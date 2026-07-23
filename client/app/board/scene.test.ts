@@ -29,6 +29,7 @@ import {
   KeyboardSpacePressed,
   type Message,
   PendingChoiceAnswered,
+  PileCardClicked,
   PromptSubmitted,
   RadialOptionPicked,
   StackDwellChanged,
@@ -1377,6 +1378,35 @@ test("DiscardChosen during put_creature_from_hand submits put_creature intent", 
     kind: "put_creature_from_hand",
     player: 0,
     choice: 21,
+  });
+});
+
+test("PileCardClicked during choose_dredge submits dredge intent", () => {
+  const dredger = creature(8, 0, { name: "Stinkweed Imp", zone: ZONE.Graveyard });
+  const pending = {
+    kind: "choose_dredge" as const,
+    player: 0,
+    items: [{ id: 8, label: "Stinkweed Imp" }],
+  };
+  const gameFold = fold(
+    state({
+      objects: [dredger],
+      pending_choice: pending,
+      can_act: true,
+    }),
+  );
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    pileExpand: { zone: ZONE.Graveyard, owner: 0 },
+    pendingChoiceKey: choiceDraftKey(pending),
+    promptDraft: { kind: "card-pick", picked: [], filter: "" },
+  };
+  const [next, commands] = updateBoard(board, PileCardClicked({ id: 8 }), gameFold, "T1");
+  expect(next.pileExpand).toBeNull();
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "choose_dredge",
+    player: 0,
+    dredger: 8,
   });
 });
 

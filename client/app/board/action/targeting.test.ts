@@ -11,6 +11,7 @@ import {
   pendingDiscardHandIds,
   pendingDivideSpellObjectIndexes,
   pendingDivideSpellOverlay,
+  pendingGraveyardPickIds,
   pendingHandPickIds,
   pendingPlayerAimOneClick,
   pendingPlayerAimOverlay,
@@ -476,6 +477,57 @@ describe("gyExileCostPile", () => {
         state([object({ id: 8, zone: ZONE.Graveyard, owner: 0 }), object({ id: 9, zone: ZONE.Graveyard, owner: 0 })]),
       ),
     ).toEqual({ zone: ZONE.Graveyard, owner: 0 });
+  });
+});
+
+describe("pendingGraveyardPickIds", () => {
+  it("returns graveyard ids for exile_from_graveyard in one pile", () => {
+    const ids = pendingGraveyardPickIds(
+      {
+        kind: "exile_from_graveyard",
+        player: 0,
+        source: 1,
+        items: [
+          { id: 8, label: "A" },
+          { id: 9, label: "B" },
+        ],
+      },
+      state([object({ id: 8, zone: ZONE.Graveyard, owner: 0 }), object({ id: 9, zone: ZONE.Graveyard, owner: 0 })]),
+    );
+    expect(ids).not.toBeNull();
+    if (ids == null) throw new Error("expected gy pick ids");
+    expect([...ids].sort()).toEqual([8, 9]);
+  });
+
+  it("returns ids for choose_dredge", () => {
+    const ids = pendingGraveyardPickIds(
+      {
+        kind: "choose_dredge",
+        player: 0,
+        items: [{ id: 8, label: "Stinkweed Imp" }],
+      },
+      state([object({ id: 8, zone: ZONE.Graveyard, owner: 0, name: "Stinkweed Imp" })]),
+    );
+    expect(ids).not.toBeNull();
+    if (ids == null) throw new Error("expected dredge ids");
+    expect([...ids]).toEqual([8]);
+  });
+
+  it("is idle when items span multiple graveyards", () => {
+    expect(
+      pendingGraveyardPickIds(
+        {
+          kind: "exile_from_graveyard",
+          player: 0,
+          source: 1,
+          items: [
+            { id: 8, label: "A" },
+            { id: 9, label: "B" },
+          ],
+        },
+        state([object({ id: 8, zone: ZONE.Graveyard, owner: 0 }), object({ id: 9, zone: ZONE.Graveyard, owner: 1 })]),
+      ),
+    ).toBeNull();
   });
 });
 

@@ -38,6 +38,8 @@ import {
   pendingBoardTargetMode,
   pendingDamageAssignBlockers,
   pendingDivideSpellObjectIndexes,
+  pendingGraveyardPickIds,
+  pendingGraveyardPickOneClick,
   pendingHandPickIds,
   pendingHandPickOneClick,
   pendingPlayerAimOneClick,
@@ -959,6 +961,26 @@ function cardPickConfig(pending: PendingChoiceView): {
   }
 }
 
+function pendingGraveyardAimCoach(
+  kind: "exile_from_graveyard" | "may_return_from_graveyard" | "shuffle_from_graveyard" | "choose_dredge",
+  oneClick: boolean,
+): string {
+  switch (kind) {
+    case "exile_from_graveyard":
+      return oneClick ? "Click a card in the graveyard to exile" : "Click cards in the graveyard to exile";
+    case "may_return_from_graveyard":
+      return "Click cards in the graveyard to return";
+    case "shuffle_from_graveyard":
+      return oneClick ? "Click a card in the graveyard to shuffle in" : "Click cards in the graveyard to shuffle in";
+    case "choose_dredge":
+      return "Click a card in the graveyard to dredge";
+    default: {
+      const _exhaustive: never = kind;
+      return _exhaustive;
+    }
+  }
+}
+
 function pendingHandAimCoach(
   kind: "discard" | "may_discard" | "put_land_from_hand" | "put_creature_from_hand" | "put_from_hand_on_top",
   oneClick: boolean,
@@ -988,6 +1010,72 @@ function cardPickForKind(
   board: BoardModel,
   tableId: string | null,
 ): Html | null {
+  const gyPick = pendingGraveyardPickIds(pending, state);
+  if (gyPick != null) {
+    const kind = pending.kind;
+    if (
+      kind !== "exile_from_graveyard" &&
+      kind !== "may_return_from_graveyard" &&
+      kind !== "shuffle_from_graveyard" &&
+      kind !== "choose_dredge"
+    ) {
+      return null;
+    }
+    const oneClick = pendingGraveyardPickOneClick(pending);
+    const draft = board.promptDraft ?? initPromptDraft(pending, state);
+    const picked = draft.kind === "card-pick" ? draft.picked : [];
+    const ready = !oneClick && cardPickReady(pending, picked);
+    const required = cardPickRequiredCount(pending);
+    const maxHint = kind === "shuffle_from_graveyard" ? pending.max : required;
+    const countLine =
+      !oneClick && maxHint != null
+        ? h.div(
+            [h.DataAttribute("testid", "pending-gy-count"), h.Class("pointer-events-none text-caption text-mist")],
+            [`${picked.length} / ${maxHint} selected`],
+          )
+        : !oneClick
+          ? h.div(
+              [h.DataAttribute("testid", "pending-gy-count"), h.Class("pointer-events-none text-caption text-mist")],
+              [`${picked.length} selected`],
+            )
+          : null;
+    const actions: Html[] = [];
+    if (!oneClick) {
+      const submitLabel =
+        kind === "exile_from_graveyard" ? "Exile" : kind === "may_return_from_graveyard" ? "Return" : "Shuffle";
+      actions.push(submitButton(submitLabel, !ready));
+    }
+    const decline = declineAnswer(pending);
+    if (decline != null) {
+      actions.push(
+        answerButton(
+          pending,
+          "prompt-decline",
+          cardPickDeclineLabel(pending) ?? "Decline",
+          decline,
+          false,
+          tableId == null,
+        ),
+      );
+    }
+    return h.div(
+      [
+        h.DataAttribute("testid", "pending-gy-aim"),
+        h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+        h.Class(
+          [
+            "fixed left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-xs rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+            actions.length > 0 ? "pointer-events-auto" : "pointer-events-none",
+          ].join(" "),
+        ),
+      ],
+      [
+        h.div([h.Class("pointer-events-none")], [pendingGraveyardAimCoach(kind, oneClick)]),
+        countLine,
+        actions.length > 0 ? h.div([h.Class("flex flex-wrap justify-center gap-2")], actions) : null,
+      ].filter((v): v is Html => v !== null),
+    );
+  }
   const handPick = pendingHandPickIds(pending, state);
   if (handPick != null) {
     const kind = pending.kind;

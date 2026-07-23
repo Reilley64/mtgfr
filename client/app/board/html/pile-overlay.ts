@@ -6,7 +6,7 @@ import { buttonClass } from "~/ui/buttonClass";
 import { cardArt } from "~/ui/card-art";
 import type { ObjectView, VisibleState } from "~/wire/types";
 import { ZONE } from "../geometry/layout";
-import { GyExileChosen, type Message, PileOverlayClosed } from "../messages";
+import { type Message, PileCardClicked, PileOverlayClosed } from "../messages";
 
 const h = html<Message>();
 
@@ -46,7 +46,7 @@ function cardThumb(card: ObjectView, selectable: boolean, selected: boolean): Ht
       h.Type("button"),
       h.DataAttribute("testid", `pile-card-${card.id}`),
       h.Attribute("title", card.name),
-      h.OnClick(GyExileChosen({ ids: [card.id] })),
+      h.OnClick(PileCardClicked({ id: card.id })),
       h.Class(["relative rounded-md", ring].filter(Boolean).join(" ")),
     ],
     [face],
@@ -62,7 +62,7 @@ export type PileOverlayOptions = {
  * Pile expand overlay. Returns null when pileExpand is null.
  *
  * Backdrop click and the Close button both fire PileOverlayClosed.
- * When `selectableIds` is set, those cards emit `GyExileChosen` on click.
+ * When `selectableIds` is set, those cards emit `PileCardClicked` on click.
  */
 export function pileOverlayView(
   expand: { zone: number; owner: number } | null,

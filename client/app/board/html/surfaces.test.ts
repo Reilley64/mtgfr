@@ -1248,6 +1248,34 @@ test("pending discard aim shows coach when cards are in hand", () => {
   );
 });
 
+test("pending gy aim shows coach when exile_from_graveyard cards share a pile", () => {
+  const gy = card(8, {
+    name: "Fodder",
+    zone: ZONE.Graveyard,
+    kind: { kind: "creature", power: 1, toughness: 1 },
+  });
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        pileExpand: { zone: ZONE.Graveyard, owner: 0 },
+      },
+      gameState({
+        objects: [gy],
+        pending_choice: {
+          kind: "exile_from_graveyard",
+          player: 0,
+          source: 1,
+          items: [{ id: 8, label: "Fodder" }],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-gy-aim")).toExist(),
+    Scene.expect(Scene.testId("pile-card-8")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+  );
+});
+
 test("gy exile cost aim shows coach when choices share a graveyard", () => {
   const caster = card(10, {
     name: "Caster",

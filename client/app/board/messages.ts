@@ -195,6 +195,8 @@ export const InspectDismissed = m("InspectDismissed");
 // ── Pile overlay (GY / exile expand) ──────────────────────────────────────────
 /** Clicked a pile card: open the pile overlay for the given zone + owner. */
 export const PileExpanded = m("PileExpanded", { zone: S.Number, owner: S.Number });
+/** Click a selectable card in the pile overlay (gy-exile cost or pending GY pick). */
+export const PileCardClicked = m("PileCardClicked", { id: S.Number });
 /** Close the pile overlay (Close button / Escape). */
 export const PileOverlayClosed = m("PileOverlayClosed");
 
@@ -293,6 +295,7 @@ export const Message = S.Union([
   InspectFlipFace,
   InspectDismissed,
   PileExpanded,
+  PileCardClicked,
   PileOverlayClosed,
   ConcedeClicked,
   ConcedeCancelled,

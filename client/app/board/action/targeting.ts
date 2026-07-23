@@ -306,14 +306,14 @@ export function pendingDiscardHandIds(
   return pendingHandPickIds(pc, state);
 }
 
-/** Shared graveyard pile for on-pile gy-exile aim, or null when modal fallback is required. */
-export function gyExileCostPile(
-  choices: ReadonlyArray<number> | null | undefined,
+/** Shared graveyard pile when every id is in the same owner's GY; otherwise null. */
+export function sharedGraveyardPile(
+  ids: ReadonlyArray<number> | null | undefined,
   state: VisibleState,
 ): { zone: number; owner: number } | null {
-  if (choices == null || choices.length === 0) return null;
+  if (ids == null || ids.length === 0) return null;
   let owner: number | null = null;
-  for (const id of choices) {
+  for (const id of ids) {
     const obj = state.objects.find((o) => o.id === id);
     if (obj == null || obj.zone !== ZONE.Graveyard) return null;
     if (owner == null) owner = obj.owner;
@@ -321,6 +321,14 @@ export function gyExileCostPile(
   }
   if (owner == null) return null;
   return { zone: ZONE.Graveyard, owner };
+}
+
+/** Shared graveyard pile for on-pile gy-exile aim, or null when modal fallback is required. */
+export function gyExileCostPile(
+  choices: ReadonlyArray<number> | null | undefined,
+  state: VisibleState,
+): { zone: number; owner: number } | null {
+  return sharedGraveyardPile(choices, state);
 }
 
 /**
@@ -333,6 +341,56 @@ export function gyExileCostObjectIds(
 ): ReadonlySet<number> | null {
   if (gyExileCostPile(choices, state) == null || choices == null) return null;
   return new Set(choices);
+}
+
+type PendingGraveyardPickChoice = Extract<
+  PendingChoiceView,
+  {
+    kind: "exile_from_graveyard" | "may_return_from_graveyard" | "shuffle_from_graveyard" | "choose_dredge";
+  }
+>;
+
+function isPendingGraveyardPick(pc: PendingChoiceView): pc is PendingGraveyardPickChoice {
+  return (
+    pc.kind === "exile_from_graveyard" ||
+    pc.kind === "may_return_from_graveyard" ||
+    pc.kind === "shuffle_from_graveyard" ||
+    pc.kind === "choose_dredge"
+  );
+}
+
+/** True when a pile click should auto-submit (no accumulate chrome). */
+export function pendingGraveyardPickOneClick(pc: PendingChoiceView | null | undefined): boolean {
+  if (pc == null || !isPendingGraveyardPick(pc)) return false;
+  if (pc.kind === "choose_dredge") return true;
+  if (pc.kind === "shuffle_from_graveyard") return pc.max === 1;
+  return false;
+}
+
+/**
+ * Legal graveyard ids for engine GY card-picks when every item shares one graveyard pile.
+ * Mixed owners / off-GY items keep the modal card picker.
+ */
+export function pendingGraveyardPickIds(
+  pc: PendingChoiceView | null | undefined,
+  state: VisibleState,
+): ReadonlySet<number> | null {
+  if (pc == null || !isPendingGraveyardPick(pc)) return null;
+  if (pc.player !== state.viewer) return null;
+  if (pc.items.length === 0) return null;
+  const ids = pc.items.map((item) => item.id);
+  if (sharedGraveyardPile(ids, state) == null) return null;
+  return new Set(ids);
+}
+
+/** Shared GY pile for pending graveyard card-picks, or null when modal fallback is required. */
+export function pendingGraveyardPickPile(
+  pc: PendingChoiceView | null | undefined,
+  state: VisibleState,
+): { zone: number; owner: number } | null {
+  const ids = pendingGraveyardPickIds(pc, state);
+  if (ids == null) return null;
+  return sharedGraveyardPile([...ids], state);
 }
 
 /**
