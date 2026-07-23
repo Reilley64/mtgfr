@@ -69,6 +69,7 @@ import {
   PromptModeChoiceToggled,
   PromptNumberSet,
   PromptOptionFilterSet,
+  PromptOrderDragEnded,
   PromptOrderMoved,
   PromptOrderRowClicked,
   PromptPartitionSet,
@@ -428,10 +429,15 @@ function orderPrompt(pending: Extract<PendingChoiceView, { kind: "order_triggers
     return h.div(
       [
         h.DataAttribute("testid", `prompt-order-${pos}`),
+        h.Draggable(true),
+        h.OnDragStart(PromptOrderRowClicked({ pos })),
+        h.AllowDrop(),
+        h.OnDrop(PromptOrderRowClicked({ pos })),
+        h.OnDragEnd(PromptOrderDragEnded()),
         h.Class(
           [
-            "flex items-center gap-2 rounded-hud border px-2 py-2 transition-colors",
-            selected ? "border-llanowar bg-llanowar/20" : "border-transparent bg-glass/50",
+            "flex cursor-grab items-center gap-2 rounded-hud border px-2 py-2 transition-colors active:cursor-grabbing",
+            selected ? "border-llanowar bg-llanowar/20 opacity-80" : "border-transparent bg-glass/50",
           ].join(" "),
         ),
       ],
@@ -479,8 +485,8 @@ function orderPrompt(pending: Extract<PendingChoiceView, { kind: "order_triggers
       [h.Class("shrink-0 text-caption text-mist")],
       [
         pick == null
-          ? "Click a trigger, then click where it should go (or use ↑↓)."
-          : "Click another row to place it there — or click it again to cancel.",
+          ? "Drag a trigger to reorder, or click then click where it should go (↑↓ also work)."
+          : "Drop on another row to place it — or click / release to cancel.",
       ],
     ),
     h.div([h.DataAttribute("testid", "prompt-order-list"), h.Class("flex flex-col gap-1")], rows),

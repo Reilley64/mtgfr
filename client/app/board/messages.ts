@@ -123,6 +123,8 @@ export const PromptDeclined = m("PromptDeclined");
 export const PromptOrderMoved = m("PromptOrderMoved", { pos: S.Number, delta: S.Number });
 /** Click-to-place reorder: first click picks a row, second click inserts it at that index. */
 export const PromptOrderRowClicked = m("PromptOrderRowClicked", { pos: S.Number });
+/** HTML5 drag cancelled without a drop — clears `orderPickPos`. */
+export const PromptOrderDragEnded = m("PromptOrderDragEnded");
 /** Set combat damage assigned to a blocker. */
 export const PromptDamageSet = m("PromptDamageSet", { id: S.Number, amount: S.Number });
 /** Type into a free-text prompt (naming a card). */
@@ -271,6 +273,7 @@ export const Message = S.Union([
   PromptDeclined,
   PromptOrderMoved,
   PromptOrderRowClicked,
+  PromptOrderDragEnded,
   PromptDamageSet,
   PromptStringSet,
   PromptCardFilterSet,

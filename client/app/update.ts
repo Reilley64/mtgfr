@@ -254,6 +254,7 @@ export const update = (
       PromptDeclined: (boardMessage) => foldBoard(model, boardMessage),
       PromptOrderMoved: (boardMessage) => foldBoard(model, boardMessage),
       PromptOrderRowClicked: (boardMessage) => foldBoard(model, boardMessage),
+      PromptOrderDragEnded: (boardMessage) => foldBoard(model, boardMessage),
       PromptDamageSet: (boardMessage) => foldBoard(model, boardMessage),
       PromptStringSet: (boardMessage) => foldBoard(model, boardMessage),
       PromptCardFilterSet: (boardMessage) => foldBoard(model, boardMessage),

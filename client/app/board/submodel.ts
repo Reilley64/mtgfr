@@ -2109,6 +2109,8 @@ export function updateBoard(
       order.splice(message.pos, 0, item);
       return [{ ...synced, promptDraft: { kind: "order", order }, orderPickPos: null }, []];
     }
+    case "PromptOrderDragEnded":
+      return [{ ...model, orderPickPos: null }, []];
     case "PromptDamageSet": {
       const synced = syncPromptDraft(model, fold);
       if (synced.promptDraft == null) return [synced, []];
