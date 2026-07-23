@@ -291,6 +291,54 @@ test("assign_combat_damage submit when damage sums to power", () => {
   });
 });
 
+test("assign_combat_damage stepper increments a blocker amount", () => {
+  const attacker: ObjectView = {
+    controller: 0,
+    has_haste: false,
+    id: 9,
+    is_commander: false,
+    kind: { kind: "creature", power: 4, toughness: 4 },
+    mana_cost: { colored: [0, 0, 0, 0, 0], generic: 0 },
+    marked_damage: 0,
+    name: "Attacker",
+    needs_target: false,
+    owner: 0,
+    plus_counters: 0,
+    power: 4,
+    print: "",
+    summoning_sick: false,
+    tapped: false,
+    toughness: 4,
+    zone: 2,
+  };
+  const pending = {
+    kind: "assign_combat_damage" as const,
+    player: 0,
+    source: 9,
+    items: [
+      { id: 20, label: "Bear" },
+      { id: 21, label: "Elf" },
+    ],
+  };
+  const s = state({ objects: [attacker], pending_choice: pending });
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(
+      viewModel(s, {
+        ...initialBoardModel(),
+        pendingChoiceKey: choiceDraftKey(pending),
+        promptDraft: { kind: "damage", amounts: { 20: 4, 21: 0 } },
+      }),
+    ),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("prompt-damage-20-value")).toHaveText("4"),
+    Scene.expect(Scene.testId("prompt-damage-20-inc")).toBeDisabled(),
+    Scene.click(Scene.testId("prompt-damage-20-dec")),
+    Scene.expect(Scene.testId("prompt-damage-20-value")).toHaveText("3"),
+    Scene.expect(Scene.testId("prompt-damage-assigned")).toHaveText("assigned 3 / 4"),
+  );
+});
+
 test("trample assign_combat_damage submit allows under-assign overflow to defender", () => {
   const attacker: ObjectView = {
     controller: 0,

@@ -1563,7 +1563,14 @@ export function updateBoard(
     case "PromptDamageSet": {
       const synced = syncPromptDraft(model, fold);
       if (synced.promptDraft == null) return [synced, []];
-      const amount = Math.max(0, Number.parseInt(String(message.amount), 10) || 0);
+      const pc = fold.state?.pending_choice;
+      let amount = Math.max(0, Number.parseInt(String(message.amount), 10) || 0);
+      if (pc?.kind === "assign_combat_damage") {
+        const power = fold.state?.objects.find((o) => o.id === pc.source)?.power ?? amount;
+        amount = clampX(amount, 0, power);
+      } else if (pc?.kind === "divide_spell_damage" || pc?.kind === "divide_counters") {
+        amount = clampX(amount, 0, pc.total);
+      }
       if (synced.promptDraft.kind === "divide") {
         return [
           {

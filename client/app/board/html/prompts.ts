@@ -243,6 +243,26 @@ function orderPrompt(pending: Extract<PendingChoiceView, { kind: "order_triggers
   ]);
 }
 
+function amountStepper(id: number, amount: number, max: number): Html {
+  const value = clampX(amount, 0, max);
+  return h.div(
+    [h.Class("flex flex-wrap items-center gap-1")],
+    [
+      itemButton("Min", `prompt-damage-${id}-min`, PromptDamageSet({ id, amount: 0 })),
+      itemButton("−", `prompt-damage-${id}-dec`, PromptDamageSet({ id, amount: value - 1 }), value <= 0),
+      h.span(
+        [
+          h.DataAttribute("testid", `prompt-damage-${id}-value`),
+          h.Class("min-w-[2ch] text-center text-body font-semibold text-snow"),
+        ],
+        [String(value)],
+      ),
+      itemButton("+", `prompt-damage-${id}-inc`, PromptDamageSet({ id, amount: value + 1 }), value >= max),
+      itemButton("Max", `prompt-damage-${id}-max`, PromptDamageSet({ id, amount: max })),
+    ],
+  );
+}
+
 function damageAssignPrompt(
   pending: Extract<PendingChoiceView, { kind: "assign_combat_damage" }>,
   state: VisibleState,
@@ -259,17 +279,7 @@ function damageAssignPrompt(
   const rows = pending.items.map((it) =>
     h.div(
       [h.Class("flex items-center gap-2")],
-      [
-        h.span([h.Class("w-28 truncate text-body")], [it.label]),
-        h.input([
-          h.Type("number"),
-          h.Min("0"),
-          h.DataAttribute("testid", `prompt-damage-${it.id}`),
-          h.Value(String(amounts[it.id] ?? 0)),
-          h.OnInput((value) => PromptDamageSet({ id: it.id, amount: Number.parseInt(value, 10) || 0 })),
-          h.Class("w-16 rounded-hud bg-glass px-2 py-1 text-body text-snow"),
-        ]),
-      ],
+      [h.span([h.Class("w-28 truncate text-body")], [it.label]), amountStepper(it.id, amounts[it.id] ?? 0, power)],
     ),
   );
   return frame("pending-choice", `Divide ${power} damage among blockers`, [
@@ -960,19 +970,15 @@ function divideTotalPrompt(
           [h.Class("flex items-center gap-2")],
           [
             h.span([h.Class("w-44 truncate text-body")], [item.label]),
-            h.input([
-              h.Type("number"),
-              h.Min("0"),
-              h.DataAttribute("testid", `prompt-damage-${index}`),
-              h.Value(String(amounts[index] ?? 0)),
-              h.OnInput((value) => PromptDamageSet({ id: index, amount: Number.parseInt(value, 10) || 0 })),
-              h.Class("w-16 rounded-hud bg-glass px-2 py-1 text-body text-snow"),
-            ]),
+            amountStepper(index, amounts[index] ?? 0, pending.total),
           ],
         ),
       ),
       h.div(
-        [h.Class(assigned === pending.total ? "text-assign-clover" : "text-caution-amber")],
+        [
+          h.DataAttribute("testid", "prompt-damage-assigned"),
+          h.Class(assigned === pending.total ? "text-assign-clover" : "text-caution-amber"),
+        ],
         [`assigned ${assigned} / ${pending.total}`],
       ),
       submitButton("Assign", !ready),
@@ -987,19 +993,15 @@ function divideTotalPrompt(
         [h.Class("flex items-center gap-2")],
         [
           h.span([h.Class("w-44 truncate text-body")], [item.label]),
-          h.input([
-            h.Type("number"),
-            h.Min("0"),
-            h.DataAttribute("testid", `prompt-damage-${item.id}`),
-            h.Value(String(amounts[item.id] ?? 0)),
-            h.OnInput((value) => PromptDamageSet({ id: item.id, amount: Number.parseInt(value, 10) || 0 })),
-            h.Class("w-16 rounded-hud bg-glass px-2 py-1 text-body text-snow"),
-          ]),
+          amountStepper(item.id, amounts[item.id] ?? 0, pending.total),
         ],
       ),
     ),
     h.div(
-      [h.Class(assigned === pending.total ? "text-assign-clover" : "text-caution-amber")],
+      [
+        h.DataAttribute("testid", "prompt-damage-assigned"),
+        h.Class(assigned === pending.total ? "text-assign-clover" : "text-caution-amber"),
+      ],
       [`assigned ${assigned} / ${pending.total}`],
     ),
     submitButton("Assign", !ready),
