@@ -1,5 +1,6 @@
 import { Effect, type Queue as EffectQueue, Queue, Stream } from "effect";
 import * as Mount from "foldkit/mount";
+import { colors } from "~/design-tokens.generated";
 import type { ActionView, PlayerView, VisibleState, WireAttack, WireBlock } from "~/wire/types";
 import { cardBackUrl, imageUrlByPrint } from "../../../lib/deck-builder/scryfall";
 import { type ImageCache, sharedImageCache } from "../../../lib/image-cache";
@@ -329,7 +330,7 @@ function paintAvatars(ctx: CanvasRenderingContext2D, frame: BitmapFrame): void {
   for (const player of frame.players) {
     const pos = avatarPos(player.player, frame.viewer, count);
     const screen = worldToScreen(frame.camera, pos.x, pos.y);
-    const stroke = frame.priority === player.player ? "#ffd76a" : seatColor(player.player, 0.9);
+    const stroke = frame.priority === player.player ? colors.priorityGold : seatColor(player.player, 0.9);
 
     ctx.save();
     ctx.beginPath();
@@ -395,7 +396,7 @@ function paintCombatArrows(ctx: CanvasRenderingContext2D, frame: BitmapFrame): v
     const from = cardsById.get(block.blocker);
     const to = cardsById.get(block.attacker);
     if (from == null || to == null) continue;
-    paintArrow(ctx, cardCenter(frame.camera, from), cardCenter(frame.camera, to), "#66ff99");
+    paintArrow(ctx, cardCenter(frame.camera, from), cardCenter(frame.camera, to), colors.wallGreen);
   }
 }
 

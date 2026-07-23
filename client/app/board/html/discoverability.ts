@@ -2,6 +2,7 @@
 
 import { type Html, html } from "foldkit/html";
 import { cn } from "~/cn";
+import { colors } from "~/design-tokens.generated";
 import { isActivePlayer } from "~/spectator";
 import { buttonClass } from "~/ui/buttonClass";
 import type { VisibleState } from "~/wire/types";
@@ -16,18 +17,18 @@ export const HINT_DISMISSED_KEY = "mtgfr.hintDismissed";
 
 const LEGEND_ITEMS: ReadonlyArray<{ color: string; shape: "dot" | "badge" | "outline"; label: string }> = [
   { color: "#e8b24a", shape: "badge", label: "Summoning sick" },
-  { color: "#7a3b13", shape: "dot", label: "Goaded" },
+  { color: colors.reconnectRust, shape: "dot", label: "Goaded" },
   { color: "#0c1412", shape: "dot", label: "Keyword / ability (Mana font)" },
-  { color: "#55cc99", shape: "badge", label: "Prepared (P)" },
-  { color: "#e9b84a", shape: "outline", label: "Commander" },
+  { color: colors.phaseMint, shape: "badge", label: "Prepared (P)" },
+  { color: colors.commanderGold, shape: "outline", label: "Commander" },
   { color: PLAYABLE_BORDER, shape: "outline", label: "Playable action" },
   { color: GRAVEYARD_OUTLINE, shape: "outline", label: "Graveyard halo (with playable)" },
   { color: EXILE_OUTLINE, shape: "outline", label: "Exile halo (with playable)" },
-  { color: "#2f7d46", shape: "badge", label: "+1/+1 counters" },
-  { color: "#8f2f2f", shape: "badge", label: "Marked damage" },
+  { color: colors.llanowar, shape: "badge", label: "+1/+1 counters" },
+  { color: colors.damageCrimson, shape: "badge", label: "Marked damage" },
   { color: "#f4efe2", shape: "badge", label: "Power / toughness / loyalty" },
-  { color: "#FF5555", shape: "outline", label: "Attacking" },
-  { color: "#66FF99", shape: "outline", label: "Blocking" },
+  { color: colors.mountainRed, shape: "outline", label: "Attacking" },
+  { color: colors.wallGreen, shape: "outline", label: "Blocking" },
 ];
 
 export function readHintDismissed(): boolean {

@@ -1,10 +1,11 @@
+import { colors } from "~/design-tokens.generated";
 import type { ActionView } from "~/wire/types";
 
 export const CARD_RESTING_OUTLINE = "#1a1a1a";
-export const PLAYABLE_BORDER = "#EAFFF0";
-export const COMMANDER_GOLD = "#E9B84A";
-export const GRAVEYARD_OUTLINE = "#7B5CFF";
-export const EXILE_OUTLINE = "#3DDC97";
+export const PLAYABLE_BORDER = colors.playableBorder;
+export const COMMANDER_GOLD = colors.commanderGold;
+export const GRAVEYARD_OUTLINE = colors.graveyardOutline;
+export const EXILE_OUTLINE = colors.exileOutline;
 
 export type PlayableCardGate = {
   id: number;

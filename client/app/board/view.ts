@@ -1,6 +1,7 @@
 import { Canvas, Submodel } from "foldkit";
 import { type Html, html } from "foldkit/html";
 import { boardStatusSummary } from "~/boardStatus";
+import { colors } from "~/design-tokens.generated";
 import { isActivePlayer } from "~/spectator";
 import type { VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
@@ -105,7 +106,7 @@ export const view = Submodel.defineView<BoardViewModel, Message>((model) => {
     aimFrom: overlay.aiming ? overlay.aimFrom : null,
     cursor: model.board.cursor,
     combatDragFrom: combatDrag?.from ?? null,
-    combatDragStroke: combatDrag == null ? null : combatDrag.declaringBlock ? "#66ff99" : "#ff6b6b",
+    combatDragStroke: combatDrag == null ? null : combatDrag.declaringBlock ? colors.wallGreen : "#ff6b6b",
     paymentPreviewIds,
     actions: state.actions,
   });

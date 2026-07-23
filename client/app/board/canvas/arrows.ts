@@ -1,4 +1,5 @@
 import { Canvas } from "foldkit";
+import { colors } from "~/design-tokens.generated";
 import type { WireAttack, WireBlock } from "~/wire/types";
 import { TARGET_COLOR } from "../action/targeting";
 import { type Camera, worldToScreen } from "../geometry/camera";
@@ -8,7 +9,7 @@ import type { AvatarScreenPositions } from "./avatars";
 type Shape = Canvas.Shape;
 
 const ATTACK_STROKE = "#ff6b6b";
-const BLOCK_STROKE = "#66ff99";
+const BLOCK_STROKE = colors.wallGreen;
 
 type Vec = { x: number; y: number };
 

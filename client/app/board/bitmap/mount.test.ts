@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { colors } from "~/design-tokens.generated";
 import type { ActionView, PlayerView } from "~/wire/types";
 import type { RenderCard } from "../geometry/layout";
 import { ZONE } from "../geometry/layout";
@@ -204,7 +205,7 @@ describe("paintBitmapLayer", () => {
     expect(calls).toContain("text:+1");
     expect(calls).toContain("text:3");
     expect(calls).toContain("fill:#e8b24a");
-    expect(calls).toContain("fill:#8f2f2f");
+    expect(calls).toContain(`fill:${colors.damageCrimson}`);
     expect(calls).not.toContain("text:Runeclaw Bear");
     expect(calls).not.toContain("text:Test Walker");
     expect(calls).not.toContain("text:Counter Bear");

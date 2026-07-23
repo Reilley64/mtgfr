@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { colors } from "~/design-tokens.generated";
 import { TARGET_COLOR } from "../action/targeting";
 import { aimArrowShapes, combatDragArrowShapes } from "./arrows";
 
@@ -36,6 +37,6 @@ describe("combatDragArrowShapes", () => {
     });
     expect(shapes[0]._tag).toBe("Path");
     if (shapes[0]._tag !== "Path") return;
-    expect(shapes[0].stroke).toBe("#66ff99");
+    expect(shapes[0].stroke).toBe(colors.wallGreen);
   });
 });

@@ -1,5 +1,6 @@
 import type { Canvas } from "foldkit";
 import { describe, expect, it } from "vitest";
+import { colors } from "~/design-tokens.generated";
 import type { ActionView, ObjectView, PlayerView, VisibleState } from "~/wire/types";
 import { TARGET_COLOR } from "../action/targeting";
 import { COMMANDER_GOLD, PLAYABLE_BORDER } from "../chrome";
@@ -284,7 +285,7 @@ describe("sceneShapes", () => {
       combat: { ...state.combat, attackers: [{ attacker: 1, defender: 1 }] },
     });
 
-    const feltIndex = shapes.findIndex((shape) => shape._tag === "Rect" && shape.fill === "#0B1310");
+    const feltIndex = shapes.findIndex((shape) => shape._tag === "Rect" && shape.fill === colors.forestFloor);
     const cardIndex = shapes.findIndex((shape) => shapeContainsText(shape, "2/2"));
     const avatarIndex = shapes.findIndex((shape) => shape._tag === "Circle");
     const arrowIndex = lastIndexWhere(shapes, (shape) => shape._tag === "Path" && shape.stroke === "#ff6b6b");
@@ -340,7 +341,7 @@ describe("sceneShapes", () => {
     const bearCard = firstCardPath(firstGroupContainingText(shapes, "2/2"));
     const forestCard = firstCardPath(firstGroupWithCardFill(shapes, "#223820"));
 
-    expect(bearCard?.stroke).toBe("#EAFFF0");
+    expect(bearCard?.stroke).toBe(PLAYABLE_BORDER);
     expect(forestCard?.stroke).toBe("#1a1a1a");
   });
 
@@ -362,7 +363,7 @@ describe("sceneShapes", () => {
     const shapes = sceneShapes(state);
     const commanderCard = firstCardPath(firstGroupContainingText(shapes, "2/2"));
 
-    expect(commanderCard?.stroke).toBe("#E9B84A");
+    expect(commanderCard?.stroke).toBe(COMMANDER_GOLD);
   });
 
   it("layers playable and commander outlines on playable commanders", () => {

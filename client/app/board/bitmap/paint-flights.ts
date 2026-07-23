@@ -1,3 +1,4 @@
+import { colors } from "~/design-tokens.generated";
 import { imageUrlByPrint } from "../../../lib/deck-builder/scryfall";
 import type { ImageCache } from "../../../lib/image-cache";
 import { CARD_H, CARD_W } from "../geometry/layout";
@@ -20,7 +21,7 @@ export function paintFlightCard(
   ctx.shadowColor = "rgba(0,0,0,0.45)";
   ctx.shadowBlur = 16;
   roundRect(ctx, x, y, w, h, r);
-  ctx.fillStyle = "#e8e4d8";
+  ctx.fillStyle = colors.oracleIvory;
   ctx.fill();
   ctx.shadowBlur = 0;
   ctx.strokeStyle = CARD_OUTLINE;
