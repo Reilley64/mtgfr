@@ -250,6 +250,45 @@ export function pendingDamageAssignOverlay(
 }
 
 /**
+ * Legal permanent ids for a local pre-submit sacrifice cost when every choice is on the battlefield.
+ * Off-board choices keep the modal cost grid.
+ */
+export function sacrificeCostObjectIds(
+  choices: ReadonlyArray<number> | null | undefined,
+  state: VisibleState,
+): ReadonlySet<number> | null {
+  if (choices == null || choices.length === 0) return null;
+  const ids = new Set<number>();
+  for (const id of choices) {
+    const obj = state.objects.find((o) => o.id === id);
+    if (obj == null || obj.zone !== ZONE.Battlefield) return null;
+    ids.add(id);
+  }
+  return ids;
+}
+
+/** Highlight sacrifice-cost permanents while `sacrificePick` is live (no aim arrow). */
+export function sacrificeCostOverlay(
+  choices: ReadonlyArray<number> | null | undefined,
+  state: VisibleState,
+): StagingOverlay {
+  const idle: StagingOverlay = {
+    aiming: false,
+    targetObjects: new Set(),
+    targetPlayers: new Set(),
+    aimFrom: null,
+  };
+  const ids = sacrificeCostObjectIds(choices, state);
+  if (ids == null) return idle;
+  return {
+    aiming: true,
+    targetObjects: ids,
+    targetPlayers: new Set(),
+    aimFrom: null,
+  };
+}
+
+/**
  * Object id → divide draft index when every `divide_spell_damage` target is a battlefield permanent.
  * Player targets or off-board items keep the modal steppers only.
  */

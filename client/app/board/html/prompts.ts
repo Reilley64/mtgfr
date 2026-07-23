@@ -41,6 +41,7 @@ import {
   pendingPlayerAimSeats,
   pendingTargetOneClick,
   playerSeatLabel,
+  sacrificeCostObjectIds,
   stagedPickTargets,
   stagedTargetTitle,
 } from "../action/targeting";
@@ -2041,10 +2042,26 @@ export function promptsView(board: BoardModel, state: VisibleState, tableId: str
   if (board.xPrompt != null) return boardXPrompt(board.xPrompt);
   if (board.modalCast != null) return modalPrompt(board.modalCast);
   if (board.sacrificePick != null) {
+    const choices = board.sacrificePick.action.sacrifice_choices ?? [];
+    if (sacrificeCostObjectIds(choices, state) != null) {
+      return h.div(
+        [
+          h.DataAttribute("testid", "sacrifice-cost-aim"),
+          h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+          h.Class(
+            "fixed left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-xs rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud pointer-events-auto",
+          ),
+        ],
+        [
+          h.div([h.Class("pointer-events-none")], ["Click a permanent to sacrifice"]),
+          cancelButton(),
+        ],
+      );
+    }
     return costPickPrompt(
       "sacrifice-pick",
       "Choose a permanent to sacrifice",
-      board.sacrificePick.action.sacrifice_choices ?? [],
+      choices,
       state,
       (id) => SacrificeChosen({ objectId: id }),
     );

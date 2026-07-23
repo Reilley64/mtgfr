@@ -1131,7 +1131,9 @@ test("sacrifice pick prompt renders as a board surface", () => {
       },
       gameState({ objects: [sacrificeBody] }),
     ),
-    Scene.expect(Scene.testId("sacrifice-pick")).toExist(),
+    Scene.expect(Scene.testId("sacrifice-cost-aim")).toExist(),
+    Scene.expect(Scene.testId("sacrifice-pick")).toBeAbsent(),
+    Scene.expect(Scene.testId("sacrifice-pick-55")).toBeAbsent(),
   );
 });
 
