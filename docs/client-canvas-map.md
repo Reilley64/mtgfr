@@ -14,6 +14,11 @@ overall module split.
 2. **Bitmaps (card art):** `client/app/board/bitmap/mount.ts` — Foldkit `Mount` regions blit card faces + flights on top of the canvas via the shared `ImageCache`.
 3. **Hits / camera:** `client/app/board/geometry/{camera,hit-test,density,layout,interaction}.ts` — pure geometry; used by the board submodel + `action/` planners.
 4. **Flights:** `client/app/board/motion/flights.ts` — canvas-owned in-flight cards; resting hand/stack stay HTML.
+
+   Flight animation is Mount-local rAF: mid-flight ticks paint only the flight
+   canvas. Resting bitmap republishes when layout/chrome/hide sets change, not on
+   every pose tick. Model receives `FlightsSynced` when the flying set changes.
+
 5. **Board submodel:** `client/app/board/submodel.ts` composes canvas, bitmap, motion, action-session, and HTML overlays. `view.ts` is the composition root.
 6. **HTML chrome:** `client/app/board/html/` — `stack.ts`, `turn-chrome.ts`, `priority-bar.ts`, `discoverability.ts`, `overlays.ts`, `hand.ts`, `mana-tray.ts`, `actions.ts`, `prompts.ts`, `activation-radial.ts`, `inspect.ts`.
 

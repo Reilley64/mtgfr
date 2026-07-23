@@ -1,6 +1,6 @@
 # Canvas flight paint performance
 
-**Status:** Draft (awaiting user review)  
+**Status:** Done — `flight-frame.test.ts` (resting gate + `mergeFlightPoses`), `mount.test.ts` (pose-only tick skips resting paint), `story.test.ts` (`FlightsSynced` settle; `TickedFrame` no-step).  
 **Date:** 2026-07-23  
 **PR:** [#74](https://github.com/Reilley64/mtgfr/pull/74)  
 **Related:** [`docs/client-canvas-map.md`](../../client-canvas-map.md), [`docs/superpowers/specs/2026-07-20-client-game-board-and-interaction.md`](2026-07-20-client-game-board-and-interaction.md)
