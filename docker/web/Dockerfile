@@ -11,6 +11,8 @@ WORKDIR /src
 COPY --from=deps /client/node_modules ./client/node_modules
 COPY client ./client
 COPY proto ./proto
+# Token codegen (`bun run gen:tokens`) reads repo-root DTCG JSON — must be present at build.
+COPY design.tokens.json ./design.tokens.json
 WORKDIR /src/client
 # Empty `VITE_CARD_CDN` → Scryfall `named` fallback in the client.
 ARG VITE_CARD_CDN=
