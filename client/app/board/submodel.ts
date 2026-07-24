@@ -1918,6 +1918,27 @@ export function updateBoard(
         if (objectId == null) return [model, []];
         const choices = pick.action.discard_choices ?? [];
         if (!choices.includes(objectId)) return [model, []];
+        const state = fold.state;
+        const handIds =
+          state != null
+            ? new Set(
+                state.objects.filter((o) => o.zone === ZONE.Hand && o.owner === state.viewer).map((o) => o.id),
+              )
+            : new Set<number>();
+        const onHand = choices.length > 0 && choices.every((id) => handIds.has(id));
+        if (!onHand) {
+          const picks: CostPicks = { ...pick.picks, discard_cost: [objectId], discard_settled: true };
+          return continueAfterCostPick(
+            { ...model, discardPick: null },
+            fold,
+            tableId,
+            pick.action,
+            pick.card,
+            picks,
+            pick.dropSeed,
+            pick.screenOrigin,
+          );
+        }
         const current = pick.picks.discard_cost;
         const next = current.includes(objectId)
           ? current.filter((id) => id !== objectId)
