@@ -2,22 +2,24 @@ import { Effect, Queue, Schema as S, Stream } from "effect";
 import { type Html, html } from "foldkit/html";
 import * as Mount from "foldkit/mount";
 import { cardHoverPreviewView } from "../../../../lib/deck-builder/card-hover-preview";
+import { manaFontClass } from "../../../../lib/oracleText";
 import { appVersionBadge } from "../../../../lib/ui/app-version";
 import { buttonClass } from "../../../../lib/ui/buttonClass";
 import { cardArt } from "../../../../lib/ui/card-art";
 import { confirmDialog } from "../../../../lib/ui/confirmDialog";
-import { feltClass, listRowClass } from "../../../../lib/ui/surfaces";
+import { feltClass, fieldClass, listRowClass } from "../../../../lib/ui/surfaces";
 import type { Message } from "../../../messages";
 import { RequestedLogout } from "../../../messages";
-import { DeckRoute, NewDeckRoute, PlayRoute, routePath } from "../../../routes";
+import { NewDeckRoute, PlayRoute, routePath } from "../../../routes";
 import {
-  AskedDeckDelete,
   CancelledDeckDelete,
+  ChangedDeckListSearch,
   ClearedDeckListHover,
   MovedDeckListHover,
   RequestedDeckDelete,
 } from "./messages";
 import type { DeckListSubmodel } from "./submodel";
+import { identityPipCodes, visibleDecks } from "./visible";
 
 const h = html<Message>();
 
@@ -75,6 +77,8 @@ function hoverPreview(model: DeckListSubmodel): Html | null {
 }
 
 export function view(model: DeckListSubmodel, username: string, apiVersion: string | null): Html {
+  const visible = visibleDecks(model.decks, model.knownCommanders, model.searchQuery);
+
   return h.main(
     [
       h.Class(
@@ -111,7 +115,7 @@ export function view(model: DeckListSubmodel, username: string, apiVersion: stri
         ],
       ),
       h.section(
-        [h.Class("mx-auto flex max-w-[720px] flex-col gap-md")],
+        [h.Class("mx-auto max-w-[960px]")],
         [
           model.error == null
             ? null
@@ -120,80 +124,87 @@ export function view(model: DeckListSubmodel, username: string, apiVersion: stri
           !model.loading && model.decks.length === 0
             ? h.div([h.Class("text-label text-lichen")], ["No decks yet — build one to get started."])
             : null,
-          ...model.decks.map((deck) =>
-            h.article(
-              [h.Class(listRowClass("flex flex-wrap items-center gap-md rounded-hud p-md"))],
-              [
-                commanderPrint(model, deck) === ""
-                  ? h.div([h.Class("size-[56px] shrink-0 rounded-control bg-glass")], [])
-                  : cardArt(h, {
-                      print: commanderPrint(model, deck),
-                      size: "art_crop",
-                      alt: "",
-                      className: "size-[56px] shrink-0 rounded-control object-cover",
-                    }),
-                h.div(
-                  [h.Class("min-w-0 flex-1")],
-                  [
-                    h.div(
-                      [h.Class("font-semibold")],
-                      [
-                        deck.name,
-                        deck.id < 0
-                          ? h.span(
-                              [
-                                h.Class(
-                                  "ml-sm rounded-full bg-lichen/14 px-[7px] py-px align-middle text-chip text-lichen",
-                                ),
-                              ],
-                              ["Precon"],
-                            )
-                          : null,
-                      ],
-                    ),
-                    h.span(
-                      [
-                        h.Class("text-label text-lichen"),
-                        h.OnMount(
-                          BindDeckListCommanderHover({
-                            cardId: deck.commander,
-                            print: commanderPrint(model, deck),
+          !model.loading && model.decks.length > 0
+            ? h.input([
+                h.Type("search"),
+                h.DataAttribute("testid", "deck-list-search"),
+                h.Placeholder("Search decks…"),
+                h.Value(model.searchQuery),
+                h.OnInput((value) => ChangedDeckListSearch({ query: value })),
+                h.Class(fieldClass("mb-md w-full max-w-[720px]")),
+              ])
+            : null,
+          !model.loading && model.decks.length > 0 && visible.length === 0
+            ? h.div([h.Class("text-label text-lichen")], ["No decks match."])
+            : null,
+          !model.loading && visible.length > 0
+            ? h.div(
+                [h.Class("mx-auto grid max-w-[960px] grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-md")],
+                visible.map((deck) => {
+                  const commander = model.knownCommanders[deck.commander];
+                  const print = commanderPrint(model, deck);
+                  const pips = identityPipCodes(commander?.color_identity ?? []);
+
+                  return h.a(
+                    [
+                      h.Href(`${routePath(PlayRoute())}?deck=${deck.id}`),
+                      h.DataAttribute("testid", `deck-tile-${deck.id}`),
+                      h.Class(
+                        listRowClass("relative flex flex-col overflow-hidden rounded-hud no-underline text-snow"),
+                      ),
+                      h.OnMount(
+                        BindDeckListCommanderHover({
+                          cardId: deck.commander,
+                          print,
+                        }),
+                      ),
+                    ],
+                    [
+                      print === ""
+                        ? h.div([h.Class("h-[110px] w-full bg-glass")], [])
+                        : cardArt(h, {
+                            print,
+                            size: "art_crop",
+                            alt: "",
+                            className: "h-[110px] w-full object-cover",
                           }),
-                        ),
-                      ],
-                      [commanderName(model, deck.commander)],
-                    ),
-                  ],
-                ),
-                h.div(
-                  [h.Class("flex flex-wrap gap-sm")],
-                  [
-                    h.a(
-                      [h.Href(`${routePath(PlayRoute())}?deck=${deck.id}`), h.Class(buttonClass("primary"))],
-                      ["Play"],
-                    ),
-                    deck.id < 0
-                      ? null
-                      : h.a(
-                          [h.Href(routePath(DeckRoute({ id: String(deck.id) }))), h.Class(buttonClass("ghost"))],
-                          ["Edit"],
-                        ),
-                    deck.id < 0
-                      ? null
-                      : h.button(
-                          [
-                            h.Type("button"),
-                            h.DataAttribute("testid", `delete-deck-${deck.id}`),
-                            h.OnClick(AskedDeckDelete({ id: deck.id })),
-                            h.Class(buttonClass("ghost")),
-                          ],
-                          ["Delete"],
-                        ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+                      h.div(
+                        [h.Class("flex min-h-[86px] flex-col gap-xs p-md")],
+                        [
+                          h.div(
+                            [h.Class("truncate text-label font-semibold")],
+                            [
+                              deck.name,
+                              deck.id < 0
+                                ? h.span(
+                                    [
+                                      h.Class(
+                                        "ml-sm rounded-full bg-lichen/14 px-[7px] py-px align-middle text-chip text-lichen",
+                                      ),
+                                    ],
+                                    ["Precon"],
+                                  )
+                                : null,
+                            ],
+                          ),
+                          h.div([h.Class("truncate text-chip text-lichen")], [commanderName(model, deck.commander)]),
+                          pips.length === 0
+                            ? null
+                            : h.div(
+                                [h.Class("mt-auto flex gap-[3px] text-[14px] text-snow")],
+                                pips.map((code) => {
+                                  const ms = manaFontClass(code);
+                                  if (ms == null) return null;
+                                  return h.i([h.Class(`ms ms-cost ms-${ms}`)], []);
+                                }),
+                              ),
+                        ],
+                      ),
+                    ],
+                  );
+                }),
+              )
+            : null,
         ],
       ),
       appVersionBadge(h, apiVersion),

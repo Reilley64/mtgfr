@@ -1,5 +1,8 @@
-import type { CatalogCard } from "../../../../lib/wire/types";
 import type { DeckSummary } from "../../../../lib/wire/types";
+
+type KnownCommander = {
+  readonly name: string;
+};
 
 const COLOR_PIP = ["W", "U", "B", "R", "G"] as const;
 
@@ -18,7 +21,7 @@ export function deckListContextMenuAllowed(deckId: number): boolean {
 
 export function visibleDecks(
   decks: readonly DeckSummary[],
-  knownCommanders: Readonly<Record<string, CatalogCard>>,
+  knownCommanders: Readonly<Record<string, KnownCommander | undefined>>,
   query: string,
 ): DeckSummary[] {
   const q = query.trim().toLowerCase();

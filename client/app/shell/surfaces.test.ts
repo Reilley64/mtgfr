@@ -125,7 +125,7 @@ describe("shell surface scenes", () => {
     );
   });
 
-  it("renders deck list chrome, delete action, and commander mounts", () => {
+  it("renders deck list chrome, tiles, and commander mounts", () => {
     Scene.scene(
       { update, view },
       Scene.with(
@@ -142,7 +142,9 @@ describe("shell surface scenes", () => {
         }),
       ),
       Scene.expect(Scene.selector('[data-testid="decks-page"]')).toExist(),
-      Scene.expect(Scene.selector('[data-testid="delete-deck-1"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="deck-list-search"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="deck-tile-1"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="delete-deck-1"]')).not.toExist(),
       Scene.expect(Scene.text("Your decks")).toExist(),
       Scene.expect(Scene.text("Superfriends")).toExist(),
       Scene.Mount.resolve(
