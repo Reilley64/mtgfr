@@ -11,8 +11,8 @@ import { emptyGameSlice, type GameSlice, type Model } from "./model";
 import type { RpcClient } from "./resources";
 import {
   isProtectedRoute,
-  nextFromUrl,
   NotFoundRoute,
+  nextFromUrl,
   normalizeAppRoute,
   pathWithSearch,
   routeFromUrl,
@@ -29,6 +29,7 @@ import { loadDeckList, update as updateDeckList } from "./shell/decks/list/updat
 import type { Message as LobbyMessage } from "./shell/lobby/messages";
 import { enterLobby } from "./shell/lobby/submodel";
 import { update as updateLobby } from "./shell/lobby/update";
+import { pushUrlMaybeViewTransition } from "./view-transition";
 
 const Redirect = Command.define(
   "Redirect",
@@ -38,9 +39,11 @@ const Redirect = Command.define(
 
 const PushUrl = Command.define(
   "PushUrl",
-  { url: S.String },
+  { url: S.String, fromPathname: S.String },
   NavigationCompleted,
-)(({ url }) => Navigation.pushUrl(url).pipe(Effect.as(NavigationCompleted())));
+)(({ url, fromPathname }) =>
+  pushUrlMaybeViewTransition(url, fromPathname, { pushUrl: Navigation.pushUrl }).pipe(Effect.as(NavigationCompleted())),
+);
 
 const LoadExternalUrl = Command.define(
   "LoadExternalUrl",
@@ -219,7 +222,7 @@ export const update = (
         M.value(request).pipe(
           M.withReturnType<readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>]>(),
           M.tagsExhaustive({
-            Internal: ({ url }) => [model, [PushUrl({ url: urlToString(url) })]],
+            Internal: ({ url }) => [model, [PushUrl({ url: urlToString(url), fromPathname: model.currentPath })]],
             External: ({ href }) => [model, [LoadExternalUrl({ href })]],
           }),
         ),
