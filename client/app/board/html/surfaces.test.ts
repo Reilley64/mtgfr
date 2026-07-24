@@ -1038,6 +1038,26 @@ test("choose_mana_color aim shows docked mana pips instead of center modal", () 
   );
 });
 
+test("choose_mode aim shows docked mode buttons instead of center modal", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        pending_choice: {
+          kind: "choose_mode",
+          labels: ["Draw a card", "Create a token"],
+          player: 0,
+          source: 1,
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-mode-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("prompt-mode-0")).toHaveText("Draw a card"),
+    Scene.expect(Scene.testId("prompt-mode-1")).toHaveText("Create a token"),
+  );
+});
+
 test("non-decider sees waiting banner instead of pending-choice controls", () => {
   overlayScene(
     overlayModel(
