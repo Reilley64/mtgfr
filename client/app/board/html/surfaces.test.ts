@@ -1678,7 +1678,42 @@ test("sacrifice pick prompt renders as a board surface", () => {
     ),
     Scene.expect(Scene.testId("sacrifice-cost-aim")).toExist(),
     Scene.expect(Scene.testId("sacrifice-pick")).toBeAbsent(),
+    Scene.expect(Scene.testId("sacrifice-pick-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("sacrifice-pick-55")).toBeAbsent(),
+  );
+});
+
+test("off-board sacrifice cost shows docked sacrifice-pick-aim instead of center modal", () => {
+  const sacrificeAction = action(14, {
+    kind: "activate",
+    label: "Village Rites",
+    sacrifice_choices: [55],
+    object: 14,
+    section: "hand",
+  });
+  const offBoard = card(55, {
+    zone: ZONE.Hand,
+    kind: { kind: "creature", power: 1, toughness: 1 },
+    name: "Fodder",
+  });
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        sacrificePick: {
+          action: sacrificeAction,
+          card: card(14, { name: "Village Rites", kind: { kind: "instant" } }),
+          dropSeed: { x: 0, y: 0 },
+          screenOrigin: { x: 0, y: 0 },
+          picks: emptyCostPicks(),
+        },
+      },
+      gameState({ objects: [offBoard] }),
+    ),
+    Scene.expect(Scene.testId("sacrifice-pick-aim")).toExist(),
+    Scene.expect(Scene.testId("sacrifice-pick")).toBeAbsent(),
+    Scene.expect(Scene.testId("sacrifice-cost-aim")).toBeAbsent(),
+    Scene.expect(Scene.testId("sacrifice-pick-55")).toHaveText("Fodder"),
   );
 });
 
@@ -1716,6 +1751,41 @@ test("discard cost aim shows coach when choices are in hand", () => {
     ),
     Scene.expect(Scene.testId("discard-cost-aim")).toExist(),
     Scene.expect(Scene.testId("discard-pick")).toBeAbsent(),
+    Scene.expect(Scene.testId("discard-pick-aim")).toBeAbsent(),
+  );
+});
+
+test("off-board discard cost shows docked discard-pick-aim instead of center modal", () => {
+  const caster = card(10, {
+    name: "Caster",
+    zone: ZONE.Hand,
+    kind: { kind: "instant" },
+  });
+  const castAction = action(50, {
+    kind: "cast",
+    label: "Cast",
+    discard_choices: [11],
+    object: 10,
+    section: "hand",
+  });
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        discardPick: {
+          action: castAction,
+          card: caster,
+          dropSeed: { x: 0, y: 0 },
+          screenOrigin: { x: 0, y: 0 },
+          picks: emptyCostPicks(),
+        },
+      },
+      gameState({ objects: [caster] }),
+    ),
+    Scene.expect(Scene.testId("discard-pick-aim")).toExist(),
+    Scene.expect(Scene.testId("discard-pick")).toBeAbsent(),
+    Scene.expect(Scene.testId("discard-cost-aim")).toBeAbsent(),
+    Scene.expect(Scene.testId("discard-pick-11")).toHaveText("#11"),
   );
 });
 
@@ -1924,6 +1994,7 @@ test("gy exile cost aim shows coach when choices share a graveyard", () => {
     Scene.expect(Scene.testId("pile-overlay")).toExist(),
     Scene.expect(Scene.testId("pile-card-8")).toExist(),
     Scene.expect(Scene.testId("gy-exile-pick")).toBeAbsent(),
+    Scene.expect(Scene.testId("gy-exile-pick-aim")).toBeAbsent(),
   );
 });
 
