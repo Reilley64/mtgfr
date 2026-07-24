@@ -1,6 +1,6 @@
 # Client Shell, Deck Builder, and Observability
 
-**Status:** Current (as of 2026-07-22)
+**Status:** Current (as of 2026-07-24)
 **Module:** `client/app/` (entry, routes, update/view), `client/app/shell/**` (auth, decks, lobby), `client/lib/**` (rpc-client, wire, lobby-store, faro, ui helpers), `client/server/**` (Nitro BFF routes + Drizzle), `client/styles/global.css`
 
 ---

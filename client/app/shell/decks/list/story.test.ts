@@ -147,6 +147,9 @@ test("tile Play href uses ?deck= and search filters tiles", () => {
       [BindDeckListContextMenu, ClosedDeckListMenu()],
       [BindDeckListContextMenu, ClosedDeckListMenu()],
       [BindDeckListContextMenu, ClosedDeckListMenu()],
+      [BindCardArt, CardArtTick()],
+      [BindCardArt, CardArtTick()],
+      [BindCardArt, CardArtTick()],
     ),
     Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
     Scene.type(Scene.selector('[data-testid="deck-list-search"]'), "mirror"),
@@ -155,11 +158,13 @@ test("tile Play href uses ?deck= and search filters tiles", () => {
       BindDeckListCommanderHover,
       BindDeckListContextMenu,
       BindDeckListContextMenu,
+      BindCardArt,
+      BindCardArt,
     ),
     Scene.expect(Scene.selector('[data-testid="deck-tile-1"]')).not.toExist(),
     Scene.expect(Scene.selector('[data-testid="deck-tile--9"]')).toExist(),
     Scene.type(Scene.selector('[data-testid="deck-list-search"]'), "zzzz"),
-    Scene.Mount.expectEnded(BindDeckListCommanderHover, BindDeckListContextMenu),
+    Scene.Mount.expectEnded(BindDeckListCommanderHover, BindDeckListContextMenu, BindCardArt),
     Scene.expect(Scene.text("No decks match.")).toExist(),
   );
 });
@@ -186,11 +191,15 @@ test("owned deck context menu offers Edit and Delete", () => {
     Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), ClosedDeckListMenu()),
     Scene.Mount.resolve(BindDeckListContextMenu({ deckId: -1 }), ClosedDeckListMenu()),
     Scene.Mount.resolve(BindCardArt, CardArtTick()),
+    Scene.Mount.resolve(BindCardArt, CardArtTick()),
     Scene.Mount.resolve(
       BindDeckListCommanderHover({ cardId: "atraxa", print: "atraxa-print" }),
       ClearedDeckListHover(),
     ),
-    Scene.Mount.resolve(BindDeckListCommanderHover({ cardId: "breena", print: "" }), ClearedDeckListHover()),
+    Scene.Mount.resolve(
+      BindDeckListCommanderHover({ cardId: "breena", print: "breena-print" }),
+      ClearedDeckListHover(),
+    ),
   );
 });
 

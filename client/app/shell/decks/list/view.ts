@@ -132,7 +132,7 @@ function commanderName(model: DeckListSubmodel, id: string): string {
 }
 
 function commanderPrint(model: DeckListSubmodel, deck: DeckListSubmodel["decks"][number]): string {
-  return deck.commander_print ?? model.knownCommanders[deck.commander]?.default_print ?? "";
+  return deck.commander_print || model.knownCommanders[deck.commander]?.default_print || "";
 }
 
 function hoverPreview(model: DeckListSubmodel): Html | null {
@@ -252,6 +252,7 @@ export function view(model: DeckListSubmodel, username: string, apiVersion: stri
             ? h.input([
                 h.Type("search"),
                 h.DataAttribute("testid", "deck-list-search"),
+                h.AriaLabel("Search decks"),
                 h.Placeholder("Search decks…"),
                 h.Value(model.searchQuery),
                 h.OnInput((value) => ChangedDeckListSearch({ query: value })),
