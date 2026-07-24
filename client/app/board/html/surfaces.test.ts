@@ -1000,6 +1000,43 @@ test("may_yes_no aim shows docked Yes and No", () => {
   );
 });
 
+test("choose_color aim shows docked mana pips instead of center modal", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        pending_choice: {
+          kind: "choose_color",
+          player: 0,
+          source: 1,
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-color-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("prompt-color-0")).toExist(),
+    Scene.expect(Scene.testId("prompt-color-pip-4")).toExist(),
+  );
+});
+
+test("choose_mana_color aim shows docked mana pips instead of center modal", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        pending_choice: {
+          kind: "choose_mana_color",
+          player: 0,
+          source: 2,
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-color-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("prompt-color-1")).toExist(),
+  );
+});
+
 test("non-decider sees waiting banner instead of pending-choice controls", () => {
   overlayScene(
     overlayModel(

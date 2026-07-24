@@ -64,7 +64,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - `choose_card_name` uses an autofocused text field (`prompt-name-input`) with placeholder “Card name”; Enter submits when the trimmed name is non-empty (same gate as the Name button). Typing ≥2 characters fires `SearchCardNames`; matching results render under `prompt-name-suggestions` (click fills the draft). Catalog suggestions assist only — free-typed / nonexistent names remain submittable.
 - `search_library` uses docked `pending-library-aim` (not the center modal): autofocused `pick-card-filter` (“Filter by name…”), face dedupe by label, filtered grid inside `pick-card-scroll`, with title / filter / Choose+Fail-to-find pinned above the scroll strip. Other card-pick kinds stay unfiltered.
 - `choose_creature_type` shows an autofocused `prompt-type-filter` (“Filter types…”) and a scrolling option strip (`prompt-type-scroll`); only matching `pending.options` are clickable. Free-typed types outside the option list are not allowed.
-- `choose_color` / `choose_mana_color` render WUBRG as mana-font pip buttons (`prompt-color-{i}` / `prompt-color-pip-{i}`) with color aria-labels; click still emits `choose_color` / `choose_mana_color` intents.
+- `choose_color` / `choose_mana_color` use docked `pending-color-aim` (not the center modal): WUBRG as mana-font pip buttons (`prompt-color-{i}` / `prompt-color-pip-{i}`) with color aria-labels; click still emits `choose_color` / `choose_mana_color` intents.
 - One-click on-board `choose_target` / spell / ability targets suppress the `pending-choice` card grid and show `pending-target-aim` label chrome (plus optional Decline). Multi-target on-board aim shows `pending-target-count` and Confirm instead of the card grid. Off-board items keep the card / player picker.
 - On-board battlefield sacrifice / proliferate / attach / phase-out / keep-tapped card-picks reuse the same `pending-target-aim` chrome (one-click or Confirm accumulate).
 - Engine `discard` / `may_discard` with every item in hand suppress the card grid for `pending-discard-aim` hand-bar coach; `put_land_from_hand` / `put_creature_from_hand` / `put_from_hand_on_top` / `cast_creature_face_down` use `pending-hand-aim` (Decline stays for optional put-land/put-creature).
@@ -115,6 +115,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Scene tests cover Space/Enter submitting ready scry / order_triggers / distribute_top drafts (and refusing incomplete distribute_top).
 - Scene/unit tests cover dredge decline (`Draw normally` → `dredger: null`) and single-pick readiness for Dredge.
 - Scene tests cover pay-cost button copy (`Pay {…}` and kind-specific declines).
+- Scene tests cover docked `pending-color-aim` for `choose_color` / `choose_mana_color` (mana pips; no center `pending-choice`).
 - Scene/unit tests cover join-forces mana stepper (no per-N buttons; draft submit).
 - Scene/unit tests cover library-search docked aim (`pending-library-aim`), filter, face dedupe, pinned scroll chrome, Choose, and Fail to find.
 - Scene tests cover `choose_card_name` typeahead list when suggestions match the draft query.
