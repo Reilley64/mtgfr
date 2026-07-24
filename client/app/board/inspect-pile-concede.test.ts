@@ -230,6 +230,32 @@ test("AltDown prefers hand aux hover over the battlefield hit under the cursor",
   });
 });
 
+test("AltDown during an undecided mulligan clears inspect and stays inert", () => {
+  const creature = battlefieldCreature(7, "Board Bolt");
+  const fold = gameFold({
+    mulliganing: true,
+    objects: [creature],
+    players: [
+      { ...twoPlayerState().players[0], hand_kept: false, can_mulligan: true, mulligans_taken: 0 },
+      { ...twoPlayerState().players[1], hand_kept: false, can_mulligan: true, mulligans_taken: 0 },
+    ],
+  });
+  const screen = screenCenterForCard(fold, 7);
+
+  let model: BoardModel = {
+    ...initialBoardModel(),
+    inspectPin: { name: "Old Pin", prepared: false, cardId: "old-card", print: "old-print" },
+    inspectCard: null,
+  };
+  [model] = updateBoard(model, BoardPointerMove({ x: screen.x, y: screen.y }), fold, "table-1");
+  const [locked, cmds] = updateBoard(model, AltDown(), fold, "table-1");
+
+  expect(locked.altDown).toBe(false);
+  expect(locked.inspectPin).toBeNull();
+  expect(locked.inspectCard).toBeUndefined();
+  expect(cmds).toEqual([]);
+});
+
 test("while Alt held, leaving the hand peek keeps hand inspect over a battlefield hit", () => {
   // Hand faces are pointer-events-none except the peek strip; leave clears aux while the
   // cursor is still over hand art. Live Alt re-pin must not steal to the BF card underneath.

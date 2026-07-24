@@ -20,7 +20,7 @@ import { discoverabilityView } from "./discoverability";
 import { handView } from "./hand";
 import { inspectView } from "./inspect";
 import { logPanelView } from "./log-panel";
-import { mulliganBarView } from "./mulligan-bar";
+import { mulliganOverlayView, mulliganWaitingView } from "./mulligan-overlay";
 import { pendingChoiceWaitingView } from "./pending-choice-waiting";
 import { pileOverlayView } from "./pile-overlay";
 import { priorityBarView } from "./priority-bar";
@@ -54,11 +54,12 @@ export function boardOverlays(
   const hiddenIds = new Set<number>([...board.handHidden, ...board.hideCardIds]);
   const seatedViewer = isActivePlayer(state.players, state.viewer);
   const spectating = state.viewer === SPECTATOR_VIEWER;
-  const mulliganing = mulliganChrome({
+  const chrome = mulliganChrome({
     mulliganing: state.mulliganing,
     localSeat: state.viewer,
     players: state.players,
-  }).show;
+  });
+  const undecidedMulligan = chrome.show && chrome.showControls;
 
   // Live object for the inspect pin's modifiers (battlefield objects only).
   const inspectObject =
@@ -78,7 +79,7 @@ export function boardOverlays(
     // (DOM order under resting permanents) — not here inside overlays.
     stackView(board, state),
     logPanelView(log),
-    seatedViewer
+    seatedViewer && !undecidedMulligan
       ? handView({
           state,
           hiddenId: stagedCardId,
@@ -103,10 +104,11 @@ export function boardOverlays(
           })(),
         })
       : null,
-    seatedViewer && mulliganing ? mulliganBarView(state) : null,
-    seatedViewer && !mulliganing ? priorityBarView(board, state) : null,
-    seatedViewer && !mulliganing ? promptsView(board, state, tableId) : null,
-    seatedViewer && !mulliganing ? activationRadialView(board, state) : null,
+    seatedViewer ? mulliganOverlayView(state) : null,
+    seatedViewer ? mulliganWaitingView(state) : null,
+    seatedViewer && !chrome.show ? priorityBarView(board, state) : null,
+    seatedViewer && !chrome.show ? promptsView(board, state, tableId) : null,
+    seatedViewer && !chrome.show ? activationRadialView(board, state) : null,
     seatedViewer ? concedeButtonView() : null,
     concedeDialogView(board.confirmConcede),
     pileOverlayView(board.pileExpand, state, {
@@ -123,8 +125,17 @@ export function boardOverlays(
       })(),
     }),
     resultOverlayView(state, board.resultSeen),
-    // Inspect dock is topmost (layer 10) — above pile, concede dialog, and result.
-    inspectView(board.inspectPin, board.inspectCard, board.inspectFace, inspectObject, state.players, state.objects),
+    // Inspect stays off during undecided mulligans so the opening-hand overlay is a true hard lock.
+    undecidedMulligan
+      ? null
+      : inspectView(
+          board.inspectPin,
+          board.inspectCard,
+          board.inspectFace,
+          inspectObject,
+          state.players,
+          state.objects,
+        ),
   ];
 
   return h.div(
