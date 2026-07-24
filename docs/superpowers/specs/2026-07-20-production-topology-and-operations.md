@@ -313,7 +313,11 @@ the PR title; semantic-release analyzes that line only.
 the `v*` tag push can cascade `docker.yml`.
 
 **`docker.yml`** (push of `v*` tags): builds and pushes both GHCR images tagged with
-`${GITHUB_REF_NAME#v}`. `GITHUB_TOKEN` with `packages: write` permission.
+`${GITHUB_REF_NAME#v}`. `GITHUB_TOKEN` permissions: `contents: read`, `packages: write`,
+`actions: write`. Each `docker/build-push-action` step imports/exports Buildx layers via
+GitHub Actions cache (`cache-from` / `cache-to` `type=gha`, `mode=max`) with per-image
+scopes `mtgfr-server` and `mtgfr-web`. Dockerfile `--mount=type=cache` Cargo mounts are
+not persisted across jobs. Guard: `scripts/check-docker-workflow-cache.sh`.
 
 **Root `package.json`:** `private: true`; `"semantic-release": "^24"` in `devDependencies`.
 Not published to npm. `@semantic-release/npm` bumps `package.json` version only (private).
@@ -347,6 +351,10 @@ Not published to npm. `@semantic-release/npm` bumps `package.json` version only 
 - **No `.releaserc`, no custom release rules**: semantic-release default config only. Version
   bumps follow the built-in Angular analyzer. `@semantic-release/git` not used (no committed
   `CHANGELOG.md`).
+- **Buildx GHA layer cache for release images** (this spec): `docker.yml` uses
+  `type=gha,mode=max` with scopes `mtgfr-server` / `mtgfr-web` so multi-stage builder
+  layers survive across `v*` tag builds on ephemeral runners. Requires `actions: write`.
+  Cache mounts (Cargo registry/`target`) are out of scope without cache-dance.
 - **OTEL propagation pattern** (production-topology-and-operations spec): Faro injects `traceparent` same-origin only; BFF
   continues it as a span parent when sampled; BFF passes its span to gRPC via `grpcRequestEnv`
   bag (not Node AsyncLocalStorage) so context survives `runPromise` across the `@effect/rpc`

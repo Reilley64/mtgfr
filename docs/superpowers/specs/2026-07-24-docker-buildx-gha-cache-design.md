@@ -1,6 +1,6 @@
 # Docker Buildx GHA layer cache for release images
 
-**Status:** Design (amends [production-topology-and-operations](2026-07-20-production-topology-and-operations.md); durable behavior lands in that surface spec)
+**Status:** Implemented (absorbed into [production-topology-and-operations](2026-07-20-production-topology-and-operations.md); not a separate indexed feature surface)
 **Date:** 2026-07-24
 **Module:** `.github/workflows/docker.yml`
 **Approach:** Persist Buildx layer cache via GitHub Actions cache (`type=gha`, `mode=max`), scoped per image
