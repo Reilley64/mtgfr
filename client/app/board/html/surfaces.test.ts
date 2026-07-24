@@ -1912,6 +1912,59 @@ test("pending discard aim shows coach when cards are in hand", () => {
   );
 });
 
+test("pending discard aim shows Confirm and count for single-card discard", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        objects: [card(11, { zone: ZONE.Hand, name: "A" })],
+        pending_choice: {
+          kind: "discard",
+          player: 0,
+          count: 1,
+          items: [{ id: 11, label: "A" }],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-discard-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-discard-count")).toHaveText("0 / 1 selected"),
+    Scene.expect(Scene.testId("prompt-submit")).toBeDisabled(),
+    Scene.expect(Scene.testId("prompt-submit")).toHaveText("Discard"),
+  );
+});
+
+test("selected pending discard hand card paints Llanowar selected chrome", () => {
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        promptDraft: { kind: "card-pick", picked: [11], filter: "" },
+      },
+      gameState({
+        objects: [
+          card(11, {
+            name: "Island",
+            zone: ZONE.Hand,
+            kind: { kind: "land", colors: [0, 1, 0, 0, 0] },
+          }),
+        ],
+        pending_choice: {
+          kind: "discard",
+          player: 0,
+          count: 1,
+          items: [{ id: 11, label: "Island" }],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("hand-card-face-11")).toExist(),
+    Scene.tap((sim) => {
+      const face = findTestId(sim.html, "hand-card-face-11");
+      expect(dataAttr(face, "discard-selected")).toBe("1");
+      expect(className(face)).toContain("ring-llanowar");
+    }),
+  );
+});
+
 test("pending exile aim shows coach when choose_exiled cards share a pile", () => {
   const exiled = card(30, {
     name: "Exiled",

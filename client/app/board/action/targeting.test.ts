@@ -694,6 +694,7 @@ describe("pendingHandPickOneClick", () => {
       pendingHandPickOneClick({
         kind: "may_discard",
         player: 0,
+        source: 1,
         items: [{ id: 1, label: "A" }],
       }),
     ).toBe(false);
