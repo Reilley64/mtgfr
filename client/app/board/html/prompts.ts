@@ -741,16 +741,26 @@ function costPickPrompt(
   state: VisibleState,
   message: (id: number) => Message,
 ): Html {
-  return frame(testId, title, [
-    h.div(
-      [h.Class("flex flex-wrap gap-2")],
-      choices.map((id) => {
-        const obj = state.objects.find((o) => o.id === id);
-        return itemButton(obj?.name ?? `#${id}`, `${testId}-${id}`, message(id));
-      }),
-    ),
-    cancelButton(),
-  ]);
+  return h.div(
+    [
+      h.DataAttribute("testid", `${testId}-aim`),
+      h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+      h.Class(
+        "pointer-events-auto fixed left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+      ),
+    ],
+    [
+      h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], [title]),
+      h.div(
+        [h.Class("flex flex-wrap justify-center gap-2")],
+        choices.map((id) => {
+          const obj = state.objects.find((o) => o.id === id);
+          return itemButton(obj?.name ?? `#${id}`, `${testId}-${id}`, message(id));
+        }),
+      ),
+      cancelButton(),
+    ],
+  );
 }
 
 function modalPrompt(mc: NonNullable<BoardModel["modalCast"]>): Html {
