@@ -16,7 +16,7 @@ function playModel(overrides: Partial<AppModel>): AppModel {
 
   return {
     ...model,
-    route: PlayRoute(),
+    route: PlayRoute({ deckId: "0" }),
     portraitGate: { open: false },
     ...overrides,
   };

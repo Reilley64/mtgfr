@@ -62,7 +62,7 @@ test("ReceivedDelta folds into game seq", () => {
     update,
     Story.with({
       ...model,
-      route: TableRoute({ table: "ABC123" }),
+      route: TableRoute({ deckId: "0", table: "ABC123" }),
       game: { ...emptyGameSlice(), active: true, tableId: "ABC123" },
     }),
     Story.message(ReceivedDelta({ seq: 7, state: state(), events: [], auto_actions: undefined })),
@@ -79,7 +79,7 @@ test("ReceivedDelta with land_played provenance spawns a board flight", () => {
     update,
     Story.with({
       ...model,
-      route: TableRoute({ table: "ABC123" }),
+      route: TableRoute({ deckId: "0", table: "ABC123" }),
       game: { ...emptyGameSlice(), active: true, tableId: "ABC123" },
     }),
     Story.message(

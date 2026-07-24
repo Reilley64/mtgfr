@@ -229,7 +229,7 @@ export function view(model: DeckListSubmodel, username: string, apiVersion: stri
 
                   return h.a(
                     [
-                      h.Href(`${routePath(PlayRoute())}?deck=${deck.id}`),
+                      h.Href(`${routePath(PlayRoute({ deckId: String(deck.id) }))}?deck=${deck.id}`),
                       h.DataAttribute("testid", `deck-tile-${deck.id}`),
                       h.Class(
                         listRowClass("relative flex flex-col overflow-hidden rounded-hud no-underline text-snow"),

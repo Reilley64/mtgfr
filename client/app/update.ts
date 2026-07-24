@@ -176,8 +176,8 @@ function foldLobby(
           Redirect({
             path:
               lobby.selectedDeckId != null
-                ? `${routePath(TableRoute({ table: lobby.tableId }))}?deck=${lobby.selectedDeckId}`
-                : routePath(TableRoute({ table: lobby.tableId })),
+                ? `${routePath(TableRoute({ deckId: String(lobby.selectedDeckId), table: lobby.tableId }))}?deck=${lobby.selectedDeckId}`
+                : routePath(TableRoute({ deckId: "0", table: lobby.tableId })),
           }),
         ]
       : [];

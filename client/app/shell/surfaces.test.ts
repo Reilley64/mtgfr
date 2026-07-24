@@ -257,7 +257,7 @@ describe("shell surface scenes", () => {
     Scene.scene(
       { update, view },
       Scene.with(
-        authedModel(PlayRoute(), {
+        authedModel(PlayRoute({ deckId: "0" }), {
           decks: {
             ...init()[0].decks,
             list: { ...init()[0].decks.list, decks: [deck], loading: false },
@@ -277,7 +277,7 @@ describe("shell surface scenes", () => {
     Scene.scene(
       { update, view },
       Scene.with(
-        authedModel(TableRoute({ table: "ABC123" }), {
+        authedModel(TableRoute({ deckId: "1", table: "ABC123" }), {
           decks: {
             ...init()[0].decks,
             list: { ...init()[0].decks.list, decks: [deck], loading: false },

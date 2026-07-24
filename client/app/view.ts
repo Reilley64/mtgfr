@@ -50,7 +50,7 @@ function nav(model: Model) {
       h.nav(
         [h.Class("flex items-center gap-md text-label text-lichen")],
         [
-          h.a([h.Href(routePath(PlayRoute())), h.Class("underline")], ["Play"]),
+          h.a([h.Href(routePath(PlayRoute({ deckId: "0" }))), h.Class("underline")], ["Play"]),
           h.a([h.Href(routePath(NewDeckRoute())), h.Class("underline")], ["New deck"]),
           user == null
             ? h.a([h.Href("/login"), h.Class("underline")], ["Sign in"])
