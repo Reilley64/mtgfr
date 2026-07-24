@@ -41,7 +41,7 @@ The home **Your decks** surface feels scattered after the tile-grid redesign:
 
 - As a returning player on `/`, I see header, search, and deck tiles aligned in one column.
 - As a player scanning decks, I see larger tiles with commander art crops (illustration only, not full card frames) and can read more of each deck/commander name before truncate.
-- As a player, hovering a tile does not open a floating card preview; primary click still goes to `/play?deck={id}`, and right-click on owned decks still offers Edit/Delete.
+- As a player, hovering a tile does not open a floating card preview; primary click still goes to `/play/{id}`, and right-click on owned decks still offers Edit/Delete.
 
 ---
 
@@ -58,7 +58,7 @@ The home **Your decks** surface feels scattered after the tile-grid redesign:
 
 - Top: commander art at Scryfall **art_crop** aspect (~1.37:1), full tile width. Use `object-cover` only for tiny ratio differences — not a fixed ~110px-tall strip.
 - Below (unchanged structure): deck name (semibold, single-line truncate), commander display name (lichen, single-line truncate), color-identity pips, **Precon** chip when `id < 0`.
-- Whole tile remains the Play affordance: `/play?deck={id}` (focusable link; Enter activates).
+- Whole tile remains the Play affordance: `/play/{id}` (focusable link; Enter activates).
 - Right-click Edit/Delete for owned decks (`id > 0`) unchanged; precons do not open a menu.
 
 ### Hover preview

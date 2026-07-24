@@ -2,15 +2,14 @@ import { Effect, Queue, Schema as S, Stream } from "effect";
 import { type Html, html } from "foldkit/html";
 import * as Mount from "foldkit/mount";
 import { cn } from "../../../../lib/cn";
-import { manaFontClass } from "../../../../lib/oracleText";
 import { appVersionBadge } from "../../../../lib/ui/app-version";
 import { buttonClass } from "../../../../lib/ui/buttonClass";
-import { cardArt } from "../../../../lib/ui/card-art";
 import { confirmDialog } from "../../../../lib/ui/confirmDialog";
-import { feltClass, fieldClass, listRowClass } from "../../../../lib/ui/surfaces";
+import { feltClass, fieldClass } from "../../../../lib/ui/surfaces";
 import type { Message } from "../../../messages";
 import { RequestedLogout } from "../../../messages";
 import { DeckRoute, NewDeckRoute, PlayRoute, routePath } from "../../../routes";
+import { type DeckCardModel, renderDeckCard } from "../deck-card";
 import {
   AskedDeckDelete,
   CancelledDeckDelete,
@@ -20,7 +19,7 @@ import {
   RequestedDeckDelete,
 } from "./messages";
 import type { DeckListSubmodel } from "./submodel";
-import { deckListContextMenuAllowed, identityPipCodes, visibleDecks } from "./visible";
+import { deckListContextMenuAllowed, visibleDecks } from "./visible";
 
 const h = html<Message>();
 
@@ -94,6 +93,18 @@ function commanderName(model: DeckListSubmodel, id: string): string {
 
 function commanderPrint(model: DeckListSubmodel, deck: DeckListSubmodel["decks"][number]): string {
   return deck.commander_print || model.knownCommanders[deck.commander]?.default_print || "";
+}
+
+function deckCardModel(model: DeckListSubmodel, deck: DeckListSubmodel["decks"][number]): DeckCardModel {
+  const commander = model.knownCommanders[deck.commander];
+  return {
+    id: deck.id,
+    name: deck.name,
+    commander: deck.commander,
+    commanderName: commanderName(model, deck.commander),
+    print: commanderPrint(model, deck),
+    colorIdentity: commander?.color_identity ?? [],
+  };
 }
 
 function contextMenu(model: DeckListSubmodel): Html {
@@ -223,70 +234,12 @@ export function view(model: DeckListSubmodel, username: string, apiVersion: stri
                   h.Class("mx-auto grid max-w-[960px] grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-md"),
                 ],
                 visible.map((deck) => {
-                  const commander = model.knownCommanders[deck.commander];
-                  const print = commanderPrint(model, deck);
-                  const pips = identityPipCodes(commander?.color_identity ?? []);
-
-                  return h.a(
-                    [
-                      h.Href(`${routePath(PlayRoute({ deckId: String(deck.id) }))}?deck=${deck.id}`),
-                      h.DataAttribute("testid", `deck-tile-${deck.id}`),
-                      h.Class(
-                        listRowClass("relative flex flex-col overflow-hidden rounded-hud no-underline text-snow"),
-                      ),
-                      h.OnMount(BindDeckListContextMenu({ deckId: deck.id })),
-                    ],
-                    [
-                      h.div(
-                        [h.Class("flex flex-1 flex-col")],
-                        [
-                          print === ""
-                            ? h.div([h.Class("aspect-[137/100] w-full bg-glass")], [])
-                            : cardArt(h, {
-                                print,
-                                size: "art_crop",
-                                alt: "",
-                                className: "aspect-[137/100] w-full object-cover",
-                              }),
-                          h.div(
-                            [h.Class("flex min-h-[86px] flex-col gap-xs p-md")],
-                            [
-                              h.div(
-                                [h.Class("truncate text-label font-semibold")],
-                                [
-                                  deck.name,
-                                  deck.id < 0
-                                    ? h.span(
-                                        [
-                                          h.Class(
-                                            "ml-sm rounded-full bg-lichen/14 px-[7px] py-px align-middle text-chip text-lichen",
-                                          ),
-                                        ],
-                                        ["Precon"],
-                                      )
-                                    : null,
-                                ],
-                              ),
-                              h.div(
-                                [h.Class("truncate text-chip text-lichen")],
-                                [commanderName(model, deck.commander)],
-                              ),
-                              pips.length === 0
-                                ? null
-                                : h.div(
-                                    [h.Class("mt-auto flex gap-[3px] text-[14px] text-snow")],
-                                    pips.map((code) => {
-                                      const ms = manaFontClass(code);
-                                      if (ms == null) return null;
-                                      return h.i([h.Class(`ms ms-cost ms-${ms}`)], []);
-                                    }),
-                                  ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ],
-                  );
+                  return renderDeckCard(h, deckCardModel(model, deck), {
+                    mode: "link",
+                    href: routePath(PlayRoute({ deckId: String(deck.id) })),
+                    rootAttrs: [h.OnMount(BindDeckListContextMenu({ deckId: deck.id }))],
+                    testId: `deck-tile-${deck.id}`,
+                  });
                 }),
               )
             : null,

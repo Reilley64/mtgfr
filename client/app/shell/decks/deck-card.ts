@@ -1,8 +1,8 @@
-import type { html as createHtml, Html } from "foldkit/html";
-import { deckCardViewTransitionName } from "../../deck-id";
+import type { Attribute, html as createHtml, Html } from "foldkit/html";
 import { manaFontClass } from "../../../lib/oracleText";
 import { cardArt } from "../../../lib/ui/card-art";
 import { listRowClass } from "../../../lib/ui/surfaces";
+import { deckCardViewTransitionName } from "../../deck-id";
 import { identityPipCodes } from "./list/visible";
 
 export type DeckCardModel = {
@@ -71,6 +71,7 @@ export function renderDeckCard<Msg>(
   opts: {
     mode: "link" | "static";
     href?: string;
+    rootAttrs?: ReadonlyArray<Attribute<Msg>>;
     testId: string;
   },
 ): Html {
@@ -78,6 +79,7 @@ export function renderDeckCard<Msg>(
     h.DataAttribute("testid", opts.testId),
     h.Class(listRowClass("relative flex flex-col overflow-hidden rounded-hud no-underline text-snow")),
     h.Style({ "view-transition-name": deckCardViewTransitionName(card.id) }),
+    ...(opts.rootAttrs ?? []),
   ];
 
   if (opts.mode === "static") {

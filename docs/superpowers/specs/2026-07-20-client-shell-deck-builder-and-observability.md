@@ -94,7 +94,7 @@ Header, search, and grid share one `max-w-[960px]` column. Tiles use a raised
 `minmax(220px, 1fr)` track, landscape commander `art_crop` (~1.37:1), deck name,
 color-identity pips, and a Precon chip when `id < 0`. Names stay single-line truncate.
 There is no cursor-follow card hover preview on this surface. The whole tile links to
-`/play?deck={id}`. A **Search decks…** field filters by deck name and commander display
+`/play/{id}`. A **Search decks…** field filters by deck name and commander display
 name (client-only). Display order: owned decks first (API relative order), then precons
 by ascending id (newest release first). Right-click on an owned deck opens Edit
 (`/decks/{id}`) and Delete (confirm dialog); precons do not open a context menu. A New
