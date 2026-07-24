@@ -897,6 +897,30 @@ test("choose_mode aim docks above the hand bar", () => {
   );
 });
 
+test("choose_trigger_modes aim docks above the hand bar", () => {
+  const s = state({
+    pending_choice: {
+      kind: "choose_trigger_modes",
+      choose: 1,
+      modes: [
+        { label: "Draw a card", needs_target: false, targets: [] },
+        { label: "Gain 1 life", needs_target: false, targets: [] },
+      ],
+      optional: false,
+      player: 0,
+      source: 1,
+    },
+  });
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("pending-trigger-modes-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("prompt-mode-choice-0")).toExist(),
+  );
+});
+
 test("choose_target_players on-board aim shows pending-player-aim chrome", () => {
   const s = state({
     pending_choice: {

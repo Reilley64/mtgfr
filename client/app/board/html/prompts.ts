@@ -1706,36 +1706,49 @@ function modeListPrompt(
     }));
   });
   const ready = picked.length === pending.choose || (pending.optional && picked.length === 0);
-  return frame("pending-choice", "Choose trigger modes", [
-    h.div(
-      [h.Class("text-caption text-mist")],
-      [pending.optional ? `Choose ${pending.choose} or none` : `Choose ${pending.choose}`],
-    ),
-    h.div(
-      [h.Class("flex flex-col gap-2")],
-      concreteChoices.map(({ choice, label }, choiceIndex) => {
-        const selected = picked.some((pickedChoice) => sameModeChoice(pickedChoice, choice));
-        return h.button(
-          [
-            h.Type("button"),
-            h.DataAttribute("testid", `prompt-mode-choice-${choiceIndex}`),
-            h.AriaPressed(selected ? "true" : "false"),
-            h.Disabled(tableId == null),
-            h.OnClick(PromptModeChoiceToggled({ index: choice.index, target: choice.target ?? null })),
-            h.Class(
-              [
-                "rounded-hud px-3 py-2 text-left text-body",
-                selected ? "bg-llanowar/25 text-snow" : "bg-glass text-snow",
-                tableId == null ? "cursor-not-allowed opacity-50" : "hover:bg-glass-dim",
-              ].join(" "),
-            ),
-          ],
-          [label],
-        );
-      }),
-    ),
-    h.div([h.Class("flex gap-2")], [submitButton("Choose", !ready), cancelButton()]),
-  ]);
+  return h.div(
+    [
+      h.DataAttribute("testid", "pending-trigger-modes-aim"),
+      h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+      h.Class(
+        "pointer-events-auto fixed left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+      ),
+    ],
+    [
+      h.div(
+        [h.Class("pointer-events-none text-center font-semibold text-body text-snow")],
+        ["Choose trigger modes"],
+      ),
+      h.div(
+        [h.Class("pointer-events-none text-caption text-mist")],
+        [pending.optional ? `Choose ${pending.choose} or none` : `Choose ${pending.choose}`],
+      ),
+      h.div(
+        [h.Class("flex w-full flex-col gap-2")],
+        concreteChoices.map(({ choice, label }, choiceIndex) => {
+          const selected = picked.some((pickedChoice) => sameModeChoice(pickedChoice, choice));
+          return h.button(
+            [
+              h.Type("button"),
+              h.DataAttribute("testid", `prompt-mode-choice-${choiceIndex}`),
+              h.AriaPressed(selected ? "true" : "false"),
+              h.Disabled(tableId == null),
+              h.OnClick(PromptModeChoiceToggled({ index: choice.index, target: choice.target ?? null })),
+              h.Class(
+                [
+                  "rounded-hud px-3 py-2 text-left text-body",
+                  selected ? "bg-llanowar/25 text-snow" : "bg-glass text-snow",
+                  tableId == null ? "cursor-not-allowed opacity-50" : "hover:bg-glass-dim",
+                ].join(" "),
+              ),
+            ],
+            [label],
+          );
+        }),
+      ),
+      h.div([h.Class("flex flex-wrap justify-center gap-2")], [submitButton("Choose", !ready), cancelButton()]),
+    ],
+  );
 }
 
 function playerPickPrompt(

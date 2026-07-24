@@ -706,6 +706,33 @@ test("trade_secrets_caster_draw shows docked pending-draw-count-aim", () => {
   );
 });
 
+test("choose_trigger_modes shows docked pending-trigger-modes-aim", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        pending_choice: {
+          kind: "choose_trigger_modes",
+          choose: 1,
+          modes: [
+            { label: "Draw a card", needs_target: false, targets: [] },
+            { label: "Gain 1 life", needs_target: false, targets: [] },
+          ],
+          optional: false,
+          player: 0,
+          source: 1,
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-trigger-modes-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("pending-choice-waiting")).toBeAbsent(),
+    Scene.expect(Scene.testId("prompt-mode-choice-0")).toExist(),
+    Scene.expect(Scene.testId("prompt-mode-choice-1")).toExist(),
+    Scene.expect(Scene.testId("prompt-submit")).toBeDisabled(),
+  );
+});
+
 test("on-board choose_target aims instead of showing a card grid", () => {
   const bear = card(7, {
     name: "Bear",
