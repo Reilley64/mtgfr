@@ -16,5 +16,6 @@ taps_self = true
 sacrifice = "this"
 
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["any"]

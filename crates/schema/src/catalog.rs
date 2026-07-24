@@ -219,7 +219,8 @@ fn land_colors(def: engine::CardDef) -> Vec<u8> {
         }
     }
     for ability in def.abilities {
-        let engine::Effect::AddMana { mana: produced, .. } = ability.effect else {
+        let engine::Effect::Mana(engine::ManaEffect::Add { mana: produced, .. }) = ability.effect
+        else {
             continue;
         };
         for (c, on) in colors.iter_mut().enumerate() {
@@ -315,7 +316,8 @@ pub fn color_identity(def: &engine::CardDef) -> u8 {
         }
     }
     for ability in def.abilities {
-        if let engine::Effect::AddMana { mana: produced, .. } = ability.effect {
+        if let engine::Effect::Mana(engine::ManaEffect::Add { mana: produced, .. }) = ability.effect
+        {
             for c in COLORS {
                 if produced.colored[c.index()] > 0 {
                     id |= 1 << c.index();

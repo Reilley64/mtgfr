@@ -25,7 +25,8 @@ timing = "static"
 
 # This creature enters with X +1/+1 counters on it.
 [[abilities.effects]]
-type = "enters_with_counters"
+type = "static"
+mode = "enters_with_counters"
 count = "x"
 
 # When this creature dies, create a 1/1 colorless Thopter artifact creature token with flying
@@ -36,7 +37,8 @@ timing = "dies"
 # create a 1/1 colorless Thopter artifact creature token with flying for each +1/+1 counter
 # on this creature
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 token = "7c0b6b53-4ddb-4bb5-8a26-0041b2006d3f"
 count = "per_counter_on_source"
 
@@ -47,6 +49,7 @@ activation_cost = { generic = 1 }
 
 # Put a +1/+1 counter on this creature.
 [[abilities.effects]]
-type = "put_counters"
+type = "counters"
+mode = "put_counters"
 count = 1
 target = "this"

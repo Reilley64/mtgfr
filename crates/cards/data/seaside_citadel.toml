@@ -20,7 +20,8 @@ taps_self = true
 
 # Add {G}
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["green"]
 
 # {T}: Add {G}, {W}, or {U}.
@@ -30,7 +31,8 @@ taps_self = true
 
 # Add {W}
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["white"]
 
 # {T}: Add {G}, {W}, or {U}.
@@ -40,5 +42,6 @@ taps_self = true
 
 # Add {U}
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["blue"]

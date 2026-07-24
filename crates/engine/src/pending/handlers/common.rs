@@ -29,11 +29,11 @@ impl Game {
         (events, removed)
     }
 
-    /// Move counters from `from` onto `to` ([`Effect::MoveCounters`]): +1/+1 counters always
+    /// Move counters from `from` onto `to` ([`Effect::Counters(CountersEffect::MoveCounters)`]): +1/+1 counters always
     /// move, through the same replaceable-placement pipeline the destination's own +1/+1
     /// doublers would apply to any other "put a counter" (CR 614); `all_kinds` also moves every
     /// named kind present, raw (named kinds bypass that pipeline everywhere else in the pool —
-    /// see [`Effect::EntersWithCounters`]'s doc).
+    /// see [`Effect::Static(StaticEffect::EntersWithCounters)`]'s doc).
     pub(crate) fn move_counters(
         &mut self,
         from: ObjectId,
@@ -91,7 +91,7 @@ impl Game {
     }
 
     /// Move +1/+1 counters from `from` onto several destinations at once
-    /// ([`Effect::MoveCounters`]'s `distributed` mode, CR 601.2d): one combined removal from
+    /// ([`Effect::Counters(CountersEffect::MoveCounters)`]'s `distributed` mode, CR 601.2d): one combined removal from
     /// `from` for the summed total, then each destination's placement through the same
     /// replaceable-counters pipeline (CR 614) [`Self::move_counters`] uses for its single-
     /// destination case. `assignment` pairs were already validated (distinct, legal, ≥1 each,

@@ -29,5 +29,5 @@ timing = "spell"
 type = "conditional"
 condition = { type = "you_control_lands_at_most", at_most = 4 }
 then = [
-        { type = "search_library", filter = "basic_land", to_zone = "battlefield", tapped = true },
+        { type = "dig", mode = "search_library", filter = "basic_land", to_zone = "battlefield", tapped = true },
     ]

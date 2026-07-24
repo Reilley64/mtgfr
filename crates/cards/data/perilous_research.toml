@@ -18,11 +18,13 @@ timing = "spell"
 
 # Draw two cards,
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 2
 
 # then sacrifice a permanent.
 [[abilities.effects]]
-type = "sacrifice_own"
+type = "choice"
+mode = "sacrifice_own"
 filter = {}
 count = 1

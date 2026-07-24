@@ -18,4 +18,5 @@ taps_self = true
 
 # Each player gains control of all creatures they own.
 [[abilities.effects]]
-type = "revert_all_creatures_to_owners"
+type = "control"
+mode = "revert_all_creatures_to_owners"

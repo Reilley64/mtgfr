@@ -22,4 +22,4 @@ condition = { type = "source_untapped" }
 [[abilities.effects]]
 type = "conditional"
 condition = { type = "source_untapped" }
-then = [{ type = "each_draw_step_player_draws", count = 1 }]
+then = [{ type = "draw", mode = "each_draw_step_player", count = 1 }]

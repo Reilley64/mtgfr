@@ -22,7 +22,8 @@ timing = "static"
 
 # Creatures you control with counters on them have trample.
 [[abilities.effects]]
-type = "anthem_static"
+type = "static"
+mode = "anthem"
 keywords = ["trample"]
 has_counters = true
 
@@ -36,6 +37,7 @@ nth_each_turn = 1
 
 # put X +1/+1 counters on Nev.
 [[abilities.effects]]
-type = "put_counters"
+type = "counters"
+mode = "put_counters"
 count = "x"
 target = "this"

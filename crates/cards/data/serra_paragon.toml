@@ -27,4 +27,5 @@ timing = "static"
 # less from your graveyard. If you do, it gains "When this permanent is put into a graveyard from the battlefield, exile
 # it and you gain 2 life."
 [[abilities.effects]]
-type = "play_from_graveyard_once_per_turn"
+type = "static"
+mode = "play_from_graveyard_once_per_turn"

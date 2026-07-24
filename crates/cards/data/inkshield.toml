@@ -23,6 +23,7 @@ timing = "spell"
 # Prevent all combat damage that would be dealt to you this turn. For each 1 damage prevented this
 # way, create a 2/1 white and black Inkling creature token with flying.
 [[abilities.effects]]
-type = "prevent_combat_damage_to_you_creating_tokens"
+type = "misc"
+mode = "prevent_combat_damage_to_you_creating_tokens"
 token = "fbdbff76-c1ea-47ea-bfcc-7c64c23dad70"
 

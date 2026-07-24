@@ -32,7 +32,8 @@ timing = "etb"
 
 # this creature becomes prepared.
 [[abilities.effects]]
-type = "become_prepared"
+type = "misc"
+mode = "become_prepared"
 
 # ...whenever one or more creature tokens you control deal combat damage to a player, this
 # creature becomes prepared.
@@ -42,7 +43,8 @@ who = "your_tokens"
 
 # this creature becomes prepared.
 [[abilities.effects]]
-type = "become_prepared"
+type = "misc"
+mode = "become_prepared"
 
 # Back face — Maestro's Gift ({3}{U}{R} sorcery): "Create a token that's a copy of target
 # creature you control. That token gains haste until end of turn."
@@ -66,7 +68,8 @@ timing = "spell"
 # Create a token that's a copy of target creature you control. That token gains haste until end
 # of turn.
 [[back.abilities.effects]]
-type = "create_token_copy"
+type = "token"
+mode = "create_copy"
 count = 1
 target = { permanent = { types = "creature", controller = "you" } }
 haste = true

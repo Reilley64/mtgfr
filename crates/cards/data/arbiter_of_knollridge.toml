@@ -26,4 +26,5 @@ timing = "etb"
 
 # each player's life total becomes the highest life total among all players.
 [[abilities.effects]]
-type = "each_player_life_becomes_highest"
+type = "life"
+mode = "each_player_becomes_highest"

@@ -20,7 +20,8 @@ taps_self = true
 
 # Target player exiles a card from their graveyard.
 [[abilities.effects]]
-type = "target_player_exiles_from_graveyard"
+type = "choice"
+mode = "target_player_exiles_from_graveyard"
 target = "player"
 
 # {1}, Exile this artifact: Exile all graveyards. Draw a card.
@@ -33,9 +34,11 @@ generic = 1
 
 # Exile all graveyards.
 [[abilities.effects]]
-type = "exile_all_graveyards"
+type = "exile"
+mode = "all_graveyards"
 
 # Draw a card.
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1

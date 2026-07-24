@@ -24,13 +24,15 @@ timing = "attacks"
 
 # you gain 2 life
 [[abilities.effects]]
-type = "gain_life"
+type = "life"
+mode = "gain"
 amount = 2
 
 # Then creatures you control gain trample and get +X/+X until end of turn, where X is the amount
 # of life you gained this turn.
 [[abilities.effects]]
-type = "pump_creatures_you_control_until_end_of_turn"
+type = "pump"
+mode = "pump_creatures_you_control_until_end_of_turn"
 power = "life_gained_this_turn"
 toughness = "life_gained_this_turn"
 keywords = ["trample"]

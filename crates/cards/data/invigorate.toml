@@ -27,7 +27,8 @@ count = 1
 [alternative_cost.rider]
 # ponytail: untargeted and un-chosen — the lowest-seat-index living opponent gains the life. Grow a
 # PendingChoice::ChooseOpponent when a card's effect depends on *which* opponent gained.
-type = "opponent_gains_life"
+type = "life"
+mode = "opponent_gains"
 amount = 3
 
 # Target creature gets +4/+4 until end of turn.
@@ -36,7 +37,8 @@ timing = "spell"
 
 # Target creature gets +4/+4 until end of turn.
 [[abilities.effects]]
-type = "pump_until_end_of_turn"
+type = "pump"
+mode = "pump_until_end_of_turn"
 power = 4
 toughness = 4
 target = "creature"

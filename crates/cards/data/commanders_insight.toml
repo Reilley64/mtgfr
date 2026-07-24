@@ -26,10 +26,12 @@ timing = "spell"
 
 # Target player draws X cards
 [[abilities.effects]]
-type = "target_player_draws"
+type = "draw"
+mode = "target_player"
 count = "x"
 
 # plus an additional card for each time they've cast a commander from the command zone this game
 [[abilities.effects]]
-type = "target_player_draws"
+type = "draw"
+mode = "target_player"
 count = "commander_casts_from_command_zone"

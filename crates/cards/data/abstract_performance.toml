@@ -27,4 +27,5 @@ timing = "spell"
 # graveyard. Look at the cards in the other pile. You may cast a spell from among them without
 # paying its mana cost. Put the rest into your hand.
 [[abilities.effects]]
-type = "opponent_splits_exile_piles"
+type = "dig"
+mode = "opponent_splits_exile_piles"

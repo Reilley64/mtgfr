@@ -25,7 +25,8 @@ timing = "static"
 
 # This creature enters with X +1/+1 counters on it.
 [[abilities.effects]]
-type = "enters_with_counters"
+type = "static"
+mode = "enters_with_counters"
 count = "x"
 
 # If one or more +1/+1 counters would be put on another creature you control, that many plus one
@@ -36,7 +37,8 @@ timing = "static"
 # If one or more +1/+1 counters would be put on another creature you control, that many plus
 # one +1/+1 counters are put on it instead.
 [[abilities.effects]]
-type = "counter_replacement"
+type = "static"
+mode = "counter_replacement"
 add = 1
 other = true
 
@@ -49,6 +51,7 @@ remove_counters = 1
 
 # Put a +1/+1 counter on another target creature you control.
 [[abilities.effects]]
-type = "put_counters"
+type = "counters"
+mode = "put_counters"
 count = 1
 target = { permanent = { types = "creature", controller = "you", other = true } }

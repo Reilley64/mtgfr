@@ -20,5 +20,6 @@ timing = "spell"
 
 # Savage Twister deals X damage to each creature.
 [[abilities.effects]]
-type = "damage_each_creature"
+type = "damage"
+mode = "each_creature"
 amount = "x"

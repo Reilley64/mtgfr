@@ -22,7 +22,8 @@ timing = "static"
 
 # This creature gets +1/+1 for each enchantment on the battlefield.
 [[abilities.effects]]
-type = "anthem_static"
+type = "static"
+mode = "anthem"
 self_only = true
 power = { per_permanent = { types = "enchantment" } }
 toughness = { per_permanent = { types = "enchantment" } }

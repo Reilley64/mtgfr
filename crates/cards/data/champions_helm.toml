@@ -22,7 +22,8 @@ timing = "static"
 
 # Equipped creature gets +2/+2.
 [[abilities.effects]]
-type = "grant_to_attached"
+type = "static"
+mode = "grant_to_attached"
 power = 2
 toughness = 2
 
@@ -32,7 +33,8 @@ timing = "static"
 
 # As long as equipped creature is legendary, it has hexproof.
 [[abilities.effects]]
-type = "grant_to_attached"
+type = "static"
+mode = "grant_to_attached"
 keywords = ["hexproof"]
 legendary_only = true
 
@@ -45,4 +47,5 @@ generic = 1
 
 # Equip {1}
 [[abilities.effects]]
-type = "equip"
+type = "control"
+mode = "equip"

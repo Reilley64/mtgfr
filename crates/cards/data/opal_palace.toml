@@ -21,7 +21,8 @@ activation_cost = { generic = 1 }
 
 # Add one mana of any color in your commander's color identity.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 identity = 1
 track_provenance = true
 
@@ -34,5 +35,6 @@ spend_predicate = "commander"
 # it enters with a number of additional +1/+1 counters on it equal to the number of times it's
 # been cast from the command zone this game.
 [[abilities.effects]]
-type = "commander_enters_with_bonus_counters"
+type = "counters"
+mode = "commander_enters_with_bonus_counters"
 count = "commander_casts_from_command_zone"

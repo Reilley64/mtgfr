@@ -72,19 +72,19 @@ pub(crate) enum ChoiceRequest {
         source: crate::ObjectId,
         amount: u8,
     },
-    /// [`Effect::Proliferate`] — empty counter-bearing board skips (no pause).
+    /// [`Effect::Choice(ChoiceEffect::Proliferate)`] — empty counter-bearing board skips (no pause).
     Proliferate {
         player: crate::PlayerId,
         source: crate::ObjectId,
         /// Iterations still to run, including this one (`0` is a no-op).
         remaining: u8,
     },
-    /// [`Effect::PhaseOut`] — no other creatures skips.
+    /// [`Effect::Choice(ChoiceEffect::PhaseOut)`] — no other creatures skips.
     PhaseOut {
         player: crate::PlayerId,
         source: crate::ObjectId,
     },
-    /// [`Effect::MaySacrifice`] — no legal permanent skips.
+    /// [`Effect::Choice(ChoiceEffect::MaySacrifice)`] — no legal permanent skips.
     MaySacrifice {
         player: crate::PlayerId,
         source: crate::ObjectId,
@@ -97,45 +97,45 @@ pub(crate) enum ChoiceRequest {
         source: crate::ObjectId,
         multiplier: u32,
     },
-    /// [`Effect::MayReturnFromGraveyard`] — no legal card skips.
+    /// [`Effect::Choice(ChoiceEffect::MayReturnFromGraveyard)`] — no legal card skips.
     MayReturnFromGraveyard {
         player: crate::PlayerId,
         source: crate::ObjectId,
         filter: crate::CardFilter,
     },
-    /// [`Effect::MayDiscard`] — empty hand skips.
+    /// [`Effect::Choice(ChoiceEffect::MayDiscard)`] — empty hand skips.
     MayDiscard {
         player: crate::PlayerId,
         source: crate::ObjectId,
         then: &'static [crate::Effect],
     },
-    /// [`Effect::Discard`] — empty (or zero-count) hand skips.
+    /// [`Effect::Choice(ChoiceEffect::Discard)`] — empty (or zero-count) hand skips.
     Discard {
         player: crate::PlayerId,
         count: u32,
         or_one_matching: Option<crate::CardFilter>,
     },
-    /// [`Effect::PutFromHandOnTop`] — empty (or zero-count) hand skips.
+    /// [`Effect::Choice(ChoiceEffect::PutFromHandOnTop)`] — empty (or zero-count) hand skips.
     PutFromHandOnTop { player: crate::PlayerId, count: u32 },
-    /// [`Effect::SacrificeSelfUnlessPay`] — always pauses.
+    /// [`Effect::Choice(ChoiceEffect::SacrificeSelfUnlessPay)`] — always pauses.
     SacrificeUnlessPay {
         player: crate::PlayerId,
         source: crate::ObjectId,
         cost: crate::Cost,
     },
-    /// [`Effect::SacrificeSelfUnlessReturnLand`] — no candidates → `None` (caller sacrifices).
+    /// [`Effect::Choice(ChoiceEffect::SacrificeSelfUnlessReturnLand)`] — no candidates → `None` (caller sacrifices).
     SacrificeUnlessReturnLand {
         player: crate::PlayerId,
         source: crate::ObjectId,
         filter: crate::PermanentFilter,
     },
-    /// [`Effect::Scry`] / [`Effect::Surveil`] — empty library skips.
+    /// [`Effect::Dig(DigEffect::Scry)`] / [`Effect::Dig(DigEffect::Surveil)`] — empty library skips.
     ArrangeTop {
         player: crate::PlayerId,
         count: u32,
         to_graveyard: bool,
     },
-    /// [`Effect::LookAtTop`] — empty library skips.
+    /// [`Effect::Dig(DigEffect::LookAtTop)`] — empty library skips.
     SelectFromTop {
         player: crate::PlayerId,
         count: u32,
@@ -147,7 +147,7 @@ pub(crate) enum ChoiceRequest {
         rest: crate::RestDest,
         mv_budget: Option<u32>,
     },
-    /// [`Effect::DistributeTop`] — empty library skips.
+    /// [`Effect::Dig(DigEffect::DistributeTop)`] — empty library skips.
     DistributeTop {
         player: crate::PlayerId,
         count: u32,
@@ -162,7 +162,7 @@ pub(crate) enum ChoiceRequest {
         source: crate::ObjectId,
         max: u32,
     },
-    /// [`Effect::SearchLibrary`] — always pauses (fail-to-find is a legal answer).
+    /// [`Effect::Dig(DigEffect::SearchLibrary)`] — always pauses (fail-to-find is a legal answer).
     SearchLibrary {
         player: crate::PlayerId,
         filter: crate::CardFilter,
@@ -171,27 +171,27 @@ pub(crate) enum ChoiceRequest {
         count: u8,
         overflow: Option<crate::SearchDest>,
     },
-    /// [`Effect::PutLandFromHand`] — no hand land skips.
+    /// [`Effect::Choice(ChoiceEffect::PutLandFromHand)`] — no hand land skips.
     PutLandFromHand {
         player: crate::PlayerId,
         tapped: bool,
     },
-    /// [`Effect::PutCreatureFromHand`] — no hand creature skips.
+    /// [`Effect::Choice(ChoiceEffect::PutCreatureFromHand)`] — no hand creature skips.
     PutCreatureFromHand {
         player: crate::PlayerId,
         source: crate::ObjectId,
     },
-    /// [`Effect::CastCreatureFaceDown`] — no payable creature skips.
+    /// [`Effect::Choice(ChoiceEffect::CastCreatureFaceDown)`] — no payable creature skips.
     CastCreatureFaceDown {
         player: crate::PlayerId,
         spent_mana: [u8; 6],
     },
-    /// [`Effect::CashOutExiledWithThis`] — empty exile pile skips.
+    /// [`Effect::Dig(DigEffect::CashOutExiledWithThis)`] — empty exile pile skips.
     ChooseExiledWithCard {
         player: crate::PlayerId,
         source: crate::ObjectId,
     },
-    /// [`Effect::CastExiledWithThisFree`] — empty exile pile skips.
+    /// [`Effect::Dig(DigEffect::CastExiledWithThisFree)`] — empty exile pile skips.
     ChooseExiledWithCardToCast {
         player: crate::PlayerId,
         source: crate::ObjectId,
@@ -202,7 +202,7 @@ pub(crate) enum ChoiceRequest {
         source: crate::ObjectId,
         marker: crate::EnterAsCopy,
     },
-    /// [`Effect::EachOtherTokenBecomesCopyOfChosen`] — no token skips.
+    /// [`Effect::Choice(ChoiceEffect::EachOtherTokenBecomesCopyOfChosen)`] — no token skips.
     ChooseTokenToCopy {
         player: crate::PlayerId,
         source: crate::ObjectId,
@@ -213,7 +213,7 @@ pub(crate) enum ChoiceRequest {
         source: crate::ObjectId,
         cards: &'static [crate::ObjectId],
     },
-    /// [`Effect::SacrificeOwn`] / annihilator — `options.len() <= count` → `None` (caller
+    /// [`Effect::Choice(ChoiceEffect::SacrificeOwn)`] / annihilator — `options.len() <= count` → `None` (caller
     /// sacrifices all).
     ChooseOwnSacrifices {
         player: crate::PlayerId,

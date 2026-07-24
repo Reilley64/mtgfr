@@ -25,7 +25,8 @@ timing = "spell"
 
 # Destroy up to X target artifacts and/or enchantments.
 [[abilities.effects]]
-type = "destroy_target"
+type = "destroy"
+mode = "target"
 target = { permanent = { types = ["artifact", "enchantment"] } }
 count = { min = 0, max = 0, x_scaled = true }
 
@@ -37,7 +38,8 @@ timing = "spell"
 # Create twice X 1/1 black and green Pest creature tokens with "When this token dies, you gain 1
 # life."
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 token = "37c4adc8-7455-4725-95fb-169a8b0254e5"
 count = "twice_x"
 

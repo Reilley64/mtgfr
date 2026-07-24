@@ -53,11 +53,11 @@ pub(crate) struct ResolveCtx {
     pub(crate) source: ObjectId,
     pub(crate) target: Option<Target>,
     /// A triggered ability's second independent target clause's chosen targets (CR 603.3d), read by
-    /// [`Effect::DoubleCountersOnTargetCreatures`]. Empty for every other resolution.
+    /// [`Effect::Counters(CountersEffect::DoubleCountersOnTargetCreatures)`]. Empty for every other resolution.
     pub(crate) targets_second: TargetList,
     pub(crate) x: u32,
     /// The multiset of mana actually spent activating the resolving ability
-    /// ([`StackItem::Ability::spent_mana`]), read by [`Effect::CastCreatureFaceDown`]'s CR 107.3
+    /// ([`StackItem::Ability::spent_mana`]), read by [`Effect::Choice(ChoiceEffect::CastCreatureFaceDown)`]'s CR 107.3
     /// payability test. All zeroes except when [`Game::resolve_top`] resolves a real activation —
     /// the pending-answer paths that reconstruct a ctx pass zeroes (none can reach
     /// `CastCreatureFaceDown`, which pauses only on its own choice).
@@ -240,10 +240,10 @@ mod tests {
     };
 
     const SURVEIL_THEN_DRAW: &[Effect] = &[
-        Effect::Surveil { count: 2 },
-        Effect::DrawCards {
+        Effect::Dig(DigEffect::Surveil { count: 2 }),
+        Effect::Draw(DrawEffect::Cards {
             count: Amount::Fixed(1),
-        },
+        }),
     ];
 
     fn hand_count(game: &Game, player: PlayerId) -> usize {
@@ -338,9 +338,9 @@ mod tests {
         let mut events = Vec::new();
 
         game.run(
-            Effect::DrawCards {
+            Effect::Draw(DrawEffect::Cards {
                 count: Amount::Fixed(1),
-            },
+            }),
             ctx(PlayerId(0)),
             &mut events,
         );

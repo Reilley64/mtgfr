@@ -21,7 +21,8 @@ taps_self = true
 
 # Add one mana of any color.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["any"]
 
 # Whenever you cast a spell with {X} in its mana cost, put two charge counters on this artifact.
@@ -32,7 +33,8 @@ caster = "you"
 
 # put two charge counters on this artifact.
 [[abilities.effects]]
-type = "put_counters"
+type = "counters"
+mode = "put_counters"
 count = 2
 kind = "charge"
 target = "this"
@@ -46,7 +48,8 @@ taps_self = true
 # Add {C} for each charge counter on this artifact. Spend this mana only on costs that contain
 # {X}.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["colorless"]
 repeat = { per_counter_of_kind = "charge" }
 restriction = "has_x"

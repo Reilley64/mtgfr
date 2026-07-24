@@ -22,6 +22,7 @@ timing = "etb"
 
 # it deals 4 damage to target creature.
 [[abilities.effects]]
-type = "deal_damage"
+type = "damage"
+mode = "target"
 amount = 4
 target = "creature"

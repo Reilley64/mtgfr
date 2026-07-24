@@ -24,4 +24,5 @@ timing = "spell"
 # creature, an enchantment, and a planeswalker. Then each player sacrifices all other nonland
 # permanents they control.
 [[abilities.effects]]
-type = "caster_keeps_one_of_each_type_per_player"
+type = "choice"
+mode = "caster_keeps_one_of_each_type_per_player"

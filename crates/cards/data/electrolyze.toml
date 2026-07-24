@@ -21,7 +21,8 @@ timing = "spell"
 
 # Electrolyze deals 2 damage divided as you choose among one or two targets.
 [[abilities.effects]]
-type = "deal_damage"
+type = "damage"
+mode = "target"
 amount = 2
 target = "any"
 count = { min = 1, max = 2 }
@@ -33,5 +34,6 @@ timing = "spell"
 
 # Draw a card.
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1

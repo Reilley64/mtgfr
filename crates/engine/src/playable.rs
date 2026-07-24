@@ -594,7 +594,7 @@ mod tests {
                 Box::leak(Box::new([
                     Ability {
                         timing: Timing::Spell,
-                        effect: Effect::DealDamage {
+                        effect: Effect::Damage(DamageEffect::Target {
                             amount: Amount::Fixed(2),
                             target: TargetSpec::AnyTarget,
                             count: TargetCount {
@@ -605,7 +605,7 @@ mod tests {
                                 strive_scaled: false,
                             },
                             divided: false,
-                        },
+                        }),
                         optional: false,
                         min_level: 0,
                         cost: Cost::FREE,
@@ -614,9 +614,9 @@ mod tests {
                     },
                     Ability {
                         timing: Timing::Spell,
-                        effect: Effect::DestroyAll {
+                        effect: Effect::Destroy(DestroyEffect::All {
                             filter: PermanentFilter::of(TypeSet::ARTIFACT),
-                        },
+                        }),
                         optional: false,
                         min_level: 0,
                         cost: Cost::FREE,
@@ -625,9 +625,9 @@ mod tests {
                     },
                 ]))
             } else {
-                Box::leak(Box::new([spell_ability(Effect::DrawCards {
+                Box::leak(Box::new([spell_ability(Effect::Draw(DrawEffect::Cards {
                     count: Amount::Fixed(1),
-                })]))
+                }))]))
             },
             identity_pips: &[],
             colors: &[],
@@ -825,12 +825,12 @@ mod tests {
                 abilities: Box::leak(Box::new([
                     Ability {
                         timing: Timing::Spell,
-                        effect: Effect::DealDamage {
+                        effect: Effect::Damage(DamageEffect::Target {
                             amount: Amount::Fixed(3),
                             target: TargetSpec::Creature,
                             count: TargetCount::default(),
                             divided: false,
-                        },
+                        }),
                         optional: false,
                         min_level: 0,
                         cost: Cost::FREE,
@@ -839,11 +839,11 @@ mod tests {
                     },
                     Ability {
                         timing: Timing::Spell,
-                        effect: Effect::DestroyTarget {
+                        effect: Effect::Destroy(DestroyEffect::Target {
                             target: TargetSpec::Permanent(PermanentFilter::of(TypeSet::ARTIFACT)),
                             count: TargetCount::default(),
                             cant_be_regenerated: false,
-                        },
+                        }),
                         optional: false,
                         min_level: 0,
                         cost: Cost::FREE,

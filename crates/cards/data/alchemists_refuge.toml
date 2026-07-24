@@ -21,4 +21,5 @@ blue = 1
 
 # You may cast spells this turn as though they had flash.
 [[abilities.effects]]
-type = "grant_flash_this_turn"
+type = "misc"
+mode = "grant_flash_this_turn"

@@ -26,7 +26,8 @@ timing = "upkeep"
 
 # create a 1/1 green Saproling creature token for each +1/+1 counter on this creature.
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 token = "2b7dba01-b08c-4218-9fc1-da55559d9155"
 count = "per_counter_on_source"
 

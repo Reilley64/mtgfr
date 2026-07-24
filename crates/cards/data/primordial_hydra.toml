@@ -31,7 +31,8 @@ timing = "static"
 
 # This creature enters with X +1/+1 counters on it.
 [[abilities.effects]]
-type = "enters_with_counters"
+type = "static"
+mode = "enters_with_counters"
 count = "x"
 
 # At the beginning of your upkeep, double the number of +1/+1 counters on this creature.
@@ -40,5 +41,6 @@ timing = "upkeep"
 
 # double the number of +1/+1 counters on this creature.
 [[abilities.effects]]
-type = "double_counters"
+type = "counters"
+mode = "double_counters"
 target = "this"

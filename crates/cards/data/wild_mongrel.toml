@@ -22,10 +22,12 @@ discard_cost = 1
 
 # This creature gets +1/+1 ... until end of turn.
 [[abilities.effects]]
-type = "pump_self_until_end_of_turn"
+type = "pump"
+mode = "pump_self_until_end_of_turn"
 power = 1
 toughness = 1
 
 # ... and becomes the color of your choice until end of turn.
 [[abilities.effects]]
-type = "set_own_color_until_end_of_turn"
+type = "choice"
+mode = "set_own_color_until_end_of_turn"

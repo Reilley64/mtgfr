@@ -23,11 +23,13 @@ timing = "spell"
 
 # Shuffle your library.
 [[abilities.effects]]
-type = "shuffle_library"
+type = "dig"
+mode = "shuffle_library"
 
 # As many times as you choose, you may exile the top card of your library. If the total mana value
 # of the cards exiled this way is 13 or less, you may cast any number of spells from among those
 # cards without paying their mana costs.
 [[abilities.effects]]
-type = "exile_top_until_stop_cast_free_under_budget"
+type = "dig"
+mode = "exile_top_until_stop_cast_free_under_budget"
 budget = 13

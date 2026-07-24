@@ -25,5 +25,6 @@ mill_self = 1
 
 # Add {C}.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["colorless"]

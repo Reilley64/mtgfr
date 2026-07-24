@@ -22,7 +22,8 @@ timing = "spell"
 # Look at the top three cards of your library. Put one of them into your hand, put one of them on
 # the bottom of your library, and exile one of them. You may play the exiled card this turn.
 [[abilities.effects]]
-type = "distribute_top"
+type = "dig"
+mode = "distribute_top"
 count = 3
 to_hand = 1
 to_bottom = 1

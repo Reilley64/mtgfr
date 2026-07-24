@@ -28,13 +28,15 @@ activation_cost = { green = 1 }
 
 # This creature gets +1/+1 until end of turn.
 [[abilities.effects]]
-type = "pump_self_until_end_of_turn"
+type = "pump"
+mode = "pump_self_until_end_of_turn"
 power = 1
 toughness = 1
 
 # Target opponent creates a 1/1 green Hippo creature token.
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 controller = "target_opponent"
 token = "c0751938-a8c6-4b27-b8ac-88aa70516721"
 
@@ -46,14 +48,16 @@ activation_cost = { white = 1 }
 
 # This creature gains protection from black and from red until end of turn.
 [[abilities.effects]]
-type = "pump_self_until_end_of_turn"
+type = "pump"
+mode = "pump_self_until_end_of_turn"
 power = 0
 toughness = 0
 keywords = [{ protection = "black" }, { protection = "red" }]
 
 # Target opponent gains 2 life.
 [[abilities.effects]]
-type = "target_player_gains_life"
+type = "life"
+mode = "target_player_gains"
 amount = 2
 opponent = true
 
@@ -64,13 +68,15 @@ activation_cost = { blue = 1 }
 
 # This creature gains flying until end of turn.
 [[abilities.effects]]
-type = "pump_self_until_end_of_turn"
+type = "pump"
+mode = "pump_self_until_end_of_turn"
 power = 0
 toughness = 0
 keywords = ["flying"]
 
 # Target opponent may draw a card.
 [[abilities.effects]]
-type = "target_player_may_draw"
+type = "choice"
+mode = "target_player_may_draw"
 count = 1
 opponent = true

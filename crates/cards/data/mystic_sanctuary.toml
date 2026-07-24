@@ -32,6 +32,7 @@ type = "this_permanent_entered_untapped"
 
 # put target instant or sorcery card from your graveyard on top of your library.
 [[abilities.effects]]
-type = "tuck_from_graveyard"
+type = "zone"
+mode = "tuck_from_graveyard"
 target = { card_in_graveyard = { whose = "yours", filter = "instant_or_sorcery" } }
 to_top = true

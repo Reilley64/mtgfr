@@ -25,7 +25,8 @@ timing = "static"
 
 # Enchanted creature gets +1/+1 and is goaded.
 [[abilities.effects]]
-type = "grant_to_attached"
+type = "static"
+mode = "grant_to_attached"
 power = 1
 toughness = 1
 goad = true
@@ -37,6 +38,7 @@ timing = "enchanted_creature_attacks"
 
 # each other creature that's attacking one of your opponents gets +1/+1 until end of turn.
 [[abilities.effects]]
-type = "pump_other_attackers_attacking_your_opponents"
+type = "pump"
+mode = "pump_other_attackers_attacking_your_opponents"
 power = 1
 toughness = 1

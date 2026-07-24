@@ -27,7 +27,8 @@ timing = "static"
 # The first spell you cast with {X} in its mana cost each turn costs {1} less to cast for each
 # +1/+1 counter on Zimone.
 [[abilities.effects]]
-type = "reduce_spell_cost"
+type = "static"
+mode = "reduce_spell_cost"
 amount = "per_counter_on_source"
 filter = "has_x"
 first_x_spell_each_turn = true
@@ -42,6 +43,7 @@ nth_each_turn = 1
 
 # put two +1/+1 counters on Zimone.
 [[abilities.effects]]
-type = "put_counters"
+type = "counters"
+mode = "put_counters"
 count = 2
 target = "this"

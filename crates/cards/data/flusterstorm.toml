@@ -20,7 +20,8 @@ timing = "spell"
 
 # Counter target instant or sorcery spell unless its controller pays {1}.
 [[abilities.effects]]
-type = "counter_target_spell"
+type = "misc"
+mode = "counter_target_spell"
 unless_pays = 1
 filter = "instant_or_sorcery"
 
@@ -31,7 +32,8 @@ timing = "when_you_cast_this"
 
 # copy it for each spell cast before it this turn. You may choose new targets for the copies.
 [[abilities.effects]]
-type = "copy_triggering_spell"
+type = "copy"
+mode = "copy_triggering_spell"
 count = "spells_cast_before_this_this_turn"
 may_choose_new_targets = true
 last_known_information = true

@@ -22,10 +22,12 @@ timing = "creature_you_control_dies"
 
 # you gain 1 life
 [[abilities.effects]]
-type = "gain_life"
+type = "life"
+mode = "gain"
 amount = 1
 
 # draw a card.
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1

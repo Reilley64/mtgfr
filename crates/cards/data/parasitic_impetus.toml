@@ -26,7 +26,8 @@ timing = "static"
 
 # Enchanted creature gets +2/+2 and is goaded.
 [[abilities.effects]]
-type = "grant_to_attached"
+type = "static"
+mode = "grant_to_attached"
 power = 2
 toughness = 2
 goad = true
@@ -37,5 +38,6 @@ timing = "enchanted_creature_attacks"
 
 # its controller loses 2 life and you gain 2 life.
 [[abilities.effects]]
-type = "attacker_loses_life_you_gain"
+type = "life"
+mode = "attacker_loses_you_gain"
 amount = 2

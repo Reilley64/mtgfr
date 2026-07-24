@@ -6,9 +6,9 @@
 use crate::*;
 
 impl Game {
-    pub(crate) fn mint_pump_family(
+    pub(crate) fn mint_pump(
         &self,
-        effect: Effect,
+        effect: PumpEffect,
         controller: PlayerId,
         source: ObjectId,
         target: Option<Target>,
@@ -17,7 +17,7 @@ impl Game {
         let source_name = self.source_name_of(source);
         match effect {
             // Pump / destroy / counters target a creature, so the chosen target is an object.
-            Effect::PumpUntilEndOfTurn {
+            PumpEffect::PumpUntilEndOfTurn {
                 power,
                 toughness,
                 keywords,
@@ -34,7 +34,7 @@ impl Game {
             }
             // Self-pump: the ability's own source, no target (prowess). The source is already
             // known at resolution, so there's nothing to choose.
-            Effect::PumpSelfUntilEndOfTurn {
+            PumpEffect::PumpSelfUntilEndOfTurn {
                 power,
                 toughness,
                 keywords,
@@ -55,7 +55,7 @@ impl Game {
             }
             // Mass pump: every creature the controller controls, no target (Selfless Spirit,
             // Moonshaker Cavalry).
-            Effect::PumpCreaturesYouControlUntilEndOfTurn {
+            PumpEffect::PumpCreaturesYouControlUntilEndOfTurn {
                 power,
                 toughness,
                 keywords,
@@ -83,25 +83,26 @@ impl Game {
             // controls matching `filter`, no P/T (Silkguard's Auras/Equipment clause). The
             // noncreature-permanent twin of the mass pump above — same "you control" scan, no
             // creature gate.
-            Effect::GrantKeywordsToPermanentsYouControlUntilEndOfTurn { keywords, filter } => self
-                .battlefield()
-                .into_iter()
-                .filter(|&id| {
-                    self.controller_of(id) == controller
-                        && self.permanent_matches(&filter, id, controller, Some(source))
-                })
-                .map(|object| Event::TempBoost {
-                    object,
-                    power: 0,
-                    toughness: 0,
-                    keywords,
-                    source_name,
-                })
-                .collect(),
+            PumpEffect::GrantKeywordsToPermanentsYouControlUntilEndOfTurn { keywords, filter } => {
+                self.battlefield()
+                    .into_iter()
+                    .filter(|&id| {
+                        self.controller_of(id) == controller
+                            && self.permanent_matches(&filter, id, controller, Some(source))
+                    })
+                    .map(|object| Event::TempBoost {
+                        object,
+                        power: 0,
+                        toughness: 0,
+                        keywords,
+                        source_name,
+                    })
+                    .collect()
+            }
             // Mass base-P/T SET: every creature the controller controls has its base P/T set to
             // `power`/`toughness` until end of turn (Biomass Mutation). Same "you control" scan as
             // the mass pump, but a 7b base SET rather than a 7c delta.
-            Effect::SetBasePtCreaturesYouControlUntilEndOfTurn {
+            PumpEffect::SetBasePtCreaturesYouControlUntilEndOfTurn {
                 power,
                 toughness,
                 other,
@@ -124,7 +125,7 @@ impl Game {
             }
             // Single-target base-P/T SET: the chosen creature's base P/T is set until end of turn
             // (Quandrix Charm mode 2). The targeted twin of the mass set above.
-            Effect::SetBasePtTargetUntilEndOfTurn {
+            PumpEffect::SetBasePtTargetUntilEndOfTurn {
                 power, toughness, ..
             } => {
                 let object = expect_object_target(target, "a base-P/T set");
@@ -138,7 +139,7 @@ impl Game {
             // toughness each equal to the number of cards exiled this way", CR 613.3(7b)): unlike
             // `SetBasePtTargetUntilEndOfTurn` above, this is never cleared at cleanup. Nothing to
             // do if the source has already left (CR 608.2c).
-            Effect::SetOwnBasePtFromAmount { amount } => {
+            PumpEffect::SetOwnBasePtFromAmount { amount } => {
                 if self.as_permanent(source).is_none() {
                     return Vec::new();
                 }
@@ -152,7 +153,7 @@ impl Game {
             // Manland self-animation (Restless Spire): the source land becomes a creature until end
             // of turn — an added type/subtype (613.4), a base-P/T SET (613.3(7b)), and granted
             // keywords, all on the source. Nothing to do if the source has left (CR 608.2c).
-            Effect::AnimateSelfUntilEndOfTurn {
+            PumpEffect::AnimateSelfUntilEndOfTurn {
                 add_types,
                 add_subtypes,
                 base_power,
@@ -190,7 +191,7 @@ impl Game {
             // "each other creature that's attacking one of your opponents gets +1/+1 until end
             // of turn." Fired by the enchanted creature's own attack trigger; `source` is the
             // Aura, so its host is the "other"-excluded creature.
-            Effect::PumpOtherAttackersAttackingYourOpponents { power, toughness } => {
+            PumpEffect::PumpOtherAttackersAttackingYourOpponents { power, toughness } => {
                 let Some(host) = self.attached_to(source) else {
                     return Vec::new();
                 };
@@ -216,7 +217,7 @@ impl Game {
             // the host is `source`'s attachment, "one of your opponents" is the host's declared
             // defender being someone other than the Aura's controller. An unattached Aura (mid-SBA) (CR 704, CR 303.4, CR 108.3)
             // has no host (guard-return).
-            Effect::EnchantedAttackerPumpAttackingOpponentElseControllerLosesLife {
+            PumpEffect::EnchantedAttackerPumpAttackingOpponentElseControllerLosesLife {
                 power,
                 toughness,
                 life,
@@ -244,7 +245,7 @@ impl Game {
             }
             // Mass keyword strip: every creature an opponent of the controller controls loses
             // `keywords` and can't have them until end of turn (arcane_lighthouse).
-            Effect::StripKeywordsFromOpponentsCreatures { keywords } => self
+            PumpEffect::StripKeywordsFromOpponentsCreatures { keywords } => self
                 .battlefield()
                 .into_iter()
                 .filter(|&id| {
@@ -254,7 +255,7 @@ impl Game {
                 .collect(),
             // Mass weaken: every creature gets -power/-toughness until end of turn (a negative
             // TempBoost, cleared at cleanup). A 0-or-less-toughness creature dies to the next SBA. (CR 704, CR 514)
-            Effect::WeakenEachCreature {
+            PumpEffect::WeakenEachCreature {
                 power,
                 toughness,
                 opponents_only,
@@ -274,8 +275,6 @@ impl Game {
                     })
                     .collect()
             }
-
-            _ => unreachable!("pump family mint received a non-family effect"),
         }
     }
 }

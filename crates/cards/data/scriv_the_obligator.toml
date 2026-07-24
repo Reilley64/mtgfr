@@ -37,12 +37,14 @@ timing = "etb"
 
 # create a white Aura enchantment token named Contract
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 
 token = "c06d8d9d-a157-482e-9c9a-463745d7bf61"
 
 [[abilities.effects]]
-type = "attach_minted_aura_to_target"
+type = "zone"
+mode = "attach_minted_aura_to_target"
 target = { permanent = { types = "creature", controller = "opponent" } }
 
 # Whenever Scriv enters or attacks, create a white Aura enchantment token named Contract attached
@@ -54,10 +56,12 @@ timing = "attacks"
 
 # create a white Aura enchantment token named Contract
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 
 token = "c06d8d9d-a157-482e-9c9a-463745d7bf61"
 
 [[abilities.effects]]
-type = "attach_minted_aura_to_target"
+type = "zone"
+mode = "attach_minted_aura_to_target"
 target = { permanent = { types = "creature", controller = "opponent" } }

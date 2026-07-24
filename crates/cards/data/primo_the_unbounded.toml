@@ -28,7 +28,8 @@ timing = "static"
 
 # Primo enters with twice X +1/+1 counters on it.
 [[abilities.effects]]
-type = "enters_with_counters"
+type = "static"
+mode = "enters_with_counters"
 count = "twice_x"
 
 # Whenever one or more creatures you control with base power 0 deal combat damage to a player,
@@ -40,7 +41,8 @@ timing = "zero_base_power_creatures_deal_combat_damage"
 # create a 0/0 green and blue Fractal creature token. Put a number of +1/+1 counters on it equal
 # to the damage dealt.
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 token = "23c6a041-b8ff-449c-8a2c-e3939668c017"
 count = 1
 enters_with = "combat_damage_dealt"

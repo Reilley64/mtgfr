@@ -30,4 +30,5 @@ generic = 2
 
 # Copy target instant or sorcery spell you control. You may choose new targets for the copy.
 [[abilities.effects]]
-type = "copy_target_spell"
+type = "copy"
+mode = "target_spell"

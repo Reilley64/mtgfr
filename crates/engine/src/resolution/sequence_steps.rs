@@ -28,7 +28,7 @@ impl Game {
             // is exiled this way" — run `then` (mints the Pest token) only if the just-exiled
             // card's own printed type is a creature. Reads the def before the move, the same
             // shape `ExileTargetFromGraveyardCreateTokenCopy` reads `def_of` before it exiles.
-            Effect::ExileTargetGraveyardCardThenIfCreature { then } => {
+            Effect::Zone(ZoneEffect::ExileTargetGraveyardCardThenIfCreature { then }) => {
                 let object =
                     expect_object_target(target, "exile target graveyard card, then if creature");
                 let is_creature = matches!(self.def_of(object).kind, CardKind::Creature { .. });
@@ -43,7 +43,7 @@ impl Game {
             // battlefield (Fabled Passage's "then … untap that land") — reads it back from the
             // SearchedToBattlefield event already recorded in `events` (see the variant doc).
             // No such event yet (the search failed to find, or hasn't run): nothing to untap.
-            Effect::UntapSearchedLand => {
+            Effect::Zone(ZoneEffect::UntapSearchedLand) => {
                 let found = events.iter().rev().find_map(|e| match e {
                     Event::SearchedToBattlefield { permanent, .. } => Some(*permanent),
                     _ => None,
@@ -56,7 +56,7 @@ impl Game {
             // preceding `CreateToken` step already minted — read back from `events`. A non-Aura
             // entering (`entering` is `None`, or its kind isn't Aura) or a missing token is a
             // no-op (guard-return).
-            Effect::AttachTriggeringAuraToMintedToken { entering } => {
+            Effect::Zone(ZoneEffect::AttachTriggeringAuraToMintedToken { entering }) => {
                 let Some(entering) = entering else {
                     return;
                 };
@@ -83,7 +83,7 @@ impl Game {
             // token: no reflexive trigger (guard-return). Otherwise enqueue each `then` effect as
             // its own reflexive triggered ability — a separate, respondable stack object placed
             // the next time a player would get priority — threading the minted token in.
-            Effect::ReflexiveTrigger { then } => {
+            Effect::Zone(ZoneEffect::ReflexiveTrigger { then }) => {
                 let Some(token) = events.iter().rev().find_map(|e| match e {
                     Event::TokenCreated { token, .. } => Some(*token),
                     _ => None,
@@ -96,7 +96,7 @@ impl Game {
             // target, may be `None` — "up to one") to the battlefield attached to the minted
             // `token`. Guard-return (CR 608.2b) if the token has left the battlefield since — with
             // the host gone the returned card can't be attached, so nothing happens.
-            Effect::ReturnFromGraveyardAttachedToToken { token, .. } => {
+            Effect::Zone(ZoneEffect::ReturnFromGraveyardAttachedToToken { token, .. }) => {
                 let Some(token) = token.filter(|&t| self.as_permanent(t).is_some()) else {
                     return;
                 };
@@ -119,7 +119,7 @@ impl Game {
             // Animate Dead: attach this Aura to the creature this same resolution's preceding
             // `ReanimateToBattlefield` step already put onto the battlefield — read back from
             // `events`. No such event yet: nothing to attach to (guard-return).
-            Effect::AttachSelfToReanimated => {
+            Effect::Zone(ZoneEffect::AttachSelfToReanimated) => {
                 let Some(permanent) = events.iter().rev().find_map(|e| match e {
                     Event::ReanimatedToBattlefield { permanent, .. } => Some(*permanent),
                     _ => None,
@@ -138,7 +138,7 @@ impl Game {
             // preceding `CreateToken` step already minted — read back from `events`, the same
             // idiom as `AttachSelfToReanimated` above. No such token yet: nothing to attach to
             // (guard-return).
-            Effect::AttachSelfToMintedToken => {
+            Effect::Zone(ZoneEffect::AttachSelfToMintedToken) => {
                 let Some(token) = events.iter().rev().find_map(|e| match e {
                     Event::TokenCreated { token, .. } => Some(*token),
                     _ => None,
@@ -160,7 +160,7 @@ impl Game {
             // non-object target: nothing to attach (guard-return).
             // ponytail: only an Aura can be attached (CR 303); a non-Aura minted token is a no-op
             // rather than a phantom attachment. The pool mints only the Contract Aura here.
-            Effect::AttachMintedAuraToTarget { .. } => {
+            Effect::Zone(ZoneEffect::AttachMintedAuraToTarget { .. }) => {
                 let Some(host) = target.and_then(Target::object_id) else {
                     return;
                 };
@@ -186,7 +186,7 @@ impl Game {
             // step just reanimated — read back from `events`, mirroring `AttachSelfToReanimated`'s
             // idiom above. No such event yet (the enchanted creature wasn't reanimated): nothing
             // to schedule (guard-return).
-            Effect::ScheduleReturnThisAuraAttachedToReanimated => {
+            Effect::Zone(ZoneEffect::ScheduleReturnThisAuraAttachedToReanimated) => {
                 let Some(permanent) = events.iter().rev().find_map(|e| match e {
                     Event::ReanimatedToBattlefield { permanent, .. } => Some(*permanent),
                     _ => None,
@@ -199,9 +199,9 @@ impl Game {
                         controller,
                         source,
                         fire_at: Step::End,
-                        effect: Effect::ReturnThisAuraAttachedTo {
+                        effect: Effect::Zone(ZoneEffect::ReturnThisAuraAttachedTo {
                             creature: Some(permanent),
-                        },
+                        }),
                     },
                 );
             }
@@ -211,7 +211,7 @@ impl Game {
             // then schedule its return to hand at the next end step (CR 603.7). No such event
             // yet (the reanimation target was illegal): nothing to grant or schedule
             // (guard-return).
-            Effect::ScheduleReturnReanimatedToHand => {
+            Effect::Zone(ZoneEffect::ScheduleReturnReanimatedToHand) => {
                 let Some(permanent) = events.iter().rev().find_map(|e| match e {
                     Event::ReanimatedToBattlefield { permanent, .. } => Some(*permanent),
                     _ => None,
@@ -236,29 +236,31 @@ impl Game {
                         controller,
                         source,
                         fire_at: Step::End,
-                        effect: Effect::ReturnObjectToHand {
+                        effect: Effect::Zone(ZoneEffect::ReturnObjectToHand {
                             object: Some(permanent),
-                        },
+                        }),
                     },
                 );
             }
             // Screams from Within: the immediate dies-return, choosing a new host (unlike Gift
             // of Immortality's same-creature return above). Pauses via the shared helper — see
             // its doc comment.
-            Effect::ReturnThisAuraFromGraveyardAttachedToChosenHost => {
+            Effect::Zone(ZoneEffect::ReturnThisAuraFromGraveyardAttachedToChosenHost) => {
                 self.return_aura_from_graveyard_attached_to_chosen_host(source, events)
             }
             // Ghoulish Impetus: schedule the same choose-host return above at the next end step
             // (CR 603.7), mirroring `ScheduleReturnThisAuraAttachedToReanimated`'s emit shape. No
             // read-back needed — this Aura's own `source` is all the delayed payload needs.
-            Effect::ScheduleReturnThisAuraFromGraveyardAttachedToChosenHost => {
+            Effect::Zone(ZoneEffect::ScheduleReturnThisAuraFromGraveyardAttachedToChosenHost) => {
                 self.push_apply(
                     events,
                     Event::DelayedTriggerScheduled {
                         controller,
                         source,
                         fire_at: Step::End,
-                        effect: Effect::ReturnThisAuraFromGraveyardAttachedToChosenHost,
+                        effect: Effect::Zone(
+                            ZoneEffect::ReturnThisAuraFromGraveyardAttachedToChosenHost,
+                        ),
                     },
                 );
             }

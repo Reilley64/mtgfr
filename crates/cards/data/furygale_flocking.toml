@@ -21,7 +21,8 @@ timing = "spell"
 # create two 3/3 blue and red Elemental creature tokens with flying that attack that opponent this
 # turn if able
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 token = "ed8ed87e-7c33-4201-81a6-1331b21a93bf"
 count = 2
 controller = "one_per_opponent"

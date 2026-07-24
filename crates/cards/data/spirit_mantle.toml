@@ -21,7 +21,8 @@ timing = "static"
 
 # Enchanted creature gets +1/+1 and has protection from creatures.
 [[abilities.effects]]
-type = "grant_to_attached"
+type = "static"
+mode = "grant_to_attached"
 power = 1
 toughness = 1
 keywords = [{ protection = "creatures" }]

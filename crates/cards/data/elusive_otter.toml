@@ -41,7 +41,8 @@ timing = "spell"
 
 # Distribute X +1/+1 counters among any number of target creatures you control.
 [[adventure.abilities.effects]]
-type = "put_counters"
+type = "counters"
+mode = "put_counters"
 count = "x"
 divided = true
 target = { permanent = { types = "creature", controller = "you" } }

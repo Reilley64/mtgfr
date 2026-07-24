@@ -18,7 +18,8 @@ taps_self = true
 
 # Add {C}.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["colorless"]
 
 # {1}, {T}: Put a storage counter on this land.
@@ -29,7 +30,8 @@ activation_cost = { generic = 1 }
 
 # Put a storage counter on this land.
 [[abilities.effects]]
-type = "put_counters"
+type = "counters"
+mode = "put_counters"
 count = 1
 target = "this"
 kind = "storage"
@@ -43,6 +45,7 @@ remove_counters_kind = "storage"
 
 # Add X mana in any combination of {R} and/or {G}.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = [["red", "green"]]
 repeat = "x"

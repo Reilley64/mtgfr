@@ -26,7 +26,8 @@ timing = "static"
 
 # This creature enters with X +1/+1 counters on it.
 [[abilities.effects]]
-type = "enters_with_counters"
+type = "static"
+mode = "enters_with_counters"
 count = "x"
 
 # When this creature enters, destroy up to one target artifact or enchantment with mana value X
@@ -37,7 +38,8 @@ timing = "etb"
 
 # destroy up to one target artifact or enchantment with mana value X or less
 [[abilities.effects]]
-type = "destroy_target"
+type = "destroy"
+mode = "target"
 count = { max = 1 }
 target = { permanent = { types = "artifact_or_enchantment", mv_max_x = true } }
 
@@ -45,10 +47,10 @@ target = { permanent = { types = "artifact_or_enchantment", mv_max_x = true } }
 [[abilities.effects]]
 type = "conditional"
 condition = { type = "source_entered_with_x_at_least", at_least = 5 }
-then = [{ type = "draw_cards", count = 1 }]
+then = [{ type = "draw", mode = "cards", count = 1 }]
 
 # If X is 10 or more, double the number of +1/+1 counters on any number of other target creatures.
 [[abilities.effects]]
 type = "conditional"
 condition = { type = "source_entered_with_x_at_least", at_least = 10 }
-then = [{ type = "double_counters_on_target_creatures", target = { permanent = { types = "creature", other = true } }, count = { min = 0, max = 6 } }]
+then = [{ type = "counters", mode = "double_counters_on_target_creatures", target = { permanent = { types = "creature", other = true } }, count = { min = 0, max = 6 } }]

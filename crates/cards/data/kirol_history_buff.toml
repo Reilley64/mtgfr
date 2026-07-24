@@ -34,7 +34,8 @@ timing = "cards_leave_your_graveyard"
 
 # Kirol becomes prepared.
 [[abilities.effects]]
-type = "become_prepared"
+type = "misc"
+mode = "become_prepared"
 
 # Back face — Pack a Punch {1}{R}{W} sorcery: "Mill a card. Put two +1/+1 counters on target
 # creature. It gains trample until end of turn." One resolution (a sequence) sharing one creature
@@ -58,18 +59,21 @@ timing = "spell"
 
 # Mill a card.
 [[back.abilities.effects]]
-type = "mill_self"
+type = "mill"
+mode = "mill_self"
 count = 1
 
 # Put two +1/+1 counters on target creature.
 [[back.abilities.effects]]
-type = "put_counters"
+type = "counters"
+mode = "put_counters"
 count = 2
 target = "creature"
 
 # It gains trample until end of turn.
 [[back.abilities.effects]]
-type = "pump_until_end_of_turn"
+type = "pump"
+mode = "pump_until_end_of_turn"
 power = 0
 toughness = 0
 target = "creature"

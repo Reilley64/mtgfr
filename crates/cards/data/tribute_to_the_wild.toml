@@ -19,6 +19,7 @@ timing = "spell"
 
 # Each opponent sacrifices an artifact or enchantment of their choice.
 [[abilities.effects]]
-type = "each_player_sacrifices"
+type = "choice"
+mode = "each_player_sacrifices"
 scope = "each_opponent"
 filter = { types = "artifact_or_enchantment" }

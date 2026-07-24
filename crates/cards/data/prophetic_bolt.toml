@@ -24,14 +24,16 @@ timing = "spell"
 
 # Prophetic Bolt deals 4 damage to any target.
 [[abilities.effects]]
-type = "deal_damage"
+type = "damage"
+mode = "target"
 amount = 4
 target = "any"
 
 # Look at the top four cards of your library. Put one of those cards into your hand and the rest on the bottom of
 # your library in any order.
 [[abilities.effects]]
-type = "look_at_top"
+type = "dig"
+mode = "look_at_top"
 count = 4
 up_to = 1
 min = 1

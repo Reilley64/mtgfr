@@ -32,5 +32,6 @@ green = 1
 
 # Target player draws a card.
 [[abilities.effects]]
-type = "target_player_draws"
+type = "draw"
+mode = "target_player"
 count = 1

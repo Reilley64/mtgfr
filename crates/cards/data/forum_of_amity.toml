@@ -27,5 +27,6 @@ black = 1
 
 # Surveil 1. (Look at the top card of your library. You may put it into your graveyard.)
 [[abilities.effects]]
-type = "surveil"
+type = "dig"
+mode = "surveil"
 count = 1

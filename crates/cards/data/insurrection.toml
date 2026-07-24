@@ -18,5 +18,6 @@ timing = "spell"
 
 # Untap all creatures and gain control of them until end of turn. They gain haste until end of turn.
 [[abilities.effects]]
-type = "gain_control_all_until_end_of_turn"
+type = "control"
+mode = "gain_control_all_until_end_of_turn"
 filter = "creatures"

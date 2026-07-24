@@ -19,7 +19,8 @@ taps_self = true
 
 # Add {C}.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["colorless"]
 
 # {4}, {T}: Target creature can't be blocked this turn.
@@ -32,7 +33,8 @@ generic = 4
 
 # Target creature can't be blocked this turn.
 [[abilities.effects]]
-type = "pump_until_end_of_turn"
+type = "pump"
+mode = "pump_until_end_of_turn"
 power = 0
 toughness = 0
 target = "creature"

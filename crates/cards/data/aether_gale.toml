@@ -23,6 +23,7 @@ timing = "spell"
 
 # Return six target nonland permanents to their owners' hands.
 [[abilities.effects]]
-type = "return_to_hand"
+type = "zone"
+mode = "return_to_hand"
 target = { permanent = "nonland" }
 count = 6

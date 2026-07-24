@@ -29,7 +29,8 @@ timing = "begin_combat"
 # the number of instant and sorcery spells you've cast this turn. They gain haste. Exile them
 # at the beginning of the next end step.
 [[abilities.effects]]
-type = "create_token_copy"
+type = "token"
+mode = "create_copy"
 target = { permanent = { types = "creature", controller = "you", other = true } }
 count = "one_plus_instants_and_sorceries_cast_this_turn"
 haste = true

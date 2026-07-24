@@ -30,7 +30,8 @@ timing = "end_step"
 # create a number of Food tokens equal to the number of nontoken creatures you had enter the
 # battlefield under your control this turn.
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 token = "a468338f-635e-4206-89d6-72d723071d45"
 count = "nontoken_creatures_entered_this_turn"
 
@@ -43,7 +44,8 @@ generic = 1
 
 # Target creature gains indestructible until end of turn.
 [[abilities.effects]]
-type = "pump_until_end_of_turn"
+type = "pump"
+mode = "pump_until_end_of_turn"
 target = "creature"
 power = 0
 toughness = 0
@@ -51,5 +53,6 @@ keywords = ["indestructible"]
 
 # Tap it.
 [[abilities.effects]]
-type = "tap_target"
+type = "control"
+mode = "tap_target"
 target = "creature"

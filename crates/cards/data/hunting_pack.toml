@@ -20,7 +20,8 @@ timing = "spell"
 
 # Create a 4/4 green Beast creature token.
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 token = "695b14a0-920a-47bd-bd4a-7989862cdd0a"
 
 # Storm (When you cast this spell, copy it for each spell cast before it this turn.)
@@ -29,6 +30,7 @@ timing = "when_you_cast_this"
 
 # copy it for each spell cast before it this turn
 [[abilities.effects]]
-type = "copy_triggering_spell"
+type = "copy"
+mode = "copy_triggering_spell"
 count = "spells_cast_before_this_this_turn"
 last_known_information = true

@@ -26,7 +26,8 @@ timing = "static"
 
 # creatures you control have haste
 [[abilities.effects]]
-type = "anthem_static"
+type = "static"
+mode = "anthem"
 keywords = ["haste"]
 from_graveyard = true
 condition = { type = "controls_lands_with_subtype", subtypes = ["Mountain"], count = 1 }

@@ -6,9 +6,9 @@
 use crate::*;
 
 impl Game {
-    pub(crate) fn mint_mana_family(
+    pub(crate) fn mint_mana(
         &self,
-        effect: Effect,
+        effect: ManaEffect,
         controller: PlayerId,
         source: ObjectId,
         target: Option<Target>,
@@ -21,7 +21,7 @@ impl Game {
             // arises in the soc pool, so an over-255 repeat saturates rather than widening the type.
             // `single_color` is handled by `Game::activate_ability` before a mana ability ever (CR 605, CR 113)
             // reaches here (it pauses on `ChooseManaColor` instead) — ignored via `..`.
-            Effect::AddMana {
+            ManaEffect::Add {
                 mana: produced,
                 identity,
                 opponent_colors,
@@ -97,8 +97,6 @@ impl Game {
                 }
                 events
             }
-
-            _ => unreachable!("mana family mint received a non-family effect"),
         }
     }
 }

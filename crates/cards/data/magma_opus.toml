@@ -22,7 +22,8 @@ timing = "spell"
 
 # Magma Opus deals 4 damage divided as you choose among any number of targets.
 [[abilities.effects]]
-type = "deal_damage"
+type = "damage"
+mode = "target"
 amount = 4
 target = "any"
 count = { max = 4 }
@@ -34,7 +35,8 @@ timing = "spell"
 
 # Tap two target permanents.
 [[abilities.effects]]
-type = "tap_target"
+type = "control"
+mode = "tap_target"
 target = { permanent = {} }
 count = { min = 2, max = 2 }
 
@@ -44,7 +46,8 @@ timing = "spell"
 
 # Create a 4/4 blue and red Elemental creature token.
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 token = "f81c047d-de36-4aed-806b-f14a290771a4"
 count = 1
 
@@ -54,7 +57,8 @@ timing = "spell"
 
 # Draw two cards.
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 2
 
 # {U/R}{U/R}, Discard this card: Create a Treasure token.
@@ -65,5 +69,6 @@ hybrid = [["blue", "red"], ["blue", "red"]]
 
 # Create a Treasure token.
 [[hand_ability.effects]]
-type = "create_treasure"
+type = "token"
+mode = "create_treasure"
 count = 1

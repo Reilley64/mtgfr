@@ -21,12 +21,14 @@ timing = "spell"
 
 # Target creature you control gets +X/+X until end of turn.
 [[abilities.effects]]
-type = "pump_until_end_of_turn"
+type = "pump"
+mode = "pump_until_end_of_turn"
 power = "x"
 toughness = "x"
 target = "creature_you_control"
 
 # Then it fights up to one target creature you don't control.
 [[abilities.effects]]
-type = "fight"
+type = "misc"
+mode = "fight"
 ally_is_shared_target = true

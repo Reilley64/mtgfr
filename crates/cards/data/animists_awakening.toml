@@ -26,7 +26,8 @@ timing = "spell"
 # ponytail: "in a random order" — the engine is pure (no rand); non-matching reveals go to the
 # bottom in library order instead, the same deterministic stand-in `reveal_until` uses.
 [[abilities.effects]]
-type = "reveal_top_cards"
+type = "reveal"
+mode = "top_cards"
 count = "x"
 filter = "land"
 matched_dest = "battlefield"

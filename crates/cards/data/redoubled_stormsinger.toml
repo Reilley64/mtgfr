@@ -29,4 +29,5 @@ timing = "attacks"
 # token that's a copy of that token. At the beginning of the next end step, sacrifice those
 # tokens.
 [[abilities.effects]]
-type = "copy_each_entered_this_turn_token_tapped_attacking"
+type = "token"
+mode = "copy_each_entered_this_turn_token_tapped_attacking"

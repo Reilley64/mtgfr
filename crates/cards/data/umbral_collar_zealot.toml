@@ -23,5 +23,6 @@ sacrifice = { permanent = { types = "artifact_or_creature", other = true } }
 
 # Surveil 1.
 [[abilities.effects]]
-type = "surveil"
+type = "dig"
+mode = "surveil"
 count = 1

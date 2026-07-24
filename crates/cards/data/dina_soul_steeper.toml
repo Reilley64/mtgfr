@@ -26,7 +26,8 @@ timing = "you_gain_life"
 
 # each opponent loses 1 life
 [[abilities.effects]]
-type = "each_opponent_loses_life"
+type = "life"
+mode = "each_opponent_loses"
 amount = 1
 
 # {1}, Sacrifice another creature: Dina gets +X/+0 until end of turn, where X is the sacrificed
@@ -38,6 +39,7 @@ sacrifice = { creature = { other = true } }
 
 # Dina gets +X/+0 until end of turn, where X is the sacrificed creature's power
 [[abilities.effects]]
-type = "pump_self_until_end_of_turn"
+type = "pump"
+mode = "pump_self_until_end_of_turn"
 power = "sacrificed_creature_power"
 toughness = 0

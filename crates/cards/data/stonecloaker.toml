@@ -26,7 +26,8 @@ timing = "etb"
 
 # return a creature you control to its owner's hand.
 [[abilities.effects]]
-type = "return_to_hand"
+type = "zone"
+mode = "return_to_hand"
 target = "creature_you_control"
 
 # When this creature enters, exile target card from a graveyard.
@@ -35,4 +36,5 @@ timing = "etb"
 
 # exile target card from a graveyard.
 [[abilities.effects]]
-type = "exile_target_graveyard_card_then_if_creature"
+type = "zone"
+mode = "exile_target_graveyard_card_then_if_creature"

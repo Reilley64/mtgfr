@@ -25,6 +25,7 @@ timing = "spell"
 
 # Return up to three target land cards from your graveyard to your hand.
 [[abilities.effects]]
-type = "return_from_graveyard_to_hand"
+type = "zone"
+mode = "return_from_graveyard_to_hand"
 target = { card_in_graveyard = { whose = "yours", filter = "land" } }
 count = { max = 3 }

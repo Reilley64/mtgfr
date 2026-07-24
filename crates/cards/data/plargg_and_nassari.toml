@@ -29,4 +29,5 @@ timing = "upkeep"
 # opponent chooses a nonland card exiled this way. You may cast up to two spells from among the
 # other cards exiled this way without paying their mana costs.
 [[abilities.effects]]
-type = "each_player_exiles_until_nonland_opponent_picks"
+type = "dig"
+mode = "each_player_exiles_until_nonland_opponent_picks"

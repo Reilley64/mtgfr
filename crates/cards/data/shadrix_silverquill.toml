@@ -33,7 +33,8 @@ optional = true
 
 # Target player creates a 2/1 white and black Inkling creature token with flying.
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 token = "fbdbff76-c1ea-47ea-bfcc-7c64c23dad70"
 controller = "target_player"
 
@@ -43,12 +44,14 @@ optional = true
 
 # Target player draws a card
 [[abilities.effects]]
-type = "target_player_draws"
+type = "draw"
+mode = "target_player"
 count = 1
 
 # and loses 1 life.
 [[abilities.effects]]
-type = "target_player_loses_life"
+type = "life"
+mode = "target_player_loses"
 amount = 1
 
 # Mode 2 — "Target player puts a +1/+1 counter on each creature they control."
@@ -58,7 +61,8 @@ optional = true
 
 # Target player puts a +1/+1 counter on each creature they control.
 [[abilities.effects]]
-type = "put_counters_each"
+type = "counters"
+mode = "put_counters_each"
 filter = { types = "creature", controller = "you" }
 count = 1
 target_player = true

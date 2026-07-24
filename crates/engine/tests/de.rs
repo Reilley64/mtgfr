@@ -157,7 +157,8 @@ hybrid = [["blue", "green"]]
 fn look_at_top_defaults_up_to_one() {
     let effect: Effect = toml::from_str(
         r#"
-type = "look_at_top"
+type = "dig"
+mode = "look_at_top"
 count = 3
 filter = "land"
 dest = "hand"
@@ -165,7 +166,7 @@ dest = "hand"
     )
     .unwrap();
     match effect {
-        Effect::LookAtTop { up_to, .. } => assert_eq!(up_to, 1),
+        Effect::Dig(DigEffect::LookAtTop { up_to, .. }) => assert_eq!(up_to, 1),
         other => panic!("expected LookAtTop, got {other:?}"),
     }
 }
@@ -174,12 +175,13 @@ dest = "hand"
 fn each_player_sacrifices_defaults_to_creature_filter() {
     let effect: Effect = toml::from_str(
         r#"
-type = "each_player_sacrifices"
+type = "choice"
+mode = "each_player_sacrifices"
 "#,
     )
     .unwrap();
     match effect {
-        Effect::EachPlayerSacrifices { filter, .. } => {
+        Effect::Choice(ChoiceEffect::EachPlayerSacrifices { filter, .. }) => {
             assert_eq!(filter.types, TypeSet::CREATURE);
         }
         other => panic!("expected EachPlayerSacrifices, got {other:?}"),
@@ -196,14 +198,14 @@ fn ability_unwraps_a_singleton_effects_list() {
     let row: Row = toml::from_str(
         r#"
 timing = "spell"
-effects = [{ type = "draw_cards", count = 1 }]
+effects = [{ type = "draw", mode = "cards", count = 1 }]
 "#,
     )
     .unwrap();
     assert!(matches!(
         row.ability.effect,
-        Effect::DrawCards {
+        Effect::Draw(DrawEffect::Cards {
             count: Amount::Fixed(1)
-        }
+        })
     ));
 }

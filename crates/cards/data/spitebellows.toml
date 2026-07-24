@@ -27,6 +27,7 @@ timing = "this_leaves_battlefield"
 
 # it deals 6 damage to target creature.
 [[abilities.effects]]
-type = "deal_damage"
+type = "damage"
+mode = "target"
 amount = 6
 target = "creature"

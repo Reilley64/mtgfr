@@ -83,7 +83,7 @@ impl Game {
         Ok(events)
     }
 
-    /// Resolve [`Effect::ExileTopCastMatchingFree`] (Herald of Amity's dig): exile the top
+    /// Resolve [`Effect::Dig(DigEffect::ExileTopCastMatchingFree)`] (Herald of Amity's dig): exile the top
     /// `count` cards of `controller`'s library face-up (public, CR 701.17), then raise a
     /// choose-up-to-one over the exiled cards matching `filter`. A short library exiles only
     /// what's there (CR 120-style "as many as possible"); an empty library raises no choice (a
@@ -387,7 +387,7 @@ impl Game {
     }
 
     /// Resolve Dance with Calamity's push-your-luck loop
-    /// ([`Effect::ExileTopUntilStopCastFreeUnderBudget`]): raise a first
+    /// ([`Effect::Dig(DigEffect::ExileTopUntilStopCastFreeUnderBudget)`]): raise a first
     /// [`ChoiceRequest::DanceExileMore`] over an empty exile pile. An already-empty library has
     /// nothing to exile, so it resolves the payoff straight away (a zero tally — nothing to cast).
     pub(crate) fn dance_with_calamity(
@@ -490,7 +490,7 @@ impl Game {
         self.choose_exiled_to_cast_free_pile(controller, source, exiled, count, false, events);
     }
 
-    /// Resolve Abstract Performance ([`Effect::OpponentSplitsExilePiles`]): exile the top four
+    /// Resolve Abstract Performance ([`Effect::Dig(DigEffect::OpponentSplitsExilePiles)`]): exile the top four
     /// (CR 701.9 face-down — hidden from every viewer but `controller`) then the next four
     /// (face-up) of `controller`'s library into two piles, then hand off to the shared
     /// [`Self::choose_splitting_opponent`] chooser to pick who picks a pile.
@@ -509,7 +509,7 @@ impl Game {
         );
     }
 
-    /// Resolve Fact or Fiction ([`Effect::RevealTopSplitPiles`]): reveal the top five of
+    /// Resolve Fact or Fiction ([`Effect::Dig(DigEffect::RevealTopSplitPiles)`]): reveal the top five of
     /// `controller`'s library (all public, CR 701.16; a short library reveals only what's there,
     /// CR 120.3 "as many as possible" — an empty library reveals nothing and raises no pause),
     /// then hand off to the shared [`Self::choose_splitting_opponent`] chooser to pick who
@@ -546,7 +546,7 @@ impl Game {
         );
     }
 
-    /// Resolve Murmurs from Beyond ([`Effect::RevealTopOpponentPicksOneToGraveyard`]): reveal the
+    /// Resolve Murmurs from Beyond ([`Effect::Dig(DigEffect::RevealTopOpponentPicksOneToGraveyard)`]): reveal the
     /// top `count` of `controller`'s library (all public, CR 701.16; a short library reveals only
     /// what's there, CR 120.3 "as many as possible" — an empty library reveals nothing and raises
     /// no pause), then hand off to the shared [`Self::choose_splitting_opponent`] chooser to pick
@@ -630,8 +630,8 @@ impl Game {
         Ok(events)
     }
 
-    /// The shared "an opponent ..." chooser for [`Effect::OpponentSplitsExilePiles`] and
-    /// [`Effect::RevealTopSplitPiles`]: with more than one opponent alive, `controller` picks
+    /// The shared "an opponent ..." chooser for [`Effect::Dig(DigEffect::OpponentSplitsExilePiles)`] and
+    /// [`Effect::Dig(DigEffect::RevealTopSplitPiles)`]: with more than one opponent alive, `controller` picks
     /// which one on a [`ChoiceRequest::ChooseSplittingOpponent`]; with at most one, resume
     /// immediately (the "single-legal-choice" collapse — no real choice to offer). `then` carries
     /// the split data already computed, so it's ready the instant the opponent is known.
@@ -737,7 +737,7 @@ impl Game {
         }
     }
 
-    /// Begin a clash (CR 701.22, [`Effect::Clash`]): the ability's controller picks a living
+    /// Begin a clash (CR 701.22, [`Effect::Dig(DigEffect::Clash)`]): the ability's controller picks a living
     /// opponent to clash with (the shared #107 [`pending::ChoiceRequest::ChooseSplittingOpponent`]
     /// chooser, collapsed when there's only one). Once known, [`Self::resume_clash`] reveals both
     /// top cards, scores the clash, and pauses each player on a keep-on-top-or-bottom scry.
@@ -950,7 +950,7 @@ impl Game {
         Ok(events)
     }
 
-    /// Resolve Plargg and Nassari ([`Effect::EachPlayerExilesUntilNonlandOpponentPicks`]): each
+    /// Resolve Plargg and Nassari ([`Effect::Dig(DigEffect::EachPlayerExilesUntilNonlandOpponentPicks)`]): each
     /// living player, in APNAP order, exiles cards from the top of their own library until they
     /// exile a nonland (all face-up, public); an opponent then picks one of the exiled nonlands.
     pub(crate) fn each_player_exiles_until_nonland(
@@ -1025,7 +1025,7 @@ impl Game {
         Ok(events)
     }
 
-    /// Resolve [`Effect::RevealUntilMayDeploy`] (Songbirds' Blessing's enchanted-creature-
+    /// Resolve [`Effect::Dig(DigEffect::RevealUntilMayDeploy)`] (Songbirds' Blessing's enchanted-creature-
     /// attacks trigger): reveal `controller`'s own top cards one at a time until the first card
     /// matching `filter` or the library runs out (CR 120.3), collecting every non-match along the
     /// way. The matching card is left unmoved on top of the library and offered on a
@@ -1205,11 +1205,11 @@ impl Game {
         Ok(events)
     }
 
-    /// Shared core of [`Effect::ReturnThisAuraFromGraveyardAttachedToChosenHost`] (Screams from
+    /// Shared core of [`Effect::Zone(ZoneEffect::ReturnThisAuraFromGraveyardAttachedToChosenHost)`] (Screams from
     /// Within's immediate dies-return, Ghoulish Impetus's delayed one once its schedule fires):
     /// move this Aura (`source`) from the graveyard to the battlefield unattached — under its
     /// owner's control, the same reanimate-a-card-from-your-own-graveyard idiom
-    /// [`Effect::ReturnThisAuraAttachedTo`]'s resolve arm uses — then pause on
+    /// [`Effect::Zone(ZoneEffect::ReturnThisAuraAttachedTo)`]'s resolve arm uses — then pause on
     /// [`PendingChoice::ChooseAttachHost`] via
     /// [`Self::maybe_pause_attach_deployed_aura`], the same choose-host surface a deployed Aura
     /// already uses (CR 303.4f). Guard-returns with no events if this Aura has since left the
@@ -1232,8 +1232,8 @@ impl Game {
         self.maybe_pause_attach_deployed_aura(permanent, owner);
     }
 
-    /// Resolve [`Effect::RevealUntilExileCastFree`] (Creative Technique's reveal-until-nonland
-    /// dig, run after its preceding [`Effect::ShuffleLibrary`] step): reveal `controller`'s own
+    /// Resolve [`Effect::Dig(DigEffect::RevealUntilExileCastFree)`] (Creative Technique's reveal-until-nonland
+    /// dig, run after its preceding [`Effect::Dig(DigEffect::ShuffleLibrary)`] step): reveal `controller`'s own
     /// top cards one at a time — same loop shape as [`Self::reveal_until_may_deploy`] —
     /// until the first card matching `filter` or the library runs out, collecting every non-match
     /// along the way. The matching card is exiled face-up and raises the shared
@@ -1288,7 +1288,7 @@ impl Game {
         self.bottom_pile_in_library(controller, &rest, events);
     }
 
-    /// Resolve [`Effect::Cascade`] (CR 702.85). Reveal cards from the top of `controller`'s
+    /// Resolve [`Effect::Dig(DigEffect::Cascade)`] (CR 702.85). Reveal cards from the top of `controller`'s
     /// library one at a time, exiling each face-up (public, reusing the dig's
     /// [`Event::ExiledFromLibraryToChooseCastFree`]), until the just-exiled card is a **nonland**
     /// with mana value strictly less than `mana_value` (the cascading spell's own mana value), or

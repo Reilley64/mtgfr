@@ -24,6 +24,7 @@ optional = true
 
 # deal 1 damage to target player or planeswalker.
 [[abilities.effects]]
-type = "deal_damage"
+type = "damage"
+mode = "target"
 amount = 1
 target = "player_or_planeswalker"

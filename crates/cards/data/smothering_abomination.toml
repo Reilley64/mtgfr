@@ -27,7 +27,8 @@ timing = "upkeep"
 
 # sacrifice a creature.
 [[abilities.effects]]
-type = "sacrifice_own"
+type = "choice"
+mode = "sacrifice_own"
 filter = "creature"
 count = 1
 
@@ -38,5 +39,6 @@ filter = "creature"
 
 # draw a card.
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1

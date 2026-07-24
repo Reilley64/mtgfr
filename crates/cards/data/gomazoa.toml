@@ -27,4 +27,5 @@ taps_self = true
 # Put this creature and each creature it's blocking on top of their owners' libraries, then those
 # players shuffle.
 [[abilities.effects]]
-type = "tuck_self_and_blocked_creatures"
+type = "zone"
+mode = "tuck_self_and_blocked_creatures"

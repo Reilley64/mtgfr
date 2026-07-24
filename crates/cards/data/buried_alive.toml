@@ -19,7 +19,8 @@ timing = "spell"
 
 # Search your library for up to three creature cards, put them into your graveyard, then shuffle.
 [[abilities.effects]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = "creature"
 to_zone = "graveyard"
 count = 3

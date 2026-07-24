@@ -22,11 +22,12 @@ timing = "static"
 
 # has flying and "Sacrifice a creature: This creature gets +2/+1 until end of turn."
 [[abilities.effects]]
-type = "grant_to_attached"
+type = "static"
+mode = "grant_to_attached"
 power = 0
 toughness = 0
 keywords = ["flying"]
-granted_ability = { cost = { sacrifice = { creature = {} } }, effects = [{ type = "pump_self_until_end_of_turn", power = 2, toughness = 1 }] }
+granted_ability = { cost = { sacrifice = { creature = {} } }, effects = [{ type = "pump", mode = "pump_self_until_end_of_turn", power = 2, toughness = 1 }] }
 
 # When this Aura is put into a graveyard from the battlefield, return it to its owner's hand.
 [[abilities]]
@@ -34,4 +35,5 @@ timing = "this_put_into_graveyard"
 
 # return it to its owner's hand
 [[abilities.effects]]
-type = "return_this_to_hand"
+type = "zone"
+mode = "return_this_to_hand"

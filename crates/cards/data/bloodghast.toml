@@ -25,7 +25,8 @@ timing = "static"
 
 # This creature has haste
 [[abilities.effects]]
-type = "anthem_static"
+type = "static"
+mode = "anthem"
 self_only = true
 keywords = ["haste"]
 condition = { type = "an_opponent_has_life_at_most", at_most = 10 }
@@ -40,4 +41,5 @@ optional = true
 
 # return this card from your graveyard to the battlefield
 [[abilities.effects]]
-type = "return_this_from_graveyard_to_battlefield"
+type = "zone"
+mode = "return_this_from_graveyard_to_battlefield"

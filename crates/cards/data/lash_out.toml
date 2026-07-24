@@ -20,11 +20,13 @@ timing = "spell"
 
 # Clash with an opponent.
 [[abilities.effects]]
-type = "clash"
+type = "dig"
+mode = "clash"
 
 # Lash Out deals 4 damage to target creature.
 [[abilities.effects]]
-type = "deal_damage"
+type = "damage"
+mode = "target"
 amount = 4
 target = "creature"
 
@@ -32,4 +34,4 @@ target = "creature"
 [[abilities.effects]]
 type = "conditional"
 condition = { type = "won_clash" }
-then = [{ type = "deal_damage_to_target_controller", amount = 2 }]
+then = [{ type = "damage", mode = "to_target_controller", amount = 2 }]

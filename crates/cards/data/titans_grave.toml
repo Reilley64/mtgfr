@@ -22,5 +22,6 @@ activation_cost = { generic = 2, black = 1, green = 1 }
 
 # Surveil 1.
 [[abilities.effects]]
-type = "surveil"
+type = "dig"
+mode = "surveil"
 count = 1

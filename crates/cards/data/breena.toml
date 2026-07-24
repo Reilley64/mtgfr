@@ -37,5 +37,6 @@ type = "attacked_opponent_has_more_life_than_another_opponent"
 
 # that attacking player draws a card and you put two +1/+1 counters on a creature you control.
 [[abilities.effects]]
-type = "attacker_draws_controller_counters"
+type = "counters"
+mode = "attacker_draws_controller_counters"
 counters = 2

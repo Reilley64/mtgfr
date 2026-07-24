@@ -19,10 +19,12 @@ timing = "spell"
 
 # Counter target creature spell.
 [[abilities.effects]]
-type = "counter_target_spell"
+type = "misc"
+mode = "counter_target_spell"
 filter = "creature"
 
 # Draw cards equal to that spell's mana value.
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = "target_mana_value"

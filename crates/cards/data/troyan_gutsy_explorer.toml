@@ -33,7 +33,8 @@ taps_self = true
 # Add {G}{U}. Spend this mana only to cast spells with mana value 5 or greater or spells with {X}
 # in their mana costs.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["green", "blue"]
 restriction = { mana_value_at_least_or_has_x = 5 }
 
@@ -45,10 +46,12 @@ activation_cost = { blue = 1 }
 
 # Draw a card
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1
 
 # then discard a card.
 [[abilities.effects]]
-type = "discard"
+type = "choice"
+mode = "discard"
 count = 1

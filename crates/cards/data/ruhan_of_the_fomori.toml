@@ -26,4 +26,5 @@ timing = "begin_combat"
 
 # choose an opponent at random. Ruhan attacks that player this combat if able.
 [[abilities.effects]]
-type = "must_attack_random_opponent"
+type = "misc"
+mode = "must_attack_random_opponent"

@@ -342,7 +342,8 @@ load error).
 timing = "etb"
 
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1
 ```
 Inline form also works: `effects = [{ type = "put_counters", count = 2, target = "creature" }]`,
@@ -363,7 +364,8 @@ two). Give more than one `[[abilities.effects]]` block (or list more than one el
 timing = "spell"
 
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 2
 
 [[abilities.effects]]
@@ -478,7 +480,7 @@ untargeted `[[abilities]]`).
 | `"any_player_sacrifices"` | Whenever *any* player sacrifices a permanent matching `filter` — a watch-others trigger (Mazirek: "whenever a player sacrifices another permanent", via `filter`'s `other = true`). |
 | `"you_discard"` | Whenever you discard a card (Containment Construct; pairs with the `exile_from_graveyard_may_play`/`exile_discarded_with_this` payoffs, §6). |
 | `"deals_combat_damage_to_player"` | Whenever a creature deals combat damage to a player, scoped by the sibling `who` field (below). |
-| `"deals_combat_damage_to_creature"` | Whenever *this* permanent deals combat damage to a creature (CR 510.2, Stinkweed Imp: "Whenever this creature deals combat damage to a creature, destroy that creature"). Self-scoped, no sibling fields — never fires on combat damage to a player, or on noncombat creature damage (fight). Feeds a following `destroy_triggering_damaged_creature` payoff with the damaged creature's id (CR 603.10a last-known information). |
+| `"deals_combat_damage_to_creature"` | Whenever *this* permanent deals combat damage to a creature (CR 510.2, Stinkweed Imp: "Whenever this creature deals combat damage to a creature, destroy that creature"). Self-scoped, no sibling fields — never fires on combat damage to a player, or on noncombat creature damage (fight). Feeds a following `destroy/triggering_damaged_creature` payoff with the damaged creature's id (CR 603.10a last-known information). |
 | `"creature_dealt_damage_by_this_dies"` | Whenever a creature dealt damage by *this* permanent **this turn** dies (CR 603.10a, Vampiric Dragon: "Whenever a creature dealt damage by this creature this turn dies, put a +1/+1 counter on this creature"). Self-scoped, no sibling fields — unlike `deals_combat_damage_to_creature`'s single-fire slot, this reads a turn-scoped tally recorded at *every* creature-damage choke, combat or noncombat alike, cleared at cleanup. Pairs with an ordinary `put_counters target = "this"` payoff (no dedicated effect). |
 | `"deals_damage_to_opponent"` | Whenever *this* permanent deals damage to an opponent of its controller, combat or noncombat alike (Looter il-Kor: "Whenever this creature deals damage to an opponent, draw a card, then discard a card"). Self-scoped, no sibling fields — damage to the controller themselves never fires it (CR 102.3: every other player is an opponent). |
 | `"zero_base_power_creatures_deal_combat_damage"` | Whenever one or more creatures this permanent's controller controls, each with **base** power 0, deal combat damage to a player — batch-once per defending player, summed across every qualifying attacker that combat (Primo, the Unbounded). The summed damage rides in `"combat_damage_dealt"` (§5 Amounts). Base-power-0 filter is hard-coded, not a sibling field — the pool's only consumer. |
@@ -495,7 +497,7 @@ untargeted `[[abilities]]`).
 | `"when_you_cast_this"` | "When you cast this spell" (CR 601.2i): scanned off the cast card's own abilities, not a battlefield watcher — placed on the stack above the spell, controller = caster, and resolves independently even if the spell is later countered (Hydroid Krasis). |
 | `"cycled"` | "When you cycle this card" (CR 702.29e): scanned off the cycled card's own abilities at `Game::cycle`'s discard, like `"when_you_cast_this"`'s self-scan — not a battlefield watcher. Cycling's draw itself is a real activated ability on the stack (CR 702.29a — see `cycling`/`hand_ability` in §1, respondable by Azorius Guildmage's `counter_target_activated_ability`), and the cycled trigger is placed *above* it, so it resolves first (Krosan Tusker's "you may search your library for a basic land card … (Do this before you draw.)"). Pairs with `optional = true` and, for a paid rider, an `[abilities.cost]` carrying `x = true`/`x = N` (Decree of Justice's "you may pay {X}. If you do, create X 1/1 white Soldier creature tokens.") — answered by `Intent::PayOptionalCostX { pay, x }`, a dedicated wire shape (not `PayOptionalCost`) so the chosen `{X}` threads onto the placed ability's stack item for its own `Amount::X` to read (same mechanism an activated ability's `{X}` cost uses). |
 | `"this_put_into_graveyard"` | When THIS permanent is put into a graveyard from the battlefield (CR — Fallen Ideal's Aura-death rider). Self-referential like `"dies"`, but not creature-scoped: fires for any permanent kind. Guarded to a live battlefield permanent immediately before the move, so a milled/discarded copy of the same card does not fire it. |
-| `"this_leaves_battlefield"` | When THIS permanent leaves the battlefield to *any* zone — destroy/exile → graveyard/exile, bounce → hand, tuck → library (Animate Dead's "when this Aura leaves the battlefield, that creature's controller sacrifices it"). Broader than `"this_put_into_graveyard"` (graveyard-only): fires off any battlefield-exit event. Carries no filter of its own, but the permanent this was attached to at the instant it left (CR 603.10a last-known information) feeds a following `sacrifice_enchanted_creature` effect. |
+| `"this_leaves_battlefield"` | When THIS permanent leaves the battlefield to *any* zone — destroy/exile → graveyard/exile, bounce → hand, tuck → library (Animate Dead's "when this Aura leaves the battlefield, that creature's controller sacrifices it"). Broader than `"this_put_into_graveyard"` (graveyard-only): fires off any battlefield-exit event. Carries no filter of its own, but the permanent this was attached to at the instant it left (CR 603.10a last-known information) feeds a following `sacrifice/enchanted_creature` effect. |
 | `"spend_mana_to_cast"` | When you spend mana **this permanent produced** to cast a spell matching the sibling `spend_predicate` — Study Hall / Path of Ancestry. Source-scoped and provenance-driven: fires only for the specific land whose `track_provenance` `add_mana` (§6) tagged the spent mana, and only when that mana funds a qualifying cast. Fires at the cast payment (off `SpellCast`, reading the paid-with spend multiset). |
 
 Watch-others death triggers see only creatures still on the battlefield; the `*_including_this`
@@ -539,7 +541,8 @@ taps_self = true
 sacrifice = "creature"
 
 [[abilities.effects]]
-type = "gain_life"
+type = "life"
+mode = "gain"
 amount = 1
 ```
 ```toml
@@ -568,7 +571,8 @@ return_self = true
 generic = 2
 
 [[abilities.effects]]
-type = "copy_target_spell"
+type = "copy"
+mode = "target_spell"
 ```
 ```toml
 # {T}, Mill a card: Add {C}.
@@ -578,7 +582,8 @@ taps_self = true
 mill_self = 1
 
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["colorless"]
 ```
 ```toml
@@ -612,7 +617,8 @@ taps_self = true
 self_damage = 1
 
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = [["red", "white"]]
 ```
 ```toml
@@ -641,7 +647,8 @@ timing = "dies"
 optional = true
 
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1
 ```
 
@@ -655,7 +662,8 @@ optional = true
 generic = 2
 
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 count = 1
 token = "81183cc6-d39c-4e51-a982-2351588987aa"  # data/tokens/fungus_beast.toml
 ```
@@ -694,7 +702,8 @@ timing = "you_sacrifice"
 filter = "creature"
 
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1
 ```
 ```toml
@@ -705,7 +714,8 @@ drawer = "opponent"
 nth_each_turn = 2
 
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1
 ```
 ```toml
@@ -821,11 +831,28 @@ type = "hand_has_land_with_subtype"
 subtypes = ["Forest", "Island"]
 ```
 
-## 6. Effects (`[[abilities.effects]] type =`)
+## Effect families
 
-Every accepted tag. "Target" column: does it read a `target` field (§7)?
+Effects use adjacent tags:
 
-| `type` | Fields | Target |
+```toml
+[[abilities.effects]]
+type = "damage"          # family
+mode = "target"          # mode within family
+amount = 3
+target = "any"
+```
+
+Structural composers (`sequence`, `conditional`, `choose_one`) have no `mode`.
+See `docs/superpowers/specs/2026-07-23-nested-effect-families-design.md` for the full map.
+
+## 6. Effects (`[[abilities.effects]]` type + mode)
+
+**Authoring shape:** write nested `type` (family) + `mode` (leaf), as in [Effect families](#effect-families) above — e.g. legacy `deal_damage` is `type = "damage"`, `mode = "target"`; legacy `search_library` is `type = "dig"`, `mode = "search_library"`; legacy `anthem_static` is `type = "static"`, `mode = "anthem"`. Only structural composers (`sequence`, `conditional`, `choose_one`) use a sole `type=` with no `mode`. This table is a **lookup index**, not copy-paste TOML: the left column is the *legacy flat effect name* (search continuity). Find the row by that name, then map it to family `type` + leaf `mode` via `docs/superpowers/specs/2026-07-23-nested-effect-families-design.md`. **Do not put the left-column string in `type=` alone** — always use family `type` + `mode` except for structural composers.
+
+"Target" column: does it read a `target` field (§7)?
+
+| `mode` (legacy flat type) | Fields | Target |
 |--------|--------|--------|
 | `deal_damage` | `amount` (amount), `target`, `count` (target-count, §7 — default one mandatory target; "up to two target" is `{ max = 2 }`, each taking `amount`), `divided` (bool, default `false` — one `amount` total split across the chosen targets, ≥1 each; Magma Opus's "divided as you choose among any number of targets" is `target = "any"`, `count = { max = 4 }`, `divided = true` — the targets are whatever `target` admits, so `"any"` lets the split fall on **players and planeswalkers** as well as creatures) | yes |
 | `draw_cards` | `count` (amount) | no |
@@ -873,10 +900,10 @@ Every accepted tag. "Target" column: does it read a `target` field (§7)?
 | `prevent_all_combat_damage_this_turn` | — | no (Moment's Peace, CR 615, #150 — the table-wide scope generalization of `prevent_combat_damage_to_you_creating_tokens`: "Prevent all combat damage that would be dealt this turn." No target — every player's combat damage is prevented, not just this ability's controller's, and nothing is minted. Arms a this-turn `CombatExtras::prevent_all_combat_damage_this_turn` flag consulted at all three combat-damage chokes — `Game::deal_creature_damage` (fight/single-blocker damage), `Game::assign_attacker_damage` (a blocked attacker's own inlined damage-marking path), and `Game::damage_player` (which still emits `Event::CombatDamagePrevented` for observability, amount-only, no token). "this turn" is modeled as "until the next untap", same idiom as the per-player shield) |
 | `prevent_combat_damage_static` | `to_self` (bool, default `false`), `by_self` (bool, default `false`) | no (Guard Gomazoa / Fog Bank, CR 615 — the *permanent*, never-expiring sibling of `prevent_all_combat_damage_this_turn`: Guard Gomazoa's "Prevent all combat damage that would be dealt to this creature" is `to_self = true`; Fog Bank's "... to and dealt by this creature" is `to_self = true, by_self = true`. A static read live off the permanent, never resolved off the stack — `to_self` scanned by `Game::combat_damage_prevented_to_creature`, `by_self` by `Game::combat_damage_prevented_by_source`, at the same three combat-damage chokes `prevent_all_combat_damage_this_turn` instruments) |
 | `place_vow_counters` | `filter` (§7 permanent filter) | no (Promise of Loyalty's rider, run as an `each_player_sacrifices` `then`: places a `"vow"` counter on each battlefield creature matching `filter` — every survivor a keep-one creature edict just left — marking the ability's controller as the player it "can't attack … for as long as it has a vow counter on it." The restriction is read live in `Game::declare_attackers`, so removing the counter lifts it. Same "or planeswalkers you control" unobservability as `cant_be_attacked_by`) |
-| `destroy_target` | `target`, `count` (target-count, §7, default `{1, 1}` — Pest Infestation's "up to X target artifacts and/or enchantments" is `count = { min = 0, max = 0, x_scaled = true }`), `cant_be_regenerated` (bool, default `false` — CR 701.15d "It can't be regenerated": turns off any regeneration shield on the target so a shielded creature dies anyway — Rapid Hybridization) | yes (creature *or* noncreature — see §7) |
-| `regenerate_shield` | `target` (§7) | yes (grants the target creature one regeneration shield, CR 701.15b: the next time it would be destroyed this turn, instead tap it, remove it from combat, and heal all damage; a `destroy_target` without `cant_be_regenerated` consumes one shield, as does the CR 704.5g lethal-marked-damage state-based destroy, and unused shields expire at cleanup. A self-only granter — "{cost}: Regenerate this creature" (Twisted Abomination) — uses `target = "this"`) |
-| `destroy_all` | `filter` (§7 permanent filter) | no (mass destruction; no target) |
-| `exile_all` | `filter` (§7 permanent filter) | no (mass exile — Oversimplify; indestructible does not save, CR 701.18a) |
+| `destroy/target` | `target`, `count` (target-count, §7, default `{1, 1}` — Pest Infestation's "up to X target artifacts and/or enchantments" is `count = { min = 0, max = 0, x_scaled = true }`), `cant_be_regenerated` (bool, default `false` — CR 701.15d "It can't be regenerated": turns off any regeneration shield on the target so a shielded creature dies anyway — Rapid Hybridization) | yes (author as `type = "destroy"`, `mode = "target"`; creature *or* noncreature — see §7) |
+| `regenerate_shield` | `target` (§7) | yes (grants the target creature one regeneration shield, CR 701.15b: the next time it would be destroyed this turn, instead tap it, remove it from combat, and heal all damage; a `destroy/target` effect without `cant_be_regenerated` consumes one shield, as does the CR 704.5g lethal-marked-damage state-based destroy, and unused shields expire at cleanup. A self-only granter — "{cost}: Regenerate this creature" (Twisted Abomination) — uses `target = "this"`) |
+| `destroy/all` | `filter` (§7 permanent filter) | no (author as `type = "destroy"`, `mode = "all"`; mass destruction, no target) |
+| `exile/all` | `filter` (§7 permanent filter) | no (author as `type = "exile"`, `mode = "all"`; mass exile — Oversimplify; indestructible does not save, CR 701.18a) |
 | `damage_each_creature` | `amount` (amount), `opponents_only` (bool, default `false` — Volcanic Torrent's "each creature ... your opponents control"), `filter` (§7 permanent filter, default: any creature — Breath of Darigaaz's "each creature *without flying*" is `filter = { without_flying = true }`, Firespout's "each creature *with flying*" is `filter = { with_flying = true }`), `include_planeswalkers` (bool, default `false` — Volcanic Torrent's "each creature and planeswalker your opponents control": widens the sweep to battlefield planeswalkers, whose share becomes loyalty loss (CR 120.3c/306.9) instead of marked damage) | no (damage to every creature — and planeswalker, if `include_planeswalkers` — matching `filter`) |
 | `damage_each_player` | `amount` (amount) | no (real damage to every player, the ability's own controller included — Breath of Darigaaz's "...and each player"; routed through the same player-damage event pair `deal_damage`'s `Target::Player` arm uses, so lifelink/prevention/replacements apply, CR 702.15e: a source dealing damage to multiple players gains life separately for each) |
 | `damage_each_other_opponent` | `amount` (amount) | no (`deals_combat_damage_to_player` payoff: the same player-damage events `damage_each_player` uses, but only to opponents of the ability's controller (CR 102.3) *other than* the one who just took the combat damage — Hydra Omnivore's "it deals that much damage to each other opponent." The damaged player is baked in at trigger placement, CR 603.10a) |
@@ -917,9 +944,9 @@ Every accepted tag. "Target" column: does it read a `target` field (§7)?
 | `revert_all_creatures_to_owners` | — | no (untargeted; board-wide control reset, CR 720 — Homeward Path's "Each player gains control of all creatures they own"). Snapshots every creature on the battlefield whose current controller differs from its owner *before* minting any event (so an earlier reversion in the same resolution can't feed a later one, mirroring `exchange_all_creatures_until_end_of_turn`), then hands each one back to its owner as a fresh permanent control change (like `gain_control`, no cleanup reversion) — every player's stolen creatures, not just the activator's ("each player", not "you"). Freshly timestamped, so it outranks any until-EOT steal still recorded even before that steal's own cleanup fires (CR 800.4a). A creature already controlled by its owner is left alone (no spurious event). Ownership is untouched (CR 108.3) |
 | `grant_source_abilities_until_end_of_turn` | — | no (Backup's rider, CR 702.166 — Guardian Scalelord's "if that's another creature, it gains the following abilities until end of turn": grants the source's *other* abilities + keywords, read live off the source's `CardDef`, to the enclosing sequence's shared target until cleanup; no-op when that target is the source itself. Author as the trailing `[[abilities.effects]]` of a Backup ETB whose first effect is the `put_counters` on `target = "creature"` — the two effects share that one target) |
 | `equip` | — | no (pairs with an activated cost) |
-| `exile_target` | `target`, `count` (target-count, §7, default `{1, 1}` — Curse of the Swine's "exile X target creatures" is `count = { min = 1, max = 1, x_scaled = true }`) | yes |
-| `exile_until_source_leaves` | `target` | yes (the O-Ring pattern, CR 603.6e linked exile: returns when this source leaves; a token ceases to exist instead) |
-| `exile_target_minting_illusion_on_leave` | `target` | yes (Skyclave Apparition's linked exile: unlike `exile_until_source_leaves`, the exiled card is *never* returned — when this source leaves the battlefield, its owner instead gets an X/X blue Illusion token, X = the exiled card's mana value; a token ceases to exist instead of being exiled) |
+| `exile/target` | `target`, `count` (target-count, §7, default `{1, 1}` — Curse of the Swine's "exile X target creatures" is `count = { min = 1, max = 1, x_scaled = true }`) | yes (author as `type = "exile"`, `mode = "target"`) |
+| `exile/until_source_leaves` | `target` | yes (author as `type = "exile"`, `mode = "until_source_leaves"`; the O-Ring pattern, CR 603.6e linked exile: returns when this source leaves; a token ceases to exist instead) |
+| `exile/target_minting_illusion_on_leave` | `target` | yes (author as `type = "exile"`, `mode = "target_minting_illusion_on_leave"`; Skyclave Apparition's linked exile: unlike `exile/until_source_leaves`, the exiled card is *never* returned — when this source leaves the battlefield, its owner instead gets an X/X blue Illusion token, X = the exiled card's mana value; a token ceases to exist instead of being exiled) |
 | `flicker_target` | `target`, `return_at` (a `Step` name, optional — omit for an immediate return, `"end"` for Mistmeadow Witch's "at the beginning of the next end step"; only `"upkeep"`/`"end"` are wired, mirroring `schedule_at_next_upkeep`'s `fire_at`) | yes (CR 400.7 — a new object: exile the target creature, then return it to the battlefield under its **owner's** control, either in this same resolution — Momentary Blink — or as a real CR 603.7 delayed triggered ability at `return_at`'s step — Mistmeadow Witch. Fresh ETBs fire, Auras fall off, counters/damage are wiped, summoning sickness resets; a token ceases to exist instead (CR 111.7), and a commander diverted to the command zone instead of exile (CR 903.9b) was never exiled, so nothing returns for it) |
 | `exile_top_may_play` | `count` (amount), `until_next_turn` (bool, default `false` — Atsushi, the Blazing Sky: the play permission lasts until the end of your *next* turn instead of expiring at this turn's cleanup), `face_down` (bool, default `false` — CR 701.9: exile face down, hidden from everyone but the owner, who "may look at that card for as long as it remains exiled"), `free_while_source` (bool, default `false` — Intet, the Dreamer: the card may be played **without paying its mana cost**, and the permission lasts "for as long as [the source] remains on the battlefield" instead of expiring at cleanup; mutually exclusive with `until_next_turn`) | no (impulse draw: exile the top `count` library cards face up, controller may play them until end of turn) |
 | `exile_top_cast_matching_free` | `count` (u32), `filter` (card filter, §7) | no (Herald of Amity's ETB: exile the top `count` library cards face up, pause on a choose-up-to-one over the ones matching `filter` to grant the free-cast permission (CR 118.5) — the chosen card stays in exile; every other exiled card, including any not offered, goes to the bottom of the library. No candidates matching `filter` skips the pause and bottoms the whole batch) |
@@ -936,8 +963,8 @@ Every accepted tag. "Target" column: does it read a `target` field (§7)?
 | `mint_free_copy_of_exiled_card` | — | engine-internal only, not author-facing — a `schedule_this_turn_combat_damage_copy`-armed payoff: mints one free copy (CR 118.5) of the card the watch names onto the stack via the Storm/Twincast copy machinery. Its `card` field is filled in by the delayed watch when it fires (`Option<ObjectId>`, always `None`/no-op if authored directly) |
 | `exile_graveyard_object_gain_life` | — | engine-internal only, not author-facing — the payoff of Serra Paragon's granted rider's real placed trigger (CR 118.9/603.6, `play_from_graveyard_once_per_turn` above): exile the already-resolved graveyard card and gain its controller `amount` life. Its `object` field is baked in by `Game::enqueue_triggers` when the trigger is fabricated (`Option<ObjectId>`, always `None`/no-op if authored directly); a no-op (no exile, no life) if the card already left the graveyard by the time this respondable trigger resolves |
 | `cast_exiled_with_this_free` | — | no (pauses on a card-pick choice over this source's linked exile pile — up to one, or decline; grants a free-cast permission (CR 118.5, "without paying its mana cost") for the chosen card instead of cashing it out — Quintorius, Loremaster's activated ability) |
-| `exile_graveyard` | — | intrinsic (target player; exile their whole graveyard — Bojuka Bog) |
-| `exile_all_graveyards` | — | no (mass twin of `exile_graveyard`; exiles *every* player's graveyard, no target — Final Act's "Exile all graveyards" mode) |
+| `exile/graveyard` | — | intrinsic (author as `type = "exile"`, `mode = "graveyard"`; target player — exile their whole graveyard, Bojuka Bog) |
+| `exile/all_graveyards` | — | no (author as `type = "exile"`, `mode = "all_graveyards"`; mass twin of `exile/graveyard`: exiles *every* player's graveyard, no target — Final Act's "Exile all graveyards" mode) |
 | `return_to_hand` | `target`, `count` (target-count, §7, default 1) | yes (bounce a permanent; `count = 6` bounces six target permanents — Aether Gale) |
 | `return_this_to_hand` | — | no (return the ability's own source to hand from wherever it is — Angelic Destiny) |
 | `phase_out` | — | no (pauses on a select-any-number choice over the *other* creatures you control — each chosen creature and everything attached to it phases out, CR 702.26; phases back in at your next untap. Guardian of Faith's ETB. Fixed filter "other creatures you control"; targets are chosen at resolution, not on the stack) |
@@ -988,18 +1015,18 @@ Every accepted tag. "Target" column: does it read a `target` field (§7)?
 | `defending_player_sacrifices` | `count` (u8) | no, subject read from attack context (annihilator N, CR 702.86a: the *defending* player — not the ability's controller — sacrifices `count` of their own permanents of their choice, any type; same `ChooseOwnSacrifices` machinery as `sacrifice_own` with an unrestricted filter and the defender standing in for the controller; pair with `timing = "enchanted_creature_attacks"` — Eldrazi Conscription) |
 | `sacrifice_self_unless_pay` | `cost` (`[cost]` table, same shape as `[echo]`) | no (Rupture Spire: "sacrifice it unless you pay {1}" — a real `timing = "etb"` triggered ability, CR 603.3b, NOT the Echo keyword, though it shares Echo's pay-or-sacrifice resolution shape: pauses on a `PendingChoice::SacrificeUnlessPay`, answered by `Intent::PayOptionalCost`; paying settles `cost` from the controller's mana pool, declining sacrifices the source) |
 | `sacrifice_self_unless_return_land` | `filter` (§7 permanent filter) | no (Treva's Ruins: "sacrifice it unless you return a non-Lair land you control to its owner's hand" — the land-bounce twin of `sacrifice_self_unless_pay`; `filter` names the qualifying lands, `{ types = "land", controller = "you", nonlair = true }` for Treva's Ruins — pauses on a `PendingChoice::SacrificeUnlessReturnLand` offering the controller's matches, answered by `Intent::ReturnLandOrSacrifice`; no matching land skips the pause and sacrifices the source outright) |
-| `sacrifice_source` | none | no (sacrifices the ability's own source unconditionally, no pause — Court Hussar's "sacrifice it unless {W} was spent to cast it": the `then` of a `negate`d `conditional` step, §6 below. Distinct from the engine-internal `sacrifice_object`, which is never authored directly — always pair `sacrifice_source` with a `conditional`/`intervening_if` gate rather than reaching for it unconditionally on its own ability) |
+| `sacrifice/source` | none | no (author as `type = "sacrifice"`, `mode = "source"`; sacrifices the ability's own source unconditionally, no pause — Court Hussar's "sacrifice it unless {W} was spent to cast it": the `then` of a `negate`d `conditional` step, §6 below. Distinct from the engine-internal `sacrifice/object`, which is never authored directly — always pair `sacrifice/source` with a `conditional`/`intervening_if` gate rather than reaching for it unconditionally on its own ability) |
 | `mill_self` | `count` (amount) | no (untargeted — always the controller's own library; contrast `mill`, which targets a player) |
 | `copy_target_spell` | — | intrinsic (an instant/sorcery spell on the stack; Twincast) |
 | `copy_this_spell` | `count` (amount, default one), `cast_from_graveyard_only` (bool, default false), `optional` (bool, default false) | no (storm/Gravestorm-style rider: mints `count` copies of the resolving spell itself, each offered the same CR 707.10c retarget `copy_target_spell` offers — Plumb the Forbidden's `"spell_sacrifice_count"`, Ominous Harvest's `"permanents_died_this_turn"`; `cast_from_graveyard_only` gates the mint on the resolving spell having been cast via flashback — Sevinne's Reclamation's "if this spell was cast from a graveyard"; `optional` pauses on a `PendingChoice::MayYesNo` before minting, declining runs nothing — Sevinne's Reclamation's "you may copy this spell") |
 | `retarget_spell_copy` | `copy` (object id) | — internal only, minted by `copy_this_spell`'s own resolution; never authored in a card TOML |
-| `may_pay_to_copy_this` | `cost` (`[cost]` table), `count` (amount, default one) | no — reads the enclosing `Sequence`'s shared target (a preceding `deal_damage`-style step's own target) to find the payer instead: a player target pays themself, a permanent target's controller pays. Chain Lightning's "Then that player or that permanent's controller may pay {R}{R}. If the player does, they may copy this spell and may choose a new target for that copy": pauses the payer on a `PendingChoice::PayCost`/`Intent::PayOptionalCost`; paying mints one copy of the resolving spell under THEM (not this ability's own controller), offering the usual CR 707.10c retarget — since the copy is a full copy of this same ability, its own resolution offers its own damaged player/controller the same rider, so the chain continues with no extra bookkeeping. `effects = [{ type = "deal_damage", amount = 3, target = "any" }, { type = "may_pay_to_copy_this", cost = { red = 2 } }]`. ponytail: collapses the oracle's two "may"s (may pay, then separately may copy) into one pay-mints-unconditionally step — declining to copy after already paying is never distinguishable from never paying. |
+| `may_pay_to_copy_this` | `cost` (`[cost]` table), `count` (amount, default one) | no — reads the enclosing `Sequence`'s shared target (a preceding `deal_damage`-style step's own target) to find the payer instead: a player target pays themself, a permanent target's controller pays. Chain Lightning's "Then that player or that permanent's controller may pay {R}{R}. If the player does, they may copy this spell and may choose a new target for that copy": pauses the payer on a `PendingChoice::PayCost`/`Intent::PayOptionalCost`; paying mints one copy of the resolving spell under THEM (not this ability's own controller), offering the usual CR 707.10c retarget — since the copy is a full copy of this same ability, its own resolution offers its own damaged player/controller the same rider, so the chain continues with no extra bookkeeping. `effects = [{ type = "damage", mode = "target", amount = 3, target = "any" }, { type = "copy", mode = "may_pay_to_copy_this", cost = { red = 2 } }]`. ponytail: collapses the oracle's two "may"s (may pay, then separately may copy) into one pay-mints-unconditionally step — declining to copy after already paying is never distinguishable from never paying. |
 | `counter_target_spell` | `unless_pays` (amount, optional — "unless its controller pays {N}", Quandrix Charm), `filter` (spell filter §7, default `"all"` — Decisive Denial's `"noncreature"`), `countered_dest` (optional — Hinder's `"library_top_or_bottom"`, "if that spell is countered this way, put that card on your choice of the top or bottom of its owner's library instead of into that player's graveyard," CR 701.5b: pauses this ability's controller on a `PendingChoice::ChooseCounteredSpellDestination`/`Intent::ChooseTopOrBottom { top }` before the countered card moves; or Spell Crumple's `"library_bottom"`, same rider but *forced* to the bottom — no pause, no player choice; either way a flashback/escape spell exiles instead (CR 702.34e/702.19d), leaving nothing for the rider to redirect, and a countered copy (CR 707.10a) ceases to exist rather than moving anywhere; never combined with `unless_pays` in the pool) | intrinsic (a spell on the stack; Counterspell) |
 | `tuck_self_to_library_bottom` | — (no fields) | no — "Put [this card] on the bottom of its owner's library" (Spell Crumple's own resolution rider, alongside its `counter_target_spell` step): marks the resolving instant/sorcery so it goes to the bottom of its owner's library instead of the graveyard once every effect step has run — the self-referential sibling of `exile_self_with_time_counters` above. A copy (CR 707.10a) still ceases to exist regardless — that check runs first. |
 | `exile_self_on_resolve` | — (no fields) | no — "Exile [this card]" on a resolving instant/sorcery (Vengeful Rebirth's own trailing rider, CR 406): marks the resolving spell so it goes to exile instead of the graveyard once every effect step has run — the exile-flavored sibling of `tuck_self_to_library_bottom` above, distinct from `exile_self_with_time_counters` (no time counters here) and from the activated-ability cost field `exile_self`. A copy (CR 707.10a) still ceases to exist regardless — that check runs first. |
 | `counter_target_activated_ability` | — (no fields) | intrinsic (`"activated_ability_on_stack"` — Azorius Guildmage's "Counter target activated ability"). Removes an *activated* ability from the stack (CR 701.5c/112.7a); unlike `counter_target_spell` there is no card to move — it just ceases to exist. Mana abilities never reach the stack (CR 605.3b) so they're unreachable; triggered abilities are excluded by the target axis. Cycling and `hand_ability` activations are real stack abilities (see §5), so this can counter them. |
 | `may_draw_unless_pays` | `cost` (amount — "unless that player pays {1}", Rhystic Study) | no (untargeted; the ability's own controller). Pairs with `timing = "cast_spell"`, `caster = "opponent"` (§5, "Trigger sibling fields"): resolution first pauses the ability's own controller on a `PendingChoice::MayYesNo` — do they want to draw at all (the card's ruling: declining is quiet, no pay window is ever offered) — and only a "yes" there raises the *triggering opponent* (not the ability's controller — `Game::queue_cast_spell_triggers` bakes their identity in via `TriggerContext::triggering_caster`, same context-fill shape as `copy_triggering_spell`'s `triggering_spell`) on a `PendingChoice::PayOrControllerDraws`/`Intent::PayOptionalCost`: paying stops the draw, declining lets it happen. |
-| `change_target_of_target_spell_or_ability` | `target` (§7 target spec, default none — `"single_target_spell_on_stack"`), `optional` (bool, default `false`) | `"single_target_spell_on_stack"` (the spell to bend). `optional = false` (default, Willbender's turned-face-up payload): "change the target of target spell or ability with a single target" — the controller chooses a *different* legal target for that spell (CR 114.6b — must change if able) and it overwrites the stored one, via the same `ChooseSpellTargets`/`SpellTargetsChosen` write-back a multi-target choice uses. No-op if the spell left the stack (CR 608.2b already fizzles the trigger) or has no legal alternate. ponytail: CR's "or ability" half is unmodeled — stack abilities have no object identity to target in this engine (see the `single_target_spell_on_stack` spec); spells only. `optional = true` (Wild Ricochet, `target = "instant_or_sorcery_spell_on_stack"`): CR 114.6a's plain "you may choose new targets" — the bent spell's *current* target(s) stay in `legal` (re-picking them is how a player declines; no must-differ filter) and every one of its independent target clauses is reached (not just a single slot), reusing the exact clause-chaining `choose_spell_targets` a fresh cast or `copy_target_spell`'s own copy-retarget already runs. This ability's own controller chooses; legality is still evaluated from the bent spell's own controller's perspective (retargeting never changes whose "you" the spell's own text refers to). Pair with a following `copy_target_spell` step in the same `effects` sequence — both share the one target chosen when this ability itself was placed/cast (Wild Ricochet: "You may choose new targets for target instant or sorcery spell. Then copy that spell. You may choose new targets for the copy." is `effects = [{ type = "change_target_of_target_spell_or_ability", target = "instant_or_sorcery_spell_on_stack", optional = true }, { type = "copy_target_spell" }]`). |
+| `change_target_of_target_spell_or_ability` | `target` (§7 target spec, default none — `"single_target_spell_on_stack"`), `optional` (bool, default `false`) | `"single_target_spell_on_stack"` (the spell to bend). `optional = false` (default, Willbender's turned-face-up payload): "change the target of target spell or ability with a single target" — the controller chooses a *different* legal target for that spell (CR 114.6b — must change if able) and it overwrites the stored one, via the same `ChooseSpellTargets`/`SpellTargetsChosen` write-back a multi-target choice uses. No-op if the spell left the stack (CR 608.2b already fizzles the trigger) or has no legal alternate. ponytail: CR's "or ability" half is unmodeled — stack abilities have no object identity to target in this engine (see the `single_target_spell_on_stack` spec); spells only. `optional = true` (Wild Ricochet, `target = "instant_or_sorcery_spell_on_stack"`): CR 114.6a's plain "you may choose new targets" — the bent spell's *current* target(s) stay in `legal` (re-picking them is how a player declines; no must-differ filter) and every one of its independent target clauses is reached (not just a single slot), reusing the exact clause-chaining `choose_spell_targets` a fresh cast or `copy_target_spell`'s own copy-retarget already runs. This ability's own controller chooses; legality is still evaluated from the bent spell's own controller's perspective (retargeting never changes whose "you" the spell's own text refers to). Pair with a following `copy_target_spell` step in the same `effects` sequence — both share the one target chosen when this ability itself was placed/cast (Wild Ricochet: "You may choose new targets for target instant or sorcery spell. Then copy that spell. You may choose new targets for the copy." is `effects = [{ type = "copy", mode = "change_target_of_target_spell_or_ability", target = "instant_or_sorcery_spell_on_stack", optional = true }, { type = "copy", mode = "target_spell" }]`). |
 | `fight` | `ally_is_shared_target` (bool, default `false`) | intrinsic — default shape: target creature an opponent controls; your own fighter is chosen at resolution. `ally_is_shared_target = true` mirrors this: the ability's shared cast target is instead your own creature (a preceding `pump_until_end_of_turn` step's target, e.g.), and the enemy ("fights up to one target creature you don't control") is chosen at an *optional* resolution-time pause instead — no legal enemy, or the ally no longer being a creature, is a no-op (no pause, no fight). Primal Might: `effects = [{ type = "pump_until_end_of_turn", power = "x", toughness = "x", target = "creature_you_control" }, { type = "fight", ally_is_shared_target = true }]` |
 | `schedule_at_next_upkeep` | `who` (`"you"` default, `"target_spell_controller"`), `then` (one effect) | no (delayed trigger, CR 603.7: `then` fires at the next upkeep — Arcane Denial's draws) |
 | `schedule_next_cast_trigger` | `filter` (spell filter, §7 below), `then` (array of effects) | no (arms a CR 603.7 delayed *one-shot*, event- rather than step-armed: the next time the ability's own controller casts a spell matching `filter` **this turn**, `then` runs as its own triggered ability, with the triggering spell's chosen `{X}` filled into `then`'s `Amount::X`/`"half_x_rounded_down"` same as a `cast_spell` trigger's own `{X}` — Brass Infiniscope's "{T}: Add {C}{C}. When you next cast a spell with {X} in its mana cost this turn, you draw a card and gain half X life, rounded down." — a `taps_self` mana ability with two `effects` blocks: `add_mana` then this. Fires at most once — CR 603.7's "next" — and expires unconsumed at the next turn's Untap if no matching cast happens first) |
@@ -1015,8 +1042,8 @@ Every accepted tag. "Target" column: does it read a `target` field (§7)?
 | `each_draw_step_player_draws` | `count` (u32) | no (`each_draw_step` payoff: the player whose draw step this is, not this ability's controller, draws `count` — Howling Mine's "that player draws an additional card." Pair with `condition = { type = "source_untapped" }` on the ability *and* nest this inside a `{ type = "conditional", condition = { type = "source_untapped" }, then = […] }` step — CR 603.4's first check (at trigger placement) and second check (re-checked fresh at resolution) both read the same live tapped state) |
 | `deal_damage_to_entering_permanent` | `amount` (i32), `then_if_subtype` (array of strings, default empty), `then` (array of effects, default empty) | no (`permanent_enters` payoff: damage the permanent that just entered. `then_if_subtype`/`then` are an optional gated follow-up: `then` runs only if the entering permanent's printed subtypes intersect `then_if_subtype` AND the damage actually landed (not prevented by protection) — Marauding Raptor's "If a Dinosaur is dealt damage this way, this creature gets +2/+0 until end of turn" is `then_if_subtype = ["Dinosaur"]`, `then = [{ type = "pump_self_until_end_of_turn", power = 2, toughness = 0 }]`. Empty `then_if_subtype` (the default) never matches, so `then` never runs) |
 | `reanimate_dying_enchanted_creature` | `under_owner` (bool, default `false`) | no (`enchanted_creature_dies` payoff: reanimate the specific creature this Aura was attached to when it died — CR 603.10a last-known information, "that card" — under this ability's own controller by default (`under_owner = false` — Changing Loyalty's "under your control") or under the card's owner (`under_owner = true` — Gift of Immortality's "under its owner's control"); no-ops if that card is no longer in a graveyard when the trigger resolves, e.g. exiled in response) |
-| `sacrifice_enchanted_creature` | — | no (a `this_leaves_battlefield` payoff: the creature this Aura was attached to the instant it left the battlefield (CR 603.10a last-known information) is sacrificed by *its own* controller — Animate Dead's "When this Aura leaves the battlefield, that creature's controller sacrifices it." No-ops if the trigger never captured a host (this permanent wasn't attached to anything when it left), or if that creature is no longer on the battlefield (it died first, or was bounced/exiled in response)) |
-| `destroy_triggering_damaged_creature` | — | no (a `deals_combat_damage_to_creature` payoff: destroy the creature this permanent's combat damage just landed on (CR 603.10a last-known information) — Stinkweed Imp's "destroy that creature." An ordinary destroy: indestructible ignores it, a regeneration shield replaces it (same as `destroy_target`). No-ops if that creature is no longer on the battlefield when the trigger resolves, e.g. bounced/exiled in response) |
+| `sacrifice/enchanted_creature` | — | no (author as `type = "sacrifice"`, `mode = "enchanted_creature"`; a `this_leaves_battlefield` payoff: the creature this Aura was attached to the instant it left the battlefield (CR 603.10a last-known information) is sacrificed by *its own* controller — Animate Dead's "When this Aura leaves the battlefield, that creature's controller sacrifices it." No-ops if the trigger never captured a host (this permanent wasn't attached to anything when it left), or if that creature is no longer on the battlefield (it died first, or was bounced/exiled in response)) |
+| `destroy/triggering_damaged_creature` | — | no (author as `type = "destroy"`, `mode = "triggering_damaged_creature"`; a `deals_combat_damage_to_creature` payoff: destroy the creature this permanent's combat damage just landed on (CR 603.10a last-known information) — Stinkweed Imp's "destroy that creature." An ordinary destroy: indestructible ignores it, a regeneration shield replaces it (same as `destroy/target`). No-ops if that creature is no longer on the battlefield when the trigger resolves, e.g. bounced/exiled in response) |
 | `exile_dead_creature_create_copy_with_subtype` | `add_subtypes` (array of subtype strings, default `[]`), `leaves_returns_exiled` (bool, default `false`) | no (a `creature_you_control_dies*` payoff — Hofri Ghostforge's "exile it. If you do, create a token that's a copy of that creature, except it's a Spirit in addition to its other types and it has 'When this token leaves the battlefield, return the exiled card to its owner's graveyard.'": exile the just-dead creature (CR 603.10a last-known information, the card now in a graveyard), mint a token copy of its printed def (CR 707.2) under this ability's controller, and union `add_subtypes` onto the token indefinitely (CR 613.4 — `["Spirit"]`); no-ops if that card is no longer in a graveyard when the trigger resolves. ponytail: the copiable snapshot is the source's *printed* `CardDef`, not full CR 707.2 copyable values. `leaves_returns_exiled`, when `true`, grants the minted token a synthesized `Trigger::ThisPermanentLeavesBattlefield` ability (engine-internal `return_exiled_card_to_owners_graveyard` payload, not TOML-facing) baking in the specific exiled card's id at mint time — mirrors the Myriad/Prowess synthesized-ability pattern; no-ops on resolution if that card is no longer in exile) |
 | `attach_triggering_aura_to_minted_token` | — | no (`permanent_enters` payoff: if the entering permanent is an Aura, attach it to the token this same `effects` sequence's preceding `create_token` step just minted — Ajani's Chosen; a no-op if the entering permanent isn't an Aura) |
 | `attach_self_to_entering` | — | no (`permanent_enters` payoff: attach this ability's own source — an Aura — to the entering permanent, moving it off any host it's already attached to; pair with `optional = true` for a "you may attach" — Shielded by Faith, Prison Term. Re-checks the Aura's own `enchant` filter against the entering permanent (CR 303.4f-style legality) — a no-op if it isn't a legal host, even if the "may" was accepted) |
@@ -1036,7 +1063,7 @@ Every accepted tag. "Target" column: does it read a `target` field (§7)?
 | `join_forces_pay_mana` | — | no (join forces, CR 101.4 — Collective Voyage's "Starting with you, each player may pay any amount of mana": each living player, in turn order starting with the caster, pauses on a pay-any-amount choice and pays that much generic mana (CR 202.2 — generic accepts any type). Carries no payoff of its own: put the shared X to work in a following `effects` step reading `"mana_paid_this_way"` (§6), resumed once every player has answered — the mana twin of `councils_dilemma_vote`) |
 | `councils_dilemma_vote` | `options` (array of strings — the ballot labels; today only `["past", "present"]`) | no (council's dilemma, CR 701.32 — Fateful Tempest's "Starting with you, each player votes for past or present": each living player, in turn order starting with the caster, votes for one of `options`, pausing on a vote choice. Carries no payoff of its own: put the tally-scaled outcomes as following `effects` steps reading `"past_votes"` / `"present_votes"` (§6), resumed once every player has voted — the vote-round twin of `each_player_exiles_from_graveyard`. ponytail: the two tallies and their `§6` amounts are hardcoded to the past/present ballot — Fateful Tempest is the only voting card; generalize to a label→tally map when a differently-balloted council's-dilemma / will-of-the-council card lands) |
 | `each_player_names_card_then_reveals_top` | — | no (choose a card name, CR 201.2/703.2j — Conundrum Sphinx's "each player chooses a card name. Then each player reveals the top card of their library. If the card a player revealed has the name they chose, that player puts it into their hand. If it doesn't, that player puts it on the bottom of their library": each living player, in APNAP order, pauses on a free-text choose-a-card-name choice; on that seat's answer their own top library card is revealed publicly and resolved immediately — into hand on an exact printed-name match, to the bottom of their library otherwise — before the next seat is asked. A single-purpose effect, no fields; the name is free text and never validated against the pool (CR 201.3 lets a player name a card that doesn't exist), only shape-checked (trimmed non-empty, ≤200 chars) at the intent boundary. An empty library still consumes the seat and moves nothing. ponytail: CR has every player choose *without* seeing anyone else's name; this fan-out resolves seats one at a time — like `councils_dilemma_vote` — so a later seat could see an earlier seat's public reveal before naming. No pool card threads a real simultaneous-commit primitive yet) |
-| `each_player_creates_fractal_from_exiled_power` | `token` (§8) | no (Oversimplify's "Each player creates a 0/0 green and blue Fractal creature token and puts a number of +1/+1 counters on it equal to the total power of creatures they controlled that were exiled this way": mints one `token` per living player, in APNAP order, with +1/+1 counters equal to *that player's own* share of the power a preceding `exile_all` step exiled — routed through the same doubler/Hardened-Scales pipeline as `create_token`'s `enters_with`. No player choice, so it never pauses. Requires a preceding `exile_all` step in the same `effects = [...]` sequence — its per-controller power snapshot is internal engine state, not a `§6` amount, since only this effect reads it) |
+| `each_player_creates_fractal_from_exiled_power` | `token` (§8) | no (Oversimplify's "Each player creates a 0/0 green and blue Fractal creature token and puts a number of +1/+1 counters on it equal to the total power of creatures they controlled that were exiled this way": mints one `token` per living player, in APNAP order, with +1/+1 counters equal to *that player's own* share of the power a preceding `exile/all` step exiled — routed through the same doubler/Hardened-Scales pipeline as `create_token`'s `enters_with`. No player choice, so it never pauses. Requires a preceding `exile/all` step in the same `effects = [...]` sequence — its per-controller power snapshot is internal engine state, not a `§6` amount, since only this effect reads it) |
 | `each_player_discards_hand_then_draws` | `count` (§6 amount) | no (Wheel of Fortune's "Each player discards their hand, then draws seven cards": every living player, in APNAP order, discards their *entire* hand — not a chosen subset — then draws `count`. No player choice, so it never pauses, unlike `discard`'s partial-hand card-pick) |
 | `each_other_token_becomes_copy_of_chosen` | — | no (Brudiclad's "Then you may choose a token you control. If you do, each other token you control becomes a copy of that token": pauses so the controller may choose one token they control — declinable ("you may"), no token ⇒ no pause — then every *other* token they control becomes an indefinite copy of it (CR 706/707.2, reusing the same `BecameCopy` primitive as `enter_as_copy`; permanent, CR 400.7). Only tokens are chosen or converted, only the controller's own. ponytail: copyable values are the chosen token's `CardDef` (CR 707.2), same note as `enter_as_copy`) |
 | `put_counter_then_may_become_copy_of_card_from_list` | — | no (Spirit of Resilience's "put a +1/+1 counter on this creature, then you may have this creature become a copy of an artifact or creature card from among those cards until end of turn": a `cards_leave_your_graveyard` (§5) payoff. Places one +1/+1 counter on the ability's own source, then — if any artifact/creature card left the graveyard this batch — pauses so the controller may pick one (declinable "you may", no copyable card ⇒ counter only, no pause); the pick becomes an *until-end-of-turn* copy of it (CR 706/707.2/514.2, reusing `enter_as_copy`'s `BecameCopy` with `until_eot: true`). The leave-batch's card ids ride in trigger context — no TOML field. ponytail: copyable values are the chosen card's printed `CardDef` (CR 707.2), same note as `enter_as_copy`) |
@@ -1048,7 +1075,7 @@ Every accepted tag. "Target" column: does it read a `target` field (§7)?
 | `return_from_graveyard_attached_to_token` | `filter` (card filter, §7) | yes (`{0,1}` — "return up to one target"; the reflexive-ability body placed by `reflexive_trigger`: targets an Aura/Equipment card in *your own* graveyard matching `filter`, and at resolution returns it to the battlefield attached to the minted token threaded in at placement — Forum Filibuster. Fizzles (CR 608.2b) if that token has left the battlefield by resolution) |
 | `may_discard` | `then` (array of effects, default `[]`) | no (resolution-time optional sub-action, CR 608.2c — the controller may discard one card from their own hand; `then` runs only "if you do" — Quintorius, History Chaser's +1 "You may discard a card. If you do, draw two cards, then mill a card." Distinct from a cost gate: activating/triggering the ability always happens, the discard is a choice made while it resolves) |
 | `put_land_from_hand` | `tapped` (bool, default `false`) | no (controller may put a land from hand onto the battlefield, CR 305.9 — Eureka Moment; doesn't use the land drop) |
-| `put_creature_from_hand` | — | no (the creature sibling of `put_land_from_hand`: controller may put a creature card from hand onto the battlefield, entering via the same ETB path as any other put-onto-the-battlefield effect; on acceptance grants haste — an until-end-of-turn `TempBoost`, exact here because the pool's only consumer always leaves the battlefield this same end step — and schedules a CR 603.7 delayed `sacrifice_object` against the deployed permanent at the next end step. No creature in hand is a no-op. ponytail: haste and the end-step sacrifice are unconditional — the pool's only consumer always wants both — rather than bool-flagged like `create_token_copy`'s `haste`/`sacrifice_at_next_end_step`; parametrize if a second card needs a different combination — Cauldron Dance's "You may put a creature card from your hand onto the battlefield. That creature gains haste. Its controller sacrifices it at the beginning of the next end step.") |
+| `put_creature_from_hand` | — | no (the creature sibling of `put_land_from_hand`: controller may put a creature card from hand onto the battlefield, entering via the same ETB path as any other put-onto-the-battlefield effect; on acceptance grants haste — an until-end-of-turn `TempBoost`, exact here because the pool's only consumer always leaves the battlefield this same end step — and schedules a CR 603.7 delayed `sacrifice/object` against the deployed permanent at the next end step. No creature in hand is a no-op. ponytail: haste and the end-step sacrifice are unconditional — the pool's only consumer always wants both — rather than bool-flagged like `create_token_copy`'s `haste`/`sacrifice_at_next_end_step`; parametrize if a second card needs a different combination — Cauldron Dance's "You may put a creature card from your hand onto the battlefield. That creature gains haste. Its controller sacrifices it at the beginning of the next end step.") |
 | `cast_creature_face_down` | — | no (controller may cast a creature card from hand — one "whose mana cost could be paid by some amount of, or all of, the mana you spent on {X}" activating this ability (CR 107.3; each colored pip needs a spent unit of its color, a hybrid pip either of its two, generic any unit — read from the resolving ability's context) — **face down as a 2/2 creature spell** (CR 708.2) without paying its mana cost; "you may," so no payable creature is a no-op — Illusionary Mask's `{X}` ability. Pair with `timing = "activated"`, `activation_cost = { x = true }`, `sorcery_speed = true`) |
 | `choose_one` | `modes` (array of effects) | no ("Choose one —" on a *triggered* ability: the controller picks one non-targeting mode at resolution — Atsushi) |
 | `become_prepared` | — | no (marks the source prepared so its `[back]` face may be cast — prepare DFCs, §1) |
@@ -1058,7 +1085,7 @@ Every accepted tag. "Target" column: does it read a `target` field (§7)?
 | `choose_creature_type` | — | no (CR 614.12/700.9-style "as ~ enters, choose a creature type" — pauses on a `ChooseCreatureType` choice for the controller over the pool's known creature types, `CREATURE_TYPES`; the chosen type is stored on the ability's own source, `Permanent::chosen_subtype`, read back by `anthem_static`'s `chosen_subtype` axis — Patchwork Banner) |
 | `choose_color` | — | no (CR 614.12/700.9-style "as ~ enters, choose a color" — pauses on a `ChooseColor` choice for the controller over the fixed five colors; the chosen color is stored on the ability's own source, `Permanent::chosen_color`, read back by `grant_to_attached`'s `protection_from_chosen_color` axis — Flickering Ward) |
 | `set_own_color_until_end_of_turn` | — | no (CR 613.3c layer-5 color-SET — "becomes the color of your choice until end of turn": pauses on the same `ChooseColor` choice as `choose_color` over the fixed five colors, but the chosen color is stored on the ability's own source as an until-end-of-turn override, `Permanent::set_color_eot`, read by `Game::colors_of` *ahead of* the source's derived/added colors — a SET **replaces** them rather than unioning, unlike `animate_self_until_end_of_turn`'s `add_colors`. Cleared at cleanup — Wild Mongrel) |
-| `conditional` | `condition` (§5 shape), `then` (array of effects), `negate` (bool, default `false`) | no (runs `then` only if `condition` holds — or, with `negate = true`, only if it *doesn't* — when *this step* resolves; a per-step gate inside an `effects` sequence. Plain: Zimone's "draw two instead". Negated: Court Hussar's "sacrifice it unless {W} was spent to cast it" is `condition = { type = "color_was_spent_to_cast_this", color = "white" }`, `negate = true`, `then = [{ type = "sacrifice_source" }]` — CR's "unless" is `negate`d "if") |
+| `conditional` | `condition` (§5 shape), `then` (array of effects), `negate` (bool, default `false`) | no (runs `then` only if `condition` holds — or, with `negate = true`, only if it *doesn't* — when *this step* resolves; a per-step gate inside an `effects` sequence. Plain: Zimone's "draw two instead". Negated: Court Hussar's "sacrifice it unless {W} was spent to cast it" is `condition = { type = "color_was_spent_to_cast_this", color = "white" }`, `negate = true`, `then = [{ type = "sacrifice", mode = "source" }]` — CR's "unless" is `negate`d "if") |
 
 `counter_replacement`: adder → `add = 1`; doubler → `times = 2` (omit `add`).
 `token_replacement`: doubler → `times = 2` (Doubling Season). Pure multiply — no `add`/`other`.
@@ -1133,11 +1160,13 @@ filter = "creature"
 life_loss = 2
 
 [[abilities.effects.then]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["black", "black"]
 
 [[abilities.effects.then]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1
 ```
 
@@ -1160,7 +1189,8 @@ relative to the *sacrificing* player, so leave it `"any"` (the default) on an ed
 type = "may_sacrifice"
 
 [[abilities.effects.then]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 2
 ```
 
@@ -1176,7 +1206,8 @@ type = "may_sacrifice"
 filter = "land"
 
 [[abilities.effects.then]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = "basic_land"
 to_zone = "battlefield"
 tapped = true
@@ -1198,14 +1229,14 @@ count = 2
 | `"any"` | "any target" (CR 115.4 — a creature, a player, or a planeswalker) | deal_damage |
 | `"creature_or_planeswalker"` | a creature or planeswalker on the battlefield | deal_damage (Rip Apart) |
 | `"player_or_planeswalker"` | a living player or a planeswalker | deal_damage (Balefire Liege) |
-| `"artifact_enchantment_or_planeswalker"` | a battlefield artifact, enchantment (incl. Aura), or planeswalker | destroy_target (Fracture) — sugar; equals `{ permanent = { types = ["artifact", "enchantment", "planeswalker"] } }` |
+| `"artifact_enchantment_or_planeswalker"` | a battlefield artifact, enchantment (incl. Aura), or planeswalker | `destroy/target` (Fracture) — sugar; equals `{ permanent = { types = ["artifact", "enchantment", "planeswalker"] } }` |
 | `{ permanent = <filter> }` | a battlefield permanent matching a composable **permanent filter** (below) | any targeted battlefield effect (destroy/exile/bounce…) — Anguished Unmaking, Abrade, Skyclave Apparition |
 | `"this"` | the ability's own source — no real choice, no `PendingChoice`, and (CR-faithfully) no shroud/hexproof check, since these abilities don't say "target" | put_counters/double_counters on self (Hangarback Walker, Primordial Hydra) |
-| `"enchanted_creature"` | the creature this Aura/Equipment is attached to — same non-targeted treatment as `"this"` | exile_target (Redemption Arc) |
+| `"enchanted_creature"` | the creature this Aura/Equipment is attached to — same non-targeted treatment as `"this"` | `exile/target` (Redemption Arc) |
 | `"this_auras_graveyard_target"` | Animate Dead only: the graveyard creature card this Aura was cast targeting (`enchant_graveyard`, above), captured as it enters — same non-targeted, no-pause treatment as `"this"`/`"enchanted_creature"`; empty (CR 603.3c: the ability is dropped) once that card has left the graveyard | reanimate_to_battlefield (Animate Dead) |
 | `"your_graveyard"` | a creature card in your graveyard | return_from_graveyard_to_hand |
 | `"any_graveyard"` | a creature card in any graveyard | reanimate_to_battlefield |
-| `{ card_in_graveyard = { whose, filter, other } }` | a graveyard card matching a **card filter** (below); `whose` = `"yours"`/`"any"`/`"opponents"` (a living opponent's graveyard, never the chooser's own — CR "target card in an opponent's graveyard"); `other` (bool, default `false`) excludes the ability's own source card — "return **another** target creature card from your graveyard", Deadwood Treefolk; only bites on a `this_leaves_battlefield` trigger, where the source's own card is itself sitting in that graveyard | reanimate_to_battlefield/tuck_from_graveyard with a non-creature or MV-gated filter — Sevinne's Reclamation, Mystic Sanctuary, Excava; exile_target with `whose = "opponents"` — Nezumi Graverobber; return_from_graveyard_to_hand with `other = true` — Deadwood Treefolk |
+| `{ card_in_graveyard = { whose, filter, other } }` | a graveyard card matching a **card filter** (below); `whose` = `"yours"`/`"any"`/`"opponents"` (a living opponent's graveyard, never the chooser's own — CR "target card in an opponent's graveyard"); `other` (bool, default `false`) excludes the ability's own source card — "return **another** target creature card from your graveyard", Deadwood Treefolk; only bites on a `this_leaves_battlefield` trigger, where the source's own card is itself sitting in that graveyard | reanimate_to_battlefield/tuck_from_graveyard with a non-creature or MV-gated filter — Sevinne's Reclamation, Mystic Sanctuary, Excava; `exile/target` with `whose = "opponents"` — Nezumi Graverobber; return_from_graveyard_to_hand with `other = true` — Deadwood Treefolk |
 | `"single_target_spell_on_stack"` | a spell on the stack with exactly one target (CR 114.6 "single target"); targets the stack object, any controller's | `change_target_of_target_spell_or_ability` (Willbender, `optional = false`). ponytail: CR's "or ability" is unreachable — stack abilities carry no object identity to target — so only spells qualify |
 | `"instant_or_sorcery_spell_on_stack"` | an instant or sorcery spell on the stack (CR 707.10), any controller's; targets the stack object | `copy_target_spell`'s own intrinsic target (Twincast — never a settable field, see below); also settable on `change_target_of_target_spell_or_ability`'s `target` field with `optional = true` (Wild Ricochet's "target instant or sorcery spell") |
 | `"activated_ability_on_stack"` | an *activated* ability on the stack (CR 112.7a), any controller's; keyed by the ability's `source` id (not a chosen object of its own) | `counter_target_activated_ability` (Azorius Guildmage). Mana abilities never reach the stack (CR 605.3b); triggered abilities are excluded. ponytail: keyed by source id — if two activated abilities on the stack shared a source, resolution counters the topmost; no pool card produces that |
@@ -1226,7 +1257,7 @@ fully declinable "up to N"; Volcanic Salvo's "up to two" is `count = { max = 2 }
 triggered-timed abilities widen to *multiple* targets: a triggered ability's single `ChooseTarget`
 pause (`Game::place_targeted_ability`) reads the effect's own `count` directly — Numot, the
 Devastator's "destroy up to two target lands" pauses on a `{ min = 0, max = 2 }` choice and, once
-two targets are chosen, pushes one `destroy_target` ability instance per target (each independently
+two targets are chosen, pushes one `destroy/target` ability instance per target (each independently
 re-checked for legality at its own resolution, CR 608.2b — the triggered-ability twin of how a
 multi-target *spell* is decomposed below). `count` is clamped to however many legal targets actually
 exist before the pause is raised, same as a multi-target spell's own clamp. Choosing none of a
@@ -1252,7 +1283,7 @@ other modes keep their ordinary single-target-or-none shape.
 
 A single mode can also carry more than one *independent* target clause (CR 601.2c) via a
 `[[abilities.effects]]` array whose steps each have a target of a **different** spec (Hull
-Breach's third mode "Destroy target artifact and target enchantment" — two `destroy_target` steps,
+Breach's third mode "Destroy target artifact and target enchantment" — two `destroy/target` steps,
 one `target = { permanent = { types = "artifact" } }`, one `types = "enchantment"`): the caster
 answers a `ChooseSpellTargets` pause per clause after cast, same as a non-modal spell's own
 independent clauses (Magma Opus's `clause = 0`/`clause = 1`), each re-checked for legality
@@ -1272,14 +1303,14 @@ max = 0, x_scaled = true }` is "up to X target(s)" (Silkguard's "up to X target 
 control"); `{ min = 1, max = 1, x_scaled = true }` is "exactly X target(s)" (Curse of the Swine's
 "exile X target creatures"). The substituted X is clamped to `MAX_TARGETS` (6) — a spell that
 needs to target more would need that ceiling bumped. `x_scaled` works on any `count`/`targets`
-field (`exile_target`, `destroy_target`, `put_counters`'s `targets`, …), not just the effects named
+field (`exile/target`, `destroy/target`, `put_counters`'s `targets`, …), not just the effects named
 above — any multi-target effect's count can opt in.
 
 `sacrifice_scaled = true` (default `false`) is the sibling for a spell whose X is never chosen as
 `{X}` but is instead *defined* by an additional sacrifice cost (CR 601.2f) — Immoral Bargain's "As
 an additional cost to cast this spell, sacrifice X creatures. Destroy X target nonland
 permanents." is `[cost.additional] sacrifice = { count = "one_or_more", filter = "creature" }`
-paired with `destroy_target`'s `target = { permanent = { types = "nonland" } }`,
+paired with `destroy/target`'s `target = { permanent = { types = "nonland" } }`,
 `count = { sacrifice_scaled = true }`. `min`/`max` need not be given (both default 0); at cast
 time they're always overridden to "exactly X", X being however many were actually sacrificed
 (`Game::spell_sacrifice_count`) — always mandatory, unlike `x_scaled`'s declinable "up to X" case.
@@ -1382,12 +1413,12 @@ Write one of:
   filter: an instant/sorcery card's `TypeSet` is empty (permanents are the other card kinds), so no
   `PermanentFilter` axis can select it — this reads the card's `CardKind::Spell` directly instead.
 - `{ permanents_destroyed_this_way = <filter (below), default matches all> }` — a "destroyed this
-  way" rider count (CR): how many permanents *this same resolution's own* preceding `destroy_all`
+  way" rider count (CR): how many permanents *this same resolution's own* preceding `destroy/all`
   step destroyed, restricted to `filter` (Ceaseless Conflict's "for each nontoken creature you
   controlled that was destroyed this way" is `{ permanents_destroyed_this_way = { types =
   "creature", controller = "you", token = "nontoken" } }`; Culling Ritual's unfiltered "for each
   permanent destroyed this way" is `{ permanents_destroyed_this_way = {} }`). Resolution-scoped,
-  not a turn tally like `"permanents_died_this_turn"` above — pair with the `destroy_all` step in
+  not a turn tally like `"permanents_died_this_turn"` above — pair with the `destroy/all` step in
   the same `effects = [...]` sequence (§"effect-sequencing"). Only the `types`/`subtypes`/
   `controller`/`token` filter axes apply (the destroyed permanents are already off the
   battlefield by the time this reads them — no live tapped/mv/power context).
@@ -1489,7 +1520,7 @@ a multicolored spell matches any of its colors; Balefire Liege's "cast a red spe
 "cast a white spell"). Only `reduce_spell_cost` reads the cast-from zone; every other
 consumer treats a spell as a plain hand cast.
 
-**Permanent filter** (the `filter` on `destroy_all` / `return_all_to_hand` / `each_player_sacrifices`,
+**Permanent filter** (the `filter` on `destroy/all` / `return_all_to_hand` / `each_player_sacrifices`,
 and the `<filter>` in a `{ permanent = … }` target): one composable predicate over a battlefield
 permanent. Every axis is independent; an unset axis imposes no restriction. Write it as a table or,
 for a common type set, a shorthand string:
@@ -1621,14 +1652,16 @@ per-pick destination list is the generalization a third destination would need.
 ```toml
 # Diabolic Tutor: search for any card, put it into your hand, then shuffle.
 [[abilities.effects]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = "any_card"
 to_zone = "hand"
 ```
 ```toml
 # Buried Alive: search for up to three creature cards, put them into your graveyard, then shuffle.
 [[abilities.effects]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = "creature"
 to_zone = "graveyard"
 count = 3
@@ -1643,7 +1676,8 @@ pay_life = 1          # omit or 0 for a no-life fetch (Terramorphic/Fabled Passa
 sacrifice = "this"
 
 [[abilities.effects]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = "basic_land"
 to_zone = "battlefield"
 tapped = false        # true to enter tapped (Rampant Growth, Terramorphic, Fabled Passage)
@@ -1652,7 +1686,8 @@ tapped = false        # true to enter tapped (Rampant Growth, Terramorphic, Fabl
 # Nature's Lore: "Search your library for a Forest card, put it onto the battlefield, then
 # shuffle." — matches the basic Forest and any nonbasic Forest-typed land.
 [[abilities.effects]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = { land_with_subtype = ["Forest"] }
 to_zone = "battlefield"
 tapped = false
@@ -1661,7 +1696,8 @@ tapped = false
 # Archaeomancer's Map: "search your library for up to two basic Plains cards, reveal them, put
 # them into your hand, then shuffle." — the Basic supertype excludes a nonbasic Plains-typed dual.
 [[abilities.effects]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = { basic_land_with_subtype = ["Plains"] }
 to_zone = "hand"
 count = 2
@@ -1670,7 +1706,8 @@ count = 2
 # Land Tax: "search your library for up to three basic land cards ... put them into your hand,
 # then shuffle." One search, up to three picks, a single shuffle after the last one.
 [[abilities.effects]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = "basic_land"
 to_zone = "hand"
 count = 3
@@ -1680,7 +1717,8 @@ count = 3
 # battlefield tapped and the other into your hand, then shuffle." One search, two destinations,
 # one shuffle after the last pick.
 [[abilities.effects]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = "basic_land"
 count = 2
 to_zone = "battlefield"
@@ -1714,13 +1752,15 @@ just needs its colors distinct; order doesn't matter, it collapses to a bitmask)
 **Multi-mana** — `add_mana` takes a list, one symbol per mana produced:
 ```toml
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["colorless", "colorless"]   # Sol Ring: {C}{C}
 ```
 Add `repeat` (an amount, §7) to scale the batch — e.g. Mana Geyser's "{R} per tapped land your
 opponents control":
 ```toml
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["red"]
 repeat = { per_permanent = { types = "land", controller = "opponent", tapped = true } }
 ```
@@ -1733,7 +1773,8 @@ taps_self = true
 activation_cost = { generic = 1 }   # {W/B} hybrid has no exact spelling; {1} is the closest fit
 
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = [["white", "black"], ["white", "black"]]
 ```
 
@@ -1753,7 +1794,8 @@ it isn't an error, the payment planner just looks past it to other mana:
 # Troyan, Gutsy Explorer: "{T}: Add {G}{U}. Spend this mana only to cast spells with mana value
 # 5 or greater or spells with {X} in their mana costs."
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["green", "blue"]
 restriction = { mana_value_at_least_or_has_x = 5 }
 ```
@@ -1785,7 +1827,8 @@ toughness = 3
 ```toml
 # on the creating card (e.g. beast_within.toml)
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 count = 1   # count is an amount (§7): a number, "x", or a derived count like
             # { per_permanent = { types = "creature", controller = "you" }, zone = "graveyard" } (Izoni)
 token = "6bb61f34-5d57-4eaa-a02c-f5d08c1ee920"
@@ -1804,8 +1847,8 @@ restriction and its own `[[abilities]]`) minted attached to a target via
   target):
   ```toml
   effects = [
-      { type = "destroy_target", target = { permanent = {} } },
-      { type = "create_token", controller = "target_controller",
+      { type = "destroy", mode = "target", target = { permanent = {} } },
+      { type = "token", mode = "create", controller = "target_controller",
         token = "6bb61f34-5d57-4eaa-a02c-f5d08c1ee920" },
   ]
   ```
@@ -1822,7 +1865,8 @@ restriction and its own `[[abilities]]`) minted attached to a target via
   shared with a preceding step:
   ```toml
   [[abilities.effects]]
-  type = "create_token"
+  type = "token"
+  mode = "create"
   controller = "target_player"
   token = "fbdbff76-c1ea-47ea-bfcc-7c64c23dad70"  # data/tokens/inkling.toml
   ```
@@ -1840,7 +1884,8 @@ restriction and its own `[[abilities]]`) minted attached to a target via
   `"target_player"`, but flipped — the target names who's left out, not who's included:
   ```toml
   [[abilities.effects]]
-  type = "create_token"
+  type = "token"
+  mode = "create"
   controller = "each_other_player"
   token = "60fe4897-6760-4c5a-8074-c92bd64df52b"  # data/tokens/dragon.toml
   ```
@@ -1980,7 +2025,8 @@ higher. The always-on base ability (level 1) carries no `min_level`.
 timing = "etb"
 
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 count = 1
 token = "fbdbff76-c1ea-47ea-bfcc-7c64c23dad70"  # data/tokens/inkling.toml
 

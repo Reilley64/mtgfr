@@ -26,10 +26,12 @@ timing = "enchanted_creature_dies"
 
 # return that card to the battlefield under its owner's control
 [[abilities.effects]]
-type = "reanimate_dying_enchanted_creature"
+type = "zone"
+mode = "reanimate_dying_enchanted_creature"
 under_owner = true
 
 # Return this card to the battlefield attached to that creature at the beginning of the next end
 # step.
 [[abilities.effects]]
-type = "schedule_return_this_aura_attached_to_reanimated"
+type = "zone"
+mode = "schedule_return_this_aura_attached_to_reanimated"

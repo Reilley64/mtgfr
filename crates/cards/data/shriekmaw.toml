@@ -30,5 +30,6 @@ timing = "etb"
 
 # destroy target nonartifact, nonblack creature.
 [[abilities.effects]]
-type = "destroy_target"
+type = "destroy"
+mode = "target"
 target = { permanent = { types = "creature", exclude = "artifact", not_color = "black" } }

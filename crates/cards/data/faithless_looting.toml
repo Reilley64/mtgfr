@@ -25,10 +25,12 @@ timing = "spell"
 
 # Draw two cards
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 2
 
 # then discard two cards
 [[abilities.effects]]
-type = "discard"
+type = "choice"
+mode = "discard"
 count = 2

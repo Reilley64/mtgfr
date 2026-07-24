@@ -29,17 +29,20 @@ timing = "spell"
 
 # Untap target creature an opponent controls
 [[abilities.effects]]
-type = "untap_target"
+type = "control"
+mode = "untap_target"
 target = { permanent = { types = "creature", controller = "opponent" } }
 
 # and gain control of it until end of turn.
 [[abilities.effects]]
-type = "gain_control_until_end_of_turn"
+type = "control"
+mode = "gain_control_until_end_of_turn"
 target = { permanent = { types = "creature", controller = "opponent" } }
 
 # That creature gains haste until end of turn.
 [[abilities.effects]]
-type = "pump_until_end_of_turn"
+type = "pump"
+mode = "pump_until_end_of_turn"
 power = 0
 toughness = 0
 target = { permanent = { types = "creature", controller = "opponent" } }

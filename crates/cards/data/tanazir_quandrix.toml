@@ -28,7 +28,8 @@ timing = "etb"
 
 # double the number of +1/+1 counters on target creature you control.
 [[abilities.effects]]
-type = "double_counters"
+type = "counters"
+mode = "double_counters"
 target = "creature_you_control"
 
 # Whenever Tanazir Quandrix attacks, you may have the base power and toughness of other creatures
@@ -40,7 +41,8 @@ optional = true
 # have the base power and toughness of other creatures you control become equal to Tanazir
 # Quandrix's power and toughness until end of turn.
 [[abilities.effects]]
-type = "set_base_pt_creatures_you_control_until_end_of_turn"
+type = "pump"
+mode = "set_base_pt_creatures_you_control_until_end_of_turn"
 power = "source_power"
 toughness = "source_toughness"
 other = true

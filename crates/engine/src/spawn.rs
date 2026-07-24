@@ -147,7 +147,7 @@ impl Game {
         // zone redirect: the tagged permanent genuinely dies here (a commander still diverts to
         // the command zone below, same as any other death), and `Game::enqueue_triggers`
         // fabricates the exile-and-gain-2-life trigger off the real `Event::MovedToGraveyard` —
-        // see `Effect::ExileGraveyardObjectGainLife`.
+        // see `Effect::Zone(ZoneEffect::ExileGraveyardObjectGainLife)`.
         if self.is_commander(from) {
             Event::MovedToCommandZone { card: new_id, from }
         } else {

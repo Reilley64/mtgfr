@@ -28,5 +28,6 @@ count = 7
 
 # return target creature card from your graveyard to the battlefield
 [[abilities.effects]]
-type = "reanimate_to_battlefield"
+type = "zone"
+mode = "reanimate_to_battlefield"
 target = "your_graveyard"

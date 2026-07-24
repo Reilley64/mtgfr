@@ -26,7 +26,8 @@ who = "your_creatures"
 
 # you gain 1 life
 [[abilities.effects]]
-type = "gain_life"
+type = "life"
+mode = "gain"
 amount = 1
 
 # At the beginning of your end step, each opponent loses X life, where X is the amount of life you
@@ -36,5 +37,6 @@ timing = "end_step"
 
 # each opponent loses X life, where X is the amount of life you gained this turn
 [[abilities.effects]]
-type = "each_opponent_loses_life"
+type = "life"
+mode = "each_opponent_loses"
 amount = "life_gained_this_turn"

@@ -27,12 +27,14 @@ timing = "upkeep"
 
 # you gain X life ... where X is the number of permanents you own that your opponents control
 [[abilities.effects]]
-type = "gain_life"
+type = "life"
+mode = "gain"
 amount = "permanents_you_own_opponents_control"
 
 # ... and draw X cards, where X is the number of permanents you own that your opponents control
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = "permanents_you_own_opponents_control"
 
 # {U}{R}{W}: Target opponent gains control of target permanent you control.
@@ -42,6 +44,7 @@ activation_cost = { blue = 1, red = 1, white = 1 }
 
 # Target opponent gains control of target permanent you control.
 [[abilities.effects]]
-type = "target_opponent_gains_control"
+type = "control"
+mode = "target_opponent_gains_control"
 target = { permanent = { controller = "you" } }
 player = "opponent"

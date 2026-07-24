@@ -43,7 +43,7 @@ timing = "dies"
 # ponytail: "creature or Vehicle" is trimmed to "creature" — no Vehicle card type exists in the pool.
 [[abilities.effects]]
 type = "choose_one"
-modes = [
-    { type = "look_at_top", count = 7, filter = { nonland_permanent_with_mana_value_at_most = 4 }, up_to = 7, min = 0, dest = "battlefield", rest = "bottom", mv_budget = 4 },
-    { type = "put_counters_each", filter = { types = "creature", controller = "you" }, count = 2 },
+options = [
+    { type = "dig", mode = "look_at_top", count = 7, filter = { nonland_permanent_with_mana_value_at_most = 4 }, up_to = 7, min = 0, dest = "battlefield", rest = "bottom", mv_budget = 4 },
+    { type = "counters", mode = "put_counters_each", filter = { types = "creature", controller = "you" }, count = 2 },
 ]

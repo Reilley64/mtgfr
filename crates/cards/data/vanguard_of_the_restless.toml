@@ -36,7 +36,8 @@ timing = "static"
 # Spirits you control get +1/+1 for each time you've cast your commander from the command zone
 # this game.
 [[abilities.effects]]
-type = "anthem_static"
+type = "static"
+mode = "anthem"
 subtypes = ["Spirit"]
 power = "commander_casts_from_command_zone"
 toughness = "commander_casts_from_command_zone"
@@ -54,4 +55,5 @@ white = 1
 
 # return this card from your graveyard to the battlefield.
 [[abilities.effects]]
-type = "return_this_from_graveyard_to_battlefield"
+type = "zone"
+mode = "return_this_from_graveyard_to_battlefield"

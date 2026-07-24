@@ -27,7 +27,8 @@ timing = "static"
 
 # Instant and sorcery spells you cast cost {1} less to cast.
 [[abilities.effects]]
-type = "reduce_spell_cost"
+type = "static"
+mode = "reduce_spell_cost"
 amount = 1
 filter = "instant_or_sorcery"
 
@@ -45,7 +46,8 @@ at_least = 5
 
 # this creature becomes prepared.
 [[abilities.effects]]
-type = "become_prepared"
+type = "misc"
+mode = "become_prepared"
 
 # Back face — Braingeyser ({X}{U}{U} sorcery): "Target player draws X cards."
 [back]
@@ -65,5 +67,6 @@ timing = "spell"
 
 # Target player draws X cards.
 [[back.abilities.effects]]
-type = "target_player_draws"
+type = "draw"
+mode = "target_player"
 count = "x"

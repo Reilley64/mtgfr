@@ -25,7 +25,8 @@ timing = "static"
 
 # This creature enters with X +1/+1 counters on it.
 [[abilities.effects]]
-type = "enters_with_counters"
+type = "static"
+mode = "enters_with_counters"
 count = "x"
 
 # When this creature dies, create a number of tapped Treasure tokens equal to its power.
@@ -34,6 +35,7 @@ timing = "dies"
 
 # create a number of tapped Treasure tokens equal to its power
 [[abilities.effects]]
-type = "create_treasure"
+type = "token"
+mode = "create_treasure"
 count = "source_power"
 tapped = true

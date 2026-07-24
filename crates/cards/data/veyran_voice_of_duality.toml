@@ -27,7 +27,8 @@ timing = "magecraft"
 
 # Veyran gets +1/+1 until end of turn.
 [[abilities.effects]]
-type = "pump_until_end_of_turn"
+type = "pump"
+mode = "pump_until_end_of_turn"
 power = 1
 toughness = 1
 target = "this"
@@ -40,5 +41,6 @@ timing = "static"
 # If you casting or copying an instant or sorcery spell causes a triggered ability of a permanent
 # you control to trigger, that ability triggers an additional time.
 [[abilities.effects]]
-type = "trigger_doubling_static"
+type = "static"
+mode = "trigger_doubling"
 caused_by_instant_or_sorcery_cast = true

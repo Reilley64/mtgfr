@@ -21,7 +21,8 @@ timing = "spell"
 
 # Volcanic Salvo deals 6 damage to each of up to two target creatures and/or planeswalkers.
 [[abilities.effects]]
-type = "deal_damage"
+type = "damage"
+mode = "target"
 amount = 6
 target = { permanent = { types = "creature_or_planeswalker" } }
 count = { max = 2 }

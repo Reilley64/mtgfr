@@ -20,6 +20,7 @@ timing = "spell"
 
 # Creatures you control have base power and toughness X/X until end of turn.
 [[abilities.effects]]
-type = "set_base_pt_creatures_you_control_until_end_of_turn"
+type = "pump"
+mode = "set_base_pt_creatures_you_control_until_end_of_turn"
 power = "x"
 toughness = "x"

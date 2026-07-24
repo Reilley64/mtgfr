@@ -25,7 +25,8 @@ timing = "spell"
 
 # Put two +1/+1 counters on target creature.
 [[abilities.effects]]
-type = "put_counters"
+type = "counters"
+mode = "put_counters"
 count = 2
 target = "creature"
 
@@ -35,7 +36,8 @@ timing = "spell"
 
 # Exile target creature with power 2 or less.
 [[abilities.effects]]
-type = "exile_target"
+type = "exile"
+mode = "target"
 target = { permanent = { types = "creature", power_max = 2 } }
 
 # Mode 2 — "Each opponent loses 3 life and you gain 3 life." (no target)
@@ -44,5 +46,6 @@ timing = "spell"
 
 # Each opponent loses 3 life and you gain 3 life.
 [[abilities.effects]]
-type = "each_opponent_drain"
+type = "life"
+mode = "each_opponent_drain"
 amount = 3

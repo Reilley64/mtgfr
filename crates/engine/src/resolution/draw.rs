@@ -1,6 +1,6 @@
-//! Draw-family event mint — pure Event vectors for [`Effect::DrawCards`] and siblings.
+//! Draw-family event mint — pure Event vectors for [`DrawEffect::Cards`] and siblings.
 //!
-//! Dispatched via [`Game::mint_draw_family`] from the exhaustive mint match.
+//! Dispatched via [`Game::mint_draw`] from the exhaustive mint match.
 //!
 //! Called only from the private mint path behind [`Game::run`] (card-dsl-and-card-pool spec / explore-all deepen).
 //! Apply stays in [`crate::apply`]; this module never mutates the board.
@@ -9,39 +9,38 @@ use crate::*;
 
 impl Game {
     /// Mint events for the Draw Effect family.
-    pub(crate) fn mint_draw_family(
+    pub(crate) fn mint_draw(
         &self,
-        effect: Effect,
+        effect: DrawEffect,
         controller: PlayerId,
         source: ObjectId,
         target: Option<Target>,
         x: u32,
     ) -> Vec<Event> {
         match effect {
-            Effect::DrawCards { count } => {
+            DrawEffect::Cards { count } => {
                 self.mint_draw_cards(controller, source, target, x, count)
             }
-            Effect::TargetPlayerDraws { count, .. } => {
+            DrawEffect::TargetPlayer { count, .. } => {
                 self.mint_target_player_draws(controller, source, target, x, count)
             }
-            Effect::EachPlayerDraws { count } => {
+            DrawEffect::EachPlayer { count } => {
                 self.mint_each_player_draws(controller, source, target, x, count)
             }
-            Effect::AttackingPlayerDraws { drawer, count } => {
+            DrawEffect::AttackingPlayer { drawer, count } => {
                 self.mint_attacking_player_draws(drawer, count)
             }
-            Effect::EachDrawStepPlayerDraws { drawer, count } => {
+            DrawEffect::EachDrawStepPlayer { drawer, count } => {
                 self.mint_each_draw_step_player_draws(drawer, count)
             }
-            Effect::TargetOwnerDraws {
+            DrawEffect::TargetOwner {
                 count,
                 controller: to_controller,
             } => self.mint_target_owner_draws(controller, source, target, x, count, to_controller),
-            _ => unreachable!("draw family mint received a non-family effect"),
         }
     }
 
-    /// Mint draw events for the ability's controller ([`Effect::DrawCards`]).
+    /// Mint draw events for the ability's controller ([`DrawEffect::Cards`]).
     pub(crate) fn mint_draw_cards(
         &self,
         controller: PlayerId,
@@ -56,7 +55,7 @@ impl Game {
         )
     }
 
-    /// Mint draw events for a chosen player target ([`Effect::TargetPlayerDraws`]).
+    /// Mint draw events for a chosen player target ([`DrawEffect::TargetPlayer`]).
     pub(crate) fn mint_target_player_draws(
         &self,
         controller: PlayerId,
@@ -74,7 +73,7 @@ impl Game {
         )
     }
 
-    /// Mint draw events for every living player ([`Effect::EachPlayerDraws`]).
+    /// Mint draw events for every living player ([`DrawEffect::EachPlayer`]).
     ///
     /// Ids are minted sequentially across every player's batch in one pass — [`Game::draw_events`]
     /// can't be called once per player here since each call restarts from the same
@@ -110,7 +109,7 @@ impl Game {
         events
     }
 
-    /// Mint draw events for the attacking player ([`Effect::AttackingPlayerDraws`]).
+    /// Mint draw events for the attacking player ([`DrawEffect::AttackingPlayer`]).
     pub(crate) fn mint_attacking_player_draws(
         &self,
         drawer: Option<PlayerId>,
@@ -121,7 +120,7 @@ impl Game {
     }
 
     /// Mint draw events for the player whose draw step it is
-    /// ([`Effect::EachDrawStepPlayerDraws`] — Howling Mine).
+    /// ([`DrawEffect::EachDrawStepPlayer`] — Howling Mine).
     pub(crate) fn mint_each_draw_step_player_draws(
         &self,
         drawer: Option<PlayerId>,
@@ -132,7 +131,7 @@ impl Game {
     }
 
     /// Mint draw events for the enclosing [`Sequence`](Effect::Sequence)'s shared target's owner
-    /// or controller ([`Effect::TargetOwnerDraws`] — Oblation's "then draws two cards" rider).
+    /// or controller ([`DrawEffect::TargetOwner`] — Oblation's "then draws two cards" rider).
     pub(crate) fn mint_target_owner_draws(
         &self,
         controller: PlayerId,

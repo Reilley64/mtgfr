@@ -18,4 +18,5 @@ timing = "static"
 
 # You have no maximum hand size.
 [[abilities.effects]]
-type = "no_maximum_hand_size"
+type = "static"
+mode = "no_maximum_hand_size"

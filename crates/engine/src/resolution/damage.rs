@@ -6,9 +6,9 @@
 use crate::*;
 
 impl Game {
-    pub(crate) fn mint_damage_family(
+    pub(crate) fn mint_damage(
         &self,
-        effect: Effect,
+        effect: DamageEffect,
         controller: PlayerId,
         source: ObjectId,
         target: Option<Target>,
@@ -16,7 +16,7 @@ impl Game {
     ) -> Vec<Event> {
         let _source_name = self.source_name_of(source);
         match effect {
-            Effect::DealDamage {
+            DamageEffect::Target {
                 amount, divided, ..
             } => {
                 let chosen = target.expect("a targeted effect resolves with a chosen target");
@@ -115,7 +115,7 @@ impl Game {
             // creature) — CR 609.7 would want each creature as the damage's true source for
             // this self-damage spell, but no pool card's protection/lifelink/replacement reads
             // that distinction here.
-            Effect::DamageEachCreature {
+            DamageEffect::EachCreature {
                 amount,
                 opponents_only,
                 filter,
@@ -207,7 +207,7 @@ impl Game {
             // instead of once for a single chosen target. `amount` doesn't vary per player (no
             // pool card reads player-specific state here), so it's resolved once, shared by
             // every player's share.
-            Effect::DamageEachPlayer { amount } => {
+            DamageEffect::EachPlayer { amount } => {
                 let amount = self.resolve_amount(amount, controller, source, target, x);
                 self.living_players()
                     .flat_map(|player| {
@@ -234,7 +234,7 @@ impl Game {
             // Hydra Omnivore's splash: same per-player damage events as `DamageEachPlayer` above,
             // but only to opponents of the ability's controller (CR 102.3) other than the one who
             // already took the combat damage — that player is baked in at trigger placement.
-            Effect::DamageEachOtherOpponent { amount, damaged } => {
+            DamageEffect::EachOtherOpponent { amount, damaged } => {
                 let damaged = damaged.expect("the damaged opponent is filled in at placement");
                 let amount = self.resolve_amount(amount, controller, source, target, x);
                 self.living_players()
@@ -263,7 +263,7 @@ impl Game {
             // Marauding Raptor: 2 damage to the permanent that just entered (context), not a
             // chosen target. `then_if_subtype`/`then` (the Dinosaur pump rider) are handled by
             // the caller in `run` — this leaf only deals the damage.
-            Effect::DealDamageToEnteringPermanent {
+            DamageEffect::ToEnteringPermanent {
                 entering, amount, ..
             } => {
                 let object = entering.expect("the entering permanent is filled in at placement");
@@ -291,7 +291,7 @@ impl Game {
 
             // Real damage to the ability's own controller — mirrors `DealDamage`'s
             // `Target::Player` arm, substituting `controller` for the chosen target.
-            Effect::DealDamageToSelf { amount } => {
+            DamageEffect::ToSelf { amount } => {
                 let amount = self.resolve_amount(amount, controller, source, target, x);
                 let mut events = vec![Event::LifeChanged {
                     player: controller,
@@ -315,7 +315,7 @@ impl Game {
             // through the same `DamageDealtToPlayer` life-loss + damage-watch events. The target is
             // the enclosing `Sequence`'s shared creature; `controller_of` follows `Object::Moved`,
             // so it still resolves even after the preceding 4-damage step killed the creature.
-            Effect::DealDamageToTargetController { amount } => {
+            DamageEffect::ToTargetController { amount } => {
                 let creature = expect_object_target(target, "deal damage to target's controller");
                 let recipient = self.controller_of(creature);
                 let amount = self.resolve_amount(amount, controller, source, target, x);
@@ -336,11 +336,10 @@ impl Game {
                 }
                 events
             }
-            _ => unreachable!("damage family mint received a non-family effect"),
         }
     }
 
-    /// Marauding Raptor's [`Effect::DealDamageToEnteringPermanent`] choreography: run the
+    /// Marauding Raptor's [`DamageEffect::ToEnteringPermanent`] choreography: run the
     /// damage step (unchanged via `execute_effect`), then — CR "if a Dinosaur is dealt damage
     /// this way, this creature gets +2/+0 until end of turn" — run `then` only if the entering
     /// permanent's subtypes intersect `then_if_subtype` AND the damage actually landed (a
@@ -348,7 +347,7 @@ impl Game {
     /// it, CR 119.3 "is dealt damage").
     pub(crate) fn resolve_deal_damage_to_entering(
         &mut self,
-        effect: Effect,
+        effect: DamageEffect,
         ctx: ResolveCtx,
         events: &mut Vec<Event>,
     ) {
@@ -359,7 +358,7 @@ impl Game {
             x,
             ..
         } = ctx;
-        let Effect::DealDamageToEnteringPermanent {
+        let DamageEffect::ToEnteringPermanent {
             entering,
             then_if_subtype,
             then,
@@ -368,7 +367,7 @@ impl Game {
         else {
             unreachable!("resolve_deal_damage_to_entering received a non-family effect")
         };
-        let evs = self.execute_effect(effect, controller, source, target, x);
+        let evs = self.execute_effect(Effect::Damage(effect), controller, source, target, x);
         let damage_landed = evs.iter().any(|e| matches!(e, Event::DamageMarked { .. }));
         self.apply_all(&evs);
         events.extend(evs);

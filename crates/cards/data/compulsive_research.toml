@@ -21,12 +21,14 @@ timing = "spell"
 
 # Target player draws three cards.
 [[abilities.effects]]
-type = "target_player_draws"
+type = "draw"
+mode = "target_player"
 count = 3
 
 # Then that player discards two cards unless they discard a land card.
 [[abilities.effects]]
-type = "discard"
+type = "choice"
+mode = "discard"
 count = 2
 target_player = true
 or_one_matching = "land"

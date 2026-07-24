@@ -20,7 +20,8 @@ timing = "static"
 
 # Enchanted creature gets +3/+3, has trample, and can't attack you or planeswalkers you control.
 [[abilities.effects]]
-type = "grant_to_attached"
+type = "static"
+mode = "grant_to_attached"
 power = 3
 toughness = 3
 keywords = ["trample"]

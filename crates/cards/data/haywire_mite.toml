@@ -26,7 +26,8 @@ timing = "dies"
 
 # you gain 2 life
 [[abilities.effects]]
-type = "gain_life"
+type = "life"
+mode = "gain"
 amount = 2
 
 # {G}, Sacrifice this creature: Exile target noncreature artifact or noncreature enchantment.
@@ -37,5 +38,6 @@ activation_cost = { green = 1 }
 
 # Exile target noncreature artifact or noncreature enchantment.
 [[abilities.effects]]
-type = "exile_target"
+type = "exile"
+mode = "target"
 target = { permanent = { types = ["artifact", "enchantment"], noncreature = true } }

@@ -17,7 +17,7 @@ impl Game {
         match effect {
             // A resolution-time optional sacrifice (Witherbloom Charm mode 0) pauses on a
             // MaySacrifice choice; declining runs nothing.
-            Effect::MaySacrifice { filter, then } => pending::raise(
+            Effect::Choice(ChoiceEffect::MaySacrifice { filter, then }) => pending::raise(
                 self,
                 pending::ChoiceRequest::MaySacrifice {
                     player: controller,
@@ -31,10 +31,10 @@ impl Game {
             // permanent this way" (Deadly Brew) gates the whole rider on the edict's own
             // controller having actually sacrificed — unmet, it's the same "runs nothing" as
             // declining, no pause at all.
-            Effect::MayReturnFromGraveyard {
+            Effect::Choice(ChoiceEffect::MayReturnFromGraveyard {
                 filter,
                 if_you_sacrificed_this_way,
-            } => {
+            }) => {
                 if if_you_sacrificed_this_way
                     && !self.resolution_frame.sacrificed_by_edict_controller
                 {
@@ -51,7 +51,7 @@ impl Game {
             }
             // A resolution-time optional discard (Quintorius, History Chaser's +1) pauses on a
             // MayDiscard choice; declining runs nothing.
-            Effect::MayDiscard { then } => pending::raise(
+            Effect::Choice(ChoiceEffect::MayDiscard { then }) => pending::raise(
                 self,
                 pending::ChoiceRequest::MayDiscard {
                     player: controller,
@@ -63,20 +63,20 @@ impl Game {
             // ability's own controller on whether they want to draw at all (the card's ruling —
             // declining is quiet, no pay window is ever offered). Only a "yes" here raises the
             // triggering opponent's own pay-or-let-it-happen pause (`Game::answer_may`).
-            Effect::MayDrawUnlessPays { cost, caster } => {
+            Effect::Choice(ChoiceEffect::MayDrawUnlessPays { cost, caster }) => {
                 pending::raise(
                     self,
                     pending::ChoiceRequest::MayYesNo {
                         player: controller,
                         source,
-                        effect: Effect::MayDrawUnlessPays { cost, caster },
+                        effect: Effect::Choice(ChoiceEffect::MayDrawUnlessPays { cost, caster }),
                     },
                 );
             }
             // Questing Phelddagrif's blue rider: "Target opponent may draw a card." Unlike
             // `MayDrawUnlessPays` above, the *targeted* player answers (no pay window rides
             // behind it) — see `Game::answer_may`.
-            Effect::TargetPlayerMayDraw { count, opponent } => {
+            Effect::Choice(ChoiceEffect::TargetPlayerMayDraw { count, opponent }) => {
                 let Some(Target::Player(player)) = target else {
                     panic!("target-player-may-draw resolves with a chosen player target");
                 };
@@ -85,14 +85,17 @@ impl Game {
                     pending::ChoiceRequest::MayYesNo {
                         player,
                         source,
-                        effect: Effect::TargetPlayerMayDraw { count, opponent },
+                        effect: Effect::Choice(ChoiceEffect::TargetPlayerMayDraw {
+                            count,
+                            opponent,
+                        }),
                     },
                 );
             }
             // Edric, Spymaster of Trest: "its controller may draw a card." Like
             // `TargetPlayerMayDraw` above, the drawing player answers — here the controller of the
             // creature that dealt the combat damage, baked in at trigger placement.
-            Effect::DamagingCreatureControllerMayDraw { count, drawer } => {
+            Effect::Choice(ChoiceEffect::DamagingCreatureControllerMayDraw { count, drawer }) => {
                 let player = drawer.expect(
                     "the damaging creature's controller is baked in by contextualize_effect at \
                      combat-damage trigger placement",
@@ -102,14 +105,17 @@ impl Game {
                     pending::ChoiceRequest::MayYesNo {
                         player,
                         source,
-                        effect: Effect::DamagingCreatureControllerMayDraw { count, drawer },
+                        effect: Effect::Choice(ChoiceEffect::DamagingCreatureControllerMayDraw {
+                            count,
+                            drawer,
+                        }),
                     },
                 );
             }
             // Arcane Denial's countered-spell rider: "Its controller may draw up to two cards"
             // (CR 120.4 / 601.2c). Pause the resolving controller on a count choice `0..=max`;
             // the answer (`Game::answer_may_draw_up_to`) draws exactly the chosen number.
-            Effect::MayDrawUpTo { count } => {
+            Effect::Choice(ChoiceEffect::MayDrawUpTo { count }) => {
                 let max = self
                     .resolve_count(count, controller, source, None, 0)
                     .min(u8::MAX as u32) as u8;
@@ -126,7 +132,7 @@ impl Game {
             // step sharing this Sequence's target; this step pauses the caster on a count choice
             // `0..=count` (`Game::answer_trade_secrets_caster_draw` chains to the opponent's
             // repeat-or-stop pause once answered).
-            Effect::MayDrawUpToThenOpponentMayRepeat { count } => {
+            Effect::Choice(ChoiceEffect::MayDrawUpToThenOpponentMayRepeat { count }) => {
                 let Some(Target::Player(opponent)) = target else {
                     panic!(
                         "may-draw-up-to-then-opponent-may-repeat resolves with a chosen opponent target"
@@ -148,7 +154,7 @@ impl Game {
             // Rupture Spire's own ETB trigger: "sacrifice it unless you pay {1}." Pauses on the
             // same pay-or-sacrifice shape Echo's `PayEchoOrSacrifice` uses, under its own variant
             // (this is a real triggered ability, not Echo — CR 603.3b, not CR 702.31).
-            Effect::SacrificeSelfUnlessPay { cost } => pending::raise(
+            Effect::Choice(ChoiceEffect::SacrificeSelfUnlessPay { cost }) => pending::raise(
                 self,
                 pending::ChoiceRequest::SacrificeUnlessPay {
                     player: controller,

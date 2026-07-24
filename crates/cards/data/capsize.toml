@@ -24,5 +24,6 @@ timing = "spell"
 
 # Return target permanent to its owner's hand.
 [[abilities.effects]]
-type = "return_to_hand"
+type = "zone"
+mode = "return_to_hand"
 target = { permanent = {} }

@@ -19,7 +19,8 @@ taps_self = true
 
 # Add {C}.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["colorless"]
 
 # {G/U}, {T}: Add {G}{G}, {G}{U}, or {U}{U}.
@@ -30,5 +31,6 @@ activation_cost = { hybrid = [["green", "blue"]] }
 
 # Add {G}{G}, {G}{U}, or {U}{U}.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = [["green", "blue"], ["green", "blue"]]

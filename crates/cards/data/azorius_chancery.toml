@@ -18,7 +18,8 @@ timing = "etb"
 
 # return a land you control to its owner's hand.
 [[abilities.effects]]
-type = "return_to_hand"
+type = "zone"
+mode = "return_to_hand"
 target = { permanent = { types = "land", controller = "you" } }
 
 # {T}: Add {W}{U}.
@@ -28,5 +29,6 @@ taps_self = true
 
 # Add {W}{U}.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["white", "blue"]

@@ -26,4 +26,5 @@ sacrifice = "this"
 
 # Exile target player's graveyard.
 [[abilities.effects]]
-type = "exile_graveyard"
+type = "exile"
+mode = "graveyard"

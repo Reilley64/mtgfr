@@ -28,7 +28,8 @@ timing = "spell"
 
 # Return target creature or planeswalker to its owner's hand.
 [[abilities.effects]]
-type = "return_to_hand"
+type = "zone"
+mode = "return_to_hand"
 target = { permanent = { types = "creature_or_planeswalker" } }
 
 # Mode 1 — "Counter target artifact or enchantment spell."
@@ -37,7 +38,8 @@ timing = "spell"
 
 # Counter target artifact or enchantment spell.
 [[abilities.effects]]
-type = "counter_target_spell"
+type = "misc"
+mode = "counter_target_spell"
 filter = "artifact_or_enchantment"
 
 # Mode 2 — "Put two +1/+1 counters on target creature."
@@ -46,7 +48,8 @@ timing = "spell"
 
 # Put two +1/+1 counters on target creature.
 [[abilities.effects]]
-type = "put_counters"
+type = "counters"
+mode = "put_counters"
 count = 2
 target = "creature"
 
@@ -57,6 +60,7 @@ timing = "spell"
 
 # Target player shuffles up to three target cards from their graveyard into their library.
 [[abilities.effects]]
-type = "shuffle_target_cards_from_graveyard_into_library"
+type = "dig"
+mode = "shuffle_target_cards_from_graveyard_into_library"
 max = 3
 target_player = true

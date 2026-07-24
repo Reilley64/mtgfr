@@ -175,7 +175,7 @@ impl Game {
     }
 
     /// The CR "whenever [a land] is tapped for mana" watch: each matching static
-    /// [`Effect::TappedForManaBonus`] on the battlefield adds a bonus credit into the tap's own
+    /// [`Effect::Static(StaticEffect::TappedForManaBonus)`] on the battlefield adds a bonus credit into the tap's own
     /// pool batch. Mana abilities don't stack (CR 605.3), so the bonus resolves inline — no stack,
     /// no priority. Called at both land-tap-for-mana chokes ([`Self::tap_for_mana`]'s `produces`
     /// sugar and an `add_mana` activation on a land). `land` is the just-tapped land, `player` its
@@ -217,8 +217,10 @@ impl Game {
         let mut any_color_source: Option<ObjectId> = None;
         for id in self.battlefield() {
             for ability in self.def_of(id).abilities {
-                let (Timing::Static, Effect::TappedForManaBonus { scope, bonus_color }) =
-                    (ability.timing, ability.effect)
+                let (
+                    Timing::Static,
+                    Effect::Static(StaticEffect::TappedForManaBonus { scope, bonus_color }),
+                ) = (ability.timing, ability.effect)
                 else {
                     continue;
                 };
@@ -269,7 +271,7 @@ impl Game {
     /// [`Player::channel_colorless_mana_this_turn`] holds and the player can afford the life
     /// payment (CR 119.4).
     /// ponytail: no source permanent to hang this off of (Channel is spent from hand — see
-    /// [`Effect::GrantChannelColorlessManaThisTurn`]'s doc), so it's a standalone `Intent` rather
+    /// [`Effect::Misc(MiscEffect::GrantChannelColorlessManaThisTurn)`]'s doc), so it's a standalone `Intent` rather
     /// than a `Game::ability_at`-addressed granted ability; offered whenever the flag holds, with
     /// no independent "any time you could activate a mana ability" timing gate.
     pub(crate) fn channel_colorless_mana(
@@ -423,7 +425,7 @@ impl Game {
                 let Timing::Activated(cost) = a.timing else {
                     return false;
                 };
-                let Effect::AddMana { single_color, .. } = a.effect else {
+                let Effect::Mana(ManaEffect::Add { single_color, .. }) = a.effect else {
                     return false;
                 };
                 cost.taps_self
@@ -454,14 +456,14 @@ impl Game {
                 let Timing::Activated(cost) = a.timing else {
                     continue;
                 };
-                let Effect::AddMana {
+                let Effect::Mana(ManaEffect::Add {
                     mana: batch,
                     identity,
                     opponent_colors,
                     restriction,
                     single_color,
                     ..
-                } = a.effect
+                }) = a.effect
                 else {
                     continue;
                 };
@@ -608,14 +610,14 @@ impl Game {
                 let Timing::Activated(cost) = a.timing else {
                     continue;
                 };
-                let Effect::AddMana {
+                let Effect::Mana(ManaEffect::Add {
                     mana: batch,
                     identity,
                     opponent_colors,
                     restriction,
                     single_color,
                     ..
-                } = a.effect
+                }) = a.effect
                 else {
                     continue;
                 };
@@ -1073,14 +1075,14 @@ impl Game {
                 let Timing::Activated(acost) = a.timing else {
                     continue;
                 };
-                let Effect::AddMana {
+                let Effect::Mana(ManaEffect::Add {
                     mana: batch,
                     identity,
                     opponent_colors,
                     single_color,
                     restriction,
                     ..
-                } = a.effect
+                }) = a.effect
                 else {
                     continue;
                 };

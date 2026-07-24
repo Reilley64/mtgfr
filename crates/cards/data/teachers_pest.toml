@@ -31,7 +31,8 @@ timing = "attacks"
 
 # you gain 1 life.
 [[abilities.effects]]
-type = "gain_life"
+type = "life"
+mode = "gain"
 amount = 1
 
 # {B}{G}: Return this card from your graveyard to the battlefield tapped.
@@ -44,5 +45,6 @@ green = 1
 
 # Return this card from your graveyard to the battlefield tapped.
 [[abilities.effects]]
-type = "return_this_from_graveyard_to_battlefield"
+type = "zone"
+mode = "return_this_from_graveyard_to_battlefield"
 tapped = true

@@ -19,11 +19,11 @@ impl Game {
         match effect {
             // A discard pauses on a card-pick choice (the discarding player chooses which to
             // pitch): the ability's controller, or a chosen target player (Prismari Command).
-            Effect::Discard {
+            Effect::Choice(ChoiceEffect::Discard {
                 count,
                 target_player,
                 or_one_matching,
-            } => {
+            }) => {
                 let discarder = if target_player {
                     let Some(Target::Player(player)) = target else {
                         panic!("target-player discard resolves with a chosen player target");
@@ -43,7 +43,7 @@ impl Game {
             }
             // Brainstorm's "put two cards from your hand on top of your library in any order"
             // pauses on an ordered card-pick choice over the controller's own hand.
-            Effect::PutFromHandOnTop { count } => pending::raise(
+            Effect::Choice(ChoiceEffect::PutFromHandOnTop { count }) => pending::raise(
                 self,
                 pending::ChoiceRequest::PutFromHandOnTop {
                     player: controller,
@@ -52,7 +52,7 @@ impl Game {
             ),
             // "You may put a land from hand onto the battlefield" pauses on a card-pick choice
             // (up to one hand land, or decline).
-            Effect::PutLandFromHand { tapped } => pending::raise(
+            Effect::Choice(ChoiceEffect::PutLandFromHand { tapped }) => pending::raise(
                 self,
                 pending::ChoiceRequest::PutLandFromHand {
                     player: controller,
@@ -63,7 +63,7 @@ impl Game {
             // battlefield" pauses on the creature sibling of `PutLandFromHand`'s card-pick
             // choice (up to one hand creature, or decline). `source` is threaded through so the
             // answer can later schedule the end-step sacrifice against this same ability.
-            Effect::PutCreatureFromHand => pending::raise(
+            Effect::Choice(ChoiceEffect::PutCreatureFromHand) => pending::raise(
                 self,
                 pending::ChoiceRequest::PutCreatureFromHand {
                     player: controller,
@@ -73,7 +73,7 @@ impl Game {
             // Illusionary Mask's "you may cast a creature card in hand … face down as a 2/2"
             // pauses on a card-pick choice over the hand creatures whose mana cost the mana
             // spent on this ability's `{X}` could pay (`ctx.spent_mana`, CR 107.3).
-            Effect::CastCreatureFaceDown => pending::raise(
+            Effect::Choice(ChoiceEffect::CastCreatureFaceDown) => pending::raise(
                 self,
                 pending::ChoiceRequest::CastCreatureFaceDown {
                     player: controller,

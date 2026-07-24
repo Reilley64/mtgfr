@@ -31,7 +31,8 @@ at_most = 1
 
 # this creature becomes prepared.
 [[abilities.effects]]
-type = "become_prepared"
+type = "misc"
+mode = "become_prepared"
 
 # Back face — Wheel of Fortune ({2}{R} sorcery): "Each player discards their hand, then draws
 # seven cards."
@@ -52,5 +53,6 @@ timing = "spell"
 
 # Each player discards their hand, then draws seven cards.
 [[back.abilities.effects]]
-type = "each_player_discards_hand_then_draws"
+type = "choice"
+mode = "each_player_discards_hand_then_draws"
 count = 7

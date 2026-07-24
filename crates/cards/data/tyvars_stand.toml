@@ -26,7 +26,8 @@ timing = "spell"
 # Target creature you control gets +X/+X and gains hexproof and indestructible until end of
 # turn.
 [[abilities.effects]]
-type = "pump_until_end_of_turn"
+type = "pump"
+mode = "pump_until_end_of_turn"
 power = "x"
 toughness = "x"
 target = "creature_you_control"

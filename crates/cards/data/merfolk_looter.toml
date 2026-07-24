@@ -23,10 +23,12 @@ taps_self = true
 
 # Draw a card
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1
 
 # then discard a card.
 [[abilities.effects]]
-type = "discard"
+type = "choice"
+mode = "discard"
 count = 1

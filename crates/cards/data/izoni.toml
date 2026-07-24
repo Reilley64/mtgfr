@@ -30,7 +30,8 @@ timing = "etb_triggered"
 
 # create a 1/1 black and green Insect creature token for each creature card in your graveyard.
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 token = "ea029c48-d26e-40b1-acef-2ec47fb61101"
 count = { per_permanent = { types = "creature", controller = "you" }, zone = "graveyard" }
 
@@ -41,10 +42,12 @@ activation_cost = { black = 1, green = 1 }
 
 # You gain 1 life
 [[abilities.effects]]
-type = "gain_life"
+type = "life"
+mode = "gain"
 amount = 1
 
 # draw a card.
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1

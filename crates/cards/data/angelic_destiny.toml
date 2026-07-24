@@ -23,7 +23,8 @@ timing = "static"
 
 # Enchanted creature gets +4/+4, has flying and first strike
 [[abilities.effects]]
-type = "grant_to_attached"
+type = "static"
+mode = "grant_to_attached"
 power = 4
 toughness = 4
 keywords = ["flying", "first_strike"]
@@ -35,7 +36,8 @@ timing = "static"
 
 # is an Angel in addition to its other types
 [[abilities.effects]]
-type = "set_attached_types"
+type = "static"
+mode = "set_attached_types"
 add_subtypes = ["Angel"]
 
 # When enchanted creature dies, return this card to its owner's hand.
@@ -44,4 +46,5 @@ timing = "enchanted_creature_dies"
 
 # return this card to its owner's hand
 [[abilities.effects]]
-type = "return_this_to_hand"
+type = "zone"
+mode = "return_this_to_hand"

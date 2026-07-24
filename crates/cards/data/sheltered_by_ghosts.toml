@@ -27,7 +27,8 @@ timing = "etb"
 
 # exile target nonland permanent an opponent controls until this Aura leaves the battlefield.
 [[abilities.effects]]
-type = "exile_until_source_leaves"
+type = "exile"
+mode = "until_source_leaves"
 target = { permanent = { types = "nonland", controller = "opponent" } }
 
 # Enchanted creature gets +1/+0 and has lifelink and ward {2}.
@@ -36,7 +37,8 @@ timing = "static"
 
 # Enchanted creature gets +1/+0 and has lifelink and ward {2}.
 [[abilities.effects]]
-type = "grant_to_attached"
+type = "static"
+mode = "grant_to_attached"
 power = 1
 toughness = 0
 keywords = ["lifelink", { ward = 2 }]

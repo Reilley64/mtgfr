@@ -71,7 +71,7 @@ where
 
 /// Leak one owned `Effect` into the `&'static Effect` a nested `Copy` field needs (a single-value
 /// sibling of [`static_slice`] — `Effect` can't hold itself by value, so
-/// [`Effect::ScheduleAtNextUpkeep`]'s `then` is the one-element leaked case instead).
+/// [`Effect::Misc(MiscEffect::ScheduleAtNextUpkeep)`]'s `then` is the one-element leaked case instead).
 pub(crate) fn static_effect<'de, D>(d: D) -> Result<&'static Effect, D::Error>
 where
     D: Deserializer<'de>,
@@ -89,7 +89,7 @@ where
     Ok(&*Box::leak(Box::new(Cost::deserialize(d)?)))
 }
 
-/// `deserialize_with` for [`Effect::GrantToAttached`]'s `granted_ability`: leak the one owned
+/// `deserialize_with` for [`Effect::Static(StaticEffect::GrantToAttached)`]'s `granted_ability`: leak the one owned
 /// [`GrantedAbility`] the sub-table spells into the `&'static` a `Copy` [`Effect`] needs. Only
 /// called when the key is present (a `#[serde(default)]` absent key stays `None`), so it always
 /// yields `Some`.
@@ -102,7 +102,7 @@ where
     Ok(Some(&*Box::leak(Box::new(GrantedAbility::deserialize(d)?))))
 }
 
-/// `deserialize_with` for [`Effect::ReanimateToBattlefield`]'s `becomes`: leak the one owned
+/// `deserialize_with` for [`Effect::Zone(ZoneEffect::ReanimateToBattlefield)`]'s `becomes`: leak the one owned
 /// [`ReanimateBecomes`] the sub-table spells into the `&'static` a `Copy` [`Effect`] needs. Only
 /// called when the key is present (an absent `#[serde(default)]` key stays `None`).
 pub(crate) fn opt_static_reanimate_becomes<'de, D>(
@@ -146,7 +146,7 @@ pub(crate) fn one_u8() -> u8 {
     1
 }
 
-/// `deserialize_with` for [`Effect::SearchLibrary`]'s `count`: either a fixed integer (the
+/// `deserialize_with` for [`Effect::Dig(DigEffect::SearchLibrary)`]'s `count`: either a fixed integer (the
 /// common "up to N") or the `"any"` marker (CR 701.19's "any number of" — Trench Gorger),
 /// untagged so TOML's own scalar type picks the arm, mirroring `AdditionalCost::pay_life`'s
 /// `PayLife` marker-or-fixed shape. `"any"` becomes `u8::MAX` — no real library holds anywhere
@@ -168,12 +168,12 @@ pub(crate) fn count_or_any<'de, D: Deserializer<'de>>(d: D) -> Result<u8, D::Err
     }
 }
 
-/// serde default for [`Effect::LookAtTop`]'s `up_to`: the printed "put *that card*" ⇒ one.
+/// serde default for [`Effect::Dig(DigEffect::LookAtTop)`]'s `up_to`: the printed "put *that card*" ⇒ one.
 pub(crate) fn one_u32() -> u32 {
     1
 }
 
-/// serde default for [`Effect::LookAtTop`]'s `filter`: a filterless look sees any card.
+/// serde default for [`Effect::Dig(DigEffect::LookAtTop)`]'s `filter`: a filterless look sees any card.
 pub(crate) fn any_card_filter() -> CardFilter {
     CardFilter::AnyCard
 }
@@ -209,7 +209,7 @@ pub(crate) fn token_profile<'de, D: Deserializer<'de>>(d: D) -> Result<CardDef, 
 
 /// An `add_mana` effect spells its batch as one symbol per mana produced
 /// (`mana = ["colorless", "colorless"]` for Sol Ring), not as pool component counts.
-/// A `deserialize_with` on the [`Effect::AddMana`] `mana` field rather than a `Deserialize`
+/// A `deserialize_with` on the [`Effect::Mana(ManaEffect::Add)`] `mana` field rather than a `Deserialize`
 /// on [`ManaPool`] itself — the pool is runtime game state (events, replays), and its
 /// canonical serde shape shouldn't be a card-DSL spelling.
 pub(crate) fn mana_batch<'de, D: Deserializer<'de>>(d: D) -> Result<ManaPool, D::Error> {

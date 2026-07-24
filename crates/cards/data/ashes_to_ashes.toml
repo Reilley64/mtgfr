@@ -18,7 +18,8 @@ timing = "spell"
 
 # Exile two target nonartifact creatures.
 [[abilities.effects]]
-type = "exile_target"
+type = "exile"
+mode = "target"
 target = { permanent = { types = "creature", exclude = "artifact" } }
 count = { min = 2, max = 2 }
 
@@ -28,5 +29,6 @@ timing = "spell"
 
 # Ashes to Ashes deals 5 damage to you.
 [[abilities.effects]]
-type = "deal_damage_to_self"
+type = "damage"
+mode = "to_self"
 amount = 5

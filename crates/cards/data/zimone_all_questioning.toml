@@ -36,7 +36,8 @@ conditions = [
 # create Primo, the Indivisible, a legendary 0/0 green and blue Fractal creature token, then put
 # that many +1/+1 counters on it
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 token = "19d20151-ecb4-4627-aa80-3086ad77b4a5"
 enters_with = { per_permanent = { types = "land", controller = "you" } }
 

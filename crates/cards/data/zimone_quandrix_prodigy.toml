@@ -29,7 +29,8 @@ activation_cost = { generic = 1 }
 
 # You may put a land card from your hand onto the battlefield tapped.
 [[abilities.effects]]
-type = "put_land_from_hand"
+type = "choice"
+mode = "put_land_from_hand"
 tapped = true
 
 # {4}, {T}: Draw a card. If you control eight or more lands, draw two cards instead — modeled as
@@ -41,7 +42,8 @@ activation_cost = { generic = 4 }
 
 # Draw a card.
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1
 
 # If you control eight or more lands, draw two cards instead.
@@ -49,5 +51,5 @@ count = 1
 type = "conditional"
 condition = { type = "you_control_lands", at_least = 8 }
 then = [
-        { type = "draw_cards", count = 1 },
+        { type = "draw", mode = "cards", count = 1 },
     ]

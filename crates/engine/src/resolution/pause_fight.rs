@@ -20,10 +20,10 @@ impl Game {
             // pause on a ChooseTarget for the controller's own creature (mirrors
             // `place_targeted_ability`). No legal creature you control: the fight fizzles
             // (CR 601.2c — no damage, no pause) rather than picking an illegal target.
-            Effect::Fight {
+            Effect::Misc(MiscEffect::Fight {
                 ally_is_shared_target: false,
                 ..
-            } => {
+            }) => {
                 let legal = self.legal_targets_for(
                     TargetSpec::CreatureYouControl,
                     source,
@@ -39,10 +39,10 @@ impl Game {
                     pending::ChoiceRequest::ChooseTarget {
                         player: controller,
                         source,
-                        effect: Effect::Fight {
+                        effect: Effect::Misc(MiscEffect::Fight {
                             enemy: target,
                             ally_is_shared_target: false,
-                        },
+                        }),
                         legal,
                         count: TargetCount::default(),
                         x: 0,
@@ -56,10 +56,10 @@ impl Game {
             // control"). Guard-returns with no pause if the ally has since left the battlefield
             // or stopped being a creature (CR 608.2b — a fizzled shared target) or there's no
             // legal enemy — the pump still stands either way.
-            Effect::Fight {
+            Effect::Misc(MiscEffect::Fight {
                 ally_is_shared_target: true,
                 ..
-            } => {
+            }) => {
                 let ally = expect_object_target(target, "primal might's pumped ally");
                 if !self.is_creature_on_battlefield(ally) {
                     return;
@@ -82,10 +82,10 @@ impl Game {
                     pending::ChoiceRequest::ChooseTarget {
                         player: controller,
                         source,
-                        effect: Effect::Fight {
+                        effect: Effect::Misc(MiscEffect::Fight {
                             enemy: Some(Target::Object(ally)),
                             ally_is_shared_target: false,
-                        },
+                        }),
                         legal,
                         count: TargetCount {
                             min: 0,
@@ -100,12 +100,12 @@ impl Game {
             // Move all counters of a kind (Nexus Mentality / Forgotten Ancient): `target` is
             // already resolved (the moved-from permanent); pause on a ChooseTarget for the
             // second permanent, mirroring `Fight`'s cast/resolution split.
-            Effect::MoveCounters {
+            Effect::Counters(CountersEffect::MoveCounters {
                 to_filter,
                 all_kinds,
                 distributed,
                 ..
-            } => {
+            }) => {
                 let from = expect_object_target(target, "a move-counters effect's source");
                 let legal: Vec<ObjectId> = self
                     .legal_targets_for(
@@ -145,13 +145,13 @@ impl Game {
                     pending::ChoiceRequest::ChooseTarget {
                         player: controller,
                         source,
-                        effect: Effect::MoveCounters {
+                        effect: Effect::Counters(CountersEffect::MoveCounters {
                             target: TargetSpec::None,
                             to_filter,
                             all_kinds,
                             distributed,
                             from: Some(Target::Object(from)),
-                        },
+                        }),
                         legal: legal.into_iter().map(Target::Object).collect(),
                         count: TargetCount::default(),
                         x: 0,

@@ -596,7 +596,7 @@ impl Game {
                 let Timing::Activated(cost) = a.timing else {
                     continue;
                 };
-                let Effect::AddMana { single_color, .. } = a.effect else {
+                let Effect::Mana(ManaEffect::Add { single_color, .. }) = a.effect else {
                     continue;
                 };
                 if !cost.taps_self

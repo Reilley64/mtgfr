@@ -25,7 +25,8 @@ timing = "etb"
 
 # As this Aura enters, choose a color.
 [[abilities.effects]]
-type = "choose_color"
+type = "choice"
+mode = "choose_color"
 
 # Enchanted creature has protection from the chosen color.
 [[abilities]]
@@ -33,7 +34,8 @@ timing = "static"
 
 # Enchanted creature has protection from the chosen color.
 [[abilities.effects]]
-type = "grant_to_attached"
+type = "static"
+mode = "grant_to_attached"
 protection_from_chosen_color = true
 
 # {W}: Return this Aura to its owner's hand.
@@ -45,4 +47,5 @@ white = 1
 
 # Return this Aura to its owner's hand.
 [[abilities.effects]]
-type = "return_this_to_hand"
+type = "zone"
+mode = "return_this_to_hand"

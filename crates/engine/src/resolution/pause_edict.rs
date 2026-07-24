@@ -22,22 +22,22 @@ impl Game {
         match effect {
             // A multi-player sacrifice edict (Deadly Brew, Promise of Loyalty) pauses per
             // affected player.
-            Effect::EachPlayerSacrifices {
+            Effect::Choice(ChoiceEffect::EachPlayerSacrifices {
                 scope,
                 keep_one,
                 filter,
                 life_loss,
                 then,
-            } => self.sacrifice_edict(
+            }) => self.sacrifice_edict(
                 scope, keep_one, filter, life_loss, then, controller, source, events,
             ),
             // A multi-player graveyard-exile fan-out (Augusta) pauses per affected player; its
             // reflexive counter payoff rides in the enclosing `Sequence`, resumed once all answer.
             // ponytail: this "when you do" is CR 603.3b's separate reflexive trigger, modeled here
-            // as a same-resolution sequenced payoff (no response window). `Effect::ReflexiveTrigger`
+            // as a same-resolution sequenced payoff (no response window). `Effect::Zone(ZoneEffect::ReflexiveTrigger)`
             // is the real-stack-object primitive; migrate to it when Augusta's "you do" condition
             // (its own exile fan-out, not a token creation) is threadable through it.
-            Effect::EachPlayerExilesFromGraveyard => {
+            Effect::Choice(ChoiceEffect::EachPlayerExilesFromGraveyard) => {
                 self.resolution_frame.nonland_cards_exiled_this_way = 0;
                 pending::raise(
                     self,
@@ -49,7 +49,7 @@ impl Game {
             }
             // Relic of Progenitus: "Target player exiles a card from their graveyard." The one-
             // player special case of the fan-out above — no `follow_up`, no payoff.
-            Effect::TargetPlayerExilesFromGraveyard { .. } => {
+            Effect::Choice(ChoiceEffect::TargetPlayerExilesFromGraveyard { .. }) => {
                 let Some(Target::Player(player)) = target else {
                     panic!(
                         "target player exiles from graveyard resolves with a chosen player target"
@@ -66,7 +66,7 @@ impl Game {
             // The caster-directed keep-one-of-each-type sweep (Tragic Arrogance): for each player,
             // the caster picks up to one nonland permanent of each type to keep; the rest are
             // sacrificed. Pauses per player on a CasterKeepPermanents choice answered by the caster.
-            Effect::CasterKeepsOneOfEachTypePerPlayer => pending::raise(
+            Effect::Choice(ChoiceEffect::CasterKeepsOneOfEachTypePerPlayer) => pending::raise(
                 self,
                 pending::ChoiceRequest::NextCasterKeep {
                     remaining: self.apnap_order(),
@@ -76,18 +76,20 @@ impl Game {
             ),
             // Nils' end step: for each player, its controller puts a +1/+1 counter on up to one
             // creature that player controls. Pauses per player on a ChooseCounterTargetForPlayer.
-            Effect::EachPlayerControllerChoosesCounterTarget => pending::raise(
-                self,
-                pending::ChoiceRequest::NextCounterTarget {
-                    remaining: self.apnap_order(),
-                    chooser: controller,
-                    source,
-                },
-            ),
+            Effect::Choice(ChoiceEffect::EachPlayerControllerChoosesCounterTarget) => {
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::NextCounterTarget {
+                        remaining: self.apnap_order(),
+                        chooser: controller,
+                        source,
+                    },
+                )
+            }
             // Join forces (Collective Voyage): "Starting with you, each player may pay any amount
             // of mana." A per-player payment round; the X-scaled payoff rides in the enclosing
             // `Sequence`, resumed once every player has answered — the vote round's twin.
-            Effect::JoinForcesPayMana => {
+            Effect::Choice(ChoiceEffect::JoinForcesPayMana) => {
                 self.resolution_frame.join_forces_mana = 0;
                 pending::raise(
                     self,
@@ -100,7 +102,7 @@ impl Game {
             // Council's dilemma (Fateful Tempest): a per-player vote round pauses each seat on a
             // CastVote choice; the tally-scaled payoff rides in the enclosing `Sequence`, resumed
             // once every player has voted (the same deferred-tail path as the graveyard fan-out).
-            Effect::CouncilsDilemmaVote { options } => {
+            Effect::Choice(ChoiceEffect::CouncilsDilemmaVote { options }) => {
                 self.resolution_frame.council_past_votes = 0;
                 self.resolution_frame.council_present_votes = 0;
                 pending::raise(
@@ -117,7 +119,7 @@ impl Game {
             // controller is always the active player, since only the active player's creatures
             // attack). Each seat pauses on a ChooseCardName; the reveal-and-match resolves inside
             // that seat's own answer (see `PendingChoice::ChooseCardName`'s doc), not here.
-            Effect::EachPlayerNamesCardThenRevealsTop => pending::raise(
+            Effect::Choice(ChoiceEffect::EachPlayerNamesCardThenRevealsTop) => pending::raise(
                 self,
                 pending::ChoiceRequest::NextCardName {
                     remaining: self.apnap_order(),
@@ -127,7 +129,7 @@ impl Game {
             // Brudiclad: "you may choose a token you control; if you do, each other token you
             // control becomes a copy of that token." Pauses on a ChooseTokenToCopy choice; with no
             // token to choose there's nothing to convert (guarded like MaySacrifice).
-            Effect::EachOtherTokenBecomesCopyOfChosen => pending::raise(
+            Effect::Choice(ChoiceEffect::EachOtherTokenBecomesCopyOfChosen) => pending::raise(
                 self,
                 pending::ChoiceRequest::ChooseTokenToCopy {
                     player: controller,
@@ -138,7 +140,7 @@ impl Game {
             // creature become a copy of an artifact or creature card from among those cards until
             // end of turn." Places the counter, then pauses on a ChooseCopyCardFromList choice
             // over the artifact/creature cards that left; no copyable card means no pause.
-            Effect::PutCounterThenMayBecomeCopyOfCardFromList { cards } => {
+            Effect::Choice(ChoiceEffect::PutCounterThenMayBecomeCopyOfCardFromList { cards }) => {
                 let count = self.counters_after_replacements(source, 1);
                 if count > 0 {
                     self.push_apply(
@@ -163,7 +165,7 @@ impl Game {
             // lands", Smothering Abomination's upkeep "sacrifice a creature") pauses on a
             // ChooseOwnSacrifices choice; with count-or-fewer legal permanents it resolves
             // immediately instead (CR 700.2's "as many as possible").
-            Effect::SacrificeOwn { filter, count } => {
+            Effect::Choice(ChoiceEffect::SacrificeOwn { filter, count }) => {
                 pending::raise(
                     self,
                     pending::ChoiceRequest::ChooseOwnSacrifices {
@@ -180,7 +182,7 @@ impl Game {
             }
             // Annihilator N (Eldrazi Conscription): the defending player, not the controller,
             // directs the forced sacrifice — same ChooseOwnSacrifices machinery, any permanent.
-            Effect::DefendingPlayerSacrifices { count, defender } => {
+            Effect::Choice(ChoiceEffect::DefendingPlayerSacrifices { count, defender }) => {
                 let defender = defender.expect("filled from attack context when placed");
                 let filter = PermanentFilter::default();
                 pending::raise(
@@ -199,7 +201,7 @@ impl Game {
             }
             // Treva's Ruins' own ETB trigger: "sacrifice it unless you return a non-Lair land you
             // control." Pauses on a candidate-land pick (or sacrifices outright with none).
-            Effect::SacrificeSelfUnlessReturnLand { filter } => {
+            Effect::Choice(ChoiceEffect::SacrificeSelfUnlessReturnLand { filter }) => {
                 pending::raise(
                     self,
                     pending::ChoiceRequest::SacrificeUnlessReturnLand {
@@ -210,9 +212,9 @@ impl Game {
                 );
                 if !self.resolution_is_paused() {
                     self.run(
-                        Effect::SacrificeObject {
+                        Effect::Sacrifice(SacrificeEffect::Object {
                             object: Some(source),
-                        },
+                        }),
                         ResolveCtx {
                             controller,
                             source,

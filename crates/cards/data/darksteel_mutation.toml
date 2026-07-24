@@ -23,7 +23,8 @@ timing = "static"
 
 # Enchanted creature is an Insect artifact creature with base power and toughness 0/1
 [[abilities.effects]]
-type = "set_attached_base_p_t"
+type = "static"
+mode = "set_attached_base_pt"
 power = 0
 toughness = 1
 
@@ -34,7 +35,8 @@ timing = "static"
 
 # is an Insect artifact creature ... and it loses all other abilities, card types, and creature types
 [[abilities.effects]]
-type = "set_attached_types"
+type = "static"
+mode = "set_attached_types"
 add_types = "artifact"
 set_subtypes = ["Insect"]
 lose_all_abilities = true
@@ -46,7 +48,8 @@ timing = "static"
 
 # has indestructible
 [[abilities.effects]]
-type = "grant_to_attached"
+type = "static"
+mode = "grant_to_attached"
 power = 0
 toughness = 0
 keywords = ["indestructible"]

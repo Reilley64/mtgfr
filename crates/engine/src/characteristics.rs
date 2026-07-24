@@ -147,14 +147,14 @@ impl Game {
                 match (ability.timing, ability.effect) {
                     (
                         Timing::Static,
-                        Effect::GrantToAttached {
+                        Effect::Static(StaticEffect::GrantToAttached {
                             power,
                             toughness,
                             keywords,
                             goad,
                             legendary_only,
                             ..
-                        },
+                        }),
                     ) => {
                         if let (Amount::Fixed(power), Amount::Fixed(toughness)) = (power, toughness)
                             && (power != 0 || toughness != 0)
@@ -175,13 +175,16 @@ impl Game {
                             push(name, ModifierContribution::Goaded);
                         }
                     }
-                    (Timing::Static, Effect::SetAttachedBasePT { power, toughness }) => {
+                    (
+                        Timing::Static,
+                        Effect::Static(StaticEffect::SetAttachedBasePt { power, toughness }),
+                    ) => {
                         push(
                             name,
                             ModifierContribution::SetBasePowerToughness { power, toughness },
                         );
                     }
-                    (Timing::Static, Effect::ControlAttached) => {
+                    (Timing::Static, Effect::Static(StaticEffect::ControlAttached)) => {
                         push(name, ModifierContribution::Controls);
                     }
                     _ => {}
@@ -199,7 +202,7 @@ impl Game {
                 for ability in p.def.abilities {
                     let (
                         Timing::Static,
-                        Effect::AnthemStatic {
+                        Effect::Static(StaticEffect::Anthem {
                             power,
                             toughness,
                             keywords,
@@ -209,7 +212,7 @@ impl Game {
                             attacking_only,
                             all_players,
                             ..
-                        },
+                        }),
                     ) = (ability.timing, ability.effect)
                     else {
                         continue;
@@ -259,8 +262,10 @@ impl Game {
                     _ => continue,
                 };
                 for ability in p.def.abilities {
-                    let (Timing::Static, Effect::GrantManaAbility { filter, .. }) =
-                        (ability.timing, ability.effect)
+                    let (
+                        Timing::Static,
+                        Effect::Static(StaticEffect::GrantManaAbility { filter, .. }),
+                    ) = (ability.timing, ability.effect)
                     else {
                         continue;
                     };
@@ -466,11 +471,11 @@ impl Game {
             }
         }
         for ability in def.abilities {
-            let Effect::AddMana {
+            let Effect::Mana(ManaEffect::Add {
                 mana: produced,
                 identity,
                 ..
-            } = ability.effect
+            }) = ability.effect
             else {
                 continue;
             };
@@ -608,12 +613,12 @@ impl Game {
         self.as_permanent(object).and_then(|p| p.attached_to)
     }
 
-    /// Each [`Effect::GrantToAttached`] granted to `host` by a permanent attached to it,
+    /// Each [`Effect::Static(StaticEffect::GrantToAttached)`] granted to `host` by a permanent attached to it,
     /// as `(power, toughness, keywords)`. Drives the additive P/T and keyword recompute.
     /// `power`/`toughness` are an [`Amount`], resolved live off the attached permanent as the
     /// effect's controller/source (Sage's Reverie's "+1/+1 for each Aura you control that's
     /// attached to a creature" — a board-derived grant, mirroring how
-    /// [`Game::anthem_pt_bonus`] resolves [`Effect::AnthemStatic`]'s amounts).
+    /// [`Game::anthem_pt_bonus`] resolves [`Effect::Static(StaticEffect::Anthem)`]'s amounts).
     pub(crate) fn attachment_grants(
         &self,
         host: ObjectId,
@@ -634,13 +639,13 @@ impl Game {
                     .filter_map(move |a| match (a.timing, a.effect) {
                         (
                             Timing::Static,
-                            Effect::GrantToAttached {
+                            Effect::Static(StaticEffect::GrantToAttached {
                                 power,
                                 toughness,
                                 keywords,
                                 legendary_only,
                                 ..
-                            },
+                            }),
                         ) => Some((
                             self.resolve_amount(power, controller, id, None, 0),
                             self.resolve_amount(toughness, controller, id, None, 0),
@@ -656,7 +661,7 @@ impl Game {
     }
 
     /// [`Keyword::ProtectionFrom`] the chosen color of each attached
-    /// `protection_from_chosen_color` [`Effect::GrantToAttached`] Aura confers on `host`
+    /// `protection_from_chosen_color` [`Effect::Static(StaticEffect::GrantToAttached)`] Aura confers on `host`
     /// (Flickering Ward's "Enchanted creature has protection from the chosen color"). The scope is
     /// the Aura's own runtime [`Permanent::chosen_color`], so it can't ride the static `keywords`
     /// slice of [`Game::attachment_grants`] and is read live here. An Aura whose color choice
@@ -671,10 +676,10 @@ impl Game {
                         (a.timing, a.effect),
                         (
                             Timing::Static,
-                            Effect::GrantToAttached {
+                            Effect::Static(StaticEffect::GrantToAttached {
                                 protection_from_chosen_color: true,
                                 ..
-                            }
+                            })
                         )
                     )
                 })
@@ -685,7 +690,7 @@ impl Game {
     }
 
     /// The controllers of every live Aura attached to `host` whose static
-    /// [`Effect::GrantToAttached`] carries `goad = true` (CR 701.38a — the Impetus cycle,
+    /// [`Effect::Static(StaticEffect::GrantToAttached)`] carries `goad = true` (CR 701.38a — the Impetus cycle,
     /// Redemption Arc): `host` is goaded by each of them for as long as the Aura stays
     /// attached. A live query over the attachment scan, not an entry in [`Game::goaded`], so
     /// it's continuous with no turn-boundary expiry and vanishes the instant the Aura leaves.
@@ -697,14 +702,17 @@ impl Game {
             let goads_host = self.def_of(id).abilities.iter().any(|a| {
                 matches!(
                     (a.timing, a.effect),
-                    (Timing::Static, Effect::GrantToAttached { goad: true, .. })
+                    (
+                        Timing::Static,
+                        Effect::Static(StaticEffect::GrantToAttached { goad: true, .. })
+                    )
                 )
             });
             goads_host.then(|| self.controller_of(id))
         })
     }
 
-    /// Whether a live Aura attached to `host` carries a static [`Effect::GrantToAttached`]
+    /// Whether a live Aura attached to `host` carries a static [`Effect::Static(StaticEffect::GrantToAttached)`]
     /// with `cant_attack = true` (Faith's Fetters/Prison Term — "Enchanted permanent/creature
     /// can't attack"), the reverse of [`Self::goaded_by_attachment`]'s "must attack". Continuous,
     /// read off the attachment scan, so it lifts the instant the Aura leaves.
@@ -716,17 +724,17 @@ impl Game {
                         (a.timing, a.effect),
                         (
                             Timing::Static,
-                            Effect::GrantToAttached {
+                            Effect::Static(StaticEffect::GrantToAttached {
                                 cant_attack: true,
                                 ..
-                            }
+                            })
                         )
                     )
                 })
         })
     }
 
-    /// Whether a live Aura attached to `host` carries a static [`Effect::GrantToAttached`] with
+    /// Whether a live Aura attached to `host` carries a static [`Effect::Static(StaticEffect::GrantToAttached)`] with
     /// `cant_attack_controller = true` *and* is controlled by `defender` (the Vow cycle's
     /// "Enchanted creature can't attack you" — scoped to this Aura's own controller, unlike
     /// [`Self::host_cant_attack`]'s blanket ban). Read in `declare_attackers` beside the landed
@@ -740,10 +748,10 @@ impl Game {
                         (a.timing, a.effect),
                         (
                             Timing::Static,
-                            Effect::GrantToAttached {
+                            Effect::Static(StaticEffect::GrantToAttached {
                                 cant_attack_controller: true,
                                 ..
-                            }
+                            })
                         )
                     )
                 })
@@ -751,7 +759,7 @@ impl Game {
     }
 
     /// The block-legality twin of [`Self::host_cant_attack`]: whether a live attached Aura's
-    /// [`Effect::GrantToAttached`] carries `cant_block = true`.
+    /// [`Effect::Static(StaticEffect::GrantToAttached)`] carries `cant_block = true`.
     pub(crate) fn host_cant_block(&self, host: ObjectId) -> bool {
         self.attachments(host).into_iter().any(|id| {
             !self.is_phased_out(id)
@@ -760,17 +768,17 @@ impl Game {
                         (a.timing, a.effect),
                         (
                             Timing::Static,
-                            Effect::GrantToAttached {
+                            Effect::Static(StaticEffect::GrantToAttached {
                                 cant_block: true,
                                 ..
-                            }
+                            })
                         )
                     )
                 })
         })
     }
 
-    /// The strictest [`AbilityRestriction`] a live attached Aura's [`Effect::GrantToAttached`]
+    /// The strictest [`AbilityRestriction`] a live attached Aura's [`Effect::Static(StaticEffect::GrantToAttached)`]
     /// imposes on `host`'s own activated abilities (Faith's Fetters' `mana_only` carve-out vs
     /// Prison Term's unqualified `none`), or `None` if no attached Aura restricts them.
     /// ponytail: takes the first such grant; the pool never stacks two ability-restricting Auras
@@ -789,17 +797,17 @@ impl Game {
                 .find_map(|a| match (a.timing, a.effect) {
                     (
                         Timing::Static,
-                        Effect::GrantToAttached {
+                        Effect::Static(StaticEffect::GrantToAttached {
                             activated_abilities: Some(restriction),
                             ..
-                        },
+                        }),
                     ) => Some(restriction),
                     _ => None,
                 })
         })
     }
 
-    /// The `(power, toughness)` a [`Effect::SetAttachedBasePT`] Aura forces onto `host`'s base,
+    /// The `(power, toughness)` a [`Effect::Static(StaticEffect::SetAttachedBasePt)`] Aura forces onto `host`'s base,
     /// if any is attached — the CR 613.3(7b) base-P/T-set entry [`Game::pt_layers`] emits, applied
     /// before the 7c counters/pumps/anthems/grants.
     /// ponytail: takes the first such grant; the pool never stacks two on one creature.
@@ -809,9 +817,10 @@ impl Game {
                 .abilities
                 .iter()
                 .find_map(|a| match (a.timing, a.effect) {
-                    (Timing::Static, Effect::SetAttachedBasePT { power, toughness }) => {
-                        Some((power, toughness))
-                    }
+                    (
+                        Timing::Static,
+                        Effect::Static(StaticEffect::SetAttachedBasePt { power, toughness }),
+                    ) => Some((power, toughness)),
                     _ => None,
                 })
         })
@@ -822,7 +831,7 @@ impl Game {
         self.has_keyword(blocker, Keyword::Flying) || self.has_keyword(blocker, Keyword::Reach)
     }
 
-    /// The CR 613.4 type/subtype layer a [`Effect::SetAttachedTypes`] Aura forces onto `host`:
+    /// The CR 613.4 type/subtype layer a [`Effect::Static(StaticEffect::SetAttachedTypes)`] Aura forces onto `host`:
     /// `(added_types, set_subtypes, added_subtypes)` — the card types unioned on, the creature
     /// subtypes that *replace* the host's own (when present), and the creature subtypes unioned on.
     /// Empty (`TypeSet::NONE`, `None`, `&[]`) when no such Aura is attached.
@@ -843,12 +852,12 @@ impl Game {
             for ability in self.def_of(id).abilities {
                 let (
                     Timing::Static,
-                    Effect::SetAttachedTypes {
+                    Effect::Static(StaticEffect::SetAttachedTypes {
                         add_types,
                         add_subtypes,
                         set_subtypes: set,
                         ..
-                    },
+                    }),
                 ) = (ability.timing, ability.effect)
                 else {
                     continue;
@@ -865,7 +874,7 @@ impl Game {
         (added_types, set_subtypes, added_subtypes)
     }
 
-    /// Whether an attached [`Effect::SetAttachedTypes`] Aura with `lose_all_abilities = true`
+    /// Whether an attached [`Effect::Static(StaticEffect::SetAttachedTypes)`] Aura with `lose_all_abilities = true`
     /// (Darksteel Mutation's "it loses all other abilities") is stripping `host`'s own printed
     /// abilities and keywords (CR 613.1e/701). Only a battlefield permanent can be a host.
     /// ponytail: ≤1 ability-removing Aura per host in the pool, so no CR 613.7 timestamp/dependency
@@ -878,10 +887,10 @@ impl Game {
             for ability in self.def_of(id).abilities {
                 if let (
                     Timing::Static,
-                    Effect::SetAttachedTypes {
+                    Effect::Static(StaticEffect::SetAttachedTypes {
                         lose_all_abilities: true,
                         ..
-                    },
+                    }),
                 ) = (ability.timing, ability.effect)
                 {
                     return true;
@@ -918,7 +927,7 @@ impl Game {
     }
 
     /// A battlefield permanent's card types after the CR 613.4 type layer: its printed types plus
-    /// any added by an attached [`Effect::SetAttachedTypes`] Aura (Darksteel Mutation → +Artifact).
+    /// any added by an attached [`Effect::Static(StaticEffect::SetAttachedTypes)`] Aura (Darksteel Mutation → +Artifact).
     /// Reads printed types for a non-permanent (CR 613 applies only to the permanent).
     pub fn effective_types(&self, id: ObjectId) -> TypeSet {
         // CR 708.2: a face-down permanent (a manifest) is a creature and nothing else — its real
@@ -945,7 +954,7 @@ impl Game {
     }
 
     /// A battlefield permanent's creature subtypes after the CR 613.4 subtype layer: its printed
-    /// subtypes with an attached [`Effect::SetAttachedTypes`] Aura's `add_subtypes` unioned on, or
+    /// subtypes with an attached [`Effect::Static(StaticEffect::SetAttachedTypes)`] Aura's `add_subtypes` unioned on, or
     /// replaced entirely by its `set_subtypes` when set (Darksteel Mutation → `[Insect]`). Reads
     /// printed subtypes for a non-permanent (CR 613 applies only to the permanent).
     pub fn effective_subtypes(&self, id: ObjectId) -> Vec<&'static str> {
@@ -1208,7 +1217,7 @@ impl Game {
         keywords
     }
 
-    /// Every static [`Effect::AnthemStatic`] that applies to `candidate`, paired with the
+    /// Every static [`Effect::Static(StaticEffect::Anthem)`] that applies to `candidate`, paired with the
     /// [`ObjectId`] of the permanent carrying it (its source — needed to resolve a dynamic
     /// `power`/`toughness` [`Amount`] and to honor `self_only`): on a permanent `candidate`'s
     /// owner also owns (or, for an `all_players` anthem, any permanent at all), matching its
@@ -1249,7 +1258,7 @@ impl Game {
             for ability in self.functional_abilities(source) {
                 let (
                     Timing::Static,
-                    effect @ Effect::AnthemStatic {
+                    effect @ Effect::Static(StaticEffect::Anthem {
                         subtypes,
                         colors,
                         chosen_subtype,
@@ -1264,7 +1273,7 @@ impl Game {
                         from_graveyard,
                         all_players,
                         ..
-                    },
+                    }),
                 ) = (ability.timing, ability.effect)
                 else {
                     continue;
@@ -1360,7 +1369,9 @@ impl Game {
                 ability.timing == Timing::Static
                     && matches!(
                         ability.effect,
-                        Effect::PreventNoncombatDamageToOtherCreaturesYouControl
+                        Effect::Static(
+                            StaticEffect::PreventNoncombatDamageToOtherCreaturesYouControl
+                        )
                     )
             });
             if prevents {
@@ -1379,7 +1390,10 @@ impl Game {
     pub(crate) fn phantom_shield_active(&self, target: ObjectId) -> bool {
         self.functional_abilities(target).iter().any(|ability| {
             ability.timing == Timing::Static
-                && matches!(ability.effect, Effect::PreventDamageToSelfRemovingCounter)
+                && matches!(
+                    ability.effect,
+                    Effect::Static(StaticEffect::PreventDamageToSelfRemovingCounter)
+                )
         })
     }
 
@@ -1394,7 +1408,7 @@ impl Game {
             ability.timing == Timing::Static
                 && matches!(
                     ability.effect,
-                    Effect::PreventCombatDamageStatic { to_self: true, .. }
+                    Effect::Static(StaticEffect::PreventCombatDamage { to_self: true, .. })
                 )
         })
     }
@@ -1409,7 +1423,7 @@ impl Game {
             ability.timing == Timing::Static
                 && matches!(
                     ability.effect,
-                    Effect::PreventCombatDamageStatic { by_self: true, .. }
+                    Effect::Static(StaticEffect::PreventCombatDamage { by_self: true, .. })
                 )
         })
     }
@@ -1432,9 +1446,9 @@ impl Game {
         self.matching_anthems(candidate)
             .into_iter()
             .fold((0, 0), |(pw, tf), (source, effect)| match effect {
-                Effect::AnthemStatic {
+                Effect::Static(StaticEffect::Anthem {
                     power, toughness, ..
-                } => (
+                }) => (
                     pw + self.resolve_amount(power, owner, source, None, 0),
                     tf + self.resolve_amount(toughness, owner, source, None, 0),
                 ),
@@ -1448,20 +1462,20 @@ impl Game {
         self.matching_anthems(candidate)
             .into_iter()
             .flat_map(|(_, effect)| match effect {
-                Effect::AnthemStatic { keywords, .. } => keywords.to_vec(),
+                Effect::Static(StaticEffect::Anthem { keywords, .. }) => keywords.to_vec(),
                 _ => Vec::new(),
             })
             .collect()
     }
 
-    /// Every keyword a static [`Effect::KeywordAnthemStatic`] elsewhere on the battlefield grants
+    /// Every keyword a static [`Effect::Static(StaticEffect::KeywordAnthem)`] elsewhere on the battlefield grants
     /// to `candidate` (Sterling Grove's "Other enchantments you control have shroud"). The
     /// bare-`PermanentFilter` static twin of
-    /// [`Effect::GrantKeywordsToPermanentsYouControlUntilEndOfTurn`]'s one-shot grant — same "you
+    /// [`Effect::Pump(PumpEffect::GrantKeywordsToPermanentsYouControlUntilEndOfTurn)`]'s one-shot grant — same "you
     /// control" scan and filter shape (`filter.other` reaches "**other** enchantments"), but read
     /// fresh here on every recompute instead of resolved once onto `temp_keywords`. Not folded
     /// into [`Game::matching_anthems`]/[`Game::anthem_keywords`]: those destructure
-    /// [`Effect::AnthemStatic`] specifically for its P/T + subtype/color/etc axes, which this
+    /// [`Effect::Static(StaticEffect::Anthem)`] specifically for its P/T + subtype/color/etc axes, which this
     /// effect has none of.
     fn keyword_anthem_static_grants(&self, candidate: ObjectId) -> Vec<Keyword> {
         if self.as_permanent(candidate).is_none() {
@@ -1480,10 +1494,10 @@ impl Game {
             for ability in self.functional_abilities(source) {
                 let (
                     Timing::Static,
-                    Effect::KeywordAnthemStatic {
+                    Effect::Static(StaticEffect::KeywordAnthem {
                         keywords: granted,
                         filter,
-                    },
+                    }),
                 ) = (ability.timing, ability.effect)
                 else {
                     continue;
@@ -1498,7 +1512,7 @@ impl Game {
     }
 
     /// Every activated mana ability granted to `candidate` by a live static
-    /// [`Effect::GrantManaAbility`] elsewhere on the battlefield (Goldspan Dragon's "Treasures
+    /// [`Effect::Static(StaticEffect::GrantManaAbility)`] elsewhere on the battlefield (Goldspan Dragon's "Treasures
     /// you control have '{T}, Sacrifice this artifact: Add two mana of any one color.'"). Mirrors
     /// [`Game::matching_anthems`]'s owner-wide scan — recomputed live off the board, no stored
     /// state, so a grant disappears the instant its source leaves. Read by [`Game::ability_at`],
@@ -1522,12 +1536,12 @@ impl Game {
             for ability in p.def.abilities {
                 let (
                     Timing::Static,
-                    Effect::GrantManaAbility {
+                    Effect::Static(StaticEffect::GrantManaAbility {
                         filter,
                         cost,
                         mana,
                         restriction,
-                    },
+                    }),
                 ) = (ability.timing, ability.effect)
                 else {
                     continue;
@@ -1544,7 +1558,7 @@ impl Game {
     }
 
     /// Every *activated* (non-mana) ability granted to `host` by a live
-    /// [`Effect::GrantToAttached`] on an Aura attached to it (Fallen Ideal's "Sacrifice a
+    /// [`Effect::Static(StaticEffect::GrantToAttached)`] on an Aura attached to it (Fallen Ideal's "Sacrifice a
     /// creature: This creature gets +2/+1 until end of turn."), as `(cost, effects)`. The
     /// non-mana twin of [`Game::granted_mana_abilities`], sourced from the attachment scan
     /// ([`Game::attachment_grants`]'s shape) rather than an owner-wide filter. Recomputed live —
@@ -1565,10 +1579,10 @@ impl Game {
                     .filter_map(|a| match (a.timing, a.effect) {
                         (
                             Timing::Static,
-                            Effect::GrantToAttached {
+                            Effect::Static(StaticEffect::GrantToAttached {
                                 granted_ability: Some(g),
                                 ..
-                            },
+                            }),
                         ) => Some((g.cost, g.effects)),
                         _ => None,
                     })
@@ -1578,9 +1592,9 @@ impl Game {
 
     /// The ability at `index` on `object`, in a stable order: its own
     /// (`index < def.abilities.len()`), then those granted by a live static
-    /// [`Effect::GrantManaAbility`] elsewhere on the battlefield
+    /// [`Effect::Static(StaticEffect::GrantManaAbility)`] elsewhere on the battlefield
     /// ([`Game::granted_mana_abilities`]), then those granted by an
-    /// [`Effect::GrantToAttached`] on an Aura attached to it
+    /// [`Effect::Static(StaticEffect::GrantToAttached)`] on an Aura attached to it
     /// ([`Game::granted_attachment_abilities`]). Each grant block occupies contiguous indices
     /// immediately past the prior. The one seam [`Game::ability_activation_gate`] and
     /// [`Game::legal_targets`] read so every granted ability activates exactly like an own one.
@@ -1595,7 +1609,7 @@ impl Game {
         if let Some(&(cost, mana)) = mana_grants.get(granted_index) {
             return Some(Ability {
                 timing: Timing::Activated(cost),
-                effect: Effect::AddMana {
+                effect: Effect::Mana(ManaEffect::Add {
                     // `mana` is already spend-restricted where applicable — `granted_mana_abilities`
                     // wraps it, so this virtual ability needs no `restriction` of its own.
                     mana,
@@ -1608,7 +1622,7 @@ impl Game {
                     target: TargetSpec::None,
                     persist_until_end_of_turn: false,
                     recipient: None,
-                },
+                }),
                 optional: false,
                 min_level: 0,
                 cost: Cost::FREE,
@@ -1638,7 +1652,7 @@ impl Game {
     }
 
     /// Whether `player` has no maximum hand size (CR 402.2): true if any permanent they control
-    /// has a live [`Effect::NoMaximumHandSize`] static ability (e.g. Reliquary Tower). Read by the
+    /// has a live [`Effect::Static(StaticEffect::NoMaximumHandSize)`] static ability (e.g. Reliquary Tower). Read by the
     /// cleanup step's discard-to-hand-size turn-based action; a characteristic-defining continuous
     /// effect (CR 611), so no event is needed — it just stops applying when the source leaves.
     pub(crate) fn has_no_max_hand_size(&self, player: PlayerId) -> bool {
@@ -1647,15 +1661,18 @@ impl Game {
                 return false;
             };
             p.owner == player
-                && p.def
-                    .abilities
-                    .iter()
-                    .any(|a| (a.timing, a.effect) == (Timing::Static, Effect::NoMaximumHandSize))
+                && p.def.abilities.iter().any(|a| {
+                    (a.timing, a.effect)
+                        == (
+                            Timing::Static,
+                            Effect::Static(StaticEffect::NoMaximumHandSize),
+                        )
+                })
         })
     }
 
     /// Whether `player` controls a permanent granting Serra Paragon's graveyard-play permission
-    /// (CR 118.9 — a live [`Effect::PlayFromGraveyardOncePerTurn`] static ability). Read by
+    /// (CR 118.9 — a live [`Effect::Static(StaticEffect::PlayFromGraveyardOncePerTurn)`] static ability). Read by
     /// [`Game::playable_zone`] to decide whether a land / permanent spell in `player`'s graveyard
     /// is playable this turn; the "once during each of your turns" cap is a separate gate
     /// ([`Player::graveyard_play_used_this_turn`]).
@@ -1666,12 +1683,16 @@ impl Game {
             };
             p.owner == player
                 && p.def.abilities.iter().any(|a| {
-                    (a.timing, a.effect) == (Timing::Static, Effect::PlayFromGraveyardOncePerTurn)
+                    (a.timing, a.effect)
+                        == (
+                            Timing::Static,
+                            Effect::Static(StaticEffect::PlayFromGraveyardOncePerTurn),
+                        )
                 })
         })
     }
 
-    /// Total generic cost reduction `player`'s static [`Effect::ReduceSpellCost`] abilities grant
+    /// Total generic cost reduction `player`'s static [`Effect::Static(StaticEffect::ReduceSpellCost)`] abilities grant
     /// to a spell they're casting (`def`, aimed at `target`): the sum of every matching reducer
     /// they control (CR 118.9 — reduces generic mana only, so the caller floors generic at 0).
     /// Pure recompute each cast — nothing is stored (engine-core-and-event-model spec, applied to cost).
@@ -1693,11 +1714,11 @@ impl Game {
             for ability in p.def.abilities {
                 let (
                     Timing::Static,
-                    Effect::ReduceSpellCost {
+                    Effect::Static(StaticEffect::ReduceSpellCost {
                         amount,
                         filter,
                         first_x_spell_each_turn,
-                    },
+                    }),
                 ) = (ability.timing, ability.effect)
                 else {
                     continue;
@@ -1785,7 +1806,7 @@ impl Game {
 
     /// The number of +1/+1 counters actually placed when `base` would be put on `object`, after
     /// its controller's static replacement effects (CR 614 — Hardened Scales, a "twice that many"
-    /// doubler). Each [`Effect::CounterReplacement`] that controller controls applies once.
+    /// doubler). Each [`Effect::Static(StaticEffect::CounterReplacement)`] that controller controls applies once.
     ///
     /// ponytail: fixed order — all additions, then all multipliers: `(base + Σadd) × Πtimes`.
     /// CR 616.1 lets the *affected player* order simultaneous replacements; every counter
@@ -1809,11 +1830,11 @@ impl Game {
             for ability in p.def.abilities {
                 let (
                     Timing::Static,
-                    Effect::CounterReplacement {
+                    Effect::Static(StaticEffect::CounterReplacement {
                         add: a,
                         times: t,
                         other,
-                    },
+                    }),
                 ) = (ability.timing, ability.effect)
                 else {
                     continue;
@@ -1857,7 +1878,10 @@ impl Game {
             for ability in p.def.abilities {
                 let (
                     Timing::Static,
-                    Effect::CreaturesYouControlEnterWithCounters { filter, count },
+                    Effect::Static(StaticEffect::CreaturesYouControlEnterWithCounters {
+                        filter,
+                        count,
+                    }),
                 ) = (ability.timing, ability.effect)
                 else {
                     continue;
@@ -1873,7 +1897,7 @@ impl Game {
 
     /// The number of tokens actually created when an effect would create `base` tokens under
     /// `recipient`'s control, after that player's static token-creation replacements (CR 614 —
-    /// Doubling Season, "twice that many of those tokens"). Each [`Effect::TokenReplacement`]
+    /// Doubling Season, "twice that many of those tokens"). Each [`Effect::Static(StaticEffect::TokenReplacement)`]
     /// that `recipient` controls multiplies the count once; the multipliers fold together.
     pub(crate) fn token_count_after_replacements(&self, recipient: PlayerId, base: u32) -> u32 {
         if base == 0 {
@@ -1888,7 +1912,7 @@ impl Game {
                 continue;
             }
             for ability in p.def.abilities {
-                let (Timing::Static, Effect::TokenReplacement { times }) =
+                let (Timing::Static, Effect::Static(StaticEffect::TokenReplacement { times })) =
                     (ability.timing, ability.effect)
                 else {
                     continue;
@@ -1901,7 +1925,7 @@ impl Game {
 
     /// The life actually gained when `recipient` would gain `base` life, after that player's static
     /// life-gain replacements (CR 614 — Pest Rescuer, "you gain that much life plus 1 instead").
-    /// Each [`Effect::LifeGainReplacement`] that `recipient` controls adds its `plus`; the addends
+    /// Each [`Effect::Static(StaticEffect::LifeGainReplacement)`] that `recipient` controls adds its `plus`; the addends
     /// fold together. Gaining `base <= 0` is not "gaining life", so no replacement applies.
     pub(crate) fn life_gain_after_replacements(&self, recipient: PlayerId, base: i32) -> i32 {
         if base <= 0 {
@@ -1916,7 +1940,7 @@ impl Game {
                 continue;
             }
             for ability in p.def.abilities {
-                let (Timing::Static, Effect::LifeGainReplacement { plus }) =
+                let (Timing::Static, Effect::Static(StaticEffect::LifeGainReplacement { plus })) =
                     (ability.timing, ability.effect)
                 else {
                     continue;
@@ -1930,7 +1954,7 @@ impl Game {
     /// The value of `{X}` a permanent spell actually enters/resolves with when `caster` casts it
     /// for the announced `base`, after that caster's static cast-X modifications (CR 107.3 —
     /// Unbound Flourishing, "double the value of X"). Applies only to *permanent* spells whose cost
-    /// contains `{X}`; each [`Effect::CastXReplacement`] `caster` controls multiplies the value
+    /// contains `{X}`; each [`Effect::Static(StaticEffect::CastXReplacement)`] `caster` controls multiplies the value
     /// once, folding multiplicatively like the token choke. The cost was already paid at `base`, so
     /// only the stored value downstream effects read is changed — not the payment.
     pub(crate) fn cast_x_after_replacements(
@@ -1959,7 +1983,7 @@ impl Game {
                 continue;
             }
             for ability in p.def.abilities {
-                let (Timing::Static, Effect::CastXReplacement { times }) =
+                let (Timing::Static, Effect::Static(StaticEffect::CastXReplacement { times })) =
                     (ability.timing, ability.effect)
                 else {
                     continue;
@@ -2098,7 +2122,7 @@ mod cache_tests {
     fn anthem() -> CardDef {
         static ABILITIES: &[Ability] = &[Ability {
             timing: Timing::Static,
-            effect: Effect::AnthemStatic {
+            effect: Effect::Static(StaticEffect::Anthem {
                 power: Amount::Fixed(1),
                 toughness: Amount::Fixed(1),
                 self_only: false,
@@ -2115,7 +2139,7 @@ mod cache_tests {
                 condition: None,
                 from_graveyard: false,
                 all_players: false,
-            },
+            }),
             optional: false,
             min_level: 0,
             cost: Cost::FREE,

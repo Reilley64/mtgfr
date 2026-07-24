@@ -34,7 +34,8 @@ optional = true
 # less from your graveyard to the battlefield with a finality counter on it. It's a 1/1 Spirit
 # creature with flying in addition to its other types.
 [[abilities.effects]]
-type = "reanimate_to_battlefield"
+type = "zone"
+mode = "reanimate_to_battlefield"
 target = { card_in_graveyard = { whose = "yours", filter = { artifact_creature_or_non_aura_enchantment_with_mana_value_at_most = 3 } } }
 finality = true
 becomes = { add_types = "creature", add_subtypes = ["Spirit"], base_power = 1, base_toughness = 1, keywords = ["flying"] }

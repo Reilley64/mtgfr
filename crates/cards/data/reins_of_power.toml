@@ -20,5 +20,6 @@ timing = "spell"
 # Untap all creatures you control and all creatures target opponent controls. You and that opponent each gain control
 # of all creatures the other controls until end of turn. Those creatures gain haste until end of turn.
 [[abilities.effects]]
-type = "exchange_all_creatures_until_end_of_turn"
+type = "control"
+mode = "exchange_all_creatures_until_end_of_turn"
 target = "opponent"

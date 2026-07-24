@@ -25,6 +25,7 @@ optional = true
 
 # search your library for a basic land card, reveal it, put it into your hand, then shuffle.
 [[abilities.effects]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = "basic_land"
 to_zone = "hand"

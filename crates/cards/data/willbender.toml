@@ -29,5 +29,6 @@ timing = "turned_face_up"
 
 # change the target of target spell or ability with a single target
 [[abilities.effects]]
-type = "change_target_of_target_spell_or_ability"
+type = "copy"
+mode = "change_target_of_target_spell_or_ability"
 target = "single_target_spell_on_stack"

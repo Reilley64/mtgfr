@@ -22,17 +22,18 @@ timing = "spell"
 
 # Clash with an opponent.
 [[abilities.effects]]
-type = "clash"
+type = "dig"
+mode = "clash"
 
 # If you win the clash, instead put that creature into its owner's library second from the top.
 [[abilities.effects]]
 type = "conditional"
 condition = { type = "won_clash" }
-then = [{ type = "tuck_permanent_into_library", target = { permanent = { types = "creature" } }, second_from_top = true }]
+then = [{ type = "zone", mode = "tuck_permanent_into_library", target = { permanent = { types = "creature" } }, second_from_top = true }]
 
 # Put target creature on top of its owner's library.
 [[abilities.effects]]
 type = "conditional"
 condition = { type = "won_clash" }
 negate = true
-then = [{ type = "tuck_permanent_into_library", target = { permanent = { types = "creature" } }, to_top = true }]
+then = [{ type = "zone", mode = "tuck_permanent_into_library", target = { permanent = { types = "creature" } }, to_top = true }]

@@ -11,16 +11,16 @@ impl Game {
         self.finish_answer();
         let mut events = Vec::new();
         if yes {
-            // A resolution-time "may copy this spell" rider (`Effect::CopyThisSpell`'s
+            // A resolution-time "may copy this spell" rider (`Effect::Copy(CopyEffect::ThisSpell)`'s
             // `optional` gate, CR 707.10c — Sevinne's Reclamation) mints inline as part of the
             // still-resolving spell rather than going on the stack as a new triggered ability — (CR 603, CR 405, CR 601)
             // the mandatory storm/Gravestorm mint this mirrors never leaves the stack either.
-            if let Effect::CopyThisSpell { count, .. } = effect {
+            if let Effect::Copy(CopyEffect::ThisSpell { count, .. }) = effect {
                 self.mint_spell_copies(count, player, source, None, 0, &mut events);
-            } else if let Effect::Demonstrate { spell } = effect {
+            } else if let Effect::Copy(CopyEffect::Demonstrate { spell }) = effect {
                 // Demonstrate's controller copy mints only once an opponent is chosen for the
                 // second copy (CR 702.147a "choose an opponent to also copy it") — see the
-                // `Effect::Demonstrate` branch in `Game::choose_targets`.
+                // `Effect::Copy(CopyEffect::Demonstrate)` branch in `Game::choose_targets`.
                 let legal: Vec<Target> = self
                     .legal_targets_for(
                         TargetSpec::OpponentPlayer,
@@ -40,14 +40,14 @@ impl Game {
                     pending::ChoiceRequest::ChooseTarget {
                         player,
                         source,
-                        effect: Effect::Demonstrate { spell },
+                        effect: Effect::Copy(CopyEffect::Demonstrate { spell }),
                         legal,
                         count: TargetCount::default(),
                         x: 0,
                         activated: false,
                     },
                 );
-            } else if let Effect::TargetPlayerMayDraw { count, .. } = effect {
+            } else if let Effect::Choice(ChoiceEffect::TargetPlayerMayDraw { count, .. }) = effect {
                 // Questing Phelddagrif's blue rider: `player` here is the *targeted* opponent who
                 // just answered "yes" (not the ability's own controller, unlike every other arm
                 // in this function) — draw them `count` cards directly, no further pause (CR
@@ -56,14 +56,19 @@ impl Game {
                 let evs = self.draw_events(player, n);
                 self.apply_all(&evs);
                 events.extend(evs);
-            } else if let Effect::DamagingCreatureControllerMayDraw { count, .. } = effect {
+            } else if let Effect::Choice(ChoiceEffect::DamagingCreatureControllerMayDraw {
+                count,
+                ..
+            }) = effect
+            {
                 // Edric: `player` here is the controller of the creature that dealt the combat
                 // damage (baked in at trigger placement), not Edric's own controller — draw them
                 // `count` cards directly, the same shape as `TargetPlayerMayDraw` above.
                 let evs = self.draw_events(player, count);
                 self.apply_all(&evs);
                 events.extend(evs);
-            } else if let Effect::MayDrawUnlessPays { cost, caster } = effect {
+            } else if let Effect::Choice(ChoiceEffect::MayDrawUnlessPays { cost, caster }) = effect
+            {
                 // Rhystic Study: `player` (the controller) said they want to draw, so now
                 // `caster` (the triggering opponent, baked in by `contextualize_effect`) gets a
                 // chance to pay `cost` and stop it — see `Game::pay_or_controller_draws`.
@@ -209,8 +214,8 @@ impl Game {
         // choice pending with nothing tapped.
         self.settle_payment(player, cost, None, None, &mut events)?;
         self.finish_answer();
-        if let Effect::CopyThisSpell { count, .. } = effect {
-            // Chain Lightning's reflexive rider (`Effect::MayPayToCopyThis`): mint inline as part
+        if let Effect::Copy(CopyEffect::ThisSpell { count, .. }) = effect {
+            // Chain Lightning's reflexive rider (`Effect::Copy(CopyEffect::MayPayToCopyThis)`): mint inline as part
             // of the still-resolving spell, matching `Game::answer_may`'s optional-copy shape,
             // rather than placing a fresh ability — `source` is that still-resolving spell, and
             // the copy mints under `player`, the PAYER (this pause's reflexively-targeted damaged
@@ -377,9 +382,9 @@ impl Game {
             self.finish_answer();
             let mut events = Vec::new();
             self.run(
-                Effect::SacrificeObject {
+                Effect::Sacrifice(SacrificeEffect::Object {
                     object: Some(source),
-                },
+                }),
                 ResolveCtx {
                     controller: player,
                     source,
@@ -407,7 +412,7 @@ impl Game {
     /// polarity as [`Game::pay_echo`]; otherwise `cards` must be exactly `count` ids from
     /// `options` that all share one owner (CR "a single graveyard") — each is put on the bottom
     /// of that owner's library ([`Event::TuckedToLibrary`], the same zone move Mistveil Plains's
-    /// `Effect::TuckFromGraveyard` uses). An invalid non-empty answer (wrong count, mixed
+    /// `Effect::Zone(ZoneEffect::TuckFromGraveyard)` uses). An invalid non-empty answer (wrong count, mixed
     /// owners, an id not offered) rejects, leaving the choice pending so the player can still
     /// decline.
     pub(crate) fn pay_cumulative_upkeep(
@@ -429,9 +434,9 @@ impl Game {
             self.finish_answer();
             let mut events = Vec::new();
             self.run(
-                Effect::SacrificeObject {
+                Effect::Sacrifice(SacrificeEffect::Object {
                     object: Some(source),
-                },
+                }),
                 ResolveCtx {
                     controller: player,
                     source,
@@ -476,7 +481,7 @@ impl Game {
     /// the graveyard to hand, or decline and exile it (CR 702.59a). The graveyard-scoped twin of
     /// [`Game::pay_echo`] — same [`Intent::PayOptionalCost`] shape and "declining does something"
     /// polarity (there, sacrificing a battlefield permanent; here, exiling a graveyard card, so
-    /// the events are pushed directly rather than routed through `Effect::SacrificeObject`, which
+    /// the events are pushed directly rather than routed through `Effect::Destroy(DestroyEffect::SacrificeObject)`, which
     /// only knows battlefield objects). An unaffordable "pay" leaves the choice pending so the
     /// player can still decline.
     pub(crate) fn pay_recover(
@@ -530,9 +535,9 @@ impl Game {
             self.finish_answer();
             let mut events = Vec::new();
             self.run(
-                Effect::SacrificeObject {
+                Effect::Sacrifice(SacrificeEffect::Object {
                     object: Some(source),
-                },
+                }),
                 ResolveCtx {
                     controller: player,
                     source,
@@ -573,9 +578,9 @@ impl Game {
         let mut events = Vec::new();
         match land {
             None => self.run(
-                Effect::SacrificeObject {
+                Effect::Sacrifice(SacrificeEffect::Object {
                     object: Some(source),
-                },
+                }),
                 ResolveCtx {
                     controller: player,
                     source,

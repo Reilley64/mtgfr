@@ -26,7 +26,8 @@ controller = "you"
 
 # this creature gets +4/+4 and gains trample until end of turn.
 [[abilities.effects]]
-type = "pump_until_end_of_turn"
+type = "pump"
+mode = "pump_until_end_of_turn"
 power = 4
 toughness = 4
 target = "this"

@@ -29,4 +29,5 @@ spell_filter = "instant_or_sorcery"
 # That player copies that spell for each other creature they control that the spell could target.
 # Each copy targets a different one of those creatures.
 [[abilities.effects]]
-type = "copy_triggering_spell_for_each_other_creature_you_control"
+type = "copy"
+mode = "copy_triggering_spell_for_each_other_creature_you_control"

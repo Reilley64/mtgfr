@@ -27,7 +27,8 @@ timing = "static"
 
 # This enchantment enters with X charge counters on it.
 [[abilities.effects]]
-type = "enters_with_counters"
+type = "static"
+mode = "enters_with_counters"
 count = "x"
 kind = "charge"
 
@@ -41,7 +42,8 @@ once_each_turn = true
 
 # Add one mana of any color.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["any"]
 
 # At the beginning of your upkeep, if this enchantment has no charge counters on it, return it to
@@ -52,4 +54,5 @@ condition = { type = "source_has_no_counters_of_kind", kind = "charge" }
 
 # return it to its owner's hand.
 [[abilities.effects]]
-type = "return_this_to_hand"
+type = "zone"
+mode = "return_this_to_hand"

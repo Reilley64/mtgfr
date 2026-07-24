@@ -27,5 +27,6 @@ timing = "enchanted_creature_attacks"
 # onto the battlefield. If you don't, put it into your hand. Put the rest on the bottom of your
 # library in a random order.
 [[abilities.effects]]
-type = "reveal_until_may_deploy"
+type = "dig"
+mode = "reveal_until_may_deploy"
 filter = "aura"

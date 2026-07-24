@@ -472,7 +472,7 @@ impl Game {
             0
         };
         // ponytail: the additional discard is a *cost* (CR 601.2h — paid pre-stack, before
-        // SpellCast below), distinct from a resolution-time `Effect::Discard`. Applied
+        // SpellCast below), distinct from a resolution-time `Effect::Choice(ChoiceEffect::Discard)`. Applied
         // incrementally (not a single `apply_all`) so each `next_object_id()` — one per discarded
         // card, then the spell itself — sees the previous event already applied.
         for &id in discard_cost {
@@ -574,7 +574,7 @@ impl Game {
         // Replicate (CR 702.108b-c): "copy it for each time you paid its replicate cost … This
         // all happens before any player has a chance to cast spells or activate abilities in
         // response" — minted right here at the cast choke (not a triggered ability, doesn't use
-        // the stack), reusing the same `mint_spell_copies` rider `Effect::CopyThisSpell` uses for
+        // the stack), reusing the same `mint_spell_copies` rider `Effect::Copy(CopyEffect::ThisSpell)` uses for
         // its own per-copy CR 707.10c retarget.
         if replicate_count > 0 {
             self.mint_spell_copies(
@@ -715,8 +715,8 @@ impl Game {
     }
 
     /// `def`'s first `Timing::Spell` ability with a target — spec and count (CR 707.10c/CR
-    /// 114.6a), single- or multi-target alike. The shared lookup [`Effect::CopyTargetSpell`]'s
-    /// copy-retarget and [`Effect::ChangeTargetOfTargetSpellOrAbility`]'s optional (Wild Ricochet)
+    /// 114.6a), single- or multi-target alike. The shared lookup [`Effect::Copy(CopyEffect::TargetSpell)`]'s
+    /// copy-retarget and [`Effect::Copy(CopyEffect::ChangeTargetOfTargetSpellOrAbility)`]'s optional (Wild Ricochet)
     /// bend both key off. `None` for a targetless spell (no retarget/copy-retarget offered). A
     /// later independent clause (Magma Opus) is reached separately once clause 0 settles, through
     /// [`Self::spell_target_clause`] via [`Self::advance_spell_target_clauses`].
@@ -732,7 +732,7 @@ impl Game {
     /// Record a just-cast multi-target spell's chosen targets (CR 601.2c), starting at its first
     /// independent target clause. Delegates to [`Self::choose_spell_target_clause`], which chains
     /// through every clause in printed order before the divided-damage/counter split runs. Reused by
-    /// `Effect::CopyTargetSpell`/`ChangeTargetOfTargetSpellOrAbility` (in `effects.rs`) to offer a
+    /// `Effect::Copy(CopyEffect::TargetSpell)`/`ChangeTargetOfTargetSpellOrAbility` (in `effects.rs`) to offer a
     /// copy's or a bent original's CR 707.10c/114.6a retarget — same shape, just against an
     /// already-on-the-stack spell id instead of a just-cast one. `anchor` is whose perspective
     /// legality is evaluated from (the bent/copied spell's own controller — CR 114.6/707.10a);
@@ -864,7 +864,7 @@ impl Game {
     }
 
     /// After a multi-target spell's targets are finalized (CR 601.2c), also settle CR 601.2d's
-    /// division for a `divided: true` `Effect::DealDamage` on that spell (Magma Opus's "4 damage
+    /// division for a `divided: true` `Effect::Damage(DamageEffect::Target)` on that spell (Magma Opus's "4 damage
     /// divided as you choose among any number of targets"). A no-op for a spell with no divided
     /// effect, or whose divided effect has no chosen targets (a legal "any number... including
     /// none" of zero). A single chosen target needs no choice — the whole amount is auto-assigned
@@ -878,11 +878,14 @@ impl Game {
         let x = spell_obj.x;
         let Some(ability) = def.abilities.iter().find(|a| {
             matches!(a.timing, Timing::Spell)
-                && matches!(a.effect, Effect::DealDamage { divided: true, .. })
+                && matches!(
+                    a.effect,
+                    Effect::Damage(DamageEffect::Target { divided: true, .. })
+                )
         }) else {
             return;
         };
-        let Effect::DealDamage { amount, .. } = ability.effect else {
+        let Effect::Damage(DamageEffect::Target { amount, .. }) = ability.effect else {
             unreachable!("guarded by the divided-DealDamage find above")
         };
         // "Any number of targets" (CR 601.2d) admits creatures *and* players — collect both.
@@ -907,7 +910,7 @@ impl Game {
     }
 
     /// After a multi-target spell's targets are finalized (CR 601.2c), also settle CR 601.2d's
-    /// division for a `divided: true` `Effect::PutCounters` on that spell (Grove's Bounty's
+    /// division for a `divided: true` `Effect::Counters(CountersEffect::PutCounters)` on that spell (Grove's Bounty's
     /// "Distribute X +1/+1 counters among any number of target creatures you control"). Mirrors
     /// [`Self::maybe_begin_damage_division`] exactly — a no-op for a spell with no divided-
     /// counters effect or no chosen targets; a single chosen target auto-takes the whole total.
@@ -923,14 +926,17 @@ impl Game {
         let x = spell_obj.x;
         let Some(ability) = def.abilities.iter().find(|a| {
             matches!(a.timing, Timing::Spell)
-                && matches!(a.effect, Effect::PutCounters { divided: true, .. })
+                && matches!(
+                    a.effect,
+                    Effect::Counters(CountersEffect::PutCounters { divided: true, .. })
+                )
         }) else {
             return;
         };
-        let Effect::PutCounters { count, .. } = ability.effect else {
+        let Effect::Counters(CountersEffect::PutCounters { count, .. }) = ability.effect else {
             unreachable!("guarded by the divided-PutCounters find above")
         };
-        // A divided effect's targets are always permanents (see `Effect::PutCounters`'s doc).
+        // A divided effect's targets are always permanents (see `Effect::Counters(CountersEffect::PutCounters)`'s doc).
         let targets: Vec<ObjectId> = self
             .spell(spell)
             .targets
@@ -1115,9 +1121,9 @@ impl Game {
             player,
             card,
             &[(
-                Effect::DrawCards {
+                Effect::Draw(DrawEffect::Cards {
                     count: Amount::Fixed(1),
-                },
+                }),
                 None,
             )],
             true,
@@ -1381,9 +1387,9 @@ impl Game {
                         controller: player,
                         source: card,
                         fire_at: Step::End,
-                        effect: Effect::SacrificeObject {
+                        effect: Effect::Sacrifice(SacrificeEffect::Object {
                             object: Some(token),
-                        },
+                        }),
                     },
                 );
             }
@@ -2003,7 +2009,7 @@ impl Game {
         // only to gain the *next* level, so its source must currently sit at exactly `level - 1`
         // (each level gained exactly once). Supersedes the `min_level` gate below (level-up
         // abilities carry `min_level` 0). A non-permanent source can't be a Class, so reject.
-        if let Effect::LevelUp { level } = ability.effect {
+        if let Effect::Counters(CountersEffect::LevelUp { level }) = ability.effect {
             if perm.is_none_or(|p| p.level + 1 != level) {
                 return Err(Reject::CannotActivate);
             }
@@ -2038,7 +2044,9 @@ impl Game {
         }
         // Equip (CR 702.6e) is sorcery-speed. (Its creature-you-control target is a chosen
         // input, checked by the caller.)
-        if matches!(ability.effect, Effect::Equip) && !self.can_take_sorcery_speed_action(player) {
+        if matches!(ability.effect, Effect::Control(ControlEffect::Equip))
+            && !self.can_take_sorcery_speed_action(player)
+        {
             return Err(Reject::WrongTiming);
         }
         // A tap cost requires an untapped permanent that isn't summoning sick (haste aside) — and,
@@ -2189,7 +2197,7 @@ impl Game {
             return Ok(events);
         }
         // Equip targets a creature you control (CR 702.6e; its timing is gated above).
-        if matches!(ability.effect, Effect::Equip) {
+        if matches!(ability.effect, Effect::Control(ControlEffect::Equip)) {
             let controls_target_creature = matches!(target, Some(Target::Object(c))
                 if self.is_creature_on_battlefield(c) && self.controller_of(c) == player);
             if !controls_target_creature {
@@ -2353,7 +2361,7 @@ impl Game {
         }
         // "Return this to its owner's hand" as part of the cost (Rootha, Mercurial Artist's
         // "Return Rootha to its owner's hand"). A token ceases to exist instead of reaching a
-        // hand (CR 111.7) — same branch `Effect::ReturnToHand` takes for a targeted bounce.
+        // hand (CR 111.7) — same branch `Effect::Zone(ZoneEffect::ReturnToHand)` takes for a targeted bounce.
         if cost.return_self {
             let perm = self.permanent(object);
             let event = if perm.token {
@@ -2410,12 +2418,12 @@ impl Game {
             // exempts a mana ability from the stack, not from choices made while it resolves, so (CR 605, CR 405, CR 113)
             // this pauses on a ChooseManaColor choice instead of resolving straight to mana —
             // the same pending-choice/answer flow every other resolution-time decision uses.
-            if let Effect::AddMana {
+            if let Effect::Mana(ManaEffect::Add {
                 mana,
                 repeat,
                 single_color: true,
                 ..
-            } = effect
+            }) = effect
             {
                 let repeat = self.resolve_count(repeat, player, object, target, 0);
                 let amount = (mana.any as u32).saturating_mul(repeat).min(u8::MAX as u32) as u8;

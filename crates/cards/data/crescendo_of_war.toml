@@ -20,7 +20,8 @@ timing = "each_upkeep"
 
 # put a strife counter on this enchantment.
 [[abilities.effects]]
-type = "put_counters"
+type = "counters"
+mode = "put_counters"
 count = 1
 target = "this"
 kind = "strife"
@@ -31,7 +32,8 @@ timing = "static"
 
 # Attacking creatures get +1/+0 for each strife counter on this enchantment.
 [[abilities.effects]]
-type = "anthem_static"
+type = "static"
+mode = "anthem"
 power = { per_counter_of_kind = "strife" }
 attacking_only = true
 all_players = true
@@ -42,6 +44,7 @@ timing = "static"
 
 # Blocking creatures you control get +1/+0 for each strife counter on this enchantment.
 [[abilities.effects]]
-type = "anthem_static"
+type = "static"
+mode = "anthem"
 power = { per_counter_of_kind = "strife" }
 blocking_only = true

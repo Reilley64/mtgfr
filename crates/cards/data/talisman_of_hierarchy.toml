@@ -20,7 +20,8 @@ taps_self = true
 
 # Add {C}.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["colorless"]
 
 # {T}: Add {W} or {B}. This artifact deals 1 damage to you.
@@ -31,5 +32,6 @@ self_damage = 1
 
 # Add {W} or {B}. This artifact deals 1 damage to you.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = [["white", "black"]]

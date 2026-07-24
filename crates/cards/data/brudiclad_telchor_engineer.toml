@@ -28,7 +28,8 @@ timing = "static"
 
 # Creature tokens you control have haste.
 [[abilities.effects]]
-type = "anthem_static"
+type = "static"
+mode = "anthem"
 tokens_only = true
 keywords = ["haste"]
 
@@ -40,9 +41,11 @@ timing = "begin_combat"
 
 # create a 2/1 blue Phyrexian Myr artifact creature token
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 token = "d23c9257-f0fc-40fb-ab35-4be57979568a"
 count = 1
 
 [[abilities.effects]]
-type = "each_other_token_becomes_copy_of_chosen"
+type = "choice"
+mode = "each_other_token_becomes_copy_of_chosen"

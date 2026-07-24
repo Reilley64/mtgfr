@@ -25,7 +25,8 @@ activation_cost = { black = 1 }
 
 # Regenerate this creature.
 [[abilities.effects]]
-type = "regenerate_shield"
+type = "control"
+mode = "regenerate_shield"
 target = "this"
 
 # Swampcycling {2} ({2}, Discard this card: Search your library for a Swamp card, reveal it, put it into your hand,
@@ -37,6 +38,7 @@ generic = 2
 
 # Search your library for a Swamp card, reveal it, put it into your hand, then shuffle.
 [[hand_ability.effects]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = { land_with_subtype = ["Swamp"] }
 to_zone = "hand"

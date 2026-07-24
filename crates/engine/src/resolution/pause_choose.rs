@@ -19,7 +19,7 @@ impl Game {
         match effect {
             // Patchwork Banner's "As this artifact enters, choose a creature type": pause on a
             // ChooseCreatureType for the controller, over the pool's known creature types.
-            Effect::ChooseCreatureType => pending::raise(
+            Effect::Choice(ChoiceEffect::ChooseCreatureType) => pending::raise(
                 self,
                 pending::ChoiceRequest::ChooseCreatureType {
                     player: controller,
@@ -29,7 +29,7 @@ impl Game {
             ),
             // Flickering Ward's "As this Aura enters, choose a color": pause on a ChooseColor for (CR 702.21, CR 303.4)
             // the controller over the fixed five colors.
-            Effect::ChooseColor => pending::raise(
+            Effect::Choice(ChoiceEffect::ChooseColor) => pending::raise(
                 self,
                 pending::ChoiceRequest::ChooseColor {
                     player: controller,
@@ -40,7 +40,7 @@ impl Game {
             // Wild Mongrel's "...and becomes the color of your choice until end of turn": the same (CR 613.3c)
             // ChooseColor picker as `ChooseColor` above, but the answer sets an until-end-of-turn
             // color-SET instead of the indefinite `chosen_color`.
-            Effect::SetOwnColorUntilEndOfTurn => pending::raise(
+            Effect::Choice(ChoiceEffect::SetOwnColorUntilEndOfTurn) => pending::raise(
                 self,
                 pending::ChoiceRequest::ChooseColor {
                     player: controller,
@@ -52,8 +52,8 @@ impl Game {
             // controller. The chosen mode resolves later through this same pipeline (see
             // `answer_choose_mode`), carrying this ability's `source`/`target`/`x` context so a
             // mode that needs them still has them. An empty mode list is a defensive no-op.
-            Effect::ChooseOne { modes } => {
-                if modes.is_empty() {
+            Effect::ChooseOne { options } => {
+                if options.is_empty() {
                     return;
                 }
                 pending::raise(
@@ -63,7 +63,7 @@ impl Game {
                         source,
                         target,
                         x,
-                        modes,
+                        modes: options,
                     },
                 );
             }
@@ -71,7 +71,7 @@ impl Game {
             // (`spell` baked in at placement, see `CardDef::demonstrate`). The spell may have
             // been countered in response before this trigger resolved (CR 707.10c guard, same
             // shape as `CopyTriggeringSpell`): nothing left to copy.
-            Effect::Demonstrate { spell } => {
+            Effect::Copy(CopyEffect::Demonstrate { spell }) => {
                 if !matches!(self.objects[spell as usize], Object::Spell(_)) {
                     return;
                 }
@@ -80,13 +80,13 @@ impl Game {
                     pending::ChoiceRequest::MayYesNo {
                         player: controller,
                         source,
-                        effect: Effect::Demonstrate { spell },
+                        effect: Effect::Copy(CopyEffect::Demonstrate { spell }),
                     },
                 );
             }
             // Proliferate (CR 701.27) pauses on a Proliferate choice over every counter-bearing
             // permanent; `times` (Expansion Algorithm's {X}) may re-pause after this iteration.
-            Effect::Proliferate { times } => {
+            Effect::Choice(ChoiceEffect::Proliferate { times }) => {
                 let n = self.resolve_count(times, controller, source, target, x);
                 pending::raise(
                     self,
@@ -100,7 +100,7 @@ impl Game {
             // Guardian of Faith's ETB (CR 702.26): pause to choose any number of the *other*
             // creatures its controller controls to phase out. Nothing to choose with no other
             // creature — skip past (like Proliferate's empty board).
-            Effect::PhaseOut => pending::raise(
+            Effect::Choice(ChoiceEffect::PhaseOut) => pending::raise(
                 self,
                 pending::ChoiceRequest::PhaseOut {
                     player: controller,

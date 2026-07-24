@@ -30,7 +30,8 @@ timing = "etb"
 
 # creatures you control gain flying and get +X/+X until end of turn, where X is the number of creatures you control.
 [[abilities.effects]]
-type = "pump_creatures_you_control_until_end_of_turn"
+type = "pump"
+mode = "pump_creatures_you_control_until_end_of_turn"
 power = "per_creature_you_control"
 toughness = "per_creature_you_control"
 keywords = ["flying"]

@@ -555,7 +555,7 @@ mod tests {
     use crate::db;
     use crate::decks::{keep_all_hands, master_from_u64, seed_game};
     use crate::test_support::{as_user, seat_deck, user_with_deck};
-    use engine::{Defender, PlayerId, SacrificeCost};
+    use engine::{DamageEffect, Defender, PlayerId, SacrificeCost};
     use schema::{IntentEnvelope, WireIntent, to_intent};
 
     use crate::game_loop::{set_yield_core, submit_intent_core};
@@ -746,7 +746,7 @@ mod tests {
         conditional_keywords: &[],
         abilities: &[engine::Ability {
             timing: engine::Timing::Triggered(engine::Trigger::Etb),
-            effect: engine::Effect::DealDamage {
+            effect: engine::Effect::Damage(DamageEffect::Target {
                 amount: engine::Amount::Fixed(1),
                 target: engine::TargetSpec::Creature,
                 count: engine::TargetCount {
@@ -757,7 +757,7 @@ mod tests {
                     strive_scaled: false,
                 },
                 divided: false,
-            },
+            }),
             optional: false,
             min_level: 0,
             condition: None,

@@ -6,9 +6,9 @@
 use crate::*;
 
 impl Game {
-    pub(crate) fn mint_zones_family(
+    pub(crate) fn mint_zones(
         &self,
-        effect: Effect,
+        effect: ZoneEffect,
         controller: PlayerId,
         source: ObjectId,
         target: Option<Target>,
@@ -20,7 +20,7 @@ impl Game {
             // library card — puts it onto the battlefield face down as a 2/2. Reads the target's
             // owner (control/ownership conflation, same as `GainLifeTargetController`), which stays
             // correct across the target's own exile (`owner_of` follows `Object::Moved`).
-            Effect::Manifest => {
+            ZoneEffect::Manifest => {
                 let object = expect_object_target(target, "a manifest");
                 let player = self.owner_of(object);
                 let Some(&card) = self.players[player.0 as usize].library.first() else {
@@ -37,7 +37,7 @@ impl Game {
             // (`return_at` absent) or schedule that return as a real CR 603.7 delayed triggered
             // ability at `return_at`'s step (`ReturnFlickeredCard`, carrying the specific card now
             // sitting in exile).
-            Effect::FlickerTarget { return_at, .. } => {
+            ZoneEffect::FlickerTarget { return_at, .. } => {
                 let object = expect_object_target(target, "flicker");
                 // CR 111.7: a token that leaves the battlefield ceases to exist rather than
                 // changing zones — nothing to flicker back.
@@ -76,9 +76,9 @@ impl Game {
                             controller,
                             source,
                             fire_at,
-                            effect: Effect::ReturnFlickeredCard {
+                            effect: Effect::Zone(ZoneEffect::ReturnFlickeredCard {
                                 exiled: Some(exiled),
-                            },
+                            }),
                         },
                     ],
                 }
@@ -87,7 +87,7 @@ impl Game {
             // (Mistmeadow Witch): return the specific card `exiled` names to the battlefield under
             // its owner's control. Guard-return with no return if it's since left exile some
             // other way (CR 603.10a last-known information).
-            Effect::ReturnFlickeredCard { exiled } => {
+            ZoneEffect::ReturnFlickeredCard { exiled } => {
                 let Some(exiled) = exiled else {
                     return Vec::new();
                 };
@@ -101,7 +101,7 @@ impl Game {
                     controller: self.owner_of(exiled),
                 }]
             }
-            Effect::ReturnToHand { .. } => {
+            ZoneEffect::ReturnToHand { .. } => {
                 let object = expect_object_target(target, "bounce");
                 let permanent = self
                     .as_permanent(object)
@@ -125,7 +125,7 @@ impl Game {
             // resolves, the Aura is already a graveyard card) or a battlefield activated ability
             // (Flickering Ward). Guard-return if the source has left both zones by resolution —
             // exiled by Nezumi Graverobber mid-trigger, say — per CR 603.6e / 400.7.
-            Effect::ReturnThisToHand => {
+            ZoneEffect::ReturnThisToHand => {
                 let Some(current) =
                     self.return_this_source(source, &[Zone::Graveyard, Zone::Battlefield])
                 else {
@@ -141,7 +141,7 @@ impl Game {
             // `ReanimateToBattlefield` — enters via the same ETB path. No-op if it has left the
             // graveyard by resolution (exiled mid-trigger, say). Teacher's Pest activates this
             // from the graveyard directly (CR 112.6) with `tapped = true`.
-            Effect::ReturnThisFromGraveyardToBattlefield { tapped } => {
+            ZoneEffect::ReturnThisFromGraveyardToBattlefield { tapped } => {
                 let Some(current) = self.return_this_source(source, &[Zone::Graveyard]) else {
                     return Vec::new();
                 };
@@ -155,7 +155,7 @@ impl Game {
             }
             // Mass bounce: every matching permanent returns to its owner's hand (a token ceases to
             // exist). Ids are minted sequentially, matching the order `apply` will push them.
-            Effect::ReturnAllToHand { filter } => {
+            ZoneEffect::ReturnAllToHand { filter } => {
                 let mut next = self.next_object_id();
                 let mut events = Vec::new();
                 for id in self.battlefield() {
@@ -184,7 +184,7 @@ impl Game {
             // Raise Dead: send the chosen graveyard creature card to its owner's hand. Reuses
             // the bounce event (both move an object to its owner's hand); the graveyard card
             // isn't on the stack, so that event's stack cleanup is a harmless no-op.
-            Effect::ReturnFromGraveyardToHand { .. } => {
+            ZoneEffect::ReturnFromGraveyardToHand { .. } => {
                 let object = expect_object_target(target, "graveyard recursion");
                 vec![Event::ReturnedToHand {
                     card: self.next_object_id(),
@@ -196,7 +196,7 @@ impl Game {
             // Excava, the Risen Past's `becomes` rider follows with a `ReanimatedCreatureBecame` on
             // the just-entered permanent — the "It's a 1/1 Spirit creature with flying" indefinite
             // set (CR 611.2c). A plain reanimation (`becomes == None`) is just the one event.
-            Effect::ReanimateToBattlefield {
+            ZoneEffect::ReanimateToBattlefield {
                 finality, becomes, ..
             } => {
                 let object = expect_object_target(target, "reanimation");
@@ -224,7 +224,7 @@ impl Game {
             // control") or that card's owner ("its owner's control"). `dying` is the pre-death
             // battlefield id — `current_id` follows its `Moved` lineage into whatever object it
             // is now.
-            Effect::ReanimateDyingEnchantedCreature { dying, under_owner } => {
+            ZoneEffect::ReanimateDyingEnchantedCreature { dying, under_owner } => {
                 let Some(dying) = dying else {
                     return Vec::new();
                 };
@@ -246,7 +246,7 @@ impl Game {
             // response — the "if you do" fails). Reads the copiable `def` off the card before it
             // exiles, mints the token copy (CR 707.2) under `controller`, then adds `add_subtypes`
             // on the minted token (CR 613.4 subtype layer, indefinite).
-            Effect::ExileDeadCreatureCreateCopyWithSubtype {
+            ZoneEffect::ExileDeadCreatureCreateCopyWithSubtype {
                 dead,
                 add_subtypes,
                 leaves_returns_exiled,
@@ -291,7 +291,7 @@ impl Game {
             // is no longer in exile (already reclaimed some other way) — the printed rider only
             // returns a card that's still exiled. `Event::ReturnedExiledCardToGraveyard`, not
             // `MovedToGraveyard` — see that event's doc for why (this isn't a death).
-            Effect::ReturnExiledCardToOwnersGraveyard { exiled } => {
+            ZoneEffect::ReturnExiledCardToOwnersGraveyard { exiled } => {
                 if self.zone_of(exiled) != Zone::Exile {
                     return Vec::new();
                 }
@@ -308,7 +308,7 @@ impl Game {
             // move the Aura graveyard→battlefield through the same shared reanimate choke
             // `ReanimateDyingEnchantedCreature` above uses, then attach it in the same batch
             // (`Event::AttachedTo`) rather than pausing to choose a host.
-            Effect::ReturnThisAuraAttachedTo { creature } => {
+            ZoneEffect::ReturnThisAuraAttachedTo { creature } => {
                 let card = self.current_id(source);
                 if self.zone_of(card) != Zone::Graveyard {
                     return Vec::new();
@@ -334,7 +334,7 @@ impl Game {
             }
             // Mistveil Plains: put the chosen graveyard card on the bottom of its owner's
             // library. Mystic Sanctuary sets `to_top` for its "on top of your library" instead.
-            Effect::TuckFromGraveyard { to_top, .. } => {
+            ZoneEffect::TuckFromGraveyard { to_top, .. } => {
                 let object = expect_object_target(target, "graveyard tuck");
                 vec![Event::TuckedToLibrary {
                     card: self.next_object_id(),
@@ -348,7 +348,7 @@ impl Game {
             // library"): put a targeted battlefield permanent into its owner's library at a fixed
             // position. No shuffle — unlike its fused sibling `ShuffleTargetPermanentIntoLibraryThenReveal`
             // above, this needs no `&mut self` and stays in the pure event-building path.
-            Effect::TuckPermanentIntoLibrary {
+            ZoneEffect::TuckPermanentIntoLibrary {
                 to_top,
                 second_from_top,
                 ..
@@ -377,7 +377,7 @@ impl Game {
             // distinct owner exactly once — never mid-batch, so a second tuck to an owner already
             // shuffled doesn't land on top of a now-scrambled library while the first tuck was the
             // only one actually randomized in.
-            Effect::TuckSelfAndBlockedCreatures => {
+            ZoneEffect::TuckSelfAndBlockedCreatures => {
                 let mut objects = vec![source];
                 objects.extend(self.attackers_blocked_by(source));
                 let mut events = Vec::new();
@@ -423,7 +423,7 @@ impl Game {
             // (Chaos Warp) — a real shuffle rather than a fixed position, but nothing in *this*
             // effect reads the post-shuffle order (Oblation's draw is a separate `TargetOwnerDraws`
             // step later in the same `Sequence`), so it stays in the pure event-building path too.
-            Effect::ShuffleTargetPermanentIntoLibrary { .. } => {
+            ZoneEffect::ShuffleTargetPermanentIntoLibrary { .. } => {
                 let object = expect_object_target(target, "a permanent to shuffle-tuck");
                 self.shuffle_tuck_events(object)
             }
@@ -431,7 +431,7 @@ impl Game {
             // controller's own graveyard returns to the battlefield under their control, with no
             // finality counter. Ids are minted sequentially, matching the order `apply` will push
             // them (same pattern as `ReturnAllToHand`'s mass bounce).
-            Effect::MassReturnFromGraveyard {
+            ZoneEffect::MassReturnFromGraveyard {
                 filter,
                 all_players,
             } => {
@@ -478,7 +478,7 @@ impl Game {
             // consumer can hit this (a token never sits in a graveyard to be reanimated, nor
             // does `PutCreatureFromHand` ever deploy one), but the guard costs nothing and keeps
             // the effect faithful if one ever does.
-            Effect::ReturnObjectToHand { object } => {
+            ZoneEffect::ReturnObjectToHand { object } => {
                 let id = object.expect("filled in when the delayed return was scheduled");
                 if self.zone_of(id) != Zone::Battlefield {
                     return Vec::new();
@@ -503,7 +503,7 @@ impl Game {
             // CR 608.2 "do as much as possible" reading gains 2 life even then (the two clauses are
             // independent), but Serra Paragon is a documented rules-corner with no official ruling;
             // split the guard to still gain life if a card ever depends on that line.
-            Effect::ExileGraveyardObjectGainLife { object, amount } => {
+            ZoneEffect::ExileGraveyardObjectGainLife { object, amount } => {
                 let id = object.expect("filled in when the placed trigger was queued");
                 if self.zone_of(id) != Zone::Graveyard {
                     return Vec::new();
@@ -521,7 +521,7 @@ impl Game {
         }
     }
 
-    /// Chaos Warp's fused reveal ([`Effect::ShuffleTargetPermanentIntoLibraryThenReveal`]):
+    /// Chaos Warp's fused reveal ([`ZoneEffect::ShuffleTargetPermanentIntoLibraryThenReveal`]):
     /// the target's owner shuffles it into their library, then reveals the new top card and —
     /// if it's a permanent card — puts it onto the battlefield under the owner (not
     /// necessarily this effect's controller). Deterministic (the shuffle's PRNG is the only
@@ -572,10 +572,10 @@ impl Game {
 
     /// Shuffle a target permanent into its owner's library (CR 111.7: a token ceases to exist
     /// instead) — the event pair shared by both Chaos Warp's fused reveal
-    /// ([`Effect::ShuffleTargetPermanentIntoLibraryThenReveal`], via
+    /// ([`ZoneEffect::ShuffleTargetPermanentIntoLibraryThenReveal`], via
     /// [`Self::resolve_shuffle_then_reveal`], which needs `&mut self` to read the
     /// post-shuffle top card) and Oblation's no-reveal sibling
-    /// ([`Effect::ShuffleTargetPermanentIntoLibrary`] above, which doesn't).
+    /// ([`ZoneEffect::ShuffleTargetPermanentIntoLibrary`] above, which doesn't).
     pub(crate) fn shuffle_tuck_events(&self, object: ObjectId) -> Vec<Event> {
         let owner = self.owner_of(object);
         if self.permanent(object).token {

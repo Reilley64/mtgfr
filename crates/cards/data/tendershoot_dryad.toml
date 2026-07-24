@@ -21,7 +21,8 @@ timing = "each_upkeep"
 
 # create a 1/1 green Saproling creature token.
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 token = "2b7dba01-b08c-4218-9fc1-da55559d9155"
 count = 1
 
@@ -30,7 +31,8 @@ timing = "static"
 
 # Saprolings you control get +2/+2 as long as you have the city's blessing.
 [[abilities.effects]]
-type = "anthem_static"
+type = "static"
+mode = "anthem"
 power = 2
 toughness = 2
 subtypes = ["Saproling"]

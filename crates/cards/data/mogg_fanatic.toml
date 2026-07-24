@@ -24,6 +24,7 @@ sacrifice = "this"
 
 # It deals 1 damage to any target.
 [[abilities.effects]]
-type = "deal_damage"
+type = "damage"
+mode = "target"
 amount = 1
 target = "any"

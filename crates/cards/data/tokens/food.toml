@@ -19,5 +19,6 @@ generic = 2
 
 # You gain 3 life.
 [[abilities.effects]]
-type = "gain_life"
+type = "life"
+mode = "gain"
 amount = 3

@@ -22,7 +22,8 @@ timing = "etb"
 
 # draw a card for each Aura you control that's attached to a creature.
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = { per_permanent = { subtypes = ["Aura"], controller = "you", attached_to_creature = true } }
 
 # Enchanted creature gets +1/+1 for each Aura you control that's attached to a creature.
@@ -31,6 +32,7 @@ timing = "static"
 
 # Enchanted creature gets +1/+1 for each Aura you control that's attached to a creature.
 [[abilities.effects]]
-type = "grant_to_attached"
+type = "static"
+mode = "grant_to_attached"
 power = { per_permanent = { subtypes = ["Aura"], controller = "you", attached_to_creature = true } }
 toughness = { per_permanent = { subtypes = ["Aura"], controller = "you", attached_to_creature = true } }

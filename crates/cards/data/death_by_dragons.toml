@@ -18,6 +18,7 @@ timing = "spell"
 
 # Each player other than target player creates a 5/5 red Dragon creature token with flying.
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 controller = "each_other_player"
 token = "60fe4897-6760-4c5a-8074-c92bd64df52b"

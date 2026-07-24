@@ -22,5 +22,6 @@ timing = "spell"
 # Reveal the top three cards of your library. An opponent chooses one of them. Put that card into your graveyard and
 # the rest into your hand.
 [[abilities.effects]]
-type = "reveal_top_opponent_picks_one_to_graveyard"
+type = "dig"
+mode = "reveal_top_opponent_picks_one_to_graveyard"
 count = 3

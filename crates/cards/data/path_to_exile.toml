@@ -20,13 +20,15 @@ timing = "spell"
 
 # Exile target creature.
 [[abilities.effects]]
-type = "exile_target"
+type = "exile"
+mode = "target"
 target = "creature"
 
 # Its controller may search their library for a basic land card, put that card onto the battlefield tapped, then
 # shuffle.
 [[abilities.effects]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = "basic_land"
 to_zone = "battlefield"
 tapped = true

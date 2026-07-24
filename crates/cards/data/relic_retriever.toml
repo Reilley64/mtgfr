@@ -28,5 +28,6 @@ type = "card_left_your_graveyard_this_turn"
 
 # create a Treasure token.
 [[abilities.effects]]
-type = "create_treasure"
+type = "token"
+mode = "create_treasure"
 count = 1

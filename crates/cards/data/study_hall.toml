@@ -20,7 +20,8 @@ activation_cost = { generic = 1 }
 
 # Add one mana of any color.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["any"]
 track_provenance = true
 
@@ -32,5 +33,6 @@ spend_predicate = "commander"
 
 # scry X, where X is the number of times it's been cast from the command zone this game.
 [[abilities.effects]]
-type = "scry"
+type = "dig"
+mode = "scry"
 count = "commander_casts_from_command_zone"

@@ -365,7 +365,7 @@ impl Game {
         Ok(events)
     }
 
-    /// Resolve a multi-player sacrifice edict ([`Effect::EachPlayerSacrifices`]): each affected
+    /// Resolve a multi-player sacrifice edict ([`Effect::Choice(ChoiceEffect::EachPlayerSacrifices)`]): each affected
     /// player (per `scope`, APNAP order) loses `life_loss` life, then the affected players choose
     /// their sacrifices one at a time (each raising [`ChoiceRequest::NextSacrificeEdict`]). Once
     /// all have chosen, `follow_up` runs for `controller`.

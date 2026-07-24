@@ -19,7 +19,8 @@ taps_self = true
 
 # Add {C}.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["colorless"]
 
 # {R/W}, {T}: Add {R}{R}, {R}{W}, or {W}{W}.
@@ -30,5 +31,6 @@ activation_cost = { hybrid = [["red", "white"]] }
 
 # Add {R}{R}, {R}{W}, or {W}{W}.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = [["red", "white"], ["red", "white"]]

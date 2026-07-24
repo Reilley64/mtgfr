@@ -26,11 +26,13 @@ timing = "spell"
 # deals 1 damage to each creature without flying ... If this spell was kicked, it deals 4 damage
 # to each creature without flying ... instead.
 [[abilities.effects]]
-type = "damage_each_creature"
+type = "damage"
+mode = "each_creature"
 amount = { if_kicked = 4, else = 1 }
 filter = { without_flying = true }
 
 # ... and each player. If this spell was kicked, it deals 4 damage ... and each player instead.
 [[abilities.effects]]
-type = "damage_each_player"
+type = "damage"
+mode = "each_player"
 amount = { if_kicked = 4, else = 1 }

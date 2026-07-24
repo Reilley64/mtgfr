@@ -826,12 +826,12 @@ pub enum PendingChoice {
         source: ObjectId,
         effect: Effect,
     },
-    /// `player` (the resolving controller of an [`Effect::MayDrawUpTo`]) chooses how many cards to
+    /// `player` (the resolving controller of an [`Effect::Choice(ChoiceEffect::MayDrawUpTo)`]) chooses how many cards to
     /// draw — any number `0..=max` (CR 120.4 / 601.2c — Arcane Denial's "may draw up to two
     /// cards"). Answered by [`Intent::ChooseDrawCount`], which draws exactly the chosen number.
     MayDrawUpTo { player: PlayerId, max: u8 },
     /// Trade Secrets' declinable draw, after `opponent`'s mandatory two-card draw
-    /// ([`Effect::MayDrawUpToThenOpponentMayRepeat`]): `player` (the caster) chooses `0..=max`
+    /// ([`Effect::Choice(ChoiceEffect::MayDrawUpToThenOpponentMayRepeat)`]): `player` (the caster) chooses `0..=max`
     /// cards to draw. Answered by [`Intent::ChooseDrawCount`] (the same wire shape as
     /// [`MayDrawUpTo`](Self::MayDrawUpTo)); once answered, `opponent` is paused on
     /// [`TradeSecretsRepeat`](Self::TradeSecretsRepeat) to decide whether to run the whole
@@ -870,7 +870,7 @@ pub enum PendingChoice {
     /// loop for `remaining - 1`, re-checking `eligible` against the now-live graveyard/library.
     /// `from_draw_step` distinguishes the two draw chokes that raise this: the turn-based draw step
     /// (`remaining == 1`; resume by re-entering [`Game::advance_step`]) versus a mid-resolution
-    /// [`Effect::DrawCards`] (resume via the deferred sequence, like every other resolution pause).
+    /// [`Effect::Draw(DrawEffect::Cards)`] (resume via the deferred sequence, like every other resolution pause).
     ChooseDredge {
         player: PlayerId,
         eligible: Vec<(ObjectId, u8)>,
@@ -886,7 +886,7 @@ pub enum PendingChoice {
         effect: Effect,
     },
     /// `player` (the target spell's controller) may pay `cost` to save `spell` from being
-    /// countered (CR 701.5c-style "unless" clause — [`Effect::CounterTargetSpell`]'s
+    /// countered (CR 701.5c-style "unless" clause — [`Effect::Misc(MiscEffect::CounterTargetSpell)`]'s
     /// `unless_pays`). Paying leaves `spell` on the stack to resolve normally; declining counters
     /// it. Answered by [`Intent::PayOptionalCost`], the mirror-image of [`PendingChoice::PayCost`]
     /// (there, declining means nothing happens; here, declining means the counter happens).
@@ -896,7 +896,7 @@ pub enum PendingChoice {
         spell: ObjectId,
     },
     /// `player` (the triggering opponent) may pay `cost` to stop `controller`'s optional draw —
-    /// Rhystic Study's "unless that player pays {1}" ([`Effect::MayDrawUnlessPays`]). Only raised
+    /// Rhystic Study's "unless that player pays {1}" ([`Effect::Choice(ChoiceEffect::MayDrawUnlessPays)`]). Only raised
     /// after `controller` accepts the preceding [`Self::MayYesNo`] pause (the real card's ruling:
     /// declining to draw never even offers a pay window). Paying leaves `controller`'s hand
     /// untouched; declining draws them a card. Answered by [`Intent::PayOptionalCost`], the same
@@ -908,7 +908,7 @@ pub enum PendingChoice {
         cost: Cost,
     },
     /// `player` (Hinder's controller) must choose the top or bottom of `spell`'s owner's library
-    /// (CR 701.5b — [`Effect::CounterTargetSpell`]'s `countered_dest` rider): `spell` is already
+    /// (CR 701.5b — [`Effect::Misc(MiscEffect::CounterTargetSpell)`]'s `countered_dest` rider): `spell` is already
     /// countered — still a live [`crate::Object::Spell`] on the stack until this answers — and
     /// this choice picks where it goes instead of into the graveyard. Answered by
     /// [`Intent::ChooseTopOrBottom`].
@@ -1023,7 +1023,7 @@ pub enum PendingChoice {
         cards: Vec<ObjectId>,
         to_graveyard: bool,
     },
-    /// `player` looked at the top `cards` of their library ([`Effect::LookAtTop`]) and may select
+    /// `player` looked at the top `cards` of their library ([`Effect::Dig(DigEffect::LookAtTop)`]) and may select
     /// up to `up_to` of them that match `filter` into `dest`; every non-selected card goes to
     /// `rest`. Answered by [`Intent::SelectFromTop`]. The looked-at ids are private to `player`
     /// (like [`ArrangeTop`](Self::ArrangeTop)).
@@ -1032,16 +1032,16 @@ pub enum PendingChoice {
         cards: Vec<ObjectId>,
         filter: CardFilter,
         up_to: u32,
-        /// See [`Effect::LookAtTop::min`].
+        /// See [`Effect::Dig(DigEffect::LookAtTop)::min`].
         min: u32,
         dest: TopDest,
-        /// See [`Effect::LookAtTop::dest_tapped`].
+        /// See [`Effect::Dig(DigEffect::LookAtTop)::dest_tapped`].
         dest_tapped: bool,
         rest: RestDest,
-        /// See [`Effect::LookAtTop::mv_budget`].
+        /// See [`Effect::Dig(DigEffect::LookAtTop)::mv_budget`].
         mv_budget: Option<u32>,
     },
-    /// Dance with Calamity's push-your-luck pause ([`Effect::ExileTopUntilStopCastFreeUnderBudget`]):
+    /// Dance with Calamity's push-your-luck pause ([`Effect::Dig(DigEffect::ExileTopUntilStopCastFreeUnderBudget)`]):
     /// `player` (the caster) may exile another top-of-library card or stop. `exiled` are the cards
     /// exiled so far (public — exile-zone) and `total_mv` their summed mana value. Answered by
     /// [`Intent::AnswerMay`] (reusing the yes/no wire shape — `yes` exiles one more, `no` stops).
@@ -1050,11 +1050,11 @@ pub enum PendingChoice {
         source: ObjectId,
         exiled: Vec<ObjectId>,
         total_mv: u32,
-        /// The bust threshold ([`Effect::ExileTopUntilStopCastFreeUnderBudget::budget`], 13 for
+        /// The bust threshold ([`Effect::Dig(DigEffect::ExileTopUntilStopCastFreeUnderBudget)::budget`], 13 for
         /// Dance with Calamity), carried across the pauses so the payoff knows the gate.
         budget: u32,
     },
-    /// `player` looked at the top `cards` of their library ([`Effect::DistributeTop`]) and must
+    /// `player` looked at the top `cards` of their library ([`Effect::Dig(DigEffect::DistributeTop)`]) and must
     /// route exactly `to_hand` of them to hand, `to_bottom` to the library bottom, and
     /// `to_exile_may_play` into exile with permission to play this turn — one card per slot,
     /// sharing none. Answered by [`Intent::DistributeTop`]. The looked-at ids are private to
@@ -1072,7 +1072,7 @@ pub enum PendingChoice {
     /// [`Intent::ChooseSacrifices`] (reusing its "any subset of the offered set" wire shape —
     /// unlike [`SacrificeEdict`](Self::SacrificeEdict)/[`MaySacrifice`](Self::MaySacrifice)'s
     /// exactly-one, an empty answer here is a legal "proliferate nothing"). `remaining` is how
-    /// many more times [`Effect::Proliferate`]'s `times` still has to run after this one; a
+    /// many more times [`Effect::Choice(ChoiceEffect::Proliferate)`]'s `times` still has to run after this one; a
     /// nonzero `remaining` re-pauses on a fresh `Proliferate` choice once this one's counters
     /// are placed, mirroring [`SearchLibrary`](Self::SearchLibrary)'s re-pause chaining.
     Proliferate {
@@ -1082,7 +1082,7 @@ pub enum PendingChoice {
         remaining: u8,
     },
     /// `player` (Guardian of Faith's controller) may choose any number of `options` — the *other*
-    /// creatures they control — to phase out (CR 702.26; [`Effect::PhaseOut`]). Answered by
+    /// creatures they control — to phase out (CR 702.26; [`Effect::Choice(ChoiceEffect::PhaseOut)`]). Answered by
     /// [`Intent::ChooseSacrifices`] (reusing its "any subset of the offered set" wire shape, like
     /// [`Proliferate`](Self::Proliferate) — an empty answer is a legal "phase out nothing," CR
     /// "any number ... target"). Each chosen creature, and everything attached to it, phases out.
@@ -1139,7 +1139,7 @@ pub enum PendingChoice {
     /// `player` (the ability's controller — always the answerer, even when `owner` is a
     /// different player) may shuffle up to `max` (`0` = unbounded) of `candidates` (cards in
     /// `owner`'s graveyard) into `owner`'s library
-    /// ([`Effect::ShuffleTargetCardsFromGraveyardIntoLibrary`] — Perpetual Timepiece has
+    /// ([`Effect::Dig(DigEffect::ShuffleTargetCardsFromGraveyardIntoLibrary)`] — Perpetual Timepiece has
     /// `owner == player`; Quandrix Command mode 3 targets a player, so `owner` may differ).
     /// Answered by [`Intent::ShuffleFromGraveyard`]. The graveyard is a public zone, so
     /// `candidates` are public (unlike [`SelectFromTop`](Self::SelectFromTop)'s library cards).
@@ -1158,7 +1158,7 @@ pub enum PendingChoice {
     /// (over `matches` minus the pick) instead of shuffling, so an "up to N" search (Land Tax)
     /// shuffles only once, after the last pick (CR 701.19f). The library is shuffled once the
     /// search ends: `remaining` hits 0, no matches are left, or the searcher fails to find.
-    /// `overflow`, carried unchanged from [`Effect::SearchLibrary::overflow`], is where every
+    /// `overflow`, carried unchanged from [`Effect::Dig(DigEffect::SearchLibrary)::overflow`], is where every
     /// find *after the first* goes instead of `dest` (Cultivate).
     SearchLibrary {
         player: PlayerId,
@@ -1198,7 +1198,7 @@ pub enum PendingChoice {
         optional: bool,
     },
     /// `player` must choose which of the permanents they control (`options`) to sacrifice to a
-    /// multi-player edict ([`Effect::EachPlayerSacrifices`]): one of them, or — with `keep_one` —
+    /// multi-player edict ([`Effect::Choice(ChoiceEffect::EachPlayerSacrifices)`]): one of them, or — with `keep_one` —
     /// all but one they keep. Answered by [`Intent::ChooseSacrifices`]. `remaining` are the
     /// still-to-choose players (APNAP order) after this one; once they're all done, `follow_up`
     /// runs for `controller`. `filter` re-derives each remaining player's options.
@@ -1231,7 +1231,7 @@ pub enum PendingChoice {
         then: &'static [Effect],
     },
     /// `player` must exile one of `options` (a card in their own graveyard) to a multi-player
-    /// graveyard-exile fan-out ([`Effect::EachPlayerExilesFromGraveyard`] — Augusta, Order
+    /// graveyard-exile fan-out ([`Effect::Choice(ChoiceEffect::EachPlayerExilesFromGraveyard)`] — Augusta, Order
     /// Returned). Mandatory (exactly one, when they have any). Answered by
     /// [`Intent::ChooseSacrifices`], reusing its "name the chosen card" wire shape. `remaining`
     /// are the still-to-choose players (APNAP order) after this one; the graveyard is a public
@@ -1245,7 +1245,7 @@ pub enum PendingChoice {
     },
     /// `caster` (Tragic Arrogance's controller) chooses which of `target_player`'s nonland
     /// permanents (`options`) to keep — up to one of each type (artifact, creature, enchantment;
-    /// a planeswalker slot is unreachable, see [`Effect::CasterKeepsOneOfEachTypePerPlayer`]).
+    /// a planeswalker slot is unreachable, see [`Effect::Choice(ChoiceEffect::CasterKeepsOneOfEachTypePerPlayer)`]).
     /// Answered by [`Intent::ChooseSacrifices`], reusing its "name the chosen set" wire shape (the
     /// set is the *kept* ids). All of `target_player`'s other nonland permanents are then sacrificed
     /// (CR 701.16b). `remaining` are the still-to-choose players (APNAP order) after this one; the
@@ -1293,7 +1293,7 @@ pub enum PendingChoice {
         remaining: Vec<PlayerId>,
     },
     /// `player` may sacrifice one of `options` (a permanent they control); if they do, `then`
-    /// resolves ([`Effect::MaySacrifice`] — Witherbloom Charm mode 0's "You may sacrifice a
+    /// resolves ([`Effect::Choice(ChoiceEffect::MaySacrifice)`] — Witherbloom Charm mode 0's "You may sacrifice a
     /// permanent. If you do, draw two cards."). Answered by [`Intent::ChooseSacrifices`]: an
     /// empty list declines, one entry pays. Distinct from [`Self::SacrificeEdict`] (mandatory,
     /// possibly multi-player): this is one player's own resolution-time optional cost.
@@ -1304,7 +1304,7 @@ pub enum PendingChoice {
         then: &'static [Effect],
     },
     /// `player` may return one of `options` (a graveyard card they own) to their hand, or decline
-    /// ([`Effect::MayReturnFromGraveyard`] — Deadly Brew's "you may return another permanent card
+    /// ([`Effect::Choice(ChoiceEffect::MayReturnFromGraveyard)`] — Deadly Brew's "you may return another permanent card
     /// from your graveyard to your hand"). Answered by [`Intent::ChooseSacrifices`] (reusing its
     /// "empty list declines, one entry picks" wire shape): an empty list declines, one entry
     /// returns that card. The graveyard-return twin of [`Self::MaySacrifice`].
@@ -1314,7 +1314,7 @@ pub enum PendingChoice {
         options: Vec<ObjectId>,
     },
     /// `player` may discard one of `options` (a card in their own hand); if they do, `then`
-    /// resolves ([`Effect::MayDiscard`] — Quintorius, History Chaser's +1 "You may discard a
+    /// resolves ([`Effect::Choice(ChoiceEffect::MayDiscard)`] — Quintorius, History Chaser's +1 "You may discard a
     /// card. If you do, draw two cards, then mill a card."). Answered by
     /// [`Intent::ChooseSacrifices`] (reusing its "empty list declines, one entry picks" wire
     /// shape, like [`Self::MayReturnFromGraveyard`]): an empty list declines, one entry
@@ -1333,11 +1333,11 @@ pub enum PendingChoice {
         hand: Vec<ObjectId>,
         count: usize,
     },
-    /// `player` must discard exactly `count` cards to an [`Effect::Discard`] (a card-draw's
+    /// `player` must discard exactly `count` cards to an [`Effect::Choice(ChoiceEffect::Discard)`] (a card-draw's
     /// rummage half, Faithless Looting): choose `count` of `hand` (their whole hand, kept for
     /// stable validation) to put into the graveyard. Answered by [`Intent::Discard`], like a
     /// cleanup discard — but resuming the resolving ability's sequence rather than a step change.
-    /// `or_one_matching` mirrors [`Effect::Discard::or_one_matching`]: when `Some`, a one-card
+    /// `or_one_matching` mirrors [`Effect::Choice(ChoiceEffect::Discard)::or_one_matching`]: when `Some`, a one-card
     /// answer matching the filter is accepted instead of the full `count`-card answer
     /// (Compulsive Research's land escape valve).
     DiscardCards {
@@ -1348,7 +1348,7 @@ pub enum PendingChoice {
     },
     /// `player` puts exactly `count` cards from `hand` (their whole hand, kept for stable
     /// validation) on top of their library, in an order they choose (Brainstorm's
-    /// [`Effect::PutFromHandOnTop`], "put two cards from your hand on top of your library in any
+    /// [`Effect::Choice(ChoiceEffect::PutFromHandOnTop)`], "put two cards from your hand on top of your library in any
     /// order"). Answered by [`Intent::PutFromHandOnTop`], whose ordered list is applied
     /// first-named-on-top.
     PutFromHandOnTop {
@@ -1358,14 +1358,14 @@ pub enum PendingChoice {
     },
     /// `player` may put one of `candidates` (their hand's land cards) onto the battlefield
     /// (`tapped` if it enters tapped), or decline ("up to one" — CR 305.9 special action, an
-    /// [`Effect::PutLandFromHand`] resolving). Answered by [`Intent::PutLandFromHand`].
+    /// [`Effect::Choice(ChoiceEffect::PutLandFromHand)`] resolving). Answered by [`Intent::PutLandFromHand`].
     PutLandFromHand {
         player: PlayerId,
         tapped: bool,
         candidates: Vec<ObjectId>,
     },
     /// `player` may put one of `candidates` (their hand's creature cards) onto the battlefield,
-    /// or decline ("up to one" — an [`Effect::PutCreatureFromHand`] resolving, Cauldron Dance).
+    /// or decline ("up to one" — an [`Effect::Choice(ChoiceEffect::PutCreatureFromHand)`] resolving, Cauldron Dance).
     /// `source` is the resolving ability, threaded through so the answer can schedule the
     /// end-step sacrifice against it. Answered by [`Intent::PutCreatureFromHand`].
     PutCreatureFromHand {
@@ -1376,7 +1376,7 @@ pub enum PendingChoice {
     /// `player` may cast one of `candidates` — the creature cards in their hand whose mana cost
     /// could be paid by some amount of, or all of, the mana spent on the `{X}` paid (CR 107.3,
     /// [`Cost::payable_from_multiset`]) — face down as a 2/2 creature spell without paying its
-    /// mana cost, or decline ("you may" — [`Effect::CastCreatureFaceDown`], Illusionary Mask,
+    /// mana cost, or decline ("you may" — [`Effect::Choice(ChoiceEffect::CastCreatureFaceDown)`], Illusionary Mask,
     /// resolving).
     /// Answered by [`Intent::CastCreatureFaceDown`]. The candidates are hand cards, so private.
     CastCreatureFaceDown {
@@ -1385,7 +1385,7 @@ pub enum PendingChoice {
     },
     /// `player` must choose up to one of `candidates` — the cards exiled with `source`
     /// ([`Game::exiled_with`]) — to put into its owner's graveyard, or decline
-    /// ([`Effect::CashOutExiledWithThis`]'s "put a card exiled with this" resolving). Answered by
+    /// ([`Effect::Dig(DigEffect::CashOutExiledWithThis)`]'s "put a card exiled with this" resolving). Answered by
     /// [`Intent::ChooseExiledWithCard`]. The candidates are exile-zone cards, so public.
     ChooseExiledWithCard {
         player: PlayerId,
@@ -1393,7 +1393,7 @@ pub enum PendingChoice {
         candidates: Vec<ObjectId>,
     },
     /// `player` must choose up to one of `candidates` — the cards exiled with `source` — to
-    /// grant the free-cast permission (CR 118.5), or decline ([`Effect::CastExiledWithThisFree`]'s
+    /// grant the free-cast permission (CR 118.5), or decline ([`Effect::Dig(DigEffect::CastExiledWithThisFree)`]'s
     /// "choose target card exiled with Quintorius" resolving). Answered by
     /// [`Intent::ChooseExiledWithCardToCast`]. The candidates are exile-zone cards, so public.
     ChooseExiledWithCardToCast {
@@ -1430,7 +1430,7 @@ pub enum PendingChoice {
         pile_b: Vec<ObjectId>,
     },
     /// `player` (an **opponent** of `controller`) must choose one of `nonlands` — the nonland cards
-    /// exiled by [`Effect::EachPlayerExilesUntilNonlandOpponentPicks`] (all public — exile-zone),
+    /// exiled by [`Effect::Dig(DigEffect::EachPlayerExilesUntilNonlandOpponentPicks)`] (all public — exile-zone),
     /// Plargg and Nassari's "an opponent chooses a nonland card exiled this way". Answered by
     /// [`Intent::ChooseExiledWithCard`] (reusing its "name the chosen card" wire shape; the pick is
     /// mandatory, so `None` is illegal here). The chosen card stays exiled; the *other* exiled
@@ -1445,15 +1445,15 @@ pub enum PendingChoice {
     },
     /// `player` (the ability's controller) must choose which opponent makes an "an opponent ..."
     /// decision on their behalf — shared by Abstract Performance's pile split
-    /// ([`Effect::OpponentSplitsExilePiles`]) and Fact or Fiction's partition
-    /// ([`Effect::RevealTopSplitPiles`]): a settled ruling (not a numbered CR section) gives the
+    /// ([`Effect::Dig(DigEffect::OpponentSplitsExilePiles)`]) and Fact or Fiction's partition
+    /// ([`Effect::Dig(DigEffect::RevealTopSplitPiles)`]): a settled ruling (not a numbered CR section) gives the
     /// ability's controller the pick of *which* opponent "an opponent" means, when more than one
     /// is alive. `legal` lists the living opponents; only raised when there are at least two
     /// ([`Game::choose_splitting_opponent`] resumes immediately with the sole opponent
     /// otherwise — the same collapse this choice's predecessor hardcoded). Answered by
     /// [`Intent::ChooseTargets`] (reusing its "single `Target::Player`" wire shape —
     /// [`Game::choose_targets`] special-cases this pause the same way it already does
-    /// `Effect::Fight`/`Effect::Demonstrate`'s mid-resolution picks). Resumes into whichever pause
+    /// `Effect::Misc(MiscEffect::Fight)`/`Effect::Copy(CopyEffect::Demonstrate)`'s mid-resolution picks). Resumes into whichever pause
     /// `then` names, now addressed to the chosen opponent.
     ChooseSplittingOpponent {
         player: PlayerId,
@@ -1462,7 +1462,7 @@ pub enum PendingChoice {
         then: SplittingContinuation,
     },
     /// `player` (the opponent [`Self::ChooseSplittingOpponent`] named) must assign each of
-    /// `revealed` — the cards [`Effect::RevealTopSplitPiles`] revealed off `controller`'s library
+    /// `revealed` — the cards [`Effect::Dig(DigEffect::RevealTopSplitPiles)`] revealed off `controller`'s library
     /// (still library-resident and public, CR 701.16 "reveal" makes them visible to everyone) —
     /// to one of two piles: the answer names pile A's subset (reusing
     /// [`Intent::ChooseSacrifices`]'s "name the subset" wire shape), everything else in `revealed`
@@ -1475,7 +1475,7 @@ pub enum PendingChoice {
         revealed: Vec<ObjectId>,
     },
     /// `player` (the opponent [`Self::ChooseSplittingOpponent`] named) must choose exactly one of
-    /// `revealed` — the cards [`Effect::RevealTopOpponentPicksOneToGraveyard`] revealed off
+    /// `revealed` — the cards [`Effect::Dig(DigEffect::RevealTopOpponentPicksOneToGraveyard)`] revealed off
     /// `controller`'s library (still library-resident and public, CR 701.16 "reveal") — to send
     /// to `controller`'s graveyard (CR "Put that card into your graveyard"); the rest go straight
     /// to `controller`'s hand (CR "and the rest into your hand"), no further pause. Answered by
@@ -1487,7 +1487,7 @@ pub enum PendingChoice {
         source: ObjectId,
         revealed: Vec<ObjectId>,
     },
-    /// `player` (the controller of [`Effect::RevealTopSplitPiles`]) picks one of the two piles
+    /// `player` (the controller of [`Effect::Dig(DigEffect::RevealTopSplitPiles)`]) picks one of the two piles
     /// [`Self::PartitionRevealed`] just made to put into their hand (CR "Put one pile into your
     /// hand"); the other goes to their graveyard (CR "and the other into your graveyard").
     /// Answered by [`Intent::ChooseOpponentPile`] (reusing Abstract Performance's "pick pile 0 or
@@ -1515,7 +1515,7 @@ pub enum PendingChoice {
         count: u8,
         rest_to_hand: bool,
     },
-    /// `player` may put `card` (the library card [`Effect::RevealUntilMayDeploy`] just revealed
+    /// `player` may put `card` (the library card [`Effect::Dig(DigEffect::RevealUntilMayDeploy)`] just revealed
     /// and stopped on, left unmoved on top of the library) onto the battlefield, or decline and
     /// put it into hand instead (Songbirds' Blessing). Answered by
     /// [`Intent::RevealedCardToBattlefieldOrHand`]. `card` was already publicly revealed
@@ -1552,7 +1552,7 @@ pub enum PendingChoice {
     },
     /// `player` (a mana ability's controller) must name one color; `amount` credits of that
     /// color are added to their pool (CR 106.4's "add N mana of any one color" —
-    /// [`Effect::AddMana`]'s `single_color`: Lotus Field, Kami of Whispered Hopes). Answered by
+    /// [`Effect::Mana(ManaEffect::Add)`]'s `single_color`: Lotus Field, Kami of Whispered Hopes). Answered by
     /// [`Intent::ChooseManaColor`]. Unlike every other pausing effect, this is raised from a mana
     /// ability's own immediate resolution ([`Game::activate_ability`]), not from the stack — CR
     /// 605.3a exempts mana abilities from the stack, not from choices made while they resolve.
@@ -1563,7 +1563,7 @@ pub enum PendingChoice {
     },
     /// `player` (an as-enters permanent's controller) must name a creature type for `source`
     /// (CR 614.12/700.9-style "as ~ enters, choose a creature type" — Patchwork Banner's
-    /// [`Effect::ChooseCreatureType`]). `options` is [`CREATURE_TYPES`], the pool's known
+    /// [`Effect::Choice(ChoiceEffect::ChooseCreatureType)`]). `options` is [`CREATURE_TYPES`], the pool's known
     /// creature-type table. Answered by [`Intent::ChooseCreatureType`], which sets `source`'s
     /// [`Permanent::chosen_subtype`].
     ChooseCreatureType {
@@ -1572,8 +1572,8 @@ pub enum PendingChoice {
         options: &'static [&'static str],
     },
     /// `player` must name a color for `source` — either an as-enters choice (CR 614.12/700.9-style
-    /// — Flickering Ward's [`Effect::ChooseColor`]) or a resolution-time color-SET (CR 613.3c —
-    /// Wild Mongrel's [`Effect::SetOwnColorUntilEndOfTurn`]). The candidate list is the fixed five
+    /// — Flickering Ward's [`Effect::Choice(ChoiceEffect::ChooseColor)`]) or a resolution-time color-SET (CR 613.3c —
+    /// Wild Mongrel's [`Effect::Choice(ChoiceEffect::SetOwnColorUntilEndOfTurn)`]). The candidate list is the fixed five
     /// colors ([`Color::ALL`]), so unlike [`Self::ChooseCreatureType`] no `options` slice is
     /// carried. Both raise this same picker (same wire prompt — [`Self::ChooseColor`] variant
     /// reused, not a second picker); `until_end_of_turn` tells [`Intent::ChooseColor`]'s handler
@@ -1584,7 +1584,7 @@ pub enum PendingChoice {
         source: ObjectId,
         until_end_of_turn: bool,
     },
-    /// `player` chooses a card name for [`Effect::EachPlayerNamesCardThenRevealsTop`]'s per-seat
+    /// `player` chooses a card name for [`Effect::Choice(ChoiceEffect::EachPlayerNamesCardThenRevealsTop)`]'s per-seat
     /// fan-out (CR 201.2/703.2j "choose a card name" — Conundrum Sphinx's attack trigger).
     /// Answered by [`Intent::ChooseCardName`]'s free-text `name`. On answer, the game reveals
     /// `player`'s own top library card and resolves the match immediately (into hand on a name
@@ -1619,7 +1619,7 @@ pub enum PendingChoice {
         gains_haste: bool,
     },
     /// `player` may choose one of `candidates` — the tokens they control ("you may choose a token
-    /// you control" — Brudiclad, Telchor Engineer, [`Effect::EachOtherTokenBecomesCopyOfChosen`]).
+    /// you control" — Brudiclad, Telchor Engineer, [`Effect::Choice(ChoiceEffect::EachOtherTokenBecomesCopyOfChosen)`]).
     /// Answered by [`Intent::ChooseCopyTarget`] (reused — the answer is also "one optional chosen
     /// object"): `Some(token)` has every *other* token `player` controls become a copy of it (an
     /// indefinite [`Event::BecameCopy`] per other token, CR 706/707.2), `None` declines the "you
@@ -1633,7 +1633,7 @@ pub enum PendingChoice {
     /// `player` may choose one of `candidates` — the artifact/creature cards that left their
     /// graveyard this batch ("you may have this creature become a copy of an artifact or creature
     /// card from among those cards" — Spirit of Resilience,
-    /// [`Effect::PutCounterThenMayBecomeCopyOfCardFromList`]). Answered by
+    /// [`Effect::Choice(ChoiceEffect::PutCounterThenMayBecomeCopyOfCardFromList)`]). Answered by
     /// [`Intent::ChooseCopyTarget`] (reused — the answer is also "one optional chosen object"):
     /// `Some(card)` has `source` become a copy of it until end of turn (an [`Event::BecameCopy`]
     /// with `until_eot: true`, CR 706/707.2), `None` declines the "you may". Only raised when at
@@ -1904,7 +1904,7 @@ pub(crate) enum StackItem {
         /// The chosen targets of a *second* independent target clause (CR 603.3d — Kinetic Ooze's
         /// X≥10 "double ... any number of other target creatures"), chosen as the trigger went on
         /// the stack. Empty for the ubiquitous single-clause ability. Read at resolution by
-        /// [`Effect::DoubleCountersOnTargetCreatures`].
+        /// [`Effect::Counters(CountersEffect::DoubleCountersOnTargetCreatures)`].
         targets_second: TargetList,
         /// The chosen `{X}` for an activated ability whose cost contains `{X}` (or a copy of one,
         /// CR 707.10c); `0` for every triggered ability. Read at resolution for `Amount::X`.
@@ -2015,17 +2015,17 @@ pub enum Event {
     /// which a cast instant/sorcery uses.
     SpellCeasedToExist { spell: ObjectId },
     /// A prepared permanent's "prepared" status changed (soc/sos prepare DFCs): set `true` by
-    /// [`Effect::BecomePrepared`], cleared (`false`) when its back-face copy is cast
+    /// [`Effect::Misc(MiscEffect::BecomePrepared)`], cleared (`false`) when its back-face copy is cast
     /// ([`Game::cast_prepared`]). Flips [`Permanent::prepared`].
     PreparedChanged { object: ObjectId, prepared: bool },
-    /// A Class permanent gained a level (CR 717.2 — [`Effect::LevelUp`]): sets `source`'s
+    /// A Class permanent gained a level (CR 717.2 — [`Effect::Counters(CountersEffect::LevelUp)`]): sets `source`'s
     /// [`Permanent::level`] to `level`. Public battlefield status, like [`Self::PreparedChanged`].
     LeveledUp { source: ObjectId, level: u8 },
-    /// `object` flipped (CR 712 — a Kamigawa flip card's [`Effect::FlipSource`]): sets
+    /// `object` flipped (CR 712 — a Kamigawa flip card's [`Effect::Misc(MiscEffect::FlipSource)`]): sets
     /// [`Permanent::flipped`], so it permanently uses its [`CardDef::back`] face's characteristics.
     /// Public battlefield status, like [`Self::PreparedChanged`].
     Flipped { object: ObjectId },
-    /// `object` phased out (CR 702.26 — Guardian of Faith's [`Effect::PhaseOut`]): sets
+    /// `object` phased out (CR 702.26 — Guardian of Faith's [`Effect::Choice(ChoiceEffect::PhaseOut)`]): sets
     /// [`Permanent::phased_out`] on it and on everything attached to it (CR 702.26g), so it's
     /// treated as though it doesn't exist until its controller's next turn.
     PhasedOut { object: ObjectId },
@@ -2033,17 +2033,17 @@ pub enum Event {
     /// untapping): clears [`Permanent::phased_out`] on it and on everything attached to it.
     PhasedIn { object: ObjectId },
     /// An as-enters "choose a creature type" choice was answered (CR 614.12/700.9-style —
-    /// Patchwork Banner's [`Effect::ChooseCreatureType`]). Sets `object`'s
+    /// Patchwork Banner's [`Effect::Choice(ChoiceEffect::ChooseCreatureType)`]). Sets `object`'s
     /// [`Permanent::chosen_subtype`].
     CreatureTypeChosen {
         object: ObjectId,
         subtype: &'static str,
     },
     /// An as-enters "choose a color" choice was answered (CR 614.12/700.9-style — Flickering
-    /// Ward's [`Effect::ChooseColor`]). Sets `object`'s [`Permanent::chosen_color`].
+    /// Ward's [`Effect::Choice(ChoiceEffect::ChooseColor)`]). Sets `object`'s [`Permanent::chosen_color`].
     ColorChosen { object: ObjectId, color: Color },
     /// A "becomes the color of your choice until end of turn" choice was answered (CR 613.3c
-    /// layer 5 — Wild Mongrel's [`Effect::SetOwnColorUntilEndOfTurn`]). Sets `object`'s
+    /// layer 5 — Wild Mongrel's [`Effect::Choice(ChoiceEffect::SetOwnColorUntilEndOfTurn)`]). Sets `object`'s
     /// [`Permanent::set_color_eot`]; cleared alongside the other until-EOT boosts by
     /// [`Self::TempBoostsEnded`].
     ColorSetUntilEndOfTurn { object: ObjectId, color: Color },
@@ -2128,11 +2128,11 @@ pub enum Event {
     Tapped { object: ObjectId },
     /// A permanent became untapped (e.g. by the untap step).
     Untapped { object: ObjectId },
-    /// A permanent was removed from combat (CR 506.4 — [`Effect::RemoveFromCombat`]; Spurnmage
+    /// A permanent was removed from combat (CR 506.4 — [`Effect::Control(ControlEffect::RemoveFromCombat)`]; Spurnmage
     /// Advocate). Drops it as attacker and blocker, and any blocks naming it as the attacker —
     /// the same combat-list cleanup [`Self::Regenerated`]'s CR 701.15b removal already applies.
     RemovedFromCombat { object: ObjectId },
-    /// A regeneration shield was granted to a permanent (CR 701.15b — [`Effect::RegenerateShield`]).
+    /// A regeneration shield was granted to a permanent (CR 701.15b — [`Effect::Control(ControlEffect::RegenerateShield)`]).
     /// Increments [`Permanent::regeneration_shields`].
     RegenerationShieldCreated { object: ObjectId },
     /// A permanent was regenerated instead of destroyed (CR 701.15b): one regeneration shield is
@@ -2156,7 +2156,7 @@ pub enum Event {
     /// `count` of `kind`'s named non-P/T counters were placed on (positive) or removed from
     /// (negative) a permanent — the [`CounterKind`]-keyed sibling of
     /// [`CountersPlaced`](Self::CountersPlaced) above. No replacement pipeline reads this path
-    /// (see [`Effect::EntersWithCounters`]'s doc): a named kind is placed as the raw amount.
+    /// (see [`Effect::Static(StaticEffect::EntersWithCounters)`]'s doc): a named kind is placed as the raw amount.
     KindCountersPlaced {
         object: ObjectId,
         kind: CounterKind,
@@ -2271,7 +2271,7 @@ pub enum Event {
     },
     /// A permanent lost `keywords` until end of turn and can't have them, unioned onto
     /// [`Permanent::temp_lost_keywords`] (arcane_lighthouse's strip — see
-    /// [`Effect::StripKeywordsFromOpponentsCreatures`]). Cleared alongside `temp_keywords` at
+    /// [`Effect::Pump(PumpEffect::StripKeywordsFromOpponentsCreatures)`]). Cleared alongside `temp_keywords` at
     /// [`Event::TempBoostsEnded`].
     KeywordsStripped {
         object: ObjectId,
@@ -2362,7 +2362,7 @@ pub enum Event {
         object: ObjectId,
         defender: PlayerId,
     },
-    /// A CR 603.7 delayed triggered ability was scheduled by [`Effect::ScheduleAtNextUpkeep`]:
+    /// A CR 603.7 delayed triggered ability was scheduled by [`Effect::Misc(MiscEffect::ScheduleAtNextUpkeep)`]:
     /// `controller` will perform `effect` the next time a step matching `fire_at` begins.
     /// `source` is the scheduling ability's own source object, reused (still addressable via the
     /// [`Object::Moved`] chain even once it's left the stack) as the delayed ability's source
@@ -2390,7 +2390,7 @@ pub enum Event {
     /// or not it was tapped), so it untaps normally on every later untap step. Removes the
     /// [`NextUntapSkipMarked`](Self::NextUntapSkipMarked) entry.
     NextUntapSkipConsumed { object: ObjectId },
-    /// A CR 603.7 delayed *one-shot* was armed by [`Effect::ScheduleNextCastTrigger`]:
+    /// A CR 603.7 delayed *one-shot* was armed by [`Effect::Misc(MiscEffect::ScheduleNextCastTrigger)`]:
     /// `controller` will perform `then` the next time they cast a spell matching `filter` this
     /// turn. `source` is the arming ability's own source object, reused as the delayed one-shot's
     /// source when it fires — same shape as `DelayedTriggerScheduled` above, event-armed rather
@@ -2409,7 +2409,7 @@ pub enum Event {
         controller: PlayerId,
         source: ObjectId,
     },
-    /// A CR 603.7 delayed watch was armed by [`Effect::ArmCombatDamageWatch`] (Stensian
+    /// A CR 603.7 delayed watch was armed by [`Effect::Misc(MiscEffect::ArmCombatDamageWatch)`] (Stensian
     /// Sanguinist): `source` will become prepared the first time `watched` deals combat damage
     /// to a player, any time later this combat. `controller` is the arming ability's controller
     /// — same shape as [`NextCastTriggerArmed`](Self::NextCastTriggerArmed), object-scoped
@@ -2429,7 +2429,7 @@ pub enum Event {
         source: ObjectId,
     },
     /// A CR 603.7 *repeatable* delayed watch was armed by
-    /// [`Effect::ScheduleThisTurnCombatDamageCopy`] (Surge to Victory): every time a creature
+    /// [`Effect::Misc(MiscEffect::ScheduleThisTurnCombatDamageCopy)`] (Surge to Victory): every time a creature
     /// `controller` controls deals combat damage to a player for the rest of this turn, mint a
     /// free copy of `card` (an instant/sorcery card already exiled by this same resolution).
     /// `source` is the arming ability's own source (the resolving spell) — same shape as
@@ -2492,7 +2492,7 @@ pub enum Event {
         assignment: DamageAssignment,
     },
     /// A divided-damage spell's total was split among its chosen targets (CR 601.2d — see
-    /// [`Effect::DealDamage`]'s `divided` field). Object shares are recorded on
+    /// [`Effect::Damage(DamageEffect::Target)`]'s `divided` field). Object shares are recorded on
     /// [`Spell::damage_division`], player shares on [`Spell::damage_division_players`] ("any number
     /// of targets" admits players); the damage itself is dealt separately, when each target's step
     /// resolves.
@@ -2502,7 +2502,7 @@ pub enum Event {
         players: [Option<(PlayerId, i32)>; MAX_TARGETS],
     },
     /// A divided-counters spell's total was split among its chosen targets (CR 601.2d — see
-    /// [`Effect::PutCounters`]'s `divided` field). Recorded on [`Spell::counter_division`]; the
+    /// [`Effect::Counters(CountersEffect::PutCounters)`]'s `divided` field). Recorded on [`Spell::counter_division`]; the
     /// counters themselves are placed separately, when each target's step resolves.
     SpellCountersDivided {
         spell: ObjectId,
@@ -2548,7 +2548,7 @@ pub enum Event {
         amount: i32,
     },
     /// `source` dealt `amount` *noncombat* damage to `player` (CR 120.1) — a marker distinct
-    /// from the `LifeChanged` it accompanies in [`Effect::DealDamage`]'s player arm, since
+    /// from the `LifeChanged` it accompanies in [`Effect::Damage(DamageEffect::Target)`]'s player arm, since
     /// non-damage life loss (drain, pay-life) also emits `LifeChanged` with a `source` but must
     /// not fire a [`Trigger::DealsDamageToOpponent`] watch. The noncombat twin of
     /// [`Self::CombatDamageDealtToPlayer`], same [`Self::Sacrificed`]-vs-`MovedToGraveyard`
@@ -2603,10 +2603,10 @@ pub enum Event {
         controller: PlayerId,
         /// Whether the entering permanent gets a finality counter (CR 614.12 — a permanent with
         /// one that would die is exiled instead), mirroring the triggering
-        /// [`Effect::ReanimateToBattlefield`]'s `finality` field.
+        /// [`Effect::Zone(ZoneEffect::ReanimateToBattlefield)`]'s `finality` field.
         finality: bool,
         /// Whether the entering permanent is tapped, mirroring
-        /// [`Effect::ReturnThisFromGraveyardToBattlefield`]'s `tapped` field (Teacher's Pest's
+        /// [`Effect::Zone(ZoneEffect::ReturnThisFromGraveyardToBattlefield)`]'s `tapped` field (Teacher's Pest's
         /// "... to the battlefield tapped").
         tapped: bool,
     },
@@ -2672,7 +2672,7 @@ pub enum Event {
     /// there's no zone-change guard to stop a re-fire on the next sweep).
     LeavesIllusionMinted { source: ObjectId, object: ObjectId },
     /// Hofri Ghostforge's minted Spirit token: `token` (minted alongside this event by the same
-    /// [`Effect::ExileDeadCreatureCreateCopyWithSubtype`] resolution, `leaves_returns_exiled`
+    /// [`Effect::Zone(ZoneEffect::ExileDeadCreatureCreateCopyWithSubtype)`] resolution, `leaves_returns_exiled`
     /// set) gains a granted "When this token leaves the battlefield, return the exiled card to
     /// its owner's graveyard" rider baking in `exiled` — recorded in [`Game::exile_links`]'s
     /// `token_leaves_returns_exiled` so [`Game::queue_token_return_exiled_trigger`] can place a
@@ -2728,8 +2728,8 @@ pub enum Event {
         controller: PlayerId,
         source: ObjectId,
     },
-    /// A flicker (CR 400.7 — a new object, [`Effect::FlickerTarget`]/
-    /// [`Effect::ReturnFlickeredCard`]): the exiled card `from` returns to the battlefield as the
+    /// A flicker (CR 400.7 — a new object, [`Effect::Zone(ZoneEffect::FlickerTarget)`]/
+    /// [`Effect::Zone(ZoneEffect::ReturnFlickeredCard)`]): the exiled card `from` returns to the battlefield as the
     /// fresh permanent `permanent`, under its owner's control (`controller`) — same shape as
     /// [`Self::ReturnedFromLinkedExile`], but unconditioned on any other permanent leaving. Fires
     /// ETB triggers like any other entry.
@@ -2751,15 +2751,15 @@ pub enum Event {
         to_top: bool,
         second_from_top: bool,
     },
-    /// `player`'s library was shuffled ([`Effect::ShuffleTargetCardsFromGraveyardIntoLibrary`]'s
+    /// `player`'s library was shuffled ([`Effect::Dig(DigEffect::ShuffleTargetCardsFromGraveyardIntoLibrary)`]'s
     /// mandatory shuffle after cards enter it — CR 701.19-style). The resulting order is a hidden
     /// zone's contents, so this event carries no order information, just that a shuffle happened.
     LibraryShuffled { player: PlayerId },
     /// The top card of `player`'s library was revealed (CR 701.30) — public to every player,
-    /// unlike a private look ([`Effect::LookAtTop`]). `card` stays where it is (still the top of
+    /// unlike a private look ([`Effect::Dig(DigEffect::LookAtTop)`]). `card` stays where it is (still the top of
     /// the library); a reveal is not itself a zone change, so a later event moves the card if
-    /// one does (Goblin Guide's [`Effect::RevealTopToHand`], Keen Duelist's
-    /// [`Effect::RevealTopAndDrainMutual`]).
+    /// one does (Goblin Guide's [`Effect::Reveal(RevealEffect::TopToHand)`], Keen Duelist's
+    /// [`Effect::Reveal(RevealEffect::TopAndDrainMutual)`]).
     RevealedTopOfLibrary {
         player: PlayerId,
         card: ObjectId,
@@ -2882,7 +2882,7 @@ pub enum Event {
         player: PlayerId,
     },
     /// A card was put from hand onto the top of its owner's library (Brainstorm resolving,
-    /// [`Effect::PutFromHandOnTop`]): `card` is its new library-object id, `from` the hand-object
+    /// [`Effect::Choice(ChoiceEffect::PutFromHandOnTop)`]): `card` is its new library-object id, `from` the hand-object
     /// id, `player` the owner, `def` its card definition. One event per card, applied in
     /// bottom-to-top order (the ordered pick's first name is applied last, so it ends up
     /// literally on top). Unlike [`Self::TuckedToLibrary`] (always a public-zone origin), this
@@ -3280,7 +3280,9 @@ pub(crate) fn enters_with_counters(def: CardDef) -> Option<(Amount, Option<Count
     def.abilities
         .iter()
         .find_map(|a| match (a.timing, a.effect) {
-            (Timing::Static, Effect::EntersWithCounters { amount, kind }) => Some((amount, kind)),
+            (Timing::Static, Effect::Static(StaticEffect::EntersWithCounters { amount, kind })) => {
+                Some((amount, kind))
+            }
             _ => None,
         })
 }

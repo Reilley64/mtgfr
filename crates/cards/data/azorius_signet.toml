@@ -20,5 +20,6 @@ activation_cost = { generic = 1 }
 
 # Add {W}{U}.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["white", "blue"]

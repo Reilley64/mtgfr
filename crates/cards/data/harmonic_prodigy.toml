@@ -27,6 +27,7 @@ timing = "static"
 # If a triggered ability of a Shaman or another Wizard you control triggers, that ability triggers
 # an additional time.
 [[abilities.effects]]
-type = "trigger_doubling_static"
+type = "static"
+mode = "trigger_doubling"
 source_subtypes = ["Shaman", "Wizard"]
 source_other = true

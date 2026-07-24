@@ -17,10 +17,12 @@ timing = "spell"
 
 # Draw three cards
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 3
 
 # then put two cards from your hand on top of your library in any order.
 [[abilities.effects]]
-type = "put_from_hand_on_top"
+type = "choice"
+mode = "put_from_hand_on_top"
 count = 2

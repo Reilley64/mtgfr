@@ -26,9 +26,11 @@ controller = "you"
 
 # create a 2/2 white Cat creature token
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 
 token = "6788478d-e157-4483-be09-9edb3f841431"
 
 [[abilities.effects]]
-type = "attach_triggering_aura_to_minted_token"
+type = "zone"
+mode = "attach_triggering_aura_to_minted_token"

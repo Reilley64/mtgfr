@@ -25,5 +25,6 @@ timing = "spell"
 
 # Exile target creature you control, then return it to the battlefield under its owner's control.
 [[abilities.effects]]
-type = "flicker_target"
+type = "zone"
+mode = "flicker_target"
 target = "creature_you_control"

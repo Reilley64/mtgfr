@@ -25,7 +25,8 @@ taps_self = true
 
 # Add {G}{G}{G}.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["green", "green", "green"]
 
 # Forestcycling {2} ({2}, Discard this card: Search your library for a Forest card, reveal it,
@@ -37,6 +38,7 @@ generic = 2
 
 # Search your library for a Forest card, reveal it, put it into your hand, then shuffle.
 [[hand_ability.effects]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = { land_with_subtype = ["Forest"] }
 to_zone = "hand"

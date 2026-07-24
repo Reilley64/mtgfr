@@ -47,7 +47,7 @@ pub(crate) struct CombatExtras {
     /// turn, so a combat-only shield cleared at Untap is behavior-exact (same turn-boundary idiom
     /// `must_attack`/`pending_next_cast` use). Combat-damage-to-a-*player* only — the N-point
     /// (Inkshield) shape stays this-turn/per-player; the permanent per-source shape (Guard
-    /// Gomazoa, Fog Bank, #220) is a separate static, [`Effect::PreventCombatDamageStatic`],
+    /// Gomazoa, Fog Bank, #220) is a separate static, [`Effect::Static(StaticEffect::PreventCombatDamage)`],
     /// scanned live off the permanent rather than stored here.
     pub combat_damage_prevention_shields: Vec<(PlayerId, CardDef)>,
     /// "Prevent all combat damage that would be dealt this turn" (Moment's Peace, #150 — the
@@ -93,7 +93,7 @@ pub(crate) struct PlayPermissions {
     /// by [`Game::controller_of`](crate::Game::controller_of), ranked against the other registries
     /// by its timestamp (CR 800.4a).
     pub conditioned_control_overrides: Vec<(ObjectId, PlayerId, ControlCondition, u64)>,
-    /// Control-changing Aura (CR 720 — [`Effect::ControlAttached`](crate::Effect::ControlAttached))
+    /// Control-changing Aura (CR 720 — [`Effect::Static(StaticEffect::ControlAttached)`](crate::Effect::Static(StaticEffect::ControlAttached)))
     /// timestamps, each `(the Aura object, the control timestamp it attached at)`. The Aura path
     /// keeps no controller entry (the controller is read live as the Aura's owner off its live
     /// attachment in [`Game::control_aura`](crate::Game::control_aura)); this only records *when*
@@ -106,7 +106,7 @@ pub(crate) struct PlayPermissions {
     pub aura_control_timestamps: Vec<(ObjectId, u64)>,
     /// Impulse draw (CR 118.6): each entry is `(an exiled card, the player who may play it,
     /// extended)` — the play permission granted by
-    /// [`Effect::ExileTopMayPlay`](crate::Effect::ExileTopMayPlay). A plain entry (`extended =
+    /// [`Effect::Mill(MillEffect::ExileTopMayPlay)`](crate::Effect::Mill(MillEffect::ExileTopMayPlay)). A plain entry (`extended =
     /// false`) expires at the very next cleanup. An `extended` entry (Atsushi, the Blazing Sky's
     /// `until_next_turn` mode) is shielded from that cleanup until it arms — flips to
     /// `extended = false` — at its player's own next untap
@@ -119,12 +119,12 @@ pub(crate) struct PlayPermissions {
     /// [`play_from_exile`](Self::play_from_exile) there is no cleanup expiry — the duration is read
     /// live by [`Game::may_play_from_exile_free_while_source`](crate::Game), which requires
     /// `source` to still be on the battlefield, so an entry for a dead source simply stops
-    /// matching. Granted by [`Effect::ExileTopMayPlay`](crate::Effect::ExileTopMayPlay)'s
+    /// matching. Granted by [`Effect::Mill(MillEffect::ExileTopMayPlay)`](crate::Effect::Mill(MillEffect::ExileTopMayPlay))'s
     /// `free_while_source` mode.
     pub play_from_exile_free_while_source: Vec<(ObjectId, PlayerId, ObjectId)>,
     /// Free-cast-from-exile (CR 118.5, "without paying its mana cost") — each entry is `(an
     /// exiled card, the player who may cast it for free)`, granted by
-    /// [`Effect::CastExiledWithThisFree`](crate::Effect::CastExiledWithThisFree) (Quintorius,
+    /// [`Effect::Dig(DigEffect::CastExiledWithThisFree)`](crate::Effect::Dig(DigEffect::CastExiledWithThisFree)) (Quintorius,
     /// Loremaster). Distinct from [`play_from_exile`](Self::play_from_exile), which permits
     /// playing from exile but still charges the normal cost. Expires unconditionally at the next
     /// cleanup ([`Event::CastFromExileFreeEnded`](crate::Event::CastFromExileFreeEnded)) — no
@@ -257,7 +257,7 @@ pub(crate) struct BatchTriggerScratch {
     /// last-known-information reason (the flag lives on the live `Object::Permanent`, gone once
     /// `create_object` tombstones it). Read (not drained) by `Game::enqueue_triggers`'s
     /// `Event::MovedToGraveyard` arm to fabricate the real placed trigger (see
-    /// [`crate::Effect::ExileGraveyardObjectGainLife`]), cleared wholesale at the end of every batch.
+    /// [`crate::Effect::Zone(ZoneEffect::ExileGraveyardObjectGainLife)`]), cleared wholesale at the end of every batch.
     pub serra_recursion_deaths: Vec<ObjectId>,
     /// `(pre-move id, def, owner)` for every creature put into a graveyard from the battlefield
     /// this batch — CR 603.10a last-known information for [`Game::queue_watch_death_triggers`],
@@ -294,15 +294,15 @@ pub(crate) struct OncePerTurnLimits {
 #[derive(Clone, Default)]
 pub(crate) struct ExileLinks {
     /// The O-Ring pattern (CR 603.6e): each entry is `(source, exiled)` — an object exiled by
-    /// [`Effect::ExileUntilSourceLeaves`](crate::Effect::ExileUntilSourceLeaves), linked to the ability's own source for as long as that source stays on the battlefield.
+    /// [`Effect::Destroy(DestroyEffect::ExileUntilSourceLeaves)`](crate::Effect::Destroy(DestroyEffect::ExileUntilSourceLeaves)), linked to the ability's own source for as long as that source stays on the battlefield.
     pub until_source_leaves: Vec<(ObjectId, ObjectId)>,
     /// Skyclave Apparition's linked exile: each entry is `(source, exiled)` — an object exiled
-    /// by [`Effect::ExileTargetMintingIllusionOnLeave`](crate::Effect::ExileTargetMintingIllusionOnLeave), linked to the ability's own source. Unlike
+    /// by [`Effect::Destroy(DestroyEffect::ExileTargetMintingIllusionOnLeave)`](crate::Effect::Destroy(DestroyEffect::ExileTargetMintingIllusionOnLeave)), linked to the ability's own source. Unlike
     /// `until_source_leaves` the card is never returned; [`Game::check_leaves_battlefield_illusions`](crate::Game::check_leaves_battlefield_illusions) mints its owner an Illusion instead once `source`
     /// leaves the battlefield, then drops the entry.
     pub illusion_on_source_leave: Vec<(ObjectId, ObjectId)>,
     /// The "exiled with" pattern (CR 400.10a): each entry is `(source, exiled)` — a card exiled
-    /// by [`Effect::ExileDiscardedWithThis`](crate::Effect::ExileDiscardedWithThis), linked to the ability's own source (Currency Converter).
+    /// by [`Effect::Mill(MillEffect::ExileDiscardedWithThis)`](crate::Effect::Mill(MillEffect::ExileDiscardedWithThis)), linked to the ability's own source (Currency Converter).
     pub with_source: Vec<(ObjectId, ObjectId)>,
     /// Hofri Ghostforge's minted Spirit token: each entry is `(token, exiled)` — the token's
     /// granted "When this token leaves the battlefield, return the exiled card to its owner's
@@ -319,12 +319,12 @@ pub(crate) struct ExileLinks {
 #[derive(Clone, Default)]
 pub(crate) struct DelayedTriggers {
     /// Each `(controller, source, fire_at, effect)`, scheduled by
-    /// [`Effect::ScheduleAtNextUpkeep`](crate::Effect::ScheduleAtNextUpkeep) and drained in full
+    /// [`Effect::Misc(MiscEffect::ScheduleAtNextUpkeep)`](crate::Effect::Misc(MiscEffect::ScheduleAtNextUpkeep)) and drained in full
     /// the next time a step matching `fire_at` begins
     /// ([`Game::fire_delayed_triggers`](crate::Game::fire_delayed_triggers)).
     pub scheduled: Vec<(PlayerId, ObjectId, Step, Effect)>,
     /// Each `(controller, source, filter, then)`, armed by
-    /// [`Effect::ScheduleNextCastTrigger`](crate::Effect::ScheduleNextCastTrigger) — CR 603.7's
+    /// [`Effect::Misc(MiscEffect::ScheduleNextCastTrigger)`](crate::Effect::Misc(MiscEffect::ScheduleNextCastTrigger)) — CR 603.7's
     /// event-armed sibling of `scheduled` above: fires once the next time `controller` casts a
     /// spell matching `filter` this turn, then removed
     /// ([`Game::fire_next_cast_triggers`](crate::Game::fire_next_cast_triggers)). Cleared
@@ -332,17 +332,17 @@ pub(crate) struct DelayedTriggers {
     /// "this turn" boundary `Player::spells_cast_this_turn` resets at.
     pub pending_next_cast: Vec<(PlayerId, ObjectId, SpellFilter, &'static [Effect])>,
     /// Each `(controller, source, watched)`, armed by
-    /// [`Effect::ArmCombatDamageWatch`](crate::Effect::ArmCombatDamageWatch) — CR 603.7's
+    /// [`Effect::Misc(MiscEffect::ArmCombatDamageWatch)`](crate::Effect::Misc(MiscEffect::ArmCombatDamageWatch)) — CR 603.7's
     /// event-armed sibling of `pending_next_cast` above, but object-scoped (watches one specific
     /// creature) rather than filter-scoped: fires
-    /// [`Effect::BecomePrepared`](crate::Effect::BecomePrepared) on `source` the first time
+    /// [`Effect::Misc(MiscEffect::BecomePrepared)`](crate::Effect::Misc(MiscEffect::BecomePrepared)) on `source` the first time
     /// `watched` deals combat damage to a player
     /// ([`Game::fire_combat_damage_watch_triggers`](crate::Game::fire_combat_damage_watch_triggers)),
     /// then removed. Cleared unconsumed at end of combat (CR "this combat" — `Game::apply`'s
     /// `Step::EndCombat` arm), unlike `pending_next_cast`'s turn-boundary expiry.
     pub pending_combat_damage_watch: Vec<(PlayerId, ObjectId, ObjectId)>,
     /// Each `(controller, source, card)`, armed by
-    /// [`Effect::ScheduleThisTurnCombatDamageCopy`](crate::Effect::ScheduleThisTurnCombatDamageCopy)
+    /// [`Effect::Misc(MiscEffect::ScheduleThisTurnCombatDamageCopy)`](crate::Effect::Misc(MiscEffect::ScheduleThisTurnCombatDamageCopy))
     /// (Surge to Victory) — CR 603.7's *repeatable* sibling of `pending_combat_damage_watch`
     /// above: controller-scoped rather than watching one chosen creature, and never removed on
     /// fire (CR "this turn" fires again on every subsequent qualifying combat-damage event,
@@ -355,7 +355,7 @@ pub(crate) struct DelayedTriggers {
     pub pending_combat_damage_copy: Vec<(PlayerId, ObjectId, ObjectId)>,
 }
 
-/// A permanent's controller/token-ness/card-def facts, snapshotted at the moment `Effect::DestroyAll`
+/// A permanent's controller/token-ness/card-def facts, snapshotted at the moment `Effect::Destroy(DestroyEffect::DestroyAll)`
 /// destroys it — captured because the permanent is already gone from the battlefield by the time
 /// a later `Sequence` step (`Amount::PermanentsDestroyedThisWay`) needs to count how many matched
 /// some filter (Ceaseless Conflict's token rider, Culling Ritual's mana rider). `def` carries the
@@ -367,9 +367,9 @@ pub(crate) struct DestroyedThisWay {
     pub(crate) token: bool,
 }
 
-/// A creature's controller and power, snapshotted at the moment `Effect::ExileAll` exiles it —
+/// A creature's controller and power, snapshotted at the moment `Effect::Destroy(DestroyEffect::ExileAll)` exiles it —
 /// captured because the creature is already gone from the battlefield by the time
-/// `Effect::EachPlayerCreatesFractalFromExiledPower` (Oversimplify) needs to sum each player's
+/// `Effect::Choice(ChoiceEffect::EachPlayerCreatesFractalFromExiledPower)` (Oversimplify) needs to sum each player's
 /// own share (CR 603.6d LKI-adjacent: the exile has already happened, so this reads a snapshot
 /// rather than the live board).
 #[derive(Clone, Copy)]

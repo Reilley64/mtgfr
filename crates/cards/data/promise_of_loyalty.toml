@@ -23,7 +23,8 @@ timing = "spell"
 
 # Each player puts a vow counter on a creature they control and sacrifices the rest.
 [[abilities.effects]]
-type = "each_player_sacrifices"
+type = "choice"
+mode = "each_player_sacrifices"
 scope = "all_players"
 keep_one = true
 filter = "creature"
@@ -32,5 +33,6 @@ filter = "creature"
 # those creatures can't attack you or planeswalkers you control for as long as it has a vow
 # counter on it.
 [[abilities.effects.then]]
-type = "place_vow_counters"
+type = "counters"
+mode = "place_vow_counters"
 filter = "creature"

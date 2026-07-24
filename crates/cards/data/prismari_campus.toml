@@ -22,5 +22,6 @@ activation_cost = { generic = 4 }
 
 # Scry 1.
 [[abilities.effects]]
-type = "scry"
+type = "dig"
+mode = "scry"
 count = 1

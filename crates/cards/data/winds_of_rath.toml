@@ -23,5 +23,6 @@ timing = "spell"
 
 # Destroy all creatures that aren't enchanted.
 [[abilities.effects]]
-type = "destroy_all"
+type = "destroy"
+mode = "all"
 filter = { types = "creature", enchanted = false }

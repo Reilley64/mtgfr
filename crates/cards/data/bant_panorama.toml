@@ -26,7 +26,8 @@ generic = 1
 # Search your library for a basic Forest, Plains, or Island card, put it onto the battlefield
 # tapped, then shuffle.
 [[abilities.effects]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = { basic_land_with_subtype = ["Forest", "Plains", "Island"] }
 to_zone = "battlefield"
 tapped = true

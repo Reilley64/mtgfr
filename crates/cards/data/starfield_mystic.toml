@@ -28,7 +28,8 @@ timing = "static"
 
 # Enchantment spells you cast cost {1} less to cast.
 [[abilities.effects]]
-type = "reduce_spell_cost"
+type = "static"
+mode = "reduce_spell_cost"
 amount = 1
 filter = "enchantment"
 
@@ -39,6 +40,7 @@ timing = "enchantment_you_control_dies"
 
 # put a +1/+1 counter on this creature.
 [[abilities.effects]]
-type = "put_counters"
+type = "counters"
+mode = "put_counters"
 count = 1
 target = "this"

@@ -28,7 +28,8 @@ timing = "spell"
 # Move all counters from target nonland permanent you control onto another target nonland
 # permanent you control.
 [[abilities.effects]]
-type = "move_counters"
+type = "counters"
+mode = "move_counters"
 target = { permanent = { types = "nonland", controller = "you" } }
 to_filter = { types = "nonland", controller = "you" }
 all_kinds = true
@@ -41,5 +42,6 @@ timing = "spell"
 # Remove all counters from target nonland permanent you control. Draw a card for each counter
 # removed this way.
 [[abilities.effects]]
-type = "remove_all_counters_then_draw"
+type = "counters"
+mode = "remove_all_counters_then_draw"
 target = { permanent = { types = "nonland", controller = "you" } }

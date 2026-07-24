@@ -19,12 +19,14 @@ timing = "spell"
 
 # Chain Lightning deals 3 damage to any target.
 [[abilities.effects]]
-type = "deal_damage"
+type = "damage"
+mode = "target"
 amount = 3
 target = "any"
 
 # Then that player or that permanent's controller may pay {R}{R}. If the player does, they may copy this spell and
 # may choose a new target for that copy.
 [[abilities.effects]]
-type = "may_pay_to_copy_this"
+type = "copy"
+mode = "may_pay_to_copy_this"
 cost = { red = 2 }

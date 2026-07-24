@@ -31,7 +31,8 @@ timing = "attacks"
 # them onto the battlefield. … Put the rest of those cards on the bottom of your library in a
 # random order.
 [[abilities.effects]]
-type = "look_at_top"
+type = "dig"
+mode = "look_at_top"
 count = 6
 filter = "aura_or_equipment"
 up_to = 1

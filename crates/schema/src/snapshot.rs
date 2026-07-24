@@ -949,7 +949,7 @@ mod tests {
     use crate::dto::{CommanderDamageView, PendingChoiceView, WireKind};
     use crate::intent::{WireAttack, WireTarget};
     use crate::test_support::{def, pass_until_choice, refresh_via_mana_tap, resolve_top_of_stack};
-    use engine::{Defender, Effect, Game, ObjectId, PlayerId};
+    use engine::{Defender, Effect, Game, ObjectId, PlayerId, TokenEffect};
 
     use super::{SPECTATOR_VIEWER, StreamFrame, ViewExtras, complete_visible};
 
@@ -1884,9 +1884,9 @@ mod tests {
         const ABILITIES: [Ability; 2] = [
             Ability {
                 timing: Timing::Triggered(Trigger::CreatureYouControlDies),
-                effect: Effect::GainLife {
+                effect: Effect::Life(LifeEffect::Gain {
                     amount: Amount::Fixed(1),
-                },
+                }),
                 optional: false,
                 min_level: 0,
                 once_each_turn: false,
@@ -1895,9 +1895,9 @@ mod tests {
             },
             Ability {
                 timing: Timing::Triggered(Trigger::CreatureYouControlDies),
-                effect: Effect::DrawCards {
+                effect: Effect::Draw(DrawEffect::Cards {
                     count: Amount::Fixed(1),
-                },
+                }),
                 optional: false,
                 min_level: 0,
                 once_each_turn: false,
@@ -2823,7 +2823,7 @@ mod tests {
         let Effect::Sequence { steps } = beast.abilities[0].effect else {
             panic!("Beast Within spell body");
         };
-        let Effect::CreateToken { token, .. } = steps[1] else {
+        let Effect::Token(TokenEffect::Create { token, .. }) = steps[1] else {
             panic!("Beast Within create_token step");
         };
         let beast_token = game.spawn_token_on_battlefield(p0, token);

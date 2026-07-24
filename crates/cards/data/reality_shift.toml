@@ -21,9 +21,11 @@ timing = "spell"
 
 # Exile target creature.
 [[abilities.effects]]
-type = "exile_target"
+type = "exile"
+mode = "target"
 target = "creature"
 
 # Its controller manifests the top card of their library.
 [[abilities.effects]]
-type = "manifest"
+type = "zone"
+mode = "manifest"

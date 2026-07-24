@@ -138,7 +138,7 @@ impl Game {
             Amount::SpellSacrificeCount => self.spell_sacrifice_count(source) as i32,
             Amount::RevealedCreatureManaValue => self.revealed_creature_mana_value(source) as i32,
             Amount::PermanentsDiedThisTurn => self.permanents_died_this_turn as i32,
-            // Reads the snapshot `Effect::DestroyAll`'s resolve path just recorded on
+            // Reads the snapshot `Effect::Destroy(DestroyEffect::DestroyAll)`'s resolve path just recorded on
             // [`ResolutionFrame`], restricted to `filter` (empty/default matches every destroyed
             // permanent — Culling Ritual's unfiltered mana count). No `permanent_matches` reuse: the
             // permanents are already off the battlefield by the time a following `Sequence`
@@ -150,37 +150,37 @@ impl Game {
                 .iter()
                 .filter(|snap| destroyed_this_way_matches(&filter, controller, snap))
                 .count() as i32,
-            // Reads the snapshot `Effect::EachPlayerExilesFromGraveyard` recorded (Augusta's "put
+            // Reads the snapshot `Effect::Choice(ChoiceEffect::EachPlayerExilesFromGraveyard)` recorded (Augusta's "put
             // that many +1/+1 counters"); resolution-scoped, like `PermanentsDestroyedThisWay`.
             Amount::NonlandCardsExiledThisWay => {
                 self.resolution_frame.nonland_cards_exiled_this_way as i32
             }
-            // Reads the snapshot this resolution's own `Effect::SearchLibrary` step just recorded
+            // Reads the snapshot this resolution's own `Effect::Dig(DigEffect::SearchLibrary)` step just recorded
             // (Trench Gorger's "the number of cards exiled this way"); resolution-scoped, like
             // `NonlandCardsExiledThisWay`.
             Amount::CardsExiledBySearchThisWay => {
                 self.resolution_frame.cards_exiled_by_search_this_way as i32
             }
-            // Reads the tallies this resolution's own `Effect::CouncilsDilemmaVote` round
+            // Reads the tallies this resolution's own `Effect::Choice(ChoiceEffect::CouncilsDilemmaVote)` round
             // accumulated (Fateful Tempest); resolution-scoped, like `NonlandCardsExiledThisWay`.
-            // Reads the tally this resolution's own `Effect::JoinForcesPayMana` round
+            // Reads the tally this resolution's own `Effect::Choice(ChoiceEffect::JoinForcesPayMana)` round
             // accumulated (Collective Voyage); resolution-scoped, like `PastVotes`.
             Amount::ManaPaidThisWay => self.resolution_frame.join_forces_mana as i32,
             Amount::PastVotes => self.resolution_frame.council_past_votes as i32,
             Amount::PresentVotes => self.resolution_frame.council_present_votes as i32,
-            // Reads the mana value the preceding `Effect::MillSelf` step snapshotted (Fateful
+            // Reads the mana value the preceding `Effect::Mill(MillEffect::MillSelf)` step snapshotted (Fateful
             // Tempest's "damage … equal to the total mana value of cards milled this way").
             Amount::TotalManaValueMilledThisWay => {
                 self.resolution_frame.milled_mana_value_this_way as i32
             }
-            // Reads the mana value the preceding `Effect::ExileTargetGraveyardCardRecordManaValue`
+            // Reads the mana value the preceding `Effect::Dig(DigEffect::ExileTargetGraveyardCardRecordManaValue)`
             // step snapshotted (Surge to Victory's team +X/+0 pump); `0` if unset — unreachable in
             // practice, since a fizzled target drops the whole ability before this reads.
             Amount::ExiledCardManaValueThisWay => self
                 .resolution_frame
                 .surge_exiled_card
                 .map_or(0, |(_, mv)| mv as i32),
-            // Reads the mana value the preceding `Effect::ReturnFromGraveyardToHand` step
+            // Reads the mana value the preceding `Effect::Zone(ZoneEffect::ReturnFromGraveyardToHand)` step
             // snapshotted (Vengeful Rebirth's conditional damage); `0` when a land came back or
             // the return fizzled — CR 120.8 turns that into "no damage at all", which is the
             // oracle's "if you return a nonland card" gate.

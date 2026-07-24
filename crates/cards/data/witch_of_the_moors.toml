@@ -30,11 +30,13 @@ type = "you_gained_life_this_turn"
 
 # each opponent sacrifices a creature of their choice
 [[abilities.effects]]
-type = "each_player_sacrifices"
+type = "choice"
+mode = "each_player_sacrifices"
 scope = "each_opponent"
 filter = "creature"
 
 # and you return up to one target creature card from your graveyard to your hand.
 [[abilities.effects]]
-type = "may_return_from_graveyard"
+type = "choice"
+mode = "may_return_from_graveyard"
 filter = "creature"

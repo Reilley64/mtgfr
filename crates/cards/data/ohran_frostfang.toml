@@ -28,7 +28,8 @@ timing = "static"
 
 # Attacking creatures you control have deathtouch.
 [[abilities.effects]]
-type = "anthem_static"
+type = "static"
+mode = "anthem"
 keywords = ["deathtouch"]
 attacking_only = true
 
@@ -39,5 +40,6 @@ who = "your_creatures"
 
 # draw a card.
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1

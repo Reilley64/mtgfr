@@ -28,7 +28,8 @@ timing = "spell"
 
 # Draw two cards
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 2
 
 # Draw two cards and create two Treasure tokens. (They're artifacts with "{T}, Sacrifice this
@@ -38,5 +39,6 @@ timing = "spell"
 
 # create two Treasure tokens
 [[abilities.effects]]
-type = "create_treasure"
+type = "token"
+mode = "create_treasure"
 count = 2

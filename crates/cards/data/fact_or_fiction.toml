@@ -22,4 +22,5 @@ timing = "spell"
 # Reveal the top five cards of your library. An opponent separates those cards into two piles. Put one pile into
 # your hand and the other into your graveyard.
 [[abilities.effects]]
-type = "reveal_top_split_piles"
+type = "dig"
+mode = "reveal_top_split_piles"

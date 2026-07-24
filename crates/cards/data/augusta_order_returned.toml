@@ -32,10 +32,12 @@ timing = "attacks"
 
 # each player exiles a card from their graveyard
 [[abilities.effects]]
-type = "each_player_exiles_from_graveyard"
+type = "choice"
+mode = "each_player_exiles_from_graveyard"
 
 # put that many +1/+1 counters on target attacking creature
 [[abilities.effects]]
-type = "put_counters"
+type = "counters"
+mode = "put_counters"
 count = "nonland_cards_exiled_this_way"
 target = { permanent = { types = "creature", attacking = true } }

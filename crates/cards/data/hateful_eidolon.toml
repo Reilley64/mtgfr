@@ -29,5 +29,6 @@ timing = "an_enchanted_creature_dies"
 
 # draw a card for each Aura you controlled that was attached to it.
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = "auras_you_controlled_attached_to_dying_creature"

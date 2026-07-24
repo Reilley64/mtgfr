@@ -44,5 +44,6 @@ timing = "spell"
 
 # Return target nonland permanent an opponent controls to its owner's hand.
 [[adventure.abilities.effects]]
-type = "return_to_hand"
+type = "zone"
+mode = "return_to_hand"
 target = { permanent = { types = "nonland", controller = "opponent" } }

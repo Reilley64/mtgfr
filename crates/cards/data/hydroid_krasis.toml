@@ -26,12 +26,14 @@ timing = "when_you_cast_this"
 
 # you gain half X life
 [[abilities.effects]]
-type = "gain_life"
+type = "life"
+mode = "gain"
 amount = "half_x_rounded_down"
 
 # and draw half X cards. Round down each time.
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = "half_x_rounded_down"
 
 # This creature enters with X +1/+1 counters on it.
@@ -40,5 +42,6 @@ timing = "static"
 
 # This creature enters with X +1/+1 counters on it.
 [[abilities.effects]]
-type = "enters_with_counters"
+type = "static"
+mode = "enters_with_counters"
 count = "x"

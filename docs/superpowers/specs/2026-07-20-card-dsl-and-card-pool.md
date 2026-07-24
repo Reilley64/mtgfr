@@ -1,7 +1,7 @@
 # Card DSL and Card Pool
 
 **Status:** Current (as of 2026-07-20)
-**Module:** `crates/cards` (`data/*.toml`, `data/tokens/*.toml`), `crates/engine` (`src/de.rs`, `src/types.rs` — `CardDef`, `Ability`, `Effect`, `Timing`), `docs/decklists/*.md`
+**Module:** `crates/cards` (`data/*.toml`, `data/tokens/*.toml`), `crates/engine` (`src/de.rs`, `src/types/effect/` — `CardDef`, `Ability`, `Effect`, family enums, `Timing`), `docs/decklists/*.md`
 
 ---
 
@@ -58,7 +58,8 @@ type = "instant"
 timing = "spell"
 
 [[abilities.effects]]
-type = "deal_damage"
+type = "damage"
+mode = "target"
 amount = 3
 target = "any"
 ```
@@ -109,29 +110,45 @@ Each ability block has a `timing` field and one or more `[[abilities.effects]]` 
 
 ### Effect vocabulary (representative sample)
 
-The `Effect` enum grows only from real cards. Currently implemented effect types include:
+The `Effect` enum grows only from real cards. Every leaf effect is authored as nested **`type` (family) + `mode` (leaf)**. Structural composers (`sequence`, `conditional`, `choose_one`) are the only effects with no `mode`. See `docs/superpowers/specs/2026-07-23-nested-effect-families-design.md` for the full family map.
 
-**Damage:** `deal_damage` (to target or player), `damage_each_creature` (mass damage), `fight` (two creatures deal damage to each other), `damage_player_for_each` (Torment of Hailfire shape).
+Top-level families: `damage`, `draw`, `life`, `destroy`, `exile`, `sacrifice`, `control`, `counters`, `mana`, `mill`, `pump`, `reveal`, `token`, `zone`, `copy`, `dig`, `choice`, `static`, `misc`, plus structural `sequence` / `conditional` / `choose_one`.
 
-**Targeting / removal:** `exile_target`, `destroy_target`, `return_to_hand`, `counter_target`, `tap_target`, `tap_all`, `destroy_all`, `exile_all`.
+Representative modes by family:
 
-**Counters:** `put_plus_one_counters`, `remove_counter`, `proliferate`, `enters_with_counters`.
+**`damage`:** `target` (to creature/player/planeswalker), `each_creature` (mass damage), `to_self`.
 
-**Token creation:** `create_token` (references a token profile by id, or an inline creature definition; `count` takes an `Amount`; `controller` specifies recipient: `you`/`each_opponent`/`each_player`/`one_per_opponent`; optional `required_defender` for goad-on-create).
+**`destroy`:** `target`, `all`, `triggering_damaged_creature`.
 
-**Card draw / library:** `draw_cards`, `mill`, `search_library`, `scry`, `surveil`, `arrange_top`.
+**`exile`:** `target`, `all`, `all_graveyards`, `graveyard`, `until_source_leaves`.
 
-**Life:** `gain_life`, `lose_life`, `each_opponent_drain` (drain each opponent), `gain_life_target_controller`.
+**`sacrifice`:** `source`, `enchanted_creature` (plus engine-internal object sacrifice helpers).
 
-**Mana:** `add_mana` (one or more `Mana` values; optional `repeat: Amount` for scaled production).
+**`control`:** `tap_target`, `tap_all`, `gain_control`, `gain_control_while`.
 
-**Pump / anthem:** `pump_until_end_of_turn` (target creature gets +N/+M until EOT), `anthem_static` (continuous anthem for matching permanents; `power`, `toughness`, `keywords` axes; optional `subtypes`/`colors`/`attacking_only`/`condition`/`self_only`/`exclude_source` filters), `grant_to_attached` (pump the enchanted/equipped permanent; takes `Amount`).
+**`counters`:** `put_counters`, `remove_counter`, `move_counters`.
 
-**Control / copy:** `gain_control`, `gain_control_while` (condition-scoped steal), `copy_target_spell`, `create_token_copy`.
+**`token`:** `create` (references a token profile by id or inline definition), `create_copy`, `create_treasure`.
 
-**Zone change:** `reanimate_to_battlefield`, `return_permanent_to_hand`, `put_on_top_of_library`, `exile_with_linked_return` (blink), `exile_dead_creature_create_copy_with_subtype`.
+**`draw`:** `cards`, `target_player`, `each_player`; **`mill`:** `cards`.
 
-**Special:** `sequence` (run multiple effects in order), `conditional` (if condition then effect else effect), `may_yes_no` (optional trigger — wraps another effect), `choose_mode` (modal dispatch), `clash`, `populate`, `draw_until_hand_size`.
+**`dig`:** `search_library`, `scry`, `surveil`, `look_at_top`, `distribute_top`, `cascade`, `clash`.
+
+**`life`:** `gain`, `lose`, `each_opponent_drain`, `gain_target_controller`.
+
+**`mana`:** `add` (one or more `Mana` values; optional `repeat: Amount` for scaled production).
+
+**`pump`:** `pump_until_end_of_turn` (target creature +N/+M until EOT); **`static`:** `anthem` (continuous anthem for matching permanents; `power`, `toughness`, `keywords` axes; optional filters), `grant_to_attached`, `enters_with_counters`.
+
+**`copy`:** `target_spell`, `this_spell`.
+
+**`zone`:** `reanimate_to_battlefield`, `return_to_hand`, `flicker_target`, `exile_dead_creature_create_copy_with_subtype`.
+
+**`choice`:** `may_sacrifice`, `may_draw_up_to`, `discard`, `proliferate`.
+
+**`misc`:** `fight`, `counter_target_spell`, `schedule_at_next_upkeep`.
+
+**Structural:** `sequence` (run multiple effects in order), `conditional` (if condition then effects else effects), `choose_one` (modal dispatch).
 
 ### Amount
 
@@ -170,7 +187,7 @@ These are the **first faithful target** (card-dsl-and-card-pool spec): every car
 - **`Effect` enum grows only from real card demand (card-dsl-and-card-pool spec).** New behavior = new `Effect` variant + `Game::run` arm + `Event::apply` arm + TOML authoring. The DSL never anticipates future cards.
 - **Token profiles are pre-loaded into a `OnceLock<HashMap<&'static str, CardDef>>` before deckable cards.** `install_token_defs` must be called before any card TOML that references a token by id is deserialized. `cards` crate's `load` function handles this ordering.
 - **The `card-dsl` feature flag gates all DSL deserialization.** The engine can be compiled without TOML parsing (e.g. for pure engine tests that construct `CardDef` inline). The feature adds `serde` derives and `de.rs`.
-- **`de.rs` holds only structurally-divergent deserializers.** Types whose TOML spelling matches their Rust shape use serde derives on the definitions in `types.rs`. Only when the TOML spelling differs structurally (flat cost table, `instant`/`sorcery` as separate strings, folded `Timing::Activated`) does `de.rs` provide a manual impl.
+- **`de.rs` holds only structurally-divergent deserializers.** Types whose TOML spelling matches their Rust shape use serde derives on the definitions in `types/effect/`. Only when the TOML spelling differs structurally (flat cost table, `instant`/`sorcery` as separate strings, folded `Timing::Activated`) does `de.rs` provide a manual impl.
 - **`otags` and `set` are pure catalog metadata** — the engine never reads them. They exist for deck-builder search (`set`/`subtypes` + Postgres catalog search, accounts-decks-and-catalog spec) and Scryfall tagger integration.
 - **`oracle` is catalog metadata** — the engine never parses it; rules behavior comes from `abilities`/`keywords` only.
 - **`approximates` is surfaced in the card catalog** so the deck builder and audits see the same gap the engine runs. An absent `approximates` field means the card is faithful.

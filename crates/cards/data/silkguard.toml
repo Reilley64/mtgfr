@@ -24,14 +24,16 @@ timing = "spell"
 
 # Put a +1/+1 counter on each of up to X target creatures you control.
 [[abilities.effects]]
-type = "put_counters"
+type = "counters"
+mode = "put_counters"
 count = 1
 target = "creature_you_control"
 targets = { min = 0, max = 0, x_scaled = true }
 
 # modified creatures you control gain hexproof until end of turn.
 [[abilities.effects]]
-type = "pump_creatures_you_control_until_end_of_turn"
+type = "pump"
+mode = "pump_creatures_you_control_until_end_of_turn"
 power = 0
 toughness = 0
 keywords = ["hexproof"]
@@ -39,6 +41,7 @@ filter = { modified = true, controller = "you" }
 
 # Auras, Equipment ... you control gain hexproof until end of turn.
 [[abilities.effects]]
-type = "grant_keywords_to_permanents_you_control_until_end_of_turn"
+type = "pump"
+mode = "grant_keywords_to_permanents_you_control_until_end_of_turn"
 keywords = ["hexproof"]
 filter = { subtypes = ["Aura", "Equipment"], controller = "you" }

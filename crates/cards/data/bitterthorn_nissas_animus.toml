@@ -27,12 +27,14 @@ timing = "etb"
 
 # create a 0/0 black Phyrexian Germ creature token
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 token = "a1c2af93-83c0-4974-b4db-abf95981d4e3"
 count = 1
 
 [[abilities.effects]]
-type = "attach_self_to_minted_token"
+type = "zone"
+mode = "attach_self_to_minted_token"
 
 # Equipped creature gets +1/+1.
 [[abilities]]
@@ -40,7 +42,8 @@ timing = "static"
 
 # Equipped creature gets +1/+1.
 [[abilities.effects]]
-type = "grant_to_attached"
+type = "static"
+mode = "grant_to_attached"
 power = 1
 toughness = 1
 
@@ -52,7 +55,8 @@ optional = true
 
 # search your library for a basic land card, put it onto the battlefield tapped, then shuffle.
 [[abilities.effects]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = "basic_land"
 to_zone = "battlefield"
 tapped = true
@@ -66,4 +70,5 @@ generic = 3
 
 # Equip {3}
 [[abilities.effects]]
-type = "equip"
+type = "control"
+mode = "equip"

@@ -32,14 +32,16 @@ timing = "spell"
 
 # You may put a +1/+1 counter on a creature.
 [[abilities.effects]]
-type = "put_counters"
+type = "counters"
+mode = "put_counters"
 count = 1
 target = "creature"
 targets = { min = 0, max = 1 }
 
 # Return each creature with power of the chosen quality to its owner's hand.
 [[abilities.effects]]
-type = "return_all_to_hand"
+type = "zone"
+mode = "return_all_to_hand"
 filter = { types = "creature", power_parity = "odd" }
 
 # You may put a +1/+1 counter on a creature. Then choose odd or even. Return each creature with
@@ -50,12 +52,14 @@ timing = "spell"
 
 # You may put a +1/+1 counter on a creature.
 [[abilities.effects]]
-type = "put_counters"
+type = "counters"
+mode = "put_counters"
 count = 1
 target = "creature"
 targets = { min = 0, max = 1 }
 
 # Return each creature with power of the chosen quality to its owner's hand.
 [[abilities.effects]]
-type = "return_all_to_hand"
+type = "zone"
+mode = "return_all_to_hand"
 filter = { types = "creature", power_parity = "even" }

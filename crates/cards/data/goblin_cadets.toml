@@ -21,6 +21,7 @@ timing = "blocks_or_becomes_blocked"
 
 # target opponent gains control of it
 [[abilities.effects]]
-type = "target_opponent_gains_control"
+type = "control"
+mode = "target_opponent_gains_control"
 target = "this"
 player = "opponent"

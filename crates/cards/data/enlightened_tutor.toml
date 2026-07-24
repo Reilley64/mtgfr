@@ -20,6 +20,7 @@ timing = "spell"
 # Search your library for an artifact or enchantment card, reveal it, then shuffle and put that
 # card on top.
 [[abilities.effects]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = "artifact_or_enchantment"
 to_zone = "library_top"

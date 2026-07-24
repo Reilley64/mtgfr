@@ -27,4 +27,5 @@ timing = "upkeep"
 # the mana value of the card revealed by the other player. You each put the card you revealed
 # into your hand.
 [[abilities.effects]]
-type = "reveal_top_and_drain_mutual"
+type = "reveal"
+mode = "top_and_drain_mutual"

@@ -26,7 +26,8 @@ at_least = 2
 
 # draw a card.
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1
 
 # Whenever another player attacks with two or more creatures, they draw a card if none of those creatures attacked you.
@@ -36,5 +37,6 @@ at_least = 2
 
 # they draw a card if none of those creatures attacked you.
 [[abilities.effects]]
-type = "attacking_player_draws"
+type = "draw"
+mode = "attacking_player"
 count = 1

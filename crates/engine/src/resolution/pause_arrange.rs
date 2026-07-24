@@ -1,4 +1,4 @@
-//! ArrangeTop pause family — [`Effect::Scry`] / [`Effect::Surveil`] (CR 701.42 / 701.43).
+//! ArrangeTop pause family — [`Effect::Dig(DigEffect::Scry)`] / [`Effect::Dig(DigEffect::Surveil)`] (CR 701.42 / 701.43).
 //!
 //! First pause peel behind [`Game::run`] (card-dsl-and-card-pool spec deepen). Pause bookkeeping stays in
 //! [`crate::pending`]; this module only raises the choice.
@@ -16,7 +16,7 @@ impl Game {
         x: u32,
     ) {
         match effect {
-            Effect::Scry { count } => {
+            Effect::Dig(DigEffect::Scry { count }) => {
                 let count = self.resolve_count(count, controller, source, target, x);
                 pending::raise(
                     self,
@@ -27,7 +27,7 @@ impl Game {
                     },
                 )
             }
-            Effect::Surveil { count } => pending::raise(
+            Effect::Dig(DigEffect::Surveil { count }) => pending::raise(
                 self,
                 pending::ChoiceRequest::ArrangeTop {
                     player: controller,

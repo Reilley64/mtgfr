@@ -23,7 +23,8 @@ timing = "spell"
 
 # Create X 4/4 white Angel creature tokens with flying.
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 token = "40c64f08-ab2f-4933-8e0e-d1a1c729008f"
 count = "x"
 
@@ -36,7 +37,8 @@ x = true
 
 # create X 1/1 white Soldier creature tokens.
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 token = "eac25f12-6459-438c-a09e-93e23d2cf80d"
 count = "x"
 

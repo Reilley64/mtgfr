@@ -28,6 +28,7 @@ timing = "static"
 
 # Aura spells you cast cost {1} less to cast.
 [[abilities.effects]]
-type = "reduce_spell_cost"
+type = "static"
+mode = "reduce_spell_cost"
 amount = 1
 filter = "aura"

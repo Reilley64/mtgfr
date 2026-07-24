@@ -26,7 +26,8 @@ optional = true
 
 # search your library for up to two basic land cards, reveal them, put them into your hand, then shuffle.
 [[abilities.effects]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = "basic_land"
 to_zone = "hand"
 count = 2
@@ -39,5 +40,6 @@ sacrifice = "this"
 
 # Draw a card.
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1

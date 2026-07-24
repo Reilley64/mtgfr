@@ -22,7 +22,8 @@ optional = true
 
 # create a 0/1 colorless Eldrazi Spawn creature token
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 token = "3aaf906a-e749-4e86-ac79-97650b92f271"
 count = 1
 

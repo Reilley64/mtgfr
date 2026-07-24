@@ -28,4 +28,5 @@ timing = "cards_leave_your_graveyard"
 # put a +1/+1 counter on this creature, then you may have this creature become a copy of an
 # artifact or creature card from among those cards until end of turn.
 [[abilities.effects]]
-type = "put_counter_then_may_become_copy_of_card_from_list"
+type = "choice"
+mode = "put_counter_then_may_become_copy_of_card_from_list"

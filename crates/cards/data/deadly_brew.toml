@@ -21,13 +21,15 @@ timing = "spell"
 
 # Each player sacrifices a creature or planeswalker of their choice.
 [[abilities.effects]]
-type = "each_player_sacrifices"
+type = "choice"
+mode = "each_player_sacrifices"
 scope = "all_players"
 filter = "creature_or_planeswalker"
 
 # If you sacrificed a permanent this way, you may return another permanent card from your
 # graveyard to your hand.
 [[abilities.effects]]
-type = "may_return_from_graveyard"
+type = "choice"
+mode = "may_return_from_graveyard"
 filter = "permanent"
 if_you_sacrificed_this_way = true

@@ -29,7 +29,8 @@ timing = "static"
 # Enchantment spells you cast have affinity for Auras. (They cost {1} less to cast for each Aura
 # you control.)
 [[abilities.effects]]
-type = "reduce_spell_cost"
+type = "static"
+mode = "reduce_spell_cost"
 amount = { per_permanent = { subtypes = ["Aura"], controller = "you" } }
 filter = "enchantment"
 
@@ -41,5 +42,6 @@ caster = "you"
 
 # draw a card.
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1

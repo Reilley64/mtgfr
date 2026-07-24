@@ -21,7 +21,8 @@ timing = "static"
 
 # Other enchantments you control have shroud.
 [[abilities.effects]]
-type = "keyword_anthem_static"
+type = "static"
+mode = "keyword_anthem"
 keywords = ["shroud"]
 filter = { types = ["enchantment"], other = true }
 
@@ -36,6 +37,7 @@ generic = 1
 
 # Search your library for an enchantment card, reveal it, then shuffle and put that card on top.
 [[abilities.effects]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = "enchantment"
 to_zone = "library_top"

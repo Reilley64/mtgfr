@@ -21,7 +21,8 @@ timing = "spell"
 # Search your library for up to two basic land cards, put them onto the battlefield tapped, then
 # shuffle.
 [[abilities.effects]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = "basic_land"
 count = 2
 to_zone = "battlefield"

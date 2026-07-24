@@ -24,4 +24,5 @@ timing = "spell"
 
 # Prevent all combat damage that would be dealt this turn.
 [[abilities.effects]]
-type = "prevent_all_combat_damage_this_turn"
+type = "misc"
+mode = "prevent_all_combat_damage_this_turn"

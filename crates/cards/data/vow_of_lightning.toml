@@ -20,7 +20,8 @@ timing = "static"
 
 # Enchanted creature gets +2/+2, has first strike, and can't attack you or planeswalkers you control.
 [[abilities.effects]]
-type = "grant_to_attached"
+type = "static"
+mode = "grant_to_attached"
 power = 2
 toughness = 2
 keywords = ["first_strike"]

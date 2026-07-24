@@ -24,7 +24,8 @@ timing = "static"
 
 # Creature spells you cast cost {1} less to cast.
 [[abilities.effects]]
-type = "reduce_spell_cost"
+type = "static"
+mode = "reduce_spell_cost"
 amount = 1
 filter = "creature"
 
@@ -37,12 +38,14 @@ controller = "you"
 # this creature deals 2 damage to it. If a Dinosaur is dealt damage this way, this creature
 # gets +2/+0 until end of turn.
 [[abilities.effects]]
-type = "deal_damage_to_entering_permanent"
+type = "damage"
+mode = "to_entering_permanent"
 amount = 2
 then_if_subtype = ["Dinosaur"]
 
 # this creature gets +2/+0 until end of turn.
 [[abilities.effects.then]]
-type = "pump_self_until_end_of_turn"
+type = "pump"
+mode = "pump_self_until_end_of_turn"
 power = 2
 toughness = 0

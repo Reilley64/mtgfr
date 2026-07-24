@@ -30,7 +30,8 @@ timing = "etb"
 # carries); "random order" for the bottomed rest is the deterministic library-order stand-in
 # every other impulse-dig effect in this pool uses (no `rand` in the pure engine).
 [[abilities.effects]]
-type = "exile_top_cast_matching_free"
+type = "dig"
+mode = "exile_top_cast_matching_free"
 count = 8
 filter = "aura"
 
@@ -41,6 +42,7 @@ timing = "attacks"
 
 # it gets +X/+X until end of turn, where X is the number of Auras you control
 [[abilities.effects]]
-type = "pump_self_until_end_of_turn"
+type = "pump"
+mode = "pump_self_until_end_of_turn"
 power = { per_permanent = { subtypes = ["Aura"], controller = "you" } }
 toughness = { per_permanent = { subtypes = ["Aura"], controller = "you" } }

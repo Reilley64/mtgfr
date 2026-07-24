@@ -23,10 +23,10 @@ timing = "spell"
 [[abilities.effects]]
 type = "conditional"
 condition = { type = "color_was_spent_to_cast_this", color = "red" }
-then = [{ type = "damage_each_creature", amount = 3, filter = { without_flying = true } }]
+then = [{ type = "damage", mode = "each_creature", amount = 3, filter = { without_flying = true } }]
 
 # and 3 damage to each creature with flying if {G} was spent to cast this spell.
 [[abilities.effects]]
 type = "conditional"
 condition = { type = "color_was_spent_to_cast_this", color = "green" }
-then = [{ type = "damage_each_creature", amount = 3, filter = { with_flying = true } }]
+then = [{ type = "damage", mode = "each_creature", amount = 3, filter = { with_flying = true } }]
