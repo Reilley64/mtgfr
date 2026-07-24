@@ -1183,6 +1183,8 @@ test("pay_any_amount_of_mana uses a stepper and submits the draft amount", () =>
     { update: sceneUpdate, view },
     Scene.with(viewModel(s)),
     resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("pending-join-forces-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-number-value")).toHaveText("0"),
     Scene.expect(Scene.testId("prompt-number-0")).not.toExist(),
     Scene.expect(Scene.testId("prompt-number-dec")).toBeDisabled(),
