@@ -400,18 +400,10 @@ function cardPickPrompt(
     ],
   );
 
-  if (!searchable) {
-    const body: Html[] = [];
-    if (hintEl != null) body.push(hintEl);
-    body.push(cardsEl);
-    body.push(actionsEl);
-    return frame("pending-choice", config.title, body);
-  }
-
-  // Library search: dock near the hand bar so the board stays visible (Arena tutor chrome).
+  // Card grids dock near the hand bar so the board stays visible (Arena chrome).
   return h.div(
     [
-      h.DataAttribute("testid", "pending-library-aim"),
+      h.DataAttribute("testid", searchable ? "pending-library-aim" : "pending-card-pick-aim"),
       h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
       h.Class(
         "pointer-events-auto fixed left-1/2 z-30 flex max-h-[min(70vh,560px)] w-[min(92vw,720px)] -translate-x-1/2 flex-col gap-2 overflow-hidden rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-snow shadow-hud",
@@ -419,10 +411,12 @@ function cardPickPrompt(
     ],
     [
       h.div([h.DataAttribute("testid", "pick-title"), h.Class("shrink-0 font-semibold text-body")], [config.title]),
-      h.div(
-        [h.Class("pointer-events-none shrink-0 text-caption text-mist")],
-        ["Filter by name, click a card, then Choose — or Fail to find."],
-      ),
+      searchable
+        ? h.div(
+            [h.Class("pointer-events-none shrink-0 text-caption text-mist")],
+            ["Filter by name, click a card, then Choose — or Fail to find."],
+          )
+        : null,
       hintEl,
       filterEl,
       h.div(
@@ -1486,7 +1480,19 @@ function cardPickForKind(
         ),
       );
     }
-    return frame("pending-choice", pending.label, [h.div([h.Class("flex flex-wrap gap-2")], buttons)]);
+    return h.div(
+      [
+        h.DataAttribute("testid", "pending-player-pick-aim"),
+        h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+        h.Class(
+          "pointer-events-auto fixed left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+        ),
+      ],
+      [
+        h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], [pending.label]),
+        h.div([h.Class("flex flex-wrap justify-center gap-2")], buttons),
+      ],
+    );
   }
 
   if (pending.kind === "scry" || pending.kind === "surveil") {
@@ -1728,10 +1734,7 @@ function modeListPrompt(
       ),
     ],
     [
-      h.div(
-        [h.Class("pointer-events-none text-center font-semibold text-body text-snow")],
-        ["Choose trigger modes"],
-      ),
+      h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], ["Choose trigger modes"]),
       h.div(
         [h.Class("pointer-events-none text-caption text-mist")],
         [pending.optional ? `Choose ${pending.choose} or none` : `Choose ${pending.choose}`],
@@ -2343,10 +2346,7 @@ function stringPickPrompt(
         ),
       ],
       [
-        h.div(
-          [h.Class("pointer-events-none shrink-0 text-center font-semibold text-body text-snow")],
-          ["Name a card"],
-        ),
+        h.div([h.Class("pointer-events-none shrink-0 text-center font-semibold text-body text-snow")], ["Name a card"]),
         h.input([
           h.DataAttribute("testid", "prompt-name-input"),
           h.Placeholder("Card name"),
@@ -2507,10 +2507,7 @@ function numberPickPrompt(
       ),
     ],
     [
-      h.div(
-        [h.Class("pointer-events-none text-center font-semibold text-body text-snow")],
-        [numberPickTitle(pending)],
-      ),
+      h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], [numberPickTitle(pending)]),
       h.div(
         [h.Class("flex flex-wrap justify-center gap-2")],
         Array.from({ length: pending.max + 1 }, (_, count) =>

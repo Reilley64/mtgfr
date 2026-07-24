@@ -1273,6 +1273,69 @@ test("library search aim shows docked filter chrome instead of center modal", ()
   );
 });
 
+test("off-board card pick shows docked pending-card-pick-aim instead of center modal", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        pending_choice: {
+          kind: "proliferate",
+          player: 0,
+          source: 1,
+          items: [
+            { id: 10, label: "Bear" },
+            { id: 11, label: "Elf" },
+          ],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-card-pick-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("pending-target-aim")).toBeAbsent(),
+    Scene.expect(Scene.testId("pick-title")).toHaveText("Proliferate — choose any number"),
+    Scene.expect(Scene.testId("pick-card-scroll")).toExist(),
+    Scene.expect(Scene.testId("prompt-card-10")).toExist(),
+    Scene.expect(Scene.testId("prompt-card-11")).toExist(),
+    Scene.expect(Scene.testId("prompt-submit")).toHaveText("Proliferate"),
+  );
+});
+
+test("choose_target player buttons show docked pending-player-pick-aim instead of center modal", () => {
+  const yard = card(99, {
+    name: "Yard Card",
+    owner: 1,
+    controller: 1,
+    zone: ZONE.Graveyard,
+  });
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        players: [player(0), player(1), player(2)],
+        objects: [yard],
+        pending_choice: {
+          kind: "choose_target",
+          label: "Choose a target",
+          max: 1,
+          optional: false,
+          player: 0,
+          source: 1,
+          items: [
+            { id: 0, label: "Alice", player: 0 },
+            { id: 1, label: "Bob", player: 1 },
+            { id: 99, label: "Yard Card" },
+          ],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-player-pick-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("pending-target-aim")).toBeAbsent(),
+    Scene.expect(Scene.testId("prompt-player-0")).toExist(),
+    Scene.expect(Scene.testId("prompt-player-1")).toExist(),
+  );
+});
+
 test("choose_card_name prompt shows a Card name placeholder field", () => {
   overlayScene(
     overlayModel(
