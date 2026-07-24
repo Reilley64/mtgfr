@@ -90,7 +90,7 @@ jobs:
 
       - name: Upload Rust JUnit report
         if: ${{ !cancelled() && hashFiles('target/nextest/ci/junit.xml') != '' }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: rust-junit-${{ matrix.partition }}
           path: target/nextest/ci/junit.xml
@@ -232,7 +232,7 @@ jobs:
         with:
           bun-version-file: .bun-version
 
-      - uses: extractions/setup-just@v3
+      - uses: extractions/setup-just@v4
         if: steps.pass.outputs.cache-hit != 'true'
 
       - name: Install client dependencies
@@ -245,7 +245,7 @@ jobs:
 
       - name: Upload client JUnit report
         if: ${{ steps.pass.outputs.cache-hit != 'true' && !cancelled() && hashFiles('client/junit.xml') != '' }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: client-junit
           path: client/junit.xml
