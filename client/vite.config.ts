@@ -2,8 +2,13 @@ import { foldkit } from "@foldkit/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
 import { nitro } from "nitro/vite";
 import { defineConfig } from "vite";
+import { clientBuildSourcemap } from "./lib/client-build-options";
 
 export default defineConfig({
+  build: {
+    // Referenced .map files for large first-party JS (Chrome / Faro).
+    sourcemap: clientBuildSourcemap,
+  },
   environments: {
     ssr: {},
   },
