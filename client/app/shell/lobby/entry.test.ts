@@ -20,7 +20,7 @@ function playLobbyModel(overrides: Partial<Model>): Model {
   const [model] = init();
   return {
     ...model,
-    route: PlayRoute({ deckId: "0" }),
+    route: PlayRoute({ deckId: "7" }),
     sessionLoaded: true,
     session: { me },
     ...overrides,
@@ -199,7 +199,7 @@ test("claim seat pre-pick includes Back to decks", () => {
   );
 });
 
-test("host redirect preserves ?deck= on the table URL", () => {
+test("host redirect uses /play/:deckId/:table", () => {
   const [model] = init();
   const withDeck = playLobbyModel({
     lobby: { ...initialLobbySlice(), selectedDeckId: 7 },
@@ -211,7 +211,7 @@ test("host redirect preserves ?deck= on the table URL", () => {
 
   const [, commands] = update(withDeck, LobbyTableCreated({ tableId: "XYZ789" }));
   const redirect = commands.find((c) => c.name === "Redirect") as { args?: { path?: string } } | undefined;
-  expect(redirect?.args?.path).toBe("/play/7/XYZ789?deck=7");
+  expect(redirect?.args?.path).toBe("/play/7/XYZ789");
 });
 
 test("joined lobby shows ready/start without a deck picker", () => {

@@ -1,6 +1,7 @@
 import { Match as M, Option, pipe, Schema as S } from "effect";
 import { literal, mapTo, oneOf, parseUrlWithFallback, r, root, slash, string } from "foldkit/route";
 import type { Url } from "foldkit/url";
+import { parseDeckIdParam } from "./deck-id";
 
 export const HomeRoute = r("HomeRoute");
 export const LoginRoute = r("LoginRoute");
@@ -23,6 +24,12 @@ const tableRouter = pipe(literal("play"), slash(string("deckId")), slash(string(
 const appRouter = oneOf(homeRouter, loginRouter, newDeckRouter, deckRouter, tableRouter, playRouter);
 
 export const routeFromUrl = parseUrlWithFallback(appRouter, NotFoundRoute);
+
+export function normalizeAppRoute(route: AppRoute, path: string): AppRoute {
+  if (route._tag !== "PlayRoute" && route._tag !== "TableRoute") return route;
+  if (parseDeckIdParam(route.deckId) != null) return route;
+  return NotFoundRoute({ path });
+}
 
 export function pathWithSearch(url: Url): string {
   const search = Option.getOrUndefined(url.search);

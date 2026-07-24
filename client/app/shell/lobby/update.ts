@@ -30,9 +30,8 @@ function viewResult(view: LobbyView | null): typeof ReceivedLobbyView.Type | typ
   return view == null ? LobbyRequestFailed({ message: UNREACHABLE }) : ReceivedLobbyView({ view });
 }
 
-function selectedDeckId(model: LobbySlice, deckIds: ReadonlyArray<number>): number | null {
-  if (model.selectedDeckId != null) return model.selectedDeckId;
-  return deckIds[0] ?? null;
+function selectedDeckId(model: LobbySlice): number | null {
+  return model.selectedDeckId;
 }
 
 function tableForJoin(model: LobbySlice): string | null {
@@ -101,16 +100,13 @@ export const CopyLobbyLink = Command.define(
   ),
 );
 
-function joinCommand(
-  model: LobbySlice,
-  deckIds: ReadonlyArray<number>,
-): readonly [LobbySlice, ReadonlyArray<FoldkitCommand.Command<Message>>] {
+function joinCommand(model: LobbySlice): readonly [LobbySlice, ReadonlyArray<FoldkitCommand.Command<Message>>] {
   const tableId = tableForJoin(model);
   if (tableId == null) {
     return [{ ...model, error: "Enter the table code your host shared.", submitting: false }, []];
   }
 
-  const deckId = selectedDeckId(model, deckIds);
+  const deckId = selectedDeckId(model);
   if (deckId == null) {
     return [{ ...model, tableId, error: "Pick a deck to bring first.", submitting: false }, []];
   }
@@ -124,7 +120,7 @@ function joinCommand(
 export const update = (
   model: LobbySlice,
   message: Message,
-  deckIds: ReadonlyArray<number>,
+  _deckIds: ReadonlyArray<number>,
 ): readonly [LobbySlice, ReadonlyArray<FoldkitCommand.Command<Message>>] =>
   M.value(message).pipe(
     M.withReturnType<readonly [LobbySlice, ReadonlyArray<FoldkitCommand.Command<Message>>]>(),
@@ -132,14 +128,14 @@ export const update = (
       ChangedLobbyDeck: ({ deckId }) => [{ ...model, selectedDeckId: deckId }, []],
       ChangedLobbyCode: ({ code }) => [{ ...model, code }, []],
       RequestedLobbyHost: () => {
-        const deckId = selectedDeckId(model, deckIds);
+        const deckId = selectedDeckId(model);
         if (deckId == null) {
           return [{ ...model, error: "Pick a deck to bring first." }, []];
         }
         return [{ ...model, selectedDeckId: deckId, error: null, submitting: true }, [CreateLobbyTable()]];
       },
-      LobbyTableCreated: ({ tableId }) => joinCommand({ ...model, tableId }, deckIds),
-      RequestedLobbyJoin: () => joinCommand(model, deckIds),
+      LobbyTableCreated: ({ tableId }) => joinCommand({ ...model, tableId }),
+      RequestedLobbyJoin: () => joinCommand(model),
       RequestedLobbyReady: ({ ready }) => {
         if (model.tableId == null) return [model, []];
         unlockTableAudio();

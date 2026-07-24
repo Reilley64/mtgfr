@@ -186,7 +186,7 @@ function claimSeat(model: LobbySlice, decks: ReadonlyArray<DeckSummary>, decksLo
     return h.div([h.Class("text-label text-lichen")], ["Loading decks…"]);
   }
 
-  // Deck already chosen (Play → Host/Join, or ?deck= on the share link): claim only — no picker.
+  // Deck already chosen in the Play/Table route: claim only — no picker.
   if (model.selectedDeckId != null) {
     return h.div(
       [h.Class("flex flex-wrap items-center gap-sm")],

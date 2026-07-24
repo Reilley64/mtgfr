@@ -4,11 +4,21 @@ import { Command, Navigation } from "foldkit";
 import { toString as urlToString } from "foldkit/url";
 import type { Message as BoardMessage } from "./board/messages";
 import { syncBoardWithGame, updateBoard } from "./board/submodel";
+import { parseDeckIdParam } from "./deck-id";
 import { applyDeltaPure, applySnapshotPure, type DeltaEnvelope, setRejectPure } from "./game/fold";
 import { type Message, NavigationCompleted, type ReceivedDelta } from "./messages";
 import { emptyGameSlice, type GameSlice, type Model } from "./model";
 import type { RpcClient } from "./resources";
-import { isProtectedRoute, nextFromUrl, pathWithSearch, routeFromUrl, routePath, safeNext, TableRoute } from "./routes";
+import {
+  isProtectedRoute,
+  nextFromUrl,
+  normalizeAppRoute,
+  pathWithSearch,
+  routeFromUrl,
+  routePath,
+  safeNext,
+  TableRoute,
+} from "./routes";
 import { initialAuthSubmodel } from "./shell/auth/submodel";
 import { update as updateAuth } from "./shell/auth/update";
 import type { Message as BuilderMessage } from "./shell/decks/builder/messages";
@@ -39,15 +49,6 @@ const LoadExternalUrl = Command.define(
 
 function loginRedirectFor(model: Model): string {
   return `/login?next=${encodeURIComponent(model.currentPath)}`;
-}
-
-function deckFromCurrentPath(currentPath: string): number | null {
-  const search = currentPath.split("?")[1];
-  if (search == null) return null;
-  const value = new URLSearchParams(search).get("deck");
-  if (value == null) return null;
-  const id = Number(value);
-  return Number.isInteger(id) ? id : null;
 }
 
 function terminalStreamError(status: number): string {
@@ -107,7 +108,7 @@ function routeEntry(model: Model): readonly [Model, ReadonlyArray<FoldkitCommand
         {
           ...model,
           decks: { ...model.decks, list },
-          lobby: enterLobby(model.lobby, { tableId: null, selectedDeckId: deckFromCurrentPath(model.currentPath) }),
+          lobby: enterLobby(model.lobby, { tableId: null, selectedDeckId: parseDeckIdParam(model.route.deckId) }),
           game: null,
         },
         commands,
@@ -121,15 +122,20 @@ function routeEntry(model: Model): readonly [Model, ReadonlyArray<FoldkitCommand
           decks: { ...model.decks, list },
           lobby: enterLobby(model.lobby, {
             tableId: model.route.table,
-            selectedDeckId: deckFromCurrentPath(model.currentPath),
+            selectedDeckId: parseDeckIdParam(model.route.deckId),
           }),
           game: null,
         },
         commands,
       ];
     }
-    default:
+    case "LoginRoute":
+    case "NotFoundRoute":
       return [model, []];
+    default: {
+      const exhaustive: never = model.route;
+      return exhaustive;
+    }
   }
 }
 
@@ -171,13 +177,10 @@ function foldLobby(
         : emptyGameSlice(lobby.tableId)
       : model.game;
   const redirect =
-    model.route._tag === "PlayRoute" && lobby.tableId != null
+    model.route._tag === "PlayRoute" && lobby.tableId != null && lobby.selectedDeckId != null
       ? [
           Redirect({
-            path:
-              lobby.selectedDeckId != null
-                ? `${routePath(TableRoute({ deckId: String(lobby.selectedDeckId), table: lobby.tableId }))}?deck=${lobby.selectedDeckId}`
-                : routePath(TableRoute({ deckId: "0", table: lobby.tableId })),
+            path: routePath(TableRoute({ deckId: String(lobby.selectedDeckId), table: lobby.tableId })),
           }),
         ]
       : [];
@@ -194,10 +197,11 @@ export const update = (
       Booted: () => [model, []],
       ReceivedApiVersion: ({ version }) => [{ ...model, apiVersion: version }, []],
       UrlChanged: ({ url }) => {
+        const currentPath = pathWithSearch(url);
         const nextModel = {
           ...model,
-          route: routeFromUrl(url),
-          currentPath: pathWithSearch(url),
+          route: normalizeAppRoute(routeFromUrl(url), currentPath),
+          currentPath,
           auth: { ...model.auth, next: nextFromUrl(url) },
         };
         return routeEntry(nextModel);

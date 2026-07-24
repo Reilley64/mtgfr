@@ -45,21 +45,29 @@ test("pathWithSearch returns pathname only when search is empty", () => {
   expect(pathWithSearch(url("/play", ""))).toBe("/play");
 });
 
-test("PlayRoute entry with currentPath /play/0?deck=-1 sets lobby.selectedDeckId to -1", () => {
-  const [base] = init(url("/play/0", "deck=-1"));
-  expect(base.currentPath).toBe("/play/0?deck=-1");
+test("non-integer play deckId becomes NotFound after normalize", () => {
+  const raw = routeFromUrl(url("/play/table-1"));
+  expect(raw).toEqual(PlayRoute({ deckId: "table-1" }));
+
+  const [base] = init(url("/play/table-1"));
+
+  expect(base.route._tag).toBe("NotFoundRoute");
+});
+
+test("PlayRoute /play/-1 sets lobby.selectedDeckId to -1", () => {
+  const [base] = init(url("/play/-1"));
 
   const [model] = update(base, ReceivedMe({ me: { id: 1, email: "alice@example.com", username: "alice" } }));
 
-  expect(model.route).toEqual(PlayRoute({ deckId: "0" }));
+  expect(model.route).toEqual(PlayRoute({ deckId: "-1" }));
   expect(model.lobby.selectedDeckId).toBe(-1);
 });
 
-test("redirects unsigned protected routes with query string preserved", () => {
-  const [model] = init(url("/play/0", "deck=abc"));
+test("redirects unsigned protected play routes with path deck", () => {
+  const [model] = init(url("/play/7"));
   const redirect = {
     name: "Redirect",
-    args: { path: "/login?next=%2Fplay%2F0%3Fdeck%3Dabc" },
+    args: { path: "/login?next=%2Fplay%2F7" },
     effect: Effect.succeed(NavigationCompleted()),
   };
 

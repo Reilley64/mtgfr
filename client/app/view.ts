@@ -4,7 +4,7 @@ import * as Mount from "foldkit/mount";
 import { view as boardView } from "./board/view";
 import { CompletedPortraitGateModal, type Message, PortraitGateCancelled, RequestedLogout } from "./messages";
 import type { Model } from "./model";
-import { HomeRoute, isProtectedRoute, NewDeckRoute, PlayRoute, routePath } from "./routes";
+import { HomeRoute, isProtectedRoute, NewDeckRoute, routePath } from "./routes";
 import { view as authView } from "./shell/auth/view";
 import { view as deckBuilderView } from "./shell/decks/builder/view";
 import { view as deckListView } from "./shell/decks/list/view";
@@ -50,7 +50,7 @@ function nav(model: Model) {
       h.nav(
         [h.Class("flex items-center gap-md text-label text-lichen")],
         [
-          h.a([h.Href(routePath(PlayRoute({ deckId: "0" }))), h.Class("underline")], ["Play"]),
+          h.a([h.Href(routePath(HomeRoute())), h.Class("underline")], ["Play"]),
           h.a([h.Href(routePath(NewDeckRoute())), h.Class("underline")], ["New deck"]),
           user == null
             ? h.a([h.Href("/login"), h.Class("underline")], ["Sign in"])
