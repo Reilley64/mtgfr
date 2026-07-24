@@ -616,6 +616,45 @@ test("x prompt shows stepper controls and a live cost preview", () => {
   );
 });
 
+test("off-board staged target pick shows docked target-pick-aim instead of center modal", () => {
+  const corpse = card(22, {
+    name: "Corpse",
+    zone: ZONE.Graveyard,
+    kind: { kind: "creature", power: 2, toughness: 2 },
+    print: "corpse-print",
+  });
+  const spell = card(10, {
+    kind: { kind: "sorcery" },
+    name: "Reanimate",
+    owner: 0,
+    controller: 0,
+  });
+  overlayScene(
+    overlayModel(
+      stagedBoard({
+        staged: {
+          card: spell,
+          action: action(10, {
+            object: spell.id,
+            label: "Cast Reanimate",
+            needs_target: true,
+            targets: [{ kind: "object", id: 22 }],
+          }),
+          picks: emptyCostPicks(),
+          preferPick: false,
+          playOrigin: { x: 0, y: 0 },
+          playOriginScreen: { x: 0, y: 0 },
+        },
+      }),
+      gameState({ objects: [spell, corpse] }),
+    ),
+    resolveBoardCardArtMounts(),
+    Scene.expect(Scene.testId("target-pick-aim")).toExist(),
+    Scene.expect(Scene.testId("target-pick")).toBeAbsent(),
+    Scene.expect(Scene.testId("target-pick-0")).toExist(),
+  );
+});
+
 test("modal mode picker renders before modes are chosen", () => {
   const modalCast: ModalCast = {
     action: action(13, {

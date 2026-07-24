@@ -662,13 +662,32 @@ function targetPickButton(target: WireTarget, state: VisibleState, testId: strin
 }
 
 function targetPickPrompt(title: string, targets: ReadonlyArray<WireTarget>, state: VisibleState): Html {
-  return frame("target-pick", title, [
-    h.div(
-      [h.Class("flex max-w-[min(90vw,1040px)] flex-wrap justify-center gap-3")],
-      targets.map((t, i) => targetPickButton(t, state, `target-pick-${i}`)),
-    ),
-    cancelButton(),
-  ]);
+  return h.div(
+    [
+      h.DataAttribute("testid", "target-pick-aim"),
+      h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+      h.Class(
+        "pointer-events-auto fixed left-1/2 z-30 flex max-h-[min(70vh,560px)] w-[min(92vw,720px)] -translate-x-1/2 flex-col gap-2 overflow-hidden rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-snow shadow-hud",
+      ),
+    ],
+    [
+      h.div([h.Class("shrink-0 text-center font-semibold text-body")], [title]),
+      h.div(
+        [
+          h.Class(
+            `${PICK_CARD_SCROLL_MIN_CLASS} w-full flex-1 overflow-y-auto overscroll-contain rounded-panel bg-glass/30 p-2`,
+          ),
+        ],
+        [
+          h.div(
+            [h.Class("flex flex-wrap justify-center gap-3")],
+            targets.map((t, i) => targetPickButton(t, state, `target-pick-${i}`)),
+          ),
+        ],
+      ),
+      h.div([h.Class("flex shrink-0 flex-wrap justify-center gap-2")], [cancelButton()]),
+    ],
+  );
 }
 
 function boardXPrompt(prompt: NonNullable<BoardModel["xPrompt"]>): Html {
