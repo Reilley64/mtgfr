@@ -733,6 +733,48 @@ test("choose_trigger_modes shows docked pending-trigger-modes-aim", () => {
   );
 });
 
+test("choose_pile_for_hand shows docked pending-pile-aim", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        pending_choice: {
+          kind: "choose_pile_for_hand",
+          pile_a: [{ id: 1, label: "Pile A card" }],
+          pile_b: [{ id: 2, label: "Pile B card" }],
+          player: 0,
+          source: 8,
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-pile-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("pending-choice-waiting")).toBeAbsent(),
+    Scene.expect(Scene.testId("prompt-pile-0")).toExist(),
+    Scene.expect(Scene.testId("prompt-pile-1")).toExist(),
+  );
+});
+
+test("opponent_chooses_pile shows docked pending-pile-aim", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        pending_choice: {
+          kind: "opponent_chooses_pile",
+          pile_a: [{ id: 3, label: "Alpha" }],
+          pile_b: [{ id: 4, label: "Beta" }],
+          player: 0,
+          source: 9,
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-pile-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("prompt-pile-0")).toExist(),
+  );
+});
+
 test("on-board choose_target aims instead of showing a card grid", () => {
   const bear = card(7, {
     name: "Bear",

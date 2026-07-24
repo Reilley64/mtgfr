@@ -1061,18 +1061,23 @@ test("divide_spell_damage submit emits divide intent when assignments match tota
 });
 
 test("choose_pile_for_hand prompt emits choose_opponent_pile intent from UI", () => {
-  const intents = clickPromptIntent(
-    state({
-      pending_choice: {
-        kind: "choose_pile_for_hand",
-        pile_a: [{ id: 1, label: "Pile A card" }],
-        pile_b: [{ id: 2, label: "Pile B card" }],
-        player: 0,
-        source: 8,
-      },
-    }),
-    Scene.click(Scene.testId("prompt-pile-1")),
+  const s = state({
+    pending_choice: {
+      kind: "choose_pile_for_hand",
+      pile_a: [{ id: 1, label: "Pile A card" }],
+      pile_b: [{ id: 2, label: "Pile B card" }],
+      player: 0,
+      source: 8,
+    },
+  });
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("pending-pile-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
   );
+  const intents = clickPromptIntent(s, Scene.click(Scene.testId("prompt-pile-1")));
   expect(intents).toEqual([{ kind: "choose_opponent_pile", player: 0, pile: 1 }]);
 });
 
