@@ -8,11 +8,12 @@ afterEach(() => {
 
 describe("searchPrints User-Agent", () => {
   it("identifies as edh.reilley.dev/0.1", async () => {
-    const fetchMock = vi.fn(async () =>
-      new Response(JSON.stringify({ data: [], has_more: false }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
+    const fetchMock = vi.fn(
+      async (_url: string, _init?: RequestInit) =>
+        new Response(JSON.stringify({ data: [], has_more: false }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
     );
     vi.stubGlobal("fetch", fetchMock);
 

@@ -1,6 +1,6 @@
 # Brand: edh.reilley.dev (display + public identity)
 
-**Status:** Design (approved for planning)  
+**Status:** Implemented  
 **Date:** 2026-07-24  
 **Module:** Client shell wordmark / document title; Scryfall + tooling HTTP User-Agent strings; `README.md`; `DESIGN.md`  
 **Approach:** String replace at call sites (no shared product-name constant module)
