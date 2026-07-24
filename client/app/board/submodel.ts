@@ -127,6 +127,8 @@ export type HandDragState = {
 export type BoardModel = {
   camera: Camera;
   cameraFitPlayers: number | null;
+  /** True after the player pans/zooms — stops automatic fitCamera from fighting them. */
+  cameraUserMoved: boolean;
   flights: Map<number, CardFlight>;
   handHidden: Set<number>;
   hideCardIds: Set<number>;
@@ -207,6 +209,7 @@ export function initialBoardModel(): BoardModel {
   return {
     camera: { panX: 0, panY: 0, zoom: 1 },
     cameraFitPlayers: null,
+    cameraUserMoved: false,
     flights: new Map(),
     handHidden: new Set(),
     hideCardIds: new Set(),
@@ -269,7 +272,7 @@ export function syncBoardWithGame(model: BoardModel, fold: BoardFold): BoardMode
     next = { ...next, priorityElapsed: 0, lastPriorityHolder: fold.state.priority };
   }
   const playerCount = Math.max(1, fold.state.players.length);
-  if (next.cameraFitPlayers !== playerCount) {
+  if (!next.cameraUserMoved && next.cameraFitPlayers !== playerCount) {
     next = {
       ...next,
       camera: fitCamera({ x: next.viewport.width, y: next.viewport.height }, playerCount, 0),
@@ -610,7 +613,7 @@ function pointerMoveModel(model: BoardModel, x: number, y: number): BoardModel {
   return {
     ...model,
     camera: panBy(model.camera, moved.pan.dx, moved.pan.dy),
-    cameraFitPlayers: null,
+    cameraUserMoved: true,
     cursor: { x, y },
     pointer: moved.phase,
   };

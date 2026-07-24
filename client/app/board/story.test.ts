@@ -3,7 +3,7 @@ import { expect, test } from "vitest";
 import type { VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
 import type { Message } from "./messages";
-import { BoardPointerDown, FlightsSynced } from "./messages";
+import { BoardPointerDown, BoardPointerMove, FlightsSynced } from "./messages";
 import { spawnFlight } from "./motion/flights";
 import { type BoardModel, initialBoardModel, syncBoardWithGame, updateBoard } from "./submodel";
 
@@ -199,6 +199,25 @@ test("FlightsSynced keeps flyers and drops settled entries in one payload", () =
       expect(board.lastFlightFrame).toBe(90);
     }),
   );
+});
+
+test("syncBoardWithGame keeps a user-panned camera across game syncs", () => {
+  const fold = gameFold();
+  const fitted = syncBoardWithGame(initialBoardModel(), fold);
+
+  const [panned] = updateBoard(fitted, BoardPointerDown({ x: 100, y: 100 }), fold, null);
+  const [moved] = updateBoard(panned, BoardPointerMove({ x: 160, y: 140 }), fold, null);
+
+  expect(moved.camera).not.toEqual(fitted.camera);
+  expect(moved.camera).toEqual({
+    panX: fitted.camera.panX + 60,
+    panY: fitted.camera.panY + 40,
+    zoom: fitted.camera.zoom,
+  });
+
+  // A later delta / action must not re-fit and wipe the pan.
+  const afterAction = syncBoardWithGame(moved, { ...fold, seq: fold.seq + 1 });
+  expect(afterAction.camera).toEqual(moved.camera);
 });
 
 test("syncBoardWithGame clears staged attackers/blocks when the step advances", () => {
