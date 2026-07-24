@@ -128,6 +128,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Scene/unit tests cover docked draw-count `pending-draw-count-aim` (number buttons; no center `pending-choice`; `choose_draw_count` intent).
 - Scene tests cover docked `pending-trigger-modes-aim` (mode rows; no center `pending-choice`).
 - Scene/unit tests cover docked `pending-pile-aim` (Pile A/B; no center `pending-choice`; `choose_opponent_pile` intent).
+- Scene tests cover docked `pending-player-pick-aim` for untagged `choose_target_players` / `choose_splitting_opponent` lists (no center `pending-choice`).
 - Scene/unit tests cover library-search docked aim (`pending-library-aim`), filter, face dedupe, pinned scroll chrome, Choose, and Fail to find.
 - Scene/unit tests cover docked `pending-creature-type-aim` (filter strip; no center `pending-choice`; `choose_creature_type` intent).
 - Scene/unit tests cover docked `pending-card-name-aim` (placeholder, Name submit, suggestions; no center `pending-choice`).
