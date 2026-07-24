@@ -52,7 +52,7 @@ The home **Your decks** surface is a plain list row: small art crop, name, alway
   - **Precon** chip when `id < 0`.
 - No always-visible Play / Edit / Delete buttons on the tile.
 - Whole tile is the Play affordance: navigates to `/play?deck={id}` (focusable link; Enter activates).
-- Keep the existing commander hover preview on the tile (mousemove); it must not prevent the Play navigation on primary click.
+- Deck-list tiles do not show a cursor-follow commander hover preview; primary click still goes to Play.
 - Loading / empty-library / error messaging keep today’s meaning (`Loading decks…`, build-first empty copy, error alert). When the library is non-empty but search matches nothing, show **No decks match.**
 
 ### Context menu
@@ -89,7 +89,7 @@ Release order is the precon registration convention in `crates/server/src/precon
 | `DeckListSubmodel` | Add `searchQuery: string`, `contextMenu: null \| { deckId, x, y }` |
 | Messages | Search changed; open/close context menu; menu Edit (navigate); menu Delete → `AskedDeckDelete` |
 | Pure helpers | `visibleDecks(decks, knownCommanders, query)` filter+order; menu item list for a deck id — unit-tested |
-| `list/view.ts` | Tile grid, search field, context menu overlay; reuse `confirmDialog` |
+| `list/view.ts` | Tile grid, search field, context menu overlay; no hover-preview mount/render; reuse `confirmDialog` |
 | Lobby | Unchanged |
 
 No wire / proto / BFF changes.
@@ -105,6 +105,7 @@ No wire / proto / BFF changes.
   - Search narrows visible tiles; no-match copy when appropriate.
   - With mixed fixtures, first visible precon is newer than later precons; all customs before any precon.
   - Right-click owned deck → Edit/Delete present; right-click precon → those items absent.
+  - No deck-list hover preview node or commander-hover mount is present.
 - Interaction policy: assert outcomes (selected deck URL, menu actions), not migration/parity framing.
 
 ---

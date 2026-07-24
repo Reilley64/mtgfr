@@ -2,7 +2,6 @@ import { Effect, Queue, Schema as S, Stream } from "effect";
 import { type Html, html } from "foldkit/html";
 import * as Mount from "foldkit/mount";
 import { cn } from "../../../../lib/cn";
-import { cardHoverPreviewView } from "../../../../lib/deck-builder/card-hover-preview";
 import { manaFontClass } from "../../../../lib/oracleText";
 import { appVersionBadge } from "../../../../lib/ui/app-version";
 import { buttonClass } from "../../../../lib/ui/buttonClass";
@@ -16,9 +15,7 @@ import {
   AskedDeckDelete,
   CancelledDeckDelete,
   ChangedDeckListSearch,
-  ClearedDeckListHover,
   ClosedDeckListMenu,
-  MovedDeckListHover,
   OpenedDeckListMenu,
   RequestedDeckDelete,
 } from "./messages";
@@ -29,41 +26,6 @@ const h = html<Message>();
 
 const MENU_ITEM =
   "cursor-pointer rounded-control border-none bg-transparent px-md py-xs text-left text-label text-snow hover:bg-white/8 focus-visible:bg-white/8 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-vine";
-
-export const BindDeckListCommanderHover = Mount.defineStream(
-  "BindDeckListCommanderHover",
-  { cardId: S.String, print: S.String },
-  MovedDeckListHover,
-  ClearedDeckListHover,
-)(
-  (args) => (element) =>
-    Stream.callback<typeof MovedDeckListHover.Type | typeof ClearedDeckListHover.Type>((queue) =>
-      Effect.gen(function* () {
-        yield* Effect.acquireRelease(
-          Effect.sync(() => {
-            const onMouseMove = (event: Event) => {
-              if (!(event instanceof MouseEvent)) return;
-              Queue.offerUnsafe(
-                queue,
-                MovedDeckListHover({ id: args.cardId, print: args.print, x: event.clientX, y: event.clientY }),
-              );
-            };
-            const onMouseLeave = () => {
-              Queue.offerUnsafe(queue, ClearedDeckListHover());
-            };
-            element.addEventListener("mousemove", onMouseMove);
-            element.addEventListener("mouseleave", onMouseLeave);
-            return () => {
-              element.removeEventListener("mousemove", onMouseMove);
-              element.removeEventListener("mouseleave", onMouseLeave);
-            };
-          }),
-          (teardown) => Effect.sync(teardown),
-        );
-        return yield* Effect.never;
-      }),
-    ),
-);
 
 type ContextMenuMessage = typeof OpenedDeckListMenu.Type | typeof ClosedDeckListMenu.Type;
 
@@ -101,30 +63,29 @@ const CONTEXT_MENU_ROOT_SELECTOR = '[data-testid="deck-list-context-menu-root"]'
 export const BindDeckListContextMenuEscape = Mount.defineStream(
   "BindDeckListContextMenuEscape",
   ClosedDeckListMenu,
-)(
-  (_element) =>
-    Stream.callback<typeof ClosedDeckListMenu.Type>((queue) =>
-      Effect.gen(function* () {
-        yield* Effect.acquireRelease(
+)((_element) =>
+  Stream.callback<typeof ClosedDeckListMenu.Type>((queue) =>
+    Effect.gen(function* () {
+      yield* Effect.acquireRelease(
+        Effect.sync(() => {
+          const onKeyDown = (event: Event): void => {
+            if (!(event instanceof KeyboardEvent)) return;
+            if (event.key !== "Escape") return;
+            if (document.querySelector(CONTEXT_MENU_ROOT_SELECTOR) == null) return;
+            event.preventDefault();
+            Queue.offerUnsafe(queue, ClosedDeckListMenu());
+          };
+          window.addEventListener("keydown", onKeyDown);
+          return onKeyDown;
+        }),
+        (onKeyDown) =>
           Effect.sync(() => {
-            const onKeyDown = (event: Event): void => {
-              if (!(event instanceof KeyboardEvent)) return;
-              if (event.key !== "Escape") return;
-              if (document.querySelector(CONTEXT_MENU_ROOT_SELECTOR) == null) return;
-              event.preventDefault();
-              Queue.offerUnsafe(queue, ClosedDeckListMenu());
-            };
-            window.addEventListener("keydown", onKeyDown);
-            return onKeyDown;
+            window.removeEventListener("keydown", onKeyDown);
           }),
-          (onKeyDown) =>
-            Effect.sync(() => {
-              window.removeEventListener("keydown", onKeyDown);
-            }),
-        );
-        return yield* Effect.never;
-      }),
-    ),
+      );
+      return yield* Effect.never;
+    }),
+  ),
 );
 
 function commanderName(model: DeckListSubmodel, id: string): string {
@@ -133,16 +94,6 @@ function commanderName(model: DeckListSubmodel, id: string): string {
 
 function commanderPrint(model: DeckListSubmodel, deck: DeckListSubmodel["decks"][number]): string {
   return deck.commander_print || model.knownCommanders[deck.commander]?.default_print || "";
-}
-
-function hoverPreview(model: DeckListSubmodel): Html | null {
-  const hover = model.hover;
-  if (hover == null) return null;
-  return cardHoverPreviewView(h, {
-    hover,
-    card: model.knownCommanders[hover.id],
-    testId: "deck-list-hover-preview",
-  });
 }
 
 function contextMenu(model: DeckListSubmodel): Html {
@@ -281,15 +232,7 @@ export function view(model: DeckListSubmodel, username: string, apiVersion: stri
                     ],
                     [
                       h.div(
-                        [
-                          h.Class("flex flex-1 flex-col"),
-                          h.OnMount(
-                            BindDeckListCommanderHover({
-                              cardId: deck.commander,
-                              print,
-                            }),
-                          ),
-                        ],
+                        [h.Class("flex flex-1 flex-col")],
                         [
                           print === ""
                             ? h.div([h.Class("h-[110px] w-full bg-glass")], [])
@@ -344,7 +287,6 @@ export function view(model: DeckListSubmodel, username: string, apiVersion: stri
         ],
       ),
       appVersionBadge(h, apiVersion),
-      hoverPreview(model),
       contextMenu(model),
     ],
   );
