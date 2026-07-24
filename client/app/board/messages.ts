@@ -95,6 +95,8 @@ export const DiscardChosen = m("DiscardChosen", { ids: S.Array(S.Number) });
 export const GyExileChosen = m("GyExileChosen", { ids: S.Array(S.Number) });
 /** Confirm a multi-card local gy-exile cost draft (`gyExilePick.picks.graveyard_exile`). */
 export const GyExileConfirmed = m("GyExileConfirmed");
+/** Confirm local discard-cost draft (`discardPick.picks.discard_cost`). */
+export const DiscardCostConfirmed = m("DiscardCostConfirmed");
 
 /** Combat staging drops (drag creature onto opponent seat or attacker card). */
 export const CombatAttackerDropped = m("CombatAttackerDropped", {
@@ -263,6 +265,7 @@ export const Message = S.Union([
   DiscardChosen,
   GyExileChosen,
   GyExileConfirmed,
+  DiscardCostConfirmed,
   CombatAttackerDropped,
   CombatBlockerDropped,
   CombatCancelAttacker,

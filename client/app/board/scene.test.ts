@@ -23,6 +23,7 @@ import { resolveBoardCardArtMounts, resolveBoardOverlayMounts, resolveLiveBoardM
 import {
   BoardPointerUp,
   DiscardChosen,
+  DiscardCostConfirmed,
   GyExileChosen,
   HandActionActivated,
   KeyboardEnterPressed,
@@ -1233,7 +1234,7 @@ test("pointer up on sacrifice-cost permanent settles the cost pick", () => {
   });
 });
 
-test("HandActionActivated during discardPick settles the discard cost", () => {
+test("HandActionActivated during discardPick toggles discard_cost selection", () => {
   const caster = creature(10, 0, { name: "Caster", zone: ZONE.Hand });
   const fodder = creature(11, 0, { name: "Island", zone: ZONE.Hand });
   const castAction: ActionView = {
@@ -1270,6 +1271,35 @@ test("HandActionActivated during discardPick settles the discard cost", () => {
     gameFold,
     "T1",
   );
+  expect(commands).toHaveLength(0);
+  expect(next.discardPick).not.toBeNull();
+  expect(next.discardPick?.picks.discard_cost).toEqual([11]);
+  expect(next.discardPick?.picks.discard_settled).toBe(false);
+});
+
+test("DiscardCostConfirmed settles local discard cost when one card selected", () => {
+  const caster = creature(10, 0, { name: "Caster", zone: ZONE.Hand });
+  const castAction: ActionView = {
+    id: 50,
+    kind: "cast",
+    label: "Cast",
+    needs_target: false,
+    object: caster.id,
+    discard_choices: [11],
+    section: "hand",
+  };
+  const gameFold = fold(state({ objects: [caster], actions: [castAction], can_act: true }));
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    discardPick: {
+      action: castAction,
+      card: caster,
+      dropSeed: { x: 0, y: 0 },
+      screenOrigin: { x: 0, y: 0 },
+      picks: { ...emptyCostPicks(), discard_cost: [11] },
+    },
+  };
+  const [next, commands] = updateBoard(board, DiscardCostConfirmed(), gameFold, "T1");
   expect(next.discardPick).toBeNull();
   expect(commands).toHaveLength(1);
   expect(intentFromCommand(commands[0])).toMatchObject({

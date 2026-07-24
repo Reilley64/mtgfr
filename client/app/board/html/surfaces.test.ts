@@ -1750,8 +1750,47 @@ test("discard cost aim shows coach when choices are in hand", () => {
       gameState({ objects: [caster, fodder] }),
     ),
     Scene.expect(Scene.testId("discard-cost-aim")).toExist(),
+    Scene.expect(Scene.testId("prompt-submit")).toBeDisabled(),
+    Scene.expect(Scene.testId("discard-cost-count")).toHaveText("0 / 1 selected"),
     Scene.expect(Scene.testId("discard-pick")).toBeAbsent(),
     Scene.expect(Scene.testId("discard-pick-aim")).toBeAbsent(),
+  );
+});
+
+test("discard cost aim enables confirm when one card selected", () => {
+  const caster = card(10, {
+    name: "Caster",
+    zone: ZONE.Hand,
+    kind: { kind: "instant" },
+  });
+  const fodder = card(11, {
+    name: "Island",
+    zone: ZONE.Hand,
+    kind: { kind: "land", colors: [0, 1, 0, 0, 0] },
+  });
+  const castAction = action(50, {
+    kind: "cast",
+    label: "Cast",
+    discard_choices: [11],
+    object: 10,
+    section: "hand",
+  });
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        discardPick: {
+          action: castAction,
+          card: caster,
+          dropSeed: { x: 0, y: 0 },
+          screenOrigin: { x: 0, y: 0 },
+          picks: { ...emptyCostPicks(), discard_cost: [11] },
+        },
+      },
+      gameState({ objects: [caster, fodder] }),
+    ),
+    Scene.expect(Scene.testId("prompt-submit")).not.toBeDisabled(),
+    Scene.expect(Scene.testId("discard-cost-count")).toHaveText("1 / 1 selected"),
   );
 });
 

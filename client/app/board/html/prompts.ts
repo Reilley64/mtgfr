@@ -56,6 +56,7 @@ import { seatColor, ZONE } from "../geometry/layout";
 import {
   CancelActionClicked,
   DiscardChosen,
+  DiscardCostConfirmed,
   GyExileChosen,
   GyExileConfirmed,
   type Message,
@@ -2825,6 +2826,8 @@ export function promptsView(board: BoardModel, state: VisibleState, tableId: str
     );
     const onHand = choices.length > 0 && choices.every((id) => handIds.has(id));
     if (onHand) {
+      const selected = board.discardPick.picks.discard_cost;
+      const ready = selected.length === 1;
       return h.div(
         [
           h.DataAttribute("testid", "discard-cost-aim"),
@@ -2833,7 +2836,33 @@ export function promptsView(board: BoardModel, state: VisibleState, tableId: str
             "pointer-events-auto fixed left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-xs rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
           ),
         ],
-        [h.div([h.Class("pointer-events-none")], ["Click a card in your hand to discard"]), cancelButton()],
+        [
+          h.div([h.Class("pointer-events-none")], ["Click a card in your hand to discard"]),
+          h.div(
+            [h.DataAttribute("testid", "discard-cost-count"), h.Class("pointer-events-none text-caption text-mist")],
+            [`${selected.length} / 1 selected`],
+          ),
+          h.div(
+            [h.Class("flex flex-wrap justify-center gap-2")],
+            [
+              h.button(
+                [
+                  h.Type("button"),
+                  h.DataAttribute("testid", "prompt-submit"),
+                  h.OnClick(DiscardCostConfirmed()),
+                  h.Disabled(!ready),
+                  h.Class(
+                    ready
+                      ? "cursor-pointer rounded-hud bg-llanowar px-3 py-1 text-body text-snow hover:bg-llanowar/90"
+                      : "cursor-not-allowed rounded-hud bg-glass px-3 py-1 text-body text-mist",
+                  ),
+                ],
+                ["Confirm"],
+              ),
+              cancelButton(),
+            ],
+          ),
+        ],
       );
     }
     return costPickPrompt("discard-pick", "Choose a card to discard", choices, state, (id) =>

@@ -1315,21 +1315,24 @@ function handActivated(
     if (objectId == null || !choices.includes(objectId)) {
       return [{ ...model, handDrag: null, hoverActionId: null }, []];
     }
-    const picks: CostPicks = {
-      ...model.discardPick.picks,
-      discard_cost: [objectId],
-      discard_settled: true,
-    };
-    return continueAfterCostPick(
-      { ...model, discardPick: null, handDrag: null, hoverActionId: null },
-      fold,
-      tableId,
-      model.discardPick.action,
-      model.discardPick.card,
-      picks,
-      model.discardPick.dropSeed,
-      model.discardPick.screenOrigin,
-    );
+    const current = model.discardPick.picks.discard_cost;
+    const next = current.includes(objectId)
+      ? current.filter((id) => id !== objectId)
+      : current.length >= 1
+        ? current
+        : [...current, objectId];
+    return [
+      {
+        ...model,
+        handDrag: null,
+        hoverActionId: null,
+        discardPick: {
+          ...model.discardPick,
+          picks: { ...model.discardPick.picks, discard_cost: next, discard_settled: false },
+        },
+      },
+      [],
+    ];
   }
   const threshold = model.viewport.height - HAND_BAR_H + HAND_PLAY_SLACK_PX;
   const card = objectByAction(fold, action);
@@ -1911,17 +1914,26 @@ export function updateBoard(
     case "DiscardChosen": {
       const pick = model.discardPick;
       if (pick != null) {
-        const picks: CostPicks = { ...pick.picks, discard_cost: [...message.ids], discard_settled: true };
-        return continueAfterCostPick(
-          { ...model, discardPick: null },
-          fold,
-          tableId,
-          pick.action,
-          pick.card,
-          picks,
-          pick.dropSeed,
-          pick.screenOrigin,
-        );
+        const objectId = message.ids[0];
+        if (objectId == null) return [model, []];
+        const choices = pick.action.discard_choices ?? [];
+        if (!choices.includes(objectId)) return [model, []];
+        const current = pick.picks.discard_cost;
+        const next = current.includes(objectId)
+          ? current.filter((id) => id !== objectId)
+          : current.length >= 1
+            ? current
+            : [...current, objectId];
+        return [
+          {
+            ...model,
+            discardPick: {
+              ...pick,
+              picks: { ...pick.picks, discard_cost: next, discard_settled: false },
+            },
+          },
+          [],
+        ];
       }
       const state = fold.state;
       const pc = state?.pending_choice ?? null;
@@ -1971,6 +1983,23 @@ export function updateBoard(
       const selected = pick.picks.graveyard_exile;
       if (selected.length < min || selected.length > max) return [model, []];
       return settleGyExilePick(model, fold, tableId, pick, selected);
+    }
+    case "DiscardCostConfirmed": {
+      const pick = model.discardPick;
+      if (pick == null) return [model, []];
+      const selected = pick.picks.discard_cost;
+      if (selected.length !== 1) return [model, []];
+      const picks: CostPicks = { ...pick.picks, discard_cost: selected, discard_settled: true };
+      return continueAfterCostPick(
+        { ...model, discardPick: null },
+        fold,
+        tableId,
+        pick.action,
+        pick.card,
+        picks,
+        pick.dropSeed,
+        pick.screenOrigin,
+      );
     }
     case "CombatAttackerDropped": {
       const from = fold.state?.objects.find((o) => o.id === message.attackerId) ?? null;
