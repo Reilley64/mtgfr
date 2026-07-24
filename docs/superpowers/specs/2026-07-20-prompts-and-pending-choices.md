@@ -36,6 +36,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - As a player offered dredge, I can pick one dredger or decline with Draw normally.
 - As a player answering an optional-pay prompt, I see the mana cost on Pay and an outcome-specific decline label.
 - As a player joining forces (`pay_any_amount_of_mana`), I adjust a Min/−/value/+/Max stepper up to my affordable max and confirm (0 declines).
+- As a player choosing trigger modes, I multi-select mode rows in docked `pending-trigger-modes-aim` and Choose (or Cancel).
 - As a player choosing cards, prompts use the same cached card art behavior as hand and stack.
 
 ## Behavior
@@ -76,8 +77,9 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - `revealed_card_to_battlefield_or_hand` shows docked `pending-revealed-destination-aim` with the revealed face plus Battlefield / Hand.
 - `choose_countered_spell_destination` shows docked `pending-destination-aim` with Top / Bottom.
 - `may_yes_no` / `dance_exile_more` / `trade_secrets_repeat` show docked `pending-yes-no-aim` with Yes / No.
-- `choose_mode` shows docked `pending-mode-aim` with one-click mode labels (`prompt-mode-{i}`); `choose_trigger_modes` stays a center `pending-choice` multi-select + Confirm.
-- `pay_any_amount_of_mana` (join forces) shows docked `pending-join-forces-aim` with Min/−/value/+/Max stepper and Pay submit; `may_draw_up_to` / `trade_secrets_caster_draw` stay center `pending-choice` number buttons.
+- `choose_mode` shows docked `pending-mode-aim` with one-click mode labels (`prompt-mode-{i}`).
+- `choose_trigger_modes` shows docked `pending-trigger-modes-aim` with multi-select mode rows, Choose, and Cancel (center `pending-choice` is unused for this kind).
+- `pay_any_amount_of_mana` (join forces) shows docked `pending-join-forces-aim` with Min/−/value/+/Max stepper and Pay submit.
 - `may_draw_up_to` / `trade_secrets_caster_draw` show docked `pending-draw-count-aim` with one-click number buttons (`0`…`max`).
 - `choose_target_players` / `choose_splitting_opponent` with seat-tagged items aim at life orbs (`pending-player-aim`); one-click when `max === 1` (or splitting); multi-pick accumulates seats in the player-pick draft with Confirm. Enter / Space submit when ready. Picked seats paint a solid Priority Gold ring (`pickedPlayers`).
 - `scry` / `surveil` use docked `pending-arrange-aim` with two-lane arrange chrome (`prompt-arrange-lanes`): cards start in Bottom (library bottom or Graveyard for Surveil); click toggles a card between Top and Bottom, preserving left-to-right order in each lane. Done always submits `arrange_top` via partition draft `{ top, bottom }`.
@@ -121,8 +123,8 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Scene tests cover docked `pending-color-aim` for `choose_color` / `choose_mana_color` (mana pips; no center `pending-choice`).
 - Scene tests cover docked `pending-mode-aim` for `choose_mode` (mode buttons; no center `pending-choice`).
 - Scene/unit tests cover docked join-forces `pending-join-forces-aim` mana stepper (no per-N buttons; draft submit; no center `pending-choice`).
-- Scene/unit tests cover join-forces mana stepper (no per-N buttons; draft submit).
 - Scene/unit tests cover docked draw-count `pending-draw-count-aim` (number buttons; no center `pending-choice`; `choose_draw_count` intent).
+- Scene tests cover docked `pending-trigger-modes-aim` (mode rows; no center `pending-choice`).
 - Scene/unit tests cover library-search docked aim (`pending-library-aim`), filter, face dedupe, pinned scroll chrome, Choose, and Fail to find.
 - Scene tests cover `choose_card_name` typeahead list when suggestions match the draft query.
 - Scene tests cover on-board pending aim chrome (`pending-target-aim`, no card grid) and optional Decline → empty `choose_targets`.
