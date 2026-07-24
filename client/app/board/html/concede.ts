@@ -15,7 +15,7 @@ export function concedeButtonView(): Html {
       h.Type("button"),
       h.DataAttribute("testid", "board-concede"),
       h.OnClick(ConcedeClicked()),
-      h.Class(cn("pointer-events-auto fixed top-md right-md z-20", buttonClass("ghost"))),
+      h.Class(cn("pointer-events-auto fixed top-md right-md z-45", buttonClass("ghost"))),
     ],
     ["Concede"],
   );
