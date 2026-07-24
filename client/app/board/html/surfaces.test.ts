@@ -47,6 +47,24 @@ function className(node: unknown): string {
     .join(" ");
 }
 
+function findTestId(node: unknown, id: string): unknown | null {
+  if (testId(node) === id) return node;
+  if (node == null || typeof node !== "object") return null;
+  const n = node as { children?: unknown[] };
+  for (const child of n.children ?? []) {
+    const found = findTestId(child, id);
+    if (found != null) return found;
+  }
+  return null;
+}
+
+function dataAttr(node: unknown, name: string): string | null {
+  if (node == null || typeof node !== "object") return null;
+  const n = node as { data?: { attrs?: Record<string, string> } };
+  const value = n.data?.attrs?.[`data-${name}`];
+  return typeof value === "string" ? value : null;
+}
+
 function findParentOfTestId(node: unknown, id: string): unknown | null {
   if (node == null || typeof node !== "object") return null;
   const n = node as { children?: unknown[] };
@@ -1754,6 +1772,48 @@ test("discard cost aim shows coach when choices are in hand", () => {
     Scene.expect(Scene.testId("discard-cost-count")).toHaveText("0 / 1 selected"),
     Scene.expect(Scene.testId("discard-pick")).toBeAbsent(),
     Scene.expect(Scene.testId("discard-pick-aim")).toBeAbsent(),
+  );
+});
+
+test("selected discard-cost hand card paints Llanowar selected chrome", () => {
+  const caster = card(10, {
+    name: "Caster",
+    zone: ZONE.Hand,
+    kind: { kind: "instant" },
+  });
+  const fodder = card(11, {
+    name: "Island",
+    zone: ZONE.Hand,
+    kind: { kind: "land", colors: [0, 1, 0, 0, 0] },
+  });
+  const castAction = action(50, {
+    kind: "cast",
+    label: "Cast",
+    discard_choices: [11],
+    object: 10,
+    section: "hand",
+  });
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        discardPick: {
+          action: castAction,
+          card: caster,
+          dropSeed: { x: 0, y: 0 },
+          screenOrigin: { x: 0, y: 0 },
+          picks: { ...emptyCostPicks(), discard_cost: [11] },
+        },
+      },
+      gameState({ objects: [caster, fodder] }),
+    ),
+    Scene.expect(Scene.testId("hand-card-11")).toExist(),
+    Scene.expect(Scene.testId("hand-card-face-11")).toExist(),
+    Scene.tap((sim) => {
+      const face = findTestId(sim.html, "hand-card-face-11");
+      expect(dataAttr(face, "discard-selected")).toBe("1");
+      expect(className(face)).toContain("ring-llanowar");
+    }),
   );
 });
 
