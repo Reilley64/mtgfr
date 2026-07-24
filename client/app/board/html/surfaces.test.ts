@@ -640,7 +640,34 @@ test("modal mode picker renders before modes are chosen", () => {
   };
   overlayScene(
     overlayModel({ ...initialBoardModel(), modalCast }),
-    Scene.expect(Scene.testId("modal-mode-picker")).toExist(),
+    Scene.expect(Scene.testId("modal-mode-aim")).toExist(),
+    Scene.expect(Scene.testId("modal-mode-picker")).toBeAbsent(),
+    Scene.expect(Scene.testId("modal-mode-0")).toExist(),
+    Scene.expect(Scene.testId("modal-mode-1")).toExist(),
+    Scene.expect(Scene.testId("modal-cast")).toBeDisabled(),
+  );
+});
+
+test("modal waiting chrome docks when modes are chosen and a target is still needed", () => {
+  const modalCast: ModalCast = {
+    action: action(13, {
+      label: "Fact or Fiction",
+      modal: {
+        choose: 1,
+        choose_max: 1,
+        modes: [{ label: "Counter", needs_target: true, targets: [] }],
+      },
+    }),
+    modes: [{ label: "Counter", needs_target: true, targets: [] }],
+    picks: emptyCostPicks(),
+    chosen: [0],
+    answers: [],
+    modeDraft: [],
+  };
+  overlayScene(
+    overlayModel({ ...initialBoardModel(), modalCast }),
+    Scene.expect(Scene.testId("modal-waiting-aim")).toExist(),
+    Scene.expect(Scene.testId("modal-waiting")).toBeAbsent(),
   );
 });
 
