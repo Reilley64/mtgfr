@@ -1279,7 +1279,7 @@ test("HandActionActivated during discardPick settles the discard cost", () => {
   });
 });
 
-test("HandActionActivated during pending discard submits discard intent", () => {
+test("HandActionActivated during pending discard toggles card-pick draft", () => {
   const a = creature(11, 0, { name: "A", zone: ZONE.Hand });
   const b = creature(12, 0, { name: "B", zone: ZONE.Hand });
   const pending = {
@@ -1307,17 +1307,57 @@ test("HandActionActivated during pending discard submits discard intent", () => 
       can_act: true,
     }),
   );
-  const [, commands] = updateBoard(
+  const [next, commands] = updateBoard(
     initialBoardModel(),
     HandActionActivated({ action: fodderAction, x: 400, y: 200 }),
     gameFold,
     "T1",
   );
-  expect(intentFromCommand(commands[0])).toEqual({
-    kind: "discard",
+  expect(commands).toHaveLength(0);
+  expect(next.promptDraft).toEqual({ kind: "card-pick", picked: [11], filter: "" });
+});
+
+test("HandActionActivated during pending discard toggles selection off", () => {
+  const a = creature(11, 0, { name: "A", zone: ZONE.Hand });
+  const b = creature(12, 0, { name: "B", zone: ZONE.Hand });
+  const pending = {
+    kind: "discard" as const,
     player: 0,
-    cards: [11],
-  });
+    count: 1,
+    items: [
+      { id: 11, label: "A" },
+      { id: 12, label: "B" },
+    ],
+  };
+  const fodderAction: ActionView = {
+    id: 51,
+    kind: "cast",
+    label: "Cast A",
+    needs_target: false,
+    object: 11,
+    section: "hand",
+  };
+  const gameFold = fold(
+    state({
+      objects: [a, b],
+      actions: [fodderAction],
+      pending_choice: pending,
+      can_act: true,
+    }),
+  );
+  const board = {
+    ...initialBoardModel(),
+    promptDraft: { kind: "card-pick" as const, picked: [11], filter: "" },
+    pendingChoiceKey: choiceDraftKey(pending),
+  };
+  const [next, commands] = updateBoard(
+    board,
+    HandActionActivated({ action: fodderAction, x: 400, y: 200 }),
+    gameFold,
+    "T1",
+  );
+  expect(commands).toHaveLength(0);
+  expect(next.promptDraft).toEqual({ kind: "card-pick", picked: [], filter: "" });
 });
 
 test("HandActionActivated during put_land_from_hand submits put_land intent", () => {

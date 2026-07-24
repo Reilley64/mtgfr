@@ -14,6 +14,7 @@ import {
   pendingExilePickIds,
   pendingGraveyardPickIds,
   pendingHandPickIds,
+  pendingHandPickOneClick,
   pendingPlayerAimOneClick,
   pendingPlayerAimOverlay,
   pendingTargetingOverlay,
@@ -676,6 +677,36 @@ describe("pendingDiscardHandIds", () => {
         state([object({ id: 11, zone: ZONE.Battlefield })]),
       ),
     ).toBeNull();
+  });
+});
+
+describe("pendingHandPickOneClick", () => {
+  it("is false for discard and may_discard at any count", () => {
+    expect(
+      pendingHandPickOneClick({
+        kind: "discard",
+        player: 0,
+        count: 1,
+        items: [{ id: 1, label: "A" }],
+      }),
+    ).toBe(false);
+    expect(
+      pendingHandPickOneClick({
+        kind: "may_discard",
+        player: 0,
+        items: [{ id: 1, label: "A" }],
+      }),
+    ).toBe(false);
+  });
+
+  it("stays true for put_land_from_hand", () => {
+    expect(
+      pendingHandPickOneClick({
+        kind: "put_land_from_hand",
+        player: 0,
+        items: [{ id: 1, label: "Forest" }],
+      }),
+    ).toBe(true);
   });
 });
 

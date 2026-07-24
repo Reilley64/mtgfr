@@ -279,6 +279,7 @@ function isPendingHandPick(pc: PendingChoiceView): pc is PendingHandPickChoice {
 /** True when a hand-bar click should auto-submit (no accumulate chrome). */
 export function pendingHandPickOneClick(pc: PendingChoiceView | null | undefined): boolean {
   if (pc == null || !isPendingHandPick(pc)) return false;
+  if (pc.kind === "discard" || pc.kind === "may_discard") return false;
   if (
     pc.kind === "put_land_from_hand" ||
     pc.kind === "put_creature_from_hand" ||
@@ -286,7 +287,7 @@ export function pendingHandPickOneClick(pc: PendingChoiceView | null | undefined
   ) {
     return true;
   }
-  if (pc.kind === "discard" || pc.kind === "put_from_hand_on_top") return pc.count === 1;
+  if (pc.kind === "put_from_hand_on_top") return pc.count === 1;
   return false;
 }
 

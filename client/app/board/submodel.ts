@@ -887,12 +887,6 @@ function submitPendingHandPick(
   objectId: number,
 ): BoardReturn {
   const idle = { ...model, handDrag: null, hoverActionId: null };
-  if (pc.kind === "discard" && pc.count === 1) {
-    return [
-      { ...idle, promptDraft: null, pendingChoiceKey: null },
-      boardIntentSubmit(tableId, choiceIntent(pc, { kind: "discard", cards: [objectId] })),
-    ];
-  }
   if (pc.kind === "put_land_from_hand") {
     return [
       { ...idle, promptDraft: null, pendingChoiceKey: null },
