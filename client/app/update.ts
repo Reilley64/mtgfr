@@ -154,7 +154,7 @@ function foldDeckList(
 function notFoundWhenPlayDeckMissing(model: Model): Model {
   if (model.route._tag !== "PlayRoute" && model.route._tag !== "TableRoute") return model;
   const deckId = parseDeckIdParam(model.route.deckId);
-  const access = playDeckAccess(deckId, model.decks.list.decks, model.decks.list.loading);
+  const access = playDeckAccess(deckId, model.decks.list.decks, model.decks.list.loading, model.decks.list.error);
   if (access !== "missing") return model;
   return { ...model, route: NotFoundRoute({ path: model.currentPath }) };
 }

@@ -87,6 +87,29 @@ test("pushUrlMaybeViewTransition waits for pushUrl from deferred transition call
   expect(events).toEqual(["callback", "pushUrl", "completed"]);
 });
 
+test("pushUrlMaybeViewTransition returns the push promise from the transition callback", async () => {
+  let callbackResult: Promise<void> | undefined;
+
+  const startViewTransition: typeof document.startViewTransition = (callbackOptions) => {
+    const callback = typeof callbackOptions === "function" ? callbackOptions : callbackOptions?.update;
+    callbackResult = callback?.();
+    return {
+      ...settledViewTransition(),
+      updateCallbackDone: callbackResult ?? Promise.resolve(),
+    };
+  };
+
+  await Effect.runPromise(
+    pushUrlMaybeViewTransition("/play/7", "/", {
+      prefersReducedMotion: false,
+      startViewTransition,
+      pushUrl: () => Effect.promise(() => Promise.resolve()),
+    }),
+  );
+
+  expect(callbackResult).toBeInstanceOf(Promise);
+});
+
 test("pushUrlMaybeViewTransition skips view transitions when reduced motion is preferred", async () => {
   let started = false;
 

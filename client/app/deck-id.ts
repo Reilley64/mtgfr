@@ -13,8 +13,10 @@ export function playDeckAccess(
   deckId: number | null,
   decks: ReadonlyArray<{ id: number }>,
   loading: boolean,
-): "loading" | "ok" | "missing" {
+  error: string | null = null,
+): "loading" | "ok" | "missing" | "error" {
   if (deckId == null) return "missing";
+  if (error != null) return "error";
   if (loading && decks.length === 0) return "loading";
   if (decks.some((deck) => deck.id === deckId)) return "ok";
   if (loading) return "loading";

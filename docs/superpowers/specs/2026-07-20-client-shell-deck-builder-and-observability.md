@@ -50,6 +50,7 @@ A single Foldkit event-reactor owns routing: `client/app/routes.ts` maps paths t
 | `/api/faro/collect` | Faro proxy | — |
 
 Required identifiers live in path params (wire-protocol-and-visibility spec routing rule). Query params are optional: `?next=` is the post-login redirect target.
+Legacy `/play`, `/play/:table`, and `?deck=` entry points are Not found (hard cut).
 
 ### Portrait gate (`client/app/view.ts`, `client/app/subscriptions.ts`, DESIGN.md Landscape Rule)
 

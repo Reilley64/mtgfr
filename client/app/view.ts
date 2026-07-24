@@ -148,7 +148,7 @@ function routeBody(model: Model) {
       case "PlayRoute": {
         if (model.game?.active === true) return boardMount(model);
         const deckId = parseDeckIdParam(model.route.deckId);
-        const access = playDeckAccess(deckId, model.decks.list.decks, model.decks.list.loading);
+        const access = playDeckAccess(deckId, model.decks.list.decks, model.decks.list.loading, model.decks.list.error);
         if (access === "missing") return shell(model, "Not found", `No Foldkit route for ${model.currentPath}.`);
         return lobbyView(
           model.lobby,
@@ -161,7 +161,7 @@ function routeBody(model: Model) {
       case "TableRoute": {
         if (model.game?.active === true) return boardMount(model);
         const deckId = parseDeckIdParam(model.route.deckId);
-        const access = playDeckAccess(deckId, model.decks.list.decks, model.decks.list.loading);
+        const access = playDeckAccess(deckId, model.decks.list.decks, model.decks.list.loading, model.decks.list.error);
         if (access === "missing") return shell(model, "Not found", `No Foldkit route for ${model.currentPath}.`);
         return lobbyView(
           model.lobby,

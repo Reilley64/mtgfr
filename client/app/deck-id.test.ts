@@ -25,3 +25,7 @@ test("playDeckAccess reflects loading, known, and missing decks", () => {
   expect(playDeckAccess(7, [{ id: 1 }], false)).toBe("missing");
   expect(playDeckAccess(null, [{ id: 1 }], false)).toBe("missing");
 });
+
+test("playDeckAccess preserves a deck load error instead of treating an empty list as missing", () => {
+  expect(playDeckAccess(7, [], false, "Could not load decks.")).toBe("error");
+});

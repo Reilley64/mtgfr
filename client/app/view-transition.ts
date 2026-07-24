@@ -49,11 +49,14 @@ export function pushUrlMaybeViewTransition(
   if (prefersReducedMotion(opts.prefersReducedMotion)) return pushUrl(url);
   if (startViewTransition == null) return pushUrl(url);
 
-  return Effect.promise(async () => {
-    await new Promise<void>((resolve, reject) => {
-      startViewTransition(() => {
-        Effect.runPromise(pushUrl(url)).then(resolve, reject);
+  return Effect.promise(() => {
+    return new Promise<void>((resolve, reject) => {
+      const transition = startViewTransition(() => {
+        const done = Effect.runPromise(pushUrl(url));
+        done.then(resolve, reject);
+        return done;
       });
+      void transition;
     });
   });
 }

@@ -276,6 +276,26 @@ describe("shell surface scenes", () => {
     );
   });
 
+  it("keeps a play deck route in the lobby while the deck list error is visible", () => {
+    Scene.scene(
+      { update, view },
+      Scene.with(
+        authedModel(PlayRoute({ deckId: "1" }), {
+          currentPath: "/play/1",
+          decks: {
+            ...init()[0].decks,
+            list: { ...init()[0].decks.list, decks: [], error: "Could not load decks.", loading: false },
+          },
+          lobby: { ...initialLobbySlice(), selectedDeckId: 1 },
+        }),
+      ),
+      Scene.expect(Scene.selector('[data-testid="lobby"]')).toExist(),
+      Scene.expect(Scene.text("Deck not found.")).toExist(),
+      Scene.expect(Scene.text("Not found")).not.toExist(),
+      Scene.expect(Scene.text("No Foldkit route for /play/1.")).not.toExist(),
+    );
+  });
+
   it("renders lobby table chrome, seats, and errors", () => {
     Scene.scene(
       { update, view },
