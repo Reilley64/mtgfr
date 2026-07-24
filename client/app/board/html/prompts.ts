@@ -742,60 +742,86 @@ function modalPrompt(mc: NonNullable<BoardModel["modalCast"]>): Html {
     const picked = multi ? mc.modeDraft : [];
     const ready = multi ? picked.length >= choose && picked.length <= chooseMax : true;
     const countHint = choose === chooseMax ? `Choose ${choose}` : `Choose ${choose}–${chooseMax}`;
-    return frame("modal-mode-picker", mc.action.label || "Choose modes", [
-      h.div([h.Class("text-caption text-mist")], [countHint]),
-      h.div(
-        [h.Class("flex flex-col gap-1")],
-        mc.modes.map((mode, i) => {
-          const selected = picked.includes(i);
-          const available = modeAvailable(mode);
-          if (multi) {
-            return h.button(
-              [
-                h.Type("button"),
-                h.DataAttribute("testid", `modal-mode-${i}`),
-                h.AriaPressed(selected ? "true" : "false"),
-                h.Disabled(!available),
-                h.OnClick(ModalModeToggled({ index: i })),
-                h.Class(
-                  [
-                    "rounded-hud px-3 py-2 text-left text-body",
-                    selected ? "bg-llanowar/25 text-snow" : "bg-glass text-snow",
-                    !available ? "cursor-not-allowed opacity-40" : "hover:bg-glass-dim",
-                  ].join(" "),
-                ),
-              ],
-              [mode.label, !available ? " (no legal target)" : ""],
-            );
-          }
-          return itemButton(mode.label, `modal-mode-${i}`, ModalModesChosen({ chosen: [i] }));
-        }),
-      ),
-      multi
-        ? h.div(
-            [h.Class("flex gap-2")],
-            [
-              h.button(
+    const title = mc.action.label || "Choose modes";
+    return h.div(
+      [
+        h.DataAttribute("testid", "modal-mode-aim"),
+        h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+        h.Class(
+          "pointer-events-auto fixed left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+        ),
+      ],
+      [
+        h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], [title]),
+        h.div([h.Class("pointer-events-none text-caption text-mist")], [countHint]),
+        h.div(
+          [h.Class("flex w-full flex-col gap-1")],
+          mc.modes.map((mode, i) => {
+            const selected = picked.includes(i);
+            const available = modeAvailable(mode);
+            if (multi) {
+              return h.button(
                 [
                   h.Type("button"),
-                  h.DataAttribute("testid", "modal-cast"),
-                  h.Disabled(!ready),
-                  h.OnClick(ModalModesChosen({ chosen: [...picked] })),
+                  h.DataAttribute("testid", `modal-mode-${i}`),
+                  h.AriaPressed(selected ? "true" : "false"),
+                  h.Disabled(!available),
+                  h.OnClick(ModalModeToggled({ index: i })),
                   h.Class(
-                    ready
-                      ? "cursor-pointer rounded-hud bg-llanowar px-3 py-1 text-body text-snow"
-                      : "cursor-not-allowed rounded-hud bg-glass px-3 py-1 text-body text-mist",
+                    [
+                      "rounded-hud px-3 py-2 text-left text-body",
+                      selected ? "bg-llanowar/25 text-snow" : "bg-glass text-snow",
+                      !available ? "cursor-not-allowed opacity-40" : "hover:bg-glass-dim",
+                    ].join(" "),
                   ),
                 ],
-                ["Cast"],
-              ),
-              cancelButton(),
-            ],
-          )
-        : cancelButton(),
-    ]);
+                [mode.label, !available ? " (no legal target)" : ""],
+              );
+            }
+            return itemButton(mode.label, `modal-mode-${i}`, ModalModesChosen({ chosen: [i] }));
+          }),
+        ),
+        multi
+          ? h.div(
+              [h.Class("flex flex-wrap justify-center gap-2")],
+              [
+                h.button(
+                  [
+                    h.Type("button"),
+                    h.DataAttribute("testid", "modal-cast"),
+                    h.Disabled(!ready),
+                    h.OnClick(ModalModesChosen({ chosen: [...picked] })),
+                    h.Class(
+                      ready
+                        ? "cursor-pointer rounded-hud bg-llanowar px-3 py-1 text-body text-snow"
+                        : "cursor-not-allowed rounded-hud bg-glass px-3 py-1 text-body text-mist",
+                    ),
+                  ],
+                  ["Cast"],
+                ),
+                cancelButton(),
+              ],
+            )
+          : cancelButton(),
+      ],
+    );
   }
-  return frame("modal-waiting", "Pick a target for the chosen mode.", [cancelButton()]);
+  return h.div(
+    [
+      h.DataAttribute("testid", "modal-waiting-aim"),
+      h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+      h.Class(
+        "pointer-events-auto fixed left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+      ),
+    ],
+    [
+      h.div(
+        [h.Class("pointer-events-none text-center font-semibold text-body text-snow")],
+        ["Pick a target for the chosen mode."],
+      ),
+      cancelButton(),
+    ],
+  );
 }
 
 function pendingChoiceTitle(pending: PendingChoiceView): string {
