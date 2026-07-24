@@ -16,9 +16,7 @@ export function mulliganOverlayView(state: VisibleState): Html | null {
   });
   if (!chrome.show || !chrome.showControls) return null;
 
-  const hand = state.objects.filter(
-    (o) => Number(o.zone) === ZONE.Hand && Number(o.owner) === Number(state.viewer),
-  );
+  const hand = state.objects.filter((o) => Number(o.zone) === ZONE.Hand && Number(o.owner) === Number(state.viewer));
 
   return h.div(
     [
@@ -44,10 +42,7 @@ export function mulliganOverlayView(state: VisibleState): Html | null {
             ],
             hand.map((obj) =>
               h.div(
-                [
-                  h.DataAttribute("testid", `mulligan-face-${obj.id}`),
-                  h.Class("pointer-events-none shrink-0"),
-                ],
+                [h.DataAttribute("testid", `mulligan-face-${obj.id}`), h.Class("pointer-events-none shrink-0")],
                 [
                   obj.print
                     ? cardArt(h, {

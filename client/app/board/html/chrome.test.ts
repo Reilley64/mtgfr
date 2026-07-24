@@ -184,6 +184,38 @@ test("mulliganing undecided seat sees overlay and hides hand bar", () => {
   );
 });
 
+test("mulligan take is disabled when can_mulligan is false", () => {
+  const state = gameState({
+    mulliganing: true,
+    objects: [card(1)],
+    players: [
+      {
+        ...player(0),
+        hand_kept: false,
+        can_mulligan: false,
+        mulligans_taken: 6,
+      },
+      {
+        ...player(1),
+        hand_kept: false,
+        can_mulligan: true,
+        mulligans_taken: 0,
+      },
+    ],
+  });
+  Scene.scene(
+    { update: (m) => [m, []], view: overlayView },
+    Scene.with({
+      board: initialBoardModel(),
+      fold: gameFold(state),
+      tableId: "T1",
+    }),
+    Scene.Mount.resolveAll([MountPriorityWatch(), PriorityElapsed({ seconds: 0 })], [BindCardArt, ArtLoaded()]),
+    Scene.expect(Scene.testId("mulligan-overlay")).toExist(),
+    Scene.expect(Scene.testId("mulligan-take")).toBeDisabled(),
+  );
+});
+
 test("mulligan kept seat sees waiting banner and hand bar", () => {
   const state = gameState({
     mulliganing: true,

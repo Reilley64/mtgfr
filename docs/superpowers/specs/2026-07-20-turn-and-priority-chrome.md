@@ -1,6 +1,6 @@
 # Turn and Priority Chrome
-**Status:** Current (as of 2026-07-23)
-**Module:** `client/app/board/html/priority-bar.ts`, `client/app/board/html/turn-chrome.ts`, `client/app/board/html/discoverability.ts`, `client/lib/combatCoach.ts`, `client/app/board/html/sound-chrome.ts`, `client/app/board/html/keyboard-mount.ts`, `client/app/board/html/mulligan-bar.ts`
+**Status:** Current (as of 2026-07-24)
+**Module:** `client/app/board/html/priority-bar.ts`, `client/app/board/html/turn-chrome.ts`, `client/app/board/html/discoverability.ts`, `client/lib/combatCoach.ts`, `client/app/board/html/sound-chrome.ts`, `client/app/board/html/keyboard-mount.ts`, `client/app/board/html/mulligan-overlay.ts`
 
 ## Problem Statement
 
@@ -27,8 +27,8 @@ Use `PriorityContextBar` for action controls, `TurnBanner` for active player and
 - Active players see End Turn when the stack is empty and combat staging is not pending.
 - Non-active players see the Until my turn rocker.
 - Space mirrors the primary/pass action. Enter toggles End Turn or Until my turn.
-- While `VisibleState.mulliganing` is true for a seated viewer, `mulliganBarView` replaces the priority bar (Keep / Mulligan). Space and Enter are inert until mulligans finish; Concede stays available.
-- After the local seat keeps, the bar stays visible with a waiting status that names undecided living seats (username, or `P{seat}` when empty). Lost seats are omitted. When every living seat has kept, status is “All players kept. Starting game…”.
+- While `VisibleState.mulliganing` is true and the local seated viewer has not kept (`!hand_kept`), `mulliganOverlayView` shows full-viewport `mulligan-overlay` (dimmed hard-lock backdrop, large opening-hand faces, Keep / Mulligan). The normal `hand-bar` and priority bar are hidden. Space and Enter stay inert; Concede remains available above the overlay.
+- After the local seat keeps while others are still deciding, the overlay dismisses, `hand-bar` returns, and `mulligan-waiting` shows waiting copy that names undecided living seats (username, or `P{seat}` when empty). Lost seats are omitted. When every living seat has kept, status is “All players kept. Starting game…”.
 - `TurnBanner` shows five phase bands: Beginning, Main 1, Combat, Main 2, End, plus step detail when needed.
 - `HintStrip` explains drag, activation click, Alt inspect, and Space pass; it auto-hides after 12 seconds and persists dismissal as `mtgfr.hintDismissed`.
 - During local declare-attackers / declare-blockers windows, `board-combat-coach` shows drag-to-stage copy (independent of hint dismissal): attack → opponent life orb, block → attacker creature.
@@ -47,7 +47,8 @@ Use `PriorityContextBar` for action controls, `TurnBanner` for active player and
 ## Testing Decisions
 
 - Chrome tests cover Next, Resolve card, Resolve stack, End Turn, Until my turn, and staged cancel controls.
-- Mulligan unit tests cover Keep/Mulligan affordances and waiting status that names undecided seats (including empty-username fallback).
+- Chrome Scene tests cover the undecided `mulligan-overlay`, disabled `mulligan-take`, and the post-keep `mulligan-waiting` banner with the restored `hand-bar`.
+- Mulligan unit tests cover Keep/Mulligan copy, enablement, and waiting status that names undecided seats (including empty-username fallback).
 - Keyboard tests cover Space, Enter, Escape, and Alt behavior without stealing text-input focus.
 - Discoverability tests cover hint auto-hide, dismissal persistence, legend content, toolbar placement, and combat staging coach copy.
 - Playable-chrome tests assert outlines/borders rather than dimming.
@@ -61,3 +62,4 @@ Use `PriorityContextBar` for action controls, `TurnBanner` for active player and
 ## Further Notes
 
 - Table audio attention cues are fired from board audio data attributes and documented in the table audio spec.
+- Mulligan overlay behavior and rationale are designed in [`2026-07-24-mulligan-pregame-overlay-design.md`](2026-07-24-mulligan-pregame-overlay-design.md).
