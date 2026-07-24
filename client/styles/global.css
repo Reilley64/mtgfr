@@ -236,7 +236,10 @@
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
-    *::after {
+    *::after,
+    ::view-transition-group(*),
+    ::view-transition-old(*),
+    ::view-transition-new(*) {
       /* biome-ignore lint/complexity/noImportantStyles: must override component-level motion for a11y */
       transition-duration: 0.01ms !important;
       /* biome-ignore lint/complexity/noImportantStyles: must override component-level motion for a11y */

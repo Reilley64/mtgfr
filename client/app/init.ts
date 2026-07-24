@@ -2,7 +2,7 @@ import { Option } from "effect";
 import type { Url } from "foldkit/url";
 import { FetchApiVersion } from "./fetch-api-version";
 import type { Model } from "./model";
-import { nextFromUrl, pathWithSearch, routeFromUrl } from "./routes";
+import { nextFromUrl, normalizeAppRoute, pathWithSearch, routeFromUrl } from "./routes";
 import { initialAuthSubmodel } from "./shell/auth/submodel";
 import { FetchMe } from "./shell/auth/update";
 import { initialDecksSubmodel } from "./shell/decks/submodel";
@@ -20,14 +20,15 @@ export const init = (
     search: Option.none(),
     hash: Option.none(),
   };
-  const route = routeFromUrl(url ?? fallbackUrl);
+  const currentPath = pathWithSearch(url ?? fallbackUrl);
+  const route = normalizeAppRoute(routeFromUrl(url ?? fallbackUrl), currentPath);
   const next = url == null ? "/" : nextFromUrl(url);
 
   return [
     {
       ready: true,
       route,
-      currentPath: pathWithSearch(url ?? fallbackUrl),
+      currentPath,
       session: { me: null },
       sessionLoaded: false,
       apiVersion: null,

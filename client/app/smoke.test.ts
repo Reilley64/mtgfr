@@ -10,14 +10,29 @@ import { BindDeckListContextMenu, BindDeckListContextMenuEscape } from "./shell/
 import { view } from "./view";
 
 const me = { id: 1, email: "alice@example.com", username: "alice" };
+const deck = {
+  commander: "atraxa",
+  commander_print: "atraxa-print",
+  id: 1,
+  name: "Superfriends",
+};
 
 function playModel(overrides: Partial<AppModel>): AppModel {
   const [model] = init();
 
   return {
     ...model,
-    route: PlayRoute(),
+    route: PlayRoute({ deckId: "1" }),
     portraitGate: { open: false },
+    decks: {
+      ...model.decks,
+      list: {
+        ...model.decks.list,
+        loading: false,
+        decks: [deck],
+      },
+    },
+    lobby: { ...model.lobby, selectedDeckId: 1 },
     ...overrides,
   };
 }
@@ -35,14 +50,7 @@ function homeWithDecks(): AppModel {
       list: {
         ...model.decks.list,
         loading: false,
-        decks: [
-          {
-            commander: "atraxa",
-            commander_print: "atraxa-print",
-            id: 1,
-            name: "Superfriends",
-          },
-        ],
+        decks: [deck],
       },
     },
   };
@@ -82,6 +90,7 @@ describe("foldkit scaffold", () => {
       { update, view },
       Scene.with(playModel({ sessionLoaded: true, session: { me } })),
       Scene.expect(Scene.selector('[data-testid="lobby"]')).toExist(),
+      Scene.Mount.resolve(BindCardArt, CardArtTick()),
     );
   });
 

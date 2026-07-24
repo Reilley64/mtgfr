@@ -257,19 +257,42 @@ describe("shell surface scenes", () => {
     Scene.scene(
       { update, view },
       Scene.with(
-        authedModel(PlayRoute(), {
+        authedModel(PlayRoute({ deckId: "1" }), {
           decks: {
             ...init()[0].decks,
-            list: { ...init()[0].decks.list, decks: [deck], loading: false },
+            list: { ...init()[0].decks.list, decks: [deck], knownCommanders: { atraxa }, loading: false },
           },
-          lobby: { ...initialLobbySlice(), selectedDeckId: null },
+          lobby: { ...initialLobbySlice(), selectedDeckId: 1 },
         }),
       ),
+      Scene.expect(Scene.selector('[data-testid="lobby-deck-card"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="lobby-deck-card-1"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-join-code"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-join"]')).toExist(),
       Scene.expect(Scene.text("Lobby")).toExist(),
       Scene.expect(Scene.text("edh.reilley.dev")).toExist(),
       Scene.expect(Scene.text("mtgfr")).not.toExist(),
+      Scene.Mount.resolve(BindCardArt, CardArtTick()),
+    );
+  });
+
+  it("keeps a play deck route in the lobby while the deck list error is visible", () => {
+    Scene.scene(
+      { update, view },
+      Scene.with(
+        authedModel(PlayRoute({ deckId: "1" }), {
+          currentPath: "/play/1",
+          decks: {
+            ...init()[0].decks,
+            list: { ...init()[0].decks.list, decks: [], error: "Could not load decks.", loading: false },
+          },
+          lobby: { ...initialLobbySlice(), selectedDeckId: 1 },
+        }),
+      ),
+      Scene.expect(Scene.selector('[data-testid="lobby"]')).toExist(),
+      Scene.expect(Scene.text("Deck not found.")).toExist(),
+      Scene.expect(Scene.text("Not found")).not.toExist(),
+      Scene.expect(Scene.text("No Foldkit route for /play/1.")).not.toExist(),
     );
   });
 
@@ -277,10 +300,10 @@ describe("shell surface scenes", () => {
     Scene.scene(
       { update, view },
       Scene.with(
-        authedModel(TableRoute({ table: "ABC123" }), {
+        authedModel(TableRoute({ deckId: "1", table: "ABC123" }), {
           decks: {
             ...init()[0].decks,
-            list: { ...init()[0].decks.list, decks: [deck], loading: false },
+            list: { ...init()[0].decks.list, decks: [deck], knownCommanders: { atraxa }, loading: false },
           },
           lobby: {
             ...initialLobbySlice(),

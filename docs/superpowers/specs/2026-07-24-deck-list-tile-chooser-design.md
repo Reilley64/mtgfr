@@ -23,7 +23,7 @@ The home **Your decks** surface is a plain list row: small art crop, name, alway
 
 ## Non-goals
 
-- Lobby deck `<select>` / Bring strip redesign.
+- Lobby deck `<select>` / Bring strip redesign; superseded by [lobby-deck-card-path-and-view-transitions](2026-07-24-lobby-deck-card-path-and-view-transitions-design.md).
 - Server-side list order or search API.
 - Color-identity filter toggles, sort controls, or a shared chooser abstraction for lobby.
 - Branding rename (`mtgfr` → `edh.reilley.dev`).
@@ -32,7 +32,7 @@ The home **Your decks** surface is a plain list row: small art crop, name, alway
 
 ## User stories
 
-- As a returning player on `/`, I see my decks as a tile grid with commander art, name, and color-identity pips; I click a tile to go to `/play?deck={id}`.
+- As a returning player on `/`, I see my decks as a tile grid with commander art, name, and color-identity pips; I click a tile to go to `/play/{id}`.
 - As a player with many decks, I type in **Search decks…** and only matching deck/commander names remain; clearing the field restores the full ordered grid.
 - As a player, my custom decks appear above all precons; among precons, the newest release appears first (Mirror Mastery before Silverquill Influence).
 - As a deck owner, I right-click a custom deck tile to Edit or Delete; Delete still confirms in the existing dialog. Right-clicking a precon does not offer Edit/Delete.
@@ -51,7 +51,7 @@ The home **Your decks** surface is a plain list row: small art crop, name, alway
   - Color-identity pips from the looked-up commander’s `color_identity` (display-only).
   - **Precon** chip when `id < 0`.
 - No always-visible Play / Edit / Delete buttons on the tile.
-- Whole tile is the Play affordance: navigates to `/play?deck={id}` (focusable link; Enter activates).
+- Whole tile is the Play affordance: navigates to `/play/{id}` (focusable link; Enter activates).
 - Deck-list tiles do not show a cursor-follow commander hover preview; primary click still goes to Play.
 - Loading / empty-library / error messaging keep today’s meaning (`Loading decks…`, build-first empty copy, error alert). When the library is non-empty but search matches nothing, show **No decks match.**
 
@@ -101,7 +101,7 @@ No wire / proto / BFF changes.
 - **Unit:** `visibleDecks` ordering (customs before precons; precon ids ascending); search match on name and commander; precon excluded from Edit/Delete menu helper.
 - **Scene / outcome** (`surfaces.test.ts` and/or focused list tests):
   - Tiles present; always-visible Play/Edit/Delete buttons absent.
-  - Tile href is `/play?deck={id}`.
+  - Tile href is `/play/{id}`.
   - Search narrows visible tiles; no-match copy when appropriate.
   - With mixed fixtures, first visible precon is newer than later precons; all customs before any precon.
   - Right-click owned deck → Edit/Delete present; right-click precon → those items absent.

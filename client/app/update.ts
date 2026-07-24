@@ -4,11 +4,22 @@ import { Command, Navigation } from "foldkit";
 import { toString as urlToString } from "foldkit/url";
 import type { Message as BoardMessage } from "./board/messages";
 import { syncBoardWithGame, updateBoard } from "./board/submodel";
+import { parseDeckIdParam, playDeckAccess } from "./deck-id";
 import { applyDeltaPure, applySnapshotPure, type DeltaEnvelope, setRejectPure } from "./game/fold";
 import { type Message, NavigationCompleted, type ReceivedDelta } from "./messages";
 import { emptyGameSlice, type GameSlice, type Model } from "./model";
 import type { RpcClient } from "./resources";
-import { isProtectedRoute, nextFromUrl, pathWithSearch, routeFromUrl, routePath, safeNext, TableRoute } from "./routes";
+import {
+  isProtectedRoute,
+  NotFoundRoute,
+  nextFromUrl,
+  normalizeAppRoute,
+  pathWithSearch,
+  routeFromUrl,
+  routePath,
+  safeNext,
+  TableRoute,
+} from "./routes";
 import { initialAuthSubmodel } from "./shell/auth/submodel";
 import { update as updateAuth } from "./shell/auth/update";
 import type { Message as BuilderMessage } from "./shell/decks/builder/messages";
@@ -18,6 +29,7 @@ import { loadDeckList, update as updateDeckList } from "./shell/decks/list/updat
 import type { Message as LobbyMessage } from "./shell/lobby/messages";
 import { enterLobby } from "./shell/lobby/submodel";
 import { update as updateLobby } from "./shell/lobby/update";
+import { pushUrlMaybeViewTransition } from "./view-transition";
 
 const Redirect = Command.define(
   "Redirect",
@@ -27,9 +39,11 @@ const Redirect = Command.define(
 
 const PushUrl = Command.define(
   "PushUrl",
-  { url: S.String },
+  { url: S.String, fromPathname: S.String },
   NavigationCompleted,
-)(({ url }) => Navigation.pushUrl(url).pipe(Effect.as(NavigationCompleted())));
+)(({ url, fromPathname }) =>
+  pushUrlMaybeViewTransition(url, fromPathname, { pushUrl: Navigation.pushUrl }).pipe(Effect.as(NavigationCompleted())),
+);
 
 const LoadExternalUrl = Command.define(
   "LoadExternalUrl",
@@ -39,15 +53,6 @@ const LoadExternalUrl = Command.define(
 
 function loginRedirectFor(model: Model): string {
   return `/login?next=${encodeURIComponent(model.currentPath)}`;
-}
-
-function deckFromCurrentPath(currentPath: string): number | null {
-  const search = currentPath.split("?")[1];
-  if (search == null) return null;
-  const value = new URLSearchParams(search).get("deck");
-  if (value == null) return null;
-  const id = Number(value);
-  return Number.isInteger(id) ? id : null;
 }
 
 function terminalStreamError(status: number): string {
@@ -107,7 +112,7 @@ function routeEntry(model: Model): readonly [Model, ReadonlyArray<FoldkitCommand
         {
           ...model,
           decks: { ...model.decks, list },
-          lobby: enterLobby(model.lobby, { tableId: null, selectedDeckId: deckFromCurrentPath(model.currentPath) }),
+          lobby: enterLobby(model.lobby, { tableId: null, selectedDeckId: parseDeckIdParam(model.route.deckId) }),
           game: null,
         },
         commands,
@@ -121,15 +126,20 @@ function routeEntry(model: Model): readonly [Model, ReadonlyArray<FoldkitCommand
           decks: { ...model.decks, list },
           lobby: enterLobby(model.lobby, {
             tableId: model.route.table,
-            selectedDeckId: deckFromCurrentPath(model.currentPath),
+            selectedDeckId: parseDeckIdParam(model.route.deckId),
           }),
           game: null,
         },
         commands,
       ];
     }
-    default:
+    case "LoginRoute":
+    case "NotFoundRoute":
       return [model, []];
+    default: {
+      const exhaustive: never = model.route;
+      return exhaustive;
+    }
   }
 }
 
@@ -139,6 +149,14 @@ function foldDeckList(
 ): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
   const [list, commands] = updateDeckList(model.decks.list, message);
   return [{ ...model, decks: { ...model.decks, list } }, commands];
+}
+
+function notFoundWhenPlayDeckMissing(model: Model): Model {
+  if (model.route._tag !== "PlayRoute" && model.route._tag !== "TableRoute") return model;
+  const deckId = parseDeckIdParam(model.route.deckId);
+  const access = playDeckAccess(deckId, model.decks.list.decks, model.decks.list.loading, model.decks.list.error);
+  if (access !== "missing") return model;
+  return { ...model, route: NotFoundRoute({ path: model.currentPath }) };
 }
 
 function foldDeckBuilder(
@@ -171,13 +189,10 @@ function foldLobby(
         : emptyGameSlice(lobby.tableId)
       : model.game;
   const redirect =
-    model.route._tag === "PlayRoute" && lobby.tableId != null
+    model.route._tag === "PlayRoute" && lobby.tableId != null && lobby.selectedDeckId != null
       ? [
           Redirect({
-            path:
-              lobby.selectedDeckId != null
-                ? `${routePath(TableRoute({ table: lobby.tableId }))}?deck=${lobby.selectedDeckId}`
-                : routePath(TableRoute({ table: lobby.tableId })),
+            path: routePath(TableRoute({ deckId: String(lobby.selectedDeckId), table: lobby.tableId })),
           }),
         ]
       : [];
@@ -194,10 +209,11 @@ export const update = (
       Booted: () => [model, []],
       ReceivedApiVersion: ({ version }) => [{ ...model, apiVersion: version }, []],
       UrlChanged: ({ url }) => {
+        const currentPath = pathWithSearch(url);
         const nextModel = {
           ...model,
-          route: routeFromUrl(url),
-          currentPath: pathWithSearch(url),
+          route: normalizeAppRoute(routeFromUrl(url), currentPath),
+          currentPath,
           auth: { ...model.auth, next: nextFromUrl(url) },
         };
         return routeEntry(nextModel);
@@ -206,7 +222,7 @@ export const update = (
         M.value(request).pipe(
           M.withReturnType<readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>]>(),
           M.tagsExhaustive({
-            Internal: ({ url }) => [model, [PushUrl({ url: urlToString(url) })]],
+            Internal: ({ url }) => [model, [PushUrl({ url: urlToString(url), fromPathname: model.currentPath })]],
             External: ({ href }) => [model, [LoadExternalUrl({ href })]],
           }),
         ),
@@ -337,7 +353,10 @@ export const update = (
         return [{ ...model, auth }, commands];
       },
       RequestedDecksRefresh: (decksMessage) => foldDeckList(model, decksMessage),
-      ReceivedDecks: (decksMessage) => foldDeckList(model, decksMessage),
+      ReceivedDecks: (decksMessage) => {
+        const [nextModel, commands] = foldDeckList(model, decksMessage);
+        return [notFoundWhenPlayDeckMissing(nextModel), commands];
+      },
       DecksLoadFailed: (decksMessage) => foldDeckList(model, decksMessage),
       ReceivedDeckListCommanders: (decksMessage) => foldDeckList(model, decksMessage),
       ChangedDeckListSearch: (decksMessage) => foldDeckList(model, decksMessage),
@@ -377,7 +396,6 @@ export const update = (
       ConfirmedBuilderDiscard: (decksMessage) => foldDeckBuilder(model, decksMessage),
       CancelledBuilderDiscard: (decksMessage) => foldDeckBuilder(model, decksMessage),
       NavigatedAwayFromBuilder: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      ChangedLobbyDeck: (lobbyMessage) => foldLobby(model, lobbyMessage),
       ChangedLobbyCode: (lobbyMessage) => foldLobby(model, lobbyMessage),
       RequestedLobbyHost: (lobbyMessage) => foldLobby(model, lobbyMessage),
       LobbyTableCreated: (lobbyMessage) => foldLobby(model, lobbyMessage),
