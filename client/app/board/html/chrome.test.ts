@@ -184,7 +184,7 @@ test("mulliganing undecided seat sees overlay and hides hand bar", () => {
   );
 });
 
-test("mulliganing kept seat does not show decision overlay", () => {
+test("mulligan kept seat sees waiting banner and hand bar", () => {
   const state = gameState({
     mulliganing: true,
     players: [
@@ -214,6 +214,8 @@ test("mulliganing kept seat does not show decision overlay", () => {
     }),
     resolveBoardOverlayMounts(),
     Scene.expect(Scene.testId("mulligan-overlay")).not.toExist(),
+    Scene.expect(Scene.testId("mulligan-waiting")).toExist(),
+    Scene.expect(Scene.testId("mulligan-waiting")).toContainText("Waiting for Bob to choose."),
     Scene.expect(Scene.testId("mulligan-keep")).not.toExist(),
     Scene.expect(Scene.testId("hand-bar")).toExist(),
   );

@@ -20,7 +20,7 @@ import { discoverabilityView } from "./discoverability";
 import { handView } from "./hand";
 import { inspectView } from "./inspect";
 import { logPanelView } from "./log-panel";
-import { mulliganOverlayView } from "./mulligan-overlay";
+import { mulliganOverlayView, mulliganWaitingView } from "./mulligan-overlay";
 import { pendingChoiceWaitingView } from "./pending-choice-waiting";
 import { pileOverlayView } from "./pile-overlay";
 import { priorityBarView } from "./priority-bar";
@@ -105,6 +105,7 @@ export function boardOverlays(
         })
       : null,
     seatedViewer ? mulliganOverlayView(state) : null,
+    seatedViewer ? mulliganWaitingView(state) : null,
     seatedViewer && !chrome.show ? priorityBarView(board, state) : null,
     seatedViewer && !chrome.show ? promptsView(board, state, tableId) : null,
     seatedViewer && !chrome.show ? activationRadialView(board, state) : null,

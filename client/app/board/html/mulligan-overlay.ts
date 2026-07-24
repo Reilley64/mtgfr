@@ -98,3 +98,22 @@ export function mulliganOverlayView(state: VisibleState): Html | null {
     ],
   );
 }
+
+export function mulliganWaitingView(state: VisibleState): Html | null {
+  const chrome = mulliganChrome({
+    mulliganing: state.mulliganing,
+    localSeat: state.viewer,
+    players: state.players,
+  });
+  if (!chrome.show || chrome.showControls) return null;
+
+  return h.div(
+    [
+      h.DataAttribute("testid", "mulligan-waiting"),
+      h.Class(
+        "pointer-events-none fixed top-md left-1/2 z-30 max-w-[min(90vw,28rem)] -translate-x-1/2 rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-center text-chip text-seafoam shadow-hud",
+      ),
+    ],
+    [chrome.status],
+  );
+}
