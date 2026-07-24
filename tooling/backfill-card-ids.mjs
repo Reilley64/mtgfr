@@ -28,7 +28,7 @@ async function fetchOracleIds() {
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
-        "User-Agent": "mtgfr/0.1",
+        "User-Agent": "edh.reilley.dev/0.1",
       },
       body: JSON.stringify({ identifiers }),
     });
@@ -51,7 +51,7 @@ async function fetchOracleIds() {
 async function resolveByName(name) {
   const res = await fetch(
     `https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`,
-    { headers: { Accept: "application/json", "User-Agent": "mtgfr/0.1" } },
+    { headers: { Accept: "application/json", "User-Agent": "edh.reilley.dev/0.1" } },
   );
   await new Promise((r) => setTimeout(r, 100));
   if (!res.ok) return null;

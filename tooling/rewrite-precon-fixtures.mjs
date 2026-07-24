@@ -26,7 +26,7 @@ function loadPool() {
 async function socPrint(oracleId) {
   const q = encodeURIComponent(`oracleid:${oracleId} set:soc`);
   const res = await fetch(`https://api.scryfall.com/cards/search?q=${q}&unique=prints`, {
-    headers: { Accept: "application/json", "User-Agent": "mtgfr/0.1" },
+    headers: { Accept: "application/json", "User-Agent": "edh.reilley.dev/0.1" },
   });
   await new Promise((r) => setTimeout(r, 100));
   if (!res.ok) return null;

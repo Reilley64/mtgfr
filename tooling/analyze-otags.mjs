@@ -10,7 +10,7 @@ const DATA_DIR = join(ROOT, "crates/cards/data");
 const ID_MAP = join(ROOT, "client/src/lib/card-ids.json");
 const OUT = join(ROOT, "docs/reports/scryfall-otags-analysis.html");
 
-const UA = { "User-Agent": "mtgfr/0.1 (otag analysis)", Accept: "application/json" };
+const UA = { "User-Agent": "edh.reilley.dev/0.1 (otag analysis)", Accept: "application/json" };
 
 // --- Scryfall bulk fetch helpers ---
 

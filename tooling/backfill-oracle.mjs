@@ -40,7 +40,7 @@ async function fetchOracle() {
     const identifiers = ids.slice(i, i + 75).map((id) => ({ id }));
     const res = await fetch("https://api.scryfall.com/cards/collection", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json", "User-Agent": "mtgfr/0.1" },
+      headers: { "Content-Type": "application/json", Accept: "application/json", "User-Agent": "edh.reilley.dev/0.1" },
       body: JSON.stringify({ identifiers }),
     });
     if (!res.ok) throw new Error(`Scryfall ${res.status}: ${await res.text()}`);
@@ -78,7 +78,7 @@ function backfillFile(path, oracle) {
 // A name absent from the id map: resolve it live via Scryfall's fuzzy `named` endpoint.
 async function resolveByName(name) {
   const res = await fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`, {
-    headers: { Accept: "application/json", "User-Agent": "mtgfr/0.1" },
+    headers: { Accept: "application/json", "User-Agent": "edh.reilley.dev/0.1" },
   });
   await new Promise((r) => setTimeout(r, 100));
   if (!res.ok) return null;
