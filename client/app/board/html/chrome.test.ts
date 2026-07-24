@@ -6,11 +6,15 @@ import { html } from "foldkit/html";
 import { Scene } from "foldkit/test";
 import { beforeAll, test } from "vitest";
 import { SPECTATOR_VIEWER } from "~/spectator";
-import type { VisibleState } from "~/wire/types";
+import { BindCardArt } from "~/ui/card-art";
+import type { ObjectView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../../game/fold";
+import { ZONE } from "../geometry/layout";
 import type { Message } from "../messages";
+import { ArtLoaded, PriorityElapsed } from "../messages";
 import { type BoardModel, initialBoardModel } from "../submodel";
 import { type BoardViewModel, view as boardView } from "../view";
+import { MountPriorityWatch } from "./audio-mount";
 import { boardOverlays } from "./overlays";
 import { resolveBoardOverlayMounts, resolveLiveBoardMounts } from "./scene-helpers";
 
@@ -39,6 +43,29 @@ function player(seat: number, lost = false): import("~/wire/types").PlayerView {
     mana_pool: { any: 0, colored: [0, 0, 0, 0, 0], colorless: 0 },
     player: seat,
     username: seat === 0 ? "Alice" : "Bob",
+  };
+}
+
+function card(id: number, overrides: Partial<ObjectView> = {}): ObjectView {
+  return {
+    controller: 0,
+    has_haste: false,
+    id,
+    is_commander: false,
+    kind: { kind: "land", colors: [] },
+    mana_cost: { generic: 0, colored: [0, 0, 0, 0, 0] },
+    marked_damage: 0,
+    name: "Forest",
+    needs_target: false,
+    owner: 0,
+    plus_counters: 0,
+    power: 0,
+    print: "forest-print",
+    summoning_sick: false,
+    tapped: false,
+    toughness: 0,
+    zone: ZONE.Hand,
+    ...overrides,
   };
 }
 
@@ -114,9 +141,10 @@ test("active player sees hand, priority bar, concede, and hint chrome", () => {
   );
 });
 
-test("mulliganing seat sees mulligan bar and hides priority chrome", () => {
+test("mulliganing undecided seat sees overlay and hides hand bar", () => {
   const state = gameState({
     mulliganing: true,
+    objects: [card(1)],
     players: [
       {
         ...player(0),
@@ -133,23 +161,62 @@ test("mulliganing seat sees mulligan bar and hides priority chrome", () => {
     ],
   });
   const model: OverlayModel = {
-    board: initialBoardModel(),
+    board: {
+      ...initialBoardModel(),
+      inspectPin: { name: "Forest", prepared: false, cardId: "forest-card", print: "forest-print" },
+    },
     fold: gameFold(state),
     tableId: "T1",
   };
   Scene.scene(
     { update: (m) => [m, []], view: overlayView },
     Scene.with(model),
-    resolveBoardOverlayMounts(),
-    Scene.expect(Scene.testId("hand-bar")).toExist(),
-    Scene.expect(Scene.testId("mulligan-bar")).toExist(),
+    Scene.Mount.resolveAll([MountPriorityWatch(), PriorityElapsed({ seconds: 0 })], [BindCardArt, ArtLoaded()]),
+    Scene.expect(Scene.testId("mulligan-overlay")).toExist(),
     Scene.expect(Scene.testId("mulligan-keep")).toExist(),
+    Scene.expect(Scene.testId("mulligan-take")).toExist(),
+    Scene.expect(Scene.testId("mulligan-face-1")).toExist(),
+    Scene.expect(Scene.testId("hand-bar")).not.toExist(),
+    Scene.expect(Scene.testId("mulligan-bar")).not.toExist(),
     Scene.expect(Scene.testId("board-primary")).not.toExist(),
     Scene.expect(Scene.testId("board-concede")).toExist(),
+    Scene.expect(Scene.testId("inspect-overlay")).not.toExist(),
   );
 });
 
-test("mulligan bar waiting status names undecided seats after local keep", () => {
+test("mulligan take is disabled when can_mulligan is false", () => {
+  const state = gameState({
+    mulliganing: true,
+    objects: [card(1)],
+    players: [
+      {
+        ...player(0),
+        hand_kept: false,
+        can_mulligan: false,
+        mulligans_taken: 6,
+      },
+      {
+        ...player(1),
+        hand_kept: false,
+        can_mulligan: true,
+        mulligans_taken: 0,
+      },
+    ],
+  });
+  Scene.scene(
+    { update: (m) => [m, []], view: overlayView },
+    Scene.with({
+      board: initialBoardModel(),
+      fold: gameFold(state),
+      tableId: "T1",
+    }),
+    Scene.Mount.resolveAll([MountPriorityWatch(), PriorityElapsed({ seconds: 0 })], [BindCardArt, ArtLoaded()]),
+    Scene.expect(Scene.testId("mulligan-overlay")).toExist(),
+    Scene.expect(Scene.testId("mulligan-take")).toBeDisabled(),
+  );
+});
+
+test("mulligan kept seat sees waiting banner and hand bar", () => {
   const state = gameState({
     mulliganing: true,
     players: [
@@ -178,8 +245,11 @@ test("mulligan bar waiting status names undecided seats after local keep", () =>
       tableId: "T1",
     }),
     resolveBoardOverlayMounts(),
-    Scene.expect(Scene.testId("mulligan-bar")).toContainText("Waiting for Bob to choose."),
+    Scene.expect(Scene.testId("mulligan-overlay")).not.toExist(),
+    Scene.expect(Scene.testId("mulligan-waiting")).toExist(),
+    Scene.expect(Scene.testId("mulligan-waiting")).toContainText("Waiting for Bob to choose."),
     Scene.expect(Scene.testId("mulligan-keep")).not.toExist(),
+    Scene.expect(Scene.testId("hand-bar")).toExist(),
   );
 });
 

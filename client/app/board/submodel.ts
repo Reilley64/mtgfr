@@ -12,10 +12,12 @@ import {
   initPromptDraft,
   type PromptDraft,
 } from "~/choice";
+import { mulliganChrome } from "~/mulligan";
 import type {
   ActionView,
   CatalogCard,
   ObjectView,
+  VisibleState,
   WireAttack,
   WireBlock,
   WireCost,
@@ -266,7 +268,8 @@ type BoardFold = Pick<GameFoldState, "provenance" | "seq" | "state">;
 export function syncBoardWithGame(model: BoardModel, fold: BoardFold): BoardModel {
   if (fold.state == null) return model;
 
-  let next = syncCombatStaging(model, fold);
+  let next = undecidedMulliganInspectLock(fold.state) ? clearInspectState(model) : model;
+  next = syncCombatStaging(next, fold);
   next = syncPromptDraft(next, fold);
   if (next.lastPriorityHolder !== fold.state.priority) {
     next = { ...next, priorityElapsed: 0, lastPriorityHolder: fold.state.priority };
@@ -951,6 +954,21 @@ type Vec = { x: number; y: number };
 type BoardCmd = FoldkitCommand.Command<Message, never, RpcClient>;
 type BoardReturn = readonly [BoardModel, ReadonlyArray<BoardCmd>];
 
+function undecidedMulliganInspectLock(state: VisibleState | null | undefined): boolean {
+  if (state == null) return false;
+  const chrome = mulliganChrome({
+    mulliganing: state.mulliganing,
+    localSeat: state.viewer,
+    players: state.players,
+  });
+  return chrome.show && chrome.showControls;
+}
+
+function clearInspectState(model: BoardModel): BoardModel {
+  if (model.inspectPin == null && model.inspectCard === undefined && !model.altDown) return model;
+  return { ...model, altDown: false, inspectPin: null, inspectCard: undefined };
+}
+
 /** DOM overlay hover for Alt-inspect — hand preferred over stack (Solid `setAuxHover`). */
 export type InspectAuxCard = {
   name: string;
@@ -975,6 +993,7 @@ function applyInspectPin(model: BoardModel, pin: InspectPin | null): BoardReturn
 }
 
 function applyLiveInspectPin(model: BoardModel, fold: GameFoldState): BoardReturn {
+  if (undecidedMulliganInspectLock(fold.state)) return [clearInspectState(model), []];
   if (!model.altDown) return [model, []];
   return applyInspectPin(model, tryPinInspect(model, fold));
 }
@@ -1950,9 +1969,7 @@ export function updateBoard(
         const state = fold.state;
         const handIds =
           state != null
-            ? new Set(
-                state.objects.filter((o) => o.zone === ZONE.Hand && o.owner === state.viewer).map((o) => o.id),
-              )
+            ? new Set(state.objects.filter((o) => o.zone === ZONE.Hand && o.owner === state.viewer).map((o) => o.id))
             : new Set<number>();
         const onHand = choices.length > 0 && choices.every((id) => handIds.has(id));
         if (!onHand) {
@@ -2389,6 +2406,7 @@ export function updateBoard(
     }
     // ── Alt-pin inspect ─────────────────────────────────────────────────────
     case "AltDown": {
+      if (undecidedMulliganInspectLock(fold.state)) return [clearInspectState(model), []];
       const withAlt = { ...model, altDown: true };
       return applyInspectPin(withAlt, tryPinInspect(withAlt, fold));
     }
