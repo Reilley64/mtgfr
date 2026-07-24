@@ -15,8 +15,8 @@ import { view } from "../view";
 import { ClearedBuilderHover } from "./decks/builder/messages";
 import { initialDeckBuilderSubmodel } from "./decks/builder/submodel";
 import { BindBuilderCardPointer } from "./decks/builder/view";
-import { ClearedDeckListHover } from "./decks/list/messages";
-import { BindDeckListCommanderHover } from "./decks/list/view";
+import { ClearedDeckListHover, ClosedDeckListMenu } from "./decks/list/messages";
+import { BindDeckListCommanderHover, BindDeckListContextMenu } from "./decks/list/view";
 import { initialLobbySlice } from "./lobby/submodel";
 
 const me = { id: 1, email: "alice@example.com", username: "alice" };
@@ -151,6 +151,7 @@ describe("shell surface scenes", () => {
         BindDeckListCommanderHover({ cardId: "atraxa", print: "atraxa-print" }),
         ClearedDeckListHover(),
       ),
+      Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), ClosedDeckListMenu()),
       Scene.Mount.resolve(BindCardArt, CardArtTick()),
     );
   });
@@ -179,6 +180,7 @@ describe("shell surface scenes", () => {
         BindDeckListCommanderHover({ cardId: "atraxa", print: "atraxa-print" }),
         ClearedDeckListHover(),
       ),
+      Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), ClosedDeckListMenu()),
       Scene.Mount.resolve(BindCardArt, CardArtTick()),
     );
   });

@@ -2,16 +2,50 @@ import { Submodel } from "foldkit";
 import { Scene } from "foldkit/test";
 import { test } from "vitest";
 import { BindCardArt, CardArtTick } from "../../../../lib/ui/card-art";
+import { ModalOpened, OpenDialogAsModal } from "../../../../lib/ui/confirmDialog";
 import type { CatalogCard } from "../../../../lib/wire/types";
-import { ClearedDeckListHover } from "./messages";
+import {
+  ClearedDeckListHover,
+  ClosedDeckListMenu,
+  type Message as DeckListMessage,
+  OpenedDeckListMenu,
+} from "./messages";
 import { initialDeckListSubmodel } from "./submodel";
 import { update } from "./update";
-import { BindDeckListCommanderHover, view } from "./view";
+import { BindDeckListCommanderHover, BindDeckListContextMenu, view } from "./view";
 
-const listView = Submodel.defineView<ReturnType<typeof initialDeckListSubmodel>, never>((model) =>
+const listView = Submodel.defineView<ReturnType<typeof initialDeckListSubmodel>, DeckListMessage>((model) =>
   view(model, "alice", null),
 );
-const listProgram = { update, view: listView };
+type SceneListMessage = DeckListMessage | typeof ModalOpened.Type | { readonly _tag?: string } | undefined;
+
+function isDeckListMessage(message: SceneListMessage): message is DeckListMessage {
+  switch (message?._tag) {
+    case "RequestedDecksRefresh":
+    case "ReceivedDecks":
+    case "DecksLoadFailed":
+    case "ReceivedDeckListCommanders":
+    case "MovedDeckListHover":
+    case "ClearedDeckListHover":
+    case "ChangedDeckListSearch":
+    case "OpenedDeckListMenu":
+    case "ClosedDeckListMenu":
+    case "AskedDeckDelete":
+    case "CancelledDeckDelete":
+    case "RequestedDeckDelete":
+    case "DeckDeleted":
+    case "DeckDeleteFailed":
+      return true;
+    default:
+      return false;
+  }
+}
+
+const listUpdate = (model: ReturnType<typeof initialDeckListSubmodel>, message: SceneListMessage) => {
+  if (!isDeckListMessage(message)) return [model, []] as const;
+  return update(model, message);
+};
+const listProgram = { update: listUpdate, view: listView };
 
 function card(overrides: Partial<CatalogCard> = {}): CatalogCard {
   return {
@@ -33,7 +67,7 @@ function card(overrides: Partial<CatalogCard> = {}): CatalogCard {
 
 test("commander hover preview renders when model carries hover state", () => {
   Scene.scene(
-    { update: (m) => [m, []], view: listView },
+    listProgram,
     Scene.with({
       ...initialDeckListSubmodel(),
       hover: { id: "atraxa", print: "atraxa-print", x: 100, y: 200 },
@@ -64,11 +98,13 @@ test("commander hover preview renders when model carries hover state", () => {
       ],
     }),
     Scene.expect(Scene.selector('[data-testid="deck-list-hover-preview"]')).toExist(),
+    Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), ClosedDeckListMenu()),
+    Scene.Mount.resolveAll([BindCardArt, CardArtTick()], [BindCardArt, CardArtTick()]),
     Scene.Mount.resolve(
       BindDeckListCommanderHover({ cardId: "atraxa", print: "atraxa-print" }),
       ClearedDeckListHover(),
     ),
-    Scene.Mount.resolveAll([BindCardArt, CardArtTick()], [BindCardArt, CardArtTick()]),
+    Scene.Mount.expectEnded(BindCardArt),
   );
 });
 
@@ -107,13 +143,72 @@ test("tile Play href uses ?deck= and search filters tiles", () => {
       [BindDeckListCommanderHover, ClearedDeckListHover()],
       [BindDeckListCommanderHover, ClearedDeckListHover()],
       [BindDeckListCommanderHover, ClearedDeckListHover()],
+      [BindDeckListContextMenu, ClosedDeckListMenu()],
+      [BindDeckListContextMenu, ClosedDeckListMenu()],
+      [BindDeckListContextMenu, ClosedDeckListMenu()],
     ),
     Scene.type(Scene.selector('[data-testid="deck-list-search"]'), "mirror"),
-    Scene.Mount.expectEnded(BindDeckListCommanderHover, BindDeckListCommanderHover),
+    Scene.Mount.expectEnded(
+      BindDeckListCommanderHover,
+      BindDeckListCommanderHover,
+      BindDeckListContextMenu,
+      BindDeckListContextMenu,
+    ),
     Scene.expect(Scene.selector('[data-testid="deck-tile-1"]')).not.toExist(),
     Scene.expect(Scene.selector('[data-testid="deck-tile--9"]')).toExist(),
     Scene.type(Scene.selector('[data-testid="deck-list-search"]'), "zzzz"),
-    Scene.Mount.expectEnded(BindDeckListCommanderHover),
+    Scene.Mount.expectEnded(BindDeckListCommanderHover, BindDeckListContextMenu),
     Scene.expect(Scene.text("No decks match.")).toExist(),
+  );
+});
+
+test("owned deck context menu offers Edit and Delete", () => {
+  Scene.scene(
+    listProgram,
+    Scene.with({
+      ...initialDeckListSubmodel(),
+      contextMenu: { deckId: 1, x: 40, y: 50 },
+      decks: [
+        { id: 1, name: "Superfriends", commander: "atraxa", commander_print: "atraxa-print" },
+        { id: -1, name: "Silverquill Influence", commander: "breena", commander_print: "" },
+      ],
+      knownCommanders: {
+        atraxa: card({ id: "atraxa", name: "Atraxa, Praetors' Voice" }),
+        breena: card({ id: "breena", name: "Breena, the Demagogue" }),
+      },
+    }),
+    Scene.expect(Scene.selector('[data-testid="deck-list-context-menu"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="deck-list-menu-edit"][href="/decks/1"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="deck-list-menu-delete"]')).toExist(),
+    Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), ClosedDeckListMenu()),
+    Scene.Mount.resolve(BindDeckListContextMenu({ deckId: -1 }), ClosedDeckListMenu()),
+    Scene.Mount.resolve(BindCardArt, CardArtTick()),
+    Scene.Mount.resolve(
+      BindDeckListCommanderHover({ cardId: "atraxa", print: "atraxa-print" }),
+      ClearedDeckListHover(),
+    ),
+    Scene.Mount.resolve(BindDeckListCommanderHover({ cardId: "breena", print: "" }), ClearedDeckListHover()),
+  );
+});
+
+test("menu Delete opens the confirm dialog", () => {
+  Scene.scene(
+    listProgram,
+    Scene.with({
+      ...initialDeckListSubmodel(),
+      contextMenu: { deckId: 1, x: 40, y: 50 },
+      decks: [{ id: 1, name: "Superfriends", commander: "atraxa", commander_print: "atraxa-print" }],
+      knownCommanders: { atraxa: card({ id: "atraxa", name: "Atraxa, Praetors' Voice" }) },
+    }),
+    Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), OpenedDeckListMenu({ deckId: 1, x: 40, y: 50 })),
+    Scene.Mount.resolve(
+      BindDeckListCommanderHover({ cardId: "atraxa", print: "atraxa-print" }),
+      ClearedDeckListHover(),
+    ),
+    Scene.Mount.resolve(BindCardArt, CardArtTick()),
+    Scene.click(Scene.selector('[data-testid="deck-list-menu-delete"]')),
+    Scene.expect(Scene.selector('[data-testid="confirm-delete-dialog"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="deck-list-context-menu"]')).not.toExist(),
+    Scene.Mount.resolve(OpenDialogAsModal(), ModalOpened()),
   );
 });
