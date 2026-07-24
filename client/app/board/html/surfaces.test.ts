@@ -667,6 +667,44 @@ test("join-forces mana prompt shows a stepper instead of per-amount buttons", ()
   );
 });
 
+test("may_draw_up_to shows docked pending-draw-count-aim with number buttons", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        pending_choice: {
+          kind: "may_draw_up_to",
+          max: 3,
+          player: 0,
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-draw-count-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("pending-choice-waiting")).toBeAbsent(),
+    Scene.expect(Scene.testId("prompt-number-0")).toExist(),
+    Scene.expect(Scene.testId("prompt-number-3")).toExist(),
+  );
+});
+
+test("trade_secrets_caster_draw shows docked pending-draw-count-aim", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        pending_choice: {
+          kind: "trade_secrets_caster_draw",
+          max: 2,
+          player: 0,
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-draw-count-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("prompt-number-2")).toExist(),
+  );
+});
+
 test("on-board choose_target aims instead of showing a card grid", () => {
   const bear = card(7, {
     name: "Bear",

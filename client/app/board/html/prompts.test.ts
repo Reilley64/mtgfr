@@ -1157,16 +1157,21 @@ test("choose_card_name prompt has placeholder and Names a typed card", () => {
 });
 
 test("may_draw_up_to prompt emits choose_draw_count intent from UI", () => {
-  const intents = clickPromptIntent(
-    state({
-      pending_choice: {
-        kind: "may_draw_up_to",
-        max: 3,
-        player: 0,
-      },
-    }),
-    Scene.click(Scene.testId("prompt-number-2")),
+  const s = state({
+    pending_choice: {
+      kind: "may_draw_up_to",
+      max: 3,
+      player: 0,
+    },
+  });
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("pending-draw-count-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
   );
+  const intents = clickPromptIntent(s, Scene.click(Scene.testId("prompt-number-2")));
   expect(intents).toEqual([{ kind: "choose_draw_count", player: 0, count: 2 }]);
 });
 
