@@ -124,8 +124,17 @@ export function boardOverlays(
       })(),
     }),
     resultOverlayView(state, board.resultSeen),
-    // Inspect dock is topmost (layer 10) — above pile, concede dialog, and result.
-    inspectView(board.inspectPin, board.inspectCard, board.inspectFace, inspectObject, state.players, state.objects),
+    // Inspect stays off during undecided mulligans so the opening-hand overlay is a true hard lock.
+    undecidedMulligan
+      ? null
+      : inspectView(
+          board.inspectPin,
+          board.inspectCard,
+          board.inspectFace,
+          inspectObject,
+          state.players,
+          state.objects,
+        ),
   ];
 
   return h.div(

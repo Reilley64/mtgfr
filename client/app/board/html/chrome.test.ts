@@ -9,17 +9,14 @@ import { SPECTATOR_VIEWER } from "~/spectator";
 import { BindCardArt } from "~/ui/card-art";
 import type { ObjectView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../../game/fold";
-import type { Message } from "../messages";
 import { ZONE } from "../geometry/layout";
-import { type BoardModel, initialBoardModel } from "../submodel";
+import type { Message } from "../messages";
 import { ArtLoaded, PriorityElapsed } from "../messages";
+import { type BoardModel, initialBoardModel } from "../submodel";
 import { type BoardViewModel, view as boardView } from "../view";
 import { MountPriorityWatch } from "./audio-mount";
 import { boardOverlays } from "./overlays";
-import {
-  resolveBoardOverlayMounts,
-  resolveLiveBoardMounts,
-} from "./scene-helpers";
+import { resolveBoardOverlayMounts, resolveLiveBoardMounts } from "./scene-helpers";
 
 const h = html<Message>();
 
@@ -55,7 +52,7 @@ function card(id: number, overrides: Partial<ObjectView> = {}): ObjectView {
     has_haste: false,
     id,
     is_commander: false,
-    kind: { kind: "land" },
+    kind: { kind: "land", colors: [] },
     mana_cost: { generic: 0, colored: [0, 0, 0, 0, 0] },
     marked_damage: 0,
     name: "Forest",
@@ -164,17 +161,17 @@ test("mulliganing undecided seat sees overlay and hides hand bar", () => {
     ],
   });
   const model: OverlayModel = {
-    board: initialBoardModel(),
+    board: {
+      ...initialBoardModel(),
+      inspectPin: { name: "Forest", prepared: false, cardId: "forest-card", print: "forest-print" },
+    },
     fold: gameFold(state),
     tableId: "T1",
   };
   Scene.scene(
     { update: (m) => [m, []], view: overlayView },
     Scene.with(model),
-    Scene.Mount.resolveAll(
-      [MountPriorityWatch(), PriorityElapsed({ seconds: 0 })],
-      [BindCardArt, ArtLoaded()],
-    ),
+    Scene.Mount.resolveAll([MountPriorityWatch(), PriorityElapsed({ seconds: 0 })], [BindCardArt, ArtLoaded()]),
     Scene.expect(Scene.testId("mulligan-overlay")).toExist(),
     Scene.expect(Scene.testId("mulligan-keep")).toExist(),
     Scene.expect(Scene.testId("mulligan-take")).toExist(),
@@ -183,6 +180,7 @@ test("mulliganing undecided seat sees overlay and hides hand bar", () => {
     Scene.expect(Scene.testId("mulligan-bar")).not.toExist(),
     Scene.expect(Scene.testId("board-primary")).not.toExist(),
     Scene.expect(Scene.testId("board-concede")).toExist(),
+    Scene.expect(Scene.testId("inspect-overlay")).not.toExist(),
   );
 });
 
