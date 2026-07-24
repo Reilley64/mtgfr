@@ -16,6 +16,7 @@ on:
 permissions:
   contents: read
   packages: write
+  actions: write
 
 env:
   REGISTRY: ghcr.io
@@ -51,6 +52,8 @@ jobs:
           file: docker/server/Dockerfile
           push: true
           tags: ${{ steps.image.outputs.server }}:${{ steps.image.outputs.version }}
+          cache-from: type=gha,scope=mtgfr-server
+          cache-to: type=gha,mode=max,scope=mtgfr-server
           build-args: |
             APP_VERSION=${{ steps.image.outputs.version }}
             GIT_COMMIT=${{ github.sha }}
@@ -62,6 +65,8 @@ jobs:
           file: docker/web/Dockerfile
           push: true
           tags: ${{ steps.image.outputs.web }}:${{ steps.image.outputs.version }}
+          cache-from: type=gha,scope=mtgfr-web
+          cache-to: type=gha,mode=max,scope=mtgfr-web
           build-args: |
             VITE_CARD_CDN=${{ vars.VITE_CARD_CDN }}
             APP_VERSION=${{ steps.image.outputs.version }}
