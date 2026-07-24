@@ -13,6 +13,7 @@ import {
 } from "./messages";
 
 import type { DeckListSubmodel } from "./submodel";
+import { deckListContextMenuAllowed } from "./visible";
 
 export const FetchDecks = Command.define(
   "FetchDecks",
@@ -82,7 +83,13 @@ export const update = (
       ],
       MovedDeckListHover: ({ id, print, x, y }) => [{ ...model, hover: { id, print, x, y } }, []],
       ClearedDeckListHover: () => [{ ...model, hover: null }, []],
-      AskedDeckDelete: ({ id }) => [{ ...model, confirmingDeleteId: id, error: null }, []],
+      ChangedDeckListSearch: ({ query }) => [{ ...model, searchQuery: query }, []],
+      OpenedDeckListMenu: ({ deckId, x, y }) => {
+        if (!deckListContextMenuAllowed(deckId)) return [model, []];
+        return [{ ...model, contextMenu: { deckId, x, y } }, []];
+      },
+      ClosedDeckListMenu: () => [{ ...model, contextMenu: null }, []],
+      AskedDeckDelete: ({ id }) => [{ ...model, confirmingDeleteId: id, error: null, contextMenu: null }, []],
       CancelledDeckDelete: () => [{ ...model, confirmingDeleteId: null }, []],
       RequestedDeckDelete: ({ id }) => [{ ...model, confirmingDeleteId: null }, [DeleteDeck({ id })]],
       DeckDeleted: () => loadDeckList(model),
