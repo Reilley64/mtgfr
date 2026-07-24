@@ -120,7 +120,7 @@ Art is keyed by Scryfall **Printing** UUID. `imageUrlByPrint(printId, size, face
 - When `VITE_CARD_CDN` is unset: Scryfall image API
   (`https://api.scryfall.com/cards/{id}?format=image&version={size}`) (local/dev).
 
-Missing ordinary (non-`art_crop`) CDN art is a broken `<img>` — no Scryfall fallback in production. The CDN path replicates Scryfall's folder fan (`first two hex chars` of the UUID). DFC backs are fetched with `face=back` in the Scryfall path; CDN serves the same `large` webp. `imageFaceAfterLoadError` falls back from `back` to `front` on load error (DFC prepare/flip cards have no Scryfall `/back/` — transformer backs that exist load on first try).
+Missing ordinary (non-`art_crop`) CDN art stays empty after load failure (no Scryfall fallback in production). The CDN path replicates Scryfall's folder fan (`first two hex chars` of the UUID). DFC backs are fetched with `face=back` in the Scryfall path; CDN serves the same `large` webp. `imageFaceAfterLoadError` falls back from `back` to `front` on load error (DFC prepare/flip cards have no Scryfall `/back/` — transformer backs that exist load on first try).
 
 `cardBackUrl()` returns `/card-back.webp` for library piles and face-down cards.
 
@@ -186,7 +186,7 @@ Single-page login/signup (toggled, not separate routes). `Login` and `Signup` ar
 - **Biome class sorting.** `nursery/useSortedClasses` is at error and configured for safe `cn` / `clsx` fixes. Keep class strings sorted in code review and use the editor or Biome fix path for drift.
 - **Gzip LZ77 benefit from sorted classes.** client-shell-deck-builder-and-observability spec notes that consistent Tailwind class ordering makes repeated utility sequences longer LZ77 matches under gzip on the shipped JS/HTML.
 - **`VITE_CARD_CDN` is build-time baked**, not runtime. Changing CDN requires a new image build.
-- **No Scryfall fallback in production.** Missing CDN art is a broken image. This is a deliberate choice (client-shell-deck-builder-and-observability spec) to avoid rate-limiting Scryfall in production.
+- **No Scryfall fallback for ordinary CDN art.** Missing non-`art_crop` CDN art does not hit Scryfall (avoids rate-limiting). The intentional exception is CDN `art_crop` load failure → Scryfall `version=art_crop` once.
 
 ---
 
