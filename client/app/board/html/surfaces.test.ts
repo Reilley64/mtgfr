@@ -695,6 +695,7 @@ test("trade_secrets_caster_draw shows docked pending-draw-count-aim", () => {
         pending_choice: {
           kind: "trade_secrets_caster_draw",
           max: 2,
+          opponent: 1,
           player: 0,
         },
       }),
