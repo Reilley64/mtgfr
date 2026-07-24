@@ -184,11 +184,21 @@ impl<'a> TableSession<'a> {
                 Some(intent) => {
                     let player = intent.actor();
                     let substantive = !matches!(intent, Intent::PassPriority { .. });
+                    // Empty combat declarations are structural seals (same job as
+                    // `seal_combat_declarations` during auto-advance). They must not cancel
+                    // End Turn / turn yield — the client races "No attackers" / "No blockers"
+                    // with SetTurnYield, and `clear_turn_yields_from_events` already ignores
+                    // empty declares. Non-empty declares still clear (the seat chose to fight).
+                    let clears_own_turn_yield = match &intent {
+                        Intent::DeclareAttackers { attackers, .. } => !attackers.is_empty(),
+                        Intent::DeclareBlockers { blocks, .. } => !blocks.is_empty(),
+                        _ => true,
+                    };
                     let more = game.submit(intent)?;
                     // Untap / being-attacked may appear on the player intent itself — clear
                     // before auto_advance (turn-priority-and-stack spec).
                     clear_turn_yields_from_events(turn_yields, &more);
-                    if clear_turn_yield_on_intent {
+                    if clear_turn_yield_on_intent && clears_own_turn_yield {
                         turn_yields[player.0 as usize] = false;
                         // Arena End Turn (turn-priority-and-stack spec): another player's cast/activate cancels the
                         // active seat's end-turn yield so they can respond.
@@ -1327,6 +1337,105 @@ mod tests {
             game.meaningful_actions(PlayerId(1))
                 .contains(&MeaningfulAction::DeclareBlockers),
             "P1 still owes a declare-blockers decision"
+        );
+    }
+
+    /// End Turn from Declare Attackers must seal an empty attack and finish the turn in one arm —
+    /// the client often still has "No attackers" beside End Turn; a single End Turn click must not
+    /// leave the seat stuck needing a second click.
+    #[test]
+    fn end_turn_from_declare_attackers_finishes_the_turn() {
+        let mut table = Table::empty();
+        let mut game = engine::Game::new();
+        // Give P1 an empty-stack instant so End Turn must stop on their window (and cannot
+        // wrap the whole table back to P0 on a helpless board).
+        game.spawn_on_battlefield(PlayerId(1), cards::get_by_name("Mountain").unwrap());
+        game.spawn_in_hand(PlayerId(1), cards::get_by_name("Shock").unwrap());
+        game.spawn_on_battlefield(
+            PlayerId(0),
+            cards::get_by_name("Grizzly Bear").expect("Grizzly Bear in pool"),
+        );
+        table.game = Some(game);
+        advance_table_to_step(&mut table, engine::Step::DeclareAttackers);
+        assert_eq!(table.game.as_ref().unwrap().active_player(), PlayerId(0));
+
+        let (result, _) = TableSession::new(&mut table).set_turn_yield(PlayerId(0), true);
+        assert!(result.accepted);
+
+        let game = table.game.as_ref().unwrap();
+        assert_eq!(
+            game.priority_holder(),
+            PlayerId(1),
+            "End Turn from declare attackers must at least reach P1's response window              (active={:?} step={:?})",
+            game.active_player(),
+            game.current_step()
+        );
+        assert!(
+            table.chrome.turn_yields()[0] || game.active_player() == PlayerId(1),
+            "End Turn stays armed until P1 acts, or the turn has already passed"
+        );
+    }
+
+    /// Client race: "No attackers" (player DeclareAttackers) lands after End Turn is armed.
+    /// Clearing turn yield on that empty declaration stops the End Turn walk at Main 2 when the
+    /// active seat still has a cast — the seat must click End Turn again. Empty declare must
+    /// preserve End Turn (event-clear already ignores it; intent-clear must too).
+    #[test]
+    fn end_turn_survives_racing_empty_declare_attackers() {
+        let bear = || cards::get_by_name("Grizzly Bear").expect("Grizzly Bear in pool");
+        let mut table = Table::empty();
+        let mut game = engine::Game::new();
+        game.fund_mana(PlayerId(0));
+        // Castable creature in Main 2: if End Turn is cancelled, auto-advance stops here.
+        game.spawn_in_hand(PlayerId(0), bear());
+        game.spawn_on_battlefield(PlayerId(0), bear());
+        game.spawn_on_battlefield(PlayerId(1), cards::get_by_name("Mountain").unwrap());
+        game.spawn_in_hand(PlayerId(1), cards::get_by_name("Shock").unwrap());
+        table.game = Some(game);
+        advance_table_to_step(&mut table, engine::Step::DeclareAttackers);
+
+        table.chrome.set_turn_yield_flag(0, true);
+        let (result, _) = TableSession::new(&mut table).submit(Intent::DeclareAttackers {
+            player: PlayerId(0),
+            attackers: vec![],
+        });
+        assert!(result.accepted, "empty declare: {:?}", result.reason);
+
+        let game = table.game.as_ref().unwrap();
+        assert_eq!(
+            game.priority_holder(),
+            PlayerId(1),
+            "empty declare must not cancel End Turn; walk should reach P1 \
+             (active={:?} step={:?} turn_yield={})",
+            game.active_player(),
+            game.current_step(),
+            table.chrome.turn_yields()[0]
+        );
+        assert!(
+            table.chrome.turn_yields()[0],
+            "End Turn must stay armed through the empty declare race"
+        );
+    }
+
+    /// Choosing real attackers is an intentional act — it must still cancel End Turn / turn yield.
+    #[test]
+    fn non_empty_declare_attackers_still_clears_turn_yield() {
+        let bear = || cards::get_by_name("Grizzly Bear").expect("Grizzly Bear in pool");
+        let mut table = Table::empty();
+        let mut game = engine::Game::new();
+        let attacker = game.spawn_on_battlefield(PlayerId(0), bear());
+        table.game = Some(game);
+        advance_table_to_step(&mut table, engine::Step::DeclareAttackers);
+
+        table.chrome.set_turn_yield_flag(0, true);
+        let (result, _) = TableSession::new(&mut table).submit(Intent::DeclareAttackers {
+            player: PlayerId(0),
+            attackers: vec![(attacker, Defender::Player(PlayerId(1)))],
+        });
+        assert!(result.accepted, "declare: {:?}", result.reason);
+        assert!(
+            !table.chrome.turn_yields()[0],
+            "attacking must cancel End Turn"
         );
     }
 
