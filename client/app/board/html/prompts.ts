@@ -571,29 +571,42 @@ function damageAssignPrompt(
           [h.span([h.Class("w-28 truncate text-body")], [it.label]), amountStepper(it.id, amounts[it.id] ?? 0, power)],
         ),
       );
-  return frame("pending-choice", `Divide ${power} damage among blockers`, [
-    onBoard
-      ? h.div(
-          [h.DataAttribute("testid", "pending-damage-aim"), h.Class("text-body text-mist")],
-          ["Click a blocker on the board to move 1 damage onto it"],
-        )
-      : null,
-    ...rows,
-    h.div(
-      [
-        h.DataAttribute("testid", "prompt-damage-assigned"),
-        h.Class(ready ? "text-assign-clover" : "text-caution-amber"),
-      ],
-      [`assigned ${assigned} / ${power}`],
-    ),
-    trample
-      ? h.div(
-          [h.DataAttribute("testid", "prompt-damage-overflow"), h.Class("text-body text-mist")],
-          [`to defender: ${overflow}`],
-        )
-      : null,
-    submitButton("Assign", !ready),
-  ]);
+  return h.div(
+    [
+      h.DataAttribute("testid", "pending-damage-aim"),
+      h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+      h.Class(
+        "pointer-events-auto fixed left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+      ),
+    ],
+    [
+      h.div(
+        [h.Class("pointer-events-none text-center font-semibold text-body text-snow")],
+        [`Divide ${power} damage among blockers`],
+      ),
+      onBoard
+        ? h.div(
+            [h.Class("pointer-events-none text-center text-body text-mist")],
+            ["Click a blocker on the board to move 1 damage onto it"],
+          )
+        : null,
+      ...rows,
+      h.div(
+        [
+          h.DataAttribute("testid", "prompt-damage-assigned"),
+          h.Class(ready ? "text-assign-clover" : "text-caution-amber"),
+        ],
+        [`assigned ${assigned} / ${power}`],
+      ),
+      trample
+        ? h.div(
+            [h.DataAttribute("testid", "prompt-damage-overflow"), h.Class("text-body text-mist")],
+            [`to defender: ${overflow}`],
+          )
+        : null,
+      submitButton("Assign", !ready),
+    ].filter((v): v is Html => v !== null),
+  );
 }
 
 function targetPickButton(target: WireTarget, state: VisibleState, testId: string): Html {
