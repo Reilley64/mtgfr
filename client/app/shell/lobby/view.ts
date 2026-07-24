@@ -1,11 +1,11 @@
 import { type Html, html } from "foldkit/html";
+import type { BuilderCatalogCard } from "../../../lib/deck-builder/cards";
 import { appVersionBadge } from "../../../lib/ui/app-version";
 import { buttonClass } from "../../../lib/ui/buttonClass";
 import { feltClass, fieldClass, panelClass } from "../../../lib/ui/surfaces";
-import type { BuilderCatalogCard } from "../../../lib/deck-builder/cards";
 import type { DeckSummary } from "../../../lib/wire/types";
 import { HomeRoute, routePath } from "../../routes";
-import { renderDeckCard, type DeckCardModel } from "../decks/deck-card";
+import { type DeckCardModel, renderDeckCard } from "../decks/deck-card";
 import {
   ChangedLobbyCode,
   type Message,
@@ -39,7 +39,10 @@ function humanError(code: string): string {
   return map[code] ?? code;
 }
 
-function deckCardModel(deck: DeckSummary, knownCommanders: Readonly<Record<string, BuilderCatalogCard>>): DeckCardModel {
+function deckCardModel(
+  deck: DeckSummary,
+  knownCommanders: Readonly<Record<string, BuilderCatalogCard>>,
+): DeckCardModel {
   const commander = knownCommanders[deck.commander];
   return {
     id: deck.id,
@@ -60,9 +63,10 @@ function deckCardAndBack(
   const deck = model.selectedDeckId == null ? undefined : decks.find((item) => item.id === model.selectedDeckId);
   const card =
     deck == null
-      ? h.div([h.Class("rounded-hud bg-glass-dim p-md text-label text-lichen")], [
-          decksLoading ? "Loading decks…" : "Deck not found.",
-        ])
+      ? h.div(
+          [h.Class("rounded-hud bg-glass-dim p-md text-label text-lichen")],
+          [decksLoading ? "Loading decks…" : "Deck not found."],
+        )
       : renderDeckCard(h, deckCardModel(deck, knownCommanders), {
           mode: "static",
           testId: `lobby-deck-card-${deck.id}`,
