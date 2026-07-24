@@ -101,6 +101,8 @@ describe("shell surface scenes", () => {
       Scene.expect(Scene.selector('[data-testid="auth-submit"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="app-version"]')).toExist(),
       Scene.expect(Scene.text("API 1.2.3")).toExist(),
+      Scene.expect(Scene.text("edh.reilley.dev")).toExist(),
+      Scene.expect(Scene.text("mtgfr")).not.toExist(),
     );
   });
 
@@ -274,6 +276,8 @@ describe("shell surface scenes", () => {
       Scene.expect(Scene.selector('[data-testid="lobby-join-code"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-join"]')).toExist(),
       Scene.expect(Scene.text("Lobby")).toExist(),
+      Scene.expect(Scene.text("edh.reilley.dev")).toExist(),
+      Scene.expect(Scene.text("mtgfr")).not.toExist(),
     );
   });
 
