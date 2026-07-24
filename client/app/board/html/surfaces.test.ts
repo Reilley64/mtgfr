@@ -1026,6 +1026,7 @@ test("choose_mana_color aim shows docked mana pips instead of center modal", () 
       gameState({
         pending_choice: {
           kind: "choose_mana_color",
+          amount: 1,
           player: 0,
           source: 2,
         },
