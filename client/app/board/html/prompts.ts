@@ -2394,21 +2394,34 @@ function numberPickPrompt(
     );
   }
   const answerFor = (count: number): AnswerInput => ({ kind: "draw_count", count });
-  return frame("pending-choice", numberPickTitle(pending), [
-    h.div(
-      [h.Class("flex flex-wrap gap-2")],
-      Array.from({ length: pending.max + 1 }, (_, count) =>
-        answerButton(
-          pending,
-          `prompt-number-${count}`,
-          String(count),
-          answerFor(count),
-          count === pending.max,
-          tableId == null,
+  return h.div(
+    [
+      h.DataAttribute("testid", "pending-draw-count-aim"),
+      h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+      h.Class(
+        "pointer-events-auto fixed left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+      ),
+    ],
+    [
+      h.div(
+        [h.Class("pointer-events-none text-center font-semibold text-body text-snow")],
+        [numberPickTitle(pending)],
+      ),
+      h.div(
+        [h.Class("flex flex-wrap justify-center gap-2")],
+        Array.from({ length: pending.max + 1 }, (_, count) =>
+          answerButton(
+            pending,
+            `prompt-number-${count}`,
+            String(count),
+            answerFor(count),
+            count === pending.max,
+            tableId == null,
+          ),
         ),
       ),
-    ),
-  ]);
+    ],
+  );
 }
 
 function destinationPickPrompt(

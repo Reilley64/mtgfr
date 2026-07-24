@@ -78,6 +78,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - `may_yes_no` / `dance_exile_more` / `trade_secrets_repeat` show docked `pending-yes-no-aim` with Yes / No.
 - `choose_mode` shows docked `pending-mode-aim` with one-click mode labels (`prompt-mode-{i}`); `choose_trigger_modes` stays a center `pending-choice` multi-select + Confirm.
 - `pay_any_amount_of_mana` (join forces) shows docked `pending-join-forces-aim` with Min/−/value/+/Max stepper and Pay submit; `may_draw_up_to` / `trade_secrets_caster_draw` stay center `pending-choice` number buttons.
+- `may_draw_up_to` / `trade_secrets_caster_draw` show docked `pending-draw-count-aim` with one-click number buttons (`0`…`max`).
 - `choose_target_players` / `choose_splitting_opponent` with seat-tagged items aim at life orbs (`pending-player-aim`); one-click when `max === 1` (or splitting); multi-pick accumulates seats in the player-pick draft with Confirm. Enter / Space submit when ready. Picked seats paint a solid Priority Gold ring (`pickedPlayers`).
 - `scry` / `surveil` use docked `pending-arrange-aim` with two-lane arrange chrome (`prompt-arrange-lanes`): cards start in Bottom (library bottom or Graveyard for Surveil); click toggles a card between Top and Bottom, preserving left-to-right order in each lane. Done always submits `arrange_top` via partition draft `{ top, bottom }`.
 - `select_from_top` uses docked `pending-select-top-aim` with Take vs Bottom lanes (`prompt-select-top-lanes`); click toggles into Take (capped at `up_to`); Done submits `select_from_top` with the Take ids.
@@ -87,7 +88,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Enter or Space submits a ready lane / order draft (`order_triggers`, `scry`, `surveil`, `select_from_top`, `distribute_top`, `partition_revealed`) the same way the Done / Confirm button does (`trySubmitReadyPendingDraft`).
 - `choose_dredge` requires exactly one selected dredger to enable Dredge; `prompt-decline` (“Draw normally”) submits `dredger: null` via `declineAnswer`.
 - Optional-pay prompts (`pay_cost`, `pay_or_counter`, `pay_or_controller_draws`, `pay_echo_or_sacrifice`, `pay_recover_or_exile`, `sacrifice_unless_pay`) use docked `pending-pay-cost-aim`; they label the affirm button `Pay ${costText(cost)}` and use outcome-specific declines: Don’t pay / Let it be countered / Let them draw / Sacrifice / Exile.
-- `pay_any_amount_of_mana` (join forces) uses a clamped stepper over `[0, max]` with draft on `promptDraft` (`PromptNumberSet`); Confirm submits via `PromptSubmitted`. Per-N buttons (`prompt-number-N`) are not used for this kind. `may_draw_up_to` / `trade_secrets_caster_draw` keep one-click number buttons.
+- `pay_any_amount_of_mana` (join forces) uses a clamped stepper over `[0, max]` with draft on `promptDraft` (`PromptNumberSet`); Confirm submits via `PromptSubmitted`. Per-N buttons (`prompt-number-N`) are not used for this kind. `may_draw_up_to` / `trade_secrets_caster_draw` keep one-click number buttons in the docked aim.
 
 ## Implementation Decisions
 
@@ -120,6 +121,8 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Scene tests cover docked `pending-color-aim` for `choose_color` / `choose_mana_color` (mana pips; no center `pending-choice`).
 - Scene tests cover docked `pending-mode-aim` for `choose_mode` (mode buttons; no center `pending-choice`).
 - Scene/unit tests cover docked join-forces `pending-join-forces-aim` mana stepper (no per-N buttons; draft submit; no center `pending-choice`).
+- Scene/unit tests cover join-forces mana stepper (no per-N buttons; draft submit).
+- Scene/unit tests cover docked draw-count `pending-draw-count-aim` (number buttons; no center `pending-choice`; `choose_draw_count` intent).
 - Scene/unit tests cover library-search docked aim (`pending-library-aim`), filter, face dedupe, pinned scroll chrome, Choose, and Fail to find.
 - Scene tests cover `choose_card_name` typeahead list when suggestions match the draft query.
 - Scene tests cover on-board pending aim chrome (`pending-target-aim`, no card grid) and optional Decline → empty `choose_targets`.
