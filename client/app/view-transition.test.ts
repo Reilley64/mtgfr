@@ -21,6 +21,17 @@ function fakeStartViewTransition(onStart: () => void): typeof document.startView
   };
 }
 
+function deferredStartViewTransition(onCallback?: () => void): typeof document.startViewTransition {
+  return (callbackOptions) => {
+    const callback = typeof callbackOptions === "function" ? callbackOptions : callbackOptions?.update;
+    queueMicrotask(() => {
+      onCallback?.();
+      void callback?.();
+    });
+    return settledViewTransition();
+  };
+}
+
 test("shouldAnimateDeckCardNav only for home to play deck entry", () => {
   expect(shouldAnimateDeckCardNav("/", "/play/7")).toBe(true);
   expect(shouldAnimateDeckCardNav("/play/7", "/")).toBe(true);
@@ -48,6 +59,32 @@ test("pushUrlMaybeViewTransition uses startViewTransition when animating", async
 
   expect(started).toBe(true);
   expect(pushed).toBe(true);
+});
+
+test("pushUrlMaybeViewTransition waits for pushUrl from deferred transition callback", async () => {
+  const events: Array<"callback" | "completed" | "pushUrl"> = [];
+
+  await Effect.runPromise(
+    pushUrlMaybeViewTransition("/play/7", "/", {
+      prefersReducedMotion: false,
+      startViewTransition: deferredStartViewTransition(() => {
+        events.push("callback");
+      }),
+      pushUrl: () =>
+        Effect.promise(
+          () =>
+            new Promise<void>((resolve) => {
+              setTimeout(() => {
+                events.push("pushUrl");
+                resolve();
+              }, 0);
+            }),
+        ),
+    }),
+  );
+  events.push("completed");
+
+  expect(events).toEqual(["callback", "pushUrl", "completed"]);
 });
 
 test("pushUrlMaybeViewTransition skips view transitions when reduced motion is preferred", async () => {

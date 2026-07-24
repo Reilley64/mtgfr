@@ -50,11 +50,10 @@ export function pushUrlMaybeViewTransition(
   if (startViewTransition == null) return pushUrl(url);
 
   return Effect.promise(async () => {
-    let pushed: Promise<void> | undefined;
-    startViewTransition(() => {
-      pushed = Effect.runPromise(pushUrl(url));
-      void pushed;
+    await new Promise<void>((resolve, reject) => {
+      startViewTransition(() => {
+        Effect.runPromise(pushUrl(url)).then(resolve, reject);
+      });
     });
-    await pushed;
   });
 }
