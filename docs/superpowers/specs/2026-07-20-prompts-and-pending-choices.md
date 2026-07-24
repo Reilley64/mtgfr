@@ -21,7 +21,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - As a player assigning combat damage among battlefield blockers, I can click a blocker to move 1 damage onto it (steppers remain for fine control).
 - As a player naming a card, I get a focused text field with a Card name placeholder, optional catalog typeahead suggestions, and can confirm with Name or Enter.
 - As a player searching their library, I filter faces by name in docked `pending-library-aim` chrome (title, filter, and Choose/Fail to find stay pinned above the scroll strip).
-- As a player choosing a creature type, I can filter the long option list by name before picking.
+- As a player choosing a creature type, I filter the long option list by name in docked `pending-creature-type-aim` before picking.
 - As a player choosing a color or mana color, I pick from mana-font pip buttons (not letter labels).
 - As a player answering a one-click on-board target choice, I aim at highlighted permanents/players (no card grid); optional choices keep Decline on the aim chrome.
 - As a player targeting only cards in one graveyard, I click selectable pile cards under `pending-gy-aim` instead of a modal grid.
@@ -65,7 +65,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - When every `divide_counters` permanent is on the battlefield, targets highlight via `pendingDamageAssignOverlay`; a click moves 1 counter onto that permanent. Chrome shows `pending-divide-counters-aim`; Enter or Space submits when `damageAssignReady`. Amount badges reuse combat-assign paint. On-board mode hides per-permanent steppers.
 - `choose_card_name` uses an autofocused text field (`prompt-name-input`) with placeholder “Card name”; Enter submits when the trimmed name is non-empty (same gate as the Name button). Typing ≥2 characters fires `SearchCardNames`; matching results render under `prompt-name-suggestions` (click fills the draft). Catalog suggestions assist only — free-typed / nonexistent names remain submittable.
 - `search_library` uses docked `pending-library-aim` (not the center modal): autofocused `pick-card-filter` (“Filter by name…”), face dedupe by label, filtered grid inside `pick-card-scroll`, with title / filter / Choose+Fail-to-find pinned above the scroll strip. Other card-pick kinds stay unfiltered.
-- `choose_creature_type` shows an autofocused `prompt-type-filter` (“Filter types…”) and a scrolling option strip (`prompt-type-scroll`); only matching `pending.options` are clickable. Free-typed types outside the option list are not allowed.
+- `choose_creature_type` shows docked `pending-creature-type-aim` with an autofocused `prompt-type-filter` (“Filter types…”) and a scrolling option strip (`prompt-type-scroll`); only matching `pending.options` are clickable. Free-typed types outside the option list are not allowed.
 - `choose_color` / `choose_mana_color` use docked `pending-color-aim` (not the center modal): WUBRG as mana-font pip buttons (`prompt-color-{i}` / `prompt-color-pip-{i}`) with color aria-labels; click still emits `choose_color` / `choose_mana_color` intents.
 - One-click on-board `choose_target` / spell / ability targets suppress the `pending-choice` card grid and show `pending-target-aim` label chrome (plus optional Decline). Multi-target on-board aim shows `pending-target-count` and Confirm instead of the card grid. Off-board items keep the card / player picker.
 - On-board battlefield sacrifice / proliferate / attach / phase-out / keep-tapped card-picks reuse the same `pending-target-aim` chrome (one-click or Confirm accumulate).
@@ -129,6 +129,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Scene tests cover docked `pending-trigger-modes-aim` (mode rows; no center `pending-choice`).
 - Scene/unit tests cover docked `pending-pile-aim` (Pile A/B; no center `pending-choice`; `choose_opponent_pile` intent).
 - Scene/unit tests cover library-search docked aim (`pending-library-aim`), filter, face dedupe, pinned scroll chrome, Choose, and Fail to find.
+- Scene/unit tests cover docked `pending-creature-type-aim` (filter strip; no center `pending-choice`; `choose_creature_type` intent).
 - Scene tests cover `choose_card_name` typeahead list when suggestions match the draft query.
 - Scene tests cover on-board pending aim chrome (`pending-target-aim`, no card grid) and optional Decline → empty `choose_targets`.
 - Scene/pointer tests cover GY pile aim for `choose_target` when every legal item shares one graveyard (`pending-gy-aim`).

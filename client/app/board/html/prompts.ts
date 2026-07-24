@@ -2317,46 +2317,59 @@ function stringPickPrompt(
       ].filter((v): v is Html => v !== null),
     );
   }
-  return frame("pending-choice", "Choose a creature type", [
-    h.input([
-      h.DataAttribute("testid", "prompt-type-filter"),
-      h.Type("search"),
-      h.Placeholder("Filter types…"),
-      h.Autofocus(true),
-      h.AriaLabel("Filter creature types"),
-      h.Value(board.promptOptionFilter),
-      h.OnInput((v) => PromptOptionFilterSet({ query: v })),
-      h.Class("w-[min(90vw,320px)] shrink-0 rounded-hud bg-glass px-3 py-1 text-body text-snow"),
-    ]),
-    h.div(
-      [
-        h.DataAttribute("testid", "prompt-type-scroll"),
-        h.Class("max-h-[min(50vh,420px)] overflow-y-auto overscroll-contain"),
-      ],
-      [
-        h.div(
-          [h.Class("flex flex-wrap justify-center gap-2")],
-          (() => {
-            const shown = filterOptionLabels(pending.options, board.promptOptionFilter);
-            if (shown.length === 0 && board.promptOptionFilter.trim() !== "") {
-              return [h.div([h.Class("text-label text-mist")], ["No types match."])];
-            }
-            return shown.map((option) => {
-              const index = pending.options.indexOf(option);
-              return answerButton(
-                pending,
-                `prompt-string-${index}`,
-                option,
-                { kind: "creature_type", subtype: option },
-                false,
-                tableId == null,
-              );
-            });
-          })(),
-        ),
-      ],
-    ),
-  ]);
+  return h.div(
+    [
+      h.DataAttribute("testid", "pending-creature-type-aim"),
+      h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+      h.Class(
+        "pointer-events-auto fixed left-1/2 z-30 flex max-h-[min(70vh,560px)] w-[min(92vw,360px)] -translate-x-1/2 flex-col items-center gap-sm overflow-hidden rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+      ),
+    ],
+    [
+      h.div(
+        [h.Class("pointer-events-none shrink-0 text-center font-semibold text-body text-snow")],
+        ["Choose a creature type"],
+      ),
+      h.input([
+        h.DataAttribute("testid", "prompt-type-filter"),
+        h.Type("search"),
+        h.Placeholder("Filter types…"),
+        h.Autofocus(true),
+        h.AriaLabel("Filter creature types"),
+        h.Value(board.promptOptionFilter),
+        h.OnInput((v) => PromptOptionFilterSet({ query: v })),
+        h.Class("w-full shrink-0 rounded-hud bg-glass px-3 py-1 text-body text-snow"),
+      ]),
+      h.div(
+        [
+          h.DataAttribute("testid", "prompt-type-scroll"),
+          h.Class("min-h-0 w-full flex-1 overflow-y-auto overscroll-contain"),
+        ],
+        [
+          h.div(
+            [h.Class("flex flex-wrap justify-center gap-2")],
+            (() => {
+              const shown = filterOptionLabels(pending.options, board.promptOptionFilter);
+              if (shown.length === 0 && board.promptOptionFilter.trim() !== "") {
+                return [h.div([h.Class("text-label text-mist")], ["No types match."])];
+              }
+              return shown.map((option) => {
+                const index = pending.options.indexOf(option);
+                return answerButton(
+                  pending,
+                  `prompt-string-${index}`,
+                  option,
+                  { kind: "creature_type", subtype: option },
+                  false,
+                  tableId == null,
+                );
+              });
+            })(),
+          ),
+        ],
+      ),
+    ],
+  );
 }
 
 function numberPickTitle(

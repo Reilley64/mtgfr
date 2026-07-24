@@ -1144,17 +1144,22 @@ test("choose_color prompt renders mana-font pips instead of letter labels", () =
 });
 
 test("choose_creature_type prompt emits choose_creature_type intent from UI", () => {
-  const intents = clickPromptIntent(
-    state({
-      pending_choice: {
-        kind: "choose_creature_type",
-        options: ["Wizard", "Cleric"],
-        player: 0,
-        source: 1,
-      },
-    }),
-    Scene.click(Scene.testId("prompt-string-1")),
+  const s = state({
+    pending_choice: {
+      kind: "choose_creature_type",
+      options: ["Wizard", "Cleric"],
+      player: 0,
+      source: 1,
+    },
+  });
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("pending-creature-type-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
   );
+  const intents = clickPromptIntent(s, Scene.click(Scene.testId("prompt-string-1")));
   expect(intents).toEqual([{ kind: "choose_creature_type", player: 0, subtype: "Cleric" }]);
 });
 
