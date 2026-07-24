@@ -17,7 +17,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const DATA_DIR = join(ROOT, "crates/cards/data");
 const ID_MAP = join(ROOT, "client/src/lib/card-ids.json");
 
-const UA = { "User-Agent": "mtgfr/0.1", Accept: "application/json" };
+const UA = { "User-Agent": "edh.reilley.dev/0.1", Accept: "application/json" };
 const MAX_TAGS = 12;
 const WEIGHT_RANK = { high: 0, median: 1, low: 2 };
 

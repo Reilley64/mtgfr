@@ -48,7 +48,7 @@ function isCommander(categories) {
 
 async function fetchDeck(id) {
   const res = await fetch(`https://archidekt.com/api/decks/${id}/`, {
-    headers: { Accept: "application/json", "User-Agent": "mtgfr/0.1" },
+    headers: { Accept: "application/json", "User-Agent": "edh.reilley.dev/0.1" },
   });
   if (!res.ok) throw new Error(`Archidekt ${id}: ${res.status}`);
   return res.json();

@@ -46,7 +46,7 @@ export async function searchPrints(oracleId: string): Promise<ScryfallPrint[]> {
   let url: string | null = `https://api.scryfall.com/cards/search?q=${q}&unique=prints&order=released`;
   while (url) {
     const res: Response = await fetch(url, {
-      headers: { Accept: "application/json", "User-Agent": "mtgfr/0.1" },
+      headers: { Accept: "application/json", "User-Agent": "edh.reilley.dev/0.1" },
     });
     if (!res.ok) {
       throw new Error(`Scryfall print search failed (${res.status})`);

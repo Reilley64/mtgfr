@@ -33,7 +33,7 @@ export function view(model: AuthSubmodel, apiVersion: string | null) {
                   h.div(
                     [h.Class("flex flex-col gap-xs")],
                     [
-                      h.div([h.Class("m-0 text-display tracking-[-0.02em]")], ["mtgfr"]),
+                      h.div([h.Class("m-0 text-display tracking-[-0.02em]")], ["edh.reilley.dev"]),
                       h.h1([h.Class("m-0 text-lichen text-title")], [isLogin ? "Sign in" : "Create account"]),
                     ],
                   ),

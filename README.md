@@ -1,4 +1,4 @@
-# mtgfr
+# edh.reilley.dev
 
 A browser-based **4-player Commander** (EDH) table for playing with friends.
 

@@ -33,7 +33,7 @@ async function fetchMeta() {
     const identifiers = ids.slice(i, i + 75).map((id) => ({ id }));
     const res = await fetch("https://api.scryfall.com/cards/collection", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json", "User-Agent": "mtgfr/0.1" },
+      headers: { "Content-Type": "application/json", Accept: "application/json", "User-Agent": "edh.reilley.dev/0.1" },
       body: JSON.stringify({ identifiers }),
     });
     if (!res.ok) throw new Error(`Scryfall ${res.status}: ${await res.text()}`);
@@ -91,7 +91,7 @@ const nameOf = (text) => text.match(/^\s*name\s*=\s*"((?:[^"\\]|\\.)*)"/m)?.[1];
 // `named` endpoint, and hand back its id so we can also patch the image map. Returns null on miss.
 async function resolveByName(name) {
   const res = await fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`, {
-    headers: { Accept: "application/json", "User-Agent": "mtgfr/0.1" },
+    headers: { Accept: "application/json", "User-Agent": "edh.reilley.dev/0.1" },
   });
   await new Promise((r) => setTimeout(r, 100));
   if (!res.ok) return null;

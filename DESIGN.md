@@ -1,4 +1,4 @@
-# Design System: mtgfr
+# Design System: edh.reilley.dev
 
 **North star:** "Arena, Unplugged" — MTGA game-client polish, zero storefront chrome (see `PRODUCT.md` anti-references). Dark green felt (`forest-floor`), translucent panels, cream cards (`oracle-ivory`) on felt. **Gold = a decision is owed** (priority gold on the orb; commander gold on commanders only). **Playable border** means a card has a current action. **Zone outlines** use graveyard purple and exile green for playable bar tiles. **Seat hues = identity** (forest/island/mountain/arcane), never semantics.
 

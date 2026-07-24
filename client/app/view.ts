@@ -46,7 +46,7 @@ function nav(model: Model) {
   return h.header(
     [h.Class("flex items-center justify-between gap-lg border-b border-white/10 p-lg")],
     [
-      h.a([h.Class("text-display text-snow no-underline"), h.Href(routePath(HomeRoute()))], ["mtgfr"]),
+      h.a([h.Class("text-display text-snow no-underline"), h.Href(routePath(HomeRoute()))], ["edh.reilley.dev"]),
       h.nav(
         [h.Class("flex items-center gap-md text-label text-lichen")],
         [
@@ -164,7 +164,7 @@ function routeBody(model: Model) {
 
 export const view = (model: Model): Document => {
   return {
-    title: "mtgfr",
+    title: "edh.reilley.dev",
     body: h.div([], [routeBody(model), model.portraitGate.open ? portraitGate() : null]),
   };
 };
