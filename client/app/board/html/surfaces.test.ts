@@ -1000,28 +1000,18 @@ test("may_yes_no aim shows docked Yes and No", () => {
   );
 });
 
-<<<<<<< HEAD
 test("choose_color aim shows docked mana pips instead of center modal", () => {
-=======
-test("choose_mode aim shows docked mode buttons instead of center modal", () => {
->>>>>>> 30381815 (feat(client): dock choose_mode as pending-mode-aim)
   overlayScene(
     overlayModel(
       initialBoardModel(),
       gameState({
         pending_choice: {
-<<<<<<< HEAD
           kind: "choose_color",
-=======
-          kind: "choose_mode",
-          labels: ["Draw a card", "Create a token"],
->>>>>>> 30381815 (feat(client): dock choose_mode as pending-mode-aim)
           player: 0,
           source: 1,
         },
       }),
     ),
-<<<<<<< HEAD
     Scene.expect(Scene.testId("pending-color-aim")).toExist(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-color-0")).toExist(),
@@ -1045,12 +1035,26 @@ test("choose_mana_color aim shows docked mana pips instead of center modal", () 
     Scene.expect(Scene.testId("pending-color-aim")).toExist(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-color-1")).toExist(),
-=======
+  );
+});
+
+test("choose_mode aim shows docked mode buttons instead of center modal", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        pending_choice: {
+          kind: "choose_mode",
+          labels: ["Draw a card", "Create a token"],
+          player: 0,
+          source: 1,
+        },
+      }),
+    ),
     Scene.expect(Scene.testId("pending-mode-aim")).toExist(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-mode-0")).toHaveText("Draw a card"),
     Scene.expect(Scene.testId("prompt-mode-1")).toHaveText("Create a token"),
->>>>>>> 30381815 (feat(client): dock choose_mode as pending-mode-aim)
   );
 });
 
