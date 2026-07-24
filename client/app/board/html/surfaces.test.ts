@@ -1274,6 +1274,8 @@ test("choose_creature_type prompt filters options by name", () => {
         },
       }),
     ),
+    Scene.expect(Scene.testId("pending-creature-type-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-type-filter")).toExist(),
     Scene.expect(Scene.placeholder("Filter types…")).toExist(),
     Scene.expect(Scene.testId("prompt-type-scroll")).toExist(),
