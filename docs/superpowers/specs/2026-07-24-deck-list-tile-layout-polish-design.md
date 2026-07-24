@@ -29,7 +29,7 @@ The home **Your decks** surface feels scattered after the tile-grid redesign:
 
 ## Non-goals
 
-- Lobby deck `<select>` / Bring strip redesign.
+- Lobby deck `<select>` / Bring strip redesign; superseded by [lobby-deck-card-path-and-view-transitions](2026-07-24-lobby-deck-card-path-and-view-transitions-design.md).
 - Ingesting or backfilling art_crop assets into the CDN (ops/CDN work outside this change).
 - Scryfall fallback for missing `large` (or any non-`art_crop` size).
 - Fixed column counts by breakpoint, or a shared chooser abstraction for lobby.

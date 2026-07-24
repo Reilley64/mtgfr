@@ -1,6 +1,6 @@
 # Lobby deck card path + view transitions
 
-**Status:** Design  
+**Status:** Implemented  
 **Date:** 2026-07-24  
 **Module:** `client/app/routes.ts`, `client/app/shell/lobby/**`, `client/app/shell/decks/list/**`, thin navigation VT seam in `client/app/`  
 **Related current-behavior specs:** [client-shell-deck-builder-and-observability](2026-07-20-client-shell-deck-builder-and-observability.md), [lobby-table-routing-and-live-game](2026-07-20-lobby-table-routing-and-live-game.md)  

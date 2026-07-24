@@ -23,7 +23,7 @@ The home **Your decks** surface is a plain list row: small art crop, name, alway
 
 ## Non-goals
 
-- Lobby deck `<select>` / Bring strip redesign.
+- Lobby deck `<select>` / Bring strip redesign; superseded by [lobby-deck-card-path-and-view-transitions](2026-07-24-lobby-deck-card-path-and-view-transitions-design.md).
 - Server-side list order or search API.
 - Color-identity filter toggles, sort controls, or a shared chooser abstraction for lobby.
 - Branding rename (`mtgfr` → `edh.reilley.dev`).

@@ -25,7 +25,7 @@ The client is a **Foldkit** SPA on **Nitro** (Vite). A single event-reactor owns
 - As a returning player on `/`, I scan commander tiles, search by name, click a tile to play, and right-click an owned deck to edit or delete it.
 - As a returning player, I navigate directly to `/decks/new` and the deck builder loads, showing the full card pool on the left and a blank decklist on the right.
 - As a deck builder, I click a pool card to add it, right-click to pick a different printing (art preference), and see the commander picker auto-populate with legendary creatures in my list.
-- As a player, I visit `/play/:deckId` (or follow a table share link), see the chosen deck card in the lobby, ready up, and wait for the host to start.
+- As a player, I visit `/play/:deckId`, optionally paste a copied table code, see the chosen deck card in the lobby, ready up, and wait for the host to start.
 - As a player on a portrait phone, I see a native dialog telling me to rotate to landscape; the deck builder and board are hidden behind the dialog.
 - As an operator, I open Grafana (via port-forward) and see browser → BFF → API traces correlated by W3C `traceparent`, with no hand/library contents in any span.
 
@@ -81,9 +81,9 @@ The game stream is a Foldkit subscription keyed by route table id and active gam
 
 ### Table routing and lobby (`client/lib/lobby/client.ts`, `client/app/shell/lobby/**`, lobby-table-routing-and-live-game spec)
 
-`tableId()` reads the table id from `/play/:deckId/:table` path. `parseTableCode` normalizes bare codes and share links (pasted URLs with `://` or `/play/` path segment). `setTableUrl` reflects a joined table into the URL via `history.replaceState`.
+`tableId()` reads the table id from `/play/:deckId/:table` path. `parseTableCode` normalizes bare codes and pasted play URLs, reading the table segment from `/play/:deckId/:table`. `setTableUrl` reflects a joined table into the URL via `history.replaceState`.
 
-The lobby polls `GET /tables/{table}/lobby` via a Foldkit subscription until `started`. Seat rows show seat-color dots (`seat-forest`, `seat-island`, `seat-mountain`, `seat-arcane`). The host (first joiner) sees a Start button when ≥2 seats are claimed and all are ready. Table share-link copy uses `navigator.clipboard.writeText` from an Effect-backed command — denied permission reveals a manual-copy input instead of throwing. `unlockTableAudio()` is called on Ready-up (the required user-gesture unlock for the shared `AudioContext`).
+The lobby polls `GET /tables/{table}/lobby` via a Foldkit subscription until `started`. Seat rows show seat-color dots (`seat-forest`, `seat-island`, `seat-mountain`, `seat-arcane`). The host (first joiner) sees a Start button when ≥2 seats are claimed and all are ready. Table-code copy uses `navigator.clipboard.writeText` from an Effect-backed command — denied permission reveals a manual-copy input instead of throwing. `unlockTableAudio()` is called on Ready-up (the required user-gesture unlock for the shared `AudioContext`).
 
 `selectedDeckId` is set from the required play route deck id. The lobby renders that deck as a non-interactive commander card with `lobby-deck-card` / `lobby-deck-card-{id}` test ids plus a **Back** link to `/`; it does not render the old deck `<select>` or `Bring:` name strip in entry or claim-seat states. Malformed deck ids route to Not found immediately, and deck ids missing from the loaded library route to Not found after the deck list resolves.
 
@@ -94,7 +94,8 @@ Header, search, and grid share one `max-w-[960px]` column. Tiles use a raised
 `minmax(220px, 1fr)` track, landscape commander `art_crop` (~1.37:1), deck name,
 color-identity pips, and a Precon chip when `id < 0`. Names stay single-line truncate.
 There is no cursor-follow card hover preview on this surface. The whole tile links to
-`/play/{id}`. A **Search decks…** field filters by deck name and commander display
+`/play/{id}`, and the tile root uses `view-transition-name: deck-card-{id}` for
+home-to-lobby CSS View Transitions when supported. A **Search decks…** field filters by deck name and commander display
 name (client-only). Display order: owned decks first (API relative order), then precons
 by ascending id (newest release first). Right-click on an owned deck opens Edit
 (`/decks/{id}`) and Delete (confirm dialog); precons do not open a context menu. A New
