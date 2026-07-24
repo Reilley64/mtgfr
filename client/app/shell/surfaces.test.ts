@@ -15,8 +15,8 @@ import { view } from "../view";
 import { ClearedBuilderHover } from "./decks/builder/messages";
 import { initialDeckBuilderSubmodel } from "./decks/builder/submodel";
 import { BindBuilderCardPointer } from "./decks/builder/view";
-import { ClearedDeckListHover } from "./decks/list/messages";
-import { BindDeckListCommanderHover } from "./decks/list/view";
+import { ClearedDeckListHover, ClosedDeckListMenu } from "./decks/list/messages";
+import { BindDeckListCommanderHover, BindDeckListContextMenu, BindDeckListContextMenuEscape } from "./decks/list/view";
 import { initialLobbySlice } from "./lobby/submodel";
 
 const me = { id: 1, email: "alice@example.com", username: "alice" };
@@ -125,7 +125,7 @@ describe("shell surface scenes", () => {
     );
   });
 
-  it("renders deck list chrome, delete action, and commander mounts", () => {
+  it("renders deck list chrome, tiles, and commander mounts", () => {
     Scene.scene(
       { update, view },
       Scene.with(
@@ -142,14 +142,18 @@ describe("shell surface scenes", () => {
         }),
       ),
       Scene.expect(Scene.selector('[data-testid="decks-page"]')).toExist(),
-      Scene.expect(Scene.selector('[data-testid="delete-deck-1"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="deck-list-search"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="deck-tile-1"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="delete-deck-1"]')).not.toExist(),
       Scene.expect(Scene.text("Your decks")).toExist(),
       Scene.expect(Scene.text("Superfriends")).toExist(),
       Scene.Mount.resolve(
         BindDeckListCommanderHover({ cardId: "atraxa", print: "atraxa-print" }),
         ClearedDeckListHover(),
       ),
+      Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), ClosedDeckListMenu()),
       Scene.Mount.resolve(BindCardArt, CardArtTick()),
+      Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
     );
   });
 
@@ -177,7 +181,9 @@ describe("shell surface scenes", () => {
         BindDeckListCommanderHover({ cardId: "atraxa", print: "atraxa-print" }),
         ClearedDeckListHover(),
       ),
+      Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), ClosedDeckListMenu()),
       Scene.Mount.resolve(BindCardArt, CardArtTick()),
+      Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
     );
   });
 
@@ -197,6 +203,7 @@ describe("shell surface scenes", () => {
         }),
       ),
       Scene.expect(Scene.text("No decks yet — build one to get started.")).toExist(),
+      Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
     );
   });
 
@@ -215,6 +222,7 @@ describe("shell surface scenes", () => {
         }),
       ),
       Scene.expect(Scene.text("Loading decks…")).toExist(),
+      Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
     );
   });
 

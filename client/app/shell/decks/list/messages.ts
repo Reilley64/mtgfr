@@ -15,6 +15,13 @@ export const MovedDeckListHover = m("MovedDeckListHover", {
   y: S.Number,
 });
 export const ClearedDeckListHover = m("ClearedDeckListHover");
+export const ChangedDeckListSearch = m("ChangedDeckListSearch", { query: S.String });
+export const OpenedDeckListMenu = m("OpenedDeckListMenu", {
+  deckId: S.Number,
+  x: S.Number,
+  y: S.Number,
+});
+export const ClosedDeckListMenu = m("ClosedDeckListMenu");
 /** Player clicked Delete on a deck row — open the confirmation dialog. */
 export const AskedDeckDelete = m("AskedDeckDelete", { id: S.Number });
 /** Player dismissed the confirmation dialog without deleting. */
@@ -31,6 +38,9 @@ export const Message = S.Union([
   ReceivedDeckListCommanders,
   MovedDeckListHover,
   ClearedDeckListHover,
+  ChangedDeckListSearch,
+  OpenedDeckListMenu,
+  ClosedDeckListMenu,
   AskedDeckDelete,
   CancelledDeckDelete,
   RequestedDeckDelete,

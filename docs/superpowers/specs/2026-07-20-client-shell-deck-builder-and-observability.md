@@ -1,6 +1,6 @@
 # Client Shell, Deck Builder, and Observability
 
-**Status:** Current (as of 2026-07-22)
+**Status:** Current (as of 2026-07-24)
 **Module:** `client/app/` (entry, routes, update/view), `client/app/shell/**` (auth, decks, lobby), `client/lib/**` (rpc-client, wire, lobby-store, faro, ui helpers), `client/server/**` (Nitro BFF routes + Drizzle), `client/styles/global.css`
 
 ---
@@ -22,6 +22,7 @@ The client is a **Foldkit** SPA on **Nitro** (Vite). A single event-reactor owns
 ## User Stories
 
 - As a new player, I visit the root URL, see the deck list, and am redirected to `/login` because I have no session. After signing up, I return to the deck list.
+- As a returning player on `/`, I scan commander tiles, search by name, click a tile to play, and right-click an owned deck to edit or delete it.
 - As a returning player, I navigate directly to `/decks/new` and the deck builder loads, showing the full card pool on the left and a blank decklist on the right.
 - As a deck builder, I click a pool card to add it, right-click to pick a different printing (art preference), and see the commander picker auto-populate with legendary creatures in my list.
 - As a player, I visit `/play` (or follow a table share link), see the lobby, pick a deck from my saved decks, ready up, and wait for the host to start.
@@ -88,7 +89,13 @@ When `selectedDeckId` is set from Play → Host/Join or `?deck=`, the lobby show
 
 ### Deck list and builder (`client/app/shell/decks/**`, client-shell-deck-builder-and-observability spec, accounts-decks-and-catalog spec)
 
-**Deck list** (`/`) shows saved decks from the deck list submodel. Each row links to the builder. A New Deck button navigates to `/decks/new`.
+**Deck list** (`/`) shows saved decks from the deck list submodel as a compact tile grid.
+Each tile uses commander `art_crop`, deck name, color-identity pips, and a Precon chip when
+`id < 0`. The whole tile links to `/play?deck={id}`. A **Search decks…** field filters by
+deck name and commander display name (client-only). Display order: owned decks first
+(API relative order), then precons by ascending id (newest release first). Right-click on
+an owned deck opens Edit (`/decks/{id}`) and Delete (confirm dialog); precons do not open
+a context menu. A New Deck button navigates to `/decks/new`.
 
 **Deck builder** (`/decks/new`, `/decks/:id`) is a split-pane layout:
 

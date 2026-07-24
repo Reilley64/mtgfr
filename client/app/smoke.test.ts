@@ -5,8 +5,12 @@ import { init, Model, update } from "./main-exports";
 import { CardArtTick, PortraitGateCancelled } from "./messages";
 import type { Model as AppModel } from "./model";
 import { HomeRoute, PlayRoute } from "./routes";
-import { ClearedDeckListHover } from "./shell/decks/list/messages";
-import { BindDeckListCommanderHover } from "./shell/decks/list/view";
+import { ClearedDeckListHover, ClosedDeckListMenu } from "./shell/decks/list/messages";
+import {
+  BindDeckListCommanderHover,
+  BindDeckListContextMenu,
+  BindDeckListContextMenuEscape,
+} from "./shell/decks/list/view";
 import { view } from "./view";
 
 const me = { id: 1, email: "alice@example.com", username: "alice" };
@@ -101,7 +105,9 @@ describe("foldkit scaffold", () => {
         BindDeckListCommanderHover({ cardId: "atraxa", print: "atraxa-print" }),
         ClearedDeckListHover(),
       ),
+      Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), ClosedDeckListMenu()),
       Scene.Mount.resolve(BindCardArt, CardArtTick()),
+      Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
     );
   });
 

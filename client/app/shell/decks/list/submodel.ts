@@ -5,6 +5,8 @@ import { DeckListHover } from "./hover";
 
 export const DeckListSubmodel = S.Struct({
   hover: S.NullOr(DeckListHover),
+  searchQuery: S.String,
+  contextMenu: S.NullOr(S.Struct({ deckId: S.Number, x: S.Number, y: S.Number })),
   knownCommanders: S.Record(S.String, CatalogCardSchema),
   decks: S.Array(DeckSummary),
   error: S.NullOr(S.String),
@@ -17,6 +19,8 @@ export type DeckListSubmodel = typeof DeckListSubmodel.Type;
 export function initialDeckListSubmodel(): DeckListSubmodel {
   return {
     hover: null,
+    searchQuery: "",
+    contextMenu: null,
     knownCommanders: {},
     decks: [],
     error: null,
