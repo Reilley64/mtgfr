@@ -2,11 +2,12 @@ import { type Html, html } from "foldkit/html";
 import { appVersionBadge } from "../../../lib/ui/app-version";
 import { buttonClass } from "../../../lib/ui/buttonClass";
 import { feltClass, fieldClass, panelClass } from "../../../lib/ui/surfaces";
+import type { BuilderCatalogCard } from "../../../lib/deck-builder/cards";
 import type { DeckSummary } from "../../../lib/wire/types";
 import { HomeRoute, routePath } from "../../routes";
+import { renderDeckCard, type DeckCardModel } from "../decks/deck-card";
 import {
   ChangedLobbyCode,
-  ChangedLobbyDeck,
   type Message,
   RequestedLobbyCopy,
   RequestedLobbyHost,
@@ -38,18 +39,39 @@ function humanError(code: string): string {
   return map[code] ?? code;
 }
 
-function pickedDeckName(model: LobbySlice, decks: ReadonlyArray<DeckSummary>): string {
-  return decks.find((deck) => deck.id === model.selectedDeckId)?.name ?? "your deck";
+function deckCardModel(deck: DeckSummary, knownCommanders: Readonly<Record<string, BuilderCatalogCard>>): DeckCardModel {
+  const commander = knownCommanders[deck.commander];
+  return {
+    id: deck.id,
+    name: deck.name,
+    commander: deck.commander,
+    commanderName: commander?.name ?? deck.commander,
+    print: deck.commander_print ?? commander?.default_print ?? "",
+    colorIdentity: commander?.color_identity ?? [],
+  };
 }
 
-function bringAndBack(model: LobbySlice, decks: ReadonlyArray<DeckSummary>): Html {
+function deckCardAndBack(
+  model: LobbySlice,
+  decks: ReadonlyArray<DeckSummary>,
+  decksLoading: boolean,
+  knownCommanders: Readonly<Record<string, BuilderCatalogCard>>,
+): Html {
+  const deck = model.selectedDeckId == null ? undefined : decks.find((item) => item.id === model.selectedDeckId);
+  const card =
+    deck == null
+      ? h.div([h.Class("rounded-hud bg-glass-dim p-md text-label text-lichen")], [
+          decksLoading ? "Loading decks…" : "Deck not found.",
+        ])
+      : renderDeckCard(h, deckCardModel(deck, knownCommanders), {
+          mode: "static",
+          testId: `lobby-deck-card-${deck.id}`,
+        });
+
   return h.div(
-    [h.Class("flex flex-wrap items-center gap-sm")],
+    [h.Class("flex flex-col gap-sm")],
     [
-      h.span(
-        [h.Class("text-label text-lichen"), h.DataAttribute("testid", "lobby-bring")],
-        ["Bring: ", h.b([], [pickedDeckName(model, decks)])],
-      ),
+      h.div([h.Class("max-w-[240px]"), h.DataAttribute("testid", "lobby-deck-card")], [card]),
       h.a(
         [h.Href(routePath(HomeRoute())), h.DataAttribute("testid", "lobby-back"), h.Class(buttonClass("ghost"))],
         ["Back"],
@@ -58,22 +80,12 @@ function bringAndBack(model: LobbySlice, decks: ReadonlyArray<DeckSummary>): Htm
   );
 }
 
-function deckPicker(model: LobbySlice, decks: ReadonlyArray<DeckSummary>): Html {
-  const selected = model.selectedDeckId ?? decks[0]?.id ?? "";
-
-  return h.select(
-    [
-      h.Id("lobby-deck"),
-      h.DataAttribute("testid", "lobby-deck"),
-      h.Value(String(selected)),
-      h.OnInput((value) => ChangedLobbyDeck({ deckId: Number(value) })),
-      h.Class(fieldClass("min-w-0 flex-1")),
-    ],
-    decks.map((deck) => h.option([h.Value(String(deck.id)), h.Selected(deck.id === selected)], [deck.name])),
-  );
-}
-
-function entry(model: LobbySlice, decks: ReadonlyArray<DeckSummary>, decksLoading: boolean): Html {
+function entry(
+  model: LobbySlice,
+  decks: ReadonlyArray<DeckSummary>,
+  decksLoading: boolean,
+  knownCommanders: Readonly<Record<string, BuilderCatalogCard>>,
+): Html {
   if (decksLoading && decks.length === 0 && model.selectedDeckId == null) {
     return h.div([h.Class("text-label text-lichen")], ["Loading decks…"]);
   }
@@ -82,13 +94,14 @@ function entry(model: LobbySlice, decks: ReadonlyArray<DeckSummary>, decksLoadin
     return h.div([h.Class("text-caution-amber text-label")], ["Build a deck first (Your decks → New deck)."]);
   }
 
-  const deckRow =
-    model.selectedDeckId != null ? bringAndBack(model, decks) : decks.length > 0 ? deckPicker(model, decks) : null;
+  if (model.selectedDeckId == null) {
+    return h.div([h.Class("text-caution-amber text-label")], ["Pick a deck to play first (Your decks → Play)."]);
+  }
 
   return h.div(
     [h.Class("flex flex-col gap-md")],
     [
-      h.div([h.Class("flex items-center gap-sm")], [deckRow]),
+      deckCardAndBack(model, decks, decksLoading, knownCommanders),
       h.div(
         [h.Class("flex items-center gap-sm")],
         [
@@ -181,17 +194,21 @@ function seats(model: LobbySlice): Html {
   );
 }
 
-function claimSeat(model: LobbySlice, decks: ReadonlyArray<DeckSummary>, decksLoading: boolean): Html {
+function claimSeat(
+  model: LobbySlice,
+  decks: ReadonlyArray<DeckSummary>,
+  decksLoading: boolean,
+  knownCommanders: Readonly<Record<string, BuilderCatalogCard>>,
+): Html {
   if (decksLoading && model.selectedDeckId == null) {
     return h.div([h.Class("text-label text-lichen")], ["Loading decks…"]);
   }
 
-  // Deck already chosen in the Play/Table route: claim only — no picker.
   if (model.selectedDeckId != null) {
     return h.div(
-      [h.Class("flex flex-wrap items-center gap-sm")],
+      [h.Class("flex flex-col gap-md")],
       [
-        bringAndBack(model, decks),
+        deckCardAndBack(model, decks, decksLoading, knownCommanders),
         h.button(
           [
             h.Type("button"),
@@ -206,30 +223,19 @@ function claimSeat(model: LobbySlice, decks: ReadonlyArray<DeckSummary>, decksLo
     );
   }
 
-  // Share-link arrival without a deck: pick once, then claim (only place the picker appears).
   if (decks.length === 0) {
     return h.div([h.Class("text-caution-amber text-label")], ["Build a deck first (Your decks → New deck)."]);
   }
 
-  return h.div(
-    [h.Class("flex flex-wrap items-center gap-sm")],
-    [
-      deckPicker(model, decks),
-      h.button(
-        [
-          h.Type("button"),
-          h.DataAttribute("testid", "lobby-claim"),
-          h.Disabled(model.submitting),
-          h.OnClick(RequestedLobbyJoin()),
-          h.Class(buttonClass("primary")),
-        ],
-        ["Claim a seat"],
-      ),
-    ],
-  );
+  return h.div([h.Class("text-caution-amber text-label")], ["Pick a deck to play first (Your decks → Play)."]);
 }
 
-function tableLobby(model: LobbySlice, decks: ReadonlyArray<DeckSummary>, decksLoading: boolean): Html {
+function tableLobby(
+  model: LobbySlice,
+  decks: ReadonlyArray<DeckSummary>,
+  decksLoading: boolean,
+  knownCommanders: Readonly<Record<string, BuilderCatalogCard>>,
+): Html {
   const joined = model.view?.you != null;
   const startError = model.view?.start_error ?? null;
 
@@ -301,7 +307,7 @@ function tableLobby(model: LobbySlice, decks: ReadonlyArray<DeckSummary>, decksL
                   ),
             ],
           )
-        : claimSeat(model, decks, decksLoading),
+        : claimSeat(model, decks, decksLoading, knownCommanders),
     ],
   );
 }
@@ -310,6 +316,7 @@ export function view(
   model: LobbySlice,
   decks: ReadonlyArray<DeckSummary>,
   decksLoading: boolean,
+  knownCommanders: Readonly<Record<string, BuilderCatalogCard>>,
   apiVersion: string | null,
 ): Html {
   return h.main(
@@ -332,7 +339,9 @@ export function view(
                   h.h1([h.Class("m-0 text-lichen text-title")], ["Lobby"]),
                 ],
               ),
-              model.tableId == null ? entry(model, decks, decksLoading) : tableLobby(model, decks, decksLoading),
+              model.tableId == null
+                ? entry(model, decks, decksLoading, knownCommanders)
+                : tableLobby(model, decks, decksLoading, knownCommanders),
               model.error == null
                 ? null
                 : h.div(

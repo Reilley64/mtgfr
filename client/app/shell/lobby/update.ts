@@ -125,7 +125,6 @@ export const update = (
   M.value(message).pipe(
     M.withReturnType<readonly [LobbySlice, ReadonlyArray<FoldkitCommand.Command<Message>>]>(),
     M.tagsExhaustive({
-      ChangedLobbyDeck: ({ deckId }) => [{ ...model, selectedDeckId: deckId }, []],
       ChangedLobbyCode: ({ code }) => [{ ...model, code }, []],
       RequestedLobbyHost: () => {
         const deckId = selectedDeckId(model);

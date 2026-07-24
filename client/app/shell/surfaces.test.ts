@@ -257,19 +257,22 @@ describe("shell surface scenes", () => {
     Scene.scene(
       { update, view },
       Scene.with(
-        authedModel(PlayRoute({ deckId: "0" }), {
+        authedModel(PlayRoute({ deckId: "1" }), {
           decks: {
             ...init()[0].decks,
-            list: { ...init()[0].decks.list, decks: [deck], loading: false },
+            list: { ...init()[0].decks.list, decks: [deck], knownCommanders: { atraxa }, loading: false },
           },
-          lobby: { ...initialLobbySlice(), selectedDeckId: null },
+          lobby: { ...initialLobbySlice(), selectedDeckId: 1 },
         }),
       ),
+      Scene.expect(Scene.selector('[data-testid="lobby-deck-card"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="lobby-deck-card-1"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-join-code"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-join"]')).toExist(),
       Scene.expect(Scene.text("Lobby")).toExist(),
       Scene.expect(Scene.text("edh.reilley.dev")).toExist(),
       Scene.expect(Scene.text("mtgfr")).not.toExist(),
+      Scene.Mount.resolve(BindCardArt, CardArtTick()),
     );
   });
 
@@ -280,7 +283,7 @@ describe("shell surface scenes", () => {
         authedModel(TableRoute({ deckId: "1", table: "ABC123" }), {
           decks: {
             ...init()[0].decks,
-            list: { ...init()[0].decks.list, decks: [deck], loading: false },
+            list: { ...init()[0].decks.list, decks: [deck], knownCommanders: { atraxa }, loading: false },
           },
           lobby: {
             ...initialLobbySlice(),

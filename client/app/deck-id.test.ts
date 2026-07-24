@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { deckCardViewTransitionName, parseDeckIdParam } from "./deck-id";
+import { deckCardViewTransitionName, parseDeckIdParam, playDeckAccess } from "./deck-id";
 
 test("parseDeckIdParam accepts integers including negative precons", () => {
   expect(parseDeckIdParam("7")).toBe(7);
@@ -17,4 +17,11 @@ test("parseDeckIdParam rejects non-integers", () => {
 test("deckCardViewTransitionName is keyed by id", () => {
   expect(deckCardViewTransitionName(7)).toBe("deck-card-7");
   expect(deckCardViewTransitionName(-1)).toBe("deck-card--1");
+});
+
+test("playDeckAccess reflects loading, known, and missing decks", () => {
+  expect(playDeckAccess(7, [], true)).toBe("loading");
+  expect(playDeckAccess(7, [{ id: 7 }], false)).toBe("ok");
+  expect(playDeckAccess(7, [{ id: 1 }], false)).toBe("missing");
+  expect(playDeckAccess(null, [{ id: 1 }], false)).toBe("missing");
 });

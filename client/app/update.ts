@@ -4,7 +4,7 @@ import { Command, Navigation } from "foldkit";
 import { toString as urlToString } from "foldkit/url";
 import type { Message as BoardMessage } from "./board/messages";
 import { syncBoardWithGame, updateBoard } from "./board/submodel";
-import { parseDeckIdParam } from "./deck-id";
+import { parseDeckIdParam, playDeckAccess } from "./deck-id";
 import { applyDeltaPure, applySnapshotPure, type DeltaEnvelope, setRejectPure } from "./game/fold";
 import { type Message, NavigationCompleted, type ReceivedDelta } from "./messages";
 import { emptyGameSlice, type GameSlice, type Model } from "./model";
@@ -12,6 +12,7 @@ import type { RpcClient } from "./resources";
 import {
   isProtectedRoute,
   nextFromUrl,
+  NotFoundRoute,
   normalizeAppRoute,
   pathWithSearch,
   routeFromUrl,
@@ -145,6 +146,14 @@ function foldDeckList(
 ): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
   const [list, commands] = updateDeckList(model.decks.list, message);
   return [{ ...model, decks: { ...model.decks, list } }, commands];
+}
+
+function notFoundWhenPlayDeckMissing(model: Model): Model {
+  if (model.route._tag !== "PlayRoute" && model.route._tag !== "TableRoute") return model;
+  const deckId = parseDeckIdParam(model.route.deckId);
+  const access = playDeckAccess(deckId, model.decks.list.decks, model.decks.list.loading);
+  if (access !== "missing") return model;
+  return { ...model, route: NotFoundRoute({ path: model.currentPath }) };
 }
 
 function foldDeckBuilder(
@@ -341,7 +350,10 @@ export const update = (
         return [{ ...model, auth }, commands];
       },
       RequestedDecksRefresh: (decksMessage) => foldDeckList(model, decksMessage),
-      ReceivedDecks: (decksMessage) => foldDeckList(model, decksMessage),
+      ReceivedDecks: (decksMessage) => {
+        const [nextModel, commands] = foldDeckList(model, decksMessage);
+        return [notFoundWhenPlayDeckMissing(nextModel), commands];
+      },
       DecksLoadFailed: (decksMessage) => foldDeckList(model, decksMessage),
       ReceivedDeckListCommanders: (decksMessage) => foldDeckList(model, decksMessage),
       ChangedDeckListSearch: (decksMessage) => foldDeckList(model, decksMessage),
@@ -381,7 +393,6 @@ export const update = (
       ConfirmedBuilderDiscard: (decksMessage) => foldDeckBuilder(model, decksMessage),
       CancelledBuilderDiscard: (decksMessage) => foldDeckBuilder(model, decksMessage),
       NavigatedAwayFromBuilder: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      ChangedLobbyDeck: (lobbyMessage) => foldLobby(model, lobbyMessage),
       ChangedLobbyCode: (lobbyMessage) => foldLobby(model, lobbyMessage),
       RequestedLobbyHost: (lobbyMessage) => foldLobby(model, lobbyMessage),
       LobbyTableCreated: (lobbyMessage) => foldLobby(model, lobbyMessage),

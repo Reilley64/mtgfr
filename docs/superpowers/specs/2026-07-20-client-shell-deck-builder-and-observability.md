@@ -25,7 +25,7 @@ The client is a **Foldkit** SPA on **Nitro** (Vite). A single event-reactor owns
 - As a returning player on `/`, I scan commander tiles, search by name, click a tile to play, and right-click an owned deck to edit or delete it.
 - As a returning player, I navigate directly to `/decks/new` and the deck builder loads, showing the full card pool on the left and a blank decklist on the right.
 - As a deck builder, I click a pool card to add it, right-click to pick a different printing (art preference), and see the commander picker auto-populate with legendary creatures in my list.
-- As a player, I visit `/play` (or follow a table share link), see the lobby, pick a deck from my saved decks, ready up, and wait for the host to start.
+- As a player, I visit `/play/:deckId` (or follow a table share link), see the chosen deck card in the lobby, ready up, and wait for the host to start.
 - As a player on a portrait phone, I see a native dialog telling me to rotate to landscape; the deck builder and board are hidden behind the dialog.
 - As an operator, I open Grafana (via port-forward) and see browser → BFF → API traces correlated by W3C `traceparent`, with no hand/library contents in any span.
 
@@ -43,13 +43,13 @@ A single Foldkit event-reactor owns routing: `client/app/routes.ts` maps paths t
 | `/login` | Auth | — |
 | `/decks/new` | Deck builder | auth submodel |
 | `/decks/:id` | Deck builder (edit) | auth submodel |
-| `/play` | Lobby / board wrapper | — |
-| `/play/:table` | Play (with table id) | — |
+| `/play/:deckId` | Lobby / board wrapper for a required deck id | auth submodel |
+| `/play/:deckId/:table` | Play (with deck id and table id) | auth submodel |
 | `/api/[...path]` | lobby/table HTTP passthrough | — |
 | `/api/rpc/[...path]` | Effect RPC BFF | — |
 | `/api/faro/collect` | Faro proxy | — |
 
-Required identifiers live in path params (wire-protocol-and-visibility spec routing rule). Query params are optional: `?deck=` preselects a deck in the lobby; `?next=` is the post-login redirect target.
+Required identifiers live in path params (wire-protocol-and-visibility spec routing rule). Query params are optional: `?next=` is the post-login redirect target.
 
 ### Portrait gate (`client/app/view.ts`, `client/app/subscriptions.ts`, DESIGN.md Landscape Rule)
 
@@ -77,15 +77,15 @@ The browser talks only to the same-origin BFF via the hand-written Effect HTTP c
 
 ### Game delta stream (`client/app/game/stream-subscription.ts`, `client/app/game/fold.ts`)
 
-The game stream is a Foldkit subscription keyed by route table id and active game table id. It opens only when the app is on `/play/:table` and the game slice is active. Snapshot and delta frames become messages, then `update` folds them through `applySnapshotPure` / `applyDeltaPure`. `model.game.connected` drives the reconnect banner; rejected intents set `game.reject` and `board.reject`. The subscription goes empty after navigation or table mismatch, so no residual stream continues after leaving the board.
+The game stream is a Foldkit subscription keyed by route table id and active game table id. It opens only when the app is on `/play/:deckId/:table` and the game slice is active. Snapshot and delta frames become messages, then `update` folds them through `applySnapshotPure` / `applyDeltaPure`. `model.game.connected` drives the reconnect banner; rejected intents set `game.reject` and `board.reject`. The subscription goes empty after navigation or table mismatch, so no residual stream continues after leaving the board.
 
 ### Table routing and lobby (`client/lib/lobby/client.ts`, `client/app/shell/lobby/**`, lobby-table-routing-and-live-game spec)
 
-`tableId()` reads the table id from `/play/:table` path. `parseTableCode` normalizes bare codes and share links (pasted URLs with `://` or `/play/` path segment). `setTableUrl` reflects a joined table into the URL via `history.replaceState`.
+`tableId()` reads the table id from `/play/:deckId/:table` path. `parseTableCode` normalizes bare codes and share links (pasted URLs with `://` or `/play/` path segment). `setTableUrl` reflects a joined table into the URL via `history.replaceState`.
 
 The lobby polls `GET /tables/{table}/lobby` via a Foldkit subscription until `started`. Seat rows show seat-color dots (`seat-forest`, `seat-island`, `seat-mountain`, `seat-arcane`). The host (first joiner) sees a Start button when ≥2 seats are claimed and all are ready. Table share-link copy uses `navigator.clipboard.writeText` from an Effect-backed command — denied permission reveals a manual-copy input instead of throwing. `unlockTableAudio()` is called on Ready-up (the required user-gesture unlock for the shared `AudioContext`).
 
-When `selectedDeckId` is set from Play → Host/Join or `?deck=`, the lobby shows locked **Bring: `<deck name>`** text and a **Back** link to `/`. It does not render the deck `<select>` in entry or claim-seat states. Bare `/play` with no selected deck keeps the deck selector plus Host / Join controls.
+`selectedDeckId` is set from the required play route deck id. The lobby renders that deck as a non-interactive commander card with `lobby-deck-card` / `lobby-deck-card-{id}` test ids plus a **Back** link to `/`; it does not render the old deck `<select>` or `Bring:` name strip in entry or claim-seat states. Malformed deck ids route to Not found immediately, and deck ids missing from the loaded library route to Not found after the deck list resolves.
 
 ### Deck list and builder (`client/app/shell/decks/**`, client-shell-deck-builder-and-observability spec, accounts-decks-and-catalog spec)
 
