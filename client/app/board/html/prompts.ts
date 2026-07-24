@@ -2360,25 +2360,38 @@ function numberPickPrompt(
     const draft = board.promptDraft ?? initPromptDraft(pending, state);
     const max = pending.max;
     const count = clampX(draft.kind === "number" ? draft.count : 0, 0, max);
-    return frame("pending-choice", numberPickTitle(pending), [
-      h.div(
-        [h.Class("flex flex-wrap items-center justify-center gap-2")],
-        [
-          itemButton("Min", "prompt-number-min", PromptNumberSet({ count: 0 })),
-          itemButton("−", "prompt-number-dec", PromptNumberSet({ count: count - 1 }), count <= 0),
-          h.span(
-            [
-              h.DataAttribute("testid", "prompt-number-value"),
-              h.Class("min-w-[2ch] text-center text-body font-semibold text-snow"),
-            ],
-            [String(count)],
-          ),
-          itemButton("+", "prompt-number-inc", PromptNumberSet({ count: count + 1 }), count >= max),
-          itemButton("Max", "prompt-number-max", PromptNumberSet({ count: max })),
-        ],
-      ),
-      submitButton(count === 0 ? "Pay 0 (decline)" : `Pay {${count}}`, tableId == null),
-    ]);
+    return h.div(
+      [
+        h.DataAttribute("testid", "pending-join-forces-aim"),
+        h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+        h.Class(
+          "pointer-events-auto fixed left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+        ),
+      ],
+      [
+        h.div(
+          [h.Class("pointer-events-none text-center font-semibold text-body text-snow")],
+          [numberPickTitle(pending)],
+        ),
+        h.div(
+          [h.Class("flex flex-wrap items-center justify-center gap-2")],
+          [
+            itemButton("Min", "prompt-number-min", PromptNumberSet({ count: 0 })),
+            itemButton("−", "prompt-number-dec", PromptNumberSet({ count: count - 1 }), count <= 0),
+            h.span(
+              [
+                h.DataAttribute("testid", "prompt-number-value"),
+                h.Class("min-w-[2ch] text-center text-body font-semibold text-snow"),
+              ],
+              [String(count)],
+            ),
+            itemButton("+", "prompt-number-inc", PromptNumberSet({ count: count + 1 }), count >= max),
+            itemButton("Max", "prompt-number-max", PromptNumberSet({ count: max })),
+          ],
+        ),
+        submitButton(count === 0 ? "Pay 0 (decline)" : `Pay {${count}}`, tableId == null),
+      ],
+    );
   }
   const answerFor = (count: number): AnswerInput => ({ kind: "draw_count", count });
   return frame("pending-choice", numberPickTitle(pending), [
