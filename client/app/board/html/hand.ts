@@ -87,6 +87,7 @@ function tile(args: {
   index: number;
   count: number;
   discardSelectable?: boolean;
+  discardSelected?: boolean;
 }): Html {
   const {
     name,
@@ -103,6 +104,7 @@ function tile(args: {
     index,
     count,
     discardSelectable = false,
+    discardSelected = false,
   } = args;
   const playable = (action != null || discardSelectable) && !slotInert;
   const testId = objectId != null ? `hand-card-${objectId}` : undefined;
@@ -113,7 +115,9 @@ function tile(args: {
   const pips = costPips(manaCost, { showZero: objectKind != null && objectKind !== "land" });
   const faceClass = [
     "pointer-events-none absolute top-0 right-0 transition-transform duration-[120ms] ease-state",
-    "group-hover/hand-tile:z-30 group-hover/hand-tile:[transform:translateY(var(--raise-y))]",
+    discardSelected
+      ? "z-30 [transform:translateY(var(--raise-y))]"
+      : "group-hover/hand-tile:z-30 group-hover/hand-tile:[transform:translateY(var(--raise-y))]",
   ].join(" ");
 
   // Solid parity: the drag source fades so the ghost carries the face; inert slots stay non-interactive.
@@ -127,13 +131,18 @@ function tile(args: {
     .join(" ");
   const faceChromeClass = [
     "relative origin-bottom rounded-game",
-    discardSelectable ? "ring-2 ring-island-blue shadow-[0_0_12px_rgba(74,158,255,0.45)]" : barZoneAura(zone, playable),
+    discardSelected
+      ? "ring-2 ring-llanowar shadow-[0_0_12px_rgba(47,125,70,0.55)]"
+      : discardSelectable
+        ? "ring-2 ring-island-blue shadow-[0_0_12px_rgba(74,158,255,0.45)]"
+        : barZoneAura(zone, playable),
   ]
     .filter((v) => v !== "")
     .join(" ");
 
   const hitClass = [
-    "pointer-events-auto absolute bottom-0 group-hover/hand-tile:[height:var(--hit-raised-h)]",
+    "pointer-events-auto absolute bottom-0",
+    discardSelected ? "[height:var(--hit-raised-h)]" : "group-hover/hand-tile:[height:var(--hit-raised-h)]",
     playable ? "cursor-grab" : "cursor-default",
   ].join(" ");
 
@@ -141,7 +150,7 @@ function tile(args: {
     h.Class(hitClass),
     h.Style({
       width: `${hitW}px`,
-      height: `${restHitH}px`,
+      height: `${discardSelected ? raisedHitH : restHitH}px`,
       right: `${HAND_CARD_W - hitW}px`,
       "--hit-raised-h": `${raisedHitH}px`,
     }),
@@ -218,6 +227,9 @@ function tile(args: {
   const cardFaceAttrs: Attribute<Message>[] = [h.Class(faceChromeClass), h.Style(cardBoxStyle)];
   if (objectId != null) {
     cardFaceAttrs.push(h.DataAttribute("testid", `hand-card-face-${objectId}`));
+  }
+  if (discardSelectable || discardSelected) {
+    cardFaceAttrs.push(h.DataAttribute("discard-selected", discardSelected ? "1" : "0"));
   }
 
   const art: Html = print
@@ -305,6 +317,8 @@ export type HandViewInputs = {
   handDrag: HandDragState | null;
   /** Object ids legal for the live local discard cost; null when not discarding. */
   discardCostIds?: ReadonlySet<number> | null;
+  /** Object ids currently selected for discard cost / pending discard pick. */
+  discardSelectedIds?: ReadonlySet<number> | null;
 };
 
 function handDragGhost(drag: HandDragState): Html {
@@ -353,7 +367,7 @@ function handDragGhost(drag: HandDragState): Html {
 }
 
 export function handView(inputs: HandViewInputs): Html {
-  const { state, hiddenId, flyingIds, hiddenIds, handDrag, discardCostIds = null } = inputs;
+  const { state, hiddenId, flyingIds, hiddenIds, handDrag, discardCostIds = null, discardSelectedIds = null } = inputs;
   const viewer = state.viewer;
   const grouped = bySection(state.actions);
   const commandActionByObject = byObject(grouped.command);
@@ -412,6 +426,7 @@ export function handView(inputs: HandViewInputs): Html {
     slotInert: boolean;
     caption?: string;
     discardSelectable?: boolean;
+    discardSelected?: boolean;
   };
   const handSlots: HandSlot[] = [];
   for (const c of handCards) {
@@ -428,6 +443,7 @@ export function handView(inputs: HandViewInputs): Html {
       slotInert: slotInert(c.id),
       caption: actionCaption(action?.kind ?? ""),
       discardSelectable: discardCostIds?.has(c.id) ?? false,
+      discardSelected: discardSelectedIds?.has(c.id) ?? false,
     });
   }
   for (const extra of handExtras(grouped.hand)) {
@@ -443,6 +459,7 @@ export function handView(inputs: HandViewInputs): Html {
       slotInert: false,
       caption: actionCaption(extra.kind),
       discardSelectable: extra.object != null ? (discardCostIds?.has(extra.object) ?? false) : false,
+      discardSelected: extra.object != null ? (discardSelectedIds?.has(extra.object) ?? false) : false,
     });
   }
   const handTiles = handSlots.map((slot, index) =>

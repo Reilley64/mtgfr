@@ -47,6 +47,24 @@ function className(node: unknown): string {
     .join(" ");
 }
 
+function findTestId(node: unknown, id: string): unknown | null {
+  if (testId(node) === id) return node;
+  if (node == null || typeof node !== "object") return null;
+  const n = node as { children?: unknown[] };
+  for (const child of n.children ?? []) {
+    const found = findTestId(child, id);
+    if (found != null) return found;
+  }
+  return null;
+}
+
+function dataAttr(node: unknown, name: string): string | null {
+  if (node == null || typeof node !== "object") return null;
+  const n = node as { data?: { attrs?: Record<string, string> } };
+  const value = n.data?.attrs?.[`data-${name}`];
+  return typeof value === "string" ? value : null;
+}
+
 function findParentOfTestId(node: unknown, id: string): unknown | null {
   if (node == null || typeof node !== "object") return null;
   const n = node as { children?: unknown[] };
@@ -1750,8 +1768,89 @@ test("discard cost aim shows coach when choices are in hand", () => {
       gameState({ objects: [caster, fodder] }),
     ),
     Scene.expect(Scene.testId("discard-cost-aim")).toExist(),
+    Scene.expect(Scene.testId("prompt-submit")).toBeDisabled(),
+    Scene.expect(Scene.testId("discard-cost-count")).toHaveText("0 / 1 selected"),
     Scene.expect(Scene.testId("discard-pick")).toBeAbsent(),
     Scene.expect(Scene.testId("discard-pick-aim")).toBeAbsent(),
+  );
+});
+
+test("selected discard-cost hand card paints Llanowar selected chrome", () => {
+  const caster = card(10, {
+    name: "Caster",
+    zone: ZONE.Hand,
+    kind: { kind: "instant" },
+  });
+  const fodder = card(11, {
+    name: "Island",
+    zone: ZONE.Hand,
+    kind: { kind: "land", colors: [0, 1, 0, 0, 0] },
+  });
+  const castAction = action(50, {
+    kind: "cast",
+    label: "Cast",
+    discard_choices: [11],
+    object: 10,
+    section: "hand",
+  });
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        discardPick: {
+          action: castAction,
+          card: caster,
+          dropSeed: { x: 0, y: 0 },
+          screenOrigin: { x: 0, y: 0 },
+          picks: { ...emptyCostPicks(), discard_cost: [11] },
+        },
+      },
+      gameState({ objects: [caster, fodder] }),
+    ),
+    Scene.expect(Scene.testId("hand-card-11")).toExist(),
+    Scene.expect(Scene.testId("hand-card-face-11")).toExist(),
+    Scene.tap((sim) => {
+      const face = findTestId(sim.html, "hand-card-face-11");
+      expect(dataAttr(face, "discard-selected")).toBe("1");
+      expect(className(face)).toContain("ring-llanowar");
+    }),
+  );
+});
+
+test("discard cost aim enables confirm when one card selected", () => {
+  const caster = card(10, {
+    name: "Caster",
+    zone: ZONE.Hand,
+    kind: { kind: "instant" },
+  });
+  const fodder = card(11, {
+    name: "Island",
+    zone: ZONE.Hand,
+    kind: { kind: "land", colors: [0, 1, 0, 0, 0] },
+  });
+  const castAction = action(50, {
+    kind: "cast",
+    label: "Cast",
+    discard_choices: [11],
+    object: 10,
+    section: "hand",
+  });
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        discardPick: {
+          action: castAction,
+          card: caster,
+          dropSeed: { x: 0, y: 0 },
+          screenOrigin: { x: 0, y: 0 },
+          picks: { ...emptyCostPicks(), discard_cost: [11] },
+        },
+      },
+      gameState({ objects: [caster, fodder] }),
+    ),
+    Scene.expect(Scene.testId("prompt-submit")).not.toBeDisabled(),
+    Scene.expect(Scene.testId("discard-cost-count")).toHaveText("1 / 1 selected"),
   );
 });
 
@@ -1810,6 +1909,111 @@ test("pending discard aim shows coach when cards are in hand", () => {
     ),
     Scene.expect(Scene.testId("pending-discard-aim")).toExist(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+  );
+});
+
+test("pending discard aim shows Confirm and count for single-card discard", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        objects: [card(11, { zone: ZONE.Hand, name: "A" })],
+        pending_choice: {
+          kind: "discard",
+          player: 0,
+          count: 1,
+          items: [{ id: 11, label: "A" }],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-discard-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-discard-count")).toHaveText("0 / 1 selected"),
+    Scene.expect(Scene.testId("prompt-submit")).toBeDisabled(),
+    Scene.expect(Scene.testId("prompt-submit")).toHaveText("Discard"),
+  );
+});
+
+test("selected pending discard hand card paints Llanowar selected chrome", () => {
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        promptDraft: { kind: "card-pick", picked: [11], filter: "" },
+      },
+      gameState({
+        objects: [
+          card(11, {
+            name: "Island",
+            zone: ZONE.Hand,
+            kind: { kind: "land", colors: [0, 1, 0, 0, 0] },
+          }),
+        ],
+        pending_choice: {
+          kind: "discard",
+          player: 0,
+          count: 1,
+          items: [{ id: 11, label: "Island" }],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("hand-card-face-11")).toExist(),
+    Scene.tap((sim) => {
+      const face = findTestId(sim.html, "hand-card-face-11");
+      expect(dataAttr(face, "discard-selected")).toBe("1");
+      expect(className(face)).toContain("ring-llanowar");
+    }),
+  );
+});
+
+test("may_discard aim shows Continue enabled with zero picks", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        objects: [card(11, { zone: ZONE.Hand, name: "A" })],
+        pending_choice: {
+          kind: "may_discard",
+          player: 0,
+          source: 1,
+          items: [{ id: 11, label: "A" }],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-discard-aim")).toExist(),
+    Scene.expect(Scene.testId("prompt-submit")).not.toBeDisabled(),
+    Scene.expect(Scene.testId("prompt-submit")).toHaveText("Continue"),
+  );
+});
+
+test("selected may_discard hand card paints Llanowar selected chrome", () => {
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        promptDraft: { kind: "card-pick", picked: [11], filter: "" },
+      },
+      gameState({
+        objects: [
+          card(11, {
+            name: "Island",
+            zone: ZONE.Hand,
+            kind: { kind: "land", colors: [0, 1, 0, 0, 0] },
+          }),
+        ],
+        pending_choice: {
+          kind: "may_discard",
+          player: 0,
+          source: 1,
+          items: [{ id: 11, label: "Island" }],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("hand-card-face-11")).toExist(),
+    Scene.tap((sim) => {
+      const face = findTestId(sim.html, "hand-card-face-11");
+      expect(dataAttr(face, "discard-selected")).toBe("1");
+      expect(className(face)).toContain("ring-llanowar");
+    }),
   );
 });
 

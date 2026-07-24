@@ -887,12 +887,6 @@ function submitPendingHandPick(
   objectId: number,
 ): BoardReturn {
   const idle = { ...model, handDrag: null, hoverActionId: null };
-  if (pc.kind === "discard" && pc.count === 1) {
-    return [
-      { ...idle, promptDraft: null, pendingChoiceKey: null },
-      boardIntentSubmit(tableId, choiceIntent(pc, { kind: "discard", cards: [objectId] })),
-    ];
-  }
   if (pc.kind === "put_land_from_hand") {
     return [
       { ...idle, promptDraft: null, pendingChoiceKey: null },
@@ -1228,6 +1222,35 @@ function tryConfirmGyExile(model: BoardModel, fold: GameFoldState, tableId: stri
   return settleGyExilePick(model, fold, tableId, pick, selected);
 }
 
+function settleDiscardCostPick(
+  model: BoardModel,
+  fold: GameFoldState,
+  tableId: string | null,
+  pick: CostPickState,
+): BoardReturn {
+  const selected = pick.picks.discard_cost;
+  const picks: CostPicks = { ...pick.picks, discard_cost: selected, discard_settled: true };
+  return continueAfterCostPick(
+    { ...model, discardPick: null },
+    fold,
+    tableId,
+    pick.action,
+    pick.card,
+    picks,
+    pick.dropSeed,
+    pick.screenOrigin,
+  );
+}
+
+/** Enter/Space confirm for local discard cost when exactly one card is selected. */
+function tryConfirmDiscardCost(model: BoardModel, fold: GameFoldState, tableId: string | null): BoardReturn | null {
+  const pick = model.discardPick;
+  if (pick == null) return null;
+  const selected = pick.picks.discard_cost;
+  if (selected.length !== 1) return [model, []];
+  return settleDiscardCostPick(model, fold, tableId, pick);
+}
+
 function continueAfterCostPick(
   model: BoardModel,
   fold: GameFoldState,
@@ -1321,21 +1344,24 @@ function handActivated(
     if (objectId == null || !choices.includes(objectId)) {
       return [{ ...model, handDrag: null, hoverActionId: null }, []];
     }
-    const picks: CostPicks = {
-      ...model.discardPick.picks,
-      discard_cost: [objectId],
-      discard_settled: true,
-    };
-    return continueAfterCostPick(
-      { ...model, discardPick: null, handDrag: null, hoverActionId: null },
-      fold,
-      tableId,
-      model.discardPick.action,
-      model.discardPick.card,
-      picks,
-      model.discardPick.dropSeed,
-      model.discardPick.screenOrigin,
-    );
+    const current = model.discardPick.picks.discard_cost;
+    const next = current.includes(objectId)
+      ? current.filter((id) => id !== objectId)
+      : current.length >= 1
+        ? current
+        : [...current, objectId];
+    return [
+      {
+        ...model,
+        handDrag: null,
+        hoverActionId: null,
+        discardPick: {
+          ...model.discardPick,
+          picks: { ...model.discardPick.picks, discard_cost: next, discard_settled: false },
+        },
+      },
+      [],
+    ];
   }
   const threshold = model.viewport.height - HAND_BAR_H + HAND_PLAY_SLACK_PX;
   const card = objectByAction(fold, action);
@@ -1917,17 +1943,47 @@ export function updateBoard(
     case "DiscardChosen": {
       const pick = model.discardPick;
       if (pick != null) {
-        const picks: CostPicks = { ...pick.picks, discard_cost: [...message.ids], discard_settled: true };
-        return continueAfterCostPick(
-          { ...model, discardPick: null },
-          fold,
-          tableId,
-          pick.action,
-          pick.card,
-          picks,
-          pick.dropSeed,
-          pick.screenOrigin,
-        );
+        const objectId = message.ids[0];
+        if (objectId == null) return [model, []];
+        const choices = pick.action.discard_choices ?? [];
+        if (!choices.includes(objectId)) return [model, []];
+        const state = fold.state;
+        const handIds =
+          state != null
+            ? new Set(
+                state.objects.filter((o) => o.zone === ZONE.Hand && o.owner === state.viewer).map((o) => o.id),
+              )
+            : new Set<number>();
+        const onHand = choices.length > 0 && choices.every((id) => handIds.has(id));
+        if (!onHand) {
+          const picks: CostPicks = { ...pick.picks, discard_cost: [objectId], discard_settled: true };
+          return continueAfterCostPick(
+            { ...model, discardPick: null },
+            fold,
+            tableId,
+            pick.action,
+            pick.card,
+            picks,
+            pick.dropSeed,
+            pick.screenOrigin,
+          );
+        }
+        const current = pick.picks.discard_cost;
+        const next = current.includes(objectId)
+          ? current.filter((id) => id !== objectId)
+          : current.length >= 1
+            ? current
+            : [...current, objectId];
+        return [
+          {
+            ...model,
+            discardPick: {
+              ...pick,
+              picks: { ...pick.picks, discard_cost: next, discard_settled: false },
+            },
+          },
+          [],
+        ];
       }
       const state = fold.state;
       const pc = state?.pending_choice ?? null;
@@ -1977,6 +2033,12 @@ export function updateBoard(
       const selected = pick.picks.graveyard_exile;
       if (selected.length < min || selected.length > max) return [model, []];
       return settleGyExilePick(model, fold, tableId, pick, selected);
+    }
+    case "DiscardCostConfirmed": {
+      const pick = model.discardPick;
+      if (pick == null) return [model, []];
+      if (pick.picks.discard_cost.length !== 1) return [model, []];
+      return settleDiscardCostPick(model, fold, tableId, pick);
     }
     case "CombatAttackerDropped": {
       const from = fold.state?.objects.find((o) => o.id === message.attackerId) ?? null;
@@ -2427,6 +2489,8 @@ export function updateBoard(
       if (fold.state?.mulliganing) return [model, []];
       const gyExile = tryConfirmGyExile(model, fold, tableId);
       if (gyExile != null) return gyExile;
+      const discardCost = tryConfirmDiscardCost(model, fold, tableId);
+      if (discardCost != null) return discardCost;
       const submitted = trySubmitReadyPendingDraft(model, fold, tableId);
       if (submitted != null) return submitted;
       return primaryClickModel(model, fold, tableId);
@@ -2437,6 +2501,8 @@ export function updateBoard(
       if (state.mulliganing) return [model, []];
       const gyExile = tryConfirmGyExile(model, fold, tableId);
       if (gyExile != null) return gyExile;
+      const discardCost = tryConfirmDiscardCost(model, fold, tableId);
+      if (discardCost != null) return discardCost;
       const submitted = trySubmitReadyPendingDraft(model, fold, tableId);
       if (submitted != null) return submitted;
       const me = state.viewer;
