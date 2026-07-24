@@ -83,7 +83,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - `pay_any_amount_of_mana` (join forces) shows docked `pending-join-forces-aim` with Min/−/value/+/Max stepper and Pay submit.
 - `may_draw_up_to` / `trade_secrets_caster_draw` show docked `pending-draw-count-aim` with one-click number buttons (`0`…`max`).
 - `opponent_chooses_pile` / `choose_pile_for_hand` show docked `pending-pile-aim` with Pile A / Pile B (card labels + choose buttons).
-- `choose_target_players` / `choose_splitting_opponent` with seat-tagged items aim at life orbs (`pending-player-aim`); one-click when `max === 1` (or splitting); multi-pick accumulates seats in the player-pick draft with Confirm. Enter / Space submit when ready. Picked seats paint a solid Priority Gold ring (`pickedPlayers`).
+- `choose_target_players` / `choose_splitting_opponent` with seat-tagged items aim at life orbs (`pending-player-aim`); one-click when `max === 1` (or splitting); multi-pick accumulates seats in the player-pick draft with Confirm. Enter / Space submit when ready. Picked seats paint a solid Priority Gold ring (`pickedPlayers`). Items without seat tags fall back to docked `pending-player-pick-aim` player buttons (Choose/Cancel for multi-pick).
 - `scry` / `surveil` use docked `pending-arrange-aim` with two-lane arrange chrome (`prompt-arrange-lanes`): cards start in Bottom (library bottom or Graveyard for Surveil); click toggles a card between Top and Bottom, preserving left-to-right order in each lane. Done always submits `arrange_top` via partition draft `{ top, bottom }`.
 - `select_from_top` uses docked `pending-select-top-aim` with Take vs Bottom lanes (`prompt-select-top-lanes`); click toggles into Take (capped at `up_to`); Done submits `select_from_top` with the Take ids.
 - `distribute_top` uses docked `pending-distribute-aim` with Revealed / Hand / Bottom / Exile lanes (`prompt-distribute-lanes`); click cycles a card through lanes with room (`nextDistributeBucket`), then back to Revealed; Distribute enables when each lane hits its exact count.
@@ -128,6 +128,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Scene/unit tests cover docked draw-count `pending-draw-count-aim` (number buttons; no center `pending-choice`; `choose_draw_count` intent).
 - Scene tests cover docked `pending-trigger-modes-aim` (mode rows; no center `pending-choice`).
 - Scene/unit tests cover docked `pending-pile-aim` (Pile A/B; no center `pending-choice`; `choose_opponent_pile` intent).
+- Scene tests cover docked `pending-player-pick-aim` for untagged `choose_target_players` / `choose_splitting_opponent` lists (no center `pending-choice`).
 - Scene/unit tests cover library-search docked aim (`pending-library-aim`), filter, face dedupe, pinned scroll chrome, Choose, and Fail to find.
 - Scene/unit tests cover docked `pending-creature-type-aim` (filter strip; no center `pending-choice`; `choose_creature_type` intent).
 - Scene/unit tests cover docked `pending-card-name-aim` (placeholder, Name submit, suggestions; no center `pending-choice`).
