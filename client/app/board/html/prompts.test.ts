@@ -1082,6 +1082,8 @@ test("choose_color prompt renders mana-font pips instead of letter labels", () =
       ),
     ),
     resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("pending-color-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-color-0")).toExist(),
     Scene.expect(Scene.testId("prompt-color-pip-0")).toExist(),
     Scene.expect(Scene.testId("prompt-color-pip-1")).toExist(),

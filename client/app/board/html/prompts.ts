@@ -2166,53 +2166,64 @@ function colorPickPrompt(
     { index: 4, code: "G", name: "Green" },
   ] as const;
   const sizePx = 28;
-  return frame("pending-choice", pending.kind === "choose_mana_color" ? "Choose a mana color" : "Choose a color", [
-    h.div(
-      [h.Class("flex flex-wrap items-center justify-center gap-2")],
-      colors.map((color) => {
-        const ms = manaFontClass(color.code) ?? color.code.toLowerCase();
-        return h.button(
-          [
-            h.Type("button"),
-            h.DataAttribute("testid", `prompt-color-${color.index}`),
-            h.AriaLabel(color.name),
-            h.Disabled(tableId == null),
-            h.OnClick(
-              PendingChoiceAnswered({
-                intent: choiceIntent(
-                  pending,
-                  pending.kind === "choose_mana_color"
-                    ? { kind: "mana_color", color: color.index }
-                    : { kind: "color", color: color.index },
-                ),
-              }),
-            ),
-            h.Class(
-              "group relative cursor-pointer rounded-hud border-0 bg-transparent p-1 disabled:cursor-not-allowed disabled:opacity-50",
-            ),
-          ],
-          [
-            h.span(
-              [
-                h.DataAttribute("testid", `prompt-color-pip-${color.index}`),
-                h.Class(
-                  "inline-flex shrink-0 items-center justify-center rounded-full shadow-[0_1px_2px_rgb(0_0_0/0.9)] transition-transform duration-150 ease-out group-hover:-translate-y-1",
-                ),
-                h.Style({
-                  width: `${sizePx}px`,
-                  height: `${sizePx}px`,
-                  "background-color": costPipPlate(color.code),
-                  color: "#111",
-                  "font-size": `${Math.round(sizePx * 0.82)}px`,
+  const title = pending.kind === "choose_mana_color" ? "Choose a mana color" : "Choose a color";
+  return h.div(
+    [
+      h.DataAttribute("testid", "pending-color-aim"),
+      h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+      h.Class(
+        "pointer-events-auto fixed left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+      ),
+    ],
+    [
+      h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], [title]),
+      h.div(
+        [h.Class("flex flex-wrap items-center justify-center gap-2")],
+        colors.map((color) => {
+          const ms = manaFontClass(color.code) ?? color.code.toLowerCase();
+          return h.button(
+            [
+              h.Type("button"),
+              h.DataAttribute("testid", `prompt-color-${color.index}`),
+              h.AriaLabel(color.name),
+              h.Disabled(tableId == null),
+              h.OnClick(
+                PendingChoiceAnswered({
+                  intent: choiceIntent(
+                    pending,
+                    pending.kind === "choose_mana_color"
+                      ? { kind: "mana_color", color: color.index }
+                      : { kind: "color", color: color.index },
+                  ),
                 }),
-              ],
-              [h.i([h.Class(`ms ms-${ms}`)], [])],
-            ),
-          ],
-        );
-      }),
-    ),
-  ]);
+              ),
+              h.Class(
+                "group relative cursor-pointer rounded-hud border-0 bg-transparent p-1 disabled:cursor-not-allowed disabled:opacity-50",
+              ),
+            ],
+            [
+              h.span(
+                [
+                  h.DataAttribute("testid", `prompt-color-pip-${color.index}`),
+                  h.Class(
+                    "inline-flex shrink-0 items-center justify-center rounded-full shadow-[0_1px_2px_rgb(0_0_0/0.9)] transition-transform duration-150 ease-out group-hover:-translate-y-1",
+                  ),
+                  h.Style({
+                    width: `${sizePx}px`,
+                    height: `${sizePx}px`,
+                    "background-color": costPipPlate(color.code),
+                    color: "#111",
+                    "font-size": `${Math.round(sizePx * 0.82)}px`,
+                  }),
+                ],
+                [h.i([h.Class(`ms ms-${ms}`)], [])],
+              ),
+            ],
+          );
+        }),
+      ),
+    ],
+  );
 }
 
 function stringPickPrompt(
