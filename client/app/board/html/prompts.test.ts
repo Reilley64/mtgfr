@@ -876,6 +876,27 @@ test("choose_mode prompt emits choose_mode intent from UI", () => {
   expect(intents).toEqual([{ kind: "choose_mode", player: 0, mode: 1 }]);
 });
 
+test("choose_mode aim docks above the hand bar", () => {
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(
+      viewModel(
+        state({
+          pending_choice: {
+            kind: "choose_mode",
+            labels: ["Mode A", "Mode B"],
+            player: 0,
+            source: 1,
+          },
+        }),
+      ),
+    ),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("pending-mode-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+  );
+});
+
 test("choose_target_players on-board aim shows pending-player-aim chrome", () => {
   const s = state({
     pending_choice: {

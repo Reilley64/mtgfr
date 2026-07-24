@@ -1667,21 +1667,31 @@ function modeListPrompt(
   tableId: string | null,
 ): Html {
   if (pending.kind === "choose_mode") {
-    return frame("pending-choice", "Choose a mode", [
-      h.div(
-        [h.Class("flex flex-col gap-2")],
-        pending.labels.map((label, index) =>
-          answerButton(
-            pending,
-            `prompt-mode-${index}`,
-            label,
-            { kind: "mode", mode: index },
-            index === 0,
-            tableId == null,
+    return h.div(
+      [
+        h.DataAttribute("testid", "pending-mode-aim"),
+        h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+        h.Class(
+          "pointer-events-auto fixed left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+        ),
+      ],
+      [
+        h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], ["Choose a mode"]),
+        h.div(
+          [h.Class("flex flex-col gap-2")],
+          pending.labels.map((label, index) =>
+            answerButton(
+              pending,
+              `prompt-mode-${index}`,
+              label,
+              { kind: "mode", mode: index },
+              index === 0,
+              tableId == null,
+            ),
           ),
         ),
-      ),
-    ]);
+      ],
+    );
   }
 
   const draft = board.promptDraft ?? initPromptDraft(pending, state);

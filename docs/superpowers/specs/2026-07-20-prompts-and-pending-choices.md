@@ -76,6 +76,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - `revealed_card_to_battlefield_or_hand` shows docked `pending-revealed-destination-aim` with the revealed face plus Battlefield / Hand.
 - `choose_countered_spell_destination` shows docked `pending-destination-aim` with Top / Bottom.
 - `may_yes_no` / `dance_exile_more` / `trade_secrets_repeat` show docked `pending-yes-no-aim` with Yes / No.
+- `choose_mode` shows docked `pending-mode-aim` with one-click mode labels (`prompt-mode-{i}`); `choose_trigger_modes` stays a center `pending-choice` multi-select + Confirm.
 - `choose_target_players` / `choose_splitting_opponent` with seat-tagged items aim at life orbs (`pending-player-aim`); one-click when `max === 1` (or splitting); multi-pick accumulates seats in the player-pick draft with Confirm. Enter / Space submit when ready. Picked seats paint a solid Priority Gold ring (`pickedPlayers`).
 - `scry` / `surveil` use docked `pending-arrange-aim` with two-lane arrange chrome (`prompt-arrange-lanes`): cards start in Bottom (library bottom or Graveyard for Surveil); click toggles a card between Top and Bottom, preserving left-to-right order in each lane. Done always submits `arrange_top` via partition draft `{ top, bottom }`.
 - `select_from_top` uses docked `pending-select-top-aim` with Take vs Bottom lanes (`prompt-select-top-lanes`); click toggles into Take (capped at `up_to`); Done submits `select_from_top` with the Take ids.
@@ -115,7 +116,11 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Scene tests cover Space/Enter submitting ready scry / order_triggers / distribute_top drafts (and refusing incomplete distribute_top).
 - Scene/unit tests cover dredge decline (`Draw normally` → `dredger: null`) and single-pick readiness for Dredge.
 - Scene tests cover pay-cost button copy (`Pay {…}` and kind-specific declines).
+<<<<<<< HEAD
 - Scene tests cover docked `pending-color-aim` for `choose_color` / `choose_mana_color` (mana pips; no center `pending-choice`).
+=======
+- Scene tests cover docked `pending-mode-aim` for `choose_mode` (mode buttons; no center `pending-choice`).
+>>>>>>> 30381815 (feat(client): dock choose_mode as pending-mode-aim)
 - Scene/unit tests cover join-forces mana stepper (no per-N buttons; draft submit).
 - Scene/unit tests cover library-search docked aim (`pending-library-aim`), filter, face dedupe, pinned scroll chrome, Choose, and Fail to find.
 - Scene tests cover `choose_card_name` typeahead list when suggestions match the draft query.
