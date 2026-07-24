@@ -1886,23 +1886,36 @@ function divideTotalPrompt(
             ],
           ),
         );
-    return frame("pending-choice", `Divide ${pending.total} damage`, [
-      onBoard
-        ? h.div(
-            [h.DataAttribute("testid", "pending-divide-aim"), h.Class("text-body text-mist")],
-            ["Click a target on the board to move 1 damage onto it"],
-          )
-        : null,
-      ...rows,
-      h.div(
-        [
-          h.DataAttribute("testid", "prompt-damage-assigned"),
-          h.Class(assigned === pending.total ? "text-assign-clover" : "text-caution-amber"),
-        ],
-        [`assigned ${assigned} / ${pending.total}`],
-      ),
-      submitButton("Assign", !ready),
-    ]);
+    return h.div(
+      [
+        h.DataAttribute("testid", "pending-divide-aim"),
+        h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+        h.Class(
+          "pointer-events-auto fixed left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+        ),
+      ],
+      [
+        h.div(
+          [h.Class("pointer-events-none text-center font-semibold text-body text-snow")],
+          [`Divide ${pending.total} damage`],
+        ),
+        onBoard
+          ? h.div(
+              [h.Class("pointer-events-none text-center text-body text-mist")],
+              ["Click a target on the board to move 1 damage onto it"],
+            )
+          : null,
+        ...rows,
+        h.div(
+          [
+            h.DataAttribute("testid", "prompt-damage-assigned"),
+            h.Class(assigned === pending.total ? "text-assign-clover" : "text-caution-amber"),
+          ],
+          [`assigned ${assigned} / ${pending.total}`],
+        ),
+        submitButton("Assign", !ready),
+      ].filter((v): v is Html => v !== null),
+    );
   }
 
   const amounts = draft.kind === "damage" ? draft.amounts : {};
