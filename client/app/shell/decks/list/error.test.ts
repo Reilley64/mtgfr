@@ -1,7 +1,8 @@
 import { Scene } from "foldkit/test";
 import { test } from "vitest";
+import { ClosedDeckListMenu } from "./messages";
 import { initialDeckListSubmodel } from "./submodel";
-import { view } from "./view";
+import { BindDeckListContextMenuEscape, view } from "./view";
 
 test("deck list errors use reconnect rust label styling", () => {
   Scene.scene(
@@ -12,5 +13,6 @@ test("deck list errors use reconnect rust label styling", () => {
     Scene.with({}),
     Scene.expect(Scene.selector('[role="alert"]')).toHaveClass("text-reconnect-rust"),
     Scene.expect(Scene.selector('[role="alert"]')).toHaveClass("text-label"),
+    Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
   );
 });
