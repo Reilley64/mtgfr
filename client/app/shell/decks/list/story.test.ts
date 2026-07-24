@@ -90,6 +90,19 @@ test("tile Play href uses ?deck= and search filters tiles", () => {
     Scene.expect(Scene.selector('[data-testid="deck-tile-1"][href="/play?deck=1"]')).toExist(),
     Scene.expect(Scene.selector('[data-testid="deck-tile--9"]')).toExist(),
     Scene.expect(Scene.selector('[data-testid="deck-tile--1"]')).toExist(),
+    Scene.expectAll(Scene.all.selector('[data-testid^="deck-tile-"]')).toHaveCount(3),
+    Scene.expect(Scene.nth(Scene.all.selector('[data-testid^="deck-tile-"]'), 0)).toHaveAttr(
+      "data-testid",
+      "deck-tile-1",
+    ),
+    Scene.expect(Scene.nth(Scene.all.selector('[data-testid^="deck-tile-"]'), 1)).toHaveAttr(
+      "data-testid",
+      "deck-tile--9",
+    ),
+    Scene.expect(Scene.nth(Scene.all.selector('[data-testid^="deck-tile-"]'), 2)).toHaveAttr(
+      "data-testid",
+      "deck-tile--1",
+    ),
     Scene.Mount.resolveAll(
       [BindDeckListCommanderHover, ClearedDeckListHover()],
       [BindDeckListCommanderHover, ClearedDeckListHover()],
