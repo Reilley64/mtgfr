@@ -32,7 +32,7 @@ The camera is `{ panX, panY, zoom }` and follows:
 screen = world * zoom + pan
 ```
 
-`worldToScreen` and `screenToWorld` are pure and do not read DOM state. `zoomAt(cam, sx, sy, factor)` preserves the world point under the screen coordinate while zooming. Zoom is bounded to the board limits. Panning changes `panX` and `panY` and marks the camera as user-moved so automatic fitting does not fight the player.
+`worldToScreen` and `screenToWorld` are pure and do not read DOM state. `zoomAt(cam, sx, sy, factor)` preserves the world point under the screen coordinate while zooming. Zoom is bounded to the board limits. Panning changes `panX` and `panY` and sets `cameraUserMoved` so automatic fitting does not fight the player on later game syncs.
 
 ### fitCamera
 
@@ -80,6 +80,7 @@ Attachments remain associated with their host for layout and hover raise. Tapped
 - Hit-test tests cover overlapped/tapped cards, topmost resolution, and avatar hits.
 - Density tests cover row packing, cluster fan poses, clamping to seat bands, and hover raise ordering.
 - Interaction tests cover pan-vs-click thresholds and camera user-moved behavior.
+- Board sync tests cover that a user-panned camera is preserved across later game syncs (actions/deltas must not re-fit).
 
 ## Out of Scope
 
