@@ -16,7 +16,7 @@ import { ClearedBuilderHover } from "./decks/builder/messages";
 import { initialDeckBuilderSubmodel } from "./decks/builder/submodel";
 import { BindBuilderCardPointer } from "./decks/builder/view";
 import { ClearedDeckListHover, ClosedDeckListMenu } from "./decks/list/messages";
-import { BindDeckListCommanderHover, BindDeckListContextMenu } from "./decks/list/view";
+import { BindDeckListCommanderHover, BindDeckListContextMenu, BindDeckListContextMenuEscape } from "./decks/list/view";
 import { initialLobbySlice } from "./lobby/submodel";
 
 const me = { id: 1, email: "alice@example.com", username: "alice" };
@@ -153,6 +153,7 @@ describe("shell surface scenes", () => {
       ),
       Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), ClosedDeckListMenu()),
       Scene.Mount.resolve(BindCardArt, CardArtTick()),
+      Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
     );
   });
 
@@ -182,6 +183,7 @@ describe("shell surface scenes", () => {
       ),
       Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), ClosedDeckListMenu()),
       Scene.Mount.resolve(BindCardArt, CardArtTick()),
+      Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
     );
   });
 
@@ -201,6 +203,7 @@ describe("shell surface scenes", () => {
         }),
       ),
       Scene.expect(Scene.text("No decks yet — build one to get started.")).toExist(),
+      Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
     );
   });
 
@@ -219,6 +222,7 @@ describe("shell surface scenes", () => {
         }),
       ),
       Scene.expect(Scene.text("Loading decks…")).toExist(),
+      Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
     );
   });
 

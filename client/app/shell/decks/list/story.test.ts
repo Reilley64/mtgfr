@@ -12,7 +12,7 @@ import {
 } from "./messages";
 import { initialDeckListSubmodel } from "./submodel";
 import { update } from "./update";
-import { BindDeckListCommanderHover, BindDeckListContextMenu, view } from "./view";
+import { BindDeckListCommanderHover, BindDeckListContextMenu, BindDeckListContextMenuEscape, view } from "./view";
 
 const listView = Submodel.defineView<ReturnType<typeof initialDeckListSubmodel>, DeckListMessage>((model) =>
   view(model, "alice", null),
@@ -104,6 +104,7 @@ test("commander hover preview renders when model carries hover state", () => {
       BindDeckListCommanderHover({ cardId: "atraxa", print: "atraxa-print" }),
       ClearedDeckListHover(),
     ),
+    Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
     Scene.Mount.expectEnded(BindCardArt),
   );
 });
@@ -147,6 +148,7 @@ test("tile Play href uses ?deck= and search filters tiles", () => {
       [BindDeckListContextMenu, ClosedDeckListMenu()],
       [BindDeckListContextMenu, ClosedDeckListMenu()],
     ),
+    Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
     Scene.type(Scene.selector('[data-testid="deck-list-search"]'), "mirror"),
     Scene.Mount.expectEnded(
       BindDeckListCommanderHover,
@@ -180,6 +182,7 @@ test("owned deck context menu offers Edit and Delete", () => {
     Scene.expect(Scene.selector('[data-testid="deck-list-context-menu"]')).toExist(),
     Scene.expect(Scene.selector('[data-testid="deck-list-menu-edit"][href="/decks/1"]')).toExist(),
     Scene.expect(Scene.selector('[data-testid="deck-list-menu-delete"]')).toExist(),
+    Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
     Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), ClosedDeckListMenu()),
     Scene.Mount.resolve(BindDeckListContextMenu({ deckId: -1 }), ClosedDeckListMenu()),
     Scene.Mount.resolve(BindCardArt, CardArtTick()),
@@ -200,6 +203,7 @@ test("menu Delete opens the confirm dialog", () => {
       decks: [{ id: 1, name: "Superfriends", commander: "atraxa", commander_print: "atraxa-print" }],
       knownCommanders: { atraxa: card({ id: "atraxa", name: "Atraxa, Praetors' Voice" }) },
     }),
+    Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
     Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), OpenedDeckListMenu({ deckId: 1, x: 40, y: 50 })),
     Scene.Mount.resolve(
       BindDeckListCommanderHover({ cardId: "atraxa", print: "atraxa-print" }),
@@ -210,5 +214,26 @@ test("menu Delete opens the confirm dialog", () => {
     Scene.expect(Scene.selector('[data-testid="confirm-delete-dialog"]')).toExist(),
     Scene.expect(Scene.selector('[data-testid="deck-list-context-menu"]')).not.toExist(),
     Scene.Mount.resolve(OpenDialogAsModal(), ModalOpened()),
+  );
+});
+
+test("Escape closes the context menu", () => {
+  Scene.scene(
+    listProgram,
+    Scene.with({
+      ...initialDeckListSubmodel(),
+      contextMenu: { deckId: 1, x: 40, y: 50 },
+      decks: [{ id: 1, name: "Superfriends", commander: "atraxa", commander_print: "atraxa-print" }],
+      knownCommanders: { atraxa: card({ id: "atraxa", name: "Atraxa, Praetors' Voice" }) },
+    }),
+    Scene.expect(Scene.selector('[data-testid="deck-list-context-menu"]')).toExist(),
+    Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), OpenedDeckListMenu({ deckId: 1, x: 40, y: 50 })),
+    Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
+    Scene.expect(Scene.selector('[data-testid="deck-list-context-menu"]')).not.toExist(),
+    Scene.Mount.resolve(BindCardArt, CardArtTick()),
+    Scene.Mount.resolve(
+      BindDeckListCommanderHover({ cardId: "atraxa", print: "atraxa-print" }),
+      ClearedDeckListHover(),
+    ),
   );
 });

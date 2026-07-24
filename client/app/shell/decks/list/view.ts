@@ -1,4 +1,4 @@
-import { Effect, Option, Queue, Schema as S, Stream } from "effect";
+import { Effect, Queue, Schema as S, Stream } from "effect";
 import { type Html, html } from "foldkit/html";
 import * as Mount from "foldkit/mount";
 import { cn } from "../../../../lib/cn";
@@ -95,6 +95,38 @@ export const BindDeckListContextMenu = Mount.defineStream(
     ),
 );
 
+const CONTEXT_MENU_ROOT_SELECTOR = '[data-testid="deck-list-context-menu-root"]';
+
+/** Window-level Escape while the deck list context menu is open. */
+export const BindDeckListContextMenuEscape = Mount.defineStream(
+  "BindDeckListContextMenuEscape",
+  ClosedDeckListMenu,
+)(
+  (_element) =>
+    Stream.callback<typeof ClosedDeckListMenu.Type>((queue) =>
+      Effect.gen(function* () {
+        yield* Effect.acquireRelease(
+          Effect.sync(() => {
+            const onKeyDown = (event: Event): void => {
+              if (!(event instanceof KeyboardEvent)) return;
+              if (event.key !== "Escape") return;
+              if (document.querySelector(CONTEXT_MENU_ROOT_SELECTOR) == null) return;
+              event.preventDefault();
+              Queue.offerUnsafe(queue, ClosedDeckListMenu());
+            };
+            window.addEventListener("keydown", onKeyDown);
+            return onKeyDown;
+          }),
+          (onKeyDown) =>
+            Effect.sync(() => {
+              window.removeEventListener("keydown", onKeyDown);
+            }),
+        );
+        return yield* Effect.never;
+      }),
+    ),
+);
+
 function commanderName(model: DeckListSubmodel, id: string): string {
   return model.knownCommanders[id]?.name ?? id;
 }
@@ -131,7 +163,6 @@ function contextMenu(model: DeckListSubmodel): Html {
           h.DataAttribute("testid", "deck-list-context-menu-catcher"),
           h.OnClick(ClosedDeckListMenu()),
           h.OnContextMenu(ClosedDeckListMenu()),
-          h.OnKeyDownPreventDefault((key) => (key === "Escape" ? Option.some(ClosedDeckListMenu()) : Option.none())),
         ],
         [],
       ),
@@ -179,6 +210,7 @@ export function view(model: DeckListSubmodel, username: string, apiVersion: stri
         ),
       ),
       h.DataAttribute("testid", "decks-page"),
+      h.OnMount(BindDeckListContextMenuEscape()),
     ],
     [
       model.confirmingDeleteId != null
