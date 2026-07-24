@@ -1439,6 +1439,48 @@ mod tests {
         );
     }
 
+    /// Symmetric to empty declare-attackers: "No blockers" must not clear turn yield.
+    #[test]
+    fn empty_declare_blockers_does_not_clear_turn_yield() {
+        let bear = || cards::get_by_name("Grizzly Bear").expect("Grizzly Bear in pool");
+        let mut table = Table::empty();
+        let mut game = engine::Game::new();
+        // P0 keeps a post-combat instant so auto-advance cannot wrap to P1 Untap (which would
+        // clear P1's yield for an unrelated reason).
+        game.spawn_on_battlefield(PlayerId(0), cards::get_by_name("Mountain").unwrap());
+        game.spawn_in_hand(PlayerId(0), cards::get_by_name("Shock").unwrap());
+        let attacker = game.spawn_on_battlefield(PlayerId(0), bear());
+        let _blocker = game.spawn_on_battlefield(PlayerId(1), bear());
+        table.game = Some(game);
+        advance_table_to_step(&mut table, engine::Step::DeclareAttackers);
+        let (result, _) = TableSession::new(&mut table).submit_system(Intent::DeclareAttackers {
+            player: PlayerId(0),
+            attackers: vec![(attacker, Defender::Player(PlayerId(1)))],
+        });
+        assert!(result.accepted);
+        assert_eq!(
+            table.game.as_ref().unwrap().current_step(),
+            engine::Step::DeclareBlockers
+        );
+
+        // Attack events clear P1's yield; re-arm to isolate the empty-blockers intent path.
+        table.chrome.set_turn_yield_flag(1, true);
+        let (result, _) = TableSession::new(&mut table).submit(Intent::DeclareBlockers {
+            player: PlayerId(1),
+            blocks: vec![],
+        });
+        assert!(result.accepted, "empty blockers: {:?}", result.reason);
+        assert_eq!(
+            table.game.as_ref().unwrap().active_player(),
+            PlayerId(0),
+            "fixture must still be P0's turn so Untap cannot clear P1's yield"
+        );
+        assert!(
+            table.chrome.turn_yields()[1],
+            "empty No blockers must not clear turn yield"
+        );
+    }
+
     /// Arena End Turn (turn-priority-and-stack spec): active player arms turn yield → auto-pass through remaining
     /// steps until the next player's turn, while opponents still receive priority windows.
     #[test]

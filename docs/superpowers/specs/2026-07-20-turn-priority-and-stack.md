@@ -95,7 +95,7 @@ These are **server-side chrome**, not engine concepts. The engine only receives 
 
 - **Stack yield**: once armed for a seat, auto-advance treats that seat as passing for the rest of the current stack. Clears when the stack empties.
 - **Turn yield**: once armed, auto-advance treats the seat as passing until one of: (a) it becomes the active player at Untap, (b) it is attacked (any `AttackerDeclared` targeting it clears the flag), (c) it submits any intentional action (cast, activate, manual Pass / Next, or a non-empty combat declaration). Auto-submitted `PassPriority` (from auto-advance or the hold timer) does not clear it. Empty `DeclareAttackers` / `DeclareBlockers` are structural seals (same as auto-advance’s empty seal) and do not clear the flag — so a client “No attackers” racing `SetTurnYield` cannot cancel End Turn.
-- **End Turn**: turn yield armed while that seat is the active player. Additional clears: (a) at Cleanup for that seat, (b) when any other seat submits a non-PassPriority intent (so the ending player can respond). While End Turn is active, `has_empty_stack_instant_play` is checked on other seats so they still get response windows.
+- **End Turn**: turn yield armed while that seat is the active player. Additional clears: (a) at Cleanup for that seat, (b) when any other seat submits a non-PassPriority intent that itself clears turn yield (so the ending player can respond — empty combat declarations do not count). While End Turn is active, `has_empty_stack_instant_play` is checked on other seats so they still get response windows.
 
 ### Stack hold and helpless dwell
 
