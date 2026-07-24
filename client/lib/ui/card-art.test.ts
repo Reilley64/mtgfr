@@ -78,3 +78,41 @@ describe("syncCardArtHost", () => {
     expect(host.querySelector("img")?.getAttribute("alt")).toBe("B");
   });
 });
+
+describe("syncCardArtHost art_crop CDN fallback", () => {
+  afterEach(() => {
+    document.body.replaceChildren();
+  });
+
+  it("swaps to data-art-fallback after primary load failure", async () => {
+    let lastImg!: { src: string; onload: (() => void) | null; onerror: (() => void) | null };
+    const cache = new ImageCache(
+      () => {},
+      () => {
+        lastImg = { src: "", onload: null, onerror: null };
+        return lastImg;
+      },
+    );
+
+    const host = document.createElement("div");
+    host.dataset.artUrl = "https://cards.example.com/art_crop/front/a/b/abcd.webp";
+    host.dataset.artFallback = "https://api.scryfall.com/cards/abcd?format=image&version=art_crop";
+    host.dataset.artAlt = "Commander";
+    host.dataset.artClass = "art";
+    document.body.append(host);
+
+    syncCardArtHost(host, cache);
+    expect(host.querySelector("[aria-hidden='true']")).toBeTruthy();
+    lastImg.onerror?.();
+    await waitUntil(
+      () => cache.isFailed(host.dataset.artUrl ?? "nope") || host.dataset.artUrl?.includes("scryfall") === true,
+    );
+    syncCardArtHost(host, cache);
+    expect(host.dataset.artUrl).toContain("api.scryfall.com");
+    expect(host.dataset.artFallback ?? "").toBe("");
+    lastImg.onload?.();
+    await waitUntil(() => cache.isReady(host.dataset.artUrl ?? ""));
+    syncCardArtHost(host, cache);
+    expect(host.querySelector("img")?.getAttribute("src")).toContain("api.scryfall.com");
+  });
+});

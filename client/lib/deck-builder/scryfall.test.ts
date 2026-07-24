@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { artCropFallbackUrl, buildImageUrl, imageUrlByPrint, scryfallImageUrl, searchPrints } from "./scryfall";
+import { artCropFallbackUrl, buildImageUrl, scryfallImageUrl, searchPrints } from "./scryfall";
 
 afterEach(() => {
   vi.unstubAllGlobals();

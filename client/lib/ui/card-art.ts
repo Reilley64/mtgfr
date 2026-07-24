@@ -2,7 +2,13 @@ import { Effect } from "effect";
 import type { html as createHtml, Html } from "foldkit/html";
 import { m } from "foldkit/message";
 import * as Mount from "foldkit/mount";
-import { cardBackUrl, type ImageFace, type ImageSize, imageUrlByPrint } from "../deck-builder/scryfall";
+import {
+  artCropFallbackUrl,
+  cardBackUrl,
+  type ImageFace,
+  type ImageSize,
+  imageUrlByPrint,
+} from "../deck-builder/scryfall";
 import { type ImageCache, sharedImageCache } from "../image-cache";
 
 export function cardArtUrl(print: string, size: ImageSize = "large", face: ImageFace = "front"): string {
@@ -18,9 +24,16 @@ export const CardArtTick = m("CardArtTick");
  * Safe to call again when the URL/alt/class change (hover preview print swaps).
  */
 export function syncCardArtHost(element: HTMLElement, cache: ImageCache = sharedImageCache): void {
-  const url = element.dataset.artUrl ?? "";
+  let url = element.dataset.artUrl ?? "";
+  const fallback = element.dataset.artFallback ?? "";
   const alt = element.dataset.artAlt ?? "";
   const className = element.dataset.artClass ?? "";
+
+  if (url && cache.isFailed(url) && fallback) {
+    element.dataset.artUrl = fallback;
+    delete element.dataset.artFallback;
+    url = fallback;
+  }
 
   element.replaceChildren();
   if (!url) return;
@@ -34,6 +47,8 @@ export function syncCardArtHost(element: HTMLElement, cache: ImageCache = shared
     element.append(img);
     return;
   }
+
+  if (cache.isFailed(url)) return;
 
   cache.get(url);
   const sk = document.createElement("div");
@@ -59,7 +74,7 @@ export const BindCardArt = Mount.define(
         const observer = new MutationObserver(paint);
         observer.observe(element, {
           attributes: true,
-          attributeFilter: ["data-art-url", "data-art-alt", "data-art-class"],
+          attributeFilter: ["data-art-url", "data-art-fallback", "data-art-alt", "data-art-class"],
         });
         return { unsub, observer };
       }),
@@ -85,11 +100,15 @@ export function cardArt<M>(
     testId?: string;
   },
 ): Html {
-  const url = cardArtUrl(opts.print, opts.size ?? "large", opts.face ?? "front");
+  const size = opts.size ?? "large";
+  const face = opts.face ?? "front";
+  const url = cardArtUrl(opts.print, size, face);
+  const fallback = size === "art_crop" ? artCropFallbackUrl(opts.print, face) : null;
   return h.div(
     [
       h.Class(`${opts.className} relative overflow-hidden`),
       h.DataAttribute("art-url", url),
+      ...(fallback ? [h.DataAttribute("art-fallback", fallback)] : []),
       h.DataAttribute("art-alt", opts.alt),
       h.DataAttribute("art-class", opts.className),
       h.OnMount(BindCardArt() as never),

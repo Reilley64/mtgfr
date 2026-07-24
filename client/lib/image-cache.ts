@@ -9,6 +9,7 @@ interface ImageLike {
 export class ImageCache {
   private images = new Map<string, ImageLike>();
   private ready = new Set<string>();
+  private failed = new Set<string>();
   private listeners = new Set<() => void>();
 
   // ponytail: no eviction; the table's active card-art set is bounded.
@@ -35,12 +36,17 @@ export class ImageCache {
     return this.ready.has(url);
   }
 
+  isFailed(url: string): boolean {
+    return this.failed.has(url);
+  }
+
   get(url: string): HTMLImageElement | undefined {
     const existing = this.images.get(url);
     if (existing) return this.ready.has(url) ? (existing as HTMLImageElement) : undefined;
 
     const img = this.makeImage();
     this.images.set(url, img);
+    this.failed.delete(url);
 
     const settled = new Promise<boolean>((resolve) => {
       img.onload = () => resolve(true);
@@ -51,8 +57,13 @@ export class ImageCache {
     const load = Effect.promise(() => settled).pipe(
       Effect.tap((success) =>
         Effect.sync(() => {
-          if (!success) return;
-          this.ready.add(url);
+          if (success) {
+            this.failed.delete(url);
+            this.ready.add(url);
+          } else {
+            this.ready.delete(url);
+            this.failed.add(url);
+          }
           this.notifyLoaded();
         }),
       ),
