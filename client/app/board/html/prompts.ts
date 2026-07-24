@@ -1795,60 +1795,80 @@ function playerPickPrompt(
   }
 
   if (pending.kind === "choose_splitting_opponent") {
-    return frame("pending-choice", pending.label, [
-      h.div(
-        [h.Class("flex flex-wrap gap-2")],
-        pending.items.flatMap((item, index) => {
-          const seat = playerSeatFromItem(item, state, index);
-          if (seat == null) return [];
-          return [
-            answerButton(
-              pending,
-              `prompt-player-${seat}`,
-              item.label,
-              { kind: "target", id: item.id, player: seat },
-              false,
-              tableId == null,
-            ),
-          ];
-        }),
-      ),
-    ]);
+    return h.div(
+      [
+        h.DataAttribute("testid", "pending-player-pick-aim"),
+        h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+        h.Class(
+          "pointer-events-auto fixed left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+        ),
+      ],
+      [
+        h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], [pending.label]),
+        h.div(
+          [h.Class("flex flex-wrap justify-center gap-2")],
+          pending.items.flatMap((item, index) => {
+            const seat = playerSeatFromItem(item, state, index);
+            if (seat == null) return [];
+            return [
+              answerButton(
+                pending,
+                `prompt-player-${seat}`,
+                item.label,
+                { kind: "target", id: item.id, player: seat },
+                false,
+                tableId == null,
+              ),
+            ];
+          }),
+        ),
+      ],
+    );
   }
 
   const draft = board.promptDraft ?? initPromptDraft(pending, state);
   const picked = draft.kind === "player-pick" ? draft.players : [];
   const ready = picked.length >= pending.min && picked.length <= pending.max;
-  return frame("pending-choice", pending.label, [
-    h.div(
-      [h.Class("flex flex-wrap gap-2")],
-      pending.items.flatMap((item, index) => {
-        const seat = playerSeatFromItem(item, state, index);
-        if (seat == null) return [];
-        const selected = picked.includes(seat);
-        return [
-          h.button(
-            [
-              h.Type("button"),
-              h.DataAttribute("testid", `prompt-player-${seat}`),
-              h.AriaPressed(selected ? "true" : "false"),
-              h.Disabled(tableId == null),
-              h.OnClick(PromptCardToggled({ id: seat })),
-              h.Class(
-                [
-                  "rounded-hud px-3 py-2 text-body",
-                  selected ? "bg-llanowar/25 text-snow" : "bg-glass text-snow",
-                  tableId == null ? "cursor-not-allowed opacity-50" : "hover:bg-glass-dim",
-                ].join(" "),
-              ),
-            ],
-            [item.label],
-          ),
-        ];
-      }),
-    ),
-    h.div([h.Class("flex gap-2")], [submitButton("Choose", !ready), cancelButton()]),
-  ]);
+  return h.div(
+    [
+      h.DataAttribute("testid", "pending-player-pick-aim"),
+      h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+      h.Class(
+        "pointer-events-auto fixed left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+      ),
+    ],
+    [
+      h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], [pending.label]),
+      h.div(
+        [h.Class("flex flex-wrap justify-center gap-2")],
+        pending.items.flatMap((item, index) => {
+          const seat = playerSeatFromItem(item, state, index);
+          if (seat == null) return [];
+          const selected = picked.includes(seat);
+          return [
+            h.button(
+              [
+                h.Type("button"),
+                h.DataAttribute("testid", `prompt-player-${seat}`),
+                h.AriaPressed(selected ? "true" : "false"),
+                h.Disabled(tableId == null),
+                h.OnClick(PromptCardToggled({ id: seat })),
+                h.Class(
+                  [
+                    "rounded-hud px-3 py-2 text-body",
+                    selected ? "bg-llanowar/25 text-snow" : "bg-glass text-snow",
+                    tableId == null ? "cursor-not-allowed opacity-50" : "hover:bg-glass-dim",
+                  ].join(" "),
+                ),
+              ],
+              [item.label],
+            ),
+          ];
+        }),
+      ),
+      h.div([h.Class("flex flex-wrap justify-center gap-2")], [submitButton("Choose", !ready), cancelButton()]),
+    ],
+  );
 }
 
 function divideTotalPrompt(

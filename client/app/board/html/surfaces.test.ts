@@ -687,6 +687,59 @@ test("may_draw_up_to shows docked pending-draw-count-aim with number buttons", (
   );
 });
 
+test("choose_target_players off-board list shows docked pending-player-pick-aim", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        players: [player(0), player(1), player(2)],
+        pending_choice: {
+          kind: "choose_target_players",
+          label: "Choose opponents",
+          min: 1,
+          max: 2,
+          player: 0,
+          source: 1,
+          items: [
+            { id: 0, label: "Player 2" },
+            { id: 1, label: "Player 3" },
+          ],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-player-pick-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("pending-player-aim")).toBeAbsent(),
+    Scene.expect(Scene.testId("prompt-player-1")).toExist(),
+    Scene.expect(Scene.testId("prompt-player-2")).toExist(),
+    Scene.expect(Scene.testId("prompt-submit")).toBeDisabled(),
+  );
+});
+
+test("choose_splitting_opponent off-board list shows docked pending-player-pick-aim", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        players: [player(0), player(1), player(2)],
+        pending_choice: {
+          kind: "choose_splitting_opponent",
+          label: "Choose an opponent",
+          player: 0,
+          source: 1,
+          items: [
+            { id: 0, label: "Player 2" },
+            { id: 1, label: "Player 3" },
+          ],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-player-pick-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("prompt-player-1")).toExist(),
+  );
+});
+
 test("trade_secrets_caster_draw shows docked pending-draw-count-aim", () => {
   overlayScene(
     overlayModel(
