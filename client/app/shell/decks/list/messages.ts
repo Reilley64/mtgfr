@@ -7,14 +7,6 @@ export const RequestedDecksRefresh = m("RequestedDecksRefresh");
 export const ReceivedDecks = m("ReceivedDecks", { decks: S.Array(DeckSummary) });
 export const DecksLoadFailed = m("DecksLoadFailed", { message: S.String });
 export const ReceivedDeckListCommanders = m("ReceivedDeckListCommanders", { cards: S.Array(CatalogCardSchema) });
-/** Cursor-follow commander preview on the deck list. */
-export const MovedDeckListHover = m("MovedDeckListHover", {
-  id: S.String,
-  print: S.String,
-  x: S.Number,
-  y: S.Number,
-});
-export const ClearedDeckListHover = m("ClearedDeckListHover");
 export const ChangedDeckListSearch = m("ChangedDeckListSearch", { query: S.String });
 export const OpenedDeckListMenu = m("OpenedDeckListMenu", {
   deckId: S.Number,
@@ -36,8 +28,6 @@ export const Message = S.Union([
   ReceivedDecks,
   DecksLoadFailed,
   ReceivedDeckListCommanders,
-  MovedDeckListHover,
-  ClearedDeckListHover,
   ChangedDeckListSearch,
   OpenedDeckListMenu,
   ClosedDeckListMenu,

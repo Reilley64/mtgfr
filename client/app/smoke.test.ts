@@ -5,12 +5,8 @@ import { init, Model, update } from "./main-exports";
 import { CardArtTick, PortraitGateCancelled } from "./messages";
 import type { Model as AppModel } from "./model";
 import { HomeRoute, PlayRoute } from "./routes";
-import { ClearedDeckListHover, ClosedDeckListMenu } from "./shell/decks/list/messages";
-import {
-  BindDeckListCommanderHover,
-  BindDeckListContextMenu,
-  BindDeckListContextMenuEscape,
-} from "./shell/decks/list/view";
+import { ClosedDeckListMenu } from "./shell/decks/list/messages";
+import { BindDeckListContextMenu, BindDeckListContextMenuEscape } from "./shell/decks/list/view";
 import { view } from "./view";
 
 const me = { id: 1, email: "alice@example.com", username: "alice" };
@@ -101,10 +97,6 @@ describe("foldkit scaffold", () => {
       { update, view },
       Scene.with(homeWithDecks()),
       Scene.expect(Scene.selector("[data-art-url]")).toExist(),
-      Scene.Mount.resolve(
-        BindDeckListCommanderHover({ cardId: "atraxa", print: "atraxa-print" }),
-        ClearedDeckListHover(),
-      ),
       Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), ClosedDeckListMenu()),
       Scene.Mount.resolve(BindCardArt, CardArtTick()),
       Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),

@@ -81,8 +81,6 @@ export const update = (
         { ...model, knownCommanders: Object.fromEntries(cards.map((card) => [card.id, card])) },
         [],
       ],
-      MovedDeckListHover: ({ id, print, x, y }) => [{ ...model, hover: { id, print, x, y } }, []],
-      ClearedDeckListHover: () => [{ ...model, hover: null }, []],
       ChangedDeckListSearch: ({ query }) => [{ ...model, searchQuery: query }, []],
       OpenedDeckListMenu: ({ deckId, x, y }) => {
         if (!deckListContextMenuAllowed(deckId)) return [model, []];
