@@ -674,35 +674,45 @@ function targetPickPrompt(title: string, targets: ReadonlyArray<WireTarget>, sta
 function boardXPrompt(prompt: NonNullable<BoardModel["xPrompt"]>): Html {
   const { minX, maxX, draftX, xCost, name } = prompt;
   const preview = costText(costWithChosenX(xCost, draftX));
-  return frame("x-prompt", `Choose X for ${name}`, [
-    h.div(
-      [
-        h.Class("mb-sm flex items-center justify-center gap-2 text-body text-mist"),
-        h.DataAttribute("testid", "x-prompt-preview"),
-      ],
-      [`Pay ${preview}`],
-    ),
-    h.div(
-      [h.Class("flex flex-wrap items-center justify-center gap-2")],
-      [
-        itemButton("Min", "x-prompt-min", XDraftSet({ x: minX })),
-        itemButton("−", "x-prompt-dec", XDraftSet({ x: draftX - 1 }), draftX <= minX),
-        h.span(
-          [
-            h.DataAttribute("testid", "x-prompt-value"),
-            h.Class("min-w-[2ch] text-center text-body font-semibold text-snow"),
-          ],
-          [String(draftX)],
-        ),
-        itemButton("+", "x-prompt-inc", XDraftSet({ x: draftX + 1 }), draftX >= maxX),
-        itemButton("Max", "x-prompt-max", XDraftSet({ x: maxX })),
-      ],
-    ),
-    h.div(
-      [h.Class("flex flex-wrap items-center justify-center gap-2")],
-      [itemButton("Confirm", "x-prompt-confirm", XSubmitted({ x: draftX })), cancelButton()],
-    ),
-  ]);
+  return h.div(
+    [
+      h.DataAttribute("testid", "x-prompt-aim"),
+      h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+      h.Class(
+        "pointer-events-auto fixed left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+      ),
+    ],
+    [
+      h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], [`Choose X for ${name}`]),
+      h.div(
+        [
+          h.Class("flex items-center justify-center gap-2 text-body text-mist"),
+          h.DataAttribute("testid", "x-prompt-preview"),
+        ],
+        [`Pay ${preview}`],
+      ),
+      h.div(
+        [h.Class("flex flex-wrap items-center justify-center gap-2")],
+        [
+          itemButton("Min", "x-prompt-min", XDraftSet({ x: minX })),
+          itemButton("−", "x-prompt-dec", XDraftSet({ x: draftX - 1 }), draftX <= minX),
+          h.span(
+            [
+              h.DataAttribute("testid", "x-prompt-value"),
+              h.Class("min-w-[2ch] text-center text-body font-semibold text-snow"),
+            ],
+            [String(draftX)],
+          ),
+          itemButton("+", "x-prompt-inc", XDraftSet({ x: draftX + 1 }), draftX >= maxX),
+          itemButton("Max", "x-prompt-max", XDraftSet({ x: maxX })),
+        ],
+      ),
+      h.div(
+        [h.Class("flex flex-wrap items-center justify-center gap-2")],
+        [itemButton("Confirm", "x-prompt-confirm", XSubmitted({ x: draftX })), cancelButton()],
+      ),
+    ],
+  );
 }
 
 function costPickPrompt(

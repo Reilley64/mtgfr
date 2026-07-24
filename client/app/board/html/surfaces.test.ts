@@ -603,7 +603,8 @@ test("x prompt shows stepper controls and a live cost preview", () => {
   };
   overlayScene(
     overlayModel({ ...initialBoardModel(), xPrompt }),
-    Scene.expect(Scene.testId("x-prompt")).toExist(),
+    Scene.expect(Scene.testId("x-prompt-aim")).toExist(),
+    Scene.expect(Scene.testId("x-prompt")).toBeAbsent(),
     Scene.expect(Scene.testId("x-prompt-preview")).toHaveText("Pay {4}"),
     Scene.expect(Scene.testId("x-prompt-value")).toHaveText("3"),
     Scene.expect(Scene.testId("x-prompt-inc")).toBeDisabled(),
