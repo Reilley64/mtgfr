@@ -1457,8 +1457,8 @@ test("divide_counters on-board aim shows coach when targets are battlefield", ()
         },
       }),
     ),
-    Scene.expect(Scene.testId("pending-choice")).toExist(),
     Scene.expect(Scene.testId("pending-divide-counters-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-damage-assigned")).toHaveText("assigned 2 / 2"),
     Scene.expect(Scene.testId("prompt-submit")).not.toBeDisabled(),
   );
