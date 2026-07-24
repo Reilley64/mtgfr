@@ -58,6 +58,28 @@ function card(overrides: Partial<CatalogCard> = {}): CatalogCard {
   };
 }
 
+test("deck list chrome and tiles share the wide column classes", () => {
+  Scene.scene(
+    listProgram,
+    Scene.with({
+      ...initialDeckListSubmodel(),
+      decks: [{ id: 1, name: "Superfriends", commander: "atraxa", commander_print: "atraxa-print" }],
+      knownCommanders: {
+        atraxa: card({ id: "atraxa", name: "Atraxa, Praetors' Voice", default_print: "atraxa-print" }),
+      },
+    }),
+    Scene.expect(Scene.selector('[data-testid="deck-list-search"]')).toHaveClass("max-w-[960px]"),
+    Scene.expect(Scene.selector('[data-testid="deck-list-grid"]')).toHaveClass("max-w-[960px]"),
+    Scene.expect(Scene.selector('[data-testid="deck-list-grid"]')).toHaveClass(
+      "grid-cols-[repeat(auto-fill,minmax(220px,1fr))]",
+    ),
+    Scene.expect(Scene.selector('[data-testid="deck-tile-1"]')).toExist(),
+    Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), ClosedDeckListMenu()),
+    Scene.Mount.resolve(BindCardArt, CardArtTick()),
+    Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
+  );
+});
+
 test("deck list does not render a hover preview", () => {
   Scene.scene(
     listProgram,

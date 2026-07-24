@@ -176,7 +176,10 @@ export function view(model: DeckListSubmodel, username: string, apiVersion: stri
           })
         : null,
       h.div(
-        [h.Class("mx-auto mb-5 flex max-w-[720px] flex-wrap items-center justify-between gap-md")],
+        [
+          h.Class("mx-auto mb-5 flex max-w-[960px] flex-wrap items-center justify-between gap-md"),
+          h.DataAttribute("testid", "deck-list-header"),
+        ],
         [
           h.h1([h.Class("m-0 text-title")], ["Your decks"]),
           h.div(
@@ -207,7 +210,7 @@ export function view(model: DeckListSubmodel, username: string, apiVersion: stri
                 h.Placeholder("Search decks…"),
                 h.Value(model.searchQuery),
                 h.OnInput((value) => ChangedDeckListSearch({ query: value })),
-                h.Class(fieldClass("mb-md w-full max-w-[720px]")),
+                h.Class(fieldClass("mb-md w-full max-w-[960px]")),
               ])
             : null,
           !model.loading && model.decks.length > 0 && visible.length === 0
@@ -215,7 +218,10 @@ export function view(model: DeckListSubmodel, username: string, apiVersion: stri
             : null,
           !model.loading && visible.length > 0
             ? h.div(
-                [h.Class("mx-auto grid max-w-[960px] grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-md")],
+                [
+                  h.DataAttribute("testid", "deck-list-grid"),
+                  h.Class("mx-auto grid max-w-[960px] grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-md"),
+                ],
                 visible.map((deck) => {
                   const commander = model.knownCommanders[deck.commander];
                   const print = commanderPrint(model, deck);
@@ -235,12 +241,12 @@ export function view(model: DeckListSubmodel, username: string, apiVersion: stri
                         [h.Class("flex flex-1 flex-col")],
                         [
                           print === ""
-                            ? h.div([h.Class("h-[110px] w-full bg-glass")], [])
+                            ? h.div([h.Class("aspect-[137/100] w-full bg-glass")], [])
                             : cardArt(h, {
                                 print,
                                 size: "art_crop",
                                 alt: "",
-                                className: "h-[110px] w-full object-cover",
+                                className: "aspect-[137/100] w-full object-cover",
                               }),
                           h.div(
                             [h.Class("flex min-h-[86px] flex-col gap-xs p-md")],
