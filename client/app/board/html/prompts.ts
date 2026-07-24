@@ -1931,9 +1931,9 @@ function pilePickPrompt(
 ): Html {
   const pileBlock = (title: string, items: ReadonlyArray<ChoiceItem>, pile: 0 | 1): Html =>
     h.div(
-      [h.Class("min-w-[220px] rounded-panel bg-glass p-3")],
+      [h.Class("min-w-[180px] flex-1 rounded-panel bg-glass p-3")],
       [
-        h.div([h.Class("mb-2 font-semibold text-body")], [title]),
+        h.div([h.Class("mb-2 font-semibold text-body text-snow")], [title]),
         h.div(
           [h.Class("mb-3 flex flex-col gap-1 text-caption text-mist")],
           items.map((item) => h.span([], [item.label])),
@@ -1948,12 +1948,22 @@ function pilePickPrompt(
         ),
       ],
     );
-  return frame("pending-choice", "Choose a pile", [
-    h.div(
-      [h.Class("flex flex-wrap gap-3")],
-      [pileBlock("Pile A", pending.pile_a, 0), pileBlock("Pile B", pending.pile_b, 1)],
-    ),
-  ]);
+  return h.div(
+    [
+      h.DataAttribute("testid", "pending-pile-aim"),
+      h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+      h.Class(
+        "pointer-events-auto fixed left-1/2 z-30 flex max-w-[min(100%-2rem,40rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+      ),
+    ],
+    [
+      h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], ["Choose a pile"]),
+      h.div(
+        [h.Class("flex w-full flex-wrap justify-center gap-3")],
+        [pileBlock("Pile A", pending.pile_a, 0), pileBlock("Pile B", pending.pile_b, 1)],
+      ),
+    ],
+  );
 }
 
 function partitionPrompt(
