@@ -168,6 +168,10 @@ Single-page login/signup (toggled, not separate routes). `Login` and `Signup` ar
 
 `appVersion()` and `gitCommit()` read from `VITE_APP_VERSION` and `VITE_GIT_COMMIT` env vars baked at build time. Consumed by the BFF OTEL SDK's `serviceVersion` and `vcs.ref.head.revision` resource attributes, and by the `AppVersion` component.
 
+### Production source maps (`vite.config.ts`, `lib/client-build-options.ts`)
+
+Vite production builds set `build.sourcemap: true` (via `clientBuildSourcemap`) so the large first-party client bundle ships a sibling `.js.map` with a `//# sourceMappingURL=` comment and embedded `sourcesContent`. Chrome DevTools and Faro can resolve minified frames without a separate map-upload pipeline. Maps are public static assets under `.output/public/assets/` (same as the JS); `"hidden"` is intentionally not used because browsers only auto-fetch maps when the comment is present.
+
 ### Lobby poll and table lifecycle (`client/app/shell/lobby/poll.ts`, `client/app/shell/lobby/subscriptions.ts`, `client/lib/lobby-store.ts`)
 
 `lobbyPoll(tableId)` is an Effect stream consumed by a Foldkit subscription. The subscription polls lobby state while a table is present and stops when `started` is true. `client/lib/lobby-store.ts` holds lobby helpers for multi-seat coordination. Once the lobby moves to `started`, the app transitions from the lobby view to the board mount, preserving the table id in the route.
@@ -186,6 +190,7 @@ Single-page login/signup (toggled, not separate routes). `Login` and `Signup` ar
 - **Biome class sorting.** `nursery/useSortedClasses` is at error and configured for safe `cn` / `clsx` fixes. Keep class strings sorted in code review and use the editor or Biome fix path for drift.
 - **Gzip LZ77 benefit from sorted classes.** client-shell-deck-builder-and-observability spec notes that consistent Tailwind class ordering makes repeated utility sequences longer LZ77 matches under gzip on the shipped JS/HTML.
 - **`VITE_CARD_CDN` is build-time baked**, not runtime. Changing CDN requires a new image build.
+- **Public client source maps.** Production uses `build.sourcemap: true` (not `"hidden"`) so DevTools/Faro can deminify the large first-party bundle. Original TypeScript is fetchable alongside the asset; acceptable for this friend-group deployment without a private map store.
 - **No Scryfall fallback for ordinary CDN art.** Missing non-`art_crop` CDN art does not hit Scryfall (avoids rate-limiting). The intentional exception is CDN `art_crop` load failure → Scryfall `version=art_crop` once.
 
 ---
@@ -201,6 +206,7 @@ Single-page login/signup (toggled, not separate routes). `Login` and `Signup` ar
 - `client/lib/deck-builder/*.test.ts` — print prefs, menus, hover preview.
 - `client/lib/ui/*.test.ts`, `client/lib/cn.test.ts` — Foldkit UI helpers (`buttonClass`, surfaces).
 - `client/lib/build-meta.test.ts` — version/commit env var reading.
+- `client/lib/client-build-options.test.ts` — production `build.sourcemap` stays `true` and wired in `vite.config.ts`.
 - Board geometry/paint/HTML tests live under `client/app/board/**` (see board spec / `docs/client-canvas-map.md`).
 - Integration test: `just client-check` runs Biome lint + typecheck + Vitest. The full check is `just check` (server + client).
 
