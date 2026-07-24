@@ -44,6 +44,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 
 - Local prompts render in this order: X prompt, modal cast, sacrifice pick, discard pick, graveyard-exile pick, staged target picker.
 - Local modal spells use docked `modal-mode-aim` (mode rows + Cast/Cancel; center `modal-mode-picker` unused). After modes are chosen and a target is still needed, docked `modal-waiting-aim` replaces center `modal-waiting`.
+- Off-board staged-action targets use docked `target-pick-aim` (scrollable face/player strip + Cancel; center `target-pick` unused).
 - Engine pending choices render only when `pending_choice.player === state.viewer` and the viewer is an active seated player.
 - When `pending_choice` is set for another seat (and the game is not mulliganing), `pendingChoiceWaitingView` shows `Waiting for {name}…` (`pending-choice-waiting`) for non-deciders and spectators. The awaited seat never sees this banner. Username falls back to `P{seat}` when empty.
 - `pendingChoicePrompt` switches on `FORMULATOR_FOR_KIND[pending.kind]` and uses an exhaustive `never` default.
@@ -113,6 +114,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Unit tests cover `pendingChoiceWaitingText` (null for decider / absent / mulligan; named seat and `P{seat}` fallback).
 - X prompt Scene tests assert docked `x-prompt-aim` (no center `x-prompt`), stepper controls, preview text (e.g. `Pay {4}`), confirm, disabled `+` at max, and absence of per-X buttons (`x-prompt-n`).
 - Scene tests cover docked `modal-mode-aim` / `modal-waiting-aim` (no center `modal-mode-picker` / `modal-waiting`).
+- Scene tests cover docked `target-pick-aim` for off-board staged targets (no center `target-pick`).
 - Unit tests cover `clampX`, `costWithChosenX` (multi-symbol X and colored pips), and `costText` for large generics.
 - Unit tests cover `damageAssignReady` for exact-sum non-trample and under-assign / over-assign / negative trample cases.
 - Unit tests cover `clickDamageAssign` redistribution and trample under-assign.
