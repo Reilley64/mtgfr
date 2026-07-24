@@ -48,7 +48,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - `pendingChoicePrompt` switches on `FORMULATOR_FOR_KIND[pending.kind]` and uses an exhaustive `never` default.
 - All engine submissions go through `choiceIntent`.
 - Card-pick prompts use `cardArt(h, opts)` for faces.
-- `boardXPrompt` is a stepper over `[minX, maxX]`:
+- `boardXPrompt` is a stepper over `[minX, maxX]` in docked `x-prompt-aim` (hand-bar HUD; center `x-prompt` modal unused):
   - Draft value lives on `XPromptState.draftX`, initialized to `clampX(maxX, minX, maxX)` when the prompt opens.
   - Min / − / + / Max dispatch `XDraftSet` (clamped into `[minX, maxX]`); Confirm dispatches `XSubmitted` with a clamped `x`.
   - − is disabled at `minX`; + is disabled at `maxX`.
@@ -110,7 +110,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Formulator registry tests ensure every `PendingChoiceView["kind"]` maps to a formulator.
 - Scene tests cover awaited-player prompt visibility and non-decider/spectator suppression plus waiting-banner copy.
 - Unit tests cover `pendingChoiceWaitingText` (null for decider / absent / mulligan; named seat and `P{seat}` fallback).
-- X prompt Scene tests assert stepper controls, preview text (e.g. `Pay {4}`), confirm, disabled `+` at max, and absence of per-X buttons (`x-prompt-n`).
+- X prompt Scene tests assert docked `x-prompt-aim` (no center `x-prompt`), stepper controls, preview text (e.g. `Pay {4}`), confirm, disabled `+` at max, and absence of per-X buttons (`x-prompt-n`).
 - Unit tests cover `clampX`, `costWithChosenX` (multi-symbol X and colored pips), and `costText` for large generics.
 - Unit tests cover `damageAssignReady` for exact-sum non-trample and under-assign / over-assign / negative trample cases.
 - Unit tests cover `clickDamageAssign` redistribution and trample under-assign.
