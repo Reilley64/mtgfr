@@ -1,6 +1,6 @@
 # Deck list tile layout polish (Your decks)
 
-**Status:** Design  
+**Status:** Implemented  
 **Date:** 2026-07-24  
 **Module:** `client/app/shell/decks/list/**`, `client/lib/deck-builder/scryfall.ts` (`imageUrlByPrint`), Scene coverage in `client/app/shell/surfaces.test.ts`  
 **Related current-behavior spec:** [client-shell-deck-builder-and-observability](2026-07-20-client-shell-deck-builder-and-observability.md) (update in the same implementation change)  

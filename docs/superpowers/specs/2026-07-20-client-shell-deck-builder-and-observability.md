@@ -90,12 +90,15 @@ When `selectedDeckId` is set from Play → Host/Join or `?deck=`, the lobby show
 ### Deck list and builder (`client/app/shell/decks/**`, client-shell-deck-builder-and-observability spec, accounts-decks-and-catalog spec)
 
 **Deck list** (`/`) shows saved decks from the deck list submodel as a compact tile grid.
-Each tile uses commander `art_crop`, deck name, color-identity pips, and a Precon chip when
-`id < 0`. The whole tile links to `/play?deck={id}`. A **Search decks…** field filters by
-deck name and commander display name (client-only). Display order: owned decks first
-(API relative order), then precons by ascending id (newest release first). Right-click on
-an owned deck opens Edit (`/decks/{id}`) and Delete (confirm dialog); precons do not open
-a context menu. A New Deck button navigates to `/decks/new`.
+Header, search, and grid share one `max-w-[960px]` column. Tiles use a raised
+`minmax(220px, 1fr)` track, landscape commander `art_crop` (~1.37:1), deck name,
+color-identity pips, and a Precon chip when `id < 0`. Names stay single-line truncate.
+There is no cursor-follow card hover preview on this surface. The whole tile links to
+`/play?deck={id}`. A **Search decks…** field filters by deck name and commander display
+name (client-only). Display order: owned decks first (API relative order), then precons
+by ascending id (newest release first). Right-click on an owned deck opens Edit
+(`/decks/{id}`) and Delete (confirm dialog); precons do not open a context menu. A New
+Deck button navigates to `/decks/new`.
 
 **Deck builder** (`/decks/new`, `/decks/:id`) is a split-pane layout:
 
@@ -109,10 +112,15 @@ a context menu. A New Deck button navigates to `/decks/new`.
 ### Card art CDN (client-shell-deck-builder-and-observability spec, accounts-decks-and-catalog spec, `lib/scryfall.ts`)
 
 Art is keyed by Scryfall **Printing** UUID. `imageUrlByPrint(printId, size, face)` returns:
-- CDN URL (`VITE_CARD_CDN/large/{face}/{a}/{b}/{id}.webp`) when `VITE_CARD_CDN` is baked at build.
-- Scryfall image API (`https://api.scryfall.com/cards/{id}?format=image&version={size}`) otherwise (local dev only).
+- When `VITE_CARD_CDN` is set and `size === "art_crop"`: CDN
+  `VITE_CARD_CDN/art_crop/{face}/{a}/{b}/{id}.webp`. If that asset fails to load, `cardArt`
+  falls back once to Scryfall `version=art_crop` (deck-list tiles use this path).
+- When `VITE_CARD_CDN` is set and `size` is any other value: CDN
+  `VITE_CARD_CDN/large/{face}/{a}/{b}/{id}.webp` — missing `large` does **not** fall back to Scryfall.
+- When `VITE_CARD_CDN` is unset: Scryfall image API
+  (`https://api.scryfall.com/cards/{id}?format=image&version={size}`) (local/dev).
 
-Missing CDN art is a broken `<img>` — no Scryfall fallback in production. The CDN path replicates Scryfall's folder fan (`first two hex chars` of the UUID). DFC backs are fetched with `face=back` in the Scryfall path; CDN serves the same `large` webp. `imageFaceAfterLoadError` falls back from `back` to `front` on load error (DFC prepare/flip cards have no Scryfall `/back/` — transformer backs that exist load on first try).
+Missing ordinary (non-`art_crop`) CDN art is a broken `<img>` — no Scryfall fallback in production. The CDN path replicates Scryfall's folder fan (`first two hex chars` of the UUID). DFC backs are fetched with `face=back` in the Scryfall path; CDN serves the same `large` webp. `imageFaceAfterLoadError` falls back from `back` to `front` on load error (DFC prepare/flip cards have no Scryfall `/back/` — transformer backs that exist load on first try).
 
 `cardBackUrl()` returns `/card-back.webp` for library piles and face-down cards.
 
