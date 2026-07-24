@@ -42,6 +42,7 @@ These documents are **not superseded** and must stay current alongside the specs
 | [client-interaction-test-policy](2026-07-22-client-interaction-test-policy-design.md) | Outcome-focused client interaction test policy |
 | [client-shell-deck-builder-and-observability](2026-07-20-client-shell-deck-builder-and-observability.md) | Shell routes, deck builder, BFF edges, observability, design system |
 | [deck-list-tile-chooser (design)](2026-07-24-deck-list-tile-chooser-design.md) | Your decks compact tile grid, search, precon order, context menu |
+| [brand-edh-reilley-dev (design)](2026-07-24-brand-edh-reilley-dev-design.md) | Display brand + Scryfall/tooling User-Agent → edh.reilley.dev |
 | [combat-and-commander-rules](2026-07-20-combat-and-commander-rules.md) | Multiplayer combat, commander tax/damage, elimination |
 | [engine-core-and-event-model](2026-07-20-engine-core-and-event-model.md) | Pure Rust engine zones, events, SBAs, determinism |
 | [flights](2026-07-20-flights.md) | Card movement animation, flight ownership, bitmap paint gating |
