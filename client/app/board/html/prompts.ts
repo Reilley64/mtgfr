@@ -2275,10 +2275,19 @@ function stringPickPrompt(
       board.cardNameSuggestions.names.length > 0
         ? board.cardNameSuggestions.names
         : [];
-    return frame(
-      "pending-choice",
-      "Name a card",
+    return h.div(
       [
+        h.DataAttribute("testid", "pending-card-name-aim"),
+        h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+        h.Class(
+          "pointer-events-auto fixed left-1/2 z-30 flex max-h-[min(70vh,560px)] w-[min(92vw,360px)] -translate-x-1/2 flex-col items-center gap-sm overflow-hidden rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+        ),
+      ],
+      [
+        h.div(
+          [h.Class("pointer-events-none shrink-0 text-center font-semibold text-body text-snow")],
+          ["Name a card"],
+        ),
         h.input([
           h.DataAttribute("testid", "prompt-name-input"),
           h.Placeholder("Card name"),
@@ -2290,13 +2299,13 @@ function stringPickPrompt(
             if (key !== "Enter" || !canSubmit) return Option.none();
             return Option.some(PromptSubmitted());
           }),
-          h.Class("w-full rounded-hud bg-glass px-3 py-1 text-body text-snow"),
+          h.Class("w-full shrink-0 rounded-hud bg-glass px-3 py-1 text-body text-snow"),
         ]),
         suggestions.length > 0
           ? h.div(
               [
                 h.DataAttribute("testid", "prompt-name-suggestions"),
-                h.Class("flex max-h-[40vh] flex-col gap-1 overflow-y-auto"),
+                h.Class("flex min-h-0 w-full flex-1 flex-col gap-1 overflow-y-auto"),
               ],
               suggestions.map((name, index) =>
                 h.button(

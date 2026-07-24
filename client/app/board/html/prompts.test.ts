@@ -1175,6 +1175,8 @@ test("choose_card_name prompt has placeholder and Names a typed card", () => {
     { update: sceneUpdate, view },
     Scene.with(viewModel(s)),
     resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("pending-card-name-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.placeholder("Card name")).toExist(),
     Scene.expect(Scene.testId("prompt-name-input")).toExist(),
     Scene.expect(Scene.testId("prompt-submit")).toBeDisabled(),
