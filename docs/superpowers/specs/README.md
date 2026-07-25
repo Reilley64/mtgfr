@@ -86,4 +86,4 @@ Decisions → Testing Decisions → Out of Scope → Further Notes.
 - **PR / loop review:** Code review must fail merge on PR-scoped design sidecars without the
   corresponding surface-spec update, missing surface-spec updates, or non-current narrative
   in this directory (see [`AGENTS.md` Feature specs](../../../AGENTS.md#feature-specs)). Plans
-  live under [`../plans/`](../plans/), not here.
+  may be written under `docs/superpowers/plans/` locally (gitignored), not here.
