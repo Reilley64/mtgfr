@@ -3,6 +3,7 @@ import { html } from "foldkit/html";
 import { Scene } from "foldkit/test";
 import { expect, test } from "vitest";
 import { choiceDraftKey } from "~/choice";
+import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/types";
 import type { GameFoldState } from "../../game/fold";
 import { SubmitIntent } from "../../game/intents";
@@ -155,7 +156,7 @@ test("order_triggers shows reorder controls and submit", () => {
     pending_choice: {
       kind: "order_triggers",
       count: 2,
-      labels: ["First", "Second"],
+      labels: [testMessageRef("First"), testMessageRef("Second")],
       player: 0,
       source: 1,
     },
@@ -178,7 +179,7 @@ test("order_triggers rows are HTML5-draggable drop targets", () => {
     pending_choice: {
       kind: "order_triggers",
       count: 2,
-      labels: ["First", "Second"],
+      labels: [testMessageRef("First"), testMessageRef("Second")],
       player: 0,
       source: 1,
     },
@@ -197,7 +198,7 @@ test("order_triggers click-to-place reorders then submits choose_order", () => {
     pending_choice: {
       kind: "order_triggers",
       count: 3,
-      labels: ["A", "B", "C"],
+      labels: [testMessageRef("A"), testMessageRef("B"), testMessageRef("C")],
       player: 0,
       source: 1,
     },
@@ -217,7 +218,7 @@ test("order_triggers drag-end clears a cancelled pick", () => {
     pending_choice: {
       kind: "order_triggers",
       count: 2,
-      labels: ["A", "B"],
+      labels: [testMessageRef("A"), testMessageRef("B")],
       player: 0,
       source: 1,
     },
@@ -234,7 +235,7 @@ test("order_triggers submit emits choose_order intent", () => {
     pending_choice: {
       kind: "order_triggers",
       count: 2,
-      labels: ["A", "B"],
+      labels: [testMessageRef("A"), testMessageRef("B")],
       player: 0,
       source: 1,
     },
@@ -515,7 +516,7 @@ test("optional on-board choose_target Decline emits empty choose_targets", () =>
       ],
       pending_choice: {
         kind: "choose_target",
-        label: "Target creature",
+        label: testMessageRef("Target creature"),
         max: 1,
         optional: true,
         player: 0,
@@ -778,7 +779,7 @@ test("may_yes_no prompt emits answer_may intent from UI", () => {
     state({
       pending_choice: {
         kind: "may_yes_no",
-        label: "Draw a card?",
+        label: testMessageRef("Draw a card?"),
         player: 0,
         source: 1,
       },
@@ -794,7 +795,7 @@ test("pay_cost prompt emits pay_optional_cost intent from UI", () => {
       pending_choice: {
         kind: "pay_cost",
         cost: { colored: [], generic: 2 },
-        label: "Pay 2?",
+        label: testMessageRef("Pay 2?"),
         player: 0,
         source: 1,
       },
@@ -809,7 +810,7 @@ test("pay_cost prompt shows cost on Pay and Don't pay decline", () => {
     pending_choice: {
       kind: "pay_cost",
       cost: { colored: [0, 0, 0, 1, 0], generic: 2 },
-      label: "Create a Fungus Beast",
+      label: testMessageRef("Create a Fungus Beast"),
       player: 0,
       source: 1,
     },
@@ -866,7 +867,7 @@ test("choose_mode prompt emits choose_mode intent from UI", () => {
     state({
       pending_choice: {
         kind: "choose_mode",
-        labels: ["Mode A", "Mode B"],
+        labels: [testMessageRef("Mode A"), testMessageRef("Mode B")],
         player: 0,
         source: 1,
       },
@@ -884,7 +885,7 @@ test("choose_mode aim docks above the hand bar", () => {
         state({
           pending_choice: {
             kind: "choose_mode",
-            labels: ["Mode A", "Mode B"],
+            labels: [testMessageRef("Mode A"), testMessageRef("Mode B")],
             player: 0,
             source: 1,
           },
@@ -903,8 +904,8 @@ test("choose_trigger_modes aim docks above the hand bar", () => {
       kind: "choose_trigger_modes",
       choose: 1,
       modes: [
-        { label: "Draw a card", needs_target: false, targets: [] },
-        { label: "Gain 1 life", needs_target: false, targets: [] },
+        { label: testMessageRef("Draw a card"), needs_target: false, targets: [] },
+        { label: testMessageRef("Gain 1 life"), needs_target: false, targets: [] },
       ],
       optional: false,
       player: 0,
@@ -925,7 +926,7 @@ test("choose_target_players on-board aim shows pending-player-aim chrome", () =>
   const s = state({
     pending_choice: {
       kind: "choose_target_players",
-      label: "Choose opponents",
+      label: testMessageRef("Choose opponents"),
       min: 1,
       max: 2,
       player: 0,
@@ -987,7 +988,7 @@ test("choose_splitting_opponent on-board aim shows pending-player-aim chrome", (
         { id: 0, label: "Player 2", player: 1 },
         { id: 0, label: "Player 3", player: 2 },
       ],
-      label: "Choose an opponent",
+      label: testMessageRef("Choose an opponent"),
       player: 0,
       source: 1,
     },
@@ -1272,7 +1273,7 @@ function xAction(): ActionView {
   return {
     id: 12,
     kind: "cast",
-    label: "Comet Storm",
+    label: testMessageRef("Comet Storm"),
     has_x: true,
     min_x: 0,
     max_x: 3,

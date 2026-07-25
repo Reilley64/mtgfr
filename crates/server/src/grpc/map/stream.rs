@@ -6,9 +6,9 @@ use schema::{
 };
 
 use crate::grpc::map::common::{
-    commander_damage_view_to_pb, object_amount_to_pb, object_id_list_to_pb, player_amount_to_pb,
-    wire_attack_to_pb, wire_block_to_pb, wire_cost_to_pb, wire_kind_to_pb, wire_mana_pool_to_pb,
-    wire_target_to_pb,
+    commander_damage_view_to_pb, message_ref_to_pb, object_amount_to_pb, object_id_list_to_pb,
+    player_amount_to_pb, wire_attack_to_pb, wire_block_to_pb, wire_cost_to_pb, wire_kind_to_pb,
+    wire_mana_pool_to_pb, wire_target_to_pb,
 };
 use crate::grpc::pb;
 
@@ -27,7 +27,7 @@ fn choice_items_to_pb(items: Vec<ChoiceItem>) -> Vec<pb::ChoiceItem> {
 
 pub fn mode_view_to_pb(mode: ModeView) -> pb::ModeView {
     pb::ModeView {
-        label: mode.label,
+        label: Some(message_ref_to_pb(mode.label)),
         targets: mode.targets.into_iter().map(wire_target_to_pb).collect(),
         needs_target: mode.needs_target,
     }
@@ -63,7 +63,7 @@ pub fn stack_object_view_to_pb(entry: StackObjectView) -> pb::StackObjectView {
         kind: entry.kind,
         source: entry.source,
         controller: u32::from(entry.controller),
-        label: entry.label,
+        label: Some(message_ref_to_pb(entry.label)),
         target: entry.target.map(wire_target_to_pb),
     }
 }
@@ -140,7 +140,7 @@ pub fn action_view_to_pb(action: ActionView) -> pb::ActionView {
         object: action.object,
         ability_index: action.ability_index,
         section: action.section,
-        label: action.label,
+        label: Some(message_ref_to_pb(action.label)),
         needs_target: action.needs_target,
         targets: action.targets.into_iter().map(wire_target_to_pb).collect(),
         modal: action.modal.map(modal_view_to_pb),
@@ -176,7 +176,7 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
             player: u32::from(player),
             source,
             count,
-            labels,
+            labels: labels.into_iter().map(message_ref_to_pb).collect(),
         }),
         PendingChoiceView::ChooseTarget {
             player,
@@ -188,7 +188,7 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
         } => Choice::ChooseTarget(pb::PendingChoiceViewChooseTarget {
             player: u32::from(player),
             source,
-            label,
+            label: Some(message_ref_to_pb(label)),
             items: choice_items_to_pb(items),
             optional,
             max: u32::from(max),
@@ -203,7 +203,7 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
         } => Choice::ChooseSpellTargets(pb::PendingChoiceViewChooseSpellTargets {
             player: u32::from(player),
             spell,
-            label,
+            label: Some(message_ref_to_pb(label)),
             min: u32::from(min),
             max: u32::from(max),
             items: choice_items_to_pb(items),
@@ -218,7 +218,7 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
         } => Choice::ChooseTargetPlayers(pb::PendingChoiceViewChooseTargetPlayers {
             player: u32::from(player),
             source,
-            label,
+            label: Some(message_ref_to_pb(label)),
             min: u32::from(min),
             max: u32::from(max),
             items: choice_items_to_pb(items),
@@ -230,7 +230,7 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
         } => Choice::MayYesNo(pb::PendingChoiceViewMayYesNo {
             player: u32::from(player),
             source,
-            label,
+            label: Some(message_ref_to_pb(label)),
         }),
         PendingChoiceView::PayAnyAmountOfMana {
             player,
@@ -271,7 +271,7 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
             player: u32::from(player),
             source,
             cost: Some(wire_cost_to_pb(cost)),
-            label,
+            label: Some(message_ref_to_pb(label)),
         }),
         PendingChoiceView::PayOrCounter {
             player,
@@ -434,7 +434,7 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
         } => Choice::ChooseAbilityTargets(pb::PendingChoiceViewChooseAbilityTargets {
             player: u32::from(player),
             source,
-            label,
+            label: Some(message_ref_to_pb(label)),
             min: u32::from(min),
             max: u32::from(max),
             items: choice_items_to_pb(items),
@@ -658,7 +658,7 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
         } => Choice::ChooseMode(pb::PendingChoiceViewChooseMode {
             player: u32::from(player),
             source,
-            labels,
+            labels: labels.into_iter().map(message_ref_to_pb).collect(),
         }),
         PendingChoiceView::ChooseTriggerModes {
             player,
@@ -778,7 +778,7 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
         } => Choice::ChooseSplittingOpponent(pb::PendingChoiceViewChooseSplittingOpponent {
             player: u32::from(player),
             source,
-            label,
+            label: Some(message_ref_to_pb(label)),
             items: choice_items_to_pb(items),
         }),
         PendingChoiceView::PartitionRevealed {
@@ -1612,7 +1612,11 @@ pub fn stream_frame_to_pb(frame: StreamFrame) -> pb::StreamFrame {
                 .filter_map(visible_event_to_pb)
                 .collect(),
             state: Some(visible_state_to_pb(envelope.state)),
-            auto_actions: envelope.auto_actions,
+            auto_actions: envelope
+                .auto_actions
+                .into_iter()
+                .map(message_ref_to_pb)
+                .collect(),
         }),
         StreamFrame::Heartbeat => Frame::Heartbeat(pb::Heartbeat {}),
     };
@@ -1622,9 +1626,9 @@ pub fn stream_frame_to_pb(frame: StreamFrame) -> pb::StreamFrame {
 #[cfg(test)]
 mod tests {
     use schema::{
-        ActionView, ChoiceItem, CombatView, DeltaEnvelope, ObjectView, PendingChoiceView,
-        PlayerView, StackObjectView, StreamFrame, VisibleEvent, VisibleState, WireCost, WireKind,
-        WireManaPool,
+        ActionView, ChoiceItem, CombatView, DeltaEnvelope, MessageParam, MessageRef, ObjectView,
+        PendingChoiceView, PlayerView, StackObjectView, StreamFrame, VisibleEvent, VisibleState,
+        WireCost, WireKind, WireManaPool,
     };
 
     use super::*;
@@ -1695,7 +1699,7 @@ mod tests {
                 kind: "spell".into(),
                 source: 10,
                 controller: 0,
-                label: "Shock".into(),
+                label: MessageRef::key("test.shock"),
                 target: Some(schema::WireTarget::Player { player: 1 }),
             }],
             combat: CombatView::default(),
@@ -1707,7 +1711,7 @@ mod tests {
             pending_choice: Some(PendingChoiceView::ChooseTarget {
                 player: 0,
                 source: 10,
-                label: "Deal 2".into(),
+                label: MessageRef::key("test.deal_2"),
                 items: vec![ChoiceItem {
                     id: 11,
                     label: "Goblin".into(),
@@ -1723,7 +1727,7 @@ mod tests {
                 object: Some(12),
                 ability_index: None,
                 section: "hand".into(),
-                label: "Lightning Bolt".into(),
+                label: MessageRef::key("test.lightning_bolt"),
                 needs_target: true,
                 targets: vec![schema::WireTarget::Player { player: 1 }],
                 modal: None,
@@ -1808,13 +1812,25 @@ mod tests {
                 },
             ],
             state,
-            auto_actions: vec!["auto-pass".into()],
+            auto_actions: vec![
+                MessageRef::key("auto.sacrificed_forced")
+                    .with_params(vec![MessageParam::string("name", "Goblin")])
+                    .with_children(vec![MessageRef::key("auto.automatic")]),
+            ],
         }));
         let Some(pb::stream_frame::Frame::Delta(delta)) = pb.frame else {
             panic!("expected Delta frame");
         };
         assert_eq!(delta.seq, 10);
-        assert_eq!(delta.auto_actions, vec!["auto-pass"]);
+        let action = delta.auto_actions.first().expect("auto action");
+        assert_eq!(action.key, "auto.sacrificed_forced");
+        assert_eq!(action.params.len(), 1);
+        assert_eq!(action.params[0].name, "name");
+        assert!(matches!(
+            action.params[0].value.as_ref(),
+            Some(pb::message_param::Value::StringValue(value)) if value == "Goblin"
+        ));
+        assert_eq!(action.children[0].key, "auto.automatic");
         assert_eq!(delta.events.len(), 2);
         match delta.events[0].event.as_ref() {
             Some(pb::visible_event::Event::CombatDamageDivided(e)) => {

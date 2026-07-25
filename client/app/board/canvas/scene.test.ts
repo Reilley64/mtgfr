@@ -1,6 +1,7 @@
 import type { Canvas } from "foldkit";
 import { describe, expect, it } from "vitest";
 import { colors } from "~/design-tokens.generated";
+import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, ObjectView, PlayerView, VisibleState } from "~/wire/types";
 import { TARGET_COLOR } from "../action/targeting";
 import { COMMANDER_GOLD, PLAYABLE_BORDER } from "../chrome";
@@ -51,7 +52,7 @@ function battlefieldAction(objectId: number): ActionView {
   return {
     id: objectId + 100,
     kind: "activate",
-    label: "Activate",
+    label: testMessageRef("Activate"),
     needs_target: false,
     object: objectId,
     section: "battlefield",
@@ -341,7 +342,7 @@ describe("sceneShapes", () => {
         {
           controller: 0,
           kind: "spell",
-          label: "Lightning Bolt",
+          label: testMessageRef("Lightning Bolt"),
           source: 9,
           target: { kind: "object", id: 1 },
         },

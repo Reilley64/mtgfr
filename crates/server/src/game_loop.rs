@@ -4,6 +4,7 @@
 //! [`settle_after_apply`]. gRPC adapters call the `*_core` entry points only.
 
 use engine::PlayerId;
+use schema::MessageRef;
 use schema::{IntentEnvelope, to_intent_for_seat};
 use serde::{Deserialize, Serialize};
 
@@ -15,14 +16,14 @@ use crate::{AppState, Registry, Table, lock};
 pub struct Ack {
     pub accepted: bool,
     /// Why the intent was rejected, if it was.
-    pub reason: Option<String>,
+    pub reject_reason: Option<MessageRef>,
 }
 
 impl From<ApplyResult> for Ack {
     fn from(result: ApplyResult) -> Self {
         Self {
             accepted: result.accepted,
-            reason: result.reason,
+            reject_reason: result.reason,
         }
     }
 }
@@ -31,7 +32,7 @@ impl From<DwellResult> for Ack {
     fn from(result: DwellResult) -> Self {
         Self {
             accepted: result.accepted,
-            reason: result.reason,
+            reject_reason: result.reason,
         }
     }
 }
@@ -122,13 +123,13 @@ fn seated_table<'r>(
     user_id: i64,
 ) -> Result<(&'r mut Table, u8), Ack> {
     let Some(table) = reg.get_mut(table_id) else {
-        return Err(reject("UnknownTable"));
+        return Err(reject("reject.unknown_table"));
     };
     if table.game.is_none() {
-        return Err(reject("GameNotStarted"));
+        return Err(reject("reject.game_not_started"));
     }
     let Some(seat) = table.seat_of(user_id) else {
-        return Err(reject("NotSeated"));
+        return Err(reject("reject.not_seated"));
     };
     Ok((table, seat))
 }
@@ -215,9 +216,9 @@ pub(crate) fn set_stack_dwell_core(
 }
 
 /// A rejected ack with a reason.
-fn reject(reason: &str) -> Ack {
+fn reject(key: &str) -> Ack {
     Ack {
         accepted: false,
-        reason: Some(reason.to_string()),
+        reject_reason: Some(MessageRef::key(key)),
     }
 }

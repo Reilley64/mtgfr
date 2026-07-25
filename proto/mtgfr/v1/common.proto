@@ -6,6 +6,23 @@ option java_multiple_files = true;
 
 // Shared wire vocabulary: targets, combat/damage, mode choices, mana, amount pairs.
 
+// Stable i18n key + params. No display English in `key`.
+message MessageRef {
+  string key = 1;
+  repeated MessageParam params = 2;
+  repeated MessageRef children = 3;
+}
+
+message MessageParam {
+  string name = 1;
+  oneof value {
+    string string_value = 2;
+    int64 int_value = 3;
+    bool bool_value = 4;
+    string amount_token = 5;
+  }
+}
+
 // Wire form of `engine::Target`: a chosen target is either a permanent (`object`) or a player.
 message WireTarget {
   oneof kind {

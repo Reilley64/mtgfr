@@ -1,5 +1,5 @@
 # Prompts and Pending Choices
-**Status:** Current (as of 2026-07-23)
+**Status:** Current (as of 2026-07-25)
 **Module:** `client/app/board/html/prompts.ts`, `client/app/board/html/pending-choice-waiting.ts`, `client/lib/choice.ts`, `client/lib/choiceWaiting.ts`, `client/lib/cardPickSearch.ts`, `client/lib/optionFilter.ts`, `client/lib/xCost.ts`, `client/app/board/action/execution.ts`, `client/lib/ui/card-art.ts`, `client/lib/wire/types.ts`
 
 ## Problem Statement
@@ -8,7 +8,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 
 ## Solution
 
-`PromptHost` is `promptsView`. It prioritizes local board prompts first, then renders `state.pending_choice` only for the awaited player. Non-deciders and spectators see a passive waiting banner (`pending-choice-waiting`) naming the awaited seat. Engine choices use `FORMULATOR_FOR_KIND` to select a formulator and submit through `choiceIntent(pc, answer)`. Local choose-X uses a clamped Min/−/value/+/Max stepper with a live resolved-cost preview from wire `x_cost`.
+`PromptHost` is `promptsView`. It prioritizes local board prompts first, then renders `state.pending_choice` only for the awaited player. Non-deciders and spectators see a passive waiting banner (`pending-choice-waiting`) naming the awaited seat. Engine choices use `FORMULATOR_FOR_KIND` to select a formulator and submit through `choiceIntent(pc, answer)`. Effect titles, mode labels, and trigger-order labels arrive as `MessageRef` and are formatted with `formatMessage`; `ChoiceItem.label` remains the visible object/seat name. Local choose-X uses a clamped Min/−/value/+/Max stepper with a live resolved-cost preview from wire `x_cost`.
 
 ## User Stories
 
@@ -50,6 +50,8 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - When `pending_choice` is set for another seat (and the game is not mulliganing), `pendingChoiceWaitingView` shows `Waiting for {name}…` (`pending-choice-waiting`) for non-deciders and spectators. The awaited seat never sees this banner. Username falls back to `P{seat}` when empty.
 - `pendingChoicePrompt` switches on `FORMULATOR_FOR_KIND[pending.kind]` and uses an exhaustive `never` default.
 - All engine submissions go through `choiceIntent`.
+- `pendingChoiceTitle`, mode rows, order-trigger rows, pay-cost effect text, and target-aim chrome format wire `MessageRef` labels with `formatMessage`.
+- Missing catalog entries render the raw key, which keeps prompts visible and makes drift obvious in development.
 - Card-pick prompts use `cardArt(h, opts)` for faces.
 - `boardXPrompt` is a stepper over `[minX, maxX]` in docked `x-prompt-aim` (hand-bar HUD; center `x-prompt` modal unused):
   - Draft value lives on `XPromptState.draftX`, initialized to `clampX(maxX, minX, maxX)` when the prompt opens.
@@ -107,11 +109,13 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Choose-X preview uses brace text rather than hand-bar mana-font pips so large resolved generics cannot collapse to a false `{0}`.
 - Waiting copy lives in `client/lib/choiceWaiting.ts`; the banner is composed in `boardOverlays` (not inside `promptsView`) so spectators see it without seated prompt chrome.
 - Library-search filter helpers live in `client/lib/cardPickSearch.ts`; filter draft is optional `filter` on `PromptDraft` `card-pick`, updated via `PromptCardFilterSet`.
+- Prompt text from the engine stays as `MessageRef` until the view edge; formulators use formatted text for titles but submit only structured answers.
 
 ## Testing Decisions
 
 - Formulator registry tests ensure every `PendingChoiceView["kind"]` maps to a formulator.
 - Scene tests cover awaited-player prompt visibility and non-decider/spectator suppression plus waiting-banner copy.
+- Scene/unit tests for MessageRef-backed prompts assert formatted English for labels while catalog coverage guards every Rust-emitted key.
 - Unit tests cover `pendingChoiceWaitingText` (null for decider / absent / mulligan; named seat and `P{seat}` fallback).
 - X prompt Scene tests assert docked `x-prompt-aim` (no center `x-prompt`), stepper controls, preview text (e.g. `Pay {4}`), confirm, disabled `+` at max, and absence of per-X buttons (`x-prompt-n`).
 - Scene tests cover docked `modal-mode-aim` / `modal-waiting-aim` (no center `modal-mode-picker` / `modal-waiting`).

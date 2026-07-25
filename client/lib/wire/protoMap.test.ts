@@ -1,6 +1,8 @@
+import * as Schema from "effect/Schema";
 import { describe, expect, it } from "vitest";
-import { fromProtoWire, intentEnvelopeToProto } from "./protoMap";
-import type { ActionView, IntentEnvelope } from "./types";
+import { catalogCardsFromProto, fromProtoWire, intentEnvelopeToProto } from "./protoMap";
+import type { ActionView, CatalogCard, IntentEnvelope } from "./types";
+import { MessageRef } from "./types";
 
 describe("fromProtoWire", () => {
   it("coerces proto bigint action ids to browser numbers", () => {
@@ -10,6 +12,171 @@ describe("fromProtoWire", () => {
 
     expect(state.actions[0]?.id).toBe(123);
     expect(typeof state.actions[0]?.id).toBe("number");
+  });
+
+  it("decodes MessageRef labels and auto action messages", () => {
+    const frame = fromProtoWire({
+      frame: {
+        case: "delta",
+        value: {
+          autoActions: [
+            {
+              key: "auto.sacrificed_forced",
+              params: [{ name: "name", value: { case: "stringValue", value: "Goblin" } }],
+              children: [],
+            },
+          ],
+          state: {
+            actions: [
+              {
+                id: 123n,
+                kind: "activate",
+                label: {
+                  key: "effect.draw_cards",
+                  params: [{ name: "count", value: { case: "intValue", value: 2n } }],
+                  children: [],
+                },
+                needsTarget: false,
+                section: "battlefield",
+              },
+            ],
+            pendingChoice: {
+              choice: {
+                case: "chooseMode",
+                value: {
+                  labels: [
+                    {
+                      key: "effect.discard",
+                      params: [{ name: "count", value: { case: "intValue", value: 1n } }],
+                      children: [],
+                    },
+                  ],
+                  player: 0,
+                  source: 7,
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    expect(frame).toMatchObject({
+      frame: "delta",
+      auto_actions: [
+        {
+          key: "auto.sacrificed_forced",
+          params: [{ name: "name", string_value: "Goblin" }],
+          children: [],
+        },
+      ],
+      state: {
+        actions: [
+          {
+            label: {
+              key: "effect.draw_cards",
+              params: [{ name: "count", int_value: 2 }],
+              children: [],
+            },
+          },
+        ],
+        pending_choice: {
+          kind: "choose_mode",
+          labels: [
+            {
+              key: "effect.discard",
+              params: [{ name: "count", int_value: 1 }],
+              children: [],
+            },
+          ],
+        },
+      },
+    });
+  });
+
+  it("decodes Ack.rejectReason into reject_reason MessageRef", () => {
+    const ack = fromProtoWire({
+      accepted: false,
+      rejectReason: {
+        key: "reject.illegal_target",
+        params: [],
+        children: [],
+      },
+    });
+
+    expect(ack).toEqual({
+      accepted: false,
+      reject_reason: {
+        key: "reject.illegal_target",
+        params: [],
+        children: [],
+      },
+    });
+  });
+});
+
+describe("catalogCardsFromProto", () => {
+  it("decodes catalog summaries as MessageRef arrays", () => {
+    const cards = catalogCardsFromProto([
+      {
+        id: "card-1",
+        defaultPrint: "print-1",
+        name: "Summary Card",
+        cost: { generic: 1, colored: [0, 0, 0, 0, 0], hasX: false, xSymbols: 0 },
+        kind: { kind: { case: "creature", value: { power: 2, toughness: 2 } } },
+        keywords: ["ward:2"],
+        summary: [
+          {
+            key: "keyword.ward",
+            params: [{ name: "amount", value: { case: "intValue", value: 2n } }],
+            children: [],
+          },
+          {
+            key: "effect.sequence",
+            params: [],
+            children: [
+              {
+                key: "effect.draw_cards",
+                params: [{ name: "count", value: { case: "intValue", value: 1n } }],
+                children: [],
+              },
+            ],
+          },
+        ],
+        legendary: false,
+        colorIdentity: [],
+        set: "tst",
+        subtypes: [],
+        otags: [],
+      },
+    ]);
+
+    expect(cards[0]).toMatchObject({
+      summary: [
+        {
+          key: "keyword.ward",
+          params: [{ name: "amount", int_value: 2 }],
+          children: [],
+        },
+        {
+          key: "effect.sequence",
+          params: [],
+          children: [
+            {
+              key: "effect.draw_cards",
+              params: [{ name: "count", int_value: 1 }],
+              children: [],
+            },
+          ],
+        },
+      ],
+    } satisfies Partial<CatalogCard>);
+  });
+});
+
+describe("MessageRef schema", () => {
+  it("rejects bare strings", () => {
+    expect(() => Schema.decodeUnknownSync(MessageRef)("Scry 1")).toThrow();
   });
 });
 

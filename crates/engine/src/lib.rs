@@ -33,7 +33,7 @@ mod characteristics_cache;
 mod combat;
 mod core;
 mod effects;
-mod label;
+mod message;
 mod mulligan;
 mod pending;
 mod pipeline;
@@ -48,6 +48,7 @@ mod triggers;
 mod types;
 mod zones;
 
+pub use message::*;
 pub use mulligan::hand_size_after_mulligans;
 /// Shared Effect-resolution context for [`Game::run`] / [`Game::run_sequence`].
 pub(crate) use resolution::ResolveCtx;

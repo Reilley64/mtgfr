@@ -1,4 +1,5 @@
 import { expect, test } from "vitest";
+import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
 import { SubmitIntent } from "../game/intents";
@@ -83,7 +84,7 @@ test("off-board staged target opens the target-pick prompt", () => {
   const castAction: ActionView = {
     id: 9,
     kind: "cast",
-    label: "Reanimate",
+    label: testMessageRef("Reanimate"),
     needs_target: true,
     object: spell.id,
     section: "hand",
@@ -110,7 +111,7 @@ test("TargetChosen from the pick dialog submits take_action for off-board target
   const castAction: ActionView = {
     id: 9,
     kind: "cast",
-    label: "Reanimate",
+    label: testMessageRef("Reanimate"),
     needs_target: true,
     object: spell.id,
     section: "hand",

@@ -2,14 +2,46 @@
 #![allow(dead_code)]
 
 use schema::{
-    CommanderDamageView, ObjectId, WireAttack, WireBlock, WireCost, WireDamage, WireEitherMana,
-    WireKind, WireManaPool, WireModeChoice, WireOfColorsMana, WireSpellDamage, WireTarget,
+    CommanderDamageView, MessageParam, MessageRef, ObjectId, WireAttack, WireBlock, WireCost,
+    WireDamage, WireEitherMana, WireKind, WireManaPool, WireModeChoice, WireOfColorsMana,
+    WireSpellDamage, WireTarget,
 };
 
 use crate::grpc::pb;
 
 fn u8s(v: impl IntoIterator<Item = u8>) -> Vec<u32> {
     v.into_iter().map(u32::from).collect()
+}
+
+pub fn message_ref_to_pb(message: MessageRef) -> pb::MessageRef {
+    pb::MessageRef {
+        key: message.key,
+        params: message
+            .params
+            .into_iter()
+            .map(message_param_to_pb)
+            .collect(),
+        children: message
+            .children
+            .into_iter()
+            .map(message_ref_to_pb)
+            .collect(),
+    }
+}
+
+fn message_param_to_pb(param: MessageParam) -> pb::MessageParam {
+    use pb::message_param::Value;
+    let value = param
+        .string_value
+        .map(Value::StringValue)
+        .or_else(|| param.int_value.map(Value::IntValue))
+        .or_else(|| param.bool_value.map(Value::BoolValue))
+        .or_else(|| param.amount_token.map(Value::AmountToken));
+
+    pb::MessageParam {
+        name: param.name,
+        value,
+    }
 }
 
 pub(crate) fn u8_trunc(v: u32) -> u8 {

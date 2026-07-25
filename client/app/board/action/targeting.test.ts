@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
 import { ZONE } from "../geometry/layout";
 import type { StagedAction } from "./execution";
@@ -51,7 +52,7 @@ function object(over: Partial<ObjectView> = {}): ObjectView {
 }
 
 function action(over: Partial<ActionView> = {}): ActionView {
-  return { id: 7, kind: "cast", label: "Shock", needs_target: true, section: "hand", ...over };
+  return { id: 7, kind: "cast", label: testMessageRef("Shock"), needs_target: true, section: "hand", ...over };
 }
 
 function state(objects: ObjectView[]): VisibleState {
@@ -83,7 +84,7 @@ function staged(over: Partial<StagedAction> = {}): StagedAction {
   const card = object({ id: 5, name: "Reanimate" });
   return {
     card,
-    action: action({ label: "Reanimate", object: 5, targets: [{ kind: "object", id: 9 }] }),
+    action: action({ label: testMessageRef("Reanimate"), object: 5, targets: [{ kind: "object", id: 9 }] }),
     picks: emptyCostPicks(),
     preferPick: false,
     playOrigin: { x: 0, y: 0 },
@@ -121,13 +122,19 @@ describe("targetMode", () => {
 
   it("a graveyard target falls back to the picker", () => {
     const corpse = object({ id: 9, zone: ZONE.Graveyard, name: "Grizzly Bear" });
-    const mode = targetMode(action({ label: "Reanimate", targets: [{ kind: "object", id: 9 }] }), state([corpse]));
+    const mode = targetMode(
+      action({ label: testMessageRef("Reanimate"), targets: [{ kind: "object", id: 9 }] }),
+      state([corpse]),
+    );
     expect(mode).toEqual({ kind: "pick", targets: [{ kind: "object", id: 9 }] });
   });
 
   it("a spell on the stack uses arrow aiming (stack faces are clickable)", () => {
     const spell = object({ id: 4, zone: ZONE.Stack, name: "Shock", kind: { kind: "instant" } });
-    const mode = targetMode(action({ label: "Counterspell", targets: [{ kind: "object", id: 4 }] }), state([spell]));
+    const mode = targetMode(
+      action({ label: testMessageRef("Counterspell"), targets: [{ kind: "object", id: 4 }] }),
+      state([spell]),
+    );
     expect(mode.kind).toBe("arrow");
     if (mode.kind !== "arrow") throw new Error("unreachable");
     expect([...mode.objects]).toEqual([4]);
@@ -138,7 +145,7 @@ describe("targetMode", () => {
     const corpse = object({ id: 9, zone: ZONE.Graveyard, name: "Bear" });
     const mode = targetMode(
       action({
-        label: "Weird",
+        label: testMessageRef("Weird"),
         targets: [
           { kind: "object", id: 4 },
           { kind: "object", id: 9 },
@@ -153,14 +160,14 @@ describe("targetMode", () => {
 describe("stagedPickTargets", () => {
   it("returns off-board targets when pick mode is required", () => {
     const corpse = object({ id: 9, zone: ZONE.Graveyard, name: "Bird" });
-    const s = staged({ action: action({ label: "Reanimate", targets: [{ kind: "object", id: 9 }] }) });
+    const s = staged({ action: action({ label: testMessageRef("Reanimate"), targets: [{ kind: "object", id: 9 }] }) });
     expect(stagedPickTargets(s, state([corpse]))).toEqual([{ kind: "object", id: 9 }]);
   });
 
   it("returns null when arrow mode and preferPick is false", () => {
     const bear = object({ id: 1 });
     const s = staged({
-      action: action({ label: "Shock", targets: [{ kind: "object", id: 1 }] }),
+      action: action({ label: testMessageRef("Shock"), targets: [{ kind: "object", id: 1 }] }),
       card: bear,
       preferPick: false,
     });
@@ -171,7 +178,7 @@ describe("stagedPickTargets", () => {
     const bear = object({ id: 1 });
     const s = staged({
       action: action({
-        label: "Shock",
+        label: testMessageRef("Shock"),
         targets: [
           { kind: "object", id: 1 },
           { kind: "player", player: 2 },
@@ -200,7 +207,7 @@ describe("stagingOverlay", () => {
     const bear = object({ id: 1 });
     const s = staged({
       action: action({
-        label: "Shock",
+        label: testMessageRef("Shock"),
         targets: [
           { kind: "object", id: 1 },
           { kind: "player", player: 2 },
@@ -219,7 +226,7 @@ describe("stagingOverlay", () => {
   it("does not aim when preferPick forces the target picker", () => {
     const bear = object({ id: 1 });
     const s = staged({
-      action: action({ label: "Shock", targets: [{ kind: "object", id: 1 }] }),
+      action: action({ label: testMessageRef("Shock"), targets: [{ kind: "object", id: 1 }] }),
       card: bear,
       preferPick: true,
     });
@@ -246,7 +253,7 @@ describe("pendingTargetingOverlay", () => {
     const overlay = pendingTargetingOverlay(
       {
         kind: "choose_target",
-        label: "Target creature",
+        label: testMessageRef("Target creature"),
         max: 1,
         optional: false,
         player: 0,
@@ -267,7 +274,7 @@ describe("pendingTargetingOverlay", () => {
     const overlay = pendingTargetingOverlay(
       {
         kind: "choose_target",
-        label: "Target creatures",
+        label: testMessageRef("Target creatures"),
         max: 2,
         optional: false,
         player: 0,
@@ -290,7 +297,7 @@ describe("pendingTargetingOverlay", () => {
     const overlay = pendingTargetingOverlay(
       {
         kind: "choose_target",
-        label: "Target card",
+        label: testMessageRef("Target card"),
         max: 1,
         optional: false,
         player: 0,
@@ -367,7 +374,7 @@ describe("pendingTargetOneClick", () => {
     expect(
       pendingTargetOneClick({
         kind: "choose_target",
-        label: "T",
+        label: testMessageRef("T"),
         max: 1,
         optional: false,
         player: 0,
@@ -378,7 +385,7 @@ describe("pendingTargetOneClick", () => {
     expect(
       pendingTargetOneClick({
         kind: "choose_target",
-        label: "T",
+        label: testMessageRef("T"),
         max: 2,
         optional: false,
         player: 0,
@@ -586,7 +593,7 @@ describe("pendingGraveyardPickIds", () => {
     const ids = pendingGraveyardPickIds(
       {
         kind: "choose_target",
-        label: "Target creature card in a graveyard",
+        label: testMessageRef("Target creature card in a graveyard"),
         player: 0,
         source: 1,
         max: 1,
@@ -605,7 +612,7 @@ describe("pendingGraveyardPickIds", () => {
       pendingGraveyardPickIds(
         {
           kind: "choose_target",
-          label: "Target creature",
+          label: testMessageRef("Target creature"),
           player: 0,
           source: 1,
           max: 1,
@@ -849,7 +856,7 @@ describe("pendingPlayerAimOverlay", () => {
     const overlay = pendingPlayerAimOverlay(
       {
         kind: "choose_target_players",
-        label: "Choose opponents",
+        label: testMessageRef("Choose opponents"),
         min: 1,
         max: 2,
         player: 0,
@@ -869,7 +876,7 @@ describe("pendingPlayerAimOverlay", () => {
     expect(
       pendingPlayerAimOneClick({
         kind: "choose_target_players",
-        label: "Choose a player",
+        label: testMessageRef("Choose a player"),
         min: 1,
         max: 1,
         player: 0,
@@ -885,7 +892,7 @@ describe("stagedTargetTitle", () => {
     const card = object({ id: 3, name: "Spirebluff Canal" });
     const s = staged({
       card,
-      action: action({ kind: "activate", label: "Loot", object: 3, targets: [] }),
+      action: action({ kind: "activate", label: testMessageRef("Loot"), object: 3, targets: [] }),
     });
     expect(stagedTargetTitle(s)).toBe("Loot — Spirebluff Canal");
   });

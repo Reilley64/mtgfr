@@ -400,7 +400,7 @@ test("InspectCardFetched stores catalog card", () => {
     otags: [],
     set: "soc",
     subtypes: [],
-    summary: "Do stuff.",
+    summary: [],
   } as unknown as import("~/wire/types").CatalogCard;
   const model = update(
     { ...initialBoardModel(), inspectPin: { name: "Test", prepared: false } },

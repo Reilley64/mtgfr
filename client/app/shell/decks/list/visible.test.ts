@@ -15,7 +15,7 @@ const card = (id: string, name: string, color_identity: number[] = []): CatalogC
   otags: [],
   set: "tst",
   subtypes: [],
-  summary: "",
+  summary: [],
 });
 
 describe("visibleDecks", () => {

@@ -155,9 +155,7 @@ impl Game {
                                 controller,
                                 source,
                                 fire_at: Step::End,
-                                effect: Effect::Exile(ExileEffect::Object {
-                                    object: Some(next),
-                                }),
+                                effect: Effect::Exile(ExileEffect::Object { object: Some(next) }),
                             });
                         }
                         next += 1;
@@ -373,9 +371,7 @@ impl Game {
                         controller,
                         source,
                         fire_at: Step::End,
-                        effect: Effect::Sacrifice(SacrificeEffect::Object {
-                            object: Some(next),
-                        }),
+                        effect: Effect::Sacrifice(SacrificeEffect::Object { object: Some(next) }),
                     });
                     next += 1;
                 }

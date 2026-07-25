@@ -3,6 +3,7 @@
 use crate::catalog::wire_cost;
 use crate::dto::{ChoiceItem, ModeView, PendingChoiceView};
 use crate::intent::WireTarget;
+use crate::message::{named_message, to_wire_message};
 use crate::projection::privacy::private_items;
 
 /// Per-snapshot context for labeling object ids and applying owner-gated privacy.
@@ -95,7 +96,7 @@ impl<'a> ChoiceCtx<'a> {
                 player: player.0,
                 source,
                 count: effects.len() as u32,
-                labels: effects.iter().map(|&e| e.label()).collect(),
+                labels: effects.iter().map(|&e| to_wire_message(e.message())).collect(),
             },
             engine::PendingChoice::ChooseTarget {
                 player,
@@ -107,7 +108,7 @@ impl<'a> ChoiceCtx<'a> {
             } => PendingChoiceView::ChooseTarget {
                 player: player.0,
                 source,
-                label: effect.label(),
+                label: to_wire_message(effect.message()),
                 items: self.label_targets(legal),
                 optional: count.min == 0,
                 max: count.max,
@@ -122,7 +123,7 @@ impl<'a> ChoiceCtx<'a> {
             } => PendingChoiceView::ChooseSpellTargets {
                 player: player.0,
                 spell,
-                label: self.game.def_of(spell).name.to_string(),
+                label: named_message("card.name", self.game.def_of(spell).name),
                 min,
                 max,
                 items: self.label_targets(legal),
@@ -137,7 +138,7 @@ impl<'a> ChoiceCtx<'a> {
             } => PendingChoiceView::ChooseTargetPlayers {
                 player: player.0,
                 source,
-                label: self.game.def_of(source).name.to_string(),
+                label: named_message("card.name", self.game.def_of(source).name),
                 min,
                 max,
                 items: self.label_players(legal),
@@ -149,7 +150,7 @@ impl<'a> ChoiceCtx<'a> {
             } => PendingChoiceView::MayYesNo {
                 player: player.0,
                 source,
-                label: effect.label(),
+                label: to_wire_message(effect.message()),
             },
             engine::PendingChoice::MayDrawUpTo { player, max } => PendingChoiceView::MayDrawUpTo {
                 player: player.0,
@@ -190,7 +191,7 @@ impl<'a> ChoiceCtx<'a> {
                 player: player.0,
                 source,
                 cost: wire_cost(cost),
-                label: effect.label(),
+                label: to_wire_message(effect.message()),
             },
             engine::PendingChoice::PayOrCounter {
                 player,
@@ -411,7 +412,7 @@ impl<'a> ChoiceCtx<'a> {
             } => PendingChoiceView::ChooseAbilityTargets {
                 player: player.0,
                 source,
-                label: effect.label(),
+                label: to_wire_message(effect.message()),
                 min,
                 max,
                 items: self.label_targets(legal),
@@ -484,7 +485,10 @@ impl<'a> ChoiceCtx<'a> {
             } => PendingChoiceView::ChooseMode {
                 player: player.0,
                 source,
-                labels: options.iter().map(|&o| o.to_string()).collect(),
+                labels: options
+                    .iter()
+                    .map(|&o| named_message("choice.option", o))
+                    .collect(),
             },
             engine::PendingChoice::MayReturnFromGraveyard {
                 player,
@@ -655,7 +659,7 @@ impl<'a> ChoiceCtx<'a> {
             } => PendingChoiceView::ChooseSplittingOpponent {
                 player: player.0,
                 source,
-                label: self.game.def_of(source).name.to_string(),
+                label: named_message("card.name", self.game.def_of(source).name),
                 items: self.label_players(legal),
             },
             engine::PendingChoice::PartitionRevealed {
@@ -715,7 +719,7 @@ impl<'a> ChoiceCtx<'a> {
             } => PendingChoiceView::ChooseMode {
                 player: player.0,
                 source,
-                labels: modes.iter().map(|&m| m.label()).collect(),
+                labels: modes.iter().map(|&m| to_wire_message(m.message())).collect(),
             },
             engine::PendingChoice::ChooseTriggerModes {
                 player,
@@ -741,7 +745,7 @@ impl<'a> ChoiceCtx<'a> {
                     modes: modes
                         .iter()
                         .map(|&effect| ModeView {
-                            label: effect.label(),
+                            label: to_wire_message(effect.message()),
                             needs_target: true,
                             targets: targets.clone(),
                         })
@@ -1122,7 +1126,7 @@ mod coverage_tests {
         );
         match view {
             PendingChoiceView::PayCost { label, cost, .. } => {
-                assert_eq!(label, draw_effect().label());
+                assert_eq!(label.key, "effect.draw_cards");
                 assert_eq!(cost.generic, 2);
             }
             other => panic!("expected PayCost, got {other:?}"),

@@ -56,6 +56,8 @@ message CatalogBackFace {
 
 // One pool card, for the deck builder to browse. Stats/keywords/summary are engine truth.
 message CatalogCard {
+  reserved 7;
+
   // Card id (Scryfall oracle id).
   string id = 1;
   // Default Printing UUID (Scryfall card id) for art when a deck line hasn't chosen otherwise.
@@ -64,8 +66,8 @@ message CatalogCard {
   WireCost cost = 4;
   WireKind kind = 5;
   repeated string keywords = 6;
-  // Plain-English summary of the card's keywords + abilities (the engine's simplified behavior).
-  string summary = 7;
+  // Message refs for the card's keywords + abilities (the engine's simplified behavior).
+  repeated MessageRef summary = 16;
   bool legendary = 8;
   // Color identity as WUBRG indices (see `engine::Color::index`).
   repeated uint32 color_identity = 9;

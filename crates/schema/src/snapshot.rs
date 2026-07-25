@@ -11,11 +11,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::catalog::{wire_cost, wire_kind};
 use crate::dto::{
-    ActionView, CombatView, CommanderDamageView, ModalView, ModeView, ModifierSourceView,
-    ObjectView, PlayerView, StackObjectView, VisibleState, WireKind, WireManaPool,
+    ActionView, CombatView, CommanderDamageView, MessageRef, ModalView, ModeView,
+    ModifierSourceView, ObjectView, PlayerView, StackObjectView, VisibleState, WireKind,
+    WireManaPool,
 };
 use crate::event::DeltaEnvelope;
 use crate::intent::{WireAttack, WireBlock, WireTarget};
+use crate::message::{child_message, message, named_message, to_wire_message};
 use crate::projection::project_pending_choice;
 
 fn format_modifier_contribution(contribution: engine::ModifierContribution) -> String {
@@ -68,7 +70,7 @@ pub struct DeltaCompose<'a> {
     pub viewer: Option<engine::PlayerId>,
     pub seq: u64,
     pub events: &'a [engine::Event],
-    pub auto_actions: Vec<String>,
+    pub auto_actions: Vec<MessageRef>,
     pub extras: &'a ViewExtras,
 }
 
@@ -203,7 +205,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 .modes_of(card)
                 .into_iter()
                 .map(|m| ModeView {
-                    label: m.label,
+                    label: to_wire_message(m.label),
                     needs_target: m.needs_target,
                     targets: m.targets.into_iter().map(WireTarget::of).collect(),
                 })
@@ -228,7 +230,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             object: None,
             ability_index: None,
             section: "setup".to_string(),
-            label: "Keep hand".to_string(),
+            label: message("action.keep_hand"),
             needs_target: false,
             targets: Vec::new(),
             modal: None,
@@ -252,7 +254,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             object: None,
             ability_index: None,
             section: "setup".to_string(),
-            label: "Mulligan".to_string(),
+            label: message("action.mulligan"),
             needs_target: false,
             targets: Vec::new(),
             modal: None,
@@ -276,7 +278,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             object: Some(card),
             ability_index: None,
             section: section_of(zone).to_string(),
-            label: game.def_of(card).name.to_string(),
+            label: named_message("action.card_name", game.def_of(card).name),
             needs_target: false,
             targets: Vec::new(),
             modal: None,
@@ -342,7 +344,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 object: Some(card),
                 ability_index: None,
                 section: section_of(zone).to_string(),
-                label: def.name.to_string(),
+                label: named_message("action.card_name", def.name),
                 needs_target: game.target_spec_of(card) != TargetSpec::None,
                 targets: targets(card, None),
                 modal: modal(card),
@@ -377,7 +379,9 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 object: Some(source),
                 ability_index: Some(ability as u32),
                 section: "battlefield".to_string(),
-                label: activation.map(|a| a.effect.label()).unwrap_or_default(),
+                label: activation
+                    .map(|a| to_wire_message(a.effect.message()))
+                    .unwrap_or_else(|| message("action.activate")),
                 needs_target: game.ability_target_spec(source, ability) != TargetSpec::None,
                 targets: targets(source, Some(ability)),
                 modal: None,
@@ -402,7 +406,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             object: Some(card),
             ability_index: None,
             section: "hand".to_string(),
-            label: format!("Cycle: {}", game.def_of(card).name),
+            label: named_message("action.cycle", game.def_of(card).name),
             needs_target: false,
             targets: Vec::new(),
             modal: None,
@@ -425,13 +429,15 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
         MeaningfulAction::ActivateHandAbility { card, index } => {
             let def = game.def_of(card);
             // Distinguish which entry (Valley Rannet's mountaincycling vs forestcycling, CR
-            // 702.29d) by its own effect, since both otherwise share the same "Discard: {name}".
-            let detail = match def.hand_ability.get(index).copied().or(def.forecast) {
+            // 702.29d) by its own effect, since both otherwise share the same discard chrome.
+            let label = match def.hand_ability.get(index).copied().or(def.forecast) {
                 Some(ability) => match ability.effects {
-                    [single] => Some(single.label()),
-                    _ => None,
+                    [single] => {
+                        child_message("action.discard_effect", to_wire_message(single.message()))
+                    }
+                    _ => named_message("action.discard_card", def.name),
                 },
-                None => None,
+                None => named_message("action.discard_card", def.name),
             };
             ActionView {
                 id: action.id,
@@ -439,10 +445,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 object: Some(card),
                 ability_index: Some(index as u32),
                 section: "hand".to_string(),
-                label: match detail {
-                    Some(detail) => format!("Discard: {detail}"),
-                    None => format!("Discard: {}", def.name),
-                },
+                label,
                 needs_target: false,
                 targets: Vec::new(),
                 modal: None,
@@ -468,7 +471,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             object: Some(card),
             ability_index: None,
             section: "hand".to_string(),
-            label: "Cast face down".to_string(),
+            label: message("action.cast_face_down"),
             needs_target: false,
             targets: Vec::new(),
             modal: None,
@@ -492,7 +495,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             object: Some(card),
             ability_index: None,
             section: "hand".to_string(),
-            label: format!("Suspend: {}", game.def_of(card).name),
+            label: named_message("action.suspend", game.def_of(card).name),
             needs_target: false,
             targets: Vec::new(),
             modal: None,
@@ -516,7 +519,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             object: Some(card),
             ability_index: None,
             section: "graveyard".to_string(),
-            label: format!("Encore: {}", game.def_of(card).name),
+            label: named_message("action.encore", game.def_of(card).name),
             needs_target: false,
             targets: Vec::new(),
             modal: None,
@@ -541,7 +544,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             object: Some(permanent),
             ability_index: None,
             section: "battlefield".to_string(),
-            label: "Turn face up".to_string(),
+            label: message("action.turn_face_up"),
             needs_target: false,
             targets: Vec::new(),
             modal: None,
@@ -579,7 +582,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 object: Some(source),
                 ability_index: None,
                 section: "battlefield".to_string(),
-                label: back_def.name.to_string(),
+                label: named_message("action.card_name", back_def.name),
                 needs_target: spec != TargetSpec::None,
                 targets: legal.into_iter().map(WireTarget::of).collect(),
                 modal: None,
@@ -621,7 +624,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 object: Some(card),
                 ability_index: Some(half as u32),
                 section: "hand".to_string(),
-                label: face.name.to_string(),
+                label: named_message("action.card_name", face.name),
                 needs_target: spec != TargetSpec::None,
                 targets: legal.into_iter().map(WireTarget::of).collect(),
                 modal: None,
@@ -646,7 +649,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             object: None,
             ability_index: None,
             section: "combat".to_string(),
-            label: "Declare attackers".to_string(),
+            label: message("action.declare_attackers"),
             needs_target: false,
             targets: Vec::new(),
             modal: None,
@@ -674,7 +677,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             object: None,
             ability_index: None,
             section: "combat".to_string(),
-            label: "Declare blockers".to_string(),
+            label: message("action.declare_blockers"),
             needs_target: false,
             targets: Vec::new(),
             modal: None,
@@ -862,7 +865,7 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                 kind: "spell".to_string(),
                 source: id,
                 controller: game.controller_of(id).0,
-                label: game.def_of(id).name.to_string(),
+                label: named_message("card.name", game.def_of(id).name),
                 target: game.spell_target(id).map(WireTarget::of),
             },
             engine::StackEntry::Ability {
@@ -874,7 +877,7 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                 kind: "ability".to_string(),
                 source,
                 controller: controller.0,
-                label: effect.label(),
+                label: to_wire_message(effect.message()),
                 target: target.map(WireTarget::of),
             },
         })
@@ -946,7 +949,7 @@ pub enum StreamFrame {
 
 #[cfg(test)]
 mod tests {
-    use crate::dto::{CommanderDamageView, PendingChoiceView, WireKind};
+    use crate::dto::{CommanderDamageView, MessageRef, PendingChoiceView, WireKind};
     use crate::intent::{WireAttack, WireTarget};
     use crate::test_support::{def, pass_until_choice, refresh_via_mana_tap, resolve_top_of_stack};
     use engine::{Defender, Effect, Game, ObjectId, PlayerId, TokenEffect};
@@ -960,6 +963,14 @@ mod tests {
 
     fn spectator_snapshot(game: &Game) -> crate::dto::VisibleState {
         complete_visible(game, None, &ViewExtras::default())
+    }
+
+    fn message_name(label: &MessageRef) -> Option<&str> {
+        label
+            .params
+            .iter()
+            .find(|param| param.name == "name")
+            .and_then(|param| param.string_value.as_deref())
     }
 
     /// CR 709.4a: a split card is cast one half at a time, so the client needs one labelled
@@ -982,9 +993,12 @@ mod tests {
         assert_eq!(
             halves
                 .iter()
-                .map(|a| (a.label.as_str(), a.ability_index, a.section.as_str()))
+                .map(|a| (message_name(&a.label), a.ability_index, a.section.as_str()))
                 .collect::<Vec<_>>(),
-            vec![("Fire", Some(0), "hand"), ("Ice", Some(1), "hand")],
+            vec![
+                (Some("Fire"), Some(0), "hand"),
+                (Some("Ice"), Some(1), "hand")
+            ],
         );
         assert!(
             !halves[0].needs_target,
@@ -1019,7 +1033,7 @@ mod tests {
             viewer: Some(PlayerId(0)),
             seq: 5,
             events: std::slice::from_ref(&draw),
-            auto_actions: vec!["Only one legal target — chosen automatically".into()],
+            auto_actions: vec![MessageRef::key("auto.only_one_legal_target")],
             extras: &extras,
         }) else {
             panic!("expected a delta frame");
@@ -1040,8 +1054,11 @@ mod tests {
         assert_eq!(env.state.stack_hold_remaining_ms, 900);
         assert_eq!(env.state.players[0].username, "alice");
         assert_eq!(
-            env.auto_actions,
-            vec!["Only one legal target — chosen automatically"]
+            env.auto_actions
+                .iter()
+                .map(|m| m.key.as_str())
+                .collect::<Vec<_>>(),
+            vec!["auto.only_one_legal_target"]
         );
 
         let StreamFrame::Delta(spectator) = compose_delta(DeltaCompose {
@@ -1512,7 +1529,8 @@ mod tests {
             mine.actions.iter().any(|a| a.kind == "play_land"
                 && a.object == Some(hand_land)
                 && a.section == "hand"
-                && a.label == "Forest"
+                && a.label.key == "action.card_name"
+                && message_name(&a.label) == Some("Forest")
                 && !a.needs_target),
             "the hand land is a play_land action from the hand section; got {:?}",
             mine.actions,
@@ -1521,7 +1539,8 @@ mod tests {
             mine.actions.iter().any(|a| a.kind == "cast"
                 && a.object == Some(commander)
                 && a.section == "command"
-                && a.label == "Grizzly Bear"
+                && a.label.key == "action.card_name"
+                && message_name(&a.label) == Some("Grizzly Bear")
                 && !a.needs_target),
             "the castable commander is a cast action from the command section; got {:?}",
             mine.actions,
@@ -1718,7 +1737,8 @@ mod tests {
             .find(|a| a.kind == "cycle" && a.object == Some(massif))
             .expect("cycling land lists a cycle action");
         assert_eq!(cycle.section, "hand");
-        assert!(cycle.label.starts_with("Cycle:"));
+        assert_eq!(cycle.label.key, "action.cycle");
+        assert_eq!(message_name(&cycle.label), Some("Glittering Massif"));
         assert!(!cycle.needs_target);
         // Plain cycling has no sacrifice cost — the client must not open a sacrifice pick.
         assert_eq!(cycle.sacrifice_choices, None);
@@ -1813,7 +1833,8 @@ mod tests {
             .find(|a| a.kind == "cast_prepared" && a.object == Some(kirol))
             .expect("prepared Kirol lists cast_prepared");
         assert_eq!(action.section, "battlefield");
-        assert_eq!(action.label, "Pack a Punch");
+        assert_eq!(action.label.key, "action.card_name");
+        assert_eq!(message_name(&action.label), Some("Pack a Punch"));
         assert!(action.needs_target);
         assert!(
             !action.has_x,
@@ -1847,7 +1868,7 @@ mod tests {
             .expect("Equip is a listed activate action");
         assert_eq!(equip.ability_index, Some(1));
         assert_eq!(equip.section, "battlefield");
-        assert_eq!(equip.label, "Equip");
+        assert_eq!(equip.label.key, "effect.control_equip");
         assert!(
             equip.needs_target,
             "Equip targets the creature to attach to"
@@ -2009,7 +2030,10 @@ mod tests {
         match snap.pending_choice {
             Some(PendingChoiceView::OrderTriggers { count, labels, .. }) => {
                 assert_eq!(count, 2);
-                assert_eq!(labels, vec!["Gain 1 life", "Draw 1"]);
+                assert_eq!(
+                    labels.iter().map(|m| m.key.as_str()).collect::<Vec<_>>(),
+                    vec!["effect.life_gain", "effect.draw_cards"],
+                );
             }
             other => panic!("expected an OrderTriggers choice, got {other:?}"),
         }
@@ -2459,7 +2483,8 @@ mod tests {
         let snap = snapshot(&game, PlayerId(0));
         assert_eq!(snap.stack.len(), 1, "Shock is on the stack");
         assert_eq!(snap.stack[0].kind, "spell");
-        assert_eq!(snap.stack[0].label, "Shock");
+        assert_eq!(snap.stack[0].label.key, "card.name");
+        assert_eq!(message_name(&snap.stack[0].label), Some("Shock"));
         assert_eq!(snap.stack[0].target, Some(WireTarget::Object { id: bear }));
     }
 

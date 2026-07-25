@@ -5,6 +5,7 @@ import { Submodel } from "foldkit";
 import { html } from "foldkit/html";
 import { Scene } from "foldkit/test";
 import { expect, test } from "vitest";
+import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../../game/fold";
 import { SubmitIntent } from "../../game/intents";
@@ -100,7 +101,7 @@ function spellOnStack(
   };
   return {
     objects: [spell],
-    stack: [{ controller: 0, kind: "spell", label, source: sourceId }],
+    stack: [{ controller: 0, kind: "spell", label: testMessageRef(label), source: sourceId }],
   };
 }
 
@@ -163,7 +164,7 @@ test("staged ghost appears on the stack during arrow targeting", () => {
   const castAction: ActionView = {
     id: 9,
     kind: "cast",
-    label: "Cast Shock",
+    label: testMessageRef("Cast Shock"),
     needs_target: true,
     object: handCard.id,
     section: "hand",
@@ -220,7 +221,7 @@ test("legal stack face is highlighted and click submits take_action", () => {
   const castAction: ActionView = {
     id: 3,
     kind: "cast",
-    label: "Cast Counterspell",
+    label: testMessageRef("Cast Counterspell"),
     needs_target: true,
     object: counter.id,
     section: "hand",
@@ -292,7 +293,7 @@ test("expand button appears for a tall stack and opens strip view", () => {
       toughness: 0,
       zone: ZONE.Stack,
     });
-    stack.push({ controller: 0, kind: "spell", label: `Spell ${i}`, source: id });
+    stack.push({ controller: 0, kind: "spell", label: testMessageRef(`Spell ${i}`), source: id });
   }
   const model: ViewModel = {
     board: initialBoardModel(),

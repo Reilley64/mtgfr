@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, ObjectView } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
 import { ZONE } from "./geometry/layout";
@@ -71,7 +72,7 @@ const bolt: ObjectView = {
 const castAction: ActionView = {
   id: 7,
   kind: "cast",
-  label: "Cast Lightning Bolt",
+  label: testMessageRef("Cast Lightning Bolt"),
   needs_target: false,
   object: 42,
   section: "hand",

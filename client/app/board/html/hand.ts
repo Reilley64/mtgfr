@@ -11,6 +11,7 @@ import { type Attribute, type Html, html } from "foldkit/html";
 import { type CostPip, costPipPlate, costPips } from "~/costPips";
 import { cardArt } from "~/ui/card-art";
 import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/types";
+import { formatMessage } from "../../../lib/i18n/message";
 import { HAND_BAR_PEEK, handBarHitHeight, handBarHitWidth, handBarRaiseTranslateY } from "../geometry/handBarHit";
 import { ZONE } from "../geometry/layout";
 import { DiscardChosen, HandActionActivated, InspectAuxHovered, type Message } from "../messages";
@@ -448,8 +449,9 @@ export function handView(inputs: HandViewInputs): Html {
   }
   for (const extra of handExtras(grouped.hand)) {
     const meta = metaFor(extra.object);
+    const label = formatMessage(extra.label);
     handSlots.push({
-      name: extra.label.replace(/^[^:]+:\s*/, ""),
+      name: label.replace(/^[^:]+:\s*/, ""),
       print: meta.print,
       cardId: meta.cardId,
       objectId: extra.object ?? undefined,
@@ -479,7 +481,7 @@ export function handView(inputs: HandViewInputs): Html {
       const meta = metaFor(a.object);
       const id = a.object ?? undefined;
       return tile({
-        name: a.label,
+        name: formatMessage(a.label),
         print: meta.print,
         cardId: meta.cardId,
         zone,

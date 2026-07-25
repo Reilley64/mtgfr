@@ -24,9 +24,28 @@ export const SignupCredentials = Schema.Struct({
 });
 export type SignupCredentials = typeof SignupCredentials.Type;
 
+export const MessageParam = Schema.Struct({
+  name: Schema.String,
+  string_value: Schema.optional(Schema.String),
+  int_value: Schema.optional(Schema.Number),
+  bool_value: Schema.optional(Schema.Boolean),
+  amount_token: Schema.optional(Schema.String),
+});
+export type MessageParam = typeof MessageParam.Type;
+export type MessageRef = {
+  readonly key: string;
+  readonly params: ReadonlyArray<MessageParam>;
+  readonly children: ReadonlyArray<MessageRef>;
+};
+export const MessageRef: Schema.Codec<MessageRef> = Schema.Struct({
+  key: Schema.String,
+  params: Schema.Array(MessageParam),
+  children: Schema.Array(Schema.suspend((): Schema.Codec<MessageRef> => MessageRef)),
+});
+
 export const Ack = Schema.Struct({
   accepted: Schema.Boolean,
-  reason: Schema.optional(Schema.NullOr(Schema.String)),
+  reject_reason: Schema.optional(Schema.NullOr(MessageRef)),
 });
 export type Ack = typeof Ack.Type;
 
@@ -132,7 +151,7 @@ export type CatalogCard = {
   otags: Array<string>;
   set: string;
   subtypes: Array<string>;
-  summary: string;
+  summary: Array<MessageRef>;
 };
 export type PlayerView = {
   commander_damage?: Array<CommanderDamageView>;
@@ -186,7 +205,7 @@ export type ObjectView = {
 export type StackObjectView = {
   controller: number;
   kind: string;
-  label: string;
+  label: MessageRef;
   source: number;
   target?: null | { id: U32; kind: "object" } | { kind: "player"; player: number };
 };
@@ -196,7 +215,7 @@ export type WireAttack = { attacker: U32; defender: number; defender_planeswalke
 export type WireBlock = { attacker: U32; blocker: U32 };
 export type WireDamage = { amount: number; blocker: U32 };
 export type WireTarget = { id: U32; kind: "object" } | { kind: "player"; player: number };
-export type ModeView = { label: string; needs_target: boolean; targets: Array<WireTarget> };
+export type ModeView = { label: MessageRef; needs_target: boolean; targets: Array<WireTarget> };
 export type VisibleEvent =
   | {
       controller: number;
@@ -371,7 +390,7 @@ export type ActionView = {
   has_x?: boolean;
   id: number;
   kind: string;
-  label: string;
+  label: MessageRef;
   max_x?: number;
   min_x?: number;
   modal?: null | { choose: number; choose_max: number; modes: Array<ModeView> };
@@ -385,11 +404,11 @@ export type ActionView = {
   targets?: Array<WireTarget>;
 };
 export type PendingChoiceView =
-  | { count: number; kind: "order_triggers"; labels: Array<string>; player: number; source: U32 }
+  | { count: number; kind: "order_triggers"; labels: Array<MessageRef>; player: number; source: U32 }
   | {
       items: Array<ChoiceItem>;
       kind: "choose_target";
-      label: string;
+      label: MessageRef;
       max: number;
       optional: boolean;
       player: number;
@@ -398,7 +417,7 @@ export type PendingChoiceView =
   | {
       items: Array<ChoiceItem>;
       kind: "choose_spell_targets";
-      label: string;
+      label: MessageRef;
       max: number;
       min: number;
       player: number;
@@ -407,15 +426,15 @@ export type PendingChoiceView =
   | {
       items: Array<ChoiceItem>;
       kind: "choose_target_players";
-      label: string;
+      label: MessageRef;
       max: number;
       min: number;
       player: number;
       source: U32;
     }
-  | { kind: "may_yes_no"; label: string; player: number; source: U32 }
+  | { kind: "may_yes_no"; label: MessageRef; player: number; source: U32 }
   | { items: Array<ChoiceItem>; kind: "decline_untap"; player: number }
-  | { cost: WireCost; kind: "pay_cost"; label: string; player: number; source: U32 }
+  | { cost: WireCost; kind: "pay_cost"; label: MessageRef; player: number; source: U32 }
   | { cost: WireCost; kind: "pay_or_counter"; player: number; spell: U32 }
   | { controller: number; cost: WireCost; kind: "pay_or_controller_draws"; player: number }
   | { kind: "choose_countered_spell_destination"; player: number; spell: U32 }
@@ -452,7 +471,7 @@ export type PendingChoiceView =
   | {
       items: Array<ChoiceItem>;
       kind: "choose_ability_targets";
-      label: string;
+      label: MessageRef;
       max: number;
       min: number;
       player: number;
@@ -494,7 +513,7 @@ export type PendingChoiceView =
   | {
       items: Array<ChoiceItem>;
       kind: "choose_splitting_opponent";
-      label: string;
+      label: MessageRef;
       player: number;
       source: U32;
     }
@@ -502,7 +521,7 @@ export type PendingChoiceView =
   | { kind: "choose_pile_for_hand"; pile_a: Array<ChoiceItem>; pile_b: Array<ChoiceItem>; player: number; source: U32 }
   | { count: number; items: Array<ChoiceItem>; kind: "choose_exiled_to_cast_free"; player: number; source: U32 }
   | { item: ChoiceItem; kind: "revealed_card_to_battlefield_or_hand"; player: number }
-  | { kind: "choose_mode"; labels: Array<string>; player: number; source: U32 }
+  | { kind: "choose_mode"; labels: Array<MessageRef>; player: number; source: U32 }
   | {
       choose: number;
       kind: "choose_trigger_modes";
@@ -654,5 +673,5 @@ export type VisibleState = {
 export type IntentEnvelope = { client_seq: number; intent: WireIntent; table_id: string };
 export type StreamFrame =
   | { frame: "snapshot"; seq: number; state: VisibleState }
-  | { auto_actions?: Array<string>; events: Array<VisibleEvent>; seq: number; state: VisibleState; frame: "delta" }
+  | { auto_actions?: Array<MessageRef>; events: Array<VisibleEvent>; seq: number; state: VisibleState; frame: "delta" }
   | { frame: "heartbeat" };

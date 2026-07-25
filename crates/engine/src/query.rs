@@ -753,7 +753,7 @@ impl Game {
             .map(|a| {
                 let spec = a.effect.target();
                 ModeInfo {
-                    label: a.effect.label(),
+                    label: a.effect.message(),
                     needs_target: spec != TargetSpec::None,
                     // ponytail: mode-blind enumeration, ahead of any {X} choice — x = 0, same
                     // "unknown yet" gap as `legal_targets` below. No pool card is modal *and*

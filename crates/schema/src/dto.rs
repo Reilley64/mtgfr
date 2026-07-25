@@ -6,6 +6,92 @@ use serde::{Deserialize, Serialize};
 use crate::ObjectId;
 use crate::intent::{WireAttack, WireBlock, WireTarget};
 
+/// Stable i18n key + typed params for player-facing text. Mirrors the protobuf `MessageRef`
+/// shape while keeping owned strings for schema DTO serde/tests.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MessageRef {
+    pub key: String,
+    #[serde(default)]
+    pub params: Vec<MessageParam>,
+    #[serde(default)]
+    pub children: Vec<MessageRef>,
+}
+
+impl MessageRef {
+    pub fn key(key: impl Into<String>) -> Self {
+        Self {
+            key: key.into(),
+            params: Vec::new(),
+            children: Vec::new(),
+        }
+    }
+
+    pub fn with_params(mut self, params: Vec<MessageParam>) -> Self {
+        self.params = params;
+        self
+    }
+
+    pub fn with_children(mut self, children: Vec<MessageRef>) -> Self {
+        self.children = children;
+        self
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MessageParam {
+    pub name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub string_value: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub int_value: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bool_value: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub amount_token: Option<String>,
+}
+
+impl MessageParam {
+    pub fn string(name: impl Into<String>, value: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            string_value: Some(value.into()),
+            int_value: None,
+            bool_value: None,
+            amount_token: None,
+        }
+    }
+
+    pub fn int(name: impl Into<String>, value: i64) -> Self {
+        Self {
+            name: name.into(),
+            string_value: None,
+            int_value: Some(value),
+            bool_value: None,
+            amount_token: None,
+        }
+    }
+
+    pub fn bool(name: impl Into<String>, value: bool) -> Self {
+        Self {
+            name: name.into(),
+            string_value: None,
+            int_value: None,
+            bool_value: Some(value),
+            amount_token: None,
+        }
+    }
+
+    pub fn amount_token(name: impl Into<String>, value: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            string_value: None,
+            int_value: None,
+            bool_value: None,
+            amount_token: Some(value.into()),
+        }
+    }
+}
+
 // ── Snapshot view types: the redacted full view of the game a client renders from ────
 
 /// Per-player public facts plus that player's private counts.
@@ -254,8 +340,8 @@ pub struct StackObjectView {
     /// The spell's stack-object id, or the ability's source permanent.
     pub source: ObjectId,
     pub controller: u8,
-    /// A human-readable label (the spell's name, or a description of the ability's effect).
-    pub label: String,
+    /// Stable label ref (the spell's name as a param, or the ability's effect key).
+    pub label: MessageRef,
     /// The chosen target, if any.
     pub target: Option<WireTarget>,
 }
@@ -292,8 +378,8 @@ pub struct ActionView {
     pub ability_index: Option<u32>,
     /// Section bucket: "hand" | "battlefield" | "command" | "graveyard" | "exile" | "combat".
     pub section: String,
-    /// Card name (play_land/cast) or ability label (activate/combat).
-    pub label: String,
+    /// Stable action label ref; card names ride as params, not preformatted English.
+    pub label: MessageRef,
     pub needs_target: bool,
     /// The targets legal for this action right now (`Game::legal_targets`), so the client
     /// highlights the real set instead of reimplementing `TargetSpec`. Empty when the action
@@ -379,8 +465,8 @@ pub struct ModalView {
 /// One printed mode of a modal spell.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ModeView {
-    /// A human-readable description of the mode's effect.
-    pub label: String,
+    /// Stable description of the mode's effect.
+    pub label: MessageRef,
     /// The targets legal for *this mode* right now. Empty when the mode takes no target — and also
     /// when it takes one but none is legal, which is why `needs_target` is separate.
     pub targets: Vec<WireTarget>,
@@ -420,7 +506,7 @@ pub enum PendingChoiceView {
         player: u8,
         source: ObjectId,
         count: u32,
-        labels: Vec<String>,
+        labels: Vec<MessageRef>,
     },
     /// Legal targets to choose among. `label` is the effect being aimed (e.g. "Deal 3 damage to
     /// any target"); `source` is the permanent or spell it comes from. `optional` ("up to one" —
@@ -430,7 +516,7 @@ pub enum PendingChoiceView {
     ChooseTarget {
         player: u8,
         source: ObjectId,
-        label: String,
+        label: MessageRef,
         items: Vec<ChoiceItem>,
         optional: bool,
         max: u8,
@@ -440,7 +526,7 @@ pub enum PendingChoiceView {
     ChooseSpellTargets {
         player: u8,
         spell: ObjectId,
-        label: String,
+        label: MessageRef,
         min: u8,
         max: u8,
         items: Vec<ChoiceItem>,
@@ -451,7 +537,7 @@ pub enum PendingChoiceView {
     ChooseTargetPlayers {
         player: u8,
         source: ObjectId,
-        label: String,
+        label: MessageRef,
         min: u8,
         max: u8,
         items: Vec<ChoiceItem>,
@@ -461,7 +547,7 @@ pub enum PendingChoiceView {
     MayYesNo {
         player: u8,
         source: ObjectId,
-        label: String,
+        label: MessageRef,
     },
     /// This player (the resolving controller) chooses how many cards to draw — any number `0..=max`
     /// (CR 120.4 / 601.2c — Arcane Denial's "may draw up to two cards"). Reveals only the maximum,
@@ -499,7 +585,7 @@ pub enum PendingChoiceView {
         source: ObjectId,
         cost: WireCost,
         /// Short English for the paid effect (`Effect::label`) — e.g. "Create 1 Fungus Beast token(s)".
-        label: String,
+        label: MessageRef,
     },
     /// Pay `cost` to save `spell` from being countered, or decline and let it be countered
     /// (CR 701.5c "unless its controller pays" — the mirror image of `PayCost`).
@@ -644,7 +730,7 @@ pub enum PendingChoiceView {
     ChooseAbilityTargets {
         player: u8,
         source: ObjectId,
-        label: String,
+        label: MessageRef,
         min: u8,
         max: u8,
         items: Vec<ChoiceItem>,
@@ -811,7 +897,7 @@ pub enum PendingChoiceView {
     ChooseSplittingOpponent {
         player: u8,
         source: ObjectId,
-        label: String,
+        label: MessageRef,
         items: Vec<ChoiceItem>,
     },
     /// This player (the opponent `ChooseSplittingOpponent` named) must assign each of `items`
@@ -856,7 +942,7 @@ pub enum PendingChoiceView {
     ChooseMode {
         player: u8,
         source: ObjectId,
-        labels: Vec<String>,
+        labels: Vec<MessageRef>,
     },
     /// This player may choose `choose` distinct modes of a modal *triggered* ability (CR 700.2 —
     /// Shadrix Silverquill's begin-combat "you may choose two"), each with its own target where
@@ -1228,6 +1314,14 @@ pub struct DeckError {
 mod tests {
     use super::*;
 
+    fn msg(key: &str) -> MessageRef {
+        MessageRef::key(key)
+    }
+
+    fn named_msg(key: &str, name: &str) -> MessageRef {
+        MessageRef::key(key).with_params(vec![MessageParam::string("name", name)])
+    }
+
     #[test]
     fn pending_choice_view_pins_the_wire_kind_and_fields_per_variant() {
         // Pins the exact JSON per kind — a typo or dropped field here is a silently dead
@@ -1237,19 +1331,22 @@ mod tests {
                 player: 0,
                 source: 7,
                 count: 2,
-                labels: vec!["Draw 1".to_string(), "Gain 1 life".to_string()],
+                labels: vec![msg("effect.draw_cards"), msg("effect.life_gain")],
             })
             .unwrap(),
             serde_json::json!({
                 "kind": "order_triggers", "player": 0, "source": 7, "count": 2,
-                "labels": ["Draw 1", "Gain 1 life"],
+                "labels": [
+                    {"key": "effect.draw_cards", "params": [], "children": []},
+                    {"key": "effect.life_gain", "params": [], "children": []}
+                ],
             }),
         );
         assert_eq!(
             serde_json::to_value(PendingChoiceView::ChooseTarget {
                 player: 1,
                 source: 7,
-                label: "Deal 1 damage to any target".to_string(),
+                label: msg("effect.damage_target"),
                 items: vec![ChoiceItem {
                     id: 4,
                     label: "Bear".to_string(),
@@ -1262,7 +1359,7 @@ mod tests {
             .unwrap(),
             serde_json::json!({
                 "kind": "choose_target", "player": 1, "source": 7,
-                "label": "Deal 1 damage to any target",
+                "label": {"key": "effect.damage_target", "params": [], "children": []},
                 "items": [{"id": 4, "label": "Bear"}], "optional": false, "max": 1,
             }),
         );
@@ -1270,7 +1367,7 @@ mod tests {
             serde_json::to_value(PendingChoiceView::ChooseTarget {
                 player: 0,
                 source: 7,
-                label: "Exile target player's graveyard".to_string(),
+                label: msg("effect.exile_graveyard"),
                 items: vec![ChoiceItem {
                     id: 0,
                     label: "Player 2".to_string(),
@@ -1283,7 +1380,7 @@ mod tests {
             .unwrap(),
             serde_json::json!({
                 "kind": "choose_target", "player": 0, "source": 7,
-                "label": "Exile target player's graveyard",
+                "label": {"key": "effect.exile_graveyard", "params": [], "children": []},
                 "items": [{"id": 0, "label": "Player 2", "player": 1}], "optional": false, "max": 1,
             }),
         );
@@ -1291,7 +1388,7 @@ mod tests {
             serde_json::to_value(PendingChoiceView::ChooseSpellTargets {
                 player: 1,
                 spell: 9,
-                label: "Lightning Bolt".to_string(),
+                label: named_msg("card.name", "Lightning Bolt"),
                 min: 1,
                 max: 1,
                 items: vec![ChoiceItem {
@@ -1304,7 +1401,12 @@ mod tests {
             .unwrap(),
             serde_json::json!({
                 "kind": "choose_spell_targets", "player": 1, "spell": 9,
-                "label": "Lightning Bolt", "min": 1, "max": 1,
+                "label": {
+                    "key": "card.name",
+                    "params": [{"name": "name", "string_value": "Lightning Bolt"}],
+                    "children": []
+                },
+                "min": 1, "max": 1,
                 "items": [{"id": 4, "label": "Bear"}],
             }),
         );
@@ -1312,12 +1414,12 @@ mod tests {
             serde_json::to_value(PendingChoiceView::MayYesNo {
                 player: 2,
                 source: 7,
-                label: "Create a Treasure token".to_string(),
+                label: msg("effect.token_create_treasure"),
             })
             .unwrap(),
             serde_json::json!({
                 "kind": "may_yes_no", "player": 2, "source": 7,
-                "label": "Create a Treasure token",
+                "label": {"key": "effect.token_create_treasure", "params": [], "children": []},
             }),
         );
         assert_eq!(
@@ -1330,13 +1432,13 @@ mod tests {
                     has_x: false,
                     x_symbols: 0,
                 },
-                label: "Draw a card".to_string(),
+                label: msg("effect.draw_cards"),
             })
             .unwrap(),
             serde_json::json!({
                 "kind": "pay_cost", "player": 3, "source": 7,
                 "cost": {"generic": 1, "colored": [0, 0, 1, 0, 0], "has_x": false, "x_symbols": 0},
-                "label": "Draw a card",
+                "label": {"key": "effect.draw_cards", "params": [], "children": []},
             }),
         );
         assert_eq!(

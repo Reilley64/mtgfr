@@ -95,10 +95,11 @@ message StackObjectView {
   // The spell's stack-object id, or the ability's source permanent.
   uint32 source = 2;
   uint32 controller = 3;
-  // A human-readable label (the spell's name, or a description of the ability's effect).
-  string label = 4;
+  reserved 4;
   // The chosen target, if any.
   optional WireTarget target = 5;
+  // Stable label for the spell name or ability effect.
+  MessageRef label = 6;
 }
 
 // One labelled item offered by a pending choice (a legal target, or a blocker to assign damage
@@ -115,12 +116,13 @@ message ChoiceItem {
 
 // One printed mode of a modal spell.
 message ModeView {
-  // A human-readable description of the mode's effect.
-  string label = 1;
+  reserved 1;
   // The targets legal for *this mode* right now. Empty when the mode takes no target — and
   // also when it takes one but none is legal, which is why `needs_target` is separate.
   repeated WireTarget targets = 2;
   bool needs_target = 3;
+  // Stable description of the mode's effect.
+  MessageRef label = 4;
 }
 
 // A modal spell's printed modes and how many of them the caster picks (CR 700.2).
@@ -145,8 +147,7 @@ message ActionView {
   optional uint32 ability_index = 4;
   // Section bucket: "hand" | "battlefield" | "command" | "graveyard" | "exile" | "combat".
   string section = 5;
-  // Card name (play_land/cast) or ability label (activate/combat).
-  string label = 6;
+  reserved 6;
   bool needs_target = 7;
   // The targets legal for this action right now.
   repeated WireTarget targets = 8;
@@ -183,6 +184,8 @@ message ActionView {
   // Whether this activate's cost includes {T}/{Q} on the source (CR 302.6 summoning sickness).
   // False / unset for non-activate actions.
   bool taps_self = 22;
+  // Stable card/action/ability label.
+  MessageRef label = 23;
 }
 
 // The current combat state a client renders: who's attacking and the declared blocks.
@@ -276,7 +279,8 @@ message PendingChoiceViewOrderTriggers {
   uint32 player = 1;
   uint32 source = 2;
   uint32 count = 3;
-  repeated string labels = 4;
+  reserved 4;
+  repeated MessageRef labels = 5;
 }
 
 // Legal targets to choose among. `label` is the effect being aimed; `source` is the permanent
@@ -287,10 +291,11 @@ message PendingChoiceViewOrderTriggers {
 message PendingChoiceViewChooseTarget {
   uint32 player = 1;
   uint32 source = 2;
-  string label = 3;
+  reserved 3;
   repeated ChoiceItem items = 4;
   bool optional = 5;
   uint32 max = 6;
+  MessageRef label = 7;
 }
 
 // A multi-target spell's targets to choose (CR 601.2c): between `min` and `max` distinct
@@ -298,10 +303,11 @@ message PendingChoiceViewChooseTarget {
 message PendingChoiceViewChooseSpellTargets {
   uint32 player = 1;
   uint32 spell = 2;
-  string label = 3;
+  reserved 3;
   uint32 min = 4;
   uint32 max = 5;
   repeated ChoiceItem items = 6;
+  MessageRef label = 7;
 }
 
 // "Any number of target players" to choose for a targeted edict (CR 601.2c/608.2b — Priest of
@@ -310,10 +316,11 @@ message PendingChoiceViewChooseSpellTargets {
 message PendingChoiceViewChooseTargetPlayers {
   uint32 player = 1;
   uint32 source = 2;
-  string label = 3;
+  reserved 3;
   uint32 min = 4;
   uint32 max = 5;
   repeated ChoiceItem items = 6;
+  MessageRef label = 7;
 }
 
 // Optional "you may" trigger — `label` is the effect so the client can name what accepting
@@ -321,7 +328,8 @@ message PendingChoiceViewChooseTargetPlayers {
 message PendingChoiceViewMayYesNo {
   uint32 player = 1;
   uint32 source = 2;
-  string label = 3;
+  reserved 3;
+  MessageRef label = 4;
 }
 
 // A may-draw-up-to count choice (Arcane Denial's "may draw up to two cards"): this player chooses
@@ -361,8 +369,9 @@ message PendingChoiceViewPayCost {
   uint32 player = 1;
   uint32 source = 2;
   WireCost cost = 3;
-  // Short English for the paid effect — e.g. "Create 1 Fungus Beast token(s)".
-  string label = 4;
+  reserved 4;
+  // Stable label for the paid effect.
+  MessageRef label = 5;
 }
 
 // Pay `cost` to save `spell` from being countered, or decline and let it be countered (CR
@@ -500,10 +509,11 @@ message PendingChoiceViewPhaseOut {
 message PendingChoiceViewChooseAbilityTargets {
   uint32 player = 1;
   uint32 source = 2;
-  string label = 3;
+  reserved 3;
   uint32 min = 4;
   uint32 max = 5;
   repeated ChoiceItem items = 6;
+  MessageRef label = 7;
 }
 
 // An activated ability's own targeted exile cost (CR 601.2c/602.2b — Spurnmage Advocate's
@@ -708,7 +718,8 @@ message PendingChoiceViewRevealedCardToBattlefieldOrHand {
 message PendingChoiceViewChooseMode {
   uint32 player = 1;
   uint32 source = 2;
-  repeated string labels = 3;
+  reserved 3;
+  repeated MessageRef labels = 4;
 }
 
 // This player may choose `choose` distinct modes of a modal *triggered* ability (CR 700.2 —
@@ -834,8 +845,9 @@ message PendingChoiceViewCastCreatureFaceDown {
 message PendingChoiceViewChooseSplittingOpponent {
   uint32 player = 1;
   uint32 source = 2;
-  string label = 3;
+  reserved 3;
   repeated ChoiceItem items = 4;
+  MessageRef label = 5;
 }
 
 // This player (the opponent `ChooseSplittingOpponent` named) must assign each of `items` (Fact
@@ -1910,10 +1922,11 @@ message DeltaEnvelope {
   uint64 seq = 1;
   repeated VisibleEvent events = 2;
   VisibleState state = 3;
-  // Human-readable labels of actions the server auto-submitted in this frame (a forced
-  // discard, an auto-passed priority with nothing to do) — for the client's "automatic"
-  // styling, so a forced play is never mistaken for the player's own move.
-  repeated string auto_actions = 4;
+  reserved 4;
+  // Stable labels of actions the server auto-submitted in this frame (a forced discard, an
+  // auto-passed priority with nothing to do) — for the client's "automatic" styling, so a
+  // forced play is never mistaken for the player's own move.
+  repeated MessageRef auto_actions = 5;
 }
 
 message SnapshotFrame {

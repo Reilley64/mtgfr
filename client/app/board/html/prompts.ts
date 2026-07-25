@@ -29,8 +29,9 @@ import { filterOptionLabels } from "~/optionFilter";
 import { manaFontClass } from "~/oracleText";
 import { isActivePlayer } from "~/spectator";
 import { cardArt } from "~/ui/card-art";
-import type { ChoiceItem, PendingChoiceView, VisibleState, WireModeChoice, WireTarget } from "~/wire/types";
+import type { ChoiceItem, MessageRef, PendingChoiceView, VisibleState, WireModeChoice, WireTarget } from "~/wire/types";
 import { clampX, costText, costWithChosenX } from "~/xCost";
+import { formatMessage } from "../../../lib/i18n/message";
 import { modeAvailable } from "../action/modal";
 import {
   gyExileCostObjectIds,
@@ -85,6 +86,10 @@ import type { BoardModel } from "../submodel";
 import { HAND_BAR_H } from "./hand";
 
 const h = html<Message>();
+
+function messageText(message: MessageRef | null | undefined): string {
+  return formatMessage(message);
+}
 
 function itemButton(label: string, testId: string, onClick: Message, disabled = false): Html {
   return h.button(
@@ -489,7 +494,7 @@ function orderPrompt(pending: Extract<PendingChoiceView, { kind: "order_triggers
               "min-w-0 flex-1 cursor-pointer rounded-hud border-0 bg-transparent px-2 py-1 text-left text-body text-snow hover:bg-glass",
             ),
           ],
-          [pending.labels[effectIndex] ?? ""],
+          [messageText(pending.labels[effectIndex])],
         ),
       ],
     );
@@ -772,7 +777,7 @@ function modalPrompt(mc: NonNullable<BoardModel["modalCast"]>): Html {
     const picked = multi ? mc.modeDraft : [];
     const ready = multi ? picked.length >= choose && picked.length <= chooseMax : true;
     const countHint = choose === chooseMax ? `Choose ${choose}` : `Choose ${choose}–${chooseMax}`;
-    const title = mc.action.label || "Choose modes";
+    const title = messageText(mc.action.label) || "Choose modes";
     return h.div(
       [
         h.DataAttribute("testid", "modal-mode-aim"),
@@ -805,10 +810,10 @@ function modalPrompt(mc: NonNullable<BoardModel["modalCast"]>): Html {
                     ].join(" "),
                   ),
                 ],
-                [mode.label, !available ? " (no legal target)" : ""],
+                [messageText(mode.label), !available ? " (no legal target)" : ""],
               );
             }
-            return itemButton(mode.label, `modal-mode-${i}`, ModalModesChosen({ chosen: [i] }));
+            return itemButton(messageText(mode.label), `modal-mode-${i}`, ModalModesChosen({ chosen: [i] }));
           }),
         ),
         multi
@@ -855,7 +860,10 @@ function modalPrompt(mc: NonNullable<BoardModel["modalCast"]>): Html {
 }
 
 function pendingChoiceTitle(pending: PendingChoiceView): string {
-  if ("label" in pending && typeof pending.label === "string" && pending.label !== "") return pending.label;
+  if ("label" in pending) {
+    const label = messageText(pending.label);
+    if (label !== "") return label;
+  }
   return `Choose (${pending.kind})`;
 }
 
@@ -959,10 +967,10 @@ function cardPickConfig(pending: PendingChoiceView): {
   const declineLabel = cardPickDeclineLabel(pending) ?? undefined;
   switch (pending.kind) {
     case "choose_target":
-      return { title: pending.label, submitLabel: "Choose", declineLabel };
+      return { title: messageText(pending.label), submitLabel: "Choose", declineLabel };
     case "choose_spell_targets":
     case "choose_ability_targets":
-      return { title: pending.label, submitLabel: "Choose" };
+      return { title: messageText(pending.label), submitLabel: "Choose" };
     case "choose_activation_cost_targets":
       return { title: "Choose cost targets", submitLabel: "Choose" };
     case "decline_untap":
@@ -1462,7 +1470,7 @@ function cardPickForKind(
   }
   if (pendingBoardTargetMode(pending, state) != null) {
     const decline = declineAnswer(pending);
-    const label = "label" in pending && typeof pending.label === "string" ? pending.label : pendingChoiceTitle(pending);
+    const label = "label" in pending ? messageText(pending.label) : pendingChoiceTitle(pending);
     const oneClick = pendingTargetOneClick(pending);
     const draft = board.promptDraft ?? initPromptDraft(pending, state);
     const picked = draft.kind === "card-pick" ? draft.picked : [];
@@ -1555,7 +1563,10 @@ function cardPickForKind(
         ),
       ],
       [
-        h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], [pending.label]),
+        h.div(
+          [h.Class("pointer-events-none text-center font-semibold text-body text-snow")],
+          [messageText(pending.label)],
+        ),
         h.div([h.Class("flex flex-wrap justify-center gap-2")], buttons),
       ],
     );
@@ -1721,7 +1732,7 @@ function payCostPrompt(
   >,
   tableId: string | null,
 ): Html {
-  const title = "label" in pending ? pending.label : pendingChoiceTitle(pending);
+  const title = "label" in pending ? messageText(pending.label) : pendingChoiceTitle(pending);
   const payLabel = `Pay ${costText(pending.cost)}`;
   const declineLabel = payCostDeclineLabel(pending.kind);
   return h.div(
@@ -1768,7 +1779,7 @@ function modeListPrompt(
             answerButton(
               pending,
               `prompt-mode-${index}`,
-              label,
+              messageText(label),
               { kind: "mode", mode: index },
               index === 0,
               tableId == null,
@@ -1783,11 +1794,11 @@ function modeListPrompt(
   const picked = draft.kind === "modes" ? draft.modes : [];
   const concreteChoices: Array<{ choice: WireModeChoice; label: string }> = pending.modes.flatMap((mode, index) => {
     if (!mode.needs_target) {
-      return [{ choice: { index } satisfies WireModeChoice, label: mode.label }];
+      return [{ choice: { index } satisfies WireModeChoice, label: messageText(mode.label) }];
     }
     return mode.targets.map((target) => ({
       choice: { index, target } satisfies WireModeChoice,
-      label: `${mode.label} — ${targetLabel(target, state)}`,
+      label: `${messageText(mode.label)} — ${targetLabel(target, state)}`,
     }));
   });
   const ready = picked.length === pending.choose || (pending.optional && picked.length === 0);
@@ -1869,7 +1880,7 @@ function playerPickPrompt(
         ),
       ],
       [
-        h.div([h.Class("pointer-events-none")], [pending.label]),
+        h.div([h.Class("pointer-events-none")], [messageText(pending.label)]),
         countLine,
         actions.length > 0 ? h.div([h.Class("flex flex-wrap justify-center gap-2")], actions) : null,
       ].filter((v): v is Html => v !== null),
@@ -1886,7 +1897,10 @@ function playerPickPrompt(
         ),
       ],
       [
-        h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], [pending.label]),
+        h.div(
+          [h.Class("pointer-events-none text-center font-semibold text-body text-snow")],
+          [messageText(pending.label)],
+        ),
         h.div(
           [h.Class("flex flex-wrap justify-center gap-2")],
           pending.items.flatMap((item, index) => {
@@ -1920,7 +1934,10 @@ function playerPickPrompt(
       ),
     ],
     [
-      h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], [pending.label]),
+      h.div(
+        [h.Class("pointer-events-none text-center font-semibold text-body text-snow")],
+        [messageText(pending.label)],
+      ),
       h.div(
         [h.Class("flex flex-wrap justify-center gap-2")],
         pending.items.flatMap((item, index) => {

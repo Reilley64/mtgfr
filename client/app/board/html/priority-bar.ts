@@ -8,6 +8,7 @@ import { priorityPrimaryClass } from "~/priorityContextChrome";
 import { turnYieldRockerClass, turnYieldThumbClass, turnYieldTrackClass } from "~/turnYieldChrome";
 import { gameButtonClass } from "~/ui/buttonClass";
 import type { VisibleState } from "~/wire/types";
+import { formatMessage } from "../../../lib/i18n/message";
 import { STEP } from "../geometry/layout";
 import {
   CancelActionClicked,
@@ -203,7 +204,7 @@ export function priorityBarView(board: BoardModel, state: VisibleState): Html {
               h.DataAttribute("testid", "board-staged-hint"),
               h.Class("max-w-[280px] text-right text-caption text-caution-amber"),
             ],
-            [`${board.staged.action.label}: click a highlighted card`],
+            [`${formatMessage(board.staged.action.label)}: click a highlighted card`],
           )
         : null,
       board.reject != null

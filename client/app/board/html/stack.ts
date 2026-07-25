@@ -7,6 +7,7 @@ import { type Attribute, type Html, html } from "foldkit/html";
 import { buttonClass } from "~/ui/buttonClass";
 import { cardArt } from "~/ui/card-art";
 import type { PlayerView, StackObjectView, VisibleState } from "~/wire/types";
+import { formatMessage } from "../../../lib/i18n/message";
 import { aimingObjectIds, stagedPickTargets } from "../action/targeting";
 import {
   STACK_CARD_W,
@@ -63,13 +64,14 @@ function targetLabel(target: StackObjectView["target"], state: VisibleState): st
 function stackItems(board: BoardModel, state: VisibleState, showStaged: boolean): StackItem[] {
   const items: StackItem[] = state.stack.map((entry, row) => {
     const meta = objectMeta(state, entry.source);
+    const label = formatMessage(entry.label);
     return {
       row,
       source: entry.source,
-      imageName: entry.kind === "spell" ? entry.label : meta.name,
+      imageName: entry.kind === "spell" ? label : meta.name,
       print: meta.print,
       cardId: meta.cardId,
-      label: entry.label,
+      label,
       staged: false,
     };
   });
@@ -201,7 +203,7 @@ function pileCaption(state: VisibleState, showStaged: boolean): Html | null {
   const top = state.stack[state.stack.length - 1];
   if (top == null) return null;
   const target = top.target != null ? targetLabel(top.target, state) : "";
-  const ability = top.kind === "ability" ? top.label : "";
+  const ability = top.kind === "ability" ? formatMessage(top.label) : "";
   if (ability === "" && target === "") return null;
   return h.div(
     [

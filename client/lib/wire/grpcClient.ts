@@ -31,6 +31,7 @@ import {
   TablesGrpcRegistry,
 } from "./generated/mtgfr/v1/mtgfr_effect_grpc";
 import {
+  ackFromProto,
   catalogCardsFromProto,
   deckDetailFromProto,
   deckSummaryListFromProto,
@@ -333,7 +334,11 @@ export function grpcClient(address: string, outboundTraceparent: string | null =
           key,
           Effect.gen(function* () {
             const game = yield* GameClient;
-            return yield* game.submitIntent({ tableId, envelope: intentEnvelopeToProto(envelope) }, opts(sessionToken));
+            const ack = yield* game.submitIntent(
+              { tableId, envelope: intentEnvelopeToProto(envelope) },
+              opts(sessionToken),
+            );
+            return ackFromProto(ack);
           }),
         ),
       setYield: (tableId, enabled, sessionToken) =>
@@ -341,7 +346,8 @@ export function grpcClient(address: string, outboundTraceparent: string | null =
           key,
           Effect.gen(function* () {
             const game = yield* GameClient;
-            return yield* game.setYield({ tableId, enabled }, opts(sessionToken));
+            const ack = yield* game.setYield({ tableId, enabled }, opts(sessionToken));
+            return ackFromProto(ack);
           }),
         ),
       setTurnYield: (tableId, enabled, sessionToken) =>
@@ -349,7 +355,8 @@ export function grpcClient(address: string, outboundTraceparent: string | null =
           key,
           Effect.gen(function* () {
             const game = yield* GameClient;
-            return yield* game.setTurnYield({ tableId, enabled }, opts(sessionToken));
+            const ack = yield* game.setTurnYield({ tableId, enabled }, opts(sessionToken));
+            return ackFromProto(ack);
           }),
         ),
       setStackDwell: (tableId, dwelling, sessionToken) =>
@@ -357,7 +364,8 @@ export function grpcClient(address: string, outboundTraceparent: string | null =
           key,
           Effect.gen(function* () {
             const game = yield* GameClient;
-            return yield* game.setStackDwell({ tableId, dwelling }, opts(sessionToken));
+            const ack = yield* game.setStackDwell({ tableId, dwelling }, opts(sessionToken));
+            return ackFromProto(ack);
           }),
         ),
       stream(tableId, sessionToken) {

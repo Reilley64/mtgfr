@@ -1,6 +1,6 @@
 # Choices, Actions, and Resolution
 
-**Status:** Current (as of 2026-07-20)
+**Status:** Current (as of 2026-07-25)
 **Module:** `crates/engine` (`src/types/` `PendingChoice`/`LegalAction`, `src/cast.rs`, `src/effects.rs`, `src/resolution/`, `src/priority.rs` `settle_payment`, `src/query.rs`, `src/playable.rs`)
 
 ---
@@ -15,7 +15,7 @@ Card effects pause the game for player input — choosing a target, paying a cos
 
 `Game::pending_choice: Option<PendingChoice>` is a plain data enum — no callbacks, no closures. While a choice is pending, `Game::legal_actions()` returns an empty list and only the matching answer intent from the awaited player is accepted by `submit`. When the choice is resolved, the engine continues executing the interrupted effect body (the `ResumeState` deferred-sequence mechanism).
 
-`Game::legal_actions()` returns a `Vec<LegalAction>`, each carrying a stable `id`, the acting `player`, and a `MeaningfulAction` kind. The client submits `Intent::TakeAction { id, … }` to execute the action; the engine looks up the id and dispatches identically to the equivalent concrete intent. Stable ids survive state changes that do not remove the underlying action.
+`Game::legal_actions()` returns a `Vec<LegalAction>`, each carrying a stable `id`, the acting `player`, and a `MeaningfulAction` kind. Schema projection gives each action a `MessageRef` label for client display. The client submits `Intent::TakeAction { id, … }` to execute the action; the engine looks up the id and dispatches identically to the equivalent concrete intent. Stable ids survive state changes that do not remove the underlying action.
 
 Payment is settled engine-side: `Game::settle_payment` auto-taps mana sources to cover a spell's or ability's cost, removing the need for the client to plan or sequence taps before casting.
 
@@ -64,13 +64,14 @@ While `Game::pending_choice` is `Some`, no `LegalAction` is exposed and only the
 
 ### Forced action
 
-`Game::forced_action()` returns the single auto-submittable intent when a pending choice has exactly one legal answer and it is unambiguously the only option. Conservative: "may" choices and ArrangeTop are never forced. The server submits forced choices automatically and tags the resulting log events as `AUTO`.
+`Game::forced_action()` returns the single auto-submittable intent when a pending choice has exactly one legal answer and it is unambiguously the only option. Conservative: "may" choices and ArrangeTop are never forced. The server submits forced choices automatically and carries a `MessageRef` auto-action notice in the delta so the client can mark the log line as automatic.
 
 ### LegalAction and TakeAction
 
 - `Game::refresh_actions()` rebuilds `Game::actions` from `Game::meaningful_actions(player)` for every living seat after every state change.
 - While `pending_choice` is `Some`, `refresh_actions` produces an empty list.
 - Each `LegalAction` carries: `id: u64` (stable monotonic), `player: PlayerId`, `kind: MeaningfulAction`.
+- Each projected `ActionView` carries a `MessageRef` label; card/object names used in those labels are params only when visible to that viewer.
 - An action whose `(player, kind)` pair survives a state change keeps its id. A genuinely new action mints a fresh monotonic id. Dead ids are never recycled.
 - `Intent::TakeAction { id, target, x, modes, sacrifice, discard_cost, graveyard_exile, attackers, blocks }` looks up `id` in `Game::actions`, checks `player` matches, and dispatches to the same private handler the equivalent concrete intent would invoke.
 - `MeaningfulAction` kinds: `PlayLand`, `Cast`, `Activate`, `Cycle`, `ActivateHandAbility`, `Suspend`, `Encore`, `TurnFaceUp`, `CastPrepared`, `CastFaceDown`, `DeclareAttackers`, `DeclareBlockers`.
@@ -117,6 +118,7 @@ Later, when the player answers, `pending::answer(game, intent)` resolves the cho
 - **`ResumeState` is not event-sourced.** The deferred-sequence resume stack (`Vec<ResumeFrame>`) is transient orchestration state on `Game`, consistent with how `pending_choice` is handled. Games are in-memory only (lobby-table-routing-and-live-game spec), so there is no replay concern.
 - **`forced_action` is conservative by design.** It errs on the side of not forcing rather than accidentally making a choice for the player. A real decision must never be auto-submitted.
 - **Payment planner preference order**: free-tap lands before non-land free-tap sources; non-pain sources before pain sources; higher-breadth (more color-versatile) sources preferred. This is a heuristic: the planner aims to minimize color waste without guaranteeing an optimal plan (optimization is bounded and practically good for the pool's cards).
+- **Engine-authored player-facing effect text is structured.** `Effect::message()` and reject mappers return closed `MessageKey` values plus params; English action, prompt, stack, and auto-action copy is formatted by the client catalog.
 
 ---
 
@@ -128,6 +130,7 @@ Later, when the player answers, `pending::answer(game, intent)` resolves the cho
 - **Stable-id tests**: construct a board, call `refresh_actions`, record an id, mutate state in a way that doesn't remove the action, call `refresh_actions` again, assert the id is unchanged. See in-module tests in `lib.rs`.
 - **`TakeAction` dispatch test**: verify that submitting `TakeAction { id }` produces the same events as the equivalent concrete intent for each `MeaningfulAction` kind.
 - **Multi-choice sequence test**: effect with two pause points (e.g. a Clash followed by a Scry) — answer each in order and verify the deferred sequence drains correctly.
+- **MessageRef tests**: representative effects, action projection, trigger-order labels, and automatic choices assert keys and params rather than English strings.
 
 ---
 

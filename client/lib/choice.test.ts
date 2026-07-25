@@ -13,6 +13,7 @@ import {
   nextDistributeBucket,
   type PromptDraft,
 } from "~/choice";
+import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ObjectView, PendingChoiceView, VisibleState, WireIntent, WireModeChoice } from "~/wire/types";
 
 const ALL_PENDING_CHOICE_KINDS = [
@@ -141,7 +142,13 @@ test("choiceIntent maps scry arrange", () => {
 });
 
 test("choiceIntent maps order_triggers", () => {
-  const pc = { kind: "order_triggers" as const, count: 2, labels: ["A", "B"], player: 0, source: 5 };
+  const pc = {
+    kind: "order_triggers" as const,
+    count: 2,
+    labels: [testMessageRef("A"), testMessageRef("B")],
+    player: 0,
+    source: 5,
+  };
   expect(choiceIntent(pc, { kind: "order", order: [1, 0] })).toEqual({
     kind: "choose_order",
     player: 0,
@@ -293,7 +300,7 @@ test("buildAnswerFromDraft builds proliferate from empty card-pick", () => {
 describe("answerFromDraft builds accepted intents", () => {
   test("builds an order answer for order_triggers", () => {
     expectDraftIntent(
-      { kind: "order_triggers", count: 2, labels: ["A", "B"], player: 0, source: 5 },
+      { kind: "order_triggers", count: 2, labels: [testMessageRef("A"), testMessageRef("B")], player: 0, source: 5 },
       { kind: "order", order: [1, 0] },
       { kind: "choose_order", order: [1, 0], player: 0 },
     );
@@ -404,7 +411,7 @@ describe("answerFromDraft builds accepted intents", () => {
 
   test("builds pay answers for optional cost prompts", () => {
     expectDraftIntent(
-      { kind: "pay_cost", cost: emptyCost, label: "Pay", player: 0, source: 1 },
+      { kind: "pay_cost", cost: emptyCost, label: testMessageRef("Pay"), player: 0, source: 1 },
       { kind: "pay", pay: true },
       { kind: "pay_optional_cost", pay: true, player: 0 },
     );
@@ -412,7 +419,7 @@ describe("answerFromDraft builds accepted intents", () => {
 
   test("builds mode answers for choose_mode", () => {
     expectDraftIntent(
-      { kind: "choose_mode", labels: ["A", "B"], player: 0, source: 1 },
+      { kind: "choose_mode", labels: [testMessageRef("A"), testMessageRef("B")], player: 0, source: 1 },
       { kind: "mode", mode: 1 },
       { kind: "choose_mode", mode: 1, player: 0 },
     );
@@ -424,9 +431,9 @@ describe("answerFromDraft builds accepted intents", () => {
         kind: "choose_trigger_modes",
         choose: 2,
         modes: [
-          { label: "A", needs_target: false, targets: [] },
-          { label: "B", needs_target: true, targets: [{ kind: "object", id: 9 }] },
-          { label: "C", needs_target: true, targets: [{ kind: "player", player: 1 }] },
+          { label: testMessageRef("A"), needs_target: false, targets: [] },
+          { label: testMessageRef("B"), needs_target: true, targets: [{ kind: "object", id: 9 }] },
+          { label: testMessageRef("C"), needs_target: true, targets: [{ kind: "player", player: 1 }] },
         ],
         optional: false,
         player: 0,
@@ -445,7 +452,7 @@ describe("answerFromDraft builds accepted intents", () => {
           { id: 0, label: "Player 2" },
           { id: 0, label: "Player 3" },
         ],
-        label: "Choose players",
+        label: testMessageRef("Choose players"),
         max: 2,
         min: 1,
         player: 0,
@@ -464,7 +471,7 @@ describe("answerFromDraft builds accepted intents", () => {
           { id: 0, label: "Player 2" },
           { id: 0, label: "Player 3" },
         ],
-        label: "Fact or Fiction",
+        label: testMessageRef("Fact or Fiction"),
         player: 0,
         source: 1,
       },
@@ -648,7 +655,7 @@ describe("answerFromDraft builds accepted intents", () => {
       {
         kind: "choose_target",
         items: [{ id: 11, label: "Bear" }],
-        label: "Choose target",
+        label: testMessageRef("Choose target"),
         max: 1,
         optional: false,
         player: 0,
@@ -671,7 +678,7 @@ describe("answerFromDraft builds accepted intents", () => {
           { id: 21, label: "Forest" },
           { id: 22, label: "Island" },
         ],
-        label: "Untap two target lands",
+        label: testMessageRef("Untap two target lands"),
         max: 2,
         optional: false,
         player: 0,
@@ -848,7 +855,7 @@ describe("answerFromDraft builds accepted intents", () => {
           { id: 81, label: "A" },
           { id: 82, label: "B" },
         ],
-        label: "Choose targets",
+        label: testMessageRef("Choose targets"),
         max: 2,
         min: 1,
         player: 0,

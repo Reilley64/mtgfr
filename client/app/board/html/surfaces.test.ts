@@ -9,6 +9,7 @@ import { Submodel } from "foldkit";
 import { html } from "foldkit/html";
 import { Scene } from "foldkit/test";
 import { beforeAll, expect, test } from "vitest";
+import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/types";
 import type { GameFoldState, LogLine } from "../../game/fold";
 import { emptyCostPicks, type ModalCast, type XPromptState } from "../action/execution";
@@ -129,7 +130,7 @@ function action(id: number, overrides: Partial<ActionView> = {}): ActionView {
   return {
     id,
     kind: "cast",
-    label: `Action ${id}`,
+    label: testMessageRef(`Action ${id}`),
     needs_target: false,
     section: "hand",
     ...overrides,
@@ -208,7 +209,7 @@ function stagedBoard(overrides: Partial<BoardModel> = {}): BoardModel {
       card: spell,
       action: action(10, {
         object: spell.id,
-        label: "Cast Shock",
+        label: testMessageRef("Cast Shock"),
         needs_target: true,
         targets: [{ kind: "object", id: 22 }],
       }),
@@ -280,7 +281,7 @@ test("smoke scene keeps existing chrome visible", () => {
     mana_cost: cost({ generic: 1 }),
   });
   const handAction = action(1, {
-    label: "Cast Lightning Bolt",
+    label: testMessageRef("Cast Lightning Bolt"),
     object: handCard.id,
     section: "hand",
   });
@@ -346,7 +347,7 @@ test("turn chrome renders banner and label", () => {
 
 test("stack context renders resolve stack affordance and top caption", () => {
   const state = gameState({
-    stack: [{ controller: 1, kind: "ability", label: "Ward 2", source: 99 }],
+    stack: [{ controller: 1, kind: "ability", label: testMessageRef("Ward 2"), source: 99 }],
   });
   overlayScene(
     overlayModel(initialBoardModel(), state),
@@ -359,7 +360,10 @@ test("armed stack yield state renders separately", () => {
   overlayScene(
     overlayModel(
       initialBoardModel(),
-      gameState({ stack: [{ controller: 1, kind: "spell", label: "Bolt", source: 77 }], yielded: true }),
+      gameState({
+        stack: [{ controller: 1, kind: "spell", label: testMessageRef("Bolt"), source: 77 }],
+        yielded: true,
+      }),
     ),
     Scene.expect(Scene.testId("board-stack-yield-armed")).toExist(),
   );
@@ -386,10 +390,30 @@ test("staged targeting shows cancel affordance and staged hint", () => {
     toughness: 2,
     name: "Bear",
   });
+  const board = stagedBoard();
+  if (board.staged == null) throw new Error("expected staged board fixture");
   overlayScene(
-    overlayModel(stagedBoard(), gameState({ objects: [target] })),
+    overlayModel(
+      {
+        ...board,
+        staged: {
+          ...board.staged,
+          action: action(10, {
+            object: 10,
+            label: {
+              key: "effect.life_gain",
+              params: [{ name: "amount", int_value: 1 }],
+              children: [],
+            },
+            needs_target: true,
+            targets: [{ kind: "object", id: 22 }],
+          }),
+        },
+      },
+      gameState({ objects: [target] }),
+    ),
     Scene.expect(Scene.testId("board-cancel-target")).toExist(),
-    Scene.expect(Scene.testId("board-staged-hint")).toContainText("Cast Shock"),
+    Scene.expect(Scene.testId("board-staged-hint")).toHaveText("Gain 1 life: click a highlighted card"),
   );
 });
 
@@ -407,7 +431,7 @@ test("hand surfaces render cost pips and a drag ghost", () => {
     mana_cost: cost({ generic: 1 }),
   });
   const castAction = action(7, {
-    label: "Cast Lightning Bolt",
+    label: testMessageRef("Cast Lightning Bolt"),
     object: handCard.id,
     section: "hand",
   });
@@ -453,7 +477,7 @@ test("inspect overlay renders from a pinned inspect card", () => {
         otags: [],
         set: "soc",
         subtypes: [],
-        summary: "Mana rock",
+        summary: [],
       },
     }),
     resolveBoardCardArtMounts(),
@@ -496,7 +520,7 @@ test("inspect overlay shows marked damage for a damaged battlefield permanent", 
           otags: [],
           set: "soc",
           subtypes: ["Bear"],
-          summary: "Bear",
+          summary: [],
         },
       },
       gameState({ objects: [bear] }),
@@ -609,7 +633,7 @@ test("result overlay renders watch and leave actions", () => {
 
 test("x prompt shows stepper controls and a live cost preview", () => {
   const xPrompt: XPromptState = {
-    action: action(12, { label: "Comet Storm", has_x: true, max_x: 3, min_x: 0 }),
+    action: action(12, { label: testMessageRef("Comet Storm"), has_x: true, max_x: 3, min_x: 0 }),
     target: null,
     picks: emptyCostPicks(),
     modes: [],
@@ -654,7 +678,7 @@ test("off-board staged target pick shows docked target-pick-aim instead of cente
           card: spell,
           action: action(10, {
             object: spell.id,
-            label: "Cast Reanimate",
+            label: testMessageRef("Cast Reanimate"),
             needs_target: true,
             targets: [{ kind: "object", id: 22 }],
           }),
@@ -676,19 +700,19 @@ test("off-board staged target pick shows docked target-pick-aim instead of cente
 test("modal mode picker renders before modes are chosen", () => {
   const modalCast: ModalCast = {
     action: action(13, {
-      label: "Cryptic Command",
+      label: testMessageRef("Cryptic Command"),
       modal: {
         choose: 2,
         choose_max: 2,
         modes: [
-          { label: "Counter target spell", needs_target: false, targets: [] },
-          { label: "Draw a card", needs_target: false, targets: [] },
+          { label: testMessageRef("Counter target spell"), needs_target: false, targets: [] },
+          { label: testMessageRef("Draw a card"), needs_target: false, targets: [] },
         ],
       },
     }),
     modes: [
-      { label: "Counter target spell", needs_target: false, targets: [] },
-      { label: "Draw a card", needs_target: false, targets: [] },
+      { label: testMessageRef("Counter target spell"), needs_target: false, targets: [] },
+      { label: testMessageRef("Draw a card"), needs_target: false, targets: [] },
     ],
     picks: emptyCostPicks(),
     chosen: null,
@@ -708,14 +732,14 @@ test("modal mode picker renders before modes are chosen", () => {
 test("modal waiting chrome docks when modes are chosen and a target is still needed", () => {
   const modalCast: ModalCast = {
     action: action(13, {
-      label: "Fact or Fiction",
+      label: testMessageRef("Fact or Fiction"),
       modal: {
         choose: 1,
         choose_max: 1,
-        modes: [{ label: "Counter", needs_target: true, targets: [] }],
+        modes: [{ label: testMessageRef("Counter"), needs_target: true, targets: [] }],
       },
     }),
-    modes: [{ label: "Counter", needs_target: true, targets: [] }],
+    modes: [{ label: testMessageRef("Counter"), needs_target: true, targets: [] }],
     picks: emptyCostPicks(),
     chosen: [0],
     answers: [],
@@ -780,7 +804,7 @@ test("choose_target_players off-board list shows docked pending-player-pick-aim"
         players: [player(0), player(1), player(2)],
         pending_choice: {
           kind: "choose_target_players",
-          label: "Choose opponents",
+          label: testMessageRef("Choose opponents"),
           min: 1,
           max: 2,
           player: 0,
@@ -809,7 +833,7 @@ test("choose_splitting_opponent off-board list shows docked pending-player-pick-
         players: [player(0), player(1), player(2)],
         pending_choice: {
           kind: "choose_splitting_opponent",
-          label: "Choose an opponent",
+          label: testMessageRef("Choose an opponent"),
           player: 0,
           source: 1,
           items: [
@@ -853,8 +877,8 @@ test("choose_trigger_modes shows docked pending-trigger-modes-aim", () => {
           kind: "choose_trigger_modes",
           choose: 1,
           modes: [
-            { label: "Draw a card", needs_target: false, targets: [] },
-            { label: "Gain 1 life", needs_target: false, targets: [] },
+            { label: testMessageRef("Draw a card"), needs_target: false, targets: [] },
+            { label: testMessageRef("Gain 1 life"), needs_target: false, targets: [] },
           ],
           optional: false,
           player: 0,
@@ -928,7 +952,7 @@ test("on-board choose_target aims instead of showing a card grid", () => {
         objects: [bear],
         pending_choice: {
           kind: "choose_target",
-          label: "Target creature",
+          label: testMessageRef("Target creature"),
           max: 1,
           optional: false,
           player: 0,
@@ -992,7 +1016,7 @@ test("multi on-board choose_target shows Confirm count chrome", () => {
         objects: [a, b],
         pending_choice: {
           kind: "choose_target",
-          label: "Target creatures",
+          label: testMessageRef("Target creatures"),
           max: 2,
           optional: false,
           player: 0,
@@ -1026,7 +1050,7 @@ test("optional on-board choose_target aim shows Decline", () => {
         objects: [bear],
         pending_choice: {
           kind: "choose_target",
-          label: "Target creature",
+          label: testMessageRef("Target creature"),
           max: 1,
           optional: true,
           player: 0,
@@ -1074,7 +1098,7 @@ test("order_triggers aim shows docked drag rows, click-to-place, and arrow contr
         pending_choice: {
           kind: "order_triggers",
           count: 2,
-          labels: ["ETB draw", "ETB treasure"],
+          labels: [testMessageRef("ETB draw"), testMessageRef("ETB treasure")],
           player: 0,
           source: 4,
         },
@@ -1214,7 +1238,7 @@ test("pay_cost aim shows docked Pay and decline", () => {
         pending_choice: {
           kind: "pay_cost",
           cost: { colored: [0, 0, 0, 1, 0], generic: 2 },
-          label: "Create a Fungus Beast",
+          label: testMessageRef("Create a Fungus Beast"),
           player: 0,
           source: 1,
         },
@@ -1234,7 +1258,7 @@ test("may_yes_no aim shows docked Yes and No", () => {
       gameState({
         pending_choice: {
           kind: "may_yes_no",
-          label: "Scry?",
+          label: testMessageRef("Scry?"),
           player: 0,
           source: 3,
         },
@@ -1292,7 +1316,7 @@ test("choose_mode aim shows docked mode buttons instead of center modal", () => 
       gameState({
         pending_choice: {
           kind: "choose_mode",
-          labels: ["Draw a card", "Create a token"],
+          labels: [testMessageRef("Draw a card"), testMessageRef("Create a token")],
           player: 0,
           source: 1,
         },
@@ -1313,7 +1337,7 @@ test("non-decider sees waiting banner instead of pending-choice controls", () =>
         viewer: 1,
         pending_choice: {
           kind: "may_yes_no",
-          label: "Scry?",
+          label: testMessageRef("Scry?"),
           player: 0,
           source: 3,
         },
@@ -1400,7 +1424,7 @@ test("choose_target player buttons show docked pending-player-pick-aim instead o
         objects: [yard],
         pending_choice: {
           kind: "choose_target",
-          label: "Choose a target",
+          label: testMessageRef("Choose a target"),
           max: 1,
           optional: false,
           player: 0,
@@ -1668,7 +1692,7 @@ test("divide_counters on-board aim shows coach when targets are battlefield", ()
 test("sacrifice pick prompt renders as a board surface", () => {
   const sacrificeAction = action(14, {
     kind: "activate",
-    label: "Village Rites",
+    label: testMessageRef("Village Rites"),
     sacrifice_choices: [55],
     object: 14,
     section: "hand",
@@ -1704,7 +1728,7 @@ test("sacrifice pick prompt renders as a board surface", () => {
 test("off-board sacrifice cost shows docked sacrifice-pick-aim instead of center modal", () => {
   const sacrificeAction = action(14, {
     kind: "activate",
-    label: "Village Rites",
+    label: testMessageRef("Village Rites"),
     sacrifice_choices: [55],
     object: 14,
     section: "hand",
@@ -1748,7 +1772,7 @@ test("discard cost aim shows coach when choices are in hand", () => {
   });
   const castAction = action(50, {
     kind: "cast",
-    label: "Cast",
+    label: testMessageRef("Cast"),
     discard_choices: [11],
     object: 10,
     section: "hand",
@@ -1788,7 +1812,7 @@ test("selected discard-cost hand card paints Llanowar selected chrome", () => {
   });
   const castAction = action(50, {
     kind: "cast",
-    label: "Cast",
+    label: testMessageRef("Cast"),
     discard_choices: [11],
     object: 10,
     section: "hand",
@@ -1830,7 +1854,7 @@ test("discard cost aim enables confirm when one card selected", () => {
   });
   const castAction = action(50, {
     kind: "cast",
-    label: "Cast",
+    label: testMessageRef("Cast"),
     discard_choices: [11],
     object: 10,
     section: "hand",
@@ -1862,7 +1886,7 @@ test("off-board discard cost shows docked discard-pick-aim instead of center mod
   });
   const castAction = action(50, {
     kind: "cast",
-    label: "Cast",
+    label: testMessageRef("Cast"),
     discard_choices: [11],
     object: 10,
     section: "hand",
@@ -2144,7 +2168,7 @@ test("pending gy aim shows coach for choose_target when cards share a pile", () 
         objects: [gy],
         pending_choice: {
           kind: "choose_target",
-          label: "Target creature card in a graveyard",
+          label: testMessageRef("Target creature card in a graveyard"),
           max: 1,
           optional: false,
           player: 0,
@@ -2172,7 +2196,7 @@ test("gy exile cost aim shows coach when choices share a graveyard", () => {
   });
   const castAction = action(50, {
     kind: "cast",
-    label: "Cast",
+    label: testMessageRef("Cast"),
     graveyard_exile_choices: [8],
     graveyard_exile_min: 1,
     graveyard_exile_max: 1,

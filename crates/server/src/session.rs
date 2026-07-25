@@ -9,6 +9,7 @@ use std::sync::Arc;
 use crate::table::Table;
 use crate::{AppState, lock};
 use engine::{Event, Game, Intent, PendingChoice, PlayerId, Reject};
+use schema::{MessageParam, MessageRef};
 use tokio::time::Instant;
 
 /// How long an uncontested spell or ability visibly sits on the stack before the server
@@ -34,7 +35,7 @@ pub struct PublishedDelta {
     pub broadcast_seq: u64,
     pub events: Vec<Event>,
     pub game: Game,
-    pub auto_actions: Vec<String>,
+    pub auto_actions: Vec<MessageRef>,
     pub yields: [bool; 4],
     pub turn_yields: [bool; 4],
     /// Stack-hold countdown for clients (ms); `0` when no hold is active.
@@ -62,7 +63,7 @@ pub(crate) enum Disposition {
 pub struct ApplyResult {
     pub accepted: bool,
     /// Why the intent was rejected, if it was.
-    pub reason: Option<String>,
+    pub reason: Option<MessageRef>,
     /// Events produced (empty on reject/panic). Fed to the debug action log.
     pub events: Vec<Event>,
 }
@@ -72,7 +73,7 @@ pub struct ApplyResult {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DwellResult {
     pub accepted: bool,
-    pub reason: Option<String>,
+    pub reason: Option<MessageRef>,
 }
 
 /// Server policy for one live table: the three chrome verbs (submit / yield / dwell), then
@@ -111,7 +112,7 @@ impl<'a> TableSession<'a> {
     pub fn set_yield(&mut self, seat: PlayerId, enabled: bool) -> (ApplyResult, Disposition) {
         if !enabled {
             return (
-                reject("StackYieldOneShot"),
+                reject("reject.stack_yield_one_shot"),
                 Disposition::Live { stack_held: false },
             );
         }
@@ -150,7 +151,7 @@ impl<'a> TableSession<'a> {
             if !helpless {
                 return DwellResult {
                     accepted: false,
-                    reason: Some("NotHelpless".into()),
+                    reason: Some(message("reject.not_helpless")),
                 };
             }
         } else {
@@ -219,11 +220,11 @@ impl<'a> TableSession<'a> {
         }));
         let (events, labels, stack_held) = match submitted {
             Err(_panic) => {
-                return (reject("EngineError"), Disposition::Panicked);
+                return (reject("reject.engine_error"), Disposition::Panicked);
             }
             Ok(Err(rejected)) => {
                 return (
-                    reject(&format!("{rejected:?}")),
+                    reject_engine(rejected),
                     Disposition::Live { stack_held: false },
                 );
             }
@@ -427,7 +428,7 @@ fn auto_advance(
     game: &mut Game,
     yields: &mut [bool; 4],
     turn_yields: &mut [bool; 4],
-) -> (Vec<Event>, Vec<String>, bool) {
+) -> (Vec<Event>, Vec<MessageRef>, bool) {
     if game.mulliganing() {
         return (Vec::new(), Vec::new(), false);
     }
@@ -446,7 +447,7 @@ fn auto_advance(
             let Some(intent) = game.forced_action() else {
                 break;
             };
-            let label = forced_action_label(game, &choice);
+            let label = forced_action_message(game, &choice);
             match game.submit(intent) {
                 Ok(more) => {
                     // Clear turn yield as soon as Untap begins or this seat is attacked —
@@ -527,35 +528,48 @@ fn clear_turn_yields_from_events(turn_yields: &mut [bool; 4], events: &[Event]) 
     }
 }
 
-fn reject(reason: &str) -> ApplyResult {
+fn reject(key: &str) -> ApplyResult {
     ApplyResult {
         events: Vec::new(),
         accepted: false,
-        reason: Some(reason.to_string()),
+        reason: Some(message(key)),
     }
+}
+
+fn reject_engine(reject: Reject) -> ApplyResult {
+    ApplyResult {
+        events: Vec::new(),
+        accepted: false,
+        reason: Some(engine::reject_message(reject).into()),
+    }
+}
+
+fn message(key: &str) -> MessageRef {
+    MessageRef::key(key)
 }
 
 /// A short human sentence for a forced choice `auto_advance` is about to submit, read from the
 /// pending choice it answers (not the resolved `Intent`, which has already lost the choice
 /// variant that motivated it). One label per forced submit — no attempt to describe *why* the
 /// choice was forced beyond what a player glancing at the log needs.
-fn forced_action_label(game: &Game, choice: &PendingChoice) -> String {
+fn forced_action_message(game: &Game, choice: &PendingChoice) -> MessageRef {
     use PendingChoice::*;
     match choice {
-        DiscardToHandSize { .. } => "Discarded to hand size (forced)".to_string(),
-        DiscardCards { .. } => "Discarded (forced)".to_string(),
-        ChooseTarget { .. } => "Only one legal target — chosen automatically".to_string(),
-        OrderTriggers { .. } => "Trigger order was forced".to_string(),
+        DiscardToHandSize { .. } => message("auto.discarded_to_hand_size"),
+        DiscardCards { .. } => message("auto.discarded"),
+        ChooseTarget { .. } => message("auto.only_one_legal_target"),
+        OrderTriggers { .. } => message("auto.trigger_order_forced"),
         // The only sacrifice a `forced_action` ever picks alone is a single-option edict.
         SacrificeEdict { options, .. } => {
             let name = options
                 .first()
                 .map(|&id| game.def_of(id).name)
                 .unwrap_or("a permanent");
-            format!("Sacrificed {name} (forced)")
+            MessageRef::key("auto.sacrificed_forced")
+                .with_params(vec![MessageParam::string("name", name)])
         }
         // `forced_action` never returns `Some` for any other pending-choice kind.
-        _ => "Automatic".to_string(),
+        _ => message("auto.automatic"),
     }
 }
 
@@ -869,8 +883,23 @@ mod tests {
         let game = table.game.as_ref().unwrap();
         assert!(game.pending_choice().is_none());
         let broadcast = rx.try_recv().expect("the resolution frame broadcasts");
-        assert!(!broadcast.auto_actions.is_empty());
+        assert_eq!(broadcast.auto_actions[0].key, "auto.only_one_legal_target");
         assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn engine_rejects_are_returned_as_message_refs() {
+        let (mut table, _bear) = bear_table();
+
+        let (result, _) = TableSession::new(&mut table).submit(Intent::PassPriority {
+            player: PlayerId(1),
+        });
+
+        assert!(!result.accepted);
+        assert_eq!(
+            result.reason.as_ref().map(|reason| reason.key.as_str()),
+            Some("reject.not_your_priority")
+        );
     }
 
     #[test]
@@ -1665,9 +1694,40 @@ mod tests {
         let before = table.seq;
         let (result, _) = TableSession::new(&mut table).set_yield(PlayerId(1), false);
         assert!(!result.accepted);
-        assert_eq!(result.reason.as_deref(), Some("StackYieldOneShot"));
+        assert_eq!(
+            result.reason.as_ref().map(|reason| reason.key.as_str()),
+            Some("reject.stack_yield_one_shot")
+        );
         assert!(table.chrome.yields()[1], "still armed");
         assert_eq!(table.seq, before, "reject must not advance seq");
+    }
+
+    #[test]
+    fn server_message_keys_are_in_the_closed_catalog() {
+        let keys = engine::MessageKey::all()
+            .iter()
+            .map(|key| key.as_str())
+            .collect::<Vec<_>>();
+
+        for expected in [
+            "auto.discarded_to_hand_size",
+            "auto.discarded",
+            "auto.only_one_legal_target",
+            "auto.trigger_order_forced",
+            "auto.sacrificed_forced",
+            "auto.automatic",
+            "reject.unknown_table",
+            "reject.game_not_started",
+            "reject.not_seated",
+            "reject.engine_error",
+            "reject.stack_yield_one_shot",
+            "reject.not_helpless",
+        ] {
+            assert!(
+                keys.contains(&expected),
+                "{expected} must be discoverable via MessageKey::all()"
+            );
+        }
     }
 
     #[test]
