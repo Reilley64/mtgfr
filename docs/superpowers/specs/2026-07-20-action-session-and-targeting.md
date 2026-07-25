@@ -36,10 +36,10 @@ Keep an action session in the board model. Pure planners decide whether an actio
 - Multi-target on-board aim (`max > 1` or spell/ability min/max ranges) accumulates picks in the card-pick draft with `k / max` + Confirm chrome (`pending-target-count`); one-click still auto-submits when `pendingTargetOneClick`. Picked permanents paint a solid Priority Gold ring (`pickedObjects`) while other legal targets keep the dashed Island Blue aim ring. Enter or Space submits when the multi-aim draft is ready. Stack faces use the same accumulate path via `TargetChosen` (not a premature one-target submit).
 - Combat staging resolves attack drops onto opponent life-orb targets and block drops onto declared attackers.
 - Required attacks are merged with staged attacks before confirmation.
-- `CancelActionClicked` and Escape call `cancelAll`, clearing staged action, X prompt, modal cast, cost picks, radial, stack expand, pile expand, prompt draft, hand drag, and reject text.
+- `CancelActionClicked` and Escape call `cancelAll`, clearing staged action, X prompt, modal cast, cost picks, the activation menu, stack expand, pile expand, prompt draft, hand drag, and reject text.
 - `session.cancel` means local pre-submit cancellation only; engine `pending_choice` is handled by `PromptHost`.
 - Payment is engine-side. The client previews `auto_tap`, but it does not tap lands or solve mana costs before submit.
-- Auto-tap preview prefers the in-flight session action (`staged`, choose-X, modal, sacrifice/discard/gy-exile pick) over `hoverActionId`, so payment glyphs stay visible after hand/radial hover clears on activate.
+- Auto-tap preview prefers the in-flight session action (`staged`, choose-X, modal, sacrifice/discard/gy-exile pick) over `hoverActionId`, so payment glyphs stay visible after hand or activation-menu hover clears on activate.
 - Local pre-submit sacrifice costs (`sacrificePick`) highlight battlefield `sacrifice_choices` (`sacrificeCostOverlay`); a click settles the cost (`SacrificeChosen` path). Chrome shows `sacrifice-cost-aim` instead of the modal grid when every choice is on the battlefield.
 - Local pre-submit discard costs (`discardPick`) aim at hand tiles: clicking a legal hand card settles the cost (`HandActionActivated` / `DiscardChosen`). Chrome shows `discard-cost-aim` when every choice is in the viewer's hand.
 - Local pre-submit graveyard-exile costs (`gyExilePick`) open the shared GY pile when every choice is in one graveyard (`gyExileCostPile` / `gy-exile-cost-aim`); pile cards with Island Blue rings emit `PileCardClicked` → `GyExileChosen`. One-click when `max <= 1`; exact `min === max` accumulates then auto-settles; `min < max` accumulates until Exile / Enter / Space (`GyExileConfirmed`). Mixed owners keep the modal `gy-exile-pick` grid.
@@ -72,4 +72,4 @@ Keep an action session in the board model. Pure planners decide whether an actio
 
 ## Further Notes
 
-- Stack, prompts, and radial specs document the UI surfaces that the action session opens.
+- Stack, prompts, and activation-menu specs document the UI surfaces that the action session opens.

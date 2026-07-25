@@ -60,9 +60,9 @@ Unplayable permanents are not darkened. Castability and activation availability 
 
 ### Selection
 
-- Permanents that have activatable abilities (including ones that are presently illegal) are selectable so the radial can list them with disabled wedges.
+- Permanents that have activatable abilities (including ones that are presently illegal) are selectable so the activation menu can list them with disabled rows.
 - Permanents with no activates are not selectable.
-- Tap-only mana lands (tap-for-mana only) are selectable so the tap wedge can open.
+- Tap-only mana lands (tap-for-mana only) are selectable so the tap-for-mana row can open.
 - Always-on seat/controller borders on every permanent are not used.
 
 ### Playable outlines

@@ -84,9 +84,9 @@ While `Game::pending_choice` is `Some`, no `LegalAction` is exposed and only the
 3. **Auto-tap paid mana abilities**: filter lands (Fetid Heath) and karoos/signets with a generic activation cost are planned feed-first so that the nested `activate_ability → settle_payment` loop only spends mana, never generating more recursion.
 4. Mana is deducted from the pool; tap events are emitted in the same delta as the cast.
 
-The client does not plan or sequence payments; the cast is a single intent. Manual `Intent::TapForMana` for free-floating mana remains available. Paid mana abilities (those with a generic cost) appear as `Activate` actions in the action list (and on the activation radial in the UI) — they are never auto-tapped.
+The client does not plan or sequence payments; the cast is a single intent. Manual `Intent::TapForMana` for free-floating mana remains available. Paid mana abilities (those with a generic cost) appear as `Activate` actions in the action list and activation menu UI — they are never auto-tapped.
 
-Net-zero converters (Study Hall — tap, pay {1}, get {1} of any color) are excluded from the planner to avoid infinite loops; they stay on the manual radial.
+Net-zero converters (Study Hall — tap, pay {1}, get {1} of any color) are excluded from the planner to avoid infinite loops; they stay on the manual activation menu.
 
 ### Effect resolution and resume
 

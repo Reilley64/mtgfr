@@ -1,6 +1,6 @@
 # Activation menu (replace radial)
 
-**Status:** approved design  
+**Status:** superseded by the living [activation-menu](2026-07-25-activation-menu.md) feature spec
 **Module:** `client/app/board/html/activation-radial.ts` (rename to activation-menu), `client/app/board/geometry/radial.ts` (options + placement + press; retire wedge geometry), `client/app/board/submodel.ts`, board Scene tests
 
 ## Goal
@@ -94,6 +94,6 @@ One menu surface only — no hybrid radial for sparse cases.
 
 In the same implementation change:
 
-- Replace or rewrite `docs/superpowers/specs/2026-07-21-activation-radial.md` so the living feature spec describes the menu (not wedges).
+- Replace or rewrite the living surface spec as [`docs/superpowers/specs/2026-07-25-activation-menu.md`](2026-07-25-activation-menu.md).
 - Update the specs README index row for activation accordingly.
 - Retire this design doc’s “approved design” status by folding truth into the surface spec (or mark superseded once the surface spec is current).
