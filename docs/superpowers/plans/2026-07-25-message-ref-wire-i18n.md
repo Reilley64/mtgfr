@@ -8,7 +8,7 @@
 
 **Tech Stack:** Protobuf / buf / tonic / prost, Rust engine+schema+server, Effect Schema + Vitest client, `just server-codegen` / `bun run gen`.
 
-**Spec:** [docs/superpowers/specs/2026-07-25-message-ref-wire-i18n-design.md](../specs/2026-07-25-message-ref-wire-i18n-design.md)
+**Spec:** [docs/superpowers/specs/2026-07-20-wire-protocol-and-visibility.md](../specs/2026-07-20-wire-protocol-and-visibility.md)
 
 ## Global Constraints
 
@@ -517,7 +517,7 @@ git commit -m "feat(client): render MessageRef labels in board chrome"
 - Modify: `docs/superpowers/specs/2026-07-20-prompts-and-pending-choices.md`
 - Modify: `docs/superpowers/specs/2026-07-20-stack.md` (if it documents English labels)
 - Modify: related choices/actions specs if needed
-- Modify: `docs/superpowers/specs/2026-07-25-message-ref-wire-i18n-design.md` — Status: Done
+- Modify: `docs/superpowers/specs/2026-07-20-wire-protocol-and-visibility.md` — Status: Done
 - Modify: `docs/superpowers/specs/README.md` — index the design if not already
 
 **Interfaces:**

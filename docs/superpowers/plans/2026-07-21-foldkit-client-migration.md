@@ -8,7 +8,7 @@
 
 **Tech Stack:** Foldkit + Effect v4 beta (align to Foldkit’s pinned beta), Nitro + Vite, Tailwind v4, Biome, Vitest, existing Effect-gRPC BFF, Foldkit Story/Scene tests.
 
-**Spec:** Superseded by the current client specs: [client-shell-deck-builder-and-observability](../specs/2026-07-20-client-shell-deck-builder-and-observability.md) and [board-composition](../specs/2026-07-20-board-composition.md).
+**Spec:** Superseded by the current client specs: [shell-routes-and-auth](../specs/2026-07-20-shell-routes-and-auth.md) and [board-composition](../specs/2026-07-20-board-composition.md).
 
 ## Global Constraints
 

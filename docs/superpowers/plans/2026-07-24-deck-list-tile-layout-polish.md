@@ -8,8 +8,8 @@
 
 **Tech Stack:** Foldkit (Html / Messages / Mount / Scene), Effect Schema, Vitest, TypeScript, Tailwind utility classes.
 
-**Spec:** [deck-list-tile-layout-polish-design](../specs/2026-07-24-deck-list-tile-layout-polish-design.md)  
-**Current-behavior update:** [client-shell-deck-builder-and-observability](../specs/2026-07-20-client-shell-deck-builder-and-observability.md)
+**Spec:** [deck-list-and-builder](../specs/2026-07-20-deck-list-and-builder.md)  
+**Current-behavior update:** [shell-routes-and-auth](../specs/2026-07-20-shell-routes-and-auth.md)
 
 ## Global Constraints
 
@@ -41,8 +41,8 @@
 | `client/app/shell/decks/list/story.test.ts` | No hover preview; layout/mount expectations |
 | `client/app/shell/surfaces.test.ts` | Drop `BindDeckListCommanderHover` resolves |
 | `client/app/smoke.test.ts` | Drop hover mount resolves |
-| `docs/superpowers/specs/2026-07-20-client-shell-deck-builder-and-observability.md` | Current behavior: layout + art_crop CDN→Scryfall |
-| `docs/superpowers/specs/2026-07-24-deck-list-tile-layout-polish-design.md` | Status → Implemented |
+| `docs/superpowers/specs/2026-07-20-shell-routes-and-auth.md` | Current behavior: layout + art_crop CDN→Scryfall |
+| `docs/superpowers/specs/2026-07-20-deck-list-and-builder.md` | Status → Implemented |
 
 ---
 
@@ -655,8 +655,8 @@ git commit -m "feat(client): enlarge and align Your decks tile grid"
 ### Task 5: Shell current-behavior spec + design status + verify
 
 **Files:**
-- Modify: `docs/superpowers/specs/2026-07-20-client-shell-deck-builder-and-observability.md`
-- Modify: `docs/superpowers/specs/2026-07-24-deck-list-tile-layout-polish-design.md` (Status → Implemented)
+- Modify: `docs/superpowers/specs/2026-07-20-shell-routes-and-auth.md`
+- Modify: `docs/superpowers/specs/2026-07-20-deck-list-and-builder.md` (Status → Implemented)
 
 **Interfaces:**
 - Consumes: implemented behavior from Tasks 1–4
@@ -696,7 +696,7 @@ Keep the existing sentence about DFC `face=back` / no Scryfall fallback for ordi
 
 - [ ] **Step 2: Mark design doc Implemented**
 
-In `docs/superpowers/specs/2026-07-24-deck-list-tile-layout-polish-design.md`, set `**Status:** Implemented`.
+In `docs/superpowers/specs/2026-07-20-deck-list-and-builder.md`, set `**Status:** Implemented`.
 
 - [ ] **Step 3: Full client verification**
 
@@ -709,7 +709,7 @@ If format/lint are part of local habit: `just client-format` / `just client-lint
 - [ ] **Step 4: Commit**
 
 ```bash
-git add docs/superpowers/specs/2026-07-20-client-shell-deck-builder-and-observability.md docs/superpowers/specs/2026-07-24-deck-list-tile-layout-polish-design.md
+git add docs/superpowers/specs/2026-07-20-shell-routes-and-auth.md docs/superpowers/specs/2026-07-20-deck-list-and-builder.md
 git commit -m "docs(client): record Your decks layout polish as current behavior"
 ```
 

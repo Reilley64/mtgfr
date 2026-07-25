@@ -10,8 +10,8 @@
 
 ## Global Constraints
 
-- Spec: `docs/superpowers/specs/2026-07-25-ci-improvement-roadmap-design.md` (Wave 1 only)
-- Surface spec to amend when shipping: `docs/superpowers/specs/2026-07-20-production-topology-and-operations.md`
+- Spec: `docs/superpowers/specs/2026-07-20-ci-and-release.md` (Wave 1 only)
+- Surface spec to amend when shipping: `docs/superpowers/specs/2026-07-20-ci-and-release.md`
 - Do not change `verify-and-release.yml` concurrency (`cancel-in-progress: false` stays)
 - Do not redesign pass-markers beyond adding hash inputs / bumping key version to `v2`
 - Do not implement Wave 2 (Postgres-on-skip, hash narrowing, Vitest JUnit, Node 20 cleanup) or Wave 3
@@ -27,8 +27,8 @@
 | `.github/workflows/ci.yml` | Concurrency cancel; changes job; terraform `if:`; docker-cache guard (Task 2); `ci-wave1-guard` (Task 3) |
 | `.github/workflows/verify-jobs.yml` | Pass-marker `v2` + CR index hash inputs; step name comments |
 | `justfile` | `server-check` / `client-check` / `check` gain CR-index + mana-oracle |
-| `docs/superpowers/specs/2026-07-20-production-topology-and-operations.md` | Document shipped Wave 1 behavior |
-| `docs/superpowers/specs/2026-07-25-ci-improvement-roadmap-design.md` | Status → Wave 1 implemented |
+| `docs/superpowers/specs/2026-07-20-ci-and-release.md` | Document shipped Wave 1 behavior |
+| `docs/superpowers/specs/2026-07-20-ci-and-release.md` | Status → Wave 1 implemented |
 
 ---
 
@@ -350,8 +350,8 @@ git commit -m "ci: gate server/client checks on CR index and mana-oracle"
 ### Task 4: Docs — production-topology + design status
 
 **Files:**
-- Modify: `docs/superpowers/specs/2026-07-20-production-topology-and-operations.md` (Release and CI pipeline)
-- Modify: `docs/superpowers/specs/2026-07-25-ci-improvement-roadmap-design.md` (status header)
+- Modify: `docs/superpowers/specs/2026-07-20-ci-and-release.md` (Release and CI pipeline)
+- Modify: `docs/superpowers/specs/2026-07-20-ci-and-release.md` (status header)
 - Test: manual read of amended paragraphs; `./scripts/check-ci-wave1.sh`
 
 **Interfaces:**
@@ -360,7 +360,7 @@ git commit -m "ci: gate server/client checks on CR index and mana-oracle"
 
 - [ ] **Step 1: Replace the `ci.yml` / `verify-jobs.yml` bullets under “Release and CI pipeline”**
 
-In `docs/superpowers/specs/2026-07-20-production-topology-and-operations.md`, replace the paragraphs that currently begin with **`ci.yml`** and **`verify-jobs.yml`** with:
+In `docs/superpowers/specs/2026-07-20-ci-and-release.md`, replace the paragraphs that currently begin with **`ci.yml`** and **`verify-jobs.yml`** with:
 
 ```markdown
 **`ci.yml`** (PRs): `concurrency` group `ci-${{ github.ref }}` with
@@ -386,10 +386,10 @@ Leave the **`verify-and-release.yml`** and **`docker.yml`** paragraphs as they a
 
 - [ ] **Step 2: Update roadmap design status**
 
-At the top of `docs/superpowers/specs/2026-07-25-ci-improvement-roadmap-design.md`, set:
+At the top of `docs/superpowers/specs/2026-07-20-ci-and-release.md`, set:
 
 ```markdown
-**Status:** Wave 1 implemented (absorbed into [production-topology-and-operations](2026-07-20-production-topology-and-operations.md); Waves 2–3 remain roadmap)
+**Status:** Wave 1 implemented (absorbed into [ci-and-release](2026-07-20-ci-and-release.md); Waves 2–3 remain roadmap)
 ```
 
 - [ ] **Step 3: Final verification**
@@ -409,8 +409,8 @@ On the PR after push: confirm a second push cancels the prior CI run; confirm te
 
 ```bash
 git add \
-  docs/superpowers/specs/2026-07-20-production-topology-and-operations.md \
-  docs/superpowers/specs/2026-07-25-ci-improvement-roadmap-design.md
+  docs/superpowers/specs/2026-07-20-ci-and-release.md \
+  docs/superpowers/specs/2026-07-20-ci-and-release.md
 git commit -m "docs: record CI Wave 1 concurrency, path-skip, and cheap gates"
 ```
 

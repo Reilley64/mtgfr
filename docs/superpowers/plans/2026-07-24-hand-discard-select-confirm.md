@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Spec: `docs/superpowers/specs/2026-07-24-hand-discard-select-confirm-design.md`
+- Spec: `docs/superpowers/specs/2026-07-20-prompts-and-pending-choices.md`
 - TDD: failing test before production code for each behavior change
 - Put-from-hand / face-down / put-on-top stay one-click where they already are
 - Off-board `discard-pick-aim` button strip stays one-shot buttons

@@ -8,7 +8,7 @@
 
 **Tech Stack:** Rust (`crates/engine`, `crates/cards`), serde + toml, `cargo nextest`, Python 3 migrator script (stdlib only), existing `card-dsl` feature.
 
-**Spec:** [docs/superpowers/specs/2026-07-23-nested-effect-families-design.md](../specs/2026-07-23-nested-effect-families-design.md)
+**Spec:** [docs/superpowers/specs/2026-07-20-card-dsl-and-card-pool.md](../specs/2026-07-20-card-dsl-and-card-pool.md)
 
 ## Global Constraints
 
@@ -18,7 +18,7 @@
 - Every current `Effect` leaf appears in exactly one family (or structural).
 - `CardDef` / `Effect` stay `Copy`; keep `cfg_attr(feature = "card-dsl", …)` patterns.
 - Exhaustive matches remain — two-level, not registries/traits.
-- Angular commits; branch `cursor/nested-effect-families-design-11d9` (rename to `cursor/nested-effect-families-11d9` only if continuing implementation on a fresh branch — prefer continuing this branch).
+- Angular commits; branch `cursor/card-dsl-and-card-pool-11d9` (rename to `cursor/nested-effect-families-11d9` only if continuing implementation on a fresh branch — prefer continuing this branch).
 - TDD where a seam exists (migrator, deserialize fixture); the cutover itself is one green window after types + Rust sites + TOMLs land together.
 - Update DSL_REFERENCE + card-dsl-and-card-pool spec examples in the same change.
 - Mark design spec **Status:** Done when implementation merges.
@@ -29,7 +29,7 @@
 
 | File | Responsibility |
 |------|----------------|
-| `docs/superpowers/specs/2026-07-23-nested-effect-families-design.md` | Normative mapping + shape (already written) |
+| `docs/superpowers/specs/2026-07-20-card-dsl-and-card-pool.md` | Normative mapping + shape (already written) |
 | `crates/engine/src/types/effect/mod.rs` (new) | Top-level `Effect` + re-exports; replaces monolithic `effect.rs` |
 | `crates/engine/src/types/effect/{damage,draw,life,destroy,control,counters,mana,mill,pump,reveal,token,zone,copy,dig,choice,static_effect,misc}.rs` (new) | Family enums + inherent `target` / helpers |
 | `crates/engine/src/types/mod.rs` | `mod effect;` path update if needed |
@@ -345,7 +345,7 @@ Expected: PASS (fix any migrator edge cases — nested `steps`, `choose_one.opti
 - [ ] **Step 4: Commit cutover**
 
 ```bash
-git add crates/engine crates/cards scripts docs/superpowers/specs/2026-07-23-nested-effect-families-design.md
+git add crates/engine crates/cards scripts docs/superpowers/specs/2026-07-20-card-dsl-and-card-pool.md
 git commit -m "refactor(engine): nest Effect into family/mode enums
 
 Hard-cut card TOML to type + mode. Behavior-identical vocabulary reshape
@@ -359,7 +359,7 @@ per nested-effect-families design."
 **Files:**
 - Modify: `.agents/skills/card-dsl/DSL_REFERENCE.md` (effect authoring section — show `type`/`mode`; update examples that used flat types)
 - Modify: `docs/superpowers/specs/2026-07-20-card-dsl-and-card-pool.md` (Lightning Bolt-style example)
-- Modify: `docs/superpowers/specs/2026-07-23-nested-effect-families-design.md` — Status → **Done**
+- Modify: `docs/superpowers/specs/2026-07-20-card-dsl-and-card-pool.md` — Status → **Done**
 - Modify: `docs/superpowers/specs/2026-07-20-choices-actions-and-resolution.md` only if it cites flat effect type strings
 
 - [ ] **Step 1: Update DSL_REFERENCE** with a short “Effect families” section:
@@ -378,7 +378,7 @@ target = "any"
 ```
 
 Structural composers (`sequence`, `conditional`, `choose_one`) have no `mode`.
-See `docs/superpowers/specs/2026-07-23-nested-effect-families-design.md` for the full map.
+See `docs/superpowers/specs/2026-07-20-card-dsl-and-card-pool.md` for the full map.
 ```
 
 - [ ] **Step 2: Update card-dsl-and-card-pool example** to nested damage.

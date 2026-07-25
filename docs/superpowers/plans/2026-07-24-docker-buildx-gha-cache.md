@@ -10,8 +10,8 @@
 
 ## Global Constraints
 
-- Spec: `docs/superpowers/specs/2026-07-24-docker-buildx-gha-cache-design.md`
-- Surface spec to amend: `docs/superpowers/specs/2026-07-20-production-topology-and-operations.md`
+- Spec: `docs/superpowers/specs/2026-07-20-ci-and-release.md`
+- Surface spec to amend: `docs/superpowers/specs/2026-07-20-ci-and-release.md`
 - Cache backend: `type=gha` only (not registry, not inline)
 - `mode=max` required (multi-stage builder layers)
 - Scopes: `mtgfr-server` and `mtgfr-web` only
@@ -26,8 +26,8 @@
 |---|---|
 | `.github/workflows/docker.yml` | `actions: write` + `cache-from` / `cache-to` on both builds |
 | `scripts/check-docker-workflow-cache.sh` | Asserts required cache wiring is present |
-| `docs/superpowers/specs/2026-07-20-production-topology-and-operations.md` | Document GHA layer cache as current behavior |
-| `docs/superpowers/specs/2026-07-24-docker-buildx-gha-cache-design.md` | Status → Implemented after landing |
+| `docs/superpowers/specs/2026-07-20-ci-and-release.md` | Document GHA layer cache as current behavior |
+| `docs/superpowers/specs/2026-07-20-ci-and-release.md` | Status → Implemented after landing |
 
 ---
 
@@ -174,8 +174,8 @@ git commit -m "ci: persist Buildx layer cache for GHCR release builds"
 ### Task 2: Amend production-topology surface spec
 
 **Files:**
-- Modify: `docs/superpowers/specs/2026-07-20-production-topology-and-operations.md`
-- Modify: `docs/superpowers/specs/2026-07-24-docker-buildx-gha-cache-design.md` (status only)
+- Modify: `docs/superpowers/specs/2026-07-20-ci-and-release.md`
+- Modify: `docs/superpowers/specs/2026-07-20-ci-and-release.md` (status only)
 - Test: `scripts/check-docker-workflow-cache.sh` (still pass); manual read of amended paragraphs
 
 **Interfaces:**
@@ -215,16 +215,16 @@ In the `## Implementation Decisions` list, add:
 
 - [ ] **Step 3: Mark design Implemented**
 
-In `docs/superpowers/specs/2026-07-24-docker-buildx-gha-cache-design.md`, change:
+In `docs/superpowers/specs/2026-07-20-ci-and-release.md`, change:
 
 ```markdown
-**Status:** Design (amends [production-topology-and-operations](2026-07-20-production-topology-and-operations.md); durable behavior lands in that surface spec)
+**Status:** Design (amends [ci-and-release](2026-07-20-ci-and-release.md); durable behavior lands in that surface spec)
 ```
 
 to:
 
 ```markdown
-**Status:** Implemented (absorbed into [production-topology-and-operations](2026-07-20-production-topology-and-operations.md); not a separate indexed feature surface)
+**Status:** Implemented (absorbed into [ci-and-release](2026-07-20-ci-and-release.md); not a separate indexed feature surface)
 ```
 
 - [ ] **Step 4: Re-run cache check**
@@ -239,8 +239,8 @@ Expected: exit 0.
 
 ```bash
 git add \
-  docs/superpowers/specs/2026-07-20-production-topology-and-operations.md \
-  docs/superpowers/specs/2026-07-24-docker-buildx-gha-cache-design.md
+  docs/superpowers/specs/2026-07-20-ci-and-release.md \
+  docs/superpowers/specs/2026-07-20-ci-and-release.md
 git commit -m "docs: document Buildx GHA cache on release images"
 ```
 

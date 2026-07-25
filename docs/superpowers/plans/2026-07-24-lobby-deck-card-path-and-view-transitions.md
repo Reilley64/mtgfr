@@ -8,8 +8,8 @@
 
 **Tech Stack:** Foldkit (Html / route / Navigation / Scene / Command), Effect Schema, Vitest, CSS View Transitions API, TypeScript.
 
-**Spec:** [lobby-deck-card-path-and-view-transitions-design](../specs/2026-07-24-lobby-deck-card-path-and-view-transitions-design.md)  
-**Current-behavior updates:** [client-shell-deck-builder-and-observability](../specs/2026-07-20-client-shell-deck-builder-and-observability.md), [lobby-table-routing-and-live-game](../specs/2026-07-20-lobby-table-routing-and-live-game.md) (path / share-link mentions)
+**Spec:** [lobby-entry-ui](../specs/2026-07-20-lobby-entry-ui.md)  
+**Current-behavior updates:** [shell-routes-and-auth](../specs/2026-07-20-shell-routes-and-auth.md), [lobby-table-routing-and-live-game](../specs/2026-07-20-lobby-table-routing-and-live-game.md) (path / share-link mentions)
 
 ## Global Constraints
 
@@ -722,9 +722,9 @@ git commit -m "feat(client): view-transition home tile to lobby deck card"
 ### Task 7: Feature spec updates + verification
 
 **Files:**
-- Modify: `docs/superpowers/specs/2026-07-20-client-shell-deck-builder-and-observability.md`
+- Modify: `docs/superpowers/specs/2026-07-20-shell-routes-and-auth.md`
 - Modify: `docs/superpowers/specs/2026-07-20-lobby-table-routing-and-live-game.md` (share link `/play/{table_id}` → table code; path shapes)
-- Modify: `docs/superpowers/specs/2026-07-24-lobby-deck-card-path-and-view-transitions-design.md` — Status: Implemented
+- Modify: `docs/superpowers/specs/2026-07-20-lobby-entry-ui.md` — Status: Implemented
 - Modify: tile-chooser / layout-polish design non-goals — one-line pointer that lobby Bring/select is superseded by the lobby-deck-card design
 
 **Docs content to write (current behavior):**

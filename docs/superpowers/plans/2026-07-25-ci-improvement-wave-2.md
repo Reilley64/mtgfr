@@ -10,8 +10,8 @@
 
 ## Global Constraints
 
-- Spec: `docs/superpowers/specs/2026-07-25-ci-improvement-roadmap-design.md` (Wave 2 only)
-- Surface spec to amend: `docs/superpowers/specs/2026-07-20-production-topology-and-operations.md`
+- Spec: `docs/superpowers/specs/2026-07-20-ci-and-release.md` (Wave 2 only)
+- Surface spec to amend: `docs/superpowers/specs/2026-07-20-ci-and-release.md`
 - Do not redesign semantic-release / Docker cascade (Wave 3)
 - Keep Wave 1 guards (`check-ci-wave1.sh`, concurrency, terraform path-skip) working
 - Do not add Playwright / live-game verify to Actions
@@ -29,8 +29,8 @@
 | `.github/workflows/docker.yml` | Action pin bumps only |
 | `client/vitest.config.ts` | JUnit reporter when `CI` is set |
 | `scripts/check-ci-wave2.sh` | Assert Wave 2 wiring |
-| `docs/superpowers/specs/2026-07-20-production-topology-and-operations.md` | Document shipped Wave 2 behavior |
-| `docs/superpowers/specs/2026-07-25-ci-improvement-roadmap-design.md` | Status → Wave 2 implemented |
+| `docs/superpowers/specs/2026-07-20-ci-and-release.md` | Document shipped Wave 2 behavior |
+| `docs/superpowers/specs/2026-07-20-ci-and-release.md` | Status → Wave 2 implemented |
 
 ---
 
@@ -438,8 +438,8 @@ git commit -m "ci: bump Actions to Node 24 majors and add Wave 2 guard"
 ### Task 5: Docs — production-topology + roadmap status
 
 **Files:**
-- Modify: `docs/superpowers/specs/2026-07-20-production-topology-and-operations.md`
-- Modify: `docs/superpowers/specs/2026-07-25-ci-improvement-roadmap-design.md`
+- Modify: `docs/superpowers/specs/2026-07-20-ci-and-release.md`
+- Modify: `docs/superpowers/specs/2026-07-20-ci-and-release.md`
 - Test: `./scripts/check-ci-wave2.sh`
 
 - [ ] **Step 1: Replace the `ci.yml` / `verify-jobs.yml` bullets under Release and CI with:**
@@ -469,7 +469,7 @@ always-on `docker-cache-guard`, `ci-wave1-guard`, and `ci-wave2-guard`.
 - [ ] **Step 2: Set roadmap design status to:**
 
 ```markdown
-**Status:** Wave 2 implemented (absorbed into [production-topology-and-operations](2026-07-20-production-topology-and-operations.md); Wave 3 remains evidence-gated roadmap)
+**Status:** Wave 2 implemented (absorbed into [ci-and-release](2026-07-20-ci-and-release.md); Wave 3 remains evidence-gated roadmap)
 ```
 
 - [ ] **Step 3: Final verification**
@@ -484,8 +484,8 @@ always-on `docker-cache-guard`, `ci-wave1-guard`, and `ci-wave2-guard`.
 
 ```bash
 git add \
-  docs/superpowers/specs/2026-07-20-production-topology-and-operations.md \
-  docs/superpowers/specs/2026-07-25-ci-improvement-roadmap-design.md
+  docs/superpowers/specs/2026-07-20-ci-and-release.md \
+  docs/superpowers/specs/2026-07-20-ci-and-release.md
 git commit -m "docs: record CI Wave 2 job split, client hash, and Vitest JUnit"
 ```
 

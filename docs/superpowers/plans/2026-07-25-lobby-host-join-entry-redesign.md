@@ -8,8 +8,8 @@
 
 **Tech Stack:** Foldkit (Html / Scene / Command / messages), Effect Schema, Vitest, Tailwind token utilities, TypeScript.
 
-**Spec:** [lobby-host-join-entry-redesign-design](../specs/2026-07-25-lobby-host-join-entry-redesign-design.md)  
-**Current-behavior updates:** [client-shell-deck-builder-and-observability](../specs/2026-07-20-client-shell-deck-builder-and-observability.md)
+**Spec:** [lobby-entry-ui](../specs/2026-07-20-lobby-entry-ui.md)  
+**Current-behavior updates:** [shell-routes-and-auth](../specs/2026-07-20-shell-routes-and-auth.md)
 
 ## Global Constraints
 
@@ -48,8 +48,8 @@
 | `client/app/shell/lobby/entry.test.ts` | Entry Scene outcomes for choose/join/Cancel |
 | `client/app/shell/surfaces.test.ts` | Shell surface coverage for choose (and join if needed) |
 | `client/styles/global.css` (only if needed) | Optional `@media (prefers-reduced-motion)` note for entry swap class |
-| `docs/superpowers/specs/2026-07-20-client-shell-deck-builder-and-observability.md` | Document entry as current behavior once shipped |
-| `docs/superpowers/specs/2026-07-25-lobby-host-join-entry-redesign-design.md` | Flip Status to Implemented when done |
+| `docs/superpowers/specs/2026-07-20-shell-routes-and-auth.md` | Document entry as current behavior once shipped |
+| `docs/superpowers/specs/2026-07-20-lobby-entry-ui.md` | Flip Status to Implemented when done |
 
 No changes to `deck-card-nav.ts` unless FLIP resolution breaks because the Host wrapper changed Mount ancestry — prefer keeping `renderDeckCard(..., { mode: "static" })` inside the Host button so existing Mount/FLIP continues to work.
 
@@ -602,8 +602,8 @@ git commit -m "feat(client): light lobby entry mode-swap motion"
 ### Task 5: Living specs + verification
 
 **Files:**
-- Modify: `docs/superpowers/specs/2026-07-20-client-shell-deck-builder-and-observability.md` (lobby entry paragraph)
-- Modify: `docs/superpowers/specs/2026-07-25-lobby-host-join-entry-redesign-design.md` (`Status: Implemented`)
+- Modify: `docs/superpowers/specs/2026-07-20-shell-routes-and-auth.md` (lobby entry paragraph)
+- Modify: `docs/superpowers/specs/2026-07-20-lobby-entry-ui.md` (`Status: Implemented`)
 
 - [ ] **Step 1: Update client-shell lobby paragraph**
 
@@ -626,8 +626,8 @@ Expected: format + lint + typecheck + Vitest all green.
 - [ ] **Step 4: Commit**
 
 ```bash
-git add docs/superpowers/specs/2026-07-20-client-shell-deck-builder-and-observability.md \
-  docs/superpowers/specs/2026-07-25-lobby-host-join-entry-redesign-design.md
+git add docs/superpowers/specs/2026-07-20-shell-routes-and-auth.md \
+  docs/superpowers/specs/2026-07-20-lobby-entry-ui.md
 git commit -m "docs: record lobby host/join entry redesign as current behavior"
 ```
 

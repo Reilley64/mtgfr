@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Spec: `docs/superpowers/specs/2026-07-25-activation-menu-design.md`
+- Spec: `docs/superpowers/specs/2026-07-25-activation-menu.md`
 - Client-only; no proto/schema activation-cost field
 - Never invent costs by parsing labels/oracle
 - One menu surface only (no hybrid radial)
@@ -511,7 +511,7 @@ git commit -m "refactor(client): remove unused activation wedge geometry"
 - Modify: `docs/superpowers/specs/README.md` — living row points at menu; design row notes absorbed / superseded
 - Modify: `docs/client-canvas-map.md` — `activation-menu.ts`
 - Modify: `docs/superpowers/specs/2026-07-20-board-composition.md` if it cites the radial module
-- Modify: `docs/superpowers/specs/2026-07-25-activation-menu-design.md` — Status: `superseded by living activation-menu feature spec`
+- Modify: `docs/superpowers/specs/2026-07-25-activation-menu.md` — Status: `superseded by living activation-menu feature spec`
 
 - [ ] **Step 1: Rewrite living surface spec for the menu (no wedges, no migration history)**
 

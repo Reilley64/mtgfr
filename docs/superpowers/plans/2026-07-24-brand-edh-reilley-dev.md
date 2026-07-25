@@ -8,7 +8,7 @@
 
 **Tech Stack:** Foldkit Scene tests, Vitest, TypeScript, plain `.mjs` tooling scripts.
 
-**Spec:** [brand-edh-reilley-dev-design](../specs/2026-07-24-brand-edh-reilley-dev-design.md)
+**Spec:** [shell-routes-and-auth](../specs/2026-07-20-shell-routes-and-auth.md)
 
 ## Global Constraints
 
@@ -37,7 +37,7 @@
 | `tooling/*.mjs` (listed below) | Tooling User-Agents |
 | `README.md` | Repo H1 |
 | `DESIGN.md` | Design system H1 |
-| `docs/superpowers/specs/2026-07-24-brand-edh-reilley-dev-design.md` | Status → Implemented |
+| `docs/superpowers/specs/2026-07-20-shell-routes-and-auth.md` | Status → Implemented |
 
 ---
 
@@ -209,7 +209,7 @@ git commit -m "feat(client): identify Scryfall clients as edh.reilley.dev"
 **Files:**
 - Modify: `README.md` (H1 only)
 - Modify: `DESIGN.md` (H1 only)
-- Modify: `docs/superpowers/specs/2026-07-24-brand-edh-reilley-dev-design.md` (status line → Implemented)
+- Modify: `docs/superpowers/specs/2026-07-20-shell-routes-and-auth.md` (status line → Implemented)
 
 - [ ] **Step 1: Update titles and design status**
 
@@ -252,7 +252,7 @@ Expected: no matches for player brand / UA / those two H1s. (`mtgfr_web` in othe
 - [ ] **Step 4: Commit and push**
 
 ```bash
-git add README.md DESIGN.md docs/superpowers/specs/2026-07-24-brand-edh-reilley-dev-design.md
+git add README.md DESIGN.md docs/superpowers/specs/2026-07-20-shell-routes-and-auth.md
 git commit -m "docs: title README and design system as edh.reilley.dev"
 git push -u origin cursor/brand-edh-reilley-dev-b23c
 ```

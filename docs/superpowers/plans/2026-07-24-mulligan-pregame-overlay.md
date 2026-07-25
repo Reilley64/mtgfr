@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Spec: `docs/superpowers/specs/2026-07-24-mulligan-pregame-overlay-design.md`
+- Spec: `docs/superpowers/specs/2026-07-20-turn-and-priority-chrome.md`
 - Undecided: `data-testid="mulligan-overlay"`; Keep=`mulligan-keep`; Mulligan=`mulligan-take`; hide `hand-bar`
 - After Keep: no overlay; `mulligan-waiting` banner; `hand-bar` returns
 - Hard lock while undecided (no pan/hand/priority under overlay); Concede stays available
@@ -360,7 +360,7 @@ Replace the mulligan bullets with:
 
 Update **Module:** line to list `mulligan-overlay.ts` instead of `mulligan-bar.ts`.
 
-Add testing bullet for overlay / waiting Scene coverage. Cross-link `2026-07-24-mulligan-pregame-overlay-design.md`.
+Add testing bullet for overlay / waiting Scene coverage. Cross-link `2026-07-20-turn-and-priority-chrome.md`.
 
 - [ ] **Step 4: Full focused verify**
 

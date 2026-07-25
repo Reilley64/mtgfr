@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Spec: `docs/superpowers/specs/2026-07-25-hand-bar-hover-stack-front-design.md`
+- Spec: `docs/superpowers/specs/2026-07-20-hand-and-zone-bar.md`
 - Hover elevate on tile **root** (whole bar); use `hover:z-50` (parent `:hover` fires while the hit strip is hovered)
 - Discard-selected: raise + green ring only — **no** elevated z from selection
 - Remove face-only hover `z-30`; keep face `translateY` raise on hover and discard-selected
@@ -154,7 +154,7 @@ git commit -m "feat(client): bring hovered hand bar tile to front"
 After the Arena-forward geometry bullet under **Behavior**, add:
 
 ```markdown
-- Hovering a bar tile elevates that tile’s root above all other action-bar tiles (`hover:z-50` on the slot). Discard-selected raises and rings but does not elevate z. See [hand-bar-hover-stack-front design](2026-07-25-hand-bar-hover-stack-front-design.md).
+- Hovering a bar tile elevates that tile’s root above all other action-bar tiles (`hover:z-50` on the slot). Discard-selected raises and rings but does not elevate z. See [hand-and-zone-bar](2026-07-20-hand-and-zone-bar.md).
 ```
 
 Under **Testing Decisions**, add:

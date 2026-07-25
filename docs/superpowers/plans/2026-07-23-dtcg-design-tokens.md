@@ -8,7 +8,7 @@
 
 **Tech Stack:** Style Dictionary `5.5.0`, Bun, DTCG JSON (`$value` / `$type`), Tailwind v4 `@theme`, Vitest, existing `just` / `bun run gen` codegen path.
 
-**Spec:** [docs/superpowers/specs/2026-07-23-dtcg-design-tokens-design.md](../specs/2026-07-23-dtcg-design-tokens-design.md)
+**Spec:** [docs/superpowers/specs/2026-07-20-shell-routes-and-auth.md](../specs/2026-07-20-shell-routes-and-auth.md)
 
 ## Global Constraints
 
@@ -20,7 +20,7 @@
 - Canvas: named design colors come from the generated module; unnamed one-offs may stay literal.
 - TDD: failing test → implement → pass → commit per task.
 - Angular commits (`feat:`, `fix:`, `test:`, `docs:`); continue branch `cursor/dtcg-design-tokens-2dae`.
-- Update `2026-07-20-client-shell-deck-builder-and-observability.md` in the same change (same code target).
+- Update `2026-07-20-shell-routes-and-auth.md` in the same change (same code target).
 
 ---
 
@@ -662,9 +662,9 @@ git commit -m "refactor: canvas named colors import generated design tokens"
 **Files:**
 - Modify: `DESIGN.md` (strip YAML frontmatter and `components`; add pointer to `design.tokens.json` + generated outputs)
 - Modify: `docs/superpowers/specs/README.md` companion table
-- Modify: `docs/superpowers/specs/2026-07-20-client-shell-deck-builder-and-observability.md` design-system section
+- Modify: `docs/superpowers/specs/2026-07-20-shell-routes-and-auth.md` design-system section
 - Modify: `AGENTS.md` design-tokens sentence
-- Modify: `docs/superpowers/specs/2026-07-23-dtcg-design-tokens-design.md` status → `Done`
+- Modify: `docs/superpowers/specs/2026-07-20-shell-routes-and-auth.md` status → `Done`
 - Modify: `client/lib/ui/buttonClass.ts` comment if it says “DESIGN.md §5 button vocabulary” — point at tokens + this file as recipe owner
 
 **Interfaces:**

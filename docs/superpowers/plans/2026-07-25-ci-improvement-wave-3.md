@@ -19,8 +19,8 @@
 
 ## Global Constraints
 
-- Spec: `docs/superpowers/specs/2026-07-25-ci-improvement-roadmap-design.md` (Wave 3 — parallel Docker only)
-- Surface spec: `docs/superpowers/specs/2026-07-20-production-topology-and-operations.md`
+- Spec: `docs/superpowers/specs/2026-07-20-ci-and-release.md` (Wave 3 — parallel Docker only)
+- Surface spec: `docs/superpowers/specs/2026-07-20-ci-and-release.md`
 - Keep `on.push.tags: ["v*"]` only (no `create` double-trigger)
 - Keep per-image GHA cache scopes `mtgfr-server` / `mtgfr-web`, `mode=max`
 - Do not change Dockerfiles, image tag scheme, or `RELEASE_TOKEN` cascade
@@ -36,8 +36,8 @@
 | `scripts/check-docker-workflow-cache.sh` | Also assert parallel job ids |
 | `scripts/check-ci-wave3.sh` | Wave 3 wiring guard |
 | `.github/workflows/ci.yml` | `ci-wave3-guard` job |
-| `docs/superpowers/specs/2026-07-20-production-topology-and-operations.md` | Document parallel Docker |
-| `docs/superpowers/specs/2026-07-25-ci-improvement-roadmap-design.md` | Status → Wave 3 implemented |
+| `docs/superpowers/specs/2026-07-20-ci-and-release.md` | Document parallel Docker |
+| `docs/superpowers/specs/2026-07-20-ci-and-release.md` | Status → Wave 3 implemented |
 
 ---
 
@@ -294,8 +294,8 @@ git commit -m "ci: build GHCR server and web images in parallel"
 
 **Files:**
 - Modify: `.github/workflows/ci.yml` (append guard job)
-- Modify: `docs/superpowers/specs/2026-07-20-production-topology-and-operations.md`
-- Modify: `docs/superpowers/specs/2026-07-25-ci-improvement-roadmap-design.md`
+- Modify: `docs/superpowers/specs/2026-07-20-ci-and-release.md`
+- Modify: `docs/superpowers/specs/2026-07-20-ci-and-release.md`
 - Test: `./scripts/check-ci-wave3.sh` → PASS
 
 - [ ] **Step 1: Append to `ci.yml` after `ci-wave2-guard`:**
@@ -331,7 +331,7 @@ Update the `ci.yml` bullet to include `ci-wave3-guard` in the always-on guards l
 - [ ] **Step 3: Set roadmap status to:**
 
 ```markdown
-**Status:** Wave 3 implemented — parallel Docker jobs (absorbed into [production-topology-and-operations](2026-07-20-production-topology-and-operations.md); further redesign remains evidence-gated)
+**Status:** Wave 3 implemented — parallel Docker jobs (absorbed into [ci-and-release](2026-07-20-ci-and-release.md); further redesign remains evidence-gated)
 ```
 
 - [ ] **Step 4: Final verification**
@@ -350,8 +350,8 @@ Expected: all exit 0.
 ```bash
 git add \
   .github/workflows/ci.yml \
-  docs/superpowers/specs/2026-07-20-production-topology-and-operations.md \
-  docs/superpowers/specs/2026-07-25-ci-improvement-roadmap-design.md
+  docs/superpowers/specs/2026-07-20-ci-and-release.md \
+  docs/superpowers/specs/2026-07-20-ci-and-release.md
 git commit -m "docs: record parallel Docker Wave 3 and wire CI guard"
 ```
 

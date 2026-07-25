@@ -143,7 +143,7 @@ During mulligans, each `PlayerView` also carries `mulligans_taken`, `hand_kept`,
 
 ### Redaction rules
 
-Implemented in `crates/schema/` (`schema::redact` / `schema::snapshot`):
+Implemented in `crates/schema/` (`schema::event::{redact, spectator_redact}` re-exported from the schema lib; privacy helpers in `projection/privacy.rs`; `schema::snapshot`):
 
 - `CardDrawn`, `SearchedToHand`, `PutFromHandOnTop` — `card` and `from` are `None` for all
   viewers except the player who drew/searched/put.
@@ -205,13 +205,14 @@ The engine/schema event model includes `MulliganTaken { player, mulligans_taken,
 - **MessageRef is the game-text contract**: engine/schema/server projection paths emit keys and
   typed params for rejects, stack/action labels, prompt effect labels, mode labels, and
   `auto_actions`; the client catalog owns English copy.
-- **Spectator projection** (wire-protocol-and-visibility spec, partial): `snapshot`/`redact` takes `Option<PlayerId>`;
+- **Spectator projection** (wire-protocol-and-visibility spec, partial): `snapshot` / `redact` / `spectator_redact` take `Option<PlayerId>`;
   `None` = spectator (all hands/libraries hidden, `viewer = SPECTATOR_VIEWER`). Eliminated
   players and signed-in non-seated users receive the spectator projection, not a 403.
 - **Codegen lifecycle**: `just server-codegen` (Rust, via `build.rs` → `OUT_DIR`) and
-  `bun run gen` (TypeScript via `scripts/gen.sh`) regenerate bindings from `.proto`. Generated
-  TS files under `client/lib/wire/generated/` are gitignored and regenerated in-image for
-  production builds.
+  `bun run gen` (TypeScript: `buf generate` via `client/package.json` `gen:wire`, plus design
+  tokens via `gen-tokens.mjs` / `gen:tokens`) regenerate bindings from `.proto` and token
+  outputs. Generated TS files under `client/lib/wire/generated/` are gitignored and regenerated
+  in-image for production builds. There is no `scripts/gen.sh`.
 
 ---
 
@@ -220,7 +221,7 @@ The engine/schema event model includes `MulliganTaken { player, mulligans_taken,
 - Wire-level tests live in `crates/server/src/grpc/tests.rs` exercising the gRPC service
   handlers against an in-memory SQLite test database.
 - Redaction correctness is tested in `crates/schema/` with fixture-driven round-trips
-  (`schema::snapshot` + `schema::redact`).
+  (`schema::snapshot` + `schema::event::{redact, spectator_redact}`).
 - MessageRef projection tests assert keys and params on `Ack.reject_reason`, stack labels,
   actions, pending-choice labels, and `auto_actions`.
 - Catalog drift is guarded by `crates/engine` comparing `MessageKey::all()` to
@@ -237,7 +238,12 @@ The engine/schema event model includes `MulliganTaken { player, mulligans_taken,
 ## Out of Scope
 
 - **Multi-language / third-party clients**: the proto contract is available in the repo but no
-  client SDK is published or supported.
+  client SDK is published or supported. Locale negotiation (`Accept-Language`, user locale
+  field) is not in scope; English catalogs are client-side only today.
+- **Auth / lobby / deck-legality gRPC `Status` English messages**: outside the `MessageRef`
+  game-text contract.
+- **Game-log narration**: `client/lib/event-fold.ts` `describe()` templates are not MessageRef
+  keys.
 - **WebSocket transport**: the stream is bridged to SSE at the BFF; native WebSocket is not in
   the protocol.
 - **Proto package versioning (`/v2`)**: reserved for hard breaking changes per `WIRE_COMPAT.md`

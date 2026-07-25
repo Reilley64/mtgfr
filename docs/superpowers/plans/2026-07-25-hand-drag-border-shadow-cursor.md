@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Spec: `docs/superpowers/specs/2026-07-25-hand-drag-border-shadow-cursor-design.md`
+- Spec: `docs/superpowers/specs/2026-07-20-hand-and-zone-bar.md`
 - Border: source loses playable aura while dragging; ghost gets `barZoneAura(zone, true)`; no ring on canvas flights
 - Cursors: unplayable `cursor-not-allowed`, playable `cursor-grab`, active drag `cursor-grabbing` on `document.documentElement`, cleared on end/cancel
 - Shadows: deepen `--drop-shadow-drag` to `0 16px 36px rgb(0 0 0 / 0.72)`; flights use blur `28`, offsetY `12`, color `rgba(0,0,0,0.55)` (exported constants)
@@ -313,13 +313,13 @@ Update specs:
 `hand-and-zone-bar.md` Behavior — replace the drag-source fade bullet with:
 
 ```markdown
-- The drag source fades with `opacity-25` and loses playable aura; the drag ghost carries the face, playable `barZoneAura`, and deepened `drop-shadow-drag`. Idle hits use `cursor-grab` when playable and `cursor-not-allowed` otherwise; an active drag sets `cursor-grabbing` on the document element. See [hand-drag-border-shadow-cursor design](2026-07-25-hand-drag-border-shadow-cursor-design.md).
+- The drag source fades with `opacity-25` and loses playable aura; the drag ghost carries the face, playable `barZoneAura`, and deepened `drop-shadow-drag`. Idle hits use `cursor-grab` when playable and `cursor-not-allowed` otherwise; an active drag sets `cursor-grabbing` on the document element. See [hand-and-zone-bar](2026-07-20-hand-and-zone-bar.md).
 ```
 
 `flights.md` Paint layer — add:
 
 ```markdown
-- In-flight cards use a stronger lift shadow (`FLIGHT_SHADOW_*` in `paint-flights.ts`) matched to the hand-drag ghost drop shadow. See [hand-drag-border-shadow-cursor design](2026-07-25-hand-drag-border-shadow-cursor-design.md).
+- In-flight cards use a stronger lift shadow (`FLIGHT_SHADOW_*` in `paint-flights.ts`) matched to the hand-drag ghost drop shadow. See [hand-and-zone-bar](2026-07-20-hand-and-zone-bar.md).
 ```
 
 In `flights.md` Out of Scope, change or remove “Changing flight visual design beyond timing and pose parity” so it no longer forbids this shadow polish (e.g. “Changing flight visual design beyond lift-shadow polish and timing/pose parity”).

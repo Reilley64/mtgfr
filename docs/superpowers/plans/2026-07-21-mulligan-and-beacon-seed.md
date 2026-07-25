@@ -8,14 +8,14 @@
 
 **Tech Stack:** Rust engine/server (`blake3`, existing `reqwest`/`tokio`), prost/tonic proto, schema DTOs, SolidStart client, `cargo nextest` / `just client-test`.
 
-**Spec:** [docs/superpowers/specs/2026-07-21-mulligan-and-beacon-seed-design.md](../specs/2026-07-21-mulligan-and-beacon-seed-design.md)
+**Spec:** [docs/superpowers/specs/2026-07-20-wire-protocol-and-visibility.md](../specs/2026-07-20-wire-protocol-and-visibility.md)
 
 ## Global Constraints
 
 - Engine stays pure — no HTTP, wall-clock, or OS RNG inside `crates/engine`.
 - TDD: failing test → implement → pass → commit per task.
 - Angular commits (`feat:`, `fix:`, `test:`, `docs:`); PRs squash-merge.
-- Branch: continue `cursor/mulligan-and-beacon-seed-design-1e1a` or sibling `cursor/mulligan-and-beacon-seed-1e1a`.
+- Branch: continue `cursor/wire-protocol-and-visibility-1e1a` or sibling `cursor/mulligan-and-beacon-seed-1e1a`.
 - `Game::with_players(n, seed: u64)` remains the test convenience API: expand `seed` into a 32-byte master (LE bytes in the first 8, rest zero) so existing unit tests keep compiling.
 - Production seed never silently falls back to `OsRng` when the beacon fails.
 - Library order stays off the event log / wire.

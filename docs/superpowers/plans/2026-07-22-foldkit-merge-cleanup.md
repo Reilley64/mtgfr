@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Spec: Superseded by current client specs and companion docs: `docs/superpowers/specs/README.md`, `docs/superpowers/specs/2026-07-20-client-shell-deck-builder-and-observability.md`, `docs/superpowers/specs/2026-07-20-board-composition.md`
+- Spec: Superseded by current client specs and companion docs: `docs/superpowers/specs/README.md`, `docs/superpowers/specs/2026-07-20-shell-routes-and-auth.md`, `docs/superpowers/specs/2026-07-20-board-composition.md`
 - **Single final commit** for all implementation tasks (no intermediate commits). Plan steps still use TDD locally.
 - Commit subject must be lower-case after `type:`, header ≤72 chars, types from `[build, ci, docs, feat, fix, perf, refactor, revert, style, test]` only — no `chore:`, no `feat!:`.
 - Do not disable `lint/style/noNonNullAssertion`.
@@ -371,9 +371,9 @@ Expected: no matches in comments/code under `client/` (docs are Task 5). If a ma
 **Files:**
 - Modify: `README.md`
 - Modify: `DESIGN.md`
-- Modify: `docs/superpowers/specs/2026-07-20-client-shell-deck-builder-and-observability.md`
+- Modify: `docs/superpowers/specs/2026-07-20-shell-routes-and-auth.md`
 - Modify: `docs/superpowers/specs/2026-07-20-board-composition.md`
-- Modify: `docs/superpowers/specs/2026-07-20-client-shell-deck-builder-and-observability.md`
+- Modify: `docs/superpowers/specs/2026-07-20-shell-routes-and-auth.md`
 - Modify: `docs/superpowers/plans/2026-07-21-foldkit-client-migration.md`
 - Modify: `docs/superpowers/specs/2026-07-20-wire-protocol-and-visibility.md`
 - Modify: `docs/superpowers/specs/2026-07-20-production-topology-and-operations.md`
@@ -399,7 +399,7 @@ just dev                      # tmux: bacon server (:8080) + Foldkit/Vite client
 - [ ] **Step 2: `DESIGN.md` implementation line**
 
 ```markdown
-**Implementation:** Token values live in the YAML frontmatter above; Tailwind/theme wiring in `client/styles/global.css` (client-shell-deck-builder-and-observability spec). Canvas paint hexes in `client/app/board/` (`layout.ts` and paint modules) are exempt from DOM tokens; keep the legend list in sync with draw.
+**Implementation:** Token values live in the YAML frontmatter above; Tailwind/theme wiring in `client/styles/global.css` (shell-routes-and-auth spec). Canvas paint hexes in `client/app/board/` (`layout.ts` and paint modules) are exempt from DOM tokens; keep the legend list in sync with draw.
 ```
 
 Also update the Components line if it still says `~/components/atoms` Solid wrappers — point at Foldkit `client/lib/ui/` helpers (`buttonClass`, surfaces) instead.

@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Spec: `docs/superpowers/specs/2026-07-25-hand-bar-arena-spacing-design.md`
+- Spec: `docs/superpowers/specs/2026-07-20-hand-and-zone-bar.md`
 - Targets: `HAND_FACE_W=208`, `HAND_BAR_PEEK=92`, `HAND_VISIBLE_H=178`, pip row `24`, bar padding `16`, derived `HAND_BAR_H=218`
 - Section gap stays `gap-xl`; fan / left-peek hit / playable borders unchanged in policy
 - Out of scope: priority chrome restyle, responsive clamps, mulligan overlay faces, canvas hand bar
@@ -129,7 +129,7 @@ Set **Status** date to `2026-07-25`.
 Under **Behavior**, replace the dense-overlap bullet with:
 
 ```markdown
-- Hand tiles fan with Arena-forward resting geometry (`HAND_FACE_W` 208, `HAND_BAR_PEEK` 92, `HAND_VISIBLE_H` 178, derived `HAND_BAR_H` 218), hover raise, and cost pips above the card face. See [hand-bar-arena-spacing design](2026-07-25-hand-bar-arena-spacing-design.md).
+- Hand tiles fan with Arena-forward resting geometry (`HAND_FACE_W` 208, `HAND_BAR_PEEK` 92, `HAND_VISIBLE_H` 178, derived `HAND_BAR_H` 218), hover raise, and cost pips above the card face. See [hand-and-zone-bar](2026-07-20-hand-and-zone-bar.md).
 ```
 
 Under **Implementation Decisions**, add:

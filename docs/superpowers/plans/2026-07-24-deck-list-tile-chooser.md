@@ -8,8 +8,8 @@
 
 **Tech Stack:** Foldkit (Html / Messages / Mount / Scene), Effect Schema, Vitest, TypeScript, mana-font via `manaFontClass`.
 
-**Spec:** [deck-list-tile-chooser-design](../specs/2026-07-24-deck-list-tile-chooser-design.md)  
-**Current-behavior update:** [client-shell-deck-builder-and-observability](../specs/2026-07-20-client-shell-deck-builder-and-observability.md)
+**Spec:** [deck-list-and-builder](../specs/2026-07-20-deck-list-and-builder.md)  
+**Current-behavior update:** [shell-routes-and-auth](../specs/2026-07-20-shell-routes-and-auth.md)
 
 ## Global Constraints
 
@@ -38,7 +38,7 @@
 | `client/app/shell/decks/list/view.ts` | Search field, tile grid, context menu, hover |
 | `client/app/shell/decks/list/story.test.ts` | Focused Scene: search, order, menu, tile href |
 | `client/app/shell/surfaces.test.ts` | Update deck-list chrome assertions |
-| `docs/superpowers/specs/2026-07-20-client-shell-deck-builder-and-observability.md` | Document current tile-chooser behavior |
+| `docs/superpowers/specs/2026-07-20-shell-routes-and-auth.md` | Document current tile-chooser behavior |
 
 ---
 
@@ -609,8 +609,8 @@ git commit -m "feat(client): add Edit/Delete context menu on deck tiles"
 ### Task 5: Shell spec + verification
 
 **Files:**
-- Modify: `docs/superpowers/specs/2026-07-20-client-shell-deck-builder-and-observability.md`
-- Optionally mark design status in `docs/superpowers/specs/2026-07-24-deck-list-tile-chooser-design.md` as implemented (one-line status bump)
+- Modify: `docs/superpowers/specs/2026-07-20-shell-routes-and-auth.md`
+- Optionally mark design status in `docs/superpowers/specs/2026-07-20-deck-list-and-builder.md` as implemented (one-line status bump)
 
 - [ ] **Step 1: Update current-behavior shell spec**
 
@@ -642,8 +642,8 @@ Expected: typecheck exit 0; all tests PASS
 - [ ] **Step 3: Commit**
 
 ```bash
-git add docs/superpowers/specs/2026-07-20-client-shell-deck-builder-and-observability.md \
-  docs/superpowers/specs/2026-07-24-deck-list-tile-chooser-design.md
+git add docs/superpowers/specs/2026-07-20-shell-routes-and-auth.md \
+  docs/superpowers/specs/2026-07-20-deck-list-and-builder.md
 git commit -m "docs(client): record Your decks tile chooser as current behavior"
 ```
 

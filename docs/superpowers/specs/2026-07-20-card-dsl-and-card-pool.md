@@ -15,7 +15,7 @@ Card behavior in Magic is vast and varied. Encoding it per-card in engine code w
 
 Each card is a TOML file in `crates/cards/data/` that deserializes into a `CardDef` struct in `crates/engine`. `CardDef` is `Copy` and `&'static` — all ability slices are interned at load time. Card behavior is expressed as `Ability { timing, effect }` pairs; the `Effect` enum is the vocabulary. The DSL grows **only when a real card demands it** (card-dsl-and-card-pool spec). Gaps are flagged via the `approximates` field and `# ponytail:` comments rather than forced approximations. Token profiles live in `data/tokens/` and are referenced by Scryfall oracle id from creating cards.
 
-Thirty-five token profiles and 618 deckable card TOMLs are present as of 2026-07-20. Eight precon decklists live in `docs/decklists/*.md` (the five Secrets of Strixhaven decks and three additional non-SoC lists).
+Thirty-seven token profiles and 665 deckable card TOMLs are present as of 2026-07-25. Nine precon decklists live in `docs/decklists/*.md` (the five Secrets of Strixhaven decks and four additional non-SoC lists).
 
 ---
 
@@ -30,7 +30,7 @@ Thirty-five token profiles and 618 deckable card TOMLs are present as of 2026-07
 7. As a **deck builder user**, I want oracle tags (`otags`) for thematic search (e.g. "typal-spirit", "ramp") even for cards whose rules aren't implemented as a tag.
 8. As a **test author**, I want to construct `CardDef` values inline in tests without parsing TOML, so unit tests are self-contained.
 9. As a **Commander player**, I want my commander's color identity enforced at deck-build time, so I can't accidentally include off-color cards.
-10. As a **player**, I want the pool's ~618 cards available for deck building, spanning the five SoC Commander precon lists and additional curated cards.
+10. As a **player**, I want the pool's ~665 cards available for deck building, spanning the five SoC Commander precon lists and additional curated cards.
 
 ---
 
@@ -110,7 +110,7 @@ Each ability block has a `timing` field and one or more `[[abilities.effects]]` 
 
 ### Effect vocabulary (representative sample)
 
-The `Effect` enum grows only from real cards. Every leaf effect is authored as nested **`type` (family) + `mode` (leaf)**. Structural composers (`sequence`, `conditional`, `choose_one`) are the only effects with no `mode`. See `docs/superpowers/specs/2026-07-23-nested-effect-families-design.md` for the full family map.
+The `Effect` enum grows only from real cards. Every leaf effect is authored as nested **`type` (family) + `mode` (leaf)**. Structural composers (`sequence`, `conditional`, `choose_one`) are the only effects with no `mode`. Family and mode vocabulary live in `crates/engine/src/types/effect/`; grow it only when a real card demands a new leaf.
 
 Top-level families: `damage`, `draw`, `life`, `destroy`, `exile`, `sacrifice`, `control`, `counters`, `mana`, `mill`, `pump`, `reveal`, `token`, `zone`, `copy`, `dig`, `choice`, `static`, `misc`, plus structural `sequence` / `conditional` / `choose_one`.
 
