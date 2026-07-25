@@ -1,12 +1,27 @@
 // Legal activates for a selected permanent, including synthesized tap-for-mana.
 
-import type { ActionView } from "~/wire/types";
+import type { ActionView, WireCost } from "~/wire/types";
 import { type Camera, worldToScreen } from "./camera";
 import { CARD_H, CARD_W, type RenderCard } from "./layout";
 
 export type RadialOption =
   | { kind: "tap_for_mana"; label: string; disabled: boolean }
   | { kind: "action"; action: ActionView; label: string; disabled: boolean };
+
+export type ActivationCostChip =
+  | { kind: "tap" }
+  | { kind: "mana"; cost: WireCost }
+  | { kind: "tap_and_mana"; cost: WireCost };
+
+export function activationCostChip(opt: RadialOption): ActivationCostChip | null {
+  if (opt.kind === "tap_for_mana") return { kind: "tap" };
+  const taps = opt.action.taps_self === true;
+  const mana = opt.action.x_cost ?? null;
+  if (mana != null && taps) return { kind: "tap_and_mana", cost: mana };
+  if (mana != null) return { kind: "mana", cost: mana };
+  if (taps) return { kind: "tap" };
+  return null;
+}
 
 const INNER_GAP_PX = 4;
 const MIN_RING_PX = 36;

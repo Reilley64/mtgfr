@@ -8,6 +8,7 @@ import {
   ACTIVATION_MENU_GAP_PX,
   ACTIVATION_MENU_MAX_HEIGHT_PX,
   ACTIVATION_MENU_WIDTH_PX,
+  activationCostChip,
   activationMenuEstimatedHeight,
   activationMenuPlacement,
   activationRadialInnerRadius,
@@ -185,6 +186,60 @@ describe("wedgePath / wedgeLabelPoint", () => {
     const p = wedgeLabelPoint(0, 1, 50, 90);
     expect(p.x).toBeCloseTo(0, 5);
     expect(p.y).toBeLessThan(0);
+  });
+});
+
+describe("activationCostChip", () => {
+  it("shows tap for tap_for_mana", () => {
+    expect(activationCostChip({ kind: "tap_for_mana", label: "Tap for mana", disabled: false })).toEqual({
+      kind: "tap",
+    });
+  });
+
+  it("shows tap when action.taps_self is true", () => {
+    expect(
+      activationCostChip({
+        kind: "action",
+        label: "Scry 1",
+        disabled: false,
+        action: activate({ taps_self: true }),
+      }),
+    ).toEqual({ kind: "tap" });
+  });
+
+  it("shows mana from x_cost when present", () => {
+    const cost = { generic: 1, colored: [0, 0, 0, 0, 0], has_x: true, x_symbols: 1 };
+    expect(
+      activationCostChip({
+        kind: "action",
+        label: "X pump",
+        disabled: false,
+        action: activate({ has_x: true, x_cost: cost }),
+      }),
+    ).toEqual({ kind: "mana", cost });
+  });
+
+  it("combines tap and mana when both apply", () => {
+    const cost = { generic: 0, colored: [0, 1, 0, 0, 0], has_x: false };
+    expect(
+      activationCostChip({
+        kind: "action",
+        label: "Pay U, tap",
+        disabled: false,
+        action: activate({ taps_self: true, x_cost: cost }),
+      }),
+    ).toEqual({ kind: "tap_and_mana", cost });
+  });
+
+  it("returns null when no structured cost exists", () => {
+    expect(
+      activationCostChip({
+        kind: "action",
+        label: "Add {U}{R}",
+        disabled: false,
+        action: activate({ label: "Add {U}{R}" }),
+      }),
+    ).toBeNull();
   });
 });
 
