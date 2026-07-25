@@ -1170,6 +1170,10 @@ impl Game {
         self.players[player.0 as usize].library.len()
     }
 
+    pub fn op_iteration(&self, player: PlayerId) -> u64 {
+        self.players[player.0 as usize].op_iteration
+    }
+
     /// The card ids currently in `player`'s hand.
     pub fn hand(&self, player: PlayerId) -> Vec<ObjectId> {
         self.hand_of(player)
