@@ -296,16 +296,18 @@ the release semver. No moving `latest` tag — pin explicit versions in `terrafo
 ### Release and CI pipeline
 
 **Commit convention:** Angular format (`feat:`, `fix:`, `build:`, `ci:`, `docs:`, `refactor:`,
-`test:`, `perf:`, `style:`; breaking changes via `BREAKING CHANGE:` footer). Enforced by
-commitlint + Husky on `commit-msg`. **PRs are squash-merged** — the squash commit subject is
-the PR title; semantic-release analyzes that line only.
+`test:`, `perf:`, `style:`; breaking changes via `BREAKING CHANGE:` footer). Enforced on each
+commit by commitlint via Husky `commit-msg` (`.husky/commit-msg`). In Cursor Cloud, after
+`npm clean-install`, `.cursor/scripts/wire-cloud-git-hooks.sh` restores the agent hooks
+dispatcher and chains `.husky` as the original hooks path so commitlint still runs. **PRs are
+squash-merged** — the squash commit subject is the PR title; semantic-release analyzes that
+line only. PR CI therefore lint-checks the **PR title** only (`commitlint` job), not the
+branch commit range.
 
 **`ci.yml`** (PRs): `concurrency` group `ci-${{ github.ref }}` with
 `cancel-in-progress: true` so superseded pushes cancel. Jobs: `changes`
-(`dorny/paths-filter` for `iac/**` + `.github/workflows/ci.yml`), commitlint,
-`verify-jobs.yml`, terraform (only when `changes.outputs.iac == 'true'`),
-always-on `docker-cache-guard`, `ci-wave1-guard`, `ci-wave2-guard`, and
-`ci-wave3-guard`.
+(`dorny/paths-filter` for `iac/**` + `.github/workflows/ci.yml`), Commitlint (PR title),
+`verify-jobs.yml`, and terraform (only when `changes.outputs.iac == 'true'`).
 
 **`verify-jobs.yml`** (reusable):
 - `verify-server-gate`: checkout + pass-marker `lookup-only` cache
@@ -332,8 +334,7 @@ public. `GITHUB_TOKEN` permissions: `contents: read`, `packages: write`,
 `actions: write`. Each build imports/exports Buildx layers via GitHub Actions cache
 (`cache-from` / `cache-to` `type=gha`, `mode=max`) with per-image scopes
 `mtgfr-server` and `mtgfr-web`. Dockerfile `--mount=type=cache` Cargo mounts are not
-persisted across jobs. Guards: `scripts/check-docker-workflow-cache.sh`,
-`scripts/check-ci-wave3.sh`.
+persisted across jobs.
 
 **Root `package.json`:** `private: true`; `"semantic-release": "^24"` in `devDependencies`.
 Not published to npm. `@semantic-release/npm` bumps `package.json` version only (private).

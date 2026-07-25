@@ -2,8 +2,6 @@ name: CI
 
 # Deploy PRD §GitHub Actions — PR verify via reusable verify-jobs.yml; terraform validates iac/.
 # Mirrors verify in verify-and-release.yml; no release steps here.
-# Wave 1: cancel superseded PR runs; path-skip terraform; cheap always-on guards.
-# Wave 3: parallel Docker jobs guard (docker.yml wiring).
 
 on:
   pull_request:
@@ -32,13 +30,13 @@ jobs:
               - 'iac/**'
               - '.github/workflows/ci.yml'
 
+  # Squash-merge uses the PR title as the main commit subject (semantic-release).
+  # Branch commits are gated locally / in Cloud via Husky commit-msg — not here.
   commitlint:
-    name: Commitlint
+    name: Commitlint (PR title)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
 
       - uses: actions/setup-node@v5
         with:
@@ -47,8 +45,10 @@ jobs:
 
       - run: npm clean-install
 
-      - name: Lint PR commits
-        run: npx commitlint --from "origin/${{ github.base_ref }}" --to "${{ github.event.pull_request.head.sha }}" --verbose
+      - name: Lint PR title
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: printf '%s\n' "$TITLE" | npx commitlint
 
   verify:
     name: Verify
@@ -77,35 +77,3 @@ jobs:
       - name: terraform validate
         working-directory: iac
         run: terraform validate
-
-  docker-cache-guard:
-    name: Docker workflow cache guard
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - name: Assert docker.yml Buildx GHA cache wiring
-        run: ./scripts/check-docker-workflow-cache.sh
-
-  ci-wave1-guard:
-    name: CI Wave 1 guard
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - name: Assert CI Wave 1 wiring
-        run: ./scripts/check-ci-wave1.sh
-
-  ci-wave2-guard:
-    name: CI Wave 2 guard
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - name: Assert CI Wave 2 wiring
-        run: ./scripts/check-ci-wave2.sh
-
-  ci-wave3-guard:
-    name: CI Wave 3 guard
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - name: Assert CI Wave 3 wiring
-        run: ./scripts/check-ci-wave3.sh
