@@ -1,6 +1,6 @@
 # Card DSL and Card Pool
 
-**Status:** Current (as of 2026-07-20)
+**Status:** Current (as of 2026-07-25)
 **Module:** `crates/cards` (`data/*.toml`, `data/tokens/*.toml`), `crates/engine` (`src/de.rs`, `src/types/effect/` — `CardDef`, `Ability`, `Effect`, family enums, `Timing`), `docs/decklists/*.md`
 
 ---
@@ -13,9 +13,9 @@ Card behavior in Magic is vast and varied. Encoding it per-card in engine code w
 
 ## Solution
 
-Each card is a TOML file in `crates/cards/data/` that deserializes into a `CardDef` struct in `crates/engine`. `CardDef` is `Copy` and `&'static` — all ability slices are interned at load time. Card behavior is expressed as `Ability { timing, effect }` pairs; the `Effect` enum is the vocabulary. The DSL grows **only when a real card demands it** (card-dsl-and-card-pool spec). Gaps are flagged via the `approximates` field and `# ponytail:` comments rather than forced approximations. Token profiles live in `data/tokens/` and are referenced by Scryfall oracle id from creating cards.
+Each card is a TOML file in `crates/cards/data/` that deserializes into a `CardDef` struct in `crates/engine`. `CardDef` is `Clone`, not `Copy`. Load still interns slice-like subfields into `'static` storage for now, but runtime game objects and events no longer embed whole definitions: they intern each printed definition into a `CardId -> Arc<CardDef>` table and carry the small handle instead. Card behavior is expressed as `Ability { timing, effect }` pairs; the `Effect` enum is the vocabulary. The DSL grows **only when a real card demands it** (card-dsl-and-card-pool spec). Gaps are flagged via the `approximates` field and `# ponytail:` comments rather than forced approximations. Token profiles live in `data/tokens/` and are referenced by Scryfall oracle id from creating cards.
 
-Thirty-seven token profiles and 665 deckable card TOMLs are present as of 2026-07-25. Nine precon decklists live in `docs/decklists/*.md` (the five Secrets of Strixhaven decks and four additional non-SoC lists).
+Thirty-seven token profiles and 665 deckable card TOMLs are present as of 2026-07-25. Nine decklists live in `docs/decklists/*.md` (the five Secrets of Strixhaven decks and four additional non-SoC lists).
 
 ---
 
@@ -25,7 +25,7 @@ Thirty-seven token profiles and 665 deckable card TOMLs are present as of 2026-0
 2. As a **card author**, I want a machine-readable `approximates` field and `# ponytail:` comments to flag where a card is mis-modeled, so the gap is documented and auditable.
 3. As a **card author**, I want to reference a token profile by Scryfall oracle id so tokens aren't duplicated across creating cards.
 4. As a **card author**, I want to flag a card as needing an engine feature that doesn't exist yet in that deck's fidelity increments backlog, rather than contorting the model.
-5. As a **rules engine consumer**, I want `CardDef` to be `Copy` so `Game` can be cheaply cloned for snapshots and look-ahead.
+5. As a **rules engine consumer**, I want printed definitions shared behind `CardId` handles so `Game` can still be cloned cheaply for snapshots and look-ahead without embedding fat `CardDef` values in every object and event.
 6. As a **deck builder user**, I want the card catalog to surface `approximates` text so I know which cards are faithfully modeled and which have known gaps.
 7. As a **deck builder user**, I want oracle tags (`otags`) for thematic search (e.g. "typal-spirit", "ramp") even for cards whose rules aren't implemented as a tag.
 8. As a **test author**, I want to construct `CardDef` values inline in tests without parsing TOML, so unit tests are self-contained.
@@ -156,7 +156,7 @@ Representative modes by family:
 
 ### Token profiles
 
-Token profiles live in `data/tokens/*.toml`. They are full `CardDef` instances with `[kind] type = "token"`. They carry `colors`, `subtypes`, and optional abilities (e.g. a Pest token that gains life on death). Creating cards reference them by oracle id: `token = "uuid"`. The `install_token_defs` / `token_def` APIs load and query the registry. Current tokens: 35 profiles covering Angel, Beast, Cat, Dragon, Elemental, Food, Fractal, Goat, Inkling, Insect, Myr, Pest, Saproling, Snake, Soldier, Spirit, Treasure, Thopter, Zombie, and others.
+Token profiles live in `data/tokens/*.toml`. They are full `CardDef` instances with `[kind] type = "token"`. They carry `colors`, `subtypes`, and optional abilities (e.g. a Pest token that gains life on death). Creating cards reference them by oracle id: `token = "uuid"`. The `install_token_defs` / `token_def` APIs load and query the registry, and token creation interns the chosen definition into a `CardId` before attaching it to a live object or event. Current tokens: 37 profiles covering Angel, Beast, Cat, Dragon, Elemental, Food, Fractal, Goat, Inkling, Insect, Myr, Pest, Saproling, Snake, Soldier, Spirit, Treasure, Thopter, Zombie, and others.
 
 ### Fidelity discipline
 
@@ -166,10 +166,10 @@ Token profiles live in `data/tokens/*.toml`. They are full `CardDef` instances w
 
 ### Precon decklists and card pool scope
 
-Eight decklists live in `docs/decklists/*.md`:
+Nine decklists live in `docs/decklists/*.md`:
 
 - Five Secrets of Strixhaven (`soc`) Commander precons: Witherbloom Pestilence, Silverquill Influence, Quandrix Unlimited, Prismari Artistry, Lorehold Spirit.
-- Three additional lists: Political Puppets, Enchantress Rubinia, Deathdancer Xira.
+- Four additional lists: Political Puppets, Mirror Mastery, Enchantress Rubinia, Deathdancer Xira.
 
 These are the **first faithful target** (card-dsl-and-card-pool spec): every card in these lists should be faithfully representable in the DSL, with `approximates` notes for known gaps. The north star (card-dsl-and-card-pool spec) is any card, faithfully — the SoC decks are the proving ground, not the ceiling.
 
@@ -183,9 +183,9 @@ These are the **first faithful target** (card-dsl-and-card-pool spec): every car
 
 ## Implementation Decisions
 
-- **`CardDef` is `Copy` and `&'static`.** `intern` / `static_slice` in `de.rs` leak owned vecs into static slices at load time (a bounded, load-once pool). This enables zero-cost `Clone` of `Game` and eliminates per-card heap allocation at runtime.
+- **`CardDef` is `Clone`, not `Copy`; runtime uses `CardId`.** `de.rs` still uses `intern` / `static_slice` / `static_effect` helpers to load slice-like TOML data into `'static` references, but once a card enters a `Game` it is interned via `intern_card_def` and referenced by `CardId` through shared `Arc<CardDef>` lookups.
 - **`Effect` enum grows only from real card demand (card-dsl-and-card-pool spec).** New behavior = new `Effect` variant + `Game::run` arm + `Event::apply` arm + TOML authoring. The DSL never anticipates future cards.
-- **Token profiles are pre-loaded into a `OnceLock<HashMap<&'static str, CardDef>>` before deckable cards.** `install_token_defs` must be called before any card TOML that references a token by id is deserialized. `cards` crate's `load` function handles this ordering.
+- **Token profiles are pre-loaded into a `OnceLock<HashMap<&'static str, CardDef>>` before deckable cards.** `install_token_defs` must be called before any card TOML that references a token by id is deserialized. `cards` crate's `load` function handles this ordering, and token creation interns the selected profile before storing it on a live object/event.
 - **The `card-dsl` feature flag gates all DSL deserialization.** The engine can be compiled without TOML parsing (e.g. for pure engine tests that construct `CardDef` inline). The feature adds `serde` derives and `de.rs`.
 - **`de.rs` holds only structurally-divergent deserializers.** Types whose TOML spelling matches their Rust shape use serde derives on the definitions in `types/effect/`. Only when the TOML spelling differs structurally (flat cost table, `instant`/`sorcery` as separate strings, folded `Timing::Activated`) does `de.rs` provide a manual impl.
 - **`otags` and `set` are pure catalog metadata** — the engine never reads them. They exist for deck-builder search (`set`/`subtypes` + Postgres catalog search, accounts-decks-and-catalog spec) and Scryfall tagger integration.
