@@ -200,7 +200,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             // when the card's modal_choose_max_if_commander asks for it (Nexus Mentality) — the
             // same check `validate_modes` enforces, so the prompt never offers a range the cast
             // would reject.
-            choose_max: game.modal_choose_max(def, action.player),
+            choose_max: game.modal_choose_max(&def, action.player),
             modes: game
                 .modes_of(card)
                 .into_iter()
@@ -324,7 +324,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                     game.cast_cost(
                         action.player,
                         card,
-                        def,
+                        def.clone(),
                         None,
                         x,
                         zone,
@@ -365,7 +365,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
         }
         MeaningfulAction::Activate { source, ability } => {
             let activation = game.ability_at(source, ability);
-            let (paid, taps_self) = match activation.map(|a| a.timing) {
+            let (paid, taps_self) = match activation.as_ref().map(|a| a.timing) {
                 Some(engine::Timing::Activated(cost)) => (Some(cost.mana), cost.taps_self),
                 _ => (None, false),
             };
@@ -380,7 +380,8 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 ability_index: Some(ability as u32),
                 section: "battlefield".to_string(),
                 label: activation
-                    .map(|a| to_wire_message(a.effect.message()))
+                    .as_ref()
+                    .map(|ability| to_wire_message(ability.effect.clone().message()))
                     .unwrap_or_else(|| message("action.activate")),
                 needs_target: game.ability_target_spec(source, ability) != TargetSpec::None,
                 targets: targets(source, Some(ability)),
@@ -433,7 +434,10 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             let label = match def.hand_ability.get(index).copied().or(def.forecast) {
                 Some(ability) => match ability.effects {
                     [single] => {
-                        child_message("action.discard_effect", to_wire_message(single.message()))
+                        child_message(
+                            "action.discard_effect",
+                            to_wire_message(single.clone().message()),
+                        )
                     }
                     _ => named_message("action.discard_card", def.name),
                 },
@@ -567,7 +571,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 .def_of(source)
                 .back
                 .expect("CastPrepared implies a back face");
-            let back_def = *back;
+            let back_def = engine::card_def(back);
             let (spec, legal) = game.prepared_cast_targets(source);
             let (has_x, min_x, max_x, x_cost) = x_choice_fields(
                 game,
@@ -605,8 +609,8 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
         // One action per half of a split card (CR 709.4a) — the label is the half's own name, which
         // is the only per-half text the client has to tell "Fire" from "Ice".
         MeaningfulAction::CastSplitHalf { card, half } => {
-            let face = *game
-                .def_of(card)
+            let def = game.def_of(card);
+            let face = def
                 .halves
                 .get(half as usize)
                 .expect("CastSplitHalf implies the half exists");
@@ -762,11 +766,15 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
             // `card_id`/`print` (the client's art + oracle lookup) whenever the live face lacks its
             // own; unflipped permanents read `front == def`, so this is a no-op there.
             let front = game.front_def_of(id);
-            let card_id_src = if def.id.is_empty() { front } else { def };
-            let print_src = if def.default_print.is_empty() {
-                front
+            let card_id_src = if def.id.is_empty() {
+                &front
             } else {
-                def
+                &def
+            };
+            let print_src = if def.default_print.is_empty() {
+                &front
+            } else {
+                &def
             };
             // CR 708.2: a face-down permanent (a manifest) is anonymized — its real name, card
             // kind, and mana cost are hidden from every viewer (the engine already reports its
@@ -807,7 +815,7 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                         toughness: 2,
                     }
                 } else {
-                    wire_kind(def)
+                    wire_kind(&def)
                 },
                 mana_cost: if face_down {
                     wire_cost(engine::Cost::FREE)
@@ -963,7 +971,9 @@ pub enum StreamFrame {
 mod tests {
     use crate::dto::{CommanderDamageView, MessageRef, PendingChoiceView, WireKind};
     use crate::intent::{WireAttack, WireTarget};
-    use crate::test_support::{def, pass_until_choice, refresh_via_mana_tap, resolve_top_of_stack};
+    use crate::test_support::{
+        card_id, def, pass_until_choice, refresh_via_mana_tap, resolve_top_of_stack,
+    };
     use engine::{Defender, Effect, Game, ObjectId, PlayerId, TokenEffect};
 
     use super::{SPECTATOR_VIEWER, StreamFrame, ViewExtras, complete_visible};
@@ -1030,7 +1040,7 @@ mod tests {
             player: PlayerId(0),
             object: 7,
             from: 3,
-            card: def("Shock"),
+            card: card_id("Shock"),
         };
         let extras = ViewExtras {
             yields: [true, false, false, false],
@@ -2930,13 +2940,13 @@ mod tests {
         let p0 = PlayerId(0);
         let treasure = game.spawn_token_on_battlefield(p0, engine::treasure_token());
         let beast = cards::get_by_name("Beast Within").expect("Beast Within in pool");
-        let Effect::Sequence { steps } = beast.abilities[0].effect else {
+        let Effect::Sequence { steps } = &beast.abilities[0].effect else {
             panic!("Beast Within spell body");
         };
-        let Effect::Token(TokenEffect::Create { token, .. }) = steps[1] else {
+        let Effect::Token(TokenEffect::Create { token, .. }) = &steps[1] else {
             panic!("Beast Within create_token step");
         };
-        let beast_token = game.spawn_token_on_battlefield(p0, token);
+        let beast_token = game.spawn_token_on_battlefield(p0, token.clone());
 
         let snap = snapshot(&game, p0);
         let treasure_view = snap

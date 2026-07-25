@@ -96,7 +96,11 @@ impl<'a> ChoiceCtx<'a> {
                 player: player.0,
                 source,
                 count: effects.len() as u32,
-                labels: effects.iter().map(|&e| to_wire_message(e.message())).collect(),
+                labels: effects
+                    .iter()
+                    .cloned()
+                    .map(|effect| to_wire_message(effect.message()))
+                    .collect(),
             },
             engine::PendingChoice::ChooseTarget {
                 player,
@@ -719,7 +723,11 @@ impl<'a> ChoiceCtx<'a> {
             } => PendingChoiceView::ChooseMode {
                 player: player.0,
                 source,
-                labels: modes.iter().map(|&m| to_wire_message(m.message())).collect(),
+                labels: modes
+                    .iter()
+                    .cloned()
+                    .map(|mode| to_wire_message(mode.message()))
+                    .collect(),
             },
             engine::PendingChoice::ChooseTriggerModes {
                 player,
@@ -744,7 +752,8 @@ impl<'a> ChoiceCtx<'a> {
                     optional,
                     modes: modes
                         .iter()
-                        .map(|&effect| ModeView {
+                        .cloned()
+                        .map(|effect| ModeView {
                             label: to_wire_message(effect.message()),
                             needs_target: true,
                             targets: targets.clone(),
@@ -1063,7 +1072,7 @@ mod coverage_tests {
                     source,
                     target: None,
                     x: 0,
-                    modes: CHOOSE_ONE_MODES,
+                    modes: CHOOSE_ONE_MODES.into(),
                 },
                 |view| matches!(view, PendingChoiceView::ChooseMode { .. }),
             ),

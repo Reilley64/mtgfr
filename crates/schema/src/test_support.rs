@@ -9,6 +9,11 @@ pub(crate) fn def(name: &str) -> engine::CardDef {
 }
 
 #[cfg(test)]
+pub(crate) fn card_id(name: &str) -> engine::CardId {
+    engine::intern_card_def(def(name))
+}
+
+#[cfg(test)]
 pub(crate) fn refresh_via_mana_tap(game: &mut Game, tapland: engine::ObjectId) {
     game.submit(engine::Intent::TapForMana {
         player: PlayerId(0),
