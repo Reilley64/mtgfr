@@ -1,5 +1,5 @@
 /* Subset of mana-font for oracle/approximates pips + mana-tray symbols (duo, color indicators).
- * Regenerate: `just client-mana-oracle` (or `node scripts/gen-mana-oracle.mjs`).
+ * Regenerate: `just client-mana-oracle` (or `bun scripts/gen-mana-oracle.mjs`).
  * Check stale: `just client-mana-oracle-check`.
  */
 .ms {

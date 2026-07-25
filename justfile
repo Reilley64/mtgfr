@@ -66,12 +66,12 @@ client-typecheck:
 [group('client')]
 [doc("Regenerate styles/mana-oracle.css from mana-font")]
 client-mana-oracle:
-    cd client && node scripts/gen-mana-oracle.mjs
+    cd client && bun scripts/gen-mana-oracle.mjs
 
 [group('client')]
 [doc("Fail if styles/mana-oracle.css is stale vs mana-font")]
 client-mana-oracle-check:
-    cd client && node scripts/gen-mana-oracle.mjs --check
+    cd client && bun scripts/gen-mana-oracle.mjs --check
 
 [group('client')]
 [doc("Fail if tokens.generated.* are stale vs design.tokens.json")]
