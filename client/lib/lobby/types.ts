@@ -4,6 +4,7 @@ export const SeatView = S.Struct({
   player: S.Number,
   claimed: S.Boolean,
   username: S.NullOr(S.String),
+  gravatar_hash: S.optional(S.NullOr(S.String)),
   deck_name: S.NullOr(S.String),
   deck_id: S.NullOr(S.Number),
   ready: S.Boolean,

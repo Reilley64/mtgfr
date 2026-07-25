@@ -11,6 +11,7 @@ function snap(overrides: Partial<LobbySnapshot> = {}): LobbySnapshot {
         seat: 0,
         userId: 1,
         username: "alice",
+        gravatarHash: "abc",
         deckId: -1,
         deckName: "Silverquill Influence",
         ready: true,
@@ -19,6 +20,7 @@ function snap(overrides: Partial<LobbySnapshot> = {}): LobbySnapshot {
         seat: 1,
         userId: 2,
         username: "bob",
+        gravatarHash: "def",
         deckId: -2,
         deckName: "Prismari Artistry",
         ready: true,
@@ -43,6 +45,7 @@ describe("toLobbyView", () => {
           seat: 0,
           userId: 1,
           username: "alice",
+          gravatarHash: "abc",
           deckId: -1,
           deckName: "Silverquill Influence",
           ready: true,
@@ -51,6 +54,7 @@ describe("toLobbyView", () => {
           seat: 1,
           userId: 2,
           username: "bob",
+          gravatarHash: "def",
           deckId: -2,
           deckName: "Prismari Artistry",
           ready: false,
@@ -58,6 +62,12 @@ describe("toLobbyView", () => {
       ],
     });
     expect(toLobbyView(notReady, 1).start_error).toBe("NotAllReady");
+  });
+
+  it("projects gravatar_hash on claimed seats", () => {
+    const view = toLobbyView(snap(), 1);
+
+    expect(view.seats[0]?.gravatar_hash).toBe("abc");
   });
 });
 

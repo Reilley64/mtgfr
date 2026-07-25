@@ -17,6 +17,7 @@ export const lobbySeats = pgTable(
     seat: integer("seat").notNull(),
     userId: integer("user_id").notNull(),
     username: text("username").notNull(),
+    gravatarHash: text("gravatar_hash").notNull().default(""),
     deckId: integer("deck_id").notNull(),
     deckName: text("deck_name").notNull(),
     ready: boolean("ready").notNull().default(false),
