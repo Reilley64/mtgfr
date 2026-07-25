@@ -1,6 +1,6 @@
 # Lobby, Table Routing, and Live Game
 
-**Status:** Current (as of 2026-07-21)
+**Status:** Current (as of 2026-07-24)
 **Module:** `crates/server/src/table.rs`, `crates/server/src/lobby.rs`, `crates/server/src/session.rs`,
 `crates/server/src/game_loop.rs`, `crates/server/src/stream.rs`, `crates/server/src/chrome.rs`,
 `crates/server/src/health.rs`, `crates/server/src/main.rs`,
@@ -40,7 +40,7 @@ The system separates pre-game lobby from live-game concerns across two persisten
 5. `Tables.Seed` resolves and validates all decks, fetches a drand beacon master seed (or a configured fixed seed in dev/test), deals opening hands, enters the mulligan phase, inserts the
    `Table` into the in-memory `Registry`, and returns `SeedResponse { table_id, pod_dns, version }`.
 6. BFF writes `table_routes (table_id → pod_dns)` to `mtgfr_web`. Clients are redirected to
-   `/play/{table_id}`.
+   `/play/{deck_id}/{table_id}` so the chosen deck remains a required path param.
 
 **In-game routing (lobby-table-routing-and-live-game spec):**
 
@@ -111,11 +111,10 @@ the BFF so that their absence does not block drain of an API pod that was never 
 
 ## User Stories
 
-- As a **host**, I create a lobby; the table id appears in a share link
-  (`https://edh.example.com/play/{table_id}`). I claim the first seat, pick a deck, and wait for
+- As a **host**, I pick a deck on Your decks, create a lobby, copy the table code, and wait for
   friends to join.
-- As a **player joining via share link**, I claim the next open seat, pick a deck from my list
-  (which includes precons), and toggle ready.
+- As a **player joining by table code**, I pick a deck from my list (which includes precons), paste
+  the code, claim the next open seat, and toggle ready.
 - As a **host**, once all claimed seats (≥2) are ready, I press Start. The game seeds and all
   players are taken to the board.
 - As a **player in-game**, I receive live `DeltaEnvelope` frames as the game progresses. I submit
@@ -287,7 +286,8 @@ seeded game; there are no "empty" table shells in the production registry.
 ## Further Notes
 
 - The `table_id` is a random 128-bit hex string (`format!("{:032x}", rand_u128)`). It is the
-  stable public identifier in share links (`/play/{table_id}`) and in `table_routes`.
+  stable public identifier copied as a table code and stored in `table_routes`; browser routes keep
+  the player's required deck id in `/play/{deck_id}/{table_id}`.
 - `SeedResponse.version` (the API binary's version string) lets the BFF detect a rolling deploy
   crossing versions mid-game — the BFF can surface a "game running on older version" warning
   if desired, though no UI for this currently exists.

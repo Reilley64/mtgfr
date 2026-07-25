@@ -109,7 +109,6 @@ export {
 } from "./shell/decks/messages";
 export {
   ChangedLobbyCode,
-  ChangedLobbyDeck,
   LobbyCopyCompleted,
   LobbyRequestFailed,
   LobbyTableCreated,

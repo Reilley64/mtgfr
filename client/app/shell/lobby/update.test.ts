@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as tableAudio from "../../../lib/tableAudio";
-import { RequestedLobbyReady } from "./messages";
+import { RequestedLobbyHost, RequestedLobbyReady } from "./messages";
 import { initialLobbySlice } from "./submodel";
 import { ReadyLobby, update } from "./update";
 
@@ -25,5 +25,15 @@ describe("RequestedLobbyReady audio unlock", () => {
     const unlock = vi.spyOn(tableAudio, "unlockTableAudio");
     update(initialLobbySlice(), RequestedLobbyReady({ ready: true }), [1]);
     expect(unlock).not.toHaveBeenCalled();
+  });
+});
+
+describe("RequestedLobbyHost deck selection", () => {
+  it("does not fall back to the first loaded deck", () => {
+    const [next, commands] = update(initialLobbySlice(), RequestedLobbyHost(), [7]);
+
+    expect(next.error).toBe("Pick a deck to bring first.");
+    expect(next.selectedDeckId).toBeNull();
+    expect(commands).toHaveLength(0);
   });
 });

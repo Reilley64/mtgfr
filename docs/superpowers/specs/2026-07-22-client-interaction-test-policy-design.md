@@ -27,7 +27,7 @@ Recent slips (Host/`WEB_DATABASE_URL`, Alt-hold inspect, hand hide on drag-play,
 | `handHidden` removes hand tile from view | `client/app/board/scene.test.ts` | Done |
 | Pool cards have no native `title` tooltip | `client/app/shell/decks/builder/story.test.ts` | Done |
 | Card art host repaints when `data-art-url` changes | `client/lib/ui/card-art.test.ts` | Done |
-| Lobby: selected deck matches pre-pick / `?deck=` among ≥2 decks (not silently `decks[0]`) | `client/app/shell/lobby/entry.test.ts` | Done |
+| Lobby: selected deck matches `/play/:deckId` pre-pick among ≥2 decks (not silently `decks[0]`) | `client/app/shell/lobby/entry.test.ts` | Done |
 | Lobby entry Bring presentation (text/card, no misleading select) | `client/app/shell/lobby/entry.test.ts`, surfaces | Done |
 
 ### AGENTS.md rule (add alongside existing surface rule)
@@ -63,7 +63,7 @@ Always documented in `.agents/skills/verify/SKILL.md`. Required only when the PR
 2. **Alt-hold** over a face-up board or hand card — inspect opens; release Alt — inspect closes.
 3. **Drag a playable hand card** above the bar — after commit the hand no longer shows a duplicate tile while the flight plays.
 4. **Deck builder hover** — move across two pool cards; preview art changes; no native title tooltip.
-5. **Lobby with a pre-picked deck** (`/play?deck=…`) — Bring text shows that deck, Back returns to `/`, and no deck select is shown.
+5. **Lobby with a pre-picked deck** (`/play/:deckId`) — the chosen deck card is shown, Back returns to `/`, and no deck select is shown.
 
 ## Out of scope
 

@@ -1,66 +1,57 @@
-# Task 2 Report: Post-keep waiting banner
+# Task 2 Report: selectedDeckId from route + not-found normalization + host redirect
 
 ## Status
 
-**DONE**
+DONE
 
 ## Summary
 
-After a seated player keeps their opening hand during mulligans, the decision overlay now stays hidden, the `hand-bar` returns, and a centered `mulligan-waiting` banner renders the existing `mulliganChrome` waiting status copy.
+- Added `normalizeAppRoute(route, path)` in `client/app/routes.ts`.
+- Normalized init and `UrlChanged` routes so non-integer Play/Table deck IDs become `NotFoundRoute({ path })`.
+- Bound lobby `selectedDeckId` from `parseDeckIdParam(route.deckId)` for Play/Table route entry.
+- Removed `deckFromCurrentPath` and stopped using `?deck=` for host redirect.
+- Changed lobby host/join deck selection to use only `model.selectedDeckId`; no first-deck fallback.
+- Changed shell Play nav to `routePath(HomeRoute())`.
+- Left deck list tile href behavior unchanged for Task 5 ownership.
 
 ## TDD Evidence
 
-### RED
+Red run:
 
-Updated `client/app/board/html/chrome.test.ts`:
-- renamed `mulliganing kept seat does not show decision overlay`
-- added assertions for `mulligan-waiting` existence and exact waiting copy
-
-Ran:
-
-```bash
-cd client && bunx vitest run app/board/html/chrome.test.ts -t "waiting banner|mulligan kept"
+```text
+cd client && bun test app/routes.test.ts app/shell/lobby/entry.test.ts app/shell/lobby/update.test.ts
+16 pass, 4 fail
+Expected failures: NotFound normalization missing, route deck not selected, host redirect still had ?deck=, lobby host fell back to first deck.
 ```
 
-Result: **FAIL**
-- `Expected element matching testId "mulligan-waiting" to exist but it does not.`
+Green/final run:
 
-### GREEN
-
-Implemented the minimal change:
-
-| File | Change |
-|------|--------|
-| `client/app/board/html/mulligan-overlay.ts` | Added `mulliganWaitingView(state): Html | null` using `mulliganChrome` and `data-testid="mulligan-waiting"` |
-| `client/app/board/html/overlays.ts` | Wired `mulliganWaitingView(state)` for seated viewers immediately after `mulliganOverlayView(state)` |
-| `client/app/board/html/chrome.test.ts` | Replaced kept-seat expectations with waiting-banner assertions |
-
-Re-ran:
-
-```bash
-cd client && bunx vitest run app/board/html/chrome.test.ts -t "mulligan"
+```text
+cd client && bun test app/routes.test.ts app/shell/lobby/entry.test.ts app/shell/lobby/update.test.ts app/shell/surfaces.test.ts
+30 pass, 0 fail
 ```
 
-Result: **PASS** — `2 passed`
+Additional verification:
 
-## Verification
+```text
+cd client && bun run typecheck
+tsc --noEmit passed
 
-Focused suite:
+cd client && bun run lint
+biome check passed; existing schema-version info only (2.5.3 config vs 2.5.5 CLI)
 
-```bash
-cd client && bunx vitest run app/board/html/chrome.test.ts
+git diff --check
+passed
 ```
 
-Result: **PASS** — `10 passed`
+## Self-review
 
-## Self-Review
-
-- `mulliganWaitingView` reuses `mulliganChrome.status`, so Task 2 keeps the copy source of truth in `client/lib/mulligan.ts`.
-- Guard-return-first shape stays intact: hidden unless `chrome.show && !chrome.showControls`.
-- Overlay composition remains ordered: undecided seats still get `mulligan-overlay`; kept seats get only `mulligan-waiting`.
-- `hand-bar` visibility remains driven by `undecidedMulligan`, so it returns immediately after keep without extra state.
-- No wire, engine, or docs changes were introduced.
+- Scope matches the brief and avoids Task 4/5/6 work.
+- `parseDeckIdParam` is the single source for route deck integer normalization.
+- Redirect path uses `routePath(TableRoute({ deckId: String(selectedDeckId), table }))` with no query string.
+- Route switch touched in `update.ts` now has explicit Login/NotFound cases plus a `never` default.
+- No inline imports, no new dependencies, no generated artifacts committed.
 
 ## Concerns
 
-None.
+- None. The lint command exits 0 but prints the existing Biome schema-version info.

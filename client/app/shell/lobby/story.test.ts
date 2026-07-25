@@ -23,7 +23,7 @@ test("started lobby view activates the board handoff", () => {
     update,
     Story.with({
       ...model,
-      route: TableRoute({ table: "ABC123" }),
+      route: TableRoute({ deckId: "0", table: "ABC123" }),
       sessionLoaded: true,
       session: { me },
       lobby: { ...model.lobby, tableId: "ABC123" },

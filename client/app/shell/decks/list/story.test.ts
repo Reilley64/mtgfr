@@ -105,7 +105,7 @@ test("deck list does not render a hover preview", () => {
   );
 });
 
-test("tile Play href uses ?deck= and search filters tiles", () => {
+test("tile Play href uses /play/:deckId and search filters tiles", () => {
   const knownCommanders = {
     atraxa: card({ id: "atraxa", name: "Atraxa, Praetors' Voice", color_identity: [0, 1, 2, 4] }),
     breena: card({ id: "breena", name: "Breena, the Demagogue" }),
@@ -120,7 +120,7 @@ test("tile Play href uses ?deck= and search filters tiles", () => {
   Scene.scene(
     listProgram,
     Scene.with({ ...initialDeckListSubmodel(), decks, knownCommanders }),
-    Scene.expect(Scene.selector('[data-testid="deck-tile-1"][href="/play?deck=1"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="deck-tile-1"][href="/play/1"]')).toExist(),
     Scene.expect(Scene.selector('[data-testid="deck-tile--9"]')).toExist(),
     Scene.expect(Scene.selector('[data-testid="deck-tile--1"]')).toExist(),
     Scene.expectAll(Scene.all.selector('[data-testid^="deck-tile-"]')).toHaveCount(3),

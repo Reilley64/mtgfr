@@ -2,9 +2,10 @@ import { Effect } from "effect";
 import { type Document, html } from "foldkit/html";
 import * as Mount from "foldkit/mount";
 import { view as boardView } from "./board/view";
+import { parseDeckIdParam, playDeckAccess } from "./deck-id";
 import { CompletedPortraitGateModal, type Message, PortraitGateCancelled, RequestedLogout } from "./messages";
 import type { Model } from "./model";
-import { HomeRoute, isProtectedRoute, NewDeckRoute, PlayRoute, routePath } from "./routes";
+import { HomeRoute, isProtectedRoute, NewDeckRoute, routePath } from "./routes";
 import { view as authView } from "./shell/auth/view";
 import { view as deckBuilderView } from "./shell/decks/builder/view";
 import { view as deckListView } from "./shell/decks/list/view";
@@ -50,7 +51,7 @@ function nav(model: Model) {
       h.nav(
         [h.Class("flex items-center gap-md text-label text-lichen")],
         [
-          h.a([h.Href(routePath(PlayRoute())), h.Class("underline")], ["Play"]),
+          h.a([h.Href(routePath(HomeRoute())), h.Class("underline")], ["Play"]),
           h.a([h.Href(routePath(NewDeckRoute())), h.Class("underline")], ["New deck"]),
           user == null
             ? h.a([h.Href("/login"), h.Class("underline")], ["Sign in"])
@@ -144,14 +145,32 @@ function routeBody(model: Model) {
         return deckBuilderView(model.decks.builder, model.apiVersion);
       case "DeckRoute":
         return deckBuilderView(model.decks.builder, model.apiVersion);
-      case "PlayRoute":
-        return model.game?.active === true
-          ? boardMount(model)
-          : lobbyView(model.lobby, model.decks.list.decks, model.decks.list.loading, model.apiVersion);
-      case "TableRoute":
-        return model.game?.active === true
-          ? boardMount(model)
-          : lobbyView(model.lobby, model.decks.list.decks, model.decks.list.loading, model.apiVersion);
+      case "PlayRoute": {
+        if (model.game?.active === true) return boardMount(model);
+        const deckId = parseDeckIdParam(model.route.deckId);
+        const access = playDeckAccess(deckId, model.decks.list.decks, model.decks.list.loading, model.decks.list.error);
+        if (access === "missing") return shell(model, "Not found", `No Foldkit route for ${model.currentPath}.`);
+        return lobbyView(
+          model.lobby,
+          model.decks.list.decks,
+          model.decks.list.loading,
+          model.decks.list.knownCommanders,
+          model.apiVersion,
+        );
+      }
+      case "TableRoute": {
+        if (model.game?.active === true) return boardMount(model);
+        const deckId = parseDeckIdParam(model.route.deckId);
+        const access = playDeckAccess(deckId, model.decks.list.decks, model.decks.list.loading, model.decks.list.error);
+        if (access === "missing") return shell(model, "Not found", `No Foldkit route for ${model.currentPath}.`);
+        return lobbyView(
+          model.lobby,
+          model.decks.list.decks,
+          model.decks.list.loading,
+          model.decks.list.knownCommanders,
+          model.apiVersion,
+        );
+      }
       case "NotFoundRoute":
         return shell(model, "Not found", `No Foldkit route for ${model.route.path}.`);
       default: {

@@ -18,17 +18,15 @@ export function parseTableCode(input: string, base = globalThis.location?.origin
 
   try {
     const url = trimmed.includes("://") ? new URL(trimmed) : new URL(trimmed, base);
-    const fromPath = url.pathname.match(/^\/play\/([^/]+)$/);
-    if (fromPath) return decodeURIComponent(fromPath[1]).trim().toUpperCase();
+    const fromPath = url.pathname.match(/^\/play\/[^/]+\/([^/]+)$/);
+    if (fromPath)
+      return decodeURIComponent(fromPath[1] ?? "")
+        .trim()
+        .toUpperCase();
     const fromQuery = url.searchParams.get("table");
     if (fromQuery != null && fromQuery.trim() !== "") return fromQuery.trim().toUpperCase();
     return null;
   } catch {
     return null;
   }
-}
-
-export function lobbyShareLink(tableId: string, origin = globalThis.location?.origin): string {
-  const path = `/play/${encodeURIComponent(tableId)}`;
-  return origin == null ? path : `${origin}${path}`;
 }
