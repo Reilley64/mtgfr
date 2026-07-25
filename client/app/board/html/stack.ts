@@ -6,7 +6,7 @@
 import { type Attribute, type Html, html } from "foldkit/html";
 import { buttonClass } from "~/ui/buttonClass";
 import { cardArt } from "~/ui/card-art";
-import type { PlayerView, StackObjectView, VisibleState } from "~/wire/types";
+import type { VisibleState } from "~/wire/types";
 import { formatMessage } from "../../../lib/i18n/message";
 import { aimingObjectIds, stagedPickTargets } from "../action/targeting";
 import {
@@ -23,6 +23,7 @@ import {
   stackStripPeek,
   TARGET_COLOR,
 } from "../geometry/stackLayout";
+import { formatStackTargetSuffix, stackEntryTargets } from "../geometry/stackTargets";
 import {
   InspectAuxHovered,
   type Message,
@@ -48,17 +49,6 @@ type StackItem = {
 function objectMeta(state: VisibleState, source: number): { print: string; name: string | null; cardId?: string } {
   const obj = state.objects.find((o) => o.id === source);
   return { print: obj?.print ?? "", name: obj?.name ?? null, cardId: obj?.card_id };
-}
-
-function targetLabel(target: StackObjectView["target"], state: VisibleState): string {
-  if (target == null) return "";
-  if (target.kind === "player") {
-    const name =
-      state.players.find((p: PlayerView) => p.player === target.player)?.username ?? `Seat ${target.player + 1}`;
-    return ` → ${name}`;
-  }
-  const obj = state.objects.find((o) => o.id === target.id);
-  return obj ? ` → ${obj.name}` : "";
 }
 
 function stackItems(board: BoardModel, state: VisibleState, showStaged: boolean): StackItem[] {
@@ -202,7 +192,7 @@ function pileCaption(state: VisibleState, showStaged: boolean): Html | null {
   }
   const top = state.stack[state.stack.length - 1];
   if (top == null) return null;
-  const target = top.target != null ? targetLabel(top.target, state) : "";
+  const target = formatStackTargetSuffix(stackEntryTargets(top), state);
   const ability = top.kind === "ability" ? formatMessage(top.label) : "";
   if (ability === "" && target === "") return null;
   return h.div(

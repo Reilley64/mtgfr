@@ -686,6 +686,24 @@ impl Game {
         }
     }
 
+    /// All declared targets on spell `id`, first clause then second (`targets_second`).
+    /// Modal spells that keep their choices on `modes` report chosen mode targets in printed
+    /// mode order when no clause targets are present.
+    /// Empty when `id` is not a spell or has no chosen targets.
+    pub fn spell_targets(&self, id: ObjectId) -> Vec<Target> {
+        match &self.objects[id as usize] {
+            Object::Spell(s) => {
+                let mut targets: Vec<Target> =
+                    s.targets.iter().chain(s.targets_second.iter()).collect();
+                if targets.is_empty() {
+                    targets.extend(s.modes.chosen().filter_map(|(_, target)| target));
+                }
+                targets
+            }
+            _ => Vec::new(),
+        }
+    }
+
     /// Whether the spell at `id` currently has exactly one target (CR 114.6's "single target" —
     /// Willbender). Counts the chosen targets across both independent clauses; `false` if `id`
     /// isn't a spell or targets zero/two-plus.

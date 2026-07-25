@@ -5,6 +5,7 @@ import { TARGET_COLOR } from "../action/targeting";
 import { type Camera, worldToScreen } from "../geometry/camera";
 import type { RenderCard } from "../geometry/layout";
 import { STACK_PEEK, type StackPresentation, stackFaceScreenOrigin } from "../geometry/stackLayout";
+import { stackEntryTargets } from "../geometry/stackTargets";
 import type { AvatarScreenPositions } from "./avatars";
 
 type Shape = Canvas.Shape;
@@ -96,7 +97,7 @@ export function stackTargetArrowShapes(input: {
   const shapes: Shape[] = [];
   for (let row = 0; row < count; row++) {
     const entry = input.stack[row];
-    if (entry?.target == null) continue;
+    if (entry == null) continue;
     const from = stackFaceScreenOrigin({
       presentation,
       viewportW: input.viewport.width,
@@ -104,15 +105,17 @@ export function stackTargetArrowShapes(input: {
       count,
       row,
     });
-    let to: Vec | null = null;
-    if (entry.target.kind === "player") {
-      to = input.avatars[entry.target.player] ?? null;
-    } else {
-      const card = byId.get(entry.target.id);
-      if (card != null) to = cardCenter(input.camera, card);
+    for (const target of stackEntryTargets(entry)) {
+      let to: Vec | null = null;
+      if (target.kind === "player") {
+        to = input.avatars[target.player] ?? null;
+      } else {
+        const card = byId.get(target.id);
+        if (card != null) to = cardCenter(input.camera, card);
+      }
+      if (to == null) continue;
+      shapes.push(...arrowPath(from, to, TARGET_COLOR));
     }
-    if (to == null) continue;
-    shapes.push(...arrowPath(from, to, TARGET_COLOR));
   }
   return shapes;
 }

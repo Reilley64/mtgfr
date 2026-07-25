@@ -53,6 +53,30 @@ describe("aimArrowShapes", () => {
 });
 
 describe("stackTargetArrowShapes", () => {
+  it("draws one arrow per declared multi-target", () => {
+    const shapes = stackTargetArrowShapes({
+      viewport: { width: 1440, height: 900 },
+      stack: [
+        {
+          controller: 0,
+          kind: "spell",
+          label: testMessageRef("Electrolyze"),
+          source: 1,
+          target: { kind: "object", id: 22 },
+          targets: [
+            { kind: "object", id: 22 },
+            { kind: "player", player: 1 },
+          ],
+        },
+      ],
+      cards: [card(22)],
+      avatars: { 0: { x: 200, y: 800 }, 1: { x: 720, y: 80 } },
+      camera: { panX: 0, panY: 0, zoom: 1 },
+    });
+    const strokes = shapes.filter((s) => s._tag === "Path" && s.stroke === TARGET_COLOR);
+    expect(strokes.length).toBe(2);
+  });
+
   it("draws Island Blue arrows from stack faces to declared object/player targets", () => {
     const shapes = stackTargetArrowShapes({
       viewport: { width: 1440, height: 900 },

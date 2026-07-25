@@ -207,7 +207,8 @@ export type StackObjectView = {
   kind: string;
   label: MessageRef;
   source: number;
-  target?: null | { id: U32; kind: "object" } | { kind: "player"; player: number };
+  target?: null | WireTarget;
+  targets?: Array<WireTarget>;
 };
 // `defender` is always the defending player's seat; `defender_planeswalker` names their
 // planeswalker being attacked, when the attack named one (CR 508.1a).

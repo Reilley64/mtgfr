@@ -861,25 +861,37 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
         .stack()
         .into_iter()
         .map(|entry| match entry {
-            engine::StackEntry::Spell(id) => StackObjectView {
-                kind: "spell".to_string(),
-                source: id,
-                controller: game.controller_of(id).0,
-                label: named_message("card.name", game.def_of(id).name),
-                target: game.spell_target(id).map(WireTarget::of),
-            },
+            engine::StackEntry::Spell(id) => {
+                let targets: Vec<WireTarget> = game
+                    .spell_targets(id)
+                    .into_iter()
+                    .map(WireTarget::of)
+                    .collect();
+                StackObjectView {
+                    kind: "spell".to_string(),
+                    source: id,
+                    controller: game.controller_of(id).0,
+                    label: named_message("card.name", game.def_of(id).name),
+                    target: game.spell_target(id).map(WireTarget::of),
+                    targets,
+                }
+            }
             engine::StackEntry::Ability {
                 controller,
                 source,
                 effect,
                 target,
-            } => StackObjectView {
-                kind: "ability".to_string(),
-                source,
-                controller: controller.0,
-                label: to_wire_message(effect.message()),
-                target: target.map(WireTarget::of),
-            },
+            } => {
+                let targets: Vec<WireTarget> = target.map(WireTarget::of).into_iter().collect();
+                StackObjectView {
+                    kind: "ability".to_string(),
+                    source,
+                    controller: controller.0,
+                    label: to_wire_message(effect.message()),
+                    target: targets.first().copied(),
+                    targets,
+                }
+            }
         })
         .collect();
 
@@ -2486,6 +2498,79 @@ mod tests {
         assert_eq!(snap.stack[0].label.key, "card.name");
         assert_eq!(message_name(&snap.stack[0].label), Some("Shock"));
         assert_eq!(snap.stack[0].target, Some(WireTarget::Object { id: bear }));
+        assert_eq!(snap.stack[0].targets, vec![WireTarget::Object { id: bear }]);
+    }
+
+    #[test]
+    fn a_snapshot_lists_all_targets_for_a_multi_target_spell() {
+        let mut game = Game::new();
+        game.fund_mana(PlayerId(0));
+        let bear = game.spawn_on_battlefield(PlayerId(1), def("Grizzly Bear"));
+        let elf = game.spawn_on_battlefield(PlayerId(1), def("Llanowar Elves"));
+        let bolt = game.spawn_in_hand(PlayerId(0), def("Electrolyze"));
+        game.submit(engine::Intent::Cast {
+            player: PlayerId(0),
+            object: bolt,
+            target: None,
+            x: 0,
+            modes: vec![],
+            discard_cost: vec![],
+            graveyard_exile: vec![],
+            sacrifice_cost: vec![],
+            kicked: false,
+            bought_back: false,
+            evoked: false,
+            strive_count: 0,
+            replicate_count: 0,
+            alternative_cost: false,
+        })
+        .unwrap();
+        game.submit(engine::Intent::ChooseTargets {
+            player: PlayerId(0),
+            targets: vec![engine::Target::Object(bear), engine::Target::Object(elf)],
+        })
+        .unwrap();
+        // Divided damage may pause next; targets must already be on the spell.
+        let snap = snapshot(&game, PlayerId(0));
+        assert_eq!(snap.stack.len(), 1);
+        assert_eq!(
+            snap.stack[0].targets,
+            vec![
+                WireTarget::Object { id: bear },
+                WireTarget::Object { id: elf },
+            ]
+        );
+        assert_eq!(snap.stack[0].target, Some(WireTarget::Object { id: bear }));
+    }
+
+    #[test]
+    fn a_snapshot_lists_modal_spell_targets_from_chosen_modes() {
+        let mut game = Game::new();
+        game.fund_mana(PlayerId(0));
+        let bear = game.spawn_on_battlefield(PlayerId(1), def("Grizzly Bear"));
+        let abrade = game.spawn_in_hand(PlayerId(0), def("Abrade"));
+        game.submit(engine::Intent::Cast {
+            player: PlayerId(0),
+            object: abrade,
+            target: None,
+            x: 0,
+            modes: vec![(0, Some(engine::Target::Object(bear)))],
+            discard_cost: vec![],
+            graveyard_exile: vec![],
+            sacrifice_cost: vec![],
+            kicked: false,
+            bought_back: false,
+            evoked: false,
+            strive_count: 0,
+            replicate_count: 0,
+            alternative_cost: false,
+        })
+        .unwrap();
+
+        let snap = snapshot(&game, PlayerId(0));
+        assert_eq!(snap.stack.len(), 1);
+        assert_eq!(snap.stack[0].target, Some(WireTarget::Object { id: bear }));
+        assert_eq!(snap.stack[0].targets, vec![WireTarget::Object { id: bear }]);
     }
 
     #[test]
