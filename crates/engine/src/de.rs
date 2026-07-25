@@ -3,16 +3,16 @@
 //! Most types deserialize via derives on their definitions in `lib.rs`; this module holds
 //! the handful whose TOML spelling differs structurally from their Rust shape (a flat
 //! `[cost]` table of color names, the `instant`/`sorcery` split of [`CardKind::Spell`],
-//! the flat ability table that folds into [`Timing::Activated`]), plus the interning
-//! helpers that turn owned TOML data into the `&'static` slices that keep [`CardDef`]
-//! `Copy` — a bounded, load-once pool that lives for the program's lifetime anyway.
+//! the flat ability table that folds into [`Timing::Activated`]), plus the load helpers
+//! that still intern legacy `'static` data and the newer `Arc`-backed effect-list
+//! deserializers used by runtime-rebuilt sequence payloads.
 //! See [`Effect`]'s doc comment for the invariant these helpers exist to satisfy.
 //!
 //! CR citations appear on individual fields where the DSL encodes a rules concept
 //! (e.g. commander identity mana, target counts); see `docs/CR_INDEX.md`.
 
 use std::collections::HashMap;
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 
 use serde::Deserialize;
 use serde::de::{self, Deserializer, IntoDeserializer, Visitor};
@@ -25,6 +25,7 @@ use crate::{
     Mana, ManaPool, Parity, PermanentFilter, ProtectionScope, ReanimateBecomes,
     SacrificeAdditionalCost, SacrificeAdditionalCostCount, SacrificeCost, SpellFilter, SpellSpeed,
     SpendToCastPredicate, Suspend, TargetCount, Timing, TokenFilter, Trigger, TypeSet,
+    intern_card_def,
 };
 
 /// Token profiles loaded from `cards/data/tokens/` before deckable cards deserialize. Keyed by
@@ -41,7 +42,7 @@ pub fn install_token_defs(defs: HashMap<&'static str, CardDef>) {
 
 /// Look up a token profile by Scryfall oracle id after [`install_token_defs`].
 pub fn token_def(id: &str) -> Option<CardDef> {
-    TOKEN_DEFS.get().and_then(|m| m.get(id).copied())
+    TOKEN_DEFS.get().and_then(|m| m.get(id).cloned())
 }
 
 // ── Interning + serde defaults (referenced by the derives in lib.rs) ────────────────
@@ -67,6 +68,16 @@ where
     T: Deserialize<'de> + 'static,
 {
     Ok(intern(Vec::<T>::deserialize(d)?))
+}
+
+/// Deserialize an owned list into shared `Arc<[T]>` storage — used by effect payloads that may
+/// be rebuilt at runtime without leaking.
+pub(crate) fn arc_slice<'de, D, T>(d: D) -> Result<Arc<[T]>, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Deserialize<'de>,
+{
+    Ok(Arc::from(Vec::<T>::deserialize(d)?))
 }
 
 /// Leak one owned `Effect` into the `&'static Effect` a nested `Copy` field needs (a single-value
@@ -400,12 +411,12 @@ impl<'de> Deserialize<'de> for CardDef {
             #[serde(default)]
             functions_in_graveyard: bool,
             /// A "prepare" DFC's back face (soc/sos) — an inline `[back]` `CardDef` table, parsed
-            /// via `CardDef`'s own impl and leaked to `'static` below. Absent for ordinary cards.
+            /// via `CardDef`'s own impl and interned below. Absent for ordinary cards.
             #[serde(default)]
             back: Option<CardDef>,
             /// An adventure card's adventure half (CR 715, soc/sos) — an inline `[adventure]`
-            /// `CardDef` table (its own `cost`, `kind`, `abilities`), parsed like `back` and leaked
-            /// to `'static` below. Absent for ordinary cards.
+            /// `CardDef` table (its own `cost`, `kind`, `abilities`), parsed like `back` and
+            /// interned below. Absent for ordinary cards.
             #[serde(default)]
             adventure: Option<CardDef>,
             /// A split card's two castable halves (CR 709, Fire // Ice) — `[[half]]` tables, each
@@ -506,11 +517,9 @@ impl<'de> Deserialize<'de> for CardDef {
             demonstrate: card.demonstrate,
             devour: card.devour,
             functions_in_graveyard: card.functions_in_graveyard,
-            // Leak the back face to `'static` (like the rest of the interned card data) so a
-            // `Copy` `&'static CardDef` reference can live on the front `CardDef`.
-            back: card.back.map(|def| &*Box::leak(Box::new(def))),
-            // Leak the adventure half to `'static`, like the back face above.
-            adventure: card.adventure.map(|def| &*Box::leak(Box::new(def))),
+            // Intern nested faces once at load so later lookups can reuse stable CardIds.
+            back: card.back.map(intern_card_def),
+            adventure: card.adventure.map(intern_card_def),
             suspend: card.suspend,
             enter_as_copy: card.enter_as_copy,
             // Leak the encore cost to `'static` (like `suspend`'s cost) so a `Copy` `&'static Cost`
@@ -1820,9 +1829,9 @@ impl<'de> Deserialize<'de> for Ability {
                      [[abilities.effects]] block",
                 ));
             }
-            [only] => *only, // one-element `effects` is just that effect (no Sequence wrapper).
+            [only] => only.clone(), // one-element `effects` is just that effect (no Sequence wrapper).
             _ => Effect::Sequence {
-                steps: intern(flat.effects),
+                steps: Arc::from(flat.effects),
             },
         };
         let timing = match flat.timing {

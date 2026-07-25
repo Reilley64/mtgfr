@@ -101,7 +101,7 @@ impl Game {
                     Event::TokenCreated {
                         token,
                         controller,
-                        def,
+                        def: intern_card_def(def),
                         creator: source,
                     },
                 ]

@@ -34,6 +34,12 @@ pub fn view_extras(
                 .and_then(|s| s.username.clone())
                 .unwrap_or_default()
         }),
+        gravatar_hashes: std::array::from_fn(|i| {
+            seats
+                .get(i)
+                .map(|s| s.gravatar_hash.clone())
+                .unwrap_or_default()
+        }),
         prints: prints.clone(),
     }
 }
@@ -156,7 +162,7 @@ mod tests {
             player: PlayerId(0),
             object: 7,
             from: 3,
-            card: def("Shock"),
+            card: engine::intern_card_def(def("Shock")),
         }
     }
 
@@ -224,6 +230,7 @@ mod tests {
         let game = Game::new();
         let mut seats = std::array::from_fn(|_| Seat::default());
         seats[0].username = Some("alice".into());
+        seats[0].gravatar_hash = "abc".into();
         seats[1].username = Some("bob".into());
         let yields = [true, false, false, false];
         let turn_yields = [false, true, false, false];
@@ -239,6 +246,7 @@ mod tests {
         assert!(!state.turn_yielded, "viewer P0 is not turn-yielded");
         assert_eq!(state.stack_hold_remaining_ms, 900);
         assert_eq!(state.players[0].username, "alice");
+        assert_eq!(state.players[0].gravatar_hash, "abc");
         assert_eq!(state.players[1].username, "bob");
 
         let StreamFrame::Delta(DeltaEnvelope { state: p1, .. }) =

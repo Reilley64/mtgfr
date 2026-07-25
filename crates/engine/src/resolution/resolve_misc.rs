@@ -42,7 +42,7 @@ impl Game {
                         Event::TokenCreated {
                             token: minted,
                             controller: player,
-                            def: token,
+                            def: intern_card_def(token.clone()),
                             creator: source,
                         },
                     );
@@ -140,20 +140,20 @@ impl Game {
             // spell so `finish_instant_sorcery_resolution` sends it to exile with time counters
             // instead of the graveyard (the resolving spell, `source`, is the card exiled).
             Effect::Zone(ZoneEffect::ExileSelfWithTimeCounters { counters, .. }) => {
-                self.self_exile_time_counters = Some(counters);
+                self.resolution_finish = Some(FinishPolicy::ExileWithTimeCounters(counters));
             }
             // "Then put [this card] on the bottom of its owner's library" (Spell Crumple): mark
             // the resolving spell so `finish_instant_sorcery_resolution` sends it to the bottom
             // of its owner's library instead of the graveyard (`source`, the resolving spell
             // itself, is the card tucked).
             Effect::Zone(ZoneEffect::TuckSelfToLibraryBottom) => {
-                self.self_tuck_to_library_bottom = true;
+                self.resolution_finish = Some(FinishPolicy::TuckLibraryBottom);
             }
             // "Exile [this card]" (Vengeful Rebirth): mark the resolving spell so
             // `finish_instant_sorcery_resolution` sends it to exile instead of the graveyard
             // (`source`, the resolving spell itself, is the card exiled).
             Effect::Zone(ZoneEffect::ExileSelfOnResolve) => {
-                self.self_exile_on_resolve = true;
+                self.resolution_finish = Some(FinishPolicy::Exile);
             }
             // Opal Palace's spend-to-cast rider: the commander spell (baked in as
             // `triggering_spell` when the `SpendManaToCast` trigger fired) is still on the stack, so

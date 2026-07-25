@@ -47,7 +47,7 @@ impl Game {
                 // The copy's target spec/count come from the original's own primary spell effect
                 // (the copy shares the same `def`) — the same lookup
                 // `ChangeTargetOfTargetSpellOrAbility`'s optional (Wild Ricochet) bend shares.
-                let Some((spec, count)) = self.spell_primary_target(original_def) else {
+                let Some((spec, count)) = self.spell_primary_target(&original_def) else {
                     return;
                 };
                 // The copy's own controller both chooses and anchors legality — a fresh copy's
@@ -104,7 +104,7 @@ impl Game {
             // Loyalty's Replicate copies, CR 702.108b/707.10a).
             Effect::Copy(CopyEffect::RetargetSpellCopy { copy }) => {
                 let def = self.def_of(copy);
-                let spec = self.required_target(def, None);
+                let spec = self.required_target(&def.clone(), None);
                 if spec == TargetSpec::None {
                     return;
                 }
@@ -115,7 +115,7 @@ impl Game {
                     .abilities
                     .iter()
                     .find(|a| matches!(a.timing, Timing::Spell))
-                    .map_or(TargetCount::default(), |a| a.effect.target_count());
+                    .map_or(TargetCount::default(), |a| a.effect.clone().target_count());
                 self.choose_spell_targets(copy, spec, count, controller, controller, events);
             }
             // Chain Lightning's reflexive rider: "that player or that permanent's controller may
@@ -171,7 +171,7 @@ impl Game {
                 // already keeps.
                 if optional {
                     let def = self.def_of(spell);
-                    let Some((spec, count)) = self.spell_primary_target(def) else {
+                    let Some((spec, count)) = self.spell_primary_target(&def) else {
                         return;
                     };
                     let anchor = self.spell(spell).controller;
@@ -187,7 +187,7 @@ impl Game {
                     .abilities
                     .iter()
                     .find(|a| matches!(a.timing, Timing::Spell))
-                    .map_or(TargetSpec::None, |a| a.effect.target());
+                    .map_or(TargetSpec::None, |a| a.effect.clone().target());
                 let spell_controller = self.spell(spell).controller;
                 let current = self.spell_target(spell);
                 let legal: Vec<Target> = self
@@ -195,7 +195,7 @@ impl Game {
                         spec,
                         spell,
                         spell_controller,
-                        color_identity(def),
+                        color_identity(&def),
                         self.spell(spell).x,
                     )
                     .into_iter()
@@ -288,12 +288,12 @@ impl Game {
                     .abilities
                     .iter()
                     .find(|a| matches!(a.timing, Timing::Spell))
-                    .map_or(TargetSpec::None, |a| a.effect.target());
+                    .map_or(TargetSpec::None, |a| a.effect.clone().target());
                 let legal = self.legal_targets_for(
                     spec,
                     original,
                     spell_controller,
-                    color_identity(def),
+                    color_identity(&def),
                     self.spell(original).x,
                 );
                 // ponytail: "could target" is read as "a creature the spell's controller
@@ -351,7 +351,7 @@ impl Game {
                 // sits directly above the original (CR 603.3b), so it's the topmost stack ability
                 // with that source.
                 let Some((copied_effect, copied_target, copied_x, copied_activated)) =
-                    self.stack.iter().rev().find_map(|item| match *item {
+                    self.stack.iter().rev().find_map(|item| match item.clone() {
                         StackItem::Ability {
                             source,
                             effect,
@@ -447,7 +447,7 @@ impl Game {
             })
             .collect();
         self.run_sequence(
-            Box::leak(copies.into_boxed_slice()),
+            copies.as_slice(),
             ResolveCtx {
                 controller,
                 source,

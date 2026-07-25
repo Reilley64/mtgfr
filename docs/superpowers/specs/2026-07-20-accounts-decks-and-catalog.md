@@ -78,6 +78,8 @@ Neither endpoint requires authentication.
   needed. I can take a precon to a lobby seat without ever building a custom deck.
 - As a **player**, I take my custom or precon deck to a lobby seat; the lobby validates that the
   deck belongs to my account (or is a precon) before letting me ready up.
+- As a **signed-in player**, I see my account face in deck-list chrome, with an outbound
+  `Change at Gravatar` link instead of in-app avatar uploads.
 
 ---
 
@@ -90,7 +92,7 @@ Neither endpoint requires authentication.
 | `Signup` | No | Validate email + username uniqueness; Argon2id hash password; create `User` + `Session`; seed `User.rating = 1000` and `User.rating_set_at = now_unix`; return `AuthSession` (token + `Me`). BFF sets `Set-Cookie: session=<token>; HttpOnly; SameSite=Lax [; Secure]`. |
 | `Login` | No | Verify password hash; create or reuse `Session`; return `AuthSession`. |
 | `Logout` | Yes (cookie) | Delete the session row; BFF clears the cookie. |
-| `GetMe` | Yes (cookie) | Resolve session token → `User`; return `Me {id, email, username}`. |
+| `GetMe` | Yes (cookie) | Resolve session token → `User`; return `Me {id, email, username}`. Email is auth-private and only returned for the authenticated user. |
 
 Session resolution flows:
 1. BFF reads `session` cookie from browser request.
@@ -99,6 +101,16 @@ Session resolution flows:
 4. Expired sessions are deleted lazily on resolution failure (not by a background sweep).
 
 Password is argon2id PHC format, stored in `Session.token` is a random hex token (not a JWT).
+
+### Account Gravatar chrome
+
+Account-facing deck-list chrome derives the signed-in user's Gravatar face from `Me.email`
+(`trim().toLowerCase()` → SHA-256 hex → `https://www.gravatar.com/avatar/{hash}?s=64&d=404`).
+The header uses the same circular Gravatar/monogram helper as lobby seats and exposes
+`account-gravatar-link`, an outbound `Change at Gravatar` link to `https://gravatar.com` with
+`target="_blank"` and `rel="noopener noreferrer"`. There is no in-app upload, crop, or moderation
+surface. Public lobby/game seat payloads carry only `gravatar_hash`, never email; see
+[Gravatar Seat Faces Design](2026-07-25-gravatar-seat-faces-design.md).
 
 ### Deck CRUD (`Decks` gRPC service)
 
@@ -225,6 +237,8 @@ for hydrating a saved deck without fetching the full catalog.
   cookie, passing the raw token as metadata. This means no cookie crosses the same-origin
   boundary; only the BFF knows how to set/clear it. Cookie is `HttpOnly`, `SameSite=Lax`,
   optionally `Secure` (`COOKIE_SECURE=true` in prod), host-only (no `Domain` attribute in prod).
+- **Email privacy**: `Me.email` is available only to the authenticated account chrome. Lobby and
+  game surfaces derive and pass a public `gravatar_hash` instead of exposing email on seats.
 - **Commander validation on every save** (accounts-decks-and-catalog spec): `legality::validate` runs at `Create` and
   `Update`, not deferred to game start. Game start re-validates as a safety check. All problems
   returned at once — not fail-fast — so the deck builder UI can display the complete error list.
@@ -256,6 +270,8 @@ for hydrating a saved deck without fetching the full catalog.
 - gRPC service-level tests in `crates/server/src/grpc/tests.rs` cover `Auth.Signup`, `Auth.Login`,
   `Decks.Create`, `Decks.List` (including precon interleaving), `Decks.Delete`, and
   `Ratings.GetLeaderboard` ordering/paging with auth enforcement.
+- Shell Scene coverage asserts account chrome includes `account-gravatar-link`; Gravatar hashing
+  and URL construction are covered in `client/lib/gravatar.test.ts`.
 - `crates/server/src/db.rs` and `crates/server/src/grpc/tests.rs` cover the rating persistence
   slice: explicit `User` rating round-trip in sqlite plus signup seeding `rating = 1000` with a
   nonzero `rating_set_at`.

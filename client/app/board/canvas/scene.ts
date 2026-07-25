@@ -234,7 +234,15 @@ export function sceneShapes(state: VisibleState, options: SceneShapesOptions = {
     ...feltShapes(width, height),
     ...seatShapes(state, camera),
     ...cardShapes(cards, camera, options.selectedId ?? null, state.viewer, targetObjects, playableObjects),
-    ...avatarShapes(state.players, avatars, state.priority, camera.zoom, targeting?.targetPlayers ?? new Set()),
+    ...avatarShapes(
+      state.players,
+      avatars,
+      state.priority,
+      camera.zoom,
+      targeting?.targetPlayers ?? new Set(),
+      state.viewer,
+      count,
+    ),
     ...arrowShapes({
       camera,
       cards,

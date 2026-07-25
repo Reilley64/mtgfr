@@ -889,13 +889,11 @@ function togglePendingObjectAimPick(
   const max =
     pc.kind === "choose_target"
       ? pc.max
-      : pc.kind === "choose_spell_targets" || pc.kind === "choose_ability_targets"
+      : pc.kind === "shuffle_from_graveyard"
         ? pc.max
-        : pc.kind === "shuffle_from_graveyard"
-          ? pc.max
-          : pc.kind === "choose_activation_cost_targets" || pc.kind === "pay_cumulative_upkeep_or_sacrifice"
-            ? pc.count
-            : (cardPickRequiredCount(pc) ?? undefined);
+        : pc.kind === "choose_activation_cost_targets" || pc.kind === "pay_cumulative_upkeep_or_sacrifice"
+          ? pc.count
+          : (cardPickRequiredCount(pc) ?? undefined);
   let next: number[];
   if (picked.includes(objectId)) {
     next = picked.filter((id) => id !== objectId);

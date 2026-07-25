@@ -254,8 +254,8 @@ describe("pendingTargetingOverlay", () => {
       {
         kind: "choose_target",
         label: testMessageRef("Target creature"),
+        min: 1,
         max: 1,
-        optional: false,
         player: 0,
         source: 1,
         items: [{ id: 7, label: "Bear" }],
@@ -275,8 +275,8 @@ describe("pendingTargetingOverlay", () => {
       {
         kind: "choose_target",
         label: testMessageRef("Target creatures"),
+        min: 1,
         max: 2,
-        optional: false,
         player: 0,
         source: 1,
         items: [
@@ -298,8 +298,8 @@ describe("pendingTargetingOverlay", () => {
       {
         kind: "choose_target",
         label: testMessageRef("Target card"),
+        min: 1,
         max: 1,
-        optional: false,
         player: 0,
         source: 1,
         items: [{ id: 9, label: "Dead" }],
@@ -375,8 +375,8 @@ describe("pendingTargetOneClick", () => {
       pendingTargetOneClick({
         kind: "choose_target",
         label: testMessageRef("T"),
+        min: 1,
         max: 1,
-        optional: false,
         player: 0,
         source: 1,
         items: [{ id: 1, label: "A" }],
@@ -386,8 +386,8 @@ describe("pendingTargetOneClick", () => {
       pendingTargetOneClick({
         kind: "choose_target",
         label: testMessageRef("T"),
+        min: 1,
         max: 2,
-        optional: false,
         player: 0,
         source: 1,
         items: [
@@ -596,8 +596,8 @@ describe("pendingGraveyardPickIds", () => {
         label: testMessageRef("Target creature card in a graveyard"),
         player: 0,
         source: 1,
+        min: 1,
         max: 1,
-        optional: false,
         items: [{ id: 8, label: "Reanimate me" }],
       },
       state([object({ id: 8, zone: ZONE.Graveyard, owner: 0, name: "Reanimate me" })]),
@@ -615,8 +615,8 @@ describe("pendingGraveyardPickIds", () => {
           label: testMessageRef("Target creature"),
           player: 0,
           source: 1,
+          min: 1,
           max: 1,
-          optional: false,
           items: [{ id: 8, label: "Bear" }],
         },
         state([object({ id: 8, zone: ZONE.Battlefield, owner: 0, name: "Bear" })]),

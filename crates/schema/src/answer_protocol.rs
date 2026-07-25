@@ -223,13 +223,10 @@ fn view_player(view: &PendingChoiceView) -> u8 {
     match view {
         PendingChoiceView::OrderTriggers { player, .. }
         | PendingChoiceView::ChooseTarget { player, .. }
-        | PendingChoiceView::ChooseSpellTargets { player, .. }
         | PendingChoiceView::ChooseTargetPlayers { player, .. }
         | PendingChoiceView::MayYesNo { player, .. }
         | PendingChoiceView::MayDrawUpTo { player, .. }
         | PendingChoiceView::PayAnyAmountOfMana { player, .. }
-        | PendingChoiceView::TradeSecretsCasterDraw { player, .. }
-        | PendingChoiceView::TradeSecretsRepeat { player, .. }
         | PendingChoiceView::DeclineUntap { player, .. }
         | PendingChoiceView::ChooseDredge { player, .. }
         | PendingChoiceView::PayCost { player, .. }
@@ -253,7 +250,6 @@ fn view_player(view: &PendingChoiceView) -> u8 {
         | PendingChoiceView::SacrificeEdict { player, .. }
         | PendingChoiceView::Proliferate { player, .. }
         | PendingChoiceView::PhaseOut { player, .. }
-        | PendingChoiceView::ChooseAbilityTargets { player, .. }
         | PendingChoiceView::ChooseActivationCostTargets { player, .. }
         | PendingChoiceView::MaySacrifice { player, .. }
         | PendingChoiceView::ChooseOwnSacrifices { player, .. }

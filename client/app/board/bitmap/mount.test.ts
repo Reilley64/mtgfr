@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { colors } from "~/design-tokens.generated";
 import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, PlayerView } from "~/wire/types";
+import { gravatarUrl } from "../../../lib/gravatar";
 import type { RenderCard } from "../geometry/layout";
 import { ZONE } from "../geometry/layout";
 import { spawnFlight } from "../motion/flights";
@@ -77,7 +78,11 @@ function mockCtx(calls: string[]): CanvasRenderingContext2D {
     closePath: vi.fn(),
     drawImage: vi.fn((image: { label?: string }) => calls.push(`image:${image.label ?? "unknown"}`)),
     fill: vi.fn(() => calls.push(`fill:${state.fillStyle}`)),
-    fillText: vi.fn((text: string) => calls.push(`text:${text}`)),
+    fillRect: vi.fn(),
+    fillText: vi.fn((text: string, _x: number, y: number) => {
+      calls.push(`text:${text}`);
+      calls.push(`text:${text}@${y}`);
+    }),
     lineTo: vi.fn(),
     measureText: vi.fn(() => ({ width: 0 })),
     moveTo: vi.fn(),
@@ -324,7 +329,89 @@ describe("paintBitmapLayer", () => {
 
     expect(calls).toContain("text:Cmd 14");
     expect(calls).not.toContain("text:Cmd 0");
-    expect(calls.filter((c) => c.startsWith("text:Cmd "))).toHaveLength(1);
+    expect(calls.filter((c) => /^text:Cmd \d+$/.test(c))).toHaveLength(1);
+  });
+
+  it("mirrors flipped opponent label paint away from their card row", () => {
+    const calls: string[] = [];
+    vi.stubGlobal("window", { devicePixelRatio: 1 });
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => mockCtx(calls)),
+      style: {},
+    } as unknown as HTMLCanvasElement;
+
+    paintBitmapLayer(
+      canvas,
+      frame({
+        cards: [],
+        players: [
+          player(),
+          player({
+            player: 1,
+            username: "Bob",
+            hand_count: 8,
+            life: 41,
+            commander_damage: [{ from: 0, amount: 9 }],
+          }),
+        ],
+      }),
+      { get: vi.fn(() => undefined) },
+    );
+
+    expect(calls).toContain("text:41@-96");
+    expect(calls).toContain("text:Hand 8@-19");
+    expect(calls).toContain("text:Cmd 9@-128");
+  });
+
+  it("paints Gravatar face images with life below the circle", () => {
+    const calls: string[] = [];
+    vi.stubGlobal("window", { devicePixelRatio: 1 });
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => mockCtx(calls)),
+      style: {},
+    } as unknown as HTMLCanvasElement;
+    const hash = "abc123";
+    const image = { label: "gravatar" } as unknown as HTMLImageElement;
+    const cache = {
+      get: vi.fn((url: string) => (url === gravatarUrl(hash) ? image : undefined)),
+    };
+
+    paintBitmapLayer(
+      canvas,
+      {
+        width: 800,
+        height: 600,
+        camera: { panX: 0, panY: 0, zoom: 1 },
+        cards: [],
+        viewer: 0,
+        players: [player({ gravatar_hash: hash })],
+        priority: 0,
+        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+        stagedAttackers: [],
+        stagedBlocks: [],
+        flights: [],
+        hideCardIds: new Set(),
+        targetObjects: new Set(),
+        pickedObjects: new Set(),
+        assignAmounts: new Map(),
+        targetPlayers: new Set(),
+        pickedPlayers: new Set(),
+        aimFrom: null,
+        cursor: { x: 0, y: 0 },
+        combatDragFrom: null,
+        combatDragStroke: null,
+        paymentPreviewIds: new Set(),
+      },
+      cache,
+    );
+
+    expect(cache.get).toHaveBeenCalledWith(gravatarUrl(hash));
+    expect(calls).toContain("image:gravatar");
+    expect(calls).toContain("text:40@956");
   });
 
   it("paints staged declare-attackers arrows above resting cards", () => {

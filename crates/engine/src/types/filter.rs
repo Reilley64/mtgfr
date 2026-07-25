@@ -372,7 +372,7 @@ pub enum CardFilter {
 
 impl CardFilter {
     /// Whether a card with this definition matches the filter.
-    pub(crate) fn matches(self, def: CardDef) -> bool {
+    pub(crate) fn matches(self, def: &CardDef) -> bool {
         match self {
             CardFilter::AnyCard => true,
             CardFilter::Land => matches!(def.kind, CardKind::Land { .. }),

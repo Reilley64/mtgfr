@@ -14,12 +14,12 @@ use tokio::sync::broadcast;
 use crate::chrome::ChromeState;
 use crate::session::{Broadcast, PublishedDelta};
 
-/// One seated player: the user who owns the seat and their display name (public — every
-/// viewer's [`schema::PlayerView::username`] shows it).
+/// One seated player: the user who owns the seat and their public display chrome.
 #[derive(Debug, Clone, Default)]
 pub struct Seat {
     pub user_id: Option<i64>,
     pub username: Option<String>,
+    pub gravatar_hash: String,
 }
 
 /// A table: up to four seats playing a live game. One `Table` per `table_id` in the registry,
@@ -90,6 +90,7 @@ impl Table {
             table.seats[i] = Seat {
                 user_id: Some(seat.user_id),
                 username: Some(seat.username.clone()),
+                gravatar_hash: seat.gravatar_hash.clone(),
             };
         }
         table

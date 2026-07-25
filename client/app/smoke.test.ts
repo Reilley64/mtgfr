@@ -45,7 +45,7 @@ function homeWithDecks(): AppModel {
     route: HomeRoute(),
     portraitGate: { open: false },
     sessionLoaded: true,
-    session: { me },
+    session: { me, meGravatarHash: null },
     decks: {
       ...model.decks,
       list: {
@@ -68,7 +68,7 @@ describe("foldkit scaffold", () => {
   it("does not render protected route content before the session loads", () => {
     Scene.scene(
       { update, view },
-      Scene.with(playModel({ sessionLoaded: false, session: { me: null } })),
+      Scene.with(playModel({ sessionLoaded: false, session: { me: null, meGravatarHash: null } })),
       Scene.expect(Scene.selector('[data-testid="lobby"]')).not.toExist(),
       Scene.expect(Scene.selector('[data-testid="session-gate"]')).toExist(),
       Scene.expect(Scene.text("Sign in")).not.toExist(),
@@ -79,7 +79,7 @@ describe("foldkit scaffold", () => {
   it("does not render protected route content for an unsigned loaded session", () => {
     Scene.scene(
       { update, view },
-      Scene.with(playModel({ sessionLoaded: true, session: { me: null } })),
+      Scene.with(playModel({ sessionLoaded: true, session: { me: null, meGravatarHash: null } })),
       Scene.expect(Scene.selector('[data-testid="lobby"]')).not.toExist(),
       Scene.expect(Scene.selector('[data-testid="session-gate"]')).toExist(),
       Scene.expect(Scene.text("Sign in")).not.toExist(),
@@ -89,7 +89,7 @@ describe("foldkit scaffold", () => {
   it("renders protected route content after authorization", () => {
     Scene.scene(
       { update, view },
-      Scene.with(playModel({ sessionLoaded: true, session: { me } })),
+      Scene.with(playModel({ sessionLoaded: true, session: { me, meGravatarHash: null } })),
       Scene.expect(Scene.selector('[data-testid="lobby"]')).toExist(),
       Scene.Mount.resolve(BindDeckCardFlip({ deckId: 1 }), DeckCardFlipTick()),
       Scene.Mount.resolve(BindCardArt, CardArtTick()),

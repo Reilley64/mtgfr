@@ -140,6 +140,7 @@ mod tests {
             user_id: crate::test_support::as_user(state, email).await.0.id,
             username: username.to_string(),
             deck_id,
+            gravatar_hash: String::new(),
         }
     }
 

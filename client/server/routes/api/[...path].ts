@@ -12,6 +12,7 @@ import {
 } from "nitro/h3";
 import { normalizePublicApiPath } from "../../../lib/api-upstream";
 import { fetchApiVersion, fetchDeckName, fetchMe, seedGame } from "../../../lib/api-upstream-auth";
+import { gravatarHash } from "../../../lib/gravatar";
 import {
   commitStart,
   createLobby,
@@ -131,6 +132,7 @@ async function handleLobby(event: H3Event, path: string, env: GrpcRequestEnv): P
       tableId,
       userId: me.id,
       username: me.username,
+      gravatarHash: await gravatarHash(me.email),
       deckId,
       deckName,
     });
@@ -171,6 +173,7 @@ async function handleLobby(event: H3Event, path: string, env: GrpcRequestEnv): P
         .map((s) => ({
           user_id: s.userId,
           username: s.username,
+          gravatar_hash: s.gravatarHash ?? "",
           deck_id: s.deckId,
         })),
     });

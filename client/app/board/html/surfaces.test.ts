@@ -801,6 +801,7 @@ test("may_draw_up_to shows docked pending-draw-count-aim with number buttons", (
       gameState({
         pending_choice: {
           kind: "may_draw_up_to",
+          label: testMessageRef("You may draw up to 3"),
           max: 3,
           player: 0,
         },
@@ -864,25 +865,6 @@ test("choose_splitting_opponent off-board list shows docked pending-player-pick-
     Scene.expect(Scene.testId("pending-player-pick-aim")).toExist(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-player-1")).toExist(),
-  );
-});
-
-test("trade_secrets_caster_draw shows docked pending-draw-count-aim", () => {
-  overlayScene(
-    overlayModel(
-      initialBoardModel(),
-      gameState({
-        pending_choice: {
-          kind: "trade_secrets_caster_draw",
-          max: 2,
-          opponent: 1,
-          player: 0,
-        },
-      }),
-    ),
-    Scene.expect(Scene.testId("pending-draw-count-aim")).toExist(),
-    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
-    Scene.expect(Scene.testId("prompt-number-2")).toExist(),
   );
 });
 
@@ -971,8 +953,8 @@ test("on-board choose_target aims instead of showing a card grid", () => {
         pending_choice: {
           kind: "choose_target",
           label: testMessageRef("Target creature"),
+          min: 1,
           max: 1,
-          optional: false,
           player: 0,
           source: 1,
           items: [{ id: 7, label: "Bear" }],
@@ -1035,8 +1017,8 @@ test("multi on-board choose_target shows Confirm count chrome", () => {
         pending_choice: {
           kind: "choose_target",
           label: testMessageRef("Target creatures"),
+          min: 1,
           max: 2,
-          optional: false,
           player: 0,
           source: 1,
           items: [
@@ -1069,8 +1051,8 @@ test("optional on-board choose_target aim shows Decline", () => {
         pending_choice: {
           kind: "choose_target",
           label: testMessageRef("Target creature"),
+          min: 0,
           max: 1,
-          optional: true,
           player: 0,
           source: 1,
           items: [{ id: 7, label: "Bear" }],
@@ -1443,8 +1425,8 @@ test("choose_target player buttons show docked pending-player-pick-aim instead o
         pending_choice: {
           kind: "choose_target",
           label: testMessageRef("Choose a target"),
+          min: 1,
           max: 1,
-          optional: false,
           player: 0,
           source: 1,
           items: [
@@ -2187,8 +2169,8 @@ test("pending gy aim shows coach for choose_target when cards share a pile", () 
         pending_choice: {
           kind: "choose_target",
           label: testMessageRef("Target creature card in a graveyard"),
+          min: 1,
           max: 1,
-          optional: false,
           player: 0,
           source: 1,
           items: [{ id: 8, label: "Reanimate me" }],

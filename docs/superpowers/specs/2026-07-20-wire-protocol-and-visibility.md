@@ -135,7 +135,7 @@ BFF can pin later `table_id` hops to this pod.
 |-------|-----------------|
 | `viewer` | Seat index, or 255 for a spectator |
 | `active_player`, `step`, `priority` | Turn structure discriminants |
-| `players` | Per-seat `PlayerView`: life, commander tax, commander damage, `hand_count`, `library_count`, mana pool |
+| `players` | Per-seat `PlayerView`: username, public `gravatar_hash` (SHA-256 hex; empty = monogram), life, commander tax, commander damage, `hand_count`, `library_count`, mana pool |
 | `objects` | Every `ObjectView` visible to this viewer: hand cards (own only), battlefield, stack, graveyard, exile, command zone |
 | `stack` | `StackObjectView` list, bottom-first; `MessageRef` label, optional primary `target`, and `targets` list (clause 0 then clause 1; empty when targetless) |
 | `combat` | `CombatView`: declared attackers with defenders, declared blocks, confirmed flags |
@@ -155,6 +155,9 @@ Implemented in `crates/schema/` (`schema::event::{redact, spectator_redact}` re-
   viewers except the player who drew/searched/put.
 - `ObjectView` for hand cards — emitted only to the owner; opponents receive `hand_count`.
 - Library order is never event-sourced; `library_count` is the only library fact in `PlayerView`.
+- Player/account email is auth-private (`Me` only). Public lobby seats and `PlayerView` carry
+  `gravatar_hash` only, so clients can paint Gravatar faces without receiving another player's
+  email. Empty hash means monogram fallback.
 - `PendingChoiceView` variants that carry private items (Scry, Surveil, SearchLibrary,
   SelectFromTop, DistributeTop, MayDiscard, Discard, PutFromHandOnTop, PutLandFromHand,
   PutCreatureFromHand, ChooseDredge, MayReturnFromGraveyard) — emitted only to the awaited seat.
@@ -163,15 +166,19 @@ Implemented in `crates/schema/` (`schema::event::{redact, spectator_redact}` re-
 
 ### PendingChoice
 
-The `PendingChoiceView` oneof has 65 arms (as of 2026-07-20), covering every engine pause:
-target selection, optional triggers, cost payments (PayCost, PayOrCounter, PayEchoOrSacrifice,
-PayRecoverOrExile, PayCumulativeUpkeepOrSacrifice), combat damage assignment, library-top
-operations (Scry, Surveil, SelectFromTop, DistributeTop), search, sacrifice edicts, proliferate,
-phase-out choice, mode selection, copy target, mana color choice, and many card-specific variants
-(Dance, Piles, Partition, Dredge, Trade Secrets, etc.). The `ChoiceItem` embedded in most
-variants carries the item's string `label` for visible object/seat identity so the prompt UI does
-not need to join against the object list. Effect titles, mode rows, and trigger-order rows use
-`MessageRef` labels.
+The `PendingChoiceView` oneof covers every engine pause: target selection, optional triggers, cost
+payments (PayCost, PayOrCounter, PayEchoOrSacrifice, PayRecoverOrExile,
+PayCumulativeUpkeepOrSacrifice), combat damage assignment, library-top operations (Scry, Surveil,
+SelectFromTop, DistributeTop), search, sacrifice edicts, proliferate, phase-out choice, mode
+selection, copy target, mana color choice, piles, partition, dredge, and the other prompt
+surfaces the board renders. The wire shape is intentionally more generic than the engine internals:
+spell-target and ability-target pauses project as `choose_target { source, label, min, max, items
+}`; repeatable yes/no loops project as `may_yes_no`; repeatable draw-count loops project as
+`may_draw_up_to { label, max }`. Legacy card-named Trade Secrets wire variants and dedicated
+`choose_spell_targets` / `choose_ability_targets` oneof arms are gone. The `ChoiceItem` embedded in
+most variants carries the item's string `label` for visible object/seat identity so the prompt UI
+does not need to join against the object list. Effect titles, mode rows, trigger-order rows, and
+generic draw-count prompts use `MessageRef` labels.
 
 ### Intent wire format
 
@@ -205,6 +212,9 @@ The engine/schema event model includes `MulliganTaken { player, mulligans_taken,
 - **Snapshot-then-deltas** (lobby-table-routing-and-live-game spec): a `tokio::broadcast` channel per table fans events to
   all subscribers; the subscribe edge redacts per viewer. Reconnect re-snapshots by opening a
   new `Game.Stream` — the initial frame is always a `SnapshotFrame`.
+- **Public avatar identity**: `ViewExtras.gravatar_hashes` stamps `PlayerView.gravatar_hash` at
+  projection time from table seat chrome. The wire exposes the hash, not email; see
+  [Gravatar Seat Faces Design](2026-07-25-gravatar-seat-faces-design.md).
 - **Self-sufficient deltas** (wire-protocol-and-visibility spec): each `DeltaEnvelope` carries `VisibleState` so the
   client never needs a side refetch. Render assembly (`schema::snapshot`) lives in the wire
   layer, not in fat engine events.
@@ -238,10 +248,14 @@ The engine/schema event model includes `MulliganTaken { player, mulligans_taken,
   (PendingChoiceView / VisibleEvent oneof cases vs `FORMULATOR_FOR_KIND` /
   `VISIBLE_EVENT_KIND_PRESENCE`).
 - Mulligan projection tests assert `mulliganing`, `mulligans_taken`, `hand_kept`, and `can_mulligan` are present in snapshots without exposing other players' hands.
+- Projection tests assert `complete_visible` and stream frames stamp `gravatar_hash` onto
+  `PlayerView` while leaving empty strings for seats without a hash.
 - `PendingChoice` variants are tested via `crates/engine/` unit tests that verify each choice
   kind is raised, answered, and produces the correct events.
-- Expand-only compliance is enforced by code review discipline, not an automated checker;
-  `WIRE_COMPAT.md` documents the invariants for reviewers.
+- Expand-only compliance is enforced by code review discipline for ordinary protocol changes;
+  `WIRE_COMPAT.md` documents the invariants for reviewers. The approved engine-refactor program is
+  the narrow exception: its PendingChoice wire simplification shipped as a coordinated hard cut
+  across engine, schema, proto, and client in one branch.
 
 ---
 

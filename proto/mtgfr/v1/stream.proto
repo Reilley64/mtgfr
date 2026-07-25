@@ -30,6 +30,8 @@ message PlayerView {
   bool hand_kept = 11;
   // Whether this player may still take another pre-game mulligan.
   bool can_mulligan = 12;
+  // SHA-256 hex Gravatar hash; empty = no face.
+  string gravatar_hash = 13;
 }
 
 // One source card def's contributions to a permanent (Alt-inspect ledger).
@@ -209,7 +211,6 @@ message PendingChoiceView {
   oneof choice {
     PendingChoiceViewOrderTriggers order_triggers = 1;
     PendingChoiceViewChooseTarget choose_target = 2;
-    PendingChoiceViewChooseSpellTargets choose_spell_targets = 3;
     PendingChoiceViewChooseTargetPlayers choose_target_players = 4;
     PendingChoiceViewMayYesNo may_yes_no = 5;
     PendingChoiceViewPayCost pay_cost = 6;
@@ -227,7 +228,6 @@ message PendingChoiceView {
     PendingChoiceViewSacrificeEdict sacrifice_edict = 18;
     PendingChoiceViewProliferate proliferate = 19;
     PendingChoiceViewPhaseOut phase_out = 20;
-    PendingChoiceViewChooseAbilityTargets choose_ability_targets = 21;
     PendingChoiceViewMaySacrifice may_sacrifice = 22;
     PendingChoiceViewChooseOwnSacrifices choose_own_sacrifices = 23;
     PendingChoiceViewDevour devour = 24;
@@ -270,8 +270,6 @@ message PendingChoiceView {
     PendingChoiceViewOpponentChoosesRevealedToGraveyard opponent_chooses_revealed_to_graveyard = 61;
     PendingChoiceViewPayCumulativeUpkeepOrSacrifice pay_cumulative_upkeep_or_sacrifice = 62;
     PendingChoiceViewMayDrawUpTo may_draw_up_to = 63;
-    PendingChoiceViewTradeSecretsCasterDraw trade_secrets_caster_draw = 64;
-    PendingChoiceViewTradeSecretsRepeat trade_secrets_repeat = 65;
     PendingChoiceViewChooseCardName choose_card_name = 66;
     PendingChoiceViewPayAnyAmountOfMana pay_any_amount_of_mana = 67;
   }
@@ -287,30 +285,17 @@ message PendingChoiceViewOrderTriggers {
 }
 
 // Legal targets to choose among. `label` is the effect being aimed; `source` is the permanent
-// or spell it comes from. `optional` ("up to one" — Killian, Decisive Mentor) lets the player
-// submit no target instead of one of `items`. `max` (Numot, the Devastator's "destroy up to two
-// target lands") is how many of `items` may be chosen at once; `1` for the ubiquitous
-// single-target case.
+// or spell it comes from. `min`/`max` are the number of distinct targets the player may choose
+// from `items`, inclusive. `min == 0` covers "up to N" choices; `min == max == 1` is the
+// ubiquitous single mandatory target case.
 message PendingChoiceViewChooseTarget {
   uint32 player = 1;
   uint32 source = 2;
   reserved 3;
   repeated ChoiceItem items = 4;
-  bool optional = 5;
   uint32 max = 6;
   MessageRef label = 7;
-}
-
-// A multi-target spell's targets to choose (CR 601.2c): between `min` and `max` distinct
-// `items` for the `spell` on the stack. `label` is the spell's name.
-message PendingChoiceViewChooseSpellTargets {
-  uint32 player = 1;
-  uint32 spell = 2;
-  reserved 3;
-  uint32 min = 4;
-  uint32 max = 5;
-  repeated ChoiceItem items = 6;
-  MessageRef label = 7;
+  uint32 min = 8;
 }
 
 // "Any number of target players" to choose for a targeted edict (CR 601.2c/608.2b — Priest of
@@ -335,11 +320,13 @@ message PendingChoiceViewMayYesNo {
   MessageRef label = 4;
 }
 
-// A may-draw-up-to count choice (Arcane Denial's "may draw up to two cards"): this player chooses
-// any number 0..=max of cards to draw. Reveals only the maximum, never hand or library contents.
+// A may-draw-up-to count choice (Arcane Denial's "may draw up to two cards", Trade Secrets'
+// caster draw, and similar prompts): this player chooses any number 0..=max of cards to draw.
+// `label` names what this count answer applies to.
 message PendingChoiceViewMayDrawUpTo {
   uint32 player = 1;
   uint32 max = 2;
+  MessageRef label = 3;
 }
 
 // Join forces (Collective Voyage): this player may pay any amount of mana toward the shared X.
@@ -348,22 +335,6 @@ message PendingChoiceViewPayAnyAmountOfMana {
   uint32 player = 1;
   uint32 source = 2;
   uint32 max = 3;
-}
-
-// Trade Secrets' declinable draw: this player (the caster), after `opponent` drew two
-// mandatorily, chooses any number 0..=max of cards to draw.
-message PendingChoiceViewTradeSecretsCasterDraw {
-  uint32 player = 1;
-  uint32 max = 2;
-  uint32 opponent = 3;
-}
-
-// Trade Secrets' repeat-or-stop pause: this player (the target opponent) may run the whole
-// process (the mandatory two-card draw, then `caster`'s declinable draw) again, or stop.
-// Answered by the yes/no AnswerMay.
-message PendingChoiceViewTradeSecretsRepeat {
-  uint32 player = 1;
-  uint32 caster = 2;
 }
 
 // The cost to accept an optional paid trigger (Trudge Garden's "you may pay {2}"), plus the
@@ -505,24 +476,10 @@ message PendingChoiceViewPhaseOut {
   repeated ChoiceItem items = 3;
 }
 
-// A triggered ability's second independent target clause (CR 603.3d — Kinetic Ooze's X≥10
-// "double ... any number of other target creatures"), chosen as the trigger goes on the stack:
-// between `min` and `max` distinct `items` for the ability from `source`. `label` is the
-// effect being aimed. Answered by `ChooseTargets`, like `ChooseSpellTargets`.
-message PendingChoiceViewChooseAbilityTargets {
-  uint32 player = 1;
-  uint32 source = 2;
-  reserved 3;
-  uint32 min = 4;
-  uint32 max = 5;
-  repeated ChoiceItem items = 6;
-  MessageRef label = 7;
-}
-
 // An activated ability's own targeted exile cost (CR 601.2c/602.2b — Spurnmage Advocate's
 // "Exile two target cards from an opponent's graveyard"), named after every other cost is
 // already paid: exactly `count` of `items` (cards in an opponent's graveyard). Answered by
-// `ChooseTargets`, like `ChooseAbilityTargets` — but a paid cost, not the ability's own
+// `ChooseTargets` — but a paid cost, not the ability's own
 // stack-bound target clause.
 message PendingChoiceViewChooseActivationCostTargets {
   uint32 player = 1;

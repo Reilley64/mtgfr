@@ -39,16 +39,6 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
             Intent::ChooseDrawCount { player, count } => game.answer_may_draw_up_to(player, count),
             _ => Err(Reject::IllegalChoice),
         },
-        PendingChoice::TradeSecretsCasterDraw { .. } => match intent {
-            Intent::ChooseDrawCount { player, count } => {
-                game.answer_trade_secrets_caster_draw(player, count)
-            }
-            _ => Err(Reject::IllegalChoice),
-        },
-        PendingChoice::TradeSecretsRepeat { .. } => match intent {
-            Intent::AnswerMay { player, yes } => game.answer_trade_secrets_repeat(player, yes),
-            _ => Err(Reject::IllegalChoice),
-        },
         PendingChoice::DeclineUntap { .. } => match intent {
             Intent::DeclineUntap {
                 player,
@@ -402,7 +392,7 @@ pub(crate) fn forced(game: &Game) -> Option<Intent> {
             // the whole hand vs. the single land) even when `count` happens to equal the hand
             // size — only force the whole-hand answer when that alternative isn't on the table.
             let land_escape_available = or_one_matching
-                .is_some_and(|filter| hand.iter().any(|&id| filter.matches(game.def_of(id))));
+                .is_some_and(|filter| hand.iter().any(|&id| filter.matches(&game.def_of(id))));
             (!land_escape_available && *count == hand.len()).then(|| Intent::Discard {
                 player: *player,
                 cards: hand.clone(),
@@ -447,8 +437,6 @@ pub(crate) fn forced(game: &Game) -> Option<Intent> {
         PendingChoice::ChooseSpellTargets { .. }
         | PendingChoice::MayYesNo { .. }
         | PendingChoice::MayDrawUpTo { .. }
-        | PendingChoice::TradeSecretsCasterDraw { .. }
-        | PendingChoice::TradeSecretsRepeat { .. }
         | PendingChoice::DeclineUntap { .. }
         | PendingChoice::ChooseDredge { .. }
         | PendingChoice::PayCost { .. }
@@ -526,6 +514,7 @@ mod tests {
             effect: Effect::Draw(DrawEffect::Cards {
                 count: crate::Amount::Fixed(1),
             }),
+            resume: crate::MayYesNoResume::Default,
         });
         // ChooseTargets is a real answer Intent, but not for MayYesNo.
         let err = answer(
@@ -551,6 +540,7 @@ mod tests {
             effect: Effect::Draw(DrawEffect::Cards {
                 count: crate::Amount::Fixed(1),
             }),
+            resume: crate::MayYesNoResume::Default,
         });
         assert!(forced(&game).is_none());
     }

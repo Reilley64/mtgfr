@@ -131,6 +131,17 @@ export const CARD_H = 134;
 
 /** Radius of a player's life-orb avatar, in world units (so it pans/zooms with the board). */
 export const AVATAR_R = 40;
+export const AVATAR_HAND_LABEL_OFFSET = -29;
+export const AVATAR_LIFE_LABEL_BELOW = 48;
+export const AVATAR_USERNAME_LABEL_BELOW = 66;
+export const AVATAR_LABEL_BELOW = 80;
+
+export type AvatarLabelOffsets = {
+  hand: number;
+  life: number;
+  username: number;
+  commander: number;
+};
 
 // Each seat: a battlefield of three rows (Noncreature → Creatures → Lands, centerward → outer)
 // with a compact zone column on the left (deck / graveyard / exile / commander), a life orb on
@@ -201,8 +212,26 @@ function seatOrigin(seat: number, viewer: number, count: number): { x: number; y
 
 /** A top-row seat is flipped to face down across the table (rows swapped, zone column reversed,
  * avatar on the far edge); the two bottom-row seats — including you — stay upright. */
-function isFlipped(seat: number, viewer: number, count: number): boolean {
+export function isFlipped(seat: number, viewer: number, count: number): boolean {
   return seatCell(seat, viewer, count).row === 0;
+}
+
+export function avatarLabelOffsets(seat: number, viewer: number, count: number): AvatarLabelOffsets {
+  if (isFlipped(seat, viewer, count)) {
+    return {
+      hand: -AVATAR_HAND_LABEL_OFFSET,
+      life: -AVATAR_LIFE_LABEL_BELOW,
+      username: -AVATAR_USERNAME_LABEL_BELOW,
+      commander: -AVATAR_LABEL_BELOW,
+    };
+  }
+
+  return {
+    hand: AVATAR_HAND_LABEL_OFFSET,
+    life: AVATAR_LIFE_LABEL_BELOW,
+    username: AVATAR_USERNAME_LABEL_BELOW,
+    commander: AVATAR_LABEL_BELOW,
+  };
 }
 
 /** The world-space band covering a seat's battlefield + zone column, for the outline/highlight. */
@@ -265,10 +294,11 @@ export function boardBounds(count: number): { minX: number; minY: number; maxX: 
   for (let seat = 0; seat < count; seat++) {
     const b = seatBand(seat, 0, count);
     const a = avatarPos(seat, 0, count);
+    const labelY = a.y + avatarLabelOffsets(seat, 0, count).commander;
     minX = Math.min(minX, b.x, a.x - AVATAR_R);
-    minY = Math.min(minY, b.y, a.y - AVATAR_R);
+    minY = Math.min(minY, b.y, a.y - AVATAR_R, labelY);
     maxX = Math.max(maxX, b.x + b.w, a.x + AVATAR_R);
-    maxY = Math.max(maxY, b.y + b.h, a.y + AVATAR_R);
+    maxY = Math.max(maxY, b.y + b.h, a.y + AVATAR_R, labelY);
   }
   return { minX, minY, maxX, maxY };
 }

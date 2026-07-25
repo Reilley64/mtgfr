@@ -49,14 +49,16 @@ pub const SPECTATOR_VIEWER: u8 = u8::MAX;
 
 /// Table-owned facts that finish a [`VisibleState`]. Pure data — no `Seat` / tokio coupling.
 ///
-/// Yield, stack-hold remaining, and display names live on the server's `Table`, not the `Game`
-/// (turn-priority-and-stack spec). Callers map table state into this DTO and pass it to [`complete_visible`].
+/// Yield, stack-hold remaining, display names, and avatar hashes live on the server's `Table`,
+/// not the `Game` (turn-priority-and-stack spec). Callers map table state into this DTO and pass
+/// it to [`complete_visible`].
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ViewExtras {
     pub yields: [bool; 4],
     pub turn_yields: [bool; 4],
     pub stack_hold_remaining_ms: u32,
     pub usernames: [String; 4],
+    pub gravatar_hashes: [String; 4],
     /// Per-seat Card id → Printing UUID from the seat's deck (art preference). Empty maps mean
     /// every object uses its CardDef `default_print`.
     pub prints: [std::collections::HashMap<String, String>; 4],
@@ -98,7 +100,7 @@ pub fn compose_delta(input: DeltaCompose<'_>) -> StreamFrame {
 /// One wire-complete [`VisibleState`] for `viewer` (`Some` = seated, `None` = spectator).
 ///
 /// Redacts private zones, projects the board, then stamps Table policy from `extras` in one
-/// pass — yield, hold remaining, and usernames. Incomplete board projection is not a public
+/// pass — yield, hold remaining, usernames, and avatar hashes. Incomplete board projection is not a public
 /// wire path (lobby-table-routing-and-live-game spec / wire-protocol-and-visibility spec). Opening snapshots use this directly; live deltas use
 /// [`compose_delta`].
 pub fn complete_visible(
@@ -117,6 +119,7 @@ pub fn complete_visible(
     state.stack_hold_remaining_ms = extras.stack_hold_remaining_ms;
     for (i, player) in state.players.iter_mut().enumerate() {
         player.username = extras.usernames[i].clone();
+        player.gravatar_hash = extras.gravatar_hashes[i].clone();
     }
     // Overlay deck-chosen Printings onto objects (by owner seat + Card id).
     for obj in &mut state.objects {
@@ -200,7 +203,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             // when the card's modal_choose_max_if_commander asks for it (Nexus Mentality) — the
             // same check `validate_modes` enforces, so the prompt never offers a range the cast
             // would reject.
-            choose_max: game.modal_choose_max(def, action.player),
+            choose_max: game.modal_choose_max(&def, action.player),
             modes: game
                 .modes_of(card)
                 .into_iter()
@@ -324,7 +327,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                     game.cast_cost(
                         action.player,
                         card,
-                        def,
+                        def.clone(),
                         None,
                         x,
                         zone,
@@ -365,7 +368,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
         }
         MeaningfulAction::Activate { source, ability } => {
             let activation = game.ability_at(source, ability);
-            let (paid, taps_self) = match activation.map(|a| a.timing) {
+            let (paid, taps_self) = match activation.as_ref().map(|a| a.timing) {
                 Some(engine::Timing::Activated(cost)) => (Some(cost.mana), cost.taps_self),
                 _ => (None, false),
             };
@@ -380,7 +383,8 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 ability_index: Some(ability as u32),
                 section: "battlefield".to_string(),
                 label: activation
-                    .map(|a| to_wire_message(a.effect.message()))
+                    .as_ref()
+                    .map(|ability| to_wire_message(ability.effect.clone().message()))
                     .unwrap_or_else(|| message("action.activate")),
                 needs_target: game.ability_target_spec(source, ability) != TargetSpec::None,
                 targets: targets(source, Some(ability)),
@@ -432,9 +436,10 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             // 702.29d) by its own effect, since both otherwise share the same discard chrome.
             let label = match def.hand_ability.get(index).copied().or(def.forecast) {
                 Some(ability) => match ability.effects {
-                    [single] => {
-                        child_message("action.discard_effect", to_wire_message(single.message()))
-                    }
+                    [single] => child_message(
+                        "action.discard_effect",
+                        to_wire_message(single.clone().message()),
+                    ),
                     _ => named_message("action.discard_card", def.name),
                 },
                 None => named_message("action.discard_card", def.name),
@@ -567,7 +572,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 .def_of(source)
                 .back
                 .expect("CastPrepared implies a back face");
-            let back_def = *back;
+            let back_def = engine::card_def(back);
             let (spec, legal) = game.prepared_cast_targets(source);
             let (has_x, min_x, max_x, x_cost) = x_choice_fields(
                 game,
@@ -605,8 +610,8 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
         // One action per half of a split card (CR 709.4a) — the label is the half's own name, which
         // is the only per-half text the client has to tell "Fire" from "Ice".
         MeaningfulAction::CastSplitHalf { card, half } => {
-            let face = *game
-                .def_of(card)
+            let def = game.def_of(card);
+            let face = def
                 .halves
                 .get(half as usize)
                 .expect("CastSplitHalf implies the half exists");
@@ -700,8 +705,8 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
     view
 }
 
-/// Redacted board projection only — yield / hold / usernames stay at their incomplete defaults
-/// until [`complete_visible`] stamps them. Not a public wire entry point.
+/// Redacted board projection only — yield / hold / usernames / avatar hashes stay at their
+/// incomplete defaults until [`complete_visible`] stamps them. Not a public wire entry point.
 fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> VisibleState {
     use engine::{PlayerId, TargetSpec, Zone};
 
@@ -719,6 +724,7 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
             PlayerView {
                 player: p,
                 username: String::new(),
+                gravatar_hash: String::new(),
                 life: game.life(pid),
                 commander_tax: game.commander_tax(pid),
                 lost: game.has_lost(pid),
@@ -762,11 +768,11 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
             // `card_id`/`print` (the client's art + oracle lookup) whenever the live face lacks its
             // own; unflipped permanents read `front == def`, so this is a no-op there.
             let front = game.front_def_of(id);
-            let card_id_src = if def.id.is_empty() { front } else { def };
+            let card_id_src = if def.id.is_empty() { &front } else { &def };
             let print_src = if def.default_print.is_empty() {
-                front
+                &front
             } else {
-                def
+                &def
             };
             // CR 708.2: a face-down permanent (a manifest) is anonymized — its real name, card
             // kind, and mana cost are hidden from every viewer (the engine already reports its
@@ -807,7 +813,7 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                         toughness: 2,
                     }
                 } else {
-                    wire_kind(def)
+                    wire_kind(&def)
                 },
                 mana_cost: if face_down {
                     wire_cost(engine::Cost::FREE)
@@ -963,7 +969,9 @@ pub enum StreamFrame {
 mod tests {
     use crate::dto::{CommanderDamageView, MessageRef, PendingChoiceView, WireKind};
     use crate::intent::{WireAttack, WireTarget};
-    use crate::test_support::{def, pass_until_choice, refresh_via_mana_tap, resolve_top_of_stack};
+    use crate::test_support::{
+        card_id, def, pass_until_choice, refresh_via_mana_tap, resolve_top_of_stack,
+    };
     use engine::{Defender, Effect, Game, ObjectId, PlayerId, TokenEffect};
 
     use super::{SPECTATOR_VIEWER, StreamFrame, ViewExtras, complete_visible};
@@ -1030,13 +1038,14 @@ mod tests {
             player: PlayerId(0),
             object: 7,
             from: 3,
-            card: def("Shock"),
+            card: card_id("Shock"),
         };
         let extras = ViewExtras {
             yields: [true, false, false, false],
             turn_yields: [false, true, false, false],
             stack_hold_remaining_ms: 900,
             usernames: ["alice".into(), "bob".into(), String::new(), String::new()],
+            gravatar_hashes: Default::default(),
             prints: Default::default(),
         };
 
@@ -1103,6 +1112,7 @@ mod tests {
             turn_yields: [true, false, false, false],
             stack_hold_remaining_ms: 1500,
             usernames: ["alice".into(), "bob".into(), String::new(), String::new()],
+            gravatar_hashes: Default::default(),
             prints: Default::default(),
         };
 
@@ -1126,6 +1136,21 @@ mod tests {
         );
         assert_eq!(spectating.stack_hold_remaining_ms, 1500);
         assert_eq!(spectating.players[0].username, "alice");
+    }
+
+    #[test]
+    fn complete_visible_stamps_gravatar_hashes() {
+        let game = Game::new();
+        let extras = ViewExtras {
+            usernames: ["alice".into(), "bob".into(), String::new(), String::new()],
+            gravatar_hashes: ["abc".into(), String::new(), String::new(), String::new()],
+            ..ViewExtras::default()
+        };
+
+        let snap = complete_visible(&game, Some(PlayerId(0)), &extras);
+
+        assert_eq!(snap.players[0].gravatar_hash, "abc");
+        assert_eq!(snap.players[1].gravatar_hash, "");
     }
 
     #[test]
@@ -2930,13 +2955,13 @@ mod tests {
         let p0 = PlayerId(0);
         let treasure = game.spawn_token_on_battlefield(p0, engine::treasure_token());
         let beast = cards::get_by_name("Beast Within").expect("Beast Within in pool");
-        let Effect::Sequence { steps } = beast.abilities[0].effect else {
+        let Effect::Sequence { steps } = &beast.abilities[0].effect else {
             panic!("Beast Within spell body");
         };
-        let Effect::Token(TokenEffect::Create { token, .. }) = steps[1] else {
+        let Effect::Token(TokenEffect::Create { token, .. }) = &steps[1] else {
             panic!("Beast Within create_token step");
         };
-        let beast_token = game.spawn_token_on_battlefield(p0, token);
+        let beast_token = game.spawn_token_on_battlefield(p0, token.clone());
 
         let snap = snapshot(&game, p0);
         let treasure_view = snap

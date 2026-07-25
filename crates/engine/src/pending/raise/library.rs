@@ -116,7 +116,7 @@ pub(super) fn search_library(
         .library
         .iter()
         .copied()
-        .filter(|&id| filter.matches(game.def_of(id)))
+        .filter(|&id| filter.matches(&game.def_of(id)))
         .collect();
     Some(PendingChoice::SearchLibrary {
         player,

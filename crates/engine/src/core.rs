@@ -44,9 +44,7 @@ impl Game {
             priority: PlayerId(0),
             consecutive_passes: 0,
             pending_trigger_groups: Vec::new(),
-            pending_echo: Vec::new(),
-            pending_recover: Vec::new(),
-            pending_cumulative_upkeep: Vec::new(),
+            pending_obligations: Vec::new(),
             pending_choice: None,
             resume: crate::resolution::ResumeState::default(),
             clash_won: false,
@@ -55,6 +53,7 @@ impl Game {
             combat_extras: state::CombatExtras::default(),
             play_permissions: state::PlayPermissions::default(),
             next_control_timestamp: 0,
+            next_continuous_timestamp: 0,
             modifier_provenance: state::ModifierProvenance::default(),
             once_per_turn: state::OncePerTurnLimits::default(),
             exile_links: state::ExileLinks::default(),
@@ -72,9 +71,7 @@ impl Game {
             abilities_granted_until_eot: Vec::new(),
             pending_enter_bonus_counters: Vec::new(),
             exile_time_counters: Vec::new(),
-            self_exile_time_counters: None,
-            self_tuck_to_library_bottom: false,
-            self_exile_on_resolve: false,
+            resolution_finish: None,
         }
     }
 
@@ -159,8 +156,8 @@ impl Game {
     pub fn stack(&self) -> Vec<StackEntry> {
         self.stack
             .iter()
-            .map(|item| match *item {
-                StackItem::Spell(id) => StackEntry::Spell(id),
+            .map(|item| match item {
+                StackItem::Spell(id) => StackEntry::Spell(*id),
                 // `x` (the ability's chosen `{X}`) and `targets_second` (a second target clause's
                 // chosen targets) are internal resolution state, not rendered on the stack view, so
                 // they're dropped from the public `StackEntry` (which shows the primary target).
@@ -174,10 +171,10 @@ impl Game {
                     spent_mana: _,
                     activated: _,
                 } => StackEntry::Ability {
-                    controller,
-                    source,
-                    effect,
-                    target,
+                    controller: *controller,
+                    source: *source,
+                    effect: effect.clone(),
+                    target: *target,
                 },
             })
             .collect()
@@ -251,13 +248,13 @@ impl Game {
         // being countered, a tuck), so the restore lives here rather than in each of them.
         if let Object::Card(card) = &mut object
             && let Some(from) = from
-            && let Some(&(_, fused)) = self
+            && let Some((_, fused)) = self
                 .play_permissions
                 .split_halves_on_stack
                 .iter()
                 .find(|&&(spell, _)| spell == from)
         {
-            card.def = fused;
+            card.def = *fused;
         }
         // A card leaving a graveyard (reanimation, graveyard recursion, cast-from-graveyard) marks
         // its owner's turn-scoped "a card left your graveyard this turn" flag — the CR 603.4
@@ -265,7 +262,7 @@ impl Game {
         // point catches every graveyard-exit path; a graveyard is only ever left, never entered
         // from itself, so a `from` card in the graveyard is always an exit.
         if let Some(from) = from
-            && let Object::Card(c) = self.objects[from as usize]
+            && let Object::Card(c) = &self.objects[from as usize]
             && c.zone == Zone::Graveyard
         {
             self.players[c.owner.0 as usize].card_left_graveyard_this_turn = true;
@@ -280,7 +277,7 @@ impl Game {
         // library/graveyard→exile path (impulse draw, mill-to-exile, graveyard hate) — pushed
         // unconditionally here, deduped on drain like `graveyard_exits_this_batch` above.
         if let Some(from) = from
-            && let Object::Card(c) = self.objects[from as usize]
+            && let Object::Card(c) = &self.objects[from as usize]
             && matches!(c.zone, Zone::Library | Zone::Graveyard)
             && let Object::Card(new) = &object
             && new.zone == Zone::Exile
@@ -334,17 +331,37 @@ impl Game {
         }
     }
 
-    /// The card definition of whatever live form the object at `id` currently has.
-    pub fn def_of(&self, id: ObjectId) -> CardDef {
-        match self.objects[id as usize] {
+    /// The live card-definition handle of the object at `id`.
+    pub(crate) fn def_id_of(&self, id: ObjectId) -> CardId {
+        match &self.objects[id as usize] {
             Object::Card(c) => c.def,
             Object::Spell(s) => s.def,
+            Object::Permanent(p) if p.flipped => {
+                let def = card_def(p.def);
+                def.back.unwrap_or(p.def)
+            }
+            Object::Permanent(p) => p.def,
+            Object::Moved { to } => self.def_id_of(*to),
+            Object::Removed => panic!("object {id} has left the game"),
+        }
+    }
+
+    /// The card definition of whatever live form the object at `id` currently has.
+    pub fn def_of(&self, id: ObjectId) -> CardDef {
+        match &self.objects[id as usize] {
+            Object::Card(c) => card_def(c.def).as_ref().clone(),
+            Object::Spell(s) => card_def(s.def).as_ref().clone(),
             // CR 712: a flipped permanent (a Kamigawa flip card) permanently uses its back face's
             // characteristics — every accessor that reads `def_of` (name, types, subtypes,
             // abilities, and `pt_base`) sees the back face at once.
-            Object::Permanent(p) if p.flipped => p.def.back.copied().unwrap_or(p.def),
-            Object::Permanent(p) => p.def,
-            Object::Moved { to } => self.def_of(to),
+            Object::Permanent(p) if p.flipped => {
+                let def = card_def(p.def);
+                def.back
+                    .map(|back| card_def(back).as_ref().clone())
+                    .unwrap_or_else(|| def.as_ref().clone())
+            }
+            Object::Permanent(p) => card_def(p.def).as_ref().clone(),
+            Object::Moved { to } => self.def_of(*to),
             Object::Removed => panic!("object {id} has left the game"),
         }
     }
@@ -355,11 +372,11 @@ impl Game {
     /// flipped. Used by the wire snapshot to keep a flipped permanent's `card_id`/`print` (art,
     /// oracle lookup) on the shared physical print while name/type/P-T display the back face.
     pub fn front_def_of(&self, id: ObjectId) -> CardDef {
-        match self.objects[id as usize] {
-            Object::Card(c) => c.def,
-            Object::Spell(s) => s.def,
-            Object::Permanent(p) => p.def,
-            Object::Moved { to } => self.front_def_of(to),
+        match &self.objects[id as usize] {
+            Object::Card(c) => card_def(c.def).as_ref().clone(),
+            Object::Spell(s) => card_def(s.def).as_ref().clone(),
+            Object::Permanent(p) => card_def(p.def).as_ref().clone(),
+            Object::Moved { to } => self.front_def_of(*to),
             Object::Removed => panic!("object {id} has left the game"),
         }
     }
@@ -368,7 +385,7 @@ impl Game {
     /// (a Dies trigger whose source token vanished, or a mana ability whose sacrifice cost
     /// was paid before the effect resolves).
     pub(crate) fn source_name_of(&self, id: ObjectId) -> &'static str {
-        match self.objects[id as usize] {
+        match &self.objects[id as usize] {
             Object::Removed => "",
             _ => self.def_of(id).name,
         }
@@ -376,11 +393,11 @@ impl Game {
 
     /// The owner of the object at `id` (a spell's controller counts as its owner here).
     pub fn owner_of(&self, id: ObjectId) -> PlayerId {
-        match self.objects[id as usize] {
+        match &self.objects[id as usize] {
             Object::Card(c) => c.owner,
             Object::Spell(s) => s.controller,
             Object::Permanent(p) => p.owner,
-            Object::Moved { to } => self.owner_of(to),
+            Object::Moved { to } => self.owner_of(*to),
             Object::Removed => panic!("object {id} has left the game"),
         }
     }
@@ -388,11 +405,11 @@ impl Game {
     /// The player currently controlling `id` (owner for cards/permanents, caster for a
     /// spell on the stack). Distinct from [`owner_of`] once control-changing effects exist.
     pub fn controller_of(&self, id: ObjectId) -> PlayerId {
-        match self.objects[id as usize] {
+        match &self.objects[id as usize] {
             Object::Card(c) => c.owner,
             Object::Spell(s) => s.controller,
             Object::Permanent(p) => self.permanent_controller(id, p.owner),
-            Object::Moved { to } => self.controller_of(to),
+            Object::Moved { to } => self.controller_of(*to),
             Object::Removed => panic!("object {id} has left the game"),
         }
     }
@@ -447,6 +464,14 @@ impl Game {
         ts
     }
 
+    /// The next continuous-effect timestamp (CR 613.7), consuming it. Static-permanent effects
+    /// stamp when they start applying; runtime base/type sets stamp when they resolve.
+    pub(crate) fn stamp_continuous_timestamp(&mut self) -> u64 {
+        let ts = self.next_continuous_timestamp;
+        self.next_continuous_timestamp += 1;
+        ts
+    }
+
     /// The control-changing Aura (CR 720 — [`Effect::Static(StaticEffect::ControlAttached)`]) currently attached to
     /// `host`, if any — the object whose owner controls `host` while it stays attached. `None`
     /// when no such Aura is attached. Applied additively over the base owner (engine-core-and-event-model spec), so the
@@ -455,7 +480,7 @@ impl Game {
         self.attachments(host).into_iter().find(|&aura| {
             self.def_of(aura).abilities.iter().any(|a| {
                 matches!(
-                    (a.timing, a.effect),
+                    (a.timing, a.effect.clone()),
                     (
                         Timing::Static,
                         Effect::Static(StaticEffect::ControlAttached)
@@ -527,7 +552,7 @@ impl Game {
             if let Some(on_expiry) = payload(&ability.effect) {
                 return on_expiry;
             }
-            if let Effect::Sequence { steps } = ability.effect
+            if let Effect::Sequence { steps } = &ability.effect
                 && let Some(on_expiry) = steps.iter().find_map(payload)
             {
                 return on_expiry;
@@ -606,9 +631,9 @@ impl Game {
     /// permanent's own face-down status is [`Self::is_face_down`]). Read by the wire redaction
     /// layer.
     pub fn is_card_face_down(&self, id: ObjectId) -> bool {
-        match self.objects[id as usize] {
+        match &self.objects[id as usize] {
             Object::Card(c) => c.face_down,
-            Object::Moved { to } => self.is_card_face_down(to),
+            Object::Moved { to } => self.is_card_face_down(*to),
             _ => false,
         }
     }
@@ -619,7 +644,7 @@ impl Game {
         // ponytail: mode-less — a modal card's per-mode target need isn't surfaced here (the UI
         // picks a mode first). Reports None for a modal card; wire per-mode specs if the UI wants
         // to preview them.
-        self.required_target(self.def_of(id), None)
+        self.required_target(&self.def_of(id), None)
     }
 
     /// Target need and legal targets for casting a prepared permanent's back face.
@@ -631,18 +656,19 @@ impl Game {
         if !perm.prepared {
             return (TargetSpec::None, Vec::new());
         }
-        let Some(back) = perm.def.back else {
+        let printed = card_def(perm.def);
+        let Some(back) = printed.back else {
             return (TargetSpec::None, Vec::new());
         };
-        let back = *back;
+        let back = card_def(back);
         let controller = self.controller_of(source);
-        let spec = self.required_target(back, None);
+        let spec = self.required_target(&back, None);
         if spec == TargetSpec::None {
             return (spec, Vec::new());
         }
         (
             spec,
-            self.legal_targets_for(spec, source, controller, color_identity(back), 0),
+            self.legal_targets_for(spec, source, controller, color_identity(&back), 0),
         )
     }
 
@@ -651,7 +677,7 @@ impl Game {
     /// (a multi-target clause like Fire's "divided among one or two targets" — a
     /// `ChooseSpellTargets` pending choice handles those, exactly as for a directly-cast spell).
     pub fn split_half_cast_targets(&self, card: ObjectId, half: u8) -> (TargetSpec, Vec<Target>) {
-        let Some(&face) = self.def_of(card).halves.get(half as usize) else {
+        let Some(face) = self.def_of(card).halves.get(half as usize) else {
             return (TargetSpec::None, Vec::new());
         };
         if self.spell_multi_target(face).is_some() {

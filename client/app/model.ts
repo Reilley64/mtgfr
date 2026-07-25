@@ -8,7 +8,10 @@ import { DecksSubmodel } from "./shell/decks/submodel";
 import { LeaderboardSubmodel } from "./shell/leaderboard/submodel";
 import { LobbySlice } from "./shell/lobby/submodel";
 
-export const SessionSlice = S.Struct({ me: S.NullOr(Me) });
+export const SessionSlice = S.Struct({
+  me: S.NullOr(Me),
+  meGravatarHash: S.NullOr(S.String),
+});
 export type SessionSlice = typeof SessionSlice.Type;
 
 export const PortraitGateSlice = S.Struct({ open: S.Boolean });

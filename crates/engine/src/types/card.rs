@@ -1,6 +1,7 @@
 use super::*;
 #[cfg(feature = "card-dsl")]
 use crate::de;
+use crate::{CardId, card_def};
 
 /// A seat at the table.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -384,7 +385,7 @@ pub enum Timing {
 }
 
 /// A card's behavior: an effect gated by a timing.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Ability {
     pub timing: Timing,
     pub effect: Effect,
@@ -447,7 +448,7 @@ pub struct AlternativeCost {
 
 /// A card definition (identity + behavior). Deserializable (under the `card-dsl` feature)
 /// straight from a card's TOML file — the `cards` crate loads the pool this way.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CardDef {
     /// Scryfall oracle id — canonical Card identity (accounts-decks-and-catalog spec). Empty for test stubs; tokens
     /// that have a Scryfall token card stamp theirs so battlefield art resolves.
@@ -526,8 +527,9 @@ pub struct CardDef {
     /// Primordial Hydra's "has trample as long as it has ten or more +1/+1 counters"), read by
     /// the characteristics recompute alongside `keywords`. Empty for every ordinary card.
     pub conditional_keywords: &'static [(Condition, Keyword)],
-    /// The card's abilities. `&'static` keeps `CardDef` `Copy` — loaded card data is
-    /// interned to `'static` at deserialization time (see the `de` module).
+    /// The card's abilities. Loaded card data still interns these slices to `'static` today (see
+    /// the `de` module); a follow-up Wave A cleanup can replace the remaining leaked slices with
+    /// shared owned storage.
     pub abilities: &'static [Ability],
     /// Extra colors a card's real rules text carries for color identity (CR 903.4) that the
     /// simplified gameplay model (cost pips, a land's single modeled producer, `AddMana`
@@ -766,19 +768,18 @@ pub struct CardDef {
     /// A "prepare" double-faced card's back face (soc/sos — CR-style): the front creature has an
     /// ability that makes it "become prepared" (a [`Permanent::prepared`] status), and while
     /// prepared its controller may cast a copy of this back-face spell (see [`Game::cast_prepared`]),
-    /// which unprepares it. `None` for every ordinary card. A `&'static CardDef` (not a nested
-    /// `CardDef` by value) so [`CardDef`] stays `Copy` and finitely sized — the back def is leaked
-    /// to `'static` at load, like the rest of the interned card data (see the `de` module).
-    /// `[back]` (an inline `CardDef` table) in TOML.
-    pub back: Option<&'static CardDef>,
+    /// which unprepares it. `None` for every ordinary card. Stored as the nested face's interned
+    /// [`CardId`] so lookups stay pure once the front face is loaded. `[back]` (an inline
+    /// `CardDef` table) in TOML.
+    pub back: Option<CardId>,
     /// An adventure card's adventure half (CR 715 — soc/sos): the front face is the creature
     /// (this `CardDef`), and its `adventure` holds the instant/sorcery spell you may cast from
     /// hand instead (its own `cost`, `kind`, and `abilities`). On resolution the card is exiled
     /// "on an adventure" (CR 715.3d) and its owner may cast the creature half from exile later at
-    /// normal cost (see [`Game::cast_adventure`]). `None` for every ordinary card. A
-    /// `&'static CardDef` (not a nested `CardDef` by value), like [`Self::back`], so [`CardDef`]
-    /// stays `Copy`. `[adventure]` (an inline `CardDef` table) in TOML.
-    pub adventure: Option<&'static CardDef>,
+    /// normal cost (see [`Game::cast_adventure`]). `None` for every ordinary card. Stored as the
+    /// nested face's interned [`CardId`] for the same reason as [`Self::back`]. `[adventure]` (an
+    /// inline `CardDef` table) in TOML.
+    pub adventure: Option<CardId>,
     /// A split card's two castable halves (CR 709 — Fire // Ice): this `CardDef` is the *fused*
     /// card (the combined characteristics every zone but the stack sees, CR 709.4 — combined name,
     /// mana cost, and colors), and `halves` holds the two faces you may actually cast. Only one
@@ -915,7 +916,7 @@ impl CardDef {
     /// printed pips), so a graveyard/battlefield mana-value gate reads the printed value
     /// correctly. Each color/color hybrid pip counts 1 (CR 202.3f — both halves are one mana;
     /// Balefire Liege's {2}{R/W}{R/W}{R/W} is mana value 5).
-    pub fn mana_value(self) -> u32 {
+    pub fn mana_value(&self) -> u32 {
         let cost = self.cost;
         cost.generic as u32
             + cost.colorless as u32
@@ -936,7 +937,7 @@ impl CardDef {
     /// reads the printed cost (CR 202.3b treats `{X}` as 0 off the stack), which is safe here
     /// because [`SpendRestriction::ManaValueAtLeastOrHasX`] always also accepts `has_x`
     /// regardless of the value actually chosen for `{X}`.
-    pub fn spell_characteristics(self) -> SpellCharacteristics {
+    pub fn spell_characteristics(&self) -> SpellCharacteristics {
         SpellCharacteristics {
             mana_value: self.mana_value(),
             has_x: self.cost.x > 0,
@@ -953,7 +954,7 @@ impl CardDef {
 /// `schema::color_identity` (crates/schema/src/lib.rs), which `server::legality::validate`
 /// checks against the pool; `def.colors` never affects deck legality (no pool token is
 /// deck-legal, and no real card sets it).
-pub fn color_identity(def: CardDef) -> [bool; Color::COUNT] {
+pub fn color_identity(def: &CardDef) -> [bool; Color::COUNT] {
     if def.devoid {
         return [false; Color::COUNT];
     }
@@ -979,7 +980,7 @@ pub fn color_identity(def: CardDef) -> [bool; Color::COUNT] {
 
 /// Whether `card` is legal in a deck led by `commander` — its color identity must be a
 /// subset of the commander's.
-pub fn within_identity(card: CardDef, commander: CardDef) -> bool {
+pub fn within_identity(card: &CardDef, commander: &CardDef) -> bool {
     let allowed = color_identity(commander);
     let needed = color_identity(card);
     (0..Color::COUNT).all(|i| !needed[i] || allowed[i])
@@ -988,22 +989,23 @@ pub fn within_identity(card: CardDef, commander: CardDef) -> bool {
 /// Whether `def` is a basic land: has the "Basic" supertype (CR 205.4a). Reads
 /// [`CardKind::Land`]'s `basic` flag rather than the card's name (or its `subtypes`, which a
 /// nonbasic land can share without being basic — see the field's doc).
-pub(crate) fn is_basic_land(def: CardDef) -> bool {
+pub(crate) fn is_basic_land(def: &CardDef) -> bool {
     matches!(def.kind, CardKind::Land { basic: true, .. })
 }
 
 /// A permanent entering the battlefield: all per-object state at its defaults.
 pub(crate) fn fresh_permanent(
-    def: CardDef,
+    def: CardId,
     owner: PlayerId,
     summoning_sick: bool,
     commander: bool,
 ) -> Permanent {
+    let printed = card_def(def);
     Permanent {
         def,
         owner,
         level: 1,
-        tapped: def.enters_tapped,
+        tapped: printed.enters_tapped,
         summoning_sick,
         entered_this_turn: true,
         plus_counters: 0,
@@ -1011,14 +1013,18 @@ pub(crate) fn fresh_permanent(
         temp_power: 0,
         temp_toughness: 0,
         base_pt_set_eot: None,
+        base_pt_set_eot_timestamp: 0,
         added_types_eot: TypeSet::NONE,
+        added_types_eot_timestamp: 0,
         added_subtypes_eot: &[],
         added_colors_eot: &[],
         set_color_eot: None,
         temp_keywords: &[],
         temp_lost_keywords: &[],
         set_base_pt: None,
+        set_base_pt_timestamp: 0,
         added_types: TypeSet::NONE,
+        added_types_timestamp: 0,
         added_subtypes: &[],
         granted_keywords: &[],
         marked_damage: 0,
@@ -1026,12 +1032,13 @@ pub(crate) fn fresh_permanent(
         commander,
         token: false,
         attached_to: None,
-        loyalty: starting_loyalty(def),
+        continuous_timestamp: 0,
+        loyalty: starting_loyalty(&printed),
         loyalty_activated: false,
         finality_counter: false,
         regeneration_shields: 0,
         prepared: false,
-        echo_unpaid: def.echo.is_some(),
+        echo_unpaid: printed.echo.is_some(),
         chosen_subtype: None,
         chosen_color: None,
         entered_with_x: 0,
@@ -1052,7 +1059,7 @@ pub(crate) fn fresh_permanent(
 
 /// A planeswalker's printed starting loyalty (CR 606.5b — it enters with that many loyalty
 /// counters); 0 for any other card kind.
-pub(crate) fn starting_loyalty(def: CardDef) -> i32 {
+pub(crate) fn starting_loyalty(def: &CardDef) -> i32 {
     match def.kind {
         CardKind::Planeswalker { loyalty } => loyalty,
         _ => 0,
@@ -1061,7 +1068,7 @@ pub(crate) fn starting_loyalty(def: CardDef) -> i32 {
 
 /// A token entering the battlefield: like [`fresh_permanent`], but flagged as a token
 /// (ceases to exist when it leaves the battlefield) and summoning-sick.
-pub(crate) fn fresh_token(def: CardDef, controller: PlayerId) -> Permanent {
+pub(crate) fn fresh_token(def: CardId, controller: PlayerId) -> Permanent {
     Permanent {
         token: true,
         ..fresh_permanent(def, controller, true, false)
@@ -1336,9 +1343,9 @@ pub(crate) fn illusion_token() -> CardDef {
 }
 
 /// A card at rest in a hidden/graveyard/command zone: identity only, no battlefield state.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub(crate) struct Card {
-    pub(crate) def: CardDef,
+    pub(crate) def: CardId,
     pub(crate) owner: PlayerId,
     /// One of Library / Hand / Graveyard / Exile / Command.
     pub(crate) zone: Zone,
@@ -1354,9 +1361,9 @@ pub(crate) struct Card {
 }
 
 /// A spell on the stack (a cast card waiting to resolve).
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub(crate) struct Spell {
-    pub(crate) def: CardDef,
+    pub(crate) def: CardId,
     pub(crate) controller: PlayerId,
     /// The chosen targets (CR 601.2c). A single-target spell fills one slot; Aether Gale fills up
     /// to six. Empty until a multi-target spell's targets are chosen (see [`Event::SpellTargetsChosen`]).
@@ -1493,9 +1500,9 @@ pub(crate) struct Spell {
 }
 
 /// A permanent on the battlefield, with its mutable per-object state.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub(crate) struct Permanent {
-    pub(crate) def: CardDef,
+    pub(crate) def: CardId,
     pub(crate) owner: PlayerId,
     /// This permanent's Class level (CR 717.4 — a Class enchantment's level counter). Raised one
     /// step at a time by [`Effect::Counters(CountersEffect::LevelUp)`] (via [`Event::LeveledUp`]); read by every
@@ -1536,12 +1543,17 @@ pub(crate) struct Permanent {
     /// counters/pumps/anthems), and cleared alongside `temp_power`/`temp_toughness` at cleanup
     /// (see [`Event::TempBoostsEnded`]'s handler). Not a `CardDef`/TOML surface — P/T is derived.
     pub(crate) base_pt_set_eot: Option<(i32, i32)>,
+    /// The CR 613.7 timestamp of [`Permanent::base_pt_set_eot`], so a later 7b set (Darksteel
+    /// Mutation after Trench Gorger, Quandrix Charm after Darksteel Mutation) wins the layer.
+    pub(crate) base_pt_set_eot_timestamp: u64,
     /// Card types added until end of turn by a self-animation (CR 613.4 — Restless Spire's "this
     /// land becomes a … creature … It's still a land"): `TypeSet::CREATURE` while a manland is
     /// animated, unioned onto its printed types by [`Game::effective_types`], and cleared alongside
     /// `base_pt_set_eot` at cleanup (see [`Event::TempBoostsEnded`]'s handler). The twin of
     /// `base_pt_set_eot` for the type layer — runtime bookkeeping, never a `CardDef`/TOML surface.
     pub(crate) added_types_eot: TypeSet,
+    /// The CR 613.7 timestamp of [`Permanent::added_types_eot`] / [`Permanent::added_subtypes_eot`].
+    pub(crate) added_types_eot_timestamp: u64,
     /// Creature subtypes added until end of turn by the same self-animation (Restless Spire →
     /// "Elemental"): unioned onto the printed subtypes by [`Game::effective_subtypes`], cleared with
     /// `added_types_eot`. `&'static` because it's copied straight from the granting ability's
@@ -1584,11 +1596,15 @@ pub(crate) struct Permanent {
     /// because a permanent that leaves the battlefield becomes a new object (CR 400.7). Runtime
     /// bookkeeping, never a `CardDef`/TOML surface.
     pub(crate) set_base_pt: Option<(i32, i32)>,
+    /// The CR 613.7 timestamp of [`Permanent::set_base_pt`].
+    pub(crate) set_base_pt_timestamp: u64,
     /// Card types added indefinitely (CR 611.2c — Excava's "It's a … creature … in addition to its
     /// other types", turning a reanimated noncreature into a creature): the indefinite twin of
     /// `added_types_eot`, unioned onto the printed types by [`Game::effective_types`], never
     /// cleared at cleanup (resets with the object per CR 400.7).
     pub(crate) added_types: TypeSet,
+    /// The CR 613.7 timestamp of [`Permanent::added_types`] / [`Permanent::added_subtypes`].
+    pub(crate) added_types_timestamp: u64,
     /// Creature subtypes added indefinitely by the same set (Excava → "Spirit"): the indefinite
     /// twin of `added_subtypes_eot`, unioned onto the printed subtypes by
     /// [`Game::effective_subtypes`]. `&'static` — copied straight from the granting ability's
@@ -1609,6 +1625,9 @@ pub(crate) struct Permanent {
     /// The permanent this is attached to, for an Aura/Equipment (CR 301.5/303.4). `None`
     /// when unattached. Its grant (see [`Effect::Static(StaticEffect::GrantToAttached)`]) applies to that host.
     pub(crate) attached_to: Option<ObjectId>,
+    /// The CR 613.7 timestamp of this permanent's own static continuous effects while on the
+    /// battlefield. Set when it enters, and refreshed when an attached grant takes hold on a host.
+    pub(crate) continuous_timestamp: u64,
     /// A planeswalker's current loyalty (its loyalty counters, CR 606.5b). 0 for a non-planeswalker.
     pub(crate) loyalty: i32,
     /// Whether a loyalty ability was activated on this planeswalker this turn (CR 606.3 — at most
@@ -1750,9 +1769,9 @@ pub(crate) struct Permanent {
     /// creature's; at cleanup ([`Event::TempBoostsEnded`]) `def` is restored from this and it is
     /// cleared back to `None` (CR 514.2). `None` for an ordinary permanent or a *permanent* copy
     /// (Altered Ego leaves the overwritten `def` in place). Runtime state, not TOML-authored — a
-    /// `&'static CardDef` (leaked at the copy step, like [`CardDef::back`]) so [`Permanent`] stays
-    /// `Copy` and small (a pointer, not a second inlined [`CardDef`]).
-    pub(crate) reverts_to_def_eot: Option<&'static CardDef>,
+    /// [`CardId`] so the copied shape shares the same interned definition model as every other
+    /// object, without leaking a second `CardDef`.
+    pub(crate) reverts_to_def_eot: Option<CardId>,
     /// The colors of mana spent to cast the spell that became this permanent (CR 106.9), fixed
     /// for the rest of this permanent's existence — copied from [`Spell::spent_colors`] as it
     /// enters, the same "read the spell's own info before it's gone" idiom as `entered_with_x`.
@@ -1770,7 +1789,7 @@ pub(crate) struct Permanent {
 // the id-indexed object arena needs `Object: Copy`, so boxing a variant isn't an option — the same
 // carve-out the sibling `Copy` enums in this crate take.
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub(crate) enum Object {
     Card(Card),
     Spell(Spell),
