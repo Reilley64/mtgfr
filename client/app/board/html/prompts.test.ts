@@ -22,7 +22,7 @@ import {
   XDraftSet,
   XSubmitted,
 } from "../messages";
-import { type BoardModel, initialBoardModel, updateBoard } from "../submodel";
+import { type BoardModel, initialBoardModel, syncBoardWithGame, updateBoard } from "../submodel";
 import { boardOverlays } from "./overlays";
 import { resolveBoardOverlayMounts } from "./scene-helpers";
 
@@ -330,6 +330,42 @@ test("scry card click moves from Bottom lane to Top lane", () => {
     kind: "partition",
     buckets: { top: [], bottom: [2, 1] },
   });
+});
+
+test("scry submit keeps Top cards in Top while pending choice lingers", () => {
+  // Regression: clearing promptDraft on Done re-inits every card into Bottom via
+  // initPromptDraft / syncPromptDraft before the server drops pending_choice.
+  const s = state({
+    pending_choice: {
+      kind: "scry",
+      player: 0,
+      items: [
+        { id: 1, label: "Island" },
+        { id: 2, label: "Forest" },
+      ],
+    },
+  });
+  const gf = gameFold(s);
+  let board = syncBoardWithGame(initialBoardModel(), gf);
+  board = updateBoard(board, PromptCardToggled({ id: 1 }), gf, "T1")[0];
+  const [submitted, commands] = updateBoard(board, PromptSubmitted(), gf, "T1");
+  expect(commands).toHaveLength(1);
+  board = syncBoardWithGame(submitted, gf);
+  expect(board.promptSubmitInFlight).toBe(true);
+  expect(board.promptDraft).toEqual({
+    kind: "partition",
+    buckets: { top: [1], bottom: [2] },
+  });
+  const [, second] = updateBoard(board, PromptSubmitted(), gf, "T1");
+  expect(second).toHaveLength(0);
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s, board)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.selector('[data-testid="prompt-arrange-top"] [data-testid="prompt-card-1"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="prompt-arrange-bottom"] [data-testid="prompt-card-1"]')).toBeAbsent(),
+    Scene.expect(Scene.selector('[data-testid="prompt-arrange-bottom"] [data-testid="prompt-card-2"]')).toExist(),
+  );
 });
 
 test("select_from_top Take lane click emits select_from_top intent", () => {

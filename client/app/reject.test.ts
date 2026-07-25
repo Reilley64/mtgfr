@@ -47,6 +47,16 @@ describe("intent reject wiring", () => {
     expect(next.game?.reject).toBe("That's not your seat.");
   });
 
+  it("IntentRejected clears promptSubmitInFlight so a frozen prompt can be retried", () => {
+    const seeded = modelWithGame();
+    const game = seeded.game;
+    if (game == null) throw new Error("test setup: game is null");
+    seeded.game = { ...game, board: { ...game.board, promptSubmitInFlight: true } };
+    const [next] = update(seeded, IntentRejected({ reason: "Not your turn." }));
+    expect(next.game?.board.promptSubmitInFlight).toBe(false);
+    expect(next.game?.board.reject).toBe("Not your turn.");
+  });
+
   it("IntentAcked clears board.reject", () => {
     const seeded = modelWithGame();
     const game = seeded.game;

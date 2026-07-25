@@ -196,6 +196,12 @@ export type BoardModel = {
   pendingChoiceKey: string | null;
   /** In-progress answer for interactive pending-choice forms. */
   promptDraft: PromptDraft | null;
+  /**
+   * True after a prompt answer was submitted while `pending_choice` still matches.
+   * Keeps the draft painted (no re-init flash) and blocks double-submit / edits until
+   * the choice key changes or the intent is rejected.
+   */
+  promptSubmitInFlight: boolean;
   /** Catalog name suggestions for `choose_card_name` (query must match current draft). */
   cardNameSuggestions: { query: string; names: ReadonlyArray<string> } | null;
   /** Filter query for closed option prompts (creature types). */
@@ -256,6 +262,7 @@ export function initialBoardModel(): BoardModel {
     lastPriorityHolder: null,
     pendingChoiceKey: null,
     promptDraft: null,
+    promptSubmitInFlight: false,
     cardNameSuggestions: null,
     promptOptionFilter: "",
     orderPickPos: null,
@@ -331,11 +338,17 @@ function syncPromptDraft(model: BoardModel, fold: BoardFold): BoardModel {
     ...model,
     pendingChoiceKey: key,
     promptDraft: pc != null && gameState != null ? initPromptDraft(pc, gameState) : null,
+    promptSubmitInFlight: false,
     cardNameSuggestions: null,
     promptOptionFilter: "",
     orderPickPos: null,
     pileExpand: pile != null ? pile : model.gyExilePick != null ? model.pileExpand : null,
   };
+}
+
+/** Freeze the current prompt draft after submitting an answer (avoids Bottom-lane re-init flash). */
+function withPromptSubmitInFlight(model: BoardModel, extras: Partial<BoardModel> = {}): BoardModel {
+  return { ...model, ...extras, promptSubmitInFlight: true };
 }
 
 function samePromptTarget(a: WireTarget | null | undefined, b: WireTarget | null | undefined): boolean {
@@ -1458,6 +1471,7 @@ function cancelAll(model: BoardModel): BoardModel {
     stackExpand: false,
     pendingChoiceKey: null,
     promptDraft: null,
+    promptSubmitInFlight: false,
     cardNameSuggestions: null,
     promptOptionFilter: "",
     orderPickPos: null,
@@ -1538,6 +1552,7 @@ function trySubmitReadyPendingDraft(
 ): BoardReturn | null {
   const state = fold.state;
   if (state == null) return null;
+  if (model.promptSubmitInFlight) return null;
   const synced = syncPromptDraft(model, fold);
   const pc = state.pending_choice;
   if (
@@ -1549,10 +1564,7 @@ function trySubmitReadyPendingDraft(
   ) {
     const answer = buildAnswerFromDraft(pc, synced.promptDraft);
     if (answer != null) {
-      return [
-        { ...synced, promptDraft: null, pendingChoiceKey: null },
-        boardIntentSubmit(tableId, choiceIntent(pc, answer)),
-      ];
+      return [withPromptSubmitInFlight(synced), boardIntentSubmit(tableId, choiceIntent(pc, answer))];
     }
   }
   if (
@@ -1563,10 +1575,7 @@ function trySubmitReadyPendingDraft(
   ) {
     const answer = buildAnswerFromDraft(pc, synced.promptDraft);
     if (answer != null) {
-      return [
-        { ...synced, promptDraft: null, pendingChoiceKey: null },
-        boardIntentSubmit(tableId, choiceIntent(pc, answer)),
-      ];
+      return [withPromptSubmitInFlight(synced), boardIntentSubmit(tableId, choiceIntent(pc, answer))];
     }
   }
   if (
@@ -1576,10 +1585,7 @@ function trySubmitReadyPendingDraft(
   ) {
     const answer = buildAnswerFromDraft(pc, synced.promptDraft);
     if (answer != null) {
-      return [
-        { ...synced, promptDraft: null, pendingChoiceKey: null },
-        boardIntentSubmit(tableId, choiceIntent(pc, answer)),
-      ];
+      return [withPromptSubmitInFlight(synced), boardIntentSubmit(tableId, choiceIntent(pc, answer))];
     }
   }
   if (
@@ -1592,10 +1598,7 @@ function trySubmitReadyPendingDraft(
     if (count >= pc.min && count <= pc.max) {
       const answer = buildAnswerFromDraft(pc, synced.promptDraft);
       if (answer != null) {
-        return [
-          { ...synced, promptDraft: null, pendingChoiceKey: null },
-          boardIntentSubmit(tableId, choiceIntent(pc, answer)),
-        ];
+        return [withPromptSubmitInFlight(synced), boardIntentSubmit(tableId, choiceIntent(pc, answer))];
       }
     }
   }
@@ -1621,10 +1624,7 @@ function trySubmitReadyPendingDraft(
     }
     const answer = buildAnswerFromDraft(pc, synced.promptDraft);
     if (answer != null) {
-      return [
-        { ...synced, promptDraft: null, pendingChoiceKey: null },
-        boardIntentSubmit(tableId, choiceIntent(pc, answer)),
-      ];
+      return [withPromptSubmitInFlight(synced), boardIntentSubmit(tableId, choiceIntent(pc, answer))];
     }
   }
   if (
@@ -1637,7 +1637,7 @@ function trySubmitReadyPendingDraft(
     const answer = buildAnswerFromDraft(pc, synced.promptDraft);
     if (answer != null) {
       return [
-        { ...synced, promptDraft: null, pendingChoiceKey: null, pileExpand: null },
+        withPromptSubmitInFlight(synced, { pileExpand: null }),
         boardIntentSubmit(tableId, choiceIntent(pc, answer)),
       ];
     }
@@ -1652,7 +1652,7 @@ function trySubmitReadyPendingDraft(
     const answer = buildAnswerFromDraft(pc, synced.promptDraft);
     if (answer != null) {
       return [
-        { ...synced, promptDraft: null, pendingChoiceKey: null, pileExpand: null },
+        withPromptSubmitInFlight(synced, { pileExpand: null }),
         boardIntentSubmit(tableId, choiceIntent(pc, answer)),
       ];
     }
@@ -1667,7 +1667,7 @@ function trySubmitReadyPendingDraft(
     const answer = buildAnswerFromDraft(pc, synced.promptDraft);
     if (answer != null) {
       return [
-        { ...synced, promptDraft: null, pendingChoiceKey: null, pileExpand: null },
+        withPromptSubmitInFlight(synced, { pileExpand: null }),
         boardIntentSubmit(tableId, choiceIntent(pc, answer)),
       ];
     }
@@ -2083,7 +2083,7 @@ export function updateBoard(
     case "PromptCardToggled": {
       const synced = syncPromptDraft(model, fold);
       const pc = fold.state?.pending_choice;
-      if (pc == null || synced.promptDraft == null) return [synced, []];
+      if (pc == null || synced.promptDraft == null || synced.promptSubmitInFlight) return [synced, []];
 
       if (synced.promptDraft.kind === "card-pick") {
         const required = cardPickRequiredCount(pc);
@@ -2289,7 +2289,7 @@ export function updateBoard(
     }
     case "PromptPartitionSet": {
       const synced = syncPromptDraft(model, fold);
-      if (synced.promptDraft?.kind !== "partition") return [synced, []];
+      if (synced.promptDraft?.kind !== "partition" || synced.promptSubmitInFlight) return [synced, []];
       const buckets: Record<string, number[]> = {};
       let currentBucket: string | null = null;
       for (const [bucket, ids] of Object.entries(synced.promptDraft.buckets)) {
@@ -2307,7 +2307,9 @@ export function updateBoard(
       const synced = syncPromptDraft(model, fold);
       const pc = fold.state?.pending_choice;
       const gameState = fold.state;
-      if (pc == null || gameState == null || synced.promptDraft == null) return [synced, []];
+      if (pc == null || gameState == null || synced.promptDraft == null || synced.promptSubmitInFlight) {
+        return [synced, []];
+      }
       if (synced.promptDraft.kind === "card-pick" && !cardPickReady(pc, synced.promptDraft.picked)) {
         return [synced, []];
       }
@@ -2343,21 +2345,15 @@ export function updateBoard(
       }
       const answer = buildAnswerFromDraft(pc, synced.promptDraft);
       if (answer == null) return [synced, []];
-      return [
-        { ...synced, promptDraft: null, pendingChoiceKey: null },
-        boardIntentSubmit(tableId, choiceIntent(pc, answer)),
-      ];
+      return [withPromptSubmitInFlight(synced), boardIntentSubmit(tableId, choiceIntent(pc, answer))];
     }
     case "PromptDeclined": {
       const synced = syncPromptDraft(model, fold);
       const pc = fold.state?.pending_choice;
-      if (pc == null) return [synced, []];
+      if (pc == null || synced.promptSubmitInFlight) return [synced, []];
       const answer = declineAnswer(pc);
       if (answer == null) return [synced, []];
-      return [
-        { ...synced, promptDraft: null, pendingChoiceKey: null },
-        boardIntentSubmit(tableId, choiceIntent(pc, answer)),
-      ];
+      return [withPromptSubmitInFlight(synced), boardIntentSubmit(tableId, choiceIntent(pc, answer))];
     }
     case "ModalModeToggled": {
       const mc = model.modalCast;
