@@ -304,7 +304,8 @@ the PR title; semantic-release analyzes that line only.
 `cancel-in-progress: true` so superseded pushes cancel. Jobs: `changes`
 (`dorny/paths-filter` for `iac/**` + `.github/workflows/ci.yml`), commitlint,
 `verify-jobs.yml`, terraform (only when `changes.outputs.iac == 'true'`),
-always-on `docker-cache-guard`, `ci-wave1-guard`, and `ci-wave2-guard`.
+always-on `docker-cache-guard`, `ci-wave1-guard`, `ci-wave2-guard`, and
+`ci-wave3-guard`.
 
 **`verify-jobs.yml`** (reusable):
 - `verify-server-gate`: checkout + pass-marker `lookup-only` cache
@@ -324,12 +325,15 @@ always-on `docker-cache-guard`, `ci-wave1-guard`, and `ci-wave2-guard`.
 (default config, no `.releaserc`). Requires `RELEASE_TOKEN` (PAT: `contents` + `workflow`) so
 the `v*` tag push can cascade `docker.yml`.
 
-**`docker.yml`** (push of `v*` tags): builds and pushes both GHCR images tagged with
-`${GITHUB_REF_NAME#v}`. `GITHUB_TOKEN` permissions: `contents: read`, `packages: write`,
-`actions: write`. Each `docker/build-push-action` step imports/exports Buildx layers via
-GitHub Actions cache (`cache-from` / `cache-to` `type=gha`, `mode=max`) with per-image
-scopes `mtgfr-server` and `mtgfr-web`. Dockerfile `--mount=type=cache` Cargo mounts are
-not persisted across jobs. Guard: `scripts/check-docker-workflow-cache.sh`.
+**`docker.yml`** (push of `v*` tags): parallel jobs `docker-server` and `docker-web`
+build/push GHCR images tagged `${GITHUB_REF_NAME#v}`; `docker-visibility` runs after
+both (`needs: [docker-server, docker-web]`, `continue-on-error`) to mark packages
+public. `GITHUB_TOKEN` permissions: `contents: read`, `packages: write`,
+`actions: write`. Each build imports/exports Buildx layers via GitHub Actions cache
+(`cache-from` / `cache-to` `type=gha`, `mode=max`) with per-image scopes
+`mtgfr-server` and `mtgfr-web`. Dockerfile `--mount=type=cache` Cargo mounts are not
+persisted across jobs. Guards: `scripts/check-docker-workflow-cache.sh`,
+`scripts/check-ci-wave3.sh`.
 
 **Root `package.json`:** `private: true`; `"semantic-release": "^24"` in `devDependencies`.
 Not published to npm. `@semantic-release/npm` bumps `package.json` version only (private).

@@ -22,5 +22,9 @@ need 'cache-from:[[:space:]]*type=gha,scope=mtgfr-server'
 need 'cache-to:[[:space:]]*type=gha,mode=max,scope=mtgfr-server'
 need 'cache-from:[[:space:]]*type=gha,scope=mtgfr-web'
 need 'cache-to:[[:space:]]*type=gha,mode=max,scope=mtgfr-web'
+need 'docker-server:'
+need 'docker-web:'
+need 'docker-visibility:'
+need 'needs:[[:space:]]*\[docker-server,[[:space:]]*docker-web\]'
 
 echo "ok: docker.yml Buildx GHA cache wiring present"
