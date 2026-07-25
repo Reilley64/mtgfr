@@ -1,6 +1,6 @@
 import { CARD_W } from "../geometry/layout";
 
-export const HAND_FACE_W = 180;
+export const HAND_FACE_W = 208;
 export const STACK_CARD_W = 112;
 
 const TAU_MS = 75;

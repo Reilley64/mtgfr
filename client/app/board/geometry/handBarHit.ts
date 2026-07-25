@@ -8,7 +8,7 @@
 // (`handBarHitHeight`) so a cursor on the resting visible bottom never leave/enter-thrashes.
 
 /** Visible strip width at rest — left edge of the face (card name), Arena-style. */
-export const HAND_BAR_PEEK = 64;
+export const HAND_BAR_PEEK = 92;
 
 export type HandBarPeekSlot = {
   /** Screen X of the card face's left edge. */

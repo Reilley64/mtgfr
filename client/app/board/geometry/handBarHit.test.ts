@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { HAND_BAR_H, HAND_VISIBLE_H } from "../html/hand";
 import { HAND_FACE_W } from "../motion/flights";
 import {
   HAND_BAR_PEEK,
@@ -13,7 +14,7 @@ import {
 const PEEK = HAND_BAR_PEEK;
 const FACE = HAND_FACE_W;
 
-/** Two slots whose right-aligned peeks sit at x=100 and x=164 → left face edges adjacent. */
+/** Two slots whose right-aligned peeks sit at x=100 and x=192 → left face edges adjacent. */
 const FIRST_PEEK_LEFT = 100;
 const TWO: HandBarPeekSlot[] = [
   { faceLeft: handBarFaceLeft(FIRST_PEEK_LEFT, FACE, PEEK) },
@@ -44,6 +45,15 @@ function hitHandBarSlotFullFaceWhenRaised(
   }
   return null;
 }
+
+describe("Arena-forward hand bar geometry", () => {
+  it("locks face, peek, visible height, and derived bar height", () => {
+    expect(HAND_FACE_W).toBe(208);
+    expect(HAND_BAR_PEEK).toBe(92);
+    expect(HAND_VISIBLE_H).toBe(178);
+    expect(HAND_BAR_H).toBe(218);
+  });
+});
 
 describe("handBarFaceLeft", () => {
   it("hangs the face left of a right-aligned peek slot", () => {
@@ -110,7 +120,7 @@ function hitBandBottomAnchored(raised: boolean, visibleH: number, cardH: number)
 }
 
 describe("handBarHitHeight / raise translate (vertical thrash)", () => {
-  const VISIBLE = 130;
+  const VISIBLE = HAND_VISIBLE_H;
   const CARD = Math.round(FACE / 0.716);
 
   it("keeps the resting visible bottom inside the hit band when raised", () => {
