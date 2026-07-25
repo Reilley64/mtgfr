@@ -103,16 +103,22 @@ Snapshot-then-apply makes multi-winner batches order-independent.
 
 ## Write path
 
-1. After engine apply in `TableSession`, scan emitted events for `Event::PlayerLost { player }`.
+1. After a table drive accepts, clone the emitted events, seat `user_id` snapshot, and post-apply
+   `Game` under the registry lock; persist ratings only after unlock. This runs from the player
+   intent path (`game_loop::with_seated_drive`) and scheduled stack resolution
+   (`session::schedule_stack_resolution`).
 2. Resolve loser seat → `user_id`; if missing, skip.
-3. Still-active winners: seats with `!game.has_lost(seat)`, `user_id.is_some()`, not the loser.
-4. If no winners with accounts, skip.
-5. Load ratings; run pure `apply_elimination`; persist changed rows.
-6. **Failure policy:** log + metric; do not fail the intent, settle loop, or broadcast. Best-effort
+3. For a batch with multiple `PlayerLost` events, reconstruct players active at batch start as
+   every player either not lost in the post-apply game or listed in the batch's losses.
+4. Process losses in event order. For each loser, winners are the current alive set minus the
+   loser; after the update, remove that loser before the next batch event.
+5. If no winners with accounts, skip.
+6. Load ratings; run pure `apply_elimination`; persist changed rows.
+7. **Failure policy:** log + metric; do not fail the intent, settle loop, or broadcast. Best-effort
    single retry is optional; no durable outbox in v1.
-7. **Idempotency:** apply once per emitted `PlayerLost` in that apply’s event list (engine does not
+8. **Idempotency:** apply once per emitted `PlayerLost` in that apply’s event list (engine does not
    re-emit). Table is pinned to one pod; no cross-pod double-apply.
-8. **Concurrency:** concurrent tables updating the same user may race; last-write-wins is acceptable
+9. **Concurrency:** concurrent tables updating the same user may race; last-write-wins is acceptable
    for v1 bragging rights.
 
 Abandoned tables and pod death do not reverse already-committed elimination updates.
@@ -164,7 +170,7 @@ optional `limit` / `offset` query or RPC fields only.
 | Layer | Coverage |
 |-------|----------|
 | Pure Elo unit | 2p / 3p / 4p elimination sequences; skip missing `user_id`; unchanged rating leaves `rating_set_at`; batch order independence |
-| Server integration | Seeded table → eliminate/concede → DB ratings move; stream/apply still succeeds if rating DB write fails |
+| Server integration | `ratings.rs` covers ordered multi-loss batches; gRPC seeded table → concede → DB ratings move; stream/apply still succeeds if rating DB write fails |
 | Leaderboard RPC | Sort `rating DESC, rating_set_at ASC`; default-1000 users included; paging |
 | Client Scene | `/leaderboard` rows; home teaser top N + navigation |
 | Specs in same change | Update accounts, shell-routes, deck-list, lobby/live-game living specs to match shipped behavior |
@@ -175,7 +181,8 @@ optional `limit` / `offset` query or RPC fields only.
 
 - `toasty/migrations/*` + `crates/server/src/db.rs` (`User`)
 - Pure module e.g. `crates/server/src/elo.rs`
-- Hook in `crates/server/src/session.rs` (post-apply events)
+- Hook in `crates/server/src/ratings.rs`, `crates/server/src/game_loop.rs`, and
+  `crates/server/src/session.rs` (post-apply events, persisted after registry unlock)
 - Proto + tonic handler + BFF RPC route
 - `client/app/routes.ts` + shell leaderboard submodel/view
 - Deck list home teaser in `client/app/shell/decks/**`

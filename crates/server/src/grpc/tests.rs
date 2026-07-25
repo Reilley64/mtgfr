@@ -302,6 +302,46 @@ async fn tables_seed_and_game_submit_intent_round_trip() {
 }
 
 #[tokio::test]
+async fn conceding_a_seeded_table_persists_elo_ratings() {
+    use pb::game_server::Game;
+
+    let state = test_state().await;
+    let (alice_id, bob_id, alice_token) =
+        seed_two_player_table_with_players(&state, "elo-concede-tbl").await;
+
+    let game_svc = game_svc::GameSvc::new(state.clone());
+    let envelope = map::intent_envelope_to_pb(schema::IntentEnvelope {
+        table_id: "elo-concede-tbl".to_string(),
+        client_seq: 0,
+        intent: schema::WireIntent::Concede { player: 0 },
+    });
+    let ack = game_svc
+        .submit_intent(authed(
+            pb::IntentRequest {
+                table_id: "elo-concede-tbl".to_string(),
+                envelope: Some(envelope),
+            },
+            &alice_token,
+        ))
+        .await
+        .expect("submit concede")
+        .into_inner();
+    assert!(ack.accepted, "concede is accepted: {ack:?}");
+
+    let mut db = state.db.clone();
+    let alice = db::User::filter_by_id(alice_id)
+        .get(&mut db)
+        .await
+        .expect("alice still exists");
+    let bob = db::User::filter_by_id(bob_id)
+        .get(&mut db)
+        .await
+        .expect("bob still exists");
+    assert_eq!(alice.rating, 984);
+    assert_eq!(bob.rating, 1016);
+}
+
+#[tokio::test]
 async fn submit_intent_rejects_mismatched_envelope_table_id() {
     use pb::game_server::Game;
     use pb::tables_server::Tables;
@@ -364,6 +404,16 @@ async fn submit_intent_rejects_mismatched_envelope_table_id() {
 /// Seed a running two-player table under `table_id` with the given host/guest, returning the
 /// host's user id. Shared setup for the `Game.Stream` coverage below.
 async fn seed_two_player_table(state: &AppState, table_id: &str) -> (i64, String) {
+    let (host_id, _guest_id, host_token) =
+        seed_two_player_table_with_players(state, table_id).await;
+    (host_id, host_token)
+}
+
+/// Seed a running two-player table and return both account ids plus the host token.
+async fn seed_two_player_table_with_players(
+    state: &AppState,
+    table_id: &str,
+) -> (i64, i64, String) {
     use pb::tables_server::Tables;
 
     let (host_id, host_token) = signed_up(state, &format!("{table_id}-host@x.c"), "host").await;
@@ -396,7 +446,7 @@ async fn seed_two_player_table(state: &AppState, table_id: &str) -> (i64, String
         .await
         .expect("seed");
     keep_table_hands(state, table_id);
-    (host_id, host_token)
+    (host_id, guest_id, host_token)
 }
 
 fn keep_table_hands(state: &AppState, table_id: &str) {
