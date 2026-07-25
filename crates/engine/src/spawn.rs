@@ -61,6 +61,7 @@ impl Game {
                 ..fresh_permanent(def, player, false, false)
             }),
         );
+        self.permanent_mut(id).continuous_timestamp = self.stamp_continuous_timestamp();
         self.characteristics_cache
             .write(|cache| cache.invalidate_owner(self, player));
         id
@@ -80,6 +81,7 @@ impl Game {
                 ..fresh_token(def, player)
             }),
         );
+        self.permanent_mut(id).continuous_timestamp = self.stamp_continuous_timestamp();
         self.characteristics_cache
             .write(|cache| cache.invalidate_owner(self, player));
         id

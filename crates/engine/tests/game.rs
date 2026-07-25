@@ -89497,6 +89497,50 @@ fn trench_gorger_base_pt_survives_a_plus_one_counter() {
     );
 }
 
+#[test]
+fn darksteel_mutation_overrides_trench_gorgers_earlier_base_pt_set() {
+    // Wave E CR 613 timestamp regression: Trench Gorger's ETB leaves an indefinite 7b base-set on
+    // the creature, then Darksteel Mutation lands later with its own 7b 0/1 set. The later Aura
+    // must win until it leaves.
+    let mut game = TestGame::new();
+    let lib = game.stack_library(PlayerId(0), &[card("Forest")]);
+    let forest = lib[0];
+
+    let gorger = game.spawn_in_hand(PlayerId(0), card("Trench Gorger"));
+    game.cast(gorger).resolve();
+
+    let Some(PendingChoice::MayYesNo { player, .. }) = game.pending_choice() else {
+        panic!(
+            "expected the optional ETB search pause, got {:?}",
+            game.pending_choice()
+        );
+    };
+    game.submit(Intent::AnswerMay { player, yes: true })
+        .unwrap();
+    resolve_top_of_stack(&mut game);
+    game.submit(Intent::SearchLibrary {
+        player: PlayerId(0),
+        choice: Some(forest),
+    })
+    .unwrap();
+
+    let gorger = game.current_id(gorger);
+    assert_eq!(
+        (game.power(gorger), game.toughness(gorger)),
+        (1, 1),
+        "Trench Gorger's own continuous effect sets it to 1/1 after exiling one land"
+    );
+
+    let mutation = game.spawn_in_hand(PlayerId(0), card("Darksteel Mutation"));
+    game.cast(mutation).at(Target::Object(gorger)).resolve();
+
+    assert_eq!(
+        (game.power(gorger), game.toughness(gorger)),
+        (0, 1),
+        "the later Darksteel Mutation 7b set overrides the earlier Trench Gorger 7b set"
+    );
+}
+
 // ── Vengeful Rebirth: two independent single-target clauses on one non-modal spell (#203) ──
 
 /// "Return target card from your graveyard to your hand. If you return a nonland card to your
