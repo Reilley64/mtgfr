@@ -6,7 +6,7 @@ name: Docker
 # `GITHUB_TOKEN` cannot cascade workflow runs. Do not also listen for `create`: GitHub
 # emits both `create` and `push` for the same tag, which doubles the build.
 # Wire clients (Effect-gRPC) and tonic stubs are regenerated inside each Dockerfile —
-# nothing under `client/src/wire/generated/` or Cargo `OUT_DIR` is committed.
+# nothing under `client/lib/wire/generated/` or Cargo `OUT_DIR` is committed.
 # Wave 3: build server and web images in parallel; visibility step waits on both.
 
 on:

@@ -114,6 +114,8 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 ## Testing Decisions
 
 - Formulator registry tests ensure every `PendingChoiceView["kind"]` maps to a formulator.
+- `client/lib/wire/wire-case-coverage.test.ts` asserts hand `FORMULATOR_FOR_KIND` keys match the
+  generated `PendingChoiceView` proto oneof (camel→snake), so codegen drift fails `just client-check`.
 - Scene tests cover awaited-player prompt visibility and non-decider/spectator suppression plus waiting-banner copy.
 - Scene/unit tests for MessageRef-backed prompts assert formatted English for labels while catalog coverage guards every Rust-emitted key.
 - Unit tests cover `pendingChoiceWaitingText` (null for decider / absent / mulligan; named seat and `P{seat}` fallback).
