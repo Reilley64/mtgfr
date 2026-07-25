@@ -23,10 +23,11 @@ Match Arena: when the pointer hovers a card in the bottom action bar, that card 
 
 ## Implementation
 
-- Apply hover elevate on the tile root (`group/hand-tile`), e.g. `group-hover/hand-tile:z-50`, so sibling slots compete in one stacking context.
+- Apply resting and hover z on the tile root (`group/hand-tile`) so sibling slots compete in one stacking context.
+- Resting order uses a CSS custom property (`--hand-z: index + 1`) with class `[z-index:var(--hand-z)]` — **not** an inline `z-index` (inline beats Tailwind hover utilities and made elevate inert).
+- Hover elevate: `hover:[z-index:50]` on the root (above any realistic resting index). Parent `:hover` matches while the hit strip child is hovered.
 - Remove face-only hover `z-30` (it cannot beat a higher-index sibling slot).
 - Keep face raise via `translateY` on hover and discard-selected as today.
-- Choose a hover z above any realistic resting index (section lengths stay small; `z-50` is enough).
 
 ## Spec truth
 
