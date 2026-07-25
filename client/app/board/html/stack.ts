@@ -161,9 +161,7 @@ function holdBar(holdMs: number, holdPeak: number, show: boolean): Html | null {
   return h.div(
     [
       h.DataAttribute("testid", "stack-hold-bar"),
-      h.Class(
-        "pointer-events-none h-1.5 overflow-hidden rounded-full bg-white/15 opacity-0 transition-opacity duration-150 group-hover/stack:opacity-100",
-      ),
+      h.Class("pointer-events-none h-1.5 overflow-hidden rounded-full bg-white/15"),
       h.Style({ width: `${STACK_CARD_W}px` }),
       h.Attribute("aria-hidden", "true"),
     ],

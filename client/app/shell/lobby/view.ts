@@ -32,7 +32,7 @@ function humanError(code: string): string {
     AlreadyStarted: "The game already started.",
     NotHost: "Only the host can start.",
     NeedTwoPlayers: "Need at least two players.",
-    NotAllReady: "Everyone must ready up first.",
+    NotAllReady: "Waiting for everyone to Ready…",
     UnknownTable: "That table link is stale or expired. Ask the host for a new code.",
     NotSeated: "Claim a seat first.",
     UnknownDeck: "That deck no longer exists.",
@@ -460,7 +460,10 @@ function tableLobby(
               startError == null
                 ? null
                 : h.span(
-                    [h.DataAttribute("testid", "lobby-start-error"), h.Class("text-caption text-lichen")],
+                    [
+                      h.DataAttribute("testid", "lobby-start-error"),
+                      h.Class("text-caption text-caution-amber"),
+                    ],
                     [humanError(startError)],
                   ),
             ],

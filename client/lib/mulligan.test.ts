@@ -28,6 +28,39 @@ describe("mulliganChrome", () => {
     expect(c.showControls).toBe(true);
     expect(c.canMulligan).toBe(true);
     expect(c.waitingCount).toBe(2);
+    expect(c.status).toBe("Keep, or mulligan for a free redraw to 7 (no London bottom).");
+  });
+
+  it("explains next hand size after the free first mulligan", () => {
+    const afterFriendly = mulliganChrome({
+      mulliganing: true,
+      localSeat: 0,
+      players: [
+        {
+          player: 0,
+          hand_kept: false,
+          can_mulligan: true,
+          mulligans_taken: 1,
+          lost: false,
+        },
+      ],
+    });
+    expect(afterFriendly.status).toBe("Keep, or mulligan to 6.");
+
+    const later = mulliganChrome({
+      mulliganing: true,
+      localSeat: 0,
+      players: [
+        {
+          player: 0,
+          hand_kept: false,
+          can_mulligan: true,
+          mulligans_taken: 3,
+          lost: false,
+        },
+      ],
+    });
+    expect(later.status).toBe("Keep, or mulligan to 4.");
   });
 
   it("still offers keep when another mulligan is unavailable", () => {

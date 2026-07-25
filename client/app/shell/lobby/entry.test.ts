@@ -480,5 +480,57 @@ test("joined lobby shows ready/start without a deck picker", () => {
     Scene.expect(Scene.selector('[data-testid="lobby-start"]')).toExist(),
     Scene.expect(Scene.selector('[data-testid="lobby-deck"]')).not.toExist(),
     Scene.expect(Scene.selector('[data-testid="lobby-claim"]')).not.toExist(),
+    Scene.expect(Scene.selector('[data-testid="lobby-start-error"].text-caution-amber')).toExist(),
+    Scene.expect(Scene.text("Need at least two players.")).toExist(),
+  );
+});
+
+test("NotAllReady start gate uses waiting copy and caution amber", () => {
+  Scene.scene(
+    { update, view: lobbyAppView },
+    Scene.with(
+      tableLobbyModel({
+        lobby: {
+          ...initialLobbySlice(),
+          tableId: "ABC123",
+          selectedDeckId: 7,
+          view: {
+            table_id: "ABC123",
+            you: 0,
+            started: false,
+            error: null,
+            start_error: "NotAllReady",
+            seats: [
+              {
+                player: 0,
+                claimed: true,
+                username: "alice",
+                deck_name: "Superfriends",
+                deck_id: 7,
+                ready: true,
+                is_host: true,
+                is_you: true,
+              },
+              {
+                player: 1,
+                claimed: true,
+                username: "bob",
+                deck_name: "Lorehold",
+                deck_id: -2,
+                ready: false,
+                is_host: false,
+                is_you: false,
+              },
+            ],
+          },
+        },
+        decks: {
+          ...init()[0].decks,
+          list: { ...init()[0].decks.list, decks: [deck] },
+        },
+      }),
+    ),
+    Scene.expect(Scene.selector('[data-testid="lobby-start-error"].text-caution-amber')).toExist(),
+    Scene.expect(Scene.text("Waiting for everyone to Ready…")).toExist(),
   );
 });
