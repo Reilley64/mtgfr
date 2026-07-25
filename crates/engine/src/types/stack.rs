@@ -2755,6 +2755,9 @@ pub enum Event {
     /// mandatory shuffle after cards enter it — CR 701.19-style). The resulting order is a hidden
     /// zone's contents, so this event carries no order information, just that a shuffle happened.
     LibraryShuffled { player: PlayerId },
+    /// Pre-game hand deal shuffle with BO1 land smoothing for `hand_size`.
+    /// Order is hidden; this only records that a smoothed shuffle occurred.
+    LibraryHandSmoothed { player: PlayerId, hand_size: u8 },
     /// The top card of `player`'s library was revealed (CR 701.30) — public to every player,
     /// unlike a private look ([`Effect::Dig(DigEffect::LookAtTop)`]). `card` stays where it is (still the top of
     /// the library); a reveal is not itself a zone change, so a later event moves the card if

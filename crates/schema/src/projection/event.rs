@@ -665,6 +665,9 @@ pub(crate) fn project_event(
             second_from_top,
         },
         Event::LibraryShuffled { player } => VisibleEvent::LibraryShuffled { player: player.0 },
+        Event::LibraryHandSmoothed { player, .. } => {
+            VisibleEvent::LibraryShuffled { player: player.0 }
+        }
         // A reveal is public (CR 701.30) — every viewer, including a spectator, sees it.
         Event::RevealedTopOfLibrary { player, card, def } => VisibleEvent::RevealedTopOfLibrary {
             player: player.0,
