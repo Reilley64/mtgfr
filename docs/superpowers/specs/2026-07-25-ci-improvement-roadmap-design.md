@@ -1,8 +1,8 @@
 # CI improvement roadmap
 
-**Status:** Wave 3 implemented — parallel Docker jobs (absorbed into [production-topology-and-operations](2026-07-20-production-topology-and-operations.md); further redesign remains evidence-gated)
+**Status:** Waves 1–3 implemented (absorbed into [production-topology-and-operations](2026-07-20-production-topology-and-operations.md)). Meta wiring-guard scripts/jobs (`check-ci-wave*`, `check-docker-workflow-cache`) were removed after the waves landed — CI runs the real checks, not YAML grep self-tests.
 **Date:** 2026-07-25  
-**Module:** `.github/workflows/` (`ci.yml`, `verify-jobs.yml`, `verify-and-release.yml`, `docker.yml`), `justfile` check recipes, `scripts/check-docker-workflow-cache.sh`  
+**Module:** `.github/workflows/` (`ci.yml`, `verify-jobs.yml`, `verify-and-release.yml`, `docker.yml`), `justfile` check recipes  
 **Approach:** Waste-first multi-wave roadmap; keep current verify → semantic-release → `v*` → Docker cascade until later waves have evidence to change it
 
 ---

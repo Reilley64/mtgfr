@@ -303,9 +303,7 @@ the PR title; semantic-release analyzes that line only.
 **`ci.yml`** (PRs): `concurrency` group `ci-${{ github.ref }}` with
 `cancel-in-progress: true` so superseded pushes cancel. Jobs: `changes`
 (`dorny/paths-filter` for `iac/**` + `.github/workflows/ci.yml`), commitlint,
-`verify-jobs.yml`, terraform (only when `changes.outputs.iac == 'true'`),
-always-on `docker-cache-guard`, `ci-wave1-guard`, `ci-wave2-guard`, and
-`ci-wave3-guard`.
+`verify-jobs.yml`, and terraform (only when `changes.outputs.iac == 'true'`).
 
 **`verify-jobs.yml`** (reusable):
 - `verify-server-gate`: checkout + pass-marker `lookup-only` cache
@@ -332,8 +330,7 @@ public. `GITHUB_TOKEN` permissions: `contents: read`, `packages: write`,
 `actions: write`. Each build imports/exports Buildx layers via GitHub Actions cache
 (`cache-from` / `cache-to` `type=gha`, `mode=max`) with per-image scopes
 `mtgfr-server` and `mtgfr-web`. Dockerfile `--mount=type=cache` Cargo mounts are not
-persisted across jobs. Guards: `scripts/check-docker-workflow-cache.sh`,
-`scripts/check-ci-wave3.sh`.
+persisted across jobs.
 
 **Root `package.json`:** `private: true`; `"semantic-release": "^24"` in `devDependencies`.
 Not published to npm. `@semantic-release/npm` bumps `package.json` version only (private).
