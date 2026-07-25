@@ -383,8 +383,7 @@ impl Game {
                 .is_ok()
                 && self.plan_auto_taps(player, cost, None, spell).is_some()
         };
-        let any_delve =
-            |target: Option<Target>| (0..=max_delve).any(|d| affordable.clone()(target, d));
+        let any_delve = |target: Option<Target>| (0..=max_delve).any(|d| affordable(target, d));
 
         // Modal: mana first, then enough playable modes for `modal_choose` (CR 700.2) — an Abrade
         // with nothing to hit must not brighten the hand or stop auto-pass.
@@ -400,7 +399,7 @@ impl Game {
                 .len();
             return n >= count.min as usize && any_delve(None);
         }
-        let spec = self.required_target(&def.clone(), None);
+        let spec = self.required_target(&def, None);
         if spec == TargetSpec::None {
             return any_delve(None);
         }
@@ -408,7 +407,7 @@ impl Game {
         // cast affordable against one creature but not another.
         self.legal_targets_for(spec, object, player, color_identity(&def), 0)
             .into_iter()
-            .any(|t| any_delve.clone()(Some(t)))
+            .any(|t| any_delve(Some(t)))
     }
 
     /// Whether `def`'s modal spell has at least [`CardDef::modal_choose`] modes the caster can
@@ -416,7 +415,7 @@ impl Game {
     fn modal_modes_listable(&self, object: ObjectId, player: PlayerId, def: &CardDef) -> bool {
         let colors = color_identity(def);
         let available = (0..MAX_MODES)
-            .map_while(|m| nth_mode(&def, m))
+            .map_while(|m| nth_mode(def, m))
             .filter(|a| self.effect_targets_listable(a.effect.clone(), object, player, colors, 0))
             .count();
         available >= def.modal_choose as usize
@@ -609,10 +608,10 @@ mod tests {
             modal_choose: 1,
             modal_choose_max: None,
             modal_choose_max_if_commander: false,
-            keywords: &[],
-            conditional_keywords: &[],
+            keywords: empty_slice(),
+            conditional_keywords: empty_slice(),
             abilities: if modal {
-                Box::leak(Box::new([
+                arc_slice([
                     Ability {
                         timing: Timing::Spell,
                         effect: Effect::Damage(DamageEffect::Target {
@@ -644,14 +643,14 @@ mod tests {
                         condition: None,
                         once_each_turn: false,
                     },
-                ]))
+                ])
             } else {
-                Box::leak(Box::new([spell_ability(Effect::Draw(DrawEffect::Cards {
+                arc_slice([spell_ability(Effect::Draw(DrawEffect::Cards {
                     count: Amount::Fixed(1),
-                }))]))
+                }))])
             },
-            identity_pips: &[],
-            colors: &[],
+            identity_pips: empty_slice(),
+            colors: empty_slice(),
             devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
@@ -661,8 +660,8 @@ mod tests {
             approximates: None,
             oracle: None,
             set: "",
-            subtypes: &[],
-            otags: &[],
+            subtypes: empty_slice(),
+            otags: empty_slice(),
             cycling: None,
             cycling_sacrifice: SacrificeCost::None,
             flashback: None,
@@ -682,14 +681,14 @@ mod tests {
             enchant_graveyard: false,
             back: None,
             adventure: None,
-            halves: &[],
+            halves: empty_slice(),
             suspend: None,
             vanishing: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,
             encore: None,
-            hand_ability: &[],
+            hand_ability: empty_slice(),
             forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,
@@ -843,7 +842,7 @@ mod tests {
         let object = game.spawn_in_hand(
             P0,
             CardDef {
-                abilities: Box::leak(Box::new([
+                abilities: arc_slice([
                     Ability {
                         timing: Timing::Spell,
                         effect: Effect::Damage(DamageEffect::Target {
@@ -871,7 +870,7 @@ mod tests {
                         condition: None,
                         once_each_turn: false,
                     },
-                ])),
+                ]),
                 ..spell_def("ModalNoTargets", flash_cost(2), true)
             },
         );

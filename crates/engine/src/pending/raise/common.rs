@@ -20,7 +20,7 @@ pub(super) fn map_identical(request: &ChoiceRequest) -> Option<PendingChoice> {
             source: *source,
             effect: effect.clone(),
             legal: legal.clone(),
-            count: count.clone(),
+            count: *count,
             x: *x,
             activated: *activated,
         }),

@@ -97,7 +97,7 @@ impl Game {
                 events.push(Event::TokenCeasedToExist {
                     token: id,
                     controller: p.owner,
-                    def: p.def.clone(),
+                    def: p.def,
                 });
                 continue;
             }
@@ -150,7 +150,7 @@ impl Game {
                     events.push(Event::TokenCeasedToExist {
                         token: id,
                         controller: p.owner,
-                        def: p.def.clone(),
+                        def: p.def,
                     });
                 } else {
                     events.push(self.graveyard_or_command(id, next));
@@ -627,17 +627,18 @@ impl Game {
                 // the `split_halves_on_stack` entry recorded below.
                 let fused = self.def_id_of(source);
                 let fused_def = card_def(fused);
-                let face = fused_def
-                    .halves
-                    .get(half as usize)
-                    .expect("a split-half cast names one of the card's halves")
-                    .clone();
-                let def = intern_card_def(face.clone());
+                let face = card_def(
+                    *fused_def
+                        .halves
+                        .get(half as usize)
+                        .expect("a split-half cast names one of the card's halves"),
+                );
+                let def = face.as_ref().clone();
                 let commander = self.is_commander(source);
                 let id = self.create_object(
                     Some(source),
                     Object::Spell(Spell {
-                        def,
+                        def: intern_card_def(def.clone()),
                         controller,
                         targets: TargetList::single(target),
                         targets_second: TargetList::default(),
@@ -677,16 +678,16 @@ impl Game {
                     .push((spell, fused));
                 // Casting a half is casting a spell — the same bookkeeping `SpellCast` does.
                 self.players[controller.0 as usize].spells_cast_this_turn += 1;
-                if face.cost.x > 0 {
+                if def.cost.x > 0 {
                     self.players[controller.0 as usize].x_spells_cast_this_turn += 1;
                 }
                 // Both halves of a split card are instants or sorceries (CR 709.1).
-                if matches!(face.kind, CardKind::Spell { .. }) {
+                if matches!(def.kind, CardKind::Spell { .. }) {
                     let player = &mut self.players[controller.0 as usize];
                     player.instant_or_sorcery_cast_this_turn = true;
                     player.greatest_instant_or_sorcery_mana_value_cast_this_turn = player
                         .greatest_instant_or_sorcery_mana_value_cast_this_turn
-                        .max(face.mana_value());
+                        .max(def.mana_value());
                     player.instants_and_sorceries_cast_this_turn += 1;
                 }
             }
@@ -1618,7 +1619,7 @@ impl Game {
                     spent_colors,
                 ) = match &self.objects[from as usize] {
                     Object::Spell(s) => (
-                        s.def.clone(),
+                        s.def,
                         s.controller,
                         s.commander,
                         s.x,

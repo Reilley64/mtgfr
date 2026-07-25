@@ -47,7 +47,7 @@ impl Game {
                         events.push(Event::TokenCeasedToExist {
                             token: id,
                             controller: p.owner,
-                            def: p.def.clone(),
+                            def: p.def,
                         });
                         continue;
                     }
@@ -97,7 +97,7 @@ impl Game {
                         events.push(Event::TokenCeasedToExist {
                             token: id,
                             controller: p.owner,
-                            def: p.def.clone(),
+                            def: p.def,
                         });
                         continue;
                     }
@@ -149,7 +149,7 @@ impl Game {
                     return vec![Event::TokenCeasedToExist {
                         token: id,
                         controller: permanent.owner,
-                        def: permanent.def.clone(),
+                        def: permanent.def,
                     }];
                 }
                 vec![self.exile_or_command(id, self.next_object_id())]
@@ -167,7 +167,7 @@ impl Game {
                     return vec![Event::TokenCeasedToExist {
                         token: object,
                         controller: permanent.owner,
-                        def: permanent.def.clone(),
+                        def: permanent.def,
                     }];
                 }
                 let exiled = self.next_object_id();
@@ -188,7 +188,7 @@ impl Game {
                     return vec![Event::TokenCeasedToExist {
                         token: object,
                         controller: permanent.owner,
-                        def: permanent.def.clone(),
+                        def: permanent.def,
                     }];
                 }
                 let exiled = self.next_object_id();
@@ -290,7 +290,7 @@ impl Game {
                         self.resolution_frame
                             .destroyed_this_way
                             .push(state::DestroyedThisWay {
-                                def: p.def.clone(),
+                                def: p.def,
                                 controller: self.controller_of(from),
                                 token: false,
                             });

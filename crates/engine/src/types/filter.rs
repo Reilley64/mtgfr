@@ -646,8 +646,8 @@ pub enum ColorFilter {
 /// removal ([`TargetSpec::Permanent`]), mass effects ([`Effect::Destroy(DestroyEffect::DestroyAll)`] /
 /// [`Effect::Zone(ZoneEffect::ReturnAllToHand)`]), and sacrifice edicts ([`Effect::Choice(ChoiceEffect::EachPlayerSacrifices)`]).
 /// Every axis is independent; an unset axis imposes no restriction. Evaluated by
-/// [`Game::permanent_matches`], which reads the axes needing game state. Kept `Copy` so
-/// [`CardDef`] stays `Copy`.
+/// [`Game::permanent_matches`], which reads the axes needing game state. Kept `Copy` because it is
+/// a compact authored predicate value.
 ///
 /// In TOML it's a `{ … }` table, or a bare-string shorthand for the common shapes —
 /// `"creatures"`, `"nonland"`, `"artifact"`, `"creature_or_planeswalker"` (see the `de` module).

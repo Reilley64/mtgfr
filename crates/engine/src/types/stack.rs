@@ -1891,8 +1891,8 @@ pub(crate) struct TriggerGroup {
 }
 
 /// An item waiting to resolve on the stack: a cast spell, or a triggered ability.
-// ponytail: Effect is ~CR 957B and this enum is Copy (CardDef: Copy invariant); boxing the large (CR 707)
-// variant would break Copy. Size is acceptable; revisit only if Effect itself shrinks.
+// ponytail: Effect is ~CR 957B; boxing the large variant would add indirection without buying much.
+// Size is acceptable; revisit only if Effect itself shrinks.
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum StackItem {
@@ -1928,8 +1928,8 @@ pub(crate) enum StackItem {
 /// A public, read-only view of one stack item, for rendering the stack. Mirrors
 /// [`StackItem`] (which is internal). Ordering follows the stack: index 0 is the
 /// bottom, the last element is the top (resolves first).
-// ponytail: Effect is ~957B and this enum is Copy (CardDef: Copy invariant); boxing the large
-// variant would break Copy. Size is acceptable; revisit only if Effect itself shrinks.
+// ponytail: Effect is ~957B; boxing the large variant would add indirection without buying much.
+// Size is acceptable; revisit only if Effect itself shrinks.
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StackEntry {
@@ -3025,7 +3025,7 @@ pub(crate) fn is_partition(top: &[ObjectId], bottom: &[ObjectId], cards: &[Objec
 /// The default `{1, 1}` is the ubiquitous single mandatory target, so every existing effect is
 /// untouched. `count = N` in TOML is sugar for `{N, N}` (an exact "N target"); an explicit
 /// `{ min, max }` spells "up to"/"one or two" ranges (see `de::TargetCount`).
-/// ponytail: scalar `u8`s, so `CardDef` stays `Copy`.
+/// ponytail: scalar `u8`s keep the authored target count tiny and easy to copy.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TargetCount {
     pub min: u8,
@@ -3217,9 +3217,9 @@ pub struct ModeInfo {
 pub(crate) fn nth_mode(def: &CardDef, mode: usize) -> Option<Ability> {
     def.abilities
         .iter()
-        .cloned()
         .filter(|a| matches!(a.timing, Timing::Spell))
         .nth(mode)
+        .cloned()
 }
 
 /// One ability's independent target clauses, in printed order (CR 601.2c/700.2) — Hull Breach's

@@ -1295,7 +1295,8 @@ pub struct ActivationCost {
 /// ability would trigger*. If it doesn't hold, the ability never goes on the stack.
 /// ponytail: the CR 603.4 *second* check (re-evaluated as the ability resolves) is skipped — a
 /// single placement-time check is all the pool's cards need; add the re-check when one relies on
-/// the condition becoming false between trigger and resolution. Must stay `Copy` ([`CardDef`]).
+/// the condition becoming false between trigger and resolution. Kept `Copy` because it is a small
+/// authored predicate value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(
     feature = "card-dsl",

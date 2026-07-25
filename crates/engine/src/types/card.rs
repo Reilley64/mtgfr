@@ -1,7 +1,19 @@
+use std::sync::Arc;
+
 use super::*;
 #[cfg(feature = "card-dsl")]
 use crate::de;
 use crate::{CardId, card_def};
+
+/// Shared owned slice storage for `CardDef` and nested payloads.
+pub fn arc_slice<T, const N: usize>(items: [T; N]) -> Arc<[T]> {
+    Arc::from(items)
+}
+
+/// Empty shared slice helper for tests and handwritten `CardDef` stubs.
+pub fn empty_slice<T>() -> Arc<[T]> {
+    Arc::default()
+}
 
 /// A seat at the table.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -156,7 +168,7 @@ pub enum SpellSpeed {
 /// color (the common case — White Knight, "protection from black"), or a non-color quality —
 /// "protection from creatures" (Spirit Mantle, CR 702.16 grants protection from a card type)
 /// or "protection from multicolored" (Stonecoil Serpent, CR 105.4's ≥2-colors quality). Kept
-/// `Copy` so [`Keyword`]/[`CardDef`] stay `Copy`. In TOML, `{ protection = "<value>" }` where
+/// `Copy` so [`Keyword`] stays a small value enum. In TOML, `{ protection = "<value>" }` where
 /// `<value>` is a color name or `"creatures"`/`"multicolored"` — see the `de` module.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProtectionScope {
@@ -261,7 +273,7 @@ pub enum Keyword {
 /// A small set of the permanent card types a card carries, as a bitset (creature, artifact,
 /// enchantment, planeswalker, land). Used two ways: a permanent's *own* types (its [`CardKind`]
 /// plus a creature's additional types — see [`CardKind::Creature`]'s `also`), and a
-/// [`PermanentFilter`]'s required-type set. Kept `Copy` so [`CardDef`] stays `Copy`.
+/// [`PermanentFilter`]'s required-type set. Kept `Copy` because it is a tiny value bitset.
 /// ponytail: no subtypes (Goblin, Aura) — those are #15/#18; this is card *types* only.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct TypeSet(u8);
@@ -369,7 +381,7 @@ impl CardKind {
 
 /// When an ability happens.
 // The `Activated(ActivationCost)` variant embeds `Effect` and dwarfs the others, but boxing
-// would break `CardDef: Copy`; same tolerated posture as `Effect`/`StackItem`/`StackEntry`.
+// would add indirection to a hot authored enum. Same tolerated posture as `Effect`/`StackItem`.
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Timing {
@@ -440,8 +452,8 @@ pub struct AlternativeCost {
     /// The non-mana cost paid instead of the printed mana cost, fired at cast time (CR 601.2f —
     /// before the spell is put on the stack), not a resolution effect. Leaked to `'static` like
     /// every other nested [`Effect`] a `Copy` struct holds ([`GrantedAbility::effects`],
-    /// [`Effect::Misc(MiscEffect::ScheduleAtNextUpkeep)`]'s `then`) — `Effect` can't hold itself by value, and
-    /// `CardDef` (which owns an `AlternativeCost`) has to stay `Copy`.
+    /// [`Effect::Misc(MiscEffect::ScheduleAtNextUpkeep)`]'s `then`) so `AlternativeCost` stays a
+    /// compact scalar value.
     #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_effect"))]
     pub rider: &'static Effect,
 }
@@ -522,27 +534,25 @@ pub struct CardDef {
     /// gated modal card ever lands.
     pub modal_choose_max_if_commander: bool,
     /// The card's intrinsic keywords.
-    pub keywords: &'static [Keyword],
+    pub keywords: Arc<[Keyword]>,
     /// Keywords granted only while a `Condition` holds (CR 702 conditional statics —
     /// Primordial Hydra's "has trample as long as it has ten or more +1/+1 counters"), read by
     /// the characteristics recompute alongside `keywords`. Empty for every ordinary card.
-    pub conditional_keywords: &'static [(Condition, Keyword)],
-    /// The card's abilities. Loaded card data still interns these slices to `'static` today (see
-    /// the `de` module); a follow-up Wave A cleanup can replace the remaining leaked slices with
-    /// shared owned storage.
-    pub abilities: &'static [Ability],
+    pub conditional_keywords: Arc<[(Condition, Keyword)]>,
+    /// The card's abilities.
+    pub abilities: Arc<[Ability]>,
     /// Extra colors a card's real rules text carries for color identity (CR 903.4) that the
     /// simplified gameplay model (cost pips, a land's single modeled producer, `AddMana`
     /// effects, activated-ability costs) doesn't otherwise capture — e.g. the dropped half of
     /// a flattened dual/pain/filter land, or a colored activated ability cut entirely. Empty
     /// for ordinary cards. `identity = [...]` in TOML; consumed by `schema::color_identity`.
-    pub identity_pips: &'static [Color],
+    pub identity_pips: Arc<[Color]>,
     /// Explicit colors (CR 105.2a: a color indicator, or CR 111.4's "colors are determined by
     /// their text" for a token) overriding the cost-pip derivation in [`color_identity`] — a
-    /// token has no mana cost, so its color must be stated outright. `&'static` (keeps `CardDef`
-    /// `Copy`); empty (every ordinary card) falls back to deriving color from cost pips as usual.
+    /// token has no mana cost, so its color must be stated outright. Empty (every ordinary card)
+    /// falls back to deriving color from cost pips as usual.
     /// `colors = ["green"]` / `["white", "black"]` in TOML.
-    pub colors: &'static [Color],
+    pub colors: Arc<[Color]>,
     /// Devoid (CR 702.114a): the card is colorless despite any colored mana-cost pips —
     /// overrides the cost-pip derivation in [`color_identity`] to all-false, taking priority
     /// over `colors` (a devoid card is never also given an explicit color list). `devoid = true`
@@ -603,11 +613,11 @@ pub struct CardDef {
     /// *land's* types stay on [`CardKind::Land::subtypes`] (rules use those); `schema::catalog_card`
     /// unions the two for the wire. `subtypes = […]` in TOML; empty when unrecorded or genuinely
     /// none — including most token profiles today (grown card by card as tribal payoffs need them).
-    pub subtypes: &'static [&'static str],
+    pub subtypes: Arc<[&'static str]>,
     /// Scryfall Tagger oracle-tag slugs (catalog metadata for deck-builder search). Pure catalog
     /// metadata — the engine never reads this at runtime. `otags = […]` in TOML; empty when
     /// unrecorded. Backfilled from Scryfall by `tooling/backfill-otags.mjs`.
-    pub otags: &'static [&'static str],
+    pub otags: Arc<[&'static str]>,
     /// Cycling {N} (CR 702.29a): "{N}, Discard this card: Draw a card," activatable from the
     /// hand. `None` for a card with no cycling. `cycling = { generic = N }` in TOML (the same
     /// `[cost]`-table shape as a spell's cost).
@@ -631,7 +641,7 @@ pub struct CardDef {
     /// index selecting which entry to activate. `[[hand_ability]]` array-of-tables in TOML: each
     /// entry an `[[hand_ability]]` table with its own `[hand_ability.cost]` (same `[cost]`-table
     /// shape as a spell's cost) plus `[[hand_ability.effects]]` (the standard effects-array shape).
-    pub hand_ability: &'static [HandActivatedAbility],
+    pub hand_ability: Arc<[HandActivatedAbility]>,
     /// Forecast (CR 702.57 — Skyscribing's "Forecast — {2}{U}, Reveal this card from your hand:
     /// Each player draws a card."): a hand-activated ability that, unlike [`Self::hand_ability`],
     /// *reveals* rather than discards its card — the card stays in hand — and is activatable only
@@ -782,10 +792,11 @@ pub struct CardDef {
     pub adventure: Option<CardId>,
     /// A split card's two castable halves (CR 709 — Fire // Ice): this `CardDef` is the *fused*
     /// card (the combined characteristics every zone but the stack sees, CR 709.4 — combined name,
-    /// mana cost, and colors), and `halves` holds the two faces you may actually cast. Only one
-    /// half is ever cast (CR 709.4a), so casting goes through [`Game::cast_split_half`] and the
-    /// fused def itself is not castable. Empty for every non-split card. `[[half]]` tables in TOML.
-    pub halves: &'static [CardDef],
+    /// mana cost, and colors), and `halves` holds the interned face ids you may actually cast.
+    /// Only one half is ever cast (CR 709.4a), so casting goes through [`Game::cast_split_half`]
+    /// and the fused def itself is not castable. Empty for every non-split card. `[[half]]`
+    /// tables in TOML.
+    pub halves: Arc<[CardId]>,
     /// Suspend N—[cost] (CR 702.62 — Rousing Refrain): "Rather than cast this card from your
     /// hand, you may pay [cost] and exile it with N time counters on it." `None` for a card
     /// without suspend. A rules-keyword (not a `[[abilities]]`): a `Some` lets its owner pay
@@ -809,8 +820,9 @@ pub struct CardDef {
     /// Activate only as a sorcery." `None` for a card without encore. A rules-keyword (not a
     /// `[[abilities]]`): a `Some` holds the encore **mana** cost; the "exile this card from your
     /// graveyard" half of the cost is intrinsic to the activation (paid by [`Game::encore`], not
-    /// stored as a pip). A `&'static Cost` (leaked at load, like [`Self::suspend`]'s cost) so
-    /// [`CardDef`] stays `Copy`. `[encore]` in TOML, the same `[cost]`-table shape as a spell's cost.
+    /// stored as a pip). A `&'static Cost` (leaked at load, like [`Self::suspend`]'s cost) keeps
+    /// the nested rider small and shared. `[encore]` in TOML, the same `[cost]`-table shape as a
+    /// spell's cost.
     pub encore: Option<&'static Cost>,
     /// "You may choose not to untap this during your untap step" (CR 502.2 — Rubinia Soulsinger):
     /// the untap turn-based action pauses this permanent's controller on a yes/no for each such
@@ -839,7 +851,7 @@ pub struct CardDef {
 }
 
 /// The riders on an [`CardDef::enter_as_copy`] replacement (CR 706/707.2). `Copy` — all scalars,
-/// no `Vec` — so [`CardDef`] stays `Copy`. `until_eot` reverts the copy at cleanup (Cursed Mirror,
+/// no `Vec` — so the nested replacement stays compact. `until_eot` reverts the copy at cleanup (Cursed Mirror,
 /// [`Permanent::reverts_to_def_eot`]); `extra_counters` are additional +1/+1 counters the copy
 /// enters with (Altered Ego's X); `gains_haste` grants the copy haste (Cursed Mirror's "except it
 /// has haste"); `of` is the copyable type axis (Copy Enchantment's "any enchantment", CR 707.2,
@@ -897,7 +909,7 @@ pub struct Suspend {
 /// ability whose payload is authored rather than a fixed draw-1. `cost` is the mana paid
 /// alongside "Discard this card" (the rest of the cost, like cycling's); `effects` runs in order
 /// when the ability resolves. `[hand_ability]` in TOML.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(
     feature = "card-dsl",
     derive(serde::Deserialize),
@@ -905,8 +917,8 @@ pub struct Suspend {
 )]
 pub struct HandActivatedAbility {
     pub cost: Cost,
-    #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_slice"))]
-    pub effects: &'static [Effect],
+    #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::arc_slice"))]
+    pub effects: Arc<[Effect]>,
 }
 
 impl CardDef {
@@ -960,7 +972,7 @@ pub fn color_identity(def: &CardDef) -> [bool; Color::COUNT] {
     }
     if !def.colors.is_empty() {
         let mut identity = [false; Color::COUNT];
-        for &color in def.colors {
+        for &color in def.colors.iter() {
             identity[color.index()] = true;
         }
         return identity;
@@ -1155,11 +1167,11 @@ fn treasure_token_builtin() -> CardDef {
         modal_choose: 1,
         modal_choose_max: None,
         modal_choose_max_if_commander: false,
-        keywords: &[],
-        conditional_keywords: &[],
-        abilities: ABILITIES,
-        identity_pips: &[],
-        colors: &[],
+        keywords: empty_slice(),
+        conditional_keywords: empty_slice(),
+        abilities: ABILITIES.into(),
+        identity_pips: empty_slice(),
+        colors: empty_slice(),
         devoid: false,
         enters_tapped: false,
         enters_tapped_unless: None,
@@ -1169,8 +1181,8 @@ fn treasure_token_builtin() -> CardDef {
         approximates: None,
         oracle: None,
         set: "",
-        subtypes: &["Treasure"],
-        otags: &[],
+        subtypes: arc_slice(["Treasure"]),
+        otags: empty_slice(),
         cycling: None,
         cycling_sacrifice: SacrificeCost::None,
         flashback: None,
@@ -1190,14 +1202,14 @@ fn treasure_token_builtin() -> CardDef {
         enchant_graveyard: false,
         back: None,
         adventure: None,
-        halves: &[],
+        halves: empty_slice(),
         suspend: None,
         vanishing: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
         encore: None,
-        hand_ability: &[],
+        hand_ability: empty_slice(),
         forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
@@ -1223,11 +1235,11 @@ pub(crate) fn rogue_token_stub() -> CardDef {
         modal_choose: 1,
         modal_choose_max: None,
         modal_choose_max_if_commander: false,
-        keywords: &[],
-        conditional_keywords: &[],
-        abilities: &[],
-        identity_pips: &[],
-        colors: &[Color::Black],
+        keywords: empty_slice(),
+        conditional_keywords: empty_slice(),
+        abilities: empty_slice(),
+        identity_pips: empty_slice(),
+        colors: arc_slice([Color::Black]),
         devoid: false,
         enters_tapped: false,
         enters_tapped_unless: None,
@@ -1237,8 +1249,8 @@ pub(crate) fn rogue_token_stub() -> CardDef {
         approximates: None,
         oracle: None,
         set: "",
-        subtypes: &["Rogue"],
-        otags: &[],
+        subtypes: arc_slice(["Rogue"]),
+        otags: empty_slice(),
         cycling: None,
         cycling_sacrifice: SacrificeCost::None,
         flashback: None,
@@ -1258,14 +1270,14 @@ pub(crate) fn rogue_token_stub() -> CardDef {
         enchant_graveyard: false,
         back: None,
         adventure: None,
-        halves: &[],
+        halves: empty_slice(),
         suspend: None,
         vanishing: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
         encore: None,
-        hand_ability: &[],
+        hand_ability: empty_slice(),
         forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
@@ -1293,11 +1305,11 @@ pub(crate) fn illusion_token() -> CardDef {
         modal_choose: 1,
         modal_choose_max: None,
         modal_choose_max_if_commander: false,
-        keywords: &[],
-        conditional_keywords: &[],
-        abilities: &[],
-        identity_pips: &[],
-        colors: &[Color::Blue],
+        keywords: empty_slice(),
+        conditional_keywords: empty_slice(),
+        abilities: empty_slice(),
+        identity_pips: empty_slice(),
+        colors: arc_slice([Color::Blue]),
         devoid: false,
         enters_tapped: false,
         enters_tapped_unless: None,
@@ -1307,8 +1319,8 @@ pub(crate) fn illusion_token() -> CardDef {
         approximates: None,
         oracle: None,
         set: "",
-        subtypes: &["Illusion"],
-        otags: &[],
+        subtypes: arc_slice(["Illusion"]),
+        otags: empty_slice(),
         cycling: None,
         cycling_sacrifice: SacrificeCost::None,
         flashback: None,
@@ -1328,14 +1340,14 @@ pub(crate) fn illusion_token() -> CardDef {
         enchant_graveyard: false,
         back: None,
         adventure: None,
-        halves: &[],
+        halves: empty_slice(),
         suspend: None,
         vanishing: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
         encore: None,
-        hand_ability: &[],
+        hand_ability: empty_slice(),
         forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,

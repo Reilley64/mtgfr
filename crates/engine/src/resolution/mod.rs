@@ -178,8 +178,9 @@ impl Game {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::LazyLock;
 
-    const TEST_LAND: CardDef = CardDef {
+    static TEST_LAND: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         name: "Test Land",
         id: "",
         default_print: "",
@@ -195,8 +196,8 @@ mod tests {
         modal_choose: 1,
         modal_choose_max: None,
         modal_choose_max_if_commander: false,
-        identity_pips: &[],
-        colors: &[],
+        identity_pips: empty_slice(),
+        colors: empty_slice(),
         devoid: false,
         enters_tapped: false,
         enters_tapped_unless: None,
@@ -206,11 +207,11 @@ mod tests {
         approximates: None,
         oracle: None,
         set: "",
-        subtypes: &[],
-        otags: &[],
-        keywords: &[],
-        conditional_keywords: &[],
-        abilities: &[],
+        subtypes: empty_slice(),
+        otags: empty_slice(),
+        keywords: empty_slice(),
+        conditional_keywords: empty_slice(),
+        abilities: empty_slice(),
         cycling: None,
         cycling_sacrifice: SacrificeCost::None,
         flashback: None,
@@ -230,18 +231,18 @@ mod tests {
         enchant_graveyard: false,
         back: None,
         adventure: None,
-        halves: &[],
+        halves: empty_slice(),
         suspend: None,
         vanishing: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
         encore: None,
-        hand_ability: &[],
+        hand_ability: empty_slice(),
         forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
-    };
+    });
 
     const SURVEIL_THEN_DRAW: &[Effect] = &[
         Effect::Dig(DigEffect::Surveil { count: 2 }),
@@ -271,7 +272,10 @@ mod tests {
     #[test]
     fn run_sequence_stashes_tail_when_a_step_pauses() {
         let mut game = Game::with_players(2, 0);
-        game.stack_library(PlayerId(0), &[TEST_LAND, TEST_LAND, TEST_LAND]);
+        game.stack_library(
+            PlayerId(0),
+            &[TEST_LAND.clone(), TEST_LAND.clone(), TEST_LAND.clone()],
+        );
         let mut events = Vec::new();
 
         game.run_sequence(SURVEIL_THEN_DRAW, ctx(PlayerId(0)), &mut events);
@@ -290,7 +294,10 @@ mod tests {
     #[test]
     fn resume_deferred_sequence_runs_the_tail_after_the_pause_clears() {
         let mut game = Game::with_players(2, 0);
-        let lib = game.stack_library(PlayerId(0), &[TEST_LAND, TEST_LAND, TEST_LAND]);
+        let lib = game.stack_library(
+            PlayerId(0),
+            &[TEST_LAND.clone(), TEST_LAND.clone(), TEST_LAND.clone()],
+        );
         let mut events = Vec::new();
 
         game.run_sequence(SURVEIL_THEN_DRAW, ctx(PlayerId(0)), &mut events);
@@ -318,7 +325,10 @@ mod tests {
     #[test]
     fn submit_resumes_a_deferred_sequence_after_a_surveil_answer() {
         let mut game = Game::with_players(2, 0);
-        let lib = game.stack_library(PlayerId(0), &[TEST_LAND, TEST_LAND, TEST_LAND]);
+        let lib = game.stack_library(
+            PlayerId(0),
+            &[TEST_LAND.clone(), TEST_LAND.clone(), TEST_LAND.clone()],
+        );
         let mut events = Vec::new();
 
         game.run_sequence(SURVEIL_THEN_DRAW, ctx(PlayerId(0)), &mut events);
@@ -338,7 +348,7 @@ mod tests {
     #[test]
     fn run_applies_a_pure_effect() {
         let mut game = Game::with_players(2, 0);
-        game.stack_library(PlayerId(0), &[TEST_LAND]);
+        game.stack_library(PlayerId(0), std::slice::from_ref(&*TEST_LAND));
         let mut events = Vec::new();
 
         game.run(

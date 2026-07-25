@@ -5,6 +5,8 @@
 //! recompute (`pt_layers`/`apply_pt_layers` — 7b base-set, 7c modifications); keywords/other
 //! characteristics stay additive per engine-core-and-event-model spec. Deferred / gaps: per-deck increments under `docs/fidelity/` (fidelity-grind skill).
 
+use std::sync::Arc;
+
 use crate::*;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -172,7 +174,7 @@ impl Game {
 
         for attachment in self.attachments(object) {
             let name = self.def_of(attachment).name;
-            for ability in self.def_of(attachment).abilities {
+            for ability in self.def_of(attachment).abilities.iter().cloned() {
                 match (ability.timing, ability.effect.clone()) {
                     (
                         Timing::Static,
@@ -501,7 +503,7 @@ impl Game {
                 LandProduces::OpponentColors => {}
             }
         }
-        for ability in def.abilities {
+        for ability in def.abilities.iter().cloned() {
             let Effect::Mana(ManaEffect::Add {
                 mana: produced,
                 identity,
@@ -656,7 +658,7 @@ impl Game {
                 continue;
             }
             let timestamp = self.static_continuous_timestamp(id);
-            for ability in self.def_of(id).abilities {
+            for ability in self.def_of(id).abilities.iter().cloned() {
                 let (
                     Timing::Static,
                     Effect::Static(StaticEffect::SetAttachedTypes {
@@ -699,7 +701,7 @@ impl Game {
             }
             let controller = self.controller_of(id);
             let timestamp = self.static_continuous_timestamp(id);
-            for ability in self.def_of(id).abilities {
+            for ability in self.def_of(id).abilities.iter().cloned() {
                 match (ability.timing, ability.effect.clone()) {
                     (
                         Timing::Static,
@@ -847,31 +849,29 @@ impl Game {
         let owner = self.owner_of(candidate);
         for (source, effect) in self.matching_anthems(candidate) {
             let timestamp = self.static_continuous_timestamp(source);
-            match effect {
-                Effect::Static(StaticEffect::Anthem {
-                    power,
-                    toughness,
-                    keywords,
-                    ..
-                }) => {
-                    let power = self.resolve_amount(power, owner, source, None, 0);
-                    let toughness = self.resolve_amount(toughness, owner, source, None, 0);
-                    if power != 0 || toughness != 0 {
-                        effects.push(ContinuousEffect {
-                            source,
-                            timestamp,
-                            kind: ContinuousEffectKind::PtDelta { power, toughness },
-                        });
-                    }
-                    if !keywords.is_empty() {
-                        effects.push(ContinuousEffect {
-                            source,
-                            timestamp,
-                            kind: ContinuousEffectKind::GrantKeywords { keywords },
-                        });
-                    }
+            if let Effect::Static(StaticEffect::Anthem {
+                power,
+                toughness,
+                keywords,
+                ..
+            }) = effect
+            {
+                let power = self.resolve_amount(power, owner, source, None, 0);
+                let toughness = self.resolve_amount(toughness, owner, source, None, 0);
+                if power != 0 || toughness != 0 {
+                    effects.push(ContinuousEffect {
+                        source,
+                        timestamp,
+                        kind: ContinuousEffectKind::PtDelta { power, toughness },
+                    });
                 }
-                _ => {}
+                if !keywords.is_empty() {
+                    effects.push(ContinuousEffect {
+                        source,
+                        timestamp,
+                        kind: ContinuousEffectKind::GrantKeywords { keywords },
+                    });
+                }
             }
         }
         if self.as_permanent(candidate).is_none() {
@@ -887,7 +887,7 @@ impl Game {
                 continue;
             }
             let timestamp = self.static_continuous_timestamp(source);
-            for ability in self.functional_abilities(source) {
+            for ability in self.functional_abilities(source).iter().cloned() {
                 let (
                     Timing::Static,
                     Effect::Static(StaticEffect::KeywordAnthem { keywords, filter }),
@@ -1128,15 +1128,15 @@ impl Game {
     /// battlefield-permanent ability iteration (trigger placement, activation gate, static scans)
     /// reads so the removal applies uniformly. Grants the Aura layers onto the host (its
     /// `grant_to_attached` keywords, its type/base-P/T sets) are separate and unaffected.
-    pub(crate) fn functional_abilities(&self, id: ObjectId) -> &'static [Ability] {
+    pub(crate) fn functional_abilities(&self, id: ObjectId) -> Arc<[Ability]> {
         // CR 708.2: a face-down permanent (a manifest) has no abilities.
         if self.is_face_down(id) {
-            return &[];
+            return empty_slice();
         }
         if self.host_loses_all_abilities(id) {
-            return &[];
+            return empty_slice();
         }
-        self.def_of(id).abilities
+        self.def_of(id).abilities.clone()
     }
 
     /// Whether `id` is a bestowed permanent (CR 702.103) currently attached to a host: while so it
@@ -1388,14 +1388,14 @@ impl Game {
         } else {
             self.def_of(object).keywords.to_vec()
         };
-        for (condition, keyword) in self.def_of(object).conditional_keywords {
+        for (condition, keyword) in self.def_of(object).conditional_keywords.iter().copied() {
             if removes_abilities {
                 break;
             }
             if let Condition::SourceHasCounters { at_least } = condition
-                && self.source_has_counters(object, *at_least)
+                && self.source_has_counters(object, at_least)
             {
-                keywords.push(*keyword);
+                keywords.push(keyword);
             }
         }
         for effect in self
@@ -1415,7 +1415,7 @@ impl Game {
         // the source has since left: the link persists on `abilities_granted_until_eot`.)
         for &(target, source) in &self.abilities_granted_until_eot {
             if target == object {
-                keywords.extend_from_slice(self.def_of(source).keywords);
+                keywords.extend_from_slice(&self.def_of(source).keywords);
             }
         }
         keywords.extend(self.chosen_color_protection_grants(object));
@@ -1466,7 +1466,7 @@ impl Game {
         for (source, source_in_graveyard, source_owner) in
             battlefield_sources.chain(graveyard_sources)
         {
-            for ability in self.functional_abilities(source) {
+            for ability in self.functional_abilities(source).iter().cloned() {
                 let (
                     Timing::Static,
                     effect @ Effect::Static(StaticEffect::Anthem {
@@ -1681,8 +1681,10 @@ impl Game {
             // A phased-out Aura grants nothing (CR 702.26e), mirroring `attachment_grants`.
             .filter(|&id| !self.is_phased_out(id))
             .flat_map(|id| {
-                self.def_of(id).abilities.iter().filter_map(|a| {
-                    match (a.timing, a.effect.clone()) {
+                let def = self.def_of(id);
+                def.abilities
+                    .iter()
+                    .filter_map(|a| match (a.timing, a.effect.clone()) {
                         (
                             Timing::Static,
                             Effect::Static(StaticEffect::GrantToAttached {
@@ -1691,8 +1693,8 @@ impl Game {
                             }),
                         ) => Some((g.cost, g.effects)),
                         _ => None,
-                    }
-                })
+                    })
+                    .collect::<Vec<_>>()
             })
             .collect()
     }
@@ -2082,11 +2084,11 @@ mod cache_tests {
             modal_choose: 0,
             modal_choose_max: None,
             modal_choose_max_if_commander: false,
-            keywords: &[],
-            conditional_keywords: &[],
-            abilities: &[],
-            identity_pips: &[],
-            colors: &[],
+            keywords: empty_slice(),
+            conditional_keywords: empty_slice(),
+            abilities: empty_slice(),
+            identity_pips: empty_slice(),
+            colors: empty_slice(),
             devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
@@ -2096,8 +2098,8 @@ mod cache_tests {
             approximates: None,
             oracle: None,
             set: "",
-            subtypes: &[],
-            otags: &[],
+            subtypes: empty_slice(),
+            otags: empty_slice(),
             cycling: None,
             cycling_sacrifice: SacrificeCost::None,
             flashback: None,
@@ -2117,14 +2119,14 @@ mod cache_tests {
             enchant_graveyard: false,
             back: None,
             adventure: None,
-            halves: &[],
+            halves: empty_slice(),
             suspend: None,
             vanishing: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,
             encore: None,
-            hand_ability: &[],
+            hand_ability: empty_slice(),
             forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,
@@ -2170,11 +2172,11 @@ mod cache_tests {
             modal_choose: 0,
             modal_choose_max: None,
             modal_choose_max_if_commander: false,
-            keywords: &[],
-            conditional_keywords: &[],
-            abilities: ABILITIES,
-            identity_pips: &[],
-            colors: &[],
+            keywords: empty_slice(),
+            conditional_keywords: empty_slice(),
+            abilities: ABILITIES.into(),
+            identity_pips: empty_slice(),
+            colors: empty_slice(),
             devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
@@ -2184,8 +2186,8 @@ mod cache_tests {
             approximates: None,
             oracle: None,
             set: "",
-            subtypes: &[],
-            otags: &[],
+            subtypes: empty_slice(),
+            otags: empty_slice(),
             cycling: None,
             cycling_sacrifice: SacrificeCost::None,
             flashback: None,
@@ -2205,14 +2207,14 @@ mod cache_tests {
             enchant_graveyard: false,
             back: None,
             adventure: None,
-            halves: &[],
+            halves: empty_slice(),
             suspend: None,
             vanishing: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,
             encore: None,
-            hand_ability: &[],
+            hand_ability: empty_slice(),
             forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,
@@ -2344,11 +2346,11 @@ mod cache_tests {
             modal_choose: 0,
             modal_choose_max: None,
             modal_choose_max_if_commander: false,
-            keywords: &[],
-            conditional_keywords: &[],
-            abilities: &[],
-            identity_pips: &[],
-            colors: &[],
+            keywords: empty_slice(),
+            conditional_keywords: empty_slice(),
+            abilities: empty_slice(),
+            identity_pips: empty_slice(),
+            colors: empty_slice(),
             devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
@@ -2358,8 +2360,8 @@ mod cache_tests {
             approximates: None,
             oracle: None,
             set: "",
-            subtypes: &[],
-            otags: &[],
+            subtypes: empty_slice(),
+            otags: empty_slice(),
             cycling: None,
             cycling_sacrifice: SacrificeCost::None,
             flashback: None,
@@ -2377,14 +2379,14 @@ mod cache_tests {
             functions_in_graveyard: false,
             back: None,
             adventure: None,
-            halves: &[],
+            halves: empty_slice(),
             suspend: None,
             vanishing: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,
             encore: None,
-            hand_ability: &[],
+            hand_ability: empty_slice(),
             forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,
@@ -2490,11 +2492,11 @@ mod characteristic_query_tests {
             modal_choose: 0,
             modal_choose_max: None,
             modal_choose_max_if_commander: false,
-            keywords,
-            conditional_keywords: &[],
-            abilities: &[],
-            identity_pips: &[],
-            colors: &[],
+            keywords: keywords.into(),
+            conditional_keywords: empty_slice(),
+            abilities: empty_slice(),
+            identity_pips: empty_slice(),
+            colors: empty_slice(),
             devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
@@ -2504,8 +2506,8 @@ mod characteristic_query_tests {
             approximates: None,
             oracle: None,
             set: "",
-            subtypes: &[],
-            otags: &[],
+            subtypes: empty_slice(),
+            otags: empty_slice(),
             cycling: None,
             cycling_sacrifice: SacrificeCost::None,
             flashback: None,
@@ -2523,14 +2525,14 @@ mod characteristic_query_tests {
             functions_in_graveyard: false,
             back: None,
             adventure: None,
-            halves: &[],
+            halves: empty_slice(),
             suspend: None,
             vanishing: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,
             encore: None,
-            hand_ability: &[],
+            hand_ability: empty_slice(),
             forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,
@@ -2556,11 +2558,11 @@ mod characteristic_query_tests {
             modal_choose: 1,
             modal_choose_max: None,
             modal_choose_max_if_commander: false,
-            keywords: &[],
-            conditional_keywords: &[],
-            abilities: &[],
-            identity_pips: &[],
-            colors: &[],
+            keywords: empty_slice(),
+            conditional_keywords: empty_slice(),
+            abilities: empty_slice(),
+            identity_pips: empty_slice(),
+            colors: empty_slice(),
             devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
@@ -2570,8 +2572,8 @@ mod characteristic_query_tests {
             approximates: None,
             oracle: None,
             set: "",
-            subtypes: &[],
-            otags: &[],
+            subtypes: empty_slice(),
+            otags: empty_slice(),
             cycling: None,
             cycling_sacrifice: SacrificeCost::None,
             flashback: None,
@@ -2589,14 +2591,14 @@ mod characteristic_query_tests {
             functions_in_graveyard: false,
             back: None,
             adventure: None,
-            halves: &[],
+            halves: empty_slice(),
             suspend: None,
             vanishing: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,
             encore: None,
-            hand_ability: &[],
+            hand_ability: empty_slice(),
             forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,
@@ -2653,11 +2655,11 @@ mod characteristic_query_tests {
                 modal_choose: 1,
                 modal_choose_max: None,
                 modal_choose_max_if_commander: false,
-                keywords: &[],
-                conditional_keywords: &[],
-                abilities: &[],
-                identity_pips: &[],
-                colors: &[],
+                keywords: empty_slice(),
+                conditional_keywords: empty_slice(),
+                abilities: empty_slice(),
+                identity_pips: empty_slice(),
+                colors: empty_slice(),
                 devoid: false,
                 enters_tapped: false,
                 enters_tapped_unless: None,
@@ -2667,8 +2669,8 @@ mod characteristic_query_tests {
                 approximates: None,
                 oracle: None,
                 set: "",
-                subtypes: &[],
-                otags: &[],
+                subtypes: empty_slice(),
+                otags: empty_slice(),
                 cycling: None,
                 cycling_sacrifice: SacrificeCost::None,
                 flashback: None,
@@ -2686,14 +2688,14 @@ mod characteristic_query_tests {
                 functions_in_graveyard: false,
                 back: None,
                 adventure: None,
-                halves: &[],
+                halves: empty_slice(),
                 suspend: None,
                 vanishing: None,
                 devour: None,
                 demonstrate: false,
                 enter_as_copy: None,
                 encore: None,
-                hand_ability: &[],
+                hand_ability: empty_slice(),
                 forecast: None,
                 may_choose_not_to_untap: false,
                 dredge: None,
@@ -2738,11 +2740,11 @@ mod characteristic_query_tests {
                 modal_choose: 1,
                 modal_choose_max: None,
                 modal_choose_max_if_commander: false,
-                keywords: &[],
-                conditional_keywords: &[],
-                abilities: &[],
-                identity_pips: &[],
-                colors: &[],
+                keywords: empty_slice(),
+                conditional_keywords: empty_slice(),
+                abilities: empty_slice(),
+                identity_pips: empty_slice(),
+                colors: empty_slice(),
                 devoid: false,
                 enters_tapped: false,
                 enters_tapped_unless: None,
@@ -2752,8 +2754,8 @@ mod characteristic_query_tests {
                 approximates: None,
                 oracle: None,
                 set: "",
-                subtypes: &[],
-                otags: &[],
+                subtypes: empty_slice(),
+                otags: empty_slice(),
                 cycling: None,
                 cycling_sacrifice: SacrificeCost::None,
                 flashback: None,
@@ -2771,14 +2773,14 @@ mod characteristic_query_tests {
                 functions_in_graveyard: false,
                 back: None,
                 adventure: None,
-                halves: &[],
+                halves: empty_slice(),
                 suspend: None,
                 vanishing: None,
                 devour: None,
                 demonstrate: false,
                 enter_as_copy: None,
                 encore: None,
-                hand_ability: &[],
+                hand_ability: empty_slice(),
                 forecast: None,
                 may_choose_not_to_untap: false,
                 dredge: None,
@@ -2821,11 +2823,11 @@ mod characteristic_query_tests {
                 modal_choose: 1,
                 modal_choose_max: None,
                 modal_choose_max_if_commander: false,
-                keywords: &[],
-                conditional_keywords: &[],
-                abilities: &[],
-                identity_pips: &[],
-                colors: &[],
+                keywords: empty_slice(),
+                conditional_keywords: empty_slice(),
+                abilities: empty_slice(),
+                identity_pips: empty_slice(),
+                colors: empty_slice(),
                 devoid: false,
                 enters_tapped: false,
                 enters_tapped_unless: None,
@@ -2835,8 +2837,8 @@ mod characteristic_query_tests {
                 approximates: None,
                 oracle: None,
                 set: "",
-                subtypes: &[],
-                otags: &[],
+                subtypes: empty_slice(),
+                otags: empty_slice(),
                 cycling: None,
                 cycling_sacrifice: SacrificeCost::None,
                 flashback: None,
@@ -2854,14 +2856,14 @@ mod characteristic_query_tests {
                 functions_in_graveyard: false,
                 back: None,
                 adventure: None,
-                halves: &[],
+                halves: empty_slice(),
                 suspend: None,
                 vanishing: None,
                 devour: None,
                 demonstrate: false,
                 enter_as_copy: None,
                 encore: None,
-                hand_ability: &[],
+                hand_ability: empty_slice(),
                 forecast: None,
                 may_choose_not_to_untap: false,
                 dredge: None,

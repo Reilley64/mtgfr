@@ -3218,7 +3218,7 @@ impl Game {
             if t != target {
                 continue;
             }
-            for ability in self.def_of(source).abilities {
+            for ability in self.def_of(source).abilities.iter() {
                 if ability_grants_source_abilities(ability.clone()) {
                     continue;
                 }
@@ -3912,7 +3912,7 @@ impl Game {
         let source_subtypes_on = self.def_of(source).subtypes;
         let mut count = 0;
         for doubler in self.battlefield() {
-            for ability in self.functional_abilities(doubler) {
+            for ability in self.functional_abilities(doubler).iter().cloned() {
                 let (
                     Timing::Static,
                     Effect::Static(StaticEffect::TriggerDoubling {
@@ -4418,11 +4418,11 @@ mod tests {
             modal_choose: 1,
             modal_choose_max: None,
             modal_choose_max_if_commander: false,
-            keywords: &[],
-            conditional_keywords: &[],
-            abilities,
-            identity_pips: &[],
-            colors: &[],
+            keywords: empty_slice(),
+            conditional_keywords: empty_slice(),
+            abilities: abilities.into(),
+            identity_pips: empty_slice(),
+            colors: empty_slice(),
             devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
@@ -4432,8 +4432,8 @@ mod tests {
             approximates: None,
             oracle: None,
             set: "",
-            subtypes: &[],
-            otags: &[],
+            subtypes: empty_slice(),
+            otags: empty_slice(),
             cycling: None,
             cycling_sacrifice: SacrificeCost::None,
             flashback: None,
@@ -4451,14 +4451,14 @@ mod tests {
             functions_in_graveyard,
             back: None,
             adventure: None,
-            halves: &[],
+            halves: empty_slice(),
             suspend: None,
             vanishing: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,
             encore: None,
-            hand_ability: &[],
+            hand_ability: empty_slice(),
             forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,

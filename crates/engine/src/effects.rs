@@ -260,8 +260,8 @@ impl Game {
                     printed
                         .abilities
                         .iter()
-                        .cloned()
                         .filter(|a| matches!(a.timing, Timing::Spell))
+                        .cloned()
                         .flat_map(|a| {
                             if ability_target_clauses(&a).len() > 1 {
                                 clause += ability_target_clauses(&a).len();
