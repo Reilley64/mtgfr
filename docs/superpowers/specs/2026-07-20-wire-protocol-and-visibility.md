@@ -193,7 +193,8 @@ The engine/schema event model includes `MulliganTaken { player, mulligans_taken,
 - **`.proto` as sole contract** (wire-protocol-and-visibility spec): `crates/schema` remains the
   projection model; `crates/server/src/grpc/map/` converts at the gRPC edge to/from native proto.
   `client/lib/wire/types.ts` holds hand-maintained TypeScript mirror types that the BFF maps via
-  `protoMap.ts`.
+  `protoMap.ts`. `VISIBLE_EVENT_KIND_PRESENCE` plus `wire-case-coverage.test.ts` keep those hand
+  unions aligned with generated `PendingChoiceView` / `VisibleEvent` oneofs after codegen.
 - **BFF cookie termination**: cookies are host-only on `edh.example.com`; they never cross the
   same-origin boundary. The token moves as gRPC metadata inside the cluster.
 - **Snapshot-then-deltas** (lobby-table-routing-and-live-game spec): a `tokio::broadcast` channel per table fans events to
@@ -228,6 +229,9 @@ The engine/schema event model includes `MulliganTaken { player, mulligans_taken,
 - Catalog drift is guarded by `crates/engine` comparing `MessageKey::all()` to
   `client/lib/i18n/rustKeys.json`, plus a client catalog coverage test that requires every
   Rust key to exist in `enCatalog`.
+- Generated↔hand wire drift is guarded by `client/lib/wire/wire-case-coverage.test.ts`
+  (PendingChoiceView / VisibleEvent oneof cases vs `FORMULATOR_FOR_KIND` /
+  `VISIBLE_EVENT_KIND_PRESENCE`).
 - Mulligan projection tests assert `mulliganing`, `mulligans_taken`, `hand_kept`, and `can_mulligan` are present in snapshots without exposing other players' hands.
 - `PendingChoice` variants are tested via `crates/engine/` unit tests that verify each choice
   kind is raised, answered, and produces the correct events.
