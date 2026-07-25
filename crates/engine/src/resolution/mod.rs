@@ -11,6 +11,8 @@
 //! prior events, mint new stack objects, or arm runtime scratch beyond a pure `mint_*` batch.
 //! Deferred / gaps: per-deck increments under `docs/fidelity/` (fidelity-grind skill).
 
+use std::sync::Arc;
+
 mod control;
 mod copy;
 mod counters;
@@ -66,10 +68,9 @@ pub(crate) struct ResolveCtx {
 
 /// The deferred tail of an [`Effect::Sequence`]: the steps left to run, plus the resolution
 /// context they share. Stashed when a step pauses and replayed when its choice is answered.
-/// `Copy` — every field is (the steps are `&'static`).
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub(crate) struct SequenceCont {
-    pub(crate) steps: &'static [Effect],
+    pub(crate) steps: Arc<[Effect]>,
     pub(crate) ctx: ResolveCtx,
 }
 
@@ -112,7 +113,7 @@ impl Game {
     /// answered. Fully non-pausing steps run to completion here.
     pub(crate) fn run_sequence(
         &mut self,
-        steps: &'static [Effect],
+        steps: &[Effect],
         ctx: ResolveCtx,
         events: &mut Vec<Event>,
     ) {
@@ -121,7 +122,10 @@ impl Game {
             if self.resolution_is_paused() {
                 let rest = &steps[i + 1..];
                 if !rest.is_empty() {
-                    self.resume.sequence = Some(SequenceCont { steps: rest, ctx });
+                    self.resume.sequence = Some(SequenceCont {
+                        steps: Arc::from(rest.to_vec()),
+                        ctx,
+                    });
                 }
                 return;
             }
@@ -154,7 +158,7 @@ impl Game {
             }
         }
         if let Some(cont) = self.resume.sequence.take() {
-            self.run_sequence(cont.steps, cont.ctx, events);
+            self.run_sequence(cont.steps.as_ref(), cont.ctx, events);
         }
         if self.resolution_is_paused() {
             return;

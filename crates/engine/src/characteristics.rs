@@ -1639,7 +1639,9 @@ impl Game {
         // multi-effect own ability uses).
         let effect = match effects {
             [single] => single.clone(),
-            steps => Effect::Sequence { steps },
+            steps => Effect::Sequence {
+                steps: steps.into(),
+            },
         };
         Some(Ability {
             timing: Timing::Activated(cost),

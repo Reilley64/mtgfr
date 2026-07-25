@@ -3,16 +3,16 @@
 //! Most types deserialize via derives on their definitions in `lib.rs`; this module holds
 //! the handful whose TOML spelling differs structurally from their Rust shape (a flat
 //! `[cost]` table of color names, the `instant`/`sorcery` split of [`CardKind::Spell`],
-//! the flat ability table that folds into [`Timing::Activated`]), plus the interning
-//! helpers that turn owned TOML data into the `&'static` slices that keep [`CardDef`]
-//! `Copy` — a bounded, load-once pool that lives for the program's lifetime anyway.
+//! the flat ability table that folds into [`Timing::Activated`]), plus the load helpers
+//! that still intern legacy `'static` data and the newer `Arc`-backed effect-list
+//! deserializers used by runtime-rebuilt sequence payloads.
 //! See [`Effect`]'s doc comment for the invariant these helpers exist to satisfy.
 //!
 //! CR citations appear on individual fields where the DSL encodes a rules concept
 //! (e.g. commander identity mana, target counts); see `docs/CR_INDEX.md`.
 
 use std::collections::HashMap;
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 
 use serde::Deserialize;
 use serde::de::{self, Deserializer, IntoDeserializer, Visitor};
@@ -68,6 +68,16 @@ where
     T: Deserialize<'de> + 'static,
 {
     Ok(intern(Vec::<T>::deserialize(d)?))
+}
+
+/// Deserialize an owned list into shared `Arc<[T]>` storage — used by effect payloads that may
+/// be rebuilt at runtime without leaking.
+pub(crate) fn arc_slice<'de, D, T>(d: D) -> Result<Arc<[T]>, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Deserialize<'de>,
+{
+    Ok(Arc::from(Vec::<T>::deserialize(d)?))
 }
 
 /// Leak one owned `Effect` into the `&'static Effect` a nested `Copy` field needs (a single-value
@@ -1821,7 +1831,7 @@ impl<'de> Deserialize<'de> for Ability {
             }
             [only] => only.clone(), // one-element `effects` is just that effect (no Sequence wrapper).
             _ => Effect::Sequence {
-                steps: intern(flat.effects),
+                steps: Arc::from(flat.effects),
             },
         };
         let timing = match flat.timing {

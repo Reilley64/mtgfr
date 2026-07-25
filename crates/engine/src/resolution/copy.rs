@@ -447,7 +447,7 @@ impl Game {
             })
             .collect();
         self.run_sequence(
-            Box::leak(copies.into_boxed_slice()),
+            copies.as_slice(),
             ResolveCtx {
                 controller,
                 source,

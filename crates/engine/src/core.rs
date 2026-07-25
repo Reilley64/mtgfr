@@ -547,7 +547,7 @@ impl Game {
             if let Some(on_expiry) = payload(&ability.effect) {
                 return on_expiry;
             }
-            if let Effect::Sequence { steps } = ability.effect
+            if let Effect::Sequence { steps } = &ability.effect
                 && let Some(on_expiry) = steps.iter().find_map(payload)
             {
                 return on_expiry;

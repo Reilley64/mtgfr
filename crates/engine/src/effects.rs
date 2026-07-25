@@ -989,7 +989,7 @@ impl Game {
             }
             // A sequence runs its steps in order, sharing this target/{X}; a pausing step defers
             // the rest until answered.
-            Effect::Sequence { steps } => self.run_sequence(steps, ctx, events),
+            Effect::Sequence { steps } => self.run_sequence(steps.as_ref(), ctx, events),
             // A per-step gate: run `then` only if `condition` holds (negated by `negate`) right
             // now (mid-resolution), sharing this target/{X}. Reuses the same intervening-if
             // evaluator triggers use, except `TargetPowerAtLeast` (Yavimaya Bloomsage's power-7
@@ -1037,7 +1037,7 @@ impl Game {
                     _ => self.condition_holds(condition, TriggerContext::of(controller)),
                 };
                 if holds != negate {
-                    self.run_sequence(then, ctx, events);
+                    self.run_sequence(then.as_ref(), ctx, events);
                 }
             }
             // Feral Appetite — see `resolution/sequence_steps.rs::run_sequence_step`.

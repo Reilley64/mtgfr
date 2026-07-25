@@ -5,6 +5,8 @@
 //! here are pause payloads, not pure constructors for those flows (prep mutates via events
 //! before the pause).
 
+use std::sync::Arc;
+
 mod common;
 mod copy;
 mod dig;
@@ -48,7 +50,7 @@ pub(crate) enum ChoiceRequest {
         source: crate::ObjectId,
         target: Option<crate::Target>,
         x: u32,
-        modes: &'static [crate::Effect],
+        modes: Arc<[crate::Effect]>,
     },
     MayYesNo {
         player: crate::PlayerId,

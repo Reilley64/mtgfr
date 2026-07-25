@@ -2037,7 +2037,7 @@ mod tests {
         assert_eq!(scry.key.as_str(), "effect.scry");
 
         let seq = Effect::Sequence {
-            steps: &[
+            steps: std::sync::Arc::from([
                 Effect::Draw(DrawEffect::Cards {
                     count: Amount::Fixed(2),
                 }),
@@ -2046,7 +2046,7 @@ mod tests {
                     target_player: false,
                     or_one_matching: None,
                 }),
-            ],
+            ]),
         }
         .message();
         assert_eq!(seq.key.as_str(), "effect.sequence");

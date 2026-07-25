@@ -1250,7 +1250,9 @@ impl Game {
         // here if a targeted hand ability ever appears.
         let effect = match ability.effects {
             [single] => single.clone(),
-            steps => Effect::Sequence { steps },
+            steps => Effect::Sequence {
+                steps: steps.into(),
+            },
         };
         self.push_ability_group(player, card, &[(effect, None)], true, &mut events);
         // An action resets the pass count; the activator keeps priority (CR 117.3c) — overriding

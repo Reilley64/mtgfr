@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use super::*;
 use crate::CardId;
 
@@ -1178,7 +1180,7 @@ pub enum PendingChoice {
         source: ObjectId,
         target: Option<Target>,
         x: u32,
-        modes: &'static [Effect],
+        modes: Arc<[Effect]>,
     },
     /// `player` may choose `choose` distinct modes of a modal *triggered* ability (`source`, CR
     /// 700.2's "choose two" extended to a trigger's own modes), each mode paired with its own

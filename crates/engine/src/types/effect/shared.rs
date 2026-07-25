@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use super::*;
 #[cfg(feature = "card-dsl")]
 use crate::de;
@@ -361,13 +363,13 @@ pub enum LandTapBonusColor {
 /// In TOML an effect is a table tagged by `type = "<snake_case variant>"` — adding a
 /// variant here is all the DSL needs (no parallel deserialization arm; see the `de` module).
 ///
-/// `Effect` is `Copy`, so any list-valued field must be `&'static [T]` (leaked/interned once
-/// at TOML-load time), never a `Vec<T>`. In a TOML-parsed variant, reach for
-/// `#[cfg_attr(feature = "card-dsl", serde(default, deserialize_with = "de::static_slice"))]`
-/// (or `de::static_str_slice` for `&'static [&'static str]`) rather than hand-rolling a leak —
-/// see [`Effect::Pump(PumpEffect::PumpUntilEndOfTurn)`]'s `keywords` field for the canonical example.
-// ponytail: `CreateToken` inlines a whole `CardDef`, which is large by design and must stay `Copy`
-// (no `Box`), so this enum is unavoidably big-variant. Boxing would break `Copy`; the lint is noise.
+/// `Effect` is `Clone`, so sequence-like effect payloads may use `Arc<[Effect]>` rather than
+/// leaked `&'static [Effect]`. In a TOML-parsed variant, reach for
+/// `#[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::arc_slice"))]`
+/// for owned effect lists, and keep `de::static_slice` only for the still-`'static` payloads
+/// that have not moved to shared owned storage yet.
+// ponytail: `CreateToken` inlines a whole `CardDef`, which is large by design; boxing it just to
+// appease the lint would add pointer noise for no product benefit.
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(
@@ -396,17 +398,17 @@ pub enum Effect {
     Static(StaticEffect),
     Misc(MiscEffect),
     Sequence {
-        #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_slice"))]
-        steps: &'static [Effect],
+        #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::arc_slice"))]
+        steps: Arc<[Effect]>,
     },
     ChooseOne {
-        #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_slice"))]
-        options: &'static [Effect],
+        #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::arc_slice"))]
+        options: Arc<[Effect]>,
     },
     Conditional {
         condition: Condition,
-        #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_slice"))]
-        then: &'static [Effect],
+        #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::arc_slice"))]
+        then: Arc<[Effect]>,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         negate: bool,
     },
@@ -1906,7 +1908,7 @@ fn fill_entering_permanent(effect: Effect, entering: ObjectId) -> Effect {
                 .map(|step| fill_entering_permanent(step.clone(), entering))
                 .collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         other => other,
@@ -1931,7 +1933,7 @@ fn fill_dying_enchanted_creature(effect: Effect, dying: ObjectId) -> Effect {
                 .map(|step| fill_dying_enchanted_creature(step.clone(), dying))
                 .collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         other => other,
@@ -1954,7 +1956,7 @@ fn fill_damaged_creature(effect: Effect, damaged: ObjectId) -> Effect {
                 .map(|step| fill_damaged_creature(step.clone(), damaged))
                 .collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         other => other,
@@ -1975,7 +1977,7 @@ fn fill_left_battlefield_host(effect: Effect, host: ObjectId) -> Effect {
                 .map(|step| fill_left_battlefield_host(step.clone(), host))
                 .collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         other => other,
@@ -2002,7 +2004,7 @@ fn fill_dead_creature(effect: Effect, dead: ObjectId) -> Effect {
                 .map(|step| fill_dead_creature(step.clone(), dead))
                 .collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         other => other,
@@ -2035,7 +2037,7 @@ fn fill_dying_permanent_types(effect: Effect, types: TypeSet) -> Effect {
                 .map(|step| fill_dying_permanent_types(step.clone(), types))
                 .collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         other => other,
@@ -2073,7 +2075,7 @@ fn fill_triggering_ability(effect: Effect, source: ObjectId) -> Effect {
                 .map(|step| fill_triggering_ability(step.clone(), source))
                 .collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         other => other,
@@ -2115,7 +2117,7 @@ fn fill_triggering_spell(effect: Effect, spell: ObjectId) -> Effect {
                 .map(|step| fill_triggering_spell(step.clone(), spell))
                 .collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         other => other,
@@ -2145,7 +2147,7 @@ fn fill_spells_cast_before_this(effect: Effect, n: u32) -> Effect {
                 .map(|step| fill_spells_cast_before_this(step.clone(), n))
                 .collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         other => other,
@@ -2167,7 +2169,7 @@ fn fill_triggering_caster(effect: Effect, caster: PlayerId) -> Effect {
                 .map(|step| fill_triggering_caster(step.clone(), caster))
                 .collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         other => other,
@@ -2192,7 +2194,7 @@ fn fill_combat_damage_source_controller(effect: Effect, player: PlayerId) -> Eff
                 .map(|step| fill_combat_damage_source_controller(step.clone(), player))
                 .collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         other => other,
@@ -2214,7 +2216,7 @@ fn fill_combat_damage_recipient(effect: Effect, player: PlayerId) -> Effect {
                 .map(|step| fill_combat_damage_recipient(step.clone(), player))
                 .collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         other => other,
@@ -2256,7 +2258,7 @@ fn fill_add_mana_recipient(effect: Effect, active_player: PlayerId) -> Effect {
                 .map(|step| fill_add_mana_recipient(step.clone(), active_player))
                 .collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         other => other,
@@ -2280,7 +2282,7 @@ fn fill_each_draw_step_drawer(effect: Effect, active_player: PlayerId) -> Effect
                 .map(|step| fill_each_draw_step_drawer(step.clone(), active_player))
                 .collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         Effect::Conditional {
@@ -2294,7 +2296,7 @@ fn fill_each_draw_step_drawer(effect: Effect, active_player: PlayerId) -> Effect
                 .collect();
             Effect::Conditional {
                 condition,
-                then: Box::leak(filled.into_boxed_slice()),
+                then: Arc::from(filled),
                 negate,
             }
         }
@@ -2360,7 +2362,7 @@ fn map_effect_amounts(effect: Effect, f: &impl Fn(Amount) -> Amount) -> Effect {
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps.iter().map(|s| map_effect_amounts(s.clone(), f)).collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         other => other,
@@ -2458,14 +2460,16 @@ fn fill_cast_mana_value(effect: Effect, mv: u32) -> Effect {
             negate,
         } => {
             if (mv < u32::from(at_least)) != negate {
-                return Effect::Sequence { steps: &[] };
+                return Effect::Sequence {
+                    steps: Arc::from([]),
+                };
             }
             let filled: Vec<Effect> = then
                 .iter()
                 .map(|step| fill_cast_mana_value(step.clone(), mv))
                 .collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         Effect::Sequence { steps } => {
@@ -2474,7 +2478,7 @@ fn fill_cast_mana_value(effect: Effect, mv: u32) -> Effect {
                 .map(|step| fill_cast_mana_value(step.clone(), mv))
                 .collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         other => other,
@@ -2546,7 +2550,7 @@ fn fill_combat_damage(effect: Effect, damage: i32) -> Effect {
                 .map(|step| fill_combat_damage(step.clone(), damage))
                 .collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         other => map_effect_amounts(other, &|amount| match amount {
@@ -2587,7 +2591,7 @@ fn fill_source_power(effect: Effect, power: i32) -> Effect {
                 .map(|step| fill_source_power(step.clone(), power))
                 .collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         other => other,
@@ -2653,7 +2657,7 @@ pub(crate) fn contextualize_sacrifice_effect(effect: Effect, power: i32, toughne
                 .map(|step| contextualize_sacrifice_effect(step.clone(), power, toughness))
                 .collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         other => other,

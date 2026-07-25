@@ -3,6 +3,8 @@
 //! Lives under `tests/` so the `cards` dev-dependency shares one `engine` type graph
 //! (a `#[cfg(test)]` module in `src/` would compile `engine` twice and break unification).
 
+use std::sync::{Arc, LazyLock};
+
 use engine::*;
 
 /// Load a real card from the `cards` crate's TOML pool (a dev-dependency).
@@ -7364,30 +7366,45 @@ fn two_doubling_seasons_quadruple_tokens() {
 /// Pest Rescuer's life-gain replacement (soc): "If you would gain life, you gain that much life
 /// plus 1 instead." A test sorcery that gains its caster 3 life, so the replacement is observable
 /// as a +4 swing.
-const GAIN_LIFE_3: CardDef = sorcery(
-    "Gain 3 (test)",
-    &[spell_ability(Effect::Life(LifeEffect::Gain {
-        amount: Amount::Fixed(3),
-    }))],
-);
+fn gain_life_3() -> CardDef {
+    static CARD: LazyLock<CardDef> = LazyLock::new(|| {
+        sorcery(
+            "Gain 3 (test)",
+            Box::leak(Box::new([spell_ability(Effect::Life(LifeEffect::Gain {
+                amount: Amount::Fixed(3),
+            }))])),
+        )
+    });
+    CARD.clone()
+}
 
 /// A test sorcery that gains its caster 0 life — gaining 0 is not "gaining life", so the
 /// replacement must not fire.
-const GAIN_LIFE_0: CardDef = sorcery(
-    "Gain 0 (test)",
-    &[spell_ability(Effect::Life(LifeEffect::Gain {
-        amount: Amount::Fixed(0),
-    }))],
-);
+fn gain_life_0() -> CardDef {
+    static CARD: LazyLock<CardDef> = LazyLock::new(|| {
+        sorcery(
+            "Gain 0 (test)",
+            Box::leak(Box::new([spell_ability(Effect::Life(LifeEffect::Gain {
+                amount: Amount::Fixed(0),
+            }))])),
+        )
+    });
+    CARD.clone()
+}
 
 /// A test sorcery that makes its caster lose 3 life — a loss, never modified by the life-gain
 /// replacement.
-const LOSE_LIFE_3: CardDef = sorcery(
-    "Lose 3 (test)",
-    &[spell_ability(Effect::Life(LifeEffect::Lose {
-        amount: Amount::Fixed(3),
-    }))],
-);
+fn lose_life_3() -> CardDef {
+    static CARD: LazyLock<CardDef> = LazyLock::new(|| {
+        sorcery(
+            "Lose 3 (test)",
+            Box::leak(Box::new([spell_ability(Effect::Life(LifeEffect::Lose {
+                amount: Amount::Fixed(3),
+            }))])),
+        )
+    });
+    CARD.clone()
+}
 
 #[test]
 fn pest_rescuer_adds_one_to_life_gain() {
@@ -7395,7 +7412,7 @@ fn pest_rescuer_adds_one_to_life_gain() {
     game.spawn_on_battlefield(PlayerId(0), card("Pest Rescuer"));
     let before = game.life(PlayerId(0));
 
-    let spell = game.spawn_in_hand(PlayerId(0), GAIN_LIFE_3);
+    let spell = game.spawn_in_hand(PlayerId(0), gain_life_3());
     game.cast(spell).resolve();
 
     assert_eq!(
@@ -7410,7 +7427,7 @@ fn life_gain_unmodified_without_pest_rescuer() {
     let mut game = TestGame::new();
     let before = game.life(PlayerId(0));
 
-    let spell = game.spawn_in_hand(PlayerId(0), GAIN_LIFE_3);
+    let spell = game.spawn_in_hand(PlayerId(0), gain_life_3());
     game.cast(spell).resolve();
 
     assert_eq!(
@@ -7426,7 +7443,7 @@ fn pest_rescuer_does_not_add_to_zero_gain() {
     game.spawn_on_battlefield(PlayerId(0), card("Pest Rescuer"));
     let before = game.life(PlayerId(0));
 
-    let spell = game.spawn_in_hand(PlayerId(0), GAIN_LIFE_0);
+    let spell = game.spawn_in_hand(PlayerId(0), gain_life_0());
     game.cast(spell).resolve();
 
     assert_eq!(
@@ -7444,7 +7461,7 @@ fn pest_rescuer_only_modifies_its_controllers_gain() {
     game.spawn_on_battlefield(PlayerId(1), card("Pest Rescuer"));
     let before = game.life(PlayerId(0));
 
-    let spell = game.spawn_in_hand(PlayerId(0), GAIN_LIFE_3);
+    let spell = game.spawn_in_hand(PlayerId(0), gain_life_3());
     game.cast(spell).resolve();
 
     assert_eq!(
@@ -7461,7 +7478,7 @@ fn two_pest_rescuers_add_two() {
     game.spawn_on_battlefield(PlayerId(0), card("Pest Rescuer"));
     let before = game.life(PlayerId(0));
 
-    let spell = game.spawn_in_hand(PlayerId(0), GAIN_LIFE_3);
+    let spell = game.spawn_in_hand(PlayerId(0), gain_life_3());
     game.cast(spell).resolve();
 
     assert_eq!(
@@ -7477,7 +7494,7 @@ fn pest_rescuer_does_not_modify_life_loss() {
     game.spawn_on_battlefield(PlayerId(0), card("Pest Rescuer"));
     let before = game.life(PlayerId(0));
 
-    let spell = game.spawn_in_hand(PlayerId(0), LOSE_LIFE_3);
+    let spell = game.spawn_in_hand(PlayerId(0), lose_life_3());
     game.cast(spell).resolve();
 
     assert_eq!(
@@ -7533,15 +7550,18 @@ fn x_spell_undoubled_without_unbound() {
 }
 
 /// A test instant/sorcery X-spell: gains its caster X life.
-const X_GAIN_SORCERY: CardDef = CardDef {
-    cost: Cost { x: 1, ..Cost::FREE },
-    ..sorcery(
-        "X Gain (test)",
-        &[spell_ability(Effect::Life(LifeEffect::Gain {
-            amount: Amount::X,
-        }))],
-    )
-};
+fn x_gain_sorcery() -> CardDef {
+    static CARD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
+        cost: Cost { x: 1, ..Cost::FREE },
+        ..sorcery(
+            "X Gain (test)",
+            Box::leak(Box::new([spell_ability(Effect::Life(LifeEffect::Gain {
+                amount: Amount::X,
+            }))])),
+        )
+    });
+    CARD.clone()
+}
 
 /// A bare cast-X doubler static (Unbound Flourishing's first ability, isolated from its
 /// instant/sorcery copy trigger so a sorcery cast can be measured without the copy interfering).
@@ -7566,7 +7586,7 @@ fn unbound_does_not_double_instant_or_sorcery_x() {
     game.spawn_on_battlefield(PlayerId(0), CAST_X_DOUBLER);
     let before = game.life(PlayerId(0));
 
-    let spell = game.spawn_in_hand(PlayerId(0), X_GAIN_SORCERY);
+    let spell = game.spawn_in_hand(PlayerId(0), x_gain_sorcery());
     game.cast(spell).x(2).resolve();
 
     assert_eq!(
@@ -7869,7 +7889,7 @@ fn unbound_flourishing_still_copies_x_sorcery_spell() {
     game.spawn_on_battlefield(PlayerId(0), card("Unbound Flourishing"));
     let before = game.life(PlayerId(0));
 
-    let spell = game.spawn_in_hand(PlayerId(0), X_GAIN_SORCERY);
+    let spell = game.spawn_in_hand(PlayerId(0), x_gain_sorcery());
     game.cast(spell).x(3).resolve();
     resolve_whole_stack(&mut game);
 
@@ -8421,25 +8441,32 @@ fn oblation_on_a_token_shuffles_nothing_but_owner_still_draws_two() {
 /// A test-only sorcery "For each opponent, create a 1/1 Squirrel token." — Eccentric
 /// Pestfinder's "for each opponent, you create a..." shape, isolated (`controller =
 /// "each_opponent"`).
-const MAKE_SQUIRREL_PER_OPPONENT: CardDef = sorcery(
-    "Make Squirrel Per Opponent (test)",
-    &[spell_ability(Effect::Token(TokenEffect::Create {
-        token: creature("Squirrel", 1, 1, &[]),
-        count: Amount::Fixed(1),
-        controller: TokenController::EachOpponent,
-        enters_with: Amount::Fixed(0),
-        set_base_pt: None,
-        exile_at_next_end_step: false,
-        enters_tapped_and_attacking: false,
-        attacking_context: None,
-        must_attack_defender: false,
-    }))],
-);
+fn make_squirrel_per_opponent() -> CardDef {
+    static CARD: LazyLock<CardDef> = LazyLock::new(|| {
+        sorcery(
+            "Make Squirrel Per Opponent (test)",
+            Box::leak(Box::new([spell_ability(Effect::Token(
+                TokenEffect::Create {
+                    token: creature("Squirrel", 1, 1, &[]),
+                    count: Amount::Fixed(1),
+                    controller: TokenController::EachOpponent,
+                    enters_with: Amount::Fixed(0),
+                    set_base_pt: None,
+                    exile_at_next_end_step: false,
+                    enters_tapped_and_attacking: false,
+                    attacking_context: None,
+                    must_attack_defender: false,
+                },
+            ))])),
+        )
+    });
+    CARD.clone()
+}
 
 #[test]
 fn an_each_opponent_token_effect_gives_one_token_to_every_opponent() {
     let mut game = Game::with_players(4, 0);
-    let spell = game.spawn_in_hand(PlayerId(0), MAKE_SQUIRREL_PER_OPPONENT);
+    let spell = game.spawn_in_hand(PlayerId(0), make_squirrel_per_opponent());
 
     game.submit(Intent::Cast {
         player: PlayerId(0),
@@ -8492,20 +8519,27 @@ fn an_each_opponent_token_effect_gives_one_token_to_every_opponent() {
 /// dies, you gain 1 life.'" — Turn Stones' own text, isolated (`controller =
 /// "one_per_opponent"`): one token per opponent, but every token belongs to the caster, not the
 /// opponents (CR 111.4).
-const MAKE_PEST_PER_OPPONENT: CardDef = sorcery(
-    "Make Pest Per Opponent (test)",
-    &[spell_ability(Effect::Token(TokenEffect::Create {
-        token: PEST,
-        count: Amount::Fixed(1),
-        controller: TokenController::OnePerOpponent,
-        enters_with: Amount::Fixed(0),
-        set_base_pt: None,
-        exile_at_next_end_step: false,
-        enters_tapped_and_attacking: false,
-        attacking_context: None,
-        must_attack_defender: false,
-    }))],
-);
+fn make_pest_per_opponent() -> CardDef {
+    static CARD: LazyLock<CardDef> = LazyLock::new(|| {
+        sorcery(
+            "Make Pest Per Opponent (test)",
+            Box::leak(Box::new([spell_ability(Effect::Token(
+                TokenEffect::Create {
+                    token: PEST,
+                    count: Amount::Fixed(1),
+                    controller: TokenController::OnePerOpponent,
+                    enters_with: Amount::Fixed(0),
+                    set_base_pt: None,
+                    exile_at_next_end_step: false,
+                    enters_tapped_and_attacking: false,
+                    attacking_context: None,
+                    must_attack_defender: false,
+                },
+            ))])),
+        )
+    });
+    CARD.clone()
+}
 
 /// Turn Stones (Eccentric Pestfinder's back face): "For each opponent, you create a 1/1 ...
 /// Pest ..." mints one token per opponent, but every token is under the caster's own control —
@@ -8513,7 +8547,7 @@ const MAKE_PEST_PER_OPPONENT: CardDef = sorcery(
 #[test]
 fn eccentric_pestfinder_mints_one_pest_per_opponent_under_you() {
     let mut game = Game::with_players(4, 0);
-    let spell = game.spawn_in_hand(PlayerId(0), MAKE_PEST_PER_OPPONENT);
+    let spell = game.spawn_in_hand(PlayerId(0), make_pest_per_opponent());
 
     game.submit(Intent::Cast {
         player: PlayerId(0),
@@ -8561,7 +8595,7 @@ fn eccentric_pestfinder_mints_one_pest_per_opponent_under_you() {
 fn eccentric_pestfinders_pest_death_trigger_gains_the_caster_life_not_an_opponent() {
     let mut game = Game::with_players(3, 0);
     let baseline = game.life(PlayerId(0));
-    let spell = game.spawn_in_hand(PlayerId(0), MAKE_PEST_PER_OPPONENT);
+    let spell = game.spawn_in_hand(PlayerId(0), make_pest_per_opponent());
 
     game.submit(Intent::Cast {
         player: PlayerId(0),
@@ -15459,20 +15493,27 @@ const TEST_NONTOKEN_COUNTER: CardDef = CardDef {
 /// A test-only sorcery "Create a 2/2 Bear token." — a minimal token-minting spell so a test can
 /// put a *token* creature onto the battlefield through the real enters-the-battlefield trigger
 /// path (unlike `spawn_token_on_battlefield`, which bypasses it).
-const MAKE_A_BEAR_TOKEN: CardDef = sorcery(
-    "Make A Bear Token (test)",
-    &[spell_ability(Effect::Token(TokenEffect::Create {
-        token: creature("Bear Token", 2, 2, &[]),
-        count: Amount::Fixed(1),
-        controller: TokenController::You,
-        enters_with: Amount::Fixed(0),
-        set_base_pt: None,
-        exile_at_next_end_step: false,
-        enters_tapped_and_attacking: false,
-        attacking_context: None,
-        must_attack_defender: false,
-    }))],
-);
+fn make_a_bear_token() -> CardDef {
+    static CARD: LazyLock<CardDef> = LazyLock::new(|| {
+        sorcery(
+            "Make A Bear Token (test)",
+            Box::leak(Box::new([spell_ability(Effect::Token(
+                TokenEffect::Create {
+                    token: creature("Bear Token", 2, 2, &[]),
+                    count: Amount::Fixed(1),
+                    controller: TokenController::You,
+                    enters_with: Amount::Fixed(0),
+                    set_base_pt: None,
+                    exile_at_next_end_step: false,
+                    enters_tapped_and_attacking: false,
+                    attacking_context: None,
+                    must_attack_defender: false,
+                },
+            ))])),
+        )
+    });
+    CARD.clone()
+}
 
 #[test]
 fn nontoken_creatures_entered_this_turn_counts_cast_creatures_but_not_tokens() {
@@ -15520,7 +15561,7 @@ fn nontoken_creatures_entered_this_turn_counts_cast_creatures_but_not_tokens() {
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
-    let token_maker = game.spawn_in_hand(PlayerId(0), MAKE_A_BEAR_TOKEN);
+    let token_maker = game.spawn_in_hand(PlayerId(0), make_a_bear_token());
     game.submit(Intent::Cast {
         player: PlayerId(0),
         object: token_maker,
@@ -18086,35 +18127,36 @@ fn copy_enchantment_copies_an_aura_and_enters_attached_after_a_host_pick() {
 /// Brudiclad's begin-combat ability: mint a 2/1 Myr, then "you may choose a token you control;
 /// if you do, each other token you control becomes a copy of that token." The 2/1 Myr and the
 /// mass token conversion, in one begin-combat `Sequence`.
-const BRUDICLAD_ABILITIES: &[Ability] = &[Ability {
-    timing: Timing::Triggered(Trigger::BeginCombat),
-    effect: Effect::Sequence {
-        steps: &[
-            Effect::Token(TokenEffect::Create {
-                token: creature("Myr", 2, 1, &[]),
-                count: Amount::Fixed(1),
-                controller: TokenController::You,
-                enters_with: Amount::Fixed(0),
-                set_base_pt: None,
-                exile_at_next_end_step: false,
-                enters_tapped_and_attacking: false,
-                attacking_context: None,
-                must_attack_defender: false,
-            }),
-            Effect::Choice(ChoiceEffect::EachOtherTokenBecomesCopyOfChosen),
-        ],
-    },
-    optional: false,
-    min_level: 0,
-    once_each_turn: false,
-    condition: None,
-    cost: Cost::FREE,
-}];
-
-const BRUDICLAD: CardDef = CardDef {
-    abilities: BRUDICLAD_ABILITIES,
-    ..creature("Brudiclad, Telchor Engineer", 4, 4, &[])
-};
+fn brudiclad() -> CardDef {
+    let abilities: &'static [Ability] = Box::leak(Box::new([Ability {
+        timing: Timing::Triggered(Trigger::BeginCombat),
+        effect: Effect::Sequence {
+            steps: Arc::from([
+                Effect::Token(TokenEffect::Create {
+                    token: creature("Myr", 2, 1, &[]),
+                    count: Amount::Fixed(1),
+                    controller: TokenController::You,
+                    enters_with: Amount::Fixed(0),
+                    set_base_pt: None,
+                    exile_at_next_end_step: false,
+                    enters_tapped_and_attacking: false,
+                    attacking_context: None,
+                    must_attack_defender: false,
+                }),
+                Effect::Choice(ChoiceEffect::EachOtherTokenBecomesCopyOfChosen),
+            ]),
+        },
+        optional: false,
+        min_level: 0,
+        once_each_turn: false,
+        condition: None,
+        cost: Cost::FREE,
+    }]));
+    CardDef {
+        abilities,
+        ..creature("Brudiclad, Telchor Engineer", 4, 4, &[])
+    }
+}
 
 /// The one battlefield permanent `controller` controls whose current def is named `name`.
 fn battlefield_permanent_named(game: &Game, controller: PlayerId, name: &str) -> ObjectId {
@@ -18135,7 +18177,7 @@ fn brudiclad_converts_each_other_token_into_a_copy_of_the_chosen_token() {
     // freshly-minted Myr) becomes a 3/3 BigToken copy; the chosen token is unchanged, and the
     // copies are permanent (CR 400.7 — resets only on leaving).
     let mut game = Game::new();
-    game.spawn_on_battlefield(PlayerId(0), BRUDICLAD);
+    game.spawn_on_battlefield(PlayerId(0), brudiclad());
     let big = game.spawn_token_on_battlefield(PlayerId(0), creature("BigToken", 3, 3, &[]));
     let small = game.spawn_token_on_battlefield(PlayerId(0), creature("SmallToken", 1, 1, &[]));
 
@@ -18186,7 +18228,7 @@ fn brudiclad_converts_each_other_token_into_a_copy_of_the_chosen_token() {
 fn brudiclad_choose_declined_leaves_tokens_unchanged() {
     // "You may choose" — declining converts nothing (the Myr stays a 2/1, SmallToken a 1/1).
     let mut game = Game::new();
-    game.spawn_on_battlefield(PlayerId(0), BRUDICLAD);
+    game.spawn_on_battlefield(PlayerId(0), brudiclad());
     let small = game.spawn_token_on_battlefield(PlayerId(0), creature("SmallToken", 1, 1, &[]));
 
     advance_until(&mut game, |g| g.current_step() == Step::BeginCombat);
@@ -18214,7 +18256,7 @@ fn brudiclad_only_converts_tokens_not_nontoken_permanents() {
     // "each other *token* you control" — a nontoken permanent you control is never converted, and
     // "you control" excludes an opponent's token.
     let mut game = Game::new();
-    game.spawn_on_battlefield(PlayerId(0), BRUDICLAD);
+    game.spawn_on_battlefield(PlayerId(0), brudiclad());
     let big = game.spawn_token_on_battlefield(PlayerId(0), creature("BigToken", 3, 3, &[]));
     let nontoken = game.spawn_on_battlefield(PlayerId(0), creature("Real Bear", 2, 2, &[]));
     let opp_token = game.spawn_token_on_battlefield(PlayerId(1), creature("OppToken", 1, 1, &[]));
@@ -26578,23 +26620,28 @@ fn mulldrifter_evoke_charges_the_evoke_cost() {
 
 /// A test-only free instant: "At the beginning of the next upkeep, you draw a card." Isolates
 /// the delayed-trigger primitive from Arcane Denial's counter half.
-const SCHEDULE_DRAW_ONE: CardDef = sorcery(
-    "Schedule Draw One (test)",
-    &[spell_ability(Effect::Misc(
-        MiscEffect::ScheduleAtNextUpkeep {
-            who: DelayController::You,
-            then: &Effect::Draw(DrawEffect::Cards {
-                count: Amount::Fixed(1),
-            }),
-            fire_at: Step::Upkeep,
-        },
-    ))],
-);
+fn schedule_draw_one() -> CardDef {
+    static CARD: LazyLock<CardDef> = LazyLock::new(|| {
+        sorcery(
+            "Schedule Draw One (test)",
+            Box::leak(Box::new([spell_ability(Effect::Misc(
+                MiscEffect::ScheduleAtNextUpkeep {
+                    who: DelayController::You,
+                    then: &Effect::Draw(DrawEffect::Cards {
+                        count: Amount::Fixed(1),
+                    }),
+                    fire_at: Step::Upkeep,
+                },
+            ))])),
+        )
+    });
+    CARD.clone()
+}
 
 #[test]
 fn schedule_at_next_upkeep_fires_once_at_next_upkeep() {
     let mut game = TestGame::new();
-    let spell = game.spawn_in_hand(PlayerId(0), SCHEDULE_DRAW_ONE);
+    let spell = game.spawn_in_hand(PlayerId(0), schedule_draw_one());
     let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
     game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
 
@@ -26836,18 +26883,23 @@ fn arcane_denial_controller_may_draw_up_to_two_at_next_upkeep() {
 
 /// A test-only free instant: "At the beginning of the next upkeep, you may draw up to two cards."
 /// Isolates the declinable-draw count pause from Arcane Denial's counter half.
-const SCHEDULE_MAY_DRAW_UP_TO_TWO: CardDef = sorcery(
-    "Schedule May Draw Up To Two (test)",
-    &[spell_ability(Effect::Misc(
-        MiscEffect::ScheduleAtNextUpkeep {
-            who: DelayController::You,
-            then: &Effect::Choice(ChoiceEffect::MayDrawUpTo {
-                count: Amount::Fixed(2),
-            }),
-            fire_at: Step::Upkeep,
-        },
-    ))],
-);
+fn schedule_may_draw_up_to_two() -> CardDef {
+    static CARD: LazyLock<CardDef> = LazyLock::new(|| {
+        sorcery(
+            "Schedule May Draw Up To Two (test)",
+            Box::leak(Box::new([spell_ability(Effect::Misc(
+                MiscEffect::ScheduleAtNextUpkeep {
+                    who: DelayController::You,
+                    then: &Effect::Choice(ChoiceEffect::MayDrawUpTo {
+                        count: Amount::Fixed(2),
+                    }),
+                    fire_at: Step::Upkeep,
+                },
+            ))])),
+        )
+    });
+    CARD.clone()
+}
 
 /// Roll a just-cast [`SCHEDULE_MAY_DRAW_UP_TO_TWO`] to its next-upkeep firing and resolve the
 /// delayed trigger, leaving the game paused on P0's `MayDrawUpTo` count choice (max 2).
@@ -26872,7 +26924,7 @@ fn reach_may_draw_up_to_pause(game: &mut Game) {
 #[test]
 fn may_draw_up_to_lets_the_player_draw_fewer_than_the_maximum() {
     let mut game = TestGame::new();
-    let spell = game.spawn_in_hand(PlayerId(0), SCHEDULE_MAY_DRAW_UP_TO_TWO);
+    let spell = game.spawn_in_hand(PlayerId(0), schedule_may_draw_up_to_two());
     let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
     game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
 
@@ -26905,7 +26957,7 @@ fn may_draw_up_to_lets_the_player_draw_fewer_than_the_maximum() {
 #[test]
 fn may_draw_up_to_zero_draws_nothing() {
     let mut game = TestGame::new();
-    let spell = game.spawn_in_hand(PlayerId(0), SCHEDULE_MAY_DRAW_UP_TO_TWO);
+    let spell = game.spawn_in_hand(PlayerId(0), schedule_may_draw_up_to_two());
     game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
     game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
 
@@ -26931,7 +26983,7 @@ fn may_draw_up_to_zero_draws_nothing() {
 #[test]
 fn may_draw_up_to_rejects_an_over_draw() {
     let mut game = TestGame::new();
-    let spell = game.spawn_in_hand(PlayerId(0), SCHEDULE_MAY_DRAW_UP_TO_TWO);
+    let spell = game.spawn_in_hand(PlayerId(0), schedule_may_draw_up_to_two());
     game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
     game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
 
@@ -31974,21 +32026,26 @@ fn deadly_brew_skips_return_when_caster_sacrificed_nothing() {
 
 // A `may_return_from_graveyard` rider with no `if_you_sacrificed_this_way` gate (the default),
 // proving other consumers (Witch of the Moors, Witherbloom Command) are unaffected.
-const MAY_RETURN_UNGATED: CardDef = sorcery(
-    "May Return Ungated",
-    &[spell_ability(Effect::Choice(
-        ChoiceEffect::MayReturnFromGraveyard {
-            filter: CardFilter::Permanent,
-            if_you_sacrificed_this_way: false,
-        },
-    ))],
-);
+fn may_return_ungated() -> CardDef {
+    static CARD: LazyLock<CardDef> = LazyLock::new(|| {
+        sorcery(
+            "May Return Ungated",
+            Box::leak(Box::new([spell_ability(Effect::Choice(
+                ChoiceEffect::MayReturnFromGraveyard {
+                    filter: CardFilter::Permanent,
+                    if_you_sacrificed_this_way: false,
+                },
+            ))])),
+        )
+    });
+    CARD.clone()
+}
 
 #[test]
 fn may_return_ungated_default_unchanged() {
     let mut game = Game::new();
     let in_graveyard = game.spawn_in_graveyard(PlayerId(0), VANILLA);
-    let spell = game.spawn_in_hand(PlayerId(0), MAY_RETURN_UNGATED);
+    let spell = game.spawn_in_hand(PlayerId(0), may_return_ungated());
 
     cast_and_resolve(&mut game, spell, None);
 
@@ -39843,20 +39900,27 @@ fn an_ordinary_token_imposes_no_must_attack_requirement() {
 
 /// A test-only sorcery combining `must_attack_defender` with `TokenController::You` (not
 /// `one_per_opponent`) — the still-flattened path every non-Furygale must-attack token takes.
-const MAKE_FORCED_TOKEN_YOU: CardDef = sorcery(
-    "Make Forced Token (test)",
-    &[spell_ability(Effect::Token(TokenEffect::Create {
-        token: creature("Forced Token", 2, 2, &[Keyword::Haste]),
-        count: Amount::Fixed(1),
-        controller: TokenController::You,
-        enters_with: Amount::Fixed(0),
-        set_base_pt: None,
-        exile_at_next_end_step: false,
-        enters_tapped_and_attacking: false,
-        attacking_context: None,
-        must_attack_defender: true,
-    }))],
-);
+fn make_forced_token_you() -> CardDef {
+    static CARD: LazyLock<CardDef> = LazyLock::new(|| {
+        sorcery(
+            "Make Forced Token (test)",
+            Box::leak(Box::new([spell_ability(Effect::Token(
+                TokenEffect::Create {
+                    token: creature("Forced Token", 2, 2, &[Keyword::Haste]),
+                    count: Amount::Fixed(1),
+                    controller: TokenController::You,
+                    enters_with: Amount::Fixed(0),
+                    set_base_pt: None,
+                    exile_at_next_end_step: false,
+                    enters_tapped_and_attacking: false,
+                    attacking_context: None,
+                    must_attack_defender: true,
+                },
+            ))])),
+        )
+    });
+    CARD.clone()
+}
 
 #[test]
 fn a_must_attack_token_under_token_controller_you_still_binds_to_the_single_flattened_opponent() {
@@ -39865,7 +39929,7 @@ fn a_must_attack_token_under_token_controller_you_still_binds_to_the_single_flat
     // *an* opponent of the controller, not scoped per-recipient.
     let mut game = Game::with_players(3, 0);
     game.fund_mana(PlayerId(0));
-    let spell = game.spawn_in_hand(PlayerId(0), MAKE_FORCED_TOKEN_YOU);
+    let spell = game.spawn_in_hand(PlayerId(0), make_forced_token_you());
     game.submit(Intent::Cast {
         player: PlayerId(0),
         object: spell,
@@ -39906,20 +39970,27 @@ fn a_must_attack_token_under_token_controller_you_still_binds_to_the_single_flat
 /// opponent this turn if able" — `must_attack_defender` combined with `one_per_opponent`
 /// (Furygale Flocking): each opponent's own pair is bound to that specific opponent, not a
 /// single flattened one.
-const MAKE_FORCED_TOKENS_PER_OPPONENT: CardDef = sorcery(
-    "Make Forced Tokens Per Opponent (test)",
-    &[spell_ability(Effect::Token(TokenEffect::Create {
-        token: creature("Forced Token", 2, 2, &[Keyword::Haste]),
-        count: Amount::Fixed(2),
-        controller: TokenController::OnePerOpponent,
-        enters_with: Amount::Fixed(0),
-        set_base_pt: None,
-        exile_at_next_end_step: false,
-        enters_tapped_and_attacking: false,
-        attacking_context: None,
-        must_attack_defender: true,
-    }))],
-);
+fn make_forced_tokens_per_opponent() -> CardDef {
+    static CARD: LazyLock<CardDef> = LazyLock::new(|| {
+        sorcery(
+            "Make Forced Tokens Per Opponent (test)",
+            Box::leak(Box::new([spell_ability(Effect::Token(
+                TokenEffect::Create {
+                    token: creature("Forced Token", 2, 2, &[Keyword::Haste]),
+                    count: Amount::Fixed(2),
+                    controller: TokenController::OnePerOpponent,
+                    enters_with: Amount::Fixed(0),
+                    set_base_pt: None,
+                    exile_at_next_end_step: false,
+                    enters_tapped_and_attacking: false,
+                    attacking_context: None,
+                    must_attack_defender: true,
+                },
+            ))])),
+        )
+    });
+    CARD.clone()
+}
 
 #[test]
 fn furygale_flocking_creates_two_tokens_per_opponent_each_forced_at_that_opponent() {
@@ -39928,7 +39999,7 @@ fn furygale_flocking_creates_two_tokens_per_opponent_each_forced_at_that_opponen
     // single flattened opponent shared by all four tokens.
     let mut game = Game::with_players(3, 0);
     game.fund_mana(PlayerId(0));
-    let spell = game.spawn_in_hand(PlayerId(0), MAKE_FORCED_TOKENS_PER_OPPONENT);
+    let spell = game.spawn_in_hand(PlayerId(0), make_forced_tokens_per_opponent());
     game.submit(Intent::Cast {
         player: PlayerId(0),
         object: spell,
@@ -45698,104 +45769,107 @@ fn spirit_of_resilience_only_offers_artifact_or_creature_cards() {
 /// Kirol, History Buff's back face — Pack a Punch ({1}{R}{W} sorcery): "Mill a card. Put two
 /// +1/+1 counters on target creature. It gains trample until end of turn." One resolution
 /// (a `Sequence`) whose counters and trample hit the same chosen creature.
-static PACK_A_PUNCH: CardDef = CardDef {
-    name: "Pack a Punch",
-    id: "",
-    default_print: "",
-    cost: Cost {
-        generic: 1,
-        colored: [1, 0, 0, 1, 0], // {W}{R}
-        ..Cost::FREE
-    },
-    kind: CardKind::Spell {
-        speed: SpellSpeed::Sorcery,
-    },
-    legendary: false,
-    uncounterable: false,
-    modal: false,
-    modal_choose: 1,
-    modal_choose_max: None,
-    modal_choose_max_if_commander: false,
-    identity_pips: &[],
-    colors: &[],
-    devoid: false,
-    enters_tapped: false,
-    enters_tapped_unless: None,
-    free_cast_if: None,
-    alternative_cost: None,
-    cast_only_during_combat: false,
-    approximates: None,
-    oracle: None,
-    set: "",
-    subtypes: &[],
-    otags: &[],
-    keywords: &[],
-    conditional_keywords: &[],
-    abilities: &[Ability {
-        timing: Timing::Spell,
-        effect: Effect::Sequence {
-            steps: &[
-                Effect::Mill(MillEffect::MillSelf {
-                    count: Amount::Fixed(1),
-                }),
-                Effect::Counters(CountersEffect::PutCounters {
-                    count: Amount::Fixed(2),
-                    target: TargetSpec::Creature,
-                    targets: TargetCount {
-                        min: 1,
-                        max: 1,
-                        x_scaled: false,
-                        sacrifice_scaled: false,
-                        strive_scaled: false,
-                    },
-                    kind: None,
-                    divided: false,
-                }),
-                Effect::Pump(PumpEffect::PumpUntilEndOfTurn {
-                    power: Amount::Fixed(0),
-                    toughness: Amount::Fixed(0),
-                    target: TargetSpec::Creature,
-                    keywords: &[Keyword::Trample],
-                }),
-            ],
+fn pack_a_punch() -> CardDef {
+    static CARD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
+        name: "Pack a Punch",
+        id: "",
+        default_print: "",
+        cost: Cost {
+            generic: 1,
+            colored: [1, 0, 0, 1, 0], // {W}{R}
+            ..Cost::FREE
         },
-        optional: false,
-        min_level: 0,
-        once_each_turn: false,
-        condition: None,
-        cost: Cost::FREE,
-    }],
-    cycling: None,
-    cycling_sacrifice: SacrificeCost::None,
-    flashback: None,
-    echo: None,
-    cumulative_upkeep: None,
-    recover: None,
-    bestow: None,
-    morph: None,
-    evoke: None,
-    delve: false,
-    escape: None,
-    retrace: false,
-    graveyard_cast_cost: None,
-    cascade: false,
-    functions_in_graveyard: false,
-    enchant: None,
-    enchant_graveyard: false,
-    back: None,
-    adventure: None,
-    halves: &[],
-    suspend: None,
-    vanishing: None,
-    devour: None,
-    demonstrate: false,
-    enter_as_copy: None,
-    encore: None,
-    hand_ability: &[],
-    forecast: None,
-    may_choose_not_to_untap: false,
-    dredge: None,
-};
+        kind: CardKind::Spell {
+            speed: SpellSpeed::Sorcery,
+        },
+        legendary: false,
+        uncounterable: false,
+        modal: false,
+        modal_choose: 1,
+        modal_choose_max: None,
+        modal_choose_max_if_commander: false,
+        identity_pips: &[],
+        colors: &[],
+        devoid: false,
+        enters_tapped: false,
+        enters_tapped_unless: None,
+        free_cast_if: None,
+        alternative_cost: None,
+        cast_only_during_combat: false,
+        approximates: None,
+        oracle: None,
+        set: "",
+        subtypes: &[],
+        otags: &[],
+        keywords: &[],
+        conditional_keywords: &[],
+        abilities: Box::leak(Box::new([Ability {
+            timing: Timing::Spell,
+            effect: Effect::Sequence {
+                steps: Arc::from([
+                    Effect::Mill(MillEffect::MillSelf {
+                        count: Amount::Fixed(1),
+                    }),
+                    Effect::Counters(CountersEffect::PutCounters {
+                        count: Amount::Fixed(2),
+                        target: TargetSpec::Creature,
+                        targets: TargetCount {
+                            min: 1,
+                            max: 1,
+                            x_scaled: false,
+                            sacrifice_scaled: false,
+                            strive_scaled: false,
+                        },
+                        kind: None,
+                        divided: false,
+                    }),
+                    Effect::Pump(PumpEffect::PumpUntilEndOfTurn {
+                        power: Amount::Fixed(0),
+                        toughness: Amount::Fixed(0),
+                        target: TargetSpec::Creature,
+                        keywords: &[Keyword::Trample],
+                    }),
+                ]),
+            },
+            optional: false,
+            min_level: 0,
+            once_each_turn: false,
+            condition: None,
+            cost: Cost::FREE,
+        }])),
+        cycling: None,
+        cycling_sacrifice: SacrificeCost::None,
+        flashback: None,
+        echo: None,
+        cumulative_upkeep: None,
+        recover: None,
+        bestow: None,
+        morph: None,
+        evoke: None,
+        delve: false,
+        escape: None,
+        retrace: false,
+        graveyard_cast_cost: None,
+        cascade: false,
+        functions_in_graveyard: false,
+        enchant: None,
+        enchant_graveyard: false,
+        back: None,
+        adventure: None,
+        halves: &[],
+        suspend: None,
+        vanishing: None,
+        devour: None,
+        demonstrate: false,
+        enter_as_copy: None,
+        encore: None,
+        hand_ability: &[],
+        forecast: None,
+        may_choose_not_to_untap: false,
+        dredge: None,
+    });
+    CARD.clone()
+}
 
 /// Kirol, History Buff's front face: a 2/3 legendary Vampire Cleric that becomes prepared
 /// whenever one or more cards leave its controller's graveyard, carrying Pack a Punch as its
@@ -45869,7 +45943,7 @@ fn kirol() -> CardDef {
         functions_in_graveyard: false,
         enchant: None,
         enchant_graveyard: false,
-        back: Some(intern_card_def(PACK_A_PUNCH.clone())),
+        back: Some(intern_card_def(pack_a_punch())),
         adventure: None,
         halves: &[],
         suspend: None,
@@ -48342,7 +48416,7 @@ fn firemane_commando_lets_attacker_draw_when_they_dont_attack_you() {
 // ── Planeswalkers & loyalty abilities (CR 606) ───────────────────────────────────────
 
 /// A loyalty ability at sorcery speed with no other cost: its only cost is the loyalty change.
-const fn loyalty_ability(loyalty: i32, effect: Effect) -> Ability {
+fn loyalty_ability(loyalty: i32, effect: Effect) -> Ability {
     Ability {
         timing: Timing::Activated(ActivationCost {
             taps_self: false,
@@ -48372,7 +48446,21 @@ const fn loyalty_ability(loyalty: i32, effect: Effect) -> Ability {
 }
 
 /// A test planeswalker with a `+1` (gain 2 life) and a `−2` (gain 5 life) loyalty ability.
-const fn test_planeswalker(name: &'static str, loyalty: i32) -> CardDef {
+fn test_planeswalker(name: &'static str, loyalty: i32) -> CardDef {
+    let abilities: &'static [Ability] = Box::leak(Box::new([
+        loyalty_ability(
+            1,
+            Effect::Life(LifeEffect::Gain {
+                amount: Amount::Fixed(2),
+            }),
+        ),
+        loyalty_ability(
+            -2,
+            Effect::Life(LifeEffect::Gain {
+                amount: Amount::Fixed(5),
+            }),
+        ),
+    ]));
     CardDef {
         name,
         id: "",
@@ -48400,7 +48488,7 @@ const fn test_planeswalker(name: &'static str, loyalty: i32) -> CardDef {
         otags: &[],
         keywords: &[],
         conditional_keywords: &[],
-        abilities: &PW_ABILITIES,
+        abilities,
         cycling: None,
         cycling_sacrifice: SacrificeCost::None,
         flashback: None,
@@ -48433,20 +48521,6 @@ const fn test_planeswalker(name: &'static str, loyalty: i32) -> CardDef {
         dredge: None,
     }
 }
-
-const PW_PLUS1: Ability = loyalty_ability(
-    1,
-    Effect::Life(LifeEffect::Gain {
-        amount: Amount::Fixed(2),
-    }),
-);
-const PW_MINUS2: Ability = loyalty_ability(
-    -2,
-    Effect::Life(LifeEffect::Gain {
-        amount: Amount::Fixed(5),
-    }),
-);
-const PW_ABILITIES: [Ability; 2] = [PW_PLUS1, PW_MINUS2];
 
 const PLUS1: usize = 0;
 const MINUS2: usize = 1;
@@ -53728,14 +53802,16 @@ fn magecraft_makes_a_treasure_with_storm_kiln_artist_out() {
 }
 
 /// The one ability shared by every [`instant_with_mana_value`] test spell.
-const INSTANT_DRAW_ABILITY: [Ability; 1] = [spell_ability(Effect::Draw(DrawEffect::Cards {
-    count: Amount::Fixed(1),
-}))];
+static INSTANT_DRAW_ABILITIES: LazyLock<&'static [Ability]> = LazyLock::new(|| {
+    Box::leak(Box::new([spell_ability(Effect::Draw(DrawEffect::Cards {
+        count: Amount::Fixed(1),
+    }))]))
+});
 
 /// A test-only instant "Draw a card." with a chosen generic cost — isolates a specific mana
 /// value for a `Trigger::CastSpell` payoff that reads the triggering spell's mana value
 /// (Prismari Pianist, Renegade Bull) without depending on a real pool card's printed cost.
-const fn instant_with_mana_value(generic: u8) -> CardDef {
+fn instant_with_mana_value(generic: u8) -> CardDef {
     CardDef {
         name: "Test Instant",
         id: "",
@@ -53768,7 +53844,7 @@ const fn instant_with_mana_value(generic: u8) -> CardDef {
         otags: &[],
         keywords: &[],
         conditional_keywords: &[],
-        abilities: &INSTANT_DRAW_ABILITY,
+        abilities: *INSTANT_DRAW_ABILITIES,
         cycling: None,
         cycling_sacrifice: SacrificeCost::None,
         flashback: None,
@@ -53806,7 +53882,7 @@ const fn instant_with_mana_value(generic: u8) -> CardDef {
 /// cast whose mana *spent* (the fixed pip plus the chosen `{X}`) diverges from its mana *value*
 /// (CR 202.3b: `{X}` counts as 0 outside the stack) for `Amount::TriggeringSpellManaSpent` probes
 /// (Manaform Hellkite).
-const fn instant_with_generic_and_x(generic: u8) -> CardDef {
+fn instant_with_generic_and_x(generic: u8) -> CardDef {
     CardDef {
         name: "Test X Instant",
         id: "",
@@ -53840,7 +53916,7 @@ const fn instant_with_generic_and_x(generic: u8) -> CardDef {
         otags: &[],
         keywords: &[],
         conditional_keywords: &[],
-        abilities: &INSTANT_DRAW_ABILITY,
+        abilities: *INSTANT_DRAW_ABILITIES,
         cycling: None,
         cycling_sacrifice: SacrificeCost::None,
         flashback: None,
@@ -55535,97 +55611,100 @@ fn laelia_grows_when_cards_exiled_from_your_library_or_graveyard() {
 
 /// A 2/2 modeled on Atsushi's dies trigger: "When this dies, choose one — exile the top two
 /// cards, you may play them • create three Treasures." The mode is chosen at resolution.
-const MODAL_DRAGON: CardDef = CardDef {
-    name: "Modal Dragon (test)",
-    id: "",
-    default_print: "",
-    cost: Cost::FREE,
-    kind: CardKind::Creature {
-        power: 2,
-        toughness: 2,
-        also: TypeSet::NONE,
-    },
-    legendary: false,
-    uncounterable: false,
-    modal: false,
-    modal_choose: 1,
-    modal_choose_max: None,
-    modal_choose_max_if_commander: false,
-    identity_pips: &[],
-    colors: &[],
-    devoid: false,
-    enters_tapped: false,
-    enters_tapped_unless: None,
-    free_cast_if: None,
-    alternative_cost: None,
-    cast_only_during_combat: false,
-    approximates: None,
-    oracle: None,
-    set: "",
-    subtypes: &[],
-    otags: &[],
-    keywords: &[],
-    conditional_keywords: &[],
-    abilities: &[Ability {
-        timing: Timing::Triggered(Trigger::Dies),
-        effect: Effect::ChooseOne {
-            options: &[
-                Effect::Mill(MillEffect::ExileTopMayPlay {
-                    count: Amount::Fixed(2),
-                    until_next_turn: false,
-                    face_down: false,
-                    free_while_source: false,
-                }),
-                Effect::Token(TokenEffect::CreateTreasure {
-                    count: Amount::Fixed(3),
-                    target_player: false,
-                    tapped: false,
-                }),
-            ],
-        },
-        optional: false,
-        min_level: 0,
-        once_each_turn: false,
-        condition: None,
+fn modal_dragon() -> CardDef {
+    static CARD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
+        name: "Modal Dragon (test)",
+        id: "",
+        default_print: "",
         cost: Cost::FREE,
-    }],
-    cycling: None,
-    cycling_sacrifice: SacrificeCost::None,
-    flashback: None,
-    echo: None,
-    cumulative_upkeep: None,
-    recover: None,
-    bestow: None,
-    morph: None,
-    evoke: None,
-    delve: false,
-    escape: None,
-    retrace: false,
-    graveyard_cast_cost: None,
-    cascade: false,
-    functions_in_graveyard: false,
-    enchant: None,
-    enchant_graveyard: false,
-    back: None,
-    adventure: None,
-    halves: &[],
-    suspend: None,
-    vanishing: None,
-    devour: None,
-    demonstrate: false,
-    enter_as_copy: None,
-    encore: None,
-    hand_ability: &[],
-    forecast: None,
-    may_choose_not_to_untap: false,
-    dredge: None,
-};
+        kind: CardKind::Creature {
+            power: 2,
+            toughness: 2,
+            also: TypeSet::NONE,
+        },
+        legendary: false,
+        uncounterable: false,
+        modal: false,
+        modal_choose: 1,
+        modal_choose_max: None,
+        modal_choose_max_if_commander: false,
+        identity_pips: &[],
+        colors: &[],
+        devoid: false,
+        enters_tapped: false,
+        enters_tapped_unless: None,
+        free_cast_if: None,
+        alternative_cost: None,
+        cast_only_during_combat: false,
+        approximates: None,
+        oracle: None,
+        set: "",
+        subtypes: &[],
+        otags: &[],
+        keywords: &[],
+        conditional_keywords: &[],
+        abilities: Box::leak(Box::new([Ability {
+            timing: Timing::Triggered(Trigger::Dies),
+            effect: Effect::ChooseOne {
+                options: Arc::from([
+                    Effect::Mill(MillEffect::ExileTopMayPlay {
+                        count: Amount::Fixed(2),
+                        until_next_turn: false,
+                        face_down: false,
+                        free_while_source: false,
+                    }),
+                    Effect::Token(TokenEffect::CreateTreasure {
+                        count: Amount::Fixed(3),
+                        target_player: false,
+                        tapped: false,
+                    }),
+                ]),
+            },
+            optional: false,
+            min_level: 0,
+            once_each_turn: false,
+            condition: None,
+            cost: Cost::FREE,
+        }])),
+        cycling: None,
+        cycling_sacrifice: SacrificeCost::None,
+        flashback: None,
+        echo: None,
+        cumulative_upkeep: None,
+        recover: None,
+        bestow: None,
+        morph: None,
+        evoke: None,
+        delve: false,
+        escape: None,
+        retrace: false,
+        graveyard_cast_cost: None,
+        cascade: false,
+        functions_in_graveyard: false,
+        enchant: None,
+        enchant_graveyard: false,
+        back: None,
+        adventure: None,
+        halves: &[],
+        suspend: None,
+        vanishing: None,
+        devour: None,
+        demonstrate: false,
+        enter_as_copy: None,
+        encore: None,
+        hand_ability: &[],
+        forecast: None,
+        may_choose_not_to_untap: false,
+        dredge: None,
+    });
+    CARD.clone()
+}
 
 /// Put `MODAL_DRAGON` onto the battlefield, kill it with Shock, and resolve until its dies
 /// trigger pauses on the mode choice. Returns the dragon's controller. (CR 108.3, CR 403.5, CR 603)
 fn kill_modal_dragon(game: &mut Game) {
     game.fund_mana(PlayerId(0));
-    let dragon = game.spawn_on_battlefield(PlayerId(0), MODAL_DRAGON);
+    let dragon = game.spawn_on_battlefield(PlayerId(0), modal_dragon());
     let shock = game.spawn_in_hand(PlayerId(0), card("Shock")); // 2 damage — lethal to the 2/2.
     game.submit(Intent::Cast {
         player: PlayerId(0),
@@ -55750,18 +55829,25 @@ fn atsushi_dies_trigger_offers_a_two_mode_choose_one() {
 // ── Discard trigger (CR 701.8) — "whenever you discard a card" ─────────────────────────
 
 /// A test-only sorcery whose one effect discards a single card (Effect::Choice(ChoiceEffect::Discard)).
-const DISCARD_ONE: CardDef = sorcery(
-    "Discard One",
-    &[spell_ability(Effect::Choice(ChoiceEffect::Discard {
-        count: 1,
-        target_player: false,
-        or_one_matching: None,
-    }))],
-);
+fn discard_one_spell() -> CardDef {
+    static CARD: LazyLock<CardDef> = LazyLock::new(|| {
+        sorcery(
+            "Discard One",
+            Box::leak(Box::new([spell_ability(Effect::Choice(
+                ChoiceEffect::Discard {
+                    count: 1,
+                    target_player: false,
+                    or_one_matching: None,
+                },
+            ))])),
+        )
+    });
+    CARD.clone()
+}
 
 /// Cast `DISCARD_ONE` and answer its `DiscardCards` pause by discarding `target_card`.
 fn discard_one(game: &mut Game, target_card: ObjectId) {
-    let spell = game.spawn_in_hand(PlayerId(0), DISCARD_ONE);
+    let spell = game.spawn_in_hand(PlayerId(0), discard_one_spell());
     game.submit(Intent::Cast {
         player: PlayerId(0),
         object: spell,
@@ -57689,20 +57775,27 @@ fn spells_cast_this_turn_tallies_and_resets_next_turn() {
 
 /// A test-only sorcery "Create a 1/1 Squirrel creature token." — used to prove a minted token
 /// never picks up Gorma's nontoken-only entering bonus.
-const MAKE_TOKEN_SQUIRREL: CardDef = sorcery(
-    "Make Squirrel (test)",
-    &[spell_ability(Effect::Token(TokenEffect::Create {
-        token: creature("Squirrel", 1, 1, &[]),
-        count: Amount::Fixed(1),
-        controller: TokenController::You,
-        enters_with: Amount::Fixed(0),
-        set_base_pt: None,
-        exile_at_next_end_step: false,
-        enters_tapped_and_attacking: false,
-        attacking_context: None,
-        must_attack_defender: false,
-    }))],
-);
+fn make_token_squirrel() -> CardDef {
+    static CARD: LazyLock<CardDef> = LazyLock::new(|| {
+        sorcery(
+            "Make Squirrel (test)",
+            Box::leak(Box::new([spell_ability(Effect::Token(
+                TokenEffect::Create {
+                    token: creature("Squirrel", 1, 1, &[]),
+                    count: Amount::Fixed(1),
+                    controller: TokenController::You,
+                    enters_with: Amount::Fixed(0),
+                    set_base_pt: None,
+                    exile_at_next_end_step: false,
+                    enters_tapped_and_attacking: false,
+                    attacking_context: None,
+                    must_attack_defender: false,
+                },
+            ))])),
+        )
+    });
+    CARD.clone()
+}
 
 #[test]
 fn gorma_grants_enter_counters_to_other_nontoken_creatures() {
@@ -57788,7 +57881,7 @@ fn gorma_bonus_excludes_tokens() {
         resolve_top_of_stack(&mut game);
     }
 
-    let spell = game.spawn_in_hand(PlayerId(0), MAKE_TOKEN_SQUIRREL);
+    let spell = game.spawn_in_hand(PlayerId(0), make_token_squirrel());
     game.cast(spell).submit();
     let events = resolve_top_of_stack_events(&mut game);
     let token = events
@@ -58500,26 +58593,28 @@ fn hand_ids(game: &Game, player: PlayerId) -> Vec<ObjectId> {
 }
 
 // Faithless Looting's shape: "draw two cards, then discard two cards" — one resolution.
-const LOOT: CardDef = sorcery(
-    "Loot",
-    &[spell_ability(Effect::Sequence {
-        steps: &[
-            Effect::Draw(DrawEffect::Cards {
-                count: Amount::Fixed(2),
-            }),
-            Effect::Choice(ChoiceEffect::Discard {
-                count: 2,
-                target_player: false,
-                or_one_matching: None,
-            }),
-        ],
-    })],
-);
+fn loot() -> CardDef {
+    sorcery(
+        "Loot",
+        Box::leak(Box::new([spell_ability(Effect::Sequence {
+            steps: Arc::from([
+                Effect::Draw(DrawEffect::Cards {
+                    count: Amount::Fixed(2),
+                }),
+                Effect::Choice(ChoiceEffect::Discard {
+                    count: 2,
+                    target_player: false,
+                    or_one_matching: None,
+                }),
+            ]),
+        })])),
+    )
+}
 
 #[test]
 fn a_sequence_draws_then_pauses_to_discard_the_drawn_cards() {
     let mut game = TestGame::new();
-    let loot = game.spawn_in_hand(PlayerId(0), LOOT);
+    let loot = game.spawn_in_hand(PlayerId(0), loot());
     let lib = game.stack_library(
         PlayerId(0),
         &[card("Shock"), card("Forest"), card("Grizzly Bear")],
@@ -58829,22 +58924,24 @@ fn brainstorm_clamps_to_hand_size_when_hand_is_smaller_than_count() {
 
 // Prismari Charm mode 0's shape: "surveil 2, then draw a card" — the draw is deferred past
 // the surveil's pause and runs only once the surveil choice is answered.
-const SURVEIL_THEN_DRAW: CardDef = sorcery(
-    "Surveil Then Draw",
-    &[spell_ability(Effect::Sequence {
-        steps: &[
-            Effect::Dig(DigEffect::Surveil { count: 2 }),
-            Effect::Draw(DrawEffect::Cards {
-                count: Amount::Fixed(1),
-            }),
-        ],
-    })],
-);
+fn surveil_then_draw() -> CardDef {
+    sorcery(
+        "Surveil Then Draw",
+        Box::leak(Box::new([spell_ability(Effect::Sequence {
+            steps: Arc::from([
+                Effect::Dig(DigEffect::Surveil { count: 2 }),
+                Effect::Draw(DrawEffect::Cards {
+                    count: Amount::Fixed(1),
+                }),
+            ]),
+        })])),
+    )
+}
 
 #[test]
 fn a_sequence_defers_the_rest_until_a_pausing_step_is_answered() {
     let mut game = TestGame::new();
-    let spell = game.spawn_in_hand(PlayerId(0), SURVEIL_THEN_DRAW);
+    let spell = game.spawn_in_hand(PlayerId(0), surveil_then_draw());
     let lib = game.stack_library(
         PlayerId(0),
         &[card("Shock"), card("Forest"), card("Grizzly Bear")],
@@ -67229,17 +67326,19 @@ fn staff_of_the_storyteller_accrues_one_story_counter_when_you_create_creature_t
 /// A Treasure is an artifact token, not a creature token — Staff's accrual trigger doesn't fire.
 #[test]
 fn staff_of_the_storyteller_does_not_accrue_from_a_noncreature_token() {
-    const MAKE_TREASURE: CardDef = sorcery(
+    let make_treasure = sorcery(
         "Make Treasure (test)",
-        &[spell_ability(Effect::Token(TokenEffect::CreateTreasure {
-            count: Amount::Fixed(1),
-            target_player: false,
-            tapped: false,
-        }))],
+        Box::leak(Box::new([spell_ability(Effect::Token(
+            TokenEffect::CreateTreasure {
+                count: Amount::Fixed(1),
+                target_player: false,
+                tapped: false,
+            },
+        ))])),
     );
     let mut g = TestGame::new();
     let staff = g.spawn_on_battlefield(PlayerId(0), card("Staff of the Storyteller"));
-    let treasure = g.spawn_in_hand(PlayerId(0), MAKE_TREASURE);
+    let treasure = g.spawn_in_hand(PlayerId(0), make_treasure);
     g.cast(treasure).resolve();
 
     assert_eq!(
@@ -68097,31 +68196,34 @@ fn proliferate_rejects_choosing_the_same_permanent_twice() {
 
 /// A test-only instant whose sole effect moves all +1/+1 counters from `target` (chosen at
 /// cast) onto a second nonland permanent you control (chosen at resolution).
-const MOVE_ALL_PLUS_COUNTERS: CardDef = CardDef {
-    name: "Move All Plus Counters (test)",
-    id: "",
-    default_print: "",
-    kind: CardKind::Spell {
-        speed: SpellSpeed::Instant,
-    },
-    abilities: &[Ability {
-        effect: Effect::Counters(CountersEffect::MoveCounters {
-            target: TargetSpec::Permanent(PermanentFilter {
-                controller: FilterController::You,
-                ..PermanentFilter::of(TypeSet::NONLAND)
+fn move_all_plus_counters() -> CardDef {
+    static CARD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
+        name: "Move All Plus Counters (test)",
+        id: "",
+        default_print: "",
+        kind: CardKind::Spell {
+            speed: SpellSpeed::Instant,
+        },
+        abilities: Box::leak(Box::new([Ability {
+            effect: Effect::Counters(CountersEffect::MoveCounters {
+                target: TargetSpec::Permanent(PermanentFilter {
+                    controller: FilterController::You,
+                    ..PermanentFilter::of(TypeSet::NONLAND)
+                }),
+                to_filter: PermanentFilter {
+                    controller: FilterController::You,
+                    ..PermanentFilter::of(TypeSet::NONLAND)
+                },
+                all_kinds: false,
+                distributed: false,
+                from: None,
             }),
-            to_filter: PermanentFilter {
-                controller: FilterController::You,
-                ..PermanentFilter::of(TypeSet::NONLAND)
-            },
-            all_kinds: false,
-            distributed: false,
-            from: None,
-        }),
-        ..spell_ability(Effect::Static(StaticEffect::NoMaximumHandSize))
-    }],
-    ..VANILLA
-};
+            ..spell_ability(Effect::Static(StaticEffect::NoMaximumHandSize))
+        }])),
+        ..VANILLA
+    });
+    CARD.clone()
+}
 
 #[test]
 fn move_counters_standalone() {
@@ -68131,7 +68233,7 @@ fn move_counters_standalone() {
     let growth = g.spawn_in_hand(PlayerId(0), GROWTH);
     g.cast(growth).at(Target::Object(a)).resolve(); // A: 2 +1/+1 counters
 
-    let spell = g.spawn_in_hand(PlayerId(0), MOVE_ALL_PLUS_COUNTERS);
+    let spell = g.spawn_in_hand(PlayerId(0), move_all_plus_counters());
     g.cast(spell).at(Target::Object(a)).resolve();
     g.submit(Intent::ChooseTargets {
         player: PlayerId(0),
@@ -70371,14 +70473,19 @@ fn ascend_grants_sticky_citys_blessing_and_gates_saproling_anthem() {
 
 /// A test-only sorcery isolating Wheel of Fortune's effect from the prepare mechanism it's
 /// paired with on naktamun_lorespinner's back face.
-const WHEEL_TEST: CardDef = sorcery(
-    "Test Wheel",
-    &[spell_ability(Effect::Choice(
-        ChoiceEffect::EachPlayerDiscardsHandThenDraws {
-            count: Amount::Fixed(7),
-        },
-    ))],
-);
+fn wheel_test() -> CardDef {
+    static CARD: LazyLock<CardDef> = LazyLock::new(|| {
+        sorcery(
+            "Test Wheel",
+            Box::leak(Box::new([spell_ability(Effect::Choice(
+                ChoiceEffect::EachPlayerDiscardsHandThenDraws {
+                    count: Amount::Fixed(7),
+                },
+            ))])),
+        )
+    });
+    CARD.clone()
+}
 
 #[test]
 fn wheel_of_fortune_each_player_discards_then_draws() {
@@ -70398,7 +70505,7 @@ fn wheel_of_fortune_each_player_discards_then_draws() {
     game.stack_library(PlayerId(1), &vec![card("Forest"); 10]);
     game.stack_library(PlayerId(2), &vec![card("Forest"); 10]);
 
-    let wheel = game.spawn_in_hand(PlayerId(0), WHEEL_TEST);
+    let wheel = game.spawn_in_hand(PlayerId(0), wheel_test());
     game.fund_mana(PlayerId(0));
     game.submit(Intent::Cast {
         player: PlayerId(0),
@@ -71463,23 +71570,28 @@ fn throes_of_chaos_cascades_on_cast() {
 /// A test-only sorcery "Create a 1/1 Squirrel token." with Demonstrate — isolates the
 /// Demonstrate rider (CR 702.147) from any card-specific body. Its ability targets nothing, so
 /// minting a copy never pauses on a CR 707.10c retarget.
-const DEMONSTRATE_TOKEN_MAKER: CardDef = CardDef {
-    demonstrate: true,
-    ..sorcery(
-        "Demonstrate Token Maker (test)",
-        &[spell_ability(Effect::Token(TokenEffect::Create {
-            token: creature("Squirrel", 1, 1, &[]),
-            count: Amount::Fixed(1),
-            controller: TokenController::You,
-            enters_with: Amount::Fixed(0),
-            set_base_pt: None,
-            exile_at_next_end_step: false,
-            enters_tapped_and_attacking: false,
-            attacking_context: None,
-            must_attack_defender: false,
-        }))],
-    )
-};
+fn demonstrate_token_maker() -> CardDef {
+    static CARD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
+        demonstrate: true,
+        ..sorcery(
+            "Demonstrate Token Maker (test)",
+            Box::leak(Box::new([spell_ability(Effect::Token(
+                TokenEffect::Create {
+                    token: creature("Squirrel", 1, 1, &[]),
+                    count: Amount::Fixed(1),
+                    controller: TokenController::You,
+                    enters_with: Amount::Fixed(0),
+                    set_base_pt: None,
+                    exile_at_next_end_step: false,
+                    enters_tapped_and_attacking: false,
+                    attacking_context: None,
+                    must_attack_defender: false,
+                },
+            ))])),
+        )
+    });
+    CARD.clone()
+}
 
 /// The live tokens on the battlefield under `player`'s control.
 fn battlefield_token_count(game: &Game, player: PlayerId) -> usize {
@@ -71494,7 +71606,7 @@ fn demonstrate_declined_copies_nothing() {
     // Demonstrate (CR 702.147): "you may copy it." A real, respondable trigger above the cast
     // spell (CR 702.147a); declining leaves just the one resolution.
     let mut game = TestGame::new();
-    let spell = game.spawn_in_hand(PlayerId(0), DEMONSTRATE_TOKEN_MAKER);
+    let spell = game.spawn_in_hand(PlayerId(0), demonstrate_token_maker());
     game.cast(spell).submit(); // demonstrate trigger goes on the stack above the sorcery
 
     let stack = game.stack();
@@ -71540,7 +71652,7 @@ fn demonstrate_copies_for_caster_and_chosen_opponent() {
     // Accepting mints a copy under the caster, then a second copy under the chosen opponent —
     // three tokens total, one batch under each controller.
     let mut game = TestGame::new();
-    let spell = game.spawn_in_hand(PlayerId(0), DEMONSTRATE_TOKEN_MAKER);
+    let spell = game.spawn_in_hand(PlayerId(0), demonstrate_token_maker());
     game.cast(spell).submit();
     resolve_top_of_stack(&mut game); // the demonstrate trigger resolves, pausing on the may
 
@@ -76500,32 +76612,33 @@ const MULTI_BOLT: CardDef = CardDef {
 /// Then copy that spell. You may choose new targets for the copy." Both steps share the one
 /// target chosen at cast (the bent spell) — the `optional` retarget writes back the FULL target
 /// set before `copy_target_spell` mints its own independent copy of it.
-const WILD_RICOCHET_RETARGET: Ability = Ability {
-    timing: Timing::Spell,
-    effect: Effect::Sequence {
-        steps: &[
-            Effect::Copy(CopyEffect::ChangeTargetOfTargetSpellOrAbility {
-                target: TargetSpec::InstantOrSorcerySpellOnStack,
-                optional: true,
-            }),
-            Effect::Copy(CopyEffect::TargetSpell),
-        ],
-    },
-    optional: false,
-    min_level: 0,
-    once_each_turn: false,
-    condition: None,
-    cost: Cost::FREE,
-};
-
 /// A synthetic Wild Ricochet: a free instant with the retarget-then-copy body above.
-const WILD_RICOCHET: CardDef = CardDef {
-    kind: CardKind::Spell {
-        speed: SpellSpeed::Instant,
-    },
-    abilities: &[WILD_RICOCHET_RETARGET],
-    ..creature("Test Wild Ricochet", 0, 0, &[])
-};
+fn wild_ricochet() -> CardDef {
+    let abilities: &'static [Ability] = Box::leak(Box::new([Ability {
+        timing: Timing::Spell,
+        effect: Effect::Sequence {
+            steps: Arc::from([
+                Effect::Copy(CopyEffect::ChangeTargetOfTargetSpellOrAbility {
+                    target: TargetSpec::InstantOrSorcerySpellOnStack,
+                    optional: true,
+                }),
+                Effect::Copy(CopyEffect::TargetSpell),
+            ]),
+        },
+        optional: false,
+        min_level: 0,
+        once_each_turn: false,
+        condition: None,
+        cost: Cost::FREE,
+    }]));
+    CardDef {
+        kind: CardKind::Spell {
+            speed: SpellSpeed::Instant,
+        },
+        abilities,
+        ..creature("Test Wild Ricochet", 0, 0, &[])
+    }
+}
 
 /// Wild Ricochet's core: retargeting a multi-target spell rewrites its FULL target set (not just
 /// a single slot), and the copy it mints afterward gets its own, independently-chosen targets.
@@ -76561,7 +76674,7 @@ fn wild_ricochet_may_retarget_a_multi_target_spell_then_copies_with_new_targets(
     .expect("two distinct legal targets, within the {0,2} range");
     let bolt = game.current_id(bolt_card);
 
-    let wr = game.spawn_in_hand(PlayerId(0), WILD_RICOCHET);
+    let wr = game.spawn_in_hand(PlayerId(0), wild_ricochet());
     game.cast(wr).at(Target::Object(bolt)).submit();
     resolve_top_of_stack(&mut game);
 
@@ -76689,7 +76802,7 @@ fn wild_ricochet_declining_retarget_leaves_original_targets() {
     .expect("two distinct legal targets, within the {0,2} range");
     let bolt = game.current_id(bolt_card);
 
-    let wr = game.spawn_in_hand(PlayerId(0), WILD_RICOCHET);
+    let wr = game.spawn_in_hand(PlayerId(0), wild_ricochet());
     game.cast(wr).at(Target::Object(bolt)).submit();
     resolve_top_of_stack(&mut game);
 

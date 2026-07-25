@@ -2565,7 +2565,7 @@ impl Game {
                 };
                 let effect = match then {
                     [only] => only.clone(),
-                    _ => Effect::Sequence { steps: then },
+                    _ => Effect::Sequence { steps: then.into() },
                 };
                 self.pending_trigger_groups.push(TriggerGroup {
                     expanded: false,
@@ -3841,7 +3841,7 @@ impl Game {
         let Effect::Sequence { steps } = effect else {
             return None;
         };
-        self.second_clause_in(steps, source, controller)
+        self.second_clause_in(steps.as_ref(), source, controller)
     }
 
     /// The first second-clause step among `steps` (recursing a gate's `then`), or `None`. See
