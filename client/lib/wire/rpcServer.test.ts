@@ -192,6 +192,8 @@ describe("dispatchRpc", () => {
       new URLSearchParams({ limit: "10.5" }),
       new URLSearchParams({ offset: "-5" }),
       new URLSearchParams({ limit: "10", offset: "NaN" }),
+      new URLSearchParams({ limit: "4294967296" }),
+      new URLSearchParams({ offset: "4294967296" }),
     ]) {
       const outcome = await dispatchRpc(["ratings", "leaderboard"], "GET", undefined, params, env);
       expect(outcome).toEqual({ kind: "json", status: 400, body: { error: "BadQuery" } });

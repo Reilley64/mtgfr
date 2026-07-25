@@ -43,11 +43,13 @@ function badQuery(): RpcOutcome {
 
 type Uint32Query = { ok: true; value: number } | { ok: false };
 
+const UINT32_MAX = 4_294_967_295;
+
 /** Parse a uint32 query param; missing/empty uses `defaultValue`, invalid values reject. */
 function parseUint32Query(raw: string | null, defaultValue: number): Uint32Query {
   if (raw === null || raw === "") return { ok: true, value: defaultValue };
   const n = Number(raw);
-  if (!Number.isInteger(n) || n < 0) return { ok: false };
+  if (!Number.isInteger(n) || n < 0 || n > UINT32_MAX) return { ok: false };
   return { ok: true, value: n };
 }
 
