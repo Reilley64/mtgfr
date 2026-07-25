@@ -2,6 +2,8 @@
 //
 // Legal stack targets are clickable while arrow-aiming (Counterspell-style). Hovering the overlay
 // emits `StackDwellChanged` when the player has priority (dwell-suppresses helpless auto-resolve).
+// Resting faces hide only for in-flight `kind: "stack"` objects — not for battlefield flights that
+// share an ability's source permanent id.
 
 import { type Attribute, type Html, html } from "foldkit/html";
 import { buttonClass } from "~/ui/buttonClass";
@@ -45,6 +47,15 @@ type StackItem = {
   label: string;
   staged: boolean;
 };
+
+/** Hide a resting stack face only while a *stack* flight owns that object id.
+ * Ability entries reuse the source permanent's id — a battlefield / from-stack flight for that
+ * permanent must not blank the ability face (ETB triggers would otherwise show only the effect
+ * caption). */
+function hideStackRestingFace(board: BoardModel, source: number): boolean {
+  const flight = board.flights.get(source);
+  return flight != null && flight.phase === "flying" && flight.kind === "stack";
+}
 
 function objectMeta(state: VisibleState, source: number): { print: string; name: string | null; cardId?: string } {
   const obj = state.objects.find((o) => o.id === source);
@@ -222,7 +233,7 @@ function pileView(
   const showHold = holdMs > 0 && !showStaged;
 
   const faces = items
-    .filter((item) => !board.hideCardIds.has(item.source))
+    .filter((item) => !hideStackRestingFace(board, item.source))
     .map((item) => {
       const isTop = item.row === items.length - 1;
       return stackFace({
@@ -315,7 +326,7 @@ function stripView(
   const showHold = holdMs > 0 && !showStaged;
 
   const faces = items
-    .filter((item) => !board.hideCardIds.has(item.source))
+    .filter((item) => !hideStackRestingFace(board, item.source))
     .map((item) => {
       const col = item.row % perRow;
       const rowY = Math.floor(item.row / perRow);
