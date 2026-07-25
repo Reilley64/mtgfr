@@ -19,6 +19,7 @@ mod chrome;
 pub mod db;
 pub mod decks;
 pub mod decks_api;
+pub mod elo;
 mod game_loop;
 pub mod grpc;
 pub mod health;
