@@ -66,6 +66,24 @@ function dataAttr(node: unknown, name: string): string | null {
   return typeof value === "string" ? value : null;
 }
 
+function attr(node: unknown, name: string): string | null {
+  if (node == null || typeof node !== "object") return null;
+  const n = node as { data?: { attrs?: Record<string, string> } };
+  const value = n.data?.attrs?.[name];
+  return typeof value === "string" ? value : null;
+}
+
+function findAttr(node: unknown, name: string, value: string): unknown | null {
+  if (attr(node, name) === value) return node;
+  if (node == null || typeof node !== "object") return null;
+  const n = node as { children?: unknown[] };
+  for (const child of n.children ?? []) {
+    const found = findAttr(child, name, value);
+    if (found != null) return found;
+  }
+  return null;
+}
+
 function findParentOfTestId(node: unknown, id: string): unknown | null {
   if (node == null || typeof node !== "object") return null;
   const n = node as { children?: unknown[] };
@@ -2280,6 +2298,13 @@ test("full board view mounts the bitmap layer", () => {
   );
 });
 
+test("full board view mounts the camera gesture host", () => {
+  liveBoardScene(
+    fullBoardModel(initialBoardModel(), gameState()),
+    Scene.expect(Scene.testId("board-camera-gesture-mount")).toExist(),
+  );
+});
+
 test("board root disables native text selection", () => {
   liveBoardScene(
     fullBoardModel(initialBoardModel(), gameState()),
@@ -2293,6 +2318,24 @@ test("full board view mounts the flight layer above the hand bar", () => {
     Scene.expect(Scene.testId("board-flight-layer")).toExist(),
     // z-30 sits above the hand bar (z-20) and below prompts (z-40).
     Scene.expect(Scene.testId("board-flight-layer")).toHaveClass("z-30"),
+  );
+});
+
+test("tiny board HUD close controls keep coarse pointer hit targets", () => {
+  const stack = Array.from({ length: 6 }, (_, index) => ({
+    controller: index % 2,
+    kind: "spell" as const,
+    label: testMessageRef(`Spell ${index}`),
+    source: 100 + index,
+  }));
+  overlayScene(
+    overlayModel({ ...initialBoardModel(), legendOpen: true, stackExpand: true }, gameState({ stack })),
+    resolveBoardCardArtMounts(0),
+    Scene.tap((sim) => {
+      expect(className(findAttr(sim.html, "aria-label", "Dismiss hint"))).toContain("hit-quiet");
+      expect(className(findAttr(sim.html, "aria-label", "Close legend"))).toContain("hit-quiet");
+      expect(className(findTestId(sim.html, "stack-collapse"))).toContain("hit-quiet");
+    }),
   );
 });
 

@@ -237,6 +237,7 @@ export const update = (
       CardArtTick: () => [model, []],
       DeckCardFlipTick: () => [model, []],
       ArtLoaded: (boardMessage) => foldBoard(model, boardMessage),
+      BoardCameraZoomed: (boardMessage) => foldBoard(model, boardMessage),
       BoardPointerDown: (boardMessage) => foldBoard(model, boardMessage),
       BoardPointerMove: (boardMessage) => foldBoard(model, boardMessage),
       BoardPointerUp: (boardMessage) => foldBoard(model, boardMessage),
