@@ -2,6 +2,7 @@
 name = "cards"
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 
 [dependencies]
 engine = { workspace = true, features = ["card-dsl"] }

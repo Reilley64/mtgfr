@@ -1,6 +1,7 @@
 {
   "name": "mtgfr-client",
   "private": true,
+  "license": "Apache-2.0",
   "type": "module",
   "scripts": {
     "gen:wire": "PATH=\"$PWD/node_modules/.bin:$PATH\" bunx --bun buf generate --template ../proto/buf.gen.yaml ../proto",
