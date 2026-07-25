@@ -89,8 +89,9 @@ above holds. Seed setup may keep today’s silent mutations.
 
 ## Testing
 
-- Fixed `master_seed` + stacked library where A and B differ in land count →
-  kept hand is the closer-to-expected sample; `op_iteration` advances by 2.
+- Fixed `master_seed` + stacked library (`len >= 2`) where A and B differ in
+  land count → kept hand is the closer-to-expected sample; `op_iteration`
+  advances by 2.
 - Equal distance tie → Sample A.
 - Mulligan redraw also burns 2 ops and applies the same selection rule for the
   new `N`.
