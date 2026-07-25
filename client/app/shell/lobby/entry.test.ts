@@ -128,7 +128,7 @@ test("keeps entry visible while decks load when a deck is selected", () => {
   );
 });
 
-test("entry shows deck card and Back, never a select", () => {
+test("entry choose mode shows Host and Join destinations with deck on Host", () => {
   Scene.scene(
     { update, view: lobbyAppView },
     Scene.with(
@@ -146,13 +146,15 @@ test("entry shows deck card and Back, never a select", () => {
         },
       }),
     ),
+    Scene.expect(Scene.testId("lobby-entry-choose")).toExist(),
+    Scene.expect(Scene.testId("lobby-host")).toExist(),
+    Scene.expect(Scene.testId("lobby-open-join")).toExist(),
     Scene.expect(Scene.testId("lobby-deck-card")).toExist(),
     Scene.expect(Scene.testId("lobby-deck-card-9")).toExist(),
     Scene.expect(Scene.text("Tokens")).toExist(),
-    Scene.expect(Scene.text("Rhys the Redeemed")).toExist(),
     Scene.expect(Scene.testId("lobby-back")).toExist(),
-    Scene.expect(Scene.text("Back")).toExist(),
-    Scene.expect(Scene.selector('[data-testid="lobby-bring"]')).toBeAbsent(),
+    Scene.expect(Scene.testId("lobby-join-code")).toBeAbsent(),
+    Scene.expect(Scene.testId("lobby-join")).toBeAbsent(),
     Scene.expect(Scene.selector('[data-testid="lobby-deck"]')).toBeAbsent(),
     Scene.Mount.resolve(BindDeckCardFlip({ deckId: 9 }), DeckCardFlipTick()),
     Scene.Mount.resolve(BindCardArt, CardArtTick()),
