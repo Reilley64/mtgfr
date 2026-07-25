@@ -1,9 +1,9 @@
 //! The card pool as data: one TOML file per card under `data/`, plus token profiles under
 //! `data/tokens/`. Loaded once into registries of `engine::CardDef`. The engine's `card-dsl`
 //! feature deserializes a card's TOML directly into `CardDef` (interning owned strings and
-//! slices to `&'static` at load, so `CardDef` stays `Copy` — a bounded, load-once pool that
-//! lives for the program's lifetime anyway); this crate is just the file I/O and the id-keyed
-//! registry, keeping the engine free of I/O (`CLAUDE.md`).
+//! load-once data to `'static` where useful, then cloning small handles from the bounded pool
+//! as needed); this crate is just the file I/O and the id-keyed registry, keeping the engine
+//! free of I/O (`CLAUDE.md`).
 //!
 //! Token profiles load first and are installed via [`engine::install_token_defs`] so
 //! `create_token`'s `token = "<oracle-id>"` resolves during deckable-card deserialize. Tokens
@@ -294,7 +294,7 @@ type = "sacrifice"
 mode = "source"
 "#;
         let def: CardDef = toml::from_str(toml).expect("split destroy-related families parse");
-        let Effect::Sequence { steps } = def.abilities[0].effect else {
+        let Effect::Sequence { steps } = &def.abilities[0].effect else {
             panic!("multiple effects should parse as a sequence");
         };
         assert!(matches!(
@@ -459,7 +459,7 @@ token = "{pest_id}"
 "#
         );
         let def: CardDef = toml::from_str(&pest).expect("token id resolves");
-        let Effect::Token(TokenEffect::Create { token, .. }) = def.abilities[0].effect else {
+        let Effect::Token(TokenEffect::Create { token, .. }) = &def.abilities[0].effect else {
             panic!("expected a nested token-create effect");
         };
         assert_eq!(token.name, "Pest");
@@ -499,7 +499,7 @@ token = "{food_id}"
 "#
         );
         let def: CardDef = toml::from_str(&food).expect("food token id resolves");
-        let Effect::Token(TokenEffect::Create { token, .. }) = def.abilities[0].effect else {
+        let Effect::Token(TokenEffect::Create { token, .. }) = &def.abilities[0].effect else {
             panic!("expected a nested token-create effect");
         };
         assert_eq!(
@@ -533,7 +533,7 @@ token = "{inkling_id}"
 "#
         );
         let def: CardDef = toml::from_str(&inkling).expect("inkling token id resolves");
-        let Effect::Token(TokenEffect::Create { token, .. }) = def.abilities[0].effect else {
+        let Effect::Token(TokenEffect::Create { token, .. }) = &def.abilities[0].effect else {
             panic!("expected a nested token-create effect");
         };
         assert_eq!(
@@ -595,36 +595,44 @@ token = { name = "Inkling", power = 2, toughness = 1 }
     /// must stamp `id` + `default_print` from `data/tokens/`.
     #[test]
     fn pool_token_profiles_carry_scryfall_art_ids() {
+        fn collect_steps(steps: &[Effect], out: &mut Vec<(&'static str, CardDef)>) {
+            for step in steps {
+                collect(step, out);
+            }
+        }
+
         fn collect(effect: &Effect, out: &mut Vec<(&'static str, CardDef)>) {
             match effect {
                 Effect::Token(TokenEffect::Create { token, .. })
                 | Effect::Misc(MiscEffect::PreventCombatDamageToYouCreatingTokens { token })
                 | Effect::Choice(ChoiceEffect::EachPlayerCreatesFractalFromExiledPower { token }) =>
                 {
-                    out.push((token.name, *token));
+                    out.push((token.name, token.clone()));
                 }
                 Effect::Sequence { steps } => {
-                    for step in *steps {
-                        collect(step, out);
-                    }
+                    collect_steps(steps.as_ref(), out);
                 }
-                Effect::Conditional { then, .. }
-                | Effect::Zone(ZoneEffect::ExileTargetGraveyardCardThenIfCreature { then })
-                | Effect::Zone(ZoneEffect::ReflexiveTrigger { then })
-                | Effect::Damage(DamageEffect::ToEnteringPermanent { then, .. })
-                | Effect::Misc(MiscEffect::ScheduleNextCastTrigger { then, .. })
-                | Effect::Choice(ChoiceEffect::EachPlayerSacrifices { then, .. })
-                | Effect::Choice(ChoiceEffect::MaySacrifice { then, .. })
-                | Effect::Choice(ChoiceEffect::MayDiscard { then }) => {
-                    for step in *then {
-                        collect(step, out);
-                    }
+                Effect::Conditional { then, .. } => collect_steps(then.as_ref(), out),
+                Effect::Zone(ZoneEffect::ExileTargetGraveyardCardThenIfCreature { then }) => {
+                    collect_steps(then, out);
                 }
+                Effect::Zone(ZoneEffect::ReflexiveTrigger { then }) => collect_steps(then, out),
+                Effect::Damage(DamageEffect::ToEnteringPermanent { then, .. }) => {
+                    collect_steps(then, out);
+                }
+                Effect::Misc(MiscEffect::ScheduleNextCastTrigger { then, .. }) => {
+                    collect_steps(then, out);
+                }
+                Effect::Choice(ChoiceEffect::EachPlayerSacrifices { then, .. }) => {
+                    collect_steps(then, out);
+                }
+                Effect::Choice(ChoiceEffect::MaySacrifice { then, .. }) => collect_steps(then, out),
+                Effect::Choice(ChoiceEffect::MayDiscard { then }) => collect_steps(then, out),
                 _ => {}
             }
         }
 
-        fn scan_card(def: CardDef, out: &mut Vec<(String, &'static str, CardDef)>) {
+        fn scan_card(def: &CardDef, out: &mut Vec<(String, &'static str, CardDef)>) {
             let mut tokens = Vec::new();
             for ability in def.abilities {
                 collect(&ability.effect, &mut tokens);
@@ -640,10 +648,12 @@ token = { name = "Inkling", power = 2, toughness = 1 }
                 }
             }
             if let Some(back) = def.back {
-                scan_card(*back, out);
+                let back = engine::card_def(back);
+                scan_card(back.as_ref(), out);
             }
             if let Some(adventure) = def.adventure {
-                scan_card(*adventure, out);
+                let adventure = engine::card_def(adventure);
+                scan_card(adventure.as_ref(), out);
             }
             for (name, token) in tokens {
                 out.push((def.name.to_string(), name, token));
@@ -652,7 +662,7 @@ token = { name = "Inkling", power = 2, toughness = 1 }
 
         let mut tokens = Vec::new();
         for def in registry().values() {
-            scan_card(*def, &mut tokens);
+            scan_card(def, &mut tokens);
         }
         assert!(
             !tokens.is_empty(),
@@ -678,10 +688,10 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         }
 
         let beast = get_by_name("Beast Within").expect("Beast Within in pool");
-        let Effect::Sequence { steps } = beast.abilities[0].effect else {
+        let Effect::Sequence { steps } = &beast.abilities[0].effect else {
             panic!("Beast Within spell body should be a Sequence");
         };
-        let Effect::Token(TokenEffect::Create { token, .. }) = steps[1] else {
+        let Effect::Token(TokenEffect::Create { token, .. }) = &steps[1] else {
             panic!("expected create_token step");
         };
         assert_eq!(token.name, "Beast");
@@ -905,7 +915,7 @@ token = { name = "Inkling", power = 2, toughness = 1 }
                 ..
             })
         ));
-        let equip = bonesplitter.abilities[1];
+        let equip = &bonesplitter.abilities[1];
         assert!(matches!(
             equip.effect,
             Effect::Control(ControlEffect::Equip)
@@ -919,7 +929,7 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         // power." — a life-gain rider then a zone-change removal.
         let swords =
             get_by_name("Swords to Plowshares").expect("Swords to Plowshares is in the pool");
-        let Effect::Sequence { steps } = swords.abilities[0].effect else {
+        let Effect::Sequence { steps } = &swords.abilities[0].effect else {
             panic!("expected a two-step sequence");
         };
         assert!(matches!(
@@ -1050,7 +1060,7 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         // graveyard, then the mana-value life-loss rider.
         let reanimate = get_by_name("Reanimate").expect("Reanimate is in the pool");
         assert_eq!(reanimate.cost.colored[Color::Black.index()], 1);
-        let Effect::Sequence { steps } = reanimate.abilities[0].effect else {
+        let Effect::Sequence { steps } = &reanimate.abilities[0].effect else {
             panic!("expected a two-step sequence");
         };
         assert!(matches!(
@@ -1150,26 +1160,35 @@ token = { name = "Inkling", power = 2, toughness = 1 }
             }
         ));
         assert_eq!(besmirch.abilities[0].timing, Timing::Spell);
+        let Effect::Sequence { steps } = &besmirch.abilities[0].effect else {
+            panic!("Besmirch should resolve as a four-step sequence");
+        };
+        assert_eq!(steps.len(), 4);
         assert!(matches!(
-            besmirch.abilities[0].effect,
-            Effect::Sequence {
-                steps: [
-                    Effect::Control(ControlEffect::GainControlUntilEndOfTurn {
-                        target: TargetSpec::Creature
-                    }),
-                    Effect::Pump(PumpEffect::PumpUntilEndOfTurn {
-                        target: TargetSpec::Creature,
-                        ..
-                    }),
-                    Effect::Control(ControlEffect::UntapTarget {
-                        target: TargetSpec::Creature,
-                        ..
-                    }),
-                    Effect::Control(ControlEffect::GoadTarget {
-                        target: TargetSpec::Creature
-                    }),
-                ]
-            }
+            &steps[0],
+            Effect::Control(ControlEffect::GainControlUntilEndOfTurn {
+                target: TargetSpec::Creature
+            })
+        ));
+        assert!(matches!(
+            &steps[1],
+            Effect::Pump(PumpEffect::PumpUntilEndOfTurn {
+                target: TargetSpec::Creature,
+                ..
+            })
+        ));
+        assert!(matches!(
+            &steps[2],
+            Effect::Control(ControlEffect::UntapTarget {
+                target: TargetSpec::Creature,
+                ..
+            })
+        ));
+        assert!(matches!(
+            &steps[3],
+            Effect::Control(ControlEffect::GoadTarget {
+                target: TargetSpec::Creature
+            })
         ));
 
         // Silverquill Charm: a modal "choose one" instant (CR 700.2). Its three spell-timed
@@ -1257,10 +1276,10 @@ token = { name = "Inkling", power = 2, toughness = 1 }
                 ..
             })
         ));
-        assert!(matches!(
-            prismari.abilities[1].effect,
-            Effect::Sequence {
-                steps: &[
+        assert_eq!(
+            &prismari.abilities[1].effect,
+            &Effect::Sequence {
+                steps: std::sync::Arc::from([
                     Effect::Draw(DrawEffect::TargetPlayer {
                         count: Amount::Fixed(2),
                         opponent: false,
@@ -1270,9 +1289,9 @@ token = { name = "Inkling", power = 2, toughness = 1 }
                         target_player: true,
                         or_one_matching: None,
                     }),
-                ],
+                ]),
             }
-        ));
+        );
         assert!(matches!(
             prismari.abilities[2].effect,
             Effect::Token(TokenEffect::CreateTreasure {
@@ -1297,20 +1316,23 @@ token = { name = "Inkling", power = 2, toughness = 1 }
             get_by_name("Witherbloom Command").expect("Witherbloom Command is in the pool");
         assert!(wither.modal && wither.modal_choose == 2);
         assert_eq!(wither.abilities.len(), 4, "four modes");
+        let Effect::Sequence { steps } = &wither.abilities[0].effect else {
+            panic!("Witherbloom Command's first mode should be a two-step sequence");
+        };
+        assert_eq!(steps.len(), 2);
         assert!(matches!(
-            wither.abilities[0].effect,
-            Effect::Sequence {
-                steps: [
-                    Effect::Mill(MillEffect::Mill {
-                        count: Amount::Fixed(3),
-                        target: TargetSpec::Player,
-                    }),
-                    Effect::Choice(ChoiceEffect::MayReturnFromGraveyard {
-                        filter: CardFilter::Land,
-                        ..
-                    }),
-                ],
-            }
+            &steps[0],
+            Effect::Mill(MillEffect::Mill {
+                count: Amount::Fixed(3),
+                target: TargetSpec::Player,
+            })
+        ));
+        assert!(matches!(
+            &steps[1],
+            Effect::Choice(ChoiceEffect::MayReturnFromGraveyard {
+                filter: CardFilter::Land,
+                ..
+            })
         ));
         assert!(matches!(
             wither.abilities[1].effect,
@@ -1345,7 +1367,7 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         let quandrix = get_by_name("Quandrix Command").expect("Quandrix Command is in the pool");
         assert!(quandrix.modal && quandrix.modal_choose == 2);
         assert_eq!(quandrix.abilities.len(), 4, "four modeled modes");
-        match quandrix.abilities[0].effect {
+        match &quandrix.abilities[0].effect {
             Effect::Zone(ZoneEffect::ReturnToHand {
                 target: TargetSpec::Permanent(filter),
                 ..
@@ -1392,19 +1414,22 @@ token = { name = "Inkling", power = 2, toughness = 1 }
                 controller: EnterController::You,
             })
         ));
+        let Effect::Sequence { steps } = &killian.abilities[0].effect else {
+            panic!("Killian's trigger should tap, then goad");
+        };
+        assert_eq!(steps.len(), 2);
         assert!(matches!(
-            killian.abilities[0].effect,
-            Effect::Sequence {
-                steps: [
-                    Effect::Control(ControlEffect::TapTarget {
-                        target: TargetSpec::Creature,
-                        ..
-                    }),
-                    Effect::Control(ControlEffect::GoadTarget {
-                        target: TargetSpec::Creature
-                    }),
-                ]
-            }
+            &steps[0],
+            Effect::Control(ControlEffect::TapTarget {
+                target: TargetSpec::Creature,
+                ..
+            })
+        ));
+        assert!(matches!(
+            &steps[1],
+            Effect::Control(ControlEffect::GoadTarget {
+                target: TargetSpec::Creature
+            })
         ));
 
         // Leonin Vanguard: an intervening-if trigger — "if you control three or more creatures"
@@ -1418,20 +1443,23 @@ token = { name = "Inkling", power = 2, toughness = 1 }
             leonin.abilities[0].condition,
             Some(Condition::YouControlAtLeastCreatures { count: 3 })
         );
+        let Effect::Sequence { steps } = &leonin.abilities[0].effect else {
+            panic!("Leonin Vanguard should resolve as pump, then life gain");
+        };
+        assert_eq!(steps.len(), 2);
         assert!(matches!(
-            leonin.abilities[0].effect,
-            Effect::Sequence {
-                steps: [
-                    Effect::Pump(PumpEffect::PumpSelfUntilEndOfTurn {
-                        power: Amount::Fixed(1),
-                        toughness: Amount::Fixed(1),
-                        ..
-                    }),
-                    Effect::Life(LifeEffect::Gain {
-                        amount: Amount::Fixed(1)
-                    }),
-                ]
-            }
+            &steps[0],
+            Effect::Pump(PumpEffect::PumpSelfUntilEndOfTurn {
+                power: Amount::Fixed(1),
+                toughness: Amount::Fixed(1),
+                ..
+            })
+        ));
+        assert!(matches!(
+            &steps[1],
+            Effect::Life(LifeEffect::Gain {
+                amount: Amount::Fixed(1)
+            })
         ));
 
         // Breena, the Demagogue: a watch-others attack trigger with an intervening-if condition
@@ -1469,7 +1497,7 @@ token = { name = "Inkling", power = 2, toughness = 1 }
             Some(1),
             "the ability's loyalty cost is +1"
         );
-        let Effect::Choice(ChoiceEffect::MayDiscard { then }) = quintorius.abilities[0].effect
+        let Effect::Choice(ChoiceEffect::MayDiscard { then }) = &quintorius.abilities[0].effect
         else {
             panic!("Quintorius's +1 is a may-discard rider");
         };
@@ -1710,11 +1738,11 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         // {G} for each permanent destroyed this way." — a `Sequence` of the wipe, then the
         // count-derived mana rider.
         let culling = get_by_name("Culling Ritual").expect("Culling Ritual is in the pool");
-        let Effect::Sequence {
-            steps: [wipe, rider],
-        } = culling.abilities[0].effect
-        else {
+        let Effect::Sequence { steps } = &culling.abilities[0].effect else {
             panic!("Culling Ritual's ability is a two-step Sequence (wipe, then mana rider)");
+        };
+        let [wipe, rider] = steps.as_ref() else {
+            panic!("Culling Ritual's sequence should have exactly two steps");
         };
         assert!(matches!(
             wipe,
@@ -1832,7 +1860,7 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         // abilities[0] is the "attacking Pests get +1/+0 and menace" anthem; abilities[1] is the
         // death-trigger token maker.
         let blight = get_by_name("Blight Mound").expect("Blight Mound is in the pool");
-        let Effect::Token(TokenEffect::Create { token: pest, .. }) = blight.abilities[1].effect
+        let Effect::Token(TokenEffect::Create { token: pest, .. }) = &blight.abilities[1].effect
         else {
             panic!("Blight Mound creates a Pest token");
         };
@@ -1848,7 +1876,7 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         // Gilded Goose's ETB makes a Food — an *artifact* token whose own activated ability
         // sacrifices it ("{2}, {T}, Sacrifice this token: You gain 3 life").
         let goose = get_by_name("Gilded Goose").expect("Gilded Goose is in the pool");
-        let Effect::Token(TokenEffect::Create { token: food, .. }) = goose.abilities[0].effect
+        let Effect::Token(TokenEffect::Create { token: food, .. }) = &goose.abilities[0].effect
         else {
             panic!("Gilded Goose's ETB creates a Food token");
         };
@@ -1878,7 +1906,7 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         // ETB exile with the composable permanent filter.
         let skyclave =
             get_by_name("Skyclave Apparition").expect("Skyclave Apparition is in the pool");
-        let source = game.spawn_on_battlefield(P0, skyclave);
+        let source = game.spawn_on_battlefield(P0, skyclave.clone());
 
         // An opponent's mana-value-3 nontoken permanent — inside the gate, a legal target.
         let in_gate = game.spawn_on_battlefield(P1, skyclave);
@@ -1909,11 +1937,11 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         // Faithless Looting: "Draw two cards, then discard two cards" is one ability whose
         // `effects = [..]` list becomes an ordered Effect::Sequence.
         let loot = get_by_name("Faithless Looting").expect("Faithless Looting is in the pool");
-        let Effect::Sequence { steps } = loot.abilities[0].effect else {
+        let Effect::Sequence { steps } = &loot.abilities[0].effect else {
             panic!("an `effects` list is an Effect::Sequence");
         };
         assert_eq!(
-            steps,
+            steps.as_ref(),
             &[
                 Effect::Draw(DrawEffect::Cards {
                     count: Amount::Fixed(2)
