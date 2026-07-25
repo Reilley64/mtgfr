@@ -16,12 +16,194 @@ pub(crate) enum Placement {
     NoLegalTarget,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TriggerWatchZone {
+    Battlefield,
+    Graveyard,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TriggerWatchScope {
+    SelfSource,
+    ControlledPlayer,
+    AllBattlefield,
+    AllBattlefieldExceptPlayer,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TriggerWatchContextKind {
+    Controller,
+    SelfCastX,
+    ActivePlayer,
+    Attack,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct TriggerWatch {
+    trigger: Trigger,
+    zone: TriggerWatchZone,
+    scope: TriggerWatchScope,
+    context: TriggerWatchContextKind,
+    skip_graveyard_functional_on_battlefield: bool,
+}
+
+impl TriggerWatch {
+    const fn battlefield_self(trigger: Trigger, context: TriggerWatchContextKind) -> Self {
+        Self {
+            trigger,
+            zone: TriggerWatchZone::Battlefield,
+            scope: TriggerWatchScope::SelfSource,
+            context,
+            skip_graveyard_functional_on_battlefield: false,
+        }
+    }
+
+    const fn battlefield_controller(trigger: Trigger) -> Self {
+        Self {
+            trigger,
+            zone: TriggerWatchZone::Battlefield,
+            scope: TriggerWatchScope::ControlledPlayer,
+            context: TriggerWatchContextKind::Controller,
+            skip_graveyard_functional_on_battlefield: true,
+        }
+    }
+
+    const fn graveyard_controller(trigger: Trigger) -> Self {
+        Self {
+            trigger,
+            zone: TriggerWatchZone::Graveyard,
+            scope: TriggerWatchScope::ControlledPlayer,
+            context: TriggerWatchContextKind::Controller,
+            skip_graveyard_functional_on_battlefield: false,
+        }
+    }
+
+    const fn battlefield_all(trigger: Trigger) -> Self {
+        Self {
+            trigger,
+            zone: TriggerWatchZone::Battlefield,
+            scope: TriggerWatchScope::AllBattlefield,
+            context: TriggerWatchContextKind::Controller,
+            skip_graveyard_functional_on_battlefield: false,
+        }
+    }
+
+    const fn battlefield_all_with_active_player(trigger: Trigger) -> Self {
+        Self {
+            trigger,
+            zone: TriggerWatchZone::Battlefield,
+            scope: TriggerWatchScope::AllBattlefield,
+            context: TriggerWatchContextKind::ActivePlayer,
+            skip_graveyard_functional_on_battlefield: false,
+        }
+    }
+
+    const fn battlefield_all_except_player(trigger: Trigger) -> Self {
+        Self {
+            trigger,
+            zone: TriggerWatchZone::Battlefield,
+            scope: TriggerWatchScope::AllBattlefieldExceptPlayer,
+            context: TriggerWatchContextKind::Controller,
+            skip_graveyard_functional_on_battlefield: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+struct TriggerWatchEvent {
+    source: Option<ObjectId>,
+    player: Option<PlayerId>,
+    active_player: Option<PlayerId>,
+    attack: Option<(PlayerId, PlayerId)>,
+    source_power: Option<i32>,
+    exclude: Option<ObjectId>,
+}
+
+impl TriggerWatchEvent {
+    const fn for_source(source: ObjectId) -> Self {
+        Self {
+            source: Some(source),
+            player: None,
+            active_player: None,
+            attack: None,
+            source_power: None,
+            exclude: None,
+        }
+    }
+
+    const fn for_player(player: PlayerId) -> Self {
+        Self {
+            source: None,
+            player: Some(player),
+            active_player: None,
+            attack: None,
+            source_power: None,
+            exclude: None,
+        }
+    }
+
+    const fn for_active_player(active_player: PlayerId) -> Self {
+        Self {
+            source: None,
+            player: Some(active_player),
+            active_player: Some(active_player),
+            attack: None,
+            source_power: None,
+            exclude: None,
+        }
+    }
+
+    const fn for_attack(source: ObjectId, attack: (PlayerId, PlayerId), source_power: i32) -> Self {
+        Self {
+            source: Some(source),
+            player: None,
+            active_player: None,
+            attack: Some(attack),
+            source_power: Some(source_power),
+            exclude: None,
+        }
+    }
+
+    const fn with_exclude(self, exclude: Option<ObjectId>) -> Self {
+        Self { exclude, ..self }
+    }
+}
+
+const ENTERS_BATTLEFIELD_TRIGGER_WATCHES: &[TriggerWatch] = &[TriggerWatch::battlefield_self(
+    Trigger::Etb,
+    TriggerWatchContextKind::SelfCastX,
+)];
+const TURNED_FACE_UP_TRIGGER_WATCHES: &[TriggerWatch] = &[TriggerWatch::battlefield_self(
+    Trigger::TurnedFaceUp,
+    TriggerWatchContextKind::Controller,
+)];
+const ATTACK_TRIGGER_WATCHES: &[TriggerWatch] = &[TriggerWatch::battlefield_self(
+    Trigger::Attacks,
+    TriggerWatchContextKind::Attack,
+)];
+#[cfg(test)]
+const UPKEEP_TRIGGER_WATCHES: &[TriggerWatch] = &[
+    TriggerWatch::battlefield_controller(Trigger::Upkeep),
+    TriggerWatch::graveyard_controller(Trigger::Upkeep),
+    TriggerWatch::battlefield_all(Trigger::EachUpkeep),
+];
+const DRAW_STEP_TRIGGER_WATCHES: &[TriggerWatch] =
+    &[TriggerWatch::battlefield_all_with_active_player(
+        Trigger::EachDrawStep,
+    )];
+const UNTAP_STEP_TRIGGER_WATCHES: &[TriggerWatch] = &[TriggerWatch::battlefield_all_except_player(
+    Trigger::EachOtherPlayerUntapStep,
+)];
+
 impl Game {
     /// Scan just-produced events and queue the triggered abilities they fire. Two flavors:
     /// *self-referential* triggers fire on the event's own subject (this permanent entered /
     /// attacked / died); *controller-scoped* triggers fire on every permanent the relevant
     /// player controls (their upkeep/end step began, they gained life, they cast a spell).
     pub(crate) fn enqueue_triggers(&mut self, events: &[Event]) {
+        // Wave C: recurring self/controller/every-player watch families route through the
+        // `TriggerWatch` tables below. Residual explicit arms stay bespoke where the trigger needs
+        // batch look-back state, per-watcher filters, or event-specific scratch/context.
         // CR 603.6c/603.10.1 "look back in time": a watch-others death trigger reads the game
         // state just *before* the deaths, so a watcher that dies in the same batch (a board wipe,
         // a combat sweep) still sees the *other* deaths in that batch. The dying watchers are
@@ -56,7 +238,10 @@ impl Game {
                     if self.as_permanent(permanent).is_some_and(|p| p.evoked) {
                         self.queue_self_sacrifice_trigger(permanent);
                     }
-                    self.queue_self_trigger(permanent, Trigger::Etb);
+                    self.queue_trigger_watch_table(
+                        ENTERS_BATTLEFIELD_TRIGGER_WATCHES,
+                        TriggerWatchEvent::for_source(permanent),
+                    );
                     // ponytail: watch-others companion to the self `Etb` above — constellation/
                     //   landfall watch *any other* permanent's entry, not their own.
                     self.queue_permanent_enters_triggers(permanent);
@@ -66,7 +251,10 @@ impl Game {
                 // its real abilities are visible — the same self-scan idiom as the `Etb` above,
                 // but not entering the battlefield, so no watch-others enters triggers.
                 Event::TurnedFaceUp { permanent } => {
-                    self.queue_self_trigger(permanent, Trigger::TurnedFaceUp);
+                    self.queue_trigger_watch_table(
+                        TURNED_FACE_UP_TRIGGER_WATCHES,
+                        TriggerWatchEvent::for_source(permanent),
+                    );
                 }
                 Event::TokenCreated {
                     token,
@@ -75,7 +263,10 @@ impl Game {
                     ..
                 } => {
                     let printed = card_def(def);
-                    self.queue_self_trigger(token, Trigger::Etb);
+                    self.queue_trigger_watch_table(
+                        ENTERS_BATTLEFIELD_TRIGGER_WATCHES,
+                        TriggerWatchEvent::for_source(token),
+                    );
                     // A created token is a permanent entering the battlefield (CR 603.6a) too.
                     self.queue_permanent_enters_triggers(token);
                     // Staff of the Storyteller's "whenever you create one or more creature
@@ -93,17 +284,14 @@ impl Game {
                 // is exactly what the event's `defender` is — an attack on a planeswalker reads
                 // as an attack on its controller.
                 Event::AttackerDeclared { object, defender, .. } => {
-                    // Self-referential "whenever this creature attacks" carries the attack
-                    // context too (Goblin Guide's `RevealTopToHand.defender`) — every other
-                    // consumer's effect ignores `ctx.attack`, so this is a no-op for them.
-                    let ctx = TriggerContext {
-                        attack: Some((self.controller_of(object), defender)),
-                        // CR 510.2/603.10a: "where X is this creature's power" reads the attacker's
-                        // power the instant the trigger goes on the stack (Guardian Scalelord).
-                        source_power: Some(self.power(object)),
-                        ..TriggerContext::of(self.owner_of(object))
-                    };
-                    self.queue_trigger_group(ctx, object, self.def_of(object), Trigger::Attacks);
+                    self.queue_trigger_watch_table(
+                        ATTACK_TRIGGER_WATCHES,
+                        TriggerWatchEvent::for_attack(
+                            object,
+                            (self.controller_of(object), defender),
+                            self.power(object),
+                        ),
+                    );
                     self.queue_watch_attack_triggers(object, defender);
                     self.queue_enchanted_creature_attacks_triggers(object, defender);
                     self.queue_myriad_triggers(object, defender);
@@ -293,8 +481,6 @@ impl Game {
                     active_player,
                 } => {
                     self.queue_controller_triggers(active_player, Trigger::Upkeep, None);
-                    // CR "at the beginning of your upkeep" fires the *controller's* graveyard-
-                    // functional upkeep triggers too (Squee), scoped to the active player's upkeep.
                     self.queue_graveyard_controller_triggers(active_player, Trigger::Upkeep);
                     self.queue_each_upkeep_triggers();
                     self.queue_echo_triggers(active_player);
@@ -329,9 +515,6 @@ impl Game {
                     active_player,
                 } => {
                     self.queue_controller_triggers(active_player, Trigger::FirstMainPhase, None);
-                    // Every-player, first-main-phase flavor: fires under its own controller
-                    // regardless of whose first main phase this is (Magus of the Vineyard), the
-                    // first-main-phase twin of the `EachUpkeep`/`EachDrawStep` arms above.
                     self.queue_each_player_first_main_phase_triggers(active_player);
                 }
                 Event::StepBegan {
@@ -691,6 +874,112 @@ impl Game {
         self.batch_trigger_scratch.serra_recursion_deaths.clear();
     }
 
+    fn trigger_watch_context(
+        &self,
+        source: ObjectId,
+        controller: PlayerId,
+        kind: TriggerWatchContextKind,
+        event: TriggerWatchEvent,
+    ) -> TriggerContext {
+        match kind {
+            TriggerWatchContextKind::Controller => TriggerContext::of(controller),
+            TriggerWatchContextKind::SelfCastX => TriggerContext {
+                cast_x: Some(self.ability_source_x(source)),
+                ..TriggerContext::of(controller)
+            },
+            TriggerWatchContextKind::ActivePlayer => TriggerContext {
+                active_player: event.active_player,
+                ..TriggerContext::of(controller)
+            },
+            TriggerWatchContextKind::Attack => TriggerContext {
+                attack: event.attack,
+                source_power: event.source_power,
+                ..TriggerContext::of(controller)
+            },
+        }
+    }
+
+    fn queue_trigger_watch_table(&mut self, watches: &[TriggerWatch], event: TriggerWatchEvent) {
+        for &watch in watches {
+            self.queue_trigger_watch(watch, event);
+        }
+    }
+
+    fn queue_trigger_watch(&mut self, watch: TriggerWatch, event: TriggerWatchEvent) {
+        match (watch.zone, watch.scope) {
+            (TriggerWatchZone::Battlefield, TriggerWatchScope::SelfSource) => {
+                let source = event
+                    .source
+                    .expect("self-source trigger watch requires an event source");
+                let controller = self.owner_of(source);
+                let ctx = self.trigger_watch_context(source, controller, watch.context, event);
+                self.queue_trigger_group(ctx, source, self.def_of(source), watch.trigger);
+            }
+            (TriggerWatchZone::Battlefield, TriggerWatchScope::ControlledPlayer) => {
+                let player = event
+                    .player
+                    .expect("controller-scoped battlefield watch requires a player");
+                for id in self.battlefield() {
+                    if Some(id) == event.exclude || self.owner_of(id) != player {
+                        continue;
+                    }
+                    if watch.skip_graveyard_functional_on_battlefield
+                        && self.def_of(id).functions_in_graveyard
+                    {
+                        continue;
+                    }
+                    let ctx = self.trigger_watch_context(id, player, watch.context, event);
+                    self.queue_trigger_group(ctx, id, self.def_of(id), watch.trigger);
+                }
+            }
+            (TriggerWatchZone::Graveyard, TriggerWatchScope::ControlledPlayer) => {
+                let player = event
+                    .player
+                    .expect("controller-scoped graveyard watch requires a player");
+                for id in self.graveyard_cards(player) {
+                    if !self.def_of(id).functions_in_graveyard {
+                        continue;
+                    }
+                    let ctx = self.trigger_watch_context(id, player, watch.context, event);
+                    self.queue_trigger_group(ctx, id, self.def_of(id), watch.trigger);
+                }
+            }
+            (TriggerWatchZone::Battlefield, TriggerWatchScope::AllBattlefield) => {
+                for id in self.battlefield() {
+                    if watch.skip_graveyard_functional_on_battlefield
+                        && self.def_of(id).functions_in_graveyard
+                    {
+                        continue;
+                    }
+                    let controller = self.owner_of(id);
+                    let ctx = self.trigger_watch_context(id, controller, watch.context, event);
+                    self.queue_trigger_group(ctx, id, self.def_of(id), watch.trigger);
+                }
+            }
+            (TriggerWatchZone::Battlefield, TriggerWatchScope::AllBattlefieldExceptPlayer) => {
+                let excluded = event
+                    .player
+                    .expect("all-battlefield-except-player watch requires a player");
+                for id in self.battlefield() {
+                    let controller = self.owner_of(id);
+                    if controller == excluded {
+                        continue;
+                    }
+                    if watch.skip_graveyard_functional_on_battlefield
+                        && self.def_of(id).functions_in_graveyard
+                    {
+                        continue;
+                    }
+                    let ctx = self.trigger_watch_context(id, controller, watch.context, event);
+                    self.queue_trigger_group(ctx, id, self.def_of(id), watch.trigger);
+                }
+            }
+            (TriggerWatchZone::Graveyard, _) => {
+                unreachable!("graveyard watches only support controller scope")
+            }
+        }
+    }
+
     /// Fire `Trigger::ThisPermanentLeavesBattlefield` for `from` if it left the battlefield to
     /// any zone this batch (recorded in `permanents_left_battlefield` by the `Game::apply` exit
     /// choke points) and its `def` has this trigger — Animate Dead's "when this Aura leaves the
@@ -767,11 +1056,11 @@ impl Game {
     /// `mv_max_x` re-check (Kinetic Ooze), locked in at placement like `cast_mana_value`/`cast_x`
     /// above.
     pub(crate) fn queue_self_trigger(&mut self, source: ObjectId, trigger: Trigger) {
-        let ctx = TriggerContext {
-            cast_x: Some(self.ability_source_x(source)),
-            ..TriggerContext::of(self.owner_of(source))
-        };
-        self.queue_trigger_group(ctx, source, self.def_of(source), trigger);
+        let watch = [TriggerWatch::battlefield_self(
+            trigger,
+            TriggerWatchContextKind::SelfCastX,
+        )];
+        self.queue_trigger_watch_table(&watch, TriggerWatchEvent::for_source(source));
     }
 
     /// Queue "its controller sacrifices it" as `permanent`'s own single-ability [`TriggerGroup`],
@@ -1188,17 +1477,11 @@ impl Game {
         trigger: Trigger,
         exclude: Option<ObjectId>,
     ) {
-        for id in self.battlefield() {
-            if Some(id) == exclude || self.owner_of(id) != player {
-                continue;
-            }
-            // A graveyard-functional card's triggers fire only from the graveyard (CR 603.6e), so
-            // it must not also fire from the battlefield — see `queue_graveyard_controller_triggers`.
-            if self.def_of(id).functions_in_graveyard {
-                continue;
-            }
-            self.queue_trigger_group(TriggerContext::of(player), id, self.def_of(id), trigger);
-        }
+        let watch = [TriggerWatch::battlefield_controller(trigger)];
+        self.queue_trigger_watch_table(
+            &watch,
+            TriggerWatchEvent::for_player(player).with_exclude(exclude),
+        );
     }
 
     /// Queue [`Trigger::CardsLeaveYourGraveyard`] for `player`, threading the batch's leaving-card
@@ -1302,12 +1585,8 @@ impl Game {
         player: PlayerId,
         trigger: Trigger,
     ) {
-        for id in self.graveyard_cards(player) {
-            if !self.def_of(id).functions_in_graveyard {
-                continue;
-            }
-            self.queue_trigger_group(TriggerContext::of(player), id, self.def_of(id), trigger);
-        }
+        let watch = [TriggerWatch::graveyard_controller(trigger)];
+        self.queue_trigger_watch_table(&watch, TriggerWatchEvent::for_player(player));
     }
 
     /// Queue every battlefield permanent's [`Trigger::EachUpkeep`] ability at the beginning of
@@ -1319,15 +1598,10 @@ impl Game {
     ///   unlike [`queue_each_draw_step_triggers`](Self::queue_each_draw_step_triggers) (Howling
     ///   Mine). Wire it here too if a future each-upkeep effect needs it.
     pub(crate) fn queue_each_upkeep_triggers(&mut self) {
-        for id in self.battlefield() {
-            let controller = self.owner_of(id);
-            self.queue_trigger_group(
-                TriggerContext::of(controller),
-                id,
-                self.def_of(id),
-                Trigger::EachUpkeep,
-            );
-        }
+        self.queue_trigger_watch_table(
+            &[TriggerWatch::battlefield_all(Trigger::EachUpkeep)],
+            TriggerWatchEvent::default(),
+        );
     }
 
     /// Queue every battlefield permanent's [`Trigger::EachEndStep`] ability at the beginning of
@@ -1338,15 +1612,10 @@ impl Game {
     ///   `queue_each_upkeep_triggers` above — wire it here too if a future each-end-step effect
     ///   needs it.
     pub(crate) fn queue_each_end_step_triggers(&mut self) {
-        for id in self.battlefield() {
-            let controller = self.owner_of(id);
-            self.queue_trigger_group(
-                TriggerContext::of(controller),
-                id,
-                self.def_of(id),
-                Trigger::EachEndStep,
-            );
-        }
+        self.queue_trigger_watch_table(
+            &[TriggerWatch::battlefield_all(Trigger::EachEndStep)],
+            TriggerWatchEvent::default(),
+        );
     }
 
     /// Queue every battlefield permanent's [`Trigger::EachDrawStep`] ability at the beginning of
@@ -1357,14 +1626,10 @@ impl Game {
     /// is, so `active_player` rides along on [`TriggerContext::active_player`] instead of being
     /// dropped like its two every-player siblings above.
     pub(crate) fn queue_each_draw_step_triggers(&mut self, active_player: PlayerId) {
-        for id in self.battlefield() {
-            let controller = self.owner_of(id);
-            let ctx = TriggerContext {
-                active_player: Some(active_player),
-                ..TriggerContext::of(controller)
-            };
-            self.queue_trigger_group(ctx, id, self.def_of(id), Trigger::EachDrawStep);
-        }
+        self.queue_trigger_watch_table(
+            DRAW_STEP_TRIGGER_WATCHES,
+            TriggerWatchEvent::for_active_player(active_player),
+        );
     }
 
     /// Queue every battlefield permanent's [`Trigger::EachPlayerFirstMainPhase`] ability at the
@@ -1376,14 +1641,12 @@ impl Game {
     /// this is, so `active_player` rides along on [`TriggerContext::active_player`] just like
     /// [`queue_each_draw_step_triggers`](Self::queue_each_draw_step_triggers).
     pub(crate) fn queue_each_player_first_main_phase_triggers(&mut self, active_player: PlayerId) {
-        for id in self.battlefield() {
-            let controller = self.owner_of(id);
-            let ctx = TriggerContext {
-                active_player: Some(active_player),
-                ..TriggerContext::of(controller)
-            };
-            self.queue_trigger_group(ctx, id, self.def_of(id), Trigger::EachPlayerFirstMainPhase);
-        }
+        self.queue_trigger_watch_table(
+            &[TriggerWatch::battlefield_all_with_active_player(
+                Trigger::EachPlayerFirstMainPhase,
+            )],
+            TriggerWatchEvent::for_active_player(active_player),
+        );
     }
 
     /// Queue every battlefield permanent's [`Trigger::EachOtherPlayerUntapStep`] ability at the
@@ -1395,18 +1658,10 @@ impl Game {
         &mut self,
         untapping_player: PlayerId,
     ) {
-        for id in self.battlefield() {
-            let controller = self.owner_of(id);
-            if controller == untapping_player {
-                continue;
-            }
-            self.queue_trigger_group(
-                TriggerContext::of(controller),
-                id,
-                self.def_of(id),
-                Trigger::EachOtherPlayerUntapStep,
-            );
-        }
+        self.queue_trigger_watch_table(
+            UNTAP_STEP_TRIGGER_WATCHES,
+            TriggerWatchEvent::for_active_player(untapping_player),
+        );
     }
 
     /// Drain every CR 603.7 delayed trigger whose `fire_at` step just began — the first time any
@@ -4135,6 +4390,138 @@ fn ability_grants_source_abilities(ability: Ability) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const P0: PlayerId = PlayerId(0);
+    const P1: PlayerId = PlayerId(1);
+
+    fn test_creature_with_abilities(
+        name: &'static str,
+        abilities: &'static [Ability],
+        functions_in_graveyard: bool,
+    ) -> CardDef {
+        CardDef {
+            name,
+            id: "",
+            default_print: "",
+            cost: Cost::FREE,
+            kind: CardKind::Creature {
+                power: 2,
+                toughness: 2,
+                also: TypeSet::NONE,
+            },
+            legendary: false,
+            uncounterable: false,
+            enchant: None,
+            enchant_graveyard: false,
+            modal: false,
+            modal_choose: 1,
+            modal_choose_max: None,
+            modal_choose_max_if_commander: false,
+            keywords: &[],
+            conditional_keywords: &[],
+            abilities,
+            identity_pips: &[],
+            colors: &[],
+            devoid: false,
+            enters_tapped: false,
+            enters_tapped_unless: None,
+            free_cast_if: None,
+            alternative_cost: None,
+            cast_only_during_combat: false,
+            approximates: None,
+            oracle: None,
+            set: "",
+            subtypes: &[],
+            otags: &[],
+            cycling: None,
+            cycling_sacrifice: SacrificeCost::None,
+            flashback: None,
+            echo: None,
+            cumulative_upkeep: None,
+            recover: None,
+            bestow: None,
+            morph: None,
+            evoke: None,
+            delve: false,
+            escape: None,
+            retrace: false,
+            graveyard_cast_cost: None,
+            cascade: false,
+            functions_in_graveyard,
+            back: None,
+            adventure: None,
+            halves: &[],
+            suspend: None,
+            vanishing: None,
+            devour: None,
+            demonstrate: false,
+            enter_as_copy: None,
+            encore: None,
+            hand_ability: &[],
+            forecast: None,
+            may_choose_not_to_untap: false,
+            dredge: None,
+        }
+    }
+
+    fn test_trigger_ability(trigger: Trigger) -> Ability {
+        Ability {
+            timing: Timing::Triggered(trigger),
+            effect: Effect::Draw(DrawEffect::Cards {
+                count: Amount::Fixed(1),
+            }),
+            optional: false,
+            min_level: 0,
+            cost: Cost::FREE,
+            condition: None,
+            once_each_turn: false,
+        }
+    }
+
+    fn leak_abilities(abilities: Vec<Ability>) -> &'static [Ability] {
+        Box::leak(abilities.into_boxed_slice())
+    }
+
+    #[test]
+    fn upkeep_watch_table_dispatches_battlefield_and_graveyard_sources() {
+        let mut game = Game::with_players(2, 0);
+        let upkeep_source = game.spawn_on_battlefield(
+            P0,
+            test_creature_with_abilities(
+                "Upkeep Source",
+                leak_abilities(vec![test_trigger_ability(Trigger::Upkeep)]),
+                false,
+            ),
+        );
+        let each_upkeep_source = game.spawn_on_battlefield(
+            P1,
+            test_creature_with_abilities(
+                "Each Upkeep Source",
+                leak_abilities(vec![test_trigger_ability(Trigger::EachUpkeep)]),
+                false,
+            ),
+        );
+        let graveyard_source = game.spawn_in_graveyard(
+            P0,
+            test_creature_with_abilities(
+                "Graveyard Upkeep Source",
+                leak_abilities(vec![test_trigger_ability(Trigger::Upkeep)]),
+                true,
+            ),
+        );
+
+        game.queue_trigger_watch_table(UPKEEP_TRIGGER_WATCHES, TriggerWatchEvent::for_player(P0));
+
+        let mut sources: Vec<ObjectId> = game
+            .pending_trigger_groups
+            .iter()
+            .map(|group| group.source)
+            .collect();
+        sources.sort_unstable();
+        let mut expected = vec![upkeep_source, each_upkeep_source, graveyard_source];
+        expected.sort_unstable();
+        assert_eq!(sources, expected);
+    }
 
     #[test]
     fn pending_obligations_drain_echo_then_recover_then_cumulative() {
