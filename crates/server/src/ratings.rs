@@ -41,6 +41,8 @@ pub async fn persist_player_lost(db: &toasty::Db, seats: &[Seat], game: &Game, e
     }
 
     let mut alive = active_at_batch_start(game, &lost_in_batch);
+    // ponytail: simultaneous multi-loss batches (e.g. SBA) process in event order — later
+    // losers are credited with wins over earlier losers; MTG would treat those as mutual draws.
     for loser in lost_in_batch {
         let Some(loser_id) = user_id_for_player(seats, loser) else {
             alive.retain(|player| *player != loser);

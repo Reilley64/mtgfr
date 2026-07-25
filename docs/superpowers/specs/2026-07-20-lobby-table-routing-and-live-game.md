@@ -175,7 +175,8 @@ the BFF so that their absence does not block drain of an API pod that was never 
    then call `ratings::persist_player_lost(&state.db, seats, game, events)`.
 7. `persist_player_lost` extracts every `Event::PlayerLost` in event order, reconstructs the batch's
    alive players from the post-apply game, skips seats without `user_id`, and applies Elo updates in
-   Postgres from snapshot ratings. Any DB failure is warning-only (`tracing::warn!`); the ack,
+   Postgres from snapshot ratings. Simultaneous multi-loss batches use event order (later losers beat
+   earlier ones) — ponytail approximation. Any DB failure is warning-only (`tracing::warn!`); the ack,
    settle loop, and stream fan-out still succeed.
 
 While the engine is `mulliganing`, clients submit `KeepHand` or `Mulligan` just like other intents. The server does not auto-advance priority or begin turn one until `MulligansFinished` has occurred; disconnected undecided seats remain undecided.
