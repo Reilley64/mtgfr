@@ -25,6 +25,7 @@ use crate::{
     Mana, ManaPool, Parity, PermanentFilter, ProtectionScope, ReanimateBecomes,
     SacrificeAdditionalCost, SacrificeAdditionalCostCount, SacrificeCost, SpellFilter, SpellSpeed,
     SpendToCastPredicate, Suspend, TargetCount, Timing, TokenFilter, Trigger, TypeSet,
+    intern_card_def,
 };
 
 /// Token profiles loaded from `cards/data/tokens/` before deckable cards deserialize. Keyed by
@@ -400,12 +401,12 @@ impl<'de> Deserialize<'de> for CardDef {
             #[serde(default)]
             functions_in_graveyard: bool,
             /// A "prepare" DFC's back face (soc/sos) — an inline `[back]` `CardDef` table, parsed
-            /// via `CardDef`'s own impl and leaked to `'static` below. Absent for ordinary cards.
+            /// via `CardDef`'s own impl and interned below. Absent for ordinary cards.
             #[serde(default)]
             back: Option<CardDef>,
             /// An adventure card's adventure half (CR 715, soc/sos) — an inline `[adventure]`
-            /// `CardDef` table (its own `cost`, `kind`, `abilities`), parsed like `back` and leaked
-            /// to `'static` below. Absent for ordinary cards.
+            /// `CardDef` table (its own `cost`, `kind`, `abilities`), parsed like `back` and
+            /// interned below. Absent for ordinary cards.
             #[serde(default)]
             adventure: Option<CardDef>,
             /// A split card's two castable halves (CR 709, Fire // Ice) — `[[half]]` tables, each
@@ -506,11 +507,9 @@ impl<'de> Deserialize<'de> for CardDef {
             demonstrate: card.demonstrate,
             devour: card.devour,
             functions_in_graveyard: card.functions_in_graveyard,
-            // Leak the back face to `'static` (like the rest of the interned card data) so a
-            // `Copy` `&'static CardDef` reference can live on the front `CardDef`.
-            back: card.back.map(|def| &*Box::leak(Box::new(def))),
-            // Leak the adventure half to `'static`, like the back face above.
-            adventure: card.adventure.map(|def| &*Box::leak(Box::new(def))),
+            // Intern nested faces once at load so later lookups can reuse stable CardIds.
+            back: card.back.map(intern_card_def),
+            adventure: card.adventure.map(intern_card_def),
             suspend: card.suspend,
             enter_as_copy: card.enter_as_copy,
             // Leak the encore cost to `'static` (like `suspend`'s cost) so a `Copy` `&'static Cost`

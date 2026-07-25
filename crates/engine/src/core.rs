@@ -257,7 +257,7 @@ impl Game {
                 .iter()
                 .find(|&&(spell, _)| spell == from)
         {
-            card.def = intern_card_def(fused.clone());
+            card.def = *fused;
         }
         // A card leaving a graveyard (reanimation, graveyard recursion, cast-from-graveyard) marks
         // its owner's turn-scoped "a card left your graveyard this turn" flag — the CR 603.4
@@ -341,10 +341,7 @@ impl Game {
             Object::Spell(s) => s.def,
             Object::Permanent(p) if p.flipped => {
                 let def = card_def(p.def);
-                let Some(back) = def.back else {
-                    return p.def;
-                };
-                intern_card_def(back.clone())
+                def.back.unwrap_or(p.def)
             }
             Object::Permanent(p) => p.def,
             Object::Moved { to } => self.def_id_of(*to),
@@ -362,7 +359,9 @@ impl Game {
             // abilities, and `pt_base`) sees the back face at once.
             Object::Permanent(p) if p.flipped => {
                 let def = card_def(p.def);
-                def.back.cloned().unwrap_or_else(|| def.as_ref().clone())
+                def.back
+                    .map(|back| card_def(back).as_ref().clone())
+                    .unwrap_or_else(|| def.as_ref().clone())
             }
             Object::Permanent(p) => card_def(p.def).as_ref().clone(),
             Object::Moved { to } => self.def_of(*to),
@@ -656,7 +655,7 @@ impl Game {
         let Some(back) = printed.back else {
             return (TargetSpec::None, Vec::new());
         };
-        let back = back.clone();
+        let back = card_def(back);
         let controller = self.controller_of(source);
         let spec = self.required_target(&back, None);
         if spec == TargetSpec::None {

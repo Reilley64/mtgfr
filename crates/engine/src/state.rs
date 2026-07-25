@@ -151,24 +151,24 @@ pub(crate) struct PlayPermissions {
     /// [`Event::SpellCast`](crate::Event::SpellCast) handler). Consulted by
     /// [`Game::may_play_from_exile`](crate::Game::may_play_from_exile).
     pub on_adventure: Vec<(ObjectId, PlayerId)>,
-    /// Adventure spells currently on the stack, each `(spell object, the creature front face to
-    /// restore to exile)`. Kept off the `Copy` [`Spell`](crate::Spell) struct (a `CardDef` by value
-    /// would double `Spell`'s size). Pushed by
+    /// Adventure spells currently on the stack, each `(spell object, the creature front-face
+    /// CardId to restore to exile)`. Kept off [`Spell`](crate::Spell) so the stack object only
+    /// carries its live face, not the follow-up restore handle as well. Pushed by
     /// [`Event::AdventureSpellCast`](crate::Event::AdventureSpellCast), read + dropped when the
     /// spell finishes ([`Event::ExiledOnAdventure`](crate::Event::ExiledOnAdventure)).
     /// ponytail: a *countered* adventure spell (which goes to the graveyard, not exile) leaves its
     /// entry here stale — keyed on a now-dead spell id it can never re-match, so it's harmless. No
     /// pool card counters an adventure; drop the entry in `counter_spell` if one ever does.
-    pub adventure_fronts: Vec<(ObjectId, CardDef)>,
-    /// Split-card halves currently on the stack, each `(the half's spell object, the fused card to
-    /// restore)` — the same off-`Copy` shape as [`adventure_fronts`](Self::adventure_fronts). Only
-    /// the cast half is on the stack (CR 709.4a); in every other zone the object is the whole split
-    /// card again (CR 709.4), so [`Game::create_object`](crate::Game) swaps the fused def back in
+    pub adventure_fronts: Vec<(ObjectId, CardId)>,
+    /// Split-card halves currently on the stack, each `(the half's spell object, the fused
+    /// CardId to restore)`. Only the cast half is on the stack (CR 709.4a); in every other zone
+    /// the object is the whole split card again (CR 709.4), so [`Game::create_object`](crate::Game)
+    /// swaps the fused def back in
     /// on the way out — one choke covering resolution, being countered, and a tuck alike.
     /// ponytail: entries are never removed. Object ids retire on zone change (CR 400.7), so a stale
     /// entry can never re-match; drop it in the stack-exit paths if a game ever runs long enough
     /// for the list's length to matter.
-    pub split_halves_on_stack: Vec<(ObjectId, CardDef)>,
+    pub split_halves_on_stack: Vec<(ObjectId, CardId)>,
 }
 
 /// Transient per-batch scratch for trigger enqueueing — not event-sourced.

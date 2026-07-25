@@ -1522,7 +1522,7 @@ impl Game {
         let Some(back) = printed.back else {
             return Err(Reject::CannotActivate);
         };
-        let back = back.clone();
+        let back = card_def(back);
         // "You may cast a copy of its spell" — casting obeys the back face's timing (Pack a Punch
         // is a sorcery: sorcery-speed only).
         if !back.is_instant_speed() && !self.can_take_sorcery_speed_action(player) {
@@ -1535,13 +1535,13 @@ impl Game {
         // choose-after-cast flow `Game::cast_with_kind` gives a directly-cast multi-target
         // spell, rather than the single up-front `target` a single-target/untargeted back face
         // takes.
-        let multi_target = self.spell_multi_target(&back.clone());
+        let multi_target = self.spell_multi_target(&back);
         if let Some((spec, count)) = multi_target {
             if target.is_some() {
                 return Err(Reject::IllegalTarget);
             }
             let n = self
-                .legal_targets_for(spec, source, player, color_identity(&back.clone()), x)
+                .legal_targets_for(spec, source, player, color_identity(&back), x)
                 .len();
             if count.min > 0 && n == 0 {
                 return Err(Reject::IllegalTarget);
@@ -1555,7 +1555,7 @@ impl Game {
         let cost = self.cast_cost(
             player,
             source,
-            back.clone(),
+            back.as_ref().clone(),
             target,
             x,
             Zone::Battlefield,
@@ -1625,11 +1625,11 @@ impl Game {
         if self.playable_zone(source, player) != Some(Zone::Hand) {
             return Err(Reject::NotCastable);
         }
-        let front = self.def_of(source);
-        let Some(adventure) = front.adventure else {
+        let front = self.def_id_of(source);
+        let Some(adventure) = card_def(front).adventure else {
             return Err(Reject::NotCastable);
         };
-        let adventure = adventure.clone();
+        let adventure = card_def(adventure);
         // The adventure obeys its own timing — a sorcery (Grove's Bounty) is sorcery-speed only.
         if !adventure.is_instant_speed() && !self.can_take_sorcery_speed_action(player) {
             return Err(Reject::WrongTiming);
@@ -1638,13 +1638,13 @@ impl Game {
         let x = x.min(u8::MAX as u32);
         // An adventure may be multi-target (Grove's Bounty's "any number of target creatures"):
         // its targets are chosen after the cast, like a directly-cast multi-target spell.
-        let multi_target = self.spell_multi_target(&adventure.clone());
+        let multi_target = self.spell_multi_target(&adventure);
         if let Some((spec, count)) = multi_target {
             if target.is_some() {
                 return Err(Reject::IllegalTarget);
             }
             let n = self
-                .legal_targets_for(spec, source, player, color_identity(&adventure.clone()), x)
+                .legal_targets_for(spec, source, player, color_identity(&adventure), x)
                 .len();
             if count.min > 0 && n == 0 {
                 return Err(Reject::IllegalTarget);
@@ -1658,7 +1658,7 @@ impl Game {
         let cost = self.cast_cost(
             player,
             source,
-            adventure.clone(),
+            adventure.as_ref().clone(),
             target,
             x,
             Zone::Hand,

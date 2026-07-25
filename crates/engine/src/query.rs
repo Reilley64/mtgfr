@@ -387,7 +387,7 @@ impl Game {
         let Some(back) = printed.back else {
             return false;
         };
-        let back = back.clone();
+        let back = card_def(back);
         // Match CastPlayKind::List timing (turn-priority-and-stack spec): instants only in a reaction window or at
         // sorcery speed; sorceries need sorcery speed.
         if back.is_instant_speed() {
@@ -401,12 +401,12 @@ impl Game {
             return false;
         }
         let spell = Some(back.spell_characteristics());
-        let spec = self.required_target(&back.clone(), None);
+        let spec = self.required_target(&back, None);
         if spec == TargetSpec::None {
             let cost = self.cast_cost(
                 player,
                 source,
-                back,
+                back.as_ref().clone(),
                 None,
                 0,
                 Zone::Battlefield,
@@ -420,13 +420,13 @@ impl Game {
             );
             return self.plan_auto_taps(player, cost, None, spell).is_some();
         }
-        self.legal_targets_for(spec, source, player, color_identity(&back.clone()), 0)
+        self.legal_targets_for(spec, source, player, color_identity(&back), 0)
             .into_iter()
             .any(|t| {
                 let cost = self.cast_cost(
                     player,
                     source,
-                    back.clone(),
+                    back.as_ref().clone(),
                     Some(t),
                     0,
                     Zone::Battlefield,

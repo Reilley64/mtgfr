@@ -1242,15 +1242,15 @@ impl Game {
                 )
             }
             MeaningfulAction::CastPrepared { source } => {
-                let Some(back) = self.def_of(source).back else {
+                let Some(back) = card_def(self.permanent(source).def).back else {
                     return Vec::new();
                 };
-                let back = back.clone();
+                let back = card_def(back);
                 (
                     self.cast_cost(
                         player,
                         source,
-                        back.clone(),
+                        back.as_ref().clone(),
                         None,
                         0,
                         Zone::Battlefield,

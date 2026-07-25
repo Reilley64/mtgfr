@@ -552,12 +552,12 @@ impl Game {
                 // The card's *main* face is the creature (front); its `adventure` is the spell
                 // being cast now. The card moves from hand onto the stack as a spell whose def is
                 // the adventure face, stashing the front face to restore on resolution.
-                let front = self.def_of(source);
-                let adventure = front
+                let front = self.def_id_of(source);
+                let adventure = card_def(front)
                     .adventure
-                    .expect("an adventure cast's source card has an adventure half")
-                    .clone();
-                let def = intern_card_def(adventure.clone());
+                    .expect("an adventure cast's source card has an adventure half");
+                let def = adventure;
+                let adventure = card_def(adventure);
                 let commander = self.is_commander(source);
                 let id = self.create_object(
                     Some(source),
@@ -625,8 +625,9 @@ impl Game {
                 // Only the cast half is on the stack (CR 709.4); the card moves from hand onto the
                 // stack as that face. `create_object` restores the fused card on the way out, off
                 // the `split_halves_on_stack` entry recorded below.
-                let fused = self.def_of(source);
-                let face = fused
+                let fused = self.def_id_of(source);
+                let fused_def = card_def(fused);
+                let face = fused_def
                     .halves
                     .get(half as usize)
                     .expect("a split-half cast names one of the card's halves")
@@ -810,12 +811,11 @@ impl Game {
             } => {
                 // The spell's characteristics come from the source permanent's back face — the
                 // front permanent stays on the battlefield, so there's no card leaving a zone.
-                let back = self
-                    .def_of(source)
+                let back = card_def(self.permanent(source).def)
                     .back
-                    .expect("a prepared cast's source has a back face")
-                    .clone();
-                let def = intern_card_def(back.clone());
+                    .expect("a prepared cast's source has a back face");
+                let def = back;
+                let back = card_def(back);
                 let id = self.create_object(
                     None,
                     Object::Spell(Spell {
@@ -1176,7 +1176,8 @@ impl Game {
             }
             // A permanent became a copy of another creature as it entered (CR 706/707.2). Overwrite
             // its `def` with the copied `def`; for an until-EOT copy, stash the original first so
-            // cleanup can restore it (Cursed Mirror). `CardDef: Copy`, so both are plain moves.
+            // cleanup can restore it (Cursed Mirror). These are `CardId` handle swaps, not full
+            // `CardDef` clones.
             Event::BecameCopy {
                 object,
                 def,
@@ -1875,8 +1876,7 @@ impl Game {
                     .iter()
                     .position(|&(spell, _)| spell == from)
                     .expect("an adventure spell finish has a recorded front face");
-                let (_, front) = self.play_permissions.adventure_fronts.remove(idx);
-                let def = intern_card_def(front);
+                let (_, def) = self.play_permissions.adventure_fronts.remove(idx);
                 let commander = self.is_commander(from);
                 let id = self.create_object(
                     Some(from),

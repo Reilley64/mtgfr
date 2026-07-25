@@ -527,8 +527,9 @@ pub struct CardDef {
     /// Primordial Hydra's "has trample as long as it has ten or more +1/+1 counters"), read by
     /// the characteristics recompute alongside `keywords`. Empty for every ordinary card.
     pub conditional_keywords: &'static [(Condition, Keyword)],
-    /// The card's abilities. `&'static` keeps `CardDef` `Copy` — loaded card data is
-    /// interned to `'static` at deserialization time (see the `de` module).
+    /// The card's abilities. Loaded card data still interns these slices to `'static` today (see
+    /// the `de` module); a follow-up Wave A cleanup can replace the remaining leaked slices with
+    /// shared owned storage.
     pub abilities: &'static [Ability],
     /// Extra colors a card's real rules text carries for color identity (CR 903.4) that the
     /// simplified gameplay model (cost pips, a land's single modeled producer, `AddMana`
@@ -767,19 +768,18 @@ pub struct CardDef {
     /// A "prepare" double-faced card's back face (soc/sos — CR-style): the front creature has an
     /// ability that makes it "become prepared" (a [`Permanent::prepared`] status), and while
     /// prepared its controller may cast a copy of this back-face spell (see [`Game::cast_prepared`]),
-    /// which unprepares it. `None` for every ordinary card. A `&'static CardDef` (not a nested
-    /// `CardDef` by value) so [`CardDef`] stays `Copy` and finitely sized — the back def is leaked
-    /// to `'static` at load, like the rest of the interned card data (see the `de` module).
-    /// `[back]` (an inline `CardDef` table) in TOML.
-    pub back: Option<&'static CardDef>,
+    /// which unprepares it. `None` for every ordinary card. Stored as the nested face's interned
+    /// [`CardId`] so lookups stay pure once the front face is loaded. `[back]` (an inline
+    /// `CardDef` table) in TOML.
+    pub back: Option<CardId>,
     /// An adventure card's adventure half (CR 715 — soc/sos): the front face is the creature
     /// (this `CardDef`), and its `adventure` holds the instant/sorcery spell you may cast from
     /// hand instead (its own `cost`, `kind`, and `abilities`). On resolution the card is exiled
     /// "on an adventure" (CR 715.3d) and its owner may cast the creature half from exile later at
-    /// normal cost (see [`Game::cast_adventure`]). `None` for every ordinary card. A
-    /// `&'static CardDef` (not a nested `CardDef` by value), like [`Self::back`], so [`CardDef`]
-    /// stays `Copy`. `[adventure]` (an inline `CardDef` table) in TOML.
-    pub adventure: Option<&'static CardDef>,
+    /// normal cost (see [`Game::cast_adventure`]). `None` for every ordinary card. Stored as the
+    /// nested face's interned [`CardId`] for the same reason as [`Self::back`]. `[adventure]` (an
+    /// inline `CardDef` table) in TOML.
+    pub adventure: Option<CardId>,
     /// A split card's two castable halves (CR 709 — Fire // Ice): this `CardDef` is the *fused*
     /// card (the combined characteristics every zone but the stack sees, CR 709.4 — combined name,
     /// mana cost, and colors), and `halves` holds the two faces you may actually cast. Only one

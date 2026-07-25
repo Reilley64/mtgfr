@@ -45800,80 +45800,82 @@ static PACK_A_PUNCH: CardDef = CardDef {
 /// Kirol, History Buff's front face: a 2/3 legendary Vampire Cleric that becomes prepared
 /// whenever one or more cards leave its controller's graveyard, carrying Pack a Punch as its
 /// back-face spell.
-static KIROL: CardDef = CardDef {
-    name: "Kirol, History Buff",
-    id: "",
-    default_print: "",
-    cost: Cost {
-        colored: [1, 0, 0, 1, 0], // {R}{W}
-        ..Cost::FREE
-    },
-    kind: CardKind::Creature {
-        power: 2,
-        toughness: 3,
-        also: TypeSet::NONE,
-    },
-    legendary: true,
-    uncounterable: false,
-    modal: false,
-    modal_choose: 1,
-    modal_choose_max: None,
-    modal_choose_max_if_commander: false,
-    identity_pips: &[],
-    colors: &[],
-    devoid: false,
-    enters_tapped: false,
-    enters_tapped_unless: None,
-    free_cast_if: None,
-    alternative_cost: None,
-    cast_only_during_combat: false,
-    approximates: None,
-    oracle: None,
-    set: "",
-    subtypes: &[],
-    otags: &[],
-    keywords: &[],
-    conditional_keywords: &[],
-    abilities: &[Ability {
-        timing: Timing::Triggered(Trigger::CardsLeaveYourGraveyard),
-        effect: Effect::Misc(MiscEffect::BecomePrepared),
-        optional: false,
-        min_level: 0,
-        once_each_turn: false,
-        condition: None,
-        cost: Cost::FREE,
-    }],
-    cycling: None,
-    cycling_sacrifice: SacrificeCost::None,
-    flashback: None,
-    echo: None,
-    cumulative_upkeep: None,
-    recover: None,
-    bestow: None,
-    morph: None,
-    evoke: None,
-    delve: false,
-    escape: None,
-    retrace: false,
-    graveyard_cast_cost: None,
-    cascade: false,
-    devour: None,
-    demonstrate: false,
-    enter_as_copy: None,
-    encore: None,
-    hand_ability: &[],
-    forecast: None,
-    may_choose_not_to_untap: false,
-    dredge: None,
-    functions_in_graveyard: false,
-    enchant: None,
-    enchant_graveyard: false,
-    back: Some(&PACK_A_PUNCH),
-    adventure: None,
-    halves: &[],
-    suspend: None,
-    vanishing: None,
-};
+fn kirol() -> CardDef {
+    CardDef {
+        name: "Kirol, History Buff",
+        id: "",
+        default_print: "",
+        cost: Cost {
+            colored: [1, 0, 0, 1, 0], // {R}{W}
+            ..Cost::FREE
+        },
+        kind: CardKind::Creature {
+            power: 2,
+            toughness: 3,
+            also: TypeSet::NONE,
+        },
+        legendary: true,
+        uncounterable: false,
+        modal: false,
+        modal_choose: 1,
+        modal_choose_max: None,
+        modal_choose_max_if_commander: false,
+        identity_pips: &[],
+        colors: &[],
+        devoid: false,
+        enters_tapped: false,
+        enters_tapped_unless: None,
+        free_cast_if: None,
+        alternative_cost: None,
+        cast_only_during_combat: false,
+        approximates: None,
+        oracle: None,
+        set: "",
+        subtypes: &[],
+        otags: &[],
+        keywords: &[],
+        conditional_keywords: &[],
+        abilities: &[Ability {
+            timing: Timing::Triggered(Trigger::CardsLeaveYourGraveyard),
+            effect: Effect::Misc(MiscEffect::BecomePrepared),
+            optional: false,
+            min_level: 0,
+            once_each_turn: false,
+            condition: None,
+            cost: Cost::FREE,
+        }],
+        cycling: None,
+        cycling_sacrifice: SacrificeCost::None,
+        flashback: None,
+        echo: None,
+        cumulative_upkeep: None,
+        recover: None,
+        bestow: None,
+        morph: None,
+        evoke: None,
+        delve: false,
+        escape: None,
+        retrace: false,
+        graveyard_cast_cost: None,
+        cascade: false,
+        devour: None,
+        demonstrate: false,
+        enter_as_copy: None,
+        encore: None,
+        hand_ability: &[],
+        forecast: None,
+        may_choose_not_to_untap: false,
+        dredge: None,
+        functions_in_graveyard: false,
+        enchant: None,
+        enchant_graveyard: false,
+        back: Some(intern_card_def(PACK_A_PUNCH.clone())),
+        adventure: None,
+        halves: &[],
+        suspend: None,
+        vanishing: None,
+    }
+}
 
 /// Reanimate a Grizzly Bear out of P0's own graveyard (one card leaving) to fire Kirol's
 /// graveyard-exit trigger, returning the reanimated creature's battlefield id.
@@ -45910,7 +45912,7 @@ fn prepare_kirol_via_graveyard_exit(game: &mut Game, kirol: ObjectId) -> ObjectI
 fn prepare_trigger_marks_the_creature_prepared() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let kirol = game.spawn_on_battlefield(PlayerId(0), KIROL.clone());
+    let kirol = game.spawn_on_battlefield(PlayerId(0), kirol());
     assert!(!game.prepared(kirol), "Kirol starts unprepared");
 
     prepare_kirol_via_graveyard_exit(&mut game, kirol);
@@ -45926,7 +45928,7 @@ fn casting_prepared_puts_the_back_face_on_the_stack_and_unprepares() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     game.stack_library(PlayerId(0), &[card("Forest"), card("Forest")]); // for Pack a Punch's mill
-    let kirol = game.spawn_on_battlefield(PlayerId(0), KIROL.clone());
+    let kirol = game.spawn_on_battlefield(PlayerId(0), kirol());
     let bear = prepare_kirol_via_graveyard_exit(&mut game, kirol);
 
     let library_before = game.library_size(PlayerId(0));
@@ -46007,7 +46009,7 @@ fn real_kirol_from_the_pool_prepares_and_casts_pack_a_punch() {
 fn cast_prepared_rejected_when_not_prepared() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let kirol = game.spawn_on_battlefield(PlayerId(0), KIROL.clone());
+    let kirol = game.spawn_on_battlefield(PlayerId(0), kirol());
     let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
 
     let err = game.submit(Intent::CastPrepared {
@@ -46029,7 +46031,7 @@ fn cast_prepared_rejected_without_the_mana() {
     let mut game = Game::new();
     // No mana funded. Prepare Kirol via a *free* graveyard-exit (Remorseful Cleric's "{T}, Sac:
     // exile target player's graveyard"), so the setup itself spends nothing.
-    let kirol = game.spawn_on_battlefield(PlayerId(0), KIROL.clone());
+    let kirol = game.spawn_on_battlefield(PlayerId(0), kirol());
     game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
     let cleric = game.spawn_on_battlefield(PlayerId(0), card("Remorseful Cleric"));
     let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
@@ -46159,73 +46161,75 @@ static PETTY_THEFT_TEST: CardDef = CardDef {
 
 /// Brazen Borrower's front face — a 3/1 flash/flying Faerie Rogue that can block only flyers,
 /// carrying Petty Theft as its adventure half.
-static BRAZEN_BORROWER_TEST: CardDef = CardDef {
-    name: "Brazen Borrower",
-    id: "",
-    default_print: "",
-    cost: Cost {
-        generic: 1,
-        colored: [0, 2, 0, 0, 0], // {U}{U}
-        ..Cost::FREE
-    },
-    kind: CardKind::Creature {
-        power: 3,
-        toughness: 1,
-        also: TypeSet::NONE,
-    },
-    legendary: false,
-    uncounterable: false,
-    modal: false,
-    modal_choose: 1,
-    modal_choose_max: None,
-    modal_choose_max_if_commander: false,
-    identity_pips: &[],
-    colors: &[],
-    devoid: false,
-    enters_tapped: false,
-    enters_tapped_unless: None,
-    free_cast_if: None,
-    alternative_cost: None,
-    cast_only_during_combat: false,
-    approximates: None,
-    oracle: None,
-    set: "",
-    subtypes: &["Faerie", "Rogue"],
-    otags: &[],
-    keywords: &[Keyword::Flying, Keyword::Flash, Keyword::CanBlockOnlyFlyers],
-    conditional_keywords: &[],
-    abilities: &[],
-    cycling: None,
-    cycling_sacrifice: SacrificeCost::None,
-    flashback: None,
-    echo: None,
-    cumulative_upkeep: None,
-    recover: None,
-    bestow: None,
-    morph: None,
-    evoke: None,
-    delve: false,
-    escape: None,
-    retrace: false,
-    graveyard_cast_cost: None,
-    cascade: false,
-    functions_in_graveyard: false,
-    enchant: None,
-    enchant_graveyard: false,
-    back: None,
-    adventure: Some(&PETTY_THEFT_TEST),
-    halves: &[],
-    suspend: None,
-    vanishing: None,
-    devour: None,
-    demonstrate: false,
-    enter_as_copy: None,
-    encore: None,
-    hand_ability: &[],
-    forecast: None,
-    may_choose_not_to_untap: false,
-    dredge: None,
-};
+fn brazen_borrower_test() -> CardDef {
+    CardDef {
+        name: "Brazen Borrower",
+        id: "",
+        default_print: "",
+        cost: Cost {
+            generic: 1,
+            colored: [0, 2, 0, 0, 0], // {U}{U}
+            ..Cost::FREE
+        },
+        kind: CardKind::Creature {
+            power: 3,
+            toughness: 1,
+            also: TypeSet::NONE,
+        },
+        legendary: false,
+        uncounterable: false,
+        modal: false,
+        modal_choose: 1,
+        modal_choose_max: None,
+        modal_choose_max_if_commander: false,
+        identity_pips: &[],
+        colors: &[],
+        devoid: false,
+        enters_tapped: false,
+        enters_tapped_unless: None,
+        free_cast_if: None,
+        alternative_cost: None,
+        cast_only_during_combat: false,
+        approximates: None,
+        oracle: None,
+        set: "",
+        subtypes: &["Faerie", "Rogue"],
+        otags: &[],
+        keywords: &[Keyword::Flying, Keyword::Flash, Keyword::CanBlockOnlyFlyers],
+        conditional_keywords: &[],
+        abilities: &[],
+        cycling: None,
+        cycling_sacrifice: SacrificeCost::None,
+        flashback: None,
+        echo: None,
+        cumulative_upkeep: None,
+        recover: None,
+        bestow: None,
+        morph: None,
+        evoke: None,
+        delve: false,
+        escape: None,
+        retrace: false,
+        graveyard_cast_cost: None,
+        cascade: false,
+        functions_in_graveyard: false,
+        enchant: None,
+        enchant_graveyard: false,
+        back: None,
+        adventure: Some(intern_card_def(PETTY_THEFT_TEST.clone())),
+        halves: &[],
+        suspend: None,
+        vanishing: None,
+        devour: None,
+        demonstrate: false,
+        enter_as_copy: None,
+        encore: None,
+        hand_ability: &[],
+        forecast: None,
+        may_choose_not_to_untap: false,
+        dredge: None,
+    }
+}
 
 /// Elusive Otter's adventure half — Grove's Bounty ({X}{G} sorcery), simplified to a single
 /// mandatory target for this file's adventure-exile-flow test; the real card's "distribute among
@@ -46322,72 +46326,74 @@ static GROVES_BOUNTY_TEST: CardDef = CardDef {
 
 /// Elusive Otter's front face — a 1/1 Otter with prowess that lesser-power creatures can't block,
 /// carrying Grove's Bounty as its adventure half.
-static ELUSIVE_OTTER_TEST: CardDef = CardDef {
-    name: "Elusive Otter",
-    id: "",
-    default_print: "",
-    cost: Cost {
-        colored: [0, 0, 0, 0, 1], // {G}
-        ..Cost::FREE
-    },
-    kind: CardKind::Creature {
-        power: 1,
-        toughness: 1,
-        also: TypeSet::NONE,
-    },
-    legendary: false,
-    uncounterable: false,
-    modal: false,
-    modal_choose: 1,
-    modal_choose_max: None,
-    modal_choose_max_if_commander: false,
-    identity_pips: &[],
-    colors: &[],
-    devoid: false,
-    enters_tapped: false,
-    enters_tapped_unless: None,
-    free_cast_if: None,
-    alternative_cost: None,
-    cast_only_during_combat: false,
-    approximates: None,
-    oracle: None,
-    set: "",
-    subtypes: &["Otter"],
-    otags: &[],
-    keywords: &[Keyword::Prowess, Keyword::LesserPowerCantBlock],
-    conditional_keywords: &[],
-    abilities: &[],
-    cycling: None,
-    cycling_sacrifice: SacrificeCost::None,
-    flashback: None,
-    echo: None,
-    cumulative_upkeep: None,
-    recover: None,
-    bestow: None,
-    morph: None,
-    evoke: None,
-    delve: false,
-    escape: None,
-    retrace: false,
-    graveyard_cast_cost: None,
-    cascade: false,
-    functions_in_graveyard: false,
-    enchant: None,
-    enchant_graveyard: false,
-    back: None,
-    adventure: Some(&GROVES_BOUNTY_TEST),
-    halves: &[],
-    suspend: None,
-    vanishing: None,
-    devour: None,
-    demonstrate: false,
-    enter_as_copy: None,
-    encore: None,
-    hand_ability: &[],
-    forecast: None,
-    may_choose_not_to_untap: false,
-    dredge: None,
-};
+fn elusive_otter_test() -> CardDef {
+    CardDef {
+        name: "Elusive Otter",
+        id: "",
+        default_print: "",
+        cost: Cost {
+            colored: [0, 0, 0, 0, 1], // {G}
+            ..Cost::FREE
+        },
+        kind: CardKind::Creature {
+            power: 1,
+            toughness: 1,
+            also: TypeSet::NONE,
+        },
+        legendary: false,
+        uncounterable: false,
+        modal: false,
+        modal_choose: 1,
+        modal_choose_max: None,
+        modal_choose_max_if_commander: false,
+        identity_pips: &[],
+        colors: &[],
+        devoid: false,
+        enters_tapped: false,
+        enters_tapped_unless: None,
+        free_cast_if: None,
+        alternative_cost: None,
+        cast_only_during_combat: false,
+        approximates: None,
+        oracle: None,
+        set: "",
+        subtypes: &["Otter"],
+        otags: &[],
+        keywords: &[Keyword::Prowess, Keyword::LesserPowerCantBlock],
+        conditional_keywords: &[],
+        abilities: &[],
+        cycling: None,
+        cycling_sacrifice: SacrificeCost::None,
+        flashback: None,
+        echo: None,
+        cumulative_upkeep: None,
+        recover: None,
+        bestow: None,
+        morph: None,
+        evoke: None,
+        delve: false,
+        escape: None,
+        retrace: false,
+        graveyard_cast_cost: None,
+        cascade: false,
+        functions_in_graveyard: false,
+        enchant: None,
+        enchant_graveyard: false,
+        back: None,
+        adventure: Some(intern_card_def(GROVES_BOUNTY_TEST.clone())),
+        halves: &[],
+        suspend: None,
+        vanishing: None,
+        devour: None,
+        demonstrate: false,
+        enter_as_copy: None,
+        encore: None,
+        hand_ability: &[],
+        forecast: None,
+        may_choose_not_to_untap: false,
+        dredge: None,
+    }
+}
 
 fn cast_from_exile(game: &mut Game, player: PlayerId, card: ObjectId) {
     game.submit(Intent::Cast {
@@ -46413,7 +46419,7 @@ fn cast_from_exile(game: &mut Game, player: PlayerId, card: ObjectId) {
 fn brazen_borrower_cast_petty_theft_then_creature_from_exile() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let brazen = game.spawn_in_hand(PlayerId(0), BRAZEN_BORROWER_TEST.clone());
+    let brazen = game.spawn_in_hand(PlayerId(0), brazen_borrower_test());
     // A nonland permanent an opponent (P1) controls — Petty Theft's target.
     let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
 
@@ -46458,7 +46464,7 @@ fn brazen_borrower_cast_petty_theft_then_creature_from_exile() {
 fn adventure_creature_cast_directly_from_hand_still_works() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let brazen = game.spawn_in_hand(PlayerId(0), BRAZEN_BORROWER_TEST.clone());
+    let brazen = game.spawn_in_hand(PlayerId(0), brazen_borrower_test());
 
     // Ignoring the adventure entirely: cast the creature face straight from hand.
     game.submit(Intent::Cast {
@@ -46493,7 +46499,7 @@ fn adventure_creature_cast_directly_from_hand_still_works() {
 fn elusive_otter_groves_bounty_puts_counters_then_exiles() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let otter = game.spawn_in_hand(PlayerId(0), ELUSIVE_OTTER_TEST.clone());
+    let otter = game.spawn_in_hand(PlayerId(0), elusive_otter_test());
     let target = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
 
     // Grove's Bounty with X=2 — {2}{G}.
@@ -47024,88 +47030,90 @@ static BRAINGEYSER_TEST: CardDef = CardDef {
 /// Dirgur Focusmage's front face: a 1/4 that becomes prepared whenever its controller casts an
 /// instant or sorcery spell with mana value 5 or greater from their hand (the cost-reducer half
 /// is skipped here — it doesn't feed `from_hand`, and the real TOML covers it).
-static DIRGUR_TEST: CardDef = CardDef {
-    name: "Dirgur Focusmage (test)",
-    id: "",
-    default_print: "",
-    cost: Cost::FREE,
-    kind: CardKind::Creature {
-        power: 1,
-        toughness: 4,
-        also: TypeSet::NONE,
-    },
-    legendary: false,
-    uncounterable: false,
-    modal: false,
-    modal_choose: 1,
-    modal_choose_max: None,
-    modal_choose_max_if_commander: false,
-    identity_pips: &[],
-    colors: &[],
-    devoid: false,
-    enters_tapped: false,
-    enters_tapped_unless: None,
-    free_cast_if: None,
-    alternative_cost: None,
-    cast_only_during_combat: false,
-    approximates: None,
-    oracle: None,
-    set: "",
-    subtypes: &[],
-    otags: &[],
-    keywords: &[],
-    conditional_keywords: &[],
-    abilities: &[Ability {
-        timing: Timing::Triggered(Trigger::CastSpell {
-            filter: SpellFilter::InstantOrSorcery,
-            caster: CasterScope::You,
-            nth_each_turn: None,
-            from_hand: true,
-        }),
-        effect: Effect::Misc(MiscEffect::BecomePrepared),
-        optional: false,
-        min_level: 0,
-        once_each_turn: false,
-        condition: Some(Condition::TriggeringSpellManaValueAtLeast { at_least: 5 }),
+fn dirgur_test() -> CardDef {
+    CardDef {
+        name: "Dirgur Focusmage (test)",
+        id: "",
+        default_print: "",
         cost: Cost::FREE,
-    }],
-    cycling: None,
-    cycling_sacrifice: SacrificeCost::None,
-    flashback: None,
-    echo: None,
-    cumulative_upkeep: None,
-    recover: None,
-    bestow: None,
-    morph: None,
-    evoke: None,
-    delve: false,
-    escape: None,
-    retrace: false,
-    graveyard_cast_cost: None,
-    cascade: false,
-    devour: None,
-    demonstrate: false,
-    enter_as_copy: None,
-    encore: None,
-    hand_ability: &[],
-    forecast: None,
-    may_choose_not_to_untap: false,
-    dredge: None,
-    functions_in_graveyard: false,
-    enchant: None,
-    enchant_graveyard: false,
-    back: Some(&BRAINGEYSER_TEST),
-    adventure: None,
-    halves: &[],
-    suspend: None,
-    vanishing: None,
-};
+        kind: CardKind::Creature {
+            power: 1,
+            toughness: 4,
+            also: TypeSet::NONE,
+        },
+        legendary: false,
+        uncounterable: false,
+        modal: false,
+        modal_choose: 1,
+        modal_choose_max: None,
+        modal_choose_max_if_commander: false,
+        identity_pips: &[],
+        colors: &[],
+        devoid: false,
+        enters_tapped: false,
+        enters_tapped_unless: None,
+        free_cast_if: None,
+        alternative_cost: None,
+        cast_only_during_combat: false,
+        approximates: None,
+        oracle: None,
+        set: "",
+        subtypes: &[],
+        otags: &[],
+        keywords: &[],
+        conditional_keywords: &[],
+        abilities: &[Ability {
+            timing: Timing::Triggered(Trigger::CastSpell {
+                filter: SpellFilter::InstantOrSorcery,
+                caster: CasterScope::You,
+                nth_each_turn: None,
+                from_hand: true,
+            }),
+            effect: Effect::Misc(MiscEffect::BecomePrepared),
+            optional: false,
+            min_level: 0,
+            once_each_turn: false,
+            condition: Some(Condition::TriggeringSpellManaValueAtLeast { at_least: 5 }),
+            cost: Cost::FREE,
+        }],
+        cycling: None,
+        cycling_sacrifice: SacrificeCost::None,
+        flashback: None,
+        echo: None,
+        cumulative_upkeep: None,
+        recover: None,
+        bestow: None,
+        morph: None,
+        evoke: None,
+        delve: false,
+        escape: None,
+        retrace: false,
+        graveyard_cast_cost: None,
+        cascade: false,
+        devour: None,
+        demonstrate: false,
+        enter_as_copy: None,
+        encore: None,
+        hand_ability: &[],
+        forecast: None,
+        may_choose_not_to_untap: false,
+        dredge: None,
+        functions_in_graveyard: false,
+        enchant: None,
+        enchant_graveyard: false,
+        back: Some(intern_card_def(BRAINGEYSER_TEST.clone())),
+        adventure: None,
+        halves: &[],
+        suspend: None,
+        vanishing: None,
+    }
+}
 
 #[test]
 fn dirgur_becomes_prepared_on_mv5_instant_cast_from_hand() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let dirgur = game.spawn_on_battlefield(PlayerId(0), DIRGUR_TEST.clone());
+    let dirgur = game.spawn_on_battlefield(PlayerId(0), dirgur_test());
     let spell = game.spawn_in_hand(PlayerId(0), instant_with_mana_value(5));
     assert!(!game.prepared(dirgur), "Dirgur starts unprepared");
 
@@ -47138,7 +47146,7 @@ fn dirgur_becomes_prepared_on_mv5_instant_cast_from_hand() {
 fn dirgur_does_not_prepare_on_small_instant() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let dirgur = game.spawn_on_battlefield(PlayerId(0), DIRGUR_TEST.clone());
+    let dirgur = game.spawn_on_battlefield(PlayerId(0), dirgur_test());
     let spell = game.spawn_in_hand(PlayerId(0), instant_with_mana_value(4));
 
     game.submit(Intent::Cast {
@@ -47171,7 +47179,7 @@ fn dirgur_does_not_prepare_on_flashback_instant() {
     // A qualifying MV-5+ instant cast via flashback — from the graveyard, not the hand. (CR 702.34, CR 403.5, CR 402.5)
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let dirgur = game.spawn_on_battlefield(PlayerId(0), DIRGUR_TEST.clone());
+    let dirgur = game.spawn_on_battlefield(PlayerId(0), dirgur_test());
     let flashback_mv5 = CardDef {
         flashback: Some(flash_cost(0, [0; 5], NO_ADD)),
         ..instant_with_mana_value(5)
@@ -47242,7 +47250,7 @@ fn dirgur_braingeyser_draws_x_to_target_player() {
         PlayerId(1),
         &[card("Forest"), card("Forest"), card("Forest")],
     );
-    let dirgur = game.spawn_on_battlefield(PlayerId(0), DIRGUR_TEST.clone());
+    let dirgur = game.spawn_on_battlefield(PlayerId(0), dirgur_test());
     prepare_dirgur(&mut game, dirgur);
 
     let library_before = game.library_size(PlayerId(1));
@@ -59534,7 +59542,7 @@ fn take_action_casts_a_prepared_back_face() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     game.stack_library(PlayerId(0), &[card("Forest"), card("Forest")]);
-    let kirol = game.spawn_on_battlefield(PlayerId(0), KIROL.clone());
+    let kirol = game.spawn_on_battlefield(PlayerId(0), kirol());
     let bear = prepare_kirol_via_graveyard_exit(&mut game, kirol);
     let tapland = game.spawn_on_battlefield(PlayerId(0), card("Mountain"));
     refresh_via_mana_tap(&mut game, tapland);
@@ -71993,7 +72001,7 @@ fn yavimaya_bloomsage_becomes_prepared_at_power_seven() {
 #[test]
 fn yavimaya_bloomsage_back_face_is_the_channel_grant() {
     // Authoring check: Channel's one back-face ability is the colorless-mana grant.
-    let back = card("Yavimaya Bloomsage").back.expect("Channel back face");
+    let back = card_def(card("Yavimaya Bloomsage").back.expect("Channel back face"));
     assert_eq!(back.name, "Channel");
     assert_eq!(back.abilities.len(), 1);
     assert_eq!(
@@ -84885,42 +84893,44 @@ static FLIPPER_BACK: CardDef = creature("Flipper Back", 3, 4, &[Keyword::Flying]
 /// flips it ([`Effect::Misc(MiscEffect::FlipSource)`]) to [`FLIPPER_BACK`]. Reuses the `[back]` inline-def slot as
 /// the flipped face (the same representation morph's face-down override reads through, but one-way
 /// and permanent).
-static FLIPPER_FRONT: CardDef = CardDef {
-    abilities: &[Ability {
-        timing: Timing::Activated(ActivationCost {
-            taps_self: false,
-            mana: Cost::FREE,
-            sacrifice: SacrificeCost::None,
-            pay_life: Amount::Fixed(0),
-            self_damage: 0,
-            loyalty: None,
+fn flipper_front() -> CardDef {
+    CardDef {
+        abilities: &[Ability {
+            timing: Timing::Activated(ActivationCost {
+                mana: Cost::FREE,
+                taps_self: false,
+                sacrifice: SacrificeCost::None,
+                pay_life: Amount::Fixed(0),
+                self_damage: 0,
+                loyalty: None,
+                once_each_turn: false,
+                sorcery_speed: false,
+                remove_counters: 0,
+                remove_counters_kind: None,
+                remove_counters_x: false,
+                return_self: false,
+                mill_self: 0,
+                discard_cost: 0,
+                exile_self: false,
+                graveyard_exile_target_count: 0,
+            }),
+            effect: Effect::Misc(MiscEffect::FlipSource),
+            optional: false,
+            min_level: 0,
             once_each_turn: false,
-            sorcery_speed: false,
-            remove_counters: 0,
-            remove_counters_kind: None,
-            remove_counters_x: false,
-            return_self: false,
-            mill_self: 0,
-            discard_cost: 0,
-            exile_self: false,
-            graveyard_exile_target_count: 0,
-        }),
-        effect: Effect::Misc(MiscEffect::FlipSource),
-        optional: false,
-        min_level: 0,
-        once_each_turn: false,
-        condition: None,
-        cost: Cost::FREE,
-    }],
-    back: Some(&FLIPPER_BACK),
-    ..creature("Flipper Front", 2, 2, &[])
-};
+            condition: None,
+            cost: Cost::FREE,
+        }],
+        back: Some(intern_card_def(FLIPPER_BACK.clone())),
+        ..creature("Flipper Front", 2, 2, &[])
+    }
+}
 
 #[test]
 fn flip_source_swaps_to_back_face() {
     // CR 712: a flip card "flips" and permanently uses its back face's name, P/T, and abilities.
     let mut game = Game::new();
-    let flipper = game.spawn_on_battlefield(PlayerId(0), FLIPPER_FRONT.clone());
+    let flipper = game.spawn_on_battlefield(PlayerId(0), flipper_front());
 
     assert_eq!(game.def_of(flipper).name, "Flipper Front");
     assert_eq!(game.power(flipper), 2);
@@ -84963,7 +84973,7 @@ fn flip_preserves_identity_counters_and_tapped() {
     // CR 712.5: flipping doesn't change the object — counters, tapped state, and object identity
     // all persist; only which face's characteristics are live changes.
     let mut game = Game::new();
-    let flipper = game.spawn_on_battlefield(PlayerId(0), FLIPPER_FRONT.clone());
+    let flipper = game.spawn_on_battlefield(PlayerId(0), flipper_front());
     game.add_plus_counter(flipper);
     game.tap(flipper);
 
@@ -85006,7 +85016,7 @@ fn unflipped_permanent_uses_front_face() {
     // Regression on the `def_of` change: a permanent that never flipped (even one with a back
     // face) reports its front face's characteristics.
     let mut game = Game::new();
-    let unflipped = game.spawn_on_battlefield(PlayerId(0), FLIPPER_FRONT.clone());
+    let unflipped = game.spawn_on_battlefield(PlayerId(0), flipper_front());
     assert_eq!(game.def_of(unflipped).name, "Flipper Front");
     assert_eq!(game.power(unflipped), 2);
     assert!(!game.has_keyword(unflipped, Keyword::Flying));
