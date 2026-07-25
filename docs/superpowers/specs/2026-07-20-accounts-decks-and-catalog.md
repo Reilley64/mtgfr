@@ -3,7 +3,9 @@
 **Status:** Current (as of 2026-07-25)
 **Module:** `crates/server/src/auth.rs`, `crates/server/src/db.rs`, `crates/server/src/decks.rs`,
 `crates/server/src/decks_api.rs`, `crates/server/src/legality.rs`, `crates/server/src/precons.rs`,
-`crates/server/src/catalog_search.rs`, `proto/mtgfr/v1/catalog.proto`, `proto/mtgfr/v1/mtgfr.proto`
+`crates/server/src/catalog_search.rs`, `crates/server/src/ratings.rs`,
+`crates/server/src/grpc/ratings_svc.rs`, `proto/mtgfr/v1/catalog.proto`,
+`proto/mtgfr/v1/mtgfr.proto`
 
 ---
 
@@ -58,6 +60,8 @@ Neither endpoint requires authentication.
   with Argon2id, creates a `User` and a `Session`, and the BFF sets the `session` cookie.
 - As a **new user**, I enter the leaderboard immediately at rating `1000`; my account stores when
   that starting rating was set so later leaderboard ties stay stable.
+- As a **signed-in player**, I can open the leaderboard and page through every account ordered by
+  rating first, then by who has held that rating the longest when tied.
 - As a **returning user**, I log in; the existing session (or a fresh one) is set as a cookie.
   My session is valid for 30 days; if it expires, the next request gets a 401 and the BFF
   redirects me to log in.
@@ -114,6 +118,26 @@ authed user's owned decks). Returns `DeckDetail`.
 
 **Delete:** Refuses negative id (precons are immutable). Deletes the Postgres row if it belongs
 to the authed user.
+
+### Ratings (`Ratings` gRPC service)
+
+`Ratings.GetLeaderboard` is auth-gated with the same `x-session-token` metadata flow as `Decks`.
+The request accepts `limit` and `offset`; `limit == 0` defaults to `50`, and any higher value is
+capped at `100`.
+
+The server queries `users` ordered by:
+
+1. `rating DESC`
+2. `rating_set_at ASC`
+3. `id ASC`
+
+The response returns:
+
+- `entries[]` with `user_id`, `username`, `rating`, and a 1-based global `rank`
+- `total` with the total number of leaderboard-visible accounts before paging
+
+`rank` is computed from the global sort order, so a page request with `offset = 25` starts ranks at
+`26`.
 
 ### Commander legality (`legality::validate`)
 
@@ -225,8 +249,8 @@ for hydrating a saved deck without fetching the full catalog.
 - `catalog_search.rs` tests use sqlite (Toasty test driver) to exercise `project()`, `search()`,
   and `lookup()` without a live Postgres instance, verifying placeholder dialect branching.
 - gRPC service-level tests in `crates/server/src/grpc/tests.rs` cover `Auth.Signup`, `Auth.Login`,
-  `Decks.Create`, `Decks.List` (including precon interleaving), and `Decks.Delete` with auth
-  enforcement.
+  `Decks.Create`, `Decks.List` (including precon interleaving), `Decks.Delete`, and
+  `Ratings.GetLeaderboard` ordering/paging with auth enforcement.
 - `crates/server/src/db.rs` and `crates/server/src/grpc/tests.rs` cover the rating persistence
   slice: explicit `User` rating round-trip in sqlite plus signup seeding `rating = 1000` with a
   nonzero `rating_set_at`.

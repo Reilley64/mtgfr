@@ -2,10 +2,22 @@ use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use engine::{Event, Game, PlayerId};
+use toasty::SqlPlaceholder;
 
 use crate::Seat;
 use crate::db::User;
 use crate::elo;
+
+const USERS_TABLE: &str = "users";
+pub const DEFAULT_LEADERBOARD_LIMIT: u32 = 50;
+pub const MAX_LEADERBOARD_LIMIT: u32 = 100;
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct LeaderboardRow {
+    pub user_id: i64,
+    pub username: String,
+    pub rating: i32,
+}
 
 /// Account users still in the game at the start of this event batch:
 /// not lost after apply, or listed in this batch's PlayerLost events.
@@ -89,6 +101,105 @@ async fn apply_one(db: &toasty::Db, loser_id: i64, winner_ids: &[i64]) -> Result
     }
 
     Ok(())
+}
+
+pub fn normalize_leaderboard_limit(limit: u32) -> u32 {
+    if limit == 0 {
+        return DEFAULT_LEADERBOARD_LIMIT;
+    }
+    limit.min(MAX_LEADERBOARD_LIMIT)
+}
+
+pub async fn leaderboard(
+    db: &toasty::Db,
+    limit: u32,
+    offset: u32,
+) -> toasty::Result<(Vec<LeaderboardRow>, u32)> {
+    let limit = normalize_leaderboard_limit(limit);
+    let mut conn = db.clone();
+    let total = leaderboard_total(&mut conn).await?;
+    let rows = leaderboard_rows(&mut conn, limit, offset).await?;
+    Ok((rows, total))
+}
+
+fn placeholder(db: &toasty::Db, n: usize) -> String {
+    match db.capability().sql_placeholder {
+        Some(SqlPlaceholder::DollarNumber) => format!("${n}"),
+        _ => format!("?{n}"),
+    }
+}
+
+async fn leaderboard_total(db: &mut toasty::Db) -> toasty::Result<u32> {
+    let sql = format!("SELECT COUNT(*) FROM {USERS_TABLE}");
+    let rows = toasty::sql::query(sql).exec(db).await?;
+    let total = rows
+        .first()
+        .and_then(|row| row.as_record())
+        .and_then(|record| record.fields.first())
+        .and_then(|value| value.to_i64())
+        .ok_or_else(|| toasty::Error::from_args(format_args!("leaderboard total row missing")))?;
+    u32::try_from(total)
+        .map_err(|_| toasty::Error::from_args(format_args!("leaderboard total overflowed u32")))
+}
+
+async fn leaderboard_rows(
+    db: &mut toasty::Db,
+    limit: u32,
+    offset: u32,
+) -> toasty::Result<Vec<LeaderboardRow>> {
+    let limit_slot = placeholder(db, 1);
+    let offset_slot = placeholder(db, 2);
+    // ponytail: use Toasty's raw-SQL escape hatch for ordered paging until model queries expose
+    // stable multi-column ORDER BY + LIMIT/OFFSET with the same clarity as the catalog search path.
+    let sql = format!(
+        "SELECT id, username, rating \
+         FROM {USERS_TABLE} \
+         ORDER BY rating DESC, rating_set_at ASC, id ASC \
+         LIMIT {limit_slot} OFFSET {offset_slot}"
+    );
+    let rows = toasty::sql::query(sql)
+        .bind(i64::from(limit))
+        .bind(i64::from(offset))
+        .exec(db)
+        .await?;
+    rows_to_leaderboard_rows(rows)
+}
+
+fn rows_to_leaderboard_rows(rows: Vec<toasty::stmt::Value>) -> toasty::Result<Vec<LeaderboardRow>> {
+    let mut entries = Vec::with_capacity(rows.len());
+    for row in rows {
+        let record = row.as_record().ok_or_else(|| {
+            toasty::Error::from_args(format_args!("leaderboard row missing record"))
+        })?;
+        let user_id = record
+            .fields
+            .first()
+            .and_then(|value| value.to_i64())
+            .ok_or_else(|| {
+                toasty::Error::from_args(format_args!("leaderboard row missing user id"))
+            })?;
+        let username = record
+            .fields
+            .get(1)
+            .and_then(|value| value.as_str())
+            .ok_or_else(|| {
+                toasty::Error::from_args(format_args!("leaderboard row missing username"))
+            })?
+            .to_string();
+        let rating = record
+            .fields
+            .get(2)
+            .and_then(|value| value.to_i32())
+            .ok_or_else(|| {
+                toasty::Error::from_args(format_args!("leaderboard row missing rating"))
+            })?;
+        entries.push(LeaderboardRow {
+            user_id,
+            username,
+            rating,
+        });
+    }
+    Ok(entries)
 }
 
 fn unix_seconds() -> i64 {

@@ -157,6 +157,99 @@ async fn signed_up(state: &AppState, email: &str, username: &str) -> (i64, Strin
     (me.id, session.session_token)
 }
 
+async fn set_user_rating(state: &AppState, user_id: i64, rating: i32, rating_set_at: i64) {
+    let mut db = state.db.clone();
+    let mut user = db::User::filter_by_id(user_id)
+        .get(&mut db)
+        .await
+        .expect("user exists");
+    user.update()
+        .rating(rating)
+        .rating_set_at(rating_set_at)
+        .exec(&mut db)
+        .await
+        .expect("update user rating");
+}
+
+#[tokio::test]
+async fn ratings_get_leaderboard_requires_authentication() {
+    use pb::ratings_server::Ratings;
+
+    let state = test_state().await;
+    let ratings_svc = ratings_svc::RatingsSvc::new(state);
+
+    let err = ratings_svc
+        .get_leaderboard(Request::new(pb::GetLeaderboardRequest {
+            limit: 0,
+            offset: 0,
+        }))
+        .await
+        .expect_err("leaderboard should require auth");
+    assert_eq!(err.code(), tonic::Code::Unauthenticated);
+}
+
+#[tokio::test]
+async fn ratings_get_leaderboard_orders_stably_and_pages() {
+    use pb::ratings_server::Ratings;
+
+    let state = test_state().await;
+    let (alice_id, alice_token) = signed_up(&state, "lb-alice@x.c", "alice").await;
+    let (bob_id, _bob_token) = signed_up(&state, "lb-bob@x.c", "bob").await;
+    let (cara_id, _cara_token) = signed_up(&state, "lb-cara@x.c", "cara").await;
+    let (dax_id, _dax_token) = signed_up(&state, "lb-dax@x.c", "dax").await;
+
+    set_user_rating(&state, alice_id, 1000, 300).await;
+    set_user_rating(&state, bob_id, 1200, 200).await;
+    set_user_rating(&state, cara_id, 1200, 100).await;
+    set_user_rating(&state, dax_id, 1200, 100).await;
+
+    let ratings_svc = ratings_svc::RatingsSvc::new(state.clone());
+
+    let paged = ratings_svc
+        .get_leaderboard(authed(
+            pb::GetLeaderboardRequest {
+                limit: 2,
+                offset: 1,
+            },
+            &alice_token,
+        ))
+        .await
+        .expect("leaderboard page")
+        .into_inner();
+    assert_eq!(paged.total, 4);
+    assert_eq!(paged.entries.len(), 2);
+    assert_eq!(paged.entries[0].user_id, dax_id);
+    assert_eq!(paged.entries[0].username, "dax");
+    assert_eq!(paged.entries[0].rating, 1200);
+    assert_eq!(paged.entries[0].rank, 2);
+    assert_eq!(paged.entries[1].user_id, bob_id);
+    assert_eq!(paged.entries[1].username, "bob");
+    assert_eq!(paged.entries[1].rating, 1200);
+    assert_eq!(paged.entries[1].rank, 3);
+
+    let default_limit = ratings_svc
+        .get_leaderboard(authed(
+            pb::GetLeaderboardRequest {
+                limit: 0,
+                offset: 0,
+            },
+            &alice_token,
+        ))
+        .await
+        .expect("leaderboard default limit")
+        .into_inner();
+    assert_eq!(default_limit.total, 4);
+    assert_eq!(default_limit.entries.len(), 4);
+    assert_eq!(default_limit.entries[0].user_id, cara_id);
+    assert_eq!(default_limit.entries[0].rank, 1);
+    assert_eq!(default_limit.entries[1].user_id, dax_id);
+    assert_eq!(default_limit.entries[1].rank, 2);
+    assert_eq!(default_limit.entries[2].user_id, bob_id);
+    assert_eq!(default_limit.entries[2].rank, 3);
+    assert_eq!(default_limit.entries[3].user_id, alice_id);
+    assert_eq!(default_limit.entries[3].rank, 4);
+}
+
 #[tokio::test]
 async fn decks_round_trip_create_list_get_update_delete() {
     use pb::decks_server::Decks;
