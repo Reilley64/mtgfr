@@ -1,6 +1,6 @@
 # Arena-style BO1 hand smoothing — design
 
-**Status:** Draft for review (2026-07-25)  
+**Status:** Approved for implementation (2026-07-25)  
 **Living surface specs to update at implement time:**
 [`2026-07-20-engine-core-and-event-model.md`](2026-07-20-engine-core-and-event-model.md),
 [`2026-07-20-lobby-table-routing-and-live-game.md`](2026-07-20-lobby-table-routing-and-live-game.md)
