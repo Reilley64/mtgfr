@@ -51,6 +51,29 @@ describe("avatarShapes commander damage", () => {
     expect(hand?._tag === "Text" ? hand.y : null).toBe(71);
   });
 
+  it("mirrors label offsets for a flipped opponent", () => {
+    const positions = {
+      0: { x: 100, y: 200 },
+      1: { x: 100, y: 100 },
+    };
+    const shapes = avatarShapes(
+      [
+        player(),
+        player({ player: 1, username: "Bob", hand_count: 8, life: 41, commander_damage: [{ from: 0, amount: 9 }] }),
+      ],
+      positions,
+      0,
+      1,
+    );
+    const life = shapes.find((s) => s._tag === "Text" && s.content === "41");
+    const hand = shapes.find((s) => s._tag === "Text" && s.content === "Hand 8");
+    const cmd = shapes.find((s) => s._tag === "Text" && s.content === "Cmd 9");
+
+    expect(life?._tag === "Text" ? life.y : null).toBe(52);
+    expect(hand?._tag === "Text" ? hand.y : null).toBe(129);
+    expect(cmd?._tag === "Text" ? cmd.y : null).toBe(20);
+  });
+
   it("paints monogram when gravatar_hash empty", () => {
     const shapes = avatarShapes([player({ username: "Alice", gravatar_hash: "" })], { 0: { x: 0, y: 0 } }, 0, 1);
 

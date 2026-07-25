@@ -81,7 +81,7 @@ Battlefield playable borders are derived from current `ActionView` data. Tap-onl
 
 Avatars are painted on the Mount bitmap layer (`bitmap/mount.ts` `paintAvatars`) using the same camera transform as cards; `canvas/avatars.ts` keeps a matching vector helper for the Foldkit Canvas pass beneath the Mount layer. The circle is always a face: `PlayerView.gravatar_hash` resolves to `https://www.gravatar.com/avatar/{hash}?s=128&d=404` through `sharedImageCache`, and missing/empty/undecoded images fall back to a seat-color circle with a monogram (`monogramLetter(username, player)`). The priority player uses a gold stroke. Lost players render with muted image overlay or muted fallback fill. Targetable player highlights use Island Blue. This behavior follows the accepted [Gravatar Seat Faces Design](2026-07-25-gravatar-seat-faces-design.md).
 
-Avatar label offsets are locked in `geometry/layout.ts`: `Hand N` paints above the circle at `pos.y - 29 * zoom`; life paints below the circle at `pos.y + 48 * zoom`; username paints at `pos.y + 66 * zoom`; and `Cmd N` paints at `pos.y + 80 * zoom` when present. HTML hit targets (`life-orb-{seat}`) remain on the circle so combat drops and player-targeting keep the same target.
+Avatar label offsets are locked in `geometry/layout.ts`: `Hand N` paints toward the battlefield (`pos.y - 29 * zoom` for upright seats, mirrored to `pos.y + 29 * zoom` for flipped seats). Life, username, and `Cmd N` paint on the outer side of the circle (`+48/+66/+80` for upright seats, mirrored to `-48/-66/-80` for flipped seats). HTML hit targets (`life-orb-{seat}`) remain on the circle so combat drops and player-targeting keep the same target.
 
 When a seat has taken commander damage, the avatar group paints `Cmd N` below the username (fill `#db8664`), where `N` is `maxCommanderDamage(player)` — the highest `amount` from any single entry in `PlayerView.commander_damage` (the 21-damage kill clock is per commander source). Omit the label when that max is 0 or the field is absent/empty. Lost seats still show `Cmd N` when present.
 
@@ -129,7 +129,7 @@ These are visual/layout rules only; they do not collapse engine objects.
 ## Testing Decisions
 
 - Canvas scene tests assert felt, seat, avatar, and arrow ordering.
-- Avatar unit tests assert Gravatar image paint, monogram fallback, locked life/hand label offsets, and `Cmd N` paint from `commander_damage` (max source only; omitted at 0).
+- Avatar unit tests assert Gravatar image paint, monogram fallback, mirrored flipped/upright label offsets, and `Cmd N` paint from `commander_damage` (max source only; omitted at 0).
 - Resting-snapshot tests assert `gravatar_hash`-only and `commander_damage`-only player changes invalidate Mount resting paint.
 - Bitmap paint tests assert playable, commander, target, auto-tap, P/T, loyalty, counter, and damage chrome on the resting layer.
 - Scene tests assert arrows and interactive life-orb hit targets remain layered correctly.

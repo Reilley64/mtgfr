@@ -332,6 +332,39 @@ describe("paintBitmapLayer", () => {
     expect(calls.filter((c) => /^text:Cmd \d+$/.test(c))).toHaveLength(1);
   });
 
+  it("mirrors flipped opponent label paint away from their card row", () => {
+    const calls: string[] = [];
+    vi.stubGlobal("window", { devicePixelRatio: 1 });
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => mockCtx(calls)),
+      style: {},
+    } as unknown as HTMLCanvasElement;
+
+    paintBitmapLayer(
+      canvas,
+      frame({
+        cards: [],
+        players: [
+          player(),
+          player({
+            player: 1,
+            username: "Bob",
+            hand_count: 8,
+            life: 41,
+            commander_damage: [{ from: 0, amount: 9 }],
+          }),
+        ],
+      }),
+      { get: vi.fn(() => undefined) },
+    );
+
+    expect(calls).toContain("text:41@-96");
+    expect(calls).toContain("text:Hand 8@-19");
+    expect(calls).toContain("text:Cmd 9@-128");
+  });
+
   it("paints Gravatar face images with life below the circle", () => {
     const calls: string[] = [];
     vi.stubGlobal("window", { devicePixelRatio: 1 });

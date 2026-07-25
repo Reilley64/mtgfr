@@ -46,7 +46,7 @@ Wheel and pinch gestures are translated by the board camera gesture Mount into `
 
 Cards use 96 x 134 world units. Seat bands are arranged as a four-seat table from the viewer perspective: viewer at the bottom, opponents around the top and sides, with top seats oriented toward the viewer. Fewer than four seats leave unused bands empty. Zone columns for command, graveyard, exile, and library live at the left edge of each seat band, and battlefield mana anchoring is derived from the same geometry.
 
-Seat avatars use a 40 world-unit radius. Their label gutter is part of `boardBounds`: hand count sits above the circle, while life, username, and commander-damage labels sit below it, so `fitCamera` reserves room for the full avatar label stack instead of only the circular face.
+Seat avatars use a 40 world-unit radius. Their label gutter is part of `boardBounds`: hand count sits toward the battlefield, while life, username, and commander-damage labels sit on the outer side of the circle. Top-row flipped seats mirror those offsets, so `fitCamera` reserves room on the side where labels actually paint instead of only the circular face.
 
 ### Hit testing
 

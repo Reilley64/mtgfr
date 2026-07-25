@@ -4,15 +4,7 @@ import type { PlayerView } from "~/wire/types";
 import { monogramLetter } from "../../../lib/gravatar";
 import { TARGET_COLOR } from "../action/targeting";
 import { type Camera, worldToScreen } from "../geometry/camera";
-import {
-  AVATAR_HAND_LABEL_OFFSET,
-  AVATAR_LABEL_BELOW,
-  AVATAR_LIFE_LABEL_BELOW,
-  AVATAR_R,
-  AVATAR_USERNAME_LABEL_BELOW,
-  avatarPos,
-  seatColor,
-} from "../geometry/layout";
+import { AVATAR_R, avatarLabelOffsets, avatarPos, seatColor } from "../geometry/layout";
 
 type Shape = Canvas.Shape;
 
@@ -49,6 +41,8 @@ export function avatarShapes(
   priority: number,
   zoom: number,
   targetPlayers: ReadonlySet<number> = new Set(),
+  viewer = 0,
+  count = Math.max(1, players.length),
 ): Shape[] {
   const radius = AVATAR_R * zoom;
   const shapes: Shape[] = [];
@@ -57,6 +51,7 @@ export function avatarShapes(
     const pos = positions[player.player];
     if (pos == null) continue;
 
+    const offsets = avatarLabelOffsets(player.player, viewer, count);
     const stroke = priority === player.player ? colors.priorityGold : seatColor(player.player, 0.9);
     const targeted = targetPlayers.has(player.player);
     shapes.push(
@@ -79,7 +74,7 @@ export function avatarShapes(
       }),
       Canvas.Text({
         x: pos.x,
-        y: pos.y + AVATAR_LIFE_LABEL_BELOW * zoom,
+        y: pos.y + offsets.life * zoom,
         content: `${player.life}`,
         font: `700 ${Math.max(1, Math.round(18 * zoom))}px system-ui, sans-serif`,
         fill: "#eff",
@@ -88,7 +83,7 @@ export function avatarShapes(
       }),
       Canvas.Text({
         x: pos.x,
-        y: pos.y + AVATAR_USERNAME_LABEL_BELOW * zoom,
+        y: pos.y + offsets.username * zoom,
         content: player.username?.trim() || `P${player.player}`,
         font: `${Math.max(1, Math.round(14 * zoom))}px system-ui, sans-serif`,
         fill: "#9cb",
@@ -97,7 +92,7 @@ export function avatarShapes(
       }),
       Canvas.Text({
         x: pos.x,
-        y: pos.y + AVATAR_HAND_LABEL_OFFSET * zoom,
+        y: pos.y + offsets.hand * zoom,
         content: `Hand ${player.hand_count}`,
         font: `${Math.max(1, Math.round(12 * zoom))}px system-ui, sans-serif`,
         fill: "#89a",
@@ -111,7 +106,7 @@ export function avatarShapes(
       shapes.push(
         Canvas.Text({
           x: pos.x,
-          y: pos.y + AVATAR_LABEL_BELOW * zoom,
+          y: pos.y + offsets.commander * zoom,
           content: `Cmd ${cmd}`,
           font: `${Math.max(1, Math.round(12 * zoom))}px system-ui, sans-serif`,
           fill: "#db8664",

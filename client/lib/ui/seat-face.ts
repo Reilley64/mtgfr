@@ -23,7 +23,7 @@ export function seatFace<Message>(h: HtmlFactory<Message>, options: SeatFaceOpti
   if (url == null) {
     return h.span(
       [h.Class(className), h.DataAttribute("testid", testId), h.Attribute("aria-label", alt)],
-      [monogramLetter(options.username, options.seat + 1)],
+      [monogramLetter(options.username, options.seat)],
     );
   }
 

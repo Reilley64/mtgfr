@@ -10,16 +10,7 @@ import { TARGET_COLOR } from "../action/targeting";
 import { maxCommanderDamage } from "../canvas/avatars";
 import { PLAYABLE_BORDER, playableBattlefieldObjectIds } from "../chrome";
 import { type Camera, worldToScreen } from "../geometry/camera";
-import {
-  AVATAR_HAND_LABEL_OFFSET,
-  AVATAR_LABEL_BELOW,
-  AVATAR_LIFE_LABEL_BELOW,
-  AVATAR_R,
-  AVATAR_USERNAME_LABEL_BELOW,
-  avatarPos,
-  type RenderCard,
-  seatColor,
-} from "../geometry/layout";
+import { AVATAR_R, avatarLabelOffsets, avatarPos, type RenderCard, seatColor } from "../geometry/layout";
 import { ArtLoaded, FlightsSynced } from "../messages";
 import { type CardFlight, stepFlights } from "../motion/flights";
 import { mergeFlightPoses, restingPaintChanged, restingPaintSnapshot } from "./flight-frame";
@@ -358,6 +349,7 @@ function paintAvatars(ctx: CanvasRenderingContext2D, frame: BitmapFrame, cache: 
   for (const player of frame.players) {
     const pos = avatarPos(player.player, frame.viewer, count);
     const screen = worldToScreen(frame.camera, pos.x, pos.y);
+    const offsets = avatarLabelOffsets(player.player, frame.viewer, count);
     const stroke = frame.priority === player.player ? colors.priorityGold : seatColor(player.player, 0.9);
     const url = gravatarUrl(player.gravatar_hash ?? "");
     const img = url ? cache.get(url) : undefined;
@@ -411,25 +403,25 @@ function paintAvatars(ctx: CanvasRenderingContext2D, frame: BitmapFrame, cache: 
     ctx.font = `700 ${Math.max(1, Math.round(18 * frame.camera.zoom))}px system-ui, sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(`${player.life}`, screen.x, screen.y + AVATAR_LIFE_LABEL_BELOW * frame.camera.zoom);
+    ctx.fillText(`${player.life}`, screen.x, screen.y + offsets.life * frame.camera.zoom);
 
     ctx.fillStyle = "#9cb";
     ctx.font = `${Math.max(1, Math.round(14 * frame.camera.zoom))}px system-ui, sans-serif`;
     ctx.fillText(
       player.username?.trim() || `P${player.player}`,
       screen.x,
-      screen.y + AVATAR_USERNAME_LABEL_BELOW * frame.camera.zoom,
+      screen.y + offsets.username * frame.camera.zoom,
     );
 
     ctx.fillStyle = "#89a";
     ctx.font = `${Math.max(1, Math.round(12 * frame.camera.zoom))}px system-ui, sans-serif`;
-    ctx.fillText(`Hand ${player.hand_count}`, screen.x, screen.y + AVATAR_HAND_LABEL_OFFSET * frame.camera.zoom);
+    ctx.fillText(`Hand ${player.hand_count}`, screen.x, screen.y + offsets.hand * frame.camera.zoom);
 
     const cmd = maxCommanderDamage(player);
     if (cmd > 0) {
       ctx.fillStyle = "#db8664";
       ctx.font = `${Math.max(1, Math.round(12 * frame.camera.zoom))}px system-ui, sans-serif`;
-      ctx.fillText(`Cmd ${cmd}`, screen.x, screen.y + AVATAR_LABEL_BELOW * frame.camera.zoom);
+      ctx.fillText(`Cmd ${cmd}`, screen.x, screen.y + offsets.commander * frame.camera.zoom);
     }
     ctx.restore();
   }
