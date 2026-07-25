@@ -65,6 +65,7 @@ pub fn stack_object_view_to_pb(entry: StackObjectView) -> pb::StackObjectView {
         controller: u32::from(entry.controller),
         label: Some(message_ref_to_pb(entry.label)),
         target: entry.target.map(wire_target_to_pb),
+        targets: entry.targets.into_iter().map(wire_target_to_pb).collect(),
     }
 }
 
@@ -1701,6 +1702,7 @@ mod tests {
                 controller: 0,
                 label: MessageRef::key("test.shock"),
                 target: Some(schema::WireTarget::Player { player: 1 }),
+                targets: vec![schema::WireTarget::Player { player: 1 }],
             }],
             combat: CombatView::default(),
             can_act: true,

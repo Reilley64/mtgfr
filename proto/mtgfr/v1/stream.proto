@@ -100,6 +100,9 @@ message StackObjectView {
   optional WireTarget target = 5;
   // Stable label for the spell name or ability effect.
   MessageRef label = 6;
+  // All declared targets, clause 0 then clause 1 (Magma Opus second clause).
+  // Empty when targetless. `target` remains the primary (first) for older clients.
+  repeated WireTarget targets = 7;
 }
 
 // One labelled item offered by a pending choice (a legal target, or a blocker to assign damage

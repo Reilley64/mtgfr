@@ -686,6 +686,15 @@ impl Game {
         }
     }
 
+    /// All declared targets on spell `id`, first clause then second (`targets_second`).
+    /// Empty when `id` is not a spell or has no chosen targets.
+    pub fn spell_targets(&self, id: ObjectId) -> Vec<Target> {
+        match &self.objects[id as usize] {
+            Object::Spell(s) => s.targets.iter().chain(s.targets_second.iter()).collect(),
+            _ => Vec::new(),
+        }
+    }
+
     /// Whether the spell at `id` currently has exactly one target (CR 114.6's "single target" —
     /// Willbender). Counts the chosen targets across both independent clauses; `false` if `id`
     /// isn't a spell or targets zero/two-plus.

@@ -344,6 +344,9 @@ pub struct StackObjectView {
     pub label: MessageRef,
     /// The chosen target, if any.
     pub target: Option<WireTarget>,
+    /// Declared targets in clause order (primary clause, then second). Empty if targetless.
+    #[serde(default)]
+    pub targets: Vec<WireTarget>,
 }
 
 /// One labelled item offered by a pending choice (a legal target, or a blocker to assign
