@@ -123,6 +123,7 @@ export type HandDragState = {
   print: string;
   manaCost: WireCost;
   kind?: string;
+  zone?: "hand" | "command" | "graveyard" | "exile";
   x: number;
   y: number;
 };
@@ -1797,6 +1798,7 @@ export function updateBoard(
             print: message.print,
             manaCost: message.manaCost,
             kind: message.kind,
+            zone: message.zone,
             x: message.x,
             y: message.y,
           },

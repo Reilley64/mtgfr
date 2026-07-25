@@ -136,7 +136,9 @@ function tile(args: {
       ? "ring-2 ring-llanowar shadow-[0_0_12px_rgba(47,125,70,0.55)]"
       : discardSelectable
         ? "ring-2 ring-island-blue shadow-[0_0_12px_rgba(74,158,255,0.45)]"
-        : barZoneAura(zone, playable),
+        : dragSource
+          ? ""
+          : barZoneAura(zone, playable),
   ]
     .filter((v) => v !== "")
     .join(" ");
@@ -144,7 +146,7 @@ function tile(args: {
   const hitClass = [
     "pointer-events-auto absolute bottom-0",
     discardSelected ? "[height:var(--hit-raised-h)]" : "group-hover/hand-tile:[height:var(--hit-raised-h)]",
-    playable ? "cursor-grab" : "cursor-default",
+    playable ? "cursor-grab" : "cursor-not-allowed",
   ].join(" ");
 
   const hitAttrs: Attribute<Message>[] = [
@@ -327,7 +329,9 @@ export type HandViewInputs = {
 
 function handDragGhost(drag: HandDragState): Html {
   const pips = costPips(drag.manaCost, { showZero: drag.kind != null && drag.kind !== "land" });
-  const artClass = `pointer-events-none block touch-none rounded-game object-cover drop-shadow-drag shadow-hand ${barZoneAura("hand")}`;
+  const zone = drag.zone ?? "hand";
+  const aura = barZoneAura(zone, true);
+  const artClass = `pointer-events-none block touch-none rounded-game object-cover drop-shadow-drag shadow-hand ${aura}`;
 
   return h.div(
     [
@@ -360,7 +364,7 @@ function handDragGhost(drag: HandDragState): Html {
         : h.div(
             [
               h.Class(
-                `flex items-center justify-center rounded-game bg-forest-shadow p-1 text-center text-caption text-snow shadow-hand ${barZoneAura("hand")}`,
+                `flex items-center justify-center rounded-game bg-forest-shadow p-1 text-center text-caption text-snow shadow-hand ${aura}`,
               ),
               h.Style({ width: `${HAND_CARD_W}px`, height: `${HAND_CARD_H}px` }),
             ],

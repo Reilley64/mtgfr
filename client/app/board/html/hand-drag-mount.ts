@@ -13,6 +13,13 @@ type HandDragMessage =
   | typeof HandDragEnded.Type
   | typeof HandActionHovered.Type;
 
+function readBarZone(zone: string | undefined): "hand" | "command" | "graveyard" | "exile" | null {
+  if (zone === "hand" || zone === "command" || zone === "graveyard" || zone === "exile") {
+    return zone;
+  }
+  return null;
+}
+
 export function handDragTargetFromEvent(target: EventTarget | null): HTMLElement | null {
   if (!(target instanceof Element)) return null;
   const hit = target.closest("[data-action-id]");
@@ -30,12 +37,14 @@ export function readHandDragPayload(hit: HTMLElement, x: number, y: number): typ
   } catch {
     return null;
   }
+  const zone = readBarZone(hit.dataset.barZone) ?? readBarZone(action.section) ?? "hand";
   return HandDragStarted({
     action,
     name: hit.dataset.cardName ?? formatMessage(action.label),
     print: hit.dataset.cardPrint ?? "",
     manaCost: readManaCost(hit.dataset.manaCost),
     kind: hit.dataset.objectKind,
+    zone,
     x,
     y,
   });

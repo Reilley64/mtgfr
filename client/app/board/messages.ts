@@ -50,6 +50,7 @@ export const HandDragStarted = m("HandDragStarted", {
   print: S.String,
   manaCost: S.Any,
   kind: S.optional(S.String),
+  zone: S.optional(S.Literal("hand", "command", "graveyard", "exile")),
   x: S.Number,
   y: S.Number,
 });

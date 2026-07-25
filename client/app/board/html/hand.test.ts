@@ -243,6 +243,46 @@ describe("handView playable outlines", () => {
   });
 });
 
+describe("handView drag chrome", () => {
+  it("moves playable border from source to ghost while dragging", () => {
+    const castable = object(42, { name: "Lightning Bolt" });
+    const cast = action(7, { object: 42 });
+    const tree = handView({
+      state: state({ objects: [castable], actions: [cast] }),
+      hiddenId: null,
+      flyingIds: new Set(),
+      hiddenIds: new Set(),
+      handDrag: {
+        action: cast,
+        name: "Lightning Bolt",
+        print: "",
+        manaCost: cost(),
+        zone: "hand",
+        x: 10,
+        y: 10,
+      },
+    });
+    const source = findTestId(tree, "hand-card-face-42");
+    expect(className(source)).not.toContain("ring-playable-border");
+    expect(treeHasClass(source, "opacity-25")).toBe(true);
+    const ghost = findTestId(tree, "hand-drag-ghost");
+    expect(ghost).not.toBeNull();
+    expect(treeHasClass(ghost, "ring-playable-border")).toBe(true);
+  });
+
+  it("uses not-allowed on unplayable and grab on playable hit strips", () => {
+    const castable = object(42, { name: "Lightning Bolt" });
+    const uncastable = object(43, { name: "Cancel" });
+    const tree = renderHand(state({ objects: [castable, uncastable], actions: [action(7, { object: 42 })] }));
+    const playableHit = findTestId(tree, "hand-card-42");
+    const unplayableHit = findTestId(tree, "hand-card-43");
+    expect(className(playableHit)).toContain("cursor-grab");
+    expect(className(playableHit)).not.toContain("cursor-not-allowed");
+    expect(className(unplayableHit)).toContain("cursor-not-allowed");
+    expect(className(unplayableHit)).not.toContain("cursor-grab");
+  });
+});
+
 describe("handView hover stacking", () => {
   it("keeps resting hand z overridable from the tile root", () => {
     const a = object(42, { name: "Lightning Bolt" });

@@ -1,3 +1,64 @@
+# Task 1 report: Playable border follows ghost + idle cursors
+
+## Scope
+
+Implemented Task 1 on branch `cursor/hand-drag-chrome-b23c` from base `ee3094e8`.
+
+Included:
+
+- `HandDragStarted.zone` message payload support
+- `HandDragState.zone` submodel storage
+- hand-bar drag payload zone inference from `data-bar-zone` / action section
+- playable border moved off the drag source and onto the hand-drag ghost
+- idle hit-strip cursors changed to `cursor-grab` for playable and `cursor-not-allowed` for unplayable
+
+Explicitly not included:
+
+- Task 2 grabbing cursor behavior
+- Task 3 shadow work
+
+## Files changed
+
+- `client/app/board/messages.ts`
+- `client/app/board/submodel.ts`
+- `client/app/board/html/hand-drag-mount.ts`
+- `client/app/board/html/hand.ts`
+- `client/app/board/html/hand.test.ts`
+
+## TDD evidence
+
+### Red
+
+Ran:
+
+```bash
+cd client && bunx vitest run app/board/html/hand.test.ts -t "drag chrome|not-allowed"
+```
+
+Observed failures:
+
+- drag source still contained `ring-playable-border`
+- unplayable hit strip still rendered `cursor-default`
+
+### Green
+
+Ran:
+
+```bash
+cd client && bunx vitest run app/board/html/hand.test.ts app/board/hand-drag.test.ts app/board/html/surfaces.test.ts
+```
+
+Result: 3 files passed, 100 tests passed.
+
+## Notes
+
+- The drag source now keeps only the fade while the ghost owns the playable border.
+- The ghost aura follows the bar zone carried on the drag payload, defaulting to `"hand"` when no bar zone is present.
+- No Task 2 cursor-grabbing or Task 3 shadow changes were made.
+
+## Concerns
+
+None.
 # Task 1 Report: Slot hover z (TDD)
 
 **Branch:** `cursor/hand-hover-stack-b23c`  
