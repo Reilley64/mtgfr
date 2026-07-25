@@ -146,3 +146,20 @@ test("redirects unsigned protected play routes with path deck", () => {
     Story.Command.resolve(redirect, NavigationCompleted()),
   );
 });
+
+test("redirects unsigned protected leaderboard route", () => {
+  const [model] = init(url("/leaderboard"));
+  const redirect = {
+    name: "Redirect",
+    args: { path: "/login?next=%2Fleaderboard" },
+    effect: Effect.succeed(NavigationCompleted()),
+  };
+
+  Story.story(
+    update,
+    Story.with(model),
+    Story.message(ReceivedMe({ me: null })),
+    Story.Command.expectExact(redirect),
+    Story.Command.resolve(redirect, NavigationCompleted()),
+  );
+});
