@@ -1,101 +1,135 @@
-# Task 3 Report: Spec + disabled Mulligan + verification
+# Task 3 Report: Activation menu view + Scene tests
 
 ## Status
 
-**DONE**
+**DONE_WITH_CONCERNS**
 
 ## Summary
 
-- Added missing Scene coverage for the disabled `mulligan-take` control in `client/app/board/html/chrome.test.ts`.
-- Updated `docs/superpowers/specs/2026-07-20-turn-and-priority-chrome.md` to describe the shipped mulligan overlay, post-keep waiting banner, overlay/waiting test coverage, and the `2026-07-24-mulligan-pregame-overlay-design.md` cross-link.
-- Kept the existing production behavior intact: `client/app/board/html/mulligan-overlay.ts` already bound `h.Disabled(!chrome.canMulligan)`, and focused verification confirmed that wiring.
+- Replaced the selected-permanent SVG radial overlay with a card-anchored activation menu in `client/app/board/html/activation-menu.ts`.
+- Moved `selectedRadialOptions` into the new menu file and rewired `overlays.ts` and `submodel.ts`.
+- Replaced the three radial Scene assertions in `client/app/board/scene.test.ts` with activation-menu assertions.
+- Deleted `client/app/board/html/activation-radial.ts`.
 
 ## TDD Evidence
 
 ### RED
 
-Added this Scene:
+Updated the three Scene tests in `client/app/board/scene.test.ts` before production changes:
 
-```ts
-test("mulligan take is disabled when can_mulligan is false", () => {
-  // undecided, can_mulligan: false, mulligans_taken: 6
-  Scene.expect(Scene.testId("mulligan-overlay")).toExist();
-  Scene.expect(Scene.testId("mulligan-take")).toBeDisabled();
-});
-```
+- `selected permanent with tap-for-mana shows activation menu row`
+- `selected tapped mana source keeps its disabled tap-for-mana row visible`
+- `activation menu is placed beside the selected card screen center`
 
 Ran:
 
 ```bash
 cd /workspace/client
-bunx vitest run app/board/html/chrome.test.ts
+bunx vitest run app/board/scene.test.ts -t "activation menu|tap-for-mana shows|disabled tap-for-mana"
 ```
 
 Result: **FAIL**
 - Exit code: `1`
-- Failure cause: the new undecided-mulligan Scene used `resolveBoardOverlayMounts()`, which expected a hand-bar drag mount that is intentionally absent while the overlay hard-lock is active.
-- This was a test harness/setup failure, not a product-behavior failure.
+- Failure signal matched expectation: `activation-menu` / `activation-menu-panel` were absent while the old radial still rendered.
+- I adjusted the disabled-row assertion from a nonexistent Foldkit `toHaveAttribute(...)` matcher to an equivalent selector assertion:
+  - `Scene.selector('[data-testid="activation-menu-row-tap_for_mana"][aria-disabled="true"]')`
+- Re-ran the same command and kept the suite red for the correct reason: missing activation-menu DOM.
 
 ### GREEN
 
-Adjusted the new Scene to use the same undecided-overlay mount resolution as the existing mulligan overlay test:
-
-- `Scene.Mount.resolveAll([MountPriorityWatch(), PriorityElapsed({ seconds: 0 })], [BindCardArt, ArtLoaded()])`
-
-Re-ran:
+Implemented the new menu view and wiring, then ran:
 
 ```bash
 cd /workspace/client
-bunx vitest run app/board/html/chrome.test.ts
+bunx vitest run app/board/scene.test.ts app/board/geometry/radial.test.ts
 ```
 
 Result: **PASS**
 - Exit code: `0`
-- `1` file passed
-- `11` tests passed
-- The new assertion proved the existing `h.Disabled(!chrome.canMulligan)` binding works.
+- `2` files passed
+- `105` tests passed
 
-## Focused Verification
+## Implementation Notes
 
-Ran from `client/`:
+- `activation-menu.ts`
+  - Reused the old radial pointer/keyboard messages: `RadialWedgeArmed`, `RadialWedgeReleased`, `RadialWedgeHovered`, `RadialOptionPicked`
+  - Kept `data-wedge` on each row
+  - Used `activationMenuPlacement(...)` and `activationMenuEstimatedHeight(...)`
+  - Rendered tap and mana cost chips via `manaFontClass("T")` and `costPips(...)`
+- `overlays.ts`
+  - Swapped `activationRadialView(...)` for `activationMenuView(...)`
+- `submodel.ts`
+  - Pointed `selectedRadialOptions` import at `./html/activation-menu`
 
-```bash
-bunx vitest run app/board/html/chrome.test.ts app/board/inspect-pile-concede.test.ts
-bunx vitest run lib/mulligan.test.ts
-bunx tsc --noEmit -p tsconfig.json
-bunx biome check --write app/board/html/mulligan-overlay.ts app/board/html/overlays.ts app/board/html/concede.ts app/board/html/chrome.test.ts
-```
+## Verification
 
-Result: **PASS**
-- Exit code: `0`
-- `app/board/html/chrome.test.ts` + `app/board/inspect-pile-concede.test.ts`: `40` tests passed
-- `lib/mulligan.test.ts`: `7` tests passed
-- TypeScript typecheck passed
-- Biome checked `4` files and rewrote `1` file (`client/app/board/html/mulligan-overlay.ts`) for formatting only
+### Focused lint
 
-## Post-format Re-check
-
-Re-ran after Biome formatting:
+Ran:
 
 ```bash
 cd /workspace/client
-bunx vitest run app/board/html/chrome.test.ts app/board/inspect-pile-concede.test.ts
-bunx vitest run lib/mulligan.test.ts
-bunx tsc --noEmit -p tsconfig.json
+bunx biome check --formatter-enabled=false app/board/html/activation-menu.ts app/board/html/overlays.ts app/board/scene.test.ts app/board/submodel.ts
 ```
 
 Result: **PASS**
 - Exit code: `0`
-- `47` focused tests passed total
-- TypeScript typecheck passed
+
+### Typecheck
+
+Ran:
+
+```bash
+cd /workspace/client
+bun run typecheck
+```
+
+Result: **PASS**
+- Exit code: `0`
+- `tsc --noEmit` passed
+- The script regenerates wire/tokens first; I reverted the incidental generated-file churn afterward so the task diff stayed scoped.
+
+### Focused tests
+
+Ran:
+
+```bash
+cd /workspace/client
+bunx vitest run app/board/scene.test.ts app/board/geometry/radial.test.ts
+```
+
+Result: **PASS**
+- Exit code: `0`
+- `105` tests passed
+
+### Full client-check attempt
+
+Ran:
+
+```bash
+just client-check
+```
+
+Result: **FAIL**, but not because of Task 3 behavior
+- `client/app/board/html/activation-menu.ts` initially needed import organization; fixed
+- Remaining blockers were repo/environment-level:
+  - `biome.json` schema version mismatch (`2.5.3` config vs `2.5.5` CLI)
+  - pre-existing `lint/style/noNonNullAssertion` warning/error in `client/app/board/geometry/radial.ts` line 122
+
+## Self-review
+
+- Scope stayed within Task 3: no wedge retirement, no spec rewrite.
+- Existing `RadialOptionPicked` outcome tests were left intact and still pass.
+- Unrelated formatter/generated-file churn from verification commands was reverted.
 
 ## Files Changed
 
-- `client/app/board/html/chrome.test.ts`
-- `client/app/board/html/mulligan-overlay.ts` (Biome formatting only)
-- `docs/superpowers/specs/2026-07-20-turn-and-priority-chrome.md`
+- `client/app/board/html/activation-menu.ts`
+- `client/app/board/html/overlays.ts`
+- `client/app/board/submodel.ts`
+- `client/app/board/scene.test.ts`
+- `client/app/board/html/activation-radial.ts` (deleted)
 
-## Notes
+## Concerns
 
-- No engine, wire, or London mulligan behavior changed in this task.
-- The spec now matches the shipped overlay/waiting flow from Tasks 1–2.
+- `just client-check` is still red due pre-existing repo/tooling issues outside Task 3.
