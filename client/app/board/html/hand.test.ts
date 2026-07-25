@@ -110,6 +110,13 @@ function className(node: unknown): string {
     .join(" ");
 }
 
+function styleValue(node: unknown, name: string): string | undefined {
+  if (node == null || typeof node !== "object") return undefined;
+  const n = node as { data?: { style?: Record<string, string> } };
+  const value = n.data?.style?.[name];
+  return typeof value === "string" ? value : undefined;
+}
+
 function treeHasClass(node: unknown, token: string): boolean {
   if (className(node).split(/\s+/).includes(token)) return true;
   if (node == null || typeof node !== "object") return false;
@@ -236,15 +243,18 @@ describe("handView playable outlines", () => {
 });
 
 describe("handView hover stacking", () => {
-  it("puts hover elevate on the tile root, not the face", () => {
+  it("keeps resting hand z overridable from the tile root", () => {
     const a = object(42, { name: "Lightning Bolt" });
     const b = object(43, { name: "Cancel" });
     const tree = renderHand(state({ objects: [a, b], actions: [action(7, { object: 42 })] }));
 
     const root = findTestId(tree, "hand-tile-42");
     expect(root).not.toBeNull();
-    expect(className(root)).toContain("hover:z-50");
-    expect(className(root)).toContain("group/hand-tile");
+    expect(treeHasClass(root, "group/hand-tile")).toBe(true);
+    expect(treeHasClass(root, "[z-index:var(--hand-z)]")).toBe(true);
+    expect(treeHasClass(root, "hover:[z-index:50]")).toBe(true);
+    expect(styleValue(root, "--hand-z")).toBe("1");
+    expect(styleValue(root, "z-index")).toBeUndefined();
 
     const face = findTestId(tree, "hand-card-face-42");
     expect(className(face)).not.toContain("group-hover/hand-tile:z-30");
@@ -265,8 +275,11 @@ describe("handView hover stacking", () => {
     });
     const root = findTestId(tree, "hand-tile-42");
     expect(root).not.toBeNull();
-    // Root still has hover elevate available, but selection alone must not add a selected z class:
-    expect(className(root)).toContain("hover:z-50");
+    // Root still has hover elevate available, but selection alone must not add a selected z class.
+    expect(treeHasClass(root, "[z-index:var(--hand-z)]")).toBe(true);
+    expect(treeHasClass(root, "hover:[z-index:50]")).toBe(true);
+    expect(styleValue(root, "--hand-z")).toBe("1");
+    expect(styleValue(root, "z-index")).toBeUndefined();
     expect(className(root)).not.toContain("z-30");
     expect(treeHasClass(root, "z-50")).toBe(false); // bare z-50 without hover: prefix
     const face = findTestId(tree, "hand-card-face-42");
