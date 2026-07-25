@@ -2,12 +2,17 @@ import { colors } from "~/design-tokens.generated";
 import { imageUrlByPrint } from "../../../lib/deck-builder/scryfall";
 import type { ImageCache } from "../../../lib/image-cache";
 import { CARD_H, CARD_W } from "../geometry/layout";
+import {
+  LIFT_SHADOW_BLUR,
+  LIFT_SHADOW_COLOR,
+  LIFT_SHADOW_OFFSET_Y,
+} from "../lift-shadow";
 import type { CardFlight } from "../motion/flights";
 import { type BitmapImageCache, CARD_OUTLINE, roundRect } from "./paint-cards";
 
-export const FLIGHT_SHADOW_BLUR = 28;
-export const FLIGHT_SHADOW_OFFSET_Y = 12;
-export const FLIGHT_SHADOW_COLOR = "rgba(0,0,0,0.55)";
+export const FLIGHT_SHADOW_BLUR = LIFT_SHADOW_BLUR;
+export const FLIGHT_SHADOW_OFFSET_Y = LIFT_SHADOW_OFFSET_Y;
+export const FLIGHT_SHADOW_COLOR = LIFT_SHADOW_COLOR;
 
 export function paintFlightCard(
   ctx: CanvasRenderingContext2D,
