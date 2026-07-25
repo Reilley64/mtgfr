@@ -34,7 +34,7 @@ impl Game {
                 let mut next = self.next_object_id();
                 let mut events = Vec::new();
                 for id in self.battlefield() {
-                    let Object::Permanent(p) = self.objects[id as usize] else {
+                    let Object::Permanent(ref p) = self.objects[id as usize] else {
                         continue;
                     };
                     if !self.permanent_matches(&filter, id, controller, Some(source)) {
@@ -47,7 +47,7 @@ impl Game {
                         events.push(Event::TokenCeasedToExist {
                             token: id,
                             controller: p.owner,
-                            def: p.def,
+                            def: p.def.clone(),
                         });
                         continue;
                     }
@@ -87,7 +87,7 @@ impl Game {
                 let mut next = self.next_object_id();
                 let mut events = Vec::new();
                 for id in self.battlefield() {
-                    let Object::Permanent(p) = self.objects[id as usize] else {
+                    let Object::Permanent(ref p) = self.objects[id as usize] else {
                         continue;
                     };
                     if !self.permanent_matches(&filter, id, controller, Some(source)) {
@@ -97,7 +97,7 @@ impl Game {
                         events.push(Event::TokenCeasedToExist {
                             token: id,
                             controller: p.owner,
-                            def: p.def,
+                            def: p.def.clone(),
                         });
                         continue;
                     }
@@ -149,7 +149,7 @@ impl Game {
                     return vec![Event::TokenCeasedToExist {
                         token: id,
                         controller: permanent.owner,
-                        def: permanent.def,
+                        def: permanent.def.clone(),
                     }];
                 }
                 vec![self.exile_or_command(id, self.next_object_id())]
@@ -167,7 +167,7 @@ impl Game {
                     return vec![Event::TokenCeasedToExist {
                         token: object,
                         controller: permanent.owner,
-                        def: permanent.def,
+                        def: permanent.def.clone(),
                     }];
                 }
                 let exiled = self.next_object_id();
@@ -188,7 +188,7 @@ impl Game {
                     return vec![Event::TokenCeasedToExist {
                         token: object,
                         controller: permanent.owner,
-                        def: permanent.def,
+                        def: permanent.def.clone(),
                     }];
                 }
                 let exiled = self.next_object_id();
@@ -271,7 +271,7 @@ impl Game {
         let evs = self.execute_effect(Effect::Destroy(effect), controller, source, target, x);
         self.resolution_frame.destroyed_this_way.clear();
         for e in &evs {
-            match *e {
+            match e.clone() {
                 Event::TokenCeasedToExist {
                     controller: died_controller,
                     def,
@@ -290,7 +290,7 @@ impl Game {
                         self.resolution_frame
                             .destroyed_this_way
                             .push(state::DestroyedThisWay {
-                                def: p.def,
+                                def: p.def.clone(),
                                 controller: self.controller_of(from),
                                 token: false,
                             });
@@ -316,7 +316,7 @@ impl Game {
         let evs = self.execute_effect(Effect::Exile(effect), controller, source, target, x);
         self.resolution_frame.power_exiled_this_way.clear();
         for e in &evs {
-            match *e {
+            match e.clone() {
                 Event::TokenCeasedToExist {
                     token,
                     controller: died_controller,

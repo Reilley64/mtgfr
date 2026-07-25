@@ -47,12 +47,12 @@ pub fn registry() -> &'static HashMap<String, CardDef> {
 
 /// The card with the given Card id, if it exists in the pool.
 pub fn get(id: &str) -> Option<CardDef> {
-    pool().by_id.get(id).copied()
+    pool().by_id.get(id).cloned()
 }
 
 /// The card with the given printed name, if it exists in the pool.
 pub fn get_by_name(name: &str) -> Option<CardDef> {
-    pool().by_name.get(name).copied()
+    pool().by_name.get(name).cloned()
 }
 
 /// Token profiles from `data/tokens/`, keyed by Scryfall oracle id.
@@ -62,7 +62,7 @@ pub fn token_registry() -> &'static HashMap<String, CardDef> {
 
 /// The token profile with the given Scryfall oracle id, if it exists.
 pub fn get_token(id: &str) -> Option<CardDef> {
-    token_pool().by_id.get(id).copied()
+    token_pool().by_id.get(id).cloned()
 }
 
 fn data_dir() -> PathBuf {
@@ -101,7 +101,10 @@ fn load_token_defs(dir: &Path) {
                 path.display()
             );
         }
-        if by_id_owned.insert(def.id.to_string(), def).is_some() {
+        if by_id_owned
+            .insert(def.id.to_string(), def.clone())
+            .is_some()
+        {
             panic!("{}: duplicate token id {}", path.display(), def.id);
         }
         // `def.id` is already leaked/`'static` from CardDef deserialize.
@@ -146,10 +149,10 @@ fn load_from_data_dir() -> Pool {
                 path.display()
             );
         }
-        if by_id.insert(def.id.to_string(), def).is_some() {
+        if by_id.insert(def.id.to_string(), def.clone()).is_some() {
             panic!("{}: duplicate Card id {}", path.display(), def.id);
         }
-        if by_name.insert(def.name.to_string(), def).is_some() {
+        if by_name.insert(def.name.to_string(), def.clone()).is_some() {
             panic!("{}: duplicate card name {}", path.display(), def.name);
         }
     }

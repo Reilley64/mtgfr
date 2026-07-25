@@ -30,7 +30,7 @@ impl Game {
         self.queue_enchantment_death_watchers(events);
         self.queue_nonland_permanent_death_watchers(events);
         for (idx, event) in events.iter().enumerate() {
-            match *event {
+            match event.clone() {
                 // Self-referential: the source is the object the event is about. A land enters via
                 // its own `LandPlayed` event (not `PermanentEntered`), so an ETB on a land — a
                 // scry land / Temple — fires from here too.
@@ -120,10 +120,10 @@ impl Game {
                     // player's death-watch (Hissing Iguanar) must still see it, off the LKI
                     // `Game::dying_creature_lki` captured before the slot was tombstoned.
                     if matches!(
-                        self.objects[self.current_id(from) as usize],
+                        &self.objects[self.current_id(from) as usize],
                         Object::Removed
                     ) {
-                        if let Some(&(_, def, owner)) = self
+                        if let Some(&(_, ref def, owner)) = self
                             .batch_trigger_scratch
                             .dying_creature_lki
                             .iter()
@@ -132,7 +132,7 @@ impl Game {
                             self.queue_watch_death_triggers(
                                 owner,
                                 from,
-                                def,
+                                def.clone(),
                                 &batch_deaths,
                                 false, // a nontoken permanent
                                 false, // include_self: its own controller left the game too (CR 800.4a)
@@ -153,7 +153,7 @@ impl Game {
                         self.queue_trigger_group(
                             TriggerContext::of(self.owner_of(from)),
                             from,
-                            def,
+                            def.clone(),
                             Trigger::ThisAuraLeaves,
                         );
                     }
@@ -195,13 +195,13 @@ impl Game {
                     // `TuckedToLibrary` below, and its payoff acts on the captured host, not self.
                     // Safe to call unconditionally — a no-op for a non-battlefield `from`, since
                     // `permanents_left_battlefield` is populated by the same battlefield-only gate.
-                    self.queue_leaves_battlefield_triggers(from, self.owner_of(from), def);
+                    self.queue_leaves_battlefield_triggers(from, self.owner_of(from), &def.clone());
                     if from_battlefield && matches!(def.kind, CardKind::Creature { .. }) {
                         let ctx = TriggerContext {
                             dying_source_stats: self.dying_source_stats(from),
                             ..TriggerContext::of(self.owner_of(from))
                         };
-                        self.queue_trigger_group(ctx, from, def, Trigger::Dies);
+                        self.queue_trigger_group(ctx, from, def.clone(), Trigger::Dies);
                         self.queue_watch_death_triggers(
                             self.owner_of(from),
                             from,
@@ -238,13 +238,13 @@ impl Game {
                     self.queue_trigger_group(
                         TriggerContext::of(controller),
                         token,
-                        def,
+                        def.clone(),
                         Trigger::ThisAuraLeaves,
                     );
                     // Leaves-to-ANY-zone self-trigger (Animate Dead) — see the `MovedToGraveyard`
                     // arm above. `def`/`controller` are passed explicitly since the token's arena
                     // slot is already `Object::Removed`.
-                    self.queue_leaves_battlefield_triggers(token, controller, def);
+                    self.queue_leaves_battlefield_triggers(token, controller, &def.clone());
                     // Hofri Ghostforge's minted Spirit token's granted return rider — only a
                     // token can carry this link (the printed def never does).
                     self.queue_token_return_exiled_trigger(token, controller);
@@ -253,7 +253,7 @@ impl Game {
                             dying_source_stats: self.dying_source_stats(token),
                             ..TriggerContext::of(controller)
                         };
-                        self.queue_trigger_group(ctx, token, def, Trigger::Dies);
+                        self.queue_trigger_group(ctx, token, def.clone(), Trigger::Dies);
                         self.queue_watch_death_triggers(
                             controller,
                             token,
@@ -277,12 +277,12 @@ impl Game {
                     // its post-move object is already `Object::Removed` — `def_of`/`owner_of`
                     // would panic reading it.
                     if matches!(
-                        self.objects[self.current_id(from) as usize],
+                        &self.objects[self.current_id(from) as usize],
                         Object::Removed
                     ) {
                         continue;
                     }
-                    self.queue_leaves_battlefield_triggers(from, self.owner_of(from), self.def_of(from));
+                    self.queue_leaves_battlefield_triggers(from, self.owner_of(from), &self.def_of(from));
                 }
                 // Controller-scoped: fire on every permanent the player controls.
                 Event::StepBegan {
@@ -406,14 +406,14 @@ impl Game {
                     // 601.2h) — `None` for a free/alt cast that spent no mana (Manaform
                     // Hellkite's `Amount::TriggeringSpellManaSpent` reads `Some(0)` in that case,
                     // via the `unwrap_or(0)` below).
-                    let mana_spent = events.iter().find_map(|e| match *e {
+                    let mana_spent = events.iter().find_map(|e| match e.clone() {
                         Event::ManaSpent { player, mana } if player == controller => Some(mana),
                         _ => None,
                     });
                     self.queue_cast_spell_triggers(
                         controller,
                         spell,
-                        def,
+                        def.clone(),
                         target,
                         x,
                         cast_from_hand,
@@ -426,8 +426,8 @@ impl Game {
                         self.queue_spend_to_cast_triggers(controller, spell, spend);
                     }
                     self.queue_becomes_targeted_triggers(target);
-                    self.queue_spell_targets_this_only_triggers(target, controller, spell, def);
-                    self.queue_prowess_triggers(controller, def, target);
+                    self.queue_spell_targets_this_only_triggers(target, controller, spell, def.clone());
+                    self.queue_prowess_triggers(controller, def.clone(), target);
                     // "When you cast this spell" (CR 601.2i/603.3): scanned off the cast card's
                     // own def, not a battlefield watcher — the source is the spell object itself,
                     // so the resulting ability is a separate stack object (Hydroid Krasis's cast
@@ -452,7 +452,7 @@ impl Game {
                             ..TriggerContext::of(controller)
                         },
                         spell,
-                        def,
+                        def.clone(),
                         Trigger::YouCastThis,
                     );
                     // Cascade (CR 702.85e): a rules-keyword "when you cast this spell" trigger, not
@@ -559,7 +559,7 @@ impl Game {
                     // its own trigger left with it — same guard as the `Dies` `include_self:
                     // false` case above.
                     if matches!(
-                        self.objects[self.current_id(source) as usize],
+                        &self.objects[self.current_id(source) as usize],
                         Object::Removed
                     ) {
                         continue;
@@ -696,7 +696,12 @@ impl Game {
     /// creature." Takes `owner`/`def` rather than re-deriving them from `from` because a
     /// `TokenCeasedToExist` source's arena slot is already `Object::Removed` by the time this
     /// runs.
-    fn queue_leaves_battlefield_triggers(&mut self, from: ObjectId, owner: PlayerId, def: CardDef) {
+    fn queue_leaves_battlefield_triggers(
+        &mut self,
+        from: ObjectId,
+        owner: PlayerId,
+        def: &CardDef,
+    ) {
         let Some(&(_, host)) = self
             .batch_trigger_scratch
             .permanents_left_battlefield
@@ -709,7 +714,12 @@ impl Game {
             left_battlefield_host: host,
             ..TriggerContext::of(owner)
         };
-        self.queue_trigger_group(ctx, from, def, Trigger::ThisPermanentLeavesBattlefield);
+        self.queue_trigger_group(
+            ctx,
+            from,
+            def.clone(),
+            Trigger::ThisPermanentLeavesBattlefield,
+        );
     }
 
     /// Hofri Ghostforge's minted Spirit token: if `token` carries a baked
@@ -844,11 +854,18 @@ impl Game {
                 dying_is_token,
             );
         }
-        for &(id, def, controller) in batch_deaths {
+        for &(id, ref def, controller) in batch_deaths {
             if id == dying {
                 continue;
             }
-            self.queue_death_watcher(id, def, controller, dead_controller, dying, dying_is_token);
+            self.queue_death_watcher(
+                id,
+                def.clone(),
+                controller,
+                dead_controller,
+                dying,
+                dying_is_token,
+            );
         }
         if include_self {
             self.queue_self_death_watcher(dying, dying_def, dead_controller);
@@ -874,7 +891,7 @@ impl Game {
         sources.dedup();
         for source in sources {
             if matches!(
-                self.objects[self.current_id(source) as usize],
+                &self.objects[self.current_id(source) as usize],
                 Object::Removed
             ) {
                 continue;
@@ -913,21 +930,26 @@ impl Game {
             dead_creature: Some(dying),
             ..TriggerContext::of(controller)
         };
-        self.queue_trigger_group(ctx, watcher, def, Trigger::CreatureDies);
-        self.queue_trigger_group(ctx, watcher, def, Trigger::CreatureDiesIncludingThis);
+        self.queue_trigger_group(ctx, watcher, def.clone(), Trigger::CreatureDies);
+        self.queue_trigger_group(
+            ctx,
+            watcher,
+            def.clone(),
+            Trigger::CreatureDiesIncludingThis,
+        );
         if controller == dead_controller {
-            self.queue_trigger_group(ctx, watcher, def, Trigger::CreatureYouControlDies);
+            self.queue_trigger_group(ctx, watcher, def.clone(), Trigger::CreatureYouControlDies);
             self.queue_trigger_group(
                 ctx,
                 watcher,
-                def,
+                def.clone(),
                 Trigger::CreatureYouControlDiesIncludingThis,
             );
             if !dying_is_token {
                 self.queue_trigger_group(
                     ctx,
                     watcher,
-                    def,
+                    def.clone(),
                     Trigger::CreatureYouControlDiesNontoken,
                 );
                 self.queue_trigger_group(
@@ -959,11 +981,11 @@ impl Game {
         dead_controller: PlayerId,
     ) {
         let ctx = TriggerContext::of(dead_controller);
-        self.queue_trigger_group(ctx, dying, def, Trigger::CreatureDiesIncludingThis);
+        self.queue_trigger_group(ctx, dying, def.clone(), Trigger::CreatureDiesIncludingThis);
         self.queue_trigger_group(
             ctx,
             dying,
-            def,
+            def.clone(),
             Trigger::CreatureYouControlDiesIncludingThis,
         );
         self.queue_trigger_group(
@@ -985,12 +1007,12 @@ impl Game {
     fn batch_creature_deaths(&self, events: &[Event]) -> Vec<(ObjectId, CardDef, PlayerId)> {
         let mut deaths = Vec::new();
         for event in events {
-            match *event {
+            match event.clone() {
                 Event::MovedToGraveyard { from, .. } => {
                     // Owner left the game in this same sweep: the creature went with them, not to
                     // the graveyard — no death to watch (matches the guard in `enqueue_triggers`).
                     if matches!(
-                        self.objects[self.current_id(from) as usize],
+                        &self.objects[self.current_id(from) as usize],
                         Object::Removed
                     ) {
                         continue;
@@ -1036,12 +1058,12 @@ impl Game {
     ///   one sweep won't see it) — grow those from a real card, per flag-don't-force.
     fn queue_enchantment_death_watchers(&mut self, events: &[Event]) {
         for event in events {
-            let (dying, owner, def) = match *event {
+            let (dying, owner, def) = match event.clone() {
                 Event::MovedToGraveyard { from, .. } => {
                     // Owner left the game in this same sweep: no death to watch (matches the
                     // guard in `enqueue_triggers`/`batch_creature_deaths`).
                     if matches!(
-                        self.objects[self.current_id(from) as usize],
+                        &self.objects[self.current_id(from) as usize],
                         Object::Removed
                     ) {
                         continue;
@@ -1099,12 +1121,12 @@ impl Game {
     ///   it) — grow those from a real card, per flag-don't-force.
     fn queue_nonland_permanent_death_watchers(&mut self, events: &[Event]) {
         for event in events {
-            let (dying, owner, def) = match *event {
+            let (dying, owner, def) = match event.clone() {
                 Event::MovedToGraveyard { from, .. } => {
                     // Owner left the game in this same sweep: no death to watch (matches the
                     // guard in `enqueue_triggers`/`batch_creature_deaths`).
                     if matches!(
-                        self.objects[self.current_id(from) as usize],
+                        &self.objects[self.current_id(from) as usize],
                         Object::Removed
                     ) {
                         continue;
@@ -1399,7 +1421,7 @@ impl Game {
             .filter(|&&(controller, _, f, _)| {
                 f == fire_at && (!controller_scoped || controller == active_player)
             })
-            .map(|&(controller, source, _, effect)| (controller, source, effect))
+            .map(|&(controller, source, _, ref effect)| (controller, source, effect.clone()))
             .collect();
         if due.is_empty() {
             return;
@@ -1453,7 +1475,7 @@ impl Game {
         then: &'static [Effect],
         token: ObjectId,
     ) {
-        for &effect in then {
+        for effect in then {
             // ponytail: `timing`/`condition` are fabricated inert placeholders, the same way
             // `fire_delayed_triggers` fabricates them — a reflexive ability isn't one of `source`'s
             // printed abilities, and `place_pending_triggers` only reads `effect`/`optional`/`cost`.
@@ -1463,7 +1485,7 @@ impl Game {
                 source,
                 abilities: vec![Ability {
                     timing: Timing::Triggered(Trigger::Upkeep),
-                    effect: effect.with_reflexive_token(token),
+                    effect: effect.clone().with_reflexive_token(token),
                     optional: false,
                     min_level: 0,
                     cost: Cost::FREE,
@@ -1595,7 +1617,7 @@ impl Game {
                 })
                 .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
                 .map(|a| Ability {
-                    effect: contextualize_effect(a.effect, ctx),
+                    effect: contextualize_effect(a.effect.clone(), ctx),
                     ..*a
                 })
                 .collect();
@@ -1768,7 +1790,7 @@ impl Game {
             .dying_creature_attachments
             .iter()
             .filter(|&&(host, ..)| host == dying)
-            .map(|&(_, aura, controller, def)| (aura, controller, def))
+            .map(|&(_, aura, controller, ref def)| (aura, controller, def.clone()))
             .collect();
         for (aura, controller, def) in auras {
             if self.players[controller.0 as usize].lost {
@@ -1801,7 +1823,7 @@ impl Game {
             .batch_trigger_scratch
             .dying_creature_attachments
             .iter()
-            .filter(|&&(host, _, controller, def)| {
+            .filter(|&&(host, _, controller, ref def)| {
                 // Skip an Aura whose owner left the game in this same sweep (CR 800.4a) — its
                 // watchers must not count it, checked directly off the captured controller's
                 // `Player::lost` (see `queue_enchanted_creature_dies_triggers`'s own doc for why
@@ -1823,11 +1845,11 @@ impl Game {
                 &auras,
             );
         }
-        for &(id, def, controller) in batch_deaths {
+        for &(id, ref def, controller) in batch_deaths {
             if id == dying {
                 continue;
             }
-            self.queue_an_enchanted_creature_dies_watcher(id, def, controller, &auras);
+            self.queue_an_enchanted_creature_dies_watcher(id, def.clone(), controller, &auras);
         }
     }
 
@@ -1880,16 +1902,16 @@ impl Game {
                 .iter()
                 .filter(|a| match a.timing {
                     Timing::Triggered(Trigger::YouSacrifice { filter }) => {
-                        controller == by && sacrifice_matches(&filter, def, id, sacrificed)
+                        controller == by && sacrifice_matches(&filter, def.clone(), id, sacrificed)
                     }
                     Timing::Triggered(Trigger::AnyPlayerSacrifices { filter }) => {
-                        sacrifice_matches(&filter, def, id, sacrificed)
+                        sacrifice_matches(&filter, def.clone(), id, sacrificed)
                     }
                     _ => false,
                 })
                 .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
                 .map(|a| Ability {
-                    effect: contextualize_effect(a.effect, ctx),
+                    effect: contextualize_effect(a.effect.clone(), ctx),
                     ..*a
                 })
                 .collect();
@@ -2047,7 +2069,7 @@ impl Game {
                 })
                 .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
                 .map(|a| Ability {
-                    effect: contextualize_effect(a.effect, ctx),
+                    effect: contextualize_effect(a.effect.clone(), ctx),
                     ..*a
                 })
                 .collect();
@@ -2090,7 +2112,7 @@ impl Game {
             })
             .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
             .map(|a| Ability {
-                effect: contextualize_effect(a.effect, ctx),
+                effect: contextualize_effect(a.effect.clone(), ctx),
                 ..*a
             })
             .collect();
@@ -2155,7 +2177,7 @@ impl Game {
                 })
                 .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
                 .map(|a| Ability {
-                    effect: contextualize_effect(a.effect, ctx),
+                    effect: contextualize_effect(a.effect.clone(), ctx),
                     ..*a
                 })
                 .collect();
@@ -2326,7 +2348,7 @@ impl Game {
                             // spell filter, so the plain hand-cast default suffices here.
                             && self.spell_matches_filter(
                                 filter,
-                                def,
+                                def.clone(),
                                 target,
                                 spell_controller,
                                 Zone::Hand,
@@ -2338,7 +2360,7 @@ impl Game {
                 })
                 .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
                 .map(|a| Ability {
-                    effect: contextualize_effect(a.effect, ctx),
+                    effect: contextualize_effect(a.effect.clone(), ctx),
                     ..*a
                 })
                 .collect();
@@ -2388,7 +2410,7 @@ impl Game {
                 })
                 .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
                 .map(|a| Ability {
-                    effect: contextualize_effect(a.effect, ctx),
+                    effect: contextualize_effect(a.effect.clone(), ctx),
                     ..*a
                 })
                 .collect();
@@ -2500,7 +2522,7 @@ impl Game {
         }
         let casts: Vec<(PlayerId, ObjectId, CardDef, Option<Target>, u32)> = events
             .iter()
-            .filter_map(|e| match *e {
+            .filter_map(|e| match e.clone() {
                 Event::SpellCast {
                     spell,
                     controller,
@@ -2516,12 +2538,12 @@ impl Game {
                 .delayed_triggers
                 .pending_next_cast
                 .iter()
-                .copied()
+                .cloned()
                 .filter(|&(controller, _, filter, _)| {
                     controller == spell_controller
                         && self.spell_matches_filter(
                             filter,
-                            def,
+                            def.clone(),
                             target,
                             spell_controller,
                             Zone::Hand,
@@ -2539,7 +2561,7 @@ impl Game {
                     ..TriggerContext::of(controller)
                 };
                 let effect = match then {
-                    [only] => *only,
+                    [only] => only.clone(),
                     _ => Effect::Sequence { steps: then },
                 };
                 self.pending_trigger_groups.push(TriggerGroup {
@@ -2583,7 +2605,7 @@ impl Game {
         }
         let damages: Vec<ObjectId> = events
             .iter()
-            .filter_map(|e| match *e {
+            .filter_map(|e| match e.clone() {
                 Event::CombatDamageDealtToPlayer { source, .. } => Some(source),
                 _ => None,
             })
@@ -2593,7 +2615,7 @@ impl Game {
                 .delayed_triggers
                 .pending_combat_damage_watch
                 .iter()
-                .copied()
+                .cloned()
                 .filter(|&(_, _, watched)| watched == damage_source)
                 .map(|(controller, source, _)| (controller, source))
                 .collect();
@@ -2642,7 +2664,7 @@ impl Game {
         }
         let damages: Vec<ObjectId> = events
             .iter()
-            .filter_map(|e| match *e {
+            .filter_map(|e| match e.clone() {
                 Event::CombatDamageDealtToPlayer { source, .. } => Some(source),
                 _ => None,
             })
@@ -2653,7 +2675,7 @@ impl Game {
                 .delayed_triggers
                 .pending_combat_damage_copy
                 .iter()
-                .copied()
+                .cloned()
                 .filter(|&(controller, _, _)| controller == damage_controller)
                 .collect();
             for (controller, source, card) in matches {
@@ -2712,7 +2734,7 @@ impl Game {
                 })
                 .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
                 .map(|a| Ability {
-                    effect: contextualize_effect(a.effect, ctx),
+                    effect: contextualize_effect(a.effect.clone(), ctx),
                     ..*a
                 })
                 .collect();
@@ -2739,7 +2761,7 @@ impl Game {
         let Some(Target::Object(id)) = spell_target else {
             return;
         };
-        if !matches!(self.objects[id as usize], Object::Permanent(_)) {
+        if !matches!(&self.objects[id as usize], Object::Permanent(_)) {
             return;
         }
         let controller = self.controller_of(id);
@@ -2750,7 +2772,7 @@ impl Game {
             .filter(|a| matches!(a.timing, Timing::Triggered(Trigger::BecomesTargeted)))
             .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
             .map(|a| Ability {
-                effect: contextualize_effect(a.effect, ctx),
+                effect: contextualize_effect(a.effect.clone(), ctx),
                 ..*a
             })
             .collect();
@@ -2778,7 +2800,7 @@ impl Game {
         let Some(Target::Object(id)) = spell_target else {
             return;
         };
-        if !matches!(self.objects[id as usize], Object::Permanent(_)) {
+        if !matches!(&self.objects[id as usize], Object::Permanent(_)) {
             return;
         }
         let controller = self.controller_of(id);
@@ -2793,11 +2815,17 @@ impl Game {
                 let Timing::Triggered(Trigger::SpellTargetsThisOnly { filter }) = a.timing else {
                     return false;
                 };
-                self.spell_matches_filter(filter, def, spell_target, spell_controller, Zone::Hand)
+                self.spell_matches_filter(
+                    filter,
+                    def.clone(),
+                    spell_target,
+                    spell_controller,
+                    Zone::Hand,
+                )
             })
             .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
             .map(|a| Ability {
-                effect: contextualize_effect(a.effect, ctx),
+                effect: contextualize_effect(a.effect.clone(), ctx),
                 ..*a
             })
             .collect();
@@ -2915,11 +2943,11 @@ impl Game {
             if t != target {
                 continue;
             }
-            for &ability in self.def_of(source).abilities {
-                if ability_grants_source_abilities(ability) {
+            for ability in self.def_of(source).abilities {
+                if ability_grants_source_abilities(ability.clone()) {
                     continue;
                 }
-                granted.push(ability);
+                granted.push(ability.clone());
             }
         }
         granted
@@ -2953,7 +2981,7 @@ impl Game {
         let abilities: Vec<Ability> = def
             .abilities
             .iter()
-            .copied()
+            .cloned()
             .chain(granted)
             .filter(|a| {
                 a.timing == Timing::Triggered(trigger)
@@ -3271,7 +3299,7 @@ impl Game {
     /// now at the land's one ETB site ([`Event::LandPlayed`]). Reuses [`Game::condition_holds`],
     /// the same intervening-if evaluator triggers use, so a land-count/subtype condition is
     /// written once and read from both places.
-    pub(crate) fn enters_tapped(&self, def: CardDef, controller: PlayerId) -> bool {
+    pub(crate) fn enters_tapped(&self, def: &CardDef, controller: PlayerId) -> bool {
         match def.enters_tapped_unless {
             Some(condition) => !self.condition_holds(condition, TriggerContext::of(controller)),
             None => def.enters_tapped,
@@ -3304,7 +3332,7 @@ impl Game {
     pub(crate) fn basic_lands_controlled(&self, controller: PlayerId) -> usize {
         self.battlefield()
             .into_iter()
-            .filter(|&id| self.controller_of(id) == controller && is_basic_land(self.def_of(id)))
+            .filter(|&id| self.controller_of(id) == controller && is_basic_land(&self.def_of(id)))
             .count()
     }
 
@@ -3379,7 +3407,7 @@ impl Game {
             // off its vanishing) can't be modal — no pool token is a modal card — and `def_of`
             // panics on a fully-`Removed` object, so that case is excluded up front rather than
             // read.
-            let modal_modes = (!matches!(self.objects[group.source as usize], Object::Removed))
+            let modal_modes = (!matches!(&self.objects[group.source as usize], Object::Removed))
                 .then(|| self.def_of(group.source))
                 .filter(|def| {
                     def.modal && !def.abilities.iter().any(|a| a.timing == Timing::Spell)
@@ -3391,7 +3419,7 @@ impl Game {
                     PendingChoice::ChooseTriggerModes {
                         player: group.controller,
                         source: group.source,
-                        modes: group.abilities.iter().map(|a| a.effect).collect(),
+                        modes: group.abilities.iter().map(|a| a.effect.clone()).collect(),
                         choose: def.modal_choose,
                         // The "may" gate lives on each mode ability's own `optional` (CR "you may
                         // choose N" — every mode shares the same optional flag; read the first).
@@ -3405,7 +3433,7 @@ impl Game {
                 // pops it back off the front and re-splits its *real* abilities, so each one
                 // keeps its own `optional` / `cost` / `condition` (Nucklavee's two "you may
                 // return target …" ETB triggers).
-                let effects = group.abilities.iter().map(|a| a.effect).collect();
+                let effects = group.abilities.iter().map(|a| a.effect.clone()).collect();
                 let (controller, source) = (group.controller, group.source);
                 crate::pending::raise_choice(
                     self,
@@ -3418,7 +3446,7 @@ impl Game {
                 return;
             }
             let group = self.pending_trigger_groups.remove(0);
-            let ability = group.abilities[0];
+            let ability = group.abilities[0].clone();
             let (player, source, effect) = (group.controller, group.source, ability.effect);
 
             // "This ability triggers only once each turn" (Morbid Opportunist, Tocasia's
@@ -3496,7 +3524,7 @@ impl Game {
         // silently skipped: nothing left to pay for.
         while let Some(source) = self.pending_recover.first().copied() {
             self.pending_recover.remove(0);
-            if !matches!(self.objects[source as usize], Object::Card(c) if c.zone == Zone::Graveyard)
+            if !matches!(&self.objects[source as usize], Object::Card(c) if c.zone == Zone::Graveyard)
             {
                 continue;
             }
@@ -3592,7 +3620,7 @@ impl Game {
         // the stack or a fully-removed object is not a permanent (a just-died creature's card,
         // still readable for its last-known subtypes/controller, is).
         if !matches!(
-            self.objects[source as usize],
+            &self.objects[source as usize],
             Object::Permanent(_) | Object::Card(_)
         ) {
             return 0;
@@ -3609,7 +3637,7 @@ impl Game {
                         source_other,
                         caused_by_instant_or_sorcery_cast,
                     }),
-                ) = (ability.timing, ability.effect)
+                ) = (ability.timing, ability.effect.clone())
                 else {
                     continue;
                 };
@@ -3653,7 +3681,7 @@ impl Game {
         player: PlayerId,
         events: &[Event],
     ) -> bool {
-        events.iter().any(|event| match *event {
+        events.iter().any(|event| match event.clone() {
             Event::SpellCast {
                 spell, controller, ..
             } => controller == player && matches!(self.def_of(spell).kind, CardKind::Spell { .. }),
@@ -3697,9 +3725,9 @@ impl Game {
         // The ability source's own colors (CR 702.16b — protection filters its targets); a
         // Dies-trigger source token may already be `Object::Removed` by placement time, same
         // guard `Game::resolve_top`'s own re-check uses.
-        let source_colors = match self.objects[source as usize] {
+        let source_colors = match &self.objects[source as usize] {
             Object::Removed => [false; Color::COUNT],
-            _ => color_identity(self.def_of(source)),
+            _ => color_identity(&self.def_of(source)),
         };
         let legality_x = self.ability_source_x(source);
         // `ThisPermanent`/`EnchantedCreature`/`ThisAurasGraveyardTarget` are a fixed reference,
@@ -3817,7 +3845,7 @@ impl Game {
         source: ObjectId,
         controller: PlayerId,
     ) -> Option<(TargetSpec, TargetCount)> {
-        for &step in steps {
+        for step in steps {
             if let Effect::Conditional {
                 condition,
                 then,
@@ -3826,7 +3854,7 @@ impl Game {
             {
                 // CR 603.4: a gated clause is only a real target clause when its intervening-if
                 // holds as the trigger goes on the stack.
-                if (self.placement_condition_holds(condition, source, controller) != negate)
+                if (self.placement_condition_holds(*condition, source, controller) != *negate)
                     && let Some(found) = self.second_clause_in(then, source, controller)
                 {
                     return Some(found);
@@ -3884,7 +3912,8 @@ impl Game {
         push_activated: bool,
         events: &mut Vec<Event>,
     ) -> Placement {
-        let Some((spec, count)) = self.ability_second_target_clause(effect, source, player) else {
+        let Some((spec, count)) = self.ability_second_target_clause(effect.clone(), source, player)
+        else {
             self.push_ability_with_targets(
                 player,
                 source,
@@ -3970,13 +3999,13 @@ impl Game {
         activated: bool,
         events: &mut Vec<Event>,
     ) {
-        for &(effect, target) in abilities {
+        for &(ref effect, target) in abilities {
             self.push_apply(
                 events,
                 Event::TriggeredAbilityOnStack {
                     controller,
                     source,
-                    effect,
+                    effect: effect.clone(),
                     target,
                     targets_second: TargetList::default(),
                     x,

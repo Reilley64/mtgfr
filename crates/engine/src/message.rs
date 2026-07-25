@@ -1451,7 +1451,7 @@ impl Effect {
             }
             Effect::Zone(ReflexiveTrigger { then }) => {
                 MessageRef::new(MessageKey::EFFECT_ZONE_REFLEXIVE_TRIGGER)
-                    .with_children(then.iter().map(|effect| effect.message()).collect())
+                    .with_children(then.iter().map(|effect| effect.clone().message()).collect())
             }
             Effect::Zone(ReturnFromGraveyardAttachedToToken { filter, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_ZONE_RETURN_FROM_GRAVEYARD_ATTACHED_TO_TOKEN)
@@ -1493,7 +1493,7 @@ impl Effect {
             }
             Effect::Zone(ExileTargetGraveyardCardThenIfCreature { then }) => {
                 MessageRef::new(MessageKey::EFFECT_ZONE_EXILE_TARGET_GRAVEYARD_CARD_THEN_IF_CREATURE)
-                    .with_children(then.iter().map(|effect| effect.message()).collect())
+                    .with_children(then.iter().map(|effect| effect.clone().message()).collect())
             }
             Effect::Zone(ReturnToHand { .. }) => MessageRef::new(MessageKey::EFFECT_ZONE_RETURN_TO_HAND),
             Effect::Zone(ReturnThisToHand) => MessageRef::new(MessageKey::EFFECT_ZONE_RETURN_THIS_TO_HAND),
@@ -1956,12 +1956,12 @@ impl Effect {
             Effect::Misc(ScheduleAtNextUpkeep { then, fire_at, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_MISC_SCHEDULE_AT_NEXT_UPKEEP)
                     .with_params(vec![step_param("fire_at", fire_at)])
-                    .with_children(vec![then.message()])
+                    .with_children(vec![then.clone().message()])
             }
             Effect::Misc(ScheduleNextCastTrigger { filter, then }) => {
                 MessageRef::new(MessageKey::EFFECT_MISC_SCHEDULE_NEXT_CAST_TRIGGER)
                     .with_params(vec![spell_filter_param("filter", filter)])
-                    .with_children(then.iter().map(|effect| effect.message()).collect())
+                    .with_children(then.iter().map(|effect| effect.clone().message()).collect())
             }
             Effect::Misc(ScheduleThisTurnCombatDamageCopy) => {
                 MessageRef::new(MessageKey::EFFECT_MISC_SCHEDULE_THIS_TURN_COMBAT_DAMAGE_COPY)
@@ -1978,11 +1978,11 @@ impl Effect {
                 MessageRef::new(MessageKey::EFFECT_MISC_GRANT_CHANNEL_COLORLESS_MANA_THIS_TURN)
             }
             Effect::Sequence { steps } => MessageRef::new(MessageKey::EFFECT_SEQUENCE)
-                .with_children(steps.iter().map(|effect| effect.message()).collect()),
+                .with_children(steps.iter().map(|effect| effect.clone().message()).collect()),
             Effect::ChooseOne { options } => MessageRef::new(MessageKey::EFFECT_CHOOSE_ONE)
-                .with_children(options.iter().map(|effect| effect.message()).collect()),
+                .with_children(options.iter().map(|effect| effect.clone().message()).collect()),
             Effect::Conditional { then, .. } => MessageRef::new(MessageKey::EFFECT_CONDITIONAL)
-                .with_children(then.iter().map(|effect| effect.message()).collect()),
+                .with_children(then.iter().map(|effect| effect.clone().message()).collect()),
         }
     }
 }

@@ -335,7 +335,7 @@ impl Game {
         self.controlled_battlefield(defender)
             .into_iter()
             .flat_map(|id| self.def_of(id).abilities)
-            .map(|ability| match (ability.timing, ability.effect) {
+            .map(|ability| match (ability.timing, ability.effect.clone()) {
                 (Timing::Static, Effect::Static(StaticEffect::AttackTax { amount })) => {
                     amount as u32
                 }
@@ -413,12 +413,15 @@ impl Game {
                         .iter()
                         .map(move |ability| (id, ability))
                 })
-                .any(|(source, ability)| match (ability.timing, ability.effect) {
-                    (Timing::Static, Effect::Static(StaticEffect::CantBeAttackedBy { filter })) => {
-                        self.permanent_matches(&filter, attacker, defender, Some(source))
-                    }
-                    _ => false,
-                });
+                .any(
+                    |(source, ability)| match (ability.timing, ability.effect.clone()) {
+                        (
+                            Timing::Static,
+                            Effect::Static(StaticEffect::CantBeAttackedBy { filter }),
+                        ) => self.permanent_matches(&filter, attacker, defender, Some(source)),
+                        _ => false,
+                    },
+                );
             if restricted {
                 return Err(Reject::IllegalDeclaration);
             }
@@ -1081,11 +1084,12 @@ impl Game {
         creator: ObjectId,
         events: &mut Vec<Event>,
     ) -> bool {
-        let Some(&(_, token)) = self
+        let Some(token) = self
             .combat_extras
             .combat_damage_prevention_shields
             .iter()
             .find(|(p, _)| *p == player)
+            .map(|(_, token)| token.clone())
         else {
             return false;
         };
@@ -1099,7 +1103,7 @@ impl Game {
                 Event::TokenCreated {
                     token: next,
                     controller: player,
-                    def: token,
+                    def: token.clone(),
                     creator,
                 },
             );

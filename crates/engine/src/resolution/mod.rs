@@ -88,7 +88,7 @@ impl Game {
     /// no live controller distinct from its owner, so both reads collapse to the same recorded
     /// value in that case.
     pub(crate) fn owner_of_shared_target(&self, object: ObjectId, to_controller: bool) -> PlayerId {
-        if matches!(self.objects[object as usize], Object::Removed) {
+        if matches!(&self.objects[object as usize], Object::Removed) {
             let (recorded_object, owner) = self
                 .resolution_frame
                 .vanished_permanent_owner
@@ -116,8 +116,8 @@ impl Game {
         ctx: ResolveCtx,
         events: &mut Vec<Event>,
     ) {
-        for (i, &step) in steps.iter().enumerate() {
-            self.run(step, ctx, events);
+        for (i, step) in steps.iter().enumerate() {
+            self.run(step.clone(), ctx, events);
             if self.resolution_is_paused() {
                 let rest = &steps[i + 1..];
                 if !rest.is_empty() {

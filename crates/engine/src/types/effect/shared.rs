@@ -369,7 +369,7 @@ pub enum LandTapBonusColor {
 // ponytail: `CreateToken` inlines a whole `CardDef`, which is large by design and must stay `Copy`
 // (no `Box`), so this enum is unavoidably big-variant. Boxing would break `Copy`; the lint is noise.
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(
     feature = "card-dsl",
     derive(serde::Deserialize),
@@ -433,8 +433,8 @@ impl Effect {
     }
 
     /// What this effect targets (most effects target nothing).
-    pub(crate) fn target(self) -> TargetSpec {
-        match self {
+    pub(crate) fn target(&self) -> TargetSpec {
+        match self.clone() {
             Effect::Damage(DamageEffect::Target { target, .. })
             | Effect::Pump(PumpEffect::PumpUntilEndOfTurn { target, .. })
             | Effect::Pump(PumpEffect::SetBasePtTargetUntilEndOfTurn { target, .. })
@@ -477,14 +477,14 @@ impl Effect {
             // A sequence shares one target: the first step that needs one supplies it.
             Effect::Sequence { steps } => steps
                 .iter()
-                .map(|s| s.target())
+                .map(|s| s.clone().target())
                 .find(|&t| t != TargetSpec::None)
                 .unwrap_or(TargetSpec::None),
             // A conditional step's target (if its gated `then` needs one) is shared from the
             // enclosing sequence, same rule as `Sequence` above.
             Effect::Conditional { then, .. } => then
                 .iter()
-                .map(|s| s.target())
+                .map(|s| s.clone().target())
                 .find(|&t| t != TargetSpec::None)
                 .unwrap_or(TargetSpec::None),
             // Quintorius's end step: a fixed target restriction (see the variant doc) — no
@@ -855,8 +855,8 @@ impl Effect {
     /// something else besides (Brass Infiniscope's `{T}: Add {C}{C}. When you next cast a spell
     /// with {X} …` arms a delayed trigger too) is still a mana ability as long as it targets
     /// nothing, so a `Sequence` counts if any of its steps does.
-    pub(crate) fn is_mana_ability(self) -> bool {
-        match self {
+    pub(crate) fn is_mana_ability(&self) -> bool {
+        match self.clone() {
             Effect::Mana(ManaEffect::Add { .. }) => true,
             Effect::Sequence { steps } => steps.iter().any(|s| matches!(s, Effect::Mana(ManaEffect::Add { .. }))),
             _ => false,
@@ -867,12 +867,12 @@ impl Effect {
     /// [`Player::mana_provenance`](crate::state) — an [`Effect::Mana(ManaEffect::Add)`] with `track_provenance`
     /// set (recursing a `Sequence` like [`is_mana_ability`](Self::is_mana_ability)). Read by
     /// `Game::activate_ability` to decide whether to tag the batch it just resolved.
-    pub(crate) fn tracks_mana_provenance(self) -> bool {
-        match self {
+    pub(crate) fn tracks_mana_provenance(&self) -> bool {
+        match self.clone() {
             Effect::Mana(ManaEffect::Add {
                 track_provenance, ..
             }) => track_provenance,
-            Effect::Sequence { steps } => steps.iter().any(|s| s.tracks_mana_provenance()),
+            Effect::Sequence { steps } => steps.iter().any(|s| s.clone().tracks_mana_provenance()),
             _ => false,
         }
     }
@@ -886,8 +886,8 @@ impl Effect {
     /// and/or enchantments"), [`CountersEffect::PutCounters`](crate::CountersEffect::PutCounters) (Silkguard's "each of up to
     /// X"), and [`DigEffect::ExileTargetGraveyardSpellCastFree`](crate::DigEffect::ExileTargetGraveyardSpellCastFree)
     /// (Renegade Bull's "up to one target," `{0, 1}`) carry a real count.
-    pub(crate) fn target_count(self) -> TargetCount {
-        match self {
+    pub(crate) fn target_count(&self) -> TargetCount {
+        match self.clone() {
             Effect::Zone(ZoneEffect::ReturnToHand { count, .. })
             | Effect::Zone(ZoneEffect::ReturnFromGraveyardToHand { count, .. })
             | Effect::Damage(DamageEffect::Target { count, .. })
@@ -911,7 +911,7 @@ impl Effect {
             // step, shared with the following untyped `GoadTarget` step).
             Effect::Sequence { steps } => steps
                 .iter()
-                .map(|s| s.target_count())
+                .map(|s| s.clone().target_count())
                 .find(|&c| c != TargetCount::default())
                 .unwrap_or_default(),
             _ => TargetCount::default(),
@@ -924,8 +924,11 @@ impl Effect {
     /// Distinguishes a genuinely independent clause from a `Sequence` step that merely shares the
     /// one chosen target (Killian's goad), so [`Game::place_ability_second_clause`] only chooses a
     /// second set of targets for the former.
-    pub(crate) fn reads_second_target_clause(self) -> bool {
-        matches!(self, Effect::Counters(CountersEffect::DoubleCountersOnTargetCreatures { .. }))
+    pub(crate) fn reads_second_target_clause(&self) -> bool {
+        matches!(
+            self,
+            Effect::Counters(CountersEffect::DoubleCountersOnTargetCreatures { .. })
+        )
     }
 
     /// Whether this effect still does something with *no* chosen target — itself untargeted, or
@@ -935,9 +938,9 @@ impl Effect {
     /// on the stack, versus dropping outright when every step needs the same declined target
     /// (Killian, Decisive Mentor's "tap up to one target creature and goad it" — goad has nothing
     /// to goad without a tapped creature, so parking it on the stack to do nothing is pure noise).
-    pub(crate) fn has_target_independent_step(self) -> bool {
-        match self {
-            Effect::Sequence { steps } => steps.iter().any(|s| s.target() == TargetSpec::None),
+    pub(crate) fn has_target_independent_step(&self) -> bool {
+        match self.clone() {
+            Effect::Sequence { steps } => steps.iter().any(|s| s.clone().target() == TargetSpec::None),
             other => other.target() == TargetSpec::None,
         }
     }
@@ -1774,7 +1777,7 @@ pub(crate) fn contextualize_effect(effect: Effect, ctx: TriggerContext) -> Effec
         ),
         None => effect,
     };
-    match (effect, ctx.attack) {
+    match (effect.clone(), ctx.attack) {
         (Effect::Counters(CountersEffect::AttackerDrawsControllerCounters { counters, .. }), Some((attacker, _attacked))) => {
             Effect::Counters(CountersEffect::AttackerDrawsControllerCounters {
                 attacker: Some(attacker),
@@ -1900,7 +1903,7 @@ fn fill_entering_permanent(effect: Effect, entering: ObjectId) -> Effect {
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|&step| fill_entering_permanent(step, entering))
+                .map(|step| fill_entering_permanent(step.clone(), entering))
                 .collect();
             Effect::Sequence {
                 steps: Box::leak(filled.into_boxed_slice()),
@@ -1925,7 +1928,7 @@ fn fill_dying_enchanted_creature(effect: Effect, dying: ObjectId) -> Effect {
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|&step| fill_dying_enchanted_creature(step, dying))
+                .map(|step| fill_dying_enchanted_creature(step.clone(), dying))
                 .collect();
             Effect::Sequence {
                 steps: Box::leak(filled.into_boxed_slice()),
@@ -1948,7 +1951,7 @@ fn fill_damaged_creature(effect: Effect, damaged: ObjectId) -> Effect {
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|&step| fill_damaged_creature(step, damaged))
+                .map(|step| fill_damaged_creature(step.clone(), damaged))
                 .collect();
             Effect::Sequence {
                 steps: Box::leak(filled.into_boxed_slice()),
@@ -1969,7 +1972,7 @@ fn fill_left_battlefield_host(effect: Effect, host: ObjectId) -> Effect {
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|&step| fill_left_battlefield_host(step, host))
+                .map(|step| fill_left_battlefield_host(step.clone(), host))
                 .collect();
             Effect::Sequence {
                 steps: Box::leak(filled.into_boxed_slice()),
@@ -1996,7 +1999,7 @@ fn fill_dead_creature(effect: Effect, dead: ObjectId) -> Effect {
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|&step| fill_dead_creature(step, dead))
+                .map(|step| fill_dead_creature(step.clone(), dead))
                 .collect();
             Effect::Sequence {
                 steps: Box::leak(filled.into_boxed_slice()),
@@ -2029,7 +2032,7 @@ fn fill_dying_permanent_types(effect: Effect, types: TypeSet) -> Effect {
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|&step| fill_dying_permanent_types(step, types))
+                .map(|step| fill_dying_permanent_types(step.clone(), types))
                 .collect();
             Effect::Sequence {
                 steps: Box::leak(filled.into_boxed_slice()),
@@ -2067,7 +2070,7 @@ fn fill_triggering_ability(effect: Effect, source: ObjectId) -> Effect {
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|&step| fill_triggering_ability(step, source))
+                .map(|step| fill_triggering_ability(step.clone(), source))
                 .collect();
             Effect::Sequence {
                 steps: Box::leak(filled.into_boxed_slice()),
@@ -2109,7 +2112,7 @@ fn fill_triggering_spell(effect: Effect, spell: ObjectId) -> Effect {
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|&step| fill_triggering_spell(step, spell))
+                .map(|step| fill_triggering_spell(step.clone(), spell))
                 .collect();
             Effect::Sequence {
                 steps: Box::leak(filled.into_boxed_slice()),
@@ -2139,7 +2142,7 @@ fn fill_spells_cast_before_this(effect: Effect, n: u32) -> Effect {
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|&step| fill_spells_cast_before_this(step, n))
+                .map(|step| fill_spells_cast_before_this(step.clone(), n))
                 .collect();
             Effect::Sequence {
                 steps: Box::leak(filled.into_boxed_slice()),
@@ -2161,7 +2164,7 @@ fn fill_triggering_caster(effect: Effect, caster: PlayerId) -> Effect {
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|&step| fill_triggering_caster(step, caster))
+                .map(|step| fill_triggering_caster(step.clone(), caster))
                 .collect();
             Effect::Sequence {
                 steps: Box::leak(filled.into_boxed_slice()),
@@ -2186,7 +2189,7 @@ fn fill_combat_damage_source_controller(effect: Effect, player: PlayerId) -> Eff
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|&step| fill_combat_damage_source_controller(step, player))
+                .map(|step| fill_combat_damage_source_controller(step.clone(), player))
                 .collect();
             Effect::Sequence {
                 steps: Box::leak(filled.into_boxed_slice()),
@@ -2208,7 +2211,7 @@ fn fill_combat_damage_recipient(effect: Effect, player: PlayerId) -> Effect {
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|&step| fill_combat_damage_recipient(step, player))
+                .map(|step| fill_combat_damage_recipient(step.clone(), player))
                 .collect();
             Effect::Sequence {
                 steps: Box::leak(filled.into_boxed_slice()),
@@ -2250,7 +2253,7 @@ fn fill_add_mana_recipient(effect: Effect, active_player: PlayerId) -> Effect {
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|&step| fill_add_mana_recipient(step, active_player))
+                .map(|step| fill_add_mana_recipient(step.clone(), active_player))
                 .collect();
             Effect::Sequence {
                 steps: Box::leak(filled.into_boxed_slice()),
@@ -2274,7 +2277,7 @@ fn fill_each_draw_step_drawer(effect: Effect, active_player: PlayerId) -> Effect
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|&step| fill_each_draw_step_drawer(step, active_player))
+                .map(|step| fill_each_draw_step_drawer(step.clone(), active_player))
                 .collect();
             Effect::Sequence {
                 steps: Box::leak(filled.into_boxed_slice()),
@@ -2287,7 +2290,7 @@ fn fill_each_draw_step_drawer(effect: Effect, active_player: PlayerId) -> Effect
         } => {
             let filled: Vec<Effect> = then
                 .iter()
-                .map(|&step| fill_each_draw_step_drawer(step, active_player))
+                .map(|step| fill_each_draw_step_drawer(step.clone(), active_player))
                 .collect();
             Effect::Conditional {
                 condition,
@@ -2355,7 +2358,7 @@ fn map_effect_amounts(effect: Effect, f: &impl Fn(Amount) -> Amount) -> Effect {
             damaged,
         }),
         Effect::Sequence { steps } => {
-            let filled: Vec<Effect> = steps.iter().map(|&s| map_effect_amounts(s, f)).collect();
+            let filled: Vec<Effect> = steps.iter().map(|s| map_effect_amounts(s.clone(), f)).collect();
             Effect::Sequence {
                 steps: Box::leak(filled.into_boxed_slice()),
             }
@@ -2459,7 +2462,7 @@ fn fill_cast_mana_value(effect: Effect, mv: u32) -> Effect {
             }
             let filled: Vec<Effect> = then
                 .iter()
-                .map(|&step| fill_cast_mana_value(step, mv))
+                .map(|step| fill_cast_mana_value(step.clone(), mv))
                 .collect();
             Effect::Sequence {
                 steps: Box::leak(filled.into_boxed_slice()),
@@ -2468,7 +2471,7 @@ fn fill_cast_mana_value(effect: Effect, mv: u32) -> Effect {
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|&step| fill_cast_mana_value(step, mv))
+                .map(|step| fill_cast_mana_value(step.clone(), mv))
                 .collect();
             Effect::Sequence {
                 steps: Box::leak(filled.into_boxed_slice()),
@@ -2540,7 +2543,7 @@ fn fill_combat_damage(effect: Effect, damage: i32) -> Effect {
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|&step| fill_combat_damage(step, damage))
+                .map(|step| fill_combat_damage(step.clone(), damage))
                 .collect();
             Effect::Sequence {
                 steps: Box::leak(filled.into_boxed_slice()),
@@ -2581,7 +2584,7 @@ fn fill_source_power(effect: Effect, power: i32) -> Effect {
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|&step| fill_source_power(step, power))
+                .map(|step| fill_source_power(step.clone(), power))
                 .collect();
             Effect::Sequence {
                 steps: Box::leak(filled.into_boxed_slice()),
@@ -2647,7 +2650,7 @@ pub(crate) fn contextualize_sacrifice_effect(effect: Effect, power: i32, toughne
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|&step| contextualize_sacrifice_effect(step, power, toughness))
+                .map(|step| contextualize_sacrifice_effect(step.clone(), power, toughness))
                 .collect();
             Effect::Sequence {
                 steps: Box::leak(filled.into_boxed_slice()),

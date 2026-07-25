@@ -262,7 +262,11 @@ impl Game {
             let def = self.def_of(card);
             self.push_apply(
                 &mut events,
-                Event::RevealedTopOfLibrary { player, card, def },
+                Event::RevealedTopOfLibrary {
+                    player,
+                    card,
+                    def: def.clone(),
+                },
             );
             if def.name == chosen {
                 self.push_apply(
@@ -402,7 +406,7 @@ impl Game {
         let all_in_hand = cards.iter().all(|c| hand.contains(c));
         let full_discard = cards.len() == count && distinct == cards.len();
         let land_escape = or_one_matching
-            .is_some_and(|filter| cards.len() == 1 && filter.matches(self.def_of(cards[0])));
+            .is_some_and(|filter| cards.len() == 1 && filter.matches(&self.def_of(cards[0])));
         if player != chooser || !all_in_hand || !(full_discard || land_escape) {
             return Err(Reject::IllegalChoice); // invalid — the choice stays pending
         }

@@ -20,7 +20,7 @@ use crate::*;
 /// dropping the *whole* ability outright.
 fn multi_target_steps(a: Ability, targets: TargetList) -> Vec<(Ability, Option<Target>)> {
     if targets.iter().next().is_some() {
-        return targets.iter().map(|t| (a, Some(t))).collect();
+        return targets.iter().map(|t| (a.clone(), Some(t))).collect();
     }
     if a.effect.target_count().min == 0 && a.effect.has_target_independent_step() {
         return vec![(a, None)];
@@ -46,13 +46,25 @@ fn ability_clause_steps(
     let mut clause = 0usize;
     steps
         .iter()
-        .map(|&step| {
+        .map(|step| {
             if step.target() == TargetSpec::None {
-                return (Ability { effect: step, ..a }, None);
+                return (
+                    Ability {
+                        effect: step.clone(),
+                        ..a
+                    },
+                    None,
+                );
             }
             let target = if clause == 0 { targets } else { targets_second }.primary();
             clause += 1;
-            (Ability { effect: step, ..a }, target)
+            (
+                Ability {
+                    effect: step.clone(),
+                    ..a
+                },
+                target,
+            )
         })
         .collect()
 }
@@ -61,7 +73,8 @@ impl Game {
     /// Resolve the top item of the stack, applying its events into `events`. Resolution
     /// applies incrementally so newly-minted object ids stay in sync with the arena.
     pub(crate) fn resolve_top(&mut self, events: &mut Vec<Event>) {
-        match *self.stack.last().expect("stack is non-empty") {
+        let top = self.stack.last().expect("stack is non-empty").clone();
+        match top {
             StackItem::Spell(object) => self.resolve_spell(object, events),
             StackItem::Ability {
                 controller,
@@ -86,9 +99,9 @@ impl Game {
                 // The source may already be `Object::Removed` (a Dies-trigger source token that
                 // vanished — `def_of` would panic); no colors is the same "no protection filters"
                 // posture this ability had before source colors were wired at all.
-                let source_colors = match self.objects[source as usize] {
+                let source_colors = match &self.objects[source as usize] {
                     Object::Removed => [false; Color::COUNT],
-                    _ => color_identity(self.def_of(source)),
+                    _ => color_identity(&self.def_of(source)),
                 };
                 if !self.target_still_legal(
                     effect.target(),
@@ -128,7 +141,7 @@ impl Game {
     /// Resolve a cast spell: a creature/enchantment enters; an instant/sorcery runs its
     /// effects then goes to the graveyard.
     pub(crate) fn resolve_spell(&mut self, object: ObjectId, events: &mut Vec<Event>) {
-        let spell = *self.spell(object);
+        let spell = self.spell(object).clone();
         // Resolution-scoped scratch: a *fizzled* graveyard-return clause never writes this, so it
         // has to be cleared here or Vengeful Rebirth's damage clause would read the mana value an
         // earlier resolution recorded (CR 608.2b — an illegal target's step simply doesn't happen).
@@ -218,9 +231,9 @@ impl Game {
                     spell
                         .modes
                         .chosen()
-                        .filter_map(|(i, target)| nth_mode(spell.def, i).map(|a| (a, target)))
+                        .filter_map(|(i, target)| nth_mode(&spell.def, i).map(|a| (a, target)))
                         .flat_map(|(a, target)| {
-                            if ability_target_clauses(a).len() > 1 {
+                            if ability_target_clauses(&a).len() > 1 {
                                 ability_clause_steps(a, spell.targets, spell.targets_second)
                             } else if a.effect.target_count().is_single() {
                                 vec![(a, target)]
@@ -245,19 +258,19 @@ impl Game {
                         .def
                         .abilities
                         .iter()
-                        .copied()
+                        .cloned()
                         .filter(|a| matches!(a.timing, Timing::Spell))
                         .flat_map(|a| {
-                            if ability_target_clauses(a).len() > 1 {
-                                clause += ability_target_clauses(a).len();
+                            if ability_target_clauses(&a).len() > 1 {
+                                clause += ability_target_clauses(&a).len();
                                 return ability_clause_steps(
-                                    a,
+                                    a.clone(),
                                     spell.targets,
                                     spell.targets_second,
                                 );
                             }
                             if a.effect.target_count().is_single() {
-                                return vec![(a, spell.targets.primary())];
+                                return vec![(a.clone(), spell.targets.primary())];
                             }
                             // ponytail: two independent clauses (0 → `targets`, 1 → `targets_second`);
                             // a third clause would need a `[TargetList; N]` — no pool spell prints one.
@@ -267,7 +280,7 @@ impl Game {
                                 spell.targets_second
                             };
                             clause += 1;
-                            multi_target_steps(a, list)
+                            multi_target_steps(a.clone(), list)
                         })
                         .collect()
                 };
@@ -287,7 +300,7 @@ impl Game {
                             object,
                             *t,
                             spell.controller,
-                            color_identity(spell.def),
+                            color_identity(&spell.def),
                             spell.x,
                         )
                     });
@@ -302,7 +315,7 @@ impl Game {
                             object,
                             target,
                             spell.controller,
-                            color_identity(spell.def),
+                            color_identity(&spell.def),
                             spell.x,
                         ) {
                             continue;
@@ -358,7 +371,7 @@ impl Game {
                 object,
                 spell.targets.primary(),
                 spell.controller,
-                color_identity(spell.def),
+                color_identity(&spell.def),
                 spell.x,
             )
         {
@@ -422,7 +435,7 @@ impl Game {
         // "Enters with N +1/+1 counters" (hydras: N = the spell's {X}) / "Enters with N
         // `kind` counters" (mana_bloom/astral_cornucopia) — see `Game::push_enters_with_counters`.
         self.push_enters_with_counters(
-            spell.def,
+            &spell.def,
             entered,
             spell.controller,
             spell.targets.primary(),
@@ -510,14 +523,14 @@ impl Game {
     /// `*ToBattlefield` events through here when a pool card needs it.
     pub(crate) fn push_enters_with_counters(
         &mut self,
-        def: CardDef,
+        def: &CardDef,
         perm: ObjectId,
         controller: PlayerId,
         target: Option<Target>,
         x: u32,
         events: &mut Vec<Event>,
     ) {
-        let Some((amount, kind)) = enters_with_counters(def) else {
+        let Some((amount, kind)) = enters_with_counters(&def) else {
             return;
         };
         let counters = self.resolve_count(amount, controller, perm, target, x);
@@ -561,7 +574,7 @@ impl Game {
         object: ObjectId,
         events: &mut Vec<Event>,
     ) {
-        let spell = *self.spell(object);
+        let spell = self.spell(object).clone();
         // A copy ceases to exist (CR 707.10a); a cast instant/sorcery goes to the graveyard.
         if spell.copy {
             // A copy that ran a self-move rider (Spell Crumple's `TuckSelfToLibraryBottom`,
@@ -716,7 +729,7 @@ impl Game {
     /// otherwise land (countered here; resolving, via `finish_instant_sorcery_resolution`'s own
     /// check). `false` for a non-spell or an ordinary, non-copy spell.
     pub(crate) fn is_copy_object(&self, object: ObjectId) -> bool {
-        matches!(self.objects[object as usize], Object::Spell(s) if s.copy)
+        matches!(&self.objects[object as usize], Object::Spell(s) if s.copy)
     }
 
     /// The live current id of a "return this" ability's own source — or `None` if it has left
@@ -736,7 +749,7 @@ impl Game {
         allowed: &[Zone],
     ) -> Option<ObjectId> {
         let current = self.current_id(source);
-        if matches!(self.objects[current as usize], Object::Removed) {
+        if matches!(&self.objects[current as usize], Object::Removed) {
             return None;
         }
         allowed.contains(&self.zone_of(current)).then_some(current)

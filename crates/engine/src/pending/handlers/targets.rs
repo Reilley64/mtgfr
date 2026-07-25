@@ -42,7 +42,7 @@ impl Game {
                 TriggerGroup {
                     controller: group.controller,
                     source: group.source,
-                    abilities: vec![group.abilities[i]],
+                    abilities: vec![group.abilities[i].clone()],
                     expanded: true,
                 },
             );
@@ -175,7 +175,7 @@ impl Game {
             // target ability" against a multi-target trigger; give the primary clause a real
             // `TargetList` (like `targets_second` already is) if one ever does.
             let abilities: Vec<(Effect, Option<Target>)> =
-                targets.iter().map(|&t| (effect, Some(t))).collect();
+                targets.iter().map(|&t| (effect.clone(), Some(t))).collect();
             self.push_ability_group_with_x(
                 player,
                 source,

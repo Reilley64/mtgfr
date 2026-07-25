@@ -124,7 +124,7 @@ impl Game {
                         events.push(Event::TokenCreated {
                             token: next,
                             controller: recipient,
-                            def,
+                            def: def.clone(),
                             creator: source,
                         });
                         // Attach the "attacks this turn if able" requirement to each minted token
@@ -224,7 +224,7 @@ impl Game {
                     events.push(Event::TokenCreated {
                         token,
                         controller,
-                        def,
+                        def: def.clone(),
                         creator: source,
                     });
                     // Determined Iteration: "The token created this way gains haste."
@@ -313,7 +313,7 @@ impl Game {
                         events.push(Event::TokenCreated {
                             token,
                             controller: attacker,
-                            def,
+                            def: def.clone(),
                             creator: source,
                         });
                         events.push(Event::Tapped { object: token });

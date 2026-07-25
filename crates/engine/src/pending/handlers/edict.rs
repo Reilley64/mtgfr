@@ -170,7 +170,7 @@ impl Game {
             &mut events,
             Event::BecameCopy {
                 object: source,
-                def,
+                def: def.clone(),
                 until_eot,
             },
         );
@@ -249,7 +249,7 @@ impl Game {
                 &mut events,
                 Event::BecameCopy {
                     object: other,
-                    def,
+                    def: def.clone(),
                     until_eot: false,
                 },
             );
@@ -510,9 +510,9 @@ impl Game {
         if self.resolution_is_paused() {
             return;
         }
-        for &effect in follow_up {
+        for effect in follow_up {
             self.run(
-                effect,
+                effect.clone(),
                 ResolveCtx {
                     controller,
                     source,

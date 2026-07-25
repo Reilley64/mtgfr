@@ -66,7 +66,7 @@ impl Game {
             return None;
         };
         perm.def.abilities.iter().position(|a| {
-            a.effect.is_mana_ability()
+            a.effect.clone().is_mana_ability()
                 && matches!(a.timing, Timing::Activated(cost)
                     if cost.taps_self
                         && cost.mana == Cost::FREE
@@ -127,7 +127,7 @@ impl Game {
         player: PlayerId,
         object: ObjectId,
     ) -> Result<Vec<Event>, Reject> {
-        let Object::Permanent(perm) = self.objects[object as usize] else {
+        let Object::Permanent(ref perm) = self.objects[object as usize] else {
             return Err(Reject::CannotProduceMana);
         };
         // A land with the `produces` sugar has a free base tap-for-one. Everything else that makes
@@ -220,7 +220,7 @@ impl Game {
                 let (
                     Timing::Static,
                     Effect::Static(StaticEffect::TappedForManaBonus { scope, bonus_color }),
-                ) = (ability.timing, ability.effect)
+                ) = (ability.timing, ability.effect.clone())
                 else {
                     continue;
                 };
@@ -317,7 +317,7 @@ impl Game {
     pub(crate) fn targets_are_legal(
         &self,
         object: ObjectId,
-        def: CardDef,
+        def: &CardDef,
         target: Option<Target>,
         controller: PlayerId,
         mode: Option<usize>,
@@ -337,7 +337,7 @@ impl Game {
     /// a creature-targeting mode requires a creature and a non-targeting mode requires none. A
     /// mode-less query on a modal card (snapshot / auto-pass, which don't know the pick) reports
     /// no requirement.
-    pub(crate) fn required_target(&self, def: CardDef, mode: Option<usize>) -> TargetSpec {
+    pub(crate) fn required_target(&self, def: &CardDef, mode: Option<usize>) -> TargetSpec {
         // Animate Dead (CR 303.4a's "enchant creature card in a graveyard"): the pool's one Aura
         // whose enchant subject is a graveyard card, not a battlefield permanent — checked ahead
         // of the ordinary `CardKind::Aura` battlefield-permanent case below (see
@@ -357,7 +357,7 @@ impl Game {
         }
         if def.modal {
             return mode
-                .and_then(|m| nth_mode(def, m))
+                .and_then(|m| nth_mode(&def, m))
                 .map_or(TargetSpec::None, |a| a.effect.target());
         }
         for ability in def.abilities {
@@ -1188,7 +1188,19 @@ impl Game {
                 };
                 for delve in (0..=max_delve).rev() {
                     let cost = self.cast_cost(
-                        player, card, def, None, 0, zone, delve, false, false, false, 0, 0, false,
+                        player,
+                        card,
+                        def.clone(),
+                        None,
+                        0,
+                        zone,
+                        delve,
+                        false,
+                        false,
+                        false,
+                        0,
+                        0,
+                        false,
                     );
                     if let Some(plan) =
                         self.plan_auto_taps(player, cost, None, Some(def.spell_characteristics()))
@@ -1199,14 +1211,14 @@ impl Game {
                 return Vec::new();
             }
             MeaningfulAction::CastSplitHalf { card, half } => {
-                let Some(&face) = self.def_of(card).halves.get(half as usize) else {
+                let Some(face) = self.def_of(card).halves.get(half as usize) else {
                     return Vec::new();
                 };
                 (
                     self.cast_cost(
                         player,
                         card,
-                        face,
+                        face.clone(),
                         None,
                         0,
                         Zone::Hand,
@@ -1226,12 +1238,12 @@ impl Game {
                 let Some(back) = self.def_of(source).back else {
                     return Vec::new();
                 };
-                let back = *back;
+                let back = back.clone();
                 (
                     self.cast_cost(
                         player,
                         source,
-                        back,
+                        back.clone(),
                         None,
                         0,
                         Zone::Battlefield,

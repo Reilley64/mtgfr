@@ -41,7 +41,7 @@ pub fn install_token_defs(defs: HashMap<&'static str, CardDef>) {
 
 /// Look up a token profile by Scryfall oracle id after [`install_token_defs`].
 pub fn token_def(id: &str) -> Option<CardDef> {
-    TOKEN_DEFS.get().and_then(|m| m.get(id).copied())
+    TOKEN_DEFS.get().and_then(|m| m.get(id).cloned())
 }
 
 // ── Interning + serde defaults (referenced by the derives in lib.rs) ────────────────
@@ -1820,7 +1820,7 @@ impl<'de> Deserialize<'de> for Ability {
                      [[abilities.effects]] block",
                 ));
             }
-            [only] => *only, // one-element `effects` is just that effect (no Sequence wrapper).
+            [only] => only.clone(), // one-element `effects` is just that effect (no Sequence wrapper).
             _ => Effect::Sequence {
                 steps: intern(flat.effects),
             },

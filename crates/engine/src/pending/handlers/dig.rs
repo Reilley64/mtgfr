@@ -126,7 +126,7 @@ impl Game {
         let candidates: Vec<ObjectId> = exiled
             .iter()
             .copied()
-            .filter(|&id| filter.matches(self.def_of(id)))
+            .filter(|&id| filter.matches(&self.def_of(id)))
             .collect();
         pending::raise(
             self,
@@ -1047,10 +1047,10 @@ impl Game {
                 Event::RevealedTopOfLibrary {
                     player: controller,
                     card,
-                    def,
+                    def: def.clone(),
                 },
             );
-            if !filter.matches(def) {
+            if !filter.matches(&def) {
                 rest.push(card);
                 continue;
             }
@@ -1256,10 +1256,10 @@ impl Game {
                 Event::RevealedTopOfLibrary {
                     player: controller,
                     card: from,
-                    def,
+                    def: def.clone(),
                 },
             );
-            if !filter.matches(def) {
+            if !filter.matches(&def) {
                 rest.push(from);
                 continue;
             }

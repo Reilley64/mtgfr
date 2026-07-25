@@ -360,7 +360,7 @@ pub(crate) struct DelayedTriggers {
 /// a later `Sequence` step (`Amount::PermanentsDestroyedThisWay`) needs to count how many matched
 /// some filter (Ceaseless Conflict's token rider, Culling Ritual's mana rider). `def` carries the
 /// type/subtype info a `PermanentFilter` needs to match against.
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub(crate) struct DestroyedThisWay {
     pub(crate) def: CardDef,
     pub(crate) controller: PlayerId,

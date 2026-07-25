@@ -402,7 +402,7 @@ pub(crate) fn forced(game: &Game) -> Option<Intent> {
             // the whole hand vs. the single land) even when `count` happens to equal the hand
             // size — only force the whole-hand answer when that alternative isn't on the table.
             let land_escape_available = or_one_matching
-                .is_some_and(|filter| hand.iter().any(|&id| filter.matches(game.def_of(id))));
+                .is_some_and(|filter| hand.iter().any(|&id| filter.matches(&game.def_of(id))));
             (!land_escape_available && *count == hand.len()).then(|| Intent::Discard {
                 player: *player,
                 cards: hand.clone(),

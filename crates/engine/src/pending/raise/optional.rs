@@ -103,7 +103,7 @@ pub(super) fn may_return_from_graveyard(
         .filter(|&id| {
             game.zone_of(id) == crate::Zone::Graveyard
                 && game.owner_of(id) == player
-                && filter.matches(game.def_of(id))
+                && filter.matches(&game.def_of(id))
         })
         .collect();
     if options.is_empty() {

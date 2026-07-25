@@ -50,11 +50,11 @@ impl Game {
     /// The zone an object currently occupies — following its lineage if the id has since
     /// moved on (so an old id still reports where the card ended up).
     pub fn zone_of(&self, object: ObjectId) -> Zone {
-        match self.objects[object as usize] {
+        match &self.objects[object as usize] {
             Object::Card(c) => c.zone,
             Object::Spell(_) => Zone::Stack,
             Object::Permanent(_) => Zone::Battlefield,
-            Object::Moved { to } => self.zone_of(to),
+            Object::Moved { to } => self.zone_of(*to),
             Object::Removed => panic!("object {object} has left the game"),
         }
     }
@@ -80,7 +80,8 @@ impl Game {
     pub fn stack_library(&mut self, player: PlayerId, defs: &[CardDef]) -> Vec<ObjectId> {
         self.players[player.0 as usize].library.clear();
         defs.iter()
-            .map(|&def| self.spawn_in_library(player, def))
+            .cloned()
+            .map(|def| self.spawn_in_library(player, def))
             .collect()
     }
 

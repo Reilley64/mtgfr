@@ -48,7 +48,7 @@ impl Game {
                     return vec![Event::TokenCeasedToExist {
                         token: object,
                         controller: permanent.owner,
-                        def: permanent.def,
+                        def: permanent.def.clone(),
                     }];
                 }
                 let owner = permanent.owner;
@@ -112,7 +112,7 @@ impl Game {
                     return vec![Event::TokenCeasedToExist {
                         token: object,
                         controller: permanent.owner,
-                        def: permanent.def,
+                        def: permanent.def.clone(),
                     }];
                 }
                 vec![Event::ReturnedToHand {
@@ -159,7 +159,7 @@ impl Game {
                 let mut next = self.next_object_id();
                 let mut events = Vec::new();
                 for id in self.battlefield() {
-                    let Object::Permanent(p) = self.objects[id as usize] else {
+                    let Object::Permanent(ref p) = self.objects[id as usize] else {
                         continue;
                     };
                     if !self.permanent_matches(&filter, id, controller, Some(source)) {
@@ -169,7 +169,7 @@ impl Game {
                         events.push(Event::TokenCeasedToExist {
                             token: id,
                             controller: p.owner,
-                            def: p.def,
+                            def: p.def.clone(),
                         });
                         continue;
                     }
@@ -398,7 +398,7 @@ impl Game {
                         events.push(Event::TokenCeasedToExist {
                             token: object,
                             controller: owner,
-                            def: permanent.def,
+                            def: permanent.def.clone(),
                         });
                         continue;
                     }
@@ -453,7 +453,7 @@ impl Game {
                         if self.zone_of(id) != Zone::Graveyard || self.owner_of(id) != owner {
                             continue;
                         }
-                        if !filter.matches(self.def_of(id)) {
+                        if !filter.matches(&self.def_of(id)) {
                             continue;
                         }
                         events.push(Event::ReanimatedToBattlefield {
@@ -488,7 +488,7 @@ impl Game {
                     return vec![Event::TokenCeasedToExist {
                         token: id,
                         controller: permanent.owner,
-                        def: permanent.def,
+                        def: permanent.def.clone(),
                     }];
                 }
                 vec![Event::ReturnedToHand {
@@ -554,10 +554,10 @@ impl Game {
             Event::RevealedTopOfLibrary {
                 player: owner,
                 card,
-                def,
+                def: def.clone(),
             },
         );
-        if CardFilter::Permanent.matches(def) {
+        if CardFilter::Permanent.matches(&def) {
             self.push_apply(
                 events,
                 Event::SearchedToBattlefield {

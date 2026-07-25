@@ -175,7 +175,7 @@ impl Game {
             return Event::TokenCeasedToExist {
                 token: id,
                 controller: perm.owner,
-                def: perm.def,
+                def: perm.def.clone(),
             };
         }
         self.graveyard_or_command(id, self.next_object_id())

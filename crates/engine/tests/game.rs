@@ -876,7 +876,7 @@ fn flashback_with_pay_life_additional_cost() {
     // A player with enough life casts and loses 3 life.
     let mut game = Game::new();
     game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
-    let object = game.spawn_in_graveyard(PlayerId(0), with_life);
+    let object = game.spawn_in_graveyard(PlayerId(0), with_life.clone());
     game.fund_mana(PlayerId(0));
     let before = game.life(PlayerId(0));
     game.submit(Intent::Cast {
@@ -3368,8 +3368,8 @@ fn capstone_a_scripted_game_plays_to_a_win() {
     .collect();
     let spare_land = game.spawn_in_hand(PlayerId(0), card("Plains"));
     let serra = game.spawn_in_hand(PlayerId(0), card("Serra Angel"));
-    game.stack_library(PlayerId(0), &[card("Savannah Lions"); 3]);
-    game.stack_library(PlayerId(1), &[card("Typhoid Rats"); 3]);
+    game.stack_library(PlayerId(0), &vec![card("Savannah Lions"); 3]);
+    game.stack_library(PlayerId(1), &vec![card("Typhoid Rats"); 3]);
 
     // Turn 1 (player 0): a land drop, then tap five lands and cast Serra Angel.
     game.submit(Intent::PlayLand {
@@ -3637,11 +3637,11 @@ fn twenty_one_commander_damage_loses_the_game() {
 fn color_identity_validation_flags_off_color_cards() {
     // Treat Grizzly Bear ({1}{G}) as a mono-green commander.
     assert!(
-        within_identity(card("Llanowar Elves"), card("Grizzly Bear")),
+        within_identity(&card("Llanowar Elves"), &card("Grizzly Bear")),
         "a green card is within a green identity"
     );
     assert!(
-        !within_identity(card("Shock"), card("Grizzly Bear")),
+        !within_identity(&card("Shock"), &card("Grizzly Bear")),
         "a red card is outside a green identity"
     );
 }
@@ -12407,9 +12407,9 @@ fn the_stack_query_exposes_spells_and_abilities_in_resolution_order() {
         "bottom of stack is the ETB draw trigger; got {:?}",
         stack[0]
     );
-    match stack[1] {
+    match &stack[1] {
         StackEntry::Spell(id) => {
-            assert_eq!(game.def_of(id).name, "Shock", "top of stack is Shock")
+            assert_eq!(game.def_of(*id).name, "Shock", "top of stack is Shock")
         }
         other => panic!("expected Shock spell on top; got {other:?}"),
     }
@@ -19424,7 +19424,7 @@ fn a_dual_credit_left_over_from_pips_pays_generic() {
     // {1}{G} from two "{T}: Add {U} or {G}" credits: one pays the {G}, the other the {1}.
     let mut game = Game::new();
     let dual = dual_land("Test UG Dual", Color::Blue, Color::Green);
-    let l1 = game.spawn_on_battlefield(PlayerId(0), dual);
+    let l1 = game.spawn_on_battlefield(PlayerId(0), dual.clone());
     let l2 = game.spawn_on_battlefield(PlayerId(0), dual);
     let spell = game.spawn_in_hand(PlayerId(0), vanilla("Test 1G Spell", 1, [0, 0, 0, 0, 1]));
 
@@ -20998,8 +20998,8 @@ fn smothering_abomination_upkeep_mandatory_sacrifice_auto_resolves_with_one_crea
     // instead of pausing on a choice (CR 700.2's "as many as possible").
     let mut game = Game::new();
     let abomination = game.spawn_on_battlefield(PlayerId(0), card("Smothering Abomination"));
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"); 2]); // avoid decking out
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"); 2]);
+    game.stack_library(PlayerId(0), &vec![card("Grizzly Bear"); 2]); // avoid decking out
+    game.stack_library(PlayerId(1), &vec![card("Grizzly Bear"); 2]);
 
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
@@ -21026,8 +21026,8 @@ fn smothering_abomination_upkeep_mandatory_sacrifice_pauses_with_several_creatur
     let abomination = game.spawn_on_battlefield(PlayerId(0), card("Smothering Abomination"));
     let bear_a = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
     let bear_b = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"); 2]); // avoid decking out
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"); 2]);
+    game.stack_library(PlayerId(0), &vec![card("Grizzly Bear"); 2]); // avoid decking out
+    game.stack_library(PlayerId(1), &vec![card("Grizzly Bear"); 2]);
 
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
@@ -22395,8 +22395,8 @@ fn a_begin_combat_trigger_fires_at_the_controllers_begin_combat_step() {
 fn a_begin_combat_trigger_does_not_fire_on_upkeep_or_the_opponents_turn() {
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), BEGIN_COMBAT_DRAW);
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"); 6]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"); 6]);
+    game.stack_library(PlayerId(0), &vec![card("Grizzly Bear"); 6]);
+    game.stack_library(PlayerId(1), &vec![card("Grizzly Bear"); 6]);
 
     // P0's own turn 1: the trigger fires at BeginCombat — resolve it so it doesn't linger on
     // the stack while the later steps are checked.
@@ -24351,7 +24351,7 @@ fn a_copied_draw_spell_draws_twice() {
     game.fund_mana(PlayerId(0));
     let library = game.stack_library(
         PlayerId(0),
-        &[card("Forest"); 10], // plenty to draw twice without decking
+        &vec![card("Forest"); 10], // plenty to draw twice without decking
     );
     let recall = game.spawn_in_hand(PlayerId(0), card("Ancestral Recall"));
     let twincast = game.spawn_in_hand(PlayerId(0), card("Twincast"));
@@ -24619,7 +24619,7 @@ fn copying_an_instant_or_sorcery_fires_the_copiers_magecraft() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     game.spawn_on_battlefield(PlayerId(0), MAGECRAFT_DRAW);
-    let library = game.stack_library(PlayerId(0), &[card("Forest"); 10]);
+    let library = game.stack_library(PlayerId(0), &vec![card("Forest"); 10]);
     let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
     let twincast = game.spawn_in_hand(PlayerId(0), card("Twincast"));
 
@@ -26980,8 +26980,8 @@ fn may_draw_up_to_rejects_an_over_draw() {
 fn trade_secrets_target_opponent_draws_two_then_caster_may_draw_up_to_four() {
     let mut game = TestGame::new();
     let spell = game.spawn_in_hand(PlayerId(0), card("Trade Secrets"));
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"); 2]);
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"); 4]);
+    game.stack_library(PlayerId(1), &vec![card("Grizzly Bear"); 2]);
+    game.stack_library(PlayerId(0), &vec![card("Grizzly Bear"); 4]);
 
     game.cast(spell).at(Target::Player(PlayerId(1))).resolve();
 
@@ -27009,8 +27009,8 @@ fn trade_secrets_target_opponent_draws_two_then_caster_may_draw_up_to_four() {
 fn trade_secrets_opponent_repeats_the_process_until_they_decline() {
     let mut game = TestGame::new();
     let spell = game.spawn_in_hand(PlayerId(0), card("Trade Secrets"));
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"); 4]);
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"); 4]);
+    game.stack_library(PlayerId(1), &vec![card("Grizzly Bear"); 4]);
+    game.stack_library(PlayerId(0), &vec![card("Grizzly Bear"); 4]);
 
     game.cast(spell).at(Target::Player(PlayerId(1))).resolve();
 
@@ -27096,8 +27096,8 @@ fn trade_secrets_opponent_repeats_the_process_until_they_decline() {
 fn trade_secrets_only_the_target_opponent_may_answer_the_repeat() {
     let mut game = TestGame::new();
     let spell = game.spawn_in_hand(PlayerId(0), card("Trade Secrets"));
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"); 2]);
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"); 4]);
+    game.stack_library(PlayerId(1), &vec![card("Grizzly Bear"); 2]);
+    game.stack_library(PlayerId(0), &vec![card("Grizzly Bear"); 4]);
 
     game.cast(spell).at(Target::Player(PlayerId(1))).resolve();
     game.submit(Intent::ChooseDrawCount {
@@ -31194,7 +31194,7 @@ fn aura_owner_losing_in_the_same_sweep_the_host_dies_does_not_panic() {
     // panic in `controller_of` (the leaving player's trigger simply doesn't fire; CR 800.4a).
     let mut game = Game::with_players(4, 0);
     for seat in 0..4 {
-        game.stack_library(PlayerId(seat), &[card("Forest"); 20]);
+        game.stack_library(PlayerId(seat), &vec![card("Forest"); 20]);
     }
     game.set_life(PlayerId(0), 2);
     let host = game.spawn_on_battlefield(PlayerId(1), VANILLA);
@@ -32114,7 +32114,7 @@ fn tragic_arrogance_caster_keeps_one_of_each_type_per_player() {
     let p1_art = game.spawn_on_battlefield(PlayerId(1), artifact("P1 Art", 0));
     let p1_cre1 = game.spawn_on_battlefield(PlayerId(1), VANILLA);
     let p1_cre2 = game.spawn_on_battlefield(PlayerId(1), VANILLA);
-    let p1_ench = game.spawn_on_battlefield(PlayerId(1), ench);
+    let p1_ench = game.spawn_on_battlefield(PlayerId(1), ench.clone());
     // P2, likewise.
     let p2_art = game.spawn_on_battlefield(PlayerId(2), artifact("P2 Art", 0));
     let p2_cre1 = game.spawn_on_battlefield(PlayerId(2), VANILLA);
@@ -32721,10 +32721,10 @@ fn fateful_tempest_all_vote_present_exiles_and_grants_play() {
     // "Exile the top card of your library for each present vote. Until the end of your next turn,
     // you may play the exiled cards." Four present votes → exile four, no mill and thus no damage.
     let mut game = Game::with_players(4, 0);
-    let lib = game.stack_library(PlayerId(0), &[card("Forest"); 6]);
+    let lib = game.stack_library(PlayerId(0), &vec![card("Forest"); 6]);
     // Stock the opponents so their draw steps don't deck them out while we roll to P0's next turn.
     for p in [PlayerId(1), PlayerId(2), PlayerId(3)] {
-        game.stack_library(p, &[card("Forest"); 2]);
+        game.stack_library(p, &vec![card("Forest"); 2]);
     }
     cast_fateful_tempest_to_vote(&mut game);
 
@@ -32832,7 +32832,7 @@ fn fateful_tempest_vote_order_is_apnap_starting_with_you() {
     // "Starting with you, each player votes" — the pauses address the seats in turn order from the
     // caster.
     let mut game = Game::with_players(4, 0);
-    game.stack_library(PlayerId(0), &[card("Forest"); 4]);
+    game.stack_library(PlayerId(0), &vec![card("Forest"); 4]);
     cast_fateful_tempest_to_vote(&mut game);
 
     for expected in [PlayerId(0), PlayerId(1), PlayerId(2), PlayerId(3)] {
@@ -32906,7 +32906,7 @@ fn collective_voyage_x_is_the_total_mana_every_player_paid() {
     // paid this way" — 2 + 1 + 0 = 3, and the searches are offered up to that shared X.
     let mut game = Game::with_players(3, 0);
     for player in [PlayerId(0), PlayerId(1), PlayerId(2)] {
-        game.stack_library(player, &[card("Forest"); 4]);
+        game.stack_library(player, &vec![card("Forest"); 4]);
     }
     cast_collective_voyage_to_payment(&mut game);
 
@@ -32935,7 +32935,7 @@ fn collective_voyage_puts_each_players_basics_onto_the_battlefield_tapped() {
     let mut game = Game::with_players(3, 0);
     let libraries: Vec<Vec<ObjectId>> = [PlayerId(0), PlayerId(1), PlayerId(2)]
         .iter()
-        .map(|&p| game.stack_library(p, &[card("Forest"); 3]))
+        .map(|&p| game.stack_library(p, &vec![card("Forest"); 3]))
         .collect();
     cast_collective_voyage_to_payment(&mut game);
 
@@ -32965,7 +32965,7 @@ fn collective_voyage_paying_more_mana_than_you_have_is_rejected() {
     // "each player may pay any amount of mana" — any amount they can actually pay (CR 601.2h).
     let mut game = Game::with_players(3, 0);
     for player in [PlayerId(0), PlayerId(1), PlayerId(2)] {
-        game.stack_library(player, &[card("Forest"); 2]);
+        game.stack_library(player, &vec![card("Forest"); 2]);
     }
     cast_collective_voyage_to_payment(&mut game);
 
@@ -33995,7 +33995,7 @@ fn mill_moves_the_top_cards_from_library_to_graveyard() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     // P1 has a ten-card library.
-    game.stack_library(PlayerId(1), &[card("Forest"); 10]);
+    game.stack_library(PlayerId(1), &vec![card("Forest"); 10]);
     let library_before = game.library_size(PlayerId(1));
 
     let tome = game.spawn_in_hand(PlayerId(0), card("Tome Scour"));
@@ -34035,7 +34035,7 @@ fn milling_more_than_the_library_holds_is_safe_and_causes_no_loss() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     // P1 has only three cards — fewer than Tome Scour's five.
-    game.stack_library(PlayerId(1), &[card("Forest"); 3]);
+    game.stack_library(PlayerId(1), &vec![card("Forest"); 3]);
 
     let tome = game.spawn_in_hand(PlayerId(0), card("Tome Scour"));
     game.submit(Intent::Cast {
@@ -45909,7 +45909,7 @@ fn prepare_kirol_via_graveyard_exit(game: &mut Game, kirol: ObjectId) -> ObjectI
 fn prepare_trigger_marks_the_creature_prepared() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let kirol = game.spawn_on_battlefield(PlayerId(0), KIROL);
+    let kirol = game.spawn_on_battlefield(PlayerId(0), KIROL.clone());
     assert!(!game.prepared(kirol), "Kirol starts unprepared");
 
     prepare_kirol_via_graveyard_exit(&mut game, kirol);
@@ -45925,7 +45925,7 @@ fn casting_prepared_puts_the_back_face_on_the_stack_and_unprepares() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     game.stack_library(PlayerId(0), &[card("Forest"), card("Forest")]); // for Pack a Punch's mill
-    let kirol = game.spawn_on_battlefield(PlayerId(0), KIROL);
+    let kirol = game.spawn_on_battlefield(PlayerId(0), KIROL.clone());
     let bear = prepare_kirol_via_graveyard_exit(&mut game, kirol);
 
     let library_before = game.library_size(PlayerId(0));
@@ -46006,7 +46006,7 @@ fn real_kirol_from_the_pool_prepares_and_casts_pack_a_punch() {
 fn cast_prepared_rejected_when_not_prepared() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let kirol = game.spawn_on_battlefield(PlayerId(0), KIROL);
+    let kirol = game.spawn_on_battlefield(PlayerId(0), KIROL.clone());
     let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
 
     let err = game.submit(Intent::CastPrepared {
@@ -46028,7 +46028,7 @@ fn cast_prepared_rejected_without_the_mana() {
     let mut game = Game::new();
     // No mana funded. Prepare Kirol via a *free* graveyard-exit (Remorseful Cleric's "{T}, Sac:
     // exile target player's graveyard"), so the setup itself spends nothing.
-    let kirol = game.spawn_on_battlefield(PlayerId(0), KIROL);
+    let kirol = game.spawn_on_battlefield(PlayerId(0), KIROL.clone());
     game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
     let cleric = game.spawn_on_battlefield(PlayerId(0), card("Remorseful Cleric"));
     let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
@@ -46412,7 +46412,7 @@ fn cast_from_exile(game: &mut Game, player: PlayerId, card: ObjectId) {
 fn brazen_borrower_cast_petty_theft_then_creature_from_exile() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let brazen = game.spawn_in_hand(PlayerId(0), BRAZEN_BORROWER_TEST);
+    let brazen = game.spawn_in_hand(PlayerId(0), BRAZEN_BORROWER_TEST.clone());
     // A nonland permanent an opponent (P1) controls — Petty Theft's target.
     let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
 
@@ -46457,7 +46457,7 @@ fn brazen_borrower_cast_petty_theft_then_creature_from_exile() {
 fn adventure_creature_cast_directly_from_hand_still_works() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let brazen = game.spawn_in_hand(PlayerId(0), BRAZEN_BORROWER_TEST);
+    let brazen = game.spawn_in_hand(PlayerId(0), BRAZEN_BORROWER_TEST.clone());
 
     // Ignoring the adventure entirely: cast the creature face straight from hand.
     game.submit(Intent::Cast {
@@ -46492,7 +46492,7 @@ fn adventure_creature_cast_directly_from_hand_still_works() {
 fn elusive_otter_groves_bounty_puts_counters_then_exiles() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let otter = game.spawn_in_hand(PlayerId(0), ELUSIVE_OTTER_TEST);
+    let otter = game.spawn_in_hand(PlayerId(0), ELUSIVE_OTTER_TEST.clone());
     let target = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
 
     // Grove's Bounty with X=2 — {2}{G}.
@@ -46536,8 +46536,8 @@ fn groves_bounty_distributes_x_counters_among_target_creatures() {
     game.fund_mana(PlayerId(0));
     let otter = game.spawn_in_hand(PlayerId(0), card("Elusive Otter"));
     let bear = card("Grizzly Bear");
-    let t1 = game.spawn_on_battlefield(PlayerId(0), bear);
-    let t2 = game.spawn_on_battlefield(PlayerId(0), bear);
+    let t1 = game.spawn_on_battlefield(PlayerId(0), bear.clone());
+    let t2 = game.spawn_on_battlefield(PlayerId(0), bear.clone());
     let t3 = game.spawn_on_battlefield(PlayerId(0), bear);
 
     // Grove's Bounty with X=3 — {3}{G}, targeting two of the three creatures you control.
@@ -46583,7 +46583,7 @@ fn groves_bounty_division_must_cover_each_target_and_sum_to_x() {
     game.fund_mana(PlayerId(0));
     let otter = game.spawn_in_hand(PlayerId(0), card("Elusive Otter"));
     let bear = card("Grizzly Bear");
-    let t1 = game.spawn_on_battlefield(PlayerId(0), bear);
+    let t1 = game.spawn_on_battlefield(PlayerId(0), bear.clone());
     let t2 = game.spawn_on_battlefield(PlayerId(0), bear);
 
     game.submit(Intent::CastAdventure {
@@ -47104,7 +47104,7 @@ static DIRGUR_TEST: CardDef = CardDef {
 fn dirgur_becomes_prepared_on_mv5_instant_cast_from_hand() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let dirgur = game.spawn_on_battlefield(PlayerId(0), DIRGUR_TEST);
+    let dirgur = game.spawn_on_battlefield(PlayerId(0), DIRGUR_TEST.clone());
     let spell = game.spawn_in_hand(PlayerId(0), instant_with_mana_value(5));
     assert!(!game.prepared(dirgur), "Dirgur starts unprepared");
 
@@ -47137,7 +47137,7 @@ fn dirgur_becomes_prepared_on_mv5_instant_cast_from_hand() {
 fn dirgur_does_not_prepare_on_small_instant() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let dirgur = game.spawn_on_battlefield(PlayerId(0), DIRGUR_TEST);
+    let dirgur = game.spawn_on_battlefield(PlayerId(0), DIRGUR_TEST.clone());
     let spell = game.spawn_in_hand(PlayerId(0), instant_with_mana_value(4));
 
     game.submit(Intent::Cast {
@@ -47170,7 +47170,7 @@ fn dirgur_does_not_prepare_on_flashback_instant() {
     // A qualifying MV-5+ instant cast via flashback — from the graveyard, not the hand. (CR 702.34, CR 403.5, CR 402.5)
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let dirgur = game.spawn_on_battlefield(PlayerId(0), DIRGUR_TEST);
+    let dirgur = game.spawn_on_battlefield(PlayerId(0), DIRGUR_TEST.clone());
     let flashback_mv5 = CardDef {
         flashback: Some(flash_cost(0, [0; 5], NO_ADD)),
         ..instant_with_mana_value(5)
@@ -47241,7 +47241,7 @@ fn dirgur_braingeyser_draws_x_to_target_player() {
         PlayerId(1),
         &[card("Forest"), card("Forest"), card("Forest")],
     );
-    let dirgur = game.spawn_on_battlefield(PlayerId(0), DIRGUR_TEST);
+    let dirgur = game.spawn_on_battlefield(PlayerId(0), DIRGUR_TEST.clone());
     prepare_dirgur(&mut game, dirgur);
 
     let library_before = game.library_size(PlayerId(1));
@@ -55402,8 +55402,8 @@ fn advanced_reconstruction_mills_then_exiles_a_graveyard_card_at_random_to_play(
     let mut game = Game::with_seed(7);
     game.spawn_on_battlefield(PlayerId(0), card("Advanced Reconstruction"));
     // A deck of Forests, deep enough to absorb the draw step that now precedes the Main1 trigger.
-    game.stack_library(PlayerId(0), &[card("Forest"); 6]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"); 4]);
+    game.stack_library(PlayerId(0), &vec![card("Forest"); 6]);
+    game.stack_library(PlayerId(1), &vec![card("Grizzly Bear"); 4]);
 
     // The trigger fires at P0's first main phase (Main1), not upkeep — roll to P0's next turn's
     // Main1 (the game already opens in P0's Main1, before the enchantment was on the battlefield).
@@ -59533,7 +59533,7 @@ fn take_action_casts_a_prepared_back_face() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     game.stack_library(PlayerId(0), &[card("Forest"), card("Forest")]);
-    let kirol = game.spawn_on_battlefield(PlayerId(0), KIROL);
+    let kirol = game.spawn_on_battlefield(PlayerId(0), KIROL.clone());
     let bear = prepare_kirol_via_graveyard_exit(&mut game, kirol);
     let tapland = game.spawn_on_battlefield(PlayerId(0), card("Mountain"));
     refresh_via_mana_tap(&mut game, tapland);
@@ -60565,7 +60565,7 @@ fn lotus_field_controller_chooses_sacrificed_lands() {
 #[test]
 fn perpetual_timepiece_self_mills_the_controller_untargeted() {
     let mut game = Game::new();
-    game.stack_library(PlayerId(0), &[card("Forest"); 4]);
+    game.stack_library(PlayerId(0), &vec![card("Forest"); 4]);
     let timepiece = game.spawn_on_battlefield(PlayerId(0), card("Perpetual Timepiece"));
 
     game.submit(Intent::ActivateAbility {
@@ -61636,7 +61636,7 @@ fn remove_counter_cost_lethal_shrink_dies_to_state_based_actions() {
             condition: None,
             cost: Cost::FREE,
         },
-        *TEST_STEELBANE.abilities.last().unwrap(),
+        TEST_STEELBANE.abilities.last().unwrap().clone(),
     ]));
     let one_counter: CardDef = CardDef {
         abilities,
@@ -64414,7 +64414,7 @@ fn green_beast_token_is_green() {
         .find(|&id| game.zone_of(id) == Zone::Battlefield && game.def_of(id).name == "Beast")
         .expect("the compensation Beast token entered");
 
-    let colors = color_identity(game.def_of(beast));
+    let colors = color_identity(&game.def_of(beast));
     assert_eq!(
         colors,
         [false, false, false, false, true],
@@ -64722,7 +64722,7 @@ const COUNTER_EACH_UP_TO_TWO: CardDef = CardDef {
 fn magma_opus_divides_damage_among_two_chosen_targets() {
     let mut game = Game::new();
     let wall = creature("Wall (test)", 0, 10, &[]);
-    let t1 = game.spawn_on_battlefield(PlayerId(1), wall);
+    let t1 = game.spawn_on_battlefield(PlayerId(1), wall.clone());
     let t2 = game.spawn_on_battlefield(PlayerId(1), wall);
     game.fund_mana(PlayerId(0));
     game.stack_library(PlayerId(0), &[VANILLA, VANILLA]); // Magma Opus draws two
@@ -64778,7 +64778,7 @@ fn magma_opus_divides_damage_among_two_chosen_targets() {
 fn magma_opus_division_must_cover_each_target_and_sum_to_the_total() {
     let mut game = Game::new();
     let wall = creature("Wall (test)", 0, 10, &[]);
-    let t1 = game.spawn_on_battlefield(PlayerId(1), wall);
+    let t1 = game.spawn_on_battlefield(PlayerId(1), wall.clone());
     let t2 = game.spawn_on_battlefield(PlayerId(1), wall);
     game.fund_mana(PlayerId(0));
     let opus = game.spawn_in_hand(PlayerId(0), card("Magma Opus"));
@@ -64845,7 +64845,7 @@ fn magma_opus_division_must_cover_each_target_and_sum_to_the_total() {
 fn magma_opus_auto_assigns_the_whole_amount_to_a_single_chosen_target() {
     let mut game = Game::new();
     let wall = creature("Wall (test)", 0, 10, &[]);
-    let t1 = game.spawn_on_battlefield(PlayerId(1), wall);
+    let t1 = game.spawn_on_battlefield(PlayerId(1), wall.clone());
     let t2 = game.spawn_on_battlefield(PlayerId(1), wall);
     game.fund_mana(PlayerId(0));
     game.stack_library(PlayerId(0), &[VANILLA, VANILLA]); // Magma Opus draws two
@@ -65001,7 +65001,7 @@ fn magma_opus_auto_assigns_the_whole_amount_to_a_single_player_target() {
 fn magma_opus_divides_damage_and_taps_two_permanents() {
     let mut game = Game::new();
     let wall = creature("Wall (test)", 0, 10, &[]);
-    let w1 = game.spawn_on_battlefield(PlayerId(1), wall);
+    let w1 = game.spawn_on_battlefield(PlayerId(1), wall.clone());
     let w2 = game.spawn_on_battlefield(PlayerId(1), wall);
     // A noncreature permanent — a legal tap target but never a legal (creature/planeswalker)
     // damage target, so its presence proves the two clauses choose independently.
@@ -65079,7 +65079,7 @@ fn magma_opus_divides_damage_and_taps_two_permanents() {
 fn volcanic_salvo_deals_full_damage_to_each_of_two_targets() {
     let mut game = Game::new();
     let wall = creature("Wall (test)", 0, 10, &[]);
-    let t1 = game.spawn_on_battlefield(PlayerId(1), wall);
+    let t1 = game.spawn_on_battlefield(PlayerId(1), wall.clone());
     let t2 = game.spawn_on_battlefield(PlayerId(1), wall);
     game.fund_mana(PlayerId(0));
     let salvo = game.spawn_in_hand(PlayerId(0), card("Volcanic Salvo"));
@@ -65128,7 +65128,7 @@ fn volcanic_salvo_deals_full_damage_to_each_of_two_targets() {
 fn prismari_charm_mode_1_damages_one_or_two_targets() {
     let mut game = Game::new();
     let wall = creature("Wall (test)", 0, 10, &[]);
-    let t1 = game.spawn_on_battlefield(PlayerId(1), wall);
+    let t1 = game.spawn_on_battlefield(PlayerId(1), wall.clone());
     let t2 = game.spawn_on_battlefield(PlayerId(1), wall);
     game.fund_mana(PlayerId(0));
     let charm = game.spawn_in_hand(PlayerId(0), card("Prismari Charm"));
@@ -67122,7 +67122,7 @@ fn staff_of_the_storyteller_removes_a_story_counter_to_draw() {
     let real_staff = card("Staff of the Storyteller");
 
     g.stack_library(PlayerId(0), &[card("Forest")]);
-    let staff_card = g.spawn_in_hand(PlayerId(0), real_staff);
+    let staff_card = g.spawn_in_hand(PlayerId(0), real_staff.clone());
     g.cast(staff_card).resolve();
     while !g.stack().is_empty() {
         resolve_top_of_stack(&mut g); // the ETB Spirit token, then its own accrual trigger
@@ -67372,8 +67372,8 @@ fn fungal_reaches_removes_x_storage_counters_for_x_mana() {
     let mut g = TestGame::new();
     // Enough library on both sides to survive the draw steps crossed rolling forward three full
     // rounds (mirrors `mana_bloom_returns_to_hand_with_no_charge_counters`'s setup).
-    g.stack_library(PlayerId(0), &[card("Forest"); 5]);
-    g.stack_library(PlayerId(1), &[card("Forest"); 5]);
+    g.stack_library(PlayerId(0), &vec![card("Forest"); 5]);
+    g.stack_library(PlayerId(1), &vec![card("Forest"); 5]);
     let land = g.spawn_on_battlefield(PlayerId(0), card("Fungal Reaches"));
 
     for _ in 0..3 {
@@ -67432,8 +67432,8 @@ fn fungal_reaches_x_mana_can_be_split_between_red_and_green() {
         let mut g = TestGame::new();
         // Enough library on both sides to survive the draw steps crossed rolling forward two
         // full rounds (mirrors `mana_bloom_returns_to_hand_with_no_charge_counters`'s setup).
-        g.stack_library(PlayerId(0), &[card("Forest"); 3]);
-        g.stack_library(PlayerId(1), &[card("Forest"); 3]);
+        g.stack_library(PlayerId(0), &vec![card("Forest"); 3]);
+        g.stack_library(PlayerId(1), &vec![card("Forest"); 3]);
         let land = g.spawn_on_battlefield(PlayerId(0), card("Fungal Reaches"));
         let forest = g.spawn_on_battlefield(PlayerId(0), card("Forest"));
 
@@ -70166,7 +70166,7 @@ fn ceaseless_conflict_makes_a_spirit_per_nontoken_creature_destroyed() {
         assert_eq!(game.power(spirit), 3);
         assert_eq!(game.toughness(spirit), 2);
         assert_eq!(
-            color_identity(game.def_of(spirit)),
+            color_identity(&game.def_of(spirit)),
             [true, false, false, true, false],
             "red and white"
         );
@@ -72371,8 +72371,8 @@ fn mycoloth_upkeep_makes_a_saproling_per_devoured_counter() {
     // then makes one 1/1 green Saproling per counter (CR — "for each +1/+1 counter on this").
     let mut game = Game::new();
     let a = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"); 3]); // avoid decking out
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"); 3]);
+    game.stack_library(PlayerId(0), &vec![card("Grizzly Bear"); 3]); // avoid decking out
+    game.stack_library(PlayerId(1), &vec![card("Grizzly Bear"); 3]);
     let mycoloth = cast_devour_creature(&mut game, "Mycoloth");
     let entered = game.current_id(mycoloth);
 
@@ -72402,8 +72402,8 @@ fn ribtruss_roaster_end_step_makes_pests_with_dies_lifegain() {
     let mut game = Game::new();
     let a = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
     let b = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"); 3]); // avoid decking out
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"); 3]);
+    game.stack_library(PlayerId(0), &vec![card("Grizzly Bear"); 3]); // avoid decking out
+    game.stack_library(PlayerId(1), &vec![card("Grizzly Bear"); 3]);
     let ribtruss = cast_devour_creature(&mut game, "Ribtruss Roaster");
     let entered = game.current_id(ribtruss);
 
@@ -72649,7 +72649,7 @@ fn plargg_and_nassari_upkeep_opponent_picks_a_nonland_controller_casts_up_to_two
     game.spawn_on_battlefield(PlayerId(0), card("Plargg and Nassari"));
     // Buffer libraries so nobody decks out over the intervening turns before P0's next upkeep.
     for p in 0..3u8 {
-        game.stack_library(PlayerId(p), &[card("Grizzly Bear"); 6]);
+        game.stack_library(PlayerId(p), &vec![card("Grizzly Bear"); 6]);
     }
 
     advance_until(&mut game, |g| {
@@ -72785,8 +72785,8 @@ fn plargg_and_nassari_casts_only_what_is_available_when_fewer_than_two_others() 
     // pod exiles two nonlands, one of which the opponent picks), the controller casts just it.
     let mut game = Game::with_players(2, 0);
     game.spawn_on_battlefield(PlayerId(0), card("Plargg and Nassari"));
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"); 6]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"); 6]);
+    game.stack_library(PlayerId(0), &vec![card("Grizzly Bear"); 6]);
+    game.stack_library(PlayerId(1), &vec![card("Grizzly Bear"); 6]);
 
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
@@ -72850,7 +72850,7 @@ fn opponent_chooses_pile_answer_from_the_controller_is_rejected() {
     // The opponent-addressed pause is answerable only by the stored opponent — the controller
     // submitting the pile choice is rejected while the choice is pending.
     let mut game = TestGame::new();
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"); 8]);
+    game.stack_library(PlayerId(0), &vec![card("Grizzly Bear"); 8]);
     let ap = game.spawn_in_hand(PlayerId(0), card("Abstract Performance"));
     game.cast(ap).resolve();
 
@@ -72884,7 +72884,7 @@ fn abstract_performance_controller_chooses_which_opponent_splits() {
     let mut game = Game::with_players(4, 0);
     let refuge = game.spawn_on_battlefield(PlayerId(2), card("Alchemist's Refuge"));
     let ap = game.spawn_in_hand(PlayerId(2), card("Abstract Performance"));
-    game.stack_library(PlayerId(2), &[card("Grizzly Bear"); 8]);
+    game.stack_library(PlayerId(2), &vec![card("Grizzly Bear"); 8]);
     game.fund_mana(PlayerId(2));
 
     // Let priority reach P2 during P0's own Main1 (P0 and P1 pass with nothing to do).
@@ -73083,7 +73083,7 @@ fn fact_or_fiction_controller_chooses_which_opponent_splits() {
     // default (the same fix Abstract Performance's chooser shares).
     let mut game = Game::with_players(3, 0);
     game.fund_mana(PlayerId(0));
-    let revealed = game.stack_library(PlayerId(0), &[card("Forest"); 5]);
+    let revealed = game.stack_library(PlayerId(0), &vec![card("Forest"); 5]);
     let ff = game.spawn_in_hand(PlayerId(0), card("Fact or Fiction"));
 
     game.submit(Intent::Cast {
@@ -73153,7 +73153,7 @@ fn fact_or_fiction_empty_pile() {
     // CR "separates those cards into two piles" allows a 0/5 split; the controller may still
     // take the empty pile (nothing to hand, everything milled).
     let mut game = TestGame::new();
-    let revealed = game.stack_library(PlayerId(0), &[card("Forest"); 5]);
+    let revealed = game.stack_library(PlayerId(0), &vec![card("Forest"); 5]);
     let ff = game.spawn_in_hand(PlayerId(0), card("Fact or Fiction"));
     game.cast(ff).resolve();
 
@@ -73195,7 +73195,7 @@ fn plargg_and_nassari_offers_up_to_two_free_casts_from_the_other_exiled_nonlands
     let mut game = Game::with_players(3, 0);
     game.spawn_on_battlefield(PlayerId(0), card("Plargg and Nassari"));
     for p in 0..3u8 {
-        game.stack_library(PlayerId(p), &[card("Grizzly Bear"); 6]);
+        game.stack_library(PlayerId(p), &vec![card("Grizzly Bear"); 6]);
     }
 
     advance_until(&mut game, |g| {
@@ -73312,7 +73312,7 @@ fn plargg_and_nassari_next_opponent_in_turn_order_picks() {
     let mut game = Game::with_players(4, 0);
     game.spawn_on_battlefield(PlayerId(1), card("Plargg and Nassari"));
     for p in 0..4u8 {
-        game.stack_library(PlayerId(p), &[card("Grizzly Bear"); 6]);
+        game.stack_library(PlayerId(p), &vec![card("Grizzly Bear"); 6]);
     }
 
     advance_until(&mut game, |g| {
@@ -73959,7 +73959,7 @@ fn dance_with_calamity_casts_exiled_free_when_total_mv_at_most_13() {
     // Dance with Calamity: exile the top cards one at a time; with the total mana value at 13 or
     // less, cast any number of them for free. Six Bears (mv 2 each) → total 12, under the gate.
     let mut game = TestGame::new();
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"); 10]);
+    game.stack_library(PlayerId(0), &vec![card("Grizzly Bear"); 10]);
     let dance = game.spawn_in_hand(PlayerId(0), card("Dance with Calamity"));
     game.cast(dance).submit();
     resolve_top_of_stack(&mut game); // shuffle, then pause on the first exile-or-stop choice
@@ -74054,7 +74054,7 @@ fn dance_with_calamity_bust_over_13_grants_no_free_cast() {
     // Dance with Calamity bust: exile past a total mana value of 13 and the cards stay exiled with
     // no free-cast permission. Seven Bears (mv 2 each) → total 14, over the gate.
     let mut game = TestGame::new();
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"); 10]);
+    game.stack_library(PlayerId(0), &vec![card("Grizzly Bear"); 10]);
     let dance = game.spawn_in_hand(PlayerId(0), card("Dance with Calamity"));
     game.cast(dance).submit();
     resolve_top_of_stack(&mut game);
@@ -81374,7 +81374,7 @@ fn armadillo_cloak_gains_life_on_combat_damage() {
     // enchanted creature's controller (P1) and the player it attacks (P2).
     let mut game = Game::with_players(4, 0);
     for seat in 0..4 {
-        game.stack_library(PlayerId(seat), &[card("Forest"); 20]); // enough to survive P1's draw
+        game.stack_library(PlayerId(seat), &vec![card("Forest"); 20]); // enough to survive P1's draw
     }
     let host = game.spawn_on_battlefield(PlayerId(1), VANILLA); // 2/2, becomes 4/4 trample enchanted
     let cloak = game.spawn_in_hand(PlayerId(0), card("Armadillo Cloak"));
@@ -84919,7 +84919,7 @@ static FLIPPER_FRONT: CardDef = CardDef {
 fn flip_source_swaps_to_back_face() {
     // CR 712: a flip card "flips" and permanently uses its back face's name, P/T, and abilities.
     let mut game = Game::new();
-    let flipper = game.spawn_on_battlefield(PlayerId(0), FLIPPER_FRONT);
+    let flipper = game.spawn_on_battlefield(PlayerId(0), FLIPPER_FRONT.clone());
 
     assert_eq!(game.def_of(flipper).name, "Flipper Front");
     assert_eq!(game.power(flipper), 2);
@@ -84962,7 +84962,7 @@ fn flip_preserves_identity_counters_and_tapped() {
     // CR 712.5: flipping doesn't change the object — counters, tapped state, and object identity
     // all persist; only which face's characteristics are live changes.
     let mut game = Game::new();
-    let flipper = game.spawn_on_battlefield(PlayerId(0), FLIPPER_FRONT);
+    let flipper = game.spawn_on_battlefield(PlayerId(0), FLIPPER_FRONT.clone());
     game.add_plus_counter(flipper);
     game.tap(flipper);
 
@@ -85005,7 +85005,7 @@ fn unflipped_permanent_uses_front_face() {
     // Regression on the `def_of` change: a permanent that never flipped (even one with a back
     // face) reports its front face's characteristics.
     let mut game = Game::new();
-    let unflipped = game.spawn_on_battlefield(PlayerId(0), FLIPPER_FRONT);
+    let unflipped = game.spawn_on_battlefield(PlayerId(0), FLIPPER_FRONT.clone());
     assert_eq!(game.def_of(unflipped).name, "Flipper Front");
     assert_eq!(game.power(unflipped), 2);
     assert!(!game.has_keyword(unflipped, Keyword::Flying));
@@ -88633,8 +88633,8 @@ fn magus_of_the_vineyard_adds_gg_to_each_players_own_first_main_phase() {
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Magus of the Vineyard"));
     // Deep enough decks to survive both players' draw steps across the two turns this test spans.
-    game.stack_library(PlayerId(0), &[card("Forest"); 4]);
-    game.stack_library(PlayerId(1), &[card("Forest"); 4]);
+    game.stack_library(PlayerId(0), &vec![card("Forest"); 4]);
+    game.stack_library(PlayerId(1), &vec![card("Forest"); 4]);
     game.begin_first_turn();
 
     // Turn 1, P0's own first main phase — "each player" includes the controller.

@@ -384,7 +384,7 @@ pub enum Timing {
 }
 
 /// A card's behavior: an effect gated by a timing.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Ability {
     pub timing: Timing,
     pub effect: Effect,
@@ -447,7 +447,7 @@ pub struct AlternativeCost {
 
 /// A card definition (identity + behavior). Deserializable (under the `card-dsl` feature)
 /// straight from a card's TOML file — the `cards` crate loads the pool this way.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CardDef {
     /// Scryfall oracle id — canonical Card identity (accounts-decks-and-catalog spec). Empty for test stubs; tokens
     /// that have a Scryfall token card stamp theirs so battlefield art resolves.
@@ -915,7 +915,7 @@ impl CardDef {
     /// printed pips), so a graveyard/battlefield mana-value gate reads the printed value
     /// correctly. Each color/color hybrid pip counts 1 (CR 202.3f — both halves are one mana;
     /// Balefire Liege's {2}{R/W}{R/W}{R/W} is mana value 5).
-    pub fn mana_value(self) -> u32 {
+    pub fn mana_value(&self) -> u32 {
         let cost = self.cost;
         cost.generic as u32
             + cost.colorless as u32
@@ -936,7 +936,7 @@ impl CardDef {
     /// reads the printed cost (CR 202.3b treats `{X}` as 0 off the stack), which is safe here
     /// because [`SpendRestriction::ManaValueAtLeastOrHasX`] always also accepts `has_x`
     /// regardless of the value actually chosen for `{X}`.
-    pub fn spell_characteristics(self) -> SpellCharacteristics {
+    pub fn spell_characteristics(&self) -> SpellCharacteristics {
         SpellCharacteristics {
             mana_value: self.mana_value(),
             has_x: self.cost.x > 0,
@@ -953,7 +953,7 @@ impl CardDef {
 /// `schema::color_identity` (crates/schema/src/lib.rs), which `server::legality::validate`
 /// checks against the pool; `def.colors` never affects deck legality (no pool token is
 /// deck-legal, and no real card sets it).
-pub fn color_identity(def: CardDef) -> [bool; Color::COUNT] {
+pub fn color_identity(def: &CardDef) -> [bool; Color::COUNT] {
     if def.devoid {
         return [false; Color::COUNT];
     }
@@ -979,7 +979,7 @@ pub fn color_identity(def: CardDef) -> [bool; Color::COUNT] {
 
 /// Whether `card` is legal in a deck led by `commander` — its color identity must be a
 /// subset of the commander's.
-pub fn within_identity(card: CardDef, commander: CardDef) -> bool {
+pub fn within_identity(card: &CardDef, commander: &CardDef) -> bool {
     let allowed = color_identity(commander);
     let needed = color_identity(card);
     (0..Color::COUNT).all(|i| !needed[i] || allowed[i])
@@ -988,7 +988,7 @@ pub fn within_identity(card: CardDef, commander: CardDef) -> bool {
 /// Whether `def` is a basic land: has the "Basic" supertype (CR 205.4a). Reads
 /// [`CardKind::Land`]'s `basic` flag rather than the card's name (or its `subtypes`, which a
 /// nonbasic land can share without being basic — see the field's doc).
-pub(crate) fn is_basic_land(def: CardDef) -> bool {
+pub(crate) fn is_basic_land(def: &CardDef) -> bool {
     matches!(def.kind, CardKind::Land { basic: true, .. })
 }
 
@@ -1000,7 +1000,7 @@ pub(crate) fn fresh_permanent(
     commander: bool,
 ) -> Permanent {
     Permanent {
-        def,
+        def: def.clone(),
         owner,
         level: 1,
         tapped: def.enters_tapped,
@@ -1026,7 +1026,7 @@ pub(crate) fn fresh_permanent(
         commander,
         token: false,
         attached_to: None,
-        loyalty: starting_loyalty(def),
+        loyalty: starting_loyalty(&def),
         loyalty_activated: false,
         finality_counter: false,
         regeneration_shields: 0,
@@ -1052,7 +1052,7 @@ pub(crate) fn fresh_permanent(
 
 /// A planeswalker's printed starting loyalty (CR 606.5b — it enters with that many loyalty
 /// counters); 0 for any other card kind.
-pub(crate) fn starting_loyalty(def: CardDef) -> i32 {
+pub(crate) fn starting_loyalty(def: &CardDef) -> i32 {
     match def.kind {
         CardKind::Planeswalker { loyalty } => loyalty,
         _ => 0,
@@ -1336,7 +1336,7 @@ pub(crate) fn illusion_token() -> CardDef {
 }
 
 /// A card at rest in a hidden/graveyard/command zone: identity only, no battlefield state.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub(crate) struct Card {
     pub(crate) def: CardDef,
     pub(crate) owner: PlayerId,
@@ -1354,7 +1354,7 @@ pub(crate) struct Card {
 }
 
 /// A spell on the stack (a cast card waiting to resolve).
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub(crate) struct Spell {
     pub(crate) def: CardDef,
     pub(crate) controller: PlayerId,
@@ -1493,7 +1493,7 @@ pub(crate) struct Spell {
 }
 
 /// A permanent on the battlefield, with its mutable per-object state.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub(crate) struct Permanent {
     pub(crate) def: CardDef,
     pub(crate) owner: PlayerId,
@@ -1770,7 +1770,7 @@ pub(crate) struct Permanent {
 // the id-indexed object arena needs `Object: Copy`, so boxing a variant isn't an option — the same
 // carve-out the sibling `Copy` enums in this crate take.
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub(crate) enum Object {
     Card(Card),
     Spell(Spell),

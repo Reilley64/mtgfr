@@ -271,7 +271,7 @@ impl Game {
         let Some(suspend) = c.def.suspend else {
             return false;
         };
-        if !self.cast_timing_ok(player, card, c.def, playable::CastPlayKind::List) {
+        if !self.cast_timing_ok(player, card, c.def.clone(), playable::CastPlayKind::List) {
             return false;
         }
         Self::affordable_from(available, *suspend.cost, None)
@@ -367,7 +367,7 @@ impl Game {
         let Some(back) = perm.def.back else {
             return false;
         };
-        let back = *back;
+        let back = back.clone();
         // Match CastPlayKind::List timing (turn-priority-and-stack spec): instants only in a reaction window or at
         // sorcery speed; sorceries need sorcery speed.
         if back.is_instant_speed() {
@@ -381,7 +381,7 @@ impl Game {
             return false;
         }
         let spell = Some(back.spell_characteristics());
-        let spec = self.required_target(back, None);
+        let spec = self.required_target(&back.clone(), None);
         if spec == TargetSpec::None {
             let cost = self.cast_cost(
                 player,
@@ -400,13 +400,13 @@ impl Game {
             );
             return self.plan_auto_taps(player, cost, None, spell).is_some();
         }
-        self.legal_targets_for(spec, source, player, color_identity(back), 0)
+        self.legal_targets_for(spec, source, player, color_identity(&back.clone()), 0)
             .into_iter()
             .any(|t| {
                 let cost = self.cast_cost(
                     player,
                     source,
-                    back,
+                    back.clone(),
                     Some(t),
                     0,
                     Zone::Battlefield,
@@ -438,7 +438,7 @@ impl Game {
             return;
         }
         for (index, face) in self.def_of(card).halves.iter().enumerate() {
-            let face = *face;
+            let face = face.clone();
             if face.is_instant_speed() {
                 if !self.can_take_sorcery_speed_action(player)
                     && self.stack.is_empty()
@@ -454,7 +454,7 @@ impl Game {
                 self.cast_cost(
                     player,
                     card,
-                    face,
+                    face.clone(),
                     target,
                     0,
                     Zone::Hand,
@@ -467,19 +467,19 @@ impl Game {
                     false,
                 )
             };
-            let spec = self.required_target(face, None);
-            let affordable = if spec == TargetSpec::None || self.spell_multi_target(face).is_some()
-            {
-                self.plan_auto_taps(player, cost_for(None), None, spell)
-                    .is_some()
-            } else {
-                self.legal_targets_for(spec, card, player, color_identity(face), 0)
-                    .into_iter()
-                    .any(|t| {
-                        self.plan_auto_taps(player, cost_for(Some(t)), None, spell)
-                            .is_some()
-                    })
-            };
+            let spec = self.required_target(&face.clone(), None);
+            let affordable =
+                if spec == TargetSpec::None || self.spell_multi_target(&face.clone()).is_some() {
+                    self.plan_auto_taps(player, cost_for(None), None, spell)
+                        .is_some()
+                } else {
+                    self.legal_targets_for(spec, card, player, color_identity(&face), 0)
+                        .into_iter()
+                        .any(|t| {
+                            self.plan_auto_taps(player, cost_for.clone()(Some(t)), None, spell)
+                                .is_some()
+                        })
+                };
             if affordable {
                 actions.push(MeaningfulAction::CastSplitHalf {
                     card,
@@ -502,7 +502,7 @@ impl Game {
         abilities: &'static [Ability],
     ) {
         for (i, a) in abilities.iter().enumerate() {
-            if a.effect.is_mana_ability() {
+            if a.effect.clone().is_mana_ability() {
                 continue;
             }
             let Ok((_, cost)) = self.ability_activation_gate(player, source, i) else {
@@ -514,10 +514,10 @@ impl Game {
             // Same target gate as casts: don't list (or stop auto-pass for) an activation that
             // can't name a legal target right now.
             if !self.effect_targets_listable(
-                a.effect,
+                a.effect.clone(),
                 source,
                 player,
-                color_identity(self.def_of(source)),
+                color_identity(&self.def_of(source)),
                 0,
             ) {
                 continue;
@@ -544,7 +544,7 @@ impl Game {
                 ability.effect,
                 source,
                 player,
-                color_identity(self.def_of(source)),
+                color_identity(&self.def_of(source)),
                 0,
             ) {
                 continue;
@@ -592,7 +592,7 @@ impl Game {
                 continue;
             }
             for (i, a) in p.def.abilities.iter().enumerate() {
-                if !a.effect.is_mana_ability() {
+                if !a.effect.clone().is_mana_ability() {
                     continue;
                 }
                 let Timing::Activated(cost) = a.timing else {
@@ -749,9 +749,9 @@ impl Game {
             return Vec::new();
         }
         let controller = self.controller_of(object);
-        let colors = color_identity(def);
+        let colors = color_identity(&def);
         (0..MAX_MODES)
-            .map_while(|m| nth_mode(def, m))
+            .map_while(|m| nth_mode(&def, m))
             .map(|a| {
                 let spec = a.effect.target();
                 ModeInfo {
@@ -773,7 +773,7 @@ impl Game {
     /// controls a commander ([`Game::controls_a_commander`]); otherwise the count collapses to the
     /// unconditional `modal_choose`. The single choke [`Game::validate_modes`] (cast legality) and
     /// the wire projection's mode-picker prompt both read this.
-    pub fn modal_choose_max(&self, def: CardDef, caster: PlayerId) -> u8 {
+    pub fn modal_choose_max(&self, def: &CardDef, caster: PlayerId) -> u8 {
         let unconditional_max = def.modal_choose_max.unwrap_or(def.modal_choose);
         if !def.modal_choose_max_if_commander || self.controls_a_commander(caster) {
             return unconditional_max;
@@ -797,9 +797,9 @@ impl Game {
     pub fn legal_targets(&self, object: ObjectId, ability_index: Option<usize>) -> Vec<Target> {
         // An ability's source colors (CR 702.16b) are the object's own — casting and activating
         // share the same permanent, so both branches read `color_identity` off it.
-        let source_colors = color_identity(self.def_of(object));
+        let source_colors = color_identity(&self.def_of(object));
         let spec = match ability_index {
-            None => self.required_target(self.def_of(object), None),
+            None => self.required_target(&self.def_of(object), None),
             Some(i) => self
                 .ability_at(object, i)
                 .map_or(TargetSpec::None, |a| a.effect.target()),
@@ -818,7 +818,7 @@ impl Game {
     /// (placement-time legality) and [`Game::resolve_top`] (resolution-time re-check), so they
     /// can't read a different X and disagree. 0 for a non-permanent source.
     pub(crate) fn ability_source_x(&self, source: ObjectId) -> u32 {
-        match self.objects[source as usize] {
+        match &self.objects[source as usize] {
             Object::Permanent(p) => p.entered_with_x,
             _ => 0,
         }
@@ -984,7 +984,7 @@ impl Game {
                 .into_iter()
                 .filter(|&id| {
                     self.zone_of(id) == Zone::Graveyard
-                        && filter.matches(self.def_of(id))
+                        && filter.matches(&self.def_of(id))
                         // "another target creature card" (Deadwood Treefolk). Compared through
                         // `current_id` because the excluded source is the ability's *battlefield*
                         // id while its card now sits in the graveyard under a fresh id — a
@@ -1009,11 +1009,11 @@ impl Game {
             TargetSpec::InstantOrSorcerySpellOnStack => self
                 .stack
                 .iter()
-                .filter_map(|item| match *item {
+                .filter_map(|item| match item {
                     StackItem::Spell(id)
-                        if matches!(self.def_of(id).kind, CardKind::Spell { .. }) =>
+                        if matches!(self.def_of(*id).kind, CardKind::Spell { .. }) =>
                     {
-                        Some(Target::Object(id))
+                        Some(Target::Object(*id))
                     }
                     _ => None,
                 })
@@ -1024,8 +1024,8 @@ impl Game {
             TargetSpec::SpellOnStack(filter) => self
                 .stack
                 .iter()
-                .filter_map(|item| match *item {
-                    StackItem::Spell(id) => Some(id),
+                .filter_map(|item| match item {
+                    StackItem::Spell(id) => Some(*id),
                     _ => None,
                 })
                 .filter(|&id| {
@@ -1047,8 +1047,8 @@ impl Game {
             TargetSpec::SingleTargetSpellOnStack => self
                 .stack
                 .iter()
-                .filter_map(|item| match *item {
-                    StackItem::Spell(id) => Some(id),
+                .filter_map(|item| match item {
+                    StackItem::Spell(id) => Some(*id),
                     _ => None,
                 })
                 .filter(|&id| self.spell_has_single_target(id))
@@ -1062,12 +1062,12 @@ impl Game {
             TargetSpec::ActivatedAbilityOnStack => self
                 .stack
                 .iter()
-                .filter_map(|item| match *item {
+                .filter_map(|item| match item {
                     StackItem::Ability {
                         source,
                         activated: true,
                         ..
-                    } => Some(Target::Object(source)),
+                    } => Some(Target::Object(*source)),
                     _ => None,
                 })
                 .collect(),
@@ -1253,11 +1253,11 @@ impl Game {
 
     /// Whether the object at `id` is (a form of) a commander.
     pub fn is_commander(&self, id: ObjectId) -> bool {
-        match self.objects[id as usize] {
+        match &self.objects[id as usize] {
             Object::Card(c) => c.commander,
             Object::Spell(s) => s.commander,
             Object::Permanent(p) => p.commander,
-            Object::Moved { to } => self.is_commander(to),
+            Object::Moved { to } => self.is_commander(*to),
             Object::Removed => false,
         }
     }
@@ -1274,8 +1274,8 @@ impl Game {
 
     /// The current live id an old id's lineage points to (following `Moved` tombstones).
     pub fn current_id(&self, id: ObjectId) -> ObjectId {
-        match self.objects[id as usize] {
-            Object::Moved { to } => self.current_id(to),
+        match &self.objects[id as usize] {
+            Object::Moved { to } => self.current_id(*to),
             _ => id,
         }
     }
@@ -1459,7 +1459,7 @@ impl Game {
         // Nonbasic land (CR 205.4a's "Basic" supertype — White Orchid Phantom's "target
         // nonbasic land"). Basic-ness reads the def's supertype flag, not subtype strings (a
         // nonbasic dual can share a basic's type line without being basic).
-        if filter.nonbasic && is_basic_land(perm.def) {
+        if filter.nonbasic && is_basic_land(&perm.def.clone()) {
             return false;
         }
         // "Modified" (CR 701.29 — Silkguard's hexproof rider).

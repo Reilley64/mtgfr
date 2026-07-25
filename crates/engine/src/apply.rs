@@ -22,7 +22,7 @@ impl Game {
             // Like the filter path below, a host that is no longer a live permanent is never
             // legal — the rewrite names an object, and that object has left the battlefield.
             return self.permanent(attachment).enchant_rewrite_host == Some(host)
-                && matches!(self.objects[host as usize], Object::Permanent(_));
+                && matches!(&self.objects[host as usize], Object::Permanent(_));
         }
         let filter = self
             .def_of(attachment)
@@ -52,7 +52,7 @@ impl Game {
         // detaches simultaneously (CR 704.5), rather than one SBA sweep behind.
         let mut leaving = Vec::new();
         for id in self.battlefield() {
-            let Object::Permanent(p) = self.objects[id as usize] else {
+            let Object::Permanent(ref p) = self.objects[id as usize] else {
                 continue;
             };
             // A creature with lethal marked damage dies (CR 704.5g); a planeswalker with 0 loyalty
@@ -96,7 +96,7 @@ impl Game {
                 events.push(Event::TokenCeasedToExist {
                     token: id,
                     controller: p.owner,
-                    def: p.def,
+                    def: p.def.clone(),
                 });
                 continue;
             }
@@ -113,7 +113,7 @@ impl Game {
             _ => None,
         };
         for id in self.battlefield() {
-            let Object::Permanent(p) = self.objects[id as usize] else {
+            let Object::Permanent(ref p) = self.objects[id as usize] else {
                 continue;
             };
             let host_illegal = match p.attached_to {
@@ -148,7 +148,7 @@ impl Game {
                     events.push(Event::TokenCeasedToExist {
                         token: id,
                         controller: p.owner,
-                        def: p.def,
+                        def: p.def.clone(),
                     });
                 } else {
                     events.push(self.graveyard_or_command(id, next));
@@ -274,10 +274,10 @@ impl Game {
         let mut next = self.next_object_id();
         let mut events = Vec::new();
         for &(source, exiled) in &self.exile_links.until_source_leaves {
-            if matches!(self.objects[source as usize], Object::Permanent(_)) {
+            if matches!(&self.objects[source as usize], Object::Permanent(_)) {
                 continue; // the source is still on the battlefield — the link is still live.
             }
-            let Object::Card(card) = self.objects[exiled as usize] else {
+            let Object::Card(ref card) = self.objects[exiled as usize] else {
                 continue;
             };
             if card.zone != Zone::Exile {
@@ -308,10 +308,10 @@ impl Game {
         let mut next = self.next_object_id();
         let mut events = Vec::new();
         for &(source, exiled) in &self.exile_links.illusion_on_source_leave {
-            if matches!(self.objects[source as usize], Object::Permanent(_)) {
+            if matches!(&self.objects[source as usize], Object::Permanent(_)) {
                 continue; // the source is still on the battlefield — the link is still live.
             }
-            let Object::Card(card) = self.objects[exiled as usize] else {
+            let Object::Card(ref card) = self.objects[exiled as usize] else {
                 continue;
             };
             if card.zone != Zone::Exile {
@@ -431,7 +431,7 @@ impl Game {
     /// already-event-sourced attacks/blocks, not facts of their own.
     pub(crate) fn apply(&mut self, event: &Event) {
         self.invalidate_characteristics_cache(event);
-        match *event {
+        match event.clone() {
             Event::SpellCast {
                 spell,
                 from,
@@ -453,8 +453,8 @@ impl Game {
                 evoked,
                 spent_colors,
             } => {
-                let (def, commander) = match self.objects[from as usize] {
-                    Object::Card(c) => (c.def, c.commander),
+                let (def, commander) = match &self.objects[from as usize] {
+                    Object::Card(c) => (c.def.clone(), c.commander),
                     _ => panic!("cast source {from} is not a card"),
                 };
                 // Cast zone is read off `from` before `create_object` below moves it onto the
@@ -477,7 +477,7 @@ impl Game {
                 let id = self.create_object(
                     Some(from),
                     Object::Spell(Spell {
-                        def,
+                        def: def.clone(),
                         controller,
                         // A single-target spell's lone target rides on the cast event; a
                         // multi-target spell casts with none and records them via
@@ -550,14 +550,15 @@ impl Game {
                 // being cast now. The card moves from hand onto the stack as a spell whose def is
                 // the adventure face, stashing the front face to restore on resolution.
                 let front = self.def_of(source);
-                let adventure = *front
+                let adventure = front
                     .adventure
-                    .expect("an adventure cast's source card has an adventure half");
+                    .expect("an adventure cast's source card has an adventure half")
+                    .clone();
                 let commander = self.is_commander(source);
                 let id = self.create_object(
                     Some(source),
                     Object::Spell(Spell {
-                        def: adventure,
+                        def: adventure.clone(),
                         controller,
                         targets: TargetList::single(target),
                         targets_second: TargetList::default(),
@@ -621,15 +622,16 @@ impl Game {
                 // stack as that face. `create_object` restores the fused card on the way out, off
                 // the `split_halves_on_stack` entry recorded below.
                 let fused = self.def_of(source);
-                let face = *fused
+                let face = fused
                     .halves
                     .get(half as usize)
-                    .expect("a split-half cast names one of the card's halves");
+                    .expect("a split-half cast names one of the card's halves")
+                    .clone();
                 let commander = self.is_commander(source);
                 let id = self.create_object(
                     Some(source),
                     Object::Spell(Spell {
-                        def: face,
+                        def: face.clone(),
                         controller,
                         targets: TargetList::single(target),
                         targets_second: TargetList::default(),
@@ -718,12 +720,12 @@ impl Game {
                 // step `mint_spell_copies` always queues.
                 let id = self.create_object(
                     None,
-                    Object::Spell(match self.objects[original as usize] {
+                    Object::Spell(match &self.objects[original as usize] {
                         Object::Spell(src) => Spell {
                             controller,
                             commander: false,
                             copy: true,
-                            ..src
+                            ..src.clone()
                         },
                         _ => Spell {
                             def: self.def_of(original),
@@ -803,14 +805,15 @@ impl Game {
             } => {
                 // The spell's characteristics come from the source permanent's back face — the
                 // front permanent stays on the battlefield, so there's no card leaving a zone.
-                let back = *self
+                let back = self
                     .def_of(source)
                     .back
-                    .expect("a prepared cast's source has a back face");
+                    .expect("a prepared cast's source has a back face")
+                    .clone();
                 let id = self.create_object(
                     None,
                     Object::Spell(Spell {
-                        def: back,
+                        def: back.clone(),
                         controller,
                         targets: TargetList::single(target),
                         targets_second: TargetList::default(),
@@ -978,11 +981,11 @@ impl Game {
                 // once-per-turn permission (no other effect plays lands from there), so a
                 // graveyard land-play consumes that permission and the land gains the rider.
                 let serra_recursion = self.zone_of(from) == Zone::Graveyard;
-                let mut perm = fresh_permanent(def, player, false, commander);
+                let mut perm = fresh_permanent(def.clone(), player, false, commander);
                 perm.serra_recursion = serra_recursion;
                 // A land's own `enters_tapped` is unconditional; a conditional gate (check
                 // lands, slowlands, reveal lands) is resolved here instead, at this one ETB site.
-                perm.tapped = self.enters_tapped(def, player);
+                perm.tapped = self.enters_tapped(&def, player);
                 let id = self.create_object(Some(from), Object::Permanent(perm));
                 assert_eq!(id, permanent);
                 self.players[player.0 as usize].lands_played += 1;
@@ -1076,7 +1079,7 @@ impl Game {
                 if let Some(host) = host {
                     let grants_control = self.def_of(object).abilities.iter().any(|a| {
                         matches!(
-                            (a.timing, a.effect),
+                            (a.timing, a.effect.clone()),
                             (
                                 Timing::Static,
                                 Effect::Static(StaticEffect::ControlAttached)
@@ -1178,7 +1181,7 @@ impl Game {
                     // revert reference lives on the `Copy` `Permanent`. Bounded — one leak per
                     // until-EOT copy, freed only at process exit — the same shape as the
                     // `KeywordsStripped` union leak below.
-                    p.reverts_to_def_eot = Some(Box::leak(Box::new(p.def)));
+                    p.reverts_to_def_eot = Some(Box::leak(Box::new(p.def.clone())));
                 }
                 p.def = def;
             }
@@ -1197,7 +1200,7 @@ impl Game {
                 // Revert an until-EOT enter-as-copy to the printed permanent (CR 514.2 — Cursed
                 // Mirror's "become a copy … until end of turn").
                 if let Some(printed) = p.reverts_to_def_eot.take() {
-                    p.def = *printed;
+                    p.def = printed.clone();
                 }
             }
             Event::KeywordsStripped { object, keywords } => {
@@ -1517,7 +1520,7 @@ impl Game {
             Event::MovedToCommandZone { card, from } => {
                 let def = self.def_of(from);
                 let owner = self.owner_of(from);
-                if matches!(self.objects[from as usize], Object::Permanent(_)) {
+                if matches!(&self.objects[from as usize], Object::Permanent(_)) {
                     self.clear_modifier_provenance(from);
                 }
                 let id = self.create_object(
@@ -1590,9 +1593,9 @@ impl Game {
                     masked,
                     evoked,
                     spent_colors,
-                ) = match self.objects[from as usize] {
+                ) = match &self.objects[from as usize] {
                     Object::Spell(s) => (
-                        s.def,
+                        s.def.clone(),
                         s.controller,
                         s.commander,
                         s.x,
@@ -1749,7 +1752,7 @@ impl Game {
                 // 700.4's "died" — put into a graveyard from the battlefield. A token's death is
                 // the separate `TokenCeasedToExist` event, not counted here (see that `Amount`
                 // variant's doc).
-                if matches!(self.objects[from as usize], Object::Permanent(_)) {
+                if matches!(&self.objects[from as usize], Object::Permanent(_)) {
                     self.permanents_died_this_turn += 1;
                     // CR "put into a graveyard from the battlefield" — `Trigger::ThisAuraLeaves`
                     // (Fallen Ideal) reads this in `enqueue_triggers`, once the pre-move object
@@ -1803,7 +1806,7 @@ impl Game {
                     // out from under it — see `Game::dying_creature_lki`.
                     self.batch_trigger_scratch
                         .dying_creature_lki
-                        .push((from, def, owner));
+                        .push((from, def.clone(), owner));
                     // CR 700.4/701.29 last-known information: read `is_modified` before
                     // `clear_modifier_provenance`/`create_object` below tear down its
                     // attachments/counters. Feeds `Condition::ModifiedCreatureDiedThisTurn`
@@ -1815,7 +1818,7 @@ impl Game {
                         self.players[controller.0 as usize].modified_creature_died_this_turn = true;
                     }
                 }
-                if matches!(self.objects[from as usize], Object::Permanent(_)) {
+                if matches!(&self.objects[from as usize], Object::Permanent(_)) {
                     self.clear_modifier_provenance(from);
                 }
                 let id = self.create_object(
@@ -1835,7 +1838,7 @@ impl Game {
                 let def = self.def_of(from);
                 let owner = self.owner_of(from);
                 let commander = self.is_commander(from);
-                if matches!(self.objects[from as usize], Object::Permanent(_)) {
+                if matches!(&self.objects[from as usize], Object::Permanent(_)) {
                     // CR 603.10a last-known information — see `MovedToGraveyard`'s
                     // `permanents_left_battlefield` push above.
                     self.batch_trigger_scratch
@@ -2008,7 +2011,7 @@ impl Game {
                     && !matches!(def.kind, CardKind::Land { .. }))
                 .then(|| def.mana_value());
                 let commander = self.is_commander(from);
-                if matches!(self.objects[from as usize], Object::Permanent(_)) {
+                if matches!(&self.objects[from as usize], Object::Permanent(_)) {
                     // CR 603.10a last-known information — see `MovedToGraveyard`'s
                     // `permanents_left_battlefield` push above.
                     self.batch_trigger_scratch
@@ -2038,7 +2041,7 @@ impl Game {
                 let def = self.def_of(from);
                 let owner = self.owner_of(from);
                 let commander = self.is_commander(from);
-                if matches!(self.objects[from as usize], Object::Permanent(_)) {
+                if matches!(&self.objects[from as usize], Object::Permanent(_)) {
                     // CR 603.10a last-known information — see `MovedToGraveyard`'s
                     // `permanents_left_battlefield` push above.
                     self.batch_trigger_scratch
@@ -2217,9 +2220,9 @@ impl Game {
                 // field borrows: the closure reads `objects`, retain mutates other fields).
                 let objects = &self.objects;
                 let removed = |o: ObjectId| matches!(objects[o as usize], Object::Removed);
-                self.stack.retain(|item| match *item {
-                    StackItem::Spell(id) => !removed(id),
-                    StackItem::Ability { source, .. } => !removed(source),
+                self.stack.retain(|item| match item {
+                    StackItem::Spell(id) => !removed(*id),
+                    StackItem::Ability { source, .. } => !removed(*source),
                 });
                 self.combat.attackers.retain(|&a| !removed(a));
                 self.combat.attack_targets.retain(|&(a, d)| {

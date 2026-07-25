@@ -26,9 +26,9 @@ impl Game {
                 let mut events = vec![Event::RevealedTopOfLibrary {
                     player: defender,
                     card,
-                    def,
+                    def: def.clone(),
                 }];
-                if filter.matches(def) {
+                if filter.matches(&def.clone()) {
                     events.push(Event::SearchedToHand {
                         player: defender,
                         object: self.next_object_id(),
@@ -61,9 +61,9 @@ impl Game {
                     events.push(Event::RevealedTopOfLibrary {
                         player: controller,
                         card,
-                        def,
+                        def: def.clone(),
                     });
-                    if !filter.matches(def) {
+                    if !filter.matches(&def.clone()) {
                         match rest_dest {
                             RestDest::Bottom => {
                                 events.push(Event::PutOnBottomOfLibrary {
@@ -153,9 +153,9 @@ impl Game {
                     events.push(Event::RevealedTopOfLibrary {
                         player: controller,
                         card,
-                        def,
+                        def: def.clone(),
                     });
-                    if !filter.matches(def) {
+                    if !filter.matches(&def.clone()) {
                         match rest_dest {
                             RestDest::Bottom => {
                                 events.push(Event::PutOnBottomOfLibrary {
