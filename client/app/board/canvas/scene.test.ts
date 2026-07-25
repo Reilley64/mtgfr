@@ -6,6 +6,7 @@ import { TARGET_COLOR } from "../action/targeting";
 import { COMMANDER_GOLD, PLAYABLE_BORDER } from "../chrome";
 import { ZONE } from "../geometry/layout";
 import { sceneShapes } from "./scene";
+import { testMessageRef } from "~/i18n/testMessageRef";
 
 type Group = Canvas.Group;
 type Shape = Canvas.Shape;
@@ -51,7 +52,7 @@ function battlefieldAction(objectId: number): ActionView {
   return {
     id: objectId + 100,
     kind: "activate",
-    label: "Activate",
+    label: testMessageRef("Activate"),
     needs_target: false,
     object: objectId,
     section: "battlefield",
@@ -341,7 +342,7 @@ describe("sceneShapes", () => {
         {
           controller: 0,
           kind: "spell",
-          label: "Lightning Bolt",
+          label: testMessageRef("Lightning Bolt"),
           source: 9,
           target: { kind: "object", id: 1 },
         },

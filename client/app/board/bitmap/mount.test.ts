@@ -13,6 +13,7 @@ import {
   paintFlightLayer,
   tickFlightClock,
 } from "./mount";
+import { testMessageRef } from "~/i18n/testMessageRef";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -115,7 +116,7 @@ function battlefieldAction(objectId: number, overrides: Partial<ActionView> = {}
   return {
     id: objectId + 100,
     kind: "activate",
-    label: "Activate",
+    label: testMessageRef("Activate"),
     needs_target: false,
     object: objectId,
     section: "battlefield",

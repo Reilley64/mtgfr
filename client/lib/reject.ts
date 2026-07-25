@@ -24,7 +24,7 @@ const legacyRejectKeys: Readonly<Record<string, string>> = {
 };
 
 /** Deprecated local reject-name adapter; server acks now carry MessageRef directly. */
-export function humanReason(reason: MessageRef): string {
+export function humanReason(reason: MessageRef | string): string {
   if (typeof reason !== "string") return formatMessage(reason);
 
   const key = legacyRejectKeys[reason] ?? reason;

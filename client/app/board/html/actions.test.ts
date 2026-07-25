@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { ActionView } from "~/wire/types";
 import { autoTapPreviewIds, barZoneAura, paymentPreviewAction } from "./actions";
+import { testMessageRef } from "~/i18n/testMessageRef";
 
 const castAction = {
   id: 3,
   kind: "cast",
-  label: "Cast",
+  label: testMessageRef("Cast"),
   needs_target: true,
   section: "hand",
   auto_tap: [10, 11],
@@ -14,7 +15,7 @@ const castAction = {
 const hoverAction = {
   id: 9,
   kind: "cast",
-  label: "Other",
+  label: testMessageRef("Other"),
   needs_target: false,
   section: "hand",
   auto_tap: [20],

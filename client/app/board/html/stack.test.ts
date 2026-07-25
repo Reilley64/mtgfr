@@ -15,6 +15,7 @@ import { type Message, StackCollapseClicked, TargetChosen } from "../messages";
 import { type BoardModel, initialBoardModel, updateBoard } from "../submodel";
 import { boardOverlays } from "./overlays";
 import { resolveBoardCardArtMounts, resolveBoardOverlayMounts } from "./scene-helpers";
+import { testMessageRef } from "~/i18n/testMessageRef";
 
 const h = html<Message>();
 
@@ -100,7 +101,7 @@ function spellOnStack(
   };
   return {
     objects: [spell],
-    stack: [{ controller: 0, kind: "spell", label, source: sourceId }],
+    stack: [{ controller: 0, kind: "spell", label: testMessageRef(label), source: sourceId }],
   };
 }
 
@@ -163,7 +164,7 @@ test("staged ghost appears on the stack during arrow targeting", () => {
   const castAction: ActionView = {
     id: 9,
     kind: "cast",
-    label: "Cast Shock",
+    label: testMessageRef("Cast Shock"),
     needs_target: true,
     object: handCard.id,
     section: "hand",
@@ -220,7 +221,7 @@ test("legal stack face is highlighted and click submits take_action", () => {
   const castAction: ActionView = {
     id: 3,
     kind: "cast",
-    label: "Cast Counterspell",
+    label: testMessageRef("Cast Counterspell"),
     needs_target: true,
     object: counter.id,
     section: "hand",
@@ -292,7 +293,7 @@ test("expand button appears for a tall stack and opens strip view", () => {
       toughness: 0,
       zone: ZONE.Stack,
     });
-    stack.push({ controller: 0, kind: "spell", label: `Spell ${i}`, source: id });
+    stack.push({ controller: 0, kind: "spell", label: testMessageRef(`Spell ${i}`), source: id });
   }
   const model: ViewModel = {
     board: initialBoardModel(),

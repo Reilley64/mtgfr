@@ -30,3 +30,19 @@ Status: DONE_WITH_CONCERNS
 ## Concerns / handoff
 
 - The catalog has full key presence for current Rust `MessageKey`s, but many less-common `effect.*` entries use generated English from the key name plus params. Reject, auto, action, and common effect copy are explicit.
+
+## Review fix: MessageRef hard cut
+
+- Removed the `MessageRef = string | {...}` dual-read: `MessageRef` is now object-only with a recursive Effect `Schema.Codec`; `formatMessage` throws for bare strings and only returns the raw key for missing catalog entries.
+- Removed `DEFAULT_KEYS`, `defaultLabel`, and runtime title-casing fallback from `client/lib/i18n/catalog/en.ts`; every catalog key is now an explicit formatter/literal entry, with historical English ported for effect/reject/auto/action surfaces.
+- Added regression coverage for schema rejection of string refs, `formatMessage` rejection of string refs, explicit historical `effect.control_tap_target`, and unknown-key raw-key behavior.
+- Updated test fixtures that were still using English strings in `MessageRef` fields to object-shaped refs via a test helper; `ChoiceItem.label` remains a plain string.
+
+## Review fix verification
+
+- RED: `cd client && bun run test lib/i18n lib/wire/protoMap.test.ts`
+  - Failed on string passthrough, generated `effect.control_tap_target` fallback (`Control tap target`), and `Schema.Any` accepting string refs.
+- GREEN: `cd client && bun run test lib/i18n lib/wire/protoMap.test.ts`
+  - Passed: 2 files, 11 tests.
+- GREEN: `cd client && bun run typecheck`
+  - Passed after converting remaining `MessageRef` fixtures to object refs.

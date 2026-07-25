@@ -38,6 +38,7 @@ import {
 } from "./messages";
 import { BOARD_VIEWPORT, type BoardModel, initialBoardModel, updateBoard } from "./submodel";
 import { type BoardViewModel, view as boardView } from "./view";
+import { testMessageRef } from "~/i18n/testMessageRef";
 
 const h = html<Message>();
 
@@ -182,7 +183,7 @@ test("hand tile activates when clicked (below hand-bar threshold)", () => {
   const action: ActionView = {
     id: 7,
     kind: "cast",
-    label: "Cast Lightning Bolt",
+    label: testMessageRef("Cast Lightning Bolt"),
     needs_target: false,
     object: 42,
     section: "hand",
@@ -220,7 +221,7 @@ test("hand-drop planner ignores release below the hand-bar threshold", () => {
   const action: ActionView = {
     id: 7,
     kind: "cast",
-    label: "Cast",
+    label: testMessageRef("Cast"),
     needs_target: false,
     object: 42,
     section: "hand",
@@ -248,7 +249,7 @@ test("stack owns Resolve card, hides primary pass", () => {
   const model = viewModel(
     fold(
       state({
-        stack: [{ controller: 1, kind: "spell", label: "Lightning Bolt", source: 99 }],
+        stack: [{ controller: 1, kind: "spell", label: testMessageRef("Lightning Bolt"), source: 99 }],
       }),
     ),
   );
@@ -326,7 +327,7 @@ test("pointer up on legal staged target emits SubmitIntent (target completion)",
   const castAction: ActionView = {
     id: 9,
     kind: "cast",
-    label: "Cast Bolt",
+    label: testMessageRef("Cast Bolt"),
     needs_target: true,
     object: attacker.id,
     section: "hand",
@@ -362,7 +363,7 @@ test("pointer up on on-board pending choose_target submits choose_targets", () =
       objects: [bear],
       pending_choice: {
         kind: "choose_target",
-        label: "Target creature",
+        label: testMessageRef("Target creature"),
         max: 1,
         optional: false,
         player: 0,
@@ -447,7 +448,7 @@ test("pointer up on multi on-board choose_target accumulates picks until Confirm
   const b = creature(2, 1, { name: "B" });
   const pending = {
     kind: "choose_target" as const,
-    label: "Target creatures",
+    label: testMessageRef("Target creatures"),
     max: 2,
     optional: false,
     player: 0,
@@ -487,7 +488,7 @@ test("Enter confirms multi on-board choose_target when draft is ready", () => {
   const b = creature(2, 1, { name: "B" });
   const pending = {
     kind: "choose_target" as const,
-    label: "Target creatures",
+    label: testMessageRef("Target creatures"),
     max: 2,
     optional: false,
     player: 0,
@@ -521,7 +522,7 @@ test("Space confirms multi on-board choose_target when draft is ready", () => {
   const b = creature(2, 1, { name: "B" });
   const pending = {
     kind: "choose_target" as const,
-    label: "Target creatures",
+    label: testMessageRef("Target creatures"),
     max: 2,
     optional: false,
     player: 0,
@@ -535,7 +536,7 @@ test("Space confirms multi on-board choose_target when draft is ready", () => {
     state({
       objects: [a, b],
       pending_choice: pending,
-      stack: [{ controller: 0, kind: "spell", label: "Hold", source: 9 }],
+      stack: [{ controller: 0, kind: "spell", label: testMessageRef("Hold"), source: 9 }],
     }),
   );
   const board: BoardModel = {
@@ -573,7 +574,7 @@ test("Space confirms on-board assign_combat_damage when draft is ready", () => {
     state({
       objects: [attacker, bear, elf],
       pending_choice: pending,
-      stack: [{ controller: 0, kind: "spell", label: "Hold", source: 9 }],
+      stack: [{ controller: 0, kind: "spell", label: testMessageRef("Hold"), source: 9 }],
     }),
   );
   const board: BoardModel = {
@@ -599,7 +600,7 @@ test("TargetChosen accumulates multi on-board stack targets until Confirm", () =
   const spellB = creature(41, 0, { name: "Spell B", zone: ZONE.Stack });
   const pending = {
     kind: "choose_target" as const,
-    label: "Target spells",
+    label: testMessageRef("Target spells"),
     max: 2,
     optional: false,
     player: 0,
@@ -613,8 +614,8 @@ test("TargetChosen accumulates multi on-board stack targets until Confirm", () =
     state({
       objects: [spellA, spellB],
       stack: [
-        { controller: 0, kind: "spell", label: "Spell A", source: 40 },
-        { controller: 0, kind: "spell", label: "Spell B", source: 41 },
+        { controller: 0, kind: "spell", label: testMessageRef("Spell A"), source: 40 },
+        { controller: 0, kind: "spell", label: testMessageRef("Spell B"), source: 41 },
       ],
       pending_choice: pending,
     }),
@@ -808,7 +809,7 @@ test("Enter confirms order_triggers when draft is ready", () => {
     player: 0,
     count: 2,
     source: 1,
-    labels: ["A", "B"],
+    labels: [testMessageRef("A"), testMessageRef("B")],
   };
   const gameFold = fold(state({ pending_choice: pending }));
   const board: BoardModel = {
@@ -887,7 +888,7 @@ test("Space does not confirm distribute_top when a lane is short", () => {
 test("pointer up on choose_target_players avatar accumulates seat picks", () => {
   const pending = {
     kind: "choose_target_players" as const,
-    label: "Choose opponents",
+    label: testMessageRef("Choose opponents"),
     min: 1,
     max: 2,
     player: 0,
@@ -913,7 +914,7 @@ test("pointer up on non-target while staged clears drag without submitting", () 
   const castAction: ActionView = {
     id: 9,
     kind: "cast",
-    label: "Cast Bolt",
+    label: testMessageRef("Cast Bolt"),
     needs_target: true,
     object: attacker.id,
     section: "hand",
@@ -949,7 +950,13 @@ test("pointer combat drop on opponent life orb stages an attacker", () => {
         blockers_declared: [],
       },
       actions: [
-        { id: 1, kind: "declare_attackers", label: "Attack", needs_target: false, section: "combat" } as ActionView,
+        {
+          id: 1,
+          kind: "declare_attackers",
+          label: testMessageRef("Attack"),
+          needs_target: false,
+          section: "combat",
+        } as ActionView,
       ],
     }),
   );
@@ -983,7 +990,7 @@ test("PendingChoiceAnswered folds into a SubmitIntent command", () => {
 });
 
 test("may_yes_no prompt mounts only for the awaited seat", () => {
-  const pendingChoice = { kind: "may_yes_no", label: "Cast?", player: 0, source: 1 } as const;
+  const pendingChoice = { kind: "may_yes_no", label: testMessageRef("Cast?"), player: 0, source: 1 } as const;
   overlayScene(
     viewModel(fold(state({ pending_choice: pendingChoice, viewer: 0 }))),
     Scene.expect(Scene.testId("prompt-yes")).toExist(),
@@ -1009,7 +1016,7 @@ test("handHidden suppresses a hand tile that would otherwise render", () => {
   const action: ActionView = {
     id: 4,
     kind: "cast",
-    label: "Cast",
+    label: testMessageRef("Cast"),
     needs_target: false,
     object: 77,
     section: "hand",
@@ -1194,7 +1201,7 @@ test("RadialOptionPicked submits the selected activate action id", () => {
   const action: ActionView = {
     id: 91,
     kind: "activate",
-    label: "Scry 1",
+    label: testMessageRef("Scry 1"),
     needs_target: false,
     object: seer.id,
     section: "battlefield",
@@ -1226,7 +1233,7 @@ test("RadialOptionPicked opens sacrifice picker before submitting a payable acti
   const action: ActionView = {
     id: 92,
     kind: "activate",
-    label: "Sacrifice a creature: Scry 1",
+    label: testMessageRef("Sacrifice a creature: Scry 1"),
     needs_target: false,
     object: seer.id,
     sacrifice_choices: [fodder.id],
@@ -1249,7 +1256,7 @@ test("pointer up on sacrifice-cost permanent settles the cost pick", () => {
   const action: ActionView = {
     id: 92,
     kind: "activate",
-    label: "Sacrifice a creature: Scry 1",
+    label: testMessageRef("Sacrifice a creature: Scry 1"),
     needs_target: false,
     object: seer.id,
     sacrifice_choices: [fodder.id],
@@ -1284,7 +1291,7 @@ test("HandActionActivated during discardPick toggles discard_cost selection", ()
   const castAction: ActionView = {
     id: 50,
     kind: "cast",
-    label: "Cast",
+    label: testMessageRef("Cast"),
     needs_target: false,
     object: caster.id,
     discard_choices: [fodder.id],
@@ -1293,7 +1300,7 @@ test("HandActionActivated during discardPick toggles discard_cost selection", ()
   const fodderAction: ActionView = {
     id: 51,
     kind: "cast",
-    label: "Cast Island",
+    label: testMessageRef("Cast Island"),
     needs_target: false,
     object: fodder.id,
     section: "hand",
@@ -1326,7 +1333,7 @@ test("DiscardChosen off-board discard-pick one-shots discard cost", () => {
   const castAction: ActionView = {
     id: 50,
     kind: "cast",
-    label: "Cast",
+    label: testMessageRef("Cast"),
     needs_target: false,
     object: caster.id,
     discard_choices: [11],
@@ -1359,7 +1366,7 @@ test("HandActionActivated during discardPick toggles discard_cost off on second 
   const castAction: ActionView = {
     id: 50,
     kind: "cast",
-    label: "Cast",
+    label: testMessageRef("Cast"),
     needs_target: false,
     object: caster.id,
     discard_choices: [fodder.id],
@@ -1368,7 +1375,7 @@ test("HandActionActivated during discardPick toggles discard_cost off on second 
   const fodderAction: ActionView = {
     id: 51,
     kind: "cast",
-    label: "Cast Island",
+    label: testMessageRef("Cast Island"),
     needs_target: false,
     object: fodder.id,
     section: "hand",
@@ -1401,7 +1408,7 @@ test("DiscardChosen during discardPick toggles discard_cost selection on hand", 
   const castAction: ActionView = {
     id: 50,
     kind: "cast",
-    label: "Cast",
+    label: testMessageRef("Cast"),
     needs_target: false,
     object: caster.id,
     discard_choices: [fodder.id],
@@ -1430,7 +1437,7 @@ test("DiscardChosen during discardPick toggles discard_cost off on second click"
   const castAction: ActionView = {
     id: 50,
     kind: "cast",
-    label: "Cast",
+    label: testMessageRef("Cast"),
     needs_target: false,
     object: caster.id,
     discard_choices: [fodder.id],
@@ -1458,7 +1465,7 @@ test("DiscardCostConfirmed settles local discard cost when one card selected", (
   const castAction: ActionView = {
     id: 50,
     kind: "cast",
-    label: "Cast",
+    label: testMessageRef("Cast"),
     needs_target: false,
     object: caster.id,
     discard_choices: [11],
@@ -1490,7 +1497,7 @@ test("Space confirms local discard cost when one card selected", () => {
   const castAction: ActionView = {
     id: 50,
     kind: "cast",
-    label: "Cast",
+    label: testMessageRef("Cast"),
     needs_target: false,
     object: caster.id,
     discard_choices: [11],
@@ -1501,7 +1508,7 @@ test("Space confirms local discard cost when one card selected", () => {
       objects: [caster],
       actions: [castAction],
       can_act: true,
-      stack: [{ controller: 0, kind: "spell", label: "Hold", source: 9 }],
+      stack: [{ controller: 0, kind: "spell", label: testMessageRef("Hold"), source: 9 }],
     }),
   );
   const board: BoardModel = {
@@ -1529,7 +1536,7 @@ test("Enter confirms local discard cost when one card selected", () => {
   const castAction: ActionView = {
     id: 50,
     kind: "cast",
-    label: "Cast",
+    label: testMessageRef("Cast"),
     needs_target: false,
     object: caster.id,
     discard_choices: [11],
@@ -1562,7 +1569,7 @@ test("Space does not pass while local discard cost is unready", () => {
   const castAction: ActionView = {
     id: 50,
     kind: "cast",
-    label: "Cast",
+    label: testMessageRef("Cast"),
     needs_target: false,
     object: caster.id,
     discard_choices: [11],
@@ -1590,7 +1597,7 @@ test("Enter does not yield while local discard cost is unready", () => {
   const castAction: ActionView = {
     id: 50,
     kind: "cast",
-    label: "Cast",
+    label: testMessageRef("Cast"),
     needs_target: false,
     object: caster.id,
     discard_choices: [11],
@@ -1629,7 +1636,7 @@ test("engine hand discard count 2 submits both cards after two toggles and Confi
   const actionA: ActionView = {
     id: 51,
     kind: "cast",
-    label: "Cast A",
+    label: testMessageRef("Cast A"),
     needs_target: false,
     object: 11,
     section: "hand",
@@ -1637,7 +1644,7 @@ test("engine hand discard count 2 submits both cards after two toggles and Confi
   const actionB: ActionView = {
     id: 52,
     kind: "cast",
-    label: "Cast B",
+    label: testMessageRef("Cast B"),
     needs_target: false,
     object: 12,
     section: "hand",
@@ -1678,7 +1685,7 @@ test("HandActionActivated during pending discard toggles card-pick draft", () =>
   const fodderAction: ActionView = {
     id: 51,
     kind: "cast",
-    label: "Cast A",
+    label: testMessageRef("Cast A"),
     needs_target: false,
     object: 11,
     section: "hand",
@@ -1716,7 +1723,7 @@ test("HandActionActivated during pending discard toggles selection off", () => {
   const fodderAction: ActionView = {
     id: 51,
     kind: "cast",
-    label: "Cast A",
+    label: testMessageRef("Cast A"),
     needs_target: false,
     object: 11,
     section: "hand",
@@ -1753,7 +1760,7 @@ test("HandActionActivated during put_land_from_hand submits put_land intent", ()
   const landAction: ActionView = {
     id: 60,
     kind: "play_land",
-    label: "Play Forest",
+    label: testMessageRef("Play Forest"),
     needs_target: false,
     object: 20,
     section: "hand",
@@ -1920,7 +1927,7 @@ test("PileCardClicked during choose_target in graveyard submits choose_targets",
   const gy = creature(8, 0, { name: "Reanimate me", zone: ZONE.Graveyard });
   const pending = {
     kind: "choose_target" as const,
-    label: "Target creature card in a graveyard",
+    label: testMessageRef("Target creature card in a graveyard"),
     max: 1,
     optional: false,
     player: 0,
@@ -1955,7 +1962,7 @@ test("GyExileChosen during gyExilePick settles a one-card exile cost", () => {
   const castAction: ActionView = {
     id: 50,
     kind: "cast",
-    label: "Cast",
+    label: testMessageRef("Cast"),
     needs_target: false,
     object: caster.id,
     graveyard_exile_choices: [8],
@@ -1993,7 +2000,7 @@ test("second GyExileChosen auto-settles exact multi gy-exile cost", () => {
   const castAction: ActionView = {
     id: 50,
     kind: "cast",
-    label: "Cast",
+    label: testMessageRef("Cast"),
     needs_target: false,
     object: caster.id,
     graveyard_exile_choices: [8, 9],

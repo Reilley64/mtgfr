@@ -4,6 +4,7 @@ import type { GameFoldState } from "../game/fold";
 import { ZONE } from "./geometry/layout";
 import { CancelActionClicked, HandActionHovered, HandDragEnded, HandDragMoved, HandDragStarted } from "./messages";
 import { BOARD_VIEWPORT, HAND_BAR_H, initialBoardModel, updateBoard } from "./submodel";
+import { testMessageRef } from "~/i18n/testMessageRef";
 
 function fold(objects: ObjectView[], actions: ActionView[]): GameFoldState {
   return {
@@ -71,7 +72,7 @@ const bolt: ObjectView = {
 const castAction: ActionView = {
   id: 7,
   kind: "cast",
-  label: "Cast Lightning Bolt",
+  label: testMessageRef("Cast Lightning Bolt"),
   needs_target: false,
   object: 42,
   section: "hand",

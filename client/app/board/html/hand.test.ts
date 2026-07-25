@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/types";
 import { ZONE } from "../geometry/layout";
 import { handView } from "./hand";
+import { testMessageRef } from "~/i18n/testMessageRef";
 
 function cost(overrides: Partial<WireCost> = {}): WireCost {
   return {
@@ -38,7 +39,7 @@ function action(id: number, overrides: Partial<ActionView> = {}): ActionView {
   return {
     id,
     kind: "cast",
-    label: `Cast ${id}`,
+    label: testMessageRef(`Cast ${id}`),
     needs_target: false,
     object: id,
     section: "hand",

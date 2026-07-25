@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import * as Schema from "effect/Schema";
 import { fromProtoWire, intentEnvelopeToProto } from "./protoMap";
+import { MessageRef } from "./types";
 import type { ActionView, IntentEnvelope } from "./types";
 
 describe("fromProtoWire", () => {
@@ -110,6 +112,12 @@ describe("fromProtoWire", () => {
         children: [],
       },
     });
+  });
+});
+
+describe("MessageRef schema", () => {
+  it("rejects bare strings", () => {
+    expect(() => Schema.decodeUnknownSync(MessageRef)("Scry 1")).toThrow();
   });
 });
 

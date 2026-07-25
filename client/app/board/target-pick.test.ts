@@ -7,6 +7,7 @@ import { ZONE } from "./geometry/layout";
 import { promptsView } from "./html/prompts";
 import { TargetChosen } from "./messages";
 import { type BoardModel, initialBoardModel, updateBoard } from "./submodel";
+import { testMessageRef } from "~/i18n/testMessageRef";
 
 function creature(id: number, over: Partial<ObjectView> = {}): ObjectView {
   return {
@@ -83,7 +84,7 @@ test("off-board staged target opens the target-pick prompt", () => {
   const castAction: ActionView = {
     id: 9,
     kind: "cast",
-    label: "Reanimate",
+    label: testMessageRef("Reanimate"),
     needs_target: true,
     object: spell.id,
     section: "hand",
@@ -110,7 +111,7 @@ test("TargetChosen from the pick dialog submits take_action for off-board target
   const castAction: ActionView = {
     id: 9,
     kind: "cast",
-    label: "Reanimate",
+    label: testMessageRef("Reanimate"),
     needs_target: true,
     object: spell.id,
     section: "hand",

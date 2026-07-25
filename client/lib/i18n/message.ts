@@ -8,13 +8,14 @@ export type MessageFormatter = (params: MessageParams, children: readonly string
 const amountTokens: Readonly<Record<string, string>> = {
   fixed: "",
   half_x: "half X",
-  half_x_rounded_down: "half X rounded down",
-  per_creature_on_battlefield: "for each creature on the battlefield",
-  per_creature_you_control: "for each creature you control",
-  per_permanent_matching: "for each matching permanent",
-  source_power: "source's power",
-  source_toughness: "source's toughness",
+  half_x_rounded_down: "half X, rounded down",
+  per_creature_on_battlefield: "1 per creature on the battlefield",
+  per_creature_you_control: "1 per creature you control",
+  per_permanent_matching: "1 per matching permanent",
+  source_power: "its power",
+  source_toughness: "its toughness",
   target_power: "target's power",
+  target_toughness: "target's toughness",
   twice_x: "twice X",
   x: "X",
 };
@@ -48,7 +49,7 @@ export function humanizeToken(value: MessageValue): string {
 
 export function formatMessage(ref: MessageRef | null | undefined): string {
   if (ref == null) return "";
-  if (typeof ref === "string") return ref;
+  if (typeof ref !== "object" || Array.isArray(ref)) throw new TypeError("MessageRef must be an object");
 
   const formatter = enCatalog[ref.key];
   if (formatter == null) return ref.key;

@@ -31,15 +31,17 @@ export const MessageParam = Schema.Struct({
   bool_value: Schema.optional(Schema.Boolean),
   amount_token: Schema.optional(Schema.String),
 });
-export type MessageParam = {
-  name: string;
-  string_value?: string;
-  int_value?: number;
-  bool_value?: boolean;
-  amount_token?: string;
+export type MessageParam = typeof MessageParam.Type;
+export type MessageRef = {
+  readonly key: string;
+  readonly params: ReadonlyArray<MessageParam>;
+  readonly children: ReadonlyArray<MessageRef>;
 };
-export type MessageRef = string | { key: string; params: Array<MessageParam>; children: Array<MessageRef> };
-export const MessageRef = Schema.Any;
+export const MessageRef: Schema.Codec<MessageRef> = Schema.Struct({
+  key: Schema.String,
+  params: Schema.Array(MessageParam),
+  children: Schema.Array(Schema.suspend((): Schema.Codec<MessageRef> => MessageRef)),
+});
 
 export const Ack = Schema.Struct({
   accepted: Schema.Boolean,

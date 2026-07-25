@@ -37,6 +37,15 @@ describe("formatMessage", () => {
     expect(formatMessage({ key: "effect.unknown_zz", params: [], children: [] })).toBe("effect.unknown_zz");
   });
 
+  it("does not pass bare strings through", () => {
+    // @ts-expect-error strings are not MessageRef values.
+    expect(() => formatMessage("Draw 2")).toThrow(TypeError);
+  });
+
+  it("formats effect.control_tap_target from an explicit historical catalog entry", () => {
+    expect(formatMessage({ key: "effect.control_tap_target", params: [], children: [] })).toBe("Tap target");
+  });
+
   it("formats reject.illegal_target", () => {
     expect(formatMessage({ key: "reject.illegal_target", params: [], children: [] })).toBe("Pick a legal target.");
   });
