@@ -49,14 +49,16 @@ pub const SPECTATOR_VIEWER: u8 = u8::MAX;
 
 /// Table-owned facts that finish a [`VisibleState`]. Pure data — no `Seat` / tokio coupling.
 ///
-/// Yield, stack-hold remaining, and display names live on the server's `Table`, not the `Game`
-/// (turn-priority-and-stack spec). Callers map table state into this DTO and pass it to [`complete_visible`].
+/// Yield, stack-hold remaining, display names, and avatar hashes live on the server's `Table`,
+/// not the `Game` (turn-priority-and-stack spec). Callers map table state into this DTO and pass
+/// it to [`complete_visible`].
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ViewExtras {
     pub yields: [bool; 4],
     pub turn_yields: [bool; 4],
     pub stack_hold_remaining_ms: u32,
     pub usernames: [String; 4],
+    pub gravatar_hashes: [String; 4],
     /// Per-seat Card id → Printing UUID from the seat's deck (art preference). Empty maps mean
     /// every object uses its CardDef `default_print`.
     pub prints: [std::collections::HashMap<String, String>; 4],
@@ -98,7 +100,7 @@ pub fn compose_delta(input: DeltaCompose<'_>) -> StreamFrame {
 /// One wire-complete [`VisibleState`] for `viewer` (`Some` = seated, `None` = spectator).
 ///
 /// Redacts private zones, projects the board, then stamps Table policy from `extras` in one
-/// pass — yield, hold remaining, and usernames. Incomplete board projection is not a public
+/// pass — yield, hold remaining, usernames, and avatar hashes. Incomplete board projection is not a public
 /// wire path (lobby-table-routing-and-live-game spec / wire-protocol-and-visibility spec). Opening snapshots use this directly; live deltas use
 /// [`compose_delta`].
 pub fn complete_visible(
@@ -117,6 +119,7 @@ pub fn complete_visible(
     state.stack_hold_remaining_ms = extras.stack_hold_remaining_ms;
     for (i, player) in state.players.iter_mut().enumerate() {
         player.username = extras.usernames[i].clone();
+        player.gravatar_hash = extras.gravatar_hashes[i].clone();
     }
     // Overlay deck-chosen Printings onto objects (by owner seat + Card id).
     for obj in &mut state.objects {
@@ -702,8 +705,8 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
     view
 }
 
-/// Redacted board projection only — yield / hold / usernames stay at their incomplete defaults
-/// until [`complete_visible`] stamps them. Not a public wire entry point.
+/// Redacted board projection only — yield / hold / usernames / avatar hashes stay at their
+/// incomplete defaults until [`complete_visible`] stamps them. Not a public wire entry point.
 fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> VisibleState {
     use engine::{PlayerId, TargetSpec, Zone};
 
@@ -721,6 +724,7 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
             PlayerView {
                 player: p,
                 username: String::new(),
+                gravatar_hash: String::new(),
                 life: game.life(pid),
                 commander_tax: game.commander_tax(pid),
                 lost: game.has_lost(pid),
@@ -1041,6 +1045,7 @@ mod tests {
             turn_yields: [false, true, false, false],
             stack_hold_remaining_ms: 900,
             usernames: ["alice".into(), "bob".into(), String::new(), String::new()],
+            gravatar_hashes: Default::default(),
             prints: Default::default(),
         };
 
@@ -1107,6 +1112,7 @@ mod tests {
             turn_yields: [true, false, false, false],
             stack_hold_remaining_ms: 1500,
             usernames: ["alice".into(), "bob".into(), String::new(), String::new()],
+            gravatar_hashes: Default::default(),
             prints: Default::default(),
         };
 
@@ -1130,6 +1136,21 @@ mod tests {
         );
         assert_eq!(spectating.stack_hold_remaining_ms, 1500);
         assert_eq!(spectating.players[0].username, "alice");
+    }
+
+    #[test]
+    fn complete_visible_stamps_gravatar_hashes() {
+        let game = Game::new();
+        let extras = ViewExtras {
+            usernames: ["alice".into(), "bob".into(), String::new(), String::new()],
+            gravatar_hashes: ["abc".into(), String::new(), String::new(), String::new()],
+            ..ViewExtras::default()
+        };
+
+        let snap = complete_visible(&game, Some(PlayerId(0)), &extras);
+
+        assert_eq!(snap.players[0].gravatar_hash, "abc");
+        assert_eq!(snap.players[1].gravatar_hash, "");
     }
 
     #[test]

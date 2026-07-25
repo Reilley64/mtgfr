@@ -138,7 +138,12 @@ function routeBody(model: Model) {
   return (() => {
     switch (model.route._tag) {
       case "HomeRoute":
-        return deckListView(model.decks.list, model.session.me?.username ?? "", model.apiVersion);
+        return deckListView(
+          model.decks.list,
+          model.session.me?.username ?? "",
+          model.session.meGravatarHash,
+          model.apiVersion,
+        );
       case "LoginRoute":
         return authView(model.auth, model.apiVersion);
       case "NewDeckRoute":

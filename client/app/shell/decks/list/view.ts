@@ -5,6 +5,7 @@ import { cn } from "../../../../lib/cn";
 import { appVersionBadge } from "../../../../lib/ui/app-version";
 import { buttonClass } from "../../../../lib/ui/buttonClass";
 import { confirmDialog } from "../../../../lib/ui/confirmDialog";
+import { seatFace } from "../../../../lib/ui/seat-face";
 import { feltClass, fieldClass } from "../../../../lib/ui/surfaces";
 import type { Message } from "../../../messages";
 import { RequestedLogout } from "../../../messages";
@@ -161,7 +162,12 @@ function contextMenu(model: DeckListSubmodel): Html {
   );
 }
 
-export function view(model: DeckListSubmodel, username: string, apiVersion: string | null): Html {
+export function view(
+  model: DeckListSubmodel,
+  username: string,
+  meGravatarHash: string | null,
+  apiVersion: string | null,
+): Html {
   const visible = visibleDecks(model.decks, model.knownCommanders, model.searchQuery);
 
   return h.main(
@@ -196,7 +202,33 @@ export function view(model: DeckListSubmodel, username: string, apiVersion: stri
           h.div(
             [h.Class("flex flex-wrap items-center gap-md")],
             [
-              h.span([h.Class("text-label text-lichen")], [username]),
+              h.div(
+                [h.Class("flex items-center gap-sm")],
+                [
+                  seatFace(h, {
+                    seat: 0,
+                    username,
+                    gravatarHash: meGravatarHash,
+                    className: "size-9",
+                  }),
+                  h.div(
+                    [h.Class("flex flex-col leading-tight")],
+                    [
+                      h.span([h.Class("text-label text-lichen")], [username]),
+                      h.a(
+                        [
+                          h.Href("https://gravatar.com"),
+                          h.DataAttribute("testid", "account-gravatar-link"),
+                          h.Attribute("target", "_blank"),
+                          h.Attribute("rel", "noopener noreferrer"),
+                          h.Class("text-caption text-lichen underline"),
+                        ],
+                        ["Change at Gravatar"],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
               h.button([h.Type("button"), h.OnClick(RequestedLogout()), h.Class(buttonClass("ghost"))], ["Sign out"]),
               h.a([h.Href(routePath(NewDeckRoute())), h.Class(buttonClass("primary"))], ["New deck"]),
             ],

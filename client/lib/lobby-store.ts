@@ -22,6 +22,7 @@ export type LobbySeatRow = {
   seat: number;
   userId: number;
   username: string;
+  gravatarHash: string;
   deckId: number;
   deckName: string;
   ready: boolean;
@@ -73,6 +74,7 @@ export async function loadLobby(db: WebDb, tableId: string): Promise<LobbySnapsh
       seat: s.seat,
       userId: s.userId,
       username: s.username,
+      gravatarHash: s.gravatarHash,
       deckId: s.deckId,
       deckName: s.deckName,
       ready: s.ready,
@@ -90,6 +92,7 @@ export async function joinLobby(
     tableId: string;
     userId: number;
     username: string;
+    gravatarHash: string;
     deckId: number;
     deckName: string;
   },
@@ -106,6 +109,7 @@ export async function joinLobby(
         deckId: opts.deckId,
         deckName: opts.deckName,
         username: opts.username,
+        gravatarHash: opts.gravatarHash,
       })
       .where(and(eq(lobbySeats.tableId, opts.tableId), eq(lobbySeats.seat, existing.seat)));
     await touchLobby(db, opts.tableId);
@@ -123,6 +127,7 @@ export async function joinLobby(
       seat,
       userId: opts.userId,
       username: opts.username,
+      gravatarHash: opts.gravatarHash,
       deckId: opts.deckId,
       deckName: opts.deckName,
       ready: false,
@@ -232,6 +237,7 @@ export function toLobbyView(snap: LobbySnapshot, userId: number | null, error?: 
       player: i,
       claimed: !!s,
       username: s?.username ?? null,
+      gravatar_hash: s?.gravatarHash ?? null,
       deck_name: s?.deckName ?? null,
       deck_id: s?.deckId ?? null,
       ready: s?.ready ?? false,

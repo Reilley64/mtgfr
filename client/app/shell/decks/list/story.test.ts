@@ -11,7 +11,7 @@ import { update } from "./update";
 import { BindDeckListContextMenu, BindDeckListContextMenuEscape, view } from "./view";
 
 const listView = Submodel.defineView<ReturnType<typeof initialDeckListSubmodel>, DeckListMessage>((model) =>
-  view(model, "alice", null),
+  view(model, "alice", null, null),
 );
 type SceneListMessage = DeckListMessage | typeof ModalOpened.Type | { readonly _tag?: string } | undefined;
 

@@ -117,6 +117,7 @@ pub fn player_view_to_pb(player: PlayerView) -> pb::PlayerView {
     pb::PlayerView {
         player: u32::from(player.player),
         username: player.username,
+        gravatar_hash: player.gravatar_hash,
         life: player.life,
         commander_tax: u32::from(player.commander_tax),
         lost: player.lost,
@@ -1595,6 +1596,7 @@ mod tests {
         PlayerView {
             player,
             username: format!("p{player}"),
+            gravatar_hash: String::new(),
             life: 40,
             commander_tax: 0,
             lost: false,

@@ -30,6 +30,8 @@ message PlayerView {
   bool hand_kept = 11;
   // Whether this player may still take another pre-game mulligan.
   bool can_mulligan = 12;
+  // SHA-256 hex Gravatar hash; empty = no face.
+  string gravatar_hash = 13;
 }
 
 // One source card def's contributions to a permanent (Alt-inspect ledger).

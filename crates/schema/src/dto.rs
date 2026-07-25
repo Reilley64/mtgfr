@@ -101,6 +101,9 @@ pub struct PlayerView {
     /// Display name from the seated account (not unique across players).
     #[serde(default)]
     pub username: String,
+    /// SHA-256 hex Gravatar hash for the seated account; empty means use the monogram fallback.
+    #[serde(default)]
+    pub gravatar_hash: String,
     pub life: i32,
     /// Extra generic mana to recast this player's commander from the command zone.
     pub commander_tax: u8,
@@ -1145,6 +1148,8 @@ pub struct SeedSeat {
     pub user_id: i64,
     pub username: String,
     pub deck_id: i64,
+    #[serde(default)]
+    pub gravatar_hash: String,
 }
 
 /// Seed a running game from a lobby the BFF already resolved. `seats` is ordered by seat index

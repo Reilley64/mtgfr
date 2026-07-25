@@ -52,7 +52,7 @@ function playLobbyModel(overrides: Partial<Model>): Model {
     ...model,
     route: PlayRoute({ deckId: "7" }),
     sessionLoaded: true,
-    session: { me },
+    session: { me, meGravatarHash: null },
     ...overrides,
   };
 }
@@ -63,7 +63,7 @@ function tableLobbyModel(overrides: Partial<Model>): Model {
     ...model,
     route: TableRoute({ deckId: "7", table: "ABC123" }),
     sessionLoaded: true,
-    session: { me },
+    session: { me, meGravatarHash: null },
     ...overrides,
   };
 }
