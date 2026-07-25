@@ -15,6 +15,8 @@ use rand::RngCore;
 
 use crate::AppState;
 use crate::db::{Session, User};
+#[cfg(test)]
+use crate::elo::STARTING_RATING;
 
 /// The session cookie name.
 const SESSION_COOKIE: &str = "session";
@@ -150,6 +152,8 @@ mod tests {
     use super::*;
     use crate::db::connect;
 
+    const TEST_RATING_SET_AT: i64 = 1_700_000_000;
+
     async fn test_state() -> AppState {
         AppState::for_test(connect("sqlite::memory:").await.expect("sqlite"))
     }
@@ -179,6 +183,8 @@ mod tests {
             .email("a@b.c")
             .username("alice")
             .password_hash(hash_password("pw"))
+            .rating(STARTING_RATING)
+            .rating_set_at(TEST_RATING_SET_AT)
             .exec(&mut db)
             .await
             .expect("create user");
@@ -199,6 +205,8 @@ mod tests {
             .email("x@y.z")
             .username("x")
             .password_hash("h")
+            .rating(STARTING_RATING)
+            .rating_set_at(TEST_RATING_SET_AT)
             .exec(&mut db)
             .await
             .expect("create user");

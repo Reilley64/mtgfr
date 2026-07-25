@@ -5,7 +5,12 @@ use crate::db::{self, Deck};
 #[cfg(test)]
 use crate::decks::SeatDeck;
 #[cfg(test)]
+use crate::elo::STARTING_RATING;
+#[cfg(test)]
 use schema::DeckCardEntry;
+
+#[cfg(test)]
+const TEST_RATING_SET_AT: i64 = 1_700_000_000;
 
 #[cfg(test)]
 pub(crate) fn seat_deck() -> SeatDeck {
@@ -56,6 +61,8 @@ pub(crate) async fn user_with_deck(state: &crate::AppState, email: &str) -> i64 
         .email(email)
         .username(email.split('@').next().unwrap_or("player"))
         .password_hash("x")
+        .rating(STARTING_RATING)
+        .rating_set_at(TEST_RATING_SET_AT)
         .exec(&mut db)
         .await
         .expect("create user");

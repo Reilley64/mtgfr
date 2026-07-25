@@ -6,6 +6,7 @@ use tonic::{Request, Status};
 use super::*;
 use crate::db;
 use crate::decks::keep_all_hands;
+use crate::elo::STARTING_RATING;
 use crate::test_support::seat_deck;
 
 async fn test_state() -> AppState {
@@ -47,6 +48,17 @@ async fn signup_mints_a_session_that_get_me_resolves_over_metadata() {
         .into_inner();
     assert_eq!(resolved.id, me.id);
     assert_eq!(resolved.username, "alice");
+
+    let mut db = state.db.clone();
+    let created_user = db::User::filter_by_id(me.id)
+        .get(&mut db)
+        .await
+        .expect("signup persists the user row");
+    assert_eq!(created_user.rating, STARTING_RATING);
+    assert!(
+        created_user.rating_set_at > 0,
+        "signup stamps when the starting rating was set"
+    );
 }
 
 #[tokio::test]

@@ -14,3 +14,8 @@ snapshot_name = "0001_snapshot.toml"
 id = 2217343831142306681
 name = "0002_catalog_cards_by_id.sql"
 snapshot_name = "0002_snapshot.toml"
+
+[[migrations]]
+id = 8546393094923436082
+name = "0003_user_rating.sql"
+snapshot_name = "0003_snapshot.toml"
