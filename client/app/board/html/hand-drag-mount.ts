@@ -64,6 +64,11 @@ export function setHandDragGrabbingCursor(active: boolean): void {
   document.documentElement.style.cursor = active ? "grabbing" : "";
 }
 
+export function armHandDragGrabbingCursor(): () => void {
+  setHandDragGrabbingCursor(true);
+  return () => setHandDragGrabbingCursor(false);
+}
+
 export const MountHandBarDrag = Mount.defineStream(
   "MountHandBarDrag",
   HandDragStarted,
@@ -80,6 +85,7 @@ export const MountHandBarDrag = Mount.defineStream(
           let move: ((event: PointerEvent) => void) | null = null;
           let up: ((event: PointerEvent) => void) | null = null;
           let cancel: ((event: PointerEvent) => void) | null = null;
+          let clearGrab = () => setHandDragGrabbingCursor(false);
 
           const teardown = () => {
             if (move) window.removeEventListener("pointermove", move);
@@ -88,7 +94,8 @@ export const MountHandBarDrag = Mount.defineStream(
             move = null;
             up = null;
             cancel = null;
-            setHandDragGrabbingCursor(false);
+            clearGrab();
+            clearGrab = () => setHandDragGrabbingCursor(false);
           };
 
           const onPointerDown = (event: Event) => {
@@ -100,7 +107,7 @@ export const MountHandBarDrag = Mount.defineStream(
             const payload = readHandDragPayload(hit, event.clientX, event.clientY);
             if (payload == null) return;
             Queue.offerUnsafe(queue, payload);
-            setHandDragGrabbingCursor(true);
+            clearGrab = armHandDragGrabbingCursor();
             move = (ev) => Queue.offerUnsafe(queue, HandDragMoved({ x: ev.clientX, y: ev.clientY }));
             up = (ev) => {
               teardown();

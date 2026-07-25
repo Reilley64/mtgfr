@@ -5,7 +5,11 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView } from "~/wire/types";
-import { readHandDragPayload, setHandDragGrabbingCursor } from "./hand-drag-mount";
+import {
+  armHandDragGrabbingCursor,
+  readHandDragPayload,
+  setHandDragGrabbingCursor,
+} from "./hand-drag-mount";
 
 function action(section: ActionView["section"]): ActionView {
   return {
@@ -40,6 +44,35 @@ describe("setHandDragGrabbingCursor", () => {
     setHandDragGrabbingCursor(true);
     expect(document.documentElement.style.cursor).toBe("grabbing");
     setHandDragGrabbingCursor(false);
+    expect(document.documentElement.style.cursor).toBe("");
+  });
+});
+
+describe("armHandDragGrabbingCursor", () => {
+  afterEach(() => {
+    document.documentElement.style.cursor = "";
+  });
+
+  it("sets grabbing when armed", () => {
+    armHandDragGrabbingCursor();
+
+    expect(document.documentElement.style.cursor).toBe("grabbing");
+  });
+
+  it("clears grabbing through the disposer", () => {
+    const clearGrab = armHandDragGrabbingCursor();
+
+    clearGrab();
+
+    expect(document.documentElement.style.cursor).toBe("");
+  });
+
+  it("allows the disposer to run twice", () => {
+    const clearGrab = armHandDragGrabbingCursor();
+
+    clearGrab();
+    clearGrab();
+
     expect(document.documentElement.style.cursor).toBe("");
   });
 });
