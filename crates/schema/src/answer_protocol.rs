@@ -294,7 +294,7 @@ fn view_player(view: &PendingChoiceView) -> u8 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::dto::ChoiceItem;
+    use crate::dto::{ChoiceItem, MessageRef};
 
     fn proliferate(player: u8) -> PendingChoiceView {
         PendingChoiceView::Proliferate {
@@ -326,7 +326,7 @@ mod tests {
         let view = PendingChoiceView::MayYesNo {
             player: 0,
             source: 3,
-            label: "Draw a card".into(),
+            label: MessageRef::key("effect.draw_cards"),
         };
         assert_eq!(
             encode_answer(&view, Answer::May { yes: false }),
