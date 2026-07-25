@@ -872,7 +872,7 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                     source: id,
                     controller: game.controller_of(id).0,
                     label: named_message("card.name", game.def_of(id).name),
-                    target: targets.first().copied(),
+                    target: game.spell_target(id).map(WireTarget::of),
                     targets,
                 }
             }
@@ -2541,6 +2541,36 @@ mod tests {
             ]
         );
         assert_eq!(snap.stack[0].target, Some(WireTarget::Object { id: bear }));
+    }
+
+    #[test]
+    fn a_snapshot_lists_modal_spell_targets_from_chosen_modes() {
+        let mut game = Game::new();
+        game.fund_mana(PlayerId(0));
+        let bear = game.spawn_on_battlefield(PlayerId(1), def("Grizzly Bear"));
+        let abrade = game.spawn_in_hand(PlayerId(0), def("Abrade"));
+        game.submit(engine::Intent::Cast {
+            player: PlayerId(0),
+            object: abrade,
+            target: None,
+            x: 0,
+            modes: vec![(0, Some(engine::Target::Object(bear)))],
+            discard_cost: vec![],
+            graveyard_exile: vec![],
+            sacrifice_cost: vec![],
+            kicked: false,
+            bought_back: false,
+            evoked: false,
+            strive_count: 0,
+            replicate_count: 0,
+            alternative_cost: false,
+        })
+        .unwrap();
+
+        let snap = snapshot(&game, PlayerId(0));
+        assert_eq!(snap.stack.len(), 1);
+        assert_eq!(snap.stack[0].target, Some(WireTarget::Object { id: bear }));
+        assert_eq!(snap.stack[0].targets, vec![WireTarget::Object { id: bear }]);
     }
 
     #[test]
