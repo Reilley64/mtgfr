@@ -2,10 +2,10 @@
 
 **Status:** Implemented  
 **Date:** 2026-07-24  
-**Module:** `client/app/routes.ts`, `client/app/shell/lobby/**`, `client/app/shell/decks/list/**`, thin navigation VT seam in `client/app/`  
+**Module:** `client/app/routes.ts`, `client/app/shell/lobby/**`, `client/app/shell/decks/list/**`, deck-card FLIP seam in `client/app/deck-card-nav.ts`  
 **Related current-behavior specs:** [client-shell-deck-builder-and-observability](2026-07-20-client-shell-deck-builder-and-observability.md), [lobby-table-routing-and-live-game](2026-07-20-lobby-table-routing-and-live-game.md)  
 **Supersedes (slice):** Lobby non-goals in [deck-list-tile-chooser](2026-07-24-deck-list-tile-chooser-design.md) and [deck-list-tile-layout-polish](2026-07-24-deck-list-tile-layout-polish-design.md) that deferred lobby Bring/`<select>` redesign — this design covers that slice only  
-**Approach:** Required deck id in play path params; lobby shows the same commander-card chrome as Your decks; CSS View Transitions between home tile and lobby card
+**Approach:** Required deck id in play path params; lobby shows the same commander-card chrome as Your decks; FLIP (WAAPI) morph between home tile and lobby card
 
 ---
 
@@ -20,7 +20,7 @@ Players pick a deck on **Your decks** via a rich commander tile, then land on ho
 - Show the chosen deck as a **commander card** on the host/join (and claim-seat) lobby surfaces — same content language as the Your decks tile (art crop, deck name, commander name, color pips, Precon chip).
 - Put the deck id in the **path**: `/play/:deckId` and `/play/:deckId/:table`.
 - **404** missing, malformed, or not-in-library deck ids (no lobby `<select>`, no name-only Bring strip).
-- Use the **CSS View Transitions API** so the home tile and lobby card read as one continuous object when navigating between `/` and `/play/:deckId` (and Back), when the API is available.
+- Morph the home tile and lobby card as one continuous object when navigating between `/` and `/play/:deckId` (and Back), via FLIP + Web Animations (not CSS View Transitions — Foldkit paints on rAF after `pushUrl`, which cannot sync inside `document.startViewTransition`).
 
 ## Non-goals
 
@@ -35,7 +35,7 @@ Players pick a deck on **Your decks** via a rich commander tile, then land on ho
 
 ## User stories
 
-- As a player, I click a deck tile on `/` and arrive on `/play/{id}` seeing that same deck as a card, with a smooth morph when the browser supports View Transitions.
+- As a player, I click a deck tile on `/` and arrive on `/play/{id}` seeing that same deck as a card, with a short FLIP morph (skipped when `prefers-reduced-motion`).
 - As a player on host/join, I Host or Join with the deck already chosen; to bring a different deck I go **Back** to Your decks and pick another tile.
 - As a player opening a bad or unknown play URL, I see the not-found surface — not an empty lobby or a deck dropdown.
 - As a player claiming a seat at `/play/{deckId}/{table}`, I see the same deck card before Ready (no select).
@@ -80,13 +80,13 @@ Lobby API errors (`UnknownDeck`, table full, etc.) stay as today’s inline huma
 - Host / Join / Ready / Start controls and table-code join field remain; seat rows stay text-only.
 - Lobby must resolve art/pips the same way the deck list does (reuse `DeckSummary` fields + known-commanders; load known-commanders for lobby if not already available there).
 
-### View transitions
+### Deck-card morph (FLIP)
 
-- Home tile and lobby card share one `view-transition-name` keyed by deck id (e.g. `deck-card-{id}`) on a single root wrapper around the card chrome.
-- Navigations between `/` and `/play/:deckId` (tile → lobby, and Back when the matching tile is present) run under `document.startViewTransition` when the API exists; otherwise instant navigation (no polyfill).
-- Prefer matching structure between tile and lobby card so the morph is stable; extract a tiny shared render helper only if duplication would break name/structure pairing — not a full chooser module.
+- Home tile and lobby card share the same deck-card chrome (`renderDeckCard`); the inner chrome node carries `data-deck-card-flip="{id}"` and a Mount that runs the FLIP when a pending snapshot matches.
+- On internal navigations between `/` and `/play/:deckId`, capture the outgoing card’s bounding rect before `Navigation.pushUrl`, then animate the incoming card from that rect (~280ms) after Foldkit mounts it.
+- Prefer matching structure between tile and lobby card so the morph is stable; shared render helper is required for chrome pairing — not a full chooser module.
 - Scope is that card pair only for this change.
-- Respect `prefers-reduced-motion` (no custom flashy overrides that fight the preference).
+- Respect `prefers-reduced-motion` (skip capture/animation).
 
 ---
 
@@ -97,8 +97,8 @@ Lobby API errors (`UnknownDeck`, table full, etc.) stay as today’s inline huma
 | `routes.ts` | `PlayRoute({ deckId })`, `TableRoute({ deckId, table })`; path build/parse; legacy shapes → not found |
 | App `update` / lobby enter | `selectedDeckId` from route `deckId`, not `?deck=` search parsing |
 | `shell/lobby/view.ts` | Deck card instead of select/Bring; keep host/join/table chrome |
-| `shell/decks/list/view.ts` | Tile `href` → `/play/{id}`; `view-transition-name` on tile root |
-| Navigation VT seam | Thin helper wrapping navigations that should animate the card pair |
+| `shell/decks/list/view.ts` | Tile `href` → `/play/{id}`; shared deck-card chrome |
+| `deck-card-nav.ts` | Capture + FLIP Mount for home ↔ play-entry deck card |
 | Known commanders | Available on lobby path so card art/pips resolve |
 
 No wire / proto / BFF schema changes.
@@ -112,7 +112,7 @@ No wire / proto / BFF schema changes.
 - **Scene:** After decks load, unknown `deckId` shows not-found (not lobby).
 - **Deck list:** Tile href is `/play/{id}` (replace `?deck=` assertions).
 - **Outcome:** Activating a tile lands on lobby with that deck’s card visible.
-- **VT helper:** Guard that the navigation path uses `startViewTransition` when available; do not flake Scene tests on animation frames.
+- **FLIP helper:** Unit-test capture/should-animate/runFlip; Scene tests resolve `BindDeckCardFlip` without asserting animation frames.
 
 Implementation updates [client-shell-deck-builder-and-observability](2026-07-20-client-shell-deck-builder-and-observability.md) (and lobby routing mentions if path shapes appear there) to describe path-param play routes and lobby deck card as **current** behavior.
 

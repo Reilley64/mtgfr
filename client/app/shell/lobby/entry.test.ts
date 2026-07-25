@@ -2,6 +2,7 @@ import { Scene } from "foldkit/test";
 import { expect, test } from "vitest";
 import { BindCardArt, CardArtTick } from "../../../lib/ui/card-art";
 import type { CatalogCard } from "../../../lib/wire/types";
+import { BindDeckCardFlip, DeckCardFlipTick } from "../../deck-card-nav";
 import { init, update } from "../../main-exports";
 import { ReceivedDecks } from "../../messages";
 import type { Model } from "../../model";
@@ -153,6 +154,7 @@ test("entry shows deck card and Back, never a select", () => {
     Scene.expect(Scene.text("Back")).toExist(),
     Scene.expect(Scene.selector('[data-testid="lobby-bring"]')).toBeAbsent(),
     Scene.expect(Scene.selector('[data-testid="lobby-deck"]')).toBeAbsent(),
+    Scene.Mount.resolve(BindDeckCardFlip({ deckId: 9 }), DeckCardFlipTick()),
     Scene.Mount.resolve(BindCardArt, CardArtTick()),
   );
 });
@@ -223,6 +225,7 @@ test("claim seat with a pre-chosen deck has no picker", () => {
     Scene.expect(Scene.selector('[data-testid="lobby-claim"]')).toExist(),
     Scene.expect(Scene.selector('[data-testid="lobby-deck"]')).not.toExist(),
     Scene.expect(Scene.selector('[data-testid="lobby-ready"]')).not.toExist(),
+    Scene.Mount.resolve(BindDeckCardFlip({ deckId: 7 }), DeckCardFlipTick()),
   );
 });
 
@@ -262,6 +265,7 @@ test("claim seat pre-pick includes Back to decks", () => {
       }),
     ),
     Scene.expect(Scene.testId("lobby-back")).toExist(),
+    Scene.Mount.resolve(BindDeckCardFlip({ deckId: 7 }), DeckCardFlipTick()),
   );
 });
 

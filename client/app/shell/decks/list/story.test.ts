@@ -4,6 +4,7 @@ import { test } from "vitest";
 import { BindCardArt, CardArtTick } from "../../../../lib/ui/card-art";
 import { ModalOpened, OpenDialogAsModal } from "../../../../lib/ui/confirmDialog";
 import type { CatalogCard } from "../../../../lib/wire/types";
+import { BindDeckCardFlip, DeckCardFlipTick } from "../../../deck-card-nav";
 import { ClosedDeckListMenu, type Message as DeckListMessage, OpenedDeckListMenu } from "./messages";
 import { initialDeckListSubmodel } from "./submodel";
 import { update } from "./update";
@@ -75,6 +76,7 @@ test("deck list chrome and tiles share the wide column classes", () => {
     ),
     Scene.expect(Scene.selector('[data-testid="deck-tile-1"]')).toExist(),
     Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), ClosedDeckListMenu()),
+    Scene.Mount.resolve(BindDeckCardFlip({ deckId: 1 }), DeckCardFlipTick()),
     Scene.Mount.resolve(BindCardArt, CardArtTick()),
     Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
   );
@@ -100,6 +102,7 @@ test("deck list does not render a hover preview", () => {
     Scene.expect(Scene.selector('[data-testid="deck-list-hover-preview"]')).not.toExist(),
     Scene.expect(Scene.selector('[data-testid="deck-tile-1"]')).toExist(),
     Scene.Mount.resolve(BindCardArt, CardArtTick()),
+    Scene.Mount.resolve(BindDeckCardFlip({ deckId: 1 }), DeckCardFlipTick()),
     Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), ClosedDeckListMenu()),
     Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
   );
@@ -140,17 +143,27 @@ test("tile Play href uses /play/:deckId and search filters tiles", () => {
       [BindDeckListContextMenu, ClosedDeckListMenu()],
       [BindDeckListContextMenu, ClosedDeckListMenu()],
       [BindDeckListContextMenu, ClosedDeckListMenu()],
+      [BindDeckCardFlip, DeckCardFlipTick()],
+      [BindDeckCardFlip, DeckCardFlipTick()],
+      [BindDeckCardFlip, DeckCardFlipTick()],
       [BindCardArt, CardArtTick()],
       [BindCardArt, CardArtTick()],
       [BindCardArt, CardArtTick()],
     ),
     Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
     Scene.type(Scene.selector('[data-testid="deck-list-search"]'), "mirror"),
-    Scene.Mount.expectEnded(BindDeckListContextMenu, BindDeckListContextMenu, BindCardArt, BindCardArt),
+    Scene.Mount.expectEnded(
+      BindDeckListContextMenu,
+      BindDeckListContextMenu,
+      BindDeckCardFlip,
+      BindDeckCardFlip,
+      BindCardArt,
+      BindCardArt,
+    ),
     Scene.expect(Scene.selector('[data-testid="deck-tile-1"]')).not.toExist(),
     Scene.expect(Scene.selector('[data-testid="deck-tile--9"]')).toExist(),
     Scene.type(Scene.selector('[data-testid="deck-list-search"]'), "zzzz"),
-    Scene.Mount.expectEnded(BindDeckListContextMenu, BindCardArt),
+    Scene.Mount.expectEnded(BindDeckListContextMenu, BindDeckCardFlip, BindCardArt),
     Scene.expect(Scene.text("No decks match.")).toExist(),
   );
 });
@@ -176,6 +189,8 @@ test("owned deck context menu offers Edit and Delete", () => {
     Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
     Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), ClosedDeckListMenu()),
     Scene.Mount.resolve(BindDeckListContextMenu({ deckId: -1 }), ClosedDeckListMenu()),
+    Scene.Mount.resolve(BindDeckCardFlip({ deckId: 1 }), DeckCardFlipTick()),
+    Scene.Mount.resolve(BindDeckCardFlip({ deckId: -1 }), DeckCardFlipTick()),
     Scene.Mount.resolve(BindCardArt, CardArtTick()),
     Scene.Mount.resolve(BindCardArt, CardArtTick()),
   );
@@ -192,6 +207,7 @@ test("menu Delete opens the confirm dialog", () => {
     }),
     Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
     Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), OpenedDeckListMenu({ deckId: 1, x: 40, y: 50 })),
+    Scene.Mount.resolve(BindDeckCardFlip({ deckId: 1 }), DeckCardFlipTick()),
     Scene.Mount.resolve(BindCardArt, CardArtTick()),
     Scene.click(Scene.selector('[data-testid="deck-list-menu-delete"]')),
     Scene.expect(Scene.selector('[data-testid="confirm-delete-dialog"]')).toExist(),
@@ -213,6 +229,7 @@ test("Escape closes the context menu", () => {
     Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), OpenedDeckListMenu({ deckId: 1, x: 40, y: 50 })),
     Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
     Scene.expect(Scene.selector('[data-testid="deck-list-context-menu"]')).not.toExist(),
+    Scene.Mount.resolve(BindDeckCardFlip({ deckId: 1 }), DeckCardFlipTick()),
     Scene.Mount.resolve(BindCardArt, CardArtTick()),
   );
 });

@@ -8,6 +8,7 @@ import { describe, it } from "vitest";
 import { BindCardArt, CardArtTick } from "../../lib/ui/card-art";
 import { ModalOpened, OpenDialogAsModal } from "../../lib/ui/confirmDialog";
 import type { CatalogCard } from "../../lib/wire/types";
+import { BindDeckCardFlip, DeckCardFlipTick } from "../deck-card-nav";
 import { init, update } from "../main-exports";
 import type { Model as AppModel } from "../model";
 import { HomeRoute, LoginRoute, NewDeckRoute, NotFoundRoute, PlayRoute, TableRoute } from "../routes";
@@ -150,6 +151,7 @@ describe("shell surface scenes", () => {
       Scene.expect(Scene.text("Your decks")).toExist(),
       Scene.expect(Scene.text("Superfriends")).toExist(),
       Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), ClosedDeckListMenu()),
+      Scene.Mount.resolve(BindDeckCardFlip({ deckId: 1 }), DeckCardFlipTick()),
       Scene.Mount.resolve(BindCardArt, CardArtTick()),
       Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
     );
@@ -176,6 +178,7 @@ describe("shell surface scenes", () => {
       Scene.expect(Scene.text('Delete "Superfriends"?')).toExist(),
       Scene.Mount.resolve(OpenDialogAsModal(), ModalOpened()),
       Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), ClosedDeckListMenu()),
+      Scene.Mount.resolve(BindDeckCardFlip({ deckId: 1 }), DeckCardFlipTick()),
       Scene.Mount.resolve(BindCardArt, CardArtTick()),
       Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
     );
@@ -272,6 +275,7 @@ describe("shell surface scenes", () => {
       Scene.expect(Scene.text("Lobby")).toExist(),
       Scene.expect(Scene.text("edh.reilley.dev")).toExist(),
       Scene.expect(Scene.text("mtgfr")).not.toExist(),
+      Scene.Mount.resolve(BindDeckCardFlip({ deckId: 1 }), DeckCardFlipTick()),
       Scene.Mount.resolve(BindCardArt, CardArtTick()),
     );
   });
