@@ -1,7 +1,7 @@
 # Board Camera and Layout
 
-**Status:** Current (as of 2026-07-23)
-**Module:** `client/app/board/geometry/camera.ts`, `client/app/board/geometry/interaction.ts`, `client/app/board/geometry/layout.ts`, `client/app/board/geometry/hit-test.ts`, `client/app/board/geometry/density.ts`, `client/app/board/submodel.ts`
+**Status:** Current (as of 2026-07-25)
+**Module:** `client/app/board/geometry/camera.ts`, `client/app/board/geometry/interaction.ts`, `client/app/board/geometry/layout.ts`, `client/app/board/geometry/hit-test.ts`, `client/app/board/geometry/density.ts`, `client/app/board/html/camera-gesture-mount.ts`, `client/app/board/submodel.ts`
 
 ---
 
@@ -32,7 +32,9 @@ The camera is `{ panX, panY, zoom }` and follows:
 screen = world * zoom + pan
 ```
 
-`worldToScreen` and `screenToWorld` are pure and do not read DOM state. `zoomAt(cam, sx, sy, factor)` preserves the world point under the screen coordinate while zooming. Zoom is bounded to the board limits. Panning changes `panX` and `panY` and sets `cameraUserMoved` so automatic fitting does not fight the player on later game syncs.
+`worldToScreen` and `screenToWorld` are pure and do not read DOM state. `zoomAt(cam, sx, sy, factor)` preserves the world point under the screen coordinate while zooming. Zoom is bounded to the board limits. Panning, wheel zoom, and two-finger pinch zoom all set `cameraUserMoved` so automatic fitting does not fight the player on later game syncs.
+
+Wheel and pinch gestures are translated by the board camera gesture Mount into `BoardCameraZoomed({ x, y, factor })`, where `x` and `y` are board-internal screen coordinates in the same space as canvas pointer handlers. The mount prevents native wheel/touch zoom only while the gesture starts over the live board rectangle.
 
 ### fitCamera
 
@@ -72,6 +74,7 @@ Attachments remain associated with their host for layout and hover raise. Tapped
 - Resolve hits from logical layout and topmost order, not animation poses.
 - Treat density, hover raise, packing, and cluster fans as layout overlays rather than engine facts.
 - Keep `fitCamera` in geometry code so tests can exercise it without rendering.
+- Keep camera persistence out of browser storage; the camera resets to fit on cold board entry until the user pans or zooms.
 
 ## Testing Decisions
 
@@ -80,11 +83,11 @@ Attachments remain associated with their host for layout and hover raise. Tapped
 - Hit-test tests cover overlapped/tapped cards, topmost resolution, and avatar hits.
 - Density tests cover row packing, cluster fan poses, clamping to seat bands, and hover raise ordering.
 - Interaction tests cover pan-vs-click thresholds and camera user-moved behavior.
-- Board sync tests cover that a user-panned camera is preserved across later game syncs (actions/deltas must not re-fit).
+- Gesture mount tests cover wheel factors, pinch factors, and client-to-board coordinate conversion.
+- Board sync tests cover that a user-panned or user-zoomed camera is preserved across later game syncs (actions/deltas must not re-fit).
 
 ## Out of Scope
 
-- Multi-touch pinch zoom.
 - Persisting per-user camera across sessions.
 - Changing engine object ordering to support visual packing.
 - Reflowing the board for portrait orientation.

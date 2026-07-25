@@ -31,6 +31,7 @@ const CardFlight = S.Struct({
 });
 
 export const ArtLoaded = m("ArtLoaded");
+export const BoardCameraZoomed = m("BoardCameraZoomed", { x: S.Number, y: S.Number, factor: S.Number });
 export const BoardPointerDown = m("BoardPointerDown", CanvasPoint);
 export const BoardPointerMove = m("BoardPointerMove", CanvasPoint);
 export const BoardPointerUp = m("BoardPointerUp", CanvasPoint);
@@ -248,6 +249,7 @@ export const LegendToggled = m("LegendToggled");
 
 export const Message = S.Union([
   ArtLoaded,
+  BoardCameraZoomed,
   BoardPointerDown,
   BoardPointerMove,
   BoardPointerUp,

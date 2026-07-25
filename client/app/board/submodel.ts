@@ -75,7 +75,7 @@ import {
   stagedPickTargets,
 } from "./action/targeting";
 import type { Camera, Vec2 } from "./geometry/camera";
-import { panBy, screenToWorld, worldToScreen } from "./geometry/camera";
+import { panBy, screenToWorld, worldToScreen, zoomAt } from "./geometry/camera";
 import {
   combatStagingClearsOnStepChange,
   handleCombatDrop,
@@ -297,7 +297,7 @@ export function syncBoardWithGame(model: BoardModel, fold: BoardFold): BoardMode
   if (!next.cameraUserMoved && next.cameraFitPlayers !== playerCount) {
     next = {
       ...next,
-      camera: fitCamera({ x: next.viewport.width, y: next.viewport.height }, playerCount, 0),
+      camera: fitCamera({ x: next.viewport.width, y: next.viewport.height }, playerCount, HAND_BAR_H),
       cameraFitPlayers: playerCount,
     };
   }
@@ -1780,6 +1780,16 @@ export function updateBoard(
   switch (message._tag) {
     case "ArtLoaded":
       return [model, []];
+    case "BoardCameraZoomed":
+      if (!Number.isFinite(message.factor) || message.factor <= 0) return [model, []];
+      return [
+        {
+          ...model,
+          camera: zoomAt(model.camera, message.x, message.y, message.factor),
+          cameraUserMoved: true,
+        },
+        [],
+      ];
     case "BoardPointerDown":
       return [pointerDownModel(model, fold, message.x, message.y), []];
     case "BoardPointerMove": {

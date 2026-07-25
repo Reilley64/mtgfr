@@ -368,7 +368,7 @@ function stripView(
             h.Type("button"),
             h.DataAttribute("testid", "stack-collapse"),
             h.OnClick(StackCollapseClicked()),
-            h.Class(buttonClass("ghost", "px-2 py-1 text-chip")),
+            h.Class(buttonClass("ghost", "hit-quiet px-2 py-1 text-chip")),
             h.Attribute("aria-label", "Collapse stack"),
           ],
           ["✕"],

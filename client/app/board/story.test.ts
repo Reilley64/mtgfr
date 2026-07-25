@@ -3,7 +3,7 @@ import { expect, test } from "vitest";
 import type { VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
 import type { Message } from "./messages";
-import { BoardPointerDown, BoardPointerMove, FlightsSynced } from "./messages";
+import { BoardCameraZoomed, BoardPointerDown, BoardPointerMove, FlightsSynced } from "./messages";
 import { spawnFlight } from "./motion/flights";
 import { type BoardModel, initialBoardModel, syncBoardWithGame, updateBoard } from "./submodel";
 
@@ -218,6 +218,38 @@ test("syncBoardWithGame keeps a user-panned camera across game syncs", () => {
   // A later delta / action must not re-fit and wipe the pan.
   const afterAction = syncBoardWithGame(moved, { ...fold, seq: fold.seq + 1 });
   expect(afterAction.camera).toEqual(moved.camera);
+});
+
+test("wheel or pinch zoom marks the camera user-moved and blocks later refit", () => {
+  const fold = gameFold();
+  const fitted = syncBoardWithGame(initialBoardModel(), fold);
+
+  const [zoomed] = updateBoard(fitted, BoardCameraZoomed({ x: 720, y: 420, factor: 1.25 }), fold, null);
+
+  expect(zoomed.cameraUserMoved).toBe(true);
+  expect(zoomed.camera.zoom).toBeCloseTo(fitted.camera.zoom * 1.25);
+
+  const morePlayers = {
+    ...fold,
+    seq: fold.seq + 1,
+    state: {
+      ...state(),
+      players: [
+        ...state().players,
+        {
+          commander_tax: 0,
+          hand_count: 7,
+          library_count: 80,
+          life: 40,
+          lost: false,
+          mana_pool: { any: 0, colored: [0, 0, 0, 0, 0], colorless: 0 },
+          player: 1,
+        },
+      ],
+    },
+  };
+  const afterSync = syncBoardWithGame(zoomed, morePlayers);
+  expect(afterSync.camera).toEqual(zoomed.camera);
 });
 
 test("syncBoardWithGame clears staged attackers/blocks when the step advances", () => {

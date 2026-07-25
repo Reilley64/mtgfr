@@ -20,6 +20,7 @@ import { layout, STEP } from "./geometry/layout";
 import { stackPresentation } from "./geometry/stackLayout";
 import { autoTapPreviewIds, paymentPreviewAction } from "./html/actions";
 import { MountBoardAudio, MountHintAutoHide } from "./html/audio-mount";
+import { MountBoardCameraGesture } from "./html/camera-gesture-mount";
 import { MountBoardKeyboard } from "./html/keyboard-mount";
 import { manaTrayView } from "./html/mana-tray";
 import { boardOverlays } from "./html/overlays";
@@ -256,6 +257,16 @@ export const view = Submodel.defineView<BoardViewModel, Message>((model) => {
             [],
           )
         : null,
+      h.div(
+        [
+          h.Class("pointer-events-none absolute inset-0 z-10 touch-none"),
+          h.DataAttribute("testid", "board-camera-gesture-mount"),
+          h.DataAttribute("board-width", String(model.board.viewport.width)),
+          h.DataAttribute("board-height", String(model.board.viewport.height)),
+          h.OnMount(MountBoardCameraGesture()),
+        ],
+        [],
+      ),
       h.div([h.Class("sr-only"), h.Attribute("aria-live", "polite")], [ariaSummary]),
       Canvas.view<Message>({
         width: model.board.viewport.width,
