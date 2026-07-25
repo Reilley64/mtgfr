@@ -335,6 +335,73 @@ test("claim seat pre-pick includes Back to decks", () => {
   );
 });
 
+test("unknown table explains that the link is stale", () => {
+  Scene.scene(
+    { update, view: lobbyAppView },
+    Scene.with(
+      tableLobbyModel({
+        lobby: {
+          ...initialLobbySlice(),
+          error: "UnknownTable",
+          tableId: "GONE",
+          selectedDeckId: 7,
+        },
+        decks: {
+          ...init()[0].decks,
+          list: { ...init()[0].decks.list, decks: [deck], loading: false },
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("lobby-error")).toExist(),
+    Scene.expect(Scene.text("That table link is stale or expired. Ask the host for a new code.")).toExist(),
+    Scene.expect(Scene.text("No such table.")).not.toExist(),
+    Scene.Mount.resolve(BindDeckCardFlip({ deckId: 7 }), DeckCardFlipTick()),
+  );
+});
+
+test("watchers are told to stay on the table link for spectator view", () => {
+  Scene.scene(
+    { update, view: lobbyAppView },
+    Scene.with(
+      tableLobbyModel({
+        lobby: {
+          ...initialLobbySlice(),
+          tableId: "ABC123",
+          selectedDeckId: 7,
+          view: {
+            table_id: "ABC123",
+            you: null,
+            started: false,
+            error: null,
+            start_error: null,
+            seats: [
+              {
+                player: 0,
+                claimed: true,
+                username: "alice",
+                deck_name: "Superfriends",
+                deck_id: 7,
+                ready: true,
+                is_host: true,
+                is_you: false,
+              },
+            ],
+          },
+        },
+        decks: {
+          ...init()[0].decks,
+          list: { ...init()[0].decks.list, decks: [deck], loading: false },
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("lobby-watch-note")).toContainText(
+      "Stay on this table link: if you don't claim a seat before the host starts, you'll enter spectator view.",
+    ),
+    Scene.expect(Scene.testId("lobby-claim")).toExist(),
+    Scene.Mount.resolve(BindDeckCardFlip({ deckId: 7 }), DeckCardFlipTick()),
+  );
+});
+
 test("host redirect uses /play/:deckId/:table", () => {
   const [model] = init();
   const withDeck = playLobbyModel({

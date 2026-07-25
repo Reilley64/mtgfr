@@ -7,7 +7,7 @@
 
 ## Problem Statement
 
-After choosing a deck, a player must host or join a table, claim a seat, ready up, and wait for the host to start — with clear chrome for table codes, seat colors, and a clean handoff from the home deck tile into the play route — without flashing the wrong lobby surface during Host create→redirect.
+After choosing a deck, a player must host or join a table, claim a seat, ready up, wait for the host to start, or stay as a watcher — with clear chrome for table codes, stale table links, seat colors, and a clean handoff from the home deck tile into the play route — without flashing the wrong lobby surface during Host create→redirect.
 
 ---
 
@@ -22,6 +22,8 @@ Lobby UI lives under `client/app/shell/lobby/**` on path-param play routes (`/pl
 - As a player, I visit `/play/:deckId`, choose Host or Join for the selected deck, optionally paste a copied table code in the focused Join panel, ready up, and wait for the host to start.
 - As a host, after creating a table I land on `/play/:deckId/:table` without seeing claim-seat chrome flash on the entry route.
 - As a player, I can copy the table code (or fall back to a manual-copy input if clipboard permission is denied) and unlock table audio by pressing Ready.
+- As a signed-in watcher, I can stay on a table link without claiming a seat and understand that the game will open in spectator view when it starts.
+- As a player following an old table link, I see stale-link copy that asks me to get a fresh code from the host.
 
 ---
 
@@ -50,11 +52,11 @@ On entry, `entryMode` is `choose` | `join`. **Choose** shows twin destination ca
 
 ### Seated lobby chrome
 
-The lobby polls `GET /tables/{table}/lobby` via a Foldkit subscription until `started`. Seat rows show seat-color dots (`seat-forest`, `seat-island`, `seat-mountain`, `seat-arcane`). The host (first joiner) sees a Start button when ≥2 seats are claimed and all are ready. Table-code copy uses `navigator.clipboard.writeText` from an Effect-backed command — denied permission reveals a manual-copy input instead of throwing. `unlockTableAudio()` is called on Ready-up (the required user-gesture unlock for the shared `AudioContext`).
+The lobby polls `GET /tables/{table}/lobby` via a Foldkit subscription until `started`. Seat rows show seat-color dots (`seat-forest`, `seat-island`, `seat-mountain`, `seat-arcane`). A signed-in user on the seated lobby who has not claimed a seat sees `lobby-watch-note`, explaining that staying on the link enters spectator view when the host starts the game. The host (first joiner) sees a Start button when ≥2 seats are claimed and all are ready. Table-code copy uses `navigator.clipboard.writeText` from an Effect-backed command — denied permission reveals a manual-copy input instead of throwing. `unlockTableAudio()` is called on Ready-up (the required user-gesture unlock for the shared `AudioContext`).
 
 ### Lobby poll and table lifecycle (`client/app/shell/lobby/poll.ts`, `client/app/shell/lobby/subscriptions.ts`, `client/lib/lobby-store.ts`)
 
-`lobbyPoll(tableId)` is an Effect stream consumed by a Foldkit subscription. The subscription polls lobby state while a table is present and stops when `started` is true. `client/lib/lobby-store.ts` holds lobby helpers for multi-seat coordination. Once the lobby moves to `started`, the app transitions from the lobby view to the board mount, preserving the table id in the route.
+`lobbyPoll(tableId)` is an Effect stream consumed by a Foldkit subscription. The subscription polls lobby state while a table is present and stops when `started` is true. `client/lib/lobby/client.ts` preserves structured JSON lobby bodies from non-2xx responses, so a 404 `UnknownTable` response reaches `model.error` instead of collapsing to `Unreachable`. `UnknownTable` renders as stale-link copy: the table link is stale or expired and the player should ask the host for a new code. `client/lib/lobby-store.ts` holds lobby helpers for multi-seat coordination. Once the lobby moves to `started`, the app transitions from the lobby view to the board mount, preserving the table id in the route.
 
 Helpers also live in `client/lib/lobby/client.ts` for table URL / code parsing used by the entry UI.
 

@@ -5,11 +5,13 @@
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
+import * as Stream from "effect/Stream";
 import * as TestClock from "effect/testing/TestClock";
 import { beforeAll, describe, expect, it } from "vitest";
 import { makeClient } from "~/effect/client";
 import { stubLocation } from "~/effect/test-support";
-import { type StreamCallbacks, streamDeltas } from "./stream-subscription";
+import { StreamTerminalError } from "./messages";
+import { type StreamCallbacks, streamDeltas, streamMessages } from "./stream-subscription";
 
 beforeAll(stubLocation);
 
@@ -170,6 +172,17 @@ describe("game stream subscription streamDeltas", () => {
         expect(errors).toEqual([404]);
       }),
     );
+  });
+
+  it("emits terminal statuses so the board can explain 401 and 404 failures", async () => {
+    for (const status of [401, 404]) {
+      const h = harness(() => status);
+      const messages = await Effect.runPromise(
+        streamMessages("t", () => 1, makeClient(h.fetchImpl)).pipe(Stream.take(1), Stream.runCollect),
+      );
+
+      expect(Array.from(messages)).toEqual([StreamTerminalError({ status })]);
+    }
   });
 
   it("treats a silent established connection as dead after the stale timeout and reconnects", async () => {
