@@ -115,8 +115,8 @@ test *args:
     @just server-test {{ args }}
     @just client-test
 
-[doc("Server CI check (fmt + clippy + CR index + migrate + nextest)")]
-server-check: server-format server-lint engine-cr-index-check
+[doc("Server CI check (CR index on committed sources, then fmt + clippy + migrate + nextest)")]
+server-check: engine-cr-index-check server-format server-lint
     cargo run -p server -- migration apply
     just server-test
 

@@ -308,8 +308,8 @@ always-on `docker-cache-guard` (`scripts/check-docker-workflow-cache.sh`) and
 `ci-wave1-guard` (`scripts/check-ci-wave1.sh`).
 
 **`verify-jobs.yml`** (reusable): two parallel jobs:
-- `verify-server`: `just server-check` (fmt + clippy + `engine-cr-index-check` +
-  migrate + nextest) — needs Rust + Postgres.
+- `verify-server`: `just server-check` (`engine-cr-index-check` on committed
+  sources before fmt, then clippy + migrate + nextest) — needs Rust + Postgres.
 - `verify-client`: `just client-check` (tokens + `client-mana-oracle-check` +
   proto codegen + format + lint + typecheck + vitest) — needs Bun (+ Rust for
   codegen).
