@@ -1,11 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as tableAudio from "../../../lib/tableAudio";
-import {
-  RequestedLobbyCancelJoin,
-  RequestedLobbyHost,
-  RequestedLobbyOpenJoin,
-  RequestedLobbyReady,
-} from "./messages";
+import { RequestedLobbyCancelJoin, RequestedLobbyHost, RequestedLobbyOpenJoin, RequestedLobbyReady } from "./messages";
 import { initialLobbySlice } from "./submodel";
 import { CreateLobbyTable, ReadyLobby, update } from "./update";
 

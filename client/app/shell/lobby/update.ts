@@ -127,10 +127,7 @@ export const update = (
     M.tagsExhaustive({
       ChangedLobbyCode: ({ code }) => [{ ...model, code }, []],
       RequestedLobbyOpenJoin: () => [{ ...model, entryMode: "join" }, []],
-      RequestedLobbyCancelJoin: () => [
-        { ...model, entryMode: "choose", code: "", error: null },
-        [],
-      ],
+      RequestedLobbyCancelJoin: () => [{ ...model, entryMode: "choose", code: "", error: null }, []],
       RequestedLobbyHost: () => {
         const deckId = selectedDeckId(model);
         if (deckId == null) {
