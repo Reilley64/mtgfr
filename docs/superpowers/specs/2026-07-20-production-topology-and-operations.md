@@ -296,14 +296,15 @@ the release semver. No moving `latest` tag — pin explicit versions in `terrafo
 ### Release and CI pipeline
 
 **Commit convention:** Angular format (`feat:`, `fix:`, `build:`, `ci:`, `docs:`, `refactor:`,
-`test:`, `perf:`, `style:`; breaking changes via `BREAKING CHANGE:` footer). Enforced by
-commitlint + Husky on `commit-msg`. **PRs are squash-merged** — the squash commit subject is
-the PR title; semantic-release analyzes that line only.
+`test:`, `perf:`, `style:`; breaking changes via `BREAKING CHANGE:` footer). Enforced locally
+by commitlint via Husky `commit-msg` (`.husky/commit-msg`); not re-run in PR CI. **PRs are
+squash-merged** — the squash commit subject is the PR title; semantic-release analyzes that
+line only.
 
 **`ci.yml`** (PRs): `concurrency` group `ci-${{ github.ref }}` with
 `cancel-in-progress: true` so superseded pushes cancel. Jobs: `changes`
-(`dorny/paths-filter` for `iac/**` + `.github/workflows/ci.yml`), commitlint,
-`verify-jobs.yml`, and terraform (only when `changes.outputs.iac == 'true'`).
+(`dorny/paths-filter` for `iac/**` + `.github/workflows/ci.yml`), `verify-jobs.yml`, and
+terraform (only when `changes.outputs.iac == 'true'`).
 
 **`verify-jobs.yml`** (reusable):
 - `verify-server-gate`: checkout + pass-marker `lookup-only` cache

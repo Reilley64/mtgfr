@@ -30,24 +30,6 @@ jobs:
               - 'iac/**'
               - '.github/workflows/ci.yml'
 
-  commitlint:
-    name: Commitlint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-
-      - uses: actions/setup-node@v5
-        with:
-          node-version-file: .node-version
-          cache: npm
-
-      - run: npm clean-install
-
-      - name: Lint PR commits
-        run: npx commitlint --from "origin/${{ github.base_ref }}" --to "${{ github.event.pull_request.head.sha }}" --verbose
-
   verify:
     name: Verify
     uses: ./.github/workflows/verify-jobs.yml
