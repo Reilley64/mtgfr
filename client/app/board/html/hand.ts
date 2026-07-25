@@ -25,11 +25,11 @@ export const HAND_CARD_W = HAND_FACE_W;
 export const HAND_CARD_PEEK = HAND_BAR_PEEK;
 export const HAND_CARD_OVERLAP = HAND_CARD_W - HAND_CARD_PEEK;
 export const HAND_CARD_H = Math.round(HAND_CARD_W / 0.716);
-export const HAND_VISIBLE_H = 130;
+export const HAND_VISIBLE_H = 178;
 /** Room above each face for cast-cost pips (reserved band outside the card). */
-const HAND_PIP_ROW_H = 20;
-/** Height of the bottom action bar — tuck + pip row + padding (Solid HAND_BAR_H). */
-export const HAND_BAR_H = HAND_VISIBLE_H + HAND_PIP_ROW_H + 12;
+const HAND_PIP_ROW_H = 24;
+/** Height of the bottom action bar — tuck + pip row + padding. */
+export const HAND_BAR_H = HAND_VISIBLE_H + HAND_PIP_ROW_H + 16;
 /**
  * From the viewport bottom: band where sticky Alt-inspect hand hover stays latched after leaving
  * the peek hit strip (raised faces extend above `HAND_BAR_H` into the board).

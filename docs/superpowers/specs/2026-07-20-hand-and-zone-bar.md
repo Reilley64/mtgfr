@@ -1,5 +1,5 @@
 # Hand and Zone Bar
-**Status:** Current (as of 2026-07-23)
+**Status:** Current (as of 2026-07-25)
 **Module:** `client/app/board/html/hand.ts`, `client/app/board/html/hand-drag-mount.ts`, `client/app/board/geometry/handBarHit.ts`, `client/app/board/motion/flights.ts`
 
 ## Problem Statement
@@ -19,7 +19,7 @@ Render a fixed DOM hand bar at the bottom of the board. It groups tiles in Arena
 
 ## Behavior
 
-- Hand tiles fan with dense overlap, hover raise, and cost pips above the card face.
+- Hand tiles fan with Arena-forward resting geometry (`HAND_FACE_W` 208, `HAND_BAR_PEEK` 92, `HAND_VISIBLE_H` 178, derived `HAND_BAR_H` 218), hover raise, and cost pips above the card face. See [hand-bar-arena-spacing design](2026-07-25-hand-bar-arena-spacing-design.md).
 - A release above `HAND_BAR_H - HAND_PLAY_SLACK_PX` commits the drop; releasing below snaps back.
 - `hiddenId`, `hiddenIds`, and flight ownership suppress tiles while a staged play or flight owns the card.
 - Playable hand/command tiles get the playable border from `barZoneAura(zone, playable)`.
@@ -34,11 +34,13 @@ Render a fixed DOM hand bar at the bottom of the board. It groups tiles in Arena
 - `slotInert` is reserved for staged/in-flight cards; it is not a visual dimming signal for unplayable cards.
 - `cardArt(h, opts)` is used for DOM faces and accepts optional `style` for precise tile sizing.
 - Alt-inspect hover metadata is attached to every face-up bar tile, playable or not.
+- Resting bar spacing is hand-tuned Arena-forward constants (not a single global scale factor). Hit height, raise translate, sticky inspect band, and drag play threshold derive from those constants.
 
 ## Testing Decisions
 
 - Scene/unit tests cover the hand bar, command/hand playable borders, unplayable no-dim behavior, drag-source opacity fade, and spectator suppression.
 - Interaction checks should drag above and below the play threshold and assert commit versus cancel outcomes.
+- Geometry lock in `handBarHit.test.ts` asserts face/peek/visible/`HAND_BAR_H` targets so a silent regress to the old dense values fails.
 
 ## Out of Scope
 
