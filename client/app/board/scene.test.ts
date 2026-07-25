@@ -373,8 +373,8 @@ test("pointer up on on-board pending choose_target submits choose_targets", () =
       pending_choice: {
         kind: "choose_target",
         label: testMessageRef("Target creature"),
+        min: 1,
         max: 1,
-        optional: false,
         player: 0,
         source: 1,
         items: [{ id: 22, label: "Grizzly Bears" }],
@@ -458,8 +458,8 @@ test("pointer up on multi on-board choose_target accumulates picks until Confirm
   const pending = {
     kind: "choose_target" as const,
     label: testMessageRef("Target creatures"),
+    min: 1,
     max: 2,
-    optional: false,
     player: 0,
     source: 1,
     items: [
@@ -498,8 +498,8 @@ test("Enter confirms multi on-board choose_target when draft is ready", () => {
   const pending = {
     kind: "choose_target" as const,
     label: testMessageRef("Target creatures"),
+    min: 1,
     max: 2,
-    optional: false,
     player: 0,
     source: 1,
     items: [
@@ -532,8 +532,8 @@ test("Space confirms multi on-board choose_target when draft is ready", () => {
   const pending = {
     kind: "choose_target" as const,
     label: testMessageRef("Target creatures"),
+    min: 1,
     max: 2,
-    optional: false,
     player: 0,
     source: 1,
     items: [
@@ -610,8 +610,8 @@ test("TargetChosen accumulates multi on-board stack targets until Confirm", () =
   const pending = {
     kind: "choose_target" as const,
     label: testMessageRef("Target spells"),
+    min: 1,
     max: 2,
-    optional: false,
     player: 0,
     source: 1,
     items: [
@@ -1937,8 +1937,8 @@ test("PileCardClicked during choose_target in graveyard submits choose_targets",
   const pending = {
     kind: "choose_target" as const,
     label: testMessageRef("Target creature card in a graveyard"),
+    min: 1,
     max: 1,
-    optional: false,
     player: 0,
     source: 1,
     items: [{ id: 8, label: "Reanimate me" }],

@@ -774,6 +774,27 @@ pub enum SplittingContinuation {
 /// A decision the engine is waiting on. While one is pending, only the matching
 /// [`Intent::ChooseOrder`] from `player` is legal.
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MayYesNoResume {
+    /// The default yes/no path: a "yes" runs the baked-in effect and a "no" declines it.
+    Default,
+    /// Trade Secrets' repeat gate: "yes" draws two for `player`, then pauses `caster` on the next
+    /// `MayDrawUpTo`.
+    TradeSecretsRepeat { caster: PlayerId, max: u8 },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MayDrawUpToResume {
+    /// The default count-choice path: draw exactly the chosen count.
+    Default,
+    /// Trade Secrets' caster draw gate: once `player` draws the chosen count, pause `opponent` on
+    /// the generic yes/no repeat choice.
+    TradeSecretsRepeat {
+        opponent: PlayerId,
+        source: ObjectId,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PendingChoice {
     /// `player` must order their simultaneously-triggered abilities (put on the stack
     /// in the chosen order). The order is a permutation of `0..effects.len()`.
@@ -828,32 +849,17 @@ pub enum PendingChoice {
         player: PlayerId,
         source: ObjectId,
         effect: Effect,
+        resume: MayYesNoResume,
     },
-    /// `player` (the resolving controller of an [`Effect::Choice(ChoiceEffect::MayDrawUpTo)`]) chooses how many cards to
-    /// draw — any number `0..=max` (CR 120.4 / 601.2c — Arcane Denial's "may draw up to two
-    /// cards"). Answered by [`Intent::ChooseDrawCount`], which draws exactly the chosen number.
-    MayDrawUpTo { player: PlayerId, max: u8 },
-    /// Trade Secrets' declinable draw, after `opponent`'s mandatory two-card draw
-    /// ([`Effect::Choice(ChoiceEffect::MayDrawUpToThenOpponentMayRepeat)`]): `player` (the caster) chooses `0..=max`
-    /// cards to draw. Answered by [`Intent::ChooseDrawCount`] (the same wire shape as
-    /// [`MayDrawUpTo`](Self::MayDrawUpTo)); once answered, `opponent` is paused on
-    /// [`TradeSecretsRepeat`](Self::TradeSecretsRepeat) to decide whether to run the whole
-    /// process again.
-    TradeSecretsCasterDraw {
+    /// `player` chooses how many cards to draw — any number `0..=max` (CR 120.4 / 601.2c —
+    /// Arcane Denial's "may draw up to two cards", Trade Secrets' caster draw, and similar
+    /// declinable count choices). `effect` carries the player-visible prompt label; `resume`
+    /// carries any follow-up bookkeeping the answer should trigger after the draw happens.
+    MayDrawUpTo {
         player: PlayerId,
         max: u8,
-        opponent: PlayerId,
-        source: ObjectId,
-    },
-    /// Trade Secrets' repeat-or-stop pause: `player` (the target opponent, having already drawn
-    /// two and watched `caster` draw up to `max` more) may run the whole process (the mandatory
-    /// two-card draw, then the caster's declinable draw) again, or stop. Answered by
-    /// [`Intent::AnswerMay`] (reusing the yes/no wire shape — `yes` repeats, `no` stops).
-    TradeSecretsRepeat {
-        player: PlayerId,
-        caster: PlayerId,
-        max: u8,
-        source: ObjectId,
+        effect: Effect,
+        resume: MayDrawUpToResume,
     },
     /// `player` (the active player at their untap step) may choose not to untap each of
     /// `permanents` — the permanents they control that carry [`CardDef::may_choose_not_to_untap`]
@@ -1771,8 +1777,6 @@ impl PendingChoice {
             | PendingChoice::ChooseActivationCostTargets { player, .. }
             | PendingChoice::MayYesNo { player, .. }
             | PendingChoice::MayDrawUpTo { player, .. }
-            | PendingChoice::TradeSecretsCasterDraw { player, .. }
-            | PendingChoice::TradeSecretsRepeat { player, .. }
             | PendingChoice::DeclineUntap { player, .. }
             | PendingChoice::ChooseDredge { player, .. }
             | PendingChoice::PayCost { player, .. }

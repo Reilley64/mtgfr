@@ -947,7 +947,7 @@ function cardPickDeclineLabel(pending: PendingChoiceView): string | null {
     case "choose_attach_host":
       return pending.optional ? "Don't attach" : null;
     case "choose_target":
-      return pending.optional ? "No target" : null;
+      return pending.min === 0 ? "No target" : null;
     case "pay_cumulative_upkeep_or_sacrifice":
       return "Don't pay";
     case "choose_dredge":
@@ -968,9 +968,6 @@ function cardPickConfig(pending: PendingChoiceView): {
   switch (pending.kind) {
     case "choose_target":
       return { title: messageText(pending.label), submitLabel: "Choose", declineLabel };
-    case "choose_spell_targets":
-    case "choose_ability_targets":
-      return { title: messageText(pending.label), submitLabel: "Choose" };
     case "choose_activation_cost_targets":
       return { title: "Choose cost targets", submitLabel: "Choose" };
     case "decline_untap":
@@ -1093,9 +1090,7 @@ function pendingGraveyardAimCoach(
     | "choose_dredge"
     | "pay_cumulative_upkeep_or_sacrifice"
     | "choose_activation_cost_targets"
-    | "choose_target"
-    | "choose_spell_targets"
-    | "choose_ability_targets",
+    | "choose_target",
   oneClick: boolean,
 ): string {
   switch (kind) {
@@ -1116,8 +1111,6 @@ function pendingGraveyardAimCoach(
         ? "Click a card in the graveyard for the activation cost"
         : "Click cards in the graveyard for the activation cost";
     case "choose_target":
-    case "choose_spell_targets":
-    case "choose_ability_targets":
       return oneClick ? "Click a card in the graveyard to target" : "Click cards in the graveyard to target";
     default: {
       const _exhaustive: never = kind;
@@ -1268,9 +1261,7 @@ function cardPickForKind(
       kind !== "choose_dredge" &&
       kind !== "pay_cumulative_upkeep_or_sacrifice" &&
       kind !== "choose_activation_cost_targets" &&
-      kind !== "choose_target" &&
-      kind !== "choose_spell_targets" &&
-      kind !== "choose_ability_targets"
+      kind !== "choose_target"
     ) {
       return null;
     }
@@ -1279,13 +1270,7 @@ function cardPickForKind(
     const picked = draft.kind === "card-pick" ? draft.picked : [];
     const ready = !oneClick && cardPickReady(pending, picked);
     const required = cardPickRequiredCount(pending);
-    const maxHint =
-      kind === "shuffle_from_graveyard" ||
-      kind === "choose_target" ||
-      kind === "choose_spell_targets" ||
-      kind === "choose_ability_targets"
-        ? pending.max
-        : required;
+    const maxHint = kind === "shuffle_from_graveyard" || kind === "choose_target" ? pending.max : required;
     const countLine =
       !oneClick && maxHint != null
         ? h.div(
@@ -1475,9 +1460,7 @@ function cardPickForKind(
     const draft = board.promptDraft ?? initPromptDraft(pending, state);
     const picked = draft.kind === "card-pick" ? draft.picked : [];
     const max =
-      pending.kind === "choose_target" ||
-      pending.kind === "choose_spell_targets" ||
-      pending.kind === "choose_ability_targets"
+      pending.kind === "choose_target"
         ? pending.max
         : pending.kind === "choose_own_sacrifices" || pending.kind === "choose_activation_cost_targets"
           ? pending.count
@@ -1662,7 +1645,7 @@ function selectFromTopLanesPrompt(
 }
 
 function yesNoPrompt(
-  pending: Extract<PendingChoiceView, { kind: "may_yes_no" | "dance_exile_more" | "trade_secrets_repeat" }>,
+  pending: Extract<PendingChoiceView, { kind: "may_yes_no" | "dance_exile_more" }>,
   tableId: string | null,
 ): Html {
   return h.div(
@@ -2524,21 +2507,14 @@ function stringPickPrompt(
 }
 
 function numberPickTitle(
-  pending: Extract<
-    PendingChoiceView,
-    { kind: "may_draw_up_to" | "trade_secrets_caster_draw" | "pay_any_amount_of_mana" }
-  >,
+  pending: Extract<PendingChoiceView, { kind: "may_draw_up_to" | "pay_any_amount_of_mana" }>,
 ): string {
-  if (pending.kind === "trade_secrets_caster_draw") return `Choose how many cards to draw (up to ${pending.max})`;
   if (pending.kind === "pay_any_amount_of_mana") return `Pay any amount of mana (up to ${pending.max})`;
-  return `Draw up to ${pending.max}`;
+  return messageText(pending.label);
 }
 
 function numberPickPrompt(
-  pending: Extract<
-    PendingChoiceView,
-    { kind: "may_draw_up_to" | "trade_secrets_caster_draw" | "pay_any_amount_of_mana" }
-  >,
+  pending: Extract<PendingChoiceView, { kind: "may_draw_up_to" | "pay_any_amount_of_mana" }>,
   board: BoardModel,
   state: VisibleState,
   tableId: string | null,
@@ -2729,11 +2705,7 @@ function pendingChoicePrompt(
       if (pending.kind !== "assign_combat_damage") return frame("pending-choice", pendingChoiceTitle(pending), []);
       return damageAssignPrompt(pending, state, board);
     case "yesNo":
-      if (
-        pending.kind !== "may_yes_no" &&
-        pending.kind !== "dance_exile_more" &&
-        pending.kind !== "trade_secrets_repeat"
-      ) {
+      if (pending.kind !== "may_yes_no" && pending.kind !== "dance_exile_more") {
         return frame("pending-choice", pendingChoiceTitle(pending), []);
       }
       return yesNoPrompt(pending, tableId);
@@ -2785,11 +2757,7 @@ function pendingChoicePrompt(
       }
       return stringPickPrompt(pending, board, state, tableId);
     case "numberPick":
-      if (
-        pending.kind !== "may_draw_up_to" &&
-        pending.kind !== "trade_secrets_caster_draw" &&
-        pending.kind !== "pay_any_amount_of_mana"
-      ) {
+      if (pending.kind !== "may_draw_up_to" && pending.kind !== "pay_any_amount_of_mana") {
         return frame("pending-choice", pendingChoiceTitle(pending), []);
       }
       return numberPickPrompt(pending, board, state, tableId);

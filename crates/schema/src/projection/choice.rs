@@ -114,7 +114,7 @@ impl<'a> ChoiceCtx<'a> {
                 source,
                 label: to_wire_message(effect.message()),
                 items: self.label_targets(legal),
-                optional: count.min == 0,
+                min: count.min,
                 max: count.max,
             },
             engine::PendingChoice::ChooseSpellTargets {
@@ -124,13 +124,13 @@ impl<'a> ChoiceCtx<'a> {
                 max,
                 legal,
                 ..
-            } => PendingChoiceView::ChooseSpellTargets {
+            } => PendingChoiceView::ChooseTarget {
                 player: player.0,
-                spell,
+                source: spell,
                 label: named_message("card.name", self.game.def_of(spell).name),
+                items: self.label_targets(legal),
                 min,
                 max,
-                items: self.label_targets(legal),
             },
             engine::PendingChoice::ChooseTargetPlayers {
                 player,
@@ -151,14 +151,21 @@ impl<'a> ChoiceCtx<'a> {
                 player,
                 source,
                 effect,
+                ..
             } => PendingChoiceView::MayYesNo {
                 player: player.0,
                 source,
                 label: to_wire_message(effect.message()),
             },
-            engine::PendingChoice::MayDrawUpTo { player, max } => PendingChoiceView::MayDrawUpTo {
+            engine::PendingChoice::MayDrawUpTo {
+                player,
+                max,
+                effect,
+                ..
+            } => PendingChoiceView::MayDrawUpTo {
                 player: player.0,
                 max,
+                label: to_wire_message(effect.message()),
             },
             engine::PendingChoice::JoinForcesPayment { player, source, .. } => {
                 PendingChoiceView::PayAnyAmountOfMana {
@@ -170,22 +177,6 @@ impl<'a> ChoiceCtx<'a> {
                     }),
                 }
             }
-            engine::PendingChoice::TradeSecretsCasterDraw {
-                player,
-                max,
-                opponent,
-                ..
-            } => PendingChoiceView::TradeSecretsCasterDraw {
-                player: player.0,
-                max,
-                opponent: opponent.0,
-            },
-            engine::PendingChoice::TradeSecretsRepeat {
-                player, caster, ..
-            } => PendingChoiceView::TradeSecretsRepeat {
-                player: player.0,
-                caster: caster.0,
-            },
             engine::PendingChoice::PayCost {
                 player,
                 source,
@@ -413,13 +404,13 @@ impl<'a> ChoiceCtx<'a> {
                 max,
                 legal,
                 ..
-            } => PendingChoiceView::ChooseAbilityTargets {
+            } => PendingChoiceView::ChooseTarget {
                 player: player.0,
                 source,
                 label: to_wire_message(effect.message()),
+                items: self.label_targets(legal),
                 min,
                 max,
-                items: self.label_targets(legal),
             },
             engine::PendingChoice::ChooseActivationCostTargets {
                 player,
@@ -912,13 +903,14 @@ mod coverage_tests {
                     legal: vec![Target::Object(blocker)],
                     clause: 0,
                 },
-                |view| matches!(view, PendingChoiceView::ChooseSpellTargets { .. }),
+                |view| matches!(view, PendingChoiceView::ChooseTarget { min: 1, max: 1, .. }),
             ),
             (
                 PendingChoice::MayYesNo {
                     player: PlayerId(0),
                     source,
                     effect: draw_effect(),
+                    resume: engine::MayYesNoResume::Default,
                 },
                 |view| matches!(view, PendingChoiceView::MayYesNo { .. }),
             ),

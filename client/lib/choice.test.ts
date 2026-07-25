@@ -19,7 +19,6 @@ import type { ObjectView, PendingChoiceView, VisibleState, WireIntent, WireModeC
 const ALL_PENDING_CHOICE_KINDS = [
   "order_triggers",
   "choose_target",
-  "choose_spell_targets",
   "choose_target_players",
   "may_yes_no",
   "decline_untap",
@@ -43,7 +42,6 @@ const ALL_PENDING_CHOICE_KINDS = [
   "sacrifice_edict",
   "proliferate",
   "phase_out",
-  "choose_ability_targets",
   "choose_activation_cost_targets",
   "may_sacrifice",
   "choose_own_sacrifices",
@@ -80,10 +78,8 @@ const ALL_PENDING_CHOICE_KINDS = [
   "opponent_chooses_revealed_to_graveyard",
   "pay_cumulative_upkeep_or_sacrifice",
   "may_draw_up_to",
-  "trade_secrets_caster_draw",
   "pay_any_amount_of_mana",
   "choose_card_name",
-  "trade_secrets_repeat",
 ] as const satisfies readonly PendingChoiceView["kind"][];
 
 const emptyCost = { colored: [], generic: 0 };
@@ -403,7 +399,7 @@ describe("answerFromDraft builds accepted intents", () => {
 
   test("builds may answers for yes-no prompts", () => {
     expectDraftIntent(
-      { kind: "trade_secrets_repeat", caster: 1, player: 0 },
+      { kind: "may_yes_no", label: testMessageRef("Repeat?"), player: 0, source: 1 },
       { kind: "may", yes: true },
       { kind: "answer_may", player: 0, yes: true },
     );
@@ -569,7 +565,7 @@ describe("answerFromDraft builds accepted intents", () => {
 
   test("builds draw count answers", () => {
     expectDraftIntent(
-      { kind: "may_draw_up_to", max: 3, player: 0 },
+      { kind: "may_draw_up_to", label: testMessageRef("Draw up to 3"), max: 3, player: 0 },
       { kind: "number", count: 2 },
       { kind: "choose_draw_count", count: 2, player: 0 },
     );
@@ -656,8 +652,8 @@ describe("answerFromDraft builds accepted intents", () => {
         kind: "choose_target",
         items: [{ id: 11, label: "Bear" }],
         label: testMessageRef("Choose target"),
+        min: 1,
         max: 1,
-        optional: false,
         player: 0,
         source: 1,
       },
@@ -679,8 +675,8 @@ describe("answerFromDraft builds accepted intents", () => {
           { id: 22, label: "Island" },
         ],
         label: testMessageRef("Untap two target lands"),
+        min: 2,
         max: 2,
-        optional: false,
         player: 0,
         source: 1,
       },
@@ -850,7 +846,7 @@ describe("answerFromDraft builds accepted intents", () => {
   test("builds multi-target and shuffle answers", () => {
     expectDraftIntent(
       {
-        kind: "choose_spell_targets",
+        kind: "choose_target",
         items: [
           { id: 81, label: "A" },
           { id: 82, label: "B" },
@@ -859,9 +855,9 @@ describe("answerFromDraft builds accepted intents", () => {
         max: 2,
         min: 1,
         player: 0,
-        spell: 90,
+        source: 90,
       },
-      { kind: "targets", ids: [81, 82] },
+      { kind: "card-pick", picked: [81, 82] },
       {
         kind: "choose_targets",
         player: 0,
