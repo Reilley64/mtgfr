@@ -844,11 +844,11 @@ target = "any"
 ```
 
 Structural composers (`sequence`, `conditional`, `choose_one`) have no `mode`.
-See `docs/superpowers/specs/2026-07-23-nested-effect-families-design.md` for the full map.
+See `docs/superpowers/specs/2026-07-20-card-dsl-and-card-pool.md` for the living Effect-family surface; this section is the authoring lookup index.
 
 ## 6. Effects (`[[abilities.effects]]` type + mode)
 
-**Authoring shape:** write nested `type` (family) + `mode` (leaf), as in [Effect families](#effect-families) above — e.g. legacy `deal_damage` is `type = "damage"`, `mode = "target"`; legacy `search_library` is `type = "dig"`, `mode = "search_library"`; legacy `anthem_static` is `type = "static"`, `mode = "anthem"`. Only structural composers (`sequence`, `conditional`, `choose_one`) use a sole `type=` with no `mode`. This table is a **lookup index**, not copy-paste TOML: the left column is the *legacy flat effect name* (search continuity). Find the row by that name, then map it to family `type` + leaf `mode` via `docs/superpowers/specs/2026-07-23-nested-effect-families-design.md`. **Do not put the left-column string in `type=` alone** — always use family `type` + `mode` except for structural composers.
+**Authoring shape:** write nested `type` (family) + `mode` (leaf), as in [Effect families](#effect-families) above — e.g. legacy `deal_damage` is `type = "damage"`, `mode = "target"`; legacy `search_library` is `type = "dig"`, `mode = "search_library"`; legacy `anthem_static` is `type = "static"`, `mode = "anthem"`. Only structural composers (`sequence`, `conditional`, `choose_one`) use a sole `type=` with no `mode`. This table is a **lookup index**, not copy-paste TOML: the left column is the *legacy flat effect name* (search continuity). Find the row by that name, then map it to family `type` + leaf `mode` using the tables below (and the family list in `docs/superpowers/specs/2026-07-20-card-dsl-and-card-pool.md`). **Do not put the left-column string in `type=` alone** — always use family `type` + `mode` except for structural composers.
 
 "Target" column: does it read a `target` field (§7)?
 
