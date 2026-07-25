@@ -66,6 +66,7 @@ These documents are **not superseded** and must stay current alongside the specs
 | Doc | Domain |
 |-----|--------|
 | [client-interaction-test-policy](2026-07-22-client-interaction-test-policy-design.md) | Outcome-focused client interaction test policy (process doc; keep) |
+| [engine-refactor-program](2026-07-25-engine-refactor-program-design.md) | Design input for engine Waves A–F (interned defs, obligations, triggers, choices, CR 613/614); update living surface specs per wave |
 
 ## Authoring conventions
 

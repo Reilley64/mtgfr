@@ -185,30 +185,15 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
             source,
             label,
             items,
-            optional,
+            min,
             max,
         } => Choice::ChooseTarget(pb::PendingChoiceViewChooseTarget {
             player: u32::from(player),
             source,
             label: Some(message_ref_to_pb(label)),
             items: choice_items_to_pb(items),
-            optional,
             max: u32::from(max),
-        }),
-        PendingChoiceView::ChooseSpellTargets {
-            player,
-            spell,
-            label,
-            min,
-            max,
-            items,
-        } => Choice::ChooseSpellTargets(pb::PendingChoiceViewChooseSpellTargets {
-            player: u32::from(player),
-            spell,
-            label: Some(message_ref_to_pb(label)),
             min: u32::from(min),
-            max: u32::from(max),
-            items: choice_items_to_pb(items),
         }),
         PendingChoiceView::ChooseTargetPlayers {
             player,
@@ -243,25 +228,11 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
             source,
             max,
         }),
-        PendingChoiceView::MayDrawUpTo { player, max } => {
+        PendingChoiceView::MayDrawUpTo { player, max, label } => {
             Choice::MayDrawUpTo(pb::PendingChoiceViewMayDrawUpTo {
                 player: u32::from(player),
                 max: u32::from(max),
-            })
-        }
-        PendingChoiceView::TradeSecretsCasterDraw {
-            player,
-            max,
-            opponent,
-        } => Choice::TradeSecretsCasterDraw(pb::PendingChoiceViewTradeSecretsCasterDraw {
-            player: u32::from(player),
-            max: u32::from(max),
-            opponent: u32::from(opponent),
-        }),
-        PendingChoiceView::TradeSecretsRepeat { player, caster } => {
-            Choice::TradeSecretsRepeat(pb::PendingChoiceViewTradeSecretsRepeat {
-                player: u32::from(player),
-                caster: u32::from(caster),
+                label: Some(message_ref_to_pb(label)),
             })
         }
         PendingChoiceView::PayCost {
@@ -424,21 +395,6 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
         } => Choice::PhaseOut(pb::PendingChoiceViewPhaseOut {
             player: u32::from(player),
             source,
-            items: choice_items_to_pb(items),
-        }),
-        PendingChoiceView::ChooseAbilityTargets {
-            player,
-            source,
-            label,
-            min,
-            max,
-            items,
-        } => Choice::ChooseAbilityTargets(pb::PendingChoiceViewChooseAbilityTargets {
-            player: u32::from(player),
-            source,
-            label: Some(message_ref_to_pb(label)),
-            min: u32::from(min),
-            max: u32::from(max),
             items: choice_items_to_pb(items),
         }),
         PendingChoiceView::ChooseActivationCostTargets {
@@ -1722,7 +1678,7 @@ mod tests {
                     print: String::new(),
                     player: None,
                 }],
-                optional: false,
+                min: 1,
                 max: 1,
             }),
             actions: vec![ActionView {

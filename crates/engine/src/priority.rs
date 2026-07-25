@@ -65,8 +65,9 @@ impl Game {
         let Object::Permanent(perm) = &self.objects[object as usize] else {
             return None;
         };
-        perm.def.abilities.iter().position(|a| {
-            a.effect.is_mana_ability()
+        let printed = card_def(perm.def);
+        printed.abilities.iter().position(|a| {
+            a.effect.clone().is_mana_ability()
                 && matches!(a.timing, Timing::Activated(cost)
                     if cost.taps_self
                         && cost.mana == Cost::FREE
@@ -82,9 +83,10 @@ impl Game {
         let Object::Permanent(perm) = &self.objects[object as usize] else {
             return false;
         };
+        let printed = card_def(perm.def);
         if let CardKind::Land {
             produces: Some(_), ..
-        } = perm.def.kind
+        } = &printed.kind
         {
             return true;
         }
@@ -127,9 +129,10 @@ impl Game {
         player: PlayerId,
         object: ObjectId,
     ) -> Result<Vec<Event>, Reject> {
-        let Object::Permanent(perm) = self.objects[object as usize] else {
+        let Object::Permanent(ref perm) = self.objects[object as usize] else {
             return Err(Reject::CannotProduceMana);
         };
+        let printed = card_def(perm.def);
         // A land with the `produces` sugar has a free base tap-for-one. Everything else that makes
         // mana does it with a real ability — Sol Ring, Arcane Signet, a mana dork, and a fetch-only
         // land's *non*-mana ability (which finds none, and rejects below). Delegate so the one (CR 605, CR 113)
@@ -137,7 +140,7 @@ impl Game {
         let CardKind::Land {
             produces: Some(produces),
             ..
-        } = perm.def.kind
+        } = &printed.kind
         else {
             let Some(index) = self.free_tap_mana_ability(object) else {
                 return Err(Reject::CannotProduceMana);
@@ -154,7 +157,7 @@ impl Game {
         // and "any color that a land an opponent controls could produce" (Exotic Orchard) both
         // resolve to a real credit here — an empty identity/producible set taps for nothing.
         let mana = match produces {
-            LandProduces::Mana(m) => Some(m),
+            LandProduces::Mana(m) => Some(*m),
             LandProduces::CommanderIdentity => self.commander_identity_credit(player),
             LandProduces::OpponentColors => self.opponent_producible_colors_credit(player),
         };
@@ -196,7 +199,8 @@ impl Game {
         let Some(perm) = self.as_permanent(land) else {
             return;
         };
-        if !matches!(perm.def.kind, CardKind::Land { .. }) {
+        let printed = card_def(perm.def);
+        if !matches!(&printed.kind, CardKind::Land { .. }) {
             return;
         }
         // "Tapped for mana" means it produced mana (CR 106.11) — the type this tap made, read back
@@ -220,7 +224,7 @@ impl Game {
                 let (
                     Timing::Static,
                     Effect::Static(StaticEffect::TappedForManaBonus { scope, bonus_color }),
-                ) = (ability.timing, ability.effect)
+                ) = (ability.timing, ability.effect.clone())
                 else {
                     continue;
                 };
@@ -317,7 +321,7 @@ impl Game {
     pub(crate) fn targets_are_legal(
         &self,
         object: ObjectId,
-        def: CardDef,
+        def: &CardDef,
         target: Option<Target>,
         controller: PlayerId,
         mode: Option<usize>,
@@ -337,7 +341,7 @@ impl Game {
     /// a creature-targeting mode requires a creature and a non-targeting mode requires none. A
     /// mode-less query on a modal card (snapshot / auto-pass, which don't know the pick) reports
     /// no requirement.
-    pub(crate) fn required_target(&self, def: CardDef, mode: Option<usize>) -> TargetSpec {
+    pub(crate) fn required_target(&self, def: &CardDef, mode: Option<usize>) -> TargetSpec {
         // Animate Dead (CR 303.4a's "enchant creature card in a graveyard"): the pool's one Aura
         // whose enchant subject is a graveyard card, not a battlefield permanent — checked ahead
         // of the ordinary `CardKind::Aura` battlefield-permanent case below (see
@@ -357,7 +361,7 @@ impl Game {
         }
         if def.modal {
             return mode
-                .and_then(|m| nth_mode(def, m))
+                .and_then(|m| nth_mode(&def, m))
                 .map_or(TargetSpec::None, |a| a.effect.target());
         }
         for ability in def.abilities {
@@ -421,10 +425,11 @@ impl Game {
             if self.controller_of(id) != player || p.tapped {
                 continue;
             }
+            let printed = card_def(p.def);
             // Permanents with a paid tap-for-mana ability (Fetid Heath filter, Study Hall any)
             // are counted only via the fixed-point below — adding their free mode here would
             // mark them used and hide the paid mode when duals are required.
-            let has_paid_mana = p.def.abilities.iter().any(|a| {
+            let has_paid_mana = printed.abilities.iter().any(|a| {
                 let Timing::Activated(cost) = a.timing else {
                     return false;
                 };
@@ -443,10 +448,10 @@ impl Game {
                 && let CardKind::Land {
                     produces: Some(produces),
                     ..
-                } = p.def.kind
+                } = &printed.kind
             {
                 let credit = match produces {
-                    LandProduces::Mana(m) => Some(m),
+                    LandProduces::Mana(m) => Some(*m),
                     LandProduces::CommanderIdentity => self.commander_identity_credit(player),
                     LandProduces::OpponentColors => self.opponent_producible_colors_credit(player),
                 };
@@ -455,7 +460,7 @@ impl Game {
                     contributed_free = true;
                 }
             }
-            for (i, a) in p.def.abilities.iter().enumerate() {
+            for (i, a) in printed.abilities.iter().enumerate() {
                 let Timing::Activated(cost) = a.timing else {
                     continue;
                 };
@@ -593,13 +598,14 @@ impl Game {
             if p.owner != player || p.tapped {
                 continue;
             }
+            let printed = card_def(p.def);
             if let CardKind::Land {
                 produces: Some(produces),
                 ..
-            } = p.def.kind
+            } = &printed.kind
             {
                 let credit = match produces {
-                    LandProduces::Mana(m) => Some(m),
+                    LandProduces::Mana(m) => Some(*m),
                     LandProduces::CommanderIdentity => self.commander_identity_credit(player),
                     LandProduces::OpponentColors => self.opponent_producible_colors_credit(player),
                 };
@@ -609,7 +615,7 @@ impl Game {
                     continue;
                 }
             }
-            for a in p.def.abilities {
+            for a in printed.abilities {
                 let Timing::Activated(cost) = a.timing else {
                     continue;
                 };
@@ -1052,10 +1058,11 @@ impl Game {
             if p.owner != player || p.tapped || Some(id) == exclude {
                 continue;
             }
-            let nonland = !matches!(p.def.kind, CardKind::Land { .. });
-            if let CardKind::Land { produces, .. } = p.def.kind {
+            let printed = card_def(p.def);
+            let nonland = !matches!(&printed.kind, CardKind::Land { .. });
+            if let CardKind::Land { produces, .. } = &printed.kind {
                 let base_credit = match produces {
-                    Some(LandProduces::Mana(m)) => Some(m),
+                    Some(LandProduces::Mana(m)) => Some(*m),
                     Some(LandProduces::CommanderIdentity) => self.commander_identity_credit(player),
                     Some(LandProduces::OpponentColors) => {
                         self.opponent_producible_colors_credit(player)
@@ -1074,7 +1081,7 @@ impl Game {
                     });
                 }
             }
-            for (i, a) in p.def.abilities.iter().enumerate() {
+            for (i, a) in printed.abilities.iter().enumerate() {
                 let Timing::Activated(acost) = a.timing else {
                     continue;
                 };
@@ -1135,7 +1142,7 @@ impl Game {
                     });
                 }
             }
-            let own_len = p.def.abilities.len();
+            let own_len = printed.abilities.len();
             for (gi, (acost, batch)) in self.granted_mana_abilities(id).into_iter().enumerate() {
                 let index = own_len + gi;
                 if !acost.taps_self
@@ -1188,7 +1195,19 @@ impl Game {
                 };
                 for delve in (0..=max_delve).rev() {
                     let cost = self.cast_cost(
-                        player, card, def, None, 0, zone, delve, false, false, false, 0, 0, false,
+                        player,
+                        card,
+                        def.clone(),
+                        None,
+                        0,
+                        zone,
+                        delve,
+                        false,
+                        false,
+                        false,
+                        0,
+                        0,
+                        false,
                     );
                     if let Some(plan) =
                         self.plan_auto_taps(player, cost, None, Some(def.spell_characteristics()))
@@ -1199,14 +1218,14 @@ impl Game {
                 return Vec::new();
             }
             MeaningfulAction::CastSplitHalf { card, half } => {
-                let Some(&face) = self.def_of(card).halves.get(half as usize) else {
+                let Some(face) = self.def_of(card).halves.get(half as usize) else {
                     return Vec::new();
                 };
                 (
                     self.cast_cost(
                         player,
                         card,
-                        face,
+                        face.clone(),
                         None,
                         0,
                         Zone::Hand,
@@ -1223,15 +1242,15 @@ impl Game {
                 )
             }
             MeaningfulAction::CastPrepared { source } => {
-                let Some(back) = self.def_of(source).back else {
+                let Some(back) = card_def(self.permanent(source).def).back else {
                     return Vec::new();
                 };
-                let back = *back;
+                let back = card_def(back);
                 (
                     self.cast_cost(
                         player,
                         source,
-                        back,
+                        back.as_ref().clone(),
                         None,
                         0,
                         Zone::Battlefield,

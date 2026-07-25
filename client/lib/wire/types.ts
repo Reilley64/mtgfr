@@ -411,19 +411,10 @@ export type PendingChoiceView =
       items: Array<ChoiceItem>;
       kind: "choose_target";
       label: MessageRef;
+      min: number;
       max: number;
-      optional: boolean;
       player: number;
       source: U32;
-    }
-  | {
-      items: Array<ChoiceItem>;
-      kind: "choose_spell_targets";
-      label: MessageRef;
-      max: number;
-      min: number;
-      player: number;
-      spell: U32;
     }
   | {
       items: Array<ChoiceItem>;
@@ -470,15 +461,6 @@ export type PendingChoiceView =
   | { items: Array<ChoiceItem>; keep_one?: boolean; kind: "sacrifice_edict"; player: number; source: U32 }
   | { items: Array<ChoiceItem>; kind: "proliferate"; player: number; source: U32 }
   | { items: Array<ChoiceItem>; kind: "phase_out"; player: number; source: U32 }
-  | {
-      items: Array<ChoiceItem>;
-      kind: "choose_ability_targets";
-      label: MessageRef;
-      max: number;
-      min: number;
-      player: number;
-      source: U32;
-    }
   | { count: number; items: Array<ChoiceItem>; kind: "choose_activation_cost_targets"; player: number; source: U32 }
   | { items: Array<ChoiceItem>; kind: "may_sacrifice"; player: number; source: U32 }
   | { count: number; items: Array<ChoiceItem>; kind: "choose_own_sacrifices"; player: number; source: U32 }
@@ -540,14 +522,12 @@ export type PendingChoiceView =
   | { count: number; items: Array<ChoiceItem>; kind: "put_from_hand_on_top"; player: number }
   | { items: Array<ChoiceItem>; kind: "opponent_chooses_revealed_to_graveyard"; player: number; source: U32 }
   | { count: number; items: Array<ChoiceItem>; kind: "pay_cumulative_upkeep_or_sacrifice"; player: number; source: U32 }
-  | { kind: "may_draw_up_to"; max: number; player: number }
+  | { kind: "may_draw_up_to"; label: MessageRef; max: number; player: number }
   // Join forces (Collective Voyage): pay any amount of mana toward the shared X. `max` is the
   // largest generic cost this seat's available mana can pay right now; paying 0 declines.
   | { kind: "pay_any_amount_of_mana"; max: number; player: number; source: U32 }
   // Conundrum Sphinx: "each player names a card" (CR 201.2 / 703.2j) — a free-text card name.
-  | { kind: "choose_card_name"; player: number; source: U32 }
-  | { kind: "trade_secrets_caster_draw"; max: number; opponent: number; player: number }
-  | { caster: number; kind: "trade_secrets_repeat"; player: number };
+  | { kind: "choose_card_name"; player: number; source: U32 };
 
 export type WireIntent =
   | {

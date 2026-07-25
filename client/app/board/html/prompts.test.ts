@@ -553,8 +553,8 @@ test("optional on-board choose_target Decline emits empty choose_targets", () =>
       pending_choice: {
         kind: "choose_target",
         label: testMessageRef("Target creature"),
+        min: 0,
         max: 1,
-        optional: true,
         player: 0,
         source: 1,
         items: [{ id: 7, label: "Bear" }],
@@ -1233,6 +1233,7 @@ test("may_draw_up_to prompt emits choose_draw_count intent from UI", () => {
   const s = state({
     pending_choice: {
       kind: "may_draw_up_to",
+      label: testMessageRef("You may draw up to 3"),
       max: 3,
       player: 0,
     },

@@ -102,7 +102,7 @@ impl Game {
             // Each selected card must be one of the looked-at cards, match the filter, and appear
             // at most once.
             if !cards.contains(&id)
-                || !filter.matches(self.def_of(id))
+                || !filter.matches(&self.def_of(id))
                 || selected[..i].contains(&id)
             {
                 return Err(Reject::IllegalChoice);
@@ -121,7 +121,7 @@ impl Game {
                     player,
                     object: self.next_object_id(),
                     from,
-                    card: self.def_of(from),
+                    card: self.def_id_of(from),
                 },
                 TopDest::Battlefield => {
                     let permanent = self.next_object_id();
@@ -134,7 +134,7 @@ impl Game {
                     }
                 }
             };
-            self.push_apply(&mut events, event);
+            self.push_apply_effect_event(&mut events, event);
         }
         // An Aura among the deployed permanents may need a host chosen (CR 303.4f). Scoped to a
         // lone deployed permanent (Armored Skyhunter's `up_to = 1`) — a multi-permanent batch
@@ -161,9 +161,9 @@ impl Game {
                         player,
                         object: self.next_object_id(),
                         from,
-                        card: self.def_of(from),
+                        card: self.def_id_of(from),
                     };
-                    self.push_apply(&mut events, event);
+                    self.push_apply_effect_event(&mut events, event);
                 }
             }
         }
@@ -219,7 +219,7 @@ impl Game {
                 player,
                 object: self.next_object_id(),
                 from,
-                card: self.def_of(from),
+                card: self.def_id_of(from),
             };
             self.push_apply(&mut events, event);
         }
@@ -338,7 +338,7 @@ impl Game {
                 color,
             }
         };
-        self.push_apply(&mut events, event);
+        self.push_apply_effect_event(&mut events, event);
         Ok(events)
     }
 
@@ -430,7 +430,7 @@ impl Game {
                 player,
                 object: self.next_object_id(),
                 from,
-                card: self.def_of(from),
+                card: self.def_id_of(from),
             },
             SearchDest::Battlefield => Event::SearchedToBattlefield {
                 permanent: self.next_object_id(),
@@ -444,7 +444,7 @@ impl Game {
             SearchDest::LibraryTop => Event::RevealedTopOfLibrary {
                 player,
                 card: from,
-                def: self.def_of(from),
+                def: self.def_id_of(from),
             },
             // Buried Alive: "put them into your graveyard" — the same library-to-graveyard
             // choke `mill_events` uses, so this arrival never counts as "from the battlefield"
@@ -558,7 +558,7 @@ impl Game {
 
         let mut events = Vec::new();
         if let Some(from) = choice {
-            self.push_apply(
+            self.push_apply_effect_event(
                 &mut events,
                 Event::PutOntoBattlefieldFromHand {
                     permanent: self.next_object_id(),
@@ -593,7 +593,7 @@ impl Game {
         let mut events = Vec::new();
         if let Some(from) = choice {
             let permanent = self.next_object_id();
-            self.push_apply(
+            self.push_apply_effect_event(
                 &mut events,
                 Event::PutOntoBattlefieldFromHand {
                     permanent,
@@ -747,7 +747,7 @@ impl Game {
 
         let mut events = Vec::new();
         self.run(
-            modes[mode],
+            modes[mode].clone(),
             ResolveCtx {
                 controller: player,
                 source,
@@ -801,7 +801,7 @@ impl Game {
         let mut seen_players: Vec<PlayerId> = Vec::new();
         let mut resolved: Vec<(Effect, Option<Target>)> = Vec::new();
         for (m, target) in modes {
-            let (Some(&effect), false) = (mode_effects.get(m), seen_modes.contains(&m)) else {
+            let (Some(effect), false) = (mode_effects.get(m), seen_modes.contains(&m)) else {
                 return Err(Reject::IllegalMode);
             };
             seen_modes.push(m);
@@ -810,7 +810,7 @@ impl Game {
                 if target.is_some() {
                     return Err(Reject::IllegalTarget);
                 }
-                resolved.push((effect, None));
+                resolved.push((effect.clone(), None));
                 continue;
             }
             let Some(Target::Player(chosen_player)) = target else {
@@ -818,13 +818,13 @@ impl Game {
             };
             if seen_players.contains(&chosen_player)
                 || !self
-                    .legal_targets_for(spec, source, player, color_identity(def), x)
+                    .legal_targets_for(spec, source, player, color_identity(&def.clone()), x)
                     .contains(&target.expect("checked Some above"))
             {
                 return Err(Reject::IllegalTarget);
             }
             seen_players.push(chosen_player);
-            resolved.push((effect, target));
+            resolved.push((effect.clone(), target));
         }
         self.finish_answer();
 

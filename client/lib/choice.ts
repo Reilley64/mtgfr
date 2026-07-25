@@ -34,7 +34,6 @@ export type FormulatorId =
 export const FORMULATOR_FOR_KIND: { [K in PendingChoiceView["kind"]]: FormulatorId } = {
   order_triggers: "orderTriggers",
   choose_target: "cardPick",
-  choose_spell_targets: "cardPick",
   choose_target_players: "playerPick",
   may_yes_no: "yesNo",
   decline_untap: "cardPick",
@@ -58,7 +57,6 @@ export const FORMULATOR_FOR_KIND: { [K in PendingChoiceView["kind"]]: Formulator
   sacrifice_edict: "cardPick",
   proliferate: "cardPick",
   phase_out: "cardPick",
-  choose_ability_targets: "cardPick",
   choose_activation_cost_targets: "cardPick",
   may_sacrifice: "cardPick",
   choose_own_sacrifices: "cardPick",
@@ -95,10 +93,8 @@ export const FORMULATOR_FOR_KIND: { [K in PendingChoiceView["kind"]]: Formulator
   opponent_chooses_revealed_to_graveyard: "cardPick",
   pay_cumulative_upkeep_or_sacrifice: "cardPick",
   may_draw_up_to: "numberPick",
-  trade_secrets_caster_draw: "numberPick",
   pay_any_amount_of_mana: "numberPick",
   choose_card_name: "stringPick",
-  trade_secrets_repeat: "yesNo",
 };
 
 export function assertAllKindsRegistered(kinds: readonly PendingChoiceView["kind"][]): void {
@@ -184,11 +180,7 @@ export function answerFromBoardTarget(pc: PendingChoiceView, target: WireTarget)
     if (target.kind === "player") return { kind: "target", id: 0, player: target.player };
     return { kind: "targets", ids: [target.id] };
   }
-  if (
-    pc.kind === "choose_spell_targets" ||
-    pc.kind === "choose_ability_targets" ||
-    pc.kind === "choose_activation_cost_targets"
-  ) {
+  if (pc.kind === "choose_activation_cost_targets") {
     if (target.kind !== "object") return null;
     return { kind: "targets", ids: [target.id] };
   }
@@ -257,7 +249,6 @@ export function initPromptDraft(pc: PendingChoiceView, state: VisibleState): Pro
     }
     case "may_yes_no":
     case "dance_exile_more":
-    case "trade_secrets_repeat":
       return { kind: "may", yes: false };
     case "pay_cost":
     case "pay_or_counter":
@@ -290,8 +281,6 @@ export function initPromptDraft(pc: PendingChoiceView, state: VisibleState): Pro
       return { kind: "string", value: pc.options[0] ?? "" };
     case "may_draw_up_to":
       return { kind: "number", count: 0 };
-    case "trade_secrets_caster_draw":
-      return { kind: "number", count: pc.max };
     case "pay_any_amount_of_mana":
       return { kind: "number", count: 0 };
     case "choose_card_name":
@@ -344,7 +333,6 @@ export function answerFromDraft(pc: PendingChoiceView, draft: PromptDraft): Answ
     }
     case "may_yes_no":
     case "dance_exile_more":
-    case "trade_secrets_repeat":
       if (draft.kind !== "may") return null;
       return { kind: "may", yes: draft.yes };
     case "pay_cost":
@@ -399,7 +387,6 @@ export function answerFromDraft(pc: PendingChoiceView, draft: PromptDraft): Answ
       if (draft.kind !== "string") return null;
       return { kind: "creature_type", subtype: draft.value };
     case "may_draw_up_to":
-    case "trade_secrets_caster_draw":
       if (draft.kind !== "number") return null;
       return { kind: "draw_count", count: draft.count };
     case "pay_any_amount_of_mana":
@@ -465,11 +452,9 @@ export function answerFromDraft(pc: PendingChoiceView, draft: PromptDraft): Answ
     case "choose_target":
       if (draft.kind === "target") return { kind: "target", id: draft.id, player: draft.player };
       if (draft.kind !== "card-pick") return null;
-      if (draft.picked.length === 0) return pc.optional ? { kind: "targets", ids: [] } : null;
-      if (draft.picked.length > pc.max) return null;
+      if (draft.picked.length < pc.min || draft.picked.length > pc.max) return null;
+      if (draft.picked.length === 0) return { kind: "targets", ids: [] };
       return { kind: "targets", ids: draft.picked };
-    case "choose_spell_targets":
-    case "choose_ability_targets":
     case "choose_activation_cost_targets":
       if (draft.kind === "targets") return { kind: "targets", ids: draft.ids };
       if (draft.kind !== "card-pick") return null;
@@ -545,7 +530,7 @@ export function declineAnswer(pc: PendingChoiceView): AnswerInput | null {
     case "choose_attach_host":
       return pc.optional ? { kind: "attach_host", host: null } : null;
     case "choose_target":
-      return pc.optional ? { kind: "targets", ids: [] } : null;
+      return pc.min === 0 ? { kind: "targets", ids: [] } : null;
     case "pay_cumulative_upkeep_or_sacrifice":
       // Empty sacrifices = decline payment (engine sacrifices the permanent).
       return { kind: "sacrifice", ids: [] };
@@ -608,10 +593,7 @@ export function cardPickReady(pc: PendingChoiceView, picked: number[]): boolean 
   // Up-to-max targeting: any 1..=max (or 0 when optional) is a submittable answer.
   if (pc.kind === "choose_target") {
     if (picked.length > pc.max) return false;
-    return pc.optional || picked.length >= 1;
-  }
-  if (pc.kind === "choose_spell_targets" || pc.kind === "choose_ability_targets") {
-    return picked.length >= pc.min && picked.length <= pc.max;
+    return picked.length >= pc.min;
   }
   const required = cardPickRequiredCount(pc);
   if (required != null) return picked.length === required;

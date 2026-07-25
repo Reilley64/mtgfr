@@ -178,7 +178,7 @@ fn keyword_message(keyword: engine::Keyword) -> MessageRef {
 }
 
 /// Wire form of a card's kind.
-pub(crate) fn wire_kind(def: engine::CardDef) -> WireKind {
+pub(crate) fn wire_kind(def: &engine::CardDef) -> WireKind {
     use engine::{CardKind, SpellSpeed};
     match def.kind {
         CardKind::Creature {
@@ -210,7 +210,7 @@ pub(crate) fn wire_kind(def: engine::CardDef) -> WireKind {
 /// shown as all five, like Command Tower. A restricted opponent-producible-colors credit that's
 /// already resolved to a concrete [`engine::Mana::OfColors`] bitmask (never authored in TOML —
 /// only produced at resolution) shows exactly its set.
-fn land_colors(def: engine::CardDef) -> Vec<u8> {
+fn land_colors(def: &engine::CardDef) -> Vec<u8> {
     let mut colors = [false; engine::Color::COUNT];
     if let engine::CardKind::Land {
         produces: Some(produces),
@@ -393,13 +393,17 @@ fn all_subtypes(def: &engine::CardDef) -> Vec<String> {
 pub fn catalog_card(def: &engine::CardDef) -> CatalogCard {
     let keywords: Vec<String> = def.keywords.iter().copied().map(wire_keyword).collect();
     let mut summary: Vec<MessageRef> = def.keywords.iter().copied().map(keyword_message).collect();
-    summary.extend(def.abilities.iter().map(|a| a.effect.message().into()));
+    summary.extend(
+        def.abilities
+            .iter()
+            .map(|ability| ability.effect.clone().message().into()),
+    );
     CatalogCard {
         id: def.id.to_string(),
         default_print: def.default_print.to_string(),
         name: def.name.to_string(),
         cost: wire_cost(def.cost),
-        kind: wire_kind(*def),
+        kind: wire_kind(def),
         keywords,
         summary,
         legendary: def.legendary,
@@ -409,10 +413,13 @@ pub fn catalog_card(def: &engine::CardDef) -> CatalogCard {
         set: def.set.to_string(),
         subtypes: all_subtypes(def),
         otags: def.otags.iter().map(|s| s.to_string()).collect(),
-        back: def.back.map(|b| CatalogBackFace {
-            name: b.name.to_string(),
-            oracle: b.oracle.map(str::to_string),
-            approximates: b.approximates.map(str::to_string),
+        back: def.back.map(|id| {
+            let back = engine::card_def(id);
+            CatalogBackFace {
+                name: back.name.to_string(),
+                oracle: back.oracle.map(str::to_string),
+                approximates: back.approximates.map(str::to_string),
+            }
         }),
     }
 }

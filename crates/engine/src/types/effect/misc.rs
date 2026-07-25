@@ -3,7 +3,7 @@ use super::*;
 use crate::de;
 
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(
     feature = "card-dsl",
     derive(serde::Deserialize),

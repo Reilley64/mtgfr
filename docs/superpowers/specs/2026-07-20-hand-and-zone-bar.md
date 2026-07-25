@@ -54,4 +54,4 @@ Render a fixed DOM hand bar at the bottom of the board. It groups tiles in Arena
 ## Further Notes
 
 - Zone pile expansion is handled separately by `PileOverlay`.
-- Flights suppress duplicate hand/stack/resting faces through `hideCardIds`, `flightOwnedIds`, and `handHidden`.
+- Flights suppress duplicate hand and resting battlefield faces through `hideCardIds`, `flightOwnedIds`, and `handHidden`. Stack faces hide only for `kind: "stack"` flights (see stack spec).
