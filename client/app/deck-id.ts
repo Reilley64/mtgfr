@@ -5,10 +5,6 @@ export function parseDeckIdParam(raw: string): number | null {
   return id;
 }
 
-export function deckCardViewTransitionName(deckId: number): string {
-  return `deck-card-${deckId}`;
-}
-
 export function playDeckAccess(
   deckId: number | null,
   decks: ReadonlyArray<{ id: number }>,

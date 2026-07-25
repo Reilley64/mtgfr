@@ -1,6 +1,7 @@
 import { Scene } from "foldkit/test";
 import { describe, expect, it } from "vitest";
 import { BindCardArt } from "../lib/ui/card-art";
+import { BindDeckCardFlip, DeckCardFlipTick } from "./deck-card-nav";
 import { init, Model, update } from "./main-exports";
 import { CardArtTick, PortraitGateCancelled } from "./messages";
 import type { Model as AppModel } from "./model";
@@ -90,6 +91,7 @@ describe("foldkit scaffold", () => {
       { update, view },
       Scene.with(playModel({ sessionLoaded: true, session: { me } })),
       Scene.expect(Scene.selector('[data-testid="lobby"]')).toExist(),
+      Scene.Mount.resolve(BindDeckCardFlip({ deckId: 1 }), DeckCardFlipTick()),
       Scene.Mount.resolve(BindCardArt, CardArtTick()),
     );
   });
@@ -107,6 +109,7 @@ describe("foldkit scaffold", () => {
       Scene.with(homeWithDecks()),
       Scene.expect(Scene.selector("[data-art-url]")).toExist(),
       Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), ClosedDeckListMenu()),
+      Scene.Mount.resolve(BindDeckCardFlip({ deckId: 1 }), DeckCardFlipTick()),
       Scene.Mount.resolve(BindCardArt, CardArtTick()),
       Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
     );

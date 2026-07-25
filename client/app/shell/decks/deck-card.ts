@@ -2,7 +2,7 @@ import type { Attribute, html as createHtml, Html } from "foldkit/html";
 import { manaFontClass } from "../../../lib/oracleText";
 import { cardArt } from "../../../lib/ui/card-art";
 import { listRowClass } from "../../../lib/ui/surfaces";
-import { deckCardViewTransitionName } from "../../deck-id";
+import { BindDeckCardFlip } from "../../deck-card-nav";
 import { identityPipCodes } from "./list/visible";
 
 export type DeckCardModel = {
@@ -31,8 +31,15 @@ function renderPips<Msg>(h: HtmlFactory<Msg>, colorIdentity: readonly number[]):
 }
 
 function renderDeckCardBody<Msg>(h: HtmlFactory<Msg>, card: DeckCardModel): Html {
+  // Flip mounts on the inner chrome so the outer root can keep a separate OnMount
+  // (e.g. deck-list context menu) — Foldkit allows one OnMount per element.
   return h.div(
-    [h.Class("flex flex-1 flex-col")],
+    [
+      h.Class("flex flex-1 flex-col"),
+      h.DataAttribute("deck-card-flip", String(card.id)),
+      // Same cast as cardArt's BindCardArt — Mount tick is not constrained to Msg.
+      h.OnMount(BindDeckCardFlip({ deckId: card.id }) as never),
+    ],
     [
       card.print === ""
         ? h.div([h.Class("aspect-[137/100] w-full bg-glass")], [])
@@ -78,7 +85,6 @@ export function renderDeckCard<Msg>(
   const attrs = [
     h.DataAttribute("testid", opts.testId),
     h.Class(listRowClass("relative flex flex-col overflow-hidden rounded-hud no-underline text-snow")),
-    h.Style({ "view-transition-name": deckCardViewTransitionName(card.id) }),
     ...(opts.rootAttrs ?? []),
   ];
 

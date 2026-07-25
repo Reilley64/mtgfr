@@ -4,6 +4,7 @@ import { Command, Navigation } from "foldkit";
 import { toString as urlToString } from "foldkit/url";
 import type { Message as BoardMessage } from "./board/messages";
 import { syncBoardWithGame, updateBoard } from "./board/submodel";
+import { captureDeckCardFlipForNav } from "./deck-card-nav";
 import { parseDeckIdParam, playDeckAccess } from "./deck-id";
 import { applyDeltaPure, applySnapshotPure, type DeltaEnvelope, setRejectPure } from "./game/fold";
 import { type Message, NavigationCompleted, type ReceivedDelta } from "./messages";
@@ -29,7 +30,6 @@ import { loadDeckList, update as updateDeckList } from "./shell/decks/list/updat
 import type { Message as LobbyMessage } from "./shell/lobby/messages";
 import { enterLobby } from "./shell/lobby/submodel";
 import { update as updateLobby } from "./shell/lobby/update";
-import { pushUrlMaybeViewTransition } from "./view-transition";
 
 const Redirect = Command.define(
   "Redirect",
@@ -39,11 +39,9 @@ const Redirect = Command.define(
 
 const PushUrl = Command.define(
   "PushUrl",
-  { url: S.String, fromPathname: S.String },
+  { url: S.String },
   NavigationCompleted,
-)(({ url, fromPathname }) =>
-  pushUrlMaybeViewTransition(url, fromPathname, { pushUrl: Navigation.pushUrl }).pipe(Effect.as(NavigationCompleted())),
-);
+)(({ url }) => Navigation.pushUrl(url).pipe(Effect.as(NavigationCompleted())));
 
 const LoadExternalUrl = Command.define(
   "LoadExternalUrl",
@@ -222,7 +220,11 @@ export const update = (
         M.value(request).pipe(
           M.withReturnType<readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>]>(),
           M.tagsExhaustive({
-            Internal: ({ url }) => [model, [PushUrl({ url: urlToString(url), fromPathname: model.currentPath })]],
+            Internal: ({ url }) => {
+              const href = urlToString(url);
+              captureDeckCardFlipForNav(model.currentPath, href);
+              return [model, [PushUrl({ url: href })]];
+            },
             External: ({ href }) => [model, [LoadExternalUrl({ href })]],
           }),
         ),
@@ -232,6 +234,7 @@ export const update = (
       CompletedPortraitGateModal: () => [model, []],
       ModalOpened: () => [model, []],
       CardArtTick: () => [model, []],
+      DeckCardFlipTick: () => [model, []],
       ArtLoaded: (boardMessage) => foldBoard(model, boardMessage),
       BoardPointerDown: (boardMessage) => foldBoard(model, boardMessage),
       BoardPointerMove: (boardMessage) => foldBoard(model, boardMessage),
