@@ -11,6 +11,7 @@ import type {
   DeckDetail,
   DeckSummary,
   IntentEnvelope,
+  Leaderboard,
   SaveDeckRequest,
   SeedRequest,
   SeedResponse,
@@ -189,6 +190,10 @@ export function saveDeckToProto(deck: SaveDeckRequest): ProtoSaveDeckRequest {
 
 export function catalogCardsFromProto(cards: readonly unknown[]): CatalogCard[] {
   return cards.map((item) => fromProtoWire<CatalogCard>(item));
+}
+
+export function leaderboardFromProto(proto: unknown): Leaderboard {
+  return fromProtoWire<Leaderboard>(proto);
 }
 
 export function seedRequestToProto(request: SeedRequest): ProtoSeedRequest {

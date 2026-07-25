@@ -17,6 +17,7 @@ import {
   DeckError,
   DeckSummary,
   type IntentEnvelope,
+  Leaderboard,
   Me,
   type SaveDeckRequest,
   type SignupCredentials,
@@ -144,6 +145,16 @@ export function makeClient(fetchImpl: typeof globalThis.fetch) {
         HttpClientRequest.put(`/decks/${id}`).pipe(HttpClientRequest.bodyJsonUnsafe(payload)),
       ),
     deleteDeck: (id: string) => empty(HttpClientRequest.make("DELETE")(`/decks/${id}`)),
+
+    ratings: {
+      leaderboard: (params: { limit: number; offset: number }) =>
+        json(
+          Leaderboard,
+          HttpClientRequest.get("/ratings/leaderboard").pipe(
+            HttpClientRequest.setUrlParams({ limit: params.limit, offset: params.offset }),
+          ),
+        ),
+    },
 
     submitIntent: (table: string, envelope: IntentEnvelope) =>
       json(Ack, HttpClientRequest.post(`/game/${table}/intent`).pipe(HttpClientRequest.bodyJsonUnsafe(envelope))),

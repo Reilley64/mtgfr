@@ -2,7 +2,7 @@
 
 import * as Match from "effect/Match";
 import { GrpcCallError, type GrpcRequestEnv, grpcClientFor, httpStatusOf } from "./grpcClient";
-import { isAuthMethod, isCardsMethod, isGameMethod, isRpcGroup } from "./rpcs";
+import { isAuthMethod, isCardsMethod, isGameMethod, isRatingsMethod, isRpcGroup } from "./rpcs";
 import type { DeckError, IntentEnvelope, SaveDeckRequest, StreamFrame } from "./types";
 
 export interface RpcEnv extends GrpcRequestEnv {
@@ -77,6 +77,29 @@ async function dispatchCards(method: string | undefined, query: URLSearchParams,
         return jsonOk(await client.cards.search(q, limit, offset));
       }),
       Match.when("lookup", async () => jsonOk(await client.cards.lookup(query.getAll("ids")))),
+      Match.exhaustive,
+    );
+  } catch (err) {
+    return fromGrpcError(err);
+  }
+}
+
+async function dispatchRatings(
+  method: string | undefined,
+  httpMethod: string,
+  query: URLSearchParams,
+  env: RpcEnv,
+): Promise<RpcOutcome> {
+  if (!isRatingsMethod(method)) return { kind: "empty", status: 404 };
+  if (httpMethod !== "GET") return { kind: "empty", status: 405 };
+  const client = grpcClientFor(env.defaultAddress, env);
+  try {
+    return await Match.value(method).pipe(
+      Match.when("leaderboard", async () => {
+        const limit = Number(query.get("limit") ?? "50");
+        const offset = Number(query.get("offset") ?? "0");
+        return jsonOk(await client.ratings.getLeaderboard({ limit, offset }, env.sessionToken));
+      }),
       Match.exhaustive,
     );
   } catch (err) {
@@ -161,6 +184,7 @@ export function dispatchRpc(
     Match.when("cards", () => dispatchCards(rest[0], query, env)),
     Match.when("decks", () => dispatchDecks(rest[0], httpMethod, body, env)),
     Match.when("game", () => dispatchGame(rest[0], rest[1], body, env)),
+    Match.when("ratings", () => dispatchRatings(rest[0], httpMethod, query, env)),
     Match.exhaustive,
   );
 }

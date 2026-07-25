@@ -26,6 +26,9 @@ import {
   GameClientLayer,
   GameGrpcRegistry,
   type Me as ProtoMe,
+  RatingsClient,
+  RatingsClientLayer,
+  RatingsGrpcRegistry,
   TablesClient,
   TablesClientLayer,
   TablesGrpcRegistry,
@@ -36,6 +39,7 @@ import {
   deckDetailFromProto,
   deckSummaryListFromProto,
   intentEnvelopeToProto,
+  leaderboardFromProto,
   saveDeckToProto,
   seedRequestToProto,
   seedResponseFromProto,
@@ -46,6 +50,7 @@ import type {
   CatalogCard,
   DeckDetail,
   IntentEnvelope,
+  Leaderboard,
   Me,
   SaveDeckRequest,
   SeedRequest,
@@ -69,6 +74,7 @@ export type GrpcRequestEnv = {
 const AllGrpcRegistry = new Map([
   ...AuthGrpcRegistry,
   ...DecksGrpcRegistry,
+  ...RatingsGrpcRegistry,
   ...CardsGrpcRegistry,
   ...GameGrpcRegistry,
   ...TablesGrpcRegistry,
@@ -115,7 +121,7 @@ export function grpcBaseUrl(address: string): string {
   return `http://${address}`;
 }
 
-type Clients = AuthClient | DecksClient | CardsClient | GameClient | TablesClient;
+type Clients = AuthClient | DecksClient | RatingsClient | CardsClient | GameClient | TablesClient;
 
 type GrpcRuntime = ManagedRuntime.ManagedRuntime<Clients, never>;
 
@@ -133,6 +139,7 @@ function runtimeFor(address: string): GrpcRuntime {
   const clients = Layer.mergeAll(
     AuthClientLayer,
     DecksClientLayer,
+    RatingsClientLayer,
     CardsClientLayer,
     GameClientLayer,
     TablesClientLayer,
@@ -172,6 +179,9 @@ export interface GrpcClient {
     get(id: number, sessionToken: string | null): Promise<DeckDetail>;
     update(id: number, req: SaveDeckRequest, sessionToken: string | null): Promise<DeckDetail>;
     delete(id: number, sessionToken: string | null): Promise<void>;
+  };
+  ratings: {
+    getLeaderboard(req: { limit: number; offset: number }, sessionToken: string | null): Promise<Leaderboard>;
   };
   cards: {
     catalog(): Promise<Array<CatalogCard>>;
@@ -296,6 +306,17 @@ export function grpcClient(address: string, outboundTraceparent: string | null =
           Effect.gen(function* () {
             const decks = yield* DecksClient;
             yield* decks.delete({ id: BigInt(id) }, opts(sessionToken));
+          }),
+        ),
+    },
+    ratings: {
+      getLeaderboard: (req, sessionToken) =>
+        run(
+          key,
+          Effect.gen(function* () {
+            const ratings = yield* RatingsClient;
+            const leaderboard = yield* ratings.getLeaderboard(req, opts(sessionToken));
+            return leaderboardFromProto(leaderboard);
           }),
         ),
     },

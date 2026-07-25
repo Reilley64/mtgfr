@@ -139,6 +139,10 @@ The response returns:
 `rank` is computed from the global sort order, so a page request with `offset = 25` starts ranks at
 `26`.
 
+The BFF exposes `GET /api/rpc/ratings/leaderboard?limit=&offset=` and forwards the session token
+metadata to `Ratings.GetLeaderboard`. The browser RPC client consumes that route as
+`rpc.ratings.leaderboard({ limit, offset })`.
+
 ### Commander legality (`legality::validate`)
 
 Validates the full deck at save time and at game start. All problems are collected before
