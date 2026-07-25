@@ -77,10 +77,14 @@ Decisions → Testing Decisions → Out of Scope → Further Notes.
 - Document **current behavior only**: no TBD, no Solid/migration history, no historical client narrative.
 - When a target splits, merges, or renames, update the relevant specs in the same change.
 - Follow the [`AGENTS.md` Feature specs section](../../../AGENTS.md#feature-specs).
+- **Superpowers:** If the change touches an existing surface, update that living module spec
+  in the same change. A new `*-design.md` is design input only — it does not replace the
+  surface-spec update (see AGENTS.md). Do not edit vendored obra/superpowers skill files for
+  this policy; project rules in `AGENTS.md` govern.
 - Use [`CONTEXT.md`](../../../CONTEXT.md) vocabulary. Reference DTCG token names
   (`design.tokens.json`); canvas uses `design-tokens.generated.ts` for named colors; unnamed
   paint literals remain the exception.
-- **PR / loop review:** Code review must fail merge on PR-scoped design sidecars, missing
-  surface-spec updates, or non-current narrative in this directory (see
-  [`AGENTS.md` Feature specs](../../../AGENTS.md#feature-specs)). Plans live under
-  [`../plans/`](../plans/), not here.
+- **PR / loop review:** Code review must fail merge on PR-scoped design sidecars without the
+  corresponding surface-spec update, missing surface-spec updates, or non-current narrative
+  in this directory (see [`AGENTS.md` Feature specs](../../../AGENTS.md#feature-specs)). Plans
+  live under [`../plans/`](../plans/), not here.
