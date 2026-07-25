@@ -75,6 +75,7 @@ const lobbyAppView = (model: Model) =>
     model.decks.list.loading,
     model.decks.list.knownCommanders,
     model.apiVersion,
+    model.route._tag === "TableRoute" ? "table" : "entry",
   );
 
 test("entry without a route deck asks the player to use deck play", () => {
@@ -347,6 +348,30 @@ test("host redirect uses /play/:deckId/:table", () => {
   const [, commands] = update(withDeck, LobbyTableCreated({ tableId: "XYZ789" }));
   const redirect = commands.find((c) => c.name === "Redirect") as { args?: { path?: string } } | undefined;
   expect(redirect?.args?.path).toBe("/play/7/XYZ789");
+});
+
+test("host handoff on PlayRoute keeps entry UI (no claim-seat flash)", () => {
+  const withDeck = playLobbyModel({
+    lobby: { ...initialLobbySlice(), selectedDeckId: 7 },
+    decks: {
+      ...init()[0].decks,
+      list: { ...init()[0].decks.list, decks: [deck], loading: false },
+    },
+  });
+
+  const [afterCreate] = update(withDeck, LobbyTableCreated({ tableId: "XYZ789" }));
+  expect(afterCreate.route._tag).toBe("PlayRoute");
+  expect(afterCreate.lobby.tableId).toBe("XYZ789");
+
+  Scene.scene(
+    { update, view: appView },
+    Scene.with(afterCreate),
+    Scene.expect(Scene.testId("lobby-entry-choose")).toExist(),
+    Scene.expect(Scene.testId("lobby-host")).toExist(),
+    Scene.expect(Scene.testId("lobby-claim")).toBeAbsent(),
+    Scene.expect(Scene.testId("lobby-table-code")).toBeAbsent(),
+    Scene.Mount.resolve(BindDeckCardFlip({ deckId: 7 }), DeckCardFlipTick()),
+  );
 });
 
 test("joined lobby shows ready/start without a deck picker", () => {
