@@ -2,7 +2,7 @@ import { Effect, Option } from "effect";
 import { Story } from "foldkit";
 import { expect, test } from "vitest";
 import { init } from "./init";
-import { NavigationCompleted, ReceivedLeaderboardPage, ReceivedMe } from "./messages";
+import { NavigationCompleted, ReceivedLeaderboardPage, ReceivedMe, RequestedLeaderboardRefresh } from "./messages";
 import {
   DeckRoute,
   HomeRoute,
@@ -95,6 +95,38 @@ test("LeaderboardRoute loads the first page on protected route entry", () => {
       expect(m.leaderboard.status).toBe("ready");
       expect(m.leaderboard.entries).toEqual([{ rank: 1, rating: 1200, user_id: 1, username: "alice" }]);
     }),
+  );
+});
+
+test("leaderboard retry refreshes from the first page after an error", () => {
+  const [base] = init(url("/leaderboard"));
+  const load = FetchLeaderboard({ limit: 50, offset: 0 });
+  const page = ReceivedLeaderboardPage({
+    leaderboard: { entries: [{ rank: 1, rating: 1200, user_id: 1, username: "alice" }], total: 1 },
+    offset: 0,
+  });
+  const model = {
+    ...base,
+    leaderboard: {
+      ...base.leaderboard,
+      entries: [{ rank: 1, rating: 1200, user_id: 1, username: "alice" }],
+      error: "Could not load the leaderboard.",
+      status: "error",
+      total: 2,
+    },
+  };
+
+  Story.story(
+    update,
+    Story.with(model),
+    Story.message(RequestedLeaderboardRefresh()),
+    Story.Command.expectExact(load),
+    Story.model((m) => {
+      expect(m.leaderboard.entries).toEqual([]);
+      expect(m.leaderboard.error).toBeNull();
+      expect(m.leaderboard.status).toBe("loading");
+    }),
+    Story.Command.resolve(load, page),
   );
 });
 

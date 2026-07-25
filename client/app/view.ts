@@ -5,7 +5,7 @@ import { view as boardView } from "./board/view";
 import { parseDeckIdParam, playDeckAccess } from "./deck-id";
 import { CompletedPortraitGateModal, type Message, PortraitGateCancelled, RequestedLogout } from "./messages";
 import type { Model } from "./model";
-import { HomeRoute, isProtectedRoute, LeaderboardRoute, NewDeckRoute, routePath } from "./routes";
+import { HomeRoute, isProtectedRoute, NewDeckRoute, routePath } from "./routes";
 import { view as authView } from "./shell/auth/view";
 import { view as deckBuilderView } from "./shell/decks/builder/view";
 import { view as deckListView } from "./shell/decks/list/view";
@@ -53,7 +53,6 @@ function nav(model: Model) {
         [h.Class("flex items-center gap-md text-label text-lichen")],
         [
           h.a([h.Href(routePath(HomeRoute())), h.Class("underline")], ["Play"]),
-          h.a([h.Href(routePath(LeaderboardRoute())), h.Class("underline")], ["Leaderboard"]),
           h.a([h.Href(routePath(NewDeckRoute())), h.Class("underline")], ["New deck"]),
           user == null
             ? h.a([h.Href("/login"), h.Class("underline")], ["Sign in"])

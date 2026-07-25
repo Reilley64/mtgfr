@@ -47,7 +47,7 @@ function row(entry: LeaderboardSubmodel["entries"][number]): Html {
 
 export function view(model: LeaderboardSubmodel, username: string, apiVersion: string | null): Html {
   const status = statusCopy(model.status);
-  const hasMore = model.entries.length < model.total;
+  const canLoadMore = model.status !== "error" && model.entries.length < model.total;
 
   return h.main(
     [
@@ -89,7 +89,7 @@ export function view(model: LeaderboardSubmodel, username: string, apiVersion: s
             ? h.div([h.Class("text-label text-lichen")], ["No rated games yet."])
             : null,
           ...model.entries.map(row),
-          hasMore
+          canLoadMore
             ? h.button(
                 [
                   h.Type("button"),

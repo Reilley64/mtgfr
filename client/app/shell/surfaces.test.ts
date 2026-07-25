@@ -241,10 +241,34 @@ describe("shell surface scenes", () => {
       ),
       Scene.expect(Scene.selector('[data-testid="leaderboard-page"]')).toExist(),
       Scene.expectAll(Scene.all.selector('[data-testid="leaderboard-row"]')).toHaveCount(2),
+      Scene.expect(Scene.text("#1")).toExist(),
       Scene.expect(Scene.text("alice")).toExist(),
       Scene.expect(Scene.text("1200")).toExist(),
+      Scene.expect(Scene.text("#2")).toExist(),
       Scene.expect(Scene.text("bruno")).toExist(),
       Scene.expect(Scene.text("1175")).toExist(),
+    );
+  });
+
+  it("hides load more while the leaderboard shows a retry error", () => {
+    Scene.scene(
+      { update, view },
+      Scene.with(
+        authedModel(LeaderboardRoute(), {
+          leaderboard: {
+            entries: [{ rank: 1, rating: 1200, user_id: 1, username: "alice" }],
+            error: "Could not load the leaderboard.",
+            status: "error",
+            total: 2,
+          },
+        }),
+      ),
+      Scene.expect(Scene.selector('[data-testid="leaderboard-page"]')).toExist(),
+      Scene.expectAll(Scene.all.selector('[data-testid="leaderboard-row"]')).toHaveCount(1),
+      Scene.expect(Scene.text("#1")).toExist(),
+      Scene.expect(Scene.text("Could not load the leaderboard.")).toExist(),
+      Scene.expect(Scene.text("Try again")).toExist(),
+      Scene.expect(Scene.text("Load more")).not.toExist(),
     );
   });
 
