@@ -20,6 +20,7 @@ Render a fixed DOM hand bar at the bottom of the board. It groups tiles in Arena
 ## Behavior
 
 - Hand tiles fan with Arena-forward resting geometry (`HAND_FACE_W` 208, `HAND_BAR_PEEK` 92, `HAND_VISIBLE_H` 178, derived `HAND_BAR_H` 218), hover raise, and cost pips above the card face. See [hand-bar-arena-spacing design](2026-07-25-hand-bar-arena-spacing-design.md).
+- Hovering a bar tile elevates that tile's root above all other action-bar tiles (`[z-index:var(--hand-z)]` resting + `hover:[z-index:50]` on the slot; resting z is not inline). Discard-selected raises and rings but does not elevate z. See [hand-bar-hover-stack-front design](2026-07-25-hand-bar-hover-stack-front-design.md).
 - A release above `HAND_BAR_H - HAND_PLAY_SLACK_PX` commits the drop; releasing below snaps back.
 - `hiddenId`, `hiddenIds`, and flight ownership suppress tiles while a staged play or flight owns the card.
 - Playable hand/command tiles get the playable border from `barZoneAura(zone, playable)`.
@@ -41,6 +42,7 @@ Render a fixed DOM hand bar at the bottom of the board. It groups tiles in Arena
 - Scene/unit tests cover the hand bar, command/hand playable borders, unplayable no-dim behavior, drag-source opacity fade, and spectator suppression.
 - Interaction checks should drag above and below the play threshold and assert commit versus cancel outcomes.
 - Geometry lock in `handBarHit.test.ts` asserts face/peek/visible/`HAND_BAR_H` targets so a silent regress to the old dense values fails.
+- `hand.test.ts` locks hover elevate on `hand-tile-{id}` and asserts discard-selected does not add selection z elevate.
 
 ## Out of Scope
 

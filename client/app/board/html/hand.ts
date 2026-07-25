@@ -117,8 +117,8 @@ function tile(args: {
   const faceClass = [
     "pointer-events-none absolute top-0 right-0 transition-transform duration-[120ms] ease-state",
     discardSelected
-      ? "z-30 [transform:translateY(var(--raise-y))]"
-      : "group-hover/hand-tile:z-30 group-hover/hand-tile:[transform:translateY(var(--raise-y))]",
+      ? "[transform:translateY(var(--raise-y))]"
+      : "group-hover/hand-tile:[transform:translateY(var(--raise-y))]",
   ].join(" ");
 
   // Solid parity: the drag source fades so the ghost carries the face; inert slots stay non-interactive.
@@ -258,15 +258,18 @@ function tile(args: {
 
   return h.div(
     [
-      h.Class("group/hand-tile pointer-events-none relative shrink-0 origin-bottom overflow-visible"),
+      h.Class(
+        "group/hand-tile pointer-events-none relative shrink-0 origin-bottom overflow-visible [z-index:var(--hand-z)] hover:[z-index:50]",
+      ),
       h.Style({
         width: `${HAND_CARD_PEEK}px`,
         height: `${HAND_VISIBLE_H}px`,
         transform: fanTransform(index, count),
         "--raise-y": `${raiseY}px`,
-        "z-index": String(index + 1),
+        "--hand-z": String(index + 1),
       }),
       h.DataAttribute("hand-index", String(index)),
+      ...(objectId != null ? [h.DataAttribute("testid", `hand-tile-${objectId}`)] : []),
     ],
     [
       h.div(

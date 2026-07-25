@@ -111,6 +111,13 @@ function className(node: unknown): string {
     .join(" ");
 }
 
+function styleValue(node: unknown, name: string): string | undefined {
+  if (node == null || typeof node !== "object") return undefined;
+  const n = node as { data?: { style?: Record<string, string> } };
+  const value = n.data?.style?.[name];
+  return typeof value === "string" ? value : undefined;
+}
+
 function treeHasClass(node: unknown, token: string): boolean {
   if (className(node).split(/\s+/).includes(token)) return true;
   if (node == null || typeof node !== "object") return false;
@@ -233,5 +240,52 @@ describe("handView playable outlines", () => {
     const face = className(findTestId(tree, "hand-card-face-9"));
     expect(face).toContain("ring-playable-border");
     expect(face).toContain("outline-commander-gold");
+  });
+});
+
+describe("handView hover stacking", () => {
+  it("keeps resting hand z overridable from the tile root", () => {
+    const a = object(42, { name: "Lightning Bolt" });
+    const b = object(43, { name: "Cancel" });
+    const tree = renderHand(state({ objects: [a, b], actions: [action(7, { object: 42 })] }));
+
+    const root = findTestId(tree, "hand-tile-42");
+    expect(root).not.toBeNull();
+    expect(treeHasClass(root, "group/hand-tile")).toBe(true);
+    expect(treeHasClass(root, "[z-index:var(--hand-z)]")).toBe(true);
+    expect(treeHasClass(root, "hover:[z-index:50]")).toBe(true);
+    expect(styleValue(root, "--hand-z")).toBe("1");
+    expect(styleValue(root, "z-index")).toBeUndefined();
+
+    const face = findTestId(tree, "hand-card-face-42");
+    expect(className(face)).not.toContain("group-hover/hand-tile:z-30");
+    // Face may still live under a wrapper — assert the tree no longer uses face hover z-30:
+    expect(treeHasClass(tree, "group-hover/hand-tile:z-30")).toBe(false);
+  });
+
+  it("does not elevate z for discard-selected without relying on selection z", () => {
+    const a = object(42, { name: "Lightning Bolt" });
+    const tree = handView({
+      state: state({ objects: [a], actions: [] }),
+      hiddenId: null,
+      flyingIds: new Set(),
+      hiddenIds: new Set(),
+      handDrag: null,
+      discardCostIds: new Set([42]),
+      discardSelectedIds: new Set([42]),
+    });
+    const root = findTestId(tree, "hand-tile-42");
+    expect(root).not.toBeNull();
+    // Root still has hover elevate available, but selection alone must not add a selected z class.
+    expect(treeHasClass(root, "[z-index:var(--hand-z)]")).toBe(true);
+    expect(treeHasClass(root, "hover:[z-index:50]")).toBe(true);
+    expect(styleValue(root, "--hand-z")).toBe("1");
+    expect(styleValue(root, "z-index")).toBeUndefined();
+    expect(className(root)).not.toContain("z-30");
+    expect(treeHasClass(root, "z-50")).toBe(false); // bare z-50 without hover: prefix
+    const face = findTestId(tree, "hand-card-face-42");
+    expect(className(face)).toContain("ring-llanowar");
+    // Face raise for selection must not use elevated z-30:
+    expect(treeHasClass(findTestId(tree, "hand-tile-42"), "z-30")).toBe(false);
   });
 });
