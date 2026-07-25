@@ -123,7 +123,11 @@ function chooseEntry(
     [h.Class("flex flex-col gap-md")],
     [
       h.div(
-        [h.DataAttribute("testid", "lobby-entry-choose"), h.Class("grid grid-cols-2 gap-md")],
+        [
+          h.DataAttribute("testid", "lobby-entry-choose"),
+          h.DataAttribute("lobby-entry-motion", "1"),
+          h.Class("grid grid-cols-2 gap-md"),
+        ],
         [
           h.button(
             [
@@ -203,7 +207,11 @@ function joinEntry(
   const deckName = deck?.name ?? (decksLoading ? "Loading decks…" : "Deck not found.");
 
   return h.div(
-    [h.DataAttribute("testid", "lobby-entry-join"), h.Class("flex flex-col gap-md")],
+    [
+      h.DataAttribute("testid", "lobby-entry-join"),
+      h.DataAttribute("lobby-entry-motion", "1"),
+      h.Class("flex flex-col gap-md"),
+    ],
     [
       h.div(
         [

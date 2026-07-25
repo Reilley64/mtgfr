@@ -233,6 +233,12 @@
   }
 
   /* Motion is state-conveying, never required to use the interface. */
+  @media (prefers-reduced-motion: no-preference) {
+    [data-lobby-entry-motion] {
+      animation: lobby-entry-swap 180ms ease-out;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -245,6 +251,17 @@
       /* biome-ignore lint/complexity/noImportantStyles: must override component-level motion for a11y */
       animation-duration: 0.01ms !important;
     }
+  }
+}
+
+@keyframes lobby-entry-swap {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
