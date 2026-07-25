@@ -159,6 +159,13 @@ export const StackExpandClicked = m("StackExpandClicked");
 /** Collapse the expanded stack overlay back to the pile. */
 export const StackCollapseClicked = m("StackCollapseClicked");
 
+/** Expand/collapse the board log between recent lines and the full fold buffer. */
+export const LogExpandToggled = m("LogExpandToggled");
+/** Copy the full board fold log to the clipboard. */
+export const LogCopyRequested = m("LogCopyRequested");
+/** Clipboard write completed for the board fold log. */
+export const LogCopyCompleted = m("LogCopyCompleted", { ok: S.Boolean });
+
 /** Activation radial: arm a wedge on pointer down. */
 export const RadialWedgeArmed = m("RadialWedgeArmed", { index: S.Number });
 /** Activation radial: release on a wedge index, or null for the dismiss scrim. */
@@ -290,6 +297,9 @@ export const Message = S.Union([
   StackDwellChanged,
   StackExpandClicked,
   StackCollapseClicked,
+  LogExpandToggled,
+  LogCopyRequested,
+  LogCopyCompleted,
   RadialWedgeArmed,
   RadialWedgeReleased,
   RadialWedgeHovered,
