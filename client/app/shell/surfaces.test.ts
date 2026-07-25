@@ -11,7 +11,16 @@ import type { CatalogCard } from "../../lib/wire/types";
 import { BindDeckCardFlip, DeckCardFlipTick } from "../deck-card-nav";
 import { init, update } from "../main-exports";
 import type { Model as AppModel } from "../model";
-import { HomeRoute, LeaderboardRoute, LoginRoute, NewDeckRoute, NotFoundRoute, PlayRoute, TableRoute } from "../routes";
+import {
+  HomeRoute,
+  LeaderboardRoute,
+  LoginRoute,
+  NewDeckRoute,
+  NotFoundRoute,
+  PlayRoute,
+  routePath,
+  TableRoute,
+} from "../routes";
 import { view } from "../view";
 import { ClearedBuilderHover } from "./decks/builder/messages";
 import { initialDeckBuilderSubmodel } from "./decks/builder/submodel";
@@ -150,6 +159,38 @@ describe("shell surface scenes", () => {
       Scene.expect(Scene.selector('[data-testid="delete-deck-1"]')).not.toExist(),
       Scene.expect(Scene.text("Your decks")).toExist(),
       Scene.expect(Scene.text("Superfriends")).toExist(),
+      Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), ClosedDeckListMenu()),
+      Scene.Mount.resolve(BindDeckCardFlip({ deckId: 1 }), DeckCardFlipTick()),
+      Scene.Mount.resolve(BindCardArt, CardArtTick()),
+      Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
+    );
+  });
+
+  it("renders a leaderboard teaser on the deck list home", () => {
+    const list = {
+      ...init()[0].decks.list,
+      decks: [deck],
+      knownCommanders: { atraxa },
+      leaderboardTeaser: [{ rank: 1, rating: 1200, user_id: 1, username: "alice" }],
+      loading: false,
+    };
+
+    Scene.scene(
+      { update, view },
+      Scene.with(
+        authedModel(HomeRoute(), {
+          decks: {
+            ...init()[0].decks,
+            list,
+          },
+        }),
+      ),
+      Scene.expect(Scene.selector('[data-testid="leaderboard-teaser"]')).toExist(),
+      Scene.expect(
+        Scene.selector(`[data-testid="leaderboard-teaser-link"][href="${routePath(LeaderboardRoute())}"]`),
+      ).toExist(),
+      Scene.expect(Scene.text("alice")).toExist(),
+      Scene.expect(Scene.text("1200")).toExist(),
       Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), ClosedDeckListMenu()),
       Scene.Mount.resolve(BindDeckCardFlip({ deckId: 1 }), DeckCardFlipTick()),
       Scene.Mount.resolve(BindCardArt, CardArtTick()),

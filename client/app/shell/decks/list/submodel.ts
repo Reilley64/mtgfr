@@ -1,12 +1,13 @@
 import { Schema as S } from "effect";
 import { CatalogCardSchema } from "../../../../lib/deck-builder/cards";
-import { DeckSummary } from "../../../../lib/wire/types";
+import { DeckSummary, LeaderboardEntry } from "../../../../lib/wire/types";
 
 export const DeckListSubmodel = S.Struct({
   searchQuery: S.String,
   contextMenu: S.NullOr(S.Struct({ deckId: S.Number, x: S.Number, y: S.Number })),
   knownCommanders: S.Record(S.String, CatalogCardSchema),
   decks: S.Array(DeckSummary),
+  leaderboardTeaser: S.Array(LeaderboardEntry),
   error: S.NullOr(S.String),
   loading: S.Boolean,
   /** Deck id whose delete confirmation dialog is open, or null. */
@@ -20,6 +21,7 @@ export function initialDeckListSubmodel(): DeckListSubmodel {
     contextMenu: null,
     knownCommanders: {},
     decks: [],
+    leaderboardTeaser: [],
     error: null,
     loading: false,
     confirmingDeleteId: null,

@@ -1,12 +1,16 @@
 import { Schema as S } from "effect";
 import { m } from "foldkit/message";
 import { CatalogCardSchema } from "../../../../lib/deck-builder/cards";
-import { DeckSummary } from "../../../../lib/wire/types";
+import { DeckSummary, LeaderboardEntry } from "../../../../lib/wire/types";
 
 export const RequestedDecksRefresh = m("RequestedDecksRefresh");
 export const ReceivedDecks = m("ReceivedDecks", { decks: S.Array(DeckSummary) });
 export const DecksLoadFailed = m("DecksLoadFailed", { message: S.String });
 export const ReceivedDeckListCommanders = m("ReceivedDeckListCommanders", { cards: S.Array(CatalogCardSchema) });
+export const ReceivedDeckListLeaderboardTeaser = m("ReceivedDeckListLeaderboardTeaser", {
+  entries: S.Array(LeaderboardEntry),
+});
+export const DeckListLeaderboardTeaserLoadFailed = m("DeckListLeaderboardTeaserLoadFailed");
 export const ChangedDeckListSearch = m("ChangedDeckListSearch", { query: S.String });
 export const OpenedDeckListMenu = m("OpenedDeckListMenu", {
   deckId: S.Number,
@@ -28,6 +32,8 @@ export const Message = S.Union([
   ReceivedDecks,
   DecksLoadFailed,
   ReceivedDeckListCommanders,
+  ReceivedDeckListLeaderboardTeaser,
+  DeckListLeaderboardTeaserLoadFailed,
   ChangedDeckListSearch,
   OpenedDeckListMenu,
   ClosedDeckListMenu,

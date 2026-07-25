@@ -5,10 +5,10 @@ import { cn } from "../../../../lib/cn";
 import { appVersionBadge } from "../../../../lib/ui/app-version";
 import { buttonClass } from "../../../../lib/ui/buttonClass";
 import { confirmDialog } from "../../../../lib/ui/confirmDialog";
-import { feltClass, fieldClass } from "../../../../lib/ui/surfaces";
+import { feltClass, fieldClass, listRowClass } from "../../../../lib/ui/surfaces";
 import type { Message } from "../../../messages";
 import { RequestedLogout } from "../../../messages";
-import { DeckRoute, NewDeckRoute, PlayRoute, routePath } from "../../../routes";
+import { DeckRoute, LeaderboardRoute, NewDeckRoute, PlayRoute, routePath } from "../../../routes";
 import { type DeckCardModel, renderDeckCard } from "../deck-card";
 import {
   AskedDeckDelete,
@@ -161,6 +161,54 @@ function contextMenu(model: DeckListSubmodel): Html {
   );
 }
 
+function leaderboardTeaser(model: DeckListSubmodel): Html {
+  if (model.leaderboardTeaser.length === 0) return null;
+
+  return h.section(
+    [
+      h.Class("mx-auto mb-md flex max-w-[960px] flex-col gap-md rounded-hud border border-vine bg-forest-surface p-lg"),
+      h.DataAttribute("testid", "leaderboard-teaser"),
+    ],
+    [
+      h.div(
+        [h.Class("flex flex-wrap items-center justify-between gap-md")],
+        [
+          h.div(
+            [h.Class("flex min-w-0 flex-col gap-xs")],
+            [
+              h.h2([h.Class("m-0 text-title")], ["Top players"]),
+              h.p([h.Class("m-0 text-label text-lichen")], ["See who is ahead before you pick a deck."]),
+            ],
+          ),
+          h.a(
+            [
+              h.Href(routePath(LeaderboardRoute())),
+              h.DataAttribute("testid", "leaderboard-teaser-link"),
+              h.Class(buttonClass("ghost")),
+            ],
+            ["Full leaderboard"],
+          ),
+        ],
+      ),
+      h.div(
+        [h.Class("flex flex-col gap-sm")],
+        model.leaderboardTeaser
+          .slice(0, 5)
+          .map((entry) =>
+            h.div(
+              [h.Class(listRowClass("grid grid-cols-[72px_1fr_96px] items-center gap-md rounded-control px-md py-sm"))],
+              [
+                h.span([h.Class("text-label text-lichen")], [`#${entry.rank}`]),
+                h.span([h.Class("min-w-0 truncate text-body")], [entry.username]),
+                h.span([h.Class("text-right text-game text-priority-gold")], [String(entry.rating)]),
+              ],
+            ),
+          ),
+      ),
+    ],
+  );
+}
+
 export function view(model: DeckListSubmodel, username: string, apiVersion: string | null): Html {
   const visible = visibleDecks(model.decks, model.knownCommanders, model.searchQuery);
 
@@ -203,6 +251,7 @@ export function view(model: DeckListSubmodel, username: string, apiVersion: stri
           ),
         ],
       ),
+      leaderboardTeaser(model),
       h.section(
         [h.Class("mx-auto max-w-[960px]")],
         [

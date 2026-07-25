@@ -2,7 +2,15 @@ import { Effect, Option } from "effect";
 import { Story } from "foldkit";
 import { expect, test } from "vitest";
 import { init } from "./init";
-import { NavigationCompleted, ReceivedLeaderboardPage, ReceivedMe, RequestedLeaderboardRefresh } from "./messages";
+import {
+  NavigationCompleted,
+  ReceivedDeckListCommanders,
+  ReceivedDeckListLeaderboardTeaser,
+  ReceivedDecks,
+  ReceivedLeaderboardPage,
+  ReceivedMe,
+  RequestedLeaderboardRefresh,
+} from "./messages";
 import {
   DeckRoute,
   HomeRoute,
@@ -13,6 +21,7 @@ import {
   routePath,
   TableRoute,
 } from "./routes";
+import { FetchDeckListLeaderboardTeaser, FetchDecks, LookupDeckListCommanders } from "./shell/decks/list/update";
 import { FetchLeaderboard } from "./shell/leaderboard/update";
 import { update } from "./update";
 
@@ -94,6 +103,27 @@ test("LeaderboardRoute loads the first page on protected route entry", () => {
     Story.model((m) => {
       expect(m.leaderboard.status).toBe("ready");
       expect(m.leaderboard.entries).toEqual([{ rank: 1, rating: 1200, user_id: 1, username: "alice" }]);
+    }),
+  );
+});
+
+test("HomeRoute loads decks and the leaderboard teaser on protected route entry", () => {
+  const [model] = init(url("/"));
+  const loadTeaser = FetchDeckListLeaderboardTeaser({ limit: 5, offset: 0 });
+  const decks = [{ id: 1, name: "Superfriends", commander: "atraxa", commander_print: "atraxa-print" }];
+  const teaser = [{ rank: 1, rating: 1200, user_id: 1, username: "alice" }];
+
+  Story.story(
+    update,
+    Story.with(model),
+    Story.message(ReceivedMe({ me })),
+    Story.Command.expectExact(FetchDecks, loadTeaser),
+    Story.Command.resolve(FetchDecks, ReceivedDecks({ decks })),
+    Story.Command.resolve(loadTeaser, ReceivedDeckListLeaderboardTeaser({ entries: teaser })),
+    Story.Command.resolve(LookupDeckListCommanders({ ids: ["atraxa"] }), ReceivedDeckListCommanders({ cards: [] })),
+    Story.model((m) => {
+      expect(m.decks.list.decks).toEqual(decks);
+      expect(m.decks.list.leaderboardTeaser).toEqual(teaser);
     }),
   );
 });
