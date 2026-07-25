@@ -16,7 +16,7 @@ describe("tokens.generated.css", () => {
     expect(css).toContain("--color-hud-edge: #5A786966;");
     expect(css).toContain("--shadow-table: 0 12px 40px rgb(0 0 0 / 0.6);");
     expect(css).toContain("--text-title--font-weight: 700;");
-    expect(css).toContain("--drop-shadow-drag: 0 10px 24px rgb(0 0 0 / 0.6);");
+    expect(css).toContain("--drop-shadow-drag: 0 16px 36px rgb(0 0 0 / 0.72);");
     expect(css).toContain("--font-sans: system-ui, sans-serif;");
   });
 });

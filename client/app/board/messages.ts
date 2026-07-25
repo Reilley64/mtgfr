@@ -14,6 +14,7 @@ const ActionView: S.Schema<ActionViewT> = S.Any;
 const CatalogCard: S.Schema<CatalogCardT | null> = S.Any;
 const FlightPhase = S.Union([S.Literal("flying"), S.Literal("settled")]);
 const FlightKind = S.Union([S.Literal("battlefield"), S.Literal("stack"), S.Literal("from-stack")]);
+const HandBarZone = S.Union([S.Literal("hand"), S.Literal("command"), S.Literal("graveyard"), S.Literal("exile")]);
 const CardFlight = S.Struct({
   id: S.Number,
   print: S.String,
@@ -50,6 +51,7 @@ export const HandDragStarted = m("HandDragStarted", {
   print: S.String,
   manaCost: S.Any,
   kind: S.optional(S.String),
+  zone: S.optional(HandBarZone),
   x: S.Number,
   y: S.Number,
 });

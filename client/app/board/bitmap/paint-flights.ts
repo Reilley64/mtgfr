@@ -5,6 +5,10 @@ import { CARD_H, CARD_W } from "../geometry/layout";
 import type { CardFlight } from "../motion/flights";
 import { type BitmapImageCache, CARD_OUTLINE, roundRect } from "./paint-cards";
 
+export const FLIGHT_SHADOW_BLUR = 28;
+export const FLIGHT_SHADOW_OFFSET_Y = 12;
+export const FLIGHT_SHADOW_COLOR = "rgba(0,0,0,0.55)";
+
 export function paintFlightCard(
   ctx: CanvasRenderingContext2D,
   flight: CardFlight,
@@ -18,12 +22,14 @@ export function paintFlightCard(
   const r = 6 * zoom * Math.max(flight.scale, 0.5);
 
   ctx.save();
-  ctx.shadowColor = "rgba(0,0,0,0.45)";
-  ctx.shadowBlur = 16;
+  ctx.shadowColor = FLIGHT_SHADOW_COLOR;
+  ctx.shadowBlur = FLIGHT_SHADOW_BLUR;
+  ctx.shadowOffsetY = FLIGHT_SHADOW_OFFSET_Y;
   roundRect(ctx, x, y, w, h, r);
   ctx.fillStyle = colors.oracleIvory;
   ctx.fill();
   ctx.shadowBlur = 0;
+  ctx.shadowOffsetY = 0;
   ctx.strokeStyle = CARD_OUTLINE;
   ctx.lineWidth = Math.max(1, 2 * zoom);
   ctx.stroke();

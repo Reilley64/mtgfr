@@ -88,7 +88,7 @@
   --shadow-press-active: inset 0 1px 0 rgb(255 255 255 / 0.1), 0 3px 10px rgb(0 0 0 / 0.4);
   --shadow-glow: inset 0 1px 0 rgb(255 255 255 / 0.18), 0 0 0 2px rgb(90 200 140 / 0.55), 0 6px 20px rgb(47 140 90 / 0.45);
   --shadow-pick: 0 0 0 3px #22cc44, 0 10px 24px rgb(0 0 0 / 0.6);
-  --drop-shadow-drag: 0 10px 24px rgb(0 0 0 / 0.6);
+  --drop-shadow-drag: 0 16px 36px rgb(0 0 0 / 0.72);
   --ease-state: cubic-bezier(0.22, 1, 0.36, 1);
   --animate-stack-in: stack-in 0.25s ease-out;
   --animate-stack-return: stack-return 0.22s ease-in;
