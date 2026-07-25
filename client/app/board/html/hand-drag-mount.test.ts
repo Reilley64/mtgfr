@@ -2,10 +2,10 @@
  * @vitest-environment happy-dom
  */
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView } from "~/wire/types";
-import { readHandDragPayload } from "./hand-drag-mount";
+import { readHandDragPayload, setHandDragGrabbingCursor } from "./hand-drag-mount";
 
 function action(section: ActionView["section"]): ActionView {
   return {
@@ -30,6 +30,19 @@ function hit(args: { action: ActionView; barZone?: string }): HTMLElement {
   }
   return element;
 }
+
+describe("setHandDragGrabbingCursor", () => {
+  afterEach(() => {
+    document.documentElement.style.cursor = "";
+  });
+
+  it("sets grabbing and clears", () => {
+    setHandDragGrabbingCursor(true);
+    expect(document.documentElement.style.cursor).toBe("grabbing");
+    setHandDragGrabbingCursor(false);
+    expect(document.documentElement.style.cursor).toBe("");
+  });
+});
 
 describe("readHandDragPayload", () => {
   it("prefers the hit dataset bar zone over the action section", () => {

@@ -59,6 +59,11 @@ function readManaCost(raw: string | undefined): WireCost {
   }
 }
 
+export function setHandDragGrabbingCursor(active: boolean): void {
+  if (typeof document === "undefined") return;
+  document.documentElement.style.cursor = active ? "grabbing" : "";
+}
+
 export const MountHandBarDrag = Mount.defineStream(
   "MountHandBarDrag",
   HandDragStarted,
@@ -83,6 +88,7 @@ export const MountHandBarDrag = Mount.defineStream(
             move = null;
             up = null;
             cancel = null;
+            setHandDragGrabbingCursor(false);
           };
 
           const onPointerDown = (event: Event) => {
@@ -94,6 +100,7 @@ export const MountHandBarDrag = Mount.defineStream(
             const payload = readHandDragPayload(hit, event.clientX, event.clientY);
             if (payload == null) return;
             Queue.offerUnsafe(queue, payload);
+            setHandDragGrabbingCursor(true);
             move = (ev) => Queue.offerUnsafe(queue, HandDragMoved({ x: ev.clientX, y: ev.clientY }));
             up = (ev) => {
               teardown();
@@ -134,6 +141,7 @@ export const MountHandBarDrag = Mount.defineStream(
           Effect.sync(() => {
             if (handle == null) return;
             handle.teardown();
+            setHandDragGrabbingCursor(false);
             element.removeEventListener("pointerdown", handle.onPointerDown);
             element.removeEventListener("pointerover", handle.onPointerOver);
             element.removeEventListener("pointerout", handle.onPointerOut);
