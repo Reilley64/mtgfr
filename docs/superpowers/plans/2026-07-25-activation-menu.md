@@ -441,7 +441,7 @@ Create `client/app/board/html/activation-menu.ts`:
   - Each row: `button` or focusable element with `data-testid={`activation-menu-row-${key}`}`, `data-wedge={i}` (keep attribute name so any `radialWedgeFromElement` callers still work if present), `role="button"`, `aria-disabled`, arm/release/hover/keydown handlers matching the old radial (no scale transforms).
   - Label: full `opt.label` with `line-clamp-2` / `text-left` (no 18-char truncate).
   - Cost chip: if `activationCostChip(opt)` non-null, render a span `data-testid="activation-menu-cost"`:
-    - tap → mana-font tap glyph (`ms ms-tap` or project’s existing tap class from mana font)
+    - tap → `<i class="ms ms-cost ms-tap">` via `manaFontClass("T")` → `"tap"`
     - mana → `costPips(cost)` disks like `hand.ts`
     - tap_and_mana → tap + pips
   - Armed/hover row: stronger border (`border-priority-gold` or `bg-llanowar-deep`); disabled: `opacity-60 cursor-not-allowed`.
@@ -549,4 +549,4 @@ git commit -m "docs: record activation menu as living feature surface"
 
 - Message names stay `RadialWedge*` / `RadialOptionPicked` (index-based); do not introduce a second press channel.
 - `data-wedge` attribute retained on rows for any element-from-point helpers; testids use `activation-menu-row-*`.
-- Tap glyph: use the same mana-font class the client already uses for `{T}` elsewhere (`rg "ms-tap|ms-untap" client`); if none exists, render a small text `{T}` chip rather than inventing a new font pipeline in this plan.
+- Tap glyph: `manaFontClass("T")` returns `"tap"` (`client/lib/oracleText.ts`); render `ms ms-cost ms-tap` like other mana-font chips.
