@@ -1,6 +1,6 @@
 # Favicon Dragon Silhouette Design
 
-**Status:** Design note (as of 2026-07-25)
+**Status:** Implemented (as of 2026-07-25)
 **Module:** `client/public/favicon.svg`, `client/public/favicon.ico`, `client/index.html`
 **Surface spec to update on ship:** [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md) (brand chrome)
 
