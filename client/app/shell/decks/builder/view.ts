@@ -329,7 +329,10 @@ function printPicker(model: DeckBuilderSubmodel): Html {
             ],
           ),
           h.div(
-            [h.Class(cn(PRINT_PICKER_GRID, "max-h-[min(60vh,720px)] overflow-y-auto"))],
+            [
+              h.Class(cn(PRINT_PICKER_GRID, "max-h-[min(60vh,720px)] overflow-y-auto overscroll-contain")),
+              h.DataAttribute("testid", "builder-print-picker-scroll"),
+            ],
             [
               !picker.loading && picker.error
                 ? h.div(
@@ -386,6 +389,7 @@ function skeletonTile(): Html {
 export function view(model: DeckBuilderSubmodel, apiVersion: string | null): Html {
   const rows = sortedDeckList(model.entries, model.known);
   const count = deckCount(model.entries);
+  const backgroundScrollLocked = model.printPicker != null;
 
   return h.main(
     [
@@ -417,8 +421,12 @@ export function view(model: DeckBuilderSubmodel, apiVersion: string | null): Htm
           h.div(
             [
               h.Class(
-                "mt-3 grid min-h-0 flex-1 grid-cols-[repeat(auto-fill,minmax(120px,1fr))] content-start gap-md overflow-y-auto",
+                cn(
+                  "mt-3 grid min-h-0 flex-1 grid-cols-[repeat(auto-fill,minmax(120px,1fr))] content-start gap-md overscroll-contain",
+                  backgroundScrollLocked ? "overflow-hidden" : "overflow-y-auto",
+                ),
               ),
+              h.DataAttribute("testid", "builder-pool-scroll"),
             ],
             [
               ...model.pool.map((card) => poolTile(model, card)),
@@ -441,7 +449,7 @@ export function view(model: DeckBuilderSubmodel, apiVersion: string | null): Htm
         ],
       ),
       h.aside(
-        [h.Class("flex min-w-0 flex-col gap-3")],
+        [h.Class("flex min-h-0 min-w-0 flex-col gap-3")],
         [
           h.h2([h.Class("m-0 text-title")], [model.editingId == null ? "New deck" : "Edit deck"]),
           h.label([h.Class("sr-only"), h.For("deck-name")], ["Deck name"]),
@@ -490,7 +498,15 @@ export function view(model: DeckBuilderSubmodel, apiVersion: string | null): Htm
             ],
           ),
           h.div(
-            [h.Class("flex max-h-[40vh] min-h-0 flex-1 flex-col gap-1 overflow-y-auto")],
+            [
+              h.Class(
+                cn(
+                  "flex max-h-[40vh] min-h-0 flex-1 flex-col gap-1 overscroll-contain",
+                  backgroundScrollLocked ? "overflow-hidden" : "overflow-y-auto",
+                ),
+              ),
+              h.DataAttribute("testid", "builder-decklist-scroll"),
+            ],
             [
               ...rows.map((row) =>
                 h.button(

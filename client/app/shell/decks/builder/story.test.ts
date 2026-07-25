@@ -147,6 +147,69 @@ test("picking a print for a deck row updates preferredPrint and the entry print"
   );
 });
 
+test("catalog and decklist are independent overscroll-contained scroll hosts", () => {
+  const solRing = card({ id: "sol-ring", name: "Sol Ring" });
+  const model = {
+    ...initialDeckBuilderSubmodel(),
+    atEnd: true,
+    entries: { "sol-ring": { count: 1, print: solRing.default_print } },
+    known: { "sol-ring": solRing },
+    preferredPrint: { "sol-ring": solRing.default_print },
+    printPicker: null,
+  };
+
+  Scene.scene(
+    { update: builderUpdate, view: (model) => builderView(model, null) },
+    Scene.with(model),
+    Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "deck" }), ClearedBuilderHover()),
+    Scene.Mount.resolve(BindCardArt, ClearedBuilderHover() as never),
+    Scene.expect(Scene.selector('[data-testid="builder-pool-scroll"]')).toHaveClass("overflow-y-auto"),
+    Scene.expect(Scene.selector('[data-testid="builder-pool-scroll"]')).toHaveClass("overscroll-contain"),
+    Scene.expect(Scene.selector('[data-testid="builder-decklist-scroll"]')).toHaveClass("overflow-y-auto"),
+    Scene.expect(Scene.selector('[data-testid="builder-decklist-scroll"]')).toHaveClass(
+      "overscroll-contain",
+    ),
+    Scene.expect(Scene.selector('[data-testid="builder-print-picker"]')).not.toExist(),
+  );
+});
+
+test("print picker freezes catalog and decklist scroll while print grid stays scrollable", () => {
+  const solRing = card({ id: "sol-ring", name: "Sol Ring" });
+  const alternatePrint = print({ collector_number: "42", id: "sol-ring-alt-print", set: "rex", set_name: "Rex" });
+  const model = {
+    ...initialDeckBuilderSubmodel(),
+    atEnd: true,
+    entries: { "sol-ring": { count: 1, print: solRing.default_print } },
+    known: { "sol-ring": solRing },
+    preferredPrint: { "sol-ring": solRing.default_print },
+    printPicker: { addOnPick: false, cardId: "sol-ring", error: false, loading: false, prints: [alternatePrint] },
+  };
+
+  Scene.scene(
+    { update: builderUpdate, view: (model) => builderView(model, null) },
+    Scene.with(model),
+    Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "deck" }), ClearedBuilderHover()),
+    Scene.Mount.resolve(OpenDialogAsModal(), ClearedBuilderHover()),
+    Scene.Mount.resolveAll(
+      [BindCardArt, ClearedBuilderHover() as never],
+      [BindCardArt, ClearedBuilderHover() as never],
+    ),
+    Scene.expect(Scene.selector('[data-testid="builder-print-picker"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="builder-pool-scroll"]')).toHaveClass("overflow-hidden"),
+    Scene.expect(Scene.selector('[data-testid="builder-pool-scroll"]')).not.toHaveClass("overflow-y-auto"),
+    Scene.expect(Scene.selector('[data-testid="builder-decklist-scroll"]')).toHaveClass("overflow-hidden"),
+    Scene.expect(Scene.selector('[data-testid="builder-decklist-scroll"]')).not.toHaveClass(
+      "overflow-y-auto",
+    ),
+    Scene.expect(Scene.selector('[data-testid="builder-print-picker-scroll"]')).toHaveClass(
+      "overflow-y-auto",
+    ),
+    Scene.expect(Scene.selector('[data-testid="builder-print-picker-scroll"]')).toHaveClass(
+      "overscroll-contain",
+    ),
+  );
+});
+
 test("print selection renders a Scryfall tile picker instead of a UUID input", () => {
   const solRing = card({ id: "sol-ring", name: "Sol Ring" });
   const alternatePrint = print({ collector_number: "42", id: "sol-ring-alt-print", set: "rex", set_name: "Rex" });

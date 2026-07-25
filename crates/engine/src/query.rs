@@ -57,10 +57,10 @@ impl Game {
     /// without forcing a dead stop on helpless defenders.
     /// Once something is ON the stack, an instant-speed cast (an instant, or flash — CR
     /// CR 702.8a) counts too: that reaction window is the whole point of the stack, and the
-    /// per-player "don't care" yield is the smooth-flow relief valve. Affordability is
-    /// checked against the mana untapped lands *could* produce ([`Game::available_mana`]),
-    /// not just the current pool — at the start of a turn the pool is empty and the lands
-    /// untapped, but a spell is still castable (auto-tap pays).
+    /// per-player "don't care" yield is the smooth-flow relief valve. Cast affordability uses
+    /// [`Game::plan_auto_taps`] (same planner settle uses), so listing matches payment even when
+    /// [`Game::available_mana`]'s optimistic merge would over-count mutually exclusive free
+    /// modes on one permanent. Auto-tap still pays from untapped lands when the pool is empty.
     /// ponytail: proactive instant-speed play on an empty stack (holding up mana in the end
     /// step) still has no affordance; add "hold priority" if it's ever wanted. (CR 702.8, CR 117, CR 301.5)
     pub fn meaningful_actions(&self, player: PlayerId) -> Vec<MeaningfulAction> {
@@ -134,7 +134,7 @@ impl Game {
                     if let Some(zone) = self.cast_listable(player, id) {
                         actions.push(MeaningfulAction::Cast { card: id, zone });
                     }
-                    self.push_split_half_actions(&mut actions, player, id, available);
+                    self.push_split_half_actions(&mut actions, player, id);
                     if self.cycle_listable(player, id, available) {
                         actions.push(MeaningfulAction::Cycle { card: id });
                     }
@@ -380,7 +380,6 @@ impl Game {
         } else if !self.can_take_sorcery_speed_action(player) {
             return false;
         }
-        let available = self.available_mana(player);
         let spell = Some(back.spell_characteristics());
         let spec = self.required_target(back, None);
         if spec == TargetSpec::None {
@@ -399,7 +398,7 @@ impl Game {
                 0,
                 false,
             );
-            return Self::affordable_from(available, cost, spell);
+            return self.plan_auto_taps(player, cost, None, spell).is_some();
         }
         self.legal_targets_for(spec, source, player, color_identity(back), 0)
             .into_iter()
@@ -419,7 +418,7 @@ impl Game {
                     0,
                     false,
                 );
-                Self::affordable_from(available, cost, spell)
+                self.plan_auto_taps(player, cost, None, spell).is_some()
             })
     }
 
@@ -431,7 +430,6 @@ impl Game {
         actions: &mut Vec<MeaningfulAction>,
         player: PlayerId,
         card: ObjectId,
-        available: ManaPool,
     ) {
         if player != self.priority {
             return;
@@ -472,11 +470,15 @@ impl Game {
             let spec = self.required_target(face, None);
             let affordable = if spec == TargetSpec::None || self.spell_multi_target(face).is_some()
             {
-                Self::affordable_from(available, cost_for(None), spell)
+                self.plan_auto_taps(player, cost_for(None), None, spell)
+                    .is_some()
             } else {
                 self.legal_targets_for(spec, card, player, color_identity(face), 0)
                     .into_iter()
-                    .any(|t| Self::affordable_from(available, cost_for(Some(t)), spell))
+                    .any(|t| {
+                        self.plan_auto_taps(player, cost_for(Some(t)), None, spell)
+                            .is_some()
+                    })
             };
             if affordable {
                 actions.push(MeaningfulAction::CastSplitHalf {

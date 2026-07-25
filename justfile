@@ -10,6 +10,11 @@ server-format:
     cargo fmt
 
 [group('server')]
+[doc("Fail if Rust code is not formatted")]
+server-format-check:
+    cargo fmt --check
+
+[group('server')]
 [doc("Lint Rust code")]
 server-lint:
     cargo clippy --all-targets
@@ -115,8 +120,8 @@ test *args:
     @just server-test {{ args }}
     @just client-test
 
-[doc("Server CI check (CR index on committed sources, then fmt + clippy + migrate + nextest)")]
-server-check: engine-cr-index-check server-format server-lint
+[doc("Server CI check (CR index on committed sources, then fmt --check + clippy + migrate + nextest)")]
+server-check: engine-cr-index-check server-format-check server-lint
     cargo run -p server -- migration apply
     just server-test
 

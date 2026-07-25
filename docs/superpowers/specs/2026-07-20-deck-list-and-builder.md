@@ -19,7 +19,7 @@ The **deck list** at `/` is a compact commander-tile grid over the deck list sub
 
 ## User Stories
 
-- As a returning player on `/`, I scan commander tiles, search by name, click a tile to play, and right-click an owned deck to edit or delete it.
+- As a returning player on `/`, I scan commander tiles (each link tile shows a Play label), search by name, click a tile to play, and right-click an owned deck to edit or delete it.
 - As a returning player, I navigate directly to `/decks/new` and the deck builder loads, showing the full card pool on the left and a blank decklist on the right.
 - As a deck builder, I click a pool card to add it, right-click to pick a different printing (art preference), and see the commander picker auto-populate with legendary creatures in my list.
 
@@ -34,7 +34,8 @@ Header, search, and grid share one `max-w-[960px]` column. Tiles use a raised
 `minmax(220px, 1fr)` track, landscape commander `art_crop` (~1.37:1), deck name,
 color-identity pips, and a Precon chip when `id < 0`. Names stay single-line truncate.
 There is no cursor-follow card hover preview on this surface. The whole tile links to
-`/play/{id}`. Home ↔ `/play/{id}` morphs the shared deck-card chrome with a short
+`/play/{id}` and shows a quiet `Play` label (`deck-play-label`) in link mode; static
+lobby deck-card chrome omits that label. Home ↔ `/play/{id}` morphs the shared deck-card chrome with a short
 FLIP animation (`deck-card-nav.ts`; skipped for reduced motion). A **Search decks…** field filters by deck name and commander display
 name (client-only). Display order: owned decks first (API relative order), then precons
 by ascending id (newest release first). Right-click on an owned deck opens Edit
@@ -51,6 +52,8 @@ Deck button navigates to `/decks/new`.
 - **Singleton enforcement.** Non-basic non-commander cards cap at 1. Commander is set via the context menu only; `canBeCommander` restricts to legendary creatures.
 - **Full Commander legality** is enforced server-side on save; the client surfaces validation errors returned as `CreateDeck422` / `UpdateDeck422` tagged Schema errors.
 - **Card lookup.** `lookupCardsByIds(ids, client)` fetches oracle data for deck hydration through `/api/rpc/cards/lookup`.
+- **Scroll.** The builder page shell does not scroll. The left catalog grid and the right decklist are independent `overflow-y-auto` scrollports with `overscroll-contain` so wheel/trackpad in one pane does not move the other or the document. The right column uses `min-h-0` so the decklist forms a real scrollport inside the grid.
+- **Print picker scroll lock.** While the choose-printing `<dialog>` is open (`printPicker` set), catalog and decklist scrollports use `overflow-hidden` (background frozen). The print tile grid inside the dialog remains `overflow-y-auto` with `overscroll-contain`. Closing the picker restores independent pane scrolling.
 
 ### Card art CDN (`client/lib/deck-builder/scryfall.ts`, `client/lib/ui/card-art.ts`, `client/lib/image-cache.ts`)
 
@@ -101,5 +104,6 @@ Missing ordinary (non-`art_crop`) CDN art stays empty after load failure (no Scr
 
 ## Further Notes
 
+- Deck builder scroll layout and print-picker lock: [2026-07-25-deck-builder-scroll-design.md](2026-07-25-deck-builder-scroll-design.md).
 - FLIP morph of shared deck-card chrome between Home and `/play/{id}` is specified here and reused by [lobby-entry-ui](2026-07-20-lobby-entry-ui.md).
 - Scryfall / tooling User-Agent identity `edh.reilley.dev/0.1` is documented under brand display in [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md).

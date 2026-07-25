@@ -29,6 +29,7 @@ test("static deck card exposes testid, name, commander, precon chip absent", () 
     Scene.expect(Scene.text("Superfriends")).toExist(),
     Scene.expect(Scene.text("Atraxa, Praetors' Voice")).toExist(),
     Scene.expect(Scene.text("Precon")).not.toExist(),
+    Scene.expect(Scene.testId("deck-play-label")).not.toExist(),
     Scene.Mount.resolve(BindDeckCardFlip({ deckId: 7 }), DeckCardFlipTick()),
     Scene.Mount.resolve(BindCardArt, CardArtTick()),
   );
@@ -59,6 +60,8 @@ test("link deck card uses an anchor with href and flip chrome", () => {
     Scene.expect(Scene.selector('[data-deck-card-flip="-2"]')).toExist(),
     Scene.expect(Scene.text("Precon")).toExist(),
     Scene.expect(Scene.text("Osgir, the Reconstructor")).toExist(),
+    Scene.expect(Scene.testId("deck-play-label")).toExist(),
+    Scene.expect(Scene.text("Play")).toExist(),
     Scene.Mount.resolve(BindDeckCardFlip({ deckId: -2 }), DeckCardFlipTick()),
   );
 });

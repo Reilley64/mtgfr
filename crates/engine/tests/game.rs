@@ -12007,6 +12007,50 @@ fn auto_tap_rejects_a_filter_land_with_no_feeder() {
 }
 
 #[test]
+fn a_painland_does_not_list_a_two_mana_spell_as_castable() {
+    // Caves of Koilos has free {{C}} and free {{W}}/{{B}} modes, but tapping it yields only
+    // one of them. Listing must not sum both modes into two mana — that mint-borders a
+    // {{2}} spell the settle path then rejects with CannotPayCost.
+    let mut game = Game::new();
+    let spell = game.spawn_in_hand(PlayerId(0), vanilla("Test Two-Mana", 2, [0; 5]));
+    game.spawn_on_battlefield(PlayerId(0), card("Caves of Koilos"));
+
+    assert!(
+        !game.has_meaningful_action(PlayerId(0)),
+        "one painland is one mana — {{2}} must not look castable",
+    );
+    assert_eq!(
+        game.submit(cast_intent(PlayerId(0), spell, None)),
+        Err(Reject::CannotPayCost),
+        "settle rejects the same unaffordable {{2}}",
+    );
+}
+
+#[test]
+fn a_painland_still_lists_its_single_pip_casts() {
+    // The colorless and colored modes remain independently listable — only mutual exclusivity
+    // must not invent a second pip.
+    for (spell, label) in [
+        (COLORLESS_ROCK, "{{C}} via the painless mode"),
+        (
+            vanilla("Test White Pip", 0, [1, 0, 0, 0, 0]),
+            "{{W}} via the colored mode",
+        ),
+    ] {
+        let mut game = Game::new();
+        let id = game.spawn_in_hand(PlayerId(0), spell);
+        game.spawn_on_battlefield(PlayerId(0), card("Caves of Koilos"));
+
+        assert!(
+            game.has_meaningful_action(PlayerId(0)),
+            "Caves alone must still list {label}",
+        );
+        game.submit(cast_intent(PlayerId(0), id, None))
+            .unwrap_or_else(|e| panic!("{label} must settle; got {e:?}"));
+    }
+}
+
+#[test]
 fn available_mana_counts_a_fed_filter_land() {
     // Mountain + Ferrous Lake must make Harmonic Prodigy ({1}{R}) a meaningful cast.
     let mut game = Game::new();

@@ -25,7 +25,7 @@ Render a fixed DOM hand bar at the bottom of the board. It groups tiles in Arena
 - `hiddenId`, `hiddenIds`, and flight ownership suppress tiles while a staged play or flight owns the card.
 - Playable hand/command tiles get the playable border from `barZoneAura(zone, playable)`.
 - Unplayable hand/command tiles stay full brightness: no `brightness-[0.55]` or equivalent veil.
-- Resting faces use `--shadow-hand` (`shadow-hand`). The drag source fades with `opacity-25` and loses playable aura; the drag ghost carries the face, zone-aware `barZoneAura(zone, true)`, and deepened `drop-shadow-drag` (plus `shadow-hand`). Idle hits use `cursor-grab` when playable and `cursor-not-allowed` otherwise; an active drag sets `cursor-grabbing` on the document element.
+- Resting faces use `--shadow-hand` (`shadow-hand`). The drag source fades with `opacity-25` and loses playable aura; the drag ghost carries the face, zone-aware `barZoneAura(zone, true)`, and the shared lift `--drop-shadow-drag` (same recipe as canvas flights; plus `shadow-hand`). Idle hits use `cursor-grab` when playable and `cursor-not-allowed` otherwise; an active drag sets `cursor-grabbing` on the document element.
 - Graveyard/exile bar tiles appear only for actions and use their zone outline colors when playable.
 - Hand and priority controls render only for active seated players, not spectators or eliminated players.
 
