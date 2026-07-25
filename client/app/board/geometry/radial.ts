@@ -2,7 +2,7 @@
 
 import type { ActionView, WireCost } from "~/wire/types";
 import { type Camera, worldToScreen } from "./camera";
-import { type RenderCard } from "./layout";
+import type { RenderCard } from "./layout";
 
 export type RadialOption =
   | { kind: "tap_for_mana"; label: string; disabled: boolean }
@@ -69,7 +69,11 @@ export function activationMenuPlacement(
   ];
   const fits = (p: { x: number; y: number }) =>
     p.x >= 0 && p.y >= 0 && p.x + menu.width <= viewport.width && p.y + menu.height <= viewport.height;
-  const raw = candidates.find(fits) ?? candidates[0]!;
+  const firstCandidate = candidates[0];
+  if (firstCandidate == null) {
+    return { left: "0%", top: "0%", width: "0%", maxHeight: "0%" };
+  }
+  const raw = candidates.find(fits) ?? firstCandidate;
   const x = clamp(raw.x, 0, Math.max(0, viewport.width - menu.width));
   const y = clamp(raw.y, 0, Math.max(0, viewport.height - menu.height));
   return {
@@ -91,7 +95,7 @@ export function radialPressDown(_state: RadialPress, wedgeIndex: number): Radial
   return { armed: wedgeIndex };
 }
 
-/** Resolve wedge index from an element (`data-wedge` on the path's `<g>`). */
+/** Resolve wedge index from a menu row or other `[data-wedge]` element. */
 export function radialWedgeFromElement(el: EventTarget | null): number | null {
   if (!(el instanceof Element)) return null;
   const node = el.closest("[data-wedge]");
