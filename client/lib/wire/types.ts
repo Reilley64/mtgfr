@@ -122,7 +122,7 @@ export type SeatView = {
   username?: string | null;
 };
 export type SeedResponse = { pod_dns: string; table_id: string; version: string };
-export type SeedSeat = { deck_id: number; user_id: number; username: string };
+export type SeedSeat = { deck_id: number; gravatar_hash?: string; user_id: number; username: string };
 export type WireCost = { colored: Array<number>; generic: number; has_x?: boolean; x_symbols?: number };
 export type WireEitherMana = { a: number; amount: number; b: number };
 export type WireKind =
@@ -156,6 +156,7 @@ export type CatalogCard = {
 export type PlayerView = {
   commander_damage?: Array<CommanderDamageView>;
   commander_tax: number;
+  gravatar_hash?: string;
   hand_count: number;
   can_mulligan?: boolean;
   hand_kept?: boolean;

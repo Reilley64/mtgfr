@@ -85,6 +85,7 @@ pub fn seed_seat_from_pb(seat: pb::SeedSeat) -> SeedSeat {
         user_id: seat.user_id,
         username: seat.username,
         deck_id: seat.deck_id,
+        gravatar_hash: seat.gravatar_hash,
     }
 }
 

@@ -92,6 +92,7 @@ message SeedSeat {
   int64 user_id = 1;
   string username = 2;
   int64 deck_id = 3;
+  string gravatar_hash = 4;
 }
 
 // Seed a running game from a lobby the BFF already resolved. `seats` is ordered by seat index

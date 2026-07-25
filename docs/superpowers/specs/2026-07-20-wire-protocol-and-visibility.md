@@ -130,7 +130,7 @@ BFF can pin later `table_id` hops to this pod.
 |-------|-----------------|
 | `viewer` | Seat index, or 255 for a spectator |
 | `active_player`, `step`, `priority` | Turn structure discriminants |
-| `players` | Per-seat `PlayerView`: life, commander tax, commander damage, `hand_count`, `library_count`, mana pool |
+| `players` | Per-seat `PlayerView`: username, `gravatar_hash` (SHA-256 hex; empty = monogram), life, commander tax, commander damage, `hand_count`, `library_count`, mana pool |
 | `objects` | Every `ObjectView` visible to this viewer: hand cards (own only), battlefield, stack, graveyard, exile, command zone |
 | `stack` | `StackObjectView` list, bottom-first; `MessageRef` label, optional primary `target`, and `targets` list (clause 0 then clause 1; empty when targetless) |
 | `combat` | `CombatView`: declared attackers with defenders, declared blocks, confirmed flags |

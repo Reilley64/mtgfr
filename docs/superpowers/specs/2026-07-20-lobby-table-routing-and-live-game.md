@@ -59,6 +59,7 @@ are random 128-bit hex strings (unguessable). Each `Table` holds:
 - A monotonic `seq` (event counter / stream resume watermark).
 - A `tokio::broadcast` channel per table for fan-out to all subscribers.
 - `ChromeState` (yield flags, stack-hold, dwell — see below).
+- Per-seat public chrome from `SeedSeat`: username and `gravatar_hash` (never email).
 - Per-seat `prints` map (Card id → Printing UUID, for `ObjectView` art).
 - `quiet_since` (for abandoned-table eviction during drain).
 
