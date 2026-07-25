@@ -24,8 +24,6 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
             _ => Err(Reject::IllegalChoice),
         },
         PendingChoice::ChooseTarget { .. }
-        | PendingChoice::ChooseSpellTargets { .. }
-        | PendingChoice::ChooseAbilityTargets { .. }
         | PendingChoice::ChooseActivationCostTargets { .. }
         | PendingChoice::ChooseSplittingOpponent { .. } => match intent {
             Intent::ChooseTargets { player, targets } => game.choose_targets(player, targets),
@@ -434,8 +432,7 @@ pub(crate) fn forced(game: &Game) -> Option<Intent> {
             sacrifices: options.clone(),
         }),
         // Default for every other discriminant — same table, no forced Intent.
-        PendingChoice::ChooseSpellTargets { .. }
-        | PendingChoice::MayYesNo { .. }
+        PendingChoice::MayYesNo { .. }
         | PendingChoice::MayDrawUpTo { .. }
         | PendingChoice::DeclineUntap { .. }
         | PendingChoice::ChooseDredge { .. }
@@ -458,7 +455,6 @@ pub(crate) fn forced(game: &Game) -> Option<Intent> {
         | PendingChoice::DistributeTop { .. }
         | PendingChoice::Proliferate { .. }
         | PendingChoice::PhaseOut { .. }
-        | PendingChoice::ChooseAbilityTargets { .. }
         | PendingChoice::ChooseActivationCostTargets { .. }
         | PendingChoice::ShuffleFromGraveyard { .. }
         | PendingChoice::SearchLibrary { .. }

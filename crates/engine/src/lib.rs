@@ -626,12 +626,15 @@ mod forced_action_tests {
         game.pending_choice = Some(PendingChoice::ChooseTarget {
             player: P0,
             source: 0,
-            effect: Effect::Draw(DrawEffect::Cards {
+            effect: Some(Effect::Draw(DrawEffect::Cards {
                 count: Amount::Fixed(1),
-            }),
+            })),
             legal: vec![Target::Object(7)],
             count: TargetCount::default(),
+            clause: 0,
+            target: None,
             x: 0,
+            spent_mana: [0; 6],
             activated: false,
         });
         assert_eq!(
@@ -649,12 +652,15 @@ mod forced_action_tests {
         game.pending_choice = Some(PendingChoice::ChooseTarget {
             player: P0,
             source: 0,
-            effect: Effect::Draw(DrawEffect::Cards {
+            effect: Some(Effect::Draw(DrawEffect::Cards {
                 count: Amount::Fixed(1),
-            }),
+            })),
             legal: vec![Target::Object(7), Target::Object(8)],
             count: TargetCount::default(),
+            clause: 0,
+            target: None,
             x: 0,
+            spent_mana: [0; 6],
             activated: false,
         });
         assert_eq!(game.forced_action(), None);
@@ -668,16 +674,19 @@ mod forced_action_tests {
         game.pending_choice = Some(PendingChoice::ChooseTarget {
             player: P0,
             source: 0,
-            effect: Effect::Draw(DrawEffect::Cards {
+            effect: Some(Effect::Draw(DrawEffect::Cards {
                 count: Amount::Fixed(1),
-            }),
+            })),
             legal: vec![Target::Object(7)],
             count: TargetCount {
                 min: 0,
                 max: 1,
                 ..TargetCount::default()
             },
+            clause: 0,
+            target: None,
             x: 0,
+            spent_mana: [0; 6],
             activated: false,
         });
         assert_eq!(game.forced_action(), None);

@@ -4078,10 +4078,13 @@ impl Game {
             PendingChoice::ChooseTarget {
                 player,
                 source,
-                effect,
+                effect: Some(effect),
                 legal,
                 count,
+                clause: 0,
+                target: None,
                 x: activation_x,
+                spent_mana: [0; 6],
                 activated,
             },
         );
@@ -4174,7 +4177,7 @@ impl Game {
     /// or `None`), choose its *second* independent target clause too (CR 603.3d — Kinetic Ooze's
     /// X≥10 "double ... any number of other target creatures") before the ability goes on the stack,
     /// then push the assembled ability. An ability with only one target clause pushes immediately
-    /// (empty `targets_second`). Pauses on a [`PendingChoice::ChooseAbilityTargets`] when the second
+    /// (empty `targets_second`). Pauses on a [`PendingChoice::ChooseTarget`] when the second
     /// clause is a real choice (more than one legal set); auto-fills when it's forced.
     /// `push_x`/`push_spent_mana`/`push_activated` are threaded onto whichever ability this
     /// finally places (an activated donation carries the activation's chosen `{X}` and spent mana
@@ -4233,14 +4236,18 @@ impl Game {
         }
         crate::pending::raise_choice(
             self,
-            PendingChoice::ChooseAbilityTargets {
+            PendingChoice::ChooseTarget {
                 player,
                 source,
-                effect,
-                target: first,
-                min: lo,
-                max: hi,
+                effect: Some(effect),
                 legal,
+                count: TargetCount {
+                    min: lo,
+                    max: hi,
+                    ..count
+                },
+                clause: 1,
+                target: first,
                 x: push_x,
                 spent_mana: push_spent_mana,
                 activated: push_activated,

@@ -718,7 +718,7 @@ pub enum PendingChoiceView {
     /// An activated ability's own targeted exile cost (CR 601.2c/602.2b — Spurnmage Advocate's
     /// "Exile two target cards from an opponent's graveyard"), named after every other cost is
     /// already paid: exactly `count` of `items` (cards in an opponent's graveyard). Answered by
-    /// `ChooseTargets`, like `ChooseAbilityTargets` — but a paid *cost*, not the ability's own
+    /// `ChooseTargets`, like a stack-bound `ChooseTarget` clause — but a paid *cost*, not the ability's own
     /// stack-bound target clause.
     ChooseActivationCostTargets {
         player: u8,

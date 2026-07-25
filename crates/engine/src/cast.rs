@@ -568,7 +568,7 @@ impl Game {
             self.push_apply(&mut events, Event::CommanderCastFromCommandZone { player });
         }
         // A multi-target spell now chooses its targets (CR 601.2c): auto-fill when the choice is
-        // forced (a single legal set — take them all), otherwise pause on a ChooseSpellTargets.
+        // forced (a single legal set — take them all), otherwise pause on a ChooseTarget.
         if let Some((spec, count)) = multi_target {
             self.choose_spell_targets(spell_id, spec, count, player, player, &mut events);
         }
@@ -787,7 +787,7 @@ impl Game {
     /// `count.max` distinct legal targets — but capped at how many legal targets exist (CR 601.2c:
     /// "the maximum possible number"). When that's a single forced set (take every legal target, no
     /// room to choose fewer or which), it's auto-filled here with no pause and the next clause runs;
-    /// otherwise the caster answers a [`PendingChoice::ChooseSpellTargets`] carrying this `clause`.
+    /// otherwise the caster answers a [`PendingChoice::ChooseTarget`] carrying this `clause`.
     /// See [`Self::choose_spell_targets`] for `anchor`/`chooser`.
     #[allow(clippy::too_many_arguments)]
     fn choose_spell_target_clause(
@@ -837,6 +837,11 @@ impl Game {
         };
         let lo = (min as usize).min(n) as u8;
         let hi = (max as usize).min(n) as u8;
+        let count = TargetCount {
+            min: lo,
+            max: hi,
+            ..count
+        };
         // Forced: exactly one legal set (must take all `n`, no option to take fewer). Auto-fill,
         // then chain into the next clause (or the divided-damage split once every clause is set).
         if lo == hi && hi as usize == n {
@@ -853,13 +858,17 @@ impl Game {
         }
         crate::pending::raise_choice(
             self,
-            PendingChoice::ChooseSpellTargets {
+            PendingChoice::ChooseTarget {
                 player: chooser,
-                spell,
-                min: lo,
-                max: hi,
+                source: spell,
+                effect: None,
                 legal,
+                count,
                 clause: clause as u8,
+                target: None,
+                x: self.spell(spell).x,
+                spent_mana: [0; 6],
+                activated: false,
             },
         );
     }

@@ -675,7 +675,7 @@ impl Game {
     /// Target need and legal targets for casting half `half` of the split card `card` (CR 709.4a).
     /// Empty when `card` has no such half, or when the half picks its targets *after* the cast
     /// (a multi-target clause like Fire's "divided among one or two targets" — a
-    /// `ChooseSpellTargets` pending choice handles those, exactly as for a directly-cast spell).
+    /// `ChooseTarget` pending choice handles those, exactly as for a directly-cast spell).
     pub fn split_half_cast_targets(&self, card: ObjectId, half: u8) -> (TargetSpec, Vec<Target>) {
         let Some(&face_id) = self.def_of(card).halves.get(half as usize) else {
             return (TargetSpec::None, Vec::new());

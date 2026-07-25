@@ -803,45 +803,32 @@ pub enum PendingChoice {
         source: ObjectId,
         effects: Vec<Effect>,
     },
-    /// `player` must choose the target(s) for a triggered (or copied — CR 707.10c) ability
-    /// (`source`'s `effect`) before it goes on the stack (CR 601.2c/603.3c). Answered by
-    /// [`Intent::ChooseTargets`]: between `count.min` and `count.max` distinct targets, drawn
-    /// from `legal` (both already clamped to `legal.len()` by [`Game::place_targeted_ability`]).
-    /// The ubiquitous single-mandatory-target ability carries `count = { min: 1, max: 1 }`;
-    /// `count.min == 0` (Killian, Decisive Mentor's "tap up to one target creature") lets
-    /// `targets` be empty to decline: the ability is dropped rather than placed with no target.
-    /// `count.max > 1` (Numot, the Devastator's "destroy up to two target lands") widens this
-    /// past one target, same range shape as
-    /// [`PendingChoice::ChooseSpellTargets`]/[`PendingChoice::ChooseAbilityTargets`]. `x`/
-    /// `activated` carry an activated ability's own chosen `{X}`/activated-ness so the assembled
-    /// ability pushes with them once answered — `0`/`false` for an ordinary triggered ability
-    /// (which carries no `{X}` of its own); Unbound Flourishing's CR 707.10c copy-retarget of a
-    /// targeted `{X}`-cost activated ability (Nin, the Pain Artist) is the one real consumer. Not
-    /// wire-mirrored — the schema projection ignores these via `..`, same as
-    /// [`PendingChoice::ChooseAbilityTargets`]'s own `x`/`spent_mana`/`activated`.
+    /// `player` must choose target(s) for one of three same-wire cases:
+    ///
+    /// - an ability's first target clause before it goes on the stack (CR 601.2c/603.3c),
+    /// - an already-on-the-stack spell's independent target clause (CR 601.2c / CR 707.10c
+    ///   retargets),
+    /// - or an ability's second independent target clause before that ability is pushed.
+    ///
+    /// Between `count.min` and `count.max` distinct targets are chosen from `legal` (already
+    /// clamped to `legal.len()` by the raise site). `source` is the ability source or the spell on
+    /// the stack. `effect` is `Some` for ability placement / mid-resolution target pauses and
+    /// `None` for spell-on-stack target clauses, whose wire label stays the card name. `clause`
+    /// indexes independent target clauses in printed order; `target` carries an already-chosen
+    /// first-clause ability target when `clause > 0`. `x`/`spent_mana`/`activated` thread an
+    /// ability's activation metadata onto the eventual push and are ignored for spell-on-stack
+    /// choices. Answered by [`Intent::ChooseTargets`].
     ChooseTarget {
         player: PlayerId,
         source: ObjectId,
-        effect: Effect,
+        effect: Option<Effect>,
         legal: Vec<Target>,
         count: TargetCount,
-        x: u32,
-        activated: bool,
-    },
-    /// `player` (the caster) must choose the targets for the multi-target `spell` on the stack
-    /// (CR 601.2c): between `min` and `max` distinct targets drawn from `legal`. Answered by
-    /// [`Intent::ChooseTargets`]. Distinct from [`Self::ChooseTarget`] (a single triggered-ability
-    /// target chosen before it hits the stack); this records N targets onto an already-cast spell.
-    ChooseSpellTargets {
-        player: PlayerId,
-        spell: ObjectId,
-        min: u8,
-        max: u8,
-        legal: Vec<Target>,
-        /// Which independent target clause this pause fills (CR 601.2c — all a spell's targets are
-        /// chosen at once, in printed order). `0` for the usual single multi-target clause; `1` for
-        /// a second one (Magma Opus's tap clause), chained after clause 0 is answered.
         clause: u8,
+        target: Option<Target>,
+        x: u32,
+        spent_mana: [u8; 6],
+        activated: bool,
     },
     /// `player` may decline or accept an optional triggered ability (`source`'s `effect`).
     /// Answered by [`Intent::AnswerMay`].
@@ -1100,30 +1087,6 @@ pub enum PendingChoice {
         source: ObjectId,
         options: Vec<ObjectId>,
     },
-    /// `player` must choose a triggered ability's *second* independent target clause (CR 603.3d —
-    /// Kinetic Ooze's X≥10 "double ... any number of other target creatures") before it goes on the
-    /// stack: between `min` and `max` distinct targets from `legal` (CR 601.2c). The ability's
-    /// `effect` (a `Sequence`) and its already-chosen first-clause `target` are carried so the
-    /// assembled ability — both clauses — is pushed once answered. Answered by
-    /// [`Intent::ChooseTargets`]. Distinct from [`Self::ChooseSpellTargets`] (a spell already on the
-    /// stack) and [`Self::ChooseTarget`] (a single first-clause target).
-    ChooseAbilityTargets {
-        player: PlayerId,
-        source: ObjectId,
-        effect: Effect,
-        target: Option<Target>,
-        min: u8,
-        max: u8,
-        legal: Vec<Target>,
-        /// The activation's chosen `{X}` / spent-mana multiset / activated-ness, carried so the
-        /// assembled ability pushes with them once answered. `0`/all-zero/`false` for a triggered
-        /// second-clause ability (Kinetic Ooze); the activation's own values for an activated
-        /// second-clause ability (Zedruu's donation). Not wire-mirrored — the schema projection
-        /// ignores these via `..`, same as the sibling `ChooseActivationCostTargets` internals.
-        x: u32,
-        spent_mana: [u8; 6],
-        activated: bool,
-    },
     /// `player` (the activator) must name `count` distinct target cards from an opponent's
     /// graveyard to pay an activated ability's own targeted exile cost (CR 601.2c/602.2b —
     /// Spurnmage Advocate's "Exile two target cards from an opponent's graveyard: …" —
@@ -1133,7 +1096,7 @@ pub enum PendingChoice {
     /// target clause, unrelated to this cost's targets. Answered by [`Intent::ChooseTargets`]:
     /// the named cards are exiled, then the fixed ability is pushed onto the stack — see
     /// [`Game::choose_activation_cost_targets_answer`]. Distinct from
-    /// [`Self::ChooseAbilityTargets`] (a *triggered* ability's second stack-bound clause, chosen
+    /// [`Self::ChooseTarget`] with `clause > 0` (a stack-bound ability's second target clause, chosen
     /// at placement, not a cost paid at activation).
     ChooseActivationCostTargets {
         player: PlayerId,
@@ -1772,8 +1735,6 @@ impl PendingChoice {
         match self {
             PendingChoice::OrderTriggers { player, .. }
             | PendingChoice::ChooseTarget { player, .. }
-            | PendingChoice::ChooseSpellTargets { player, .. }
-            | PendingChoice::ChooseAbilityTargets { player, .. }
             | PendingChoice::ChooseActivationCostTargets { player, .. }
             | PendingChoice::MayYesNo { player, .. }
             | PendingChoice::MayDrawUpTo { player, .. }

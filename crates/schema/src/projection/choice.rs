@@ -112,25 +112,13 @@ impl<'a> ChoiceCtx<'a> {
             } => PendingChoiceView::ChooseTarget {
                 player: player.0,
                 source,
-                label: to_wire_message(effect.message()),
+                label: effect.as_ref().map_or_else(
+                    || named_message("card.name", self.game.def_of(source).name),
+                    |effect| to_wire_message(effect.clone().message()),
+                ),
                 items: self.label_targets(legal),
                 min: count.min,
                 max: count.max,
-            },
-            engine::PendingChoice::ChooseSpellTargets {
-                player,
-                spell,
-                min,
-                max,
-                legal,
-                ..
-            } => PendingChoiceView::ChooseTarget {
-                player: player.0,
-                source: spell,
-                label: named_message("card.name", self.game.def_of(spell).name),
-                items: self.label_targets(legal),
-                min,
-                max,
             },
             engine::PendingChoice::ChooseTargetPlayers {
                 player,
@@ -395,22 +383,6 @@ impl<'a> ChoiceCtx<'a> {
                 player: player.0,
                 source,
                 items: self.label_items(options),
-            },
-            engine::PendingChoice::ChooseAbilityTargets {
-                player,
-                source,
-                effect,
-                min,
-                max,
-                legal,
-                ..
-            } => PendingChoiceView::ChooseTarget {
-                player: player.0,
-                source,
-                label: to_wire_message(effect.message()),
-                items: self.label_targets(legal),
-                min,
-                max,
             },
             engine::PendingChoice::ChooseActivationCostTargets {
                 player,
@@ -886,22 +858,29 @@ mod coverage_tests {
                 PendingChoice::ChooseTarget {
                     player: PlayerId(0),
                     source,
-                    effect: draw_effect(),
+                    effect: Some(draw_effect()),
                     legal: vec![Target::Object(blocker)],
                     count: engine::TargetCount::default(),
+                    clause: 0,
+                    target: None,
                     x: 0,
+                    spent_mana: [0; 6],
                     activated: false,
                 },
                 |view| matches!(view, PendingChoiceView::ChooseTarget { .. }),
             ),
             (
-                PendingChoice::ChooseSpellTargets {
+                PendingChoice::ChooseTarget {
                     player: PlayerId(0),
-                    spell,
-                    min: 1,
-                    max: 1,
+                    source: spell,
+                    effect: None,
                     legal: vec![Target::Object(blocker)],
+                    count: engine::TargetCount::default(),
                     clause: 0,
+                    target: None,
+                    x: 0,
+                    spent_mana: [0; 6],
+                    activated: false,
                 },
                 |view| matches!(view, PendingChoiceView::ChooseTarget { min: 1, max: 1, .. }),
             ),

@@ -24389,8 +24389,13 @@ fn a_copied_spell_may_be_retargeted() {
 
     // Resolve Twincast: the copy is minted and pauses on the CR 707.10c retarget choice.
     resolve_top_of_stack(&mut game);
-    let Some(PendingChoice::ChooseSpellTargets { spell, legal, .. }) = game.pending_choice() else {
-        panic!("the copy offers a ChooseSpellTargets retarget choice");
+    let Some(PendingChoice::ChooseTarget {
+        source: spell,
+        legal,
+        ..
+    }) = game.pending_choice()
+    else {
+        panic!("the copy offers a ChooseTarget retarget choice");
     };
     assert_ne!(
         spell, bolt_on_stack,
@@ -25628,8 +25633,7 @@ fn spell_crumple_countering_a_copy_makes_it_cease_to_exist_cr_707_10a() {
 
     resolve_top_of_stack(&mut game); // the storm trigger resolves, minting 1 copy, pausing on retarget
     let copy = top_spell(&game);
-    let Some(PendingChoice::ChooseSpellTargets { player, legal, .. }) = game.pending_choice()
-    else {
+    let Some(PendingChoice::ChooseTarget { player, legal, .. }) = game.pending_choice() else {
         panic!(
             "expected the storm copy's retarget pause, got {:?}",
             game.pending_choice()
@@ -25727,7 +25731,7 @@ fn a_copy_of_spell_crumple_ceasing_to_exist_does_not_leak_its_self_tuck_onto_the
     .expect("Twincast can copy the instant Spell Crumple");
 
     resolve_top_of_stack(&mut game); // Twincast resolves: mints a Spell Crumple copy, pausing to retarget.
-    let Some(PendingChoice::ChooseSpellTargets { player, .. }) = game.pending_choice() else {
+    let Some(PendingChoice::ChooseTarget { player, .. }) = game.pending_choice() else {
         panic!(
             "expected the copy's retarget pause, got {:?}",
             game.pending_choice()
@@ -27722,7 +27726,7 @@ fn owlin_spiralmancer_copies_first_x_spell_each_turn_with_retarget() {
     .unwrap();
 
     resolve_top_of_stack(&mut g); // the accepted copy trigger resolves: mints a copy, pauses to retarget
-    let Some(PendingChoice::ChooseSpellTargets { player, legal, .. }) = g.pending_choice() else {
+    let Some(PendingChoice::ChooseTarget { player, legal, .. }) = g.pending_choice() else {
         panic!("accepting the copy pauses on \"you may choose new targets for the copy\"");
     };
     assert!(
@@ -27804,7 +27808,7 @@ fn unbound_flourishing_copies_instant_or_sorcery_with_x() {
 
     g.cast(blaze).x(4).at(Target::Player(PlayerId(1))).submit();
     resolve_top_of_stack(&mut g); // the mandatory copy ability resolves: mints a copy, pauses to retarget
-    let Some(PendingChoice::ChooseSpellTargets { player, .. }) = g.pending_choice() else {
+    let Some(PendingChoice::ChooseTarget { player, .. }) = g.pending_choice() else {
         panic!("the copy ability pauses on \"you may choose new targets for the copy\"");
     };
     g.submit(Intent::ChooseTargets {
@@ -31140,9 +31144,8 @@ fn changing_loyalty_replicate_makes_a_token_copy_per_payment() {
         "paying replicate once mints one copy at cast, before either spell resolves"
     );
 
-    let Some(PendingChoice::ChooseSpellTargets { player, legal, .. }) = game.pending_choice()
-    else {
-        panic!("the replicate copy offers a ChooseSpellTargets retarget choice");
+    let Some(PendingChoice::ChooseTarget { player, legal, .. }) = game.pending_choice() else {
+        panic!("the replicate copy offers a ChooseTarget retarget choice");
     };
     assert!(
         legal.contains(&Target::Object(creature_b)),
@@ -31182,8 +31185,8 @@ fn changing_loyalty_replicate_copy_ceases_to_exist_when_it_leaves() {
         .at(Target::Object(creature_a))
         .replicating(1)
         .submit();
-    let Some(PendingChoice::ChooseSpellTargets { player, .. }) = game.pending_choice() else {
-        panic!("the replicate copy offers a ChooseSpellTargets retarget choice");
+    let Some(PendingChoice::ChooseTarget { player, .. }) = game.pending_choice() else {
+        panic!("the replicate copy offers a ChooseTarget retarget choice");
     };
     game.submit(Intent::ChooseTargets {
         player,
@@ -31229,8 +31232,8 @@ fn changing_loyalty_replicate_copy_steals_on_death() {
         .at(Target::Object(creature_a))
         .replicating(1)
         .submit();
-    let Some(PendingChoice::ChooseSpellTargets { player, .. }) = game.pending_choice() else {
-        panic!("the replicate copy offers a ChooseSpellTargets retarget choice");
+    let Some(PendingChoice::ChooseTarget { player, .. }) = game.pending_choice() else {
+        panic!("the replicate copy offers a ChooseTarget retarget choice");
     };
     game.submit(Intent::ChooseTargets {
         player,
@@ -33378,8 +33381,8 @@ fn rootha_return_self_cost_bounces_source() {
 
     // Resolve Rootha's ability: the copy is minted and pauses on the CR 707.10c retarget choice.
     resolve_top_of_stack(&mut game);
-    let Some(PendingChoice::ChooseSpellTargets { legal, .. }) = game.pending_choice() else {
-        panic!("the copy offers a ChooseSpellTargets retarget choice");
+    let Some(PendingChoice::ChooseTarget { legal, .. }) = game.pending_choice() else {
+        panic!("the copy offers a ChooseTarget retarget choice");
     };
     assert!(legal.contains(&Target::Object(ox)));
     game.submit(Intent::ChooseTargets {
@@ -36035,8 +36038,7 @@ fn sevinnes_reclamation_flashback_cast_copies_with_retarget() {
 
     // Two legal graveyard targets remain (target_a already left for the battlefield) — a real
     // "may choose a new target" decision, not an auto-filled single legal target.
-    let Some(PendingChoice::ChooseSpellTargets { player, legal, .. }) = game.pending_choice()
-    else {
+    let Some(PendingChoice::ChooseTarget { player, legal, .. }) = game.pending_choice() else {
         panic!("accepting the copy pauses to choose its new target");
     };
     assert!(
@@ -36757,10 +36759,7 @@ fn life_from_the_loam_returns_up_to_three_lands() {
     })
     .expect("Life from the Loam is castable at sorcery speed with an empty stack");
 
-    let Some(PendingChoice::ChooseSpellTargets {
-        legal, min, max, ..
-    }) = game.pending_choice()
-    else {
+    let Some(PendingChoice::ChooseTarget { legal, count, .. }) = game.pending_choice() else {
         panic!("three legal lands with a {{0,3}} count pauses for a target choice");
     };
     assert!(
@@ -36768,7 +36767,7 @@ fn life_from_the_loam_returns_up_to_three_lands() {
         "a non-land graveyard card is never a legal pick"
     );
     assert_eq!(
-        (min, max),
+        (count.min, count.max),
         (0, 3),
         "up to three — declinable, not mandatory"
     );
@@ -41812,7 +41811,7 @@ fn zedruu_donate(game: &mut Game, zedruu: ObjectId, gift: ObjectId, opponent: Pl
     })
     .expect("Zedruu activates its donation on a permanent it controls");
     // The donation's second, independent target clause (CR 601.2c): the target opponent.
-    let Some(PendingChoice::ChooseAbilityTargets { legal, .. }) = game.pending_choice() else {
+    let Some(PendingChoice::ChooseTarget { legal, .. }) = game.pending_choice() else {
         panic!(
             "donation pauses to choose the target opponent, got {:?}",
             game.pending_choice()
@@ -42107,7 +42106,7 @@ fn cast_vedalken_and_exchange(
     // The "an opponent controls" clause: chosen if it's a real choice, else already auto-filled.
     if matches!(
         game.pending_choice(),
-        Some(PendingChoice::ChooseAbilityTargets { .. })
+        Some(PendingChoice::ChooseTarget { .. })
     ) {
         game.submit(Intent::ChooseTargets {
             player: caster,
@@ -43049,12 +43048,12 @@ fn kinetic_ooze_x10_doubling_targets_are_chosen_at_placement() {
     .expect("the mana-value-5 artifact is a legal destroy target at X=10");
 
     // CR 603.3d — the X ≥ 10 rider's "other target creatures" are chosen as the trigger goes on
-    // the stack (a second, multi-target clause), not at resolution: a `ChooseAbilityTargets` pause
+    // the stack (a second, multi-target clause), not at resolution: a `ChooseTarget` pause
     // offering every *other* creature (any player's).
     let ooze_perm = game.current_id(ooze);
     let legal = match game.pending_choice() {
-        Some(PendingChoice::ChooseAbilityTargets { min: 0, legal, .. }) => legal,
-        other => panic!("expected the second-clause ChooseAbilityTargets pause, got {other:?}"),
+        Some(PendingChoice::ChooseTarget { count, legal, .. }) if count.min == 0 => legal,
+        other => panic!("expected the second-clause ChooseTarget pause, got {other:?}"),
     };
     assert!(
         legal.contains(&Target::Object(mine)) && legal.contains(&Target::Object(theirs)),
@@ -43128,8 +43127,8 @@ fn kinetic_ooze_x10_cannot_target_hexproof_creature() {
 
     // The destroy has no legal target, so the ETB skips straight to the second (doubling) clause.
     let legal = match game.pending_choice() {
-        Some(PendingChoice::ChooseAbilityTargets { legal, .. }) => legal,
-        other => panic!("expected the second-clause ChooseAbilityTargets pause, got {other:?}"),
+        Some(PendingChoice::ChooseTarget { legal, .. }) => legal,
+        other => panic!("expected the second-clause ChooseTarget pause, got {other:?}"),
     };
     assert!(
         !legal.contains(&Target::Object(their_hexproof)),
@@ -43164,7 +43163,7 @@ fn kinetic_ooze_x10_declines_doubling_targets() {
     assert!(
         matches!(
             game.pending_choice(),
-            Some(PendingChoice::ChooseAbilityTargets { min: 0, .. })
+            Some(PendingChoice::ChooseTarget { count, .. }) if count.min == 0
         ),
         "the doubling clause is offered (X=10), and choosing zero is legal"
     );
@@ -60333,8 +60332,7 @@ fn ominous_harvest_gravestorm_copies_per_permanent_died_this_turn() {
     // Answer each minted copy's retarget choice until the mint queue drains (see
     // `Effect::Copy(CopyEffect::ThisSpell)`'s doc: one copy mints per `resolve_sequence` pause/resume step).
     let mut copies = 0;
-    while let Some(PendingChoice::ChooseSpellTargets { player, legal, .. }) = game.pending_choice()
-    {
+    while let Some(PendingChoice::ChooseTarget { player, legal, .. }) = game.pending_choice() {
         copies += 1;
         game.submit(Intent::ChooseTargets {
             player,
@@ -60379,8 +60377,7 @@ fn storm_copies_for_each_prior_spell_this_turn() {
 
     let remaining_targets = [Target::Object(bear2), Target::Object(bear3)];
     let mut copies = 0;
-    while let Some(PendingChoice::ChooseSpellTargets { player, legal, .. }) = game.pending_choice()
-    {
+    while let Some(PendingChoice::ChooseTarget { player, legal, .. }) = game.pending_choice() {
         let want = remaining_targets[copies];
         assert!(
             legal.contains(&want),
@@ -60544,8 +60541,7 @@ fn storm_copies_survive_countered_original() {
     );
 
     resolve_top_of_stack(&mut game); // the storm trigger still resolves, minting 1 copy
-    let Some(PendingChoice::ChooseSpellTargets { player, legal, .. }) = game.pending_choice()
-    else {
+    let Some(PendingChoice::ChooseTarget { player, legal, .. }) = game.pending_choice() else {
         panic!(
             "expected the surviving copy's retarget pause, got {:?}",
             game.pending_choice()
@@ -60629,8 +60625,7 @@ fn flusterstorm_storm_copy_ceases_to_exist_when_countered() {
 
     resolve_top_of_stack(&mut game); // the storm trigger resolves, minting 1 copy, pausing on retarget
     let copy = top_spell(&game);
-    let Some(PendingChoice::ChooseSpellTargets { player, legal, .. }) = game.pending_choice()
-    else {
+    let Some(PendingChoice::ChooseTarget { player, legal, .. }) = game.pending_choice() else {
         panic!(
             "expected the storm copy's retarget pause, got {:?}",
             game.pending_choice()
@@ -61324,8 +61319,7 @@ fn chain_lightning_damaged_player_may_pay_to_copy() {
     .unwrap();
 
     // Paying mints a copy under the PAYER (CR 707.10c retarget), not the original caster.
-    let Some(PendingChoice::ChooseSpellTargets { player, legal, .. }) = game.pending_choice()
-    else {
+    let Some(PendingChoice::ChooseTarget { player, legal, .. }) = game.pending_choice() else {
         panic!(
             "expected the minted copy's retarget choice; got {:?}",
             game.pending_choice()
@@ -61402,7 +61396,7 @@ fn chain_lightning_copy_chains() {
             pay: true,
         })
         .unwrap();
-        let Some(PendingChoice::ChooseSpellTargets { player, .. }) = game.pending_choice() else {
+        let Some(PendingChoice::ChooseTarget { player, .. }) = game.pending_choice() else {
             panic!("expected a retarget pause; got {:?}", game.pending_choice());
         };
         game.submit(Intent::ChooseTargets {
@@ -65412,7 +65406,7 @@ fn prismari_charm_modes_0_and_2_are_not_dragged_into_multi_target_selection() {
     assert!(
         !matches!(
             game.pending_choice(),
-            Some(PendingChoice::ChooseSpellTargets { .. })
+            Some(PendingChoice::ChooseTarget { .. })
         ),
         "mode 0 has no multi-target clause to pause on"
     );
@@ -65487,15 +65481,14 @@ fn hull_breach_third_mode_destroys_target_artifact_and_target_enchantment() {
         .expect("mode 2 needs both targets chosen after cast");
 
     match game.pending_choice() {
-        Some(PendingChoice::ChooseSpellTargets {
-            min,
-            max,
+        Some(PendingChoice::ChooseTarget {
+            count,
             legal,
             clause,
             ..
         }) => {
             assert_eq!(
-                (min, max, clause),
+                (count.min, count.max, clause),
                 (1, 1, 0),
                 "clause 0 is the artifact clause"
             );
@@ -65505,7 +65498,7 @@ fn hull_breach_third_mode_destroys_target_artifact_and_target_enchantment() {
                 "only artifacts are legal for clause 0"
             );
         }
-        other => panic!("expected clause 0's ChooseSpellTargets pause, got {other:?}"),
+        other => panic!("expected clause 0's ChooseTarget pause, got {other:?}"),
     }
     game.submit(Intent::ChooseTargets {
         player: PlayerId(0),
@@ -65514,15 +65507,14 @@ fn hull_breach_third_mode_destroys_target_artifact_and_target_enchantment() {
     .expect("the real artifact is a legal clause-0 target");
 
     match game.pending_choice() {
-        Some(PendingChoice::ChooseSpellTargets {
-            min,
-            max,
+        Some(PendingChoice::ChooseTarget {
+            count,
             legal,
             clause,
             ..
         }) => {
             assert_eq!(
-                (min, max, clause),
+                (count.min, count.max, clause),
                 (1, 1, 1),
                 "clause 1 is the enchantment clause"
             );
@@ -65532,7 +65524,7 @@ fn hull_breach_third_mode_destroys_target_artifact_and_target_enchantment() {
                 "only enchantments are legal for clause 1"
             );
         }
-        other => panic!("expected clause 1's ChooseSpellTargets pause, got {other:?}"),
+        other => panic!("expected clause 1's ChooseTarget pause, got {other:?}"),
     }
     game.submit(Intent::ChooseTargets {
         player: PlayerId(0),
@@ -66562,14 +66554,11 @@ fn immoral_bargain_destroys_one_per_creature_sacrificed() {
         .sacrificing(vec![fodder1, fodder2])
         .submit();
 
-    let Some(PendingChoice::ChooseSpellTargets {
-        min, max, legal, ..
-    }) = game.pending_choice()
-    else {
-        panic!("a multi-target ChooseSpellTargets pause is offered after the sacrifice is paid");
+    let Some(PendingChoice::ChooseTarget { count, legal, .. }) = game.pending_choice() else {
+        panic!("a multi-target ChooseTarget pause is offered after the sacrifice is paid");
     };
     assert_eq!(
-        (min, max),
+        (count.min, count.max),
         (2, 2),
         "X = 2 creatures sacrificed wants exactly two targets"
     );
@@ -66608,7 +66597,7 @@ fn immoral_bargain_destroys_one_per_creature_sacrificed() {
 #[test]
 fn immoral_bargain_target_count_tracks_sacrifice_count() {
     // Sacrificing only 1 creature scales X down to 1 — but the spell still routes through the
-    // multi-target `ChooseSpellTargets` machinery rather than the single-target fast path, even
+    // multi-target `ChooseTarget` machinery rather than the single-target fast path, even
     // though its effective count is {1, 1}, because `sacrifice_scaled` counts are excluded from
     // `TargetCount::is_single()` exactly like `x_scaled` counts are.
     let mut game = TestGame::new();
@@ -66619,16 +66608,11 @@ fn immoral_bargain_target_count_tracks_sacrifice_count() {
 
     game.cast(bargain).sacrificing(vec![fodder]).submit();
 
-    let Some(PendingChoice::ChooseSpellTargets {
-        min, max, legal, ..
-    }) = game.pending_choice()
-    else {
-        panic!(
-            "sacrificing 1 creature still pauses on ChooseSpellTargets, not a single-target cast"
-        );
+    let Some(PendingChoice::ChooseTarget { count, legal, .. }) = game.pending_choice() else {
+        panic!("sacrificing 1 creature still pauses on ChooseTarget, not a single-target cast");
     };
     assert_eq!(
-        (min, max),
+        (count.min, count.max),
         (1, 1),
         "X = 1 sacrificed creature wants exactly one target"
     );
@@ -66663,7 +66647,7 @@ fn immoral_bargain_sacrificing_zero_creatures_is_legal_and_destroys_nothing() {
     let bargain = game.spawn_in_hand(PlayerId(0), card("Immoral Bargain"));
 
     game.cast(bargain).sacrificing(vec![]).submit();
-    // X = 0 still routes through `ChooseSpellTargets` (a legal target exists, so `{0, 0}` isn't
+    // X = 0 still routes through `ChooseTarget` (a legal target exists, so `{0, 0}` isn't
     // the forced-auto-fill "must take every legal target" case) — answer it with none chosen.
     game.submit(Intent::ChooseTargets {
         player: PlayerId(0),
@@ -66706,7 +66690,7 @@ fn twinflame_single_target_pays_base_cost_one_copy() {
     let twinflame = game.spawn_in_hand(PlayerId(0), card("Twinflame"));
 
     // Only one legal target ("creature you control") exists, so declaring a Strive count of 1
-    // auto-fills that lone target with no `ChooseSpellTargets` pause.
+    // auto-fills that lone target with no `ChooseTarget` pause.
     let events = game.cast(twinflame).striving(1).submit();
     let spent = events
         .iter()
@@ -66815,7 +66799,7 @@ fn twinflame_strive_scales_cost_by_targets() {
     );
 
     // All three legal targets ("creature you control") auto-fill exactly N=3, so no
-    // `ChooseSpellTargets` pause is offered.
+    // `ChooseTarget` pause is offered.
     resolve_top_of_stack(&mut game);
     let bears = battlefield_named(&game, PlayerId(0), "Grizzly Bear");
     assert_eq!(
@@ -71836,8 +71820,7 @@ fn replication_technique_demonstrate_full() {
 
     // The caster's own copy mints first, so its retarget choice comes first: both of the
     // caster's own permanents are legal — retarget to the *other* one.
-    let Some(PendingChoice::ChooseSpellTargets { player, legal, .. }) = game.pending_choice()
-    else {
+    let Some(PendingChoice::ChooseTarget { player, legal, .. }) = game.pending_choice() else {
         panic!(
             "the caster's copy pauses to retarget, got {:?}",
             game.pending_choice()
@@ -71855,8 +71838,7 @@ fn replication_technique_demonstrate_full() {
 
     // The opponent's copy mints next (deferred until the caster's own retarget clears): both of
     // the opponent's own permanents are legal.
-    let Some(PendingChoice::ChooseSpellTargets { player, legal, .. }) = game.pending_choice()
-    else {
+    let Some(PendingChoice::ChooseTarget { player, legal, .. }) = game.pending_choice() else {
         panic!(
             "the opponent's copy pauses to retarget, got {:?}",
             game.pending_choice()
@@ -76534,7 +76516,7 @@ fn willbender_changes_target_of_single_target_spell() {
 
     // Resolving the trigger pauses for the bolt's new target.
     advance_until(&mut game, |g| g.pending_choice().is_some());
-    let Some(PendingChoice::ChooseSpellTargets { legal, .. }) = game.pending_choice() else {
+    let Some(PendingChoice::ChooseTarget { legal, .. }) = game.pending_choice() else {
         panic!(
             "the retarget trigger pauses to choose the bolt's new target; got {:?}",
             game.pending_choice()
@@ -76595,7 +76577,7 @@ fn willbender_leaves_target_unchanged_when_no_other_legal_target() {
     turn_willbender_up_targeting(&mut game, willbender, bolt);
 
     // Resolve only the trigger (top of the stack, above the bolt): with no alternate target it
-    // raises no ChooseSpellTargets pause and leaves the bolt's target intact.
+    // raises no ChooseTarget pause and leaves the bolt's target intact.
     resolve_top_of_stack(&mut game);
     assert!(
         game.pending_choice().is_none(),
@@ -76798,13 +76780,13 @@ fn wild_ricochet_may_retarget_a_multi_target_spell_then_copies_with_new_targets(
 
     // The retarget pause reaches the whole target set, and — CR 114.6a, unlike Willbender's
     // must-differ bend — still offers the bolt's own current targets as legal choices.
-    let Some(PendingChoice::ChooseSpellTargets {
+    let Some(PendingChoice::ChooseTarget {
         player,
-        spell,
+        source: spell,
         legal,
-        min,
-        max,
+        count,
         clause,
+        ..
     }) = game.pending_choice()
     else {
         panic!(
@@ -76819,7 +76801,7 @@ fn wild_ricochet_may_retarget_a_multi_target_spell_then_copies_with_new_targets(
         "Wild Ricochet's own controller chooses"
     );
     assert_eq!(clause, 0);
-    assert_eq!((min, max), (0, 2));
+    assert_eq!((count.min, count.max), (0, 2));
     for creature in [a, b, c, d] {
         assert!(
             legal.contains(&Target::Object(creature)),
@@ -76834,11 +76816,10 @@ fn wild_ricochet_may_retarget_a_multi_target_spell_then_copies_with_new_targets(
 
     // The retarget's own auto-fill/pause chain finishes and the sequence resumes into
     // `copy_target_spell`, which mints an independent copy and offers its own retarget.
-    let Some(PendingChoice::ChooseSpellTargets {
-        spell: copy,
+    let Some(PendingChoice::ChooseTarget {
+        source: copy,
         legal: copy_legal,
-        min: copy_min,
-        max: copy_max,
+        count: copy_count,
         clause: copy_clause,
         ..
     }) = game.pending_choice()
@@ -76850,7 +76831,7 @@ fn wild_ricochet_may_retarget_a_multi_target_spell_then_copies_with_new_targets(
     };
     assert_ne!(copy, bolt, "the copy is a distinct stack object");
     assert_eq!(copy_clause, 0);
-    assert_eq!((copy_min, copy_max), (0, 2));
+    assert_eq!((copy_count.min, copy_count.max), (0, 2));
     for creature in [a, b, c, d] {
         assert!(copy_legal.contains(&Target::Object(creature)));
     }
@@ -76932,7 +76913,7 @@ fn wild_ricochet_declining_retarget_leaves_original_targets() {
     })
     .expect("re-picking the current targets is a legal decline");
 
-    let Some(PendingChoice::ChooseSpellTargets { spell: copy, .. }) = game.pending_choice() else {
+    let Some(PendingChoice::ChooseTarget { source: copy, .. }) = game.pending_choice() else {
         panic!(
             "expected the copy's own independent retarget pause; got {:?}",
             game.pending_choice()
@@ -77002,7 +76983,7 @@ fn wild_ricochet_card_is_faithful() {
     game.cast(wr).at(Target::Object(bolt)).submit();
     resolve_top_of_stack(&mut game);
 
-    let Some(PendingChoice::ChooseSpellTargets { spell, .. }) = game.pending_choice() else {
+    let Some(PendingChoice::ChooseTarget { source: spell, .. }) = game.pending_choice() else {
         panic!(
             "expected the retarget pause; got {:?}",
             game.pending_choice()
@@ -77015,7 +76996,7 @@ fn wild_ricochet_card_is_faithful() {
     })
     .expect("one legal target, within the {0,2} range");
 
-    let Some(PendingChoice::ChooseSpellTargets { spell: copy, .. }) = game.pending_choice() else {
+    let Some(PendingChoice::ChooseTarget { source: copy, .. }) = game.pending_choice() else {
         panic!(
             "expected the copy's own retarget pause; got {:?}",
             game.pending_choice()
@@ -80538,7 +80519,7 @@ fn fire_half_of_a_split_card_deals_its_divided_damage_and_the_whole_card_hits_th
         x: 0,
     })
     .unwrap();
-    let Some(PendingChoice::ChooseSpellTargets { .. }) = game.pending_choice() else {
+    let Some(PendingChoice::ChooseTarget { .. }) = game.pending_choice() else {
         panic!(
             "Fire chooses one or two targets, got {:?}",
             game.pending_choice()
@@ -82226,7 +82207,7 @@ fn ashes_to_ashes_deals_real_damage_to_you() {
     })
     .expect("Ashes to Ashes is castable");
     // Exactly two legal targets exist for a "choose exactly two" clause (CR 601.2c's "maximum
-    // possible number") — a single forced set, auto-filled with no `ChooseSpellTargets` pause.
+    // possible number") — a single forced set, auto-filled with no `ChooseTarget` pause.
     // Both abilities resolve together off the single spell object on the stack.
     let events = resolve_top_of_stack_events(&mut game);
 
@@ -88269,7 +88250,7 @@ fn electrolyze_deals_two_divided_and_draws_a_card() {
     .unwrap();
     // Pause on the divided-damage target choice (one or two targets).
     let legal = match game.pending_choice() {
-        Some(PendingChoice::ChooseSpellTargets { legal, .. }) => legal.clone(),
+        Some(PendingChoice::ChooseTarget { legal, .. }) => legal.clone(),
         other => panic!("expected a targets pause for divided damage, got {other:?}"),
     };
     assert!(
@@ -89090,7 +89071,7 @@ fn riku_copies_your_instant_when_you_pay_ur() {
     .unwrap();
 
     resolve_top_of_stack(&mut g); // the paid copy ability resolves: mints a copy, pauses to retarget
-    let Some(PendingChoice::ChooseSpellTargets { player, legal, .. }) = g.pending_choice() else {
+    let Some(PendingChoice::ChooseTarget { player, legal, .. }) = g.pending_choice() else {
         panic!("paying the cost pauses on \"you may choose new targets for the copy\"");
     };
     assert!(
@@ -89720,7 +89701,7 @@ fn vengeful_rebirth_returns_a_nonland_card_and_deals_its_mana_value_to_any_targe
         .expect("both clauses are chosen after the cast, not in the intent");
 
     match game.pending_choice() {
-        Some(PendingChoice::ChooseSpellTargets { clause, legal, .. }) => {
+        Some(PendingChoice::ChooseTarget { clause, legal, .. }) => {
             assert_eq!(clause, 0, "clause 0 is the graveyard-return clause");
             assert_eq!(
                 legal,
@@ -89728,7 +89709,7 @@ fn vengeful_rebirth_returns_a_nonland_card_and_deals_its_mana_value_to_any_targe
                 "every card in the caster's graveyard is a legal clause-0 target"
             );
         }
-        other => panic!("expected clause 0's ChooseSpellTargets pause, got {other:?}"),
+        other => panic!("expected clause 0's ChooseTarget pause, got {other:?}"),
     }
     game.submit(Intent::ChooseTargets {
         player: PlayerId(0),
@@ -89737,10 +89718,10 @@ fn vengeful_rebirth_returns_a_nonland_card_and_deals_its_mana_value_to_any_targe
     .expect("the graveyard card is a legal clause-0 target");
 
     match game.pending_choice() {
-        Some(PendingChoice::ChooseSpellTargets { clause, .. }) => {
+        Some(PendingChoice::ChooseTarget { clause, .. }) => {
             assert_eq!(clause, 1, "clause 1 is the damage clause's any target");
         }
-        other => panic!("expected clause 1's ChooseSpellTargets pause, got {other:?}"),
+        other => panic!("expected clause 1's ChooseTarget pause, got {other:?}"),
     }
     let life_before = game.life(PlayerId(1));
     game.submit(Intent::ChooseTargets {
