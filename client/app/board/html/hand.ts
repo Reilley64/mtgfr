@@ -364,7 +364,7 @@ function handDragGhost(drag: HandDragState): Html {
         : h.div(
             [
               h.Class(
-                `flex items-center justify-center rounded-game bg-forest-shadow p-1 text-center text-caption text-snow shadow-hand ${aura}`,
+                `flex items-center justify-center rounded-game bg-forest-shadow p-1 text-center text-caption text-snow drop-shadow-drag shadow-hand ${aura}`,
               ),
               h.Style({ width: `${HAND_CARD_W}px`, height: `${HAND_CARD_H}px` }),
             ],

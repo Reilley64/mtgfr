@@ -255,7 +255,7 @@ describe("handView drag chrome", () => {
       handDrag: {
         action: cast,
         name: "Lightning Bolt",
-        print: "",
+        print: "bolt-print",
         manaCost: cost(),
         zone: "hand",
         x: 10,
@@ -268,6 +268,30 @@ describe("handView drag chrome", () => {
     const ghost = findTestId(tree, "hand-drag-ghost");
     expect(ghost).not.toBeNull();
     expect(treeHasClass(ghost, "ring-playable-border")).toBe(true);
+    expect(treeHasClass(ghost, "drop-shadow-drag")).toBe(true);
+  });
+
+  it("applies drop-shadow-drag on name-only drag ghost fallback", () => {
+    const castable = object(42, { name: "Lightning Bolt", print: "" });
+    const cast = action(7, { object: 42 });
+    const tree = handView({
+      state: state({ objects: [castable], actions: [cast] }),
+      hiddenId: null,
+      flyingIds: new Set(),
+      hiddenIds: new Set(),
+      handDrag: {
+        action: cast,
+        name: "Lightning Bolt",
+        print: "",
+        manaCost: cost(),
+        zone: "hand",
+        x: 10,
+        y: 10,
+      },
+    });
+    const ghost = findTestId(tree, "hand-drag-ghost");
+    expect(ghost).not.toBeNull();
+    expect(treeHasClass(ghost, "drop-shadow-drag")).toBe(true);
   });
 
   it("uses command playable aura classes on a command-zone drag ghost", () => {
