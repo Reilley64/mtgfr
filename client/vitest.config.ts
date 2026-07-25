@@ -2,6 +2,8 @@
 
 import { configDefaults, defineConfig } from "vitest/config";
 
+const ci = process.env.CI === "true" || process.env.CI === "1";
+
 export default defineConfig({
   resolve: {
     // Match vite.config.ts — path aliases come from tsconfig.json (`~/*`).
@@ -11,5 +13,13 @@ export default defineConfig({
   test: {
     environment: "node",
     exclude: [...configDefaults.exclude, ".output/**"],
+    ...(ci
+      ? {
+          reporters: ["default", "junit"],
+          outputFile: {
+            junit: "./junit.xml",
+          },
+        }
+      : {}),
   },
 });

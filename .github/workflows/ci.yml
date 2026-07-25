@@ -21,7 +21,7 @@ jobs:
     outputs:
       iac: ${{ steps.filter.outputs.iac }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: dorny/paths-filter@v3
         id: filter
@@ -35,11 +35,11 @@ jobs:
     name: Commitlint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version-file: .node-version
           cache: npm
@@ -59,7 +59,7 @@ jobs:
     if: needs.changes.outputs.iac == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: hashicorp/setup-terraform@v3
         with:
@@ -81,7 +81,7 @@ jobs:
     name: Docker workflow cache guard
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Assert docker.yml Buildx GHA cache wiring
         run: ./scripts/check-docker-workflow-cache.sh
 
@@ -89,6 +89,14 @@ jobs:
     name: CI Wave 1 guard
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Assert CI Wave 1 wiring
         run: ./scripts/check-ci-wave1.sh
+
+  ci-wave2-guard:
+    name: CI Wave 2 guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Assert CI Wave 2 wiring
+        run: ./scripts/check-ci-wave2.sh
