@@ -25,7 +25,7 @@ The client is a **Foldkit** SPA on **Nitro** (Vite). A single event-reactor owns
 - As a returning player on `/`, I scan commander tiles, search by name, click a tile to play, and right-click an owned deck to edit or delete it.
 - As a returning player, I navigate directly to `/decks/new` and the deck builder loads, showing the full card pool on the left and a blank decklist on the right.
 - As a deck builder, I click a pool card to add it, right-click to pick a different printing (art preference), and see the commander picker auto-populate with legendary creatures in my list.
-- As a player, I visit `/play/:deckId`, optionally paste a copied table code, see the chosen deck card in the lobby, ready up, and wait for the host to start.
+- As a player, I visit `/play/:deckId`, choose Host or Join for the selected deck, optionally paste a copied table code in the focused Join panel, ready up, and wait for the host to start.
 - As a player on a portrait phone, I see a native dialog telling me to rotate to landscape; the deck builder and board are hidden behind the dialog.
 - As an operator, I open Grafana (via port-forward) and see browser → BFF → API traces correlated by W3C `traceparent`, with no hand/library contents in any span.
 
@@ -86,7 +86,7 @@ The game stream is a Foldkit subscription keyed by route table id and active gam
 
 The lobby polls `GET /tables/{table}/lobby` via a Foldkit subscription until `started`. Seat rows show seat-color dots (`seat-forest`, `seat-island`, `seat-mountain`, `seat-arcane`). The host (first joiner) sees a Start button when ≥2 seats are claimed and all are ready. Table-code copy uses `navigator.clipboard.writeText` from an Effect-backed command — denied permission reveals a manual-copy input instead of throwing. `unlockTableAudio()` is called on Ready-up (the required user-gesture unlock for the shared `AudioContext`).
 
-`selectedDeckId` is set from the required play route deck id. The lobby renders that deck as a non-interactive commander card with `lobby-deck-card` / `lobby-deck-card-{id}` test ids plus a **Back** link to `/`; it does not render the old deck `<select>` or `Bring:` name strip in entry or claim-seat states. Malformed deck ids route to Not found immediately, and deck ids missing from the loaded library route to Not found after the deck list resolves.
+`selectedDeckId` is set from the required play route deck id. The lobby entry starts in choose mode with peer **Host a table** and **Join a table** destination cards; Host contains the selected deck's non-interactive commander card with `lobby-deck-card` / `lobby-deck-card-{id}` test ids, while Join opens a focused panel with a compact `lobby-bringing` strip, table-code input, Join table submit, Cancel, and a **Back** link to `/`. It does not render the old deck `<select>` or `Bring:` name strip in entry or claim-seat states. Malformed deck ids route to Not found immediately, and deck ids missing from the loaded library route to Not found after the deck list resolves.
 
 ### Deck list and builder (`client/app/shell/decks/**`, client-shell-deck-builder-and-observability spec, accounts-decks-and-catalog spec)
 

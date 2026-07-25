@@ -3,12 +3,15 @@ import { cn } from "../../../lib/cn";
 import type { BuilderCatalogCard } from "../../../lib/deck-builder/cards";
 import { appVersionBadge } from "../../../lib/ui/app-version";
 import { buttonClass } from "../../../lib/ui/buttonClass";
+import { cardArt } from "../../../lib/ui/card-art";
 import { feltClass, fieldClass, panelClass } from "../../../lib/ui/surfaces";
 import type { DeckSummary } from "../../../lib/wire/types";
 import { HomeRoute, routePath } from "../../routes";
 import { type DeckCardModel, renderDeckCard } from "../decks/deck-card";
 import {
+  ChangedLobbyCode,
   type Message,
+  RequestedLobbyCancelJoin,
   RequestedLobbyCopy,
   RequestedLobbyHost,
   RequestedLobbyJoin,
@@ -170,6 +173,95 @@ function chooseEntry(
   );
 }
 
+function bringingArt(
+  deck: DeckSummary | undefined,
+  knownCommanders: Readonly<Record<string, BuilderCatalogCard>>,
+): Html {
+  if (deck == null) {
+    return h.div([h.Class("size-10 bg-glass")], []);
+  }
+
+  const print = deck.commander_print ?? knownCommanders[deck.commander]?.default_print ?? "";
+  if (print === "") {
+    return h.div([h.Class("size-10 bg-glass")], []);
+  }
+
+  return cardArt(h, {
+    print,
+    size: "art_crop",
+    alt: "",
+    className: "size-10 object-cover",
+  });
+}
+
+function joinEntry(
+  model: LobbySlice,
+  deck: DeckSummary | undefined,
+  decksLoading: boolean,
+  knownCommanders: Readonly<Record<string, BuilderCatalogCard>>,
+): Html {
+  const deckName = deck?.name ?? (decksLoading ? "Loading decks…" : "Deck not found.");
+
+  return h.div(
+    [h.DataAttribute("testid", "lobby-entry-join"), h.Class("flex flex-col gap-md")],
+    [
+      h.div(
+        [
+          h.DataAttribute("testid", "lobby-bringing"),
+          h.Class("flex items-center gap-sm border-b border-vine-dim pb-sm"),
+        ],
+        [
+          h.div([h.Class("size-10 shrink-0 overflow-hidden rounded-control")], [bringingArt(deck, knownCommanders)]),
+          h.div(
+            [h.Class("min-w-0")],
+            [
+              h.div([h.Class("text-label text-lichen")], ["Bringing"]),
+              h.div([h.Class("truncate font-semibold")], [deckName]),
+            ],
+          ),
+        ],
+      ),
+      h.div([h.Class("font-semibold text-title")], ["Join a table"]),
+      h.div([h.Class("text-label text-lichen")], ["Paste the code your host shared"]),
+      h.label([h.For("table-code"), h.Class("sr-only")], ["Table code"]),
+      h.input([
+        h.Id("table-code"),
+        h.DataAttribute("testid", "lobby-join-code"),
+        h.Placeholder("Table code"),
+        h.Value(model.code),
+        h.OnInput((code) => ChangedLobbyCode({ code })),
+        h.Autocomplete("off"),
+        h.Spellcheck(false),
+        h.Class(fieldClass("w-full")),
+      ]),
+      h.button(
+        [
+          h.Type("button"),
+          h.DataAttribute("testid", "lobby-join"),
+          h.Disabled(model.submitting),
+          h.OnClick(RequestedLobbyJoin()),
+          h.Class(buttonClass("primary")),
+        ],
+        ["Join table"],
+      ),
+      h.button(
+        [
+          h.Type("button"),
+          h.DataAttribute("testid", "lobby-join-cancel"),
+          h.Disabled(model.submitting),
+          h.OnClick(RequestedLobbyCancelJoin()),
+          h.Class(buttonClass("ghost")),
+        ],
+        ["Cancel"],
+      ),
+      h.a(
+        [h.Href(routePath(HomeRoute())), h.DataAttribute("testid", "lobby-back"), h.Class(buttonClass("ghost"))],
+        ["Back"],
+      ),
+    ],
+  );
+}
+
 function entry(
   model: LobbySlice,
   decks: ReadonlyArray<DeckSummary>,
@@ -193,7 +285,7 @@ function entry(
     return chooseEntry(model, deck, decksLoading, knownCommanders);
   }
 
-  return h.div([h.Class("text-label text-lichen")], ["Join a table"]);
+  return joinEntry(model, deck, decksLoading, knownCommanders);
 }
 
 function seats(model: LobbySlice): Html {
