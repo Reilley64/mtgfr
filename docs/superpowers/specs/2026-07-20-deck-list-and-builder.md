@@ -52,6 +52,8 @@ Deck button navigates to `/decks/new`.
 - **Singleton enforcement.** Non-basic non-commander cards cap at 1. Commander is set via the context menu only; `canBeCommander` restricts to legendary creatures.
 - **Full Commander legality** is enforced server-side on save; the client surfaces validation errors returned as `CreateDeck422` / `UpdateDeck422` tagged Schema errors.
 - **Card lookup.** `lookupCardsByIds(ids, client)` fetches oracle data for deck hydration through `/api/rpc/cards/lookup`.
+- **Scroll.** The builder page shell does not scroll. The left catalog grid and the right decklist are independent `overflow-y-auto` scrollports with `overscroll-contain` so wheel/trackpad in one pane does not move the other or the document. The right column uses `min-h-0` so the decklist forms a real scrollport inside the grid.
+- **Print picker scroll lock.** While the choose-printing `<dialog>` is open (`printPicker` set), catalog and decklist scrollports use `overflow-hidden` (background frozen). The print tile grid inside the dialog remains `overflow-y-auto` with `overscroll-contain`. Closing the picker restores independent pane scrolling.
 
 ### Card art CDN (`client/lib/deck-builder/scryfall.ts`, `client/lib/ui/card-art.ts`, `client/lib/image-cache.ts`)
 
@@ -102,5 +104,6 @@ Missing ordinary (non-`art_crop`) CDN art stays empty after load failure (no Scr
 
 ## Further Notes
 
+- Deck builder scroll layout and print-picker lock: [2026-07-25-deck-builder-scroll-design.md](2026-07-25-deck-builder-scroll-design.md).
 - FLIP morph of shared deck-card chrome between Home and `/play/{id}` is specified here and reused by [lobby-entry-ui](2026-07-20-lobby-entry-ui.md).
 - Scryfall / tooling User-Agent identity `edh.reilley.dev/0.1` is documented under brand display in [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md).
