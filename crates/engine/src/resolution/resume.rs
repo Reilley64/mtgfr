@@ -97,7 +97,7 @@ mod tests {
     fn clear_for_removed_drops_sequence_when_controller_leaves() {
         let mut resume = ResumeState {
             sequence: Some(SequenceCont {
-                steps: &[],
+                steps: std::sync::Arc::from([]),
                 ctx: ctx(PlayerId(0)),
             }),
             ..ResumeState::default()

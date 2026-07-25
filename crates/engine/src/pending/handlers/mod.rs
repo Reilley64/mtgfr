@@ -205,9 +205,9 @@ mod tests {
             source,
             abilities: effects
                 .iter()
-                .map(|&effect| Ability {
+                .map(|effect| Ability {
                     timing: Timing::Triggered(Trigger::Upkeep),
-                    effect,
+                    effect: effect.clone(),
                     optional: false,
                     min_level: 0,
                     cost: Cost::FREE,

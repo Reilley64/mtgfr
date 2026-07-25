@@ -156,7 +156,7 @@ mod tests {
             player: PlayerId(0),
             object: 7,
             from: 3,
-            card: def("Shock"),
+            card: engine::intern_card_def(def("Shock")),
         }
     }
 

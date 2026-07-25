@@ -27,6 +27,10 @@ fn mana_code(mana: engine::Mana) -> u8 {
     }
 }
 
+fn card_name(id: engine::CardId) -> String {
+    engine::card_def(id).name.to_string()
+}
+
 /// Project a canonical engine event into what `viewer` is allowed to see.
 /// `viewer` is `Some(seat)` for a player, `None` for a spectator — the owner-gated
 /// branches below then simply never fire for a spectator.
@@ -460,7 +464,7 @@ pub(crate) fn project_event(
             player: player.0,
             card,
             from: redact_private(player, viewer, from),
-            def: redact_private(player, viewer, def.name.to_string()),
+            def: redact_private(player, viewer, card_name(def)),
         },
         Event::BlockerDeclared { blocker, attacker } => {
             VisibleEvent::BlockerDeclared { blocker, attacker }
@@ -672,7 +676,7 @@ pub(crate) fn project_event(
         Event::RevealedTopOfLibrary { player, card, def } => VisibleEvent::RevealedTopOfLibrary {
             player: player.0,
             card,
-            def: def.name.to_string(),
+            def: card_name(def),
         },
         Event::PutOnBottomOfLibrary { player, card } => VisibleEvent::PutOnBottomOfLibrary {
             player: player.0,
@@ -687,7 +691,7 @@ pub(crate) fn project_event(
             player: player.0,
             object,
             from: redact_private(player, viewer, from),
-            card: redact_private(player, viewer, card.name.to_string()),
+            card: redact_private(player, viewer, card_name(card)),
         },
         Event::SearchedToBattlefield {
             permanent,
@@ -763,7 +767,7 @@ pub(crate) fn project_event(
             player: player.0,
             object,
             from: redact_private(player, viewer, from),
-            card: redact_private(player, viewer, card.name.to_string()),
+            card: redact_private(player, viewer, card_name(card)),
         },
         Event::Sacrificed { object, by, .. } => VisibleEvent::Sacrificed { object, by: by.0 },
         Event::CastFromExileFreePermissionGranted { card, player } => {

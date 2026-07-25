@@ -144,7 +144,7 @@ impl Game {
         for attachment in self.attachments(object) {
             let name = self.def_of(attachment).name;
             for ability in self.def_of(attachment).abilities {
-                match (ability.timing, ability.effect) {
+                match (ability.timing, ability.effect.clone()) {
                     (
                         Timing::Static,
                         Effect::Static(StaticEffect::GrantToAttached {
@@ -199,7 +199,8 @@ impl Game {
                 let Some(p) = self.as_permanent(id) else {
                     continue;
                 };
-                for ability in p.def.abilities {
+                let def = card_def(p.def);
+                for ability in def.abilities.iter().cloned() {
                     let (
                         Timing::Static,
                         Effect::Static(StaticEffect::Anthem {
@@ -213,7 +214,7 @@ impl Game {
                             all_players,
                             ..
                         }),
-                    ) = (ability.timing, ability.effect)
+                    ) = (ability.timing, ability.effect.clone())
                     else {
                         continue;
                     };
@@ -237,7 +238,7 @@ impl Game {
                     if attacking_only && !self.combat.attackers.contains(&object) {
                         continue;
                     }
-                    let name = p.def.name;
+                    let name = def.name;
                     if let (Amount::Fixed(power), Amount::Fixed(toughness)) = (power, toughness)
                         && (power != 0 || toughness != 0)
                     {
@@ -261,16 +262,17 @@ impl Game {
                     Some(p) if p.owner == owner => p,
                     _ => continue,
                 };
-                for ability in p.def.abilities {
+                let def = card_def(p.def);
+                for ability in def.abilities.iter().cloned() {
                     let (
                         Timing::Static,
                         Effect::Static(StaticEffect::GrantManaAbility { filter, .. }),
-                    ) = (ability.timing, ability.effect)
+                    ) = (ability.timing, ability.effect.clone())
                     else {
                         continue;
                     };
                     if self.permanent_matches(&filter, object, owner, None) {
-                        push(p.def.name, ModifierContribution::ManaAbility);
+                        push(def.name, ModifierContribution::ManaAbility);
                     }
                 }
             }
@@ -379,7 +381,7 @@ impl Game {
             colors[color.index()] = true;
             return colors;
         }
-        let mut colors = color_identity(self.def_of(object));
+        let mut colors = color_identity(&self.def_of(object));
         if let Some(p) = self.as_permanent(object) {
             for color in p.added_colors_eot {
                 colors[color.index()] = true;
@@ -396,7 +398,7 @@ impl Game {
         self.live_object_ids()
             .into_iter()
             .find(|&id| self.is_commander(id) && self.owner_of(id) == player)
-            .map_or([false; Color::COUNT], |id| color_identity(self.def_of(id)))
+            .map_or([false; Color::COUNT], |id| color_identity(&self.def_of(id)))
     }
 
     /// The mana credit "one mana of any color in your commander's color identity" (CR 903.4 —
@@ -633,10 +635,8 @@ impl Game {
             .filter(move |&id| !self.is_phased_out(id))
             .flat_map(move |id| {
                 let controller = self.controller_of(id);
-                self.def_of(id)
-                    .abilities
-                    .iter()
-                    .filter_map(move |a| match (a.timing, a.effect) {
+                self.def_of(id).abilities.iter().filter_map(move |a| {
+                    match (a.timing, a.effect.clone()) {
                         (
                             Timing::Static,
                             Effect::Static(StaticEffect::GrantToAttached {
@@ -656,7 +656,8 @@ impl Game {
                             },
                         )),
                         _ => None,
-                    })
+                    }
+                })
             })
     }
 
@@ -673,7 +674,7 @@ impl Game {
             .filter(|&id| {
                 self.def_of(id).abilities.iter().any(|a| {
                     matches!(
-                        (a.timing, a.effect),
+                        (a.timing, a.effect.clone()),
                         (
                             Timing::Static,
                             Effect::Static(StaticEffect::GrantToAttached {
@@ -701,7 +702,7 @@ impl Game {
         self.attachments(host).into_iter().filter_map(move |id| {
             let goads_host = self.def_of(id).abilities.iter().any(|a| {
                 matches!(
-                    (a.timing, a.effect),
+                    (a.timing, a.effect.clone()),
                     (
                         Timing::Static,
                         Effect::Static(StaticEffect::GrantToAttached { goad: true, .. })
@@ -721,7 +722,7 @@ impl Game {
             !self.is_phased_out(id)
                 && self.def_of(id).abilities.iter().any(|a| {
                     matches!(
-                        (a.timing, a.effect),
+                        (a.timing, a.effect.clone()),
                         (
                             Timing::Static,
                             Effect::Static(StaticEffect::GrantToAttached {
@@ -745,7 +746,7 @@ impl Game {
                 && self.controller_of(id) == defender
                 && self.def_of(id).abilities.iter().any(|a| {
                     matches!(
-                        (a.timing, a.effect),
+                        (a.timing, a.effect.clone()),
                         (
                             Timing::Static,
                             Effect::Static(StaticEffect::GrantToAttached {
@@ -765,7 +766,7 @@ impl Game {
             !self.is_phased_out(id)
                 && self.def_of(id).abilities.iter().any(|a| {
                     matches!(
-                        (a.timing, a.effect),
+                        (a.timing, a.effect.clone()),
                         (
                             Timing::Static,
                             Effect::Static(StaticEffect::GrantToAttached {
@@ -794,7 +795,7 @@ impl Game {
             self.def_of(id)
                 .abilities
                 .iter()
-                .find_map(|a| match (a.timing, a.effect) {
+                .find_map(|a| match (a.timing, a.effect.clone()) {
                     (
                         Timing::Static,
                         Effect::Static(StaticEffect::GrantToAttached {
@@ -816,7 +817,7 @@ impl Game {
             self.def_of(id)
                 .abilities
                 .iter()
-                .find_map(|a| match (a.timing, a.effect) {
+                .find_map(|a| match (a.timing, a.effect.clone()) {
                     (
                         Timing::Static,
                         Effect::Static(StaticEffect::SetAttachedBasePt { power, toughness }),
@@ -858,7 +859,7 @@ impl Game {
                         set_subtypes: set,
                         ..
                     }),
-                ) = (ability.timing, ability.effect)
+                ) = (ability.timing, ability.effect.clone())
                 else {
                     continue;
                 };
@@ -891,7 +892,7 @@ impl Game {
                         lose_all_abilities: true,
                         ..
                     }),
-                ) = (ability.timing, ability.effect)
+                ) = (ability.timing, ability.effect.clone())
                 {
                     return true;
                 }
@@ -1274,7 +1275,7 @@ impl Game {
                         all_players,
                         ..
                     }),
-                ) = (ability.timing, ability.effect)
+                ) = (ability.timing, ability.effect.clone())
                 else {
                     continue;
                 };
@@ -1498,7 +1499,7 @@ impl Game {
                         keywords: granted,
                         filter,
                     }),
-                ) = (ability.timing, ability.effect)
+                ) = (ability.timing, ability.effect.clone())
                 else {
                     continue;
                 };
@@ -1533,7 +1534,8 @@ impl Game {
             if p.owner != owner {
                 continue;
             }
-            for ability in p.def.abilities {
+            let def = card_def(p.def);
+            for ability in def.abilities.iter().cloned() {
                 let (
                     Timing::Static,
                     Effect::Static(StaticEffect::GrantManaAbility {
@@ -1542,7 +1544,7 @@ impl Game {
                         mana,
                         restriction,
                     }),
-                ) = (ability.timing, ability.effect)
+                ) = (ability.timing, ability.effect.clone())
                 else {
                     continue;
                 };
@@ -1573,10 +1575,8 @@ impl Game {
             // A phased-out Aura grants nothing (CR 702.26e), mirroring `attachment_grants`.
             .filter(|&id| !self.is_phased_out(id))
             .flat_map(|id| {
-                self.def_of(id)
-                    .abilities
-                    .iter()
-                    .filter_map(|a| match (a.timing, a.effect) {
+                self.def_of(id).abilities.iter().filter_map(|a| {
+                    match (a.timing, a.effect.clone()) {
                         (
                             Timing::Static,
                             Effect::Static(StaticEffect::GrantToAttached {
@@ -1585,7 +1585,8 @@ impl Game {
                             }),
                         ) => Some((g.cost, g.effects)),
                         _ => None,
-                    })
+                    }
+                })
             })
             .collect()
     }
@@ -1601,8 +1602,8 @@ impl Game {
     /// `None` for an out-of-range index.
     pub fn ability_at(&self, object: ObjectId, index: usize) -> Option<Ability> {
         let def = self.def_of(object);
-        if let Some(&ability) = def.abilities.get(index) {
-            return Some(ability);
+        if let Some(ability) = def.abilities.get(index) {
+            return Some(ability.clone());
         }
         let granted_index = index - def.abilities.len();
         let mana_grants = self.granted_mana_abilities(object);
@@ -1637,8 +1638,10 @@ impl Game {
         // A one-effect grant is used directly; multiple run as a `Sequence` (the same shape a
         // multi-effect own ability uses).
         let effect = match effects {
-            [single] => *single,
-            steps => Effect::Sequence { steps },
+            [single] => single.clone(),
+            steps => Effect::Sequence {
+                steps: steps.into(),
+            },
         };
         Some(Ability {
             timing: Timing::Activated(cost),
@@ -1660,9 +1663,10 @@ impl Game {
             let Object::Permanent(p) = object else {
                 return false;
             };
+            let def = card_def(p.def);
             p.owner == player
-                && p.def.abilities.iter().any(|a| {
-                    (a.timing, a.effect)
+                && def.abilities.iter().any(|a| {
+                    (a.timing, a.effect.clone())
                         == (
                             Timing::Static,
                             Effect::Static(StaticEffect::NoMaximumHandSize),
@@ -1681,9 +1685,10 @@ impl Game {
             let Object::Permanent(p) = object else {
                 return false;
             };
+            let def = card_def(p.def);
             p.owner == player
-                && p.def.abilities.iter().any(|a| {
-                    (a.timing, a.effect)
+                && def.abilities.iter().any(|a| {
+                    (a.timing, a.effect.clone())
                         == (
                             Timing::Static,
                             Effect::Static(StaticEffect::PlayFromGraveyardOncePerTurn),
@@ -1711,7 +1716,8 @@ impl Game {
             if p.owner != player {
                 continue;
             }
-            for ability in p.def.abilities {
+            let printed = card_def(p.def);
+            for ability in printed.abilities.iter().cloned() {
                 let (
                     Timing::Static,
                     Effect::Static(StaticEffect::ReduceSpellCost {
@@ -1719,7 +1725,7 @@ impl Game {
                         filter,
                         first_x_spell_each_turn,
                     }),
-                ) = (ability.timing, ability.effect)
+                ) = (ability.timing, ability.effect.clone())
                 else {
                     continue;
                 };
@@ -1737,7 +1743,7 @@ impl Game {
                 {
                     continue;
                 }
-                if !self.spell_matches_filter(filter, def, target, player, from_zone) {
+                if !self.spell_matches_filter(filter, def.clone(), target, player, from_zone) {
                     continue;
                 }
                 let resolved = self.resolve_amount(amount, player, id as ObjectId, None, 0);
@@ -1800,7 +1806,7 @@ impl Game {
             SpellFilter::CastFromNonHandZone => from_zone != Zone::Hand,
             // Balefire Liege's "cast a red spell" / "cast a white spell" — CR 105.1/202.2, the
             // spell's own colors (a multicolored spell matches every one of its colors).
-            SpellFilter::Color(color) => color_identity(def)[color.index()],
+            SpellFilter::Color(color) => color_identity(&def)[color.index()],
         }
     }
 
@@ -1827,7 +1833,8 @@ impl Game {
             if p.owner != controller {
                 continue;
             }
-            for ability in p.def.abilities {
+            let def = card_def(p.def);
+            for ability in def.abilities.iter().cloned() {
                 let (
                     Timing::Static,
                     Effect::Static(StaticEffect::CounterReplacement {
@@ -1835,7 +1842,7 @@ impl Game {
                         times: t,
                         other,
                     }),
-                ) = (ability.timing, ability.effect)
+                ) = (ability.timing, ability.effect.clone())
                 else {
                     continue;
                 };
@@ -1875,14 +1882,15 @@ impl Game {
             if self.controller_of(source) != controller {
                 continue;
             }
-            for ability in p.def.abilities {
+            let def = card_def(p.def);
+            for ability in def.abilities.iter().cloned() {
                 let (
                     Timing::Static,
                     Effect::Static(StaticEffect::CreaturesYouControlEnterWithCounters {
                         filter,
                         count,
                     }),
-                ) = (ability.timing, ability.effect)
+                ) = (ability.timing, ability.effect.clone())
                 else {
                     continue;
                 };
@@ -1911,9 +1919,10 @@ impl Game {
             if p.owner != recipient {
                 continue;
             }
-            for ability in p.def.abilities {
+            let def = card_def(p.def);
+            for ability in def.abilities.iter().cloned() {
                 let (Timing::Static, Effect::Static(StaticEffect::TokenReplacement { times })) =
-                    (ability.timing, ability.effect)
+                    (ability.timing, ability.effect.clone())
                 else {
                     continue;
                 };
@@ -1939,9 +1948,10 @@ impl Game {
             if self.controller_of(id as ObjectId) != recipient {
                 continue;
             }
-            for ability in p.def.abilities {
+            let def = card_def(p.def);
+            for ability in def.abilities.iter().cloned() {
                 let (Timing::Static, Effect::Static(StaticEffect::LifeGainReplacement { plus })) =
-                    (ability.timing, ability.effect)
+                    (ability.timing, ability.effect.clone())
                 else {
                     continue;
                 };
@@ -1982,9 +1992,10 @@ impl Game {
             if self.controller_of(id as ObjectId) != caster {
                 continue;
             }
-            for ability in p.def.abilities {
+            let def = card_def(p.def);
+            for ability in def.abilities.iter().cloned() {
                 let (Timing::Static, Effect::Static(StaticEffect::CastXReplacement { times })) =
-                    (ability.timing, ability.effect)
+                    (ability.timing, ability.effect.clone())
                 else {
                     continue;
                 };
@@ -2252,7 +2263,7 @@ mod cache_tests {
         let spell = game.create_object(
             None,
             Object::Spell(Spell {
-                def: anthem(),
+                def: intern_card_def(anthem()),
                 controller: PlayerId(0),
                 targets: TargetList::default(),
                 targets_second: TargetList::default(),
@@ -2407,7 +2418,7 @@ mod cache_tests {
         game.apply(&Event::TokenCreated {
             token,
             controller: PlayerId(0),
-            def: creature(1, 1),
+            def: intern_card_def(creature(1, 1)),
             creator: bear,
         });
         assert!(

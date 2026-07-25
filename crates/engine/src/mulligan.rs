@@ -59,7 +59,7 @@ impl Game {
                 Event::PutFromHandOnTop {
                     card: next,
                     from,
-                    def: self.def_of(from),
+                    def: self.def_id_of(from),
                     player,
                 },
             );

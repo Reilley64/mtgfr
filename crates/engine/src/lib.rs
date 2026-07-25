@@ -32,6 +32,7 @@ mod characteristics;
 mod characteristics_cache;
 mod combat;
 mod core;
+mod defs;
 mod effects;
 mod hand_smooth;
 mod message;
@@ -49,6 +50,7 @@ mod triggers;
 mod types;
 mod zones;
 
+pub use defs::{CardId, card_def, intern_card_def};
 pub use message::*;
 pub use mulligan::hand_size_after_mulligans;
 /// Shared Effect-resolution context for [`Game::run`] / [`Game::run_sequence`].

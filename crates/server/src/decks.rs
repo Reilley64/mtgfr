@@ -23,7 +23,7 @@ pub struct SeatDeck {
 
 fn expand(list: &[(CardDef, usize)]) -> Vec<CardDef> {
     list.iter()
-        .flat_map(|&(card, n)| std::iter::repeat_n(card, n))
+        .flat_map(|(card, n)| std::iter::repeat_n(card.clone(), *n))
         .collect()
 }
 
@@ -33,7 +33,7 @@ fn expand(list: &[(CardDef, usize)]) -> Vec<CardDef> {
 pub fn seed_game(seats: &[(PlayerId, SeatDeck)], master_seed: [u8; 32]) -> Game {
     let mut game = Game::with_master_seed(seats.len() as u8, master_seed);
     for (player, deck) in seats {
-        game.designate_commander(*player, deck.commander);
+        game.designate_commander(*player, deck.commander.clone());
         game.stack_library(*player, &expand(&deck.cards));
         game.deal_smoothed_hand(*player, OPENING_HAND as u8);
     }

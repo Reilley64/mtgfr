@@ -1,6 +1,6 @@
 # Engine Core and Event Model
 
-**Status:** Current (as of 2026-07-21)
+**Status:** Current (as of 2026-07-25)
 **Module:** `crates/engine` (`src/lib.rs`, `src/core.rs`, `src/apply.rs`, `src/pipeline.rs`, `src/zones.rs`, `src/state.rs`, `src/characteristics.rs`, `src/characteristics_cache.rs`, `src/spawn.rs`)
 
 ---
@@ -67,11 +67,13 @@ Real games enter a simultaneous pre-game mulligan phase after libraries are stac
 - An object takes a **new `ObjectId`** each time it changes zones (CR 400.7). Old slots become `Object::Moved { to }` tombstones so that any holder of an old id can follow the chain to the current id via `Game::zone_of` / `Game::current_id`.
 - An `Object::Removed` sentinel is used for objects that have left the game (eliminated player's owned cards after `PlayerLost`). Accessing a `Removed` object panics — these are illegal inputs.
 - Objects are typed by zone: `Object::Card` (library / hand / graveyard / exile / command), `Object::Spell` (stack, awaiting resolution), `Object::Permanent` (battlefield).
+- Every live `Card`, `Spell`, and `Permanent` stores `def: CardId` rather than embedding a whole `CardDef`. Rules code resolves the printed definition through the process-global intern table (`card_def(id) -> Arc<CardDef>`) when it needs card text, types, costs, or abilities.
 
 ### Event sourcing
 
 - `Event`s are the sole mechanism for mutating **board facts**: life totals, zone membership, counters, tapped/untapped, damage marks, mana pools, stack contents.
 - `Game::apply(event)` and `Game::apply_all(events)` apply events individually. Every handler in `apply.rs` is a direct, pattern-matched mutation with no callbacks.
+- Event variants that need printed card identity carry `CardId` handles instead of embedding `CardDef` values. Apply, trigger, and projection code dereference those handles through the same intern table when they need the printed definition.
 - **Priority, pending choices, and pass bookkeeping are not event-sourced.** They live as plain fields on `Game` and are updated in the submit path directly. This means the event log alone does not reconstitute priority state — which is intentional: games are in-memory only (lobby-table-routing-and-live-game spec) and do not need replay.
 - Library order is not event-sourced either: shuffles and draws mutate `Player::library` directly rather than emitting a full-reorder event, preserving privacy (other players must not see the order).
 
@@ -129,11 +131,12 @@ Implemented SBAs (CR 704):
 
 ## Implementation Decisions
 
-- **`CardDef` is `Copy` and `&'static`.** Abilities are `&'static [Ability]`, so `CardDef` fields never heap-allocate at runtime. The `card-dsl` feature's `intern` / `static_slice` helpers leak owned vecs into static slices at load time (a bounded, load-once pool). This enables zero-cost `Clone` of `Game` (needed for look-ahead and snapshot forking).
+- **Printed definitions are interned behind `CardId`.** `CardDef` is `Clone`, not `Copy`. `intern_card_def(def)` stores an `Arc<CardDef>` in a process-global table and returns a small `CardId`; `card_def(id)` clones the shared `Arc` back out. Non-empty Scryfall oracle ids dedupe to one stable handle, nested back/adventure faces are interned up front, and runtime restore paths (flip, adventure, split-card stack exits) reuse those handles instead of cloning fresh defs.
+- **`Effect` is `Clone`, not `Copy`.** Abilities, stack entries, and event handlers clone effects when they need owned values. Sequence-like effect payloads (`Effect::Sequence::steps`, `ChooseOne::options`, `Conditional::then`) are shared `Arc<[Effect]>` lists, so runtime rebuilds and pause/resume continuations own their tails without leaking. `CardDef`'s remaining slice-like printed data is still `'static`-backed for now; the current shipped state is stable `CardId` interning plus Arc-backed runtime effect tails.
 - **`Effect` enum grows only from real card demand (card-dsl-and-card-pool spec).** New card behavior = new `Effect` variant + one `Game::run` dispatch arm + `Event::apply` arm + TOML entry. No caller bypasses `Game::run` to apply effects directly.
 - **P/T layers are engine-internal** (`PtLayer` is not a DSL or TOML surface), not stored, and rebuilt fresh on each query. Real CR 613 timestamps and dependency ordering are forward-compatible stubs.
 - **No I/O, no `async`, no wall-clock in the engine.** Beacon fetching and seed policy live in the server; the engine only receives the master seed. Time-based behavior (suspend, time counters) is event-triggered, not polled.
-- **Game state is `Clone`.** `Game` derives `Clone` so the server can snapshot for spectator projection or the engine can be forked for look-ahead without additional complexity.
+- **Game state is `Clone`.** `Game` derives `Clone` so the server can snapshot for spectator projection or the engine can be forked for look-ahead without additional complexity. Those clones share immutable printed definitions through the intern table while keeping mutable board state independent.
 - **`ObjectId` is a `u32` arena index.** Out-of-range ids are rejected at the `submit` gate before any handler sees them, preventing untrusted input from causing panics.
 - **`Reject` is typed.** `submit` returns `Err(Reject::ChoicePending)`, `Err(Reject::UnknownObject)`, etc., so callers can log the exact reason without parsing events.
 

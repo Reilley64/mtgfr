@@ -115,6 +115,7 @@ impl Game {
                 }
                 let mut next = self.next_object_id();
                 let mut events = Vec::new();
+                let def = intern_card_def(def);
                 for (recipient, batch_defender) in batches {
                     // Doubling Season (CR 614): each batch may enter under a different player
                     // (Combat Calligrapher), so apply the recipient's token-creation replacements
@@ -184,11 +185,12 @@ impl Game {
                 // Doubling Season doubles Treasures too — they are tokens (CR 614).
                 let count = self.token_count_after_replacements(recipient, count);
                 let mut events = Vec::new();
+                let def = intern_card_def(treasure_token());
                 for next in (self.next_object_id()..).take(count as usize) {
                     events.push(Event::TokenCreated {
                         token: next,
                         controller: recipient,
-                        def: treasure_token(),
+                        def,
                         creator: source,
                     });
                     // "create a number of tapped Treasure tokens" (Goldvein Hydra): each minted
@@ -215,7 +217,7 @@ impl Game {
                 // the entering-permanent context instead of a chosen target (see `entering`'s doc).
                 let object =
                     entering.unwrap_or_else(|| expect_object_target(target, "a token copy"));
-                let def = self.def_of(object);
+                let def = self.def_id_of(object);
                 let count = self.resolve_count(count, controller, source, target, x);
                 // Doubling Season (CR 614): the copies enter under `controller`.
                 let count = self.token_count_after_replacements(controller, count);
@@ -273,7 +275,7 @@ impl Game {
             TokenEffect::BecomeCopyOfTargetCreatureGainingMyriad { .. } => {
                 let chosen =
                     expect_object_target(target, "become-copy-of-target-creature-gaining-myriad");
-                let def = self.def_of(chosen);
+                let def = self.def_id_of(chosen);
                 const MYRIAD: &[Keyword] = &[Keyword::Myriad];
                 vec![
                     Event::BecameCopy {
@@ -299,7 +301,7 @@ impl Game {
                 let (attacker, defender) = attacking_context.expect(
                     "filled in by Game::queue_myriad_triggers when the ability is synthesized",
                 );
-                let def = self.def_of(source);
+                let def = self.def_id_of(source);
                 let mut next = self.next_object_id();
                 let mut events = Vec::new();
                 for opponent in self.living_players() {
@@ -355,7 +357,7 @@ impl Game {
                     if !self.permanent_matches(&filter, id, attacker, Some(source)) {
                         continue;
                     }
-                    let def = self.def_of(id);
+                    let def = self.def_id_of(id);
                     events.push(Event::TokenCreated {
                         token: next,
                         controller: attacker,

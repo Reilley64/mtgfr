@@ -259,12 +259,13 @@ impl Game {
 
         let mut events = Vec::new();
         if let Some(&card) = self.players[player.0 as usize].library.first() {
-            let def = self.def_of(card);
+            let def = self.def_id_of(card);
+            let printed = card_def(def);
             self.push_apply(
                 &mut events,
                 Event::RevealedTopOfLibrary { player, card, def },
             );
-            if def.name == chosen {
+            if printed.name == chosen {
                 self.push_apply(
                     &mut events,
                     Event::SearchedToHand {
@@ -306,7 +307,7 @@ impl Game {
 
         let mut events = Vec::new();
         for &id in &sacrifices {
-            let def = self.def_of(id);
+            let def = self.def_id_of(id);
             let event = self.sacrifice_event(id);
             self.push_apply(&mut events, event);
             self.push_apply(
@@ -402,7 +403,7 @@ impl Game {
         let all_in_hand = cards.iter().all(|c| hand.contains(c));
         let full_discard = cards.len() == count && distinct == cards.len();
         let land_escape = or_one_matching
-            .is_some_and(|filter| cards.len() == 1 && filter.matches(self.def_of(cards[0])));
+            .is_some_and(|filter| cards.len() == 1 && filter.matches(&self.def_of(cards[0])));
         if player != chooser || !all_in_hand || !(full_discard || land_escape) {
             return Err(Reject::IllegalChoice); // invalid — the choice stays pending
         }
@@ -447,7 +448,7 @@ impl Game {
         let mut events = Vec::new();
         for &from in cards.iter().rev() {
             let card = self.next_object_id();
-            let def = self.def_of(from);
+            let def = self.def_id_of(from);
             self.push_apply(
                 &mut events,
                 Event::PutFromHandOnTop {

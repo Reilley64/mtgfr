@@ -811,6 +811,7 @@ pub fn spectator_redact(event: &engine::Event) -> VisibleEvent {
 mod tests {
     use super::*;
     use crate::snapshot::{StreamFrame, ViewExtras, complete_visible};
+    use crate::test_support::card_id;
     use engine::{Event, Game, PlayerId};
 
     fn snapshot(game: &Game, viewer: PlayerId) -> crate::dto::VisibleState {
@@ -825,7 +826,7 @@ mod tests {
             player: PlayerId(0),
             object: 7,
             from: 42,
-            card: cards::get_by_name("Shock").unwrap(),
+            card: card_id("Shock"),
         };
         let spec = spectator_redact(&ev);
         match spec {
@@ -901,7 +902,7 @@ mod tests {
             player: alice,
             object: 7,
             from: 3,
-            card: cards::get_by_name("Shock").expect("Shock is in the pool"),
+            card: card_id("Shock"),
         };
 
         let for_alice = redact(&draw, alice);
@@ -938,7 +939,7 @@ mod tests {
             player: alice,
             object: 7,
             from: 3,
-            card: cards::get_by_name("Shock").expect("Shock is in the pool"),
+            card: card_id("Shock"),
         };
 
         let for_alice = redact(&tutor, alice);

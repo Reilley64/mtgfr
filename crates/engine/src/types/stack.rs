@@ -1,4 +1,7 @@
+use std::sync::Arc;
+
 use super::*;
+use crate::CardId;
 
 /// What an attacking creature is attacking (CR 506.2/508.1a): the defending player, or a
 /// planeswalker that player controls. (Battles — CR 506.2c — have no card in the pool yet; add a
@@ -1177,7 +1180,7 @@ pub enum PendingChoice {
         source: ObjectId,
         target: Option<Target>,
         x: u32,
-        modes: &'static [Effect],
+        modes: Arc<[Effect]>,
     },
     /// `player` may choose `choose` distinct modes of a modal *triggered* ability (`source`, CR
     /// 700.2's "choose two" extended to a trigger's own modes), each mode paired with its own
@@ -1887,7 +1890,7 @@ pub(crate) struct TriggerGroup {
 // ponytail: Effect is ~CR 957B and this enum is Copy (CardDef: Copy invariant); boxing the large (CR 707)
 // variant would break Copy. Size is acceptable; revisit only if Effect itself shrinks.
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum StackItem {
     Spell(ObjectId),
     Ability {
@@ -1924,7 +1927,7 @@ pub(crate) enum StackItem {
 // ponytail: Effect is ~957B and this enum is Copy (CardDef: Copy invariant); boxing the large
 // variant would break Copy. Size is acceptable; revisit only if Effect itself shrinks.
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StackEntry {
     /// A cast spell waiting to resolve, identified by its stack-object id.
     Spell(ObjectId),
@@ -1940,7 +1943,7 @@ pub enum StackEntry {
 /// A canonical, full-information record of something that happened. The *only* thing
 /// that mutates game state (via [`Game::apply`]). The engine is audience-unaware; any
 /// per-viewer redaction happens outside the engine.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Event {
     /// A card was cast: it left `from` (hand/command) and became the spell `spell` on the stack.
     SpellCast {
@@ -2266,7 +2269,7 @@ pub enum Event {
     /// battlefield status — the projected object's name/types change accordingly.
     BecameCopy {
         object: ObjectId,
-        def: CardDef,
+        def: CardId,
         until_eot: bool,
     },
     /// A permanent lost `keywords` until end of turn and can't have them, unioned onto
@@ -2617,7 +2620,7 @@ pub enum Event {
     TokenCreated {
         token: ObjectId,
         controller: PlayerId,
-        def: CardDef,
+        def: CardId,
         creator: ObjectId,
     },
     /// A token left the battlefield and ceased to exist (CR 111.7) — a state-based action.
@@ -2626,7 +2629,7 @@ pub enum Event {
     TokenCeasedToExist {
         token: ObjectId,
         controller: PlayerId,
-        def: CardDef,
+        def: CardId,
     },
     /// Damage was marked on a permanent. `source` is what dealt it (a spell/ability/attacker),
     /// carried for the game log; `None` for engine-internal adjustments.
@@ -2766,7 +2769,7 @@ pub enum Event {
     RevealedTopOfLibrary {
         player: PlayerId,
         card: ObjectId,
-        def: CardDef,
+        def: CardId,
     },
     /// A previously-revealed card ([`Self::RevealedTopOfLibrary`]) went to the bottom of its own
     /// owner's library (Open the Way's non-matching reveals, CR 701.30-adjacent). Not a zone
@@ -2780,7 +2783,7 @@ pub enum Event {
         player: PlayerId,
         object: ObjectId,
         from: ObjectId,
-        card: CardDef,
+        card: CardId,
     },
     /// A found library card `from` was put onto the battlefield under `controller`'s control as the
     /// permanent `permanent` (ramp / fetchland resolving), `tapped` if it enters tapped. Fires ETB
@@ -2855,7 +2858,7 @@ pub enum Event {
         object: ObjectId,
         /// The library-object id it came from.
         from: ObjectId,
-        card: CardDef,
+        card: CardId,
     },
     /// A permanent was sacrificed (CR 701.20): `by` is the player who sacrificed it, `def` its
     /// card definition. Emitted alongside the graveyard/command-zone/vanish event a sacrifice
@@ -2867,7 +2870,7 @@ pub enum Event {
     Sacrificed {
         object: ObjectId,
         by: PlayerId,
-        def: CardDef,
+        def: CardId,
     },
     /// A card was discarded (CR 701.8): `card` is its new graveyard-object id (the same id
     /// `MovedToGraveyard.card` mints), `from` the hand-object id, `player` who discarded it,
@@ -2881,7 +2884,7 @@ pub enum Event {
     Discarded {
         card: ObjectId,
         from: ObjectId,
-        def: CardDef,
+        def: CardId,
         player: PlayerId,
     },
     /// A card was put from hand onto the top of its owner's library (Brainstorm resolving,
@@ -2895,7 +2898,7 @@ pub enum Event {
     PutFromHandOnTop {
         card: ObjectId,
         from: ObjectId,
-        def: CardDef,
+        def: CardId,
         player: PlayerId,
     },
     /// A `Trigger::YouDiscard` payoff (CR 601 impulse play): the graveyard card `from` was
@@ -3207,10 +3210,10 @@ pub struct ModeInfo {
     pub targets: Vec<Target>,
 }
 
-pub(crate) fn nth_mode(def: CardDef, mode: usize) -> Option<Ability> {
+pub(crate) fn nth_mode(def: &CardDef, mode: usize) -> Option<Ability> {
     def.abilities
         .iter()
-        .copied()
+        .cloned()
         .filter(|a| matches!(a.timing, Timing::Spell))
         .nth(mode)
 }
@@ -3233,20 +3236,23 @@ pub(crate) fn nth_mode(def: CardDef, mode: usize) -> Option<Ability> {
 /// a hypothetical card with two *genuinely* independent same-spec clauses (no pool card prints
 /// one) would misclassify as one shared clause; promote to an explicit per-effect marker if one
 /// ever does.
-pub(crate) fn ability_target_clauses(ability: Ability) -> Vec<(TargetSpec, TargetCount)> {
-    let Effect::Sequence { steps } = ability.effect else {
-        if ability.effect.target() == TargetSpec::None {
+pub(crate) fn ability_target_clauses(ability: &Ability) -> Vec<(TargetSpec, TargetCount)> {
+    let Effect::Sequence { steps } = &ability.effect else {
+        if ability.effect.clone().target() == TargetSpec::None {
             return Vec::new();
         }
-        return vec![(ability.effect.target(), ability.effect.target_count())];
+        return vec![(
+            ability.effect.clone().target(),
+            ability.effect.clone().target_count(),
+        )];
     };
     let mut clauses: Vec<(TargetSpec, TargetCount)> = Vec::new();
     for step in steps.iter() {
-        let spec = step.target();
+        let spec = step.clone().target();
         if spec == TargetSpec::None || clauses.last().is_some_and(|&(prev, _)| prev == spec) {
             continue;
         }
-        clauses.push((spec, step.target_count()));
+        clauses.push((spec, step.clone().target_count()));
     }
     clauses
 }
@@ -3258,12 +3264,12 @@ pub(crate) fn ability_target_clauses(ability: Ability) -> Vec<(TargetSpec, Targe
 /// enchantment", two single-target clauses). `None` once every chosen mode's target(s) are
 /// already fully supplied synchronously at cast (the ubiquitous single-target-or-no-target mode).
 pub(crate) fn modal_clause_ability(
-    def: CardDef,
+    def: &CardDef,
     modes: impl Iterator<Item = (usize, Option<Target>)>,
 ) -> Option<Ability> {
-    modes.filter_map(|(m, _)| nth_mode(def, m)).find(|&a| {
+    modes.filter_map(|(m, _)| nth_mode(def, m)).find(|a| {
         let clauses = ability_target_clauses(a);
-        clauses.len() > 1 || !a.effect.target_count().is_single()
+        clauses.len() > 1 || !a.effect.clone().target_count().is_single()
     })
 }
 
@@ -3276,15 +3282,15 @@ pub(crate) fn modal_clause_ability(
 /// enters-with-counters site for free.
 /// ponytail: vanishing short-circuits a printed static rather than stacking with it — no pool card
 /// has both, so there is no ordering to get right; place both when one does.
-pub(crate) fn enters_with_counters(def: CardDef) -> Option<(Amount, Option<CounterKind>)> {
+pub(crate) fn enters_with_counters(def: &CardDef) -> Option<(Amount, Option<CounterKind>)> {
     if let Some(counters) = def.vanishing {
         return Some((Amount::Fixed(counters as i32), Some(CounterKind::Time)));
     }
     def.abilities
         .iter()
-        .find_map(|a| match (a.timing, a.effect) {
+        .find_map(|a| match (a.timing, &a.effect) {
             (Timing::Static, Effect::Static(StaticEffect::EntersWithCounters { amount, kind })) => {
-                Some((amount, kind))
+                Some((*amount, *kind))
             }
             _ => None,
         })

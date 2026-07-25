@@ -292,7 +292,8 @@ impl Game {
         card: &Card,
         controller: PlayerId,
     ) -> bool {
-        if !filter.types.is_empty() && !filter.types.intersects(card.def.kind.types()) {
+        let printed = card_def(card.def);
+        if !filter.types.is_empty() && !filter.types.intersects(printed.kind.types()) {
             return false;
         }
         let yours = card.owner == controller;
@@ -302,7 +303,7 @@ impl Game {
             _ => {}
         }
         if let Some(max) = filter.mv_max
-            && card.def.mana_value() > max as u32
+            && printed.mana_value() > max as u32
         {
             return false;
         }
@@ -340,14 +341,11 @@ fn destroyed_this_way_matches(
     you: PlayerId,
     snap: &state::DestroyedThisWay,
 ) -> bool {
-    if !filter.types.is_empty() && !filter.types.intersects(snap.def.kind.types()) {
+    let printed = card_def(snap.def);
+    if !filter.types.is_empty() && !filter.types.intersects(printed.kind.types()) {
         return false;
     }
-    if !filter.subtypes.is_empty()
-        && !filter
-            .subtypes
-            .iter()
-            .any(|s| snap.def.subtypes.contains(s))
+    if !filter.subtypes.is_empty() && !filter.subtypes.iter().any(|s| printed.subtypes.contains(s))
     {
         return false;
     }
