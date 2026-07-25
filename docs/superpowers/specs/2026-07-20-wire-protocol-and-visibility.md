@@ -2,6 +2,7 @@
 
 **Status:** Current (as of 2026-07-25)
 **Module:** `proto/mtgfr/v1/`, `crates/schema/`, `crates/server/src/grpc/`, `client/lib/wire/`
+(`types.ts`, `protoMap.ts`, `visibleEventKindPresence.ts`, `wire-case-coverage.test.ts`, generated/)
 
 ---
 

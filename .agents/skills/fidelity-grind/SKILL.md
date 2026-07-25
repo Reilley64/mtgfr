@@ -168,14 +168,20 @@ Hard-won loop rules (already baked into the script — do not soften them):
 ## Phase 5 — Client catch-up
 
 Engine waves accrue wire debt. After the grind (or mid-grind if large):
-`just server-codegen`, then diff the regenerated wire types against the client registries —
-every `PendingChoiceView` needs a form in `client/src/components/molecules/prompt-forms.tsx` (reuse an existing
-form when the answer shape matches; the engine dispatches by pending-choice kind), every
-`VisibleEvent` an arm in `client/src/store.ts` (effect/Match, exhaustive), and new
-`MeaningfulAction`s surface via the existing generic tiles/radial. Gate: `npx tsc --noEmit` clean + client tests green via **`just client-test`** — that recipe
-is `bun run test` (vitest). Plain `bun test` runs Bun's own runner over the same files and
-reports dozens of phantom failures; the mirror-mastery grind lost a cycle "fixing" 50 tests
-that were never broken. Only the recipe's output counts as evidence.
+`just server-codegen`, then close the hand-written wire gap —
+
+1. Add any new `PendingChoiceView` kinds to `client/lib/wire/types.ts` and register them in
+   `FORMULATOR_FOR_KIND` (`client/lib/choice.ts`); reuse an existing formulator when the answer
+   shape matches (prompts render via `client/app/board/html/prompts.ts`).
+2. Add any new `VisibleEvent` kinds to `client/lib/wire/types.ts`, extend
+   `VISIBLE_EVENT_KIND_PRESENCE` (`client/lib/wire/visibleEventKindPresence.ts`), and add
+   exhaustive arms in `client/lib/event-fold.ts` (`extractProvenance` / `describe`).
+3. New `MeaningfulAction`s surface via the existing generic tiles / activation menu.
+
+Gate: **`just client-check`** (codegen + format + lint + typecheck + Vitest). That includes
+`wire-case-coverage.test.ts`, which fails if generated proto oneofs drift from the hand unions.
+`just client-test` alone is `bun run test` (vitest). Plain `bun test` runs Bun's own runner over
+the same files and reports dozens of phantom failures — only the just recipes count as evidence.
 
 ## Phase 5.5 — Ship the deck as a precon
 
