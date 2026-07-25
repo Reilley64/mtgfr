@@ -386,6 +386,8 @@ git commit -m "feat(client): twin Host/Join destination cards on lobby entry"
 
 ```ts
 // client/app/shell/lobby/entry.test.ts
+import { RequestedLobbyCancelJoin, RequestedLobbyOpenJoin } from "./messages";
+
 test("opening Join shows focused panel with Bringing strip and hides destinations", () => {
   const base = playLobbyModel({
     lobby: { ...initialLobbySlice(), selectedDeckId: 7 },
@@ -400,16 +402,9 @@ test("opening Join shows focused panel with Bringing strip and hides destination
     },
   });
 
-  Scene.story(
-    update,
-    Scene.with(base),
-    Scene.dispatch(RequestedLobbyOpenJoin()),
-    Scene.model((m) => {
-      expect(m.lobby.entryMode).toBe("join");
-    }),
-  );
-
   const [joined] = update(base, RequestedLobbyOpenJoin());
+  expect(joined.lobby.entryMode).toBe("join");
+
   Scene.scene(
     { update, view: lobbyAppView },
     Scene.with(joined),
@@ -426,34 +421,35 @@ test("opening Join shows focused panel with Bringing strip and hides destination
 });
 
 test("Cancel returns to choose and clears the table code", () => {
-  const open = {
-    ...playLobbyModel({
-      lobby: {
-        ...initialLobbySlice(),
-        selectedDeckId: 7,
-        entryMode: "join",
-        code: "ABC123",
-      },
-      decks: {
-        ...init()[0].decks,
-        list: { ...init()[0].decks.list, decks: [deck], loading: false },
-      },
-    }),
-  };
+  const open = playLobbyModel({
+    lobby: {
+      ...initialLobbySlice(),
+      selectedDeckId: 7,
+      entryMode: "join",
+      code: "ABC123",
+      error: "UnknownTable",
+    },
+    decks: {
+      ...init()[0].decks,
+      list: { ...init()[0].decks.list, decks: [deck], loading: false },
+    },
+  });
 
-  Scene.story(
-    update,
-    Scene.with(open),
-    Scene.dispatch(RequestedLobbyCancelJoin()),
-    Scene.model((m) => {
-      expect(m.lobby.entryMode).toBe("choose");
-      expect(m.lobby.code).toBe("");
-    }),
+  const [next] = update(open, RequestedLobbyCancelJoin());
+  expect(next.lobby.entryMode).toBe("choose");
+  expect(next.lobby.code).toBe("");
+  expect(next.lobby.error).toBeNull();
+
+  Scene.scene(
+    { update, view: lobbyAppView },
+    Scene.with(next),
+    Scene.expect(Scene.testId("lobby-entry-choose")).toExist(),
+    Scene.expect(Scene.testId("lobby-entry-join")).toBeAbsent(),
   );
 });
 ```
 
-If `Scene.story` / `Scene.dispatch` patterns differ in this repo, mirror the existing story helpers from `shell/lobby/story.test.ts` / other shell stories — assert via `update()` + `Scene.scene` as in the OpenJoin example above.
+Use app `update` from `main-exports` (same as other entry tests) so `RequestedLobbyOpenJoin` is handled through the real message union.
 
 - [ ] **Step 2: Run tests to verify they fail**
 
