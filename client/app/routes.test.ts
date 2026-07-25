@@ -9,6 +9,7 @@ import {
   ReceivedDecks,
   ReceivedLeaderboardPage,
   ReceivedMe,
+  ReceivedMeGravatarHash,
   RequestedLeaderboardRefresh,
 } from "./messages";
 import {
@@ -23,7 +24,7 @@ import {
 } from "./routes";
 import { FetchDeckListLeaderboardTeaser, FetchDecks, LookupDeckListCommanders } from "./shell/decks/list/update";
 import { FetchLeaderboard } from "./shell/leaderboard/update";
-import { update } from "./update";
+import { HashMeGravatar, update } from "./update";
 
 /** Foldkit `Url.search` is without a leading `?` (e.g. `deck=-1`). */
 const url = (pathname: string, search = "") => ({
@@ -98,8 +99,9 @@ test("LeaderboardRoute loads the first page on protected route entry", () => {
     update,
     Story.with(model),
     Story.message(ReceivedMe({ me })),
-    Story.Command.expectExact(load),
+    Story.Command.expectExact(load, HashMeGravatar({ email: me.email })),
     Story.Command.resolve(load, page),
+    Story.Command.resolve(HashMeGravatar, ReceivedMeGravatarHash({ email: me.email, hash: "deadbeef" })),
     Story.model((m) => {
       expect(m.leaderboard.status).toBe("ready");
       expect(m.leaderboard.entries).toEqual([{ rank: 1, rating: 1200, user_id: 1, username: "alice" }]);
@@ -117,9 +119,10 @@ test("HomeRoute loads decks and the leaderboard teaser on protected route entry"
     update,
     Story.with(model),
     Story.message(ReceivedMe({ me })),
-    Story.Command.expectExact(FetchDecks, loadTeaser),
+    Story.Command.expectExact(FetchDecks, loadTeaser, HashMeGravatar({ email: me.email })),
     Story.Command.resolve(FetchDecks, ReceivedDecks({ decks })),
     Story.Command.resolve(loadTeaser, ReceivedDeckListLeaderboardTeaser({ entries: teaser })),
+    Story.Command.resolve(HashMeGravatar, ReceivedMeGravatarHash({ email: me.email, hash: "deadbeef" })),
     Story.Command.resolve(LookupDeckListCommanders({ ids: ["atraxa"] }), ReceivedDeckListCommanders({ cards: [] })),
     Story.model((m) => {
       expect(m.decks.list.decks).toEqual(decks);

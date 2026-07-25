@@ -282,14 +282,17 @@ mod tests {
             Seat {
                 user_id: Some(winner),
                 username: None,
+                gravatar_hash: String::new(),
             },
             Seat {
                 user_id: Some(first_loser),
                 username: None,
+                gravatar_hash: String::new(),
             },
             Seat {
                 user_id: Some(second_loser),
                 username: None,
+                gravatar_hash: String::new(),
             },
         ];
         let mut game = Game::with_players(3, 0);
