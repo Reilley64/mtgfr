@@ -24,14 +24,14 @@ pub fn apply_elimination(
     if winner_ids.is_empty() {
         return Vec::new();
     }
-    let Some(&r_loser) = ratings.get(&loser_id) else {
-        return Vec::new();
-    };
+    let r_loser = *ratings
+        .get(&loser_id)
+        .expect("ratings map must contain loser_id");
     let mut deltas: HashMap<i64, f64> = HashMap::new();
     for &wid in winner_ids {
-        let Some(&r_w) = ratings.get(&wid) else {
-            continue;
-        };
+        let r_w = *ratings
+            .get(&wid)
+            .expect("ratings map must contain every winner id");
         let e_w = expected(r_w, r_loser);
         let e_l = expected(r_loser, r_w);
         *deltas.entry(wid).or_default() += K * (1.0 - e_w);
@@ -86,5 +86,17 @@ mod tests {
     #[test]
     fn empty_winners_returns_no_updates() {
         assert!(apply_elimination(&map(&[(1, 1000)]), 1, &[]).is_empty());
+    }
+
+    #[test]
+    #[should_panic(expected = "ratings map must contain loser_id")]
+    fn missing_loser_is_programmer_error() {
+        apply_elimination(&map(&[(1, 1000)]), 2, &[1]);
+    }
+
+    #[test]
+    #[should_panic(expected = "ratings map must contain every winner id")]
+    fn missing_winner_is_programmer_error() {
+        apply_elimination(&map(&[(1, 1000), (3, 1000)]), 3, &[1, 2]);
     }
 }
