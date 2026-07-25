@@ -1,6 +1,6 @@
 # Lobby host/join entry redesign
 
-**Status:** Design  
+**Status:** Implemented  
 **Date:** 2026-07-25  
 **Module:** `client/app/shell/lobby/**` (entry surface on `/play/:deckId` only)  
 **Related current-behavior specs:** [client-shell-deck-builder-and-observability](2026-07-20-client-shell-deck-builder-and-observability.md), [lobby-table-routing-and-live-game](2026-07-20-lobby-table-routing-and-live-game.md)  
