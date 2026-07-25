@@ -26,7 +26,7 @@ The current favicon is a blocky commander-gold **E** on an opaque `forest-floor`
 ### Visual mark
 
 - **Disc:** filled circle of `forest-floor` `#0B1310`.
-- **Cutout:** side-profile **head + neck** bust, facing right, as a hole through the disc (transparent negative space) — same idea as GitHub’s circular Invertocat.
+- **Cutout:** side-profile **closed-mouth** head + neck bust, facing right, as a hole through the disc (transparent negative space) — same idea as GitHub’s circular Invertocat. Neck base is planted on the bottom rim of the disc (badge carve-out, not a floating bust).
 - Technique: one path (or compound path) with `fill-rule="evenodd"` (circle outer + dragon inner); no stroke, no `commander-gold`, no square/`rect` plate.
 - Outside the circle: fully transparent.
 - `viewBox="0 0 32 32"` with ~8–12% padding from the viewBox edges to the circle so it does not clip in browser tabs.

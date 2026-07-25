@@ -104,7 +104,7 @@ The `mana-oracle.css` import brings in the mana-font glyph subset (icon font, no
 
 Player-facing wordmark and document title use **`edh.reilley.dev`** (lowercase hostname, no scheme). Scryfall and related tooling HTTP User-Agent identity is **`edh.reilley.dev/0.1`** (call sites include `client/lib/deck-builder/scryfall.ts` and tooling scripts). Surfaces that show the wordmark include HTML `<title>`, Foldkit `Document.title` / nav brand link (`client/app/view.ts`), auth panel hero, and lobby panel hero. Package names, database names (`mtgfr` / `mtgfr_web`), proto package, GHCR image names, and similar infrastructure identifiers are not renamed as part of this brand display (see Further Notes).
 
-The site favicon is a filled `forest-floor` (#0B1310) circle with an elder-dragon head-and-neck bust cut out as transparent negative space (side profile, facing right) — GitHub Invertocat-style, not a lettermark and not a square plate. Source of truth is `client/public/favicon.svg`; `client/public/favicon.ico` is a multi-size alpha raster fallback. `client/index.html` declares `<link rel="icon" href="/favicon.svg" type="image/svg+xml" />` then `<link rel="icon" href="/favicon.ico" sizes="any" />`.
+The site favicon is a filled `forest-floor` (#0B1310) circle with a closed-mouth elder-dragon head-and-neck bust cut out as transparent negative space (side profile, facing right; neck base planted on the bottom rim) — GitHub Invertocat-style, not a lettermark and not a square plate. Source of truth is `client/public/favicon.svg`; `client/public/favicon.ico` is a multi-size alpha raster fallback. `client/index.html` declares `<link rel="icon" href="/favicon.svg" type="image/svg+xml" />` then `<link rel="icon" href="/favicon.ico" sizes="any" />`.
 
 ### Biome
 
