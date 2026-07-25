@@ -50,6 +50,7 @@ These documents are **not superseded** and must stay current alongside the specs
 | [flights](2026-07-20-flights.md) | Card movement animation, flight ownership, bitmap paint gating |
 | [foldkit-devtools](2026-07-22-foldkit-devtools.md) | Local Foldkit runtime relay and MCP debugging tools |
 | [hand-and-zone-bar](2026-07-20-hand-and-zone-bar.md) | Hand, command, graveyard, exile bars and playable outlines |
+| [hand-bar-arena-spacing (design)](2026-07-25-hand-bar-arena-spacing-design.md) | Arena-forward hand bar face/peek/visible-height targets |
 | [lobby-table-routing-and-live-game](2026-07-20-lobby-table-routing-and-live-game.md) | Lobby, seed, in-memory tables, affinity, drain |
 | [mana-tray](2026-07-20-mana-tray.md) | Battlefield mana pool tray and payment mana tray surfaces |
 | [nested-effect-families](2026-07-23-nested-effect-families-design.md) | Nested `Effect` family/`mode` vocabulary (design) |
