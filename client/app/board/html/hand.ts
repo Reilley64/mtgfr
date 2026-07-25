@@ -257,9 +257,7 @@ function tile(args: {
 
   return h.div(
     [
-      h.Class(
-        "group/hand-tile pointer-events-none relative shrink-0 origin-bottom overflow-visible hover:z-50",
-      ),
+      h.Class("group/hand-tile pointer-events-none relative shrink-0 origin-bottom overflow-visible hover:z-50"),
       h.Style({
         width: `${HAND_CARD_PEEK}px`,
         height: `${HAND_VISIBLE_H}px`,
