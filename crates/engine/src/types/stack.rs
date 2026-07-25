@@ -1171,7 +1171,7 @@ pub enum PendingChoice {
     /// `player` (the trigger's controller) must choose one of `modes` for an [`Effect::ChooseOne`]
     /// "choose one" triggered ability, resolving at the point the ability resolves. Answered by
     /// [`Intent::ChooseMode`]; the chosen mode is run with the trigger's `source`/`target`/`x`
-    /// context. Mode labels for the wire come from `modes.len()` / each mode's [`Effect::label`].
+    /// context. Mode labels for the wire come from `modes.len()` / each mode's [`Effect::message`].
     ChooseMode {
         player: PlayerId,
         source: ObjectId,
@@ -3199,7 +3199,7 @@ impl DamageAssignment {
 /// `targets` differ: the mode wants a target but none is legal, so it can't be chosen right now.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ModeInfo {
-    pub label: String,
+    pub label: crate::MessageRef,
     pub needs_target: bool,
     pub targets: Vec<Target>,
 }

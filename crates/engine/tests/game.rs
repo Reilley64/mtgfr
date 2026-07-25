@@ -25986,9 +25986,15 @@ fn echo_label_renders_colored_pips() {
         additional: NO_ADD,
         reduce_own_generic: None,
     };
+    let message = Effect::Choice(ChoiceEffect::SacrificeSelfUnlessPay { cost }).message();
     assert_eq!(
-        Effect::Choice(ChoiceEffect::SacrificeSelfUnlessPay { cost }).label(),
-        "Sacrifice this unless you pay {2}{R}"
+        message.key.as_str(),
+        "effect.choice_sacrifice_self_unless_pay"
+    );
+    assert_eq!(message.params[0].name, "cost");
+    assert_eq!(
+        message.params[0].value,
+        MessageParamValue::OwnedStr("{2}{R}".to_string())
     );
 }
 
@@ -26165,9 +26171,15 @@ fn generic_only_sacrifice_unless_pay_label() {
         additional: NO_ADD,
         reduce_own_generic: None,
     };
+    let message = Effect::Choice(ChoiceEffect::SacrificeSelfUnlessPay { cost }).message();
     assert_eq!(
-        Effect::Choice(ChoiceEffect::SacrificeSelfUnlessPay { cost }).label(),
-        "Sacrifice this unless you pay {1}"
+        message.key.as_str(),
+        "effect.choice_sacrifice_self_unless_pay"
+    );
+    assert_eq!(message.params[0].name, "cost");
+    assert_eq!(
+        message.params[0].value,
+        MessageParamValue::OwnedStr("{1}".to_string())
     );
 }
 
