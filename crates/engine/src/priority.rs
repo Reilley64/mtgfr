@@ -65,7 +65,8 @@ impl Game {
         let Object::Permanent(perm) = &self.objects[object as usize] else {
             return None;
         };
-        perm.def.abilities.iter().position(|a| {
+        let printed = card_def(perm.def);
+        printed.abilities.iter().position(|a| {
             a.effect.clone().is_mana_ability()
                 && matches!(a.timing, Timing::Activated(cost)
                     if cost.taps_self
@@ -82,9 +83,10 @@ impl Game {
         let Object::Permanent(perm) = &self.objects[object as usize] else {
             return false;
         };
+        let printed = card_def(perm.def);
         if let CardKind::Land {
             produces: Some(_), ..
-        } = perm.def.kind
+        } = &printed.kind
         {
             return true;
         }
@@ -130,6 +132,7 @@ impl Game {
         let Object::Permanent(ref perm) = self.objects[object as usize] else {
             return Err(Reject::CannotProduceMana);
         };
+        let printed = card_def(perm.def);
         // A land with the `produces` sugar has a free base tap-for-one. Everything else that makes
         // mana does it with a real ability — Sol Ring, Arcane Signet, a mana dork, and a fetch-only
         // land's *non*-mana ability (which finds none, and rejects below). Delegate so the one (CR 605, CR 113)
@@ -137,7 +140,7 @@ impl Game {
         let CardKind::Land {
             produces: Some(produces),
             ..
-        } = perm.def.kind
+        } = &printed.kind
         else {
             let Some(index) = self.free_tap_mana_ability(object) else {
                 return Err(Reject::CannotProduceMana);
@@ -154,7 +157,7 @@ impl Game {
         // and "any color that a land an opponent controls could produce" (Exotic Orchard) both
         // resolve to a real credit here — an empty identity/producible set taps for nothing.
         let mana = match produces {
-            LandProduces::Mana(m) => Some(m),
+            LandProduces::Mana(m) => Some(*m),
             LandProduces::CommanderIdentity => self.commander_identity_credit(player),
             LandProduces::OpponentColors => self.opponent_producible_colors_credit(player),
         };
@@ -196,7 +199,8 @@ impl Game {
         let Some(perm) = self.as_permanent(land) else {
             return;
         };
-        if !matches!(perm.def.kind, CardKind::Land { .. }) {
+        let printed = card_def(perm.def);
+        if !matches!(&printed.kind, CardKind::Land { .. }) {
             return;
         }
         // "Tapped for mana" means it produced mana (CR 106.11) — the type this tap made, read back
@@ -421,10 +425,11 @@ impl Game {
             if self.controller_of(id) != player || p.tapped {
                 continue;
             }
+            let printed = card_def(p.def);
             // Permanents with a paid tap-for-mana ability (Fetid Heath filter, Study Hall any)
             // are counted only via the fixed-point below — adding their free mode here would
             // mark them used and hide the paid mode when duals are required.
-            let has_paid_mana = p.def.abilities.iter().any(|a| {
+            let has_paid_mana = printed.abilities.iter().any(|a| {
                 let Timing::Activated(cost) = a.timing else {
                     return false;
                 };
@@ -443,10 +448,10 @@ impl Game {
                 && let CardKind::Land {
                     produces: Some(produces),
                     ..
-                } = p.def.kind
+                } = &printed.kind
             {
                 let credit = match produces {
-                    LandProduces::Mana(m) => Some(m),
+                    LandProduces::Mana(m) => Some(*m),
                     LandProduces::CommanderIdentity => self.commander_identity_credit(player),
                     LandProduces::OpponentColors => self.opponent_producible_colors_credit(player),
                 };
@@ -455,7 +460,7 @@ impl Game {
                     contributed_free = true;
                 }
             }
-            for (i, a) in p.def.abilities.iter().enumerate() {
+            for (i, a) in printed.abilities.iter().enumerate() {
                 let Timing::Activated(cost) = a.timing else {
                     continue;
                 };
@@ -593,13 +598,14 @@ impl Game {
             if p.owner != player || p.tapped {
                 continue;
             }
+            let printed = card_def(p.def);
             if let CardKind::Land {
                 produces: Some(produces),
                 ..
-            } = p.def.kind
+            } = &printed.kind
             {
                 let credit = match produces {
-                    LandProduces::Mana(m) => Some(m),
+                    LandProduces::Mana(m) => Some(*m),
                     LandProduces::CommanderIdentity => self.commander_identity_credit(player),
                     LandProduces::OpponentColors => self.opponent_producible_colors_credit(player),
                 };
@@ -609,7 +615,7 @@ impl Game {
                     continue;
                 }
             }
-            for a in p.def.abilities {
+            for a in printed.abilities {
                 let Timing::Activated(cost) = a.timing else {
                     continue;
                 };
@@ -1052,10 +1058,11 @@ impl Game {
             if p.owner != player || p.tapped || Some(id) == exclude {
                 continue;
             }
-            let nonland = !matches!(p.def.kind, CardKind::Land { .. });
-            if let CardKind::Land { produces, .. } = p.def.kind {
+            let printed = card_def(p.def);
+            let nonland = !matches!(&printed.kind, CardKind::Land { .. });
+            if let CardKind::Land { produces, .. } = &printed.kind {
                 let base_credit = match produces {
-                    Some(LandProduces::Mana(m)) => Some(m),
+                    Some(LandProduces::Mana(m)) => Some(*m),
                     Some(LandProduces::CommanderIdentity) => self.commander_identity_credit(player),
                     Some(LandProduces::OpponentColors) => {
                         self.opponent_producible_colors_credit(player)
@@ -1074,7 +1081,7 @@ impl Game {
                     });
                 }
             }
-            for (i, a) in p.def.abilities.iter().enumerate() {
+            for (i, a) in printed.abilities.iter().enumerate() {
                 let Timing::Activated(acost) = a.timing else {
                     continue;
                 };
@@ -1135,7 +1142,7 @@ impl Game {
                     });
                 }
             }
-            let own_len = p.def.abilities.len();
+            let own_len = printed.abilities.len();
             for (gi, (acost, batch)) in self.granted_mana_abilities(id).into_iter().enumerate() {
                 let index = own_len + gi;
                 if !acost.taps_self

@@ -199,7 +199,8 @@ impl Game {
                 let Some(p) = self.as_permanent(id) else {
                     continue;
                 };
-                for ability in p.def.abilities {
+                let def = card_def(p.def);
+                for ability in def.abilities.iter().cloned() {
                     let (
                         Timing::Static,
                         Effect::Static(StaticEffect::Anthem {
@@ -237,7 +238,7 @@ impl Game {
                     if attacking_only && !self.combat.attackers.contains(&object) {
                         continue;
                     }
-                    let name = p.def.name;
+                    let name = def.name;
                     if let (Amount::Fixed(power), Amount::Fixed(toughness)) = (power, toughness)
                         && (power != 0 || toughness != 0)
                     {
@@ -261,7 +262,8 @@ impl Game {
                     Some(p) if p.owner == owner => p,
                     _ => continue,
                 };
-                for ability in p.def.abilities {
+                let def = card_def(p.def);
+                for ability in def.abilities.iter().cloned() {
                     let (
                         Timing::Static,
                         Effect::Static(StaticEffect::GrantManaAbility { filter, .. }),
@@ -270,7 +272,7 @@ impl Game {
                         continue;
                     };
                     if self.permanent_matches(&filter, object, owner, None) {
-                        push(p.def.name, ModifierContribution::ManaAbility);
+                        push(def.name, ModifierContribution::ManaAbility);
                     }
                 }
             }
@@ -1532,7 +1534,8 @@ impl Game {
             if p.owner != owner {
                 continue;
             }
-            for ability in p.def.abilities {
+            let def = card_def(p.def);
+            for ability in def.abilities.iter().cloned() {
                 let (
                     Timing::Static,
                     Effect::Static(StaticEffect::GrantManaAbility {
@@ -1658,8 +1661,9 @@ impl Game {
             let Object::Permanent(p) = object else {
                 return false;
             };
+            let def = card_def(p.def);
             p.owner == player
-                && p.def.abilities.iter().any(|a| {
+                && def.abilities.iter().any(|a| {
                     (a.timing, a.effect.clone())
                         == (
                             Timing::Static,
@@ -1679,8 +1683,9 @@ impl Game {
             let Object::Permanent(p) = object else {
                 return false;
             };
+            let def = card_def(p.def);
             p.owner == player
-                && p.def.abilities.iter().any(|a| {
+                && def.abilities.iter().any(|a| {
                     (a.timing, a.effect.clone())
                         == (
                             Timing::Static,
@@ -1709,7 +1714,8 @@ impl Game {
             if p.owner != player {
                 continue;
             }
-            for ability in p.def.abilities {
+            let printed = card_def(p.def);
+            for ability in printed.abilities.iter().cloned() {
                 let (
                     Timing::Static,
                     Effect::Static(StaticEffect::ReduceSpellCost {
@@ -1825,7 +1831,8 @@ impl Game {
             if p.owner != controller {
                 continue;
             }
-            for ability in p.def.abilities {
+            let def = card_def(p.def);
+            for ability in def.abilities.iter().cloned() {
                 let (
                     Timing::Static,
                     Effect::Static(StaticEffect::CounterReplacement {
@@ -1873,7 +1880,8 @@ impl Game {
             if self.controller_of(source) != controller {
                 continue;
             }
-            for ability in p.def.abilities {
+            let def = card_def(p.def);
+            for ability in def.abilities.iter().cloned() {
                 let (
                     Timing::Static,
                     Effect::Static(StaticEffect::CreaturesYouControlEnterWithCounters {
@@ -1909,7 +1917,8 @@ impl Game {
             if p.owner != recipient {
                 continue;
             }
-            for ability in p.def.abilities {
+            let def = card_def(p.def);
+            for ability in def.abilities.iter().cloned() {
                 let (Timing::Static, Effect::Static(StaticEffect::TokenReplacement { times })) =
                     (ability.timing, ability.effect.clone())
                 else {
@@ -1937,7 +1946,8 @@ impl Game {
             if self.controller_of(id as ObjectId) != recipient {
                 continue;
             }
-            for ability in p.def.abilities {
+            let def = card_def(p.def);
+            for ability in def.abilities.iter().cloned() {
                 let (Timing::Static, Effect::Static(StaticEffect::LifeGainReplacement { plus })) =
                     (ability.timing, ability.effect.clone())
                 else {
@@ -1980,7 +1990,8 @@ impl Game {
             if self.controller_of(id as ObjectId) != caster {
                 continue;
             }
-            for ability in p.def.abilities {
+            let def = card_def(p.def);
+            for ability in def.abilities.iter().cloned() {
                 let (Timing::Static, Effect::Static(StaticEffect::CastXReplacement { times })) =
                     (ability.timing, ability.effect.clone())
                 else {
@@ -2250,7 +2261,7 @@ mod cache_tests {
         let spell = game.create_object(
             None,
             Object::Spell(Spell {
-                def: anthem(),
+                def: intern_card_def(anthem()),
                 controller: PlayerId(0),
                 targets: TargetList::default(),
                 targets_second: TargetList::default(),
@@ -2405,7 +2416,7 @@ mod cache_tests {
         game.apply(&Event::TokenCreated {
             token,
             controller: PlayerId(0),
-            def: creature(1, 1),
+            def: intern_card_def(creature(1, 1)),
             creator: bear,
         });
         assert!(

@@ -1,4 +1,5 @@
 use super::*;
+use crate::CardId;
 
 /// What an attacking creature is attacking (CR 506.2/508.1a): the defending player, or a
 /// planeswalker that player controls. (Battles — CR 506.2c — have no card in the pool yet; add a
@@ -2266,7 +2267,7 @@ pub enum Event {
     /// battlefield status — the projected object's name/types change accordingly.
     BecameCopy {
         object: ObjectId,
-        def: CardDef,
+        def: CardId,
         until_eot: bool,
     },
     /// A permanent lost `keywords` until end of turn and can't have them, unioned onto
@@ -2617,7 +2618,7 @@ pub enum Event {
     TokenCreated {
         token: ObjectId,
         controller: PlayerId,
-        def: CardDef,
+        def: CardId,
         creator: ObjectId,
     },
     /// A token left the battlefield and ceased to exist (CR 111.7) — a state-based action.
@@ -2626,7 +2627,7 @@ pub enum Event {
     TokenCeasedToExist {
         token: ObjectId,
         controller: PlayerId,
-        def: CardDef,
+        def: CardId,
     },
     /// Damage was marked on a permanent. `source` is what dealt it (a spell/ability/attacker),
     /// carried for the game log; `None` for engine-internal adjustments.
@@ -2766,7 +2767,7 @@ pub enum Event {
     RevealedTopOfLibrary {
         player: PlayerId,
         card: ObjectId,
-        def: CardDef,
+        def: CardId,
     },
     /// A previously-revealed card ([`Self::RevealedTopOfLibrary`]) went to the bottom of its own
     /// owner's library (Open the Way's non-matching reveals, CR 701.30-adjacent). Not a zone
@@ -2780,7 +2781,7 @@ pub enum Event {
         player: PlayerId,
         object: ObjectId,
         from: ObjectId,
-        card: CardDef,
+        card: CardId,
     },
     /// A found library card `from` was put onto the battlefield under `controller`'s control as the
     /// permanent `permanent` (ramp / fetchland resolving), `tapped` if it enters tapped. Fires ETB
@@ -2855,7 +2856,7 @@ pub enum Event {
         object: ObjectId,
         /// The library-object id it came from.
         from: ObjectId,
-        card: CardDef,
+        card: CardId,
     },
     /// A permanent was sacrificed (CR 701.20): `by` is the player who sacrificed it, `def` its
     /// card definition. Emitted alongside the graveyard/command-zone/vanish event a sacrifice
@@ -2867,7 +2868,7 @@ pub enum Event {
     Sacrificed {
         object: ObjectId,
         by: PlayerId,
-        def: CardDef,
+        def: CardId,
     },
     /// A card was discarded (CR 701.8): `card` is its new graveyard-object id (the same id
     /// `MovedToGraveyard.card` mints), `from` the hand-object id, `player` who discarded it,
@@ -2881,7 +2882,7 @@ pub enum Event {
     Discarded {
         card: ObjectId,
         from: ObjectId,
-        def: CardDef,
+        def: CardId,
         player: PlayerId,
     },
     /// A card was put from hand onto the top of its owner's library (Brainstorm resolving,
@@ -2895,7 +2896,7 @@ pub enum Event {
     PutFromHandOnTop {
         card: ObjectId,
         from: ObjectId,
-        def: CardDef,
+        def: CardId,
         player: PlayerId,
     },
     /// A `Trigger::YouDiscard` payoff (CR 601 impulse play): the graveyard card `from` was

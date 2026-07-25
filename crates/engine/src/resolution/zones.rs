@@ -48,7 +48,7 @@ impl Game {
                     return vec![Event::TokenCeasedToExist {
                         token: object,
                         controller: permanent.owner,
-                        def: permanent.def.clone(),
+                        def: permanent.def,
                     }];
                 }
                 let owner = permanent.owner;
@@ -112,7 +112,7 @@ impl Game {
                     return vec![Event::TokenCeasedToExist {
                         token: object,
                         controller: permanent.owner,
-                        def: permanent.def.clone(),
+                        def: permanent.def,
                     }];
                 }
                 vec![Event::ReturnedToHand {
@@ -169,7 +169,7 @@ impl Game {
                         events.push(Event::TokenCeasedToExist {
                             token: id,
                             controller: p.owner,
-                            def: p.def.clone(),
+                            def: p.def,
                         });
                         continue;
                     }
@@ -258,7 +258,7 @@ impl Game {
                 if self.zone_of(card) != Zone::Graveyard {
                     return Vec::new();
                 }
-                let def = self.def_of(card);
+                let def = self.def_id_of(card);
                 let exiled = self.next_object_id();
                 let move_event = self.exile_or_command(card, exiled);
                 let token = exiled + 1;
@@ -360,7 +360,7 @@ impl Game {
                     return vec![Event::TokenCeasedToExist {
                         token: object,
                         controller: owner,
-                        def: self.def_of(object),
+                        def: self.def_id_of(object),
                     }];
                 }
                 vec![Event::TuckedToLibrary {
@@ -398,7 +398,7 @@ impl Game {
                         events.push(Event::TokenCeasedToExist {
                             token: object,
                             controller: owner,
-                            def: permanent.def.clone(),
+                            def: permanent.def,
                         });
                         continue;
                     }
@@ -488,7 +488,7 @@ impl Game {
                     return vec![Event::TokenCeasedToExist {
                         token: id,
                         controller: permanent.owner,
-                        def: permanent.def.clone(),
+                        def: permanent.def,
                     }];
                 }
                 vec![Event::ReturnedToHand {
@@ -554,7 +554,7 @@ impl Game {
             Event::RevealedTopOfLibrary {
                 player: owner,
                 card,
-                def: def.clone(),
+                def: self.def_id_of(card),
             },
         );
         if CardFilter::Permanent.matches(&def) {
@@ -582,7 +582,7 @@ impl Game {
             return vec![Event::TokenCeasedToExist {
                 token: object,
                 controller: owner,
-                def: self.def_of(object),
+                def: self.def_id_of(object),
             }];
         }
         vec![

@@ -257,7 +257,7 @@ impl Game {
                 .iter()
                 .find(|&&(spell, _)| spell == from)
         {
-            card.def = fused.clone();
+            card.def = intern_card_def(fused.clone());
         }
         // A card leaving a graveyard (reanimation, graveyard recursion, cast-from-graveyard) marks
         // its owner's turn-scoped "a card left your graveyard this turn" flag — the CR 603.4
@@ -334,18 +334,37 @@ impl Game {
         }
     }
 
+    /// The live card-definition handle of the object at `id`.
+    pub(crate) fn def_id_of(&self, id: ObjectId) -> CardId {
+        match &self.objects[id as usize] {
+            Object::Card(c) => c.def,
+            Object::Spell(s) => s.def,
+            Object::Permanent(p) if p.flipped => {
+                let def = card_def(p.def);
+                let Some(back) = def.back else {
+                    return p.def;
+                };
+                intern_card_def(back.clone())
+            }
+            Object::Permanent(p) => p.def,
+            Object::Moved { to } => self.def_id_of(*to),
+            Object::Removed => panic!("object {id} has left the game"),
+        }
+    }
+
     /// The card definition of whatever live form the object at `id` currently has.
     pub fn def_of(&self, id: ObjectId) -> CardDef {
         match &self.objects[id as usize] {
-            Object::Card(c) => c.def.clone(),
-            Object::Spell(s) => s.def.clone(),
+            Object::Card(c) => card_def(c.def).as_ref().clone(),
+            Object::Spell(s) => card_def(s.def).as_ref().clone(),
             // CR 712: a flipped permanent (a Kamigawa flip card) permanently uses its back face's
             // characteristics — every accessor that reads `def_of` (name, types, subtypes,
             // abilities, and `pt_base`) sees the back face at once.
             Object::Permanent(p) if p.flipped => {
-                p.def.back.cloned().unwrap_or_else(|| p.def.clone())
+                let def = card_def(p.def);
+                def.back.cloned().unwrap_or_else(|| def.as_ref().clone())
             }
-            Object::Permanent(p) => p.def.clone(),
+            Object::Permanent(p) => card_def(p.def).as_ref().clone(),
             Object::Moved { to } => self.def_of(*to),
             Object::Removed => panic!("object {id} has left the game"),
         }
@@ -358,9 +377,9 @@ impl Game {
     /// oracle lookup) on the shared physical print while name/type/P-T display the back face.
     pub fn front_def_of(&self, id: ObjectId) -> CardDef {
         match &self.objects[id as usize] {
-            Object::Card(c) => c.def.clone(),
-            Object::Spell(s) => s.def.clone(),
-            Object::Permanent(p) => p.def.clone(),
+            Object::Card(c) => card_def(c.def).as_ref().clone(),
+            Object::Spell(s) => card_def(s.def).as_ref().clone(),
+            Object::Permanent(p) => card_def(p.def).as_ref().clone(),
             Object::Moved { to } => self.front_def_of(*to),
             Object::Removed => panic!("object {id} has left the game"),
         }
@@ -633,7 +652,8 @@ impl Game {
         if !perm.prepared {
             return (TargetSpec::None, Vec::new());
         }
-        let Some(back) = perm.def.back else {
+        let printed = card_def(perm.def);
+        let Some(back) = printed.back else {
             return (TargetSpec::None, Vec::new());
         };
         let back = back.clone();

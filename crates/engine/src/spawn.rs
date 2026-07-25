@@ -12,6 +12,7 @@ impl Game {
     /// would otherwise go stale the instant a test drops a card in here after an earlier read;
     /// see [`Self::spawn_in_graveyard`]'s doc comment.
     pub fn spawn_in_hand(&mut self, player: PlayerId, def: CardDef) -> ObjectId {
+        let def = intern_card_def(def);
         let id = self.create_object(
             None,
             Object::Card(Card {
@@ -32,6 +33,7 @@ impl Game {
     /// Reliquary) reads live off the graveyard, so a battlefield permanent's cached P/T would
     /// otherwise go stale the instant a test drops a card in here after an earlier read.
     pub fn spawn_in_graveyard(&mut self, player: PlayerId, def: CardDef) -> ObjectId {
+        let def = intern_card_def(def);
         let id = self.create_object(
             None,
             Object::Card(Card {
@@ -51,6 +53,7 @@ impl Game {
     /// (not summoning sick, as if it had been there since before the turn). Invalidates
     /// `player`'s cached characteristics — see [`Self::spawn_in_graveyard`]'s doc comment.
     pub fn spawn_on_battlefield(&mut self, player: PlayerId, def: CardDef) -> ObjectId {
+        let def = intern_card_def(def);
         let id = self.create_object(
             None,
             Object::Permanent(Permanent {
@@ -68,6 +71,7 @@ impl Game {
     /// [`Self::spawn_on_battlefield`]. Invalidates `player`'s cached characteristics — see
     /// [`Self::spawn_in_graveyard`]'s doc comment.
     pub fn spawn_token_on_battlefield(&mut self, player: PlayerId, def: CardDef) -> ObjectId {
+        let def = intern_card_def(def);
         let id = self.create_object(
             None,
             Object::Permanent(Permanent {
@@ -83,6 +87,7 @@ impl Game {
 
     /// Setup: create `player`'s commander in the command zone and set Commander life (40).
     pub fn designate_commander(&mut self, player: PlayerId, def: CardDef) -> ObjectId {
+        let def = intern_card_def(def);
         let id = self.create_object(
             None,
             Object::Card(Card {

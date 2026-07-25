@@ -121,7 +121,7 @@ impl Game {
                     player,
                     object: self.next_object_id(),
                     from,
-                    card: self.def_of(from),
+                    card: self.def_id_of(from),
                 },
                 TopDest::Battlefield => {
                     let permanent = self.next_object_id();
@@ -161,7 +161,7 @@ impl Game {
                         player,
                         object: self.next_object_id(),
                         from,
-                        card: self.def_of(from),
+                        card: self.def_id_of(from),
                     };
                     self.push_apply(&mut events, event);
                 }
@@ -219,7 +219,7 @@ impl Game {
                 player,
                 object: self.next_object_id(),
                 from,
-                card: self.def_of(from),
+                card: self.def_id_of(from),
             };
             self.push_apply(&mut events, event);
         }
@@ -430,7 +430,7 @@ impl Game {
                 player,
                 object: self.next_object_id(),
                 from,
-                card: self.def_of(from),
+                card: self.def_id_of(from),
             },
             SearchDest::Battlefield => Event::SearchedToBattlefield {
                 permanent: self.next_object_id(),
@@ -444,7 +444,7 @@ impl Game {
             SearchDest::LibraryTop => Event::RevealedTopOfLibrary {
                 player,
                 card: from,
-                def: self.def_of(from),
+                def: self.def_id_of(from),
             },
             // Buried Alive: "put them into your graveyard" — the same library-to-graveyard
             // choke `mill_events` uses, so this arrival never counts as "from the battlefield"

@@ -61,6 +61,7 @@ impl Game {
 
     /// Create a card on the bottom of `player`'s library, returning its id.
     pub(crate) fn spawn_in_library(&mut self, player: PlayerId, def: CardDef) -> ObjectId {
+        let def = intern_card_def(def);
         let id = self.create_object(
             None,
             Object::Card(Card {
@@ -191,7 +192,7 @@ impl Game {
                         player,
                         object: next,
                         from,
-                        card: self.def_of(from),
+                        card: self.def_id_of(from),
                     };
                     next += 1;
                     event

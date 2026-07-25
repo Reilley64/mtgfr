@@ -259,16 +259,13 @@ impl Game {
 
         let mut events = Vec::new();
         if let Some(&card) = self.players[player.0 as usize].library.first() {
-            let def = self.def_of(card);
+            let def = self.def_id_of(card);
+            let printed = card_def(def);
             self.push_apply(
                 &mut events,
-                Event::RevealedTopOfLibrary {
-                    player,
-                    card,
-                    def: def.clone(),
-                },
+                Event::RevealedTopOfLibrary { player, card, def },
             );
-            if def.name == chosen {
+            if printed.name == chosen {
                 self.push_apply(
                     &mut events,
                     Event::SearchedToHand {
@@ -310,7 +307,7 @@ impl Game {
 
         let mut events = Vec::new();
         for &id in &sacrifices {
-            let def = self.def_of(id);
+            let def = self.def_id_of(id);
             let event = self.sacrifice_event(id);
             self.push_apply(&mut events, event);
             self.push_apply(
@@ -451,7 +448,7 @@ impl Game {
         let mut events = Vec::new();
         for &from in cards.iter().rev() {
             let card = self.next_object_id();
-            let def = self.def_of(from);
+            let def = self.def_id_of(from);
             self.push_apply(
                 &mut events,
                 Event::PutFromHandOnTop {

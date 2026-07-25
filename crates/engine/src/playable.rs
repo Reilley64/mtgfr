@@ -126,12 +126,13 @@ impl Game {
         let Object::Card(card) = &self.objects[object as usize] else {
             return Err(Reject::NotCastable);
         };
-        if matches!(card.def.kind, CardKind::Land { .. }) {
+        let printed = card_def(card.def);
+        if matches!(&printed.kind, CardKind::Land { .. }) {
             return Err(Reject::NotCastable);
         }
         // A split card is cast as one of its halves (CR 709.4a — `Intent::CastSplitHalf`), never
         // as the fused card this `CardDef` describes.
-        if !card.def.halves.is_empty() {
+        if !printed.halves.is_empty() {
             return Err(Reject::NotCastable);
         }
         let Some(zone) = self.playable_zone(object, player) else {
@@ -140,19 +141,19 @@ impl Game {
         if !kind.is_enumeration() && player != self.priority {
             return Err(Reject::NotYourPriority);
         }
-        if !self.cast_timing_ok(player, object, card.def.clone(), kind) {
+        if !self.cast_timing_ok(player, object, printed.as_ref().clone(), kind) {
             return Err(Reject::WrongTiming);
         }
         let from_command = zone == Zone::Command;
         let from_graveyard = zone == Zone::Graveyard;
-        let cast_via_flashback = from_graveyard && card.def.flashback.is_some();
-        let cast_via_escape = from_graveyard && card.def.escape.is_some();
+        let cast_via_flashback = from_graveyard && printed.flashback.is_some();
+        let cast_via_escape = from_graveyard && printed.escape.is_some();
 
         // Clause 0 of the non-modal spell's post-cast target clauses (CR 601.2c) — `None` for the
         // single-target majority, the first of one-per-multi-target-ability (Magma Opus), or the
         // first of a single multi-clause ability's own clauses (Vengeful Rebirth's graveyard
         // return + "any target" damage). Later clauses are chosen at their own pauses.
-        let mut multi_target = self.spell_multi_target(&card.def.clone());
+        let mut multi_target = self.spell_multi_target(printed.as_ref());
 
         // CR 601.2b: {X} (and modes) are chosen before targets (CR 601.2c) — computed here,
         // ahead of every target-legality check below, so a `PermanentFilter::mv_eq_x` target
@@ -161,21 +162,21 @@ impl Game {
         // of directly) at this point in the cast sequence.
         let x = inputs.x.min(u8::MAX as u32);
 
-        let chosen = if card.def.modal {
+        let chosen = if printed.modal {
             if inputs.target.is_some() {
                 return Err(Reject::IllegalMode);
             }
             if kind.is_enumeration() {
                 Modes::default()
             } else {
-                self.validate_modes(object, card.def.clone(), inputs.modes, player, x)?;
+                self.validate_modes(object, printed.as_ref().clone(), inputs.modes, player, x)?;
                 // The chosen mode may need post-cast target selection — either a same-spec
                 // multi-target mode (Prismari Charm's "one or two targets") or a multi-clause
                 // mode (Hull Breach's "target artifact and target enchantment", two independent
                 // single-target clauses) — same post-cast target-choice shape as a non-modal
                 // multi-target spell, just scoped to the mode that was picked. Every clause the
                 // mode carries needs at least one legal target, not just the first.
-                let clauses = self.modal_target_clauses(&card.def, inputs.modes);
+                let clauses = self.modal_target_clauses(printed.as_ref(), inputs.modes);
                 multi_target = clauses.first().copied();
                 for (spec, count) in clauses {
                     let n = self
@@ -183,7 +184,7 @@ impl Game {
                             spec,
                             object,
                             player,
-                            color_identity(&card.def.clone()),
+                            color_identity(printed.as_ref()),
                             x,
                         )
                         .len();
@@ -199,7 +200,7 @@ impl Game {
             }
             if !kind.is_enumeration() {
                 let n = self
-                    .legal_targets_for(spec, object, player, color_identity(&card.def.clone()), x)
+                    .legal_targets_for(spec, object, player, color_identity(printed.as_ref()), x)
                     .len();
                 if count.min > 0 && n == 0 {
                     return Err(Reject::IllegalTarget);
@@ -223,7 +224,7 @@ impl Game {
                 return Err(Reject::IllegalMode);
             }
             if !kind.is_enumeration()
-                && !self.targets_are_legal(object, &card.def, inputs.target, player, None, x)
+                && !self.targets_are_legal(object, printed.as_ref(), inputs.target, player, None, x)
             {
                 return Err(Reject::IllegalTarget);
             }
@@ -234,7 +235,7 @@ impl Game {
         let cost = self.cast_cost(
             player,
             object,
-            card.def.clone(),
+            printed.as_ref().clone(),
             inputs.target,
             x,
             zone,
@@ -248,12 +249,12 @@ impl Game {
         );
 
         if kind.is_enumeration() {
-            if !self.cast_affordable_list(player, object, card.def.clone(), zone) {
+            if !self.cast_affordable_list(player, object, printed.as_ref().clone(), zone) {
                 return Err(Reject::CannotPayCost);
             }
             return Ok(ValidatedCast {
                 zone,
-                def: card.def.clone(),
+                def: printed.as_ref().clone(),
                 cost,
                 from_command,
                 cast_via_flashback,
@@ -269,7 +270,7 @@ impl Game {
         self.validate_cast_cost_picks(
             player,
             object,
-            card.def.clone(),
+            printed.as_ref().clone(),
             cost,
             zone,
             cast_via_escape,
@@ -278,7 +279,7 @@ impl Game {
 
         Ok(ValidatedCast {
             zone,
-            def: card.def.clone(),
+            def: printed.as_ref().clone(),
             cost,
             from_command,
             cast_via_flashback,

@@ -142,6 +142,7 @@ impl Game {
     /// effects then goes to the graveyard.
     pub(crate) fn resolve_spell(&mut self, object: ObjectId, events: &mut Vec<Event>) {
         let spell = self.spell(object).clone();
+        let printed = card_def(spell.def);
         // Resolution-scoped scratch: a *fizzled* graveyard-return clause never writes this, so it
         // has to be cleared here or Vengeful Rebirth's damage clause would read the mana value an
         // earlier resolution recorded (CR 608.2b — an illegal target's step simply doesn't happen).
@@ -152,7 +153,7 @@ impl Game {
         let kind = if spell.bestowed {
             CardKind::Aura
         } else {
-            spell.def.kind
+            printed.kind
         };
         match kind {
             // Animate Dead (CR 303.4a's "enchant creature card in a graveyard"): a real Aura, but
@@ -163,7 +164,7 @@ impl Game {
             // `attach_self_to_reanimated` effects do the reanimate-then-attach, see
             // `CardDef::enchant_graveyard`'s doc). Every ordinary Aura keeps the immediate-attach
             // arm below.
-            CardKind::Aura if spell.def.enchant_graveyard => {
+            CardKind::Aura if printed.enchant_graveyard => {
                 self.resolve_permanent_enter(spell, object, events);
             }
             CardKind::Creature { .. }
@@ -220,7 +221,7 @@ impl Game {
                 // A modal spell runs only its chosen modes, in printed order, each with its own
                 // target (CR 700.2 — modes are validated at cast, so `nth_mode` is `Some`); a
                 // non-modal spell runs every one of its spell abilities against its single target.
-                let steps: Vec<(Ability, Option<Target>)> = if spell.def.modal {
+                let steps: Vec<(Ability, Option<Target>)> = if printed.modal {
                     // A chosen mode's own effect may itself be multi-target (Prismari Charm
                     // mode 1's "one or two targets") or carry more than one independent target
                     // clause (Hull Breach mode 2's "target artifact and target enchantment"):
@@ -231,7 +232,9 @@ impl Game {
                     spell
                         .modes
                         .chosen()
-                        .filter_map(|(i, target)| nth_mode(&spell.def, i).map(|a| (a, target)))
+                        .filter_map(|(i, target)| {
+                            nth_mode(printed.as_ref(), i).map(|a| (a, target))
+                        })
                         .flat_map(|(a, target)| {
                             if ability_target_clauses(&a).len() > 1 {
                                 ability_clause_steps(a, spell.targets, spell.targets_second)
@@ -254,8 +257,7 @@ impl Game {
                     // graveyard-return clause 0 and "any target" damage clause 1), split the same
                     // way the modal branch above splits Hull Breach's third mode.
                     let mut clause = 0usize;
-                    spell
-                        .def
+                    printed
                         .abilities
                         .iter()
                         .cloned()
@@ -300,7 +302,7 @@ impl Game {
                             object,
                             *t,
                             spell.controller,
-                            color_identity(&spell.def),
+                            color_identity(printed.as_ref()),
                             spell.x,
                         )
                     });
@@ -315,7 +317,7 @@ impl Game {
                             object,
                             target,
                             spell.controller,
-                            color_identity(&spell.def),
+                            color_identity(printed.as_ref()),
                             spell.x,
                         ) {
                             continue;
@@ -358,6 +360,7 @@ impl Game {
     /// [`Self::resolve_spell`] so a card that's `CardKind::Aura` but enters unattached (its own
     /// ETB ability does the attaching) can share this generic entry with the non-Aura kinds.
     fn resolve_permanent_enter(&mut self, spell: Spell, object: ObjectId, events: &mut Vec<Event>) {
+        let printed = card_def(spell.def);
         // Animate Dead (CR 303.4a/608.2b): its own cast-time "enchant creature card in a
         // graveyard" target can fizzle the same way an Aura's battlefield host can — an
         // opponent exiling the chosen graveyard card in response leaves it with no legal
@@ -365,13 +368,13 @@ impl Game {
         // instead of entering unattached. The pool's only card with a cast-time graveyard
         // target, so this re-check is scoped to `enchant_graveyard` rather than folded
         // into the `CardKind::Aura` fizzle branch in `resolve_spell`.
-        if spell.def.enchant_graveyard
+        if printed.enchant_graveyard
             && !self.target_still_legal(
                 TargetSpec::CreatureCardInAnyGraveyard,
                 object,
                 spell.targets.primary(),
                 spell.controller,
-                color_identity(&spell.def),
+                color_identity(printed.as_ref()),
                 spell.x,
             )
         {
@@ -400,7 +403,7 @@ impl Game {
         // sacrifice any number of the other creatures they control; the counters are
         // applied when that choice is answered (see `Game::answer_devour`). With no other
         // creature to give up there's nothing to choose — resolution runs on unpaused.
-        if let Some(multiplier) = spell.def.devour {
+        if let Some(multiplier) = printed.devour {
             pending::raise(
                 self,
                 pending::ChoiceRequest::Devour {
@@ -419,7 +422,7 @@ impl Game {
         // counters, and haste are applied when that choice is answered (see
         // `Game::answer_enter_as_copy`). With no creature to copy there's nothing to
         // choose — resolution runs on unpaused.
-        if let Some(marker) = spell.def.enter_as_copy {
+        if let Some(marker) = printed.enter_as_copy {
             pending::raise(
                 self,
                 pending::ChoiceRequest::EnterAsCopy {
@@ -435,7 +438,7 @@ impl Game {
         // "Enters with N +1/+1 counters" (hydras: N = the spell's {X}) / "Enters with N
         // `kind` counters" (mana_bloom/astral_cornucopia) — see `Game::push_enters_with_counters`.
         self.push_enters_with_counters(
-            &spell.def,
+            printed.as_ref(),
             entered,
             spell.controller,
             spell.targets.primary(),
@@ -460,7 +463,7 @@ impl Game {
                 Event::CountersPlaced {
                     object: entered,
                     count: n,
-                    source_name: spell.def.name,
+                    source_name: printed.name,
                 },
             );
         }
@@ -482,7 +485,7 @@ impl Game {
                     Event::CountersPlaced {
                         object: entered,
                         count: n,
-                        source_name: spell.def.name,
+                        source_name: printed.name,
                     },
                 );
             }
@@ -492,7 +495,7 @@ impl Game {
         // actually cast via escape (a card with escape usually has a normal cast mode (CR 702.19, CR 601)
         // too, which gets no counters).
         if spell.escape
-            && let Some(escape) = spell.def.escape
+            && let Some(escape) = printed.escape
             && escape.plus_one_plus_one_counters > 0
         {
             let n =
@@ -503,7 +506,7 @@ impl Game {
                     Event::CountersPlaced {
                         object: entered,
                         count: n,
-                        source_name: spell.def.name,
+                        source_name: printed.name,
                     },
                 );
             }

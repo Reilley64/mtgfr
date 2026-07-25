@@ -219,7 +219,7 @@ impl Game {
                 if self.zone_of(id) != Zone::Battlefield {
                     return Vec::new();
                 }
-                let def = self.def_of(id);
+                let def = self.def_id_of(id);
                 vec![
                     self.sacrifice_event(id),
                     Event::Sacrificed {
@@ -234,7 +234,7 @@ impl Game {
                 if self.zone_of(id) != Zone::Battlefield {
                     return Vec::new();
                 }
-                let def = self.def_of(id);
+                let def = self.def_id_of(id);
                 vec![
                     self.sacrifice_event(id),
                     Event::Sacrificed {
@@ -245,7 +245,7 @@ impl Game {
                 ]
             }
             SacrificeEffect::Source => {
-                let def = self.def_of(source);
+                let def = self.def_id_of(source);
                 vec![
                     self.sacrifice_event(source),
                     Event::Sacrificed {

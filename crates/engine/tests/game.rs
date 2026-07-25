@@ -13981,7 +13981,8 @@ fn drawing_takes_the_top_card_of_the_library_into_hand() {
     assert!(
         events.iter().any(|e| matches!(
             e,
-            Event::CardDrawn { from, card, .. } if *from == top[0] && card.name == "Shock"
+            Event::CardDrawn { from, card, .. }
+                if *from == top[0] && card_def(*card).name == "Shock"
         )),
         "the top card (Shock) is drawn; got {events:?}",
     );
@@ -14003,7 +14004,7 @@ fn the_same_seed_shuffles_a_library_identically() {
         (0..deck.len())
             .flat_map(|_| game.draw_card(PlayerId(0)))
             .filter_map(|e| match e {
-                Event::CardDrawn { card, .. } => Some(card.name),
+                Event::CardDrawn { card, .. } => Some(card_def(card).name),
                 _ => None,
             })
             .collect::<Vec<_>>()
@@ -14032,7 +14033,7 @@ fn the_same_master_seed_and_iteration_shuffles_identically() {
         (0..deck.len())
             .flat_map(|_| game.draw_card(PlayerId(0)))
             .filter_map(|e| match e {
-                Event::CardDrawn { card, .. } => Some(card.name),
+                Event::CardDrawn { card, .. } => Some(card_def(card).name),
                 _ => None,
             })
             .collect::<Vec<_>>()
@@ -14058,7 +14059,7 @@ fn different_players_get_independent_shuffle_streams() {
         .draw_card(PlayerId(0))
         .into_iter()
         .find_map(|e| match e {
-            Event::CardDrawn { card, .. } => Some(card.name),
+            Event::CardDrawn { card, .. } => Some(card_def(card).name),
             _ => None,
         }) {
         Some(n) => n,
@@ -14075,7 +14076,7 @@ fn different_players_get_independent_shuffle_streams() {
         .draw_card(PlayerId(0))
         .into_iter()
         .find_map(|e| match e {
-            Event::CardDrawn { card, .. } => Some(card.name),
+            Event::CardDrawn { card, .. } => Some(card_def(card).name),
             _ => None,
         }) {
         Some(n) => n,

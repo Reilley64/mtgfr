@@ -1103,7 +1103,7 @@ impl Game {
                 Event::TokenCreated {
                     token: next,
                     controller: player,
-                    def: token.clone(),
+                    def: intern_card_def(token.clone()),
                     creator,
                 },
             );

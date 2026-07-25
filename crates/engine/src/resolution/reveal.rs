@@ -22,13 +22,14 @@ impl Game {
                 let Some(&card) = self.players[defender.0 as usize].library.first() else {
                     return Vec::new(); // an empty library reveals nothing (CR 120.3-ish).
                 };
-                let def = self.def_of(card);
+                let def = self.def_id_of(card);
+                let printed = card_def(def);
                 let mut events = vec![Event::RevealedTopOfLibrary {
                     player: defender,
                     card,
-                    def: def.clone(),
+                    def,
                 }];
-                if filter.matches(&def.clone()) {
+                if filter.matches(&printed) {
                     events.push(Event::SearchedToHand {
                         player: defender,
                         object: self.next_object_id(),
@@ -57,13 +58,14 @@ impl Game {
                     if matched >= goal {
                         break; // cards past the stop point stay on top, untouched.
                     }
-                    let def = self.def_of(card);
+                    let def = self.def_id_of(card);
+                    let printed = card_def(def);
                     events.push(Event::RevealedTopOfLibrary {
                         player: controller,
                         card,
-                        def: def.clone(),
+                        def,
                     });
-                    if !filter.matches(&def.clone()) {
+                    if !filter.matches(&printed) {
                         match rest_dest {
                             RestDest::Bottom => {
                                 events.push(Event::PutOnBottomOfLibrary {
@@ -149,13 +151,14 @@ impl Game {
                     .iter()
                     .take(goal as usize)
                 {
-                    let def = self.def_of(card);
+                    let def = self.def_id_of(card);
+                    let printed = card_def(def);
                     events.push(Event::RevealedTopOfLibrary {
                         player: controller,
                         card,
-                        def: def.clone(),
+                        def,
                     });
-                    if !filter.matches(&def.clone()) {
+                    if !filter.matches(&printed) {
                         match rest_dest {
                             RestDest::Bottom => {
                                 events.push(Event::PutOnBottomOfLibrary {
@@ -223,14 +226,14 @@ impl Game {
                     events.push(Event::RevealedTopOfLibrary {
                         player: controller,
                         card,
-                        def: self.def_of(card),
+                        def: self.def_id_of(card),
                     });
                 }
                 if let Some(card) = them {
                     events.push(Event::RevealedTopOfLibrary {
                         player: opponent,
                         card,
-                        def: self.def_of(card),
+                        def: self.def_id_of(card),
                     });
                 }
                 if let Some(card) = them {
@@ -253,7 +256,7 @@ impl Game {
                         player: controller,
                         object: next,
                         from: card,
-                        card: self.def_of(card),
+                        card: self.def_id_of(card),
                     });
                     next += 1;
                 }
@@ -262,7 +265,7 @@ impl Game {
                         player: opponent,
                         object: next,
                         from: card,
-                        card: self.def_of(card),
+                        card: self.def_id_of(card),
                     });
                 }
                 events

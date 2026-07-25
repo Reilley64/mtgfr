@@ -42,7 +42,7 @@ impl Game {
                         Event::TokenCreated {
                             token: minted,
                             controller: player,
-                            def: token.clone(),
+                            def: intern_card_def(token.clone()),
                             creator: source,
                         },
                     );

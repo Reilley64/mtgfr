@@ -29,12 +29,13 @@ impl Game {
             // spell with mana value 3 or less from their graveyard, once during each of their
             // turns.
             Zone::Graveyard => {
+                let def = card_def(c.def);
                 c.owner == player
-                    && (c.def.flashback.is_some()
-                        || c.def.escape.is_some()
-                        || c.def.retrace
-                        || c.def.graveyard_cast_cost.is_some()
-                        || self.serra_graveyard_play_allowed(&c.def.clone(), player))
+                    && (def.flashback.is_some()
+                        || def.escape.is_some()
+                        || def.retrace
+                        || def.graveyard_cast_cost.is_some()
+                        || self.serra_graveyard_play_allowed(&def, player))
             }
             _ => false,
         };
@@ -477,7 +478,7 @@ impl Game {
         // card, then the spell itself — sees the previous event already applied.
         for &id in discard_cost {
             let card = self.next_object_id();
-            let def = self.def_of(id);
+            let def = self.def_id_of(id);
             self.push_apply(&mut events, Event::MovedToGraveyard { card, from: id });
             // CR 701.8/601.2h: a cost discard is still a discard — fires "whenever you discard"
             // watchers too.
@@ -502,7 +503,7 @@ impl Game {
         // sacrifice one or more creatures"), paid pre-stack like the discard loop above. Routes
         // through the normal death events so "when this/a creature dies" watchers fire off it.
         for &id in sacrifice_cost {
-            let def = self.def_of(id);
+            let def = self.def_id_of(id);
             let event = self.sacrifice_event(id);
             self.push_apply(&mut events, event);
             self.push_apply(
@@ -873,7 +874,7 @@ impl Game {
     /// `Game::choose_spell_targets_answer`'s player-chosen branch.
     pub(crate) fn maybe_begin_damage_division(&mut self, spell: ObjectId, events: &mut Vec<Event>) {
         let spell_obj = self.spell(spell);
-        let def = spell_obj.def.clone();
+        let def = card_def(spell_obj.def);
         let controller = spell_obj.controller;
         let x = spell_obj.x;
         let Some(ability) = def.abilities.iter().find(|a| {
@@ -921,7 +922,7 @@ impl Game {
         events: &mut Vec<Event>,
     ) {
         let spell_obj = self.spell(spell);
-        let def = spell_obj.def.clone();
+        let def = card_def(spell_obj.def);
         let controller = spell_obj.controller;
         let x = spell_obj.x;
         let Some(ability) = def.abilities.iter().find(|a| {
@@ -976,15 +977,16 @@ impl Game {
         object: ObjectId,
     ) -> Result<Vec<Event>, Reject> {
         let def = match &self.objects[object as usize] {
-            Object::Card(card) => card.def.clone(),
+            Object::Card(card) => card.def,
             _ => return Err(Reject::NotCastable),
         };
+        let printed = card_def(def);
         // Playable from hand, exile, or (via Serra Paragon, CR 118.9) the graveyard — a land is
         // never cast from the command zone.
         if !matches!(
             self.playable_zone(object, player),
             Some(Zone::Hand | Zone::Exile | Zone::Graveyard)
-        ) || !matches!(&def.kind, CardKind::Land { .. })
+        ) || !matches!(&printed.kind, CardKind::Land { .. })
         {
             return Err(Reject::NotCastable);
         }
@@ -1004,7 +1006,7 @@ impl Game {
         // A land's own as-enters static (CR 616.1 — Vivid Crag's "enters with two charge
         // counters"): no spell/target context at this special action, unlike the cast-resolution
         // choke `push_enters_with_counters` also serves.
-        self.push_enters_with_counters(&def, permanent, player, None, 0, &mut events);
+        self.push_enters_with_counters(&printed, permanent, player, None, 0, &mut events);
         Ok(events)
     }
 
@@ -1055,7 +1057,7 @@ impl Game {
         events: &mut Vec<Event>,
     ) {
         for &id in sacrificed {
-            let def = self.def_of(id);
+            let def = self.def_id_of(id);
             let sac = self.sacrifice_event(id);
             self.push_apply(events, sac);
             self.push_apply(
@@ -1086,20 +1088,21 @@ impl Game {
             return Err(Reject::NotYourPriority);
         }
         let (owner, zone, def) = match &self.objects[card as usize] {
-            Object::Card(card_state) => (card_state.owner, card_state.zone, card_state.def.clone()),
+            Object::Card(card_state) => (card_state.owner, card_state.zone, card_state.def),
             _ => return Err(Reject::CannotActivate),
         };
+        let printed = card_def(def);
         if zone != Zone::Hand || owner != player {
             return Err(Reject::CannotActivate);
         }
-        let Some(cost) = def.cycling else {
+        let Some(cost) = printed.cycling else {
             return Err(Reject::CannotActivate);
         };
         // Resolve the cycling sacrifice cost up front (CR 118.9/602.2b), same choke an ordinary
         // activation's sacrifice cost uses.
         let named: Vec<ObjectId> = sacrifice.into_iter().collect();
         let sacrificed =
-            self.validate_sacrifice_cost(player, card, def.cycling_sacrifice, &named)?;
+            self.validate_sacrifice_cost(player, card, printed.cycling_sacrifice, &named)?;
 
         // Pay the cost — mana (settled first, auto-tapping lands; an unpayable cost rejects
         // before the discard), the sacrifice, and "discard this card" (CR 702.29a) — before the
@@ -1135,12 +1138,17 @@ impl Game {
         // the ordinary trigger pipeline in `after_events` — lands on top of the draw already on
         // the stack, so it resolves first (Krosan Tusker's "(Do this before you draw.)"). Scanned
         // off the cycled card's own def, mirroring `Trigger::YouCastThis`'s self-scan.
-        if def
+        if printed
             .abilities
             .iter()
             .any(|a| a.timing == Timing::Triggered(Trigger::Cycled))
         {
-            self.queue_trigger_group(TriggerContext::of(player), card, def, Trigger::Cycled);
+            self.queue_trigger_group(
+                TriggerContext::of(player),
+                card,
+                printed.as_ref().clone(),
+                Trigger::Cycled,
+            );
         }
         // An action resets the pass count; the cycler keeps priority (CR 117.3c) — overriding the
         // active-player default `push_ability_group` set.
@@ -1178,9 +1186,10 @@ impl Game {
         if c.zone != Zone::Hand || c.owner != player {
             return Err(Reject::CannotActivate);
         }
-        let (ability, forecast) = if let Some(&ability) = c.def.hand_ability.get(index) {
+        let printed = card_def(c.def);
+        let (ability, forecast) = if let Some(ability) = printed.hand_ability.get(index).cloned() {
             (ability, false)
-        } else if let Some(ability) = c.def.forecast {
+        } else if let Some(ability) = printed.forecast.clone() {
             // Forecast (CR 702.57a): activated only during the controller's own upkeep, and
             // only once each turn.
             if self.step != Step::Upkeep || self.active_player != player {
@@ -1270,11 +1279,17 @@ impl Game {
         if c.zone != Zone::Hand || c.owner != player {
             return Err(Reject::CannotActivate);
         }
-        let Some(suspend) = c.def.suspend else {
+        let printed = card_def(c.def);
+        let Some(suspend) = printed.suspend else {
             return Err(Reject::CannotActivate);
         };
         // CR 702.62b: a card may be suspended any time it could be cast (timing follows the card).
-        if !self.cast_timing_ok(player, card, c.def.clone(), playable::CastPlayKind::Full) {
+        if !self.cast_timing_ok(
+            player,
+            card,
+            printed.as_ref().clone(),
+            playable::CastPlayKind::Full,
+        ) {
             return Err(Reject::WrongTiming);
         }
 
@@ -1324,15 +1339,15 @@ impl Game {
         if c.zone != Zone::Graveyard || c.owner != player {
             return Err(Reject::CannotActivate);
         }
-        let Some(cost) = c.def.encore else {
+        let def = c.def;
+        let printed = card_def(def);
+        let Some(cost) = printed.encore else {
             return Err(Reject::CannotActivate);
         };
         // CR 702.140b: encore may be activated only as a sorcery.
         if !self.can_take_sorcery_speed_action(player) {
             return Err(Reject::WrongTiming);
         }
-        let def = c.def.clone();
-
         // Pay the cost (CR 702.140a): the encore mana cost (settled first, auto-tapping lands; an
         // unpayable cost rejects before any exile) plus exiling this card from the graveyard.
         let mut events = Vec::new();
@@ -1362,7 +1377,7 @@ impl Game {
                     Event::TokenCreated {
                         token,
                         controller: player,
-                        def: def.clone(),
+                        def,
                         creator: card,
                     },
                 );
@@ -1380,7 +1395,7 @@ impl Game {
                         power: 0,
                         toughness: 0,
                         keywords: HASTE,
-                        source_name: def.name,
+                        source_name: printed.name,
                     },
                 );
                 self.push_apply(
@@ -1421,8 +1436,9 @@ impl Game {
         if !perm.face_down || perm.owner != player {
             return Err(Reject::CannotActivate);
         }
+        let def = card_def(perm.def);
         // CR 701.34e: only a creature card may be turned face up.
-        let CardKind::Creature { .. } = perm.def.kind else {
+        let CardKind::Creature { .. } = &def.kind else {
             return Err(Reject::CannotActivate);
         };
         // A morph card turns up for its morph cost (CR 702.37c); a manifest (no morph) pays the
@@ -1431,7 +1447,7 @@ impl Game {
         // or the morph cost) isn't modeled; no pool card manifests a morph card, so a `morph`
         // card here was always a morph cast and its morph cost is correct. Add the dual-cost fork
         // when a card first manifests a morph card.
-        let cost = perm.def.morph.unwrap_or(perm.def.cost);
+        let cost = def.morph.unwrap_or(def.cost);
 
         // Pay the hidden card's mana cost (auto-tapping lands; an unpayable cost rejects before the
         // reveal), then flip it face up.
@@ -1502,7 +1518,8 @@ impl Game {
         if !perm.prepared {
             return Err(Reject::CannotActivate);
         }
-        let Some(back) = perm.def.back else {
+        let printed = card_def(perm.def);
+        let Some(back) = printed.back else {
             return Err(Reject::CannotActivate);
         };
         let back = back.clone();
@@ -2349,7 +2366,7 @@ impl Game {
         // it, same as any other discard.
         for &id in &named {
             let card = self.next_object_id();
-            let def = self.def_of(id);
+            let def = self.def_id_of(id);
             self.push_apply(&mut events, Event::MovedToGraveyard { card, from: id });
             self.push_apply(
                 &mut events,

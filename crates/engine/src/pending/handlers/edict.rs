@@ -38,7 +38,7 @@ impl Game {
         events: &mut Vec<Event>,
     ) {
         for &id in ids {
-            let def = self.def_of(id);
+            let def = self.def_id_of(id);
             let event = self.sacrifice_event(id);
             self.push_apply(events, event);
             self.push_apply(
@@ -165,12 +165,13 @@ impl Game {
         // ponytail: `BecameCopy` overwrites `def` *after* `PermanentEntered` fired, so an ETB
         // trigger of the *copied* creature is missed (the trigger watcher saw the pre-copy def).
         // Neither Altered Ego nor Cursed Mirror copies a creature with an ETB; revisit when one does.
-        let def = self.def_of(chosen);
+        let def = self.def_id_of(chosen);
+        let printed = card_def(def);
         self.push_apply(
             &mut events,
             Event::BecameCopy {
                 object: source,
-                def: def.clone(),
+                def,
                 until_eot,
             },
         );
@@ -208,7 +209,7 @@ impl Game {
         // unattached above (`BecameCopy` only overwrites `def`), so it must now pause to choose a
         // host among legal enchant targets — the same deployed-Aura attach path a searched-out or
         // reanimated Aura uses.
-        if def.kind == CardKind::Aura {
+        if matches!(&printed.kind, CardKind::Aura) {
             self.maybe_pause_attach_deployed_aura(source, player);
         }
         Ok(events)
@@ -242,14 +243,14 @@ impl Game {
         // full read of any copy-layer modifications already on it — exact for this pool, same note
         // as `Game::answer_enter_as_copy` (slice 2). Snapshot the other tokens up front, before
         // any `BecameCopy` applies.
-        let def = self.def_of(chosen);
+        let def = self.def_id_of(chosen);
         let others: Vec<ObjectId> = candidates.into_iter().filter(|&id| id != chosen).collect();
         for other in others {
             self.push_apply(
                 &mut events,
                 Event::BecameCopy {
                     object: other,
-                    def: def.clone(),
+                    def,
                     until_eot: false,
                 },
             );
@@ -290,7 +291,7 @@ impl Game {
             &mut events,
             Event::BecameCopy {
                 object: source,
-                def: self.def_of(chosen),
+                def: self.def_id_of(chosen),
                 until_eot: true,
             },
         );
@@ -308,7 +309,7 @@ impl Game {
     ) {
         for &id in ids {
             let card = self.next_object_id();
-            let def = self.def_of(id);
+            let def = self.def_id_of(id);
             self.push_apply(events, Event::MovedToGraveyard { card, from: id });
             self.push_apply(
                 events,
@@ -564,7 +565,7 @@ impl Game {
         let mut events = Vec::new();
         // Sacrifices route through the normal death events, so "when this/a creature dies" fires.
         for &id in &sacrifices {
-            let def = self.def_of(id);
+            let def = self.def_id_of(id);
             let event = self.sacrifice_event(id);
             self.push_apply(&mut events, event);
             self.push_apply(
@@ -635,7 +636,7 @@ impl Game {
         // Sacrifice every nonland permanent not kept, routed through the normal death events so
         // "when this/a creature dies" fires.
         for id in options.into_iter().filter(|id| !keeps.contains(id)) {
-            let def = self.def_of(id);
+            let def = self.def_id_of(id);
             let event = self.sacrifice_event(id);
             self.push_apply(&mut events, event);
             self.push_apply(

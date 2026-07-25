@@ -1,6 +1,7 @@
 use super::*;
 #[cfg(feature = "card-dsl")]
 use crate::de;
+use crate::{CardId, card_def};
 
 /// A seat at the table.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -994,16 +995,17 @@ pub(crate) fn is_basic_land(def: &CardDef) -> bool {
 
 /// A permanent entering the battlefield: all per-object state at its defaults.
 pub(crate) fn fresh_permanent(
-    def: CardDef,
+    def: CardId,
     owner: PlayerId,
     summoning_sick: bool,
     commander: bool,
 ) -> Permanent {
+    let printed = card_def(def);
     Permanent {
-        def: def.clone(),
+        def,
         owner,
         level: 1,
-        tapped: def.enters_tapped,
+        tapped: printed.enters_tapped,
         summoning_sick,
         entered_this_turn: true,
         plus_counters: 0,
@@ -1026,12 +1028,12 @@ pub(crate) fn fresh_permanent(
         commander,
         token: false,
         attached_to: None,
-        loyalty: starting_loyalty(&def),
+        loyalty: starting_loyalty(&printed),
         loyalty_activated: false,
         finality_counter: false,
         regeneration_shields: 0,
         prepared: false,
-        echo_unpaid: def.echo.is_some(),
+        echo_unpaid: printed.echo.is_some(),
         chosen_subtype: None,
         chosen_color: None,
         entered_with_x: 0,
@@ -1061,7 +1063,7 @@ pub(crate) fn starting_loyalty(def: &CardDef) -> i32 {
 
 /// A token entering the battlefield: like [`fresh_permanent`], but flagged as a token
 /// (ceases to exist when it leaves the battlefield) and summoning-sick.
-pub(crate) fn fresh_token(def: CardDef, controller: PlayerId) -> Permanent {
+pub(crate) fn fresh_token(def: CardId, controller: PlayerId) -> Permanent {
     Permanent {
         token: true,
         ..fresh_permanent(def, controller, true, false)
@@ -1338,7 +1340,7 @@ pub(crate) fn illusion_token() -> CardDef {
 /// A card at rest in a hidden/graveyard/command zone: identity only, no battlefield state.
 #[derive(Debug, Clone)]
 pub(crate) struct Card {
-    pub(crate) def: CardDef,
+    pub(crate) def: CardId,
     pub(crate) owner: PlayerId,
     /// One of Library / Hand / Graveyard / Exile / Command.
     pub(crate) zone: Zone,
@@ -1356,7 +1358,7 @@ pub(crate) struct Card {
 /// A spell on the stack (a cast card waiting to resolve).
 #[derive(Debug, Clone)]
 pub(crate) struct Spell {
-    pub(crate) def: CardDef,
+    pub(crate) def: CardId,
     pub(crate) controller: PlayerId,
     /// The chosen targets (CR 601.2c). A single-target spell fills one slot; Aether Gale fills up
     /// to six. Empty until a multi-target spell's targets are chosen (see [`Event::SpellTargetsChosen`]).
@@ -1495,7 +1497,7 @@ pub(crate) struct Spell {
 /// A permanent on the battlefield, with its mutable per-object state.
 #[derive(Debug, Clone)]
 pub(crate) struct Permanent {
-    pub(crate) def: CardDef,
+    pub(crate) def: CardId,
     pub(crate) owner: PlayerId,
     /// This permanent's Class level (CR 717.4 — a Class enchantment's level counter). Raised one
     /// step at a time by [`Effect::Counters(CountersEffect::LevelUp)`] (via [`Event::LeveledUp`]); read by every
@@ -1750,9 +1752,9 @@ pub(crate) struct Permanent {
     /// creature's; at cleanup ([`Event::TempBoostsEnded`]) `def` is restored from this and it is
     /// cleared back to `None` (CR 514.2). `None` for an ordinary permanent or a *permanent* copy
     /// (Altered Ego leaves the overwritten `def` in place). Runtime state, not TOML-authored — a
-    /// `&'static CardDef` (leaked at the copy step, like [`CardDef::back`]) so [`Permanent`] stays
-    /// `Copy` and small (a pointer, not a second inlined [`CardDef`]).
-    pub(crate) reverts_to_def_eot: Option<&'static CardDef>,
+    /// [`CardId`] so the copied shape shares the same interned definition model as every other
+    /// object, without leaking a second `CardDef`.
+    pub(crate) reverts_to_def_eot: Option<CardId>,
     /// The colors of mana spent to cast the spell that became this permanent (CR 106.9), fixed
     /// for the rest of this permanent's existence — copied from [`Spell::spent_colors`] as it
     /// enters, the same "read the spell's own info before it's gone" idiom as `entered_with_x`.

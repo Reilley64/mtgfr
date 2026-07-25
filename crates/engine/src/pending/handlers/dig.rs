@@ -38,9 +38,9 @@ impl Game {
                 // color/creature-subtype isn't modeled yet (the #10 gap) — a plain colorless,
                 // subtype-less body stands in either way.
                 def: if is_land {
-                    treasure_token()
+                    intern_card_def(treasure_token())
                 } else {
-                    rogue_token_stub()
+                    intern_card_def(rogue_token_stub())
                 },
                 creator: source,
             };
@@ -532,7 +532,7 @@ impl Game {
                 Event::RevealedTopOfLibrary {
                     player: controller,
                     card,
-                    def: self.def_of(card),
+                    def: self.def_id_of(card),
                 },
             );
         }
@@ -570,7 +570,7 @@ impl Game {
                 Event::RevealedTopOfLibrary {
                     player: controller,
                     card,
-                    def: self.def_of(card),
+                    def: self.def_id_of(card),
                 },
             );
         }
@@ -623,7 +623,7 @@ impl Game {
                     player: controller,
                     object: self.next_object_id(),
                     from,
-                    card: self.def_of(from),
+                    card: self.def_id_of(from),
                 },
             );
         }
@@ -786,7 +786,7 @@ impl Game {
                     Event::RevealedTopOfLibrary {
                         player,
                         card,
-                        def: self.def_of(card),
+                        def: self.def_id_of(card),
                     },
                 );
             }
@@ -894,7 +894,7 @@ impl Game {
                     player,
                     object: self.next_object_id(),
                     from,
-                    card: self.def_of(from),
+                    card: self.def_id_of(from),
                 },
             );
         }
@@ -1041,16 +1041,17 @@ impl Game {
         let library: Vec<ObjectId> = self.players[controller.0 as usize].library.clone();
         let mut rest: Vec<ObjectId> = Vec::new();
         for card in library {
-            let def = self.def_of(card);
+            let def = self.def_id_of(card);
+            let printed = card_def(def);
             self.push_apply(
                 events,
                 Event::RevealedTopOfLibrary {
                     player: controller,
                     card,
-                    def: def.clone(),
+                    def,
                 },
             );
-            if !filter.matches(&def) {
+            if !filter.matches(printed.as_ref()) {
                 rest.push(card);
                 continue;
             }
@@ -1100,14 +1101,13 @@ impl Game {
             );
             self.maybe_pause_attach_deployed_aura(permanent, player);
         } else {
-            let def = self.def_of(card);
             self.push_apply(
                 &mut events,
                 Event::SearchedToHand {
                     player,
                     object: self.next_object_id(),
                     from: card,
-                    card: def,
+                    card: self.def_id_of(card),
                 },
             );
         }
@@ -1250,16 +1250,17 @@ impl Game {
         let library: Vec<ObjectId> = self.players[controller.0 as usize].library.clone();
         let mut rest: Vec<ObjectId> = Vec::new();
         for from in library {
-            let def = self.def_of(from);
+            let def = self.def_id_of(from);
+            let printed = card_def(def);
             self.push_apply(
                 events,
                 Event::RevealedTopOfLibrary {
                     player: controller,
                     card: from,
-                    def: def.clone(),
+                    def,
                 },
             );
-            if !filter.matches(&def) {
+            if !filter.matches(printed.as_ref()) {
                 rest.push(from);
                 continue;
             }

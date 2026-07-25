@@ -74,6 +74,7 @@ impl Game {
                     def,
                     ..
                 } => {
+                    let printed = card_def(def);
                     self.queue_self_trigger(token, Trigger::Etb);
                     // A created token is a permanent entering the battlefield (CR 603.6a) too.
                     self.queue_permanent_enters_triggers(token);
@@ -82,7 +83,7 @@ impl Game {
                     // batch below — mirrors `graveyard_exits_this_batch`.
                     // ponytail: "you" scope only (`Trigger::YouCreateToken` is fieldless) — no
                     //   pool card needs an opponent/any-player watch yet.
-                    if matches!(def.kind, CardKind::Creature { .. }) {
+                    if matches!(&printed.kind, CardKind::Creature { .. }) {
                         self.batch_trigger_scratch
                             .creature_tokens_created_this_batch
                             .push(controller);
@@ -232,32 +233,33 @@ impl Game {
                     controller,
                     def,
                 } => {
+                    let printed = card_def(def).as_ref().clone();
                     // A token only ever exists as a battlefield permanent, so — unlike the
                     // `MovedToGraveyard` arm above — no scratch guard is needed: every
                     // `TokenCeasedToExist` is CR's "put into a graveyard from the battlefield".
                     self.queue_trigger_group(
                         TriggerContext::of(controller),
                         token,
-                        def.clone(),
+                        printed.clone(),
                         Trigger::ThisAuraLeaves,
                     );
                     // Leaves-to-ANY-zone self-trigger (Animate Dead) — see the `MovedToGraveyard`
                     // arm above. `def`/`controller` are passed explicitly since the token's arena
                     // slot is already `Object::Removed`.
-                    self.queue_leaves_battlefield_triggers(token, controller, &def.clone());
+                    self.queue_leaves_battlefield_triggers(token, controller, &printed);
                     // Hofri Ghostforge's minted Spirit token's granted return rider — only a
                     // token can carry this link (the printed def never does).
                     self.queue_token_return_exiled_trigger(token, controller);
-                    if matches!(def.kind, CardKind::Creature { .. }) {
+                    if matches!(&printed.kind, CardKind::Creature { .. }) {
                         let ctx = TriggerContext {
                             dying_source_stats: self.dying_source_stats(token),
                             ..TriggerContext::of(controller)
                         };
-                        self.queue_trigger_group(ctx, token, def.clone(), Trigger::Dies);
+                        self.queue_trigger_group(ctx, token, printed.clone(), Trigger::Dies);
                         self.queue_watch_death_triggers(
                             controller,
                             token,
-                            def,
+                            printed,
                             &batch_deaths,
                             true, // a token ceasing to exist never satisfies a "nontoken" watch
                             true, // include_self: its controller is still in the game
@@ -525,7 +527,7 @@ impl Game {
                 // which also fire for a plain destroy: `YouSacrifice`/`AnyPlayerSacrifices` watch
                 // specifically for this marker.
                 Event::Sacrificed { object, by, def } => {
-                    self.queue_sacrifice_triggers(object, by, def)
+                    self.queue_sacrifice_triggers(object, by, card_def(def).as_ref().clone())
                 }
                 // A discard (CR 701.8) — distinct from `MovedToGraveyard`, which also fires for a
                 // sacrifice/destroy: `YouDiscard` watches specifically for this marker.
@@ -1036,8 +1038,9 @@ impl Game {
                     controller,
                     def,
                 } => {
-                    if matches!(def.kind, CardKind::Creature { .. }) {
-                        deaths.push((token, def, controller));
+                    let printed = card_def(def).as_ref().clone();
+                    if matches!(&printed.kind, CardKind::Creature { .. }) {
+                        deaths.push((token, printed, controller));
                     }
                 }
                 _ => {}
@@ -1083,7 +1086,7 @@ impl Game {
                     token,
                     controller,
                     def,
-                } => (token, controller, def),
+                } => (token, controller, card_def(def).as_ref().clone()),
                 _ => continue,
             };
             if !def.kind.types().intersects(TypeSet::ENCHANTMENT) {
@@ -1146,7 +1149,7 @@ impl Game {
                     token,
                     controller,
                     def,
-                } => (token, controller, def),
+                } => (token, controller, card_def(def).as_ref().clone()),
                 _ => continue,
             };
             if !def.kind.types().intersects(TypeSet::NONLAND) {
@@ -3250,7 +3253,8 @@ impl Game {
                 return false;
             }
             let perm = self.permanent(id);
-            if !types.is_empty() && !types.intersects(perm.def.kind.types()) {
+            let printed = card_def(perm.def);
+            if !types.is_empty() && !types.intersects(printed.kind.types()) {
                 return false;
             }
             match token {
@@ -3356,13 +3360,16 @@ impl Game {
         subtypes: &[&str],
     ) -> bool {
         self.objects.iter().any(|o| match o {
-            Object::Card(c) if c.zone == Zone::Hand && c.owner == controller => match c.def.kind {
-                CardKind::Land {
-                    subtypes: land_subtypes,
-                    ..
-                } => land_subtypes.iter().copied().any(|s| subtypes.contains(&s)),
-                _ => false,
-            },
+            Object::Card(c) if c.zone == Zone::Hand && c.owner == controller => {
+                let def = card_def(c.def);
+                match &def.kind {
+                    CardKind::Land {
+                        subtypes: land_subtypes,
+                        ..
+                    } => land_subtypes.iter().copied().any(|s| subtypes.contains(&s)),
+                    _ => false,
+                }
+            }
             _ => false,
         })
     }

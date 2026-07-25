@@ -4,7 +4,7 @@
 //! Side state for goad (CR 701.38), delayed triggers (CR 603.7), exile links,
 //! once-per-turn flags, until-EOT control (CR 720), and inspect-ledger provenance.
 
-use crate::{CardDef, Effect, Keyword, ObjectId, PlayerId, SpellFilter, Step};
+use crate::{CardDef, CardId, Effect, Keyword, ObjectId, PlayerId, SpellFilter, Step};
 
 /// The CR 611.2b duration condition scoping a control-changing effect (Rubinia Soulsinger's "for
 /// as long as you control Rubinia and Rubinia remains tapped"). Stored alongside the override in
@@ -358,11 +358,12 @@ pub(crate) struct DelayedTriggers {
 /// A permanent's controller/token-ness/card-def facts, snapshotted at the moment `Effect::Destroy(DestroyEffect::DestroyAll)`
 /// destroys it — captured because the permanent is already gone from the battlefield by the time
 /// a later `Sequence` step (`Amount::PermanentsDestroyedThisWay`) needs to count how many matched
-/// some filter (Ceaseless Conflict's token rider, Culling Ritual's mana rider). `def` carries the
-/// type/subtype info a `PermanentFilter` needs to match against.
+/// some filter (Ceaseless Conflict's token rider, Culling Ritual's mana rider). `def` is the
+/// interned handle whose printed data carries the type/subtype info a `PermanentFilter` needs to
+/// match against.
 #[derive(Clone)]
 pub(crate) struct DestroyedThisWay {
-    pub(crate) def: CardDef,
+    pub(crate) def: CardId,
     pub(crate) controller: PlayerId,
     pub(crate) token: bool,
 }
