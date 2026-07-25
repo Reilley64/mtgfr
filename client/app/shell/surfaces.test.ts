@@ -256,7 +256,7 @@ describe("shell surface scenes", () => {
     );
   });
 
-  it("renders lobby entry join surfaces with decks", () => {
+  it("renders lobby entry choose destinations with decks", () => {
     Scene.scene(
       { update, view },
       Scene.with(
@@ -268,13 +268,14 @@ describe("shell surface scenes", () => {
           lobby: { ...initialLobbySlice(), selectedDeckId: 1 },
         }),
       ),
+      Scene.expect(Scene.selector('[data-testid="lobby-entry-choose"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="lobby-host"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="lobby-open-join"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-deck-card"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-deck-card-1"]')).toExist(),
-      Scene.expect(Scene.selector('[data-testid="lobby-join-code"]')).toExist(),
-      Scene.expect(Scene.selector('[data-testid="lobby-join"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="lobby-join-code"]')).toBeAbsent(),
       Scene.expect(Scene.text("Lobby")).toExist(),
       Scene.expect(Scene.text("edh.reilley.dev")).toExist(),
-      Scene.expect(Scene.text("mtgfr")).not.toExist(),
       Scene.Mount.resolve(BindDeckCardFlip({ deckId: 1 }), DeckCardFlipTick()),
       Scene.Mount.resolve(BindCardArt, CardArtTick()),
     );

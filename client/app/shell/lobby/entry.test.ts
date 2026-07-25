@@ -8,7 +8,7 @@ import { ReceivedDecks } from "../../messages";
 import type { Model } from "../../model";
 import { PlayRoute, TableRoute } from "../../routes";
 import { view as appView } from "../../view";
-import { LobbyTableCreated } from "./messages";
+import { LobbyTableCreated, RequestedLobbyCancelJoin, RequestedLobbyOpenJoin } from "./messages";
 import { initialLobbySlice } from "./submodel";
 import { view as lobbyView } from "./view";
 
@@ -128,7 +128,7 @@ test("keeps entry visible while decks load when a deck is selected", () => {
   );
 });
 
-test("entry shows deck card and Back, never a select", () => {
+test("entry choose mode shows Host and Join destinations with deck on Host", () => {
   Scene.scene(
     { update, view: lobbyAppView },
     Scene.with(
@@ -146,16 +146,81 @@ test("entry shows deck card and Back, never a select", () => {
         },
       }),
     ),
+    Scene.expect(Scene.testId("lobby-entry-choose")).toExist(),
+    Scene.expect(Scene.testId("lobby-host")).toExist(),
+    Scene.expect(Scene.testId("lobby-open-join")).toExist(),
     Scene.expect(Scene.testId("lobby-deck-card")).toExist(),
     Scene.expect(Scene.testId("lobby-deck-card-9")).toExist(),
     Scene.expect(Scene.text("Tokens")).toExist(),
     Scene.expect(Scene.text("Rhys the Redeemed")).toExist(),
     Scene.expect(Scene.testId("lobby-back")).toExist(),
-    Scene.expect(Scene.text("Back")).toExist(),
-    Scene.expect(Scene.selector('[data-testid="lobby-bring"]')).toBeAbsent(),
+    Scene.expect(Scene.testId("lobby-join-code")).toBeAbsent(),
+    Scene.expect(Scene.testId("lobby-join")).toBeAbsent(),
     Scene.expect(Scene.selector('[data-testid="lobby-deck"]')).toBeAbsent(),
     Scene.Mount.resolve(BindDeckCardFlip({ deckId: 9 }), DeckCardFlipTick()),
     Scene.Mount.resolve(BindCardArt, CardArtTick()),
+  );
+});
+
+test("opening Join shows focused panel with Bringing strip and hides destinations", () => {
+  const base = playLobbyModel({
+    lobby: { ...initialLobbySlice(), selectedDeckId: 7 },
+    decks: {
+      ...init()[0].decks,
+      list: {
+        ...init()[0].decks.list,
+        decks: [deck],
+        knownCommanders: { atraxa: card({ id: "atraxa", name: "Atraxa" }) },
+        loading: false,
+      },
+    },
+  });
+
+  const [joined] = update(base, RequestedLobbyOpenJoin());
+  expect(joined.lobby.entryMode).toBe("join");
+
+  Scene.scene(
+    { update, view: lobbyAppView },
+    Scene.with(joined),
+    Scene.expect(Scene.testId("lobby-entry-join")).toExist(),
+    Scene.expect(Scene.testId("lobby-bringing")).toExist(),
+    Scene.expect(Scene.text("Superfriends")).toExist(),
+    Scene.expect(Scene.testId("lobby-join-code")).toExist(),
+    Scene.expect(Scene.testId("lobby-join")).toExist(),
+    Scene.expect(Scene.testId("lobby-join-cancel")).toExist(),
+    Scene.expect(Scene.testId("lobby-entry-choose")).toBeAbsent(),
+    Scene.expect(Scene.testId("lobby-open-join")).toBeAbsent(),
+    Scene.expect(Scene.testId("lobby-back")).toExist(),
+    Scene.Mount.resolve(BindCardArt, CardArtTick()),
+  );
+});
+
+test("Cancel returns to choose and clears the table code", () => {
+  const open = playLobbyModel({
+    lobby: {
+      ...initialLobbySlice(),
+      selectedDeckId: 7,
+      entryMode: "join",
+      code: "ABC123",
+      error: "UnknownTable",
+    },
+    decks: {
+      ...init()[0].decks,
+      list: { ...init()[0].decks.list, decks: [deck], loading: false },
+    },
+  });
+
+  const [next] = update(open, RequestedLobbyCancelJoin());
+  expect(next.lobby.entryMode).toBe("choose");
+  expect(next.lobby.code).toBe("");
+  expect(next.lobby.error).toBeNull();
+
+  Scene.scene(
+    { update, view: lobbyAppView },
+    Scene.with(next),
+    Scene.expect(Scene.testId("lobby-entry-choose")).toExist(),
+    Scene.expect(Scene.testId("lobby-entry-join")).toBeAbsent(),
+    Scene.Mount.resolve(BindDeckCardFlip({ deckId: 7 }), DeckCardFlipTick()),
   );
 });
 

@@ -126,6 +126,8 @@ export const update = (
     M.withReturnType<readonly [LobbySlice, ReadonlyArray<FoldkitCommand.Command<Message>>]>(),
     M.tagsExhaustive({
       ChangedLobbyCode: ({ code }) => [{ ...model, code }, []],
+      RequestedLobbyOpenJoin: () => [{ ...model, entryMode: "join" }, []],
+      RequestedLobbyCancelJoin: () => [{ ...model, entryMode: "choose", code: "", error: null }, []],
       RequestedLobbyHost: () => {
         const deckId = selectedDeckId(model);
         if (deckId == null) {

@@ -9,12 +9,7 @@ export function cardBackUrl(): string {
   return "/card-back.webp";
 }
 
-export function buildImageUrl(
-  printId: string,
-  size: ImageSize,
-  face: ImageFace,
-  cdnBase: string,
-): string {
+export function buildImageUrl(printId: string, size: ImageSize, face: ImageFace, cdnBase: string): string {
   if (!printId) return "";
   const base = cdnBase.replace(/\/$/, "");
   if (base) {
@@ -31,11 +26,7 @@ export function scryfallImageUrl(printId: string, size: ImageSize, face: ImageFa
   return buildImageUrl(printId, size, face, "");
 }
 
-export function artCropFallbackUrl(
-  printId: string,
-  face: ImageFace = "front",
-  cdnBase: string = CDN,
-): string | null {
+export function artCropFallbackUrl(printId: string, face: ImageFace = "front", cdnBase: string = CDN): string | null {
   if (!printId) return null;
   if (!cdnBase.replace(/\/$/, "")) return null;
   return scryfallImageUrl(printId, "art_crop", face);

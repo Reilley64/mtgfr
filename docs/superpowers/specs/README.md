@@ -45,6 +45,7 @@ These documents are **not superseded** and must stay current alongside the specs
 | [deck-list-tile-chooser (design)](2026-07-24-deck-list-tile-chooser-design.md) | Your decks compact tile grid, search, precon order, context menu |
 | [deck-list-tile-layout-polish (design)](2026-07-24-deck-list-tile-layout-polish-design.md) | Your decks column align, larger tiles, art_crop CDN→Scryfall fallback, no hover preview |
 | [lobby-deck-card-path-and-view-transitions (design)](2026-07-24-lobby-deck-card-path-and-view-transitions-design.md) | Play routes require deck path param; lobby deck card; FLIP morph from Your decks tile |
+| [lobby-host-join-entry-redesign (design)](2026-07-25-lobby-host-join-entry-redesign-design.md) | Pre-table `/play/:deckId` twin Host/Join destinations + focused join panel |
 | [brand-edh-reilley-dev (design)](2026-07-24-brand-edh-reilley-dev-design.md) | Display brand + Scryfall/tooling User-Agent → edh.reilley.dev |
 | [combat-and-commander-rules](2026-07-20-combat-and-commander-rules.md) | Multiplayer combat, commander tax/damage, elimination |
 | [engine-core-and-event-model](2026-07-20-engine-core-and-event-model.md) | Pure Rust engine zones, events, SBAs, determinism |
