@@ -109,8 +109,8 @@ list with Printing UUIDs.
 
 **`Cards`** — `Catalog`, `Search`, `Lookup`. No auth required. `Search` accepts a freetext
 query `q` plus `limit`/`offset`; `Lookup` accepts a list of card ids for deck hydration.
-Results are `CatalogCard` — engine-true stats, keywords, ability summary, printing, and
-optional `oracle` and `approximates` fields.
+Results are `CatalogCard` — engine-true stats, keywords, a `MessageRef[]` ability summary,
+printing, and optional `oracle` and `approximates` fields.
 
 **`Game`** — `Stream`, `SubmitIntent`, `SetYield`, `SetTurnYield`, `SetStackDwell`. Auth
 required for `SubmitIntent` and the yield/dwell setters. `Stream` is a server-streaming RPC;

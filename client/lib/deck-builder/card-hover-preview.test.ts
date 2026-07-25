@@ -23,7 +23,7 @@ const solRing: CatalogCard = {
   otags: [],
   set: "c14",
   subtypes: [],
-  summary: "",
+  summary: [],
 };
 
 const followView = Submodel.defineView<

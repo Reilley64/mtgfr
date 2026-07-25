@@ -1,7 +1,7 @@
 import * as Schema from "effect/Schema";
 import { describe, expect, it } from "vitest";
-import { fromProtoWire, intentEnvelopeToProto } from "./protoMap";
-import type { ActionView, IntentEnvelope } from "./types";
+import { catalogCardsFromProto, fromProtoWire, intentEnvelopeToProto } from "./protoMap";
+import type { ActionView, CatalogCard, IntentEnvelope } from "./types";
 import { MessageRef } from "./types";
 
 describe("fromProtoWire", () => {
@@ -112,6 +112,65 @@ describe("fromProtoWire", () => {
         children: [],
       },
     });
+  });
+});
+
+describe("catalogCardsFromProto", () => {
+  it("decodes catalog summaries as MessageRef arrays", () => {
+    const cards = catalogCardsFromProto([
+      {
+        id: "card-1",
+        defaultPrint: "print-1",
+        name: "Summary Card",
+        cost: { generic: 1, colored: [0, 0, 0, 0, 0], hasX: false, xSymbols: 0 },
+        kind: { kind: { case: "creature", value: { power: 2, toughness: 2 } } },
+        keywords: ["ward:2"],
+        summary: [
+          {
+            key: "keyword.ward",
+            params: [{ name: "amount", value: { case: "intValue", value: 2n } }],
+            children: [],
+          },
+          {
+            key: "effect.sequence",
+            params: [],
+            children: [
+              {
+                key: "effect.draw_cards",
+                params: [{ name: "count", value: { case: "intValue", value: 1n } }],
+                children: [],
+              },
+            ],
+          },
+        ],
+        legendary: false,
+        colorIdentity: [],
+        set: "tst",
+        subtypes: [],
+        otags: [],
+      },
+    ]);
+
+    expect(cards[0]).toMatchObject({
+      summary: [
+        {
+          key: "keyword.ward",
+          params: [{ name: "amount", int_value: 2 }],
+          children: [],
+        },
+        {
+          key: "effect.sequence",
+          params: [],
+          children: [
+            {
+              key: "effect.draw_cards",
+              params: [{ name: "count", int_value: 1 }],
+              children: [],
+            },
+          ],
+        },
+      ],
+    } satisfies Partial<CatalogCard>);
   });
 });
 

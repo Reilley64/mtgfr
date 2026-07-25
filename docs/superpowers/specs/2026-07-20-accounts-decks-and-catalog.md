@@ -249,6 +249,8 @@ for hydrating a saved deck without fetching the full catalog.
   differs from its printed rules. The deck builder displays this to inform players of known gaps.
 - `CatalogCard.oracle` carries the printed rules text for deck builder hover/inspect; it is
   absent for vanilla cards and for cards whose oracle text hasn't been recorded in the card TOML.
+- `CatalogCard.summary` carries keyword and modeled-ability summaries as `MessageRef[]`; clients
+  format those refs with the i18n catalog when a surface renders them.
 - Precon fixture JSON files are also the source of truth for the SoC precon tests in
   `crates/server/src/decks.rs` via `include_str!` — changing a precon's list automatically runs
   it through the legality validator on the next `cargo nextest run`.

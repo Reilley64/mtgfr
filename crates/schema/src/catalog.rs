@@ -108,7 +108,7 @@ pub(crate) fn wire_keyword(keyword: engine::Keyword) -> String {
     }
 }
 
-/// Human-readable keyword for catalog `summary` (deck-builder hover text).
+/// Human-readable keyword for modifier ledgers where a compact string contribution is enough.
 pub(crate) fn keyword_label(keyword: engine::Keyword) -> String {
     use engine::{Color, Keyword, ProtectionScope};
     match keyword {

@@ -151,7 +151,7 @@ export type CatalogCard = {
   otags: Array<string>;
   set: string;
   subtypes: Array<string>;
-  summary: string;
+  summary: Array<MessageRef>;
 };
 export type PlayerView = {
   commander_damage?: Array<CommanderDamageView>;

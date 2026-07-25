@@ -21,6 +21,27 @@ const WireKind = S.Union([
   S.Struct({ kind: S.Literal("land"), colors: S.Array(S.Number) }),
 ]);
 
+const MessageParam = S.Struct({
+  amount_token: S.optional(S.String),
+  bool_value: S.optional(S.Boolean),
+  int_value: S.optional(S.Number),
+  name: S.String,
+  string_value: S.optional(S.String),
+});
+type MessageParam = typeof MessageParam.Type;
+
+type MessageRef = {
+  readonly key: string;
+  readonly params: ReadonlyArray<MessageParam>;
+  readonly children: ReadonlyArray<MessageRef>;
+};
+
+const MessageRef: S.Codec<MessageRef> = S.Struct({
+  children: S.Array(S.suspend((): S.Codec<MessageRef> => MessageRef)),
+  key: S.String,
+  params: S.Array(MessageParam),
+});
+
 export const CatalogCardSchema = S.Struct({
   approximates: S.optional(S.NullOr(S.String)),
   back: S.optional(
@@ -44,7 +65,7 @@ export const CatalogCardSchema = S.Struct({
   otags: S.Array(S.String),
   set: S.String,
   subtypes: S.Array(S.String),
-  summary: S.String,
+  summary: S.Array(MessageRef),
 });
 
 export type BuilderCatalogCard = typeof CatalogCardSchema.Type;

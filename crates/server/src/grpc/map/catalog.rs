@@ -5,7 +5,7 @@ use schema::{
     SeedRequest, SeedResponse, SeedSeat,
 };
 
-use crate::grpc::map::common::{wire_cost_to_pb, wire_kind_to_pb};
+use crate::grpc::map::common::{message_ref_to_pb, wire_cost_to_pb, wire_kind_to_pb};
 use crate::grpc::pb;
 
 pub fn deck_card_entry_to_pb(entry: DeckCardEntry) -> pb::DeckCardEntry {
@@ -68,12 +68,7 @@ pub fn catalog_card_to_pb(card: CatalogCard) -> pb::CatalogCard {
         cost: Some(wire_cost_to_pb(card.cost)),
         kind: Some(wire_kind_to_pb(card.kind)),
         keywords: card.keywords,
-        summary: card
-            .summary
-            .into_iter()
-            .map(|message| message.key)
-            .collect::<Vec<_>>()
-            .join("; "),
+        summary: card.summary.into_iter().map(message_ref_to_pb).collect(),
         legendary: card.legendary,
         color_identity: card.color_identity.into_iter().map(u32::from).collect(),
         approximates: card.approximates,
@@ -106,5 +101,59 @@ pub fn seed_response_to_pb(resp: SeedResponse) -> pb::SeedResponse {
         table_id: resp.table_id,
         pod_dns: resp.pod_dns,
         version: resp.version,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use schema::{MessageParam, MessageRef, WireCost, WireKind};
+
+    use super::*;
+
+    #[test]
+    fn catalog_card_summary_preserves_message_refs() {
+        let card = CatalogCard {
+            id: "card-1".to_string(),
+            default_print: "print-1".to_string(),
+            name: "Summary Card".to_string(),
+            cost: WireCost {
+                generic: 1,
+                colored: [0, 0, 0, 0, 0],
+                has_x: false,
+                x_symbols: 0,
+            },
+            kind: WireKind::Creature {
+                power: 2,
+                toughness: 2,
+            },
+            keywords: vec!["ward:2".to_string()],
+            summary: vec![
+                MessageRef::key("keyword.ward").with_params(vec![MessageParam::int("amount", 2)]),
+                MessageRef::key("effect.sequence").with_children(vec![
+                    MessageRef::key("effect.draw_cards")
+                        .with_params(vec![MessageParam::int("count", 1)]),
+                ]),
+            ],
+            legendary: false,
+            color_identity: vec![],
+            approximates: None,
+            oracle: None,
+            set: "tst".to_string(),
+            subtypes: vec![],
+            otags: vec![],
+            back: None,
+        };
+
+        let pb = catalog_card_to_pb(card);
+
+        assert_eq!(pb.summary.len(), 2);
+        assert_eq!(pb.summary[0].key, "keyword.ward");
+        assert_eq!(pb.summary[0].params[0].name, "amount");
+        assert!(matches!(
+            pb.summary[0].params[0].value,
+            Some(pb::message_param::Value::IntValue(2))
+        ));
+        assert_eq!(pb.summary[1].children[0].key, "effect.draw_cards");
+        assert_eq!(pb.summary[1].children[0].params[0].name, "count");
     }
 }

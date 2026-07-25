@@ -53,7 +53,7 @@ function card(overrides: Partial<CatalogCard> = {}): CatalogCard {
     otags: [],
     set: "tst",
     subtypes: [],
-    summary: "",
+    summary: [],
     ...overrides,
   };
 }

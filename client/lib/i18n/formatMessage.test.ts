@@ -49,4 +49,22 @@ describe("formatMessage", () => {
   it("formats reject.illegal_target", () => {
     expect(formatMessage({ key: "reject.illegal_target", params: [], children: [] })).toBe("Pick a legal target.");
   });
+
+  it("formats catalog keyword summaries", () => {
+    expect(formatMessage({ key: "keyword.flying", params: [], children: [] })).toBe("Flying");
+    expect(
+      formatMessage({
+        key: "keyword.ward",
+        params: [{ name: "amount", int_value: 2 }],
+        children: [],
+      }),
+    ).toBe("Ward {2}");
+    expect(
+      formatMessage({
+        key: "keyword.protection_from",
+        params: [{ name: "scope", string_value: "red" }],
+        children: [],
+      }),
+    ).toBe("Protection from red");
+  });
 });
