@@ -22,7 +22,7 @@ specs for the current module split, especially
    every pose tick. Model receives `FlightsSynced` when the flying set changes.
 
 5. **Board submodel:** `client/app/board/submodel.ts` composes canvas, bitmap, motion, action-session, and HTML overlays. `view.ts` is the composition root.
-6. **HTML chrome:** `client/app/board/html/` — `stack.ts`, `turn-chrome.ts`, `priority-bar.ts`, `discoverability.ts`, `overlays.ts`, `hand.ts`, `mana-tray.ts`, `actions.ts`, `prompts.ts`, `activation-radial.ts`, `inspect.ts`.
+6. **HTML chrome:** `client/app/board/html/` — `stack.ts`, `turn-chrome.ts`, `priority-bar.ts`, `discoverability.ts`, `overlays.ts`, `hand.ts`, `mana-tray.ts`, `actions.ts`, `prompts.ts`, `activation-menu.ts`, `inspect.ts`.
 
 ## Module → responsibility map
 

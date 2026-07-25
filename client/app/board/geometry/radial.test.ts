@@ -3,23 +3,21 @@
  */
 import { describe, expect, it } from "vitest";
 import type { ActionView } from "~/wire/types";
-import { CARD_H, CARD_W } from "./layout";
 import {
-  activationRadialInnerRadius,
-  activationRadialOuterRadius,
-  activationRadialRadius,
+  ACTIVATION_MENU_GAP_PX,
+  ACTIVATION_MENU_MAX_HEIGHT_PX,
+  ACTIVATION_MENU_WIDTH_PX,
+  activationCostChip,
+  activationMenuEstimatedHeight,
+  activationMenuPlacement,
   type RadialPress,
   radialOptionKey,
   radialOptions,
-  radialOverlayPlacement,
   radialPressDown,
   radialPressUp,
   radialScreenCenter,
   radialWedgeAtPoint,
   radialWedgeFromElement,
-  wedgeIndex,
-  wedgeLabelPoint,
-  wedgePath,
 } from "./radial";
 
 const activate = (over: Partial<ActionView> = {}): ActionView =>
@@ -35,35 +33,12 @@ const activate = (over: Partial<ActionView> = {}): ActionView =>
     ...over,
   }) as unknown as ActionView;
 
-describe("activationRadialRadius", () => {
-  it("scales with zoom so the ring tracks the on-screen card", () => {
-    expect(activationRadialRadius(1)).toBe(CARD_H / 2 + 12);
-    expect(activationRadialRadius(2)).toBe(CARD_H + 12);
-    expect(activationRadialRadius(0.1)).toBe(40);
-  });
-});
-
 describe("radialScreenCenter", () => {
   it("maps the selected card center from world to screen coordinates", () => {
     const camera = { panX: 5, panY: -13, zoom: 2 };
     const card = { x: 10, y: 20, w: 120, h: 80 };
 
     expect(radialScreenCenter(camera, card)).toEqual({ x: 145, y: 107 });
-  });
-});
-
-describe("radialOverlayPlacement", () => {
-  it("places the SVG in % of the viewport so CSS-stretched canvases stay aligned", () => {
-    // Board canvases paint in logical viewport px but CSS-stretch to the window
-    // (`h-full w-full`). Fixed left/top in logical px only centers when window ==
-    // viewport; percentages of the same box track the painted card at any size.
-    expect(radialOverlayPlacement({ x: 720, y: 450 }, 200, { width: 1440, height: 900 })).toEqual({
-      left: "50%",
-      top: "50%",
-      width: `${(200 / 1440) * 100}%`,
-      height: `${(200 / 900) * 100}%`,
-      transform: "translate(-50%, -50%)",
-    });
   });
 });
 
@@ -124,62 +99,57 @@ describe("radialOptions", () => {
   });
 });
 
-describe("activationRadialInnerRadius / outer", () => {
-  it("clears the upright card corners and keeps a usable ring thickness", () => {
-    const zoom = 1;
-    const inner = activationRadialInnerRadius(zoom);
-    const outer = activationRadialOuterRadius(zoom);
-    const corner = Math.hypot(CARD_W / 2, CARD_H / 2) * zoom;
-    expect(inner).toBeGreaterThan(corner);
-    expect(outer - inner).toBeGreaterThanOrEqual(36);
-    expect(outer).toBeGreaterThanOrEqual(activationRadialRadius(zoom));
+describe("activationCostChip", () => {
+  it("shows tap for tap_for_mana", () => {
+    expect(activationCostChip({ kind: "tap_for_mana", label: "Tap for mana", disabled: false })).toEqual({
+      kind: "tap",
+    });
   });
 
-  it("scales with zoom", () => {
-    expect(activationRadialInnerRadius(2)).toBeGreaterThan(activationRadialInnerRadius(1));
-    expect(activationRadialOuterRadius(2)).toBeGreaterThan(activationRadialOuterRadius(1));
-  });
-});
-
-describe("wedgeIndex", () => {
-  it("puts the top of the ring in wedge 0 when count is 4", () => {
-    // atan2(-1, 0) === -π/2 — straight up from center
-    expect(wedgeIndex(-Math.PI / 2, 4)).toBe(0);
-  });
-
-  it("wraps angles into [0, count)", () => {
-    expect(wedgeIndex(Math.PI, 4)).toBeGreaterThanOrEqual(0);
-    expect(wedgeIndex(Math.PI, 4)).toBeLessThan(4);
+  it("shows tap when action.taps_self is true", () => {
+    expect(
+      activationCostChip({
+        kind: "action",
+        label: "Scry 1",
+        disabled: false,
+        action: activate({ taps_self: true }),
+      }),
+    ).toEqual({ kind: "tap" });
   });
 
-  it("returns 0 for a single wedge at any angle", () => {
-    expect(wedgeIndex(0, 1)).toBe(0);
-    expect(wedgeIndex(2, 1)).toBe(0);
-  });
-});
-
-describe("wedgePath / wedgeLabelPoint", () => {
-  it("returns a non-empty path for each of 6 wedges", () => {
-    for (let i = 0; i < 6; i++) {
-      expect(wedgePath(i, 6, 50, 90).length).toBeGreaterThan(10);
-    }
-  });
-
-  it("draws a full donut with two outer semicircles when count is 1", () => {
-    // SVG cannot express a 360° arc in one A command (start==end collapses).
-    const d = wedgePath(0, 1, 50, 90);
-    const outerArcs = d.match(/A 90 90/g) ?? [];
-    expect(outerArcs.length).toBe(2);
-    expect(d).toContain("A 50 50");
-    // evenodd hole: outer closed, then inner closed (no radial L seam through the label)
-    expect(d.indexOf("Z")).toBeLessThan(d.lastIndexOf("Z"));
-    expect(d).not.toMatch(/L /);
+  it("shows mana from x_cost when present", () => {
+    const cost = { generic: 1, colored: [0, 0, 0, 0, 0], has_x: true, x_symbols: 1 };
+    expect(
+      activationCostChip({
+        kind: "action",
+        label: "X pump",
+        disabled: false,
+        action: activate({ has_x: true, x_cost: cost }),
+      }),
+    ).toEqual({ kind: "mana", cost });
   });
 
-  it("places the single-wedge label at the top", () => {
-    const p = wedgeLabelPoint(0, 1, 50, 90);
-    expect(p.x).toBeCloseTo(0, 5);
-    expect(p.y).toBeLessThan(0);
+  it("combines tap and mana when both apply", () => {
+    const cost = { generic: 0, colored: [0, 1, 0, 0, 0], has_x: false };
+    expect(
+      activationCostChip({
+        kind: "action",
+        label: "Pay U, tap",
+        disabled: false,
+        action: activate({ taps_self: true, x_cost: cost }),
+      }),
+    ).toEqual({ kind: "tap_and_mana", cost });
+  });
+
+  it("returns null when no structured cost exists", () => {
+    expect(
+      activationCostChip({
+        kind: "action",
+        label: "Add {U}{R}",
+        disabled: false,
+        action: activate({ label: "Add {U}{R}" }),
+      }),
+    ).toBeNull();
   });
 });
 
@@ -217,6 +187,66 @@ describe("radialWedgeFromElement / radialWedgeAtPoint", () => {
     const fromPoint = (_x: number, _y: number) => wedge;
     expect(radialWedgeAtPoint(10, 20, fromPoint)).toBe(2);
     expect(radialWedgeAtPoint(10, 20, () => null)).toBeNull();
+  });
+});
+
+describe("activationMenuEstimatedHeight", () => {
+  it("grows with option count and caps at max height", () => {
+    expect(activationMenuEstimatedHeight(1)).toBeLessThan(activationMenuEstimatedHeight(4));
+    expect(activationMenuEstimatedHeight(50)).toBe(ACTIVATION_MENU_MAX_HEIGHT_PX);
+  });
+});
+
+describe("activationMenuPlacement", () => {
+  const menu = { width: ACTIVATION_MENU_WIDTH_PX, height: 120 };
+  const card = { w: 96, h: 134 };
+  const vp = { width: 1440, height: 900 };
+
+  it("prefers the right of the card when there is room", () => {
+    const center = { x: 400, y: 450 };
+    const place = activationMenuPlacement(center, card, menu, vp);
+    const leftPx = (Number.parseFloat(place.left) / 100) * vp.width;
+    const expected = center.x + card.w / 2 + ACTIVATION_MENU_GAP_PX;
+    expect(leftPx).toBeCloseTo(expected, 1);
+    expect(place.width).toBe(`${(menu.width / vp.width) * 100}%`);
+  });
+
+  it("flips to the left when the right side overflows", () => {
+    const center = { x: 1400, y: 450 };
+    const place = activationMenuPlacement(center, card, menu, vp);
+    const leftPx = (Number.parseFloat(place.left) / 100) * vp.width;
+    expect(leftPx + menu.width).toBeLessThanOrEqual(vp.width + 0.5);
+    expect(leftPx).toBeLessThan(center.x);
+  });
+
+  it("flips above when horizontal sides overflow", () => {
+    // Narrow viewport: menu cannot fit left or right of a centered card.
+    const narrow = { width: 300, height: 900 };
+    const center = { x: 150, y: 450 };
+    const wideMenu = { width: 240, height: 80 };
+    const place = activationMenuPlacement(center, card, wideMenu, narrow);
+    const topPx = (Number.parseFloat(place.top) / 100) * narrow.height;
+    expect(topPx + wideMenu.height).toBeLessThanOrEqual(center.y - card.h / 2 + 0.5);
+  });
+
+  it("clamps so the panel stays fully on-screen", () => {
+    const center = { x: 10, y: 10 };
+    const place = activationMenuPlacement(center, card, menu, vp);
+    const leftPx = (Number.parseFloat(place.left) / 100) * vp.width;
+    const topPx = (Number.parseFloat(place.top) / 100) * vp.height;
+    expect(leftPx).toBeGreaterThanOrEqual(0);
+    expect(topPx).toBeGreaterThanOrEqual(0);
+    expect(leftPx + menu.width).toBeLessThanOrEqual(vp.width + 0.5);
+    expect(topPx + menu.height).toBeLessThanOrEqual(vp.height + 0.5);
+  });
+
+  it("returns zero box when viewport is invalid", () => {
+    expect(activationMenuPlacement({ x: 1, y: 1 }, card, menu, { width: 0, height: 0 })).toEqual({
+      left: "0%",
+      top: "0%",
+      width: "0%",
+      maxHeight: "0%",
+    });
   });
 });
 

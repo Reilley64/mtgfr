@@ -14,7 +14,7 @@ import {
 } from "../action/targeting";
 import type { Message } from "../messages";
 import type { BoardModel } from "../submodel";
-import { activationRadialView } from "./activation-radial";
+import { activationMenuView } from "./activation-menu";
 import { concedeButtonView, concedeDialogView } from "./concede";
 import { discoverabilityView } from "./discoverability";
 import { handView } from "./hand";
@@ -108,7 +108,7 @@ export function boardOverlays(
     seatedViewer ? mulliganWaitingView(state) : null,
     seatedViewer && !chrome.show ? priorityBarView(board, state) : null,
     seatedViewer && !chrome.show ? promptsView(board, state, tableId) : null,
-    seatedViewer && !chrome.show ? activationRadialView(board, state) : null,
+    seatedViewer && !chrome.show ? activationMenuView(board, state) : null,
     seatedViewer ? concedeButtonView() : null,
     concedeDialogView(board.confirmConcede),
     pileOverlayView(board.pileExpand, state, {

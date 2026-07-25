@@ -45,7 +45,7 @@ Alt/Option pins a card into a shared preview `dock` mode. The dock has a full-bo
 
 - Scene/unit tests cover Alt pin (card and life orb), dock backdrop, left art, right oracle/extras, marked damage, commander-damage rows (present/absent), DFC flip, and dismissal.
 - Layer tests should assert inspect renders above prompt/system overlay DOM.
-- Keyboard tests cover Escape dismissing inspect before radial/action cancellation.
+- Keyboard tests cover Escape dismissing inspect before activation menu or action cancellation.
 
 ## Out of Scope
 

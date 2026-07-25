@@ -32,7 +32,8 @@ These documents are **not superseded** and must stay current alongside the specs
 |------|--------|
 | [accounts-decks-and-catalog](2026-07-20-accounts-decks-and-catalog.md) | Auth, sessions, deck storage, legality, catalog projection |
 | [action-session-and-targeting](2026-07-20-action-session-and-targeting.md) | Board action planning, local prompts, targets, submit pipeline |
-| [activation-radial](2026-07-21-activation-radial.md) | Battlefield permanent activation menu and wedge behavior |
+| [activation-menu](2026-07-25-activation-menu.md) | Battlefield permanent activation menu, placement, costs, and commit behavior |
+| [activation-menu (design)](2026-07-25-activation-menu-design.md) | Design input absorbed by the living [activation-menu](2026-07-25-activation-menu.md) spec |
 | [battlefield](2026-07-20-battlefield.md) | Battlefield paint, permanent chrome, avatars, arrows, packing |
 | [board-camera-and-layout](2026-07-20-board-camera-and-layout.md) | Camera transform, screen/world geometry, seat and zone layout |
 | [board-composition](2026-07-20-board-composition.md) | Board submodel, Canvas/Mount/HTML surfaces, overlay composition |

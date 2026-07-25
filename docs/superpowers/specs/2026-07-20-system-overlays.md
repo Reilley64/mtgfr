@@ -33,7 +33,7 @@ Compose system overlays in `boardOverlays` as DOM layers above the board surface
 - System overlays remain DOM, not canvas.
 - Concede is game action chrome, not navigation.
 - Pile overlay uses `cardArt(h, opts)` for card thumbnails and falls back to card names when art is unavailable.
-- Escape priority dismisses inspect, radial, stack expansion, and then local action/pile state.
+- Escape priority dismisses inspect, the activation menu, stack expansion, and then local action/pile state.
 
 ## Testing Decisions
 

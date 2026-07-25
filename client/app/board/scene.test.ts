@@ -17,7 +17,7 @@ import { emptyCostPicks } from "./action/execution";
 import { worldToScreen } from "./geometry/camera";
 import type { RenderCard } from "./geometry/layout";
 import { avatarPos, layout, STEP, ZONE } from "./geometry/layout";
-import { activationRadialOuterRadius, radialOverlayPlacement } from "./geometry/radial";
+import { ACTIVATION_MENU_WIDTH_PX, activationMenuEstimatedHeight, activationMenuPlacement } from "./geometry/radial";
 import { boardOverlays } from "./html/overlays";
 import { resolveBoardCardArtMounts, resolveBoardOverlayMounts, resolveLiveBoardMounts } from "./html/scene-helpers";
 import {
@@ -1022,7 +1022,7 @@ test("handHidden suppresses a hand tile that would otherwise render", () => {
   overlayScene(hidden, Scene.expect(Scene.testId("hand-card-77")).toBeAbsent());
 });
 
-test("selected permanent with tap-for-mana shows a single-option activation radial", () => {
+test("selected permanent with tap-for-mana shows activation menu row", () => {
   const land = creature(5, 0, {
     name: "Forest",
     kind: { kind: "land", colors: [1, 0, 0, 0, 0] },
@@ -1034,12 +1034,13 @@ test("selected permanent with tap-for-mana shows a single-option activation radi
   const selected: ViewModel = { ...base, board: { ...base.board, selectedId: 5 } };
   overlayScene(
     selected,
-    Scene.expect(Scene.testId("activation-radial")).toExist(),
-    Scene.expect(Scene.testId("radial-wedge-tap_for_mana")).toExist(),
+    Scene.expect(Scene.testId("activation-menu")).toExist(),
+    Scene.expect(Scene.testId("activation-menu-row-tap_for_mana")).toExist(),
+    Scene.expect(Scene.testId("activation-menu-cost")).toExist(),
   );
 });
 
-test("selected tapped mana source keeps its disabled tap-for-mana wedge visible", () => {
+test("selected tapped mana source keeps its disabled tap-for-mana row visible", () => {
   const land = creature(5, 0, {
     name: "Forest",
     kind: { kind: "land", colors: [1, 0, 0, 0, 0] },
@@ -1052,13 +1053,53 @@ test("selected tapped mana source keeps its disabled tap-for-mana wedge visible"
   const selected: ViewModel = { ...base, board: { ...base.board, selectedId: 5 } };
   overlayScene(
     selected,
-    Scene.expect(Scene.testId("activation-radial")).toExist(),
-    Scene.expect(Scene.testId("radial-wedge-tap_for_mana")).toExist(),
-    Scene.expect(Scene.selector('[data-testid="radial-wedge-tap_for_mana"] path')).toHaveClass("cursor-not-allowed"),
+    Scene.expect(Scene.testId("activation-menu")).toExist(),
+    Scene.expect(Scene.testId("activation-menu-row-tap_for_mana")).toExist(),
+    Scene.expect(Scene.selector('[data-testid="activation-menu-row-tap_for_mana"][aria-disabled="true"]')).toExist(),
   );
 });
 
-test("activation radial svg is centered on the selected card screen center", () => {
+test("activation menu Enter on tap-for-mana row clears selection", () => {
+  const land = creature(5, 0, {
+    name: "Forest",
+    kind: { kind: "land", colors: [1, 0, 0, 0, 0] },
+    taps_for_mana: true,
+    power: 0,
+    toughness: 0,
+  });
+  const base = viewModel(fold(state({ objects: [land], can_act: true })));
+  const selected: ViewModel = { ...base, board: { ...base.board, selectedId: 5 } };
+  const row = Scene.testId("activation-menu-row-tap_for_mana");
+
+  overlayScene(
+    selected,
+    Scene.expect(row).toHaveAttr("aria-label", "Tap for mana"),
+    Scene.keydown(row, "Enter"),
+    Scene.expect(Scene.testId("activation-menu")).toBeAbsent(),
+  );
+});
+
+test("activation menu Space on tap-for-mana row clears selection", () => {
+  const land = creature(5, 0, {
+    name: "Forest",
+    kind: { kind: "land", colors: [1, 0, 0, 0, 0] },
+    taps_for_mana: true,
+    power: 0,
+    toughness: 0,
+  });
+  const base = viewModel(fold(state({ objects: [land], can_act: true })));
+  const selected: ViewModel = { ...base, board: { ...base.board, selectedId: 5 } };
+  const row = Scene.testId("activation-menu-row-tap_for_mana");
+
+  overlayScene(
+    selected,
+    Scene.expect(row).toHaveAttr("aria-label", "Tap for mana"),
+    Scene.keydown(row, " "),
+    Scene.expect(Scene.testId("activation-menu")).toBeAbsent(),
+  );
+});
+
+test("activation menu is placed beside the selected card screen center", () => {
   const land = creature(5, 0, {
     name: "Forest",
     kind: { kind: "land", colors: [1, 0, 0, 0, 0] },
@@ -1075,17 +1116,20 @@ test("activation radial svg is centered on the selected card screen center", () 
   expect(card).toBeDefined();
   if (card == null) return;
   const center = worldToScreen(board.camera, card.x + card.w / 2, card.y + card.h / 2);
-  const size = activationRadialOuterRadius(board.camera.zoom) * 2 + 8;
-  const place = radialOverlayPlacement(center, size, board.viewport);
+  const zoom = board.camera.zoom;
+  const place = activationMenuPlacement(
+    center,
+    { w: card.w * zoom, h: card.h * zoom },
+    { width: ACTIVATION_MENU_WIDTH_PX, height: activationMenuEstimatedHeight(1) },
+    board.viewport,
+  );
   const selected: ViewModel = { board, fold: gameFold, tableId: "T1" };
 
   overlayScene(
     selected,
-    Scene.expect(Scene.selector("svg")).toHaveStyle("left", place.left),
-    Scene.expect(Scene.selector("svg")).toHaveStyle("top", place.top),
-    Scene.expect(Scene.selector("svg")).toHaveStyle("width", place.width),
-    Scene.expect(Scene.selector("svg")).toHaveStyle("height", place.height),
-    Scene.expect(Scene.selector("svg")).toHaveStyle("transform", place.transform),
+    Scene.expect(Scene.testId("activation-menu-panel")).toHaveStyle("left", place.left),
+    Scene.expect(Scene.testId("activation-menu-panel")).toHaveStyle("top", place.top),
+    Scene.expect(Scene.testId("activation-menu-panel")).toHaveStyle("width", place.width),
   );
 });
 

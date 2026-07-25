@@ -98,7 +98,7 @@ import {
   shouldAutoCollapseStackExpand,
   stackPeekFor,
 } from "./geometry/stackLayout";
-import { selectedRadialOptions } from "./html/activation-radial";
+import { selectedRadialOptions } from "./html/activation-menu";
 import { persistHintDismissed, readHintDismissed } from "./html/discoverability";
 import { HAND_BAR_H, HAND_INSPECT_STICKY_BAND, HAND_PLAY_SLACK_PX } from "./html/hand";
 import { GyExileChosen, type Message } from "./messages";
