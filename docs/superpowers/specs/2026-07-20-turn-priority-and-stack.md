@@ -82,7 +82,7 @@ TBAs run automatically at the beginning of a step, before priority is granted (C
 `Game::has_meaningful_action(player)` returns `true` when `Game::meaningful_actions(player)` is non-empty. A meaningful action is one of:
 
 - A land drop available in the player's hand during their main phase (sorcery speed, empty stack).
-- A castable spell: timing, zone, affordability, at least one legal target (or enough playable modes). On an empty stack during a non-main / non-declare step, **only instant-speed casts count**; sorcery-speed spells do not stop auto-pass.
+- A castable spell: timing, zone, affordability, at least one legal target (or enough playable modes). Cast (and split-half / prepared) list affordability uses `Game::plan_auto_taps` — the same planner settle uses — so mutually exclusive free mana modes on one permanent (a painland's `{C}` vs colored) cannot mint-border a cast payment will reject. On an empty stack during a non-main / non-declare step, **only instant-speed casts count**; sorcery-speed spells do not stop auto-pass.
 - An activatable non-mana ability on a permanent they control.
 - A combat declaration that is awaited by the engine (DeclareAttackers / DeclareBlockers step).
 - **Exception:** after attackers are declared, each defending player's Declare Attackers priority also counts empty-stack instants as meaningful, so defenders can respond before blockers (turn-priority-and-stack spec).
@@ -116,7 +116,7 @@ These are **server-side chrome**, not engine concepts. The engine only receives 
 
 - **Step advancement is in `priority.rs` (`Game::advance_step`).** It handles the step-by-step TBA dispatch and fires `StepBegan` events. Combat-step gating (DeclareAttackers, DeclareBlockers awaiting declarations) is also in this module.
 - **`PostIntentPipeline` phases are stable and ordered.** `pipeline.rs` defines `PostIntentPhase::ALL` as a fixed const slice; new phases must be inserted in rules order.
-- **`CastPlayKind` distinguishes list, one-click, and full-validate paths** (`playable.rs`). The list path (for `meaningful_actions` / auto-pass) checks timing, zone, affordability, and target availability but does not require chosen inputs. The full path also validates chosen discard picks, graveyard exile, etc.
+- **`CastPlayKind` distinguishes list, one-click, and full-validate paths** (`playable.rs`). The list path (for `meaningful_actions` / auto-pass) checks timing, zone, affordability via `plan_auto_taps`, and target availability but does not require chosen inputs. The full path also validates chosen discard picks, graveyard exile, etc. `available_mana` remains an optimistic estimate for other callers (e.g. `max_payable_x`); it may over-count exclusive free modes on one land, which is safe for upper bounds but must not drive cast listing.
 - **`has_empty_stack_instant_play` is a separate predicate from `has_meaningful_action`** (turn-priority-and-stack spec). It is broader: it includes empty-stack instant-speed casts that `has_meaningful_action` omits. Used only by the End Turn server chrome to grant opponent response windows.
 - **`consecutive_passes` resets on every act, every resolution.** It does not reset on the step boundary — advancing a step is a direct state mutation in `advance_step`, not driven by the pass counter.
 - **Engine is intent-only.** Yield flags, hold timers, dwell registration, and auto-advance loops live entirely in the server layer, not in the engine. Adding a new yield dimension = server chrome only.
