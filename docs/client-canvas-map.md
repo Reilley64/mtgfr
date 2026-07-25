@@ -22,7 +22,7 @@ specs for the current module split, especially
    every pose tick. Model receives `FlightsSynced` when the flying set changes.
 
 5. **Board submodel:** `client/app/board/submodel.ts` composes canvas, bitmap, motion, action-session, and HTML overlays. `view.ts` is the composition root.
-6. **HTML chrome:** `client/app/board/html/` — `stack.ts`, `turn-chrome.ts`, `priority-bar.ts`, `discoverability.ts`, `overlays.ts`, `hand.ts`, `mana-tray.ts`, `actions.ts`, `prompts.ts`, `activation-menu.ts`, `inspect.ts`.
+6. **HTML chrome:** `client/app/board/html/` — `stack.ts`, `turn-chrome.ts`, `priority-bar.ts`, `discoverability.ts`, `overlays.ts`, `hand.ts`, `mana-tray.ts`, `actions.ts`, `log-panel.ts`, `prompts.ts`, `activation-menu.ts`, `inspect.ts`.
 
 ## Module → responsibility map
 
@@ -45,6 +45,7 @@ specs for the current module split, especially
 | `app/board/view.ts` | Board composition root (canvas + Mount + HTML overlays) |
 | `app/board/html/stack.ts` | Stack DOM (pile / strip / full) |
 | `app/board/html/turn-chrome.ts` | Turn/priority chrome |
+| `app/board/html/log-panel.ts` | Game log HUD (`board-log`; last 30 fold lines) |
 | `lib/image-cache.ts` | Art decode cache (shared canvas + bitmap) |
 | `lib/wire/types.ts` | Wire shapes (snake_case) |
 
@@ -93,6 +94,7 @@ specs for the current module split, especially
 | [Battlefield](superpowers/specs/2026-07-20-battlefield.md) | Resting permanents, avatar paint, arrows, packing, chrome |
 | [Flights](superpowers/specs/2026-07-20-flights.md) | Flight ownership, animation clock, bitmap paint gating |
 | [Card inspect](superpowers/specs/2026-07-20-card-inspect.md) | Topmost inspect dock and board card preview behavior |
+| [Board log panel](superpowers/specs/2026-07-25-board-log-panel.md) | Fold event log HUD above the hand bar |
 | [`DESIGN.md`](../DESIGN.md) | Tokens; canvas hex exemptions |
 | [`agent-navigation.md`](agent-navigation.md) | Engine CR lookup (server-side) |
 

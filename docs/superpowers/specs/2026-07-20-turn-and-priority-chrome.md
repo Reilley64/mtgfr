@@ -62,4 +62,3 @@ Use `PriorityContextBar` for action controls, `TurnBanner` for active player and
 ## Further Notes
 
 - Table audio attention cues are fired from board audio data attributes and documented in the table audio spec.
-- Mulligan overlay behavior and rationale are designed in [`2026-07-24-mulligan-pregame-overlay-design.md`](2026-07-24-mulligan-pregame-overlay-design.md).

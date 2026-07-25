@@ -33,40 +33,39 @@ These documents are **not superseded** and must stay current alongside the specs
 | [accounts-decks-and-catalog](2026-07-20-accounts-decks-and-catalog.md) | Auth, sessions, deck storage, legality, catalog projection |
 | [action-session-and-targeting](2026-07-20-action-session-and-targeting.md) | Board action planning, local prompts, targets, submit pipeline |
 | [activation-menu](2026-07-25-activation-menu.md) | Battlefield permanent activation menu, placement, costs, and commit behavior |
-| [activation-menu (design)](2026-07-25-activation-menu-design.md) | Design input absorbed by the living [activation-menu](2026-07-25-activation-menu.md) spec |
 | [battlefield](2026-07-20-battlefield.md) | Battlefield paint, permanent chrome, avatars, arrows, packing |
 | [board-camera-and-layout](2026-07-20-board-camera-and-layout.md) | Camera transform, screen/world geometry, seat and zone layout |
 | [board-composition](2026-07-20-board-composition.md) | Board submodel, Canvas/Mount/HTML surfaces, overlay composition |
+| [board-log-panel](2026-07-25-board-log-panel.md) | Board event log panel above the hand bar |
 | [card-dsl-and-card-pool](2026-07-20-card-dsl-and-card-pool.md) | TOML card scripts, effect vocabulary, precons, fidelity posture |
 | [card-inspect](2026-07-20-card-inspect.md) | Alt/Option dock inspect, catalog fetch, modifier ledger |
 | [choices-actions-and-resolution](2026-07-20-choices-actions-and-resolution.md) | Engine choices, legal actions, payment, resolution |
-| [client-interaction-test-policy](2026-07-22-client-interaction-test-policy-design.md) | Outcome-focused client interaction test policy |
-| [client-shell-deck-builder-and-observability](2026-07-20-client-shell-deck-builder-and-observability.md) | Shell routes, deck builder, BFF edges, observability, design system |
-| [deck-list-tile-chooser (design)](2026-07-24-deck-list-tile-chooser-design.md) | Your decks compact tile grid, search, precon order, context menu |
-| [deck-list-tile-layout-polish (design)](2026-07-24-deck-list-tile-layout-polish-design.md) | Your decks column align, larger tiles, art_crop CDN→Scryfall fallback, no hover preview |
-| [lobby-deck-card-path-and-view-transitions (design)](2026-07-24-lobby-deck-card-path-and-view-transitions-design.md) | Play routes require deck path param; lobby deck card; FLIP morph from Your decks tile |
-| [lobby-host-join-entry-redesign (design)](2026-07-25-lobby-host-join-entry-redesign-design.md) | Pre-table `/play/:deckId` twin Host/Join destinations + focused join panel |
-| [brand-edh-reilley-dev (design)](2026-07-24-brand-edh-reilley-dev-design.md) | Display brand + Scryfall/tooling User-Agent → edh.reilley.dev |
+| [ci-and-release](2026-07-20-ci-and-release.md) | GitHub Actions verify/release/docker, Buildx GHA cache, semantic-release |
 | [combat-and-commander-rules](2026-07-20-combat-and-commander-rules.md) | Multiplayer combat, commander tax/damage, elimination |
+| [deck-list-and-builder](2026-07-20-deck-list-and-builder.md) | Deck list tiles, search, builder split-pane, card art CDN |
 | [engine-core-and-event-model](2026-07-20-engine-core-and-event-model.md) | Pure Rust engine zones, events, SBAs, determinism |
 | [flights](2026-07-20-flights.md) | Card movement animation, flight ownership, bitmap paint gating |
 | [foldkit-devtools](2026-07-22-foldkit-devtools.md) | Local Foldkit runtime relay and MCP debugging tools |
 | [hand-and-zone-bar](2026-07-20-hand-and-zone-bar.md) | Hand, command, graveyard, exile bars and playable outlines |
-| [hand-bar-arena-spacing (design)](2026-07-25-hand-bar-arena-spacing-design.md) | Arena-forward hand bar face/peek/visible-height targets |
-| [hand-bar-hover-stack-front (design)](2026-07-25-hand-bar-hover-stack-front-design.md) | Hovered hand-bar tile stacks above all other bar tiles |
-| [hand-drag-border-shadow-cursor (design)](2026-07-25-hand-drag-border-shadow-cursor-design.md) | Drag ghost playable border, flight lift shadow, grab cursors |
+| [lobby-entry-ui](2026-07-20-lobby-entry-ui.md) | Lobby Host/Join entry, seated chrome, poll, table code, Ready audio unlock |
 | [lobby-table-routing-and-live-game](2026-07-20-lobby-table-routing-and-live-game.md) | Lobby, seed, in-memory tables, affinity, drain |
 | [mana-tray](2026-07-20-mana-tray.md) | Battlefield mana pool tray and payment mana tray surfaces |
-| [message-ref-wire-i18n (design)](2026-07-25-message-ref-wire-i18n-design.md) | Completed design for MessageRef game-text keys on the wire |
-| [nested-effect-families](2026-07-23-nested-effect-families-design.md) | Nested `Effect` family/`mode` vocabulary (design) |
-| [production-topology-and-operations](2026-07-20-production-topology-and-operations.md) | k3s, Argo, Tunnel, migrations, releases, LGTM |
+| [observability-ops](2026-07-20-observability-ops.md) | LGTM/Alloy/Grafana ops, Faro, BFF OTEL, scrub rules |
+| [production-topology-and-operations](2026-07-20-production-topology-and-operations.md) | k3s, Argo, Tunnel, migrations, Dockerfiles, health/drain |
 | [prompts-and-pending-choices](2026-07-20-prompts-and-pending-choices.md) | Pending-choice forms, X prompt, modal and local cost prompts |
+| [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md) | Shell routes, portrait gate, auth, Foldkit/wire edge, design tokens, brand |
 | [stack](2026-07-20-stack.md) | Stack pile, strip, expansion, targetability, auto-resolve pause |
 | [system-overlays](2026-07-20-system-overlays.md) | Result, concede, pile expansion, reconnect, portrait gate overlays |
 | [table-audio](2026-07-20-table-audio.md) | Synthesized table cues, browser unlock, sound toggle |
-| [turn-and-priority-chrome](2026-07-20-turn-and-priority-chrome.md) | Phase, priority, pass/yield, hints, playable chrome |
+| [turn-and-priority-chrome](2026-07-20-turn-and-priority-chrome.md) | Phase, priority, pass/yield, hints, playable chrome, mulligan overlay |
 | [turn-priority-and-stack](2026-07-20-turn-priority-and-stack.md) | Engine turn structure, priority, stack, auto-pass, yields |
 | [wire-protocol-and-visibility](2026-07-20-wire-protocol-and-visibility.md) | Proto contract, redaction, snapshot/delta stream |
+
+## Process / policy (not a product surface)
+
+| Doc | Domain |
+|-----|--------|
+| [client-interaction-test-policy](2026-07-22-client-interaction-test-policy-design.md) | Outcome-focused client interaction test policy (process doc; keep) |
 
 ## Authoring conventions
 
@@ -87,4 +86,4 @@ Decisions → Testing Decisions → Out of Scope → Further Notes.
 - **PR / loop review:** Code review must fail merge on PR-scoped design sidecars without the
   corresponding surface-spec update, missing surface-spec updates, or non-current narrative
   in this directory (see [`AGENTS.md` Feature specs](../../../AGENTS.md#feature-specs)). Plans
-  live under [`../plans/`](../plans/), not here.
+  may be written under `docs/superpowers/plans/` locally (gitignored), not here.

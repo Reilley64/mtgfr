@@ -34,7 +34,7 @@ required on every line and on the commander; decks are always read and written a
 `legality::validate` runs on every create/update and on game start, returning every problem as a
 list so the deck builder can display all errors simultaneously.
 
-**Precon virtual decks** (-1 through -8) are static fixtures baked into the server binary at
+**Precon virtual decks** (-1 through -9) are static fixtures baked into the server binary at
 compile time via `include_str!` (`crates/server/fixtures/decks/*.json`). They are not DB rows
 and cannot be edited or deleted. Negative ids can never collide with the Postgres autoincrement
 positive ids of user decks. Every user sees precons in their deck list alongside their own decks.
@@ -66,7 +66,7 @@ Neither endpoint requires authentication.
   query; I paginate by adjusting `offset`.
 - As a **deck builder**, I open an existing deck; the client calls `Cards.Lookup` with all card
   ids in the deck to hydrate names, stats, and art without fetching the full catalog.
-- As a **player**, I own precon decks (ids -1 through -8) automatically — no signup action
+- As a **player**, I own precon decks (ids -1 through -9) automatically — no signup action
   needed. I can take a precon to a lobby seat without ever building a custom deck.
 - As a **player**, I take my custom or precon deck to a lobby seat; the lobby validates that the
   deck belongs to my account (or is a precon) before letting me ready up.
@@ -101,7 +101,7 @@ commander print). `DeckDetail` is the full view (id, name, commander, commander\
 If validation fails, the gRPC call returns an error containing all legality problems joined by
 newline; no partial saves.
 
-**List:** Returns `DeckList` with both DB-backed decks (owned by the authed user) and the eight
+**List:** Returns `DeckList` with both DB-backed decks (owned by the authed user) and the nine
 precon summaries. Precons appear in the list with their fixed negative ids; the client can
 display them like any deck.
 
@@ -128,7 +128,7 @@ returning; the caller gets the complete list. Invariants checked:
 
 ### Precon virtual decks (`precons.rs`)
 
-Eight precons with ids `-1` through `-8` are loaded from `fixtures/decks/*.json` via
+Nine precons with ids `-1` through `-9` are loaded from `fixtures/decks/*.json` via
 `include_str!` at compile time. Each fixture records `commander`, `commander_print`, and `cards`.
 Precon names are:
 
@@ -139,7 +139,10 @@ Precon names are:
 | -3 | Witherbloom Pestilence |
 | -4 | Lorehold Spirit |
 | -5 | Quandrix Unlimited |
-| -6...-8 | Additional fidelity-grind decks |
+| -6 | Enchantress Rubinia |
+| -7 | Deathdancer Xira |
+| -8 | Political Puppets |
+| -9 | Mirror Mastery |
 
 `is_precon(id)` returns `true` for `id < 0`. Edit and delete of a precon id returns a 422.
 Precon decklists are the same source of truth as the Phase 5.5 legality fixtures
@@ -244,7 +247,7 @@ for hydrating a saved deck without fetching the full catalog.
   rules definition (CR 903.4) within the engine's simplified color model.
 - The `catalog_search::project()` call on boot means a server restart always reflects the current
   engine card pool — no stale catalog entries survive a binary update. The truncate+reinsert is
-  cheap for the current pool size (618 deckable card TOMLs).
+  cheap for the current pool size (665 deckable card TOMLs).
 - `CatalogCard.approximates` is the one-line fidelity note on how a card's engine behavior
   differs from its printed rules. The deck builder displays this to inform players of known gaps.
 - `CatalogCard.oracle` carries the printed rules text for deck builder hover/inspect; it is

@@ -1,8 +1,10 @@
 # Production Topology and Operations
 
-**Status:** Current (as of 2026-07-20)
+**Status:** Current (as of 2026-07-25)
 **Module:** `iac/`, `docker/server/Dockerfile`, `docker/web/Dockerfile`,
-`.github/workflows/`, `crates/server/src/settings.rs`, `crates/server/src/health.rs`
+`crates/server/src/settings.rs`, `crates/server/src/health.rs`
+
+Related: [ci-and-release](2026-07-20-ci-and-release.md), [observability-ops](2026-07-20-observability-ops.md).
 
 ---
 
@@ -12,8 +14,6 @@ A friend-group Commander game needs to be reachable over the public internet wit
 or inbound open ports on the home server. Deploys must not kill in-progress games: rolling out a
 new binary while four people are mid-combat must not disconnect anyone. The infrastructure must be
 reproducible from source; image builds and releases must be traceable to a specific git commit.
-Observability — structured logs, distributed traces, and metrics from browser through BFF to API
-— is needed to debug friend-group games without full server access.
 
 ---
 
@@ -22,14 +22,13 @@ Observability — structured logs, distributed traces, and metrics from browser 
 The deployment stack is: home **k3s** cluster on a dedicated host, reached from the internet via
 **Cloudflare Tunnel** (no inbound public ports on the cluster), managed entirely via **Terraform**
 in `iac/` plus an **Argo CD** `Application` that owns rolling API and web Deployments. Releases
-are fully automated via **semantic-release** (default config, Angular commit convention) producing
-`v*` git tags that trigger **GHCR** container image builds. Operators run `terraform apply` from a
-separate apply machine (workstation/laptop with kubeconfig access to the k3s API) to roll images
-and infrastructure.
+are fully automated via **semantic-release** (see [ci-and-release](2026-07-20-ci-and-release.md))
+producing `v*` git tags that trigger **GHCR** container image builds. Operators run `terraform apply`
+from a separate apply machine (workstation/laptop with kubeconfig access to the k3s API) to roll
+images and infrastructure.
 
-Observability is self-hosted **LGTM** (Grafana/Loki/Tempo/Prometheus) in namespace `observability`,
-with **Grafana Alloy** as the sole ingest path, browser Faro telemetry via same-origin
-`/api/faro/collect`, and OTEL from both BFF and API. Grafana is operator-only via `kubectl
+Observability is self-hosted **LGTM** in namespace `observability` — see
+[observability-ops](2026-07-20-observability-ops.md). Grafana is operator-only via `kubectl
 port-forward`; no tunnel hostname for the observability plane.
 
 ---
@@ -46,11 +45,10 @@ port-forward`; no tunnel hostname for the observability plane.
 - As a **developer**, I merge a `fix:` PR; a `v*.*.patch` tag is cut; I apply as above. Old pod
   drains within 60s of its last game ending; k3s then SIGKILLs it after the 24h grace if it
   somehow never drains (edge case for very long games).
-- As an **operator**, I run `kubectl -n observability port-forward svc/grafana 3000:80` and open
-  Grafana; I see latency, error rate, and can correlate a browser trace to a BFF span to an API
-  span via Tempo trace links in Loki.
 - As an **operator**, I run `kubectl port-forward` to `edh-api:8080` and `GET /health/drain` to
   observe `{"active_tables": N, "draining": true}` while a Terminating pod is draining.
+
+Operator Grafana / Tempo stories live in [observability-ops](2026-07-20-observability-ops.md).
 
 ---
 
@@ -94,7 +92,7 @@ Axum health probes are on `:8080` inside the cluster; the BFF exposes only `meta
 | `terraform` | tfstate Secret, lock Lease (kubernetes backend) |
 | `argocd` | Argo CD Helm release; Application `edh` |
 | `edh` | All app workloads (see table below) |
-| `observability` | LGTM stack: Alloy, Loki, Tempo, Prometheus, Grafana |
+| `observability` | LGTM stack: Alloy, Loki, Tempo, Prometheus, Grafana (detail in [observability-ops](2026-07-20-observability-ops.md)) |
 
 **Namespace `edh` workloads:**
 
@@ -220,40 +218,7 @@ Web BFF env (Nitro `edh-web`):
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://alloy.observability.svc:4318` |
 | `FARO_COLLECT_UPSTREAM` | `http://alloy.observability.svc:12347/collect` |
 
-### Observability (production-topology-and-operations spec)
-
-**Self-hosted LGTM** in namespace `observability` (Terraform Helm):
-- **Grafana Alloy** — sole ingest path for all telemetry.
-- **Loki** — structured log store (7d retention).
-- **Tempo** — distributed trace store (7d retention).
-- **Prometheus** — metrics (15d retention).
-- **Grafana** — dashboards and trace/log correlation; operator-only via `kubectl port-forward`.
-
-**Browser:** Grafana Faro (`@grafana/faro-web-sdk` + `@grafana/faro-web-tracing`) in
-`client/app/faro.ts`. Posts to same-origin `/api/faro/collect`; the BFF proxies
-to Alloy `faro.receiver`. Session sampling: 100%; stuck `isSampled=false` sessions are repaired.
-
-**BFF:** `client/server/plugins/otel.server.ts` — process-scoped `@effect/opentelemetry` `ManagedRuntime`.
-Inbound W3C `traceparent` continued as BFF parent span *only when sampled* (unsampled Faro
-non-recording injects are ignored). BFF propagates its span into gRPC metadata so Tempo shows
-browser → web → API trace chains.
-
-**API:** `tracing` + `opentelemetry-otlp` (HTTP export) in `crates/server`. Engine
-(`crates/engine`) emits `tracing` spans but no OTEL exporters (engine is pure).
-
-**Scrub rules (production-topology-and-operations spec):** identifiers + timing + error classes only. Never hand/library
-contents, intent payloads, or auth headers in telemetry. TOON action traces (`ACTION_LOG_DIR`)
-must stay off Loki. Alloy Faro rate-limits ingest; browser collect is size-capped at 512KiB.
-
-**Grafana access (operator only):**
-```bash
-kubectl -n observability port-forward svc/grafana 3000:80
-# admin password: terraform output -raw grafana_admin_password
-# or: kubectl -n observability get secret grafana-admin -o jsonpath='{.data.admin-password}' | base64 -d
-```
-
-**Local/dev:** OTEL exporters no-op when `OTEL_EXPORTER_OTLP_ENDPOINT` is unset; `RUST_LOG`
-still drives `tracing` fmt output.
+OTEL / Faro exporter behavior and scrub rules: [observability-ops](2026-07-20-observability-ops.md).
 
 ### Database migrations
 
@@ -292,60 +257,7 @@ bases (no shell, no package manager):
 
 Both images are pushed to public GHCR (`ghcr.io/<owner>/mtgfr-server`, `mtgfr-web`) tagged with
 the release semver. No moving `latest` tag — pin explicit versions in `terraform.tfvars`.
-
-### Release and CI pipeline
-
-**Commit convention:** Angular format (`feat:`, `fix:`, `build:`, `ci:`, `docs:`, `refactor:`,
-`test:`, `perf:`, `style:`; breaking changes via `BREAKING CHANGE:` footer). Enforced on each
-commit by commitlint via Husky `commit-msg` (`.husky/commit-msg`). In Cursor Cloud, after
-`npm clean-install`, `.cursor/scripts/wire-cloud-git-hooks.sh` restores the agent hooks
-dispatcher and chains `.husky` as the original hooks path so commitlint still runs. **PRs are
-squash-merged** — the squash commit subject is the PR title; semantic-release analyzes that
-line only. PR CI therefore lint-checks the **PR title** only (`commitlint` job), not the
-branch commit range.
-
-**`ci.yml`** (PRs): `concurrency` group `ci-${{ github.ref }}` with
-`cancel-in-progress: true` so superseded pushes cancel. Jobs: `changes`
-(`dorny/paths-filter` for `iac/**` + `.github/workflows/ci.yml`), Commitlint (PR title),
-`verify-jobs.yml`, and terraform (only when `changes.outputs.iac == 'true'`).
-
-**`verify-jobs.yml`** (reusable):
-- `verify-server-gate`: checkout + pass-marker `lookup-only` cache
-  (`verify-server-v2-*`, includes `docs/CR_INDEX.md` + `scripts/gen_cr_index.py`).
-  No Postgres service.
-- `verify-server`: runs only on cache miss; Postgres 16 + `just server-check`
-  (`engine-cr-index-check` before fmt, then clippy + migrate + nextest); writes
-  pass marker via `actions/cache/save`. Uploads nextest JUnit + test summary.
-- `verify-client`: Bun-only `just client-check` (tokens + mana-oracle + buf
-  codegen + format + lint + typecheck + vitest). Pass marker
-  `verify-client-v3-*` hashes `client/**`, `proto/**`,
-  `design.tokens.json`, `.bun-version`, `justfile`, and this workflow — not
-  `crates/**` (wire codegen does not compile Rust). On miss: Vitest JUnit
-  (`client/junit.xml`) upload + test summary. No Rust toolchain on this job.
-
-**`verify-and-release.yml`** (push to main): `verify-jobs.yml` then `npx semantic-release`
-(default config, no `.releaserc`). Requires `RELEASE_TOKEN` (PAT: `contents` + `workflow`) so
-the `v*` tag push can cascade `docker.yml`.
-
-**`docker.yml`** (push of `v*` tags): parallel jobs `docker-server` and `docker-web`
-build/push GHCR images tagged `${GITHUB_REF_NAME#v}`; `docker-visibility` runs after
-both (`needs: [docker-server, docker-web]`, `continue-on-error`) to mark packages
-public. `GITHUB_TOKEN` permissions: `contents: read`, `packages: write`,
-`actions: write`. Each build imports/exports Buildx layers via GitHub Actions cache
-(`cache-from` / `cache-to` `type=gha`, `mode=max`) with per-image scopes
-`mtgfr-server` and `mtgfr-web`. Dockerfile `--mount=type=cache` Cargo mounts are not
-persisted across jobs.
-
-**Root `package.json`:** `private: true`; `"semantic-release": "^24"` in `devDependencies`.
-Not published to npm. `@semantic-release/npm` bumps `package.json` version only (private).
-
-**End-to-end release flow:**
-1. Merge `feat:` PR → squash commit on `main`.
-2. `verify-and-release.yml` runs verify → semantic-release → `v*.*.* ` tag → GitHub Release.
-3. `docker.yml` builds GHCR images on that tag.
-4. Operator updates `server_image` / `web_image` in `terraform.tfvars`, runs `terraform apply`.
-5. Argo syncs: migrate Jobs → new API Deployment (wave 0) → Service retarget (wave 1) → PruneLast.
-6. Old pods drain in-process on SIGTERM.
+CI/Buildx cache and release tag cascade: [ci-and-release](2026-07-20-ci-and-release.md).
 
 ---
 
@@ -356,7 +268,7 @@ Not published to npm. `@semantic-release/npm` bumps `package.json` version only 
 - **Kubernetes backend for Terraform state**: state Secret + Lease live on the same k3s cluster.
   State is gone if k3s/etcd is gone — maintain k3s etcd backups. No local state files on the
   apply machine in steady state.
-- **Argo CD owns API/web Deployments + edh-api Service** (lobby-table-routing-and-live-game spec): sync waves enforce roll
+- **Argo CD owns API/web Deployments + edh-api Service** ([lobby-table-routing-and-live-game](2026-07-20-lobby-table-routing-and-live-game.md)): sync waves enforce roll
   order; `PruneLast` ensures prior Deployment prune happens after Service retarget. Terraform
   owns the headless Service (always in Terraform, never pruned by Argo).
 - **Official `postgres` image StatefulSet, not CloudNativePG/Bitnami**: simple for a friend-group
@@ -365,18 +277,7 @@ Not published to npm. `@semantic-release/npm` bumps `package.json` version only 
   for steady state. Tunnel credentials as a K8s Secret consumed by `cloudflared`.
 - **Distroless runtime images** (this spec): no shell in prod. Ephemeral debug containers
   for inspection. `cc` variant for dynamically-linked Rust; `oven/bun:*-distroless` for the web BFF.
-- **No `.releaserc`, no custom release rules**: semantic-release default config only. Version
-  bumps follow the built-in Angular analyzer. `@semantic-release/git` not used (no committed
-  `CHANGELOG.md`).
-- **Buildx GHA layer cache for release images** (this spec): `docker.yml` uses
-  `type=gha,mode=max` with scopes `mtgfr-server` / `mtgfr-web` so multi-stage builder
-  layers survive across `v*` tag builds on ephemeral runners. Requires `actions: write`.
-  Cache mounts (Cargo registry/`target`) are out of scope without cache-dance.
-- **OTEL propagation pattern** (production-topology-and-operations spec): Faro injects `traceparent` same-origin only; BFF
-  continues it as a span parent when sampled; BFF passes its span to gRPC via `grpcRequestEnv`
-  bag (not Node AsyncLocalStorage) so context survives `runPromise` across the `@effect/rpc`
-  boundary.
-- **Action traces off observability** (production-topology-and-operations spec): TOON files are on a dedicated PVC, not stdout
+- **Action traces off observability** ([observability-ops](2026-07-20-observability-ops.md)): TOON files are on a dedicated PVC, not stdout
   or Loki. Retained on pod prune. PVC names include `instanceId` to avoid collisions across
   rolling Deployments.
 
@@ -410,6 +311,8 @@ Not published to npm. `@semantic-release/npm` bumps `package.json` version only 
   Staging can be a second `terraform workspace` or a separate directory, not currently set up.
 - **mTLS between in-cluster services**: accepted for v1. Cloudflare Tunnel provides edge TLS;
   in-cluster is HTTP only.
+- CI workflow internals and semantic-release rules: [ci-and-release](2026-07-20-ci-and-release.md).
+- LGTM/Faro/BFF OTEL detail: [observability-ops](2026-07-20-observability-ops.md).
 
 ---
 
@@ -426,9 +329,6 @@ Not published to npm. `@semantic-release/npm` bumps `package.json` version only 
 - **Failure mode:** if Service `edh-api` selects a new instance id before the Deployment is
   Ready (mis-ordered sync without waves), Start/seed returns connection errors until the new
   Deployment becomes healthy. Sync waves prevent this in steady state.
-- The `RELEASE_TOKEN` repo secret (PAT: `contents` + `workflow`) is required for semantic-release
-  to push `v*` tags that cascade `docker.yml`. The default `GITHUB_TOKEN` cannot trigger cascade
-  workflow runs on tag push.
 - **Idle lobby TTL = 30 minutes** on `mtgfr_web`. Sweep is BFF-driven. Refine the TTL-reset
   events if playtesting reveals false drains (e.g. a long deck-selection phase without a ready
   toggle).
@@ -438,3 +338,4 @@ Not published to npm. `@semantic-release/npm` bumps `package.json` version only 
 - The Argo Application is a `helm_release.edh_application` (using the `argocd-apps` chart);
   if a prior apply left a failed `kubernetes_manifest.edh_application` in state, remove it with
   `terraform state rm 'kubernetes_manifest.edh_application'` before re-applying.
+- Release token / tag cascade requirements: [ci-and-release](2026-07-20-ci-and-release.md).
