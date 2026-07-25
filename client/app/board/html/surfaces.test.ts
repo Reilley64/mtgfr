@@ -9,6 +9,7 @@ import { Submodel } from "foldkit";
 import { html } from "foldkit/html";
 import { Scene } from "foldkit/test";
 import { beforeAll, expect, test } from "vitest";
+import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/types";
 import type { GameFoldState, LogLine } from "../../game/fold";
 import { emptyCostPicks, type ModalCast, type XPromptState } from "../action/execution";
@@ -18,7 +19,6 @@ import { type BoardModel, initialBoardModel } from "../submodel";
 import { type BoardViewModel, view as boardView } from "../view";
 import { boardOverlays } from "./overlays";
 import { resolveBoardCardArtMounts, resolveBoardOverlayMounts, resolveLiveBoardMounts } from "./scene-helpers";
-import { testMessageRef } from "~/i18n/testMessageRef";
 
 /** Preorder `data-testid` walk — later siblings paint above earlier ones under `board-mount`. */
 function collectTestIds(node: unknown, out: string[] = []): string[] {
@@ -387,10 +387,30 @@ test("staged targeting shows cancel affordance and staged hint", () => {
     toughness: 2,
     name: "Bear",
   });
+  const board = stagedBoard();
+  if (board.staged == null) throw new Error("expected staged board fixture");
   overlayScene(
-    overlayModel(stagedBoard(), gameState({ objects: [target] })),
+    overlayModel(
+      {
+        ...board,
+        staged: {
+          ...board.staged,
+          action: action(10, {
+            object: 10,
+            label: {
+              key: "effect.life_gain",
+              params: [{ name: "amount", int_value: 1 }],
+              children: [],
+            },
+            needs_target: true,
+            targets: [{ kind: "object", id: 22 }],
+          }),
+        },
+      },
+      gameState({ objects: [target] }),
+    ),
     Scene.expect(Scene.testId("board-cancel-target")).toExist(),
-    Scene.expect(Scene.testId("board-staged-hint")).toContainText("Cast Shock"),
+    Scene.expect(Scene.testId("board-staged-hint")).toHaveText("Gain 1 life: click a highlighted card"),
   );
 });
 

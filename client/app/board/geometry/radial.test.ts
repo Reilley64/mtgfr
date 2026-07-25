@@ -2,6 +2,7 @@
  * @vitest-environment happy-dom
  */
 import { describe, expect, it } from "vitest";
+import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView } from "~/wire/types";
 import {
   ACTIVATION_MENU_GAP_PX,
@@ -19,20 +20,18 @@ import {
   radialWedgeAtPoint,
   radialWedgeFromElement,
 } from "./radial";
-import { testMessageRef } from "~/i18n/testMessageRef";
 
 const activate = (over: Partial<ActionView> = {}): ActionView =>
   ({
-    ability_index: 0,
     id: 1,
     kind: "activate",
-    label: "Draw a card",
+    label: testMessageRef("Draw a card"),
     needs_target: false,
     object: 7,
     section: "battlefield",
     targets: [],
     ...over,
-  }) as unknown as ActionView;
+  });
 
 describe("radialScreenCenter", () => {
   it("maps the selected card center from world to screen coordinates", () => {
