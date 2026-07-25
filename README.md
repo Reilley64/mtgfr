@@ -53,3 +53,7 @@ just --list
 - [`docs/README.md`](docs/README.md) — full docs index
 
 Agent-oriented working notes live in [`AGENTS.md`](AGENTS.md). Releases are cut by [semantic-release](https://semantic-release.org/) on `main` (PRs are squash-merged — the **PR title** is the release signal).
+
+## License
+
+Copyright 2026 Reilley. Licensed under the [Apache License 2.0](LICENSE). That covers the software in this repository only — Magic: The Gathering names, card text, art, and related trademarks remain the property of Wizards of the Coast.
