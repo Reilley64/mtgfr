@@ -10,8 +10,29 @@ env:
   DATABASE_URL: postgresql://mtgfr:mtgfr@localhost:5432/mtgfr
 
 jobs:
+  verify-server-gate:
+    name: Verify (server) cache
+    runs-on: ubuntu-latest
+    outputs:
+      cache-hit: ${{ steps.pass.outputs.cache-hit }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/cache@v5
+        id: pass
+        with:
+          path: .ci-pass
+          key: verify-server-v2-${{ hashFiles('crates/**', 'proto/**', 'Cargo.toml', 'Cargo.lock', 'Toasty.toml', 'toasty/**', '.config/nextest.toml', 'justfile', '.github/workflows/verify-jobs.yml', 'docs/CR_INDEX.md', 'scripts/gen_cr_index.py') }}
+          lookup-only: true
+
+      - name: Skip — server hash already verified
+        if: steps.pass.outputs.cache-hit == 'true'
+        run: echo "Pass marker hit for server content hash; full verify job will be skipped."
+
   verify-server:
     name: Verify (server)
+    needs: verify-server-gate
+    if: needs.verify-server-gate.outputs.cache-hit != 'true'
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -29,58 +50,46 @@ jobs:
           --health-retries 10
 
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/cache@v4
-        id: pass
-        with:
-          path: .ci-pass
-          key: verify-server-v2-${{ hashFiles('crates/**', 'proto/**', 'Cargo.toml', 'Cargo.lock', 'Toasty.toml', 'toasty/**', '.config/nextest.toml', 'justfile', '.github/workflows/verify-jobs.yml', 'docs/CR_INDEX.md', 'scripts/gen_cr_index.py') }}
-
-      - name: Skip — server hash already verified
-        if: steps.pass.outputs.cache-hit == 'true'
-        run: echo "Pass marker hit for server content hash; skipping setup and checks."
+      - uses: actions/checkout@v5
 
       - uses: dtolnay/rust-toolchain@stable
-        if: steps.pass.outputs.cache-hit != 'true'
         with:
           components: rustfmt, clippy
 
       - uses: Swatinem/rust-cache@v2
-        if: steps.pass.outputs.cache-hit != 'true'
 
       - uses: extractions/setup-just@v3
-        if: steps.pass.outputs.cache-hit != 'true'
 
       - uses: taiki-e/install-action@v2
-        if: steps.pass.outputs.cache-hit != 'true'
         with:
           tool: nextest
 
       - name: Install protoc
-        if: steps.pass.outputs.cache-hit != 'true'
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends protobuf-compiler
 
-      - name: just server-check (fmt + clippy + CR index + migrate + nextest)
-        if: steps.pass.outputs.cache-hit != 'true'
+      - name: just server-check (CR index, then fmt + clippy + migrate + nextest)
         run: just server-check
 
       - name: Upload Rust JUnit report
-        if: ${{ steps.pass.outputs.cache-hit != 'true' && !cancelled() && hashFiles('target/nextest/ci/junit.xml') != '' }}
-        uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() && hashFiles('target/nextest/ci/junit.xml') != '' }}
+        uses: actions/upload-artifact@v5
         with:
           name: rust-junit
           path: target/nextest/ci/junit.xml
 
       - name: Rust test summary
-        if: ${{ steps.pass.outputs.cache-hit != 'true' && !cancelled() && hashFiles('target/nextest/ci/junit.xml') != '' }}
+        if: ${{ !cancelled() && hashFiles('target/nextest/ci/junit.xml') != '' }}
         uses: test-summary/action@v2
         with:
           paths: target/nextest/ci/junit.xml
 
       - name: Write pass marker
-        if: steps.pass.outputs.cache-hit != 'true'
         run: mkdir -p .ci-pass && echo ok > .ci-pass/marker
+
+      - uses: actions/cache/save@v5
+        with:
+          path: .ci-pass
+          key: verify-server-v2-${{ hashFiles('crates/**', 'proto/**', 'Cargo.toml', 'Cargo.lock', 'Toasty.toml', 'toasty/**', '.config/nextest.toml', 'justfile', '.github/workflows/verify-jobs.yml', 'docs/CR_INDEX.md', 'scripts/gen_cr_index.py') }}
 
   verify-client:
     name: Verify (client)

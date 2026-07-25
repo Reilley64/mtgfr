@@ -1,57 +1,97 @@
-# Task 2 Report: selectedDeckId from route + not-found normalization + host redirect
+# Task 2 Report: Split server verify — gate job + Postgres only on miss
 
 ## Status
 
-DONE
+COMPLETE
 
-## Summary
+## Branch
 
-- Added `normalizeAppRoute(route, path)` in `client/app/routes.ts`.
-- Normalized init and `UrlChanged` routes so non-integer Play/Table deck IDs become `NotFoundRoute({ path })`.
-- Bound lobby `selectedDeckId` from `parseDeckIdParam(route.deckId)` for Play/Table route entry.
-- Removed `deckFromCurrentPath` and stopped using `?deck=` for host redirect.
-- Changed lobby host/join deck selection to use only `model.selectedDeckId`; no first-deck fallback.
-- Changed shell Play nav to `routePath(HomeRoute())`.
-- Left deck list tile href behavior unchanged for Task 5 ownership.
+`cursor/ci-improvement-wave-2-5be3`
 
-## TDD Evidence
+## Files modified
 
-Red run:
+| File | Action |
+|------|--------|
+| `.github/workflows/verify-jobs.yml` | Split server verify into gate + full job; moved Postgres service to miss-only job |
 
-```text
-cd client && bun test app/routes.test.ts app/shell/lobby/entry.test.ts app/shell/lobby/update.test.ts
-16 pass, 4 fail
-Expected failures: NotFound normalization missing, route deck not selected, host redirect still had ?deck=, lobby host fell back to first deck.
+## Step 1: Workflow change
+
+Replaced the single `verify-server` job with:
+
+- `verify-server-gate`
+  - `actions/checkout@v5`
+  - `actions/cache@v5`
+  - same `verify-server-v2-...` key
+  - `lookup-only: true`
+  - exposes `cache-hit` output
+  - contains no `services:` block and no `postgres`
+- `verify-server`
+  - `needs: verify-server-gate`
+  - `if: needs.verify-server-gate.outputs.cache-hit != 'true'`
+  - owns the `postgres:16` service
+  - runs the existing server toolchain + `just server-check`
+  - writes the pass marker and saves it with `actions/cache/save@v5`
+
+Left `verify-client` unchanged for this task.
+
+## Step 2: Sanity-check
+
+```bash
+rg -n "verify-server-gate:|lookup-only|needs: verify-server-gate|postgres:16" .github/workflows/verify-jobs.yml
 ```
 
-Green/final run:
+Result:
 
 ```text
-cd client && bun test app/routes.test.ts app/shell/lobby/entry.test.ts app/shell/lobby/update.test.ts app/shell/surfaces.test.ts
-30 pass, 0 fail
+13:  verify-server-gate:
+26:          lookup-only: true
+34:    needs: verify-server-gate
+39:        image: postgres:16
 ```
 
-Additional verification:
+Body-level checks:
+
+```bash
+gate_body=$(awk '/^  verify-server-gate:/{grab=1; next} grab && /^  verify-server:/{exit} grab {print}' .github/workflows/verify-jobs.yml)
+server_body=$(awk '/^  verify-server:/{grab=1; next} grab && /^  verify-client:/{exit} grab {print}' .github/workflows/verify-jobs.yml)
+```
+
+Results:
 
 ```text
-cd client && bun run typecheck
-tsc --noEmit passed
-
-cd client && bun run lint
-biome check passed; existing schema-version info only (2.5.3 config vs 2.5.5 CLI)
-
-git diff --check
-passed
+gate_clean=yes
+server_postgres=yes
 ```
 
-## Self-review
+This confirms the tightened guard requirements:
 
-- Scope matches the brief and avoids Task 4/5/6 work.
-- `parseDeckIdParam` is the single source for route deck integer normalization.
-- Redirect path uses `routePath(TableRoute({ deckId: String(selectedDeckId), table }))` with no query string.
-- Route switch touched in `update.ts` now has explicit Login/NotFound cases plus a `never` default.
-- No inline imports, no new dependencies, no generated artifacts committed.
+- gate job id exists
+- gate cache step is `lookup-only: true`
+- gate body has no `services:` and no `postgres`
+- full server job needs gate
+- full server job keeps `postgres:16`
 
-## Concerns
+## Step 3: Shared Wave 2 guard status
 
-- None. The lint command exits 0 but prints the existing Biome schema-version info.
+```bash
+./scripts/check-ci-wave2.sh
+echo "wave2_exit=$?"
+```
+
+Result:
+
+```text
+          key: verify-client-v2-${{ hashFiles('client/**', 'proto/**', 'crates/**', 'Cargo.toml', 'Cargo.lock', '.bun-version', 'justfile', '.github/workflows/verify-jobs.yml') }}
+client hashFiles still includes crates/**
+wave2_exit=1
+```
+
+This is expected for Task 2 because `verify-client` is intentionally unchanged and later tasks own the client-side Wave 2 fixes.
+
+## Step 4: Commit
+
+Commit message:
+
+```text
+ci: skip Postgres service on server pass-marker hit
+```
