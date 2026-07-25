@@ -4,6 +4,7 @@ import type { BuilderCatalogCard } from "../../../lib/deck-builder/cards";
 import { appVersionBadge } from "../../../lib/ui/app-version";
 import { buttonClass } from "../../../lib/ui/buttonClass";
 import { cardArt } from "../../../lib/ui/card-art";
+import { seatFace } from "../../../lib/ui/seat-face";
 import { feltClass, fieldClass, panelClass } from "../../../lib/ui/surfaces";
 import type { DeckSummary } from "../../../lib/wire/types";
 import { HomeRoute, routePath } from "../../routes";
@@ -303,13 +304,18 @@ function seats(model: LobbySlice): Html {
       h.div(
         [
           h.Class(
-            "grid grid-cols-[auto_minmax(7rem,11rem)_minmax(0,1fr)_auto] items-center gap-sm rounded-hud bg-glass-dim px-md py-sm",
+            "grid grid-cols-[auto_auto_minmax(7rem,11rem)_minmax(0,1fr)_auto] items-center gap-sm rounded-hud bg-glass-dim px-md py-sm",
           ),
           h.DataAttribute("testid", `lobby-seat-${seat.player}`),
           h.DataAttribute("claimed", seat.claimed ? "1" : "0"),
         ],
         [
           h.span([h.Class(`size-2.5 shrink-0 rounded-full ${seatDots[seat.player] ?? "bg-fog"}`)], []),
+          seatFace(h, {
+            seat: seat.player,
+            username: seat.username,
+            gravatarHash: seat.gravatar_hash ?? null,
+          }),
           h.span(
             [h.Class(seat.claimed ? "min-w-0 font-semibold" : "min-w-0 text-lichen")],
             [seat.claimed ? (seat.username ?? `Seat ${seat.player + 1}`) : `Seat ${seat.player + 1}`],
@@ -460,10 +466,7 @@ function tableLobby(
               startError == null
                 ? null
                 : h.span(
-                    [
-                      h.DataAttribute("testid", "lobby-start-error"),
-                      h.Class("text-caption text-caution-amber"),
-                    ],
+                    [h.DataAttribute("testid", "lobby-start-error"), h.Class("text-caption text-caution-amber")],
                     [humanError(startError)],
                   ),
             ],

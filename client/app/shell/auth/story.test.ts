@@ -5,8 +5,10 @@ import { Story } from "foldkit";
 import { afterEach, expect, test, vi } from "vitest";
 import { client } from "../../../lib/rpc-client";
 import { init, update } from "../../main-exports";
-import { AuthFailed, NavigationCompleted, ReceivedMe } from "../../messages";
+import { AuthFailed, NavigationCompleted, ReceivedMe, ReceivedMeGravatarHash } from "../../messages";
 import { RpcClient } from "../../resources";
+import { NotFoundRoute } from "../../routes";
+import { HashMeGravatar } from "../../update";
 import { Logout } from "./update";
 
 afterEach(() => {
@@ -28,6 +30,39 @@ test("session folds me", () => {
     Story.Command.resolve(redirect, NavigationCompleted()),
     Story.model((m) => {
       expect(m.session.me).toBeNull();
+    }),
+  );
+});
+
+test("session stores me Gravatar hash from the ReceivedMe command", () => {
+  const [model] = init();
+  const email = "alice@example.com";
+  const hash = "ff8d9819fc0e12bf0d24892e45987e249a28dce836a85cad60e28eaaa8c6d976";
+
+  Story.story(
+    update,
+    Story.with({ ...model, route: NotFoundRoute({ path: "/done" }) }),
+    Story.message(ReceivedMe({ me: { id: 1, email, username: "alice" } })),
+    Story.Command.resolve(HashMeGravatar, ReceivedMeGravatarHash({ email, hash })),
+    Story.model((m) => {
+      expect(m.session.meGravatarHash).toBe(hash);
+    }),
+  );
+});
+
+test("session ignores stale me Gravatar hash results", () => {
+  const [model] = init();
+
+  Story.story(
+    update,
+    Story.with({
+      ...model,
+      sessionLoaded: true,
+      session: { me: { id: 1, email: "alice@example.com", username: "alice" }, meGravatarHash: null },
+    }),
+    Story.message(ReceivedMeGravatarHash({ email: "bob@example.com", hash: "stale" })),
+    Story.model((m) => {
+      expect(m.session.meGravatarHash).toBeNull();
     }),
   );
 });

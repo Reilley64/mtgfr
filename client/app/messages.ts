@@ -19,6 +19,7 @@ export const NavigationCompleted = m("NavigationCompleted");
 export const PortraitGateChanged = m("PortraitGateChanged", { open: S.Boolean });
 export const PortraitGateCancelled = m("PortraitGateCancelled");
 export const CompletedPortraitGateModal = m("CompletedPortraitGateModal");
+export const ReceivedMeGravatarHash = m("ReceivedMeGravatarHash", { email: S.String, hash: S.String });
 export { CardArtTick, DeckCardFlipTick, ModalOpened };
 
 export const Message = S.Union([
@@ -30,6 +31,7 @@ export const Message = S.Union([
   PortraitGateChanged,
   PortraitGateCancelled,
   CompletedPortraitGateModal,
+  ReceivedMeGravatarHash,
   ModalOpened,
   CardArtTick,
   DeckCardFlipTick,

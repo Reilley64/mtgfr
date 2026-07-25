@@ -73,7 +73,7 @@ function loginModel(overrides: Partial<AppModel> = {}): AppModel {
     route: LoginRoute(),
     portraitGate: { open: false },
     sessionLoaded: true,
-    session: { me: null },
+    session: { me: null, meGravatarHash: null },
     ...overrides,
   };
 }
@@ -85,7 +85,7 @@ function authedModel(route: AppModel["route"], overrides: Partial<AppModel> = {}
     route,
     portraitGate: { open: false },
     sessionLoaded: true,
-    session: { me },
+    session: { me, meGravatarHash: "ff8d9819fc0e12bf0d24892e45987e249a28dce836a85cad60e28eaaa8c6d976" },
     ...overrides,
   };
 }
@@ -148,6 +148,7 @@ describe("shell surface scenes", () => {
       Scene.expect(Scene.selector('[data-testid="deck-list-search"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="deck-tile-1"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="delete-deck-1"]')).not.toExist(),
+      Scene.expect(Scene.selector('[data-testid="account-gravatar-link"]')).toExist(),
       Scene.expect(Scene.text("Your decks")).toExist(),
       Scene.expect(Scene.text("Superfriends")).toExist(),
       Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), ClosedDeckListMenu()),
@@ -322,6 +323,7 @@ describe("shell surface scenes", () => {
                   claimed: true,
                   deck_id: 1,
                   deck_name: "Superfriends",
+                  gravatar_hash: "ff8d9819fc0e12bf0d24892e45987e249a28dce836a85cad60e28eaaa8c6d976",
                   is_host: true,
                   is_you: true,
                   player: 0,
@@ -341,6 +343,7 @@ describe("shell surface scenes", () => {
       Scene.expect(Scene.selector('[data-testid="lobby-copy-code"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-seats"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-seat-0"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="seat-face-0"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-start-error"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-start-error"].text-caution-amber')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-error"]')).toExist(),

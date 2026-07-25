@@ -29,7 +29,7 @@ export const init = (
       ready: true,
       route,
       currentPath,
-      session: { me: null },
+      session: { me: null, meGravatarHash: null },
       sessionLoaded: false,
       apiVersion: null,
       auth: initialAuthSubmodel(next),

@@ -40,7 +40,9 @@ FLIP animation (`deck-card-nav.ts`; skipped for reduced motion). A **Search deck
 name (client-only). Display order: owned decks first (API relative order), then precons
 by ascending id (newest release first). Right-click on an owned deck opens Edit
 (`/decks/{id}`) and Delete (confirm dialog); precons do not open a context menu. A New
-Deck button navigates to `/decks/new`.
+Deck button navigates to `/decks/new`. Signed-in account chrome in the header shows
+the username with the same circular Gravatar/monogram face helper used for seats and
+an outbound `Change at Gravatar` link (`account-gravatar-link`) to `https://gravatar.com`.
 
 ### Deck builder (`client/app/shell/decks/builder/**`, `/decks/new`, `/decks/:id`)
 
@@ -89,7 +91,7 @@ Missing ordinary (non-`art_crop`) CDN art stays empty after load failure (no Scr
 - `client/lib/deck-builder/*.test.ts` — print prefs, menus, hover preview.
 - `client/lib/ui/card-art.test.ts` — art URL / host sync against `ImageCache`.
 - `client/lib/image-cache.test.ts` — cache settle / subscriber behavior.
-- Scene coverage for shell deck surfaces lives with other shell Scene tests (see [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md) Testing Decisions / `just client-check`).
+- Scene coverage for shell deck surfaces, including `account-gravatar-link`, lives with other shell Scene tests (see [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md) Testing Decisions / `just client-check`).
 
 ---
 

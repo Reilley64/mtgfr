@@ -58,6 +58,8 @@ A native `<dialog showModal>` opens when `(orientation: portrait) and (max-width
 
 `FetchMe` is a Foldkit command wrapping `client.me()` with all failures folded to `null` — any 401, decode error, or transport failure is treated as "not signed in." Route entry runs session checks for protected routes. While the session is unresolved, protected content stays blank; once resolved to `null`, the app redirects to `/login?next=<current-path>`. The `next` redirect target is validated server-side and in-browser: only same-origin absolute paths starting with `/` (not `//` or `/\`) are accepted.
 
+When `ReceivedMe` carries a signed-in user, the app queues `HashMeGravatar`, a Foldkit command that SHA-256 hashes the user's email through `client/lib/gravatar.ts` and stores the result as `session.meGravatarHash`. The completion message includes the source email, and `update` ignores stale hash results when the current session email no longer matches. Signed-out sessions clear `meGravatarHash`.
+
 Unsigned protected content never renders.
 
 ### Foldkit state and effects (`client/app/model.ts`, `client/app/update.ts`, `client/app/subscriptions.ts`, `client/app/resources.ts`)
@@ -142,7 +144,7 @@ Vite production builds set `build.sourcemap: true` (via `clientBuildSourcemap`) 
 
 ## Testing Decisions
 
-- `client/app/shell/auth/**/*.test.ts` — auth stories and helpers.
+- `client/app/shell/auth/**/*.test.ts` — auth stories and helpers, including `ReceivedMe` → `HashMeGravatar` session storage and stale-result guarding.
 - `client/app/routes.test.ts`, `client/app/smoke.test.ts` — routing and smoke.
 - `client/app/game/*.test.ts` — game fold, stream subscription.
 - `client/lib/rpc-client.test.ts` — Effect HTTP client (stubbed fetch).

@@ -2,12 +2,13 @@ import { Effect, Match as M, Schema as S } from "effect";
 import type { Command as FoldkitCommand } from "foldkit";
 import { Command, Navigation } from "foldkit";
 import { toString as urlToString } from "foldkit/url";
+import { gravatarHash } from "../lib/gravatar";
 import type { Message as BoardMessage } from "./board/messages";
 import { syncBoardWithGame, updateBoard } from "./board/submodel";
 import { captureDeckCardFlipForNav } from "./deck-card-nav";
 import { parseDeckIdParam, playDeckAccess } from "./deck-id";
 import { applyDeltaPure, applySnapshotPure, type DeltaEnvelope, setRejectPure } from "./game/fold";
-import { type Message, NavigationCompleted, type ReceivedDelta } from "./messages";
+import { type Message, NavigationCompleted, type ReceivedDelta, ReceivedMeGravatarHash } from "./messages";
 import { emptyGameSlice, type GameSlice, type Model } from "./model";
 import type { RpcClient } from "./resources";
 import {
@@ -48,6 +49,14 @@ const LoadExternalUrl = Command.define(
   { href: S.String },
   NavigationCompleted,
 )(({ href }) => Navigation.load(href).pipe(Effect.as(NavigationCompleted())));
+
+export const HashMeGravatar = Command.define(
+  "HashMeGravatar",
+  { email: S.String },
+  ReceivedMeGravatarHash,
+)(({ email }) =>
+  Effect.promise(() => gravatarHash(email)).pipe(Effect.map((hash) => ReceivedMeGravatarHash({ email, hash }))),
+);
 
 function loginRedirectFor(model: Model): string {
   return `/login?next=${encodeURIComponent(model.currentPath)}`;
@@ -233,6 +242,10 @@ export const update = (
       PortraitGateChanged: ({ open }) => [{ ...model, portraitGate: { open } }, []],
       PortraitGateCancelled: () => [model, []],
       CompletedPortraitGateModal: () => [model, []],
+      ReceivedMeGravatarHash: ({ email, hash }) => {
+        if (model.session.me?.email !== email) return [model, []];
+        return [{ ...model, session: { ...model.session, meGravatarHash: hash } }, []];
+      },
       ModalOpened: () => [model, []],
       CardArtTick: () => [model, []],
       DeckCardFlipTick: () => [model, []],
@@ -349,12 +362,13 @@ export const update = (
         const [auth, commands] = updateAuth(model.auth, authMessage);
         const nextModel = {
           ...model,
-          session: { me: authMessage.me },
+          session: { me: authMessage.me, meGravatarHash: null },
           sessionLoaded: true,
           auth: authMessage.me == null ? auth : initialAuthSubmodel(model.auth.next),
         };
         const [routeModel, routeCommands] = routeEntry(nextModel);
-        return [routeModel, [...commands, ...routeCommands]];
+        const gravatarCommands = authMessage.me == null ? [] : [HashMeGravatar({ email: authMessage.me.email })];
+        return [routeModel, [...commands, ...routeCommands, ...gravatarCommands]];
       },
       AuthFailed: (authMessage) => {
         const [auth, commands] = updateAuth(model.auth, authMessage);
