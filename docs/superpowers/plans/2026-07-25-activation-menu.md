@@ -32,7 +32,7 @@
 | `client/app/board/submodel.ts` | Import `selectedRadialOptions` from new path |
 | `client/app/board/scene.test.ts` | Scene/outcome tests for menu testids + placement |
 | `client/app/board/html/surfaces.test.ts` | Add/extend Scene coverage if overlays suite owns surface presence |
-| `docs/superpowers/specs/2026-07-21-activation-radial.md` | Rewrite as current activation-menu surface (or replace + retarget README) |
+| `docs/superpowers/specs/2026-07-25-activation-menu.md` | Living activation-menu surface spec |
 | `docs/superpowers/specs/README.md` | Point living row at menu; mark design absorbed |
 | `docs/client-canvas-map.md` | `activation-menu.ts` in HTML chrome list |
 | `docs/superpowers/specs/2026-07-20-board-composition.md` | Update if it names the radial file |
@@ -507,7 +507,7 @@ git commit -m "refactor(client): remove unused activation wedge geometry"
 ### Task 5: Living feature spec + nav docs
 
 **Files:**
-- Rewrite: `docs/superpowers/specs/2026-07-21-activation-radial.md` → current menu behavior (same authoring template: Problem → Solution → Stories → Behavior → Implementation → Testing → Out of Scope). Prefer renaming file to `2026-07-25-activation-menu.md` **only if** you update every link in the same change; otherwise rewrite in place and retitle to “Activation Menu”.
+- Create/update: `docs/superpowers/specs/2026-07-25-activation-menu.md` — current menu behavior (authoring template: Problem → Solution → Stories → Behavior → Implementation → Testing → Out of Scope). Do not leave a specs stub at the retired radial path.
 - Modify: `docs/superpowers/specs/README.md` — living row points at menu; design row notes absorbed / superseded
 - Modify: `docs/client-canvas-map.md` — `activation-menu.ts`
 - Modify: `docs/superpowers/specs/2026-07-20-board-composition.md` if it cites the radial module
