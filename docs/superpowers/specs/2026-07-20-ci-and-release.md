@@ -61,12 +61,15 @@ branch commit range.
 ### `verify-jobs.yml` (reusable)
 
 **`verify-jobs.yml`** (reusable):
-- `verify-server-gate`: checkout + pass-marker `lookup-only` cache
-  (`verify-server-v2-*`, includes `docs/CR_INDEX.md` + `scripts/gen_cr_index.py`).
-  No Postgres service.
-- `verify-server`: runs only on cache miss; Postgres 16 + `just server-check`
-  (`engine-cr-index-check` before fmt, then clippy + migrate + nextest); writes
-  pass marker via `actions/cache/save`. Uploads nextest JUnit + test summary.
+- `verify-server`: single job (same pass-marker pattern as client). Pass marker
+  `verify-server-v2-*` hashes `crates/**`, `proto/**`, Cargo/Toasty lockfiles,
+  `toasty/**`, `.config/nextest.toml`, `justfile`, this workflow,
+  `docs/CR_INDEX.md`, and `scripts/gen_cr_index.py`. Key is computed once at
+  restore on a clean checkout; the cache post-step saves that same key (do not
+  re-`hashFiles` after checks). On miss: Postgres 16 + `just server-check`
+  (`engine-cr-index-check`, `cargo fmt --check`, clippy, migrate, nextest);
+  JUnit upload + test summary. On hit: skip toolchain/setup/checks (Postgres
+  service still starts with the job).
 - `verify-client`: Bun-only `just client-check` (tokens + mana-oracle + buf
   codegen + format + lint + typecheck + vitest). Pass marker
   `verify-client-v3-*` hashes `client/**`, `proto/**`,
