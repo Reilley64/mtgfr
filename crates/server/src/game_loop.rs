@@ -8,6 +8,8 @@ use schema::MessageRef;
 use schema::{IntentEnvelope, to_intent_for_seat};
 use serde::{Deserialize, Serialize};
 
+use tracing::Instrument;
+
 use crate::session::{ApplyResult, Disposition, DwellResult, TableSession, settle_after_apply};
 use crate::{AppState, Registry, Table, lock};
 
@@ -113,7 +115,6 @@ pub(crate) async fn submit_intent_core(
         user_id = user_id,
         accepted = tracing::field::Empty,
     );
-    let _enter = span.enter();
 
     let ack = with_seated_drive(state, user_id, table_id, |table, seat| {
         let intent = to_intent_for_seat(env.intent.clone(), PlayerId(seat));
@@ -132,6 +133,7 @@ pub(crate) async fn submit_intent_core(
             log_row,
         }
     })
+    .instrument(span.clone())
     .await;
     span.record("accepted", ack.accepted);
     ack
