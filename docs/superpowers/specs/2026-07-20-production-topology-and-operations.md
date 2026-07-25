@@ -304,19 +304,21 @@ the PR title; semantic-release analyzes that line only.
 `cancel-in-progress: true` so superseded pushes cancel. Jobs: `changes`
 (`dorny/paths-filter` for `iac/**` + `.github/workflows/ci.yml`), commitlint,
 `verify-jobs.yml`, terraform (only when `changes.outputs.iac == 'true'`),
-always-on `docker-cache-guard` (`scripts/check-docker-workflow-cache.sh`) and
-`ci-wave1-guard` (`scripts/check-ci-wave1.sh`).
+always-on `docker-cache-guard`, `ci-wave1-guard`, and `ci-wave2-guard`.
 
-**`verify-jobs.yml`** (reusable): two parallel jobs:
-- `verify-server`: `just server-check` (`engine-cr-index-check` on committed
-  sources before fmt, then clippy + migrate + nextest) — needs Rust + Postgres.
-- `verify-client`: `just client-check` (tokens + `client-mana-oracle-check` +
-  proto codegen + format + lint + typecheck + vitest) — needs Bun (+ Rust for
-  codegen).
-- Content-hash skip: each job caches a pass marker keyed by `hashFiles` of its
-  side's inputs (`verify-server-v2-*` / `verify-client-v2-*`); server hash
-  includes `docs/CR_INDEX.md` and `scripts/gen_cr_index.py`. PRs restore markers
-  from `main` (client-only PR skips the server job and vice versa).
+**`verify-jobs.yml`** (reusable):
+- `verify-server-gate`: checkout + pass-marker `lookup-only` cache
+  (`verify-server-v2-*`, includes `docs/CR_INDEX.md` + `scripts/gen_cr_index.py`).
+  No Postgres service.
+- `verify-server`: runs only on cache miss; Postgres 16 + `just server-check`
+  (`engine-cr-index-check` before fmt, then clippy + migrate + nextest); writes
+  pass marker via `actions/cache/save`. Uploads nextest JUnit + test summary.
+- `verify-client`: Bun-only `just client-check` (tokens + mana-oracle + buf
+  codegen + format + lint + typecheck + vitest). Pass marker
+  `verify-client-v3-*` hashes `client/**`, `proto/**`, `.bun-version`,
+  `justfile`, and this workflow — not `crates/**` (wire codegen does not
+  compile Rust). On miss: Vitest JUnit (`client/junit.xml`) upload + test
+  summary. No Rust toolchain on this job.
 
 **`verify-and-release.yml`** (push to main): `verify-jobs.yml` then `npx semantic-release`
 (default config, no `.releaserc`). Requires `RELEASE_TOKEN` (PAT: `contents` + `workflow`) so
