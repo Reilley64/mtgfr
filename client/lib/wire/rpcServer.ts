@@ -37,6 +37,30 @@ function fromGrpcError(err: unknown): RpcOutcome {
   return { kind: "json", status, body };
 }
 
+function badQuery(): RpcOutcome {
+  return { kind: "json", status: 400, body: { error: "BadQuery" } };
+}
+
+type Uint32Query = { ok: true; value: number } | { ok: false };
+
+/** Parse a uint32 query param; missing/empty uses `defaultValue`, invalid values reject. */
+function parseUint32Query(raw: string | null, defaultValue: number): Uint32Query {
+  if (raw === null || raw === "") return { ok: true, value: defaultValue };
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 0) return { ok: false };
+  return { ok: true, value: n };
+}
+
+type LeaderboardPaging = { ok: true; limit: number; offset: number } | { ok: false };
+
+function parseLeaderboardPaging(query: URLSearchParams): LeaderboardPaging {
+  const limit = parseUint32Query(query.get("limit"), 0);
+  if (!limit.ok) return { ok: false };
+  const offset = parseUint32Query(query.get("offset"), 0);
+  if (!offset.ok) return { ok: false };
+  return { ok: true, limit: limit.value, offset: offset.value };
+}
+
 async function dispatchAuth(method: string | undefined, body: unknown, env: RpcEnv): Promise<RpcOutcome> {
   if (!isAuthMethod(method)) return { kind: "empty", status: 404 };
   const client = grpcClientFor(env.defaultAddress, env);
@@ -96,9 +120,11 @@ async function dispatchRatings(
   try {
     return await Match.value(method).pipe(
       Match.when("leaderboard", async () => {
-        const limit = Number(query.get("limit") ?? "50");
-        const offset = Number(query.get("offset") ?? "0");
-        return jsonOk(await client.ratings.getLeaderboard({ limit, offset }, env.sessionToken));
+        const paging = parseLeaderboardPaging(query);
+        if (!paging.ok) return badQuery();
+        return jsonOk(
+          await client.ratings.getLeaderboard({ limit: paging.limit, offset: paging.offset }, env.sessionToken),
+        );
       }),
       Match.exhaustive,
     );

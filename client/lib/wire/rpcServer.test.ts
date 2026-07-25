@@ -185,6 +185,25 @@ describe("dispatchRpc", () => {
     expect(outcome).toEqual({ kind: "empty", status: 405 });
   });
 
+  it("400s ratings/leaderboard for invalid limit/offset query params", async () => {
+    for (const params of [
+      new URLSearchParams({ limit: "-1" }),
+      new URLSearchParams({ limit: "abc" }),
+      new URLSearchParams({ limit: "10.5" }),
+      new URLSearchParams({ offset: "-5" }),
+      new URLSearchParams({ limit: "10", offset: "NaN" }),
+    ]) {
+      const outcome = await dispatchRpc(["ratings", "leaderboard"], "GET", undefined, params, env);
+      expect(outcome).toEqual({ kind: "json", status: 400, body: { error: "BadQuery" } });
+    }
+    expect(calls.leaderboard).toBeUndefined();
+  });
+
+  it("defaults ratings/leaderboard limit/offset to 0 when query params are missing", async () => {
+    await dispatchRpc(["ratings", "leaderboard"], "GET", undefined, new URLSearchParams(), env);
+    expect(calls.leaderboard).toEqual({ limit: 0, offset: 0 });
+  });
+
   it("resolves the table's pod address for game calls and 404s an unresolvable table", async () => {
     const outcome = await dispatchRpc(
       ["game", "ABC123", "intent"],
