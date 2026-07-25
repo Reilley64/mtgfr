@@ -45,8 +45,8 @@ that identify visible objects remain plain string data; hidden names must not be
 The BFF (Nitro) handles cookie termination: the session cookie never
 travels beyond the BFF, and the resolved session token flows as gRPC metadata
 (`x-session-token`) to tonic. Health-check HTTP lives on `:8080` (Axum `GET /health/live`,
-`/health/ready`, `/health/drain`); all game, auth, deck, and catalog RPCs live on `:50051`
-(tonic).
+`/health/ready`, `/health/drain`); all `Auth`, `Decks`, `Ratings`, `Cards`, `Game`, and
+`Tables` RPCs live on `:50051` (tonic).
 
 **Per-viewer redaction** happens at the `schema` crate boundary, before any bytes leave the
 server process. The engine emits full-information canonical `Event`s and a full-information
@@ -107,6 +107,11 @@ resolves the token from `x-session-token` metadata.
 **`Decks`** — `Create`, `List`, `Get`, `Update`, `Delete`. All operations require auth. Decks
 are owned by the authenticated user; `DeckDetail` carries the full `(id, count, print)` card
 list with Printing UUIDs.
+
+**`Ratings`** — `GetLeaderboard`. Requires auth. `limit == 0` uses the default page size, values
+above the server max clamp to that max, and `offset` pages the global ratings table ordered by
+`rating DESC`, `rating_set_at ASC`, then `id ASC`. Each `LeaderboardEntry` carries `rank`,
+`user_id`, `username`, and `rating`; `Leaderboard.total` carries the full row count for paging.
 
 **`Cards`** — `Catalog`, `Search`, `Lookup`. No auth required. `Search` accepts a freetext
 query `q` plus `limit`/`offset`; `Lookup` accepts a list of card ids for deck hydration.

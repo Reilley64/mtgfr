@@ -261,6 +261,14 @@ mod tests {
         );
     }
 
+    #[test]
+    fn normalize_leaderboard_limit_clamps_values_above_the_maximum() {
+        assert_eq!(
+            normalize_leaderboard_limit(MAX_LEADERBOARD_LIMIT + 1),
+            MAX_LEADERBOARD_LIMIT
+        );
+    }
+
     #[tokio::test]
     async fn persist_player_lost_processes_multi_loss_batches_in_event_order() {
         let db = db::connect("sqlite::memory:").await.expect("sqlite");
