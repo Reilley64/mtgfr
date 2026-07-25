@@ -123,6 +123,58 @@ test("stack overlay renders card art for spells on the stack", () => {
   );
 });
 
+test("stack pile caption lists every declared target", () => {
+  const { objects } = spellOnStack(42, "Electrolyze", "electrolyze-print");
+  const bear: ObjectView = {
+    controller: 1,
+    has_haste: false,
+    id: 22,
+    is_commander: false,
+    kind: { kind: "creature", power: 2, toughness: 2 },
+    mana_cost: { generic: 2, colored: [0, 0, 0, 0, 0] },
+    marked_damage: 0,
+    name: "Bear",
+    needs_target: false,
+    owner: 1,
+    plus_counters: 0,
+    power: 2,
+    print: "bear-print",
+    summoning_sick: false,
+    tapped: false,
+    toughness: 2,
+    zone: ZONE.Battlefield,
+  };
+  const model: ViewModel = {
+    board: initialBoardModel(),
+    fold: gameFold(
+      gameState({
+        objects: [...objects, bear],
+        stack: [
+          {
+            controller: 0,
+            kind: "spell",
+            label: testMessageRef("Electrolyze"),
+            source: 42,
+            targets: [
+              { kind: "object", id: 22 },
+              { kind: "player", player: 1 },
+            ],
+          },
+        ],
+      }),
+    ),
+    tableId: "T1",
+  };
+  Scene.scene(
+    { update: (m) => [m, []], view: overlayView },
+    Scene.with(model),
+    resolveBoardOverlayMounts(),
+    resolveBoardCardArtMounts(),
+    Scene.expect(Scene.testId("stack-top-caption")).toContainText("Bear"),
+    Scene.expect(Scene.testId("stack-top-caption")).toContainText("Bob"),
+  );
+});
+
 test("staged ghost appears on the stack during arrow targeting", () => {
   const handCard: ObjectView = {
     controller: 0,

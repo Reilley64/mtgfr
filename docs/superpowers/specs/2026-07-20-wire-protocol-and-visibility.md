@@ -131,7 +131,7 @@ BFF can pin later `table_id` hops to this pod.
 | `active_player`, `step`, `priority` | Turn structure discriminants |
 | `players` | Per-seat `PlayerView`: life, commander tax, commander damage, `hand_count`, `library_count`, mana pool |
 | `objects` | Every `ObjectView` visible to this viewer: hand cards (own only), battlefield, stack, graveyard, exile, command zone |
-| `stack` | `StackObjectView` list, bottom-first; `MessageRef` label and optional target per entry |
+| `stack` | `StackObjectView` list, bottom-first; `MessageRef` label, optional primary `target`, and `targets` list (clause 0 then clause 1; empty when targetless) |
 | `combat` | `CombatView`: declared attackers with defenders, declared blocks, confirmed flags |
 | `pending_choice` | The `PendingChoiceView` the engine is blocked on, if any; effect/mode titles use `MessageRef` labels |
 | `actions` | `ActionView` list for this viewer's own legal actions with `MessageRef` labels (empty for spectators) |
