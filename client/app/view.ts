@@ -156,6 +156,7 @@ function routeBody(model: Model) {
           model.decks.list.loading,
           model.decks.list.knownCommanders,
           model.apiVersion,
+          "entry",
         );
       }
       case "TableRoute": {
@@ -169,6 +170,7 @@ function routeBody(model: Model) {
           model.decks.list.loading,
           model.decks.list.knownCommanders,
           model.apiVersion,
+          "table",
         );
       }
       case "NotFoundRoute":
