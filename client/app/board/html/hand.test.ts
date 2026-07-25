@@ -234,3 +234,44 @@ describe("handView playable outlines", () => {
     expect(face).toContain("outline-commander-gold");
   });
 });
+
+describe("handView hover stacking", () => {
+  it("puts hover elevate on the tile root, not the face", () => {
+    const a = object(42, { name: "Lightning Bolt" });
+    const b = object(43, { name: "Cancel" });
+    const tree = renderHand(state({ objects: [a, b], actions: [action(7, { object: 42 })] }));
+
+    const root = findTestId(tree, "hand-tile-42");
+    expect(root).not.toBeNull();
+    expect(className(root)).toContain("hover:z-50");
+    expect(className(root)).toContain("group/hand-tile");
+
+    const face = findTestId(tree, "hand-card-face-42");
+    expect(className(face)).not.toContain("group-hover/hand-tile:z-30");
+    // Face may still live under a wrapper — assert the tree no longer uses face hover z-30:
+    expect(treeHasClass(tree, "group-hover/hand-tile:z-30")).toBe(false);
+  });
+
+  it("does not elevate z for discard-selected without relying on selection z", () => {
+    const a = object(42, { name: "Lightning Bolt" });
+    const tree = handView({
+      state: state({ objects: [a], actions: [] }),
+      hiddenId: null,
+      flyingIds: new Set(),
+      hiddenIds: new Set(),
+      handDrag: null,
+      discardCostIds: new Set([42]),
+      discardSelectedIds: new Set([42]),
+    });
+    const root = findTestId(tree, "hand-tile-42");
+    expect(root).not.toBeNull();
+    // Root still has hover elevate available, but selection alone must not add a selected z class:
+    expect(className(root)).toContain("hover:z-50");
+    expect(className(root)).not.toContain("z-30");
+    expect(treeHasClass(root, "z-50")).toBe(false); // bare z-50 without hover: prefix
+    const face = findTestId(tree, "hand-card-face-42");
+    expect(className(face)).toContain("ring-llanowar");
+    // Face raise for selection must not use elevated z-30:
+    expect(treeHasClass(findTestId(tree, "hand-tile-42"), "z-30")).toBe(false);
+  });
+});
