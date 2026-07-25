@@ -144,6 +144,7 @@ export function activationMenuView(board: BoardModel, state: VisibleState): Html
           return h.button(
             [
               h.Type("button"),
+              h.AriaLabel(opt.label),
               h.DataAttribute("testid", `activation-menu-row-${radialOptionKey(opt)}`),
               h.DataAttribute("wedge", String(index)),
               h.Role("button"),

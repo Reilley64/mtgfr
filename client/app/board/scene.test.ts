@@ -1059,6 +1059,46 @@ test("selected tapped mana source keeps its disabled tap-for-mana row visible", 
   );
 });
 
+test("activation menu Enter on tap-for-mana row clears selection", () => {
+  const land = creature(5, 0, {
+    name: "Forest",
+    kind: { kind: "land", colors: [1, 0, 0, 0, 0] },
+    taps_for_mana: true,
+    power: 0,
+    toughness: 0,
+  });
+  const base = viewModel(fold(state({ objects: [land], can_act: true })));
+  const selected: ViewModel = { ...base, board: { ...base.board, selectedId: 5 } };
+  const row = Scene.testId("activation-menu-row-tap_for_mana");
+
+  overlayScene(
+    selected,
+    Scene.expect(row).toHaveAttr("aria-label", "Tap for mana"),
+    Scene.keydown(row, "Enter"),
+    Scene.expect(Scene.testId("activation-menu")).toBeAbsent(),
+  );
+});
+
+test("activation menu Space on tap-for-mana row clears selection", () => {
+  const land = creature(5, 0, {
+    name: "Forest",
+    kind: { kind: "land", colors: [1, 0, 0, 0, 0] },
+    taps_for_mana: true,
+    power: 0,
+    toughness: 0,
+  });
+  const base = viewModel(fold(state({ objects: [land], can_act: true })));
+  const selected: ViewModel = { ...base, board: { ...base.board, selectedId: 5 } };
+  const row = Scene.testId("activation-menu-row-tap_for_mana");
+
+  overlayScene(
+    selected,
+    Scene.expect(row).toHaveAttr("aria-label", "Tap for mana"),
+    Scene.keydown(row, " "),
+    Scene.expect(Scene.testId("activation-menu")).toBeAbsent(),
+  );
+});
+
 test("activation menu is placed beside the selected card screen center", () => {
   const land = creature(5, 0, {
     name: "Forest",
