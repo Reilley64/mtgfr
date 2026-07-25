@@ -75,10 +75,10 @@ Shell stays: centred felt panel, brand `edh.reilley.dev`, quiet “Lobby” titl
 
 | Card | Content | Action |
 |------|---------|--------|
-| **Host** | Existing non-interactive deck-card chrome (art crop, deck name, commander name, color pips, Precon chip) + “Host a table” + short helper (“with this deck”) | Whole card is the Host CTA → `RequestedLobbyHost` |
-| **Join** | Matching destination tile with a code motif (not deck art) + “Join a table” + helper (“enter a code”) | Whole card → `entryMode = "join"` |
+| **Host** | Deck-card chrome (art crop, deck name, commander name, color pips, Precon chip) + “Host a table” + short helper (“with this deck”) | One Host CTA (button semantics) wrapping the chrome → `RequestedLobbyHost`. The chrome is not a separate control and does not navigate to change decks. |
+| **Join** | Matching destination tile with a code motif (not deck art) + “Join a table” + helper (“enter a code”) | One Join CTA (button semantics) → `entryMode = "join"` |
 
-Cards are equal visual weight: inset felt / vine-border destination tiles (game destinations, not a primary button stacked above a text field). **Back** (ghost) below the row links to `/`.
+Cards are equal visual weight: inset felt / vine-border destination tiles (game destinations, not a primary button stacked above a text field). Keyboard/focus treat each destination as a single control. **Back** (ghost) below the row links to `/` to change decks.
 
 Destination cards render only when a deck is resolved for the route. Loading / empty / pick-a-deck amber gates stay as today’s entry gates before the twin row.
 
