@@ -80,17 +80,20 @@ describe("startError", () => {
   });
 });
 
-describe("joinLobby gravatar persistence", () => {
-  const db = createWebDb();
+// Client CI has no Postgres; run the round-trip only when WEB_DATABASE_URL is set
+// (local Cloud / migrate environments). Projection coverage above still runs in CI.
+describe.skipIf(!process.env.WEB_DATABASE_URL)("joinLobby gravatar persistence", () => {
+  let db: ReturnType<typeof createWebDb>;
   let tableId: string | undefined;
 
   afterEach(async () => {
-    if (!tableId) return;
+    if (!tableId || db == null) return;
     await db.delete(lobbies).where(eq(lobbies.tableId, tableId));
     tableId = undefined;
   });
 
   it("writes gravatarHash on insert/update and loadLobby/toLobbyView read it back", async () => {
+    db = createWebDb();
     tableId = await createLobby(db, 9001);
 
     const joined = await joinLobby(db, {
