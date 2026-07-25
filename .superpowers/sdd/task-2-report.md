@@ -45,3 +45,5 @@ feat(client): use grabbing cursor during hand drag
 - Extracted `armHandDragGrabbingCursor()` so the mount arms the global grabbing cursor only after a successful drag start and tears it down through a captured disposer.
 - Updated `MountHandBarDrag` teardown to call the session disposer before resetting it to the default no-op clear path.
 - Extended the focused helper tests to cover arming, disposer clearing, and double-dispose safety while keeping the existing `setHandDragGrabbingCursor` coverage intact.
+- Verification for this follow-up: `cd client && bunx vitest run app/board/html/hand-drag-mount.test.ts app/board/hand-drag.test.ts` → `2 files, 15 tests passed`.
+- Follow-up commit: `test(client): gate hand drag grabbing cursor arm/disarm`.
