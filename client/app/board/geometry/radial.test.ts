@@ -21,17 +21,16 @@ import {
   radialWedgeFromElement,
 } from "./radial";
 
-const activate = (over: Partial<ActionView> = {}): ActionView =>
-  ({
-    id: 1,
-    kind: "activate",
-    label: testMessageRef("Draw a card"),
-    needs_target: false,
-    object: 7,
-    section: "battlefield",
-    targets: [],
-    ...over,
-  });
+const activate = (over: Partial<ActionView> = {}): ActionView => ({
+  id: 1,
+  kind: "activate",
+  label: testMessageRef("Draw a card"),
+  needs_target: false,
+  object: 7,
+  section: "battlefield",
+  targets: [],
+  ...over,
+});
 
 describe("radialScreenCenter", () => {
   it("maps the selected card center from world to screen coordinates", () => {

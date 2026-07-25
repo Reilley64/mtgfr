@@ -311,7 +311,10 @@ mode = "source"
                 ..
             })
         ));
-        assert!(matches!(steps[2], Effect::Sacrifice(SacrificeEffect::Source)));
+        assert!(matches!(
+            steps[2],
+            Effect::Sacrifice(SacrificeEffect::Source)
+        ));
     }
 
     #[test]

@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, ObjectView } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
 import { ZONE } from "./geometry/layout";
 import { CancelActionClicked, HandActionHovered, HandDragEnded, HandDragMoved, HandDragStarted } from "./messages";
 import { BOARD_VIEWPORT, HAND_BAR_H, initialBoardModel, updateBoard } from "./submodel";
-import { testMessageRef } from "~/i18n/testMessageRef";
 
 function fold(objects: ObjectView[], actions: ActionView[]): GameFoldState {
   return {

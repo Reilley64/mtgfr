@@ -1,6 +1,6 @@
 # MessageRef on the wire (i18n-ready keys)
 
-**Status:** Approved design  
+**Status:** Done  
 **Date:** 2026-07-25  
 **Module:** `proto/mtgfr/v1/`, `crates/engine` (effect/reject message refs; delete `label.rs`), `crates/schema` (projection), `crates/server` (Ack / auto_actions), `client/lib/` (catalog + `formatMessage`), prompt/stack/reject UI call sites  
 **Related:** [wire-protocol-and-visibility](2026-07-20-wire-protocol-and-visibility.md), [prompts-and-pending-choices](2026-07-20-prompts-and-pending-choices.md), [choices-actions-and-resolution](2026-07-20-choices-actions-and-resolution.md), [stack](2026-07-20-stack.md)
@@ -49,6 +49,7 @@ Shared proto messages:
 message MessageRef {
   string key = 1;              // e.g. "reject.illegal_target", "effect.deal_damage"
   repeated MessageParam params = 2;
+  repeated MessageRef children = 3;
 }
 
 message MessageParam {
@@ -134,13 +135,14 @@ Consumers use **MessageRef only**; reserved string fields are unused.
 
 ---
 
-## Feature specs to update (implementation PR)
+## Living spec coverage
 
-Document shipped behavior (not this design note) in:
+Shipped behavior is documented in:
 
 - [wire-protocol-and-visibility](2026-07-20-wire-protocol-and-visibility.md) — `MessageRef` on Ack / labels / auto_actions
 - [prompts-and-pending-choices](2026-07-20-prompts-and-pending-choices.md) — titles from formatted refs
-- Stack / choices / actions specs if they describe `label` as English prose
+- [choices-actions-and-resolution](2026-07-20-choices-actions-and-resolution.md) — action labels and auto-action notices
+- [stack](2026-07-20-stack.md) — stack labels from formatted refs
 
 ---
 

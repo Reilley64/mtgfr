@@ -1,4 +1,5 @@
 import { expect, test } from "vitest";
+import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
 import { SubmitIntent } from "../game/intents";
@@ -7,7 +8,6 @@ import { ZONE } from "./geometry/layout";
 import { promptsView } from "./html/prompts";
 import { TargetChosen } from "./messages";
 import { type BoardModel, initialBoardModel, updateBoard } from "./submodel";
-import { testMessageRef } from "~/i18n/testMessageRef";
 
 function creature(id: number, over: Partial<ObjectView> = {}): ObjectView {
   return {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
 import { ZONE } from "../geometry/layout";
 import type { StagedAction } from "./execution";
@@ -27,7 +28,6 @@ import {
   stagingOverlay,
   targetMode,
 } from "./targeting";
-import { testMessageRef } from "~/i18n/testMessageRef";
 
 function object(over: Partial<ObjectView> = {}): ObjectView {
   return {
@@ -122,13 +122,19 @@ describe("targetMode", () => {
 
   it("a graveyard target falls back to the picker", () => {
     const corpse = object({ id: 9, zone: ZONE.Graveyard, name: "Grizzly Bear" });
-    const mode = targetMode(action({ label: testMessageRef("Reanimate"), targets: [{ kind: "object", id: 9 }] }), state([corpse]));
+    const mode = targetMode(
+      action({ label: testMessageRef("Reanimate"), targets: [{ kind: "object", id: 9 }] }),
+      state([corpse]),
+    );
     expect(mode).toEqual({ kind: "pick", targets: [{ kind: "object", id: 9 }] });
   });
 
   it("a spell on the stack uses arrow aiming (stack faces are clickable)", () => {
     const spell = object({ id: 4, zone: ZONE.Stack, name: "Shock", kind: { kind: "instant" } });
-    const mode = targetMode(action({ label: testMessageRef("Counterspell"), targets: [{ kind: "object", id: 4 }] }), state([spell]));
+    const mode = targetMode(
+      action({ label: testMessageRef("Counterspell"), targets: [{ kind: "object", id: 4 }] }),
+      state([spell]),
+    );
     expect(mode.kind).toBe("arrow");
     if (mode.kind !== "arrow") throw new Error("unreachable");
     expect([...mode.objects]).toEqual([4]);

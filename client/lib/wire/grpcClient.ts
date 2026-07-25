@@ -334,7 +334,10 @@ export function grpcClient(address: string, outboundTraceparent: string | null =
           key,
           Effect.gen(function* () {
             const game = yield* GameClient;
-            const ack = yield* game.submitIntent({ tableId, envelope: intentEnvelopeToProto(envelope) }, opts(sessionToken));
+            const ack = yield* game.submitIntent(
+              { tableId, envelope: intentEnvelopeToProto(envelope) },
+              opts(sessionToken),
+            );
             return ackFromProto(ack);
           }),
         ),

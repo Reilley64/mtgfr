@@ -360,7 +360,10 @@ test("armed stack yield state renders separately", () => {
   overlayScene(
     overlayModel(
       initialBoardModel(),
-      gameState({ stack: [{ controller: 1, kind: "spell", label: testMessageRef("Bolt"), source: 77 }], yielded: true }),
+      gameState({
+        stack: [{ controller: 1, kind: "spell", label: testMessageRef("Bolt"), source: 77 }],
+        yielded: true,
+      }),
     ),
     Scene.expect(Scene.testId("board-stack-yield-armed")).toExist(),
   );

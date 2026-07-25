@@ -1,8 +1,8 @@
-import { describe, expect, it } from "vitest";
 import * as Schema from "effect/Schema";
+import { describe, expect, it } from "vitest";
 import { fromProtoWire, intentEnvelopeToProto } from "./protoMap";
-import { MessageRef } from "./types";
 import type { ActionView, IntentEnvelope } from "./types";
+import { MessageRef } from "./types";
 
 describe("fromProtoWire", () => {
   it("coerces proto bigint action ids to browser numbers", () => {

@@ -9,6 +9,7 @@ import { html } from "foldkit/html";
 import { Scene } from "foldkit/test";
 import { beforeAll, expect, test } from "vitest";
 import { choiceDraftKey } from "~/choice";
+import { testMessageRef } from "~/i18n/testMessageRef";
 import { BindCardArt } from "~/ui/card-art";
 import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
@@ -38,7 +39,6 @@ import {
 } from "./messages";
 import { BOARD_VIEWPORT, type BoardModel, initialBoardModel, updateBoard } from "./submodel";
 import { type BoardViewModel, view as boardView } from "./view";
-import { testMessageRef } from "~/i18n/testMessageRef";
 
 const h = html<Message>();
 

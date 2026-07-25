@@ -1,6 +1,6 @@
 # Wire Protocol and Visibility
 
-**Status:** Current (as of 2026-07-23)
+**Status:** Current (as of 2026-07-25)
 **Module:** `proto/mtgfr/v1/`, `crates/schema/`, `crates/server/src/grpc/`, `client/lib/wire/`
 
 ---
@@ -27,6 +27,12 @@ Two secondary constraints shape the protocol architecture:
 message type exchanged between server and client. No JSON-in-string escape hatches exist in the
 protocol — all trees are native protobuf.
 
+Player-facing server-authored game text is carried as `MessageRef` values: a stable `key`, typed
+`params`, and optional child `MessageRef`s for composed effects. English prose lives in the client
+catalog (`client/lib/i18n/catalog/en.ts`) and is rendered with `formatMessage`. Card/object names
+that identify visible objects remain plain string data; hidden names must not be embedded in
+`MessageRef` params.
+
 **Transport layer:**
 
 | Hop | Transport |
@@ -51,7 +57,8 @@ pure.
 at the current `seq`, then a sequence of `DeltaEnvelope` frames. Each `DeltaEnvelope` carries:
 - a monotonic `seq` (resume watermark),
 - a batch of `VisibleEvent`s (for the game log and stack panel),
-- the viewer's **complete** `VisibleState` after applying those events.
+- the viewer's **complete** `VisibleState` after applying those events,
+- `auto_actions`, a list of `MessageRef` notices for forced or automatic submissions in the frame.
 
 The client folds deltas in place — replace the board from `state`, grow the log from `events`.
 No mid-stream snapshot refetch is needed. On reconnect after a `seq` gap, the client re-fetches
@@ -124,10 +131,10 @@ BFF can pin later `table_id` hops to this pod.
 | `active_player`, `step`, `priority` | Turn structure discriminants |
 | `players` | Per-seat `PlayerView`: life, commander tax, commander damage, `hand_count`, `library_count`, mana pool |
 | `objects` | Every `ObjectView` visible to this viewer: hand cards (own only), battlefield, stack, graveyard, exile, command zone |
-| `stack` | `StackObjectView` list, bottom-first; label and optional target per entry |
+| `stack` | `StackObjectView` list, bottom-first; `MessageRef` label and optional target per entry |
 | `combat` | `CombatView`: declared attackers with defenders, declared blocks, confirmed flags |
-| `pending_choice` | The `PendingChoiceView` the engine is blocked on, if any |
-| `actions` | `ActionView` list for this viewer's own legal actions (empty for spectators) |
+| `pending_choice` | The `PendingChoiceView` the engine is blocked on, if any; effect/mode titles use `MessageRef` labels |
+| `actions` | `ActionView` list for this viewer's own legal actions with `MessageRef` labels (empty for spectators) |
 | `can_act`, `yielded`, `turn_yielded` | Priority / yield state for auto-pass logic |
 | `stack_hold_remaining_ms` | Countdown until an uncontested stack auto-resolves |
 | `mulliganing` | Whether the game is still in simultaneous pre-game mulligans |
@@ -156,7 +163,9 @@ PayRecoverOrExile, PayCumulativeUpkeepOrSacrifice), combat damage assignment, li
 operations (Scry, Surveil, SelectFromTop, DistributeTop), search, sacrifice edicts, proliferate,
 phase-out choice, mode selection, copy target, mana color choice, and many card-specific variants
 (Dance, Piles, Partition, Dredge, Trade Secrets, etc.). The `ChoiceItem` embedded in most
-variants carries the item's `label` so the prompt UI does not need to join against the object list.
+variants carries the item's string `label` for visible object/seat identity so the prompt UI does
+not need to join against the object list. Effect titles, mode rows, and trigger-order rows use
+`MessageRef` labels.
 
 ### Intent wire format
 
@@ -168,6 +177,10 @@ the underlying action remains legal (lobby-table-routing-and-live-game spec).
 
 Pre-game mulligans use dedicated `KeepHand { player }` and `Mulligan { player }` intent arms. The authenticated seat stamps the actor at the schema boundary, so a client cannot keep or mulligan for another player by changing the payload.
 
+`Ack` returns `accepted` plus optional `reject_reason: MessageRef` when an intent is rejected.
+The client formats that ref for reject chrome; auth/lobby/deck gRPC status messages are outside
+this game-text contract.
+
 ### Mulligan events and stream source of truth
 
 The engine/schema event model includes `MulliganTaken { player, mulligans_taken, hand_size }`, `HandKept { player }`, and `MulligansFinished`. The current `stream.proto` `VisibleEvent` oneof does not yet define protobuf arms for these events, so the gRPC mapper **omits** them from stream deltas (it does not emit empty oneofs). Clients must treat `VisibleState.mulliganing` and each `PlayerView`'s `mulligans_taken` / `hand_kept` / `can_mulligan` fields as the source of truth for mulligan UI.
@@ -176,12 +189,10 @@ The engine/schema event model includes `MulliganTaken { player, mulligans_taken,
 
 ## Implementation Decisions
 
-- **`.proto` as sole contract** (wire-protocol-and-visibility spec): eliminates the utoipa/Orval OpenAPI layer (wire-protocol-and-visibility spec, superseded) and the OpenAPI-generated Effect client (wire-protocol-and-visibility spec, superseded). `crates/schema`
-  remains the projection model; `crates/server/src/grpc/map/` converts at the gRPC edge to/from
-  native proto. `client/lib/wire/types.ts` holds hand-maintained TypeScript mirror types that
-  the BFF maps via `protoMap.ts`.
-- **Hard cut for the REST→gRPC migration**: API + web shipped together; in-flight tables could
-  drop. After that cut, expand-only proto rules apply (wire-protocol-and-visibility spec, `WIRE_COMPAT.md`).
+- **`.proto` as sole contract** (wire-protocol-and-visibility spec): `crates/schema` remains the
+  projection model; `crates/server/src/grpc/map/` converts at the gRPC edge to/from native proto.
+  `client/lib/wire/types.ts` holds hand-maintained TypeScript mirror types that the BFF maps via
+  `protoMap.ts`.
 - **BFF cookie termination**: cookies are host-only on `edh.example.com`; they never cross the
   same-origin boundary. The token moves as gRPC metadata inside the cluster.
 - **Snapshot-then-deltas** (lobby-table-routing-and-live-game spec): a `tokio::broadcast` channel per table fans events to
@@ -191,6 +202,9 @@ The engine/schema event model includes `MulliganTaken { player, mulligans_taken,
   client never needs a side refetch. Render assembly (`schema::snapshot`) lives in the wire
   layer, not in fat engine events.
 - **Mulligan UI is snapshot-driven**: until protobuf visible-event variants are added, mulligan decision progress comes from `VisibleState` fields on snapshots and deltas, not from the event log.
+- **MessageRef is the game-text contract**: engine/schema/server projection paths emit keys and
+  typed params for rejects, stack/action labels, prompt effect labels, mode labels, and
+  `auto_actions`; the client catalog owns English copy.
 - **Spectator projection** (wire-protocol-and-visibility spec, partial): `snapshot`/`redact` takes `Option<PlayerId>`;
   `None` = spectator (all hands/libraries hidden, `viewer = SPECTATOR_VIEWER`). Eliminated
   players and signed-in non-seated users receive the spectator projection, not a 403.
@@ -207,6 +221,11 @@ The engine/schema event model includes `MulliganTaken { player, mulligans_taken,
   handlers against an in-memory SQLite test database.
 - Redaction correctness is tested in `crates/schema/` with fixture-driven round-trips
   (`schema::snapshot` + `schema::redact`).
+- MessageRef projection tests assert keys and params on `Ack.reject_reason`, stack labels,
+  actions, pending-choice labels, and `auto_actions`.
+- Catalog drift is guarded by `crates/engine` comparing `MessageKey::all()` to
+  `client/lib/i18n/rustKeys.json`, plus a client catalog coverage test that requires every
+  Rust key to exist in `enCatalog`.
 - Mulligan projection tests assert `mulliganing`, `mulligans_taken`, `hand_kept`, and `can_mulligan` are present in snapshots without exposing other players' hands.
 - `PendingChoice` variants are tested via `crates/engine/` unit tests that verify each choice
   kind is raised, answered, and produces the correct events.

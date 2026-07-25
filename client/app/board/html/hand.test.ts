@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/types";
 import { ZONE } from "../geometry/layout";
 import { handView } from "./hand";
-import { testMessageRef } from "~/i18n/testMessageRef";
 
 function cost(overrides: Partial<WireCost> = {}): WireCost {
   return {

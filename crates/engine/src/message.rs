@@ -1977,6 +1977,15 @@ mod tests {
         }
     }
 
+    fn rust_keys_fixture() -> String {
+        let keys = MessageKey::all()
+            .iter()
+            .map(|key| format!("  {:?}", key.as_str()))
+            .collect::<Vec<_>>()
+            .join(",\n");
+        format!("[\n{keys}\n]\n")
+    }
+
     #[test]
     fn message_refs_are_stable() {
         let draw = Effect::Draw(DrawEffect::Cards {
@@ -2023,6 +2032,14 @@ mod tests {
         assert_eq!(
             reject_message(Reject::IllegalTarget).key.as_str(),
             "reject.illegal_target"
+        );
+    }
+
+    #[test]
+    fn rust_keys_fixture_matches_message_key_all() {
+        assert_eq!(
+            include_str!("../../../client/lib/i18n/rustKeys.json"),
+            rust_keys_fixture()
         );
     }
 

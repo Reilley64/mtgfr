@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
 import {
   buildTakeActionIntent,
@@ -12,7 +13,6 @@ import {
   stagedCastSubmission,
   usedCostPick,
 } from "./execution";
-import { testMessageRef } from "~/i18n/testMessageRef";
 
 const mkAction = (over: Partial<ActionView> = {}): ActionView => ({
   id: 1,

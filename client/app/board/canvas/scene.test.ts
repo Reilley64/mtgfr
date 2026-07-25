@@ -1,12 +1,12 @@
 import type { Canvas } from "foldkit";
 import { describe, expect, it } from "vitest";
 import { colors } from "~/design-tokens.generated";
+import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, ObjectView, PlayerView, VisibleState } from "~/wire/types";
 import { TARGET_COLOR } from "../action/targeting";
 import { COMMANDER_GOLD, PLAYABLE_BORDER } from "../chrome";
 import { ZONE } from "../geometry/layout";
 import { sceneShapes } from "./scene";
-import { testMessageRef } from "~/i18n/testMessageRef";
 
 type Group = Canvas.Group;
 type Shape = Canvas.Shape;

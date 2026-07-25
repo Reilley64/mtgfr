@@ -13,8 +13,8 @@ import {
   nextDistributeBucket,
   type PromptDraft,
 } from "~/choice";
-import type { ObjectView, PendingChoiceView, VisibleState, WireIntent, WireModeChoice } from "~/wire/types";
 import { testMessageRef } from "~/i18n/testMessageRef";
+import type { ObjectView, PendingChoiceView, VisibleState, WireIntent, WireModeChoice } from "~/wire/types";
 
 const ALL_PENDING_CHOICE_KINDS = [
   "order_triggers",
@@ -142,7 +142,13 @@ test("choiceIntent maps scry arrange", () => {
 });
 
 test("choiceIntent maps order_triggers", () => {
-  const pc = { kind: "order_triggers" as const, count: 2, labels: [testMessageRef("A"), testMessageRef("B")], player: 0, source: 5 };
+  const pc = {
+    kind: "order_triggers" as const,
+    count: 2,
+    labels: [testMessageRef("A"), testMessageRef("B")],
+    player: 0,
+    source: 5,
+  };
   expect(choiceIntent(pc, { kind: "order", order: [1, 0] })).toEqual({
     kind: "choose_order",
     player: 0,

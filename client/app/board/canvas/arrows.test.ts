@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { colors } from "~/design-tokens.generated";
+import { testMessageRef } from "~/i18n/testMessageRef";
 import { TARGET_COLOR } from "../action/targeting";
 import type { RenderCard } from "../geometry/layout";
 import { aimArrowShapes, combatDragArrowShapes, stackTargetArrowShapes } from "./arrows";
-import { testMessageRef } from "~/i18n/testMessageRef";
 
 function card(id: number, over: Partial<RenderCard> = {}): RenderCard {
   return {
@@ -57,8 +57,20 @@ describe("stackTargetArrowShapes", () => {
     const shapes = stackTargetArrowShapes({
       viewport: { width: 1440, height: 900 },
       stack: [
-        { controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: 1, target: { kind: "object", id: 22 } },
-        { controller: 0, kind: "spell", label: testMessageRef("Shock"), source: 2, target: { kind: "player", player: 1 } },
+        {
+          controller: 0,
+          kind: "spell",
+          label: testMessageRef("Lightning Bolt"),
+          source: 1,
+          target: { kind: "object", id: 22 },
+        },
+        {
+          controller: 0,
+          kind: "spell",
+          label: testMessageRef("Shock"),
+          source: 2,
+          target: { kind: "player", player: 1 },
+        },
         { controller: 0, kind: "spell", label: testMessageRef("Divination"), source: 3, target: null },
       ],
       cards: [card(22)],
@@ -84,7 +96,9 @@ describe("stackTargetArrowShapes", () => {
   it("uses expanded strip origins when presentation is expanded", () => {
     const pile = stackTargetArrowShapes({
       viewport: { width: 1440, height: 900 },
-      stack: [{ controller: 0, kind: "spell", label: testMessageRef("Bolt"), source: 1, target: { kind: "object", id: 22 } }],
+      stack: [
+        { controller: 0, kind: "spell", label: testMessageRef("Bolt"), source: 1, target: { kind: "object", id: 22 } },
+      ],
       cards: [card(22)],
       avatars: {},
       camera: { panX: 0, panY: 0, zoom: 1 },
@@ -92,7 +106,9 @@ describe("stackTargetArrowShapes", () => {
     });
     const expanded = stackTargetArrowShapes({
       viewport: { width: 1440, height: 900 },
-      stack: [{ controller: 0, kind: "spell", label: testMessageRef("Bolt"), source: 1, target: { kind: "object", id: 22 } }],
+      stack: [
+        { controller: 0, kind: "spell", label: testMessageRef("Bolt"), source: 1, target: { kind: "object", id: 22 } },
+      ],
       cards: [card(22)],
       avatars: {},
       camera: { panX: 0, panY: 0, zoom: 1 },

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { colors } from "~/design-tokens.generated";
+import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, PlayerView } from "~/wire/types";
 import type { RenderCard } from "../geometry/layout";
 import { ZONE } from "../geometry/layout";
@@ -13,7 +14,6 @@ import {
   paintFlightLayer,
   tickFlightClock,
 } from "./mount";
-import { testMessageRef } from "~/i18n/testMessageRef";
 
 afterEach(() => {
   vi.unstubAllGlobals();

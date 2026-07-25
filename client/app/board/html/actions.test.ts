@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView } from "~/wire/types";
 import { autoTapPreviewIds, barZoneAura, paymentPreviewAction } from "./actions";
-import { testMessageRef } from "~/i18n/testMessageRef";
 
 const castAction = {
   id: 3,
