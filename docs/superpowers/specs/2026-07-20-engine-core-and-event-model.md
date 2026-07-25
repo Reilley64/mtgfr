@@ -131,8 +131,8 @@ Implemented SBAs (CR 704):
 
 ## Implementation Decisions
 
-- **Printed definitions are interned behind `CardId`.** `CardDef` is `Clone`, not `Copy`. `intern_card_def(def)` stores an `Arc<CardDef>` in a process-global table and returns a small `CardId`; `card_def(id)` clones the shared `Arc` back out. Live `Card` / `Spell` / `Permanent` objects and `Event` variants that need printed identity store the handle, not the fat definition.
-- **`Effect` is `Clone`, not `Copy`.** Abilities, stack entries, and event handlers clone effects when they need owned values. Wave A keeps observable behavior identical while removing the representation constraint that blocked later boxing of large effect arms.
+- **Printed definitions are interned behind `CardId`.** `CardDef` is `Clone`, not `Copy`. `intern_card_def(def)` stores an `Arc<CardDef>` in a process-global table and returns a small `CardId`; `card_def(id)` clones the shared `Arc` back out. Non-empty Scryfall oracle ids dedupe to one stable handle, nested back/adventure faces are interned up front, and runtime restore paths (flip, adventure, split-card stack exits) reuse those handles instead of cloning fresh defs.
+- **`Effect` is `Clone`, not `Copy`.** Abilities, stack entries, and event handlers clone effects when they need owned values. The remaining leaked `&'static` ability/effect slices are still a Wave A follow-up; the current shipped state is stable `CardId` interning plus `Effect`/`CardDef` no longer being `Copy`.
 - **`Effect` enum grows only from real card demand (card-dsl-and-card-pool spec).** New card behavior = new `Effect` variant + one `Game::run` dispatch arm + `Event::apply` arm + TOML entry. No caller bypasses `Game::run` to apply effects directly.
 - **P/T layers are engine-internal** (`PtLayer` is not a DSL or TOML surface), not stored, and rebuilt fresh on each query. Real CR 613 timestamps and dependency ordering are forward-compatible stubs.
 - **No I/O, no `async`, no wall-clock in the engine.** Beacon fetching and seed policy live in the server; the engine only receives the master seed. Time-based behavior (suspend, time counters) is event-triggered, not polled.
