@@ -24,6 +24,16 @@ need_grep() {
   fi
 }
 
+job_body() {
+  local file=$1
+  local job=$2
+  awk -v job="$job" '
+    $0 ~ "^  " job ":" {grab=1; next}
+    grab && /^  [a-zA-Z0-9_-]+:/ {exit}
+    grab {print}
+  ' "$file"
+}
+
 need_file "$verify"
 need_file "$ci"
 need_file "$vitest"
@@ -33,11 +43,32 @@ need_grep "$verify" 'verify-server-gate:' "server gate job"
 need_grep "$verify" 'lookup-only:[[:space:]]*true' "cache lookup-only"
 need_grep "$verify" 'needs:[[:space:]]*verify-server-gate' "full server needs gate"
 need_grep "$verify" "needs\.verify-server-gate\.outputs\.cache-hit[[:space:]]*!=[[:space:]]*'true'" "full server if miss"
-need_grep "$verify" 'image:[[:space:]]*postgres:16' "postgres only on full job"
 
-# Gate job must not declare services:
-if awk '/^  verify-server-gate:/,/^  [a-z]/{print}' "$verify" | grep -q '^    services:'; then
+gate_body=$(job_body "$verify" "verify-server-gate")
+server_body=$(job_body "$verify" "verify-server")
+
+if [[ -z "$gate_body" ]]; then
+  echo "verify-server-gate job body is empty" >&2
+  exit 1
+fi
+
+if [[ -z "$server_body" ]]; then
+  echo "verify-server job body is empty" >&2
+  exit 1
+fi
+
+if echo "$gate_body" | grep -q '^    services:'; then
   echo "verify-server-gate must not declare services:" >&2
+  exit 1
+fi
+
+if echo "$gate_body" | grep -qE 'postgres'; then
+  echo "verify-server-gate must not declare postgres" >&2
+  exit 1
+fi
+
+if ! echo "$server_body" | grep -qE 'image:[[:space:]]*postgres:16'; then
+  echo "verify-server must declare postgres:16 service" >&2
   exit 1
 fi
 
@@ -49,16 +80,22 @@ fi
 need_grep "$verify" 'verify-client-v3-' "client pass marker v3"
 need_grep "$verify" "hashFiles\('client/\*\*', 'proto/\*\*'" "client hashFiles proto+client"
 
-# Client job must not install Rust toolchain
-if awk '/^  verify-client:/,/^  [a-z]/{print}' "$verify" | grep -q 'dtolnay/rust-toolchain'; then
+client_body=$(job_body "$verify" "verify-client")
+if [[ -z "$client_body" ]]; then
+  echo "verify-client job body is empty" >&2
+  exit 1
+fi
+
+if echo "$client_body" | grep -q 'dtolnay/rust-toolchain'; then
   echo "verify-client must not use dtolnay/rust-toolchain" >&2
   exit 1
 fi
 
 # Vitest JUnit
 need_grep "$vitest" 'junit' "vitest junit reporter"
-need_grep "$verify" 'client-junit|junit\.xml' "client junit path in workflow"
-need_grep "$verify" 'test-summary/action@v2' "test-summary for client"
+need_grep "$verify" 'name:[[:space:]]*client-junit' "client junit artifact name"
+need_grep "$verify" 'path:[[:space:]]*client/junit\.xml' "client junit path in workflow"
+need_grep "$verify" 'Client test summary' "Client test summary step"
 
 # Node-24 action majors (checkout@v5+, cache@v5+, setup-node@v5+, upload-artifact@v5+)
 need_grep "$ci" 'actions/checkout@v[5-9]' "ci checkout major >=5"
