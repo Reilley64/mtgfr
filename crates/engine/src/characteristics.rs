@@ -1568,28 +1568,8 @@ impl Game {
     /// source itself). The static-scan sibling of [`Game::matching_anthems`]; read at every
     /// noncombat creature-damage choke (effect + fight damage). Combat damage never consults it.
     pub(crate) fn noncombat_damage_prevented_to_creature(&self, target: ObjectId) -> bool {
-        let target_controller = self.controller_of(target);
-        for source in self.battlefield() {
-            if source == target {
-                continue;
-            }
-            if self.controller_of(source) != target_controller {
-                continue;
-            }
-            let prevents = self.functional_abilities(source).iter().any(|ability| {
-                ability.timing == Timing::Static
-                    && matches!(
-                        ability.effect,
-                        Effect::Static(
-                            StaticEffect::PreventNoncombatDamageToOtherCreaturesYouControl
-                        )
-                    )
-            });
-            if prevents {
-                return true;
-            }
-        }
-        false
+        self.replacement_registry()
+            .noncombat_damage_prevented_to_creature(self, target)
     }
 
     /// Whether `target` itself carries Phantom Centaur's self-shield (CR 615: "If damage would
@@ -1599,13 +1579,7 @@ impl Game {
     /// PreventDamageToSelfRemovingCounter)` ability of its own — and applies to combat damage
     /// too (Tajic's static skips combat; Phantom Centaur's doesn't).
     pub(crate) fn phantom_shield_active(&self, target: ObjectId) -> bool {
-        self.functional_abilities(target).iter().any(|ability| {
-            ability.timing == Timing::Static
-                && matches!(
-                    ability.effect,
-                    Effect::Static(StaticEffect::PreventDamageToSelfRemovingCounter)
-                )
-        })
+        self.replacement_registry().phantom_shield_active(target)
     }
 
     /// Whether `target` carries a permanent combat-damage-prevention static shielding damage
@@ -1615,13 +1589,8 @@ impl Game {
     /// own — combat-only, unlike [`Game::phantom_shield_active`], which covers noncombat damage
     /// too and removes a counter each time.
     pub(crate) fn combat_damage_prevented_to_creature(&self, target: ObjectId) -> bool {
-        self.functional_abilities(target).iter().any(|ability| {
-            ability.timing == Timing::Static
-                && matches!(
-                    ability.effect,
-                    Effect::Static(StaticEffect::PreventCombatDamage { to_self: true, .. })
-                )
-        })
+        self.replacement_registry()
+            .combat_damage_prevented_to_creature(target)
     }
 
     /// Whether `source` carries a permanent combat-damage-prevention static shielding damage it
@@ -1630,13 +1599,8 @@ impl Game {
     /// the sibling query to [`Game::combat_damage_prevented_to_creature`], keyed on the source
     /// end of a combat-damage instance instead of the target end.
     pub(crate) fn combat_damage_prevented_by_source(&self, source: ObjectId) -> bool {
-        self.functional_abilities(source).iter().any(|ability| {
-            ability.timing == Timing::Static
-                && matches!(
-                    ability.effect,
-                    Effect::Static(StaticEffect::PreventCombatDamage { by_self: true, .. })
-                )
-        })
+        self.replacement_registry()
+            .combat_damage_prevented_by_source(source)
     }
 
     /// The "remove a +1/+1 counter" event Phantom Centaur's shield fires alongside each
@@ -1644,6 +1608,9 @@ impl Game {
     /// (the shield still applies; it just has nothing to take, CR 615's replacement effect
     /// doesn't create counters from nothing).
     pub(crate) fn phantom_shield_counter_removal(&self, target: ObjectId) -> Option<Event> {
+        if !self.replacement_registry().phantom_shield_active(target) {
+            return None;
+        }
         (self.plus_counters(target) > 0).then_some(Event::CountersPlaced {
             object: target,
             count: -1,
@@ -1959,43 +1926,8 @@ impl Game {
     /// the result — the choice they'd make — so a single order is documented rather than offered as
     /// a choice. Grow into a real ordering choice if a card ever makes another order preferable.
     pub(crate) fn counters_after_replacements(&self, object: ObjectId, base: i32) -> i32 {
-        if base <= 0 {
-            return base;
-        }
-        let controller = self.controller_of(object);
-        let mut add = 0;
-        let mut times = 1;
-        for (id, obj) in self.objects.iter().enumerate() {
-            let Object::Permanent(p) = obj else {
-                continue;
-            };
-            if p.owner != controller {
-                continue;
-            }
-            let def = card_def(p.def);
-            for ability in def.abilities.iter().cloned() {
-                let (
-                    Timing::Static,
-                    Effect::Static(StaticEffect::CounterReplacement {
-                        add: a,
-                        times: t,
-                        other,
-                    }),
-                ) = (ability.timing, ability.effect.clone())
-                else {
-                    continue;
-                };
-                // CR "another creature you control": a replacement that excludes its own
-                // source doesn't apply when the permanent receiving the counters IS that
-                // source (Benevolent Hydra doesn't double its own counters).
-                if other && id as ObjectId == object {
-                    continue;
-                }
-                add += a;
-                times *= t;
-            }
-        }
-        (base + add) * times
+        self.replacement_registry()
+            .counter_replaced_amount(self, object, base)
     }
 
     /// The total additional +1/+1 counters `entered` receives from every static "creatures you
@@ -2008,38 +1940,8 @@ impl Game {
     /// functioning until the permanent is on the battlefield (same ruling as Master Biomancer /
     /// Corpsejack Menace not affecting their own entry).
     pub(crate) fn additional_enter_counters(&self, entered: ObjectId, controller: PlayerId) -> i32 {
-        let mut total = 0;
-        for (id, obj) in self.objects.iter().enumerate() {
-            let Object::Permanent(p) = obj else {
-                continue;
-            };
-            let source = id as ObjectId;
-            // A permanent's own ETB-modifying static doesn't modify its own entry (see doc above).
-            if source == entered {
-                continue;
-            }
-            if self.controller_of(source) != controller {
-                continue;
-            }
-            let def = card_def(p.def);
-            for ability in def.abilities.iter().cloned() {
-                let (
-                    Timing::Static,
-                    Effect::Static(StaticEffect::CreaturesYouControlEnterWithCounters {
-                        filter,
-                        count,
-                    }),
-                ) = (ability.timing, ability.effect.clone())
-                else {
-                    continue;
-                };
-                if !self.permanent_matches(&filter, entered, controller, Some(source)) {
-                    continue;
-                }
-                total += self.resolve_count(count, controller, source, None, 0) as i32;
-            }
-        }
-        total
+        self.replacement_registry()
+            .additional_enter_counters(self, entered, controller)
     }
 
     /// The number of tokens actually created when an effect would create `base` tokens under
@@ -2047,28 +1949,8 @@ impl Game {
     /// Doubling Season, "twice that many of those tokens"). Each [`Effect::Static(StaticEffect::TokenReplacement)`]
     /// that `recipient` controls multiplies the count once; the multipliers fold together.
     pub(crate) fn token_count_after_replacements(&self, recipient: PlayerId, base: u32) -> u32 {
-        if base == 0 {
-            return 0;
-        }
-        let mut product: u32 = 1;
-        for obj in &self.objects {
-            let Object::Permanent(p) = obj else {
-                continue;
-            };
-            if p.owner != recipient {
-                continue;
-            }
-            let def = card_def(p.def);
-            for ability in def.abilities.iter().cloned() {
-                let (Timing::Static, Effect::Static(StaticEffect::TokenReplacement { times })) =
-                    (ability.timing, ability.effect.clone())
-                else {
-                    continue;
-                };
-                product *= times.max(0) as u32;
-            }
-        }
-        base * product
+        self.replacement_registry()
+            .token_replaced_amount(recipient, base)
     }
 
     /// The life actually gained when `recipient` would gain `base` life, after that player's static
@@ -2076,28 +1958,8 @@ impl Game {
     /// Each [`Effect::Static(StaticEffect::LifeGainReplacement)`] that `recipient` controls adds its `plus`; the addends
     /// fold together. Gaining `base <= 0` is not "gaining life", so no replacement applies.
     pub(crate) fn life_gain_after_replacements(&self, recipient: PlayerId, base: i32) -> i32 {
-        if base <= 0 {
-            return base;
-        }
-        let mut total = 0;
-        for (id, obj) in self.objects.iter().enumerate() {
-            let Object::Permanent(p) = obj else {
-                continue;
-            };
-            if self.controller_of(id as ObjectId) != recipient {
-                continue;
-            }
-            let def = card_def(p.def);
-            for ability in def.abilities.iter().cloned() {
-                let (Timing::Static, Effect::Static(StaticEffect::LifeGainReplacement { plus })) =
-                    (ability.timing, ability.effect.clone())
-                else {
-                    continue;
-                };
-                total += plus;
-            }
-        }
-        base + total
+        self.replacement_registry()
+            .life_gain_replaced_amount(recipient, base)
     }
 
     /// The value of `{X}` a permanent spell actually enters/resolves with when `caster` casts it

@@ -451,10 +451,8 @@ impl Game {
         // `CreaturesYouControlEnterWithCounters` ability on another permanent that matches
         // the just-entered permanent (a static never modifies its own permanent's entry —
         // see `Game::additional_enter_counters`'s doc), sum, and place through the same
-        // doubler/Hardened-Scales replacement pipeline as any other counter placement.
-        // ponytail: only wired at this cast-resolution choke — a reanimated or blinked-in
-        // nontoken creature doesn't pick up the bonus (no pool card observes that path;
-        // extend to `ReanimateToBattlefield`'s own PermanentEntered if one needs it).
+        // doubler/Hardened-Scales replacement pipeline as any other counter placement. Non-spell
+        // battlefield-entry events reuse the same reads through `push_apply_effect_event`.
         let bonus = self.additional_enter_counters(entered, spell.controller);
         let n = self.counters_after_replacements(entered, bonus);
         if n > 0 {
@@ -519,11 +517,9 @@ impl Game {
     /// (CR 702.63a), placed as `perm` enters the battlefield. A `None` kind (+1/+1) is grown by any
     /// counter-replacement static (Hardened Scales, a doubler) reading `controller`; a named `kind`
     /// instead places the raw amount — no replacement static touches a named kind. Shared by
-    /// [`Self::resolve_permanent_enter`]'s cast-resolution choke and [`Self::play_land`], the land
-    /// special action's own ETB site with no spell/target context (`target = None`, `x = 0`).
-    /// ponytail: those two are the only entry sites — a permanent reanimated, blinked, or searched
-    /// straight onto the battlefield still enters with no counters. Wire the remaining
-    /// `*ToBattlefield` events through here when a pool card needs it.
+    /// [`Self::resolve_permanent_enter`]'s cast-resolution choke, [`Self::play_land`]'s land-entry
+    /// site, and the non-spell battlefield-entry helper threaded through
+    /// `push_apply_effect_event` / `apply_effect_events_with_replacements`.
     pub(crate) fn push_enters_with_counters(
         &mut self,
         def: &CardDef,
@@ -533,7 +529,7 @@ impl Game {
         x: u32,
         events: &mut Vec<Event>,
     ) {
-        let Some((amount, kind)) = enters_with_counters(&def) else {
+        let Some((amount, kind)) = enters_with_counters(def) else {
             return;
         };
         let counters = self.resolve_count(amount, controller, perm, target, x);
@@ -1129,8 +1125,7 @@ impl Game {
             }
             _ => {
                 let evs = self.execute_effect(effect, controller, source, target, x);
-                self.apply_all(&evs);
-                events.extend(evs);
+                self.apply_effect_events_with_replacements(evs, events);
             }
         }
     }

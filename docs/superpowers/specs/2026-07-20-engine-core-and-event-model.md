@@ -114,6 +114,14 @@ Implemented SBAs (CR 704):
 - **Keywords** start from the object's printed keywords/conditional keywords (unless a lose-all-abilities effect removed them), then union keyword-grant `ContinuousEffect`s from attachments, runtime grants, and anthems. Backup / granted printed abilities, chosen-color protection grants, and temp "can't have" strips still apply in the existing follow-up reads around that pipeline.
 - Results are memoized in `CharacteristicsCache` and invalidated on relevant events (counter changes, pump effects, anthem attachment/detachment). Cache cells are per-object.
 
+### Replacement effects (depth 2)
+
+- `replacements.rs` builds a live replacement registry from runtime combat shields plus battlefield static abilities that modify damage, counters, token creation, life gain, or ETB counters.
+- Combat-damage chokes consult that registry for player shields (Inkshield), table-wide combat prevention (Moment's Peace), permanent combat-prevention statics (Guard Gomazoa / Fog Bank), Phantom Centaur's self-shield, and Tajic's noncombat "other creatures" shield.
+- Counter placements, token creation, and life gain route through the same registry, so controller-owned doublers/adders (Hardened Scales, Benevolent Hydra, Doubling Season, Pest Rescuer, Ozolith, the Shattered Spire) are read through one path instead of per-call-site scans.
+- Non-spell battlefield-entry events (`ReanimatedToBattlefield`, `FlickeredToBattlefield`, `ReturnedFromLinkedExile`, `SearchedToBattlefield`, `PutOntoBattlefieldFromHand`) immediately apply their printed `enters_with_counters` / vanishing counters and any live "creatures you control enter with additional counters" statics through that same registry, matching the cast/land entry path.
+- Spell-only pausing as-enters choices such as devour and `enter_as_copy` still run in the spell-resolution path rather than the generic registry. The engine does not yet implement full CR 614/616 ordering across arbitrary overlapping replacements.
+
 ### Elimination
 
 - Any player whose life total drops to 0 or below, or who must draw from an empty library, or who concedes, emits `PlayerLost`.
@@ -141,6 +149,7 @@ Implemented SBAs (CR 704):
 - **Recurring trigger watches are table-driven.** `triggers.rs` models the common enqueue shapes (self source, one player's battlefield, one player's graveyard, every battlefield permanent, every battlefield permanent except one player) as `TriggerWatch` rows plus a small event-context carrier. `enqueue_triggers` dispatches ETB/turned-face-up/attack, step-begin, life-change, and batch token/exile families through that table, while death look-back, cast filters, and combat-damage watches stay bespoke because they need extra per-event or per-watcher state.
 - **Resolving instants and sorceries share one finish-policy scratch slot.** Self-move riders like Spell Crumple, Rousing Refrain, and Vengeful Rebirth set `Game::resolution_finish: Option<FinishPolicy>` during their own resolution; `finish_instant_sorcery_resolution` consumes that slot immediately after the spell's effect body finishes.
 - **P/T layers are engine-internal** (`PtLayer` is not a DSL or TOML surface), not stored, and rebuilt fresh on each query. Real CR 613 timestamps and dependency ordering are forward-compatible stubs.
+- **Replacement reads are registry-backed.** `replacements.rs` materializes live damage/counter/token/life/ETB-counter replacement entries from runtime shields and functional static abilities; existing helper reads (`counters_after_replacements`, prevention predicates, life/token doublers, extra ETB counters) delegate to that registry instead of open-coding fresh battlefield scans.
 - **No I/O, no `async`, no wall-clock in the engine.** Beacon fetching and seed policy live in the server; the engine only receives the master seed. Time-based behavior (suspend, time counters) is event-triggered, not polled.
 - **Game state is `Clone`.** `Game` derives `Clone` so the server can snapshot for spectator projection or the engine can be forked for look-ahead without additional complexity. Those clones share immutable printed definitions through the intern table while keeping mutable board state independent.
 - **`ObjectId` is a `u32` arena index.** Out-of-range ids are rejected at the `submit` gate before any handler sees them, preventing untrusted input from causing panics.
@@ -158,6 +167,7 @@ Implemented SBAs (CR 704):
 - **Keyword-obligation tests** should assert the unified `pending_obligations` queue still drains Echo before Recover before Cumulative upkeep.
 - **Elimination tests** should assert `Game::winner()` changes correctly and that the loser's objects are gone.
 - **Characteristics tests** should construct an attacker, attach an anthem, and assert `Game::power` returns the boosted value.
+- **Replacement tests** should cover at least one prevention/static case and one non-spell battlefield-entry counter case, so the shared registry is exercised from both damage and ETB chokes.
 - Prior art: `tests/game.rs` in the `engine` crate holds the canonical multi-player integration scenarios.
 
 ---
@@ -165,7 +175,7 @@ Implemented SBAs (CR 704):
 ## Out of Scope
 
 - **Full CR 613 completion.** The engine now has a real continuous-effect registry plus pool-relevant timestamp handling for stacked base-P/T sets, but it still does not model the full rules space: general dependency ordering, full card-type replacement/removal ordering, and every exotic same-layer timestamp conflict remain fidelity-driven follow-up work in `docs/fidelity/<slug>-increments.md`.
-- **Replacement effects** (general: doubling effects, damage prevention beyond the implemented per-player/table-wide combat shields, enter-as-copy). Partial implementations exist; the full CR 614 replacement-effect engine is a backlog item.
+- **Full CR 614 / 616 completeness.** The engine now has a live replacement registry covering prevention shields, counter/token/life doublers, and non-spell ETB counter propagation, but it still does not model arbitrary replacement ordering/choice, every as-enters modifier, or every damage-prevention observability case. Remaining gaps stay fidelity-driven.
 - **Durable game persistence.** Games are in-memory only; lost on server restart (lobby-table-routing-and-live-game spec).
 - **Intent replay.** The old `SavedGame`/`SavedIntent` replay path was deleted in lobby-table-routing-and-live-game spec; the event log is audit-only.
 - **Spectator projection from library / hand contents.** Hand and library contents are already filtered at the schema/wire layer, not in the engine.
