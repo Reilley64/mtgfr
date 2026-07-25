@@ -12,7 +12,7 @@ import { choiceDraftKey } from "~/choice";
 import { testMessageRef } from "~/i18n/testMessageRef";
 import { BindCardArt } from "~/ui/card-art";
 import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
-import type { GameFoldState } from "../game/fold";
+import type { GameFoldState, LogLine } from "../game/fold";
 import { SetStackDwell, SubmitIntent } from "../game/intents";
 import { emptyCostPicks } from "./action/execution";
 import { worldToScreen } from "./geometry/camera";
@@ -21,6 +21,7 @@ import { avatarPos, layout, STEP, ZONE } from "./geometry/layout";
 import { ACTIVATION_MENU_WIDTH_PX, activationMenuEstimatedHeight, activationMenuPlacement } from "./geometry/radial";
 import { boardOverlays } from "./html/overlays";
 import { resolveBoardCardArtMounts, resolveBoardOverlayMounts, resolveLiveBoardMounts } from "./html/scene-helpers";
+import { CopyBoardLog } from "./log-commands";
 import {
   BoardPointerUp,
   DiscardChosen,
@@ -29,6 +30,7 @@ import {
   HandActionActivated,
   KeyboardEnterPressed,
   KeyboardSpacePressed,
+  LogCopyRequested,
   type Message,
   PendingChoiceAnswered,
   PileCardClicked,
@@ -112,6 +114,13 @@ function fold(state: VisibleState | null): GameFoldState {
     },
     tableFeel: { land: false, stack: false, resolve: false, damage: false },
   };
+}
+
+function logLines(count: number): LogLine[] {
+  return Array.from({ length: count }, (_, i) => {
+    const seq = i + 1;
+    return { seq, text: `entry-${String(seq).padStart(3, "0")}` };
+  });
 }
 
 function viewModel(fold: GameFoldState): ViewModel {
@@ -2126,9 +2135,66 @@ test("log panel shows last lines with AUTO chip", () => {
   );
 });
 
+test("log panel collapsed shows only the last 30 lines", () => {
+  const model = viewModel({ ...fold(state()), log: logLines(31) });
+  overlayScene(
+    model,
+    Scene.expect(Scene.testId("board-log")).toExist(),
+    Scene.expect(Scene.testId("board-log")).not.toContainText("entry-001"),
+    Scene.expect(Scene.testId("board-log")).toContainText("entry-031"),
+  );
+});
+
+test("log panel expands to show older fold-buffer lines", () => {
+  const model = viewModel({ ...fold(state()), log: logLines(31) });
+  overlayScene(
+    model,
+    Scene.expect(Scene.testId("board-log")).not.toContainText("entry-001"),
+    Scene.click(Scene.testId("board-log-expand")),
+    Scene.expect(Scene.testId("board-log")).toContainText("entry-001"),
+  );
+});
+
+test("log panel exposes a copy action", () => {
+  const model = viewModel({ ...fold(state()), log: logLines(2) });
+  overlayScene(
+    model,
+    Scene.expect(Scene.testId("board-log-toolbar")).toExist(),
+    Scene.expect(Scene.testId("board-log-copy")).toExist(),
+  );
+});
+
+test("log panel shows copy feedback states", () => {
+  const copied = viewModel({ ...fold(state()), log: logLines(2) });
+  overlayScene(
+    { ...copied, board: { ...copied.board, logCopied: true } },
+    Scene.expect(Scene.testId("board-log-copy")).toHaveText("Copied"),
+  );
+
+  const failed = viewModel({ ...fold(state()), log: logLines(2) });
+  overlayScene(
+    { ...failed, board: { ...failed.board, logCopyFailed: true } },
+    Scene.expect(Scene.testId("board-log-copy")).toHaveText("Copy failed"),
+  );
+});
+
+test("LogCopyRequested emits CopyBoardLog with the full fold buffer", () => {
+  const gameFold = { ...fold(state()), log: logLines(31) };
+  const [next, commands] = updateBoard({ ...initialBoardModel(), logCopied: true }, LogCopyRequested(), gameFold, "T1");
+  expect(next.logCopied).toBe(false);
+  expect(commands).toHaveLength(1);
+  expect(commands[0]?.name).toBe(CopyBoardLog.name);
+  expect(commands[0]?.args).toEqual({ text: gameFold.log.map((line) => line.text).join("\n") });
+});
+
 test("log panel hidden when log is empty", () => {
   const model = viewModel(fold(state()));
-  overlayScene(model, Scene.expect(Scene.testId("board-log")).toBeAbsent());
+  overlayScene(
+    model,
+    Scene.expect(Scene.testId("board-log")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-log-toolbar")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-log-copy")).toBeAbsent(),
+  );
 });
 
 test("board hosts keyboard and audio mounts on separate elements", () => {

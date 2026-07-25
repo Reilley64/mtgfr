@@ -102,6 +102,7 @@ import {
 import { selectedRadialOptions } from "./html/activation-menu";
 import { persistHintDismissed, readHintDismissed } from "./html/discoverability";
 import { HAND_BAR_H, HAND_INSPECT_STICKY_BAND, HAND_PLAY_SLACK_PX } from "./html/hand";
+import { CopyBoardLog } from "./log-commands";
 import { GyExileChosen, type Message } from "./messages";
 import {
   type CardFlight,
@@ -182,6 +183,12 @@ export type BoardModel = {
   stackExpand: boolean;
   /** Peak hold-ms seen this countdown — bar denominator for `stack_hold_remaining_ms`. */
   stackHoldPeak: number;
+  /** Board log panel shows the full fold buffer instead of the last 30 lines. */
+  logExpanded: boolean;
+  /** Last board log copy succeeded; reset by expand/collapse or a new copy attempt. */
+  logCopied: boolean;
+  /** Last board log copy failed; paired with `logCopied` for toolbar feedback. */
+  logCopyFailed: boolean;
   // Concede.
   confirmConcede: boolean;
   // Game result.
@@ -253,6 +260,9 @@ export function initialBoardModel(): BoardModel {
     pileExpand: null,
     stackExpand: false,
     stackHoldPeak: 0,
+    logExpanded: false,
+    logCopied: false,
+    logCopyFailed: false,
     confirmConcede: false,
     resultSeen: false,
     hintDismissed: readHintDismissed(),
@@ -1078,6 +1088,10 @@ function boardIntentSubmit(tableId: string | null, intent: WireIntent): BoardCmd
   // folds those results into `game.board.reject`, so the board's own case handlers don't need to
   // observe them directly.
   return submitCmd(tableId, intent);
+}
+
+function boardLogText(fold: GameFoldState): string {
+  return fold.log.map((line) => line.text).join("\n");
 }
 
 function takeAction(
@@ -2381,6 +2395,15 @@ export function updateBoard(
       return [{ ...model, stackExpand: true }, []];
     case "StackCollapseClicked":
       return [{ ...model, stackExpand: false }, []];
+    case "LogExpandToggled":
+      return [{ ...model, logExpanded: !model.logExpanded, logCopied: false, logCopyFailed: false }, []];
+    case "LogCopyRequested": {
+      const text = boardLogText(fold);
+      if (text === "") return [{ ...model, logCopied: false, logCopyFailed: false }, []];
+      return [{ ...model, logCopied: false, logCopyFailed: false }, [CopyBoardLog({ text }) as unknown as BoardCmd]];
+    }
+    case "LogCopyCompleted":
+      return [{ ...model, logCopied: message.ok, logCopyFailed: !message.ok }, []];
     case "RadialWedgeArmed":
       return [{ ...model, radialPress: radialPressDown(model.radialPress, message.index) }, []];
     case "RadialWedgeHovered":

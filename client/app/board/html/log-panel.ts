@@ -1,8 +1,10 @@
-// Game log panel: last 30 fold lines in a Hud surface above the hand bar (left column).
+// Game log panel: recent or expanded fold lines in a Hud surface above the hand bar (left column).
 
 import { type Html, html } from "foldkit/html";
+import { buttonClass } from "~/ui/buttonClass";
 import type { LogLine } from "../../game/fold";
-import type { Message } from "../messages";
+import { LogCopyRequested, LogExpandToggled, type Message } from "../messages";
+import type { BoardModel } from "../submodel";
 import { HAND_BAR_H } from "./hand";
 
 const h = html<Message>();
@@ -30,10 +32,14 @@ function lineView(line: LogLine): Html {
   return h.div([h.Class("text-caption text-mist")], [line.text]);
 }
 
-export function logPanelView(log: ReadonlyArray<LogLine>): Html | null {
+export function logPanelView(board: BoardModel, log: ReadonlyArray<LogLine>): Html | null {
   if (log.length === 0) return null;
 
-  const lines = log.slice(-LOG_VISIBLE);
+  const lines = board.logExpanded ? log : log.slice(-LOG_VISIBLE);
+  const logClass = board.logExpanded
+    ? "pointer-events-auto max-h-[min(40vh,420px)] w-[min(300px,46vw)] overflow-y-auto rounded-hud bg-forest-hud p-md text-label leading-normal shadow-hud"
+    : "pointer-events-auto max-h-[150px] w-[min(300px,46vw)] overflow-y-auto rounded-hud bg-forest-hud p-md text-label leading-normal shadow-hud";
+  const copyLabel = board.logCopied ? "Copied" : board.logCopyFailed ? "Copy failed" : "Copy";
 
   return h.div(
     [
@@ -43,13 +49,34 @@ export function logPanelView(log: ReadonlyArray<LogLine>): Html | null {
     [
       h.div(
         [
-          h.DataAttribute("testid", "board-log"),
-          h.Role("log"),
-          h.Attribute("aria-live", "polite"),
-          h.Class(
-            "max-h-[150px] w-[min(300px,46vw)] overflow-y-auto rounded-hud bg-forest-hud p-md text-label leading-normal shadow-hud",
+          h.DataAttribute("testid", "board-log-toolbar"),
+          h.Class("pointer-events-auto flex w-[min(300px,46vw)] items-center justify-between gap-xs"),
+        ],
+        [
+          h.button(
+            [
+              h.Type("button"),
+              h.DataAttribute("testid", "board-log-expand"),
+              h.OnClick(LogExpandToggled()),
+              h.Class(buttonClass("ghost", "px-2 py-1 text-chip")),
+              h.Attribute("aria-expanded", board.logExpanded ? "true" : "false"),
+            ],
+            [board.logExpanded ? "Collapse" : "Expand"],
+          ),
+          h.button(
+            [
+              h.Type("button"),
+              h.DataAttribute("testid", "board-log-copy"),
+              h.OnClick(LogCopyRequested()),
+              h.Class(buttonClass("ghost", "px-2 py-1 text-chip")),
+              h.Attribute("aria-label", "Copy game log"),
+            ],
+            [copyLabel],
           ),
         ],
+      ),
+      h.div(
+        [h.DataAttribute("testid", "board-log"), h.Role("log"), h.Attribute("aria-live", "polite"), h.Class(logClass)],
         lines.map(lineView),
       ),
     ],
