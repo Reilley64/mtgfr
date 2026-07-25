@@ -37,6 +37,7 @@ A single Foldkit event-reactor owns routing: `client/app/routes.ts` maps paths t
 |---|---|---|
 | `/` | Decks list | auth submodel |
 | `/login` | Auth | — |
+| `/leaderboard` | Leaderboard | auth submodel |
 | `/decks/new` | Deck builder | auth submodel |
 | `/decks/:id` | Deck builder (edit) | auth submodel |
 | `/play/:deckId` | Lobby / board wrapper for a required deck id | auth submodel |
@@ -48,7 +49,7 @@ A single Foldkit event-reactor owns routing: `client/app/routes.ts` maps paths t
 Required identifiers live in path params ([wire-protocol-and-visibility](2026-07-20-wire-protocol-and-visibility.md) routing rule). Query params are optional: `?next=` is the post-login redirect target.
 Legacy `/play`, `/play/:table`, and `?deck=` entry points are Not found (hard cut).
 
-Lobby Host/Join and seated chrome for `/play/:deckId` and `/play/:deckId/:table` are specified in [lobby-entry-ui](2026-07-20-lobby-entry-ui.md). Deck list (`/`) and builder (`/decks/…`) are specified in [deck-list-and-builder](2026-07-20-deck-list-and-builder.md).
+Lobby Host/Join and seated chrome for `/play/:deckId` and `/play/:deckId/:table` are specified in [lobby-entry-ui](2026-07-20-lobby-entry-ui.md). Deck list (`/`) and builder (`/decks/…`) are specified in [deck-list-and-builder](2026-07-20-deck-list-and-builder.md). The leaderboard route (`/leaderboard`) renders a ranked list from `client.ratings.leaderboard`, showing rank, username, and rating for authenticated players.
 
 ### Portrait gate (`client/app/view.ts`, `client/app/subscriptions.ts`, DESIGN.md Landscape Rule)
 
@@ -62,9 +63,9 @@ Unsigned protected content never renders.
 
 ### Foldkit state and effects (`client/app/model.ts`, `client/app/update.ts`, `client/app/subscriptions.ts`, `client/app/resources.ts`)
 
-The app model is the single UI state tree. `update(model, message)` is the only state transition point and returns `[Model, Command[]]`. Shell submodels own auth, deck list, deck builder, and lobby state; the board owns board interaction state while game deltas fold into `client/app/game/fold.ts`.
+The app model is the single UI state tree. `update(model, message)` is the only state transition point and returns `[Model, Command[]]`. Shell submodels own auth, deck list, deck builder, leaderboard, and lobby state; the board owns board interaction state while game deltas fold into `client/app/game/fold.ts`.
 
-Async work is expressed as Foldkit **Commands** backed by Effect programs. Commands depend on the `RpcClient` resource from `client/app/resources.ts`, so wire access is explicit at the runtime boundary. Session checks, auth submit, deck loading, catalog search, deck save/delete, lobby host/join, and table navigation all flow through commands.
+Async work is expressed as Foldkit **Commands** backed by Effect programs. Commands depend on the `RpcClient` resource from `client/app/resources.ts`, so wire access is explicit at the runtime boundary. Session checks, auth submit, deck loading, catalog search, deck save/delete, leaderboard loading, lobby host/join, and table navigation all flow through commands.
 
 Long-lived listeners are Foldkit **Subscriptions**. App subscriptions cover portrait orientation, lobby polling, and game stream frames. Dependency functions decide when each stream is active; returning `Stream.empty` stops work when the route or table changes. Components do not own long-lived fibers.
 

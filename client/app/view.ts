@@ -5,10 +5,11 @@ import { view as boardView } from "./board/view";
 import { parseDeckIdParam, playDeckAccess } from "./deck-id";
 import { CompletedPortraitGateModal, type Message, PortraitGateCancelled, RequestedLogout } from "./messages";
 import type { Model } from "./model";
-import { HomeRoute, isProtectedRoute, NewDeckRoute, routePath } from "./routes";
+import { HomeRoute, isProtectedRoute, LeaderboardRoute, NewDeckRoute, routePath } from "./routes";
 import { view as authView } from "./shell/auth/view";
 import { view as deckBuilderView } from "./shell/decks/builder/view";
 import { view as deckListView } from "./shell/decks/list/view";
+import { view as leaderboardView } from "./shell/leaderboard/view";
 import { view as lobbyView } from "./shell/lobby/view";
 
 const h = html<Message>();
@@ -52,6 +53,7 @@ function nav(model: Model) {
         [h.Class("flex items-center gap-md text-label text-lichen")],
         [
           h.a([h.Href(routePath(HomeRoute())), h.Class("underline")], ["Play"]),
+          h.a([h.Href(routePath(LeaderboardRoute())), h.Class("underline")], ["Leaderboard"]),
           h.a([h.Href(routePath(NewDeckRoute())), h.Class("underline")], ["New deck"]),
           user == null
             ? h.a([h.Href("/login"), h.Class("underline")], ["Sign in"])
@@ -141,6 +143,8 @@ function routeBody(model: Model) {
         return deckListView(model.decks.list, model.session.me?.username ?? "", model.apiVersion);
       case "LoginRoute":
         return authView(model.auth, model.apiVersion);
+      case "LeaderboardRoute":
+        return leaderboardView(model.leaderboard, model.session.me?.username ?? "", model.apiVersion);
       case "NewDeckRoute":
         return deckBuilderView(model.decks.builder, model.apiVersion);
       case "DeckRoute":

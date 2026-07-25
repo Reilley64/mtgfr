@@ -2,8 +2,18 @@ import { Effect, Option } from "effect";
 import { Story } from "foldkit";
 import { expect, test } from "vitest";
 import { init } from "./init";
-import { NavigationCompleted, ReceivedMe } from "./messages";
-import { DeckRoute, HomeRoute, PlayRoute, pathWithSearch, routeFromUrl, routePath, TableRoute } from "./routes";
+import { NavigationCompleted, ReceivedLeaderboardPage, ReceivedMe } from "./messages";
+import {
+  DeckRoute,
+  HomeRoute,
+  LeaderboardRoute,
+  PlayRoute,
+  pathWithSearch,
+  routeFromUrl,
+  routePath,
+  TableRoute,
+} from "./routes";
+import { FetchLeaderboard } from "./shell/leaderboard/update";
 import { update } from "./update";
 
 /** Foldkit `Url.search` is without a leading `?` (e.g. `deck=-1`). */
@@ -16,8 +26,11 @@ const url = (pathname: string, search = "") => ({
   hash: Option.none<string>(),
 });
 
+const me = { id: 1, email: "alice@example.com", username: "alice" };
+
 test("parses the Foldkit shell routes", () => {
   expect(routeFromUrl(url("/"))).toEqual(HomeRoute());
+  expect(routeFromUrl(url("/leaderboard"))).toEqual(LeaderboardRoute());
   expect(routeFromUrl(url("/decks/abc"))).toEqual(DeckRoute({ id: "abc" }));
 });
 
@@ -32,6 +45,7 @@ test("bare /play is not found", () => {
 
 test("builds typed route paths", () => {
   expect(routePath(DeckRoute({ id: "abc" }))).toBe("/decks/abc");
+  expect(routePath(LeaderboardRoute())).toBe("/leaderboard");
   expect(routePath(PlayRoute({ deckId: "7" }))).toBe("/play/7");
   expect(routePath(TableRoute({ deckId: "7", table: "ABC123" }))).toBe("/play/7/ABC123");
 });
@@ -57,10 +71,31 @@ test("non-integer play deckId becomes NotFound after normalize", () => {
 test("PlayRoute /play/-1 sets lobby.selectedDeckId to -1", () => {
   const [base] = init(url("/play/-1"));
 
-  const [model] = update(base, ReceivedMe({ me: { id: 1, email: "alice@example.com", username: "alice" } }));
+  const [model] = update(base, ReceivedMe({ me }));
 
   expect(model.route).toEqual(PlayRoute({ deckId: "-1" }));
   expect(model.lobby.selectedDeckId).toBe(-1);
+});
+
+test("LeaderboardRoute loads the first page on protected route entry", () => {
+  const [model] = init(url("/leaderboard"));
+  const load = FetchLeaderboard({ limit: 50, offset: 0 });
+  const page = ReceivedLeaderboardPage({
+    leaderboard: { entries: [{ rank: 1, rating: 1200, user_id: 1, username: "alice" }], total: 1 },
+    offset: 0,
+  });
+
+  Story.story(
+    update,
+    Story.with(model),
+    Story.message(ReceivedMe({ me })),
+    Story.Command.expectExact(load),
+    Story.Command.resolve(load, page),
+    Story.model((m) => {
+      expect(m.leaderboard.status).toBe("ready");
+      expect(m.leaderboard.entries).toEqual([{ rank: 1, rating: 1200, user_id: 1, username: "alice" }]);
+    }),
+  );
 });
 
 test("redirects unsigned protected play routes with path deck", () => {

@@ -6,6 +6,7 @@ import { nextFromUrl, normalizeAppRoute, pathWithSearch, routeFromUrl } from "./
 import { initialAuthSubmodel } from "./shell/auth/submodel";
 import { FetchMe } from "./shell/auth/update";
 import { initialDecksSubmodel } from "./shell/decks/submodel";
+import { initialLeaderboardSubmodel } from "./shell/leaderboard/submodel";
 import { initialLobbySlice } from "./shell/lobby/submodel";
 import { isPortraitPhone } from "./subscriptions";
 
@@ -34,6 +35,7 @@ export const init = (
       apiVersion: null,
       auth: initialAuthSubmodel(next),
       decks: initialDecksSubmodel(),
+      leaderboard: initialLeaderboardSubmodel(),
       lobby: initialLobbySlice(),
       game: null,
       portraitGate: { open: isPortraitPhone() },

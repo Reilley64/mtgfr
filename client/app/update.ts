@@ -27,6 +27,8 @@ import type { Message as BuilderMessage } from "./shell/decks/builder/messages";
 import { enterBuilder, update as updateBuilder } from "./shell/decks/builder/update";
 import type { Message as ListMessage } from "./shell/decks/list/messages";
 import { loadDeckList, update as updateDeckList } from "./shell/decks/list/update";
+import type { Message as LeaderboardMessage } from "./shell/leaderboard/messages";
+import { loadLeaderboard, update as updateLeaderboard } from "./shell/leaderboard/update";
 import type { Message as LobbyMessage } from "./shell/lobby/messages";
 import { enterLobby } from "./shell/lobby/submodel";
 import { update as updateLobby } from "./shell/lobby/update";
@@ -97,6 +99,10 @@ function routeEntry(model: Model): readonly [Model, ReadonlyArray<FoldkitCommand
       const [list, commands] = loadDeckList(model.decks.list);
       return [{ ...model, decks: { ...model.decks, list } }, commands];
     }
+    case "LeaderboardRoute": {
+      const [leaderboard, commands] = loadLeaderboard(model.leaderboard);
+      return [{ ...model, leaderboard }, commands];
+    }
     case "NewDeckRoute": {
       const [builder, commands] = enterBuilder(null);
       return [{ ...model, decks: { ...model.decks, builder } }, commands];
@@ -164,6 +170,14 @@ function foldDeckBuilder(
 ): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
   const [builder, commands] = updateBuilder(model.decks.builder, message);
   return [{ ...model, decks: { ...model.decks, builder } }, commands];
+}
+
+function foldLeaderboard(
+  model: Model,
+  message: LeaderboardMessage,
+): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
+  const [leaderboard, commands] = updateLeaderboard(model.leaderboard, message);
+  return [{ ...model, leaderboard }, commands];
 }
 
 function foldBoard(
@@ -375,6 +389,10 @@ export const update = (
       RequestedDeckDelete: (decksMessage) => foldDeckList(model, decksMessage),
       DeckDeleted: (decksMessage) => foldDeckList(model, decksMessage),
       DeckDeleteFailed: (decksMessage) => foldDeckList(model, decksMessage),
+      RequestedLeaderboardRefresh: (leaderboardMessage) => foldLeaderboard(model, leaderboardMessage),
+      RequestedLeaderboardNextPage: (leaderboardMessage) => foldLeaderboard(model, leaderboardMessage),
+      ReceivedLeaderboardPage: (leaderboardMessage) => foldLeaderboard(model, leaderboardMessage),
+      LeaderboardLoadFailed: (leaderboardMessage) => foldLeaderboard(model, leaderboardMessage),
       ChangedBuilderName: (decksMessage) => foldDeckBuilder(model, decksMessage),
       ChangedBuilderQuery: (decksMessage) => foldDeckBuilder(model, decksMessage),
       RequestedNextBuilderPage: (decksMessage) => foldDeckBuilder(model, decksMessage),
