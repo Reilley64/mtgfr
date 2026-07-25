@@ -33,6 +33,7 @@ mod characteristics_cache;
 mod combat;
 mod core;
 mod effects;
+mod hand_smooth;
 mod message;
 mod mulligan;
 mod pending;

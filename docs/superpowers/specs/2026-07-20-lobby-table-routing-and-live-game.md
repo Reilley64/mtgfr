@@ -37,7 +37,7 @@ The system separates pre-game lobby from live-game concerns across two persisten
    claimed and all claimed seats are ready.
 4. The host clicks Start. The BFF calls `Tables.Seed` (gRPC, Service `edh-api`) on the
    **newest** active API pod. The seed request carries seat order, user ids, and deck ids.
-5. `Tables.Seed` resolves and validates all decks, fetches a drand beacon master seed (or a configured fixed seed in dev/test), deals opening hands, enters the mulligan phase, inserts the
+5. `Tables.Seed` resolves and validates all decks, fetches a drand beacon master seed (or a configured fixed seed in dev/test), deals BO1-smoothed opening hands, enters the mulligan phase, inserts the
    `Table` into the in-memory `Registry`, and returns `SeedResponse { table_id, pod_dns, version }`.
 6. BFF writes `table_routes (table_id → pod_dns)` to `mtgfr_web`. Clients are redirected to
    `/play/{deck_id}/{table_id}` so the chosen deck remains a required path param.
@@ -148,7 +148,7 @@ the BFF so that their absence does not block drain of an API pod that was never 
 8. Return `SeedResponse { table_id, pod_dns: settings.pod_dns, version: settings.version }`.
    BFF writes `table_routes`.
 
-`decks::seed_game` constructs `Game::with_master_seed`, designates commanders, stacks and shuffles each library with per-seat derived RNG, draws seven cards per seat, and calls `begin_mulligans()`. It deliberately does **not** call `begin_first_turn()` at seed time; the first turn begins only after all living seats keep their hands.
+`decks::seed_game` constructs `Game::with_master_seed`, designates commanders, stacks each library, deals a BO1-smoothed opening hand (two per-seat RNG shuffle samples), and calls `begin_mulligans()`. It deliberately does **not** call `begin_first_turn()` at seed time; the first turn begins only after all living seats keep their hands.
 
 ### Stream subscribe (`Game.Stream`)
 

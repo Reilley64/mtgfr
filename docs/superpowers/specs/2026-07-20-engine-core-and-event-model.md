@@ -25,7 +25,7 @@ State is **event-sourced for board facts** (objects, mana, zones, counters, dama
 
 The sole randomness source is an injected 32-byte master seed. Each logical random operation derives an isolated splitmix64 stream from `BLAKE3(master_seed || player || op_iteration)`, so the engine is deterministic without coupling one player's library order to another player's random operations.
 
-Real games enter a simultaneous pre-game mulligan phase after libraries are shuffled and opening hands are drawn. The first turn is not begun until every living player has kept.
+Real games enter a simultaneous pre-game mulligan phase after libraries are stacked and 2-sample BO1 land-smoothed opening hands are drawn. The first turn is not begun until every living player has kept.
 
 ---
 
@@ -49,14 +49,15 @@ Real games enter a simultaneous pre-game mulligan phase after libraries are shuf
 ### Game construction and zones
 
 - `Game::with_players(n: u8, seed: u64)` creates a deterministic compatibility seed by expanding the `u64` into the first eight bytes of a 32-byte master seed. `Game::with_master_seed(n: u8, master_seed: [u8; 32])` is the production constructor. Both create `n` seats (2–4), each starting at 40 life (Commander default), empty zones, and player 0 as the starting active player holding priority; the game is parked in their first main phase with beginning steps un-run.
-- Real setup shuffles each library, draws seven cards, then calls `Game::begin_mulligans()`. During this simultaneous mulligan phase, any undecided living seat may `KeepHand` or `Mulligan`; ordinary game actions are blocked until all living seats keep.
+- Real setup stacks each library, runs 2-sample BO1 land smoothing for seven cards via `Game::deal_smoothed_hand`, then calls `Game::begin_mulligans()`. During this simultaneous mulligan phase, any undecided living seat may `KeepHand` or `Mulligan`; ordinary game actions are blocked until all living seats keep.
 - `Game::begin_first_turn()` must be called after setup and mulligans: it runs Untap → Upkeep → Draw for the starting player, feeding the post-intent pipeline so upkeep triggers reach the stack. The seeded-game path calls it automatically when the final player keeps.
 - In a two-player game the starting player skips their first draw step (CR 103.8a). In three- or four-player games, no player skips (CR 103.8c).
 
 ### Pre-game mulligans
 
 - `hand_size_after_mulligans(0) == 7`, `hand_size_after_mulligans(1) == 7` for the friendly mulligan, then later mulligans draw to size 6, 5, ... down to 1. There is no London bottoming or Vancouver scry.
-- `KeepHand { player }` emits `HandKept`. `Mulligan { player }` returns that player's hand to the top of their library, emits `LibraryShuffled`, draws the new hand size, then emits `MulliganTaken { player, mulligans_taken, hand_size }`.
+- `KeepHand { player }` emits `HandKept`. `Mulligan { player }` returns that player's hand to the top of their library, emits `LibraryHandSmoothed { hand_size }` (two derive-per-op shuffles, keeping the closer land count and projecting as visible `LibraryShuffled`), draws the new hand size, then emits `MulliganTaken { player, mulligans_taken, hand_size }`.
+- Mulligan redraws are deliberately smoothed too, unlike Arena's reported BO1 behavior that leaves mulligans unsmoothed.
 - A seat at hand size 1 auto-keeps after the mulligan redraw. Further keep/mulligan intents from lost seats, already-kept seats, or outside the mulligan phase are rejected as `Reject::Mulliganing`.
 - When all living seats have kept, the engine emits `MulligansFinished`, clears `mulliganing`, and begins the first turn. The first-draw skip rule is unchanged and is armed only once the first turn begins.
 
@@ -121,7 +122,7 @@ Implemented SBAs (CR 704):
 - The sole randomness source is `Game::master_seed: [u8; 32]`.
 - Each player has a monotonic `op_iteration: u64`. `Game::with_op_rng(player, f)` derives `BLAKE3(master_seed || player_index:u8 || op_iteration:u64-le)`, increments that player's iteration once, and gives `f` a short-lived splitmix64 `OpRng`.
 - `OpRng::gen_index(upper)` uses rejection sampling to avoid modulo bias. `Game::shuffle` uses Fisher-Yates over that unbiased index helper.
-- One library shuffle, one random graveyard pick, one random opponent pick, or one random-order bottoming is one logical operation and bumps exactly one player's counter. Setup and mulligan shuffles are attributed to the seat whose library is shuffled; controller-scoped card effects attribute to that effect's controller.
+- One mid-game library shuffle, one random graveyard pick, one random opponent pick, or one random-order bottoming is one logical operation and bumps exactly one player's counter. `Game::deal_smoothed_hand` and mulligan redraws run two shuffle samples and bump the seat's counter twice when the library has at least two cards. Controller-scoped card effects attribute random operations to that effect's controller.
 - Seeding is injected at construction (`with_master_seed(n, master_seed)`); `with_players(n, seed)` remains a deterministic `u64` test convenience.
 
 ---

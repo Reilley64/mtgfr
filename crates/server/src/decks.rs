@@ -28,19 +28,14 @@ fn expand(list: &[(CardDef, usize)]) -> Vec<CardDef> {
 }
 
 /// Build a game for the given seated players (`(seat, deck)`, seats contiguous from 0):
-/// designate each commander, seed and shuffle each library, draw opening hands, and wait for
+/// designate each commander, seed each library, deal smoothed opening hands, and wait for
 /// each player to keep or mulligan.
 pub fn seed_game(seats: &[(PlayerId, SeatDeck)], master_seed: [u8; 32]) -> Game {
     let mut game = Game::with_master_seed(seats.len() as u8, master_seed);
     for (player, deck) in seats {
         game.designate_commander(*player, deck.commander);
         game.stack_library(*player, &expand(&deck.cards));
-        game.shuffle(*player);
-    }
-    for _ in 0..OPENING_HAND {
-        for (player, _) in seats {
-            game.draw_card(*player);
-        }
+        game.deal_smoothed_hand(*player, OPENING_HAND as u8);
     }
     game.begin_mulligans();
     game
@@ -135,6 +130,32 @@ mod tests {
         assert!(game.mulliganing());
         assert_eq!(game.current_step(), engine::Step::Main1);
         assert_eq!(game.active_player(), PlayerId(0));
+    }
+
+    #[test]
+    fn seed_game_smoothed_opening_burns_two_ops_per_seat() {
+        let deck = || {
+            let commander = card("Tajic, Legion's Edge");
+            let plains = card("Plains");
+            let mut prints = std::collections::HashMap::new();
+            prints.insert(
+                commander.id.to_string(),
+                commander.default_print.to_string(),
+            );
+            prints.insert(plains.id.to_string(), plains.default_print.to_string());
+            SeatDeck {
+                commander,
+                cards: vec![(plains, 99)],
+                prints,
+            }
+        };
+        let seats = [(PlayerId(0), deck()), (PlayerId(1), deck())];
+        let game = seed_game(&seats, master_from_u64(0x50c_2026));
+
+        for (player, _) in &seats {
+            assert_eq!(game.op_iteration(*player), 2);
+            assert_eq!(game.hand(*player).len(), OPENING_HAND as usize);
+        }
     }
 }
 

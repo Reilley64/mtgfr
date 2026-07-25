@@ -2309,6 +2309,9 @@ impl Game {
             // library (CR 701.19-style). The order isn't event-sourced (like scry / `Game::
             // shuffle`'s other callers) — mutate the library directly.
             Event::LibraryShuffled { player } => self.shuffle(player),
+            Event::LibraryHandSmoothed { player, hand_size } => {
+                self.smoothed_shuffle_for_hand(player, hand_size)
+            }
             // A reveal is not a zone change (CR 701.30) — the card stays exactly where it is;
             // nothing to mutate here.
             Event::RevealedTopOfLibrary { .. } => {}

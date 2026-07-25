@@ -87,10 +87,11 @@ fn friendly_mulligan_redraws_seven() {
 }
 
 #[test]
-fn friendly_mulligan_emits_library_shuffled_before_redraw() {
+fn friendly_mulligan_emits_library_hand_smoothed_before_redraw() {
     let mut game = Game::with_players(2, 1);
     deal_opening(&mut game, 40);
 
+    let before = game.op_iteration(PlayerId(0));
     let events = game
         .submit(Intent::Mulligan {
             player: PlayerId(0),
@@ -99,30 +100,42 @@ fn friendly_mulligan_emits_library_shuffled_before_redraw() {
 
     let shuffle_pos = events
         .iter()
-        .position(
-            |event| matches!(event, Event::LibraryShuffled { player } if *player == PlayerId(0)),
-        )
-        .expect("a mulligan shuffles through the event stream");
+        .position(|event| {
+            matches!(
+                event,
+                Event::LibraryHandSmoothed {
+                    player,
+                    hand_size: 7
+                } if *player == PlayerId(0)
+            )
+        })
+        .expect("mulligan emits LibraryHandSmoothed");
     assert_eq!(
         events
             .iter()
-            .filter(
-                |event| matches!(event, Event::LibraryShuffled { player } if *player == PlayerId(0))
-            )
+            .filter(|event| {
+                matches!(
+                    event,
+                    Event::LibraryHandSmoothed { player, .. } if *player == PlayerId(0)
+                )
+            })
             .count(),
-        1,
-        "a mulligan shuffles exactly once"
+        1
+    );
+    assert!(
+        !events.iter().any(
+            |event| matches!(event, Event::LibraryShuffled { player } if *player == PlayerId(0))
+        ),
+        "mulligan must not emit one-op LibraryShuffled"
     );
     let redraw_pos = events
         .iter()
         .position(
             |event| matches!(event, Event::CardDrawn { player, .. } if *player == PlayerId(0)),
         )
-        .expect("a mulligan redraws a hand");
-    assert!(
-        shuffle_pos < redraw_pos,
-        "shuffle must happen before redraw"
-    );
+        .expect("redraw");
+    assert!(shuffle_pos < redraw_pos);
+    assert_eq!(game.op_iteration(PlayerId(0)), before + 2);
 }
 
 #[test]
