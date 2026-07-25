@@ -13,6 +13,7 @@ import { emptyCostPicks } from "../action/execution";
 import { ZONE } from "../geometry/layout";
 import { STACK_EXPAND_COUNT } from "../geometry/stackLayout";
 import { type Message, StackCollapseClicked, TargetChosen } from "../messages";
+import { spawnFlight } from "../motion/flights";
 import { type BoardModel, initialBoardModel, updateBoard } from "../submodel";
 import { boardOverlays } from "./overlays";
 import { resolveBoardCardArtMounts, resolveBoardOverlayMounts } from "./scene-helpers";
@@ -120,6 +121,117 @@ test("stack overlay renders card art for spells on the stack", () => {
     Scene.expect(Scene.testId("stack-overlay")).toExist(),
     Scene.expect(Scene.testId("stack-face-0")).toExist(),
     Scene.expect(Scene.selector("[data-art-url]")).toExist(),
+  );
+});
+
+test("spell stack face stays hidden while its stack entrance flight is in progress", () => {
+  const { objects, stack } = spellOnStack(42, "Lightning Bolt", "bolt-print");
+  const flight = {
+    ...spawnFlight({
+      id: 42,
+      kind: "stack",
+      name: "Lightning Bolt",
+      print: "bolt-print",
+      scale: 0.8,
+      targetScale: 1,
+      targetX: 100,
+      targetY: 40,
+      x: 20,
+      y: 10,
+      fromCardId: 7,
+    }),
+    phase: "flying" as const,
+  };
+  const model: ViewModel = {
+    board: {
+      ...initialBoardModel(),
+      flights: new Map([[42, flight]]),
+      hideCardIds: new Set([42]),
+      ownedIds: new Set([42]),
+    },
+    fold: gameFold(gameState({ objects, stack })),
+    tableId: "T1",
+  };
+  Scene.scene(
+    { update: (m) => [m, []], view: overlayView },
+    Scene.with(model),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("stack-overlay")).toExist(),
+    Scene.expect(Scene.testId("stack-face-0")).toBeAbsent(),
+  );
+});
+
+test("ability stack face keeps card art while its source permanent is mid-battlefield flight", () => {
+  // ETB trigger: stack entry.source is the permanent id. A battlefield flight for that same id
+  // puts it in hideCardIds so the resting battlefield face stays hidden — but the ability on the
+  // stack is a different resting face and must still show the source's art (not only the effect
+  // caption).
+  const sourceId = 99;
+  const permanent: ObjectView = {
+    controller: 0,
+    has_haste: false,
+    id: sourceId,
+    is_commander: false,
+    kind: { kind: "creature", power: 2, toughness: 2 },
+    mana_cost: { generic: 1, colored: [0, 0, 1, 0, 0] },
+    marked_damage: 0,
+    name: "Elvish Visionary",
+    needs_target: false,
+    owner: 0,
+    plus_counters: 0,
+    power: 2,
+    print: "visionary-print",
+    summoning_sick: true,
+    tapped: false,
+    toughness: 2,
+    zone: ZONE.Battlefield,
+  };
+  const flight = {
+    ...spawnFlight({
+      id: sourceId,
+      kind: "battlefield",
+      name: permanent.name,
+      print: permanent.print ?? "",
+      scale: 0.8,
+      targetScale: 1,
+      targetX: 100,
+      targetY: 40,
+      x: 20,
+      y: 10,
+    }),
+    phase: "flying" as const,
+  };
+  const model: ViewModel = {
+    board: {
+      ...initialBoardModel(),
+      flights: new Map([[sourceId, flight]]),
+      hideCardIds: new Set([sourceId]),
+      ownedIds: new Set([sourceId]),
+    },
+    fold: gameFold(
+      gameState({
+        objects: [permanent],
+        stack: [
+          {
+            controller: 0,
+            kind: "ability",
+            label: testMessageRef("Draw a card"),
+            source: sourceId,
+          },
+        ],
+      }),
+    ),
+    tableId: "T1",
+  };
+  Scene.scene(
+    { update: (m) => [m, []], view: overlayView },
+    Scene.with(model),
+    resolveBoardOverlayMounts(),
+    resolveBoardCardArtMounts(),
+    Scene.expect(Scene.testId("stack-overlay")).toExist(),
+    Scene.expect(Scene.testId("stack-face-0")).toExist(),
+    Scene.expect(Scene.selector("[data-art-url]")).toExist(),
+    Scene.expect(Scene.testId("stack-top-caption")).toContainText("Draw a card"),
   );
 });
 
