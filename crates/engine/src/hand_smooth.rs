@@ -22,7 +22,7 @@ impl Game {
         let land_total = self.players[player.0 as usize]
             .library
             .iter()
-            .filter(|&&id| CardFilter::Land.matches(self.def_of(id)))
+            .filter(|&&id| CardFilter::Land.matches(card_def(self.def_id_of(id)).as_ref()))
             .count();
         let n = (hand_size as usize).min(len);
         let expected = n as f64 * land_total as f64 / len as f64;
@@ -58,7 +58,7 @@ impl Game {
             .library
             .iter()
             .take(n)
-            .filter(|&&id| CardFilter::Land.matches(self.def_of(id)))
+            .filter(|&&id| CardFilter::Land.matches(card_def(self.def_id_of(id)).as_ref()))
             .count() as u32
     }
 }
@@ -171,7 +171,7 @@ mod game_tests {
             .library
             .iter()
             .take(n)
-            .filter(|&&id| CardFilter::Land.matches(game.def_of(id)))
+            .filter(|&&id| CardFilter::Land.matches(card_def(game.def_id_of(id)).as_ref()))
             .count() as u32
     }
 
@@ -214,7 +214,9 @@ mod game_tests {
         let baseline = expected_game.players[p.0 as usize].library.clone();
         let land_total = baseline
             .iter()
-            .filter(|&&id| CardFilter::Land.matches(expected_game.def_of(id)))
+            .filter(|&&id| {
+                CardFilter::Land.matches(card_def(expected_game.def_id_of(id)).as_ref())
+            })
             .count();
         let expected = 7.0 * land_total as f64 / baseline.len() as f64;
 
@@ -252,7 +254,7 @@ mod game_tests {
     fn ordinary_shuffle_still_burns_one_op() {
         let mut game = Game::with_master_seed(1, [3; 32]);
         let p = PlayerId(0);
-        game.stack_library(p, &[card("Forest"); 10]);
+        game.stack_library(p, &vec![card("Forest"); 10]);
         let before = game.op_iteration(p);
         game.shuffle(p);
         assert_eq!(game.op_iteration(p), before + 1);
