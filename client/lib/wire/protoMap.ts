@@ -6,6 +6,7 @@ import type {
 import type { IntentEnvelope as ProtoIntentEnvelope } from "./generated/mtgfr/v1/intent_effect_grpc";
 import { IntentEnvelopeSchema as IntentEnvelopePbSchema } from "./generated/mtgfr/v1/intent_pb";
 import type {
+  Ack,
   CatalogCard,
   DeckDetail,
   DeckSummary,
@@ -44,6 +45,32 @@ function isPlayerAmountShape(value: unknown): value is { player: number; amount:
   return isPlainObject(value) && Object.keys(value).length === 2 && "player" in value && "amount" in value;
 }
 
+function isMessageParamShape(value: Record<string, unknown>): boolean {
+  return typeof value.name === "string" && isPlainObject(value.value) && typeof value.value.case === "string";
+}
+
+function messageParamFromProto(value: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = { name: value.name };
+  if (!isPlainObject(value.value) || typeof value.value.case !== "string") return result;
+
+  switch (value.value.case) {
+    case "amountToken":
+      result.amount_token = value.value.value;
+      return result;
+    case "boolValue":
+      result.bool_value = value.value.value;
+      return result;
+    case "intValue":
+      result.int_value = convertFromProto(value.value.value);
+      return result;
+    case "stringValue":
+      result.string_value = value.value.value;
+      return result;
+    default:
+      return result;
+  }
+}
+
 function toAmountTuple(item: unknown): unknown {
   if (isObjectAmountShape(item)) return [item.id, item.amount];
   if (isPlayerAmountShape(item)) return [item.player, item.amount];
@@ -76,6 +103,8 @@ function convertFromProto(value: unknown): unknown {
   if (keys.length === 1 && keys[0] === "ids" && Array.isArray(value.ids)) {
     return value.ids.map((id) => convertFromProto(id));
   }
+
+  if (isMessageParamShape(value)) return messageParamFromProto(value);
 
   const oneof = flattenOneofWrapper(value);
   if (oneof !== null) return oneof[0];
@@ -168,6 +197,10 @@ export function seedRequestToProto(request: SeedRequest): ProtoSeedRequest {
 
 export function seedResponseFromProto(proto: unknown): SeedResponse {
   return fromProtoWire<SeedResponse>(proto);
+}
+
+export function ackFromProto(proto: unknown): Ack {
+  return fromProtoWire<Ack>(proto);
 }
 
 /** `WireIntent` wraps under proto field `intent`, not `kind`. `create` fills proto3 defaults

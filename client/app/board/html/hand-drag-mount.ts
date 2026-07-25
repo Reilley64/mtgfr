@@ -4,6 +4,7 @@
 import { Effect, Queue, Stream } from "effect";
 import * as Mount from "foldkit/mount";
 import type { ActionView, WireCost } from "~/wire/types";
+import { formatMessage } from "../../../lib/i18n/message";
 import { HandActionHovered, HandDragEnded, HandDragMoved, HandDragStarted } from "../messages";
 
 type HandDragMessage =
@@ -31,7 +32,7 @@ export function readHandDragPayload(hit: HTMLElement, x: number, y: number): typ
   }
   return HandDragStarted({
     action,
-    name: hit.dataset.cardName ?? action.label,
+    name: hit.dataset.cardName ?? formatMessage(action.label),
     print: hit.dataset.cardPrint ?? "",
     manaCost: readManaCost(hit.dataset.manaCost),
     kind: hit.dataset.objectKind,

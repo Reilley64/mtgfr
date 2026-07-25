@@ -10,6 +10,7 @@
 
 import { colors } from "~/design-tokens.generated";
 import type { ActionView, PendingChoiceView, VisibleState, WireTarget } from "~/wire/types";
+import { formatMessage } from "../../../lib/i18n/message";
 import { ZONE } from "../geometry/layout";
 import type { StagedAction } from "./execution";
 
@@ -652,8 +653,9 @@ export function aimingObjectIds(
 /** Title while the player is aiming a staged cast or activation before submitting. */
 export function stagedTargetTitle(staged: StagedAction): string {
   const { card, action } = staged;
-  if (action.kind === "activate" && action.label !== card.name) {
-    return `${action.label} — ${card.name}`;
+  const label = formatMessage(action.label);
+  if (action.kind === "activate" && label !== card.name) {
+    return `${label} — ${card.name}`;
   }
-  return action.label;
+  return label;
 }

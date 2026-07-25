@@ -1,5 +1,6 @@
 import type { ZonePileEntrance } from "../../lib/event-fold";
 import { describe, extractProvenance } from "../../lib/event-fold";
+import { formatMessage } from "../../lib/i18n/message";
 import type { StreamFrame, VisibleState } from "../../lib/wire/types";
 
 export type DeltaEnvelope = Omit<Extract<StreamFrame, { frame: "delta" }>, "frame">;
@@ -111,9 +112,9 @@ export function applyDeltaPure(prev: GameFoldState, delta: DeltaEnvelope): GameF
     if (text != null) eventLines.push({ seq: delta.seq, text });
   }
 
-  const autoLines: LogLine[] = (delta.auto_actions ?? []).map((text) => ({
+  const autoLines: LogLine[] = (delta.auto_actions ?? []).map((message) => ({
     seq: delta.seq,
-    text,
+    text: formatMessage(message),
     auto: true,
   }));
   const lines = [...eventLines, ...autoLines];

@@ -1,8 +1,8 @@
 import { Effect, Schema as S } from "effect";
 import { Command } from "foldkit";
-import { humanReason } from "../../lib/reject";
+import { formatMessage } from "../../lib/i18n/message";
 import { statusOf } from "../../lib/rpc-client";
-import type { IntentEnvelope, WireIntent } from "../../lib/wire/types";
+import type { Ack, IntentEnvelope, WireIntent } from "../../lib/wire/types";
 import { CardNameSuggestionsFetched, InspectCardFetched } from "../board/messages";
 import { RpcClient } from "../resources";
 import { IntentAcked, IntentRejected } from "./messages";
@@ -20,9 +20,9 @@ function failureReason(error: unknown): string {
   return "Couldn't reach the table.";
 }
 
-function ackMessage(ack: { accepted: boolean; reason?: string | null }) {
+function ackMessage(ack: Ack) {
   if (ack.accepted) return IntentAcked();
-  return IntentRejected({ reason: ack.reason ? humanReason(ack.reason) : "That didn't work." });
+  return IntentRejected({ reason: ack.reject_reason ? formatMessage(ack.reject_reason) : "That didn't work." });
 }
 
 export const SubmitIntent = Command.define(

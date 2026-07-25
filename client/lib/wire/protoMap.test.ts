@@ -11,6 +11,106 @@ describe("fromProtoWire", () => {
     expect(state.actions[0]?.id).toBe(123);
     expect(typeof state.actions[0]?.id).toBe("number");
   });
+
+  it("decodes MessageRef labels and auto action messages", () => {
+    const frame = fromProtoWire({
+      frame: {
+        case: "delta",
+        value: {
+          autoActions: [
+            {
+              key: "auto.sacrificed_forced",
+              params: [{ name: "name", value: { case: "stringValue", value: "Goblin" } }],
+              children: [],
+            },
+          ],
+          state: {
+            actions: [
+              {
+                id: 123n,
+                kind: "activate",
+                label: {
+                  key: "effect.draw_cards",
+                  params: [{ name: "count", value: { case: "intValue", value: 2n } }],
+                  children: [],
+                },
+                needsTarget: false,
+                section: "battlefield",
+              },
+            ],
+            pendingChoice: {
+              choice: {
+                case: "chooseMode",
+                value: {
+                  labels: [
+                    {
+                      key: "effect.discard",
+                      params: [{ name: "count", value: { case: "intValue", value: 1n } }],
+                      children: [],
+                    },
+                  ],
+                  player: 0,
+                  source: 7,
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    expect(frame).toMatchObject({
+      frame: "delta",
+      auto_actions: [
+        {
+          key: "auto.sacrificed_forced",
+          params: [{ name: "name", string_value: "Goblin" }],
+          children: [],
+        },
+      ],
+      state: {
+        actions: [
+          {
+            label: {
+              key: "effect.draw_cards",
+              params: [{ name: "count", int_value: 2 }],
+              children: [],
+            },
+          },
+        ],
+        pending_choice: {
+          kind: "choose_mode",
+          labels: [
+            {
+              key: "effect.discard",
+              params: [{ name: "count", int_value: 1 }],
+              children: [],
+            },
+          ],
+        },
+      },
+    });
+  });
+
+  it("decodes Ack.rejectReason into reject_reason MessageRef", () => {
+    const ack = fromProtoWire({
+      accepted: false,
+      rejectReason: {
+        key: "reject.illegal_target",
+        params: [],
+        children: [],
+      },
+    });
+
+    expect(ack).toEqual({
+      accepted: false,
+      reject_reason: {
+        key: "reject.illegal_target",
+        params: [],
+        children: [],
+      },
+    });
+  });
 });
 
 describe("intentEnvelopeToProto", () => {

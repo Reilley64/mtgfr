@@ -26,6 +26,7 @@ import type {
   WireTarget,
 } from "~/wire/types";
 import { clampX } from "~/xCost";
+import { formatMessage } from "../../lib/i18n/message";
 import { type InspectPin, inspectPinChanged, pinFromCard, pinFromPlayer } from "../../lib/inspect";
 import { humanReason } from "../../lib/reject";
 import { isSoundEnabled, playUnmuteTick, setSoundEnabled, unlockTableAudio } from "../../lib/tableAudio";
@@ -1094,7 +1095,7 @@ function ensureXPrompt(
     target,
     picks,
     modes,
-    name: action.kind === "cast_prepared" ? action.label : (card?.name ?? action.label),
+    name: action.kind === "cast_prepared" ? formatMessage(action.label) : (card?.name ?? formatMessage(action.label)),
     minX,
     maxX,
     draftX: clampX(maxX, minX, maxX),
