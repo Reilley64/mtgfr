@@ -30,6 +30,26 @@ jobs:
               - 'iac/**'
               - '.github/workflows/ci.yml'
 
+  # Squash-merge uses the PR title as the main commit subject (semantic-release).
+  # Branch commits are gated locally / in Cloud via Husky commit-msg — not here.
+  commitlint:
+    name: Commitlint (PR title)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - run: npm clean-install
+
+      - name: Lint PR title
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: printf '%s\n' "$TITLE" | npx commitlint
+
   verify:
     name: Verify
     uses: ./.github/workflows/verify-jobs.yml

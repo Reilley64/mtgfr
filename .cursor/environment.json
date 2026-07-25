@@ -3,6 +3,6 @@
     "dockerfile": "Dockerfile",
     "context": ".."
   },
-  "install": "cd client && bun install --frozen-lockfile && cd .. && cargo fetch",
+  "install": ".cursor/scripts/ensure-node.sh && . \"$HOME/.cursor-node-env\" 2>/dev/null || true; export PATH=\"${HOME}/.local/node-v$(tr -d '[:space:]' < .node-version)/bin:$PATH\"; npm clean-install && .cursor/scripts/wire-cloud-git-hooks.sh && cd client && bun install --frozen-lockfile && cd .. && cargo fetch",
   "start": "sudo service postgresql start"
 }

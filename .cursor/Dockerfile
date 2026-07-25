@@ -57,6 +57,12 @@ RUN cargo install just --locked \
 RUN curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.14"
 ENV PATH=/home/ubuntu/.bun/bin:${PATH}
 
+# Node + npm pinned to .node-version (22.23.1) — root package.json (husky/commitlint/
+# semantic-release). Official tarball keeps npm on PATH without relying on corepack.
+RUN curl -fsSL "https://nodejs.org/dist/v22.23.1/node-v22.23.1-linux-x64.tar.xz" \
+    | sudo tar -xJ -C /usr/local --strip-components=1 \
+    && sudo ln -sf /usr/local/bin/node /usr/local/bin/nodejs
+
 # Cursor `install`/`start` hooks often run with a stripped system PATH (no login
 # shell, image ENV PATH ignored). Symlink toolchains into /usr/local/bin so
 # `bun install` / `cargo fetch` work without exporting PATH in environment.json.
