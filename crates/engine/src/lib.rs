@@ -34,6 +34,7 @@ mod combat;
 mod core;
 mod effects;
 mod message;
+mod hand_smooth;
 mod mulligan;
 mod pending;
 mod pipeline;
