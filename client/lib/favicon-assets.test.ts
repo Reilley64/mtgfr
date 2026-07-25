@@ -33,4 +33,18 @@ describe("favicon assets", () => {
     const count = ico[4]! | (ico[5]! << 8);
     expect(count).toBeGreaterThanOrEqual(2);
   });
+
+  it("ICO embeds PNG frames with alpha (no white matte)", () => {
+    // Vista+ PNG-in-ICO: from PNG signature, IHDR color type is at offset +25 (must be 6 = RGBA).
+    const pngSig = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    let found = 0;
+    for (let i = 0; i <= ico.length - 26; i++) {
+      if (!ico.subarray(i, i + 8).equals(pngSig)) continue;
+      const colorType = ico[i + 25];
+      expect(colorType).toBe(6);
+      found += 1;
+      if (found >= 2) break;
+    }
+    expect(found).toBeGreaterThanOrEqual(2);
+  });
 });
