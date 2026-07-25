@@ -433,12 +433,10 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             // 702.29d) by its own effect, since both otherwise share the same discard chrome.
             let label = match def.hand_ability.get(index).copied().or(def.forecast) {
                 Some(ability) => match ability.effects {
-                    [single] => {
-                        child_message(
-                            "action.discard_effect",
-                            to_wire_message(single.clone().message()),
-                        )
-                    }
+                    [single] => child_message(
+                        "action.discard_effect",
+                        to_wire_message(single.clone().message()),
+                    ),
                     _ => named_message("action.discard_card", def.name),
                 },
                 None => named_message("action.discard_card", def.name),
@@ -766,11 +764,7 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
             // `card_id`/`print` (the client's art + oracle lookup) whenever the live face lacks its
             // own; unflipped permanents read `front == def`, so this is a no-op there.
             let front = game.front_def_of(id);
-            let card_id_src = if def.id.is_empty() {
-                &front
-            } else {
-                &def
-            };
+            let card_id_src = if def.id.is_empty() { &front } else { &def };
             let print_src = if def.default_print.is_empty() {
                 &front
             } else {

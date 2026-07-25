@@ -214,9 +214,7 @@ mod game_tests {
         let baseline = expected_game.players[p.0 as usize].library.clone();
         let land_total = baseline
             .iter()
-            .filter(|&&id| {
-                CardFilter::Land.matches(card_def(expected_game.def_id_of(id)).as_ref())
-            })
+            .filter(|&&id| CardFilter::Land.matches(card_def(expected_game.def_id_of(id)).as_ref()))
             .count();
         let expected = 7.0 * land_total as f64 / baseline.len() as f64;
 
