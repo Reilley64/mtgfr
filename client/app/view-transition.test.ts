@@ -125,3 +125,48 @@ test("pushUrlMaybeViewTransition skips view transitions when reduced motion is p
 
   expect(started).toBe(false);
 });
+
+test("pushUrlMaybeViewTransition waits for a paint frame after pushUrl so Foldkit can patch", async () => {
+  const events: Array<"pushUrl" | "raf" | "callbackDone" | "completed"> = [];
+  let releaseRaf: (() => void) | undefined;
+
+  const startViewTransition: typeof document.startViewTransition = (callbackOptions) => {
+    const callback = typeof callbackOptions === "function" ? callbackOptions : callbackOptions?.update;
+    const result = callback?.();
+    void Promise.resolve(result).then(() => {
+      events.push("callbackDone");
+    });
+    return {
+      ...settledViewTransition(),
+      updateCallbackDone: Promise.resolve(result).then(() => undefined),
+    };
+  };
+
+  const effect = Effect.runPromise(
+    pushUrlMaybeViewTransition("/play/7", "/", {
+      prefersReducedMotion: false,
+      startViewTransition,
+      pushUrl: () =>
+        Effect.sync(() => {
+          events.push("pushUrl");
+        }),
+      requestAnimationFrame: (cb) => {
+        releaseRaf = () => {
+          events.push("raf");
+          cb(0);
+        };
+        return 1;
+      },
+    }),
+  );
+
+  for (let i = 0; i < 10 && releaseRaf == null; i++) {
+    await Promise.resolve();
+  }
+  expect(events).toEqual(["pushUrl"]);
+  expect(releaseRaf).toBeTypeOf("function");
+  releaseRaf?.();
+  await effect;
+  events.push("completed");
+  expect(events).toEqual(["pushUrl", "raf", "callbackDone", "completed"]);
+});
