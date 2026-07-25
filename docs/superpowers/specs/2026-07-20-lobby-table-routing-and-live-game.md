@@ -1,8 +1,8 @@
 # Lobby, Table Routing, and Live Game
 
-**Status:** Current (as of 2026-07-24)
+**Status:** Current (as of 2026-07-25)
 **Module:** `crates/server/src/table.rs`, `crates/server/src/lobby.rs`, `crates/server/src/session.rs`,
-`crates/server/src/game_loop.rs`, `crates/server/src/stream.rs`, `crates/server/src/chrome.rs`,
+`crates/server/src/game_loop.rs`, `crates/server/src/ratings.rs`, `crates/server/src/stream.rs`, `crates/server/src/chrome.rs`,
 `crates/server/src/health.rs`, `crates/server/src/main.rs`,
 BFF `client/server/` (Nitro lobby + `table_routes`)
 
@@ -71,7 +71,7 @@ Reconnect re-opens the stream from the current `seq` — no gap replay; reconnec
 
 **Chrome settle (turn-priority-and-stack spec / turn-priority-and-stack spec / 0029 / 0037):**
 
-After every intent, `TableSession::apply` applies the engine action, then runs a settle loop
+After every intent, `TableSession::submit` applies the engine action, then runs a settle loop
 (`settle_after_apply`) that:
 1. Loops `PassPriority` while the current priority holder has no meaningful action
    (`has_meaningful_action`) and no pending choice, up to 256 auto-passes.
@@ -165,12 +165,18 @@ the BFF so that their absence does not block drain of an API pod that was never 
 
 1. Auth: `x-session-token` → `AuthUser`. The user must have a seat at `table_id`.
 2. `game_loop::submit_core` → `with_seated_drive` → lock registry → find table → find seat →
-   `TableSession::apply(intent)`.
-3. `apply` dispatches the engine intent, runs the settle loop (auto-pass, hold arm/clear), then
+   `TableSession::submit(intent)`.
+3. `submit` dispatches the engine intent, runs the settle loop (auto-pass, hold arm/clear), then
    publishes a `DeltaEnvelope` to `table.tx` for all subscribers.
 4. Returns `Ack { accepted, reason }`. Deltas arrive on the stream, not in the ack.
-5. Action log is appended outside the lock (`action_log::append`) — TOON format, written to
-   `ACTION_LOG_DIR`.
+5. For an accepted apply, `with_seated_drive` snapshots `table.seats`, the full post-apply `Game`,
+   and the emitted `events` under the registry lock, then releases the lock before tail work.
+6. Unlock tail: append the TOON action log row (`action_log::append`, written to `ACTION_LOG_DIR`),
+   then call `ratings::persist_player_lost(&state.db, seats, game, events)`.
+7. `persist_player_lost` extracts every `Event::PlayerLost` in event order, reconstructs the batch's
+   alive players from the post-apply game, skips seats without `user_id`, and applies Elo updates in
+   Postgres from snapshot ratings. Any DB failure is warning-only (`tracing::warn!`); the ack,
+   settle loop, and stream fan-out still succeed.
 
 While the engine is `mulliganing`, clients submit `KeepHand` or `Mulligan` just like other intents. The server does not auto-advance priority or begin turn one until `MulligansFinished` has occurred; disconnected undecided seats remain undecided.
 
@@ -234,6 +240,10 @@ seeded game; there are no "empty" table shells in the production registry.
 - **Drand over silent fallback** (`beacon.rs`): production seed calls must get Cloudflare/drand randomness or fail; fixed master seeds are explicit test/dev configuration (`settings.master_seed` or `MTGFR_MASTER_SEED`).
 - **Settle loop bounded** (turn-priority-and-stack spec): up to 256 auto-passes per intent, preventing infinite
   loops on engine bugs. The bound is high enough for real priority chains.
+- **Post-unlock Elo writes** (`game_loop.rs`, `session.rs`, `ratings.rs`): player-submitted intents and
+  held stack-resolution passes both clone `(seats, game, events)` only after an accepted apply, then
+  persist any `PlayerLost` ratings after the registry lock is released. Rating writes are best-effort:
+  `persist_player_lost` logs a warning on failure and never rejects the already-accepted game action.
 - **Abandoned table grace = 60s** (`table.rs`): long enough for a reconnect blip; short enough
   that ghost tables from closed browsers don't pin Terminating pods for the full 24h grace.
   The first no-subscriber sweep *arms* grace from `now` rather than using the seed timestamp,
@@ -260,7 +270,10 @@ seeded game; there are no "empty" table shells in the production registry.
   draining, `drain` status with zero active tables.
 - `crates/server/src/grpc/tests.rs` contains integration tests for `Tables.Seed` (including
   draining rejection, duplicate table id, invalid seat counts, beacon failure, and recorded beacon entropy) and `Game.SubmitIntent` (seated
-  vs. non-seated auth).
+  vs. non-seated auth). The same file also covers the Elo hook with a seeded-table concede that
+  moves persisted ratings.
+- `crates/server/src/ratings.rs` tests assert multi-loss `PlayerLost` batches are processed in
+  event order when the unlock-tail persist hook runs.
 - `crates/server/src/decks.rs` tests assert seeded games deal opening hands, enter mulligans, and delay the first turn until keeps.
 - Engine-level tests (`tests/game.rs`) cover the full game loop: variable players, elimination,
   multiplayer combat, lobby start.

@@ -141,7 +141,8 @@ The response returns:
 
 The BFF exposes `GET /api/rpc/ratings/leaderboard?limit=&offset=` and forwards the session token
 metadata to `Ratings.GetLeaderboard`. The browser RPC client consumes that route as
-`rpc.ratings.leaderboard({ limit, offset })`.
+`rpc.ratings.leaderboard({ limit, offset })`. The BFF route is `GET`-only; invalid non-`u32`
+`limit` or `offset` query values return HTTP 400 before gRPC is called.
 
 ### Commander legality (`legality::validate`)
 

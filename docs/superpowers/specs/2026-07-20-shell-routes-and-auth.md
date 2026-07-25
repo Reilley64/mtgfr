@@ -49,7 +49,7 @@ A single Foldkit event-reactor owns routing: `client/app/routes.ts` maps paths t
 Required identifiers live in path params ([wire-protocol-and-visibility](2026-07-20-wire-protocol-and-visibility.md) routing rule). Query params are optional: `?next=` is the post-login redirect target.
 Legacy `/play`, `/play/:table`, and `?deck=` entry points are Not found (hard cut).
 
-Lobby Host/Join and seated chrome for `/play/:deckId` and `/play/:deckId/:table` are specified in [lobby-entry-ui](2026-07-20-lobby-entry-ui.md). Deck list (`/`) and builder (`/decks/…`) are specified in [deck-list-and-builder](2026-07-20-deck-list-and-builder.md). The leaderboard route (`/leaderboard`) renders a ranked list from `client.ratings.leaderboard`, showing rank, username, and rating for authenticated players. When a later page load fails after prior rows are already visible, the existing rows stay on screen, `Load more` is hidden, and `Try again` restarts from the first page.
+Lobby Host/Join and seated chrome for `/play/:deckId` and `/play/:deckId/:table` are specified in [lobby-entry-ui](2026-07-20-lobby-entry-ui.md). Deck list (`/`) and builder (`/decks/…`) are specified in [deck-list-and-builder](2026-07-20-deck-list-and-builder.md). The leaderboard route (`/leaderboard`) renders a ranked list from `rpc.ratings.leaderboard({ limit, offset })`, showing rank, username, and rating for authenticated players. Route entry loads the first page as `limit = 50, offset = 0`; `Load more` appends the next page. When a later page load fails after prior rows are already visible, the existing rows stay on screen, `Load more` is hidden, and `Try again` clears the current rows and restarts from the first page.
 
 ### Portrait gate (`client/app/view.ts`, `client/app/subscriptions.ts`, DESIGN.md Landscape Rule)
 
@@ -144,7 +144,8 @@ Vite production builds set `build.sourcemap: true` (via `clientBuildSourcemap`) 
 ## Testing Decisions
 
 - `client/app/shell/auth/**/*.test.ts` — auth stories and helpers.
-- `client/app/routes.test.ts`, `client/app/smoke.test.ts` — routing and smoke.
+- `client/app/routes.test.ts`, `client/app/smoke.test.ts` — routing and smoke; includes protected `/leaderboard` entry, auth redirect, home teaser fetch, and retry-from-page-one behavior.
+- `client/app/shell/surfaces.test.ts` — shell Scene coverage for the `/leaderboard` surface and its retry/error chrome.
 - `client/app/game/*.test.ts` — game fold, stream subscription.
 - `client/lib/rpc-client.test.ts` — Effect HTTP client (stubbed fetch).
 - `client/lib/wire/*.test.ts` — BFF gRPC / RPC method gate.

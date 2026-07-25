@@ -1,12 +1,12 @@
 # Elo Leaderboard Design
 
-**Status:** Design note (as of 2026-07-25)
+**Status:** Implemented reference note (as of 2026-07-25)
 **Module:** `crates/server` (auth/db + game session elimination hook), proto `Ratings` (or equivalent),
 BFF `/api/rpc/ratings/*`, `client/app/shell` (`/leaderboard` + home teaser on `/`)
 
-This document is design input for a public Elo leaderboard. Implementation must also update the
-living module specs it touches (accounts, shell routes, deck list, lobby/live-game) in the same
-change — this file does not replace those surface specs.
+This document records the shipped design for the Elo leaderboard. The living module specs it
+touches (accounts, shell routes, deck list, lobby/live-game) remain the source of truth for the
+surface behavior; this file is reference context, not a replacement for those module specs.
 
 ---
 
