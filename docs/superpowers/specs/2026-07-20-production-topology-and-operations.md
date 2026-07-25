@@ -315,10 +315,10 @@ always-on `docker-cache-guard`, `ci-wave1-guard`, and `ci-wave2-guard`.
   pass marker via `actions/cache/save`. Uploads nextest JUnit + test summary.
 - `verify-client`: Bun-only `just client-check` (tokens + mana-oracle + buf
   codegen + format + lint + typecheck + vitest). Pass marker
-  `verify-client-v3-*` hashes `client/**`, `proto/**`, `.bun-version`,
-  `justfile`, and this workflow — not `crates/**` (wire codegen does not
-  compile Rust). On miss: Vitest JUnit (`client/junit.xml`) upload + test
-  summary. No Rust toolchain on this job.
+  `verify-client-v3-*` hashes `client/**`, `proto/**`,
+  `design.tokens.json`, `.bun-version`, `justfile`, and this workflow — not
+  `crates/**` (wire codegen does not compile Rust). On miss: Vitest JUnit
+  (`client/junit.xml`) upload + test summary. No Rust toolchain on this job.
 
 **`verify-and-release.yml`** (push to main): `verify-jobs.yml` then `npx semantic-release`
 (default config, no `.releaserc`). Requires `RELEASE_TOKEN` (PAT: `contents` + `workflow`) so

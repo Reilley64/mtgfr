@@ -79,6 +79,7 @@ if grep -E "verify-client-v[0-9]+-.*hashFiles\([^)]*crates/\*\*" "$verify"; then
 fi
 need_grep "$verify" 'verify-client-v3-' "client pass marker v3"
 need_grep "$verify" "hashFiles\('client/\*\*', 'proto/\*\*'" "client hashFiles proto+client"
+need_grep "$verify" "hashFiles\([^)]*'design\\.tokens\\.json'" "client hashFiles design tokens"
 
 client_body=$(job_body "$verify" "verify-client")
 if [[ -z "$client_body" ]]; then
