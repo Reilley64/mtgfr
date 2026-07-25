@@ -65,6 +65,56 @@ export function radialOverlayPlacement(
   };
 }
 
+export const ACTIVATION_MENU_WIDTH_PX = 240;
+export const ACTIVATION_MENU_MAX_HEIGHT_PX = 280;
+export const ACTIVATION_MENU_GAP_PX = 8;
+const ACTIVATION_MENU_ROW_PX = 36;
+const ACTIVATION_MENU_PAD_PX = 16;
+
+export function activationMenuEstimatedHeight(optionCount: number, rowPx = ACTIVATION_MENU_ROW_PX): number {
+  const n = Math.max(0, optionCount);
+  return Math.min(ACTIVATION_MENU_MAX_HEIGHT_PX, n * rowPx + ACTIVATION_MENU_PAD_PX);
+}
+
+function clamp(n: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, n));
+}
+
+/**
+ * Card-anchored menu box in % of the board viewport (CSS-stretch safe).
+ * Prefer right → left → above → below; then clamp fully on-screen.
+ */
+export function activationMenuPlacement(
+  center: { x: number; y: number },
+  cardScreen: { w: number; h: number },
+  menu: { width: number; height: number },
+  viewport: { width: number; height: number },
+  gap = ACTIVATION_MENU_GAP_PX,
+): { left: string; top: string; width: string; maxHeight: string } {
+  if (viewport.width <= 0 || viewport.height <= 0) {
+    return { left: "0%", top: "0%", width: "0%", maxHeight: "0%" };
+  }
+  const halfW = cardScreen.w / 2;
+  const halfH = cardScreen.h / 2;
+  const candidates = [
+    { x: center.x + halfW + gap, y: center.y - menu.height / 2 },
+    { x: center.x - halfW - gap - menu.width, y: center.y - menu.height / 2 },
+    { x: center.x - menu.width / 2, y: center.y - halfH - gap - menu.height },
+    { x: center.x - menu.width / 2, y: center.y + halfH + gap },
+  ];
+  const fits = (p: { x: number; y: number }) =>
+    p.x >= 0 && p.y >= 0 && p.x + menu.width <= viewport.width && p.y + menu.height <= viewport.height;
+  const raw = candidates.find(fits) ?? candidates[0]!;
+  const x = clamp(raw.x, 0, Math.max(0, viewport.width - menu.width));
+  const y = clamp(raw.y, 0, Math.max(0, viewport.height - menu.height));
+  return {
+    left: `${(x / viewport.width) * 100}%`,
+    top: `${(y / viewport.height) * 100}%`,
+    width: `${(menu.width / viewport.width) * 100}%`,
+    maxHeight: `${(Math.min(menu.height, ACTIVATION_MENU_MAX_HEIGHT_PX) / viewport.height) * 100}%`,
+  };
+}
+
 export function radialOptionKey(opt: RadialOption): string {
   if (opt.kind === "tap_for_mana") return "tap_for_mana";
   return `action:${opt.action.id}`;

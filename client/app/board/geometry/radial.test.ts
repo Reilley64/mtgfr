@@ -5,6 +5,11 @@ import { describe, expect, it } from "vitest";
 import type { ActionView } from "~/wire/types";
 import { CARD_H, CARD_W } from "./layout";
 import {
+  ACTIVATION_MENU_GAP_PX,
+  ACTIVATION_MENU_MAX_HEIGHT_PX,
+  ACTIVATION_MENU_WIDTH_PX,
+  activationMenuEstimatedHeight,
+  activationMenuPlacement,
   activationRadialInnerRadius,
   activationRadialOuterRadius,
   activationRadialRadius,
@@ -217,6 +222,66 @@ describe("radialWedgeFromElement / radialWedgeAtPoint", () => {
     const fromPoint = (_x: number, _y: number) => wedge;
     expect(radialWedgeAtPoint(10, 20, fromPoint)).toBe(2);
     expect(radialWedgeAtPoint(10, 20, () => null)).toBeNull();
+  });
+});
+
+describe("activationMenuEstimatedHeight", () => {
+  it("grows with option count and caps at max height", () => {
+    expect(activationMenuEstimatedHeight(1)).toBeLessThan(activationMenuEstimatedHeight(4));
+    expect(activationMenuEstimatedHeight(50)).toBe(ACTIVATION_MENU_MAX_HEIGHT_PX);
+  });
+});
+
+describe("activationMenuPlacement", () => {
+  const menu = { width: ACTIVATION_MENU_WIDTH_PX, height: 120 };
+  const card = { w: 96, h: 134 };
+  const vp = { width: 1440, height: 900 };
+
+  it("prefers the right of the card when there is room", () => {
+    const center = { x: 400, y: 450 };
+    const place = activationMenuPlacement(center, card, menu, vp);
+    const leftPx = (Number.parseFloat(place.left) / 100) * vp.width;
+    const expected = center.x + card.w / 2 + ACTIVATION_MENU_GAP_PX;
+    expect(leftPx).toBeCloseTo(expected, 1);
+    expect(place.width).toBe(`${(menu.width / vp.width) * 100}%`);
+  });
+
+  it("flips to the left when the right side overflows", () => {
+    const center = { x: 1400, y: 450 };
+    const place = activationMenuPlacement(center, card, menu, vp);
+    const leftPx = (Number.parseFloat(place.left) / 100) * vp.width;
+    expect(leftPx + menu.width).toBeLessThanOrEqual(vp.width + 0.5);
+    expect(leftPx).toBeLessThan(center.x);
+  });
+
+  it("flips above when horizontal sides overflow", () => {
+    // Narrow viewport: menu cannot fit left or right of a centered card.
+    const narrow = { width: 300, height: 900 };
+    const center = { x: 150, y: 450 };
+    const wideMenu = { width: 240, height: 80 };
+    const place = activationMenuPlacement(center, card, wideMenu, narrow);
+    const topPx = (Number.parseFloat(place.top) / 100) * narrow.height;
+    expect(topPx + wideMenu.height).toBeLessThanOrEqual(center.y - card.h / 2 + 0.5);
+  });
+
+  it("clamps so the panel stays fully on-screen", () => {
+    const center = { x: 10, y: 10 };
+    const place = activationMenuPlacement(center, card, menu, vp);
+    const leftPx = (Number.parseFloat(place.left) / 100) * vp.width;
+    const topPx = (Number.parseFloat(place.top) / 100) * vp.height;
+    expect(leftPx).toBeGreaterThanOrEqual(0);
+    expect(topPx).toBeGreaterThanOrEqual(0);
+    expect(leftPx + menu.width).toBeLessThanOrEqual(vp.width + 0.5);
+    expect(topPx + menu.height).toBeLessThanOrEqual(vp.height + 0.5);
+  });
+
+  it("returns zero box when viewport is invalid", () => {
+    expect(activationMenuPlacement({ x: 1, y: 1 }, card, menu, { width: 0, height: 0 })).toEqual({
+      left: "0%",
+      top: "0%",
+      width: "0%",
+      maxHeight: "0%",
+    });
   });
 });
 
