@@ -107,7 +107,10 @@ pub fn format_labeled(
         player.to_string(),
         intent_label.to_string(),
         if result.accepted { "t" } else { "f" }.to_string(),
-        result.reason.clone().unwrap_or_else(|| "-".to_string()),
+        result
+            .reason
+            .as_ref()
+            .map_or_else(|| "-".to_string(), |reason| reason.key.clone()),
         step,
         active,
         priority,
@@ -327,7 +330,7 @@ mod tests {
     fn rejected(reason: &str) -> ApplyResult {
         ApplyResult {
             accepted: false,
-            reason: Some(reason.to_string()),
+            reason: Some(schema::MessageRef::key(reason)),
             events: Vec::new(),
         }
     }
@@ -360,12 +363,12 @@ mod tests {
             7,
             1,
             &WireIntent::PassPriority { player: 1 },
-            &rejected("EngineError"),
+            &rejected("reject.engine_error"),
             &[],
             None,
         );
         assert!(
-            row.starts_with("7,1,pass,f,EngineError,-,-,-,-,"),
+            row.starts_with("7,1,pass,f,reject.engine_error,-,-,-,-,"),
             "panic row without game: {row}"
         );
     }

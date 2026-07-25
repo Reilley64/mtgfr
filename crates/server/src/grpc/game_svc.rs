@@ -29,7 +29,7 @@ impl GameSvc {
 fn ack_msg(ack: crate::game_loop::Ack) -> pb::Ack {
     pb::Ack {
         accepted: ack.accepted,
-        reason: ack.reason,
+        reject_reason: ack.reject_reason.map(map::message_ref_to_pb),
     }
 }
 
@@ -156,5 +156,33 @@ impl pb::game_server::Game for GameSvc {
         let inner = request.into_inner();
         let ack = set_stack_dwell_core(&self.state, user.id, &inner.table_id, inner.dwelling);
         Ok(Response::new(ack_msg(ack)))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use schema::{MessageParam, MessageRef};
+
+    use super::*;
+
+    #[test]
+    fn ack_msg_maps_reject_reason_message_ref() {
+        let ack = crate::game_loop::Ack {
+            accepted: false,
+            reject_reason: Some(
+                MessageRef::key("reject.engine_error")
+                    .with_params(vec![MessageParam::bool("recoverable", false)])
+                    .with_children(vec![MessageRef::key("reject.not_helpless")]),
+            ),
+        };
+
+        let pb = ack_msg(ack);
+        let reason = pb.reject_reason.expect("reject reason");
+        assert_eq!(reason.key, "reject.engine_error");
+        assert!(matches!(
+            reason.params[0].value.as_ref(),
+            Some(pb::message_param::Value::BoolValue(false))
+        ));
+        assert_eq!(reason.children[0].key, "reject.not_helpless");
     }
 }

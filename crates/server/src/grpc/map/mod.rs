@@ -6,5 +6,6 @@ mod intent;
 mod stream;
 
 pub use catalog::*;
+pub use common::*;
 pub use intent::*;
 pub use stream::*;

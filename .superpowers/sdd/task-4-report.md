@@ -1,4 +1,4 @@
-# Task 4 Report: Right-click context menu
+# Task 4 Report: Server Ack + forced auto_actions as MessageRef
 
 ## Status
 
@@ -8,26 +8,25 @@ Done.
 
 Red:
 
-- Added Scene tests for the owned deck menu and delete confirmation path before production code.
-- `cd client && bunx vitest run app/shell/decks/list/story.test.ts`
-- Result: failed as expected because `BindDeckListContextMenu` / menu UI did not exist yet.
+- Added server tests for forced auto-action keys, engine reject keys, server-only reject keys in `MessageKey::all()`, and nested MessageRef proto mapping.
+- `cargo nextest run --profile ci -p server a_forced_single_legal_target_choice_auto_resolves_without_a_client_intent engine_rejects_are_returned_as_message_refs delta_collapses_divided_damage_into_object_amount_rows stack_yield_rejects_disable_once_armed server_message_keys_are_in_the_closed_catalog`
+- Result: failed to compile as expected because server/session/gRPC still used strings and `pb::Ack.reason`.
 
 Green:
 
-- Implemented `BindDeckListContextMenu`, attached it to deck tiles, rendered the Edit/Delete menu overlay, and updated Scene mount lifecycles.
-- `cd client && bunx vitest run app/shell/decks/list/story.test.ts`
-- Result: 4 tests passed.
+- Wired `schema::MessageRef` through `ApplyResult`, `DwellResult`, `PublishedDelta`, `Ack.reject_reason`, `stream::frame_for`, and gRPC DTO-to-proto mapping.
+- Mapped engine rejects through `engine::reject_message`.
+- Added forced auto-action keys and server-only reject keys to `engine::MessageKey::all()`.
+- `cargo nextest run --profile ci -p server a_forced_single_legal_target_choice_auto_resolves_without_a_client_intent engine_rejects_are_returned_as_message_refs delta_collapses_divided_damage_into_object_amount_rows stack_yield_rejects_disable_once_armed server_message_keys_are_in_the_closed_catalog`
+- Result: 5 tests passed.
 
 ## Verification
 
-- `cd client && bun run lint`
-  - Passed. Biome reported the existing schema-version info for `biome.json`.
-- `cd client && bun run typecheck`
+- `cargo fmt`
   - Passed.
-- `cd client && bunx vitest run app/shell/decks/list/story.test.ts app/shell/surfaces.test.ts app/shell/decks/list/update.search.test.ts app/shell/decks/list/visible.test.ts`
-  - Passed: 4 files, 25 tests.
+- `cargo nextest run --profile ci -p server`
+  - Passed: 164 tests.
 
 ## Notes
 
-- `just` was unavailable in this container, so client scripts were used directly.
-- The delete confirm Scene clicks `deck-list-menu-delete` directly; this is stricter than dispatching the message and keeps the Scene test type-safe.
+- `CatalogCard.summary` remains a proto string, so the server mapper joins summary message keys at that boundary to keep `-p server` compiling while Task 4's Ack/delta MessageRef proto fields are wired.

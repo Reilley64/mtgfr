@@ -68,7 +68,12 @@ pub fn catalog_card_to_pb(card: CatalogCard) -> pb::CatalogCard {
         cost: Some(wire_cost_to_pb(card.cost)),
         kind: Some(wire_kind_to_pb(card.kind)),
         keywords: card.keywords,
-        summary: card.summary,
+        summary: card
+            .summary
+            .into_iter()
+            .map(|message| message.key)
+            .collect::<Vec<_>>()
+            .join("; "),
         legendary: card.legendary,
         color_identity: card.color_identity.into_iter().map(u32::from).collect(),
         approximates: card.approximates,

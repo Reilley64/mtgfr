@@ -25,6 +25,12 @@ macro_rules! message_keys {
 }
 
 message_keys! {
+    AUTO_AUTOMATIC => "auto.automatic",
+    AUTO_DISCARDED => "auto.discarded",
+    AUTO_DISCARDED_TO_HAND_SIZE => "auto.discarded_to_hand_size",
+    AUTO_ONLY_ONE_LEGAL_TARGET => "auto.only_one_legal_target",
+    AUTO_SACRIFICED_FORCED => "auto.sacrificed_forced",
+    AUTO_TRIGGER_ORDER_FORCED => "auto.trigger_order_forced",
     EFFECT_CHOOSE_ONE => "effect.choose_one",
     EFFECT_CONDITIONAL => "effect.conditional",
     EFFECT_CONTROL_ATTACH_SELF_TO_ENTERING => "effect.control_attach_self_to_entering",
@@ -275,10 +281,16 @@ message_keys! {
     REJECT_ILLEGAL_DECLARATION => "reject.illegal_declaration",
     REJECT_ILLEGAL_MODE => "reject.illegal_mode",
     REJECT_ILLEGAL_TARGET => "reject.illegal_target",
+    REJECT_GAME_NOT_STARTED => "reject.game_not_started",
+    REJECT_ENGINE_ERROR => "reject.engine_error",
     REJECT_MULLIGANING => "reject.mulliganing",
+    REJECT_NOT_HELPLESS => "reject.not_helpless",
     REJECT_NOT_CASTABLE => "reject.not_castable",
+    REJECT_NOT_SEATED => "reject.not_seated",
     REJECT_NOT_YOUR_PRIORITY => "reject.not_your_priority",
+    REJECT_STACK_YIELD_ONE_SHOT => "reject.stack_yield_one_shot",
     REJECT_UNKNOWN_ACTION => "reject.unknown_action",
+    REJECT_UNKNOWN_TABLE => "reject.unknown_table",
     REJECT_UNKNOWN_OBJECT => "reject.unknown_object",
     REJECT_WRONG_TIMING => "reject.wrong_timing",
 }
