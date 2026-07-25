@@ -3,7 +3,6 @@
  */
 import { describe, expect, it } from "vitest";
 import type { ActionView } from "~/wire/types";
-import { CARD_H, CARD_W } from "./layout";
 import {
   ACTIVATION_MENU_GAP_PX,
   ACTIVATION_MENU_MAX_HEIGHT_PX,
@@ -11,21 +10,14 @@ import {
   activationCostChip,
   activationMenuEstimatedHeight,
   activationMenuPlacement,
-  activationRadialInnerRadius,
-  activationRadialOuterRadius,
-  activationRadialRadius,
   type RadialPress,
   radialOptionKey,
   radialOptions,
-  radialOverlayPlacement,
   radialPressDown,
   radialPressUp,
   radialScreenCenter,
   radialWedgeAtPoint,
   radialWedgeFromElement,
-  wedgeIndex,
-  wedgeLabelPoint,
-  wedgePath,
 } from "./radial";
 
 const activate = (over: Partial<ActionView> = {}): ActionView =>
@@ -41,35 +33,12 @@ const activate = (over: Partial<ActionView> = {}): ActionView =>
     ...over,
   }) as unknown as ActionView;
 
-describe("activationRadialRadius", () => {
-  it("scales with zoom so the ring tracks the on-screen card", () => {
-    expect(activationRadialRadius(1)).toBe(CARD_H / 2 + 12);
-    expect(activationRadialRadius(2)).toBe(CARD_H + 12);
-    expect(activationRadialRadius(0.1)).toBe(40);
-  });
-});
-
 describe("radialScreenCenter", () => {
   it("maps the selected card center from world to screen coordinates", () => {
     const camera = { panX: 5, panY: -13, zoom: 2 };
     const card = { x: 10, y: 20, w: 120, h: 80 };
 
     expect(radialScreenCenter(camera, card)).toEqual({ x: 145, y: 107 });
-  });
-});
-
-describe("radialOverlayPlacement", () => {
-  it("places the SVG in % of the viewport so CSS-stretched canvases stay aligned", () => {
-    // Board canvases paint in logical viewport px but CSS-stretch to the window
-    // (`h-full w-full`). Fixed left/top in logical px only centers when window ==
-    // viewport; percentages of the same box track the painted card at any size.
-    expect(radialOverlayPlacement({ x: 720, y: 450 }, 200, { width: 1440, height: 900 })).toEqual({
-      left: "50%",
-      top: "50%",
-      width: `${(200 / 1440) * 100}%`,
-      height: `${(200 / 900) * 100}%`,
-      transform: "translate(-50%, -50%)",
-    });
   });
 });
 
@@ -127,65 +96,6 @@ describe("radialOptions", () => {
     expect(radialOptions(7, [filter], false, false, true)).toEqual([
       { kind: "action", action: filter, label: "Add {U}{R}", disabled: false },
     ]);
-  });
-});
-
-describe("activationRadialInnerRadius / outer", () => {
-  it("clears the upright card corners and keeps a usable ring thickness", () => {
-    const zoom = 1;
-    const inner = activationRadialInnerRadius(zoom);
-    const outer = activationRadialOuterRadius(zoom);
-    const corner = Math.hypot(CARD_W / 2, CARD_H / 2) * zoom;
-    expect(inner).toBeGreaterThan(corner);
-    expect(outer - inner).toBeGreaterThanOrEqual(36);
-    expect(outer).toBeGreaterThanOrEqual(activationRadialRadius(zoom));
-  });
-
-  it("scales with zoom", () => {
-    expect(activationRadialInnerRadius(2)).toBeGreaterThan(activationRadialInnerRadius(1));
-    expect(activationRadialOuterRadius(2)).toBeGreaterThan(activationRadialOuterRadius(1));
-  });
-});
-
-describe("wedgeIndex", () => {
-  it("puts the top of the ring in wedge 0 when count is 4", () => {
-    // atan2(-1, 0) === -π/2 — straight up from center
-    expect(wedgeIndex(-Math.PI / 2, 4)).toBe(0);
-  });
-
-  it("wraps angles into [0, count)", () => {
-    expect(wedgeIndex(Math.PI, 4)).toBeGreaterThanOrEqual(0);
-    expect(wedgeIndex(Math.PI, 4)).toBeLessThan(4);
-  });
-
-  it("returns 0 for a single wedge at any angle", () => {
-    expect(wedgeIndex(0, 1)).toBe(0);
-    expect(wedgeIndex(2, 1)).toBe(0);
-  });
-});
-
-describe("wedgePath / wedgeLabelPoint", () => {
-  it("returns a non-empty path for each of 6 wedges", () => {
-    for (let i = 0; i < 6; i++) {
-      expect(wedgePath(i, 6, 50, 90).length).toBeGreaterThan(10);
-    }
-  });
-
-  it("draws a full donut with two outer semicircles when count is 1", () => {
-    // SVG cannot express a 360° arc in one A command (start==end collapses).
-    const d = wedgePath(0, 1, 50, 90);
-    const outerArcs = d.match(/A 90 90/g) ?? [];
-    expect(outerArcs.length).toBe(2);
-    expect(d).toContain("A 50 50");
-    // evenodd hole: outer closed, then inner closed (no radial L seam through the label)
-    expect(d.indexOf("Z")).toBeLessThan(d.lastIndexOf("Z"));
-    expect(d).not.toMatch(/L /);
-  });
-
-  it("places the single-wedge label at the top", () => {
-    const p = wedgeLabelPoint(0, 1, 50, 90);
-    expect(p.x).toBeCloseTo(0, 5);
-    expect(p.y).toBeLessThan(0);
   });
 });
 
