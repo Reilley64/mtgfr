@@ -1013,14 +1013,18 @@ pub(crate) fn fresh_permanent(
         temp_power: 0,
         temp_toughness: 0,
         base_pt_set_eot: None,
+        base_pt_set_eot_timestamp: 0,
         added_types_eot: TypeSet::NONE,
+        added_types_eot_timestamp: 0,
         added_subtypes_eot: &[],
         added_colors_eot: &[],
         set_color_eot: None,
         temp_keywords: &[],
         temp_lost_keywords: &[],
         set_base_pt: None,
+        set_base_pt_timestamp: 0,
         added_types: TypeSet::NONE,
+        added_types_timestamp: 0,
         added_subtypes: &[],
         granted_keywords: &[],
         marked_damage: 0,
@@ -1028,6 +1032,7 @@ pub(crate) fn fresh_permanent(
         commander,
         token: false,
         attached_to: None,
+        continuous_timestamp: 0,
         loyalty: starting_loyalty(&printed),
         loyalty_activated: false,
         finality_counter: false,
@@ -1538,12 +1543,17 @@ pub(crate) struct Permanent {
     /// counters/pumps/anthems), and cleared alongside `temp_power`/`temp_toughness` at cleanup
     /// (see [`Event::TempBoostsEnded`]'s handler). Not a `CardDef`/TOML surface — P/T is derived.
     pub(crate) base_pt_set_eot: Option<(i32, i32)>,
+    /// The CR 613.7 timestamp of [`Permanent::base_pt_set_eot`], so a later 7b set (Darksteel
+    /// Mutation after Trench Gorger, Quandrix Charm after Darksteel Mutation) wins the layer.
+    pub(crate) base_pt_set_eot_timestamp: u64,
     /// Card types added until end of turn by a self-animation (CR 613.4 — Restless Spire's "this
     /// land becomes a … creature … It's still a land"): `TypeSet::CREATURE` while a manland is
     /// animated, unioned onto its printed types by [`Game::effective_types`], and cleared alongside
     /// `base_pt_set_eot` at cleanup (see [`Event::TempBoostsEnded`]'s handler). The twin of
     /// `base_pt_set_eot` for the type layer — runtime bookkeeping, never a `CardDef`/TOML surface.
     pub(crate) added_types_eot: TypeSet,
+    /// The CR 613.7 timestamp of [`Permanent::added_types_eot`] / [`Permanent::added_subtypes_eot`].
+    pub(crate) added_types_eot_timestamp: u64,
     /// Creature subtypes added until end of turn by the same self-animation (Restless Spire →
     /// "Elemental"): unioned onto the printed subtypes by [`Game::effective_subtypes`], cleared with
     /// `added_types_eot`. `&'static` because it's copied straight from the granting ability's
@@ -1586,11 +1596,15 @@ pub(crate) struct Permanent {
     /// because a permanent that leaves the battlefield becomes a new object (CR 400.7). Runtime
     /// bookkeeping, never a `CardDef`/TOML surface.
     pub(crate) set_base_pt: Option<(i32, i32)>,
+    /// The CR 613.7 timestamp of [`Permanent::set_base_pt`].
+    pub(crate) set_base_pt_timestamp: u64,
     /// Card types added indefinitely (CR 611.2c — Excava's "It's a … creature … in addition to its
     /// other types", turning a reanimated noncreature into a creature): the indefinite twin of
     /// `added_types_eot`, unioned onto the printed types by [`Game::effective_types`], never
     /// cleared at cleanup (resets with the object per CR 400.7).
     pub(crate) added_types: TypeSet,
+    /// The CR 613.7 timestamp of [`Permanent::added_types`] / [`Permanent::added_subtypes`].
+    pub(crate) added_types_timestamp: u64,
     /// Creature subtypes added indefinitely by the same set (Excava → "Spirit"): the indefinite
     /// twin of `added_subtypes_eot`, unioned onto the printed subtypes by
     /// [`Game::effective_subtypes`]. `&'static` — copied straight from the granting ability's
@@ -1611,6 +1625,9 @@ pub(crate) struct Permanent {
     /// The permanent this is attached to, for an Aura/Equipment (CR 301.5/303.4). `None`
     /// when unattached. Its grant (see [`Effect::Static(StaticEffect::GrantToAttached)`]) applies to that host.
     pub(crate) attached_to: Option<ObjectId>,
+    /// The CR 613.7 timestamp of this permanent's own static continuous effects while on the
+    /// battlefield. Set when it enters, and refreshed when an attached grant takes hold on a host.
+    pub(crate) continuous_timestamp: u64,
     /// A planeswalker's current loyalty (its loyalty counters, CR 606.5b). 0 for a non-planeswalker.
     pub(crate) loyalty: i32,
     /// Whether a loyalty ability was activated on this planeswalker this turn (CR 606.3 — at most

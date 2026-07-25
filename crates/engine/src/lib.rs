@@ -138,6 +138,10 @@ pub struct Game {
     /// [`Game::controller_of`] to rank several control effects on one permanent. Never reset, so an
     /// earlier steal always compares older than a later one for the game's lifetime.
     pub(crate) next_control_timestamp: u64,
+    /// Monotonic source of continuous-effect timestamps (CR 613.7 — later same-layer effects win
+    /// absent dependency). Stamped when a permanent starts applying a static continuous effect and
+    /// when a runtime base/type set lands on a permanent.
+    pub(crate) next_continuous_timestamp: u64,
     /// Sourced counter/EOT-boost batches for the Alt-inspect mod ledger.
     pub(crate) modifier_provenance: state::ModifierProvenance,
     /// Once-per-turn activation/trigger caps, reset at each untap step.

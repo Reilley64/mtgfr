@@ -102,13 +102,16 @@ Implemented SBAs (CR 704):
 - A player at ≤ 0 life → loses. A player who must draw from an empty library → loses.
 - `PlayerLost` tombstones every object owned by the loser (CR 800.4a); any permanent others control that was owned by the loser returns to its new owner (control effects end). The last surviving player is the winner.
 
-### Effective characteristics (P/T, keywords)
+### Effective characteristics (continuous effects, layers, cache)
 
-- **Power/toughness** are computed on demand via a two-pass ordered layer list (`PtLayer`):
-  - Layer 7b: base P/T (printed, or set by a `BasePtSet` continuous effect like Darksteel Mutation).
-  - Layer 7c: additive modifications — +1/+1 counters, until-EOT pumps, anthem static effects, `grant_to_attached` Aura/Equipment bonuses.
-  - Each `PtLayer` entry carries a `source` ObjectId and a `timestamp` for tie-breaking. Full CR 613 dependency ordering is deferred (engine-core-and-event-model spec).
-- **Keywords** are a set-union of the permanent's base keywords (from `CardDef`), granted keywords (anthems, backup, attached Aura grants), and conditional keywords (e.g. first strike if attacking). Full CR 613 lose-all-abilities ordering is deferred.
+- `characteristics.rs` rebuilds a per-query **continuous-effect pipeline** (`ContinuousEffect`) for the object being read. Today's readers register attachment statics, runtime self-animation / reanimation sets, anthem statics, and keyword grants into that engine-internal pipeline rather than hard-coding separate layer passes per case.
+- **Type/subtype changes** read the layer-4-ish `SetTypes` entries first: attached Auras such as Darksteel Mutation plus runtime self-animation / reanimation type additions (Restless Spire, Excava). Added card types are unioned on; subtype-set entries replace the current creature subtype line in timestamp order, then later subtype-add entries union on top.
+- **Ability removal** reads `LoseAllAbilities` entries before the object's own printed abilities/keywords are consulted, so Darksteel Mutation-style "loses all other abilities" suppresses the host's printed static/activated/triggered text while still allowing later granted keywords from the Aura itself.
+- **Power/toughness** are computed on demand from ordered layer entries:
+  - Layer 7b: base P/T (printed, or set by a `BasePtSet` continuous effect such as Darksteel Mutation, Trench Gorger, Quandrix Charm, or a self-animation).
+  - Layer 7c: additive modifications — +1/+1 counters, -1/-1 counters, until-EOT pumps, anthem static effects, and `grant_to_attached` Aura/Equipment bonuses.
+  - Every runtime base/type set and every static continuous source carries a CR 613.7 timestamp, so same-layer ordering now handles the pool-relevant stacked-base case where a later Darksteel Mutation overrides an earlier Trench Gorger base-P/T set.
+- **Keywords** start from the object's printed keywords/conditional keywords (unless a lose-all-abilities effect removed them), then union keyword-grant `ContinuousEffect`s from attachments, runtime grants, and anthems. Backup / granted printed abilities, chosen-color protection grants, and temp "can't have" strips still apply in the existing follow-up reads around that pipeline.
 - Results are memoized in `CharacteristicsCache` and invalidated on relevant events (counter changes, pump effects, anthem attachment/detachment). Cache cells are per-object.
 
 ### Elimination
@@ -161,7 +164,7 @@ Implemented SBAs (CR 704):
 
 ## Out of Scope
 
-- **Full CR 613 layers** (type-changing, lose-all-abilities, dependency ordering, timestamp conflicts beyond 7b/7c). Flagged when a deck needs them via that deck's `docs/fidelity/<slug>-increments.md`.
+- **Full CR 613 completion.** The engine now has a real continuous-effect registry plus pool-relevant timestamp handling for stacked base-P/T sets, but it still does not model the full rules space: general dependency ordering, full card-type replacement/removal ordering, and every exotic same-layer timestamp conflict remain fidelity-driven follow-up work in `docs/fidelity/<slug>-increments.md`.
 - **Replacement effects** (general: doubling effects, damage prevention beyond the implemented per-player/table-wide combat shields, enter-as-copy). Partial implementations exist; the full CR 614 replacement-effect engine is a backlog item.
 - **Durable game persistence.** Games are in-memory only; lost on server restart (lobby-table-routing-and-live-game spec).
 - **Intent replay.** The old `SavedGame`/`SavedIntent` replay path was deleted in lobby-table-routing-and-live-game spec; the event log is audit-only.

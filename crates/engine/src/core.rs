@@ -53,6 +53,7 @@ impl Game {
             combat_extras: state::CombatExtras::default(),
             play_permissions: state::PlayPermissions::default(),
             next_control_timestamp: 0,
+            next_continuous_timestamp: 0,
             modifier_provenance: state::ModifierProvenance::default(),
             once_per_turn: state::OncePerTurnLimits::default(),
             exile_links: state::ExileLinks::default(),
@@ -460,6 +461,14 @@ impl Game {
     pub(crate) fn stamp_control_timestamp(&mut self) -> u64 {
         let ts = self.next_control_timestamp;
         self.next_control_timestamp += 1;
+        ts
+    }
+
+    /// The next continuous-effect timestamp (CR 613.7), consuming it. Static-permanent effects
+    /// stamp when they start applying; runtime base/type sets stamp when they resolve.
+    pub(crate) fn stamp_continuous_timestamp(&mut self) -> u64 {
+        let ts = self.next_continuous_timestamp;
+        self.next_continuous_timestamp += 1;
         ts
     }
 

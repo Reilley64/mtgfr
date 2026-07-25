@@ -995,6 +995,8 @@ impl Game {
                 perm.tapped = self.enters_tapped(&printed, player);
                 let id = self.create_object(Some(from), Object::Permanent(perm));
                 assert_eq!(id, permanent);
+                self.permanent_mut(permanent).continuous_timestamp =
+                    self.stamp_continuous_timestamp();
                 self.players[player.0 as usize].lands_played += 1;
                 if serra_recursion {
                     self.players[player.0 as usize].graveyard_play_used_this_turn = true;
@@ -1076,6 +1078,10 @@ impl Game {
                 if host.is_some() && self.def_of(object).enchant_graveyard {
                     self.permanent_mut(object).enchant_rewrite_host = host;
                 }
+                if host.is_some() {
+                    self.permanent_mut(object).continuous_timestamp =
+                        self.stamp_continuous_timestamp();
+                }
                 // CR 302.6/720.3: gaining control of a permanent (here via a control-changing
                 // Aura becoming attached) makes it summoning-sick for its new controller until
                 // that controller's next untap — it hasn't been under their control since their
@@ -1128,7 +1134,10 @@ impl Game {
                 power,
                 toughness,
             } => {
-                self.permanent_mut(object).base_pt_set_eot = Some((power, toughness));
+                let ts = self.stamp_continuous_timestamp();
+                let p = self.permanent_mut(object);
+                p.base_pt_set_eot = Some((power, toughness));
+                p.base_pt_set_eot_timestamp = ts;
             }
             Event::TypesAddedUntilEndOfTurn {
                 object,
@@ -1136,8 +1145,10 @@ impl Game {
                 subtypes,
                 colors,
             } => {
+                let ts = self.stamp_continuous_timestamp();
                 let p = self.permanent_mut(object);
                 p.added_types_eot = types;
+                p.added_types_eot_timestamp = ts;
                 p.added_subtypes_eot = subtypes;
                 p.added_colors_eot = colors;
             }
@@ -1151,10 +1162,13 @@ impl Game {
                 base_toughness,
                 keywords,
             } => {
+                let ts = self.stamp_continuous_timestamp();
                 let p = self.permanent_mut(object);
                 p.added_types = add_types;
+                p.added_types_timestamp = ts;
                 p.added_subtypes = add_subtypes;
                 p.set_base_pt = Some((base_power, base_toughness));
+                p.set_base_pt_timestamp = ts;
                 p.granted_keywords = keywords;
             }
             // Hofri Ghostforge's minted copy (CR 613.4): the indefinite subtype set, written as the
@@ -1172,7 +1186,10 @@ impl Game {
                 power,
                 toughness,
             } => {
-                self.permanent_mut(object).set_base_pt = Some((power, toughness));
+                let ts = self.stamp_continuous_timestamp();
+                let p = self.permanent_mut(object);
+                p.set_base_pt = Some((power, toughness));
+                p.set_base_pt_timestamp = ts;
             }
             // A permanent became a copy of another creature as it entered (CR 706/707.2). Overwrite
             // its `def` with the copied `def`; for an until-EOT copy, stash the original first so
@@ -1197,7 +1214,9 @@ impl Game {
                 let p = self.permanent_mut(object);
                 p.temp_lost_keywords = &[];
                 p.base_pt_set_eot = None;
+                p.base_pt_set_eot_timestamp = 0;
                 p.added_types_eot = TypeSet::NONE;
+                p.added_types_eot_timestamp = 0;
                 p.added_subtypes_eot = &[];
                 p.added_colors_eot = &[];
                 p.set_color_eot = None;
@@ -1619,6 +1638,8 @@ impl Game {
                     Object::Permanent(fresh_permanent(def, owner, true, commander)),
                 );
                 assert_eq!(id, permanent);
+                self.permanent_mut(permanent).continuous_timestamp =
+                    self.stamp_continuous_timestamp();
                 // See `Permanent::entered_with_x`'s doc — locked in here while `from` is still
                 // the resolving Spell, before `remove_spell_from_stack` below takes it away.
                 self.permanent_mut(permanent).entered_with_x = x;
@@ -1676,6 +1697,8 @@ impl Game {
                     Object::Permanent(fresh_permanent(def, controller, true, commander)),
                 );
                 assert_eq!(id, permanent);
+                self.permanent_mut(permanent).continuous_timestamp =
+                    self.stamp_continuous_timestamp();
                 // Excava, the Risen Past (CR 614.12): the finality counter is present the instant
                 // the reanimated permanent enters — mirrors `EntersWithCounters`'s `plus_counters`
                 // set right after `create_object`, above.
@@ -1694,6 +1717,7 @@ impl Game {
             } => {
                 let id = self.create_object(None, Object::Permanent(fresh_token(def, controller)));
                 assert_eq!(id, token);
+                self.permanent_mut(token).continuous_timestamp = self.stamp_continuous_timestamp();
             }
             Event::TokenCeasedToExist {
                 token,
