@@ -55,6 +55,7 @@ function loginRedirectFor(model: Model): string {
 
 function terminalStreamError(status: number): string {
   if (status === 401) return "Session expired — sign in again.";
+  if (status === 404) return "Table no longer available.";
   return `Lost connection to the table (${status}).`;
 }
 

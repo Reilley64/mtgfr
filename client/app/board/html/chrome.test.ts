@@ -85,12 +85,12 @@ function gameState(overrides: Partial<VisibleState> = {}): VisibleState {
   };
 }
 
-function gameFold(state: VisibleState | null = gameState()): GameFoldState {
+function gameFold(state: VisibleState | null = gameState(), reject: string | null = null): GameFoldState {
   return {
     seq: 1,
     state,
     log: [],
-    reject: null,
+    reject,
     provenance: {
       zoneMoves: new Map(),
       resolvedFromStack: new Set(),
@@ -328,8 +328,28 @@ test("reconnect banner appears only when disconnected with live state", () => {
     Scene.with(boardModel(gameFold(), false)),
     resolveLiveBoardMounts(),
     Scene.expect(Scene.testId("board-reconnecting")).toExist(),
-    Scene.expect(Scene.text("Reconnecting…")).toExist(),
+    Scene.expect(Scene.text("Connection lost — reconnecting…")).toExist(),
     Scene.expect(Scene.testId("board-status")).not.toExist(),
+  );
+});
+
+test("reconnect banner explains an expired session terminal error", () => {
+  Scene.scene(
+    { update: (m) => [m, []], view: fullBoardView },
+    Scene.with(boardModel(gameFold(gameState(), "Session expired — sign in again."), false)),
+    resolveLiveBoardMounts(),
+    Scene.expect(Scene.testId("board-reconnecting")).toExist(),
+    Scene.expect(Scene.text("Session expired — sign in again.")).toExist(),
+  );
+});
+
+test("reconnect banner explains a missing table terminal error", () => {
+  Scene.scene(
+    { update: (m) => [m, []], view: fullBoardView },
+    Scene.with(boardModel(gameFold(gameState(), "Table no longer available."), false)),
+    resolveLiveBoardMounts(),
+    Scene.expect(Scene.testId("board-reconnecting")).toExist(),
+    Scene.expect(Scene.text("Table no longer available.")).toExist(),
   );
 });
 

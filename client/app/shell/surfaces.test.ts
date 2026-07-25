@@ -344,7 +344,7 @@ describe("shell surface scenes", () => {
       Scene.expect(Scene.selector('[data-testid="lobby-start-error"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-error"]')).toExist(),
       Scene.expect(Scene.text("Need at least two players.")).toExist(),
-      Scene.expect(Scene.text("No such table.")).toExist(),
+      Scene.expect(Scene.text("That table link is stale or expired. Ask the host for a new code.")).toExist(),
     );
   });
 

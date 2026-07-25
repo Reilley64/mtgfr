@@ -77,6 +77,11 @@ function hintVisible(board: BoardModel): boolean {
   return !board.hintDismissed && !board.hintAutoHidden;
 }
 
+function reconnectBannerText(model: BoardViewModel): string | null {
+  if (model.connected) return null;
+  return model.fold.reject ?? "Connection lost — reconnecting…";
+}
+
 export const view = Submodel.defineView<BoardViewModel, Message>((model) => {
   const state = model.fold.state;
   if (state == null) return connectingBoard();
@@ -215,6 +220,7 @@ export const view = Submodel.defineView<BoardViewModel, Message>((model) => {
         };
 
   const ariaSummary = boardStatusSummary(state, state.viewer);
+  const reconnectText = reconnectBannerText(model);
 
   // Foldkit keeps only the last OnMount insert hook per element — never stack
   // MountBoardKeyboard / MountBoardAudio / MountHintAutoHide on the same node
@@ -299,7 +305,7 @@ export const view = Submodel.defineView<BoardViewModel, Message>((model) => {
         ],
         [],
       ),
-      model.connected
+      reconnectText == null
         ? null
         : h.div(
             [
@@ -308,7 +314,7 @@ export const view = Submodel.defineView<BoardViewModel, Message>((model) => {
                 "fixed top-0 right-0 left-0 z-40 bg-reconnect-rust p-sm text-center font-semibold text-label text-snow",
               ),
             ],
-            ["Reconnecting…"],
+            [reconnectText],
           ),
     ],
   );

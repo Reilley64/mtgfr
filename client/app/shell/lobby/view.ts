@@ -33,7 +33,7 @@ function humanError(code: string): string {
     NotHost: "Only the host can start.",
     NeedTwoPlayers: "Need at least two players.",
     NotAllReady: "Everyone must ready up first.",
-    UnknownTable: "No such table.",
+    UnknownTable: "That table link is stale or expired. Ask the host for a new code.",
     NotSeated: "Claim a seat first.",
     UnknownDeck: "That deck no longer exists.",
     Draining: "Server is restarting — try again in a moment.",
@@ -422,6 +422,15 @@ function tableLobby(
           ])
         : null,
       seats(model),
+      !joined && model.view != null && !model.view.started
+        ? h.div(
+            [
+              h.DataAttribute("testid", "lobby-watch-note"),
+              h.Class("rounded-hud border border-vine-dim bg-glass-dim px-md py-sm text-caption text-lichen"),
+            ],
+            ["Stay on this table link: if you don't claim a seat before the host starts, you'll enter spectator view."],
+          )
+        : null,
       joined
         ? h.div(
             [h.Class("flex flex-wrap items-center gap-sm")],
