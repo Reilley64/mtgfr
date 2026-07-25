@@ -373,10 +373,10 @@ fn str_param(name: &'static str, value: &'static str) -> MessageParam {
     }
 }
 
-fn debug_param(name: &'static str, value: impl std::fmt::Debug) -> MessageParam {
+fn owned_str_param(name: &'static str, value: String) -> MessageParam {
     MessageParam {
         name,
-        value: MessageParamValue::OwnedStr(debug_token(value)),
+        value: MessageParamValue::OwnedStr(value),
     }
 }
 
@@ -394,13 +394,20 @@ fn name_param(name: &'static str, value: &'static str) -> MessageParam {
     }
 }
 
-fn debug_token(value: impl std::fmt::Debug) -> String {
-    let raw = format!("{value:?}");
+fn snake_text(value: &str) -> String {
     let mut out = String::new();
     let mut prev_sep = true;
-    for ch in raw.chars() {
-        if ch.is_ascii_alphanumeric() {
+    for ch in value.chars() {
+        if ch.is_ascii_uppercase() {
+            if !prev_sep {
+                out.push('_');
+            }
             out.push(ch.to_ascii_lowercase());
+            prev_sep = false;
+            continue;
+        }
+        if ch.is_ascii_lowercase() || ch.is_ascii_digit() {
+            out.push(ch);
             prev_sep = false;
             continue;
         }
@@ -412,7 +419,517 @@ fn debug_token(value: impl std::fmt::Debug) -> String {
     while out.ends_with('_') {
         out.pop();
     }
+    if out.is_empty() {
+        return "none".to_string();
+    }
     out
+}
+
+fn join_tokens(tokens: impl IntoIterator<Item = String>) -> String {
+    let tokens: Vec<String> = tokens.into_iter().collect();
+    if tokens.is_empty() {
+        return "none".to_string();
+    }
+    if tokens.len() == 1 {
+        return tokens[0].clone();
+    }
+    let mut out = String::new();
+    for (index, token) in tokens.iter().enumerate() {
+        if index > 0 {
+            if index == tokens.len() - 1 {
+                out.push_str("_and_");
+            } else {
+                out.push('_');
+            }
+        }
+        out.push_str(token);
+    }
+    out
+}
+
+fn string_list_token(values: &[&str]) -> String {
+    join_tokens(values.iter().map(|value| snake_text(value)))
+}
+
+fn string_list_param(name: &'static str, values: &[&str]) -> MessageParam {
+    owned_str_param(name, string_list_token(values))
+}
+
+fn color_token(color: Color) -> &'static str {
+    match color {
+        Color::White => "white",
+        Color::Blue => "blue",
+        Color::Black => "black",
+        Color::Red => "red",
+        Color::Green => "green",
+    }
+}
+
+fn color_filter_token(filter: ColorFilter) -> String {
+    match filter {
+        ColorFilter::Any => "any_color".to_string(),
+        ColorFilter::Monocolored => "monocolored".to_string(),
+        ColorFilter::White => "white".to_string(),
+        ColorFilter::Blue => "blue".to_string(),
+        ColorFilter::Black => "black".to_string(),
+        ColorFilter::Red => "red".to_string(),
+        ColorFilter::Green => "green".to_string(),
+        ColorFilter::NotColor(color) => format!("not_{}", color_token(color)),
+    }
+}
+
+fn color_list_param(name: &'static str, values: &[Color]) -> MessageParam {
+    owned_str_param(
+        name,
+        join_tokens(values.iter().map(|color| color_token(*color).to_string())),
+    )
+}
+
+fn protection_scope_token(scope: ProtectionScope) -> String {
+    match scope {
+        ProtectionScope::Color(color) => color_token(color).to_string(),
+        ProtectionScope::Creatures => "creatures".to_string(),
+        ProtectionScope::Multicolored => "multicolored".to_string(),
+    }
+}
+
+fn keyword_token(keyword: Keyword) -> String {
+    match keyword {
+        Keyword::Flying => "flying".to_string(),
+        Keyword::FirstStrike => "first_strike".to_string(),
+        Keyword::Vigilance => "vigilance".to_string(),
+        Keyword::Haste => "haste".to_string(),
+        Keyword::Trample => "trample".to_string(),
+        Keyword::Deathtouch => "deathtouch".to_string(),
+        Keyword::Reach => "reach".to_string(),
+        Keyword::Menace => "menace".to_string(),
+        Keyword::DoubleStrike => "double_strike".to_string(),
+        Keyword::Lifelink => "lifelink".to_string(),
+        Keyword::Defender => "defender".to_string(),
+        Keyword::Unblockable => "unblockable".to_string(),
+        Keyword::Indestructible => "indestructible".to_string(),
+        Keyword::Flash => "flash".to_string(),
+        Keyword::Ward(cost) => format!("ward_{cost}"),
+        Keyword::ProtectionFrom(scope) => {
+            format!("protection_from_{}", protection_scope_token(scope))
+        }
+        Keyword::Hexproof => "hexproof".to_string(),
+        Keyword::Shroud => "shroud".to_string(),
+        Keyword::Prowess => "prowess".to_string(),
+        Keyword::Skulk => "skulk".to_string(),
+        Keyword::Shadow => "shadow".to_string(),
+        Keyword::Fear => "fear".to_string(),
+        Keyword::LesserPowerCantBlock => "lesser_power_cant_block".to_string(),
+        Keyword::CantBlock => "cant_block".to_string(),
+        Keyword::CanBlockOnlyFlyers => "can_block_only_flyers".to_string(),
+        Keyword::Decayed => "decayed".to_string(),
+        Keyword::Myriad => "myriad".to_string(),
+    }
+}
+
+fn keyword_list_param(name: &'static str, values: &[Keyword]) -> MessageParam {
+    owned_str_param(name, join_tokens(values.iter().copied().map(keyword_token)))
+}
+
+fn counter_kind_token(kind: CounterKind) -> &'static str {
+    match kind {
+        CounterKind::Charge => "charge",
+        CounterKind::Story => "story",
+        CounterKind::Study => "study",
+        CounterKind::Vow => "vow",
+        CounterKind::Time => "time",
+        CounterKind::Scream => "scream",
+        CounterKind::MinusOneMinusOne => "minus_one_minus_one",
+        CounterKind::Strife => "strife",
+        CounterKind::Age => "age",
+        CounterKind::Storage => "storage",
+    }
+}
+
+fn counter_kind_param(name: &'static str, kind: CounterKind) -> MessageParam {
+    str_param(name, counter_kind_token(kind))
+}
+
+fn search_dest_token(dest: SearchDest) -> &'static str {
+    match dest {
+        SearchDest::Hand => "hand",
+        SearchDest::Battlefield => "battlefield",
+        SearchDest::LibraryTop => "library_top",
+        SearchDest::Graveyard => "graveyard",
+        SearchDest::Exile => "exile",
+    }
+}
+
+fn search_dest_param(name: &'static str, dest: SearchDest) -> MessageParam {
+    str_param(name, search_dest_token(dest))
+}
+
+fn top_dest_token(dest: TopDest) -> &'static str {
+    match dest {
+        TopDest::Hand => "hand",
+        TopDest::Battlefield => "battlefield",
+    }
+}
+
+fn top_dest_param(name: &'static str, dest: TopDest) -> MessageParam {
+    str_param(name, top_dest_token(dest))
+}
+
+fn countered_dest_token(dest: CounteredDest) -> &'static str {
+    match dest {
+        CounteredDest::LibraryTopOrBottom => "library_top_or_bottom",
+        CounteredDest::LibraryBottom => "library_bottom",
+    }
+}
+
+fn optional_countered_dest_param(name: &'static str, dest: Option<CounteredDest>) -> MessageParam {
+    str_param(name, dest.map(countered_dest_token).unwrap_or("none"))
+}
+
+fn step_token(step: Step) -> &'static str {
+    match step {
+        Step::Untap => "untap",
+        Step::Upkeep => "upkeep",
+        Step::Draw => "draw",
+        Step::Main1 => "main1",
+        Step::BeginCombat => "begin_combat",
+        Step::DeclareAttackers => "declare_attackers",
+        Step::DeclareBlockers => "declare_blockers",
+        Step::FirstStrikeCombatDamage => "first_strike_combat_damage",
+        Step::CombatDamage => "combat_damage",
+        Step::EndCombat => "end_combat",
+        Step::Main2 => "main2",
+        Step::End => "end",
+        Step::Cleanup => "cleanup",
+    }
+}
+
+fn step_param(name: &'static str, step: Step) -> MessageParam {
+    str_param(name, step_token(step))
+}
+
+fn edict_scope_token(scope: EdictScope) -> &'static str {
+    match scope {
+        EdictScope::AllPlayers => "all_players",
+        EdictScope::EachOpponent => "each_opponent",
+        EdictScope::TargetedPlayers => "targeted_players",
+    }
+}
+
+fn edict_scope_param(name: &'static str, scope: EdictScope) -> MessageParam {
+    str_param(name, edict_scope_token(scope))
+}
+
+fn land_tap_scope_token(scope: LandTapScope) -> &'static str {
+    match scope {
+        LandTapScope::EnchantedHost => "enchanted_host",
+        LandTapScope::Controller => "controller",
+    }
+}
+
+fn land_tap_bonus_color_token(color: LandTapBonusColor) -> &'static str {
+    match color {
+        LandTapBonusColor::AnyColor => "any_color",
+        LandTapBonusColor::Produced => "produced",
+    }
+}
+
+fn type_set_token(types: TypeSet) -> String {
+    if types.is_empty() {
+        return "any".to_string();
+    }
+    if types == TypeSet::NONLAND {
+        return "nonland".to_string();
+    }
+    if types == TypeSet::ARTIFACT.union(TypeSet::ENCHANTMENT) {
+        return "artifact_or_enchantment".to_string();
+    }
+    if types == TypeSet::ARTIFACT.union(TypeSet::CREATURE) {
+        return "artifact_or_creature".to_string();
+    }
+    if types == TypeSet::CREATURE.union(TypeSet::PLANESWALKER) {
+        return "creature_or_planeswalker".to_string();
+    }
+
+    let mut parts = Vec::new();
+    if types.intersects(TypeSet::CREATURE) {
+        parts.push("creature".to_string());
+    }
+    if types.intersects(TypeSet::ARTIFACT) {
+        parts.push("artifact".to_string());
+    }
+    if types.intersects(TypeSet::ENCHANTMENT) {
+        parts.push("enchantment".to_string());
+    }
+    if types.intersects(TypeSet::PLANESWALKER) {
+        parts.push("planeswalker".to_string());
+    }
+    if types.intersects(TypeSet::LAND) {
+        parts.push("land".to_string());
+    }
+    join_tokens(parts)
+}
+
+fn parity_token(parity: Parity) -> &'static str {
+    match parity {
+        Parity::Even => "even",
+        Parity::Odd => "odd",
+    }
+}
+
+fn token_filter_token(filter: TokenFilter) -> Option<&'static str> {
+    match filter {
+        TokenFilter::Any => None,
+        TokenFilter::Token => Some("token"),
+        TokenFilter::Nontoken => Some("nontoken"),
+    }
+}
+
+fn permanent_filter_token(filter: PermanentFilter) -> String {
+    let mut parts = vec!["permanent".to_string()];
+    if !filter.types.is_empty() {
+        parts.push(type_set_token(filter.types));
+    }
+    if !filter.subtypes.is_empty() {
+        parts.push(format!("subtype_{}", string_list_token(filter.subtypes)));
+    }
+    match filter.controller {
+        FilterController::Any => {}
+        FilterController::You => parts.push("you_control".to_string()),
+        FilterController::Opponent => parts.push("opponent_controlled".to_string()),
+    }
+    if let Some(token) = token_filter_token(filter.token) {
+        parts.push(token.to_string());
+    }
+    if filter.other {
+        parts.push("other".to_string());
+    }
+    match filter.enchanted {
+        Some(true) => parts.push("enchanted".to_string()),
+        Some(false) => parts.push("not_enchanted".to_string()),
+        None => {}
+    }
+    match filter.attached_to_creature {
+        Some(true) => parts.push("attached_to_creature".to_string()),
+        Some(false) => parts.push("not_attached_to_creature".to_string()),
+        None => {}
+    }
+    if filter.enchanted_by_you {
+        parts.push("enchanted_by_you".to_string());
+    }
+    if let Some(max) = filter.mv_max {
+        parts.push(format!("mv_lte_{max}"));
+    }
+    if let Some(min) = filter.mv_min {
+        parts.push(format!("mv_gte_{min}"));
+    }
+    if filter.mv_eq_x {
+        parts.push("mv_eq_x".to_string());
+    }
+    if filter.mv_max_x {
+        parts.push("mv_lte_x".to_string());
+    }
+    match filter.tapped {
+        Some(true) => parts.push("tapped".to_string()),
+        Some(false) => parts.push("untapped".to_string()),
+        None => {}
+    }
+    if let Some(max) = filter.power_max {
+        parts.push(format!("power_lte_{max}"));
+    }
+    if let Some(parity) = filter.power_parity {
+        parts.push(format!("power_{}", parity_token(parity)));
+    }
+    if !filter.exclude.is_empty() {
+        parts.push(format!("excluding_{}", type_set_token(filter.exclude)));
+    }
+    if filter.color != ColorFilter::Any {
+        parts.push(color_filter_token(filter.color));
+    }
+    if filter.modified {
+        parts.push("modified".to_string());
+    }
+    if filter.attacking {
+        parts.push("attacking".to_string());
+    }
+    if filter.attacking_you {
+        parts.push("attacking_you".to_string());
+    }
+    if filter.power_less_than_source {
+        parts.push("power_lt_source".to_string());
+    }
+    if filter.entered_this_turn {
+        parts.push("entered_this_turn".to_string());
+    }
+    if filter.nonbasic {
+        parts.push("nonbasic".to_string());
+    }
+    if let Some(name) = filter.name {
+        parts.push(format!("named_{}", snake_text(name)));
+    }
+    if filter.nonlegendary {
+        parts.push("nonlegendary".to_string());
+    }
+    if filter.nonlair {
+        parts.push("nonlair".to_string());
+    }
+    if filter.without_flying {
+        parts.push("without_flying".to_string());
+    }
+    if filter.with_flying {
+        parts.push("with_flying".to_string());
+    }
+    if filter.shares_type_with_dying_permanent {
+        parts.push("shares_type_with_dying_permanent".to_string());
+    }
+    parts.join("_")
+}
+
+fn permanent_filter_param(name: &'static str, filter: PermanentFilter) -> MessageParam {
+    owned_str_param(name, permanent_filter_token(filter))
+}
+
+fn optional_permanent_filter_param(
+    name: &'static str,
+    filter: Option<PermanentFilter>,
+) -> MessageParam {
+    owned_str_param(
+        name,
+        filter
+            .map(permanent_filter_token)
+            .unwrap_or_else(|| "any_permanent".to_string()),
+    )
+}
+
+fn card_filter_token(filter: CardFilter) -> String {
+    match filter {
+        CardFilter::BasicLand => "basic_land".to_string(),
+        CardFilter::Land => "land".to_string(),
+        CardFilter::Nonland => "nonland".to_string(),
+        CardFilter::Creature => "creature".to_string(),
+        CardFilter::AnyCard => "any_card".to_string(),
+        CardFilter::LandWithSubtype(subtypes) => {
+            format!("land_with_subtype_{}", string_list_token(subtypes))
+        }
+        CardFilter::BasicLandWithSubtype(subtypes) => {
+            format!("basic_land_with_subtype_{}", string_list_token(subtypes))
+        }
+        CardFilter::PermanentWithManaValueAtMost(max) => format!("permanent_mv_lte_{max}"),
+        CardFilter::NonlandPermanentWithManaValueAtMost(max) => {
+            format!("nonland_permanent_mv_lte_{max}")
+        }
+        CardFilter::ArtifactOrCreatureWithManaValueAtMost(max) => {
+            format!("artifact_or_creature_mv_lte_{max}")
+        }
+        CardFilter::CreatureWithManaValueAtMost(max) => format!("creature_mv_lte_{max}"),
+        CardFilter::CreatureWithManaValueAtLeast(min) => format!("creature_mv_gte_{min}"),
+        CardFilter::ArtifactCreatureOrNonAuraEnchantmentWithManaValueAtMost(max) => {
+            format!("artifact_creature_or_non_aura_enchantment_mv_lte_{max}")
+        }
+        CardFilter::InstantOrSorcery => "instant_or_sorcery".to_string(),
+        CardFilter::Sorcery => "sorcery".to_string(),
+        CardFilter::SorceryWithColor(color) => format!("sorcery_{}", color_token(color)),
+        CardFilter::InstantWithColor(color) => format!("instant_{}", color_token(color)),
+        CardFilter::Enchantment => "enchantment".to_string(),
+        CardFilter::Permanent => "permanent".to_string(),
+        CardFilter::NoncreatureNonland => "noncreature_nonland".to_string(),
+        CardFilter::CreatureWithManaValueAtMostCombatDamage => {
+            "creature_mv_lte_combat_damage".to_string()
+        }
+        CardFilter::NonlandPermanentWithManaValueAtMostSourcePower => {
+            "nonland_permanent_mv_lte_source_power".to_string()
+        }
+        CardFilter::AuraOrEquipment => "aura_or_equipment".to_string(),
+        CardFilter::Aura => "aura".to_string(),
+        CardFilter::ArtifactOrCreature => "artifact_or_creature".to_string(),
+        CardFilter::ArtifactOrEnchantment => "artifact_or_enchantment".to_string(),
+    }
+}
+
+fn card_filter_param(name: &'static str, filter: CardFilter) -> MessageParam {
+    owned_str_param(name, card_filter_token(filter))
+}
+
+fn graveyard_scope_token(scope: GraveyardScope) -> &'static str {
+    match scope {
+        GraveyardScope::Yours => "yours",
+        GraveyardScope::Any => "any",
+        GraveyardScope::Opponents => "opponents",
+    }
+}
+
+fn spell_filter_token(filter: SpellFilter) -> String {
+    match filter {
+        SpellFilter::AllSpells => "all_spells".to_string(),
+        SpellFilter::CreatureSpells => "creature_spells".to_string(),
+        SpellFilter::NoncreatureSpells => "noncreature_spells".to_string(),
+        SpellFilter::SpellsThatTargetACreature => "spells_that_target_a_creature".to_string(),
+        SpellFilter::Aura => "aura".to_string(),
+        SpellFilter::InstantOrSorcery => "instant_or_sorcery".to_string(),
+        SpellFilter::Enchantment => "enchantment".to_string(),
+        SpellFilter::ArtifactOrEnchantment => "artifact_or_enchantment".to_string(),
+        SpellFilter::HasSubtype(subtypes) => format!("has_subtype_{}", string_list_token(subtypes)),
+        SpellFilter::HasXInCost => "has_x_in_cost".to_string(),
+        SpellFilter::InstantOrSorceryWithXInCost => "instant_or_sorcery_with_x_in_cost".to_string(),
+        SpellFilter::Historic => "historic".to_string(),
+        SpellFilter::AuraTargetsModifiedPermanentYouControl => {
+            "aura_targets_modified_permanent_you_control".to_string()
+        }
+        SpellFilter::CastFromNonHandZone => "cast_from_non_hand_zone".to_string(),
+        SpellFilter::Color(color) => format!("color_{}", color_token(color)),
+    }
+}
+
+fn spell_filter_param(name: &'static str, filter: SpellFilter) -> MessageParam {
+    owned_str_param(name, spell_filter_token(filter))
+}
+
+fn target_spec_token(target: TargetSpec) -> String {
+    match target {
+        TargetSpec::None => "none".to_string(),
+        TargetSpec::Creature => "creature".to_string(),
+        TargetSpec::CreatureYouControl => "creature_you_control".to_string(),
+        TargetSpec::Player => "player".to_string(),
+        TargetSpec::OpponentPlayer => "opponent".to_string(),
+        TargetSpec::AnyTarget => "any".to_string(),
+        TargetSpec::CreatureOrPlaneswalker => "creature_or_planeswalker".to_string(),
+        TargetSpec::PlayerOrPlaneswalker => "player_or_planeswalker".to_string(),
+        TargetSpec::CreatureCardInYourGraveyard => "creature_card_in_your_graveyard".to_string(),
+        TargetSpec::CreatureCardInAnyGraveyard => "creature_card_in_any_graveyard".to_string(),
+        TargetSpec::CardInGraveyard {
+            whose,
+            filter,
+            other,
+        } => {
+            let mut parts = vec![
+                "card_in_graveyard".to_string(),
+                graveyard_scope_token(whose).to_string(),
+                card_filter_token(filter),
+            ];
+            if other {
+                parts.push("other".to_string());
+            }
+            parts.join("_")
+        }
+        TargetSpec::InstantOrSorcerySpellOnStack => "instant_or_sorcery_spell_on_stack".to_string(),
+        TargetSpec::SpellOnStack(filter) => {
+            format!("spell_on_stack_{}", spell_filter_token(filter))
+        }
+        TargetSpec::SingleTargetSpellOnStack => "single_target_spell_on_stack".to_string(),
+        TargetSpec::ActivatedAbilityOnStack => "activated_ability_on_stack".to_string(),
+        TargetSpec::ArtifactEnchantmentOrPlaneswalker => {
+            "artifact_enchantment_or_planeswalker".to_string()
+        }
+        TargetSpec::Permanent(filter) => permanent_filter_token(filter),
+        TargetSpec::CreatureTokenYouControl => "creature_token_you_control".to_string(),
+        TargetSpec::ThisPermanent => "this".to_string(),
+        TargetSpec::EnchantedCreature => "enchanted_creature".to_string(),
+        TargetSpec::ThisAurasGraveyardTarget => "this_auras_graveyard_target".to_string(),
+    }
+}
+
+fn target_spec_param(name: &'static str, target: TargetSpec) -> MessageParam {
+    owned_str_param(name, target_spec_token(target))
 }
 
 fn amount_token(amount: Amount) -> &'static str {
@@ -521,7 +1038,7 @@ impl Effect {
                 amount_param("amount", amount),
                 bool_param("opponents_only", opponents_only),
                 bool_param("include_planeswalkers", include_planeswalkers),
-                debug_param("filter", filter),
+                optional_permanent_filter_param("filter", filter),
             ]),
             Effect::Damage(DamageEffect::EachPlayer { amount }) => {
                 MessageRef::new(MessageKey::EFFECT_DAMAGE_EACH_PLAYER)
@@ -603,14 +1120,14 @@ impl Effect {
             Effect::Destroy(DestroyEffect::Target { .. }) => MessageRef::new(MessageKey::EFFECT_DESTROY_TARGET),
             Effect::Destroy(DestroyEffect::All { filter }) => {
                 MessageRef::new(MessageKey::EFFECT_DESTROY_ALL)
-                    .with_params(vec![debug_param("filter", filter)])
+                    .with_params(vec![permanent_filter_param("filter", filter)])
             }
             Effect::Destroy(TriggeringDamagedCreature { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_DESTROY_TRIGGERING_DAMAGED_CREATURE)
             }
             Effect::Exile(ExileEffect::Target { .. }) => MessageRef::new(MessageKey::EFFECT_EXILE_TARGET),
             Effect::Exile(ExileEffect::All { filter }) => MessageRef::new(MessageKey::EFFECT_EXILE_ALL)
-                .with_params(vec![debug_param("filter", filter)]),
+                .with_params(vec![permanent_filter_param("filter", filter)]),
             Effect::Exile(UntilSourceLeaves { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_EXILE_UNTIL_SOURCE_LEAVES)
             }
@@ -667,7 +1184,7 @@ impl Effect {
             }
             Effect::Control(UntapAll { filter }) => {
                 MessageRef::new(MessageKey::EFFECT_CONTROL_UNTAP_ALL)
-                    .with_params(vec![debug_param("filter", filter)])
+                    .with_params(vec![permanent_filter_param("filter", filter)])
             }
             Effect::Counters(PlaceVowCounters { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_COUNTERS_PLACE_VOW_COUNTERS)
@@ -675,7 +1192,7 @@ impl Effect {
             Effect::Counters(PutCounters { count, kind, .. }) => {
                 let mut params = vec![amount_param("count", count)];
                 if let Some(kind) = kind {
-                    params.push(debug_param("kind", kind));
+                    params.push(counter_kind_param("kind", kind));
                 }
                 MessageRef::new(MessageKey::EFFECT_COUNTERS_PUT_COUNTERS).with_params(params)
             }
@@ -741,7 +1258,7 @@ impl Effect {
             }
             Effect::Mill(ExileTargetFromGraveyardCreateTokenCopy { filter }) => {
                 MessageRef::new(MessageKey::EFFECT_MILL_EXILE_TARGET_FROM_GRAVEYARD_CREATE_TOKEN_COPY)
-                    .with_params(vec![debug_param("filter", filter)])
+                    .with_params(vec![card_filter_param("filter", filter)])
             }
             Effect::Pump(PumpUntilEndOfTurn {
                 power,
@@ -751,7 +1268,7 @@ impl Effect {
             }) => MessageRef::new(MessageKey::EFFECT_PUMP_PUMP_UNTIL_END_OF_TURN).with_params(vec![
                 amount_param("power", power),
                 amount_param("toughness", toughness),
-                debug_param("keywords", keywords),
+                keyword_list_param("keywords", keywords),
             ]),
             Effect::Pump(PumpSelfUntilEndOfTurn {
                 power,
@@ -760,7 +1277,7 @@ impl Effect {
             }) => MessageRef::new(MessageKey::EFFECT_PUMP_PUMP_SELF_UNTIL_END_OF_TURN).with_params(vec![
                 amount_param("power", power),
                 amount_param("toughness", toughness),
-                debug_param("keywords", keywords),
+                keyword_list_param("keywords", keywords),
             ]),
             Effect::Pump(PumpCreaturesYouControlUntilEndOfTurn {
                 power,
@@ -771,12 +1288,12 @@ impl Effect {
                 .with_params(vec![
                     amount_param("power", power),
                     amount_param("toughness", toughness),
-                    debug_param("keywords", keywords),
-                    debug_param("filter", filter),
+                    keyword_list_param("keywords", keywords),
+                    permanent_filter_param("filter", filter),
                 ]),
             Effect::Pump(GrantKeywordsToPermanentsYouControlUntilEndOfTurn { keywords, filter }) => {
                 MessageRef::new(MessageKey::EFFECT_PUMP_GRANT_KEYWORDS_TO_PERMANENTS_YOU_CONTROL_UNTIL_END_OF_TURN)
-                    .with_params(vec![debug_param("keywords", keywords), debug_param("filter", filter)])
+                    .with_params(vec![keyword_list_param("keywords", keywords), permanent_filter_param("filter", filter)])
             }
             Effect::Pump(SetBasePtCreaturesYouControlUntilEndOfTurn {
                 power,
@@ -820,7 +1337,7 @@ impl Effect {
             ]),
             Effect::Pump(StripKeywordsFromOpponentsCreatures { keywords }) => {
                 MessageRef::new(MessageKey::EFFECT_PUMP_STRIP_KEYWORDS_FROM_OPPONENTS_CREATURES)
-                    .with_params(vec![debug_param("keywords", keywords)])
+                    .with_params(vec![keyword_list_param("keywords", keywords)])
             }
             Effect::Pump(WeakenEachCreature {
                 power,
@@ -833,7 +1350,7 @@ impl Effect {
             ]),
             Effect::Reveal(TopToHand { filter, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_REVEAL_TOP_TO_HAND)
-                    .with_params(vec![debug_param("filter", filter)])
+                    .with_params(vec![card_filter_param("filter", filter)])
             }
             Effect::Reveal(TopAndDrainMutual) => {
                 MessageRef::new(MessageKey::EFFECT_REVEAL_TOP_AND_DRAIN_MUTUAL)
@@ -844,9 +1361,9 @@ impl Effect {
                 matched_dest,
                 ..
             }) => MessageRef::new(MessageKey::EFFECT_REVEAL_UNTIL).with_params(vec![
-                debug_param("filter", filter),
+                card_filter_param("filter", filter),
                 amount_param("count", count),
-                debug_param("matched_dest", matched_dest),
+                search_dest_param("matched_dest", matched_dest),
             ]),
             Effect::Reveal(TopCards {
                 filter,
@@ -854,9 +1371,9 @@ impl Effect {
                 matched_dest,
                 ..
             }) => MessageRef::new(MessageKey::EFFECT_REVEAL_TOP_CARDS).with_params(vec![
-                debug_param("filter", filter),
+                card_filter_param("filter", filter),
                 amount_param("count", count),
-                debug_param("matched_dest", matched_dest),
+                search_dest_param("matched_dest", matched_dest),
             ]),
             Effect::Token(Create { token, count, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_TOKEN_CREATE)
@@ -899,7 +1416,7 @@ impl Effect {
             }
             Effect::Zone(ReturnFromGraveyardAttachedToToken { filter, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_ZONE_RETURN_FROM_GRAVEYARD_ATTACHED_TO_TOKEN)
-                    .with_params(vec![debug_param("filter", filter)])
+                    .with_params(vec![card_filter_param("filter", filter)])
             }
             Effect::Zone(AttachSelfToReanimated) => {
                 MessageRef::new(MessageKey::EFFECT_ZONE_ATTACH_SELF_TO_REANIMATED)
@@ -947,7 +1464,7 @@ impl Effect {
             }
             Effect::Zone(ReturnAllToHand { filter }) => {
                 MessageRef::new(MessageKey::EFFECT_ZONE_RETURN_ALL_TO_HAND)
-                    .with_params(vec![debug_param("filter", filter)])
+                    .with_params(vec![permanent_filter_param("filter", filter)])
             }
             Effect::Zone(ReturnFromGraveyardToHand { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_ZONE_RETURN_FROM_GRAVEYARD_TO_HAND)
@@ -963,7 +1480,7 @@ impl Effect {
                 filter,
                 all_players,
             }) => MessageRef::new(MessageKey::EFFECT_ZONE_MASS_RETURN_FROM_GRAVEYARD).with_params(vec![
-                debug_param("filter", filter),
+                card_filter_param("filter", filter),
                 bool_param("all_players", all_players),
             ]),
             Effect::Zone(ShuffleTargetPermanentIntoLibraryThenReveal { .. }) => {
@@ -985,7 +1502,7 @@ impl Effect {
             }
             Effect::Zone(ExileDeadCreatureCreateCopyWithSubtype { add_subtypes, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_ZONE_EXILE_DEAD_CREATURE_CREATE_COPY_WITH_SUBTYPE)
-                    .with_params(vec![debug_param("add_subtypes", add_subtypes)])
+                    .with_params(vec![string_list_param("add_subtypes", add_subtypes)])
             }
             Effect::Zone(ReturnExiledCardToOwnersGraveyard { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_ZONE_RETURN_EXILED_CARD_TO_OWNERS_GRAVEYARD)
@@ -1032,11 +1549,11 @@ impl Effect {
             }
             Effect::Dig(RevealUntilMayDeploy { filter }) => {
                 MessageRef::new(MessageKey::EFFECT_DIG_REVEAL_UNTIL_MAY_DEPLOY)
-                    .with_params(vec![debug_param("filter", filter)])
+                    .with_params(vec![card_filter_param("filter", filter)])
             }
             Effect::Dig(RevealUntilExileCastFree { filter }) => {
                 MessageRef::new(MessageKey::EFFECT_DIG_REVEAL_UNTIL_EXILE_CAST_FREE)
-                    .with_params(vec![debug_param("filter", filter)])
+                    .with_params(vec![card_filter_param("filter", filter)])
             }
             Effect::Dig(ShuffleLibrary) => MessageRef::new(MessageKey::EFFECT_DIG_SHUFFLE_LIBRARY),
             Effect::Dig(Clash) => MessageRef::new(MessageKey::EFFECT_DIG_CLASH),
@@ -1046,7 +1563,7 @@ impl Effect {
             }
             Effect::Dig(ExileTopCastMatchingFree { count, filter }) => {
                 MessageRef::new(MessageKey::EFFECT_DIG_EXILE_TOP_CAST_MATCHING_FREE)
-                    .with_params(vec![int_param("count", count), debug_param("filter", filter)])
+                    .with_params(vec![int_param("count", count), card_filter_param("filter", filter)])
             }
             Effect::Dig(Cascade { mana_value }) => {
                 MessageRef::new(MessageKey::EFFECT_DIG_CASCADE)
@@ -1068,11 +1585,11 @@ impl Effect {
             }
             Effect::Dig(ExileTargetGraveyardSpellCastFree { filter, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_DIG_EXILE_TARGET_GRAVEYARD_SPELL_CAST_FREE)
-                    .with_params(vec![debug_param("filter", filter)])
+                    .with_params(vec![card_filter_param("filter", filter)])
             }
             Effect::Dig(ExileTargetGraveyardCardRecordManaValue { filter }) => {
                 MessageRef::new(MessageKey::EFFECT_DIG_EXILE_TARGET_GRAVEYARD_CARD_RECORD_MANA_VALUE)
-                    .with_params(vec![debug_param("filter", filter)])
+                    .with_params(vec![card_filter_param("filter", filter)])
             }
             Effect::Dig(CashOutExiledWithThis) => {
                 MessageRef::new(MessageKey::EFFECT_DIG_CASH_OUT_EXILED_WITH_THIS)
@@ -1092,7 +1609,7 @@ impl Effect {
             }) => MessageRef::new(MessageKey::EFFECT_DIG_LOOK_AT_TOP).with_params(vec![
                 int_param("count", count),
                 int_param("up_to", up_to),
-                debug_param("dest", dest),
+                top_dest_param("dest", dest),
             ]),
             Effect::Dig(DistributeTop {
                 count,
@@ -1108,7 +1625,7 @@ impl Effect {
             Effect::Dig(SearchLibrary {
                 filter, to_zone, ..
             }) => MessageRef::new(MessageKey::EFFECT_DIG_SEARCH_LIBRARY)
-                .with_params(vec![debug_param("filter", filter), debug_param("to_zone", to_zone)]),
+                .with_params(vec![card_filter_param("filter", filter), search_dest_param("to_zone", to_zone)]),
             Effect::Dig(ShuffleTargetCardsFromGraveyardIntoLibrary { max, target_player }) => {
                 MessageRef::new(MessageKey::EFFECT_DIG_SHUFFLE_TARGET_CARDS_FROM_GRAVEYARD_INTO_LIBRARY)
                     .with_params(vec![int_param("max", max), bool_param("target_player", target_player)])
@@ -1158,7 +1675,7 @@ impl Effect {
             }
             Effect::Choice(SacrificeSelfUnlessReturnLand { filter }) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_SACRIFICE_SELF_UNLESS_RETURN_LAND)
-                    .with_params(vec![debug_param("filter", filter)])
+                    .with_params(vec![permanent_filter_param("filter", filter)])
             }
             Effect::Choice(PhaseOut) => MessageRef::new(MessageKey::EFFECT_CHOICE_PHASE_OUT),
             Effect::Choice(DamagingCreatureControllerMayDraw { count, .. }) => {
@@ -1168,13 +1685,13 @@ impl Effect {
             Effect::Choice(EachPlayerSacrifices {
                 scope, keep_one, ..
             }) => MessageRef::new(MessageKey::EFFECT_CHOICE_EACH_PLAYER_SACRIFICES)
-                .with_params(vec![debug_param("scope", scope), bool_param("keep_one", keep_one)]),
+                .with_params(vec![edict_scope_param("scope", scope), bool_param("keep_one", keep_one)]),
             Effect::Choice(EachPlayerExilesFromGraveyard) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_EACH_PLAYER_EXILES_FROM_GRAVEYARD)
             }
             Effect::Choice(TargetPlayerExilesFromGraveyard { target }) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_TARGET_PLAYER_EXILES_FROM_GRAVEYARD)
-                    .with_params(vec![debug_param("target", target)])
+                    .with_params(vec![target_spec_param("target", target)])
             }
             Effect::Choice(CasterKeepsOneOfEachTypePerPlayer) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_CASTER_KEEPS_ONE_OF_EACH_TYPE_PER_PLAYER)
@@ -1187,7 +1704,7 @@ impl Effect {
             }
             Effect::Choice(CouncilsDilemmaVote { options }) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_COUNCILS_DILEMMA_VOTE)
-                    .with_params(vec![debug_param("options", options)])
+                    .with_params(vec![string_list_param("options", options)])
             }
             Effect::Choice(EachPlayerNamesCardThenRevealsTop) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_EACH_PLAYER_NAMES_CARD_THEN_REVEALS_TOP)
@@ -1208,11 +1725,11 @@ impl Effect {
             }
             Effect::Choice(MaySacrifice { filter, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_MAY_SACRIFICE)
-                    .with_params(vec![debug_param("filter", filter)])
+                    .with_params(vec![permanent_filter_param("filter", filter)])
             }
             Effect::Choice(MayReturnFromGraveyard { filter, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_MAY_RETURN_FROM_GRAVEYARD)
-                    .with_params(vec![debug_param("filter", filter)])
+                    .with_params(vec![card_filter_param("filter", filter)])
             }
             Effect::Choice(MayDiscard { .. }) => MessageRef::new(MessageKey::EFFECT_CHOICE_MAY_DISCARD),
             Effect::Choice(MayDrawUnlessPays { cost, .. }) => {
@@ -1228,7 +1745,7 @@ impl Effect {
             }
             Effect::Choice(SacrificeOwn { filter, count }) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_SACRIFICE_OWN)
-                    .with_params(vec![debug_param("filter", filter), int_param("count", count)])
+                    .with_params(vec![permanent_filter_param("filter", filter), int_param("count", count)])
             }
             Effect::Choice(DefendingPlayerSacrifices { count, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_DEFENDING_PLAYER_SACRIFICES)
@@ -1236,11 +1753,11 @@ impl Effect {
             }
             Effect::Static(GrantManaAbility { filter, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_GRANT_MANA_ABILITY)
-                    .with_params(vec![debug_param("filter", filter)])
+                    .with_params(vec![permanent_filter_param("filter", filter)])
             }
             Effect::Static(KeywordAnthem { keywords, filter }) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_KEYWORD_ANTHEM)
-                    .with_params(vec![debug_param("keywords", keywords), debug_param("filter", filter)])
+                    .with_params(vec![keyword_list_param("keywords", keywords), permanent_filter_param("filter", filter)])
             }
             Effect::Static(Anthem {
                 power,
@@ -1264,9 +1781,9 @@ impl Effect {
                 bool_param("self_only", self_only),
                 bool_param("exclude_source", exclude_source),
                 bool_param("tokens_only", tokens_only),
-                debug_param("keywords", keywords),
-                debug_param("subtypes", subtypes),
-                debug_param("colors", colors),
+                keyword_list_param("keywords", keywords),
+                string_list_param("subtypes", subtypes),
+                color_list_param("colors", colors),
                 bool_param("chosen_subtype", chosen_subtype),
                 bool_param("attacking_only", attacking_only),
                 bool_param("blocking_only", blocking_only),
@@ -1276,7 +1793,10 @@ impl Effect {
             ]),
             Effect::Static(TappedForManaBonus { scope, bonus_color }) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_TAPPED_FOR_MANA_BONUS)
-                    .with_params(vec![debug_param("scope", scope), debug_param("bonus_color", bonus_color)])
+                    .with_params(vec![
+                        str_param("scope", land_tap_scope_token(scope)),
+                        str_param("bonus_color", land_tap_bonus_color_token(bonus_color)),
+                    ])
             }
             Effect::Static(TriggerDoubling { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_TRIGGER_DOUBLING)
@@ -1297,7 +1817,7 @@ impl Effect {
                 first_x_spell_each_turn,
             }) => MessageRef::new(MessageKey::EFFECT_STATIC_REDUCE_SPELL_COST).with_params(vec![
                 amount_param("amount", amount),
-                debug_param("filter", filter),
+                spell_filter_param("filter", filter),
                 bool_param("first_x_spell_each_turn", first_x_spell_each_turn),
             ]),
             Effect::Static(AttackTax { amount }) => {
@@ -1309,7 +1829,7 @@ impl Effect {
             }
             Effect::Static(CantBeAttackedBy { filter }) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_CANT_BE_ATTACKED_BY)
-                    .with_params(vec![debug_param("filter", filter)])
+                    .with_params(vec![permanent_filter_param("filter", filter)])
             }
             Effect::Static(PreventCombatDamage { to_self, by_self }) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_PREVENT_COMBAT_DAMAGE)
@@ -1334,13 +1854,13 @@ impl Effect {
             Effect::Static(EntersWithCounters { amount, kind }) => {
                 let mut params = vec![amount_param("amount", amount)];
                 if let Some(kind) = kind {
-                    params.push(debug_param("kind", kind));
+                    params.push(counter_kind_param("kind", kind));
                 }
                 MessageRef::new(MessageKey::EFFECT_STATIC_ENTERS_WITH_COUNTERS).with_params(params)
             }
             Effect::Static(CreaturesYouControlEnterWithCounters { filter, count }) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_CREATURES_YOU_CONTROL_ENTER_WITH_COUNTERS)
-                    .with_params(vec![debug_param("filter", filter), amount_param("count", count)])
+                    .with_params(vec![permanent_filter_param("filter", filter), amount_param("count", count)])
             }
             Effect::Static(GrantToAttached {
                 power, toughness, ..
@@ -1355,8 +1875,8 @@ impl Effect {
                 add_subtypes,
                 ..
             }) => MessageRef::new(MessageKey::EFFECT_STATIC_SET_ATTACHED_TYPES).with_params(vec![
-                debug_param("set_subtypes", set_subtypes),
-                debug_param("add_subtypes", add_subtypes),
+                string_list_param("set_subtypes", set_subtypes),
+                string_list_param("add_subtypes", add_subtypes),
             ]),
             Effect::Static(ControlAttached) => MessageRef::new(MessageKey::EFFECT_STATIC_CONTROL_ATTACHED),
             Effect::Misc(ScheduleColorlessManaForCounteredSpellNextMainPhase) => {
@@ -1384,8 +1904,8 @@ impl Effect {
                 filter,
                 countered_dest,
             }) => MessageRef::new(MessageKey::EFFECT_MISC_COUNTER_TARGET_SPELL).with_params(vec![
-                debug_param("filter", filter),
-                debug_param("countered_dest", countered_dest),
+                spell_filter_param("filter", filter),
+                optional_countered_dest_param("countered_dest", countered_dest),
                 bool_param("unless_pays", unless_pays.is_some()),
                 unless_pays
                     .map(|amount| amount_param("amount", amount))
@@ -1396,12 +1916,12 @@ impl Effect {
             }
             Effect::Misc(ScheduleAtNextUpkeep { then, fire_at, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_MISC_SCHEDULE_AT_NEXT_UPKEEP)
-                    .with_params(vec![debug_param("fire_at", fire_at)])
+                    .with_params(vec![step_param("fire_at", fire_at)])
                     .with_children(vec![then.message()])
             }
             Effect::Misc(ScheduleNextCastTrigger { filter, then }) => {
                 MessageRef::new(MessageKey::EFFECT_MISC_SCHEDULE_NEXT_CAST_TRIGGER)
-                    .with_params(vec![debug_param("filter", filter)])
+                    .with_params(vec![spell_filter_param("filter", filter)])
                     .with_children(then.iter().map(|effect| effect.message()).collect())
             }
             Effect::Misc(ScheduleThisTurnCombatDamageCopy) => {
@@ -1431,6 +1951,19 @@ impl Effect {
 #[cfg(test)]
 mod tests {
     use crate::*;
+
+    fn string_param<'a>(message: &'a MessageRef, name: &str) -> &'a str {
+        let param = message
+            .params
+            .iter()
+            .find(|param| param.name == name)
+            .expect("message param exists");
+        match &param.value {
+            MessageParamValue::Str(value) => value,
+            MessageParamValue::OwnedStr(value) => value.as_str(),
+            other => panic!("expected string param {name}, got {other:?}"),
+        }
+    }
 
     #[test]
     fn message_refs_are_stable() {
@@ -1478,6 +2011,42 @@ mod tests {
         assert_eq!(
             reject_message(Reject::IllegalTarget).key.as_str(),
             "reject.illegal_target"
+        );
+    }
+
+    #[test]
+    fn message_params_use_snake_case_machine_tokens() {
+        let keyword = Effect::Pump(PumpEffect::PumpSelfUntilEndOfTurn {
+            power: Amount::Fixed(1),
+            toughness: Amount::Fixed(1),
+            keywords: &[Keyword::FirstStrike],
+        })
+        .message();
+        assert_eq!(string_param(&keyword, "keywords"), "first_strike");
+
+        let search = Effect::Dig(DigEffect::SearchLibrary {
+            filter: CardFilter::BasicLand,
+            to_zone: SearchDest::LibraryTop,
+            tapped: false,
+            searcher: SearchScope::You,
+            count: 1,
+            overflow: None,
+            count_amount: None,
+        })
+        .message();
+        assert_eq!(string_param(&search, "filter"), "basic_land");
+        assert_eq!(string_param(&search, "to_zone"), "library_top");
+
+        let permanents = Effect::Control(ControlEffect::UntapAll {
+            filter: PermanentFilter {
+                controller: FilterController::You,
+                ..PermanentFilter::of(TypeSet::CREATURE)
+            },
+        })
+        .message();
+        assert_eq!(
+            string_param(&permanents, "filter"),
+            "permanent_creature_you_control"
         );
     }
 }

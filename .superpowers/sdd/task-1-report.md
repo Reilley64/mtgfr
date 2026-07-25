@@ -94,68 +94,62 @@ Results:
 ## Concerns
 
 None.
-# Task 1 Report: Play routes require deckId path param
 
-## Status
+## Review fix: stable param tokens
 
-DONE
+- Replaced `debug_param` / `debug_token` with explicit token helpers for filters, destinations, keywords, counters, colors, scopes, targets, and timing params used by `Effect::message`.
+- Machine params now use stable snake_case tokens such as `first_strike`, `library_top`, `basic_land`, and `permanent_creature_you_control`.
+- Added `message_params_use_snake_case_machine_tokens` to pin keyword, destination, card-filter, and permanent-filter tokens.
+- Removed the stale unrelated route-report content.
 
-## Summary
-
-- Added `client/app/deck-id.ts` with `parseDeckIdParam(raw: string): number | null`.
-- Added `deckCardViewTransitionName(deckId: number): string`.
-- Updated `PlayRoute` to require `{ deckId: string }` and build `/play/:deckId`.
-- Updated `TableRoute` to require `{ deckId: string, table: string }` and build `/play/:deckId/:table`.
-- Ordered `tableRouter` before `playRouter` so `/play/:deckId/:table` parses as `TableRoute`.
-- Updated existing `PlayRoute()` and `TableRoute({ table })` call sites to pass `deckId` without implementing later lobby binding or view-transition behavior.
-
-## TDD Evidence
+### Review-fix TDD evidence
 
 Red run:
 
 ```text
-cd client && bun test app/deck-id.test.ts app/routes.test.ts
+cargo nextest run --profile ci -p engine message_params_use_snake_case_machine_tokens
 ```
 
-Expected failures were observed before production changes:
-
-- `client/app/deck-id.test.ts` could not import missing `./deck-id`.
-- `/play/7` parsed as the old `TableRoute`.
-- Bare `/play` still parsed as the old `PlayRoute`.
-- `routePath(PlayRoute({ deckId: "7" }))` still returned `/play`.
-
-Green run:
+Result: failed as expected before the helper replacement.
 
 ```text
-cd client && bun test app/deck-id.test.ts app/routes.test.ts app/smoke.test.ts
+assertion `left == right` failed
+  left: "firststrike"
+ right: "first_strike"
 ```
 
-Result: 18 pass, 0 fail.
-
-Final focused verification:
+Green/focused run:
 
 ```text
-cd client && bun test app/deck-id.test.ts app/routes.test.ts app/smoke.test.ts app/shell/lobby/entry.test.ts app/shell/lobby/story.test.ts app/shell/surfaces.test.ts app/game/story.test.ts
+cargo nextest run --profile ci -p engine message_params_use_snake_case_machine_tokens
 ```
 
-Result: 39 pass, 0 fail.
-
-Compile verification:
+Result:
 
 ```text
-cd client && bun run typecheck
+Summary [   0.007s] 1 test run: 1 passed, 1938 skipped
 ```
 
-Result: exit 0.
+Requested focused run:
 
-## Self-Review
+```text
+cargo nextest run --profile ci -p engine message_refs_are_stable reject_messages_use_reject_namespace
+```
 
-- Scope matches Task 1: route shapes, `parseDeckIdParam`, and `deckCardViewTransitionName`.
-- Did not add lobby UI, selectedDeckId path binding, route normalization, or CSS view transitions.
-- Kept existing query-string selected-deck behavior intact where tests already covered it by adding the required path segment and preserving `?deck=`.
-- Left non-integer `/play/:deckId` normalization for Task 2, per the brief note.
-- No feature spec update was needed because this task is a narrow route/helper change in an implementation plan sequence.
+Result:
 
-## Concerns
+```text
+Summary [   0.006s] 2 tests run: 2 passed, 1937 skipped
+```
 
-- The top-level nav `Play` link now uses `PlayRoute({ deckId: "0" })` as a temporary constructor value because the final lobby UI deck binding is explicitly deferred to later tasks.
+Broader engine run:
+
+```text
+cargo nextest run --profile ci -p engine
+```
+
+Result:
+
+```text
+Summary [  80.785s] 1939 tests run: 1939 passed, 0 skipped
+```
