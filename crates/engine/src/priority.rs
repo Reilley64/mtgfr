@@ -400,9 +400,12 @@ impl Game {
     /// paid ability is included only when the running estimate can pay its activation cost, via
     /// spend-then-merge (never gross-only). Used by [`has_meaningful_action`] so an untapped
     /// board counts as castable mana.
-    /// A painland's two free modes are both summed, over-counting a single land's output, but
-    /// over-counting only makes auto-pass stop *more* often (never wrongly skip), the safe
-    /// direction (turn-priority-and-stack spec). (CR 605, CR 108.3, CR 113)
+    /// A painland's two free modes are both summed, over-counting a single land's output.
+    /// Callers that gate *listable* casts / activates must not use this alone — use
+    /// [`Game::plan_auto_taps`] (as [`Game::cast_affordable_list`] and
+    /// [`Game::activation_mana_payable`] do) so exclusive modes cannot invent a second pip.
+    /// Optimistic over-count remains acceptable for upper bounds such as [`Game::max_payable_x`].
+    /// (CR 605, CR 108.3, CR 113)
     pub(crate) fn available_mana(&self, player: PlayerId) -> ManaPool {
         let mut mana = self.players[player.0 as usize].mana_pool;
         let mut used = vec![false; self.objects.len()];

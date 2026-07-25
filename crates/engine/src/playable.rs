@@ -344,7 +344,6 @@ impl Game {
         def: CardDef,
         zone: Zone,
     ) -> bool {
-        let available = self.available_mana(player);
         // Delve (CR 702.66) can reduce generic — list as affordable when some exile count
         // in 0..=graveyard size makes the cost payable (otherwise Treasure Cruise never appears
         // until the caster already has {7}{U} floating).
@@ -354,14 +353,16 @@ impl Game {
             0
         };
         let spell = Some(def.spell_characteristics());
+        // Same planner settle uses — `available_mana` over-counts mutually exclusive free
+        // modes on one permanent (painland {{C}} + colored), which would mint-border a cast
+        // the payment path then rejects.
         let affordable = |target: Option<Target>, delve: u8| {
             let cost = self.cast_cost(
                 player, object, def, target, 0, zone, delve, false, false, false, 0, 0, false,
             );
-            Self::affordable_from(available, cost, spell)
-                && self
-                    .cast_additional_cost_gate(player, object, cost, 0, zone)
-                    .is_ok()
+            self.cast_additional_cost_gate(player, object, cost, 0, zone)
+                .is_ok()
+                && self.plan_auto_taps(player, cost, None, spell).is_some()
         };
         let any_delve = |target: Option<Target>| (0..=max_delve).any(|d| affordable(target, d));
 
