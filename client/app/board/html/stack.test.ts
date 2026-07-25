@@ -161,11 +161,11 @@ test("spell stack face stays hidden while its stack entrance flight is in progre
   );
 });
 
-test("ability stack face keeps card art while its source permanent is mid-battlefield flight", () => {
-  // ETB trigger: stack entry.source is the permanent id. A battlefield flight for that same id
-  // puts it in hideCardIds so the resting battlefield face stays hidden — but the ability on the
-  // stack is a different resting face and must still show the source's art (not only the effect
-  // caption).
+function abilityDuringSourceFlight(kind: "battlefield" | "from-stack"): ViewModel {
+  // Trigger on the stack: entry.source is the permanent id. A battlefield / from-stack flight for
+  // that same id puts it in hideCardIds so the resting battlefield face stays hidden — but the
+  // ability on the stack is a different resting face and must still show the source's art (not
+  // only the effect caption).
   const sourceId = 99;
   const permanent: ObjectView = {
     controller: 0,
@@ -189,7 +189,7 @@ test("ability stack face keeps card art while its source permanent is mid-battle
   const flight = {
     ...spawnFlight({
       id: sourceId,
-      kind: "battlefield",
+      kind,
       name: permanent.name,
       print: permanent.print ?? "",
       scale: 0.8,
@@ -201,7 +201,7 @@ test("ability stack face keeps card art while its source permanent is mid-battle
     }),
     phase: "flying" as const,
   };
-  const model: ViewModel = {
+  return {
     board: {
       ...initialBoardModel(),
       flights: new Map([[sourceId, flight]]),
@@ -223,9 +223,25 @@ test("ability stack face keeps card art while its source permanent is mid-battle
     ),
     tableId: "T1",
   };
+}
+
+test("ability stack face keeps card art while its source permanent is mid-battlefield flight", () => {
   Scene.scene(
     { update: (m) => [m, []], view: overlayView },
-    Scene.with(model),
+    Scene.with(abilityDuringSourceFlight("battlefield")),
+    resolveBoardOverlayMounts(),
+    resolveBoardCardArtMounts(),
+    Scene.expect(Scene.testId("stack-overlay")).toExist(),
+    Scene.expect(Scene.testId("stack-face-0")).toExist(),
+    Scene.expect(Scene.selector("[data-art-url]")).toExist(),
+    Scene.expect(Scene.testId("stack-top-caption")).toContainText("Draw a card"),
+  );
+});
+
+test("ability stack face keeps card art while its source permanent is mid from-stack flight", () => {
+  Scene.scene(
+    { update: (m) => [m, []], view: overlayView },
+    Scene.with(abilityDuringSourceFlight("from-stack")),
     resolveBoardOverlayMounts(),
     resolveBoardCardArtMounts(),
     Scene.expect(Scene.testId("stack-overlay")).toExist(),
