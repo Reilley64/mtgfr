@@ -270,6 +270,34 @@ describe("handView drag chrome", () => {
     expect(treeHasClass(ghost, "ring-playable-border")).toBe(true);
   });
 
+  it("uses command playable aura classes on a command-zone drag ghost", () => {
+    const commander = object(9, {
+      zone: ZONE.Command,
+      is_commander: true,
+      name: "Zimone, Quandrix Prodigy",
+    });
+    const cast = action(9, { object: 9, section: "command", kind: "cast" });
+    const tree = handView({
+      state: state({ objects: [commander], actions: [cast] }),
+      hiddenId: null,
+      flyingIds: new Set(),
+      hiddenIds: new Set(),
+      handDrag: {
+        action: cast,
+        name: commander.name,
+        print: "",
+        manaCost: commander.mana_cost,
+        zone: "command",
+        x: 10,
+        y: 10,
+      },
+    });
+    const ghost = findTestId(tree, "hand-drag-ghost");
+    expect(ghost).not.toBeNull();
+    expect(treeHasClass(ghost, "ring-playable-border")).toBe(true);
+    expect(treeHasClass(ghost, "outline-commander-gold")).toBe(true);
+  });
+
   it("uses not-allowed on unplayable and grab on playable hit strips", () => {
     const castable = object(42, { name: "Lightning Bolt" });
     const uncastable = object(43, { name: "Cancel" });
