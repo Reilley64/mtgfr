@@ -585,9 +585,7 @@ impl Game {
             // `ExileSelfOnResolve`) never reaches a library/exile — it just ceases to exist.
             // Discard those scratch marks here so they can't leak past this resolution and
             // redirect the *next* spell that finishes.
-            self.self_tuck_to_library_bottom = false;
-            self.self_exile_time_counters = None;
-            self.self_exile_on_resolve = false;
+            self.resolution_finish = None;
             self.push_apply(events, Event::SpellCeasedToExist { spell: object });
             return;
         }
@@ -637,42 +635,47 @@ impl Game {
             );
             return;
         }
-        // Spell Crumple's own "Then put Spell Crumple on the bottom of its owner's library"
-        // rider: an `Effect::Zone(ZoneEffect::TuckSelfToLibraryBottom)` step this resolution ran marked the spell
-        // to tuck itself rather than reach the graveyard below — the self-referential sibling of
-        // the buyback fork above.
-        if std::mem::take(&mut self.self_tuck_to_library_bottom) {
-            self.push_apply(
-                events,
-                Event::TuckedToLibrary {
-                    card: self.next_object_id(),
-                    from: object,
-                    to_top: false,
-                    second_from_top: false,
-                },
-            );
-            return;
-        }
-        // Rousing Refrain's "Exile [this card] with three time counters on it" (CR 702.62): an
-        // `Effect::Zone(ZoneEffect::ExileSelfWithTimeCounters)` step this resolution ran marked the spell to exile
-        // itself (with counters) rather than reach the graveyard below.
-        if let Some(counters) = self.self_exile_time_counters.take() {
-            self.push_exile_with_time_counters(object, counters, events);
-            return;
-        }
-        // Vengeful Rebirth's own "Exile Vengeful Rebirth" rider: an `Effect::Zone(ZoneEffect::ExileSelfOnResolve)`
-        // step this resolution ran marked the spell to exile itself (plain, no time counters)
-        // rather than reach the graveyard below — the counter-less sibling of the time-counter
-        // fork above.
-        if std::mem::take(&mut self.self_exile_on_resolve) {
-            self.push_apply(
-                events,
-                Event::MovedToExile {
-                    card: self.next_object_id(),
-                    from: object,
-                },
-            );
-            return;
+        if let Some(policy) = self.resolution_finish.take() {
+            match policy {
+                // Spell Crumple's own "Then put Spell Crumple on the bottom of its owner's
+                // library" rider: an `Effect::Zone(ZoneEffect::TuckSelfToLibraryBottom)` step this
+                // resolution ran marked the spell to tuck itself rather than reach the graveyard
+                // below — the self-referential sibling of the buyback fork above.
+                FinishPolicy::TuckLibraryBottom => {
+                    self.push_apply(
+                        events,
+                        Event::TuckedToLibrary {
+                            card: self.next_object_id(),
+                            from: object,
+                            to_top: false,
+                            second_from_top: false,
+                        },
+                    );
+                    return;
+                }
+                // Rousing Refrain's "Exile [this card] with three time counters on it" (CR
+                // 702.62): an `Effect::Zone(ZoneEffect::ExileSelfWithTimeCounters)` step this
+                // resolution ran marked the spell to exile itself (with counters) rather than
+                // reach the graveyard below.
+                FinishPolicy::ExileWithTimeCounters(counters) => {
+                    self.push_exile_with_time_counters(object, counters, events);
+                    return;
+                }
+                // Vengeful Rebirth's own "Exile Vengeful Rebirth" rider: an
+                // `Effect::Zone(ZoneEffect::ExileSelfOnResolve)` step this resolution ran marked
+                // the spell to exile itself (plain, no time counters) rather than reach the
+                // graveyard below — the counter-less sibling of the time-counter fork above.
+                FinishPolicy::Exile => {
+                    self.push_apply(
+                        events,
+                        Event::MovedToExile {
+                            card: self.next_object_id(),
+                            from: object,
+                        },
+                    );
+                    return;
+                }
+            }
         }
         // Quintorius, Loremaster's CR 614.6 rider: "If that spell would be put into a graveyard,
         // put it on the bottom of its owner's library instead." `object` is the spell's live id;

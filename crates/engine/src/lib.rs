@@ -198,22 +198,11 @@ pub struct Game {
     /// [`Permanent`]); an entry is created as the card is suspended and dropped when the last
     /// counter is removed (the card becomes castable) — see [`Game::exile_time_counters`].
     pub(crate) exile_time_counters: Vec<(ObjectId, u32)>,
-    /// Set by an [`Effect::Zone(ZoneEffect::ExileSelfWithTimeCounters)`] step while a spell resolves, so
-    /// [`Game::finish_instant_sorcery_resolution`] exiles that spell with time counters rather
-    /// than sending it to the graveyard (Rousing Refrain). Consumed (`take`) in `finish`, which
-    /// always runs right after the spell's effects — only one spell resolves at a time.
-    pub(crate) self_exile_time_counters: Option<u32>,
-    /// Set by an [`Effect::Zone(ZoneEffect::TuckSelfToLibraryBottom)`] step while a spell resolves, so
-    /// [`Game::finish_instant_sorcery_resolution`] tucks that spell to the bottom of its owner's
-    /// library rather than sending it to the graveyard (Spell Crumple). Consumed (`take`) in
-    /// `finish`, the same one-spell-at-a-time guarantee [`Self::self_exile_time_counters`] relies
-    /// on.
-    pub(crate) self_tuck_to_library_bottom: bool,
-    /// Set by an [`Effect::Zone(ZoneEffect::ExileSelfOnResolve)`] step while a spell resolves, so
-    /// [`Game::finish_instant_sorcery_resolution`] exiles that spell rather than sending it to
-    /// the graveyard (Vengeful Rebirth). Consumed (`take`) in `finish`, the same
-    /// one-spell-at-a-time guarantee [`Self::self_tuck_to_library_bottom`] relies on.
-    pub(crate) self_exile_on_resolve: bool,
+    /// Post-resolution destination override for the spell currently finishing resolution. Set by
+    /// self-move zone effects during that spell's own resolution and consumed immediately by
+    /// [`Game::finish_instant_sorcery_resolution`], so the one-spell-at-a-time resolution model
+    /// is enough lifetime management.
+    pub(crate) resolution_finish: Option<FinishPolicy>,
 }
 
 impl Game {

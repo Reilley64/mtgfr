@@ -70,9 +70,7 @@ impl Game {
             abilities_granted_until_eot: Vec::new(),
             pending_enter_bonus_counters: Vec::new(),
             exile_time_counters: Vec::new(),
-            self_exile_time_counters: None,
-            self_tuck_to_library_bottom: false,
-            self_exile_on_resolve: false,
+            resolution_finish: None,
         }
     }
 

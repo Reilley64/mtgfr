@@ -2262,10 +2262,10 @@ impl Game {
                 self.pending_enter_bonus_counters
                     .retain(|&(object, _)| !removed(object));
                 self.exile_time_counters.retain(|&(card, _)| !removed(card));
-                // ponytail: `self_exile_time_counters` is read back synchronously in the same
-                // resolution that sets it (`Game::finish_instant_sorcery_resolution`, right after
-                // the spell's own effects run) — it never survives past one `PlayerLost` batch to
-                // go stale, so it carries no cross-player state to purge here.
+                // ponytail: `resolution_finish` is consumed synchronously in the same resolution
+                // that sets it (`Game::finish_instant_sorcery_resolution`, right after the
+                // spell's own effects run) — it never survives past one `PlayerLost` batch to go
+                // stale, so it carries no cross-player state to purge here.
                 self.delayed_triggers
                     .scheduled
                     .retain(|&(controller, ..)| controller != player);
