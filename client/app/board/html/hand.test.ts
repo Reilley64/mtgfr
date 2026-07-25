@@ -255,7 +255,7 @@ describe("handView drag chrome", () => {
       handDrag: {
         action: cast,
         name: "Lightning Bolt",
-        print: "",
+        print: "bolt-print",
         manaCost: cost(),
         zone: "hand",
         x: 10,
@@ -268,6 +268,7 @@ describe("handView drag chrome", () => {
     const ghost = findTestId(tree, "hand-drag-ghost");
     expect(ghost).not.toBeNull();
     expect(treeHasClass(ghost, "ring-playable-border")).toBe(true);
+    expect(treeHasClass(ghost, "drop-shadow-drag")).toBe(true);
   });
 
   it("uses command playable aura classes on a command-zone drag ghost", () => {
