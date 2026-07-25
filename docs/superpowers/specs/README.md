@@ -54,6 +54,7 @@ These documents are **not superseded** and must stay current alongside the specs
 | [hand-and-zone-bar](2026-07-20-hand-and-zone-bar.md) | Hand, command, graveyard, exile bars and playable outlines |
 | [hand-bar-arena-spacing (design)](2026-07-25-hand-bar-arena-spacing-design.md) | Arena-forward hand bar face/peek/visible-height targets |
 | [hand-bar-hover-stack-front (design)](2026-07-25-hand-bar-hover-stack-front-design.md) | Hovered hand-bar tile stacks above all other bar tiles |
+| [hand-drag-border-shadow-cursor (design)](2026-07-25-hand-drag-border-shadow-cursor-design.md) | Drag ghost playable border, flight lift shadow, grab cursors |
 | [lobby-table-routing-and-live-game](2026-07-20-lobby-table-routing-and-live-game.md) | Lobby, seed, in-memory tables, affinity, drain |
 | [mana-tray](2026-07-20-mana-tray.md) | Battlefield mana pool tray and payment mana tray surfaces |
 | [message-ref-wire-i18n (design)](2026-07-25-message-ref-wire-i18n-design.md) | Completed design for MessageRef game-text keys on the wire |
