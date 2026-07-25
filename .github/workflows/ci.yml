@@ -84,3 +84,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Assert docker.yml Buildx GHA cache wiring
         run: ./scripts/check-docker-workflow-cache.sh
+
+  ci-wave1-guard:
+    name: CI Wave 1 guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assert CI Wave 1 wiring
+        run: ./scripts/check-ci-wave1.sh
