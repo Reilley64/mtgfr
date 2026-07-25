@@ -45,6 +45,13 @@ export function enterLobby(
     };
   }
 
+  if (model.tableId == null && opts.selectedDeckId != null && model.selectedDeckId !== opts.selectedDeckId) {
+    return {
+      ...initialLobbySlice(),
+      selectedDeckId: opts.selectedDeckId,
+    };
+  }
+
   return {
     ...model,
     selectedDeckId: opts.selectedDeckId ?? model.selectedDeckId,

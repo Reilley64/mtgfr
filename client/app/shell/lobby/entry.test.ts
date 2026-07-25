@@ -152,6 +152,7 @@ test("entry choose mode shows Host and Join destinations with deck on Host", () 
     Scene.expect(Scene.testId("lobby-deck-card")).toExist(),
     Scene.expect(Scene.testId("lobby-deck-card-9")).toExist(),
     Scene.expect(Scene.text("Tokens")).toExist(),
+    Scene.expect(Scene.text("Rhys the Redeemed")).toExist(),
     Scene.expect(Scene.testId("lobby-back")).toExist(),
     Scene.expect(Scene.testId("lobby-join-code")).toBeAbsent(),
     Scene.expect(Scene.testId("lobby-join")).toBeAbsent(),
