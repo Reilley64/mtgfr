@@ -2,7 +2,7 @@
 **Status:** Current (as of 2026-07-25)
 **Module:** `client/app/board/html/activation-menu.ts`, `client/app/board/geometry/radial.ts`, `client/app/board/submodel.ts`
 
-## Problem
+## Problem Statement
 
 Selecting a battlefield permanent must expose its legal activations and tap-for-mana affordance with reliable pointer and keyboard behavior. The surface must stay readable, show activation costs when current action data can supply them, and avoid fragile synthesized clicks.
 
@@ -29,11 +29,11 @@ Render a card-anchored activation menu beside the selected battlefield permanent
 - The wrapper uses `data-testid="activation-menu"`.
 - The menu panel uses `data-testid="activation-menu-panel"`, `role="group"`, and `aria-label="Activation options"`.
 - Each row uses `data-testid="activation-menu-row-{key}"`, where `key` comes from `radialOptionKey`.
-- Rows keep `data-wedge="{index}"` for element-from-point helpers even though the surface is no longer wedge-shaped.
+- Rows keep `data-wedge="{index}"` for element-from-point helpers.
 - Each row exposes the option label, uses `aria-label` from that label, and sets `aria-disabled="true"` for disabled rows.
 - Rows show an optional `data-testid="activation-menu-cost"` chip when current option data exposes a displayable cost. The client does not parse labels to invent costs.
 - Tap-for-mana rows show a tap chip. Action rows show a tap chip when `taps_self` is true, mana pips when a mana cost is present, and both when both are present.
-- The label column is readable at menu width and clamps to two lines instead of hard radial-style truncation.
+- The label column is readable at menu width and clamps to two lines.
 - Pointer-down on a row arms that row index.
 - Pointer-up on the same row commits. Pointer-up on a different row cancels that press. Pointer-up on the scrim dismisses the menu.
 - Disabled rows never commit.
@@ -48,7 +48,7 @@ Render a card-anchored activation menu beside the selected battlefield permanent
 ## Implementation Decisions
 
 - Keep option building, stable option identity, press-state reduction, card screen-center math, placement, and cost-chip derivation in `client/app/board/geometry/radial.ts`.
-- Keep board message names `RadialWedgeArmed`, `RadialWedgeReleased`, `RadialWedgeHovered`, and `RadialOptionPicked`; the interaction channel stays index-based even though the DOM surface is now a menu.
+- Keep board message names `RadialWedgeArmed`, `RadialWedgeReleased`, `RadialWedgeHovered`, and `RadialOptionPicked`; the interaction channel stays index-based for menu rows.
 - Keep the activation surface in DOM, not canvas, so focus, keyboard handlers, and accessibility roles remain available.
 - `selectedRadialOptions` remains the board-side selector for the chosen permanent's menu rows.
 - `commitRadialIndex` still clears selection before submitting tap-for-mana or a battlefield action.
