@@ -124,6 +124,10 @@ impl Game {
                     PendingChoice::MayDrawUpTo {
                         player: controller,
                         max,
+                        effect: Effect::Choice(ChoiceEffect::MayDrawUpTo {
+                            count: Amount::Fixed(i32::from(max)),
+                        }),
+                        resume: MayDrawUpToResume::Default,
                     },
                 );
             }
@@ -143,11 +147,13 @@ impl Game {
                     .min(u8::MAX as u32) as u8;
                 pending::raise_choice(
                     self,
-                    PendingChoice::TradeSecretsCasterDraw {
+                    PendingChoice::MayDrawUpTo {
                         player: controller,
                         max,
-                        opponent,
-                        source,
+                        effect: Effect::Choice(ChoiceEffect::MayDrawUpToThenOpponentMayRepeat {
+                            count: Amount::Fixed(i32::from(max)),
+                        }),
+                        resume: MayDrawUpToResume::TradeSecretsRepeat { opponent, source },
                     },
                 );
             }

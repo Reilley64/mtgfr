@@ -3750,6 +3750,7 @@ impl Game {
                             player,
                             source,
                             effect,
+                            resume: crate::MayYesNoResume::Default,
                         }
                     } else {
                         PendingChoice::PayCost {

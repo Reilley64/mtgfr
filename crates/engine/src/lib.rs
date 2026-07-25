@@ -606,6 +606,7 @@ mod forced_action_tests {
             effect: Effect::Draw(DrawEffect::Cards {
                 count: Amount::Fixed(1),
             }),
+            resume: crate::MayYesNoResume::Default,
         });
         assert_eq!(
             game.forced_action(),
@@ -1025,6 +1026,7 @@ mod refresh_actions_tests {
             effect: Effect::Draw(DrawEffect::Cards {
                 count: Amount::Fixed(1),
             }),
+            resume: crate::MayYesNoResume::Default,
         });
         game.refresh_actions();
         assert!(

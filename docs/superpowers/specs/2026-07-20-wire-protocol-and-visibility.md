@@ -158,15 +158,19 @@ Implemented in `crates/schema/` (`schema::event::{redact, spectator_redact}` re-
 
 ### PendingChoice
 
-The `PendingChoiceView` oneof has 65 arms (as of 2026-07-20), covering every engine pause:
-target selection, optional triggers, cost payments (PayCost, PayOrCounter, PayEchoOrSacrifice,
-PayRecoverOrExile, PayCumulativeUpkeepOrSacrifice), combat damage assignment, library-top
-operations (Scry, Surveil, SelectFromTop, DistributeTop), search, sacrifice edicts, proliferate,
-phase-out choice, mode selection, copy target, mana color choice, and many card-specific variants
-(Dance, Piles, Partition, Dredge, Trade Secrets, etc.). The `ChoiceItem` embedded in most
-variants carries the item's string `label` for visible object/seat identity so the prompt UI does
-not need to join against the object list. Effect titles, mode rows, and trigger-order rows use
-`MessageRef` labels.
+The `PendingChoiceView` oneof covers every engine pause: target selection, optional triggers, cost
+payments (PayCost, PayOrCounter, PayEchoOrSacrifice, PayRecoverOrExile,
+PayCumulativeUpkeepOrSacrifice), combat damage assignment, library-top operations (Scry, Surveil,
+SelectFromTop, DistributeTop), search, sacrifice edicts, proliferate, phase-out choice, mode
+selection, copy target, mana color choice, piles, partition, dredge, and the other prompt
+surfaces the board renders. The wire shape is intentionally more generic than the engine internals:
+spell-target and ability-target pauses project as `choose_target { source, label, min, max, items
+}`; repeatable yes/no loops project as `may_yes_no`; repeatable draw-count loops project as
+`may_draw_up_to { label, max }`. Legacy card-named Trade Secrets wire variants and dedicated
+`choose_spell_targets` / `choose_ability_targets` oneof arms are gone. The `ChoiceItem` embedded in
+most variants carries the item's string `label` for visible object/seat identity so the prompt UI
+does not need to join against the object list. Effect titles, mode rows, trigger-order rows, and
+generic draw-count prompts use `MessageRef` labels.
 
 ### Intent wire format
 
@@ -235,8 +239,10 @@ The engine/schema event model includes `MulliganTaken { player, mulligans_taken,
 - Mulligan projection tests assert `mulliganing`, `mulligans_taken`, `hand_kept`, and `can_mulligan` are present in snapshots without exposing other players' hands.
 - `PendingChoice` variants are tested via `crates/engine/` unit tests that verify each choice
   kind is raised, answered, and produces the correct events.
-- Expand-only compliance is enforced by code review discipline, not an automated checker;
-  `WIRE_COMPAT.md` documents the invariants for reviewers.
+- Expand-only compliance is enforced by code review discipline for ordinary protocol changes;
+  `WIRE_COMPAT.md` documents the invariants for reviewers. The approved engine-refactor program is
+  the narrow exception: its PendingChoice wire simplification shipped as a coordinated hard cut
+  across engine, schema, proto, and client in one branch.
 
 ---
 

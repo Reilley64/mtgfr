@@ -26760,7 +26760,7 @@ fn arcane_denial_counters_then_schedules_both_draws() {
     let mut saw_up_to_two = false;
     while !game.stack().is_empty() {
         resolve_top_of_stack(&mut game);
-        if let Some(PendingChoice::MayDrawUpTo { player, max }) = game.pending_choice() {
+        if let Some(PendingChoice::MayDrawUpTo { player, max, .. }) = game.pending_choice() {
             assert_eq!((player, max), (PlayerId(0), 2));
             saw_up_to_two = true;
             game.submit(Intent::ChooseDrawCount { player, count: 2 })
@@ -26851,7 +26851,7 @@ fn arcane_denial_controller_may_draw_up_to_two_at_next_upkeep() {
     let mut saw_up_to_two = false;
     while !game.stack().is_empty() {
         resolve_top_of_stack(&mut game);
-        if let Some(PendingChoice::MayDrawUpTo { player, max }) = game.pending_choice() {
+        if let Some(PendingChoice::MayDrawUpTo { player, max, .. }) = game.pending_choice() {
             assert_eq!((player, max), (PlayerId(0), 2));
             saw_up_to_two = true;
             game.submit(Intent::ChooseDrawCount { player, count: 1 })
@@ -26914,6 +26914,7 @@ fn reach_may_draw_up_to_pause(game: &mut Game) {
             Some(PendingChoice::MayDrawUpTo {
                 player: PlayerId(0),
                 max: 2,
+                ..
             })
         ),
         "expected P0's up-to-two count pause, got {:?}",
@@ -27005,6 +27006,7 @@ fn may_draw_up_to_rejects_an_over_draw() {
             Some(PendingChoice::MayDrawUpTo {
                 player: PlayerId(0),
                 max: 2,
+                ..
             })
         ),
         "the count pause is still live after the rejected over-draw"
@@ -27025,9 +27027,9 @@ fn may_draw_up_to_rejects_an_over_draw() {
 
 // Trade Secrets (cmd): "Target opponent draws two cards, then you draw up to four cards. That
 // opponent may repeat this process as many times as they choose." The target opponent's two-card
-// draw is mandatory and immediate; the caster's "up to four" is a declinable count pause
-// (`PendingChoice::TradeSecretsCasterDraw`), after which the *target opponent* is paused on
-// `PendingChoice::TradeSecretsRepeat` to decide whether to run the whole process again.
+// draw is mandatory and immediate; the caster's "up to four" uses the generic
+// `PendingChoice::MayDrawUpTo`, after which the *target opponent* is paused on the generic
+// `PendingChoice::MayYesNo` repeat choice.
 
 #[test]
 fn trade_secrets_target_opponent_draws_two_then_caster_may_draw_up_to_four() {
@@ -27046,10 +27048,9 @@ fn trade_secrets_target_opponent_draws_two_then_caster_may_draw_up_to_four() {
     assert!(
         matches!(
             game.pending_choice(),
-            Some(PendingChoice::TradeSecretsCasterDraw {
+            Some(PendingChoice::MayDrawUpTo {
                 player: PlayerId(0),
                 max: 4,
-                opponent: PlayerId(1),
                 ..
             })
         ),
@@ -27082,10 +27083,8 @@ fn trade_secrets_opponent_repeats_the_process_until_they_decline() {
     assert!(
         matches!(
             game.pending_choice(),
-            Some(PendingChoice::TradeSecretsRepeat {
+            Some(PendingChoice::MayYesNo {
                 player: PlayerId(1),
-                caster: PlayerId(0),
-                max: 4,
                 ..
             })
         ),
@@ -27107,10 +27106,9 @@ fn trade_secrets_opponent_repeats_the_process_until_they_decline() {
     assert!(
         matches!(
             game.pending_choice(),
-            Some(PendingChoice::TradeSecretsCasterDraw {
+            Some(PendingChoice::MayDrawUpTo {
                 player: PlayerId(0),
                 max: 4,
-                opponent: PlayerId(1),
                 ..
             })
         ),
@@ -27160,7 +27158,7 @@ fn trade_secrets_only_the_target_opponent_may_answer_the_repeat() {
     .expect("declining the up-to-four draw is legal");
     assert!(matches!(
         game.pending_choice(),
-        Some(PendingChoice::TradeSecretsRepeat {
+        Some(PendingChoice::MayYesNo {
             player: PlayerId(1),
             ..
         })
@@ -27177,7 +27175,7 @@ fn trade_secrets_only_the_target_opponent_may_answer_the_repeat() {
     assert!(
         matches!(
             game.pending_choice(),
-            Some(PendingChoice::TradeSecretsRepeat {
+            Some(PendingChoice::MayYesNo {
                 player: PlayerId(1),
                 ..
             })

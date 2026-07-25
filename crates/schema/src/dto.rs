@@ -512,27 +512,17 @@ pub enum PendingChoiceView {
         labels: Vec<MessageRef>,
     },
     /// Legal targets to choose among. `label` is the effect being aimed (e.g. "Deal 3 damage to
-    /// any target"); `source` is the permanent or spell it comes from. `optional` ("up to one" —
-    /// Killian, Decisive Mentor) lets the player submit no target instead of one of `items`. `max`
-    /// (CR 601.2c — Numot, the Devastator's "destroy up to two target lands") is how many of
-    /// `items` may be chosen at once; `1` for the ubiquitous single-target case.
+    /// any target"); `source` is the permanent or spell it comes from. `min`/`max` are the number
+    /// of distinct targets the player may choose from `items`, inclusive (`min == 0` covers "up to
+    /// N" choices such as Killian, Decisive Mentor; `min == max == 1` is the ubiquitous single
+    /// mandatory target case).
     ChooseTarget {
         player: u8,
         source: ObjectId,
         label: MessageRef,
         items: Vec<ChoiceItem>,
-        optional: bool,
-        max: u8,
-    },
-    /// A multi-target spell's targets to choose (CR 601.2c): between `min` and `max` distinct
-    /// `items` for the `spell` on the stack. `label` is the spell's name.
-    ChooseSpellTargets {
-        player: u8,
-        spell: ObjectId,
-        label: MessageRef,
         min: u8,
         max: u8,
-        items: Vec<ChoiceItem>,
     },
     /// "Any number of target players" to choose for a targeted edict (CR 601.2c/608.2b — Priest
     /// of Forgotten Gods): between `min` (0) and `max` distinct `items` (players). `label` is the
@@ -552,10 +542,14 @@ pub enum PendingChoiceView {
         source: ObjectId,
         label: MessageRef,
     },
-    /// This player (the resolving controller) chooses how many cards to draw — any number `0..=max`
-    /// (CR 120.4 / 601.2c — Arcane Denial's "may draw up to two cards"). Reveals only the maximum,
-    /// never hand or library contents.
-    MayDrawUpTo { player: u8, max: u8 },
+    /// This player chooses how many cards to draw — any number `0..=max` (CR 120.4 / 601.2c —
+    /// Arcane Denial's "may draw up to two cards", Trade Secrets' caster draw, and similar
+    /// declinable count choices). `label` names what this count answer applies to.
+    MayDrawUpTo {
+        player: u8,
+        max: u8,
+        label: MessageRef,
+    },
     /// Join forces (Collective Voyage): this player may pay any amount of mana toward the shared
     /// X (CR 101.4 — each player in turn order starting with the caster). `max` is the largest
     /// generic cost their available mana can pay right now; paying `0` declines.
@@ -564,14 +558,6 @@ pub enum PendingChoiceView {
         source: ObjectId,
         max: u32,
     },
-    /// Trade Secrets' declinable draw: this player (the caster), after `opponent` drew two
-    /// mandatorily, chooses any number `0..=max` of cards to draw. Reveals only the maximum,
-    /// never hand or library contents.
-    TradeSecretsCasterDraw { player: u8, max: u8, opponent: u8 },
-    /// Trade Secrets' repeat-or-stop pause: this player (the target opponent) may run the whole
-    /// process (the mandatory two-card draw, then `caster`'s declinable draw) again, or stop.
-    /// Answered by the yes/no `AnswerMay`.
-    TradeSecretsRepeat { player: u8, caster: u8 },
     /// This player (the active player at their untap step) may choose not to untap any of `items`
     /// — the permanents they control that "may choose not to untap" (CR 502.2 — Rubinia
     /// Soulsinger). `items` are public battlefield permanents. Answering keeps the chosen subset
@@ -724,18 +710,6 @@ pub enum PendingChoiceView {
     PhaseOut {
         player: u8,
         source: ObjectId,
-        items: Vec<ChoiceItem>,
-    },
-    /// A triggered ability's second independent target clause (CR 603.3d — Kinetic Ooze's X≥10
-    /// "double ... any number of other target creatures"), chosen as the trigger goes on the stack:
-    /// between `min` and `max` distinct `items` for the ability from `source`. `label` is the effect
-    /// being aimed. Answered by `ChooseTargets`, like `ChooseSpellTargets`.
-    ChooseAbilityTargets {
-        player: u8,
-        source: ObjectId,
-        label: MessageRef,
-        min: u8,
-        max: u8,
         items: Vec<ChoiceItem>,
     },
     /// An activated ability's own targeted exile cost (CR 601.2c/602.2b — Spurnmage Advocate's
@@ -1010,7 +984,6 @@ impl PendingChoiceView {
     pub fn for_each_item_mut(&mut self, mut f: impl FnMut(&mut ChoiceItem)) {
         match self {
             Self::ChooseTarget { items, .. }
-            | Self::ChooseSpellTargets { items, .. }
             | Self::ChooseTargetPlayers { items, .. }
             | Self::DeclineUntap { items, .. }
             | Self::SacrificeUnlessReturnLand { items, .. }
@@ -1026,7 +999,6 @@ impl PendingChoiceView {
             | Self::SacrificeEdict { items, .. }
             | Self::Proliferate { items, .. }
             | Self::PhaseOut { items, .. }
-            | Self::ChooseAbilityTargets { items, .. }
             | Self::ChooseActivationCostTargets { items, .. }
             | Self::MaySacrifice { items, .. }
             | Self::ChooseOwnSacrifices { items, .. }
@@ -1069,8 +1041,6 @@ impl PendingChoiceView {
             | Self::MayYesNo { .. }
             | Self::MayDrawUpTo { .. }
             | Self::PayAnyAmountOfMana { .. }
-            | Self::TradeSecretsCasterDraw { .. }
-            | Self::TradeSecretsRepeat { .. }
             | Self::PayCost { .. }
             | Self::PayOrCounter { .. }
             | Self::PayOrControllerDraws { .. }
@@ -1356,14 +1326,14 @@ mod tests {
                     print: String::new(),
                     player: None,
                 }],
-                optional: false,
+                min: 1,
                 max: 1,
             })
             .unwrap(),
             serde_json::json!({
                 "kind": "choose_target", "player": 1, "source": 7,
                 "label": {"key": "effect.damage_target", "params": [], "children": []},
-                "items": [{"id": 4, "label": "Bear"}], "optional": false, "max": 1,
+                "items": [{"id": 4, "label": "Bear"}], "min": 1, "max": 1,
             }),
         );
         assert_eq!(
@@ -1377,20 +1347,20 @@ mod tests {
                     print: String::new(),
                     player: Some(1),
                 }],
-                optional: false,
+                min: 1,
                 max: 1,
             })
             .unwrap(),
             serde_json::json!({
                 "kind": "choose_target", "player": 0, "source": 7,
                 "label": {"key": "effect.exile_graveyard", "params": [], "children": []},
-                "items": [{"id": 0, "label": "Player 2", "player": 1}], "optional": false, "max": 1,
+                "items": [{"id": 0, "label": "Player 2", "player": 1}], "min": 1, "max": 1,
             }),
         );
         assert_eq!(
-            serde_json::to_value(PendingChoiceView::ChooseSpellTargets {
+            serde_json::to_value(PendingChoiceView::ChooseTarget {
                 player: 1,
-                spell: 9,
+                source: 9,
                 label: named_msg("card.name", "Lightning Bolt"),
                 min: 1,
                 max: 1,
@@ -1403,7 +1373,7 @@ mod tests {
             })
             .unwrap(),
             serde_json::json!({
-                "kind": "choose_spell_targets", "player": 1, "spell": 9,
+                "kind": "choose_target", "player": 1, "source": 9,
                 "label": {
                     "key": "card.name",
                     "params": [{"name": "name", "string_value": "Lightning Bolt"}],
