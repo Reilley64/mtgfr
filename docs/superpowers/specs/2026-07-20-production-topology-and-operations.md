@@ -251,7 +251,8 @@ bases (no shell, no package manager):
 1. Deps: `oven/bun:1.3.14` — `bun install --frozen-lockfile` (pin matches `client/package.json`).
 2. Build: `oven/bun:1.3.14` — copy `client/`, `proto/`, and repo-root `design.tokens.json`;
    `bun run build` (Effect-gRPC codegen, DTCG token gen, typecheck, Nitro/Vite → `.output/`).
-   Nitro emits a Bun server.
+   Nitro is pinned to `preset: "bun"` in `client/nitro.config.ts` so `.output` is the Bun.serve
+   build (not Node auto-detect).
 3. Runtime: `oven/bun:1.3.14-distroless` as `nonroot` — copy `.output/`; entrypoint `bun`,
    `CMD [".output/server/index.mjs"]`.
 

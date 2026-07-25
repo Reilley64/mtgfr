@@ -1,9 +1,9 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 // Regenerate `styles/mana-oracle.css` from `mana-font`'s full stylesheet — pip/cost rules plus
 // tray extras (multicolor duo + color indicators). Not the full ability glyph sheet.
 // Usage:
-//   node scripts/gen-mana-oracle.mjs          # write
-//   node scripts/gen-mana-oracle.mjs --check  # fail if stale
+//   bun scripts/gen-mana-oracle.mjs          # write
+//   bun scripts/gen-mana-oracle.mjs --check  # fail if stale
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -14,7 +14,7 @@ const outCss = join(root, "styles/mana-oracle.css");
 
 const HEADER = `\
 /* Subset of mana-font for oracle/approximates pips + mana-tray symbols (duo, color indicators).
- * Regenerate: \`just client-mana-oracle\` (or \`node scripts/gen-mana-oracle.mjs\`).
+ * Regenerate: \`just client-mana-oracle\` (or \`bun scripts/gen-mana-oracle.mjs\`).
  * Check stale: \`just client-mana-oracle-check\`.
  */
 `;

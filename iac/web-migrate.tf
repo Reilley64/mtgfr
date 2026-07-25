@@ -1,6 +1,6 @@
 # Drizzle migrations for mtgfr_web (SolidStart lobby / table_routes).
 # Mirrors iac/migrate.tf: wait_for_completion so edh-web only rolls after schema is current.
-# Uses oven/bun + drizzle-kit (web image is distroless Node and has no migrate entrypoint).
+# Uses oven/bun + drizzle-kit (web image is distroless Bun and has no migrate entrypoint).
 
 locals {
   web_mig_root  = "${path.module}/../client/db/migrations"
