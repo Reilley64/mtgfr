@@ -444,7 +444,12 @@ export const update = (
         return [
           {
             ...model,
-            game: { ...model.game, ...rejected, board: { ...model.game.board, reject: reason } },
+            game: {
+              ...model.game,
+              ...rejected,
+              // Re-enable the frozen prompt draft so the player can correct and resubmit.
+              board: { ...model.game.board, reject: reason, promptSubmitInFlight: false },
+            },
           },
           [],
         ];
