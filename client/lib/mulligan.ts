@@ -54,6 +54,19 @@ const waitingStatus = (waiting: readonly MulliganPlayer[]): string => {
   return `Waiting for ${joinNames(waiting.map(seatLabel))} to choose.`;
 };
 
+/** Hand size after the next Mulligan from the current `mulligans_taken` count. */
+function nextMulliganHandSize(mulligansTaken: number): number {
+  if (mulligansTaken <= 0) return 7;
+  return Math.max(1, 7 - mulligansTaken);
+}
+
+function decidingStatus(mulligansTaken: number): string {
+  if (mulligansTaken <= 0) {
+    return "Keep, or mulligan for a free redraw to 7 (no London bottom).";
+  }
+  return `Keep, or mulligan to ${nextMulliganHandSize(mulligansTaken)}.`;
+}
+
 export function mulliganChrome(input: MulliganChromeInput): MulliganChrome {
   if (!input.mulliganing) return hiddenChrome();
 
@@ -72,7 +85,7 @@ export function mulliganChrome(input: MulliganChromeInput): MulliganChrome {
     waitingCount,
     mulligansTaken,
     title: "Opening hand",
-    status: showControls ? "Keep this hand or take a mulligan." : waitingStatus(waiting),
+    status: showControls ? decidingStatus(mulligansTaken) : waitingStatus(waiting),
     keepLabel: "Keep",
     mulliganLabel: mulligansTaken === 0 ? "Mulligan" : `Mulligan (${mulligansTaken} taken)`,
   };

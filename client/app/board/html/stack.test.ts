@@ -388,5 +388,6 @@ test("hold bar renders when stack_hold_remaining_ms is positive", () => {
     resolveBoardOverlayMounts(),
     resolveBoardCardArtMounts(),
     Scene.expect(Scene.testId("stack-hold-bar")).toExist(),
+    Scene.expect(Scene.selector('[data-testid="stack-hold-bar"].opacity-0')).not.toExist(),
   );
 });
