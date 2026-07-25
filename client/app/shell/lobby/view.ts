@@ -461,13 +461,23 @@ function tableLobby(
   );
 }
 
+export type LobbySurface = "entry" | "table";
+
 export function view(
   model: LobbySlice,
   decks: ReadonlyArray<DeckSummary>,
   decksLoading: boolean,
   knownCommanders: Readonly<Record<string, BuilderCatalogCard>>,
   apiVersion: string | null,
+  surface: LobbySurface,
 ): Html {
+  // PlayRoute always paints entry — even after Host sets tableId and queues
+  // Redirect — so we do not flash claim-seat / table chrome before navigation.
+  const body =
+    surface === "entry"
+      ? entry(model, decks, decksLoading, knownCommanders)
+      : tableLobby(model, decks, decksLoading, knownCommanders);
+
   return h.main(
     [h.Class(feltClass("fixed inset-0 overflow-y-auto"))],
     [
@@ -488,9 +498,7 @@ export function view(
                   h.h1([h.Class("m-0 text-lichen text-title")], ["Lobby"]),
                 ],
               ),
-              model.tableId == null
-                ? entry(model, decks, decksLoading, knownCommanders)
-                : tableLobby(model, decks, decksLoading, knownCommanders),
+              body,
               model.error == null
                 ? null
                 : h.div(
