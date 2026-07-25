@@ -2,6 +2,7 @@ import { Effect } from "effect";
 import { Navigation } from "foldkit";
 
 type PushUrl = (url: string) => Effect.Effect<void>;
+type Raf = (callback: FrameRequestCallback) => number;
 
 function pathnameOnly(path: string): string {
   try {
@@ -28,6 +29,19 @@ function browserStartViewTransition(): typeof document.startViewTransition | und
   return globalThis.document?.startViewTransition?.bind(globalThis.document);
 }
 
+function browserRaf(): Raf {
+  return (
+    globalThis.requestAnimationFrame?.bind(globalThis) ?? ((cb) => setTimeout(() => cb(0), 0) as unknown as number)
+  );
+}
+
+/** Foldkit patches the DOM on the next animation frame after UrlChanged; wait for that patch. */
+function waitForFoldkitPaint(raf: Raf): Promise<void> {
+  return new Promise((resolve) => {
+    raf(() => resolve());
+  });
+}
+
 export function shouldAnimateDeckCardNav(fromPathname: string, toPathname: string): boolean {
   if (isHome(fromPathname) && isPlayDeckEntry(toPathname)) return true;
   return isPlayDeckEntry(fromPathname) && isHome(toPathname);
@@ -40,10 +54,12 @@ export function pushUrlMaybeViewTransition(
     startViewTransition?: typeof document.startViewTransition;
     prefersReducedMotion?: boolean;
     pushUrl?: PushUrl;
+    requestAnimationFrame?: Raf;
   } = {},
 ): Effect.Effect<void> {
   const pushUrl = opts.pushUrl ?? Navigation.pushUrl;
   const startViewTransition = opts.startViewTransition ?? browserStartViewTransition();
+  const raf = opts.requestAnimationFrame ?? browserRaf();
 
   if (!shouldAnimateDeckCardNav(fromPathname, pathnameOnly(url))) return pushUrl(url);
   if (prefersReducedMotion(opts.prefersReducedMotion)) return pushUrl(url);
@@ -52,7 +68,13 @@ export function pushUrlMaybeViewTransition(
   return Effect.promise(() => {
     return new Promise<void>((resolve, reject) => {
       const transition = startViewTransition(() => {
-        const done = Effect.runPromise(pushUrl(url));
+        // pushUrl only updates history + queues UrlChanged; Foldkit's DOM patch
+        // runs on the following rAF. The View Transition API snapshots "new"
+        // state when this callback settles — so we must wait for that paint.
+        const done = (async () => {
+          await Effect.runPromise(pushUrl(url));
+          await waitForFoldkitPaint(raf);
+        })();
         done.then(resolve, reject);
         return done;
       });
