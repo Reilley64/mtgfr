@@ -42,6 +42,7 @@ mod pipeline;
 mod playable;
 mod priority;
 mod query;
+mod replacements;
 mod resolution;
 pub mod rng;
 mod spawn;

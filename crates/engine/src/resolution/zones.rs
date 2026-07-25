@@ -558,7 +558,7 @@ impl Game {
             },
         );
         if CardFilter::Permanent.matches(&def) {
-            self.push_apply(
+            self.push_apply_effect_event(
                 events,
                 Event::SearchedToBattlefield {
                     permanent: self.next_object_id(),

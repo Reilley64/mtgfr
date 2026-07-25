@@ -738,7 +738,7 @@ impl Game {
         // Moment's Peace (CR 615, #150): a this-turn table-wide "prevent all combat damage"
         // shield cancels the attacker's damage to every blocker before any is assigned, so no
         // trample overflow is computed either — same silent guard as `deal_creature_damage`'s.
-        if self.combat_extras.prevent_all_combat_damage_this_turn {
+        if self.replacement_registry().prevents_all_combat_damage() {
             return;
         }
         // Fog Bank (CR 615, #220): a permanent "prevent all combat damage ... dealt by" static on
@@ -878,7 +878,7 @@ impl Game {
         // Fog Bank's "prevent all combat damage ... dealt by" static on the attacker, and Moment's
         // Peace's table-wide this-turn shield (CR 615) — both silent, as on the creature path.
         if self.combat_damage_prevented_by_source(source)
-            || self.combat_extras.prevent_all_combat_damage_this_turn
+            || self.replacement_registry().prevents_all_combat_damage()
         {
             return;
         }
@@ -954,7 +954,7 @@ impl Game {
         // Moment's Peace (CR 615, #150): a this-turn table-wide "prevent all combat damage"
         // shield silently cancels combat damage to a creature — same silent-prevention style as
         // the noncombat guard above (no event; nothing in the pool reads a prevented total here).
-        if combat && self.combat_extras.prevent_all_combat_damage_this_turn {
+        if combat && self.replacement_registry().prevents_all_combat_damage() {
             return;
         }
         self.push_apply(
@@ -1031,14 +1031,7 @@ impl Game {
         // Moment's Peace (CR 615, #150): the table-wide "prevent all combat damage" shield — like
         // Inkshield's above, but every player and no token mint. Still surfaced as the same
         // `Event::CombatDamagePrevented` for observability.
-        if self.combat_extras.prevent_all_combat_damage_this_turn {
-            self.push_apply(events, Event::CombatDamagePrevented { player, amount });
-            return;
-        }
-        // Moment's Peace (CR 615, #150): the table-wide "prevent all combat damage" shield — like
-        // Inkshield's above, but every player and no token mint. Still surfaced as the same
-        // `Event::CombatDamagePrevented` for observability.
-        if self.combat_extras.prevent_all_combat_damage_this_turn {
+        if self.replacement_registry().prevents_all_combat_damage() {
             self.push_apply(events, Event::CombatDamagePrevented { player, amount });
             return;
         }
@@ -1085,11 +1078,8 @@ impl Game {
         events: &mut Vec<Event>,
     ) -> bool {
         let Some(token) = self
-            .combat_extras
-            .combat_damage_prevention_shields
-            .iter()
-            .find(|(p, _)| *p == player)
-            .map(|(_, token)| token.clone())
+            .replacement_registry()
+            .combat_damage_prevention_token_for_player(player)
         else {
             return false;
         };
@@ -1103,7 +1093,7 @@ impl Game {
                 Event::TokenCreated {
                     token: next,
                     controller: player,
-                    def: intern_card_def(token.clone()),
+                    def: token,
                     creator,
                 },
             );

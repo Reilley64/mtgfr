@@ -35018,6 +35018,51 @@ fn reanimate_puts_a_creature_onto_the_battlefield_and_fires_its_etb() {
 }
 
 #[test]
+fn reanimated_enters_with_counters_apply_as_enters_replacements() {
+    // CR 614 "as this enters" applies on non-cast battlefield entry too: Reanimate should return
+    // Golgari Grave-Troll with one +1/+1 counter per OTHER creature card still in its
+    // controller's graveyard, and Hardened Scales should grow that placement by one.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    game.spawn_on_battlefield(PlayerId(0), card("Hardened Scales"));
+    game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    game.spawn_in_graveyard(PlayerId(0), card("Elvish Visionary"));
+    let troll = game.spawn_in_graveyard(PlayerId(0), card("Golgari Grave-Troll"));
+    let reanimate = game.spawn_in_hand(PlayerId(0), card("Reanimate"));
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: reanimate,
+        target: Some(Target::Object(troll)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    let troll = game.current_id(troll);
+    assert_eq!(
+        game.zone_of(troll),
+        Zone::Battlefield,
+        "the Troll was reanimated"
+    );
+    assert_eq!(
+        game.plus_counters(troll),
+        3,
+        "two other creature cards remain in the graveyard, and Hardened Scales grows 2 -> 3"
+    );
+}
+
+#[test]
 fn animate_dead_targets_graveyard_creature_at_cast() {
     // Animate Dead's "enchant creature card in a graveyard" (CR 303.4a) is a real cast-time
     // target — a respondable CR 601.2c choice, like any other Aura's enchant subject — not a

@@ -1090,7 +1090,7 @@ impl Game {
         let mut events = Vec::new();
         if choice.is_some() {
             let permanent = self.next_object_id();
-            self.push_apply(
+            self.push_apply_effect_event(
                 &mut events,
                 Event::SearchedToBattlefield {
                     permanent,

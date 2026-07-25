@@ -107,7 +107,7 @@ impl Game {
                 let Event::ReanimatedToBattlefield { permanent, .. } = event else {
                     unreachable!("reanimate_event always returns a ReanimatedToBattlefield event")
                 };
-                self.push_apply(events, event);
+                self.push_apply_effect_event(events, event);
                 self.push_apply(
                     events,
                     Event::AttachedTo {

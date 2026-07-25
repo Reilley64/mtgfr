@@ -134,7 +134,7 @@ impl Game {
                     }
                 }
             };
-            self.push_apply(&mut events, event);
+            self.push_apply_effect_event(&mut events, event);
         }
         // An Aura among the deployed permanents may need a host chosen (CR 303.4f). Scoped to a
         // lone deployed permanent (Armored Skyhunter's `up_to = 1`) — a multi-permanent batch
@@ -163,7 +163,7 @@ impl Game {
                         from,
                         card: self.def_id_of(from),
                     };
-                    self.push_apply(&mut events, event);
+                    self.push_apply_effect_event(&mut events, event);
                 }
             }
         }
@@ -338,7 +338,7 @@ impl Game {
                 color,
             }
         };
-        self.push_apply(&mut events, event);
+        self.push_apply_effect_event(&mut events, event);
         Ok(events)
     }
 
@@ -558,7 +558,7 @@ impl Game {
 
         let mut events = Vec::new();
         if let Some(from) = choice {
-            self.push_apply(
+            self.push_apply_effect_event(
                 &mut events,
                 Event::PutOntoBattlefieldFromHand {
                     permanent: self.next_object_id(),
@@ -593,7 +593,7 @@ impl Game {
         let mut events = Vec::new();
         if let Some(from) = choice {
             let permanent = self.next_object_id();
-            self.push_apply(
+            self.push_apply_effect_event(
                 &mut events,
                 Event::PutOntoBattlefieldFromHand {
                     permanent,
