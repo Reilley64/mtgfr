@@ -61,6 +61,32 @@ pub(crate) use resolution::SearchFanout;
 pub use state::ControlCondition;
 pub use types::*;
 
+/// Keyword-trigger obligations queued outside ordinary triggered abilities and drained when the
+/// normal pending-trigger queue empties.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Obligation {
+    Echo { permanent: ObjectId },
+    Recover { card: ObjectId },
+    CumulativeUpkeep { permanent: ObjectId },
+}
+
+impl Obligation {
+    pub(crate) fn object(self) -> ObjectId {
+        match self {
+            Self::Echo { permanent } | Self::CumulativeUpkeep { permanent } => permanent,
+            Self::Recover { card } => card,
+        }
+    }
+}
+
+/// Post-resolution destination override for the spell currently finishing resolution.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum FinishPolicy {
+    ExileWithTimeCounters(u32),
+    TuckLibraryBottom,
+    Exile,
+}
+
 /// The authoritative state of one game.
 #[derive(Clone)]
 pub struct Game {
@@ -79,27 +105,12 @@ pub struct Game {
     /// Abilities that have triggered but aren't on the stack yet; placed (in APNAP
     /// order, each controller ordering their own) the next time priority is granted.
     pub(crate) pending_trigger_groups: Vec<TriggerGroup>,
-    /// Permanents whose Echo (CR 702.31) pay-or-sacrifice choice is due but not yet placed —
-    /// queued at their controller's upkeep ([`Game::enqueue_triggers`]), drained one at a time
-    /// (each becomes a [`PendingChoice::PayEchoOrSacrifice`]) after the ordinary trigger queue
-    /// empties in [`Game::place_pending_triggers`].
-    pub(crate) pending_echo: Vec<ObjectId>,
-    /// Graveyard cards whose Recover (CR 702.59) pay-or-exile choice is due but not yet placed —
-    /// queued once per qualifying creature death ([`Game::enqueue_triggers`]'s `MovedToGraveyard`
-    /// arm), drained one at a time (each becomes a [`PendingChoice::PayRecoverOrExile`]) after
-    /// [`pending_echo`](Self::pending_echo) empties in [`Game::place_pending_triggers`]. A card
-    /// popped after it already left the graveyard (an earlier trigger from the same simultaneous
-    /// batch of deaths already recovered or exiled it — CR 702.59a's ruling that only the first of
-    /// several simultaneous triggers has any effect) is silently skipped, not re-offered.
-    pub(crate) pending_recover: Vec<ObjectId>,
-    /// Permanents whose cumulative upkeep (CR 702.24) age counter + pay-or-sacrifice choice is
-    /// due but not yet placed — queued at their controller's upkeep
-    /// ([`Game::queue_cumulative_upkeep_triggers`]), drained one at a time (each places an age
-    /// counter, then becomes a [`PendingChoice::PayCumulativeUpkeepOrSacrifice`]) after
-    /// [`pending_recover`](Self::pending_recover) empties in [`Game::place_pending_triggers`]. A
-    /// source that left the battlefield since being queued is skipped, same as
-    /// [`pending_echo`](Self::pending_echo).
-    pub(crate) pending_cumulative_upkeep: Vec<ObjectId>,
+    /// Keyword-trigger obligations queued outside ordinary trigger groups: Echo's pay-or-sacrifice
+    /// upkeep choice, Recover's pay-or-exile graveyard choice, and Cumulative upkeep's
+    /// age-counter-then-pay-or-sacrifice choice. [`Game::place_pending_triggers`] drains this one
+    /// at a time after ordinary triggers, preserving today's priority: every Echo first, then
+    /// every Recover, then every Cumulative upkeep.
+    pub(crate) pending_obligations: Vec<Obligation>,
     /// A decision the engine is blocked on until the active chooser answers.
     pub(crate) pending_choice: Option<PendingChoice>,
     /// Deferred resolution resume riders (clash scry, sequence tail, demonstrate opponent copy,
@@ -187,22 +198,11 @@ pub struct Game {
     /// [`Permanent`]); an entry is created as the card is suspended and dropped when the last
     /// counter is removed (the card becomes castable) — see [`Game::exile_time_counters`].
     pub(crate) exile_time_counters: Vec<(ObjectId, u32)>,
-    /// Set by an [`Effect::Zone(ZoneEffect::ExileSelfWithTimeCounters)`] step while a spell resolves, so
-    /// [`Game::finish_instant_sorcery_resolution`] exiles that spell with time counters rather
-    /// than sending it to the graveyard (Rousing Refrain). Consumed (`take`) in `finish`, which
-    /// always runs right after the spell's effects — only one spell resolves at a time.
-    pub(crate) self_exile_time_counters: Option<u32>,
-    /// Set by an [`Effect::Zone(ZoneEffect::TuckSelfToLibraryBottom)`] step while a spell resolves, so
-    /// [`Game::finish_instant_sorcery_resolution`] tucks that spell to the bottom of its owner's
-    /// library rather than sending it to the graveyard (Spell Crumple). Consumed (`take`) in
-    /// `finish`, the same one-spell-at-a-time guarantee [`Self::self_exile_time_counters`] relies
-    /// on.
-    pub(crate) self_tuck_to_library_bottom: bool,
-    /// Set by an [`Effect::Zone(ZoneEffect::ExileSelfOnResolve)`] step while a spell resolves, so
-    /// [`Game::finish_instant_sorcery_resolution`] exiles that spell rather than sending it to
-    /// the graveyard (Vengeful Rebirth). Consumed (`take`) in `finish`, the same
-    /// one-spell-at-a-time guarantee [`Self::self_tuck_to_library_bottom`] relies on.
-    pub(crate) self_exile_on_resolve: bool,
+    /// Post-resolution destination override for the spell currently finishing resolution. Set by
+    /// self-move zone effects during that spell's own resolution and consumed immediately by
+    /// [`Game::finish_instant_sorcery_resolution`], so the one-spell-at-a-time resolution model
+    /// is enough lifetime management.
+    pub(crate) resolution_finish: Option<FinishPolicy>,
 }
 
 impl Game {

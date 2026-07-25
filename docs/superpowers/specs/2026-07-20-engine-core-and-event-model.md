@@ -21,7 +21,7 @@ A Commander game needs an authoritative, deterministic, server-side rules engine
 
 `crates/engine` is a pure Rust library exposing a single `Game` struct — the authoritative state of one match. All mutation flows through `Game::submit(intent) -> Result<Vec<Event>, Reject>`, which validates the intent, applies the resulting `Event`s, then runs a fixed post-intent pipeline (SBAs → triggers → action refresh) before returning.
 
-State is **event-sourced for board facts** (objects, mana, zones, counters, damage) and **orchestration-tracked for priority and choices** (priority holder, pass count, pending choice). This distinction is an explicit design commitment: `pending_choice`, `consecutive_passes`, and similar orchestration fields live directly on `Game`, not in events, so the event log is an audit trail of what happened rather than a replay harness.
+State is **event-sourced for board facts** (objects, mana, zones, counters, damage) and **orchestration-tracked for priority and choices** (priority holder, pass count, pending choice). This distinction is an explicit design commitment: `pending_choice`, `consecutive_passes`, `pending_obligations`, `resolution_finish`, and similar orchestration fields live directly on `Game`, not in events, so the event log is an audit trail of what happened rather than a replay harness.
 
 The sole randomness source is an injected 32-byte master seed. Each logical random operation derives an isolated splitmix64 stream from `BLAKE3(master_seed || player || op_iteration)`, so the engine is deterministic without coupling one player's library order to another player's random operations.
 
@@ -74,7 +74,7 @@ Real games enter a simultaneous pre-game mulligan phase after libraries are stac
 - `Event`s are the sole mechanism for mutating **board facts**: life totals, zone membership, counters, tapped/untapped, damage marks, mana pools, stack contents.
 - `Game::apply(event)` and `Game::apply_all(events)` apply events individually. Every handler in `apply.rs` is a direct, pattern-matched mutation with no callbacks.
 - Event variants that need printed card identity carry `CardId` handles instead of embedding `CardDef` values. Apply, trigger, and projection code dereference those handles through the same intern table when they need the printed definition.
-- **Priority, pending choices, and pass bookkeeping are not event-sourced.** They live as plain fields on `Game` and are updated in the submit path directly. This means the event log alone does not reconstitute priority state — which is intentional: games are in-memory only (lobby-table-routing-and-live-game spec) and do not need replay.
+- **Priority, pending choices, pass bookkeeping, keyword obligations, and resolution-finish scratch are not event-sourced.** They live as plain fields on `Game` and are updated in the submit path directly. This means the event log alone does not reconstitute priority state — which is intentional: games are in-memory only (lobby-table-routing-and-live-game spec) and do not need replay.
 - Library order is not event-sourced either: shuffles and draws mutate `Player::library` directly rather than emitting a full-reorder event, preserving privacy (other players must not see the order).
 
 ### Post-intent pipeline
@@ -86,7 +86,7 @@ After every `submit` (and after `begin_first_turn`), `PostIntentPipeline::run` e
 3. **TriggerEnqueue** — scan just-produced events and enqueue triggered abilities (self-referential ETBs, watch-others death triggers, controller-scoped upkeep/end-step triggers, etc.).
 4. **DelayedTriggers** — fire CR 603.7 scheduled delayed triggers whose step has now arrived.
 5. **NextCastTriggers** / **CombatDamageWatchTriggers** / **CombatDamageCopyTriggers** — event-armed one-shot and repeatable delayed watches.
-6. **TriggerPlacement** — place enqueued pending triggers onto the stack in APNAP order (active player's triggers first; each player orders their own simultaneous triggers).
+6. **TriggerPlacement** — place enqueued pending triggers onto the stack in APNAP order (active player's triggers first; each player orders their own simultaneous triggers), then drain one queued keyword obligation at a time once ordinary triggers are exhausted: every Echo first, then every Recover, then every Cumulative upkeep.
 7. **RefreshActions** — recompute every living seat's `Vec<LegalAction>`.
 
 ### State-based actions (SBA)
@@ -134,6 +134,8 @@ Implemented SBAs (CR 704):
 - **Printed definitions are interned behind `CardId`.** `CardDef` is `Clone`, not `Copy`. `intern_card_def(def)` stores an `Arc<CardDef>` in a process-global table and returns a small `CardId`; `card_def(id)` clones the shared `Arc` back out. Non-empty Scryfall oracle ids dedupe to one stable handle, nested back/adventure faces are interned up front, and runtime restore paths (flip, adventure, split-card stack exits) reuse those handles instead of cloning fresh defs.
 - **`Effect` is `Clone`, not `Copy`.** Abilities, stack entries, and event handlers clone effects when they need owned values. Sequence-like effect payloads (`Effect::Sequence::steps`, `ChooseOne::options`, `Conditional::then`) are shared `Arc<[Effect]>` lists, so runtime rebuilds and pause/resume continuations own their tails without leaking. `CardDef`'s remaining slice-like printed data is still `'static`-backed for now; the current shipped state is stable `CardId` interning plus Arc-backed runtime effect tails.
 - **`Effect` enum grows only from real card demand (card-dsl-and-card-pool spec).** New card behavior = new `Effect` variant + one `Game::run` dispatch arm + `Event::apply` arm + TOML entry. No caller bypasses `Game::run` to apply effects directly.
+- **Keyword obligations share one queue.** `Game::pending_obligations: Vec<Obligation>` carries Echo, Recover, and Cumulative upkeep work that is not represented as ordinary `TriggerGroup`s. Placement preserves the existing priority order by selecting Echo obligations first, then Recover, then Cumulative upkeep, while keeping FIFO order within each kind.
+- **Resolving instants and sorceries share one finish-policy scratch slot.** Self-move riders like Spell Crumple, Rousing Refrain, and Vengeful Rebirth set `Game::resolution_finish: Option<FinishPolicy>` during their own resolution; `finish_instant_sorcery_resolution` consumes that slot immediately after the spell's effect body finishes.
 - **P/T layers are engine-internal** (`PtLayer` is not a DSL or TOML surface), not stored, and rebuilt fresh on each query. Real CR 613 timestamps and dependency ordering are forward-compatible stubs.
 - **No I/O, no `async`, no wall-clock in the engine.** Beacon fetching and seed policy live in the server; the engine only receives the master seed. Time-based behavior (suspend, time counters) is event-triggered, not polled.
 - **Game state is `Clone`.** `Game` derives `Clone` so the server can snapshot for spectator projection or the engine can be forked for look-ahead without additional complexity. Those clones share immutable printed definitions through the intern table while keeping mutable board state independent.
@@ -149,6 +151,7 @@ Implemented SBAs (CR 704):
 - **Mulligan tests** should assert the friendly mulligan redraws to seven, later mulligans draw to size, hand size 1 auto-keeps, and the first turn does not begin until every living player has kept.
 - **SBA tests** should construct a minimal board (a creature with lethal damage marks), submit a `PassPriority`, and assert the creature moved to the graveyard.
 - **Trigger tests** should verify the pending trigger group is populated after the triggering event and that `place_pending_triggers` puts it on the stack.
+- **Keyword-obligation tests** should assert the unified `pending_obligations` queue still drains Echo before Recover before Cumulative upkeep.
 - **Elimination tests** should assert `Game::winner()` changes correctly and that the loser's objects are gone.
 - **Characteristics tests** should construct an attacker, attach an anthem, and assert `Game::power` returns the boosted value.
 - Prior art: `tests/game.rs` in the `engine` crate holds the canonical multi-player integration scenarios.

@@ -44,9 +44,7 @@ impl Game {
             priority: PlayerId(0),
             consecutive_passes: 0,
             pending_trigger_groups: Vec::new(),
-            pending_echo: Vec::new(),
-            pending_recover: Vec::new(),
-            pending_cumulative_upkeep: Vec::new(),
+            pending_obligations: Vec::new(),
             pending_choice: None,
             resume: crate::resolution::ResumeState::default(),
             clash_won: false,
@@ -72,9 +70,7 @@ impl Game {
             abilities_granted_until_eot: Vec::new(),
             pending_enter_bonus_counters: Vec::new(),
             exile_time_counters: Vec::new(),
-            self_exile_time_counters: None,
-            self_tuck_to_library_bottom: false,
-            self_exile_on_resolve: false,
+            resolution_finish: None,
         }
     }
 

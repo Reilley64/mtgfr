@@ -62,6 +62,8 @@ While `Game::pending_choice` is `Some`, no `LegalAction` is exposed and only the
 - **`Discard { player, hand, count }`** — a triggered discard effect (distinct from cleanup discard to hand size).
 - **`ChooseSacrifice { player, options, filter }`** — a triggered edict that asks the player to pick which permanent(s) they sacrifice voluntarily (for a modal/optional effect).
 
+These three keyword-cost choices come from `Game::pending_obligations`, the engine's unified post-trigger obligation queue. Once ordinary `TriggerGroup` placement is exhausted, `place_pending_triggers` raises them one at a time in fixed priority order: Echo first, then Recover, then Cumulative upkeep.
+
 ### Forced action
 
 `Game::forced_action()` returns the single auto-submittable intent when a pending choice has exactly one legal answer and it is unambiguously the only option. Conservative: "may" choices and ArrangeTop are never forced. The server submits forced choices automatically and carries a `MessageRef` auto-action notice in the delta so the client can mark the log line as automatic.
@@ -97,6 +99,8 @@ When an effect body needs player input mid-resolution, it calls `pending::raise(
 
 Later, when the player answers, `pending::answer(game, intent)` resolves the choice and stores the answer in the `ResumeState`. `Game::resume_deferred_sequence` is then called at the tail of `submit_inner` to drain any deferred effect steps that were parked while the choice was pending. This allows a single effect body (`Effect::Sequence`, `Effect::Clash`, `Effect::Demonstrate`, etc.) to have multiple pause points without nesting callbacks.
 
+When an instant or sorcery finishes resolving without pausing, `Game::finish_instant_sorcery_resolution` handles its final destination. Buyback, flashback/escape, adventure, and Quintorius replacement logic still branch directly from the live `Spell`; self-move riders authored as effect steps set `Game::resolution_finish: Option<FinishPolicy>` during resolution so the finisher can consume one plain post-resolution destination override (`TuckLibraryBottom`, `ExileWithTimeCounters`, or `Exile`).
+
 ### Cast flow (high level)
 
 1. Client submits `Intent::TakeAction { id: cast_id, target, x, … }` (or legacy `Intent::Cast`).
@@ -106,7 +110,7 @@ Later, when the player answers, `pending::answer(game, intent)` resolves the cho
 5. `Event::SpellCast` is emitted; the card moves from hand to stack as `Object::Spell`.
 6. Cast triggers fire (`CastSpell` triggers, magecraft, etc.) at the next priority window (via `enqueue_triggers`).
 7. When the stack resolves (all players pass), `Game::resolve_top` calls `Game::resolve_spell` for the top spell.
-8. Permanents enter the battlefield (`Event::PermanentEntered`); instants/sorceries run their effects via `Game::run` and move to the graveyard.
+8. Permanents enter the battlefield (`Event::PermanentEntered`); instants/sorceries run their effects via `Game::run`, then `finish_instant_sorcery_resolution` sends them to the graveyard or the one-shot `resolution_finish` destination selected during that resolution.
 
 ---
 
@@ -116,6 +120,7 @@ Later, when the player answers, `pending::answer(game, intent)` resolves the cho
 - **Stable action ids (lobby-table-routing-and-live-game spec) enable tap-then-cast.** A client can tap a land (changing mana state but not removing the cast action), then submit `TakeAction { id: cast_id }` with the id it fetched before the tap. The id survives because the action's `(player, kind)` pair is unchanged.
 - **`CastPlayKind` separates listing from execution.** The `List` path checks timing, zone, affordability, and target availability without needing chosen inputs; it drives `meaningful_actions` and auto-pass. The `OneClick` and `Full` paths additionally validate chosen discard picks, graveyard-exile selections, and other cost components.
 - **`ResumeState` is not event-sourced.** The deferred-sequence resume stack (`Vec<ResumeFrame>`) is transient orchestration state on `Game`, consistent with how `pending_choice` is handled. Games are in-memory only (lobby-table-routing-and-live-game spec), so there is no replay concern.
+- **Resolution finish policy is plain data on `Game`.** Self-referential zone riders set `resolution_finish` while their spell resolves, and the finisher consumes it immediately after the effect body completes. This keeps the spell's final destination override in the same orchestration tier as `pending_choice` and `ResumeState`, not in events.
 - **`forced_action` is conservative by design.** It errs on the side of not forcing rather than accidentally making a choice for the player. A real decision must never be auto-submitted.
 - **Payment planner preference order**: free-tap lands before non-land free-tap sources; non-pain sources before pain sources; higher-breadth (more color-versatile) sources preferred. This is a heuristic: the planner aims to minimize color waste without guaranteeing an optimal plan (optimization is bounded and practically good for the pool's cards).
 - **Engine-authored player-facing effect text is structured.** `Effect::message()` and reject mappers return closed `MessageKey` values plus params; English action, prompt, stack, and auto-action copy is formatted by the client catalog.
@@ -126,6 +131,7 @@ Later, when the player answers, `pending::answer(game, intent)` resolves the cho
 
 - **`forced_action` is unit-testable** without a board: construct `PendingChoice` directly on a bare `Game`, assert `forced_action()` returns the correct `Some`/`None`. See the in-module tests in `lib.rs`.
 - **Choice resume tests**: construct a board with a choice-raising effect (e.g. Scry), submit the triggering action, assert `pending_choice` is set, then submit the answer intent and assert the game continues correctly.
+- **Keyword-obligation tests**: assert the unified obligation queue still raises Echo choices before Recover choices before Cumulative upkeep choices.
 - **Payment tests**: give a player specific untapped lands, verify `settle_payment` taps the correct sources and the correct mana is deducted. Test pain-land preference (non-pain lands tapped first).
 - **Stable-id tests**: construct a board, call `refresh_actions`, record an id, mutate state in a way that doesn't remove the action, call `refresh_actions` again, assert the id is unchanged. See in-module tests in `lib.rs`.
 - **`TakeAction` dispatch test**: verify that submitting `TakeAction { id }` produces the same events as the equivalent concrete intent for each `MeaningfulAction` kind.
