@@ -221,7 +221,8 @@ impl Game {
                         // once the ordinary trigger queue (and Echo's) empty.
                         for candidate in self.graveyard_cards(self.owner_of(from)) {
                             if self.def_of(candidate).recover.is_some() {
-                                self.pending_recover.push(candidate);
+                                self.pending_obligations
+                                    .push(Obligation::Recover { card: candidate });
                             }
                         }
                     }
@@ -1234,7 +1235,8 @@ impl Game {
                 continue;
             }
             if self.permanent(id).echo_unpaid {
-                self.pending_echo.push(id);
+                self.pending_obligations
+                    .push(Obligation::Echo { permanent: id });
             }
         }
     }
@@ -1250,8 +1252,23 @@ impl Game {
             if self.controller_of(id) != player || self.def_of(id).cumulative_upkeep.is_none() {
                 continue;
             }
-            self.pending_cumulative_upkeep.push(id);
+            self.pending_obligations
+                .push(Obligation::CumulativeUpkeep { permanent: id });
         }
+    }
+
+    fn pop_next_pending_obligation(&mut self) -> Option<Obligation> {
+        for matches_kind in [
+            |obligation: &Obligation| matches!(obligation, Obligation::Echo { .. }),
+            |obligation: &Obligation| matches!(obligation, Obligation::Recover { .. }),
+            |obligation: &Obligation| matches!(obligation, Obligation::CumulativeUpkeep { .. }),
+        ] {
+            let Some(index) = self.pending_obligations.iter().position(matches_kind) else {
+                continue;
+            };
+            return Some(self.pending_obligations.remove(index));
+        }
+        None
     }
 
     /// Queue [`Trigger::Magecraft`] for `player`, threading the triggering spell's mana value `mv`
@@ -3499,94 +3516,97 @@ impl Game {
             }
         }
 
-        // Echo (CR 702.31c/d): once the ordinary trigger queue is empty, offer one queued
-        // pay-or-sacrifice choice at a time (a second, if any, follows once this one resolves —
-        // the same "one at a time, chained across submits" shape `pending_trigger_groups` uses).
-        // A source that left the battlefield since being queued (removed some other way in the
-        // interim) is skipped with nothing to sacrifice.
-        while let Some(source) = self.pending_echo.first().copied() {
-            self.pending_echo.remove(0);
-            if self.as_permanent(source).is_none() {
-                continue;
+        // Once the ordinary trigger queue is empty, drain one keyword-trigger obligation at a
+        // time. This preserves today's priority order: every Echo first, then every Recover, then
+        // every Cumulative upkeep.
+        while let Some(obligation) = self.pop_next_pending_obligation() {
+            match obligation {
+                // Echo (CR 702.31c/d): offer one queued pay-or-sacrifice choice at a time (a
+                // second, if any, follows once this one resolves — the same "one at a time,
+                // chained across submits" shape `pending_trigger_groups` uses). A source that left
+                // the battlefield since being queued (removed some other way in the interim) is
+                // skipped with nothing to sacrifice.
+                Obligation::Echo { permanent: source } => {
+                    if self.as_permanent(source).is_none() {
+                        continue;
+                    }
+                    let cost = self
+                        .def_of(source)
+                        .echo
+                        .expect("only queued for a permanent with an echo cost");
+                    crate::pending::raise_choice(
+                        self,
+                        PendingChoice::PayEchoOrSacrifice {
+                            player: self.owner_of(source),
+                            source,
+                            cost,
+                        },
+                    );
+                    return;
+                }
+                // Recover (CR 702.59a): offer one queued pay-or-exile choice at a time. A card
+                // that already left the graveyard since being queued (recovered or exiled by an
+                // earlier trigger from the same simultaneous batch of deaths — CR 702.59a's
+                // ruling that only the first of several such triggers has any effect) is silently
+                // skipped: nothing left to pay for.
+                Obligation::Recover { card: source } => {
+                    if !matches!(&self.objects[source as usize], Object::Card(c) if c.zone == Zone::Graveyard)
+                    {
+                        continue;
+                    }
+                    let cost = self
+                        .def_of(source)
+                        .recover
+                        .expect("only queued for a card with a recover cost");
+                    crate::pending::raise_choice(
+                        self,
+                        PendingChoice::PayRecoverOrExile {
+                            player: self.owner_of(source),
+                            source,
+                            cost,
+                        },
+                    );
+                    return;
+                }
+                // Cumulative upkeep (CR 702.24a): put an age counter on the permanent, then offer
+                // one queued pay-or-sacrifice choice at a time, scaled by its now-updated total
+                // age counter count. A source that left the battlefield since being queued is
+                // skipped, same as Echo/Recover above.
+                Obligation::CumulativeUpkeep { permanent: source } => {
+                    if self.as_permanent(source).is_none() {
+                        continue;
+                    }
+                    let cumulative_upkeep = self
+                        .def_of(source)
+                        .cumulative_upkeep
+                        .expect("only queued for a permanent with cumulative upkeep");
+                    self.push_apply(
+                        events,
+                        Event::KindCountersPlaced {
+                            object: source,
+                            kind: CounterKind::Age,
+                            count: 1,
+                        },
+                    );
+                    let age_counters = self.counters_of_kind(source, CounterKind::Age);
+                    let count =
+                        u32::from(cumulative_upkeep.graveyard_cards) * u32::from(age_counters);
+                    let options = self
+                        .living_players()
+                        .flat_map(|p| self.graveyard_of(p))
+                        .collect();
+                    crate::pending::raise_choice(
+                        self,
+                        PendingChoice::PayCumulativeUpkeepOrSacrifice {
+                            player: self.controller_of(source),
+                            source,
+                            options,
+                            count,
+                        },
+                    );
+                    return;
+                }
             }
-            let cost = self
-                .def_of(source)
-                .echo
-                .expect("only queued for a permanent with an echo cost");
-            crate::pending::raise_choice(
-                self,
-                PendingChoice::PayEchoOrSacrifice {
-                    player: self.owner_of(source),
-                    source,
-                    cost,
-                },
-            );
-            return;
-        }
-
-        // Recover (CR 702.59a): once Echo's queue is empty too, offer one queued pay-or-exile
-        // choice at a time. A card that already left the graveyard since being queued (recovered
-        // or exiled by an earlier trigger from the same simultaneous batch of deaths — CR
-        // 702.59a's ruling that only the first of several such triggers has any effect) is
-        // silently skipped: nothing left to pay for.
-        while let Some(source) = self.pending_recover.first().copied() {
-            self.pending_recover.remove(0);
-            if !matches!(&self.objects[source as usize], Object::Card(c) if c.zone == Zone::Graveyard)
-            {
-                continue;
-            }
-            let cost = self
-                .def_of(source)
-                .recover
-                .expect("only queued for a card with a recover cost");
-            crate::pending::raise_choice(
-                self,
-                PendingChoice::PayRecoverOrExile {
-                    player: self.owner_of(source),
-                    source,
-                    cost,
-                },
-            );
-            return;
-        }
-
-        // Cumulative upkeep (CR 702.24a): once Recover's queue is empty too, put an age counter
-        // on the permanent, then offer one queued pay-or-sacrifice choice at a time, scaled by
-        // its now-updated total age counter count. A source that left the battlefield since
-        // being queued is skipped, same as Echo/Recover above.
-        while let Some(source) = self.pending_cumulative_upkeep.first().copied() {
-            self.pending_cumulative_upkeep.remove(0);
-            if self.as_permanent(source).is_none() {
-                continue;
-            }
-            let cumulative_upkeep = self
-                .def_of(source)
-                .cumulative_upkeep
-                .expect("only queued for a permanent with cumulative upkeep");
-            self.push_apply(
-                events,
-                Event::KindCountersPlaced {
-                    object: source,
-                    kind: CounterKind::Age,
-                    count: 1,
-                },
-            );
-            let age_counters = self.counters_of_kind(source, CounterKind::Age);
-            let count = u32::from(cumulative_upkeep.graveyard_cards) * u32::from(age_counters);
-            let options = self
-                .living_players()
-                .flat_map(|p| self.graveyard_of(p))
-                .collect();
-            crate::pending::raise_choice(
-                self,
-                PendingChoice::PayCumulativeUpkeepOrSacrifice {
-                    player: self.controller_of(source),
-                    source,
-                    options,
-                    count,
-                },
-            );
-            return;
         }
     }
 
@@ -4109,5 +4129,49 @@ fn ability_grants_source_abilities(ability: Ability) -> bool {
             )
         }),
         _ => false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pending_obligations_drain_echo_then_recover_then_cumulative() {
+        let mut game = Game::with_players(2, 0);
+        game.pending_obligations = vec![
+            Obligation::Recover { card: 20 },
+            Obligation::CumulativeUpkeep { permanent: 30 },
+            Obligation::Echo { permanent: 10 },
+            Obligation::Recover { card: 21 },
+            Obligation::Echo { permanent: 11 },
+            Obligation::CumulativeUpkeep { permanent: 31 },
+        ];
+
+        assert_eq!(
+            game.pop_next_pending_obligation(),
+            Some(Obligation::Echo { permanent: 10 })
+        );
+        assert_eq!(
+            game.pop_next_pending_obligation(),
+            Some(Obligation::Echo { permanent: 11 })
+        );
+        assert_eq!(
+            game.pop_next_pending_obligation(),
+            Some(Obligation::Recover { card: 20 })
+        );
+        assert_eq!(
+            game.pop_next_pending_obligation(),
+            Some(Obligation::Recover { card: 21 })
+        );
+        assert_eq!(
+            game.pop_next_pending_obligation(),
+            Some(Obligation::CumulativeUpkeep { permanent: 30 })
+        );
+        assert_eq!(
+            game.pop_next_pending_obligation(),
+            Some(Obligation::CumulativeUpkeep { permanent: 31 })
+        );
+        assert_eq!(game.pop_next_pending_obligation(), None);
     }
 }

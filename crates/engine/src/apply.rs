@@ -2249,10 +2249,8 @@ impl Game {
                 // must be dropped here, not placed once tombstoned.
                 self.pending_trigger_groups
                     .retain(|g| g.controller != player);
-                self.pending_echo.retain(|&source| !removed(source));
-                self.pending_recover.retain(|&source| !removed(source));
-                self.pending_cumulative_upkeep
-                    .retain(|&source| !removed(source));
+                self.pending_obligations
+                    .retain(|obligation| !removed(obligation.object()));
                 if self
                     .pending_choice
                     .as_ref()
