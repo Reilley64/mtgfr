@@ -40,6 +40,15 @@ const mockClient = {
       return [];
     }),
   },
+  ratings: {
+    getLeaderboard: vi.fn(async (req: { limit: number; offset: number }) => {
+      calls.leaderboard = req;
+      return {
+        entries: [{ user_id: 7, username: "alice", rating: 1234, rank: 26 }],
+        total: 99,
+      };
+    }),
+  },
   game: {
     submitIntent: vi.fn(async () => ({ accepted: true })),
     setYield: vi.fn(async () => ({ accepted: true })),
@@ -155,6 +164,46 @@ describe("dispatchRpc", () => {
     params.append("ids", "b");
     await dispatchRpc(["cards", "lookup"], "GET", undefined, params, env);
     expect(calls.lookup).toEqual(["a", "b"]);
+  });
+
+  it("routes ratings/leaderboard with limit/offset from the query string", async () => {
+    const params = new URLSearchParams({ limit: "25", offset: "25" });
+    const outcome = await dispatchRpc(["ratings", "leaderboard"], "GET", undefined, params, env);
+    expect(outcome).toEqual({
+      kind: "json",
+      status: 200,
+      body: {
+        entries: [{ user_id: 7, username: "alice", rating: 1234, rank: 26 }],
+        total: 99,
+      },
+    });
+    expect(calls.leaderboard).toEqual({ limit: 25, offset: 25 });
+  });
+
+  it("405s ratings/leaderboard for non-GET methods", async () => {
+    const outcome = await dispatchRpc(["ratings", "leaderboard"], "POST", undefined, new URLSearchParams(), env);
+    expect(outcome).toEqual({ kind: "empty", status: 405 });
+  });
+
+  it("400s ratings/leaderboard for invalid limit/offset query params", async () => {
+    for (const params of [
+      new URLSearchParams({ limit: "-1" }),
+      new URLSearchParams({ limit: "abc" }),
+      new URLSearchParams({ limit: "10.5" }),
+      new URLSearchParams({ offset: "-5" }),
+      new URLSearchParams({ limit: "10", offset: "NaN" }),
+      new URLSearchParams({ limit: "4294967296" }),
+      new URLSearchParams({ offset: "4294967296" }),
+    ]) {
+      const outcome = await dispatchRpc(["ratings", "leaderboard"], "GET", undefined, params, env);
+      expect(outcome).toEqual({ kind: "json", status: 400, body: { error: "BadQuery" } });
+    }
+    expect(calls.leaderboard).toBeUndefined();
+  });
+
+  it("defaults ratings/leaderboard limit/offset to 0 when query params are missing", async () => {
+    await dispatchRpc(["ratings", "leaderboard"], "GET", undefined, new URLSearchParams(), env);
+    expect(calls.leaderboard).toEqual({ limit: 0, offset: 0 });
   });
 
   it("resolves the table's pod address for game calls and 404s an unresolvable table", async () => {

@@ -21,6 +21,8 @@ function isDeckListMessage(message: SceneListMessage): message is DeckListMessag
     case "ReceivedDecks":
     case "DecksLoadFailed":
     case "ReceivedDeckListCommanders":
+    case "ReceivedDeckListLeaderboardTeaser":
+    case "DeckListLeaderboardTeaserLoadFailed":
     case "ChangedDeckListSearch":
     case "OpenedDeckListMenu":
     case "ClosedDeckListMenu":

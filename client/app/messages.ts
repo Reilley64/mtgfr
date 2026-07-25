@@ -9,6 +9,7 @@ import { DeckCardFlipTick } from "./deck-card-nav";
 import { Message as GameMessage } from "./game/messages";
 import { Message as AuthMessage } from "./shell/auth/messages";
 import { Message as DecksMessage } from "./shell/decks/messages";
+import { Message as LeaderboardMessage } from "./shell/leaderboard/messages";
 import { Message as LobbyMessage } from "./shell/lobby/messages";
 
 export const Booted = m("Booted");
@@ -38,6 +39,7 @@ export const Message = S.Union([
   BoardMessage,
   AuthMessage,
   DecksMessage,
+  LeaderboardMessage,
   LobbyMessage,
   GameMessage,
 ]);
@@ -87,6 +89,7 @@ export {
   DeckBuilderLoadFailed,
   DeckDeleted,
   DeckDeleteFailed,
+  DeckListLeaderboardTeaserLoadFailed,
   DeckSaved,
   DeckSaveFailed,
   DecksLoadFailed,
@@ -102,6 +105,7 @@ export {
   ReceivedBuilderSearchPage,
   ReceivedDeckForBuilder,
   ReceivedDeckListCommanders,
+  ReceivedDeckListLeaderboardTeaser,
   ReceivedDecks,
   RemovedBuilderCard,
   RequestedBuilderCancel,
@@ -111,6 +115,12 @@ export {
   SetBuilderCommander,
   SubmittedDeckSave,
 } from "./shell/decks/messages";
+export {
+  LeaderboardLoadFailed,
+  ReceivedLeaderboardPage,
+  RequestedLeaderboardNextPage,
+  RequestedLeaderboardRefresh,
+} from "./shell/leaderboard/messages";
 export {
   ChangedLobbyCode,
   LobbyCopyCompleted,

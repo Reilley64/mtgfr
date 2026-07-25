@@ -45,6 +45,20 @@ pub struct PublishedDelta {
 /// Fan-out payload: `Arc` so subscribers clone a pointer, not the payload.
 pub type Broadcast = Arc<PublishedDelta>;
 
+struct RatingSnapshot {
+    seats: Vec<crate::Seat>,
+    game: Game,
+    events: Vec<Event>,
+}
+
+enum HoldResolution {
+    Continue,
+    Applied {
+        log_row: String,
+        rating_snapshot: Option<Box<RatingSnapshot>>,
+    },
+}
+
 /// What became of a table after applying an intent, decided under the lock and acted on by the
 /// caller once the borrow ends.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -366,48 +380,78 @@ fn schedule_stack_resolution(state: AppState, table_id: String, seq: u64) {
         }
         loop {
             tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-            let mut reg = lock(&state.reg);
-            let Some(table) = reg.get_mut(&table_id) else {
-                return;
+            let resolution = {
+                let mut reg = lock(&state.reg);
+                let Some(table) = reg.get_mut(&table_id) else {
+                    return;
+                };
+                if table.seq != seq {
+                    table.chrome.clear_hold_if_seq(seq);
+                    return;
+                }
+                let Some((_, started)) = table.chrome.stack_hold() else {
+                    return;
+                };
+                let now = Instant::now();
+                let any_dwell = table.chrome.any_dwell();
+                if now < hold_deadline(started, any_dwell) {
+                    HoldResolution::Continue
+                } else {
+                    table.chrome.clear_hold();
+                    let Some(game) = table.game.as_ref() else {
+                        return;
+                    };
+                    let Some(holder) =
+                        stack_hold_pass(game, table.chrome.yields(), table.chrome.turn_yields())
+                    else {
+                        return;
+                    };
+                    let mut session = TableSession::new(table);
+                    let wire = schema::WireIntent::PassPriority { player: holder.0 };
+                    let (result, disposition) =
+                        session.submit_system(Intent::PassPriority { player: holder });
+                    let log_row = crate::action_log::format_row(
+                        table.seq,
+                        holder.0,
+                        &wire,
+                        &result,
+                        &result.events,
+                        table.game.as_ref(),
+                    );
+                    let seq = table.seq;
+                    let rating_snapshot = result.accepted.then(|| {
+                        table.game.as_ref().map(|game| RatingSnapshot {
+                            seats: table.seats.to_vec(),
+                            game: game.clone(),
+                            events: result.events.clone(),
+                        })
+                    });
+                    settle_after_apply(&mut reg, &state, &table_id, disposition, seq);
+                    HoldResolution::Applied {
+                        log_row,
+                        rating_snapshot: rating_snapshot.flatten().map(Box::new),
+                    }
+                }
             };
-            if table.seq != seq {
-                table.chrome.clear_hold_if_seq(seq);
-                return;
+            match resolution {
+                HoldResolution::Continue => continue,
+                HoldResolution::Applied {
+                    log_row,
+                    rating_snapshot,
+                } => {
+                    crate::action_log::append(&table_id, &log_row);
+                    if let Some(snapshot) = rating_snapshot {
+                        crate::ratings::persist_player_lost(
+                            &state.db,
+                            &snapshot.seats,
+                            &snapshot.game,
+                            &snapshot.events,
+                        )
+                        .await;
+                    }
+                    return;
+                }
             }
-            let Some((_, started)) = table.chrome.stack_hold() else {
-                return;
-            };
-            let now = Instant::now();
-            let any_dwell = table.chrome.any_dwell();
-            if now < hold_deadline(started, any_dwell) {
-                continue;
-            }
-            table.chrome.clear_hold();
-            let Some(game) = table.game.as_ref() else {
-                return;
-            };
-            let Some(holder) =
-                stack_hold_pass(game, table.chrome.yields(), table.chrome.turn_yields())
-            else {
-                return;
-            };
-            let mut session = TableSession::new(table);
-            let wire = schema::WireIntent::PassPriority { player: holder.0 };
-            let (result, disposition) =
-                session.submit_system(Intent::PassPriority { player: holder });
-            let log_row = crate::action_log::format_row(
-                table.seq,
-                holder.0,
-                &wire,
-                &result,
-                &result.events,
-                table.game.as_ref(),
-            );
-            let seq = table.seq;
-            settle_after_apply(&mut reg, &state, &table_id, disposition, seq);
-            drop(reg);
-            crate::action_log::append(&table_id, &log_row);
-            return;
         }
     });
 }

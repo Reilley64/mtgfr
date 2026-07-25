@@ -3,7 +3,9 @@
 **Status:** Current (as of 2026-07-25)
 **Module:** `crates/server/src/auth.rs`, `crates/server/src/db.rs`, `crates/server/src/decks.rs`,
 `crates/server/src/decks_api.rs`, `crates/server/src/legality.rs`, `crates/server/src/precons.rs`,
-`crates/server/src/catalog_search.rs`, `proto/mtgfr/v1/catalog.proto`, `proto/mtgfr/v1/mtgfr.proto`
+`crates/server/src/catalog_search.rs`, `crates/server/src/ratings.rs`,
+`crates/server/src/grpc/ratings_svc.rs`, `proto/mtgfr/v1/catalog.proto`,
+`proto/mtgfr/v1/mtgfr.proto`
 
 ---
 
@@ -26,7 +28,9 @@ Postgres database (`mtgfr`), accessed via Toasty ORM models (`User`, `Session`, 
 **Auth** is email + password with Argon2id hashing. Signup and login produce an HttpOnly cookie
 (`session`) on the browser via the BFF; the session token also travels as gRPC metadata
 (`x-session-token`) from the BFF to tonic on every protected call. Session TTL is 30 days;
-expired sessions are lazily swept on the next auth attempt with that token.
+expired sessions are lazily swept on the next auth attempt with that token. `User` rows also
+persist leaderboard seed fields: `rating` starts at `1000` and `rating_set_at` stores the Unix
+seconds when that integer rating was last set.
 
 **Decks** are fully user-owned data: `(name, commander, commander_print, cards)` where `cards`
 is a JSON blob of `Vec<DeckCardEntry>` (`id`, `count`, `print`). Print (Printing UUID) is
@@ -54,6 +58,10 @@ Neither endpoint requires authentication.
 
 - As a **new user**, I sign up with email + password + username; the server hashes my password
   with Argon2id, creates a `User` and a `Session`, and the BFF sets the `session` cookie.
+- As a **new user**, I enter the leaderboard immediately at rating `1000`; my account stores when
+  that starting rating was set so later leaderboard ties stay stable.
+- As a **signed-in player**, I can open the leaderboard and page through every account ordered by
+  rating first, then by who has held that rating the longest when tied.
 - As a **returning user**, I log in; the existing session (or a fresh one) is set as a cookie.
   My session is valid for 30 days; if it expires, the next request gets a 401 and the BFF
   redirects me to log in.
@@ -81,7 +89,7 @@ Neither endpoint requires authentication.
 
 | RPC | Auth required | Behavior |
 |-----|--------------|----------|
-| `Signup` | No | Validate email + username uniqueness; Argon2id hash password; create `User` + `Session`; return `AuthSession` (token + `Me`). BFF sets `Set-Cookie: session=<token>; HttpOnly; SameSite=Lax [; Secure]`. |
+| `Signup` | No | Validate email + username uniqueness; Argon2id hash password; create `User` + `Session`; seed `User.rating = 1000` and `User.rating_set_at = now_unix`; return `AuthSession` (token + `Me`). BFF sets `Set-Cookie: session=<token>; HttpOnly; SameSite=Lax [; Secure]`. |
 | `Login` | No | Verify password hash; create or reuse `Session`; return `AuthSession`. |
 | `Logout` | Yes (cookie) | Delete the session row; BFF clears the cookie. |
 | `GetMe` | Yes (cookie) | Resolve session token → `User`; return `Me {id, email, username}`. Email is auth-private and only returned for the authenticated user. |
@@ -122,6 +130,31 @@ authed user's owned decks). Returns `DeckDetail`.
 
 **Delete:** Refuses negative id (precons are immutable). Deletes the Postgres row if it belongs
 to the authed user.
+
+### Ratings (`Ratings` gRPC service)
+
+`Ratings.GetLeaderboard` is auth-gated with the same `x-session-token` metadata flow as `Decks`.
+The request accepts `limit` and `offset`; `limit == 0` defaults to `50`, and any higher value is
+capped at `100`.
+
+The server queries `users` ordered by:
+
+1. `rating DESC`
+2. `rating_set_at ASC`
+3. `id ASC`
+
+The response returns:
+
+- `entries[]` with `user_id`, `username`, `rating`, and a 1-based global `rank`
+- `total` with the total number of leaderboard-visible accounts before paging
+
+`rank` is computed from the global sort order, so a page request with `offset = 25` starts ranks at
+`26`.
+
+The BFF exposes `GET /api/rpc/ratings/leaderboard?limit=&offset=` and forwards the session token
+metadata to `Ratings.GetLeaderboard`. The browser RPC client consumes that route as
+`rpc.ratings.leaderboard({ limit, offset })`. The BFF route is `GET`-only; invalid non-`u32`
+`limit` or `offset` query values return HTTP 400 before gRPC is called.
 
 ### Commander legality (`legality::validate`)
 
@@ -195,9 +228,11 @@ for hydrating a saved deck without fetching the full catalog.
 ## Implementation Decisions
 
 - **Toasty ORM for Postgres** (accounts-decks-and-catalog spec): models `User`, `Session`, `Deck` in
-  `crates/server/src/db.rs`. `Deck.cards` is a JSON blob (`Vec<DeckCardEntry>`) — always read
-  and written as a whole; no per-card relational queries. `push_schema()` is dev / SQLite-test
-  only; production runs Toasty migrations (`just migrate`).
+  `crates/server/src/db.rs`. `User` persists `rating: i32` plus `rating_set_at: i64`; migration
+  backfill defaults existing Postgres rows to `(1000, 0)`, while signup writes the real current
+  Unix seconds. `Deck.cards` is a JSON blob (`Vec<DeckCardEntry>`) — always read and written as a
+  whole; no per-card relational queries. `push_schema()` is dev / SQLite-test only; production
+  runs Toasty migrations (`just migrate`).
 - **Session cookie + `x-session-token` gRPC metadata** (accounts-decks-and-catalog spec): the BFF terminates the
   cookie, passing the raw token as metadata. This means no cookie crosses the same-origin
   boundary; only the BFF knows how to set/clear it. Cookie is `HttpOnly`, `SameSite=Lax`,
@@ -233,10 +268,13 @@ for hydrating a saved deck without fetching the full catalog.
 - `catalog_search.rs` tests use sqlite (Toasty test driver) to exercise `project()`, `search()`,
   and `lookup()` without a live Postgres instance, verifying placeholder dialect branching.
 - gRPC service-level tests in `crates/server/src/grpc/tests.rs` cover `Auth.Signup`, `Auth.Login`,
-  `Decks.Create`, `Decks.List` (including precon interleaving), and `Decks.Delete` with auth
-  enforcement.
+  `Decks.Create`, `Decks.List` (including precon interleaving), `Decks.Delete`, and
+  `Ratings.GetLeaderboard` ordering/paging with auth enforcement.
 - Shell Scene coverage asserts account chrome includes `account-gravatar-link`; Gravatar hashing
   and URL construction are covered in `client/lib/gravatar.test.ts`.
+- `crates/server/src/db.rs` and `crates/server/src/grpc/tests.rs` cover the rating persistence
+  slice: explicit `User` rating round-trip in sqlite plus signup seeding `rating = 1000` with a
+  nonzero `rating_set_at`.
 
 ---
 

@@ -5,6 +5,7 @@ import { emptyGameFold, type GameFoldState } from "./game/fold";
 import { AppRoute } from "./routes";
 import { AuthSubmodel } from "./shell/auth/submodel";
 import { DecksSubmodel } from "./shell/decks/submodel";
+import { LeaderboardSubmodel } from "./shell/leaderboard/submodel";
 import { LobbySlice } from "./shell/lobby/submodel";
 
 export const SessionSlice = S.Struct({
@@ -60,6 +61,7 @@ export const Model = S.Struct({
   apiVersion: S.NullOr(S.String),
   auth: AuthSubmodel,
   decks: DecksSubmodel,
+  leaderboard: LeaderboardSubmodel,
   lobby: LobbySlice,
   game: S.NullOr(GameSlice),
   portraitGate: PortraitGateSlice,

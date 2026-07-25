@@ -9,6 +9,7 @@ import { HomeRoute, isProtectedRoute, NewDeckRoute, routePath } from "./routes";
 import { view as authView } from "./shell/auth/view";
 import { view as deckBuilderView } from "./shell/decks/builder/view";
 import { view as deckListView } from "./shell/decks/list/view";
+import { view as leaderboardView } from "./shell/leaderboard/view";
 import { view as lobbyView } from "./shell/lobby/view";
 
 const h = html<Message>();
@@ -146,6 +147,8 @@ function routeBody(model: Model) {
         );
       case "LoginRoute":
         return authView(model.auth, model.apiVersion);
+      case "LeaderboardRoute":
+        return leaderboardView(model.leaderboard, model.session.me?.username ?? "", model.apiVersion);
       case "NewDeckRoute":
         return deckBuilderView(model.decks.builder, model.apiVersion);
       case "DeckRoute":

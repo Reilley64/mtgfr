@@ -2,7 +2,7 @@
 
 import * as Match from "effect/Match";
 import { GrpcCallError, type GrpcRequestEnv, grpcClientFor, httpStatusOf } from "./grpcClient";
-import { isAuthMethod, isCardsMethod, isGameMethod, isRpcGroup } from "./rpcs";
+import { isAuthMethod, isCardsMethod, isGameMethod, isRatingsMethod, isRpcGroup } from "./rpcs";
 import type { DeckError, IntentEnvelope, SaveDeckRequest, StreamFrame } from "./types";
 
 export interface RpcEnv extends GrpcRequestEnv {
@@ -35,6 +35,32 @@ function fromGrpcError(err: unknown): RpcOutcome {
   const status = httpStatusOf(err.code);
   const body = err.code === "invalid_argument" ? deckErrorOf(err.message) : { error: err.message };
   return { kind: "json", status, body };
+}
+
+function badQuery(): RpcOutcome {
+  return { kind: "json", status: 400, body: { error: "BadQuery" } };
+}
+
+type Uint32Query = { ok: true; value: number } | { ok: false };
+
+const UINT32_MAX = 4_294_967_295;
+
+/** Parse a uint32 query param; missing/empty uses `defaultValue`, invalid values reject. */
+function parseUint32Query(raw: string | null, defaultValue: number): Uint32Query {
+  if (raw === null || raw === "") return { ok: true, value: defaultValue };
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 0 || n > UINT32_MAX) return { ok: false };
+  return { ok: true, value: n };
+}
+
+type LeaderboardPaging = { ok: true; limit: number; offset: number } | { ok: false };
+
+function parseLeaderboardPaging(query: URLSearchParams): LeaderboardPaging {
+  const limit = parseUint32Query(query.get("limit"), 0);
+  if (!limit.ok) return { ok: false };
+  const offset = parseUint32Query(query.get("offset"), 0);
+  if (!offset.ok) return { ok: false };
+  return { ok: true, limit: limit.value, offset: offset.value };
 }
 
 async function dispatchAuth(method: string | undefined, body: unknown, env: RpcEnv): Promise<RpcOutcome> {
@@ -77,6 +103,31 @@ async function dispatchCards(method: string | undefined, query: URLSearchParams,
         return jsonOk(await client.cards.search(q, limit, offset));
       }),
       Match.when("lookup", async () => jsonOk(await client.cards.lookup(query.getAll("ids")))),
+      Match.exhaustive,
+    );
+  } catch (err) {
+    return fromGrpcError(err);
+  }
+}
+
+async function dispatchRatings(
+  method: string | undefined,
+  httpMethod: string,
+  query: URLSearchParams,
+  env: RpcEnv,
+): Promise<RpcOutcome> {
+  if (!isRatingsMethod(method)) return { kind: "empty", status: 404 };
+  if (httpMethod !== "GET") return { kind: "empty", status: 405 };
+  const client = grpcClientFor(env.defaultAddress, env);
+  try {
+    return await Match.value(method).pipe(
+      Match.when("leaderboard", async () => {
+        const paging = parseLeaderboardPaging(query);
+        if (!paging.ok) return badQuery();
+        return jsonOk(
+          await client.ratings.getLeaderboard({ limit: paging.limit, offset: paging.offset }, env.sessionToken),
+        );
+      }),
       Match.exhaustive,
     );
   } catch (err) {
@@ -161,6 +212,7 @@ export function dispatchRpc(
     Match.when("cards", () => dispatchCards(rest[0], query, env)),
     Match.when("decks", () => dispatchDecks(rest[0], httpMethod, body, env)),
     Match.when("game", () => dispatchGame(rest[0], rest[1], body, env)),
+    Match.when("ratings", () => dispatchRatings(rest[0], httpMethod, query, env)),
     Match.exhaustive,
   );
 }

@@ -66,6 +66,20 @@ export const DeckError = Schema.Struct({
 });
 export type DeckError = typeof DeckError.Type;
 
+export const LeaderboardEntry = Schema.Struct({
+  user_id: Schema.Number,
+  username: Schema.String,
+  rating: Schema.Number,
+  rank: Schema.Number,
+});
+export type LeaderboardEntry = typeof LeaderboardEntry.Type;
+
+export const Leaderboard = Schema.Struct({
+  entries: Schema.Array(LeaderboardEntry),
+  total: Schema.Number,
+});
+export type Leaderboard = typeof Leaderboard.Type;
+
 export const DeckSummary = Schema.Struct({
   commander: Schema.String,
   commander_print: Schema.optional(Schema.String),

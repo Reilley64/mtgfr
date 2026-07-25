@@ -6,6 +6,7 @@ use tonic::{Request, Status};
 use super::*;
 use crate::db;
 use crate::decks::keep_all_hands;
+use crate::elo::STARTING_RATING;
 use crate::test_support::seat_deck;
 
 async fn test_state() -> AppState {
@@ -47,6 +48,17 @@ async fn signup_mints_a_session_that_get_me_resolves_over_metadata() {
         .into_inner();
     assert_eq!(resolved.id, me.id);
     assert_eq!(resolved.username, "alice");
+
+    let mut db = state.db.clone();
+    let created_user = db::User::filter_by_id(me.id)
+        .get(&mut db)
+        .await
+        .expect("signup persists the user row");
+    assert_eq!(created_user.rating, STARTING_RATING);
+    assert!(
+        created_user.rating_set_at > 0,
+        "signup stamps when the starting rating was set"
+    );
 }
 
 #[tokio::test]
@@ -143,6 +155,99 @@ async fn signed_up(state: &AppState, email: &str, username: &str) -> (i64, Strin
         .into_inner();
     let me = session.me.expect("signup returns the new account");
     (me.id, session.session_token)
+}
+
+async fn set_user_rating(state: &AppState, user_id: i64, rating: i32, rating_set_at: i64) {
+    let mut db = state.db.clone();
+    let mut user = db::User::filter_by_id(user_id)
+        .get(&mut db)
+        .await
+        .expect("user exists");
+    user.update()
+        .rating(rating)
+        .rating_set_at(rating_set_at)
+        .exec(&mut db)
+        .await
+        .expect("update user rating");
+}
+
+#[tokio::test]
+async fn ratings_get_leaderboard_requires_authentication() {
+    use pb::ratings_server::Ratings;
+
+    let state = test_state().await;
+    let ratings_svc = ratings_svc::RatingsSvc::new(state);
+
+    let err = ratings_svc
+        .get_leaderboard(Request::new(pb::GetLeaderboardRequest {
+            limit: 0,
+            offset: 0,
+        }))
+        .await
+        .expect_err("leaderboard should require auth");
+    assert_eq!(err.code(), tonic::Code::Unauthenticated);
+}
+
+#[tokio::test]
+async fn ratings_get_leaderboard_orders_stably_and_pages() {
+    use pb::ratings_server::Ratings;
+
+    let state = test_state().await;
+    let (alice_id, alice_token) = signed_up(&state, "lb-alice@x.c", "alice").await;
+    let (bob_id, _bob_token) = signed_up(&state, "lb-bob@x.c", "bob").await;
+    let (cara_id, _cara_token) = signed_up(&state, "lb-cara@x.c", "cara").await;
+    let (dax_id, _dax_token) = signed_up(&state, "lb-dax@x.c", "dax").await;
+
+    set_user_rating(&state, alice_id, 1000, 300).await;
+    set_user_rating(&state, bob_id, 1200, 200).await;
+    set_user_rating(&state, cara_id, 1200, 100).await;
+    set_user_rating(&state, dax_id, 1200, 100).await;
+
+    let ratings_svc = ratings_svc::RatingsSvc::new(state.clone());
+
+    let paged = ratings_svc
+        .get_leaderboard(authed(
+            pb::GetLeaderboardRequest {
+                limit: 2,
+                offset: 1,
+            },
+            &alice_token,
+        ))
+        .await
+        .expect("leaderboard page")
+        .into_inner();
+    assert_eq!(paged.total, 4);
+    assert_eq!(paged.entries.len(), 2);
+    assert_eq!(paged.entries[0].user_id, dax_id);
+    assert_eq!(paged.entries[0].username, "dax");
+    assert_eq!(paged.entries[0].rating, 1200);
+    assert_eq!(paged.entries[0].rank, 2);
+    assert_eq!(paged.entries[1].user_id, bob_id);
+    assert_eq!(paged.entries[1].username, "bob");
+    assert_eq!(paged.entries[1].rating, 1200);
+    assert_eq!(paged.entries[1].rank, 3);
+
+    let default_limit = ratings_svc
+        .get_leaderboard(authed(
+            pb::GetLeaderboardRequest {
+                limit: 0,
+                offset: 0,
+            },
+            &alice_token,
+        ))
+        .await
+        .expect("leaderboard default limit")
+        .into_inner();
+    assert_eq!(default_limit.total, 4);
+    assert_eq!(default_limit.entries.len(), 4);
+    assert_eq!(default_limit.entries[0].user_id, cara_id);
+    assert_eq!(default_limit.entries[0].rank, 1);
+    assert_eq!(default_limit.entries[1].user_id, dax_id);
+    assert_eq!(default_limit.entries[1].rank, 2);
+    assert_eq!(default_limit.entries[2].user_id, bob_id);
+    assert_eq!(default_limit.entries[2].rank, 3);
+    assert_eq!(default_limit.entries[3].user_id, alice_id);
+    assert_eq!(default_limit.entries[3].rank, 4);
 }
 
 #[tokio::test]
@@ -292,6 +397,46 @@ async fn tables_seed_and_game_submit_intent_round_trip() {
 }
 
 #[tokio::test]
+async fn conceding_a_seeded_table_persists_elo_ratings() {
+    use pb::game_server::Game;
+
+    let state = test_state().await;
+    let (alice_id, bob_id, alice_token) =
+        seed_two_player_table_with_players(&state, "elo-concede-tbl").await;
+
+    let game_svc = game_svc::GameSvc::new(state.clone());
+    let envelope = map::intent_envelope_to_pb(schema::IntentEnvelope {
+        table_id: "elo-concede-tbl".to_string(),
+        client_seq: 0,
+        intent: schema::WireIntent::Concede { player: 0 },
+    });
+    let ack = game_svc
+        .submit_intent(authed(
+            pb::IntentRequest {
+                table_id: "elo-concede-tbl".to_string(),
+                envelope: Some(envelope),
+            },
+            &alice_token,
+        ))
+        .await
+        .expect("submit concede")
+        .into_inner();
+    assert!(ack.accepted, "concede is accepted: {ack:?}");
+
+    let mut db = state.db.clone();
+    let alice = db::User::filter_by_id(alice_id)
+        .get(&mut db)
+        .await
+        .expect("alice still exists");
+    let bob = db::User::filter_by_id(bob_id)
+        .get(&mut db)
+        .await
+        .expect("bob still exists");
+    assert_eq!(alice.rating, 984);
+    assert_eq!(bob.rating, 1016);
+}
+
+#[tokio::test]
 async fn submit_intent_rejects_mismatched_envelope_table_id() {
     use pb::game_server::Game;
     use pb::tables_server::Tables;
@@ -356,6 +501,16 @@ async fn submit_intent_rejects_mismatched_envelope_table_id() {
 /// Seed a running two-player table under `table_id` with the given host/guest, returning the
 /// host's user id. Shared setup for the `Game.Stream` coverage below.
 async fn seed_two_player_table(state: &AppState, table_id: &str) -> (i64, String) {
+    let (host_id, _guest_id, host_token) =
+        seed_two_player_table_with_players(state, table_id).await;
+    (host_id, host_token)
+}
+
+/// Seed a running two-player table and return both account ids plus the host token.
+async fn seed_two_player_table_with_players(
+    state: &AppState,
+    table_id: &str,
+) -> (i64, i64, String) {
     use pb::tables_server::Tables;
 
     let (host_id, host_token) = signed_up(state, &format!("{table_id}-host@x.c"), "host").await;
@@ -390,7 +545,7 @@ async fn seed_two_player_table(state: &AppState, table_id: &str) -> (i64, String
         .await
         .expect("seed");
     keep_table_hands(state, table_id);
-    (host_id, host_token)
+    (host_id, guest_id, host_token)
 }
 
 fn keep_table_hands(state: &AppState, table_id: &str) {

@@ -48,6 +48,26 @@ describe("makeClient", () => {
     const url = calls[0][0];
     expect(url.pathname).toBe("/api/rpc/auth/me");
   });
+
+  it("builds ratings/leaderboard with limit and offset query params", async () => {
+    const { fetch, calls } = recordingFetch(
+      json({
+        entries: [{ user_id: 7, username: "alice", rating: 1234, rank: 26 }],
+        total: 99,
+      }),
+    );
+    const client = makeClient(fetch);
+    const leaderboard = await Effect.runPromise(client.ratings.leaderboard({ limit: 25, offset: 25 }));
+    expect(leaderboard).toEqual({
+      entries: [{ user_id: 7, username: "alice", rating: 1234, rank: 26 }],
+      total: 99,
+    });
+    expect(calls).toHaveLength(1);
+    const url = calls[0][0];
+    expect(url.pathname).toBe("/api/rpc/ratings/leaderboard");
+    expect(url.searchParams.get("limit")).toBe("25");
+    expect(url.searchParams.get("offset")).toBe("25");
+  });
 });
 
 describe("orNull", () => {

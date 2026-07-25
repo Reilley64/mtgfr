@@ -11,7 +11,16 @@ import type { CatalogCard } from "../../lib/wire/types";
 import { BindDeckCardFlip, DeckCardFlipTick } from "../deck-card-nav";
 import { init, update } from "../main-exports";
 import type { Model as AppModel } from "../model";
-import { HomeRoute, LoginRoute, NewDeckRoute, NotFoundRoute, PlayRoute, TableRoute } from "../routes";
+import {
+  HomeRoute,
+  LeaderboardRoute,
+  LoginRoute,
+  NewDeckRoute,
+  NotFoundRoute,
+  PlayRoute,
+  routePath,
+  TableRoute,
+} from "../routes";
 import { view } from "../view";
 import { ClearedBuilderHover } from "./decks/builder/messages";
 import { initialDeckBuilderSubmodel } from "./decks/builder/submodel";
@@ -158,6 +167,38 @@ describe("shell surface scenes", () => {
     );
   });
 
+  it("renders a leaderboard teaser on the deck list home", () => {
+    const list = {
+      ...init()[0].decks.list,
+      decks: [deck],
+      knownCommanders: { atraxa },
+      leaderboardTeaser: [{ rank: 1, rating: 1200, user_id: 1, username: "alice" }],
+      loading: false,
+    };
+
+    Scene.scene(
+      { update, view },
+      Scene.with(
+        authedModel(HomeRoute(), {
+          decks: {
+            ...init()[0].decks,
+            list,
+          },
+        }),
+      ),
+      Scene.expect(Scene.selector('[data-testid="leaderboard-teaser"]')).toExist(),
+      Scene.expect(
+        Scene.selector(`[data-testid="leaderboard-teaser-link"][href="${routePath(LeaderboardRoute())}"]`),
+      ).toExist(),
+      Scene.expect(Scene.text("alice")).toExist(),
+      Scene.expect(Scene.text("1200")).toExist(),
+      Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), ClosedDeckListMenu()),
+      Scene.Mount.resolve(BindDeckCardFlip({ deckId: 1 }), DeckCardFlipTick()),
+      Scene.Mount.resolve(BindCardArt, CardArtTick()),
+      Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
+    );
+  });
+
   it("renders the deck delete confirmation dialog", () => {
     Scene.scene(
       { update, view },
@@ -221,6 +262,55 @@ describe("shell surface scenes", () => {
       ),
       Scene.expect(Scene.text("Loading decks…")).toExist(),
       Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
+    );
+  });
+
+  it("renders leaderboard rows with usernames and ratings", () => {
+    Scene.scene(
+      { update, view },
+      Scene.with(
+        authedModel(LeaderboardRoute(), {
+          leaderboard: {
+            entries: [
+              { rank: 1, rating: 1200, user_id: 1, username: "alice" },
+              { rank: 2, rating: 1175, user_id: 2, username: "bruno" },
+            ],
+            error: null,
+            status: "ready",
+            total: 2,
+          },
+        }),
+      ),
+      Scene.expect(Scene.selector('[data-testid="leaderboard-page"]')).toExist(),
+      Scene.expectAll(Scene.all.selector('[data-testid="leaderboard-row"]')).toHaveCount(2),
+      Scene.expect(Scene.text("#1")).toExist(),
+      Scene.expect(Scene.text("alice")).toExist(),
+      Scene.expect(Scene.text("1200")).toExist(),
+      Scene.expect(Scene.text("#2")).toExist(),
+      Scene.expect(Scene.text("bruno")).toExist(),
+      Scene.expect(Scene.text("1175")).toExist(),
+    );
+  });
+
+  it("hides load more while the leaderboard shows a retry error", () => {
+    Scene.scene(
+      { update, view },
+      Scene.with(
+        authedModel(LeaderboardRoute(), {
+          leaderboard: {
+            entries: [{ rank: 1, rating: 1200, user_id: 1, username: "alice" }],
+            error: "Could not load the leaderboard.",
+            status: "error",
+            total: 2,
+          },
+        }),
+      ),
+      Scene.expect(Scene.selector('[data-testid="leaderboard-page"]')).toExist(),
+      Scene.expectAll(Scene.all.selector('[data-testid="leaderboard-row"]')).toHaveCount(1),
+      Scene.expect(Scene.text("#1")).toExist(),
+      Scene.expect(Scene.text("Could not load the leaderboard.")).toExist(),
+      Scene.expect(Scene.text("Try again")).toExist(),
+      Scene.expect(Scene.text("Load more")).not.toExist(),
     );
   });
 

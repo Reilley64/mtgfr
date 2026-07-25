@@ -13,13 +13,14 @@ Players need to browse saved and precon decks, open a deck into play or edit, an
 
 ## Solution
 
-The **deck list** at `/` is a compact commander-tile grid over the deck list submodel (search, precon ordering, owned-deck context menu). The **deck builder** at `/decks/new` and `/decks/:id` is a split-pane pool + decklist UI over catalog search RPCs. Card art is keyed by Scryfall Printing UUID via `client/lib/deck-builder/scryfall.ts` and rendered through `client/lib/ui/card-art.ts` against `sharedImageCache` in `client/lib/image-cache.ts`. Deck persistence and legality rules are owned by [accounts-decks-and-catalog](2026-07-20-accounts-decks-and-catalog.md); route/auth shell by [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md).
+The **deck list** at `/` is a compact commander-tile grid over the deck list submodel (search, top-5 leaderboard teaser, precon ordering, owned-deck context menu). The **deck builder** at `/decks/new` and `/decks/:id` is a split-pane pool + decklist UI over catalog search RPCs. Card art is keyed by Scryfall Printing UUID via `client/lib/deck-builder/scryfall.ts` and rendered through `client/lib/ui/card-art.ts` against `sharedImageCache` in `client/lib/image-cache.ts`. Deck persistence and legality rules are owned by [accounts-decks-and-catalog](2026-07-20-accounts-decks-and-catalog.md); route/auth shell by [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md).
 
 ---
 
 ## User Stories
 
 - As a returning player on `/`, I scan commander tiles (each link tile shows a Play label), search by name, click a tile to play, and right-click an owned deck to edit or delete it.
+- As a returning player on `/`, I also glance at the top 5 leaderboard teaser and jump to the full `/leaderboard` page when I want the broader standings.
 - As a returning player, I navigate directly to `/decks/new` and the deck builder loads, showing the full card pool on the left and a blank decklist on the right.
 - As a deck builder, I click a pool card to add it, right-click to pick a different printing (art preference), and see the commander picker auto-populate with legendary creatures in my list.
 
@@ -33,7 +34,10 @@ The **deck list** at `/` is a compact commander-tile grid over the deck list sub
 Header, search, and grid share one `max-w-[960px]` column. Tiles use a raised
 `minmax(220px, 1fr)` track, landscape commander `art_crop` (~1.37:1), deck name,
 color-identity pips, and a Precon chip when `id < 0`. Names stay single-line truncate.
-There is no cursor-follow card hover preview on this surface. The whole tile links to
+There is no cursor-follow card hover preview on this surface. A compact **Top players**
+teaser can appear above the search/grid column when the home route has top-5 leaderboard
+data; it lists rank, username, and rating, and links to `/leaderboard` without adding
+extra stats chrome or deck-related controls. The whole tile links to
 `/play/{id}` and shows a quiet `Play` label (`deck-play-label`) in link mode; static
 lobby deck-card chrome omits that label. Home ↔ `/play/{id}` morphs the shared deck-card chrome with a short
 FLIP animation (`deck-card-nav.ts`; skipped for reduced motion). A **Search decks…** field filters by deck name and commander display
@@ -43,6 +47,9 @@ by ascending id (newest release first). Right-click on an owned deck opens Edit
 Deck button navigates to `/decks/new`. Signed-in account chrome in the header shows
 the username with the same circular Gravatar/monogram face helper used for seats and
 an outbound `Change at Gravatar` link (`account-gravatar-link`) to `https://gravatar.com`.
+The home route loads the teaser separately from the deck list (`Ratings.GetLeaderboard`
+via `limit = 5, offset = 0`); if that request fails, the teaser clears to empty and the
+deck grid still loads normally.
 
 ### Deck builder (`client/app/shell/decks/builder/**`, `/decks/new`, `/decks/:id`)
 
@@ -91,7 +98,11 @@ Missing ordinary (non-`art_crop`) CDN art stays empty after load failure (no Scr
 - `client/lib/deck-builder/*.test.ts` — print prefs, menus, hover preview.
 - `client/lib/ui/card-art.test.ts` — art URL / host sync against `ImageCache`.
 - `client/lib/image-cache.test.ts` — cache settle / subscriber behavior.
-- Scene coverage for shell deck surfaces, including `account-gravatar-link`, lives with other shell Scene tests (see [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md) Testing Decisions / `just client-check`).
+- Scene coverage for shell deck surfaces lives with other shell Scene tests, including
+  `account-gravatar-link` and the home leaderboard teaser (`data-testid="leaderboard-teaser"`);
+  route-entry Stories cover the home fetch path, the separate teaser fetch, and its load-success
+  path (see [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md) Testing Decisions /
+  `just client-check`).
 
 ---
 
