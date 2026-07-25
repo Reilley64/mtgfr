@@ -131,6 +131,10 @@ export const CARD_H = 134;
 
 /** Radius of a player's life-orb avatar, in world units (so it pans/zooms with the board). */
 export const AVATAR_R = 40;
+export const AVATAR_HAND_LABEL_OFFSET = -29;
+export const AVATAR_LIFE_LABEL_BELOW = 48;
+export const AVATAR_USERNAME_LABEL_BELOW = 66;
+export const AVATAR_LABEL_BELOW = 80;
 
 // Each seat: a battlefield of three rows (Noncreature → Creatures → Lands, centerward → outer)
 // with a compact zone column on the left (deck / graveyard / exile / commander), a life orb on
@@ -265,10 +269,11 @@ export function boardBounds(count: number): { minX: number; minY: number; maxX: 
   for (let seat = 0; seat < count; seat++) {
     const b = seatBand(seat, 0, count);
     const a = avatarPos(seat, 0, count);
+    const labelY = isFlipped(seat, 0, count) ? a.y - AVATAR_LABEL_BELOW : a.y + AVATAR_LABEL_BELOW;
     minX = Math.min(minX, b.x, a.x - AVATAR_R);
-    minY = Math.min(minY, b.y, a.y - AVATAR_R);
+    minY = Math.min(minY, b.y, a.y - AVATAR_R, labelY);
     maxX = Math.max(maxX, b.x + b.w, a.x + AVATAR_R);
-    maxY = Math.max(maxY, b.y + b.h, a.y + AVATAR_R);
+    maxY = Math.max(maxY, b.y + b.h, a.y + AVATAR_R, labelY);
   }
   return { minX, minY, maxX, maxY };
 }

@@ -46,6 +46,8 @@ Wheel and pinch gestures are translated by the board camera gesture Mount into `
 
 Cards use 96 x 134 world units. Seat bands are arranged as a four-seat table from the viewer perspective: viewer at the bottom, opponents around the top and sides, with top seats oriented toward the viewer. Fewer than four seats leave unused bands empty. Zone columns for command, graveyard, exile, and library live at the left edge of each seat band, and battlefield mana anchoring is derived from the same geometry.
 
+Seat avatars use a 40 world-unit radius. Their label gutter is part of `boardBounds`: hand count sits above the circle, while life, username, and commander-damage labels sit below it, so `fitCamera` reserves room for the full avatar label stack instead of only the circular face.
+
 ### Hit testing
 
 Pointer events arrive in screen coordinates and are tested through the shared camera. Hits resolve against the logical `RenderCard` layout, not against tweened or in-flight paint poses. When multiple cards overlap, the topmost card in the resolved layout order wins. Avatar hits use the same camera transform and seat positions.
@@ -79,7 +81,7 @@ Attachments remain associated with their host for layout and hover raise. Tapped
 ## Testing Decisions
 
 - Camera tests cover world/screen round trips, pan, zoom-at invariants, and fit behavior.
-- Layout tests cover seat placement, zone columns, tapped rotation fields, attachments, and player-count variation.
+- Layout tests cover seat placement, zone columns, tapped rotation fields, attachments, avatar label bounds, and player-count variation.
 - Hit-test tests cover overlapped/tapped cards, topmost resolution, and avatar hits.
 - Density tests cover row packing, cluster fan poses, clamping to seat bands, and hover raise ordering.
 - Interaction tests cover pan-vs-click thresholds and camera user-moved behavior.

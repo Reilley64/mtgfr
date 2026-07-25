@@ -126,15 +126,15 @@ describe("boardBounds", () => {
   // A 2-player table is a single (left) column; 3 and 4 players both span both columns, so their
   // bounds match (the 3p table just leaves the diagonal cell empty).
   it("fits a 2-player table (one column)", () => {
-    expect(boardBounds(2)).toEqual({ minX: -72, minY: -88, maxX: 728, maxY: 948 });
+    expect(boardBounds(2)).toEqual({ minX: -72, minY: -128, maxX: 728, maxY: 988 });
   });
 
   it("fits a 3-player table (both columns, no diagonal)", () => {
-    expect(boardBounds(3)).toEqual({ minX: -72, minY: -88, maxX: 1624, maxY: 948 });
+    expect(boardBounds(3)).toEqual({ minX: -72, minY: -128, maxX: 1624, maxY: 988 });
   });
 
   it("fits a 4-player table (full 2×2)", () => {
-    expect(boardBounds(4)).toEqual({ minX: -72, minY: -88, maxX: 1624, maxY: 948 });
+    expect(boardBounds(4)).toEqual({ minX: -72, minY: -128, maxX: 1624, maxY: 988 });
   });
 });
 

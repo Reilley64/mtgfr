@@ -14,7 +14,7 @@ The in-game Commander table must stay readable while showing four seats, hundred
 The board is a Foldkit submodel with three coordinated surfaces:
 
 - Foldkit Canvas for vector battlefield furniture, seats, arrows, and vector helpers.
-- Foldkit Mount canvases for bitmap resting card art, authoritative avatar life orbs, and in-flight card art.
+- Foldkit Mount canvases for bitmap resting card art, authoritative avatar face/life orbs, and in-flight card art.
 - HTML overlays for hand, stack, prompts, priority chrome, mana tray, game log, inspect, sound, legend, concede, and result UI.
 
 `view.ts` is the composition root. `submodel.ts` owns board state and update logic, and `messages.ts` defines the board message protocol. The authoritative layer stack lives in [`docs/client-canvas-map.md`](../../client-canvas-map.md); board visual changes must follow that map.
@@ -68,7 +68,7 @@ The root includes an `sr-only` `aria-live="polite"` region populated by `boardSt
 
 ### Image preload
 
-Board image use goes through `sharedImageCache`. Published bitmap frames preload visible resting-card, flight-card, and card-back URLs before painting so decode work is not tied to a single draw call.
+Board image use goes through `sharedImageCache`. Published bitmap frames preload visible resting-card, flight-card, card-back, and Gravatar face URLs before painting so decode work is not tied to a single draw call. Avatar image-load notifications repaint the resting bitmap layer through the shared cache subscription.
 
 ### Prompts
 

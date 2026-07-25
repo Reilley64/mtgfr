@@ -15,7 +15,7 @@ import {
   resolveClick,
   TOP_MARGIN,
 } from "./interaction";
-import { AVATAR_R, avatarPos, boardBounds, CARD_H, type RenderCard, ZONE } from "./layout";
+import { AVATAR_LABEL_BELOW, avatarPos, boardBounds, CARD_H, type RenderCard, ZONE } from "./layout";
 
 const MAIN_1 = 3;
 
@@ -246,8 +246,8 @@ describe("fitCamera", () => {
       // Find whichever seat sits topmost (row 0, if any occupied) and check its avatar's top edge.
       for (let seat = 0; seat < count; seat++) {
         const a = avatarPos(seat, 0, count);
-        if (a.y - AVATAR_R !== bounds.minY) continue; // not the top-row seat
-        const screenTop = worldToScreen(cam, a.x, a.y - AVATAR_R).y;
+        if (a.y - AVATAR_LABEL_BELOW !== bounds.minY) continue; // not the top-row seat
+        const screenTop = worldToScreen(cam, a.x, a.y - AVATAR_LABEL_BELOW).y;
         expect(screenTop).toBeGreaterThanOrEqual(TOP_MARGIN - 0.01); // float slack
       }
     }
@@ -256,8 +256,8 @@ describe("fitCamera", () => {
   // Commander is 4 seats — this is the viewport we dogfood. Cards must stay readable vs the hand.
   it("keeps 4-player battlefield cards readable at 1440×900 with the live hand bar", () => {
     const cam = fitCamera({ x: 1440, y: 900 }, 4, 128);
-    // Commander is the format — 4 seats must stay readable (~hand-card scale, not postage stamps).
-    expect(CARD_H * cam.zoom).toBeGreaterThanOrEqual(86);
+    // Commander is the format — 4 seats must stay readable while preserving the avatar label gutter.
+    expect(CARD_H * cam.zoom).toBeGreaterThanOrEqual(80);
   });
 });
 

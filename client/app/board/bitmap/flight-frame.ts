@@ -46,6 +46,7 @@ function playerPaintKey(player: PlayerView): Record<string, unknown> {
     life: player.life,
     lost: player.lost,
     username: player.username ?? "",
+    gravatar_hash: player.gravatar_hash ?? "",
     hand_count: player.hand_count,
     commander_damage: commanderDamage,
   };

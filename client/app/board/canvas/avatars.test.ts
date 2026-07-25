@@ -41,6 +41,22 @@ describe("maxCommanderDamage", () => {
 });
 
 describe("avatarShapes commander damage", () => {
+  it("places life below the circle and keeps hand above", () => {
+    const positions = { 0: { x: 100, y: 100 } };
+    const shapes = avatarShapes([player()], positions, 0, 1);
+    const life = shapes.find((s) => s._tag === "Text" && s.content === "40");
+    const hand = shapes.find((s) => s._tag === "Text" && s.content === "Hand 7");
+
+    expect(life?._tag === "Text" ? life.y : null).toBe(148);
+    expect(hand?._tag === "Text" ? hand.y : null).toBe(71);
+  });
+
+  it("paints monogram when gravatar_hash empty", () => {
+    const shapes = avatarShapes([player({ username: "Alice", gravatar_hash: "" })], { 0: { x: 0, y: 0 } }, 0, 1);
+
+    expect(textContents(shapes)).toContain("A");
+  });
+
   it("paints Cmd N when damage > 0 and omits it at 0", () => {
     const positions = { 0: { x: 100, y: 100 } };
     const withDmg = avatarShapes([player({ commander_damage: [{ from: 1, amount: 14 }] })], positions, 0, 1);
