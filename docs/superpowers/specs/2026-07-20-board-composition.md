@@ -1,6 +1,6 @@
 # Board Composition
 
-**Status:** Current (as of 2026-07-23)
+**Status:** Current (as of 2026-07-25)
 **Module:** `client/app/board/view.ts`, `client/app/board/submodel.ts`, `client/app/board/messages.ts`, `client/app/board/html/`, `client/app/board/bitmap/`, `client/app/board/canvas/`
 
 ---
@@ -14,7 +14,7 @@ The in-game Commander table must stay readable while showing four seats, hundred
 The board is a Foldkit submodel with three coordinated surfaces:
 
 - Foldkit Canvas for vector battlefield furniture, seats, arrows, and vector helpers.
-- Foldkit Mount canvases for bitmap resting card art, authoritative avatar face/life orbs, and in-flight card art.
+- Foldkit Mount canvases for bitmap resting card art, authoritative Gravatar/monogram avatar face/life chrome, and in-flight card art.
 - HTML overlays for hand, stack, prompts, priority chrome, mana tray, game log, inspect, sound, legend, concede, and result UI.
 
 `view.ts` is the composition root. `submodel.ts` owns board state and update logic, and `messages.ts` defines the board message protocol. The authoritative layer stack lives in [`docs/client-canvas-map.md`](../../client-canvas-map.md); board visual changes must follow that map.
@@ -41,7 +41,7 @@ The live board composes:
 
 - `Canvas.view` for vector scene shapes and pointer events.
 - `manaTrayView` projected from world coordinates as DOM below resting permanents.
-- `board-bitmap-layer` for resting battlefield faces, card chrome, and avatar life orbs.
+- `board-bitmap-layer` for resting battlefield faces, card chrome, and avatar face/life chrome.
 - `boardOverlays` for hand, stack, prompts, priority, discoverability, game log (`log-panel` / `board-log`), concede, pile expand, result, and inspect. See [board-log-panel](2026-07-25-board-log-panel.md).
 - `board-flight-layer` for in-flight cards above hand and stack.
 - `board-reconnecting` when the stream is disconnected.
@@ -68,7 +68,7 @@ The root includes an `sr-only` `aria-live="polite"` region populated by `boardSt
 
 ### Image preload
 
-Board image use goes through `sharedImageCache`. Published bitmap frames preload visible resting-card, flight-card, card-back, and Gravatar face URLs before painting so decode work is not tied to a single draw call. Avatar image-load notifications repaint the resting bitmap layer through the shared cache subscription.
+Board image use goes through `sharedImageCache`. Published bitmap frames preload visible resting-card, flight-card, card-back, and Gravatar face URLs before painting so decode work is not tied to a single draw call. Avatar image-load notifications repaint the resting bitmap layer through the shared cache subscription; fallback monogram circles remain available while a hash is absent or an image has not decoded. See [Gravatar Seat Faces Design](2026-07-25-gravatar-seat-faces-design.md).
 
 ### Prompts
 
@@ -100,6 +100,7 @@ Stable markers include `board-mount`, `board-connecting`, `board-keyboard-mount`
 
 - Keep the board as Canvas + Mount + HTML; do not merge it into one retained scene graph.
 - Treat `docs/client-canvas-map.md` as the layer stack authority.
+- Keep Mount authoritative for avatar face/life chrome; Canvas avatar shapes stay a lower vector helper.
 - Keep required identifiers in route path params; board prompts and local modes are not routes.
 - Keep selection prevention on `board-mount`, not globally.
 - Keep prompt visibility decider-scoped even though wire state may expose redacted pending-choice facts to other viewers.
@@ -107,7 +108,7 @@ Stable markers include `board-mount`, `board-connecting`, `board-keyboard-mount`
 
 ## Testing Decisions
 
-- Scene tests cover root mounting, `select-none`, layer order, board keyboard/audio mounts, overlays, prompts, hand chrome, and inspect.
+- Scene tests cover root mounting, `select-none`, layer order, board keyboard/audio mounts, overlays, prompts, hand chrome, life-orb hit targets, and inspect.
 - Unit tests cover board update outcomes for spectator/eliminated behavior, prompt state, sound toggles, and keyboard handling.
 - Live board verification should exercise route entry, reconnect banner visibility where feasible, and a seated play path with hand, stack, and priority chrome.
 

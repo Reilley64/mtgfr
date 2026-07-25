@@ -2,14 +2,7 @@ import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
 import { lobbies } from "../db/schema";
 import { createWebDb } from "../server/db/client";
-import {
-  createLobby,
-  joinLobby,
-  loadLobby,
-  type LobbySnapshot,
-  startError,
-  toLobbyView,
-} from "./lobby-store";
+import { createLobby, joinLobby, type LobbySnapshot, loadLobby, startError, toLobbyView } from "./lobby-store";
 
 function snap(overrides: Partial<LobbySnapshot> = {}): LobbySnapshot {
   return {
@@ -112,7 +105,8 @@ describe("joinLobby gravatar persistence", () => {
 
     const loaded = await loadLobby(db, tableId);
     expect(loaded?.seats[0]?.gravatarHash).toBe("hash-on-join");
-    expect(toLobbyView(loaded!, 9001).seats[0]?.gravatar_hash).toBe("hash-on-join");
+    if (loaded == null) throw new Error("expected lobby to load");
+    expect(toLobbyView(loaded, 9001).seats[0]?.gravatar_hash).toBe("hash-on-join");
 
     const updated = await joinLobby(db, {
       tableId,
@@ -126,6 +120,7 @@ describe("joinLobby gravatar persistence", () => {
 
     const reloaded = await loadLobby(db, tableId);
     expect(reloaded?.seats[0]?.gravatarHash).toBe("hash-updated");
-    expect(toLobbyView(reloaded!, 9001).seats[0]?.gravatar_hash).toBe("hash-updated");
+    if (reloaded == null) throw new Error("expected lobby to reload");
+    expect(toLobbyView(reloaded, 9001).seats[0]?.gravatar_hash).toBe("hash-updated");
   });
 });

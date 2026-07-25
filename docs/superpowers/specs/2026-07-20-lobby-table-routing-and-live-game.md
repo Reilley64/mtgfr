@@ -1,6 +1,6 @@
 # Lobby, Table Routing, and Live Game
 
-**Status:** Current (as of 2026-07-24)
+**Status:** Current (as of 2026-07-25)
 **Module:** `crates/server/src/table.rs`, `crates/server/src/lobby.rs`, `crates/server/src/session.rs`,
 `crates/server/src/game_loop.rs`, `crates/server/src/stream.rs`, `crates/server/src/chrome.rs`,
 `crates/server/src/health.rs`, `crates/server/src/main.rs`,
@@ -36,7 +36,8 @@ The system separates pre-game lobby from live-game concerns across two persisten
 3. Each user toggles ready. The host (first to join) sees the Start button when ≥2 seats are
    claimed and all claimed seats are ready.
 4. The host clicks Start. The BFF calls `Tables.Seed` (gRPC, Service `edh-api`) on the
-   **newest** active API pod. The seed request carries seat order, user ids, and deck ids.
+   **newest** active API pod. The seed request carries seat order, user ids, usernames,
+   public `gravatar_hash` values, and deck ids.
 5. `Tables.Seed` resolves and validates all decks, fetches a drand beacon master seed (or a configured fixed seed in dev/test), deals BO1-smoothed opening hands, enters the mulligan phase, inserts the
    `Table` into the in-memory `Registry`, and returns `SeedResponse { table_id, pod_dns, version }`.
 6. BFF writes `table_routes (table_id → pod_dns)` to `mtgfr_web`. Clients are redirected to
@@ -143,7 +144,8 @@ the BFF so that their absence does not block drain of an API pod that was never 
    registry lock — no DB await across the lock.
 5. Resolve entropy before inserting the table: `settings.master_seed` or `MTGFR_MASTER_SEED` supplies a fixed 64-hex-character master seed with `beacon_round = 0`; otherwise the API fetches `https://drand.cloudflare.com/public/latest`, retrying across `https://api.drand.sh/public/latest`. The drand `randomness` becomes the `[u8; 32]` engine master seed and `round` is recorded as `beacon_round`.
 6. If beacon entropy is unavailable or malformed and no fixed seed is configured, return 503. No partial table is created and there is no silent production fallback to `OsRng`.
-7. Under the lock: build `Table::seeded(...)`, record `table.seed` and `table.beacon_round`, fill
+7. Under the lock: build `Table::seeded(...)`, record `table.seed` and `table.beacon_round`, copy
+   `SeedSeat.username` and public `SeedSeat.gravatar_hash` into table seat chrome, fill
    `table.prints` (Card id → Printing UUID per seat), seed game via `decks::seed_game`, call
    `registry.try_insert(table_id, table)`.
 8. Return `SeedResponse { table_id, pod_dns: settings.pod_dns, version: settings.version }`.
@@ -226,6 +228,9 @@ seeded game; there are no "empty" table shells in the production registry.
 - **BFF-owned lobby** (lobby-table-routing-and-live-game spec): pre-game state lives on `mtgfr_web` (Drizzle). No lobby
   tables in the API pod; no lobby fan-out needed across pods. The BFF owns seat claim, ready-up,
   host start, and `table_routes`.
+- **Seat face privacy**: the BFF derives/stores lobby `gravatar_hash` from the authenticated
+  user's email, then forwards only that hash in `Tables.Seed`. API table chrome and streams never
+  receive or expose seat email. See [Gravatar Seat Faces Design](2026-07-25-gravatar-seat-faces-design.md).
 - **table_routes for pod affinity** (lobby-table-routing-and-live-game spec): no affinity cookie, no ConfigMap peer registry.
   `table_id` in the path is the routing key; `pod_dns` in `mtgfr_web.table_routes` is the
   destination. Headless Service `publishNotReadyAddresses` keeps Terminating pods dialable.
@@ -262,6 +267,8 @@ seeded game; there are no "empty" table shells in the production registry.
 - `crates/server/src/grpc/tests.rs` contains integration tests for `Tables.Seed` (including
   draining rejection, duplicate table id, invalid seat counts, beacon failure, and recorded beacon entropy) and `Game.SubmitIntent` (seated
   vs. non-seated auth).
+- Stream projection tests assert seeded table extras stamp usernames and `gravatar_hash` into
+  visible player chrome.
 - `crates/server/src/decks.rs` tests assert seeded games deal opening hands, enter mulligans, and delay the first turn until keeps.
 - Engine-level tests (`tests/game.rs`) cover the full game loop: variable players, elimination,
   multiplayer combat, lobby start.

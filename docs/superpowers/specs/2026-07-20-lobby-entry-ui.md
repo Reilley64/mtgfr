@@ -13,7 +13,7 @@ After choosing a deck, a player must host or join a table, claim a seat, ready u
 
 ## Solution
 
-Lobby UI lives under `client/app/shell/lobby/**` on path-param play routes (`/play/:deckId` entry, `/play/:deckId/:table` seated/board). Host/Join uses `entryMode` (`choose` | `join`); seated chrome shows seat-color dots, Ready/Start, and table-code copy. Polling is a Foldkit subscription over `lobbyPoll`. Server lobby/seed/affinity mechanics are owned by [lobby-table-routing-and-live-game](2026-07-20-lobby-table-routing-and-live-game.md); the route table and auth guard by [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md).
+Lobby UI lives under `client/app/shell/lobby/**` on path-param play routes (`/play/:deckId` entry, `/play/:deckId/:table` seated/board). Host/Join uses `entryMode` (`choose` | `join`); seated chrome shows seat-color dots, Gravatar/monogram seat faces, Ready/Start, and table-code copy. Polling is a Foldkit subscription over `lobbyPoll`. Server lobby/seed/affinity mechanics are owned by [lobby-table-routing-and-live-game](2026-07-20-lobby-table-routing-and-live-game.md); the route table and auth guard by [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md). Face behavior follows [Gravatar Seat Faces Design](2026-07-25-gravatar-seat-faces-design.md).
 
 ---
 
@@ -52,7 +52,7 @@ On entry, `entryMode` is `choose` | `join`. **Choose** shows twin destination ca
 
 ### Seated lobby chrome
 
-The lobby polls `GET /tables/{table}/lobby` via a Foldkit subscription until `started`. Seat rows show seat-color dots (`seat-forest`, `seat-island`, `seat-mountain`, `seat-arcane`) plus a circular face (`seat-face-{player}`) beside the username. When `gravatar_hash` is present, the face is a Gravatar image; otherwise it falls back to the username initial / seat number monogram. A signed-in user on the seated lobby who has not claimed a seat sees `lobby-watch-note`, explaining that staying on the link enters spectator view when the host starts the game. The host (first joiner) sees a Start button when ≥2 seats are claimed and all are ready; while Start is disabled, `lobby-start-error` shows the gate reason in caution amber (`NeedTwoPlayers` → “Need at least two players.”, `NotAllReady` → “Waiting for everyone to Ready…”). Table-code copy uses `navigator.clipboard.writeText` from an Effect-backed command — denied permission reveals a manual-copy input instead of throwing. `unlockTableAudio()` is called on Ready-up (the required user-gesture unlock for the shared `AudioContext`).
+The lobby polls `GET /tables/{table}/lobby` via a Foldkit subscription until `started`. Seat rows show seat-color dots (`seat-forest`, `seat-island`, `seat-mountain`, `seat-arcane`) plus a circular face (`seat-face-{player}`) beside the username. When public `gravatar_hash` is present, the face is a Gravatar image loaded with `d=404`; otherwise it falls back to the username initial / seat number monogram. Lobby seats never carry email. A signed-in user on the seated lobby who has not claimed a seat sees `lobby-watch-note`, explaining that staying on the link enters spectator view when the host starts the game. The host (first joiner) sees a Start button when ≥2 seats are claimed and all are ready; while Start is disabled, `lobby-start-error` shows the gate reason in caution amber (`NeedTwoPlayers` → “Need at least two players.”, `NotAllReady` → “Waiting for everyone to Ready…”). Table-code copy uses `navigator.clipboard.writeText` from an Effect-backed command — denied permission reveals a manual-copy input instead of throwing. `unlockTableAudio()` is called on Ready-up (the required user-gesture unlock for the shared `AudioContext`).
 
 ### Lobby poll and table lifecycle (`client/app/shell/lobby/poll.ts`, `client/app/shell/lobby/subscriptions.ts`, `client/lib/lobby-store.ts`)
 
@@ -65,6 +65,7 @@ Helpers also live in `client/lib/lobby/client.ts` for table URL / code parsing u
 ## Implementation Decisions
 
 - **Route-keyed lobby paint** prevents Host create→redirect from flashing seated/claim chrome on `/play/:deckId` while `tableId` may already be set in memory.
+- **Seat faces share `seatFace`.** Claimed and open lobby seats use the same Gravatar/monogram helper as account chrome, keyed by public `gravatar_hash` rather than email.
 - **Clipboard denial is non-throwing.** Failed `navigator.clipboard.writeText` reveals a manual-copy input rather than surfacing an uncaught error.
 - **Ready unlocks audio.** `unlockTableAudio()` on Ready-up is the required user-gesture unlock for the shared `AudioContext` ([table-audio](2026-07-20-table-audio.md)).
 
@@ -74,7 +75,7 @@ Helpers also live in `client/lib/lobby/client.ts` for table URL / code parsing u
 
 - `client/app/shell/lobby/**/*.test.ts` — lobby stories and helpers (Host/Join entry, seated chrome, poll).
 - `client/lib/lobby-store.test.ts` — lobby state helpers.
-- Scene assertions for lobby entry / seated surfaces, including `seat-face-0`, live with shell Scene coverage (`just client-check`).
+- Scene assertions for lobby entry / seated surfaces, including `seat-face-0` Gravatar/monogram chrome, live with shell Scene coverage (`just client-check`).
 
 ---
 

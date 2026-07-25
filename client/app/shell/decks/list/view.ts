@@ -220,7 +220,7 @@ export function view(
                           h.Href("https://gravatar.com"),
                           h.DataAttribute("testid", "account-gravatar-link"),
                           h.Attribute("target", "_blank"),
-                          h.Attribute("rel", "noreferrer"),
+                          h.Attribute("rel", "noopener noreferrer"),
                           h.Class("text-caption text-lichen underline"),
                         ],
                         ["Change at Gravatar"],
