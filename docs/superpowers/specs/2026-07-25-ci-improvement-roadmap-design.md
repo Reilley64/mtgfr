@@ -1,6 +1,6 @@
 # CI improvement roadmap
 
-**Status:** Design (roadmap); Wave 1 not yet implemented  
+**Status:** Wave 1 implemented (absorbed into [production-topology-and-operations](2026-07-20-production-topology-and-operations.md); Waves 2–3 remain roadmap)
 **Date:** 2026-07-25  
 **Module:** `.github/workflows/` (`ci.yml`, `verify-jobs.yml`, `verify-and-release.yml`, `docker.yml`), `justfile` check recipes, `scripts/check-docker-workflow-cache.sh`  
 **Approach:** Waste-first multi-wave roadmap; keep current verify → semantic-release → `v*` → Docker cascade until later waves have evidence to change it

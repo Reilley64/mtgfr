@@ -300,13 +300,23 @@ the release semver. No moving `latest` tag — pin explicit versions in `terrafo
 commitlint + Husky on `commit-msg`. **PRs are squash-merged** — the squash commit subject is
 the PR title; semantic-release analyzes that line only.
 
-**`ci.yml`** (PRs): calls `verify-jobs.yml` in parallel + `terraform` validate in `iac/`.
+**`ci.yml`** (PRs): `concurrency` group `ci-${{ github.ref }}` with
+`cancel-in-progress: true` so superseded pushes cancel. Jobs: `changes`
+(`dorny/paths-filter` for `iac/**` + `.github/workflows/ci.yml`), commitlint,
+`verify-jobs.yml`, terraform (only when `changes.outputs.iac == 'true'`),
+always-on `docker-cache-guard` (`scripts/check-docker-workflow-cache.sh`) and
+`ci-wave1-guard` (`scripts/check-ci-wave1.sh`).
 
 **`verify-jobs.yml`** (reusable): two parallel jobs:
-- `verify-server`: `just server-check` (fmt + clippy + migrate + nextest) — needs Rust + Postgres.
-- `verify-client`: `just client-check` (proto codegen + format + lint + typecheck + vitest) — needs Bun only.
-- Content-hash skip: each job caches a pass marker keyed by `hashFiles` of its side's inputs;
-  PRs restore markers from `main` (client-only PR skips the server job and vice versa).
+- `verify-server`: `just server-check` (fmt + clippy + `engine-cr-index-check` +
+  migrate + nextest) — needs Rust + Postgres.
+- `verify-client`: `just client-check` (tokens + `client-mana-oracle-check` +
+  proto codegen + format + lint + typecheck + vitest) — needs Bun (+ Rust for
+  codegen).
+- Content-hash skip: each job caches a pass marker keyed by `hashFiles` of its
+  side's inputs (`verify-server-v2-*` / `verify-client-v2-*`); server hash
+  includes `docs/CR_INDEX.md` and `scripts/gen_cr_index.py`. PRs restore markers
+  from `main` (client-only PR skips the server job and vice versa).
 
 **`verify-and-release.yml`** (push to main): `verify-jobs.yml` then `npx semantic-release`
 (default config, no `.releaserc`). Requires `RELEASE_TOKEN` (PAT: `contents` + `workflow`) so
