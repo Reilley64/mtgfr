@@ -15,6 +15,13 @@
       "when": 1784217000000,
       "tag": "0001_lobby_seat_user_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785086280000,
+      "tag": "0002_lobby_seat_gravatar",
+      "breakpoints": true
     }
   ]
 }

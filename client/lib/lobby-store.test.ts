@@ -1,5 +1,15 @@
-import { describe, expect, it } from "vitest";
-import { type LobbySnapshot, startError, toLobbyView } from "./lobby-store";
+import { eq } from "drizzle-orm";
+import { afterEach, describe, expect, it } from "vitest";
+import { lobbies } from "../db/schema";
+import { createWebDb } from "../server/db/client";
+import {
+  createLobby,
+  joinLobby,
+  loadLobby,
+  type LobbySnapshot,
+  startError,
+  toLobbyView,
+} from "./lobby-store";
 
 function snap(overrides: Partial<LobbySnapshot> = {}): LobbySnapshot {
   return {
@@ -74,5 +84,48 @@ describe("toLobbyView", () => {
 describe("startError", () => {
   it("does not treat started as a start_error code", () => {
     expect(startError(snap({ startedAt: new Date("2026-07-22T00:00:00Z") }), 1)).toBeNull();
+  });
+});
+
+describe("joinLobby gravatar persistence", () => {
+  const db = createWebDb();
+  let tableId: string | undefined;
+
+  afterEach(async () => {
+    if (!tableId) return;
+    await db.delete(lobbies).where(eq(lobbies.tableId, tableId));
+    tableId = undefined;
+  });
+
+  it("writes gravatarHash on insert/update and loadLobby/toLobbyView read it back", async () => {
+    tableId = await createLobby(db, 9001);
+
+    const joined = await joinLobby(db, {
+      tableId,
+      userId: 9001,
+      username: "alice",
+      gravatarHash: "hash-on-join",
+      deckId: 1,
+      deckName: "Test Deck",
+    });
+    expect(joined.snap?.seats[0]?.gravatarHash).toBe("hash-on-join");
+
+    const loaded = await loadLobby(db, tableId);
+    expect(loaded?.seats[0]?.gravatarHash).toBe("hash-on-join");
+    expect(toLobbyView(loaded!, 9001).seats[0]?.gravatar_hash).toBe("hash-on-join");
+
+    const updated = await joinLobby(db, {
+      tableId,
+      userId: 9001,
+      username: "alice",
+      gravatarHash: "hash-updated",
+      deckId: 1,
+      deckName: "Test Deck",
+    });
+    expect(updated.snap?.seats[0]?.gravatarHash).toBe("hash-updated");
+
+    const reloaded = await loadLobby(db, tableId);
+    expect(reloaded?.seats[0]?.gravatarHash).toBe("hash-updated");
+    expect(toLobbyView(reloaded!, 9001).seats[0]?.gravatar_hash).toBe("hash-updated");
   });
 });
