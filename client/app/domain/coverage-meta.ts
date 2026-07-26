@@ -1,5 +1,6 @@
 import { apiUpstream, parseLiveStatus } from "./api-upstream-auth";
-import { ensureOracleTotalRefresh, getCachedOracleTotal, getCachedOracleTotalBySet } from "./scryfall-oracle-total";
+import { ensureOracleTotalRefresh, getCachedOracleTotal } from "./scryfall-oracle-total";
+import { ensureSetOracleTotalsRefresh, getCachedSetOracleTotals } from "./scryfall-set-oracle-totals";
 import { ensureScryfallSetsRefresh, getCachedScryfallSets, type ScryfallSetRow } from "./scryfall-sets";
 
 export type CoverageSetRow = {
@@ -18,7 +19,7 @@ export type CoverageMeta = {
 
 export function joinCoverageSetRows(
   sets: ReadonlyArray<ScryfallSetRow> | null,
-  oracleTotalBySet: Readonly<Record<string, number>> | null,
+  setOracleTotals: Readonly<Record<string, number>> | null,
   faithfulBySet: Readonly<Record<string, number>> | null,
 ): CoverageSetRow[] {
   if (sets == null || sets.length === 0) return [];
@@ -28,7 +29,7 @@ export function joinCoverageSetRows(
     name: set.name,
     releasedAt: set.releasedAt,
     faithful: faithfulBySet?.[set.code] ?? 0,
-    oracleTotal: oracleTotalBySet?.[set.code] ?? null,
+    oracleTotal: setOracleTotals?.[set.code] ?? null,
   }));
 }
 
@@ -36,12 +37,13 @@ function unavailableCoverageMeta(): CoverageMeta {
   return {
     faithfulCount: null,
     oracleTotal: getCachedOracleTotal(),
-    sets: joinCoverageSetRows(getCachedScryfallSets(), getCachedOracleTotalBySet(), null),
+    sets: joinCoverageSetRows(getCachedScryfallSets(), getCachedSetOracleTotals(), null),
   };
 }
 
 export async function fetchCoverageMeta(): Promise<CoverageMeta> {
   ensureOracleTotalRefresh();
+  ensureSetOracleTotalsRefresh();
   ensureScryfallSetsRefresh();
 
   try {
@@ -54,7 +56,7 @@ export async function fetchCoverageMeta(): Promise<CoverageMeta> {
     return {
       faithfulCount: parsed.faithfulCount,
       oracleTotal: getCachedOracleTotal(),
-      sets: joinCoverageSetRows(getCachedScryfallSets(), getCachedOracleTotalBySet(), parsed.faithfulBySet),
+      sets: joinCoverageSetRows(getCachedScryfallSets(), getCachedSetOracleTotals(), parsed.faithfulBySet),
     };
   } catch {
     return unavailableCoverageMeta();
