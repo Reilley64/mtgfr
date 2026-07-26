@@ -10,6 +10,8 @@ import { gravatarHash } from "./domain/gravatar";
 import { applyDeltaPure, applySnapshotPure, type DeltaEnvelope, setRejectPure } from "./game/fold";
 import {
   GotAuthMessage,
+  GotDeckBuilderMessage,
+  GotDeckListMessage,
   type Message,
   NavigationCompleted,
   type ReceivedDelta,
@@ -30,10 +32,10 @@ import {
 } from "./routes";
 import * as Auth from "./shell/auth";
 import type { Message as AuthMessage } from "./shell/auth/messages";
+import * as DeckBuilder from "./shell/decks/builder";
 import type { Message as BuilderMessage } from "./shell/decks/builder/messages";
-import { enterBuilder, update as updateBuilder } from "./shell/decks/builder/update";
+import * as DeckList from "./shell/decks/list";
 import type { Message as ListMessage } from "./shell/decks/list/messages";
-import { loadDeckList, update as updateDeckList } from "./shell/decks/list/update";
 import type { Message as LeaderboardMessage } from "./shell/leaderboard/messages";
 import { loadLeaderboard, update as updateLeaderboard } from "./shell/leaderboard/update";
 import type { Message as LobbyMessage } from "./shell/lobby/messages";
@@ -116,23 +118,23 @@ function routeEntry(model: Model): readonly [Model, ReadonlyArray<FoldkitCommand
 
   switch (model.route._tag) {
     case "HomeRoute": {
-      const [list, commands] = loadDeckList(model.decks.list);
-      return [{ ...model, decks: { ...model.decks, list } }, commands];
+      const [list, commands] = DeckList.loadDeckList(model.decks.list);
+      return [{ ...model, decks: { ...model.decks, list } }, mapDeckListCommands(commands)];
     }
     case "LeaderboardRoute": {
       const [leaderboard, commands] = loadLeaderboard(model.leaderboard);
       return [{ ...model, leaderboard }, commands];
     }
     case "NewDeckRoute": {
-      const [builder, commands] = enterBuilder(null);
-      return [{ ...model, decks: { ...model.decks, builder } }, commands];
+      const [builder, commands] = DeckBuilder.enterBuilder(null);
+      return [{ ...model, decks: { ...model.decks, builder } }, mapDeckBuilderCommands(commands)];
     }
     case "DeckRoute": {
-      const [builder, commands] = enterBuilder(model.route.id);
-      return [{ ...model, decks: { ...model.decks, builder } }, commands];
+      const [builder, commands] = DeckBuilder.enterBuilder(model.route.id);
+      return [{ ...model, decks: { ...model.decks, builder } }, mapDeckBuilderCommands(commands)];
     }
     case "PlayRoute": {
-      const [list, commands] = loadDeckList(model.decks.list);
+      const [list, commands] = DeckList.loadDeckList(model.decks.list);
       return [
         {
           ...model,
@@ -140,11 +142,11 @@ function routeEntry(model: Model): readonly [Model, ReadonlyArray<FoldkitCommand
           lobby: enterLobby(model.lobby, { tableId: null, selectedDeckId: parseDeckIdParam(model.route.deckId) }),
           game: null,
         },
-        commands,
+        mapDeckListCommands(commands),
       ];
     }
     case "TableRoute": {
-      const [list, commands] = loadDeckList(model.decks.list);
+      const [list, commands] = DeckList.loadDeckList(model.decks.list);
       return [
         {
           ...model,
@@ -155,7 +157,7 @@ function routeEntry(model: Model): readonly [Model, ReadonlyArray<FoldkitCommand
           }),
           game: null,
         },
-        commands,
+        mapDeckListCommands(commands),
       ];
     }
     case "LoginRoute":
@@ -168,12 +170,18 @@ function routeEntry(model: Model): readonly [Model, ReadonlyArray<FoldkitCommand
   }
 }
 
+function mapDeckListCommands(
+  commands: ReadonlyArray<FoldkitCommand.Command<ListMessage, never, RpcClient>>,
+): ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>> {
+  return Command.mapMessages(commands, (message) => GotDeckListMessage({ message }));
+}
+
 function foldDeckList(
   model: Model,
   message: ListMessage,
 ): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
-  const [list, commands] = updateDeckList(model.decks.list, message);
-  return [{ ...model, decks: { ...model.decks, list } }, commands];
+  const [list, commands] = DeckList.update(model.decks.list, message);
+  return [{ ...model, decks: { ...model.decks, list } }, mapDeckListCommands(commands)];
 }
 
 function notFoundWhenPlayDeckMissing(model: Model): Model {
@@ -188,8 +196,14 @@ function foldDeckBuilder(
   model: Model,
   message: BuilderMessage,
 ): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
-  const [builder, commands] = updateBuilder(model.decks.builder, message);
-  return [{ ...model, decks: { ...model.decks, builder } }, commands];
+  const [builder, commands] = DeckBuilder.update(model.decks.builder, message);
+  return [{ ...model, decks: { ...model.decks, builder } }, mapDeckBuilderCommands(commands)];
+}
+
+function mapDeckBuilderCommands(
+  commands: ReadonlyArray<FoldkitCommand.Command<BuilderMessage, never, RpcClient>>,
+): ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>> {
+  return Command.mapMessages(commands, (message) => GotDeckBuilderMessage({ message }));
 }
 
 function foldLeaderboard(
@@ -386,6 +400,12 @@ export const update = (
       PriorityElapsed: (boardMessage) => foldBoard(model, boardMessage),
       LegendToggled: (boardMessage) => foldBoard(model, boardMessage),
       GotAuthMessage: ({ message }) => foldAuth(model, message),
+      GotDeckListMessage: ({ message }) => {
+        const [nextModel, commands] = foldDeckList(model, message);
+        if (message._tag !== "ReceivedDecks") return [nextModel, commands];
+        return [notFoundWhenPlayDeckMissing(nextModel), commands];
+      },
+      GotDeckBuilderMessage: ({ message }) => foldDeckBuilder(model, message),
       ToggledAccountMenu: () => {
         if (model.route._tag === "HomeRoute") {
           const list = model.decks.list;
@@ -442,54 +462,10 @@ export const update = (
         }
         return [model, []];
       },
-      RequestedDecksRefresh: (decksMessage) => foldDeckList(model, decksMessage),
-      ReceivedDecks: (decksMessage) => {
-        const [nextModel, commands] = foldDeckList(model, decksMessage);
-        return [notFoundWhenPlayDeckMissing(nextModel), commands];
-      },
-      DecksLoadFailed: (decksMessage) => foldDeckList(model, decksMessage),
-      ReceivedDeckListCommanders: (decksMessage) => foldDeckList(model, decksMessage),
-      ChangedDeckListSearch: (decksMessage) => foldDeckList(model, decksMessage),
-      OpenedDeckListMenu: (decksMessage) => foldDeckList(model, decksMessage),
-      ClosedDeckListMenu: (decksMessage) => foldDeckList(model, decksMessage),
-      AskedDeckDelete: (decksMessage) => foldDeckList(model, decksMessage),
-      CancelledDeckDelete: (decksMessage) => foldDeckList(model, decksMessage),
-      RequestedDeckDelete: (decksMessage) => foldDeckList(model, decksMessage),
-      DeckDeleted: (decksMessage) => foldDeckList(model, decksMessage),
-      DeckDeleteFailed: (decksMessage) => foldDeckList(model, decksMessage),
       RequestedLeaderboardRefresh: (leaderboardMessage) => foldLeaderboard(model, leaderboardMessage),
       RequestedLeaderboardNextPage: (leaderboardMessage) => foldLeaderboard(model, leaderboardMessage),
       ReceivedLeaderboardPage: (leaderboardMessage) => foldLeaderboard(model, leaderboardMessage),
       LeaderboardLoadFailed: (leaderboardMessage) => foldLeaderboard(model, leaderboardMessage),
-      ChangedBuilderName: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      ChangedBuilderQuery: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      RequestedNextBuilderPage: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      ReceivedBuilderSearchPage: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      BuilderSearchFailed: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      ReceivedDeckForBuilder: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      DeckBuilderLoadFailed: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      HydratedBuilderCards: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      AddedBuilderCard: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      RemovedBuilderCard: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      SetBuilderCommander: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      OpenedBuilderPrintPicker: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      ReceivedBuilderPrints: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      BuilderPrintSearchFailed: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      PickedBuilderPrint: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      ClosedBuilderPrintPicker: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      SubmittedDeckSave: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      DeckSaved: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      DeckSaveFailed: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      MovedBuilderHover: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      ClearedBuilderHover: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      OpenedBuilderMenu: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      ClosedBuilderMenu: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      RanBuilderMenuAction: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      ActivatedBuilderTarget: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      RequestedBuilderCancel: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      ConfirmedBuilderDiscard: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      CancelledBuilderDiscard: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      NavigatedAwayFromBuilder: (decksMessage) => foldDeckBuilder(model, decksMessage),
       ChangedLobbyCode: (lobbyMessage) => foldLobby(model, lobbyMessage),
       RequestedLobbyHost: (lobbyMessage) => foldLobby(model, lobbyMessage),
       RequestedLobbyOpenJoin: (lobbyMessage) => foldLobby(model, lobbyMessage),

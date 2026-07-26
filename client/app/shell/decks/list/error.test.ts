@@ -10,7 +10,15 @@ test("deck list errors use reconnect rust label styling", () => {
   Scene.scene(
     {
       update: (model) => [model, []],
-      view: () => view({ ...initialDeckListSubmodel(), error: "Couldn't load decks." }, "alice", null, emptyChrome),
+      view: () =>
+        view(
+          { ...initialDeckListSubmodel(), error: "Couldn't load decks." },
+          {
+            username: "alice",
+            meGravatarHash: null,
+            chrome: emptyChrome,
+          },
+        ),
     },
     Scene.with({}),
     Scene.expect(Scene.selector('[role="alert"]')).toHaveClass("text-reconnect-rust"),

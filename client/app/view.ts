@@ -4,12 +4,19 @@ import * as Mount from "foldkit/mount";
 import { view as boardView } from "./board/view";
 import { parseDeckIdParam, playDeckAccess } from "./deck-id";
 import type { AppChromeMeta } from "./domain/ui/app-version";
-import { CompletedPortraitGateModal, GotAuthMessage, type Message, PortraitGateCancelled } from "./messages";
+import {
+  CompletedPortraitGateModal,
+  GotAuthMessage,
+  GotDeckBuilderMessage,
+  GotDeckListMessage,
+  type Message,
+  PortraitGateCancelled,
+} from "./messages";
 import type { Model } from "./model";
 import { HomeRoute, isProtectedRoute, NewDeckRoute, routePath } from "./routes";
 import * as Auth from "./shell/auth";
-import { view as deckBuilderView } from "./shell/decks/builder/view";
-import { view as deckListView } from "./shell/decks/list/view";
+import * as DeckBuilder from "./shell/decks/builder";
+import * as DeckList from "./shell/decks/list";
 import { view as leaderboardView } from "./shell/leaderboard/view";
 import { view as lobbyView } from "./shell/lobby/view";
 
@@ -92,6 +99,30 @@ function shell(model: Model, title: string, body: string) {
   );
 }
 
+function toParentDeckListMessage(message: DeckList.ViewMessage): Message {
+  switch (message._tag) {
+    case "ModalOpened":
+    case "CardArtTick":
+    case "DeckCardFlipTick":
+    case "GotAuthMessage":
+    case "ToggledAccountMenu":
+    case "ClosedAccountMenu":
+      return message;
+    default:
+      return GotDeckListMessage({ message });
+  }
+}
+
+function toParentDeckBuilderMessage(message: DeckBuilder.ViewMessage): Message {
+  switch (message._tag) {
+    case "ModalOpened":
+    case "CardArtTick":
+      return message;
+    default:
+      return GotDeckBuilderMessage({ message });
+  }
+}
+
 function boardMount(model: Model) {
   const tableId =
     model.game?.tableId ?? model.lobby.tableId ?? (model.route._tag === "TableRoute" ? model.route.table : null);
@@ -152,12 +183,17 @@ function routeBody(model: Model) {
   return (() => {
     switch (model.route._tag) {
       case "HomeRoute":
-        return deckListView(
-          model.decks.list,
-          model.session.me?.username ?? "",
-          model.session.meGravatarHash,
-          chromeMeta(model),
-        );
+        return h.submodel({
+          slotId: "deck-list",
+          model: model.decks.list,
+          view: DeckList.view,
+          viewInputs: {
+            username: model.session.me?.username ?? "",
+            meGravatarHash: model.session.meGravatarHash,
+            chrome: chromeMeta(model),
+          },
+          toParentMessage: toParentDeckListMessage,
+        });
       case "LoginRoute":
         return h.submodel({
           slotId: "auth",
@@ -174,9 +210,21 @@ function routeBody(model: Model) {
           chromeMeta(model),
         );
       case "NewDeckRoute":
-        return deckBuilderView(model.decks.builder, chromeMeta(model));
+        return h.submodel({
+          slotId: "deck-builder",
+          model: model.decks.builder,
+          view: DeckBuilder.view,
+          viewInputs: { chrome: chromeMeta(model) },
+          toParentMessage: toParentDeckBuilderMessage,
+        });
       case "DeckRoute":
-        return deckBuilderView(model.decks.builder, chromeMeta(model));
+        return h.submodel({
+          slotId: "deck-builder",
+          model: model.decks.builder,
+          view: DeckBuilder.view,
+          viewInputs: { chrome: chromeMeta(model) },
+          toParentMessage: toParentDeckBuilderMessage,
+        });
       case "PlayRoute": {
         if (model.game?.active === true) return boardMount(model);
         const deckId = parseDeckIdParam(model.route.deckId);

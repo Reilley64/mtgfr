@@ -9,7 +9,8 @@ import { ModalOpened } from "./domain/ui/confirmDialog";
 import { Message as GameMessage } from "./game/messages";
 import { Message as AccountChromeMessage } from "./shell/account-chrome/messages";
 import { Message as AuthMessage } from "./shell/auth/messages";
-import { Message as DecksMessage } from "./shell/decks/messages";
+import { Message as DeckBuilderMessage } from "./shell/decks/builder/messages";
+import { Message as DeckListMessage } from "./shell/decks/list/messages";
 import { Message as LeaderboardMessage } from "./shell/leaderboard/messages";
 import { Message as LobbyMessage } from "./shell/lobby/messages";
 
@@ -27,6 +28,8 @@ export const PortraitGateCancelled = m("PortraitGateCancelled");
 export const CompletedPortraitGateModal = m("CompletedPortraitGateModal");
 export const ReceivedMeGravatarHash = m("ReceivedMeGravatarHash", { email: S.String, hash: S.String });
 export const GotAuthMessage = m("GotAuthMessage", { message: AuthMessage });
+export const GotDeckListMessage = m("GotDeckListMessage", { message: DeckListMessage });
+export const GotDeckBuilderMessage = m("GotDeckBuilderMessage", { message: DeckBuilderMessage });
 export { CardArtTick, DeckCardFlipTick, ModalOpened };
 
 export const Message = S.Union([
@@ -40,12 +43,13 @@ export const Message = S.Union([
   CompletedPortraitGateModal,
   ReceivedMeGravatarHash,
   GotAuthMessage,
+  GotDeckListMessage,
+  GotDeckBuilderMessage,
   ModalOpened,
   CardArtTick,
   DeckCardFlipTick,
   BoardMessage,
   AccountChromeMessage,
-  DecksMessage,
   LeaderboardMessage,
   LobbyMessage,
   GameMessage,
@@ -71,49 +75,6 @@ export {
   ClosedAccountMenu,
   ToggledAccountMenu,
 } from "./shell/account-chrome/messages";
-export {
-  ActivatedBuilderTarget,
-  AddedBuilderCard,
-  AskedDeckDelete,
-  BuilderPrintSearchFailed,
-  BuilderSearchFailed,
-  CancelledBuilderDiscard,
-  CancelledDeckDelete,
-  ChangedBuilderName,
-  ChangedBuilderQuery,
-  ChangedDeckListSearch,
-  ClearedBuilderHover,
-  ClosedBuilderMenu,
-  ClosedBuilderPrintPicker,
-  ClosedDeckListMenu,
-  ConfirmedBuilderDiscard,
-  DeckBuilderLoadFailed,
-  DeckDeleted,
-  DeckDeleteFailed,
-  DeckSaved,
-  DeckSaveFailed,
-  DecksLoadFailed,
-  HydratedBuilderCards,
-  MovedBuilderHover,
-  NavigatedAwayFromBuilder,
-  OpenedBuilderMenu,
-  OpenedBuilderPrintPicker,
-  OpenedDeckListMenu,
-  PickedBuilderPrint,
-  RanBuilderMenuAction,
-  ReceivedBuilderPrints,
-  ReceivedBuilderSearchPage,
-  ReceivedDeckForBuilder,
-  ReceivedDeckListCommanders,
-  ReceivedDecks,
-  RemovedBuilderCard,
-  RequestedBuilderCancel,
-  RequestedDeckDelete,
-  RequestedDecksRefresh,
-  RequestedNextBuilderPage,
-  SetBuilderCommander,
-  SubmittedDeckSave,
-} from "./shell/decks/messages";
 export {
   LeaderboardLoadFailed,
   ReceivedLeaderboardPage,

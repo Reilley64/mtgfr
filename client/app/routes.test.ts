@@ -5,10 +5,8 @@ import { init } from "./init";
 import {
   ClosedAccountMenu,
   GotAuthMessage,
+  GotDeckListMessage,
   NavigationCompleted,
-  OpenedDeckListMenu,
-  ReceivedDeckListCommanders,
-  ReceivedDecks,
   ReceivedLeaderboardPage,
   ReceivedMeGravatarHash,
   RequestedLeaderboardRefresh,
@@ -26,7 +24,7 @@ import {
   TableRoute,
 } from "./routes";
 import * as Auth from "./shell/auth";
-import { FetchDecks, LookupDeckListCommanders } from "./shell/decks/list/update";
+import * as DeckList from "./shell/decks/list";
 import { FetchLeaderboard } from "./shell/leaderboard/update";
 import { HashMeGravatar, update } from "./update";
 
@@ -132,10 +130,13 @@ test("HomeRoute loads decks on protected route entry", () => {
     update,
     Story.with(model),
     Story.message(GotAuthMessage({ message: Auth.Message.ReceivedMe({ me }) })),
-    Story.Command.expectExact(FetchDecks, HashMeGravatar({ email: me.email })),
-    Story.Command.resolve(FetchDecks, ReceivedDecks({ decks })),
+    Story.Command.expectExact(DeckList.FetchDecks, HashMeGravatar({ email: me.email })),
+    Story.Command.resolve(DeckList.FetchDecks, DeckList.Message.ReceivedDecks({ decks })),
     Story.Command.resolve(HashMeGravatar, ReceivedMeGravatarHash({ email: me.email, hash: "deadbeef" })),
-    Story.Command.resolve(LookupDeckListCommanders({ ids: ["atraxa"] }), ReceivedDeckListCommanders({ cards: [] })),
+    Story.Command.resolve(
+      DeckList.LookupDeckListCommanders({ ids: ["atraxa"] }),
+      DeckList.Message.ReceivedDeckListCommanders({ cards: [] }),
+    ),
     Story.model((m) => {
       expect(m.decks.list.decks).toEqual(decks);
       expect("leaderboardTeaser" in m.decks.list).toBe(false);
@@ -204,7 +205,11 @@ test("HomeRoute opening a deck context menu closes the account menu", () => {
         },
       },
     }),
-    Story.message(OpenedDeckListMenu({ deckId: 7, x: 10, y: 20 })),
+    Story.message(
+      GotDeckListMessage({
+        message: DeckList.Message.OpenedDeckListMenu({ deckId: 7, x: 10, y: 20 }),
+      }),
+    ),
     Story.model((m) => {
       expect(m.decks.list.accountMenuOpen).toBe(false);
       expect(m.decks.list.contextMenu).toEqual({ deckId: 7, x: 10, y: 20 });

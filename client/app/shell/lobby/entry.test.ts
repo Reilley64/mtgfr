@@ -4,10 +4,11 @@ import { BindDeckCardFlip, DeckCardFlipTick } from "../../deck-card-nav";
 import { BindCardArt, CardArtTick } from "../../domain/ui/card-art";
 import type { CatalogCard } from "../../domain/wire/types";
 import { init, update } from "../../main-exports";
-import { ReceivedDecks } from "../../messages";
+import { GotDeckListMessage } from "../../messages";
 import type { Model } from "../../model";
 import { PlayRoute, TableRoute } from "../../routes";
 import { view as appView } from "../../view";
+import * as DeckList from "../decks/list";
 import { LobbyTableCreated, RequestedLobbyCancelJoin, RequestedLobbyOpenJoin } from "./messages";
 import { initialLobbySlice } from "./submodel";
 import { view as lobbyView } from "./view";
@@ -240,7 +241,7 @@ test("unknown deck after load shows not-found, not lobby", () => {
         list: { ...init()[0].decks.list, decks: [], loading: true },
       },
     }),
-    ReceivedDecks({ decks: [deck] }),
+    GotDeckListMessage({ message: DeckList.Message.ReceivedDecks({ decks: [deck] }) }),
   );
 
   expect(next.route._tag).toBe("NotFoundRoute");

@@ -1,12 +1,14 @@
 import { Effect, Queue, Schema as S, Stream } from "effect";
+import { Submodel } from "foldkit";
 import { type Html, html } from "foldkit/html";
 import * as Mount from "foldkit/mount";
 import { cn } from "../../../domain/cn";
 import { type AppChromeMeta, appVersionBadge } from "../../../domain/ui/app-version";
 import { confirmDialog } from "../../../domain/ui/confirmDialog";
 import { feltClass, fieldClass, listRowClass } from "../../../domain/ui/surfaces";
-import type { Message } from "../../../messages";
+import type { CardArtTick, DeckCardFlipTick, GotAuthMessage, ModalOpened } from "../../../messages";
 import { DeckRoute, NewDeckRoute, PlayRoute, routePath } from "../../../routes";
+import type { ClosedAccountMenu, ToggledAccountMenu } from "../../account-chrome/messages";
 import { accountChrome } from "../../account-chrome/view";
 import { type DeckCardModel, renderDeckCard } from "../deck-card";
 import {
@@ -14,13 +16,23 @@ import {
   CancelledDeckDelete,
   ChangedDeckListSearch,
   ClosedDeckListMenu,
+  type Message,
   OpenedDeckListMenu,
   RequestedDeckDelete,
 } from "./messages";
 import type { DeckListSubmodel } from "./submodel";
 import { deckListContextMenuAllowed, visibleDecks } from "./visible";
 
-const h = html<Message>();
+export type ViewMessage =
+  | Message
+  | typeof ModalOpened.Type
+  | typeof CardArtTick.Type
+  | typeof DeckCardFlipTick.Type
+  | typeof GotAuthMessage.Type
+  | typeof ToggledAccountMenu.Type
+  | typeof ClosedAccountMenu.Type;
+
+const h = html<ViewMessage>();
 
 const MENU_ITEM =
   "cursor-pointer rounded-control border-none bg-transparent px-md py-xs text-left text-label text-snow hover:bg-white/8 focus-visible:bg-white/8 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-vine";
@@ -160,12 +172,13 @@ function contextMenu(model: DeckListSubmodel): Html {
   );
 }
 
-export function view(
-  model: DeckListSubmodel,
-  username: string,
-  meGravatarHash: string | null,
-  chrome: AppChromeMeta,
-): Html {
+export type ViewInputs = {
+  readonly username: string;
+  readonly meGravatarHash: string | null;
+  readonly chrome: AppChromeMeta;
+};
+
+export const view = Submodel.defineView<DeckListSubmodel, ViewMessage, ViewInputs>((model, viewInputs) => {
   const visible = visibleDecks(model.decks, model.knownCommanders, model.searchQuery);
 
   return h.main(
@@ -201,8 +214,8 @@ export function view(
             [h.Class("flex flex-wrap items-center gap-md")],
             [
               accountChrome(h, {
-                username,
-                gravatarHash: meGravatarHash,
+                username: viewInputs.username,
+                gravatarHash: viewInputs.meGravatarHash,
                 menuOpen: model.accountMenuOpen,
                 showLeaderboardLink: true,
               }),
@@ -267,8 +280,8 @@ export function view(
             : null,
         ],
       ),
-      appVersionBadge(h, chrome),
+      appVersionBadge(h, viewInputs.chrome),
       contextMenu(model),
     ],
   );
-}
+});
