@@ -101,6 +101,69 @@ describe.skipIf(!process.env.WEB_DATABASE_URL)("joinLobby gravatar persistence",
   let db: ReturnType<typeof createWebDb>;
   let tableId: string | undefined;
 
+  function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null;
+  }
+
+  function isLobbyRow(value: unknown, id: string): value is Record<string, unknown> {
+    return isRecord(value) && value.tableId === id;
+  }
+
+  function startAfterFirstLobbyRead(
+    baseDb: ReturnType<typeof createWebDb>,
+    id: string,
+  ): ReturnType<typeof createWebDb> {
+    let armed = true;
+
+    function wrapLobbyQueryBuilder<T extends object>(builder: T): T {
+      return new Proxy(builder, {
+        get(target, prop, receiver) {
+          const value = Reflect.get(target, prop, receiver);
+          if (typeof value !== "function") return value;
+
+          return (...args: unknown[]) => {
+            const result = Reflect.apply(value, target, args);
+            if (prop !== "limit") {
+              return isRecord(result) ? wrapLobbyQueryBuilder(result) : result;
+            }
+
+            return Promise.resolve(result).then(async (rows: unknown) => {
+              if (!armed || !Array.isArray(rows)) return rows;
+              armed = false;
+              await markStarted(baseDb, id);
+              return rows.map((row) => (isLobbyRow(row, id) ? { ...row, startedAt: null } : row));
+            });
+          };
+        },
+      });
+    }
+
+    return new Proxy(baseDb, {
+      get(target, prop, receiver) {
+        const value = Reflect.get(target, prop, receiver);
+        if (prop !== "select" || typeof value !== "function") return value;
+
+        return (...args: unknown[]) => {
+          const selectBuilder = Reflect.apply(value, target, args);
+          if (!isRecord(selectBuilder)) return selectBuilder;
+
+          return new Proxy(selectBuilder, {
+            get(selectTarget, selectProp, selectReceiver) {
+              const selectValue = Reflect.get(selectTarget, selectProp, selectReceiver);
+              if (selectProp !== "from" || typeof selectValue !== "function") return selectValue;
+
+              return (table: unknown) => {
+                const fromBuilder = Reflect.apply(selectValue, selectTarget, [table]);
+                if (!isRecord(fromBuilder)) return fromBuilder;
+                return table === lobbies ? wrapLobbyQueryBuilder(fromBuilder) : fromBuilder;
+              };
+            },
+          });
+        };
+      },
+    });
+  }
+
   afterEach(async () => {
     if (!tableId || db == null) return;
     await db.delete(lobbies).where(eq(lobbies.tableId, tableId));
@@ -166,5 +229,16 @@ describe.skipIf(!process.env.WEB_DATABASE_URL)("joinLobby gravatar persistence",
     await markStarted(db, tableId);
     const afterStart = await setCommanderDamageEnabled(db, tableId, 1, true);
     expect(afterStart.error).toBe("AlreadyStarted");
+  });
+
+  it("rejects commander damage changes when the table starts after the first read", async () => {
+    db = createWebDb();
+    tableId = await createLobby(db, 1);
+
+    const result = await setCommanderDamageEnabled(startAfterFirstLobbyRead(db, tableId), tableId, 1, false);
+
+    expect(result.error).toBe("AlreadyStarted");
+    expect(result.snap?.startedAt).toBeInstanceOf(Date);
+    expect(result.snap?.commanderDamageEnabled).toBe(true);
   });
 });

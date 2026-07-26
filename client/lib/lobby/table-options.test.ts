@@ -16,5 +16,9 @@ describe("parseTableOptionsBody", () => {
       tableId: "ABC",
       commanderDamageEnabled: false,
     });
+    expect(parseTableOptionsBody({ table_id: "ABC", commander_damage_enabled: true })).toEqual({
+      tableId: "ABC",
+      commanderDamageEnabled: true,
+    });
   });
 });

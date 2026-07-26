@@ -177,7 +177,18 @@ export async function setCommanderDamageEnabled(
   if (!snap) return { error: "UnknownTable" };
   if (snap.startedAt != null) return { error: "AlreadyStarted", snap };
   if (snap.hostUserId !== userId) return { error: "NotHost", snap };
-  await db.update(lobbies).set({ commanderDamageEnabled: enabled }).where(eq(lobbies.tableId, tableId));
+  const updatedRows = await db
+    .update(lobbies)
+    .set({ commanderDamageEnabled: enabled })
+    .where(and(eq(lobbies.tableId, tableId), eq(lobbies.hostUserId, userId), isNull(lobbies.startedAt)))
+    .returning({ tableId: lobbies.tableId });
+  if (updatedRows.length === 0) {
+    const latest = await loadLobby(db, tableId);
+    if (!latest) return { error: "UnknownTable" };
+    if (latest.startedAt != null) return { error: "AlreadyStarted", snap: latest };
+    if (latest.hostUserId !== userId) return { error: "NotHost", snap: latest };
+    return { error: "UnknownTable" };
+  }
   await touchLobby(db, tableId);
   const updated = await loadLobby(db, tableId);
   if (!updated) return { error: "UnknownTable" };
