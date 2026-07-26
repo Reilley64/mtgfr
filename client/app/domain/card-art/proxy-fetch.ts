@@ -1,5 +1,9 @@
+import type { LookupAddress } from "node:dns";
 import { lookup } from "node:dns/promises";
+import type { IncomingMessage } from "node:http";
+import { request as httpsRequest } from "node:https";
 import { isIP } from "node:net";
+import type { LookupFunction } from "node:net";
 import { contentLengthTooLarge } from "../faro/collect";
 
 export const PROXY_ART_MAX_BYTES = 5 * 1024 * 1024;
@@ -8,9 +12,14 @@ const ALLOWED_IMAGE_CONTENT_TYPES = new Set(["image/gif", "image/jpeg", "image/p
 const BLOCKED_HOSTNAMES = new Set(["localhost", "metadata.google.internal"]);
 const BLOCKED_HOST_SUFFIXES = [".home.arpa", ".internal", ".local", ".localhost"];
 
-type LookupAddress = { address: string; family: number };
 type LookupHost = (hostname: string, options: { all: true; verbatim: true }) => Promise<ReadonlyArray<LookupAddress>>;
-type FetchImpl = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
+type ProxyFetchInit = {
+  headers: Record<string, string>;
+  lookup: LookupFunction;
+  redirect: "manual";
+  signal: AbortSignal;
+};
+type FetchImpl = (target: URL, init: ProxyFetchInit) => Promise<Response>;
 
 type ProxySuccess = {
   ok: true;
@@ -136,7 +145,7 @@ function isBlockedHostname(hostname: string): boolean {
   return isBlockedIpLiteral(normalized);
 }
 
-async function assertPublicResolvedHost(target: URL, lookupHost: LookupHost): Promise<void> {
+async function assertPublicResolvedHost(target: URL, lookupHost: LookupHost): Promise<ReadonlyArray<LookupAddress>> {
   let results: ReadonlyArray<LookupAddress>;
   try {
     results = await lookupHost(target.hostname, { all: true, verbatim: true });
@@ -153,6 +162,127 @@ async function assertPublicResolvedHost(target: URL, lookupHost: LookupHost): Pr
       throw new UnsafeProxyTargetError("resolved to blocked address");
     }
   }
+
+  return results;
+}
+
+function lookupFamily(options: Parameters<LookupFunction>[1]): number {
+  if (options.family === "IPv4") return 4;
+  if (options.family === "IPv6") return 6;
+  if (typeof options.family === "number") return options.family;
+  return 0;
+}
+
+function pinnedLookupError(): NodeJS.ErrnoException {
+  return Object.assign(new Error("pinned lookup returned no matching addresses"), { code: "ENOTFOUND" });
+}
+
+function pinnedLookup(addresses: ReadonlyArray<LookupAddress>): LookupFunction {
+  return (_hostname, options, callback) => {
+    const requestedFamily = lookupFamily(options);
+    const matches = requestedFamily === 0 ? addresses : addresses.filter((address) => address.family === requestedFamily);
+    if (matches.length === 0) {
+      callback(pinnedLookupError(), []);
+      return;
+    }
+
+    if (options.all) {
+      callback(null, [...matches]);
+      return;
+    }
+
+    const first = matches[0];
+    callback(null, first.address, first.family);
+  };
+}
+
+function responseHeaders(headersRecord: IncomingMessage["headers"]): Headers {
+  const headers = new Headers();
+  for (const [name, value] of Object.entries(headersRecord)) {
+    if (value === undefined) continue;
+    if (typeof value === "string") {
+      headers.set(name, value);
+      continue;
+    }
+    for (const item of value) {
+      headers.append(name, item);
+    }
+  }
+  return headers;
+}
+
+function responseBodyStream(response: IncomingMessage): ReadableStream<Uint8Array> {
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      response.on("data", (chunk: string | Uint8Array) => {
+        controller.enqueue(typeof chunk === "string" ? new TextEncoder().encode(chunk) : chunk);
+      });
+      response.on("end", () => {
+        controller.close();
+      });
+      response.on("error", (error) => {
+        controller.error(error);
+      });
+    },
+    cancel() {
+      response.destroy();
+    },
+  });
+}
+
+async function fetchPinnedHttps(target: URL, init: ProxyFetchInit): Promise<Response> {
+  return new Promise<Response>((resolve, reject) => {
+    let settled = false;
+
+    const cleanup = () => {
+      init.signal.removeEventListener("abort", handleAbort);
+    };
+
+    const settle = (next: () => void) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      next();
+    };
+
+    const request = httpsRequest(
+      {
+        headers: init.headers,
+        hostname: target.hostname,
+        lookup: init.lookup,
+        method: "GET",
+        path: `${target.pathname}${target.search}`,
+        port: target.port.length > 0 ? Number(target.port) : undefined,
+        servername: target.hostname,
+      },
+      (response) => {
+        settle(() =>
+          resolve(
+            new Response(responseBodyStream(response), {
+              headers: responseHeaders(response.headers),
+              status: response.statusCode ?? 502,
+            }),
+          ),
+        );
+      },
+    );
+
+    const handleAbort = () => {
+      request.destroy(new DOMException("The operation was aborted.", "AbortError"));
+    };
+
+    request.once("error", (error) => {
+      settle(() => reject(error));
+    });
+
+    if (init.signal.aborted) {
+      handleAbort();
+      return;
+    }
+
+    init.signal.addEventListener("abort", handleAbort, { once: true });
+    request.end();
+  });
 }
 
 function imageContentType(response: Response): string {
@@ -222,17 +352,18 @@ export async function fetchProxyCardArt(
   raw: string,
   deps: FetchProxyCardArtDeps = {},
 ): Promise<ProxySuccess | ProxyFailure> {
-  const fetchImpl = deps.fetchImpl ?? fetch;
+  const fetchImpl = deps.fetchImpl ?? fetchPinnedHttps;
   const lookupHost = deps.lookupHost ?? lookup;
   const maxBytes = deps.maxBytes ?? PROXY_ART_MAX_BYTES;
   const timeoutMs = deps.timeoutMs ?? PROXY_ART_TIMEOUT_MS;
 
   try {
     const target = assertSafeProxyTarget(raw);
-    await assertPublicResolvedHost(target, lookupHost);
+    const resolvedAddresses = await assertPublicResolvedHost(target, lookupHost);
 
     const response = await fetchImpl(target, {
       headers: { accept: "image/*" },
+      lookup: pinnedLookup(resolvedAddresses),
       redirect: "manual",
       signal: AbortSignal.timeout(timeoutMs),
     });

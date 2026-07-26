@@ -88,10 +88,12 @@ Art is keyed by Scryfall **Printing** UUID. `imageUrlByPrint(printId, size, face
 uses the same-origin authenticated BFF path `/api/card-art/proxy?url=...` first and keeps the
 printing URL in `data-art-fallback`, so a proxy fetch or decode failure swaps back to the printing.
 The BFF route accepts only authenticated requests, requires `https` targets, rejects credentialed
-URLs plus private/link-local/metadata hosts (including private DNS resolutions), caps response size
-at 5 MiB, accepts only `image/jpeg|png|webp|gif`, uses `redirect: "manual"`, and never forwards the
-player's cookies to the remote host. Successful proxy responses return `Cache-Control: public,
-max-age=300`. Back faces do not use the proxy; they continue to use the selected printing. When no
+URLs plus private/link-local/metadata hosts, resolves hostnames before connect, rejects blocked
+private/link-local/metadata resolutions, then pins the HTTPS request lookup to the vetted address
+set, caps response size at 5 MiB, accepts only `image/jpeg|png|webp|gif`, does not follow
+redirects, and never forwards the player's cookies to the remote host. Successful proxy responses
+return `Cache-Control: private, max-age=300`. Back faces do not use the proxy; they continue to use
+the selected printing. When no
 proxy is present, existing art-crop CDN → Scryfall fallback behavior stays unchanged.
 
 Missing ordinary (non-`art_crop`) CDN art stays empty after load failure (no Scryfall fallback in production). The CDN path replicates Scryfall's folder fan (`first two hex chars` of the UUID). DFC backs are fetched with `face=back` in the Scryfall path; CDN serves the same `large` webp. `imageFaceAfterLoadError` falls back from `back` to `front` on load error (DFC prepare/flip cards have no Scryfall `/back/` — transformer backs that exist load on first try).

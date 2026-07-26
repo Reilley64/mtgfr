@@ -5,7 +5,7 @@ import { grpcRequestEnv, runTraced } from "../../../../app/domain/otel";
 import type { GrpcRequestEnv } from "../../../../app/domain/wire/grpcClient";
 
 const SESSION_COOKIE = "session";
-const SUCCESS_CACHE_CONTROL = "public, max-age=300";
+const SUCCESS_CACHE_CONTROL = "private, max-age=300";
 
 type CardArtProxyDeps = {
   buildGrpcEnv?: (sessionToken: string) => Promise<GrpcRequestEnv>;

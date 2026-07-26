@@ -61,3 +61,18 @@ Complete.
   - `.superpowers/sdd/task-4-report.md`
   - `client/app/domain/card-art/proxy-url.ts`
   - `client/app/domain/ui/card-art.test.ts`
+
+## Review follow-up — 2026-07-26
+
+- Finding 1 fixed: `GET /api/card-art/proxy` now returns `Cache-Control: private, max-age=300`.
+- Finding 2 fixed: the proxy resolves the hostname, rejects blocked results, then pins the HTTPS
+  request lookup to the vetted address set instead of re-resolving during connect.
+- Regression coverage added:
+  - `client/app/domain/card-art/proxy-fetch.test.ts` asserts the request path receives a pinned
+    lookup that yields only the vetted DNS result.
+  - `client/server/routes/api/card-art/proxy.get.test.ts` asserts the success header is private.
+- Fresh verification:
+  - `cd client && bun run test -- app/domain/card-art/proxy-fetch.test.ts server/routes/api/card-art/proxy.get.test.ts`
+    - passed: 2 files, 10 tests
+  - `cd client && bun run typecheck`
+    - passed
