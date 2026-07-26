@@ -85,7 +85,7 @@ JUnit: keep the `ci` profile path; upload per-shard artifacts (e.g. `rust-junit-
 - **Key inputs:** same file set as today’s `verify-server-v2-*` (crates, proto, Cargo/Toasty, nextest config, justfile, workflow, CR index scripts). Bump the key prefix to `verify-server-v3-*` when the workflow shape changes so old markers cannot skip a differently structured verify.
 - **Read:** gate (or each consumer job) restores the marker and skips work on hit.
 - **Write:** only `verify-server-mark`, and only when the run was a **miss** and **lint + both shards succeeded**. Neither test shard writes the marker alone (avoids caching a pass while the sibling or lint still fails).
-- On hit: Postgres may still start if a skipped matrix job keeps a service block; prefer structuring so skipped jobs do not pay for a service when the workflow allows (implementation may keep today’s “service still starts” quirk if unavoidable — document the choice in the living spec).
+- On hit: keep today’s quirk — Postgres service containers may still start with matrix jobs that skip work. Do not block this design on eliminating that overhead.
 
 ### Aggregator
 
