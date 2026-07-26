@@ -32,7 +32,7 @@ import { initialDeckBuilderSubmodel } from "./submodel";
 import { update as builderUpdate, NavigateHome, SaveDeck, SearchBuilderPrints } from "./update";
 import { BindBuilderCardPointer, view as builderView } from "./view";
 
-const emptyChrome = { version: null, faithfulCount: null, oracleTotal: null };
+const emptyChrome = { version: null, faithfulCount: null, oracleTotal: null, coverageHref: null };
 
 function card(overrides: Partial<CatalogCard> = {}): CatalogCard {
   return {

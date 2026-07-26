@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { apiMeta, createTable, joinTable, lobbyState } from "./client";
+import { apiMeta, coverageMeta, createTable, joinTable, lobbyState } from "./client";
 
 const unknownTable = {
   table_id: "GONE",
@@ -74,6 +74,58 @@ describe("lobby client", () => {
       version: "1.2.3",
       faithfulCount: 662,
       oracleTotal: 28412,
+    });
+  });
+
+  it("decodes set coverage rows and null oracle totals", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        json(
+          {
+            faithful_count: 662,
+            oracle_total: 28412,
+            sets: [
+              {
+                code: "soc",
+                name: "Secrets of Strixhaven Commander",
+                released_at: "2026-04-01",
+                faithful: 10,
+                oracle_total: 400,
+              },
+              {
+                code: "scn",
+                name: "Set Without Oracle Rows",
+                released_at: null,
+                faithful: 0,
+                oracle_total: null,
+              },
+            ],
+          },
+          200,
+        ),
+      ),
+    );
+
+    await expect(coverageMeta()).resolves.toEqual({
+      faithfulCount: 662,
+      oracleTotal: 28412,
+      sets: [
+        {
+          code: "soc",
+          name: "Secrets of Strixhaven Commander",
+          releasedAt: "2026-04-01",
+          faithful: 10,
+          oracleTotal: 400,
+        },
+        {
+          code: "scn",
+          name: "Set Without Oracle Rows",
+          releasedAt: null,
+          faithful: 0,
+          oracleTotal: null,
+        },
+      ],
     });
   });
 });

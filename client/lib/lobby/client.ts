@@ -7,10 +7,23 @@ const ApiMeta = S.Struct({
   faithful_count: S.optional(S.Number),
   oracle_total: S.optional(S.Number),
 });
+const CoverageSetMeta = S.Struct({
+  code: S.String,
+  name: S.String,
+  released_at: S.optional(S.NullOr(S.String)),
+  faithful: S.Number,
+  oracle_total: S.optional(S.NullOr(S.Number)),
+});
+const CoverageMetaResponse = S.Struct({
+  faithful_count: S.optional(S.NullOr(S.Number)),
+  oracle_total: S.optional(S.NullOr(S.Number)),
+  sets: S.Array(CoverageSetMeta),
+});
 
 const decodeLobbyView = S.decodeUnknownOption(LobbyView);
 const decodeCreatedTable = S.decodeUnknownOption(CreatedTable);
 const decodeApiMeta = S.decodeUnknownOption(ApiMeta);
+const decodeCoverageMeta = S.decodeUnknownOption(CoverageMetaResponse);
 
 async function lobbyFetchJson(path: string, init?: RequestInit): Promise<unknown | null> {
   const res = await fetch(`/api/${path}`, {
@@ -69,5 +82,37 @@ export async function apiMeta(): Promise<{
     version: decoded.version,
     faithfulCount: decoded.faithful_count ?? null,
     oracleTotal: decoded.oracle_total ?? null,
+  };
+}
+
+export type CoverageSetMeta = {
+  code: string;
+  name: string;
+  releasedAt: string | null;
+  faithful: number;
+  oracleTotal: number | null;
+};
+
+export type CoverageMeta = {
+  faithfulCount: number | null;
+  oracleTotal: number | null;
+  sets: CoverageSetMeta[];
+};
+
+export async function coverageMeta(): Promise<CoverageMeta | null> {
+  const body = await lobbyFetchJson("meta/coverage/v1");
+  const decoded = decodeOrNull(decodeCoverageMeta, body);
+  if (!decoded) return null;
+
+  return {
+    faithfulCount: decoded.faithful_count ?? null,
+    oracleTotal: decoded.oracle_total ?? null,
+    sets: decoded.sets.map((set) => ({
+      code: set.code,
+      name: set.name,
+      releasedAt: set.released_at ?? null,
+      faithful: set.faithful,
+      oracleTotal: set.oracle_total ?? null,
+    })),
   };
 }
