@@ -2,8 +2,9 @@ import type { html as createHtml, Html } from "foldkit/html";
 import { cn } from "../../domain/cn";
 import { buttonClass } from "../../domain/ui/buttonClass";
 import { seatFace } from "../../domain/ui/seat-face";
-import { RequestedLogout } from "../../messages";
+import { GotAuthMessage } from "../../messages";
 import { LeaderboardRoute, routePath } from "../../routes";
+import * as Auth from "../auth";
 import { BindAccountMenuEscape } from "./escape";
 import { ClosedAccountMenu, ToggledAccountMenu } from "./messages";
 
@@ -102,7 +103,7 @@ export function accountChrome<Msg>(h: HtmlFactory<Msg>, options: AccountChromeOp
                         [
                           h.Type("button"),
                           h.DataAttribute("testid", "account-menu-sign-out"),
-                          h.OnClick(RequestedLogout() as never),
+                          h.OnClick(GotAuthMessage({ message: Auth.Message.RequestedLogout() }) as never),
                           h.Class(MENU_ITEM),
                         ],
                         ["Sign out"],

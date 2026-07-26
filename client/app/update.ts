@@ -8,7 +8,13 @@ import { captureDeckCardFlipForNav } from "./deck-card-nav";
 import { parseDeckIdParam, playDeckAccess } from "./deck-id";
 import { gravatarHash } from "./domain/gravatar";
 import { applyDeltaPure, applySnapshotPure, type DeltaEnvelope, setRejectPure } from "./game/fold";
-import { type Message, NavigationCompleted, type ReceivedDelta, ReceivedMeGravatarHash } from "./messages";
+import {
+  GotAuthMessage,
+  type Message,
+  NavigationCompleted,
+  type ReceivedDelta,
+  ReceivedMeGravatarHash,
+} from "./messages";
 import { emptyGameSlice, type GameSlice, type Model } from "./model";
 import type { RpcClient } from "./resources";
 import {
@@ -22,8 +28,8 @@ import {
   safeNext,
   TableRoute,
 } from "./routes";
-import { initialAuthSubmodel } from "./shell/auth/submodel";
-import { update as updateAuth } from "./shell/auth/update";
+import * as Auth from "./shell/auth";
+import type { Message as AuthMessage } from "./shell/auth/messages";
 import type { Message as BuilderMessage } from "./shell/decks/builder/messages";
 import { enterBuilder, update as updateBuilder } from "./shell/decks/builder/update";
 import type { Message as ListMessage } from "./shell/decks/list/messages";
@@ -226,6 +232,28 @@ function foldLobby(
   return [{ ...model, lobby, game }, [...commands, ...redirect]];
 }
 
+function foldAuth(
+  model: Model,
+  message: AuthMessage,
+): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
+  const [auth, commands] = Auth.update(model.auth, message);
+  const mappedCommands = Command.mapMessages(commands, (child) => GotAuthMessage({ message: child }));
+
+  if (message._tag !== "ReceivedMe") {
+    return [{ ...model, auth }, mappedCommands];
+  }
+
+  const nextModel = {
+    ...model,
+    session: { me: message.me, meGravatarHash: null },
+    sessionLoaded: true,
+    auth: message.me == null ? auth : Auth.Model.initialAuthSubmodel(model.auth.next),
+  };
+  const [routeModel, routeCommands] = routeEntry(nextModel);
+  const gravatarCommands = message.me == null ? [] : [HashMeGravatar({ email: message.me.email })];
+  return [routeModel, [...mappedCommands, ...routeCommands, ...gravatarCommands]];
+}
+
 export const update = (
   model: Model,
   message: Message,
@@ -357,46 +385,7 @@ export const update = (
       SoundToggled: (boardMessage) => foldBoard(model, boardMessage),
       PriorityElapsed: (boardMessage) => foldBoard(model, boardMessage),
       LegendToggled: (boardMessage) => foldBoard(model, boardMessage),
-      ChangedAuthMode: (authMessage) => {
-        const [auth, commands] = updateAuth(model.auth, authMessage);
-        return [{ ...model, auth }, commands];
-      },
-      ChangedAuthEmail: (authMessage) => {
-        const [auth, commands] = updateAuth(model.auth, authMessage);
-        return [{ ...model, auth }, commands];
-      },
-      ChangedAuthUsername: (authMessage) => {
-        const [auth, commands] = updateAuth(model.auth, authMessage);
-        return [{ ...model, auth }, commands];
-      },
-      ChangedAuthPassword: (authMessage) => {
-        const [auth, commands] = updateAuth(model.auth, authMessage);
-        return [{ ...model, auth }, commands];
-      },
-      SubmittedAuth: (authMessage) => {
-        const [auth, commands] = updateAuth(model.auth, authMessage);
-        return [{ ...model, auth }, commands];
-      },
-      RequestedLogout: (authMessage) => {
-        const [auth, commands] = updateAuth(model.auth, authMessage);
-        return [{ ...model, auth }, commands];
-      },
-      ReceivedMe: (authMessage) => {
-        const [auth, commands] = updateAuth(model.auth, authMessage);
-        const nextModel = {
-          ...model,
-          session: { me: authMessage.me, meGravatarHash: null },
-          sessionLoaded: true,
-          auth: authMessage.me == null ? auth : initialAuthSubmodel(model.auth.next),
-        };
-        const [routeModel, routeCommands] = routeEntry(nextModel);
-        const gravatarCommands = authMessage.me == null ? [] : [HashMeGravatar({ email: authMessage.me.email })];
-        return [routeModel, [...commands, ...routeCommands, ...gravatarCommands]];
-      },
-      AuthFailed: (authMessage) => {
-        const [auth, commands] = updateAuth(model.auth, authMessage);
-        return [{ ...model, auth }, commands];
-      },
+      GotAuthMessage: ({ message }) => foldAuth(model, message),
       ToggledAccountMenu: () => {
         if (model.route._tag === "HomeRoute") {
           const list = model.decks.list;

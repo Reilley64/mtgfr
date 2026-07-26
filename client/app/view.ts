@@ -4,10 +4,10 @@ import * as Mount from "foldkit/mount";
 import { view as boardView } from "./board/view";
 import { parseDeckIdParam, playDeckAccess } from "./deck-id";
 import type { AppChromeMeta } from "./domain/ui/app-version";
-import { CompletedPortraitGateModal, type Message, PortraitGateCancelled, RequestedLogout } from "./messages";
+import { CompletedPortraitGateModal, GotAuthMessage, type Message, PortraitGateCancelled } from "./messages";
 import type { Model } from "./model";
 import { HomeRoute, isProtectedRoute, NewDeckRoute, routePath } from "./routes";
-import { view as authView } from "./shell/auth/view";
+import * as Auth from "./shell/auth";
 import { view as deckBuilderView } from "./shell/decks/builder/view";
 import { view as deckListView } from "./shell/decks/list/view";
 import { view as leaderboardView } from "./shell/leaderboard/view";
@@ -66,7 +66,11 @@ function nav(model: Model) {
           user == null
             ? h.a([h.Href("/login"), h.Class("underline")], ["Sign in"])
             : h.button(
-                [h.Type("button"), h.Class("hit-quiet underline"), h.OnClick(RequestedLogout())],
+                [
+                  h.Type("button"),
+                  h.Class("hit-quiet underline"),
+                  h.OnClick(GotAuthMessage({ message: Auth.Message.RequestedLogout() })),
+                ],
                 [`Sign out ${user.username}`],
               ),
         ],
@@ -155,7 +159,13 @@ function routeBody(model: Model) {
           chromeMeta(model),
         );
       case "LoginRoute":
-        return authView(model.auth, chromeMeta(model));
+        return h.submodel({
+          slotId: "auth",
+          model: model.auth,
+          view: Auth.view,
+          viewInputs: chromeMeta(model),
+          toParentMessage: (message) => GotAuthMessage({ message }),
+        });
       case "LeaderboardRoute":
         return leaderboardView(
           model.leaderboard,

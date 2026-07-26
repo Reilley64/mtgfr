@@ -26,6 +26,7 @@ export const PortraitGateChanged = m("PortraitGateChanged", { open: S.Boolean })
 export const PortraitGateCancelled = m("PortraitGateCancelled");
 export const CompletedPortraitGateModal = m("CompletedPortraitGateModal");
 export const ReceivedMeGravatarHash = m("ReceivedMeGravatarHash", { email: S.String, hash: S.String });
+export const GotAuthMessage = m("GotAuthMessage", { message: AuthMessage });
 export { CardArtTick, DeckCardFlipTick, ModalOpened };
 
 export const Message = S.Union([
@@ -38,12 +39,12 @@ export const Message = S.Union([
   PortraitGateCancelled,
   CompletedPortraitGateModal,
   ReceivedMeGravatarHash,
+  GotAuthMessage,
   ModalOpened,
   CardArtTick,
   DeckCardFlipTick,
   BoardMessage,
   AccountChromeMessage,
-  AuthMessage,
   DecksMessage,
   LeaderboardMessage,
   LobbyMessage,
@@ -70,16 +71,6 @@ export {
   ClosedAccountMenu,
   ToggledAccountMenu,
 } from "./shell/account-chrome/messages";
-export {
-  AuthFailed,
-  ChangedAuthEmail,
-  ChangedAuthMode,
-  ChangedAuthPassword,
-  ChangedAuthUsername,
-  ReceivedMe,
-  RequestedLogout,
-  SubmittedAuth,
-} from "./shell/auth/messages";
 export {
   ActivatedBuilderTarget,
   AddedBuilderCard,

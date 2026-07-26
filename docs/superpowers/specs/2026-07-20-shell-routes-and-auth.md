@@ -59,6 +59,8 @@ A native `<dialog showModal>` opens when `(orientation: portrait) and (max-width
 
 `FetchMe` is a Foldkit command wrapping `client.me()` with all failures folded to `null` — any 401, decode error, or transport failure is treated as "not signed in." Route entry runs session checks for protected routes. While the session is unresolved, protected content stays blank; once resolved to `null`, the app redirects to `/login?next=<current-path>`. The `next` redirect target is validated server-side and in-browser: only same-origin absolute paths starting with `/` (not `//` or `/\`) are accepted.
 
+The `/login` route renders the auth screen through a Foldkit submodel boundary. Child auth messages lift into the app through `GotAuthMessage`, and the parent keeps session ownership by inspecting `ReceivedMe` after the child auth update runs. Child auth commands are lifted back to app messages with Foldkit `Command.mapMessages`, so auth remains an isolated submodel while session redirects and `HashMeGravatar` stay parent-owned.
+
 When `ReceivedMe` carries a signed-in user, the app queues `HashMeGravatar`, a Foldkit command that SHA-256 hashes the user's email through `client/app/domain/gravatar.ts` and stores the result as `session.meGravatarHash`. The completion message includes the source email, and `update` ignores stale hash results when the current session email no longer matches. Signed-out sessions clear `meGravatarHash`. The resulting hash feeds the shared account chrome face on home and leaderboard, matching the seat/avatar helper family without exposing raw email in UI state.
 
 Unsigned protected content never renders.
@@ -150,6 +152,7 @@ Vite production builds set `build.sourcemap: true` (via `clientBuildSourcemap`) 
 ## Testing Decisions
 
 - `client/app/shell/auth/**/*.test.ts` — auth stories and helpers, including `ReceivedMe` → `HashMeGravatar` session storage and stale-result guarding.
+- `client/app/update.test.ts` — parent-level regressions such as lifting auth child messages through `GotAuthMessage`.
 - `client/app/routes.test.ts`, `client/app/smoke.test.ts` — routing and smoke; includes protected `/leaderboard` entry, auth redirect, home entry loading decks without a teaser fetch, and retry-from-page-one behavior.
 - `client/app/shell/surfaces.test.ts` — shell Scene coverage for auth, deck, leaderboard, and lobby surfaces, including shared account chrome and the `% faithful` + `API {version}` shell badge stack; Scene asserts `pool-coverage` above `app-version` when the model has complete meta.
 - `client/app/domain/ui/app-version.test.ts` — percent formatting and stacked badge rendering rules.

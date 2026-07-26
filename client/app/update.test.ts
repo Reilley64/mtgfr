@@ -1,7 +1,9 @@
 import { expect, test } from "vitest";
 import { StreamTerminalError } from "./game/messages";
 import { init, update } from "./main-exports";
+import { GotAuthMessage } from "./messages";
 import { emptyGameSlice } from "./model";
+import { ChangedAuthEmail } from "./shell/auth/messages";
 
 test("terminal stream errors store user-facing reconnect reasons", () => {
   const [base] = init();
@@ -13,4 +15,17 @@ test("terminal stream errors store user-facing reconnect reasons", () => {
   const [missing] = update({ ...base, game: emptyGameSlice("T1") }, StreamTerminalError({ status: 404 }));
   expect(missing.game?.connected).toBe(false);
   expect(missing.game?.reject).toBe("Table no longer available.");
+});
+
+test("GotAuthMessage updates auth email through the parent update", () => {
+  const [base] = init();
+
+  const [next] = update(
+    base,
+    GotAuthMessage({
+      message: ChangedAuthEmail({ email: "a@b.c" }),
+    }),
+  );
+
+  expect(next.auth.email).toBe("a@b.c");
 });

@@ -1,3 +1,4 @@
+import { Submodel } from "foldkit";
 import { html } from "foldkit/html";
 import { type AppChromeMeta, appVersionBadge } from "../../domain/ui/app-version";
 import { buttonClass } from "../../domain/ui/buttonClass";
@@ -14,7 +15,7 @@ import type { AuthSubmodel } from "./submodel";
 
 const h = html<Message>();
 
-export function view(model: AuthSubmodel, chrome: AppChromeMeta) {
+export const view = Submodel.defineView<AuthSubmodel, Message, AppChromeMeta>((model, chrome) => {
   const isLogin = model.mode === "login";
   const modeToggle = isLogin ? ChangedAuthMode({ mode: "signup" }) : ChangedAuthMode({ mode: "login" });
 
@@ -113,4 +114,4 @@ export function view(model: AuthSubmodel, chrome: AppChromeMeta) {
       appVersionBadge(h, chrome),
     ],
   );
-}
+});

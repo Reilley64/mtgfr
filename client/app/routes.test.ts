@@ -4,12 +4,12 @@ import { expect, test } from "vitest";
 import { init } from "./init";
 import {
   ClosedAccountMenu,
+  GotAuthMessage,
   NavigationCompleted,
   OpenedDeckListMenu,
   ReceivedDeckListCommanders,
   ReceivedDecks,
   ReceivedLeaderboardPage,
-  ReceivedMe,
   ReceivedMeGravatarHash,
   RequestedLeaderboardRefresh,
   ToggledAccountMenu,
@@ -25,6 +25,7 @@ import {
   routePath,
   TableRoute,
 } from "./routes";
+import * as Auth from "./shell/auth";
 import { FetchDecks, LookupDeckListCommanders } from "./shell/decks/list/update";
 import { FetchLeaderboard } from "./shell/leaderboard/update";
 import { HashMeGravatar, update } from "./update";
@@ -95,7 +96,7 @@ test("non-integer play deckId becomes NotFound after normalize", () => {
 test("PlayRoute /play/-1 sets lobby.selectedDeckId to -1", () => {
   const [base] = init(url("/play/-1"));
 
-  const [model] = update(base, ReceivedMe({ me }));
+  const [model] = update(base, GotAuthMessage({ message: Auth.Message.ReceivedMe({ me }) }));
 
   expect(model.route).toEqual(PlayRoute({ deckId: "-1" }));
   expect(model.lobby.selectedDeckId).toBe(-1);
@@ -112,7 +113,7 @@ test("LeaderboardRoute loads the first page on protected route entry", () => {
   Story.story(
     update,
     Story.with(model),
-    Story.message(ReceivedMe({ me })),
+    Story.message(GotAuthMessage({ message: Auth.Message.ReceivedMe({ me }) })),
     Story.Command.expectExact(load, HashMeGravatar({ email: me.email })),
     Story.Command.resolve(load, page),
     Story.Command.resolve(HashMeGravatar, ReceivedMeGravatarHash({ email: me.email, hash: "deadbeef" })),
@@ -130,7 +131,7 @@ test("HomeRoute loads decks on protected route entry", () => {
   Story.story(
     update,
     Story.with(model),
-    Story.message(ReceivedMe({ me })),
+    Story.message(GotAuthMessage({ message: Auth.Message.ReceivedMe({ me }) })),
     Story.Command.expectExact(FetchDecks, HashMeGravatar({ email: me.email })),
     Story.Command.resolve(FetchDecks, ReceivedDecks({ decks })),
     Story.Command.resolve(HashMeGravatar, ReceivedMeGravatarHash({ email: me.email, hash: "deadbeef" })),
@@ -256,7 +257,7 @@ test("redirects unsigned protected play routes with path deck", () => {
   Story.story(
     update,
     Story.with(model),
-    Story.message(ReceivedMe({ me: null })),
+    Story.message(GotAuthMessage({ message: Auth.Message.ReceivedMe({ me: null }) })),
     Story.Command.expectExact(redirect),
     Story.Command.resolve(redirect, NavigationCompleted()),
   );
@@ -273,7 +274,7 @@ test("redirects unsigned protected leaderboard route", () => {
   Story.story(
     update,
     Story.with(model),
-    Story.message(ReceivedMe({ me: null })),
+    Story.message(GotAuthMessage({ message: Auth.Message.ReceivedMe({ me: null }) })),
     Story.Command.expectExact(redirect),
     Story.Command.resolve(redirect, NavigationCompleted()),
   );
