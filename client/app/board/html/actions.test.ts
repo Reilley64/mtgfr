@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView } from "~/wire/types";
-import { autoTapPreviewIds, barZoneAura, handTileCaption, modesForObject, orderPlayModes, paymentPreviewAction } from "./actions";
+import {
+  autoTapPreviewIds,
+  barZoneAura,
+  handTileCaption,
+  modesForObject,
+  orderPlayModes,
+  paymentPreviewAction,
+} from "./actions";
 
 const castAction = {
   id: 3,
@@ -132,7 +139,12 @@ describe("modesForObject", () => {
 
 describe("orderPlayModes", () => {
   it("orders cast/play_land, then cycle, then hand abilities by action id", () => {
-    const modes = [act(30, "activate_hand_ability", 1), act(10, "cycle", 1), act(5, "cast", 1), act(31, "activate_hand_ability", 1)];
+    const modes = [
+      act(30, "activate_hand_ability", 1),
+      act(10, "cycle", 1),
+      act(5, "cast", 1),
+      act(31, "activate_hand_ability", 1),
+    ];
     expect(orderPlayModes(modes).map((a) => a.id)).toEqual([5, 10, 30, 31]);
   });
 });

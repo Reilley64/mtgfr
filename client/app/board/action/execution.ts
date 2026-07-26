@@ -188,14 +188,11 @@ export type HandPlayPlan =
   | { kind: "single"; action: ActionView }
   | { kind: "choose"; modes: ActionView[] };
 
-export function planHandPlay(
-  modes: readonly ActionView[],
-  y: number,
-  threshold: number,
-): HandPlayPlan {
+export function planHandPlay(modes: readonly ActionView[], y: number, threshold: number): HandPlayPlan {
   if (y > threshold) return { kind: "ignore" };
   if (modes.length === 0) return { kind: "ignore" };
-  if (modes.length === 1) return { kind: "single", action: modes[0]! };
+  const [action] = modes;
+  if (modes.length === 1 && action != null) return { kind: "single", action };
   return { kind: "choose", modes: orderPlayModes(modes) };
 }
 
