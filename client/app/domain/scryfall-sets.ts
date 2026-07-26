@@ -60,8 +60,11 @@ function parseScryfallSets(body: unknown): ReadonlyArray<ScryfallSetRow> | null 
     const code = readString(value, "code");
     const name = readString(value, "name");
     const cardCount = readNumber(value, "card_count");
+    const setType = readString(value, "set_type");
     if (code == null || name == null || cardCount == null) continue;
     if (cardCount <= 0) continue;
+    // Art Series and other memorabilia aren't deckable pool targets.
+    if (setType === "memorabilia") continue;
 
     rows.push({
       code,
@@ -101,4 +104,17 @@ export function ensureScryfallSetsRefresh(fetchImpl: typeof fetch = globalThis.f
   inflight = refreshScryfallSets(fetchImpl).finally(() => {
     inflight = null;
   });
+}
+
+/** Await a cold fill; when warm, return cache and kick SWR in the background. */
+export async function loadScryfallSets(
+  fetchImpl: typeof fetch = globalThis.fetch,
+): Promise<ReadonlyArray<ScryfallSetRow> | null> {
+  const warm = getCachedScryfallSets();
+  if (warm != null) {
+    ensureScryfallSetsRefresh(fetchImpl);
+    return warm;
+  }
+  if (inflight) return inflight;
+  return refreshScryfallSets(fetchImpl);
 }
