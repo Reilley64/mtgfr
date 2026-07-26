@@ -164,6 +164,7 @@ export type CatalogCard = {
   oracle?: string | null;
   otags: Array<string>;
   set: string;
+  sets: Array<string>;
   subtypes: Array<string>;
   summary: Array<MessageRef>;
 };

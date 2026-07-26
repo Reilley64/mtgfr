@@ -27,9 +27,11 @@ pub struct CatalogCard {
     /// The card's printed (oracle) rules text, for the deck builder's read-the-text hover
     /// (`engine::CardDef::oracle`). `None` for a card whose text isn't recorded, or a vanilla.
     pub oracle: Option<String>,
-    /// Set/edition code (Scryfall's lowercase code, e.g. `"soc"`); empty when unrecorded. A
-    /// deck-builder search dimension.
+    /// Deprecated legacy set/edition code; always empty. Use `sets`.
     pub set: String,
+    /// Every Scryfall set code with a printing of this oracle (lowercase). A deck-builder search
+    /// dimension.
+    pub sets: Vec<String>,
     /// Printed subtypes for search (creature types like "Goblin"/"Wizard", plus a land's printed
     /// types). The union of `engine::CardDef::subtypes` (creature/artifact/enchantment types) and,
     /// for a land, its `CardKind::Land::subtypes`.
@@ -412,7 +414,8 @@ pub fn catalog_card(def: &engine::CardDef) -> CatalogCard {
         color_identity: identity_indices(color_identity(def)),
         approximates: def.approximates.map(str::to_string),
         oracle: def.oracle.map(str::to_string),
-        set: def.sets.first().copied().unwrap_or_default().to_string(),
+        set: String::new(),
+        sets: def.sets.iter().map(|s| s.to_string()).collect(),
         subtypes: all_subtypes(def),
         otags: def.otags.iter().map(|s| s.to_string()).collect(),
         back: def.back.map(|id| {
@@ -457,6 +460,10 @@ mod tests {
             vec![green],
             "Forest is mono-green by its produced mana"
         );
+
+        let viper = catalog_card(&def("Ambush Viper"));
+        assert_eq!(viper.set, "");
+        assert!(viper.sets.contains(&"inr".to_string()));
 
         let tajic = catalog_card(&def("Tajic, Legion's Edge"));
         assert!(tajic.legendary);

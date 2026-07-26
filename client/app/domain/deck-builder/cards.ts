@@ -64,6 +64,7 @@ export const CatalogCardSchema = S.Struct({
   oracle: S.optional(S.NullOr(S.String)),
   otags: S.Array(S.String),
   set: S.String,
+  sets: S.Array(S.String),
   subtypes: S.Array(S.String),
   summary: S.Array(MessageRef),
 });

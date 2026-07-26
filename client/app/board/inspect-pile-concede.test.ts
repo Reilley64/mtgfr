@@ -399,7 +399,8 @@ test("InspectCardFetched stores catalog card", () => {
     kind: { kind: "instant" as const },
     legendary: false,
     otags: [],
-    set: "soc",
+    set: "",
+    sets: ["soc"],
     subtypes: [],
     summary: [],
   } as unknown as import("~/wire/types").CatalogCard;

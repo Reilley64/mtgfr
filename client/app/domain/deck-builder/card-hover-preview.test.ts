@@ -21,7 +21,8 @@ const solRing: CatalogCard = {
   name: "Sol Ring",
   oracle: "{T}: Add {C}{C}.",
   otags: [],
-  set: "c14",
+  set: "",
+  sets: ["c14"],
   subtypes: [],
   summary: [],
 };

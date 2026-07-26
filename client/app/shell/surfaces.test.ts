@@ -57,7 +57,8 @@ const atraxa = card({
   legendary: true,
   name: "Atraxa, Praetors' Voice",
   oracle: "Flying, vigilance, deathtouch, lifelink",
-  set: "c16",
+  set: "",
+  sets: ["c16"],
   subtypes: ["Angel", "Horror"],
 });
 
@@ -85,7 +86,8 @@ function card(overrides: Partial<CatalogCard> = {}): CatalogCard {
     legendary: false,
     name: "Card",
     otags: [],
-    set: "tst",
+    set: "",
+    sets: ["tst"],
     subtypes: [],
     summary: [],
     ...overrides,
