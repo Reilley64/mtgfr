@@ -1,6 +1,6 @@
 # Foldkit submodels, domain layout, play routes, and installable PWA (design)
 
-**Status:** Design input pending user review (2026-07-26).
+**Status:** Approved design input (2026-07-26).
 **Surfaces (update at implement time):** [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md), [lobby-entry-ui](2026-07-20-lobby-entry-ui.md), [lobby-table-routing-and-live-game](2026-07-20-lobby-table-routing-and-live-game.md), [deck-list-and-builder](2026-07-20-deck-list-and-builder.md), [board-composition](2026-07-20-board-composition.md); favicon / icon notes in [favicon-dragon-silhouette-design](2026-07-25-favicon-dragon-silhouette-design.md).
 **Upstream patterns:** [Foldkit project organization](https://foldkit.dev/patterns/project-organization), [Informing submodels](https://foldkit.dev/patterns/informing-submodels), [Submodels](https://foldkit.dev/patterns/submodels).
 
