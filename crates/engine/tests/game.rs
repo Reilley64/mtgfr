@@ -90244,3 +90244,128 @@ fn artisan_of_kozilek_annihilates_the_planeswalkers_controller() {
     assert_eq!(game.zone_of(pw), Zone::Graveyard);
     assert_eq!(game.zone_of(bear), Zone::Graveyard);
 }
+
+#[test]
+fn plus_and_minus_counters_annihilate_as_state_based_action() {
+    // CR 704.5r: if a permanent has both +1/+1 and -1/-1 counters, that many pairs are removed
+    // as a state-based action.
+    let mut game = Game::new();
+    let creature = game.spawn_on_battlefield(PlayerId(0), creature("Annihilation Test", 3, 3, &[]));
+    for _ in 0..3 {
+        game.add_plus_counter(creature);
+    }
+    for _ in 0..2 {
+        game.add_kind_counter(creature, CounterKind::MinusOneMinusOne);
+    }
+    assert_eq!(game.plus_counters(creature), 3);
+    assert_eq!(
+        game.counters_of_kind(creature, CounterKind::MinusOneMinusOne),
+        2
+    );
+
+    game.submit(Intent::PassPriority {
+        player: PlayerId(0),
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.plus_counters(creature),
+        1,
+        "min(3,2)=2 pairs annihilated; one +1/+1 remains"
+    );
+    assert_eq!(
+        game.counters_of_kind(creature, CounterKind::MinusOneMinusOne),
+        0,
+        "both -1/-1 counters annihilated"
+    );
+    assert_eq!(game.power(creature), 4, "3 base + 1 remaining counter");
+    assert_eq!(game.toughness(creature), 4);
+}
+
+#[test]
+fn legend_rule_pauses_then_puts_losers_in_graveyard() {
+    // CR 704.5j: two legendary permanents with the same name under one controller → choose one
+    // to keep; the rest go to their owners' graveyards.
+    let mut game = Game::new();
+    let keep = game.spawn_on_battlefield(PlayerId(0), LEGENDARY_CREATURE.clone());
+    let lose = game.spawn_on_battlefield(PlayerId(0), LEGENDARY_CREATURE.clone());
+
+    game.submit(Intent::PassPriority {
+        player: PlayerId(0),
+    })
+    .unwrap();
+
+    let Some(PendingChoice::ChooseLegendaryKeep {
+        player, options, ..
+    }) = game.pending_choice()
+    else {
+        panic!(
+            "expected ChooseLegendaryKeep, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(player, PlayerId(0));
+    assert_eq!(options.len(), 2);
+    assert!(options.contains(&keep) && options.contains(&lose));
+
+    game.submit(Intent::ChooseLegendaryKeep {
+        player: PlayerId(0),
+        keep,
+    })
+    .unwrap();
+
+    assert!(game.pending_choice().is_none());
+    assert_eq!(game.zone_of(keep), Zone::Battlefield);
+    assert_eq!(
+        game.zone_of(lose),
+        Zone::Graveyard,
+        "legend-rule loser leaves for the graveyard"
+    );
+}
+
+#[test]
+fn legend_rule_ignores_same_name_under_different_controllers() {
+    let mut game = Game::new();
+    let a = game.spawn_on_battlefield(PlayerId(0), LEGENDARY_CREATURE.clone());
+    let b = game.spawn_on_battlefield(PlayerId(1), LEGENDARY_CREATURE.clone());
+
+    game.submit(Intent::PassPriority {
+        player: PlayerId(0),
+    })
+    .unwrap();
+
+    assert!(
+        game.pending_choice().is_none(),
+        "legend rule is per controller"
+    );
+    assert_eq!(game.zone_of(a), Zone::Battlefield);
+    assert_eq!(game.zone_of(b), Zone::Battlefield);
+}
+
+#[test]
+fn legend_rule_token_loser_ceases_to_exist() {
+    let mut game = Game::new();
+    let keep = game.spawn_on_battlefield(PlayerId(0), LEGENDARY_CREATURE.clone());
+    let token = game.spawn_token_on_battlefield(PlayerId(0), LEGENDARY_CREATURE.clone());
+
+    game.submit(Intent::PassPriority {
+        player: PlayerId(0),
+    })
+    .unwrap();
+    assert!(matches!(
+        game.pending_choice(),
+        Some(PendingChoice::ChooseLegendaryKeep { .. })
+    ));
+
+    game.submit(Intent::ChooseLegendaryKeep {
+        player: PlayerId(0),
+        keep,
+    })
+    .unwrap();
+
+    assert_eq!(game.zone_of(keep), Zone::Battlefield);
+    assert!(
+        !game.live_object_ids().contains(&token),
+        "token legend loser ceases rather than visiting the graveyard"
+    );
+}

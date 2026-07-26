@@ -89,6 +89,7 @@ export const FORMULATOR_FOR_KIND: { [K in PendingChoiceView["kind"]]: Formulator
   choose_color: "colorPick",
   choose_copy_target: "cardPick",
   choose_attach_host: "cardPick",
+  choose_legendary_keep: "cardPick",
   put_from_hand_on_top: "cardPick",
   opponent_chooses_revealed_to_graveyard: "cardPick",
   pay_cumulative_upkeep_or_sacrifice: "cardPick",
@@ -158,6 +159,7 @@ export type AnswerInput =
   | { kind: "revealed"; choice: number | null }
   | { kind: "copy_target"; copy: number | null }
   | { kind: "attach_host"; host: number | null }
+  | { kind: "legendary_keep"; keep: number }
   | { kind: "keep_tapped"; ids: number[] }
   | { kind: "top_or_bottom"; top: boolean }
   | { kind: "return_land"; land: number | null }
@@ -186,6 +188,7 @@ export function answerFromBoardTarget(pc: PendingChoiceView, target: WireTarget)
   }
   if (target.kind !== "object") return null;
   if (pc.kind === "choose_attach_host") return { kind: "attach_host", host: target.id };
+  if (pc.kind === "choose_legendary_keep") return { kind: "legendary_keep", keep: target.id };
   if (pc.kind === "sacrifice_unless_return_land") return { kind: "return_land", land: target.id };
   if (pc.kind === "choose_copy_target") return { kind: "copy_target", copy: target.id };
   if (pc.kind === "decline_untap") return { kind: "keep_tapped", ids: [target.id] };
@@ -488,6 +491,12 @@ export function answerFromDraft(pc: PendingChoiceView, draft: PromptDraft): Answ
     case "choose_attach_host":
       if (draft.kind !== "card-pick") return null;
       return { kind: "attach_host", host: pickSingleCard(draft.picked) };
+    case "choose_legendary_keep": {
+      if (draft.kind !== "card-pick") return null;
+      const keep = pickSingleCard(draft.picked);
+      if (keep == null) return null;
+      return { kind: "legendary_keep", keep };
+    }
     case "put_from_hand_on_top":
       if (draft.kind !== "card-pick") return null;
       return { kind: "hand_on_top", cards: draft.picked };
@@ -554,6 +563,7 @@ export function cardPickRequiredCount(pc: PendingChoiceView): number | null {
     case "sacrifice_unless_return_land":
     case "choose_copy_target":
     case "choose_attach_host":
+    case "choose_legendary_keep":
     case "cast_creature_face_down":
     case "choose_dredge":
       return 1;
@@ -718,6 +728,7 @@ export function choiceIntent(pc: PendingChoiceView, answer: AnswerInput): WireIn
       revealed: (a) => ({ kind: "revealed_card_to_battlefield_or_hand", player, choice: a.choice }),
       copy_target: (a) => ({ kind: "choose_copy_target", player, copy: a.copy }),
       attach_host: (a) => ({ kind: "choose_attach_host", player, host: a.host }),
+      legendary_keep: (a) => ({ kind: "choose_legendary_keep", player, keep: a.keep }),
       keep_tapped: (a) => ({ kind: "decline_untap", player, keep_tapped: a.ids }),
       top_or_bottom: (a) => ({ kind: "choose_top_or_bottom", player, top: a.top }),
       return_land: (a) => ({ kind: "return_land_or_sacrifice", player, land: a.land }),

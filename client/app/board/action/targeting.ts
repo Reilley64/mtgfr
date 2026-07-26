@@ -142,6 +142,7 @@ const ONBOARD_CARD_PICK_KINDS = new Set<PendingChoiceView["kind"]>([
   "phase_out",
   "decline_untap",
   "choose_attach_host",
+  "choose_legendary_keep",
   "sacrifice_unless_return_land",
   "choose_copy_target",
   "choose_counter_target_for_player",
@@ -174,6 +175,7 @@ export function pendingTargetOneClick(pc: PendingChoiceView): boolean {
   if (pc.kind === "choose_target") return pc.min === 1 && pc.max === 1;
   if (
     pc.kind === "choose_attach_host" ||
+    pc.kind === "choose_legendary_keep" ||
     pc.kind === "sacrifice_unless_return_land" ||
     pc.kind === "choose_copy_target"
   ) {

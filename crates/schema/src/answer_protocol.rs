@@ -119,6 +119,9 @@ pub enum Answer {
     AttachHost {
         host: Option<ObjectId>,
     },
+    LegendaryKeep {
+        keep: ObjectId,
+    },
     CopyTarget {
         copy: Option<ObjectId>,
     },
@@ -214,6 +217,7 @@ pub fn encode_answer(view: &PendingChoiceView, answer: Answer) -> WireIntent {
             WireIntent::RevealedCardToBattlefieldOrHand { player, choice }
         }
         Answer::AttachHost { host } => WireIntent::ChooseAttachHost { player, host },
+        Answer::LegendaryKeep { keep } => WireIntent::ChooseLegendaryKeep { player, keep },
         Answer::CopyTarget { copy } => WireIntent::ChooseCopyTarget { player, copy },
         Answer::TopOrBottom { top } => WireIntent::ChooseTopOrBottom { player, top },
     }
@@ -283,6 +287,7 @@ fn view_player(view: &PendingChoiceView) -> u8 {
         | PendingChoiceView::ChooseColor { player, .. }
         | PendingChoiceView::ChooseCardName { player, .. }
         | PendingChoiceView::ChooseAttachHost { player, .. }
+        | PendingChoiceView::ChooseLegendaryKeep { player, .. }
         | PendingChoiceView::ChooseCopyTarget { player, .. } => *player,
     }
 }

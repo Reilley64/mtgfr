@@ -772,6 +772,15 @@ impl<'a> ChoiceCtx<'a> {
                 items: self.label_items(candidates),
                 optional,
             },
+            engine::PendingChoice::ChooseLegendaryKeep {
+                player,
+                name,
+                options,
+            } => PendingChoiceView::ChooseLegendaryKeep {
+                player: player.0,
+                name: name.to_string(),
+                items: self.label_items(options),
+            },
             engine::PendingChoice::ChooseCopyTarget {
                 player,
                 source,

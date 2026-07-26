@@ -681,6 +681,15 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
             items: choice_items_to_pb(items),
             optional,
         }),
+        PendingChoiceView::ChooseLegendaryKeep {
+            player,
+            name,
+            items,
+        } => Choice::ChooseLegendaryKeep(pb::PendingChoiceViewChooseLegendaryKeep {
+            player: u32::from(player),
+            name,
+            items: choice_items_to_pb(items),
+        }),
         PendingChoiceView::DeclineUntap { player, items } => {
             Choice::DeclineUntap(pb::PendingChoiceViewDeclineUntap {
                 player: u32::from(player),

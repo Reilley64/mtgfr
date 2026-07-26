@@ -76,6 +76,7 @@ message WireIntent {
     WireIntentMulligan mulligan = 55;
     WireIntentChooseCardName choose_card_name = 56;
     WireIntentCastSplitHalf cast_split_half = 57;
+    WireIntentChooseLegendaryKeep choose_legendary_keep = 58;
   }
 }
 
@@ -342,6 +343,13 @@ message WireIntentChooseCardName {
 message WireIntentChooseAttachHost {
   uint32 player = 1;
   optional uint32 host = 2;
+}
+
+// Answer a legend-rule choice (CR 704.5j): `keep` is the one legendary permanent among the
+// conflict options that remains on the battlefield.
+message WireIntentChooseLegendaryKeep {
+  uint32 player = 1;
+  uint32 keep = 2;
 }
 
 // Answer an enter-as-copy choice (CR 706/707.2 — Altered Ego, Cursed Mirror): `copy` is the

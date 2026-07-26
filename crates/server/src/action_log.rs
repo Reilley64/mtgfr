@@ -249,6 +249,7 @@ fn intent_str(w: &WireIntent) -> String {
         WireIntent::ChooseColor { color, .. } => format!("color {color}"),
         WireIntent::ChooseCardName { name, .. } => format!("card-name {name}"),
         WireIntent::ChooseAttachHost { host, .. } => format!("attach-host {}", opt_id(host)),
+        WireIntent::ChooseLegendaryKeep { keep, .. } => format!("legendary-keep {keep}"),
         WireIntent::ChooseCopyTarget { copy, .. } => format!("copy-target {}", opt_id(copy)),
         WireIntent::ChooseTopOrBottom { top, .. } => format!("top-or-bottom {top}"),
         WireIntent::Cycle { card, .. } => format!("cycle {card}"),

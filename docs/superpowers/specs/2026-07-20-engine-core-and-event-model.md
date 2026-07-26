@@ -99,6 +99,8 @@ Implemented SBAs (CR 704):
 - Planeswalker with `loyalty <= 0` → goes to graveyard.
 - Aura attached to nothing or to an illegal host → goes to graveyard (token Auras cease to exist).
 - Equipment attached to an illegal host → detaches (does not die).
+- Permanent with both +1/+1 and −1/−1 counters → remove `min` of each as a pair (CR 704.5r), before death checks in the same scan.
+- Legend rule (CR 704.5j): after event-producing SBAs settle, if a living controller has two or more legendary permanents with the same printed name, pause on `ChooseLegendaryKeep` (one conflict group per sweep, lowest seat then name). The answer keeps one permanent; the rest leave via graveyard / command divert / token cease. Further groups wait for the next sweep.
 - A player at ≤ 0 life → loses. A player who must draw from an empty library → loses.
 - `PlayerLost` tombstones every object owned by the loser (CR 800.4a); any permanent others control that was owned by the loser returns to its new owner (control effects end). The last surviving player is the winner.
 
