@@ -84,7 +84,6 @@ export type Leaderboard = typeof Leaderboard.Type;
 export const DeckSummary = Schema.Struct({
   commander: Schema.String,
   commander_print: Schema.optional(Schema.String),
-  commander_proxy_art_url: Schema.optional(Schema.String),
   id: Schema.Number,
   name: Schema.String,
 });
