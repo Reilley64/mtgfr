@@ -12,6 +12,7 @@ import { PLAYABLE_BORDER, playableBattlefieldObjectIds } from "../chrome";
 import { type Camera, worldToScreen } from "../geometry/camera";
 import { AVATAR_R, avatarLabelOffsets, avatarPos, type RenderCard, seatColor } from "../geometry/layout";
 import { ArtLoaded, FlightsSynced } from "../messages";
+import type { ExitFx } from "../motion/exit-fx";
 import { type CardFlight, stepFlights } from "../motion/flights";
 import { mergeFlightPoses, restingPaintChanged, restingPaintSnapshot } from "./flight-frame";
 import {
@@ -124,7 +125,7 @@ export function tickFlightClock(
   state: FlightClockState;
   frame: BitmapFrame;
   paintFlight: boolean;
-  sync: { flights: CardFlight[]; now: number } | null;
+  sync: { flights: CardFlight[]; exitFx: ExitFx[]; now: number } | null;
 } {
   const stepped = stepFlights(new Map(state.liveFlights.map((flight) => [flight.id, flight])), dtMs, reducedMotion);
   const liveFlights = [...stepped.flights.values()];
@@ -140,7 +141,7 @@ export function tickFlightClock(
     },
     frame: { ...frame, flights: liveFlights },
     paintFlight: true,
-    sync: flyingMembershipChanged || allSettled ? { flights: liveFlights, now } : null,
+    sync: flyingMembershipChanged || allSettled ? { flights: liveFlights, exitFx: [], now } : null,
   };
 }
 
