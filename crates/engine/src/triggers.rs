@@ -3615,6 +3615,10 @@ impl Game {
             // Dread Cacodemon/Reiver Demon: "if you cast it from your hand" — source-object-based
             // like the four conditions above.
             Condition::CastFromHand => self.as_permanent(source).is_some_and(|p| p.cast_from_hand),
+            // Plumb the Forbidden's reflexive "When you do": the copy trigger happens only if one
+            // or more creatures were sacrificed to the additional cost — source-object-based like
+            // the conditions above, reading the resolving spell's own recorded count (CR 601.2f).
+            Condition::SpellSacrificedToCast => self.spell_sacrifice_count(source) > 0,
             _ => self.condition_holds(condition, ctx),
         }
     }
@@ -3801,6 +3805,11 @@ impl Game {
             // (Dread Cacodemon's/Reiver Demon's ETB intervening-if, CR 603.4), which intercepts it
             // directly against its own `source` parameter before falling through here.
             Condition::CastFromHand => false,
+            // ponytail: source-object-based like `CastFromHand` above — `TriggerContext` carries
+            // no source id either. Reachable only through `Game::ability_condition_holds` (Plumb
+            // the Forbidden's reflexive "When you do" copy gate, CR 603.4), which intercepts it
+            // directly against its own `source` parameter before falling through here.
+            Condition::SpellSacrificedToCast => false,
             // ponytail: source-object-based like `SourceEnteredWithXAtLeast` above —
             // `TriggerContext` carries no source id either. Reachable only through the
             // `Effect::Conditional` resolve site (`Game::run`), which intercepts it directly

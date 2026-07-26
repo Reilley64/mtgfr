@@ -62516,7 +62516,14 @@ fn plumb_the_forbidden_declining_the_sacrifice_is_legal() {
         })
         .unwrap();
     assert_eq!(game.spell_sacrifice_count(spell), 0);
-    // The reflexive copy trigger fires but mints nothing (0 sacrificed); drain it and the spell.
+    // The printed card's copy rider is a reflexive "When you do [sacrifice]" trigger (CR
+    // 603.4/706.9). With nothing sacrificed, the reflexive trigger never happens at all — the
+    // stack holds only the spell itself, no zero-count copy trigger.
+    assert_eq!(
+        game.stack().len(),
+        1,
+        "no reflexive copy trigger — nothing was sacrificed"
+    );
     resolve_whole_stack(&mut game);
 
     assert_eq!(

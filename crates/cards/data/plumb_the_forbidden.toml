@@ -35,11 +35,16 @@ mode = "lose"
 amount = 1
 
 # When you do [sacrifice creatures to the additional cost], copy this spell for each creature
-# sacrificed this way. A cast-time reflexive trigger, so the copies sit on the stack above the
-# original; `spell_sacrifice_count` reads the cost already paid at cast (0 copies if none were
-# sacrificed). Plumb is untargeted, so the copies need no retarget choice.
+# sacrificed this way. A cast-time reflexive trigger (CR 603.4): the `spell_sacrificed_to_cast`
+# intervening-if gates it on having actually sacrificed, so with nothing sacrificed the trigger
+# doesn't happen at all (no zero-count copy trigger on the stack). When it does fire the copies sit
+# on the stack above the original; `spell_sacrifice_count` reads the cost already paid at cast.
+# Plumb is untargeted, so the copies need no retarget choice.
 [[abilities]]
 timing = "when_you_cast_this"
+
+[abilities.condition]
+type = "spell_sacrificed_to_cast"
 
 # copy this spell for each creature sacrificed this way.
 [[abilities.effects]]

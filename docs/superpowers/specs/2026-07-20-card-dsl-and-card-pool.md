@@ -141,11 +141,11 @@ Representative modes by family:
 
 **`pump`:** `pump_until_end_of_turn` (target creature +N/+M until EOT); **`static`:** `anthem` (continuous anthem for matching permanents; `power`, `toughness`, `keywords` axes; optional filters), `grant_to_attached`, `enters_with_counters`.
 
-**`copy`:** `target_spell`, `this_spell`.
+**`copy`:** `target_spell`, `this_spell`, `copy_triggering_spell`. Cast-time self-copy riders (Gravestorm, Storm, and Plumb the Forbidden's reflexive "When you do") live on a `timing = "when_you_cast_this"` ability using `copy_triggering_spell` (with a `count` `Amount` such as `permanents_died_this_turn`, `spells_cast_before_this`, or `spell_sacrifice_count`): the copies mint on the stack *above* the still-unresolved original (CR 706.9), unlike resolution-time `this_spell`. A reflexive "When you do" (Plumb) additionally carries a `condition` (`spell_sacrificed_to_cast`) so the trigger doesn't happen at all when nothing was sacrificed — no zero-count copy trigger reaches the stack — whereas a keyword Gravestorm/Storm trigger always fires and simply copies zero times when its count is 0.
 
 **`zone`:** `reanimate_to_battlefield`, `return_to_hand`, `flicker_target`, `exile_dead_creature_create_copy_with_subtype`.
 
-**`choice`:** `may_sacrifice`, `may_draw_up_to`, `discard`, `proliferate`.
+**`choice`:** `may_sacrifice`, `may_draw_up_to`, `discard`, `proliferate`, `may_return_from_graveyard` (return a matching card from your graveyard to your hand). `may_return_from_graveyard` takes an optional `mandatory` bool (default `false`): the optional "you may return" consumers (Deadly Brew, Witch of the Moors) leave it `false` and the choice is declinable, while a mandatory "you return" (Witherbloom Command mode 0) sets `mandatory = true` so declining is rejected when a legal card exists — with no legal card the effect simply does nothing (no pause) either way.
 
 **`misc`:** `fight`, `counter_target_spell`, `schedule_at_next_upkeep`.
 

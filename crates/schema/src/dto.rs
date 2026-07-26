@@ -790,8 +790,12 @@ pub enum PendingChoiceView {
         target_player: u8,
         items: Vec<ChoiceItem>,
     },
-    /// This player may return one of `items` (a card in their own graveyard) to their hand, or
-    /// decline (CR 601.2f-style resolution-time optional rider — Deadly Brew).
+    /// This player returns one of `items` (a card in their own graveyard) to their hand. Optional
+    /// riders (Deadly Brew, Witch of the Moors) let the player decline; a mandatory "you return"
+    /// (Witherbloom Command mode 0) does not — the engine rejects a decline while a legal card
+    /// exists. The engine's `mandatory` flag is not yet projected here, so this DTO cannot tell the
+    /// client to hide the Decline control (client catch-up); the server rejects an illegal decline
+    /// regardless.
     MayReturnFromGraveyard {
         player: u8,
         source: ObjectId,

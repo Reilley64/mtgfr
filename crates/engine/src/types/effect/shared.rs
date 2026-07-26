@@ -1635,6 +1635,16 @@ pub enum Condition {
     /// [`condition_holds`](Game::condition_holds) path (returns `false` there) — every ETB
     /// intervening-if goes through `ability_condition_holds` instead.
     CastFromHand,
+    /// "When you do [sacrifice one or more creatures]" (CR 603.4 — Plumb the Forbidden's reflexive
+    /// copy rider). Gates a spell's [`Trigger::YouCastThis`](crate::Trigger::YouCastThis) ability
+    /// on whether one or more permanents were actually sacrificed to pay the spell's additional
+    /// sacrifice cost (CR 601.2f): the reflexive trigger doesn't happen at all when nothing was
+    /// sacrificed, so no zero-count copy trigger ever goes on the stack. Source-object-based like
+    /// [`CastFromHand`](Self::CastFromHand) just above: `TriggerContext` carries no source id, so
+    /// [`Game::ability_condition_holds`] special-cases it directly against its own `source`
+    /// parameter, reading [`Game::spell_sacrifice_count`]. Unreachable through the ordinary
+    /// [`condition_holds`](Game::condition_holds) path (returns `false` there).
+    SpellSacrificedToCast,
     /// "if this ability has been activated `at_least` or more times this turn" (CR 602.2b —
     /// Dragon Whelp's "If this ability has been activated four or more times this turn,
     /// sacrifice this creature at the beginning of the next end step"). Source-object-based like
