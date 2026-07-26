@@ -311,6 +311,24 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn an_invalid_card_line_proxy_art_url_is_rejected_with_problems() {
+        let state = test_state().await;
+        let alice = user(&state, "a@b.c").await;
+        let mut deck = legal_deck();
+        let expected = format!("invalid proxy art url on {}", deck.cards[0].id);
+        deck.cards[0].proxy_art_url = "http://example.com/cards/line-proxy.png".to_string();
+
+        let err = create_deck_core(&state, alice, deck).await.unwrap_err();
+        let DeckOpError::Illegal(problems) = err else {
+            panic!("expected illegal problems");
+        };
+        assert!(
+            problems.iter().any(|problem| problem == &expected),
+            "got {problems:?}",
+        );
+    }
+
+    #[tokio::test]
     async fn update_deck_renames_and_replaces_cards() {
         let state = test_state().await;
         let alice = user(&state, "a@b.c").await;
