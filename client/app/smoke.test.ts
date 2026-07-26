@@ -1,4 +1,5 @@
 import { Scene } from "foldkit/test";
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { BindDeckCardFlip, DeckCardFlipTick } from "./deck-card-nav";
 import { BindCardArt } from "./domain/ui/card-art";
@@ -122,5 +123,16 @@ describe("foldkit scaffold", () => {
       Scene.expect(Scene.selector("#portrait-gate")).not.toExist(),
       Scene.expect(Scene.selector('[data-testid="landscape-root"]')).toHaveClass("landscape-rotate-root"),
     );
+  });
+
+  it("keeps the mobile safe-area contract for landscape rotate", () => {
+    const indexHtml = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+    const globalCss = readFileSync(new URL("../styles/global.css", import.meta.url), "utf8");
+
+    expect(indexHtml).toContain("viewport-fit=cover");
+    expect(globalCss).toContain("env(safe-area-inset-top)");
+    expect(globalCss).toContain("env(safe-area-inset-right)");
+    expect(globalCss).toContain("env(safe-area-inset-bottom)");
+    expect(globalCss).toContain("env(safe-area-inset-left)");
   });
 });
