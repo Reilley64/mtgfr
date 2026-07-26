@@ -12,9 +12,9 @@ import { PLAYABLE_BORDER, playableBattlefieldObjectIds } from "../chrome";
 import { type Camera, worldToScreen } from "../geometry/camera";
 import { AVATAR_R, avatarLabelOffsets, avatarPos, type RenderCard, seatColor } from "../geometry/layout";
 import { ArtLoaded, FlightsSynced } from "../messages";
-import type { ExitFx } from "../motion/exit-fx";
+import { type ExitFx, exitFxParticles, particleAllowancePerFx, stepExitFx } from "../motion/exit-fx";
 import { type CardFlight, stepFlights } from "../motion/flights";
-import { mergeFlightPoses, restingPaintChanged, restingPaintSnapshot } from "./flight-frame";
+import { mergeExitFxPoses, mergeFlightPoses, restingPaintChanged, restingPaintSnapshot } from "./flight-frame";
 import {
   paintAutoTapPreview,
   paintCard,
@@ -22,6 +22,7 @@ import {
   paintCardPickedHighlight,
   paintCardTargetHighlight,
 } from "./paint-cards";
+import { paintExitFx } from "./paint-exit-fx";
 import { paintFlightCard } from "./paint-flights";
 
 export type BitmapFrame = {
@@ -57,6 +58,7 @@ export type BitmapFrame = {
 
 export type FlightClockState = {
   liveFlights: CardFlight[];
+  liveExitFx: ExitFx[];
   lastRestingSnapshot: ReturnType<typeof restingPaintSnapshot> | null;
 };
 
@@ -65,6 +67,7 @@ type LayerQueue = EffectQueue.Enqueue<typeof ArtLoaded.Type | typeof FlightsSync
 let currentFrame: BitmapFrame | null = null;
 let flightClockState: FlightClockState = {
   liveFlights: [],
+  liveExitFx: [],
   lastRestingSnapshot: null,
 };
 const mountedLayers = new Set<BitmapMountHandle>();
@@ -101,17 +104,22 @@ export function applyPublishedFrame(
   frame: BitmapFrame,
 ): { state: FlightClockState; paintResting: boolean; paintFlight: boolean; frame: BitmapFrame } {
   const liveFlights = mergeFlightPoses(state.liveFlights, frame.flights);
-  const mergedFrame = { ...frame, flights: liveFlights };
-  const { flights: _flights, ...restingFrame } = mergedFrame;
+  const liveExitFx = mergeExitFxPoses(state.liveExitFx, frame.exitFx ?? []);
+  const mergedFrame = { ...frame, flights: liveFlights, exitFx: liveExitFx };
+  const { flights: _flights, exitFx: _exitFx, ...restingFrame } = mergedFrame;
   const nextRestingSnapshot = restingPaintSnapshot(restingFrame);
 
   return {
     state: {
       liveFlights,
+      liveExitFx,
       lastRestingSnapshot: nextRestingSnapshot,
     },
     paintResting: restingPaintChanged(state.lastRestingSnapshot, nextRestingSnapshot),
-    paintFlight: state.lastRestingSnapshot == null || flightsChanged(state.liveFlights, liveFlights),
+    paintFlight:
+      state.lastRestingSnapshot == null ||
+      flightsChanged(state.liveFlights, liveFlights) ||
+      exitFxChanged(state.liveExitFx, liveExitFx),
     frame: mergedFrame,
   };
 }
@@ -130,19 +138,26 @@ export function tickFlightClock(
 } {
   const stepped = stepFlights(new Map(state.liveFlights.map((flight) => [flight.id, flight])), dtMs, reducedMotion);
   const liveFlights = [...stepped.flights.values()];
+  const steppedExitFx = stepExitFx(new Map(state.liveExitFx.map((fx) => [fx.id, fx])), dtMs, reducedMotion);
+  const liveExitFx = [...steppedExitFx.exitFx.values()];
   const prevFlyingIds = flyingIds(state.liveFlights);
   const nextFlyingIds = flyingIds(liveFlights);
   const flyingMembershipChanged = !sameIdSet(prevFlyingIds, nextFlyingIds);
   const allSettled = prevFlyingIds.size > 0 && nextFlyingIds.size === 0;
+  const exitFxChangedNow = exitFxChanged(state.liveExitFx, liveExitFx);
 
   return {
     state: {
       ...state,
       liveFlights,
+      liveExitFx,
     },
-    frame: { ...frame, flights: liveFlights },
+    frame: { ...frame, flights: liveFlights, exitFx: liveExitFx },
     paintFlight: true,
-    sync: flyingMembershipChanged || allSettled ? { flights: liveFlights, exitFx: [...(frame.exitFx ?? [])], now } : null,
+    sync:
+      flyingMembershipChanged || allSettled || exitFxChangedNow
+        ? { flights: liveFlights, exitFx: liveExitFx, now }
+        : null,
   };
 }
 
@@ -171,6 +186,31 @@ function flightsChanged(prev: readonly CardFlight[], next: readonly CardFlight[]
   return false;
 }
 
+function exitFxChanged(prev: readonly ExitFx[], next: readonly ExitFx[]): boolean {
+  if (prev.length !== next.length) return true;
+
+  for (let index = 0; index < prev.length; index += 1) {
+    const before = prev[index];
+    const after = next[index];
+    if (before == null || after == null) return true;
+    if (
+      before.id !== after.id ||
+      before.print !== after.print ||
+      before.name !== after.name ||
+      before.kind !== after.kind ||
+      before.x !== after.x ||
+      before.y !== after.y ||
+      before.scale !== after.scale ||
+      before.progress !== after.progress ||
+      before.seed !== after.seed
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 function flyingIds(flights: readonly CardFlight[]): Set<number> {
   return new Set(flights.filter((flight) => flight.phase === "flying").map((flight) => flight.id));
 }
@@ -187,12 +227,15 @@ function resetClockState(): void {
   currentFrame = null;
   flightClockState = {
     liveFlights: [],
+    liveExitFx: [],
     lastRestingSnapshot: null,
   };
 }
 
-export function bitmapFrameNeedsRaf(frame: Pick<BitmapFrame, "flights"> | null): boolean {
-  return frame?.flights.some((flight) => flight.phase === "flying") ?? false;
+export function bitmapFrameNeedsRaf(frame: Pick<BitmapFrame, "flights" | "exitFx"> | null): boolean {
+  if (frame == null) return false;
+  if (frame.flights.some((flight) => flight.phase === "flying")) return true;
+  return (frame.exitFx?.length ?? 0) > 0;
 }
 
 /** Size the backing store to the DPR, reset the transform, and clear. Returns the 2D context. */
@@ -257,6 +300,11 @@ export function paintFlightLayer(canvas: HTMLCanvasElement, frame: BitmapFrame, 
 
   for (const flight of frame.flights) {
     paintFlightCard(ctx, flight, frame.camera.zoom, cache);
+  }
+  const exitFx = frame.exitFx ?? [];
+  const particleAllowance = particleAllowancePerFx(exitFx.length);
+  for (const fx of exitFx) {
+    paintExitFx(ctx, fx, frame.camera.zoom, cache, exitFxParticles(fx, particleAllowance));
   }
 }
 
@@ -510,6 +558,9 @@ function preloadFrameArt(frame: BitmapFrame, cache: Pick<ImageCache, "preload">)
   }
   for (const flight of frame.flights) {
     if (flight.print) urls.push(imageUrlByPrint(flight.print));
+  }
+  for (const fx of frame.exitFx ?? []) {
+    if (fx.print) urls.push(imageUrlByPrint(fx.print));
   }
   for (const player of frame.players) {
     const url = gravatarUrl(player.gravatar_hash ?? "");

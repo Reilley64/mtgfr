@@ -20,13 +20,13 @@ import {
 const missingGlobal = Symbol("missing-global");
 const originalGlobals = new Map<string, unknown>();
 
-function stubGlobal(name: string, value: unknown): void {
+function _stubGlobal(name: string, value: unknown): void {
   if (typeof vi.stubGlobal === "function") {
     vi.stubGlobal(name, value);
     return;
   }
   if (!originalGlobals.has(name)) {
-    const hadOwnGlobal = Object.prototype.hasOwnProperty.call(globalThis, name);
+    const hadOwnGlobal = Object.hasOwn(globalThis, name);
     originalGlobals.set(name, hadOwnGlobal ? Reflect.get(globalThis, name) : missingGlobal);
   }
   Object.defineProperty(globalThis, name, { value, configurable: true, writable: true });
@@ -192,6 +192,7 @@ function frame(overrides: Partial<BitmapFrame> = {}): BitmapFrame {
 function flightClockState(overrides: Partial<FlightClockState> = {}): FlightClockState {
   return {
     liveFlights: [],
+    liveExitFx: [],
     lastRestingSnapshot: null,
     ...overrides,
   };
@@ -923,11 +924,51 @@ describe("paintFlightLayer", () => {
     expect(calls.includes("image:resting")).toBe(false);
     expect(calls.indexOf("image:flight")).toBeGreaterThan(calls.indexOf("clear"));
   });
+
+  it("paints exit FX art on the animated layer after flights", () => {
+    const calls: string[] = [];
+    vi.stubGlobal("window", { devicePixelRatio: 1 });
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => mockCtx(calls)),
+      style: {},
+    } as unknown as HTMLCanvasElement;
+    const image = (label: string) => ({ label }) as unknown as HTMLImageElement;
+    const cache = {
+      get: vi.fn((url: string) => (url.includes("exit-print") ? image("exit") : undefined)),
+    };
+
+    paintFlightLayer(
+      canvas,
+      frame({
+        cards: [],
+        flights: [],
+        exitFx: [
+          {
+            ...spawnExitFx({
+              id: 77,
+              kind: "destroy",
+              name: "Ash Bear",
+              print: "exit-print",
+              x: 100,
+              y: 100,
+              scale: 1,
+            }),
+            progress: 0.4,
+          },
+        ],
+      }),
+      cache,
+    );
+
+    expect(calls).toContain("image:exit");
+  });
 });
 
 describe("bitmapFrameNeedsRaf", () => {
   it("idles while no bitmap animation is active", () => {
-    expect(bitmapFrameNeedsRaf({ flights: [] })).toBe(false);
+    expect(bitmapFrameNeedsRaf({ flights: [], exitFx: [] })).toBe(false);
   });
 
   it("requests frames while flights are active", () => {
@@ -945,6 +986,26 @@ describe("bitmapFrameNeedsRaf", () => {
             targetY: 0,
             x: 0,
             y: 0,
+          }),
+        ],
+        exitFx: [],
+      }),
+    ).toBe(true);
+  });
+
+  it("requests frames while exit FX are active", () => {
+    expect(
+      bitmapFrameNeedsRaf({
+        flights: [],
+        exitFx: [
+          spawnExitFx({
+            id: 9,
+            kind: "exile",
+            name: "Void Bear",
+            print: "exit-print",
+            x: 0,
+            y: 0,
+            scale: 1,
           }),
         ],
       }),
@@ -1014,12 +1075,35 @@ describe("flight clock helpers", () => {
     const state = flightClockState({ liveFlights: [flight] });
 
     const published = applyPublishedFrame(state, publishedFrame);
-    const tick = tickFlightClock(published.state, published.frame, 16, 16, true);
+    const tick = tickFlightClock(published.state, published.frame, 16, 16, false);
 
     expect(tick.sync).toEqual({
       flights: [{ ...flight, x: 0, y: 0, scale: 1, phase: "settled" }],
-      exitFx: [exitFx],
+      exitFx: [{ ...exitFx, progress: 16 / 550 }],
       now: 16,
     });
+  });
+
+  it("steps exit FX forward and drops completed entries from the sync payload", () => {
+    const exitFx = {
+      ...spawnExitFx({
+        id: 7,
+        kind: "destroy",
+        name: "Grizzly Bears",
+        print: "print-id",
+        x: 80,
+        y: 60,
+        scale: 1,
+      }),
+      progress: 0.95,
+    };
+    const publishedFrame = frame({ flights: [], exitFx: [exitFx] });
+    const state = flightClockState();
+
+    const published = applyPublishedFrame(state, publishedFrame);
+    const tick = tickFlightClock(published.state, published.frame, 32, 32, false);
+
+    expect(tick.frame.exitFx).toEqual([]);
+    expect(tick.sync).toEqual({ flights: [], exitFx: [], now: 32 });
   });
 });
