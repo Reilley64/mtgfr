@@ -750,6 +750,7 @@ impl Effect {
             | Effect::Choice(ChoiceEffect::MaySacrifice { .. })
             | Effect::Choice(ChoiceEffect::MayReturnFromGraveyard { .. })
             | Effect::Choice(ChoiceEffect::MayDiscard { .. })
+            | Effect::Choice(ChoiceEffect::MayPutCounterOnCreature)
             | Effect::Choice(ChoiceEffect::MayDrawUnlessPays { .. })
             | Effect::Counters(CountersEffect::PutCountersEach { .. })
             | Effect::Choice(ChoiceEffect::Proliferate { .. })

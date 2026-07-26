@@ -66529,22 +66529,62 @@ fn white_orchid_phantom_ramp_search_can_be_declined() {
     assert_eq!(game.pending_choice(), None);
 }
 
+/// Decline Zimone's Hypothesis' resolution-time optional "+1/+1 counter on a creature" primer
+/// (CR 601.2c — up-to-one, chosen during resolution and never a stack target): answered by an
+/// empty [`Intent::ChooseCopyTarget`], the same "one object or none" wire shape the pick uses.
+fn decline_counter_primer(g: &mut Game) {
+    let Some(PendingChoice::MayPutCounterOnCreature { player, .. }) = g.pending_choice() else {
+        panic!(
+            "expected the optional +1/+1 counter primer pause, got {:?}",
+            g.pending_choice()
+        );
+    };
+    g.submit(Intent::ChooseCopyTarget { player, copy: None })
+        .expect("declining the optional primer is legal");
+}
+
+/// Answer Zimone's Hypothesis' primer by putting the +1/+1 counter on `creature`.
+fn put_counter_primer_on(g: &mut Game, creature: ObjectId) {
+    let Some(PendingChoice::MayPutCounterOnCreature { player, .. }) = g.pending_choice() else {
+        panic!(
+            "expected the optional +1/+1 counter primer pause, got {:?}",
+            g.pending_choice()
+        );
+    };
+    g.submit(Intent::ChooseCopyTarget {
+        player,
+        copy: Some(creature),
+    })
+    .expect("the primer picks a legal creature");
+}
+
+/// Answer Zimone's Hypothesis' resolution-time "choose odd or even" (CR 700.2 — a choose-one, so
+/// the parity is never announced on the stack): mode 0 = odd, mode 1 = even.
+fn choose_parity(g: &mut Game, mode: usize) {
+    let Some(PendingChoice::ChooseMode { player, .. }) = g.pending_choice() else {
+        panic!(
+            "expected the odd/even parity choice, got {:?}",
+            g.pending_choice()
+        );
+    };
+    g.submit(Intent::ChooseMode { player, mode })
+        .expect("odd/even is a legal mode choice");
+}
+
 #[test]
 fn zimones_hypothesis_choosing_odd_returns_only_odd_power_creatures() {
-    // CR 701.16 (return to hand) — "choose odd or even. Return each creature with power of the
-    // chosen quality to its owner's hand." Modeled as a modal choice between the two parities.
+    // CR 701.16 (return to hand) — "You may put a +1/+1 counter on a creature. Then choose odd or
+    // even. Return each creature with power of the chosen quality to its owner's hand." Both the
+    // primer and the parity are resolution-time choices; nothing is announced on the stack at cast.
     let mut g = TestGame::new();
     let odd = g.spawn_on_battlefield(PlayerId(1), card("Augury Owl")); // power 1
     let even = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // power 2
     let spell = g.spawn_in_hand(PlayerId(0), card("Zimone's Hypothesis"));
 
-    g.cast(spell).mode(0, None).submit(); // mode 0 = odd
-    g.submit(Intent::ChooseTargets {
-        player: PlayerId(0),
-        targets: vec![],
-    })
-    .expect("declining the optional counter primer is a legal empty choice");
-    resolve_top_of_stack(&mut g);
+    g.cast(spell).submit(); // no mode, no target — parity is chosen during resolution
+    resolve_top_of_stack(&mut g); // resolution pauses on the optional counter primer
+    decline_counter_primer(&mut g);
+    choose_parity(&mut g, 0); // odd
 
     assert_eq!(
         g.zone_of(odd),
@@ -66566,13 +66606,10 @@ fn zimones_hypothesis_choosing_even_returns_only_even_power_creatures() {
     let even = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // power 2
     let spell = g.spawn_in_hand(PlayerId(0), card("Zimone's Hypothesis"));
 
-    g.cast(spell).mode(1, None).submit(); // mode 1 = even
-    g.submit(Intent::ChooseTargets {
-        player: PlayerId(0),
-        targets: vec![],
-    })
-    .expect("declining the optional counter primer is a legal empty choice");
+    g.cast(spell).submit();
     resolve_top_of_stack(&mut g);
+    decline_counter_primer(&mut g);
+    choose_parity(&mut g, 1); // even
 
     assert_eq!(
         g.zone_of(even),
@@ -66597,13 +66634,10 @@ fn zimones_hypothesis_primer_puts_counter_then_bounces_by_parity() {
     let theirs_even = g.spawn_on_battlefield(PlayerId(1), creature("Four (test)", 4, 4, &[]));
     let spell = g.spawn_in_hand(PlayerId(0), card("Zimone's Hypothesis"));
 
-    g.cast(spell).mode(1, None).submit(); // mode 1 = even
-    g.submit(Intent::ChooseTargets {
-        player: PlayerId(0),
-        targets: vec![Target::Object(mine_even)],
-    })
-    .expect("the primer targets a legal creature");
+    g.cast(spell).submit();
     resolve_top_of_stack(&mut g);
+    put_counter_primer_on(&mut g, mine_even); // 2/2 -> 3/3
+    choose_parity(&mut g, 1); // even
 
     assert_eq!(g.plus_counters(mine_even), 1, "the primer counter landed");
     assert_eq!(
@@ -66623,8 +66657,8 @@ fn zimones_hypothesis_primer_puts_counter_then_bounces_by_parity() {
     );
 }
 
-/// Declining the primer (up-to-one → zero targets) places no counter, and the mass parity
-/// bounce still resolves — the untargeted rider isn't dragged down by the declined target.
+/// Declining the primer (up-to-one → none) places no counter, and the mass parity bounce still
+/// resolves — the untargeted rider isn't dragged down by the declined pick.
 #[test]
 fn zimones_hypothesis_primer_declined() {
     let mut g = TestGame::new();
@@ -66632,13 +66666,10 @@ fn zimones_hypothesis_primer_declined() {
     let even = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // power 2
     let spell = g.spawn_in_hand(PlayerId(0), card("Zimone's Hypothesis"));
 
-    g.cast(spell).mode(0, None).submit(); // mode 0 = odd
-    g.submit(Intent::ChooseTargets {
-        player: PlayerId(0),
-        targets: vec![],
-    })
-    .expect("declining the optional counter primer is a legal empty choice");
+    g.cast(spell).submit();
     resolve_top_of_stack(&mut g);
+    decline_counter_primer(&mut g);
+    choose_parity(&mut g, 0); // odd
 
     assert_eq!(g.plus_counters(odd), 0, "no counter placed on decline");
     assert_eq!(g.plus_counters(even), 0, "no counter placed on decline");
@@ -66651,6 +66682,38 @@ fn zimones_hypothesis_primer_declined() {
         g.zone_of(even),
         Zone::Battlefield,
         "the even-power creature still stays"
+    );
+}
+
+/// The primer never advertises a target at cast, so a creature that leaves in response can't
+/// fizzle the spell — Zimone's Hypothesis still resolves, and the mass bounce reads the live
+/// board at resolution (regression bar #2).
+#[test]
+fn zimones_hypothesis_resolves_when_a_creature_leaves_before_resolution() {
+    let mut g = TestGame::new();
+    let victim = g.spawn_on_battlefield(PlayerId(0), creature("Two (test)", 2, 2, &[])); // even
+    let survivor = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear")); // power 2, even
+    let spell = g.spawn_in_hand(PlayerId(0), card("Zimone's Hypothesis"));
+
+    g.cast(spell).submit(); // Hypothesis on the stack; player 0 keeps priority
+
+    // In response, destroy the creature you might have wanted to counter.
+    let grasp = g.spawn_in_hand(PlayerId(0), card("Infernal Grasp")); // "Destroy target creature."
+    g.cast(grasp).at(Target::Object(victim)).resolve();
+    assert_eq!(
+        g.zone_of(victim),
+        Zone::Graveyard,
+        "the planned creature left before resolution"
+    );
+
+    resolve_top_of_stack(&mut g); // Hypothesis resolves anyway — no target to fizzle
+    decline_counter_primer(&mut g); // only the survivor is offered now
+    choose_parity(&mut g, 1); // even
+
+    assert_eq!(
+        g.zone_of(survivor),
+        Zone::Hand,
+        "the even bounce still resolves on the surviving creature"
     );
 }
 

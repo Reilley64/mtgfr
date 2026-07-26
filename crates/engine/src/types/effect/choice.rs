@@ -134,6 +134,15 @@ pub enum ChoiceEffect {
         count: Amount,
     },
 
+    /// A resolution-time optional "you may put a +1/+1 counter on a creature" (CR 601.2c —
+    /// Zimone's Hypothesis' primer): pauses the controller on a
+    /// [`PendingChoice::MayPutCounterOnCreature`](crate::PendingChoice) over every creature on the
+    /// battlefield; picking one puts a single +1/+1 counter on it, declining does nothing. Unlike
+    /// [`Self::MaySacrifice`]/[`Self::MayDiscard`] it carries no `then` — its follow-up (the mass
+    /// parity bounce) runs as the next step of the enclosing `Sequence` whether or not the counter
+    /// was placed, not "if you do". Non-targeted: nothing is advertised on the stack at cast.
+    MayPutCounterOnCreature,
+
     MayReturnFromGraveyard {
         filter: CardFilter,
         #[cfg_attr(feature = "card-dsl", serde(default))]

@@ -51,6 +51,16 @@ impl Game {
                     },
                 )
             }
+            // A resolution-time optional "put a +1/+1 counter on a creature" (Zimone's Hypothesis'
+            // primer) pauses on a MayPutCounterOnCreature choice over every battlefield creature;
+            // declining runs nothing. No creature to offer skips the pause outright.
+            Effect::Choice(ChoiceEffect::MayPutCounterOnCreature) => pending::raise(
+                self,
+                pending::ChoiceRequest::MayPutCounterOnCreature {
+                    player: controller,
+                    source,
+                },
+            ),
             // A resolution-time optional discard (Quintorius, History Chaser's +1) pauses on a
             // MayDiscard choice; declining runs nothing.
             Effect::Choice(ChoiceEffect::MayDiscard { then }) => pending::raise(

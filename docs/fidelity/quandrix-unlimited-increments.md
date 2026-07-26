@@ -5,10 +5,10 @@ engine-capability backlog for this deck (ranked increments plus the concrete Qua
 unblock).
 
 From `docs/decklists/quandrix_unlimited.md` (official Wizards `soc` precon; commander Zimone,
-Infinite Analyst). After the documentation re-audit, only two deck cards still need engine work.
-Quandrix's loud X/counter/copy core is largely already landed; the remaining gaps are narrower:
-one cast-time X legality cap, and one spell whose resolution-time choices are still exposed on the
-stack.
+Infinite Analyst). After the documentation re-audit, two deck cards needed engine work — both now
+landed. Quandrix's loud X/counter/copy core was largely already landed; the remaining gaps were
+narrower: one cast-time X legality cap (#1), and one spell whose resolution-time choices were still
+exposed on the stack (#2).
 
 ### 1. `cast-x-cannot-exceed-player-count` — 1 card, S — LANDED (2026-07-26)
 
@@ -32,7 +32,18 @@ UI/count-picker affordance to the same ceiling. Regression bar:
 - in a two-seat test fixture, X = 2 stays legal and X = 3 is rejected,
 - the existing reveal-until-X-lands behavior stays unchanged once the cast is legal.
 
-### 2. `resolution-time-parity-choice-with-optional-nontargeted-primer` — 1 card, M
+### 2. `resolution-time-parity-choice-with-optional-nontargeted-primer` — 1 card, M — LANDED (2026-07-26)
+
+Landed as a resolution-time `Sequence`: the new fieldless `ChoiceEffect::MayPutCounterOnCreature`
+(`mode = "may_put_counter_on_creature"`) pauses the controller on a
+`PendingChoice::MayPutCounterOnCreature` over every battlefield creature — a non-targeted optional
+that puts one +1/+1 counter on the chosen creature (or nothing on decline), answered by
+`Intent::ChooseCopyTarget` and projected onto the generic `ChooseCopyTarget` pick-or-decline view
+(no new wire variant, no client change). It carries no `then`; the parity `choose_one`
+(odd/even → the two `return_all_to_hand` filters) is the next `Sequence` step and always runs, so
+the mass bounce reads each creature's post-counter power. `zimones_hypothesis.toml` drops `modal`
+and its cast-time targeted primer, so odd/even is no longer announced on the stack and the primer
+can't fizzle if its creature leaves before resolution. `Zimone's Hypothesis` is now faithful.
 
 **Depends on:** none.
 **Cards:** `zimones_hypothesis.toml`

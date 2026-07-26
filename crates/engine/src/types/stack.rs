@@ -1331,6 +1331,19 @@ pub enum PendingChoice {
         options: Vec<ObjectId>,
         then: &'static [Effect],
     },
+    /// `player` may put a single +1/+1 counter on one of `options` (a creature on the
+    /// battlefield), or decline ([`Effect::Choice(ChoiceEffect::MayPutCounterOnCreature)`] —
+    /// Zimone's Hypothesis' primer). Answered by [`Intent::ChooseCopyTarget`] (its "one object or
+    /// none" wire shape): `None` declines, `Some(id)` puts the counter. Non-targeted — the pick
+    /// is made at resolution, never advertised on the stack. Distinct from the targeted cast-time
+    /// counter placement ([`CountersEffect::PutCounters`](crate::CountersEffect)); this is a
+    /// resolution-time optional, projected onto the same generic pick-or-decline client view as
+    /// [`Self::ChooseCopyTarget`].
+    MayPutCounterOnCreature {
+        player: PlayerId,
+        source: ObjectId,
+        options: Vec<ObjectId>,
+    },
     /// `player` must discard down to the hand-size limit at cleanup (CR 514.3): choose exactly
     /// `count` of `hand` (their whole hand, kept for stable display/validation) to discard.
     /// Answered by [`Intent::Discard`].
@@ -1817,6 +1830,7 @@ impl PendingChoice {
             | PendingChoice::MaySacrifice { player, .. }
             | PendingChoice::MayReturnFromGraveyard { player, .. }
             | PendingChoice::MayDiscard { player, .. }
+            | PendingChoice::MayPutCounterOnCreature { player, .. }
             | PendingChoice::DiscardToHandSize { player, .. }
             | PendingChoice::DiscardCards { player, .. }
             | PendingChoice::PutFromHandOnTop { player, .. }

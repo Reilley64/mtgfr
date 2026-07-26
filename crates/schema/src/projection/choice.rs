@@ -479,6 +479,18 @@ impl<'a> ChoiceCtx<'a> {
                 source,
                 items: private_items(player, self.viewer, options, |ids| self.label_items(ids)),
             },
+            // Zimone's Hypothesis' "+1/+1 counter on a creature" primer is a "choose one of these
+            // objects (or decline)" pick, so it reuses the generic `ChooseCopyTarget` view — the
+            // client renders it the same way, and the answer is the same `ChooseCopyTarget` intent.
+            engine::PendingChoice::MayPutCounterOnCreature {
+                player,
+                source,
+                options,
+            } => PendingChoiceView::ChooseCopyTarget {
+                player: player.0,
+                source,
+                items: self.label_items(options),
+            },
             engine::PendingChoice::ChooseOwnSacrifices {
                 player,
                 source,

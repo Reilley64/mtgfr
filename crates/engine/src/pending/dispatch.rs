@@ -236,6 +236,12 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
             }
             _ => Err(Reject::IllegalChoice),
         },
+        PendingChoice::MayPutCounterOnCreature { .. } => match intent {
+            Intent::ChooseCopyTarget { player, copy } => {
+                game.answer_may_put_counter_on_creature(player, copy)
+            }
+            _ => Err(Reject::IllegalChoice),
+        },
         PendingChoice::DiscardToHandSize { .. } | PendingChoice::DiscardCards { .. } => {
             match intent {
                 Intent::Discard { player, cards } => game.answer_discard(player, cards),
@@ -486,6 +492,7 @@ pub(crate) fn forced(game: &Game) -> Option<Intent> {
         | PendingChoice::MaySacrifice { .. }
         | PendingChoice::MayReturnFromGraveyard { .. }
         | PendingChoice::MayDiscard { .. }
+        | PendingChoice::MayPutCounterOnCreature { .. }
         | PendingChoice::PutFromHandOnTop { .. }
         | PendingChoice::PutLandFromHand { .. }
         | PendingChoice::PutCreatureFromHand { .. }

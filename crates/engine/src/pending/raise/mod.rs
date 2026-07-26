@@ -112,6 +112,11 @@ pub(crate) enum ChoiceRequest {
         source: crate::ObjectId,
         then: &'static [crate::Effect],
     },
+    /// [`Effect::Choice(ChoiceEffect::MayPutCounterOnCreature)`] — no battlefield creature skips.
+    MayPutCounterOnCreature {
+        player: crate::PlayerId,
+        source: crate::ObjectId,
+    },
     /// [`Effect::Choice(ChoiceEffect::Discard)`] — empty (or zero-count) hand skips.
     Discard {
         player: crate::PlayerId,
@@ -406,6 +411,9 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
             source,
             then,
         } => optional::may_discard(game, player, source, then),
+        ChoiceRequest::MayPutCounterOnCreature { player, source } => {
+            optional::may_put_counter_on_creature(game, player, source)
+        }
         ChoiceRequest::Discard {
             player,
             count,

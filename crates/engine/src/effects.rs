@@ -909,6 +909,7 @@ impl Game {
             | Effect::Choice(ChoiceEffect::DamagingCreatureControllerMayDraw { .. })
             | Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             | Effect::Choice(ChoiceEffect::MayDrawUpToThenOpponentMayRepeat { .. })
+            | Effect::Choice(ChoiceEffect::MayPutCounterOnCreature)
             | Effect::Choice(ChoiceEffect::SacrificeSelfUnlessPay { .. }) => {
                 self.run_may_pause(effect, ctx)
             }

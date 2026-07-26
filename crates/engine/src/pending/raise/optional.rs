@@ -136,6 +136,26 @@ pub(super) fn may_discard(
     })
 }
 
+pub(super) fn may_put_counter_on_creature(
+    game: &Game,
+    player: PlayerId,
+    source: ObjectId,
+) -> Option<PendingChoice> {
+    let options: Vec<ObjectId> = game
+        .battlefield()
+        .into_iter()
+        .filter(|&id| matches!(game.def_of(id).kind, crate::CardKind::Creature { .. }))
+        .collect();
+    if options.is_empty() {
+        return None;
+    }
+    Some(PendingChoice::MayPutCounterOnCreature {
+        player,
+        source,
+        options,
+    })
+}
+
 pub(super) fn discard(
     game: &Game,
     player: PlayerId,
