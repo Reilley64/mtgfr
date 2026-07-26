@@ -36,6 +36,15 @@ describe("scryfall sets cache", () => {
               name: "Secrets of Strixhaven",
               released_at: "2026-04-01",
               card_count: 400,
+              set_type: "commander",
+              digital: false,
+            },
+            {
+              code: "asos",
+              name: "Secrets of Strixhaven Art Series",
+              released_at: "2026-04-24",
+              card_count: 54,
+              set_type: "memorabilia",
               digital: false,
             },
             {
@@ -43,6 +52,7 @@ describe("scryfall sets cache", () => {
               name: "Tokens",
               released_at: null,
               card_count: 0,
+              set_type: "token",
               digital: false,
             },
           ],

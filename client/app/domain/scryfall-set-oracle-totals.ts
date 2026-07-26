@@ -134,3 +134,14 @@ export function ensureSetOracleTotalsRefresh(fetchImpl: typeof fetch = globalThi
     inflight = null;
   });
 }
+
+/** Await a cold fill; when warm, return cache and kick SWR in the background. */
+export async function loadSetOracleTotals(fetchImpl: typeof fetch = globalThis.fetch): Promise<SetOracleTotals | null> {
+  const warm = getCachedSetOracleTotals();
+  if (warm != null) {
+    ensureSetOracleTotalsRefresh(fetchImpl);
+    return warm;
+  }
+  if (inflight) return inflight;
+  return refreshSetOracleTotals(fetchImpl);
+}
