@@ -123,7 +123,7 @@ test("PlayRoute /play/-1 sets lobby.selectedDeckId to -1", () => {
   expect(model.lobby.selectedDeckId).toBe(-1);
 });
 
-test("navigating from PlayRoute to GameTableRoute clears lobby.selectedDeckId", () => {
+test("navigating from PlayRoute to GameTableRoute clears lobby.selectedDeckId and seeds an active game slice", () => {
   const [base] = init(url("/play/7"));
   const [authed] = update(base, GotAuthMessage({ message: Auth.Message.ReceivedMe({ me }) }));
 
@@ -132,6 +132,9 @@ test("navigating from PlayRoute to GameTableRoute clears lobby.selectedDeckId", 
   expect(authed.route).toEqual(PlayRoute({ deckId: "7" }));
   expect(authed.lobby.selectedDeckId).toBe(7);
   expect(model.route).toEqual(GameTableRoute({ table: "ABC123" }));
+  expect(model.game).not.toBeNull();
+  expect(model.game?.tableId).toBe("ABC123");
+  expect(model.game?.active).toBe(true);
   expect(model.lobby.tableId).toBe("ABC123");
   expect(model.lobby.selectedDeckId).toBeNull();
 });

@@ -148,6 +148,34 @@ function enterLobbyRoute(
   ];
 }
 
+function gameSliceForTableRoute(model: Model, tableId: string) {
+  if (model.game?.tableId === tableId) {
+    return { ...model.game, active: true };
+  }
+
+  return emptyGameSlice(tableId);
+}
+
+function enterGameTableRoute(
+  model: Model,
+  tableId: string,
+): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
+  const [list, deckListCommands] = DeckList.informRouteChanged(model.decks.list);
+  const [lobby, lobbyCommands] = Lobby.informRouteChanged(model.lobby, {
+    tableId,
+    selectedDeckId: null,
+  });
+  return [
+    {
+      ...model,
+      decks: { ...model.decks, list },
+      game: gameSliceForTableRoute(model, tableId),
+      lobby,
+    },
+    [...mapDeckListCommands(deckListCommands), ...mapLobbyCommands(lobbyCommands)],
+  ];
+}
+
 function routeEntry(model: Model): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
   const authCommands = sessionCommands(model);
   if (authCommands.length > 0) return [model, authCommands];
@@ -173,10 +201,7 @@ function routeEntry(model: Model): readonly [Model, ReadonlyArray<FoldkitCommand
         selectedDeckId: parseDeckIdParam(model.route.deckId),
       });
     case "GameTableRoute":
-      return enterLobbyRoute(model, {
-        tableId: model.route.table,
-        selectedDeckId: null,
-      });
+      return enterGameTableRoute(model, model.route.table);
     case "LoginRoute":
     case "NotFoundRoute":
       return [model, []];
