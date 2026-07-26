@@ -219,7 +219,8 @@ impl Game {
     }
 
     /// Test/setup helper: deal `amount` commander damage to `player` from `source` (routed through
-    /// an event so state stays mutated only by [`Game::apply`], exactly as [`Game::set_life`] does).
+    /// an event so state stays mutated only by [`Game::apply`], exactly as [`Game::set_life`] does);
+    /// this bypasses the commander-damage table option.
     pub fn deal_commander_damage(&mut self, source: ObjectId, player: PlayerId, amount: i32) {
         self.apply(&Event::CommanderDamageDealt {
             source,

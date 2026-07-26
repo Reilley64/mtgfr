@@ -94,7 +94,7 @@ pub fn seed_request_from_pb(req: pb::SeedRequest) -> SeedRequest {
         table_id: req.table_id,
         host_user_id: req.host_user_id,
         seats: req.seats.into_iter().map(seed_seat_from_pb).collect(),
-        commander_damage_enabled: req.commander_damage_enabled,
+        commander_damage_enabled: req.commander_damage_enabled.unwrap_or(true),
     }
 }
 
@@ -108,6 +108,7 @@ pub fn seed_response_to_pb(resp: SeedResponse) -> pb::SeedResponse {
 
 #[cfg(test)]
 mod tests {
+    use prost::Message as _;
     use schema::{MessageParam, MessageRef, WireCost, WireKind};
 
     use super::*;
@@ -157,5 +158,14 @@ mod tests {
         ));
         assert_eq!(pb.summary[1].children[0].key, "effect.draw_cards");
         assert_eq!(pb.summary[1].children[0].params[0].name, "count");
+    }
+
+    #[test]
+    fn seed_request_defaults_missing_commander_damage_enabled_to_true() {
+        let req = pb::SeedRequest::decode(&[][..]).expect("empty seed request decodes");
+
+        let mapped = seed_request_from_pb(req);
+
+        assert!(mapped.commander_damage_enabled);
     }
 }

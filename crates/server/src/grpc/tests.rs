@@ -366,7 +366,7 @@ async fn tables_seed_and_game_submit_intent_round_trip() {
                 gravatar_hash: String::new(),
             },
         ],
-        commander_damage_enabled: true,
+        commander_damage_enabled: Some(true),
     };
     let tables_svc = tables_svc::TablesSvc::new(state.clone());
     let resp = tables_svc
@@ -469,7 +469,7 @@ async fn submit_intent_rejects_mismatched_envelope_table_id() {
                         gravatar_hash: String::new(),
                     },
                 ],
-                commander_damage_enabled: true,
+                commander_damage_enabled: Some(true),
             },
             &host_token,
         ))
@@ -541,7 +541,7 @@ async fn seed_two_player_table_with_players(
                         gravatar_hash: String::new(),
                     },
                 ],
-                commander_damage_enabled: true,
+                commander_damage_enabled: Some(true),
             },
             &host_token,
         ))
@@ -753,7 +753,7 @@ async fn draining_still_serves_an_owned_stream_but_rejects_new_seeds() {
                         gravatar_hash: String::new(),
                     },
                 ],
-                commander_damage_enabled: true,
+                commander_damage_enabled: Some(true),
             },
             &host_token,
         ))
