@@ -355,5 +355,6 @@ seeded game; there are no "empty" table shells in the production registry.
   `Option<PlayerId>` (`None` = spectator projection), so non-seated signed-in watchers receive
   public zones and counts only.
 - Drizzle migrations for `mtgfr_web` are a squashed v3 baseline (`just client-migrate`). An
-  existing `mtgfr_web` that predates the squash needs a one-time reconcile of its
-  `__drizzle_migrations` journal against the v3 baseline before applying new migrations.
+  existing `mtgfr_web` that predates the squash is reconciled by the `edh-web-migrate` Job
+  (journal rewrite to the v3 baseline after verifying `lobby_seats.gravatar_hash`) before
+  `drizzle-kit migrate` runs.
