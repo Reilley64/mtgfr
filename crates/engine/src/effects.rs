@@ -535,17 +535,19 @@ impl Game {
                     );
                 }
             }
-            Some(kind) if counters > 0 => {
-                self.push_apply(
-                    events,
-                    Event::KindCountersPlaced {
-                        object: perm,
-                        kind,
-                        count: counters as i32,
-                    },
-                );
+            Some(kind) => {
+                let n = self.kind_counters_after_replacements(perm, counters as i32);
+                if n > 0 {
+                    self.push_apply(
+                        events,
+                        Event::KindCountersPlaced {
+                            object: perm,
+                            kind,
+                            count: n,
+                        },
+                    );
+                }
             }
-            Some(_) => {}
         }
     }
 

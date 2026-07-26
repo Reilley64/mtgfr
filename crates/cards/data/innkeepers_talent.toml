@@ -11,7 +11,7 @@ default_print = "941b0afc-0e8f-45f2-ae7f-07595e164611"
 oracle = "(Gain the next level as a sorcery to add its ability.)\nAt the beginning of combat on your turn, put a +1/+1 counter on target creature you control.\n{G}: Level 2\nPermanents you control with counters on them have ward {1}.\n{3}{G}: Level 3\nIf you would put one or more counters on a permanent or player, put twice that many of each of those kinds of counters on that permanent or player instead."
 set = "blb"
 subtypes = ["Class"]
-approximates = "Level 3's \"put twice that many of each of those kinds of counters\" replacement is unmodeled — the counter-replacement pipeline is +1/+1-only and permanent-only (#19). Level 2's ward also misses this Class itself: the engine tracks a Class's level as a plain level scalar, not as the level counters CR 717.2 puts on it, so a leveled Class never satisfies its own \"with counters on them\" filter."
+approximates = "Level 2's ward misses this Class itself: the engine tracks a Class's level as a plain level scalar, not as the level counters CR 717.2 puts on it, so a leveled Class never satisfies its own \"with counters on them\" filter. Level 3's replacement keys off who *would put* the counters, which the engine reads as the recipient's own side, so it also fires on counters an opponent puts on your permanents."
 
 [cost]
 generic = 1
@@ -71,3 +71,17 @@ green = 1
 type = "counters"
 mode = "level_up"
 level = 3
+
+# If you would put one or more counters on a permanent or player, put twice that many of each of
+# those kinds of counters on that permanent or player instead.
+[[abilities]]
+timing = "static"
+min_level = 3
+
+# put twice that many of each of those kinds of counters on that permanent or player instead
+[[abilities.effects]]
+type = "static"
+mode = "counter_replacement"
+times = 2
+any_kind = true
+recipients = "permanents_and_players"

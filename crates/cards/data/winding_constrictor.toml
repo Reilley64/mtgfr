@@ -1,0 +1,44 @@
+# If one or more counters would be put on an artifact or creature you control, that many plus one of each of those
+# kinds of counters are put on that permanent instead.
+# If you would get one or more counters, you get that many plus one of each of those kinds of counters instead.
+name = "Winding Constrictor"
+id = "c9404d7d-a026-4082-9fcb-1ab571a136b5"
+default_print = "107c8aa8-c8f8-4cbf-821b-bd2cb33354f0"
+oracle = "If one or more counters would be put on an artifact or creature you control, that many plus one of each of those kinds of counters are put on that permanent instead.\nIf you would get one or more counters, you get that many plus one of each of those kinds of counters instead."
+set = "aer"
+subtypes = ["Snake"]
+
+[cost]
+black = 1
+green = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 3
+
+# If one or more counters would be put on an artifact or creature you control, that many plus one
+# of each of those kinds of counters are put on that permanent instead.
+[[abilities]]
+timing = "static"
+
+# that many plus one of each of those kinds of counters are put on that permanent instead
+[[abilities.effects]]
+type = "static"
+mode = "counter_replacement"
+add = 1
+any_kind = true
+filter = { types = "artifact_or_creature", controller = "you" }
+
+# If you would get one or more counters, you get that many plus one of each of those kinds of
+# counters instead.
+[[abilities]]
+timing = "static"
+
+# you get that many plus one of each of those kinds of counters instead
+[[abilities.effects]]
+type = "static"
+mode = "counter_replacement"
+add = 1
+any_kind = true
+recipients = "players"

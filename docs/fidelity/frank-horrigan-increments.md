@@ -429,6 +429,41 @@ because level counters route around this path) — fix Ozolith's filter in the s
 *Cards:* vorinclex_monstrous_raider, winding_constrictor, innkeepers_talent (L3), plus existing
 pool ozolith_the_shattered_spire, hardened_scales, doubling_season.
 
+_Landed 2026-07-27._ `counters_after_replacements` is now three thin wrappers over one
+`Game::replaced_counters(recipient, plus_one, base)`: the +1/+1-on-a-permanent wrapper keeps the
+old name and all ~20 existing call sites untouched, plus `kind_counters_after_replacements`
+(named kinds, CR 122.1) and `player_counters_after_replacements` (the player half).
+`StaticEffect::CounterReplacement` grew `halve` (÷2 rounded down), `any_kind`, `opponents`,
+`recipients` (`permanents` / `players` / `permanents_and_players`) and an optional recipient
+`filter`; the loop also gained the `min_level` gate it never had, which is what makes a Class's
+level-3 replacement possible. Newly routed placement paths: `PutCounters { kind }`,
+`PutCountersEach { kind }`, `PutCountersOnPlayer`, `TopUpCountersOnPlayer`, `EntersWithCounters`'s
+named-kind arm, `move_counters`' `all_kinds` arm, both proliferate halves, and
+`Game::place_player_counters`. `winding_constrictor.toml` and `vorinclex_monstrous_raider.toml`
+authored; Innkeeper's Talent gained its level-3 ability; Ozolith, Hardened Scales, Corpsejack
+Menace, Branching Evolution and Kami of Whispered Hopes gained their printed recipient filters and
+Ozolith's `ponytail:` is gone; Doubling Season is now `any_kind` (its oracle says "one or more
+counters", so a -1/-1 `PutCountersEach` on its controller's own creature is doubled — the pinned
+test that asserted the opposite was rewritten).
+
+Two sketch claims were wrong or overtaken. (1) The sketch's "re-key on a `CounterRecipient` and a
+`CounterKind` selector" implies threading a kind through every call site; only the +1/+1-vs-named
+distinction is actually load-bearing, so the parameter is a `bool` and no call site had to change
+its arguments. (2) "`ozolith_the_shattered_spire.toml:10` is presently harmless only because level
+counters route around this path" — the real reason it was harmless is that nothing in the pool put
++1/+1 counters on a land or enchantment; the test that pins the fix has to mint that placement
+with a test-only `CardDef`.
+
+Still blocked, and named in `vorinclex_monstrous_raider.toml`'s `approximates` and the trimmed
+`innkeepers_talent.toml` note: **the placing player is not threaded**. Both cards' clauses key off
+who *would put* the counters; the engine reads that as the recipient's own side (the receiving
+permanent's controller, or the receiving player). Exact for every recipient-keyed card and for the
+common case of a player growing their own board, backwards when a player puts counters on another
+player's permanent. Fixing it means passing the placing player into all ~20 counter-placement call
+sites. **CR 616.1 ordering is also still unoffered** (`ponytail:` on `Game::replaced_counters`):
+applications run additions → multipliers → halvings, which is no longer provably the affected
+player's best order now that a halving exists.
+
 ### 20. `player-counters-poison-infect-toxic` — 17 cards, XL — LANDED 2026-07-27
 Depends on: nothing (this is the foundation).
 **Falsifies `types/effect/shared.rs:1070`** — and the remedy that note prescribes ("grow this slot

@@ -864,8 +864,11 @@ impl Effect {
             Effect::Counters(CountersEffect::RemoveAllButOnePlusOneCounterThenGainLife { .. }) => {
                 "Remove all but one +1/+1 counter, gain 1 life for each removed".to_string()
             }
-            Effect::Static(StaticEffect::CounterReplacement { add, times, .. }) => {
-                format!("+1/+1 counters placed: (n + {add}) x {times}")
+            Effect::Static(StaticEffect::CounterReplacement {
+                add, times, halve, ..
+            }) => {
+                let half = if halve { " / 2" } else { "" };
+                format!("counters placed: (n + {add}) x {times}{half}")
             }
             Effect::Static(StaticEffect::TokenReplacement { times }) => {
                 format!("tokens created: n x {times}")

@@ -16,8 +16,9 @@ impl Game {
     ) -> Vec<Event> {
         let source_name = self.source_name_of(source);
         match effect {
-            // `kind = Some(k)` (Staff of the Storyteller's story counter) bypasses the +1/+1
-            // replacement pipeline entirely, same as `EntersWithCounters`'s own kind split above.
+            // `kind = Some(k)` (Staff of the Storyteller's story counter) runs through the
+            // any-kind half of the replacement pipeline (Winding Constrictor, Vorinclex), not the
+            // +1/+1-only one.
             CountersEffect::PutCounters {
                 count,
                 kind: Some(kind),
@@ -25,6 +26,7 @@ impl Game {
             } => {
                 let object = expect_object_target(target, "a kind-counter effect");
                 let count = self.resolve_count(count, controller, source, target, x) as i32;
+                let count = self.kind_counters_after_replacements(object, count);
                 if count <= 0 {
                     return Vec::new();
                 }
@@ -100,20 +102,21 @@ impl Game {
                     .into_iter()
                     .filter(|&id| self.permanent_matches(&filter, id, you, Some(source)));
                 // `kind = Some(k)` (Contagion Engine's "-1/-1 counter on each creature target
-                // player controls") bypasses the +1/+1 replacement pipeline entirely, same as
-                // `PutCounters`'s own kind split above.
-                // ponytail: doesn't run named-kind placements through
-                // `counters_after_replacements` — that function is +1/+1-only today (fidelity
-                // increment #19 widens it to other kinds).
+                // player controls") takes the any-kind half of the replacement pipeline, same as
+                // `PutCounters`'s own kind split above — the per-recipient count is replaced
+                // separately, since each recipient's own controller's replacements apply.
                 if let Some(kind) = kind {
                     if count <= 0 {
                         return Vec::new();
                     }
                     return matching
-                        .map(|object| Event::KindCountersPlaced {
-                            object,
-                            kind,
-                            count,
+                        .filter_map(|object| {
+                            let n = self.kind_counters_after_replacements(object, count);
+                            (n > 0).then_some(Event::KindCountersPlaced {
+                                object,
+                                kind,
+                                count: n,
+                            })
                         })
                         .collect();
                 }
@@ -156,6 +159,10 @@ impl Game {
                     if !self.living_players().any(|p| p == player) {
                         return Vec::new();
                     }
+                    let count = self.player_counters_after_replacements(player, count);
+                    if count <= 0 {
+                        return Vec::new();
+                    }
                     return vec![Event::PlayerCountersPlaced {
                         player,
                         kind,
@@ -175,10 +182,13 @@ impl Game {
                         ),
                         EdictScope::TargetedOpponent => unreachable!("handled above"),
                     })
-                    .map(|player| Event::PlayerCountersPlaced {
-                        player,
-                        kind,
-                        count,
+                    .filter_map(|player| {
+                        let n = self.player_counters_after_replacements(player, count);
+                        (n > 0).then_some(Event::PlayerCountersPlaced {
+                            player,
+                            kind,
+                            count: n,
+                        })
                     })
                     .collect()
             }
@@ -233,13 +243,14 @@ impl Game {
                     return Vec::new();
                 }
                 let count = to.saturating_sub(self.player_counters(player, kind));
-                if count == 0 {
+                let count = self.player_counters_after_replacements(player, count as i32);
+                if count <= 0 {
                     return Vec::new();
                 }
                 vec![Event::PlayerCountersPlaced {
                     player,
                     kind,
-                    count: count as i32,
+                    count,
                 }]
             }
             // Promise of Loyalty's rider: place a vow counter on each surviving creature, marking

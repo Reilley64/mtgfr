@@ -69,13 +69,37 @@ pub enum StaticEffect {
 
     ControlAttached,
 
+    /// A counter-placement replacement (CR 614 — Hardened Scales, Doubling Season, Vorinclex).
+    /// `add` then `times` then `halve` describe the modification; the remaining fields say which
+    /// placements it sees. See [`Game::counters_after_replacements`](crate::Game).
     CounterReplacement {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         add: i32,
         #[cfg_attr(feature = "card-dsl", serde(default = "de::one"))]
         times: i32,
+        /// Vorinclex's opponent-facing clause: "half that many … rounded down".
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        halve: bool,
+        /// Benevolent Hydra's "another creature you control": never replaces its own source's
+        /// counters.
         #[cfg_attr(feature = "card-dsl", serde(default))]
         other: bool,
+        /// "one or more counters" (Winding Constrictor, Vorinclex) rather than the default
+        /// "one or more +1/+1 counters" (Hardened Scales, Corpsejack Menace).
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        any_kind: bool,
+        /// Vorinclex's second clause: replaces an *opponent's* placements instead of its
+        /// controller's.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        opponents: bool,
+        /// Which recipients the replacement reaches (CR 122.1 — counters sit on permanents and on
+        /// players).
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        recipients: CounterRecipients,
+        /// A type gate on the receiving permanent — Ozolith's "an artifact or creature you
+        /// control". `None` is every permanent (Doubling Season, Vorinclex).
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        filter: Option<PermanentFilter>,
     },
 
     CounterScaledAttackTax,
@@ -219,4 +243,20 @@ pub enum StaticEffect {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         caused_by_instant_or_sorcery_cast: bool,
     },
+}
+
+/// Which recipients a [`StaticEffect::CounterReplacement`] reaches. Counters sit on permanents and
+/// on players (CR 122.1), and a card names one or both: Hardened Scales only permanents, Winding
+/// Constrictor's second ability only its controller, Vorinclex "a permanent or player".
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(
+    feature = "card-dsl",
+    derive(serde::Deserialize),
+    serde(rename_all = "snake_case")
+)]
+pub enum CounterRecipients {
+    #[default]
+    Permanents,
+    Players,
+    PermanentsAndPlayers,
 }

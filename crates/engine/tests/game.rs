@@ -92127,14 +92127,13 @@ fn minus_one_minus_one_counters_on_each_creature_target_player_controls() {
 }
 
 #[test]
-fn minus_one_minus_one_counters_from_put_counters_each_are_not_doubled() {
-    // A -1/-1-kind `PutCountersEach` mints `Event::KindCountersPlaced` directly, bypassing
-    // `counters_after_replacements` (the +1/+1-only replacement pipeline that Hardened
-    // Scales/Doubling Season hook — increment #19 widens it to other kinds). Doubling Season on
-    // the *targeted* player's own battlefield must not amplify this -1/-1 placement.
+fn minus_one_minus_one_counters_from_put_counters_each_are_doubled_by_doubling_season() {
+    // "If an effect would put one or more counters on a permanent you control, it puts twice that
+    // many of those counters on that permanent instead" — *counters*, of every kind (CR 122.1),
+    // so Doubling Season on the targeted player's own battlefield doubles a -1/-1 placement too.
     let mut game = TestGame::new();
     game.spawn_on_battlefield(PlayerId(1), card("Doubling Season"));
-    let their_bear = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let their_bear = game.spawn_on_battlefield(PlayerId(1), BIG);
     let artifact = game.spawn_in_hand(PlayerId(0), TEST_MINUS_ONE_EACH_TARGET_PLAYER);
     game.cast(artifact).resolve();
 
@@ -92147,8 +92146,8 @@ fn minus_one_minus_one_counters_from_put_counters_each_are_not_doubled() {
 
     assert_eq!(
         game.counters_of_kind(their_bear, CounterKind::MinusOneMinusOne),
-        1,
-        "Doubling Season's +1/+1 counter_replacement doesn't touch a -1/-1 PutCountersEach"
+        2,
+        "Doubling Season doubles counters of every kind on its controller's permanents"
     );
 }
 
@@ -95623,4 +95622,191 @@ fn garruks_emblem_survives_garruk_leaving_the_battlefield() {
     assert_eq!(game.emblems(PlayerId(0)).len(), 1, "the emblem stays");
     assert_eq!((game.power(mine), game.toughness(mine)), (5, 5));
     assert!(game.has_keyword(mine, Keyword::Trample));
+}
+
+// ── Counter replacement beyond +1/+1 (CR 614): any kind, on a permanent or a player ──────
+
+/// A test artifact whose ETB puts two +1/+1 counters on each land its controller controls — the
+/// only way in this pool to aim a +1/+1 placement at a permanent that is neither artifact nor
+/// creature, which is what Ozolith's printed filter has to exclude.
+const TEST_PLUS_COUNTERS_ON_YOUR_LANDS: CardDef = CardDef {
+    name: "Test Land Grower",
+    kind: CardKind::Artifact,
+    abilities: &[Ability {
+        timing: Timing::Triggered(Trigger::Etb),
+        effect: Effect::Counters(CountersEffect::PutCountersEach {
+            filter: PermanentFilter {
+                controller: FilterController::You,
+                ..PermanentFilter::of(TypeSet::LAND)
+            },
+            count: Amount::Fixed(2),
+            target_player: false,
+            kind: None,
+        }),
+        optional: false,
+        min_level: 0,
+        once_each_turn: false,
+        condition: None,
+        cost: Cost::FREE,
+    }],
+    ..TEST_STEELBANE
+};
+
+#[test]
+fn hardened_scales_still_adds_one_plus_one_plus_one_counter() {
+    // Regression pin: "that many plus one +1/+1 counters" stays exactly +1 as the replacement
+    // pipeline widens to other counter kinds and to players.
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Hardened Scales"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+
+    put_two_counters(&mut game, PlayerId(0), bear);
+
+    assert_eq!(game.plus_counters(bear), 3, "2 + 1 = 3");
+}
+
+#[test]
+fn winding_constrictor_adds_one_of_each_kind_to_a_creature_you_control() {
+    // "If one or more counters would be put on an artifact or creature you control, that many
+    // plus one of each of those kinds of counters are put on that permanent instead." — a -1/-1
+    // counter is "of those kinds" just as much as a +1/+1 one is.
+    let mut game = TestGame::new();
+    let snake = game.spawn_on_battlefield(PlayerId(0), card("Winding Constrictor"));
+    let minus = game.spawn_in_hand(PlayerId(0), TEST_MINUS_ONE_EACH_TARGET_PLAYER);
+    game.cast(minus).resolve();
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Player(PlayerId(0))],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.counters_of_kind(snake, CounterKind::MinusOneMinusOne),
+        2,
+        "one -1/-1 counter plus one of that kind = 2"
+    );
+
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    put_two_counters(&mut game, PlayerId(0), bear);
+    assert_eq!(game.plus_counters(bear), 3, "+1/+1 counters: 2 + 1 = 3");
+}
+
+#[test]
+fn winding_constrictor_adds_one_counter_when_you_would_get_counters() {
+    // "If you would get one or more counters, you get that many plus one of each of those kinds
+    // of counters instead." — the player half, which no counter replacement reached before.
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Winding Constrictor"));
+
+    game.place_player_counters(PlayerId(0), PlayerCounterKind::Poison, 1);
+    assert_eq!(
+        game.player_counters(PlayerId(0), PlayerCounterKind::Poison),
+        2,
+        "one poison counter plus one = 2"
+    );
+
+    game.place_player_counters(PlayerId(1), PlayerCounterKind::Poison, 1);
+    assert_eq!(
+        game.player_counters(PlayerId(1), PlayerCounterKind::Poison),
+        1,
+        "\"you\" is the Snake's controller — an opponent's counters are untouched"
+    );
+}
+
+#[test]
+fn vorinclex_doubles_counters_you_put_on_a_permanent_or_player() {
+    // "If you would put one or more counters on a permanent or player, put twice that many of
+    // each of those kinds of counters on that permanent or player instead."
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Vorinclex, Monstrous Raider"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+
+    put_two_counters(&mut game, PlayerId(0), bear);
+    assert_eq!(game.plus_counters(bear), 4, "twice that many: 2 -> 4");
+
+    game.place_player_counters(PlayerId(0), PlayerCounterKind::Poison, 3);
+    assert_eq!(
+        game.player_counters(PlayerId(0), PlayerCounterKind::Poison),
+        6,
+        "counters on a player are doubled too: 3 -> 6"
+    );
+}
+
+#[test]
+fn vorinclexes_opponent_halves_their_counters_rounded_down() {
+    // "If an opponent would put one or more counters on a permanent or player, they put half that
+    // many of each of those kinds of counters on that permanent or player instead, rounded down."
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(1), card("Vorinclex, Monstrous Raider"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+
+    put_two_counters(&mut game, PlayerId(0), bear);
+    assert_eq!(game.plus_counters(bear), 1, "half of 2 = 1");
+
+    game.place_player_counters(PlayerId(0), PlayerCounterKind::Poison, 3);
+    assert_eq!(
+        game.player_counters(PlayerId(0), PlayerCounterKind::Poison),
+        1,
+        "half of 3, rounded down, is 1"
+    );
+}
+
+#[test]
+fn ozoliths_replacement_only_applies_to_artifacts_and_creatures() {
+    // "If one or more +1/+1 counters would be put on an artifact or creature you control…": a
+    // land you control is neither, so its counters are placed unmodified.
+    let mut game = TestGame::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Ozolith, the Shattered Spire"));
+    let forest = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+
+    let grower = game.spawn_in_hand(PlayerId(0), TEST_PLUS_COUNTERS_ON_YOUR_LANDS);
+    game.cast(grower).resolve();
+    resolve_top_of_stack(&mut game); // the ETB trigger
+    assert_eq!(
+        game.plus_counters(forest),
+        2,
+        "a land is neither an artifact nor a creature — no extra counter"
+    );
+
+    put_two_counters(&mut game, PlayerId(0), bear);
+    assert_eq!(
+        game.plus_counters(bear),
+        3,
+        "a creature you control: 2 + 1 = 3"
+    );
+}
+
+#[test]
+fn innkeepers_talent_level_three_doubles_counters_on_a_permanent_or_player() {
+    // Level 3: "If you would put one or more counters on a permanent or player, put twice that
+    // many of each of those kinds of counters on that permanent or player instead." The
+    // replacement functions only at level 3 (CR 717.5).
+    let mut game = Game::new();
+    let class = game.spawn_on_battlefield(PlayerId(0), card("Innkeeper's Talent"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+
+    put_two_counters(&mut game, PlayerId(0), bear);
+    assert_eq!(
+        game.plus_counters(bear),
+        2,
+        "at level 1 nothing is replaced"
+    );
+
+    game.fund_mana(PlayerId(0));
+    level_up_chirography(&mut game, class, 1); // {G}: Level 2
+    game.fund_mana(PlayerId(0));
+    level_up_chirography(&mut game, class, 3); // {3}{G}: Level 3
+
+    let other = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    put_two_counters(&mut game, PlayerId(0), other);
+    assert_eq!(game.plus_counters(other), 4, "level 3 doubles: 2 -> 4");
+
+    game.place_player_counters(PlayerId(0), PlayerCounterKind::Poison, 1);
+    assert_eq!(
+        game.player_counters(PlayerId(0), PlayerCounterKind::Poison),
+        2,
+        "counters on a player are doubled too"
+    );
 }

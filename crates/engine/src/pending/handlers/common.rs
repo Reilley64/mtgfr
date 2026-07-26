@@ -32,8 +32,7 @@ impl Game {
     /// Move counters from `from` onto `to` ([`Effect::Counters(CountersEffect::MoveCounters)`]): +1/+1 counters always
     /// move, through the same replaceable-placement pipeline the destination's own +1/+1
     /// doublers would apply to any other "put a counter" (CR 614); `all_kinds` also moves every
-    /// named kind present, raw (named kinds bypass that pipeline everywhere else in the pool —
-    /// see [`Effect::Static(StaticEffect::EntersWithCounters)`]'s doc).
+    /// named kind present, through the any-kind half of that same pipeline.
     pub(crate) fn move_counters(
         &mut self,
         from: ObjectId,
@@ -79,14 +78,17 @@ impl Game {
                     count: -count,
                 },
             );
-            self.push_apply(
-                events,
-                Event::KindCountersPlaced {
-                    object: to,
-                    kind,
-                    count,
-                },
-            );
+            let n = self.kind_counters_after_replacements(to, count);
+            if n > 0 {
+                self.push_apply(
+                    events,
+                    Event::KindCountersPlaced {
+                        object: to,
+                        kind,
+                        count: n,
+                    },
+                );
+            }
         }
     }
 

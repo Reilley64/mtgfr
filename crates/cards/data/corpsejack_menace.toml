@@ -27,4 +27,5 @@ timing = "static"
 [[abilities.effects]]
 type = "static"
 mode = "counter_replacement"
+filter = { types = "creature", controller = "you" }
 times = 2

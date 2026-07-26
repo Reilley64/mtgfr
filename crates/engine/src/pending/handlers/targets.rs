@@ -298,9 +298,9 @@ impl Game {
     }
 
     /// Give `id` another counter of each kind already on it (CR 701.27).
-    /// ponytail: [`Game::counters_after_replacements`] is +1/+1-and-permanent-only, so a
-    /// replacement effect ("if a counter would be put on…") doesn't see the named-kind or
-    /// loyalty counters here — widen it with increment #19.
+    /// ponytail: a loyalty counter added here skips the CR 614 replacement pipeline — loyalty is
+    /// the scalar [`Permanent::loyalty`], not a `kind_counters` slot. Route it once loyalty and
+    /// named counters share a store.
     fn proliferate_permanent(&mut self, events: &mut Vec<Event>, id: ObjectId) {
         if self.permanent(id).plus_counters > 0 {
             let n = self.counters_after_replacements(id, 1);
@@ -316,13 +316,17 @@ impl Game {
             }
         }
         for &kind in CounterKind::ALL.iter() {
-            if self.permanent(id).kind_counters[kind as usize] > 0 {
+            if self.permanent(id).kind_counters[kind as usize] == 0 {
+                continue;
+            }
+            let n = self.kind_counters_after_replacements(id, 1);
+            if n > 0 {
                 self.push_apply(
                     events,
                     Event::KindCountersPlaced {
                         object: id,
                         kind,
-                        count: 1,
+                        count: n,
                     },
                 );
             }
@@ -342,13 +346,17 @@ impl Game {
     /// Give `seat` another counter of each kind already on them (CR 701.27 — poison).
     fn proliferate_player(&mut self, events: &mut Vec<Event>, seat: PlayerId) {
         for &kind in PlayerCounterKind::ALL.iter() {
-            if self.player_counters(seat, kind) > 0 {
+            if self.player_counters(seat, kind) == 0 {
+                continue;
+            }
+            let n = self.player_counters_after_replacements(seat, 1);
+            if n > 0 {
                 self.push_apply(
                     events,
                     Event::PlayerCountersPlaced {
                         player: seat,
                         kind,
-                        count: 1,
+                        count: n,
                     },
                 );
             }

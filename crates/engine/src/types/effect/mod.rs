@@ -34,7 +34,7 @@ pub use misc::MiscEffect;
 pub use pump::PumpEffect;
 pub use reveal::RevealEffect;
 pub use sacrifice::SacrificeEffect;
-pub use r#static::StaticEffect;
+pub use r#static::{CounterRecipients, StaticEffect};
 pub use token::TokenEffect;
 pub use zone::ZoneEffect;
 
