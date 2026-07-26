@@ -9,7 +9,8 @@ picked.
 
 ## Commits
 
-- Pending at report-write time in this session; see git history after push.
+- `d92152c` `fix(client): gate mandatory graveyard return prompts`
+- `9a636d2` merge `origin/main` into `cursor/soc-fidelity-program-8537`
 
 ## What landed
 
@@ -52,6 +53,8 @@ picked.
 
 - PR body update for `#224` is blocked here: the requested `ManagePullRequest` tool is unavailable
   in this harness, and `gh` is read-only.
+- Sync merge completed cleanly against `origin/main`; post-merge `just client-check` stayed green and
+  `witherbloom_pestilence_is_a_legal_commander_deck` still passed.
 - Pre-existing unstaged branch worktree changes outside this task were left untouched.
 
 ## Report path
