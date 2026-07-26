@@ -55,6 +55,8 @@
   --color-yielded-ink: #FFE9A8;
   --color-quiet-hover: #2C3F35;
   --font-sans: system-ui, sans-serif;
+  --font-shell: "Manrope", system-ui, sans-serif;
+  --font-display: "Space Grotesk", system-ui, sans-serif;
   --text-title: 18px;
   --text-title--font-weight: 700;
   --text-body: 14px;

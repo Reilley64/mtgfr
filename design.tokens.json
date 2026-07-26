@@ -65,7 +65,17 @@
     "sans": {
       "$type": "fontFamily",
       "$value": "system-ui, sans-serif",
-      "$description": "One Face Rule"
+      "$description": "Board HUD / canvas chrome face (dense game UI)"
+    },
+    "shell": {
+      "$type": "fontFamily",
+      "$value": "\"Manrope\", system-ui, sans-serif",
+      "$description": "Shell UI sans — geometric game-client body/controls"
+    },
+    "display": {
+      "$type": "fontFamily",
+      "$value": "\"Space Grotesk\", system-ui, sans-serif",
+      "$description": "Shell display sans — titles, brand, table code emphasis"
     }
   },
   "text": {

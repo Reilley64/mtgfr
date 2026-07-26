@@ -31,6 +31,8 @@
     "@effect/opentelemetry": "4.0.0-beta.101",
     "@effect/platform-browser": "4.0.0-beta.101",
     "@effect/sql-pg": "4.0.0-beta.101",
+    "@fontsource/manrope": "5.2.5",
+    "@fontsource/space-grotesk": "5.2.6",
     "@grafana/faro-web-sdk": "^2.8.2",
     "@grafana/faro-web-tracing": "^2.8.2",
     "@opentelemetry/exporter-logs-otlp-http": "^0.221.0",

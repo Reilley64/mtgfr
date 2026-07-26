@@ -10,6 +10,11 @@
  *
  * The canvas is exempt from all of this: it paints with the hex literals in Board.tsx/layout.ts. */
 
+@import "@fontsource/manrope/400.css";
+@import "@fontsource/manrope/600.css";
+@import "@fontsource/manrope/700.css";
+@import "@fontsource/space-grotesk/500.css";
+@import "@fontsource/space-grotesk/700.css";
 @import "tailwindcss";
 /* Oracle/approximates mana pips + mana-tray symbols (duo / color indicators) — subset of mana-font. */
 @import "./mana-oracle.css";
