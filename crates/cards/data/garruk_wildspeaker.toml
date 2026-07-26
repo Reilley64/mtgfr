@@ -2,11 +2,11 @@
 # −1: Create a 3/3 green Beast creature token.
 # −4: Creatures you control get +3/+3 and gain trample until end of turn.
 name = "Garruk Wildspeaker"
+sets = ["cmd", "ddd", "gvl", "lrw", "m10", "m11", "pdtp", "prm", "sld", "slp"]
 id = "186b4def-4fff-4a2b-bcbf-5318b0ac5fa9"
 default_print = "08cf7ee6-ba30-42cd-a5b3-fd2fe7252f11"
 otags = ["beast-tokens", "cycle-lrw-mono-color-lt", "creature-token-maker", "enlarge-team", "mana-accel-self", "planeswalker", "ramp", "untapper-land"]
 oracle = "+1: Untap two target lands.\n−1: Create a 3/3 green Beast creature token.\n−4: Creatures you control get +3/+3 and gain trample until end of turn."
-set = "cmd"
 subtypes = ["Garruk"]
 legendary = true
 

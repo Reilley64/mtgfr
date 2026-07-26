@@ -1,11 +1,11 @@
 # Flying, trample
 # Shroud (This creature can't be the target of spells or abilities.)
 name = "Simic Sky Swallower"
+sets = ["cmd", "cmr", "ddo", "dis", "gk2", "ima", "mm3"]
 id = "e5c48c6d-a7bf-45b3-b48c-dc884d49c5f7"
 default_print = "f791b7fa-3d12-409d-b017-cb9fd8b71af7"
 otags = ["cycle-c13-ramp-payoff", "evasion", "french-vanilla", "keyword-soup", "shroud"]
 oracle = "Flying, trample\nShroud (This creature can't be the target of spells or abilities.)"
-set = "cmr"
 subtypes = ["Leviathan"]
 keywords = ["flying", "trample", "shroud"]
 

@@ -3,11 +3,11 @@
 # "This spell costs {1} less to cast for each creature on the battlefield.
 #  Blasphemous Act deals 13 damage to each creature." — {8}{R} sorcery.
 name = "Blasphemous Act"
+sets = ["2xm", "40k", "blc", "brc", "c14", "c16", "c18", "c21", "clb", "cm2", "cmm", "cmr", "drc", "dsc", "ecc", "eoc", "isd", "lcc", "ltc", "msc", "ncc", "pip", "plst", "prm", "scd", "sld", "soc", "tdc", "tle", "tmc", "voc", "who"]
 id = "7a2484a9-04fd-41a0-8224-610c1c07ed10"
 default_print = "7d4b1d44-126e-4987-9a9f-f0f9627a09cb"
 otags = ["affinity-for-creatures", "burn-creature", "hate-wide", "sweeper", "symmetrical"]
 oracle = "This spell costs {1} less to cast for each creature on the battlefield.\nBlasphemous Act deals 13 damage to each creature."
-set = "msc"
 
 [cost]
 generic = 8

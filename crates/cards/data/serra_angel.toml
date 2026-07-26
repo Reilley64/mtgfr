@@ -1,11 +1,11 @@
 # Flying
 # Vigilance (Attacking doesn't cause this creature to tap.)
 name = "Serra Angel"
+sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "7ed", "8ed", "9ed", "anb", "ath", "ced", "cei", "cma", "cmd", "ddc", "dmr", "dom", "dvd", "ema", "fbb", "fdn", "gn3", "gnt", "ima", "j25", "jmp", "lea", "leb", "m10", "m11", "m12", "m13", "m14", "m15", "me4", "o90p", "oana", "ori", "p30a", "p30h", "pdom", "plst", "pmda", "prm", "ps11", "ptc", "pw24", "pwos", "sld", "sum", "v15", "w16", "w17"]
 id = "4b7ac066-e5c7-43e6-9e7e-2739b24a905d"
 default_print = "b8c5e74c-96e7-4a1f-93b7-14d776fe4b2d"
 otags = ["cycle-w16-u", "evasion", "french-vanilla", "meme", "namesake-spell"]
 oracle = "Flying\nVigilance (Attacking doesn't cause this creature to tap.)"
-set = "fdn"
 subtypes = ["Angel"]
 keywords = ["flying", "vigilance"]
 

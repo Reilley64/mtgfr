@@ -347,9 +347,10 @@ type = "creature"
 power = 1
 toughness = 1
 "#;
-        let def: CardDef =
-            toml::from_str(legacy).expect("singular set still loads during migration");
-        assert_eq!(def.sets.as_ref(), &["cmd"]);
+        assert!(
+            toml::from_str::<CardDef>(legacy).is_err(),
+            "singular set metadata was removed; use sets = [...]"
+        );
 
         let bare = "name = \"Bare\"\nid = \"00000000-0000-0000-0000-000000000001\"\ndefault_print = \"00000000-0000-0000-0000-000000000002\"\n\n[kind]\ntype = \"creature\"\npower = 1\ntoughness = 1\n";
         let def: CardDef = toml::from_str(bare).expect("omitted sets defaults empty");

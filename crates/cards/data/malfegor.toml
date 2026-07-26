@@ -2,10 +2,10 @@
 # When Malfegor enters, discard your hand. Each opponent sacrifices a creature of their choice for
 # each card discarded this way.
 name = "Malfegor"
+sets = ["cma", "cmd", "con", "ima", "pcon", "prm"]
 id = "52e1546a-63eb-48d7-acc4-81b912aabc90"
 default_print = "32118f00-d9f3-4f01-b013-a010e1ab3ae1"
 oracle = "Flying\nWhen Malfegor enters, discard your hand. Each opponent sacrifices a creature of their choice for each card discarded this way."
-set = "cmd"
 legendary = true
 subtypes = ["Demon", "Dragon"]
 keywords = ["flying"]

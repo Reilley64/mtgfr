@@ -1,10 +1,10 @@
 # {T}: Add {C}{C}.
 name = "Sol Ring"
+sets = ["2ed", "30a", "3ed", "40k", "afc", "blc", "brc", "c13", "c14", "c15", "c16", "c17", "c18", "c19", "c20", "c21", "cc1", "cc2", "ced", "cei", "clb", "cm2", "cma", "cmd", "cmm", "cmr", "dmc", "drc", "dsc", "ecc", "eoc", "fbb", "fdc", "fic", "g05", "khc", "lcc", "lea", "leb", "ltc", "m3c", "mb2", "me4", "mic", "mkc", "moc", "mps", "msc", "ncc", "nec", "onc", "otc", "pf19", "pfdn", "pip", "plg22", "plst", "prm", "pz1", "scd", "slc", "sld", "soc", "sum", "tdc", "tle", "tmc", "v10", "vma", "voc", "who", "woc", "znc"]
 id = "6ad8011d-3471-4369-9d68-b264cc027487"
 default_print = "91fdb56b-54d5-4272-8319-505ff987fe9b"
 otags = ["activated-ability", "adds-multiple-mana", "full-refund", "mana-rock"]
 oracle = "{T}: Add {C}{C}."
-set = "msc"
 
 [cost]
 generic = 1

@@ -21,3 +21,22 @@ green = 1
   assert.doesNotMatch(out, /^\s*set\s*=/m);
   assert.match(out, /\[cost\]/);
 });
+
+test("rewriteTomlSets drops nested singular set metadata", () => {
+  const input = `name = "Fire // Ice"
+id = "ae92942b-919c-4ea9-b693-85fcef765d5a"
+default_print = "230e65b2-a908-4418-8ef9-ecc475ff0b27"
+set = "cmd"
+
+[[half]]
+name = "Fire"
+set = "cmd"
+
+[half.kind]
+type = "instant"
+`;
+  const out = rewriteTomlSets(input, ["apc", "cmd"]);
+  assert.match(out, /sets = \["apc", "cmd"\]/);
+  assert.doesNotMatch(out, /^\s*set\s*=/m);
+  assert.match(out, /\[\[half\]\]/);
+});

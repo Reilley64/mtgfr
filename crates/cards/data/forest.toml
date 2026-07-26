@@ -1,10 +1,10 @@
 # ({T}: Add {G}.)
 name = "Forest"
+sets = ["10e", "2ed", "2xm", "30a", "3ed", "40k", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "9ed", "acr", "afr", "akh", "akr", "ala", "ana", "anb", "arc", "ath", "avr", "bbd", "bfz", "blb", "brb", "bro", "btd", "c13", "c14", "c15", "c16", "c17", "c18", "c19", "ced", "cei", "chk", "clb", "clu", "cm2", "cma", "cmd", "cmm", "cmr", "cst", "dd1", "ddd", "dde", "ddg", "ddh", "ddj", "ddl", "ddm", "ddo", "ddp", "ddr", "dds", "ddu", "dft", "dkm", "dmr", "dmu", "dom", "dpa", "dsk", "dtk", "e01", "ecl", "eld", "eoe", "evg", "fbb", "fdn", "fic", "fin", "frf", "g17", "gk1", "gk2", "gn2", "gn3", "gnt", "grn", "gs1", "gvl", "h09", "hbg", "hob", "hop", "hou", "ice", "iko", "inr", "inv", "isd", "itp", "j14", "j22", "j25", "jmp", "khm", "kld", "klr", "ktk", "lci", "lea", "leb", "lrw", "ltr", "m10", "m11", "m12", "m13", "m14", "m15", "m19", "m20", "m21", "mbs", "me1", "me3", "mh2", "mh3", "mid", "mir", "mkm", "mmq", "mom", "mrd", "msh", "neo", "nph", "ody", "olep", "one", "ons", "ori", "otj", "p02", "p23", "pal00", "pal01", "pal03", "pal04", "pal05", "pal06", "pal99", "palp", "pana", "parl", "pc2", "pca", "pelp", "pf19", "pf20", "pgpx", "pgru", "pip", "pl25", "plst", "pmps", "pmps06", "pmps07", "pmps08", "pmps09", "pmps10", "pmps11", "por", "ppp1", "prm", "prw2", "prwk", "ps11", "psal", "pss2", "pss3", "pss4", "ptc", "ptk", "pz2", "rav", "rix", "rna", "roe", "rqs", "rtr", "s99", "scd", "shm", "sir", "sld", "slp", "snc", "soi", "som", "sos", "spm", "stx", "sum", "td0", "td2", "tdm", "thb", "ths", "tla", "tmp", "tmt", "tpr", "tsp", "ugl", "und", "unf", "unh", "usg", "ust", "vow", "war", "wc00", "wc01", "wc02", "wc03", "wc04", "wc97", "wc98", "wc99", "who", "woe", "xana", "xln", "zen", "znr"]
 id = "b34bb2dc-c1af-4d77-b0b3-a0fb342a5fc6"
 default_print = "22463284-2478-4b1e-9a37-6dd2383266cf"
 otags = ["activated-ability", "cycle-lea-basic-land", "eponymous", "single-english-word-name", "tutored-by-name", "unique-type-line"]
 oracle = "({T}: Add {G}.)"
-set = "msh"
 
 [kind]
 type = "land"

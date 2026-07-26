@@ -1,11 +1,11 @@
 # Punishing Fire deals 2 damage to any target.
 # Whenever an opponent gains life, you may pay {R}. If you do, return this card from your graveyard to your hand.
 name = "Punishing Fire"
+sets = ["cmd", "ddg", "plst", "pz1", "zen"]
 id = "1890ef1b-38e5-432d-b040-f33cea7814e7"
 default_print = "b381d3c4-b318-4dff-a214-8a16a3872107"
 otags = ["burn-any", "lifegain-matters", "regrowth-self", "trigger-from-graveyard"]
 oracle = "Punishing Fire deals 2 damage to any target.\nWhenever an opponent gains life, you may pay {R}. If you do, return this card from your graveyard to your hand."
-set = "cmd"
 # CR 603.6e — the opponent-lifegain recursion trigger functions from the graveyard.
 functions_in_graveyard = true
 

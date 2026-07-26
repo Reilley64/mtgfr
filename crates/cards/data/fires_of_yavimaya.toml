@@ -1,9 +1,9 @@
 # Creatures you control have haste.
 # Sacrifice this enchantment: Target creature gets +2/+2 until end of turn.
 name = "Fires of Yavimaya"
+sets = ["arc", "c13", "cns", "ddl", "hop", "inv", "pc2", "pca", "plst", "scd", "td0", "vma", "wc01"]
 otags = ["activated-ability", "cycle-cns-draft-signpost", "cycle-inv-sac-enchantment", "cycle-vma-draft-signpost", "gives-haste", "keyword-anthem", "sacrifice-self"]
 oracle = "Creatures you control have haste.\nSacrifice this enchantment: Target creature gets +2/+2 until end of turn."
-set = "pca"
 id = "e23d6f3b-0e18-423b-943b-15db7837255b"
 default_print = "7294e30f-0356-4bcc-a264-4cd46d8f13a6"
 

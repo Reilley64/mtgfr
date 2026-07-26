@@ -5,11 +5,11 @@
 # [Petty Theft]
 # Return target nonland permanent an opponent controls to its owner's hand.
 name = "Brazen Borrower"
+sets = ["eld", "peld", "plst", "prm", "sld", "soc", "spg", "woc"]
 id = "c7b044c3-3cfa-407e-bf20-2875e8e04b7b"
 default_print = "25d309d6-9e56-441e-bd29-5c903d5221bf"
 otags = ["alliteration", "castable-from-exile", "cheaper-than-mv", "exile-self", "high-flying", "removal-bounce", "removal-nonland", "single-target-instant-sorcery", "spot-removal"]
 oracle = "Flash\nFlying\nThis creature can block only creatures with flying. // Return target nonland permanent an opponent controls to its owner's hand."
-set = "soc"
 subtypes = ["Faerie", "Rogue"]
 
 [cost]
@@ -29,7 +29,6 @@ keywords = ["flying", "flash", "can_block_only_flyers"]
 [adventure]
 name = "Petty Theft"
 oracle = "Return target nonland permanent an opponent controls to its owner's hand."
-set = "soc"
 
 [adventure.cost]
 generic = 1

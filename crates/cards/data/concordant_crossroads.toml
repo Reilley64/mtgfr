@@ -1,7 +1,7 @@
 # All creatures have haste.
 name = "Concordant Crossroads"
+sets = ["2x2", "bchr", "chr", "leg", "me3", "prm", "sld", "td0"]
 otags = ["alliteration", "gives-haste", "keyword-anthem", "symmetrical"]
-set = "2x2"
 id = "ff01b408-6d17-40a3-9efd-a1b341ec1307"
 default_print = "c9a26f51-5bff-4f06-abaa-6fbb56a8b5b6"
 oracle = "All creatures have haste."

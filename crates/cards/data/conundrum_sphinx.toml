@@ -3,11 +3,11 @@
 # library. If the card a player revealed has the name they chose, that player puts it into their hand. If it
 # doesn't, that player puts it on the bottom of their library.
 name = "Conundrum Sphinx"
+sets = ["c18", "cmd", "m11"]
 id = "fb1bd39c-c870-4f63-9e4f-32c94ac46555"
 default_print = "2905cea6-77cb-4d9b-93f4-e22211af25e1"
 otags = ["attack-trigger", "card-draw", "flying", "library-manipulation", "named-choice"]
 oracle = "Flying\nWhenever this creature attacks, each player chooses a card name. Then each player reveals the top card of their library. If the card a player revealed has the name they chose, that player puts it into their hand. If it doesn't, that player puts it on the bottom of their library."
-set = "c18"
 subtypes = ["Sphinx"]
 keywords = ["flying"]
 approximates = "Players name and resolve one seat at a time in APNAP order rather than all choosing simultaneously — a later seat sees an earlier seat's public reveal (and whether it hit) before naming their own."

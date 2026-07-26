@@ -8,8 +8,10 @@
 //   node tooling/backfill-sets.mjs
 
 import { readFileSync, writeFileSync, readdirSync } from "node:fs";
-import { gunzipSync } from "node:zlib";
+import { Readable } from "node:stream";
+import { StringDecoder } from "node:string_decoder";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { createGunzip } from "node:zlib";
 import { dirname, join } from "node:path";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -27,7 +29,7 @@ export function uniqueSortedSets(codes) {
 
 /**
  * Rewrite top-level set metadata in a card TOML string.
- * Drops `set =` / `sets =` before the first table; inserts `sets = […]` after `name =`.
+ * Drops singular `set =` anywhere, drops top-level `sets =`, and inserts `sets = […]` after `name =`.
  */
 export function rewriteTomlSets(text, sets) {
   const lines = text.split("\n");
@@ -37,7 +39,7 @@ export function rewriteTomlSets(text, sets) {
   if (nameIdx < 0) throw new Error("no top-level name key");
 
   const kept = lines.filter(
-    (l, i) => !(i < cut && (/^\s*set\s*=/.test(l) || /^\s*sets\s*=/.test(l))),
+    (l, i) => !(/^\s*set\s*=/.test(l) || (i < cut && /^\s*sets\s*=/.test(l))),
   );
   const nameLine = kept.findIndex((l) => /^\s*name\s*=/.test(l));
 
@@ -55,19 +57,31 @@ async function fetchOracleToSets() {
   const res = await fetch(jsonl_download_uri, { headers: UA });
   if (!res.ok) throw new Error(`bulk download default-cards: ${res.status}`);
 
-  const text = gunzipSync(Buffer.from(await res.arrayBuffer())).toString("utf8");
   const oracleToSets = new Map();
+  const decoder = new StringDecoder("utf8");
+  let carry = "";
 
-  for (const rawLine of text.split("\n")) {
-    const line = rawLine.trim();
-    if (!line) continue;
-    const card = JSON.parse(line);
-    if (!card.oracle_id || typeof card.set !== "string" || !card.set) continue;
-    if (!oracleToSets.has(card.oracle_id)) oracleToSets.set(card.oracle_id, new Set());
-    oracleToSets.get(card.oracle_id).add(card.set.toLowerCase());
+  const stream = Readable.fromWeb(res.body).pipe(createGunzip());
+  for await (const chunk of stream) {
+    const text = carry + decoder.write(chunk);
+    const lines = text.split("\n");
+    carry = lines.pop() ?? "";
+    for (const line of lines) {
+      indexJsonlLine(oracleToSets, line);
+    }
   }
+  indexJsonlLine(oracleToSets, carry + decoder.end());
 
   return oracleToSets;
+}
+
+function indexJsonlLine(oracleToSets, rawLine) {
+  const line = rawLine.trim();
+  if (!line) return;
+  const card = JSON.parse(line);
+  if (!card.oracle_id || typeof card.set !== "string" || !card.set) return;
+  if (!oracleToSets.has(card.oracle_id)) oracleToSets.set(card.oracle_id, new Set());
+  oracleToSets.get(card.oracle_id).add(card.set.toLowerCase());
 }
 
 const oracleIdOf = (text) => text.match(/^\s*id\s*=\s*"([^"]+)"/m)?.[1];

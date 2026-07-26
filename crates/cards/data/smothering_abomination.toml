@@ -3,11 +3,11 @@
 # At the beginning of your upkeep, sacrifice a creature.
 # Whenever you sacrifice a creature, draw a card.
 name = "Smothering Abomination"
+sets = ["bfz", "pbfz", "soc"]
 id = "c3db28e5-6162-4642-a1c9-a7ace0737950"
 default_print = "aac33238-e4bd-4c72-aecc-9905232c3ab4"
 otags = ["cda-color", "draw-engine", "evasion", "repeatable-pure-draw", "repeatable-sacrifice-outlet", "sacrifice-outlet-creature", "synergy-sacrifice", "triggered-ability", "upkeep-cost"]
 oracle = "Devoid (This card has no color.)\nFlying\nAt the beginning of your upkeep, sacrifice a creature.\nWhenever you sacrifice a creature, draw a card."
-set = "soc"
 subtypes = ["Eldrazi"]
 keywords = ["flying"]
 devoid = true

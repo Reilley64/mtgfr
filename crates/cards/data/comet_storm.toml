@@ -2,10 +2,10 @@
 # Choose any target, then choose another target for each time this spell was kicked. Comet Storm
 # deals X damage to each of them.
 name = "Comet Storm"
+sets = ["c15", "c17", "c20", "cma", "cmd", "cmr", "mm2", "p10", "prm", "pwwk", "wwk"]
 id = "9c2b262b-53c0-41a1-8f1a-0c336453d4bf"
 default_print = "aca2ba5b-f42e-46bc-8053-caaec5e4de8f"
 oracle = "Multikicker {1} (You may pay an additional {1} any number of times as you cast this spell.)\nChoose any target, then choose another target for each time this spell was kicked. Comet Storm deals X damage to each of them."
-set = "cmd"
 
 [cost]
 x = true

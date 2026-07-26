@@ -2,11 +2,11 @@
 # {T}: Add {U}.
 # {T}, Remove a charge counter from this land: Add one mana of any color.
 name = "Vivid Creek"
+sets = ["c13", "c15", "c17", "cmd", "cmr", "h09", "lrw", "mma", "ncc", "pc2", "pca"]
 id = "2da7c49f-cc1e-45d9-9cbf-067e92b0daef"
 default_print = "c9082527-aa88-42f7-b2f2-de21878cb179"
 otags = ["activated-ability", "counters-matter", "charge-counter-land"]
 oracle = "This land enters tapped with two charge counters on it.\n{T}: Add {U}.\n{T}, Remove a charge counter from this land: Add one mana of any color."
-set = "ncc"
 enters_tapped = true
 
 [kind]
