@@ -1,8 +1,8 @@
 import { html } from "foldkit/html";
 import { Scene } from "foldkit/test";
 import { test } from "vitest";
-import { BindCardArt, CardArtTick } from "../../../lib/ui/card-art";
 import { BindDeckCardFlip, DeckCardFlipTick } from "../../deck-card-nav";
+import { BindCardArt, CardArtTick } from "../../domain/ui/card-art";
 import { renderDeckCard } from "./deck-card";
 
 const h = html<never>();

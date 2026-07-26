@@ -3,4 +3,4 @@
 .output
 .nitro
 junit.xml
-lib/wire/generated/
+app/domain/wire/generated/

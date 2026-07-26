@@ -3,7 +3,7 @@ import * as HttpClientError from "effect/unstable/http/HttpClientError";
 import * as HttpClientRequest from "effect/unstable/http/HttpClientRequest";
 import { Story } from "foldkit";
 import { afterEach, expect, test, vi } from "vitest";
-import { client } from "../../../lib/rpc-client";
+import { client } from "../../domain/rpc-client";
 import { init, update } from "../../main-exports";
 import { AuthFailed, NavigationCompleted, ReceivedMe, ReceivedMeGravatarHash } from "../../messages";
 import { RpcClient } from "../../resources";

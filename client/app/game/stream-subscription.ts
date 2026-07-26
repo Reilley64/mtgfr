@@ -2,7 +2,7 @@ import { Effect, Queue, Schema as S, Stream } from "effect";
 import { Subscription } from "foldkit";
 import { type Client, client as defaultClient } from "~/effect/client";
 import { streamDeltas as streamDeltasEffect } from "~/effect/stream";
-import type { StreamFrame } from "../../lib/wire/types";
+import type { StreamFrame } from "../domain/wire/types";
 import type { Message as AppMessage } from "../messages";
 import type { Model } from "../model";
 import {

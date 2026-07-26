@@ -2,7 +2,7 @@ import { foldkit } from "@foldkit/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
 import { nitro } from "nitro/vite";
 import { defineConfig } from "vite";
-import { clientBuildSourcemap } from "./lib/client-build-options";
+import { clientBuildSourcemap } from "./app/domain/client-build-options";
 
 export default defineConfig({
   build: {
@@ -18,7 +18,7 @@ export default defineConfig({
     port: 3000,
   },
   resolve: {
-    // Vite 8+: single source of truth is tsconfig.json compilerOptions.paths (`~/*` → `./lib/*`).
+    // Vite 8+: single source of truth is tsconfig.json compilerOptions.paths (`~/*` → `./app/domain/*`).
     tsconfigPaths: true,
   },
   plugins: [

@@ -1,12 +1,12 @@
 import { type Html, html } from "foldkit/html";
-import { cn } from "../../../lib/cn";
-import type { BuilderCatalogCard } from "../../../lib/deck-builder/cards";
-import { type AppChromeMeta, appVersionBadge } from "../../../lib/ui/app-version";
-import { buttonClass } from "../../../lib/ui/buttonClass";
-import { cardArt } from "../../../lib/ui/card-art";
-import { seatFace } from "../../../lib/ui/seat-face";
-import { feltClass, fieldClass, panelClass } from "../../../lib/ui/surfaces";
-import type { DeckSummary } from "../../../lib/wire/types";
+import { cn } from "../../domain/cn";
+import type { BuilderCatalogCard } from "../../domain/deck-builder/cards";
+import { type AppChromeMeta, appVersionBadge } from "../../domain/ui/app-version";
+import { buttonClass } from "../../domain/ui/buttonClass";
+import { cardArt } from "../../domain/ui/card-art";
+import { seatFace } from "../../domain/ui/seat-face";
+import { feltClass, fieldClass, panelClass } from "../../domain/ui/surfaces";
+import type { DeckSummary } from "../../domain/wire/types";
 import { HomeRoute, routePath } from "../../routes";
 import { type DeckCardModel, renderDeckCard } from "../decks/deck-card";
 import {

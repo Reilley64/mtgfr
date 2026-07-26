@@ -10,7 +10,7 @@
 
 import { colors } from "~/design-tokens.generated";
 import type { ActionView, PendingChoiceView, VisibleState, WireTarget } from "~/wire/types";
-import { formatMessage } from "../../../lib/i18n/message";
+import { formatMessage } from "../../domain/i18n/message";
 import { ZONE } from "../geometry/layout";
 import type { StagedAction } from "./execution";
 

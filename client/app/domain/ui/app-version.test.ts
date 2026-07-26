@@ -22,9 +22,7 @@ describe("formatFaithfulPercent", () => {
 
 describe("appVersionBadge", () => {
   it("renders nothing until the API version is known", () => {
-    expect(
-      appVersionBadge(h, { version: null, faithfulCount: 1, oracleTotal: 100 }),
-    ).toBeNull();
+    expect(appVersionBadge(h, { version: null, faithfulCount: 1, oracleTotal: 100 })).toBeNull();
   });
 
   it("renders version only when coverage is incomplete", () => {

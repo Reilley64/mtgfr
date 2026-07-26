@@ -229,7 +229,7 @@ The engine/schema event model includes `MulliganTaken { player, mulligans_taken,
 - **Codegen lifecycle**: `just server-codegen` (Rust, via `build.rs` → `OUT_DIR`) and
   `bun run gen` (TypeScript: `buf generate` via `client/package.json` `gen:wire`, plus design
   tokens via `gen-tokens.mjs` / `gen:tokens`) regenerate bindings from `.proto` and token
-  outputs. Generated TS files under `client/lib/wire/generated/` are gitignored and regenerated
+  outputs. Generated TS files under `client/app/domain/wire/generated/` are gitignored and regenerated
   in-image for production builds. There is no `scripts/gen.sh`.
 
 ---

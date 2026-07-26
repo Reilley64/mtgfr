@@ -1,6 +1,6 @@
 import { Schema as S } from "effect";
 import { m } from "foldkit/message";
-import { Leaderboard } from "../../../lib/wire/types";
+import { Leaderboard } from "../../domain/wire/types";
 
 export const RequestedLeaderboardRefresh = m("RequestedLeaderboardRefresh");
 export const RequestedLeaderboardNextPage = m("RequestedLeaderboardNextPage");

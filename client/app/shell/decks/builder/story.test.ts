@@ -2,11 +2,11 @@ import { Effect, Option } from "effect";
 import { Story } from "foldkit";
 import { Scene } from "foldkit/test";
 import { expect, test } from "vitest";
-import type { ScryfallPrint } from "../../../../lib/deck-builder/scryfall";
-import { client } from "../../../../lib/rpc-client";
-import { BindCardArt } from "../../../../lib/ui/card-art";
-import { OpenDialogAsModal } from "../../../../lib/ui/confirmDialog";
-import { type CatalogCard, CreateDeck422, type SaveDeckRequest } from "../../../../lib/wire/types";
+import type { ScryfallPrint } from "../../../domain/deck-builder/scryfall";
+import { client } from "../../../domain/rpc-client";
+import { BindCardArt } from "../../../domain/ui/card-art";
+import { OpenDialogAsModal } from "../../../domain/ui/confirmDialog";
+import { type CatalogCard, CreateDeck422, type SaveDeckRequest } from "../../../domain/wire/types";
 import { update as appUpdate, init } from "../../../main-exports";
 import { RpcClient } from "../../../resources";
 import {

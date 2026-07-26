@@ -1,6 +1,6 @@
 import { Story } from "foldkit";
 import { expect, test } from "vitest";
-import type { LobbyView } from "../../../lib/lobby/types";
+import type { LobbyView } from "../../domain/lobby/types";
 import { init, update } from "../../main-exports";
 import { ReceivedLobbyView } from "../../messages";
 import { TableRoute } from "../../routes";

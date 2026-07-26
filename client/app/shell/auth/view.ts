@@ -1,7 +1,7 @@
 import { html } from "foldkit/html";
-import { type AppChromeMeta, appVersionBadge } from "../../../lib/ui/app-version";
-import { buttonClass } from "../../../lib/ui/buttonClass";
-import { feltClass, fieldClass, panelClass } from "../../../lib/ui/surfaces";
+import { type AppChromeMeta, appVersionBadge } from "../../domain/ui/app-version";
+import { buttonClass } from "../../domain/ui/buttonClass";
+import { feltClass, fieldClass, panelClass } from "../../domain/ui/surfaces";
 import {
   ChangedAuthEmail,
   ChangedAuthMode,

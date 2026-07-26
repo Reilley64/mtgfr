@@ -1,6 +1,6 @@
 import { Effect } from "effect";
 import { Command } from "foldkit";
-import { apiMeta } from "../lib/lobby/client";
+import { apiMeta } from "./domain/lobby/client";
 import { ReceivedApiVersion } from "./messages";
 
 export const FetchApiVersion = Command.define(
@@ -16,8 +16,6 @@ export const FetchApiVersion = Command.define(
         oracleTotal: response?.oracleTotal ?? null,
       });
     }),
-    Effect.catch(() =>
-      Effect.succeed(ReceivedApiVersion({ version: null, faithfulCount: null, oracleTotal: null })),
-    ),
+    Effect.catch(() => Effect.succeed(ReceivedApiVersion({ version: null, faithfulCount: null, oracleTotal: null }))),
   ),
 );

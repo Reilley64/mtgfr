@@ -26,10 +26,10 @@ import type {
   WireTarget,
 } from "~/wire/types";
 import { clampX } from "~/xCost";
-import { formatMessage } from "../../lib/i18n/message";
-import { type InspectPin, inspectPinChanged, pinFromCard, pinFromPlayer } from "../../lib/inspect";
-import { humanReason } from "../../lib/reject";
-import { isSoundEnabled, playUnmuteTick, setSoundEnabled, unlockTableAudio } from "../../lib/tableAudio";
+import { formatMessage } from "../domain/i18n/message";
+import { type InspectPin, inspectPinChanged, pinFromCard, pinFromPlayer } from "../domain/inspect";
+import { humanReason } from "../domain/reject";
+import { isSoundEnabled, playUnmuteTick, setSoundEnabled, unlockTableAudio } from "../domain/tableAudio";
 import type { GameFoldState } from "../game/fold";
 import {
   FetchInspectCard,

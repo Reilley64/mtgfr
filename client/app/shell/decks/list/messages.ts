@@ -1,7 +1,7 @@
 import { Schema as S } from "effect";
 import { m } from "foldkit/message";
-import { CatalogCardSchema } from "../../../../lib/deck-builder/cards";
-import { DeckSummary } from "../../../../lib/wire/types";
+import { CatalogCardSchema } from "../../../domain/deck-builder/cards";
+import { DeckSummary } from "../../../domain/wire/types";
 
 export const RequestedDecksRefresh = m("RequestedDecksRefresh");
 export const ReceivedDecks = m("ReceivedDecks", { decks: S.Array(DeckSummary) });

@@ -1,6 +1,6 @@
 import { Schema as S } from "effect";
 import { m } from "foldkit/message";
-import { LobbyView } from "../../../lib/lobby/types";
+import { LobbyView } from "../../domain/lobby/types";
 
 export const ChangedLobbyCode = m("ChangedLobbyCode", { code: S.String });
 export const RequestedLobbyHost = m("RequestedLobbyHost");

@@ -1,10 +1,10 @@
 import { Submodel } from "foldkit";
 import { Scene } from "foldkit/test";
 import { test } from "vitest";
-import { BindCardArt, CardArtTick } from "../../../../lib/ui/card-art";
-import { ModalOpened, OpenDialogAsModal } from "../../../../lib/ui/confirmDialog";
-import type { CatalogCard } from "../../../../lib/wire/types";
 import { BindDeckCardFlip, DeckCardFlipTick } from "../../../deck-card-nav";
+import { BindCardArt, CardArtTick } from "../../../domain/ui/card-art";
+import { ModalOpened, OpenDialogAsModal } from "../../../domain/ui/confirmDialog";
+import type { CatalogCard } from "../../../domain/wire/types";
 import { ClosedDeckListMenu, type Message as DeckListMessage, OpenedDeckListMenu } from "./messages";
 import { initialDeckListSubmodel } from "./submodel";
 import { update } from "./update";

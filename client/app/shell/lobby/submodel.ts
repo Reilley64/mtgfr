@@ -1,5 +1,5 @@
 import { Schema as S } from "effect";
-import { LobbyView } from "../../../lib/lobby/types";
+import { LobbyView } from "../../domain/lobby/types";
 
 export const LobbyEntryMode = S.Union([S.Literal("choose"), S.Literal("join")]);
 export type LobbyEntryMode = typeof LobbyEntryMode.Type;

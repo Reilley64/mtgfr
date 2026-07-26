@@ -1,8 +1,8 @@
 import { Scene } from "foldkit/test";
 import { expect, test } from "vitest";
-import { BindCardArt, CardArtTick } from "../../../lib/ui/card-art";
-import type { CatalogCard } from "../../../lib/wire/types";
 import { BindDeckCardFlip, DeckCardFlipTick } from "../../deck-card-nav";
+import { BindCardArt, CardArtTick } from "../../domain/ui/card-art";
+import type { CatalogCard } from "../../domain/wire/types";
 import { init, update } from "../../main-exports";
 import { ReceivedDecks } from "../../messages";
 import type { Model } from "../../model";

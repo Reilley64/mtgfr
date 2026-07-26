@@ -5,10 +5,10 @@
  */
 import { Scene } from "foldkit/test";
 import { describe, expect, it } from "vitest";
-import { BindCardArt, CardArtTick } from "../../lib/ui/card-art";
-import { ModalOpened, OpenDialogAsModal } from "../../lib/ui/confirmDialog";
-import type { CatalogCard } from "../../lib/wire/types";
 import { BindDeckCardFlip, DeckCardFlipTick } from "../deck-card-nav";
+import { BindCardArt, CardArtTick } from "../domain/ui/card-art";
+import { ModalOpened, OpenDialogAsModal } from "../domain/ui/confirmDialog";
+import type { CatalogCard } from "../domain/wire/types";
 import { init, update } from "../main-exports";
 import type { Model as AppModel } from "../model";
 import {

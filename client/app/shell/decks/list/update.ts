@@ -1,7 +1,7 @@
 import { Effect, Match as M, Schema as S } from "effect";
 import type { Command as FoldkitCommand } from "foldkit";
 import { Command } from "foldkit";
-import { lookupCardsByIds } from "../../../../lib/deck-builder/lookup-cards";
+import { lookupCardsByIds } from "../../../domain/deck-builder/lookup-cards";
 import { RpcClient } from "../../../resources";
 import {
   DeckDeleted,

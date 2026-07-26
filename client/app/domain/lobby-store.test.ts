@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
-import { lobbies } from "../db/schema";
-import { createWebDb } from "../server/db/client";
+import { lobbies } from "../../db/schema";
+import { createWebDb } from "../../server/db/client";
 import { createLobby, joinLobby, type LobbySnapshot, loadLobby, startError, toLobbyView } from "./lobby-store";
 
 function snap(overrides: Partial<LobbySnapshot> = {}): LobbySnapshot {

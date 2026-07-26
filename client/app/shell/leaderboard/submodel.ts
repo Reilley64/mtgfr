@@ -1,5 +1,5 @@
 import { Schema as S } from "effect";
-import { LeaderboardEntry } from "../../../lib/wire/types";
+import { LeaderboardEntry } from "../../domain/wire/types";
 
 export const LeaderboardStatus = S.Union([
   S.Literal("idle"),

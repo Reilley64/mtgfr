@@ -1,11 +1,11 @@
 import { Effect, Match as M, Schema as S } from "effect";
 import type { Command as FoldkitCommand } from "foldkit";
 import { Command } from "foldkit";
-import { createTable, joinTable, readyUp, startGame } from "../../../lib/lobby/client";
-import { parseTableCode } from "../../../lib/lobby/code";
-import { lobbyIsHost } from "../../../lib/lobby/seat";
-import type { LobbyView } from "../../../lib/lobby/types";
-import { unlockTableAudio } from "../../../lib/tableAudio";
+import { createTable, joinTable, readyUp, startGame } from "../../domain/lobby/client";
+import { parseTableCode } from "../../domain/lobby/code";
+import { lobbyIsHost } from "../../domain/lobby/seat";
+import type { LobbyView } from "../../domain/lobby/types";
+import { unlockTableAudio } from "../../domain/tableAudio";
 import { LobbyCopyCompleted, LobbyRequestFailed, LobbyTableCreated, type Message, ReceivedLobbyView } from "./messages";
 import type { LobbySlice } from "./submodel";
 

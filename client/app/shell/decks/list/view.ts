@@ -1,10 +1,10 @@
 import { Effect, Queue, Schema as S, Stream } from "effect";
 import { type Html, html } from "foldkit/html";
 import * as Mount from "foldkit/mount";
-import { cn } from "../../../../lib/cn";
-import { type AppChromeMeta, appVersionBadge } from "../../../../lib/ui/app-version";
-import { confirmDialog } from "../../../../lib/ui/confirmDialog";
-import { feltClass, fieldClass, listRowClass } from "../../../../lib/ui/surfaces";
+import { cn } from "../../../domain/cn";
+import { type AppChromeMeta, appVersionBadge } from "../../../domain/ui/app-version";
+import { confirmDialog } from "../../../domain/ui/confirmDialog";
+import { feltClass, fieldClass, listRowClass } from "../../../domain/ui/surfaces";
 import type { Message } from "../../../messages";
 import { DeckRoute, NewDeckRoute, PlayRoute, routePath } from "../../../routes";
 import { accountChrome } from "../../account-chrome/view";

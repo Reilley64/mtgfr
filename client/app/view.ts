@@ -1,9 +1,9 @@
 import { Effect } from "effect";
 import { type Document, html } from "foldkit/html";
 import * as Mount from "foldkit/mount";
-import type { AppChromeMeta } from "../lib/ui/app-version";
 import { view as boardView } from "./board/view";
 import { parseDeckIdParam, playDeckAccess } from "./deck-id";
+import type { AppChromeMeta } from "./domain/ui/app-version";
 import { CompletedPortraitGateModal, type Message, PortraitGateCancelled, RequestedLogout } from "./messages";
 import type { Model } from "./model";
 import { HomeRoute, isProtectedRoute, NewDeckRoute, routePath } from "./routes";

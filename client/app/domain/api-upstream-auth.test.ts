@@ -64,7 +64,10 @@ describe("fetchApiMeta", () => {
 
   it("keeps version when live coverage is absent", async () => {
     vi.mocked(getCachedOracleTotal).mockReturnValue(28412);
-    vi.stubGlobal("fetch", vi.fn(async () => json({ version: "1.2.3" })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => json({ version: "1.2.3" })),
+    );
 
     await expect(fetchApiMeta()).resolves.toEqual({
       version: "1.2.3",
@@ -76,7 +79,10 @@ describe("fetchApiMeta", () => {
 
   it("falls back to cached oracle total when live status is unavailable", async () => {
     vi.mocked(getCachedOracleTotal).mockReturnValue(28412);
-    vi.stubGlobal("fetch", vi.fn(async () => json({ error: true }, 503)));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => json({ error: true }, 503)),
+    );
 
     await expect(fetchApiMeta()).resolves.toEqual({
       version: null,
@@ -87,9 +93,12 @@ describe("fetchApiMeta", () => {
 
   it("returns null meta fields when the oracle cache is cold", async () => {
     vi.mocked(getCachedOracleTotal).mockReturnValue(null);
-    vi.stubGlobal("fetch", vi.fn(async () => {
-      throw new Error("upstream down");
-    }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("upstream down");
+      }),
+    );
 
     await expect(fetchApiMeta()).resolves.toEqual({
       version: null,

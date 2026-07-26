@@ -1,7 +1,7 @@
 import type { html as createHtml, Html } from "foldkit/html";
-import { cn } from "../../../lib/cn";
-import { buttonClass } from "../../../lib/ui/buttonClass";
-import { seatFace } from "../../../lib/ui/seat-face";
+import { cn } from "../../domain/cn";
+import { buttonClass } from "../../domain/ui/buttonClass";
+import { seatFace } from "../../domain/ui/seat-face";
 import { RequestedLogout } from "../../messages";
 import { LeaderboardRoute, routePath } from "../../routes";
 import { BindAccountMenuEscape } from "./escape";

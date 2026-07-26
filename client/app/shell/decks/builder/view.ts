@@ -1,16 +1,16 @@
 import { Effect, Option, Queue, Schema as S, Stream } from "effect";
 import { type Html, html } from "foldkit/html";
 import * as Mount from "foldkit/mount";
-import { cn } from "../../../../lib/cn";
-import { cardHoverPreviewView } from "../../../../lib/deck-builder/card-hover-preview";
-import { DECK_SIZE, deckCount, sortedDeckList } from "../../../../lib/deck-builder/cards";
-import { formatReleasedAt } from "../../../../lib/deck-builder/print";
-import type { ScryfallPrint } from "../../../../lib/deck-builder/scryfall";
-import { type AppChromeMeta, appVersionBadge } from "../../../../lib/ui/app-version";
-import { buttonClass } from "../../../../lib/ui/buttonClass";
-import { cardArt } from "../../../../lib/ui/card-art";
-import { confirmDialog, OpenDialogAsModal } from "../../../../lib/ui/confirmDialog";
-import { feltClass, fieldClass } from "../../../../lib/ui/surfaces";
+import { cn } from "../../../domain/cn";
+import { cardHoverPreviewView } from "../../../domain/deck-builder/card-hover-preview";
+import { DECK_SIZE, deckCount, sortedDeckList } from "../../../domain/deck-builder/cards";
+import { formatReleasedAt } from "../../../domain/deck-builder/print";
+import type { ScryfallPrint } from "../../../domain/deck-builder/scryfall";
+import { type AppChromeMeta, appVersionBadge } from "../../../domain/ui/app-version";
+import { buttonClass } from "../../../domain/ui/buttonClass";
+import { cardArt } from "../../../domain/ui/card-art";
+import { confirmDialog, OpenDialogAsModal } from "../../../domain/ui/confirmDialog";
+import { feltClass, fieldClass } from "../../../domain/ui/surfaces";
 import type { Message } from "../../../messages";
 import {
   ActivatedBuilderTarget,

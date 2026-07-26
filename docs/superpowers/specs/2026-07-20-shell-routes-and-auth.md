@@ -1,7 +1,7 @@
 # Shell Routes and Auth
 
 **Status:** Current (as of 2026-07-26)
-**Module:** `client/app/` (entry, routes, update/view, model, subscriptions, resources), `client/app/shell/auth/**`, `client/app/faro.ts`, `client/lib/rpc-client.ts`, `client/lib/wire/**`, `client/lib/build-meta.ts`, `client/lib/client-build-options.ts`, `client/lib/design-tokens.generated.ts`, `client/lib/ui/**`, `client/styles/global.css`, `client/styles/tokens.generated.css`, `vite.config.ts`
+**Module:** `client/app/` (entry, routes, update/view, model, subscriptions, resources), `client/app/shell/auth/**`, `client/app/faro.ts`, `client/app/domain/rpc-client.ts`, `client/app/domain/wire/**`, `client/app/domain/build-meta.ts`, `client/app/domain/client-build-options.ts`, `client/app/domain/design-tokens.generated.ts`, `client/app/domain/ui/**`, `client/styles/global.css`, `client/styles/tokens.generated.css`, `vite.config.ts`
 
 ---
 
@@ -15,7 +15,7 @@ These concerns — routing, auth, Foldkit state/effects, the high-level wire/BFF
 
 ## Solution
 
-The client is a **Foldkit** SPA on **Nitro** (Vite). A single event-reactor owns all routes (`client/app/`: `Model` / `Message` / `update` / `view` with shell submodels). Async/wire work uses Effect at runtime boundaries (`client/lib/rpc-client.ts`, streams, BFF); Foldkit owns UI state. The wire contract is a hand-written Effect HTTP client over the same-origin `/api/rpc` BFF, which dials tonic gRPC. Design tokens are authored in `design.tokens.json` (DTCG) and generated under `bun run gen` into Tailwind v4 `@theme` (`client/styles/tokens.generated.css`) and canvas exports (`client/lib/design-tokens.generated.ts`). Biome handles format/lint. Observability: Grafana Faro (browser) + `@effect/opentelemetry` (BFF) + OTLP/tonic (API) — see [observability-ops](2026-07-20-observability-ops.md); exporters no-op locally unless OTLP is set.
+The client is a **Foldkit** SPA on **Nitro** (Vite). A single event-reactor owns all routes (`client/app/`: `Model` / `Message` / `update` / `view` with shell submodels). Async/wire work uses Effect at runtime boundaries (`client/app/domain/rpc-client.ts`, streams, BFF); Foldkit owns UI state. The wire contract is a hand-written Effect HTTP client over the same-origin `/api/rpc` BFF, which dials tonic gRPC. Design tokens are authored in `design.tokens.json` (DTCG) and generated under `bun run gen` into Tailwind v4 `@theme` (`client/styles/tokens.generated.css`) and canvas exports (`client/app/domain/design-tokens.generated.ts`). Biome handles format/lint. Observability: Grafana Faro (browser) + `@effect/opentelemetry` (BFF) + OTLP/tonic (API) — see [observability-ops](2026-07-20-observability-ops.md); exporters no-op locally unless OTLP is set.
 
 ---
 
@@ -59,7 +59,7 @@ A native `<dialog showModal>` opens when `(orientation: portrait) and (max-width
 
 `FetchMe` is a Foldkit command wrapping `client.me()` with all failures folded to `null` — any 401, decode error, or transport failure is treated as "not signed in." Route entry runs session checks for protected routes. While the session is unresolved, protected content stays blank; once resolved to `null`, the app redirects to `/login?next=<current-path>`. The `next` redirect target is validated server-side and in-browser: only same-origin absolute paths starting with `/` (not `//` or `/\`) are accepted.
 
-When `ReceivedMe` carries a signed-in user, the app queues `HashMeGravatar`, a Foldkit command that SHA-256 hashes the user's email through `client/lib/gravatar.ts` and stores the result as `session.meGravatarHash`. The completion message includes the source email, and `update` ignores stale hash results when the current session email no longer matches. Signed-out sessions clear `meGravatarHash`. The resulting hash feeds the shared account chrome face on home and leaderboard, matching the seat/avatar helper family without exposing raw email in UI state.
+When `ReceivedMe` carries a signed-in user, the app queues `HashMeGravatar`, a Foldkit command that SHA-256 hashes the user's email through `client/app/domain/gravatar.ts` and stores the result as `session.meGravatarHash`. The completion message includes the source email, and `update` ignores stale hash results when the current session email no longer matches. Signed-out sessions clear `meGravatarHash`. The resulting hash feeds the shared account chrome face on home and leaderboard, matching the seat/avatar helper family without exposing raw email in UI state.
 
 Unsigned protected content never renders.
 
@@ -69,15 +69,15 @@ The app model is the single UI state tree. `update(model, message)` is the only 
 
 Async work is expressed as Foldkit **Commands** backed by Effect programs. Commands depend on the `RpcClient` resource from `client/app/resources.ts`, so wire access is explicit at the runtime boundary. Session checks, auth submit, deck loading, catalog search, deck save/delete, leaderboard loading, lobby host/join, and table navigation all flow through commands.
 
-Boot also fetches `/api/meta/version/v1` through `client/lib/lobby/client.ts`. The `apiMeta()` helper decodes the required app `version` plus optional `faithful_count` / `oracle_total` fields from the BFF meta response. The app model stores all three values (`apiVersion`, `faithfulCount`, `oracleTotal`) through the existing `FetchApiVersion` Foldkit command and threads them into shell views as shared `AppChromeMeta`. Malformed or missing coverage fields fold to `null`, so the version line still renders and the `% faithful` line is simply omitted.
+Boot also fetches `/api/meta/version/v1` through `client/app/domain/lobby/client.ts`. The `apiMeta()` helper decodes the required app `version` plus optional `faithful_count` / `oracle_total` fields from the BFF meta response. The app model stores all three values (`apiVersion`, `faithfulCount`, `oracleTotal`) through the existing `FetchApiVersion` Foldkit command and threads them into shell views as shared `AppChromeMeta`. Malformed or missing coverage fields fold to `null`, so the version line still renders and the `% faithful` line is simply omitted.
 
 Long-lived listeners are Foldkit **Subscriptions**. App subscriptions cover portrait orientation, lobby polling, and game stream frames. Dependency functions decide when each stream is active; returning `Stream.empty` stops work when the route or table changes. Components do not own long-lived fibers.
 
 ### Wire protocol (high-level; detail in [wire-protocol-and-visibility](2026-07-20-wire-protocol-and-visibility.md))
 
-Modules: `client/lib/rpc-client.ts`, `client/server/routes/api/rpc/[...path].ts`, `client/lib/wire/grpcClient.ts`.
+Modules: `client/app/domain/rpc-client.ts`, `client/server/routes/api/rpc/[...path].ts`, `client/app/domain/wire/grpcClient.ts`.
 
-The browser talks only to the same-origin BFF via the hand-written Effect HTTP client (`client/lib/rpc-client.ts`) over `/api/rpc`. The Nitro BFF dispatches `/api/rpc/**` requests and calls tonic gRPC through `client/lib/wire/grpcClient.ts`. There is no direct browser-to-gRPC communication. The proto wire is the sole contract.
+The browser talks only to the same-origin BFF via the hand-written Effect HTTP client (`client/app/domain/rpc-client.ts`) over `/api/rpc`. The Nitro BFF dispatches `/api/rpc/**` requests and calls tonic gRPC through `client/app/domain/wire/grpcClient.ts`. There is no direct browser-to-gRPC communication. The proto wire is the sole contract.
 
 `makeClient(fetch)` accepts a fetch implementation so tests can stub it. `client` is the app singleton (credentials: include, prepended `/api/rpc`). Wire types (`wire/types.ts`) are Effect Schema-decoded DTOs; `wire/protoMap.ts` maps them to/from proto.
 
@@ -89,7 +89,7 @@ The game stream is a Foldkit subscription keyed by route table id and active gam
 
 ### Design system (`DESIGN.md`, `design.tokens.json`, `client/styles/global.css`)
 
-`design.tokens.json` (DTCG) is the **single source of truth** for design token values. Token prose and rules live in [`DESIGN.md`](../../../DESIGN.md). `bun run gen` (Style Dictionary) generates `client/styles/tokens.generated.css` (Tailwind v4 `@theme`) and `client/lib/design-tokens.generated.ts` (canvas named colors). `global.css` imports generated theme output and keeps hand-authored keyframes/interaction rules. Foldkit HTML helpers and shared UI helpers in `client/lib/ui/` own component recipes — never via `@apply`, and not as token component maps. Inline style is used only for CSS variables; classes carry appearance. Arbitrary values (`bg-[#18221ef5]`) are for one-off values that token files do not name; they do not extend the token list.
+`design.tokens.json` (DTCG) is the **single source of truth** for design token values. Token prose and rules live in [`DESIGN.md`](../../../DESIGN.md). `bun run gen` (Style Dictionary) generates `client/styles/tokens.generated.css` (Tailwind v4 `@theme`) and `client/app/domain/design-tokens.generated.ts` (canvas named colors). `global.css` imports generated theme output and keeps hand-authored keyframes/interaction rules. Foldkit HTML helpers and shared UI helpers in `client/app/domain/ui/` own component recipes — never via `@apply`, and not as token component maps. Inline style is used only for CSS variables; classes carry appearance. Arbitrary values (`bg-[#18221ef5]`) are for one-off values that token files do not name; they do not extend the token list.
 
 Key semantic tokens:
 - `forest-floor` (#0B1310) — canvas background, `index.html` inline background (prevents flash).
@@ -107,7 +107,7 @@ The `mana-oracle.css` import brings in the mana-font glyph subset (icon font, no
 
 ### Brand display
 
-Player-facing wordmark and document title use **`edh.reilley.dev`** (lowercase hostname, no scheme). Scryfall and related tooling HTTP User-Agent identity is **`edh.reilley.dev/0.1`** (call sites include `client/lib/deck-builder/scryfall.ts` and tooling scripts). Surfaces that show the wordmark include HTML `<title>`, Foldkit `Document.title` / nav brand link (`client/app/view.ts`), auth panel hero, and lobby panel hero. Package names, database names (`mtgfr` / `mtgfr_web`), proto package, GHCR image names, and similar infrastructure identifiers are not renamed as part of this brand display (see Further Notes).
+Player-facing wordmark and document title use **`edh.reilley.dev`** (lowercase hostname, no scheme). Scryfall and related tooling HTTP User-Agent identity is **`edh.reilley.dev/0.1`** (call sites include `client/app/domain/deck-builder/scryfall.ts` and tooling scripts). Surfaces that show the wordmark include HTML `<title>`, Foldkit `Document.title` / nav brand link (`client/app/view.ts`), auth panel hero, and lobby panel hero. Package names, database names (`mtgfr` / `mtgfr_web`), proto package, GHCR image names, and similar infrastructure identifiers are not renamed as part of this brand display (see Further Notes).
 
 The site favicon is a filled `forest-floor` (#0B1310) circle with a closed-mouth elder-dragon head-and-neck bust cut out as transparent negative space (side profile, facing right; neck base planted on the bottom rim) — GitHub Invertocat-style, not a lettermark and not a square plate. Source of truth is `client/public/favicon.svg`; `client/public/favicon.ico` is a multi-size alpha raster fallback. `client/index.html` declares `<link rel="icon" href="/favicon.svg" type="image/svg+xml" />` then `<link rel="icon" href="/favicon.ico" sizes="any" />`.
 
@@ -123,13 +123,13 @@ Browser Faro, BFF OTEL (`client/server/plugins/otel.server.ts`), scrub rules, Fa
 
 Single-page login/signup (toggled, not separate routes). `Login` and `Signup` are Foldkit commands wrapping `client.login` / `client.signup`. 401 → "Wrong email or password", 409 → "That email is already registered", anything else → "Something went wrong." On success the server sets an HttpOnly session cookie and the client navigates to `safeNext(params.next)`. `safeNext` enforces same-origin absolute paths only: rejects missing, relative, protocol-relative `//`, backslash `/\`, or scheme-carrying targets.
 
-### Build metadata (`client/lib/build-meta.ts`, `client/lib/ui/app-version.ts`)
+### Build metadata (`client/app/domain/build-meta.ts`, `client/app/domain/ui/app-version.ts`)
 
 `appVersion()` and `gitCommit()` read from `VITE_APP_VERSION` and `VITE_GIT_COMMIT` env vars baked at build time. Consumed by the BFF OTEL SDK's `serviceVersion` and `vcs.ref.head.revision` resource attributes, and by the `AppVersion` component.
 
 Bottom-left shell chrome (`appVersionBadge`): when `apiVersion` is known, show `API {version}` (`data-testid="app-version"`). When `faithfulCount` and `oracleTotal` are also known and `oracleTotal > 0`, show `{n}% faithful` on the line above (`data-testid="pool-coverage"`). Percentage uses one decimal below 10%, otherwise whole percent (`formatFaithfulPercent`). Coverage comes from `GET /api/meta/version/v1` (`faithful_count` from API `/health/live`, `oracle_total` from BFF-cached Scryfall oracle-cards JSONL count, 24h TTL, non-blocking refresh). Incomplete coverage → version line only. Not shown on the in-game board.
 
-### Production source maps (`vite.config.ts`, `client/lib/client-build-options.ts`)
+### Production source maps (`vite.config.ts`, `client/app/domain/client-build-options.ts`)
 
 Vite production builds set `build.sourcemap: true` (via `clientBuildSourcemap`) so the large first-party client bundle ships a sibling `.js.map` with a `//# sourceMappingURL=` comment and embedded `sourcesContent`. Chrome DevTools and Faro can resolve minified frames without a separate map-upload pipeline. Maps are public static assets under `.output/public/assets/` (same as the JS); `"hidden"` is intentionally not used because browsers only auto-fetch maps when the comment is present.
 
@@ -152,13 +152,13 @@ Vite production builds set `build.sourcemap: true` (via `clientBuildSourcemap`) 
 - `client/app/shell/auth/**/*.test.ts` — auth stories and helpers, including `ReceivedMe` → `HashMeGravatar` session storage and stale-result guarding.
 - `client/app/routes.test.ts`, `client/app/smoke.test.ts` — routing and smoke; includes protected `/leaderboard` entry, auth redirect, home entry loading decks without a teaser fetch, and retry-from-page-one behavior.
 - `client/app/shell/surfaces.test.ts` — shell Scene coverage for auth, deck, leaderboard, and lobby surfaces, including shared account chrome and the `% faithful` + `API {version}` shell badge stack; Scene asserts `pool-coverage` above `app-version` when the model has complete meta.
-- `client/lib/ui/app-version.test.ts` — percent formatting and stacked badge rendering rules.
+- `client/app/domain/ui/app-version.test.ts` — percent formatting and stacked badge rendering rules.
 - `client/app/game/*.test.ts` — game fold, stream subscription.
-- `client/lib/rpc-client.test.ts` — Effect HTTP client (stubbed fetch).
-- `client/lib/wire/*.test.ts` — BFF gRPC / RPC method gate.
-- `client/lib/ui/*.test.ts`, `client/lib/cn.test.ts` — Foldkit UI helpers (`buttonClass`, surfaces).
-- `client/lib/build-meta.test.ts` — version/commit env var reading.
-- `client/lib/client-build-options.test.ts` — production `build.sourcemap` stays `true` and wired in `vite.config.ts`.
+- `client/app/domain/rpc-client.test.ts` — Effect HTTP client (stubbed fetch).
+- `client/app/domain/wire/*.test.ts` — BFF gRPC / RPC method gate.
+- `client/app/domain/ui/*.test.ts`, `client/app/domain/cn.test.ts` — Foldkit UI helpers (`buttonClass`, surfaces).
+- `client/app/domain/build-meta.test.ts` — version/commit env var reading.
+- `client/app/domain/client-build-options.test.ts` — production `build.sourcemap` stays `true` and wired in `vite.config.ts`.
 - Board geometry/paint/HTML tests live under `client/app/board/**` (see board specs / `docs/client-canvas-map.md`).
 - Integration test: `just client-check` runs Biome lint + typecheck + Vitest. The full check is `just check` (server + client).
 
@@ -179,11 +179,11 @@ Vite production builds set `build.sourcemap: true` (via `clientBuildSourcemap`) 
 
 ## Further Notes
 
-- **`design.tokens.json` is the token source.** Token values are authored there, then generated into `client/styles/tokens.generated.css` and `client/lib/design-tokens.generated.ts`; never hand-edit generated outputs. Design-system prose SoT remains [`DESIGN.md`](../../../DESIGN.md).
+- **`design.tokens.json` is the token source.** Token values are authored there, then generated into `client/styles/tokens.generated.css` and `client/app/domain/design-tokens.generated.ts`; never hand-edit generated outputs. Design-system prose SoT remains [`DESIGN.md`](../../../DESIGN.md).
 - **Brand non-rename.** Display wordmark and public User-Agent use `edh.reilley.dev`; DBs (`mtgfr`, `mtgfr_web`), proto (`mtgfr.v1`), GHCR images, K8s labels, npm/cargo package names, clap CLI name, Terraform example hostname (`edh.example.com`), localStorage keys, Faro/OTEL service names, and Style Dictionary format ids are not renamed for brand display alone.
 - **Effect / `@effect/*` packages must be pinned to the same exact beta.** Breaking the pin causes runtime type mismatches between Effect fibers from different versions.
-- **Wire codegen.** `.proto` is the sole contract ([wire-protocol-and-visibility](2026-07-20-wire-protocol-and-visibility.md)). After proto changes: `just server-codegen` / `bun run gen` to regenerate the gitignored `client/lib/wire/generated/` directory. The BFF gRPC client imports from there.
+- **Wire codegen.** `.proto` is the sole contract ([wire-protocol-and-visibility](2026-07-20-wire-protocol-and-visibility.md)). After proto changes: `just server-codegen` / `bun run gen` to regenerate the gitignored `client/app/domain/wire/generated/` directory. The BFF gRPC client imports from there.
 - **Safe area insets.** The landscape rule applies to notched devices — `viewport-fit=cover` with safe-area insets. The portrait gate handles the notched-portrait case; landscape layout tightens padding but does not re-stack.
 - **`just client-check`** is the canonical verification: Biome format + lint (including sorted-class check) + TypeScript typecheck + Vitest. Always run before committing client changes.
-- **Live client architecture** is Foldkit + Nitro with `client/app/`, `client/lib/`, and `client/server/` as the module split.
+- **Live client architecture** is Foldkit + Nitro with `client/app/`, `client/app/domain/`, and `client/server/` as the module split.
 - **Pool coverage badge design input:** [2026-07-26-pool-coverage-badge-design.md](2026-07-26-pool-coverage-badge-design.md).

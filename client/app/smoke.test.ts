@@ -1,7 +1,7 @@
 import { Scene } from "foldkit/test";
 import { describe, expect, it } from "vitest";
-import { BindCardArt } from "../lib/ui/card-art";
 import { BindDeckCardFlip, DeckCardFlipTick } from "./deck-card-nav";
+import { BindCardArt } from "./domain/ui/card-art";
 import { init, Model, update } from "./main-exports";
 import { CardArtTick, PortraitGateCancelled } from "./messages";
 import type { Model as AppModel } from "./model";

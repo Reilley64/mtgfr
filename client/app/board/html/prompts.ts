@@ -31,7 +31,7 @@ import { isActivePlayer } from "~/spectator";
 import { cardArt } from "~/ui/card-art";
 import type { ChoiceItem, MessageRef, PendingChoiceView, VisibleState, WireModeChoice, WireTarget } from "~/wire/types";
 import { clampX, costText, costWithChosenX } from "~/xCost";
-import { formatMessage } from "../../../lib/i18n/message";
+import { formatMessage } from "../../domain/i18n/message";
 import { modeAvailable } from "../action/modal";
 import {
   gyExileCostObjectIds,

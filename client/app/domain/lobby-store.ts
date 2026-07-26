@@ -1,6 +1,6 @@
 import { and, eq, isNull, lt, sql } from "drizzle-orm";
-import { lobbies, lobbySeats, tableRoutes } from "../db/schema";
-import type { WebDb } from "../server/db/client";
+import { lobbies, lobbySeats, tableRoutes } from "../../db/schema";
+import type { WebDb } from "../../server/db/client";
 import type { LobbyView } from "./lobby-types";
 
 const IDLE_LOBBY_MS = 30 * 60 * 1000;

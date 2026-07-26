@@ -1,7 +1,7 @@
 import { Canvas } from "foldkit";
 import { colors } from "~/design-tokens.generated";
 import type { PlayerView } from "~/wire/types";
-import { monogramLetter } from "../../../lib/gravatar";
+import { monogramLetter } from "../../domain/gravatar";
 import { TARGET_COLOR } from "../action/targeting";
 import { type Camera, worldToScreen } from "../geometry/camera";
 import { AVATAR_R, avatarLabelOffsets, avatarPos, seatColor } from "../geometry/layout";

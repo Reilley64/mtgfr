@@ -12,7 +12,7 @@
     "skipLibCheck": true,
     "isolatedModules": true,
     "paths": {
-      "~/*": ["./lib/*"]
+      "~/*": ["./app/domain/*"]
     },
     "plugins": [
       {
@@ -20,5 +20,5 @@
       }
     ]
   },
-  "include": ["lib", "server", "app", "nitro.config.ts", "vite.config.ts", "vitest.config.ts"]
+  "include": ["app", "server", "nitro.config.ts", "vite.config.ts", "vitest.config.ts"]
 }

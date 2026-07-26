@@ -1,6 +1,6 @@
 import { Schema as S } from "effect";
-import { Me } from "../lib/wire/types";
 import { type BoardModel, initialBoardModel } from "./board/submodel";
+import { Me } from "./domain/wire/types";
 import { emptyGameFold, type GameFoldState } from "./game/fold";
 import { AppRoute } from "./routes";
 import { AuthSubmodel } from "./shell/auth/submodel";
