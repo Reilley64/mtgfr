@@ -39,16 +39,17 @@ Cut cold **server verify wall-clock** with a **modest** parallelization budget: 
 ### Job graph (`verify-jobs.yml`)
 
 ```text
-verify-server-gate          (restore pass marker; emit cache-hit output)
+verify-server-gate          (cache/restore only → outputs.cache-hit; never save)
         |
-        +-- miss --> verify-server-lint     (CR index + fmt + clippy; no Postgres)
-        |              verify-server-test   (matrix partition 1, 2; Postgres + migrate + nextest shard)
+        +-- miss --> verify-server-lint     (CR index + fmt + clippy; rust-cache shared-key)
+        |              verify-server-test   (matrix 1/2, 2/2; Postgres + migrate + nextest shard;
+        |                                   rust-cache shared-key)
         |                    |
-        +--------------------+--> verify-server-mark  (write pass marker only on full success + miss)
+        +--------------------+--> verify-server-mark  (cache/save only after lint + both shards OK)
         |
-        +-- hit  --> lint/test/mark skipped or no-op
+        +-- hit  --> lint / test / mark jobs skipped via if:
 
-verify-server               (aggregator: needs lint + both test shards; single status check)
+verify-server               (aggregator; green on hit OR full miss success)
 ```
 
 Naming in the Actions UI should stay readable, e.g. `Verify (server lint)`, `Verify (server test) (1, 2)`, `Verify (server)` for the aggregator. Exact `name:` strings are implementation detail as long as one stable aggregator remains for branch protection / mental model.
