@@ -1,9 +1,17 @@
 /**
  * @vitest-environment happy-dom
  */
+import { html } from "foldkit/html";
 import { afterEach, describe, expect, it } from "vitest";
 import { ImageCache } from "../image-cache";
-import { cardArtUrl, syncCardArtHost } from "./card-art";
+import { cardArt, cardArtUrl, syncCardArtHost } from "./card-art";
+
+function dataAttr(node: unknown, name: string): string | null {
+  if (node == null || typeof node !== "object") return null;
+  const view = node as { data?: { attrs?: Record<string, string> } };
+  const value = view.data?.attrs?.[`data-${name}`];
+  return typeof value === "string" ? value : null;
+}
 
 async function waitUntil(predicate: () => boolean, timeoutMs = 1000): Promise<void> {
   const start = Date.now();
@@ -19,6 +27,24 @@ describe("cardArtUrl", () => {
   });
   it("defaults to large front", () => {
     expect(cardArtUrl("abcd-print")).toContain("abcd-print");
+  });
+});
+
+describe("cardArt", () => {
+  const h = html<never>();
+
+  it("uses proxy art with print fallback on the front face", () => {
+    const node = cardArt(h, {
+      print: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+      proxyArtUrl: "https://example.com/a.png",
+      size: "large",
+      face: "front",
+      alt: "Commander",
+      className: "art",
+    });
+
+    expect(dataAttr(node, "art-url")).toContain("/api/card-art/proxy?url=");
+    expect(dataAttr(node, "art-fallback")).toContain("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
   });
 });
 
@@ -106,6 +132,44 @@ describe("syncCardArtHost art_crop CDN fallback", () => {
     lastImg.onerror?.();
     await waitUntil(
       () => cache.isFailed(host.dataset.artUrl ?? "nope") || host.dataset.artUrl?.includes("scryfall") === true,
+    );
+    syncCardArtHost(host, cache);
+    expect(host.dataset.artUrl).toContain("api.scryfall.com");
+    expect(host.dataset.artFallback ?? "").toBe("");
+    lastImg.onload?.();
+    await waitUntil(() => cache.isReady(host.dataset.artUrl ?? ""));
+    syncCardArtHost(host, cache);
+    expect(host.querySelector("img")?.getAttribute("src")).toContain("api.scryfall.com");
+  });
+});
+
+describe("syncCardArtHost proxy art fallback", () => {
+  afterEach(() => {
+    document.body.replaceChildren();
+  });
+
+  it("swaps to print art after proxy load failure", async () => {
+    let lastImg!: { src: string; onload: (() => void) | null; onerror: (() => void) | null };
+    const cache = new ImageCache(
+      () => {},
+      () => {
+        lastImg = { src: "", onload: null, onerror: null };
+        return lastImg;
+      },
+    );
+
+    const host = document.createElement("div");
+    host.dataset.artUrl = "/api/card-art/proxy?url=https%3A%2F%2Fexample.com%2Fa.png";
+    host.dataset.artFallback = "https://api.scryfall.com/cards/abcd?format=image&version=large";
+    host.dataset.artAlt = "Commander";
+    host.dataset.artClass = "art";
+    document.body.append(host);
+
+    syncCardArtHost(host, cache);
+    expect(host.querySelector("[aria-hidden='true']")).toBeTruthy();
+    lastImg.onerror?.();
+    await waitUntil(
+      () => cache.isFailed("/api/card-art/proxy?url=https%3A%2F%2Fexample.com%2Fa.png") || host.dataset.artUrl?.includes("scryfall") === true,
     );
     syncCardArtHost(host, cache);
     expect(host.dataset.artUrl).toContain("api.scryfall.com");

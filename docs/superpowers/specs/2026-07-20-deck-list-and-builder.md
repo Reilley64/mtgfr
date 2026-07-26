@@ -84,6 +84,12 @@ Art is keyed by Scryfall **Printing** UUID. `imageUrlByPrint(printId, size, face
 - When `VITE_CARD_CDN` is unset: Scryfall image API
   (`https://api.scryfall.com/cards/{id}?format=image&version={size}`) (local/dev).
 
+`cardArt` resolves the final HTML host attributes. When `proxyArtUrl` is present, front-face art
+uses the same-origin BFF path `/api/card-art/proxy?url=...` first and keeps the printing URL in
+`data-art-fallback`, so a proxy fetch or decode failure swaps back to the printing. Back faces do
+not use the proxy; they continue to use the selected printing. When no proxy is present, existing
+art-crop CDN → Scryfall fallback behavior stays unchanged.
+
 Missing ordinary (non-`art_crop`) CDN art stays empty after load failure (no Scryfall fallback in production). The CDN path replicates Scryfall's folder fan (`first two hex chars` of the UUID). DFC backs are fetched with `face=back` in the Scryfall path; CDN serves the same `large` webp. `imageFaceAfterLoadError` falls back from `back` to `front` on load error (DFC prepare/flip cards have no Scryfall `/back/` — transformer backs that exist load on first try).
 
 `cardBackUrl()` returns `/card-back.webp` for library piles and face-down cards.
@@ -106,7 +112,9 @@ Missing ordinary (non-`art_crop`) CDN art stays empty after load failure (no Scr
 
 - `client/app/shell/decks/**/*.test.ts` — decks list/builder stories and helpers (including sequential multi-card remove and keyed decklist rows for pointer-Mount remount).
 - `client/app/domain/deck-builder/*.test.ts` — print prefs, menus, hover preview.
-- `client/app/domain/ui/card-art.test.ts` — art URL / host sync against `ImageCache`.
+- `client/app/domain/card-art/proxy-url.test.ts` — proxy URL encoding and front/back face resolution.
+- `client/app/domain/ui/card-art.test.ts` — art URL / host sync against `ImageCache`, including
+  proxy-to-print fallback and art-crop fallback.
 - `client/app/domain/image-cache.test.ts` — cache settle / subscriber behavior.
 - Scene coverage for shell deck surfaces lives with other shell Scene tests, including
   `header-leaderboard-link`, `account-menu-*`, `account-gravatar-link`, and
