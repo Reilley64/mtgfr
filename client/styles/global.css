@@ -203,15 +203,17 @@
   }
 
   /* Portrait phones keep the app usable by rotating the landscape-first shell in CSS. */
-  .landscape-rotate-root {
-    position: fixed;
-    top: 0;
-    left: 100%;
-    width: 100vh;
-    height: 100vw;
-    transform: rotate(90deg);
-    transform-origin: top left;
-    overflow: auto;
+  @media (orientation: portrait) and (max-width: 900px) {
+    .landscape-rotate-root {
+      position: fixed;
+      top: 0;
+      left: 100%;
+      width: 100vh;
+      height: 100vw;
+      transform: rotate(90deg);
+      transform-origin: top left;
+      overflow: auto;
+    }
   }
 
   /* Short landscape (phones on their side): tighten screen chrome, keep side-by-side. */
