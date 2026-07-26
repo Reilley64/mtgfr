@@ -1,48 +1,66 @@
-# Task 4 Report: Paint + Mount clock for exit FX
+# Task 4 Report: Leaderboard page uses shared account chrome
 
 ## Status
 
-Complete.
+**Complete.** The leaderboard header now uses the shared avatar account chrome from home, keeps the Play link, hides the leaderboard self-link, and clears the menu when leaderboard loads start.
 
-## Scope delivered
+## Changes
 
-- Added `client/app/board/bitmap/paint-exit-fx.ts` with distinct destroy vs exile bitmap paint:
-  - destroy: lifted card face, ash/burn veil, warm ember particles
-  - exile: lifted card face, squash-to-center void, teal shard particles
-- Added `client/app/board/bitmap/paint-exit-fx.test.ts`
-- Extended `client/app/board/bitmap/mount.ts` to:
-  - track `liveExitFx` alongside `liveFlights`
-  - preserve in-progress exit FX across republishes
-  - step exit FX in `tickFlightClock` via `stepExitFx`
-  - keep rAF alive while exit FX remain active
-  - publish stepped `exitFx` in `FlightsSynced`
-  - drop completed FX from the frame/sync payload
-  - paint exit FX on the flight layer after flights
-  - preload exit-FX card art
-- Extended `client/app/board/bitmap/mount.test.ts` for flight-layer paint, rAF gating, stepped sync, and completion cleanup
-- Added `mergeExitFxPoses` in `client/app/board/bitmap/flight-frame.ts`
-- Verified `client/app/board/view.ts` already publishes `exitFx`, so no view-path change was needed
+### `client/app/shell/leaderboard/view.ts`
+- Replaced the standalone `Sign out` button with `accountChrome(...)`.
+- Removed the `Signed in as ...` subtitle.
+- Added `meGravatarHash` to the view signature and passed `showLeaderboardLink: false`.
+
+### `client/app/view.ts`
+- Passed `model.session.meGravatarHash` into `leaderboardView(...)`.
+
+### `client/app/shell/leaderboard/update.ts`
+- Updated `loadLeaderboard(...)` to set `accountMenuOpen: false` whenever a leaderboard load starts.
+
+### `client/app/shell/surfaces.test.ts`
+- Extended the leaderboard scene to assert:
+  - `Play` remains visible.
+  - the avatar trigger exists.
+  - the shared chrome does not render the leaderboard self-link.
+  - the old `Signed in as alice` subtitle is gone.
+- Added a scene proving the leaderboard account menu renders and closes through `BindAccountMenuEscape`.
+
+### `client/app/routes.test.ts`
+- Extended the leaderboard refresh story to assert that retry/reset closes the account menu while re-entering the loading state.
+
+## TDD evidence
+
+1. **RED:** `cd /workspace/client && bun test app/shell/surfaces.test.ts -t "leaderboard"`
+   Result: 2 failures — missing `account-menu-trigger`, missing open `account-menu`.
+2. **GREEN:** implemented the shared chrome wiring and load reset.
+3. **GREEN verification:** `cd /workspace/client && bun test app/shell/surfaces.test.ts app/routes.test.ts`
+   Result: `31 pass, 0 fail`.
 
 ## Verification
 
 Passed:
 
-- `cd /workspace/client && bun run test -- app/board/bitmap/paint-exit-fx.test.ts app/board/bitmap/mount.test.ts app/board/exit-fx-sync.test.ts app/board/story.test.ts`
-- `cd /workspace/client && bun run typecheck`
-- `cd /workspace/client && bunx biome check --formatter-enabled=false app/board/bitmap/paint-exit-fx.ts app/board/bitmap/paint-exit-fx.test.ts app/board/bitmap/mount.ts app/board/bitmap/mount.test.ts app/board/bitmap/flight-frame.ts`
+- `cd /workspace && just client-migrate`
+- `cd /workspace/client && bun run lint && bun run typecheck && bun test app/shell/surfaces.test.ts app/routes.test.ts lib/lobby-store.test.ts`
+
+Results:
+
+- lint: completed with existing repo warnings only
+- typecheck: pass
+- tests: `36 pass, 0 fail`
 
 ## Self-review
 
 No blocking issues found.
 
-Non-blocking note:
+- Scope stayed inside the task brief; living specs were not updated.
+- Reused the existing home/decks `accountChrome` pattern instead of duplicating header behavior.
+- Added coverage for both visible chrome and the `loadLeaderboard` menu-reset path.
 
-- `tickFlightClock` now emits `FlightsSynced` while exit FX progress changes so the board model stays in lockstep with the short-lived 550ms animation. That is intentional, but it does mean a brief burst of sync messages during active exit FX.
+## Commit
 
-## Review follow-up: reduced-motion publish path
+`feat(client): share leaderboard account chrome`
 
-- Fixed the Important review finding in `client/app/board/bitmap/mount.ts` by collapsing publish-time `exitFx` through the same reduced-motion preference the Mount already uses for rAF ticks, so the animated layer never paints a one-frame ExitFx flash.
-- Added a mount regression in `client/app/board/bitmap/mount.test.ts` that stubs reduced motion, publishes a frame with `exitFx`, asserts the animated frame/state are cleared immediately, confirms no rAF is needed, and checks that an immediate sync payload is surfaced.
-- Test evidence:
-  - `cd /workspace/client && bun test app/board/bitmap/paint-exit-fx.test.ts app/board/bitmap/mount.test.ts`
-  - Result: `25 pass, 0 fail`
+## Concerns
+
+- Repo lint still reports pre-existing `noNonNullAssertion` warnings outside this task (`app/board/motion/exit-fx.test.ts`, `lib/favicon-assets.test.ts`, `lib/gravatar.ts`), but they do not block the targeted verification above.

@@ -2,7 +2,6 @@ import { Effect, Option } from "effect";
 import { Story } from "foldkit";
 import { expect, test } from "vitest";
 import { init } from "./init";
-import type { Model } from "./model";
 import {
   ClosedAccountMenu,
   NavigationCompleted,
@@ -15,6 +14,7 @@ import {
   RequestedLeaderboardRefresh,
   ToggledAccountMenu,
 } from "./messages";
+import type { Model } from "./model";
 import {
   DeckRoute,
   HomeRoute,
@@ -222,6 +222,7 @@ test("leaderboard retry refreshes from the first page after an error", () => {
     ...base,
     leaderboard: {
       ...base.leaderboard,
+      accountMenuOpen: true,
       entries: [{ rank: 1, rating: 1200, user_id: 1, username: "alice" }],
       error: "Could not load the leaderboard.",
       status: "error",
@@ -235,6 +236,7 @@ test("leaderboard retry refreshes from the first page after an error", () => {
     Story.message(RequestedLeaderboardRefresh()),
     Story.Command.expectExact(load),
     Story.model((m) => {
+      expect(m.leaderboard.accountMenuOpen).toBe(false);
       expect(m.leaderboard.entries).toEqual([]);
       expect(m.leaderboard.error).toBeNull();
       expect(m.leaderboard.status).toBe("loading");

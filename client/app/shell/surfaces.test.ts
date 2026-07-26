@@ -18,8 +18,8 @@ import {
   NewDeckRoute,
   NotFoundRoute,
   PlayRoute,
-  TableRoute,
   routePath,
+  TableRoute,
 } from "../routes";
 import { view } from "../view";
 import { BindAccountMenuEscape } from "./account-chrome/escape";
@@ -166,9 +166,7 @@ describe("shell surface scenes", () => {
       Scene.expect(Scene.text("Sign out")).not.toExist(),
       Scene.expect(Scene.text("Your decks")).toExist(),
       Scene.expect(Scene.text("Superfriends")).toExist(),
-      Scene.expect(
-        Scene.selector(`[data-testid="deck-list-new-deck"][href="${routePath(NewDeckRoute())}"]`),
-      ).toExist(),
+      Scene.expect(Scene.selector(`[data-testid="deck-list-new-deck"][href="${routePath(NewDeckRoute())}"]`)).toExist(),
       Scene.expect(Scene.text("New deck")).toExist(),
       Scene.expect(
         Scene.selector(`[data-testid="deck-list-header"] a[href="${routePath(NewDeckRoute())}"]`),
@@ -254,9 +252,7 @@ describe("shell surface scenes", () => {
         }),
       ),
       Scene.expect(Scene.text("No decks yet — build one to get started.")).not.toExist(),
-      Scene.expect(
-        Scene.selector(`[data-testid="deck-list-new-deck"][href="${routePath(NewDeckRoute())}"]`),
-      ).toExist(),
+      Scene.expect(Scene.selector(`[data-testid="deck-list-new-deck"][href="${routePath(NewDeckRoute())}"]`)).toExist(),
       Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
     );
   });
@@ -305,6 +301,31 @@ describe("shell surface scenes", () => {
       Scene.expect(Scene.text("#2")).toExist(),
       Scene.expect(Scene.text("bruno")).toExist(),
       Scene.expect(Scene.text("1175")).toExist(),
+      Scene.expect(Scene.text("Play")).toExist(),
+      Scene.expect(Scene.selector('[data-testid="account-menu-trigger"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="header-leaderboard-link"]')).not.toExist(),
+      Scene.expect(Scene.text("Signed in as alice")).not.toExist(),
+    );
+  });
+
+  it("opens the account menu on the leaderboard", () => {
+    Scene.scene(
+      { update, view },
+      Scene.with(
+        authedModel(LeaderboardRoute(), {
+          leaderboard: {
+            entries: [{ rank: 1, rating: 1200, user_id: 1, username: "alice" }],
+            accountMenuOpen: true,
+            error: null,
+            status: "ready",
+            total: 1,
+          },
+        }),
+      ),
+      Scene.expect(Scene.selector('[data-testid="account-menu"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="account-menu-sign-out"]')).toExist(),
+      Scene.Mount.resolve(BindAccountMenuEscape(), ClosedAccountMenu()),
+      Scene.Mount.expectEnded(BindAccountMenuEscape),
     );
   });
 
