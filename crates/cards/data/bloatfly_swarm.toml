@@ -1,0 +1,41 @@
+# Flying
+# This creature enters with five +1/+1 counters on it.
+# If damage would be dealt to this creature while it has a +1/+1 counter on it, prevent that damage, remove that many
+# +1/+1 counters from it, then give each player a rad counter for each +1/+1 counter removed this way.
+name = "Bloatfly Swarm"
+set = "pip"
+subtypes = ["Insect", "Mutant"]
+id = "fc50e254-71bc-46b3-93e6-c6eb820a3473"
+default_print = "2d90b839-0808-435d-bcf3-aa7af414c44b"
+oracle = "Flying\nThis creature enters with five +1/+1 counters on it.\nIf damage would be dealt to this creature while it has a +1/+1 counter on it, prevent that damage, remove that many +1/+1 counters from it, then give each player a rad counter for each +1/+1 counter removed this way."
+keywords = ["flying"]
+
+[cost]
+generic = 3
+black = 1
+
+[kind]
+type = "creature"
+power = 0
+toughness = 0
+
+# This creature enters with five +1/+1 counters on it.
+[[abilities]]
+timing = "static"
+
+# This creature enters with five +1/+1 counters on it.
+[[abilities.effects]]
+type = "static"
+mode = "enters_with_counters"
+count = 5
+
+# If damage would be dealt to this creature while it has a +1/+1 counter on it, prevent that damage, remove that many
+# +1/+1 counters from it, then give each player a rad counter for each +1/+1 counter removed this way.
+[[abilities]]
+timing = "static"
+
+# If damage would be dealt to this creature while it has a +1/+1 counter on it, prevent that damage, remove that many
+# +1/+1 counters from it, then give each player a rad counter for each +1/+1 counter removed this way.
+[[abilities.effects]]
+type = "static"
+mode = "prevent_damage_to_self_removing_counters_giving_rad"

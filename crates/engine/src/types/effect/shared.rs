@@ -888,6 +888,8 @@ impl Effect {
             | Effect::Static(StaticEffect::PlayFromGraveyardOncePerTurn)
             | Effect::Static(StaticEffect::PreventNoncombatDamageToOtherCreaturesYouControl)
             | Effect::Static(StaticEffect::PreventDamageToSelfRemovingCounter)
+            // Bloatfly Swarm's rad-counter rider is also self-only — no chosen target.
+            | Effect::Static(StaticEffect::PreventDamageToSelfRemovingCountersGivingRad)
             | Effect::Static(StaticEffect::PreventCombatDamage { .. })
             // Redoubled Stormsinger enumerates matching tokens internally — no chosen target.
             | Effect::Pump(PumpEffect::SetBasePtCreaturesYouControlUntilEndOfTurn { .. })

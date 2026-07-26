@@ -545,11 +545,10 @@ emits one `LifeChanged` of `-n` plus one `PlayerCountersPlaced` of `-n` from tha
 short library never removes more counters than it spent. `feral_ghoul.toml` is faithful — menace,
 the "another creature you control dies" +1/+1 trigger, and a `dies` trigger reading
 `Amount::SourcePower` off the existing CR 603.10a `dying_creature_stats` LKI capture. `PlayerView`
-carries a public `rad` count (`stream.proto` field 14). Still blocked: bloatfly_swarm is
-unbuilt — it needs #22's damage replacement, which has not landed. No client surface shows the
+carries a public `rad` count (`stream.proto` field 14). Still blocked: no client surface shows the
 `rad` count yet; the board needs a chip beside the poison indicator._
 
-### 22. `damage-prevention-replacing-counters` — 1 card, M
+### 22. `damage-prevention-replacing-counters` — 1 card, M — LANDED 2026-07-27
 Depends on: #21.
 Bloatfly Swarm: "if damage would be dealt to this creature while it has a +1/+1 counter on it,
 prevent that damage, remove that many +1/+1 counters from it, then give each player a rad counter
@@ -557,6 +556,18 @@ for each +1/+1 counter removed this way." A self-hosted damage replacement (CR 6
 is counter removal, capped by the counters actually present — the removal count is
 `min(damage, counters)`, and the rad counters follow that *actual* number. *Cards:*
 bloatfly_swarm.
+
+_Landed 2026-07-27: a new `StaticEffect::PreventDamageToSelfRemovingCountersGivingRad` sibling of
+Phantom Centaur's `PreventDamageToSelfRemovingCounter`, matched by the same
+`Game::phantom_shield_active` scan (both are self-only, CR 615, and cover combat and noncombat
+damage alike). `Game::phantom_shield_counter_removal` now takes the incoming damage `amount` and
+returns `Vec<Event>`: Phantom Centaur's variant still ignores `amount` and removes exactly one
+counter (regression-tested against a 5-damage hit); Bloatfly Swarm's removes
+`min(amount, counters present)`, then emits one `PlayerCountersPlaced` rad counter per living
+player per counter removed (CR 102.1 — the controller included). All six call sites
+(`resolution/damage.rs` ×3, `combat.rs` ×2) thread the amount through unchanged.
+`bloatfly_swarm.toml` is faithful, reusing the existing `enters_with_counters` static mode for its
+five +1/+1 counters._
 
 ### 23. `final-act-player-counter-mode` — 1 existing card, S — LANDED 2026-07-27
 Depends on: #20 slice 1. **Falsifies `final_act.toml:13` and `:22`.**

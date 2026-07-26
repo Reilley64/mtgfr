@@ -163,6 +163,8 @@ pub enum StaticEffect {
 
     PreventDamageToSelfRemovingCounter,
 
+    PreventDamageToSelfRemovingCountersGivingRad,
+
     PreventNoncombatDamageToOtherCreaturesYouControl,
 
     ReduceSpellCost {
