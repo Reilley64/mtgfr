@@ -90,6 +90,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - `choose_trigger_modes` shows docked `pending-trigger-modes-aim` with multi-select mode rows, Choose, and Cancel (center `pending-choice` is unused for this kind).
 - `pay_any_amount_of_mana` (join forces) shows docked `pending-join-forces-aim` with Min/−/value/+/Max stepper and Pay submit.
 - `may_draw_up_to` shows docked `pending-draw-count-aim` with one-click number buttons (`0`…`max`) and a MessageRef-backed title. Trade Secrets uses this same generic draw-count prompt rather than a dedicated wire kind.
+- `choose_copy_target` keeps the docked card-pick surface, but when the wire carries `put_counter_on_creature = true` (the reused Zimone's Hypothesis primer) the chrome swaps from copy wording to `Choose a creature to get a +1/+1 counter` with a `Put counter` submit button.
 - `opponent_chooses_pile` / `choose_pile_for_hand` show docked `pending-pile-aim` with Pile A / Pile B (card labels + choose buttons).
 - `choose_target_players` / `choose_splitting_opponent` with seat-tagged items aim at life orbs (`pending-player-aim`); one-click when `max === 1` (or splitting); multi-pick accumulates seats in the player-pick draft with Confirm. Enter / Space submit when ready. Picked seats paint a solid Priority Gold ring (`pickedPlayers`). Items without seat tags fall back to docked `pending-player-pick-aim` player buttons (Choose/Cancel for multi-pick).
 - `scry` / `surveil` use docked `pending-arrange-aim` with two-lane arrange chrome (`prompt-arrange-lanes`): cards start in Bottom (library bottom or Graveyard for Surveil); click toggles a card between Top and Bottom, preserving left-to-right order in each lane. Done always submits `arrange_top` via partition draft `{ top, bottom }`. After Done, `promptSubmitInFlight` freezes that draft (no re-init into Bottom) until `pending_choice` changes or the intent is rejected.
@@ -139,6 +140,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Scene tests cover Space/Enter submitting ready scry / order_triggers / distribute_top drafts (and refusing incomplete distribute_top).
 - Scene/unit tests cover dredge decline (`Draw normally` → `dredger: null`) and single-pick readiness for Dredge.
 - Scene tests cover pay-cost button copy (`Pay {…}` and kind-specific declines).
+- Scene tests cover `choose_copy_target` wording for both the normal copy case and the reused counter-primer case.
 - Scene tests cover docked `pending-color-aim` for `choose_color` / `choose_mana_color` (mana pips; no center `pending-choice`).
 - Scene tests cover docked `pending-mode-aim` for `choose_mode` (mode buttons; no center `pending-choice`).
 - Scene/unit tests cover docked join-forces `pending-join-forces-aim` mana stepper (no per-N buttons; draft submit; no center `pending-choice`).
@@ -166,7 +168,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 
 ## Out of Scope
 
-- Changing `.proto` choice shapes.
+- Introducing brand-new pending-choice oneof arms when an expand-only field on an existing shape is enough.
 - Client-side inference of unavailable pending-choice kinds.
 - Sparse illegal-X denylists and oracle “enters as N/N” hints.
 - Engine `pending_choice` X formulators (none today); choose-X here is the board-local `xPrompt` path only.

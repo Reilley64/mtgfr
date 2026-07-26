@@ -141,6 +141,40 @@ describe("fromProtoWire", () => {
       items: [{ id: 11, label: "Forest" }],
     });
   });
+
+  it("decodes choose_copy_target counter-primer wording from proto choice payloads", () => {
+    const frame = fromProtoWire<{
+      state: {
+        pending_choice: {
+          kind: string;
+          put_counter_on_creature?: boolean;
+          items: Array<{ id: number; label: string }>;
+        };
+      };
+    }>({
+      state: {
+        pendingChoice: {
+          choice: {
+            case: "chooseCopyTarget",
+            value: {
+              player: 0,
+              source: 7,
+              putCounterOnCreature: true,
+              items: [{ id: 11, label: "Forest" }],
+            },
+          },
+        },
+      },
+    });
+
+    expect(frame.state.pending_choice).toEqual({
+      kind: "choose_copy_target",
+      player: 0,
+      source: 7,
+      put_counter_on_creature: true,
+      items: [{ id: 11, label: "Forest" }],
+    });
+  });
 });
 
 describe("catalogCardsFromProto", () => {

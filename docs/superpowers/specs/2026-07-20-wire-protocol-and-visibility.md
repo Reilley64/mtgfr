@@ -178,8 +178,11 @@ spell-target and ability-target pauses project as `choose_target { source, label
 `may_draw_up_to { label, max }`. Legacy card-named Trade Secrets wire variants and dedicated
 `choose_spell_targets` / `choose_ability_targets` oneof arms are gone. The `ChoiceItem` embedded in
 most variants carries the item's string `label` for visible object/seat identity so the prompt UI
-does not need to join against the object list. Effect titles, mode rows, trigger-order rows, and
-generic draw-count prompts use `MessageRef` labels.
+does not need to join against the object list. `choose_copy_target` also carries
+`put_counter_on_creature` for the one reused non-copy primer (`MayPutCounterOnCreature`), letting
+clients keep the same answer shape while swapping the prompt wording away from "copy target".
+Effect titles, mode rows, trigger-order rows, and generic draw-count prompts use `MessageRef`
+labels.
 
 ### Intent wire format
 

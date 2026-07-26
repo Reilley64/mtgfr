@@ -535,7 +535,13 @@ export type PendingChoiceView =
   | { amount: number; kind: "choose_mana_color"; player: number; source: U32 }
   | { kind: "choose_creature_type"; options: Array<string>; player: number; source: U32 }
   | { kind: "choose_color"; player: number; source: U32 }
-  | { items: Array<ChoiceItem>; kind: "choose_copy_target"; player: number; source: U32 }
+  | {
+      items: Array<ChoiceItem>;
+      kind: "choose_copy_target";
+      player: number;
+      put_counter_on_creature?: boolean;
+      source: U32;
+    }
   | { attachment: U32; items: Array<ChoiceItem>; kind: "choose_attach_host"; optional: boolean; player: number }
   | { items: Array<ChoiceItem>; kind: "choose_legendary_keep"; name: string; player: number }
   | { count: number; items: Array<ChoiceItem>; kind: "put_from_hand_on_top"; player: number }

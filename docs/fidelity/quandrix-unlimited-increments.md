@@ -38,8 +38,9 @@ Landed as a resolution-time `Sequence`: the new fieldless `ChoiceEffect::MayPutC
 (`mode = "may_put_counter_on_creature"`) pauses the controller on a
 `PendingChoice::MayPutCounterOnCreature` over every battlefield creature — a non-targeted optional
 that puts one +1/+1 counter on the chosen creature (or nothing on decline), answered by
-`Intent::ChooseCopyTarget` and projected onto the generic `ChooseCopyTarget` pick-or-decline view
-(no new wire variant, no client change). It carries no `then`; the parity `choose_one`
+`Intent::ChooseCopyTarget` and projected onto `ChooseCopyTarget` with a
+`put_counter_on_creature` prompt discriminator (no new wire variant). It carries no `then`; the
+parity `choose_one`
 (odd/even → the two `return_all_to_hand` filters) is the next `Sequence` step and always runs, so
 the mass bounce reads each creature's post-counter power. `zimones_hypothesis.toml` drops `modal`
 and its cast-time targeted primer, so odd/even is no longer announced on the stack and the primer

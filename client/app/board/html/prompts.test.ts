@@ -730,6 +730,47 @@ test("mandatory may_return_from_graveyard blocks empty submit until a card is ch
   expect(commands.map(intentFromCommand)).toEqual([{ kind: "choose_sacrifices", player: 0, sacrifices: [8] }]);
 });
 
+test("choose_copy_target swaps to counter wording for the MayPutCounterOnCreature primer", () => {
+  const s = state({
+    pending_choice: {
+      kind: "choose_copy_target",
+      player: 0,
+      source: 1,
+      put_counter_on_creature: true,
+      items: [{ id: 9, label: "Grizzly Bears" }],
+    },
+  });
+
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("pending-card-pick-aim")).toExist(),
+    Scene.expect(Scene.testId("pick-title")).toHaveText("Choose a creature to get a +1/+1 counter"),
+    Scene.expect(Scene.testId("prompt-submit")).toHaveText("Put counter"),
+  );
+});
+
+test("choose_copy_target keeps copy wording for real copy prompts", () => {
+  const s = state({
+    pending_choice: {
+      kind: "choose_copy_target",
+      player: 0,
+      source: 1,
+      items: [{ id: 9, label: "Grizzly Bears" }],
+    },
+  });
+
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("pending-card-pick-aim")).toExist(),
+    Scene.expect(Scene.testId("pick-title")).toHaveText("Choose a copy target"),
+    Scene.expect(Scene.testId("prompt-submit")).toHaveText("Copy"),
+  );
+});
+
 test("opponent_chooses_revealed_to_graveyard card click submits choose_exiled", () => {
   const s = state({
     pending_choice: {
