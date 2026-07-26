@@ -41,8 +41,9 @@ Ship an authenticated `/coverage` shell route that renders a searchable set tabl
 - Columns are `Set`, `Faithful`, `Scryfall`, and `%`.
 - Each row shows the set code, set name, faithful count, oracle total, and formatted percent.
 - Search filters by lowercase substring match on set code or set name.
-- Rows sort by percent descending, then set name ascending, then set code ascending.
-- Rows with `oracleTotal == null` sort after rows with known denominators and render `—` in both the `Scryfall` and `%` columns.
+- Rows sort by `releasedAt` descending, with null release dates after dated sets, then set name ascending, then set code ascending.
+- The page chrome, search field, and column headers remain pinned in the viewport; only `data-testid="coverage-table-body"` scrolls the visible row list.
+- Rows with `oracleTotal == null` render `—` in both the `Scryfall` and `%` columns.
 - Rows with `oracleTotal > 0` and `faithful = 0` render `0%`, not `—`.
 - Percent text reuses `formatFaithfulPercent`: one decimal below 10%, otherwise a whole percent.
 
@@ -79,7 +80,7 @@ Ship an authenticated `/coverage` shell route that renders a searchable set tabl
 - `client/app/shell/coverage/view.test.ts` asserts row sorting, lowercase filtering, and `—` formatting when either count is missing.
 - `client/app/shell/coverage/story.test.ts` asserts `GotCoverageMessage` parent folding for refresh.
 - `client/app/routes.test.ts` asserts `/coverage` route parsing, auth redirect, and retry behavior that clears rows while preserving the query, with messages wrapped as `GotCoverageMessage` / `GotAuthMessage`.
-- `client/app/shell/surfaces.test.ts` asserts the coverage page scene, search/filter empty state, and shell badge link to `/coverage`.
+- `client/app/shell/surfaces.test.ts` asserts the coverage page scene, `coverage-table-body` row scroller, search/filter empty state, and shell badge link to `/coverage`.
 - Verification for this task runs focused server nextest filters, focused client Vitest suites, `just client-typecheck`, `just client-lint`, and `just server-format-check`.
 
 ## Out of Scope

@@ -40,9 +40,11 @@ function statusCopy(status: CoverageStatus): string | null {
   }
 }
 
-function percentValue(row: CoverageSetRow): number {
-  if (row.oracleTotal == null || !(row.oracleTotal > 0)) return Number.NEGATIVE_INFINITY;
-  return row.faithful / row.oracleTotal;
+function compareReleasedAtDescending(left: CoverageSetRow, right: CoverageSetRow): number {
+  if (left.releasedAt == null && right.releasedAt == null) return 0;
+  if (left.releasedAt == null) return 1;
+  if (right.releasedAt == null) return -1;
+  return right.releasedAt.localeCompare(left.releasedAt);
 }
 
 export function coveragePercentText(faithfulCount: number | null, oracleTotal: number | null): string {
@@ -60,8 +62,8 @@ export function visibleCoverageRows(model: Pick<CoverageSubmodel, "query" | "set
         });
 
   return [...filtered].sort((left, right) => {
-    const percentDelta = percentValue(right) - percentValue(left);
-    if (percentDelta !== 0) return percentDelta;
+    const releasedAtOrder = compareReleasedAtDescending(left, right);
+    if (releasedAtOrder !== 0) return releasedAtOrder;
 
     const nameOrder = left.name.localeCompare(right.name);
     if (nameOrder !== 0) return nameOrder;
@@ -105,14 +107,14 @@ export const view = Submodel.defineView<CoverageSubmodel, ViewMessage, ViewInput
     [
       h.Class(
         feltClass(
-          "h-full overflow-y-auto p-xxl pt-[max(1.5rem,env(safe-area-inset-top))] pr-[max(1.5rem,env(safe-area-inset-right))] pb-[max(1.5rem,env(safe-area-inset-bottom))] pl-[max(1.5rem,env(safe-area-inset-left))]",
+          "flex h-full flex-col overflow-hidden p-xxl pt-[max(1.5rem,env(safe-area-inset-top))] pr-[max(1.5rem,env(safe-area-inset-right))] pb-[max(1.5rem,env(safe-area-inset-bottom))] pl-[max(1.5rem,env(safe-area-inset-left))]",
         ),
       ),
       h.DataAttribute("testid", "coverage-page"),
     ],
     [
       h.div(
-        [h.Class("mx-auto mb-5 flex max-w-[960px] flex-wrap items-center justify-between gap-md")],
+        [h.Class("mx-auto mb-5 flex w-full max-w-[960px] shrink-0 flex-wrap items-center justify-between gap-md")],
         [
           h.div(
             [h.Class("flex min-w-0 flex-col gap-xs")],
@@ -139,7 +141,7 @@ export const view = Submodel.defineView<CoverageSubmodel, ViewMessage, ViewInput
         ],
       ),
       h.section(
-        [h.Class("mx-auto flex max-w-[960px] flex-col gap-sm")],
+        [h.Class("mx-auto flex min-h-0 w-full max-w-[960px] flex-1 flex-col gap-sm")],
         [
           model.error == null
             ? null
@@ -158,10 +160,14 @@ export const view = Submodel.defineView<CoverageSubmodel, ViewMessage, ViewInput
             : null,
           model.status === "ready" && rows.length > 0
             ? h.div(
-                [h.Class("flex flex-col gap-xs"), h.DataAttribute("testid", "coverage-table")],
+                [h.Class("flex min-h-0 flex-1 flex-col gap-xs"), h.DataAttribute("testid", "coverage-table")],
                 [
                   h.div(
-                    [h.Class("grid grid-cols-[minmax(0,1.75fr)_96px_96px_80px] gap-md px-md text-label text-lichen")],
+                    [
+                      h.Class(
+                        "grid shrink-0 grid-cols-[minmax(0,1.75fr)_96px_96px_80px] gap-md px-md text-label text-lichen",
+                      ),
+                    ],
                     [
                       h.span([], ["Set"]),
                       h.span([h.Class("text-right")], ["Faithful"]),
@@ -169,7 +175,13 @@ export const view = Submodel.defineView<CoverageSubmodel, ViewMessage, ViewInput
                       h.span([h.Class("text-right")], ["%"]),
                     ],
                   ),
-                  ...rows.map(tableRow),
+                  h.div(
+                    [
+                      h.Class("flex min-h-0 flex-1 flex-col gap-xs overflow-y-auto"),
+                      h.DataAttribute("testid", "coverage-table-body"),
+                    ],
+                    rows.map(tableRow),
+                  ),
                 ],
               )
             : null,

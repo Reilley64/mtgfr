@@ -1,18 +1,18 @@
 import { expect, test } from "vitest";
 import { coveragePercentText, visibleCoverageRows } from "./view";
 
-test("visibleCoverageRows sorts by percent descending then name", () => {
+test("visibleCoverageRows sorts by releasedAt descending then name", () => {
   const rows = visibleCoverageRows({
     query: "",
     sets: [
-      { code: "beta", name: "Beta", releasedAt: null, faithful: 1, oracleTotal: 2 },
-      { code: "alpha", name: "Alpha", releasedAt: null, faithful: 1, oracleTotal: 2 },
-      { code: "soc", name: "Secrets of Strixhaven", releasedAt: null, faithful: 10, oracleTotal: 400 },
-      { code: "mystery", name: "Mystery Set", releasedAt: null, faithful: 3, oracleTotal: null },
+      { code: "alpha", name: "Alpha", releasedAt: "2010-01-01", faithful: 1, oracleTotal: 10 },
+      { code: "soc", name: "Secrets of Strixhaven", releasedAt: "2026-04-01", faithful: 1, oracleTotal: 10 },
+      { code: "beta", name: "Beta", releasedAt: "2010-01-01", faithful: 1, oracleTotal: 10 },
+      { code: "mystery", name: "Mystery", releasedAt: null, faithful: 1, oracleTotal: 10 },
     ],
   });
 
-  expect(rows.map((row) => row.code)).toEqual(["alpha", "beta", "soc", "mystery"]);
+  expect(rows.map((row) => row.code)).toEqual(["soc", "alpha", "beta", "mystery"]);
 });
 
 test("visibleCoverageRows filters by lowercase code or name query", () => {
