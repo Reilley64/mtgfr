@@ -5,14 +5,13 @@ against live pool files and the current X-spell / counter / copy paths). Command
 **Zimone, Infinite Analyst**. Backlog:
 [quandrix-unlimited-increments.md](quandrix-unlimited-increments.md).
 
-Intake counts: 85 faithful / 0 approximated / 0 expressible / 2 needing engine work.
-The classifier returned 87 A / 0 B / 0 missing, but the Quandrix re-audit demoted two cards to D:
-`Open the Way` still ignores its printed player-count ceiling on X, and `Zimone's Hypothesis` still
-front-loads its resolution-time "counter a creature, then choose odd or even" decisions onto the
-cast step.
+Intake counts: 87 faithful / 0 approximated / 0 expressible / 0 needing engine work.
+The prior Quandrix re-audit filed two D-items — `Open the Way`'s player-count X cap and
+`Zimone's Hypothesis`'s resolution-time choice sequencing — and both have since landed via the
+deck increment backlog.
 
-**Current intake state (2026-07-26): 87/87 nonbasic Quandrix cards are in the pool. 85 are already
-faithful; 2 still need engine work.**
+**Final state (2026-07-26): 87/87 nonbasic Quandrix cards are in the pool, all fully faithful —
+0 residuals.**
 
 ## A. In pool, faithful at intake (85)
 
@@ -129,15 +128,12 @@ None.
 
 None. All 87 Quandrix nonbasics are already in the pool.
 
-## D. In pool, not yet faithful; needs engine work (2)
+## D. In pool, not yet faithful; needs engine work (0)
 
-These cards are scripted, but Quandrix makes their remaining gaps observable. Each card points at
-the increment that clears it.
+None. Both prior Quandrix residuals landed; see
+[quandrix-unlimited-increments.md](quandrix-unlimited-increments.md).
 
-- [ ] Open the Way — #1
-- [ ] Zimone's Hypothesis — #2
-
-## Observability re-audit
+## Closed re-audit notes
 
 ### 1. Quandrix's headline X shell stays in A after re-audit
 
@@ -158,7 +154,7 @@ The decklist's scariest surfaces are no longer open gaps. The current engine alr
 The deck is therefore **not** blocked on a broad "X on stack" or "copy plus X" subsystem. The
 remaining work is narrower.
 
-### 2. `Open the Way` falsifies its own "player-count cap is unneeded" premise
+### 2. `Open the Way`'s player-count X cap was a real fidelity gap
 
 `open_the_way.toml` explicitly notes that `"X can't be greater than the number of players in the
 game"` is not enforced because no other pool effect bounded X by player count. Quandrix itself now
@@ -170,7 +166,7 @@ a live fidelity gap, not a harmless ponytail, so the card moves to D as incremen
 Its second note — bottoming the nonlands in deterministic order instead of random order — still
 stays hidden in this deck and does not need its own increment.
 
-### 3. `Zimone's Hypothesis` still turns resolution-time choices into stack-time mode/target picks
+### 3. `Zimone's Hypothesis` was front-loading resolution-time choices onto the stack
 
 `zimones_hypothesis.toml` models "choose odd or even" as a modal choice and the optional primer as a
 targeted `put_counters` clause. That gets the visible final board state right in goldfish tests, but
@@ -199,4 +195,4 @@ No other explicit note becomes a real Quandrix blocker:
   state.
 - `Vineglimmer Snarl`'s reveal shortcut stays strictly upside.
 
-The re-audit therefore files exactly two Quandrix increments.
+The re-audit therefore filed exactly two Quandrix increments, and both are now landed.
