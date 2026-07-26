@@ -63,6 +63,7 @@ export type FlightClockState = {
 };
 
 type LayerQueue = EffectQueue.Enqueue<typeof ArtLoaded.Type | typeof FlightsSynced.Type>;
+type FlightSync = { flights: CardFlight[]; exitFx: ExitFx[]; now: number };
 
 let currentFrame: BitmapFrame | null = null;
 let flightClockState: FlightClockState = {
@@ -78,6 +79,7 @@ type BitmapMountHandle = {
   render: (canvas: HTMLCanvasElement) => void;
   /** Only the flight layer self-animates; the permanents/arrows layer repaints on publish. */
   animates: boolean;
+  queue: LayerQueue;
   unsubscribe: () => void;
   rafId: number;
   lastFlightTick: number | null;
@@ -92,6 +94,7 @@ export function publishBitmapFrame(frame: BitmapFrame): void {
   for (const handle of mountedLayers) {
     if (handle.animates) {
       if (published.paintFlight) handle.render(handle.canvas);
+      if (published.sync != null) Queue.offerUnsafe(handle.queue, FlightsSynced(published.sync));
       handle.kickRaf();
       continue;
     }
@@ -102,9 +105,20 @@ export function publishBitmapFrame(frame: BitmapFrame): void {
 export function applyPublishedFrame(
   state: FlightClockState,
   frame: BitmapFrame,
-): { state: FlightClockState; paintResting: boolean; paintFlight: boolean; frame: BitmapFrame } {
+): {
+  state: FlightClockState;
+  paintResting: boolean;
+  paintFlight: boolean;
+  frame: BitmapFrame;
+  sync: FlightSync | null;
+} {
   const liveFlights = mergeFlightPoses(state.liveFlights, frame.flights);
-  const liveExitFx = mergeExitFxPoses(state.liveExitFx, frame.exitFx ?? []);
+  const steppedExitFx = stepExitFx(
+    new Map(mergeExitFxPoses(state.liveExitFx, frame.exitFx ?? []).map((fx) => [fx.id, fx])),
+    0,
+    prefersReducedMotion(),
+  );
+  const liveExitFx = [...steppedExitFx.exitFx.values()];
   const mergedFrame = { ...frame, flights: liveFlights, exitFx: liveExitFx };
   const { flights: _flights, exitFx: _exitFx, ...restingFrame } = mergedFrame;
   const nextRestingSnapshot = restingPaintSnapshot(restingFrame);
@@ -120,6 +134,10 @@ export function applyPublishedFrame(
       state.lastRestingSnapshot == null ||
       flightsChanged(state.liveFlights, liveFlights) ||
       exitFxChanged(state.liveExitFx, liveExitFx),
+    sync:
+      steppedExitFx.completedIds.length > 0
+        ? { flights: liveFlights, exitFx: liveExitFx, now: animationNow() }
+        : null,
     frame: mergedFrame,
   };
 }
@@ -354,7 +372,7 @@ function registerLayer(
     }
     handle.rafId = requestAnimationFrame(frame);
   };
-  handle = { canvas: element, render, animates, unsubscribe, rafId: 0, lastFlightTick: null, kickRaf };
+  handle = { canvas: element, render, animates, queue, unsubscribe, rafId: 0, lastFlightTick: null, kickRaf };
   mountedLayers.add(handle);
   render(handle.canvas);
   kickRaf();
@@ -571,4 +589,8 @@ function preloadFrameArt(frame: BitmapFrame, cache: Pick<ImageCache, "preload">)
 
 function prefersReducedMotion(): boolean {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function animationNow(): number {
+  return typeof performance === "object" && typeof performance.now === "function" ? performance.now() : 0;
 }

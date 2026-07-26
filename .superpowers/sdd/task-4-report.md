@@ -38,3 +38,11 @@ No blocking issues found.
 Non-blocking note:
 
 - `tickFlightClock` now emits `FlightsSynced` while exit FX progress changes so the board model stays in lockstep with the short-lived 550ms animation. That is intentional, but it does mean a brief burst of sync messages during active exit FX.
+
+## Review follow-up: reduced-motion publish path
+
+- Fixed the Important review finding in `client/app/board/bitmap/mount.ts` by collapsing publish-time `exitFx` through the same reduced-motion preference the Mount already uses for rAF ticks, so the animated layer never paints a one-frame ExitFx flash.
+- Added a mount regression in `client/app/board/bitmap/mount.test.ts` that stubs reduced motion, publishes a frame with `exitFx`, asserts the animated frame/state are cleared immediately, confirms no rAF is needed, and checks that an immediate sync payload is surfaced.
+- Test evidence:
+  - `cd /workspace/client && bun test app/board/bitmap/paint-exit-fx.test.ts app/board/bitmap/mount.test.ts`
+  - Result: `25 pass, 0 fail`

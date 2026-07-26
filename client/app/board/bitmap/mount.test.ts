@@ -19,10 +19,12 @@ import {
 
 const missingGlobal = Symbol("missing-global");
 const originalGlobals = new Map<string, unknown>();
+const nativeStubGlobal = typeof vi.stubGlobal === "function" ? vi.stubGlobal.bind(vi) : null;
+const nativeUnstubAllGlobals = typeof vi.unstubAllGlobals === "function" ? vi.unstubAllGlobals.bind(vi) : null;
 
 function _stubGlobal(name: string, value: unknown): void {
-  if (typeof vi.stubGlobal === "function") {
-    vi.stubGlobal(name, value);
+  if (nativeStubGlobal != null) {
+    nativeStubGlobal(name, value);
     return;
   }
   if (!originalGlobals.has(name)) {
@@ -33,8 +35,8 @@ function _stubGlobal(name: string, value: unknown): void {
 }
 
 function unstubAllGlobals(): void {
-  if (typeof vi.unstubAllGlobals === "function") {
-    vi.unstubAllGlobals();
+  if (nativeUnstubAllGlobals != null) {
+    nativeUnstubAllGlobals();
     return;
   }
   for (const [name, value] of originalGlobals) {
@@ -45,6 +47,10 @@ function unstubAllGlobals(): void {
     Object.defineProperty(globalThis, name, { value, configurable: true, writable: true });
   }
   originalGlobals.clear();
+}
+
+if (nativeStubGlobal == null) {
+  Object.assign(vi, { stubGlobal: _stubGlobal });
 }
 
 afterEach(() => {
@@ -1082,6 +1088,40 @@ describe("flight clock helpers", () => {
       exitFx: [{ ...exitFx, progress: 16 / 550 }],
       now: 16,
     });
+  });
+
+  it("strips exit FX before publish-time paint under reduced motion", () => {
+    const calls: string[] = [];
+    vi.stubGlobal("window", { devicePixelRatio: 1 });
+    vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: true })));
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => mockCtx(calls)),
+      style: {},
+    } as unknown as HTMLCanvasElement;
+    const cache = {
+      get: vi.fn(() => ({ label: "exit" }) as unknown as HTMLImageElement),
+    };
+    const exitFx = spawnExitFx({
+      id: 11,
+      kind: "exile",
+      name: "Void Bear",
+      print: "exit-print",
+      x: 80,
+      y: 60,
+      scale: 1,
+    });
+
+    const published = applyPublishedFrame(flightClockState(), frame({ cards: [], flights: [], exitFx: [exitFx] }));
+
+    paintFlightLayer(canvas, published.frame, cache);
+
+    expect(published.state.liveExitFx).toEqual([]);
+    expect(published.frame.exitFx).toEqual([]);
+    expect(bitmapFrameNeedsRaf(published.frame)).toBe(false);
+    expect(calls).not.toContain("image:exit");
+    expect(Reflect.get(published, "sync")).toMatchObject({ flights: [], exitFx: [] });
   });
 
   it("steps exit FX forward and drops completed entries from the sync payload", () => {
