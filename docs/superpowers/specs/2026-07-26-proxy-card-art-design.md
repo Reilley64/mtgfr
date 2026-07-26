@@ -58,7 +58,7 @@ Let a player paste an `https` image URL on a real catalog card in the deck build
 - Card context menu (right-click / long-press) gains **Set proxy art…** for editable deck context. **Choose printing…** remains for Scryfall printings.
 - Dialog: card name, URL field, **Save** / **Clear** / close.
 - **Save** / **Clear** update the in-builder deck model (same dirty/persist cadence as changing a printing): the URL is written onto that deck line, or onto `commander_proxy_art_url` when editing the commander, and persists when the player saves the deck. Client-side shape validation mirrors deck-save rules; image fetch still happens only at display via the BFF.
-- **Clear** removes the proxy URL from the builder model; printing art returns after the next deck save (and immediately in the builder preview).
+- **Clear** removes the proxy URL from the builder model immediately (builder preview returns to printing art); the cleared state persists when the player saves the deck.
 - Quiet indicator when a proxy is set (e.g. small “Proxy” chip on the row / commander chrome). Builder thumbnails use the same proxy → fallback path as the board when practical.
 - Print-picker dialog behavior is unchanged aside from coexisting with the override.
 
