@@ -1,5 +1,7 @@
+import { create, toBinary } from "@bufbuild/protobuf";
 import * as Schema from "effect/Schema";
 import { describe, expect, it } from "vitest";
+import { PendingChoiceViewMayReturnFromGraveyardSchema } from "./generated/mtgfr/v1/stream_pb";
 import { catalogCardsFromProto, fromProtoWire, intentEnvelopeToProto } from "./protoMap";
 import type { ActionView, CatalogCard, IntentEnvelope } from "./types";
 import { MessageRef } from "./types";
@@ -140,6 +142,20 @@ describe("fromProtoWire", () => {
       mandatory: true,
       items: [{ id: 11, label: "Forest" }],
     });
+  });
+
+  it("encodes may_return_from_graveyard as items=3 and mandatory=4", () => {
+    const binary = toBinary(
+      PendingChoiceViewMayReturnFromGraveyardSchema,
+      create(PendingChoiceViewMayReturnFromGraveyardSchema, {
+        player: 0,
+        source: 7,
+        items: [{ id: 11, label: "Forest" }],
+        mandatory: true,
+      }),
+    );
+
+    expect(Array.from(binary)).toEqual([16, 7, 26, 10, 8, 11, 18, 6, 70, 111, 114, 101, 115, 116, 32, 1]);
   });
 
   it("decodes choose_copy_target counter-primer wording from proto choice payloads", () => {

@@ -559,8 +559,8 @@ message PendingChoiceViewChooseCounterTargetForPlayer {
 message PendingChoiceViewMayReturnFromGraveyard {
   uint32 player = 1;
   uint32 source = 2;
-  bool mandatory = 3;
-  repeated ChoiceItem items = 4;
+  repeated ChoiceItem items = 3;
+  bool mandatory = 4;
 }
 
 // This player may discard one of `items` (a card in their own hand, private to them) to gain a
