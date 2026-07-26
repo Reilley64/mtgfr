@@ -103,7 +103,7 @@ points at the increment(s) that clear it.
 - [ ] Breena, the Demagogue — #1
 - [ ] Coercive Impetus — #2
 - [ ] Combat Calligrapher — #1
-- [ ] Darksteel Mutation — #4
+- [x] Darksteel Mutation — #4 (landed)
 - [ ] Defacing Duskmage — #1, #6 (#6 landed; still blocked on #1)
 - [ ] Doomwake Giant — #1
 - [ ] Eiganjo Dynastorian — #1

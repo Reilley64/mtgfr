@@ -33,6 +33,9 @@ enum ContinuousEffectKind {
     /// CR 613.4: type/subtype-changing effect.
     SetTypes {
         add_types: TypeSet,
+        /// When `true`, `add_types` *replaces* the host's printed card types (Darksteel Mutation),
+        /// rather than being unioned onto them (Angelic Destiny).
+        set_types: bool,
         set_subtypes: Option<&'static [&'static str]>,
         add_subtypes: &'static [&'static str],
     },
@@ -663,6 +666,7 @@ impl Game {
                     Timing::Static,
                     Effect::Static(StaticEffect::SetAttachedTypes {
                         add_types,
+                        set_types,
                         add_subtypes,
                         set_subtypes,
                         lose_all_abilities,
@@ -676,6 +680,7 @@ impl Game {
                     timestamp,
                     kind: ContinuousEffectKind::SetTypes {
                         add_types,
+                        set_types,
                         set_subtypes: (!set_subtypes.is_empty()).then_some(set_subtypes),
                         add_subtypes,
                     },
@@ -769,6 +774,7 @@ impl Game {
                 timestamp: p.added_types_eot_timestamp,
                 kind: ContinuousEffectKind::SetTypes {
                     add_types: p.added_types_eot,
+                    set_types: false,
                     set_subtypes: None,
                     add_subtypes: p.added_subtypes_eot,
                 },
@@ -787,6 +793,7 @@ impl Game {
                 timestamp: p.added_types_timestamp,
                 kind: ContinuousEffectKind::SetTypes {
                     add_types: p.added_types,
+                    set_types: false,
                     set_subtypes: None,
                     add_subtypes: p.added_subtypes,
                 },
@@ -1078,6 +1085,7 @@ impl Game {
         host: ObjectId,
     ) -> (
         TypeSet,
+        bool,
         Option<&'static [&'static str]>,
         &'static [&'static str],
     ) {
@@ -1088,26 +1096,31 @@ impl Game {
             .collect();
         effects.sort_by_key(|effect| (effect.layer(), effect.timestamp, effect.source));
         let mut added_types = TypeSet::NONE;
+        let mut set_types = false;
         let mut set_subtypes: Option<&'static [&'static str]> = None;
         let mut added_subtypes: &'static [&'static str] = &[];
         for effect in effects {
             let ContinuousEffectKind::SetTypes {
                 add_types,
-                set_subtypes: set,
+                set_types: set,
+                set_subtypes: set_sub,
                 add_subtypes,
             } = effect.kind
             else {
                 continue;
             };
             added_types = added_types.union(add_types);
-            if let Some(set) = set {
-                set_subtypes = Some(set);
+            if set {
+                set_types = true;
+            }
+            if let Some(set_sub) = set_sub {
+                set_subtypes = Some(set_sub);
             }
             if !add_subtypes.is_empty() {
                 added_subtypes = add_subtypes;
             }
         }
-        (added_types, set_subtypes, added_subtypes)
+        (added_types, set_types, set_subtypes, added_subtypes)
     }
 
     /// Whether an attached [`Effect::Static(StaticEffect::SetAttachedTypes)`] Aura with `lose_all_abilities = true`
@@ -1165,8 +1178,14 @@ impl Game {
         if self.as_permanent(id).is_none() {
             return printed;
         }
-        let (attached_types, _, _) = self.attached_type_layer(id);
-        let mut types = printed.union(attached_types);
+        let (attached_types, set_types, _, _) = self.attached_type_layer(id);
+        // CR 613.4: a set-types Aura (Darksteel Mutation) replaces the host's printed card types
+        // outright; an additive Aura (Angelic Destiny) unions onto them.
+        let mut types = if set_types {
+            attached_types
+        } else {
+            printed.union(attached_types)
+        };
         let mut runtime_effects: Vec<_> = self
             .runtime_continuous_effects(id)
             .into_iter()
@@ -1200,7 +1219,7 @@ impl Game {
         if self.as_permanent(id).is_none() {
             return printed.to_vec();
         }
-        let (_, set, added) = self.attached_type_layer(id);
+        let (_, _, set, added) = self.attached_type_layer(id);
         let mut subtypes = match set {
             Some(set) => set.to_vec(),
             None => printed.to_vec(),

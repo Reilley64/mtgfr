@@ -180,6 +180,11 @@ pub enum StaticEffect {
     SetAttachedTypes {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         add_types: TypeSet,
+        /// CR 613.4: when `true`, `add_types` are the host's *complete* card types (replacing its
+        /// printed ones — Darksteel Mutation's "loses all other … card types"), not merely unioned
+        /// on. Default `false` keeps the additive Angelic-Destiny behavior.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        set_types: bool,
         #[cfg_attr(
             feature = "card-dsl",
             serde(default, deserialize_with = "de::static_str_slice")

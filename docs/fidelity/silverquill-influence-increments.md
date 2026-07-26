@@ -66,7 +66,11 @@ regressions are (a) Ajani's Chosen should not be able to snap `animate_dead.toml
 token, and (b) Gift returning onto a creature that gained protection from white should stay in the
 graveyard instead of entering-and-then-falling-off through an illegal temporary attachment.
 
-### 4. `attached-type-removal-layer` — 1 card, M
+### 4. `attached-type-removal-layer` — 1 card, M — **LANDED** (2026-07-26)
+Landed: `SetAttachedTypes`/`ContinuousEffectKind::SetTypes` gained a `set_types` flag (CR 613.4
+"loses all other card types") that makes `add_types` the host's complete card-type list instead of
+a union; `darksteel_mutation.toml` now sets `add_types = ["artifact", "creature"]` + `set_types =
+true`, so mutating an enchantment creature (Doomwake Giant) leaves exactly an artifact creature.
 **Depends on:** none.
 **Cards:** `darksteel_mutation.toml`
 **Sketch:** the current layer-4-ish type pipeline in `characteristics.rs` unions added card types

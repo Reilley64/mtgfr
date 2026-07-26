@@ -28419,6 +28419,42 @@ fn darksteel_mutation_sets_type_line() {
     );
 }
 
+#[test]
+fn darksteel_mutation_strips_enchantment_type_from_an_enchantment_creature() {
+    // CR 613.4: Darksteel Mutation makes the enchanted creature "an Insect artifact creature …
+    // and it loses all other … card types." On Doomwake Giant (an enchantment creature) that must
+    // drop the enchantment type — leaving exactly an artifact creature, not an enchantment
+    // creature artifact.
+    let mut game = Game::new();
+    let giant = game.spawn_on_battlefield(PlayerId(0), card("Doomwake Giant"));
+    assert!(
+        game.effective_types(giant).intersects(TypeSet::ENCHANTMENT),
+        "Doomwake Giant is printed an enchantment creature",
+    );
+
+    let mutation = game.spawn_in_hand(PlayerId(0), card("Darksteel Mutation"));
+    cast_and_resolve(&mut game, mutation, Some(Target::Object(giant)));
+    resolve_whole_stack(&mut game); // clear the Aura's own enters-constellation trigger
+
+    assert!(
+        game.effective_types(giant).intersects(TypeSet::ARTIFACT),
+        "the mutated Giant is an artifact creature",
+    );
+    assert!(
+        game.effective_types(giant).intersects(TypeSet::CREATURE),
+        "the mutated Giant is still a creature",
+    );
+    assert!(
+        !game.effective_types(giant).intersects(TypeSet::ENCHANTMENT),
+        "it loses its enchantment card type (CR 613.4 'loses all other card types')",
+    );
+    assert!(
+        game.effective_subtypes(giant).contains(&"Insect")
+            && !game.effective_subtypes(giant).contains(&"Giant"),
+        "creature types set to exactly Insect",
+    );
+}
+
 /// A test-only 2/2 flyer with a printed attack trigger (gain 1 life) and a printed free
 /// activated ability (gain 1 life) — exercises the CR 613/701 "loses all abilities" removal:
 /// under Darksteel Mutation none of these printed abilities/keywords should function.
