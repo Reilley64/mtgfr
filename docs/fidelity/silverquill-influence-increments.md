@@ -55,7 +55,14 @@ the cleanest result is a real attack-tax payment choice rather than today's invi
 auto-plan. Tests should cover both "cannot pay, so the goaded creature is not forced to attack" and
 "can pay, so the goaded creature must attack a legal non-goader."
 
-### 3. `noncast-aura-attachment-legality` — 2 cards, M
+### 3. `noncast-aura-attachment-legality` — 2 cards, M — **LANDED** (2026-07-26)
+Landed: added `Game::noncast_attach_legal` (reuses `attachment_host_legal` + `protection_blocks_source`)
+and routed both non-cast Aura moves through it — Ajani's Chosen's
+`AttachTriggeringAuraToMintedToken` (guard-return, Aura stays put if the minted token fails its
+enchant restriction) and Gift of Immortality's delayed `ReturnThisAuraAttachedTo` (returns nothing,
+Aura stays in the graveyard, if the reanimated creature now has protection from the Aura). Ajani's
+Chosen still needs increment #1's controller-scoped watch fix, so it stays unchecked on the deck
+report.
 **Depends on:** none.
 **Cards:** `ajanis_chosen.toml`, `gift_of_immortality.toml`
 **Sketch:** most Aura moves already re-check `attachment_host_legal`, but two Silverquill helpers

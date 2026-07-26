@@ -36,6 +36,17 @@ impl Game {
         )
     }
 
+    /// Whether an Aura may be attached to `host` by an effect that isn't a normal cast (Ajani's
+    /// Chosen's "you may attach it to the token", Gift of Immortality's delayed "return this card
+    /// attached to that creature"). A cast Aura gets its legality from a target choice (CR 601.2c),
+    /// but these force-attach with no target step, so this is the only gate: `host` must satisfy
+    /// the Aura's `enchant` restriction (CR 303.4f) *and* not have protection that stops the Aura
+    /// (CR 702.16e). Reuses [`Game::attachment_host_legal`] so the check stays one seam.
+    pub(crate) fn noncast_attach_legal(&self, attachment: ObjectId, host: ObjectId) -> bool {
+        self.attachment_host_legal(attachment, host)
+            && !self.protection_blocks_source(host, attachment)
+    }
+
     /// Re-check state-based actions and return the events they produce.
     /// A player at 0-or-less life loses; a creature with lethal marked damage dies.
     pub(crate) fn check_state_based_actions(&self) -> Vec<Event> {

@@ -69,6 +69,13 @@ impl Game {
                 }) else {
                     return;
                 };
+                // CR 303.4f: "you may attach it to the token" is a real attach, so the moving
+                // Aura's own enchant restriction (and any protection the token has) must permit
+                // it. Animate Dead can only enchant the creature it reanimated, never a fresh Cat
+                // token, so the snap is illegal and the Aura stays where it is (guard-return).
+                if !self.noncast_attach_legal(entering, token) {
+                    return;
+                }
                 self.push_apply(
                     events,
                     Event::AttachedTo {

@@ -110,7 +110,7 @@ points at the increment(s) that clear it.
 - [ ] Eriette of the Charmed Apple — #1
 - [ ] Firemane Commando — #1
 - [ ] Ghostly Prison — #2
-- [ ] Gift of Immortality — #3
+- [x] Gift of Immortality — #3
 - [ ] Ghoulish Impetus — #2
 - [ ] Hateful Eidolon — #1
 - [ ] Herald of Amity — #1, #5

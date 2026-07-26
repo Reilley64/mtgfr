@@ -28062,6 +28062,91 @@ static FLIGHT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     dredge: None,
 });
 
+/// A test-only colorless Aura that grants its host protection from white — a stand-in for
+/// whatever gives a creature protection between a Gift of Immortality death and the next end
+/// step, exercising the non-cast Aura-return legality gate (CR 303.4g / 702.16e).
+static PRO_WHITE_CLOAK: LazyLock<CardDef> = LazyLock::new(|| CardDef {
+    name: "Protection Cloak (test)",
+    id: "",
+    default_print: "",
+    cost: Cost::FREE,
+    kind: CardKind::Aura,
+    legendary: false,
+    uncounterable: false,
+    modal: false,
+    modal_choose: 1,
+    modal_choose_max: None,
+    modal_choose_max_if_commander: false,
+    identity_pips: empty_slice(),
+    colors: empty_slice(),
+    devoid: false,
+    enters_tapped: false,
+    enters_tapped_unless: None,
+    free_cast_if: None,
+    alternative_cost: None,
+    cast_only_during_combat: false,
+    approximates: None,
+    oracle: None,
+    set: "",
+    subtypes: empty_slice(),
+    otags: empty_slice(),
+    keywords: empty_slice(),
+    conditional_keywords: empty_slice(),
+    abilities: arc_slice([Ability {
+        timing: Timing::Static,
+        effect: Effect::Static(StaticEffect::GrantToAttached {
+            power: Amount::Fixed(0),
+            toughness: Amount::Fixed(0),
+            keywords: &[Keyword::ProtectionFrom(ProtectionScope::Color(
+                Color::White,
+            ))],
+            goad: false,
+            protection_from_chosen_color: false,
+            granted_ability: None,
+            cant_attack: false,
+            cant_block: false,
+            cant_attack_controller: false,
+            activated_abilities: None,
+            legendary_only: false,
+        }),
+        optional: false,
+        min_level: 0,
+        once_each_turn: false,
+        condition: None,
+        cost: Cost::FREE,
+    }]),
+    cycling: None,
+    cycling_sacrifice: SacrificeCost::None,
+    flashback: None,
+    echo: None,
+    cumulative_upkeep: None,
+    recover: None,
+    bestow: None,
+    morph: None,
+    evoke: None,
+    delve: false,
+    escape: None,
+    retrace: false,
+    graveyard_cast_cost: None,
+    cascade: false,
+    functions_in_graveyard: false,
+    enchant: None,
+    enchant_graveyard: false,
+    back: None,
+    adventure: None,
+    halves: empty_slice(),
+    suspend: None,
+    vanishing: None,
+    devour: None,
+    demonstrate: false,
+    enter_as_copy: None,
+    encore: None,
+    hand_ability: empty_slice(),
+    forecast: None,
+    may_choose_not_to_untap: false,
+    dredge: None,
+});
+
 /// The activated ability Fallen Ideal grants its enchanted host: "Sacrifice a creature: This
 /// creature gets +2/+1 until end of turn." — no mana, "a creature" (not "another"), so the host
 /// may sacrifice itself.
@@ -62481,6 +62566,144 @@ fn ajanis_chosen_attaches_the_triggering_aura_to_the_minted_cat_token() {
     assert!(
         game.attachments(doubling_season).is_empty(),
         "a non-Aura enchantment is never attached anywhere"
+    );
+}
+
+#[test]
+fn ajanis_chosen_cannot_snap_an_enchant_land_aura_onto_its_cat_token() {
+    // Ajani's Chosen's "you may attach it to the token" is a real attach (CR 303.4f), so the
+    // moving Aura's own enchant restriction still applies. An "enchant land" Aura (a stand-in for
+    // any Aura whose restriction the 2/2 Cat fails — Silverquill's Animate Dead can only enchant
+    // the creature it reanimated) can never legally move onto the creature token, so it stays on
+    // the land it entered attached to rather than snapping onto the Cat.
+    static ENCHANT_LAND_AURA: LazyLock<CardDef> = LazyLock::new(|| CardDef {
+        name: "Land Aura (test)",
+        id: "",
+        default_print: "",
+        cost: Cost::FREE,
+        kind: CardKind::Aura,
+        legendary: false,
+        uncounterable: false,
+        modal: false,
+        modal_choose: 1,
+        modal_choose_max: None,
+        modal_choose_max_if_commander: false,
+        identity_pips: empty_slice(),
+        colors: empty_slice(),
+        devoid: false,
+        enters_tapped: false,
+        enters_tapped_unless: None,
+        free_cast_if: None,
+        alternative_cost: None,
+        cast_only_during_combat: false,
+        approximates: None,
+        oracle: None,
+        set: "",
+        subtypes: arc_slice(["Aura"]),
+        otags: empty_slice(),
+        keywords: empty_slice(),
+        conditional_keywords: empty_slice(),
+        abilities: empty_slice(),
+        cycling: None,
+        cycling_sacrifice: SacrificeCost::None,
+        flashback: None,
+        echo: None,
+        cumulative_upkeep: None,
+        recover: None,
+        bestow: None,
+        morph: None,
+        evoke: None,
+        delve: false,
+        escape: None,
+        retrace: false,
+        graveyard_cast_cost: None,
+        cascade: false,
+        functions_in_graveyard: false,
+        enchant: Some(PermanentFilter::of(TypeSet::LAND)),
+        enchant_graveyard: false,
+        back: None,
+        adventure: None,
+        halves: empty_slice(),
+        suspend: None,
+        vanishing: None,
+        devour: None,
+        demonstrate: false,
+        enter_as_copy: None,
+        encore: None,
+        hand_ability: empty_slice(),
+        forecast: None,
+        may_choose_not_to_untap: false,
+        dredge: None,
+    });
+
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Ajani's Chosen"));
+    let land = game.spawn_on_battlefield(PlayerId(0), card("Island"));
+    let aura = game.spawn_in_hand(PlayerId(0), ENCHANT_LAND_AURA.clone());
+
+    cast_and_resolve(&mut game, aura, Some(Target::Object(land))); // Aura enters on the land...
+    resolve_top_of_stack(&mut game); // ...firing Ajani's Chosen: mint the Cat, then try to snap.
+
+    let cats = battlefield_named(&game, PlayerId(0), "Cat");
+    assert_eq!(cats.len(), 1, "Ajani's Chosen still minted its Cat token");
+    assert_eq!(
+        game.attached_to(game.current_id(aura)),
+        Some(land),
+        "the enchant-land Aura can't move onto the creature token, so it stays on the land",
+    );
+    assert!(
+        game.attachments(cats[0]).is_empty(),
+        "the illegal Aura never attached to the Cat",
+    );
+}
+
+#[test]
+fn gift_of_immortality_return_blocked_by_protection_stays_in_graveyard() {
+    // CR 303.4g / 702.16e: Gift of Immortality's delayed "return this card attached to that
+    // creature" is a non-cast attach that must still be legal. If the reanimated creature gained
+    // protection from white, the white Aura can't attach — it stays in the graveyard rather than
+    // entering and immediately falling off.
+    let mut game = Game::new();
+    let host = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
+    let aura_card = game.spawn_in_hand(PlayerId(0), card("Gift of Immortality"));
+    cast_and_resolve(&mut game, aura_card, Some(Target::Object(host)));
+
+    let destroy = game.spawn_in_hand(PlayerId(0), DESTROY.clone());
+    cast_and_resolve(&mut game, destroy, Some(Target::Object(host)));
+    assert_eq!(game.zone_of(host), Zone::Graveyard, "the host died");
+
+    let events = resolve_top_of_stack_events(&mut game); // reanimates the host, schedules the return
+    let reanimated = events
+        .iter()
+        .find_map(|e| match e {
+            Event::ReanimatedToBattlefield { permanent, .. } => Some(*permanent),
+            _ => None,
+        })
+        .expect("Gift of Immortality reanimates the dying host");
+
+    // Give the reanimated creature protection from white before the end step.
+    let cloak = game.spawn_in_hand(PlayerId(0), PRO_WHITE_CLOAK.clone());
+    cast_and_resolve(&mut game, cloak, Some(Target::Object(reanimated)));
+    assert!(
+        game.has_keyword(
+            reanimated,
+            Keyword::ProtectionFrom(ProtectionScope::Color(Color::White))
+        ),
+        "the reanimated creature now has protection from white",
+    );
+
+    advance_until(&mut game, |g| g.current_step() == Step::End);
+    resolve_top_of_stack(&mut game); // the delayed return resolves — and must no-op
+
+    assert_eq!(
+        game.zone_of(aura_card),
+        Zone::Graveyard,
+        "the white Aura can't legally attach to a pro-white creature, so it stays in the graveyard",
+    );
+    assert_eq!(
+        game.attachments(reanimated),
+        vec![game.current_id(cloak)],
+        "only the protection cloak is attached — Gift never entered",
     );
 }
 
