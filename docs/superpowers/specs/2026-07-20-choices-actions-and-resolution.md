@@ -57,6 +57,7 @@ While `Game::pending_choice` is `Some`, no `LegalAction` is exposed and only the
 - **`CommanderRedirect { player, commander, … }`** — redirect a commander to the command zone instead of the graveyard/exile. Not forced (the player may allow it to go to the graveyard).
 - **`AssignCombatDamage { player, attacker, blockers, total_damage }`** — assign trample damage among blockers and the defending player, with lethal-to-each-blocker minimums.
 - **`ChooseAttachHost { player, attachment, legal }`** — pick a legal host for an Aura being deployed (e.g. from a tutor that puts it directly onto the battlefield).
+- **`ChooseLegendaryKeep { player, name, options }`** — legend rule (CR 704.5j): controller chooses which same-named legendary permanent to keep; answered by `Intent::ChooseLegendaryKeep`. Raised from the SBA sweep after event-producing SBAs settle (not mid-resolution).
 - **`PayEchoOrSacrifice { player, permanent }`** — Echo (CR 702.31): pay the echo cost or sacrifice the permanent at upkeep.
 - **`PayRecoverOrExile { player, card }`** — Recover (CR 702.59): pay the recover cost to return a creature from the graveyard, or exile it.
 - **`PayCumulativeUpkeepOrSacrifice { player, permanent, cost }`** — Cumulative Upkeep (CR 702.24): pay all accumulated age-counter costs or sacrifice.

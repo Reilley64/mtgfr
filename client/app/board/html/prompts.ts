@@ -1064,6 +1064,11 @@ function cardPickConfig(pending: PendingChoiceView): {
       return { title: "Choose a copy target", submitLabel: "Copy" };
     case "choose_attach_host":
       return { title: "Choose what to attach to", submitLabel: "Attach", declineLabel };
+    case "choose_legendary_keep":
+      return {
+        title: `Legend rule — choose which ${pending.name} to keep`,
+        submitLabel: "Keep",
+      };
     case "put_from_hand_on_top":
       return {
         title: `Put ${pending.count} card${pending.count === 1 ? "" : "s"} from your hand on top`,
@@ -1455,7 +1460,12 @@ function cardPickForKind(
   }
   if (pendingBoardTargetMode(pending, state) != null) {
     const decline = declineAnswer(pending);
-    const label = "label" in pending ? messageText(pending.label) : pendingChoiceTitle(pending);
+    const label =
+      "label" in pending
+        ? messageText(pending.label)
+        : FORMULATOR_FOR_KIND[pending.kind] === "cardPick"
+          ? cardPickConfig(pending).title
+          : pendingChoiceTitle(pending);
     const oneClick = pendingTargetOneClick(pending);
     const draft = board.promptDraft ?? initPromptDraft(pending, state);
     const picked = draft.kind === "card-pick" ? draft.picked : [];

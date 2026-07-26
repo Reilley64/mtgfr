@@ -684,4 +684,45 @@ impl Game {
             .collect();
         keeps.len() == super::max_distinct_slots(&option_masks, &slots)
     }
+
+    /// Answer a [`PendingChoice::ChooseLegendaryKeep`] (CR 704.5j): keep `keep` on the battlefield
+    /// and put every other option into its owner's graveyard (commanders divert; tokens cease).
+    pub(crate) fn answer_legendary_keep(
+        &mut self,
+        player: PlayerId,
+        keep: ObjectId,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::ChooseLegendaryKeep {
+            player: chooser,
+            options,
+            ..
+        }) = self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        if player != chooser || !options.contains(&keep) {
+            return Err(Reject::IllegalChoice);
+        }
+        self.finish_answer();
+
+        let mut events = Vec::new();
+        for id in options.into_iter().filter(|&id| id != keep) {
+            let Some((is_token, owner, def)) =
+                self.as_permanent(id).map(|p| (p.token, p.owner, p.def))
+            else {
+                continue;
+            };
+            let event = if is_token {
+                Event::TokenCeasedToExist {
+                    token: id,
+                    controller: owner,
+                    def,
+                }
+            } else {
+                self.graveyard_or_command(id, self.next_object_id())
+            };
+            self.push_apply(&mut events, event);
+        }
+        Ok(events)
+    }
 }

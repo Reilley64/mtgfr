@@ -311,6 +311,12 @@ pub fn wire_intent_to_pb(intent: WireIntent) -> pb::WireIntent {
                 host,
             })
         }
+        WireIntent::ChooseLegendaryKeep { player, keep } => {
+            Intent::ChooseLegendaryKeep(pb::WireIntentChooseLegendaryKeep {
+                player: u32::from(player),
+                keep,
+            })
+        }
         WireIntent::ChooseCopyTarget { player, copy } => {
             Intent::ChooseCopyTarget(pb::WireIntentChooseCopyTarget {
                 player: u32::from(player),
@@ -729,6 +735,12 @@ pub fn wire_intent_from_pb(intent: pb::WireIntent) -> Result<WireIntent, String>
             WireIntent::ChooseAttachHost {
                 player: u8_trunc(player),
                 host,
+            }
+        }
+        Intent::ChooseLegendaryKeep(pb::WireIntentChooseLegendaryKeep { player, keep }) => {
+            WireIntent::ChooseLegendaryKeep {
+                player: u8_trunc(player),
+                keep,
             }
         }
         Intent::ChooseCopyTarget(pb::WireIntentChooseCopyTarget { player, copy }) => {

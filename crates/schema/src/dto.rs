@@ -980,6 +980,13 @@ pub enum PendingChoiceView {
         items: Vec<ChoiceItem>,
         optional: bool,
     },
+    /// Legend rule (CR 704.5j): this player chooses which of `items` (legendary permanents they
+    /// control named `name`) to keep; the rest leave the battlefield. Public battlefield items.
+    ChooseLegendaryKeep {
+        player: u8,
+        name: String,
+        items: Vec<ChoiceItem>,
+    },
 }
 
 impl PendingChoiceView {
@@ -1028,6 +1035,7 @@ impl PendingChoiceView {
             | Self::ChooseExiledToCastFree { items, .. }
             | Self::ChooseCopyTarget { items, .. }
             | Self::ChooseAttachHost { items, .. }
+            | Self::ChooseLegendaryKeep { items, .. }
             | Self::PayCumulativeUpkeepOrSacrifice { items, .. } => {
                 for item in items {
                     f(item);

@@ -533,6 +533,7 @@ export type PendingChoiceView =
   | { kind: "choose_color"; player: number; source: U32 }
   | { items: Array<ChoiceItem>; kind: "choose_copy_target"; player: number; source: U32 }
   | { attachment: U32; items: Array<ChoiceItem>; kind: "choose_attach_host"; optional: boolean; player: number }
+  | { items: Array<ChoiceItem>; kind: "choose_legendary_keep"; name: string; player: number }
   | { count: number; items: Array<ChoiceItem>; kind: "put_from_hand_on_top"; player: number }
   | { items: Array<ChoiceItem>; kind: "opponent_chooses_revealed_to_graveyard"; player: number; source: U32 }
   | { count: number; items: Array<ChoiceItem>; kind: "pay_cumulative_upkeep_or_sacrifice"; player: number; source: U32 }
@@ -616,6 +617,7 @@ export type WireIntent =
   | { kind: "choose_creature_type"; player: number; subtype: string }
   | { color: number; kind: "choose_color"; player: number }
   | { host?: null | U32; kind: "choose_attach_host"; player: number }
+  | { keep: U32; kind: "choose_legendary_keep"; player: number }
   | { copy?: null | U32; kind: "choose_copy_target"; player: number }
   | { kind: "choose_top_or_bottom"; player: number; top: boolean }
   | { card: U32; kind: "cycle"; player: number; sacrifice?: null | U32 }
