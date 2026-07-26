@@ -832,6 +832,9 @@ impl Effect {
             Effect::Counters(CountersEffect::RemoveAllCountersThenDraw { .. }) => {
                 "Remove all counters, draw a card for each removed".to_string()
             }
+            Effect::Counters(CountersEffect::RemoveAllButOnePlusOneCounterThenGainLife { .. }) => {
+                "Remove all but one +1/+1 counter, gain 1 life for each removed".to_string()
+            }
             Effect::Static(StaticEffect::CounterReplacement { add, times, .. }) => {
                 format!("+1/+1 counters placed: (n + {add}) x {times}")
             }
@@ -1610,12 +1613,25 @@ impl Effect {
                     .to_string()
             }
             // A conditional step reads as its `then` steps — no consumer renders `Condition`
-            // prose today (an activation gate's `condition` isn't labeled either).
-            Effect::Conditional { then, .. } => then
-                .iter()
-                .map(|&s| s.label())
-                .collect::<Vec<_>>()
-                .join(", then "),
+            // prose today (an activation gate's `condition` isn't labeled either). A two-sided
+            // conditional appends its else branch so the label still names every effect the
+            // player might see; without the `Condition` prose "otherwise" is the only cue that
+            // the two halves are alternatives.
+            Effect::Conditional {
+                then, otherwise, ..
+            } => {
+                let label = |steps: &[Effect]| {
+                    steps
+                        .iter()
+                        .map(|&s| s.label())
+                        .collect::<Vec<_>>()
+                        .join(", then ")
+                };
+                if otherwise.is_empty() {
+                    return label(then);
+                }
+                format!("{}, otherwise {}", label(then), label(otherwise))
+            }
             Effect::Zone(ZoneEffect::UntapSearchedLand) => "Untap the searched land".to_string(),
         }
     }
@@ -1665,5 +1681,34 @@ mod tests {
             .label(),
             "Draw 2, then Discard 2"
         );
+    }
+
+    /// Lily Bowen, Raging Grandma's "…if its power is 16 or less. Otherwise, …": a two-sided
+    /// `Conditional` must name BOTH branches. Labelling only `then` silently hides every effect
+    /// reachable through the else branch.
+    #[test]
+    fn a_two_sided_conditional_labels_its_otherwise_branch() {
+        let two_sided = Effect::Conditional {
+            condition: Condition::SourcePowerAtMost { at_most: 16 },
+            then: &[Effect::Draw(DrawEffect::Cards {
+                count: Amount::Fixed(2),
+            })],
+            negate: false,
+            otherwise: &[Effect::Life(LifeEffect::Gain {
+                amount: Amount::Fixed(1),
+            })],
+        };
+        assert_eq!(two_sided.label(), "Draw 2, otherwise Gain 1 life");
+
+        // The one-sided form (every other consumer) keeps its bare `then` prose.
+        let one_sided = Effect::Conditional {
+            condition: Condition::SourcePowerAtMost { at_most: 16 },
+            then: &[Effect::Draw(DrawEffect::Cards {
+                count: Amount::Fixed(2),
+            })],
+            negate: false,
+            otherwise: &[],
+        };
+        assert_eq!(one_sided.label(), "Draw 2");
     }
 }

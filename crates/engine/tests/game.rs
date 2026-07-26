@@ -28632,6 +28632,7 @@ const FALLEN_IDEAL_GRANT: GrantedAbility = GrantedAbility {
         toughness: Amount::Fixed(1),
         keywords: &[],
     })],
+    trigger: None,
 };
 
 /// A test-only Aura shaped like Fallen Ideal: its host gains flying and the granted "Sacrifice a
@@ -29917,6 +29918,120 @@ fn champions_helm_grants_hexproof_only_while_equipped_creature_is_legendary() {
     assert!(
         !game.has_keyword(bear, Keyword::Hexproof),
         "the Helm moved off the bear, which never had hexproof anyway"
+    );
+}
+
+#[test]
+fn power_fist_grants_trample_and_the_combat_damage_counters_trigger() {
+    // Power Fist ({1}{G}): "Equipped creature has trample and 'Whenever this creature deals
+    // combat damage to a player, put that many +1/+1 counters on it.' Equip {2}." Unblocked, its
+    // printed 2 power deals 2 combat damage, so two +1/+1 counters.
+    let mut game = Game::new();
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // 2/2
+    let fist = game.spawn_on_battlefield(PlayerId(0), card("Power Fist"));
+    game.fund_mana(PlayerId(0));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: fist,
+        ability_index: 1, // index 0 is the static grant; 1 is Equip {2}
+        target: Some(Target::Object(bear)),
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("Equip {2} is a legal sorcery-speed activation on a creature you control");
+    resolve_top_of_stack(&mut game);
+
+    assert!(
+        game.has_keyword(bear, Keyword::Trample),
+        "the equipped creature has trample"
+    );
+
+    attack_with(&mut game, vec![bear]);
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(
+        game.plus_counters(bear),
+        2,
+        "2 unblocked combat damage put that many +1/+1 counters on the equipped creature"
+    );
+}
+
+#[test]
+fn power_fists_granted_trigger_is_not_an_activatable_ability() {
+    // The granted ability is triggered, not activated (unlike Fallen Ideal's granted "Sacrifice a
+    // creature: …") — the equipped creature gains no new activatable index for it.
+    let mut game = Game::new();
+    let bear = game.spawn_on_battlefield(PlayerId(0), VANILLA); // 0 own abilities
+    let fist = game.spawn_on_battlefield(PlayerId(0), card("Power Fist"));
+    game.fund_mana(PlayerId(0));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: fist,
+        ability_index: 1,
+        target: Some(Target::Object(bear)),
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.ability_at(bear, 0),
+        None,
+        "the granted trigger occupies no activatable index on the equipped creature"
+    );
+    assert!(
+        !game
+            .meaningful_actions(PlayerId(0))
+            .iter()
+            .any(|a| matches!(a, MeaningfulAction::Activate { source, .. } if *source == bear)),
+        "the equipped creature offers no new activation"
+    );
+}
+
+#[test]
+fn power_fists_trigger_stops_once_it_moves_to_another_creature() {
+    // The grant is read live off the attachment scan: once Power Fist moves to a second
+    // creature, the first no longer has the trigger, even though it's still on the battlefield.
+    let mut game = Game::new();
+    let first = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // 2/2
+    let second = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let fist = game.spawn_on_battlefield(PlayerId(0), card("Power Fist"));
+    game.fund_mana(PlayerId(0));
+
+    let equip = |game: &mut Game, host| {
+        game.submit(Intent::ActivateAbility {
+            player: PlayerId(0),
+            object: fist,
+            ability_index: 1,
+            target: Some(Target::Object(host)),
+            sacrifice: vec![],
+            discard_cost: vec![],
+            x: 0,
+        })
+        .unwrap();
+        resolve_top_of_stack(game);
+    };
+
+    equip(&mut game, first);
+    equip(&mut game, second);
+    assert_eq!(game.attached_to(fist), Some(second), "the equipment moved");
+    assert!(
+        !game.has_keyword(first, Keyword::Trample),
+        "the first creature is no longer equipped"
+    );
+
+    attack_with(&mut game, vec![first]);
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(
+        game.plus_counters(first),
+        0,
+        "no longer equipped, so its own combat damage no longer puts counters on it"
     );
 }
 
@@ -44749,6 +44864,7 @@ const FIGHT_SPELL: CardDef = CardDef {
         effect: Effect::Misc(MiscEffect::Fight {
             enemy: None,
             ally_is_shared_target: false,
+            one_way: false,
         }),
         optional: false,
         min_level: 0,
@@ -44786,6 +44902,28 @@ const FIGHT_SPELL: CardDef = CardDef {
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
+};
+
+/// One-way damage equal to power (Infectious Bite, fidelity increment #7): same cast-time /
+/// resolution-time target split as [`FIGHT_SPELL`], but `one_way: true` — no fight (CR 701.12
+/// never applies; the oracle text never says "fights"), so only the ally's damage to the enemy
+/// happens.
+const ONE_WAY_FIGHT_SPELL: CardDef = CardDef {
+    name: "One-Way Fight (test)",
+    abilities: &[Ability {
+        timing: Timing::Spell,
+        effect: Effect::Misc(MiscEffect::Fight {
+            enemy: None,
+            ally_is_shared_target: false,
+            one_way: true,
+        }),
+        optional: false,
+        min_level: 0,
+        once_each_turn: false,
+        cost: Cost::FREE,
+        condition: None,
+    }],
+    ..FIGHT_SPELL
 };
 
 #[test]
@@ -44867,6 +45005,69 @@ fn fight_fizzles_with_no_legal_creature_you_control() {
         "the opponent's creature took no damage",
     );
     assert_eq!(g.marked_damage(g.current_id(theirs)), 0);
+}
+
+#[test]
+fn one_way_damage_equal_to_power_does_not_damage_the_source_back() {
+    // Infectious Bite: "Target creature you control deals damage equal to its power to target
+    // creature you don't control." — one-directional, not a fight (CR 701.12 doesn't apply, so
+    // the enemy never deals damage back).
+    let mut g = TestGame::new();
+    let mine = g.spawn_on_battlefield(PlayerId(0), creature("Mine 3/3", 3, 3, &[]));
+    let theirs = g.spawn_on_battlefield(PlayerId(1), creature("Theirs 2/2", 2, 2, &[]));
+    let spell = g.spawn_in_hand(PlayerId(0), ONE_WAY_FIGHT_SPELL);
+
+    g.cast(spell).at(Target::Object(theirs)).resolve();
+    g.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(mine)],
+    })
+    .unwrap();
+
+    assert_eq!(
+        g.zone_of(g.current_id(theirs)),
+        Zone::Graveyard,
+        "the 2/2 took my 3/3's 3 power and died",
+    );
+    assert_eq!(
+        g.marked_damage(g.current_id(mine)),
+        0,
+        "one-way damage never comes back to the source",
+    );
+}
+
+#[test]
+fn infectious_bite_poisons_the_opponent_after_the_ally_choice_resolves() {
+    // Infectious Bite: "... Each opponent gets a poison counter." — the poison step is the rest
+    // of the spell's `Sequence`, deferred behind the ally-choice pause; it must still run once
+    // that choice is answered.
+    let mut g = TestGame::new();
+    let mine = g.spawn_on_battlefield(PlayerId(0), creature("Mine 3/3", 3, 3, &[]));
+    let theirs = g.spawn_on_battlefield(PlayerId(1), creature("Theirs 2/2", 2, 2, &[]));
+    let spell = g.spawn_in_hand(PlayerId(0), card("Infectious Bite"));
+
+    g.cast(spell).at(Target::Object(theirs)).resolve();
+    g.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(mine)],
+    })
+    .unwrap();
+
+    assert_eq!(
+        g.zone_of(g.current_id(theirs)),
+        Zone::Graveyard,
+        "the 2/2 took my 3/3's 3 power and died",
+    );
+    assert_eq!(
+        g.marked_damage(g.current_id(mine)),
+        0,
+        "one-way damage never comes back to the source",
+    );
+    assert_eq!(
+        g.player_counters(PlayerId(1), PlayerCounterKind::Poison),
+        1,
+        "each opponent gets a poison counter, after the ally-choice pause resumes the sequence",
+    );
 }
 
 #[test]
@@ -93546,5 +93747,541 @@ fn multikicker_count_is_rejected_on_a_spell_without_multikicker() {
             .try_submit(),
         Err(Reject::CannotPayCost),
         "Shock has no multikicker cost to pay"
+    );
+}
+
+// ── Increment #14 `double-counters-or-cull-and-gain`: `Condition::SourcePowerAtMost` and ──
+// ── `CountersEffect::RemoveAllButOnePlusOneCounterThenGainLife` — Lily Bowen, Raging Grandma ──
+
+/// A test-only 0/0 creature whose only ability is Lily Bowen's cull-and-gain-life half in
+/// isolation, with no upkeep gate and no ETB counters: "{T}: Remove all but one +1/+1 counter
+/// from this creature, then you gain 1 life for each +1/+1 counter removed this way." Exercises
+/// `CountersEffect::RemoveAllButOnePlusOneCounterThenGainLife` at its own counter counts, apart
+/// from Lily's `SourcePowerAtMost` gate.
+const TEST_CULL_CREATURE: CardDef = CardDef {
+    abilities: &[Ability {
+        timing: Timing::Activated(ActivationCost {
+            taps_self: true,
+            mana: Cost::FREE,
+            sacrifice: SacrificeCost::None,
+            pay_life: Amount::Fixed(0),
+            self_damage: 0,
+            loyalty: None,
+            once_each_turn: false,
+            sorcery_speed: false,
+            remove_counters: 0,
+            remove_counters_kind: None,
+            remove_counters_x: false,
+            return_self: false,
+            mill_self: 0,
+            discard_cost: 0,
+            exile_self: false,
+            graveyard_exile_target_count: 0,
+        }),
+        effect: Effect::Counters(CountersEffect::RemoveAllButOnePlusOneCounterThenGainLife {
+            target: TargetSpec::ThisPermanent,
+        }),
+        optional: false,
+        min_level: 0,
+        once_each_turn: false,
+        condition: None,
+        cost: Cost::FREE,
+    }],
+    ..creature("Test Cull Creature", 1, 1, &[])
+};
+
+#[test]
+fn remove_all_but_one_plus_one_counter_gains_one_life_each() {
+    // The cull-and-gain half in isolation: six +1/+1 counters (three `put_two_counters` calls,
+    // no doubler present) keeps one and gains 1 life per counter actually removed.
+    let mut game = TestGame::new();
+    let creature = game.spawn_on_battlefield(PlayerId(0), TEST_CULL_CREATURE);
+    put_two_counters(&mut game, PlayerId(0), creature);
+    put_two_counters(&mut game, PlayerId(0), creature);
+    put_two_counters(&mut game, PlayerId(0), creature);
+    assert_eq!(
+        game.plus_counters(creature),
+        6,
+        "three put-two-counters calls"
+    );
+    let life_before = game.life(PlayerId(0));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: creature,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.plus_counters(creature),
+        1,
+        "all but one counter removed"
+    );
+    assert_eq!(
+        game.life(PlayerId(0)),
+        life_before + 5,
+        "1 life for each of the five counters actually removed"
+    );
+}
+
+#[test]
+fn remove_all_but_one_plus_one_counter_is_a_no_op_with_no_counters() {
+    // "All but one" of zero is zero (the effect's own no-op guard) — no counters removed, no
+    // life gained, and the +1/+1 count stays at zero rather than going negative.
+    let mut game = TestGame::new();
+    let creature = game.spawn_on_battlefield(PlayerId(0), TEST_CULL_CREATURE);
+    assert_eq!(game.plus_counters(creature), 0, "no counters to start");
+    let life_before = game.life(PlayerId(0));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: creature,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(game.plus_counters(creature), 0, "still zero counters");
+    assert_eq!(game.life(PlayerId(0)), life_before, "no life gained");
+}
+
+#[test]
+fn lily_bowen_doubles_counters_while_at_sixteen_power_or_less() {
+    // Lily Bowen, Raging Grandma: "Lily Bowen enters with two +1/+1 counters on it. At the
+    // beginning of your upkeep, double the number of +1/+1 counters on Lily Bowen if its power
+    // is 16 or less." Doubles at 2 (well under 16), and again right at the 16-power boundary.
+    let mut game = TestGame::new();
+    game.stack_library(PlayerId(0), &vec![card("Grizzly Bear"); 5]);
+    game.stack_library(PlayerId(1), &vec![card("Grizzly Bear"); 5]);
+    let lily_card = game.spawn_in_hand(PlayerId(0), card("Lily Bowen, Raging Grandma"));
+    game.cast(lily_card).resolve();
+    let lily = find_battlefield_permanent(&game, "Lily Bowen, Raging Grandma");
+    assert_eq!(
+        game.plus_counters(lily),
+        2,
+        "entered with two +1/+1 counters"
+    );
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
+    });
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.plus_counters(lily),
+        4,
+        "power 2 is 16 or less: doubled"
+    );
+
+    // Grow to exactly the 16-power boundary — still "16 or less".
+    for _ in 0..6 {
+        put_two_counters(&mut game, PlayerId(0), lily);
+    }
+    assert_eq!(game.plus_counters(lily), 16, "4 + 6*2 = 16");
+
+    // Leave this upkeep before waiting for the *next* one — the ability already resolved once
+    // this same upkeep, so the predicate below would otherwise match immediately without
+    // advancing a full turn cycle.
+    advance_until(&mut game, |g| g.current_step() != Step::Upkeep);
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
+    });
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.plus_counters(lily),
+        32,
+        "power 16 is still 16 or less: doubled, not culled"
+    );
+}
+
+#[test]
+fn lily_bowen_culls_to_one_and_gains_life_above_sixteen_power() {
+    // Lily Bowen, Raging Grandma: "Otherwise, remove all but one +1/+1 counter from it, then you
+    // gain 1 life for each +1/+1 counter removed this way." Above the 16-power threshold.
+    let mut game = TestGame::new();
+    game.stack_library(PlayerId(0), &vec![card("Grizzly Bear"); 2]);
+    game.stack_library(PlayerId(1), &vec![card("Grizzly Bear"); 2]);
+    let lily_card = game.spawn_in_hand(PlayerId(0), card("Lily Bowen, Raging Grandma"));
+    game.cast(lily_card).resolve();
+    let lily = find_battlefield_permanent(&game, "Lily Bowen, Raging Grandma");
+    for _ in 0..8 {
+        put_two_counters(&mut game, PlayerId(0), lily);
+    }
+    assert_eq!(game.plus_counters(lily), 18, "2 + 8*2 = 18, power over 16");
+    let life_before = game.life(PlayerId(0));
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
+    });
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(game.plus_counters(lily), 1, "culled to one +1/+1 counter");
+    assert_eq!(
+        game.life(PlayerId(0)),
+        life_before + 17,
+        "1 life for each of the seventeen counters actually removed"
+    );
+}
+
+#[test]
+fn lily_bowens_upkeep_doubling_goes_through_counter_replacements() {
+    // CR 121.6/614: the upkeep ability's own "double the number of counters" step places as many
+    // more +1/+1 counters as Lily already has, and that placement is itself a "counters would be
+    // put" event subject to other replacement effects — the same interaction Primordial Hydra's
+    // printed ruling describes as *tripling*, not quadrupling, with one doubler present: 2
+    // existing + (2 base more, doubled by the replacement to 4) = 6, not 8.
+    let mut game = TestGame::new();
+    game.stack_library(PlayerId(0), &vec![card("Grizzly Bear"); 2]);
+    game.stack_library(PlayerId(1), &vec![card("Grizzly Bear"); 2]);
+    let lily_card = game.spawn_in_hand(PlayerId(0), card("Lily Bowen, Raging Grandma"));
+    game.cast(lily_card).resolve();
+    let lily = find_battlefield_permanent(&game, "Lily Bowen, Raging Grandma");
+    assert_eq!(
+        game.plus_counters(lily),
+        2,
+        "entered with two +1/+1 counters, no doubler yet"
+    );
+
+    game.spawn_on_battlefield(PlayerId(0), card("Branching Evolution"));
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
+    });
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.plus_counters(lily),
+        6,
+        "2 existing + 4 actually placed (2 base, doubled by Branching Evolution)"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Toxic (#20 slice 3, CR 702.164): Keyword::Toxic(N) — a creature with toxic N gives the player
+// it deals combat damage to N poison counters *in addition to* that damage (CR 702.164a), and
+// multiple instances add (CR 702.164b).
+// ---------------------------------------------------------------------------
+
+/// A 2/2 with toxic 1 — the generic test stand-in for Blightbelly Rat's body.
+const TOXIC_2_2: CardDef = creature("Toxic 1 2/2 (test)", 2, 2, &[Keyword::Toxic(1)]);
+
+/// A test-only Aura shaped like Necrogen Communion: "Enchanted creature has toxic 2."
+const TOXIC_AURA_TEST: CardDef = CardDef {
+    name: "Toxic 2 Aura (test)",
+    abilities: &[Ability {
+        timing: Timing::Static,
+        effect: Effect::Static(StaticEffect::GrantToAttached {
+            power: Amount::Fixed(0),
+            toughness: Amount::Fixed(0),
+            keywords: &[Keyword::Toxic(2)],
+            goad: false,
+            protection_from_chosen_color: false,
+            granted_ability: None,
+            cant_attack: false,
+            cant_block: false,
+            cant_attack_controller: false,
+            activated_abilities: None,
+            legendary_only: false,
+        }),
+        optional: false,
+        min_level: 0,
+        once_each_turn: false,
+        condition: None,
+        cost: Cost::FREE,
+    }],
+    ..FLIGHT
+};
+
+/// A test-only toxic 1/1 whose ETB deals 2 *noncombat* damage to target player.
+const TOXIC_PINGER_TEST: CardDef = CardDef {
+    name: "Toxic pinger (test)",
+    keywords: &[Keyword::Toxic(1)],
+    abilities: &[Ability {
+        timing: Timing::Triggered(Trigger::Etb),
+        effect: Effect::Damage(DamageEffect::Target {
+            amount: Amount::Fixed(2),
+            target: TargetSpec::Player,
+            count: TargetCount {
+                min: 1,
+                max: 1,
+                x_scaled: false,
+                sacrifice_scaled: false,
+                strive_scaled: false,
+                total_mv_max: None,
+            },
+            divided: false,
+        }),
+        optional: false,
+        min_level: 0,
+        once_each_turn: false,
+        condition: None,
+        cost: Cost::FREE,
+    }],
+    ..PINGER
+};
+
+#[test]
+fn toxic_gives_poison_counters_in_addition_to_combat_damage() {
+    // CR 702.164a: toxic does not replace the damage the way infect does — the defending player
+    // takes the full 2 combat damage *and* gets one poison counter.
+    let mut game = Game::new();
+    let attacker = game.spawn_on_battlefield(PlayerId(0), TOXIC_2_2);
+
+    attack_with(&mut game, vec![attacker]);
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(game.life(PlayerId(1)), 18, "toxic still deals its damage");
+    assert_eq!(
+        game.player_counters(PlayerId(1), PlayerCounterKind::Poison),
+        1,
+        "and one poison counter on top"
+    );
+}
+
+#[test]
+fn multiple_instances_of_toxic_add() {
+    // CR 702.164b: a creature with more than one instance of toxic gives the sum — a printed
+    // toxic 1 wearing an Aura granting toxic 2 gives three poison counters.
+    let mut game = Game::new();
+    let attacker = game.spawn_on_battlefield(PlayerId(0), TOXIC_2_2);
+    let aura = game.spawn_in_hand(PlayerId(0), TOXIC_AURA_TEST);
+    fund_cast_resolve(&mut game, PlayerId(0), aura, Some(Target::Object(attacker)));
+
+    attack_with(&mut game, vec![attacker]);
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(
+        game.player_counters(PlayerId(1), PlayerCounterKind::Poison),
+        3,
+        "toxic 1 + toxic 2 = three poison counters"
+    );
+}
+
+#[test]
+fn infect_and_toxic_both_give_poison() {
+    // Infect changes the *form* of the damage (CR 702.90c) and toxic adds counters *on top* of
+    // it (CR 702.164a) — they stack. Three damage from an infecting toxic-1 creature is three
+    // poison from infect plus one from toxic, and no life lost.
+    let mut game = Game::new();
+    let attacker = game.spawn_on_battlefield(
+        PlayerId(0),
+        creature(
+            "Infect toxic 1 3/3 (test)",
+            3,
+            3,
+            &[Keyword::Infect, Keyword::Toxic(1)],
+        ),
+    );
+
+    attack_with(&mut game, vec![attacker]);
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(game.life(PlayerId(1)), 20, "infect costs no life");
+    assert_eq!(
+        game.player_counters(PlayerId(1), PlayerCounterKind::Poison),
+        4,
+        "three poison from infect, one more from toxic"
+    );
+}
+
+#[test]
+fn prevented_combat_damage_gives_no_toxic_counters() {
+    // CR 702.164a hangs the poison counters off combat damage actually dealt. Moment's Peace
+    // prevents all of it (CR 615), so no damage is dealt and no poison is placed.
+    let mut game = Game::with_players(2, 0);
+    let attacker = game.spawn_on_battlefield(PlayerId(0), TOXIC_2_2);
+    let fog = game.spawn_in_hand(PlayerId(0), card("Moment's Peace"));
+
+    attack_with(&mut game, vec![attacker]);
+    block_with(&mut game, vec![]).unwrap();
+    fund_cast_resolve(&mut game, PlayerId(0), fog, None);
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(game.life(PlayerId(1)), 20, "the damage was prevented");
+    assert_eq!(
+        game.player_counters(PlayerId(1), PlayerCounterKind::Poison),
+        0,
+        "prevented combat damage grants no toxic counters"
+    );
+}
+
+#[test]
+fn noncombat_damage_from_a_toxic_source_gives_no_poison() {
+    // CR 702.164a is combat damage only — a toxic creature's ETB ping costs life and nothing else.
+    let mut game = Game::new();
+    let pinger = game.spawn_in_hand(PlayerId(0), TOXIC_PINGER_TEST);
+    fund_cast_resolve(&mut game, PlayerId(0), pinger, None);
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Player(PlayerId(1))],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(game.life(PlayerId(1)), 18, "the ping still costs life");
+    assert_eq!(
+        game.player_counters(PlayerId(1), PlayerCounterKind::Poison),
+        0,
+        "toxic is combat damage only"
+    );
+}
+
+#[test]
+fn ten_poison_counters_from_toxic_eliminate_a_player() {
+    // CR 704.5c: poison from toxic is ordinary poison — the tenth counter loses the game.
+    let mut game = Game::with_players(4, 0);
+    game.place_player_counters(PlayerId(1), PlayerCounterKind::Poison, 9);
+    let attacker = game.spawn_on_battlefield(PlayerId(0), TOXIC_2_2);
+
+    attack_with(&mut game, vec![attacker]);
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(
+        game.player_counters(PlayerId(1), PlayerCounterKind::Poison),
+        10
+    );
+    assert!(
+        game.has_lost(PlayerId(1)),
+        "ten poison counters loses the game"
+    );
+}
+
+#[test]
+fn bilious_skulldweller_deathtouches_and_poisons() {
+    // Bilious Skulldweller: "Deathtouch / Toxic 1" — a 1/1 whose combat damage kills its blocker
+    // and, when it connects with a player, adds a poison counter to the life loss.
+    let mut game = Game::new();
+    let skulldweller = game.spawn_on_battlefield(PlayerId(0), card("Bilious Skulldweller"));
+    assert!(game.has_keyword(skulldweller, Keyword::Deathtouch));
+
+    attack_with(&mut game, vec![skulldweller]);
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(game.life(PlayerId(1)), 19, "toxic still deals its 1 damage");
+    assert_eq!(
+        game.player_counters(PlayerId(1), PlayerCounterKind::Poison),
+        1
+    );
+}
+
+#[test]
+fn necrogen_communion_grants_toxic_two_and_reanimates_its_host() {
+    // Necrogen Communion: "Enchanted creature has toxic 2. When enchanted creature dies, return
+    // that card to the battlefield under your control." Toxic 2 stacks onto the Skulldweller's
+    // printed toxic 1 (CR 702.164b) for three poison counters.
+    let mut game = Game::new();
+    let skulldweller = game.spawn_on_battlefield(PlayerId(0), card("Bilious Skulldweller"));
+    let aura = game.spawn_in_hand(PlayerId(0), card("Necrogen Communion"));
+    fund_cast_resolve(
+        &mut game,
+        PlayerId(0),
+        aura,
+        Some(Target::Object(skulldweller)),
+    );
+
+    attack_with(&mut game, vec![skulldweller]);
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(
+        game.player_counters(PlayerId(1), PlayerCounterKind::Poison),
+        3,
+        "printed toxic 1 plus the Aura's toxic 2"
+    );
+}
+
+#[test]
+fn necrogen_communion_returns_the_enchanted_creature_it_watched_die() {
+    // "When enchanted creature dies, return that card to the battlefield under your control."
+    let mut game = Game::new();
+    let host = game.spawn_on_battlefield(PlayerId(0), card("Bilious Skulldweller"));
+    let aura = game.spawn_in_hand(PlayerId(0), card("Necrogen Communion"));
+    fund_cast_resolve(&mut game, PlayerId(0), aura, Some(Target::Object(host)));
+    let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+    fund_cast_resolve(&mut game, PlayerId(0), bolt, Some(Target::Object(host)));
+    resolve_top_of_stack(&mut game); // the enchanted-creature-dies trigger
+
+    let returned = game
+        .live_object_ids()
+        .into_iter()
+        .find(|&id| {
+            game.zone_of(id) == Zone::Battlefield && game.def_of(id).name == "Bilious Skulldweller"
+        })
+        .expect("the enchanted creature came back");
+    assert_eq!(
+        game.controller_of(returned),
+        PlayerId(0),
+        "the dead enchanted creature is back on the battlefield under the Aura controller"
+    );
+}
+
+#[test]
+fn blightbelly_rat_poisons_and_proliferates_when_it_dies() {
+    // Blightbelly Rat: "Toxic 1 / When this creature dies, proliferate."
+    let mut game = Game::new();
+    let rat = game.spawn_on_battlefield(PlayerId(0), card("Blightbelly Rat"));
+    let counter_holder = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    game.add_plus_counter(counter_holder);
+
+    attack_with(&mut game, vec![rat]);
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+    assert_eq!(
+        game.player_counters(PlayerId(1), PlayerCounterKind::Poison),
+        1,
+        "toxic 1 on connect"
+    );
+
+    let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+    fund_cast_resolve(&mut game, PlayerId(0), bolt, Some(Target::Object(rat)));
+    resolve_top_of_stack(&mut game); // the dies trigger resolves → pauses on the proliferate choice
+    game.submit(Intent::ChooseSacrifices {
+        player: PlayerId(0),
+        sacrifices: vec![counter_holder],
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.plus_counters(counter_holder),
+        2,
+        "proliferate added a second +1/+1 counter"
+    );
+}
+
+#[test]
+fn bloated_contaminator_poisons_and_proliferates_on_connect() {
+    // Bloated Contaminator: "Trample / Toxic 1 / Whenever this creature deals combat damage to a
+    // player, proliferate." The toxic counter lands first, so proliferate has something to grow.
+    let mut game = Game::new();
+    let beast = game.spawn_on_battlefield(PlayerId(0), card("Bloated Contaminator"));
+    let counter_holder = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    game.add_plus_counter(counter_holder);
+    assert!(game.has_keyword(beast, Keyword::Trample));
+
+    attack_with(&mut game, vec![beast]);
+    // The combat-damage trigger resolves mid-advance and pauses on its proliferate choice.
+    advance_until(&mut game, |g| g.pending_choice().is_some());
+    game.submit(Intent::ChooseSacrifices {
+        player: PlayerId(0),
+        sacrifices: vec![counter_holder],
+    })
+    .unwrap();
+
+    assert_eq!(game.life(PlayerId(1)), 16, "four trample damage");
+    assert_eq!(
+        game.player_counters(PlayerId(1), PlayerCounterKind::Poison),
+        1
+    );
+    assert_eq!(
+        game.plus_counters(counter_holder),
+        2,
+        "proliferate added a second +1/+1 counter"
     );
 }

@@ -176,6 +176,30 @@ impl Game {
                 events.extend(self.draw_events(controller, removed as u32));
                 events
             }
+            // Lily Bowen's downshift half: keep exactly one +1/+1 counter, then gain 1 life per
+            // counter actually removed. Zero or one counter present removes zero (guard-return
+            // via the `max(0)` below) and gains nothing.
+            CountersEffect::RemoveAllButOnePlusOneCounterThenGainLife { .. } => {
+                let object = expect_object_target(target, "a cull-and-gain-life effect");
+                let removed = (self.permanent(object).plus_counters - 1).max(0);
+                let mut events = Vec::new();
+                if removed > 0 {
+                    events.push(Event::CountersPlaced {
+                        object,
+                        count: -removed,
+                        source_name,
+                    });
+                }
+                let life = self.life_gain_after_replacements(controller, removed);
+                if life != 0 {
+                    events.push(Event::LifeChanged {
+                        player: controller,
+                        amount: life,
+                        source: Some(source),
+                    });
+                }
+                events
+            }
             // Breena: the attacking player (context) draws one; the controller's chosen creature
             // gets `counters` +1/+1 counters.
             CountersEffect::AttackerDrawsControllerCounters { attacker, counters } => {

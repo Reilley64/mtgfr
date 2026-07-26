@@ -93,6 +93,7 @@ pub(crate) fn wire_keyword(keyword: engine::Keyword) -> String {
         Keyword::Decayed => "decayed".into(),
         Keyword::Myriad => "myriad".into(),
         Keyword::Infect => "infect".into(),
+        Keyword::Toxic(n) => format!("toxic:{n}"),
         Keyword::Ward(n) => format!("ward:{n}"),
         Keyword::ProtectionFrom(scope) => {
             let name = match scope {
@@ -139,6 +140,7 @@ pub(crate) fn keyword_label(keyword: engine::Keyword) -> String {
         Keyword::Decayed => "Decayed".into(),
         Keyword::Myriad => "Myriad".into(),
         Keyword::Infect => "Infect".into(),
+        Keyword::Toxic(n) => format!("Toxic {n}"),
         Keyword::Ward(n) => format!("Ward {{{n}}}"),
         Keyword::ProtectionFrom(scope) => {
             let name = match scope {

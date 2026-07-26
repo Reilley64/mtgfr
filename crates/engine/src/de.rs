@@ -102,6 +102,36 @@ where
     Ok(Some(&*Box::leak(Box::new(GrantedAbility::deserialize(d)?))))
 }
 
+/// The one [`Trigger`] flavor [`GrantedAbility`]'s `trigger` can spell in TOML today (Power
+/// Fist's "Whenever this creature deals combat damage to a player, …"), externally tagged like a
+/// plain Rust enum (`trigger = { deals_combat_damage_to_player = { who = "this" } }`) — unlike
+/// [`Timing`]'s `TriggerTag`, which pairs a `timing` tag with sibling fields on the *ability's own
+/// table* because an [`Ability`] already has a flat `timing` column to piggyback on; a
+/// [`GrantedAbility`] has no such column, so its `trigger` nests instead.
+/// ponytail: only `DealsCombatDamageToPlayer` is wired — extend this tag (mirroring
+/// `TriggerTag`) the moment a second granted-trigger card needs a different flavor.
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum GrantedTriggerTag {
+    DealsCombatDamageToPlayer {
+        #[serde(default)]
+        who: CombatDamageScope,
+    },
+}
+
+/// `deserialize_with` for [`GrantedAbility`]'s `trigger`. Only called when the key is present (a
+/// `#[serde(default)]` absent key stays `None`), so it always yields `Some`.
+pub(crate) fn opt_granted_trigger<'de, D>(d: D) -> Result<Option<Trigger>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Ok(Some(match GrantedTriggerTag::deserialize(d)? {
+        GrantedTriggerTag::DealsCombatDamageToPlayer { who } => {
+            Trigger::DealsCombatDamageToPlayer { who }
+        }
+    }))
+}
+
 /// `deserialize_with` for [`Effect::Zone(ZoneEffect::ReanimateToBattlefield)`]'s `becomes`: leak the one owned
 /// [`ReanimateBecomes`] the sub-table spells into the `&'static` a `Copy` [`Effect`] needs. Only
 /// called when the key is present (an absent `#[serde(default)]` key stays `None`).

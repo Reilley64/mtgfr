@@ -95,5 +95,17 @@ pub enum CountersEffect {
         target: TargetSpec,
     },
 
+    /// "remove all but one +1/+1 counter from it, then you gain 1 life for each +1/+1 counter
+    /// removed this way" (Lily Bowen, Raging Grandma) — the cull-and-gain sibling of
+    /// [`Self::RemoveAllCountersThenDraw`]: keeps exactly one +1/+1 counter (a no-op with zero or
+    /// one already present — "all but one" of nothing or one is nothing) and the life gained is
+    /// the number actually removed, not a flat amount.
+    /// ponytail: +1/+1-only and always "keep one, gain life" — Lily Bowen is the only consumer;
+    /// grow a `keep`/`gain_life` rider (or a `kind` axis) on `RemoveAllCountersThenDraw` instead of
+    /// a new sibling if a future card needs a different keep-count or payoff.
+    RemoveAllButOnePlusOneCounterThenGainLife {
+        target: TargetSpec,
+    },
+
     RemoveCounterFromSelf,
 }

@@ -2158,9 +2158,14 @@ impl Game {
                 combat_damage_source_controller: Some(source_controller),
                 ..TriggerContext::of(controller)
             };
+            // ponytail: only this scanner consults granted triggered abilities — the pool's one
+            // consumer (Power Fist). Move onto a shared owned-abilities accessor the moment a
+            // second granted trigger flavor lands (see `Game::granted_attachment_triggers`).
+            let granted_triggers = self.granted_attachment_triggers(id);
             let abilities: Vec<Ability> = self
                 .functional_abilities(id)
                 .iter()
+                .chain(granted_triggers.iter())
                 .filter(|a| match a.timing {
                     Timing::Triggered(Trigger::DealsCombatDamageToPlayer { who }) => match who {
                         CombatDamageScope::This => id == source,
@@ -3211,6 +3216,12 @@ impl Game {
             // resolve site (`Game::run`), which intercepts it directly against its own `source`
             // parameter before falling through here (Kinetic Ooze's X-threshold riders).
             Condition::SourceEnteredWithXAtLeast { .. } => false,
+            // ponytail: source-object-based like `SourceEnteredWithXAtLeast` above —
+            // `TriggerContext` carries no source id either. Reachable only through the
+            // `Effect::Conditional` resolve site (`Game::run`), which intercepts it directly
+            // against its own `source` parameter before falling through here (Lily Bowen,
+            // Raging Grandma's upkeep gate).
+            Condition::SourcePowerAtMost { .. } => false,
             // ponytail: source-object-based like `SourceEnteredWithXAtLeast` above — `TriggerContext`
             // carries no source id either. Reachable only through the `Effect::Conditional` resolve
             // site (`Game::run`), which intercepts it directly against its own `source` parameter
@@ -3866,6 +3877,7 @@ impl Game {
                 condition,
                 then,
                 negate,
+                ..
             } = step
             {
                 // CR 603.4: a gated clause is only a real target clause when its intervening-if

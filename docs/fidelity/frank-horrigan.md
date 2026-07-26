@@ -90,9 +90,9 @@ increment that unblocks each card is in parentheses.
 
 - [ ] Agent Frank Horrigan (#1) — built 2026-07-26; still approximated (proliferate can't choose players, #17)
 - [x] Alpha Deathclaw (#12) — built 2026-07-26, faithful
-- [ ] Bilious Skulldweller (#20 slice 3)
-- [ ] Blightbelly Rat (#20 slice 3)
-- [ ] Bloated Contaminator (#20 slice 3)
+- [x] Bilious Skulldweller (#20 slice 3) — built 2026-07-27, faithful
+- [ ] Blightbelly Rat (#20 slice 3) — built 2026-07-27; still approximated (proliferate can't choose players, #17)
+- [ ] Bloated Contaminator (#20 slice 3) — built 2026-07-27; still approximated (proliferate can't choose players, #17)
 - [ ] Bloatfly Swarm (#21, #22)
 - [x] Cankerbloom (#10) — built 2026-07-26; still approximated (proliferate can't choose players, #17)
 - [ ] Contagion Engine (#3) — built 2026-07-26; still approximated (proliferate can't choose players, #17)
@@ -103,18 +103,18 @@ increment that unblocks each card is in parentheses.
 - [x] Garruk, Primal Hunter (#4) — built 2026-07-26, faithful
 - [ ] Glistening Sphere (#20 slice 4)
 - [x] Ichor Rats (#20 slices 1–2) — built 2026-07-26, faithful
-- [ ] Infectious Bite (#7, #20 slice 1)
+- [x] Infectious Bite (#7, #20 slice 1) — built 2026-07-27, faithful
 - [x] Infectious Inquiry (#20 slice 1) — built 2026-07-26, faithful
 - [ ] Innkeeper's Talent (#2, #17, #19) — built 2026-07-26; still approximated (L3 counter-doubling needs #19; L2 ward misses the Class itself because level is a scalar, not CR 717.2 counters)
 - [x] Inspiring Call (#2) — built 2026-07-26, faithful
-- [ ] Lily Bowen, Raging Grandma (#14)
-- [ ] Necrogen Communion (#20 slice 3)
+- [x] Lily Bowen, Raging Grandma (#14) — built 2026-07-27, faithful
+- [x] Necrogen Communion (#20 slice 3) — built 2026-07-27, faithful
 - [x] Overgrown Tomb (#6) — built 2026-07-26, faithful
 - [x] Phyresis (#20 slice 2) — built 2026-07-26, faithful
 - [ ] Phyresis Outbreak (#20 slice 5)
 - [ ] Phyrexian Swarmlord (#20 slices 2, 4)
 - [x] Plague Stinger (#20 slice 2) — built 2026-07-26, faithful
-- [ ] Power Fist (#15)
+- [x] Power Fist (#15) — built 2026-07-27, faithful
 - [x] Rampaging Yao Guai (#9) — built 2026-07-26, faithful
 - [ ] Scheming Aspirant (#18)
 - [x] Undergrowth Stadium (#5) — built 2026-07-26, faithful

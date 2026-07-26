@@ -1,0 +1,33 @@
+# Trample
+# Toxic 1 (Players dealt combat damage by this creature also get a poison counter.)
+# Whenever this creature deals combat damage to a player, proliferate. (Choose any number of
+# permanents and/or players, then give each another counter of each kind already there.)
+name = "Bloated Contaminator"
+id = "090018e0-4dcb-4b3c-b4e0-7ba62de0484d"
+default_print = "411bda96-6c65-475d-9850-0a9b3eefa553"
+otags = ["mix-and-match", "poisonous", "saboteur", "triggered-ability"]
+oracle = "Trample\nToxic 1 (Players dealt combat damage by this creature also get a poison counter.)\nWhenever this creature deals combat damage to a player, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)"
+set = "one"
+subtypes = ["Phyrexian", "Beast"]
+keywords = ["trample", { toxic = 1 }]
+approximates = "\"Proliferate\" (CR 701.27) only enumerates battlefield permanents with a counter — it can't choose players (poison/rad) or Class level/exiled time/scream counters, though this card's own reminder text says \"permanents and/or players\" (increment #17, not in this wave)."
+
+[cost]
+generic = 2
+green = 1
+
+[kind]
+type = "creature"
+power = 4
+toughness = 4
+
+# Whenever this creature deals combat damage to a player, proliferate. (Choose any number of
+# permanents and/or players, then give each another counter of each kind already there.)
+[[abilities]]
+timing = "deals_combat_damage_to_player"
+
+# proliferate
+[[abilities.effects]]
+type = "choice"
+mode = "proliferate"
+times = 1

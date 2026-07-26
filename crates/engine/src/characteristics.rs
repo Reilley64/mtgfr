@@ -349,6 +349,19 @@ impl Game {
             })
     }
 
+    /// How many poison counters `object` gives a player it deals combat damage to (CR 702.164a).
+    /// Multiple instances of toxic add (CR 702.164b), so every instance is summed rather than
+    /// first-matched the way [`ward_amount`](Self::ward_amount) is.
+    pub(crate) fn toxic_amount(&self, object: ObjectId) -> i32 {
+        self.effective_keywords(object)
+            .into_iter()
+            .filter_map(|k| match k {
+                Keyword::Toxic(n) => Some(i32::from(n)),
+                _ => None,
+            })
+            .sum()
+    }
+
     /// The [`ProtectionScope`]s `object` currently has (CR 702.16), collected from its
     /// effective keywords.
     pub(crate) fn protection_scopes(
@@ -1597,7 +1610,54 @@ impl Game {
                                 granted_ability: Some(g),
                                 ..
                             }),
-                        ) => Some((g.cost, g.effects)),
+                        ) if g.trigger.is_none() => Some((g.cost, g.effects)),
+                        _ => None,
+                    })
+            })
+            .collect()
+    }
+
+    /// Every *triggered* ability granted to `host` by a live
+    /// [`Effect::Static(StaticEffect::GrantToAttached)`] Aura/Equipment attached to it (Power
+    /// Fist's "Whenever this creature deals combat damage to a player, put that many +1/+1
+    /// counters on it."), synthesized directly as an [`Ability`] — unlike the activated twin
+    /// ([`Game::granted_attachment_abilities`]), there is no `ability_at` index to address, since
+    /// a triggered ability isn't activated. Recomputed live off the same attachment scan, so it
+    /// disappears the instant the Aura/Equipment leaves (CR 702.26e for a phased-out one).
+    /// ponytail: only the combat-damage-to-a-player scanner consults granted triggered abilities —
+    /// the pool's one consumer (Power Fist). Move this onto a shared owned-abilities accessor the
+    /// moment a second granted trigger flavor lands.
+    pub(crate) fn granted_attachment_triggers(&self, host: ObjectId) -> Vec<Ability> {
+        self.attachments(host)
+            .into_iter()
+            // A phased-out Aura/Equipment grants nothing (CR 702.26e), mirroring `attachment_grants`.
+            .filter(|&id| !self.is_phased_out(id))
+            .flat_map(|id| {
+                self.def_of(id)
+                    .abilities
+                    .iter()
+                    .filter_map(|a| match (a.timing, a.effect) {
+                        (
+                            Timing::Static,
+                            Effect::Static(StaticEffect::GrantToAttached {
+                                granted_ability: Some(g),
+                                ..
+                            }),
+                        ) => g.trigger.map(|trigger| {
+                            let effect = match g.effects {
+                                [single] => *single,
+                                steps => Effect::Sequence { steps },
+                            };
+                            Ability {
+                                timing: Timing::Triggered(trigger),
+                                effect,
+                                optional: false,
+                                min_level: 0,
+                                cost: Cost::FREE,
+                                condition: None,
+                                once_each_turn: false,
+                            }
+                        }),
                         _ => None,
                     })
             })

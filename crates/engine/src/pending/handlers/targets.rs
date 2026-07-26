@@ -208,11 +208,11 @@ impl Game {
         };
         // A fight's second creature (see `Effect::Misc(MiscEffect::Fight)`) is chosen mid-resolution, not placed
         // as a new ability — apply the mutual damage directly instead of going back on the stack.
-        if let Effect::Misc(MiscEffect::Fight { enemy, .. }) = effect {
+        if let Effect::Misc(MiscEffect::Fight { enemy, one_way, .. }) = effect {
             let your_creature = expect_object_target(Some(target), "a fight's chosen creature");
             let enemy_creature =
                 expect_object_target(enemy, "a fight's pre-resolved opponent creature");
-            self.fight(your_creature, enemy_creature, &mut events);
+            self.fight(your_creature, enemy_creature, one_way, &mut events);
         } else if let Effect::Counters(CountersEffect::MoveCounters {
             from, all_kinds, ..
         }) = effect

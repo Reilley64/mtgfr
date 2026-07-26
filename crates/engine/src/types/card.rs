@@ -262,6 +262,14 @@ pub enum Keyword {
     /// chokes [`Game::creature_damage_events`](crate::Game::creature_damage_events) and
     /// [`Game::player_damage_events`](crate::Game::player_damage_events).
     Infect,
+    /// Toxic N (CR 702.164): "Players dealt combat damage by this creature also get N poison
+    /// counters." Unlike Infect it does *not* reshape the damage (CR 702.164a) — the life loss
+    /// still happens and the poison counters are placed on top of it. Multiple instances add
+    /// (CR 702.164b), so this is read as a sum by
+    /// [`Game::toxic_amount`](crate::Game::toxic_amount), not a first-match lookup like Ward's.
+    /// Combat damage only: applied at [`Game::damage_player`](crate::Game::damage_player), after
+    /// that choke's prevention guards, so fully prevented combat damage places no counters.
+    Toxic(u8),
 }
 
 /// A small set of the permanent card types a card carries, as a bitset (creature, artifact,

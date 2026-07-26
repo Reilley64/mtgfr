@@ -1,0 +1,34 @@
+# Target creature you control deals damage equal to its power to target creature you don't
+# control. Each opponent gets a poison counter.
+name = "Infectious Bite"
+id = "7b740cd6-e07d-4273-8a7f-e084bdaf0f1c"
+default_print = "83dfb2a5-cd5c-46c6-9bb8-7c5d00f3e003"
+otags = ["multiple-targets", "one-sided-fight", "poison-opponents", "poisonous"]
+oracle = "Target creature you control deals damage equal to its power to target creature you don't control. Each opponent gets a poison counter."
+set = "one"
+
+[cost]
+generic = 1
+green = 1
+
+[kind]
+type = "instant"
+
+# Target creature you control deals damage equal to its power to target creature you don't
+# control.
+[[abilities]]
+timing = "spell"
+
+# Target creature you control deals damage equal to its power to target creature you don't control.
+[[abilities.effects]]
+type = "misc"
+mode = "fight"
+one_way = true
+
+# Each opponent gets a poison counter.
+[[abilities.effects]]
+type = "counters"
+mode = "put_counters_on_player"
+kind = "poison"
+count = 1
+scope = "each_opponent"

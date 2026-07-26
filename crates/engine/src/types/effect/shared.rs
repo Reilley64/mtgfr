@@ -423,6 +423,15 @@ pub enum Effect {
         then: &'static [Effect],
         #[cfg_attr(feature = "card-dsl", serde(default))]
         negate: bool,
+        /// "if X … Otherwise, Y" (Lily Bowen, Raging Grandma): a true else branch, run when
+        /// `condition` (as gated by `negate`) does *not* hold, instead of `then`. Evaluates
+        /// `condition` exactly once per resolution — unlike a second, independently-conditioned
+        /// `Conditional` sharing the same condition (Whirlpool Whelm / Court Hussar's shape),
+        /// which mis-fires whenever `then`'s own mutation flips a condition that reads state
+        /// `then` itself changes (Lily's own power, moved by the counters `then` places). Empty
+        /// (the default) for every other consumer — a plain one-sided `Conditional` with no else.
+        #[cfg_attr(feature = "card-dsl", serde(default, deserialize_with = "de::static_slice"))]
+        otherwise: &'static [Effect],
     },
 }
 
@@ -457,6 +466,7 @@ impl Effect {
             | Effect::Counters(CountersEffect::DoubleCountersOnTargetCreatures { target, .. })
             | Effect::Counters(CountersEffect::MoveCounters { target, .. })
             | Effect::Counters(CountersEffect::RemoveAllCountersThenDraw { target })
+            | Effect::Counters(CountersEffect::RemoveAllButOnePlusOneCounterThenGainLife { target })
             | Effect::Exile(ExileEffect::Target { target, .. })
             | Effect::Exile(ExileEffect::UntilSourceLeaves { target })
             | Effect::Exile(ExileEffect::TargetMintingIllusionOnLeave { target })
@@ -494,10 +504,15 @@ impl Effect {
                 .map(|s| s.target())
                 .find(|&t| t != TargetSpec::None)
                 .unwrap_or(TargetSpec::None),
-            // A conditional step's target (if its gated `then` needs one) is shared from the
-            // enclosing sequence, same rule as `Sequence` above.
-            Effect::Conditional { then, .. } => then
+            // A conditional step's target is shared from the enclosing sequence, same rule as
+            // `Sequence` above. Both branches are searched: targets are chosen on announcement
+            // (CR 601.2c), before the condition is evaluated at resolution, so an `otherwise`
+            // branch that needs a target has to supply one just as `then` does.
+            Effect::Conditional {
+                then, otherwise, ..
+            } => then
                 .iter()
+                .chain(otherwise.iter())
                 .map(|s| s.target())
                 .find(|&t| t != TargetSpec::None)
                 .unwrap_or(TargetSpec::None),
@@ -1170,13 +1185,18 @@ pub enum AbilityRestriction {
     ManaAbilitiesOnly,
 }
 
-/// An *activated* ability an Aura grants its enchanted host (Fallen Ideal's "Sacrifice a
-/// creature: This creature gets +2/+1 until end of turn."), carried by
-/// [`Effect::Static(StaticEffect::GrantToAttached)`]. The non-mana twin of [`Effect::Static(StaticEffect::GrantManaAbility)`]'s inline
-/// `cost`/`mana`: surfaced on the host by [`Game::granted_attachment_abilities`] and synthesized
-/// into an [`Ability`] by [`Game::ability_at`], never resolved off the stack itself. Read live off
-/// the attachment scan, so it disappears the instant the Aura leaves. `effects` resolve against the
-/// host as the ability's own source (so `pump_self_until_end_of_turn` pumps the host).
+/// An *activated* or *triggered* ability an Aura/Equipment grants its host (Fallen Ideal's
+/// "Sacrifice a creature: This creature gets +2/+1 until end of turn.", Power Fist's "Whenever
+/// this creature deals combat damage to a player, put that many +1/+1 counters on it."), carried
+/// by [`Effect::Static(StaticEffect::GrantToAttached)`]. `cost` and `trigger` are mutually
+/// exclusive: an activated grant (`cost`, `trigger: None`) is the non-mana twin of
+/// [`Effect::Static(StaticEffect::GrantManaAbility)`]'s inline `cost`/`mana`, surfaced by
+/// [`Game::granted_attachment_abilities`] and synthesized into an [`Ability`] by
+/// [`Game::ability_at`]; a triggered grant (`trigger: Some(_)`, `cost` unused) is surfaced by
+/// [`Game::granted_attachment_triggers`] instead and never becomes an activatable index. Neither
+/// is ever resolved off the stack itself. Read live off the attachment scan, so it disappears the
+/// instant the Aura/Equipment leaves. `effects` resolve against the host as the ability's own
+/// source (so `pump_self_until_end_of_turn` pumps the host).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(
     feature = "card-dsl",
@@ -1185,7 +1205,8 @@ pub enum AbilityRestriction {
 )]
 pub struct GrantedAbility {
     /// The granted ability's activation cost, spelled as the same flat fields an inline
-    /// [`ActivationCost`] uses (Fallen Ideal: `sacrifice = { creature = {} }`, no mana).
+    /// [`ActivationCost`] uses (Fallen Ideal: `sacrifice = { creature = {} }`, no mana). Unused
+    /// when `trigger` is `Some`.
     #[cfg_attr(feature = "card-dsl", serde(default))]
     pub cost: ActivationCost,
     /// The granted ability's effect(s), leaked to `'static` like every other nested effect slice
@@ -1196,6 +1217,14 @@ pub struct GrantedAbility {
         serde(default, deserialize_with = "de::static_slice")
     )]
     pub effects: &'static [Effect],
+    /// When present, this grant is *triggered* rather than activated (Power Fist's "Whenever
+    /// this creature deals combat damage to a player, …") — `cost` is ignored and the host never
+    /// gains an activatable index for it. `None` (the default) keeps the plain activated shape.
+    #[cfg_attr(
+        feature = "card-dsl",
+        serde(default, deserialize_with = "de::opt_granted_trigger")
+    )]
+    pub trigger: Option<Trigger>,
 }
 
 /// The indefinite characteristics set an [`Effect::Zone(ZoneEffect::ReanimateToBattlefield)`] with a `becomes`
@@ -1540,6 +1569,13 @@ pub enum Condition {
     /// `condition_holds` path; the [`Effect::Conditional`] resolve site special-cases it directly
     /// against the shared `target` before falling through — see `Game::run`.
     TargetPowerAtLeast { at_least: u32 },
+    /// "if its power is `at_most` or less" (Lily Bowen, Raging Grandma's upkeep gate) —
+    /// source-object-based like [`SourceHasCounters`](Self::SourceHasCounters): reads the
+    /// source's own live [`Game::power`], not a `TriggerContext` field. `TriggerContext` carries
+    /// no source id, so this is unreachable through the ordinary `condition_holds` path; the
+    /// [`Effect::Conditional`] resolve site special-cases it directly against its own `source`
+    /// parameter, mirroring [`SourceEnteredWithXAtLeast`](Self::SourceEnteredWithXAtLeast).
+    SourcePowerAtMost { at_most: u32 },
     /// "as long as an opponent has `at_most` or less life" (Bloodghast's conditional haste) — an
     /// existential over the ability controller's opponents (CR 104.3a): holds when any living
     /// opponent's life is `at_most` or lower. Evaluated live, so a life change across the
@@ -2342,8 +2378,13 @@ fn fill_each_draw_step_drawer(effect: Effect, active_player: PlayerId) -> Effect
             condition,
             then,
             negate,
+            otherwise,
         } => {
             let filled: Vec<Effect> = then
+                .iter()
+                .map(|&step| fill_each_draw_step_drawer(step, active_player))
+                .collect();
+            let filled_otherwise: Vec<Effect> = otherwise
                 .iter()
                 .map(|&step| fill_each_draw_step_drawer(step, active_player))
                 .collect();
@@ -2351,6 +2392,7 @@ fn fill_each_draw_step_drawer(effect: Effect, active_player: PlayerId) -> Effect
                 condition,
                 then: Box::leak(filled.into_boxed_slice()),
                 negate,
+                otherwise: Box::leak(filled_otherwise.into_boxed_slice()),
             }
         }
         other => other,
@@ -2511,9 +2553,16 @@ fn fill_cast_mana_value(effect: Effect, mv: u32) -> Effect {
             condition: Condition::TriggeringSpellManaValueAtLeast { at_least },
             then,
             negate,
+            otherwise,
         } => {
             if (mv < u32::from(at_least)) != negate {
-                return Effect::Sequence { steps: &[] };
+                let filled_otherwise: Vec<Effect> = otherwise
+                    .iter()
+                    .map(|&step| fill_cast_mana_value(step, mv))
+                    .collect();
+                return Effect::Sequence {
+                    steps: Box::leak(filled_otherwise.into_boxed_slice()),
+                };
             }
             let filled: Vec<Effect> = then
                 .iter()
@@ -2712,5 +2761,57 @@ pub(crate) fn contextualize_sacrifice_effect(effect: Effect, power: i32, toughne
             }
         }
         other => other,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Targets are chosen on announcement (CR 601.2c), before a `Conditional`'s condition is
+    /// evaluated at resolution — so a spell whose only target sits in the `otherwise` branch
+    /// still has to announce that target. Reading `then` alone reports `None` and the branch
+    /// resolves with nothing to affect.
+    #[test]
+    fn a_conditional_finds_a_target_in_either_branch() {
+        const GAIN: Effect = Effect::Life(LifeEffect::Gain {
+            amount: Amount::Fixed(1),
+        });
+        const BOUNCE: Effect = Effect::Zone(ZoneEffect::ReturnToHand {
+            target: TargetSpec::Creature,
+            count: TargetCount {
+                min: 1,
+                max: 1,
+                x_scaled: false,
+                sacrifice_scaled: false,
+                strive_scaled: false,
+                total_mv_max: None,
+            },
+        });
+
+        let target_in_otherwise = Effect::Conditional {
+            condition: Condition::SourcePowerAtMost { at_most: 16 },
+            then: &[GAIN],
+            negate: false,
+            otherwise: &[BOUNCE],
+        };
+        assert_eq!(target_in_otherwise.target(), TargetSpec::Creature);
+
+        // `then` still wins when both branches target — it is announced first.
+        let target_in_then = Effect::Conditional {
+            condition: Condition::SourcePowerAtMost { at_most: 16 },
+            then: &[BOUNCE],
+            negate: false,
+            otherwise: &[GAIN],
+        };
+        assert_eq!(target_in_then.target(), TargetSpec::Creature);
+
+        let no_target = Effect::Conditional {
+            condition: Condition::SourcePowerAtMost { at_most: 16 },
+            then: &[GAIN],
+            negate: false,
+            otherwise: &[GAIN],
+        };
+        assert_eq!(no_target.target(), TargetSpec::None);
     }
 }

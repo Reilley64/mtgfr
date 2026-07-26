@@ -605,8 +605,16 @@ token = { name = "Inkling", power = 2, toughness = 1 }
                         collect(step, out);
                     }
                 }
-                Effect::Conditional { then, .. }
-                | Effect::Zone(ZoneEffect::ExileTargetGraveyardCardThenIfCreature { then })
+                // Both branches: a token minted only in the else branch is still a pool token
+                // that needs its art id, and nothing else in the build would catch it.
+                Effect::Conditional {
+                    then, otherwise, ..
+                } => {
+                    for step in then.iter().chain(otherwise.iter()) {
+                        collect(step, out);
+                    }
+                }
+                Effect::Zone(ZoneEffect::ExileTargetGraveyardCardThenIfCreature { then })
                 | Effect::Zone(ZoneEffect::ReflexiveTrigger { then })
                 | Effect::Damage(DamageEffect::ToEnteringPermanent { then, .. })
                 | Effect::Misc(MiscEffect::ScheduleNextCastTrigger { then, .. })

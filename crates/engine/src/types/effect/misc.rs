@@ -30,6 +30,11 @@ pub enum MiscEffect {
         enemy: Option<Target>,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         ally_is_shared_target: bool,
+        // Infectious Bite: "Target creature you control deals damage equal to its power to
+        // target creature you don't control" is one-directional — CR 701.12/119.3 fight
+        // language never appears, so only the ally→enemy damage half of the plumbing below runs.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        one_way: bool,
     },
 
     FlipSource,

@@ -974,7 +974,17 @@ impl Game {
     /// Resolve a fight (CR 701.12): `a` and `b` each deal damage equal to their power to the
     /// other, simultaneously — both powers are read before either amount is applied (CR
     /// 510.2/701.12c), so neither side's damage affects how much the other deals.
-    pub(crate) fn fight(&mut self, a: ObjectId, b: ObjectId, events: &mut Vec<Event>) {
+    ///
+    /// `one_way` (Infectious Bite) skips `b`'s damage back to `a` — this is not a fight at all
+    /// (the oracle text never says "fights"; CR 701.12 doesn't apply), just a plain "deals damage
+    /// equal to its power to" reusing the same damage plumbing.
+    pub(crate) fn fight(
+        &mut self,
+        a: ObjectId,
+        b: ObjectId,
+        one_way: bool,
+        events: &mut Vec<Event>,
+    ) {
         // CR 615: a masked Illusionary Mask creature that would deal damage is turned face up first
         // — before its power is read, so it deals its real power (its being-dealt-damage flip rides
         // on `deal_creature_damage` below).
@@ -985,6 +995,9 @@ impl Game {
         // Fight damage is noncombat (CR 701.12), so it passes `combat = false` — Tajic's static
         // prevents it, unlike combat damage.
         self.deal_creature_damage(a, b, power_a, false, events);
+        if one_way {
+            return;
+        }
         self.deal_creature_damage(b, a, power_b, false, events);
     }
 
@@ -1043,6 +1056,22 @@ impl Game {
                 amount,
             },
         );
+        // Toxic N (CR 702.164a): "Players dealt combat damage by this creature also get N poison
+        // counters" — in addition to the damage, not instead of it, so this sits after the damage
+        // events rather than replacing them the way infect does. It is deliberately below every
+        // prevention guard above: damage that was wholly prevented was never dealt, so it grants
+        // no toxic counters.
+        let toxic = self.toxic_amount(source);
+        if toxic > 0 {
+            self.push_apply(
+                events,
+                Event::PlayerCountersPlaced {
+                    player,
+                    kind: PlayerCounterKind::Poison,
+                    count: toxic,
+                },
+            );
+        }
         self.gain_lifelink(source, amount, events);
     }
 

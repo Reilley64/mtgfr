@@ -137,13 +137,17 @@ raises an optional pay-or-decline pending choice during the enters replacement, 
 the engine already models this for cast costs, see `crates/engine/src/types/mana.rs:201-204`).
 *Cards:* overgrown_tomb.
 
-### 7. `one-way-damage-equal-to-power` — 1 card, S
-Depends on: nothing.
-"Target creature you control deals damage equal to its power to target creature you don't
-control" — a one-way fight. The existing fight machinery (`resolution/pause_fight.rs`) is
-mutual-only. *Sketch:* a `mutual: bool` (or a `one_way` mode) on the fight effect, skipping the
-back-half damage event; both targets are still chosen up front. *Cards:* infectious_bite (its
-poison rider needs #20 slice 1).
+### 7. `one-way-damage-equal-to-power` — 1 card, S — LANDED 2026-07-26
+_Landed 2026-07-26: `MiscEffect::Fight` grew a `one_way: bool` (TOML `one_way`, default `false`)
+alongside `ally_is_shared_target`; `Game::fight` guard-returns before the enemy→ally damage event
+when set. Correction to this section's premise: the cast/resolution target split isn't "both
+targets chosen up front" — Infectious Bite reuses the same cast-time-enemy /
+resolution-time-pause-for-ally split every other `fight`-shaped effect here already uses
+(Decisive Denial, Primal Might), just with the back-half damage event skipped; this is not a
+fight at all (CR 701.12/701.12c never apply — the oracle text never says "fights"), so nothing
+that cares about fighting is told one happened. infectious_bite authored, fully faithful — its
+poison rider (`put_counters_on_player`, `each_opponent` scope) landed in #20 slice 1 as noted.
+Still blocked: nothing._
 
 ### 8. `phyrexian-mana` — 1 card, S/M
 Depends on: nothing.
@@ -256,7 +260,26 @@ trigger that puts a loyalty counter on each Garruk its controller controls — a
 pointing at a permanent type, not at its creator, so it survives the creating walker's death.
 Fix the Promise of Loyalty note in the same change. *Cards:* garruk_cursed_huntsman.
 
-### 14. `double-counters-or-cull-and-gain` — 1 card, M
+### 14. `double-counters-or-cull-and-gain` — 1 card, M — LANDED 2026-07-26
+_Landed 2026-07-26: the premise above overstated the gap — `CountersEffect::DoubleCounters`
+already existed and already routed through the counter-replacement pipeline
+(`doubled_counters_event` → `counters_after_replacements`); only the source-power-at-most
+condition and the cull-and-gain-life effect were actually missing. Added
+`Condition::SourcePowerAtMost { at_most }` (source-object-based, same shape as
+`SourceHasCounters`/`SourceEnteredWithXAtLeast` — only reachable inside `{ type = "conditional",
+… }`, special-cased at the `Game::run` resolve site) and
+`CountersEffect::RemoveAllButOnePlusOneCounterThenGainLife { target }` (keeps exactly one +1/+1
+counter — a no-op at zero or one already present — and gains 1 life per counter *actually
+removed*). Also fixed a real bug the card's own "if … Otherwise …" shape exposed:
+`Effect::Conditional` gained an `otherwise: &'static [Effect]` field (default empty, backward
+compatible) because the established "two independently-conditioned `conditional` steps sharing one
+condition" pattern (Whirlpool Whelm/Court Hussar) mis-fires when the first step's own effect
+changes what the shared condition reads — Lily's "double" mutates her own power, so at any power in
+[9,16] doubling would cross back over the 16 threshold and the second (negated) step would
+spuriously *also* cull right after doubling. `otherwise` evaluates `condition` exactly once and
+branches, closing that gap; Lily is authored as a single `conditional` step with `then`/`otherwise`
+instead of two. lily_bowen_raging_grandma is fully faithful — no `approximates`. Still blocked:
+nothing._
 Depends on: nothing.
 Lily Bowen's upkeep needs three things the DSL lacks: a source-power-**at-most** condition
 (`Condition` has `TargetPowerAtLeast` and `SourceHasCounters { at_least }` only), "double the
@@ -268,11 +291,22 @@ count must be the number actually removed). *Cards:* lily_bowen_raging_grandma.
 ### 15. `grant-triggered-ability-to-attached` — 1 card, M
 Depends on: nothing.
 `grant_to_attached`'s `granted_ability` is a `GrantedAbility { cost, effects }` — activated only.
-Power Fist grants the equipped creature a *triggered* ability ("whenever this creature deals
-combat damage to a player, put that many +1/+1 counters on it"). *Sketch:* let the granted ability
-carry a `Trigger` instead of a cost, and have the trigger scanners see granted abilities as well
-as printed ones. Note "that many" is the damage dealt, so the grant must thread the trigger's own
-damage amount into the counter count. *Cards:* power_fist.
+Power Fist (`{1}{G}` Equipment, Equip {2}) grants the equipped creature **trample** *and* a
+*triggered* ability ("whenever this creature deals combat damage to a player, put that many
++1/+1 counters on it") — the trample half already lands via `GrantToAttached { keywords }`, the
+gap is the triggered half. *Sketch:* let the granted ability carry a `Trigger` instead of a cost,
+and have the trigger scanners see granted abilities as well as printed ones. Note "that many" is
+the damage dealt, so the grant must thread the trigger's own damage amount into the counter count.
+*Cards:* power_fist.
+
+**LANDED 2026-07-26:** `GrantedAbility` gained `trigger: Option<Trigger>`, mutually exclusive with
+the activated-only `cost` path (`Game::granted_attachment_abilities` now excludes any grant with
+`trigger.is_some()`). `Game::queue_combat_damage_triggers` chains a new
+`Game::granted_attachment_triggers(host)` accessor alongside `functional_abilities` (ponytail-scoped
+to that one scanner — the pool's one consumer). `Amount::CombatDamageDealt` already threaded the
+damage amount via `fill_combat_damage`/`contextualize_effect`, so no new amount surface was needed.
+`power_fist.toml` is faithful: trample via `GrantToAttached { keywords }`, the counters trigger via
+the new `trigger` field, Equip {2} — no `approximates`. Still blocked: nothing.
 
 ### 16. `compleated` — 1 card, M
 Depends on: #8 phyrexian-mana.
@@ -377,14 +411,36 @@ don't see infect damage; upgrade path is a source-carrying `Event::DamageDealtTo
 **Slice 3 — `Keyword::Toxic(u8)`.** CR 702.164: *in addition to* its normal combat damage, a
 creature with toxic N gives the player it damages N poison counters. Unlike infect this does not
 replace the damage. Multiple instances add (CR 702.164b). *Cards:* bilious_skulldweller,
-blightbelly_rat, bloated_contaminator, contaminant_grafter, venerated_rotpriest,
-necrogen_communion (Aura grant).
+blightbelly_rat, bloated_contaminator, necrogen_communion (Aura grant).
+*2026-07-27 — slice 3 built (the XL is not LANDED; slices 4–5 remain).* `Keyword::Toxic(u8)`
+(TOML `{ toxic = N }`), `Game::toxic_amount` beside `ward_amount` — a **sum** over
+`effective_keywords`, not a first-match, because CR 702.164b makes multiple instances add — and the
+`Event::PlayerCountersPlaced { kind: Poison }` push at the tail of `combat.rs::damage_player`,
+below every prevention guard (prevented combat damage was never dealt, so it grants no counters)
+and on the combat path only (a toxic source's noncombat damage grants nothing). Toxic stacks with
+infect: an infecting toxic-1 creature dealing 3 gives 4 poison and costs no life. No new wire
+surface — the slice-1 `VisibleEvent::PlayerCountersPlaced` / `PlayerView.poison` already carry it;
+`wire_keyword`/`keyword_label` gained `toxic:N` / `Toxic N`. bilious_skulldweller and
+necrogen_communion (including its `reanimate_dying_enchanted_creature` return-under-your-control
+clause) are faithful; blightbelly_rat and bloated_contaminator carry only the shared #17
+proliferate-scope `approximates`.
 
 **Slice 4 — poison readers.** `Condition::AnOpponentHasPoisonAtLeast { at_least }` (the printed
 **Corrupted** ability word, CR 702.165), `Amount::OpponentsPoisonCounters`, and Vraska's −9
 "top up to nine" (a *difference*, not a fixed add — it must place nothing if the target already
 has nine or more). *Cards:* contaminant_grafter, glistening_sphere, phyrexian_swarmlord,
-vraska_betrayals_sting.
+vraska_betrayals_sting, venerated_rotpriest.
+
+Two toxic cards moved here out of slice 3 — printing toxic is not what gates them:
+- **contaminant_grafter** was already listed in this slice for its Corrupted ability
+  (`Condition::AnOpponentHasPoisonAtLeast`); its "whenever one or more creatures you control deal
+  combat damage to one or more players" is additionally a *batch* watch that no `CombatDamageScope`
+  arm expresses (`types/trigger.rs:578`).
+- **venerated_rotpriest** needs "whenever a creature **you control** becomes the target of a spell"
+  — `Trigger::BecomesTargeted` (`types/trigger.rs:429`) is self-referential only — plus a
+  *targeted-opponent* player-counter put, which `CountersEffect::PutCountersOnPlayer`'s `EdictScope`
+  cannot express (its only targeted arm, `TargetedPlayers`, is "any number of target players",
+  `types/filter.rs:860-871`).
 
 **Slice 5 — poison-scaled pump.** Phyresis Outbreak's "each creature your opponents control gets
 -1/-1 until end of turn **for each poison counter its controller has**" — a per-permanent amount
