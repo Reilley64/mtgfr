@@ -69,7 +69,7 @@ These documents are **not superseded** and must stay current alongside the specs
 | [engine-refactor-program](2026-07-25-engine-refactor-program-design.md) | Design input for engine Waves A–F (interned defs, obligations, triggers, choices, CR 613/614); update living surface specs per wave |
 | [sba-fidelity-gaps](2026-07-26-sba-fidelity-gaps-design.md) | Design input for CR 704.5j legend rule + CR 704.5r counter annihilation; update living engine-core / choices / prompts / wire specs |
 | [pool-coverage-badge](2026-07-26-pool-coverage-badge-design.md) | Design input for shell `% faithful` coverage above API version (faithful pool ÷ Scryfall oracle total); update shell-routes / meta at implement time |
-| [foldkit-submodels-pwa-and-play-routes](2026-07-26-foldkit-submodels-pwa-and-play-routes-design.md) | Design input: Foldkit `Got*`/`inform*`/`domain/`, play routes (`/` pick → `/play/:deckId` → pregame deck+table → in-game table-only), installable-only PWA; update shell/lobby/board specs per wave |
+| [foldkit-submodels-pwa-and-play-routes](2026-07-26-foldkit-submodels-pwa-and-play-routes-design.md) | Design input: Foldkit 0.132 + Effect beta.101, `Got*`/`inform*`/`domain/`, play routes (in-game table-only), installable-only PWA; update shell/lobby/board specs per wave |
 
 ## Authoring conventions
 
