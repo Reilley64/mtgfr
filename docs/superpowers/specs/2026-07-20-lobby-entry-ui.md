@@ -41,7 +41,7 @@ Required identifiers live in path params (see route table in [shell-routes-and-a
 
 Bare `/play` and `?deck=` entry points are Not found (hard cut). Single-segment `/play/...` paths normalize by segment shape: numeric segments stay deck-entry routes, while non-numeric segments become table-scoped routes. Malformed / not-in-library deck ids still 404.
 
-`tableId()` reads the table id from either `/play/:deckId/:table` or `/play/:table`. `parseTableCode` still normalizes bare codes and pasted play URLs from the pregame two-segment shape; table-only paste support is tracked with the broader Wave 2 route work. `setTableUrl` reflects a joined table into the URL via `history.replaceState`.
+`tableId()` reads the table id from either `/play/:deckId/:table` or `/play/:table`. `parseTableCode` normalizes guest input into a table id: bare codes (uppercased), pasted `/play/:deckId/:table` pregame links, pasted `/play/:table` in-game share links, and legacy `?table=` query params. Ambiguous paths (`/play/`, three or more `/play/...` segments, or unparseable URLs) return `null`. Pregame two-segment paths take precedence when both shapes could apply. `setTableUrl` reflects a joined table into the URL via `history.replaceState`.
 
 `selectedDeckId` is set from the required play route deck id when the route carries one. When the route carries no deck (`/play/:table`), route entry clears `selectedDeckId` to `null` even if the previous play route had a deck selected, so claim-seat/watcher chrome cannot reuse stale deck state. Lobby paint is route-keyed: `/play/:deckId` always renders the entry surface (`surface: "entry"`), while `/play/:deckId/:table` and `/play/:table` render the seated surface — so Host’s create→redirect handoff does not flash claim-seat chrome while `tableId` is already set on the entry route. Once the lobby view flips to `started`, the parent replaces `/play/:deckId/:table` with `/play/:table` and leaves Host create/join handoff on the pregame two-segment path until that start transition happens.
 
@@ -77,6 +77,7 @@ Helpers also live in `client/app/domain/lobby/client.ts` for table URL / code pa
 ## Testing Decisions
 
 - `client/app/shell/lobby/**/*.test.ts` — lobby stories and helpers (Host/Join entry, seated chrome, poll, `GotLobbyMessage` / `informRouteChanged` route entry, including `/play/:table` clearing stale deck selection and `started` redirecting seated pregame URLs to the table-only path).
+- `client/app/domain/lobby/code.test.ts` — `parseTableCode` for both `/play/:deckId/:table` and `/play/:table` path shapes, bare codes, and junk rejection (`/play/`, three+ segments).
 - `client/app/domain/lobby-store.test.ts` — lobby state helpers; with `WEB_DATABASE_URL`, asserts
   `loadLobby` on an empty table (requires migrate-applied `gravatar_hash`).
 - Scene assertions for lobby entry / seated surfaces, including `seat-face-0` Gravatar/monogram chrome and the table-only `/play/:table` shell route, live with shell Scene coverage (`just client-check`).
