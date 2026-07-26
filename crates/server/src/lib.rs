@@ -26,6 +26,7 @@ pub mod health;
 pub mod legality;
 mod lobby;
 pub mod precons;
+pub mod proxy_art;
 mod ratings;
 mod session;
 pub mod settings;

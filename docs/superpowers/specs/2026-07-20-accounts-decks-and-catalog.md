@@ -123,9 +123,12 @@ commander print). `DeckDetail` is the full view (id, name, commander, commander\
 
 **Create / Update:** `SaveDeckRequest` carries the same commander identity fields plus optional
 `commander_proxy_art_url`, and each card line may carry optional `proxy_art_url`. Those URLs are
-display-only and do not participate in legality. `SaveDeckRequest` → `legality::validate` →
-Postgres insert or update. If validation fails, the gRPC call returns an error containing all
-legality problems joined by newline; no partial saves.
+display-only, but non-empty values must parse as credential-free `https` URLs no longer than 2048
+characters; empty string means absent, and the server never fetches them during save. Invalid
+proxy-art URLs are added to the same Illegal problem list as Commander legality failures, so the
+deck builder still receives every save-time problem at once. `SaveDeckRequest` →
+`legality::validate` + proxy-art shape validation → Postgres insert or update. If validation
+fails, the gRPC call returns an error containing all problems joined by newline; no partial saves.
 
 **List:** Returns `DeckList` with both DB-backed decks (owned by the authed user) and the nine
 precon summaries. Precons appear in the list with their fixed negative ids; the client can
@@ -228,8 +231,10 @@ for hydrating a saved deck without fetching the full catalog.
   commander. `default_print` on `CatalogCard` is the Scryfall-preferred print from `/cards/named`.
   Precon fixtures stamp explicit Archidekt/SoC Printing UUIDs.
 - **Proxy art URL** = optional display-only alter-art override carried on `DeckCardEntry.proxy_art_url`
-  and `DeckDetail` / `SaveDeckRequest.commander_proxy_art_url`. Empty string means absent. It never
-  replaces the required Printing UUID for legality or object identity.
+  and `DeckDetail` / `SaveDeckRequest.commander_proxy_art_url`. Empty string means absent; non-empty
+  values must be credential-free `https` URLs no longer than 2048 characters. They never replace
+  the required Printing UUID for legality or object identity, and the server does not fetch them at
+  save time.
 - The engine is print-agnostic. Art resolution (`imageUrlByPrint()`) is CDN-only by Printing UUID;
   missing art is a broken image (no Scryfall image host fallback).
 
@@ -280,6 +285,9 @@ for hydrating a saved deck without fetching the full catalog.
 - gRPC service-level tests in `crates/server/src/grpc/tests.rs` cover `Auth.Signup`, `Auth.Login`,
   `Decks.Create`, `Decks.List` (including precon interleaving), `Decks.Delete`, and
   `Ratings.GetLeaderboard` ordering/paging with auth enforcement.
+- `crates/server/src/proxy_art.rs` unit tests cover the accepted/rejected proxy-art URL shapes, and
+  `crates/server/src/decks_api.rs` verifies both commander/card proxy-art round-trip persistence and
+  save-time rejection of invalid proxy-art URLs.
 - Shell Scene coverage asserts account chrome includes `account-gravatar-link`; Gravatar hashing
   and URL construction are covered in `client/app/domain/gravatar.test.ts`.
 - `crates/server/src/db.rs` and `crates/server/src/grpc/tests.rs` cover the rating persistence
