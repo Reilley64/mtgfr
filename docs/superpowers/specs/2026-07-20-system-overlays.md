@@ -32,7 +32,7 @@ Compose system overlays in `boardOverlays` as DOM layers above the board surface
 
 - System overlays remain DOM, not canvas.
 - Concede is game action chrome, not navigation.
-- Pile overlay uses `cardArt(h, opts)` for card thumbnails and falls back to card names when art is unavailable.
+- Pile overlay uses `cardArt(h, opts)` for card thumbnails. When a visible pile card carries `proxy_art_url`, the overlay threads it as `proxyArtUrl` so the shared art host prefers the proxy URL while keeping printed art fallback metadata. Card names remain the fallback when art is unavailable.
 - Escape priority dismisses inspect, the activation menu, stack expansion, and then local action/pile state.
 
 ## Testing Decisions

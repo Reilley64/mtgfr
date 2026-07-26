@@ -55,7 +55,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - All engine submissions go through `choiceIntent`.
 - `pendingChoiceTitle`, mode rows, order-trigger rows, pay-cost effect text, and target-aim chrome format wire `MessageRef` labels with `formatMessage`.
 - Missing catalog entries render the raw key, which keeps prompts visible and makes drift obvious in development.
-- Card-pick prompts use `cardArt(h, opts)` for faces.
+- Card-pick prompts use `cardArt(h, opts)` for faces. When a visible choice carries `proxy_art_url`, prompts thread it as `proxyArtUrl` so the shared art host prefers the proxy URL while keeping printed art fallback metadata.
 - `boardXPrompt` is a stepper over `[minX, maxX]` in docked `x-prompt-aim` (hand-bar HUD; center `x-prompt` modal unused):
   - Draft value lives on `XPromptState.draftX`, initialized to `clampX(maxX, minX, maxX)` when the prompt opens.
   - Min / − / + / Max dispatch `XDraftSet` (clamped into `[minX, maxX]`); Confirm dispatches `XSubmitted` with a clamped `x`.

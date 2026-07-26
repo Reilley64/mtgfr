@@ -473,7 +473,7 @@ function retargetFlightToCard(flight: CardFlight, model: BoardModel, card: Rende
   const target = cardTarget(model.camera, card);
   const next = retargetFlight(flight, { x: target.x, y: target.y, scale: 1 });
   if (!card.proxyArtUrl) {
-    return { ...next, print: card.print, name: card.name };
+    return { ...next, print: card.print, proxyArtUrl: undefined, name: card.name };
   }
   return { ...next, print: card.print, proxyArtUrl: card.proxyArtUrl, name: card.name };
 }
