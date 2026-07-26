@@ -171,8 +171,8 @@ describe.skipIf(!process.env.WEB_DATABASE_URL)("joinLobby gravatar persistence",
   });
 
   it("loadLobby succeeds on an empty table (missing gravatar_hash 500s Host as Unreachable)", async () => {
-    // Prod 3.100.2: POST /tables/v1 ok, then join/lobby GET 500 when lobby_seats lacks
-    // gravatar_hash — client decode maps that Nitro body to Unreachable.
+    // Schema must come from edh-web-migrate (0002/0003 + Job assert), not app self-heal.
+    // Without gravatar_hash, join/lobby GET 500 → client Unreachable.
     db = createWebDb();
     tableId = await createLobby(db, 9000);
     await expect(loadLobby(db, tableId)).resolves.toMatchObject({

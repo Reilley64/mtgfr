@@ -230,10 +230,14 @@ only during rolling deploys (nullable/default new columns; no rename/drop until 
 **`mtgfr_web` (BFF Postgres):** Drizzle ORM. CLI: `bun run drizzle-kit push`. Justfile:
 `just client-migrate`. Tables: `lobbies`, `lobby_seats` (includes `gravatar_hash`), `table_routes`.
 Forward-only, expand-only. The `edh-web-migrate` Job is Terraform-owned (hash of
-`client/db/migrations/**`); an Argo-only web image roll does **not** apply new Drizzle
-files — run `terraform apply` when migrations change. If `lobby_seats.gravatar_hash` is
-missing, Host create still returns `table_id` but join/lobby GET 500 (client shows
-Unreachable). Repair migration `0003_lobby_seat_gravatar_if_not_exists` is idempotent.
+`client/db/migrations/**` plus a script rev); an Argo-only web image roll does **not**
+apply new Drizzle files — run `terraform apply` when migrations change. Schema
+correctness is the Job’s job: after `drizzle-kit migrate` it asserts
+`lobby_seats.gravatar_hash` exists (`ADD COLUMN IF NOT EXISTS` + `information_schema`
+check) so journal drift cannot leave Host broken. Repair migration
+`0003_lobby_seat_gravatar_if_not_exists` is idempotent. The BFF does **not** mutate or
+probe schema at request time; if the column is missing, join/lobby GET 500 (client
+Unreachable).
 
 **`push_schema()` is dev/SQLite-test only.** Production pods assume `migration apply` ran
 first (via the K8s Job before the Deployment roll).
