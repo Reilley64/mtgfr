@@ -317,7 +317,7 @@ test("decklist rows are keyed by card id so pointer mounts remount after remove"
 
   // Keys force snabbdom to destroy/recreate rows; without them BindBuilderCardPointer
   // keeps the removed cardId after the first click (Mount args are mount-time only).
-  const html = builderView(model, null);
+  const html = builderView(model, emptyChrome);
   expect(html).not.toBeNull();
   if (html == null) return;
   for (const id of ["mana-crypt", "sol-ring"] as const) {
