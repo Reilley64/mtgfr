@@ -28,36 +28,32 @@ function decodeOrNull<A>(decode: (u: unknown) => Option.Option<A>, body: unknown
   return Option.getOrNull(decode(body));
 }
 
-export function createTable(): Promise<{ table_id: string } | null> {
-  return lobbyFetchJson("tables/v1", { method: "POST", body: "{}" }).then((body) =>
-    decodeOrNull(decodeCreatedTable, body),
-  );
+export async function createTable(): Promise<{ table_id: string } | null> {
+  const body = await lobbyFetchJson("tables/v1", { method: "POST", body: "{}" });
+  return decodeOrNull(decodeCreatedTable, body);
 }
 
-export function joinTable(payload: { table_id: string; deck_id: number }): Promise<LobbyView | null> {
-  return lobbyFetchJson("tables/join/v1", { method: "POST", body: JSON.stringify(payload) }).then((body) =>
-    decodeOrNull(decodeLobbyView, body),
-  );
+export async function joinTable(payload: { table_id: string; deck_id: number }): Promise<LobbyView | null> {
+  const body = await lobbyFetchJson("tables/join/v1", { method: "POST", body: JSON.stringify(payload) });
+  return decodeOrNull(decodeLobbyView, body);
 }
 
-export function readyUp(payload: { table_id: string; ready: boolean }): Promise<LobbyView | null> {
-  return lobbyFetchJson("tables/ready/v1", { method: "POST", body: JSON.stringify(payload) }).then((body) =>
-    decodeOrNull(decodeLobbyView, body),
-  );
+export async function readyUp(payload: { table_id: string; ready: boolean }): Promise<LobbyView | null> {
+  const body = await lobbyFetchJson("tables/ready/v1", { method: "POST", body: JSON.stringify(payload) });
+  return decodeOrNull(decodeLobbyView, body);
 }
 
-export function startGame(payload: { table_id: string }): Promise<LobbyView | null> {
-  return lobbyFetchJson("tables/start/v1", { method: "POST", body: JSON.stringify(payload) }).then((body) =>
-    decodeOrNull(decodeLobbyView, body),
-  );
+export async function startGame(payload: { table_id: string }): Promise<LobbyView | null> {
+  const body = await lobbyFetchJson("tables/start/v1", { method: "POST", body: JSON.stringify(payload) });
+  return decodeOrNull(decodeLobbyView, body);
 }
 
-export function lobbyState(table: string): Promise<LobbyView | null> {
-  return lobbyFetchJson(`tables/${encodeURIComponent(table)}/lobby/v1`).then((body) =>
-    decodeOrNull(decodeLobbyView, body),
-  );
+export async function lobbyState(table: string): Promise<LobbyView | null> {
+  const body = await lobbyFetchJson(`tables/${encodeURIComponent(table)}/lobby/v1`);
+  return decodeOrNull(decodeLobbyView, body);
 }
 
-export function apiVersion(): Promise<{ version: string } | null> {
-  return lobbyFetchJson("meta/version/v1").then((body) => decodeOrNull(decodeApiVersion, body));
+export async function apiVersion(): Promise<{ version: string } | null> {
+  const body = await lobbyFetchJson("meta/version/v1");
+  return decodeOrNull(decodeApiVersion, body);
 }
