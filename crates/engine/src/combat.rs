@@ -807,14 +807,9 @@ impl Game {
                 continue;
             }
             dealt += amount;
-            self.push_apply(
-                events,
-                Event::DamageMarked {
-                    object: blocker,
-                    amount,
-                    source: Some(attacker),
-                },
-            );
+            for event in self.creature_damage_events(attacker, blocker, amount) {
+                self.push_apply(events, event);
+            }
             // CR 510.2: this is combat damage to a creature — a `DealsCombatDamageToCreature`
             // watch (Stinkweed Imp) fires off this marker, not the plain `DamageMarked` above.
             self.push_apply(
@@ -954,14 +949,9 @@ impl Game {
         if combat && self.combat_extras.prevent_all_combat_damage_this_turn {
             return;
         }
-        self.push_apply(
-            events,
-            Event::DamageMarked {
-                object: target,
-                amount,
-                source: Some(source),
-            },
-        );
+        for event in self.creature_damage_events(source, target, amount) {
+            self.push_apply(events, event);
+        }
         // CR 510.2: combat damage to a creature (blocker → attacker) also fires a
         // `DealsCombatDamageToCreature` watch (Stinkweed Imp) — `fight`'s noncombat call
         // (`combat = false`) does not.
@@ -1032,21 +1022,9 @@ impl Game {
             self.push_apply(events, Event::CombatDamagePrevented { player, amount });
             return;
         }
-        // Moment's Peace (CR 615, #150): the table-wide "prevent all combat damage" shield — like
-        // Inkshield's above, but every player and no token mint. Still surfaced as the same
-        // `Event::CombatDamagePrevented` for observability.
-        if self.combat_extras.prevent_all_combat_damage_this_turn {
-            self.push_apply(events, Event::CombatDamagePrevented { player, amount });
-            return;
+        for event in self.player_damage_events(source, player, amount) {
+            self.push_apply(events, event);
         }
-        self.push_apply(
-            events,
-            Event::LifeChanged {
-                player,
-                amount: -amount,
-                source: Some(source),
-            },
-        );
         if self.is_commander(source) {
             self.push_apply(
                 events,

@@ -94,26 +94,26 @@ increment that unblocks each card is in parentheses.
 - [ ] Blightbelly Rat (#20 slice 3)
 - [ ] Bloated Contaminator (#20 slice 3)
 - [ ] Bloatfly Swarm (#21, #22)
-- [ ] Cankerbloom (#10)
+- [x] Cankerbloom (#10) — built 2026-07-26; still approximated (proliferate can't choose players, #17)
 - [ ] Contagion Engine (#3) — built 2026-07-26; still approximated (proliferate can't choose players, #17)
 - [ ] Contaminant Grafter (#20 slices 3–4)
-- [ ] Everflowing Chalice (#11)
+- [x] Everflowing Chalice (#11) — built 2026-07-26, faithful
 - [ ] Feral Ghoul (#21)
 - [ ] Garruk, Cursed Huntsman (#13)
 - [x] Garruk, Primal Hunter (#4) — built 2026-07-26, faithful
 - [ ] Glistening Sphere (#20 slice 4)
-- [ ] Ichor Rats (#20 slices 1–2) — ETB half built 2026-07-26; still approximated (Infect, slice 2)
+- [x] Ichor Rats (#20 slices 1–2) — built 2026-07-26, faithful
 - [ ] Infectious Bite (#7, #20 slice 1)
 - [x] Infectious Inquiry (#20 slice 1) — built 2026-07-26, faithful
-- [ ] Innkeeper's Talent (#2, #17, #19)
-- [ ] Inspiring Call (#2)
+- [ ] Innkeeper's Talent (#2, #17, #19) — built 2026-07-26; still approximated (L3 counter-doubling needs #19; L2 ward misses the Class itself because level is a scalar, not CR 717.2 counters)
+- [x] Inspiring Call (#2) — built 2026-07-26, faithful
 - [ ] Lily Bowen, Raging Grandma (#14)
 - [ ] Necrogen Communion (#20 slice 3)
 - [x] Overgrown Tomb (#6) — built 2026-07-26, faithful
-- [ ] Phyresis (#20 slice 2)
+- [x] Phyresis (#20 slice 2) — built 2026-07-26, faithful
 - [ ] Phyresis Outbreak (#20 slice 5)
 - [ ] Phyrexian Swarmlord (#20 slices 2, 4)
-- [ ] Plague Stinger (#20 slice 2)
+- [x] Plague Stinger (#20 slice 2) — built 2026-07-26, faithful
 - [ ] Power Fist (#15)
 - [x] Rampaging Yao Guai (#9) — built 2026-07-26, faithful
 - [ ] Scheming Aspirant (#18)
@@ -137,9 +137,9 @@ into the increment that clears it.
 | `characteristics.rs:1811` — CR 616.1 ordering "documented rather than offered as a choice" because every pool replacement is the affected player's own adder | Vorinclex, Monstrous Raider | #19 — a *halving* owned by an opponent breaks all three premises at once |
 | `characteristics.rs:1807` — `counters_after_replacements(object, base)` | Winding Constrictor, Vorinclex, Innkeeper's Talent L3 | #19 — the `ObjectId` signature gives "or on **you**" no call site, and the +1/+1-only scope silently skips every other kind |
 | ~~`characteristics.rs:1100` — CR 704.5r ±1/±1 annihilation SBA "unobservable today (no pool card puts both kinds on one creature)"~~ **cleared 2026-07-26** | Contagion Clasp and Contagion Engine place real `-1/-1` counters onto a deck full of `+1/+1` counters | #24 (landed) |
-| `triggers.rs:2946` — "no pool Class gates one of those triggers" | Innkeeper's Talent | #2 — wider than the note admits: `min_level` is read at exactly **one** site, so no *static* is level-gated either |
+| ~~`triggers.rs:2946` — "no pool Class gates one of those triggers"~~ **cleared 2026-07-26** | Innkeeper's Talent | #2 (landed) — the audit's "read at exactly **one** site" was itself wrong: `min_level` is read at four, and only `keyword_anthem_static_grants` was missing the gate |
 | `promise_of_loyalty.toml:3` — "unobservable while every attack target is a player (planeswalker defenders unmodeled)" | the three planeswalkers | #13 — the parenthetical was already false about its own engine (`Defender::Planeswalker` exists); a note fix, not a code fix |
-| `types/mana.rs:223` — single-kicker only, "grow those from a real card that needs one" | Everflowing Chalice | #11 — the deferral condition is now met |
+| ~~`types/mana.rs:223` — single-kicker only, "grow those from a real card that needs one"~~ **cleared 2026-07-26** | Everflowing Chalice | #11 (landed) |
 
 `ozolith_the_shattered_spire.toml:10` is a near miss kept on watch: its over-broad
 `counter_replacement` shape is still harmless *today* only because level counters route around

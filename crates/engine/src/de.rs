@@ -20,9 +20,9 @@ use serde::de::{self, Deserializer, IntoDeserializer, Visitor};
 use crate::{
     Ability, ActivationCost, AdditionalCost, AlternativeCost, Amount, AmountZone, CardDef,
     CardFilter, CardKind, CasterScope, Color, ColorFilter, CombatDamageScope, Condition, Cost,
-    CounterKind, CumulativeUpkeepCost, EdictScope, Effect, EnterAsCopy, EnterController,
-    EscapeCost, FilterController, GrantedAbility, HandActivatedAbility, Keyword, LandProduces,
-    Mana, ManaPool, Parity, PermanentFilter, ProtectionScope, ReanimateBecomes,
+    CounterAxis, CounterKind, CumulativeUpkeepCost, EdictScope, Effect, EnterAsCopy,
+    EnterController, EscapeCost, FilterController, GrantedAbility, HandActivatedAbility, Keyword,
+    LandProduces, Mana, ManaPool, Parity, PermanentFilter, ProtectionScope, ReanimateBecomes,
     SacrificeAdditionalCost, SacrificeAdditionalCostCount, SacrificeCost, SpellFilter, SpellSpeed,
     SpendToCastPredicate, Suspend, TargetCount, Timing, TokenFilter, Trigger, TypeSet,
 };
@@ -625,8 +625,9 @@ impl<'de> Deserialize<'de> for Cost {
 /// `buyback = { generic = 3 }` spells Buyback (CR 702.27) — same table shape.
 /// `strive = { generic = 2, red = 1 }` spells Strive (CR 702.42) — same table shape, the
 /// per-extra-target cost. `replicate = { generic = 2 }` spells Replicate (CR 702.108) — same
-/// table shape, the per-payment cost. `reveal_creature_from_hand = true` spells "reveal a
-/// creature card from your hand" (CR 601.2g — Disaster Radius).
+/// table shape, the per-payment cost. `multikicker = { generic = 2 }` spells Multikicker (CR
+/// 702.34) — same table shape as `replicate`, the per-payment cost. `reveal_creature_from_hand =
+/// true` spells "reveal a creature card from your hand" (CR 601.2g — Disaster Radius).
 impl<'de> Deserialize<'de> for AdditionalCost {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         /// `pay_life` is a string marker (`"x"`) or a fixed count (`3`); untagged so TOML's own
@@ -676,6 +677,9 @@ impl<'de> Deserialize<'de> for AdditionalCost {
             /// `[cost.additional.replicate]` — Replicate (CR 702.108), the same table shape as
             /// `[cost]`.
             replicate: Option<Cost>,
+            /// `[cost.additional.multikicker]` — Multikicker (CR 702.34), the same table shape as
+            /// `[cost]`.
+            multikicker: Option<Cost>,
         }
 
         let raw = Raw::deserialize(d)?;
@@ -722,6 +726,7 @@ impl<'de> Deserialize<'de> for AdditionalCost {
             buyback: raw.buyback.map(|c| &*Box::leak(Box::new(c))),
             strive: raw.strive.map(|c| &*Box::leak(Box::new(c))),
             replicate: raw.replicate.map(|c| &*Box::leak(Box::new(c))),
+            multikicker: raw.multikicker.map(|c| &*Box::leak(Box::new(c))),
         })
     }
 }
@@ -941,7 +946,8 @@ impl<'de> Deserialize<'de> for ProtectionScope {
 /// `"triggering_spell_mana_value"`, `"spell_sacrifice_count"`, `"revealed_creature_mana_value"`,
 /// `"permanents_died_this_turn"`,
 /// `"mana_paid_this_way"`, `"past_votes"`, `"present_votes"`, `"total_mana_value_milled_this_way"`,
-/// `"exiled_card_mana_value_this_way"`, `"combat_damage_dealt"`, `"spells_cast_before_this_this_turn"`),
+/// `"exiled_card_mana_value_this_way"`, `"combat_damage_dealt"`, `"spells_cast_before_this_this_turn"`,
+/// `"times_kicked"`),
 /// or a table for a filtered count
 /// (`{ per_permanent = <filter>, zone = "graveyard" }`), a per-kind counter count
 /// (`{ per_counter_of_kind = "charge" }`), a conditional amount
@@ -1000,6 +1006,7 @@ impl<'de> Deserialize<'de> for Amount {
             "combat_damage_dealt",
             "triggering_damage_dealt",
             "spells_cast_before_this_this_turn",
+            "times_kicked",
         ];
 
         impl<'de> Visitor<'de> for AmountVisitor {
@@ -1077,6 +1084,7 @@ impl<'de> Deserialize<'de> for Amount {
                     "combat_damage_dealt" => Amount::CombatDamageDealt,
                     "triggering_damage_dealt" => Amount::TriggeringDamageDealt,
                     "spells_cast_before_this_this_turn" => Amount::SpellsCastBeforeThisThisTurn,
+                    "times_kicked" => Amount::TimesKicked,
                     other => return Err(E::unknown_variant(other, KEYWORDS)),
                 })
             }
@@ -1343,7 +1351,7 @@ impl<'de> Deserialize<'de> for TypeSet {
 /// `enchanted_by_you`, `mv_max`, `mv_min`, `mv_eq_x`, `mv_max_x`, `power_max`, `power_parity`,
 /// `noncreature`, `exclude`, `color`, `not_color`, `modified`, `attacking`, `attacking_you`,
 /// `power_less_than_source`, `entered_this_turn`, `nonbasic`, `nonlegendary`, `nonlair`,
-/// `without_flying`, `with_flying`). `noncreature` is sugar for `exclude = "creature"`;
+/// `without_flying`, `with_flying`, `with_counter`). `noncreature` is sugar for `exclude = "creature"`;
 /// `not_color` is sugar for `color`'s negated-color arm — both fold into the same
 /// [`PermanentFilter`] fields as their general spelling (see below).
 impl<'de> Deserialize<'de> for PermanentFilter {
@@ -1454,6 +1462,8 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     /// bare-string shorthand of the same name above.
                     #[serde(default)]
                     shares_type_with_dying_permanent: bool,
+                    #[serde(default)]
+                    with_counter: Option<CounterAxis>,
                 }
 
                 let t = Table::deserialize(de::value::MapAccessDeserializer::new(map))?;
@@ -1494,6 +1504,7 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     without_flying: t.without_flying,
                     with_flying: t.with_flying,
                     shares_type_with_dying_permanent: t.shares_type_with_dying_permanent,
+                    with_counter: t.with_counter,
                 })
             }
         }

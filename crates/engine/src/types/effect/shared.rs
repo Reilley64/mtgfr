@@ -249,6 +249,13 @@ pub enum Amount {
         then: &'static Amount,
         else_: &'static Amount,
     },
+    /// How many times the resolving spell's Multikicker cost (CR 702.34) was paid — Everflowing
+    /// Chalice's "This artifact enters with a charge counter on it for each time it was kicked."
+    /// Reads [`Game::times_kicked`] off the effect's `source`, which is still the resolving
+    /// [`Object::Spell`] when read from a cast-time cost but is the fresh [`Object::Permanent`]
+    /// by the time an `enters_with_counters` effect resolves (CR 702.34c) — both shapes are
+    /// covered so the read is never silently 0.
+    TimesKicked,
     /// The greatest mana value among instant and sorcery spells the effect's controller has cast
     /// this turn (turn-scoped, 0 if none) — Rootha, Mastering the Moment's "X is the greatest
     /// mana value among instant and sorcery spells you've cast this turn." A live read (unlike

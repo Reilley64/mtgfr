@@ -121,6 +121,7 @@ fn amount_label(amount: Amount) -> String {
         Amount::CombatDamageDealt => "the damage dealt".to_string(),
         Amount::TriggeringDamageDealt => "that much".to_string(),
         Amount::SpellsCastBeforeThisThisTurn => "each spell cast before it this turn".to_string(),
+        Amount::TimesKicked => "1 per time it was kicked".to_string(),
     }
 }
 

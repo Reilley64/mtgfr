@@ -214,6 +214,7 @@ impl Game {
                 };
                 self.resolve_amount(amount, controller, source, target, x)
             }
+            Amount::TimesKicked => self.times_kicked(source) as i32,
             Amount::GreatestInstantOrSorceryManaValueCastThisTurn => {
                 self.players[controller.0 as usize]
                     .greatest_instant_or_sorcery_mana_value_cast_this_turn as i32

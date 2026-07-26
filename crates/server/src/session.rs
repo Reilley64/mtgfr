@@ -831,6 +831,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
     }
@@ -1143,6 +1144,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         });
         assert!(
@@ -1560,6 +1562,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         });
         assert!(result.accepted, "P1 casts Shock: {:?}", result.reason);

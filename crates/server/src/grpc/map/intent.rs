@@ -66,6 +66,7 @@ pub fn wire_intent_to_pb(intent: WireIntent) -> pb::WireIntent {
             strive_count,
             replicate_count,
             alternative_cost,
+            multikicker_count,
         } => Intent::Cast(pb::WireIntentCast {
             player: u32::from(player),
             object,
@@ -81,6 +82,7 @@ pub fn wire_intent_to_pb(intent: WireIntent) -> pb::WireIntent {
             strive_count: u32::from(strive_count),
             replicate_count: u32::from(replicate_count),
             alternative_cost,
+            multikicker_count: u32::from(multikicker_count),
         }),
         WireIntent::PlayLand { player, object } => Intent::PlayLand(pb::WireIntentPlayLand {
             player: u32::from(player),
@@ -484,6 +486,7 @@ pub fn wire_intent_from_pb(intent: pb::WireIntent) -> Result<WireIntent, String>
             strive_count,
             replicate_count,
             alternative_cost,
+            multikicker_count,
         }) => WireIntent::Cast {
             player: u8_trunc(player),
             object,
@@ -499,6 +502,7 @@ pub fn wire_intent_from_pb(intent: pb::WireIntent) -> Result<WireIntent, String>
             strive_count: u8_trunc(strive_count),
             replicate_count: u8_trunc(replicate_count),
             alternative_cost,
+            multikicker_count: u8_trunc(multikicker_count),
         },
         Intent::PlayLand(pb::WireIntentPlayLand { player, object }) => WireIntent::PlayLand {
             player: u8_trunc(player),
@@ -904,6 +908,7 @@ mod tests {
             evoked: false,
             strive_count: 2,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         };
         let pb = wire_intent_to_pb(cast.clone());

@@ -332,6 +332,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                         false,
                         0,
                         0,
+                        0,
                         false,
                     )
                 },
@@ -1174,6 +1175,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
         .unwrap();
@@ -1823,6 +1825,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
         .unwrap();
@@ -2018,6 +2021,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
         .unwrap();
@@ -2091,6 +2095,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
         .unwrap();
@@ -2209,6 +2214,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
         .expect("cast Martial Impetus");
@@ -2479,6 +2485,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
         .unwrap();
@@ -2516,6 +2523,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
         .unwrap();
@@ -2574,6 +2582,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
         .unwrap();
@@ -2684,6 +2693,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
         .unwrap();

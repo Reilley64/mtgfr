@@ -484,6 +484,7 @@ impl Game {
                 bought_back,
                 strive_count,
                 replicate_count,
+                multikicker_count,
                 bestowed,
                 face_down,
                 masked,
@@ -537,6 +538,7 @@ impl Game {
                         bought_back,
                         strive_count,
                         replicate_count,
+                        multikicker_count,
                         serra_recursion,
                         bestowed,
                         face_down,
@@ -615,6 +617,7 @@ impl Game {
                         bought_back: false,
                         strive_count: 0,
                         replicate_count: 0,
+                        multikicker_count: 0,
                         serra_recursion: false,
                         bestowed: false,
                         face_down: false,
@@ -687,6 +690,7 @@ impl Game {
                         bought_back: false,
                         strive_count: 0,
                         replicate_count: 0,
+                        multikicker_count: 0,
                         serra_recursion: false,
                         bestowed: false,
                         face_down: false,
@@ -783,6 +787,7 @@ impl Game {
                             bought_back: false,
                             strive_count: 0,
                             replicate_count: 0,
+                            multikicker_count: 0,
                             serra_recursion: false,
                             bestowed: false,
                             face_down: false,
@@ -874,6 +879,7 @@ impl Game {
                         bought_back: false,
                         strive_count: 0,
                         replicate_count: 0,
+                        multikicker_count: 0,
                         serra_recursion: false,
                         bestowed: false,
                         face_down: false,
@@ -1645,6 +1651,7 @@ impl Game {
                     face_down,
                     masked,
                     evoked,
+                    multikicker_count,
                     spent_colors,
                 ) = match self.objects[from as usize] {
                     Object::Spell(s) => (
@@ -1659,6 +1666,7 @@ impl Game {
                         s.face_down,
                         s.masked,
                         s.evoked,
+                        s.multikicker_count,
                         s.spent_colors,
                     ),
                     _ => panic!("PermanentEntered source {from} is not a spell"),
@@ -1696,6 +1704,10 @@ impl Game {
                 // alongside the permanent's ETB triggers (`Game::enqueue_triggers`), so an ETB
                 // payoff (Mulldrifter's draw two) still resolves first.
                 self.permanent_mut(permanent).evoked = evoked;
+                // Multikicker (CR 702.34c): "enters with a charge counter on it for each time it
+                // was kicked" — locked in here while `from` is still the resolving Spell, the same
+                // idiom as `entered_with_x` above.
+                self.permanent_mut(permanent).entered_times_kicked = multikicker_count;
                 // See `Permanent::spent_colors`'s doc — same "read it before the spell is gone"
                 // idiom as `entered_with_x` above (Court Hussar's "unless {W} was spent to cast it").
                 self.permanent_mut(permanent).spent_colors = spent_colors;

@@ -99,6 +99,10 @@ pub(crate) fn project_event(
             // condition the client just sees the resulting event for). Add it here if a UI ever
             // wants to badge the cast itself with which colors funded it.
             spent_colors: _,
+            // ponytail: the declared Multikicker count isn't surfaced on the wire either, same
+            // reasoning as `replicate_count` above — no UI reads it yet. Add it when a
+            // Multikicker card's UI wants to show "cast with N charges."
+            multikicker_count: _,
         } => VisibleEvent::SpellCast {
             spell,
             from,

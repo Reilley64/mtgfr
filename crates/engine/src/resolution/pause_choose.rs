@@ -64,6 +64,7 @@ impl Game {
                         target,
                         x,
                         modes: options,
+                        activated: false,
                     },
                 );
             }

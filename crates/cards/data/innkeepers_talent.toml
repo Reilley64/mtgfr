@@ -1,0 +1,73 @@
+# (Gain the next level as a sorcery to add its ability.)
+# At the beginning of combat on your turn, put a +1/+1 counter on target creature you control.
+# {G}: Level 2
+# Permanents you control with counters on them have ward {1}.
+# {3}{G}: Level 3
+# If you would put one or more counters on a permanent or player, put twice that many of each of
+# those kinds of counters on that permanent or player instead.
+name = "Innkeeper's Talent"
+id = "915b75d1-b5e3-4aca-a54c-beaccef0a2e4"
+default_print = "941b0afc-0e8f-45f2-ae7f-07595e164611"
+oracle = "(Gain the next level as a sorcery to add its ability.)\nAt the beginning of combat on your turn, put a +1/+1 counter on target creature you control.\n{G}: Level 2\nPermanents you control with counters on them have ward {1}.\n{3}{G}: Level 3\nIf you would put one or more counters on a permanent or player, put twice that many of each of those kinds of counters on that permanent or player instead."
+set = "blb"
+subtypes = ["Class"]
+approximates = "Level 3's \"put twice that many of each of those kinds of counters\" replacement is unmodeled — the counter-replacement pipeline is +1/+1-only and permanent-only (#19). Level 2's ward also misses this Class itself: the engine tracks a Class's level as a plain level scalar, not as the level counters CR 717.2 puts on it, so a leveled Class never satisfies its own \"with counters on them\" filter."
+
+[cost]
+generic = 1
+green = 1
+
+[kind]
+type = "enchantment"
+
+# At the beginning of combat on your turn, put a +1/+1 counter on target creature you control.
+[[abilities]]
+timing = "begin_combat"
+
+# put a +1/+1 counter on target creature you control.
+[[abilities.effects]]
+type = "counters"
+mode = "put_counters"
+count = 1
+target = "creature_you_control"
+
+# {G}: Level 2
+[[abilities]]
+timing = "activated"
+sorcery_speed = true
+
+[abilities.activation_cost]
+green = 1
+
+# Level 2
+[[abilities.effects]]
+type = "counters"
+mode = "level_up"
+level = 2
+
+# Permanents you control with counters on them have ward {1}.
+[[abilities]]
+timing = "static"
+min_level = 2
+
+# Permanents you control with counters on them have ward {1}.
+[[abilities.effects]]
+type = "static"
+mode = "keyword_anthem"
+keywords = [{ ward = 1 }]
+filter = { controller = "you", with_counter = "any" }
+
+# {3}{G}: Level 3
+[[abilities]]
+timing = "activated"
+sorcery_speed = true
+
+[abilities.activation_cost]
+generic = 3
+green = 1
+
+# Level 3
+[[abilities.effects]]
+type = "counters"
+mode = "level_up"
+level = 3

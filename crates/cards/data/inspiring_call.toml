@@ -1,0 +1,32 @@
+# Draw a card for each creature you control with a +1/+1 counter on it. Those creatures gain
+# indestructible until end of turn. (Damage and effects that say "destroy" don't destroy them.)
+name = "Inspiring Call"
+id = "9b9a10ff-5a5d-4df8-88aa-18d84ff9117c"
+default_print = "2555ec7b-5cc2-4ffd-9344-6368019feff9"
+oracle = "Draw a card for each creature you control with a +1/+1 counter on it. Those creatures gain indestructible until end of turn. (Damage and effects that say \"destroy\" don't destroy them.)"
+set = "tle"
+
+[cost]
+generic = 2
+green = 1
+
+[kind]
+type = "instant"
+
+# Draw a card for each creature you control with a +1/+1 counter on it. Those creatures gain
+# indestructible until end of turn.
+[[abilities]]
+timing = "spell"
+
+# Draw a card for each creature you control with a +1/+1 counter on it.
+[[abilities.effects]]
+type = "draw"
+mode = "cards"
+count = { per_permanent = { types = "creature", controller = "you", with_counter = "plus_one_plus_one" } }
+
+# Those creatures gain indestructible until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "grant_keywords_to_permanents_you_control_until_end_of_turn"
+keywords = ["indestructible"]
+filter = { types = "creature", controller = "you", with_counter = "plus_one_plus_one" }

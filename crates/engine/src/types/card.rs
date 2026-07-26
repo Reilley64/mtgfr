@@ -255,6 +255,13 @@ pub enum Keyword {
     /// this keyword; Muddle, the Ever-Changing grants it to itself temporarily via its magecraft
     /// ability.
     Myriad,
+    /// Infect (CR 702.90): this source's damage to a creature is dealt as that many -1/-1 counters
+    /// (CR 702.90b) and its damage to a player as that many poison counters (CR 702.90c). The
+    /// damage is still dealt (CR 120.3) at its original size — lifelink, deathtouch, the
+    /// commander-damage tally and every "deals damage" watch still see it. Read at the two damage
+    /// chokes [`Game::creature_damage_events`](crate::Game::creature_damage_events) and
+    /// [`Game::player_damage_events`](crate::Game::player_damage_events).
+    Infect,
 }
 
 /// A small set of the permanent card types a card carries, as a bitset (creature, artifact,
@@ -1055,6 +1062,7 @@ pub(crate) fn fresh_permanent(
         flipped: false,
         masked: false,
         evoked: false,
+        entered_times_kicked: 0,
         reverts_to_def_eot: None,
         spent_colors: [false; Color::COUNT],
     }
@@ -1467,6 +1475,13 @@ pub(crate) struct Spell {
     /// `strive_count` is; read at the [`Event::SpellCast`] choke to mint that many copies via
     /// [`Game::mint_spell_copies`] (CR 702.108b).
     pub(crate) replicate_count: u8,
+    /// How many times the caster paid this spell's Multikicker cost (CR 702.34 —
+    /// [`AdditionalCost::multikicker`]), 0 if the spell has no Multikicker cost or the caster paid
+    /// it zero times. Settled before the spell hits the stack (CR 601.2b) and recorded here the
+    /// way `replicate_count` is; copied onto the resulting [`Permanent::entered_times_kicked`] when
+    /// the spell resolves ([`Event::PermanentEntered`]), read by [`Amount::TimesKicked`] (CR
+    /// 702.34c — "enters with a charge counter on it for each time it was kicked").
+    pub(crate) multikicker_count: u8,
     /// Whether this spell was cast from a graveyard under Serra Paragon's permission (CR 118.9 —
     /// [`Effect::Static(StaticEffect::PlayFromGraveyardOncePerTurn)`]). Copied onto the resulting
     /// [`Permanent::serra_recursion`] when the spell resolves ([`Event::PermanentEntered`]), so the
@@ -1773,6 +1788,12 @@ pub(crate) struct Permanent {
     /// casting [`Spell::evoked`]; runtime state, not TOML-authored, defaulted `false` like
     /// `bestowed`.
     pub(crate) evoked: bool,
+    /// How many times this permanent's spell paid its Multikicker cost (CR 702.34 —
+    /// [`AdditionalCost::multikicker`]), fixed as it enters — copied from [`Spell::multikicker_count`]
+    /// the same "read the spell's own info before it's gone" idiom as `evoked` above. 0 for a
+    /// permanent whose card has no Multikicker cost, or that entered by some other means (a token,
+    /// a copy). Read by [`Amount::TimesKicked`] (CR 702.34c).
+    pub(crate) entered_times_kicked: u8,
     /// The `def` to restore at cleanup for an *until-end-of-turn* enter-as-copy (Cursed Mirror,
     /// CR 706/613 — "become a copy … until end of turn"): when the copy is established, the
     /// permanent's original printed `def` is stashed here and `def` is overwritten with the copied

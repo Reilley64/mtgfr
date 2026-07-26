@@ -175,6 +175,9 @@ impl Game {
     /// count itself (CR 702.108 — each payment is a full extra instance of the cost, unlike
     /// Strive's "beyond the first") — 0 for a spell with no Replicate, or when pricing without a
     /// declared count.
+    /// `multikicker_count` folds [`AdditionalCost::multikicker`]'s cost on top, the same "each
+    /// payment is a full extra instance" multiply as `replicate_count` (CR 702.34) — 0 for a
+    /// spell with no Multikicker, or when pricing without a declared count.
     /// `alternative_cost` charges [`CardDef::alternative_cost`]'s non-mana rider *instead of* the
     /// printed cost (CR 601.2f), same opt-in shape as `evoked` — `false` for a spell with none, or
     /// when pricing without declaring it. Unlike every other flag above, this replaces the whole
@@ -195,6 +198,7 @@ impl Game {
         evoked: bool,
         strive_count: u8,
         replicate_count: u8,
+        multikicker_count: u8,
         alternative_cost: bool,
     ) -> Cost {
         // A printed alternative cost (CR 601.2f — Invigorate): declaring it replaces the mana
@@ -340,6 +344,22 @@ impl Game {
                 .colorless
                 .saturating_add(replicate.colorless.saturating_mul(replicate_count));
         }
+        // Multikicker (CR 702.34a): "you may pay an additional [cost] any number of times as you
+        // cast this spell" — the same "each payment is a full extra instance" multiply as
+        // Replicate above, its own separate additional-cost field.
+        // ponytail: sums generic/colored/colorless pips only, mirroring kicker/strive/replicate's
+        // own pip-only fold above — Everflowing Chalice's multikicker cost carries none.
+        if let Some(multikicker) = base.additional.multikicker {
+            cost.generic = cost
+                .generic
+                .saturating_add(multikicker.generic.saturating_mul(multikicker_count));
+            for (pip, per) in cost.colored.iter_mut().zip(multikicker.colored.iter()) {
+                *pip = pip.saturating_add(per.saturating_mul(multikicker_count));
+            }
+            cost.colorless = cost
+                .colorless
+                .saturating_add(multikicker.colorless.saturating_mul(multikicker_count));
+        }
         if let Some(Target::Object(id)) = target
             && self.controller_of(id) != player
             && let Some(n) = self.ward_amount(id)
@@ -365,6 +385,7 @@ impl Game {
         evoked: bool,
         strive_count: u8,
         replicate_count: u8,
+        multikicker_count: u8,
         alternative_cost: bool,
     ) -> Result<Vec<Event>, Reject> {
         self.cast_with_kind(
@@ -381,6 +402,7 @@ impl Game {
             evoked,
             strive_count,
             replicate_count,
+            multikicker_count,
             alternative_cost,
             playable::CastPlayKind::Full,
         )
@@ -402,6 +424,7 @@ impl Game {
         evoked: bool,
         strive_count: u8,
         replicate_count: u8,
+        multikicker_count: u8,
         alternative_cost: bool,
         kind: CastPlayKind,
     ) -> Result<Vec<Event>, Reject> {
@@ -420,6 +443,7 @@ impl Game {
                 evoked,
                 strive_count,
                 replicate_count,
+                multikicker_count,
                 alternative_cost,
             },
             kind,
@@ -556,6 +580,7 @@ impl Game {
                 bought_back,
                 strive_count,
                 replicate_count,
+                multikicker_count,
                 bestowed: false,
                 face_down: false,
                 masked: false,
@@ -1565,6 +1590,7 @@ impl Game {
             false,
             0,
             0,
+            0,
             false,
         );
         let mut events = Vec::new();
@@ -1668,6 +1694,7 @@ impl Game {
             false,
             0,
             0,
+            0,
             false,
         );
         let mut events = Vec::new();
@@ -1760,6 +1787,7 @@ impl Game {
             false,
             false,
             false,
+            0,
             0,
             0,
             false,
@@ -1864,6 +1892,7 @@ impl Game {
                 bought_back: false,
                 strive_count: 0,
                 replicate_count: 0,
+                multikicker_count: 0,
                 bestowed: true,
                 face_down: false,
                 masked: false,
@@ -1957,6 +1986,7 @@ impl Game {
                 bought_back: false,
                 strive_count: 0,
                 replicate_count: 0,
+                multikicker_count: 0,
                 bestowed: false,
                 face_down: true,
                 masked,
@@ -2534,6 +2564,28 @@ impl Game {
                     count: cost.graveyard_exile_target_count,
                 },
             );
+            return Ok(events);
+        }
+
+        // A modal activated ability (CR 601.2b — Cankerbloom's "Choose one — Destroy target
+        // artifact. / Destroy target enchantment. / Proliferate."): choose the mode as the
+        // ability is activated, before any target, since its modes may target different things
+        // — the activation's single `target` parameter can't carry all of them. The chosen
+        // mode's own target (if any) is requested next by `answer_choose_mode`.
+        if let Effect::ChooseOne { options } = effect {
+            if !options.is_empty() {
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::ChooseMode {
+                        player,
+                        source: object,
+                        target: None,
+                        x,
+                        modes: options,
+                        activated: true,
+                    },
+                );
+            }
             return Ok(events);
         }
 

@@ -86,6 +86,14 @@ pub enum Intent {
         /// recorded on the resulting [`Spell::replicate_count`], read by the cast choke to mint
         /// that many copies (CR 702.108b).
         replicate_count: u8,
+        /// How many times the caster paid the spell's Multikicker cost
+        /// ([`AdditionalCost::multikicker`] — CR 702.34), settled before the stack for the same
+        /// reason as `replicate_count` above (its total cost depends on the declared count). 0
+        /// (the default) for a spell with no Multikicker, or "pay it zero times." Folded into the
+        /// mana paid by [`Game::cast_cost`] and recorded on the resulting
+        /// [`Spell::multikicker_count`], read back by [`Amount::TimesKicked`] once the resulting
+        /// permanent enters (CR 702.34c).
+        multikicker_count: u8,
         /// Whether the caster is casting the spell for its printed alternative cost (CR 601.2f —
         /// [`CardDef::alternative_cost`]) instead of its printed mana cost — Invigorate's "rather
         /// than pay this spell's mana cost, you may have an opponent gain 3 life." Mirrors
@@ -1181,16 +1189,31 @@ pub enum PendingChoice {
         remaining: u8,
         overflow: Option<SearchDest>,
     },
-    /// `player` (the trigger's controller) must choose one of `modes` for an [`Effect::ChooseOne`]
-    /// "choose one" triggered ability, resolving at the point the ability resolves. Answered by
-    /// [`Intent::ChooseMode`]; the chosen mode is run with the trigger's `source`/`target`/`x`
-    /// context. Mode labels for the wire come from `modes.len()` / each mode's [`Effect::label`].
+    /// `player` (the trigger's controller, or the activator) must choose one of `modes` for an
+    /// [`Effect::ChooseOne`] "choose one" ability. Answered by [`Intent::ChooseMode`]. Mode
+    /// labels for the wire come from `modes.len()` / each mode's [`Effect::label`].
+    ///
+    /// `activated == false` (CR 700.2 — a "choose one" triggered ability): the mode is chosen at
+    /// the point the ability resolves and immediately run with the trigger's own
+    /// `source`/`target`/`x` context (a triggered ability's whole single target, chosen before
+    /// this pause, works for every mode since only one mode ever actually runs).
+    ///
+    /// `activated == true` (CR 601.2b — a modal *activated* ability, Cankerbloom's "Choose one —
+    /// Destroy target artifact. / Destroy target enchantment. / Proliferate."): the mode is
+    /// chosen as the ability is activated, before any target is picked, because different modes
+    /// may target different things — an activated ability's single `target` intent parameter
+    /// can't carry all of them. `target` is always `None` on this path; the chosen mode's own
+    /// target (if it has one) is requested next via [`PendingChoice::ChooseTarget`].
+    /// ponytail: CR 601.2b orders mode choice ahead of CR 601.2h cost payment; this engine pays
+    /// costs first and raises this pause once the ability would otherwise hit the stack. No
+    /// player gets priority between the two, so the reordering is unobservable.
     ChooseMode {
         player: PlayerId,
         source: ObjectId,
         target: Option<Target>,
         x: u32,
         modes: &'static [Effect],
+        activated: bool,
     },
     /// `player` may choose `choose` distinct modes of a modal *triggered* ability (`source`, CR
     /// 700.2's "choose two" extended to a trigger's own modes), each mode paired with its own
@@ -1990,6 +2013,9 @@ pub enum Event {
         /// How many times the caster paid Replicate (CR 702.108), 0 for a spell with no Replicate;
         /// see [`Spell::replicate_count`].
         replicate_count: u8,
+        /// How many times the caster paid Multikicker (CR 702.34), 0 for a spell with no
+        /// Multikicker; see [`Spell::multikicker_count`].
+        multikicker_count: u8,
         /// Whether this was a bestow cast (CR 702.103 — for [`CardDef::bestow`], as an Aura spell);
         /// see [`Spell::bestowed`]. `false` for an ordinary cast.
         bestowed: bool,

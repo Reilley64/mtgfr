@@ -397,6 +397,7 @@ impl Game {
                 false,
                 0,
                 0,
+                0,
                 false,
             );
             return Self::affordable_from(available, cost, spell);
@@ -415,6 +416,7 @@ impl Game {
                     false,
                     false,
                     false,
+                    0,
                     0,
                     0,
                     false,
@@ -464,6 +466,7 @@ impl Game {
                     false,
                     false,
                     false,
+                    0,
                     0,
                     0,
                     false,
@@ -1459,6 +1462,15 @@ impl Game {
         // "Modified" (CR 701.29 — Silkguard's hexproof rider).
         if filter.modified && !self.is_modified(id, you) {
             return false;
+        }
+        // Counter axis (CR 122.1 — Innkeeper's Talent's "with counters on them", Inspiring
+        // Call's "with a +1/+1 counter on it"). Narrower than `modified` above, which also
+        // matches an equipped/enchanted permanent with no counter at all.
+        match filter.with_counter {
+            None => {}
+            Some(CounterAxis::Any) if self.has_any_counter(id) => {}
+            Some(CounterAxis::PlusOnePlusOne) if self.plus_counters(id) > 0 => {}
+            Some(_) => return false,
         }
         // Printed name (CR 201.2 — Leitmotif Composer's "creatures named Leitmotif Composer").
         if let Some(name) = filter.name

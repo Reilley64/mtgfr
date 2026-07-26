@@ -49,6 +49,10 @@ pub(crate) enum ChoiceRequest {
         target: Option<crate::Target>,
         x: u32,
         modes: &'static [crate::Effect],
+        /// Whether the mode is being chosen for an *activated* ability as it goes on the stack
+        /// (CR 601.2b — Cankerbloom) rather than for a triggered "choose one" at resolution (CR
+        /// 700.2, the historical `false` path). See [`crate::PendingChoice::ChooseMode`].
+        activated: bool,
     },
     MayYesNo {
         player: crate::PlayerId,

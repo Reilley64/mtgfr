@@ -54,6 +54,7 @@ define_map_identical! {
         target,
         x,
         modes,
+        activated,
     },
     MayYesNo {
         player,

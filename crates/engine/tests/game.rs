@@ -465,6 +465,7 @@ fn casting_pays_the_spells_cost_from_the_pool() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -503,6 +504,7 @@ const NO_ADD: AdditionalCost = AdditionalCost {
     buyback: None,
     strive: None,
     replicate: None,
+    multikicker: None,
 };
 
 /// A test-only sorcery "Draw a card." with flashback {2} — Faithless Looting's shape, trivialized
@@ -688,6 +690,7 @@ fn flashback_casts_a_spell_from_the_graveyard_then_exiles_it() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("a flashback card is castable from its owner's graveyard");
@@ -762,6 +765,7 @@ fn flashback_rejected_when_card_lacks_flashback() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     });
     assert_eq!(result, Err(Reject::NotCastable));
@@ -817,6 +821,7 @@ fn flashback_pays_the_flashback_cost_not_the_printed_cost() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the flashback cost {1}, not the printed {5}, is charged");
@@ -841,6 +846,7 @@ fn flashback_with_pay_life_additional_cost() {
                 buyback: None,
                 strive: None,
                 replicate: None,
+                multikicker: None,
             },
         )),
         functions_in_graveyard: false,
@@ -882,6 +888,7 @@ fn flashback_with_pay_life_additional_cost() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("a player with 3+ life can pay the flashback's Pay 3 life rider");
@@ -910,6 +917,7 @@ fn flashback_with_pay_life_additional_cost() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     });
     assert_eq!(result, Err(Reject::CannotPayCost));
@@ -957,6 +965,7 @@ fn raffines_guidance_casts_from_graveyard_for_alt_cost() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Raffine's Guidance is castable from its owner's graveyard for {2}{W}");
@@ -1000,6 +1009,7 @@ fn raffines_guidance_graveyard_cast_charges_the_alt_cost_not_the_printed_cost() 
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     });
     assert_eq!(
@@ -1032,6 +1042,7 @@ fn retrace_recasts_from_graveyard_by_discarding_a_land() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("retrace lets Throes of Chaos be cast from the graveyard by discarding a land");
@@ -1072,6 +1083,7 @@ fn retrace_requires_a_land_in_hand() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     });
     assert_eq!(result, Err(Reject::CannotPayCost));
@@ -1091,6 +1103,7 @@ fn retrace_requires_a_land_in_hand() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     });
     assert_eq!(result, Err(Reject::CannotPayCost));
@@ -1117,6 +1130,7 @@ fn retrace_is_repeatable() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("first retrace cast");
@@ -1143,6 +1157,7 @@ fn retrace_is_repeatable() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("retrace is repeatable — the spell was never exiled");
@@ -1173,6 +1188,7 @@ fn call_the_skybreaker_retrace_casts_from_graveyard_by_discarding_a_land() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("retrace lets Call the Skybreaker be cast from the graveyard by discarding a land");
@@ -1221,6 +1237,7 @@ fn call_the_skybreaker_retrace_requires_a_land_in_hand() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     });
     assert_eq!(result, Err(Reject::CannotPayCost));
@@ -1240,6 +1257,7 @@ fn call_the_skybreaker_retrace_requires_a_land_in_hand() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     });
     assert_eq!(result, Err(Reject::CannotPayCost));
@@ -1270,6 +1288,7 @@ fn call_the_skybreaker_casts_from_hand_normally_with_no_discard() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("casting from hand pays only the printed cost — no discard required");
@@ -1320,6 +1339,7 @@ fn treasure_cruise_delve_reduces_generic_cost() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("delving 5 cards reduces {7}{U} to {2}{U}, payable with the 3 mana tapped");
@@ -1487,6 +1507,7 @@ fn serra_paragon_plays_a_land_from_graveyard_once_per_turn() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         }),
         Err(Reject::NotCastable),
@@ -1520,6 +1541,7 @@ fn serra_paragon_casts_permanent_spell_mv_le_3_from_graveyard() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         }),
         Err(Reject::NotCastable),
@@ -1541,6 +1563,7 @@ fn serra_paragon_casts_permanent_spell_mv_le_3_from_graveyard() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         }),
         Err(Reject::NotCastable),
@@ -1561,6 +1584,7 @@ fn serra_paragon_casts_permanent_spell_mv_le_3_from_graveyard() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("a mana value 2 permanent spell is castable from the graveyard via Serra Paragon");
@@ -1589,6 +1613,7 @@ fn serra_paragon_recursion_card_exiles_and_gains_2_on_death() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("castable from the graveyard via Serra Paragon");
@@ -1619,6 +1644,7 @@ fn serra_paragon_recursion_card_exiles_and_gains_2_on_death() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Destroy targets the recurred creature");
@@ -1663,6 +1689,7 @@ fn serra_paragon_recursion_death_fires_a_death_watch_before_the_exile() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("castable from the graveyard via Serra Paragon");
@@ -1748,6 +1775,7 @@ fn serra_paragon_recursion_rider_is_a_noop_if_the_card_already_left_the_graveyar
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("castable from the graveyard via Serra Paragon");
@@ -1788,6 +1816,7 @@ fn serra_paragon_recursion_rider_is_a_noop_if_the_card_already_left_the_graveyar
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Lorehold Charm's reanimate mode legally targets the mv2 recurred creature card");
@@ -1866,6 +1895,7 @@ fn a_normally_cast_permanent_dies_to_the_graveyard_without_serra_rider() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Destroy targets the bear");
@@ -1906,6 +1936,7 @@ const TWO_ETB: CardDef = CardDef {
             buyback: None,
             strive: None,
             replicate: None,
+            multikicker: None,
         },
         reduce_own_generic: None,
     },
@@ -2215,6 +2246,7 @@ const MAY_PAY_DRAW: CardDef = CardDef {
                 buyback: None,
                 strive: None,
                 replicate: None,
+                multikicker: None,
             },
             reduce_own_generic: None,
         },
@@ -2802,6 +2834,7 @@ impl TestGame {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         }
     }
@@ -2824,6 +2857,7 @@ struct Casting<'g> {
     evoked: bool,
     strive_count: u8,
     replicate_count: u8,
+    multikicker_count: u8,
     alternative_cost: bool,
 }
 
@@ -2903,6 +2937,13 @@ impl Casting<'_> {
         self
     }
 
+    /// Declare a Multikicker payment count (CR 702.34) — how many times the caster paid the
+    /// multikicker cost. Unset (0) for a spell with no Multikicker, or "pay it zero times."
+    fn multikicking(mut self, multikicker_count: u8) -> Self {
+        self.multikicker_count = multikicker_count;
+        self
+    }
+
     /// Cast for the spell's printed alternative cost (CR 601.2f — [`CardDef::alternative_cost`])
     /// instead of its printed mana cost. Unset (`false` — cast normally) for a spell with none.
     fn alternative_cost(mut self, alternative_cost: bool) -> Self {
@@ -2927,6 +2968,7 @@ impl Casting<'_> {
             evoked: self.evoked,
             strive_count: self.strive_count,
             replicate_count: self.replicate_count,
+            multikicker_count: self.multikicker_count,
             alternative_cost: self.alternative_cost,
         })
     }
@@ -2953,6 +2995,7 @@ impl Casting<'_> {
             evoked,
             strive_count,
             replicate_count,
+            multikicker_count,
             alternative_cost,
         } = self;
         game.fund_mana(PlayerId(0));
@@ -2970,6 +3013,7 @@ impl Casting<'_> {
             evoked,
             strive_count,
             replicate_count,
+            multikicker_count,
             alternative_cost,
         })
         .expect("the spell is castable");
@@ -3212,6 +3256,7 @@ fn declare_attackers_survives_a_ceased_token() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -3396,6 +3441,7 @@ fn capstone_a_scripted_game_plays_to_a_win() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -3450,6 +3496,7 @@ fn casting_the_commander_from_the_command_zone_taxes_each_recast() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -3486,6 +3533,7 @@ fn commander_casts_amount_scales_draw_commanders_insight() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -3519,6 +3567,7 @@ fn commander_casts_amount_scales_draw_commanders_insight() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -3552,6 +3601,7 @@ fn commander_casts_amount_scales_draw_commanders_insight() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -3583,6 +3633,7 @@ fn a_dying_commander_returns_to_the_command_zone() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -3603,6 +3654,7 @@ fn a_dying_commander_returns_to_the_command_zone() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -4423,6 +4475,7 @@ fn leitmotif_copies_self_on_big_instant_cast() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("a funded MV-5 instant is castable");
@@ -4465,6 +4518,7 @@ fn leitmotif_does_not_copy_on_small_instant_or_creature_spell() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("a funded MV-4 instant is castable");
@@ -4499,6 +4553,7 @@ fn leitmotif_does_not_copy_on_small_instant_or_creature_spell() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("a funded MV-5 creature is castable");
@@ -4671,6 +4726,7 @@ fn venerable_warsinger_pumped_reanimates_higher_mv() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -4789,6 +4845,7 @@ fn guardian_scalelord_pumped_reanimates_higher_mv() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -4832,6 +4889,7 @@ fn guardian_scalelord_backup_grants_flying_and_attack_trigger() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -4912,6 +4970,7 @@ fn guardian_scalelord_backup_on_itself_grants_nothing() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -5104,6 +5163,7 @@ fn a_pump_lasts_until_end_of_turn() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -7098,6 +7158,7 @@ fn a_counter_effect_permanently_grows_the_target() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -7281,6 +7342,7 @@ fn a_token_effect_puts_tokens_onto_the_battlefield() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -7327,6 +7389,7 @@ fn make_inklings_and_count(game: &mut Game, player: PlayerId) -> usize {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -8070,6 +8133,7 @@ fn elementalists_palette_restricted_mana_funds_nins_x_activation() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -8485,6 +8549,7 @@ fn an_each_opponent_token_effect_gives_one_token_to_every_opponent() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -8559,6 +8624,7 @@ fn eccentric_pestfinder_mints_one_pest_per_opponent_under_you() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -8607,6 +8673,7 @@ fn eccentric_pestfinders_pest_death_trigger_gains_the_caster_life_not_an_opponen
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -8632,6 +8699,7 @@ fn eccentric_pestfinders_pest_death_trigger_gains_the_caster_life_not_an_opponen
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -8669,6 +8737,7 @@ fn death_by_dragons_each_other_player_gets_dragons_except_the_target() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -8722,6 +8791,7 @@ fn death_by_dragons_skips_an_already_eliminated_player() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -8770,6 +8840,7 @@ fn a_token_ceases_to_exist_when_it_dies() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -8799,6 +8870,7 @@ fn a_token_ceases_to_exist_when_it_dies() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -8995,6 +9067,7 @@ fn a_token_with_a_death_trigger_fires_it_when_it_dies() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -9016,6 +9089,7 @@ fn a_token_with_a_death_trigger_fires_it_when_it_dies() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -9111,6 +9185,7 @@ fn cast_twinflame_and_resolve(game: &mut Game, twinflame: ObjectId, strive_count
         evoked: false,
         strive_count,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the spell is castable");
@@ -9199,6 +9274,7 @@ fn a_token_copy_fires_the_originals_etb_trigger() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -9920,6 +9996,7 @@ fn fire_muddle_magecraft(game: &mut Game, dummy: ObjectId, yes: bool, bear: Opti
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -10462,6 +10539,7 @@ fn damage_each_player_with_lifelink_gains_life_once_per_player_hit() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the test blast is castable");
@@ -10545,6 +10623,7 @@ fn effective_toughness_governs_lethal_damage() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -10631,6 +10710,7 @@ fn a_nonbasic_dual_sharing_a_basic_land_type_does_not_count_as_basic() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -10679,6 +10759,7 @@ fn natures_lore_fetches_any_forest_typed_card_not_just_the_basic() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -10727,6 +10808,7 @@ fn three_visits_fetches_a_nonbasic_forest_typed_land_not_just_the_basic() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -10933,6 +11015,7 @@ fn a_summoning_sick_creature_cannot_use_a_tap_ability() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -10976,6 +11059,7 @@ fn a_freshly_cast_noncreature_artifact_is_not_summoning_sick() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -11019,6 +11103,7 @@ fn the_untap_step_clears_summoning_sickness() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -11153,6 +11238,7 @@ fn cast_intent(player: PlayerId, object: ObjectId, target: Option<Target>) -> In
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     }
 }
@@ -11756,6 +11842,7 @@ fn conceding_while_you_owe_the_game_a_choice_drops_that_choice() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -12321,6 +12408,7 @@ fn an_etb_trigger_goes_on_the_stack_and_resolves() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -12360,6 +12448,7 @@ fn the_stack_query_exposes_spells_and_abilities_in_resolution_order() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -12380,6 +12469,7 @@ fn the_stack_query_exposes_spells_and_abilities_in_resolution_order() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -12632,6 +12722,7 @@ fn nonbasic_filter_matches_nonbasic_land() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -12682,6 +12773,7 @@ fn white_orchid_phantom_cannot_target_basic_land() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -12742,6 +12834,7 @@ fn damage_events_carry_their_source_for_the_log() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
         .unwrap();
@@ -12801,6 +12894,7 @@ fn fund_cast_resolve(game: &mut Game, player: PlayerId, object: ObjectId, target
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the spell is castable");
@@ -13001,6 +13095,7 @@ fn a_creature_only_spell_rejects_a_player_target() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         }),
         Err(Reject::IllegalTarget),
@@ -13028,6 +13123,7 @@ fn a_targeted_etb_trigger_pauses_for_a_target_then_deals_damage() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -13088,6 +13184,7 @@ fn an_optional_trigger_fires_only_when_accepted() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -13135,6 +13232,7 @@ fn a_declined_optional_trigger_is_skipped() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -13179,6 +13277,7 @@ fn a_pay_cost_trigger_fires_only_after_paying() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -13250,6 +13349,7 @@ fn trudge_gardens_pay_2_trigger_creates_a_fungus_beast_only_after_paying() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -13329,6 +13429,7 @@ fn simultaneous_triggers_from_one_permanent_are_ordered_by_their_controller() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -13397,6 +13498,7 @@ fn stonecloaker_both_ordered_etbs_choose_targets() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -13493,6 +13595,7 @@ fn a_creature_cannot_be_cast_at_instant_speed() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     });
 
@@ -13522,6 +13625,7 @@ fn cast_only_during_combat_rejects_in_main_phase() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     });
 
@@ -13551,6 +13655,7 @@ fn cast_only_during_combat_allows_in_combat() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     });
 
@@ -13585,6 +13690,7 @@ fn alchemists_refuge_grants_flash_permission_for_the_turn() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     });
     assert_eq!(
@@ -13619,6 +13725,7 @@ fn alchemists_refuge_grants_flash_permission_for_the_turn() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     });
     assert!(
@@ -13667,6 +13774,7 @@ fn alchemists_refuge_flash_permission_expires_at_the_next_untap() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     });
     assert_eq!(
@@ -13698,6 +13806,7 @@ fn an_instant_can_be_cast_outside_the_main_phase() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     });
 
@@ -13727,6 +13836,7 @@ fn a_targeted_spell_requires_a_target() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     });
 
@@ -13755,6 +13865,7 @@ fn a_creature_targeting_spell_rejects_a_non_creature_target() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     });
 
@@ -13780,6 +13891,7 @@ fn casting_without_enough_mana_is_rejected() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     });
 
@@ -13812,6 +13924,7 @@ fn casting_a_creature_moves_it_to_the_stack() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
         .expect("cast should be legal");
@@ -13844,6 +13957,7 @@ fn passing_priority_in_succession_resolves_a_creature_onto_the_battlefield() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -13885,6 +13999,7 @@ fn creature_on_battlefield(game: &mut Game, controller: PlayerId) -> ObjectId {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -13921,6 +14036,7 @@ fn lethal_damage_kills_the_creature_via_a_state_based_action() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -14174,6 +14290,7 @@ fn state_based_actions_spare_undamaged_creatures() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -14692,6 +14809,7 @@ fn feral_appetite_pest_dies_gains_life() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -15588,6 +15706,7 @@ fn nontoken_creatures_entered_this_turn_counts_cast_creatures_but_not_tokens() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -15607,6 +15726,7 @@ fn nontoken_creatures_entered_this_turn_counts_cast_creatures_but_not_tokens() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -15626,6 +15746,7 @@ fn nontoken_creatures_entered_this_turn_counts_cast_creatures_but_not_tokens() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -15674,6 +15795,7 @@ fn nontoken_creatures_entered_this_turn_resets_at_the_next_untap() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -15745,6 +15867,7 @@ fn nev_trample_grant_drops_once_the_last_counter_is_removed() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -15851,6 +15974,7 @@ fn ohran_frostfang_deathtouch_gone_once_ohran_leaves_the_battlefield() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -15976,6 +16100,7 @@ fn yavimaya_enchantress_counts_opponents_enchantments() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -16017,6 +16142,7 @@ fn yavimaya_enchantress_counts_opponents_enchantments() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -16185,6 +16311,7 @@ fn cast_red_spell_triggers_balefire_damage() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Shock is castable");
@@ -16230,6 +16357,7 @@ fn cast_red_spell_triggers_balefire_damage() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Wave of Reckoning is castable");
@@ -16285,6 +16413,7 @@ fn patchwork_banner_buffs_only_chosen_type() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -16352,6 +16481,7 @@ fn patchwork_banner_offers_newly_printed_creature_types() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -16495,6 +16625,7 @@ fn eidolon_cast_normally_is_a_0_0_creature_pumped_by_its_own_buff() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Eidolon is castable for its {1}{W}{W} creature cost");
@@ -16588,6 +16719,7 @@ fn bestowed_eidolon_becomes_a_creature_when_its_host_leaves() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Destroy targets the enchanted creature");
@@ -16675,6 +16807,7 @@ fn vanguard_spirit_anthem_scales_with_commander_casts_from_the_command_zone() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -16757,6 +16890,7 @@ fn study_hall_scries_when_its_mana_casts_your_commander() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -16801,6 +16935,7 @@ fn study_hall_does_not_scry_from_untagged_mana() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -16855,6 +16990,7 @@ fn study_hall_does_not_scry_when_its_mana_casts_a_noncommander_spell() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -16911,6 +17047,7 @@ fn study_hall_provenance_is_cleared_when_the_pool_empties() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -16981,6 +17118,7 @@ fn path_of_ancestry_scries_on_a_typal_creature_spell() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -17040,6 +17178,7 @@ fn path_of_ancestry_does_not_scry_on_an_unshared_or_noncreature_spell() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
         .unwrap();
@@ -17109,6 +17248,7 @@ fn cast_commander_with_opal_mana(game: &mut Game, cmd: ObjectId) -> ObjectId {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -17152,6 +17292,7 @@ fn opal_palace_commander_enters_with_command_zone_counters() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -17190,6 +17331,7 @@ fn opal_palace_no_bonus_counters_from_untagged_mana() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -17308,6 +17450,7 @@ fn an_instant_stops_auto_pass_while_the_stack_is_not_empty() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -17342,6 +17485,7 @@ fn a_sorcery_speed_spell_is_never_a_reaction() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -17377,6 +17521,7 @@ fn casting_requires_priority() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -17396,6 +17541,7 @@ fn casting_requires_priority() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     });
     assert_eq!(
@@ -17424,6 +17570,7 @@ fn casting_requires_priority() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("with priority, the reaction cast is accepted");
@@ -17455,6 +17602,7 @@ fn next_pass_resolves_stack_flags_only_the_final_pass() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -17809,6 +17957,7 @@ fn cast_altered_ego(game: &mut Game, x: u32) -> ObjectId {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -17920,6 +18069,7 @@ fn cursed_mirror_becomes_a_copy_until_end_of_turn_with_haste() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -17983,6 +18133,7 @@ fn cursed_mirror_declined_stays_a_mana_rock() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -18023,6 +18174,7 @@ fn enter_as_copy_no_battlefield_creature_no_pause() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -18055,6 +18207,7 @@ fn cast_copy_enchantment(game: &mut Game) -> ObjectId {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -18729,6 +18882,7 @@ const COLORLESS_ROCK: CardDef = CardDef {
             buyback: None,
             strive: None,
             replicate: None,
+            multikicker: None,
         },
         reduce_own_generic: None,
     },
@@ -18843,6 +18997,7 @@ fn colorless_mana_pays_a_colorless_cost_pip() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -18887,6 +19042,7 @@ fn colorless_mana_cannot_pay_a_colored_pip() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
@@ -18931,6 +19087,7 @@ fn any_color_mana_pays_a_colored_and_a_generic_pip() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -19450,6 +19607,7 @@ const fn vanilla(name: &'static str, generic: u8, colored: [u8; 5]) -> CardDef {
                 buyback: None,
                 strive: None,
                 replicate: None,
+                multikicker: None,
             },
             reduce_own_generic: None,
         },
@@ -19530,6 +19688,7 @@ fn cast_plain(game: &mut Game, player: PlayerId, object: ObjectId) -> Result<Vec
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
 }
@@ -19941,6 +20100,7 @@ fn hybrid_filter_land(name: &'static str, a: Color, b: Color) -> CardDef {
                     buyback: None,
                     strive: None,
                     replicate: None,
+                    multikicker: None,
                 },
                 reduce_own_generic: None,
                 hybrid,
@@ -20217,6 +20377,7 @@ fn biomass_mutation_hybrid_cost_payable_by_either_color() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("two green sources pay both {G/U} hybrid pips");
@@ -20335,6 +20496,7 @@ fn a_dies_trigger_fires_when_the_creature_is_destroyed() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -20370,6 +20532,7 @@ fn shock_to_death(game: &mut Game, victim: ObjectId, drain_target: PlayerId) {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -20491,6 +20654,7 @@ fn shock_and_settle(game: &mut Game, victim: ObjectId) {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -20586,6 +20750,7 @@ fn fracture_to_death(game: &mut Game, victim: ObjectId) {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -20925,6 +21090,7 @@ fn plain_creature_dies_still_excludes_self() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -21661,6 +21827,7 @@ fn dina_drains_each_opponent_on_lifegain_without_looping() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -22138,6 +22305,7 @@ fn nether_traitor_returns_itself_from_graveyard_when_your_creature_dies() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -22196,6 +22364,7 @@ fn nether_traitor_declining_the_cost_leaves_it_in_the_graveyard() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -22243,6 +22412,7 @@ fn punishing_fire_returns_from_graveyard_when_an_opponent_gains_life() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -22274,6 +22444,7 @@ fn punishing_fire_returns_from_graveyard_when_an_opponent_gains_life() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -22328,6 +22499,7 @@ fn punishing_fire_does_not_trigger_when_its_controller_gains_life() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -22985,6 +23157,7 @@ fn a_you_gain_life_trigger_fires_when_the_controller_gains_life() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -23038,6 +23211,7 @@ fn arbiter_sets_each_player_life_to_highest_cr_118_5() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Arbiter of Knollridge is castable");
@@ -23170,6 +23344,7 @@ fn a_magecraft_trigger_fires_when_the_controller_casts_an_instant_or_sorcery() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -23210,6 +23385,7 @@ fn prowess_pumps_on_noncreature_cast() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -23251,6 +23427,7 @@ fn prowess_does_not_pump_on_creature_cast() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -23291,6 +23468,7 @@ fn prowess_only_fires_for_its_own_controllers_casts() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -23330,6 +23508,7 @@ fn monologue_tax_makes_treasure_on_opponents_second_spell() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -23348,6 +23527,7 @@ fn monologue_tax_makes_treasure_on_opponents_second_spell() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -23379,6 +23559,7 @@ fn monologue_tax_makes_treasure_on_opponents_second_spell() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -23409,6 +23590,7 @@ fn monologue_tax_makes_treasure_on_opponents_second_spell() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -23445,6 +23627,7 @@ fn cast_and_reach_rhystic_may_draw_pause(game: &mut Game, controller: PlayerId, 
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -23557,6 +23740,7 @@ fn rhystic_study_ignores_your_own_casts() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -23877,6 +24061,7 @@ fn cast_spell_trigger_respects_spell_filter() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Flight is castable");
@@ -24268,6 +24453,7 @@ fn elementalists_palette_charge_mana_only_pays_x_costs() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -24311,6 +24497,7 @@ fn elementalists_palette_charge_mana_only_pays_x_costs() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
@@ -24333,6 +24520,7 @@ fn elementalists_palette_charge_mana_only_pays_x_costs() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
         .unwrap();
@@ -24371,6 +24559,7 @@ fn mangara_the_diplomat_draws_on_an_opponents_second_spell() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -24400,6 +24589,7 @@ fn mangara_the_diplomat_draws_on_an_opponents_second_spell() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -24625,6 +24815,7 @@ fn a_copied_burn_spell_deals_its_damage_twice() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("bolt is castable");
@@ -24643,6 +24834,7 @@ fn a_copied_burn_spell_deals_its_damage_twice() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Twincast can target the bolt on the stack");
@@ -24690,6 +24882,7 @@ fn a_copied_spell_may_be_retargeted() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("bolt is castable");
@@ -24708,6 +24901,7 @@ fn a_copied_spell_may_be_retargeted() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Twincast can target the bolt on the stack");
@@ -24771,6 +24965,7 @@ fn a_copied_draw_spell_draws_twice() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Ancestral Recall is castable");
@@ -24789,6 +24984,7 @@ fn a_copied_draw_spell_draws_twice() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Twincast can copy Ancestral Recall");
@@ -24834,6 +25030,7 @@ fn a_copy_is_controlled_by_the_copier_and_leaves_no_graveyard_card() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("bolt is castable");
@@ -24857,6 +25054,7 @@ fn a_copy_is_controlled_by_the_copier_and_leaves_no_graveyard_card() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("P1 can copy P0's bolt");
@@ -24924,6 +25122,7 @@ fn a_countered_copy_of_a_spell_ceases_to_exist() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("bolt is castable");
@@ -24946,6 +25145,7 @@ fn a_countered_copy_of_a_spell_ceases_to_exist() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("P1 can copy P0's bolt");
@@ -24973,6 +25173,7 @@ fn a_countered_copy_of_a_spell_ceases_to_exist() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the copy is a legal counter target");
@@ -25038,6 +25239,7 @@ fn copying_an_instant_or_sorcery_fires_the_copiers_magecraft() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("bolt is castable");
@@ -25056,6 +25258,7 @@ fn copying_an_instant_or_sorcery_fires_the_copiers_magecraft() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Twincast can copy the bolt");
@@ -25183,6 +25386,7 @@ fn a_countered_spell_goes_to_its_owners_graveyard_and_never_resolves() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Grizzly Bear is castable");
@@ -25205,6 +25409,7 @@ fn a_countered_spell_goes_to_its_owners_graveyard_and_never_resolves() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("a hard counter can target a creature spell on the stack");
@@ -25251,6 +25456,7 @@ fn countering_a_spell_that_already_left_the_stack_does_nothing() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Grizzly Bear is castable");
@@ -25274,6 +25480,7 @@ fn countering_a_spell_that_already_left_the_stack_does_nothing() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("first counter targets the bear");
@@ -25291,6 +25498,7 @@ fn countering_a_spell_that_already_left_the_stack_does_nothing() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("second counter also targets the bear");
@@ -25337,6 +25545,7 @@ fn a_spell_that_cant_be_countered_stays_on_the_stack_against_a_hard_counter() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Altered Ego is castable");
@@ -25359,6 +25568,7 @@ fn a_spell_that_cant_be_countered_stays_on_the_stack_against_a_hard_counter() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("a hard counter can still legally target an uncounterable spell");
@@ -25413,6 +25623,7 @@ fn counter_unless_pays_none_is_hard_counter() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Grizzly Bear is castable");
@@ -25435,6 +25646,7 @@ fn counter_unless_pays_none_is_hard_counter() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("a hard counter can target a creature spell on the stack");
@@ -25474,6 +25686,7 @@ fn cast_quandrix_charm_counter_mode(game: &mut Game) -> ObjectId {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Grizzly Bear is castable");
@@ -25496,6 +25709,7 @@ fn cast_quandrix_charm_counter_mode(game: &mut Game) -> ObjectId {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Quandrix Charm mode 0 can target the bear on the stack");
@@ -25628,6 +25842,7 @@ fn cast_hinder_countering_bear(game: &mut Game, filler: CardDef) -> ObjectId {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Grizzly Bear is castable");
@@ -25650,6 +25865,7 @@ fn cast_hinder_countering_bear(game: &mut Game, filler: CardDef) -> ObjectId {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Hinder can target the bear on the stack");
@@ -25755,6 +25971,7 @@ fn hinder_countering_flashback_spell_exiles_it() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("a flashback card is castable from its owner's graveyard");
@@ -25777,6 +25994,7 @@ fn hinder_countering_flashback_spell_exiles_it() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Hinder can target the flashback spell on the stack");
@@ -25825,6 +26043,7 @@ fn spell_crumple_counters_a_spell_to_the_bottom_of_its_owners_library() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Grizzly Bear is castable");
@@ -25847,6 +26066,7 @@ fn spell_crumple_counters_a_spell_to_the_bottom_of_its_owners_library() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Spell Crumple can target the bear on the stack");
@@ -25922,6 +26142,7 @@ fn spell_crumple_countering_a_copy_makes_it_cease_to_exist_cr_707_10a() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -25948,6 +26169,7 @@ fn spell_crumple_countering_a_copy_makes_it_cease_to_exist_cr_707_10a() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Flusterstorm can target the still-on-stack instant");
@@ -25986,6 +26208,7 @@ fn spell_crumple_countering_a_copy_makes_it_cease_to_exist_cr_707_10a() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the storm copy is a legal counter target");
@@ -26930,6 +27153,7 @@ fn mulldrifter_evoke_charges_the_evoke_cost() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
@@ -26951,6 +27175,7 @@ fn mulldrifter_evoke_charges_the_evoke_cost() {
             evoked: true,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
         .expect("the same {{2}}{{U}} in the pool fully funds the evoke cost");
@@ -27048,6 +27273,7 @@ fn arcane_denial_counters_then_schedules_both_draws() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Lightning Bolt is castable");
@@ -27070,6 +27296,7 @@ fn arcane_denial_counters_then_schedules_both_draws() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Arcane Denial can counter the bolt");
@@ -27160,6 +27387,7 @@ fn arcane_denial_controller_may_draw_up_to_two_at_next_upkeep() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Lightning Bolt is castable");
@@ -27182,6 +27410,7 @@ fn arcane_denial_controller_may_draw_up_to_two_at_next_upkeep() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Arcane Denial can counter the bolt");
@@ -27657,6 +27886,7 @@ fn next_cast_trigger_ignores_opponents_and_non_x_spells() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("P1's {X} spell is castable");
@@ -27746,6 +27976,7 @@ fn thunderclap_drake_copies_next_instant_per_commander_cast() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -27767,6 +27998,7 @@ fn thunderclap_drake_copies_next_instant_per_commander_cast() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -27789,6 +28021,7 @@ fn thunderclap_drake_copies_next_instant_per_commander_cast() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -27877,6 +28110,7 @@ fn thunderclap_drake_only_copies_instant_or_sorcery() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -27932,6 +28166,7 @@ fn thunderclap_drake_copy_noops_if_spell_countered() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -27975,6 +28210,7 @@ fn thunderclap_drake_copy_noops_if_spell_countered() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the counter can target the filler spell");
@@ -29023,6 +29259,7 @@ fn modifier_sources_attributes_a_pump_to_the_spell_card_def() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -29109,6 +29346,7 @@ fn modifier_sources_clears_eot_pump_at_cleanup() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -29404,6 +29642,7 @@ fn chains_of_custody_fizzles_to_the_graveyard_if_its_host_leaves_your_control() 
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Chains of Custody can target a creature P0 still controls");
@@ -29425,6 +29664,7 @@ fn chains_of_custody_fizzles_to_the_graveyard_if_its_host_leaves_your_control() 
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Changing Loyalty has flash, so P1 can cast it in response");
@@ -29751,6 +29991,7 @@ fn an_aura_with_an_illegal_target_on_resolution_goes_to_the_graveyard() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -29769,6 +30010,7 @@ fn an_aura_with_an_illegal_target_on_resolution_goes_to_the_graveyard() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -29847,6 +30089,7 @@ fn coercive_impetus_fires_under_its_own_controller_on_an_opponents_creature() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Coercive Impetus can enchant an opponent's creature");
@@ -29908,6 +30151,7 @@ fn parasitic_impetus_drains_its_hosts_controller_when_it_attacks() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Parasitic Impetus can enchant an opponent's creature");
@@ -29999,6 +30243,7 @@ fn martial_impetus_does_not_pump_attackers_of_its_controller_or_non_attackers() 
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Martial Impetus can enchant an opponent's creature");
@@ -30051,6 +30296,7 @@ fn cast_scriv_targeting(game: &mut Game, caster: PlayerId, scriv: ObjectId, vict
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Scriv is castable");
@@ -30256,6 +30502,7 @@ fn scriv_with_no_opponent_creature_leaves_no_phantom_aura() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Scriv is castable");
@@ -30332,6 +30579,7 @@ fn angelic_destiny_returns_to_hand_when_its_host_dies_in_a_board_wipe() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the spell is castable");
@@ -30688,6 +30936,7 @@ fn hateful_eidolon_survives_own_death_in_batch() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the spell is castable");
@@ -31783,6 +32032,7 @@ fn skyclave_apparition_leaves_mints_owner_illusion() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -31893,6 +32143,7 @@ fn skyclave_apparition_leaves_with_nothing_exiled_mints_no_illusion() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -32487,6 +32738,7 @@ fn cast_tragic_arrogance(game: &mut Game) -> ObjectId {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Tragic Arrogance is castable");
@@ -32830,6 +33082,7 @@ fn each_player_exiles_from_graveyard_in_apnap_order() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the spell is castable");
@@ -33025,6 +33278,7 @@ fn cast_fateful_tempest_to_vote(game: &mut Game) {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Fateful Tempest is castable");
@@ -33269,6 +33523,7 @@ fn cast_collective_voyage_to_payment(game: &mut Game) {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Collective Voyage is castable");
@@ -33643,6 +33898,7 @@ fn rootha_return_self_cost_bounces_source() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("bolt is castable");
@@ -34160,6 +34416,7 @@ fn exile_removes_a_creature_to_the_exile_zone_not_the_graveyard() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -34195,6 +34452,7 @@ fn exiling_a_commander_diverts_it_to_the_command_zone() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -34226,6 +34484,7 @@ fn a_commander_diverted_from_exile_can_still_be_recast_from_the_command_zone() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -34246,6 +34505,7 @@ fn a_commander_diverted_from_exile_can_still_be_recast_from_the_command_zone() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -34266,6 +34526,7 @@ fn a_commander_diverted_from_exile_can_still_be_recast_from_the_command_zone() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -34304,6 +34565,7 @@ fn bounce_returns_a_creature_to_its_owners_hand() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -34346,6 +34608,7 @@ fn bouncing_a_token_makes_it_cease_to_exist() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -34375,6 +34638,7 @@ fn bouncing_a_token_makes_it_cease_to_exist() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -34411,6 +34675,7 @@ fn mill_moves_the_top_cards_from_library_to_graveyard() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -34450,6 +34715,7 @@ fn milling_more_than_the_library_holds_is_safe_and_causes_no_loss() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -34500,6 +34766,7 @@ fn blaze_deals_x_damage_to_a_creature_then_to_a_player() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -34527,6 +34794,7 @@ fn blaze_deals_x_damage_to_a_creature_then_to_a_player() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -34568,6 +34836,7 @@ fn blaze_with_insufficient_mana_for_the_chosen_x_is_rejected() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     });
     assert_eq!(rejected, Err(Reject::CannotPayCost));
@@ -34587,6 +34856,7 @@ fn blaze_with_insufficient_mana_for_the_chosen_x_is_rejected() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     });
     assert!(accepted.is_ok(), "X=2 fits the three mana available");
@@ -34616,6 +34886,7 @@ fn tyvars_stand_pumps_by_x_and_grants_hexproof_and_indestructible_until_end_of_t
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -34661,6 +34932,7 @@ fn primal_might_pumps_the_chosen_creature_by_x_until_end_of_turn() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -34694,6 +34966,7 @@ fn primal_might_pumped_creature_fights_chosen_enemy() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -34748,6 +35021,7 @@ fn primal_might_fight_declined_leaves_creature_pumped() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -34793,6 +35067,7 @@ fn primal_might_no_enemy_no_pause() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -35218,6 +35493,7 @@ fn stroke_of_genius_makes_the_target_player_draw_x() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -35257,6 +35533,7 @@ fn the_mana_paid_scales_with_the_chosen_x() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
         .unwrap();
@@ -35294,6 +35571,7 @@ fn raise_dead_returns_a_creature_from_your_graveyard_to_your_hand() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -35332,6 +35610,7 @@ fn reanimate_puts_a_creature_onto_the_battlefield_and_fires_its_etb() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -35384,6 +35663,7 @@ fn animate_dead_targets_graveyard_creature_at_cast() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
     };
@@ -35442,6 +35722,7 @@ fn animate_dead_fizzles_if_target_exiled_in_response() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -35580,6 +35861,7 @@ fn reanimate_can_target_an_opponents_graveyard_under_your_control() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -35616,6 +35898,7 @@ fn a_declined_sun_titan_trigger_reanimates_nothing() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -35669,6 +35952,7 @@ fn an_accepted_sun_titan_trigger_pauses_to_choose_its_reanimation_target() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -35734,6 +36018,7 @@ fn finality_counter_exiles_instead_of_dying() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -35765,6 +36050,7 @@ fn finality_counter_exiles_instead_of_dying() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -35793,6 +36079,7 @@ fn finality_counter_exiles_instead_of_dying() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -35879,6 +36166,7 @@ fn excava_reanimates_with_finality_counter() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -36011,6 +36299,7 @@ fn plain_reanimate_does_not_set_type() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -36053,6 +36342,7 @@ fn raise_dead_rejects_illegal_graveyard_targets() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         }),
         Err(Reject::IllegalTarget),
@@ -36076,6 +36366,7 @@ fn raise_dead_rejects_illegal_graveyard_targets() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         }),
         Err(Reject::IllegalTarget),
@@ -36099,6 +36390,7 @@ fn raise_dead_rejects_illegal_graveyard_targets() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         }),
         Err(Reject::IllegalTarget),
@@ -36129,6 +36421,7 @@ const NONCREATURE_PERMANENT_MV2: CardDef = CardDef {
             buyback: None,
             strive: None,
             replicate: None,
+            multikicker: None,
         },
         reduce_own_generic: None,
     },
@@ -36210,6 +36503,7 @@ const NONCREATURE_PERMANENT_MV4: CardDef = CardDef {
             buyback: None,
             strive: None,
             replicate: None,
+            multikicker: None,
         },
         reduce_own_generic: None,
     },
@@ -36257,6 +36551,7 @@ fn reanimate_noncreature_permanent_under_mv_sevinnes() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -36457,6 +36752,7 @@ fn primary_research_reanimates_a_nonland_permanent_gated_by_mana_value() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -36514,6 +36810,7 @@ const NONCREATURE_PERMANENT_MV5: CardDef = CardDef {
             buyback: None,
             strive: None,
             replicate: None,
+            multikicker: None,
         },
         reduce_own_generic: None,
     },
@@ -36545,6 +36842,7 @@ fn angel_of_indemnity_reanimates_permanent_card_mv_four() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -36600,6 +36898,7 @@ fn angel_of_indemnity_permanent_card_target_includes_lands_but_not_mv_five() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -36644,6 +36943,7 @@ fn sun_titan_can_reanimate_a_land_card() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -36688,6 +36988,7 @@ fn karmic_guide_reanimates_only_from_your_own_graveyard() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -36872,6 +37173,7 @@ fn return_land_from_graveyard_to_hand() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -37021,6 +37323,7 @@ fn life_from_the_loam_returns_up_to_three_lands() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Life from the Loam is castable at sorcery speed with an empty stack");
@@ -37089,6 +37392,7 @@ fn life_from_the_loam_returns_just_one_land_when_only_one_is_available() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Life from the Loam is castable at sorcery speed with an empty stack");
@@ -37131,6 +37435,7 @@ fn raise_dead_still_returns_exactly_one_card_with_default_count() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Raise Dead is castable with a single legal graveyard target");
@@ -37451,6 +37756,7 @@ fn mass_return_enchantments_from_graveyard_replenish() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -37587,6 +37893,7 @@ fn mass_return_creatures_from_all_graveyards() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -37650,6 +37957,7 @@ fn all_hallows_eve_returns_all_graveyard_creatures_on_expiry() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -37793,6 +38101,7 @@ fn scry_pauses_on_an_arrange_top_choice_and_reorders_the_library() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -37875,6 +38184,7 @@ fn surveil_puts_the_bottom_pile_into_the_graveyard() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -37942,6 +38252,7 @@ fn resolve_look_dig(game: &mut Game) -> ObjectId {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -38144,6 +38455,7 @@ fn resolve_look_dig_to_battlefield(game: &mut Game) -> ObjectId {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -38576,6 +38888,7 @@ fn expressive_iteration_routes_top_three() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -38666,6 +38979,7 @@ fn resolve_look_dig_mandatory(game: &mut Game) {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -38858,6 +39172,7 @@ fn scry_for_more_than_the_library_holds_is_safe() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -38949,6 +39264,7 @@ fn an_arrange_top_answer_must_partition_the_shown_cards() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -39002,6 +39318,7 @@ fn a_creature_cost_reducer_shaves_generic_from_a_creature_spell() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("a {1}{G} creature is castable for {G} under a {1}-less reducer");
@@ -39040,6 +39357,7 @@ fn a_creature_cost_reducer_leaves_noncreature_spells_alone() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
@@ -39068,6 +39386,7 @@ fn cost_reduction_never_removes_a_colored_pip() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
@@ -39091,6 +39410,7 @@ fn cost_reduction_never_removes_a_colored_pip() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("{G} pays for the {G} creature");
@@ -39125,6 +39445,7 @@ fn cost_reducers_stack() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("{3}{W}{W} reduced by two {1}-off reducers is castable for {1}{W}{W}");
@@ -39257,6 +39578,7 @@ fn killian_reduces_only_spells_that_target_a_creature() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
@@ -39278,6 +39600,7 @@ fn killian_reduces_only_spells_that_target_a_creature() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("a creature-targeting spell gets Killian's {2} off");
@@ -39314,6 +39637,7 @@ fn aura_cost_reducer_only_discounts_aura_spells_transcendent_envoy() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the Aura reducer shaves the generic off an Aura spell");
@@ -39338,6 +39662,7 @@ fn aura_cost_reducer_only_discounts_aura_spells_transcendent_envoy() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
@@ -39370,6 +39695,7 @@ fn instant_or_sorcery_reducer_stormcatch_mentor() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the instant/sorcery reducer shaves the generic off an instant spell");
@@ -39400,6 +39726,7 @@ fn instant_or_sorcery_reducer_stormcatch_mentor() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the instant/sorcery reducer shaves the generic off a sorcery spell");
@@ -39429,6 +39756,7 @@ fn instant_or_sorcery_reducer_stormcatch_mentor() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
@@ -39470,6 +39798,7 @@ fn blasphemous_act_costs_one_less_per_creature_on_battlefield() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("{8}{R} reduced by 3 live creatures is castable for {5}{R}");
@@ -39503,6 +39832,7 @@ fn blasphemous_act_costs_one_less_per_creature_on_battlefield() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("8 creatures floor the {8} generic at 0 — only the {R} pip is owed");
@@ -39537,6 +39867,7 @@ fn self_reduction_absent_leaves_cost_unchanged() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
@@ -39571,6 +39902,7 @@ fn tomik_has_affinity_for_planeswalkers_they_control() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("one planeswalker you control drops the {1} generic to {0} — {W}{B} alone pays it");
@@ -39598,6 +39930,7 @@ fn tomik_has_affinity_for_planeswalkers_they_control() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
@@ -39640,6 +39973,7 @@ fn volcanic_salvo_costs_one_less_per_total_power_you_control() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("7 total power drops the {10} generic to {3} — {3}{R}{R} (5 mana) pays it");
@@ -39691,6 +40025,7 @@ fn furygale_flocking_costs_one_less_per_graveyard_instant_or_sorcery() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("2 instant/sorcery cards in the graveyard drop the {8} generic to {6} — {6}{R}{R} (8 mana) pays it");
@@ -39723,6 +40058,7 @@ fn mortality_spear_costs_less_if_you_gained_life_this_turn() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -39749,6 +40085,7 @@ fn mortality_spear_costs_less_if_you_gained_life_this_turn() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("having gained life this turn, the {2} generic drops to {0} — {B}{G} alone pays it");
@@ -39777,6 +40114,7 @@ fn mortality_spear_costs_less_if_you_gained_life_this_turn() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
@@ -39819,6 +40157,7 @@ fn avatar_of_woe_costs_six_less_with_ten_creature_cards_in_all_graveyards() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
@@ -39842,6 +40181,7 @@ fn avatar_of_woe_costs_six_less_with_ten_creature_cards_in_all_graveyards() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect(
@@ -39879,6 +40219,7 @@ fn avatar_of_fury_costs_six_less_when_one_opponent_has_seven_lands() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("one opponent with seven lands reduces {6}{R}{R} to {R}{R} — two Mountains pay it");
@@ -39919,6 +40260,7 @@ fn avatar_of_fury_summed_opponent_lands_do_not_trigger_the_discount() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
@@ -40115,6 +40457,7 @@ fn a_summoning_sick_goaded_creature_is_not_required_to_attack() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -40159,6 +40502,7 @@ fn furygale_flocking_tokens_must_attack_this_turn() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Furygale Flocking is castable with a funded pool");
@@ -40217,6 +40561,7 @@ fn furygale_must_attack_requirement_expires_at_the_turn_boundary() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -40286,6 +40631,7 @@ fn a_must_attack_token_under_token_controller_you_still_binds_to_the_single_flat
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -40349,6 +40695,7 @@ fn furygale_flocking_creates_two_tokens_per_opponent_each_forced_at_that_opponen
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -40546,6 +40893,7 @@ fn cast_promise_keeping_one_each(game: &mut Game) -> [ObjectId; 3] {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Promise of Loyalty ({4}{W}) is castable with a funded pool");
@@ -40636,6 +40984,7 @@ fn an_ordinary_keep_one_edict_places_no_vow_counters() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -40683,6 +41032,7 @@ fn casting_besmirch_goads_the_target_creature() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Besmirch ({1}{R}{R}) is castable with a funded pool");
@@ -40726,6 +41076,7 @@ fn goad_on_attached_forces_attack_and_avoids_the_goader_martial_impetus() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Martial Impetus is castable");
@@ -40792,6 +41143,7 @@ fn goad_on_attached_ends_when_the_aura_leaves() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Martial Impetus is castable");
@@ -40819,6 +41171,7 @@ fn goad_on_attached_ends_when_the_aura_leaves() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Fracture is castable");
@@ -41021,6 +41374,7 @@ fn prison_term_reattaches_to_entering_opponent_creature() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -41144,6 +41498,7 @@ fn reattach_effect_rechecks_the_auras_enchant_filter_at_the_move() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -41195,6 +41550,7 @@ fn pacifism_restriction_lifts_when_aura_leaves() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Fracture is castable");
@@ -41571,6 +41927,7 @@ fn besmirch_untaps_steals_hastes_and_goads() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Besmirch ({1}{R}{R}) is castable with a funded pool");
@@ -42351,6 +42708,7 @@ fn cast_vedalken_and_exchange(
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("cast Vedalken Plotter");
@@ -44564,6 +44922,7 @@ fn decisive_denial_mode1_counters_only_a_noncreature_spell() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Grizzly Bear is castable");
@@ -44585,6 +44944,7 @@ fn decisive_denial_mode1_counters_only_a_noncreature_spell() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the test counter can target the bear spell");
@@ -44624,6 +44984,7 @@ fn quandrix_command_mode1_counters_only_an_artifact_or_enchantment_spell() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Grizzly Bear is castable");
@@ -44657,6 +45018,7 @@ fn quandrix_command_mode1_counters_only_an_artifact_or_enchantment_spell() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Arcane Signet is castable");
@@ -44695,6 +45057,7 @@ fn starfield_mystic_reducer_only_discounts_enchantment_spells() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the enchantment reducer shaves the generic off an enchantment spell");
@@ -44720,6 +45083,7 @@ fn starfield_mystic_reducer_only_discounts_enchantment_spells() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the enchantment reducer shaves the generic off an Aura spell too");
@@ -44744,6 +45108,7 @@ fn starfield_mystic_reducer_only_discounts_enchantment_spells() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
@@ -44782,6 +45147,7 @@ fn pearl_ear_affinity_for_auras_grants_no_reduction_with_zero_auras() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
@@ -44818,6 +45184,7 @@ fn pearl_ear_affinity_for_auras_reduces_enchantment_spells_per_aura() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the first Darksteel Mutation is castable at its full {1}{W}");
@@ -44842,6 +45209,7 @@ fn pearl_ear_affinity_for_auras_reduces_enchantment_spells_per_aura() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("with 1 Aura controlled, a second Aura spell costs just {W} — its {1} is shaved off");
@@ -44872,6 +45240,7 @@ fn pearl_ear_affinity_for_auras_reduces_enchantment_spells_per_aura() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("2 Auras controlled shave exactly {2} generic off an enchantment spell");
@@ -44904,6 +45273,7 @@ fn pearl_ear_affinity_for_auras_does_not_reduce_creature_spells() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Darksteel Mutation is castable");
@@ -44929,6 +45299,7 @@ fn pearl_ear_affinity_for_auras_does_not_reduce_creature_spells() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
@@ -44966,6 +45337,7 @@ fn zimone_reduces_first_x_spell_each_turn_per_counter() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
@@ -44989,6 +45361,7 @@ fn zimone_reduces_first_x_spell_each_turn_per_counter() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("3 +1/+1 counters on Zimone shave {3} off the {X}-chosen {5}, to exactly {2}");
@@ -45022,6 +45395,7 @@ fn zimone_reduces_only_the_first_x_spell_each_turn() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the first {X} spell this turn is fully reduced by 2 counters, to {0}");
@@ -45043,6 +45417,7 @@ fn zimone_reduces_only_the_first_x_spell_each_turn() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
@@ -45078,6 +45453,7 @@ fn zimone_x_spell_reduction_resets_next_turn() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the first {X} spell this turn is fully reduced by 2 counters, to {0}");
@@ -45110,6 +45486,7 @@ fn zimone_x_spell_reduction_resets_next_turn() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the {X}-spell tally reset at the turn boundary, so the reduction applies again");
@@ -45142,6 +45519,7 @@ fn zimone_does_not_reduce_non_x_spells() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
@@ -45179,6 +45557,7 @@ fn animar_reduces_creature_spells_by_one_generic_per_counter() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
@@ -45201,6 +45580,7 @@ fn animar_reduces_creature_spells_by_one_generic_per_counter() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("3 +1/+1 counters on Animar shave all 3 generic off Serra Angel, to exactly {W}{W}");
@@ -45232,6 +45612,7 @@ fn animar_reduction_floors_at_zero_generic_and_never_touches_colored_pips() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
@@ -45254,6 +45635,7 @@ fn animar_reduction_floors_at_zero_generic_and_never_touches_colored_pips() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the reduction floors at 0 generic; one green pays the fully-reduced cost");
@@ -45293,6 +45675,7 @@ fn sram_senior_edificer_draws_on_casting_an_aura_but_not_a_plain_creature() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Darksteel Mutation is castable");
@@ -45564,6 +45947,7 @@ fn witch_of_the_moors_single_trigger_edict_then_optional_return() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -45640,6 +46024,7 @@ fn relic_retriever_makes_a_treasure_only_after_a_card_left_your_graveyard() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -45697,6 +46082,7 @@ fn relic_retriever_fires_on_each_players_end_step() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -45872,6 +46258,7 @@ fn cards_leaving_graveyard_fires_the_trigger() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -45940,6 +46327,7 @@ fn only_your_graveyard_counts() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -45972,6 +46360,7 @@ fn spirit_reanimate_and_resolve_trigger(game: &mut Game, corpse: ObjectId) {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -46311,6 +46700,7 @@ fn prepare_kirol_via_graveyard_exit(game: &mut Game, kirol: ObjectId) -> ObjectI
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -46827,6 +47217,7 @@ fn cast_from_exile(game: &mut Game, player: PlayerId, card: ObjectId) {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("an adventure card is castable from exile at its normal cost");
@@ -46898,6 +47289,7 @@ fn adventure_creature_cast_directly_from_hand_still_works() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the creature half is castable straight from hand for {1}{U}{U}");
@@ -47262,6 +47654,7 @@ fn inspired_skypainter_becomes_prepared_on_etb() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -47322,6 +47715,7 @@ fn inspired_skypainter_maestros_gift_copies_target_creature_with_haste() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -47548,6 +47942,7 @@ fn dirgur_becomes_prepared_on_mv5_instant_cast_from_hand() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("a funded MV-5 instant is castable from hand");
@@ -47580,6 +47975,7 @@ fn dirgur_does_not_prepare_on_small_instant() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("a funded MV-4 instant is castable from hand");
@@ -47617,6 +48013,7 @@ fn dirgur_does_not_prepare_on_flashback_instant() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("a flashback card is castable from the graveyard");
@@ -47646,6 +48043,7 @@ fn prepare_dirgur(game: &mut Game, dirgur: ObjectId) {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -47717,6 +48115,7 @@ fn real_dirgur_focusmage_from_the_pool_prepares_and_casts_braingeyser() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("a funded MV-5 instant is castable from hand");
@@ -47977,6 +48376,7 @@ fn unfiltered_cast_trigger_still_fires_from_any_zone() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("a flashback card is castable from the graveyard");
@@ -48195,6 +48595,7 @@ fn pest_rescuer_pest_token_dies_gain_life() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -48239,6 +48640,7 @@ fn pest_rescuer_makes_pest_on_each_players_upkeep() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -48889,6 +49291,7 @@ fn a_planeswalker_cast_onto_the_battlefield_has_its_starting_loyalty() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -49350,6 +49753,7 @@ fn cast_red_spell_triggers_balefire_damage_at_a_planeswalker() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Shock is castable");
@@ -49413,6 +49817,7 @@ fn rip_apart_mode_0_damages_a_creature_or_a_planeswalker() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("mode 0 targeting the planeswalker is castable");
@@ -49452,6 +49857,7 @@ fn magma_opus_divides_damage_onto_a_planeswalker_and_a_creature() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Magma Opus is castable");
@@ -49501,6 +49907,7 @@ fn put_two_counters(game: &mut Game, caster: PlayerId, creature: ObjectId) {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -50493,6 +50900,7 @@ fn a_tutor_finds_a_card_puts_it_in_hand_and_shuffles() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -50812,6 +51220,7 @@ fn buried_alive_puts_up_to_three_creatures_into_graveyard() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -50889,6 +51298,7 @@ fn buried_alive_up_to_three_allows_fewer_or_zero_picks() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -50927,6 +51337,7 @@ fn buried_alive_up_to_three_allows_fewer_or_zero_picks() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -50974,6 +51385,7 @@ fn search_up_to_two_declining_the_first_pick_still_shuffles_and_finds_nothing() 
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -51254,6 +51666,7 @@ fn cultivate_finds_two_lands_one_to_battlefield_tapped_one_to_hand() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -51405,6 +51818,7 @@ fn ramp_puts_a_basic_land_onto_the_battlefield_tapped() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -52583,6 +52997,7 @@ fn failing_to_find_is_legal_and_still_shuffles() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -52635,6 +53050,7 @@ fn a_creature_search_cannot_find_a_land() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -53343,6 +53759,7 @@ fn populate_creates_a_copy_of_a_creature_token_you_control() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -53394,6 +53811,7 @@ fn delayed_sacrifice_next_end_step_determined_iteration() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -53467,6 +53885,7 @@ fn determined_iteration_populated_token_gains_haste() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -53529,6 +53948,7 @@ fn create_token_copy_without_haste_rider_grants_no_haste() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -53593,6 +54013,7 @@ fn impulse_play_until_end_of_next_turn_atsushi() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -53782,6 +54203,7 @@ fn mass_weaken_kills_low_toughness_and_survivors_recover_next_turn() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Toxic Deluge is castable for X=2");
@@ -53863,6 +54285,7 @@ fn breath_of_darigaaz_unkicked_deals_one_to_nonfliers_and_each_player() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Breath of Darigaaz is castable unkicked");
@@ -53917,6 +54340,7 @@ fn breath_of_darigaaz_kicked_deals_four_to_nonfliers_and_each_player() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Breath of Darigaaz is castable kicked");
@@ -53978,6 +54402,7 @@ fn noncreature_removal_enumerates_only_valid_permanents_and_destroys_one() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         }),
         Err(Reject::IllegalTarget),
@@ -53998,6 +54423,7 @@ fn noncreature_removal_enumerates_only_valid_permanents_and_destroys_one() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the artifact is a legal target");
@@ -54107,6 +54533,7 @@ fn a_create_treasure_effect_puts_artifact_tokens_onto_the_battlefield() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -54147,6 +54574,7 @@ fn a_treasure_sacrifices_for_mana_of_any_color_and_ceases_to_exist() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -54195,6 +54623,7 @@ fn a_treasure_sacrifices_for_mana_of_any_color_and_ceases_to_exist() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the Treasure's any-color mana pays Shock's {R}");
@@ -54224,6 +54653,7 @@ fn magecraft_makes_a_treasure_with_storm_kiln_artist_out() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -54409,6 +54839,7 @@ fn prismari_pianist_creates_three_tokens_when_the_cast_spells_mana_value_is_five
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -54434,6 +54865,7 @@ fn prismari_pianist_creates_three_tokens_when_the_cast_spells_mana_value_is_five
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -54553,6 +54985,7 @@ fn magecraft_fractal_enters_with_counters_equal_to_spell_mana_value() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -54598,6 +55031,7 @@ fn hardened_scales_grows_a_magecraft_tokens_entry_counters() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -54634,6 +55068,7 @@ fn renegade_bull_gets_plus_x_until_end_of_turn_where_x_is_the_cast_spells_mana_v
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -54836,6 +55271,7 @@ fn manaform_hellkite_token_pt_equals_mana_spent_printed_cost() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -54890,6 +55326,7 @@ fn manaform_hellkite_token_pt_reflects_actual_mana_spent() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -54931,6 +55368,7 @@ fn manaform_dragon_token_exiled_at_next_end_step() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -54980,6 +55418,7 @@ fn create_token_without_set_base_pt_uses_printed_pt() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -55020,6 +55459,7 @@ fn manaform_hellkite_pool_card_creates_the_dragon_illusion() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -55210,6 +55650,7 @@ fn rootha_makes_x_x_elemental_where_x_is_the_greatest_instant_or_sorcery_mana_va
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -55230,6 +55671,7 @@ fn rootha_makes_x_x_elemental_where_x_is_the_greatest_instant_or_sorcery_mana_va
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -55286,6 +55728,7 @@ fn rootha_mastering_the_moment_pool_card_creates_the_elemental() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -55419,6 +55862,7 @@ fn rionya_count_is_one_plus_instants_and_sorceries_cast_this_turn() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -55439,6 +55883,7 @@ fn rionya_count_is_one_plus_instants_and_sorceries_cast_this_turn() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -56040,6 +56485,7 @@ fn laelia_grows_when_cards_exiled_from_your_library_or_graveyard() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -56162,6 +56608,7 @@ fn kill_modal_dragon(game: &mut Game) {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -56257,6 +56704,7 @@ fn atsushi_dies_trigger_offers_a_two_mode_choose_one() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -56297,6 +56745,7 @@ fn discard_one(game: &mut Game, target_card: ObjectId) {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -56516,6 +56965,7 @@ fn conspiracy_theorist_discard_lets_you_impulse_the_card() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the exiled card is castable from exile this turn");
@@ -56884,6 +57334,7 @@ fn free_cast_from_exile_pays_no_mana_quintorius_loremaster() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Shock is castable from exile under the free-cast permission");
@@ -56946,6 +57397,7 @@ fn free_cast_permission_expires_at_cleanup_quintorius_loremaster() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         }),
         Err(Reject::NotCastable),
@@ -56993,6 +57445,7 @@ fn quintorius_free_cast_spell_goes_to_library_bottom_on_resolve() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -57066,6 +57519,7 @@ fn quintorius_free_cast_spell_goes_to_library_bottom_when_countered() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -57088,6 +57542,7 @@ fn quintorius_free_cast_spell_goes_to_library_bottom_when_countered() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -57133,6 +57588,7 @@ fn massacre_casts_free_when_opponent_controls_plains_and_you_control_swamp() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the free-cast permission holds — Massacre is castable with no mana in the pool");
@@ -57180,6 +57636,7 @@ fn massacre_requires_full_payment_without_a_qualifying_opponent_land() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
@@ -57201,6 +57658,7 @@ fn massacre_requires_full_payment_without_a_qualifying_opponent_land() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Massacre is still castable by paying its printed {2}{B}{B} cost");
@@ -57232,6 +57690,7 @@ fn normal_spell_still_goes_to_graveyard_quintorius_loremaster() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -57440,6 +57899,7 @@ fn an_equip_ability_fizzles_when_its_creature_dies_in_response() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Infernal Grasp can destroy the equip target in response");
@@ -58109,6 +58569,7 @@ fn cast_and_collect(game: &mut Game, spell: ObjectId, target: Option<Target>) ->
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
         .expect("castable");
@@ -58364,6 +58825,7 @@ fn enter_counters_static_ignores_opponents() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("VANILLA is castable by P1");
@@ -59531,6 +59993,7 @@ fn take_action_casts_exactly_like_the_equivalent_cast_intent() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
         .unwrap();
@@ -59794,6 +60257,7 @@ fn cycling_requires_priority() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -59845,6 +60309,7 @@ fn cycling_with_a_spell_on_the_stack_resets_passes_and_keeps_priority() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -59993,6 +60458,7 @@ fn edge_of_autumn_searches_a_basic_land_when_controlling_four_or_fewer_lands() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -60049,6 +60515,7 @@ fn edge_of_autumn_does_nothing_when_controlling_five_or_more_lands() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -60201,6 +60668,7 @@ fn legal_actions_is_empty_while_a_choice_is_pending() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -60248,6 +60716,7 @@ fn killian_taps_and_goads_when_your_enchantment_enters() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -60272,6 +60741,7 @@ fn killian_taps_and_goads_when_your_enchantment_enters() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -60323,6 +60793,7 @@ fn killian_decisive_mentor_tap_and_goad_target_is_declinable() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -60367,6 +60838,7 @@ fn killian_own_entry_does_not_fire_his_enchantment_watch() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -60469,6 +60941,7 @@ fn beledros_pest_token_dies_gain_life() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -60806,6 +61279,7 @@ fn storm_copies_survive_countered_original() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -60828,6 +61302,7 @@ fn storm_copies_survive_countered_original() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Reaping the Graves is castable");
@@ -60851,6 +61326,7 @@ fn storm_copies_survive_countered_original() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("a hard counter can target Reaping the Graves under its own storm trigger");
@@ -60916,6 +61392,7 @@ fn flusterstorm_storm_copy_ceases_to_exist_when_countered() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -60942,6 +61419,7 @@ fn flusterstorm_storm_copy_ceases_to_exist_when_countered() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Flusterstorm can target the still-on-stack instant");
@@ -60981,6 +61459,7 @@ fn flusterstorm_storm_copy_ceases_to_exist_when_countered() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the storm copy is a legal counter target");
@@ -62006,6 +62485,7 @@ const TEST_STEELBANE: CardDef = CardDef {
                         buyback: None,
                         strive: None,
                         replicate: None,
+                        multikicker: None,
                     },
                     reduce_own_generic: None,
                     hybrid: &[],
@@ -62094,6 +62574,7 @@ fn remove_counter_cost_destroys_target() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -62197,6 +62678,7 @@ fn remove_counter_cost_lethal_shrink_dies_to_state_based_actions() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -63127,6 +63609,7 @@ fn moldervine_reclamation_gains_life_and_draws_from_a_single_trigger() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -63571,6 +64054,7 @@ fn goldspan_grant_disappears_when_goldspan_leaves() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -63746,6 +64230,7 @@ fn troyan_mana_only_pays_expensive_spells() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
@@ -63768,6 +64253,7 @@ fn troyan_mana_only_pays_expensive_spells() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
         .unwrap();
@@ -63811,6 +64297,7 @@ fn troyan_mana_pays_x_spell() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
         .unwrap();
@@ -63862,6 +64349,7 @@ fn galazeth_grants_restricted_treasure_mana() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
@@ -63884,6 +64372,7 @@ fn galazeth_grants_restricted_treasure_mana() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
         .unwrap();
@@ -63919,6 +64408,7 @@ fn cast_aether_gale(game: &mut Game) -> ObjectId {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Aether Gale is castable at sorcery speed with an empty stack");
@@ -64071,6 +64561,7 @@ fn aether_gale_skips_a_target_that_became_illegal_before_resolution() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("a free instant is a legal reaction");
@@ -64130,6 +64621,7 @@ fn aether_gale_is_a_no_op_when_all_targets_became_illegal() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -64395,6 +64887,7 @@ fn quandrix_command_three_mode_combination_is_unperturbed_by_the_fourth_mode() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Arcane Signet is castable");
@@ -64583,6 +65076,7 @@ fn replication_technique_copies_a_noncreature_permanent_you_control() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the spell is castable");
@@ -64637,6 +65131,7 @@ fn white_orchid_phantom_etb_destroys_a_target_land() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -64697,6 +65192,7 @@ fn white_orchid_phantom_lets_destroyed_lands_controller_ramp() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -64780,6 +65276,7 @@ fn white_orchid_phantom_ramp_search_can_be_declined() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -65292,6 +65789,7 @@ fn magma_opus_divides_damage_among_two_chosen_targets() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Magma Opus is castable at instant speed with an empty stack");
@@ -65346,6 +65844,7 @@ fn magma_opus_division_must_cover_each_target_and_sum_to_the_total() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -65414,6 +65913,7 @@ fn magma_opus_auto_assigns_the_whole_amount_to_a_single_chosen_target() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -65467,6 +65967,7 @@ fn magma_opus_divides_damage_across_a_creature_and_a_player() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Magma Opus is castable at instant speed with an empty stack");
@@ -65518,6 +66019,7 @@ fn magma_opus_auto_assigns_the_whole_amount_to_a_single_player_target() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -65574,6 +66076,7 @@ fn magma_opus_divides_damage_and_taps_two_permanents() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Magma Opus is castable at instant speed with an empty stack");
@@ -65647,6 +66150,7 @@ fn volcanic_salvo_deals_full_damage_to_each_of_two_targets() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Volcanic Salvo is castable at sorcery speed with an empty stack");
@@ -65696,6 +66200,7 @@ fn prismari_charm_mode_1_damages_one_or_two_targets() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect(
@@ -65738,6 +66243,7 @@ fn prismari_charm_modes_0_and_2_are_not_dragged_into_multi_target_selection() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("mode 0 needs no target");
@@ -65767,6 +66273,7 @@ fn prismari_charm_modes_0_and_2_are_not_dragged_into_multi_target_selection() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("mode 2 targets a single nonland permanent directly, no post-cast target choice");
@@ -65976,6 +66483,7 @@ fn hull_breach_third_mode_resolves_when_one_target_became_illegal() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Ancient Grudge is a legal response");
@@ -66018,6 +66526,7 @@ fn tap_two_target_permanents() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("castable with an empty stack");
@@ -66060,6 +66569,7 @@ fn put_a_counter_on_each_of_up_to_two_target_creatures() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("castable with an empty stack");
@@ -66116,6 +66626,7 @@ fn silkguard_puts_a_counter_on_each_of_up_to_x_target_creatures() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("castable at X=2 with an empty stack");
@@ -66167,6 +66678,7 @@ fn silkguard_at_x_zero_chooses_no_targets() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("castable at X=0 with an empty stack");
@@ -66300,6 +66812,7 @@ fn silkguard_grants_hexproof_to_modified_creatures() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -66356,6 +66869,7 @@ fn modified_includes_equipped_and_aura_enchanted_creatures() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -66413,6 +66927,7 @@ fn modified_excludes_a_creature_enchanted_by_an_opponents_aura() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("an instant is castable on the opponent's turn");
@@ -66447,6 +66962,7 @@ fn silkguard_grants_hexproof_to_the_creatures_it_just_countered() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("castable at X=1 with an empty stack");
@@ -66517,6 +67033,7 @@ fn silkguard_grants_hexproof_to_your_auras_and_equipment() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("castable at X=1 with an empty stack");
@@ -66581,6 +67098,7 @@ fn silkguard_hexproof_on_equipment_wears_off_at_cleanup() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("castable at X=0 with an empty stack");
@@ -66697,6 +67215,7 @@ fn pearl_ear_does_not_draw_when_an_opponent_casts_the_aura() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Shielded by Faith is castable by P1 targeting their own creature");
@@ -66733,6 +67252,7 @@ fn curse_of_the_swine_exiles_x_target_creatures_and_makes_a_boar_per_exile() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("castable at X=2 with an empty stack");
@@ -66826,6 +67346,7 @@ fn pest_infestation_destroys_up_to_x_targets_and_creates_twice_x_pests() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("castable at X=2 with an empty stack");
@@ -67104,6 +67625,7 @@ fn twinflame_strive_scales_cost_by_targets() {
         evoked: false,
         strive_count: 3,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     });
     assert_eq!(
@@ -67129,6 +67651,7 @@ fn twinflame_strive_scales_cost_by_targets() {
             evoked: false,
             strive_count: 3,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
         .expect("fully funding the Strive cost for 3 targets is legal");
@@ -67408,6 +67931,7 @@ fn hydroid_krasis_cast_trigger_resolves_even_if_countered() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Hydroid Krasis is castable");
@@ -67435,6 +67959,7 @@ fn hydroid_krasis_cast_trigger_resolves_even_if_countered() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("a hard counter can target the Hydroid spell under its own cast trigger");
@@ -67492,6 +68017,7 @@ fn astral_cornucopia_x3_cost_pays_x_thrice() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("6 green mana pays {X}{X}{X} with X = 2");
@@ -67526,6 +68052,7 @@ fn astral_cornucopia_x3_cost_pays_x_thrice() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     });
     assert_eq!(
@@ -67562,6 +68089,7 @@ fn single_x_spell_still_pays_x_once() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("4 mana (3 generic + {G}) pays {X}{G} with X = 3");
@@ -67829,6 +68357,7 @@ fn staff_of_the_storyteller_does_not_accrue_when_an_opponent_creates_a_token() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -68846,6 +69375,7 @@ fn grow_ancient_by_two(g: &mut TestGame, ancient: ObjectId) {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -68968,6 +69498,7 @@ fn forgotten_ancient_gains_counter_when_any_player_casts_a_spell() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -69014,6 +69545,7 @@ fn forgotten_ancient_gains_counter_when_any_player_casts_a_spell() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -69056,6 +69588,7 @@ fn forgotten_ancient_gains_counter_when_any_player_casts_a_spell() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -69415,6 +69948,7 @@ fn open_the_way_reveals_until_x_lands() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -69471,6 +70005,7 @@ fn open_the_way_short_library_puts_every_land_found() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -69522,6 +70057,7 @@ fn songbirds_blessing_attaches_deployed_aura_to_chosen_creature() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Songbirds' Blessing can enchant a creature you control");
@@ -69707,6 +70243,7 @@ fn songbirds_blessing_no_legal_host_sweeps_aura_to_graveyard() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -69771,6 +70308,7 @@ fn songbirds_blessing_declining_goes_to_hand() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -69831,6 +70369,7 @@ fn songbirds_blessing_no_aura_in_library_is_a_noop() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -69880,6 +70419,7 @@ fn songbirds_blessing_bottoms_rest_in_prng_order() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -69952,6 +70492,7 @@ fn songbirds_blessing_bottoms_rest_in_prng_order() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
         .unwrap();
@@ -70053,6 +70594,7 @@ fn creative_technique_reveals_until_nonland_exiles_and_casts_free() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
         .expect("the exiled nonland is castable for free, unfunded");
@@ -70234,6 +70776,7 @@ fn animists_awakening_reveals_top_x_and_deploys_all_lands() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -70295,6 +70838,7 @@ fn animists_awakening_reveals_exactly_x() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -70342,6 +70886,7 @@ fn animists_awakening_reveals_as_many_as_possible() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -70377,6 +70922,7 @@ fn animists_awakening_spell_mastery_untaps_deployed_lands() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -70413,6 +70959,7 @@ fn animists_awakening_no_spell_mastery_leaves_lands_tapped() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -70680,6 +71227,7 @@ fn arcane_lighthouse_strips_hexproof_and_shroud_and_blocks_a_fresh_grant_this_tu
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -70992,6 +71540,7 @@ fn wheel_of_fortune_each_player_discards_then_draws() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the spell is castable");
@@ -71195,6 +71744,7 @@ fn cast_x_and_resolve(game: &mut Game, def: CardDef, x: u32, name: &str) -> Obje
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap_or_else(|e| panic!("{name} is castable: {e:?}"));
@@ -71455,6 +72005,7 @@ fn gyome_master_chef_end_step_creates_food_equal_to_nontoken_creatures_entered()
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -71474,6 +72025,7 @@ fn gyome_master_chef_end_step_creates_food_equal_to_nontoken_creatures_entered()
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -71579,6 +72131,7 @@ fn gilded_goose_sac_a_food_adds_one_mana_of_any_color() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the sacrificed Food's any-color mana pays Shock's {R}");
@@ -71702,6 +72255,7 @@ fn herald_of_amity_etb_exiles_top_eight_and_casts_chosen_aura_free() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the Aura is castable from exile under the free-cast permission, unfunded");
@@ -71884,6 +72438,7 @@ fn cascade_exiles_until_cheaper_nonland_and_casts_it_free() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
         .expect(
@@ -72404,6 +72959,7 @@ fn renegade_bull_free_cast_fires_own_cast_trigger() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the free-cast permission makes Big Score castable from exile");
@@ -72467,6 +73023,7 @@ fn renegade_bull_free_cast_fires_other_cast_watchers() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -72852,6 +73409,7 @@ fn cast_devour_creature(game: &mut Game, card_name: &str) -> ObjectId {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the devour creature is castable");
@@ -73036,6 +73594,7 @@ fn ribtruss_roaster_end_step_makes_pests_with_dies_lifegain() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("castable");
@@ -73173,6 +73732,7 @@ fn abstract_performance_opponent_picks_pile_controller_casts_one_free_rest_to_ha
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the kept-pile creature is castable from exile for free");
@@ -73356,6 +73916,7 @@ fn plargg_and_nassari_upkeep_opponent_picks_a_nonland_controller_casts_up_to_two
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
         .expect("each other exiled card casts from exile for free");
@@ -73427,6 +73988,7 @@ fn plargg_and_nassari_casts_only_what_is_available_when_fewer_than_two_others() 
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the lone other exiled card casts for free");
@@ -73519,6 +74081,7 @@ fn abstract_performance_controller_chooses_which_opponent_splits() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the flash permission lets P2 cast a sorcery on P0's turn");
@@ -73688,6 +74251,7 @@ fn fact_or_fiction_controller_chooses_which_opponent_splits() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -73884,6 +74448,7 @@ fn plargg_and_nassari_offers_up_to_two_free_casts_from_the_other_exiled_nonlands
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
         .expect("the granted free-cast permission casts without paying the mana cost");
@@ -74628,6 +75193,7 @@ fn dance_with_calamity_casts_exiled_free_when_total_mv_at_most_13() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the exiled Bear is castable for free");
@@ -74695,6 +75261,7 @@ fn dance_with_calamity_bust_over_13_grants_no_free_cast() {
                 evoked: false,
                 strive_count: 0,
                 replicate_count: 0,
+                multikicker_count: 0,
                 alternative_cost: false,
             }),
             Err(Reject::NotCastable),
@@ -75230,6 +75797,7 @@ fn advanced_reconstruction_level_two_burns_each_opponent_on_graveyard_leave() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -75271,6 +75839,7 @@ fn advanced_reconstruction_level_two_burns_each_opponent_on_graveyard_leave() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -75324,6 +75893,7 @@ fn advanced_reconstruction_level_three_reduces_non_hand_casts() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("a graveyard cast is legal");
@@ -75355,6 +75925,7 @@ fn advanced_reconstruction_level_three_reduces_non_hand_casts() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("a {2} artifact is castable from a full pool");
@@ -75405,6 +75976,7 @@ fn intermediate_chirography_level_two_counters_on_first_life_loss() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -75699,6 +76271,7 @@ fn cast_chirography(game: &mut Game) -> (ObjectId, ObjectId) {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -75954,6 +76527,7 @@ fn rousing_refrain_adds_red_per_card_in_target_opponent_hand() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -76013,6 +76587,7 @@ fn rousing_refrain_suspend_cast_exiles_with_time_counters() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     });
     assert!(cast.is_err(), "a still-suspended card can't be cast yet");
@@ -76072,6 +76647,7 @@ fn rousing_refrain_suspend_ticks_and_casts_free_at_zero() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     });
     assert!(
@@ -76194,6 +76770,7 @@ fn scream_counter_expiry_moves_to_graveyard_and_runs_payload() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -76255,6 +76832,7 @@ fn rousing_refrain_mana_persists_across_step() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -76325,6 +76903,7 @@ fn ordinary_mana_empties_at_step_boundary() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -77135,6 +77714,7 @@ fn wild_ricochet_may_retarget_a_multi_target_spell_then_copies_with_new_targets(
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("castable with an empty stack");
@@ -77263,6 +77843,7 @@ fn wild_ricochet_declining_retarget_leaves_original_targets() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("castable with an empty stack");
@@ -77341,6 +77922,7 @@ fn wild_ricochet_card_is_faithful() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("castable with an empty stack");
@@ -78024,6 +78606,7 @@ fn cast_free(game: &mut Game, player: PlayerId, object: ObjectId) {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the free spell is castable");
@@ -78771,6 +79354,7 @@ fn phantom_centaur_prevents_at_zero_counters_removing_nothing() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -79788,6 +80372,7 @@ fn capsize_buyback_requires_the_extra_mana() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     });
     assert_eq!(rejected, Err(Reject::CannotPayCost));
@@ -79902,6 +80487,7 @@ fn constant_mists_bought_back_returns_to_hand_and_fogs() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -80847,6 +81433,7 @@ fn fire_half_of_a_split_card_deals_its_divided_damage_and_the_whole_card_hits_th
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         }),
         Err(Reject::NotCastable),
@@ -80974,6 +81561,7 @@ fn casting_a_second_half_of_the_same_split_card_still_leaves_the_whole_card_behi
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -81213,6 +81801,7 @@ fn overwhelming_intellect_counters_a_creature_spell_and_draws_its_mana_value() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Auramancer is castable");
@@ -81235,6 +81824,7 @@ fn overwhelming_intellect_counters_a_creature_spell_and_draws_its_mana_value() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Overwhelming Intellect can counter a creature spell");
@@ -81279,6 +81869,7 @@ fn overwhelming_intellect_cannot_target_a_noncreature_spell() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Lightning Bolt is castable");
@@ -81302,6 +81893,7 @@ fn overwhelming_intellect_cannot_target_a_noncreature_spell() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         }),
         Err(Reject::IllegalTarget),
@@ -81422,6 +82014,7 @@ fn momentary_blink_flickers_creature_you_control_immediately() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -81532,6 +82125,7 @@ fn enlightened_tutor_reveals_and_puts_an_artifact_or_enchantment_card_on_top() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -81735,6 +82329,7 @@ fn cast_court_hussar_funding_generic_with(game: &mut Game, generic_source: &str)
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -81849,6 +82444,7 @@ fn cast_firespout_funding_hybrid_with(game: &mut Game, red_sources: u8, green_so
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Firespout is castable off its funded hybrid pip");
@@ -81951,6 +82547,7 @@ fn cast_and_resolve_seated(
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the spell is castable");
@@ -82227,6 +82824,7 @@ fn cast_aura_at(game: &mut Game, player: PlayerId, aura: ObjectId, host: ObjectI
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("the Aura is castable at its host");
@@ -82545,6 +83143,7 @@ fn ashes_to_ashes_deals_real_damage_to_you() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Ashes to Ashes is castable");
@@ -83852,6 +84451,7 @@ fn skullclamp_draws_two_when_the_equipped_creature_dies() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -84171,6 +84771,7 @@ fn grim_harvest_recover_offers_a_pay_or_exile_choice_when_a_creature_dies() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Shock is castable");
@@ -84213,6 +84814,7 @@ fn grim_harvest_recover_paid_returns_it_to_hand() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -84257,6 +84859,7 @@ fn grim_harvest_recover_declined_exiles_it() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -84331,6 +84934,7 @@ fn grim_harvest_returns_a_creature_card_from_the_graveyard_to_hand() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Grim Harvest is castable targeting the graveyard bear");
@@ -84370,6 +84974,7 @@ fn tutored_to_graveyard_creature_does_not_fire_dies() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -84484,6 +85089,7 @@ fn minus_one_counter_reduces_power_and_toughness() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -84523,6 +85129,7 @@ fn removing_a_minus_one_counter_restores_power_and_toughness() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -84911,6 +85518,7 @@ fn cast_and_resolve_draw_one(game: &mut Game, player: PlayerId) {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("free sorcery is castable in main phase");
@@ -85094,6 +85702,7 @@ fn cast_and_resolve_draw_three(game: &mut Game, player: PlayerId) {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("free sorcery is castable in main phase");
@@ -85364,6 +85973,7 @@ fn golgari_thug_dies_tucks_a_creature_to_top_of_library() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -85894,6 +86504,7 @@ fn two_controllers_death_watch_orders_apnap() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -86377,6 +86988,7 @@ fn plumeveil_flashes_in_on_an_opponents_turn() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Flash lets Plumeveil be cast on the active player's turn");
@@ -87194,6 +87806,7 @@ fn intet_exiles_the_top_card_face_down_and_lets_you_cast_it_free() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("\"play that card without paying its mana cost\" — no mana in pool");
@@ -87233,6 +87846,7 @@ fn intets_play_permission_ends_when_intet_leaves_the_battlefield() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -87258,6 +87872,7 @@ fn intets_play_permission_ends_when_intet_leaves_the_battlefield() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         }),
         Err(Reject::NotCastable),
@@ -87365,6 +87980,7 @@ fn cast_lash_out_keep_tops(
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Lash Out is castable");
@@ -87511,6 +88127,7 @@ fn clash_keep_or_bottom_moves_the_revealed_card() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -87616,6 +88233,7 @@ fn scattering_stroke_win_adds_colorless_for_countered_spell_mana_value() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Grizzly Bear is castable");
@@ -87640,6 +88258,7 @@ fn scattering_stroke_win_adds_colorless_for_countered_spell_mana_value() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Scattering Stroke is castable");
@@ -87691,6 +88310,7 @@ fn scattering_stroke_loss_counters_but_schedules_no_mana() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -87713,6 +88333,7 @@ fn scattering_stroke_loss_counters_but_schedules_no_mana() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -87761,6 +88382,7 @@ fn pollen_lullaby_win_keeps_opponents_creatures_tapped_through_their_untap() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Pollen Lullaby is castable");
@@ -87809,6 +88431,7 @@ fn whirlpool_whelm_loss_puts_creature_on_top_win_second_from_top() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Whirlpool Whelm is castable");
@@ -87856,6 +88479,7 @@ fn whirlpool_whelm_win_puts_creature_second_from_top() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -88791,6 +89415,7 @@ fn colossal_might_pumps_plus_four_plus_two_with_trample() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -88828,6 +89453,7 @@ fn electrolyze_deals_two_divided_and_draws_a_card() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -88900,6 +89526,7 @@ fn ray_of_command_steals_gains_haste_and_untaps() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -88938,6 +89565,7 @@ fn ruination_destroys_all_nonbasic_lands_only() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -88981,6 +89609,7 @@ fn savage_twister_deals_x_damage_to_each_creature() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -89026,6 +89655,7 @@ fn tribute_to_the_wild_makes_each_opponent_sacrifice_artifact_or_enchantment() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -90527,6 +91157,7 @@ fn invigorate_cast_for_its_alternative_cost_pays_no_mana_and_an_opponent_gains_t
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: true,
     })
     .expect("a Forest on the battlefield offers the alternative cost");
@@ -90849,6 +91480,7 @@ fn artisan_of_kozilek_reanimates_a_creature_card_when_cast() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -90951,6 +91583,7 @@ fn birds_of_paradise_taps_for_one_mana_of_any_color() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .expect("Birds of Paradise's any-color mana pays Shock's {R}");
@@ -91005,6 +91638,7 @@ fn farseek_fetches_a_swamp_but_not_a_forest() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -91786,6 +92420,7 @@ fn infectious_inquiry_gives_each_opponent_a_poison_counter() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -91830,6 +92465,7 @@ fn poison_counters_accumulate_across_separate_spells() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
         .unwrap();
@@ -91934,6 +92570,7 @@ fn vraskas_fall_poisons_an_opponent_with_nothing_to_sacrifice() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -91972,6 +92609,7 @@ fn vraskas_fall_edicts_and_poisons_the_same_opponent() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -92015,6 +92653,7 @@ fn ichor_rats_entering_poisons_every_player_including_its_controller() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        multikicker_count: 0,
         alternative_cost: false,
     })
     .unwrap();
@@ -92027,6 +92666,209 @@ fn ichor_rats_entering_poisons_every_player_including_its_controller() {
             "{player:?} got a poison counter from Ichor Rats"
         );
     }
+}
+
+// ---------------------------------------------------------------------------
+// Infect (#20 slice 2, CR 702.90): Keyword::Infect reshapes the damage a source deals —
+// -1/-1 counters on creatures, poison counters on players — without changing the fact or
+// the size of the damage (CR 120.3).
+// ---------------------------------------------------------------------------
+
+/// A 2/2 with infect — the generic test stand-in for Plague Stinger's body.
+const INFECT_2_2: CardDef = creature("Infect 2/2 (test)", 2, 2, &[Keyword::Infect]);
+
+#[test]
+fn infect_combat_damage_to_a_player_becomes_poison_counters() {
+    // CR 702.90c: damage an infect source deals to a player is dealt in the form of that many
+    // poison counters, not as life loss.
+    let mut game = Game::new();
+    let attacker = game.spawn_on_battlefield(PlayerId(0), INFECT_2_2);
+
+    attack_with(&mut game, vec![attacker]);
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(game.life(PlayerId(1)), 20, "infect damage costs no life");
+    assert_eq!(
+        game.player_counters(PlayerId(1), PlayerCounterKind::Poison),
+        2,
+        "two poison counters instead"
+    );
+}
+
+#[test]
+fn infect_damage_to_a_creature_becomes_minus_one_minus_one_counters() {
+    // CR 702.90b: damage an infect source deals to a creature is dealt in the form of that many
+    // -1/-1 counters, not as marked damage.
+    let mut game = Game::new();
+    let attacker = game.spawn_on_battlefield(
+        PlayerId(0),
+        creature("Infect 3/3 (test)", 3, 3, &[Keyword::Infect]),
+    );
+    let blocker = game.spawn_on_battlefield(PlayerId(1), creature("Blocker 4/4", 4, 4, &[]));
+
+    attack_with(&mut game, vec![attacker]);
+    block_with(&mut game, vec![(blocker, attacker)]).unwrap();
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(
+        game.counters_of_kind(blocker, CounterKind::MinusOneMinusOne),
+        3,
+        "three -1/-1 counters"
+    );
+    assert_eq!(game.marked_damage(blocker), 0, "and no marked damage");
+    assert_eq!(
+        (game.power(blocker), game.toughness(blocker)),
+        (1, 1),
+        "the 4/4 is shrunk to a 1/1"
+    );
+}
+
+#[test]
+fn infect_noncombat_damage_also_becomes_counters() {
+    // Infect reads "damage", not "combat damage" — a fight (CR 701.12) from an infect creature
+    // places -1/-1 counters just as its combat damage would.
+    let mut g = TestGame::new();
+    let mine = g.spawn_on_battlefield(PlayerId(0), INFECT_2_2);
+    let theirs = g.spawn_on_battlefield(PlayerId(1), creature("Theirs 4/4", 4, 4, &[]));
+    let spell = g.spawn_in_hand(PlayerId(0), FIGHT_SPELL);
+
+    g.cast(spell).at(Target::Object(theirs)).resolve();
+    g.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(mine)],
+    })
+    .unwrap();
+
+    assert_eq!(
+        g.counters_of_kind(theirs, CounterKind::MinusOneMinusOne),
+        2,
+        "the fight's noncombat damage is -1/-1 counters too"
+    );
+    assert_eq!(g.marked_damage(theirs), 0, "and no marked damage");
+}
+
+#[test]
+fn infect_still_triggers_lifelink_and_deathtouch() {
+    // CR 120.3: infect changes the form of the damage, not the fact that it was dealt — lifelink
+    // (CR 702.15) still gains life off the original amount, and deathtouch (CR 702.2b) still
+    // destroys the creature that was dealt the damage.
+    let mut game = Game::new();
+    let attacker = game.spawn_on_battlefield(
+        PlayerId(0),
+        creature(
+            "Infect lifelink deathtouch 1/1 (test)",
+            1,
+            1,
+            &[Keyword::Infect, Keyword::Lifelink, Keyword::Deathtouch],
+        ),
+    );
+    let blocker = game.spawn_on_battlefield(PlayerId(1), creature("Blocker 4/4", 4, 4, &[]));
+
+    attack_with(&mut game, vec![attacker]);
+    block_with(&mut game, vec![(blocker, attacker)]).unwrap();
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(
+        game.life(PlayerId(0)),
+        21,
+        "lifelink gains 1 off the original damage"
+    );
+    assert_eq!(
+        game.zone_of(blocker),
+        Zone::Graveyard,
+        "deathtouch still destroys the blocker it was dealt to"
+    );
+}
+
+#[test]
+fn ten_poison_from_infect_damage_loses_the_game() {
+    // CR 704.5c: poison from infect damage is ordinary poison — the tenth counter loses the game.
+    let mut game = Game::with_players(4, 0);
+    game.place_player_counters(PlayerId(1), PlayerCounterKind::Poison, 8);
+    let attacker = game.spawn_on_battlefield(PlayerId(0), INFECT_2_2);
+
+    attack_with(&mut game, vec![attacker]);
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(
+        game.player_counters(PlayerId(1), PlayerCounterKind::Poison),
+        10
+    );
+    assert!(
+        game.has_lost(PlayerId(1)),
+        "ten poison counters loses the game"
+    );
+}
+
+#[test]
+fn infect_counters_annihilate_existing_plus_one_counters() {
+    // CR 704.5r: a permanent with both +1/+1 and -1/-1 counters has N of each removed, N being the
+    // smaller count — so 3 infect damage onto two +1/+1 counters settles at zero plus, one minus.
+    let mut game = Game::new();
+    let attacker = game.spawn_on_battlefield(
+        PlayerId(0),
+        creature("Infect 3/3 (test)", 3, 3, &[Keyword::Infect]),
+    );
+    let blocker = game.spawn_on_battlefield(PlayerId(1), creature("Blocker 4/4", 4, 4, &[]));
+    game.add_plus_counter(blocker);
+    game.add_plus_counter(blocker);
+
+    attack_with(&mut game, vec![attacker]);
+    block_with(&mut game, vec![(blocker, attacker)]).unwrap();
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(
+        game.plus_counters(blocker),
+        0,
+        "both +1/+1 counters annihilated"
+    );
+    assert_eq!(
+        game.counters_of_kind(blocker, CounterKind::MinusOneMinusOne),
+        1,
+        "one -1/-1 counter survives the pairing"
+    );
+    assert_eq!(
+        (game.power(blocker), game.toughness(blocker)),
+        (3, 3),
+        "a 4/4 net one -1/-1 counter"
+    );
+}
+
+#[test]
+fn phyresis_grants_infect_to_the_enchanted_creature() {
+    // Phyresis: "Enchanted creature has infect." — the grant runs through the same keyword check
+    // the printed keyword does, so the Bear's combat damage becomes poison counters.
+    let mut game = Game::new();
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // 2/2
+    let aura = game.spawn_in_hand(PlayerId(0), card("Phyresis"));
+    fund_cast_resolve(&mut game, PlayerId(0), aura, Some(Target::Object(bear)));
+
+    attack_with(&mut game, vec![bear]);
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(game.life(PlayerId(1)), 20, "infect damage costs no life");
+    assert_eq!(
+        game.player_counters(PlayerId(1), PlayerCounterKind::Poison),
+        2,
+        "the enchanted Bear poisons instead"
+    );
+}
+
+#[test]
+fn plague_stinger_flies_and_infects() {
+    // Plague Stinger: "Flying / Infect" — a 1/1 flier whose combat damage is a poison counter.
+    let mut game = Game::new();
+    let stinger = game.spawn_on_battlefield(PlayerId(0), card("Plague Stinger"));
+    assert!(game.has_keyword(stinger, Keyword::Flying));
+
+    attack_with(&mut game, vec![stinger]);
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(game.life(PlayerId(1)), 20);
+    assert_eq!(
+        game.player_counters(PlayerId(1), PlayerCounterKind::Poison),
+        1
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -92306,5 +93148,403 @@ fn alpha_deathclaw_destroys_on_etb_and_again_on_monstrosity() {
         game.zone_of(monstrous_victim),
         Zone::Graveyard,
         "the becomes-monstrous trigger destroyed its target too"
+    );
+}
+
+#[test]
+fn inspiring_call_draws_one_card_per_creature_with_a_plus_one_counter() {
+    // Inspiring Call ({2}{G}): "Draw a card for each creature you control with a +1/+1 counter
+    // on it."
+    let mut game = Game::new();
+    let countered1 = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let countered2 = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let _bare = game.spawn_on_battlefield(PlayerId(0), VANILLA); // no counter — doesn't count
+    game.add_plus_counter(countered1);
+    game.add_plus_counter(countered2);
+
+    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.fund_mana(PlayerId(0));
+    let call = game.spawn_in_hand(PlayerId(0), card("Inspiring Call"));
+    let library_before = game.library_size(PlayerId(0));
+    cast_and_resolve(&mut game, call, None);
+
+    assert_eq!(
+        game.library_size(PlayerId(0)),
+        library_before - 2,
+        "one draw per creature with a +1/+1 counter — the counterless creature doesn't count"
+    );
+}
+
+#[test]
+fn inspiring_call_grants_indestructible_only_to_creatures_with_counters() {
+    // Inspiring Call: "Those creatures gain indestructible until end of turn" — "those" is the
+    // set counted above, not every creature you control.
+    let mut game = Game::new();
+    let countered = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let bare = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    game.add_plus_counter(countered);
+
+    game.fund_mana(PlayerId(0));
+    let call = game.spawn_in_hand(PlayerId(0), card("Inspiring Call"));
+    cast_and_resolve(&mut game, call, None);
+
+    assert!(game.has_keyword(countered, Keyword::Indestructible));
+    assert!(
+        !game.has_keyword(bare, Keyword::Indestructible),
+        "a creature with no +1/+1 counter isn't among \"those creatures\""
+    );
+}
+
+#[test]
+fn innkeepers_talent_ward_is_absent_below_level_two() {
+    // Innkeeper's Talent's Level 2 static ("Permanents you control with counters on them have
+    // ward {1}") must not function while the Class sits at level 1 — regression on
+    // `keyword_anthem_static_grants` never reading `min_level`.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let talent = game.spawn_in_hand(PlayerId(0), card("Innkeeper's Talent"));
+    cast_and_resolve(&mut game, talent, None);
+
+    let countered = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    game.add_plus_counter(countered);
+
+    assert!(
+        !game.has_keyword(countered, Keyword::Ward(1)),
+        "the Class is still level 1 — Level 2's ward hasn't been gained yet"
+    );
+}
+
+#[test]
+fn innkeepers_talent_level_two_grants_ward_to_permanents_with_counters() {
+    // After leveling to 2, "Permanents you control with counters on them have ward {1}" is live
+    // for any counter kind, not only +1/+1 (CR 122.1's unqualified "counter").
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let talent_in_hand = game.spawn_in_hand(PlayerId(0), card("Innkeeper's Talent"));
+    cast_and_resolve(&mut game, talent_in_hand, None);
+    let talent = battlefield_named(&game, PlayerId(0), "Innkeeper's Talent")[0];
+
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: talent,
+        ability_index: 1, // {G}: Level 2
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("{G}: Level 2 should be activatable");
+    resolve_top_of_stack(&mut game);
+
+    let countered = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let bare = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    game.add_plus_counter(countered);
+
+    assert!(game.has_keyword(countered, Keyword::Ward(1)));
+    assert!(
+        !game.has_keyword(bare, Keyword::Ward(1)),
+        "no counter on it — the anthem's `with_counter = \"any\"` gate excludes it"
+    );
+}
+
+#[test]
+fn cankerbloom_destroy_artifact_mode_targets_an_artifact() {
+    // Cankerbloom ({1}, Sacrifice this creature: Choose one — Destroy target artifact. / Destroy
+    // target enchantment. / Proliferate.): mode 0 is chosen at activation (CR 601.2b), then that
+    // mode's own target is requested — only artifacts are legal.
+    let mut game = Game::new();
+    let cankerbloom = game.spawn_on_battlefield(PlayerId(0), card("Cankerbloom"));
+    let artifact = game.spawn_on_battlefield(PlayerId(0), card("Sol Ring"));
+    let enchantment = game.spawn_on_battlefield(PlayerId(0), card("Doubling Season"));
+    game.fund_mana(PlayerId(0));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: cankerbloom,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("Cankerbloom's ability should be activatable");
+    assert_eq!(
+        game.zone_of(cankerbloom),
+        Zone::Graveyard,
+        "sacrificed as a cost, before the mode is even chosen"
+    );
+
+    let Some(PendingChoice::ChooseMode { .. }) = game.pending_choice() else {
+        panic!(
+            "activation pauses on the mode choice before any target; got {:?}",
+            game.pending_choice()
+        );
+    };
+    game.submit(Intent::ChooseMode {
+        player: PlayerId(0),
+        mode: 0, // Destroy target artifact.
+    })
+    .expect("choosing the destroy-artifact mode is legal");
+
+    let Some(PendingChoice::ChooseTarget { legal, .. }) = game.pending_choice() else {
+        panic!(
+            "the destroy-artifact mode pauses on its own target; got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(legal.contains(&Target::Object(artifact)));
+    assert!(
+        !legal.contains(&Target::Object(enchantment)),
+        "the destroy-artifact mode's legal set is artifacts only"
+    );
+
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(artifact)],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.zone_of(artifact),
+        Zone::Graveyard,
+        "the artifact is destroyed"
+    );
+    assert_eq!(
+        game.zone_of(enchantment),
+        Zone::Battlefield,
+        "the enchantment was never a legal target for this mode"
+    );
+}
+
+#[test]
+fn cankerbloom_destroy_enchantment_mode_targets_an_enchantment() {
+    // Mode 1 ("Destroy target enchantment.") must re-derive its own legal set — proof that the
+    // target request comes from the chosen mode, not a single pre-chosen target shared by all
+    // three modes.
+    let mut game = Game::new();
+    let cankerbloom = game.spawn_on_battlefield(PlayerId(0), card("Cankerbloom"));
+    let artifact = game.spawn_on_battlefield(PlayerId(0), card("Sol Ring"));
+    let enchantment = game.spawn_on_battlefield(PlayerId(0), card("Doubling Season"));
+    game.fund_mana(PlayerId(0));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: cankerbloom,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("Cankerbloom's ability should be activatable");
+    game.submit(Intent::ChooseMode {
+        player: PlayerId(0),
+        mode: 1, // Destroy target enchantment.
+    })
+    .expect("choosing the destroy-enchantment mode is legal");
+
+    let Some(PendingChoice::ChooseTarget { legal, .. }) = game.pending_choice() else {
+        panic!(
+            "the destroy-enchantment mode pauses on its own target; got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(legal.contains(&Target::Object(enchantment)));
+    assert!(
+        !legal.contains(&Target::Object(artifact)),
+        "the destroy-enchantment mode's legal set is enchantments only"
+    );
+
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(enchantment)],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.zone_of(enchantment),
+        Zone::Graveyard,
+        "the enchantment is destroyed"
+    );
+    assert_eq!(
+        game.zone_of(artifact),
+        Zone::Battlefield,
+        "the artifact was never a legal target for this mode"
+    );
+}
+
+#[test]
+fn cankerbloom_proliferate_mode_needs_no_target() {
+    // Mode 2 ("Proliferate.") has no target of its own — the mode choice goes straight to the
+    // proliferate choice, never a `ChooseTarget` pause.
+    let mut game = Game::new();
+    let cankerbloom = game.spawn_on_battlefield(PlayerId(0), card("Cankerbloom"));
+    let countered = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    game.add_plus_counter(countered);
+    game.fund_mana(PlayerId(0));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: cankerbloom,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("Cankerbloom's ability should be activatable");
+    game.submit(Intent::ChooseMode {
+        player: PlayerId(0),
+        mode: 2, // Proliferate.
+    })
+    .expect("choosing the proliferate mode is legal");
+    assert!(
+        game.pending_choice().is_none(),
+        "no target pause — the mode with no target of its own goes straight to the stack; got {:?}",
+        game.pending_choice()
+    );
+    resolve_top_of_stack(&mut game); // the ability resolves → pauses on the proliferate choice
+
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::Proliferate { .. })
+        ),
+        "the proliferate mode has no target of its own — straight to the proliferate choice; got {:?}",
+        game.pending_choice()
+    );
+}
+
+// ── Multikicker (CR 702.34, fidelity increment #11) ─────────────────────────────────────
+
+#[test]
+fn multikicker_charges_its_cost_once_per_payment() {
+    // Everflowing Chalice: "Multikicker {2} (You may pay an additional {2} any number of times
+    // as you cast this spell.)" — paying it three times adds {2} × 3 = {6} to the printed {0}
+    // (CR 702.34a), for a total cost of {6}.
+    let mut g = TestGame::new();
+    tap_forests_for_mana(&mut g, PlayerId(0), 6);
+    let chalice = g.spawn_in_hand(PlayerId(0), card("Everflowing Chalice"));
+    g.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: chalice,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 3,
+        alternative_cost: false,
+    })
+    .expect("6 green mana pays the printed {0} plus three {2} multikicker payments");
+    assert_eq!(
+        g.floating_mana(PlayerId(0)),
+        0,
+        "all 6 mana was spent paying multikicker three times"
+    );
+
+    // A caster with only {4} can't pay the {6} total.
+    let mut g = TestGame::new();
+    tap_forests_for_mana(&mut g, PlayerId(0), 4);
+    let chalice = g.spawn_in_hand(PlayerId(0), card("Everflowing Chalice"));
+    let rejected = g.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: chalice,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 3,
+        alternative_cost: false,
+    });
+    assert_eq!(
+        rejected,
+        Err(Reject::CannotPayCost),
+        "4 mana can't pay the {{6}} total cost of paying multikicker three times"
+    );
+}
+
+#[test]
+fn everflowing_chalice_enters_with_a_charge_counter_for_each_time_it_was_kicked() {
+    // "This artifact enters with a charge counter on it for each time it was kicked" (CR 702.34b).
+    let mut g = TestGame::new();
+    let chalice = g.spawn_in_hand(PlayerId(0), card("Everflowing Chalice"));
+    g.cast(chalice).multikicking(2).resolve();
+    let chalice = find_battlefield_permanent(&g, "Everflowing Chalice");
+    assert_eq!(
+        g.counters_of_kind(chalice, CounterKind::Charge),
+        2,
+        "kicked twice ⇒ 2 charge counters"
+    );
+
+    let mut g = TestGame::new();
+    let unkicked = g.spawn_in_hand(PlayerId(0), card("Everflowing Chalice"));
+    g.cast(unkicked).resolve();
+    let unkicked = find_battlefield_permanent(&g, "Everflowing Chalice");
+    assert_eq!(
+        g.counters_of_kind(unkicked, CounterKind::Charge),
+        0,
+        "kicked zero times ⇒ no charge counters, no crash reading the spell after it left the stack"
+    );
+}
+
+#[test]
+fn everflowing_chalice_taps_for_colorless_mana_per_charge_counter() {
+    // "{T}: Add {C} for each charge counter on this artifact."
+    let mut g = TestGame::new();
+    let chalice = g.spawn_in_hand(PlayerId(0), card("Everflowing Chalice"));
+    g.cast(chalice).multikicking(2).resolve();
+    let chalice = find_battlefield_permanent(&g, "Everflowing Chalice");
+    assert_eq!(g.counters_of_kind(chalice, CounterKind::Charge), 2);
+
+    let before = g.colorless_in_pool(PlayerId(0));
+    g.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: chalice,
+        ability_index: 1, // 0 = the static enters-with-counters ability, 1 = the tap ability
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    assert_eq!(
+        g.colorless_in_pool(PlayerId(0)) - before,
+        2,
+        "{{C}} per charge counter — two charge counters, two colorless mana"
+    );
+}
+
+#[test]
+fn multikicker_count_is_rejected_on_a_spell_without_multikicker() {
+    // A client can't opt into a multikicker rider a spell doesn't print (CR 702.34 only applies
+    // to a spell whose text actually says "Multikicker").
+    let mut game = TestGame::new();
+    let shock = game.spawn_in_hand(PlayerId(0), card("Shock"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+
+    assert_eq!(
+        game.cast(shock)
+            .at(Target::Object(bear))
+            .multikicking(1)
+            .try_submit(),
+        Err(Reject::CannotPayCost),
+        "Shock has no multikicker cost to pay"
     );
 }

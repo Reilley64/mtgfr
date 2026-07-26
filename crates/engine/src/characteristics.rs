@@ -1511,6 +1511,11 @@ impl Game {
                 else {
                     continue;
                 };
+                // A level-gated anthem functions only at or above its level (CR 717.5). A
+                // battlefield source has a real level; a graveyard-functional one is trivially 1.
+                if ability.min_level > self.as_permanent(source).map_or(1, |p| p.level) {
+                    continue;
+                }
                 if !self.permanent_matches(&filter, candidate, candidate_controller, Some(source)) {
                     continue;
                 }
@@ -2067,6 +2072,7 @@ mod cache_tests {
             buyback: None,
             strive: None,
             replicate: None,
+            multikicker: None,
         },
         reduce_own_generic: None,
     };
@@ -2292,6 +2298,7 @@ mod cache_tests {
                 bought_back: false,
                 strive_count: 0,
                 replicate_count: 0,
+                multikicker_count: 0,
                 serra_recursion: false,
                 bestowed: false,
                 face_down: false,
@@ -2476,6 +2483,7 @@ mod characteristic_query_tests {
             buyback: None,
             strive: None,
             replicate: None,
+            multikicker: None,
         },
         reduce_own_generic: None,
     };

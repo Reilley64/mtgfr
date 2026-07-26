@@ -188,6 +188,17 @@ copies of the spell immediately (CR 702.108b — reusing the same `Game::mint_sp
 `copy_this_spell` uses, including each copy's own CR 707.10c retarget pause); a copy of a
 permanent spell (not just instant/sorcery) resolves as a **token** (CR 707.10a) that ceases to
 exist once it leaves the battlefield, including falling unattached as an Aura (CR 111.7/704.5m).
+`[cost.additional.multikicker]` (Multikicker, CR 702.34 — Everflowing Chalice's "Multikicker {2}";
+the same `[cost]`-shaped sub-table, e.g. `[cost.additional.multikicker]` / `generic = 2`) scales
+with a caster-declared *payment* count exactly like Replicate, committed pre-stack on
+`Intent::Cast`'s `multikicker_count` (0 for none): `Game::cast_cost` multiplies
+`[cost.additional.multikicker]` by the count directly and adds it in, and the count is recorded on
+the resolved spell (`Spell::multikicker_count`). Unlike Replicate, Multikicker doesn't mint copies
+— the count is copied onto the resulting permanent (`Permanent::entered_times_kicked`) as it
+enters (CR 702.34c), read back by the `"times_kicked"` `Amount` (below) for a
+"enters with a counter for each time it was kicked" rider. The existing single-payment `kicked`
+flag/`if_kicked` `Amount` sugar is unrelated and untouched — it stays the binary Kicker (CR 702.33)
+shape; a card printing both isn't modeled.
 
 `reduce_own_generic` is a *self* cost reducer (CR 601.2f/702.41 "this spell costs N less to cast")
 — an [`Amount`](#amounts) resolved with the spell's own controller/source/`{X}` at cast time and
@@ -302,7 +313,13 @@ and `myriad` (CR 702.114 — like Prowess, the whole triggered ability *is* the 
 synthesizes the per-opponent tapped-and-attacking token mint in `Game::queue_myriad_triggers`,
 never author it as an `[[abilities]]`. No pool card prints this keyword yet — Muddle, the
 Ever-Changing grants it to itself temporarily via `become_copy_of_target_creature_gaining_myriad`,
-§6).
+§6), and `infect` (CR 702.90 — this source's damage to a creature is dealt as that many `-1/-1`
+counters and its damage to a player as that many `poison` counters; the damage is still dealt at
+its original size, so lifelink, deathtouch, the commander tally and the "deals damage" markers all
+still see it. Applied at the two shared damage chokes `Game::creature_damage_events` /
+`Game::player_damage_events`, so printed (`plague_stinger.toml`, `ichor_rats.toml`) and granted
+(`phyresis.toml`'s `grant_to_attached`) infect behave identically. Damage to planeswalkers is
+unchanged).
 
 Parametrized keywords are a single-key table:
 
@@ -1082,7 +1099,7 @@ See `docs/superpowers/specs/2026-07-23-nested-effect-families-design.md` for the
 | `put_land_from_hand` | `tapped` (bool, default `false`) | no (controller may put a land from hand onto the battlefield, CR 305.9 — Eureka Moment; doesn't use the land drop) |
 | `put_creature_from_hand` | — | no (the creature sibling of `put_land_from_hand`: controller may put a creature card from hand onto the battlefield, entering via the same ETB path as any other put-onto-the-battlefield effect; on acceptance grants haste — an until-end-of-turn `TempBoost`, exact here because the pool's only consumer always leaves the battlefield this same end step — and schedules a CR 603.7 delayed `sacrifice/object` against the deployed permanent at the next end step. No creature in hand is a no-op. ponytail: haste and the end-step sacrifice are unconditional — the pool's only consumer always wants both — rather than bool-flagged like `create_token_copy`'s `haste`/`sacrifice_at_next_end_step`; parametrize if a second card needs a different combination — Cauldron Dance's "You may put a creature card from your hand onto the battlefield. That creature gains haste. Its controller sacrifices it at the beginning of the next end step.") |
 | `cast_creature_face_down` | — | no (controller may cast a creature card from hand — one "whose mana cost could be paid by some amount of, or all of, the mana you spent on {X}" activating this ability (CR 107.3; each colored pip needs a spent unit of its color, a hybrid pip either of its two, generic any unit — read from the resolving ability's context) — **face down as a 2/2 creature spell** (CR 708.2) without paying its mana cost; "you may," so no payable creature is a no-op — Illusionary Mask's `{X}` ability. Pair with `timing = "activated"`, `activation_cost = { x = true }`, `sorcery_speed = true`) |
-| `choose_one` | `modes` (array of effects) | no ("Choose one —" on a *triggered* ability: the controller picks one non-targeting mode at resolution — Atsushi) |
+| `choose_one` | `modes` (array of effects) | no ("Choose one —" — Atsushi's *triggered* form: the controller picks one non-targeting mode at resolution. On a `timing = "activated"` ability (CR 601.2b — Cankerbloom's "{1}, Sacrifice this creature: Choose one — Destroy target artifact. / Destroy target enchantment. / Proliferate."), the mode is instead chosen as the ability is activated, before any target — each mode's own target (if it has one) is requested next, so modes may target different things. The activation's own `target` intent parameter is unused on a `choose_one` ability; leave it `None`) |
 | `become_prepared` | — | no (marks the source prepared so its `[back]` face may be cast — prepare DFCs, §1) |
 | `flip_source` | — | no (CR 712 — a Kamigawa flip card "flips": the source permanent permanently uses its `[back]` face's characteristics, name/P/T/types/abilities, via `Permanent::flipped`. One-way (nothing unflips it) and idempotent; the object is unchanged (CR 712.5 — counters, attachments, tapped state persist). Nezumi Graverobber → Nighteyes the Devourer. Reuses the `[back]` inline card table as the flipped face) |
 | `level_up` | `level` (u8) | no (a Class's "Level N" ability, CR 717.2: sets the source's level to `level`. Always on a `timing = "activated"`, `sorcery_speed = true` ability; the engine offers it only while the source is at `level - 1`, so each level is gained exactly once. See the Class worked example, §9) |
@@ -1422,6 +1439,12 @@ Write one of:
   the storm spell's own later-minted copies) — only meaningful on a `timing = "when_you_cast_this"`
   ability's effect (Reaping the Graves' Storm, paired with `copy_triggering_spell`'s
   `last_known_information = true`)
+- `"times_kicked"` — how many times the resolving spell's Multikicker cost was paid (CR 702.34c —
+  `[cost.additional.multikicker]`, above), 0 for none — reads the source both as the resolving
+  spell (a cast-time cost) and, once it enters, the fresh permanent (`Game::times_kicked`), since
+  an `enters_with_counters` static's `source` is already the permanent by the time it resolves.
+  Everflowing Chalice's "This artifact enters with a charge counter on it for each time it was
+  kicked": `{ mode = "enters_with_counters", count = "times_kicked", kind = "charge" }`
 - `{ auras_attached_to_source = {} }` — the count of Auras (any controller) currently attached to
   the effect's source (CR 303.4) — Kor Spiritdancer's "gets +2/+2 for each Aura attached to it"
   (Amounts carry no per-unit coefficient, so the printed +2/+2 is two summed self-only anthem
@@ -1569,6 +1592,7 @@ for a common type set, a shorthand string:
 | `color` | `"any"` (default), `"monocolored"`, `"white"`/`"blue"`/`"black"`/`"red"`/`"green"` | color-count restriction (Vanishing Verse's "monocolored permanent") or a specific color (Oran-Rief, the Vastwood's "each green creature") |
 | `not_color` | `"white"`/`"blue"`/`"black"`/`"red"`/`"green"`, optional | does NOT have this color (CR 105.2a's negation — Terror/Shriekmaw's "nonblack creature"); a colorless permanent always passes. Sugar for `color`'s negated arm — sets the same field as `color` (don't set both). |
 | `modified` | bool (default `false`) | `true` requires the permanent be "modified" (CR 701.29: has any counter, is enchanted by an Aura, or is equipped — Silkguard's "modified creatures you control gain hexproof") |
+| `with_counter` | `"any"`/`"plus_one_plus_one"`, optional | counter axis (CR 122.1), narrower than `modified` above (which also matches an equipped/enchanted permanent with no counter at all): `"any"` requires any counter of any kind (Innkeeper's Talent's "permanents you control with counters on them"), `"plus_one_plus_one"` requires specifically a +1/+1 counter (Inspiring Call's "creature you control with a +1/+1 counter on it"); omit to not gate on counters. ponytail: `"any"` reads `Game::has_any_counter`, which walks +1/+1, every `CounterKind` and the finality counter — a Class's level is a plain `Permanent::level` scalar rather than the level counters CR 717.2 puts on it, so a leveled Class doesn't match `"any"`; model level as real counters if a card ever needs it to |
 | `attacking` | bool (default `false`) | `true` restricts to creatures declared as attackers this combat (Tajic's Mentor — "target attacking creature") |
 | `attacking_you` | bool (default `false`) | `true` restricts to creatures attacking *this filter's own controller* (Soul Snare's "creature that's attacking you") — narrower than `attacking`, which matches an attacker no matter whose defender it is. Reads [`Game::defender_of`], the per-attacker declared-defender lookup goad/attack-tax already use |
 | `power_less_than_source` | bool (default `false`) | `true` requires power strictly less than the filter's own source permanent's power (Mentor, CR 702.121a "lesser power"); meaningless without a source, so only meaningful on a targeted ability's own target filter |
@@ -2010,7 +2034,9 @@ characteristic recompute (engine-core-and-event-model spec — additive layers, 
   (`anthem_static`'s `keywords`, §6), or condition-gated on the card itself
   (`conditional_keywords`, §1) — no "gains a keyword for the rest of the game" grant.
 - **Modal *triggered* abilities** are supported only for *non-targeting* modes (`choose_one`,
-  §6 — Atsushi); a triggered mode that needs a freshly chosen target isn't. Modal spells take
+  §6 — Atsushi); a triggered mode that needs a freshly chosen target isn't. A modal *activated*
+  ability's modes each choose their own target fine (`choose_one` on `timing = "activated"`, §6 —
+  Cankerbloom). Modal spells take
   `choose`/`choose_max` (§1), but there are no per-mode riders (entwine, escalate).
 - **Day/night, monarch, and initiative** are still out. (Permanent one-shot control change IS
   expressible — `gain_control`, §6 — Entrancing Melody.)

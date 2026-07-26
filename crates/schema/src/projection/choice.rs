@@ -1067,6 +1067,7 @@ mod coverage_tests {
                     target: None,
                     x: 0,
                     modes: CHOOSE_ONE_MODES,
+                    activated: false,
                 },
                 |view| matches!(view, PendingChoiceView::ChooseMode { .. }),
             ),

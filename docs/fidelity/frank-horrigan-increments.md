@@ -37,7 +37,31 @@ turn-scoped `attacked_this_turn` bool on `Permanent`, set at declare-attackers a
 existing attack bookkeeping and cleared at untap — not "is currently attacking", which lapses at
 end of combat while the printed grant does not. *Cards:* agent_frank_horrigan.
 
-### 2. `counter-filter-axis-and-class-level-gating` — 2 cards, S
+### 2. `counter-filter-axis-and-class-level-gating` — 2 cards, S — LANDED 2026-07-26
+_Landed 2026-07-26: (a) `PermanentFilter::with_counter: Option<CounterAxis>` (`Any` /
+`PlusOnePlusOne`), matched in `Game::permanent_matches` beside the `modified` guard. (b) the
+falsified sentence below is corrected in place — the real remaining gap was
+`characteristics.rs`'s `keyword_anthem_static_grants` (the `KeywordAnthem` static scanner), which
+never read `ability.min_level`; it now guards the same way `matching_anthems`
+(`characteristics.rs:1298`) and `cost_reduction` (`characteristics.rs:1737`) already did. Swept
+every other `Timing::Static` scanner in `characteristics.rs` for the same gap: the attachment-scan
+family (`ControlAttached`, `SetAttachedBasePt`, goad/cant-attack/cant-block grants, etc.) is
+structurally exempt — an Aura can't be a Class, so it never carries `min_level`. Left deliberately
+ungated, with no driving card yet: `granted_mana_abilities` (`GrantManaAbility`),
+`has_no_max_hand_size` (`NoMaximumHandSize`), `grants_graveyard_recursion`
+(`PlayFromGraveyardOncePerTurn`), the token/life-gain/cast-X replacement scanners
+(`TokenReplacement`, `LifeGainReplacement`, `CastXReplacement`), and the four combat/noncombat
+damage-prevention self-shield queries (`noncombat_damage_prevented_to_creature`,
+`phantom_shield_active`, `combat_damage_prevented_to_creature`,
+`combat_damage_prevented_by_source`) — each is a real latent instance of the same bug shape if a
+future Class ever carries one of those statics at a level, but none does today; gate them when a
+card actually needs it. inspiring_call is fully faithful; innkeepers_talent keeps a trimmed
+`approximates`. Still blocked: (i) innkeepers_talent's Level 3 counter-doubling replacement, on
+#19; (ii) innkeepers_talent's Level 2 ward doesn't cover the Class itself — the engine tracks a
+Class's level as a plain `Permanent::level` scalar, not the level counters CR 717.2 puts on it,
+so `has_any_counter` returns false for a leveled Class and it fails its own `with_counter = "any"`
+filter. Fixing that means modeling level as real counters (a Class-model change, out of this
+increment); noted on the card and on the `with_counter` row in DSL_REFERENCE._
 Depends on: nothing.
 Two small gaps that meet on Innkeeper's Talent.
 (a) `PermanentFilter` has no counter axis. `modified` (CR 701.29) is strictly broader — it also
@@ -45,11 +69,14 @@ matches Auras and Equipment — so it can't express "creature you control with a
 it" (Inspiring Call, for both its `per_permanent` draw count and its indestructible grant) or
 "permanents you control with counters on them" (Innkeeper's Talent Level 2). *Sketch:* a
 `with_counter: Option<CounterAxis>` field distinguishing "any counter" from "+1/+1 specifically".
-(b) **Falsifies `triggers.rs:2946`.** `min_level` is consulted at exactly one site
-(`triggers.rs:2960`), so a Class's level-gated *static* abilities function at level 1 — Innkeeper's
-Talent's Level 2 ward and Level 3 doubler would both be live the moment it hits the battlefield.
-*Sketch:* read `ability.min_level` in the static scanners (`characteristics.rs`) and the bespoke
-trigger scanners the note names. *Cards:* inspiring_call, innkeepers_talent (with #17, #19).
+(b) `min_level` is consulted at `triggers.rs:2981`, `cast.rs:2035` (activated abilities),
+`characteristics.rs:1298` (the `Anthem` scanner), and `characteristics.rs:1737` (the
+`ReduceSpellCost` scanner) — but *not* by `characteristics.rs`'s `keyword_anthem_static_grants`
+(the `KeywordAnthem` static scanner), so a Class's level-gated keyword-anthem statics function at
+level 1 — Innkeeper's Talent's Level 2 ward would be live the moment it hits the battlefield.
+*Sketch:* copy the `min_level` guard `matching_anthems` already uses into
+`keyword_anthem_static_grants`. *Cards:* inspiring_call, innkeepers_talent (Level 3's doubler
+static waits on #19).
 
 ### 3. `put-counters-each-counter-kind` — 1 card, S — LANDED 2026-07-26
 _Landed 2026-07-26: `CountersEffect::PutCountersEach` gained the same `kind: Option<CounterKind>`
@@ -143,7 +170,26 @@ the target spec, validated when the target set is submitted (CR 601.2c — legal
 the whole set, so this is a set-level predicate, not a per-target filter). *Cards:*
 rampaging_yao_guai.
 
-### 10. `per-mode-targets-on-activated-abilities` — 1 card, M
+### 10. `per-mode-targets-on-activated-abilities` — 1 card, M — LANDED 2026-07-26
+_Landed 2026-07-26: `ChoiceRequest::ChooseMode`/`PendingChoice::ChooseMode` gained an
+`activated: bool` (existing resolution-time triggered-ability raises pass `false`, unchanged
+behavior). `Game::activate_ability` now branches on `Effect::ChooseOne` once costs are paid and
+the ability would otherwise hit the stack, raising `ChooseMode { activated: true, target: None,
+… }` instead of placing. `answer_choose_mode` splits on the flag: `false` is the original
+run-immediately triggered-ability path; `true` takes the chosen mode and either places it
+straight onto the stack (`place_ability_second_clause`, mirroring the `ChooseTarget` handler's
+own "up to N, declined" placement call) when the mode's own `effect.target()` is
+`TargetSpec::None` (Cankerbloom's proliferate mode), or raises a fresh `ChoiceRequest::ChooseTarget
+{ activated: true, … }` scoped to that mode's own legal set (the destroy-artifact/
+destroy-enchantment modes) — reusing the existing `ChooseTarget` answer handler and its
+`place_ability_second_clause` call verbatim, no new pending machinery. An empty legal set for the
+chosen mode is `Reject::IllegalChoice`, leaving the mode pause standing (CR 601.2c: a mode with no
+legal target can't be chosen) rather than stranding the activator on an unpayable pick. `//
+ponytail:` noted on the variant: CR 601.2b orders mode choice ahead of CR 601.2h cost payment;
+this engine pays costs first and raises the pause once the ability would otherwise hit the stack,
+unobservable because no player gets priority between the two. `cankerbloom` authored fresh
+(absent from the pool), fully faithful apart from the pool's standard proliferate residual
+(increment #17, not in this wave). Still blocked: nothing._
 Depends on: nothing.
 `Effect::ChooseOne` raises a `ChoiceRequest::ChooseMode` carrying the *ability's* single
 pre-chosen target (`resolution/pause_choose.rs`), so an activated modal ability whose modes
@@ -152,7 +198,28 @@ can't be expressed. The card-level `modal`/`choose` flags are spell-timing only.
 the mode first, then raise that mode's own target request — the same two-step the spell path
 already does, lifted onto activated abilities. *Cards:* cankerbloom.
 
-### 11. `multikicker` — 1 card, M
+### 11. `multikicker` — 1 card, M — LANDED 2026-07-26
+_Landed 2026-07-26: `AdditionalCost::multikicker: Option<&'static Cost>` (TOML
+`[cost.additional.multikicker]`, the same `[cost]`-shaped sub-table as `kicker`/`replicate`) —
+copied end to end from Replicate, not folded into the existing binary `kicker`/`kicked` flag.
+`Intent::Cast` gained `multikicker_count: u8` (proto `intent.proto` field 15, next free after
+`alternative_cost = 14`), threaded through `Game::cast_cost`'s ×N pip fold beside Replicate's,
+`Event::SpellCast`, and `Object::Spell::multikicker_count`; `playable.rs` rejects a nonzero count
+declared against a spell with no Multikicker cost, mirroring Replicate's own gate.
+`Permanent::entered_times_kicked: u8` is locked in from `Spell::multikicker_count` at
+`Event::PermanentEntered` (`from` is still the resolving Spell at that point, the same "read it
+before the spell is gone" idiom as `evoked`), and the new `Amount::TimesKicked` (TOML
+`"times_kicked"`) reads a new `Game::times_kicked` helper that checks *both* `Object::Spell` and
+`Object::Permanent` — the enters-with-counters site's `source` is already the fresh permanent by
+resolution time, so a spell-only read would have silently returned 0 (caught by a dedicated TDD
+test). Not surfaced on the wire to the client (`VisibleEvent::SpellCast` drops it with a
+`ponytail:` note, same as `replicate_count`); client codegen not required (gitignored, no client
+reader). everflowing_chalice authored fresh and is fully faithful (`{0}` cost needed an explicit
+`[cost]\ngeneric = 0` table for the frame audit to match Scryfall's printed `{0}`, since an absent
+`[cost]` also parses to zero but audits as "no cost text"). The existing single-kicker `kicked: bool`
+and `Amount::IfSpellKicked` are untouched; `types/mana.rs`'s single-kicker ponytail is trimmed to
+name only its one remaining residual (a card printing both a single Kicker and a Multikicker cost
+isn't modeled — none in the pool does). Still blocked: nothing._
 Depends on: nothing. **Falsifies `types/mana.rs:223`** ("single-kicker only … grow those from a
 real card that needs one" — the deferral condition is now met).
 *Sketch:* a `multikicker` cost that may be paid any number of times, recording the *count* paid on
@@ -292,6 +359,20 @@ players becomes poison counters. This is a damage *replacement*, so it must sit 
 damage choke in `resolution/damage.rs` / `combat.rs::damage_player`, not only on the combat path —
 Infectious Bite and any noncombat source must route through it too. Lifelink and deathtouch still
 apply off the original damage amount. *Cards:* plague_stinger, ichor_rats, phyresis (Aura grant).
+*2026-07-26 — slice 2 built (the XL is not LANDED; slices 3–5 remain).* `Keyword::Infect` plus two
+shared chokes in `resolution/damage.rs` — `Game::creature_damage_events` (`Event::DamageMarked` →
+`Event::KindCountersPlaced { kind: MinusOneMinusOne }`) and `Game::player_damage_events`
+(`Event::LifeChanged` → `Event::PlayerCountersPlaced { kind: Poison }`) — with every damage mint
+routed through them: all eight `mint_damage` arms (single target, each-creature, each-player,
+each-other-opponent, to-entering-permanent, to-self, to-target-controller) and `combat.rs`'s
+blocker-assignment loop, `deal_creature_damage` (combat damage **and** fight) and `damage_player`.
+Prevention/protection guards, `DamageDealtToPlayer` / `CombatDamageDealtToCreature` /
+`DeathtouchMarked`, lifelink and the commander tally all still fire off the original amount;
+planeswalker damage is untouched. `resolve_deal_damage_to_entering`'s "did the damage land" probe
+recognises the counter form too. plague_stinger, phyresis and ichor_rats are faithful. Residual
+(`ponytail:` on `creature_damage_events`): the two watchers that ride a bare `Event::DamageMarked`
+— Armadillo Cloak's enchanted-host damage trigger and Vampiric Dragon's `damaged_this_turn` tally —
+don't see infect damage; upgrade path is a source-carrying `Event::DamageDealtToCreature` marker.
 
 **Slice 3 — `Keyword::Toxic(u8)`.** CR 702.164: *in addition to* its normal combat damage, a
 creature with toxic N gives the player it damages N poison counters. Unlike infect this does not

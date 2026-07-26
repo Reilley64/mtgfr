@@ -278,6 +278,7 @@ impl Game {
                     evoked,
                     strive_count,
                     replicate_count,
+                    multikicker_count,
                     alternative_cost,
                 } => self.cast(
                     player,
@@ -293,6 +294,7 @@ impl Game {
                     evoked,
                     strive_count,
                     replicate_count,
+                    multikicker_count,
                     alternative_cost,
                 )?,
                 Intent::PlayLand { player, object } => self.play_land(player, object)?,
@@ -466,6 +468,7 @@ impl Game {
                 false,
                 false,
                 false,
+                0,
                 0,
                 0,
                 false,

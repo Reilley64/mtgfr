@@ -722,9 +722,15 @@ impl Game {
         Ok(events)
     }
 
-    /// Answer a [`PendingChoice::ChooseMode`]: resolve the chosen mode of a "choose one" triggered
-    /// ability ([`Effect::ChooseOne`]) through the ordinary resolution pipeline, carrying the
-    /// trigger's own `source`/`target`/`x` context. The chosen sub-effect may itself pause.
+    /// Answer a [`PendingChoice::ChooseMode`]. Two shapes, split on `activated` (see the variant
+    /// doc):
+    ///
+    /// - `activated == false`: a "choose one" triggered ability ([`Effect::ChooseOne`]) — the
+    ///   chosen mode runs immediately through the ordinary resolution pipeline, carrying the
+    ///   trigger's own `source`/`target`/`x` context. The chosen sub-effect may itself pause.
+    /// - `activated == true`: a modal activated ability (CR 601.2b — Cankerbloom) — the chosen
+    ///   mode's own target (if it has one) is requested next, then the mode is placed on the
+    ///   stack (never run immediately; an activated ability always goes to the stack).
     pub(crate) fn answer_choose_mode(
         &mut self,
         player: PlayerId,
@@ -735,6 +741,7 @@ impl Game {
             target,
             x,
             modes,
+            activated,
             ..
         }) = self.pending_choice.clone()
         else {
@@ -743,11 +750,54 @@ impl Game {
         if mode >= modes.len() {
             return Err(Reject::IllegalMode);
         }
-        self.finish_answer();
+        let chosen = modes[mode];
 
+        if activated {
+            let spec = chosen.target();
+            if spec == TargetSpec::None {
+                self.finish_answer();
+                let mut events = Vec::new();
+                self.place_ability_second_clause(
+                    player,
+                    source,
+                    chosen,
+                    None,
+                    x,
+                    [0; 6],
+                    true,
+                    &mut events,
+                );
+                return Ok(events);
+            }
+            let source_colors = color_identity(self.def_of(source));
+            let legal = self.legal_targets_for(spec, source, player, source_colors, x);
+            // CR 601.2c: a mode with no legal target can't be chosen. The `ChooseMode` pause was
+            // only cloned above, never taken, so rejecting here leaves it standing — the
+            // activator picks a different mode instead of being stranded on an unpayable one.
+            if legal.is_empty() {
+                return Err(Reject::IllegalChoice);
+            }
+            self.finish_answer();
+            let events = Vec::new();
+            pending::raise(
+                self,
+                pending::ChoiceRequest::ChooseTarget {
+                    player,
+                    source,
+                    effect: chosen,
+                    legal,
+                    count: TargetCount::default(),
+                    x,
+                    activated: true,
+                },
+            );
+            return Ok(events);
+        }
+
+        self.finish_answer();
         let mut events = Vec::new();
         self.run(
-            modes[mode],
+            chosen,
             ResolveCtx {
                 controller: player,
                 source,

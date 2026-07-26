@@ -29,6 +29,10 @@ pub(crate) struct CastInputs<'a> {
     /// [`AdditionalCost::replicate`]); 0 for a spell with no Replicate, or "pay it zero times."
     /// See [`Intent::Cast`]'s own doc.
     pub replicate_count: u8,
+    /// How many times the caster paid the spell's Multikicker cost (CR 702.34 —
+    /// [`AdditionalCost::multikicker`]); 0 for a spell with no Multikicker, or "pay it zero
+    /// times." See [`Intent::Cast`]'s own doc.
+    pub multikicker_count: u8,
     /// Whether the caster is casting the spell for its printed alternative cost (CR 601.2f —
     /// [`CardDef::alternative_cost`]) instead of its printed mana cost. See [`Intent::Cast`]'s own
     /// doc.
@@ -107,6 +111,7 @@ impl Game {
                 evoked: false,
                 strive_count: 0,
                 replicate_count: 0,
+                multikicker_count: 0,
                 alternative_cost: false,
             },
             kind,
@@ -238,6 +243,7 @@ impl Game {
             inputs.evoked,
             inputs.strive_count,
             inputs.replicate_count,
+            inputs.multikicker_count,
             inputs.alternative_cost,
         );
 
@@ -356,7 +362,7 @@ impl Game {
         let spell = Some(def.spell_characteristics());
         let affordable = |target: Option<Target>, delve: u8| {
             let cost = self.cast_cost(
-                player, object, def, target, 0, zone, delve, false, false, false, 0, 0, false,
+                player, object, def, target, 0, zone, delve, false, false, false, 0, 0, 0, false,
             );
             Self::affordable_from(available, cost, spell)
                 && self
@@ -526,6 +532,12 @@ impl Game {
         if inputs.replicate_count > 0 && cost.additional.replicate.is_none() {
             return Err(Reject::CannotPayCost);
         }
+        // Multikicker (CR 702.34): only declarable if the spell actually has one, mirroring
+        // strive/replicate's own gates above. Its mana is already folded into `cost` by
+        // `Game::cast_cost`.
+        if inputs.multikicker_count > 0 && cost.additional.multikicker.is_none() {
+            return Err(Reject::CannotPayCost);
+        }
         // Alternative cost (CR 601.2f — Invigorate): only declarable if the card actually has one,
         // mirroring evoke's own gate above, *and* only if its printed condition holds right now
         // ("If you control a Forest") — unlike evoke, which has no condition to re-check here.
@@ -559,6 +571,7 @@ mod tests {
         buyback: None,
         strive: None,
         replicate: None,
+        multikicker: None,
     };
 
     fn flash_cost(generic: u8) -> Cost {
@@ -730,6 +743,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         };
         assert!(
@@ -766,6 +780,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         };
         assert!(matches!(
@@ -795,6 +810,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         };
         assert!(
@@ -882,6 +898,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         };
         assert!(matches!(

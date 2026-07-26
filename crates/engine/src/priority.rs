@@ -1185,7 +1185,8 @@ impl Game {
                 };
                 for delve in (0..=max_delve).rev() {
                     let cost = self.cast_cost(
-                        player, card, def, None, 0, zone, delve, false, false, false, 0, 0, false,
+                        player, card, def, None, 0, zone, delve, false, false, false, 0, 0, 0,
+                        false,
                     );
                     if let Some(plan) =
                         self.plan_auto_taps(player, cost, None, Some(def.spell_characteristics()))
@@ -1213,6 +1214,7 @@ impl Game {
                         false,
                         0,
                         0,
+                        0,
                         false,
                     ),
                     None,
@@ -1236,6 +1238,7 @@ impl Game {
                         false,
                         false,
                         false,
+                        0,
                         0,
                         0,
                         false,

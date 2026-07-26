@@ -791,6 +791,19 @@ impl Game {
         }
     }
 
+    /// How many times the object at `id` had its Multikicker cost paid (CR 702.34 —
+    /// [`AdditionalCost::multikicker`]), 0 for anything else. [`Amount::TimesKicked`]'s read:
+    /// `source` is still the resolving [`Object::Spell`] for a cast-time cost, but is the fresh
+    /// [`Object::Permanent`] by the time an `enters_with_counters` effect resolves (CR 702.34c),
+    /// so both shapes are checked — a spell-only read would silently return 0 there.
+    pub fn times_kicked(&self, id: ObjectId) -> u8 {
+        match &self.objects[id as usize] {
+            Object::Spell(s) => s.multikicker_count,
+            Object::Permanent(p) => p.entered_times_kicked,
+            _ => 0,
+        }
+    }
+
     /// The creatures currently declared as attackers.
     pub fn attackers(&self) -> Vec<ObjectId> {
         self.combat.attackers.clone()

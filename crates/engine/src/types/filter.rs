@@ -787,6 +787,27 @@ pub struct PermanentFilter {
     /// `TriggerContext::dying_permanent_types` before [`Game::permanent_matches`] ever reads this
     /// filter, so [`Game::permanent_matches`] itself never consults this flag.
     pub shares_type_with_dying_permanent: bool,
+    /// Counter axis (CR 122.1) narrower than `modified` above — `modified` also matches an
+    /// equipped/enchanted permanent with no counter at all, so it can't express Inspiring Call's
+    /// "creature you control with a +1/+1 counter on it" or Innkeeper's Talent's "permanents you
+    /// control with counters on them" (any kind). `None` (default) doesn't gate on counters.
+    pub with_counter: Option<CounterAxis>,
+}
+
+/// TOML `with_counter = "any"` / `with_counter = "plus_one_plus_one"` — the two counter shapes
+/// the pool currently needs on a [`PermanentFilter`] (CR 122.1's unqualified "counter" vs the
+/// +1/+1 kind specifically).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "card-dsl",
+    derive(serde::Deserialize),
+    serde(rename_all = "snake_case")
+)]
+pub enum CounterAxis {
+    /// Any counter of any kind (Innkeeper's Talent's "with counters on them").
+    Any,
+    /// Specifically a +1/+1 counter (Inspiring Call's "with a +1/+1 counter on it").
+    PlusOnePlusOne,
 }
 
 impl PermanentFilter {
@@ -822,6 +843,7 @@ impl PermanentFilter {
             without_flying: false,
             with_flying: false,
             shares_type_with_dying_permanent: false,
+            with_counter: None,
         }
     }
 }
