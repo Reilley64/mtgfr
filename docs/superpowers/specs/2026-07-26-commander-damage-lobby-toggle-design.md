@@ -75,7 +75,7 @@ Host switch (seated lobby)
 ### BFF / Postgres
 
 - Add `commander_damage_enabled` boolean NOT NULL DEFAULT true on `lobbies`.
-- New host-only options route (e.g. `POST /api/tables/options/v1`). Errors:
+- New host-only options route: `POST /api/tables/options/v1`. Errors:
   `NotHost`, `AlreadyStarted`, `UnknownTable`.
 - Start reads the column into `SeedRequest`. After `startedAt` is set, options
   writes fail with `AlreadyStarted`.
