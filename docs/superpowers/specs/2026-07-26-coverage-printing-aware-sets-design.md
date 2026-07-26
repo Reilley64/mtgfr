@@ -1,7 +1,7 @@
 # Coverage printing-aware sets (design)
 
 **Status:** Approved design input (2026-07-26).
-**Surfaces:** card pool TOML / `CardDef.sets`; `tooling/backfill-sets.mjs`; API `faithful_by_set`; BFF coverage meta denominators; `/coverage` sort; catalog search / wire `sets`. Builds on and **supersedes the per-set metric and default sort** in [coverage-by-set design](2026-07-26-coverage-by-set-design.md) (route, badge entry, and BFF-mediated transport stay). Global badge remains [pool-coverage-badge](2026-07-26-pool-coverage-badge-design.md).
+**Surfaces:** card pool TOML / `CardDef.sets`; `tooling/backfill-sets.mjs`; API `faithful_by_set`; BFF coverage meta denominators; `/coverage` sort + independent row scroll; catalog search / wire `sets`. Builds on and **supersedes the per-set metric and default sort** in [coverage-by-set design](2026-07-26-coverage-by-set-design.md) (route, badge entry, and BFF-mediated transport stay). Global badge remains [pool-coverage-badge](2026-07-26-pool-coverage-badge-design.md).
 
 ---
 
@@ -14,7 +14,8 @@
 1. **Per-set Faithful** = faithful pool cards whose oracle appears in that set (any printing).
 2. **Per-set Scryfall** = unique Scryfall oracle ids with ≥1 English printing in that set.
 3. **Default sort** = set release date descending.
-4. Keep Scryfall **off** the game API at runtime; keep the global `% faithful` badge formula unchanged.
+4. **Scroll** = set rows scroll independently; page chrome, search, and column headers stay put.
+5. Keep Scryfall **off** the game API at runtime; keep the global `% faithful` badge formula unchanged.
 
 ## Locked decisions
 
