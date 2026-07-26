@@ -59,6 +59,20 @@ describe("lobby makeClient", () => {
     expect((err as LobbyHttpError).status).toBe(500);
   });
 
+  it("fails LobbyUnauthorized on 401 non-DTO body", async () => {
+    const client = makeClient((() =>
+      Promise.resolve(new Response("not authorized", { status: 401 }))) as unknown as typeof fetch);
+    const err = await Effect.runPromise(client.lobbyState("ABC123").pipe(Effect.flip));
+    expect(err._tag).toBe("LobbyUnauthorized");
+  });
+
+  it("fails LobbyBadRequest on 400 non-DTO body", async () => {
+    const client = makeClient((() =>
+      Promise.resolve(new Response("bad request", { status: 400 }))) as unknown as typeof fetch);
+    const err = await Effect.runPromise(client.lobbyState("ABC123").pipe(Effect.flip));
+    expect(err._tag).toBe("LobbyBadRequest");
+  });
+
   it("fails LobbyDecodeError on 200 camelCase tableId", async () => {
     const client = makeClient((() =>
       Promise.resolve(

@@ -240,7 +240,9 @@ does **not** mutate or probe schema at request time; if `gravatar_hash` is missi
 
 An existing `mtgfr_web` provisioned before the v3 squash carries pre-squash rows in its
 `__drizzle_migrations` journal. That journal needs a one-time reconcile to the v3 baseline (its
-tables already match the baseline DDL) before `drizzle-kit migrate` will apply cleanly; a freshly
+tables already match the baseline DDL) before `drizzle-kit migrate` will apply cleanly. The
+reconcile verifies `lobby_seats.gravatar_hash` exists before marking the v3 baseline applied; after
+drop-and-remigrate, verify the same column exists before treating the cutover as complete. A freshly
 created `mtgfr_web` applies the baseline directly.
 
 **`push_schema()` is dev/SQLite-test only.** Production pods assume `migration apply` ran
