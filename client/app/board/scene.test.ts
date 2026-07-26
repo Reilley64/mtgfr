@@ -35,6 +35,7 @@ import {
   type Message,
   PendingChoiceAnswered,
   PileCardClicked,
+  PlayModeChosen,
   PromptSubmitted,
   RadialOptionPicked,
   StackDwellChanged,
@@ -288,6 +289,220 @@ test("HandActionActivated with two hand modes parks card and opens playModePick"
   expect(playModePickOf(next)?.modes.map((mode) => mode.id)).toEqual([7, 8]);
   expect(next.handHidden.has(card.id)).toBe(true);
   expect(next.flights.has(card.id)).toBe(true);
+});
+
+test("HandActionActivated choose branch clears other local action sessions", () => {
+  const card = creature(42, 0, { name: "Valley Rannet", zone: ZONE.Hand });
+  const castAction: ActionView = {
+    id: 7,
+    kind: "cast",
+    label: testMessageRef("Cast Valley Rannet"),
+    needs_target: false,
+    object: card.id,
+    section: "hand",
+  };
+  const cycleAction: ActionView = {
+    id: 8,
+    kind: "cycle",
+    label: testMessageRef("Mountaincycling"),
+    needs_target: false,
+    object: card.id,
+    section: "hand",
+  };
+  const staleAction: ActionView = {
+    id: 9,
+    kind: "cast",
+    label: testMessageRef("Stale"),
+    needs_target: false,
+    object: card.id,
+    section: "hand",
+  };
+  const gameFold = fold(state({ objects: [card], actions: [castAction, cycleAction] }));
+  const staleSessions: BoardModel = {
+    ...initialBoardModel(),
+    staged: {
+      card,
+      action: staleAction,
+      picks: emptyCostPicks(),
+      preferPick: false,
+      playOrigin: { x: 1, y: 2 },
+      playOriginScreen: { x: 3, y: 4 },
+    },
+    xPrompt: {
+      action: staleAction,
+      target: null,
+      picks: emptyCostPicks(),
+      modes: [],
+      name: "Stale",
+      minX: 0,
+      maxX: 1,
+      draftX: 1,
+      xCost: { generic: 0, colored: [0, 0, 0, 0, 0], has_x: true, x_symbols: 1 },
+    },
+    modalCast: {
+      action: staleAction,
+      modes: [],
+      picks: emptyCostPicks(),
+      chosen: null,
+      answers: [],
+      modeDraft: [],
+    },
+    sacrificePick: {
+      action: staleAction,
+      card,
+      dropSeed: { x: 0, y: 0 },
+      screenOrigin: { x: 0, y: 0 },
+      picks: emptyCostPicks(),
+    },
+    gyExilePick: {
+      action: staleAction,
+      card,
+      dropSeed: { x: 0, y: 0 },
+      screenOrigin: { x: 0, y: 0 },
+      picks: emptyCostPicks(),
+    },
+  };
+
+  const [next, commands] = updateBoard(
+    staleSessions,
+    HandActionActivated({ action: castAction, x: 400, y: 200 }),
+    gameFold,
+    "T1",
+  );
+
+  expect(commands).toEqual([]);
+  expect(playModePickOf(next)?.modes.map((mode) => mode.id)).toEqual([7, 8]);
+  expect(next.staged).toBeNull();
+  expect(next.xPrompt).toBeNull();
+  expect(next.modalCast).toBeNull();
+  expect(next.sacrificePick).toBeNull();
+  expect(next.discardPick).toBeNull();
+  expect(next.gyExilePick).toBeNull();
+});
+
+test("PlayModeChosen runs the selected action and clears playModePick", () => {
+  const card = creature(42, 0, { name: "Valley Rannet", zone: ZONE.Hand });
+  const castAction: ActionView = {
+    id: 7,
+    kind: "cast",
+    label: testMessageRef("Cast Valley Rannet"),
+    needs_target: false,
+    object: card.id,
+    section: "hand",
+  };
+  const cycleAction: ActionView = {
+    id: 8,
+    kind: "cycle",
+    label: testMessageRef("Mountaincycling"),
+    needs_target: false,
+    object: card.id,
+    section: "hand",
+  };
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    playModePick: {
+      card,
+      modes: [castAction, cycleAction],
+      dropSeed: { x: 0, y: 0 },
+      screenOrigin: { x: 400, y: 200 },
+    },
+    handHidden: new Set([card.id]),
+    flights: new Map([
+      [
+        card.id,
+        {
+          id: card.id,
+          print: "",
+          name: card.name,
+          x: 400,
+          y: 200,
+          scale: 1,
+          targetX: 720,
+          targetY: 140,
+          targetScale: 0.5,
+          phase: "flying",
+          kind: "stack",
+          fromCardId: card.id,
+        },
+      ],
+    ]),
+    hideCardIds: new Set([card.id]),
+    ownedIds: new Set([card.id]),
+  };
+  const gameFold = fold(state({ objects: [card], actions: [castAction, cycleAction] }));
+
+  const [next, commands] = updateBoard(board, PlayModeChosen({ actionId: cycleAction.id }), gameFold, "T1");
+
+  expect(playModePickOf(next)).toBeNull();
+  expect(next.handHidden.has(card.id)).toBe(true);
+  expect(next.flights.has(card.id)).toBe(true);
+  expect(commands).toHaveLength(1);
+  expect(commands[0]?.name).toBe(SubmitIntent.name);
+  expect(intentFromCommand(commands[0])).toMatchObject({
+    kind: "take_action",
+    id: cycleAction.id,
+  });
+});
+
+test("PlayModeChosen restores the parked card when the selected action rejects", () => {
+  const card = creature(42, 0, { name: "Valley Rannet", zone: ZONE.Hand });
+  const castAction: ActionView = {
+    id: 7,
+    kind: "cast",
+    label: testMessageRef("Cast Valley Rannet"),
+    needs_target: false,
+    object: card.id,
+    section: "hand",
+  };
+  const rejectedAction: ActionView = {
+    id: 8,
+    kind: "cycle",
+    label: testMessageRef("Mountaincycling"),
+    needs_target: false,
+    object: card.id,
+    sacrifice_choices: [],
+    section: "hand",
+  };
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    playModePick: {
+      card,
+      modes: [castAction, rejectedAction],
+      dropSeed: { x: 0, y: 0 },
+      screenOrigin: { x: 400, y: 200 },
+    },
+    handHidden: new Set([card.id]),
+    flights: new Map([
+      [
+        card.id,
+        {
+          id: card.id,
+          print: "",
+          name: card.name,
+          x: 400,
+          y: 200,
+          scale: 1,
+          targetX: 720,
+          targetY: 140,
+          targetScale: 0.5,
+          phase: "flying",
+          kind: "stack",
+          fromCardId: card.id,
+        },
+      ],
+    ]),
+    hideCardIds: new Set([card.id]),
+    ownedIds: new Set([card.id]),
+  };
+  const gameFold = fold(state({ objects: [card], actions: [castAction, rejectedAction] }));
+
+  const [next, commands] = updateBoard(board, PlayModeChosen({ actionId: rejectedAction.id }), gameFold, "T1");
+
+  expect(commands).toEqual([]);
+  expect(playModePickOf(next)).toBeNull();
+  expect(next.reject).toBe("That ability isn't available.");
+  expect(next.handHidden.has(card.id)).toBe(false);
+  expect(next.flights.has(card.id)).toBe(false);
 });
 
 test("CancelActionClicked clears playModePick and restores the hand card", () => {

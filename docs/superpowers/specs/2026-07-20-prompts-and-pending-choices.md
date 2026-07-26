@@ -42,7 +42,8 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 
 ## Behavior
 
-- Local prompts render in this order: X prompt, modal cast, sacrifice pick, discard pick, graveyard-exile pick, staged target picker.
+- Local prompts render in this order: hand play-mode chooser, X prompt, modal cast, sacrifice pick, discard pick, graveyard-exile pick, staged target picker.
+- Multi-action hand cards use docked `play-mode-aim` with one `play-mode-{i}` button per legal mode plus Cancel; choosing a row dispatches `PlayModeChosen` and keeps the parked stack flight while the selected action continues through cost, modal, target, or submit steps.
 - Local modal spells use docked `modal-mode-aim` (mode rows + Cast/Cancel; center `modal-mode-picker` unused). After modes are chosen and a target is still needed, docked `modal-waiting-aim` replaces center `modal-waiting`.
 - Off-board staged-action targets use docked `target-pick-aim` (scrollable face/player strip + Cancel; center `target-pick` unused).
 - Local cost pickers that cannot aim on the canvas (`sacrifice-pick`, `discard-pick`, `gy-exile-pick`) use docked `${id}-aim` button strips (center `${id}` modals unused).
@@ -120,6 +121,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Scene/unit tests for MessageRef-backed prompts assert formatted English for labels while catalog coverage guards every Rust-emitted key.
 - Unit tests cover `pendingChoiceWaitingText` (null for decider / absent / mulligan; named seat and `P{seat}` fallback).
 - X prompt Scene tests assert docked `x-prompt-aim` (no center `x-prompt`), stepper controls, preview text (e.g. `Pay {4}`), confirm, disabled `+` at max, and absence of per-X buttons (`x-prompt-n`).
+- Scene tests cover docked `play-mode-aim`, `play-mode-{i}` rows, Cancel, and `PlayModeChosen` clearing `playModePick` before continuing the selected action.
 - Scene tests cover docked `modal-mode-aim` / `modal-waiting-aim` (no center `modal-mode-picker` / `modal-waiting`).
 - Scene tests cover docked `target-pick-aim` for off-board staged targets (no center `target-pick`).
 - Scene tests cover docked `sacrifice-pick-aim` / `discard-pick-aim` for off-board cost fallbacks (no center pick modals).

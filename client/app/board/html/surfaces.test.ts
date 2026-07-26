@@ -12,7 +12,7 @@ import { beforeAll, expect, test } from "vitest";
 import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/types";
 import type { GameFoldState, LogLine } from "../../game/fold";
-import { emptyCostPicks, type ModalCast, type XPromptState } from "../action/execution";
+import { emptyCostPicks, type ModalCast, type PlayModePick, type XPromptState } from "../action/execution";
 import { ZONE } from "../geometry/layout";
 import type { Message } from "../messages";
 import { type BoardModel, initialBoardModel } from "../submodel";
@@ -745,6 +745,37 @@ test("modal mode picker renders before modes are chosen", () => {
     Scene.expect(Scene.testId("modal-mode-0")).toExist(),
     Scene.expect(Scene.testId("modal-mode-1")).toExist(),
     Scene.expect(Scene.testId("modal-cast")).toBeDisabled(),
+  );
+});
+
+test("playModePick shows docked play-mode-aim with one button per mode", () => {
+  const valleyRannet = card(42, { name: "Valley Rannet" });
+  const playModePick: PlayModePick = {
+    card: valleyRannet,
+    modes: [
+      action(1, { kind: "cast", object: valleyRannet.id, label: testMessageRef("Valley Rannet") }),
+      action(2, {
+        kind: "activate_hand_ability",
+        object: valleyRannet.id,
+        label: testMessageRef("Discard: Mountain"),
+      }),
+      action(3, {
+        kind: "activate_hand_ability",
+        object: valleyRannet.id,
+        label: testMessageRef("Discard: Forest"),
+      }),
+    ],
+    dropSeed: { x: 0, y: 0 },
+    screenOrigin: { x: 400, y: 200 },
+  };
+
+  overlayScene(
+    overlayModel({ ...initialBoardModel(), playModePick }),
+    Scene.expect(Scene.testId("play-mode-aim")).toExist(),
+    Scene.expect(Scene.testId("play-mode-0")).toExist(),
+    Scene.expect(Scene.testId("play-mode-1")).toExist(),
+    Scene.expect(Scene.testId("play-mode-2")).toExist(),
+    Scene.expect(Scene.testId("prompt-cancel")).toExist(),
   );
 });
 

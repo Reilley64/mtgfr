@@ -458,10 +458,7 @@ function retargetFlightToCard(flight: CardFlight, model: BoardModel, card: Rende
   return retargetFlight(flight, { x: target.x, y: target.y, scale: 1 });
 }
 
-function hiddenCardIds(
-  flights: ReadonlyMap<number, CardFlight>,
-  exitFx: ReadonlyMap<number, ExitFx>,
-): Set<number> {
+function hiddenCardIds(flights: ReadonlyMap<number, CardFlight>, exitFx: ReadonlyMap<number, ExitFx>): Set<number> {
   const hidden = flyingCardIds(flights);
   for (const id of exitFx.keys()) hidden.add(id);
   return hidden;
@@ -526,7 +523,7 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
     const pose =
       flight != null
         ? battlefieldPoseFromFlight(flight)
-        : (from != null ? model.lastBattlefieldPoses.get(from) : undefined) ?? model.lastBattlefieldPoses.get(id);
+        : ((from != null ? model.lastBattlefieldPoses.get(from) : undefined) ?? model.lastBattlefieldPoses.get(id));
     if (flight != null && flightId != null) {
       flights.delete(flightId);
       if (flight.fromCardId != null) handHidden.delete(flight.fromCardId);
@@ -1517,7 +1514,7 @@ function handActivated(
   if (playPlan.kind === "choose") {
     const card = objectByAction(fold, playPlan.modes[0]!) ?? objectByAction(fold, action);
     if (card == null) return [{ ...withHint, reject: humanReason("UnknownObject") }, []];
-    const seeded = seedDropFromHand(withHint, card, screenOrigin, "stack");
+    const seeded = seedDropFromHand(clearActionSessionsForPlayMode(withHint), card, screenOrigin, "stack");
     return [
       {
         ...seeded,
@@ -1606,6 +1603,31 @@ function cancelAll(model: BoardModel): BoardModel {
     orderPickPos: null,
     handDrag: null,
     hoverActionId: null,
+  };
+}
+
+function clearActionSessionsForPlayMode(model: BoardModel): BoardModel {
+  const ids = [
+    model.staged?.card.id,
+    model.xPrompt?.action.object,
+    model.modalCast?.action.object,
+    model.sacrificePick?.card?.id,
+    model.discardPick?.card?.id,
+    model.gyExilePick?.card?.id,
+  ];
+  let cleared = model;
+  for (const id of ids) {
+    if (id != null) cleared = clearPlayOrigin(cleared, id);
+  }
+  return {
+    ...cleared,
+    staged: null,
+    xPrompt: null,
+    modalCast: null,
+    sacrificePick: null,
+    discardPick: null,
+    gyExilePick: null,
+    pileExpand: null,
   };
 }
 
@@ -1985,6 +2007,24 @@ export function updateBoard(
     }
     case "CancelActionClicked":
       return [cancelAll(model), []];
+    case "PlayModeChosen": {
+      const pick = model.playModePick;
+      if (pick == null) return [model, []];
+      const chosen = pick.modes.find((mode) => mode.id === message.actionId);
+      if (chosen == null) return [{ ...clearPlayOrigin(model, pick.card.id), playModePick: null }, []];
+      const [next, commands] = continueAfterCostPick(
+        { ...model, playModePick: null, reject: null },
+        fold,
+        tableId,
+        chosen,
+        pick.card,
+        emptyCostPicks(),
+        pick.dropSeed,
+        pick.screenOrigin,
+      );
+      if (next.reject != null) return [clearPlayOrigin(next, pick.card.id), commands];
+      return [next, commands];
+    }
     case "CommanderCastClicked": {
       const action = findCastActionForObject(fold.state?.actions, message.objectId);
       if (action == null) {
