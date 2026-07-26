@@ -32,12 +32,13 @@ The **deck list** at `/` is a compact commander-tile grid over the deck list sub
 ### Deck list (`client/app/shell/decks/**`, `/`)
 
 **Deck list** (`/`) shows saved decks from the deck list submodel as a compact tile grid.
-Header, search, and grid share one `max-w-[960px]` column. The header keeps the page
-title on the left and uses shared account chrome on the right: a `Leaderboard` link
-(`header-leaderboard-link`) plus an avatar trigger backed by the same circular
-Gravatar/monogram face helper used for seats. Opening the avatar menu shows a username
-title, an outbound `Change at Gravatar` link (`account-gravatar-link`) to
-`https://gravatar.com`, and `Sign out`.
+The page title (`Your decks`) lives in the shared `shellFrame` header title slot, not a
+custom left-side title block. The shared header trailing slot holds account chrome: a
+`Leaderboard` link (`header-leaderboard-link`) plus an avatar trigger backed by the same
+circular Gravatar/monogram face helper used for seats. Opening the avatar menu shows a
+username title, an outbound `Change at Gravatar` link (`account-gravatar-link`) to
+`https://gravatar.com`, and `Sign out`. Search and grid share one `max-w-[960px]`
+stage column.
 
 Tiles use a raised `minmax(220px, 1fr)` track, landscape commander `art_crop`
 (~1.37:1), deck name, color-identity pips, and a Precon chip when `id < 0`. Names stay
@@ -62,7 +63,9 @@ ascending id (newest release first). Right-click on an owned deck opens Edit
 
 ### Deck builder (`client/app/shell/decks/builder/**`, `/decks/new`, `/decks/:id`)
 
-**Deck builder** is a split-pane layout:
+**Deck builder** renders through `shellFrame`: the shared header title slot says `New deck`
+or `Edit deck`, and the shared trailing slot holds the same avatar account chrome as the
+deck list. The stage body is a split-pane layout:
 
 - **Left: card pool grid.** Loads from `/api/rpc/cards/search` in 100-card pages via an `IntersectionObserver` sentinel at the grid bottom. Filters: text search (tokenized LIKE over `search_blob`), set, subtypes ([accounts-decks-and-catalog](2026-07-20-accounts-decks-and-catalog.md)). Pool tiles are `POOL_CARD` style: art thumbnail + name + type + cost pips, click-to-add. Right-click (or 500 ms long-press) opens a context menu with printing options and basics shortcuts.
 - **Right: decklist panel.** Commander picker (legendary creatures in the list), deck name field, 99-card decklist with per-card counts and a running total. Click a row to remove one. Decklist rows (and pool tiles / commander chip) are keyed by oracle id so `BindBuilderCardPointer` remounts after list churn — Mount args are captured at insert, so unkeyed reuse left later rows activating the removed card until refresh. Deck save calls `/api/rpc/decks` or `/api/rpc/decks/:id` with `SaveDeckRequest`.
