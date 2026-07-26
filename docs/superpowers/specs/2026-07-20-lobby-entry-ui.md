@@ -37,9 +37,9 @@ Required identifiers live in path params (see route table in [shell-routes-and-a
 |---|---|
 | `/play/:deckId` | Entry (`surface: "entry"`) — Host/Join choose or focused join panel |
 | `/play/:deckId/:table` | Seated lobby / board mount after start |
-| `/play/:table` | Table-scoped seated lobby / board mount for non-numeric table ids |
+| `/play/:table` | Table-scoped seated lobby / board mount for generated table codes containing at least one letter |
 
-Bare `/play` and `?deck=` entry points are Not found (hard cut). Single-segment `/play/...` paths normalize by segment shape: numeric segments stay deck-entry routes, while non-numeric segments become table-scoped routes. Malformed / not-in-library deck ids still 404.
+Bare `/play` and `?deck=` entry points are Not found (hard cut). Single-segment `/play/...` paths normalize by segment shape: integer-looking segments stay deck-entry routes, while table codes become table-scoped routes. Minted table codes are six characters from `23456789ABCDEFGHJKMNPQRSTUVWXYZ` and are regenerated until they contain at least one letter, so generated lobby ids cannot collide with numeric deck ids. Malformed / not-in-library deck ids still 404.
 
 `tableId()` reads the table id from either `/play/:deckId/:table` or `/play/:table`. `parseTableCode` normalizes guest input into a table id: bare codes (uppercased), pasted `/play/:deckId/:table` pregame links, pasted `/play/:table` in-game share links, and legacy `?table=` query params. Ambiguous paths (`/play/`, three or more `/play/...` segments, or unparseable URLs) return `null`. Pregame two-segment paths take precedence when both shapes could apply. `setTableUrl` reflects a joined table into the URL via `history.replaceState`.
 

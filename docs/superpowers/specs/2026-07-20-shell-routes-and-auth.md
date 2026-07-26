@@ -42,13 +42,13 @@ A single Foldkit event-reactor owns routing: `client/app/routes.ts` maps paths t
 | `/decks/:id` | Deck builder (edit) | auth submodel |
 | `/play/:deckId` | Lobby Host/Join entry for a required deck id | auth submodel |
 | `/play/:deckId/:table` | Pregame lobby for a required deck id and table id | auth submodel |
-| `/play/:table` | Table-scoped lobby / board wrapper for a non-numeric table id | auth submodel |
+| `/play/:table` | Table-scoped lobby / board wrapper for a generated table code containing at least one letter | auth submodel |
 | `/api/[...path]` | lobby/table HTTP passthrough | — |
 | `/api/rpc/[...path]` | Effect RPC BFF | — |
 | `/api/faro/collect` | Faro proxy | — |
 
 Required identifiers live in path params ([wire-protocol-and-visibility](2026-07-20-wire-protocol-and-visibility.md) routing rule). Query params are optional: `?next=` is the post-login redirect target.
-Bare `/play` and `?deck=` entry points are Not found (hard cut). Single-segment `/play/...` paths are discriminated by segment shape: numeric segments normalize to `PlayRoute` deck entry, and non-numeric segments normalize to the table-scoped in-game route.
+Bare `/play` and `?deck=` entry points are Not found (hard cut). Single-segment `/play/...` paths are discriminated by segment shape: integer-looking segments normalize to `PlayRoute` deck entry, and table codes normalize to the table-scoped in-game route. Minted lobby table codes are six characters from `23456789ABCDEFGHJKMNPQRSTUVWXYZ` and are regenerated until they contain at least one letter, so generated share codes never collide with numeric deck ids.
 
 ### Installable PWA (`client/app/pwa.ts`, `client/app/sw.ts`, `vite.config.ts`)
 

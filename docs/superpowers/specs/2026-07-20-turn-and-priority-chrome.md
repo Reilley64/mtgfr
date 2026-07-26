@@ -1,6 +1,6 @@
 # Turn and Priority Chrome
 **Status:** Current (as of 2026-07-26)
-**Module:** `client/app/board/html/priority-bar.ts`, `client/app/board/html/turn-chrome.ts`, `client/app/board/html/discoverability.ts`, `client/lib/combatCoach.ts`, `client/app/board/html/sound-chrome.ts`, `client/app/board/html/keyboard-mount.ts`, `client/app/board/html/mulligan-overlay.ts`
+**Module:** `client/app/board/html/priority-bar.ts`, `client/app/board/html/turn-chrome.ts`, `client/app/board/html/discoverability.ts`, `client/app/domain/combatCoach.ts`, `client/app/board/html/sound-chrome.ts`, `client/app/board/html/keyboard-mount.ts`, `client/app/board/html/mulligan-overlay.ts`
 
 ## Problem Statement
 

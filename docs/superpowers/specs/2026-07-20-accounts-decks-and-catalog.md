@@ -272,7 +272,7 @@ for hydrating a saved deck without fetching the full catalog.
   `Decks.Create`, `Decks.List` (including precon interleaving), `Decks.Delete`, and
   `Ratings.GetLeaderboard` ordering/paging with auth enforcement.
 - Shell Scene coverage asserts account chrome includes `account-gravatar-link`; Gravatar hashing
-  and URL construction are covered in `client/lib/gravatar.test.ts`.
+  and URL construction are covered in `client/app/domain/gravatar.test.ts`.
 - `crates/server/src/db.rs` and `crates/server/src/grpc/tests.rs` cover the rating persistence
   slice: explicit `User` rating round-trip in sqlite plus signup seeding `rating = 1000` with a
   nonzero `rating_set_at`.

@@ -1,6 +1,6 @@
 # Prompts and Pending Choices
 **Status:** Current (as of 2026-07-26)
-**Module:** `client/app/board/html/prompts.ts`, `client/app/board/html/pending-choice-waiting.ts`, `client/lib/choice.ts`, `client/lib/choiceWaiting.ts`, `client/lib/cardPickSearch.ts`, `client/lib/optionFilter.ts`, `client/lib/xCost.ts`, `client/app/board/action/execution.ts`, `client/lib/ui/card-art.ts`, `client/lib/wire/types.ts`
+**Module:** `client/app/board/html/prompts.ts`, `client/app/board/html/pending-choice-waiting.ts`, `client/app/domain/choice.ts`, `client/app/domain/choiceWaiting.ts`, `client/app/domain/cardPickSearch.ts`, `client/app/domain/optionFilter.ts`, `client/app/domain/xCost.ts`, `client/app/board/action/execution.ts`, `client/app/domain/ui/card-art.ts`, `client/app/domain/wire/types.ts`
 
 ## Problem Statement
 
@@ -107,16 +107,16 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - `initPromptDraft`, `buildAnswerFromDraft`, and readiness helpers own draft validation.
 - Local pre-submit prompts live in `BoardModel` and are not derived from shared `pending_choice`.
 - `cardArt(h, opts)` has one DOM API and supports optional `style`.
-- Pure X helpers live in `client/lib/xCost.ts` (`clampX`, `costWithChosenX`, `costText`).
+- Pure X helpers live in `client/app/domain/xCost.ts` (`clampX`, `costWithChosenX`, `costText`).
 - Choose-X preview uses brace text rather than hand-bar mana-font pips so large resolved generics cannot collapse to a false `{0}`.
-- Waiting copy lives in `client/lib/choiceWaiting.ts`; the banner is composed in `boardOverlays` (not inside `promptsView`) so spectators see it without seated prompt chrome.
-- Library-search filter helpers live in `client/lib/cardPickSearch.ts`; filter draft is optional `filter` on `PromptDraft` `card-pick`, updated via `PromptCardFilterSet`.
+- Waiting copy lives in `client/app/domain/choiceWaiting.ts`; the banner is composed in `boardOverlays` (not inside `promptsView`) so spectators see it without seated prompt chrome.
+- Library-search filter helpers live in `client/app/domain/cardPickSearch.ts`; filter draft is optional `filter` on `PromptDraft` `card-pick`, updated via `PromptCardFilterSet`.
 - Prompt text from the engine stays as `MessageRef` until the view edge; formulators use formatted text for titles but submit only structured answers.
 
 ## Testing Decisions
 
 - Formulator registry tests ensure every `PendingChoiceView["kind"]` maps to a formulator.
-- `client/lib/wire/wire-case-coverage.test.ts` asserts hand `FORMULATOR_FOR_KIND` keys match the
+- `client/app/domain/wire/wire-case-coverage.test.ts` asserts hand `FORMULATOR_FOR_KIND` keys match the
   generated `PendingChoiceView` proto oneof (camel→snake), so codegen drift fails `just client-check`.
 - Scene tests cover awaited-player prompt visibility and non-decider/spectator suppression plus waiting-banner copy.
 - Scene/unit tests for MessageRef-backed prompts assert formatted English for labels while catalog coverage guards every Rust-emitted key.

@@ -56,7 +56,8 @@ affinity cookie; `table_id` in the path is the sole routing key.
 **In-memory Registry and Table (lobby-table-routing-and-live-game spec):**
 
 One `Registry` per API pod process (a `std::sync::Mutex<HashMap<String, Table>>`). Table ids
-are random 128-bit hex strings (unguessable). Each `Table` holds:
+are six-character codes drawn from `23456789ABCDEFGHJKMNPQRSTUVWXYZ` and regenerated until they
+contain at least one letter. Each `Table` holds:
 - The `engine::Game` (pure, deterministic state machine).
 - The 32-byte master seed and `beacon_round` used to derive every engine random operation (`beacon_round = 0` for configured/test seeds).
 - A monotonic `seq` (event counter / stream resume watermark).
@@ -145,7 +146,7 @@ Deck pick, lobby entry, pregame, and in-game paths are owned by the Foldkit clie
 | `/` | Deck pick (home deck list) |
 | `/play/:deckId` | Host/Join entry for the chosen deck |
 | `/play/:deckId/:tableId` | Pregame seated lobby (claim, ready, start) |
-| `/play/:tableId` | In-game board after start (table id only; non-numeric single segment) |
+| `/play/:tableId` | In-game board after start (table id only; generated table code containing at least one letter) |
 
 Host create and Join-with-code handoffs land on the two-segment pregame path. Start replaces that URL with the table-only in-game path while preserving the same `table_id` for BFF `table_routes` lookup and the game stream.
 
@@ -322,11 +323,12 @@ seeded game; there are no "empty" table shells in the production registry.
 
 ## Further Notes
 
-- The `table_id` is a random 128-bit hex string (`format!("{:032x}", rand_u128)`). It is the
-  stable public identifier copied as a table code and stored in `table_routes`. Pregame browser
-  routes keep the local player's deck in `/play/{deck_id}/{table_id}`; after start the client
-  strips to `/play/{table_id}` only. Share links and `parseTableCode` accept both shapes
-  (see [lobby-entry-ui](2026-07-20-lobby-entry-ui.md)).
+- The `table_id` is a six-character code drawn from `23456789ABCDEFGHJKMNPQRSTUVWXYZ` and
+  regenerated until it contains at least one letter. It is the stable public identifier copied as
+  a table code and stored in `table_routes`. Pregame browser routes keep the local player's deck in
+  `/play/{deck_id}/{table_id}`; after start the client strips to `/play/{table_id}` only. Share
+  links and `parseTableCode` accept both shapes (see
+  [lobby-entry-ui](2026-07-20-lobby-entry-ui.md)).
 - `SeedResponse.version` (the API binary's version string) lets the BFF detect a rolling deploy
   crossing versions mid-game — the BFF can surface a "game running on older version" warning
   if desired, though no UI for this currently exists.
