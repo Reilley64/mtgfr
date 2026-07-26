@@ -104,6 +104,14 @@ public. `GITHUB_TOKEN` permissions: `contents: read`, `packages: write`,
 `mtgfr-server` and `mtgfr-web`. Dockerfile `--mount=type=cache` Cargo mounts are not
 persisted across jobs.
 
+### `ci-image.yml` (CI toolchain image)
+
+**`ci-image.yml`:** on push to `main`/`master` when `docker/ci/**` or this workflow
+changes, and on `workflow_dispatch`, builds/pushes `ghcr.io/<owner>/mtgfr-ci:latest`
+with Buildx GHA cache scope `mtgfr-ci`, then attempts to mark the package public
+(`docker-ci-visibility`, `continue-on-error`). Server verify (`verify-jobs.yml`) still
+installs toolchain/protoc/just/nextest on the runner (does not use `mtgfr-ci` yet).
+
 ### Root package / semantic-release
 
 **Root `package.json`:** `private: true`; `"semantic-release": "^24"` in `devDependencies`.
