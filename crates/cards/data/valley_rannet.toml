@@ -1,9 +1,9 @@
 # Mountaincycling {2}, forestcycling {2} ({2}, Discard this card: Search your library for a Mountain or Forest card,
 # reveal it, put it into your hand, then shuffle.)
 name = "Valley Rannet"
+sets = ["arb", "c13", "cmd", "ddl"]
 otags = []
 oracle = "Mountaincycling {2}, forestcycling {2} ({2}, Discard this card: Search your library for a Mountain or Forest card, reveal it, put it into your hand, then shuffle.)"
-set = "cmd"
 subtypes = ["Beast"]
 id = "d0a3b261-3daf-4082-8bc5-e66326a6c382"
 default_print = "60c76000-4377-499a-a2bf-78460216926b"

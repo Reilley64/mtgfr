@@ -13,7 +13,8 @@ const card = (id: string, name: string, color_identity: number[] = []): CatalogC
   name,
   oracle: "",
   otags: [],
-  set: "tst",
+  set: "",
+  sets: ["tst"],
   subtypes: [],
   summary: [],
 });

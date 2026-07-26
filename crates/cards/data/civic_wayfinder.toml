@@ -1,9 +1,9 @@
 # When this creature enters, you may search your library for a basic land card, reveal it, put it into your hand,
 # then shuffle.
 name = "Civic Wayfinder"
+sets = ["10e", "ddr", "dpa", "ema", "ps11", "rav", "td0"]
 otags = ["triggered-ability", "tutor-land-basic", "tutor-to-hand", "virtual-vanilla"]
 oracle = "When this creature enters, you may search your library for a basic land card, reveal it, put it into your hand, then shuffle."
-set = "ddr"
 subtypes = ["Elf", "Druid", "Warrior"]
 id = "b9e53414-c21f-4479-b8c1-8b36c3e6e006"
 default_print = "5e9754ec-18d1-4c0f-abdd-49ce2d778083"

@@ -3,10 +3,10 @@
 # Dredge 6 (If you would draw a card, you may mill six cards instead. If you do, return this card from your
 # graveyard to your hand.)
 name = "Golgari Grave-Troll"
+sets = ["ddj", "plst", "rav", "rvr", "td0", "uma"]
 id = "686f4a37-b5e4-46d4-9e0e-11794b2d12cd"
 default_print = "d332acbc-6224-43bc-a509-3a7edc877423"
 oracle = "This creature enters with a +1/+1 counter on it for each creature card in your graveyard.\n{1}, Remove a +1/+1 counter from this creature: Regenerate this creature.\nDredge 6 (If you would draw a card, you may mill six cards instead. If you do, return this card from your graveyard to your hand.)"
-set = "rvr"
 subtypes = ["Troll", "Skeleton"]
 
 # Dredge 6 (If you would draw a card, you may mill six cards instead. If you do, return this

@@ -2,9 +2,9 @@
 # When this land enters, return a land you control to its owner's hand.
 # {T}: Add {B}{G}.
 name = "Golgari Rot Farm"
+sets = ["2x2", "blc", "c13", "c15", "c16", "c18", "c19", "c20", "c21", "clu", "cm2", "cma", "cmd", "cmm", "ddj", "dsc", "ecc", "gk1", "ima", "khc", "mm2", "prm", "rav", "td0", "tdc"]
 otags = ["activated-ability", "cycle-rav-bounceland", "drawback", "triggered-ability"]
 oracle = "This land enters tapped.\nWhen this land enters, return a land you control to its owner's hand.\n{T}: Add {B}{G}."
-set = "ecc"
 id = "1b301478-b14f-4ef8-94e6-9647d582eabe"
 default_print = "42486edd-24b7-4299-84fa-50559917b2a8"
 enters_tapped = true

@@ -2,11 +2,11 @@
 # Storm (When you cast this spell, copy it for each spell cast before it this turn. You may choose new targets for
 # the copies.)
 name = "Reaping the Graves"
+sets = ["plst", "scg", "td0"]
 id = "80c663a5-2794-4748-b47a-34352fb2112f"
 default_print = "760a66bd-2821-4710-8f02-3c30772dd884"
 otags = ["cast-trigger-self", "copy-self", "graveyard-recursion-creature", "hand-positive", "single-target-instant-sorcery", "storm-like"]
 oracle = "Return target creature card from your graveyard to your hand.\nStorm (When you cast this spell, copy it for each spell cast before it this turn. You may choose new targets for the copies.)"
-set = "scg"
 
 [cost]
 generic = 2

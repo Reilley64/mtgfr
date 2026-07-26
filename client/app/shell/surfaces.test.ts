@@ -48,6 +48,25 @@ function collectTestIds(node: unknown, out: string[] = []): string[] {
   return out;
 }
 
+function findTestId(node: unknown, testId: string): unknown {
+  if (node == null || typeof node !== "object") return null;
+  const n = node as { data?: { attrs?: Record<string, string> }; children?: unknown[] };
+  if (n.data?.attrs?.["data-testid"] === testId) return node;
+  for (const child of n.children ?? []) {
+    const found = findTestId(child, testId);
+    if (found != null) return found;
+  }
+  return null;
+}
+
+function textContent(node: unknown): string {
+  if (typeof node === "string") return node;
+  if (node == null || typeof node !== "object") return "";
+  const n = node as { children?: unknown[]; text?: string };
+  if (n.text != null) return n.text;
+  return (n.children ?? []).map(textContent).join("");
+}
+
 const atraxa = card({
   color_identity: [2, 4, 5],
   cost: { colored: [0, 0, 1, 1, 1], generic: 4 },
@@ -57,7 +76,8 @@ const atraxa = card({
   legendary: true,
   name: "Atraxa, Praetors' Voice",
   oracle: "Flying, vigilance, deathtouch, lifelink",
-  set: "c16",
+  set: "",
+  sets: ["c16"],
   subtypes: ["Angel", "Horror"],
 });
 
@@ -85,7 +105,8 @@ function card(overrides: Partial<CatalogCard> = {}): CatalogCard {
     legendary: false,
     name: "Card",
     otags: [],
-    set: "tst",
+    set: "",
+    sets: ["tst"],
     subtypes: [],
     summary: [],
     ...overrides,
@@ -377,10 +398,20 @@ describe("shell surface scenes", () => {
       Scene.expect(Scene.text("Coverage")).toExist(),
       Scene.expect(Scene.selector('[data-testid="coverage-global-percent"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="coverage-search"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="coverage-table"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="coverage-table-body"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="coverage-row-soc"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="header-leaderboard-link"]')).toExist(),
       Scene.expect(Scene.text("Secrets of Strixhaven")).toExist(),
       Scene.expect(Scene.text("2.5%")).toExist(),
+      Scene.tap((sim) => {
+        const tableBody = findTestId(sim.html, "coverage-table-body");
+        expect(tableBody).not.toBeNull();
+        const bodyText = textContent(tableBody);
+        expect(bodyText).toContain("Secrets of Strixhaven");
+        expect(bodyText).not.toContain("Faithful");
+        expect(bodyText).not.toContain("Scryfall");
+      }),
     );
   });
 

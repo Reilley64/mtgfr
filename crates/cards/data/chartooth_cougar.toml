@@ -2,9 +2,9 @@
 # Mountaincycling {2} ({2}, Discard this card: Search your library for a Mountain card, reveal it, put it into your
 # hand, then shuffle.)
 name = "Chartooth Cougar"
+sets = ["a25", "cmd", "cns", "dd2", "ddi", "jvc", "plst", "scg", "td0", "vma"]
 otags = ["activate-from-hand", "alliteration", "bottomless-mana-sink", "cheaper-than-mv", "cycle-scg-5m-landcycler", "firebreathing", "tutor-land-mountain", "tutor-to-hand"]
 oracle = "{R}: This creature gets +1/+0 until end of turn.\nMountaincycling {2} ({2}, Discard this card: Search your library for a Mountain card, reveal it, put it into your hand, then shuffle.)"
-set = "a25"
 subtypes = ["Cat", "Beast"]
 id = "717152c3-2082-49aa-9274-a1a6abe54b65"
 default_print = "03a32ab2-cc55-43fb-82d8-c51a3849b344"

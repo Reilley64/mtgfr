@@ -256,7 +256,8 @@ describe("catalogCardsFromProto", () => {
         ],
         legendary: false,
         colorIdentity: [],
-        set: "tst",
+        set: "",
+        sets: ["tst"],
         subtypes: [],
         otags: [],
       },
@@ -281,6 +282,8 @@ describe("catalogCardsFromProto", () => {
           ],
         },
       ],
+      set: "",
+      sets: ["tst"],
     } satisfies Partial<CatalogCard>);
   });
 });

@@ -1,11 +1,11 @@
 # Electrolyze deals 2 damage divided as you choose among one or two targets.
 # Draw a card.
 name = "Electrolyze"
+sets = ["cmd", "gk1", "gpt", "ima", "mm2", "mma", "pcmp", "pidw", "prm", "pz1", "sta"]
 id = "07b222d7-24f2-4994-9004-ff6672ebe161"
 default_print = "5112af09-1305-4e00-8273-403eac40786f"
 otags = ["burn-any", "cantrip", "divided-damage", "hand-neutral", "multi-removal", "multiple-targets", "pure-draw"]
 oracle = "Electrolyze deals 2 damage divided as you choose among one or two targets.\nDraw a card."
-set = "ima"
 
 [cost]
 generic = 1

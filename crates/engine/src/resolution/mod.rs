@@ -207,7 +207,7 @@ mod tests {
         cast_only_before_attackers: false,
         approximates: None,
         oracle: None,
-        set: "",
+        sets: empty_slice(),
         subtypes: empty_slice(),
         otags: empty_slice(),
         keywords: empty_slice(),

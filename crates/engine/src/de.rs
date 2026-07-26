@@ -354,7 +354,7 @@ impl<'de> Deserialize<'de> for CardDef {
             #[serde(default)]
             oracle: Option<String>,
             #[serde(default)]
-            set: String,
+            sets: Vec<String>,
             #[serde(default)]
             subtypes: Vec<String>,
             #[serde(default)]
@@ -516,7 +516,7 @@ impl<'de> Deserialize<'de> for CardDef {
             cast_only_before_attackers: card.cast_only_before_attackers,
             approximates: card.approximates.map(|s| &*Box::leak(s.into_boxed_str())),
             oracle: card.oracle.map(|s| &*Box::leak(s.into_boxed_str())),
-            set: Box::leak(card.set.into_boxed_str()),
+            sets: arc_strs(card.sets),
             subtypes: arc_strs(card.subtypes),
             otags: arc_strs(card.otags),
             cycling: card.cycling,

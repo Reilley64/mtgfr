@@ -1,12 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fetchCoverageMeta, joinCoverageSetRows } from "./coverage-meta";
-import { ensureOracleTotalRefresh, getCachedOracleTotal, getCachedOracleTotalBySet } from "./scryfall-oracle-total";
+import { ensureOracleTotalRefresh, getCachedOracleTotal } from "./scryfall-oracle-total";
+import { ensureSetOracleTotalsRefresh, getCachedSetOracleTotals } from "./scryfall-set-oracle-totals";
 import { ensureScryfallSetsRefresh, getCachedScryfallSets } from "./scryfall-sets";
 
 vi.mock("./scryfall-oracle-total", () => ({
   ensureOracleTotalRefresh: vi.fn(),
   getCachedOracleTotal: vi.fn(),
-  getCachedOracleTotalBySet: vi.fn(),
+}));
+
+vi.mock("./scryfall-set-oracle-totals", () => ({
+  ensureSetOracleTotalsRefresh: vi.fn(),
+  getCachedSetOracleTotals: vi.fn(),
 }));
 
 vi.mock("./scryfall-sets", () => ({
@@ -65,7 +70,8 @@ describe("fetchCoverageMeta", () => {
   beforeEach(() => {
     vi.mocked(ensureOracleTotalRefresh).mockReset();
     vi.mocked(getCachedOracleTotal).mockReset();
-    vi.mocked(getCachedOracleTotalBySet).mockReset();
+    vi.mocked(ensureSetOracleTotalsRefresh).mockReset();
+    vi.mocked(getCachedSetOracleTotals).mockReset();
     vi.mocked(ensureScryfallSetsRefresh).mockReset();
     vi.mocked(getCachedScryfallSets).mockReset();
   });
@@ -76,7 +82,7 @@ describe("fetchCoverageMeta", () => {
 
   it("returns joined live and cached coverage facts", async () => {
     vi.mocked(getCachedOracleTotal).mockReturnValue(28412);
-    vi.mocked(getCachedOracleTotalBySet).mockReturnValue({ soc: 400 });
+    vi.mocked(getCachedSetOracleTotals).mockReturnValue({ soc: 400 });
     vi.mocked(getCachedScryfallSets).mockReturnValue([
       {
         code: "soc",
@@ -110,6 +116,7 @@ describe("fetchCoverageMeta", () => {
       ],
     });
     expect(ensureOracleTotalRefresh).toHaveBeenCalledOnce();
+    expect(ensureSetOracleTotalsRefresh).toHaveBeenCalledOnce();
     expect(ensureScryfallSetsRefresh).toHaveBeenCalledOnce();
   });
 });

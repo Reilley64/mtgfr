@@ -2,10 +2,10 @@
 # Whenever a creature dealt damage by this creature this turn dies, put a +1/+1 counter on this creature.
 # {1}{R}: This creature deals 1 damage to target creature.
 name = "Vampiric Dragon"
+sets = ["arc", "ody", "ps11", "td0", "voc"]
 id = "e8941499-2b31-417b-b2d2-10a144826703"
 default_print = "4f21d595-c248-4aae-9fd7-4e5787ab8781"
 oracle = "Flying\nWhenever a creature dealt damage by this creature this turn dies, put a +1/+1 counter on this creature.\n{1}{R}: This creature deals 1 damage to target creature."
-set = "ody"
 subtypes = ["Vampire", "Dragon"]
 keywords = ["flying"]
 

@@ -2,9 +2,9 @@
 # owner's hand.
 # {T}: Add {B}, {R}, or {G}.
 name = "Darigaaz's Caldera"
+sets = ["dmr", "pls", "psal", "td0"]
 otags = ["activated-ability", "cycle-pls-lair", "namesake-spell", "triggered-ability"]
 oracle = "When this land enters, sacrifice it unless you return a non-Lair land you control to its owner's hand.\n{T}: Add {B}, {R}, or {G}."
-set = "dmr"
 id = "19b58ec9-bb88-4193-8ea8-c8f09ceec1ed"
 default_print = "27b1ad2d-f02e-4e6b-a49a-f65d174bb0fc"
 identity = ["black", "red", "green"]

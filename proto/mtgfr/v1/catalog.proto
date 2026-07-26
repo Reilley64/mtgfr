@@ -77,7 +77,7 @@ message CatalogCard {
   // The card's printed (oracle) rules text, for the deck builder's read-the-text hover. Absent
   // for a card whose text isn't recorded, or a vanilla.
   optional string oracle = 11;
-  // Set/edition code (Scryfall's lowercase code, e.g. "soc"); empty when unrecorded.
+  // Set/edition code — deprecated; always empty. Use `sets`.
   string set = 12;
   // Printed subtypes for search (creature types, plus a land's printed types).
   repeated string subtypes = 13;
@@ -85,6 +85,8 @@ message CatalogCard {
   repeated string otags = 14;
   // Other face of a prepare DFC. Absent for ordinary single-faced cards.
   optional CatalogBackFace back = 15;
+  // Every Scryfall set code with a printing of this oracle (lowercase).
+  repeated string sets = 17;
 }
 
 // One seat to seed, in seat-index order.

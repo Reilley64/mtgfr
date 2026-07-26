@@ -2,10 +2,10 @@
 # When this land enters, return a land you control to its owner's hand.
 # {T}: Add {R}{W}.
 name = "Boros Garrison"
+sets = ["2x2", "c13", "c15", "c16", "c17", "c19", "c20", "c21", "clu", "cm2", "cma", "cmd", "cmr", "dmc", "gk1", "hop", "ima", "mkc", "mm2", "onc", "prm", "rav", "znc"]
 id = "8fa3ac81-3dfe-4565-be99-5554f7597b4b"
 default_print = "fd0c3f44-b27c-4fc4-9870-21f616259f51"
 oracle = "This land enters tapped.\nWhen this land enters, return a land you control to its owner's hand.\n{T}: Add {R}{W}."
-set = "cmd"
 enters_tapped = true
 
 [kind]

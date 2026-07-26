@@ -4,8 +4,8 @@
 # When this creature enters, look at the top three cards of your library. Put one of them into your hand and the rest
 # on the bottom of your library in any order.
 name = "Raven Familiar"
+sets = ["c13", "plst", "td0", "ulg"]
 otags = ["drawback", "evasion", "hand-neutral", "impulse", "intervening-if-clause", "virtual-french-vanilla"]
-set = "c13"
 subtypes = ["Bird"]
 id = "47aabd9d-0f68-490a-a2ae-5cd9ef689be6"
 default_print = "8b60227d-74de-4f2a-b281-3512dd77ffe8"

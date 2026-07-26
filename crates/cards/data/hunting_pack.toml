@@ -1,11 +1,11 @@
 # Create a 4/4 green Beast creature token.
 # Storm (When you cast this spell, copy it for each spell cast before it this turn.)
 name = "Hunting Pack"
+sets = ["c20", "cmd", "ima", "j21", "mh2", "plst", "scg", "wc03"]
 id = "d3e1848a-c236-4352-a7be-b0b4699af968"
 default_print = "9586c90d-85e5-47a2-a4b6-3571539fbf39"
 otags = ["cast-trigger-self", "copy-self", "multiple-bodies"]
 oracle = "Create a 4/4 green Beast creature token.\nStorm (When you cast this spell, copy it for each spell cast before it this turn.)"
-set = "cmd"
 
 [cost]
 generic = 5

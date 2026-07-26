@@ -1,10 +1,10 @@
 # Exile target artifact or enchantment. If you cast this spell during your main phase, you may
 # exile up to one other target artifact or enchantment.
 name = "Return to Dust"
+sets = ["c14", "c17", "c18", "c21", "cma", "cmd", "cmm", "cmr", "dsc", "khc", "lcc", "mic", "moc", "prm", "tsp", "tsr", "who"]
 id = "3029df1d-d02a-4fed-8ab4-000a2096f823"
 default_print = "2d2819b0-9d17-406e-9b09-6b9e3d71a413"
 oracle = "Exile target artifact or enchantment. If you cast this spell during your main phase, you may exile up to one other target artifact or enchantment."
-set = "cmd"
 
 [cost]
 generic = 2

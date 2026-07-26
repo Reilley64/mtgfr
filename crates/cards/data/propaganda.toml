@@ -2,10 +2,10 @@
 # ponytail: the tax is auto-paid (pool first, then auto-tapped lands) at declare time rather than
 # offered as an explicit pay-or-decline choice — can't-afford makes the declaration illegal.
 name = "Propaganda"
+sets = ["acr", "afc", "c13", "c16", "c20", "clb", "cmd", "fic", "m3c", "msc", "otc", "plst", "pz1", "sld", "tmp", "who"]
 id = "ea9709b6-4c37-4d5a-b04d-cd4c42e4f9dd"
 default_print = "48f9976c-e8a2-4f5a-a2d0-aa63b27c19dc"
 oracle = "Creatures can't attack you unless their controller pays {2} for each creature they control that's attacking you."
-set = "cmd"
 
 [cost]
 generic = 2
