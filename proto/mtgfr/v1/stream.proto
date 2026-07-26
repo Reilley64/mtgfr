@@ -1051,6 +1051,7 @@ message VisibleEvent {
     VisibleEventSplitHalfSpellCast split_half_spell_cast = 131;
     VisibleEventPlayerCountersPlaced player_counters_placed = 132;
     VisibleEventBecameMonstrous became_monstrous = 133;
+    VisibleEventEmblemCreated emblem_created = 134;
   }
 }
 
@@ -1634,6 +1635,15 @@ message VisibleEventTokenCreated {
 
 message VisibleEventTokenCeasedToExist {
   uint32 token = 1;
+}
+
+// A player got an emblem (CR 114.1). Public — CR 114.2, an emblem is visible to everyone,
+// and nothing can remove, copy, or target it afterwards (CR 114.5).
+message VisibleEventEmblemCreated {
+  uint32 emblem = 1;
+  uint32 controller = 2;
+  // The emblem's name; its abilities come from the catalog by name, like any other object's.
+  string name = 3;
 }
 
 // A spell on the stack was copied (Twincast): a new spell object `copy` was put on the stack

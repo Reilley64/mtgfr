@@ -1619,6 +1619,7 @@ impl Effect {
             Effect::Zone(ZoneEffect::ExileSelfOnResolve) => "Exile this".to_string(),
             Effect::Misc(MiscEffect::BecomePrepared) => "Become prepared".to_string(),
             Effect::Misc(MiscEffect::FlipSource) => "Flip this permanent".to_string(),
+            Effect::Misc(MiscEffect::GetEmblem { .. }) => "You get an emblem".to_string(),
             Effect::Counters(CountersEffect::LevelUp { level }) => format!("Level {level}"),
             Effect::Counters(CountersEffect::Monstrosity { count }) => {
                 format!("Monstrosity {count}")

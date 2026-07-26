@@ -9,7 +9,6 @@ oracle = "0: Create two 2/2 black and green Wolf creature tokens with \"When thi
 set = "eld"
 subtypes = ["Garruk"]
 legendary = true
-approximates = "The −6 emblem mode (\"You get an emblem with 'Creatures you control get +3/+3 and have trample.'\") is omitted — emblems (CR 114) don't exist in the engine yet; see fidelity increment #13b."
 
 [cost]
 generic = 4
@@ -50,3 +49,14 @@ target = "creature"
 type = "draw"
 mode = "cards"
 count = 1
+
+# −6: You get an emblem with "Creatures you control get +3/+3 and have trample."
+[[abilities]]
+timing = "activated"
+loyalty = -6
+
+# You get an emblem with "Creatures you control get +3/+3 and have trample."
+[[abilities.effects]]
+type = "misc"
+mode = "get_emblem"
+emblem = "6a5090b1-5eb6-4709-8208-ff3678be5756"

@@ -95520,3 +95520,107 @@ fn bloatfly_swarm_with_no_counters_is_dealt_damage_normally() {
         "no counters were removed, so no rad counters are given"
     );
 }
+
+// ── Garruk, Cursed Huntsman's emblem (#13b, CR 114) ─────────────────────────────────────────
+
+/// Tick Garruk's loyalty up to `loyalty`, then activate his `−6` and resolve it.
+fn garruk_emblem_ultimate(game: &mut Game, garruk: ObjectId, loyalty: i32) {
+    game.add_loyalty(garruk, loyalty - game.loyalty(garruk));
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: garruk,
+        ability_index: 2,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("6 loyalty pays the −6");
+    resolve_top_of_stack(game);
+}
+
+#[test]
+fn garruks_minus_six_gives_an_emblem() {
+    // Garruk, Cursed Huntsman: "−6: You get an emblem with \"Creatures you control get +3/+3 and
+    // have trample.\"" — CR 114.1: the emblem is created in the command zone under its owner's
+    // control.
+    let mut game = Game::new();
+    let garruk = game.spawn_on_battlefield(PlayerId(0), card("Garruk, Cursed Huntsman"));
+    assert!(game.emblems(PlayerId(0)).is_empty(), "no emblem yet");
+
+    garruk_emblem_ultimate(&mut game, garruk, 6);
+
+    let emblems = game.emblems(PlayerId(0));
+    assert_eq!(emblems.len(), 1, "the −6 gives you exactly one emblem");
+    assert_eq!(
+        game.zone_of(emblems[0]),
+        Zone::Command,
+        "CR 114.1: an emblem is in the command zone"
+    );
+    assert!(
+        game.emblems(PlayerId(1)).is_empty(),
+        "only the ability's controller gets it"
+    );
+}
+
+#[test]
+fn garruks_emblem_anthem_applies_to_creatures_you_control() {
+    // The emblem's only ability: "Creatures you control get +3/+3 and have trample."
+    let mut game = Game::new();
+    let garruk = game.spawn_on_battlefield(PlayerId(0), card("Garruk, Cursed Huntsman"));
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+
+    garruk_emblem_ultimate(&mut game, garruk, 7);
+
+    assert_eq!(
+        (game.power(mine), game.toughness(mine)),
+        (5, 5),
+        "2/2 + 3/3"
+    );
+    assert!(game.has_keyword(mine, Keyword::Trample));
+    assert_eq!(
+        (game.power(theirs), game.toughness(theirs)),
+        (2, 2),
+        "an opponent's creature is untouched"
+    );
+    assert!(!game.has_keyword(theirs, Keyword::Trample));
+}
+
+#[test]
+fn garruks_emblem_applies_to_creatures_that_enter_after_it() {
+    // CR 114.3: an emblem's abilities are continuous, not a one-shot pump — a creature that
+    // enters later gets the bonus too.
+    let mut game = Game::new();
+    let garruk = game.spawn_on_battlefield(PlayerId(0), card("Garruk, Cursed Huntsman"));
+
+    garruk_emblem_ultimate(&mut game, garruk, 7);
+    let latecomer = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+
+    assert_eq!(
+        (game.power(latecomer), game.toughness(latecomer)),
+        (5, 5),
+        "the anthem is continuous"
+    );
+    assert!(game.has_keyword(latecomer, Keyword::Trample));
+}
+
+#[test]
+fn garruks_emblem_survives_garruk_leaving_the_battlefield() {
+    // CR 114.5: nothing can remove an emblem — paying the last of Garruk's loyalty puts him in
+    // the graveyard (CR 704.5i), and the emblem keeps working.
+    let mut game = Game::new();
+    let garruk = game.spawn_on_battlefield(PlayerId(0), card("Garruk, Cursed Huntsman"));
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+
+    garruk_emblem_ultimate(&mut game, garruk, 6);
+
+    assert_eq!(
+        game.zone_of(game.current_id(garruk)),
+        Zone::Graveyard,
+        "0 loyalty puts Garruk in the graveyard"
+    );
+    assert_eq!(game.emblems(PlayerId(0)).len(), 1, "the emblem stays");
+    assert_eq!((game.power(mine), game.toughness(mine)), (5, 5));
+    assert!(game.has_keyword(mine, Keyword::Trample));
+}

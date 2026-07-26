@@ -139,8 +139,14 @@ impl Game {
             Event::PermanentEntered { .. } => {
                 cache.invalidate_all_battlefield(self);
             }
+            // A new emblem's static abilities (CR 114.3 — Garruk, Cursed Huntsman's "Creatures you
+            // control get +3/+3 and have trample") apply to every creature its controller owns,
+            // same scope as `LandPlayed`/`TokenCreated`.
             Event::LandPlayed { player, .. }
             | Event::TokenCreated {
+                controller: player, ..
+            }
+            | Event::EmblemCreated {
                 controller: player, ..
             } => {
                 cache.invalidate_owner(self, player);

@@ -561,6 +561,15 @@ pub enum VisibleEvent {
     TokenCeasedToExist {
         token: ObjectId,
     },
+    /// `controller` got an emblem (CR 114.1). Never redacted — CR 114.2, an emblem is public, and
+    /// nothing can remove, copy, or target it afterwards (CR 114.5).
+    EmblemCreated {
+        emblem: ObjectId,
+        controller: u8,
+        /// The emblem's name, which is all a viewer needs to identify it (its abilities come from
+        /// the catalog by name, same as any other object's).
+        name: String,
+    },
     /// A spell on the stack was copied (Twincast): a new spell object `copy` was put on the stack
     /// above `original`, controlled by `controller`.
     SpellCopied {

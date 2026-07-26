@@ -272,7 +272,7 @@ Garruk has died (tested), and never an opponent's Garruk (tested). Also cleared 
 regardless of whether the declared target was that player or their planeswalker, so the "or
 planeswalkers you control" clause was already covered) and the same false claim on
 `counter_scaled_attack_tax`'s and `cant_be_attacked_by`'s `DSL_REFERENCE.md` rows. Still blocked:
-the `−6` emblem residual, cleared by #13b._
+the `−6` emblem residual, cleared by #13b (LANDED 2026-07-27).
 Depends on: nothing. **Clears the stale note at `promise_of_loyalty.toml:3`** ("planeswalker
 defenders unmodeled" — already false; `Defender::Planeswalker` exists and `combat.rs:430` says so).
 Garruk, Cursed Huntsman's `0` and `−3` abilities plus its Wolf token, whose own death trigger
@@ -282,7 +282,22 @@ scalar `Permanent::loyalty`, mutated by the existing `Event::LoyaltyChanged`; no
 `CounterKind`. The `−6` emblem mode is omitted and flagged in `approximates`. Fix the Promise
 of Loyalty note in the same change. *Cards:* garruk_cursed_huntsman.
 
-### 13b. `emblems` — clears 13a's residual, L
+### 13b. `emblems` — clears 13a's residual, L — LANDED 2026-07-27
+_Landed 2026-07-27: emblems (CR 114) exist. Took the **command-zone-object** shape, not a
+dedicated `Game::emblems` store: an emblem is an `Object::Card` in `Zone::Command` with
+`commander = false`, which needs no new struct, gives the emblem a real `ObjectId` (so
+`Game::matching_anthems` takes it as a third source chain beside battlefield and graveyard sources
+with no signature change), and is an unambiguous discriminator — the engine's only other two ways
+into `Zone::Command` (`Game::designate_commander`, `Event::MovedToCommandZone`) both hardcode
+`commander = true`, and both castability gates require it, so an emblem is never castable.
+`Game::emblems(player)` reads them back; there is no remover, by CR 114.5. New
+`MiscEffect::GetEmblem { emblem }` names the emblem by Scryfall oracle id through the existing
+`data/tokens/` `CardDef` registry (`crates/cards/data/tokens/emblem_garruk_cursed_huntsman.toml`,
+`[kind] type = "sorcery"` so its `TypeSet` is empty — CR 114.5's "no characteristics other than
+its abilities"); its single static ability is a plain `StaticEffect::Anthem { power = 3,
+toughness = 3, keywords = ["trample"] }`. New public `Event::EmblemCreated` (never redacted —
+CR 114.2) with its `VisibleEvent`/proto arms. `garruk_cursed_huntsman.toml` is fully faithful —
+`approximates` deleted. Still blocked: nothing._
 Depends on: 13a (LANDED 2026-07-27, unblocked). Emblems are an ownerless, unremovable, non-permanent object in a per-player
 store carrying static abilities only (CR 114.1–114.5). Garruk's is a `StaticEffect::Anthem`
 ("Creatures you control get +3/+3 and have trample"), which already exists — the store is the

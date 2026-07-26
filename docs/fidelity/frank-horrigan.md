@@ -99,7 +99,7 @@ increment that unblocks each card is in parentheses.
 - [x] Contaminant Grafter (#20 slices 3–4) — built 2026-07-27, faithful
 - [x] Everflowing Chalice (#11) — built 2026-07-26, faithful
 - [x] Feral Ghoul (#21) — built 2026-07-27, faithful
-- [ ] Garruk, Cursed Huntsman (#13a, #13b) — built 2026-07-27; still approximated (the −6 emblem mode is omitted — emblems don't exist in the engine; #13b)
+- [x] Garruk, Cursed Huntsman (#13a, #13b) — built 2026-07-27, faithful (#13b landed emblems and the −6 the same day)
 - [x] Garruk, Primal Hunter (#4) — built 2026-07-26, faithful
 - [x] Glistening Sphere (#20 slice 4) — built 2026-07-27, faithful
 - [x] Ichor Rats (#20 slices 1–2) — built 2026-07-26, faithful

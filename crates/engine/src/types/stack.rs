@@ -2639,6 +2639,14 @@ pub enum Event {
     CombatDamagePrevented { player: PlayerId, amount: i32 },
     /// `from` left play and became the command-zone card `card` (commander replacement).
     MovedToCommandZone { card: ObjectId, from: ObjectId },
+    /// "You get an emblem with …" (CR 114.1): `controller` got the emblem object `emblem`, whose
+    /// `def` carries its abilities and nothing else. Public — CR 114.2, an emblem is visible to
+    /// everyone; nothing can remove, copy, or target it afterwards (CR 114.5).
+    EmblemCreated {
+        emblem: ObjectId,
+        controller: PlayerId,
+        def: CardDef,
+    },
     /// A player's mana pool emptied (a step or phase ended).
     ManaEmptied {
         player: PlayerId,

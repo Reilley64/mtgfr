@@ -1595,6 +1595,29 @@ impl Game {
                 assert_eq!(id, card);
                 self.remove_spell_from_stack(from);
             }
+            // CR 114.1/114.3: the emblem is created in its owner's command zone with only the
+            // abilities `def` carries. `commander: false` is what distinguishes it from an actual
+            // commander there — the engine's only other two ways into `Zone::Command`
+            // (`Game::designate_commander` and `MovedToCommandZone` above) both hardcode `true`,
+            // and both castability gates (`Game::cast`, `Game::playable`) require it, so an
+            // emblem is never castable. Nothing ever removes it (CR 114.5).
+            Event::EmblemCreated {
+                emblem,
+                controller,
+                def,
+            } => {
+                let id = self.create_object(
+                    None,
+                    Object::Card(Card {
+                        def,
+                        owner: controller,
+                        zone: Zone::Command,
+                        commander: false,
+                        face_down: false,
+                    }),
+                );
+                assert_eq!(id, emblem);
+            }
             Event::ManaEmptied {
                 player,
                 end_of_turn,

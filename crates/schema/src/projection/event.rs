@@ -601,6 +601,16 @@ pub(crate) fn project_event(
             creator: Some(creator),
         },
         Event::TokenCeasedToExist { token, .. } => VisibleEvent::TokenCeasedToExist { token },
+        // CR 114.2: an emblem is public information — never redacted, whoever the viewer is.
+        Event::EmblemCreated {
+            emblem,
+            controller,
+            def,
+        } => VisibleEvent::EmblemCreated {
+            emblem,
+            controller: controller.0,
+            name: def.name.to_string(),
+        },
         Event::SpellCopied {
             copy,
             original,

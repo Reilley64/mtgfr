@@ -811,6 +811,8 @@ impl Effect {
             | Effect::Misc(MiscEffect::MustAttackRandomOpponent)
             | Effect::Misc(MiscEffect::PreventCombatDamageToYouCreatingTokens { .. })
             | Effect::Misc(MiscEffect::PreventAllCombatDamageThisTurn)
+            // CR 114.5: an emblem can't be targeted, and getting one targets nothing either.
+            | Effect::Misc(MiscEffect::GetEmblem { .. })
             | Effect::Counters(CountersEffect::PlaceVowCounters { .. })
             | Effect::Life(LifeEffect::Lose { .. })
             | Effect::Damage(DamageEffect::ToSelf { .. })

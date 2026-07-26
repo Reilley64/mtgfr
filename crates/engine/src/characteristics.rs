@@ -1274,8 +1274,15 @@ impl Game {
             .into_iter()
             .filter(|&id| self.def_of(id).functions_in_graveyard)
             .map(|id| (id, true, owner));
-        for (source, source_in_graveyard, source_owner) in
-            battlefield_sources.chain(graveyard_sources)
+        // Emblem anthems (CR 114.3 — Garruk, Cursed Huntsman's "Creatures you control get +3/+3
+        // and have trample"). An emblem's abilities function from the command zone, so it is a
+        // third source chain here; it is tagged `false` (not "in a graveyard") because a
+        // `from_graveyard` anthem is specifically a card functioning from a graveyard, which an
+        // emblem never is.
+        let emblem_sources = self.emblems(owner).into_iter().map(|id| (id, false, owner));
+        for (source, source_in_graveyard, source_owner) in battlefield_sources
+            .chain(graveyard_sources)
+            .chain(emblem_sources)
         {
             for ability in self.functional_abilities(source) {
                 let (

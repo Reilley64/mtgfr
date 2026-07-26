@@ -79,6 +79,7 @@ impl Game {
                 m @ (MiscEffect::ArmCombatDamageWatch
                 | MiscEffect::BecomePrepared
                 | MiscEffect::FlipSource
+                | MiscEffect::GetEmblem { .. }
                 | MiscEffect::CounterTargetActivatedAbility
                 | MiscEffect::CounterTargetSpell { .. }
                 | MiscEffect::GrantChannelColorlessManaThisTurn

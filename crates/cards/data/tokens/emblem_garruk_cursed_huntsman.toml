@@ -1,0 +1,24 @@
+# Creatures you control get +3/+3 and have trample.
+#
+# An emblem (CR 114), not a token — it shares `data/tokens/`'s registry because that registry is
+# just "a named `CardDef` keyed by Scryfall oracle id", and Scryfall models emblems as token-set
+# cards. `kind = "sorcery"` gives it `TypeSet::NONE`: CR 114.5, an emblem has no characteristics
+# other than its abilities.
+name = "Garruk, Cursed Huntsman Emblem"
+id = "6a5090b1-5eb6-4709-8208-ff3678be5756"
+default_print = "d6c65749-1774-4b36-891e-abf762c95cec"
+
+[kind]
+type = "sorcery"
+
+# Creatures you control get +3/+3 and have trample.
+[[abilities]]
+timing = "static"
+
+# Creatures you control get +3/+3 and have trample.
+[[abilities.effects]]
+type = "static"
+mode = "anthem"
+power = 3
+toughness = 3
+keywords = ["trample"]

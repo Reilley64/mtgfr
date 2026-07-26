@@ -1320,6 +1320,15 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> Option<pb::VisibleEvent> {
         VisibleEvent::TokenCeasedToExist { token } => {
             Event::TokenCeasedToExist(pb::VisibleEventTokenCeasedToExist { token })
         }
+        VisibleEvent::EmblemCreated {
+            emblem,
+            controller,
+            name,
+        } => Event::EmblemCreated(pb::VisibleEventEmblemCreated {
+            emblem,
+            controller: u32::from(controller),
+            name,
+        }),
         VisibleEvent::SpellCopied {
             copy,
             original,

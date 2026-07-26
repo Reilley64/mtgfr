@@ -1303,6 +1303,24 @@ impl Game {
             .collect()
     }
 
+    /// Ids of every emblem `player` owns (CR 114). An emblem is an ownerless-but-controlled,
+    /// unremovable, non-permanent object that exists only in the command zone (CR 114.1) and has
+    /// no characteristics other than its abilities (CR 114.5), so it is stored as a command-zone
+    /// [`Object::Card`] with `commander: false` — the engine's only other two ways into
+    /// [`Zone::Command`] ([`Game::designate_commander`] and [`Event::MovedToCommandZone`]) both
+    /// set `commander: true`, which makes that flag an unambiguous emblem discriminator. Nothing
+    /// removes, copies, or targets an emblem (CR 114.5), so there is no counterpart remover.
+    pub fn emblems(&self, player: PlayerId) -> Vec<ObjectId> {
+        self.objects
+            .iter()
+            .enumerate()
+            .filter(|(_, o)| {
+                matches!(o, Object::Card(c) if c.zone == Zone::Command && !c.commander && c.owner == player)
+            })
+            .map(|(id, _)| id as ObjectId)
+            .collect()
+    }
+
     /// Whether the permanent `id` satisfies `filter`. `you` is the effect's controller (the
     /// "you" the filter's `controller` axis is relative to); `source` is the filter's own source
     /// permanent, used only by the `other` axis ("another permanent") — pass `None` where there
