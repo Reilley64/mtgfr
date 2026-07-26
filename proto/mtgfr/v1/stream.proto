@@ -105,6 +105,13 @@ message StackObjectView {
   // All declared targets, clause 0 then clause 1 (Magma Opus second clause).
   // Empty when targetless. `target` remains the primary (first) for older clients.
   repeated WireTarget targets = 7;
+  // Scryfall Printing UUID for stack art. Required when `source` is a Moved tombstone
+  // (sacrifice-as-cost activations) that never appears in VisibleState.objects.
+  string print = 8;
+  // Source card's catalog id for inspect / oracle (empty when anonymized).
+  string card_id = 9;
+  // Source card's display name for art alt text / inspect (empty when anonymized).
+  string name = 10;
 }
 
 // One labelled item offered by a pending choice (a legal target, or a blocker to assign damage

@@ -350,6 +350,16 @@ pub struct StackObjectView {
     /// Declared targets in clause order (primary clause, then second). Empty if targetless.
     #[serde(default)]
     pub targets: Vec<WireTarget>,
+    /// Scryfall Printing UUID for stack art. Needed when `source` is a Moved tombstone
+    /// (sacrifice-as-cost) that `live_object_ids` omits from [`VisibleState::objects`].
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub print: String,
+    /// Source card catalog id for inspect / oracle. Empty when anonymized.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub card_id: String,
+    /// Source card display name for art alt / inspect. Empty when anonymized.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub name: String,
 }
 
 /// One labelled item offered by a pending choice (a legal target, or a blocker to assign
