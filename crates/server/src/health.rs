@@ -26,7 +26,7 @@ pub fn faithful_by_set() -> BTreeMap<String, u32> {
         if def.set.is_empty() {
             continue;
         }
-        *map.entry(def.set.to_string()).or_default() += 1;
+        *map.entry(def.set.to_lowercase()).or_default() += 1;
     }
     map
 }
@@ -127,7 +127,7 @@ mod tests {
             if def.set.is_empty() {
                 continue;
             }
-            *expected.entry(def.set.to_string()).or_default() += 1;
+            *expected.entry(def.set.to_lowercase()).or_default() += 1;
         }
         assert!(!expected.is_empty());
         let state = test_state().await;

@@ -34,3 +34,7 @@ test("coveragePercentText shows em dash when oracle total is missing", () => {
 test("coveragePercentText shows em dash when faithful count is missing", () => {
   expect(coveragePercentText(null, 400)).toBe("—");
 });
+
+test("coveragePercentText shows 0.0% when faithful is zero", () => {
+  expect(coveragePercentText(0, 400)).toBe("0.0%");
+});

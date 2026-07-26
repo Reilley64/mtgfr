@@ -13,9 +13,10 @@ export function formatFaithfulPercent(faithfulCount: number, oracleTotal: number
   if (!(oracleTotal > 0) || !Number.isFinite(faithfulCount) || !Number.isFinite(oracleTotal)) {
     return null;
   }
-  const pct = (100 * faithfulCount) / oracleTotal;
-  if (pct < 10) return `${pct.toFixed(1)}%`;
-  return `${Math.round(pct)}%`;
+  const rawPct = (100 * faithfulCount) / oracleTotal;
+  if (rawPct >= 100) return "100%";
+  if (rawPct < 10) return `${rawPct.toFixed(1)}%`;
+  return `${Math.round(rawPct)}%`;
 }
 
 /** Fixed bottom-left API badge — hidden until `version` is known (Solid AppVersion parity). */

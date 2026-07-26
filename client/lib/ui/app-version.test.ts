@@ -18,6 +18,10 @@ describe("formatFaithfulPercent", () => {
     expect(formatFaithfulPercent(1000, 10000)).toBe("10%");
     expect(formatFaithfulPercent(2500, 10000)).toBe("25%");
   });
+
+  it("clamps to 100% when faithful exceeds oracle total", () => {
+    expect(formatFaithfulPercent(500, 400)).toBe("100%");
+  });
 });
 
 describe("appVersionBadge", () => {
