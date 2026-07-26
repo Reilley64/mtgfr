@@ -1,13 +1,14 @@
 import { defineHandler } from "nitro/h3";
 import { loadLobby, toLobbyView } from "../../../../../../app/domain/lobby-store";
+import { runWebDb } from "../../../../../db/client";
 import { json, tableParam, unknownLobby, withLobbyAuth } from "../../../../../lobby-http";
 
 export default defineHandler(async (event) => {
   const tableId = tableParam(event);
   if (!tableId) return new Response("Not Found", { status: 404 });
 
-  return withLobbyAuth(event, `api tables/${tableId}/lobby/v1`, async ({ me, db }) => {
-    const snap = await loadLobby(db, tableId);
+  return withLobbyAuth(event, `api tables/${tableId}/lobby/v1`, async ({ me }) => {
+    const snap = await runWebDb(loadLobby(tableId));
     if (!snap) {
       return json(toLobbyView(unknownLobby(tableId), me.id, "UnknownTable"), 404);
     }

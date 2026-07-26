@@ -125,7 +125,9 @@ The browser talks only to the same-origin BFF via the hand-written Effect HTTP c
 The `/api/rpc/[...path]` route opens exactly one `runTracedRequest` runtime edge around Effect
 dispatch. `dispatchRpc` returns an Effect that resolves to `RpcOutcome`, including mapped gRPC
 errors; the route sets or clears the HttpOnly session cookie imperatively only after that Effect
-finishes.
+finishes. For in-game methods, `dispatchRpc` resolves the owning pod through `resolveTableAddress`,
+which runs the Effect-native `lookupTableRoute` store program via `runWebDb` (`client/server/db/client.ts`)
+— a pooled `ManagedRuntime` over the `WebDb` Drizzle `effect-postgres` service on `mtgfr_web`.
 
 `makeClient(fetch)` accepts a fetch implementation so tests can stub it. `client` is the app singleton (credentials: include, prepended `/api/rpc`). Wire types (`wire/types.ts`) are Effect Schema-decoded DTOs; `wire/protoMap.ts` maps them to/from proto.
 

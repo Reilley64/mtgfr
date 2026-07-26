@@ -16,10 +16,15 @@ const mocks = vi.hoisted(() => ({
   gravatarHash: vi.fn(),
   joinLobby: vi.fn(),
   loadLobby: vi.fn(),
+  runWebDb: vi.fn(),
   seedGame: vi.fn(),
   setReady: vi.fn(),
   startError: vi.fn(),
   withLobbyAuth: vi.fn(),
+}));
+
+vi.mock("./db/client", () => ({
+  runWebDb: mocks.runWebDb,
 }));
 
 vi.mock("./lobby-http", () => ({
@@ -70,7 +75,6 @@ vi.mock("../app/domain/lobby-store", () => ({
   }),
 }));
 
-const db = { kind: "db" };
 const env = { sessionToken: "session-token" };
 const me = { id: 42, email: "player@example.test", username: "Player" };
 
@@ -87,13 +91,14 @@ function event(table: string | null, body: Record<string, unknown> = {}): H3Even
 describe("lobby table route files", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.withLobbyAuth.mockImplementation(async (_event, _span, fn) => fn({ me, env, db }));
-    mocks.createLobby.mockResolvedValue("NEWTBL");
+    mocks.withLobbyAuth.mockImplementation(async (_event, _span, fn) => fn({ me, env }));
+    mocks.runWebDb.mockImplementation((op) => Promise.resolve(op));
+    mocks.createLobby.mockReturnValue("NEWTBL");
     mocks.fetchDeckName.mockReturnValue(Effect.succeed("Mock Deck"));
     mocks.gravatarHash.mockResolvedValue("avatar-hash");
-    mocks.joinLobby.mockResolvedValue({ snap: { tableId: "PATHID", hostUserId: me.id, startedAt: null, seats: [] } });
-    mocks.setReady.mockResolvedValue({ snap: { tableId: "PATHID", hostUserId: me.id, startedAt: null, seats: [] } });
-    mocks.loadLobby.mockResolvedValue({
+    mocks.joinLobby.mockReturnValue({ snap: { tableId: "PATHID", hostUserId: me.id, startedAt: null, seats: [] } });
+    mocks.setReady.mockReturnValue({ snap: { tableId: "PATHID", hostUserId: me.id, startedAt: null, seats: [] } });
+    mocks.loadLobby.mockReturnValue({
       tableId: "PATHID",
       hostUserId: me.id,
       startedAt: null,
@@ -137,11 +142,10 @@ describe("lobby table route files", () => {
     await startHandler(event("PATHID", { table_id: "BODYID" }));
 
     expect(mocks.joinLobby).toHaveBeenCalledWith(
-      db,
       expect.objectContaining({ tableId: "PATHID", userId: me.id, deckId: 7 }),
     );
-    expect(mocks.setReady).toHaveBeenCalledWith(db, "PATHID", me.id, true);
+    expect(mocks.setReady).toHaveBeenCalledWith("PATHID", me.id, true);
     expect(mocks.seedGame).toHaveBeenCalledWith(env, expect.objectContaining({ table_id: "PATHID" }));
-    expect(mocks.commitStart).toHaveBeenCalledWith(db, "PATHID", "pod.local");
+    expect(mocks.commitStart).toHaveBeenCalledWith("PATHID", "pod.local");
   });
 });
