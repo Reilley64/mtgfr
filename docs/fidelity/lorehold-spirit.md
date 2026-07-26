@@ -126,7 +126,7 @@ None. All 83 Lorehold nonbasics are already in the pool.
 - [x] Ao, the Dawn Sky — #1 (LANDED)
 - [x] Atsushi, the Blazing Sky — #1 (LANDED)
 - [x] Augusta, Order Returned — #2 (LANDED)
-- [ ] Conspiracy Theorist — #3
+- [x] Conspiracy Theorist — #3 (LANDED)
 
 ## Observability re-audit
 
@@ -181,19 +181,19 @@ Lorehold's own graveyard-exit shell makes the count live every game, so the targ
 missing response window are not harmless documentation noise. This is increment
 [#2](lorehold-spirit-increments.md#2-reflexive-trigger-follow-up-targeting--1-card-m).
 
-### 4. `Conspiracy Theorist` falsifies its own discard-trigger ponytail
+### 4. `Conspiracy Theorist` discard trigger — batch + nonland filter + choose-one (LANDED)
 
-`Conspiracy Theorist`'s file still claims two shortcuts are harmless:
+`Conspiracy Theorist`'s file previously claimed two shortcuts were harmless:
 
-- the trigger fires on **every** discarded card, not once per discard event, and
-- it fires on discarded **lands** too, not only on "one or more nonland cards".
+- the trigger fired on **every** discarded card, not once per discard event, and
+- it fired on discarded **lands** too, not only on "one or more nonland cards".
 
-Lorehold falsifies both. The deck can discard lands to Quintorius's +1, to `Conspiracy Theorist`'s
-own attack trigger, and to spells like `Faithless Looting` / `Seize the Spoils`; under the current
-shape, a discarded land can still be exiled and played, and multiple discarded nonlands would yield
-multiple single-card triggers instead of one "choose one of them" window. That is a live fidelity
-gap, not a harmless upside note. This is increment
-[#3](lorehold-spirit-increments.md#3-discard-trigger-batch-filter-and-choose-one--1-card-m).
+Lorehold falsified both — the deck routinely discards lands (to Quintorius's +1, to `Conspiracy
+Theorist`'s own attack trigger, to `Faithless Looting` / `Seize the Spoils`) and can discard several
+cards at once. The card now uses `timing = "you_discard_nonland"` + `may_exile_discarded_nonland_may_play`:
+a discarded land grants no impulse play, and a multi-card nonland discard yields one "choose one of
+them" window. Landed as increment
+[#3](lorehold-spirit-increments.md#3-discard-trigger-batch-filter-and-choose-one--1-card-m--landed-2026-07-26).
 
 ### 5. The remaining ponytails stay harmless for this deck
 

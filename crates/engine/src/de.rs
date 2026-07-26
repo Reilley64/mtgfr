@@ -1766,6 +1766,7 @@ enum TriggerTag {
     YouSacrifice,
     AnyPlayerSacrifices,
     YouDiscard,
+    YouDiscardNonland,
     DealsCombatDamageToPlayer,
     DealsCombatDamageToCreature,
     CreatureDealtDamageByThisDies,
@@ -2036,6 +2037,7 @@ impl<'de> Deserialize<'de> for Ability {
                     filter: flat.filter,
                 },
                 TriggerTag::YouDiscard => Trigger::YouDiscard,
+                TriggerTag::YouDiscardNonland => Trigger::YouDiscardNonland,
                 TriggerTag::DealsCombatDamageToPlayer => {
                     Trigger::DealsCombatDamageToPlayer { who: flat.who }
                 }

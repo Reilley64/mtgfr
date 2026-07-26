@@ -123,6 +123,7 @@ message_keys! {
     EFFECT_CHOICE_MAY_DRAW_UNLESS_PAYS => "effect.choice_may_draw_unless_pays",
     EFFECT_CHOICE_MAY_DRAW_UP_TO => "effect.choice_may_draw_up_to",
     EFFECT_CHOICE_MAY_DRAW_UP_TO_THEN_OPPONENT_MAY_REPEAT => "effect.choice_may_draw_up_to_then_opponent_may_repeat",
+    EFFECT_CHOICE_MAY_EXILE_DISCARDED_NONLAND_MAY_PLAY => "effect.choice_may_exile_discarded_nonland_may_play",
     EFFECT_CHOICE_MAY_PUT_COUNTER_ON_CREATURE => "effect.choice_may_put_counter_on_creature",
     EFFECT_CHOICE_MAY_RETURN_FROM_GRAVEYARD => "effect.choice_may_return_from_graveyard",
     EFFECT_CHOICE_MAY_SACRIFICE => "effect.choice_may_sacrifice",
@@ -1840,6 +1841,9 @@ impl Effect {
             Effect::Choice(MayReturnFromGraveyard { filter, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_MAY_RETURN_FROM_GRAVEYARD)
                     .with_params(vec![card_filter_param("filter", filter)])
+            }
+            Effect::Choice(MayExileDiscardedNonlandMayPlay { .. }) => {
+                MessageRef::new(MessageKey::EFFECT_CHOICE_MAY_EXILE_DISCARDED_NONLAND_MAY_PLAY)
             }
             Effect::Choice(MayDiscard { .. }) => MessageRef::new(MessageKey::EFFECT_CHOICE_MAY_DISCARD),
             Effect::Choice(MayPutCounterOnCreature) => {

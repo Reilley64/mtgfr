@@ -278,6 +278,7 @@ message PendingChoiceView {
     PendingChoiceViewChooseCardName choose_card_name = 66;
     PendingChoiceViewPayAnyAmountOfMana pay_any_amount_of_mana = 67;
     PendingChoiceViewChooseLegendaryKeep choose_legendary_keep = 68;
+    PendingChoiceViewMayExileDiscardedToPlay may_exile_discarded_to_play = 69;
   }
 }
 
@@ -566,6 +567,15 @@ message PendingChoiceViewMayReturnFromGraveyard {
 // rider effect, or decline (CR 608.2c-style resolution-time optional sub-action — Quintorius,
 // History Chaser's +1).
 message PendingChoiceViewMayDiscard {
+  uint32 player = 1;
+  uint32 source = 2;
+  repeated ChoiceItem items = 3;
+}
+
+// This player may exile one of `items` (a nonland card they just discarded, in their own public
+// graveyard) face-up with impulse-play permission until end of turn, or decline (Conspiracy
+// Theorist's "you may exile one of them from your graveyard … you may cast it this turn").
+message PendingChoiceViewMayExileDiscardedToPlay {
   uint32 player = 1;
   uint32 source = 2;
   repeated ChoiceItem items = 3;

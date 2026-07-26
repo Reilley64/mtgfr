@@ -469,6 +469,15 @@ impl<'a> ChoiceCtx<'a> {
                 mandatory,
                 items: self.label_items(options),
             },
+            engine::PendingChoice::MayExileDiscardedToPlay {
+                player,
+                source,
+                options,
+            } => PendingChoiceView::MayExileDiscardedToPlay {
+                player: player.0,
+                source,
+                items: self.label_items(options),
+            },
             engine::PendingChoice::MayDiscard {
                 player,
                 source,

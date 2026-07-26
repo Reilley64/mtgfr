@@ -1327,6 +1327,20 @@ pub enum PendingChoice {
         options: Vec<ObjectId>,
         mandatory: bool,
     },
+    /// `player` may exile one of `options` (a nonland card they just discarded, still in their
+    /// graveyard) face-up with impulse-play permission until end of turn, or decline
+    /// ([`Effect::Choice(ChoiceEffect::MayExileDiscardedNonlandMayPlay)`] — Conspiracy Theorist's
+    /// "you may exile one of them from your graveyard. If you do, you may cast it this turn").
+    /// Answered by [`Intent::ChooseSacrifices`] (reusing its "empty list declines, one entry
+    /// picks" wire shape, like [`Self::MayReturnFromGraveyard`]): an empty list declines, one
+    /// entry exiles that card with play permission. The impulse-play twin of
+    /// [`Self::MayReturnFromGraveyard`]; the choose-one batch payoff of
+    /// [`Trigger::YouDiscardNonland`](crate::Trigger).
+    MayExileDiscardedToPlay {
+        player: PlayerId,
+        source: ObjectId,
+        options: Vec<ObjectId>,
+    },
     /// `player` may discard one of `options` (a card in their own hand); if they do, `then`
     /// resolves ([`Effect::Choice(ChoiceEffect::MayDiscard)`] — Quintorius, History Chaser's +1 "You may discard a
     /// card. If you do, draw two cards, then mill a card."). Answered by
@@ -1837,6 +1851,7 @@ impl PendingChoice {
             | PendingChoice::JoinForcesPayment { player, .. }
             | PendingChoice::MaySacrifice { player, .. }
             | PendingChoice::MayReturnFromGraveyard { player, .. }
+            | PendingChoice::MayExileDiscardedToPlay { player, .. }
             | PendingChoice::MayDiscard { player, .. }
             | PendingChoice::MayPutCounterOnCreature { player, .. }
             | PendingChoice::DiscardToHandSize { player, .. }

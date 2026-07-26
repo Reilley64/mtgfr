@@ -750,6 +750,7 @@ impl Effect {
             | Effect::Choice(ChoiceEffect::MaySacrifice { .. })
             | Effect::Choice(ChoiceEffect::MayReturnFromGraveyard { .. })
             | Effect::Choice(ChoiceEffect::MayDiscard { .. })
+            | Effect::Choice(ChoiceEffect::MayExileDiscardedNonlandMayPlay { .. })
             | Effect::Choice(ChoiceEffect::MayPutCounterOnCreature)
             | Effect::Choice(ChoiceEffect::MayDrawUnlessPays { .. })
             | Effect::Counters(CountersEffect::PutCountersEach { .. })
@@ -1891,6 +1892,14 @@ pub(crate) fn contextualize_effect(effect: Effect, ctx: TriggerContext) -> Effec
     } else {
         fill_cards_left_graveyard(effect, ctx.cards_left_graveyard)
     };
+    // A `YouDiscardNonland` payoff that exiles one of the discarded nonland cards (Conspiracy
+    // Theorist) needs the batch's nonland card ids baked in — same shape as `cards_left_graveyard`
+    // above. `&[]` for every other trigger, so this is a no-op elsewhere.
+    let effect = if ctx.discarded_nonland_cards.is_empty() {
+        effect
+    } else {
+        fill_discarded_nonland_cards(effect, ctx.discarded_nonland_cards)
+    };
     // A delayed one-shot's copy payoff (Thunderclap Drake) needs the spell that fired the
     // armed watch, not the attack tuple below — guarded separately for the same reason as
     // `entering`/`dying_enchanted_creature` above.
@@ -2214,6 +2223,19 @@ fn fill_cards_left_graveyard(effect: Effect, cards: &'static [ObjectId]) -> Effe
     match effect {
         Effect::Choice(ChoiceEffect::PutCounterThenMayBecomeCopyOfCardFromList { .. }) => {
             Effect::Choice(ChoiceEffect::PutCounterThenMayBecomeCopyOfCardFromList { cards })
+        }
+        other => other,
+    }
+}
+
+/// Rewrite a [`TriggerContext::discarded_nonland_cards`]-reading effect placeholder to the batch's
+/// nonland card ids: [`Effect::Choice(ChoiceEffect::MayExileDiscardedNonlandMayPlay)`] (Conspiracy
+/// Theorist, off [`Trigger::YouDiscardNonland`]) — mirrors [`fill_cards_left_graveyard`] above.
+/// `cards` is the already-leaked `&'static` slice off the trigger context, so no re-leak here.
+fn fill_discarded_nonland_cards(effect: Effect, cards: &'static [ObjectId]) -> Effect {
+    match effect {
+        Effect::Choice(ChoiceEffect::MayExileDiscardedNonlandMayPlay { .. }) => {
+            Effect::Choice(ChoiceEffect::MayExileDiscardedNonlandMayPlay { cards })
         }
         other => other,
     }

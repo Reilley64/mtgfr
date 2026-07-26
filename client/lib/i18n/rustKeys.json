@@ -97,6 +97,7 @@
   "effect.choice_may_draw_unless_pays",
   "effect.choice_may_draw_up_to",
   "effect.choice_may_draw_up_to_then_opponent_may_repeat",
+  "effect.choice_may_exile_discarded_nonland_may_play",
   "effect.choice_may_put_counter_on_creature",
   "effect.choice_may_return_from_graveyard",
   "effect.choice_may_sacrifice",

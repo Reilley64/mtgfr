@@ -61,10 +61,19 @@ Regression bar:
 - a positive nonland count creates a second trigger that targets an attacking creature afterward,
 - players can respond in the real window between the graveyard fan-out and the counter placement.
 
-### 3. `discard-trigger-batch-filter-and-choose-one` — 1 card, M
+### 3. `discard-trigger-batch-filter-and-choose-one` — 1 card, M — LANDED (2026-07-26)
 
 **Depends on:** none.
 **Cards:** `conspiracy_theorist.toml`
+**Landed:** new `Trigger::YouDiscardNonland` (batch-once, controller-scoped, drained from
+`discards_this_batch` like `CardsLeaveYourGraveyard`): a single simultaneous discard is one "you
+discard" event and fires **only when at least one discarded card was a nonland** (`!types()
+.intersects(TypeSet::LAND)`, so an instant counts as nonland — a lone land discard fires nothing).
+The discarded nonland card ids ride in `TriggerContext::discarded_nonland_cards`, baked into the new
+`ChoiceEffect::MayExileDiscardedNonlandMayPlay` payoff (`fill_discarded_nonland_cards`), which pauses
+on `PendingChoice::MayExileDiscardedToPlay` — a choose-one-of-them (or decline) over exactly those
+cards still in the graveyard, exiling the chosen one face-up with impulse-play permission. The
+unfiltered per-card `Trigger::YouDiscard` (Containment Construct / Currency Converter) is unchanged.
 **Sketch:** `Conspiracy Theorist` needs a discard-trigger shape stricter than the current
 `Trigger::YouDiscard` plumbing. Today the trigger queues once per discarded card and threads only one
 discarded-card id, which is good enough for `Containment Construct` but not for "Whenever you

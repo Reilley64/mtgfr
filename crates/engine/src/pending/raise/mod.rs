@@ -107,6 +107,13 @@ pub(crate) enum ChoiceRequest {
         filter: crate::CardFilter,
         mandatory: bool,
     },
+    /// [`Effect::Choice(ChoiceEffect::MayExileDiscardedNonlandMayPlay)`] — no card still in the
+    /// graveyard skips (Conspiracy Theorist).
+    MayExileDiscardedNonlandMayPlay {
+        player: crate::PlayerId,
+        source: crate::ObjectId,
+        cards: &'static [crate::ObjectId],
+    },
     /// [`Effect::Choice(ChoiceEffect::MayDiscard)`] — empty hand skips.
     MayDiscard {
         player: crate::PlayerId,
@@ -407,6 +414,11 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
             filter,
             mandatory,
         } => optional::may_return_from_graveyard(game, player, source, filter, mandatory),
+        ChoiceRequest::MayExileDiscardedNonlandMayPlay {
+            player,
+            source,
+            cards,
+        } => optional::may_exile_discarded_nonland_may_play(game, player, source, cards),
         ChoiceRequest::MayDiscard {
             player,
             source,

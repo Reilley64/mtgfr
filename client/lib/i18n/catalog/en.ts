@@ -149,6 +149,9 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.choice_may_draw_up_to": (params) => `You may draw up to ${param(params, "count")}`,
   "effect.choice_may_draw_up_to_then_opponent_may_repeat": (params) =>
     `You may draw up to ${param(params, "count")}, then that opponent may repeat this process`,
+  "effect.choice_may_exile_discarded_nonland_may_play": literal(
+    "You may exile one of the discarded nonland cards; play it this turn",
+  ),
   "effect.choice_may_put_counter_on_creature": literal("You may put a +1/+1 counter on a creature"),
   "effect.choice_may_return_from_graveyard": (params) =>
     `You may return ${humanize(param(params, "filter", "a card"))} from your graveyard to your hand`,

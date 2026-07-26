@@ -62,6 +62,7 @@ While `Game::pending_choice` is `Some`, no `LegalAction` is exposed and only the
 - **`PayRecoverOrExile { player, card }`** — Recover (CR 702.59): pay the recover cost to return a creature from the graveyard, or exile it.
 - **`PayCumulativeUpkeepOrSacrifice { player, permanent, cost }`** — Cumulative Upkeep (CR 702.24): pay all accumulated age-counter costs or sacrifice.
 - **`Discard { player, hand, count }`** — a triggered discard effect (distinct from cleanup discard to hand size).
+- **`MayExileDiscardedToPlay { player, source, options }`** — a batch nonland-discard payoff (Conspiracy Theorist's `Trigger::YouDiscardNonland`): may exile one of `options` (the nonland cards discarded this event, still in the graveyard) face-up with impulse-play permission until end of turn, or decline. Answered by `Intent::ChooseSacrifices` (empty declines, one entry picks); never forced. No card still in the graveyard skips the pause.
 - **`ChooseSacrifice { player, options, filter }`** — a triggered edict that asks the player to pick which permanent(s) they sacrifice voluntarily (for a modal/optional effect).
 
 These three keyword-cost choices come from `Game::pending_obligations`, the engine's unified post-trigger obligation queue. Once ordinary `TriggerGroup` placement is exhausted, `place_pending_triggers` raises them one at a time in fixed priority order: Echo first, then Recover, then Cumulative upkeep.

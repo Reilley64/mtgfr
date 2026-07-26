@@ -800,6 +800,14 @@ pub enum PendingChoiceView {
         mandatory: bool,
         items: Vec<ChoiceItem>,
     },
+    /// This player may exile one of `items` (a nonland card they just discarded, in their own —
+    /// public — graveyard) face-up with impulse-play permission until end of turn, or decline
+    /// (Conspiracy Theorist's "you may exile one of them … you may cast it this turn").
+    MayExileDiscardedToPlay {
+        player: u8,
+        source: ObjectId,
+        items: Vec<ChoiceItem>,
+    },
     /// This player may discard one of `items` (a card in their own hand, private to them) to
     /// gain a rider effect, or decline (CR 608.2c-style resolution-time optional sub-action —
     /// Quintorius, History Chaser's +1).
@@ -1033,6 +1041,7 @@ impl PendingChoiceView {
             | Self::CasterKeepPermanents { items, .. }
             | Self::ChooseCounterTargetForPlayer { items, .. }
             | Self::MayReturnFromGraveyard { items, .. }
+            | Self::MayExileDiscardedToPlay { items, .. }
             | Self::MayDiscard { items, .. }
             | Self::Discard { items, .. }
             | Self::PutFromHandOnTop { items, .. }

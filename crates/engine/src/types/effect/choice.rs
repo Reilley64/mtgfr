@@ -143,6 +143,21 @@ pub enum ChoiceEffect {
     /// was placed, not "if you do". Non-targeted: nothing is advertised on the stack at cast.
     MayPutCounterOnCreature,
 
+    /// A batch nonland-discard payoff (CR 701.8 — Conspiracy Theorist's "you may exile one of
+    /// them from your graveyard. If you do, you may cast it this turn"): pauses the controller on
+    /// a [`PendingChoice::MayExileDiscardedToPlay`](crate::PendingChoice) over `cards` (the nonland
+    /// cards discarded this event, still in the graveyard), choosing one exiles it face-up with
+    /// impulse-play permission until end of turn, declining does nothing. `cards` is baked in at
+    /// [`Trigger::YouDiscardNonland`](crate::Trigger) placement from
+    /// [`TriggerContext::discarded_nonland_cards`](crate::TriggerContext) via
+    /// `contextualize_effect`'s `fill_discarded_nonland_cards` — the graveyard-return twin of
+    /// [`Self::PutCounterThenMayBecomeCopyOfCardFromList`]. Non-targeted: nothing is advertised on
+    /// the stack. No legal card left (a prior effect moved them) quietly does nothing (no pause).
+    MayExileDiscardedNonlandMayPlay {
+        #[cfg_attr(feature = "card-dsl", serde(skip))]
+        cards: &'static [ObjectId],
+    },
+
     MayReturnFromGraveyard {
         filter: CardFilter,
         #[cfg_attr(feature = "card-dsl", serde(default))]

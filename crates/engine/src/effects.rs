@@ -903,6 +903,7 @@ impl Game {
             // SacrificeSelfUnlessPay — may pause peel (`resolution/pause_may`).
             Effect::Choice(ChoiceEffect::MaySacrifice { .. })
             | Effect::Choice(ChoiceEffect::MayReturnFromGraveyard { .. })
+            | Effect::Choice(ChoiceEffect::MayExileDiscardedNonlandMayPlay { .. })
             | Effect::Choice(ChoiceEffect::MayDiscard { .. })
             | Effect::Choice(ChoiceEffect::MayDrawUnlessPays { .. })
             | Effect::Choice(ChoiceEffect::TargetPlayerMayDraw { .. })

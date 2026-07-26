@@ -262,6 +262,7 @@ fn view_player(view: &PendingChoiceView) -> u8 {
         | PendingChoiceView::CasterKeepPermanents { player, .. }
         | PendingChoiceView::ChooseCounterTargetForPlayer { player, .. }
         | PendingChoiceView::MayReturnFromGraveyard { player, .. }
+        | PendingChoiceView::MayExileDiscardedToPlay { player, .. }
         | PendingChoiceView::MayDiscard { player, .. }
         | PendingChoiceView::Discard { player, .. }
         | PendingChoiceView::PutFromHandOnTop { player, .. }

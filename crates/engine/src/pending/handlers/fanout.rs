@@ -465,6 +465,42 @@ impl Game {
         Ok(events)
     }
 
+    /// Answer a [`PendingChoice::MayExileDiscardedToPlay`]: `choice` is empty to decline, or names
+    /// the one discarded nonland card (one of the choice's `options`) exiled from `player`'s
+    /// graveyard face-up with impulse-play permission
+    /// ([`Effect::Choice(ChoiceEffect::MayExileDiscardedNonlandMayPlay)`] — Conspiracy Theorist).
+    /// The impulse-play twin of [`Self::answer_may_return_from_graveyard`] — minting the same
+    /// [`Event::ExiledFromGraveyardMayPlay`] as [`MillEffect::ExileFromGraveyardMayPlay`].
+    pub(crate) fn answer_may_exile_discarded_to_play(
+        &mut self,
+        _player: PlayerId,
+        choice: Vec<ObjectId>,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::MayExileDiscardedToPlay {
+            player, options, ..
+        }) = self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        if choice.len() > 1 || choice.iter().any(|id| !options.contains(id)) {
+            return Err(Reject::IllegalChoice);
+        }
+        self.finish_answer();
+
+        let mut events = Vec::new();
+        for &id in &choice {
+            self.push_apply(
+                &mut events,
+                Event::ExiledFromGraveyardMayPlay {
+                    player,
+                    card: self.next_object_id(),
+                    from: id,
+                },
+            );
+        }
+        Ok(events)
+    }
+
     /// Answer a discard choice — either a cleanup [`PendingChoice::DiscardToHandSize`] or an
     /// [`Effect::Choice(ChoiceEffect::Discard)`]'s [`PendingChoice::DiscardCards`]: move the chosen cards to the
     /// graveyard. A cleanup discard then resumes the interrupted step-transition (carrying the turn

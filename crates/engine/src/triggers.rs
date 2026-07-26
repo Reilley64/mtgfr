@@ -881,7 +881,16 @@ impl Game {
                 }
                 // A discard (CR 701.8) — distinct from `MovedToGraveyard`, which also fires for a
                 // sacrifice/destroy: `YouDiscard` watches specifically for this marker.
-                Event::Discarded { card, player, .. } => self.queue_discard_triggers(player, card),
+                Event::Discarded { card, player, .. } => {
+                    self.queue_discard_triggers(player, card);
+                    // Conspiracy Theorist's "one or more nonland cards" (CR 701.8): record every
+                    // discard now, then drain once per batch below — mirrors
+                    // `graveyard_exits_this_batch`. The nonland filter happens on drain (a card's
+                    // types are stable across the batch).
+                    self.batch_trigger_scratch
+                        .discards_this_batch
+                        .push((player, card));
+                }
                 // Combat damage to a player (CR 510.2) — the combat-damage-to-player watch family
                 // and the broader "deals damage to an opponent" self-watch now dispatch via the
                 // watch table. Aura-host and other scratch-driven companions stay explicit.
@@ -990,6 +999,37 @@ impl Game {
             owners.dedup();
             for owner in owners {
                 self.queue_controller_triggers(owner, Trigger::YouCreateToken, None);
+            }
+        }
+        // Conspiracy Theorist's "one or more nonland cards" (CR 701.8/603.3b): the whole
+        // simultaneous discard, not each card, is the trigger event, and it fires only when at
+        // least one discarded card was a nonland. Drain (group by discarder, filter to nonlands,
+        // then clear) and fire each qualifying discarder once. Same shape as the batches above.
+        if !self.batch_trigger_scratch.discards_this_batch.is_empty() {
+            let discards = std::mem::take(&mut self.batch_trigger_scratch.discards_this_batch);
+            let mut players: Vec<PlayerId> = discards.iter().map(|(p, _)| *p).collect();
+            players.sort_unstable_by_key(|p| p.0);
+            players.dedup();
+            for player in players {
+                // Only the nonland cards among this player's discards are "one of them" (CR
+                // 701.8); a land-only discard qualifies no one and fires nothing.
+                let nonland: Vec<ObjectId> = discards
+                    .iter()
+                    .filter(|(p, id)| {
+                        // "Nonland card" is any card that is not a land (CR 701.8) — an
+                        // instant/sorcery has no permanent type at all, so test the *absence* of
+                        // LAND rather than the presence of a NONLAND permanent type.
+                        *p == player && !self.def_of(*id).kind.types().intersects(TypeSet::LAND)
+                    })
+                    .map(|(_, id)| *id)
+                    .collect();
+                if nonland.is_empty() {
+                    continue;
+                }
+                // ponytail: leaked per fire so `TriggerContext` stays `Copy`, exactly like
+                //   `graveyard_exits_this_batch`'s `cards_left_graveyard` above.
+                let nonland: &'static [ObjectId] = Box::leak(nonland.into_boxed_slice());
+                self.queue_discard_nonland_triggers(player, nonland);
             }
         }
         // Laelia, the Blade Reforged's growth trigger: CR "one or more cards put into exile
@@ -2058,6 +2098,7 @@ impl Game {
                 active_player: None,
                 attack: Some((attacking_player, attacked)),
                 discarded: None,
+                discarded_nonland_cards: &[],
                 entering: None,
                 dying_source_stats: None,
                 cast_mana_value: None,
@@ -2275,6 +2316,7 @@ impl Game {
                 active_player: None,
                 attack: Some((host_controller, defender)),
                 discarded: None,
+                discarded_nonland_cards: &[],
                 entering: None,
                 dying_source_stats: None,
                 cast_mana_value: None,
@@ -2540,6 +2582,7 @@ impl Game {
             active_player: None,
             attack: None,
             discarded: Some(discarded),
+            discarded_nonland_cards: &[],
             entering: None,
             dying_source_stats: None,
             cast_mana_value: None,
@@ -2567,6 +2610,30 @@ impl Game {
                 continue;
             }
             self.queue_trigger_group(ctx, id, self.def_of(id), Trigger::YouDiscard);
+        }
+    }
+
+    /// Queue [`Trigger::YouDiscardNonland`] watchers on every permanent `player` controls
+    /// (Conspiracy Theorist's "Whenever you discard one or more nonland cards, you may exile one
+    /// of them …"): fires once per discard *event*, not once per card, and only when at least one
+    /// discarded card was a nonland. `nonland_cards` are the discarded nonland cards' new
+    /// graveyard-object ids (CR 603.10a last-known information), threaded into the
+    /// [`TriggerContext`] so the payoff can offer exactly "one of them" — mirrors
+    /// [`queue_cards_leave_graveyard_triggers`](Self::queue_cards_leave_graveyard_triggers).
+    pub(crate) fn queue_discard_nonland_triggers(
+        &mut self,
+        player: PlayerId,
+        nonland_cards: &'static [ObjectId],
+    ) {
+        let ctx = TriggerContext {
+            discarded_nonland_cards: nonland_cards,
+            ..TriggerContext::of(player)
+        };
+        for id in self.battlefield() {
+            if self.owner_of(id) != player {
+                continue;
+            }
+            self.queue_trigger_group(ctx, id, self.def_of(id), Trigger::YouDiscardNonland);
         }
     }
 

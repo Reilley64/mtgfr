@@ -488,6 +488,15 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
             mandatory,
             items: choice_items_to_pb(items),
         }),
+        PendingChoiceView::MayExileDiscardedToPlay {
+            player,
+            source,
+            items,
+        } => Choice::MayExileDiscardedToPlay(pb::PendingChoiceViewMayExileDiscardedToPlay {
+            player: u32::from(player),
+            source,
+            items: choice_items_to_pb(items),
+        }),
         PendingChoiceView::MayDiscard {
             player,
             source,

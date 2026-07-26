@@ -61,6 +61,19 @@ impl Game {
                     source,
                 },
             ),
+            // Conspiracy Theorist's batch nonland-discard payoff: "you may exile one of them from
+            // your graveyard." Pauses on a MayExileDiscardedToPlay choice over the discarded
+            // nonland cards still in the graveyard; declining (or none still there) runs nothing.
+            Effect::Choice(ChoiceEffect::MayExileDiscardedNonlandMayPlay { cards }) => {
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::MayExileDiscardedNonlandMayPlay {
+                        player: controller,
+                        source,
+                        cards,
+                    },
+                )
+            }
             // A resolution-time optional discard (Quintorius, History Chaser's +1) pauses on a
             // MayDiscard choice; declining runs nothing.
             Effect::Choice(ChoiceEffect::MayDiscard { then }) => pending::raise(

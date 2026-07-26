@@ -118,6 +118,29 @@ pub(super) fn may_return_from_graveyard(
     })
 }
 
+pub(super) fn may_exile_discarded_nonland_may_play(
+    game: &Game,
+    player: PlayerId,
+    source: ObjectId,
+    cards: &'static [ObjectId],
+) -> Option<PendingChoice> {
+    // Only the discarded nonland cards still sitting in this player's graveyard are eligible — a
+    // prior effect may have already moved one out (CR 400.7). No survivor skips the pause.
+    let options: Vec<ObjectId> = cards
+        .iter()
+        .copied()
+        .filter(|&id| game.zone_of(id) == crate::Zone::Graveyard && game.owner_of(id) == player)
+        .collect();
+    if options.is_empty() {
+        return None;
+    }
+    Some(PendingChoice::MayExileDiscardedToPlay {
+        player,
+        source,
+        options,
+    })
+}
+
 pub(super) fn may_discard(
     game: &Game,
     player: PlayerId,

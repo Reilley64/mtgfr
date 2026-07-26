@@ -57619,6 +57619,51 @@ fn discard_one(game: &mut Game, target_card: ObjectId) {
     .expect("discarding the chosen card is legal");
 }
 
+/// A test-only sorcery that discards `count` chosen cards in a single resolution — the
+/// multi-card batch (CR 701.8) behind Conspiracy Theorist's "discard one or more nonland cards."
+fn discard_n_spell(count: u32) -> CardDef {
+    sorcery(
+        "Discard N",
+        Box::leak(Box::new([spell_ability(Effect::Choice(
+            ChoiceEffect::Discard {
+                count,
+                target_player: false,
+                or_one_matching: None,
+            },
+        ))])),
+    )
+}
+
+/// Cast a discard-`cards.len()` sorcery and answer its `DiscardCards` pause by discarding all of
+/// `cards` at once — one simultaneous discard event.
+fn discard_cards_together(game: &mut Game, cards: &[ObjectId]) {
+    let spell = game.spawn_in_hand(PlayerId(0), discard_n_spell(cards.len() as u32));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: spell,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack(game); // the spell resolves, pausing on a DiscardCards choice
+    game.submit(Intent::Discard {
+        player: PlayerId(0),
+        cards: cards.to_vec(),
+    })
+    .expect("discarding the chosen cards is legal");
+}
+
 #[test]
 fn discarding_a_card_fires_you_discard_trigger() {
     // The real pool card: Containment Construct's "whenever you discard a card, you may exile
@@ -57781,41 +57826,44 @@ fn conspiracy_theorist_discard_lets_you_impulse_the_card() {
     // Conspiracy Theorist's second ability: "Whenever you discard one or more nonland cards,
     // you may exile one of them from your graveyard. If you do, you may cast it this turn."
     let mut game = Game::new();
-    game.spawn_on_battlefield(PlayerId(0), card("Conspiracy Theorist"));
+    let theorist = game.spawn_on_battlefield(PlayerId(0), card("Conspiracy Theorist"));
     let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
 
     discard_one(&mut game, bolt);
-
-    assert!(
-        matches!(
-            game.pending_choice(),
-            Some(PendingChoice::MayYesNo {
-                player: PlayerId(0),
-                ..
-            })
-        ),
-        "the discard fires Conspiracy Theorist's optional impulse trigger, got {:?}",
-        game.pending_choice(),
-    );
-
-    game.submit(Intent::AnswerMay {
-        player: PlayerId(0),
-        yes: true,
-    })
-    .unwrap();
-    resolve_top_of_stack(&mut game); // the accepted trigger resolves: exile with may-cast
+    // The batch nonland-discard trigger is a real stack object (CR 603.3b), not an
+    // at-placement may — resolve it to reach the "exile one of them" choice.
+    resolve_top_of_stack(&mut game);
 
     let discarded = game.current_id(bolt);
     assert_eq!(
-        game.zone_of(discarded),
+        game.pending_choice(),
+        Some(PendingChoice::MayExileDiscardedToPlay {
+            player: PlayerId(0),
+            source: theorist,
+            options: vec![discarded],
+        }),
+        "resolving the trigger offers the one discarded nonland card to exile, got {:?}",
+        game.pending_choice(),
+    );
+
+    // Choosing it exiles the card from the graveyard with may-cast permission.
+    game.submit(Intent::ChooseSacrifices {
+        player: PlayerId(0),
+        sacrifices: vec![discarded],
+    })
+    .unwrap();
+
+    let exiled = game.current_id(bolt);
+    assert_eq!(
+        game.zone_of(exiled),
         Zone::Exile,
-        "accepting the trigger exiled the discarded card from the graveyard"
+        "choosing the card exiled it from the graveyard"
     );
 
     game.fund_mana(PlayerId(0));
     game.submit(Intent::Cast {
         player: PlayerId(0),
-        object: discarded,
+        object: exiled,
         target: Some(Target::Player(PlayerId(1))),
         x: 0,
         modes: vec![],
@@ -57834,10 +57882,116 @@ fn conspiracy_theorist_discard_lets_you_impulse_the_card() {
 }
 
 #[test]
+fn conspiracy_theorist_discarding_only_a_land_does_not_trigger() {
+    // "Whenever you discard one or more nonland cards …" — a lone land discard is not a nonland
+    // discard, so the impulse trigger never fires (regression bar #1).
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Conspiracy Theorist"));
+    let forest = game.spawn_in_hand(PlayerId(0), card("Forest"));
+
+    discard_one(&mut game, forest);
+
+    assert!(
+        game.pending_choice().is_none(),
+        "discarding only a land fires no nonland-discard trigger, got {:?}",
+        game.pending_choice(),
+    );
+    assert!(
+        game.stack().is_empty(),
+        "no trigger reached the stack for a land-only discard"
+    );
+    assert_eq!(
+        game.zone_of(game.current_id(forest)),
+        Zone::Graveyard,
+        "the discarded land stays in the graveyard"
+    );
+}
+
+#[test]
+fn conspiracy_theorist_two_nonland_discards_offer_one_choice_among_them() {
+    // "… you may exile one of them …" — two nonland cards discarded in one event yield one
+    // trigger and one choice among exactly those two cards (regression bar #2).
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Conspiracy Theorist"));
+    let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+    let other = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+
+    discard_cards_together(&mut game, &[bolt, other]);
+    // A single simultaneous discard is one "you discard" event → exactly one trigger.
+    assert_eq!(
+        game.stack().len(),
+        1,
+        "two cards discarded at once fire the batch trigger once, not twice"
+    );
+    resolve_top_of_stack(&mut game);
+
+    let discarded_bolt = game.current_id(bolt);
+    let discarded_other = game.current_id(other);
+    let Some(PendingChoice::MayExileDiscardedToPlay {
+        player: PlayerId(0),
+        options,
+        ..
+    }) = game.pending_choice()
+    else {
+        panic!(
+            "expected the exile-one-of-them choice, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(
+        options
+            .iter()
+            .copied()
+            .collect::<std::collections::HashSet<_>>(),
+        [discarded_bolt, discarded_other].into_iter().collect(),
+        "the choice offers both discarded nonland cards"
+    );
+
+    game.submit(Intent::ChooseSacrifices {
+        player: PlayerId(0),
+        sacrifices: vec![discarded_bolt],
+    })
+    .unwrap();
+    assert_eq!(
+        game.zone_of(game.current_id(bolt)),
+        Zone::Exile,
+        "the chosen card is exiled"
+    );
+    assert_eq!(
+        game.zone_of(game.current_id(other)),
+        Zone::Graveyard,
+        "the unchosen card stays in the graveyard — only one of them"
+    );
+}
+
+#[test]
+fn conspiracy_theorist_declining_the_nonland_discard_leaves_the_card() {
+    // "you may exile" — declining (an empty choice) leaves the card in the graveyard.
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Conspiracy Theorist"));
+    let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+
+    discard_one(&mut game, bolt);
+    resolve_top_of_stack(&mut game);
+
+    game.submit(Intent::ChooseSacrifices {
+        player: PlayerId(0),
+        sacrifices: vec![],
+    })
+    .expect("declining the may is legal");
+    assert!(game.pending_choice().is_none());
+    assert_eq!(
+        game.zone_of(game.current_id(bolt)),
+        Zone::Graveyard,
+        "declining leaves the discarded card in the graveyard"
+    );
+}
+
+#[test]
 fn conspiracy_theorist_attack_loot_pays_one_and_draws() {
     // Conspiracy Theorist's first ability: "Whenever this creature attacks, you may pay {1}
-    // and discard a card. If you do, draw a card." Paying and discarding also feeds the
-    // second ability's discard trigger.
+    // and discard a card. If you do, draw a card." Discarding a *land* here pays the loot but
+    // does not incorrectly grant impulse play of that land (regression bar #3).
     let mut game = Game::new();
     let theorist = game.spawn_on_battlefield(PlayerId(0), card("Conspiracy Theorist"));
     let fodder = game.spawn_in_hand(PlayerId(0), card("Forest"));
@@ -57887,14 +58041,8 @@ fn conspiracy_theorist_attack_loot_pays_one_and_draws() {
     );
     assert_eq!(game.zone_of(lib[0]), Zone::Hand, "the discard drew a card");
     assert!(
-        matches!(
-            game.pending_choice(),
-            Some(PendingChoice::MayYesNo {
-                player: PlayerId(0),
-                ..
-            })
-        ),
-        "the loot's discard also fed the discard-to-impulse trigger, got {:?}",
+        game.pending_choice().is_none() && game.stack().is_empty(),
+        "discarding a land feeds no nonland-discard impulse trigger, got {:?}",
         game.pending_choice(),
     );
 }

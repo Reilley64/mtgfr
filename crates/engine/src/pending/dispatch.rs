@@ -230,6 +230,12 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
             }
             _ => Err(Reject::IllegalChoice),
         },
+        PendingChoice::MayExileDiscardedToPlay { .. } => match intent {
+            Intent::ChooseSacrifices { player, sacrifices } => {
+                game.answer_may_exile_discarded_to_play(player, sacrifices)
+            }
+            _ => Err(Reject::IllegalChoice),
+        },
         PendingChoice::MayDiscard { .. } => match intent {
             Intent::ChooseSacrifices { player, sacrifices } => {
                 game.answer_may_discard(player, sacrifices)
@@ -491,6 +497,7 @@ pub(crate) fn forced(game: &Game) -> Option<Intent> {
         | PendingChoice::ChooseCardName { .. }
         | PendingChoice::MaySacrifice { .. }
         | PendingChoice::MayReturnFromGraveyard { .. }
+        | PendingChoice::MayExileDiscardedToPlay { .. }
         | PendingChoice::MayDiscard { .. }
         | PendingChoice::MayPutCounterOnCreature { .. }
         | PendingChoice::PutFromHandOnTop { .. }
