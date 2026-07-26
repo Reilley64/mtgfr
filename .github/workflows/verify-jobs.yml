@@ -70,7 +70,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        partition: [1, 2]
+        partition: [1, 2, 3]
     services:
       postgres:
         image: postgres:16
@@ -107,7 +107,7 @@ jobs:
         run: |
           set -euo pipefail
           just migrate
-          cargo nextest run --profile ci --partition count:${{ matrix.partition }}/2
+          cargo nextest run --profile ci --partition count:${{ matrix.partition }}/3
 
       - name: Upload Rust JUnit report
         if: ${{ !cancelled() && hashFiles('target/nextest/ci/junit.xml') != '' }}
@@ -171,7 +171,7 @@ jobs:
             echo "verify-server-mark result=$mark"
             exit 1
           fi
-          echo "Lint + both nextest shards + pass-marker save succeeded."
+          echo "Lint + all nextest shards + pass-marker save succeeded."
 
   verify-client:
     name: Verify (client)

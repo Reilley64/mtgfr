@@ -13,14 +13,14 @@ Cold PR / main `verify-server` wall-clock is dominated by nextest (~5–6 minute
 
 ## Goal
 
-Cut cold **server verify wall-clock** with a **modest** parallelization budget: **exactly two** nextest shards. Best effort — no hard time target. Prefer GHA minutes spent on two shards over introducing a new test runner (Maelstrom) or large matrices.
+Cut cold **server verify wall-clock** with a **modest** parallelization budget: **three** nextest shards. Best effort — no hard time target. Prefer GHA minutes spent on a small shard matrix over introducing a new test runner (Maelstrom) or large matrices.
 
 ## Locked decisions
 
 | Decision | Choice |
 |---|---|
 | Optimize for | Cold `verify-server` wall-clock |
-| Parallelism | 2 nextest shards (`count:1/2` and `count:2/2`) |
+| Parallelism | 3 nextest shards (`count:1/3`, `count:2/3`, `count:3/3`) |
 | Runner | Stay on `ubuntu-latest` (no larger / self-hosted runners in this pass) |
 | Local commands | `just server-test` / `just server-check` remain unsharded |
 | Pass marker | Same content-hash idea; **restore-only gate + save-only mark after lint + both shards succeed** |
@@ -30,9 +30,9 @@ Cut cold **server verify wall-clock** with a **modest** parallelization budget: 
 
 ## Approaches considered
 
-1. **Two-shard nextest matrix + separate lint + mark aggregator (chosen)** — Targets the nextest wall; modest minutes bump; stays on nextest/JUnit.
-2. Lint job parallel to one nextest job — Simpler; only recovers ~clipy overlap (~30–60s); leaves the 5–6 min suite intact.
-3. Larger single runner — Minimal workflow shape change; billed-minute / plan dependent; weaker fit for the two-shard preference.
+1. **Three-shard nextest matrix + separate lint + mark aggregator (chosen)** — Targets the nextest wall; modest minutes bump; stays on nextest/JUnit. Started at two shards, then bumped to three after confirming public-repo Actions minutes are free and 2→3 still beats setup overhead.
+2. Lint job parallel to one nextest job — Simpler; only recovers ~clippy overlap (~30–60s); leaves the 5–6 min suite intact.
+3. Larger single runner — Minimal workflow shape change; billed-minute / plan dependent; weaker fit for a small shard matrix.
 
 ## Design
 
@@ -42,7 +42,7 @@ Cut cold **server verify wall-clock** with a **modest** parallelization budget: 
 verify-server-gate          (cache/restore only → outputs.cache-hit; never save)
         |
         +-- miss --> verify-server-lint     (CR index + fmt + clippy; rust-cache shared-key)
-        |              verify-server-test   (matrix 1/2, 2/2; Postgres + migrate + nextest shard;
+        |              verify-server-test   (matrix 1/3, 2/3, 3/3; Postgres + migrate + nextest shard;
         |                                   rust-cache shared-key)
         |                    |
         +--------------------+--> verify-server-mark  (cache/save only after lint + both shards OK)
@@ -70,7 +70,7 @@ No Postgres service, no migrate, no nextest. Runs in parallel with the test matr
 strategy:
   fail-fast: false
   matrix:
-    partition: [1, 2]
+    partition: [1, 2, 3]
 ```
 
 On cache miss, each shard:
@@ -78,9 +78,9 @@ On cache miss, each shard:
 1. Postgres 16 service (same as today’s `verify-server`)
 2. Toolchain + rust-cache + nextest + protoc + just (same setup as today)
 3. `cargo run -p server -- migration apply`
-4. `cargo nextest run --profile ci --partition count:${{ matrix.partition }}/2`
+4. `cargo nextest run --profile ci --partition count:${{ matrix.partition }}/3`
 
-JUnit: keep the `ci` profile path; upload per-shard artifacts (e.g. `rust-junit-1`, `rust-junit-2`) and run test-summary on each when present.
+JUnit: keep the `ci` profile path; upload per-shard artifacts (e.g. `rust-junit-1` … `rust-junit-3`) and run test-summary on each when present.
 
 ### Caching (must keep working)
 
@@ -94,7 +94,7 @@ Today one job restores `.ci-pass`, runs checks, then the cache **post-step** sav
 |---|---|---|
 | `verify-server-gate` | `actions/cache/restore` only | Clean checkout → same `hashFiles(...)` key → emit `outputs.cache-hit`. **Never** write `.ci-pass`. **Never** save. |
 | `verify-server-lint` / `verify-server-test` | none for pass marker | `if: needs.verify-server-gate.outputs.cache-hit != 'true'`. On hit these jobs are **skipped** (not “run empty”). |
-| `verify-server-mark` | `actions/cache/save` only | Runs only when gate was a **miss** and lint + **both** matrix shards succeeded. Checkout (so `hashFiles` matches) → `mkdir .ci-pass && echo ok > .ci-pass/marker` → save with the **identical** key expression as restore. |
+| `verify-server-mark` | `actions/cache/save` only | Runs only when gate was a **miss** and lint + **all** matrix shards succeeded. Checkout (so `hashFiles` matches) → `mkdir .ci-pass && echo ok > .ci-pass/marker` → save with the **identical** key expression as restore. |
 
 **Key**
 
@@ -104,7 +104,7 @@ Today one job restores `.ci-pass`, runs checks, then the cache **post-step** sav
 
 **Invariants**
 
-- Marker present ⇒ lint + full suite (both partitions) previously succeeded for that content hash.
+- Marker present ⇒ lint + full suite (all partitions) previously succeeded for that content hash.
 - Partial success ⇒ no save.
 - Cancelled / failed needed job ⇒ no save; aggregator red.
 - Gate miss + empty `.ci-pass` must not produce a saved empty entry (restore-only gate + save-only mark).
@@ -115,7 +115,7 @@ Today one job restores `.ci-pass`, runs checks, then the cache **post-step** sav
 
 Lint and both test shards each need a toolchain on miss. Job names change from today’s single `verify-server`, so **default** `Swatinem/rust-cache` keys (which incorporate job identity) would cold-miss after the refactor.
 
-**Lock:** every miss-path Rust job (lint + both partitions) uses the same:
+**Lock:** every miss-path Rust job (lint + all partitions) uses the same:
 
 ```yaml
 - uses: Swatinem/rust-cache@v2
@@ -125,6 +125,8 @@ Lint and both test shards each need a toolchain on miss. Job names change from t
 
 So clippy and nextest shards share one Cargo cache namespace. Concurrent saves are acceptable (last writer wins); correctness does not depend on which shard saves last. Do **not** give each matrix cell a distinct cache key for this pass.
 
+Public-repo standard hosted runners do not bill Actions minutes, so shard count is chosen for wall-clock vs setup overhead, not spend.
+
 Client pass-marker / bun install caching stays as today.
 
 ### Aggregator
@@ -132,26 +134,26 @@ Client pass-marker / bun install caching stays as today.
 `verify-server` `needs: [verify-server-gate, verify-server-lint, verify-server-test]` (matrix collapses to one need). Use `if: always()` and succeed when:
 
 - `gate.outputs.cache-hit == 'true'`, or
-- gate miss **and** lint result `success` **and** test matrix result `success`
+- gate miss **and** lint result `success` **and** test matrix result `success` (all three partitions)
 
 Any other combination (failure, cancelled, unexpected skip on miss) → fail. This preserves a single server verify status for humans and required checks.
 
 ### Local / justfile
 
-- `just server-test *args` continues to run full `cargo nextest run --profile ci` with args passthrough (so `--partition count:1/2` works ad hoc without a new recipe).
+- `just server-test *args` continues to run full `cargo nextest run --profile ci` with args passthrough (so `--partition count:1/3` works ad hoc without a new recipe).
 - `just server-check` stays the single-runner local/CI-equivalent path: CR index + fmt + clippy + migrate + full nextest.
 - CI does **not** call `just server-check` as one blob anymore; it composes the same steps across jobs.
 
 ### Docs
 
-In the same implementation change, update [ci-and-release](2026-07-20-ci-and-release.md) Behavior / Implementation so it describes the split jobs, two-shard nextest, marker write rules, and aggregator — no migration/history prose.
+In the same implementation change, update [ci-and-release](2026-07-20-ci-and-release.md) Behavior / Implementation so it describes the split jobs, three-shard nextest, marker write rules, and aggregator — no migration/history prose.
 
 ## Error / degradation
 
 | Condition | Behavior |
 |---|---|
 | Lint fails, tests pass | Aggregator fails; pass marker **not** written |
-| One shard fails | Other shard still finishes (`fail-fast: false`); aggregator fails; marker not written |
+| One shard fails | Other shards still finish (`fail-fast: false`); aggregator fails; marker not written |
 | Cache hit | Lint/test work skipped; aggregator green |
 | Cancelled matrix member | Aggregator fails (no false pass marker) |
 
@@ -159,16 +161,16 @@ In the same implementation change, update [ci-and-release](2026-07-20-ci-and-rel
 
 Task 3 records PR-run evidence in `.superpowers/sdd/2026-07-26-gha-server-verify-sharding/task-3-report.md`.
 
-1. PR that touches `crates/**` → pass-marker **miss** → lint + two shards run → mark job saves → aggregator green → both JUnit artifacts present.
+1. PR that touches `crates/**` → pass-marker **miss** → lint + three shards run → mark job saves → aggregator green → JUnit artifacts for partitions 1–3 present.
 2. Immediate follow-up commit that does **not** change server hash inputs → gate **hit** → lint/test/mark skipped → aggregator green (proves pass-marker still short-circuits).
 3. Forced failure: break one shard (or lint) on a miss run → aggregator red **and** mark job does not run / does not save (proves no false pass marker). Revert before merge.
-4. On a miss run, confirm rust-cache restore reports the shared `verify-server` key on lint and both shards (not three disjoint cold keys).
+4. On a miss run, confirm rust-cache restore reports the shared `verify-server` key on lint and all shards (not disjoint cold keys).
 5. Locally: `just server-check` still runs the full unsharded suite.
 
 ## Out of Scope
 
 - Maelstrom or other alternate runners
-- More than two shards
+- More than three shards
 - Larger / self-hosted runners
 - Client Vitest sharding
 - Per-test slow-suite tuning

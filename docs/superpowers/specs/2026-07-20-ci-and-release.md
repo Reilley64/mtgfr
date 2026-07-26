@@ -71,11 +71,11 @@ branch commit range.
     `cache-hit`.
   - On miss: `verify-server-lint` (CR index + fmt + clippy; installs protoc;
     `Swatinem/rust-cache` `shared-key: verify-server`) runs in parallel with
-    `verify-server-test` matrix partitions `1` and `2` (Postgres 16 + migrate +
-    `cargo nextest run --profile ci --partition count:i/2`; same
+    `verify-server-test` matrix partitions `1`, `2`, and `3` (Postgres 16 +
+    migrate + `cargo nextest run --profile ci --partition count:i/3`; same
     `shared-key: verify-server`; per-shard JUnit upload + test summary).
   - `verify-server-mark`: `actions/cache/save@v5` only when gate miss and lint +
-    both test shards succeeded.
+    all test shards succeeded.
   - Aggregator job `Verify (server)`: green on cache hit, or on miss when lint +
     tests + mark succeeded.
   - On hit: lint, test, and mark jobs are skipped (`if:`); Postgres does not
