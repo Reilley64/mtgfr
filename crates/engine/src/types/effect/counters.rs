@@ -84,11 +84,22 @@ pub enum CountersEffect {
 
     /// "Each opponent gets a poison counter" (Infectious Inquiry, Vraska's Fall) / "each player
     /// gets a poison counter" (Ichor Rats) — CR 122.1. Places `count` counters of `kind` on every
-    /// living player in `scope`, and targets nothing.
+    /// living player in `scope`. Targets nothing except under
+    /// [`EdictScope::TargetedOpponent`] ("target opponent gets a poison counter", Venerated
+    /// Rotpriest), which names exactly one chosen opponent.
     PutCountersOnPlayer {
         kind: PlayerCounterKind,
         count: Amount,
         scope: EdictScope,
+    },
+
+    /// "If target player has fewer than nine poison counters, they get a number of poison counters
+    /// equal to the difference" (Vraska, Betrayal's Sting's −9) — a *top-up* to `to`, not a fixed
+    /// add: the count placed is `to - current`, and a target already at or above `to` gets nothing
+    /// at all (no counters, no event). Targets a player (CR "target player").
+    TopUpCountersOnPlayer {
+        kind: PlayerCounterKind,
+        to: u8,
     },
 
     RemoveAllCountersThenDraw {

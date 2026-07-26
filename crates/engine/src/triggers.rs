@@ -560,6 +560,12 @@ impl Game {
                     amount,
                 } => {
                     self.queue_combat_damage_triggers(source, player, amount);
+                    // Contaminant Grafter's batch watch: "one or more creatures you control deal
+                    // combat damage to one or more players" is a single trigger per damage step,
+                    // so accumulate the controller here and drain it once below.
+                    self.batch_trigger_scratch
+                        .creatures_dealt_combat_damage_this_batch
+                        .push(self.controller_of(source));
                     // Armadillo Cloak's attached-host damage watch: this creature dealt combat
                     // damage to a player. See `queue_enchanted_creature_deals_damage_triggers`.
                     self.queue_enchanted_creature_deals_damage_triggers(source, amount);
@@ -664,6 +670,31 @@ impl Game {
             owners.dedup();
             for owner in owners {
                 self.queue_controller_triggers(owner, Trigger::YouCreateToken, None);
+            }
+        }
+        // CR 603.3b "one or more creatures you control deal combat damage to one or more
+        // players" (Contaminant Grafter): the whole combat damage step is one trigger event, not
+        // one per connecting creature. Same drain-dedup-clear shape as the accumulator above.
+        if !self
+            .batch_trigger_scratch
+            .creatures_dealt_combat_damage_this_batch
+            .is_empty()
+        {
+            let mut controllers = std::mem::take(
+                &mut self
+                    .batch_trigger_scratch
+                    .creatures_dealt_combat_damage_this_batch,
+            );
+            controllers.sort_unstable_by_key(|p| p.0);
+            controllers.dedup();
+            for controller in controllers {
+                self.queue_controller_triggers(
+                    controller,
+                    Trigger::DealsCombatDamageToPlayer {
+                        who: CombatDamageScope::YourCreaturesBatch,
+                    },
+                    None,
+                );
             }
         }
         // Laelia, the Blade Reforged's growth trigger: CR "one or more cards put into exile
@@ -2176,6 +2207,10 @@ impl Game {
                         // Edric: any creature's damage counts, but only when it landed on one of
                         // the watcher's own opponents (CR 102.3 — every other player).
                         CombatDamageScope::AnyCreatureDamagingYourOpponent => player != controller,
+                        // Contaminant Grafter's "one or more creatures you control" fires once
+                        // for the whole combat damage step, not once per creature — it is queued
+                        // from the batch drain at the end of `enqueue_triggers`, never here.
+                        CombatDamageScope::YourCreaturesBatch => false,
                     },
                     _ => false,
                 })
@@ -2753,14 +2788,14 @@ impl Game {
         }
     }
 
-    /// Queue [`Trigger::BecomesTargeted`] triggers (CR 603.2c "becomes the target of a
-    /// spell"): a spell just declared `spell_target`. Self-referential, like
-    /// [`Game::queue_permanent_enters_triggers`]'s `Etb` sibling — unlike the
-    /// battlefield-scanning watches above, there's exactly one possible source (the targeted
-    /// permanent itself), so this looks it up directly rather than scanning every permanent.
+    /// Queue [`Trigger::BecomesTargeted`] triggers (CR 603.2c "becomes the target of a spell"): a
+    /// spell just declared `spell_target`. Both scopes fire under the *targeted permanent's*
+    /// controller — [`BecomesTargetedScope::This`] off the targeted permanent's own abilities
+    /// (Goldspan Dragon), [`BecomesTargetedScope::CreatureYouControl`] off every permanent that
+    /// player controls, but only when the target is one of their creatures (Venerated Rotpriest).
     /// ponytail: the engine's spells carry a single [`Target`] (multi-target is unlanded), so
-    /// this fires at most once per cast — faithful for Goldspan Dragon, the only consumer. A
-    /// spell with no target, or one targeting a player rather than a permanent, fires nothing.
+    /// this fires at most once per cast. A spell with no target, or one targeting a player rather
+    /// than a permanent, fires nothing.
     pub(crate) fn queue_becomes_targeted_triggers(&mut self, spell_target: Option<Target>) {
         let Some(Target::Object(id)) = spell_target else {
             return;
@@ -2769,25 +2804,50 @@ impl Game {
             return;
         }
         let controller = self.controller_of(id);
+        self.queue_becomes_targeted_group(id, controller, BecomesTargetedScope::This);
+        if !self.is_creature_on_battlefield(id) {
+            return;
+        }
+        for watcher in self.battlefield() {
+            if self.controller_of(watcher) != controller {
+                continue;
+            }
+            self.queue_becomes_targeted_group(
+                watcher,
+                controller,
+                BecomesTargetedScope::CreatureYouControl,
+            );
+        }
+    }
+
+    /// One watcher's share of [`Self::queue_becomes_targeted_triggers`]: `source`'s abilities that
+    /// watch `who`, queued under `controller` (the targeted permanent's controller).
+    fn queue_becomes_targeted_group(
+        &mut self,
+        source: ObjectId,
+        controller: PlayerId,
+        who: BecomesTargetedScope,
+    ) {
         let ctx = TriggerContext::of(controller);
         let abilities: Vec<Ability> = self
-            .functional_abilities(id)
+            .functional_abilities(source)
             .iter()
-            .filter(|a| matches!(a.timing, Timing::Triggered(Trigger::BecomesTargeted)))
+            .filter(|a| a.timing == Timing::Triggered(Trigger::BecomesTargeted { who }))
             .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
             .map(|a| Ability {
                 effect: contextualize_effect(a.effect, ctx),
                 ..*a
             })
             .collect();
-        if !abilities.is_empty() {
-            self.pending_trigger_groups.push(TriggerGroup {
-                expanded: false,
-                controller,
-                source: id,
-                abilities,
-            });
+        if abilities.is_empty() {
+            return;
         }
+        self.pending_trigger_groups.push(TriggerGroup {
+            expanded: false,
+            controller,
+            source,
+            abilities,
+        });
     }
 
     /// Queue [`Trigger::SpellTargetsThisOnly`] triggers (Mirrorwing Dragon — CR 603.2c narrowed
@@ -3211,6 +3271,12 @@ impl Game {
             Condition::AnOpponentHasLifeAtMost { at_most } => self
                 .living_players()
                 .any(|p| p != ctx.controller && self.life(p) <= at_most as i32),
+            // Corrupted (CR 702.165): "an opponent has three or more poison counters" — an
+            // existential over living opponents, same shape as the life check above.
+            Condition::AnOpponentHasPoisonAtLeast { at_least } => self.living_players().any(|p| {
+                p != ctx.controller
+                    && self.player_counters(p, PlayerCounterKind::Poison) as u32 >= at_least
+            }),
             // ponytail: source-object-based like `TargetPowerAtLeast` above — `TriggerContext`
             // carries no source id either. Reachable only through the `Effect::Conditional`
             // resolve site (`Game::run`), which intercepts it directly against its own `source`

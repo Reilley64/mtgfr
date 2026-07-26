@@ -201,6 +201,15 @@ pub(crate) struct BatchTriggerScratch {
     /// shape (CR 603.3b's "one or more"). Pushed by [`Game::enqueue_triggers`]'s
     /// `Event::TokenCreated` handling, drained (deduped) and cleared at the end of every batch.
     pub creature_tokens_created_this_batch: Vec<PlayerId>,
+    /// Controllers one or more of whose creatures dealt combat damage to a player in the event
+    /// batch currently being applied — the accumulator behind
+    /// [`CombatDamageScope::YourCreaturesBatch`](crate::CombatDamageScope::YourCreaturesBatch)
+    /// (Contaminant Grafter's "one or more creatures you control deal combat damage to one or
+    /// more players"), same batch-once shape as
+    /// [`creature_tokens_created_this_batch`](Self::creature_tokens_created_this_batch). Pushed by
+    /// [`Game::enqueue_triggers`]'s `Event::CombatDamageDealtToPlayer` handling, drained (deduped)
+    /// and cleared at the end of every batch.
+    pub creatures_dealt_combat_damage_this_batch: Vec<PlayerId>,
     /// `(dying creature's pre-move id, attached Aura's pre-move id, that Aura's controller, that
     /// Aura's def)` tuples — CR 603.6c last-known information for
     /// [`Trigger::EnchantedCreatureDies`](crate::Trigger::EnchantedCreatureDies). Captured by

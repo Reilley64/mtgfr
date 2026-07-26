@@ -1,0 +1,57 @@
+# This artifact enters tapped.
+# When this artifact enters, proliferate.
+# {T}: Add one mana of any color.
+# Corrupted — {T}: Add three mana of any one color. Activate only if an opponent has three or more poison counters.
+name = "Glistening Sphere"
+id = "15679808-baba-4a11-b111-f313ce24197f"
+default_print = "b825db05-7e95-400b-944b-526cfa6addc0"
+oracle = "This artifact enters tapped.\nWhen this artifact enters, proliferate.\n{T}: Add one mana of any color.\nCorrupted — {T}: Add three mana of any one color. Activate only if an opponent has three or more poison counters."
+set = "onc"
+enters_tapped = true
+approximates = "\"Proliferate\" (CR 701.27) only enumerates battlefield permanents with a counter — it can't choose players (poison/rad) or Class level/exiled time/scream counters, though this card's own reminder text says \"permanents and/or players\" (increment #17, not in this wave)."
+
+[cost]
+generic = 3
+
+[kind]
+type = "artifact"
+
+# When this artifact enters, proliferate.
+[[abilities]]
+timing = "etb"
+
+# proliferate
+[[abilities.effects]]
+type = "choice"
+mode = "proliferate"
+times = 1
+
+# {T}: Add one mana of any color.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add one mana of any color.
+[[abilities.effects]]
+type = "mana"
+mode = "add"
+mana = ["any"]
+
+# Corrupted — {T}: Add three mana of any one color. Activate only if an opponent has three or more poison counters.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Activate only if an opponent has three or more poison counters (the Corrupted ability word,
+# CR 702.165 — an activation restriction, CR 602.5b).
+[abilities.condition]
+type = "an_opponent_has_poison_at_least"
+at_least = 3
+
+# Add three mana of any one color.
+[[abilities.effects]]
+type = "mana"
+mode = "add"
+mana = ["any"]
+repeat = 3
+single_color = true

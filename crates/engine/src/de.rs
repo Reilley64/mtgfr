@@ -18,13 +18,14 @@ use serde::Deserialize;
 use serde::de::{self, Deserializer, IntoDeserializer, Visitor};
 
 use crate::{
-    Ability, ActivationCost, AdditionalCost, AlternativeCost, Amount, AmountZone, CardDef,
-    CardFilter, CardKind, CasterScope, Color, ColorFilter, CombatDamageScope, Condition, Cost,
-    CounterAxis, CounterKind, CumulativeUpkeepCost, EdictScope, Effect, EnterAsCopy,
-    EnterController, EscapeCost, FilterController, GrantedAbility, HandActivatedAbility, Keyword,
-    LandProduces, Mana, ManaPool, Parity, PermanentFilter, ProtectionScope, ReanimateBecomes,
-    SacrificeAdditionalCost, SacrificeAdditionalCostCount, SacrificeCost, SpellFilter, SpellSpeed,
-    SpendToCastPredicate, Suspend, TargetCount, Timing, TokenFilter, Trigger, TypeSet,
+    Ability, ActivationCost, AdditionalCost, AlternativeCost, Amount, AmountZone,
+    BecomesTargetedScope, CardDef, CardFilter, CardKind, CasterScope, Color, ColorFilter,
+    CombatDamageScope, Condition, Cost, CounterAxis, CounterKind, CumulativeUpkeepCost, EdictScope,
+    Effect, EnterAsCopy, EnterController, EscapeCost, FilterController, GrantedAbility,
+    HandActivatedAbility, Keyword, LandProduces, Mana, ManaPool, Parity, PermanentFilter,
+    ProtectionScope, ReanimateBecomes, SacrificeAdditionalCost, SacrificeAdditionalCostCount,
+    SacrificeCost, SpellFilter, SpellSpeed, SpendToCastPredicate, Suspend, TargetCount, Timing,
+    TokenFilter, Trigger, TypeSet,
 };
 
 /// Token profiles loaded from `cards/data/tokens/` before deckable cards deserialize. Keyed by
@@ -1067,6 +1068,7 @@ impl<'de> Deserialize<'de> for Amount {
                     "target_toughness" => Amount::TargetToughness,
                     "target_mana_value" => Amount::TargetManaValue,
                     "per_counter_on_source" => Amount::PerCounterOnSource,
+                    "opponents_poison_counters" => Amount::OpponentsPoisonCounters,
                     "life_gained_this_turn" => Amount::LifeGainedThisTurn,
                     "spells_cast_this_turn" => Amount::SpellsCastThisTurn,
                     "cards_in_target_player_hand" => Amount::CardsInTargetPlayerHand,
@@ -1818,10 +1820,16 @@ impl<'de> Deserialize<'de> for Ability {
             #[serde(default)]
             controller: EnterController,
             /// Who a `deals_combat_damage_to_player` trigger watches (Leitmotif Composer's
-            /// `this`, Ohran Frostfang's `your_creatures`, Curiosity Crafter's `your_tokens`).
-            /// Ignored for every other trigger/timing.
+            /// `this`, Ohran Frostfang's `your_creatures`, Curiosity Crafter's `your_tokens`,
+            /// Contaminant Grafter's batch-once `your_creatures_batch`). Ignored for every other
+            /// trigger/timing.
             #[serde(default)]
             who: CombatDamageScope,
+            /// Which permanent a `becomes_targeted` trigger watches — `this` (default, Goldspan
+            /// Dragon) or `creature_you_control` (Venerated Rotpriest). Ignored for every other
+            /// trigger/timing.
+            #[serde(default)]
+            targeted: BecomesTargetedScope,
             /// The spell filter for a `cast_spell` trigger (Monologue Tax's "a spell", Sram
             /// Senior Edificer's "an Aura, Equipment, or Vehicle spell"). Named distinctly from
             /// `filter` (a [`PermanentFilter`], taken by the sacrifice triggers above). Ignored
@@ -1987,7 +1995,7 @@ impl<'de> Deserialize<'de> for Ability {
                     Trigger::CardsExiledFromYourLibraryOrGraveyard
                 }
                 TriggerTag::YouCreateToken => Trigger::YouCreateToken,
-                TriggerTag::BecomesTargeted => Trigger::BecomesTargeted,
+                TriggerTag::BecomesTargeted => Trigger::BecomesTargeted { who: flat.targeted },
                 TriggerTag::SpellTargetsThisOnly => Trigger::SpellTargetsThisOnly {
                     filter: flat.spell_filter,
                 },

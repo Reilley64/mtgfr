@@ -1,0 +1,54 @@
+# Trample, toxic 1
+# Whenever one or more creatures you control deal combat damage to one or more players, proliferate.
+# Corrupted — At the beginning of your end step, if an opponent has three or more poison counters, draw a card, then
+# you may put a land card from your hand onto the battlefield.
+name = "Contaminant Grafter"
+id = "ba922414-878f-4261-9bce-500c5c9e9506"
+default_print = "0ef2f776-ff35-464b-bfcf-075c9ae4baa7"
+oracle = "Trample, toxic 1\nWhenever one or more creatures you control deal combat damage to one or more players, proliferate.\nCorrupted — At the beginning of your end step, if an opponent has three or more poison counters, draw a card, then you may put a land card from your hand onto the battlefield."
+set = "onc"
+subtypes = ["Phyrexian", "Druid"]
+keywords = ["trample", { toxic = 1 }]
+approximates = "\"Proliferate\" (CR 701.27) only enumerates battlefield permanents with a counter — it can't choose players (poison/rad) or Class level/exiled time/scream counters, though this card's own reminder text says \"permanents and/or players\" (increment #17, not in this wave)."
+
+[cost]
+generic = 4
+green = 1
+
+[kind]
+type = "creature"
+power = 5
+toughness = 5
+
+# Whenever one or more creatures you control deal combat damage to one or more players, proliferate.
+[[abilities]]
+timing = "deals_combat_damage_to_player"
+who = "your_creatures_batch"
+
+# proliferate
+[[abilities.effects]]
+type = "choice"
+mode = "proliferate"
+times = 1
+
+# Corrupted — At the beginning of your end step, if an opponent has three or more poison counters, draw a card, then
+# you may put a land card from your hand onto the battlefield.
+[[abilities]]
+timing = "end_step"
+
+# if an opponent has three or more poison counters (the Corrupted ability word, CR 702.165 — an
+# intervening-if, CR 603.4)
+[abilities.condition]
+type = "an_opponent_has_poison_at_least"
+at_least = 3
+
+# draw a card,
+[[abilities.effects]]
+type = "draw"
+mode = "cards"
+count = 1
+
+# then you may put a land card from your hand onto the battlefield.
+[[abilities.effects]]
+type = "choice"
+mode = "put_land_from_hand"

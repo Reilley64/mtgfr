@@ -50,6 +50,7 @@ impl Game {
                 | CountersEffect::PutCounters { .. }
                 | CountersEffect::PutCountersEach { .. }
                 | CountersEffect::PutCountersOnPlayer { .. }
+                | CountersEffect::TopUpCountersOnPlayer { .. }
                 | CountersEffect::RemoveAllButOnePlusOneCounterThenGainLife { .. }
                 | CountersEffect::RemoveAllCountersThenDraw { .. }
                 | CountersEffect::RemoveCounterFromSelf) => {

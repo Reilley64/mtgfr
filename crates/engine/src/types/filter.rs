@@ -868,6 +868,13 @@ pub enum EdictScope {
     /// [`PendingChoice::ChooseTargetPlayers`](super::PendingChoice::ChooseTargetPlayers) pause
     /// before the edict's per-player sacrifice fan-out begins.
     TargetedPlayers,
+    /// "Target opponent" (Venerated Rotpriest's "target opponent gets a poison counter") —
+    /// exactly one opponent, chosen as an ordinary target when the ability goes on the stack (CR
+    /// 601.2c), not a subset picked during resolution like
+    /// [`TargetedPlayers`](Self::TargetedPlayers). The effect carrying it reports
+    /// [`TargetSpec::OpponentPlayer`](super::TargetSpec::OpponentPlayer), so the shared targeting
+    /// machinery picks and legality-checks the player; resolution just reads the chosen target.
+    TargetedOpponent,
 }
 
 /// Who controls a token minted by [`Effect::Token(TokenEffect::Create)`] (CR 111.4's "under its controller's

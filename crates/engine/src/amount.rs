@@ -253,6 +253,13 @@ impl Game {
             // `queue_enchanted_creature_deals_damage_triggers`), so a live read here never happens
             // for the pool. The arm exists only so this match stays exhaustive.
             Amount::TriggeringDamageDealt => 0,
+            // "for each poison counter your opponents have" (Phyrexian Swarmlord): the sum over
+            // every living opponent, CR 122.1.
+            Amount::OpponentsPoisonCounters => self
+                .living_players()
+                .filter(|&p| p != controller)
+                .map(|p| self.player_counters(p, PlayerCounterKind::Poison) as i32)
+                .sum(),
         }
     }
 

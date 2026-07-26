@@ -137,16 +137,33 @@ impl Game {
                 if count <= 0 {
                     return Vec::new();
                 }
+                // "Target opponent gets a poison counter" (Venerated Rotpriest): the one chosen
+                // target, not a scan. A target that has since left the game gets nothing.
+                if scope == EdictScope::TargetedOpponent {
+                    let Some(Target::Player(player)) = target else {
+                        return Vec::new();
+                    };
+                    if !self.living_players().any(|p| p == player) {
+                        return Vec::new();
+                    }
+                    return vec![Event::PlayerCountersPlaced {
+                        player,
+                        kind,
+                        count,
+                    }];
+                }
                 self.living_players()
                     .filter(|&player| match scope {
                         EdictScope::AllPlayers => true,
                         EdictScope::EachOpponent => player != controller,
                         // ponytail: no pool card places player counters on a chosen subset of
                         // players, and the DSL surface for this mode documents only
-                        // all_players/each_opponent. Give this a real arm when one does.
+                        // all_players/each_opponent/target_opponent. Give this a real arm when
+                        // one does.
                         EdictScope::TargetedPlayers => unreachable!(
                             "player counters have no targeted-players spelling in the card pool"
                         ),
+                        EdictScope::TargetedOpponent => unreachable!("handled above"),
                     })
                     .map(|player| Event::PlayerCountersPlaced {
                         player,
@@ -154,6 +171,26 @@ impl Game {
                         count,
                     })
                     .collect()
+            }
+            // "If target player has fewer than nine poison counters, they get a number of poison
+            // counters equal to the difference" (Vraska, Betrayal's Sting's −9): a top-up, so a
+            // target already at or above `to` gets no counters and mints no event at all.
+            CountersEffect::TopUpCountersOnPlayer { kind, to } => {
+                let Some(Target::Player(player)) = target else {
+                    return Vec::new();
+                };
+                if !self.living_players().any(|p| p == player) {
+                    return Vec::new();
+                }
+                let count = to.saturating_sub(self.player_counters(player, kind));
+                if count == 0 {
+                    return Vec::new();
+                }
+                vec![Event::PlayerCountersPlaced {
+                    player,
+                    kind,
+                    count: count as i32,
+                }]
             }
             // Promise of Loyalty's rider: place a vow counter on each surviving creature, marking
             // the controller (the caster — "can't attack *you*") as the protected player. Scans

@@ -316,6 +316,11 @@ pub enum Amount {
     /// count when a [`Trigger::YouCastThis`] ability is placed on the stack — resolving this
     /// variant directly never happens (see [`Game::resolve_amount`]'s fallback).
     SpellsCastBeforeThisThisTurn,
+    /// The total number of poison counters (CR 122.1) sitting on the effect controller's living
+    /// opponents — Phyrexian Swarmlord's "for each poison counter your opponents have." A live
+    /// read summed across every opponent, not a per-opponent maximum; a player who has already
+    /// lost is out of the game and contributes nothing.
+    OpponentsPoisonCounters,
 }
 
 impl Default for Amount {
@@ -587,6 +592,11 @@ impl Effect {
                 ..
             }) => TargetSpec::None,
             Effect::Draw(DrawEffect::TargetPlayer { opponent: true, .. })
+            // "Target opponent gets a poison counter" (Venerated Rotpriest).
+            | Effect::Counters(CountersEffect::PutCountersOnPlayer {
+                scope: EdictScope::TargetedOpponent,
+                ..
+            })
             | Effect::Life(LifeEffect::DrainTarget { opponent: true, .. })
             | Effect::Reveal(RevealEffect::TopAndDrainMutual)
             | Effect::Life(LifeEffect::TargetPlayerGains { opponent: true, .. })
@@ -625,7 +635,9 @@ impl Effect {
             | Effect::Dig(DigEffect::ShuffleTargetCardsFromGraveyardIntoLibrary {
                 target_player: true,
                 ..
-            }) => TargetSpec::Player,
+            })
+            // "If target player has fewer than nine poison counters …" (Vraska, Betrayal's Sting).
+            | Effect::Counters(CountersEffect::TopUpCountersOnPlayer { .. }) => TargetSpec::Player,
             // Equip targets the creature to attach to (the "you control" restriction is
             // enforced when the ability is activated, not by the target spec).
             Effect::Control(ControlEffect::Equip) => TargetSpec::Creature,
@@ -725,7 +737,10 @@ impl Effect {
             | Effect::Choice(ChoiceEffect::MayDrawUnlessPays { .. })
             | Effect::Counters(CountersEffect::PutCountersEach { .. })
             // "Each player/opponent gets a poison counter" names its players by scope, not by target.
-            | Effect::Counters(CountersEffect::PutCountersOnPlayer { .. })
+            | Effect::Counters(CountersEffect::PutCountersOnPlayer {
+                scope: EdictScope::AllPlayers | EdictScope::EachOpponent | EdictScope::TargetedPlayers,
+                ..
+            })
             | Effect::Choice(ChoiceEffect::Proliferate { .. })
             | Effect::Choice(ChoiceEffect::Discard {
                 target_player: false,
@@ -1635,6 +1650,13 @@ pub enum Condition {
     /// special-cases it directly against its own `source` parameter, reading
     /// [`Permanent::spent_colors`].
     ColorWasSpentToCastThis { color: Color },
+    /// "if an opponent has `at_least` or more poison counters" — the printed **Corrupted** ability
+    /// word (CR 702.165), an existential over the ability controller's living opponents like
+    /// [`AnOpponentHasLifeAtMost`](Self::AnOpponentHasLifeAtMost). Serves both an intervening-if
+    /// (Contaminant Grafter's end step, CR 603.4) and an activation restriction (Glistening
+    /// Sphere's "Activate only if …", CR 602.5b) — [`Game::ability_activation_gate`] evaluates the
+    /// same `Ability::condition` slot.
+    AnOpponentHasPoisonAtLeast { at_least: u32 },
 }
 
 /// Whether `sacrifices` is a legal answer to a sacrifice edict over `options`: every id a

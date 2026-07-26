@@ -1,0 +1,59 @@
+# Compleated ({B/P} can be paid with {B} or 2 life. If life was paid, this planeswalker enters with two fewer loyalty
+# counters.)
+# 0: You draw a card and lose 1 life. Proliferate.
+# −2: Target creature becomes a Treasure artifact with "{T}, Sacrifice this artifact: Add one mana of any color" and
+# loses all other card types and abilities.
+# −9: If target player has fewer than nine poison counters, they get a number of poison counters equal to the
+# difference.
+name = "Vraska, Betrayal's Sting"
+id = "05d09c55-f551-4cb4-a8d2-4811dccc848d"
+default_print = "9f1fa1c5-ff87-4bbc-89aa-dbebc91eada0"
+oracle = "Compleated ({B/P} can be paid with {B} or 2 life. If life was paid, this planeswalker enters with two fewer loyalty counters.)\n0: You draw a card and lose 1 life. Proliferate.\n−2: Target creature becomes a Treasure artifact with \"{T}, Sacrifice this artifact: Add one mana of any color\" and loses all other card types and abilities.\n−9: If target player has fewer than nine poison counters, they get a number of poison counters equal to the difference."
+set = "ecc"
+subtypes = ["Vraska"]
+legendary = true
+approximates = "\"Proliferate\" (CR 701.27) only enumerates battlefield permanents with a counter — it can't choose players (poison/rad) or Class level/exiled time/scream counters, though this card's own reminder text says \"permanents and/or players\" (increment #17, not in this wave). Three further residuals, each its own unlanded increment: the printed {B/P} Phyrexian mana pip is modeled as a plain {B} (no \"or 2 life\" payment — increment #8), so Compleated's \"enters with two fewer loyalty counters\" when life was paid never applies (increment #16); and the −2 \"target creature becomes a Treasure artifact ... and loses all other card types and abilities\" mode is omitted entirely rather than approximated (increment #25). The 0 and −9 abilities are faithful."
+
+[cost]
+generic = 4
+black = 2
+
+[kind]
+type = "planeswalker"
+loyalty = 6
+
+# 0: You draw a card and lose 1 life. Proliferate.
+[[abilities]]
+timing = "activated"
+loyalty = 0
+
+# You draw a card
+[[abilities.effects]]
+type = "draw"
+mode = "cards"
+count = 1
+
+# and lose 1 life.
+[[abilities.effects]]
+type = "life"
+mode = "lose"
+amount = 1
+
+# Proliferate.
+[[abilities.effects]]
+type = "choice"
+mode = "proliferate"
+times = 1
+
+# −9: If target player has fewer than nine poison counters, they get a number of poison counters equal to the
+# difference.
+[[abilities]]
+timing = "activated"
+loyalty = -9
+
+# If target player has fewer than nine poison counters, they get a number of poison counters equal to the difference.
+[[abilities.effects]]
+type = "counters"
+mode = "top_up_counters_on_player"
+kind = "poison"
+to = 9

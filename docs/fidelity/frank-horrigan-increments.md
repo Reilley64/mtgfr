@@ -442,6 +442,29 @@ Two toxic cards moved here out of slice 3 — printing toxic is not what gates t
   cannot express (its only targeted arm, `TargetedPlayers`, is "any number of target players",
   `types/filter.rs:860-871`).
 
+*2026-07-27 — slice 4 built (the XL is not LANDED; slice 5 remains).*
+`Condition::AnOpponentHasPoisonAtLeast { at_least }` is an existential over living opponents, and
+the same `Ability::condition` slot serves Contaminant Grafter's intervening-if (CR 603.4) and
+Glistening Sphere's activation restriction (CR 602.5b) — `Game::ability_activation_gate` already
+honored the slot, so no new field. `Amount::OpponentsPoisonCounters` sums (not maxes) across living
+opponents. Vraska's −9 is its own effect, `CountersEffect::TopUpCountersOnPlayer { kind, to }`
+(TOML `top_up_counters_on_player`), targeting a player and emitting **no** event at all when the
+target is already at or above `to`. Venerated Rotpriest took the `EdictScope::TargetedOpponent`
+route over a second targeting spelling: `PutCountersOnPlayer` reports
+`TargetSpec::OpponentPlayer` under that scope and the shared targeting machinery does the rest.
+Two watchers widened: `CombatDamageScope::YourCreaturesBatch` drains through
+`BatchTriggerScratch::creatures_dealt_combat_damage_this_batch` for exactly one trigger per combat
+damage step (CR 603.3b), and `Trigger::BecomesTargeted` gained a `who: BecomesTargetedScope` axis
+(`this` / `creature_you_control`, TOML sibling `targeted`) instead of a second trigger variant.
+contaminant_grafter, glistening_sphere, phyrexian_swarmlord (plus the `phyrexian_insect` token
+profile) and venerated_rotpriest are faithful except the shared #17 proliferate-scope
+`approximates` where proliferate is printed; vraska_betrayals_sting additionally names three
+residuals — the `{B/P}` pip modeled as plain `{B}` (#8), Compleated's enters-with-two-fewer that
+therefore never applies (#16), and the −2 becomes-a-Treasure mode dropped rather than approximated
+(#25). Follow-up noticed: `striding_shotcaller.toml` still carries a `ponytail:` note saying its
+`who = "your_creatures"` approximates a batch watch — `"your_creatures_batch"` now expresses it
+faithfully.
+
 **Slice 5 — poison-scaled pump.** Phyresis Outbreak's "each creature your opponents control gets
 -1/-1 until end of turn **for each poison counter its controller has**" — a per-permanent amount
 resolved against *that permanent's controller*, not the spell's controller. *Cards:*

@@ -23869,7 +23869,9 @@ const BECOMES_TARGETED_TREASURE_MAKER: CardDef = CardDef {
     keywords: &[],
     conditional_keywords: &[],
     abilities: &[Ability {
-        timing: Timing::Triggered(Trigger::BecomesTargeted),
+        timing: Timing::Triggered(Trigger::BecomesTargeted {
+            who: BecomesTargetedScope::This,
+        }),
         effect: Effect::Token(TokenEffect::CreateTreasure {
             count: Amount::Fixed(1),
             target_player: false,
@@ -94283,5 +94285,264 @@ fn bloated_contaminator_poisons_and_proliferates_on_connect() {
         game.plus_counters(counter_holder),
         2,
         "proliferate added a second +1/+1 counter"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Poison readers (#20 slice 4): the Corrupted ability word (CR 702.165) gates on "an opponent
+// has three or more poison counters" — as an intervening-if (Contaminant Grafter) and as an
+// activation restriction (Glistening Sphere, CR 602.5b); `Amount::OpponentsPoisonCounters` sums
+// that total (Phyrexian Swarmlord); Vraska, Betrayal's Sting's −9 tops a target player up to
+// nine rather than adding a fixed number; Venerated Rotpriest watches "a creature you control
+// becomes the target of a spell" and poisons a target opponent; Contaminant Grafter's
+// "one or more creatures you control deal combat damage" is one batch trigger per damage step.
+// ---------------------------------------------------------------------------
+
+/// Activate Glistening Sphere's Corrupted mana ability (index 2).
+fn activate_corrupted_mana(game: &mut Game, sphere: ObjectId) -> Result<Vec<Event>, Reject> {
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: sphere,
+        ability_index: 2,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+}
+
+#[test]
+fn corrupted_activation_needs_three_poison_on_an_opponent() {
+    // Glistening Sphere: "Corrupted — {T}: Add three mana of any one color. Activate only if an
+    // opponent has three or more poison counters." CR 602.5b makes an activation with the
+    // restriction unmet illegal.
+    let mut game = Game::new();
+    let sphere = game.spawn_on_battlefield(PlayerId(0), card("Glistening Sphere"));
+    game.untap(sphere); // "This artifact enters tapped" — spawn honors it; the {T} cost needs it up.
+
+    game.place_player_counters(PlayerId(1), PlayerCounterKind::Poison, 2);
+    assert!(
+        activate_corrupted_mana(&mut game, sphere).is_err(),
+        "two poison counters is below the Corrupted threshold"
+    );
+
+    game.place_player_counters(PlayerId(1), PlayerCounterKind::Poison, 1);
+    assert!(
+        activate_corrupted_mana(&mut game, sphere).is_ok(),
+        "the third poison counter turns Corrupted on"
+    );
+}
+
+#[test]
+fn corrupted_end_step_trigger_needs_three_poison_on_an_opponent() {
+    // Contaminant Grafter: "Corrupted — At the beginning of your end step, if an opponent has
+    // three or more poison counters, draw a card, ..." — CR 603.4's intervening-if, so below the
+    // threshold the ability never goes on the stack at all.
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Contaminant Grafter"));
+    game.stack_library(PlayerId(0), &vec![card("Grizzly Bear"); 12]);
+    game.stack_library(PlayerId(1), &vec![card("Grizzly Bear"); 12]);
+
+    game.place_player_counters(PlayerId(1), PlayerCounterKind::Poison, 2);
+    advance_until(&mut game, |g| g.current_step() == Step::End);
+    advance_until(&mut game, |g| g.current_step() != Step::End);
+    assert!(
+        game.hand(PlayerId(0)).is_empty(),
+        "two poison counters leaves Corrupted off, so no card is drawn"
+    );
+
+    game.place_player_counters(PlayerId(1), PlayerCounterKind::Poison, 1);
+    pass_until_next_turn(&mut game);
+    pass_until_next_turn(&mut game);
+    advance_until(&mut game, |g| g.current_step() == Step::End);
+    advance_until(&mut game, |g| g.current_step() != Step::End);
+    assert_eq!(
+        game.hand(PlayerId(0)).len(),
+        2,
+        "Corrupted is on: the end-step draw plus this turn's draw step"
+    );
+}
+
+#[test]
+fn phyrexian_swarmlord_mints_one_insect_per_opponent_poison_counter() {
+    // Phyrexian Swarmlord: "At the beginning of your upkeep, create a 1/1 green Phyrexian Insect
+    // creature token with infect for each poison counter your opponents have."
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Phyrexian Swarmlord"));
+    game.place_player_counters(PlayerId(1), PlayerCounterKind::Poison, 3);
+
+    game.begin_first_turn();
+    advance_until(&mut game, |g| {
+        !battlefield_named(g, PlayerId(0), "Phyrexian Insect").is_empty()
+    });
+
+    let insects = battlefield_named(&game, PlayerId(0), "Phyrexian Insect");
+    assert_eq!(insects.len(), 3, "one Insect per opponent poison counter");
+    assert!(
+        game.has_keyword(insects[0], Keyword::Infect),
+        "the minted Insects have infect"
+    );
+}
+
+/// Put Vraska, Betrayal's Sting onto the battlefield with enough loyalty to ultimate.
+fn vraska_ready_to_ultimate(game: &mut Game) -> ObjectId {
+    let vraska = game.spawn_on_battlefield(PlayerId(0), card("Vraska, Betrayal's Sting"));
+    game.add_loyalty(vraska, 3); // 6 printed + 3 = 9, the cost of her −9.
+    vraska
+}
+
+#[test]
+fn vraska_betrayals_sting_tops_a_target_player_up_to_nine_poison() {
+    // "−9: If target player has fewer than nine poison counters, they get a number of poison
+    // counters equal to the difference." Four already there means five more, not nine more.
+    let mut game = Game::new();
+    let vraska = vraska_ready_to_ultimate(&mut game);
+    game.place_player_counters(PlayerId(1), PlayerCounterKind::Poison, 4);
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: vraska,
+        ability_index: 1,
+        target: Some(Target::Player(PlayerId(1))),
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.player_counters(PlayerId(1), PlayerCounterKind::Poison),
+        9,
+        "topped up to nine, not 4 + 9"
+    );
+}
+
+#[test]
+fn vraska_betrayals_sting_places_nothing_at_nine_or_more_poison() {
+    // The "if target player has fewer than nine" clause: at nine the difference is zero, so no
+    // counters are placed at all.
+    let mut game = Game::new();
+    let vraska = vraska_ready_to_ultimate(&mut game);
+    game.place_player_counters(PlayerId(1), PlayerCounterKind::Poison, 9);
+
+    let events = game
+        .submit(Intent::ActivateAbility {
+            player: PlayerId(0),
+            object: vraska,
+            ability_index: 1,
+            target: Some(Target::Player(PlayerId(1))),
+            sacrifice: vec![],
+            discard_cost: vec![],
+            x: 0,
+        })
+        .unwrap();
+    let _ = events;
+    let resolved = resolve_top_of_stack_events(&mut game);
+
+    assert!(
+        !resolved
+            .iter()
+            .any(|e| matches!(e, Event::PlayerCountersPlaced { .. })),
+        "no counters are placed when the target already has nine"
+    );
+    assert_eq!(
+        game.player_counters(PlayerId(1), PlayerCounterKind::Poison),
+        9
+    );
+    assert!(!game.has_lost(PlayerId(1)), "nine poison is not ten");
+}
+
+#[test]
+fn venerated_rotpriest_poisons_when_a_creature_you_control_is_targeted() {
+    // Venerated Rotpriest: "Whenever a creature you control becomes the target of a spell,
+    // target opponent gets a poison counter." CR 603.2c — the watch is over every creature its
+    // controller controls, not just itself.
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Venerated Rotpriest"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let destroy = game.spawn_in_hand(PlayerId(0), DESTROY);
+
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: destroy,
+        target: Some(Target::Object(bear)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    // The trigger says "target opponent" — choose it as the ability goes on the stack (CR 601.2c).
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Player(PlayerId(1))],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // the Rotpriest trigger, above the spell
+
+    assert_eq!(
+        game.player_counters(PlayerId(1), PlayerCounterKind::Poison),
+        1,
+        "the only opponent gets the poison counter"
+    );
+}
+
+#[test]
+fn venerated_rotpriest_ignores_a_spell_targeting_an_opponents_creature() {
+    // "a creature **you control**" — an opponent's creature being targeted is not the watch.
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Venerated Rotpriest"));
+    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let destroy = game.spawn_in_hand(PlayerId(0), DESTROY);
+
+    cast_and_resolve(&mut game, destroy, Some(Target::Object(theirs)));
+
+    assert_eq!(
+        game.player_counters(PlayerId(1), PlayerCounterKind::Poison),
+        0,
+        "targeting an opponent's creature never fires the Rotpriest"
+    );
+}
+
+#[test]
+fn contaminant_grafter_batch_trigger_fires_once_for_two_connecting_attackers() {
+    // "Whenever one or more creatures you control deal combat damage to one or more players,
+    // proliferate" — CR 603.3b's batch wording: one trigger per combat damage step, however many
+    // creatures connected.
+    let mut game = Game::new();
+    let grafter = game.spawn_on_battlefield(PlayerId(0), card("Contaminant Grafter"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let counter_holder = game.spawn_on_battlefield(PlayerId(0), card("Llanowar Elves"));
+    game.add_plus_counter(counter_holder);
+
+    attack_with(&mut game, vec![grafter, bear]);
+    advance_until(&mut game, |g| g.pending_choice().is_some());
+    game.submit(Intent::ChooseSacrifices {
+        player: PlayerId(0),
+        sacrifices: vec![counter_holder],
+    })
+    .unwrap();
+    advance_until(&mut game, |g| {
+        g.current_step() == Step::EndCombat || g.pending_choice().is_some()
+    });
+
+    assert!(
+        game.pending_choice().is_none(),
+        "the batch trigger proliferates exactly once, not once per connecting creature"
+    );
+    assert_eq!(
+        game.plus_counters(counter_holder),
+        2,
+        "one proliferate, so one extra +1/+1 counter"
     );
 }

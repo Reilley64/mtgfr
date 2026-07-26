@@ -17,6 +17,7 @@ fn amount_label(amount: Amount) -> String {
         Amount::TwiceX => "twice X".to_string(),
         Amount::PerCreatureYouControl => "1 per creature you control".to_string(),
         Amount::PerCreatureOnBattlefield => "1 per creature on the battlefield".to_string(),
+        Amount::OpponentsPoisonCounters => "1 per poison counter your opponents have".to_string(),
         Amount::PerPermanentMatching { filter, zone } => {
             let where_ = match zone {
                 AmountZone::Battlefield => "on the battlefield",
@@ -818,8 +819,15 @@ impl Effect {
                     EdictScope::AllPlayers => "Each player",
                     EdictScope::EachOpponent => "Each opponent",
                     EdictScope::TargetedPlayers => "Each target player",
+                    EdictScope::TargetedOpponent => "Target opponent",
                 };
                 format!("{who} gets {} {kind_name} counters", amount_label(count))
+            }
+            Effect::Counters(CountersEffect::TopUpCountersOnPlayer { kind, to }) => {
+                let kind_name = match kind {
+                    PlayerCounterKind::Poison => "poison",
+                };
+                format!("Give target player {kind_name} counters up to {to}")
             }
             Effect::Choice(ChoiceEffect::Proliferate { times }) => format!("Proliferate {} times", amount_label(times)),
             Effect::Counters(CountersEffect::MoveCounters { all_kinds, .. }) => {
@@ -1448,6 +1456,7 @@ impl Effect {
                     EdictScope::AllPlayers => "Each player",
                     EdictScope::EachOpponent => "Each opponent",
                     EdictScope::TargetedPlayers => "Any number of target players",
+                    EdictScope::TargetedOpponent => "Target opponent",
                 };
                 if keep_one {
                     format!("{who} keeps one creature and sacrifices the rest")

@@ -210,6 +210,13 @@ impl Game {
         });
     }
 
+    /// Test/setup helper: add `amount` loyalty counters to a planeswalker (routed through an
+    /// event, exactly as [`Game::place_player_counters`]) — the setup a test needs to reach an
+    /// ultimate a card has no plus ability to climb to.
+    pub fn add_loyalty(&mut self, object: ObjectId, amount: i32) {
+        self.apply(&Event::LoyaltyChanged { object, amount });
+    }
+
     /// Whether a player has lost the game.
     pub fn has_lost(&self, player: PlayerId) -> bool {
         self.players[player.0 as usize].lost
