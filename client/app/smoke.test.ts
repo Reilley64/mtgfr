@@ -1,5 +1,5 @@
-import { Scene } from "foldkit/test";
 import { readFileSync } from "node:fs";
+import { Scene } from "foldkit/test";
 import { describe, expect, it } from "vitest";
 import { BindDeckCardFlip, DeckCardFlipTick } from "./deck-card-nav";
 import { BindCardArt } from "./domain/ui/card-art";
