@@ -21,6 +21,7 @@ import {
   joinLobby,
   type LobbySnapshot,
   loadLobby,
+  probeLobbySchema,
   setReady,
   startError,
   sweepWebDb,
@@ -68,6 +69,12 @@ async function handleLobby(event: H3Event, path: string, env: GrpcRequestEnv): P
   if (method === "GET" && path === "meta/version/v1") {
     const version = (await fetchApiVersion()) ?? "unknown";
     return json({ version });
+  }
+
+  // Ops probe: Host Unreachable when gravatar_hash is missing (no auth — schema shape only).
+  if (method === "GET" && path === "meta/web-schema/v1") {
+    const probe = await probeLobbySchema(webDb());
+    return json(probe, probe.gravatar_hash ? 200 : 503);
   }
 
   const routeDelete = method === "DELETE" && /^tables\/[^/]+\/route\/v1$/.test(path);
@@ -217,6 +224,11 @@ const handleLobbyTraced = Effect.fn(function* (event: H3Event, path: string) {
 /** Nitro handler methods for lobby/meta. */
 const ALLOWED_METHODS = new Set(["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]);
 
+function lobbyDbErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message.slice(0, 300);
+  return String(err).slice(0, 300);
+}
+
 async function forward(event: H3Event) {
   const method = getMethod(event);
   if (!ALLOWED_METHODS.has(method)) {
@@ -228,12 +240,18 @@ async function forward(event: H3Event) {
     return new Response("Not Found", { status: 404 });
   }
 
-  const lobby = await runTracedRequest(
-    getRequestHeader(event, "traceparent") ?? null,
-    `api ${path}`,
-    handleLobbyTraced(event, path),
-  );
-  return lobby ?? new Response("Not Found", { status: 404 });
+  try {
+    const lobby = await runTracedRequest(
+      getRequestHeader(event, "traceparent") ?? null,
+      `api ${path}`,
+      handleLobbyTraced(event, path),
+    );
+    return lobby ?? new Response("Not Found", { status: 404 });
+  } catch (err) {
+    // Surface SQL/schema failures instead of opaque Nitro { unhandled: true } so Host
+    // Unreachable can be diagnosed from the response body (e.g. missing gravatar_hash).
+    return json({ error: "LobbyDb", message: lobbyDbErrorMessage(err) }, 500);
+  }
 }
 
 export default defineEventHandler(forward);

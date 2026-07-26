@@ -5,9 +5,12 @@
 locals {
   web_mig_root  = "${path.module}/../client/db/migrations"
   web_mig_files = fileset(local.web_mig_root, "**")
-  web_migrations_hash = substr(sha256(join("", [
+  # Bump when the Job script body changes so a new Job name re-runs migrate
+  # (Completed Jobs are not re-executed on in-place spec edits alone).
+  web_mig_script_rev = "gravatar-ensure-1"
+  web_migrations_hash = substr(sha256(join("", concat([
     for f in sort(tolist(local.web_mig_files)) : filesha256("${local.web_mig_root}/${f}")
-  ])), 0, 8)
+  ], [local.web_mig_script_rev]))), 0, 8)
 }
 
 resource "kubernetes_config_map_v1" "edh_web_migrations" {
@@ -120,6 +123,27 @@ resource "kubernetes_job_v1" "edh_web_migrate" {
             CFG
             bun install --no-save
             bunx drizzle-kit migrate
+            # Journal can claim 0002/0003 applied while the column is still missing
+            # (drift / partial apply). Force the Host-critical column every run.
+            cat > /work/ensure-gravatar.mjs <<'JS'
+            import pg from "pg";
+            const url = process.env.WEB_DATABASE_URL;
+            if (!url) throw new Error("WEB_DATABASE_URL required");
+            const client = new pg.Client({ connectionString: url });
+            await client.connect();
+            await client.query(
+              `ALTER TABLE "lobby_seats" ADD COLUMN IF NOT EXISTS "gravatar_hash" text DEFAULT '' NOT NULL`,
+            );
+            const { rows } = await client.query(
+              `SELECT 1 AS ok FROM information_schema.columns
+               WHERE table_schema = 'public' AND table_name = 'lobby_seats'
+                 AND column_name = 'gravatar_hash'`,
+            );
+            await client.end();
+            if (rows.length !== 1) throw new Error("lobby_seats.gravatar_hash still missing after ALTER");
+            console.log("ensure-gravatar: lobby_seats.gravatar_hash ok");
+            JS
+            bun /work/ensure-gravatar.mjs
           EOT
           ]
 

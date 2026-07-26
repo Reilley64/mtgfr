@@ -236,6 +236,9 @@ missing, Host create still returns `table_id` but join/lobby GET 500 (client sho
 Unreachable). Repair migration `0003_lobby_seat_gravatar_if_not_exists` is idempotent;
 the BFF also runs `ensureLobbySchema` once per process on lobby routes (same
 `ADD COLUMN IF NOT EXISTS`) so a web roll self-heals when the Job was skipped.
+`edh-web-migrate` runs that ALTER again after `drizzle-kit migrate` and verifies
+`information_schema` (journal drift must not leave Host broken). Probe:
+`GET /api/meta/web-schema/v1` → `{ gravatar_hash: bool }`.
 
 **`push_schema()` is dev/SQLite-test only.** Production pods assume `migration apply` ran
 first (via the K8s Job before the Deployment roll).

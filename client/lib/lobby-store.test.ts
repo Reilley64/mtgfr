@@ -8,6 +8,7 @@ import {
   joinLobby,
   type LobbySnapshot,
   loadLobby,
+  probeLobbySchema,
   resetLobbySchemaEnsureForTests,
   startError,
   toLobbyView,
@@ -121,8 +122,10 @@ describe.skipIf(!process.env.WEB_DATABASE_URL)("joinLobby gravatar persistence",
     await db.execute(sql`ALTER TABLE "lobby_seats" DROP COLUMN IF EXISTS "gravatar_hash"`);
     tableId = await createLobby(db, 9002);
     await expect(loadLobby(db, tableId)).rejects.toThrow();
+    await expect(probeLobbySchema(db)).resolves.toMatchObject({ gravatar_hash: false });
 
     await ensureLobbySchema(db);
+    await expect(probeLobbySchema(db)).resolves.toEqual({ gravatar_hash: true });
     await expect(loadLobby(db, tableId)).resolves.toMatchObject({
       tableId,
       hostUserId: 9002,

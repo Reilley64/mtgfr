@@ -70,6 +70,17 @@ export function resetLobbySchemaEnsureForTests(): void {
   lobbySchemaEnsure = null;
 }
 
+/** Ops probe for `/api/meta/web-schema/v1` — does not mutate schema. */
+export async function probeLobbySchema(db: WebDb): Promise<{ gravatar_hash: boolean; error?: string }> {
+  try {
+    await db.execute(sql`SELECT "gravatar_hash" FROM "lobby_seats" LIMIT 0`);
+    return { gravatar_hash: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { gravatar_hash: false, error: message.slice(0, 300) };
+  }
+}
+
 export async function createLobby(db: WebDb, hostUserId: number): Promise<string> {
   let lastError: unknown;
   for (let attempt = 0; attempt < 8; attempt++) {
