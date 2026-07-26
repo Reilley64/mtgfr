@@ -5,6 +5,7 @@ import type { ActionView, PlayerView } from "~/wire/types";
 import { gravatarUrl } from "../../../lib/gravatar";
 import type { RenderCard } from "../geometry/layout";
 import { ZONE } from "../geometry/layout";
+import { spawnExitFx } from "../motion/exit-fx";
 import { spawnFlight } from "../motion/flights";
 import {
   applyPublishedFrame,
@@ -16,8 +17,38 @@ import {
   tickFlightClock,
 } from "./mount";
 
+const missingGlobal = Symbol("missing-global");
+const originalGlobals = new Map<string, unknown>();
+
+function stubGlobal(name: string, value: unknown): void {
+  if (typeof vi.stubGlobal === "function") {
+    vi.stubGlobal(name, value);
+    return;
+  }
+  if (!originalGlobals.has(name)) {
+    const hadOwnGlobal = Object.prototype.hasOwnProperty.call(globalThis, name);
+    originalGlobals.set(name, hadOwnGlobal ? Reflect.get(globalThis, name) : missingGlobal);
+  }
+  Object.defineProperty(globalThis, name, { value, configurable: true, writable: true });
+}
+
+function unstubAllGlobals(): void {
+  if (typeof vi.unstubAllGlobals === "function") {
+    vi.unstubAllGlobals();
+    return;
+  }
+  for (const [name, value] of originalGlobals) {
+    if (value === missingGlobal) {
+      Reflect.deleteProperty(globalThis, name);
+      continue;
+    }
+    Object.defineProperty(globalThis, name, { value, configurable: true, writable: true });
+  }
+  originalGlobals.clear();
+}
+
 afterEach(() => {
-  vi.unstubAllGlobals();
+  unstubAllGlobals();
 });
 
 function player(overrides: Partial<PlayerView> = {}): PlayerView {
@@ -152,6 +183,7 @@ function frame(overrides: Partial<BitmapFrame> = {}): BitmapFrame {
     cursor: { x: 0, y: 0 },
     combatDragFrom: null,
     combatDragStroke: null,
+    exitFx: [],
     paymentPreviewIds: new Set(),
     ...overrides,
   };
@@ -954,5 +986,40 @@ describe("flight clock helpers", () => {
 
     expect(republish.paintResting).toBe(false);
     expect(republish.frame.flights[0]?.x).not.toBe(0);
+  });
+
+  it("preserves active exit FX in sync payloads while flights settle", () => {
+    const flight = spawnFlight({
+      id: 3,
+      print: "p",
+      name: "Bolt",
+      x: 0,
+      y: 0,
+      scale: 1,
+      targetX: 0,
+      targetY: 0,
+      targetScale: 1,
+      kind: "battlefield",
+    });
+    const exitFx = spawnExitFx({
+      id: 7,
+      kind: "destroy",
+      name: "Grizzly Bears",
+      print: "print-id",
+      x: 80,
+      y: 60,
+      scale: 1,
+    });
+    const publishedFrame = frame({ flights: [flight], exitFx: [exitFx] });
+    const state = flightClockState({ liveFlights: [flight] });
+
+    const published = applyPublishedFrame(state, publishedFrame);
+    const tick = tickFlightClock(published.state, published.frame, 16, 16, true);
+
+    expect(tick.sync).toEqual({
+      flights: [{ ...flight, x: 0, y: 0, scale: 1, phase: "settled" }],
+      exitFx: [exitFx],
+      now: 16,
+    });
   });
 });

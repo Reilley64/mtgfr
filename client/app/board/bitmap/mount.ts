@@ -37,6 +37,7 @@ export type BitmapFrame = {
   stagedAttackers: readonly WireAttack[];
   stagedBlocks: readonly WireBlock[];
   flights: readonly CardFlight[];
+  exitFx?: readonly ExitFx[];
   hideCardIds: ReadonlySet<number>;
   targetObjects: ReadonlySet<number>;
   /** Multi-aim picks already toggled in the pending draft (Priority Gold solid ring). */
@@ -141,7 +142,7 @@ export function tickFlightClock(
     },
     frame: { ...frame, flights: liveFlights },
     paintFlight: true,
-    sync: flyingMembershipChanged || allSettled ? { flights: liveFlights, exitFx: [], now } : null,
+    sync: flyingMembershipChanged || allSettled ? { flights: liveFlights, exitFx: [...(frame.exitFx ?? [])], now } : null,
   };
 }
 

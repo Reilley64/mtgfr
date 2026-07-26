@@ -175,6 +175,7 @@ export const view = Submodel.defineView<BoardViewModel, Message>((model) => {
     stagedAttackers: model.board.combatAttackers,
     stagedBlocks: model.board.combatBlocks,
     flights: [...model.board.flights.values()],
+    exitFx: [...model.board.exitFx.values()],
     hideCardIds: model.board.hideCardIds,
     targetObjects: overlay.targetObjects,
     pickedObjects:

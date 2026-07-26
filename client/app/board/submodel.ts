@@ -518,10 +518,15 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
   }
 
   for (const [id, zone] of fold.provenance.battlefieldExits) {
-    const flight = flights.get(id);
-    const pose = flight != null ? battlefieldPoseFromFlight(flight) : model.lastBattlefieldPoses.get(id);
-    if (flight != null) {
-      flights.delete(id);
+    const from = fold.provenance.zoneMoves.get(id);
+    const flightId = flights.has(id) ? id : from != null && flights.has(from) ? from : null;
+    const flight = flightId == null ? undefined : flights.get(flightId);
+    const pose =
+      flight != null
+        ? battlefieldPoseFromFlight(flight)
+        : (from != null ? model.lastBattlefieldPoses.get(from) : undefined) ?? model.lastBattlefieldPoses.get(id);
+    if (flight != null && flightId != null) {
+      flights.delete(flightId);
       if (flight.fromCardId != null) handHidden.delete(flight.fromCardId);
     }
     if (pose == null) continue;

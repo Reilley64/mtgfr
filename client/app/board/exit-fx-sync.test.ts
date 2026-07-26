@@ -174,6 +174,55 @@ describe("syncBoardWithGame exit FX", () => {
     expect(after.hideCardIds.has(bearId)).toBe(true);
   });
 
+  it("BF exit rebinds to the prior battlefield id pose when provenance changes ids", () => {
+    const priorBattlefieldId = 19;
+    const exitId = 20;
+    const board: BoardModel = {
+      ...initialBoardModel(),
+      lastBattlefieldPoses: new Map([
+        [
+          priorBattlefieldId,
+          {
+            x: 144,
+            y: 188,
+            scale: 0.8,
+            print: "print-bear",
+            name: "Grizzly Bears",
+          },
+        ],
+      ]),
+    };
+    const graveyardBear = creature(exitId, 0, {
+      id: exitId,
+      name: "Grizzly Bears",
+      print: "print-bear",
+      zone: ZONE.Graveyard,
+    });
+
+    const after = syncBoardWithGame(
+      board,
+      gameFold(
+        state({ objects: [graveyardBear] }),
+        { seq: 2 },
+        {
+          zoneMoves: new Map([[exitId, priorBattlefieldId]]),
+          battlefieldExits: new Map([[exitId, "graveyard"]]),
+        },
+      ),
+    );
+
+    expect(after.exitFx.get(exitId)).toMatchObject({
+      kind: "destroy",
+      x: 144,
+      y: 188,
+      scale: 0.8,
+      print: "print-bear",
+      name: "Grizzly Bears",
+    });
+    expect(after.flights.has(exitId)).toBe(false);
+    expect(after.hideCardIds.has(exitId)).toBe(true);
+  });
+
   it("non-battlefield graveyard moves still glide when battlefieldExits is empty", () => {
     const fromId = 90;
     const toId = 91;

@@ -125,6 +125,48 @@ test("FlightsSynced keeps exit FX ids hidden even without flights", () => {
   );
 });
 
+test("FlightsSynced keeps flyers and exit FX ids hidden together", () => {
+  const fold = gameFold();
+  const flight = {
+    ...spawnFlight({
+      id: 1,
+      kind: "battlefield",
+      name: "Grizzly Bears",
+      print: "print-flight",
+      scale: 0.8,
+      targetScale: 1,
+      targetX: 100,
+      targetY: 0,
+      x: 40,
+      y: 12,
+      fromCardId: 9,
+    }),
+    phase: "flying" as const,
+  };
+  const fx = spawnExitFx({
+    id: 7,
+    kind: "destroy",
+    name: "Exit Bear",
+    print: "print-fx",
+    x: 80,
+    y: 60,
+    scale: 1,
+  });
+
+  Story.story(
+    (board: BoardModel, message: Message) => updateBoard(board, message, fold, null),
+    Story.with(initialBoardModel()),
+    Story.message(FlightsSynced({ flights: [flight], exitFx: [fx], now: 200 })),
+    Story.model((board) => {
+      expect(board.flights.get(1)).toEqual(flight);
+      expect(board.exitFx.get(7)).toEqual(fx);
+      expect(board.hideCardIds).toEqual(new Set([1, 7]));
+      expect(board.handHidden).toEqual(new Set([9]));
+      expect(board.lastFlightFrame).toBe(200);
+    }),
+  );
+});
+
 test("FlightsSynced clears hidden cards when flights disappear", () => {
   const fold = gameFold();
   const model: BoardModel = {
