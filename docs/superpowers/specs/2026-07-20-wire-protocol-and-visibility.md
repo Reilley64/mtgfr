@@ -48,6 +48,13 @@ travels beyond the BFF, and the resolved session token flows as gRPC metadata
 `/health/ready`, `/health/drain`); all `Auth`, `Decks`, `Ratings`, `Cards`, `Game`, and
 `Tables` RPCs live on `:50051` (tonic).
 
+The `/api/rpc/[...path]` BFF route runs one `runTracedRequest` per request and dispatches the
+matched RPC as an Effect. `dispatchRpc` maps gRPC failures into `RpcOutcome` values at the dispatch
+boundary; the route then applies session-cookie set/clear side effects after the Effect completes.
+There is no Promise sandwich around dispatch. The stream outcome remains an `AsyncIterable` that
+the SSE adapter pulls, so connect-time gRPC failures can still become HTTP statuses before the first
+event is sent.
+
 **Per-viewer redaction** happens at the `schema` crate boundary, before any bytes leave the
 server process. The engine emits full-information canonical `Event`s and a full-information
 `Game` struct; the `schema` crate maps these to `VisibleEvent` and `VisibleState` per viewer,
@@ -214,6 +221,9 @@ The engine/schema event model includes `MulliganTaken { player, mulligans_taken,
   unions aligned with generated `PendingChoiceView` / `VisibleEvent` oneofs after codegen.
 - **BFF cookie termination**: cookies are host-only on `edh.example.com`; they never cross the
   same-origin boundary. The token moves as gRPC metadata inside the cluster.
+- **Effect RPC dispatch boundary**: `/api/rpc/[...path]` performs request body/cookie plumbing in
+  Nitro, then runs a single traced Effect dispatch. `dispatchRpc` routes to the generated gRPC
+  clients as Effects and converts dispatch-time gRPC errors to HTTP-shaped `RpcOutcome` values.
 - **Snapshot-then-deltas** (lobby-table-routing-and-live-game spec): a `tokio::broadcast` channel per table fans events to
   all subscribers; the subscribe edge redacts per viewer. Reconnect re-snapshots by opening a
   new `Game.Stream` — the initial frame is always a `SnapshotFrame`.
