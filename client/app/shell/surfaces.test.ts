@@ -430,6 +430,9 @@ describe("shell surface scenes", () => {
       Scene.expect(Scene.text("Secrets of Strixhaven")).toExist(),
       Scene.expect(Scene.text("2.5%")).toExist(),
       Scene.tap((sim) => {
+        const ids = collectTestIds(sim.html);
+        expect(ids.indexOf("coverage-global-percent")).toBeLessThan(ids.indexOf("shell-stage"));
+        expect(ids.indexOf("coverage-global-percent")).toBeLessThan(ids.indexOf("coverage-page"));
         const tableBody = findTestId(sim.html, "coverage-table-body");
         expect(tableBody).not.toBeNull();
         const bodyText = textContent(tableBody);
@@ -570,7 +573,9 @@ describe("shell surface scenes", () => {
       Scene.expectAll(Scene.all.selector('[data-testid="leaderboard-row"]')).toHaveCount(1),
       Scene.expect(Scene.text("#1")).toExist(),
       Scene.expect(Scene.text("Could not load the leaderboard.")).toExist(),
+      Scene.expect(Scene.selector('[data-testid="leaderboard-try-again"]')).toExist(),
       Scene.expect(Scene.text("Try again")).toExist(),
+      Scene.expect(Scene.selector('[data-testid="leaderboard-load-more"]')).not.toExist(),
       Scene.expect(Scene.text("Load more")).not.toExist(),
     );
   });

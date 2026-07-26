@@ -2,7 +2,7 @@ import { Submodel } from "foldkit";
 import { type Html, html } from "foldkit/html";
 import { type AppChromeMeta, formatFaithfulPercent } from "../../domain/ui/app-version";
 import { buttonClass } from "../../domain/ui/buttonClass";
-import { fieldClass, listRowClass } from "../../domain/ui/surfaces";
+import { alertClass, fieldClass, listRowClass } from "../../domain/ui/surfaces";
 import type { ClosedAccountMenu, GotAuthMessage, ToggledAccountMenu } from "../../messages";
 import { HomeRoute, routePath } from "../../routes";
 import { accountChrome } from "../account-chrome/view";
@@ -90,7 +90,7 @@ function tableRow(row: CoverageSetRow): Html {
       h.span([h.Class("text-right text-body text-snow")], [String(row.faithful)]),
       h.span([h.Class("text-right text-body text-snow")], [row.oracleTotal == null ? "—" : String(row.oracleTotal)]),
       h.span(
-        [h.Class("text-right text-game text-priority-gold")],
+        [h.Class("text-right font-display text-game text-vine")],
         [coveragePercentText(row.faithful, row.oracleTotal)],
       ),
     ],
@@ -107,6 +107,10 @@ export const view = Submodel.defineView<CoverageSubmodel, ViewMessage, ViewInput
   return shellFrame(h, {
     atmosphere: "shell",
     title: "Coverage",
+    subtitle: h.p(
+      [h.Class("m-0 text-label text-lichen"), h.DataAttribute("testid", "coverage-global-percent")],
+      [`${globalPercent} faithful`],
+    ),
     chrome,
     leading: h.a([h.Href(routePath(HomeRoute())), h.Class(buttonClass("ghost"))], ["Play"]),
     trailing: accountChrome(h, {
@@ -123,26 +127,10 @@ export const view = Submodel.defineView<CoverageSubmodel, ViewMessage, ViewInput
         h.DataAttribute("testid", "coverage-page"),
       ],
       [
-        h.div(
-          [h.Class("mx-auto mb-5 flex w-full max-w-[960px] shrink-0 flex-wrap items-center justify-between gap-md")],
-          [
-            h.div(
-              [h.Class("flex min-w-0 flex-col gap-xs")],
-              [
-                h.div(
-                  [h.Class("text-label text-lichen"), h.DataAttribute("testid", "coverage-global-percent")],
-                  [`${globalPercent} faithful`],
-                ),
-              ],
-            ),
-          ],
-        ),
         h.section(
           [h.Class("mx-auto flex min-h-0 w-full max-w-[960px] flex-1 flex-col gap-sm")],
           [
-            model.error == null
-              ? null
-              : h.div([h.Role("alert"), h.Class("shrink-0 text-label text-reconnect-rust")], [model.error]),
+            model.error == null ? null : h.div([h.Role("alert"), h.Class(alertClass("shrink-0"))], [model.error]),
             status == null ? null : h.div([h.Class("shrink-0 text-label text-lichen")], [status]),
             model.status !== "loading"
               ? h.input([

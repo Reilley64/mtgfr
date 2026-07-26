@@ -96,4 +96,16 @@ describe("shellFrame", () => {
 
     expect(classNameOf(findByTestId(tree, "shell-frame"))).toContain("shell-atmosphere-shell");
   });
+
+  it("accepts Html subtitle nodes", () => {
+    const tree = shellFrame(h, {
+      atmosphere: "shell",
+      title: "Coverage",
+      subtitle: h.p([h.DataAttribute("testid", "coverage-global-percent")], ["1.9% faithful"]),
+      stage: [],
+      chrome: { version: null, faithfulCount: null, oracleTotal: null, coverageHref: null },
+    });
+
+    expect(collectTestIds(tree)).toContain("coverage-global-percent");
+  });
 });
