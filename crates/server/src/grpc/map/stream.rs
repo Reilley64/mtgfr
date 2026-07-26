@@ -163,6 +163,7 @@ pub fn action_view_to_pb(action: ActionView) -> pb::ActionView {
             .map(wire_attack_to_pb)
             .collect(),
         taps_self: action.taps_self,
+        declare_for: action.declare_for.into_iter().map(u32::from).collect(),
     }
 }
 
@@ -240,11 +241,13 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
             source,
             cost,
             label,
+            can_pay,
         } => Choice::PayCost(pb::PendingChoiceViewPayCost {
             player: u32::from(player),
             source,
             cost: Some(wire_cost_to_pb(cost)),
             label: Some(message_ref_to_pb(label)),
+            can_pay,
         }),
         PendingChoiceView::PayOrCounter {
             player,
@@ -1713,6 +1716,7 @@ mod tests {
                 auto_tap: vec![],
                 required_attacks: vec![],
                 taps_self: false,
+                declare_for: Vec::new(),
             }],
         }
     }

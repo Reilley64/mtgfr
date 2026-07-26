@@ -58,6 +58,10 @@ pub enum ControlEffect {
 
     RevertAllCreaturesToOwners,
 
+    TapAll {
+        filter: PermanentFilter,
+    },
+
     TapTarget {
         target: TargetSpec,
         #[cfg_attr(feature = "card-dsl", serde(default))]

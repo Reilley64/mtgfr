@@ -806,6 +806,7 @@ mod tests {
         free_cast_if: None,
         alternative_cost: None,
         cast_only_during_combat: false,
+        cast_only_before_attackers: false,
         approximates: None,
         oracle: None,
         set: "",
@@ -824,6 +825,9 @@ mod tests {
                     x_scaled: false,
                     sacrifice_scaled: false,
                     strive_scaled: false,
+                    multikicker_scaled: false,
+                    kicked_scaled: false,
+                    main_phase_scaled: false,
                 },
                 divided: false,
             }),
@@ -888,6 +892,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
     }
@@ -1215,6 +1220,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         });
         assert!(
@@ -1632,6 +1638,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         });
         assert!(result.accepted, "P1 casts Shock: {:?}", result.reason);

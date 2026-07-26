@@ -108,6 +108,46 @@ impl Game {
         Ok(events)
     }
 
+    /// Pause on the next opponent with a card to discard (skipping any with an empty hand), or —
+    /// when none remain — return, letting the enclosing sequence resume into the draw payoff.
+    pub(crate) fn prompt_next_discard_edict(&mut self, remaining: Vec<PlayerId>, source: ObjectId) {
+        crate::pending::raise(
+            self,
+            crate::pending::ChoiceRequest::NextDiscardEdict { remaining, source },
+        );
+    }
+
+    /// Answer a [`PendingChoice::DiscardEdict`]: discard the one chosen hand card (Syphon Mind's
+    /// "Each other player discards a card"), tallying it into
+    /// [`ResolutionFrame::cards_discarded_this_way`](crate::resolution::ResolutionFrame), then move
+    /// on to the next opponent — the discard twin of [`Self::choose_graveyard_exile`].
+    pub(crate) fn answer_discard_edict(
+        &mut self,
+        player: PlayerId,
+        discards: Vec<ObjectId>,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::DiscardEdict {
+            options,
+            remaining,
+            source,
+            ..
+        }) = self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        // Mandatory: exactly one of the offered cards (declining isn't legal when they have one).
+        if discards.len() != 1 || !options.contains(&discards[0]) {
+            return Err(Reject::IllegalChoice);
+        }
+        self.finish_answer();
+
+        let mut events = Vec::new();
+        self.discard_ids(&discards, player, &mut events);
+        self.resolution_frame.cards_discarded_this_way += 1;
+        self.prompt_next_discard_edict(remaining, source);
+        Ok(events)
+    }
+
     /// Pause on the next player to vote, or — when none remain — return, letting the enclosing
     /// sequence resume into the tally-scaled outcome steps. Unlike a graveyard fan-out, no seat is
     /// ever skipped: every living player votes (CR 701.32a).
@@ -180,8 +220,10 @@ impl Game {
         Ok(events)
     }
 
-    /// Answer a [`PendingChoice::CastVote`]: `choice` is the index into the ballot's `options`
-    /// (0 = past, 1 = present). Tally the vote, then move on to the next player.
+    /// Answer a [`PendingChoice::CastVote`]: `choice` is the index into the ballot's `options`.
+    /// A council's-dilemma ballot (`["past", "present"]`) tallies the vote; Archangel of Strife's
+    /// war/peace ballot instead records the voter's own answer against the asking permanent on
+    /// `Player::war_choices`. Either way, move on to the next player.
     pub(crate) fn answer_vote(
         &mut self,
         player: PlayerId,
@@ -204,12 +246,21 @@ impl Game {
         };
         self.finish_answer();
 
-        // ponytail: past/present hardcoded — Fateful Tempest is the pool's only council's-dilemma
-        // card. Generalize to a label→tally map when a differently-balloted voting card lands.
+        // ponytail: ballots hardcoded to the pool's two voting cards. Generalize to a
+        // label→outcome map when a third, differently-balloted voting card lands.
         match ballot {
             "past" => self.resolution_frame.council_past_votes += 1,
             "present" => self.resolution_frame.council_present_votes += 1,
-            other => panic!("unknown council's-dilemma ballot {other:?}"),
+            "war" | "peace" => {
+                self.players[voter.0 as usize]
+                    .war_choices
+                    .push((source, ballot == "war"));
+                // A `war_choice`-gated anthem just started/stopped applying to every creature
+                // this voter owns — same scope as `Event::CitysBlessingGained`'s invalidation.
+                self.characteristics_cache
+                    .write(|cache| cache.invalidate_owner(self, voter));
+            }
+            other => panic!("unknown vote ballot {other:?}"),
         }
         self.prompt_next_vote(remaining, source, options);
         Ok(Vec::new())

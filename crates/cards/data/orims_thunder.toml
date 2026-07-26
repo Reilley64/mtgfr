@@ -1,0 +1,39 @@
+# Kicker {R} (You may pay an additional {R} as you cast this spell.)
+# Destroy target artifact or enchantment. If this spell was kicked, it deals damage equal to that
+# permanent's mana value to target creature.
+name = "Orim's Thunder"
+id = "380429d5-82db-449c-b9b9-3e82ab987972"
+default_print = "79431517-5ef4-44f4-8ff2-53a27b4c84b0"
+oracle = "Kicker {R} (You may pay an additional {R} as you cast this spell.)\nDestroy target artifact or enchantment. If this spell was kicked, it deals damage equal to that permanent's mana value to target creature."
+set = "cmd"
+
+[cost]
+generic = 2
+white = 1
+
+# Kicker {R} (You may pay an additional {R} as you cast this spell.)
+[cost.additional.kicker]
+red = 1
+
+[kind]
+type = "instant"
+
+# Destroy target artifact or enchantment. If this spell was kicked, it deals damage equal to that
+# permanent's mana value to target creature.
+[[abilities]]
+timing = "spell"
+
+# Destroy target artifact or enchantment.
+[[abilities.effects]]
+type = "destroy"
+mode = "target"
+target = { permanent = { types = "artifact_or_enchantment" } }
+
+# If this spell was kicked, it deals damage equal to that permanent's mana value to target
+# creature.
+[[abilities.effects]]
+type = "damage"
+mode = "target"
+amount = "spell_first_target_mana_value"
+target = "creature"
+count = { min = 1, max = 1, kicked_scaled = true }

@@ -18,7 +18,8 @@ export function handleCombatDrop(
   defender: number | null,
   blockTarget: RenderCard | null,
   declaredAttackers: WireAttack[],
-  me: number,
+  /** Seats this declaration covers (`declaresFor`) — the viewer's own unless it was moved. */
+  seats: readonly number[],
   opponents: number[] = [],
 ): CombatDropResult {
   if (mode === "attackers") {
@@ -27,7 +28,7 @@ export function handleCombatDrop(
     return next ? { kind: "attackers", value: next } : { kind: "none" };
   }
   if (mode === "blockers") {
-    const next = blockDrop(currentBlocks, from.id, blockTarget, declaredAttackers, me);
+    const next = blockDrop(currentBlocks, from.id, blockTarget, declaredAttackers, seats);
     return next ? { kind: "blockers", value: next } : { kind: "none" };
   }
   return { kind: "none" };

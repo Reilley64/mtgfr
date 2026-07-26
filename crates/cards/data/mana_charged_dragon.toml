@@ -1,0 +1,37 @@
+# Flying, trample
+# Join forces — Whenever this creature attacks or blocks, each player starting with you may pay
+# any amount of mana. This creature gets +X/+0 until end of turn, where X is the total amount of
+# mana paid this way.
+name = "Mana-Charged Dragon"
+id = "87354a7b-01be-419e-b383-4c28e12a2f2b"
+default_print = "0c5a02b2-849e-467b-b8a7-0c9e352cfb99"
+oracle = "Flying, trample\nJoin forces — Whenever this creature attacks or blocks, each player starting with you may pay any amount of mana. This creature gets +X/+0 until end of turn, where X is the total amount of mana paid this way."
+set = "cmd"
+subtypes = ["Dragon"]
+keywords = ["flying", "trample"]
+
+[cost]
+generic = 4
+red = 2
+
+[kind]
+type = "creature"
+power = 5
+toughness = 5
+
+# Join forces — Whenever this creature attacks or blocks, each player starting with you may pay
+# any amount of mana.
+[[abilities]]
+timing = "attacks_or_blocks"
+
+# each player starting with you may pay any amount of mana.
+[[abilities.effects]]
+type = "choice"
+mode = "join_forces_pay_mana"
+
+# This creature gets +X/+0 until end of turn, where X is the total amount of mana paid this way.
+[[abilities.effects]]
+type = "pump"
+mode = "pump_self_until_end_of_turn"
+power = "mana_paid_this_way"
+toughness = 0

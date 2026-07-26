@@ -1,0 +1,45 @@
+# At the beginning of the end step, if no creatures are on the battlefield, sacrifice this enchantment.
+# {R}: This enchantment deals 1 damage to each creature and each player.
+name = "Pyrohemia"
+id = "9ac57a10-3402-4656-9079-f713884cde35"
+default_print = "7e17b8ee-9de9-44d8-958b-3fced717ed32"
+oracle = "At the beginning of the end step, if no creatures are on the battlefield, sacrifice this enchantment.\n{R}: This enchantment deals 1 damage to each creature and each player."
+set = "cmd"
+
+[cost]
+generic = 2
+red = 2
+
+[kind]
+type = "enchantment"
+
+# At the beginning of the end step, if no creatures are on the battlefield, sacrifice this
+# enchantment.
+[[abilities]]
+timing = "each_end_step"
+
+[abilities.condition]
+type = "no_creatures_on_battlefield"
+
+# if no creatures are on the battlefield, sacrifice this enchantment.
+[[abilities.effects]]
+type = "conditional"
+condition = { type = "no_creatures_on_battlefield" }
+then = [{ type = "sacrifice", mode = "source" }]
+
+# {R}: This enchantment deals 1 damage to each creature and each player.
+[[abilities]]
+timing = "activated"
+activation_cost = { red = 1 }
+
+# This enchantment deals 1 damage to each creature ...
+[[abilities.effects]]
+type = "damage"
+mode = "each_creature"
+amount = 1
+
+# ... and each player.
+[[abilities.effects]]
+type = "damage"
+mode = "each_player"
+amount = 1

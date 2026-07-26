@@ -149,8 +149,16 @@ impl Game {
         self.resolution_frame.returned_nonland_card_mana_value = None;
         // A bestowed spell (CR 702.103d) resolves as an Aura — it enters attached to its target
         // through the same path a `CardKind::Aura` spell uses, not as a creature (its printed
-        // `kind` stays `Creature` for when it later stops being attached, CR 702.103i).
-        let kind = if spell.bestowed {
+        // `kind` stays `Creature` for when it later stops being attached, CR 702.103i). A
+        // face-down morph spell (CR 702.37b/708.2) resolves as a plain 2/2 colorless creature
+        // regardless of its hidden real kind (Zoetic Cavern's is Land) — same override shape.
+        let kind = if spell.face_down {
+            CardKind::Creature {
+                power: 2,
+                toughness: 2,
+                also: TypeSet::NONE,
+            }
+        } else if spell.bestowed {
             CardKind::Aura
         } else {
             printed.kind
@@ -855,6 +863,8 @@ impl Game {
             }
             // Edict / fan-out pauses — edict pause peel (`resolution/pause_edict`).
             Effect::Choice(ChoiceEffect::EachPlayerSacrifices { .. })
+            | Effect::Choice(ChoiceEffect::EachPlayerChoosesWarOrPeace)
+            | Effect::Choice(ChoiceEffect::EachOpponentDiscards)
             | Effect::Choice(ChoiceEffect::EachPlayerExilesFromGraveyard)
             | Effect::Choice(ChoiceEffect::TargetPlayerExilesFromGraveyard { .. })
             | Effect::Choice(ChoiceEffect::CasterKeepsOneOfEachTypePerPlayer)
@@ -976,7 +986,7 @@ impl Game {
             Effect::Choice(ChoiceEffect::Discard { .. })
             | Effect::Choice(ChoiceEffect::PutFromHandOnTop { .. })
             | Effect::Choice(ChoiceEffect::PutLandFromHand { .. })
-            | Effect::Choice(ChoiceEffect::PutCreatureFromHand)
+            | Effect::Choice(ChoiceEffect::PutCreatureFromHand { .. })
             | Effect::Choice(ChoiceEffect::CastCreatureFaceDown) => {
                 self.run_hand_pause(effect, ctx)
             }
@@ -1032,6 +1042,18 @@ impl Game {
                     // permanents"). Source-object-based like `SourceEnteredWithXAtLeast` above.
                     Condition::SourceUntapped => {
                         self.as_permanent(source).is_some_and(|p| !p.tapped)
+                    }
+                    // Dragon Whelp: "If this ability has been activated four or more times this
+                    // turn" — counts this turn's `once_per_turn.activated` entries for `source`
+                    // (every activated-ability activation records one, not just a
+                    // `once_each_turn`-capped one — see `Game::activate_ability`).
+                    Condition::SourceActivatedThisTurnAtLeast { at_least } => {
+                        self.once_per_turn
+                            .activated
+                            .iter()
+                            .filter(|&&(object, _)| object == source)
+                            .count() as u32
+                            >= at_least
                     }
                     _ => self.condition_holds(condition, TriggerContext::of(controller)),
                 };
@@ -1097,6 +1119,10 @@ impl Game {
             Effect::Choice(ChoiceEffect::EachPlayerDiscardsHandThenDraws { .. }) => {
                 self.run_misc_choreo(effect, ctx, events)
             }
+            // Malfegor's "discard your hand" — see `resolution/resolve_misc.rs`.
+            Effect::Choice(ChoiceEffect::DiscardYourHand) => {
+                self.run_misc_choreo(effect, ctx, events)
+            }
             // `CreateToken`'s `enters_with` choreography — see
             // `resolution/tokens.rs::resolve_create_token`.
             Effect::Token(token @ TokenEffect::Create { .. }) => {
@@ -1110,9 +1136,20 @@ impl Game {
             Effect::Misc(MiscEffect::MustAttackRandomOpponent) => {
                 self.run_misc_choreo(effect, ctx, events)
             }
+            // Basandra, Battle Seraph's {R} ability — see `resolution/resolve_misc.rs`.
+            Effect::Misc(MiscEffect::MustAttackTarget) => self.run_misc_choreo(effect, ctx, events),
+            // Tariel, Reckoner of Souls — see `resolution/resolve_misc.rs`.
+            Effect::Zone(ZoneEffect::ReanimateRandomFromTargetOpponentGraveyard { .. }) => {
+                self.run_misc_choreo(effect, ctx, events)
+            }
             // Inkshield / Moment's Peace — see `resolution/resolve_misc.rs`.
             Effect::Misc(MiscEffect::PreventCombatDamageToYouCreatingTokens { .. })
             | Effect::Misc(MiscEffect::PreventAllCombatDamageThisTurn) => {
+                self.run_misc_choreo(effect, ctx, events)
+            }
+            // Master Warcraft — see `resolution/resolve_misc.rs`.
+            Effect::Misc(MiscEffect::YouChooseWhichCreaturesAttack)
+            | Effect::Misc(MiscEffect::YouChooseWhichCreaturesBlock) => {
                 self.run_misc_choreo(effect, ctx, events)
             }
             // Each of these draws may be replaced by dredge (CR 702.52): `draw_with_dredge` draws one

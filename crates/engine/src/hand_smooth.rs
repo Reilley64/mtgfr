@@ -122,6 +122,7 @@ mod game_tests {
             free_cast_if: None,
             alternative_cost: None,
             cast_only_during_combat: false,
+            cast_only_before_attackers: false,
             approximates: None,
             oracle: None,
             set: "",

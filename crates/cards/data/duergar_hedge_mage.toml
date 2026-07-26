@@ -1,0 +1,49 @@
+# When this creature enters, if you control two or more Mountains, you may destroy target artifact.
+# When this creature enters, if you control two or more Plains, you may destroy target enchantment.
+name = "Duergar Hedge-Mage"
+id = "ecb2fd58-b880-4d9e-93cb-c4d2b28233c9"
+default_print = "a55e7048-4532-443b-9480-a139069ecf0a"
+oracle = "When this creature enters, if you control two or more Mountains, you may destroy target artifact.\nWhen this creature enters, if you control two or more Plains, you may destroy target enchantment."
+set = "moc"
+subtypes = ["Dwarf", "Shaman"]
+
+[cost]
+generic = 2
+hybrid = [["red", "white"]]
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# When this creature enters, if you control two or more Mountains, you may destroy target artifact.
+[[abilities]]
+timing = "etb"
+optional = true
+
+[abilities.condition]
+type = "controls_lands_with_subtype"
+subtypes = ["Mountain"]
+count = 2
+
+# destroy target artifact
+[[abilities.effects]]
+type = "destroy"
+mode = "target"
+target = { permanent = { types = "artifact" } }
+
+# When this creature enters, if you control two or more Plains, you may destroy target enchantment.
+[[abilities]]
+timing = "etb"
+optional = true
+
+[abilities.condition]
+type = "controls_lands_with_subtype"
+subtypes = ["Plains"]
+count = 2
+
+# destroy target enchantment
+[[abilities.effects]]
+type = "destroy"
+mode = "target"
+target = { permanent = { types = "enchantment" } }

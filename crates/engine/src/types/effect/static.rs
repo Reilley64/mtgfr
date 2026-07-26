@@ -52,15 +52,41 @@ pub enum StaticEffect {
         from_graveyard: bool,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         all_players: bool,
+        /// Restricts to creatures controlled by a player who has made a matching per-player
+        /// choice: `Some(true)`/`Some(false)` reads a two-sided as-enters choice recorded on
+        /// [`Player`](crate::Player) (Archangel of Strife's "Creatures controlled by players who
+        /// chose war/peace"); `None` (default) applies no such restriction.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        war_choice: Option<bool>,
     },
 
     AttackTax {
         amount: u8,
     },
 
+    /// "Each opponent who cast a spell this turn can't attack with creatures" (Angelic Arbiter):
+    /// a blanket per-player attack ban, unlike [`StaticEffect::CantBeAttackedBy`]'s
+    /// defender-scoped filter — the gated player can't declare *any* attacker, not just ones
+    /// aimed at a specific defender. Checked against `Player::spells_cast_this_turn` in
+    /// `Game::declare_attackers`, and only against a static controlled by someone other than the
+    /// declaring player (CR: "opponent").
+    CantAttackIfCastThisTurn,
+
     CantBeAttackedBy {
         filter: PermanentFilter,
     },
+
+    CantBlockFilter {
+        filter: PermanentFilter,
+    },
+
+    CantCastDuringCombat,
+
+    /// "Each opponent who attacked with a creature this turn can't cast spells" (Angelic
+    /// Arbiter): the mirror of [`StaticEffect::CantAttackIfCastThisTurn`] — a blanket per-player
+    /// cast ban, checked against `Player::attacked_this_turn` in `Game::cast_timing_ok`, and only
+    /// against a static controlled by someone other than the casting player.
+    CantCastIfAttackedThisTurn,
 
     CastXReplacement {
         #[cfg_attr(feature = "card-dsl", serde(default = "de::one"))]
@@ -143,6 +169,8 @@ pub enum StaticEffect {
         keywords: &'static [Keyword],
         #[cfg_attr(feature = "card-dsl", serde(default))]
         filter: PermanentFilter,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        all_players: bool,
     },
 
     LifeGainReplacement {
@@ -150,7 +178,11 @@ pub enum StaticEffect {
         plus: i32,
     },
 
+    MustAttackEachCombat,
+
     NoMaximumHandSize,
+
+    OpponentsCantSearchLibraries,
 
     PlayFromGraveyardOncePerTurn,
 
@@ -164,6 +196,8 @@ pub enum StaticEffect {
     PreventDamageToSelfRemovingCounter,
 
     PreventNoncombatDamageToOtherCreaturesYouControl,
+
+    ProtectionFromChosenColor,
 
     ReduceSpellCost {
         amount: Amount,

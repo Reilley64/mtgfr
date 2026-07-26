@@ -105,14 +105,17 @@ impl PostIntentPipeline {
     /// priority back to the player who must declare — all-pass must not skip the declaration.
     fn seal_combat_declarations(game: &mut Game, events: &mut Vec<Event>) -> bool {
         if game.step == Step::DeclareAttackers && !game.combat.attackers_declared {
-            match game.declare_attackers(game.active_player, &[]) {
+            // Whoever makes the declaration this turn — the active player unless a live Master
+            // Warcraft moved the choice — is who seals it and who priority goes back to.
+            let declarer = game.attack_declarer();
+            match game.declare_attackers(declarer, &[]) {
                 Ok(ev) => {
                     events.extend(ev);
                     true
                 }
                 Err(_) => {
                     game.consecutive_passes = 0;
-                    game.priority = game.active_player;
+                    game.priority = declarer;
                     false
                 }
             }
@@ -122,11 +125,17 @@ impl PostIntentPipeline {
                 .filter(|&p| game.is_attacked_player(p) && !game.combat.blocked_by.contains(&p))
                 .collect();
             for defender in defenders {
-                match game.declare_blockers(defender, &[]) {
+                // An overridden declaration seals every attacked seat at once, so a later seat in
+                // this list can already be done by the time the loop reaches it.
+                if game.combat.blocked_by.contains(&defender) {
+                    continue;
+                }
+                let declarer = game.block_declarer(defender);
+                match game.declare_blockers(declarer, &[]) {
                     Ok(ev) => events.extend(ev),
                     Err(_) => {
                         game.consecutive_passes = 0;
-                        game.priority = defender;
+                        game.priority = declarer;
                         return false;
                     }
                 }

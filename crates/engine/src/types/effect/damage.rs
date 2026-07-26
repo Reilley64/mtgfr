@@ -26,6 +26,15 @@ pub enum DamageEffect {
         damaged: Option<PlayerId>,
     },
 
+    /// The old "Radiance" keyword action (Cleansing Beam): "deals `amount` damage to target
+    /// creature and each other creature that shares a color with it." One real target (`target`,
+    /// a single creature — CR 608.2b legality/protection/hexproof gate only that choice); the
+    /// rest of the batch is [`Game::radiance_batch`], swept in untargeted at resolution.
+    Radiance {
+        amount: Amount,
+        target: TargetSpec,
+    },
+
     EachPlayer {
         amount: Amount,
     },

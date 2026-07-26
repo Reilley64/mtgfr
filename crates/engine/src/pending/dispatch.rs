@@ -188,6 +188,10 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
             }
             _ => Err(Reject::IllegalChoice),
         },
+        PendingChoice::DiscardEdict { .. } => match intent {
+            Intent::Discard { player, cards } => game.answer_discard_edict(player, cards),
+            _ => Err(Reject::IllegalChoice),
+        },
         PendingChoice::CasterKeepPermanents { .. } => match intent {
             Intent::ChooseSacrifices { player, sacrifices } => {
                 game.answer_caster_keep(player, sacrifices)
@@ -426,8 +430,9 @@ pub(crate) fn forced(game: &Game) -> Option<Intent> {
             player,
             options,
             keep_one,
+            count,
             ..
-        } => (!keep_one && options.len() == 1).then(|| Intent::ChooseSacrifices {
+        } => (!keep_one && options.len() as u32 <= *count).then(|| Intent::ChooseSacrifices {
             player: *player,
             sacrifices: options.clone(),
         }),
@@ -436,6 +441,12 @@ pub(crate) fn forced(game: &Game) -> Option<Intent> {
         } => (options.len() == 1).then(|| Intent::ChooseSacrifices {
             player: *player,
             sacrifices: options.clone(),
+        }),
+        PendingChoice::DiscardEdict {
+            player, options, ..
+        } => (options.len() == 1).then(|| Intent::Discard {
+            player: *player,
+            cards: options.clone(),
         }),
         // Default for every other discriminant — same table, no forced Intent.
         PendingChoice::MayYesNo { .. }

@@ -21,19 +21,19 @@ const creature = (id: number, over: Partial<RenderCard> = {}): RenderCard =>
 
 describe("handleCombatDrop", () => {
   it("stages an attacker onto a defender seat", () => {
-    const result = handleCombatDrop("attackers", [], [], creature(3), 1, null, [], 0);
+    const result = handleCombatDrop("attackers", [], [], creature(3), 1, null, [], [0]);
     expect(result).toEqual({ kind: "attackers", value: [{ attacker: 3, defender: 1 }] });
   });
 
   it("retargets an already-staged attacker", () => {
-    const result = handleCombatDrop("attackers", [{ attacker: 3, defender: 1 }], [], creature(3), 2, null, [], 0);
+    const result = handleCombatDrop("attackers", [{ attacker: 3, defender: 1 }], [], creature(3), 2, null, [], [0]);
     expect(result).toEqual({ kind: "attackers", value: [{ attacker: 3, defender: 2 }] });
   });
 
   it("stages a blocker onto an attacker aimed at me", () => {
     const declared = [{ attacker: 9, defender: 0 }];
     const target = creature(9, { zone: ZONE.Battlefield, controller: 1 });
-    const result = handleCombatDrop("blockers", [], [], creature(4), null, target, declared, 0);
+    const result = handleCombatDrop("blockers", [], [], creature(4), null, target, declared, [0]);
     expect(result).toEqual({ kind: "blockers", value: [{ blocker: 4, attacker: 9 }] });
   });
 
@@ -41,7 +41,7 @@ describe("handleCombatDrop", () => {
   // face — the seat avatar under the drop point loses to the permanent on top of it.
   it("stages an attacker onto an opponent's planeswalker instead of their face", () => {
     const pw = creature(9, { kind: "planeswalker", zone: ZONE.Battlefield, controller: 1 });
-    const result = handleCombatDrop("attackers", [], [], creature(3), 1, pw, [], 0, [1, 2, 3]);
+    const result = handleCombatDrop("attackers", [], [], creature(3), 1, pw, [], [0], [1, 2, 3]);
     expect(result).toEqual({
       kind: "attackers",
       value: [{ attacker: 3, defender: 1, defender_planeswalker: 9 }],
@@ -50,12 +50,12 @@ describe("handleCombatDrop", () => {
 
   it("dropping on a non-planeswalker permanent still attacks the seat under it", () => {
     const bear = creature(9, { zone: ZONE.Battlefield, controller: 1 });
-    const result = handleCombatDrop("attackers", [], [], creature(3), 1, bear, [], 0, [1, 2, 3]);
+    const result = handleCombatDrop("attackers", [], [], creature(3), 1, bear, [], [0], [1, 2, 3]);
     expect(result).toEqual({ kind: "attackers", value: [{ attacker: 3, defender: 1 }] });
   });
 
   it("returns none outside a combat mode", () => {
-    expect(handleCombatDrop(null, [], [], creature(3), 1, null, [], 0)).toEqual({ kind: "none" });
+    expect(handleCombatDrop(null, [], [], creature(3), 1, null, [], [0])).toEqual({ kind: "none" });
   });
 });
 

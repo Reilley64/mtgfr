@@ -8,7 +8,7 @@
 //
 // Requires network access to archidekt.com.
 
-import { readFileSync, writeFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -27,6 +27,7 @@ const DECKS = [
   { file: "enchantress_rubinia.json", archidekt: 2209180 },
   { file: "deathdancer_xira.json", archidekt: 2209179 },
   { file: "mirror_mastery.json", archidekt: 2209174 },
+  { file: "heavenly_inferno.json", archidekt: 2209172 },
 ];
 
 function loadPool() {
@@ -87,7 +88,8 @@ for (const { file, archidekt } of DECKS) {
   if (!commander) throw new Error(`${file}: no commander category found`);
 
   const path = join(FIX_DIR, file);
-  const old = JSON.parse(readFileSync(path, "utf8"));
+  // A deck being added for the first time has no fixture yet; sort is then purely by id.
+  const old = existsSync(path) ? JSON.parse(readFileSync(path, "utf8")) : { cards: [] };
   const rank = new Map(old.cards.map((c, i) => [c.id, i]));
   cards.sort(
     (a, b) => (rank.get(a.id) ?? 10_000) - (rank.get(b.id) ?? 10_000) || a.id.localeCompare(b.id),

@@ -53,6 +53,61 @@ impl Game {
                     source_name,
                 }]
             }
+            // Mother of Runes: "{T}: Target creature you control gains protection from the color
+            // of your choice until end of turn." A preceding `Effect::ChooseColor` step in the
+            // same `Sequence` has already stored the chosen color on the ability's own `source`
+            // (`Permanent::chosen_color`) by the time this step runs. No P/T change — a
+            // keyword-only `TempBoost`, the single-`Keyword` twin of `PumpUntilEndOfTurn`'s
+            // `&'static` `keywords` slice: the scope isn't known until resolution, so it's leaked
+            // fresh here rather than baked in at TOML-parse time (same leak-at-resolution shape as
+            // `Game::resync_modifier_aggregates`'s multi-source keyword union).
+            PumpEffect::GrantChosenColorProtectionUntilEndOfTurn { .. } => {
+                let object = expect_object_target(target, "a chosen-color protection grant");
+                let Some(color) = self.as_permanent(source).and_then(|p| p.chosen_color) else {
+                    // The color choice never landed (e.g. the source left before resolution) —
+                    // nothing to grant.
+                    return Vec::new();
+                };
+                vec![Event::TempBoost {
+                    object,
+                    power: 0,
+                    toughness: 0,
+                    keywords: Box::leak(Box::new([Keyword::ProtectionFrom(
+                        ProtectionScope::Color(color),
+                    )])),
+                    source_name,
+                }]
+            }
+            // Bathe in Light: "Target creature and each other creature that shares a color with
+            // it gain protection from the chosen color until end of turn." The batch-capable
+            // twin of `GrantChosenColorProtectionUntilEndOfTurn` right above — same preceding
+            // `choose_color` step — but the grant lands on every creature in `Game::radiance_batch`
+            // of the chosen target (the old "Radiance" keyword action, CR 105.2), not just the
+            // target itself. `source` here is the spell itself (an instant), not a permanent, so
+            // the choice reads back via `chosen_color_of` (checks `Spell::chosen_color`) rather
+            // than `Permanent::chosen_color` directly. One leaked keyword slice is shared across
+            // every creature's `TempBoost` (the same protection scope for all).
+            PumpEffect::RadianceChosenColorProtectionUntilEndOfTurn { .. } => {
+                let chosen = expect_object_target(target, "a radiance protection grant");
+                let Some(color) = self.chosen_color_of(source) else {
+                    // The color choice never landed (e.g. the source left before resolution) —
+                    // nothing to grant.
+                    return Vec::new();
+                };
+                let keywords: &'static [Keyword] = Box::leak(Box::new([Keyword::ProtectionFrom(
+                    ProtectionScope::Color(color),
+                )]));
+                self.radiance_batch(chosen)
+                    .into_iter()
+                    .map(|object| Event::TempBoost {
+                        object,
+                        power: 0,
+                        toughness: 0,
+                        keywords,
+                        source_name,
+                    })
+                    .collect()
+            }
             // Mass pump: every creature the controller controls, no target (Selfless Spirit,
             // Moonshaker Cavalry).
             PumpEffect::PumpCreaturesYouControlUntilEndOfTurn {
@@ -68,6 +123,33 @@ impl Game {
                     .filter(|&id| {
                         self.is_creature_on_battlefield(id)
                             && self.controller_of(id) == controller
+                            && self.permanent_matches(&filter, id, controller, Some(source))
+                    })
+                    .map(|object| Event::TempBoost {
+                        object,
+                        power,
+                        toughness,
+                        keywords,
+                        source_name,
+                    })
+                    .collect()
+            }
+            // Mass pump, every controller: every creature on the battlefield matching `filter`,
+            // not just the controller's own (Bladewing the Risen). The board-wide twin of
+            // `PumpCreaturesYouControlUntilEndOfTurn` right above — same filter, no
+            // `controller_of(id) == controller` gate.
+            PumpEffect::PumpEachCreatureUntilEndOfTurn {
+                power,
+                toughness,
+                keywords,
+                filter,
+            } => {
+                let power = self.resolve_amount(power, controller, source, target, x);
+                let toughness = self.resolve_amount(toughness, controller, source, target, x);
+                self.battlefield()
+                    .into_iter()
+                    .filter(|&id| {
+                        self.is_creature_on_battlefield(id)
                             && self.permanent_matches(&filter, id, controller, Some(source))
                     })
                     .map(|object| Event::TempBoost {

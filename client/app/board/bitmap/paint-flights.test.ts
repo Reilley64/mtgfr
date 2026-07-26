@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  LIFT_SHADOW_BLUR,
-  LIFT_SHADOW_COLOR,
-  LIFT_SHADOW_OFFSET_Y,
-} from "../lift-shadow";
+import { LIFT_SHADOW_BLUR, LIFT_SHADOW_COLOR, LIFT_SHADOW_OFFSET_Y } from "../lift-shadow";
 import { FLIGHT_SHADOW_BLUR, FLIGHT_SHADOW_COLOR, FLIGHT_SHADOW_OFFSET_Y } from "./paint-flights";
 
 describe("flight lift shadow", () => {

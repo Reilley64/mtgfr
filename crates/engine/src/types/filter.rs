@@ -330,6 +330,14 @@ pub enum CardFilter {
     /// (Deadly Brew: "return another permanent card from your graveyard to your hand"). The
     /// unbounded twin of [`PermanentWithManaValueAtMost`](Self::PermanentWithManaValueAtMost).
     Permanent,
+    /// A permanent card whose type line carries any of these subtypes, no card-type restriction
+    /// (Bladewing the Risen: "target Dragon permanent card" — a Dragon creature card qualifies).
+    /// [`Permanent`](Self::Permanent) plus a subtype gate; reads the printed subtype line
+    /// ([`CardDef::subtypes`]) directly, the same check [`Aura`](Self::Aura) uses.
+    PermanentWithSubtype(
+        #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_str_slice"))]
+        &'static [&'static str],
+    ),
     /// A card that is neither a creature nor a land (Quintorius, Loremaster's "target
     /// noncreature, nonland card") — an instant, sorcery, noncreature artifact, enchantment
     /// (Aura included), or planeswalker.
@@ -447,6 +455,9 @@ impl CardFilter {
             }
             CardFilter::Enchantment => def.kind.types().intersects(TypeSet::ENCHANTMENT),
             CardFilter::Permanent => !def.kind.types().is_empty(),
+            CardFilter::PermanentWithSubtype(subtypes) => {
+                !def.kind.types().is_empty() && def.subtypes.iter().any(|s| subtypes.contains(s))
+            }
             CardFilter::NoncreatureNonland => {
                 !matches!(def.kind, CardKind::Creature { .. } | CardKind::Land { .. })
             }

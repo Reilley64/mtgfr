@@ -1,0 +1,37 @@
+# When this creature enters, if you cast it from your hand, destroy all creatures your opponents
+# control, then tap all other creatures you control.
+name = "Dread Cacodemon"
+id = "1d34e78e-4fe9-44e1-88d3-a98fd64555a9"
+default_print = "25344729-19a5-496f-8e6f-ce7b69afdc68"
+oracle = "When this creature enters, if you cast it from your hand, destroy all creatures your opponents control, then tap all other creatures you control."
+set = "cma"
+subtypes = ["Demon"]
+
+[cost]
+generic = 7
+black = 3
+
+[kind]
+type = "creature"
+power = 8
+toughness = 8
+
+# When this creature enters, if you cast it from your hand, destroy all creatures your opponents
+# control, then tap all other creatures you control.
+[[abilities]]
+timing = "etb"
+
+[abilities.condition]
+type = "cast_from_hand"
+
+# destroy all creatures your opponents control
+[[abilities.effects]]
+type = "destroy"
+mode = "all"
+filter = { types = "creature", controller = "opponent" }
+
+# then tap all other creatures you control.
+[[abilities.effects]]
+type = "control"
+mode = "tap_all"
+filter = { types = "creature", controller = "you", other = true }

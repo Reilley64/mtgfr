@@ -60,6 +60,21 @@ pub(crate) struct CombatExtras {
     /// Cleared at the next turn's Untap step, the same "this turn" idiom as
     /// `combat_damage_prevention_shields`.
     pub prevent_all_combat_damage_this_turn: bool,
+    /// "You choose which creatures attack this turn" (CR 508.1a — Master Warcraft): the player who
+    /// makes the attack declaration in the active player's place. `None` (the common case) leaves
+    /// it to the active player — read through [`Game::attack_declarer`](crate::Game::attack_declarer),
+    /// the single choke `Game::declare_attackers`, the affordance list and the auto-seal all go
+    /// through. The attackers themselves are still the *active player's* creatures; only the seat
+    /// making the choice moves. Cleared at the next turn's Untap step (the "this turn" boundary,
+    /// same idiom as `must_attack`).
+    pub attack_declarer: Option<PlayerId>,
+    /// "You choose which creatures block this turn and how those creatures block" (CR 509.1a —
+    /// Master Warcraft): the player who makes *every* defending player's block declaration, read
+    /// through [`Game::block_declarer`](crate::Game::block_declarer). Unlike the attack half there
+    /// are several declarations to displace — one per attacked player — so an overridden
+    /// declaration is a single submission covering every attacked seat at once, and each blocker's
+    /// legality is still checked against its own controller. Cleared at the same turn boundary.
+    pub block_declarer: Option<PlayerId>,
 }
 
 /// Active play and control permissions stored outside `Card`/`Permanent` so they stay `Copy`.
@@ -277,8 +292,11 @@ pub(crate) struct BatchTriggerScratch {
 /// Once-per-turn activation and trigger caps, reset at each untap step.
 #[derive(Clone, Default)]
 pub(crate) struct OncePerTurnLimits {
-    /// Activations this turn of a `once_each_turn`-capped activated ability (CR 602.2b), each
-    /// entry (source object, ability index). Checked by
+    /// Activations this turn of any activated ability, each entry (source object, ability
+    /// index). Recorded for every activation (not just `once_each_turn`-capped ones — CR
+    /// 602.2b), so it doubles as a per-object activation counter for conditions like
+    /// [`SourceActivatedThisTurnAtLeast`](crate::types::effect::shared::Condition::SourceActivatedThisTurnAtLeast)
+    /// (Dragon Whelp). Checked by
     /// [`Game::ability_activation_gate`](crate::Game::ability_activation_gate); cleared at the start of every turn.
     pub activated: Vec<(ObjectId, usize)>,
     /// Placements this turn of a `once_each_turn`-capped *triggered* ability (CR "this ability

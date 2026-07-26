@@ -1,0 +1,12 @@
+# Token: Kithkin Soldier
+# Sources: gwyllion_hedge_mage.toml
+name = "Kithkin Soldier"
+id = "caf4a0d2-64de-42df-a88e-bb0d3f34e207"
+default_print = "064ce217-2a93-41ae-b26a-e80cbb2353e4"
+colors = ["white"]
+subtypes = ["Kithkin", "Soldier"]
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1

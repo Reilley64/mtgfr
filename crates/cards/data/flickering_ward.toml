@@ -21,7 +21,7 @@ type = "aura"
 
 # As this Aura enters, choose a color.
 [[abilities]]
-timing = "etb"
+timing = "as_enters"
 
 # As this Aura enters, choose a color.
 [[abilities.effects]]

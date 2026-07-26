@@ -168,26 +168,28 @@ impl Game {
             }
         }
 
-        // A combat declaration to make (only if this player hasn't already declared).
-        let can_attack = player == self.active_player
+        // A combat declaration to make (only if it hasn't already been declared). The seat that
+        // declares is the active player / each defending player, unless a live Master Warcraft
+        // moved the choice — the creatures on offer stay their own controllers'.
+        let can_attack = player == self.attack_declarer()
             && self.step == Step::DeclareAttackers
             && !self.combat.attackers_declared
             && self
-                .controlled_battlefield(player)
+                .controlled_battlefield(self.active_player)
                 .into_iter()
                 .any(|id| self.can_attack(id));
         if can_attack {
             actions.push(MeaningfulAction::DeclareAttackers);
         }
-        let can_block = self.is_attacked_player(player)
-            && self.step == Step::DeclareBlockers
-            && !self.combat.blocked_by.contains(&player)
-            // Can any of this player's creatures legally block at least one attacker?
+        let block_seats = self.block_seats_for(player);
+        let can_block = self.step == Step::DeclareBlockers
+            // Can any creature this player declares for legally block at least one attacker?
             && self.battlefield().into_iter().any(|bid| {
-                self.combat
-                    .attackers
-                    .iter()
-                    .any(|&atk| self.can_block(player, bid, atk))
+                self.combat.attackers.iter().any(|&atk| {
+                    block_seats
+                        .iter()
+                        .any(|&seat| self.can_block(seat, bid, atk))
+                })
             });
         if can_block {
             actions.push(MeaningfulAction::DeclareBlockers);
@@ -345,9 +347,11 @@ impl Game {
         Self::affordable_from(available, *cost, None)
     }
 
-    /// Whether the face-down manifest `permanent` may be offered the turn-face-up action (CR
-    /// 701.34e): priority holder, its controller (owner), the hidden card is a creature card, and
-    /// its mana cost is affordable. A noncreature manifest is never turnable (it stays a 2/2).
+    /// Whether the face-down `permanent` may be offered the turn-face-up action: priority holder,
+    /// its controller (owner), the reveal cost affordable, and — for a plain manifest (CR
+    /// 701.34e) — the hidden card is a creature card. A noncreature manifest is never turnable (it
+    /// stays a 2/2); a morph card (CR 702.37c) has no such restriction and may turn up regardless
+    /// of its real kind (Zoetic Cavern's is Land).
     fn turn_face_up_listable(
         &self,
         player: PlayerId,
@@ -364,8 +368,10 @@ impl Game {
             return false;
         }
         let printed = card_def(perm.def);
-        // CR 701.34e: only a creature card may be turned face up.
-        if !matches!(&printed.kind, CardKind::Creature { .. }) {
+        // CR 701.34e: only a creature card may be turned face up — but that restriction is
+        // manifest's alone. A morph card (CR 702.37c) may be turned face up regardless of its
+        // real kind (Zoetic Cavern's is Land), since morph itself grants the turn-up permission.
+        if printed.morph.is_none() && !matches!(&printed.kind, CardKind::Creature { .. }) {
             return false;
         }
         // Morph turns up for its morph cost (CR 702.37c); a manifest for its printed cost — the
@@ -416,6 +422,7 @@ impl Game {
                 false,
                 0,
                 0,
+                0,
                 false,
             );
             return self.plan_auto_taps(player, cost, None, spell).is_some();
@@ -434,6 +441,7 @@ impl Game {
                     false,
                     false,
                     false,
+                    0,
                     0,
                     0,
                     false,
@@ -482,6 +490,7 @@ impl Game {
                     false,
                     false,
                     false,
+                    0,
                     0,
                     0,
                     false,
@@ -821,6 +830,9 @@ impl Game {
         // share the same permanent, so both branches read `color_identity` off it.
         let source_colors = color_identity(&self.def_of(object));
         let spec = match ability_index {
+            // The card's own cast requirement, *not* [`Game::target_spec_of`]: a post-cast-clause
+            // spell (Twinflame's Strive targets) takes no target in the cast intent but still has
+            // a real pre-cast enumeration — which creatures it could copy at all.
             None => self.required_target(&self.def_of(object), None),
             Some(i) => self
                 .ability_at(object, i)
@@ -1600,6 +1612,7 @@ mod permanent_filter_tests {
             free_cast_if: None,
             alternative_cost: None,
             cast_only_during_combat: false,
+            cast_only_before_attackers: false,
             approximates: None,
             oracle: None,
             set: "",

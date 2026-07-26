@@ -1730,7 +1730,8 @@ token = { name = "Inkling", power = 2, toughness = 1 }
                     types: TypeSet::CREATURE,
                     enchanted: Some(false),
                     ..
-                }
+                },
+                cant_be_regenerated: true,
             })
         ));
 
@@ -1751,7 +1752,8 @@ token = { name = "Inkling", power = 2, toughness = 1 }
                     types: TypeSet::NONLAND,
                     mv_max: Some(2),
                     ..
-                }
+                },
+                ..
             })
         ));
         assert!(matches!(

@@ -1276,6 +1276,7 @@ test("pay_cost aim shows docked Pay and decline", () => {
       gameState({
         pending_choice: {
           kind: "pay_cost",
+          can_pay: true,
           cost: { colored: [0, 0, 0, 1, 0], generic: 2 },
           label: testMessageRef("Create a Fungus Beast"),
           player: 0,

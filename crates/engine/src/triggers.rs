@@ -314,18 +314,22 @@ impl TriggerWatchEvent {
     }
 }
 
-const ENTERS_BATTLEFIELD_TRIGGER_WATCHES: &[TriggerWatch] = &[TriggerWatch::battlefield_self(
-    Trigger::Etb,
-    TriggerWatchContextKind::SelfCastX,
-)];
+const ENTERS_BATTLEFIELD_TRIGGER_WATCHES: &[TriggerWatch] = &[
+    // First, so a card carrying both makes its CR 614.12 as-enters choice before its ETB trigger
+    // is placed on the stack. `place_pending_triggers` resolves this group inline, never placing it.
+    TriggerWatch::battlefield_self(Trigger::AsEnters, TriggerWatchContextKind::SelfCastX),
+    TriggerWatch::battlefield_self(Trigger::Etb, TriggerWatchContextKind::SelfCastX),
+];
 const TURNED_FACE_UP_TRIGGER_WATCHES: &[TriggerWatch] = &[TriggerWatch::battlefield_self(
     Trigger::TurnedFaceUp,
     TriggerWatchContextKind::Controller,
 )];
-const ATTACK_TRIGGER_WATCHES: &[TriggerWatch] = &[TriggerWatch::battlefield_self(
-    Trigger::Attacks,
-    TriggerWatchContextKind::Attack,
-)];
+const ATTACK_TRIGGER_WATCHES: &[TriggerWatch] = &[
+    TriggerWatch::battlefield_self(Trigger::Attacks, TriggerWatchContextKind::Attack),
+    // Mana-Charged Dragon's "whenever this creature attacks or blocks" — the attack half; the
+    // block half is `queue_attacks_or_blocks_block_triggers`, called from `Game::declare_blockers`.
+    TriggerWatch::battlefield_self(Trigger::AttacksOrBlocks, TriggerWatchContextKind::Attack),
+];
 #[cfg(test)]
 const UPKEEP_TRIGGER_WATCHES: &[TriggerWatch] = &[
     TriggerWatch::battlefield_controller(Trigger::Upkeep),
@@ -2066,6 +2070,10 @@ impl Game {
     /// [`Trigger::CreatureEnchantedByYourAuraAttacks`] fires on every battlefield permanent,
     /// gated on how many of the *whole* attacker set (any defender) are enchanted by an Aura the
     /// watcher's own controller controls (CR 508.1, Killian, Decisive Mentor's second ability).
+    /// A fourth, differently-shaped pass follows the per-watcher loop:
+    /// [`Trigger::CreatureAttacks`] (Righteous Cause's "whenever a creature attacks") fires once
+    /// *per attacker* rather than once gated on a count, so it gets its own loop over
+    /// `attackers` instead of joining the single-fire-per-watcher filter chain above.
     /// Called directly from [`Game::declare_attackers`] once the attacker set is committed,
     /// rather than from [`Self::enqueue_triggers`]'s per-event scan.
     pub(crate) fn queue_batch_attack_triggers(
@@ -2124,6 +2132,39 @@ impl Game {
                 });
             }
         }
+
+        // "Whenever a creature attacks" (CR 508.1, Righteous Cause): once per attacker, any
+        // controller, any defender — the watcher's own controller need not be involved in the
+        // attack at all. Fires N times off an N-attacker set, unlike the gated single-fire-per-
+        // watcher loop above, so it walks `attackers` in the outer loop instead.
+        for &(attacker, defender) in attackers {
+            let this_attacking_player = self.controller_of(attacker);
+            for id in self.battlefield() {
+                let controller = self.owner_of(id);
+                let ctx = TriggerContext {
+                    attack: Some((this_attacking_player, defender)),
+                    ..TriggerContext::of(controller)
+                };
+                let abilities: Vec<Ability> = self
+                    .functional_abilities(id)
+                    .iter()
+                    .filter(|a| matches!(a.timing, Timing::Triggered(Trigger::CreatureAttacks)))
+                    .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
+                    .map(|a| Ability {
+                        effect: contextualize_effect(a.effect.clone(), ctx),
+                        ..*a
+                    })
+                    .collect();
+                if !abilities.is_empty() {
+                    self.pending_trigger_groups.push(TriggerGroup {
+                        expanded: false,
+                        controller,
+                        source: id,
+                        abilities,
+                    });
+                }
+            }
+        }
     }
 
     /// Queue [`Trigger::BlocksOrBecomesBlocked`] (Goblin Cadets, CR 509): `blocks` is one
@@ -2147,6 +2188,26 @@ impl Game {
                 fired.push(id);
                 self.queue_self_trigger(id, Trigger::BlocksOrBecomesBlocked);
             }
+        }
+    }
+
+    /// Queue [`Trigger::AttacksOrBlocks`]'s block half (Mana-Charged Dragon, CR 509.3a): unlike
+    /// [`queue_blocks_or_becomes_blocked_triggers`](Self::queue_blocks_or_becomes_blocked_triggers)
+    /// above, only the *blocker* side of each pair fires — a blocked attacker doesn't "block".
+    /// Deduped the same way, so a creature blocking multiple attackers still fires once. Called
+    /// directly from [`Game::declare_blockers`]; the attack half is queued alongside
+    /// [`Trigger::Attacks`] off [`Event::AttackerDeclared`] instead.
+    pub(crate) fn queue_attacks_or_blocks_block_triggers(
+        &mut self,
+        blocks: &[(ObjectId, ObjectId)],
+    ) {
+        let mut fired: Vec<ObjectId> = Vec::new();
+        for &(blocker, _) in blocks {
+            if fired.contains(&blocker) {
+                continue;
+            }
+            fired.push(blocker);
+            self.queue_self_trigger(blocker, Trigger::AttacksOrBlocks);
         }
     }
 
@@ -3525,6 +3586,9 @@ impl Game {
             // Howling Mine: "if Howling Mine is untapped" — source-object-based like the three
             // conditions above.
             Condition::SourceUntapped => self.as_permanent(source).is_some_and(|p| !p.tapped),
+            // Dread Cacodemon/Reiver Demon: "if you cast it from your hand" — source-object-based
+            // like the four conditions above.
+            Condition::CastFromHand => self.as_permanent(source).is_some_and(|p| p.cast_from_hand),
             _ => self.condition_holds(condition, ctx),
         }
     }
@@ -3535,6 +3599,9 @@ impl Game {
             Condition::YouControlAtLeastCreatures { count } => {
                 self.creatures_controlled(ctx.controller) as u32 >= count
             }
+            // Pyrohemia: "if no creatures are on the battlefield" — board-wide, every
+            // controller (unlike `YouControlAtLeastCreatures` above).
+            Condition::NoCreaturesOnBattlefield => self.creatures_on_battlefield() == 0,
             // "that opponent has more life than another of your opponents": some other opponent
             // of the controller (not the attacked one) has strictly less life than the attacked.
             Condition::AttackedOpponentHasMoreLifeThanAnotherOpponent => {
@@ -3703,6 +3770,17 @@ impl Game {
             // site (`Game::run`), which intercepts it directly against its own `source` parameter
             // before falling through here (Court Hussar's "unless {W} was spent to cast it").
             Condition::ColorWasSpentToCastThis { .. } => false,
+            // ponytail: source-object-based like `ColorWasSpentToCastThis` above — `TriggerContext`
+            // carries no source id either. Reachable only through `Game::ability_condition_holds`
+            // (Dread Cacodemon's/Reiver Demon's ETB intervening-if, CR 603.4), which intercepts it
+            // directly against its own `source` parameter before falling through here.
+            Condition::CastFromHand => false,
+            // ponytail: source-object-based like `SourceEnteredWithXAtLeast` above —
+            // `TriggerContext` carries no source id either. Reachable only through the
+            // `Effect::Conditional` resolve site (`Game::run`), which intercepts it directly
+            // against its own `source` parameter before falling through here (Dragon Whelp's
+            // activation-count check).
+            Condition::SourceActivatedThisTurnAtLeast { .. } => false,
             Condition::All { conditions } => {
                 conditions.iter().all(|&c| self.condition_holds(c, ctx))
             }
@@ -3876,7 +3954,9 @@ impl Game {
     }
 
     /// Put queued triggers on the stack. A group with several abilities raises an
-    /// ordering choice and stops; single-ability groups go straight on the stack.
+    /// ordering choice and stops; single-ability groups go straight on the stack. The one
+    /// exception is [`Trigger::AsEnters`] (CR 614.12), a replacement effect that runs inline here
+    /// and never reaches the stack.
     pub(crate) fn place_pending_triggers(&mut self, events: &mut Vec<Event>) {
         // Don't place triggers while blocked on an unrelated choice.
         if self.pending_choice.is_some() {
@@ -3946,6 +4026,36 @@ impl Game {
             let group = self.pending_trigger_groups.remove(0);
             let ability = group.abilities[0].clone();
             let (player, source, effect) = (group.controller, group.source, ability.effect);
+
+            // "As this permanent enters, …" (CR 614.12) is a replacement effect, not a triggered
+            // ability: run it right here instead of placing it, so no player holds priority
+            // between the entry and the choice. A choice it raises returns; the post-intent
+            // pipeline re-enters placement once answered, and this group is already popped.
+            // ponytail: state-based actions run one pipeline phase *ahead* of placement, so the
+            // choice lands a sweep later than CR 704.3 strictly wants. Unobservable for every
+            // as-enters card in the pool (their payoffs only add stats or grant protection, and
+            // nothing between the two sweeps gets priority); move this ahead of the SBA phase if
+            // an as-enters choice ever decides whether a permanent survives that first sweep.
+            if ability.timing == Timing::Triggered(Trigger::AsEnters) {
+                debug_assert!(
+                    !ability.optional,
+                    "an as-enters replacement effect can't be a 'you may' — it never reaches the \
+                     optional gate below"
+                );
+                let ctx = crate::resolution::ResolveCtx {
+                    controller: player,
+                    source,
+                    target: None,
+                    targets_second: TargetList::default(),
+                    x: 0,
+                    spent_mana: [0; 6],
+                };
+                self.run(effect, ctx, events);
+                if self.pending_choice.is_some() {
+                    return;
+                }
+                continue;
+            }
 
             // "This ability triggers only once each turn" (Morbid Opportunist, Tocasia's
             // Welcome): counted at placement (when it triggers), not resolution, per CR — so the
@@ -4655,6 +4765,7 @@ mod tests {
             free_cast_if: None,
             alternative_cost: None,
             cast_only_during_combat: false,
+            cast_only_before_attackers: false,
             approximates: None,
             oracle: None,
             set: "",
@@ -4733,6 +4844,7 @@ mod tests {
             free_cast_if: None,
             alternative_cost: None,
             cast_only_during_combat: false,
+            cast_only_before_attackers: false,
             approximates: None,
             oracle: None,
             set: "",

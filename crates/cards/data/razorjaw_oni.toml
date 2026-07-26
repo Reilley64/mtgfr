@@ -1,0 +1,26 @@
+# Black creatures can't block.
+name = "Razorjaw Oni"
+id = "ed8bc0f2-5a65-4eb4-bf88-3642a55b6889"
+default_print = "89cdde9e-eb7d-4111-8ee1-cc02070a368c"
+otags = ["anthem", "prevent-block", "static"]
+oracle = "Black creatures can't block."
+set = "cmd"
+subtypes = ["Demon", "Spirit"]
+
+[cost]
+generic = 3
+black = 1
+
+[kind]
+type = "creature"
+power = 4
+toughness = 5
+
+# Black creatures can't block.
+[[abilities]]
+timing = "static"
+
+[[abilities.effects]]
+type = "static"
+mode = "cant_block_filter"
+filter = { color = "black" }

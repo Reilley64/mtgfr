@@ -1,0 +1,28 @@
+# Each other player discards a card. You draw a card for each card discarded this way.
+name = "Syphon Mind"
+id = "abc37d6c-6300-47b5-a679-9db5b83eb54f"
+default_print = "53a224be-4365-46da-9ff2-a04ea16e5154"
+oracle = "Each other player discards a card. You draw a card for each card discarded this way."
+set = "cmd"
+
+[cost]
+generic = 3
+black = 1
+
+[kind]
+type = "sorcery"
+
+# Each other player discards a card. You draw a card for each card discarded this way.
+[[abilities]]
+timing = "spell"
+
+# Each other player discards a card.
+[[abilities.effects]]
+type = "choice"
+mode = "each_opponent_discards"
+
+# You draw a card for each card discarded this way.
+[[abilities.effects]]
+type = "draw"
+mode = "cards"
+count = "cards_discarded_this_way"

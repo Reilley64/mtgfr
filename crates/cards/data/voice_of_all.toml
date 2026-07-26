@@ -1,0 +1,37 @@
+# Flying
+# As this creature enters, choose a color.
+# This creature has protection from the chosen color.
+name = "Voice of All"
+id = "b1631e9c-a993-4d44-b009-b2624d79560c"
+default_print = "d84b1c31-fb33-4f5c-b766-6ca8ad6e0976"
+oracle = "Flying\nAs this creature enters, choose a color.\nThis creature has protection from the chosen color."
+set = "dmr"
+subtypes = ["Angel"]
+keywords = ["flying"]
+
+[cost]
+generic = 2
+white = 2
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# As this creature enters, choose a color.
+[[abilities]]
+timing = "as_enters"
+
+# As this creature enters, choose a color.
+[[abilities.effects]]
+type = "choice"
+mode = "choose_color"
+
+# This creature has protection from the chosen color.
+[[abilities]]
+timing = "static"
+
+# This creature has protection from the chosen color.
+[[abilities.effects]]
+type = "static"
+mode = "protection_from_chosen_color"

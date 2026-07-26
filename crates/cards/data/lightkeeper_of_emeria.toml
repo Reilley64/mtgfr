@@ -1,0 +1,33 @@
+# Multikicker {W} (You may pay an additional {W} any number of times as you cast this spell.)
+# Flying
+# When this creature enters, you gain 2 life for each time it was kicked.
+name = "Lightkeeper of Emeria"
+id = "7f31aa43-cf75-4488-b47f-e16e923a2d01"
+default_print = "00d998ca-7e81-4302-b2c1-acd90ea2b44d"
+oracle = "Multikicker {W} (You may pay an additional {W} any number of times as you cast this spell.)\nFlying\nWhen this creature enters, you gain 2 life for each time it was kicked."
+set = "cmd"
+subtypes = ["Angel"]
+keywords = ["flying"]
+
+[cost]
+generic = 3
+white = 1
+
+# Multikicker {W} (You may pay an additional {W} any number of times as you cast this spell.)
+[cost.additional.multikicker]
+white = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 4
+
+# When this creature enters, you gain 2 life for each time it was kicked.
+[[abilities]]
+timing = "etb"
+
+# you gain 2 life for each time it was kicked.
+[[abilities.effects]]
+type = "life"
+mode = "gain"
+amount = { times = 2, per = "spell_multikicker_count" }

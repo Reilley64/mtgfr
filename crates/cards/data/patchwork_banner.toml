@@ -18,7 +18,7 @@ type = "artifact"
 
 # As this artifact enters, choose a creature type.
 [[abilities]]
-timing = "etb"
+timing = "as_enters"
 
 # choose a creature type.
 [[abilities.effects]]
