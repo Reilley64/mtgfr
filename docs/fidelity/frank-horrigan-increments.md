@@ -558,16 +558,28 @@ is counter removal, capped by the counters actually present — the removal coun
 bloatfly_swarm.
 
 _Landed 2026-07-27: a new `StaticEffect::PreventDamageToSelfRemovingCountersGivingRad` sibling of
-Phantom Centaur's `PreventDamageToSelfRemovingCounter`, matched by the same
+Phantom Centaur's `PreventDamageToSelfRemovingCounter`, found by the same
 `Game::phantom_shield_active` scan (both are self-only, CR 615, and cover combat and noncombat
 damage alike). `Game::phantom_shield_counter_removal` now takes the incoming damage `amount` and
 returns `Vec<Event>`: Phantom Centaur's variant still ignores `amount` and removes exactly one
 counter (regression-tested against a 5-damage hit); Bloatfly Swarm's removes
 `min(amount, counters present)`, then emits one `PlayerCountersPlaced` rad counter per living
-player per counter removed (CR 102.1 — the controller included). All six call sites
+player per counter removed (CR 102.1 — the controller included). All five call sites
 (`resolution/damage.rs` ×3, `combat.rs` ×2) thread the amount through unchanged.
 `bloatfly_swarm.toml` is faithful, reusing the existing `enters_with_counters` static mode for its
 five +1/+1 counters._
+
+_Reconciled 2026-07-27 (verify stage): the two shields do **not** share a CR 614.1 predicate, and
+`phantom_shield_active` was originally a bare `matches!` over both variants — so a Bloatfly Swarm
+with no +1/+1 counters still prevented damage outright, where its "while it has a +1/+1 counter on
+it" clause means the replacement simply doesn't apply and the damage is dealt and marked normally.
+The lane's own `bloatfly_swarm_takes_damage_normally_with_no_counters` could not catch it: a
+counterless Bloatfly Swarm is a 0/0 that dies to the CR 704.5a state-based action whether or not
+the damage landed, so the assertion passed either way. `phantom_shield_active` now branches per
+variant (Phantom Centaur unconditional, Bloatfly Swarm gated on `plus_counters(target) > 0`),
+which fixes all five call sites at once since every one of them gates its early return on that
+predicate. Regression: `bloatfly_swarm_with_no_counters_is_dealt_damage_normally` holds it alive
+under anthems so the marked damage is observable._
 
 ### 23. `final-act-player-counter-mode` — 1 existing card, S — LANDED 2026-07-27
 Depends on: #20 slice 1. **Falsifies `final_act.toml:13` and `:22`.**

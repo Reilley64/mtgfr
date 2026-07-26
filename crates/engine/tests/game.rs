@@ -95391,8 +95391,10 @@ fn bloatfly_swarm_gives_each_player_a_rad_counter_per_counter_removed() {
 
 #[test]
 fn bloatfly_swarm_takes_damage_normally_with_no_counters() {
-    // With no +1/+1 counters left, the replacement's predicate ("while it has a +1/+1 counter on
-    // it") is false, so the damage is dealt (and marked) normally rather than prevented.
+    // A counterless Bloatfly Swarm is a 0/0 that dies either way, so this pins only the rad-counter
+    // rider: nothing is removed, so nobody gets a rad counter. The CR 614.1 predicate itself
+    // ("while it has a +1/+1 counter on it") is pinned by
+    // `bloatfly_swarm_with_no_counters_is_dealt_damage_normally`, which keeps it alive to observe.
     let mut g = TestGame::new();
     let swarm = g.spawn_on_battlefield(PlayerId(0), card("Bloatfly Swarm")); // 0/0, no counters
     let burn = g.spawn_in_hand(PlayerId(0), BURN_FIXED_3);
@@ -95477,5 +95479,44 @@ fn bloatfly_swarm_prevents_combat_damage_by_removing_that_many_plus_one_counters
         g.player_counters(PlayerId(0), PlayerCounterKind::Rad),
         3,
         "the attacking opponent also gets a rad counter per counter removed"
+    );
+}
+
+#[test]
+fn bloatfly_swarm_with_no_counters_is_dealt_damage_normally() {
+    // CR 614.1 — Bloatfly Swarm's replacement is *conditional*: "If damage would be dealt to this
+    // creature **while it has a +1/+1 counter on it**, prevent that damage…". With no +1/+1
+    // counter the predicate is false and the damage is dealt and marked normally, unlike Phantom
+    // Centaur's unconditional shield. Anthems keep it alive so the marked damage is observable —
+    // a bare 0/0 dies to the CR 704.5a state-based action either way, which hides the difference.
+    let mut g = TestGame::new();
+    for _ in 0..4 {
+        g.spawn_on_battlefield(PlayerId(0), ANTHEM_LORD);
+    }
+    let swarm = g.spawn_on_battlefield(PlayerId(0), card("Bloatfly Swarm")); // 4/4 with no counters
+    let burn = g.spawn_in_hand(PlayerId(0), BURN_FIXED_3);
+
+    g.cast(burn).at(Target::Object(swarm)).resolve();
+
+    let swarm = g.current_id(swarm);
+    assert_eq!(
+        g.zone_of(swarm),
+        Zone::Battlefield,
+        "a 4/4 survives 3 damage"
+    );
+    assert_eq!(
+        g.marked_damage(swarm),
+        3,
+        "with no +1/+1 counter the replacement doesn't apply, so the damage is marked"
+    );
+    assert_eq!(
+        g.player_counters(PlayerId(0), PlayerCounterKind::Rad),
+        0,
+        "no counters were removed, so no rad counters are given"
+    );
+    assert_eq!(
+        g.player_counters(PlayerId(1), PlayerCounterKind::Rad),
+        0,
+        "no counters were removed, so no rad counters are given"
     );
 }

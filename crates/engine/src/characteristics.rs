@@ -1409,20 +1409,25 @@ impl Game {
     /// it, prevent that damage, remove that many +1/+1 counters from it, then give each player a
     /// rad counter for each +1/+1 counter removed this way."). Unlike
     /// [`Game::noncombat_damage_prevented_to_creature`]'s "other creatures you control" scan,
-    /// this is self-only — true iff `target` has a `(Timing::Static,
-    /// PreventDamageToSelfRemovingCounter | PreventDamageToSelfRemovingCountersGivingRad)`
-    /// ability of its own — and applies to combat damage too (Tajic's static skips combat;
-    /// neither of these does).
+    /// this is self-only — it reads only `target`'s own abilities — and applies to combat damage
+    /// too (Tajic's static skips combat; neither of these does).
+    ///
+    /// The two differ in their CR 614.1 predicate, so this is not a bare `matches!`: Phantom
+    /// Centaur's applies unconditionally (it just has nothing to take once its counters are
+    /// gone), while Bloatfly Swarm's applies only "while it has a +1/+1 counter on it" — with
+    /// none, the damage is dealt and marked normally.
     pub(crate) fn phantom_shield_active(&self, target: ObjectId) -> bool {
         self.functional_abilities(target).iter().any(|ability| {
-            ability.timing == Timing::Static
-                && matches!(
-                    ability.effect,
-                    Effect::Static(StaticEffect::PreventDamageToSelfRemovingCounter)
-                        | Effect::Static(
-                            StaticEffect::PreventDamageToSelfRemovingCountersGivingRad
-                        )
-                )
+            if ability.timing != Timing::Static {
+                return false;
+            }
+            match ability.effect {
+                Effect::Static(StaticEffect::PreventDamageToSelfRemovingCounter) => true,
+                Effect::Static(StaticEffect::PreventDamageToSelfRemovingCountersGivingRad) => {
+                    self.plus_counters(target) > 0
+                }
+                _ => false,
+            }
         })
     }
 
