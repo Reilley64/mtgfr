@@ -23,7 +23,7 @@ Cut cold **server verify wall-clock** with a **modest** parallelization budget: 
 | Parallelism | 3 nextest shards (`count:1/3`, `count:2/3`, `count:3/3`) |
 | Runner | Stay on `ubuntu-latest` (no larger / self-hosted runners in this pass) |
 | Local commands | `just server-test` / `just server-check` remain unsharded |
-| Pass marker | Same content-hash idea; **restore-only gate + save-only mark after lint + both shards succeed** |
+| Pass marker | Same content-hash idea; **restore-only gate + save-only mark after lint + all shards succeed** |
 | Cargo cache | Lint + both test shards share one `Swatinem/rust-cache` `shared-key` |
 | Required-check shape | Keep a single aggregator job named like today’s server gate |
 | Client / docker / release | Unchanged |
@@ -45,7 +45,7 @@ verify-server-gate          (cache/restore only → outputs.cache-hit; never sav
         |              verify-server-test   (matrix 1/3, 2/3, 3/3; Postgres + migrate + nextest shard;
         |                                   rust-cache shared-key)
         |                    |
-        +--------------------+--> verify-server-mark  (cache/save only after lint + both shards OK)
+        +--------------------+--> verify-server-mark  (cache/save only after lint + all shards OK)
         |
         +-- hit  --> lint / test / mark jobs skipped via if:
 
