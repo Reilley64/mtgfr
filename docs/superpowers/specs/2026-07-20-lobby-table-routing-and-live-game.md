@@ -253,10 +253,13 @@ seeded game; there are no "empty" table shells in the production registry.
   host start, and `table_routes`.
 - **Effect-native lobby store** (`client/app/domain/lobby-store.ts`): store operations are `Effect.fn`
   programs that `yield* WebDb` (a `Context.Service` over Drizzle's `drizzle-orm/effect-postgres`
-  driver on `@effect/sql-pg`) and `yield*` each query as an Effect. Promise-edge callers
-  (`lobby-http.ts` `withLobbyAuth` sweep, the table route handlers, and the `/api/rpc`
-  `resolveTableAddress`) run a store program with `runWebDb(op)` from `client/server/db/client.ts`,
-  which reuses one pooled `ManagedRuntime` per `WEB_DATABASE_URL`. There is no surrounding SQL
+  driver on `@effect/sql-pg`) and `yield*` each query as an Effect. Lobby table routes keep their
+  Nitro `defineHandler(async …)` boundary, then pass Effect bodies to `withLobbyAuth`; that helper
+  annotates the request span, authenticates, sweeps idle rows, and provides `WebDbLive` around the
+  traced Effect so route bodies yield store programs directly. The remaining Promise-edge caller,
+  `/api/rpc` `resolveTableAddress`, runs `lookupTableRoute` with `runWebDb(op)` from
+  `client/server/db/client.ts`, which reuses one pooled `ManagedRuntime` per `WEB_DATABASE_URL`.
+  There is no surrounding SQL
   transaction: `createLobby` retries a fresh code on a unique-violation (Postgres `23505`,
   surfaced as a `UniqueViolation` reason), `joinLobby` re-reads and reconciles on a seat/user race,
   and `commitStart` deletes the freshly-written `table_routes` row if `markStarted` fails.

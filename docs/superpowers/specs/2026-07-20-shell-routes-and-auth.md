@@ -49,9 +49,10 @@ A single Foldkit event-reactor owns routing: `client/app/routes.ts` maps paths t
 
 Required identifiers live in path params ([wire-protocol-and-visibility](2026-07-20-wire-protocol-and-visibility.md) routing rule). Query params are optional: `?next=` is the post-login redirect target.
 
-### BFF lobby and meta HTTP (`client/server/routes/api/**`)
+### BFF lobby and meta HTTP (`client/server/routes/api/**`, `client/server/lobby-http.ts`)
 
 Lobby and meta HTTP are one Nitro route file per operation. Each handler exports `defineHandler` from `nitro/h3` inline; shared auth, tracing, and JSON helpers live in `client/server/lobby-http.ts`.
+Route files stay at the Nitro Promise boundary (`export default defineHandler(async …)`), but pass Effect bodies that yield `Response` values into `withLobbyAuth` / `runMetaGet`. `withLobbyAuth` handles the session cookie, `grpcRequestEnv`, `fetchMe`, span annotation, idle lobby sweep, and `WebDbLive` provisioning inside the traced Effect; table route bodies yield lobby-store Effects directly instead of calling `runWebDb`.
 
 | Route | File |
 |---|---|

@@ -1,13 +1,13 @@
 import * as Effect from "effect/Effect";
+import * as Layer from "effect/Layer";
 import type { H3Event } from "nitro/h3";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { json, readJsonObject, tableParam, unknownLobby, withLobbyAuth } from "./lobby-http";
+import { json, readJsonObject, runMetaGet, tableParam, unknownLobby, withLobbyAuth } from "./lobby-http";
 
 const mocks = vi.hoisted(() => ({
   fetchMe: vi.fn(),
   grpcRequestEnv: vi.fn(),
   runTracedRequest: vi.fn(),
-  runWebDb: vi.fn(),
   sweepWebDb: vi.fn(),
 }));
 
@@ -25,7 +25,7 @@ vi.mock("../app/domain/otel", () => ({
 }));
 
 vi.mock("./db/client", () => ({
-  runWebDb: mocks.runWebDb,
+  WebDbLive: Layer.empty,
 }));
 
 const env = { sessionToken: "session-token" };
@@ -50,7 +50,6 @@ describe("lobby-http", () => {
     mocks.fetchMe.mockReturnValue(Effect.succeed(me));
     mocks.grpcRequestEnv.mockReturnValue(Effect.succeed(env));
     mocks.runTracedRequest.mockImplementation((_traceparent, _spanName, body) => Effect.runPromise(body));
-    mocks.runWebDb.mockResolvedValue(undefined);
     mocks.sweepWebDb.mockReturnValue(Effect.void);
   });
 
@@ -101,7 +100,7 @@ describe("lobby-http", () => {
   it("withLobbyAuth returns Unauthorized when fetchMe returns null", async () => {
     mocks.fetchMe.mockReturnValueOnce(Effect.succeed(null));
 
-    const res = await withLobbyAuth(authEvent(), "api test", async () => json({ ok: true }));
+    const res = await withLobbyAuth(authEvent(), "api test", () => Effect.succeed(json({ ok: true })));
 
     expect(res.status).toBe(401);
     await expect(res.text()).resolves.toBe("Unauthorized");
@@ -109,11 +108,16 @@ describe("lobby-http", () => {
 
   it("withLobbyAuth returns LobbyDb when the traced path throws", async () => {
     const message = "database offline";
-    const res = await withLobbyAuth(authEvent(), "api test", async () => {
-      throw new Error(message);
-    });
+    const res = await withLobbyAuth(authEvent(), "api test", () => Effect.fail(new Error(message)));
 
     expect(res.status).toBe(500);
     await expect(res.json()).resolves.toEqual({ error: "LobbyDb", message });
+  });
+
+  it("runMetaGet executes Effect response bodies", async () => {
+    const res = await runMetaGet(authEvent(), "api meta test", () => Effect.succeed(json({ ok: true })));
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({ ok: true });
   });
 });
