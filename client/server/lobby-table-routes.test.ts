@@ -1,11 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { H3Event } from "nitro/h3";
-import createHandler from "./routes/api/tables/v1.post";
-import lobbyHandler from "./routes/api/tables/[table]/lobby/v1.get";
-import routeDeleteHandler from "./routes/api/tables/[table]/route/v1.delete";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import joinHandler from "./routes/api/tables/[table]/join/v1.post";
+import lobbyHandler from "./routes/api/tables/[table]/lobby/v1.get";
 import readyHandler from "./routes/api/tables/[table]/ready/v1.post";
+import routeDeleteHandler from "./routes/api/tables/[table]/route/v1.delete";
 import startHandler from "./routes/api/tables/[table]/start/v1.post";
+import createHandler from "./routes/api/tables/v1.post";
 
 const mocks = vi.hoisted(() => ({
   commitStart: vi.fn(),

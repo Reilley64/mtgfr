@@ -45,7 +45,7 @@ type LobbyAuthCtx = {
   db: ReturnType<typeof createWebDb>;
 };
 
-export async function withLobbyAuth<T>(
+export async function withLobbyAuth(
   event: H3Event,
   spanName: string,
   fn: (ctx: LobbyAuthCtx) => Promise<Response>,
@@ -79,11 +79,7 @@ export async function withLobbyAuth<T>(
   }
 }
 
-export async function runMetaGet(
-  event: H3Event,
-  spanName: string,
-  fn: () => Promise<Response>,
-): Promise<Response> {
+export async function runMetaGet(event: H3Event, spanName: string, fn: () => Promise<Response>): Promise<Response> {
   const traceparent = event.req.headers.get("traceparent");
   return runTracedRequest(
     traceparent,

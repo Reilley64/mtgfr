@@ -1,6 +1,6 @@
+import type { H3Event } from "nitro/h3";
 import { describe, expect, it } from "vitest";
 import { json, readJsonObject, tableParam, unknownLobby } from "./lobby-http";
-import type { H3Event } from "nitro/h3";
 
 describe("lobby-http", () => {
   it("json sets content-type and status", async () => {
