@@ -11,6 +11,7 @@ function fold(objects: ObjectView[], actions: ActionView[]): GameFoldState {
     seq: 1,
     state: {
       active_player: 0,
+      commander_damage_enabled: true,
       can_act: true,
       combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
       objects,

@@ -1,7 +1,7 @@
 import * as Schema from "effect/Schema";
 import { describe, expect, it } from "vitest";
-import { catalogCardsFromProto, fromProtoWire, intentEnvelopeToProto } from "./protoMap";
-import type { ActionView, CatalogCard, IntentEnvelope } from "./types";
+import { catalogCardsFromProto, fromProtoWire, intentEnvelopeToProto, seedRequestToProto } from "./protoMap";
+import type { ActionView, CatalogCard, IntentEnvelope, StreamFrame } from "./types";
 import { MessageRef } from "./types";
 
 describe("fromProtoWire", () => {
@@ -113,6 +113,27 @@ describe("fromProtoWire", () => {
       },
     });
   });
+
+  it("decodes commander damage toggle from visible snapshots", () => {
+    const frame = fromProtoWire<StreamFrame>({
+      frame: {
+        case: "snapshot",
+        value: {
+          seq: 1n,
+          state: {
+            commanderDamageEnabled: false,
+          },
+        },
+      },
+    });
+
+    expect(frame).toMatchObject({
+      frame: "snapshot",
+      state: {
+        commander_damage_enabled: false,
+      },
+    });
+  });
 });
 
 describe("catalogCardsFromProto", () => {
@@ -206,5 +227,20 @@ describe("intentEnvelopeToProto", () => {
     if (intent?.case !== "takeAction") return;
     expect(intent.value.id).toBe(91n);
     expect(typeof intent.value.id).toBe("bigint");
+  });
+});
+
+describe("seedRequestToProto", () => {
+  it("maps commander_damage_enabled to the proto seed flag", () => {
+    const proto = seedRequestToProto({
+      table_id: "T1",
+      host_user_id: 17,
+      seats: [],
+      commander_damage_enabled: false,
+    });
+
+    expect(proto.tableId).toBe("T1");
+    expect(proto.hostUserId).toBe(17n);
+    expect(proto.commanderDamageEnabled).toBe(false);
   });
 });

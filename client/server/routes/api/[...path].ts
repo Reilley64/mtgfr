@@ -167,6 +167,7 @@ async function handleLobby(event: H3Event, path: string, env: GrpcRequestEnv): P
     const seeded = await seedGame(env, {
       table_id: tableId,
       host_user_id: snap.hostUserId,
+      commander_damage_enabled: true,
       seats: snap.seats
         .slice()
         .sort((a, b) => a.seat - b.seat)

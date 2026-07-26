@@ -6,6 +6,10 @@ use serde::{Deserialize, Serialize};
 use crate::ObjectId;
 use crate::intent::{WireAttack, WireBlock, WireTarget};
 
+fn default_true() -> bool {
+    true
+}
+
 /// Stable i18n key + typed params for player-facing text. Mirrors the protobuf `MessageRef`
 /// shape while keeping owned strings for schema DTO serde/tests.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1092,6 +1096,9 @@ pub struct VisibleState {
     /// Whether the game is in the simultaneous pre-game mulligan phase.
     #[serde(default)]
     pub mulliganing: bool,
+    /// Whether Commander damage tallies and the 21-damage loss condition are enabled.
+    #[serde(default = "default_true")]
+    pub commander_damage_enabled: bool,
     pub players: Vec<PlayerView>,
     pub objects: Vec<ObjectView>,
     /// The stack, bottom-first (last entry is the top, which resolves next).
@@ -1177,6 +1184,7 @@ pub struct SeedRequest {
     pub table_id: String,
     pub host_user_id: i64,
     pub seats: Vec<SeedSeat>,
+    pub commander_damage_enabled: bool,
 }
 
 /// The seeded game's location: which pod owns it (`pod_dns`) and the API version running there,

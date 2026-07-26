@@ -1564,6 +1564,7 @@ pub fn visible_state_to_pb(state: VisibleState) -> pb::VisibleState {
         pending_choice: state.pending_choice.map(pending_choice_view_to_pb),
         actions: state.actions.into_iter().map(action_view_to_pb).collect(),
         mulliganing: state.mulliganing,
+        commander_damage_enabled: state.commander_damage_enabled,
     }
 }
 
@@ -1628,6 +1629,7 @@ mod tests {
             active_player: 0,
             step: 3,
             priority: 0,
+            commander_damage_enabled: true,
             players: vec![empty_player(0), empty_player(1)],
             objects: vec![ObjectView {
                 id: 10,
@@ -1743,6 +1745,7 @@ mod tests {
         assert_eq!(snap.seq, 9);
         let st = snap.state.expect("snapshot state");
         assert_eq!(st.viewer, 0);
+        assert!(st.commander_damage_enabled);
         assert_eq!(st.objects.len(), 1);
         assert_eq!(
             st.objects[0].kind.as_ref().and_then(|k| k.kind.as_ref()),

@@ -64,6 +64,9 @@ pub(crate) async fn seed_table_core_with_entropy(
     table.seed = entropy.master_seed;
     table.beacon_round = entropy.beacon_round;
     table.game = Some(seed_game(&resolved, entropy.master_seed));
+    if let Some(game) = table.game.as_mut() {
+        game.set_commander_damage_enabled(req.commander_damage_enabled);
+    }
     // try_insert under the lock: another request could have raced the same id past the first check.
     if !reg.try_insert(req.table_id.clone(), table) {
         return Err(StatusCode::BAD_REQUEST);
@@ -158,6 +161,7 @@ mod tests {
                 table_id: "tbl1".to_string(),
                 host_user_id,
                 seats: vec![host_seat, guest_seat],
+                commander_damage_enabled: true,
             },
         )
         .await
@@ -187,6 +191,32 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn seed_table_copies_commander_damage_option_to_game() {
+        let state = AppState::for_test(db::connect("sqlite::memory:").await.expect("sqlite"));
+        let host_seat = seed_seat(&state, "host@x.c", "host").await;
+        let guest_seat = seed_seat(&state, "guest@x.c", "guest").await;
+        let host_user_id = host_seat.user_id;
+
+        seed_table_core(
+            &state,
+            host_user_id,
+            SeedRequest {
+                table_id: "tbl-no-cmd".to_string(),
+                host_user_id,
+                seats: vec![host_seat, guest_seat],
+                commander_damage_enabled: false,
+            },
+        )
+        .await
+        .expect("seeding succeeds");
+
+        let reg = lock(&state.reg);
+        let table = reg.get("tbl-no-cmd").expect("table inserted");
+        let game = table.game.as_ref().expect("game seeded");
+        assert!(!game.commander_damage_enabled());
+    }
+
+    #[tokio::test]
     async fn seed_table_is_rejected_with_503_while_draining() {
         let state = AppState::for_test(db::connect("sqlite::memory:").await.expect("sqlite"));
         let host_seat = seed_seat(&state, "host@x.c", "host").await;
@@ -201,6 +231,7 @@ mod tests {
                 table_id: "tbl-draining".to_string(),
                 host_user_id,
                 seats: vec![host_seat, guest_seat],
+                commander_damage_enabled: true,
             },
         )
         .await
@@ -227,6 +258,7 @@ mod tests {
                 table_id: "tbl-baddeck".to_string(),
                 host_user_id,
                 seats: vec![host_seat, guest_seat],
+                commander_damage_enabled: true,
             },
         )
         .await
@@ -246,6 +278,7 @@ mod tests {
             table_id: "tbl-dup".to_string(),
             host_user_id,
             seats: vec![host_seat, guest_seat],
+            commander_damage_enabled: true,
         };
         let _ = seed_table_core(&state, host_user_id, req.clone())
             .await
@@ -270,6 +303,7 @@ mod tests {
                 table_id: "tbl-solo".to_string(),
                 host_user_id,
                 seats: vec![host_seat],
+                commander_damage_enabled: true,
             },
         )
         .await
@@ -292,6 +326,7 @@ mod tests {
                 table_id: "tbl-spoof".to_string(),
                 host_user_id,
                 seats: vec![host_seat, guest_seat],
+                commander_damage_enabled: true,
             },
         )
         .await
@@ -315,6 +350,7 @@ mod tests {
                 table_id: "tbl-absent-host".to_string(),
                 host_user_id,
                 seats: vec![guest_a, guest_b],
+                commander_damage_enabled: true,
             },
         )
         .await
@@ -338,6 +374,7 @@ mod tests {
                 table_id: "tbl-stolen-deck".to_string(),
                 host_user_id,
                 seats: vec![host_seat, guest_seat],
+                commander_damage_enabled: true,
             },
         )
         .await
@@ -381,6 +418,7 @@ mod tests {
                 table_id: "tbl-beacon-down".to_string(),
                 host_user_id,
                 seats: vec![host_seat, guest_seat],
+                commander_damage_enabled: true,
             },
             &FailingEntropy,
         )
@@ -414,6 +452,7 @@ mod tests {
                 table_id: "tbl-beacon-recorded".to_string(),
                 host_user_id,
                 seats: vec![host_seat, guest_seat],
+                commander_damage_enabled: true,
             },
             &FixedEntropy(crate::beacon::MasterEntropy {
                 master_seed,

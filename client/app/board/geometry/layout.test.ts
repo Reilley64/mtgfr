@@ -57,6 +57,7 @@ function mkPlayer(overrides: Partial<PlayerView> = {}): PlayerView {
 function mkState(overrides: Partial<VisibleState> = {}): VisibleState {
   return {
     active_player: 0,
+    commander_damage_enabled: true,
     can_act: true,
     combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
     objects: [],

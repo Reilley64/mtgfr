@@ -149,7 +149,12 @@ export type WireKind =
   | { colors: Array<number>; kind: "land" };
 export type WireOfColorsMana = { amount: number; mask: number };
 export type U32 = number;
-export type SeedRequest = { host_user_id: number; seats: Array<SeedSeat>; table_id: string };
+export type SeedRequest = {
+  commander_damage_enabled: boolean;
+  host_user_id: number;
+  seats: Array<SeedSeat>;
+  table_id: string;
+};
 export type CatalogCard = {
   approximates?: string | null;
   back?: null | { approximates?: string | null; name: string; oracle?: string | null };
@@ -655,6 +660,7 @@ export type VisibleState = {
   actions?: Array<ActionView>;
   active_player: number;
   can_act: boolean;
+  commander_damage_enabled: boolean;
   combat: {
     attackers: Array<WireAttack>;
     attackers_declared: boolean;

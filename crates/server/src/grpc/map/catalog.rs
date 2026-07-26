@@ -94,6 +94,7 @@ pub fn seed_request_from_pb(req: pb::SeedRequest) -> SeedRequest {
         table_id: req.table_id,
         host_user_id: req.host_user_id,
         seats: req.seats.into_iter().map(seed_seat_from_pb).collect(),
+        commander_damage_enabled: req.commander_damage_enabled,
     }
 }
 

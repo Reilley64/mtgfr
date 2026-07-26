@@ -3,6 +3,7 @@ import type {
   SaveDeckRequest as ProtoSaveDeckRequest,
   SeedRequest as ProtoSeedRequest,
 } from "./generated/mtgfr/v1/catalog_effect_grpc";
+import { SeedRequestSchema as SeedRequestPbSchema } from "./generated/mtgfr/v1/catalog_pb";
 import type { IntentEnvelope as ProtoIntentEnvelope } from "./generated/mtgfr/v1/intent_effect_grpc";
 import { IntentEnvelopeSchema as IntentEnvelopePbSchema } from "./generated/mtgfr/v1/intent_pb";
 import type {
@@ -197,7 +198,7 @@ export function leaderboardFromProto(proto: unknown): Leaderboard {
 }
 
 export function seedRequestToProto(request: SeedRequest): ProtoSeedRequest {
-  return coerceBigints(toProtoWire(request)) as ProtoSeedRequest;
+  return create(SeedRequestPbSchema, coerceBigints(toProtoWire(request)) as never) as ProtoSeedRequest;
 }
 
 export function seedResponseFromProto(proto: unknown): SeedResponse {

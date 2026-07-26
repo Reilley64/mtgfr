@@ -886,6 +886,8 @@ message VisibleState {
   repeated ActionView actions = 14;
   // Whether the game is in the simultaneous pre-game mulligan phase.
   bool mulliganing = 15;
+  // Whether Commander damage tallies and the 21-damage loss condition are enabled.
+  bool commander_damage_enabled = 16;
 }
 
 // An `engine::Event` after per-viewer redaction. Public facts pass through unchanged; private
