@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { CatalogCard } from "../../../../lib/wire/types";
+import type { CatalogCard } from "../../../domain/wire/types";
 import { deckListContextMenuAllowed, identityPipCodes, visibleDecks } from "./visible";
 
 const card = (id: string, name: string, color_identity: number[] = []): CatalogCard => ({

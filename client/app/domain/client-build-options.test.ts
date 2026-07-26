@@ -11,7 +11,7 @@ describe("client production source maps", () => {
   });
 
   it("wires the option into vite.config build.sourcemap", () => {
-    const viteConfig = readFileSync(resolve(import.meta.dirname, "../vite.config.ts"), "utf8");
+    const viteConfig = readFileSync(resolve(import.meta.dirname, "../../vite.config.ts"), "utf8");
     expect(viteConfig).toContain("clientBuildSourcemap");
     expect(viteConfig).toMatch(/sourcemap:\s*clientBuildSourcemap/);
   });

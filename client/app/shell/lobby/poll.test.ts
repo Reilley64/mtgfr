@@ -1,6 +1,6 @@
 import { Effect, Schedule, Stream } from "effect";
 import { describe, expect, it } from "vitest";
-import type { LobbyView } from "../../../lib/lobby/types";
+import type { LobbyView } from "../../domain/lobby/types";
 import { lobbyPoll } from "./poll";
 
 const waiting: LobbyView = { table_id: "ABC123", started: false, seats: [], you: null, start_error: null, error: null };

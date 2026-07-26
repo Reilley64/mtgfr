@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ActionView, ObjectView } from "~/wire/types";
-import * as tableAudio from "../../lib/tableAudio";
+import * as tableAudio from "../domain/tableAudio";
 import type { GameFoldState } from "../game/fold";
 import { SoundToggled } from "./messages";
 import { initialBoardModel, updateBoard } from "./submodel";

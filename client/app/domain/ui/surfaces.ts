@@ -1,4 +1,4 @@
-// Surface recipes for Foldkit views. Token values come from design.tokens.json via generated theme (see client/lib/ui/).
+// Surface recipes for Foldkit views. Token values come from design.tokens.json via generated theme in app/domain/ui/.
 
 import { cn } from "../cn";
 

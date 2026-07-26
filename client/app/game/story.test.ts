@@ -2,13 +2,14 @@ import { Story } from "foldkit";
 import { expect, test } from "vitest";
 import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView } from "~/wire/types";
-import type { ObjectView, VisibleState } from "../../lib/wire/types";
 import { ZONE } from "../board/geometry/layout";
+import type { ObjectView, VisibleState } from "../domain/wire/types";
 import { SubmitIntent } from "../game/intents";
 import { init, update } from "../main-exports";
-import { ReceivedDelta } from "../messages";
+import { GotGameMessage } from "../messages";
 import { emptyGameSlice } from "../model";
-import { TableRoute } from "../routes";
+import { PregameTableRoute } from "../routes";
+import { ReceivedDelta } from "./messages";
 
 function object(overrides: Partial<ObjectView> = {}): ObjectView {
   return {
@@ -80,10 +81,12 @@ test("ReceivedDelta folds into game seq", () => {
     update,
     Story.with({
       ...model,
-      route: TableRoute({ deckId: "0", table: "ABC123" }),
+      route: PregameTableRoute({ deckId: "0", table: "ABC123" }),
       game: { ...emptyGameSlice(), active: true, tableId: "ABC123" },
     }),
-    Story.message(ReceivedDelta({ seq: 7, state: state(), events: [], auto_actions: undefined })),
+    Story.message(
+      GotGameMessage({ message: ReceivedDelta({ seq: 7, state: state(), events: [], auto_actions: undefined }) }),
+    ),
     Story.model((m) => {
       expect(m.game?.seq).toBe(7);
     }),
@@ -106,7 +109,7 @@ test("ReceivedDelta auto-continues a play mode pick that sync prunes to one acti
   const [next, commands] = update(
     {
       ...model,
-      route: TableRoute({ deckId: "0", table: tableId }),
+      route: PregameTableRoute({ deckId: "0", table: tableId }),
       game: {
         ...game,
         active: true,
@@ -121,11 +124,13 @@ test("ReceivedDelta auto-continues a play mode pick that sync prunes to one acti
         },
       },
     },
-    ReceivedDelta({
-      seq: 7,
-      state: { ...state([card]), actions: [cycleAction] },
-      events: [],
-      auto_actions: undefined,
+    GotGameMessage({
+      message: ReceivedDelta({
+        seq: 7,
+        state: { ...state([card]), actions: [cycleAction] },
+        events: [],
+        auto_actions: undefined,
+      }),
     }),
   );
 
@@ -142,15 +147,17 @@ test("ReceivedDelta with land_played provenance spawns a board flight", () => {
     update,
     Story.with({
       ...model,
-      route: TableRoute({ deckId: "0", table: "ABC123" }),
+      route: PregameTableRoute({ deckId: "0", table: "ABC123" }),
       game: { ...emptyGameSlice(), active: true, tableId: "ABC123" },
     }),
     Story.message(
-      ReceivedDelta({
-        seq: 7,
-        state: state([object()]),
-        events: [{ kind: "land_played", from: 9, permanent: 3, player: 0 }],
-        auto_actions: undefined,
+      GotGameMessage({
+        message: ReceivedDelta({
+          seq: 7,
+          state: state([object()]),
+          events: [{ kind: "land_played", from: 9, permanent: 3, player: 0 }],
+          auto_actions: undefined,
+        }),
       }),
     ),
     Story.model((m) => {

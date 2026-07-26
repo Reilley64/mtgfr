@@ -14,7 +14,7 @@ const clientRoot = join(here, "..");
 const repoRoot = join(clientRoot, "..");
 const tokensPath = join(repoRoot, "design.tokens.json");
 const cssOut = join(clientRoot, "styles/tokens.generated.css");
-const tsOut = join(clientRoot, "lib/design-tokens.generated.ts");
+const tsOut = join(clientRoot, "app/domain/design-tokens.generated.ts");
 
 function kebabToCamel(kebab) {
   return kebab.replace(/-([a-z0-9])/g, (_, c) => c.toUpperCase());

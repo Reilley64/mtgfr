@@ -1,7 +1,7 @@
 # Lobby Entry UI
 
 **Status:** Current (as of 2026-07-26)
-**Module:** `client/app/shell/lobby/**`, `client/lib/lobby/client.ts`, `client/lib/lobby-store.ts`
+**Module:** `client/app/shell/lobby/**`, `client/app/domain/lobby/client.ts`, `client/app/domain/lobby-store.ts`
 
 ---
 
@@ -13,7 +13,7 @@ After choosing a deck, a player must host or join a table, claim a seat, ready u
 
 ## Solution
 
-Lobby UI lives under `client/app/shell/lobby/**` on path-param play routes (`/play/:deckId` entry, `/play/:deckId/:table` seated/board). Host/Join uses `entryMode` (`choose` | `join`); seated chrome shows seat-color dots, Gravatar/monogram seat faces, Ready/Start, and table-code copy. Polling is a Foldkit subscription over `lobbyPoll`. Server lobby/seed/affinity mechanics are owned by [lobby-table-routing-and-live-game](2026-07-20-lobby-table-routing-and-live-game.md); the route table and auth guard by [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md). Face behavior follows [Gravatar Seat Faces Design](2026-07-25-gravatar-seat-faces-design.md).
+Lobby UI lives under `client/app/shell/lobby/**` on path-param play routes (`/play/:deckId` entry, `/play/:deckId/:table` seated pregame, `/play/:table` table-scoped table/game links). The lobby submodel boundary lifts through `GotLobbyMessage`; route entry and post-session cold-load call `informRouteChanged` so lobby reset/load stays child-owned while the parent keeps auth redirects and game-slice activation. Host/Join uses `entryMode` (`choose` | `join`); seated chrome shows seat-color dots, Gravatar/monogram seat faces, Ready/Start, and table-code copy. Polling is a Foldkit subscription over `lobbyPoll`. Server lobby/seed/affinity mechanics are owned by [lobby-table-routing-and-live-game](2026-07-20-lobby-table-routing-and-live-game.md); the route table and auth guard by [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md). Face behavior follows [Gravatar Seat Faces Design](2026-07-25-gravatar-seat-faces-design.md).
 
 ---
 
@@ -37,12 +37,13 @@ Required identifiers live in path params (see route table in [shell-routes-and-a
 |---|---|
 | `/play/:deckId` | Entry (`surface: "entry"`) — Host/Join choose or focused join panel |
 | `/play/:deckId/:table` | Seated lobby / board mount after start |
+| `/play/:table` | Table-scoped seated lobby / board mount for generated table codes containing at least one letter |
 
-Legacy `/play`, `/play/:table`, and `?deck=` entry points are Not found (hard cut). Malformed / not-in-library deck ids still 404.
+Bare `/play` and `?deck=` entry points are Not found (hard cut). Single-segment `/play/...` paths normalize by segment shape: integer-looking segments stay deck-entry routes, while table codes become table-scoped routes. Minted table codes are six characters from `23456789ABCDEFGHJKMNPQRSTUVWXYZ` and are regenerated until they contain at least one letter, so generated lobby ids cannot collide with numeric deck ids. Malformed / not-in-library deck ids still 404.
 
-`tableId()` reads the table id from `/play/:deckId/:table` path. `parseTableCode` normalizes bare codes and pasted play URLs, reading the table segment from `/play/:deckId/:table`. `setTableUrl` reflects a joined table into the URL via `history.replaceState`.
+`tableId()` reads the table id from either `/play/:deckId/:table` or `/play/:table`. `parseTableCode` normalizes guest input into a table id: bare codes (uppercased), pasted `/play/:deckId/:table` pregame links, pasted `/play/:table` in-game share links, and legacy `?table=` query params. Ambiguous paths (`/play/`, three or more `/play/...` segments, or unparseable URLs) return `null`. Pregame two-segment paths take precedence when both shapes could apply. `setTableUrl` reflects a joined table into the URL via `history.replaceState`.
 
-`selectedDeckId` is set from the required play route deck id. Lobby paint is route-keyed: `/play/:deckId` always renders the entry surface (`surface: "entry"`), and `/play/:deckId/:table` renders the seated surface — so Host’s create→redirect handoff does not flash claim-seat chrome while `tableId` is already set on the entry route.
+`selectedDeckId` is set from the required play route deck id when the route carries one. When the route carries no deck (`/play/:table`), route entry clears `selectedDeckId` to `null` even if the previous play route had a deck selected, so claim-seat/watcher chrome cannot reuse stale deck state. Lobby paint is route-keyed: `/play/:deckId` always renders the entry surface (`surface: "entry"`), while `/play/:deckId/:table` and `/play/:table` render the seated surface — so Host’s create→redirect handoff does not flash claim-seat chrome while `tableId` is already set on the entry route. Once the lobby view flips to `started`, the parent replaces `/play/:deckId/:table` with `/play/:table` and leaves Host create/join handoff on the pregame two-segment path until that start transition happens.
 
 Home ↔ `/play/{id}` morphs the shared deck-card chrome with a short FLIP animation (`deck-card-nav.ts`; skipped for reduced motion) — list-side detail in [deck-list-and-builder](2026-07-20-deck-list-and-builder.md).
 
@@ -54,16 +55,18 @@ On entry, `entryMode` is `choose` | `join`. **Choose** shows twin destination ca
 
 The lobby polls `GET /tables/{table}/lobby` via a Foldkit subscription until `started`. Seat rows show seat-color dots (`seat-forest`, `seat-island`, `seat-mountain`, `seat-arcane`) plus a circular face (`seat-face-{player}`) beside the username. When public `gravatar_hash` is present, the face is a Gravatar image loaded with `d=404`; otherwise it falls back to the username initial / seat number monogram. Lobby seats never carry email. A signed-in user on the seated lobby who has not claimed a seat sees `lobby-watch-note`, explaining that staying on the link enters spectator view when the host starts the game. The host (first joiner) sees a Start button when ≥2 seats are claimed and all are ready; while Start is disabled, `lobby-start-error` shows the gate reason in caution amber (`NeedTwoPlayers` → “Need at least two players.”, `NotAllReady` → “Waiting for everyone to Ready…”). Table-code copy uses `navigator.clipboard.writeText` from an Effect-backed command — denied permission reveals a manual-copy input instead of throwing. `unlockTableAudio()` is called on Ready-up (the required user-gesture unlock for the shared `AudioContext`).
 
-### Lobby poll and table lifecycle (`client/app/shell/lobby/poll.ts`, `client/app/shell/lobby/subscriptions.ts`, `client/lib/lobby-store.ts`)
+### Lobby poll and table lifecycle (`client/app/shell/lobby/poll.ts`, `client/app/shell/lobby/subscriptions.ts`, `client/app/domain/lobby-store.ts`)
 
-`lobbyPoll(tableId)` is an Effect stream consumed by a Foldkit subscription. The subscription polls lobby state while a table is present and stops when `started` is true. `client/lib/lobby/client.ts` decodes lobby JSON with the `LobbyView` schema and preserves structured non-2xx lobby bodies, so a 404 `UnknownTable` response reaches `model.error` instead of collapsing to `Unreachable`. Bodies that are not a valid `LobbyView` (for example Nitro 500 JSON missing `table_id`) decode to `null` → `Unreachable`, so Foldkit never constructs `ReceivedLobbyView` with an invalid payload (which would crash with `Missing key at ["view"]["table_id"]`). Host’s create→join path hits that Unreachable mapping when `loadLobby` 500s — notably if `mtgfr_web.lobby_seats` lacks `gravatar_hash`. Schema is asserted by `edh-web-migrate`, not the BFF (see [production-topology-and-operations](2026-07-20-production-topology-and-operations.md)). `UnknownTable` renders as stale-link copy: the table link is stale or expired and the player should ask the host for a new code. `client/lib/lobby-store.ts` holds lobby helpers for multi-seat coordination. Once the lobby moves to `started`, the app transitions from the lobby view to the board mount, preserving the table id in the route.
+`lobbyPoll(tableId)` is an Effect stream consumed by a Foldkit subscription. The subscription polls lobby state while a table is present and stops when `started` is true. `client/app/domain/lobby/client.ts` decodes lobby JSON with the `LobbyView` schema and preserves structured non-2xx lobby bodies, so a 404 `UnknownTable` response reaches `model.error` instead of collapsing to `Unreachable`. Bodies that are not a valid `LobbyView` (for example Nitro 500 JSON missing `table_id`) decode to `null` → `Unreachable`, so Foldkit never constructs `ReceivedLobbyView` with an invalid payload (which would crash with `Missing key at ["view"]["table_id"]`). Host’s create→join path hits that Unreachable mapping when `loadLobby` 500s — notably if `mtgfr_web.lobby_seats` lacks `gravatar_hash`. Schema is asserted by `edh-web-migrate`, not the BFF (see [production-topology-and-operations](2026-07-20-production-topology-and-operations.md)). `UnknownTable` renders as stale-link copy: the table link is stale or expired and the player should ask the host for a new code. `client/app/domain/lobby-store.ts` holds lobby helpers for multi-seat coordination. Once the lobby moves to `started`, the app transitions from the lobby view to the board mount and replaces seated pregame URLs with the table-only route while preserving the same table id.
 
-Helpers also live in `client/lib/lobby/client.ts` for table URL / code parsing used by the entry UI.
+Helpers also live in `client/app/domain/lobby/client.ts` for table URL / code parsing used by the entry UI.
 
 ---
 
 ## Implementation Decisions
 
+- **Route entry is child-owned.** Play-route entry runs through lobby `informRouteChanged`, which calls the child update with route-change messages instead of having the parent mutate lobby state directly.
+- **Table-only routes clear deck choice.** `ChangedLobbyRoute` treats an explicit `selectedDeckId: null` as authoritative, so `/play/:table` wipes any prior deck-picked lobby state instead of preserving it.
 - **Route-keyed lobby paint** prevents Host create→redirect from flashing seated/claim chrome on `/play/:deckId` while `tableId` may already be set in memory.
 - **Seat faces share `seatFace`.** Claimed and open lobby seats use the same Gravatar/monogram helper as account chrome, keyed by public `gravatar_hash` rather than email.
 - **Clipboard denial is non-throwing.** Failed `navigator.clipboard.writeText` reveals a manual-copy input rather than surfacing an uncaught error.
@@ -73,10 +76,11 @@ Helpers also live in `client/lib/lobby/client.ts` for table URL / code parsing u
 
 ## Testing Decisions
 
-- `client/app/shell/lobby/**/*.test.ts` — lobby stories and helpers (Host/Join entry, seated chrome, poll).
-- `client/lib/lobby-store.test.ts` — lobby state helpers; with `WEB_DATABASE_URL`, asserts
+- `client/app/shell/lobby/**/*.test.ts` — lobby stories and helpers (Host/Join entry, seated chrome, poll, `GotLobbyMessage` / `informRouteChanged` route entry, including `/play/:table` clearing stale deck selection and `started` redirecting seated pregame URLs to the table-only path).
+- `client/app/domain/lobby/code.test.ts` — `parseTableCode` for both `/play/:deckId/:table` and `/play/:table` path shapes, bare codes, and junk rejection (`/play/`, three+ segments).
+- `client/app/domain/lobby-store.test.ts` — lobby state helpers; with `WEB_DATABASE_URL`, asserts
   `loadLobby` on an empty table (requires migrate-applied `gravatar_hash`).
-- Scene assertions for lobby entry / seated surfaces, including `seat-face-0` Gravatar/monogram chrome, live with shell Scene coverage (`just client-check`).
+- Scene assertions for lobby entry / seated surfaces, including `seat-face-0` Gravatar/monogram chrome and the table-only `/play/:table` shell route, live with shell Scene coverage (`just client-check`).
 
 ---
 

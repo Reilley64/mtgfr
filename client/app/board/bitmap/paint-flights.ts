@@ -1,6 +1,6 @@
 import { colors } from "~/design-tokens.generated";
-import { imageUrlByPrint } from "../../../lib/deck-builder/scryfall";
-import type { ImageCache } from "../../../lib/image-cache";
+import { imageUrlByPrint } from "../../domain/deck-builder/scryfall";
+import type { ImageCache } from "../../domain/image-cache";
 import { CARD_H, CARD_W } from "../geometry/layout";
 import { LIFT_SHADOW_BLUR, LIFT_SHADOW_COLOR, LIFT_SHADOW_OFFSET_Y } from "../lift-shadow";
 import type { CardFlight } from "../motion/flights";

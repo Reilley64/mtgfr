@@ -8,7 +8,7 @@ import { priorityPrimaryClass } from "~/priorityContextChrome";
 import { turnYieldRockerClass, turnYieldThumbClass, turnYieldTrackClass } from "~/turnYieldChrome";
 import { gameButtonClass } from "~/ui/buttonClass";
 import type { VisibleState } from "~/wire/types";
-import { formatMessage } from "../../../lib/i18n/message";
+import { formatMessage } from "../../domain/i18n/message";
 import { type PrimaryAction, primaryActionFor } from "../geometry/interaction";
 import {
   CancelActionClicked,

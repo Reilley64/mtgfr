@@ -12,7 +12,7 @@ import { cn, THEME_SCALES } from "~/cn";
 
 // Read the generated token CSS off disk, not via Vite's `?raw` — the Tailwind plugin claims `.css`
 // imports and hands back an empty string in the node test environment.
-const css = readFileSync(new URL("../styles/tokens.generated.css", import.meta.url), "utf8");
+const css = readFileSync(new URL("../../styles/tokens.generated.css", import.meta.url), "utf8");
 
 /** The keys defined under a `--<prefix>-*` namespace in @theme, ignoring modifiers like
  * `--text-title--font-weight`. */

@@ -1,11 +1,11 @@
 import { Effect, Match as M, Schema as S } from "effect";
 import type { Command as FoldkitCommand } from "foldkit";
 import { Command } from "foldkit";
-import { createTable, joinTable, readyUp, startGame } from "../../../lib/lobby/client";
-import { parseTableCode } from "../../../lib/lobby/code";
-import { lobbyIsHost } from "../../../lib/lobby/seat";
-import type { LobbyView } from "../../../lib/lobby/types";
-import { unlockTableAudio } from "../../../lib/tableAudio";
+import { createTable, joinTable, readyUp, startGame } from "../../domain/lobby/client";
+import { parseTableCode } from "../../domain/lobby/code";
+import { lobbyIsHost } from "../../domain/lobby/seat";
+import type { LobbyView } from "../../domain/lobby/types";
+import { unlockTableAudio } from "../../domain/tableAudio";
 import { LobbyCopyCompleted, LobbyRequestFailed, LobbyTableCreated, type Message, ReceivedLobbyView } from "./messages";
 import type { LobbySlice } from "./submodel";
 
@@ -37,6 +37,46 @@ function selectedDeckId(model: LobbySlice): number | null {
 function tableForJoin(model: LobbySlice): string | null {
   if (model.tableId != null) return model.tableId;
   return parseTableCode(model.code);
+}
+
+function applyRouteChange(
+  model: LobbySlice,
+  route: { tableId: string | null; selectedDeckId: number | null },
+): LobbySlice {
+  if (model.tableId !== route.tableId) {
+    return {
+      tableId: route.tableId,
+      selectedDeckId: route.selectedDeckId,
+      code: "",
+      entryMode: "choose",
+      view: null,
+      started: false,
+      error: null,
+      copied: false,
+      clipboardFallback: false,
+      submitting: false,
+    };
+  }
+
+  if (model.tableId == null && route.selectedDeckId != null && model.selectedDeckId !== route.selectedDeckId) {
+    return {
+      tableId: null,
+      selectedDeckId: route.selectedDeckId,
+      code: "",
+      entryMode: "choose",
+      view: null,
+      started: false,
+      error: null,
+      copied: false,
+      clipboardFallback: false,
+      submitting: false,
+    };
+  }
+
+  return {
+    ...model,
+    selectedDeckId: route.selectedDeckId,
+  };
 }
 
 export const CreateLobbyTable = Command.define(
@@ -125,6 +165,7 @@ export const update = (
   M.value(message).pipe(
     M.withReturnType<readonly [LobbySlice, ReadonlyArray<FoldkitCommand.Command<Message>>]>(),
     M.tagsExhaustive({
+      ChangedLobbyRoute: ({ tableId, selectedDeckId }) => [applyRouteChange(model, { tableId, selectedDeckId }), []],
       ChangedLobbyCode: ({ code }) => [{ ...model, code }, []],
       RequestedLobbyOpenJoin: () => [{ ...model, entryMode: "join" }, []],
       RequestedLobbyCancelJoin: () => [{ ...model, entryMode: "choose", code: "", error: null }, []],

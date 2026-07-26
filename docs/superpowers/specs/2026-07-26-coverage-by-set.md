@@ -1,6 +1,6 @@
 # Coverage by Set
 **Status:** Current (as of 2026-07-26)
-**Module:** `client/app/shell/coverage/**`, `client/lib/lobby/client.ts`, `client/lib/coverage-meta.ts`, `client/lib/scryfall-sets.ts`, `client/lib/scryfall-oracle-total.ts`, `client/server/routes/api/[...path].ts`, `crates/server/src/health.rs`
+**Module:** `client/app/shell/coverage/**`, `client/app/domain/lobby/client.ts`, `client/app/domain/coverage-meta.ts`, `client/app/domain/scryfall-sets.ts`, `client/app/domain/scryfall-oracle-total.ts`, `client/server/routes/api/[...path].ts`, `crates/server/src/health.rs`
 
 ## Problem Statement
 
@@ -22,7 +22,7 @@ Ship an authenticated `/coverage` shell route that renders a searchable set tabl
 ### Route entry and shell chrome
 
 - `/coverage` is an auth-gated shell route. Unauthenticated entry redirects to `/login?next=%2Fcoverage`.
-- Route entry loads coverage through `coverageMeta()` from `GET /api/meta/coverage/v1`.
+- Route entry calls `Coverage.informRouteChanged`, which loads coverage through `coverageMeta()` from `GET /api/meta/coverage/v1`. Child commands and view events lift through `GotCoverageMessage`.
 - The page renders `data-testid="coverage-page"` on the same felt shell background family as leaderboard and deck surfaces.
 - Header chrome shows `Coverage`, a global `{n}% faithful` line or `— faithful`, a `Play` link back to `/`, and the shared avatar account menu with the `Leaderboard` shortcut still visible.
 - The fixed bottom-left shell badge still renders on this page when `apiVersion` is known. When global badge coverage meta is complete, the `pool-coverage` line links to `/coverage`.
@@ -70,13 +70,15 @@ Ship an authenticated `/coverage` shell route that renders a searchable set tabl
 - Represent unavailable denominators as `null` on the wire and `—` in the UI. Do not coerce them to `0`.
 - Compute `faithful_by_set` from `cards::registry()` inside server health with no extra I/O.
 - Use 24-hour in-memory caches plus fire-and-forget refresh for Scryfall set metadata and oracle totals.
+- Align the coverage shell feature with other `Got*` submodels: `shell/coverage/index.ts` namespace exports, `informRouteChanged`, parent `GotCoverageMessage`, and `Command.mapMessages` lift — no flat coverage tags in the parent `Message` union.
 
 ## Testing Decisions
 
 - `crates/server/src/health.rs` tests assert `faithful_by_set` matches the registry, omits empty set codes, excludes approximated cards, and sums to no more than `faithful_count`.
-- `client/lib/coverage-meta.test.ts` asserts the BFF join uses Scryfall rows as the source of truth for the set list and leaves missing per-set oracle totals as `null`.
+- `client/app/domain/coverage-meta.test.ts` asserts the BFF join uses Scryfall rows as the source of truth for the set list and leaves missing per-set oracle totals as `null`.
 - `client/app/shell/coverage/view.test.ts` asserts row sorting, lowercase filtering, and `—` formatting when either count is missing.
-- `client/app/routes.test.ts` asserts `/coverage` route parsing, auth redirect, and retry behavior that clears rows while preserving the query.
+- `client/app/shell/coverage/story.test.ts` asserts `GotCoverageMessage` parent folding for refresh.
+- `client/app/routes.test.ts` asserts `/coverage` route parsing, auth redirect, and retry behavior that clears rows while preserving the query, with messages wrapped as `GotCoverageMessage` / `GotAuthMessage`.
 - `client/app/shell/surfaces.test.ts` asserts the coverage page scene, search/filter empty state, and shell badge link to `/coverage`.
 - Verification for this task runs focused server nextest filters, focused client Vitest suites, `just client-typecheck`, `just client-lint`, and `just server-format-check`.
 

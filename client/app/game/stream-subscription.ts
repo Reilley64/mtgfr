@@ -2,8 +2,7 @@ import { Effect, Queue, Schema as S, Stream } from "effect";
 import { Subscription } from "foldkit";
 import { type Client, client as defaultClient } from "~/effect/client";
 import { streamDeltas as streamDeltasEffect } from "~/effect/stream";
-import type { StreamFrame } from "../../lib/wire/types";
-import type { Message as AppMessage } from "../messages";
+import type { StreamFrame } from "../domain/wire/types";
 import type { Model } from "../model";
 import {
   type Message as GameMessage,
@@ -48,12 +47,13 @@ export function streamMessages(
   );
 }
 
-export const subscriptions = Subscription.make<Model, AppMessage>()((entry) => ({
+export const subscriptions = Subscription.make<Model, GameMessage>()((entry) => ({
   gameStream: entry(
     { table: S.NullOr(S.String), gameTable: S.NullOr(S.String), active: S.Boolean },
     {
       modelToDependencies: (model) => {
-        const table = model.route._tag === "TableRoute" ? model.route.table : null;
+        const table =
+          model.route._tag === "PregameTableRoute" || model.route._tag === "GameTableRoute" ? model.route.table : null;
         return {
           table,
           gameTable: model.game?.tableId ?? null,

@@ -3,6 +3,9 @@ import { expect, test } from "vitest";
 import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
+import { update as appUpdate, init } from "../main-exports";
+import { GotBoardMessage } from "../messages";
+import { emptyGameSlice } from "../model";
 import type { Message } from "./messages";
 import {
   BoardCameraZoomed,
@@ -98,6 +101,22 @@ function handMode(id: number, kind: "cast" | "cycle", object: number): ActionVie
     section: "hand",
   };
 }
+
+test("GotBoardMessage updates the board through the parent update", () => {
+  const [model] = init();
+
+  Story.story(
+    appUpdate,
+    Story.with({
+      ...model,
+      game: { ...emptyGameSlice("ABC123"), seq: 1, state: state() },
+    }),
+    Story.message(GotBoardMessage({ message: BoardPointerDown({ x: 12, y: 18 }) })),
+    Story.model((next) => {
+      expect(next.game?.board.pointer).toEqual({ kind: "pan", x: 12, y: 18 });
+    }),
+  );
+});
 
 test("pointer down on empty felt enters pan phase", () => {
   const fold = gameFold();

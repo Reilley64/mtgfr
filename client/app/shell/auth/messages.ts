@@ -1,6 +1,6 @@
 import { Schema as S } from "effect";
 import { m } from "foldkit/message";
-import { Me } from "../../../lib/wire/types";
+import { Me } from "../../domain/wire/types";
 import { AuthMode } from "./submodel";
 
 export const ChangedAuthMode = m("ChangedAuthMode", { mode: AuthMode });

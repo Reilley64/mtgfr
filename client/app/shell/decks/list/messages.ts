@@ -1,8 +1,9 @@
 import { Schema as S } from "effect";
 import { m } from "foldkit/message";
-import { CatalogCardSchema } from "../../../../lib/deck-builder/cards";
-import { DeckSummary } from "../../../../lib/wire/types";
+import { CatalogCardSchema } from "../../../domain/deck-builder/cards";
+import { DeckSummary } from "../../../domain/wire/types";
 
+export const ChangedDeckListRoute = m("ChangedDeckListRoute");
 export const RequestedDecksRefresh = m("RequestedDecksRefresh");
 export const ReceivedDecks = m("ReceivedDecks", { decks: S.Array(DeckSummary) });
 export const DecksLoadFailed = m("DecksLoadFailed", { message: S.String });
@@ -24,6 +25,7 @@ export const DeckDeleted = m("DeckDeleted");
 export const DeckDeleteFailed = m("DeckDeleteFailed", { message: S.String });
 
 export const Message = S.Union([
+  ChangedDeckListRoute,
   RequestedDecksRefresh,
   ReceivedDecks,
   DecksLoadFailed,
