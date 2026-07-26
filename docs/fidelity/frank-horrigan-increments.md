@@ -160,8 +160,9 @@ went from the `Event::ManaSpent` tail (`phyrexian_life_paid_from`) and pushes on
 `Event::LifeChanged { amount: -2 }` per life-paid pip. Correction to this section's premise: the
 choice is **not** recorded on the spell — the derivation is per-cast and doesn't survive
 resolution, so #16's compleated rider still can't read it and must thread the outcome onto the
-resolved permanent itself. vraska_betrayals_sting's cost is now `{4}{B}{B/P}` and its
-`approximates` drops the "modeled as a plain {B}" residual. Still blocked: nothing.
+resolved permanent itself — which is what #16 then did (see below). vraska_betrayals_sting's cost is
+now `{4}{B}{B/P}` and its `approximates` drops the "modeled as a plain {B}" residual.
+Still blocked: nothing.
 ponytail: the mana-or-life pick is automatic, not offered (CR 107.4f frames it as the caster's);
 every pool cost carries at most one Phyrexian pip, so the fixed pick order never costs a payment
 a real choice would find — widen to a raised `PendingChoice` (mirroring `PayLifeOrEntersTapped`)
@@ -390,8 +391,8 @@ match gained a ponytail-noted `phyrexian_life_paid: _` (not surfaced on the wire
 `spent_colors`). Tests: `compleated_vraska_enters_with_two_fewer_loyalty_when_life_paid` and
 `compleated_vraska_enters_with_full_loyalty_when_the_pip_took_mana`
 (`crates/engine/tests/game.rs`); `cast_vraska_with` now returns the cast `ObjectId`. Vraska's
-`approximates` is trimmed to the −2 Treasure-mode residual only (#25, unlanded) — the Compleated
-half is faithful.
+`approximates` was trimmed to the −2 Treasure-mode residual only, and #25 cleared that too later the
+same day, so the card carries no note at all now. Still blocked: nothing.
 
 ### 17. `proliferate-full-scope` — 9 cards + observers, L — LANDED 2026-07-27
 Depends on: #20 slice 1 (for the player half).
@@ -601,10 +602,12 @@ damage step (CR 603.3b), and `Trigger::BecomesTargeted` gained a `who: BecomesTa
 (`this` / `creature_you_control`, TOML sibling `targeted`) instead of a second trigger variant.
 contaminant_grafter, glistening_sphere, phyrexian_swarmlord (plus the `phyrexian_insect` token
 profile) and venerated_rotpriest are faithful with no `approximates` — the proliferate-scope note
-they were authored with was cleared when #17 landed in the same wave; vraska_betrayals_sting names
-three residuals — the `{B/P}` pip modeled as plain `{B}` (#8), Compleated's enters-with-two-fewer that
-therefore never applies (#16), and the −2 becomes-a-Treasure mode dropped rather than approximated
-(#25). Follow-up noticed: `striding_shotcaller.toml` still carries a `ponytail:` note saying its
+they were authored with was cleared when #17 landed in the same wave; vraska_betrayals_sting named
+three residuals at the time — the `{B/P}` pip modeled as plain `{B}` (#8), Compleated's
+enters-with-two-fewer that therefore never applied (#16), and the −2 becomes-a-Treasure mode dropped
+rather than approximated (#25). All three have since landed (#8, then #16 and #25 on 2026-07-27) and
+the card's `approximates` line is gone — vraska_betrayals_sting is faithful.
+Follow-up noticed: `striding_shotcaller.toml` still carries a `ponytail:` note saying its
 `who = "your_creatures"` approximates a batch watch — `"your_creatures_batch"` now expresses it
 faithfully.
 
@@ -731,11 +734,24 @@ vraska_betrayals_sting.
 target permanent's current `def` and reusing the existing indefinite `Event::BecameCopy { until_eot:
 false, .. }` mint (CR 400.7 — no cleanup, resets only if the object leaves the battlefield) with a new
 `becomes_treasure(printed)` helper (`crates/engine/src/types/card.rs`, next to `treasure_token()`)
-that keeps the target's name/id/default_print/cost/legendary and replaces everything else with the
-Treasure profile — a type/ability-SET, not a CR 707 copy. `vraska_betrayals_sting_turns_a_creature_
-into_a_treasure` asserts the target becomes a plain artifact with the Treasure subtype, keeps its own
-name, and loses its printed keyword/abilities; `a_creature_that_became_a_treasure_sacrifices_for_mana_
-of_any_color` proves it gained the granted mana ability and — unlike a real Treasure *token* — is not
-a token, so sacrificing it lands in the graveyard rather than ceasing to exist. Increment #16
-(Compleated) already landed earlier in this lane, so `vraska_betrayals_sting.toml`'s `approximates`
-line is now fully cleared — the card is faithful.
+that keeps the target's name/id/default_print/cost/legendary/colors/devoid and replaces everything
+else with the Treasure profile — a type/ability-SET, not a CR 707 copy. `vraska_betrayals_sting_turns_
+a_creature_into_a_treasure` asserts the target becomes a plain artifact with the Treasure subtype,
+keeps its own name, and loses its printed keyword/abilities; `a_creature_that_became_a_treasure_
+sacrifices_for_mana_of_any_color` proves it gained the granted mana ability and — unlike a real
+Treasure *token* — is not a token, so sacrificing it lands in the graveyard rather than ceasing to
+exist. Increment #16 (Compleated) already landed earlier in this lane, so
+`vraska_betrayals_sting.toml`'s `approximates` line is now fully cleared — the card is faithful.
+Still blocked: nothing.
+
+_Reconciled 2026-07-27 — two bugs found and fixed in the wave's verify pass, each with a regression
+test:_ (i) `becomes_treasure` took `colors`/`devoid` from the Treasure profile, so a target that
+states its color outright rather than deriving it from mana-cost pips (any token, CR 111.4) went
+colorless — a type/ability set never touches colour (CR 613 layer 5). Both fields now ride along
+from the target (`a_creature_that_became_a_treasure_keeps_its_own_color`). (ii) `Event::BecameCopy`
+armed `Permanent::reverts_to_def_eot` for an until-EOT copy but never *dis*armed it for an
+indefinite one, so converting a permanent that was mid-until-EOT-copy (Cursed Mirror copying a
+creature) left the cleanup revert live and `Event::TempBoostsEnded` snapped it back to the printed
+Cursed Mirror, undoing a durationless CR 613 effect. The indefinite branch now clears it
+(`a_treasure_conversion_outlasts_an_until_end_of_turn_copy_it_replaced`), with a `ponytail:` note
+that the rewrite still snapshots the live (copied) name/cost rather than recomputing layers.

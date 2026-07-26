@@ -1243,13 +1243,21 @@ impl Game {
                 until_eot,
             } => {
                 let p = self.permanent_mut(object);
-                if until_eot {
-                    // Leak the original printed def to `'static` (like `CardDef::back`) so the
-                    // revert reference lives on the `Copy` `Permanent`. Bounded — one leak per
-                    // until-EOT copy, freed only at process exit — the same shape as the
-                    // `KeywordsStripped` union leak below.
-                    p.reverts_to_def_eot = Some(Box::leak(Box::new(p.def)));
-                }
+                // For an until-EOT copy, leak the original printed def to `'static` (like
+                // `CardDef::back`) so the revert reference lives on the `Copy` `Permanent`.
+                // Bounded — one leak per until-EOT copy, freed only at process exit — the same
+                // shape as the `KeywordsStripped` union leak below. An *indefinite* rewrite
+                // (CR 400.7) instead disarms any revert already armed on this permanent:
+                // otherwise `Event::TempBoostsEnded` would restore the pre-copy def at cleanup
+                // and undo a later-timestamped, durationless effect (Vraska, Betrayal's Sting's
+                // −2 on a Cursed Mirror that is currently copying a creature).
+                // ponytail: that rewrite snapshots whatever def is live now, so it inherits the
+                // copy's name/cost rather than the printed card's — a CR 613 layered
+                // recomputation would keep the printed copiable values under the layer-4/6 set.
+                p.reverts_to_def_eot = match until_eot {
+                    true => Some(Box::leak(Box::new(p.def))),
+                    false => None,
+                };
                 p.def = def;
             }
             Event::TempBoostsEnded { object } => {

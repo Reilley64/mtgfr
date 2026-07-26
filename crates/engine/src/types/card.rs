@@ -1123,7 +1123,10 @@ pub fn treasure_token() -> CardDef {
 /// A permanent that "becomes a Treasure artifact … and loses all other card types and abilities"
 /// (CR 613.1d/613.1f — Vraska, Betrayal's Sting's −2). Unlike a copy effect (CR 707) this is a
 /// type- and ability-SETTING effect: name, mana cost and identity are unchanged, only the card
-/// types, subtypes and abilities are replaced by the Treasure profile.
+/// types, subtypes and abilities are replaced by the Treasure profile. Color (CR 613 layer 5) is
+/// untouched too, so `cost` carries the pip-derived colors and the explicit `colors`/`devoid`
+/// overrides ride along for a target that states its color outright (a token, CR 111.4).
+/// `legendary` stays because a supertype is not a card type (CR 205.4).
 pub(crate) fn becomes_treasure(printed: CardDef) -> CardDef {
     CardDef {
         name: printed.name,
@@ -1131,6 +1134,8 @@ pub(crate) fn becomes_treasure(printed: CardDef) -> CardDef {
         default_print: printed.default_print,
         cost: printed.cost,
         legendary: printed.legendary,
+        colors: printed.colors,
+        devoid: printed.devoid,
         ..treasure_token()
     }
 }

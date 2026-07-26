@@ -94532,7 +94532,7 @@ fn a_phyrexian_pip_paid_with_life_costs_two_life() {
 
     let mut lands = vec![swamp];
     lands.extend(mountains);
-    let _vraska = cast_vraska_with(&mut game, &lands);
+    cast_vraska_with(&mut game, &lands);
 
     assert_eq!(
         game.life(PlayerId(0)),
@@ -94551,7 +94551,7 @@ fn a_phyrexian_pip_paid_with_matching_mana_costs_no_life() {
         .collect();
     let before = game.life(PlayerId(0));
 
-    let _vraska = cast_vraska_with(&mut game, &swamps);
+    cast_vraska_with(&mut game, &swamps);
 
     assert_eq!(
         game.life(PlayerId(0)),
@@ -94578,7 +94578,7 @@ fn compleated_vraska_enters_with_two_fewer_loyalty_when_life_paid() {
     let mut lands = vec![swamp];
     lands.extend(mountains);
 
-    let _vraska = cast_vraska_with(&mut game, &lands);
+    cast_vraska_with(&mut game, &lands);
     let events = resolve_top_of_stack_events(&mut game);
     let permanent = events
         .iter()
@@ -94604,7 +94604,7 @@ fn compleated_vraska_enters_with_full_loyalty_when_the_pip_took_mana() {
         .map(|_| game.spawn_on_battlefield(PlayerId(0), card("Swamp")))
         .collect();
 
-    let _vraska = cast_vraska_with(&mut game, &swamps);
+    cast_vraska_with(&mut game, &swamps);
     let events = resolve_top_of_stack_events(&mut game);
     let permanent = events
         .iter()
@@ -96084,7 +96084,7 @@ fn a_phyrexian_pip_falls_back_to_life_when_its_color_is_needed_for_generic() {
         .collect();
     let before = game.life(PlayerId(0));
 
-    let _vraska = cast_vraska_with(&mut game, &swamps);
+    cast_vraska_with(&mut game, &swamps);
 
     assert_eq!(
         game.life(PlayerId(0)),
@@ -96208,5 +96208,109 @@ fn a_creature_that_became_a_treasure_sacrifices_for_mana_of_any_color() {
         game.life(PlayerId(1)),
         18,
         "Shock's 2 damage went through, paid entirely by the Treasure-granted mana"
+    );
+}
+
+#[test]
+fn a_creature_that_became_a_treasure_keeps_its_own_color() {
+    // CR 613: "becomes a Treasure artifact … and loses all other card types and abilities" sets
+    // card types (layer 4) and abilities (layer 6) — it never touches color (layer 5). A green
+    // token creature, whose color is stated outright because it has no mana cost (CR 111.4), is
+    // still green after Vraska's −2.
+    let mut game = Game::new();
+    let vraska = game.spawn_on_battlefield(PlayerId(0), card("Vraska, Betrayal's Sting"));
+    let green_token = CardDef {
+        colors: &[Color::Green],
+        ..MUTABLE_FLYER
+    };
+    let beast = game.spawn_on_battlefield(PlayerId(0), green_token);
+    assert!(game.colors_of(beast)[Color::Green.index()], "printed green");
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: vraska,
+        ability_index: 1,
+        target: Some(Target::Object(beast)),
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.def_of(beast).kind,
+        CardKind::Artifact,
+        "it did become a Treasure artifact"
+    );
+    assert!(
+        game.colors_of(beast)[Color::Green.index()],
+        "a type/ability-setting effect leaves color alone (CR 613 layer 5)"
+    );
+}
+
+#[test]
+fn a_treasure_conversion_outlasts_an_until_end_of_turn_copy_it_replaced() {
+    // Vraska's −2 has no duration (CR 613, indefinite). Applying it over an until-end-of-turn
+    // copy effect (Cursed Mirror's "become a copy of any creature … until end of turn") must not
+    // leave that copy's cleanup revert armed — at cleanup the permanent stays a Treasure rather
+    // than snapping back to the printed Cursed Mirror.
+    let mut game = Game::new();
+    let bear = game.spawn_on_battlefield(PlayerId(1), COPY_BEAR);
+    let vraska = game.spawn_on_battlefield(PlayerId(0), card("Vraska, Betrayal's Sting"));
+    game.fund_mana(PlayerId(0));
+    let mirror = game.spawn_in_hand(PlayerId(0), card("Cursed Mirror"));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: mirror,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    let mirror = game.current_id(mirror);
+    game.submit(Intent::ChooseCopyTarget {
+        player: PlayerId(0),
+        copy: Some(bear),
+    })
+    .unwrap();
+    assert_eq!(
+        game.def_of(mirror).name,
+        "Craw Wurm Bear",
+        "copying the Bear"
+    );
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: vraska,
+        ability_index: 1,
+        target: Some(Target::Object(mirror)),
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    assert!(
+        game.def_of(mirror).subtypes.contains(&"Treasure"),
+        "the −2 converted the copy"
+    );
+
+    pass_until_next_turn(&mut game);
+
+    assert!(
+        game.def_of(mirror).subtypes.contains(&"Treasure"),
+        "the indefinite conversion survives the until-end-of-turn copy's cleanup revert"
     );
 }
