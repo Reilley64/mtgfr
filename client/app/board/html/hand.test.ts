@@ -102,6 +102,26 @@ function findTestId(node: unknown, id: string): unknown | null {
   return null;
 }
 
+function collectTestIds(node: unknown): string[] {
+  const ids: string[] = [];
+  const walk = (current: unknown) => {
+    const id = testId(current);
+    if (id != null) ids.push(id);
+    if (current == null || typeof current !== "object") return;
+    const n = current as { children?: unknown[] };
+    for (const child of n.children ?? []) walk(child);
+  };
+  walk(node);
+  return ids;
+}
+
+function attr(node: unknown, name: string): string | undefined {
+  if (node == null || typeof node !== "object") return undefined;
+  const n = node as { data?: { attrs?: Record<string, string> } };
+  const value = n.data?.attrs?.[name];
+  return typeof value === "string" ? value : undefined;
+}
+
 function className(node: unknown): string {
   if (node == null || typeof node !== "object") return "";
   const n = node as { data?: { class?: Record<string, boolean> } };
@@ -332,6 +352,43 @@ describe("handView drag chrome", () => {
     expect(className(playableHit)).not.toContain("cursor-not-allowed");
     expect(className(unplayableHit)).toContain("cursor-not-allowed");
     expect(className(unplayableHit)).not.toContain("cursor-grab");
+  });
+});
+
+describe("handView multi-action cards", () => {
+  it("renders one hand tile when cast and two hand abilities are legal", () => {
+    const card = object(42, { name: "Valley Rannet", kind: { kind: "creature", power: 6, toughness: 3 } });
+    const tree = renderHand(
+      state({
+        objects: [card],
+        actions: [
+          action(1, { object: 42, kind: "cast" }),
+          action(2, { object: 42, kind: "activate_hand_ability", label: testMessageRef("Discard: Mountain") }),
+          action(3, { object: 42, kind: "activate_hand_ability", label: testMessageRef("Discard: Forest") }),
+        ],
+      }),
+    );
+    expect(findTestId(tree, "hand-card-42")).not.toBeNull();
+    expect(findTestId(tree, "hand-card-face-42")).not.toBeNull();
+    const faces = collectTestIds(tree).filter((id) => id.startsWith("hand-card-face-"));
+    expect(faces).toEqual(["hand-card-face-42"]);
+  });
+
+  it("omits Discard caption when multiple modes are legal", () => {
+    const card = object(42, { name: "Valley Rannet" });
+    const tree = renderHand(
+      state({
+        objects: [card],
+        actions: [
+          action(2, { object: 42, kind: "activate_hand_ability" }),
+          action(3, { object: 42, kind: "activate_hand_ability" }),
+        ],
+      }),
+    );
+    const hit = findTestId(tree, "hand-card-42");
+    expect(className(hit)).not.toContain("Discard");
+    expect(findTestId(tree, "hand-caption-42")).toBeNull();
+    expect(attr(hit, "aria-label")).toBe("Valley Rannet");
   });
 });
 

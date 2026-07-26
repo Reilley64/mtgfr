@@ -60,11 +60,6 @@ function actionPriority(a: ActionView): number {
   return 0;
 }
 
-export function handExtras(actions: readonly ActionView[]): ActionView[] {
-  const primary = byObject(actions);
-  return actions.filter((a) => a.object != null && primary.get(a.object)?.id !== a.id);
-}
-
 const PLAY_MODE_RANK: Record<string, number> = {
   cast: 0,
   play_land: 0,
