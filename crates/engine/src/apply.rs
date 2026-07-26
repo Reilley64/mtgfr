@@ -36,6 +36,17 @@ impl Game {
         )
     }
 
+    /// Whether an Aura may be attached to `host` by an effect that isn't a normal cast (Ajani's
+    /// Chosen's "you may attach it to the token", Gift of Immortality's delayed "return this card
+    /// attached to that creature"). A cast Aura gets its legality from a target choice (CR 601.2c),
+    /// but these force-attach with no target step, so this is the only gate: `host` must satisfy
+    /// the Aura's `enchant` restriction (CR 303.4f) *and* not have protection that stops the Aura
+    /// (CR 702.16e). Reuses [`Game::attachment_host_legal`] so the check stays one seam.
+    pub(crate) fn noncast_attach_legal(&self, attachment: ObjectId, host: ObjectId) -> bool {
+        self.attachment_host_legal(attachment, host)
+            && !self.protection_blocks_source(host, attachment)
+    }
+
     /// Re-check state-based actions and return the events they produce.
     /// A player at 0-or-less life loses; a creature with lethal marked damage dies.
     pub(crate) fn check_state_based_actions(&self) -> Vec<Event> {
@@ -1317,6 +1328,11 @@ impl Game {
                     p.reverts_to_def_eot = Some(p.def);
                 }
                 p.def = def;
+                // A new copy effect replaces the object's copiable characteristics wholesale (CR
+                // 707.2), so any "except it has <keywords>" rider from a *prior* copied form is
+                // dropped. This effect's own rider (if any) is re-established by the
+                // `CopyRiderKeywordsGranted` event(s) that follow this `BecameCopy`.
+                p.copy_rider_keywords = &[];
             }
             Event::TempBoostsEnded { object } => {
                 self.modifier_provenance
@@ -1333,9 +1349,33 @@ impl Game {
                 p.added_colors_eot = &[];
                 p.set_color_eot = None;
                 // Revert an until-EOT enter-as-copy to the printed permanent (CR 514.2 — Cursed
-                // Mirror's "become a copy … until end of turn").
+                // Mirror's "become a copy … until end of turn"). The copy's "except it has
+                // haste/myriad" rider ends with the copy, so clear the copiable rider too (an
+                // indefinite copy or a token leaves it in place — it resets with the object).
                 if let Some(printed) = p.reverts_to_def_eot.take() {
                     p.def = printed;
+                    p.copy_rider_keywords = &[];
+                }
+            }
+            // A copy made "except it has <keywords>" (CR 707.2): union the exception keywords into
+            // the object's copiable characteristics (they persist and are copied again), rather
+            // than the until-end-of-turn `TempBoost` an ordinary keyword grant uses.
+            Event::CopyRiderKeywordsGranted { object, keywords } => {
+                let p = self.permanent_mut(object);
+                if p.copy_rider_keywords.is_empty() {
+                    p.copy_rider_keywords = keywords;
+                } else {
+                    // Union-not-clobber for a second rider landing on the same object (a copy of a
+                    // copy that itself carries a different rider). Leaks a small deduped slice to
+                    // keep `Permanent: Copy`, bounded by one leak per such collision (mirrors
+                    // `KeywordsStripped`'s own union above).
+                    let mut union: Vec<Keyword> = p.copy_rider_keywords.to_vec();
+                    for k in keywords {
+                        if !union.contains(k) {
+                            union.push(*k);
+                        }
+                    }
+                    p.copy_rider_keywords = Box::leak(union.into_boxed_slice());
                 }
             }
             Event::KeywordsStripped { object, keywords } => {

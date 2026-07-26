@@ -149,6 +149,10 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.choice_may_draw_up_to": (params) => `You may draw up to ${param(params, "count")}`,
   "effect.choice_may_draw_up_to_then_opponent_may_repeat": (params) =>
     `You may draw up to ${param(params, "count")}, then that opponent may repeat this process`,
+  "effect.choice_may_exile_discarded_nonland_may_play": literal(
+    "You may exile one of the discarded nonland cards; play it this turn",
+  ),
+  "effect.choice_may_put_counter_on_creature": literal("You may put a +1/+1 counter on a creature"),
   "effect.choice_may_return_from_graveyard": (params) =>
     `You may return ${humanize(param(params, "filter", "a card"))} from your graveyard to your hand`,
   "effect.choice_may_sacrifice": (params) => `You may sacrifice ${humanize(param(params, "filter", "a permanent"))}`,
@@ -333,6 +337,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.life_each_opponent_drain": (params) =>
     `Each opponent loses ${param(params, "amount")}, you gain ${bool(params, "sum_gain") ? "life equal to the life lost this way" : param(params, "amount")}`,
   "effect.life_each_opponent_loses": (params) => `Each opponent loses ${param(params, "amount")}`,
+  "effect.life_each_player_loses": (params) => `Each player loses ${param(params, "amount")}`,
   "effect.life_each_player_becomes_highest": literal(
     "Each player's life total becomes the highest life total among all players",
   ),

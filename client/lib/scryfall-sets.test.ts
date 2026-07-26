@@ -121,13 +121,14 @@ describe("scryfall sets cache", () => {
   });
 
   it("ensureScryfallSetsRefresh does not block and populates the cache", async () => {
-    const fetchImpl = vi.fn(async () =>
-      new Response(
-        JSON.stringify({
-          data: [{ code: "soc", name: "Secrets of Strixhaven", released_at: "2026-04-01", card_count: 400 }],
-        }),
-        { status: 200 },
-      ),
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            data: [{ code: "soc", name: "Secrets of Strixhaven", released_at: "2026-04-01", card_count: 400 }],
+          }),
+          { status: 200 },
+        ),
     );
 
     ensureScryfallSetsRefresh(fetchImpl as unknown as typeof fetch);

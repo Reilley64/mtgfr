@@ -28,10 +28,6 @@ type = "sorcery"
 
 # Mode 0 — "Target player mills three cards, then you return a land card from your graveyard to
 # your hand."
-# ponytail: "you return" (mandatory) is modeled as "you may return" (Effect::MayReturnFromGraveyard) —
-# declining is illegal by the oracle, but returning a land is pure upside, so a rational player
-# never declines and the divergence is unobservable. Upgrade: a mandatory
-# ReturnACardFromYourGraveyard { filter } sibling if a card ever punishes declining.
 [[abilities]]
 timing = "spell"
 
@@ -42,11 +38,13 @@ mode = "mill"
 count = 3
 target = "player"
 
-# then you return a land card from your graveyard to your hand.
+# then you return a land card from your graveyard to your hand. Mandatory ("you return"): with a
+# land card in your graveyard you must return one; no legal land card does nothing (CR 608.2b).
 [[abilities.effects]]
 type = "choice"
 mode = "may_return_from_graveyard"
 filter = "land"
+mandatory = true
 
 # Mode 1 — "Destroy target noncreature, nonland permanent with mana value 2 or less."
 [[abilities]]

@@ -391,6 +391,44 @@ impl Game {
         Ok(events)
     }
 
+    /// Answer a [`PendingChoice::MayPutCounterOnCreature`]: `choice` is `None` to decline, or one
+    /// of the choice's `options` (a battlefield creature) to put a single +1/+1 counter on
+    /// (Zimone's Hypothesis' primer, CR 601.2c). Non-targeted, so a `Some` id must be a currently
+    /// offered creature; the enclosing `Sequence`'s next step (the parity bounce) runs regardless,
+    /// resumed by [`Game::resume_deferred_sequence`] after this returns.
+    pub(crate) fn answer_may_put_counter_on_creature(
+        &mut self,
+        _player: PlayerId,
+        choice: Option<ObjectId>,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::MayPutCounterOnCreature {
+            source, options, ..
+        }) = self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        if choice.is_some_and(|id| !options.contains(&id)) {
+            return Err(Reject::IllegalChoice);
+        }
+        self.finish_answer();
+
+        let mut events = Vec::new();
+        if let Some(object) = choice {
+            let n = self.counters_after_replacements(object, 1);
+            if n > 0 {
+                self.push_apply(
+                    &mut events,
+                    Event::CountersPlaced {
+                        object,
+                        count: n,
+                        source_name: self.source_name_of(source),
+                    },
+                );
+            }
+        }
+        Ok(events)
+    }
+
     /// Answer a [`PendingChoice::MayReturnFromGraveyard`]: `choice` is empty to decline, or names
     /// the one graveyard card (one of the choice's `options`) returned to `player`'s hand
     /// ([`Effect::Choice(ChoiceEffect::MayReturnFromGraveyard)`] — Deadly Brew's rider).
@@ -399,8 +437,48 @@ impl Game {
         _player: PlayerId,
         choice: Vec<ObjectId>,
     ) -> Result<Vec<Event>, Reject> {
-        let Some(PendingChoice::MayReturnFromGraveyard { options, .. }) =
-            self.pending_choice.clone()
+        let Some(PendingChoice::MayReturnFromGraveyard {
+            options, mandatory, ..
+        }) = self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        if choice.len() > 1 || choice.iter().any(|id| !options.contains(id)) {
+            return Err(Reject::IllegalChoice);
+        }
+        // "you return" (mandatory): a legal card must be chosen — declining is illegal (CR 700.2).
+        if mandatory && choice.is_empty() {
+            return Err(Reject::IllegalChoice);
+        }
+        self.finish_answer();
+
+        let mut events = Vec::new();
+        for &id in &choice {
+            self.push_apply(
+                &mut events,
+                Event::ReturnedToHand {
+                    card: self.next_object_id(),
+                    from: id,
+                },
+            );
+        }
+        Ok(events)
+    }
+
+    /// Answer a [`PendingChoice::MayExileDiscardedToPlay`]: `choice` is empty to decline, or names
+    /// the one discarded nonland card (one of the choice's `options`) exiled from `player`'s
+    /// graveyard face-up with impulse-play permission
+    /// ([`Effect::Choice(ChoiceEffect::MayExileDiscardedNonlandMayPlay)`] — Conspiracy Theorist).
+    /// The impulse-play twin of [`Self::answer_may_return_from_graveyard`] — minting the same
+    /// [`Event::ExiledFromGraveyardMayPlay`] as [`MillEffect::ExileFromGraveyardMayPlay`].
+    pub(crate) fn answer_may_exile_discarded_to_play(
+        &mut self,
+        _player: PlayerId,
+        choice: Vec<ObjectId>,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::MayExileDiscardedToPlay {
+            player, options, ..
+        }) = self.pending_choice.clone()
         else {
             return Err(Reject::IllegalChoice);
         };
@@ -413,7 +491,8 @@ impl Game {
         for &id in &choice {
             self.push_apply(
                 &mut events,
-                Event::ReturnedToHand {
+                Event::ExiledFromGraveyardMayPlay {
+                    player,
                     card: self.next_object_id(),
                     from: id,
                 },

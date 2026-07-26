@@ -69,6 +69,13 @@ impl Game {
                 }) else {
                     return;
                 };
+                // CR 303.4f: "you may attach it to the token" is a real attach, so the moving
+                // Aura's own enchant restriction (and any protection the token has) must permit
+                // it. Animate Dead can only enchant the creature it reanimated, never a fresh Cat
+                // token, so the snap is illegal and the Aura stays where it is (guard-return).
+                if !self.noncast_attach_legal(entering, token) {
+                    return;
+                }
                 self.push_apply(
                     events,
                     Event::AttachedTo {
@@ -91,6 +98,20 @@ impl Game {
                     return;
                 };
                 self.queue_reflexive_trigger(controller, source, then, token);
+            }
+            // A reflexive "when one or more nonland cards are exiled this way" trigger (CR 603.3b —
+            // Augusta, Order Returned): the "you do" is that this resolution's preceding
+            // `EachPlayerExilesFromGraveyard` fan-out exiled one or more nonland cards. Zero
+            // exiled: no reflexive trigger at all (guard-return) — no follow-up object, no target
+            // prompt. Otherwise enqueue each `then` effect as its own reflexive triggered ability,
+            // placed the next time a player would get priority, with the settled count baked in so
+            // its counter payload reads the number chosen before the follow-up resolves.
+            Effect::Zone(ZoneEffect::ReflexiveTriggerIfNonlandExiled { then }) => {
+                let count = self.resolution_frame.nonland_cards_exiled_this_way;
+                if count == 0 {
+                    return;
+                }
+                self.queue_reflexive_counter_trigger(controller, source, then, count);
             }
             // The reflexive ability's own resolution: return the chosen graveyard card (CR 601.2c
             // target, may be `None` — "up to one") to the battlefield attached to the minted

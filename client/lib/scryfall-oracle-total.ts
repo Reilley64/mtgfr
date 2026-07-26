@@ -51,9 +51,7 @@ function parseOracleCounts(text: string): { value: number; bySet: Record<string,
   return { value, bySet };
 }
 
-export async function refreshOracleTotal(
-  fetchImpl: typeof fetch = globalThis.fetch,
-): Promise<number | null> {
+export async function refreshOracleTotal(fetchImpl: typeof fetch = globalThis.fetch): Promise<number | null> {
   try {
     const metaRes = await fetchImpl(BULK_URL, {
       headers: { Accept: "application/json", "User-Agent": UA },

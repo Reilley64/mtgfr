@@ -167,6 +167,16 @@ impl Game {
         // of directly) at this point in the cast sequence.
         let x = inputs.x.min(u8::MAX as u32);
 
+        // A printed non-mana ceiling on X (CR 601.2b — Open the Way's "X can't be greater than
+        // the number of players in the game"): rejected before payment, so it's an illegal
+        // announcement rather than a mana shortfall. Enumeration (list) requests announce X=0, so
+        // they never trip it.
+        if let Some(cap) = self.cast_x_ceiling(printed.as_ref())
+            && x > cap
+        {
+            return Err(Reject::IllegalChoice);
+        }
+
         let chosen = if printed.modal {
             if inputs.target.is_some() {
                 return Err(Reject::IllegalMode);
@@ -770,6 +780,7 @@ mod tests {
             halves: empty_slice(),
             suspend: None,
             vanishing: None,
+            cast_x_max: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,

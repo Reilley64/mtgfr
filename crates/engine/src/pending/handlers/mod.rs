@@ -125,6 +125,7 @@ mod tests {
                 halves: empty_slice(),
                 suspend: None,
                 vanishing: None,
+                cast_x_max: None,
                 devour: None,
                 demonstrate: false,
                 enter_as_copy: None,

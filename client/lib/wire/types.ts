@@ -492,7 +492,8 @@ export type PendingChoiceView =
       source: U32;
       target_player: number;
     }
-  | { items: Array<ChoiceItem>; kind: "may_return_from_graveyard"; player: number; source: U32 }
+  | { items: Array<ChoiceItem>; kind: "may_return_from_graveyard"; mandatory: boolean; player: number; source: U32 }
+  | { items: Array<ChoiceItem>; kind: "may_exile_discarded_to_play"; player: number; source: U32 }
   | { items: Array<ChoiceItem>; kind: "may_discard"; player: number; source: U32 }
   | { count: number; items: Array<ChoiceItem>; kind: "discard"; player: number }
   | { items: Array<ChoiceItem>; kind: "put_land_from_hand"; player: number }
@@ -535,7 +536,13 @@ export type PendingChoiceView =
   | { amount: number; kind: "choose_mana_color"; player: number; source: U32 }
   | { kind: "choose_creature_type"; options: Array<string>; player: number; source: U32 }
   | { kind: "choose_color"; player: number; source: U32 }
-  | { items: Array<ChoiceItem>; kind: "choose_copy_target"; player: number; source: U32 }
+  | {
+      items: Array<ChoiceItem>;
+      kind: "choose_copy_target";
+      player: number;
+      put_counter_on_creature?: boolean;
+      source: U32;
+    }
   | { attachment: U32; items: Array<ChoiceItem>; kind: "choose_attach_host"; optional: boolean; player: number }
   | { items: Array<ChoiceItem>; kind: "choose_legendary_keep"; name: string; player: number }
   | { count: number; items: Array<ChoiceItem>; kind: "put_from_hand_on_top"; player: number }

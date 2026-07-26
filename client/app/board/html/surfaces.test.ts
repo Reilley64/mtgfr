@@ -10,6 +10,7 @@ import { html } from "foldkit/html";
 import { Scene } from "foldkit/test";
 import { beforeAll, expect, test } from "vitest";
 import { testMessageRef } from "~/i18n/testMessageRef";
+import { fromProtoWire } from "~/wire/protoMap";
 import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/types";
 import type { GameFoldState, LogLine } from "../../game/fold";
 import { emptyCostPicks, type ModalCast, type PlayModePick, type XPromptState } from "../action/execution";
@@ -2195,6 +2196,94 @@ test("pending gy aim shows coach when exile_from_graveyard cards share a pile", 
     ),
     Scene.expect(Scene.testId("pending-gy-aim")).toExist(),
     Scene.expect(Scene.testId("pile-card-8")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+  );
+});
+
+test("pending gy aim shows Decline only for optional may_return_from_graveyard", () => {
+  const gy = card(8, {
+    name: "Reanimate me",
+    zone: ZONE.Graveyard,
+    kind: { kind: "creature", power: 1, toughness: 1 },
+  });
+
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        pileExpand: { zone: ZONE.Graveyard, owner: 0 },
+      },
+      gameState({
+        objects: [gy],
+        pending_choice: {
+          kind: "may_return_from_graveyard",
+          player: 0,
+          source: 1,
+          mandatory: false,
+          items: [{ id: 8, label: "Reanimate me" }],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-gy-aim")).toExist(),
+    Scene.expect(Scene.testId("prompt-decline")).toExist(),
+  );
+
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        pileExpand: { zone: ZONE.Graveyard, owner: 0 },
+      },
+      gameState({
+        objects: [gy],
+        pending_choice: {
+          kind: "may_return_from_graveyard",
+          player: 0,
+          source: 1,
+          mandatory: true,
+          items: [{ id: 8, label: "Reanimate me" }],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-gy-aim")).toExist(),
+    Scene.expect(Scene.testId("prompt-decline")).toBeAbsent(),
+  );
+});
+
+test("pending gy aim shows Exile and Don't exile for may_exile_discarded_to_play", () => {
+  const bolt = card(8, {
+    name: "Lightning Bolt",
+    zone: ZONE.Graveyard,
+    kind: { kind: "instant" },
+  });
+
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        pileExpand: { zone: ZONE.Graveyard, owner: 0 },
+      },
+      gameState({
+        objects: [bolt],
+        pending_choice:
+          fromProtoWire<VisibleState>({
+            pendingChoice: {
+              choice: {
+                case: "mayExileDiscardedToPlay",
+                value: {
+                  player: 0,
+                  source: 1,
+                  items: [{ id: 8, label: "Lightning Bolt" }],
+                },
+              },
+            },
+          }).pending_choice ?? null,
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-gy-aim")).toExist(),
+    Scene.expect(Scene.testId("pile-card-8")).toExist(),
+    Scene.expect(Scene.testId("prompt-submit")).toHaveText("Exile"),
+    Scene.expect(Scene.testId("prompt-decline")).toHaveText("Don't exile"),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
   );
 });

@@ -5,9 +5,6 @@
 # "Flying, haste. Whenever this creature attacks or becomes the target of a spell, create a
 # Treasure token. Treasures you control have '{T}, Sacrifice this artifact: Add two mana of any
 # one color.'"
-# ponytail: "two mana of any *one* color" (both credits the same color) is modeled as two
-# independently-any credits (mana = ["any", "any"]) — a harmless over-permissiveness; no pool
-# card can tell the difference (nothing forces one Treasure's output to match colors).
 name = "Goldspan Dragon"
 id = "716b3ea2-45b7-4a8f-af72-de7f4e510eff"
 default_print = "848c1951-90fa-4f01-9aed-76f1afcd9995"
@@ -54,7 +51,10 @@ timing = "static"
 [[abilities.effects]]
 type = "static"
 mode = "grant_mana_ability"
+# "two mana of any one color" (CR 106.4): both credits lock to one chosen color, so the granted
+# ability pauses on a color choice rather than producing two independent wildcards.
 mana = ["any", "any"]
+single_color = true
 
 [abilities.effects.filter]
 types = ["artifact"]

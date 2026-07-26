@@ -1,6 +1,6 @@
 ---
 name: fidelity-grind
-description: Given an Archidekt deck link, make every card in that deck faithful — deck intake, fidelity report checklist, observability re-audit, pure-authoring pass, engine grind loop, client catch-up, full verify + skill retrospective, then an open PR watched through CI and review to merge. Use when the user provides a deck URL and wants the pool to support it faithfully.
+description: Given an Archidekt deck link or frozen decklist, make every card in that deck faithful — deck intake, fidelity report checklist, observability re-audit, pure-authoring pass, engine grind loop, client catch-up, full verify + skill retrospective, then an open PR watched through CI and review to merge. Use when the user provides a deck source and wants the pool to support it faithfully.
 ---
 
 # Fidelity Grind
@@ -11,7 +11,7 @@ encodes the process that took the first 429-card pool from ~60% to 99.3% faithfu
 `test-driven-development` skill (red → green) throughout. Use other obra/superpowers skills
 named below for isolation, planning, verification, review, and branch finish.
 
-**Inputs:** an Archidekt deck URL (`https://archidekt.com/decks/<id>/<slug>`).
+**Inputs:** either an Archidekt deck URL (`https://archidekt.com/decks/<id>/<slug>`) or a frozen local decklist (for example `docs/decklists/<slug>.md` sourced from an official Wizards list).
 **Output:** every deck card scripted in `crates/cards/data/`, faithful or carrying a precise
 `approximates` residual; engine + client green; an open PR against the default branch with
 the wrap-up report as its body.
@@ -34,6 +34,10 @@ the wrap-up report as its body.
 - Follow **`using-git-worktrees`** to put the grind in an isolated workspace. Prefer the
   platform-native worktree flow; fall back to:
   `git worktree add ../mtgfr-grind-<slug> -b fidelity-<slug> main`
+- If the platform flow or a nested `git worktree add` fails but you are already in an isolated
+  checkout, treat the current checkout as the grind root and stamp that absolute path into every
+  brief/script token. The SoC program used `/workspace` this way; do not invent a second nested
+  worktree just to satisfy the ritual.
 - Commit every green wave on that branch. **Never merge to the default branch until the grind is done**
   and the user confirms. Periodically sync-merge the default branch *into* the grind branch (delegate to an
   agent; full workspace tests both sides after resolving). If the default branch was
@@ -51,10 +55,17 @@ the wrap-up report as its body.
 
 ## Phase 1 — Deck intake
 
-- Deck id from the URL; fetch `https://archidekt.com/api/decks/<id>/` (public JSON).
-  Each entry: `card.oracleCard.name`, quantity, categories. Ignore basic-land quantities;
-  dedupe by name. Cross-check oracle text against Scryfall when authoring (Archidekt's
-  `oracleCard.text` can lag) — the TOML `oracle` field must be current Scryfall text.
+- Intake source can be either an Archidekt deck JSON or a frozen local decklist.
+- For Archidekt, fetch `https://archidekt.com/api/decks/<id>/` (public JSON). Each entry:
+  `card.oracleCard.name`, quantity, categories. Ignore basic-land quantities; dedupe by name.
+- For a frozen local decklist (for example the SoC Wizards lists committed under
+  `docs/decklists/*.md`), treat the checked-in list as the source of truth and run
+  `python tooling/soc_fidelity_intake.py docs/decklists/<slug>.md` to baseline A/B/missing
+  against `crates/cards/data/`. Use that output as the starting checklist only; the manual
+  observability re-audit still decides what stays faithful vs. moves to B/D.
+- Cross-check oracle text against Scryfall when authoring — Archidekt's `oracleCard.text` can lag,
+  and local decklists omit oracle text entirely — so the TOML `oracle` field must be current
+  Scryfall text.
 - Card identity is the TOML `name` field (not the filename). Match deck names against
   `grep -h '^name = ' crates/cards/data/*.toml`.
 
@@ -269,14 +280,11 @@ pool that supports it. After client catch-up (the wire is settled by then):
    still match reality: file paths, recipe names, API/lobby flows. Commit the skill edits to
    the grind branch so they ride the PR. Anything learned *during* Phase 7 PR watch (a CI
    failure mode, a review pattern) goes in a small `docs(skills):` follow-up PR.
-5. **Commit hygiene for the PR:** the repo commitlint-lints every PR commit (≤72-char
-   header, lower-case subject, type enum — `merge:` is not a type and defeats commitlint's
-   built-in merge-commit ignore). Grind-wave headers rarely survive this, and after a
-   history rewrite the branch lineage can't be made to lint at all. Since `main` takes
-   squash merges anyway, collapse the branch to ONE conforming commit with the identical
-   verified tree: tag the old head (`git tag grind-<slug>-history`), then
-   `git commit-tree 'HEAD^{tree}' -p origin/<default> -m "<conforming message>"`,
-   `git reset --hard` to it, and force-push. The PR body carries the full story.
+5. **Commit hygiene for the PR:** keep verified wave history by default. This repo's CI
+   lint-checks the **PR title** for release semantics, not every branch commit, so do **not**
+   squash or rewrite the branch just for aesthetics. Only rewrite history if an actual CI /
+   commitlint gate blocks on branch commit messages or merge subjects; tag the old head first,
+   note the reason in the wrap-up report, and force-push only as the unblock.
 6. **End with an open PR, not a direct merge:** follow **`finishing-a-development-branch`**
    (verify tests → present options → execute). Prefer opening a PR with `gh pr create`
    against the default branch. The PR body is the wrap-up report — the deck
@@ -315,5 +323,6 @@ Stay on the PR until it merges; don't end the run at "PR opened".
   sentence/clause it implements, quoted directly above. Comments wrap at 120 chars.
 - Effects always use the `[[abilities.effects]]` array form.
 - Any TOML-surface change updates `DSL_REFERENCE.md` in the same change.
-- `CardDef: Copy` — `&'static` leaked slices, never `Vec`/`String` fields.
+- `CardDef` is `Clone`, not `Copy`; keep skill/backlog/spec prose aligned with the current
+  `Arc`-backed printed-definition storage.
 - Every bug fix gets a regression test at the lowest layer that catches it.

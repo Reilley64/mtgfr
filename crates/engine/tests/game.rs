@@ -581,6 +581,7 @@ static FLASHBACK_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -649,6 +650,7 @@ static COMBAT_ONLY_INSTANT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -755,6 +757,7 @@ fn flashback_rejected_when_card_lacks_flashback() {
         halves: empty_slice(),
         suspend: None,
         vanishing: None,
+        cast_x_max: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
@@ -811,6 +814,7 @@ fn flashback_pays_the_flashback_cost_not_the_printed_cost() {
         halves: empty_slice(),
         suspend: None,
         vanishing: None,
+        cast_x_max: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
@@ -874,6 +878,7 @@ fn flashback_with_pay_life_additional_cost() {
         halves: empty_slice(),
         suspend: None,
         vanishing: None,
+        cast_x_max: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
@@ -2030,6 +2035,7 @@ static TWO_ETB: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -2120,6 +2126,7 @@ static PINGER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -2196,6 +2203,7 @@ static MAY_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -2292,6 +2300,7 @@ static MAY_PAY_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -2377,6 +2386,7 @@ static LOOK_DIG: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -2462,6 +2472,7 @@ static LOOK_DIG_MANDATORY_TWO: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -2548,6 +2559,7 @@ static LOOK_DIG_TO_BATTLEFIELD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -2660,6 +2672,7 @@ fn creature(
         halves: empty_slice(),
         suspend: None,
         vanishing: None,
+        cast_x_max: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
@@ -5324,6 +5337,7 @@ static PUMP_POWER_PLUS_2: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -5403,6 +5417,7 @@ static GRANT_FLYING: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -5480,6 +5495,7 @@ static GRANT_INDESTRUCTIBLE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -5566,6 +5582,7 @@ static DESTROY: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -5656,6 +5673,7 @@ static DESTROY_NONARTIFACT_NONBLACK: LazyLock<CardDef> = LazyLock::new(|| CardDe
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -5742,6 +5760,7 @@ static DESTROY_ANY_PERMANENT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -5831,6 +5850,7 @@ static DESTROY_NONBASIC_LAND: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -5916,6 +5936,7 @@ static EXILE_FROM_ANY_GRAVEYARD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -6006,6 +6027,7 @@ static EXILE_ANY_CARD_FROM_ANY_GRAVEYARD: LazyLock<CardDef> = LazyLock::new(|| C
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -6094,6 +6116,7 @@ static EXILE_NONCREATURE_ARTIFACT_OR_ENCHANTMENT: LazyLock<CardDef> = LazyLock::
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -6182,6 +6205,7 @@ static EXILE_SMALL_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -6267,6 +6291,7 @@ static EXILE_ENCHANTMENT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -6352,6 +6377,7 @@ static EXILE_ARTIFACT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -6419,6 +6445,7 @@ static SHROUD_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -6486,6 +6513,7 @@ static HEXPROOF_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -6565,6 +6593,7 @@ static MASS_INDESTRUCTIBLE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -6643,6 +6672,7 @@ static MASS_FLYING_PER_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -6722,6 +6752,7 @@ static GRANT_UNBLOCKABLE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -7032,6 +7063,146 @@ fn quintorius_declining_the_may_discard_skips_the_whole_if_you_do_rider() {
 }
 
 #[test]
+fn quintorius_history_chaser_is_castable_as_a_planeswalker_commander() {
+    // "Quintorius, History Chaser can be your commander." The lone planeswalker face commander of
+    // the five soc precons: it starts in the command zone and casts from there onto the
+    // battlefield as a planeswalker with its printed starting loyalty (CR 606.5b).
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let cmd = game.designate_commander(PlayerId(0), card("Quintorius, History Chaser"));
+    assert_eq!(
+        game.zone_of(cmd),
+        Zone::Command,
+        "the commander starts in the command zone"
+    );
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: cmd,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .expect("the planeswalker commander is castable from the command zone");
+    assert_eq!(game.zone_of(cmd), Zone::Stack, "cast from the command zone");
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.zone_of(cmd),
+        Zone::Battlefield,
+        "the commander resolves onto the battlefield"
+    );
+    assert_eq!(
+        game.loyalty(game.current_id(cmd)),
+        5,
+        "it enters with its printed starting loyalty"
+    );
+}
+
+#[test]
+fn quintorius_history_chaser_loyalty_is_once_per_turn() {
+    // CR 606.3: only one loyalty ability of a given planeswalker may be activated each turn. After
+    // the +1 this turn, the −4 is illegal even though the loyalty (now 6) could pay for it.
+    let mut game = Game::new();
+    let pw = game.spawn_on_battlefield(PlayerId(0), card("Quintorius, History Chaser"));
+    game.spawn_in_hand(PlayerId(0), card("Forest")); // so the +1's may-discard actually pauses
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: pw,
+        ability_index: 0, // +1
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // the +1 resolves, pausing on its may-discard
+    game.submit(Intent::ChooseSacrifices {
+        player: PlayerId(0),
+        sacrifices: vec![],
+    })
+    .expect("declining the +1's may-discard is legal");
+    assert_eq!(game.loyalty(pw), 6, "the +1 raised loyalty 5 → 6");
+
+    let second = game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: pw,
+        ability_index: 1, // −4
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    });
+    assert_eq!(
+        second,
+        Err(Reject::CannotActivate),
+        "a second loyalty ability the same turn is illegal (CR 606.3)"
+    );
+}
+
+#[test]
+fn quintorius_history_chaser_graveyard_exit_makes_a_red_white_spirit() {
+    // "Whenever one or more cards leave your graveyard, create a 3/2 red and white Spirit creature
+    // token." Reanimate pulls one card out of P0's graveyard — one card leaving fires the token.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    game.spawn_on_battlefield(PlayerId(0), card("Quintorius, History Chaser"));
+    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let reanimate = game.spawn_in_hand(PlayerId(0), card("Reanimate"));
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: reanimate,
+        target: Some(Target::Object(corpse)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // Reanimate resolves: the creature leaves the graveyard
+    resolve_top_of_stack(&mut game); // the graveyard-exit trigger resolves: create the Spirit
+
+    let spirit = game
+        .live_object_ids()
+        .into_iter()
+        .find(|&id| {
+            game.zone_of(id) == Zone::Battlefield
+                && game.owner_of(id) == PlayerId(0)
+                && game.effective_subtypes(id).contains(&"Spirit")
+        })
+        .expect("the graveyard exit created a Spirit token");
+    assert_eq!(
+        (game.power(spirit), game.toughness(spirit)),
+        (3, 2),
+        "the Spirit token is 3/2"
+    );
+    let colors = game.colors_of(spirit);
+    assert!(
+        colors[Color::Red.index()] && colors[Color::White.index()],
+        "the Spirit token is red and white"
+    );
+}
+
+#[test]
 fn unblockable_prevents_any_block_declaration_this_turn() {
     let mut game = TestGame::new();
     game.fund_mana(PlayerId(0));
@@ -7190,6 +7361,7 @@ static GROWTH: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -7293,6 +7465,7 @@ static INKLING: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -7375,6 +7548,7 @@ static MAKE_INKLINGS: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -9049,6 +9223,7 @@ static PEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -9131,6 +9306,7 @@ static MAKE_PEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -9345,6 +9521,89 @@ fn twinflame_token_copy_gains_haste_and_exiles() {
 }
 
 #[test]
+fn twinflame_token_copiable_snapshot_carries_haste() {
+    // Copy-effect exception riders slice 1: Twinflame's "except it has haste" is part of the
+    // token's *copiable* values (CR 707.2), so its copiable snapshot reports haste — the rider a
+    // second-generation copy preserves — not merely a transient until-end-of-turn boost.
+    let mut game = Game::new();
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let twinflame = game.spawn_in_hand(PlayerId(0), card("Twinflame"));
+
+    cast_twinflame_and_resolve(&mut game, twinflame, 1);
+    let copy = battlefield_named(&game, PlayerId(0), "Grizzly Bear")
+        .into_iter()
+        .find(|&id| id != mine)
+        .expect("Twinflame minted a copy");
+
+    assert!(game.has_keyword(copy, Keyword::Haste), "the copy has haste");
+    assert!(
+        game.copiable_keywords(copy).contains(&Keyword::Haste),
+        "haste is a copiable rider, not a transient boost — a copy of this token keeps it"
+    );
+    assert!(
+        game.copiable_keywords(mine).is_empty(),
+        "the original Grizzly Bear carries no copy-exception rider"
+    );
+}
+
+#[test]
+fn rite_of_replication_copying_a_twinflame_token_preserves_haste() {
+    // Copy-effect exception riders slice 2 (token-copy readers): Rite of Replication makes "a
+    // token that's a copy of target creature." When that creature is itself a first-generation
+    // copy carrying a copiable rider (a Twinflame haste token), the second-generation copy keeps
+    // haste (CR 707.2 — the copy uses the copied object's current copiable values).
+    let mut game = Game::new();
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let twinflame = game.spawn_in_hand(PlayerId(0), card("Twinflame"));
+    let rite = game.spawn_in_hand(PlayerId(0), card("Rite of Replication"));
+
+    cast_twinflame_and_resolve(&mut game, twinflame, 1);
+    let haste_token = battlefield_named(&game, PlayerId(0), "Grizzly Bear")
+        .into_iter()
+        .find(|&id| id != mine)
+        .expect("Twinflame minted a haste token");
+    assert!(
+        game.copiable_keywords(haste_token)
+            .contains(&Keyword::Haste)
+    );
+
+    let before: Vec<ObjectId> = battlefield_named(&game, PlayerId(0), "Grizzly Bear");
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: rite,
+        target: Some(Target::Object(haste_token)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .expect("Rite is castable");
+    resolve_top_of_stack(&mut game);
+
+    let second_gen = battlefield_named(&game, PlayerId(0), "Grizzly Bear")
+        .into_iter()
+        .find(|&id| !before.contains(&id))
+        .expect("Rite minted a second-generation copy");
+    assert!(
+        game.has_keyword(second_gen, Keyword::Haste),
+        "copying a copy keeps its 'except it has haste' rider (CR 707.2)"
+    );
+    assert!(
+        game.copiable_keywords(second_gen).contains(&Keyword::Haste),
+        "the rider stays copiable on the second-generation copy — a third copy would keep it too"
+    );
+}
+
+#[test]
 fn a_token_copy_fires_the_originals_etb_trigger() {
     // Copying Elvish Visionary ("When this creature enters, draw a card") makes a token that
     // enters through the normal path — so its copied ETB fires and draws.
@@ -9468,6 +9727,7 @@ static HERALD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -10209,6 +10469,180 @@ fn muddle_becomes_copy_of_chosen_creature_until_end_of_turn_on_magecraft() {
     assert!(
         !game.has_keyword(muddle, Keyword::Myriad),
         "myriad expires with the copy"
+    );
+}
+
+#[test]
+fn muddle_copied_form_copiable_snapshot_carries_myriad() {
+    // Copy-effect exception riders slice 1: Muddle's "except it has myriad" is part of its
+    // copied form's *copiable* values (CR 707.2), so the copiable snapshot reports myriad — the
+    // rider a second-generation copy of Muddle preserves — and it is cleared when the
+    // until-end-of-turn copy reverts.
+    let mut game = Game::new();
+    let muddle = game.spawn_on_battlefield(PlayerId(0), card("Muddle, the Ever-Changing"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), creature("Big Bear", 5, 5, &[]));
+    let dummy = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
+
+    fire_muddle_magecraft(&mut game, dummy, true, Some(bear));
+    resolve_whole_stack(&mut game);
+
+    assert!(
+        game.copiable_keywords(muddle).contains(&Keyword::Myriad),
+        "myriad is a copiable rider on Muddle's copied form"
+    );
+
+    pass_until_next_turn(&mut game);
+    assert!(
+        game.copiable_keywords(muddle).is_empty(),
+        "the until-end-of-turn copy reverting clears the copiable rider"
+    );
+}
+
+#[test]
+fn muddle_copying_a_twinflame_haste_token_keeps_both_haste_and_myriad() {
+    // Copy-effect exception riders slice 3 (permanent-copy readers): when Muddle becomes a copy
+    // of a creature that is *already* a copy carrying a rider (a Twinflame haste token you
+    // control), it keeps that creature's haste (CR 707.2) unioned with the myriad Muddle's own
+    // ability adds — neither rider is dropped.
+    let mut game = Game::new();
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let twinflame = game.spawn_in_hand(PlayerId(0), card("Twinflame"));
+
+    // Cast Twinflame while the Bear is the only creature, so it auto-targets it → one haste token.
+    cast_twinflame_and_resolve(&mut game, twinflame, 1);
+    let haste_token = battlefield_named(&game, PlayerId(0), "Grizzly Bear")
+        .into_iter()
+        .find(|&id| id != mine)
+        .expect("Twinflame minted a haste token");
+
+    let muddle = game.spawn_on_battlefield(PlayerId(0), card("Muddle, the Ever-Changing"));
+    let dummy = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
+    fire_muddle_magecraft(&mut game, dummy, true, Some(haste_token));
+    resolve_whole_stack(&mut game);
+
+    assert_eq!(
+        game.def_of(muddle).name,
+        "Grizzly Bear",
+        "Muddle became a copy of the Twinflame token"
+    );
+    assert!(
+        game.has_keyword(muddle, Keyword::Myriad),
+        "Muddle's own 'except it has myriad' rider"
+    );
+    assert!(
+        game.has_keyword(muddle, Keyword::Haste),
+        "the copied token's 'except it has haste' rider is preserved (CR 707.2)"
+    );
+    let riders = game.copiable_keywords(muddle);
+    assert!(riders.contains(&Keyword::Myriad) && riders.contains(&Keyword::Haste));
+}
+
+#[test]
+fn brudiclad_copying_a_twinflame_token_carries_its_haste_rider() {
+    // Copy-effect exception riders slice 3 (permanent-copy readers): Brudiclad's "each other
+    // token you control becomes a copy of that token" copies the chosen token's copiable values,
+    // including a copy-effect rider (a Twinflame haste token). The converted token keeps haste as
+    // a *copiable* rider (CR 707.2) — distinct from Brudiclad's own token-haste anthem, which
+    // grants no copiable value — so a further copy of it would keep haste too.
+    let mut game = Game::new();
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let twinflame = game.spawn_in_hand(PlayerId(0), card("Twinflame"));
+    cast_twinflame_and_resolve(&mut game, twinflame, 1);
+    let haste_token = battlefield_named(&game, PlayerId(0), "Grizzly Bear")
+        .into_iter()
+        .find(|&id| id != mine)
+        .expect("Twinflame minted a haste token");
+
+    game.spawn_on_battlefield(PlayerId(0), card("Brudiclad, Telchor Engineer"));
+    advance_until(&mut game, |g| g.current_step() == Step::BeginCombat);
+    resolve_top_of_stack(&mut game); // Brudiclad's begin-combat trigger mints a Myr, then pauses
+
+    let Some(PendingChoice::ChooseTokenToCopy { .. }) = game.pending_choice() else {
+        panic!(
+            "Brudiclad pauses to choose a token to copy, got {:?}",
+            game.pending_choice()
+        );
+    };
+    let grizzlies_before = battlefield_named(&game, PlayerId(0), "Grizzly Bear");
+    game.submit(Intent::ChooseCopyTarget {
+        player: PlayerId(0),
+        copy: Some(haste_token),
+    })
+    .unwrap();
+
+    let converted = battlefield_named(&game, PlayerId(0), "Grizzly Bear")
+        .into_iter()
+        .find(|&id| !grizzlies_before.contains(&id))
+        .expect("the Myr token became a copy of the Twinflame Grizzly");
+    assert!(
+        game.copiable_keywords(converted).contains(&Keyword::Haste),
+        "the copied token's haste rider is preserved as a copiable value (CR 707.2)"
+    );
+}
+
+#[test]
+fn recopying_a_vanilla_token_drops_a_prior_copy_effect_haste_rider() {
+    // Regression (copy-effect riders): a new copy effect overwrites the object's copiable values
+    // wholesale (CR 707.2), so a stale "except it has haste" rider left by a *prior* copied form
+    // must not survive. Brudiclad first makes a Myr token become a copy of a Twinflame haste token
+    // (picking up haste as a copiable rider), then on a later combat that same token becomes a copy
+    // of a plain Myr — its copiable haste rider must be gone, not carried over.
+    let mut game = Game::new();
+    // Stock libraries so crossing draw steps into a later turn does not deck anyone out.
+    game.stack_library(PlayerId(0), &vec![card("Forest"); 10]);
+    game.stack_library(PlayerId(1), &vec![card("Forest"); 10]);
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let twinflame = game.spawn_in_hand(PlayerId(0), card("Twinflame"));
+    cast_twinflame_and_resolve(&mut game, twinflame, 1);
+    let haste_token = battlefield_named(&game, PlayerId(0), "Grizzly Bear")
+        .into_iter()
+        .find(|&id| id != mine)
+        .expect("Twinflame minted a haste token");
+
+    game.spawn_on_battlefield(PlayerId(0), card("Brudiclad, Telchor Engineer"));
+
+    // First combat: Brudiclad mints a Myr and makes it a copy of the Twinflame haste token.
+    advance_until(&mut game, |g| g.current_step() == Step::BeginCombat);
+    resolve_top_of_stack(&mut game);
+    let grizzlies_before = battlefield_named(&game, PlayerId(0), "Grizzly Bear");
+    game.submit(Intent::ChooseCopyTarget {
+        player: PlayerId(0),
+        copy: Some(haste_token),
+    })
+    .unwrap();
+    let converted = battlefield_named(&game, PlayerId(0), "Grizzly Bear")
+        .into_iter()
+        .find(|&id| !grizzlies_before.contains(&id))
+        .expect("the Myr token became a copy of the Twinflame Grizzly");
+    assert!(
+        game.copiable_keywords(converted).contains(&Keyword::Haste),
+        "setup: the converted token picked up the copy-effect haste rider"
+    );
+
+    // Later combat: Brudiclad mints a fresh plain Myr and makes the earlier token a copy of it.
+    advance_until(&mut game, |g| g.active_player() != PlayerId(0));
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::BeginCombat
+    });
+    resolve_top_of_stack(&mut game);
+    let fresh_myr = battlefield_named(&game, PlayerId(0), "Myr")
+        .into_iter()
+        .next()
+        .expect("Brudiclad minted a fresh plain Myr");
+    game.submit(Intent::ChooseCopyTarget {
+        player: PlayerId(0),
+        copy: Some(fresh_myr),
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.def_of(converted).name,
+        "Myr",
+        "the earlier token became a copy of the plain Myr"
+    );
+    assert!(
+        !game.copiable_keywords(converted).contains(&Keyword::Haste),
+        "the prior copy's haste rider is cleared by the new copy effect (CR 707.2)"
     );
 }
 
@@ -11681,6 +12115,7 @@ fn auto_tap_pays_with_a_free_granted_mana_ability() {
                 }; 4],
             },
             restriction: None,
+            single_color: false,
         }),
         optional: false,
         min_level: 0,
@@ -11739,6 +12174,7 @@ fn auto_tap_pays_with_a_free_granted_mana_ability() {
         halves: empty_slice(),
         suspend: None,
         vanishing: None,
+        cast_x_max: None,
         uncounterable: false,
         conditional_keywords: empty_slice(),
         colors: empty_slice(),
@@ -11799,6 +12235,7 @@ fn auto_tap_pays_with_a_free_granted_mana_ability() {
         halves: empty_slice(),
         suspend: None,
         vanishing: None,
+        cast_x_max: None,
         uncounterable: false,
         conditional_keywords: empty_slice(),
         colors: empty_slice(),
@@ -13234,6 +13671,7 @@ static TARGET_OPPONENT_DRAWS_THREE: LazyLock<CardDef> = LazyLock::new(|| CardDef
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -14614,6 +15052,7 @@ static ANTHEM_LORD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -15256,6 +15695,7 @@ fn hofri_ghostforge_no_return_if_exiled_card_already_moved() {
             halves: empty_slice(),
             suspend: None,
             vanishing: None,
+            cast_x_max: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,
@@ -15453,6 +15893,7 @@ static TEST_COUNTER_SHEDDER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -15516,6 +15957,7 @@ static TEST_FOOD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -15616,6 +16058,7 @@ static TEST_SAC_A_FOOD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -18986,6 +19429,7 @@ static COLORLESS_ROCK: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -19627,6 +20071,7 @@ fn dual_land(name: &'static str, a: Color, b: Color) -> CardDef {
         halves: empty_slice(),
         suspend: None,
         vanishing: None,
+        cast_x_max: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
@@ -19715,6 +20160,7 @@ fn vanilla(name: &'static str, generic: u8, colored: [u8; 5]) -> CardDef {
         halves: empty_slice(),
         suspend: None,
         vanishing: None,
+        cast_x_max: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
@@ -20039,6 +20485,7 @@ fn hybrid_filter_land(name: &'static str, a: Color, b: Color) -> CardDef {
         halves: empty_slice(),
         suspend: None,
         vanishing: None,
+        cast_x_max: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
@@ -20310,6 +20757,7 @@ static DIES_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -20904,6 +21352,7 @@ static WATCHES_CREATURE_DIES: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -21023,6 +21472,7 @@ static WATCHES_CREATURE_DIES_ONCE_EACH_TURN: LazyLock<CardDef> = LazyLock::new(|
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -21168,6 +21618,7 @@ static CREATURE_MV3: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -21316,6 +21767,7 @@ static WATCHES_ANY_SACRIFICE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -21897,6 +22349,7 @@ static UPKEEP_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -21996,6 +22449,7 @@ static GRAVEYARD_UPKEEP_RETURN: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -22019,6 +22473,7 @@ static BATTLEFIELD_UPKEEP_RETURN: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -22564,6 +23019,7 @@ static EACH_UPKEEP_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -22684,6 +23140,7 @@ static END_STEP_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -22776,6 +23233,7 @@ static BEGIN_COMBAT_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -22900,6 +23358,7 @@ static GAIN_LIFE_ETB: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -22973,6 +23432,7 @@ static LIFE_GAIN_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -23159,6 +23619,7 @@ static MAGECRAFT_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -23671,6 +24132,7 @@ static INSTANT_FILLER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -23752,6 +24214,7 @@ static BECOMES_TARGETED_TREASURE_MAKER: LazyLock<CardDef> = LazyLock::new(|| Car
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -23867,6 +24330,7 @@ static AURA_CAST_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -23987,6 +24451,7 @@ static X_INSTANT_FILLER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -24050,6 +24515,7 @@ static HISTORIC_TEST_ARTIFACT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -24517,6 +24983,7 @@ static DRAW_ONE_TARGET: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -25207,6 +25674,7 @@ static COUNTER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -26224,6 +26692,7 @@ static X_EXILE_SELF_ON_RESOLVE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -28465,6 +28934,94 @@ static FLIGHT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
+    devour: None,
+    demonstrate: false,
+    enter_as_copy: None,
+    encore: None,
+    hand_ability: empty_slice(),
+    forecast: None,
+    may_choose_not_to_untap: false,
+    dredge: None,
+});
+
+/// A test-only colorless Aura that grants its host protection from white — a stand-in for
+/// whatever gives a creature protection between a Gift of Immortality death and the next end
+/// step, exercising the non-cast Aura-return legality gate (CR 303.4g / 702.16e).
+static PRO_WHITE_CLOAK: LazyLock<CardDef> = LazyLock::new(|| CardDef {
+    name: "Protection Cloak (test)",
+    id: "",
+    default_print: "",
+    cost: Cost::FREE,
+    kind: CardKind::Aura,
+    legendary: false,
+    uncounterable: false,
+    modal: false,
+    modal_choose: 1,
+    modal_choose_max: None,
+    modal_choose_max_if_commander: false,
+    identity_pips: empty_slice(),
+    colors: empty_slice(),
+    devoid: false,
+    enters_tapped: false,
+    enters_tapped_unless: None,
+    free_cast_if: None,
+    alternative_cost: None,
+    cast_only_during_combat: false,
+    cast_only_before_attackers: false,
+    approximates: None,
+    oracle: None,
+    set: "",
+    subtypes: empty_slice(),
+    otags: empty_slice(),
+    keywords: empty_slice(),
+    conditional_keywords: empty_slice(),
+    abilities: arc_slice([Ability {
+        timing: Timing::Static,
+        effect: Effect::Static(StaticEffect::GrantToAttached {
+            power: Amount::Fixed(0),
+            toughness: Amount::Fixed(0),
+            keywords: &[Keyword::ProtectionFrom(ProtectionScope::Color(
+                Color::White,
+            ))],
+            goad: false,
+            protection_from_chosen_color: false,
+            granted_ability: None,
+            cant_attack: false,
+            cant_block: false,
+            cant_attack_controller: false,
+            activated_abilities: None,
+            legendary_only: false,
+        }),
+        optional: false,
+        min_level: 0,
+        once_each_turn: false,
+        condition: None,
+        cost: Cost::FREE,
+    }]),
+    cycling: None,
+    cycling_sacrifice: SacrificeCost::None,
+    flashback: None,
+    echo: None,
+    cumulative_upkeep: None,
+    recover: None,
+    bestow: None,
+    morph: None,
+    evoke: None,
+    delve: false,
+    escape: None,
+    retrace: false,
+    graveyard_cast_cost: None,
+    cascade: false,
+    functions_in_graveyard: false,
+    enchant: None,
+    enchant_graveyard: false,
+    back: None,
+    adventure: None,
+    halves: empty_slice(),
+    suspend: None,
+    vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -28626,6 +29183,7 @@ static MUTATION: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -28834,6 +29392,42 @@ fn darksteel_mutation_sets_type_line() {
     );
 }
 
+#[test]
+fn darksteel_mutation_strips_enchantment_type_from_an_enchantment_creature() {
+    // CR 613.4: Darksteel Mutation makes the enchanted creature "an Insect artifact creature …
+    // and it loses all other … card types." On Doomwake Giant (an enchantment creature) that must
+    // drop the enchantment type — leaving exactly an artifact creature, not an enchantment
+    // creature artifact.
+    let mut game = Game::new();
+    let giant = game.spawn_on_battlefield(PlayerId(0), card("Doomwake Giant"));
+    assert!(
+        game.effective_types(giant).intersects(TypeSet::ENCHANTMENT),
+        "Doomwake Giant is printed an enchantment creature",
+    );
+
+    let mutation = game.spawn_in_hand(PlayerId(0), card("Darksteel Mutation"));
+    cast_and_resolve(&mut game, mutation, Some(Target::Object(giant)));
+    resolve_whole_stack(&mut game); // clear the Aura's own enters-constellation trigger
+
+    assert!(
+        game.effective_types(giant).intersects(TypeSet::ARTIFACT),
+        "the mutated Giant is an artifact creature",
+    );
+    assert!(
+        game.effective_types(giant).intersects(TypeSet::CREATURE),
+        "the mutated Giant is still a creature",
+    );
+    assert!(
+        !game.effective_types(giant).intersects(TypeSet::ENCHANTMENT),
+        "it loses its enchantment card type (CR 613.4 'loses all other card types')",
+    );
+    assert!(
+        game.effective_subtypes(giant).contains(&"Insect")
+            && !game.effective_subtypes(giant).contains(&"Giant"),
+        "creature types set to exactly Insect",
+    );
+}
+
 /// A test-only 2/2 flyer with a printed attack trigger (gain 1 life) and a printed free
 /// activated ability (gain 1 life) — exercises the CR 613/701 "loses all abilities" removal:
 /// under Darksteel Mutation none of these printed abilities/keywords should function.
@@ -28932,6 +29526,7 @@ static MUTABLE_FLYER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -30636,6 +31231,7 @@ static WATCHES_HOST_DIES_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -30726,6 +31322,7 @@ static PLAIN_AURA: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -32143,6 +32740,7 @@ static CONTROL_ATTACHED_AURA: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -32534,6 +33132,7 @@ fn may_return_ungated() -> CardDef {
                 ChoiceEffect::MayReturnFromGraveyard {
                     filter: CardFilter::Permanent,
                     if_you_sacrificed_this_way: false,
+                    mandatory: false,
                 },
             ))])),
         )
@@ -32948,6 +33547,7 @@ static EACH_EXILE_GRAVEYARD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -33058,17 +33658,13 @@ fn augusta_attack_exiles_each_graveyard_and_counters_target_per_nonland() {
 
     attack_with(&mut game, vec![augusta]);
 
-    // The attack trigger chooses its target attacking creature up front (Augusta is the only one).
-    let Some(PendingChoice::ChooseTarget { legal, .. }) = game.pending_choice() else {
-        panic!("Augusta's attack trigger pauses to choose a target attacking creature");
-    };
-    assert_eq!(legal, vec![Target::Object(augusta)]);
-    game.submit(Intent::ChooseTargets {
-        player: PlayerId(0),
-        targets: vec![Target::Object(augusta)],
-    })
-    .unwrap();
-    resolve_top_of_stack(&mut game);
+    // The attack trigger no longer front-loads a target: the counter target rides on the reflexive
+    // follow-up (chosen after the exiles), so the attack trigger goes straight on the stack.
+    assert!(
+        game.pending_choice().is_none(),
+        "no up-front target prompt — the target is chosen on the reflexive follow-up"
+    );
+    resolve_top_of_stack(&mut game); // the attack trigger resolves → graveyard fan-out begins
 
     // Each player exiles one graveyard card (APNAP): P0 then P1.
     game.submit(Intent::ChooseSacrifices {
@@ -33081,10 +33677,38 @@ fn augusta_attack_exiles_each_graveyard_and_counters_target_per_nonland() {
         sacrifices: vec![b_gy],
     })
     .unwrap();
-
-    assert!(game.pending_choice().is_none());
     assert_eq!(game.zone_of(a_gy), Zone::Exile);
     assert_eq!(game.zone_of(b_gy), Zone::Exile);
+
+    // Two nonland cards exiled → the reflexive trigger is created and only now chooses its target
+    // attacking creature, in a real window after the fan-out (Augusta is the only attacker).
+    let Some(PendingChoice::ChooseTarget { legal, .. }) = game.pending_choice() else {
+        panic!(
+            "the reflexive counter trigger pauses to choose a target attacking creature, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(legal, vec![Target::Object(augusta)]);
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(augusta)],
+    })
+    .unwrap();
+
+    // The reflexive trigger is a real, respondable stack object between the fan-out and the counter
+    // placement — it has not resolved yet, so no counters are on the attacker.
+    assert!(
+        matches!(game.stack().last(), Some(StackEntry::Ability { .. })),
+        "the reflexive counter trigger is on the stack, awaiting a response window"
+    );
+    assert_eq!(
+        game.plus_counters(augusta),
+        0,
+        "the counters are not placed until the reflexive trigger resolves"
+    );
+    resolve_top_of_stack(&mut game); // the reflexive trigger resolves → counters placed
+
+    assert!(game.pending_choice().is_none());
     assert_eq!(
         game.plus_counters(augusta),
         2,
@@ -33102,12 +33726,7 @@ fn augusta_attack_all_lands_exiled_gives_no_counters() {
     let b_gy = game.spawn_in_graveyard(PlayerId(1), card("Forest")); // land
 
     attack_with(&mut game, vec![augusta]);
-    game.submit(Intent::ChooseTargets {
-        player: PlayerId(0),
-        targets: vec![Target::Object(augusta)],
-    })
-    .unwrap();
-    resolve_top_of_stack(&mut game);
+    resolve_top_of_stack(&mut game); // the attack trigger resolves → graveyard fan-out begins
     game.submit(Intent::ChooseSacrifices {
         player: PlayerId(0),
         sacrifices: vec![a_gy],
@@ -33119,6 +33738,11 @@ fn augusta_attack_all_lands_exiled_gives_no_counters() {
     })
     .unwrap();
 
+    // Zero nonland cards exiled → no reflexive trigger is created at all, and no target prompt.
+    assert!(
+        game.pending_choice().is_none(),
+        "all-lands exile creates no second trigger and no target prompt"
+    );
     assert_eq!(
         game.zone_of(a_gy),
         Zone::Exile,
@@ -33142,12 +33766,7 @@ fn augusta_attack_short_graveyards_still_completes() {
     let b_gy = game.spawn_in_graveyard(PlayerId(1), VANILLA.clone());
 
     attack_with(&mut game, vec![augusta]);
-    game.submit(Intent::ChooseTargets {
-        player: PlayerId(0),
-        targets: vec![Target::Object(augusta)],
-    })
-    .unwrap();
-    resolve_top_of_stack(&mut game);
+    resolve_top_of_stack(&mut game); // the attack trigger resolves → graveyard fan-out begins
     // P0 is skipped (empty graveyard); P1 exiles their only card.
     assert_eq!(
         graveyard_exile_chooser(&game),
@@ -33159,6 +33778,20 @@ fn augusta_attack_short_graveyards_still_completes() {
         sacrifices: vec![b_gy],
     })
     .unwrap();
+
+    // One nonland exiled → the reflexive trigger targets the sole attacker, then resolves.
+    let Some(PendingChoice::ChooseTarget { .. }) = game.pending_choice() else {
+        panic!(
+            "the reflexive counter trigger pauses to choose a target attacking creature, got {:?}",
+            game.pending_choice()
+        );
+    };
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(augusta)],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // the reflexive trigger resolves → counter placed
 
     assert!(game.pending_choice().is_none());
     assert_eq!(game.zone_of(b_gy), Zone::Exile);
@@ -36427,6 +37060,7 @@ static NONCREATURE_PERMANENT_MV2: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -37090,6 +37724,7 @@ static RETURN_LAND_FROM_GRAVEYARD: LazyLock<CardDef> = LazyLock::new(|| CardDef 
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -37224,6 +37859,7 @@ static RETURN_SORCERY_FROM_GRAVEYARD: LazyLock<CardDef> = LazyLock::new(|| CardD
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -37490,6 +38126,7 @@ static EXILE_CARD_FROM_OPPONENTS_GRAVEYARD: LazyLock<CardDef> = LazyLock::new(||
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -37682,6 +38319,7 @@ static REPLENISH: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -37816,6 +38454,7 @@ static MASS_RETURN_ALL_CREATURES: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -40437,6 +41076,79 @@ fn a_summoning_sick_goaded_creature_is_not_required_to_attack() {
     .expect("a summoning-sick goaded creature isn't forced to attack");
 }
 
+#[test]
+fn a_goaded_creature_whose_controller_cannot_pay_the_attack_tax_is_not_forced() {
+    // CR 701.38a "if able" + CR 508.1g: a goaded creature must attack, but only if its controller
+    // can actually pay the tax to reach a legal defender. P0's only opponent (P1) taxes attacks
+    // with Ghostly Prison and P0 has no mana, so the goaded creature is "not able" and is not
+    // forced — an empty declaration is legal instead of wedging the step.
+    let mut game = Game::with_players(2, 0);
+    let c = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
+    game.spawn_on_battlefield(PlayerId(1), card("Ghostly Prison"));
+    game.goad(c, PlayerId(1));
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+
+    assert!(
+        game.required_attacks(PlayerId(0)).is_empty(),
+        "an unaffordable goaded attack is not a required attack",
+    );
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: vec![],
+    })
+    .expect("a goaded creature whose tax can't be paid isn't forced to attack");
+}
+
+#[test]
+fn a_goaded_creature_whose_controller_can_pay_the_attack_tax_is_still_forced() {
+    // The affordable twin of the previous test: with {2} floating, P0 can pay Ghostly Prison's tax,
+    // so the goaded creature is "able" and must attack (empty is illegal); the paid attack lands.
+    let mut game = Game::with_players(2, 0);
+    let c = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
+    game.spawn_on_battlefield(PlayerId(1), card("Ghostly Prison"));
+    game.goad(c, PlayerId(1));
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+    float_green(&mut game, PlayerId(0), 2);
+
+    assert_eq!(
+        game.required_attacks(PlayerId(0)),
+        vec![(c, Defender::Player(PlayerId(1)))],
+        "an affordable goaded attack is still required (only opponent is the goader)",
+    );
+    assert_eq!(
+        game.submit(Intent::DeclareAttackers {
+            player: PlayerId(0),
+            attackers: vec![],
+        }),
+        Err(Reject::IllegalDeclaration),
+        "an affordable goaded creature must still attack",
+    );
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: vec![(c, Defender::Player(PlayerId(1)))],
+    })
+    .expect("paying the {2} tax lets the goaded creature attack its only (goader) opponent");
+}
+
+#[test]
+fn a_goaded_creature_may_attack_a_goader_when_the_only_nongoader_is_unaffordable() {
+    // CR 701.38a's "attacks a player other than you if able" is gated on the tax too: the lone
+    // non-goader (P2) taxes with Ghostly Prison and P0 has no mana, while the goader (P1) is free.
+    // So the "attack a non-goader if able" clause is not able — the goaded creature may (and must)
+    // attack the affordable goader P1 instead of wedging.
+    let mut game = Game::with_players(3, 0);
+    let c = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
+    game.spawn_on_battlefield(PlayerId(2), card("Ghostly Prison"));
+    game.goad(c, PlayerId(1)); // goaded only by P1; P2 is the (taxing) non-goader
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: vec![(c, Defender::Player(PlayerId(1)))],
+    })
+    .expect("with the only non-goader unaffordable, attacking the free goader satisfies goad");
+}
+
 // ── "Attacks this turn if able" requirement (CR 508.1a — Furygale Flocking) ───────────
 
 #[test]
@@ -41651,6 +42363,7 @@ static STEAL_UNTIL_EOT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -42018,6 +42731,7 @@ static MELODY: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -44048,6 +44762,7 @@ static CHOOSE_TWO: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -44289,6 +45004,86 @@ fn witherbloom_command_mode_0_mills_then_returns_land() {
     );
 }
 
+#[test]
+fn witherbloom_command_mode_0_land_return_is_mandatory() {
+    // Mode 0's "then you return a land card from your graveyard to your hand" is mandatory (CR
+    // 700.2). With a land in the caster's own graveyard, they must return one — declining (an
+    // empty choice) is illegal, unlike Deadly Brew / Witch of the Moors' "you may return."
+    let mut g = TestGame::new();
+    g.stack_library(
+        PlayerId(1),
+        &[card("Forest"), card("Forest"), card("Forest")],
+    );
+    let land_in_graveyard = g.spawn_in_graveyard(PlayerId(0), card("Forest"));
+    let command = g.spawn_in_hand(PlayerId(0), card("Witherbloom Command"));
+
+    g.cast(command)
+        .mode(0, Some(Target::Player(PlayerId(1))))
+        .mode(3, Some(Target::Player(PlayerId(1))))
+        .resolve();
+
+    let Some(PendingChoice::MayReturnFromGraveyard {
+        player: PlayerId(0),
+        ..
+    }) = g.pending_choice()
+    else {
+        panic!(
+            "mode 0's land return pauses on the caster's own graveyard; got {:?}",
+            g.pending_choice()
+        );
+    };
+
+    assert_eq!(
+        g.submit(Intent::ChooseSacrifices {
+            player: PlayerId(0),
+            sacrifices: vec![],
+        }),
+        Err(Reject::IllegalChoice),
+        "declining is illegal — a legal land card must be returned"
+    );
+
+    g.submit(Intent::ChooseSacrifices {
+        player: PlayerId(0),
+        sacrifices: vec![land_in_graveyard],
+    })
+    .expect("returning the land is legal");
+    assert!(g.pending_choice().is_none());
+    assert_eq!(
+        g.zone_of(land_in_graveyard),
+        Zone::Hand,
+        "the returned land is in the caster's hand"
+    );
+}
+
+#[test]
+fn witherbloom_command_mode_0_returns_nothing_with_no_land_in_graveyard() {
+    // Mandatory only when a legal card exists: with no land card in the caster's graveyard, the
+    // return does nothing at all (no pause, no wedge) — CR 608.2b.
+    let mut g = TestGame::new();
+    g.stack_library(
+        PlayerId(1),
+        &[card("Forest"), card("Forest"), card("Forest")],
+    );
+    // A nonland card in the graveyard is not a legal return for the land filter.
+    g.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let command = g.spawn_in_hand(PlayerId(0), card("Witherbloom Command"));
+
+    g.cast(command)
+        .mode(0, Some(Target::Player(PlayerId(1))))
+        .mode(3, Some(Target::Player(PlayerId(1))))
+        .resolve();
+
+    assert!(
+        g.pending_choice().is_none(),
+        "no legal land to return — the mandatory return quietly does nothing"
+    );
+    assert_eq!(
+        cards_in_zone(&g, PlayerId(1), Zone::Graveyard),
+        3,
+        "mode 0 still milled the target player three"
+    );
+}
+
 // ── Modal "choose one or more" spells (CR 700.2d) — the Casualties of War shape ───────
 // A synthetic choose-one-or-more instant with two board-observable modes. `modal_choose = 1`
 // (the minimum) and `modal_choose_max = Some(2)` (the ceiling) — an open mode count, not a
@@ -44383,6 +45178,7 @@ static CHOOSE_ONE_OR_MORE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -44756,6 +45552,7 @@ static FIGHT_SPELL: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -46203,6 +47000,7 @@ static GRAVEYARD_EXIT_WATCHER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -46573,6 +47371,7 @@ fn pack_a_punch() -> CardDef {
         halves: empty_slice(),
         suspend: None,
         vanishing: None,
+        cast_x_max: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
@@ -46663,6 +47462,7 @@ fn kirol() -> CardDef {
         halves: empty_slice(),
         suspend: None,
         vanishing: None,
+        cast_x_max: None,
     }
 }
 
@@ -46793,6 +47593,75 @@ fn real_kirol_from_the_pool_prepares_and_casts_pack_a_punch() {
         "Pack a Punch's trample grant"
     );
     assert!(!game.prepared(kirol), "casting the copy unprepared Kirol");
+}
+
+#[test]
+fn vandals_edit_each_player_loses_two_life_as_one_simultaneous_batch() {
+    // Defacing Duskmage's back face, Vandal's Edit: "Draw two cards. Each player loses 2 life."
+    // "Each player loses 2 life" is a single simultaneous loss touching every living player —
+    // the active caster included, in seat order — not each-opponent-then-you (CR 118.9).
+    let mut game = Game::with_players(4, 0);
+    game.fund_mana(PlayerId(0));
+    game.stack_library(PlayerId(0), &[card("Forest"), card("Forest")]); // for Vandal's Edit's draw
+    game.stack_library(PlayerId(1), &[card("Forest"), card("Forest")]); // for the preparing draws
+
+    let duskmage = game.spawn_on_battlefield(PlayerId(0), card("Defacing Duskmage"));
+
+    // An opponent's second draw this turn prepares the Duskmage.
+    let draw1 = game.spawn_in_hand(PlayerId(0), DRAW_ONE_TARGET.clone());
+    cast_and_resolve(&mut game, draw1, Some(Target::Player(PlayerId(1))));
+    resolve_whole_stack(&mut game);
+    let draw2 = game.spawn_in_hand(PlayerId(0), DRAW_ONE_TARGET.clone());
+    cast_and_resolve(&mut game, draw2, Some(Target::Player(PlayerId(1))));
+    resolve_whole_stack(&mut game);
+    assert!(
+        game.prepared(duskmage),
+        "an opponent's second draw this turn prepared the Duskmage",
+    );
+
+    let life_before: Vec<i32> = (0..4).map(|s| game.life(PlayerId(s))).collect();
+
+    game.submit(Intent::CastPrepared {
+        player: PlayerId(0),
+        source: duskmage,
+        target: None,
+        x: 0,
+    })
+    .expect("a prepared Duskmage with {1}{W}{B} can cast Vandal's Edit");
+
+    let mut events = Vec::new();
+    while !game.stack().is_empty() {
+        let holder = game.priority_holder();
+        events.extend(
+            game.submit(Intent::PassPriority { player: holder })
+                .unwrap(),
+        );
+    }
+
+    for s in 0..4 {
+        assert_eq!(
+            game.life(PlayerId(s)),
+            life_before[s as usize] - 2,
+            "player {s} lost 2 life to Vandal's Edit",
+        );
+    }
+
+    // One 2-life loss per living player, emitted together in seat order — the caster (P0) is
+    // not artificially resolved last as the old each-opponent-then-you sequence did.
+    let losers: Vec<PlayerId> = events
+        .iter()
+        .filter_map(|e| match e {
+            Event::LifeChanged {
+                player, amount: -2, ..
+            } => Some(*player),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        losers,
+        vec![PlayerId(0), PlayerId(1), PlayerId(2), PlayerId(3)],
+        "each player's 2-life loss is emitted once, in seat order",
+    );
 }
 
 #[test]
@@ -46943,6 +47812,7 @@ static PETTY_THEFT_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -47015,6 +47885,7 @@ fn brazen_borrower_test() -> CardDef {
         halves: empty_slice(),
         suspend: None,
         vanishing: None,
+        cast_x_max: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
@@ -47113,6 +47984,7 @@ static GROVES_BOUNTY_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -47184,6 +48056,7 @@ fn elusive_otter_test() -> CardDef {
         halves: empty_slice(),
         suspend: None,
         vanishing: None,
+        cast_x_max: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
@@ -47822,6 +48695,7 @@ static BRAINGEYSER_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -47912,6 +48786,7 @@ fn dirgur_test() -> CardDef {
         halves: empty_slice(),
         suspend: None,
         vanishing: None,
+        cast_x_max: None,
     }
 }
 
@@ -48334,6 +49209,7 @@ fn unfiltered_cast_trigger_still_fires_from_any_zone() {
         halves: empty_slice(),
         suspend: None,
         vanishing: None,
+        cast_x_max: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
@@ -49250,6 +50126,7 @@ fn test_planeswalker(name: &'static str, loyalty: i32) -> CardDef {
         halves: empty_slice(),
         suspend: None,
         vanishing: None,
+        cast_x_max: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
@@ -50776,6 +51653,7 @@ static CREATURE_TUTOR: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -53499,6 +54377,7 @@ static MASS_SHOCK: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -53574,6 +54453,7 @@ static MASS_BOUNCE_CREATURES: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -53747,6 +54627,7 @@ static POPULATE_AT_END_STEP: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -54035,13 +54916,14 @@ fn impulse_play_until_end_of_next_turn_atsushi() {
         alternative_cost: false,
     })
     .unwrap();
-    resolve_top_of_stack(&mut game); // Infernal Grasp resolves: destroy + life loss; dies queued
-    resolve_top_of_stack(&mut game); // the dies trigger resolves → pauses on the mode choice (CR 603.6, CR 603)
+    resolve_top_of_stack(&mut game); // Infernal Grasp resolves: destroy + life loss; dies trigger placed
+    // The mode is chosen as the dies trigger goes on the stack (CR 603.3d) — the pause is live now.
 
     let Some(PendingChoice::ChooseMode { player, .. }) = game.pending_choice() else {
         panic!("Atsushi's dies trigger pauses to choose a mode");
     };
     game.submit(Intent::ChooseMode { player, mode: 0 }).unwrap(); // exile-and-may-play mode
+    resolve_top_of_stack(&mut game); // the chosen exile-and-may-play branch resolves off the stack
 
     let forest = game.current_id(library[0]);
     assert_eq!(
@@ -54523,6 +55405,7 @@ static MAKE_TREASURES: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -54751,6 +55634,7 @@ fn instant_with_mana_value(generic: u8) -> CardDef {
         halves: empty_slice(),
         suspend: None,
         vanishing: None,
+        cast_x_max: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
@@ -54824,6 +55708,7 @@ fn instant_with_generic_and_x(generic: u8) -> CardDef {
         halves: empty_slice(),
         suspend: None,
         vanishing: None,
+        cast_x_max: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
@@ -54974,6 +55859,7 @@ static DEEKAH_MAGECRAFT_FRACTAL: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -55165,6 +56051,7 @@ static MANAFORM_DRAGON_TOKEN: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -55257,6 +56144,7 @@ static MANAFORM_HELLKITE_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -55550,6 +56438,7 @@ static ROOTHA_ELEMENTAL_TOKEN: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -55637,6 +56526,7 @@ static ROOTHA_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -55851,6 +56741,7 @@ static RIONYA_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -56110,6 +57001,7 @@ static IMPULSE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -56320,6 +57212,7 @@ static RANDOM_GRAVEYARD_EXILE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -56601,6 +57494,7 @@ fn modal_dragon() -> CardDef {
         halves: empty_slice(),
         suspend: None,
         vanishing: None,
+        cast_x_max: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
@@ -56637,8 +57531,9 @@ fn kill_modal_dragon(game: &mut Game) {
         alternative_cost: false,
     })
     .unwrap();
-    resolve_top_of_stack(game); // Shock resolves → SBA kills the dragon. (CR 704)
-    resolve_top_of_stack(game); // the dies trigger resolves → pauses on the mode choice. (CR 603.6, CR 603)
+    resolve_top_of_stack(game); // Shock resolves → SBA kills the dragon → dies trigger placed. (CR 704, CR 603)
+    // The mode is chosen as the trigger goes on the stack (CR 603.3d), so the mode pause is
+    // already live — no further resolution before answering.
 }
 
 #[test]
@@ -56650,6 +57545,7 @@ fn modal_triggered_ability_atsushi_chooses_treasures() {
         mode: 1,
     })
     .expect("choosing the create-three-Treasures mode is legal");
+    resolve_top_of_stack(&mut game); // the chosen Treasures branch resolves off the stack
     assert_eq!(
         battlefield_named(&game, PlayerId(0), "Treasure").len(),
         3,
@@ -56667,6 +57563,7 @@ fn modal_triggered_ability_atsushi_chooses_exile() {
         mode: 0,
     })
     .expect("choosing the impulse-exile mode is legal");
+    resolve_top_of_stack(&mut game); // the chosen impulse-exile branch resolves off the stack
     for card_id in &top {
         let card_id = game.current_id(*card_id);
         assert_eq!(
@@ -56734,11 +57631,84 @@ fn atsushi_dies_trigger_offers_a_two_mode_choose_one() {
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the destroy resolves → Atsushi dies → dies trigger placed. (CR 603.6, CR 603)
-    resolve_top_of_stack(&mut game); // its dies trigger resolves → pauses on the mode choice. (CR 603.6, CR 603)
+    // The mode is chosen as the trigger goes on the stack (CR 603.3d), so the two-mode pause is
+    // already live the moment the dies trigger is placed.
     let Some(PendingChoice::ChooseMode { modes, .. }) = game.pending_choice() else {
         panic!("Atsushi's dies trigger should pause on a two-mode choice");
     };
     assert_eq!(modes.len(), 2, "impulse-exile • three Treasures");
+}
+
+#[test]
+fn modal_dies_trigger_chooses_its_mode_at_placement_then_resolves_the_branch() {
+    // Increment #1 (CR 603.3d / 700.2): a *triggered* "choose one" picks its mode as the ability
+    // goes on the stack, not after players pass priority into resolution. Atsushi's dies trigger
+    // therefore exposes the chosen branch — three Treasures — on the stack before anyone can
+    // respond, and only that concrete branch resolves.
+    let mut game = Game::new();
+    let atsushi = game.spawn_on_battlefield(PlayerId(0), card("Atsushi, the Blazing Sky"));
+    let destroy = game.spawn_in_hand(PlayerId(0), DESTROY.clone());
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: destroy,
+        target: Some(Target::Object(atsushi)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // the destroy resolves → Atsushi dies → dies trigger placed
+
+    // The mode pause is live the moment the trigger is placed: nothing is on the stack yet, and
+    // the branch has not run.
+    let Some(PendingChoice::ChooseMode {
+        player,
+        at_placement: true,
+        ..
+    }) = game.pending_choice()
+    else {
+        panic!(
+            "the dies trigger pauses on its mode choice at placement, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(
+        game.stack().is_empty(),
+        "the trigger is not on the stack until its mode is chosen"
+    );
+
+    game.submit(Intent::ChooseMode { player, mode: 1 }).unwrap(); // create three Treasures
+
+    // The chosen branch — a concrete Treasures ability, not a "choose one" — is now on the stack,
+    // public before any response window, and has not resolved yet.
+    match game.stack().last() {
+        Some(StackEntry::Ability { effect, .. }) => assert!(
+            matches!(effect, Effect::Token(TokenEffect::CreateTreasure { .. })),
+            "the chosen Treasures branch is what's on the stack, got {effect:?}"
+        ),
+        other => panic!("the chosen branch should be on the stack, got {other:?}"),
+    }
+    assert_eq!(
+        battlefield_named(&game, PlayerId(0), "Treasure").len(),
+        0,
+        "the branch has not resolved yet — it is still on the stack"
+    );
+
+    resolve_top_of_stack(&mut game); // the chosen branch resolves off the stack
+    assert_eq!(
+        battlefield_named(&game, PlayerId(0), "Treasure").len(),
+        3,
+        "resolving the placed branch created three Treasures"
+    );
 }
 
 // ── Discard trigger (CR 701.8) — "whenever you discard a card" ─────────────────────────
@@ -56787,6 +57757,51 @@ fn discard_one(game: &mut Game, target_card: ObjectId) {
         cards: vec![target_card],
     })
     .expect("discarding the chosen card is legal");
+}
+
+/// A test-only sorcery that discards `count` chosen cards in a single resolution — the
+/// multi-card batch (CR 701.8) behind Conspiracy Theorist's "discard one or more nonland cards."
+fn discard_n_spell(count: u32) -> CardDef {
+    sorcery(
+        "Discard N",
+        Box::leak(Box::new([spell_ability(Effect::Choice(
+            ChoiceEffect::Discard {
+                count,
+                target_player: false,
+                or_one_matching: None,
+            },
+        ))])),
+    )
+}
+
+/// Cast a discard-`cards.len()` sorcery and answer its `DiscardCards` pause by discarding all of
+/// `cards` at once — one simultaneous discard event.
+fn discard_cards_together(game: &mut Game, cards: &[ObjectId]) {
+    let spell = game.spawn_in_hand(PlayerId(0), discard_n_spell(cards.len() as u32));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: spell,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack(game); // the spell resolves, pausing on a DiscardCards choice
+    game.submit(Intent::Discard {
+        player: PlayerId(0),
+        cards: cards.to_vec(),
+    })
+    .expect("discarding the chosen cards is legal");
 }
 
 #[test]
@@ -56951,41 +57966,44 @@ fn conspiracy_theorist_discard_lets_you_impulse_the_card() {
     // Conspiracy Theorist's second ability: "Whenever you discard one or more nonland cards,
     // you may exile one of them from your graveyard. If you do, you may cast it this turn."
     let mut game = Game::new();
-    game.spawn_on_battlefield(PlayerId(0), card("Conspiracy Theorist"));
+    let theorist = game.spawn_on_battlefield(PlayerId(0), card("Conspiracy Theorist"));
     let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
 
     discard_one(&mut game, bolt);
-
-    assert!(
-        matches!(
-            game.pending_choice(),
-            Some(PendingChoice::MayYesNo {
-                player: PlayerId(0),
-                ..
-            })
-        ),
-        "the discard fires Conspiracy Theorist's optional impulse trigger, got {:?}",
-        game.pending_choice(),
-    );
-
-    game.submit(Intent::AnswerMay {
-        player: PlayerId(0),
-        yes: true,
-    })
-    .unwrap();
-    resolve_top_of_stack(&mut game); // the accepted trigger resolves: exile with may-cast
+    // The batch nonland-discard trigger is a real stack object (CR 603.3b), not an
+    // at-placement may — resolve it to reach the "exile one of them" choice.
+    resolve_top_of_stack(&mut game);
 
     let discarded = game.current_id(bolt);
     assert_eq!(
-        game.zone_of(discarded),
+        game.pending_choice(),
+        Some(PendingChoice::MayExileDiscardedToPlay {
+            player: PlayerId(0),
+            source: theorist,
+            options: vec![discarded],
+        }),
+        "resolving the trigger offers the one discarded nonland card to exile, got {:?}",
+        game.pending_choice(),
+    );
+
+    // Choosing it exiles the card from the graveyard with may-cast permission.
+    game.submit(Intent::ChooseSacrifices {
+        player: PlayerId(0),
+        sacrifices: vec![discarded],
+    })
+    .unwrap();
+
+    let exiled = game.current_id(bolt);
+    assert_eq!(
+        game.zone_of(exiled),
         Zone::Exile,
-        "accepting the trigger exiled the discarded card from the graveyard"
+        "choosing the card exiled it from the graveyard"
     );
 
     game.fund_mana(PlayerId(0));
     game.submit(Intent::Cast {
         player: PlayerId(0),
-        object: discarded,
+        object: exiled,
         target: Some(Target::Player(PlayerId(1))),
         x: 0,
         modes: vec![],
@@ -57004,10 +58022,116 @@ fn conspiracy_theorist_discard_lets_you_impulse_the_card() {
 }
 
 #[test]
+fn conspiracy_theorist_discarding_only_a_land_does_not_trigger() {
+    // "Whenever you discard one or more nonland cards …" — a lone land discard is not a nonland
+    // discard, so the impulse trigger never fires (regression bar #1).
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Conspiracy Theorist"));
+    let forest = game.spawn_in_hand(PlayerId(0), card("Forest"));
+
+    discard_one(&mut game, forest);
+
+    assert!(
+        game.pending_choice().is_none(),
+        "discarding only a land fires no nonland-discard trigger, got {:?}",
+        game.pending_choice(),
+    );
+    assert!(
+        game.stack().is_empty(),
+        "no trigger reached the stack for a land-only discard"
+    );
+    assert_eq!(
+        game.zone_of(game.current_id(forest)),
+        Zone::Graveyard,
+        "the discarded land stays in the graveyard"
+    );
+}
+
+#[test]
+fn conspiracy_theorist_two_nonland_discards_offer_one_choice_among_them() {
+    // "… you may exile one of them …" — two nonland cards discarded in one event yield one
+    // trigger and one choice among exactly those two cards (regression bar #2).
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Conspiracy Theorist"));
+    let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+    let other = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+
+    discard_cards_together(&mut game, &[bolt, other]);
+    // A single simultaneous discard is one "you discard" event → exactly one trigger.
+    assert_eq!(
+        game.stack().len(),
+        1,
+        "two cards discarded at once fire the batch trigger once, not twice"
+    );
+    resolve_top_of_stack(&mut game);
+
+    let discarded_bolt = game.current_id(bolt);
+    let discarded_other = game.current_id(other);
+    let Some(PendingChoice::MayExileDiscardedToPlay {
+        player: PlayerId(0),
+        options,
+        ..
+    }) = game.pending_choice()
+    else {
+        panic!(
+            "expected the exile-one-of-them choice, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(
+        options
+            .iter()
+            .copied()
+            .collect::<std::collections::HashSet<_>>(),
+        [discarded_bolt, discarded_other].into_iter().collect(),
+        "the choice offers both discarded nonland cards"
+    );
+
+    game.submit(Intent::ChooseSacrifices {
+        player: PlayerId(0),
+        sacrifices: vec![discarded_bolt],
+    })
+    .unwrap();
+    assert_eq!(
+        game.zone_of(game.current_id(bolt)),
+        Zone::Exile,
+        "the chosen card is exiled"
+    );
+    assert_eq!(
+        game.zone_of(game.current_id(other)),
+        Zone::Graveyard,
+        "the unchosen card stays in the graveyard — only one of them"
+    );
+}
+
+#[test]
+fn conspiracy_theorist_declining_the_nonland_discard_leaves_the_card() {
+    // "you may exile" — declining (an empty choice) leaves the card in the graveyard.
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Conspiracy Theorist"));
+    let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+
+    discard_one(&mut game, bolt);
+    resolve_top_of_stack(&mut game);
+
+    game.submit(Intent::ChooseSacrifices {
+        player: PlayerId(0),
+        sacrifices: vec![],
+    })
+    .expect("declining the may is legal");
+    assert!(game.pending_choice().is_none());
+    assert_eq!(
+        game.zone_of(game.current_id(bolt)),
+        Zone::Graveyard,
+        "declining leaves the discarded card in the graveyard"
+    );
+}
+
+#[test]
 fn conspiracy_theorist_attack_loot_pays_one_and_draws() {
     // Conspiracy Theorist's first ability: "Whenever this creature attacks, you may pay {1}
-    // and discard a card. If you do, draw a card." Paying and discarding also feeds the
-    // second ability's discard trigger.
+    // and discard a card. If you do, draw a card." Discarding a *land* here pays the loot but
+    // does not incorrectly grant impulse play of that land (regression bar #3).
     let mut game = Game::new();
     let theorist = game.spawn_on_battlefield(PlayerId(0), card("Conspiracy Theorist"));
     let fodder = game.spawn_in_hand(PlayerId(0), card("Forest"));
@@ -57057,14 +58181,8 @@ fn conspiracy_theorist_attack_loot_pays_one_and_draws() {
     );
     assert_eq!(game.zone_of(lib[0]), Zone::Hand, "the discard drew a card");
     assert!(
-        matches!(
-            game.pending_choice(),
-            Some(PendingChoice::MayYesNo {
-                player: PlayerId(0),
-                ..
-            })
-        ),
-        "the loot's discard also fed the discard-to-impulse trigger, got {:?}",
+        game.pending_choice().is_none() && game.stack().is_empty(),
+        "discarding a land feeds no nonland-discard impulse trigger, got {:?}",
         game.pending_choice(),
     );
 }
@@ -58161,6 +59279,7 @@ static NO_MAX_HAND_SIZE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -58266,6 +59385,7 @@ macro_rules! amount_spell {
             halves: empty_slice(),
             suspend: None,
             vanishing: None,
+            cast_x_max: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,
@@ -58455,6 +59575,7 @@ macro_rules! hydra_with_etb {
             halves: empty_slice(),
             suspend: None,
             vanishing: None,
+            cast_x_max: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,
@@ -59528,6 +60649,7 @@ fn sorcery(name: &'static str, abilities: &'static [Ability]) -> CardDef {
         halves: empty_slice(),
         suspend: None,
         vanishing: None,
+        cast_x_max: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
@@ -61160,11 +62282,33 @@ fn once_each_turn_caps_activation_beledros() {
 
 #[test]
 fn ominous_harvest_targets_a_player_to_draw_and_lose_life() {
+    // Cast as the turn's first spell, so Gravestorm's cast-time trigger snapshots 0 permanents
+    // and mints no copies — only the original resolves. It still sits above the spell, so the
+    // whole stack has to drain (the trigger, then the spell).
     let mut game = Game::new();
     let victim_top = game.stack_library(PlayerId(1), &[card("Forest")])[0];
     let harvest = game.spawn_in_hand(PlayerId(0), card("Ominous Harvest"));
 
-    cast_and_resolve(&mut game, harvest, Some(Target::Player(PlayerId(1))));
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: harvest,
+        target: Some(Target::Player(PlayerId(1))),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .expect("Ominous Harvest is castable");
+    resolve_whole_stack(&mut game);
 
     assert_eq!(
         game.zone_of(victim_top),
@@ -61175,12 +62319,13 @@ fn ominous_harvest_targets_a_player_to_draw_and_lose_life() {
 }
 
 #[test]
-fn ominous_harvest_gravestorm_copies_per_permanent_died_this_turn() {
-    // Gravestorm: "copy it for each permanent put into a graveyard from the battlefield this
-    // turn." Kill a creature and a noncreature permanent (Gravestorm counts every permanent
-    // type, not just creatures) before casting — the original plus 2 copies each pause on their
-    // own CR 707.10c retarget choice, then each independently draws its target a card and costs
-    // it 1 life.
+fn ominous_harvest_gravestorm_copies_from_cast_context_keeping_the_target() {
+    // Gravestorm: "When you cast this spell, copy it for each permanent put into a graveyard from
+    // the battlefield this turn." Kill a creature and a noncreature permanent (Gravestorm counts
+    // every permanent type, not just creatures) before casting. The Gravestorm trigger is a
+    // cast-time "when you cast this spell" trigger: it mints its 2 copies ON THE STACK ABOVE the
+    // original (CR 706.9), so all three resolve before the original's draw/life step runs. It has
+    // no "you may choose new targets," so every copy keeps the original's chosen target (P1).
     let mut game = TestGame::new();
     let bear = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
     let artifact = game.spawn_on_battlefield(PlayerId(0), NONCREATURE_PERMANENT_MV2.clone());
@@ -61189,37 +62334,48 @@ fn ominous_harvest_gravestorm_copies_per_permanent_died_this_turn() {
     let kill2 = game.spawn_in_hand(PlayerId(0), DESTROY_ANY_PERMANENT.clone());
     game.cast(kill2).at(Target::Object(artifact)).resolve();
 
-    game.stack_library(PlayerId(0), &[card("Forest"), card("Forest")]);
-    game.stack_library(PlayerId(1), &[card("Forest")]);
-    let life_before = game.life(PlayerId(0)) + game.life(PlayerId(1));
+    game.stack_library(
+        PlayerId(1),
+        &[card("Forest"), card("Forest"), card("Forest")],
+    );
+    let life_before = game.life(PlayerId(1));
 
     let harvest = game.spawn_in_hand(PlayerId(0), card("Ominous Harvest"));
     game.cast(harvest).at(Target::Player(PlayerId(1))).submit();
-    resolve_top_of_stack(&mut game); // the original resolves, then mints its first copy and pauses
 
-    // Answer each minted copy's retarget choice until the mint queue drains (see
-    // `Effect::Copy(CopyEffect::ThisSpell)`'s doc: one copy mints per `resolve_sequence` pause/resume step).
-    let mut copies = 0;
-    while let Some(PendingChoice::ChooseTarget { player, legal, .. }) = game.pending_choice() {
-        copies += 1;
-        game.submit(Intent::ChooseTargets {
-            player,
-            targets: vec![legal[0]],
-        })
-        .expect("a legal retarget");
-    }
-    assert_eq!(copies, 2, "one copy per permanent that died this turn");
-    resolve_whole_stack(&mut game); // resolve the two now-targeted copies
-
-    assert_eq!(
-        game.life(PlayerId(0)) + game.life(PlayerId(1)),
-        life_before - 3,
-        "the original and both copies each cost their target 1 life"
+    // The Gravestorm trigger sits above the original spell. Resolving it mints the two copies from
+    // cast context — no retarget pause is offered, and nothing has drawn or lost life yet.
+    resolve_top_of_stack(&mut game);
+    assert!(
+        game.pending_choice().is_none(),
+        "Gravestorm offers no \"choose new targets\" — the copies keep the original's target"
     );
     assert_eq!(
-        hand_ids(&game, PlayerId(0)).len() + hand_ids(&game, PlayerId(1)).len(),
+        game.stack().len(),
         3,
-        "the original and both copies each drew their target a card"
+        "the original plus its two copies sit on the stack, none resolved yet"
+    );
+    assert_eq!(
+        game.life(PlayerId(1)),
+        life_before,
+        "no copy or the original has resolved yet"
+    );
+
+    resolve_whole_stack(&mut game);
+
+    assert_eq!(
+        game.life(PlayerId(1)),
+        life_before - 3,
+        "the original and both copies each cost the shared target 1 life"
+    );
+    assert_eq!(
+        hand_ids(&game, PlayerId(1)).len(),
+        3,
+        "the original and both copies each drew the shared target a card"
+    );
+    assert!(
+        hand_ids(&game, PlayerId(0)).is_empty(),
+        "the copies kept the original's target — the caster never draws"
     );
 }
 
@@ -62012,14 +63168,17 @@ fn seize_the_spoils_additional_discard_cost_paid() {
 fn plumb_the_forbidden_records_sacrificed_count() {
     // Plumb the Forbidden (soc): "As an additional cost to cast this spell, you may sacrifice
     // one or more creatures. … You draw a card and lose 1 life." Paying the optional cost
-    // sacrifices exactly the named creatures, and the count is recorded on the resolved spell
-    // (the seam a copy-per-sacrifice rider — #83 — will read; nothing reads it yet).
+    // sacrifices exactly the named creatures, and the count is recorded on the cast (the seam the
+    // cast-time copy trigger reads to mint one copy per creature sacrificed this way).
     let mut game = TestGame::new();
     let plumb = game.spawn_in_hand(PlayerId(0), card("Plumb the Forbidden"));
     let fodder1 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
     let fodder2 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
     let keeper = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    let lib = game.stack_library(PlayerId(0), &[card("Forest")]);
+    game.stack_library(
+        PlayerId(0),
+        &[card("Forest"), card("Forest"), card("Forest")],
+    );
     let life_before = game.life(PlayerId(0));
 
     let events = game
@@ -62038,7 +63197,7 @@ fn plumb_the_forbidden_records_sacrificed_count() {
         2,
         "the cast context recorded how many were sacrificed"
     );
-    resolve_top_of_stack(&mut game);
+    resolve_whole_stack(&mut game);
 
     assert_eq!(game.zone_of(fodder1), Zone::Graveyard);
     assert_eq!(game.zone_of(fodder2), Zone::Graveyard);
@@ -62047,10 +63206,16 @@ fn plumb_the_forbidden_records_sacrificed_count() {
         Zone::Battlefield,
         "the un-sacrificed creature survives"
     );
-    assert_eq!(game.life(PlayerId(0)), life_before - 1, "lost 1 life");
-    let hand = hand_ids(&game, PlayerId(0));
-    assert_eq!(hand.len(), 1, "drew a card");
-    assert!(hand.contains(&game.current_id(lib[0])));
+    assert_eq!(
+        game.life(PlayerId(0)),
+        life_before - 3,
+        "the original plus its 2 copies each cost 1 life"
+    );
+    assert_eq!(
+        hand_ids(&game, PlayerId(0)).len(),
+        3,
+        "the original plus its 2 copies each drew a card"
+    );
 }
 
 // ── #83 storm-copy-count: an `Amount`-scaled copy rider on the landed `SpellCopied`/retarget
@@ -62059,9 +63224,10 @@ fn plumb_the_forbidden_records_sacrificed_count() {
 #[test]
 fn plumb_the_forbidden_copies_once_per_sacrifice() {
     // "... you may sacrifice one or more creatures. When you do, copy this spell for each
-    // creature sacrificed this way." Sacrificing 2 creatures mints 2 copies of the resolving
-    // spell on top of it — 3 total resolutions (the original plus both copies), each drawing a
-    // card and losing 1 life. Plumb has no target, so no copy needs a retarget choice.
+    // creature sacrificed this way." The "when you do" is a cast-time reflexive trigger: it mints
+    // its 2 copies ON THE STACK ABOVE the original (CR 706.9), so all 3 resolve — the original
+    // plus both copies — each drawing a card and losing 1 life. Plumb has no target, so no copy
+    // needs a retarget choice.
     let mut game = TestGame::new();
     let plumb = game.spawn_in_hand(PlayerId(0), card("Plumb the Forbidden"));
     let fodder1 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
@@ -62075,6 +63241,25 @@ fn plumb_the_forbidden_copies_once_per_sacrifice() {
     game.cast(plumb)
         .sacrificing(vec![fodder1, fodder2])
         .submit();
+
+    // Resolving the reflexive copy trigger mints both copies from cast context, above the
+    // original — nothing has drawn or lost life yet.
+    resolve_top_of_stack(&mut game);
+    assert!(
+        game.pending_choice().is_none(),
+        "no retarget — Plumb is untargeted"
+    );
+    assert_eq!(
+        game.stack().len(),
+        3,
+        "the original plus its two copies sit on the stack, none resolved yet"
+    );
+    assert_eq!(
+        game.life(PlayerId(0)),
+        life_before,
+        "no copy or the original has resolved yet"
+    );
+
     resolve_whole_stack(&mut game);
 
     assert_eq!(
@@ -62108,7 +63293,15 @@ fn plumb_the_forbidden_declining_the_sacrifice_is_legal() {
         })
         .unwrap();
     assert_eq!(game.spell_sacrifice_count(spell), 0);
-    resolve_top_of_stack(&mut game);
+    // The printed card's copy rider is a reflexive "When you do [sacrifice]" trigger (CR
+    // 603.4/706.9). With nothing sacrificed, the reflexive trigger never happens at all — the
+    // stack holds only the spell itself, no zero-count copy trigger.
+    assert_eq!(
+        game.stack().len(),
+        1,
+        "no reflexive copy trigger — nothing was sacrificed"
+    );
+    resolve_whole_stack(&mut game);
 
     assert_eq!(
         game.zone_of(fodder),
@@ -62618,6 +63811,7 @@ static TEST_STEELBANE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -62931,6 +64125,7 @@ static TEST_ENCHANTMENT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -63034,6 +64229,7 @@ static WATCHES_ENCHANTMENTS_ENTER: LazyLock<CardDef> = LazyLock::new(|| CardDef 
                 halves: empty_slice(),
                 suspend: None,
                 vanishing: None,
+                cast_x_max: None,
                 devour: None,
                 demonstrate: false,
                 enter_as_copy: None,
@@ -63080,6 +64276,7 @@ static WATCHES_ENCHANTMENTS_ENTER: LazyLock<CardDef> = LazyLock::new(|| CardDef 
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -63162,6 +64359,7 @@ static WATCHES_OPPONENT_LANDFALL: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -63260,6 +64458,146 @@ fn ajanis_chosen_attaches_the_triggering_aura_to_the_minted_cat_token() {
     assert!(
         game.attachments(doubling_season).is_empty(),
         "a non-Aura enchantment is never attached anywhere"
+    );
+}
+
+#[test]
+fn ajanis_chosen_cannot_snap_an_enchant_land_aura_onto_its_cat_token() {
+    // Ajani's Chosen's "you may attach it to the token" is a real attach (CR 303.4f), so the
+    // moving Aura's own enchant restriction still applies. An "enchant land" Aura (a stand-in for
+    // any Aura whose restriction the 2/2 Cat fails — Silverquill's Animate Dead can only enchant
+    // the creature it reanimated) can never legally move onto the creature token, so it stays on
+    // the land it entered attached to rather than snapping onto the Cat.
+    static ENCHANT_LAND_AURA: LazyLock<CardDef> = LazyLock::new(|| CardDef {
+        name: "Land Aura (test)",
+        id: "",
+        default_print: "",
+        cost: Cost::FREE,
+        kind: CardKind::Aura,
+        legendary: false,
+        uncounterable: false,
+        modal: false,
+        modal_choose: 1,
+        modal_choose_max: None,
+        modal_choose_max_if_commander: false,
+        identity_pips: empty_slice(),
+        colors: empty_slice(),
+        devoid: false,
+        enters_tapped: false,
+        enters_tapped_unless: None,
+        free_cast_if: None,
+        alternative_cost: None,
+        cast_only_during_combat: false,
+        cast_only_before_attackers: false,
+        approximates: None,
+        oracle: None,
+        set: "",
+        subtypes: arc_slice(["Aura"]),
+        otags: empty_slice(),
+        keywords: empty_slice(),
+        conditional_keywords: empty_slice(),
+        abilities: empty_slice(),
+        cycling: None,
+        cycling_sacrifice: SacrificeCost::None,
+        flashback: None,
+        echo: None,
+        cumulative_upkeep: None,
+        recover: None,
+        bestow: None,
+        morph: None,
+        evoke: None,
+        delve: false,
+        escape: None,
+        retrace: false,
+        graveyard_cast_cost: None,
+        cascade: false,
+        functions_in_graveyard: false,
+        enchant: Some(PermanentFilter::of(TypeSet::LAND)),
+        enchant_graveyard: false,
+        back: None,
+        adventure: None,
+        halves: empty_slice(),
+        suspend: None,
+        vanishing: None,
+        cast_x_max: None,
+        devour: None,
+        demonstrate: false,
+        enter_as_copy: None,
+        encore: None,
+        hand_ability: empty_slice(),
+        forecast: None,
+        may_choose_not_to_untap: false,
+        dredge: None,
+    });
+
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Ajani's Chosen"));
+    let land = game.spawn_on_battlefield(PlayerId(0), card("Island"));
+    let aura = game.spawn_in_hand(PlayerId(0), ENCHANT_LAND_AURA.clone());
+
+    cast_and_resolve(&mut game, aura, Some(Target::Object(land))); // Aura enters on the land...
+    resolve_top_of_stack(&mut game); // ...firing Ajani's Chosen: mint the Cat, then try to snap.
+
+    let cats = battlefield_named(&game, PlayerId(0), "Cat");
+    assert_eq!(cats.len(), 1, "Ajani's Chosen still minted its Cat token");
+    assert_eq!(
+        game.attached_to(game.current_id(aura)),
+        Some(land),
+        "the enchant-land Aura can't move onto the creature token, so it stays on the land",
+    );
+    assert!(
+        game.attachments(cats[0]).is_empty(),
+        "the illegal Aura never attached to the Cat",
+    );
+}
+
+#[test]
+fn gift_of_immortality_return_blocked_by_protection_stays_in_graveyard() {
+    // CR 303.4g / 702.16e: Gift of Immortality's delayed "return this card attached to that
+    // creature" is a non-cast attach that must still be legal. If the reanimated creature gained
+    // protection from white, the white Aura can't attach — it stays in the graveyard rather than
+    // entering and immediately falling off.
+    let mut game = Game::new();
+    let host = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
+    let aura_card = game.spawn_in_hand(PlayerId(0), card("Gift of Immortality"));
+    cast_and_resolve(&mut game, aura_card, Some(Target::Object(host)));
+
+    let destroy = game.spawn_in_hand(PlayerId(0), DESTROY.clone());
+    cast_and_resolve(&mut game, destroy, Some(Target::Object(host)));
+    assert_eq!(game.zone_of(host), Zone::Graveyard, "the host died");
+
+    let events = resolve_top_of_stack_events(&mut game); // reanimates the host, schedules the return
+    let reanimated = events
+        .iter()
+        .find_map(|e| match e {
+            Event::ReanimatedToBattlefield { permanent, .. } => Some(*permanent),
+            _ => None,
+        })
+        .expect("Gift of Immortality reanimates the dying host");
+
+    // Give the reanimated creature protection from white before the end step.
+    let cloak = game.spawn_in_hand(PlayerId(0), PRO_WHITE_CLOAK.clone());
+    cast_and_resolve(&mut game, cloak, Some(Target::Object(reanimated)));
+    assert!(
+        game.has_keyword(
+            reanimated,
+            Keyword::ProtectionFrom(ProtectionScope::Color(Color::White))
+        ),
+        "the reanimated creature now has protection from white",
+    );
+
+    advance_until(&mut game, |g| g.current_step() == Step::End);
+    resolve_top_of_stack(&mut game); // the delayed return resolves — and must no-op
+
+    assert_eq!(
+        game.zone_of(aura_card),
+        Zone::Graveyard,
+        "the white Aura can't legally attach to a pro-white creature, so it stays in the graveyard",
+    );
+    assert_eq!(
+        game.attachments(reanimated),
+        vec![game.current_id(cloak)],
+        "only the protection cloak is attached — Gift never entered",
     );
 }
 
@@ -63531,6 +64869,167 @@ fn doomwake_giant_constellation_weakens_opponents_creatures() {
 }
 
 #[test]
+fn stolen_doomwake_constellation_fires_for_its_new_controller() {
+    // Doomwake Giant's constellation ("Whenever another enchantment you control enters, creatures
+    // your opponents control get -1/-1") keys on its *controller*, not its owner. After P0 steals
+    // P1's Doomwake (a permanent control change — CR 108.3 keeps P1 as owner), an enchantment P0
+    // plays fires the constellation for P0: it weakens P0's opponent P1's creature, not P0's own.
+    // The permanent-enters watch dispatch must read `controller_of`, not `owner_of`.
+    let mut game = Game::new();
+    let doomwake = game.spawn_on_battlefield(PlayerId(1), card("Doomwake Giant"));
+    let own_bear = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone()); // P0's — must be spared
+    let p1_bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear")); // P1's — weakened
+
+    let steal = game.spawn_in_hand(PlayerId(0), STEAL_PERMANENT.clone());
+    cast_and_resolve(&mut game, steal, Some(Target::Object(doomwake)));
+    assert_eq!(
+        game.controller_of(doomwake),
+        PlayerId(0),
+        "P0 controls Doomwake"
+    );
+    assert_eq!(
+        game.owner_of(doomwake),
+        PlayerId(1),
+        "P1 still owns it (CR 108.3)"
+    );
+
+    let enchantment = game.spawn_in_hand(PlayerId(0), TEST_ENCHANTMENT.clone());
+    cast_and_resolve(&mut game, enchantment, None); // enters under P0's control
+    resolve_top_of_stack(&mut game); // the constellation trigger resolves
+
+    assert_eq!(
+        game.power(p1_bear),
+        1,
+        "P0's opponent P1's creature is weakened to 1/1 by the stolen Doomwake",
+    );
+    assert_eq!(
+        game.power(own_bear),
+        2,
+        "P0's own creature is spared — the constellation fires for its new controller P0",
+    );
+}
+
+#[test]
+fn stolen_breena_attack_watch_fires_for_its_new_controller() {
+    // Breena's "Whenever a player attacks one of your opponents … you put two +1/+1 counters on a
+    // creature you control" watches its *controller's* opponents. After P0 steals P2's Breena
+    // (ownership stays with P2, CR 108.3), an attack on one of P0's opponents fires Breena for P0
+    // — it is P0, not owner P2, who chooses the counter target. The watch-attack dispatch must
+    // read `controller_of`, not `owner_of`.
+    let mut game = Game::with_players(3, 0);
+    let breena = game.spawn_on_battlefield(PlayerId(2), card("Breena, the Demagogue"));
+    let attacker = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
+    game.stack_library(PlayerId(0), &[card("Forest")]);
+    // Under P0's control, P0's opponents are P1 and P2; the attacked opponent (P1) must be ahead
+    // of the other (P2) for Breena's intervening-if to hold.
+    game.set_life(PlayerId(0), 20);
+    game.set_life(PlayerId(1), 25);
+    game.set_life(PlayerId(2), 20);
+
+    let steal = game.spawn_in_hand(PlayerId(0), STEAL_PERMANENT.clone());
+    cast_and_resolve_seated(
+        &mut game,
+        PlayerId(0),
+        3,
+        steal,
+        Some(Target::Object(breena)),
+    );
+    assert_eq!(
+        game.controller_of(breena),
+        PlayerId(0),
+        "P0 controls Breena"
+    );
+    assert_eq!(
+        game.owner_of(breena),
+        PlayerId(2),
+        "P2 still owns it (CR 108.3)"
+    );
+
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: vec![(attacker, Defender::Player(PlayerId(1)))],
+    })
+    .unwrap();
+
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::ChooseTarget {
+                player: PlayerId(0),
+                ..
+            })
+        ),
+        "the stolen Breena fires for its new controller P0 — P0 chooses the counter target; \
+         got {:?}",
+        game.pending_choice(),
+    );
+}
+
+#[test]
+fn stolen_sram_cast_watch_draws_for_its_new_controller() {
+    // Sram's "Whenever you cast an Aura … draw a card" keys on its *controller* casting. After P0
+    // steals P1's Sram (owner stays P1, CR 108.3), P0 casting an Aura fires Sram for P0 — P0
+    // draws. The cast-spell watch dispatch must read `controller_of`, not `owner_of`.
+    let mut game = Game::new();
+    let sram = game.spawn_on_battlefield(PlayerId(1), card("Sram, Senior Edificer"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
+    game.stack_library(PlayerId(0), &[card("Forest"), card("Island")]);
+    let steal = game.spawn_in_hand(PlayerId(0), STEAL_PERMANENT.clone());
+    cast_and_resolve(&mut game, steal, Some(Target::Object(sram)));
+    assert_eq!(game.controller_of(sram), PlayerId(0), "P0 controls Sram");
+    assert_eq!(
+        game.owner_of(sram),
+        PlayerId(1),
+        "P1 still owns it (CR 108.3)"
+    );
+
+    let aura = game.spawn_in_hand(PlayerId(0), card("Sentinel's Eyes"));
+    let lib_before = game.library_size(PlayerId(0));
+    cast_and_resolve(&mut game, aura, Some(Target::Object(bear)));
+    resolve_top_of_stack(&mut game); // resolve whichever of the Aura / Sram's draw remains
+
+    assert_eq!(
+        game.library_size(PlayerId(0)),
+        lib_before - 1,
+        "the stolen Sram drew a card for its new controller P0 when P0 cast an Aura",
+    );
+}
+
+#[test]
+fn stolen_starfield_mystic_enchantment_death_fires_for_its_new_controller() {
+    // Starfield Mystic's "Whenever an enchantment you control is put into a graveyard … put a
+    // +1/+1 counter on this creature" keys on its *controller*. After P0 steals P1's Mystic
+    // (owner stays P1, CR 108.3), an enchantment P0 controls dying fires it for P0. The
+    // enchantment-death watch dispatch must read `controller_of`, not `owner_of`.
+    let mut game = Game::new();
+    let mystic = game.spawn_on_battlefield(PlayerId(1), card("Starfield Mystic"));
+    let enchantment = game.spawn_on_battlefield(PlayerId(0), TEST_ENCHANTMENT.clone());
+    let steal = game.spawn_in_hand(PlayerId(0), STEAL_PERMANENT.clone());
+    cast_and_resolve(&mut game, steal, Some(Target::Object(mystic)));
+    assert_eq!(
+        game.controller_of(mystic),
+        PlayerId(0),
+        "P0 controls the Mystic"
+    );
+    assert_eq!(
+        game.owner_of(mystic),
+        PlayerId(1),
+        "P1 still owns it (CR 108.3)"
+    );
+
+    let destroy = game.spawn_in_hand(PlayerId(0), DESTROY_ANY_PERMANENT.clone());
+    cast_and_resolve(&mut game, destroy, Some(Target::Object(enchantment))); // P0's enchantment dies
+    resolve_top_of_stack(&mut game); // the Mystic's death trigger resolves
+
+    assert_eq!(
+        game.plus_counters(mystic),
+        1,
+        "the stolen Starfield Mystic got a +1/+1 counter for its controller P0's enchantment dying",
+    );
+}
+
+#[test]
 fn artifact_and_enchantment_creature_types_are_authored_from_toml() {
     // CR 306/307: a permanent's card types union — Doomwake Giant is an Enchantment
     // Creature and Brudiclad, Telchor Engineer is an Artifact Creature (#124's `also: TypeSet`
@@ -63768,6 +65267,7 @@ fn of_colors_land(name: &'static str, mask: u8) -> CardDef {
         halves: empty_slice(),
         suspend: None,
         vanishing: None,
+        cast_x_max: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
@@ -64029,39 +65529,85 @@ fn goldspan_dragon_grants_treasures_two_mana() {
     // two mana of any one color.'" The grant is a static ability read live off the board
     // (Game::granted_mana_abilities), addressed on the Treasure past its own ability (index
     // 0 is the Treasure's built-in "Add one mana of any color"; index 1 is the grant).
+    // "Any *one* color" (CR 106.4): both credits lock to the one color the controller names,
+    // so the ability pauses on ChooseManaColor rather than adding two independent wildcards.
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Goldspan Dragon"));
     let treasure = game.spawn_on_battlefield(PlayerId(0), treasure_token());
 
-    let events = game
-        .submit(Intent::ActivateAbility {
-            player: PlayerId(0),
-            object: treasure,
-            ability_index: 1,
-            target: None,
-            sacrifice: vec![],
-            discard_cost: vec![],
-            x: 0,
-        })
-        .unwrap();
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: treasure,
+        ability_index: 1,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
 
     assert_eq!(
         game.zone_of(treasure),
         Zone::Graveyard,
         "the granted ability's sacrifice cost consumed the Treasure"
     );
-    let added = events.iter().find_map(|e| match e {
-        Event::ManaAdded {
-            mana: Mana::Any,
-            amount,
-            ..
-        } => Some(*amount),
-        _ => None,
-    });
     assert_eq!(
-        added,
-        Some(2),
-        "the grant adds two mana, not the Treasure's own one"
+        game.pending_choice(),
+        Some(PendingChoice::ChooseManaColor {
+            player: PlayerId(0),
+            source: treasure,
+            amount: 2,
+        }),
+        "the grant adds two mana of one chosen color, pausing to name it"
+    );
+
+    game.submit(Intent::ChooseManaColor {
+        player: PlayerId(0),
+        color: Color::Red,
+    })
+    .unwrap();
+
+    assert_eq!(game.mana_in_pool(PlayerId(0), Color::Red), 2);
+    assert_eq!(
+        game.floating_mana(PlayerId(0)),
+        2,
+        "both credits lock to the one named color, not two independent wildcards"
+    );
+}
+
+#[test]
+fn goldspan_treasure_cannot_split_across_two_colors() {
+    // Regression for linked-any-one-color-mana-credits: one Goldspan-boosted Treasure can fund
+    // {R}{R} (or {U}{U}), but never one blue pip and one red pip — "two mana of any one color"
+    // means both mana are the same chosen color.
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Goldspan Dragon"));
+    let treasure = game.spawn_on_battlefield(PlayerId(0), treasure_token());
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: treasure,
+        ability_index: 1,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    game.submit(Intent::ChooseManaColor {
+        player: PlayerId(0),
+        color: Color::Red,
+    })
+    .unwrap();
+
+    // The pool now holds two concrete red — it can pay {R}{R}, but has no blue and no
+    // independent wildcard credit that could split off to fund a blue pip.
+    let pool = game.mana_pool(PlayerId(0));
+    assert_eq!(pool.colored[Color::Red.index()], 2);
+    assert_eq!(pool.colored[Color::Blue.index()], 0);
+    assert_eq!(
+        pool.any, 0,
+        "a single Goldspan Treasure leaves no any-color credit to split one blue and one red pip"
     );
 }
 
@@ -64214,6 +65760,7 @@ static FIVE_MANA_VALUE_SORCERY: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -65380,22 +66927,62 @@ fn white_orchid_phantom_ramp_search_can_be_declined() {
     assert_eq!(game.pending_choice(), None);
 }
 
+/// Decline Zimone's Hypothesis' resolution-time optional "+1/+1 counter on a creature" primer
+/// (CR 601.2c — up-to-one, chosen during resolution and never a stack target): answered by an
+/// empty [`Intent::ChooseCopyTarget`], the same "one object or none" wire shape the pick uses.
+fn decline_counter_primer(g: &mut Game) {
+    let Some(PendingChoice::MayPutCounterOnCreature { player, .. }) = g.pending_choice() else {
+        panic!(
+            "expected the optional +1/+1 counter primer pause, got {:?}",
+            g.pending_choice()
+        );
+    };
+    g.submit(Intent::ChooseCopyTarget { player, copy: None })
+        .expect("declining the optional primer is legal");
+}
+
+/// Answer Zimone's Hypothesis' primer by putting the +1/+1 counter on `creature`.
+fn put_counter_primer_on(g: &mut Game, creature: ObjectId) {
+    let Some(PendingChoice::MayPutCounterOnCreature { player, .. }) = g.pending_choice() else {
+        panic!(
+            "expected the optional +1/+1 counter primer pause, got {:?}",
+            g.pending_choice()
+        );
+    };
+    g.submit(Intent::ChooseCopyTarget {
+        player,
+        copy: Some(creature),
+    })
+    .expect("the primer picks a legal creature");
+}
+
+/// Answer Zimone's Hypothesis' resolution-time "choose odd or even" (CR 700.2 — a choose-one, so
+/// the parity is never announced on the stack): mode 0 = odd, mode 1 = even.
+fn choose_parity(g: &mut Game, mode: usize) {
+    let Some(PendingChoice::ChooseMode { player, .. }) = g.pending_choice() else {
+        panic!(
+            "expected the odd/even parity choice, got {:?}",
+            g.pending_choice()
+        );
+    };
+    g.submit(Intent::ChooseMode { player, mode })
+        .expect("odd/even is a legal mode choice");
+}
+
 #[test]
 fn zimones_hypothesis_choosing_odd_returns_only_odd_power_creatures() {
-    // CR 701.16 (return to hand) — "choose odd or even. Return each creature with power of the
-    // chosen quality to its owner's hand." Modeled as a modal choice between the two parities.
+    // CR 701.16 (return to hand) — "You may put a +1/+1 counter on a creature. Then choose odd or
+    // even. Return each creature with power of the chosen quality to its owner's hand." Both the
+    // primer and the parity are resolution-time choices; nothing is announced on the stack at cast.
     let mut g = TestGame::new();
     let odd = g.spawn_on_battlefield(PlayerId(1), card("Augury Owl")); // power 1
     let even = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // power 2
     let spell = g.spawn_in_hand(PlayerId(0), card("Zimone's Hypothesis"));
 
-    g.cast(spell).mode(0, None).submit(); // mode 0 = odd
-    g.submit(Intent::ChooseTargets {
-        player: PlayerId(0),
-        targets: vec![],
-    })
-    .expect("declining the optional counter primer is a legal empty choice");
-    resolve_top_of_stack(&mut g);
+    g.cast(spell).submit(); // no mode, no target — parity is chosen during resolution
+    resolve_top_of_stack(&mut g); // resolution pauses on the optional counter primer
+    decline_counter_primer(&mut g);
+    choose_parity(&mut g, 0); // odd
 
     assert_eq!(
         g.zone_of(odd),
@@ -65417,13 +67004,10 @@ fn zimones_hypothesis_choosing_even_returns_only_even_power_creatures() {
     let even = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // power 2
     let spell = g.spawn_in_hand(PlayerId(0), card("Zimone's Hypothesis"));
 
-    g.cast(spell).mode(1, None).submit(); // mode 1 = even
-    g.submit(Intent::ChooseTargets {
-        player: PlayerId(0),
-        targets: vec![],
-    })
-    .expect("declining the optional counter primer is a legal empty choice");
+    g.cast(spell).submit();
     resolve_top_of_stack(&mut g);
+    decline_counter_primer(&mut g);
+    choose_parity(&mut g, 1); // even
 
     assert_eq!(
         g.zone_of(even),
@@ -65448,13 +67032,10 @@ fn zimones_hypothesis_primer_puts_counter_then_bounces_by_parity() {
     let theirs_even = g.spawn_on_battlefield(PlayerId(1), creature("Four (test)", 4, 4, &[]));
     let spell = g.spawn_in_hand(PlayerId(0), card("Zimone's Hypothesis"));
 
-    g.cast(spell).mode(1, None).submit(); // mode 1 = even
-    g.submit(Intent::ChooseTargets {
-        player: PlayerId(0),
-        targets: vec![Target::Object(mine_even)],
-    })
-    .expect("the primer targets a legal creature");
+    g.cast(spell).submit();
     resolve_top_of_stack(&mut g);
+    put_counter_primer_on(&mut g, mine_even); // 2/2 -> 3/3
+    choose_parity(&mut g, 1); // even
 
     assert_eq!(g.plus_counters(mine_even), 1, "the primer counter landed");
     assert_eq!(
@@ -65474,8 +67055,8 @@ fn zimones_hypothesis_primer_puts_counter_then_bounces_by_parity() {
     );
 }
 
-/// Declining the primer (up-to-one → zero targets) places no counter, and the mass parity
-/// bounce still resolves — the untargeted rider isn't dragged down by the declined target.
+/// Declining the primer (up-to-one → none) places no counter, and the mass parity bounce still
+/// resolves — the untargeted rider isn't dragged down by the declined pick.
 #[test]
 fn zimones_hypothesis_primer_declined() {
     let mut g = TestGame::new();
@@ -65483,13 +67064,10 @@ fn zimones_hypothesis_primer_declined() {
     let even = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // power 2
     let spell = g.spawn_in_hand(PlayerId(0), card("Zimone's Hypothesis"));
 
-    g.cast(spell).mode(0, None).submit(); // mode 0 = odd
-    g.submit(Intent::ChooseTargets {
-        player: PlayerId(0),
-        targets: vec![],
-    })
-    .expect("declining the optional counter primer is a legal empty choice");
+    g.cast(spell).submit();
     resolve_top_of_stack(&mut g);
+    decline_counter_primer(&mut g);
+    choose_parity(&mut g, 0); // odd
 
     assert_eq!(g.plus_counters(odd), 0, "no counter placed on decline");
     assert_eq!(g.plus_counters(even), 0, "no counter placed on decline");
@@ -65502,6 +67080,38 @@ fn zimones_hypothesis_primer_declined() {
         g.zone_of(even),
         Zone::Battlefield,
         "the even-power creature still stays"
+    );
+}
+
+/// The primer never advertises a target at cast, so a creature that leaves in response can't
+/// fizzle the spell — Zimone's Hypothesis still resolves, and the mass bounce reads the live
+/// board at resolution (regression bar #2).
+#[test]
+fn zimones_hypothesis_resolves_when_a_creature_leaves_before_resolution() {
+    let mut g = TestGame::new();
+    let victim = g.spawn_on_battlefield(PlayerId(0), creature("Two (test)", 2, 2, &[])); // even
+    let survivor = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear")); // power 2, even
+    let spell = g.spawn_in_hand(PlayerId(0), card("Zimone's Hypothesis"));
+
+    g.cast(spell).submit(); // Hypothesis on the stack; player 0 keeps priority
+
+    // In response, destroy the creature you might have wanted to counter.
+    let grasp = g.spawn_in_hand(PlayerId(0), card("Infernal Grasp")); // "Destroy target creature."
+    g.cast(grasp).at(Target::Object(victim)).resolve();
+    assert_eq!(
+        g.zone_of(victim),
+        Zone::Graveyard,
+        "the planned creature left before resolution"
+    );
+
+    resolve_top_of_stack(&mut g); // Hypothesis resolves anyway — no target to fizzle
+    decline_counter_primer(&mut g); // only the survivor is offered now
+    choose_parity(&mut g, 1); // even
+
+    assert_eq!(
+        g.zone_of(survivor),
+        Zone::Hand,
+        "the even bounce still resolves on the surviving creature"
     );
 }
 
@@ -65621,6 +67231,7 @@ static SAPROLING_ANTHEM: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -65739,6 +67350,7 @@ static TAP_TWO_PERMANENTS: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -65828,6 +67440,7 @@ static COUNTER_EACH_UP_TO_TWO: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -66849,6 +68462,7 @@ static MASS_HEXPROOF_TO_MODIFIED: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -68725,6 +70339,7 @@ static TEST_STUDY_COUNTER_SOURCE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -69946,6 +71561,54 @@ fn reveal_top_mana_value_life_loss_keen_duelist() {
     );
 }
 
+#[test]
+fn stolen_upkeep_watcher_fires_for_its_controller_not_its_owner() {
+    // Control vs ownership on a live battlefield watcher: Keen Duelist's "At the beginning of your
+    // upkeep" keys on its *controller's* upkeep, not its owner's. When P0 steals P1's Keen Duelist
+    // (a permanent control change — ownership stays with P1, CR 108.3), the trigger fires on P0's
+    // upkeep and stays silent on P1's. The controller-scoped watch-table dispatch must read
+    // `controller_of`, not `owner_of`, for permanents still on the battlefield.
+    let mut game = Game::new();
+    game.stack_library(PlayerId(0), &[VANILLA.clone(), VANILLA.clone()]);
+    game.stack_library(PlayerId(1), &[VANILLA.clone(), VANILLA.clone()]);
+    let keen = game.spawn_on_battlefield(PlayerId(1), card("Keen Duelist"));
+    let steal = game.spawn_in_hand(PlayerId(0), STEAL_PERMANENT.clone());
+    cast_and_resolve(&mut game, steal, Some(Target::Object(keen)));
+    assert_eq!(
+        game.owner_of(keen),
+        PlayerId(1),
+        "P1 still owns it (CR 108.3)"
+    );
+    assert_eq!(game.controller_of(keen), PlayerId(0), "P0 now controls it");
+
+    // Its owner P1's upkeep comes first — the stolen watcher must stay silent there.
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Upkeep
+    });
+    assert!(
+        game.pending_choice().is_none(),
+        "stolen Keen Duelist must not trigger on its owner P1's upkeep (P0 controls it); \
+         got {:?}",
+        game.pending_choice(),
+    );
+
+    // P0's upkeep: the watcher fires for its controller, pausing to choose P0's target opponent.
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
+    });
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::ChooseTarget {
+                player: PlayerId(0),
+                ..
+            })
+        ),
+        "stolen Keen Duelist fires on its controller P0's upkeep; got {:?}",
+        game.pending_choice(),
+    );
+}
+
 // ── Reveal-until-a-count (#84, CR 701.30/120): open_the_way ────────────────────────────────
 
 #[test]
@@ -70014,9 +71677,10 @@ fn open_the_way_reveals_until_x_lands() {
 
 #[test]
 fn open_the_way_short_library_puts_every_land_found() {
-    // CR 120-style "as many as possible": X=3 but the library only holds one land, so the
+    // CR 120-style "as many as possible": X=2 but the library only holds one land, so the
     // reveal runs off the end of the library rather than crashing — the one land found still
-    // goes to the battlefield, every other revealed card to the bottom.
+    // goes to the battlefield, every other revealed card to the bottom. X=2 equals the two-seat
+    // player-count cap, so it stays legal.
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     let lib = game.stack_library(
@@ -70028,7 +71692,7 @@ fn open_the_way_short_library_puts_every_land_found() {
         player: PlayerId(0),
         object: spell,
         target: None,
-        x: 3,
+        x: 2,
         modes: vec![],
         discard_cost: vec![],
         graveyard_exile: vec![],
@@ -70051,6 +71715,62 @@ fn open_the_way_short_library_puts_every_land_found() {
     assert_eq!(game.library_size(PlayerId(0)), 2);
     assert_eq!(draw_top_from(&mut game, PlayerId(0)), lib[0]);
     assert_eq!(draw_top_from(&mut game, PlayerId(0)), lib[2]);
+}
+
+/// Build a bare `Open the Way` cast intent at the given `x`, for the player-count cap tests.
+fn open_the_way_cast(player: PlayerId, spell: ObjectId, x: u32) -> Intent {
+    Intent::Cast {
+        player,
+        object: spell,
+        target: None,
+        x,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    }
+}
+
+#[test]
+fn open_the_way_x_cannot_exceed_player_count_four_seats() {
+    // "X can't be greater than the number of players in the game." In a four-seat game X=4 is
+    // legal but X=5 is rejected — a cast-time legality cap, not a mana shortfall.
+    let mut game = Game::with_players(4, 0);
+    game.fund_mana(PlayerId(0));
+    game.stack_library(PlayerId(0), &[card("Forest"), card("Forest")]);
+    let spell = game.spawn_in_hand(PlayerId(0), card("Open the Way"));
+
+    assert_eq!(
+        game.submit(open_the_way_cast(PlayerId(0), spell, 5)),
+        Err(Reject::IllegalChoice),
+        "X=5 exceeds the four-player cap"
+    );
+    game.submit(open_the_way_cast(PlayerId(0), spell, 4))
+        .expect("X=4 equals the four-player cap and is legal");
+}
+
+#[test]
+fn open_the_way_x_cannot_exceed_player_count_two_seats() {
+    // Same cap in a two-seat fixture: X=2 stays legal, X=3 is rejected.
+    let mut game = Game::with_players(2, 0);
+    game.fund_mana(PlayerId(0));
+    game.stack_library(PlayerId(0), &[card("Forest"), card("Forest")]);
+    let spell = game.spawn_in_hand(PlayerId(0), card("Open the Way"));
+
+    assert_eq!(
+        game.submit(open_the_way_cast(PlayerId(0), spell, 3)),
+        Err(Reject::IllegalChoice),
+        "X=3 exceeds the two-player cap"
+    );
+    game.submit(open_the_way_cast(PlayerId(0), spell, 2))
+        .expect("X=2 equals the two-player cap and is legal");
 }
 
 // ── Reveal-until-first-match with a routed pause (#84 residual slice): songbirds_blessing ──
@@ -70247,6 +71967,7 @@ fn songbirds_blessing_no_legal_host_sweeps_aura_to_graveyard() {
         halves: empty_slice(),
         suspend: None,
         vanishing: None,
+        cast_x_max: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
@@ -71196,6 +72917,7 @@ static GRANT_HEXPROOF_ANY_TARGET: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -71751,6 +73473,7 @@ static ZERO_POWER_WITH_COUNTER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -75003,12 +76726,12 @@ fn phasing_zero_creatures_is_legal_and_only_your_other_creatures_are_eligible() 
 
 // ── Total-mana-value budget selection (#122): ao_the_dawn_sky, dance_with_calamity ──────────
 
-/// Cast Infernal Grasp at `victim`, resolve it, and resolve the resulting dies trigger up to its
-/// mode choice — leaving a `ChooseMode` pause for a self-death modal trigger. (CR 603.6, CR 700.2, CR 601)
+/// Cast Infernal Grasp at `victim` and resolve it, leaving a `ChooseMode` pause for the resulting
+/// self-death modal trigger. The mode is chosen as the trigger goes on the stack (CR 603.3d), so
+/// the pause lands the moment the dies trigger is placed — no further resolution. (CR 603.6, CR 700.2)
 fn kill_and_reach_dies_mode(game: &mut TestGame, victim: ObjectId) {
     let grasp = game.spawn_in_hand(PlayerId(0), card("Infernal Grasp")); // "Destroy target creature."
     game.cast(grasp).at(Target::Object(victim)).resolve();
-    resolve_top_of_stack(game); // the dies trigger resolves → pauses on the mode choice (CR 603.6, CR 603)
 }
 
 #[test]
@@ -75041,6 +76764,7 @@ fn ao_the_dawn_sky_mode_1_puts_nonland_permanents_under_mv_budget_onto_battlefie
         );
     };
     game.submit(Intent::ChooseMode { player, mode: 0 }).unwrap(); // the dig mode
+    resolve_top_of_stack(&mut game); // the chosen dig branch resolves → pauses on the selection
 
     let Some(PendingChoice::SelectFromTop { cards, .. }) = game.pending_choice() else {
         panic!("mode 1 looks at the top seven and pauses to select");
@@ -75110,6 +76834,7 @@ fn ao_the_dawn_sky_mode_2_puts_two_counters_on_each_creature() {
         panic!("Ao's dies trigger pauses to choose a mode");
     };
     game.submit(Intent::ChooseMode { player, mode: 1 }).unwrap(); // the +1/+1-counters mode
+    resolve_top_of_stack(&mut game); // the chosen +1/+1-counters branch resolves off the stack
 
     assert_eq!(
         game.pending_choice(),
@@ -75655,6 +77380,7 @@ static TEST_CLASS: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -76782,6 +78508,7 @@ static SCREAM_EXILE_RETURN_CREATURES: LazyLock<CardDef> = LazyLock::new(|| CardD
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -84381,6 +86108,7 @@ static MAY_DRAW_UPKEEP: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -85373,6 +87101,7 @@ static DRAW_ONE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -85440,6 +87169,7 @@ static DRAW_THREE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -85504,6 +87234,7 @@ static DREDGER_3: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -85581,6 +87312,7 @@ static DIES_FODDER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
@@ -89219,6 +90951,7 @@ static TEST_LAND_WITH_CHARGE_COUNTERS: LazyLock<CardDef> = LazyLock::new(|| Card
     halves: empty_slice(),
     suspend: None,
     vanishing: None,
+    cast_x_max: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
