@@ -10,8 +10,14 @@ export const FetchApiVersion = Command.define(
   Effect.tryPromise(() => apiMeta()).pipe(
     Effect.map((response) => {
       const tag = response?.version?.trim();
-      return ReceivedApiVersion({ version: tag ? tag : null });
+      return ReceivedApiVersion({
+        version: tag ? tag : null,
+        faithfulCount: response?.faithfulCount ?? null,
+        oracleTotal: response?.oracleTotal ?? null,
+      });
     }),
-    Effect.catch(() => Effect.succeed(ReceivedApiVersion({ version: null }))),
+    Effect.catch(() =>
+      Effect.succeed(ReceivedApiVersion({ version: null, faithfulCount: null, oracleTotal: null })),
+    ),
   ),
 );

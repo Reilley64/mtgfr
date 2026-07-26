@@ -2,7 +2,7 @@ import { Effect, Queue, Schema as S, Stream } from "effect";
 import { type Html, html } from "foldkit/html";
 import * as Mount from "foldkit/mount";
 import { cn } from "../../../../lib/cn";
-import { appVersionBadge } from "../../../../lib/ui/app-version";
+import { appVersionBadge, type AppChromeMeta } from "../../../../lib/ui/app-version";
 import { confirmDialog } from "../../../../lib/ui/confirmDialog";
 import { feltClass, fieldClass, listRowClass } from "../../../../lib/ui/surfaces";
 import type { Message } from "../../../messages";
@@ -164,7 +164,7 @@ export function view(
   model: DeckListSubmodel,
   username: string,
   meGravatarHash: string | null,
-  apiVersion: string | null,
+  chrome: AppChromeMeta,
 ): Html {
   const visible = visibleDecks(model.decks, model.knownCommanders, model.searchQuery);
 
@@ -267,7 +267,7 @@ export function view(
             : null,
         ],
       ),
-      appVersionBadge(h, apiVersion),
+      appVersionBadge(h, chrome),
       contextMenu(model),
     ],
   );

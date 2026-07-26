@@ -85,6 +85,8 @@ function loginModel(overrides: Partial<AppModel> = {}): AppModel {
     portraitGate: { open: false },
     sessionLoaded: true,
     session: { me: null, meGravatarHash: null },
+    faithfulCount: null,
+    oracleTotal: null,
     ...overrides,
   };
 }
@@ -115,6 +117,23 @@ describe("shell surface scenes", () => {
       Scene.expect(Scene.text("API 1.2.3")).toExist(),
       Scene.expect(Scene.text("edh.reilley.dev")).toExist(),
       Scene.expect(Scene.text("mtgfr")).not.toExist(),
+    );
+  });
+
+  it("renders pool coverage above API version when meta is complete", () => {
+    const chrome = {
+      apiVersion: "1.2.3",
+      faithfulCount: 662,
+      oracleTotal: 28412,
+    };
+
+    Scene.scene(
+      { update, view },
+      Scene.with(loginModel(chrome)),
+      Scene.expect(Scene.selector('[data-testid="pool-coverage"]')).toExist(),
+      Scene.expect(Scene.text("2.3% faithful")).toExist(),
+      Scene.expect(Scene.selector('[data-testid="app-version"]')).toExist(),
+      Scene.expect(Scene.text("API 1.2.3")).toExist(),
     );
   });
 

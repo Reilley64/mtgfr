@@ -49,7 +49,7 @@ A single Foldkit event-reactor owns routing: `client/app/routes.ts` maps paths t
 Required identifiers live in path params ([wire-protocol-and-visibility](2026-07-20-wire-protocol-and-visibility.md) routing rule). Query params are optional: `?next=` is the post-login redirect target.
 Legacy `/play`, `/play/:table`, and `?deck=` entry points are Not found (hard cut).
 
-Lobby Host/Join and seated chrome for `/play/:deckId` and `/play/:deckId/:table` are specified in [lobby-entry-ui](2026-07-20-lobby-entry-ui.md). Deck list (`/`) and builder (`/decks/…`) are specified in [deck-list-and-builder](2026-07-20-deck-list-and-builder.md). The home route entry loads decks only; it does not issue a separate top-players teaser fetch. The leaderboard route (`/leaderboard`) renders a ranked list from `rpc.ratings.leaderboard({ limit, offset })`, showing rank, username, and rating for authenticated players, with header chrome that keeps `Play` back to `/` and reuses the shared avatar account menu instead of a standalone sign-out button. Route entry loads the first page as `limit = 50, offset = 0`; `Load more` appends the next page. When a later page load fails after prior rows are already visible, the existing rows stay on screen, `Load more` is hidden, and `Try again` clears the current rows and restarts from the first page.
+Lobby Host/Join and seated chrome for `/play/:deckId` and `/play/:deckId/:table` are specified in [lobby-entry-ui](2026-07-20-lobby-entry-ui.md). Deck list (`/`) and builder (`/decks/…`) are specified in [deck-list-and-builder](2026-07-20-deck-list-and-builder.md). The home route entry loads decks only; it does not issue a separate top-players teaser fetch. The leaderboard route (`/leaderboard`) renders a ranked list from `rpc.ratings.leaderboard({ limit, offset })`, showing rank, username, and rating for authenticated players, with header chrome that keeps `Play` back to `/` and reuses the shared avatar account menu instead of a standalone sign-out button. Route entry loads the first page as `limit = 50, offset = 0`; `Load more` appends the next page. When a later page load fails after prior rows are already visible, the existing rows stay on screen, `Load more` is hidden, and `Try again` clears the current rows and restarts from the first page. Every shell surface that already showed the fixed bottom-left API badge now uses the shared two-line stack: `{n}% faithful` above `API {version}` when both coverage counts are present; when either coverage count is missing or invalid, the shell renders only the version line. The board remains out of scope for this chrome.
 
 ### Portrait gate (`client/app/view.ts`, `client/app/subscriptions.ts`, DESIGN.md Landscape Rule)
 
@@ -69,7 +69,7 @@ The app model is the single UI state tree. `update(model, message)` is the only 
 
 Async work is expressed as Foldkit **Commands** backed by Effect programs. Commands depend on the `RpcClient` resource from `client/app/resources.ts`, so wire access is explicit at the runtime boundary. Session checks, auth submit, deck loading, catalog search, deck save/delete, leaderboard loading, lobby host/join, and table navigation all flow through commands.
 
-Boot also fetches `/api/meta/version/v1` through `client/lib/lobby/client.ts`. The `apiMeta()` helper decodes the required app `version` plus optional `faithful_count` / `oracle_total` fields from the BFF meta response. The shell currently stores only the version string in app state, so malformed or missing coverage fields are ignored without breaking chrome.
+Boot also fetches `/api/meta/version/v1` through `client/lib/lobby/client.ts`. The `apiMeta()` helper decodes the required app `version` plus optional `faithful_count` / `oracle_total` fields from the BFF meta response. The app model stores all three values (`apiVersion`, `faithfulCount`, `oracleTotal`) through the existing `FetchApiVersion` Foldkit command and threads them into shell views as shared `AppChromeMeta`. Malformed or missing coverage fields fold to `null`, so the version line still renders and the `% faithful` line is simply omitted.
 
 Long-lived listeners are Foldkit **Subscriptions**. App subscriptions cover portrait orientation, lobby polling, and game stream frames. Dependency functions decide when each stream is active; returning `Stream.empty` stops work when the route or table changes. Components do not own long-lived fibers.
 
@@ -149,7 +149,8 @@ Vite production builds set `build.sourcemap: true` (via `clientBuildSourcemap`) 
 
 - `client/app/shell/auth/**/*.test.ts` — auth stories and helpers, including `ReceivedMe` → `HashMeGravatar` session storage and stale-result guarding.
 - `client/app/routes.test.ts`, `client/app/smoke.test.ts` — routing and smoke; includes protected `/leaderboard` entry, auth redirect, home entry loading decks without a teaser fetch, and retry-from-page-one behavior.
-- `client/app/shell/surfaces.test.ts` — shell Scene coverage for the `/leaderboard` surface, its shared account chrome, and retry/error chrome.
+- `client/app/shell/surfaces.test.ts` — shell Scene coverage for auth, deck, leaderboard, and lobby surfaces, including shared account chrome and the `% faithful` + `API {version}` shell badge stack.
+- `client/lib/ui/app-version.test.ts` — percent formatting and stacked badge rendering rules.
 - `client/app/game/*.test.ts` — game fold, stream subscription.
 - `client/lib/rpc-client.test.ts` — Effect HTTP client (stubbed fetch).
 - `client/lib/wire/*.test.ts` — BFF gRPC / RPC method gate.

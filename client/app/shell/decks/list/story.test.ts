@@ -10,8 +10,10 @@ import { initialDeckListSubmodel } from "./submodel";
 import { update } from "./update";
 import { BindDeckListContextMenu, BindDeckListContextMenuEscape, view } from "./view";
 
+const emptyChrome = { version: null, faithfulCount: null, oracleTotal: null };
+
 const listView = Submodel.defineView<ReturnType<typeof initialDeckListSubmodel>, DeckListMessage>((model) =>
-  view(model, "alice", null, null),
+  view(model, "alice", null, emptyChrome),
 );
 type SceneListMessage = DeckListMessage | typeof ModalOpened.Type | { readonly _tag?: string } | undefined;
 
