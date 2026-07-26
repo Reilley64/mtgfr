@@ -83,7 +83,7 @@ Decisions → Testing Decisions → Out of Scope → Further Notes.
 - Follow the [`AGENTS.md` Feature specs section](../../../AGENTS.md#feature-specs).
 - **Superpowers:** If the change touches an existing surface, update that living module spec
   in the same change. A new `*-design.md` is design input only — it does not replace the
-  surface-spec update (see AGENTS.md). Do not edit vendored obra/superpowers skill files for
+  surface-spec update (see AGENTS.md). Do not edit Cursor `superpowers` plugin skill files for
   this policy; project rules in `AGENTS.md` govern.
 - Use [`CONTEXT.md`](../../../CONTEXT.md) vocabulary. Reference DTCG token names
   (`design.tokens.json`); canvas uses `design-tokens.generated.ts` for named colors; unnamed

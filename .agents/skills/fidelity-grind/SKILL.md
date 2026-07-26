@@ -8,7 +8,7 @@ description: Given an Archidekt deck link, make every card in that deck faithful
 Turn an Archidekt deck into a fully faithful slice of the card pool, end to end. This skill
 encodes the process that took the first 429-card pool from ~60% to 99.3% faithful (waves 1–142,
 2026-07). Read `card-dsl` (authoring bar). Drive implementation with the
-`test-driven-development` skill (red → green) throughout. Use other obra/superpowers skills
+`test-driven-development` skill (red → green) throughout. Use other superpowers plugin skills
 named below for isolation, planning, verification, review, and branch finish.
 
 **Inputs:** an Archidekt deck URL (`https://archidekt.com/decks/<id>/<slug>`).
@@ -16,7 +16,7 @@ named below for isolation, planning, verification, review, and branch finish.
 `approximates` residual; engine + client green; an open PR against the default branch with
 the wrap-up report as its body.
 
-## Superpowers skills this grind uses
+## Superpowers plugin skills this grind uses
 
 | Phase | Skill | Role |
 |-------|-------|------|
