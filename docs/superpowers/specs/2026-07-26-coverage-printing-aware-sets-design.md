@@ -29,6 +29,7 @@
 | Who talks to Scryfall | **BFF** (denominators + set catalog) and **offline script** (write `sets` into TOMLs). API never dials Scryfall |
 | Global badge | Unchanged: faithful count ÷ oracle-cards bulk line count |
 | Default table sort | `released_at` descending; null/missing dates last; tie-break name, then code |
+| Coverage scroll | Page chrome, search, and column headers stay fixed; only the set **row list** scrolls in the remaining viewport |
 | Cache | In-memory compact index on BFF (24h TTL, SWR); no Kubernetes PVC for v1 |
 
 ## Approaches considered
@@ -72,6 +73,7 @@
 - `/coverage` default sort: `released_at` descending (ISO date strings compare lexicographically when present); rows with null/missing `released_at` after dated rows; then `name`, then `code`.
 - Search filter unchanged (code / name).
 - Percent formatting unchanged (`formatFaithfulPercent`, including clamp when faithful > oracle after drift).
+- **Independent row scroll:** the page shell is a full-height column (`h-full` / flex), not a single document scroll. Fixed (non-scrolling) region: title + global % + Play/account chrome, error/status, search field, and the Set / Faithful / Scryfall / % column header row. The set rows live in a sibling panel with `min-h-0 flex-1 overflow-y-auto` (or equivalent) so only that list scrolls inside the remaining viewport. Avoid `overflow-y-auto` on the outer `main` once the inner scroller owns the rows (otherwise nested scroll fights). Safe-area padding stays on the outer shell.
 
 ### Error / degradation
 
@@ -89,7 +91,7 @@
 - **Engine/cards:** `sets` deserializes; fixtures may use empty `sets`.
 - **Server health:** multi-set credit (one faithful card in two codes increments both); `approximates` excluded; empty `sets` omitted.
 - **BFF:** per-set `oracle_total` counts unique oracles across printings (regression: a reprint set’s total is not the default-print-only count); SWR on failure.
-- **Client:** `visibleCoverageRows` sorts by release date desc; Scene coverage still covers load/search/error/retry.
+- **Client:** `visibleCoverageRows` sorts by release date desc; Scene coverage still covers load/search/error/retry; assert the row list container is the scroll owner (e.g. `data-testid="coverage-table-body"` with overflow scroll) while chrome/search/headers stay outside it.
 - **Catalog:** search for a set code that appears only in `sets` (not formerly singular `set`) returns the card.
 - **Specs at implement time:** update living [coverage-by-set](2026-07-26-coverage-by-set.md), [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md) / accounts-catalog as needed, [card-dsl-and-card-pool](2026-07-20-card-dsl-and-card-pool.md) + DSL reference. This file remains design input.
 
@@ -107,5 +109,6 @@
 - CMD-style rows show faithful ≤ Scryfall unique-oracle-in-set (absent authoring/cache drift), with a denominator reflecting every oracle printed in the product — not ~37 default-print orphans.
 - New cards get `sets` via one script invocation, not hand-edited reprint lists.
 - `/coverage` opens with newest sets first by `released_at`.
+- Scrolling the set list does not move the page header, search, or column headers.
 - API process never calls Scryfall; global badge behavior unchanged.
 - Failures never invent coverage numbers or block the rest of the shell.
