@@ -11,10 +11,12 @@ export function extractProvenance(
   events: VisibleEvent[],
   priorStack: Set<number>,
   _viewer: number,
+  priorBattlefieldIds: ReadonlySet<number>,
 ): {
   moves: Map<number, number>;
   fromStack: Set<number>;
   fromStackExit: Set<number>;
+  battlefieldExits: Map<number, "graveyard" | "exile">;
   tokenCreators: Map<number, number>;
   landPlays: Map<number, number>;
   zonePileEntrances: Map<number, ZonePileEntrance>;
@@ -23,13 +25,28 @@ export function extractProvenance(
   const moves = new Map<number, number>();
   const fromStack = new Set<number>();
   const fromStackExit = new Set<number>();
+  const battlefieldExits = new Map<number, "graveyard" | "exile">();
   const tokenCreators = new Map<number, number>();
   const landPlays = new Map<number, number>();
   const zonePileEntrances = new Map<number, ZonePileEntrance>();
   const stackEntrances = new Map<number, { controller: number; from: number }>();
   for (const e of events) {
     Match.value(e).pipe(
-      Match.discriminator("kind")("moved_to_graveyard", "moved_to_exile", "milled", "moved_to_command_zone", (e) => {
+      Match.discriminator("kind")("moved_to_graveyard", (e) => {
+        moves.set(e.card, e.from);
+        if (priorStack.has(e.from)) fromStackExit.add(e.card);
+        if (priorBattlefieldIds.has(e.from) || priorBattlefieldIds.has(e.card)) {
+          battlefieldExits.set(e.card, "graveyard");
+        }
+      }),
+      Match.discriminator("kind")("moved_to_exile", (e) => {
+        moves.set(e.card, e.from);
+        if (priorStack.has(e.from)) fromStackExit.add(e.card);
+        if (priorBattlefieldIds.has(e.from) || priorBattlefieldIds.has(e.card)) {
+          battlefieldExits.set(e.card, "exile");
+        }
+      }),
+      Match.discriminator("kind")("milled", "moved_to_command_zone", (e) => {
         moves.set(e.card, e.from);
         if (priorStack.has(e.from)) fromStackExit.add(e.card);
       }),
@@ -192,7 +209,7 @@ export function extractProvenance(
       Match.exhaustive,
     );
   }
-  return { moves, fromStack, fromStackExit, tokenCreators, landPlays, zonePileEntrances, stackEntrances };
+  return { moves, fromStack, fromStackExit, battlefieldExits, tokenCreators, landPlays, zonePileEntrances, stackEntrances };
 }
 
 // A human-readable log line for an event, joining object ids → names against the delta's

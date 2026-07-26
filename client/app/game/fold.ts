@@ -16,6 +16,7 @@ export type FoldProvenance = {
   zoneMoves: Map<number, number>;
   resolvedFromStack: Set<number>;
   leftStackToPile: Set<number>;
+  battlefieldExits: Map<number, "graveyard" | "exile">;
   tokenCreators: Map<number, number>;
   landPlayFrom: Map<number, number>;
   zonePileEntrances: Map<number, ZonePileEntrance>;
@@ -29,6 +30,8 @@ export type TableFeelBatch = {
   stack: boolean;
   resolve: boolean;
   damage: boolean;
+  destroy: boolean;
+  exile: boolean;
 };
 
 export type GameFoldState = {
@@ -45,6 +48,7 @@ function emptyProvenance(): FoldProvenance {
     zoneMoves: new Map(),
     resolvedFromStack: new Set(),
     leftStackToPile: new Set(),
+    battlefieldExits: new Map(),
     tokenCreators: new Map(),
     landPlayFrom: new Map(),
     zonePileEntrances: new Map(),
@@ -54,7 +58,7 @@ function emptyProvenance(): FoldProvenance {
 }
 
 function emptyTableFeel(): TableFeelBatch {
-  return { land: false, stack: false, resolve: false, damage: false };
+  return { land: false, stack: false, resolve: false, damage: false, destroy: false, exile: false };
 }
 
 export function emptyGameFold(): GameFoldState {
@@ -119,7 +123,10 @@ export function applyDeltaPure(prev: GameFoldState, delta: DeltaEnvelope): GameF
   }));
   const lines = [...eventLines, ...autoLines];
   const priorStackObjectIds = new Set(prev.state?.stack.map((stackObject) => stackObject.source) ?? []);
-  const provenance = extractProvenance(delta.events, priorStackObjectIds, prev.state?.viewer ?? 0);
+  const priorBattlefieldIds = new Set(
+    (prev.state?.objects ?? []).filter((object) => object.zone === 2 /* Battlefield */).map((object) => object.id),
+  );
+  const provenance = extractProvenance(delta.events, priorStackObjectIds, prev.state?.viewer ?? 0, priorBattlefieldIds);
 
   return {
     ...prev,
@@ -130,6 +137,7 @@ export function applyDeltaPure(prev: GameFoldState, delta: DeltaEnvelope): GameF
       zoneMoves: provenance.moves,
       resolvedFromStack: provenance.fromStack,
       leftStackToPile: provenance.fromStackExit,
+      battlefieldExits: provenance.battlefieldExits,
       tokenCreators: provenance.tokenCreators,
       landPlayFrom: provenance.landPlays,
       zonePileEntrances: provenance.zonePileEntrances,
@@ -148,6 +156,8 @@ export function applyDeltaPure(prev: GameFoldState, delta: DeltaEnvelope): GameF
       damage: delta.events.some(
         (event) => event.kind === "combat_damage_dealt_to_creature" || event.kind === "combat_damage_dealt_to_player",
       ),
+      destroy: [...provenance.battlefieldExits.values()].some((zone) => zone === "graveyard"),
+      exile: [...provenance.battlefieldExits.values()].some((zone) => zone === "exile"),
     },
   };
 }
