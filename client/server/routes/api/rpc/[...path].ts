@@ -2,15 +2,12 @@
 
 import * as Effect from "effect/Effect";
 import {
-  defineEventHandler,
+  defineHandler,
   deleteCookie,
   getCookie,
-  getMethod,
-  getRequestHeader,
   getRequestURL,
   getRouterParam,
   type H3Event,
-  readRawBody,
   setCookie,
 } from "nitro/h3";
 import { grpcUpstreamFromPodDns } from "../../../../app/domain/api-upstream";
@@ -148,21 +145,21 @@ function routeSegments(event: H3Event): string[] {
 }
 
 async function jsonBody(event: H3Event): Promise<unknown> {
-  const raw = await readRawBody(event, "utf8");
-  return JSON.parse(raw ?? "");
+  const raw = await event.req.text();
+  return JSON.parse(raw);
 }
 
 const ALLOWED_METHODS = new Set(["GET", "POST", "PUT", "DELETE"]);
 
-async function handle(event: H3Event): Promise<Response> {
-  const method = getMethod(event);
+export default defineHandler(async (event) => {
+  const method = event.req.method;
   if (!ALLOWED_METHODS.has(method)) {
     return new Response("Method Not Allowed", { status: 405 });
   }
 
   const segments = routeSegments(event);
   const sessionToken = getCookie(event, SESSION_COOKIE) ?? null;
-  const traceparent = getRequestHeader(event, "traceparent") ?? null;
+  const traceparent = event.req.headers.get("traceparent") ?? null;
 
   let body: unknown;
   if (method === "POST" || method === "PUT") {
@@ -196,6 +193,4 @@ async function handle(event: H3Event): Promise<Response> {
   }
 
   return outcomeToResponse(outcome);
-}
-
-export default defineEventHandler(handle);
+});

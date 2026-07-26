@@ -50,18 +50,27 @@ export async function createTable(): Promise<{ table_id: string } | null> {
   return decodeOrNull(decodeCreatedTable, body);
 }
 
-export async function joinTable(payload: { table_id: string; deck_id: number }): Promise<LobbyView | null> {
-  const body = await lobbyFetchJson("tables/join/v1", { method: "POST", body: JSON.stringify(payload) });
+export async function joinTable(tableId: string, payload: { deck_id: number }): Promise<LobbyView | null> {
+  const body = await lobbyFetchJson(`tables/${encodeURIComponent(tableId)}/join/v1`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
   return decodeOrNull(decodeLobbyView, body);
 }
 
-export async function readyUp(payload: { table_id: string; ready: boolean }): Promise<LobbyView | null> {
-  const body = await lobbyFetchJson("tables/ready/v1", { method: "POST", body: JSON.stringify(payload) });
+export async function readyUp(tableId: string, payload: { ready: boolean }): Promise<LobbyView | null> {
+  const body = await lobbyFetchJson(`tables/${encodeURIComponent(tableId)}/ready/v1`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
   return decodeOrNull(decodeLobbyView, body);
 }
 
-export async function startGame(payload: { table_id: string }): Promise<LobbyView | null> {
-  const body = await lobbyFetchJson("tables/start/v1", { method: "POST", body: JSON.stringify(payload) });
+export async function startGame(tableId: string): Promise<LobbyView | null> {
+  const body = await lobbyFetchJson(`tables/${encodeURIComponent(tableId)}/start/v1`, {
+    method: "POST",
+    body: "{}",
+  });
   return decodeOrNull(decodeLobbyView, body);
 }
 

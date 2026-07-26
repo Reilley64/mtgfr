@@ -76,6 +76,7 @@ These documents are **not superseded** and must stay current alongside the specs
 | [coverage-printing-aware-sets](2026-07-26-coverage-printing-aware-sets-design.md) | Design input: pool `sets` + backfill script; printing-aware faithful/oracle per set; release-date sort; supersedes coverage-by-set metric/sort |
 | [gha-server-verify-sharding](2026-07-26-gha-server-verify-sharding-design.md) | Design input for 3-shard nextest cold `verify-server` wall-clock; update `ci-and-release` at implement time |
 | [ci-rust-protoc-image](2026-07-26-ci-rust-protoc-image-design.md) | Design input for GHCR `mtgfr-ci` toolchain image (PR1 publish; PR2 containerize verify + migrate job); update `ci-and-release` per PR |
+| [bff-route-split](2026-07-26-bff-route-split-design.md) | Design input: Nitro one-file-per lobby/meta op, `defineHandler` + h3 web APIs, path-param join/ready/start; update shell/lobby/coverage specs at implement time |
 | [shell-polish-redesign](2026-07-26-shell-polish-redesign-design.md) | Design input: shared shell frame, shell type pair, atmosphere step-up, CSS portrait→landscape rotate, per-surface reflows; update shell/deck/lobby/coverage/system-overlays/board-composition specs + `DESIGN.md` per wave |
 
 ## Authoring conventions
