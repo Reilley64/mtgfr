@@ -13,7 +13,6 @@ on:
 
 env:
   DATABASE_URL: postgresql://mtgfr:mtgfr@localhost:5432/mtgfr
-  MTGFR_CI_IMAGE: ghcr.io/reilley64/mtgfr-ci:latest
 
 jobs:
   verify-server-gate:
