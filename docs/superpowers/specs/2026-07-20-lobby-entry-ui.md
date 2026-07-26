@@ -59,7 +59,7 @@ An Options card renders above the seat list and below table-code chrome (`lobby-
 
 ### Lobby poll and table lifecycle (`client/app/shell/lobby/poll.ts`, `client/app/shell/lobby/subscriptions.ts`, `client/lib/lobby-store.ts`)
 
-`lobbyPoll(tableId)` is an Effect stream consumed by a Foldkit subscription. The subscription polls lobby state while a table is present and stops when `started` is true. `client/lib/lobby/client.ts` preserves structured JSON lobby bodies from non-2xx responses, so a 404 `UnknownTable` response reaches `model.error` instead of collapsing to `Unreachable`. `UnknownTable` renders as stale-link copy: the table link is stale or expired and the player should ask the host for a new code. `client/lib/lobby-store.ts` holds lobby helpers for multi-seat coordination. Once the lobby moves to `started`, the app transitions from the lobby view to the board mount, preserving the table id in the route.
+`lobbyPoll(tableId)` is an Effect stream consumed by a Foldkit subscription. The subscription polls lobby state while a table is present and stops when `started` is true. `client/lib/lobby/client.ts` decodes lobby JSON with the `LobbyView` schema and preserves structured non-2xx lobby bodies, so a 404 `UnknownTable` response reaches `model.error` instead of collapsing to `Unreachable`. Bodies that are not a valid `LobbyView` (for example Nitro 500 JSON missing `table_id`) decode to `null` → `Unreachable`, so Foldkit never constructs `ReceivedLobbyView` with an invalid payload (which would crash with `Missing key at ["view"]["table_id"]`). Host’s create→join path hits that Unreachable mapping when `loadLobby` 500s — notably if `mtgfr_web.lobby_seats` lacks `gravatar_hash` (migration drift; see [production-topology-and-operations](2026-07-20-production-topology-and-operations.md)). `UnknownTable` renders as stale-link copy: the table link is stale or expired and the player should ask the host for a new code. `client/lib/lobby-store.ts` holds lobby helpers for multi-seat coordination. Once the lobby moves to `started`, the app transitions from the lobby view to the board mount, preserving the table id in the route.
 
 Helpers also live in `client/lib/lobby/client.ts` for table URL / code parsing used by the entry UI.
 
@@ -78,7 +78,8 @@ Helpers also live in `client/lib/lobby/client.ts` for table URL / code parsing u
 ## Testing Decisions
 
 - `client/app/shell/lobby/**/*.test.ts` — lobby stories and helpers (Host/Join entry, seated chrome, poll).
-- `client/lib/lobby-store.test.ts` — lobby state helpers.
+- `client/lib/lobby-store.test.ts` — lobby state helpers; with `WEB_DATABASE_URL`, asserts
+  `loadLobby` on an empty table (guards missing `gravatar_hash` / Host Unreachable).
 - Scene assertions for lobby entry / seated surfaces, including `seat-face-0` Gravatar/monogram chrome and the commander-damage options card / disabled guest switch, live with shell Scene coverage (`just client-check`).
 
 ---

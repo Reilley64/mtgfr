@@ -26,8 +26,15 @@
     {
       "idx": 3,
       "version": "7",
+      "when": 1785086400000,
+      "tag": "0003_lobby_seat_gravatar_if_not_exists",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
       "when": 1785088800000,
-      "tag": "0003_lobby_commander_damage",
+      "tag": "0004_lobby_commander_damage",
       "breakpoints": true
     }
   ]

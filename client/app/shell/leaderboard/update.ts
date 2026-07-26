@@ -28,7 +28,7 @@ export function loadLeaderboard(
 ): readonly [LeaderboardSubmodel, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
   const entries = offset === 0 ? [] : model.entries;
   return [
-    { ...model, entries, error: null, status: "loading" },
+    { ...model, accountMenuOpen: false, entries, error: null, status: "loading" },
     [FetchLeaderboard({ limit: LEADERBOARD_PAGE_SIZE, offset })],
   ];
 }

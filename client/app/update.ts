@@ -105,7 +105,7 @@ function routeEntry(model: Model): readonly [Model, ReadonlyArray<FoldkitCommand
 
   switch (model.route._tag) {
     case "HomeRoute": {
-      const [list, commands] = loadDeckList(model.decks.list, { includeLeaderboardTeaser: true });
+      const [list, commands] = loadDeckList(model.decks.list);
       return [{ ...model, decks: { ...model.decks, list } }, commands];
     }
     case "LeaderboardRoute": {
@@ -388,6 +388,62 @@ export const update = (
         const [auth, commands] = updateAuth(model.auth, authMessage);
         return [{ ...model, auth }, commands];
       },
+      ToggledAccountMenu: () => {
+        if (model.route._tag === "HomeRoute") {
+          const list = model.decks.list;
+          return [
+            {
+              ...model,
+              decks: {
+                ...model.decks,
+                list: {
+                  ...list,
+                  accountMenuOpen: !list.accountMenuOpen,
+                  contextMenu: null,
+                },
+              },
+            },
+            [],
+          ];
+        }
+        if (model.route._tag === "LeaderboardRoute") {
+          return [
+            {
+              ...model,
+              leaderboard: {
+                ...model.leaderboard,
+                accountMenuOpen: !model.leaderboard.accountMenuOpen,
+              },
+            },
+            [],
+          ];
+        }
+        return [model, []];
+      },
+      ClosedAccountMenu: () => {
+        if (model.route._tag === "HomeRoute") {
+          return [
+            {
+              ...model,
+              decks: {
+                ...model.decks,
+                list: { ...model.decks.list, accountMenuOpen: false },
+              },
+            },
+            [],
+          ];
+        }
+        if (model.route._tag === "LeaderboardRoute") {
+          return [
+            {
+              ...model,
+              leaderboard: { ...model.leaderboard, accountMenuOpen: false },
+            },
+            [],
+          ];
+        }
+        return [model, []];
+      },
       RequestedDecksRefresh: (decksMessage) => foldDeckList(model, decksMessage),
       ReceivedDecks: (decksMessage) => {
         const [nextModel, commands] = foldDeckList(model, decksMessage);
@@ -403,8 +459,6 @@ export const update = (
       RequestedDeckDelete: (decksMessage) => foldDeckList(model, decksMessage),
       DeckDeleted: (decksMessage) => foldDeckList(model, decksMessage),
       DeckDeleteFailed: (decksMessage) => foldDeckList(model, decksMessage),
-      ReceivedDeckListLeaderboardTeaser: (decksMessage) => foldDeckList(model, decksMessage),
-      DeckListLeaderboardTeaserLoadFailed: (decksMessage) => foldDeckList(model, decksMessage),
       RequestedLeaderboardRefresh: (leaderboardMessage) => foldLeaderboard(model, leaderboardMessage),
       RequestedLeaderboardNextPage: (leaderboardMessage) => foldLeaderboard(model, leaderboardMessage),
       ReceivedLeaderboardPage: (leaderboardMessage) => foldLeaderboard(model, leaderboardMessage),

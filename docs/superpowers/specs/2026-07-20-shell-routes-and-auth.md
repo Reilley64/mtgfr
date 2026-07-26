@@ -1,6 +1,6 @@
 # Shell Routes and Auth
 
-**Status:** Current (as of 2026-07-25)
+**Status:** Current (as of 2026-07-26)
 **Module:** `client/app/` (entry, routes, update/view, model, subscriptions, resources), `client/app/shell/auth/**`, `client/app/faro.ts`, `client/lib/rpc-client.ts`, `client/lib/wire/**`, `client/lib/build-meta.ts`, `client/lib/client-build-options.ts`, `client/lib/design-tokens.generated.ts`, `client/lib/ui/**`, `client/styles/global.css`, `client/styles/tokens.generated.css`, `vite.config.ts`
 
 ---
@@ -49,7 +49,7 @@ A single Foldkit event-reactor owns routing: `client/app/routes.ts` maps paths t
 Required identifiers live in path params ([wire-protocol-and-visibility](2026-07-20-wire-protocol-and-visibility.md) routing rule). Query params are optional: `?next=` is the post-login redirect target.
 Legacy `/play`, `/play/:table`, and `?deck=` entry points are Not found (hard cut).
 
-Lobby Host/Join and seated chrome for `/play/:deckId` and `/play/:deckId/:table` are specified in [lobby-entry-ui](2026-07-20-lobby-entry-ui.md). Deck list (`/`) and builder (`/decks/…`) are specified in [deck-list-and-builder](2026-07-20-deck-list-and-builder.md). The leaderboard route (`/leaderboard`) renders a ranked list from `rpc.ratings.leaderboard({ limit, offset })`, showing rank, username, and rating for authenticated players. Route entry loads the first page as `limit = 50, offset = 0`; `Load more` appends the next page. When a later page load fails after prior rows are already visible, the existing rows stay on screen, `Load more` is hidden, and `Try again` clears the current rows and restarts from the first page.
+Lobby Host/Join and seated chrome for `/play/:deckId` and `/play/:deckId/:table` are specified in [lobby-entry-ui](2026-07-20-lobby-entry-ui.md). Deck list (`/`) and builder (`/decks/…`) are specified in [deck-list-and-builder](2026-07-20-deck-list-and-builder.md). The home route entry loads decks only; it does not issue a separate top-players teaser fetch. The leaderboard route (`/leaderboard`) renders a ranked list from `rpc.ratings.leaderboard({ limit, offset })`, showing rank, username, and rating for authenticated players, with header chrome that keeps `Play` back to `/` and reuses the shared avatar account menu instead of a standalone sign-out button. Route entry loads the first page as `limit = 50, offset = 0`; `Load more` appends the next page. When a later page load fails after prior rows are already visible, the existing rows stay on screen, `Load more` is hidden, and `Try again` clears the current rows and restarts from the first page.
 
 ### Portrait gate (`client/app/view.ts`, `client/app/subscriptions.ts`, DESIGN.md Landscape Rule)
 
@@ -59,7 +59,7 @@ A native `<dialog showModal>` opens when `(orientation: portrait) and (max-width
 
 `FetchMe` is a Foldkit command wrapping `client.me()` with all failures folded to `null` — any 401, decode error, or transport failure is treated as "not signed in." Route entry runs session checks for protected routes. While the session is unresolved, protected content stays blank; once resolved to `null`, the app redirects to `/login?next=<current-path>`. The `next` redirect target is validated server-side and in-browser: only same-origin absolute paths starting with `/` (not `//` or `/\`) are accepted.
 
-When `ReceivedMe` carries a signed-in user, the app queues `HashMeGravatar`, a Foldkit command that SHA-256 hashes the user's email through `client/lib/gravatar.ts` and stores the result as `session.meGravatarHash`. The completion message includes the source email, and `update` ignores stale hash results when the current session email no longer matches. Signed-out sessions clear `meGravatarHash`.
+When `ReceivedMe` carries a signed-in user, the app queues `HashMeGravatar`, a Foldkit command that SHA-256 hashes the user's email through `client/lib/gravatar.ts` and stores the result as `session.meGravatarHash`. The completion message includes the source email, and `update` ignores stale hash results when the current session email no longer matches. Signed-out sessions clear `meGravatarHash`. The resulting hash feeds the shared account chrome face on home and leaderboard, matching the seat/avatar helper family without exposing raw email in UI state.
 
 Unsigned protected content never renders.
 
@@ -146,8 +146,8 @@ Vite production builds set `build.sourcemap: true` (via `clientBuildSourcemap`) 
 ## Testing Decisions
 
 - `client/app/shell/auth/**/*.test.ts` — auth stories and helpers, including `ReceivedMe` → `HashMeGravatar` session storage and stale-result guarding.
-- `client/app/routes.test.ts`, `client/app/smoke.test.ts` — routing and smoke; includes protected `/leaderboard` entry, auth redirect, home teaser fetch, and retry-from-page-one behavior.
-- `client/app/shell/surfaces.test.ts` — shell Scene coverage for the `/leaderboard` surface and its retry/error chrome.
+- `client/app/routes.test.ts`, `client/app/smoke.test.ts` — routing and smoke; includes protected `/leaderboard` entry, auth redirect, home entry loading decks without a teaser fetch, and retry-from-page-one behavior.
+- `client/app/shell/surfaces.test.ts` — shell Scene coverage for the `/leaderboard` surface, its shared account chrome, and retry/error chrome.
 - `client/app/game/*.test.ts` — game fold, stream subscription.
 - `client/lib/rpc-client.test.ts` — Effect HTTP client (stubbed fetch).
 - `client/lib/wire/*.test.ts` — BFF gRPC / RPC method gate.
