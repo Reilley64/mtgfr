@@ -92,6 +92,18 @@ describe.skipIf(!process.env.WEB_DATABASE_URL)("joinLobby gravatar persistence",
     tableId = undefined;
   });
 
+  it("loadLobby succeeds on an empty table (missing gravatar_hash 500s Host as Unreachable)", async () => {
+    // Prod 3.100.2: POST /tables/v1 ok, then join/lobby GET 500 when lobby_seats lacks
+    // gravatar_hash — client decode maps that Nitro body to Unreachable.
+    db = createWebDb();
+    tableId = await createLobby(db, 9000);
+    await expect(loadLobby(db, tableId)).resolves.toMatchObject({
+      tableId,
+      hostUserId: 9000,
+      seats: [],
+    });
+  });
+
   it("writes gravatarHash on insert/update and loadLobby/toLobbyView read it back", async () => {
     db = createWebDb();
     tableId = await createLobby(db, 9001);
