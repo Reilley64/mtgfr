@@ -4,9 +4,9 @@
 
 **Layout:** Canvas board (96×134 world-unit cards, shared camera) + thin DOM HUD. Z-order: board → HUD → backdrop (29) → modal (30) → pinned board inspect dock (topmost, above system modals). No persistent nav chrome.
 
-**The Landscape Rule.** Mobile and tablet are **landscape-first**. Auth, lobby, decks, builder, and board assume horizontal space. Portrait phones (`orientation: portrait` and `max-width: 900px`) open a native `<dialog showModal>` rotate gate (top-layer, inert background, focus trap; Escape disabled) — never a stacked vertical reflow of the builder or board. Short landscape (phone on its side) keeps side-by-side columns and tightens padding; it does not flip the axis. The board supports wheel and two-finger pinch zoom in landscape so players can adjust dense tables without a layout mode switch. Safe-area insets apply on notched devices (`viewport-fit=cover`).
+**The Landscape Rule.** Mobile and tablet are **landscape-first**. Auth, lobby, decks, builder, and board assume horizontal space. On `(orientation: portrait) and (max-width: 900px)` the app root applies CSS rotate and width/height swap (`.landscape-rotate-root`); there is no rotate dialog and no portrait reflow of the builder or board. Short landscape (phone on its side) keeps side-by-side columns and tightens padding; it does not flip the axis. The board supports wheel and two-finger pinch zoom in landscape so players can adjust dense tables without a layout mode switch. Safe-area insets apply on notched devices (`viewport-fit=cover`).
 
-**Typography:** `system-ui` only. Screen ramp: title 18/700, body 14/400, button 14/600, label 13, caption 12. Game chrome: `game` 15/600 (`Button variant="game"`), `display` 22/700 (lobby table code). HUD density below caption: `chip` 11, `micro` 10 — board/hand chrome only, never prose. No display fonts.
+**Typography:** Shell surfaces use Manrope (`font-shell`) and Space Grotesk (`font-display` for titles). Board HUD and canvas chrome use `font-sans` (`system-ui`). Screen ramp: title 18/700, body 14/400, button 14/600, label 13, caption 12. Game chrome: `game` 15/600 (`Button variant="game"`), `display` 22/700 (lobby table code). HUD density below caption: `chip` 11, `micro` 10 — board/hand chrome only, never prose.
 
 **Semantic colors (combat):** Mountain Red = attack, Wall Green = block, Island Blue = targeting.
 

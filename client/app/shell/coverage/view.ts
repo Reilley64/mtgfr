@@ -1,11 +1,12 @@
 import { Submodel } from "foldkit";
 import { type Html, html } from "foldkit/html";
-import { type AppChromeMeta, appVersionBadge, formatFaithfulPercent } from "../../domain/ui/app-version";
+import { type AppChromeMeta, formatFaithfulPercent } from "../../domain/ui/app-version";
 import { buttonClass } from "../../domain/ui/buttonClass";
-import { feltClass, fieldClass, listRowClass } from "../../domain/ui/surfaces";
+import { fieldClass, listRowClass } from "../../domain/ui/surfaces";
 import type { ClosedAccountMenu, GotAuthMessage, ToggledAccountMenu } from "../../messages";
 import { HomeRoute, routePath } from "../../routes";
 import { accountChrome } from "../account-chrome/view";
+import { shellFrame } from "../frame/shell-frame";
 import { ChangedCoverageQuery, type Message as CoverageMessage, RequestedCoverageRefresh } from "./messages";
 import type { CoverageSetRow, CoverageStatus, CoverageSubmodel } from "./submodel";
 
@@ -103,106 +104,100 @@ export const view = Submodel.defineView<CoverageSubmodel, ViewMessage, ViewInput
   const globalPercent = coveragePercentText(model.faithfulCount, model.oracleTotal);
   const emptyCopy = model.query.trim() === "" ? "No set coverage available." : "No sets match.";
 
-  return h.main(
-    [
-      h.Class(
-        feltClass(
-          // h-dvh (not h-full): parent height is unconstrained, so h-full grows with the row
-          // list and overflow-y-auto on the body never engages — same lesson as deck-builder.
-          "flex h-dvh flex-col overflow-hidden p-xxl pt-[max(1.5rem,env(safe-area-inset-top))] pr-[max(1.5rem,env(safe-area-inset-right))] pb-[max(1.5rem,env(safe-area-inset-bottom))] pl-[max(1.5rem,env(safe-area-inset-left))]",
+  return shellFrame(h, {
+    atmosphere: "shell",
+    title: "Coverage",
+    chrome,
+    leading: h.a([h.Href(routePath(HomeRoute())), h.Class(buttonClass("ghost"))], ["Play"]),
+    trailing: accountChrome(h, {
+      username,
+      gravatarHash: meGravatarHash,
+      menuOpen: model.accountMenuOpen,
+      showLeaderboardLink: true,
+    }),
+    stage: h.div(
+      [
+        // h-dvh (not h-full): parent height is unconstrained, so h-full grows with the row
+        // list and overflow-y-auto on the body never engages — same lesson as deck-builder.
+        h.Class("flex h-dvh flex-col overflow-hidden"),
+        h.DataAttribute("testid", "coverage-page"),
+      ],
+      [
+        h.div(
+          [h.Class("mx-auto mb-5 flex w-full max-w-[960px] shrink-0 flex-wrap items-center justify-between gap-md")],
+          [
+            h.div(
+              [h.Class("flex min-w-0 flex-col gap-xs")],
+              [
+                h.div(
+                  [h.Class("text-label text-lichen"), h.DataAttribute("testid", "coverage-global-percent")],
+                  [`${globalPercent} faithful`],
+                ),
+              ],
+            ),
+          ],
         ),
-      ),
-      h.DataAttribute("testid", "coverage-page"),
-    ],
-    [
-      h.div(
-        [h.Class("mx-auto mb-5 flex w-full max-w-[960px] shrink-0 flex-wrap items-center justify-between gap-md")],
-        [
-          h.div(
-            [h.Class("flex min-w-0 flex-col gap-xs")],
-            [
-              h.h1([h.Class("m-0 text-title")], ["Coverage"]),
-              h.div(
-                [h.Class("text-label text-lichen"), h.DataAttribute("testid", "coverage-global-percent")],
-                [`${globalPercent} faithful`],
-              ),
-            ],
-          ),
-          h.div(
-            [h.Class("flex flex-wrap items-center gap-md")],
-            [
-              h.a([h.Href(routePath(HomeRoute())), h.Class(buttonClass("ghost"))], ["Play"]),
-              accountChrome(h, {
-                username,
-                gravatarHash: meGravatarHash,
-                menuOpen: model.accountMenuOpen,
-                showLeaderboardLink: true,
-              }),
-            ],
-          ),
-        ],
-      ),
-      h.section(
-        [h.Class("mx-auto flex min-h-0 w-full max-w-[960px] flex-1 flex-col gap-sm")],
-        [
-          model.error == null
-            ? null
-            : h.div([h.Role("alert"), h.Class("shrink-0 text-label text-reconnect-rust")], [model.error]),
-          status == null ? null : h.div([h.Class("shrink-0 text-label text-lichen")], [status]),
-          model.status !== "loading"
-            ? h.input([
-                h.Type("search"),
-                h.DataAttribute("testid", "coverage-search"),
-                h.AriaLabel("Search sets"),
-                h.Placeholder("Search sets…"),
-                h.Value(model.query),
-                h.OnInput((query) => ChangedCoverageQuery({ query })),
-                h.Class(fieldClass("mb-sm w-full max-w-[420px] shrink-0")),
-              ])
-            : null,
-          model.status === "ready" && rows.length > 0
-            ? h.div(
-                [h.Class("flex min-h-0 flex-1 flex-col gap-xs"), h.DataAttribute("testid", "coverage-table")],
-                [
-                  h.div(
-                    [
-                      h.Class(
-                        "grid shrink-0 grid-cols-[minmax(0,1.75fr)_96px_96px_80px] gap-md px-md text-label text-lichen",
-                      ),
-                    ],
-                    [
-                      h.span([], ["Set"]),
-                      h.span([h.Class("text-right")], ["Faithful"]),
-                      h.span([h.Class("text-right")], ["Scryfall"]),
-                      h.span([h.Class("text-right")], ["%"]),
-                    ],
-                  ),
-                  h.div(
-                    [
-                      h.Class("flex min-h-0 flex-1 flex-col gap-xs overflow-y-auto"),
-                      h.DataAttribute("testid", "coverage-table-body"),
-                    ],
-                    rows.map(tableRow),
-                  ),
-                ],
-              )
-            : null,
-          model.status === "ready" && rows.length === 0
-            ? h.div([h.Class("text-label text-lichen")], [emptyCopy])
-            : null,
-          model.status === "error"
-            ? h.button(
-                [
-                  h.Type("button"),
-                  h.OnClick(RequestedCoverageRefresh()),
-                  h.Class(buttonClass("ghost", "mt-md self-start")),
-                ],
-                ["Try again"],
-              )
-            : null,
-        ],
-      ),
-      appVersionBadge(h, chrome),
-    ],
-  );
+        h.section(
+          [h.Class("mx-auto flex min-h-0 w-full max-w-[960px] flex-1 flex-col gap-sm")],
+          [
+            model.error == null
+              ? null
+              : h.div([h.Role("alert"), h.Class("shrink-0 text-label text-reconnect-rust")], [model.error]),
+            status == null ? null : h.div([h.Class("shrink-0 text-label text-lichen")], [status]),
+            model.status !== "loading"
+              ? h.input([
+                  h.Type("search"),
+                  h.DataAttribute("testid", "coverage-search"),
+                  h.AriaLabel("Search sets"),
+                  h.Placeholder("Search sets…"),
+                  h.Value(model.query),
+                  h.OnInput((query) => ChangedCoverageQuery({ query })),
+                  h.Class(fieldClass("mb-sm w-full max-w-[420px] shrink-0")),
+                ])
+              : null,
+            model.status === "ready" && rows.length > 0
+              ? h.div(
+                  [h.Class("flex min-h-0 flex-1 flex-col gap-xs"), h.DataAttribute("testid", "coverage-table")],
+                  [
+                    h.div(
+                      [
+                        h.Class(
+                          "grid shrink-0 grid-cols-[minmax(0,1.75fr)_96px_96px_80px] gap-md px-md text-label text-lichen",
+                        ),
+                      ],
+                      [
+                        h.span([], ["Set"]),
+                        h.span([h.Class("text-right")], ["Faithful"]),
+                        h.span([h.Class("text-right")], ["Scryfall"]),
+                        h.span([h.Class("text-right")], ["%"]),
+                      ],
+                    ),
+                    h.div(
+                      [
+                        h.Class("flex min-h-0 flex-1 flex-col gap-xs overflow-y-auto"),
+                        h.DataAttribute("testid", "coverage-table-body"),
+                      ],
+                      rows.map(tableRow),
+                    ),
+                  ],
+                )
+              : null,
+            model.status === "ready" && rows.length === 0
+              ? h.div([h.Class("text-label text-lichen")], [emptyCopy])
+              : null,
+            model.status === "error"
+              ? h.button(
+                  [
+                    h.Type("button"),
+                    h.OnClick(RequestedCoverageRefresh()),
+                    h.Class(buttonClass("ghost", "mt-md self-start")),
+                  ],
+                  ["Try again"],
+                )
+              : null,
+          ],
+        ),
+      ],
+    ),
+  });
 });

@@ -1,7 +1,7 @@
 # Shell Routes and Auth
 
 **Status:** Current (as of 2026-07-26)
-**Module:** `client/app/` (entry, routes, update/view, model, subscriptions, resources, `pwa.ts`, `sw.ts`), `client/app/shell/auth/**`, `client/app/faro.ts`, `client/app/domain/rpc-client.ts`, `client/app/domain/wire/**`, `client/app/domain/build-meta.ts`, `client/app/domain/client-build-options.ts`, `client/app/domain/design-tokens.generated.ts`, `client/app/domain/ui/**`, `client/styles/global.css`, `client/styles/tokens.generated.css`, `vite.config.ts`
+**Module:** `client/app/` (entry, routes, update/view, model, subscriptions, resources, `pwa.ts`, `sw.ts`), `client/app/shell/frame/shell-frame.ts`, `client/app/shell/auth/**`, `client/app/faro.ts`, `client/app/domain/rpc-client.ts`, `client/app/domain/wire/**`, `client/app/domain/build-meta.ts`, `client/app/domain/client-build-options.ts`, `client/app/domain/design-tokens.generated.ts`, `client/app/domain/ui/**`, `client/styles/global.css`, `client/styles/tokens.generated.css`, `vite.config.ts`
 
 ---
 
@@ -22,7 +22,7 @@ The client is a **Foldkit** SPA on **Nitro** (Vite). A single event-reactor owns
 ## User Stories
 
 - As a new player, I visit the root URL, see the deck list, and am redirected to `/login` because I have no session. After signing up, I return to the deck list.
-- As a player on a portrait phone, I see a native dialog telling me to rotate to landscape; the deck builder and board are hidden behind the dialog.
+- As a player on a portrait phone, I see the landscape-first layout rotated in place via CSS; the deck builder and board stay usable without a dialog or vertical reflow.
 - As a returning player, I sign in on `/login` and am sent to the validated `?next=` path (or a safe default) without open-redirect risk.
 
 ---
@@ -31,7 +31,7 @@ The client is a **Foldkit** SPA on **Nitro** (Vite). A single event-reactor owns
 
 ### App shell and routing (`client/app/routes.ts`, `client/app/view.ts`)
 
-A single Foldkit event-reactor owns routing: `client/app/routes.ts` maps paths to shell views; `client/app/view.ts` renders the active route. Auth-gated routes consult the auth submodel (redirect to `/login?next=…` when unsigned-in). No persistent nav chrome. Global chrome is the portrait gate (Landscape Rule). Routes:
+A single Foldkit event-reactor owns routing: `client/app/routes.ts` maps paths to shell views; `client/app/view.ts` renders the active route. Auth-gated routes consult the auth submodel (redirect to `/login?next=…` when unsigned-in). No persistent nav chrome. Non-board routes render through `shellFrame` (Landscape Rule applies at the app root). Routes:
 
 | Path | View | Guard |
 |---|---|---|
@@ -88,9 +88,13 @@ Lobby Host/Join and seated chrome for `/play/:deckId`, `/play/:deckId/:table`, a
 
 The coverage route (`/coverage`) loads `coverageMeta()` from `GET /api/meta/coverage/v1` on route entry through `Coverage.informRouteChanged` / `GotCoverageMessage`, and renders a searchable set-completeness table for authenticated users. The page header shows `Coverage`, the global `% faithful` line, a `Play` link back to `/`, and the shared avatar account menu with the `Leaderboard` shortcut kept visible. Rows filter by lowercase match on set code or name, sort by release date descending with null release dates last, and show `Set`, `Faithful`, `Scryfall`, and `%` columns. Percentage formatting reuses the shared badge formatter; rows with missing `oracle_total` show `—` instead of inventing a denominator or percent, and the global header follows the same rule when either global count is missing. `Try again` restarts the coverage load from an empty loading state after errors, while the error alert stays visible and the search input remains available outside the loading state. Every shell surface that already showed the fixed bottom-left API badge now uses the shared two-line stack: `{n}% faithful` above `API {version}` when both coverage counts are present; when either coverage count is missing or invalid, the shell renders only the version line. The board remains out of scope for this chrome. When coverage meta is complete, the badge `% faithful` line links to `/coverage`. Detailed page behavior and the BFF/API join contract live in [coverage-by-set](2026-07-26-coverage-by-set.md).
 
-### Portrait gate (`client/app/view.ts`, `client/app/subscriptions.ts`, DESIGN.md Landscape Rule)
+### Shell frame (`client/app/shell/frame/shell-frame.ts`)
 
-A native `<dialog showModal>` opens when `(orientation: portrait) and (max-width: 900px)` matches. A Foldkit Mount command defers `.showModal()` until the dialog is connected. Escape is swallowed (`OnCancel` prevents dismissal). The scrim covers the background inert. A Foldkit subscription listens to `matchMedia` changes and closes the gate automatically on landscape flip. It is mounted at the app root so every route is behind it.
+Auth, deck list, deck builder, lobby, leaderboard, and coverage routes render through `shellFrame`: full-bleed felt atmosphere (`shell-atmosphere-auth` or `shell-atmosphere-shell`), a three-column header (`shell-header-leading` / title / `shell-header-trailing`), a centered stage (`shell-stage`), and the shared `% faithful` + `API {version}` badge. Auth passes no shell header title; its stage keeps the `edh.reilley.dev` wordmark and auth form title. Lobby passes `Lobby` as the shell header title and its stage renders only the Host/Join or table body, with no inner wordmark/hero. Shell body text uses `font-shell` (Manrope); route titles use `font-display` (Space Grotesk). Board routes bypass `shellFrame` and mount the board submodel directly.
+
+### Landscape rotate (`client/app/view.ts`, `client/app/subscriptions.ts`, `client/styles/global.css`, DESIGN.md Landscape Rule)
+
+When `(orientation: portrait) and (max-width: 900px)` matches, the app root (`data-testid="landscape-root"`) gets class `landscape-rotate-root`. CSS swaps width/height, rotates the subtree 90°, and applies best-effort `env(safe-area-inset-*)` padding so landscape-first layouts stay side-by-side without a dialog, portrait reflow, or notch clipping. A Foldkit subscription listens to `matchMedia` changes and dispatches `LandscapeRotateChanged`; boot seeds `landscapeRotate.active` from the same query (`client/app/init.ts`, `isPortraitPhone()` in `client/app/subscriptions.ts`). Every route — shell and board — lives under the rotate root when active.
 
 ### Auth guard (`client/app/update.ts`, `client/app/shell/auth/**`)
 
@@ -140,15 +144,15 @@ Key semantic tokens:
 - Seat colors: `seat-forest`, `seat-island`, `seat-mountain`, `seat-arcane` — player identity, never semantics.
 - Combat semantics: `mountain-red` (attack), `wall-green` (block), `island-blue` (targeting).
 
-Typography is `system-ui` only. Screen ramp: `title` 18/700, `body` 14/400, `button-label` 14/600, `label` 13, `caption` 12, `game` 15/600, `display` 22/700. HUD density: `chip` 11, `micro` 10 (board/hand chrome only). No display fonts. Rounded corners: `panel` 12px, `modal` 10px, `game` 10px, `hud` 8px, `control` 6px, `focus` 4px.
+Shell typography uses Manrope (`font-shell`) and Space Grotesk (`font-display` for titles); board HUD and canvas chrome use `font-sans` (`system-ui`). Screen ramp: `title` 18/700, `body` 14/400, `button-label` 14/600, `label` 13, `caption` 12, `game` 15/600, `display` 22/700. HUD density: `chip` 11, `micro` 10 (board/hand chrome only). Rounded corners: `panel` 12px, `modal` 10px, `game` 10px, `hud` 8px, `control` 6px, `focus` 4px.
 
 The `mana-oracle.css` import brings in the mana-font glyph subset (icon font, not body text). A custom `@font-face` overrides the mana-font package to prefer woff2 for canvas `ctx.fillText`. Mana pips in oracle text use `ms.ms-oracle` with `font-size: 0.78em` so pips don't dominate the body line.
 
 ### Brand display
 
-Player-facing wordmark and document title use **`edh.reilley.dev`** (lowercase hostname, no scheme). Scryfall and related tooling HTTP User-Agent identity is **`edh.reilley.dev/0.1`** (call sites include `client/app/domain/deck-builder/scryfall.ts` and tooling scripts). Surfaces that show the wordmark include HTML `<title>`, Foldkit `Document.title` / nav brand link (`client/app/view.ts`), auth panel hero, and lobby panel hero. Package names, database names (`mtgfr` / `mtgfr_web`), proto package, GHCR image names, and similar infrastructure identifiers are not renamed as part of this brand display (see Further Notes).
+Player-facing wordmark and document title use **`edh.reilley.dev`** (lowercase hostname, no scheme). Scryfall and related tooling HTTP User-Agent identity is **`edh.reilley.dev/0.1`** (call sites include `client/app/domain/deck-builder/scryfall.ts` and tooling scripts). Surfaces that show the wordmark include HTML `<title>`, Foldkit `Document.title` / nav brand link (`client/app/view.ts`), and the auth stage hero. Lobby uses the shell header title `Lobby` and does not render an inner brand wordmark. Package names, database names (`mtgfr` / `mtgfr_web`), proto package, GHCR image names, and similar infrastructure identifiers are not renamed as part of this brand display (see Further Notes).
 
-The site favicon is a filled `forest-floor` (#0B1310) circle with a closed-mouth elder-dragon head-and-neck bust cut out as transparent negative space (side profile, facing right; neck base planted on the bottom rim) — GitHub Invertocat-style, not a lettermark and not a square plate. Source of truth is `client/public/favicon.svg`; `client/public/favicon.ico` is a multi-size alpha raster fallback. Install surfaces derive `client/public/pwa-192.png`, `client/public/pwa-512.png`, and `client/public/apple-touch-icon.png` from the same dragon-on-disc art family. `client/index.html` declares `<meta name="theme-color" content="#0B1310" />`, `<link rel="apple-touch-icon" href="/apple-touch-icon.png" />`, `<link rel="icon" href="/favicon.svg" type="image/svg+xml" />`, then `<link rel="icon" href="/favicon.ico" sizes="any" />`.
+The site favicon is a filled `forest-floor` (#0B1310) circle with a closed-mouth elder-dragon head-and-neck bust cut out as transparent negative space (side profile, facing right; neck base planted on the bottom rim) — GitHub Invertocat-style, not a lettermark and not a square plate. Source of truth is `client/public/favicon.svg`; `client/public/favicon.ico` is a multi-size alpha raster fallback. Install surfaces derive `client/public/pwa-192.png`, `client/public/pwa-512.png`, and `client/public/apple-touch-icon.png` from the same dragon-on-disc art family. `client/index.html` declares `<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />`, `<meta name="theme-color" content="#0B1310" />`, `<link rel="apple-touch-icon" href="/apple-touch-icon.png" />`, `<link rel="icon" href="/favicon.svg" type="image/svg+xml" />`, then `<link rel="icon" href="/favicon.ico" sizes="any" />`.
 
 ### Biome
 
@@ -192,7 +196,7 @@ Vite production builds set `build.sourcemap: true` (via `clientBuildSourcemap`) 
 
 - `client/app/shell/auth/**/*.test.ts` — auth stories and helpers, including `ReceivedMe` → `HashMeGravatar` session storage and stale-result guarding.
 - `client/app/update.test.ts` — parent-level regressions such as lifting auth child messages through `GotAuthMessage`.
-- `client/app/routes.test.ts`, `client/app/smoke.test.ts` — routing and smoke; includes protected `/leaderboard` and `/coverage` entry, auth redirects, home entry loading decks without a teaser fetch, leaderboard retry-from-page-one behavior, numeric-vs-table single-segment `/play/...` discrimination, and coverage refresh/query/account-menu state (including post-failure `status: "error"`), with coverage child messages lifted through `GotCoverageMessage`.
+- `client/app/routes.test.ts`, `client/app/smoke.test.ts` — routing and smoke; includes protected `/leaderboard` and `/coverage` entry, auth redirects, home entry loading decks without a teaser fetch, leaderboard retry-from-page-one behavior, numeric-vs-table single-segment `/play/...` discrimination, the landscape rotate class plus safe-area HTML/CSS contract, and coverage refresh/query/account-menu state (including post-failure `status: "error"`), with coverage child messages lifted through `GotCoverageMessage`.
 - `client/app/shell/lobby/**/*.test.ts`, `client/app/shell/leaderboard/**/*.test.ts`, `client/app/shell/coverage/**/*.test.ts` — route-inform resets, wrapper-lifted parent folds (`GotLobbyMessage`, `GotLeaderboardMessage`, `GotCoverageMessage`), lobby redirect/game handoff, leaderboard retry/load-more state, and coverage sort/filter/`—` formatting.
 - `client/app/shell/surfaces.test.ts` — shell Scene coverage for auth, deck, leaderboard, coverage, and lobby surfaces, including shared account chrome and the `% faithful` + `API {version}` shell badge stack; Scene asserts `pool-coverage` above `app-version` when the model has complete meta, asserts `pool-coverage[href="/coverage"]`, and asserts `/coverage` renders the global percent, search field, row filtering/empty state, and retry error UI.
 - `client/app/domain/ui/app-version.test.ts` — percent formatting and stacked badge rendering rules, including optional `coverageHref` link.
@@ -228,7 +232,7 @@ Vite production builds set `build.sourcemap: true` (via `clientBuildSourcemap`) 
 - **Brand non-rename.** Display wordmark and public User-Agent use `edh.reilley.dev`; DBs (`mtgfr`, `mtgfr_web`), proto (`mtgfr.v1`), GHCR images, K8s labels, npm/cargo package names, clap CLI name, Terraform example hostname (`edh.example.com`), localStorage keys, Faro/OTEL service names, and Style Dictionary format ids are not renamed for brand display alone.
 - **Effect / `@effect/*` packages must be pinned to the same exact beta.** Breaking the pin causes runtime type mismatches between Effect fibers from different versions.
 - **Wire codegen.** `.proto` is the sole contract ([wire-protocol-and-visibility](2026-07-20-wire-protocol-and-visibility.md)). After proto changes: `just server-codegen` / `bun run gen` to regenerate the gitignored `client/app/domain/wire/generated/` directory. The BFF gRPC client imports from there.
-- **Safe area insets.** The landscape rule applies to notched devices — `viewport-fit=cover` with safe-area insets. The portrait gate handles the notched-portrait case; landscape layout tightens padding but does not re-stack.
+- **Safe area insets.** The landscape rule applies to notched devices — `viewport-fit=cover` with safe-area insets. Portrait phones use CSS landscape rotate (no dialog); short landscape layout tightens padding but does not re-stack.
 - **`just client-check`** is the canonical verification: Biome format + lint (including sorted-class check) + TypeScript typecheck + Vitest. Always run before committing client changes.
 - **Live client architecture** is Foldkit + Nitro with `client/app/`, `client/app/domain/`, and `client/server/` as the module split.
 - **Pool coverage badge design input:** [2026-07-26-pool-coverage-badge-design.md](2026-07-26-pool-coverage-badge-design.md).

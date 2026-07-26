@@ -1,9 +1,10 @@
+import { readFileSync } from "node:fs";
 import { Scene } from "foldkit/test";
 import { describe, expect, it } from "vitest";
 import { BindDeckCardFlip, DeckCardFlipTick } from "./deck-card-nav";
 import { BindCardArt } from "./domain/ui/card-art";
 import { init, Model, update } from "./main-exports";
-import { CardArtTick, PortraitGateCancelled } from "./messages";
+import { CardArtTick } from "./messages";
 import type { Model as AppModel } from "./model";
 import { HomeRoute, PlayRoute } from "./routes";
 import { ClosedDeckListMenu } from "./shell/decks/list/messages";
@@ -24,7 +25,7 @@ function playModel(overrides: Partial<AppModel>): AppModel {
   return {
     ...model,
     route: PlayRoute({ deckId: "1" }),
-    portraitGate: { open: false },
+    landscapeRotate: { active: false },
     decks: {
       ...model.decks,
       list: {
@@ -43,7 +44,7 @@ function homeWithDecks(): AppModel {
   return {
     ...model,
     route: HomeRoute(),
-    portraitGate: { open: false },
+    landscapeRotate: { active: false },
     sessionLoaded: true,
     session: { me, meGravatarHash: null },
     decks: {
@@ -115,16 +116,23 @@ describe("foldkit scaffold", () => {
     );
   });
 
-  it("opens the portrait gate through a mount instead of an open attribute", () => {
-    const portraitGateModal = { name: "OpenPortraitGateModal" };
-
+  it("applies landscape rotate class instead of a portrait dialog", () => {
     Scene.scene(
       { update, view },
-      Scene.with(playModel({ portraitGate: { open: true } })),
-      Scene.expect(Scene.selector("#portrait-gate")).not.toHaveAttr("open"),
-      Scene.expect(Scene.selector("#portrait-gate")).toHaveHook("insert"),
-      Scene.Mount.expectExact(portraitGateModal),
-      Scene.Mount.resolve(portraitGateModal, PortraitGateCancelled()),
+      Scene.with(playModel({ landscapeRotate: { active: true } })),
+      Scene.expect(Scene.selector("#portrait-gate")).not.toExist(),
+      Scene.expect(Scene.selector('[data-testid="landscape-root"]')).toHaveClass("landscape-rotate-root"),
     );
+  });
+
+  it("keeps the mobile safe-area contract for landscape rotate", () => {
+    const indexHtml = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+    const globalCss = readFileSync(new URL("../styles/global.css", import.meta.url), "utf8");
+
+    expect(indexHtml).toContain("viewport-fit=cover");
+    expect(globalCss).toContain("env(safe-area-inset-top)");
+    expect(globalCss).toContain("env(safe-area-inset-right)");
+    expect(globalCss).toContain("env(safe-area-inset-bottom)");
+    expect(globalCss).toContain("env(safe-area-inset-left)");
   });
 });

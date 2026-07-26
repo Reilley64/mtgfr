@@ -12,6 +12,8 @@
         "@effect/opentelemetry": "4.0.0-beta.101",
         "@effect/platform-browser": "4.0.0-beta.101",
         "@effect/sql-pg": "4.0.0-beta.101",
+        "@fontsource/manrope": "5.2.5",
+        "@fontsource/space-grotesk": "5.2.6",
         "@grafana/faro-web-sdk": "^2.8.2",
         "@grafana/faro-web-tracing": "^2.8.2",
         "@opentelemetry/exporter-logs-otlp-http": "^0.221.0",
@@ -377,6 +379,10 @@
     "@foldkit/devtools-mcp": ["@foldkit/devtools-mcp@0.13.4", "", { "dependencies": { "@modelcontextprotocol/sdk": "^1.29.0", "ws": "^8.21.0" }, "peerDependencies": { "effect": "4.0.0-beta.101", "foldkit": "^0" }, "bin": { "foldkit-devtools-mcp": "./dist/server.js" } }, "sha512-kRzmOKYIrmskMn6z5TBf/qWRzBDRgvrQwBevo3T9rV+r6I7jZfKhhlCejxMnifvAceGif7WLdXCAZXuJpLBj3Q=="],
 
     "@foldkit/vite-plugin": ["@foldkit/vite-plugin@0.11.1", "", { "dependencies": { "magic-string": "^0.30.21", "ws": "^8.21.0" }, "peerDependencies": { "effect": "4.0.0-beta.101", "foldkit": "^0", "vite": "^7.0.0 || ^8.0.0" } }, "sha512-f1yrSgkYWFpotVmajkvEY+rlXIj7RGIUgD7Cw7+/6sIYIj964aVbh0Lxk7t3ybkuZbEyWeoF12B91nW7pmJNSQ=="],
+
+    "@fontsource/manrope": ["@fontsource/manrope@5.2.5", "", {}, "sha512-4mYUAhsuF8KoXseG8T9woWUc/foznUVluFtE6fCKAqe76WM3kmDNedaINWjzWB73+wly0duFvVpDBma3NXXT0g=="],
+
+    "@fontsource/space-grotesk": ["@fontsource/space-grotesk@5.2.6", "", {}, "sha512-Ejf50hUdoWYFkVdqckXxXuIY3tPgQZ/095EHa21uLBOuk7CQAlxqSdkPu5y47Xv+xa8A4TSrdAJlS9YdF5DqGg=="],
 
     "@grafana/faro-core": ["@grafana/faro-core@2.8.2", "", { "dependencies": { "@opentelemetry/api": "^1.9.0", "@opentelemetry/otlp-transformer": "^0.219.0" } }, "sha512-63C6+N/P9/ySUMaGut8yVb1DkPuHS5I/lfRm97+aDXFj3+8pxRT/QzyXNe0r6KMU5O95wC9FLVGxG9ZvkwEhJQ=="],
 

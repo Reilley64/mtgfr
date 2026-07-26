@@ -1,6 +1,6 @@
 # Board Composition
 
-**Status:** Current (as of 2026-07-25)
+**Status:** Current (as of 2026-07-26)
 **Module:** `client/app/board/view.ts`, `client/app/board/submodel.ts`, `client/app/board/messages.ts`, `client/app/board/html/`, `client/app/board/bitmap/`, `client/app/board/canvas/`
 
 ---
@@ -90,7 +90,7 @@ Table audio is synthesized with Web Audio. The happy path unlocks audio synchron
 
 ### Landscape Rule
 
-The board follows the Landscape Rule in [`DESIGN.md`](../../DESIGN.md): portrait phones show the rotate gate; the board is not reflowed into a vertical mobile layout.
+The board follows the Landscape Rule in [`DESIGN.md`](../../../DESIGN.md): portrait phones use CSS landscape rotate at the app root (`.landscape-rotate-root`); the board is not reflowed into a vertical mobile layout.
 
 ### Data-testid markers
 

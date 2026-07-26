@@ -49,7 +49,7 @@ Home ↔ `/play/{id}` morphs the shared deck-card chrome with a short FLIP anima
 
 ### Host / Join entry (`entryMode`)
 
-On entry, `entryMode` is `choose` | `join`. **Choose** shows twin destination cards: Host wraps the deck-card chrome (`lobby-deck-card` / `lobby-deck-card-{id}`) and hosts immediately; Join (`lobby-open-join`) opens **join** mode. **Join** replaces the twin row with a focused panel (`lobby-bringing`, `lobby-join-code`, `lobby-join`, `lobby-join-cancel`). Claim-seat and seated lobby still use the deck card + Ready/Start chrome as before. It does not render the old deck `<select>` or `Bring:` name strip in entry or claim-seat states; claim-seat shows **Back** to Your decks without a deck picker.
+On entry, `entryMode` is `choose` | `join`. The shared shell header owns the `Lobby` title; the lobby stage does not render a second wordmark or hero. **Choose** shows twin destination cards: Host wraps the deck-card chrome (`lobby-deck-card` / `lobby-deck-card-{id}`) and hosts immediately; Join (`lobby-open-join`) opens **join** mode. **Join** replaces the twin row with a focused panel (`lobby-bringing`, `lobby-join-code`, `lobby-join`, `lobby-join-cancel`). Claim-seat and seated lobby still use the deck card + Ready/Start chrome as before. It does not render the old deck `<select>` or `Bring:` name strip in entry or claim-seat states; claim-seat shows **Back** to Your decks without a deck picker.
 
 ### Seated lobby chrome
 
@@ -87,7 +87,7 @@ Helpers also live in `client/app/domain/lobby/client.ts` for table URL / code pa
 ## Out of Scope
 
 - Server lobby tables, seed affinity, and drain ([lobby-table-routing-and-live-game](2026-07-20-lobby-table-routing-and-live-game.md)).
-- Full route/auth table and portrait gate ([shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md)).
+- Full route/auth table and CSS landscape rotate ([shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md)).
 - Deck list tile grid and builder ([deck-list-and-builder](2026-07-20-deck-list-and-builder.md)).
 - Cross-browser clipboard fallbacks beyond the existing try/catch reveal pattern.
 

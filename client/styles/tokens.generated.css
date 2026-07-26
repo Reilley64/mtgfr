@@ -55,6 +55,8 @@
   --color-yielded-ink: #FFE9A8;
   --color-quiet-hover: #2C3F35;
   --font-sans: system-ui, sans-serif;
+  --font-shell: "Manrope", system-ui, sans-serif;
+  --font-display: "Space Grotesk", system-ui, sans-serif;
   --text-title: 18px;
   --text-title--font-weight: 700;
   --text-body: 14px;
@@ -81,6 +83,9 @@
   --spacing-lg: 14px;
   --spacing-xl: 16px;
   --spacing-xxl: 24px;
+  --spacing-shell-gutter: 24px;
+  --spacing-shell-header-y: 14px;
+  --size-shell-stage-max: 1100px;
   --shadow-table: 0 12px 40px rgb(0 0 0 / 0.6);
   --shadow-hand: 0 6px 18px rgb(0 0 0 / 0.5);
   --shadow-hud: 0 6px 20px rgb(0 0 0 / 0.45);
@@ -95,4 +100,5 @@
   --animate-stack-resolve: stack-resolve 0.22s ease-out;
   --animate-breathe: breathe 1.8s ease-in-out infinite;
   --animate-skeleton: breathe 1.2s ease-in-out infinite;
+  --animate-shell-enter: shell-enter 0.2s var(--ease-state);
 }

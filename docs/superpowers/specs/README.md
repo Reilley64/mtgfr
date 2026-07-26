@@ -54,9 +54,9 @@ These documents are **not superseded** and must stay current alongside the specs
 | [observability-ops](2026-07-20-observability-ops.md) | LGTM/Alloy/Grafana ops, Faro, BFF OTEL, scrub rules |
 | [production-topology-and-operations](2026-07-20-production-topology-and-operations.md) | k3s, Argo, Tunnel, migrations, Dockerfiles, health/drain |
 | [prompts-and-pending-choices](2026-07-20-prompts-and-pending-choices.md) | Pending-choice forms, X prompt, modal and local cost prompts |
-| [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md) | Shell routes, portrait gate, auth, Foldkit/wire edge, design tokens, brand |
+| [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md) | Shell routes, CSS landscape rotate, auth, Foldkit/wire edge, design tokens, brand |
 | [stack](2026-07-20-stack.md) | Stack pile, strip, expansion, targetability, auto-resolve pause |
-| [system-overlays](2026-07-20-system-overlays.md) | Result, concede, pile expansion, reconnect, portrait gate overlays |
+| [system-overlays](2026-07-20-system-overlays.md) | Result, concede, pile expansion, reconnect, CSS landscape rotate context |
 | [table-audio](2026-07-20-table-audio.md) | Synthesized table cues, browser unlock, sound toggle |
 | [turn-and-priority-chrome](2026-07-20-turn-and-priority-chrome.md) | Phase, priority, pass/yield, hints, playable chrome, mulligan overlay |
 | [turn-priority-and-stack](2026-07-20-turn-priority-and-stack.md) | Engine turn structure, priority, stack, auto-pass, yields |
@@ -77,6 +77,7 @@ These documents are **not superseded** and must stay current alongside the specs
 | [gha-server-verify-sharding](2026-07-26-gha-server-verify-sharding-design.md) | Design input for 3-shard nextest cold `verify-server` wall-clock; update `ci-and-release` at implement time |
 | [ci-rust-protoc-image](2026-07-26-ci-rust-protoc-image-design.md) | Design input for GHCR `mtgfr-ci` toolchain image (PR1 publish; PR2 containerize verify + migrate job); update `ci-and-release` per PR |
 | [bff-route-split](2026-07-26-bff-route-split-design.md) | Design input: Nitro one-file-per lobby/meta op, `defineHandler` + h3 web APIs, path-param join/ready/start; update shell/lobby/coverage specs at implement time |
+| [shell-polish-redesign](2026-07-26-shell-polish-redesign-design.md) | Design input: shared shell frame, shell type pair, atmosphere step-up, CSS portrait→landscape rotate, per-surface reflows; update shell/deck/lobby/coverage/system-overlays/board-composition specs + `DESIGN.md` per wave |
 
 ## Authoring conventions
 
