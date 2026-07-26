@@ -11,6 +11,10 @@ D once the deck's real observers were considered: `Animate Dead` makes controlle
 bugs observable, the goad package falsifies the current goad-plus-tax shortcut, and two Aura-move
 helpers plus Darksteel Mutation still sit on real rules gaps.
 
+**Final state (2026-07-26): 84/84 nonbasic Silverquill cards are in the pool — 83 fully faithful,
+with one deliberate residual remaining on `Herald of Amity` (increment #5: cast the chosen Aura
+during Herald's ETB resolution instead of granting a later free cast this turn).**
+
 ## A. In pool, faithful at intake (56)
 
 - [ ] Angelic Destiny
