@@ -3,6 +3,7 @@ import { lobbyState } from "./client";
 
 const unknownTable = {
   table_id: "GONE",
+  commander_damage_enabled: true,
   seats: [],
   you: null,
   started: false,

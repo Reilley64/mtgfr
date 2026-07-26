@@ -2,13 +2,23 @@ import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
 import { lobbies } from "../db/schema";
 import { createWebDb } from "../server/db/client";
-import { createLobby, joinLobby, type LobbySnapshot, loadLobby, startError, toLobbyView } from "./lobby-store";
+import {
+  createLobby,
+  joinLobby,
+  type LobbySnapshot,
+  loadLobby,
+  markStarted,
+  setCommanderDamageEnabled,
+  startError,
+  toLobbyView,
+} from "./lobby-store";
 
 function snap(overrides: Partial<LobbySnapshot> = {}): LobbySnapshot {
   return {
     tableId: "ABC123",
     hostUserId: 1,
     startedAt: null,
+    commanderDamageEnabled: true,
     seats: [
       {
         seat: 0,
@@ -72,6 +82,11 @@ describe("toLobbyView", () => {
 
     expect(view.seats[0]?.gravatar_hash).toBe("abc");
   });
+
+  it("projects commander_damage_enabled on LobbyView", () => {
+    expect(toLobbyView(snap(), 1).commander_damage_enabled).toBe(true);
+    expect(toLobbyView(snap({ commanderDamageEnabled: false }), 1).commander_damage_enabled).toBe(false);
+  });
 });
 
 describe("startError", () => {
@@ -125,5 +140,31 @@ describe.skipIf(!process.env.WEB_DATABASE_URL)("joinLobby gravatar persistence",
     expect(reloaded?.seats[0]?.gravatarHash).toBe("hash-updated");
     if (reloaded == null) throw new Error("expected lobby to reload");
     expect(toLobbyView(reloaded, 9001).seats[0]?.gravatar_hash).toBe("hash-updated");
+  });
+
+  it("host can flip commander damage; non-host and started are rejected", async () => {
+    db = createWebDb();
+    tableId = await createLobby(db, 1);
+    const loaded = await loadLobby(db, tableId);
+    expect(loaded?.commanderDamageEnabled).toBe(true);
+
+    const asHost = await setCommanderDamageEnabled(db, tableId, 1, false);
+    expect(asHost.error).toBeUndefined();
+    expect(asHost.snap?.commanderDamageEnabled).toBe(false);
+
+    await joinLobby(db, {
+      tableId,
+      userId: 2,
+      username: "bob",
+      gravatarHash: "x",
+      deckId: -2,
+      deckName: "D",
+    });
+    const asGuest = await setCommanderDamageEnabled(db, tableId, 2, true);
+    expect(asGuest.error).toBe("NotHost");
+
+    await markStarted(db, tableId);
+    const afterStart = await setCommanderDamageEnabled(db, tableId, 1, true);
+    expect(afterStart.error).toBe("AlreadyStarted");
   });
 });

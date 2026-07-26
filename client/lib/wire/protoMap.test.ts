@@ -1,7 +1,13 @@
 import * as Schema from "effect/Schema";
 import { describe, expect, it } from "vitest";
-import { catalogCardsFromProto, fromProtoWire, intentEnvelopeToProto, seedRequestToProto, streamFrameFromProto } from "./protoMap";
-import type { ActionView, CatalogCard, IntentEnvelope, StreamFrame } from "./types";
+import {
+  catalogCardsFromProto,
+  fromProtoWire,
+  intentEnvelopeToProto,
+  seedRequestToProto,
+  streamFrameFromProto,
+} from "./protoMap";
+import type { ActionView, CatalogCard, IntentEnvelope } from "./types";
 import { MessageRef } from "./types";
 
 describe("fromProtoWire", () => {

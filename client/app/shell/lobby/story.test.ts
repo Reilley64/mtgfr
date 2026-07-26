@@ -9,6 +9,7 @@ const me = { id: 1, email: "alice@example.com", username: "alice" };
 
 const startedLobby: LobbyView = {
   table_id: "ABC123",
+  commander_damage_enabled: true,
   seats: [],
   you: 0,
   started: true,

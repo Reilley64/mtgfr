@@ -424,6 +424,7 @@ describe("shell surface scenes", () => {
               start_error: "NeedTwoPlayers",
               started: false,
               table_id: "ABC123",
+              commander_damage_enabled: true,
               you: 0,
             },
           },

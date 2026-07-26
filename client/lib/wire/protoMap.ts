@@ -131,7 +131,7 @@ export function fromProtoWire<T = unknown>(value: unknown): T {
 }
 
 /** Product default: EDH tables track Commander damage unless explicitly disabled. */
-function withVisibleStateDefaults(state: Record<string, unknown>): Record<string, unknown> {
+function withVisibleStateDefaults<T extends { commander_damage_enabled?: unknown }>(state: T): T {
   if (state.commander_damage_enabled === undefined) {
     state.commander_damage_enabled = true;
   }
@@ -142,13 +142,13 @@ function normalizeStreamFrame(frame: StreamFrame): StreamFrame {
   if (frame.frame === "snapshot") {
     return {
       ...frame,
-      state: withVisibleStateDefaults({ ...frame.state }) as StreamFrame["state"],
+      state: withVisibleStateDefaults({ ...frame.state }),
     };
   }
   if (frame.frame === "delta") {
     return {
       ...frame,
-      state: withVisibleStateDefaults({ ...frame.state }) as StreamFrame["state"],
+      state: withVisibleStateDefaults({ ...frame.state }),
     };
   }
   return frame;

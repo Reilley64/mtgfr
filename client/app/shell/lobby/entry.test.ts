@@ -260,6 +260,7 @@ test("claim seat with a pre-chosen deck has no picker", () => {
           selectedDeckId: 7,
           view: {
             table_id: "ABC123",
+            commander_damage_enabled: true,
             you: null,
             started: false,
             error: null,
@@ -306,6 +307,7 @@ test("claim seat pre-pick includes Back to decks", () => {
           selectedDeckId: 7,
           view: {
             table_id: "ABC123",
+            commander_damage_enabled: true,
             you: null,
             started: false,
             error: null,
@@ -370,6 +372,7 @@ test("watchers are told to stay on the table link for spectator view", () => {
           selectedDeckId: 7,
           view: {
             table_id: "ABC123",
+            commander_damage_enabled: true,
             you: null,
             started: false,
             error: null,
@@ -452,6 +455,7 @@ test("joined lobby shows ready/start without a deck picker", () => {
           selectedDeckId: 7,
           view: {
             table_id: "ABC123",
+            commander_damage_enabled: true,
             you: 0,
             started: false,
             error: null,
@@ -496,6 +500,7 @@ test("NotAllReady start gate uses waiting copy and caution amber", () => {
           selectedDeckId: 7,
           view: {
             table_id: "ABC123",
+            commander_damage_enabled: true,
             you: 0,
             started: false,
             error: null,

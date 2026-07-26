@@ -15,6 +15,7 @@ export type SeatView = typeof SeatView.Type;
 
 export const LobbyView = S.Struct({
   table_id: S.String,
+  commander_damage_enabled: S.Boolean,
   seats: S.Array(SeatView),
   you: S.NullOr(S.Number),
   started: S.Boolean,

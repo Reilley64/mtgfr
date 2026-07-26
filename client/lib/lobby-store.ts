@@ -32,6 +32,7 @@ export type LobbySnapshot = {
   tableId: string;
   hostUserId: number;
   startedAt: Date | null;
+  commanderDamageEnabled: boolean;
   seats: LobbySeatRow[];
 };
 
@@ -70,6 +71,7 @@ export async function loadLobby(db: WebDb, tableId: string): Promise<LobbySnapsh
     tableId: lobby.tableId,
     hostUserId: lobby.hostUserId,
     startedAt: lobby.startedAt,
+    commanderDamageEnabled: lobby.commanderDamageEnabled,
     seats: seats.map((s) => ({
       seat: s.seat,
       userId: s.userId,
@@ -165,6 +167,23 @@ export async function setReady(
   return { snap: updated };
 }
 
+export async function setCommanderDamageEnabled(
+  db: WebDb,
+  tableId: string,
+  userId: number,
+  enabled: boolean,
+): Promise<{ error?: string; snap?: LobbySnapshot }> {
+  const snap = await loadLobby(db, tableId);
+  if (!snap) return { error: "UnknownTable" };
+  if (snap.startedAt != null) return { error: "AlreadyStarted", snap };
+  if (snap.hostUserId !== userId) return { error: "NotHost", snap };
+  await db.update(lobbies).set({ commanderDamageEnabled: enabled }).where(eq(lobbies.tableId, tableId));
+  await touchLobby(db, tableId);
+  const updated = await loadLobby(db, tableId);
+  if (!updated) return { error: "UnknownTable" };
+  return { snap: updated };
+}
+
 export function startError(snap: LobbySnapshot, userId: number): string | null {
   if (snap.hostUserId !== userId) return "NotHost";
   if (!snap.seats.some((s) => s.userId === userId)) return "NotSeated";
@@ -247,6 +266,7 @@ export function toLobbyView(snap: LobbySnapshot, userId: number | null, error?: 
   });
   return {
     table_id: snap.tableId,
+    commander_damage_enabled: snap.commanderDamageEnabled,
     seats,
     you,
     started: snap.startedAt != null,

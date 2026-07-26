@@ -1,3 +1,28 @@
+## Task 3 report
+
+Status: implemented BFF/DB lobby commander damage option.
+
+Changes:
+- Added `lobbies.commander_damage_enabled` via `0003_lobby_commander_damage.sql`, Drizzle journal, and schema column.
+- Added `LobbySnapshot.commanderDamageEnabled`, `toLobbyView().commander_damage_enabled`, `loadLobby` projection, and `setCommanderDamageEnabled(db, tableId, userId, enabled)`.
+- Added `POST /api/tables/options/v1` and changed table start seeding to use `snap.commanderDamageEnabled`.
+- Added `LobbyView` Effect schema field, `setTableOptions`, and updated typed lobby fixtures.
+- Fixed an existing `StreamFrame["state"]` union-index typecheck blocker and removed the now-unused `StreamFrame` test import.
+
+TDD:
+- Added the requested store projection and DB mutation tests before implementation.
+- Red run: `cd client && bun test lib/lobby-store.test.ts` failed on missing `setCommanderDamageEnabled` export.
+
+Verification:
+- `just client-migrate`
+- `cd client && bun test lib/lobby-store.test.ts` -> 7 pass, 0 fail.
+- `just client-typecheck`
+- `just client-test` -> 108 files passed, 1086 tests passed.
+- `just client-lint` -> exit 0; reports 5 existing warning-level non-null assertions.
+- `git diff --check`
+
+Concerns:
+- `just client-lint` still prints pre-existing warning-level non-null assertions in unrelated files.
 # Task 3 report — Sync: spawn ExitFx, suppress glide, hide faces
 
 ## Status

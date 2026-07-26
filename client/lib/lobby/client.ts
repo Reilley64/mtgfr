@@ -30,6 +30,13 @@ export function readyUp(payload: { table_id: string; ready: boolean }): Promise<
   return lobbyFetch("tables/ready/v1", { method: "POST", body: JSON.stringify(payload) });
 }
 
+export function setTableOptions(payload: {
+  table_id: string;
+  commander_damage_enabled: boolean;
+}): Promise<LobbyView | null> {
+  return lobbyFetch("tables/options/v1", { method: "POST", body: JSON.stringify(payload) });
+}
+
 export function startGame(payload: { table_id: string }): Promise<LobbyView | null> {
   return lobbyFetch("tables/start/v1", { method: "POST", body: JSON.stringify(payload) });
 }
