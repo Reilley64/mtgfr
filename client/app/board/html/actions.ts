@@ -65,6 +65,39 @@ export function handExtras(actions: readonly ActionView[]): ActionView[] {
   return actions.filter((a) => a.object != null && primary.get(a.object)?.id !== a.id);
 }
 
+const PLAY_MODE_RANK: Record<string, number> = {
+  cast: 0,
+  play_land: 0,
+  cast_prepared: 0,
+  cast_face_down: 0,
+  cycle: 1,
+  activate_hand_ability: 2,
+  suspend: 3,
+  forecast: 3,
+};
+
+export function orderPlayModes(modes: readonly ActionView[]): ActionView[] {
+  return [...modes].sort((a, b) => {
+    const rankA = PLAY_MODE_RANK[a.kind] ?? 9;
+    const rankB = PLAY_MODE_RANK[b.kind] ?? 9;
+    if (rankA !== rankB) return rankA - rankB;
+    return a.id - b.id;
+  });
+}
+
+export function modesForObject(actions: readonly ActionView[], objectId: number): ActionView[] {
+  return orderPlayModes(actions.filter((a) => a.section === "hand" && a.object === objectId));
+}
+
+export function handTileCaption(modes: readonly ActionView[]): string | undefined {
+  if (modes.length !== 1) return undefined;
+  const kind = modes[0]?.kind;
+  if (kind === "cycle") return "Cycle";
+  if (kind === "activate_hand_ability") return "Discard";
+  if (kind === "suspend") return "Suspend";
+  return undefined;
+}
+
 /** Object ids to paint with the auto-tap preview glyph while hovering an action. */
 export function autoTapPreviewIds(action: ActionView | null | undefined): ReadonlySet<number> {
   return new Set(action?.auto_tap ?? []);
