@@ -10,16 +10,19 @@ The classifier returned 83 A / 0 B / 0 missing, including `Quintorius, History C
 annotated commander lines; the re-audit demoted four cards to D once Lorehold's real trigger-shape
 observers were considered.
 
-**Current state (2026-07-26): 83/83 nonbasic Lorehold cards are in the pool — 79 fully faithful,
-with 4 scripted cards still blocked on trigger-shape engine work.**
+**Current state (2026-07-26): 83/83 nonbasic Lorehold cards are in the pool and fully faithful
+(0 residual blockers).**
 
-## A. In pool, faithful after re-audit (79)
+## A. In pool, faithful after re-audit (83)
 
 - [ ] Advanced Reconstruction
+- [ ] Ao, the Dawn Sky
 - [ ] Angel of Indemnity
 - [ ] Anger
 - [ ] Arcane Signet
 - [ ] Archaeomancer's Map
+- [ ] Atsushi, the Blazing Sky
+- [ ] Augusta, Order Returned
 - [ ] Balefire Liege
 - [ ] Battlefield Forge
 - [ ] Bitterthorn, Nissa's Animus
@@ -28,6 +31,7 @@ with 4 scripted cards still blocked on trigger-shape engine work.**
 - [ ] Clifftop Retreat
 - [ ] Command Tower
 - [ ] Containment Construct
+- [ ] Conspiracy Theorist
 - [ ] Currency Converter
 - [ ] Drumbellower
 - [ ] Emeria, the Sky Ruin
@@ -121,12 +125,9 @@ None.
 
 None. All 83 Lorehold nonbasics are already in the pool.
 
-## D. In pool, not yet faithful; needs engine work (4)
+## D. In pool, not yet faithful; needs engine work (0)
 
-- [x] Ao, the Dawn Sky — #1 (LANDED)
-- [x] Atsushi, the Blazing Sky — #1 (LANDED)
-- [x] Augusta, Order Returned — #2 (LANDED)
-- [x] Conspiracy Theorist — #3 (LANDED)
+- [x] None. All former D cards landed and now sit in section A.
 
 ## Observability re-audit
 
@@ -153,46 +154,28 @@ Lorehold backlog items:
 The feared Quintorius loyalty / leaves-graveyard / Hofri / recursion work is therefore already
 landed. Lorehold's live backlog is narrower.
 
-### 2. `Ao` and `Atsushi` make the triggered modal-choice shortcut observable
+### 2. `Ao` and `Atsushi` now choose triggered modes on placement (LANDED)
 
-`Atsushi, the Blazing Sky` already declares the residual openly: its dies trigger chooses the mode
-at resolution instead of when the triggered ability is put onto the stack. `Ao, the Dawn Sky` uses
-the same triggered `choose_one` path, so it carries the same shape even though its file does not
-spell it out.
-
-Lorehold makes that visible because these are real multiplayer, instant-speed trigger windows:
-players should know which branch was chosen before deciding whether to respond, and the engine's
-current pause happens only after the trigger starts resolving. The live gap is therefore the
-trigger-shape rule itself, not either card's dig / Treasure / counter payload. This is increment
-[#1](lorehold-spirit-increments.md#1-triggered-modal-choices-must-be-chosen-on-placement--2-cards-m).
+`Ao, the Dawn Sky` and `Atsushi, the Blazing Sky` both rode the triggered modal-choice fix from
+increment [#1](lorehold-spirit-increments.md#1-triggered-modal-choices-must-be-chosen-on-placement--2-cards-m):
+their dies triggers now choose the branch when the trigger is put onto the stack, preserving the
+real response window before resolution.
 
 Ao's separate "creature or Vehicle" trim still stays harmless here — Lorehold fields no Vehicle card
 and no Lorehold card distinguishes the absent type line.
 
-### 3. `Augusta, Order Returned` still front-loads a reflexive-trigger target
+### 3. `Augusta, Order Returned` now creates the reflexive follow-up trigger correctly (LANDED)
 
-`Augusta, Order Returned` currently chooses its target attacking creature **before** the graveyard
-exiles happen, then pays out counters in the same resolving ability. The printed card is a reflexive
-trigger: only if one or more nonland cards were exiled this way should a second trigger be created,
-and that second trigger should choose its attacking-creature target afterward, on its own stack
-object.
-
-Lorehold's own graveyard-exit shell makes the count live every game, so the target timing and
-missing response window are not harmless documentation noise. This is increment
+`Augusta, Order Returned` now exiles the nonland cards first, then creates the reflexive trigger
+only if at least one card was exiled, and that second trigger chooses its attacking-creature target
+on its own stack object. This closes increment
 [#2](lorehold-spirit-increments.md#2-reflexive-trigger-follow-up-targeting--1-card-m).
 
-### 4. `Conspiracy Theorist` discard trigger — batch + nonland filter + choose-one (LANDED)
+### 4. `Conspiracy Theorist` now batches nonland discards into one exile choice (LANDED)
 
-`Conspiracy Theorist`'s file previously claimed two shortcuts were harmless:
-
-- the trigger fired on **every** discarded card, not once per discard event, and
-- it fired on discarded **lands** too, not only on "one or more nonland cards".
-
-Lorehold falsified both — the deck routinely discards lands (to Quintorius's +1, to `Conspiracy
-Theorist`'s own attack trigger, to `Faithless Looting` / `Seize the Spoils`) and can discard several
-cards at once. The card now uses `timing = "you_discard_nonland"` + `may_exile_discarded_nonland_may_play`:
-a discarded land grants no impulse play, and a multi-card nonland discard yields one "choose one of
-them" window. Landed as increment
+`Conspiracy Theorist` now uses `timing = "you_discard_nonland"` +
+`may_exile_discarded_nonland_may_play`: a land discard grants no impulse play, and a multi-card
+nonland discard yields one "choose one of them" exile window. This closes increment
 [#3](lorehold-spirit-increments.md#3-discard-trigger-batch-filter-and-choose-one--1-card-m--landed-2026-07-26).
 
 ### 5. The remaining ponytails stay harmless for this deck
@@ -206,5 +189,5 @@ No other explicit residual becomes a Lorehold blocker:
 - `Spirit of Resilience`'s copy-source note remains exact for graveyard cards.
 - `White Orchid Phantom`'s fail-to-find stand-in is indistinguishable from declining the search.
 
-The re-audit therefore files exactly three Lorehold increments affecting four cards, not a broader
-rewrite of the deck's headline planeswalker or recursion shell.
+The re-audit's three Lorehold increments are now closed; Lorehold needs no remaining deck-local
+fidelity work.

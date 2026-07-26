@@ -171,8 +171,9 @@ payments (PayCost, PayOrCounter, PayEchoOrSacrifice, PayRecoverOrExile,
 PayCumulativeUpkeepOrSacrifice), combat damage assignment, library-top operations (Scry, Surveil,
 SelectFromTop, DistributeTop), search, sacrifice edicts, proliferate, phase-out choice, mode
 selection, copy target, legend-rule keep (`choose_legendary_keep` / `ChooseLegendaryKeep`,
-expand-only), mana color choice, piles, partition, dredge, and the other prompt surfaces the board
-renders. The wire shape is intentionally more generic than the engine internals:
+expand-only), mana color choice, piles, partition, dredge, `may_exile_discarded_to_play` for
+Conspiracy Theorist's "exile one of them from your graveyard" follow-up, and the other prompt
+surfaces the board renders. The wire shape is intentionally more generic than the engine internals:
 spell-target and ability-target pauses project as `choose_target { source, label, min, max, items
 }`; repeatable yes/no loops project as `may_yes_no`; repeatable draw-count loops project as
 `may_draw_up_to { label, max }`. Legacy card-named Trade Secrets wire variants and dedicated

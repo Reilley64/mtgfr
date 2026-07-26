@@ -175,6 +175,39 @@ describe("fromProtoWire", () => {
       items: [{ id: 11, label: "Forest" }],
     });
   });
+
+  it("decodes may_exile_discarded_to_play from proto choice payloads", () => {
+    const frame = fromProtoWire<{
+      state: {
+        pending_choice: {
+          kind: string;
+          player: number;
+          source: number;
+          items: Array<{ id: number; label: string }>;
+        };
+      };
+    }>({
+      state: {
+        pendingChoice: {
+          choice: {
+            case: "mayExileDiscardedToPlay",
+            value: {
+              player: 0,
+              source: 7,
+              items: [{ id: 11, label: "Lightning Bolt" }],
+            },
+          },
+        },
+      },
+    });
+
+    expect(frame.state.pending_choice).toEqual({
+      kind: "may_exile_discarded_to_play",
+      player: 0,
+      source: 7,
+      items: [{ id: 11, label: "Lightning Bolt" }],
+    });
+  });
 });
 
 describe("catalogCardsFromProto", () => {
