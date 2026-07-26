@@ -21,9 +21,9 @@ jobs:
     outputs:
       cache-hit: ${{ steps.pass.outputs.cache-hit }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: actions/cache/restore@v5
+      - uses: actions/cache/restore@v6
         id: pass
         with:
           path: .ci-pass
@@ -50,7 +50,7 @@ jobs:
       image: ghcr.io/reilley64/mtgfr-ci:latest
       options: --user root
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -79,7 +79,7 @@ jobs:
       matrix:
         partition: [1, 2, 3]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -90,7 +90,7 @@ jobs:
 
       - name: Upload Rust JUnit report
         if: ${{ !cancelled() && hashFiles('target/nextest/ci/junit.xml') != '' }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: rust-junit-${{ matrix.partition }}
           path: target/nextest/ci/junit.xml
@@ -130,7 +130,7 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -156,12 +156,12 @@ jobs:
       && needs.verify-server-migrate.result == 'success'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Write pass marker
         run: mkdir -p .ci-pass && echo ok > .ci-pass/marker
 
-      - uses: actions/cache/save@v5
+      - uses: actions/cache/save@v6
         with:
           path: .ci-pass
           key: verify-server-v3-${{ hashFiles('crates/**', 'proto/**', 'Cargo.toml', 'Cargo.lock', 'Toasty.toml', 'toasty/**', '.config/nextest.toml', 'justfile', '.github/workflows/verify-jobs.yml', 'docs/CR_INDEX.md', 'scripts/gen_cr_index.py') }}
@@ -214,9 +214,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         id: pass
         with:
           path: .ci-pass
@@ -232,7 +232,7 @@ jobs:
         with:
           bun-version-file: .bun-version
 
-      - uses: extractions/setup-just@v3
+      - uses: extractions/setup-just@v4
         if: steps.pass.outputs.cache-hit != 'true'
 
       - name: Install client dependencies
@@ -245,7 +245,7 @@ jobs:
 
       - name: Upload client JUnit report
         if: ${{ steps.pass.outputs.cache-hit != 'true' && !cancelled() && hashFiles('client/junit.xml') != '' }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: client-junit
           path: client/junit.xml
