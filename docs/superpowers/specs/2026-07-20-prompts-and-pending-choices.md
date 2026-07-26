@@ -43,7 +43,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 ## Behavior
 
 - Local prompts render in this order: hand play-mode chooser, X prompt, modal cast, sacrifice pick, discard pick, graveyard-exile pick, staged target picker.
-- Multi-action hand cards use docked `play-mode-aim` with one `play-mode-{i}` button per legal mode plus Cancel; choosing a row dispatches `PlayModeChosen` and keeps the parked stack flight while the selected action continues through cost, modal, target, or submit steps.
+- Local `playModePick` is board session chrome alongside `modalCast`, cost picks, and staged targets (not an engine `pending_choice`). Multi-action hand cards use docked `play-mode-aim` with one `play-mode-{i}` button per legal mode plus Cancel; choosing a row dispatches `PlayModeChosen` and keeps the parked stack flight while the selected action continues through cost, modal, target, or submit steps. Cancel clears the park and returns the card to hand without submitting an intent.
 - While `play-mode-aim` is open, snapshot and delta sync prune buttons whose action ids are no longer legal. Exactly one remaining mode auto-continues that mode; zero remaining modes cancel the session, return the card to hand, and submit no intent. A stale `PlayModeChosen` for a pruned action id clears `playModePick`, returns the card to hand, and emits no command.
 - Local modal spells use docked `modal-mode-aim` (mode rows + Cast/Cancel; center `modal-mode-picker` unused). After modes are chosen and a target is still needed, docked `modal-waiting-aim` replaces center `modal-waiting`.
 - Off-board staged-action targets use docked `target-pick-aim` (scrollable face/player strip + Cancel; center `target-pick` unused).

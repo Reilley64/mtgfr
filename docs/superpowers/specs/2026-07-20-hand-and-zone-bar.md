@@ -19,10 +19,13 @@ Render a fixed DOM hand bar at the bottom of the board. It groups tiles in Arena
 
 ## Behavior
 
+- One DOM tile per hand card; multiple legal hand-section actions on the same object do not mint extra tiles.
 - Hand tiles fan with Arena-forward resting geometry (`HAND_FACE_W` 208, `HAND_BAR_PEEK` 92, `HAND_VISIBLE_H` 178, derived `HAND_BAR_H` 218 — pip-row 24 + bar bottom padding 16 are already implied by that height), hover raise, and cost pips above the card face.
+- Resting cost pips show the card's printed cast cost, not cycle or hand-ability costs. Multi-legal-mode tiles omit Cycle/Discard captions; a sole legal `cycle` or `activate_hand_ability` keeps that caption.
 - Hovering a bar tile elevates that tile's root above all other action-bar tiles (`[z-index:var(--hand-z)]` resting + `hover:[z-index:50]` on the slot; resting z is not inline). Discard-selected raises and rings but does not elevate z.
 - A release above `HAND_BAR_H - HAND_PLAY_SLACK_PX` commits the drop (`HAND_PLAY_SLACK_PX` is 96); releasing below snaps back.
-- Hand activation re-resolves all current hand-section actions for that object. With exactly one legal mode, it follows the existing play/cost/target pipeline; with multiple legal modes, it clears other local action sessions, seeds a stack flight, and parks the card in local `playModePick` state until `PlayModeChosen` continues the selected action through the same cost/target pipeline or Cancel restores the card.
+- Activating a hand tile with exactly one legal mode runs the existing play/cost/target pipeline immediately. With two or more legal modes, activation clears other local action sessions, seeds a stack flight, parks the card in local `playModePick` state, and opens docked `play-mode-aim` until `PlayModeChosen` continues the selected action through the same cost/target pipeline or Cancel restores the card.
+- Design: [`2026-07-26-hand-play-mode-chooser-design.md`](2026-07-26-hand-play-mode-chooser-design.md).
 - While `playModePick` is open, snapshot and delta sync reconcile the parked modes against current legal actions. Pruned modes disappear; exactly one remaining mode auto-continues through the same play/cost/target pipeline; zero remaining modes cancel the session, return the card to hand, and submit no intent.
 - `hiddenId`, `hiddenIds`, and flight ownership suppress tiles while a staged play or flight owns the card.
 - Playable hand/command tiles get the playable border from `barZoneAura(zone, playable)`.

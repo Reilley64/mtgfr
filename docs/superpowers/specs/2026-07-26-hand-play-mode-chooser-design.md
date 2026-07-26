@@ -1,7 +1,6 @@
 # Hand play-mode chooser — design
 
-**Status:** Approved for planning (2026-07-26)
-**Living surface specs to update at implement time:**
+**Status:** Implemented (2026-07-26). Surface specs are the source of truth:
 [`2026-07-20-hand-and-zone-bar.md`](2026-07-20-hand-and-zone-bar.md),
 [`2026-07-20-prompts-and-pending-choices.md`](2026-07-20-prompts-and-pending-choices.md)
 (local session chrome; cross-link flights/stack staging as needed)
