@@ -32,18 +32,20 @@ expired sessions are lazily swept on the next auth attempt with that token. `Use
 persist leaderboard seed fields: `rating` starts at `1000` and `rating_set_at` stores the Unix
 seconds when that integer rating was last set.
 
-**Decks** are fully user-owned data: `(name, commander, commander_print, cards)` where `cards`
-is a JSON blob of `Vec<DeckCardEntry>` (`id`, `count`, `print`, optional `proxy_art_url`).
-The deck RPC contract also carries optional `commander_proxy_art_url` on `DeckDetail` and
-`SaveDeckRequest`. These proxy-art URLs are display-only alter-art hints; empty string means
+**Decks** are fully user-owned data: `(name, commander, commander_print, commander_proxy_art_url,
+cards)` where `cards` is a JSON blob of `Vec<DeckCardEntry>` (`id`, `count`, `print`, optional
+`proxy_art_url`). These proxy-art URLs are display-only alter-art hints; empty string means
 absent. Print (Printing UUID) is still required on every line and on the commander; decks are
-always read and written as a whole. `legality::validate` runs on every create/update and on game
-start, returning every problem as a list so the deck builder can display all errors simultaneously.
+always read and written as a whole. Proxy-art granularity matches the saved deck line: one URL per
+`DeckCardEntry` (so a basics line with `count > 1` shares one alter-art URL for that line) plus
+one optional commander URL. `legality::validate` runs on every create/update and on game start,
+returning every problem as a list so the deck builder can display all errors simultaneously.
 
-**Precon virtual decks** (-1 through -9) are static fixtures baked into the server binary at
+**Precon virtual decks** (-1 through -10) are static fixtures baked into the server binary at
 compile time via `include_str!` (`crates/server/fixtures/decks/*.json`). They are not DB rows
 and cannot be edited or deleted. Negative ids can never collide with the Postgres autoincrement
-positive ids of user decks. Every user sees precons in their deck list alongside their own decks.
+positive ids of user decks. Current fixtures ship with empty commander and card-line proxy-art
+URLs. Every user sees precons in their deck list alongside their own decks.
 
 **Card catalog** is a Postgres projection of the engine's `cards::registry()`, populated on
 server boot into the `catalog_cards` table (DDL managed by Toasty migrations; data refreshed by
@@ -76,7 +78,7 @@ Neither endpoint requires authentication.
   query; I paginate by adjusting `offset`.
 - As a **deck builder**, I open an existing deck; the client calls `Cards.Lookup` with all card
   ids in the deck to hydrate names, stats, and art without fetching the full catalog.
-- As a **player**, I own precon decks (ids -1 through -9) automatically — no signup action
+- As a **player**, I own precon decks (ids -1 through -10) automatically — no signup action
   needed. I can take a precon to a lobby seat without ever building a custom deck.
 - As a **player**, I take my custom or precon deck to a lobby seat; the lobby validates that the
   deck belongs to my account (or is a precon) before letting me ready up.
@@ -130,7 +132,7 @@ deck builder still receives every save-time problem at once. `SaveDeckRequest` �
 `legality::validate` + proxy-art shape validation → Postgres insert or update. If validation
 fails, the gRPC call returns an error containing all problems joined by newline; no partial saves.
 
-**List:** Returns `DeckList` with both DB-backed decks (owned by the authed user) and the nine
+**List:** Returns `DeckList` with both DB-backed decks (owned by the authed user) and the ten
 precon summaries. Precons appear in the list with their fixed negative ids; the client can
 display them like any deck.
 
@@ -287,8 +289,8 @@ for hydrating a saved deck without fetching the full catalog.
   `Decks.Create`, `Decks.List` (including precon interleaving), `Decks.Delete`, and
   `Ratings.GetLeaderboard` ordering/paging with auth enforcement.
 - `crates/server/src/proxy_art.rs` unit tests cover the accepted/rejected proxy-art URL shapes, and
-  `crates/server/src/decks_api.rs` verifies both commander/card proxy-art round-trip persistence and
-  save-time rejection of invalid proxy-art URLs.
+  `crates/server/src/decks_api.rs` verifies commander/card-line proxy-art round-trip persistence plus
+  save-time rejection of invalid commander and card-line proxy-art URLs.
 - Shell Scene coverage asserts account chrome includes `account-gravatar-link`; Gravatar hashing
   and URL construction are covered in `client/app/domain/gravatar.test.ts`.
 - `crates/server/src/db.rs` and `crates/server/src/grpc/tests.rs` cover the rating persistence

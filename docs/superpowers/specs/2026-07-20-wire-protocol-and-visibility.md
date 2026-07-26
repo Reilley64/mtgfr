@@ -78,8 +78,12 @@ rule): during a rolling deploy, the active SPA may talk to a Terminating API pod
 older binary. All concurrent binaries must share a parseable protocol. This means: additive
 optional fields only, new field numbers for new fields, new RPC/intent/event variants that old
 peers never send — never rename, remove, or reuse field numbers while older pods serve tables.
-The shipped `proxy_art_url` additions on `ObjectView`, `StackObjectView`, and `ChoiceItem` follow
-that rule: new optional string fields where empty string means absent.
+The shipped proxy-art additions follow that rule: `catalog.proto` adds
+`DeckCardEntry.proxy_art_url = 4`, `DeckDetail.commander_proxy_art_url = 6`, and
+`SaveDeckRequest.commander_proxy_art_url = 5`; `stream.proto` adds
+`ObjectView.proxy_art_url = 28`, `StackObjectView.proxy_art_url = 11`, and
+`ChoiceItem.proxy_art_url = 5`. Each is a new optional string field where empty string means
+absent.
 
 ---
 
@@ -110,8 +114,10 @@ the session token; the BFF sets it as an HttpOnly cookie (`session`) on the brow
 resolves the token from `x-session-token` metadata.
 
 **`Decks`** — `Create`, `List`, `Get`, `Update`, `Delete`. All operations require auth. Decks
-are owned by the authenticated user; `DeckDetail` carries the full `(id, count, print)` card
-list with Printing UUIDs.
+are owned by the authenticated user. `DeckSummary` stays list-view chrome only; the full
+`DeckDetail` / `SaveDeckRequest` contract carries the chosen commander/card Printing UUIDs plus
+optional display-only proxy-art fields (`commander_proxy_art_url`, `DeckCardEntry.proxy_art_url`)
+where empty string means absent.
 
 **`Ratings`** — `GetLeaderboard`. Requires auth. `limit == 0` uses the default page size, values
 above the server max clamp to that max, and `offset` pages the global ratings table ordered by
