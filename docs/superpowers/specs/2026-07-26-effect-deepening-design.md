@@ -1,7 +1,6 @@
 # Deepen Effect integration on the client (design)
 
-**Status:** Approved design input (2026-07-26).
-**Surfaces (update at implement time):** [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md), [lobby-entry-ui](2026-07-20-lobby-entry-ui.md), [lobby-table-routing-and-live-game](2026-07-20-lobby-table-routing-and-live-game.md), [wire-protocol-and-visibility](2026-07-20-wire-protocol-and-visibility.md), [coverage-by-set](2026-07-26-coverage-by-set.md), [deck-list-and-builder](2026-07-20-deck-list-and-builder.md) (Wave 5 Scryfall only), production-topology notes if Drizzle/runtime wiring changes.
+**Status:** Implemented (2026-07-26). Shipped behavior is documented in living specs: [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md), [lobby-entry-ui](2026-07-20-lobby-entry-ui.md), [lobby-table-routing-and-live-game](2026-07-20-lobby-table-routing-and-live-game.md), [wire-protocol-and-visibility](2026-07-20-wire-protocol-and-visibility.md), [coverage-by-set](2026-07-26-coverage-by-set.md), [deck-list-and-builder](2026-07-20-deck-list-and-builder.md), [production-topology-and-operations](2026-07-20-production-topology-and-operations.md).
 **Upstream patterns:** `client/app/domain/rpc-client.ts`, `client/app/resources.ts`, Foldkit Commands/Subscriptions; Drizzle Effect Postgres (`drizzle-orm/effect-postgres` + `@effect/sql-pg`).
 
 ---
