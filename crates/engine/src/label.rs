@@ -823,6 +823,15 @@ impl Effect {
                 };
                 format!("{who} gets {} {kind_name} counters", amount_label(count))
             }
+            Effect::Counters(CountersEffect::RemoveAllPlayerCounters { scope }) => {
+                let who = match scope {
+                    EdictScope::AllPlayers => "Each player",
+                    EdictScope::EachOpponent => "Each opponent",
+                    EdictScope::TargetedPlayers => "Each target player",
+                    EdictScope::TargetedOpponent => "Target opponent",
+                };
+                format!("{who} loses all counters")
+            }
             Effect::Counters(CountersEffect::TopUpCountersOnPlayer { kind, to }) => {
                 let kind_name = match kind {
                     PlayerCounterKind::Poison => "poison",

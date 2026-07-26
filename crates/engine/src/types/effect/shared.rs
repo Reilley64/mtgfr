@@ -597,6 +597,10 @@ impl Effect {
                 scope: EdictScope::TargetedOpponent,
                 ..
             })
+            | Effect::Counters(CountersEffect::RemoveAllPlayerCounters {
+                scope: EdictScope::TargetedOpponent,
+                ..
+            })
             | Effect::Life(LifeEffect::DrainTarget { opponent: true, .. })
             | Effect::Reveal(RevealEffect::TopAndDrainMutual)
             | Effect::Life(LifeEffect::TargetPlayerGains { opponent: true, .. })
@@ -738,6 +742,11 @@ impl Effect {
             | Effect::Counters(CountersEffect::PutCountersEach { .. })
             // "Each player/opponent gets a poison counter" names its players by scope, not by target.
             | Effect::Counters(CountersEffect::PutCountersOnPlayer {
+                scope: EdictScope::AllPlayers | EdictScope::EachOpponent | EdictScope::TargetedPlayers,
+                ..
+            })
+            // "Each opponent loses all counters" (Final Act) names its players by scope too.
+            | Effect::Counters(CountersEffect::RemoveAllPlayerCounters {
                 scope: EdictScope::AllPlayers | EdictScope::EachOpponent | EdictScope::TargetedPlayers,
                 ..
             })
@@ -1159,9 +1168,12 @@ pub enum PlayerCounterKind {
 
 impl PlayerCounterKind {
     /// How many kinds [`Player::kind_counters`] has a slot for. Adding a kind (a rad counter,
-    /// say) is a one-line change here plus the variant. An `ALL` twin of [`CounterKind::ALL`],
-    /// for walking "each kind already there", lands with its first consumer.
+    /// say) is a one-line change here plus the variant, plus [`Self::ALL`].
     pub(crate) const COUNT: usize = 1;
+
+    /// Every kind, for enumerating "each kind present" ("each opponent loses all counters",
+    /// Final Act) — the [`CounterKind::ALL`] twin for player-side counters.
+    pub(crate) const ALL: [PlayerCounterKind; Self::COUNT] = [PlayerCounterKind::Poison];
 }
 
 /// [`CardDef::cumulative_upkeep`](super::CardDef::cumulative_upkeep)'s upkeep cost (CR 702.24):

@@ -172,6 +172,46 @@ impl Game {
                     })
                     .collect()
             }
+            // "Each opponent loses all counters" (Final Act) — CR 122.1/121.2: every counter of
+            // every kind on each player in `scope` is removed, not just poison. A player who has
+            // already lost is out of the game and loses nothing (`living_players`).
+            CountersEffect::RemoveAllPlayerCounters { scope } => {
+                let targets: Vec<PlayerId> = if scope == EdictScope::TargetedOpponent {
+                    let Some(Target::Player(player)) = target else {
+                        return Vec::new();
+                    };
+                    if !self.living_players().any(|p| p == player) {
+                        return Vec::new();
+                    }
+                    vec![player]
+                } else {
+                    self.living_players()
+                        .filter(|&player| match scope {
+                            EdictScope::AllPlayers => true,
+                            EdictScope::EachOpponent => player != controller,
+                            // ponytail: same residual as `PutCountersOnPlayer` above — no pool
+                            // card spells a chosen-subset "remove all counters" mode.
+                            EdictScope::TargetedPlayers => unreachable!(
+                                "player counters have no targeted-players spelling in the card pool"
+                            ),
+                            EdictScope::TargetedOpponent => unreachable!("handled above"),
+                        })
+                        .collect()
+                };
+                targets
+                    .into_iter()
+                    .flat_map(|player| {
+                        PlayerCounterKind::ALL.iter().filter_map(move |&kind| {
+                            let count = self.player_counters(player, kind) as i32;
+                            (count > 0).then_some(Event::PlayerCountersPlaced {
+                                player,
+                                kind,
+                                count: -count,
+                            })
+                        })
+                    })
+                    .collect()
+            }
             // "If target player has fewer than nine poison counters, they get a number of poison
             // counters equal to the difference" (Vraska, Betrayal's Sting's −9): a top-up, so a
             // target already at or above `to` gets no counters and mints no event at all.

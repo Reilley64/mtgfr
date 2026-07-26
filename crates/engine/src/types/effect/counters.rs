@@ -93,6 +93,12 @@ pub enum CountersEffect {
         scope: EdictScope,
     },
 
+    /// "Each opponent loses all counters" (Final Act) — CR 122.1/121.2: every counter of every
+    /// kind on each player in `scope` is removed, not just poison.
+    RemoveAllPlayerCounters {
+        scope: EdictScope,
+    },
+
     /// "If target player has fewer than nine poison counters, they get a number of poison counters
     /// equal to the difference" (Vraska, Betrayal's Sting's −9) — a *top-up* to `to`, not a fixed
     /// add: the count placed is `to - current`, and a target already at or above `to` gets nothing

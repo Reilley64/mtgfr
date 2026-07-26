@@ -94546,3 +94546,53 @@ fn contaminant_grafter_batch_trigger_fires_once_for_two_connecting_attackers() {
         "one proliferate, so one extra +1/+1 counter"
     );
 }
+
+#[test]
+fn final_act_fifth_mode_makes_each_opponent_lose_all_counters() {
+    // Final Act's fifth mode, "Each opponent loses all counters" (CR 122.1/121.2): every counter
+    // of every kind on each opponent is removed — the caster's own counters are untouched, since
+    // it's "each opponent," not "each player."
+    let mut g = TestGame::new();
+    g.place_player_counters(PlayerId(1), PlayerCounterKind::Poison, 3);
+    g.place_player_counters(PlayerId(0), PlayerCounterKind::Poison, 2);
+
+    let act = g.spawn_in_hand(PlayerId(0), card("Final Act"));
+    g.cast(act).mode(3, None).resolve();
+
+    assert_eq!(
+        g.player_counters(PlayerId(1), PlayerCounterKind::Poison),
+        0,
+        "the opponent loses all of their counters"
+    );
+    assert_eq!(
+        g.player_counters(PlayerId(0), PlayerCounterKind::Poison),
+        2,
+        "the caster's own counters are untouched — it's each *opponent*, not each player"
+    );
+}
+
+#[test]
+fn final_act_fifth_mode_is_a_no_op_when_no_opponent_has_any_counter() {
+    // No opponent has any counter of any kind, so the mode places no event at all.
+    let mut g = TestGame::new();
+
+    let act = g.spawn_in_hand(PlayerId(0), card("Final Act"));
+    let events = g.cast(act).mode(3, None).submit();
+    let resolved = resolve_top_of_stack_events(&mut g);
+    let _ = events;
+
+    assert!(
+        !resolved
+            .iter()
+            .any(|e| matches!(e, Event::PlayerCountersPlaced { .. })),
+        "no counters to remove means no events at all"
+    );
+}
+
+#[test]
+fn final_act_now_offers_four_modes() {
+    // Restoring the fifth mode ("each opponent loses all counters") alongside the three already
+    // expressible modes raises `choose_max` from 3 to 4 — only "destroy all battles" (battles
+    // aren't a modeled permanent type) is still dropped.
+    assert_eq!(card("Final Act").modal_choose_max, Some(4));
+}

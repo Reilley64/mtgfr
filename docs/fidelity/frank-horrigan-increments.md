@@ -499,6 +499,12 @@ surfaced verbatim to users in the catalog. Restore the mode, raise `choose_max` 
 trim the note to the genuinely-remaining "destroy all battles" residual. *Cards:* final_act
 (existing pool).
 
+_Landed 2026-07-27: new `CountersEffect::RemoveAllPlayerCounters { scope }` (mirrors
+`PutCountersOnPlayer`'s `EdictScope` shape, iterating every `PlayerCounterKind` via a new `ALL`
+const) restores the fifth mode as `final_act.toml` mode 3, `choose_max` raised to 4. The
+`approximates` note now names only the "destroy all battles" residual (battles aren't a modeled
+permanent type)._
+
 ### 24. `plus-minus-counter-annihilation-sba` — observers, S — LANDED 2026-07-26
 Depends on: nothing. **Falsifies `characteristics.rs:1100`.**
 CR 704.5r: a permanent with both +1/+1 and -1/-1 counters has N of each removed as a state-based
