@@ -27,14 +27,16 @@ export function runEither<A, E>(
 
 /** A stub `fetch` that always returns the given web `Response`, ignoring the request. */
 export function respondWith(response: Response): typeof fetch {
-  return () => Promise.resolve(response);
+  // Bun's `typeof fetch` includes `preconnect`; stubs only implement the call signature.
+  return (() => Promise.resolve(response)) as unknown as typeof fetch;
 }
 
 export const ok = () => new Response(null, { status: 200 });
 export const status = (code: number) => new Response(null, { status: code });
 export const json = (body: unknown, code = 200) =>
   new Response(JSON.stringify(body), { status: code, headers: { "content-type": "application/json" } });
-export const networkError: typeof fetch = () => Promise.reject(new TypeError("Failed to fetch"));
+export const networkError: typeof fetch = (() =>
+  Promise.reject(new TypeError("Failed to fetch"))) as unknown as typeof fetch;
 
 /** Decode a captured request's JSON body — `bodyUnsafeJson` sends it as a `Uint8Array`, not a
  * string, so a test can't `JSON.parse(init.body)` directly. */
@@ -49,6 +51,6 @@ export function recordingFetch(response: Response): { fetch: typeof fetch; calls
   const fetchImpl = ((url: URL, init?: RequestInit) => {
     calls.push([url, init]);
     return Promise.resolve(response);
-  }) as typeof fetch;
+  }) as unknown as typeof fetch;
   return { fetch: fetchImpl, calls };
 }

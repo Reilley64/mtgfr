@@ -36,6 +36,7 @@ The client is a single Foldkit SPA with feature folders, but it drifts from Fold
 | Foldkit version | `foldkit` **`^0.132.0`** (from `^0.131.0`); bump `@foldkit/vite-plugin` / `@foldkit/devtools-mcp` only if 0.132 peers or changelog require it |
 | Effect version | **`effect` and every direct `@effect/*` dependency pinned to the same exact `4.0.0-beta.101`** (from `4.0.0-beta.97`) — AGENTS.md same-beta rule |
 | Effect platform packages | Direct deps match runtimes: `@effect/platform-browser` (SPA). **Do not** keep unused `@effect/platform-node` (Nitro BFF is Bun). Add `@effect/platform-bun@4.0.0-beta.101` only when a BFF Effect Layer actually needs it; `@effect-grpc/codegen` may still pull `platform-node` transitively |
+| TypeScript ambient types | Client `tsconfig` uses `"types": ["bun"]` and direct `@types/bun` pinned to the same Bun major/minor as `engines.bun` / `packageManager` (currently `1.3.14`). Do **not** keep unused direct `@types/node` |
 | Route lazy-load / workspace packages | Out of scope for this design |
 
 ## Approaches considered

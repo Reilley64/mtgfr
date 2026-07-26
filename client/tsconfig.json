@@ -6,7 +6,7 @@
     "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
-    "types": ["node"],
+    "types": ["bun"],
     "strict": true,
     "noEmit": true,
     "skipLibCheck": true,

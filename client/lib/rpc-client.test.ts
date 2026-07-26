@@ -12,20 +12,21 @@ function stubLocation(): void {
 }
 
 function respondWith(response: Response): typeof fetch {
-  return () => Promise.resolve(response);
+  // Bun's `typeof fetch` includes `preconnect`; stubs only implement the call signature.
+  return (() => Promise.resolve(response)) as unknown as typeof fetch;
 }
 
 const status = (code: number) => new Response(null, { status: code });
 const json = (body: unknown, code = 200) =>
   new Response(JSON.stringify(body), { status: code, headers: { "content-type": "application/json" } });
-const networkError: typeof fetch = () => Promise.reject(new TypeError("Failed to fetch"));
+const networkError: typeof fetch = (() => Promise.reject(new TypeError("Failed to fetch"))) as unknown as typeof fetch;
 
 function recordingFetch(response: Response): { fetch: typeof fetch; calls: [URL, RequestInit | undefined][] } {
   const calls: [URL, RequestInit | undefined][] = [];
   const fetchImpl = ((url: URL, init?: RequestInit) => {
     calls.push([url, init]);
     return Promise.resolve(response);
-  }) as typeof fetch;
+  }) as unknown as typeof fetch;
   return { fetch: fetchImpl, calls };
 }
 
