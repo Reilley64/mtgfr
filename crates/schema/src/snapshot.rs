@@ -3318,4 +3318,49 @@ mod tests {
             .expect("ability still on stack");
         assert_eq!(seated.print, preferred);
     }
+
+    /// Tokens cease to exist (`Object::Removed`) instead of becoming a graveyard card (CR 111.7).
+    /// A Food's "{2}, {T}, Sacrifice this: gain 3 life" still leaves an ability on the stack keyed
+    /// by that Removed id — stack art must read last-known identity, not panic / blank.
+    #[test]
+    fn sacrifice_as_cost_token_ability_projects_source_art_on_the_stack_entry() {
+        let mut game = Game::new();
+        let p0 = PlayerId(0);
+        game.fund_mana(p0);
+        let food_def =
+            cards::get_token("a468338f-635e-4206-89d6-72d723071d45").expect("Food token profile");
+        let expected_print = food_def.default_print.to_string();
+        let expected_card_id = food_def.id.to_string();
+        let food = game.spawn_token_on_battlefield(p0, food_def);
+
+        game.submit(engine::Intent::ActivateAbility {
+            player: p0,
+            object: food,
+            ability_index: 0,
+            target: None,
+            sacrifice: vec![],
+            discard_cost: vec![],
+            x: 0,
+        })
+        .expect("activate Food");
+
+        assert!(
+            !game.live_object_ids().contains(&food),
+            "Food token ceases to exist as the activation cost"
+        );
+
+        let snap = snapshot(&game, p0);
+        assert!(
+            snap.objects.iter().all(|o| o.id != food),
+            "Removed token must not appear in objects"
+        );
+        let entry = snap
+            .stack
+            .iter()
+            .find(|e| e.kind == "ability" && e.source == food)
+            .expect("Food ability on stack keyed by the sacrificed token id");
+        assert_eq!(entry.print, expected_print);
+        assert_eq!(entry.name, "Food");
+        assert_eq!(entry.card_id, expected_card_id);
+    }
 }

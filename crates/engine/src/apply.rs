@@ -875,7 +875,7 @@ impl Game {
             }
             Event::SpellCeasedToExist { spell } => {
                 self.remove_spell_from_stack(spell);
-                self.objects[spell as usize] = Object::Removed;
+                self.mark_removed(spell);
             }
             Event::PreparedChanged { object, prepared } => {
                 self.permanent_mut(object).prepared = prepared;
@@ -1931,7 +1931,10 @@ impl Game {
                 // for a later same-`Sequence` step (Oblation's `target_owner_draws` rider) that
                 // would otherwise panic reading `owner_of` a now-`Object::Removed` id.
                 self.resolution_frame.vanished_permanent_owner = Some((token, controller));
-                self.objects[token as usize] = Object::Removed;
+                self.objects[token as usize] = Object::Removed {
+                    def,
+                    owner: controller,
+                };
             }
             Event::DamageMarked { object, amount, .. } => {
                 self.permanent_mut(object).marked_damage += amount
@@ -2392,14 +2395,18 @@ impl Game {
                 // permanent they own but someone else controls (a donation they made stays owned by
                 // them, so it leaves too).
                 for slot in self.objects.iter_mut() {
-                    let owned = match slot {
-                        Object::Card(c) => c.owner == player,
-                        Object::Spell(s) => s.controller == player,
-                        Object::Permanent(p) => p.owner == player,
-                        Object::Moved { .. } | Object::Removed => false,
+                    let identity = match slot {
+                        Object::Card(c) if c.owner == player => Some((c.def, c.owner)),
+                        Object::Spell(s) if s.controller == player => Some((s.def, s.controller)),
+                        Object::Permanent(p) if p.owner == player => Some((p.def, p.owner)),
+                        Object::Moved { .. }
+                        | Object::Removed { .. }
+                        | Object::Card(_)
+                        | Object::Spell(_)
+                        | Object::Permanent(_) => None,
                     };
-                    if owned {
-                        *slot = Object::Removed;
+                    if let Some((def, owner)) = identity {
+                        *slot = Object::Removed { def, owner };
                     }
                 }
                 // CR 800.4a: any effect that gives the departing player control of an object also
@@ -2418,7 +2425,7 @@ impl Game {
                 // Drop any now-removed objects off the stack and out of combat (disjoint
                 // field borrows: the closure reads `objects`, retain mutates other fields).
                 let objects = &self.objects;
-                let removed = |o: ObjectId| matches!(objects[o as usize], Object::Removed);
+                let removed = |o: ObjectId| matches!(objects[o as usize], Object::Removed { .. });
                 self.stack.retain(|item| match item {
                     StackItem::Spell(id) => !removed(*id),
                     StackItem::Ability { source, .. } => !removed(*source),

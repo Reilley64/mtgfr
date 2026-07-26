@@ -110,7 +110,7 @@ impl Game {
             Object::Card(c) => c.commander = true,
             Object::Spell(s) => s.commander = true,
             Object::Permanent(p) => p.commander = true,
-            Object::Moved { .. } | Object::Removed => {
+            Object::Moved { .. } | Object::Removed { .. } => {
                 panic!("cannot make a moved-or-removed object a commander")
             }
         }

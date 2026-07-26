@@ -1253,7 +1253,7 @@ impl Game {
         self.objects
             .iter()
             .enumerate()
-            .filter(|(_, o)| !matches!(o, Object::Moved { .. } | Object::Removed))
+            .filter(|(_, o)| !matches!(o, Object::Moved { .. } | Object::Removed { .. }))
             .map(|(id, _)| id as ObjectId)
             .collect()
     }
@@ -1292,7 +1292,7 @@ impl Game {
             Object::Spell(s) => s.commander,
             Object::Permanent(p) => p.commander,
             Object::Moved { to } => self.is_commander(*to),
-            Object::Removed => false,
+            Object::Removed { .. } => false,
         }
     }
 
