@@ -324,6 +324,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.life_each_opponent_drain": (params) =>
     `Each opponent loses ${param(params, "amount")}, you gain ${bool(params, "sum_gain") ? "life equal to the life lost this way" : param(params, "amount")}`,
   "effect.life_each_opponent_loses": (params) => `Each opponent loses ${param(params, "amount")}`,
+  "effect.life_each_player_loses": (params) => `Each player loses ${param(params, "amount")}`,
   "effect.life_each_player_becomes_highest": literal(
     "Each player's life total becomes the highest life total among all players",
   ),
