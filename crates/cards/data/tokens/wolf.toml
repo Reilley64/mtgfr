@@ -1,0 +1,23 @@
+# Token: Wolf (Garruk, Cursed Huntsman)
+# Sources: garruk_cursed_huntsman.toml
+name = "Wolf"
+id = "21c3b763-b6a2-4e9e-8621-d2ab62e448f2"
+default_print = "88452ed7-1065-41c3-94a6-dc41108c45c1"
+colors = ["black", "green"]
+subtypes = ["Wolf"]
+oracle = "When this creature dies, put a loyalty counter on each Garruk you control."
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# When this creature dies, put a loyalty counter on each Garruk you control.
+[[abilities]]
+timing = "dies"
+
+# put a loyalty counter on each Garruk you control
+[[abilities.effects]]
+type = "counters"
+mode = "put_loyalty_counter_each"
+filter = { types = "planeswalker", subtypes = ["Garruk"], controller = "you" }

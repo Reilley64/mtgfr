@@ -128,6 +128,16 @@ impl Game {
                     })
                     .collect()
             }
+            // "Put a loyalty counter on each Garruk you control" (the Wolf token minted by Garruk,
+            // Cursed Huntsman's `0`) — same battlefield-filter walk as `PutCountersEach`, but
+            // loyalty is the scalar `Permanent::loyalty`, mutated by `Event::LoyaltyChanged`
+            // directly, not through the +1/+1-counter replacement pipeline.
+            CountersEffect::PutLoyaltyCounterEach { filter } => self
+                .battlefield()
+                .into_iter()
+                .filter(|&id| self.permanent_matches(&filter, id, controller, Some(source)))
+                .map(|object| Event::LoyaltyChanged { object, amount: 1 })
+                .collect(),
             // "Each opponent gets a poison counter" (Infectious Inquiry, Vraska's Fall) / "each
             // player gets a poison counter" (Ichor Rats): counters on the *players* in scope, not
             // on any permanent (CR 122.1). A player who has already lost is no longer in the game

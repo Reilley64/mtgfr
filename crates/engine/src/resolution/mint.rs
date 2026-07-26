@@ -49,6 +49,7 @@ impl Game {
                 | CountersEffect::PlaceVowCounters { .. }
                 | CountersEffect::PutCounters { .. }
                 | CountersEffect::PutCountersEach { .. }
+                | CountersEffect::PutLoyaltyCounterEach { .. }
                 | CountersEffect::PutCountersOnPlayer { .. }
                 | CountersEffect::RemoveAllPlayerCounters { .. }
                 | CountersEffect::TopUpCountersOnPlayer { .. }

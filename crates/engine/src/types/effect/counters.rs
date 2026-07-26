@@ -125,4 +125,13 @@ pub enum CountersEffect {
     },
 
     RemoveCounterFromSelf,
+
+    /// "Put a loyalty counter on each Garruk you control" (the Wolf token minted by Garruk,
+    /// Cursed Huntsman's `0`) — a permanent-type filter walk, same shape as
+    /// [`Self::PutCountersEach`], but loyalty is the scalar `Permanent::loyalty`
+    /// ([`crate::Event::LoyaltyChanged`]), not a [`CounterKind`], so it can't reuse that variant's
+    /// counter-placement events.
+    PutLoyaltyCounterEach {
+        filter: PermanentFilter,
+    },
 }

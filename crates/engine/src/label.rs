@@ -812,6 +812,9 @@ impl Effect {
                 };
                 format!("Put {} {kind_name} counters on each", amount_label(count))
             }
+            Effect::Counters(CountersEffect::PutLoyaltyCounterEach { .. }) => {
+                "Put a loyalty counter on each".to_string()
+            }
             Effect::Counters(CountersEffect::PutCountersOnPlayer { kind, count, scope }) => {
                 let kind_name = match kind {
                     PlayerCounterKind::Poison => "poison",

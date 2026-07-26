@@ -745,6 +745,7 @@ impl Effect {
             | Effect::Choice(ChoiceEffect::MayDiscard { .. })
             | Effect::Choice(ChoiceEffect::MayDrawUnlessPays { .. })
             | Effect::Counters(CountersEffect::PutCountersEach { .. })
+            | Effect::Counters(CountersEffect::PutLoyaltyCounterEach { .. })
             // "Each player/opponent gets a poison counter" names its players by scope, not by target.
             | Effect::Counters(CountersEffect::PutCountersOnPlayer {
                 scope: EdictScope::AllPlayers | EdictScope::EachOpponent | EdictScope::TargetedPlayers,

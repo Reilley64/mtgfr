@@ -95052,3 +95052,181 @@ fn phyresis_outbreak_counts_the_poison_it_just_gave() {
     );
     assert_eq!(game.toughness(opponents_creature), 3);
 }
+
+// ── Garruk, Cursed Huntsman's Wolves (#13a) ─────────────────────────────────────────────────
+
+#[test]
+fn garruk_cursed_huntsman_zero_creates_two_wolves() {
+    // Garruk, Cursed Huntsman: "0: Create two 2/2 black and green Wolf creature tokens with
+    // \"When this token dies, put a loyalty counter on each Garruk you control.\""
+    let mut game = Game::new();
+    let garruk = game.spawn_on_battlefield(PlayerId(0), card("Garruk, Cursed Huntsman"));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: garruk,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    assert_eq!(
+        game.loyalty(garruk),
+        5,
+        "a 0-cost loyalty ability leaves loyalty unchanged"
+    );
+    resolve_top_of_stack(&mut game);
+
+    let wolves = battlefield_named(&game, PlayerId(0), "Wolf");
+    assert_eq!(wolves.len(), 2, "two Wolf tokens");
+    for &wolf in &wolves {
+        assert_eq!((game.power(wolf), game.toughness(wolf)), (2, 2));
+        assert!(game.colors_of(wolf)[Color::Black.index()], "black");
+        assert!(game.colors_of(wolf)[Color::Green.index()], "and green");
+    }
+}
+
+#[test]
+fn a_dying_wolf_puts_a_loyalty_counter_on_each_garruk_you_control() {
+    // The Wolf token: "When this token dies, put a loyalty counter on each Garruk you control." —
+    // names a permanent type/subtype, not its creator, so an unrelated Garruk you control also
+    // benefits.
+    let mut game = Game::new();
+    let wildspeaker = game.spawn_on_battlefield(PlayerId(0), card("Garruk Wildspeaker"));
+    let huntsman = game.spawn_on_battlefield(PlayerId(0), card("Garruk, Cursed Huntsman"));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: huntsman,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    let wolf = battlefield_named(&game, PlayerId(0), "Wolf")[0];
+
+    let shock = game.spawn_in_hand(PlayerId(0), card("Shock")); // 2 damage — lethal to the 2/2.
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: shock,
+        target: Some(Target::Object(wolf)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // Shock resolves → SBA kills the Wolf.
+    resolve_top_of_stack(&mut game); // the Wolf's dies trigger resolves.
+
+    assert_eq!(
+        game.loyalty(wildspeaker),
+        4,
+        "an unrelated Garruk you control gains a loyalty counter"
+    );
+    assert_eq!(
+        game.loyalty(huntsman),
+        6,
+        "the creating Garruk gains one too"
+    );
+}
+
+#[test]
+fn a_dying_wolf_does_not_bump_an_opponents_garruk() {
+    // The Wolf token's dies trigger reads "each Garruk you control" from the token's own
+    // controller's perspective — an opponent's Garruk is untouched.
+    let mut game = Game::new();
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Garruk, Cursed Huntsman"));
+    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Garruk Wildspeaker"));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: mine,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    let wolf = battlefield_named(&game, PlayerId(0), "Wolf")[0];
+
+    let shock = game.spawn_in_hand(PlayerId(0), card("Shock"));
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: shock,
+        target: Some(Target::Object(wolf)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.loyalty(mine),
+        6,
+        "the controller's own Garruk gains a loyalty counter"
+    );
+    assert_eq!(game.loyalty(theirs), 3, "an opponent's Garruk is untouched");
+}
+
+#[test]
+fn garruk_cursed_huntsman_minus_three_destroys_a_creature_and_draws() {
+    // Garruk, Cursed Huntsman: "−3: Destroy target creature. Draw a card."
+    let mut game = Game::new();
+    game.stack_library(PlayerId(0), &[VANILLA]);
+    let garruk = game.spawn_on_battlefield(PlayerId(0), card("Garruk, Cursed Huntsman"));
+    let victim = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: garruk,
+        ability_index: 1,
+        target: Some(Target::Object(victim)),
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    assert_eq!(game.loyalty(garruk), 2, "the −3 is paid on activation");
+    let hand_before = game.hand(PlayerId(0)).len();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.zone_of(victim),
+        Zone::Graveyard,
+        "the creature is destroyed"
+    );
+    assert_eq!(
+        game.hand(PlayerId(0)).len(),
+        hand_before + 1,
+        "a card is drawn"
+    );
+}

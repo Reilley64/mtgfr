@@ -251,7 +251,23 @@ activated `monstrosity N` effect that is a no-op when already monstrous and othe
 `Trigger::BecomesMonstrous`. Alpha Deathclaw's "enters **or** becomes monstrous" is one ability
 with two trigger conditions, like the commander's "enters or attacks". *Cards:* alpha_deathclaw.
 
-### 13a. `garruk-cursed-huntsman-wolves` — 1 card, M
+### 13a. `garruk-cursed-huntsman-wolves` — 1 card, M — LANDED 2026-07-27
+_Landed 2026-07-27: `garruk_cursed_huntsman.toml` authored fresh (absent from the pool) with its
+`0` and `−3` abilities; the `−6` emblem mode is omitted and named in `approximates` (CR 114
+emblems don't exist in the engine — see #13b, now unblocked). Its Wolf token
+(`crates/cards/data/tokens/wolf.toml`) carries its own `dies` trigger, a new
+`CountersEffect::PutLoyaltyCounterEach { filter }` — "put a loyalty counter on each Garruk you
+control" walks the battlefield by `PermanentFilter` (same shape as `PutCountersEach`) and emits
+`Event::LoyaltyChanged { amount: 1 }` per match, since loyalty is the scalar `Permanent::loyalty`,
+not a `CounterKind`; no new counter kind added. The filter names a permanent type/subtype, not the
+creating walker, so a Wolf's death still bumps an unrelated Garruk you control after the creating
+Garruk has died (tested), and never an opponent's Garruk (tested). Also cleared the stale note at
+`promise_of_loyalty.toml:3` ("planeswalker defenders unmodeled" — already false;
+`combat.rs`'s attack-declaration `resolved` list records every attack against its defending player
+regardless of whether the declared target was that player or their planeswalker, so the "or
+planeswalkers you control" clause was already covered) and the same false claim on
+`counter_scaled_attack_tax`'s and `cant_be_attacked_by`'s `DSL_REFERENCE.md` rows. Still blocked:
+the `−6` emblem residual, cleared by #13b._
 Depends on: nothing. **Clears the stale note at `promise_of_loyalty.toml:3`** ("planeswalker
 defenders unmodeled" — already false; `Defender::Planeswalker` exists and `combat.rs:430` says so).
 Garruk, Cursed Huntsman's `0` and `−3` abilities plus its Wolf token, whose own death trigger
@@ -262,7 +278,7 @@ scalar `Permanent::loyalty`, mutated by the existing `Event::LoyaltyChanged`; no
 of Loyalty note in the same change. *Cards:* garruk_cursed_huntsman.
 
 ### 13b. `emblems` — clears 13a's residual, L
-Depends on: 13a. Emblems are an ownerless, unremovable, non-permanent object in a per-player
+Depends on: 13a (LANDED 2026-07-27, unblocked). Emblems are an ownerless, unremovable, non-permanent object in a per-player
 store carrying static abilities only (CR 114.1–114.5). Garruk's is a `StaticEffect::Anthem`
 ("Creatures you control get +3/+3 and have trample"), which already exists — the store is the
 only new machinery. Wire the `−6` and delete 13a's `approximates` line. No emblem removal,
