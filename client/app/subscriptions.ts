@@ -1,7 +1,7 @@
 import { Subscription } from "foldkit";
 import { subscriptions as gameSubscriptions } from "./game";
 import type { Message } from "./messages";
-import { GotGameMessage, GotLobbyMessage, PortraitGateChanged } from "./messages";
+import { GotGameMessage, GotLobbyMessage, LandscapeRotateChanged } from "./messages";
 import type { Model } from "./model";
 import { subscriptions as lobbySubscriptions } from "./shell/lobby/subscriptions";
 
@@ -14,11 +14,11 @@ export function isPortraitPhone(): boolean {
 }
 
 const appSubscriptions = Subscription.make<Model, Message>()(() => ({
-  portraitGate: Subscription.persistent(
+  landscapeRotate: Subscription.persistent(
     Subscription.fromEvent<Event, Message>({
       target: () => (typeof window.matchMedia === "function" ? window.matchMedia(PORTRAIT_QUERY) : window),
       type: "change",
-      toMessage: () => PortraitGateChanged({ open: isPortraitPhone() }),
+      toMessage: () => LandscapeRotateChanged({ active: isPortraitPhone() }),
     }),
   ),
 }));

@@ -40,7 +40,7 @@ export const init = (url?: Url) => {
     coverage: initialCoverageSubmodel(),
     lobby: initialLobbySlice(),
     game: null,
-    portraitGate: { open: isPortraitPhone() },
+    landscapeRotate: { active: isPortraitPhone() },
   };
   const commands = [
     Command.mapMessage(FetchMe(), (message) => GotAuthMessage({ message })),

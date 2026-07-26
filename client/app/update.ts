@@ -390,9 +390,7 @@ export const update = (
           }),
         ),
       NavigationCompleted: () => [model, []],
-      PortraitGateChanged: ({ open }) => [{ ...model, portraitGate: { open } }, []],
-      PortraitGateCancelled: () => [model, []],
-      CompletedPortraitGateModal: () => [model, []],
+      LandscapeRotateChanged: ({ active }) => [{ ...model, landscapeRotate: { active } }, []],
       ReceivedMeGravatarHash: ({ email, hash }) => {
         if (model.session.me?.email !== email) return [model, []];
         return [{ ...model, session: { ...model.session, meGravatarHash: hash } }, []];

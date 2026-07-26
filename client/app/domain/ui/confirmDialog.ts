@@ -1,6 +1,6 @@
 // Shared ConfirmDialog view helper — renders a native <dialog> opened with showModal() so the
 // browser provides the focus trap, top-layer stacking, and Escape-to-cancel behaviour for free.
-// Mirrors the pattern used for the portrait gate (OpenPortraitGateModal in app/view.ts).
+// Mirrors the native modal pattern used by the app's confirm prompts.
 //
 // Usage: call confirmDialog(h, { ... }) from within a view that has ModalOpened in its Message
 // union. The OpenDialogAsModal Mount dispatches ModalOpened (a no-op) when the element mounts;

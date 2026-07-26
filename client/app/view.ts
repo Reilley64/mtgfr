@@ -1,11 +1,8 @@
-import { Effect } from "effect";
 import { type Document, html } from "foldkit/html";
-import * as Mount from "foldkit/mount";
 import { type ViewMessage as BoardViewMessage, view as boardView } from "./board";
 import { parseDeckIdParam, playDeckAccess } from "./deck-id";
 import type { AppChromeMeta } from "./domain/ui/app-version";
 import {
-  CompletedPortraitGateModal,
   GotAuthMessage,
   GotBoardMessage,
   GotCoverageMessage,
@@ -14,7 +11,6 @@ import {
   GotLeaderboardMessage,
   GotLobbyMessage,
   type Message,
-  PortraitGateCancelled,
 } from "./messages";
 import type { Model } from "./model";
 import { CoverageRoute, HomeRoute, isProtectedRoute, NewDeckRoute, routePath } from "./routes";
@@ -35,34 +31,6 @@ function chromeMeta(model: Model): AppChromeMeta {
     coverageHref: routePath(CoverageRoute()),
   };
 }
-
-export const OpenPortraitGateModal = Mount.define(
-  "OpenPortraitGateModal",
-  CompletedPortraitGateModal,
-)((element) =>
-  Effect.gen(function* () {
-    yield* Effect.acquireRelease(
-      Effect.sync(() => {
-        if (typeof HTMLDialogElement === "undefined") return null;
-        if (!(element instanceof HTMLDialogElement)) return null;
-
-        const handle = { cancelled: false, dialog: element };
-        queueMicrotask(() => {
-          if (handle.cancelled || !element.isConnected || element.open) return;
-          element.showModal();
-        });
-        return handle;
-      }),
-      (handle) =>
-        Effect.sync(() => {
-          if (handle == null) return;
-          handle.cancelled = true;
-          if (handle.dialog.open) handle.dialog.close();
-        }),
-    );
-    return CompletedPortraitGateModal();
-  }),
-);
 
 function nav(model: Model) {
   const user = model.session.me;
@@ -204,25 +172,6 @@ function boardMount(model: Model) {
   );
 }
 
-function portraitGate() {
-  return h.dialog(
-    [
-      h.Id("portrait-gate"),
-      h.Class("portrait-gate bg-forest-floor font-sans text-body text-snow"),
-      h.Attribute("aria-labelledby", "portrait-gate-title"),
-      h.OnMount(OpenPortraitGateModal()),
-      h.OnCancel(PortraitGateCancelled()),
-    ],
-    [
-      h.div([h.Id("portrait-gate-title"), h.Class("text-title")], ["Rotate to landscape"]),
-      h.div(
-        [h.Class("max-w-[28ch] text-label text-lichen")],
-        ["The table and deck builder are built for horizontal screens. Turn your device sideways to continue."],
-      ),
-    ],
-  );
-}
-
 function routeBody(model: Model) {
   if (isProtectedRoute(model.route) && (!model.sessionLoaded || model.session.me == null)) {
     // Spec: no persistent nav chrome. Blank gate until session resolves (avoids Play/Sign in flash).
@@ -357,6 +306,12 @@ function routeBody(model: Model) {
 export const view = (model: Model): Document => {
   return {
     title: "edh.reilley.dev",
-    body: h.div([], [routeBody(model), model.portraitGate.open ? portraitGate() : null]),
+    body: h.div(
+      [
+        h.DataAttribute("testid", "landscape-root"),
+        ...(model.landscapeRotate.active ? [h.Class("landscape-rotate-root")] : []),
+      ],
+      [routeBody(model)],
+    ),
   };
 };
