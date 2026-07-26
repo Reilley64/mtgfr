@@ -153,6 +153,8 @@ describe("shell surface scenes", () => {
       { update, view },
       Scene.with(loginModel({ apiVersion: "1.2.3" })),
       Scene.expect(Scene.selector('[data-testid="auth-panel"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="auth-brand"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="auth-brand"]')).toHaveClass("font-display"),
       Scene.expect(Scene.selector('[data-testid="auth-form"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="auth-email"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="auth-password"]')).toExist(),
@@ -163,6 +165,11 @@ describe("shell surface scenes", () => {
       Scene.expect(Scene.text("API 1.2.3")).toExist(),
       Scene.expect(Scene.text("edh.reilley.dev")).toExist(),
       Scene.expect(Scene.text("mtgfr")).not.toExist(),
+      Scene.tap((sim) => {
+        const panel = findTestId(sim.html, "auth-panel");
+        expect(panel).not.toBeNull();
+        expect(textContent(panel)).not.toContain("edh.reilley.dev");
+      }),
     );
   });
 
@@ -243,10 +250,8 @@ describe("shell surface scenes", () => {
       Scene.expect(Scene.text("Your decks")).toExist(),
       Scene.expect(Scene.text("Superfriends")).toExist(),
       Scene.expect(Scene.selector(`[data-testid="deck-list-new-deck"][href="${routePath(NewDeckRoute())}"]`)).toExist(),
+      Scene.expect(Scene.selector('[data-testid="deck-list-new-deck-header"]')).not.toExist(),
       Scene.expect(Scene.text("New deck")).toExist(),
-      Scene.expect(
-        Scene.selector(`[data-testid="deck-list-header"] a[href="${routePath(NewDeckRoute())}"]`),
-      ).not.toExist(),
       Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), ClosedDeckListMenu()),
       Scene.Mount.resolve(BindDeckCardFlip({ deckId: 1 }), DeckCardFlipTick()),
       Scene.Mount.resolve(BindCardArt, CardArtTick()),
@@ -328,6 +333,8 @@ describe("shell surface scenes", () => {
         }),
       ),
       Scene.expect(Scene.text("No decks yet — build one to get started.")).not.toExist(),
+      Scene.expect(Scene.selector('[data-testid="deck-list-empty"]')).toExist(),
+      Scene.expect(Scene.selector(`[data-testid="deck-list-empty"] a[href="${routePath(NewDeckRoute())}"]`)).toExist(),
       Scene.expect(Scene.selector(`[data-testid="deck-list-new-deck"][href="${routePath(NewDeckRoute())}"]`)).toExist(),
       Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
     );
@@ -619,7 +626,10 @@ describe("shell surface scenes", () => {
       ...expectShellFrame(),
       Scene.expect(Scene.selector('[data-testid="account-menu-trigger"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-host"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="lobby-host"]')).toHaveClass("bg-llanowar"),
       Scene.expect(Scene.selector('[data-testid="lobby-open-join"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="lobby-open-join"]')).toHaveClass("border-dashed"),
+      Scene.expect(Scene.selector('[data-testid="lobby-open-join"]')).not.toHaveClass("bg-llanowar"),
       Scene.expect(Scene.selector('[data-testid="lobby-deck-card"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-deck-card-1"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-join-code"]')).toBeAbsent(),
@@ -688,9 +698,13 @@ describe("shell surface scenes", () => {
         }),
       ),
       Scene.expect(Scene.selector('[data-testid="lobby-table-code"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="lobby-table-code"]')).toHaveClass("font-display"),
+      Scene.expect(Scene.selector('[data-testid="lobby-table-code"]')).toHaveClass("text-display"),
       ...expectShellFrame(),
       Scene.expect(Scene.selector('[data-testid="account-menu-trigger"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-copy-code"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="lobby-copy-code"]')).toHaveClass("border-vine"),
+      Scene.expect(Scene.selector('[data-testid="lobby-copy-code"]')).not.toHaveClass("bg-llanowar"),
       Scene.expect(Scene.selector('[data-testid="lobby-seats"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-seat-0"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="seat-face-0"]')).toExist(),

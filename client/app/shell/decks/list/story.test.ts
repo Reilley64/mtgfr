@@ -110,6 +110,17 @@ test("deck list chrome and tiles share the wide column classes", () => {
   );
 });
 
+test("empty deck list points players to deck creation", () => {
+  Scene.scene(
+    listProgram,
+    Scene.with({ ...initialDeckListSubmodel(), decks: [], loading: false }),
+    Scene.expect(Scene.selector('[data-testid="deck-list-empty"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="deck-list-empty"] a[href="/decks/new"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="deck-list-new-deck"][href="/decks/new"]')).toExist(),
+    Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
+  );
+});
+
 test("deck list does not render a hover preview", () => {
   Scene.scene(
     listProgram,
