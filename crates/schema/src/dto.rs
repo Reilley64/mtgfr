@@ -383,6 +383,8 @@ pub struct ActionView {
     /// The activated ability's index on `object`; set only for `kind == "activate"`.
     pub ability_index: Option<u32>,
     /// Section bucket: "hand" | "battlefield" | "command" | "graveyard" | "exile" | "combat".
+    /// For `kind == "activate"`, `"graveyard"` when the source is in the graveyard
+    /// (`functions_in_graveyard`); otherwise `"battlefield"`.
     pub section: String,
     /// Stable action label ref; card names ride as params, not preformatted English.
     pub label: MessageRef,

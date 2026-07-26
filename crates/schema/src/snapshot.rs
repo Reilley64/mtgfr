@@ -162,8 +162,9 @@ pub fn complete_visible(
 }
 
 /// Wire form of one of `game`'s stored [`engine::LegalAction`]s. `MeaningfulAction::PlayLand`/
-/// `Cast` bucket by their carried zone; `Activate` is always "battlefield"; the combat
-/// declarations are "combat" (the board UI drives them, not the action bar).
+/// `Cast` bucket by their carried zone; `Activate` buckets by the source's zone (battlefield
+/// radial vs graveyard bar for `functions_in_graveyard`); the combat declarations are "combat"
+/// (the board UI drives them, not the action bar).
 fn x_choice_fields(
     game: &engine::Game,
     player: engine::PlayerId,
@@ -387,12 +388,18 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 Some(paid) => x_choice_fields(game, action.player, paid, None, |x| paid.with_x(x)),
                 None => (false, 0, 0, None),
             };
+            // CR 112.6/603.6e: a `functions_in_graveyard` activate (Teacher's Pest) lives in the
+            // GY bar with escape/encore. Ordinary permanent activates stay "battlefield".
+            let section = match game.zone_of(source) {
+                Zone::Graveyard => "graveyard",
+                _ => "battlefield",
+            };
             ActionView {
                 id: action.id,
                 kind: "activate".to_string(),
                 object: Some(source),
                 ability_index: Some(ability as u32),
-                section: "battlefield".to_string(),
+                section: section.to_string(),
                 label: activation
                     .as_ref()
                     .map(|ability| to_wire_message(ability.effect.clone().message()))
@@ -1766,6 +1773,31 @@ mod tests {
         let mut expected = fodder;
         expected.sort();
         assert_eq!(choices, expected);
+    }
+
+    #[test]
+    fn a_graveyard_activated_ability_buckets_under_the_graveyard_section() {
+        // Teacher's Pest (sos): "{B}{G}: Return this card from your graveyard to the battlefield
+        // tapped." Engine lists the activate from the GY; the wire section must match so the
+        // hand-bar Graveyard bucket (and not the battlefield radial) can offer it.
+        let mut game = Game::new();
+        game.fund_mana(PlayerId(0));
+        let pest = game.spawn_in_graveyard(PlayerId(0), def("Teacher's Pest"));
+        // Tap a land so `refresh_actions` runs (spawn helpers don't); mana is already funded.
+        let tapland = game.spawn_on_battlefield(PlayerId(0), def("Swamp"));
+        refresh_via_mana_tap(&mut game, tapland);
+
+        let snap = snapshot(&game, PlayerId(0));
+        let action = snap
+            .actions
+            .iter()
+            .find(|a| a.kind == "activate" && a.object == Some(pest))
+            .expect("Teacher's Pest GY activate is listed");
+        assert_eq!(
+            action.section, "graveyard",
+            "functions_in_graveyard activates bucket with escape/encore, not battlefield"
+        );
+        assert_eq!(action.ability_index, Some(1));
     }
 
     #[test]

@@ -224,6 +224,33 @@ describe("handView playable outlines", () => {
     expect(exile).toContain("outline-exile-outline");
   });
 
+  it("shows a graveyard-section activate on the graveyard bar (Teacher's Pest self-return)", () => {
+    const pest = object(62, {
+      zone: ZONE.Graveyard,
+      name: "Teacher's Pest",
+      kind: { kind: "creature", power: 1, toughness: 1 },
+    });
+    const tree = renderHand(
+      state({
+        objects: [pest],
+        actions: [
+          action(62, {
+            object: pest.id,
+            section: "graveyard",
+            kind: "activate",
+            ability_index: 1,
+            label: testMessageRef("Return this card from your graveyard to the battlefield tapped"),
+          }),
+        ],
+      }),
+    );
+
+    const face = findTestId(tree, "hand-card-face-62");
+    expect(face).not.toBeNull();
+    expect(className(face)).toContain("ring-playable-border");
+    expect(className(face)).toContain("outline-graveyard-outline");
+  });
+
   it("keeps commander gold on an unplayable command-zone commander", () => {
     const commander = object(9, {
       zone: ZONE.Command,
