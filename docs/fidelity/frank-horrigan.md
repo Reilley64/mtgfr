@@ -119,7 +119,7 @@ increment that unblocks each card is in parentheses.
 - [x] Scheming Aspirant (#18) — built 2026-07-27, faithful
 - [x] Undergrowth Stadium (#5) — built 2026-07-26, faithful
 - [x] Venerated Rotpriest (#20 slices 1, 3) — built 2026-07-27, faithful
-- [x] Vorinclex, Monstrous Raider (#19, #26) — built 2026-07-27; both clauses key off the placing player as of #26 (residual: CR 616.1's ordering choice is unoffered — a halving and a doubler at once resolve additions → multipliers → halvings in fixed order)
+- [ ] Vorinclex, Monstrous Raider (#19, #26) — built 2026-07-27; both clauses key off the placing player as of #26, still approximated on one residual (CR 616.1's ordering choice is unoffered — a halving and a doubler at once resolve additions → multipliers → halvings in fixed order)
 - [x] Vraska, Betrayal's Sting (#8, #16, #25, #20 slices 1, 4) — built 2026-07-27; faithful as of #25 (Compleated landed in #16, the −2 becomes-Treasure mode in #25; `approximates` cleared)
 - [x] Vraska's Fall (#20 slice 1) — built 2026-07-26, faithful
 - [x] Winding Constrictor (#19) — built 2026-07-27, faithful

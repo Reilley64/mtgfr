@@ -809,3 +809,18 @@ inversion), `vorinclex_halves_counters_an_opponent_puts_on_your_permanent` (was 
 `winding_constrictor_adds_to_counters_an_opponent_puts_on_your_creature` pinning the recipient-keyed
 half so the new axis can't drift onto it. Residual: CR 616.1's ordering choice, still unoffered and
 still the whole of Vorinclex's `approximates`.
+
+Still blocked (verified 2026-07-27, neither on this axis, neither with an increment of its own
+yet): **CR 616.1's ordering choice** — a halving and a doubler applying at once still resolve
+additions → multipliers → halvings rather than in the affected player's chosen order
+(`ponytail:` on `Game::replaced_counters`; the whole of `vorinclex_monstrous_raider.toml`'s
+`approximates`). And **Innkeeper's Talent Level 2's ward**, which misses the Class itself because
+the engine tracks a Class's level as a plain scalar rather than the CR 717.2 level counters the
+`with_counter = "any"` filter reads (the whole of `innkeepers_talent.toml`'s `approximates`).
+Separately, `replaced_counters` gates on the replacement permanent's `owner` rather than
+`Game::controller_of`, both for the placer/recipient side test and for the `filter` perspective, so
+a *stolen* Vorinclex or Doubling Season would still watch its owner's placements instead of its new
+controller's (CR 613's "functions for its controller"). Pre-existing on every `CounterReplacement`
+and untouched by #26 — no card in this deck changes control, but six in the wider pool do
+(Dominus of Fealty, Rubinia Soulsinger, Entrancing Melody, Ray of Command, Besmirch, Insurrection),
+so it wants its own increment with a control-change regression test.
