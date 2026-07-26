@@ -1,63 +1,8 @@
 // `/api/rpc` dispatcher tests with `grpcClient` mocked.
 
+import * as Effect from "effect/Effect";
+import * as Stream from "effect/Stream";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
-const calls: Record<string, unknown> = {};
-const mockClient = {
-  auth: {
-    signup: vi.fn(async (req: unknown) => {
-      calls.signup = req;
-      return { me: { id: 1, email: "a@b.c", username: "a" }, sessionToken: "tok" };
-    }),
-    login: vi.fn(async (req: unknown) => {
-      calls.login = req;
-      return { me: { id: 1, email: "a@b.c", username: "a" }, sessionToken: "tok" };
-    }),
-    logout: vi.fn(async () => {}),
-    getMe: vi.fn(async () => ({ id: 1, email: "a@b.c", username: "a" })),
-  },
-  decks: {
-    create: vi.fn(async (req: unknown) => {
-      calls.create = req;
-      return { id: 1, name: "Deck" };
-    }),
-    list: vi.fn(async () => [{ id: 1, name: "Deck" }]),
-    get: vi.fn(async (id: number) => ({ id, name: "Deck" })),
-    update: vi.fn(async (id: number, req: unknown) => {
-      calls.update = { id, req };
-      return { id, name: "Deck" };
-    }),
-    delete: vi.fn(async () => {}),
-  },
-  cards: {
-    catalog: vi.fn(async () => []),
-    search: vi.fn(async (q: string, limit: number, offset: number) => {
-      calls.search = { q, limit, offset };
-      return [];
-    }),
-    lookup: vi.fn(async (ids: string[]) => {
-      calls.lookup = ids;
-      return [];
-    }),
-  },
-  ratings: {
-    getLeaderboard: vi.fn(async (req: { limit: number; offset: number }) => {
-      calls.leaderboard = req;
-      return {
-        entries: [{ user_id: 7, username: "alice", rating: 1234, rank: 26 }],
-        total: 99,
-      };
-    }),
-  },
-  game: {
-    submitIntent: vi.fn(async () => ({ accepted: true })),
-    setYield: vi.fn(async () => ({ accepted: true })),
-    setTurnYield: vi.fn(async () => ({ accepted: true })),
-    setStackDwell: vi.fn(async () => ({ accepted: true })),
-    stream: vi.fn(),
-  },
-  tables: { seed: vi.fn() },
-};
 
 class MockGrpcCallError extends Error {
   code: string;
@@ -66,6 +11,105 @@ class MockGrpcCallError extends Error {
     this.code = code;
   }
 }
+
+const calls: Record<string, unknown> = {};
+const mockClient = {
+  auth: {
+    signup: vi.fn((req: unknown) =>
+      Effect.succeed({
+        me: { id: 1, email: "a@b.c", username: "a" },
+        sessionToken: "tok",
+      }).pipe(
+        Effect.tap(() =>
+          Effect.sync(() => {
+            calls.signup = req;
+          }),
+        ),
+      ),
+    ),
+    login: vi.fn((req: unknown) =>
+      Effect.succeed({
+        me: { id: 1, email: "a@b.c", username: "a" },
+        sessionToken: "tok",
+      }).pipe(
+        Effect.tap(() =>
+          Effect.sync(() => {
+            calls.login = req;
+          }),
+        ),
+      ),
+    ),
+    logout: vi.fn(() => Effect.void),
+    getMe: vi.fn(() => Effect.succeed({ id: 1, email: "a@b.c", username: "a" })),
+  },
+  decks: {
+    create: vi.fn(
+      (req: unknown): Effect.Effect<{ id: number; name: string }, MockGrpcCallError> =>
+        Effect.succeed({ id: 1, name: "Deck" }).pipe(
+          Effect.tap(() =>
+            Effect.sync(() => {
+              calls.create = req;
+            }),
+          ),
+        ),
+    ),
+    list: vi.fn(() => Effect.succeed([{ id: 1, name: "Deck" }])),
+    get: vi.fn((id: number) => Effect.succeed({ id, name: "Deck" })),
+    update: vi.fn((id: number, req: unknown) =>
+      Effect.succeed({ id, name: "Deck" }).pipe(
+        Effect.tap(() =>
+          Effect.sync(() => {
+            calls.update = { id, req };
+          }),
+        ),
+      ),
+    ),
+    delete: vi.fn(() => Effect.void),
+  },
+  cards: {
+    catalog: vi.fn(() => Effect.succeed([])),
+    search: vi.fn((q: string, limit: number, offset: number) =>
+      Effect.succeed([]).pipe(
+        Effect.tap(() =>
+          Effect.sync(() => {
+            calls.search = { q, limit, offset };
+          }),
+        ),
+      ),
+    ),
+    lookup: vi.fn((ids: string[]) =>
+      Effect.succeed([]).pipe(
+        Effect.tap(() =>
+          Effect.sync(() => {
+            calls.lookup = ids;
+          }),
+        ),
+      ),
+    ),
+  },
+  ratings: {
+    getLeaderboard: vi.fn((req: { limit: number; offset: number }) =>
+      Effect.succeed({
+        entries: [{ user_id: 7, username: "alice", rating: 1234, rank: 26 }],
+        total: 99,
+      }).pipe(
+        Effect.tap(() =>
+          Effect.sync(() => {
+            calls.leaderboard = req;
+          }),
+        ),
+      ),
+    ),
+  },
+  game: {
+    submitIntent: vi.fn(() => Effect.succeed({ accepted: true })),
+    setYield: vi.fn(() => Effect.succeed({ accepted: true })),
+    setTurnYield: vi.fn(() => Effect.succeed({ accepted: true })),
+    setStackDwell: vi.fn(() => Effect.succeed({ accepted: true })),
+    stream: vi.fn(),
+  },
+  tables: { seed: vi.fn() },
+};
 
 vi.mock("./grpcClient", () => ({
   grpcClient: () => mockClient,
@@ -141,8 +185,8 @@ describe("dispatchRpc", () => {
   });
 
   it("reconstructs DeckError.problems from decks_svc.rs's folded 'illegal deck: a; b' status message", async () => {
-    mockClient.decks.create.mockRejectedValueOnce(
-      new MockGrpcCallError("invalid_argument", "illegal deck: Too many cards; Illegal commander"),
+    mockClient.decks.create.mockReturnValueOnce(
+      Effect.fail(new MockGrpcCallError("invalid_argument", "illegal deck: Too many cards; Illegal commander")),
     );
     const outcome = await dispatchRpc(["decks"], "POST", { name: "Deck" }, new URLSearchParams(), env);
     expect(outcome).toEqual({
@@ -221,10 +265,7 @@ describe("dispatchRpc", () => {
   });
 
   it("streams game/:table/stream instead of returning json", async () => {
-    async function* frames() {
-      yield { frame: "heartbeat" as const };
-    }
-    mockClient.game.stream.mockReturnValueOnce(frames());
+    mockClient.game.stream.mockReturnValueOnce(Stream.make({ frame: "heartbeat" }));
     const outcome = await dispatchRpc(["game", "ABC123", "stream"], "GET", undefined, new URLSearchParams(), env);
     expect(outcome.kind).toBe("stream");
   });

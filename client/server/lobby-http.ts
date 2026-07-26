@@ -1,6 +1,6 @@
 import * as Effect from "effect/Effect";
 import { getCookie, type H3Event } from "nitro/h3";
-import { fetchMe } from "../app/domain/api-upstream-auth";
+import { fetchMe, type Me } from "../app/domain/api-upstream-auth";
 import { type LobbySnapshot, sweepWebDb } from "../app/domain/lobby-store";
 import { grpcRequestEnv, runTracedRequest } from "../app/domain/otel";
 import type { GrpcRequestEnv } from "../app/domain/wire/grpcClient";
@@ -42,7 +42,7 @@ function lobbyDbErrorMessage(err: unknown): string {
 }
 
 type LobbyAuthCtx = {
-  me: NonNullable<Awaited<ReturnType<typeof fetchMe>>>;
+  me: Me;
   env: GrpcRequestEnv;
   db: ReturnType<typeof createWebDb>;
 };
@@ -64,10 +64,10 @@ export async function withLobbyAuth(
           "http.route": spanName,
         });
         const env = yield* grpcRequestEnv(sessionToken);
+        const me = yield* fetchMe(env);
+        if (!me) return new Response("Unauthorized", { status: 401 });
         return yield* Effect.tryPromise({
           try: async () => {
-            const me = await fetchMe(env);
-            if (!me) return new Response("Unauthorized", { status: 401 });
             const db = createWebDb();
             await sweepWebDb(db);
             return fn({ me, env, db });

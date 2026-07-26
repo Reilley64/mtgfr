@@ -1,3 +1,4 @@
+import * as Effect from "effect/Effect";
 import { defineHandler } from "nitro/h3";
 import { seedGame } from "../../../../../../app/domain/api-upstream-auth";
 import { commitStart, loadLobby, startError, toLobbyView } from "../../../../../../app/domain/lobby-store";
@@ -23,19 +24,21 @@ export default defineHandler(async (event) => {
     const err = startError(snap, me.id);
     if (err) return json(toLobbyView(snap, me.id, err));
 
-    const seeded = await seedGame(env, {
-      table_id: tableId,
-      host_user_id: snap.hostUserId,
-      seats: snap.seats
-        .slice()
-        .sort((a, b) => a.seat - b.seat)
-        .map((seat) => ({
-          user_id: seat.userId,
-          username: seat.username,
-          gravatar_hash: seat.gravatarHash ?? "",
-          deck_id: seat.deckId,
-        })),
-    });
+    const seeded = await Effect.runPromise(
+      seedGame(env, {
+        table_id: tableId,
+        host_user_id: snap.hostUserId,
+        seats: snap.seats
+          .slice()
+          .sort((a, b) => a.seat - b.seat)
+          .map((seat) => ({
+            user_id: seat.userId,
+            username: seat.username,
+            gravatar_hash: seat.gravatarHash ?? "",
+            deck_id: seat.deckId,
+          })),
+      }),
+    );
     if (!seeded.ok) {
       return json(toLobbyView(snap, me.id, seeded.status === 503 ? "Draining" : "SeedFailed"));
     }

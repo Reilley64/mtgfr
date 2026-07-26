@@ -1,6 +1,8 @@
 // `/api/rpc` dispatcher — unit-testable without a Nitro route.
 
+import * as Effect from "effect/Effect";
 import * as Match from "effect/Match";
+import * as Stream from "effect/Stream";
 import { GrpcCallError, type GrpcRequestEnv, grpcClientFor, httpStatusOf } from "./grpcClient";
 import { isAuthMethod, isCardsMethod, isGameMethod, isRatingsMethod, isRpcGroup } from "./rpcs";
 import type { DeckError, IntentEnvelope, SaveDeckRequest, StreamFrame } from "./types";
@@ -41,6 +43,14 @@ function badQuery(): RpcOutcome {
   return { kind: "json", status: 400, body: { error: "BadQuery" } };
 }
 
+function runGrpc<A>(effect: Effect.Effect<A, GrpcCallError>): Promise<A> {
+  return Effect.runPromise(effect);
+}
+
+function streamFrames(frames: Stream.Stream<StreamFrame, GrpcCallError>): AsyncIterable<StreamFrame> {
+  return Stream.toAsyncIterable(frames);
+}
+
 type Uint32Query = { ok: true; value: number } | { ok: false };
 
 const UINT32_MAX = 4_294_967_295;
@@ -70,19 +80,19 @@ async function dispatchAuth(method: string | undefined, body: unknown, env: RpcE
     return await Match.value(method).pipe(
       Match.when("signup", async () => {
         const req = body as { email: string; password: string; username: string };
-        const res = await client.auth.signup(req, env.sessionToken);
+        const res = await runGrpc(client.auth.signup(req, env.sessionToken));
         return { kind: "json" as const, status: 200, body: res.me, setSessionToken: res.sessionToken };
       }),
       Match.when("login", async () => {
         const req = body as { email: string; password: string };
-        const res = await client.auth.login(req, env.sessionToken);
+        const res = await runGrpc(client.auth.login(req, env.sessionToken));
         return { kind: "json" as const, status: 200, body: res.me, setSessionToken: res.sessionToken };
       }),
       Match.when("logout", async () => {
-        await client.auth.logout(env.sessionToken);
+        await runGrpc(client.auth.logout(env.sessionToken));
         return { kind: "empty" as const, status: 204, clearSession: true };
       }),
-      Match.when("me", async () => jsonOk(await client.auth.getMe(env.sessionToken))),
+      Match.when("me", async () => jsonOk(await runGrpc(client.auth.getMe(env.sessionToken)))),
       Match.exhaustive,
     );
   } catch (err) {
@@ -95,14 +105,14 @@ async function dispatchCards(method: string | undefined, query: URLSearchParams,
   const client = grpcClientFor(env.defaultAddress, env);
   try {
     return await Match.value(method).pipe(
-      Match.when("catalog", async () => jsonOk(await client.cards.catalog())),
+      Match.when("catalog", async () => jsonOk(await runGrpc(client.cards.catalog()))),
       Match.when("search", async () => {
         const q = query.get("q") ?? "";
         const limit = Number(query.get("limit") ?? "50");
         const offset = Number(query.get("offset") ?? "0");
-        return jsonOk(await client.cards.search(q, limit, offset));
+        return jsonOk(await runGrpc(client.cards.search(q, limit, offset)));
       }),
-      Match.when("lookup", async () => jsonOk(await client.cards.lookup(query.getAll("ids")))),
+      Match.when("lookup", async () => jsonOk(await runGrpc(client.cards.lookup(query.getAll("ids"))))),
       Match.exhaustive,
     );
   } catch (err) {
@@ -125,7 +135,9 @@ async function dispatchRatings(
         const paging = parseLeaderboardPaging(query);
         if (!paging.ok) return badQuery();
         return jsonOk(
-          await client.ratings.getLeaderboard({ limit: paging.limit, offset: paging.offset }, env.sessionToken),
+          await runGrpc(
+            client.ratings.getLeaderboard({ limit: paging.limit, offset: paging.offset }, env.sessionToken),
+          ),
         );
       }),
       Match.exhaustive,
@@ -144,16 +156,17 @@ async function dispatchDecks(
   const client = grpcClientFor(env.defaultAddress, env);
   try {
     if (id === undefined) {
-      if (httpMethod === "GET") return jsonOk(await client.decks.list(env.sessionToken));
-      if (httpMethod === "POST") return jsonOk(await client.decks.create(body as SaveDeckRequest, env.sessionToken));
+      if (httpMethod === "GET") return jsonOk(await runGrpc(client.decks.list(env.sessionToken)));
+      if (httpMethod === "POST")
+        return jsonOk(await runGrpc(client.decks.create(body as SaveDeckRequest, env.sessionToken)));
       return { kind: "empty", status: 405 };
     }
     const deckId = Number(id);
-    if (httpMethod === "GET") return jsonOk(await client.decks.get(deckId, env.sessionToken));
+    if (httpMethod === "GET") return jsonOk(await runGrpc(client.decks.get(deckId, env.sessionToken)));
     if (httpMethod === "PUT")
-      return jsonOk(await client.decks.update(deckId, body as SaveDeckRequest, env.sessionToken));
+      return jsonOk(await runGrpc(client.decks.update(deckId, body as SaveDeckRequest, env.sessionToken)));
     if (httpMethod === "DELETE") {
-      await client.decks.delete(deckId, env.sessionToken);
+      await runGrpc(client.decks.delete(deckId, env.sessionToken));
       return { kind: "empty", status: 204 };
     }
     return { kind: "empty", status: 405 };
@@ -175,20 +188,24 @@ async function dispatchGame(
   try {
     return await Match.value(method).pipe(
       Match.when("intent", async () =>
-        jsonOk(await client.game.submitIntent(tableId, body as IntentEnvelope, env.sessionToken)),
+        jsonOk(await runGrpc(client.game.submitIntent(tableId, body as IntentEnvelope, env.sessionToken))),
       ),
       Match.when("yield", async () =>
-        jsonOk(await client.game.setYield(tableId, (body as { enabled: boolean }).enabled, env.sessionToken)),
+        jsonOk(await runGrpc(client.game.setYield(tableId, (body as { enabled: boolean }).enabled, env.sessionToken))),
       ),
       Match.when("turn-yield", async () =>
-        jsonOk(await client.game.setTurnYield(tableId, (body as { enabled: boolean }).enabled, env.sessionToken)),
+        jsonOk(
+          await runGrpc(client.game.setTurnYield(tableId, (body as { enabled: boolean }).enabled, env.sessionToken)),
+        ),
       ),
       Match.when("stack-dwell", async () =>
-        jsonOk(await client.game.setStackDwell(tableId, (body as { dwelling: boolean }).dwelling, env.sessionToken)),
+        jsonOk(
+          await runGrpc(client.game.setStackDwell(tableId, (body as { dwelling: boolean }).dwelling, env.sessionToken)),
+        ),
       ),
       Match.when("stream", async () => ({
         kind: "stream" as const,
-        frames: client.game.stream(tableId, env.sessionToken),
+        frames: streamFrames(client.game.stream(tableId, env.sessionToken)),
       })),
       Match.exhaustive,
     );
