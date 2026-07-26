@@ -3,7 +3,7 @@ import { client as lobbyHttp } from "../../domain/lobby/client";
 import type { LobbyView } from "../../domain/lobby/types";
 
 type LobbyPollOptions = {
-  fetchLobby?: (tableId: string) => Effect.Effect<LobbyView, never>;
+  fetchLobby?: (tableId: string) => Effect.Effect<LobbyView | null, never>;
   schedule?: Schedule.Schedule<unknown>;
 };
 
