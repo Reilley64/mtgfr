@@ -13,7 +13,7 @@ The client is a single Foldkit SPA with feature folders, but it drifts from Fold
 ## Goal
 
 1. Align the client with Foldkit project-organization and informing-submodels conventions (`Got*Message`, `Command.mapMessages`, `inform*`, feature `index.ts` namespaces, `domain/`).
-2. Reshape play routes so deck picking is on `/play`, pregame lobby keeps deck+table in the path, and the live game is table-only.
+2. Reshape play routes so deck picking stays on `/` (home deck list), Host/Join entry stays `/play/:deckId`, seated pregame stays `/play/:deckId/:tableId`, and the live game becomes table-only (`/play/:tableId`).
 3. Ship an **installable-only** PWA via `vite-plugin-pwa` (browser-native install; network-only service worker; no precache / offline mode).
 
 ## Locked decisions
@@ -25,10 +25,11 @@ The client is a single Foldkit SPA with feature folders, but it drifts from Fold
 | Shared code location | Rename/move `client/lib/` → `client/app/domain/` (Foldkit `domain/` sibling to features); keep `client/server/` and `client/styles/` outside the app TEA tree |
 | Feature namespaces | Add `index.ts` re-exports per feature (`export * as Lobby from './lobby'`, etc.) |
 | `page/` folder rename | **Not required** — keep product folders `shell/`, `board/`, `game/` as the feature roots (equivalent role to docs’ `page/`) |
-| Play entry | `/play` — deck picker + Host/Join |
-| Pregame (seated lobby) | `/play/:deckId/:tableId` |
+| Deck pick | `/` — home deck list (unchanged); Play navigates to `/play/:deckId` |
+| Play entry (Host/Join) | `/play/:deckId` (unchanged) |
+| Pregame (seated lobby) | `/play/:deckId/:tableId` (unchanged path shape) |
 | Live game | `/play/:tableId` only (after start); deck already on seats in DB / seed |
-| Legacy play URLs | Hard cut Not found: bare `/play/:deckId`, `?deck=`, and other obsolete shapes |
+| Legacy play URLs | Hard cut Not found: bare `/play`, `?deck=`, and other obsolete shapes (not `/play/:deckId`) |
 | PWA ambition | Installable only (A) — not offline |
 | PWA tooling | **Approach 2** — `vite-plugin-pwa` with **injectManifest** (or equivalent) and a hand-authored **network-only** SW (no precache, no runtime caching) |
 | Install UX | Browser-native only — no in-app Install button / `beforeinstallprompt` chrome |
@@ -50,9 +51,10 @@ The client is a single Foldkit SPA with feature folders, but it drifts from Fold
 
 ### Play routes
 
-1. Drop deck from all play URLs immediately (`/play` + `/play/:table`) — Loses explicit pregame “bringing this deck” in the path.
-2. **Picker on `/play`; pregame `/play/:deckId/:tableId`; in-game `/play/:tableId` (chosen)** — Deck id remains a required path param while claiming/readying; stripped once seats are seeded and the board mounts.
-3. Keep current `/play/:deckId` and `/play/:deckId/:table` forever — Rejected; table share links should not require a deck segment after start.
+1. Move deck picking onto `/play` — Rejected; home deck list on `/` already owns that job.
+2. Drop deck from all play URLs (`/play/:table` only) — Loses explicit pregame “bringing this deck” in the path for Host/Join and seated lobby.
+3. **Keep `/` → `/play/:deckId` → `/play/:deckId/:tableId`; strip to `/play/:tableId` after start (chosen)** — Minimal URL change; in-game share links no longer carry a deck segment.
+4. Keep current `/play/:deckId/:table` for the live board forever — Rejected; once seeded, table id alone is enough.
 
 ## Design
 
@@ -63,7 +65,7 @@ Implement as **three waves** (separate PRs or stacked commits; each wave updates
 | Wave | Deliverable |
 |---|---|
 | **1** | Foldkit submodel protocol + `client/app/domain/` move + feature `index.ts` namespaces |
-| **2** | Play route reshape (picker / pregame / in-game) + lobby/parse/share updates |
+| **2** | Play route reshape (in-game table-only URL) + lobby/parse/share updates |
 | **3** | Installable PWA (`vite-plugin-pwa`, icons, network-only SW, `entry` registration) |
 
 Waves 1–2 may merge if review prefers one PR; Wave 3 must not enable precaching.
@@ -144,27 +146,28 @@ Align with Foldkit cold-load guidance: after session resolves for a protected ro
 
 | Path | Route tag | Surface |
 |---|---|---|
-| `/play` | `PlayRoute` | Deck picker + Host/Join entry |
-| `/play/:deckId/:tableId` | `PregameTableRoute` | Seated pregame lobby |
+| `/` | `HomeRoute` | Deck list — choose deck / Play (unchanged) |
+| `/play/:deckId` | `PlayRoute` | Host/Join entry for that deck (unchanged) |
+| `/play/:deckId/:tableId` | `PregameTableRoute` (today’s `TableRoute` pregame role) | Seated pregame lobby |
 | `/play/:tableId` | `GameTableRoute` | Live board (after start) |
-| Legacy `/play/:numericDeckId` only, `?deck=`, obsolete shapes | `NotFoundRoute` | Hard cut |
+| Bare `/play`, `?deck=`, obsolete shapes | `NotFoundRoute` | Hard cut |
 
-Router `oneOf` order: two-segment pregame **before** one-segment game. `normalizeAppRoute` rejects a single-segment play path that is clearly a legacy numeric deck id (not a table id). Table ids remain unguessable hex (existing lobby behavior).
+Router `oneOf` order: two-segment pregame **before** one-segment game **before** `/play/:deckId` entry (or discriminate game vs entry: table ids are unguessable hex; deck ids are numeric — `normalizeAppRoute` sends numeric single segments to `PlayRoute` and non-numeric to `GameTableRoute`). Table ids remain unguessable hex (existing lobby behavior).
 
 #### Behavior
 
-1. **`/play`:** Load deck list (via deck-list `inform*`). Player selects a library deck (`selectedDeckId` in lobby model). Host creates a table or Join submits code + `deck_id` to BFF (unchanged join payload). On success, navigate to `/play/:deckId/:tableId`.
-2. **`/play/:deckId/:tableId`:** Pregame lobby as today (claim/ready/start, poll, watch note). Path deck id is the local player’s bringing deck; seat row still persists `deck_id` in `mtgfr_web` on join.
-3. **Start → game:** On lobby `started`, parent navigates to `/play/:tableId` (strip deck segment), activates `GameSlice`, board mounts, game stream keys off table id only.
-4. **Share / parse:** `parseTableCode` accepts `/play/:deckId/:tableId` and `/play/:tableId`, plus bare codes. Prefer sharing bare codes or post-start `/play/:tableId` for in-game; pregame invites may still paste two-segment URLs (joiner’s own deck comes from `/play` picker before join, not from the host’s path deck segment).
-5. **Home “Play”:** Navigates to `/play` with optional in-memory preselect of that deck for the picker; refresh without selection shows the picker empty/unselected (no deck id in the URL on entry).
+1. **`/`:** Deck list as today. Play on a deck tile navigates to `/play/:deckId` (FLIP morph unchanged).
+2. **`/play/:deckId`:** Host/Join entry as today. Host create or Join with code + `deck_id` → navigate to `/play/:deckId/:tableId`.
+3. **`/play/:deckId/:tableId`:** Pregame lobby as today (claim/ready/start, poll, watch note). Path deck id is the local player’s bringing deck; seat row still persists `deck_id` in `mtgfr_web` on join.
+4. **Start → game:** On lobby `started`, parent navigates to `/play/:tableId` (strip deck segment), activates `GameSlice`, board mounts, game stream keys off table id only.
+5. **Share / parse:** `parseTableCode` accepts `/play/:deckId/:tableId` and `/play/:tableId`, plus bare codes. Joiner still picks their own deck on `/` then joins from `/play/:theirDeckId` (or pastes a code there); host path deck segment is not the joiner’s deck.
 
 #### Spec / product copy updates (implement wave)
 
-- shell-routes route table and guards.
-- lobby-entry-ui path-param behavior and FLIP/home morph targets.
-- lobby-table-routing “redirect to `/play/{deck}/{table}`” → pregame two-segment; in-game table-only.
-- deck-list-and-builder play CTA target.
+- shell-routes route table and guards (add `GameTableRoute`; clarify pregame vs in-game).
+- lobby-entry-ui: start handoff navigates to table-only path; entry/pregame paths unchanged.
+- lobby-table-routing: pregame remains `/play/{deck}/{table}`; in-game becomes `/play/{table}` only.
+- deck-list-and-builder: Play CTA remains `/play/:deckId` (no change to home picker).
 
 ---
 
@@ -215,10 +218,10 @@ Router `oneOf` order: two-segment pregame **before** one-segment game. `normaliz
 
 ### Wave 2
 
-- `routes.test.ts`: `/play`, `/play/:deckId/:tableId`, `/play/:tableId`, reject legacy numeric-only `/play/:deckId`.
+- `routes.test.ts`: `/play/:deckId` entry, `/play/:deckId/:tableId` pregame, `/play/:tableId` in-game; bare `/play` and `?deck=` Not found; numeric vs hex single-segment discrimination.
 - `parseTableCode` tests for both path shapes.
-- Lobby entry/scene: picker on `/play`; start navigates to table-only path; board stream still keys on table id.
-- Update shell surfaces / lobby entry Scene assertions for new paths.
+- Lobby entry/scene: home → `/play/:deckId` unchanged; start navigates to table-only path; board stream still keys on table id.
+- Update shell surfaces / lobby entry Scene assertions for the in-game path.
 
 ### Wave 3
 
