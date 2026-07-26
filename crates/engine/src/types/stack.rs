@@ -961,6 +961,19 @@ pub enum PendingChoice {
         source: ObjectId,
         cost: Cost,
     },
+    /// `player` (a land card's controller, about to play it) may pay `life` to have it enter
+    /// untapped, or decline and have it enter tapped (CR 614.12 — [`CardDef::enters_tapped_unless_you_pay_life`],
+    /// Overgrown Tomb's "As this land enters, you may pay 2 life. If you don't, it enters
+    /// tapped."). Raised by [`Game::play_land`] *before* the land's own [`Event::LandPlayed`] is
+    /// minted (the land isn't on the battlefield yet — CR 614.12's replacement locks in before
+    /// the permanent exists), so `source` is the land *card*, not a permanent. Answered by
+    /// [`Intent::PayOptionalCost`], the land-drop-scoped twin of [`Self::SacrificeUnlessPay`] —
+    /// same shape, opposite consequence (there, sacrifice; here, tapped).
+    PayLifeOrEntersTapped {
+        player: PlayerId,
+        source: ObjectId,
+        life: u8,
+    },
     /// `player` (`source`'s controller) must return one of `candidates` (their own non-Lair
     /// lands) to its owner's hand to keep `source`, or decline and sacrifice it — Treva's Ruins'
     /// own ETB triggered ability. The land-bounce twin of [`Self::SacrificeUnlessPay`]; answered
@@ -1780,6 +1793,7 @@ impl PendingChoice {
             | PendingChoice::PayCumulativeUpkeepOrSacrifice { player, .. }
             | PendingChoice::PayRecoverOrExile { player, .. }
             | PendingChoice::SacrificeUnlessPay { player, .. }
+            | PendingChoice::PayLifeOrEntersTapped { player, .. }
             | PendingChoice::SacrificeUnlessReturnLand { player, .. }
             | PendingChoice::AssignCombatDamage { player, .. }
             | PendingChoice::DivideSpellDamage { player, .. }

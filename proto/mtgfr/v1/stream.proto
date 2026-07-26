@@ -270,6 +270,7 @@ message PendingChoiceView {
     PendingChoiceViewTradeSecretsRepeat trade_secrets_repeat = 65;
     PendingChoiceViewChooseCardName choose_card_name = 66;
     PendingChoiceViewPayAnyAmountOfMana pay_any_amount_of_mana = 67;
+    PendingChoiceViewPayLifeOrEntersTapped pay_life_or_enters_tapped = 68;
   }
 }
 
@@ -812,6 +813,14 @@ message PendingChoiceViewSacrificeUnlessPay {
   uint32 player = 1;
   uint32 source = 2;
   WireCost cost = 3;
+}
+
+// A land card's controller, about to play it, may pay `life` to have it enter untapped, or
+// decline and have it enter tapped (CR 614.12 — Overgrown Tomb).
+message PendingChoiceViewPayLifeOrEntersTapped {
+  uint32 player = 1;
+  uint32 source = 2;
+  uint32 life = 3;
 }
 
 // Return one of `items` (a non-Lair land the player controls, public) to its owner's hand to

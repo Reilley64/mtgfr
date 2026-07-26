@@ -240,6 +240,7 @@ fn view_player(view: &PendingChoiceView) -> u8 {
         | PendingChoiceView::PayCumulativeUpkeepOrSacrifice { player, .. }
         | PendingChoiceView::PayRecoverOrExile { player, .. }
         | PendingChoiceView::SacrificeUnlessPay { player, .. }
+        | PendingChoiceView::PayLifeOrEntersTapped { player, .. }
         | PendingChoiceView::SacrificeUnlessReturnLand { player, .. }
         | PendingChoiceView::AssignCombatDamage { player, .. }
         | PendingChoiceView::DivideSpellDamage { player, .. }

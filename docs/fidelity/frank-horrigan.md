@@ -95,7 +95,7 @@ increment that unblocks each card is in parentheses.
 - [ ] Bloated Contaminator (#20 slice 3)
 - [ ] Bloatfly Swarm (#21, #22)
 - [ ] Cankerbloom (#10)
-- [ ] Contagion Engine (#3)
+- [ ] Contagion Engine (#3) — built 2026-07-26; still approximated (proliferate can't choose players, #17)
 - [ ] Contaminant Grafter (#20 slices 3–4)
 - [ ] Everflowing Chalice (#11)
 - [ ] Feral Ghoul (#21)
@@ -109,7 +109,7 @@ increment that unblocks each card is in parentheses.
 - [ ] Inspiring Call (#2)
 - [ ] Lily Bowen, Raging Grandma (#14)
 - [ ] Necrogen Communion (#20 slice 3)
-- [ ] Overgrown Tomb (#6)
+- [x] Overgrown Tomb (#6) — built 2026-07-26, faithful
 - [ ] Phyresis (#20 slice 2)
 - [ ] Phyresis Outbreak (#20 slice 5)
 - [ ] Phyrexian Swarmlord (#20 slices 2, 4)

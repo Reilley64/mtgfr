@@ -310,6 +310,10 @@ impl<'de> Deserialize<'de> for CardDef {
             enters_tapped: bool,
             #[serde(default)]
             enters_tapped_unless: Option<Condition>,
+            /// A CR 614.12 as-enters replacement choice (Overgrown Tomb) — `enters_tapped_unless_you_pay_life = 2`;
+            /// absent for a card without one.
+            #[serde(default)]
+            enters_tapped_unless_you_pay_life: Option<u8>,
             /// A printed conditional free-cast permission (CR 118.5) — `free_cast_if = { .. }`
             /// with the same `Condition` table shape as `enters_tapped_unless`; absent for a
             /// card without one.
@@ -481,6 +485,7 @@ impl<'de> Deserialize<'de> for CardDef {
             devoid: card.devoid,
             enters_tapped: card.enters_tapped,
             enters_tapped_unless: card.enters_tapped_unless,
+            enters_tapped_unless_you_pay_life: card.enters_tapped_unless_you_pay_life,
             free_cast_if: card.free_cast_if,
             alternative_cost: card.alternative_cost,
             cast_only_during_combat: card.cast_only_during_combat,

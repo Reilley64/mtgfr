@@ -993,6 +993,25 @@ impl Game {
             return Err(Reject::WrongTiming);
         }
 
+        // "As this land enters, you may pay 2 life. If you don't, it enters tapped." (CR
+        // 614.12 — Overgrown Tomb): a *choice*, not a board-state condition, so it pauses before
+        // the land exists rather than falling through `enters_tapped_unless`. Only offered when
+        // affordable (CR 119.4 — life down to and including 0); below the cost the land just
+        // enters tapped with no prompt, handled by `Game::enters_tapped` at `Event::LandPlayed`.
+        if let Some(life) = card.def.enters_tapped_unless_you_pay_life
+            && self.life(player) >= life as i32
+        {
+            pending::raise_choice(
+                self,
+                PendingChoice::PayLifeOrEntersTapped {
+                    player,
+                    source: object,
+                    life,
+                },
+            );
+            return Ok(Vec::new());
+        }
+
         let permanent = self.next_object_id();
         let mut events = vec![Event::LandPlayed {
             permanent,

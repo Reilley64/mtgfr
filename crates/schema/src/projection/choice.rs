@@ -254,6 +254,13 @@ impl<'a> ChoiceCtx<'a> {
                 source,
                 cost: wire_cost(cost),
             },
+            engine::PendingChoice::PayLifeOrEntersTapped { player, source, life } => {
+                PendingChoiceView::PayLifeOrEntersTapped {
+                    player: player.0,
+                    source,
+                    life,
+                }
+            }
             engine::PendingChoice::SacrificeUnlessReturnLand {
                 player,
                 source,

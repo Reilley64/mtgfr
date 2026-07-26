@@ -756,6 +756,15 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
             source,
             cost: Some(wire_cost_to_pb(cost)),
         }),
+        PendingChoiceView::PayLifeOrEntersTapped {
+            player,
+            source,
+            life,
+        } => Choice::PayLifeOrEntersTapped(pb::PendingChoiceViewPayLifeOrEntersTapped {
+            player: u32::from(player),
+            source,
+            life: u32::from(life),
+        }),
         PendingChoiceView::SacrificeUnlessReturnLand {
             player,
             source,

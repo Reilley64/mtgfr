@@ -99,6 +99,10 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
             Intent::PayOptionalCost { player, pay } => game.pay_sacrifice_unless(player, pay),
             _ => Err(Reject::IllegalChoice),
         },
+        PendingChoice::PayLifeOrEntersTapped { .. } => match intent {
+            Intent::PayOptionalCost { player, pay } => game.pay_life_or_enters_tapped(player, pay),
+            _ => Err(Reject::IllegalChoice),
+        },
         PendingChoice::SacrificeUnlessReturnLand { .. } => match intent {
             Intent::ReturnLandOrSacrifice { player, land } => {
                 game.return_land_or_sacrifice(player, land)
@@ -459,6 +463,7 @@ pub(crate) fn forced(game: &Game) -> Option<Intent> {
         | PendingChoice::PayCumulativeUpkeepOrSacrifice { .. }
         | PendingChoice::PayRecoverOrExile { .. }
         | PendingChoice::SacrificeUnlessPay { .. }
+        | PendingChoice::PayLifeOrEntersTapped { .. }
         | PendingChoice::SacrificeUnlessReturnLand { .. }
         | PendingChoice::AssignCombatDamage { .. }
         | PendingChoice::DivideSpellDamage { .. }

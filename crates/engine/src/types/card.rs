@@ -557,6 +557,14 @@ pub struct CardDef {
     /// the unconditional `enters_tapped` flag. Mutually meaningful: a card that needs both
     /// (none currently do) would need a third state; not worth it until one does.
     pub enters_tapped_unless: Option<Condition>,
+    /// A CR 614.12 as-enters replacement *choice*, not a `Condition` — Overgrown Tomb's "As this
+    /// land enters, you may pay 2 life. If you don't, it enters tapped.": `Some(life)` raises a
+    /// [`PendingChoice::PayLifeOrEntersTapped`] before the land enters, offered only when the
+    /// controller's life total is greater than or equal to `life` (CR 119.4 — a player may pay
+    /// life down to and including 0; below the cost the land simply enters tapped, no prompt).
+    /// `None` (the common case) leaves [`Self::enters_tapped_unless`] as the only conditional
+    /// gate. `enters_tapped_unless_you_pay_life = 2` in TOML.
+    pub enters_tapped_unless_you_pay_life: Option<u8>,
     /// A printed "you may cast this spell without paying its mana cost" permission, gated on a
     /// board-state [`Condition`] checked fresh at cast time (CR 118.5 — Massacre: "If an
     /// opponent controls a Plains and you control a Swamp, you may cast this spell without
@@ -1157,6 +1165,7 @@ fn treasure_token_builtin() -> CardDef {
         devoid: false,
         enters_tapped: false,
         enters_tapped_unless: None,
+        enters_tapped_unless_you_pay_life: None,
         free_cast_if: None,
         alternative_cost: None,
         cast_only_during_combat: false,
@@ -1225,6 +1234,7 @@ pub(crate) fn rogue_token_stub() -> CardDef {
         devoid: false,
         enters_tapped: false,
         enters_tapped_unless: None,
+        enters_tapped_unless_you_pay_life: None,
         free_cast_if: None,
         alternative_cost: None,
         cast_only_during_combat: false,
@@ -1295,6 +1305,7 @@ pub(crate) fn illusion_token() -> CardDef {
         devoid: false,
         enters_tapped: false,
         enters_tapped_unless: None,
+        enters_tapped_unless_you_pay_life: None,
         free_cast_if: None,
         alternative_cost: None,
         cast_only_during_combat: false,

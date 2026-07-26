@@ -73,7 +73,7 @@ impl Game {
                     .into_iter()
                     .collect()
             }
-            // Put `count` +1/+1 counters on each battlefield permanent matching `filter`
+            // Put `count` counters on each battlefield permanent matching `filter`
             // (Mazirek: "each creature you control"; Shadrix Silverquill's begin-combat "Target
             // player puts a +1/+1 counter on each creature they control" reads `filter`'s
             // `you`/`opponent` axis from the chosen Player target's perspective instead).
@@ -82,6 +82,7 @@ impl Game {
                 filter,
                 count,
                 target_player,
+                kind,
             } => {
                 let you = if target_player {
                     let Some(Target::Player(player)) = target else {
@@ -94,9 +95,29 @@ impl Game {
                     controller
                 };
                 let count = self.resolve_count(count, controller, source, target, x) as i32;
-                self.battlefield()
+                let matching = self
+                    .battlefield()
                     .into_iter()
-                    .filter(|&id| self.permanent_matches(&filter, id, you, Some(source)))
+                    .filter(|&id| self.permanent_matches(&filter, id, you, Some(source)));
+                // `kind = Some(k)` (Contagion Engine's "-1/-1 counter on each creature target
+                // player controls") bypasses the +1/+1 replacement pipeline entirely, same as
+                // `PutCounters`'s own kind split above.
+                // ponytail: doesn't run named-kind placements through
+                // `counters_after_replacements` — that function is +1/+1-only today (fidelity
+                // increment #19 widens it to other kinds).
+                if let Some(kind) = kind {
+                    if count <= 0 {
+                        return Vec::new();
+                    }
+                    return matching
+                        .map(|object| Event::KindCountersPlaced {
+                            object,
+                            kind,
+                            count,
+                        })
+                        .collect();
+                }
+                matching
                     .filter_map(|object| {
                         let n = self.counters_after_replacements(object, count);
                         (n > 0).then_some(Event::CountersPlaced {

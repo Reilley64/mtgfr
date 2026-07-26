@@ -783,8 +783,31 @@ impl Effect {
             Effect::Counters(CountersEffect::DoubleCountersOnAttachedCreature) => {
                 "Double the +1/+1 counters on equipped creature".to_string()
             }
-            Effect::Counters(CountersEffect::PutCountersEach { count, .. }) => {
+            Effect::Counters(CountersEffect::PutCountersEach {
+                count,
+                kind: None,
+                ..
+            }) => {
                 format!("Put {} +1/+1 counters on each", amount_label(count))
+            }
+            Effect::Counters(CountersEffect::PutCountersEach {
+                count,
+                kind: Some(kind),
+                ..
+            }) => {
+                let kind_name = match kind {
+                    CounterKind::Charge => "charge",
+                    CounterKind::Story => "story",
+                    CounterKind::Study => "study",
+                    CounterKind::Vow => "vow",
+                    CounterKind::Time => "time",
+                    CounterKind::Scream => "scream",
+                    CounterKind::MinusOneMinusOne => "-1/-1",
+                    CounterKind::Strife => "strife",
+                    CounterKind::Age => "age",
+                    CounterKind::Storage => "storage",
+                };
+                format!("Put {} {kind_name} counters on each", amount_label(count))
             }
             Effect::Counters(CountersEffect::PutCountersOnPlayer { kind, count, scope }) => {
                 let kind_name = match kind {

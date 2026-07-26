@@ -45,21 +45,36 @@ impl Game {
                 // "whenever a creature enters" watches see it.
                 | Event::Manifested { permanent, .. }
                 | Event::LandPlayed { permanent, .. } => {
-                    // Evoke (CR 702.74a): queued *before* the permanent's own `Etb` trigger below
-                    // so it lands underneath it on the stack and so resolves *after* — an ETB
-                    // payoff (Mulldrifter's draw two) still happens before the sacrifice.
-                    // ponytail: no ordering choice is raised for the controller's own simultaneous
-                    // triggers (CR 603.3b) — the two are queued as separate single-ability groups
-                    // rather than one multi-ability group, so `place_pending_triggers` places both
-                    // without pausing. Grow into a real `OrderTriggers` choice if an evoke card
-                    // ever needs the controller to choose the other order.
-                    if self.as_permanent(permanent).is_some_and(|p| p.evoked) {
-                        self.queue_self_sacrifice_trigger(permanent);
+                    // CR 800.4a: if this same event batch already eliminated the entering
+                    // permanent's controller (Overgrown Tomb's pay-2-life-to-0 replacement, then
+                    // the state-based sweep — `PostIntentPhase::StateBasedActions` runs before
+                    // `TriggerEnqueue`), the permanent already left the game outright, not merely
+                    // the battlefield. There's no controller left to put a triggered ability on
+                    // the stack for, so it's skipped rather than queued from a since-removed
+                    // object. ponytail: also silently drops other permanents' "enters the
+                    // battlefield" watch triggers for this entry (constellation/landfall) — a
+                    // real card wanting those to still fire needs last-known-information plumbing
+                    // like the Dies-trigger family already has.
+                    if self.as_permanent(permanent).is_some() {
+                        // Evoke (CR 702.74a): queued *before* the permanent's own `Etb` trigger
+                        // below so it lands underneath it on the stack and so resolves *after* —
+                        // an ETB payoff (Mulldrifter's draw two) still happens before the
+                        // sacrifice.
+                        // ponytail: no ordering choice is raised for the controller's own
+                        // simultaneous triggers (CR 603.3b) — the two are queued as separate
+                        // single-ability groups rather than one multi-ability group, so
+                        // `place_pending_triggers` places both without pausing. Grow into a real
+                        // `OrderTriggers` choice if an evoke card ever needs the controller to
+                        // choose the other order.
+                        if self.as_permanent(permanent).is_some_and(|p| p.evoked) {
+                            self.queue_self_sacrifice_trigger(permanent);
+                        }
+                        self.queue_self_trigger(permanent, Trigger::Etb);
+                        // ponytail: watch-others companion to the self `Etb` above —
+                        //   constellation/landfall watch *any other* permanent's entry, not
+                        //   their own.
+                        self.queue_permanent_enters_triggers(permanent);
                     }
-                    self.queue_self_trigger(permanent, Trigger::Etb);
-                    // ponytail: watch-others companion to the self `Etb` above — constellation/
-                    //   landfall watch *any other* permanent's entry, not their own.
-                    self.queue_permanent_enters_triggers(permanent);
                 }
                 // Turned face up (CR 702.37f): scan the now-revealed permanent's own abilities for
                 // a turned-face-up trigger. The flag is already cleared (the apply ran first), so
@@ -3278,6 +3293,15 @@ impl Game {
     /// the same intervening-if evaluator triggers use, so a land-count/subtype condition is
     /// written once and read from both places.
     pub(crate) fn enters_tapped(&self, def: CardDef, controller: PlayerId) -> bool {
+        // `enters_tapped_unless_you_pay_life` (CR 614.12's pay-life-or-tapped choice) is
+        // resolved by [`Game::play_land`] / its answer handler *before* this site runs — by the
+        // time `Event::LandPlayed` applies, the land is either entering tapped outright (the
+        // choice was declined, or never offered — CR 119.4's life floor) or about to be untapped
+        // by a follow-up `Event::Untapped` (the choice was paid). Either way this always
+        // returns `true` here; it never reads the *outcome* of that choice.
+        if def.enters_tapped_unless_you_pay_life.is_some() {
+            return true;
+        }
         match def.enters_tapped_unless {
             Some(condition) => !self.condition_holds(condition, TriggerContext::of(controller)),
             None => def.enters_tapped,

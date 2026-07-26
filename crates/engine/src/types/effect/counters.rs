@@ -67,6 +67,11 @@ pub enum CountersEffect {
         count: Amount,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         target_player: bool,
+        /// `None` puts +1/+1 counters (the historical, still-default spelling); `Some(kind)`
+        /// (Contagion Engine's "-1/-1 counter on each creature target player controls") puts
+        /// that named kind instead, mirroring [`Self::PutCounters`]'s own `kind` axis.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        kind: Option<CounterKind>,
     },
 
     /// "Each opponent gets a poison counter" (Infectious Inquiry, Vraska's Fall) / "each player

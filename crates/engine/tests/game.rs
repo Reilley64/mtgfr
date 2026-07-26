@@ -526,6 +526,7 @@ const FLASHBACK_DRAW: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -593,6 +594,7 @@ const COMBAT_ONLY_INSTANT: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: true,
@@ -1923,6 +1925,7 @@ const TWO_ETB: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -2013,6 +2016,7 @@ const PINGER: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -2098,6 +2102,7 @@ const MAY_DRAW: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -2173,6 +2178,7 @@ const MAY_PAY_DRAW: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -2269,6 +2275,7 @@ const LOOK_DIG: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -2353,6 +2360,7 @@ const LOOK_DIG_MANDATORY_TWO: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -2438,6 +2446,7 @@ const LOOK_DIG_TO_BATTLEFIELD: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -2566,6 +2575,7 @@ const fn creature(
         devoid: false,
         enters_tapped: false,
         enters_tapped_unless: None,
+        enters_tapped_unless_you_pay_life: None,
         free_cast_if: None,
         alternative_cost: None,
         cast_only_during_combat: false,
@@ -5167,6 +5177,7 @@ const PUMP_POWER_PLUS_2: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -5245,6 +5256,7 @@ const GRANT_FLYING: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -5321,6 +5333,7 @@ const GRANT_INDESTRUCTIBLE: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -5398,6 +5411,7 @@ const DESTROY: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -5481,6 +5495,7 @@ const DESTROY_NONARTIFACT_NONBLACK: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -5568,6 +5583,7 @@ const DESTROY_ANY_PERMANENT: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -5651,6 +5667,7 @@ const DESTROY_NONBASIC_LAND: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -5737,6 +5754,7 @@ const EXILE_FROM_ANY_GRAVEYARD: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -5820,6 +5838,7 @@ const EXILE_ANY_CARD_FROM_ANY_GRAVEYARD: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -5906,6 +5925,7 @@ const EXILE_NONCREATURE_ARTIFACT_OR_ENCHANTMENT: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -5991,6 +6011,7 @@ const EXILE_SMALL_CREATURE: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -6076,6 +6097,7 @@ const EXILE_ENCHANTMENT: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -6158,6 +6180,7 @@ const EXILE_ARTIFACT: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -6242,6 +6265,7 @@ const SHROUD_CREATURE: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -6308,6 +6332,7 @@ const HEXPROOF_CREATURE: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -6373,6 +6398,7 @@ const MASS_INDESTRUCTIBLE: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -6450,6 +6476,7 @@ const MASS_FLYING_PER_CREATURE: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -6528,6 +6555,7 @@ const GRANT_UNBLOCKABLE: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -6985,6 +7013,7 @@ const GROWTH: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -7107,6 +7136,7 @@ const INKLING: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -7170,6 +7200,7 @@ const MAKE_INKLINGS: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -8808,6 +8839,7 @@ const PEST: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -8881,6 +8913,7 @@ const MAKE_PEST: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -9221,6 +9254,7 @@ const HERALD: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -11419,6 +11453,7 @@ fn auto_tap_pays_with_a_free_granted_mana_ability() {
         identity_pips: &[],
         enters_tapped: false,
         enters_tapped_unless: None,
+        enters_tapped_unless_you_pay_life: None,
         free_cast_if: None,
         alternative_cost: None,
         cast_only_during_combat: false,
@@ -11478,6 +11513,7 @@ fn auto_tap_pays_with_a_free_granted_mana_ability() {
         identity_pips: &[],
         enters_tapped: false,
         enters_tapped_unless: None,
+        enters_tapped_unless_you_pay_life: None,
         free_cast_if: None,
         alternative_cost: None,
         cast_only_during_combat: false,
@@ -12845,6 +12881,7 @@ const TARGET_OPPONENT_DRAWS_THREE: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -14185,6 +14222,7 @@ const ANTHEM_LORD: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -14850,6 +14888,7 @@ fn hofri_ghostforge_no_return_if_exiled_card_already_moved() {
             devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
+            enters_tapped_unless_you_pay_life: None,
             free_cast_if: None,
             alternative_cost: None,
             cast_only_during_combat: false,
@@ -15005,6 +15044,7 @@ const TEST_COUNTER_SHEDDER: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -15108,6 +15148,7 @@ const TEST_FOOD: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -15174,6 +15215,7 @@ const TEST_SAC_A_FOOD: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -18608,6 +18650,7 @@ const COLORLESS_ROCK: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -19245,6 +19288,7 @@ const fn dual_land(name: &'static str, a: Color, b: Color) -> CardDef {
         devoid: false,
         enters_tapped: false,
         enters_tapped_unless: None,
+        enters_tapped_unless_you_pay_life: None,
         free_cast_if: None,
         alternative_cost: None,
         cast_only_during_combat: false,
@@ -19331,6 +19375,7 @@ const fn vanilla(name: &'static str, generic: u8, colored: [u8; 5]) -> CardDef {
         devoid: false,
         enters_tapped: false,
         enters_tapped_unless: None,
+        enters_tapped_unless_you_pay_life: None,
         free_cast_if: None,
         alternative_cost: None,
         cast_only_during_combat: false,
@@ -19568,6 +19613,164 @@ fn an_untapped_dual_land_counts_both_colors_toward_castability() {
     }
 }
 
+// ── Shocklands: "As this land enters, you may pay 2 life. If you don't, it enters tapped." ──
+// (CR 614.12 — an as-enters replacement choice, not a board-state condition.)
+
+#[test]
+fn a_shockland_enters_untapped_when_you_pay_two_life() {
+    let mut game = Game::new();
+    let life_before = game.life(PlayerId(0));
+    let tomb = game.spawn_in_hand(PlayerId(0), card("Overgrown Tomb"));
+
+    let events = game
+        .submit(Intent::PlayLand {
+            player: PlayerId(0),
+            object: tomb,
+        })
+        .unwrap();
+    assert!(
+        events.is_empty(),
+        "the land pauses on the payment choice before it enters"
+    );
+    assert_eq!(
+        game.pending_choice(),
+        Some(PendingChoice::PayLifeOrEntersTapped {
+            player: PlayerId(0),
+            source: tomb,
+            life: 2,
+        })
+    );
+
+    let events = game
+        .submit(Intent::PayOptionalCost {
+            player: PlayerId(0),
+            pay: true,
+        })
+        .unwrap();
+
+    let permanent = land_permanent(&events);
+    assert!(
+        !game.is_tapped(permanent),
+        "paying 2 life lets it enter untapped"
+    );
+    assert_eq!(
+        game.life(PlayerId(0)),
+        life_before - 2,
+        "paying the cost actually costs 2 life"
+    );
+}
+
+#[test]
+fn a_shockland_enters_tapped_when_you_decline() {
+    let mut game = Game::new();
+    let life_before = game.life(PlayerId(0));
+    let tomb = game.spawn_in_hand(PlayerId(0), card("Overgrown Tomb"));
+
+    game.submit(Intent::PlayLand {
+        player: PlayerId(0),
+        object: tomb,
+    })
+    .unwrap();
+    let events = game
+        .submit(Intent::PayOptionalCost {
+            player: PlayerId(0),
+            pay: false,
+        })
+        .unwrap();
+
+    let permanent = land_permanent(&events);
+    assert!(game.is_tapped(permanent), "declining leaves it tapped");
+    assert_eq!(
+        game.life(PlayerId(0)),
+        life_before,
+        "declining costs no life"
+    );
+}
+
+#[test]
+fn a_shockland_offers_the_payment_at_exactly_two_life() {
+    // CR 119.4: a player may pay life down to and including 0 — at exactly 2 life the choice
+    // is still offered, and paying puts them at 0 (a state-based loss, CR 704.5a).
+    let mut game = Game::new();
+    game.set_life(PlayerId(0), 2);
+    let tomb = game.spawn_in_hand(PlayerId(0), card("Overgrown Tomb"));
+
+    game.submit(Intent::PlayLand {
+        player: PlayerId(0),
+        object: tomb,
+    })
+    .unwrap();
+    assert_eq!(
+        game.pending_choice(),
+        Some(PendingChoice::PayLifeOrEntersTapped {
+            player: PlayerId(0),
+            source: tomb,
+            life: 2,
+        }),
+        "still offered at exactly 2 life"
+    );
+
+    game.submit(Intent::PayOptionalCost {
+        player: PlayerId(0),
+        pay: true,
+    })
+    .unwrap();
+
+    assert_eq!(game.life(PlayerId(0)), 0);
+}
+
+#[test]
+fn a_shockland_enters_tapped_below_the_life_cost_with_no_prompt() {
+    let mut game = Game::new();
+    game.set_life(PlayerId(0), 1);
+    let tomb = game.spawn_in_hand(PlayerId(0), card("Overgrown Tomb"));
+
+    let events = game
+        .submit(Intent::PlayLand {
+            player: PlayerId(0),
+            object: tomb,
+        })
+        .unwrap();
+
+    assert_eq!(
+        game.pending_choice(),
+        None,
+        "below the life cost there is no prompt at all"
+    );
+    let permanent = land_permanent(&events);
+    assert!(
+        game.is_tapped(permanent),
+        "can't afford it, so it just enters tapped"
+    );
+    assert_eq!(game.life(PlayerId(0)), 1, "no life was taken");
+}
+
+#[test]
+fn a_shockland_taps_for_black_or_green() {
+    // "{T}: Add {B} or {G}" is one credit that resolves its color at payment time — it pays a
+    // {B} spell in one game and a {G} spell in another.
+    for pip in [Color::Black, Color::Green] {
+        let mut game = Game::new();
+        let tomb = game.spawn_on_battlefield(PlayerId(0), card("Overgrown Tomb"));
+        let mut colored = [0; 5];
+        colored[pip.index()] = 1;
+        let spell = game.spawn_in_hand(PlayerId(0), vanilla("Test One-Pip", 0, colored));
+
+        game.submit(Intent::TapForMana {
+            player: PlayerId(0),
+            object: tomb,
+        })
+        .unwrap();
+        cast_plain(&mut game, PlayerId(0), spell).unwrap();
+
+        assert_eq!(
+            game.zone_of(spell),
+            Zone::Stack,
+            "the dual credit paid the {pip:?} pip"
+        );
+    }
+}
+
 // ── Hybrid mana pips in activation costs: "{a/b}, {T}: …" (CR 107.4e) ───────────────
 
 /// A test-only filter land: `{a/b}, {T}: Add {C}` — isolates the hybrid activation-cost pip
@@ -19652,6 +19855,7 @@ fn hybrid_filter_land(name: &'static str, a: Color, b: Color) -> CardDef {
         devoid: false,
         enters_tapped: false,
         enters_tapped_unless: None,
+        enters_tapped_unless_you_pay_life: None,
         free_cast_if: None,
         alternative_cost: None,
         cast_only_during_combat: false,
@@ -19911,6 +20115,7 @@ const DIES_DRAW: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -20499,6 +20704,7 @@ const WATCHES_CREATURE_DIES: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -20617,6 +20823,7 @@ const WATCHES_CREATURE_DIES_ONCE_EACH_TURN: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -20771,6 +20978,7 @@ const CREATURE_MV3: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -20890,6 +21098,7 @@ const WATCHES_ANY_SACRIFICE: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -21485,6 +21694,7 @@ const UPKEEP_DRAW: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -21585,6 +21795,7 @@ const GRAVEYARD_UPKEEP_RETURN: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -22145,6 +22356,7 @@ const EACH_UPKEEP_DRAW: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -22264,6 +22476,7 @@ const END_STEP_DRAW: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -22355,6 +22568,7 @@ const BEGIN_COMBAT_DRAW: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -22478,6 +22692,7 @@ const GAIN_LIFE_ETB: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -22550,6 +22765,7 @@ const LIFE_GAIN_DRAW: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -22733,6 +22949,7 @@ const MAGECRAFT_DRAW: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -23233,6 +23450,7 @@ const INSTANT_FILLER: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -23311,6 +23529,7 @@ const BECOMES_TARGETED_TREASURE_MAKER: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -23422,6 +23641,7 @@ const AURA_CAST_DRAW: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -23545,6 +23765,7 @@ const X_INSTANT_FILLER: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -23617,6 +23838,7 @@ const HISTORIC_TEST_ARTIFACT: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -24067,6 +24289,7 @@ const DRAW_ONE_TARGET: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -24737,6 +24960,7 @@ const COUNTER: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -25738,6 +25962,7 @@ const X_EXILE_SELF_ON_RESOLVE: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -27933,6 +28158,7 @@ const FLIGHT: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -28102,6 +28328,7 @@ const MUTATION: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -28377,6 +28604,7 @@ const MUTABLE_FLYER: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -30066,6 +30294,7 @@ const WATCHES_HOST_DIES_DRAW: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -30165,6 +30394,7 @@ const PLAIN_AURA: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -31571,6 +31801,7 @@ const CONTROL_ATTACHED_AURA: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -32375,6 +32606,7 @@ const EACH_EXILE_GRAVEYARD: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -35768,6 +36000,7 @@ const NONCREATURE_PERMANENT_MV2: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -36398,6 +36631,7 @@ const RETURN_LAND_FROM_GRAVEYARD: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -36528,6 +36762,7 @@ const RETURN_SORCERY_FROM_GRAVEYARD: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -36791,6 +37026,7 @@ const EXILE_CARD_FROM_OPPONENTS_GRAVEYARD: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -36993,6 +37229,7 @@ const REPLENISH: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -37125,6 +37362,7 @@ const MASS_RETURN_ALL_CREATURES: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -40895,6 +41133,7 @@ const STEAL_UNTIL_EOT: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -41257,6 +41496,7 @@ const MELODY: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -43239,6 +43479,7 @@ const CHOOSE_TWO: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -43595,6 +43836,7 @@ const CHOOSE_ONE_OR_MORE: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -43989,6 +44231,7 @@ const FIGHT_SPELL: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -45400,6 +45643,7 @@ const GRAVEYARD_EXIT_WATCHER: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -45747,6 +45991,7 @@ static PACK_A_PUNCH: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -45851,6 +46096,7 @@ static KIROL: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -46121,6 +46367,7 @@ static PETTY_THEFT_TEST: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -46212,6 +46459,7 @@ static BRAZEN_BORROWER_TEST: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -46282,6 +46530,7 @@ static GROVES_BOUNTY_TEST: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -46375,6 +46624,7 @@ static ELUSIVE_OTTER_TEST: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -46996,6 +47246,7 @@ static BRAINGEYSER_TEST: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -47074,6 +47325,7 @@ static DIRGUR_TEST: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -47498,6 +47750,7 @@ fn unfiltered_cast_trigger_still_fires_from_any_zone() {
         devoid: false,
         enters_tapped: false,
         enters_tapped_unless: None,
+        enters_tapped_unless_you_pay_life: None,
         free_cast_if: None,
         alternative_cost: None,
         cast_only_during_combat: false,
@@ -48411,6 +48664,7 @@ const fn test_planeswalker(name: &'static str, loyalty: i32) -> CardDef {
         devoid: false,
         enters_tapped: false,
         enters_tapped_unless: None,
+        enters_tapped_unless_you_pay_life: None,
         free_cast_if: None,
         alternative_cost: None,
         cast_only_during_combat: false,
@@ -50004,6 +50258,7 @@ const CREATURE_TUTOR: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -52621,6 +52876,7 @@ const MASS_SHOCK: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -52698,6 +52954,7 @@ const MASS_BOUNCE_CREATURES: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -52855,6 +53112,7 @@ const POPULATE_AT_END_STEP: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -53631,6 +53889,7 @@ const MAKE_TREASURES: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -53864,6 +54123,7 @@ const fn instant_with_mana_value(generic: u8) -> CardDef {
         devoid: false,
         enters_tapped: false,
         enters_tapped_unless: None,
+        enters_tapped_unless_you_pay_life: None,
         free_cast_if: None,
         alternative_cost: None,
         cast_only_during_combat: false,
@@ -53936,6 +54196,7 @@ const fn instant_with_generic_and_x(generic: u8) -> CardDef {
         devoid: false,
         enters_tapped: false,
         enters_tapped_unless: None,
+        enters_tapped_unless_you_pay_life: None,
         free_cast_if: None,
         alternative_cost: None,
         cast_only_during_combat: false,
@@ -54065,6 +54326,7 @@ const DEEKAH_MAGECRAFT_FRACTAL: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -54270,6 +54532,7 @@ const MANAFORM_DRAGON_TOKEN: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -54338,6 +54601,7 @@ const MANAFORM_HELLKITE_TEST: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -54648,6 +54912,7 @@ const ROOTHA_ELEMENTAL_TOKEN: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -54716,6 +54981,7 @@ const ROOTHA_TEST: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -54915,6 +55181,7 @@ const RIONYA_TEST: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -55168,6 +55435,7 @@ const IMPULSE: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -55382,6 +55650,7 @@ const RANDOM_GRAVEYARD_EXILE: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -55663,6 +55932,7 @@ const MODAL_DRAGON: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -57213,6 +57483,7 @@ const NO_MAX_HAND_SIZE: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -57317,6 +57588,7 @@ macro_rules! amount_spell {
             devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
+            enters_tapped_unless_you_pay_life: None,
             free_cast_if: None,
             alternative_cost: None,
             cast_only_during_combat: false,
@@ -57477,6 +57749,7 @@ macro_rules! hydra_with_etb {
             devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
+            enters_tapped_unless_you_pay_life: None,
             free_cast_if: None,
             alternative_cost: None,
             cast_only_during_combat: false,
@@ -58544,6 +58817,7 @@ const fn sorcery(name: &'static str, abilities: &'static [Ability]) -> CardDef {
         devoid: false,
         enters_tapped: false,
         enters_tapped_unless: None,
+        enters_tapped_unless_you_pay_life: None,
         free_cast_if: None,
         alternative_cost: None,
         cast_only_during_combat: false,
@@ -61545,6 +61819,7 @@ const TEST_STEELBANE: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -61924,6 +62199,7 @@ const TEST_ENCHANTMENT: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -61988,6 +62264,7 @@ const WATCHES_ENCHANTMENTS_ENTER: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -62025,6 +62302,7 @@ const WATCHES_ENCHANTMENTS_ENTER: CardDef = CardDef {
                 devoid: false,
                 enters_tapped: false,
                 enters_tapped_unless: None,
+                enters_tapped_unless_you_pay_life: None,
                 free_cast_if: None,
                 alternative_cost: None,
                 cast_only_during_combat: false,
@@ -62139,6 +62417,7 @@ const WATCHES_OPPONENT_LANDFALL: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -62756,6 +63035,7 @@ const fn of_colors_land(name: &'static str, mask: u8) -> CardDef {
         devoid: false,
         enters_tapped: false,
         enters_tapped_unless: None,
+        enters_tapped_unless_you_pay_life: None,
         free_cast_if: None,
         alternative_cost: None,
         cast_only_during_combat: false,
@@ -63198,6 +63478,7 @@ const FIVE_MANA_VALUE_SORCERY: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -64567,6 +64848,7 @@ const SAPROLING_ANTHEM: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -64689,6 +64971,7 @@ const TAP_TWO_PERMANENTS: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -64772,6 +65055,7 @@ const COUNTER_EACH_UP_TO_TWO: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -65786,6 +66070,7 @@ const MASS_HEXPROOF_TO_MODIFIED: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -67659,6 +67944,7 @@ const TEST_STUDY_COUNTER_SOURCE: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -69212,6 +69498,7 @@ fn songbirds_blessing_no_legal_host_sweeps_aura_to_graveyard() {
         devoid: false,
         enters_tapped: false,
         enters_tapped_unless: None,
+        enters_tapped_unless_you_pay_life: None,
         free_cast_if: None,
         alternative_cost: None,
         cast_only_during_combat: false,
@@ -70138,6 +70425,7 @@ const GRANT_HEXPROOF_ANY_TARGET: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -70687,6 +70975,7 @@ const ZERO_POWER_WITH_COUNTER: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -74547,6 +74836,7 @@ const TEST_CLASS: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -75675,6 +75965,7 @@ const SCREAM_EXILE_RETURN_CREATURES: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -83214,6 +83505,7 @@ const MAY_DRAW_UPKEEP: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -84203,6 +84495,7 @@ const DRAW_ONE: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -84269,6 +84562,7 @@ const DRAW_THREE: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -84334,6 +84628,7 @@ const DREDGER_3: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -84400,6 +84695,7 @@ const DIES_FODDER: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -86484,6 +86780,7 @@ const RAMPAGING_YAO_GUAI_TEST: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -88251,6 +88548,7 @@ const TEST_LAND_WITH_CHARGE_COUNTERS: CardDef = CardDef {
     devoid: false,
     enters_tapped: false,
     enters_tapped_unless: None,
+    enters_tapped_unless_you_pay_life: None,
     free_cast_if: None,
     alternative_cost: None,
     cast_only_during_combat: false,
@@ -90764,6 +91062,215 @@ fn contagion_clasp_etb_puts_a_minus_one_minus_one_counter_on_target_creature() {
         game.toughness(bear),
         1,
         "2/2 base minus 1/1 from the counter"
+    );
+}
+
+/// A test-only artifact whose ETB puts a -1/-1 counter on each creature target player
+/// controls (fidelity increment #3, `put-counters-each-counter-kind`) — Contagion Engine's own
+/// trigger shape, isolated from its `{4}, {T}: Proliferate twice` half.
+const TEST_MINUS_ONE_EACH_TARGET_PLAYER: CardDef = CardDef {
+    name: "Test Minus-Each Artifact",
+    kind: CardKind::Artifact,
+    abilities: &[Ability {
+        timing: Timing::Triggered(Trigger::Etb),
+        effect: Effect::Counters(CountersEffect::PutCountersEach {
+            filter: PermanentFilter {
+                controller: FilterController::You,
+                ..PermanentFilter::of(TypeSet::CREATURE)
+            },
+            count: Amount::Fixed(1),
+            target_player: true,
+            kind: Some(CounterKind::MinusOneMinusOne),
+        }),
+        optional: false,
+        min_level: 0,
+        once_each_turn: false,
+        condition: None,
+        cost: Cost::FREE,
+    }],
+    ..TEST_STEELBANE
+};
+
+#[test]
+fn minus_one_minus_one_counters_on_each_creature_target_player_controls() {
+    // `PutCountersEach { kind: Some(MinusOneMinusOne), target_player: true, .. }`: the -1/-1
+    // kind lands on each of the *targeted player's* creatures, not the ability's controller's,
+    // and not on that player's noncreature permanents.
+    let mut game = TestGame::new();
+    let their_bear_one = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let their_bear_two = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let their_land = game.spawn_on_battlefield(PlayerId(1), card("Plains"));
+    let my_bear = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let artifact = game.spawn_in_hand(PlayerId(0), TEST_MINUS_ONE_EACH_TARGET_PLAYER);
+    game.cast(artifact).resolve();
+
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::ChooseTarget { .. })
+        ),
+        "the ETB pauses to choose its target player"
+    );
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Player(PlayerId(1))],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.counters_of_kind(their_bear_one, CounterKind::MinusOneMinusOne),
+        1,
+        "a -1/-1 counter landed on the target player's first creature"
+    );
+    assert_eq!(
+        game.counters_of_kind(their_bear_two, CounterKind::MinusOneMinusOne),
+        1,
+        "a -1/-1 counter landed on the target player's second creature"
+    );
+    assert_eq!(
+        game.counters_of_kind(their_land, CounterKind::MinusOneMinusOne),
+        0,
+        "the creature filter leaves a noncreature permanent untouched"
+    );
+    assert_eq!(
+        game.counters_of_kind(my_bear, CounterKind::MinusOneMinusOne),
+        0,
+        "the ability's controller's own creature is untouched — it reads the target's board"
+    );
+}
+
+#[test]
+fn minus_one_minus_one_counters_from_put_counters_each_are_not_doubled() {
+    // A -1/-1-kind `PutCountersEach` mints `Event::KindCountersPlaced` directly, bypassing
+    // `counters_after_replacements` (the +1/+1-only replacement pipeline that Hardened
+    // Scales/Doubling Season hook — increment #19 widens it to other kinds). Doubling Season on
+    // the *targeted* player's own battlefield must not amplify this -1/-1 placement.
+    let mut game = TestGame::new();
+    game.spawn_on_battlefield(PlayerId(1), card("Doubling Season"));
+    let their_bear = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let artifact = game.spawn_in_hand(PlayerId(0), TEST_MINUS_ONE_EACH_TARGET_PLAYER);
+    game.cast(artifact).resolve();
+
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Player(PlayerId(1))],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.counters_of_kind(their_bear, CounterKind::MinusOneMinusOne),
+        1,
+        "Doubling Season's +1/+1 counter_replacement doesn't touch a -1/-1 PutCountersEach"
+    );
+}
+
+#[test]
+fn contagion_engine_etb_puts_a_minus_one_minus_one_counter_on_each_creature_target_player_controls()
+{
+    // Contagion Engine: "When this artifact enters, put a -1/-1 counter on each creature target
+    // player controls."
+    let mut game = TestGame::new();
+    let their_bear = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let their_other_bear = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let my_bear = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let engine = game.spawn_in_hand(PlayerId(0), card("Contagion Engine"));
+    game.cast(engine).resolve();
+
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::ChooseTarget { .. })
+        ),
+        "the ETB pauses to choose its target player"
+    );
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Player(PlayerId(1))],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.counters_of_kind(their_bear, CounterKind::MinusOneMinusOne),
+        1,
+        "a -1/-1 counter landed on the target player's first creature"
+    );
+    assert_eq!(
+        game.counters_of_kind(their_other_bear, CounterKind::MinusOneMinusOne),
+        1,
+        "a -1/-1 counter landed on the target player's second creature"
+    );
+    assert_eq!(
+        game.counters_of_kind(my_bear, CounterKind::MinusOneMinusOne),
+        0,
+        "the caster's own creature is untouched — the ETB reads the target's board"
+    );
+}
+
+#[test]
+fn contagion_engine_activated_ability_proliferates_twice() {
+    // Contagion Engine: "{4}, {T}: Proliferate twice." — CR 701.27b: "then do it again" is a
+    // second, independently-chosen proliferate instance, the same `times = 2` spelling as
+    // Agent Frank Horrigan's own "proliferate twice".
+    let mut game = Game::new();
+    let engine = game.spawn_on_battlefield(PlayerId(0), card("Contagion Engine"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    put_two_counters(&mut game, PlayerId(0), bear);
+    game.fund_mana(PlayerId(0));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: engine,
+        ability_index: 1,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::Proliferate { .. })
+        ),
+        "proliferating pauses to choose counter-bearing permanents"
+    );
+    game.submit(Intent::ChooseSacrifices {
+        player: PlayerId(0),
+        sacrifices: vec![bear],
+    })
+    .unwrap();
+    assert_eq!(
+        game.plus_counters(bear),
+        3,
+        "first proliferate instance: 2 + 1"
+    );
+
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::Proliferate { .. })
+        ),
+        "\"then do it again\" re-pauses for a second, independent proliferate instance"
+    );
+    game.submit(Intent::ChooseSacrifices {
+        player: PlayerId(0),
+        sacrifices: vec![bear],
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.plus_counters(bear),
+        4,
+        "second proliferate instance: 3 + 1"
+    );
+    assert!(
+        game.pending_choice().is_none(),
+        "both proliferate instances are spent"
     );
 }
 

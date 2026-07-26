@@ -51,13 +51,16 @@ Talent's Level 2 ward and Level 3 doubler would both be live the moment it hits 
 *Sketch:* read `ability.min_level` in the static scanners (`characteristics.rs`) and the bespoke
 trigger scanners the note names. *Cards:* inspiring_call, innkeepers_talent (with #17, #19).
 
-### 3. `put-counters-each-counter-kind` — 1 card, S
-Depends on: nothing.
-`CountersEffect::PutCountersEach` (`types/effect/counters.rs:65`) carries `filter`/`count`/
-`target_player` but no `kind`, so "put a -1/-1 counter on each creature target player controls"
-can only place +1/+1 counters. *Sketch:* add the same `kind: Option<CounterKind>` axis the
-singular `PutCounters` already has, routing to `Event::KindCountersPlaced`. *Cards:*
-contagion_engine.
+### 3. `put-counters-each-counter-kind` — 1 card, S — LANDED 2026-07-26
+_Landed 2026-07-26: `CountersEffect::PutCountersEach` gained the same `kind: Option<CounterKind>`
+axis `PutCounters` already had. `None` keeps the historical +1/+1 path unchanged
+(`counters_after_replacements` → `Event::CountersPlaced`); `Some(kind)` mints
+`Event::KindCountersPlaced` directly, bypassing the +1/+1-only replacement pipeline (pinned by a
+regression test: Doubling Season doesn't amplify a -1/-1 `PutCountersEach`). `label.rs` mirrors
+`PutCounters`'s own kind-name arm. contagion_engine authored — ETB half fully faithful. Still
+blocked: the card's own `{4}, {T}: Proliferate twice` carries the same residual as
+agent_frank_horrigan's proliferate — CR 701.27 can't yet choose players (poison/rad) or Class
+level/exiled time/scream counters (increment #17, not this wave)._
 
 ### 4. `greatest-power-amount` — 1 card, S — LANDED 2026-07-26
 _Landed 2026-07-26: `Amount::GreatestPowerAmongCreaturesYouControl` (TOML
@@ -79,15 +82,27 @@ No condition counts *opponents* (`OpponentsControlLands` counts lands). *Sketch:
 must track eliminations, not the table's starting size, or the land reads wrong in a game that
 has gone to two. *Cards:* undergrowth_stadium.
 
-### 6. `shockland-pay-life-as-enters` — 1 card, S/M
+### 6. `shockland-pay-life-as-enters` — 1 card, S/M — LANDED 2026-07-26
+_Landed 2026-07-26: `CardDef::enters_tapped_unless_you_pay_life: Option<u8>` (TOML root key,
+`crates/engine/src/types/card.rs`). Took the "pause before the enter" shape (most faithful to CR
+614.12): `Game::play_land` raises `PendingChoice::PayLifeOrEntersTapped` and returns no events
+before the land exists on the battlefield at all — declining or affording nothing mints
+`Event::LandPlayed` tapped immediately; paying mints `LandPlayed` (tapped, per `enters_tapped`'s
+unconditional `true` for this field) followed by `Event::LifeChanged` and `Event::Untapped`.
+Answered by the existing `Intent::PayOptionalCost`, the `SacrificeUnlessPay` family's land-drop
+twin. Offered only when `life >= life_cost` (CR 119.4 — a player may pay life down to and
+including 0); below the cost there is no prompt and the land just enters tapped. `overgrown_tomb`
+authored, fully faithful, frame-audit clean._
 Depends on: nothing.
 No pool land pays life as it enters — `enters_tapped_unless` takes a `Condition`, and `pay_life`
 exists only as a cast/activation cost. Overgrown Tomb's "as this land enters, you may pay 2 life;
 if you don't, it enters tapped" is a CR 614.12 as-enters replacement with a *choice*, not a
 condition. *Sketch:* an `enters_tapped_unless_you_pay_life: Option<u32>` on the land frame that
 raises an optional pay-or-decline pending choice during the enters replacement, defaulting to
-"don't pay" (enters tapped) when declined or when the player is at ≤2 life. *Cards:*
-overgrown_tomb.
+"don't pay" (enters tapped) when declined, and only offered at all when the player's life total is
+**greater than or equal to** the cost (CR 119.4 — a player may pay life down to and including 0;
+the engine already models this for cast costs, see `crates/engine/src/types/mana.rs:201-204`).
+*Cards:* overgrown_tomb.
 
 ### 7. `one-way-damage-equal-to-power` — 1 card, S
 Depends on: nothing.

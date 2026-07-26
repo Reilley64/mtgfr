@@ -744,6 +744,7 @@ mod tests {
         devoid: false,
         enters_tapped: false,
         enters_tapped_unless: None,
+        enters_tapped_unless_you_pay_life: None,
         free_cast_if: None,
         alternative_cost: None,
         cast_only_during_combat: false,

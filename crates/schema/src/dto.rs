@@ -560,6 +560,15 @@ pub enum PendingChoiceView {
         source: ObjectId,
         cost: WireCost,
     },
+    /// A land card's controller, about to play it, may pay `life` to have it enter untapped, or
+    /// decline and have it enter tapped (CR 614.12 — Overgrown Tomb). `source` is the land
+    /// *card*, not a permanent — it isn't on the battlefield yet. Answered by the wire
+    /// `PayOptionalCost` intent.
+    PayLifeOrEntersTapped {
+        player: u8,
+        source: ObjectId,
+        life: u8,
+    },
     /// Return one of `items` (a non-Lair land the player controls, public) to its owner's hand
     /// to keep `source`, or decline and sacrifice it (Treva's Ruins).
     SacrificeUnlessReturnLand {
@@ -994,6 +1003,7 @@ impl PendingChoiceView {
             | Self::PayEchoOrSacrifice { .. }
             | Self::PayRecoverOrExile { .. }
             | Self::SacrificeUnlessPay { .. }
+            | Self::PayLifeOrEntersTapped { .. }
             | Self::ChooseMode { .. }
             | Self::ChooseTriggerModes { .. }
             | Self::ChooseManaColor { .. }
