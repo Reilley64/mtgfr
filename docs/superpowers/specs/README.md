@@ -42,6 +42,7 @@ These documents are **not superseded** and must stay current alongside the specs
 | [choices-actions-and-resolution](2026-07-20-choices-actions-and-resolution.md) | Engine choices, legal actions, payment, resolution |
 | [ci-and-release](2026-07-20-ci-and-release.md) | GitHub Actions verify/release/docker, Buildx GHA cache, semantic-release |
 | [combat-and-commander-rules](2026-07-20-combat-and-commander-rules.md) | Multiplayer combat, commander tax/damage, elimination |
+| [coverage-by-set](2026-07-26-coverage-by-set.md) | Auth-gated `/coverage` set table, search/filter, BFF coverage meta join, faithful-by-set health input |
 | [deck-list-and-builder](2026-07-20-deck-list-and-builder.md) | Deck list tiles, search, builder split-pane, card art CDN |
 | [engine-core-and-event-model](2026-07-20-engine-core-and-event-model.md) | Pure Rust engine zones, events, SBAs, determinism |
 | [flights](2026-07-20-flights.md) | Card movement animation, flight ownership, bitmap paint gating |
