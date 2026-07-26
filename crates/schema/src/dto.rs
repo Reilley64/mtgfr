@@ -321,6 +321,9 @@ pub struct ObjectView {
     /// battlefield and when nothing modifies the permanent beyond its printed oracle.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub modifiers: Vec<ModifierSourceView>,
+    /// Optional https image URL for alter art (display only). Empty = none.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub proxy_art_url: String,
 }
 
 /// One source card def's contributions to a permanent (Alt-inspect ledger).
@@ -360,6 +363,9 @@ pub struct StackObjectView {
     /// Source card display name for art alt / inspect. Empty when anonymized.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub name: String,
+    /// Optional https image URL for alter art (display only). Empty = none.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub proxy_art_url: String,
 }
 
 /// One labelled item offered by a pending choice (a legal target, or a blocker to assign
@@ -375,6 +381,9 @@ pub struct ChoiceItem {
     /// Scryfall Printing UUID for card art. Empty for player seats and face-down / redacted items.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub print: String,
+    /// Optional https image URL for alter art (display only). Empty = none.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub proxy_art_url: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub player: Option<u8>,
 }
@@ -1291,6 +1300,9 @@ pub struct DeckCardEntry {
     pub count: u32,
     /// Scryfall card UUID for art (required).
     pub print: String,
+    /// Optional https image URL for alter art (display only). Empty = none.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub proxy_art_url: String,
 }
 
 /// A deck in a list view (no card contents).
@@ -1314,6 +1326,9 @@ pub struct DeckDetail {
     /// Printing UUID for the commander's art.
     pub commander_print: String,
     pub cards: Vec<DeckCardEntry>,
+    /// Optional https image URL for the commander's alter art (display only). Empty = none.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub commander_proxy_art_url: String,
 }
 
 /// Body for creating or updating a deck.
@@ -1325,6 +1340,9 @@ pub struct SaveDeckRequest {
     /// Printing UUID for the commander's art.
     pub commander_print: String,
     pub cards: Vec<DeckCardEntry>,
+    /// Optional https image URL for the commander's alter art (display only). Empty = none.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub commander_proxy_art_url: String,
 }
 
 /// Why a deck was rejected as illegal — every problem at once, for the builder to list.
@@ -1343,6 +1361,24 @@ mod tests {
 
     fn named_msg(key: &str, name: &str) -> MessageRef {
         MessageRef::key(key).with_params(vec![MessageParam::string("name", name)])
+    }
+
+    #[test]
+    fn deck_card_entry_round_trips_proxy_art_url() {
+        let entry = DeckCardEntry {
+            id: "oracle".into(),
+            count: 1,
+            print: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee".into(),
+            proxy_art_url: "https://example.com/alter.png".into(),
+        };
+        let json = serde_json::to_string(&entry).unwrap();
+        assert!(json.contains("proxy_art_url"));
+        let back: DeckCardEntry = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.proxy_art_url, "https://example.com/alter.png");
+
+        let legacy = r#"{"id":"oracle","count":1,"print":"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"}"#;
+        let old: DeckCardEntry = serde_json::from_str(legacy).unwrap();
+        assert!(old.proxy_art_url.is_empty());
     }
 
     #[test]
@@ -1374,6 +1410,7 @@ mod tests {
                     id: 4,
                     label: "Bear".to_string(),
                     print: String::new(),
+                    proxy_art_url: String::new(),
                     player: None,
                 }],
                 min: 1,
@@ -1395,6 +1432,7 @@ mod tests {
                     id: 0,
                     label: "Player 2".to_string(),
                     print: String::new(),
+                    proxy_art_url: String::new(),
                     player: Some(1),
                 }],
                 min: 1,
@@ -1418,6 +1456,7 @@ mod tests {
                     id: 4,
                     label: "Bear".to_string(),
                     print: String::new(),
+                    proxy_art_url: String::new(),
                     player: None,
                 }],
             })
@@ -1474,6 +1513,7 @@ mod tests {
                     id: 6,
                     label: "Bear".to_string(),
                     print: String::new(),
+                    proxy_art_url: String::new(),
                     player: None,
                 }],
             })
@@ -1525,6 +1565,7 @@ mod tests {
                     id: 7,
                     label: "Grizzly Bears".into(),
                     print: String::new(),
+                    proxy_art_url: String::new(),
                     player: None,
                 }],
             })

@@ -15,6 +15,8 @@ message DeckCardEntry {
   uint32 count = 2;
   // Scryfall card UUID for art (required).
   string print = 3;
+  // Optional https image URL for alter art (display only). Empty = none.
+  string proxy_art_url = 4;
 }
 
 // A deck in a list view (no card contents).
@@ -35,6 +37,8 @@ message DeckDetail {
   // Printing UUID for the commander's art.
   string commander_print = 4;
   repeated DeckCardEntry cards = 5;
+  // Optional https image URL for the commander's alter art (display only). Empty = none.
+  string commander_proxy_art_url = 6;
 }
 
 // Body for creating or updating a deck.
@@ -45,6 +49,8 @@ message SaveDeckRequest {
   // Printing UUID for the commander's art.
   string commander_print = 3;
   repeated DeckCardEntry cards = 4;
+  // Optional https image URL for the commander's alter art (display only). Empty = none.
+  string commander_proxy_art_url = 5;
 }
 
 // The back face of a prepare DFC, for card inspect flip (name + rules text).

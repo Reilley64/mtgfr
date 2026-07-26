@@ -13,6 +13,7 @@ pub fn deck_card_entry_to_pb(entry: DeckCardEntry) -> pb::DeckCardEntry {
         id: entry.id,
         count: entry.count,
         print: entry.print,
+        proxy_art_url: entry.proxy_art_url,
     }
 }
 
@@ -21,6 +22,7 @@ pub fn deck_card_entry_from_pb(entry: pb::DeckCardEntry) -> DeckCardEntry {
         id: entry.id,
         count: entry.count,
         print: entry.print,
+        proxy_art_url: entry.proxy_art_url,
     }
 }
 
@@ -40,6 +42,7 @@ pub fn deck_detail_to_pb(deck: DeckDetail) -> pb::DeckDetail {
         commander: deck.commander,
         commander_print: deck.commander_print,
         cards: deck.cards.into_iter().map(deck_card_entry_to_pb).collect(),
+        commander_proxy_art_url: deck.commander_proxy_art_url,
     }
 }
 
@@ -49,6 +52,7 @@ pub fn save_deck_request_from_pb(req: pb::SaveDeckRequest) -> SaveDeckRequest {
         commander: req.commander,
         commander_print: req.commander_print,
         cards: req.cards.into_iter().map(deck_card_entry_from_pb).collect(),
+        commander_proxy_art_url: req.commander_proxy_art_url,
     }
 }
 

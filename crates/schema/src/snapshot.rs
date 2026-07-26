@@ -935,6 +935,7 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                             .collect(),
                     })
                     .collect(),
+                proxy_art_url: String::new(),
             }
         })
         .collect();
@@ -960,6 +961,7 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                     print,
                     card_id,
                     name,
+                    proxy_art_url: String::new(),
                 }
             }
             engine::StackEntry::Ability {
@@ -980,6 +982,7 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                     print,
                     card_id,
                     name,
+                    proxy_art_url: String::new(),
                 }
             }
         })

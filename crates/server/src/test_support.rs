@@ -37,6 +37,7 @@ fn legal_deck_json() -> String {
             id: def.id.to_string(),
             count,
             print: def.default_print.to_string(),
+            proxy_art_url: String::new(),
         }
     };
     let mut cards: Vec<DeckCardEntry> = [

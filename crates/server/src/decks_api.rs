@@ -35,6 +35,7 @@ fn detail_of(deck: Deck) -> Result<DeckDetail, DeckOpError> {
         commander: deck.commander,
         commander_print: deck.commander_print,
         cards,
+        commander_proxy_art_url: String::new(),
     })
 }
 
@@ -206,6 +207,7 @@ mod tests {
                 id: def.id.to_string(),
                 count,
                 print: def.default_print.to_string(),
+                proxy_art_url: String::new(),
             }
         };
         let mut cards: Vec<DeckCardEntry> = nonbasics.iter().map(|n| entry(n, 1)).collect();
@@ -216,6 +218,7 @@ mod tests {
             commander: tajic.id.to_string(),
             commander_print: tajic.default_print.to_string(),
             cards,
+            commander_proxy_art_url: String::new(),
         }
     }
 
@@ -265,6 +268,7 @@ mod tests {
             id: bolt.id.to_string(),
             count: 1,
             print: bolt.default_print.to_string(),
+            proxy_art_url: String::new(),
         };
 
         let updated = update_deck_core(&state, alice, created.id, revised.clone())

@@ -97,6 +97,7 @@ static PRECONS: LazyLock<Vec<DeckDetail>> = LazyLock::new(|| {
                 commander: f.commander,
                 commander_print: f.commander_print,
                 cards: f.cards,
+                commander_proxy_art_url: String::new(),
             }
         })
         .collect()

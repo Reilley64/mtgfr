@@ -28,6 +28,7 @@ impl<'a> ChoiceCtx<'a> {
             id,
             label: def.name.to_string(),
             print: def.default_print.to_string(),
+            proxy_art_url: String::new(),
             player: None,
         }
     }
@@ -38,6 +39,7 @@ impl<'a> ChoiceCtx<'a> {
             id: 0,
             label: format!("Player {}", p.0 + 1),
             print: String::new(),
+            proxy_art_url: String::new(),
             player: Some(p.0),
         }
     }
@@ -58,6 +60,7 @@ impl<'a> ChoiceCtx<'a> {
                         id,
                         label: String::new(),
                         print: String::new(),
+                        proxy_art_url: String::new(),
                         player: None,
                     }
                 } else {

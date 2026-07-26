@@ -18,6 +18,7 @@ pub fn choice_item_to_pb(item: ChoiceItem) -> pb::ChoiceItem {
         label: item.label,
         player: item.player.map(u32::from),
         print: item.print,
+        proxy_art_url: item.proxy_art_url,
     }
 }
 
@@ -69,6 +70,7 @@ pub fn stack_object_view_to_pb(entry: StackObjectView) -> pb::StackObjectView {
         print: entry.print,
         card_id: entry.card_id,
         name: entry.name,
+        proxy_art_url: entry.proxy_art_url,
     }
 }
 
@@ -113,6 +115,7 @@ pub fn object_view_to_pb(obj: ObjectView) -> pb::ObjectView {
             .into_iter()
             .map(modifier_source_view_to_pb)
             .collect(),
+        proxy_art_url: obj.proxy_art_url,
     }
 }
 
@@ -1681,6 +1684,7 @@ mod tests {
                 face_down: false,
                 attached_to: None,
                 modifiers: vec![],
+                proxy_art_url: String::new(),
             }],
             stack: vec![StackObjectView {
                 kind: "spell".into(),
@@ -1692,6 +1696,7 @@ mod tests {
                 print: "shock-print".into(),
                 card_id: "shock-id".into(),
                 name: "Shock".into(),
+                proxy_art_url: String::new(),
             }],
             combat: CombatView::default(),
             can_act: true,
@@ -1707,6 +1712,7 @@ mod tests {
                     id: 11,
                     label: "Goblin".into(),
                     print: String::new(),
+                    proxy_art_url: String::new(),
                     player: None,
                 }],
                 min: 1,
