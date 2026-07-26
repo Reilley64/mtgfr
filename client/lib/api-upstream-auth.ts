@@ -88,10 +88,6 @@ export async function fetchApiMeta(): Promise<{
   }
 }
 
-export async function fetchApiVersion(): Promise<string | null> {
-  return (await fetchApiMeta()).version;
-}
-
 export type { SeedResponse };
 
 export async function seedGame(

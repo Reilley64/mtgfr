@@ -57,12 +57,6 @@ export async function lobbyState(table: string): Promise<LobbyView | null> {
   return decodeOrNull(decodeLobbyView, body);
 }
 
-export async function apiVersion(): Promise<{ version: string } | null> {
-  const meta = await apiMeta();
-  if (!meta) return null;
-  return { version: meta.version };
-}
-
 export async function apiMeta(): Promise<{
   version: string;
   faithfulCount: number | null;
