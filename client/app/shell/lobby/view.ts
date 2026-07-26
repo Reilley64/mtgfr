@@ -114,9 +114,9 @@ function deckCardAndBack(
   );
 }
 
-function destinationCardClass(): string {
+function joinCardClass(): string {
   return cn(
-    "flex flex-col gap-sm rounded-hud border border-vine bg-glass-dim p-md text-left",
+    "flex min-h-full flex-col gap-sm rounded-hud border border-dashed border-vine bg-glass-dim p-md text-left",
     "hover:bg-white/8 disabled:opacity-60",
   );
 }
@@ -146,30 +146,39 @@ function chooseEntry(
   knownCommanders: Readonly<Record<string, BuilderCatalogCard>>,
 ): Html {
   return h.div(
-    [h.Class("flex flex-col gap-md")],
+    [h.Class("flex flex-col gap-lg")],
     [
       h.div(
         [
           h.DataAttribute("testid", "lobby-entry-choose"),
           h.DataAttribute("lobby-entry-motion", "1"),
-          h.Class("grid grid-cols-2 gap-md"),
+          h.Class("grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] gap-lg"),
         ],
         [
-          h.button(
-            [
-              h.Type("button"),
-              h.DataAttribute("testid", "lobby-host"),
-              h.Disabled(model.submitting),
-              h.OnClick(RequestedLobbyHost()),
-              h.Class(destinationCardClass()),
-            ],
+          h.div(
+            [h.Class("flex flex-col gap-md")],
             [
               h.div(
-                [h.Class("max-w-[240px]"), h.DataAttribute("testid", "lobby-deck-card")],
+                [h.Class("max-w-[280px]"), h.DataAttribute("testid", "lobby-deck-card")],
                 [selectedDeckCard(deck, decksLoading, knownCommanders)],
               ),
-              h.div([h.Class("font-semibold")], ["Host a table"]),
-              h.div([h.Class("text-label text-lichen")], ["with this deck"]),
+              h.div(
+                [h.Class("flex flex-col gap-xs")],
+                [
+                  h.div([h.Class("font-semibold text-title")], ["Ready to play?"]),
+                  h.div([h.Class("text-label text-lichen")], ["Host a fresh Commander table with this deck."]),
+                ],
+              ),
+              h.button(
+                [
+                  h.Type("button"),
+                  h.DataAttribute("testid", "lobby-host"),
+                  h.Disabled(model.submitting),
+                  h.OnClick(RequestedLobbyHost()),
+                  h.Class(buttonClass("primary", "w-fit")),
+                ],
+                ["Host a table"],
+              ),
             ],
           ),
           h.button(
@@ -178,7 +187,7 @@ function chooseEntry(
               h.DataAttribute("testid", "lobby-open-join"),
               h.Disabled(model.submitting),
               h.OnClick(RequestedLobbyOpenJoin()),
-              h.Class(destinationCardClass()),
+              h.Class(joinCardClass()),
             ],
             [
               h.div(
@@ -429,7 +438,7 @@ function tableLobby(
           h.span(
             [
               h.DataAttribute("testid", "lobby-table-code"),
-              h.Class("select-text font-bold text-display tracking-[0.06em]"),
+              h.Class("select-text font-display text-display tracking-[0.06em]"),
             ],
             [model.tableId ?? ""],
           ),
@@ -438,7 +447,7 @@ function tableLobby(
               h.Type("button"),
               h.DataAttribute("testid", "lobby-copy-code"),
               h.OnClick(RequestedLobbyCopy()),
-              h.Class(buttonClass("primary")),
+              h.Class(buttonClass("ghost")),
             ],
             [model.copied ? "Copied" : "Copy code"],
           ),
