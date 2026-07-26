@@ -217,6 +217,11 @@ impl Game {
                 let object =
                     entering.unwrap_or_else(|| expect_object_target(target, "a token copy"));
                 let def = self.def_id_of(object);
+                // CR 707.2: a copy uses the copied object's *current copiable* values, which
+                // include any copy-effect exception rider it already carries — so copying a
+                // first-generation copy (a Twinflame haste token, Muddle's myriad form) preserves
+                // that rider on the new token, not just its `def`.
+                let copied_rider = self.copiable_keywords(object);
                 let count = self.resolve_count(count, controller, source, target, x);
                 // Doubling Season (CR 614): the copies enter under `controller`.
                 let count = self.token_count_after_replacements(controller, count);
@@ -236,6 +241,14 @@ impl Game {
                         events.push(Event::CopyRiderKeywordsGranted {
                             object: token,
                             keywords: HASTE,
+                        });
+                    }
+                    // Carry the copied object's own copiable rider (CR 707.2) onto the new copy —
+                    // unioned with any `haste` this effect adds of its own.
+                    if !copied_rider.is_empty() {
+                        events.push(Event::CopyRiderKeywordsGranted {
+                            object: token,
+                            keywords: copied_rider,
                         });
                     }
                     // Determined Iteration: "Sacrifice it at the beginning of the next end step"
@@ -357,12 +370,22 @@ impl Game {
                         continue;
                     }
                     let def = self.def_id_of(id);
+                    // CR 707.2: "a copy of that token" carries the copied token's own copy-effect
+                    // exception rider (a Twinflame haste token that entered this turn keeps haste
+                    // on its copy).
+                    let copied_rider = self.copiable_keywords(id);
                     events.push(Event::TokenCreated {
                         token: next,
                         controller: attacker,
                         def,
                         creator: source,
                     });
+                    if !copied_rider.is_empty() {
+                        events.push(Event::CopyRiderKeywordsGranted {
+                            object: next,
+                            keywords: copied_rider,
+                        });
+                    }
                     events.push(Event::Tapped { object: next });
                     events.push(Event::TokenEnteredAttacking {
                         token: next,

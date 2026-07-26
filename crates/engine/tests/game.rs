@@ -9371,6 +9371,63 @@ fn twinflame_token_copiable_snapshot_carries_haste() {
 }
 
 #[test]
+fn rite_of_replication_copying_a_twinflame_token_preserves_haste() {
+    // Copy-effect exception riders slice 2 (token-copy readers): Rite of Replication makes "a
+    // token that's a copy of target creature." When that creature is itself a first-generation
+    // copy carrying a copiable rider (a Twinflame haste token), the second-generation copy keeps
+    // haste (CR 707.2 — the copy uses the copied object's current copiable values).
+    let mut game = Game::new();
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let twinflame = game.spawn_in_hand(PlayerId(0), card("Twinflame"));
+    let rite = game.spawn_in_hand(PlayerId(0), card("Rite of Replication"));
+
+    cast_twinflame_and_resolve(&mut game, twinflame, 1);
+    let haste_token = battlefield_named(&game, PlayerId(0), "Grizzly Bear")
+        .into_iter()
+        .find(|&id| id != mine)
+        .expect("Twinflame minted a haste token");
+    assert!(
+        game.copiable_keywords(haste_token)
+            .contains(&Keyword::Haste)
+    );
+
+    let before: Vec<ObjectId> = battlefield_named(&game, PlayerId(0), "Grizzly Bear");
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: rite,
+        target: Some(Target::Object(haste_token)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .expect("Rite is castable");
+    resolve_top_of_stack(&mut game);
+
+    let second_gen = battlefield_named(&game, PlayerId(0), "Grizzly Bear")
+        .into_iter()
+        .find(|&id| !before.contains(&id))
+        .expect("Rite minted a second-generation copy");
+    assert!(
+        game.has_keyword(second_gen, Keyword::Haste),
+        "copying a copy keeps its 'except it has haste' rider (CR 707.2)"
+    );
+    assert!(
+        game.copiable_keywords(second_gen).contains(&Keyword::Haste),
+        "the rider stays copiable on the second-generation copy — a third copy would keep it too"
+    );
+}
+
+#[test]
 fn a_token_copy_fires_the_originals_etb_trigger() {
     // Copying Elvish Visionary ("When this creature enters, draw a card") makes a token that
     // enters through the normal path — so its copied ETB fires and draws.

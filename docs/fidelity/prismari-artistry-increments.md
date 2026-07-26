@@ -37,10 +37,12 @@ read that every permanent-copy and token-copy path consults.
    Regressions: `twinflame_token_copiable_snapshot_carries_haste`,
    `muddle_copied_form_copiable_snapshot_carries_myriad` (plus the existing haste/myriad behavior
    tests, unchanged).
-2. **Token-copy readers (M).** Route `TokenEffect::CreateCopy` and
-   `TokenEffect::CopyEachEnteredThisTurnTokenTappedAttacking` through that accessor so
-   `Determined Iteration`, `Replication Technique`, `Rite of Replication`, `Rionya`, `Twinflame`,
-   and `Redoubled Stormsinger` preserve the copied rider when they copy a first-generation copy.
+2. **Token-copy readers (M).** _LANDED 2026-07-26._ `TokenEffect::CreateCopy` and
+   `TokenEffect::CopyEachEnteredThisTurnTokenTappedAttacking` now read `copiable_keywords` of the
+   copied object and emit the rider on each minted token, so `Determined Iteration`,
+   `Replication Technique`, `Rite of Replication`, `Rionya`, `Twinflame`, and `Redoubled
+   Stormsinger` preserve the copied rider when they copy a first-generation copy (CR 707.2).
+   Regression: `rite_of_replication_copying_a_twinflame_token_preserves_haste`.
 3. **Permanent-copy readers (L).** Route `answer_enter_as_copy`,
    `answer_each_other_token_becomes_copy`, `answer_choose_copy_card_from_list`, and
    `TokenEffect::BecomeCopyOfTargetCreatureGainingMyriad` through the same accessor so
