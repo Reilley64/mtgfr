@@ -9,6 +9,8 @@ import {
   playAttentionPriority,
   playAttentionYourTurn,
   playTableFeelDamage,
+  playTableFeelDestroy,
+  playTableFeelExile,
   playTableFeelLand,
   playTableFeelResolve,
   playTableFeelStack,
@@ -56,6 +58,11 @@ export const MountBoardAudio = Mount.define(
             if (readBool(element, "feel-stack")) playTableFeelStack();
             if (readBool(element, "feel-resolve")) playTableFeelResolve();
             if (readBool(element, "feel-damage")) playTableFeelDamage();
+            const reduced = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+            if (!reduced) {
+              if (readBool(element, "feel-destroy")) playTableFeelDestroy();
+              if (readBool(element, "feel-exile")) playTableFeelExile();
+            }
           }
           prevSeq = seq;
 
@@ -84,6 +91,8 @@ export const MountBoardAudio = Mount.define(
             "data-feel-stack",
             "data-feel-resolve",
             "data-feel-damage",
+            "data-feel-destroy",
+            "data-feel-exile",
           ],
         });
         return observer;

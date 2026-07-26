@@ -71,6 +71,8 @@ function boardAudioAttrs(model: BoardViewModel, state: VisibleState) {
     h.DataAttribute("feel-stack", feel.stack ? "1" : "0"),
     h.DataAttribute("feel-resolve", feel.resolve ? "1" : "0"),
     h.DataAttribute("feel-damage", feel.damage ? "1" : "0"),
+    h.DataAttribute("feel-destroy", feel.destroy ? "1" : "0"),
+    h.DataAttribute("feel-exile", feel.exile ? "1" : "0"),
   ];
 }
 
