@@ -1,4 +1,4 @@
-import { Effect } from "effect";
+import { Effect, Option } from "effect";
 import { Story } from "foldkit";
 import { Scene } from "foldkit/test";
 import { expect, test } from "vitest";
@@ -274,6 +274,54 @@ test("activated pool target adds a card; deck target removes one", () => {
       expect(m.decks.builder.entries["sol-ring"]).toBeUndefined();
     }),
   );
+});
+
+test("removing two different deck cards clears both entries", () => {
+  const [model] = init();
+  const solRing = card({ id: "sol-ring", name: "Sol Ring" });
+  const manaCrypt = card({ id: "mana-crypt", name: "Mana Crypt" });
+
+  Story.story(
+    appUpdate,
+    Story.with(model),
+    Story.message(ReceivedBuilderSearchPage({ cards: [solRing, manaCrypt], offset: 0, query: "" })),
+    Story.message(ActivatedBuilderTarget({ cardId: "sol-ring", kind: "pool" })),
+    Story.message(ActivatedBuilderTarget({ cardId: "mana-crypt", kind: "pool" })),
+    Story.message(ActivatedBuilderTarget({ cardId: "sol-ring", kind: "deck" })),
+    Story.message(ActivatedBuilderTarget({ cardId: "mana-crypt", kind: "deck" })),
+    Story.model((m) => {
+      expect(m.decks.builder.entries["sol-ring"]).toBeUndefined();
+      expect(m.decks.builder.entries["mana-crypt"]).toBeUndefined();
+    }),
+  );
+});
+
+test("decklist rows are keyed by card id so pointer mounts remount after remove", () => {
+  const solRing = card({ id: "sol-ring", name: "Sol Ring" });
+  const manaCrypt = card({ id: "mana-crypt", name: "Mana Crypt" });
+  const model = {
+    ...initialDeckBuilderSubmodel(),
+    atEnd: true,
+    entries: {
+      "mana-crypt": { count: 1, print: manaCrypt.default_print },
+      "sol-ring": { count: 1, print: solRing.default_print },
+    },
+    known: { "mana-crypt": manaCrypt, "sol-ring": solRing },
+    preferredPrint: {
+      "mana-crypt": manaCrypt.default_print,
+      "sol-ring": solRing.default_print,
+    },
+  };
+
+  // Keys force snabbdom to destroy/recreate rows; without them BindBuilderCardPointer
+  // keeps the removed cardId after the first click (Mount args are mount-time only).
+  const html = builderView(model, null);
+  for (const id of ["mana-crypt", "sol-ring"] as const) {
+    const row = Scene.selector(`[data-testid="deck-row-${id}"]`)(html);
+    expect(Option.isSome(row)).toBe(true);
+    if (Option.isNone(row)) return;
+    expect(row.value.key).toBe(id);
+  }
 });
 
 test("choose-print menu action opens the print picker without adding a copy", () => {

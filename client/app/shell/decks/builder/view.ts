@@ -364,6 +364,9 @@ function poolTile(model: DeckBuilderSubmodel, card: DeckBuilderSubmodel["pool"][
   const print = model.preferredPrint[card.id] ?? card.default_print;
   return h.button(
     [
+      // Key by oracle id: BindBuilderCardPointer captures cardId at mount; without a
+      // stable key, snabbdom reuses the node after list churn and clicks keep the old id.
+      h.Key(card.id),
       h.Type("button"),
       h.DataAttribute("testid", `pool-card-${card.id}`),
       h.Class(cn(POOL_CARD, offIdentity(model, card) && "opacity-40")),
@@ -469,6 +472,7 @@ export function view(model: DeckBuilderSubmodel, apiVersion: string | null): Htm
               )
             : h.button(
                 [
+                  h.Key(model.commander.id),
                   h.Type("button"),
                   h.DataAttribute("testid", "builder-commander"),
                   h.Class(
@@ -512,6 +516,9 @@ export function view(model: DeckBuilderSubmodel, apiVersion: string | null): Htm
               ...rows.map((row) =>
                 h.button(
                   [
+                    // Key by oracle id so removing a row remounts BindBuilderCardPointer
+                    // for the next card (Mount args are captured once at insert).
+                    h.Key(row.id),
                     h.Type("button"),
                     h.DataAttribute("testid", `deck-row-${row.id}`),
                     h.Class(DECK_ROW),
