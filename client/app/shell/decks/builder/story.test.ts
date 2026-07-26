@@ -163,12 +163,15 @@ test("catalog and decklist are independent overscroll-contained scroll hosts", (
     Scene.with(model),
     Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "deck" }), ClearedBuilderHover()),
     Scene.Mount.resolve(BindCardArt, ClearedBuilderHover() as never),
+    // Viewport-bounded shell — without h-dvh the grid grows with the pool and the catalog never overflows.
+    Scene.expect(Scene.selector('[data-testid="deck-builder-page"]')).toHaveClass("h-dvh"),
+    Scene.expect(Scene.selector('[data-testid="deck-builder-page"]')).toHaveClass("grid-rows-[minmax(0,1fr)]"),
+    Scene.expect(Scene.selector('[data-testid="deck-builder-page"]')).toHaveClass("overflow-hidden"),
+    Scene.expect(Scene.selector('[data-testid="deck-builder-page"]')).not.toHaveClass("min-h-screen"),
     Scene.expect(Scene.selector('[data-testid="builder-pool-scroll"]')).toHaveClass("overflow-y-auto"),
     Scene.expect(Scene.selector('[data-testid="builder-pool-scroll"]')).toHaveClass("overscroll-contain"),
     Scene.expect(Scene.selector('[data-testid="builder-decklist-scroll"]')).toHaveClass("overflow-y-auto"),
-    Scene.expect(Scene.selector('[data-testid="builder-decklist-scroll"]')).toHaveClass(
-      "overscroll-contain",
-    ),
+    Scene.expect(Scene.selector('[data-testid="builder-decklist-scroll"]')).toHaveClass("overscroll-contain"),
     Scene.expect(Scene.selector('[data-testid="builder-print-picker"]')).not.toExist(),
   );
 });
@@ -198,15 +201,9 @@ test("print picker freezes catalog and decklist scroll while print grid stays sc
     Scene.expect(Scene.selector('[data-testid="builder-pool-scroll"]')).toHaveClass("overflow-hidden"),
     Scene.expect(Scene.selector('[data-testid="builder-pool-scroll"]')).not.toHaveClass("overflow-y-auto"),
     Scene.expect(Scene.selector('[data-testid="builder-decklist-scroll"]')).toHaveClass("overflow-hidden"),
-    Scene.expect(Scene.selector('[data-testid="builder-decklist-scroll"]')).not.toHaveClass(
-      "overflow-y-auto",
-    ),
-    Scene.expect(Scene.selector('[data-testid="builder-print-picker-scroll"]')).toHaveClass(
-      "overflow-y-auto",
-    ),
-    Scene.expect(Scene.selector('[data-testid="builder-print-picker-scroll"]')).toHaveClass(
-      "overscroll-contain",
-    ),
+    Scene.expect(Scene.selector('[data-testid="builder-decklist-scroll"]')).not.toHaveClass("overflow-y-auto"),
+    Scene.expect(Scene.selector('[data-testid="builder-print-picker-scroll"]')).toHaveClass("overflow-y-auto"),
+    Scene.expect(Scene.selector('[data-testid="builder-print-picker-scroll"]')).toHaveClass("overscroll-contain"),
   );
 });
 

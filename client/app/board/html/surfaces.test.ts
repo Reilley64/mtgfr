@@ -204,13 +204,14 @@ function gameFold(state: VisibleState | null = gameState(), log: ReadonlyArray<L
       zoneMoves: new Map(),
       resolvedFromStack: new Set(),
       leftStackToPile: new Set(),
+      battlefieldExits: new Map(),
       tokenCreators: new Map(),
       landPlayFrom: new Map(),
       zonePileEntrances: new Map(),
       stackEntrances: new Map(),
       priorStackObjectIds: new Set(),
     },
-    tableFeel: { land: false, stack: false, resolve: false, damage: false },
+    tableFeel: { land: false, stack: false, resolve: false, damage: false, destroy: false, exile: false },
   };
 }
 
@@ -1275,6 +1276,7 @@ test("pay_cost aim shows docked Pay and decline", () => {
       gameState({
         pending_choice: {
           kind: "pay_cost",
+          can_pay: true,
           cost: { colored: [0, 0, 0, 1, 0], generic: 2 },
           label: testMessageRef("Create a Fungus Beast"),
           player: 0,

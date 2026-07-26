@@ -10,6 +10,8 @@ use super::*;
 pub enum DestroyEffect {
     All {
         filter: PermanentFilter,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        cant_be_regenerated: bool,
     },
 
     Target {

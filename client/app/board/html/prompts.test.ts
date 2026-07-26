@@ -72,13 +72,14 @@ function gameFold(s: VisibleState): GameFoldState {
       zoneMoves: new Map(),
       resolvedFromStack: new Set(),
       leftStackToPile: new Set(),
+      battlefieldExits: new Map(),
       tokenCreators: new Map(),
       landPlayFrom: new Map(),
       zonePileEntrances: new Map(),
       stackEntrances: new Map(),
       priorStackObjectIds: new Set(),
     },
-    tableFeel: { land: false, stack: false, resolve: false, damage: false },
+    tableFeel: { land: false, stack: false, resolve: false, damage: false, destroy: false, exile: false },
   };
 }
 
@@ -830,6 +831,7 @@ test("pay_cost prompt emits pay_optional_cost intent from UI", () => {
     state({
       pending_choice: {
         kind: "pay_cost",
+        can_pay: true,
         cost: { colored: [], generic: 2 },
         label: testMessageRef("Pay 2?"),
         player: 0,
@@ -845,6 +847,7 @@ test("pay_cost prompt shows cost on Pay and Don't pay decline", () => {
   const s = state({
     pending_choice: {
       kind: "pay_cost",
+      can_pay: true,
       cost: { colored: [0, 0, 0, 1, 0], generic: 2 },
       label: testMessageRef("Create a Fungus Beast"),
       player: 0,
@@ -859,6 +862,26 @@ test("pay_cost prompt shows cost on Pay and Don't pay decline", () => {
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-pay")).toHaveText("Pay {2}{R}"),
     Scene.expect(Scene.testId("prompt-decline")).toHaveText("Don't pay"),
+  );
+});
+
+test("pay_cost prompt disables Pay when the player cannot afford the cost", () => {
+  const s = state({
+    pending_choice: {
+      kind: "pay_cost",
+      can_pay: false,
+      cost: { colored: [0, 0, 0, 1, 0], generic: 2 },
+      label: testMessageRef("Create a Fungus Beast"),
+      player: 0,
+      source: 1,
+    },
+  });
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("prompt-pay")).toBeDisabled(),
+    Scene.expect(Scene.testId("prompt-decline")).toExist(),
   );
 });
 

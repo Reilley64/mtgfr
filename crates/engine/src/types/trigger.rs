@@ -43,6 +43,13 @@ pub enum Trigger {
     /// When this permanent enters the battlefield (ETB). Spelled `"etb"` in TOML (`"etb_triggered"`
     /// is an accepted alias — see `de::TriggerTag`).
     Etb,
+    /// "As this permanent enters, …" (CR 614.12) — a replacement effect, *not* a triggered
+    /// ability, so it never uses the stack: [`Game::place_pending_triggers`] runs its effect
+    /// inline instead of placing it, and no player gets priority between the entry and the
+    /// choice. Watched off the same entry events as [`Etb`](Self::Etb) (and queued ahead of it,
+    /// so a card carrying both makes its as-enters choice before its ETB trigger is placed).
+    /// Spelled `"as_enters"` in TOML.
+    AsEnters,
     /// When this permanent is turned face up (CR 702.37f — a morph/megamorph turned-face-up
     /// trigger). Fires off [`Event::TurnedFaceUp`] by scanning the now-revealed object's own
     /// abilities. Spelled `"turned_face_up"` in TOML.
@@ -56,6 +63,14 @@ pub enum Trigger {
     /// [`Game::declare_blockers`] (batch-deduped, like [`Trigger::YouAttackWithCreatures`]'s
     /// [`Game::queue_batch_attack_triggers`]), not [`Game::enqueue_triggers`]'s per-event scan.
     BlocksOrBecomesBlocked,
+    /// Whenever this creature attacks or blocks (Mana-Charged Dragon, CR 508.1a / CR 509.3a) —
+    /// unlike [`BlocksOrBecomesBlocked`](Self::BlocksOrBecomesBlocked), the *attacker* half of a
+    /// block declaration doesn't fire this (an attacker "becomes blocked", it doesn't "block").
+    /// Queued alongside [`Attacks`](Self::Attacks) off [`Event::AttackerDeclared`] for the attack
+    /// half; the block half is a batch-scan from [`Game::declare_blockers`] over the *blocker*
+    /// side only, deduped like [`Game::queue_blocks_or_becomes_blocked_triggers`] so a creature
+    /// blocking multiple attackers still fires once.
+    AttacksOrBlocks,
     /// When this creature dies (moves from the battlefield to the graveyard, or — for a
     /// token — ceases to exist).
     Dies,
@@ -196,6 +211,14 @@ pub enum Trigger {
     /// [`TriggerContext`]'s `attack` tuple so the payoff effect can address "they". See
     /// [`Game::queue_batch_attack_triggers`].
     AnotherPlayerAttacksWithCreatures { at_least: u8 },
+    /// Whenever a creature attacks (CR 508.1, Righteous Cause) — any controller, any defender,
+    /// fired once per attacker declared this combat. Unlike the batch-count triggers above
+    /// (which fire once per combat, gated on a threshold), this one fires once *per attacker* —
+    /// three attackers in one combat means three separate triggers — so
+    /// [`Game::queue_batch_attack_triggers`] gives it its own per-attacker loop over the
+    /// committed attacker set rather than joining the single-pass-per-watcher filter chain the
+    /// count triggers share. Spelled `"creature_attacks"` in TOML.
+    CreatureAttacks,
     /// Whenever the creature this Aura is attached to is declared as an attacker (CR 508.1, the
     /// Impetus cycle: "Whenever enchanted creature attacks, …"). A watch-attached trigger: placed
     /// on the Aura, but its controller is the Aura's own controller — not the enchanted

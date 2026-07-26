@@ -224,12 +224,36 @@ pool that supports it. After client catch-up (the wire is settled by then):
    the live drive *did* catch was invisible to every unit test: a mandatory two-target prompt
    the client could only ever answer with one id, wedging all four seats forever.
    Fix what it finds with regression tests at the lowest layer (`test-driven-development`).
+   **Three traps produced four false wedges in the heavenly-inferno grind — the `verify` skill
+   now carries all three:** the smoke stack may take its own HTTP/Vite/Postgres ports but *not*
+   its own gRPC port (routed tables are pinned to `:50051`); a rejected intent acks HTTP 200, so
+   the driver must branch on `Ack.accepted`; and an action's legal targets already ride on
+   `ActionView.targets`, so guessing from the battlefield buries the drive under thousands of
+   `reject.illegal_target` acks. Read `logs/actions.<TABLE>.toon` (every intent, its accepted
+   flag, reject reason, post-state and events) before blaming the engine.
+   **Then read the surviving rejects per card — that is where the real bugs are.** Two clusters
+   outlived the traps here: one was the driver skipping a cost the action itself carried
+   (`sacrifice_choices` → `reject.cannot_activate`), the other a genuine product bug the whole
+   unit suite missed — a spell whose targets are chosen *after* the cast (CR 601.2c) was
+   advertised with `needs_target: true`, so the board staged a target click the cast gate could
+   only reject. Rule: **an action the snapshot lists must be submittable exactly as listed** —
+   and so must a pending choice. Fixing that cluster exposed the next (equip enumerating
+   opponents' creatures its own gate rejects), which exposed the next (a `ChooseSpellTargets`
+   raised with `min: 0, max: 0` and a full `legal` list). Expect this class to recur, and re-run
+   the drive after each fix: a loud cluster hides the quieter ones behind it.
    If the local environment
    cannot boot server+client (missing DB, port conflicts, etc.), delegate the smoke game to a
    cloud/remote agent with a clean setup, or fix the environment before proceeding. Do not
    skip — this is the final integration gate before the PR.
 3. Sync-merge the default branch into the grind branch one last time; full bar both sides
    (`just check`-equivalent: workspace tests, fmt, clippy-no-new, tsc, client tests).
+   Two things a merge breaks that no test name warns you about: a wire field whose *type*
+   changed on the default branch (heavenly-inferno merged an i18n hard-cut that turned
+   `ActionView.label` from `string` into `MessageRef`) only fails in **`just client-typecheck`**,
+   in this branch's own test fixtures — reach for the repo's fixture helper
+   (`client/lib/i18n/testMessageRef.ts`) rather than hand-building the new shape; and
+   `docs/CR_INDEX.md` goes stale from both sides' new citations, so re-run
+   `just engine-cr-index` before `just engine-cr-index-check`.
 4. **Skill retrospective (before opening the PR):** the grind isn't done until this skill has
    absorbed what the grind taught. Review the whole run against the skill and fold every
    lesson in *before* opening the PR, so the skill improvements ride in the same squash

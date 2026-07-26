@@ -13,7 +13,7 @@ Make catalog and decklist scroll independently inside the split-pane builder, an
 
 ### Independent pane scroll
 
-- The builder page shell (`deck-builder-page`) stays non-scrolling (`overflow-hidden`). Document/page scroll is not the browsing mechanism.
+- The builder page shell (`deck-builder-page`) stays viewport-bounded (`h-dvh` + `grid-rows-[minmax(0,1fr)]`) and non-scrolling (`overflow-hidden`). Document/page scroll is not the browsing mechanism — without a definite viewport height the grid grows with the pool and the catalog never overflows.
 - **Catalog** (left pool grid): keep `overflow-y-auto` as the infinite-scroll host (existing IntersectionObserver sentinel). Add `overscroll-contain` so wheel/trackpad does not chain to the document or the decklist.
 - **Decklist** (right list): keep its own `overflow-y-auto` scrollport. Add `overscroll-contain`. Ensure the aside participates in the grid height constraint (`min-h-0` / flex column) so the list scrolls inside the panel instead of expanding the page.
 - Wheel/trackpad over one pane must not move the other pane.

@@ -3,13 +3,11 @@ import { type Html, html } from "foldkit/html";
 import * as Mount from "foldkit/mount";
 import { cn } from "../../../../lib/cn";
 import { appVersionBadge } from "../../../../lib/ui/app-version";
-import { buttonClass } from "../../../../lib/ui/buttonClass";
 import { confirmDialog } from "../../../../lib/ui/confirmDialog";
-import { seatFace } from "../../../../lib/ui/seat-face";
 import { feltClass, fieldClass, listRowClass } from "../../../../lib/ui/surfaces";
 import type { Message } from "../../../messages";
-import { RequestedLogout } from "../../../messages";
-import { DeckRoute, LeaderboardRoute, NewDeckRoute, PlayRoute, routePath } from "../../../routes";
+import { DeckRoute, NewDeckRoute, PlayRoute, routePath } from "../../../routes";
+import { accountChrome } from "../../account-chrome/view";
 import { type DeckCardModel, renderDeckCard } from "../deck-card";
 import {
   AskedDeckDelete,
@@ -162,54 +160,6 @@ function contextMenu(model: DeckListSubmodel): Html {
   );
 }
 
-function leaderboardTeaser(model: DeckListSubmodel): Html {
-  if (model.leaderboardTeaser.length === 0) return null;
-
-  return h.section(
-    [
-      h.Class("mx-auto mb-md flex max-w-[960px] flex-col gap-md rounded-hud border border-vine bg-forest-surface p-lg"),
-      h.DataAttribute("testid", "leaderboard-teaser"),
-    ],
-    [
-      h.div(
-        [h.Class("flex flex-wrap items-center justify-between gap-md")],
-        [
-          h.div(
-            [h.Class("flex min-w-0 flex-col gap-xs")],
-            [
-              h.h2([h.Class("m-0 text-title")], ["Top players"]),
-              h.p([h.Class("m-0 text-label text-lichen")], ["See who is ahead before you pick a deck."]),
-            ],
-          ),
-          h.a(
-            [
-              h.Href(routePath(LeaderboardRoute())),
-              h.DataAttribute("testid", "leaderboard-teaser-link"),
-              h.Class(buttonClass("ghost")),
-            ],
-            ["Full leaderboard"],
-          ),
-        ],
-      ),
-      h.div(
-        [h.Class("flex flex-col gap-sm")],
-        model.leaderboardTeaser
-          .slice(0, 5)
-          .map((entry) =>
-            h.div(
-              [h.Class(listRowClass("grid grid-cols-[72px_1fr_96px] items-center gap-md rounded-control px-md py-sm"))],
-              [
-                h.span([h.Class("text-label text-lichen")], [`#${entry.rank}`]),
-                h.span([h.Class("min-w-0 truncate text-body")], [entry.username]),
-                h.span([h.Class("text-right text-game text-priority-gold")], [String(entry.rating)]),
-              ],
-            ),
-          ),
-      ),
-    ],
-  );
-}
-
 export function view(
   model: DeckListSubmodel,
   username: string,
@@ -250,40 +200,16 @@ export function view(
           h.div(
             [h.Class("flex flex-wrap items-center gap-md")],
             [
-              h.div(
-                [h.Class("flex items-center gap-sm")],
-                [
-                  seatFace(h, {
-                    seat: 0,
-                    username,
-                    gravatarHash: meGravatarHash,
-                    className: "size-9",
-                  }),
-                  h.div(
-                    [h.Class("flex flex-col leading-tight")],
-                    [
-                      h.span([h.Class("text-label text-lichen")], [username]),
-                      h.a(
-                        [
-                          h.Href("https://gravatar.com"),
-                          h.DataAttribute("testid", "account-gravatar-link"),
-                          h.Attribute("target", "_blank"),
-                          h.Attribute("rel", "noopener noreferrer"),
-                          h.Class("text-caption text-lichen underline"),
-                        ],
-                        ["Change at Gravatar"],
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              h.button([h.Type("button"), h.OnClick(RequestedLogout()), h.Class(buttonClass("ghost"))], ["Sign out"]),
-              h.a([h.Href(routePath(NewDeckRoute())), h.Class(buttonClass("primary"))], ["New deck"]),
+              accountChrome(h, {
+                username,
+                gravatarHash: meGravatarHash,
+                menuOpen: model.accountMenuOpen,
+                showLeaderboardLink: true,
+              }),
             ],
           ),
         ],
       ),
-      leaderboardTeaser(model),
       h.section(
         [h.Class("mx-auto max-w-[960px]")],
         [
@@ -291,9 +217,6 @@ export function view(
             ? null
             : h.div([h.Role("alert"), h.Class("text-label text-reconnect-rust")], [model.error]),
           model.loading ? h.div([h.Class("text-label text-lichen")], ["Loading decks…"]) : null,
-          !model.loading && model.decks.length === 0
-            ? h.div([h.Class("text-label text-lichen")], ["No decks yet — build one to get started."])
-            : null,
           !model.loading && model.decks.length > 0
             ? h.input([
                 h.Type("search"),
@@ -308,20 +231,38 @@ export function view(
           !model.loading && model.decks.length > 0 && visible.length === 0
             ? h.div([h.Class("text-label text-lichen")], ["No decks match."])
             : null,
-          !model.loading && visible.length > 0
+          !model.loading
             ? h.div(
                 [
                   h.DataAttribute("testid", "deck-list-grid"),
                   h.Class("mx-auto grid max-w-[960px] grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-md"),
                 ],
-                visible.map((deck) => {
-                  return renderDeckCard(h, deckCardModel(model, deck), {
-                    mode: "link",
-                    href: routePath(PlayRoute({ deckId: String(deck.id) })),
-                    rootAttrs: [h.OnMount(BindDeckListContextMenu({ deckId: deck.id }))],
-                    testId: `deck-tile-${deck.id}`,
-                  });
-                }),
+                [
+                  h.a(
+                    [
+                      h.Href(routePath(NewDeckRoute())),
+                      h.DataAttribute("testid", "deck-list-new-deck"),
+                      h.Class(
+                        listRowClass(
+                          "flex aspect-auto min-h-[200px] flex-col items-center justify-center gap-sm border border-dashed border-vine bg-transparent no-underline",
+                        ),
+                      ),
+                      h.AriaLabel("New deck"),
+                    ],
+                    [
+                      h.span([h.Class("text-title text-lichen")], ["+"]),
+                      h.span([h.Class("text-label font-semibold text-snow")], ["New deck"]),
+                    ],
+                  ),
+                  ...visible.map((deck) => {
+                    return renderDeckCard(h, deckCardModel(model, deck), {
+                      mode: "link",
+                      href: routePath(PlayRoute({ deckId: String(deck.id) })),
+                      rootAttrs: [h.OnMount(BindDeckListContextMenu({ deckId: deck.id }))],
+                      testId: `deck-tile-${deck.id}`,
+                    });
+                  }),
+                ],
               )
             : null,
         ],

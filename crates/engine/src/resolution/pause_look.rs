@@ -126,7 +126,14 @@ impl Game {
                         count,
                         overflow,
                     },
-                )
+                );
+                // Stranglehold denies `searching_player` (CR 701.19): the raise above came back
+                // without pausing. In an `AllPlayers` fan-out (Veteran Explorer), walk straight to
+                // the next queued player instead of silently dropping the rest of the fan-out;
+                // outside a fan-out this is a no-op (`continue_search_fanout` sees no live queue).
+                if !self.resolution_is_paused() {
+                    self.continue_search_fanout();
+                }
             }
             _ => unreachable!("look pause family received a non-family effect"),
         }

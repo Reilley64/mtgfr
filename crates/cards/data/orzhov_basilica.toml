@@ -1,0 +1,33 @@
+# This land enters tapped.
+# When this land enters, return a land you control to its owner's hand.
+# {T}: Add {W}{B}.
+name = "Orzhov Basilica"
+oracle = "This land enters tapped.\nWhen this land enters, return a land you control to its owner's hand.\n{T}: Add {W}{B}."
+set = "dsc"
+id = "aa00ae0b-7c0f-427e-8102-ce0e2a6af5df"
+default_print = "9c7c08fc-b6ee-498c-8ab6-fd6be27c9d97"
+enters_tapped = true
+
+[kind]
+type = "land"
+
+# When this land enters, return a land you control to its owner's hand.
+[[abilities]]
+timing = "etb"
+
+# return a land you control to its owner's hand.
+[[abilities.effects]]
+type = "zone"
+mode = "return_to_hand"
+target = { permanent = { types = "land", controller = "you" } }
+
+# {T}: Add {W}{B}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add {W}{B}.
+[[abilities.effects]]
+type = "mana"
+mode = "add"
+mana = ["white", "black"]

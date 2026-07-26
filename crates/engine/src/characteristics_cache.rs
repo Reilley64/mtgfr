@@ -95,6 +95,10 @@ impl Game {
         self.characteristics_cache
             .write(|cache| match event.clone() {
                 Event::CountersPlaced { object, .. }
+                // A -1/-1 (or any kind) counter shifts P/T just like a +1/+1 does; without this the
+                // target's cached toughness goes stale (put_counters -1/-1 shrank power but not
+                // toughness). Enters-with-counters escapes only via its ETB's board-wide invalidation.
+                | Event::KindCountersPlaced { object, .. }
                 | Event::TempBoost { object, .. }
                 | Event::BasePtSetUntilEndOfTurn { object, .. }
                 | Event::BasePtSetIndefinite { object, .. }
@@ -201,9 +205,11 @@ impl Game {
                 Event::CreatureTypeChosen { object, .. } => {
                     cache.invalidate_owner(self, self.owner_of(object));
                 }
-                // Flickering Ward's answered "choose a color" changed the protection keyword the Aura (CR 702.21, CR 303.4)
-                // (`object`) grants its enchanted host — invalidate that host's cached keywords.
+                // A chosen color changed a protection keyword that reads `chosen_color`: Voice of All's
+                // own static reads its self (`object`), while Flickering Ward's Aura (`object`) grants (CR 702.21, CR 303.4)
+                // the keyword to its enchanted host — invalidate both.
                 Event::ColorChosen { object, .. } => {
+                    cache.invalidate_object(object);
                     if let Some(host) = self.as_permanent(object).and_then(|p| p.attached_to) {
                         cache.invalidate_object(host);
                     }

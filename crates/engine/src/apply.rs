@@ -529,6 +529,7 @@ impl Game {
                 bought_back,
                 strive_count,
                 replicate_count,
+                multikicker_count,
                 bestowed,
                 face_down,
                 masked,
@@ -544,6 +545,11 @@ impl Game {
                 // stack (CR 601's default cast zone — Dirgur Focusmage's "from your hand").
                 let from_zone = self.zone_of(from);
                 let cast_from_hand = from_zone == Zone::Hand;
+                // CR 505.1a/505.1b: read off ambient timing state (like `cast_from_hand` above),
+                // not a player-declared cost — Sulfurous Blast's/Return to Dust's cast-timing
+                // rider needs no wire field, unlike kicked/multikicker.
+                let cast_during_main_phase = self.active_player == controller
+                    && matches!(self.step, Step::Main1 | Step::Main2);
                 // Serra Paragon (CR 118.9): a permanent spell cast from the graveyard by neither
                 // flashback nor escape can only be its once-per-turn permission — flashback/escape (CR 702.34, CR 702.19, CR 500)
                 // set their own flags, and no permanent card has retrace. The tag rides to the
@@ -569,11 +575,13 @@ impl Game {
                         targets_second: TargetList::default(),
                         commander,
                         x,
+                        chosen_color: None,
                         modes,
                         copy: false,
                         flashback,
                         escape,
                         cast_from_hand,
+                        cast_during_main_phase,
                         damage_division: DamageAssignment::default(),
                         damage_division_players: [None; MAX_TARGETS],
                         counter_division: DamageAssignment::default(),
@@ -583,6 +591,7 @@ impl Game {
                         bought_back,
                         strive_count,
                         replicate_count,
+                        multikicker_count,
                         serra_recursion,
                         bestowed,
                         face_down,
@@ -639,6 +648,9 @@ impl Game {
                 let def = adventure;
                 let adventure = card_def(adventure);
                 let commander = self.is_commander(source);
+                // CR 505.1a/505.1b: same ambient-timing read `Event::SpellCast` uses above.
+                let cast_during_main_phase = self.active_player == controller
+                    && matches!(self.step, Step::Main1 | Step::Main2);
                 let id = self.create_object(
                     Some(source),
                     Object::Spell(Spell {
@@ -648,12 +660,14 @@ impl Game {
                         targets_second: TargetList::default(),
                         commander,
                         x,
+                        chosen_color: None,
                         modes: Modes::default(),
                         copy: false,
                         flashback: false,
                         escape: false,
                         // Cast from the card's owner's hand (CR 601's default cast zone).
                         cast_from_hand: true,
+                        cast_during_main_phase,
                         damage_division: DamageAssignment::default(),
                         damage_division_players: [None; MAX_TARGETS],
                         counter_division: DamageAssignment::default(),
@@ -663,6 +677,7 @@ impl Game {
                         bought_back: false,
                         strive_count: 0,
                         replicate_count: 0,
+                        multikicker_count: 0,
                         serra_recursion: false,
                         bestowed: false,
                         face_down: false,
@@ -715,6 +730,9 @@ impl Game {
                 );
                 let def = face.as_ref().clone();
                 let commander = self.is_commander(source);
+                // CR 505.1a/505.1b: same ambient-timing read `Event::SpellCast` uses above.
+                let cast_during_main_phase = self.active_player == controller
+                    && matches!(self.step, Step::Main1 | Step::Main2);
                 let id = self.create_object(
                     Some(source),
                     Object::Spell(Spell {
@@ -724,12 +742,14 @@ impl Game {
                         targets_second: TargetList::default(),
                         commander,
                         x,
+                        chosen_color: None,
                         modes: Modes::default(),
                         copy: false,
                         flashback: false,
                         escape: false,
                         // Cast from the card's owner's hand (CR 601's default cast zone).
                         cast_from_hand: true,
+                        cast_during_main_phase,
                         damage_division: DamageAssignment::default(),
                         damage_division_players: [None; MAX_TARGETS],
                         counter_division: DamageAssignment::default(),
@@ -739,6 +759,7 @@ impl Game {
                         bought_back: false,
                         strive_count: 0,
                         replicate_count: 0,
+                        multikicker_count: 0,
                         serra_recursion: false,
                         bestowed: false,
                         face_down: false,
@@ -821,11 +842,14 @@ impl Game {
                             targets_second: TargetList::default(),
                             commander: false,
                             x: 0,
+                            chosen_color: None,
                             modes: Modes::default(),
                             copy: true,
                             flashback: false,
                             escape: false,
                             cast_from_hand: false,
+                            // A copy isn't "cast" (CR 707.10) — no ambient timing to read.
+                            cast_during_main_phase: false,
                             damage_division: DamageAssignment::default(),
                             damage_division_players: [None; MAX_TARGETS],
                             counter_division: DamageAssignment::default(),
@@ -835,6 +859,7 @@ impl Game {
                             bought_back: false,
                             strive_count: 0,
                             replicate_count: 0,
+                            multikicker_count: 0,
                             serra_recursion: false,
                             bestowed: false,
                             face_down: false,
@@ -877,9 +902,14 @@ impl Game {
             Event::CreatureTypeChosen { object, subtype } => {
                 self.permanent_mut(object).chosen_subtype = Some(subtype);
             }
-            Event::ColorChosen { object, color } => {
-                self.permanent_mut(object).chosen_color = Some(color);
-            }
+            // Most choose_color sources are permanents (Mother of Runes, Flickering Ward's
+            // as-enters self); Bathe in Light's is the spell itself mid-resolution, which isn't
+            // a permanent, so it gets its own `Spell::chosen_color` slot instead.
+            Event::ColorChosen { object, color } => match &mut self.objects[object as usize] {
+                Object::Permanent(p) => p.chosen_color = Some(color),
+                Object::Spell(s) => s.chosen_color = Some(color),
+                other => panic!("object {object} can't record a chosen color: {other:?}"),
+            },
             Event::ColorSetUntilEndOfTurn { object, color } => {
                 self.permanent_mut(object).set_color_eot = Some(color);
             }
@@ -895,6 +925,9 @@ impl Game {
                 let back = card_def(self.permanent(source).def)
                     .back
                     .expect("a prepared cast's source has a back face");
+                // CR 505.1a/505.1b: same ambient-timing read `Event::SpellCast` uses above.
+                let cast_during_main_phase = self.active_player == controller
+                    && matches!(self.step, Step::Main1 | Step::Main2);
                 let def = back;
                 let back = card_def(back);
                 let id = self.create_object(
@@ -906,6 +939,7 @@ impl Game {
                         targets_second: TargetList::default(),
                         commander: false,
                         x,
+                        chosen_color: None,
                         modes: Modes::default(),
                         // "Cast a **copy**" (CR): it ceases to exist on resolve rather than
                         // becoming a graveyard card (there is no card behind it).
@@ -914,6 +948,7 @@ impl Game {
                         escape: false,
                         // Cast from the source permanent's prepared state, not the hand.
                         cast_from_hand: false,
+                        cast_during_main_phase,
                         damage_division: DamageAssignment::default(),
                         damage_division_players: [None; MAX_TARGETS],
                         counter_division: DamageAssignment::default(),
@@ -923,6 +958,7 @@ impl Game {
                         bought_back: false,
                         strive_count: 0,
                         replicate_count: 0,
+                        multikicker_count: 0,
                         serra_recursion: false,
                         bestowed: false,
                         face_down: false,
@@ -1012,6 +1048,7 @@ impl Game {
                         player.flash_permission_this_turn = false;
                         player.channel_colorless_mana_this_turn = false;
                         player.graveyard_play_used_this_turn = false;
+                        player.attacked_this_turn = false;
                     }
                     // "Activate only once each turn" (CR 602.2b) resets at the start of every
                     // turn, not just the capped ability's controller's own — same boundary as
@@ -1044,6 +1081,11 @@ impl Game {
                     // expires at the next Untap — same behavior-exact turn-boundary idiom as the
                     // per-player Inkshield shield just above.
                     self.combat_extras.prevent_all_combat_damage_this_turn = false;
+                    // "You choose which creatures attack/block this turn" (Master Warcraft)
+                    // expires at the same turn boundary as the shields above — combat is always
+                    // within the turn, so clearing at Untap is behavior-exact for "this turn".
+                    self.combat_extras.attack_declarer = None;
+                    self.combat_extras.block_declarer = None;
                     // "Entered the battlefield this turn" (Oran-Rief, the Vastwood) expires at
                     // the same turn boundary — every battlefield permanent's, not just the
                     // active player's (a new turn, anyone's, ends "this turn").
@@ -1379,6 +1421,10 @@ impl Game {
                 let target = defender_planeswalker
                     .map_or(Defender::Player(defender), Defender::Planeswalker);
                 self.combat.attack_targets.push((object, target));
+                // Angelic Arbiter's "attacked with a creature this turn" tracking (turn-scoped;
+                // reset at Untap alongside the other this-turn tallies above).
+                let controller = self.controller_of(object);
+                self.players[controller.0 as usize].attacked_this_turn = true;
             }
             Event::TokenEnteredAttacking { token, defender } => {
                 self.combat.attackers.push(token);
@@ -1697,6 +1743,8 @@ impl Game {
                     masked,
                     evoked,
                     spent_colors,
+                    cast_from_hand,
+                    multikicker_count,
                 ) = match &self.objects[from as usize] {
                     Object::Spell(s) => (
                         s.def,
@@ -1711,6 +1759,8 @@ impl Game {
                         s.masked,
                         s.evoked,
                         s.spent_colors,
+                        s.cast_from_hand,
+                        s.multikicker_count,
                     ),
                     _ => panic!("PermanentEntered source {from} is not a spell"),
                 };
@@ -1724,6 +1774,9 @@ impl Game {
                 // See `Permanent::entered_with_x`'s doc — locked in here while `from` is still
                 // the resolving Spell, before `remove_spell_from_stack` below takes it away.
                 self.permanent_mut(permanent).entered_with_x = x;
+                // See `Permanent::entered_multikicker_count`'s doc — same "read it before the
+                // spell is gone" idiom as `entered_with_x` above (Lightkeeper of Emeria's ETB).
+                self.permanent_mut(permanent).entered_multikicker_count = multikicker_count;
                 // See `Permanent::cast_time_enchant_target`'s doc — same "read it before the
                 // spell is gone" idiom as `entered_with_x` above. Harmless to set for every
                 // permanent (not just `enchant_graveyard` ones): `ThisAurasGraveyardTarget` is
@@ -1752,6 +1805,9 @@ impl Game {
                 // See `Permanent::spent_colors`'s doc — same "read it before the spell is gone"
                 // idiom as `entered_with_x` above (Court Hussar's "unless {W} was spent to cast it").
                 self.permanent_mut(permanent).spent_colors = spent_colors;
+                // Dread Cacodemon/Reiver Demon: "if you cast it from your hand" — same
+                // "read it before the spell is gone" idiom as `spent_colors` just above.
+                self.permanent_mut(permanent).cast_from_hand = cast_from_hand;
                 // CR 707.10a: a copy of a permanent spell becomes a token as it resolves — it
                 // ceases to exist (rather than going to the graveyard) once it leaves the
                 // battlefield, via the same `Permanent::token` machinery any other token uses.

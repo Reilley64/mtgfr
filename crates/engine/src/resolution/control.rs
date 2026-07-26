@@ -224,6 +224,19 @@ impl Game {
                 .map(|object| Event::Untapped { object })
                 .collect(),
 
+            // Dread Cacodemon: "tap all other creatures you control" — the tap-side mirror of
+            // `UntapAll` just above. `filter.other` (already set by the card's TOML) relies on
+            // `permanent_matches`'s `Some(source)` to exclude Dread's own permanent id.
+            ControlEffect::TapAll { filter } => self
+                .battlefield()
+                .into_iter()
+                .filter(|&id| {
+                    self.controller_of(id) == controller
+                        && self.permanent_matches(&filter, id, controller, Some(source))
+                })
+                .map(|object| Event::Tapped { object })
+                .collect(),
+
             _ => unreachable!("control family mint received a non-family effect"),
         }
     }

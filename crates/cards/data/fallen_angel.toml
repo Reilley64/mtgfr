@@ -1,0 +1,30 @@
+# Flying
+# Sacrifice a creature: This creature gets +2/+1 until end of turn.
+name = "Fallen Angel"
+id = "1869a326-8b48-4331-b969-5ce83cf4ff8a"
+default_print = "d3baa621-1b50-4a7f-9ed4-4ae0e0e9e4e7"
+oracle = "Flying\nSacrifice a creature: This creature gets +2/+1 until end of turn."
+set = "a25"
+subtypes = ["Angel"]
+keywords = ["flying"]
+
+[cost]
+generic = 3
+black = 2
+
+[kind]
+type = "creature"
+power = 3
+toughness = 3
+
+# Sacrifice a creature: This creature gets +2/+1 until end of turn.
+[[abilities]]
+timing = "activated"
+sacrifice = "creature"
+
+# This creature gets +2/+1 until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "pump_self_until_end_of_turn"
+power = 2
+toughness = 1

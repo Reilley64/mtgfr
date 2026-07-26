@@ -126,6 +126,7 @@ pub(super) fn map_identical(request: &ChoiceRequest) -> Option<PendingChoice> {
             keep_one,
             filter,
             life_loss,
+            count,
             then,
         } => Some(PendingChoice::ChooseTargetPlayers {
             player: *player,
@@ -136,6 +137,7 @@ pub(super) fn map_identical(request: &ChoiceRequest) -> Option<PendingChoice> {
             keep_one: *keep_one,
             filter: *filter,
             life_loss: *life_loss,
+            count: *count,
             then,
         }),
         ChoiceRequest::DanceExileMore {

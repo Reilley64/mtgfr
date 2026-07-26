@@ -79,6 +79,10 @@ pub(crate) fn project_event(
             // reasoning as `sacrifice_count`/`kicked`/`strive_count` above — no UI reads it yet.
             // Add it when a Replicate card's UI wants to show "cast with N copies."
             replicate_count: _,
+            // ponytail: the declared Multikicker count isn't surfaced on the wire either, same
+            // reasoning as `sacrifice_count`/`kicked`/`strive_count`/`replicate_count` above — no
+            // UI reads it yet.
+            multikicker_count: _,
             // ponytail: whether the spell was bestowed (CR 702.103) isn't surfaced on the wire
             // either, same reasoning as `sacrifice_count`/`kicked` above — no UI reads it yet. Add
             // a `bestowed` to VisibleEvent::SpellCast when the UI wants to show "bestowed."

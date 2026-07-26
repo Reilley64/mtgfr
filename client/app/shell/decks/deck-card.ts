@@ -30,11 +30,7 @@ function renderPips<Msg>(h: HtmlFactory<Msg>, colorIdentity: readonly number[]):
   );
 }
 
-function renderDeckCardBody<Msg>(
-  h: HtmlFactory<Msg>,
-  card: DeckCardModel,
-  opts: { showPlayLabel: boolean },
-): Html {
+function renderDeckCardBody<Msg>(h: HtmlFactory<Msg>, card: DeckCardModel, opts: { showPlayLabel: boolean }): Html {
   // Flip mounts on the inner chrome so the outer root can keep a separate OnMount
   // (e.g. deck-list context menu) — Foldkit allows one OnMount per element.
   return h.div(

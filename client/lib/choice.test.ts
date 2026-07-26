@@ -408,7 +408,7 @@ describe("answerFromDraft builds accepted intents", () => {
 
   test("builds pay answers for optional cost prompts", () => {
     expectDraftIntent(
-      { kind: "pay_cost", cost: emptyCost, label: testMessageRef("Pay"), player: 0, source: 1 },
+      { kind: "pay_cost", can_pay: true, cost: emptyCost, label: testMessageRef("Pay"), player: 0, source: 1 },
       { kind: "pay", pay: true },
       { kind: "pay_optional_cost", pay: true, player: 0 },
     );

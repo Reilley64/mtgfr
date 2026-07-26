@@ -173,7 +173,7 @@ returning; the caller gets the complete list. Invariants checked:
 
 ### Precon virtual decks (`precons.rs`)
 
-Nine precons with ids `-1` through `-9` are loaded from `fixtures/decks/*.json` via
+Ten precons with ids `-1` through `-10` are loaded from `fixtures/decks/*.json` via
 `include_str!` at compile time. Each fixture records `commander`, `commander_print`, and `cards`.
 Precon names are:
 
@@ -188,6 +188,7 @@ Precon names are:
 | -7 | Deathdancer Xira |
 | -8 | Political Puppets |
 | -9 | Mirror Mastery |
+| -10 | Heavenly Inferno |
 
 `is_precon(id)` returns `true` for `id < 0`. Edit and delete of a precon id returns a 422.
 Precon decklists are the same source of truth as the Phase 5.5 legality fixtures

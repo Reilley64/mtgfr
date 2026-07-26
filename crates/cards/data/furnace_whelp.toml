@@ -1,0 +1,30 @@
+# Flying
+# {R}: This creature gets +1/+0 until end of turn.
+name = "Furnace Whelp"
+id = "8422f1e0-00ca-4ffb-a6b2-e2c9f96d7f23"
+default_print = "2ce76e86-39f3-4ebf-b550-88ea7f23a91f"
+oracle = "Flying\n{R}: This creature gets +1/+0 until end of turn."
+set = "jmp"
+subtypes = ["Dragon"]
+keywords = ["flying"]
+
+[cost]
+generic = 2
+red = 2
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# {R}: This creature gets +1/+0 until end of turn.
+[[abilities]]
+timing = "activated"
+activation_cost = { red = 1 }
+
+# This creature gets +1/+0 until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "pump_self_until_end_of_turn"
+power = 1
+toughness = 0

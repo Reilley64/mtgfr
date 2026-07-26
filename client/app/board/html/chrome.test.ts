@@ -5,6 +5,7 @@ import { Submodel } from "foldkit";
 import { html } from "foldkit/html";
 import { Scene } from "foldkit/test";
 import { beforeAll, test } from "vitest";
+import { testMessageRef } from "~/i18n/testMessageRef";
 import { SPECTATOR_VIEWER } from "~/spectator";
 import { BindCardArt } from "~/ui/card-art";
 import type { ObjectView, VisibleState } from "~/wire/types";
@@ -95,13 +96,14 @@ function gameFold(state: VisibleState | null = gameState(), reject: string | nul
       zoneMoves: new Map(),
       resolvedFromStack: new Set(),
       leftStackToPile: new Set(),
+      battlefieldExits: new Map(),
       tokenCreators: new Map(),
       landPlayFrom: new Map(),
       zonePileEntrances: new Map(),
       stackEntrances: new Map(),
       priorStackObjectIds: new Set(),
     },
-    tableFeel: { land: false, stack: false, resolve: false, damage: false },
+    tableFeel: { land: false, stack: false, resolve: false, damage: false, destroy: false, exile: false },
   };
 }
 
@@ -138,6 +140,43 @@ test("active player sees hand, priority bar, concede, and hint chrome", () => {
     Scene.expect(Scene.testId("board-concede")).toExist(),
     Scene.expect(Scene.testId("board-hint")).toExist(),
     Scene.expect(Scene.testId("board-legend-toggle")).toExist(),
+  );
+});
+
+// Master Warcraft (CR 508.1a): the caster declares somebody else's attackers, so the engine hands
+// *them* the declaration. The button follows the engine's action list, not the seat's own turn.
+test("a seat handed a moved attack declaration gets the confirm button, not 'Next'", () => {
+  const state = gameState({
+    active_player: 1,
+    step: 5, // declare attackers
+    viewer: 0,
+    actions: [
+      {
+        id: 1,
+        kind: "declare_attackers",
+        label: testMessageRef("Declare attackers"),
+        needs_target: false,
+        section: "combat",
+        declare_for: [1],
+      },
+    ],
+  });
+  Scene.scene(
+    { update: (m) => [m, []], view: overlayView },
+    Scene.with({ board: initialBoardModel(), fold: gameFold(state), tableId: "T1" }),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("board-primary")).toContainText("No attackers"),
+  );
+});
+
+// ...and the active player it was taken from just passes, so two seats can't both declare.
+test("the active player whose attack declaration was moved away sees 'Next'", () => {
+  const state = gameState({ active_player: 0, step: 5, viewer: 0, actions: [] });
+  Scene.scene(
+    { update: (m) => [m, []], view: overlayView },
+    Scene.with({ board: initialBoardModel(), fold: gameFold(state), tableId: "T1" }),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("board-primary")).toContainText("Next"),
   );
 });
 

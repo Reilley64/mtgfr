@@ -145,3 +145,21 @@ export function playTableFeelDamage(): void {
   tone(ac, 110, t, 0.07, 0.04, "triangle");
   tone(ac, 90, t + 0.03, 0.08, 0.03, "sine");
 }
+
+/** Crackly short burn cue when a permanent is destroyed (BF→GY exit FX). */
+export function playTableFeelDestroy(): void {
+  const ac = canPlay();
+  if (!ac) return;
+  const t = ac.currentTime;
+  tone(ac, 140, t, 0.09, 0.045, "sawtooth");
+  tone(ac, 90, t + 0.04, 0.1, 0.03, "triangle");
+}
+
+/** Soft void whoosh when a permanent is exiled (BF→exile exit FX). */
+export function playTableFeelExile(): void {
+  const ac = canPlay();
+  if (!ac) return;
+  const t = ac.currentTime;
+  tone(ac, 520, t, 0.06, 0.03, "sine");
+  tone(ac, 280, t + 0.05, 0.12, 0.035, "triangle");
+}

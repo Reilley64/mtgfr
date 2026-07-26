@@ -144,6 +144,11 @@ pub enum Amount {
     /// way". Reads [`Game::spell_sacrifice_count`] off the effect's `source` (the resolving
     /// spell itself).
     SpellSacrificeCount,
+    /// How many times the resolving spell's Multikicker cost (CR 702.33c) was paid — Lightkeeper
+    /// of Emeria's "you gain 2 life for each time it was kicked." Reads
+    /// [`Game::spell_multikicker_count`] off the effect's `source` (the resolving spell itself),
+    /// the multikicker sibling of [`SpellSacrificeCount`](Self::SpellSacrificeCount)'s read.
+    SpellMultikickerCount,
     /// The mana value of the creature card revealed to pay the resolving spell's
     /// [`AdditionalCost::reveal_creature_from_hand`] (CR 601.2g) — Disaster Radius's "X is the
     /// revealed card's mana value." Reads [`Game::revealed_creature_mana_value`] off the effect's
@@ -244,6 +249,27 @@ pub enum Amount {
         then: &'static Amount,
         else_: &'static Amount,
     },
+    /// `then` if the resolving spell was cast during its controller's main phase, else `else_` —
+    /// Sulfurous Blast's "Sulfurous Blast deals 2 damage to each creature and each player. If you
+    /// cast this spell during your main phase, Sulfurous Blast deals 3 damage ... instead." Reads
+    /// [`Game::spell_cast_during_main_phase`] off the effect's `source` (the resolving spell
+    /// itself), the cast-timing sibling of [`IfSpellKicked`](Self::IfSpellKicked)'s kicked-flag
+    /// read. Both arms are `&'static` (leaked, like `IfSpellKicked`'s) to keep [`Amount`] `Copy`.
+    IfSpellCastDuringMainPhase {
+        then: &'static Amount,
+        else_: &'static Amount,
+    },
+    /// The mana value of the resolving spell's own *first* (clause 0) chosen target — Orim's
+    /// Thunder's "If this spell was kicked, it deals damage equal to that permanent's mana value
+    /// to target creature," where "that permanent" is the artifact or enchantment its own destroy
+    /// clause targeted, not this damage effect's own (clause 1) target creature. Reads
+    /// `self.spell(source).targets.primary()` off the effect's `source` (the resolving spell
+    /// itself) via [`Game::def_of`] — safe even after the destroy clause moves that permanent to
+    /// a graveyard, since a zone change chains through [`Object::Moved`] rather than removing the
+    /// object, and no state-based action clears it mid-resolution (CR 704.3 only checks between
+    /// whole spell/ability resolutions). `0` if the spell has no clause-0 target (unreachable for
+    /// Orim's Thunder — its destroy clause is single-mandatory).
+    SpellFirstTargetManaValue,
     /// The greatest mana value among instant and sorcery spells the effect's controller has cast
     /// this turn (turn-scoped, 0 if none) — Rootha, Mastering the Moment's "X is the greatest
     /// mana value among instant and sorcery spells you've cast this turn." A live read (unlike
@@ -304,6 +330,21 @@ pub enum Amount {
     /// count when a [`Trigger::YouCastThis`] ability is placed on the stack — resolving this
     /// variant directly never happens (see [`Game::resolve_amount`]'s fallback).
     SpellsCastBeforeThisThisTurn,
+    /// `times` × the value of `by` (Congregate's "2 life for each creature on the battlefield" =
+    /// `Scaled { times: 2, by: PerCreatureOnBattlefield }`). `by` is `&'static` (leaked, like other
+    /// nested amounts) to keep [`Amount`] `Copy`.
+    Scaled {
+        times: i32,
+        by: &'static Amount,
+    },
+    /// How many cards were discarded during this resolution's edict fan-out (Syphon Mind's "for
+    /// each card discarded this way"; Malfegor's discarded hand size) — a resolution-local tally on
+    /// [`ResolutionFrame::cards_discarded_this_way`].
+    CardsDiscardedThisWay,
+    /// How many creatures were sacrificed during this resolution's edict fan-out (Syphon Flesh's
+    /// "for each creature sacrificed this way") — a resolution-local tally on
+    /// [`ResolutionFrame::creatures_sacrificed_this_way`].
+    CreaturesSacrificedThisWay,
 }
 
 impl Default for Amount {
@@ -438,7 +479,10 @@ impl Effect {
     pub(crate) fn target(&self) -> TargetSpec {
         match self.clone() {
             Effect::Damage(DamageEffect::Target { target, .. })
+            | Effect::Damage(DamageEffect::Radiance { target, .. })
             | Effect::Pump(PumpEffect::PumpUntilEndOfTurn { target, .. })
+            | Effect::Pump(PumpEffect::GrantChosenColorProtectionUntilEndOfTurn { target })
+            | Effect::Pump(PumpEffect::RadianceChosenColorProtectionUntilEndOfTurn { target })
             | Effect::Pump(PumpEffect::SetBasePtTargetUntilEndOfTurn { target, .. })
             | Effect::Counters(CountersEffect::PutCounters { target, .. })
             | Effect::Counters(CountersEffect::DoubleCounters { target })
@@ -451,6 +495,7 @@ impl Effect {
             | Effect::Zone(ZoneEffect::FlickerTarget { target, .. })
             | Effect::Zone(ZoneEffect::ReturnFromGraveyardToHand { target, .. })
             | Effect::Zone(ZoneEffect::ReanimateToBattlefield { target, .. })
+            | Effect::Zone(ZoneEffect::ReanimateRandomFromTargetOpponentGraveyard { target })
             | Effect::Zone(ZoneEffect::TuckFromGraveyard { target, .. })
             | Effect::Mill(MillEffect::Mill { target, .. })
             | Effect::Choice(ChoiceEffect::TargetPlayerExilesFromGraveyard { target })
@@ -599,9 +644,13 @@ impl Effect {
                 target_player: true,
                 ..
             }) => TargetSpec::Player,
-            // Equip targets the creature to attach to (the "you control" restriction is
-            // enforced when the ability is activated, not by the target spec).
-            Effect::Control(ControlEffect::Equip) => TargetSpec::Creature,
+            // Equip targets "target creature you control" (CR 702.6e). The activation gate
+            // enforces it too; the spec must say so as well, or the enumeration the client
+            // highlights from offers opponents' creatures the gate can only bounce.
+            Effect::Control(ControlEffect::Equip) => TargetSpec::CreatureYouControl,
+            // Basandra, Battle Seraph's {R} ability: "Target creature attacks this turn if able" —
+            // any creature, not just an opponent's.
+            Effect::Misc(MiscEffect::MustAttackTarget) => TargetSpec::Creature,
             // Breena's counter half: "a creature you control" (the drawing player is context,
             // not a target) — restricted to the ability's controller's own creatures.
             Effect::Counters(CountersEffect::AttackerDrawsControllerCounters { .. }) => TargetSpec::CreatureYouControl,
@@ -633,6 +682,7 @@ impl Effect {
             | Effect::Dig(DigEffect::CashOutExiledWithThis)
             | Effect::Dig(DigEffect::CastExiledWithThisFree)
             | Effect::Static(StaticEffect::GrantToAttached { .. })
+            | Effect::Static(StaticEffect::ProtectionFromChosenColor)
             | Effect::Static(StaticEffect::SetAttachedBasePt { .. })
             | Effect::Static(StaticEffect::SetAttachedTypes { .. })
             | Effect::Life(LifeEffect::EachOpponentDrain { .. })
@@ -672,6 +722,7 @@ impl Effect {
             | Effect::Damage(DamageEffect::EachOtherOpponent { .. })
             | Effect::Pump(PumpEffect::WeakenEachCreature { .. })
             | Effect::Pump(PumpEffect::PumpCreaturesYouControlUntilEndOfTurn { .. })
+            | Effect::Pump(PumpEffect::PumpEachCreatureUntilEndOfTurn { .. })
             | Effect::Pump(PumpEffect::GrantKeywordsToPermanentsYouControlUntilEndOfTurn { .. })
             | Effect::Pump(PumpEffect::PumpOtherAttackersAttackingYourOpponents { .. })
             | Effect::Pump(PumpEffect::EnchantedAttackerPumpAttackingOpponentElseControllerLosesLife { .. })
@@ -679,6 +730,9 @@ impl Effect {
             | Effect::Pump(PumpEffect::PumpSelfUntilEndOfTurn { .. })
             | Effect::Static(StaticEffect::ControlAttached)
             | Effect::Choice(ChoiceEffect::EachPlayerSacrifices { .. })
+            | Effect::Choice(ChoiceEffect::EachPlayerChoosesWarOrPeace)
+            | Effect::Choice(ChoiceEffect::EachOpponentDiscards)
+            | Effect::Choice(ChoiceEffect::DiscardYourHand)
             | Effect::Choice(ChoiceEffect::EachPlayerExilesFromGraveyard)
             | Effect::Choice(ChoiceEffect::CasterKeepsOneOfEachTypePerPlayer)
             | Effect::Choice(ChoiceEffect::EachPlayerControllerChoosesCounterTarget)
@@ -704,10 +758,11 @@ impl Effect {
                 ..
             })
             | Effect::Choice(ChoiceEffect::PutLandFromHand { .. })
-            | Effect::Choice(ChoiceEffect::PutCreatureFromHand)
+            | Effect::Choice(ChoiceEffect::PutCreatureFromHand { .. })
             | Effect::Choice(ChoiceEffect::PutFromHandOnTop { .. })
             | Effect::Choice(ChoiceEffect::CastCreatureFaceDown)
             | Effect::Control(ControlEffect::UntapAll { .. })
+            | Effect::Control(ControlEffect::TapAll { .. })
             | Effect::Control(ControlEffect::GainControlAllUntilEndOfTurn { .. })
             | Effect::Draw(DrawEffect::EachPlayer { .. })
             | Effect::Choice(ChoiceEffect::SacrificeOwn { .. })
@@ -749,10 +804,21 @@ impl Effect {
             | Effect::Static(StaticEffect::AttackTax { .. })
             | Effect::Static(StaticEffect::CounterScaledAttackTax)
             | Effect::Static(StaticEffect::CantBeAttackedBy { .. })
+            | Effect::Static(StaticEffect::CantBlockFilter { .. })
+            | Effect::Static(StaticEffect::CantCastDuringCombat)
+            // "Each opponent who cast a spell this turn can't attack with creatures" /
+            // "...who attacked with a creature this turn can't cast spells" (Angelic Arbiter): a
+            // per-player lockout, not a chosen target — enforced in `Game::declare_attackers` /
+            // `Game::cast_timing_ok`.
+            | Effect::Static(StaticEffect::CantAttackIfCastThisTurn)
+            | Effect::Static(StaticEffect::CantCastIfAttackedThisTurn)
             // Always names the ability's own source as the required attacker — no chosen target.
             | Effect::Misc(MiscEffect::MustAttackRandomOpponent)
             | Effect::Misc(MiscEffect::PreventCombatDamageToYouCreatingTokens { .. })
             | Effect::Misc(MiscEffect::PreventAllCombatDamageThisTurn)
+            // Names its own controller as the declaring seat (Master Warcraft) — no chosen target.
+            | Effect::Misc(MiscEffect::YouChooseWhichCreaturesAttack)
+            | Effect::Misc(MiscEffect::YouChooseWhichCreaturesBlock)
             | Effect::Counters(CountersEffect::PlaceVowCounters { .. })
             | Effect::Life(LifeEffect::Lose { .. })
             | Effect::Damage(DamageEffect::ToSelf { .. })
@@ -822,6 +888,10 @@ impl Effect {
             | Effect::Zone(ZoneEffect::ReturnThisAuraFromGraveyardAttachedToChosenHost)
             | Effect::Zone(ZoneEffect::ScheduleReturnThisAuraFromGraveyardAttachedToChosenHost)
             | Effect::Static(StaticEffect::NoMaximumHandSize)
+            | Effect::Static(StaticEffect::OpponentsCantSearchLibraries)
+            // "All creatures ... attack each combat if able" (Avatar of Slaughter): a global
+            // requirement, not a chosen target — enforced in `Game::declare_attackers`.
+            | Effect::Static(StaticEffect::MustAttackEachCombat)
             // Backup's grant rides the enclosing `Sequence`'s shared target (the counter's
             // creature), never a target of its own — see the variant doc.
             | Effect::Control(ControlEffect::GrantSourceAbilitiesUntilEndOfTurn)
@@ -1309,6 +1379,15 @@ pub enum Condition {
     /// ponytail: counts creatures only — the one object kind the pool needs; add a `kind`
     /// discriminator (permanents, artifacts, …) when a real card counts something else.
     YouControlAtLeastCreatures { count: u32 },
+    /// "if no creatures are on the battlefield" (Pyrohemia's self-sacrifice gate) — board-wide,
+    /// every controller, unlike [`YouControlAtLeastCreatures`](Self::YouControlAtLeastCreatures)
+    /// above. Reads [`Game::creatures_on_battlefield`], the same tally
+    /// [`Amount::PerCreatureOnBattlefield`] uses. Usable both as `[abilities.condition]` (CR
+    /// 603.4's first check, at trigger placement) and nested in a `{ type = "conditional", … }`
+    /// step (the CR 603.4 *second* check, re-checked fresh at resolution — a creature created in
+    /// response to the trigger suppresses the sacrifice), same pairing as
+    /// [`SourceUntapped`](Self::SourceUntapped)/Howling Mine.
+    NoCreaturesOnBattlefield,
     /// Breena: "if that opponent has more life than another of your opponents." Reads the
     /// triggering context's attacked opponent; needs the controller to have ≥2 opponents.
     AttackedOpponentHasMoreLifeThanAnotherOpponent,
@@ -1548,16 +1627,44 @@ pub enum Condition {
     /// special-cases it directly against its own `source` parameter, reading
     /// [`Permanent::spent_colors`].
     ColorWasSpentToCastThis { color: Color },
+    /// "if you cast it from your hand" (CR 603.4 — Dread Cacodemon's/Reiver Demon's ETB
+    /// intervening-if). Source-object-based like [`ColorWasSpentToCastThis`](Self::ColorWasSpentToCastThis)
+    /// just above: `TriggerContext` carries no source id, so
+    /// [`Game::ability_condition_holds`] special-cases it directly against its own `source`
+    /// parameter, reading [`Permanent::cast_from_hand`]. Unreachable through the ordinary
+    /// [`condition_holds`](Game::condition_holds) path (returns `false` there) — every ETB
+    /// intervening-if goes through `ability_condition_holds` instead.
+    CastFromHand,
+    /// "if this ability has been activated `at_least` or more times this turn" (CR 602.2b —
+    /// Dragon Whelp's "If this ability has been activated four or more times this turn,
+    /// sacrifice this creature at the beginning of the next end step"). Source-object-based like
+    /// [`SourceEnteredWithXAtLeast`](Self::SourceEnteredWithXAtLeast): `TriggerContext` carries no
+    /// source id, so the [`Effect::Conditional`] resolve site special-cases it directly against
+    /// its own `source` parameter, counting this turn's
+    /// [`Event::AbilityActivatedThisTurn`](crate::Event::AbilityActivatedThisTurn) entries for that
+    /// object (`Game::once_per_turn.activated`, cleared every untap). Every activated-ability
+    /// activation records one now (not just a `once_each_turn`-capped one), so a later activation
+    /// this turn is already counted by the time an earlier one resolves — matching the real-card
+    /// ruling that this checks the turn's total activation count, not how many have resolved yet.
+    // ponytail: counts every activation of the *source object*, not of the specific ability the
+    // condition hangs on — the resolve site has the source id but no ability index by then. Exact
+    // for Dragon Whelp (its only activated ability); a card with two activated abilities would
+    // let one ability's activations satisfy the other's count. Thread the index through
+    // `Effect::Conditional` when such a card arrives.
+    SourceActivatedThisTurnAtLeast { at_least: u32 },
 }
 
 /// Whether `sacrifices` is a legal answer to a sacrifice edict over `options`: every id a
 /// distinct one of the options, and the right count — all-but-one kept for `keep_one`, otherwise
-/// exactly one. (The caller only prompts when there's a real choice, so `options` is non-empty
-/// and, for `keep_one`, holds at least two.)
+/// `count` (Malfegor sacrifices one per card discarded), capped at what's available (a player with
+/// fewer creatures than `count` sacrifices all of them — CR 601-style "as many as you can"). (The
+/// caller only prompts when there's a real choice, so `options` is non-empty and, for `keep_one`,
+/// holds at least two.)
 pub(crate) fn valid_sacrifice_choice(
     sacrifices: &[ObjectId],
     options: &[ObjectId],
     keep_one: bool,
+    count: u32,
 ) -> bool {
     if sacrifices.iter().any(|id| !options.contains(id)) {
         return false;
@@ -1566,7 +1673,11 @@ pub(crate) fn valid_sacrifice_choice(
         .iter()
         .enumerate()
         .all(|(i, id)| !sacrifices[..i].contains(id));
-    let required = if keep_one { options.len() - 1 } else { 1 };
+    let required = if keep_one {
+        options.len() - 1
+    } else {
+        (count as usize).min(options.len())
+    };
     no_duplicates && sacrifices.len() == required
 }
 
@@ -1821,6 +1932,16 @@ pub(crate) fn contextualize_effect(effect: Effect, ctx: TriggerContext) -> Effec
                 defender: Some(defender),
             })
         }
+        // Kaalia of the Vast: "put an … creature card from your hand onto the battlefield tapped
+        // and attacking that opponent" — bake the defending player so the answer enters the
+        // put-in creature tapped and attacking it (CR 508.4).
+        (Effect::Choice(ChoiceEffect::PutCreatureFromHand { subtypes, keep, .. }), Some((_attacker, defender))) => {
+            Effect::Choice(ChoiceEffect::PutCreatureFromHand {
+                subtypes,
+                keep,
+                defender: Some(defender),
+            })
+        }
         // Combat Calligrapher: "that attacking player creates a tapped … token … that's
         // attacking that opponent" — bake the (attacker, attacked) pair so the token mints
         // under the attacker and enters tapped and attacking it, per CR 508.4.
@@ -2025,12 +2146,14 @@ fn fill_dying_permanent_types(effect: Effect, types: TypeSet) -> Effect {
             scope,
             keep_one,
             life_loss,
+            count,
             then,
         }) if filter.shares_type_with_dying_permanent => Effect::Choice(ChoiceEffect::EachPlayerSacrifices {
             filter: PermanentFilter { types, ..filter },
             scope,
             keep_one,
             life_loss,
+            count,
             then,
         }),
         Effect::Sequence { steps } => {

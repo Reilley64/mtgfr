@@ -39,6 +39,8 @@ export const GameSlice = S.Struct({
     stack: S.Boolean,
     resolve: S.Boolean,
     damage: S.Boolean,
+    destroy: S.Boolean,
+    exile: S.Boolean,
   }),
 });
 

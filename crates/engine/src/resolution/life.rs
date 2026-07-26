@@ -110,6 +110,7 @@ impl Game {
                 let Some(Target::Player(gainer)) = target else {
                     panic!("target-player-gains-life resolves with a chosen player target");
                 };
+                let amount = self.resolve_amount(amount, controller, source, target, x);
                 vec![Event::LifeChanged {
                     player: gainer,
                     amount: self.life_gain_after_replacements(gainer, amount),

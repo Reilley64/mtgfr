@@ -38,6 +38,20 @@ pub enum PumpEffect {
         life: u32,
     },
 
+    GrantChosenColorProtectionUntilEndOfTurn {
+        target: TargetSpec,
+    },
+
+    /// The old "Radiance" keyword action's batch twin of
+    /// [`GrantChosenColorProtectionUntilEndOfTurn`](Self::GrantChosenColorProtectionUntilEndOfTurn)
+    /// (Bathe in Light): "Target creature and each other creature that shares a color with it
+    /// gain protection from the chosen color until end of turn." Sequenced after a `choose_color`
+    /// step the same way — the color lives on the ability's own `source` — but the grant lands on
+    /// [`Game::radiance_batch`] of `target`, not just `target` itself.
+    RadianceChosenColorProtectionUntilEndOfTurn {
+        target: TargetSpec,
+    },
+
     GrantKeywordsToPermanentsYouControlUntilEndOfTurn {
         #[cfg_attr(
             feature = "card-dsl",
@@ -49,6 +63,22 @@ pub enum PumpEffect {
     },
 
     PumpCreaturesYouControlUntilEndOfTurn {
+        power: Amount,
+        toughness: Amount,
+        #[cfg_attr(
+            feature = "card-dsl",
+            serde(default, deserialize_with = "de::static_slice")
+        )]
+        keywords: &'static [Keyword],
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        filter: PermanentFilter,
+    },
+
+    /// Mass pump, every controller: every creature on the battlefield matching `filter`, not just
+    /// the controller's own (Bladewing the Risen: "Dragon creatures get +1/+1 until end of turn" —
+    /// board-wide, unlike [`PumpCreaturesYouControlUntilEndOfTurn`](Self::PumpCreaturesYouControlUntilEndOfTurn),
+    /// which hardcodes "you control" on top of `filter`'s own controller axis).
+    PumpEachCreatureUntilEndOfTurn {
         power: Amount,
         toughness: Amount,
         #[cfg_attr(

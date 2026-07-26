@@ -71,6 +71,8 @@ function boardAudioAttrs(model: BoardViewModel, state: VisibleState) {
     h.DataAttribute("feel-stack", feel.stack ? "1" : "0"),
     h.DataAttribute("feel-resolve", feel.resolve ? "1" : "0"),
     h.DataAttribute("feel-damage", feel.damage ? "1" : "0"),
+    h.DataAttribute("feel-destroy", feel.destroy ? "1" : "0"),
+    h.DataAttribute("feel-exile", feel.exile ? "1" : "0"),
   ];
 }
 
@@ -175,6 +177,7 @@ export const view = Submodel.defineView<BoardViewModel, Message>((model) => {
     stagedAttackers: model.board.combatAttackers,
     stagedBlocks: model.board.combatBlocks,
     flights: [...model.board.flights.values()],
+    exitFx: [...model.board.exitFx.values()],
     hideCardIds: model.board.hideCardIds,
     targetObjects: overlay.targetObjects,
     pickedObjects:

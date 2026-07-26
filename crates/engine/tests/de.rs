@@ -70,6 +70,9 @@ fn target_count_parses_scalar_and_table_forms() {
             x_scaled: false,
             sacrifice_scaled: false,
             strive_scaled: false,
+            multikicker_scaled: false,
+            kicked_scaled: false,
+            main_phase_scaled: false,
         }
     );
 
@@ -89,6 +92,9 @@ max = 3
             x_scaled: false,
             sacrifice_scaled: false,
             strive_scaled: false,
+            multikicker_scaled: false,
+            kicked_scaled: false,
+            main_phase_scaled: false,
         }
     );
 

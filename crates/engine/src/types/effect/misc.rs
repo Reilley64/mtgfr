@@ -40,6 +40,8 @@ pub enum MiscEffect {
 
     MustAttackRandomOpponent,
 
+    MustAttackTarget,
+
     PreventAllCombatDamageThisTurn,
 
     PreventCombatDamageToYouCreatingTokens {
@@ -66,4 +68,8 @@ pub enum MiscEffect {
     ScheduleThisTurnCombatDamageCopy,
 
     SkipNextUntapOpponentCreatures,
+
+    YouChooseWhichCreaturesAttack,
+
+    YouChooseWhichCreaturesBlock,
 }

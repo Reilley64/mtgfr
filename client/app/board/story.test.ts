@@ -1,9 +1,18 @@
 import { Story } from "foldkit";
 import { expect, test } from "vitest";
-import type { VisibleState } from "~/wire/types";
+import { testMessageRef } from "~/i18n/testMessageRef";
+import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
 import type { Message } from "./messages";
-import { BoardCameraZoomed, BoardPointerDown, BoardPointerMove, FlightsSynced } from "./messages";
+import {
+  BoardCameraZoomed,
+  BoardPointerDown,
+  BoardPointerMove,
+  CombatAttackerDropped,
+  CombatBlockerDropped,
+  FlightsSynced,
+} from "./messages";
+import { spawnExitFx } from "./motion/exit-fx";
 import { spawnFlight } from "./motion/flights";
 import { type BoardModel, initialBoardModel, syncBoardWithGame, updateBoard } from "./submodel";
 
@@ -32,24 +41,51 @@ function state(): VisibleState {
   };
 }
 
-function gameFold(): GameFoldState {
+function gameFold(over: Partial<VisibleState> = {}): GameFoldState {
   return {
     seq: 1,
-    state: state(),
+    state: { ...state(), ...over },
     log: [],
     reject: null,
     provenance: {
       zoneMoves: new Map(),
       resolvedFromStack: new Set(),
       leftStackToPile: new Set(),
+      battlefieldExits: new Map(),
       tokenCreators: new Map(),
       landPlayFrom: new Map(),
       zonePileEntrances: new Map(),
       stackEntrances: new Map(),
       priorStackObjectIds: new Set(),
     },
-    tableFeel: { land: false, stack: false, resolve: false, damage: false },
+    tableFeel: { land: false, stack: false, resolve: false, damage: false, destroy: false, exile: false },
   };
+}
+
+function creature(id: number, controller: number): ObjectView {
+  return {
+    controller,
+    has_haste: false,
+    id,
+    is_commander: false,
+    kind: { kind: "creature", power: 2, toughness: 2 },
+    mana_cost: { colored: [0, 0, 0, 0, 0], generic: 2 },
+    marked_damage: 0,
+    name: "Grizzly Bears",
+    needs_target: false,
+    owner: controller,
+    plus_counters: 0,
+    power: 2,
+    summoning_sick: false,
+    tapped: false,
+    toughness: 2,
+    zone: 2, // battlefield
+  };
+}
+
+/** A combat declaration as the engine projects it: `declare_for` names the seats it covers. */
+function declareAction(kind: "declare_attackers" | "declare_blockers", declare_for: number[]): ActionView {
+  return { id: 1, kind, label: testMessageRef(kind), needs_target: false, section: "combat", declare_for };
 }
 
 test("pointer down on empty felt enters pan phase", () => {
@@ -87,12 +123,79 @@ test("FlightsSynced stores still-flying poses and hides the source card", () => 
   Story.story(
     (board: BoardModel, message: Message) => updateBoard(board, message, fold, null),
     Story.with(initialBoardModel()),
-    Story.message(FlightsSynced({ flights: [flight], now: 200 })),
+    Story.message(FlightsSynced({ flights: [flight], exitFx: [], now: 200 })),
     Story.model((board) => {
       expect(board.flights.get(1)).toEqual(flight);
       expect(board.handHidden.has(9)).toBe(true);
       expect(board.hideCardIds).toEqual(new Set([1]));
       expect(board.ownedIds).toEqual(new Set([1]));
+      expect(board.lastFlightFrame).toBe(200);
+    }),
+  );
+});
+
+test("FlightsSynced keeps exit FX ids hidden even without flights", () => {
+  const fold = gameFold();
+  const fx = spawnExitFx({
+    id: 7,
+    kind: "destroy",
+    name: "Grizzly Bears",
+    print: "print-id",
+    x: 80,
+    y: 60,
+    scale: 1,
+  });
+
+  Story.story(
+    (board: BoardModel, message: Message) => updateBoard(board, message, fold, null),
+    Story.with(initialBoardModel()),
+    Story.message(FlightsSynced({ flights: [], exitFx: [fx], now: 200 })),
+    Story.model((board) => {
+      expect(board.exitFx.get(7)).toEqual(fx);
+      expect(board.hideCardIds).toEqual(new Set([7]));
+      expect(board.ownedIds.size).toBe(0);
+      expect(board.lastFlightFrame).toBe(200);
+    }),
+  );
+});
+
+test("FlightsSynced keeps flyers and exit FX ids hidden together", () => {
+  const fold = gameFold();
+  const flight = {
+    ...spawnFlight({
+      id: 1,
+      kind: "battlefield",
+      name: "Grizzly Bears",
+      print: "print-flight",
+      scale: 0.8,
+      targetScale: 1,
+      targetX: 100,
+      targetY: 0,
+      x: 40,
+      y: 12,
+      fromCardId: 9,
+    }),
+    phase: "flying" as const,
+  };
+  const fx = spawnExitFx({
+    id: 7,
+    kind: "destroy",
+    name: "Exit Bear",
+    print: "print-fx",
+    x: 80,
+    y: 60,
+    scale: 1,
+  });
+
+  Story.story(
+    (board: BoardModel, message: Message) => updateBoard(board, message, fold, null),
+    Story.with(initialBoardModel()),
+    Story.message(FlightsSynced({ flights: [flight], exitFx: [fx], now: 200 })),
+    Story.model((board) => {
+      expect(board.flights.get(1)).toEqual(flight);
+      expect(board.exitFx.get(7)).toEqual(fx);
+      expect(board.hideCardIds).toEqual(new Set([1, 7]));
+      expect(board.handHidden).toEqual(new Set([9]));
       expect(board.lastFlightFrame).toBe(200);
     }),
   );
@@ -129,7 +232,7 @@ test("FlightsSynced clears hidden cards when flights disappear", () => {
   Story.story(
     (board: BoardModel, message: Message) => updateBoard(board, message, fold, null),
     Story.with(model),
-    Story.message(FlightsSynced({ flights: [], now: 200 })),
+    Story.message(FlightsSynced({ flights: [], exitFx: [], now: 200 })),
     Story.model((board) => {
       expect(board.flights.size).toBe(0);
       expect(board.handHidden.size).toBe(0);
@@ -189,7 +292,7 @@ test("FlightsSynced keeps flyers and drops settled entries in one payload", () =
   Story.story(
     (board: BoardModel, message: Message) => updateBoard(board, message, fold, null),
     Story.with(model),
-    Story.message(FlightsSynced({ flights: [flyer, settled], now: 90 })),
+    Story.message(FlightsSynced({ flights: [flyer, settled], exitFx: [], now: 90 })),
     Story.model((board) => {
       expect(board.flights.get(1)).toEqual(flyer);
       expect(board.flights.has(2)).toBe(false);
@@ -278,4 +381,50 @@ test("syncBoardWithGame clears staged attackers/blocks when the step advances", 
   expect(advanced.combatBlocks).toEqual([]);
   expect(advanced.attackersConfirmed).toBe(false);
   expect(advanced.blockersConfirmed).toBe(false);
+});
+
+// Master Warcraft: the engine hands seat 0 the *active player's* attack declaration, so dropping
+// seat 1's creature onto seat 2's avatar has to stage it — the creature is not seat 0's own.
+test("a moved attack declaration stages the creatures of the seat it covers", () => {
+  const fold = gameFold({
+    active_player: 1,
+    step: 5, // declare attackers
+    objects: [creature(7, 1)],
+    actions: [declareAction("declare_attackers", [1])],
+  });
+
+  Story.story(
+    (model: BoardModel, message: Message) => updateBoard(model, message, fold, null),
+    Story.with(initialBoardModel()),
+    Story.message(CombatAttackerDropped({ attackerId: 7, defenderSeat: 2 })),
+    Story.model((model) => {
+      expect(model.combatAttackers).toEqual([{ attacker: 7, defender: 2 }]);
+    }),
+  );
+});
+
+// The block half is where the covered seats bite: seat 0 is not being attacked at all, so without
+// the engine's `declare_for` the drop is rejected as "nobody is attacking you".
+test("a moved block declaration stages blocks for the attacked seat, not the declarer", () => {
+  const attacked = gameFold({
+    active_player: 2,
+    step: 6, // declare blockers
+    objects: [creature(7, 2), creature(8, 1)],
+    combat: {
+      attackers: [{ attacker: 7, defender: 1 }],
+      blocks: [],
+      attackers_declared: true,
+      blockers_declared: [],
+    },
+    actions: [declareAction("declare_blockers", [1])],
+  });
+
+  Story.story(
+    (model: BoardModel, message: Message) => updateBoard(model, message, attacked, null),
+    Story.with(initialBoardModel()),
+    Story.message(CombatBlockerDropped({ attackerId: 7, blockerId: 8 })),
+    Story.model((model) => {
+      expect(model.combatBlocks).toEqual([{ blocker: 8, attacker: 7 }]);
+    }),
+  );
 });

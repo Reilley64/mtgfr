@@ -75,6 +75,7 @@ message_keys! {
     EFFECT_CONTROL_REVERT_ALL_CREATURES_TO_OWNERS => "effect.control_revert_all_creatures_to_owners",
     EFFECT_CONTROL_TAP_TARGET => "effect.control_tap_target",
     EFFECT_CONTROL_TARGET_OPPONENT_GAINS_CONTROL => "effect.control_target_opponent_gains_control",
+    EFFECT_CONTROL_TAP_ALL => "effect.control_tap_all",
     EFFECT_CONTROL_UNTAP_ALL => "effect.control_untap_all",
     EFFECT_CONTROL_UNTAP_TARGET => "effect.control_untap_target",
     EFFECT_COPY_CHANGE_TARGET_OF_TARGET_SPELL_OR_ABILITY => "effect.copy_change_target_of_target_spell_or_ability",
@@ -107,7 +108,10 @@ message_keys! {
     EFFECT_CHOICE_DAMAGING_CREATURE_CONTROLLER_MAY_DRAW => "effect.choice_damaging_creature_controller_may_draw",
     EFFECT_CHOICE_DEFENDING_PLAYER_SACRIFICES => "effect.choice_defending_player_sacrifices",
     EFFECT_CHOICE_DISCARD => "effect.choice_discard",
+    EFFECT_CHOICE_DISCARD_YOUR_HAND => "effect.choice_discard_your_hand",
+    EFFECT_CHOICE_EACH_OPPONENT_DISCARDS => "effect.choice_each_opponent_discards",
     EFFECT_CHOICE_EACH_OTHER_TOKEN_BECOMES_COPY_OF_CHOSEN => "effect.choice_each_other_token_becomes_copy_of_chosen",
+    EFFECT_CHOICE_EACH_PLAYER_CHOOSES_WAR_OR_PEACE => "effect.choice_each_player_chooses_war_or_peace",
     EFFECT_CHOICE_EACH_PLAYER_CONTROLLER_CHOOSES_COUNTER_TARGET => "effect.choice_each_player_controller_chooses_counter_target",
     EFFECT_CHOICE_EACH_PLAYER_CREATES_FRACTAL_FROM_EXILED_POWER => "effect.choice_each_player_creates_fractal_from_exiled_power",
     EFFECT_CHOICE_EACH_PLAYER_DISCARDS_HAND_THEN_DRAWS => "effect.choice_each_player_discards_hand_then_draws",
@@ -125,6 +129,7 @@ message_keys! {
     EFFECT_CHOICE_PROLIFERATE => "effect.choice_proliferate",
     EFFECT_CHOICE_PUT_COUNTER_THEN_MAY_BECOME_COPY_OF_CARD_FROM_LIST => "effect.choice_put_counter_then_may_become_copy_of_card_from_list",
     EFFECT_CHOICE_PUT_CREATURE_FROM_HAND => "effect.choice_put_creature_from_hand",
+    EFFECT_CHOICE_PUT_CREATURE_FROM_HAND_ATTACKING => "effect.choice_put_creature_from_hand_attacking",
     EFFECT_CHOICE_PUT_FROM_HAND_ON_TOP => "effect.choice_put_from_hand_on_top",
     EFFECT_CHOICE_PUT_LAND_FROM_HAND => "effect.choice_put_land_from_hand",
     EFFECT_CHOICE_SACRIFICE_OWN => "effect.choice_sacrifice_own",
@@ -136,6 +141,7 @@ message_keys! {
     EFFECT_DAMAGE_EACH_CREATURE => "effect.damage_each_creature",
     EFFECT_DAMAGE_EACH_OTHER_OPPONENT => "effect.damage_each_other_opponent",
     EFFECT_DAMAGE_EACH_PLAYER => "effect.damage_each_player",
+    EFFECT_DAMAGE_RADIANCE => "effect.damage_radiance",
     EFFECT_DAMAGE_TARGET => "effect.damage_target",
     EFFECT_DAMAGE_TO_ENTERING_PERMANENT => "effect.damage_to_entering_permanent",
     EFFECT_DAMAGE_TO_SELF => "effect.damage_to_self",
@@ -207,6 +213,7 @@ message_keys! {
     EFFECT_MISC_GRANT_CHANNEL_COLORLESS_MANA_THIS_TURN => "effect.misc_grant_channel_colorless_mana_this_turn",
     EFFECT_MISC_GRANT_FLASH_THIS_TURN => "effect.misc_grant_flash_this_turn",
     EFFECT_MISC_MUST_ATTACK_RANDOM_OPPONENT => "effect.misc_must_attack_random_opponent",
+    EFFECT_MISC_MUST_ATTACK_TARGET => "effect.misc_must_attack_target",
     EFFECT_MISC_PREVENT_ALL_COMBAT_DAMAGE_THIS_TURN => "effect.misc_prevent_all_combat_damage_this_turn",
     EFFECT_MISC_PREVENT_COMBAT_DAMAGE_TO_YOU_CREATING_TOKENS => "effect.misc_prevent_combat_damage_to_you_creating_tokens",
     EFFECT_MISC_SCHEDULE_AT_NEXT_UPKEEP => "effect.misc_schedule_at_next_upkeep",
@@ -214,13 +221,18 @@ message_keys! {
     EFFECT_MISC_SCHEDULE_NEXT_CAST_TRIGGER => "effect.misc_schedule_next_cast_trigger",
     EFFECT_MISC_SCHEDULE_THIS_TURN_COMBAT_DAMAGE_COPY => "effect.misc_schedule_this_turn_combat_damage_copy",
     EFFECT_MISC_SKIP_NEXT_UNTAP_OPPONENT_CREATURES => "effect.misc_skip_next_untap_opponent_creatures",
+    EFFECT_MISC_YOU_CHOOSE_WHICH_CREATURES_ATTACK => "effect.misc_you_choose_which_creatures_attack",
+    EFFECT_MISC_YOU_CHOOSE_WHICH_CREATURES_BLOCK => "effect.misc_you_choose_which_creatures_block",
     EFFECT_PUMP_ANIMATE_SELF_UNTIL_END_OF_TURN => "effect.pump_animate_self_until_end_of_turn",
     EFFECT_PUMP_ENCHANTED_ATTACKER_PUMP_ATTACKING_OPPONENT_ELSE_CONTROLLER_LOSES_LIFE => "effect.pump_enchanted_attacker_pump_attacking_opponent_else_controller_loses_life",
+    EFFECT_PUMP_GRANT_CHOSEN_COLOR_PROTECTION_UNTIL_END_OF_TURN => "effect.pump_grant_chosen_color_protection_until_end_of_turn",
     EFFECT_PUMP_GRANT_KEYWORDS_TO_PERMANENTS_YOU_CONTROL_UNTIL_END_OF_TURN => "effect.pump_grant_keywords_to_permanents_you_control_until_end_of_turn",
+    EFFECT_PUMP_PUMP_EACH_CREATURE_UNTIL_END_OF_TURN => "effect.pump_pump_each_creature_until_end_of_turn",
     EFFECT_PUMP_PUMP_CREATURES_YOU_CONTROL_UNTIL_END_OF_TURN => "effect.pump_pump_creatures_you_control_until_end_of_turn",
     EFFECT_PUMP_PUMP_OTHER_ATTACKERS_ATTACKING_YOUR_OPPONENTS => "effect.pump_pump_other_attackers_attacking_your_opponents",
     EFFECT_PUMP_PUMP_SELF_UNTIL_END_OF_TURN => "effect.pump_pump_self_until_end_of_turn",
     EFFECT_PUMP_PUMP_UNTIL_END_OF_TURN => "effect.pump_pump_until_end_of_turn",
+    EFFECT_PUMP_RADIANCE_CHOSEN_COLOR_PROTECTION_UNTIL_END_OF_TURN => "effect.pump_radiance_chosen_color_protection_until_end_of_turn",
     EFFECT_PUMP_SET_BASE_PT_CREATURES_YOU_CONTROL_UNTIL_END_OF_TURN => "effect.pump_set_base_pt_creatures_you_control_until_end_of_turn",
     EFFECT_PUMP_SET_BASE_PT_TARGET_UNTIL_END_OF_TURN => "effect.pump_set_base_pt_target_until_end_of_turn",
     EFFECT_PUMP_SET_OWN_BASE_PT_FROM_AMOUNT => "effect.pump_set_own_base_pt_from_amount",
@@ -237,7 +249,14 @@ message_keys! {
     EFFECT_SEQUENCE => "effect.sequence",
     EFFECT_STATIC_ANTHEM => "effect.static_anthem",
     EFFECT_STATIC_ATTACK_TAX => "effect.static_attack_tax",
+    EFFECT_STATIC_CANT_ATTACK_IF_CAST_THIS_TURN => "effect.static_cant_attack_if_cast_this_turn",
     EFFECT_STATIC_CANT_BE_ATTACKED_BY => "effect.static_cant_be_attacked_by",
+    EFFECT_STATIC_CANT_BLOCK_FILTER => "effect.static_cant_block_filter",
+    EFFECT_STATIC_CANT_CAST_DURING_COMBAT => "effect.static_cant_cast_during_combat",
+    EFFECT_STATIC_CANT_CAST_IF_ATTACKED_THIS_TURN => "effect.static_cant_cast_if_attacked_this_turn",
+    EFFECT_STATIC_MUST_ATTACK_EACH_COMBAT => "effect.static_must_attack_each_combat",
+    EFFECT_STATIC_OPPONENTS_CANT_SEARCH_LIBRARIES => "effect.static_opponents_cant_search_libraries",
+    EFFECT_STATIC_PROTECTION_FROM_CHOSEN_COLOR => "effect.static_protection_from_chosen_color",
     EFFECT_STATIC_CAST_X_REPLACEMENT => "effect.static_cast_x_replacement",
     EFFECT_STATIC_CONTROL_ATTACHED => "effect.static_control_attached",
     EFFECT_STATIC_COUNTER_REPLACEMENT => "effect.static_counter_replacement",
@@ -278,6 +297,7 @@ message_keys! {
     EFFECT_ZONE_MANIFEST => "effect.zone_manifest",
     EFFECT_ZONE_MASS_RETURN_FROM_GRAVEYARD => "effect.zone_mass_return_from_graveyard",
     EFFECT_ZONE_REANIMATE_DYING_ENCHANTED_CREATURE => "effect.zone_reanimate_dying_enchanted_creature",
+    EFFECT_ZONE_REANIMATE_RANDOM_FROM_TARGET_OPPONENT_GRAVEYARD => "effect.zone_reanimate_random_from_target_opponent_graveyard",
     EFFECT_ZONE_REANIMATE_TO_BATTLEFIELD => "effect.zone_reanimate_to_battlefield",
     EFFECT_ZONE_REFLEXIVE_TRIGGER => "effect.zone_reflexive_trigger",
     EFFECT_ZONE_RETURN_ALL_TO_HAND => "effect.zone_return_all_to_hand",
@@ -543,6 +563,7 @@ fn keyword_token(keyword: Keyword) -> String {
         Keyword::Deathtouch => "deathtouch".to_string(),
         Keyword::Reach => "reach".to_string(),
         Keyword::Menace => "menace".to_string(),
+        Keyword::Intimidate => "intimidate".to_string(),
         Keyword::DoubleStrike => "double_strike".to_string(),
         Keyword::Lifelink => "lifelink".to_string(),
         Keyword::Defender => "defender".to_string(),
@@ -854,6 +875,9 @@ fn card_filter_token(filter: CardFilter) -> String {
         CardFilter::BasicLandWithSubtype(subtypes) => {
             format!("basic_land_with_subtype_{}", string_list_token(subtypes))
         }
+        CardFilter::PermanentWithSubtype(subtypes) => {
+            format!("permanent_with_subtype_{}", string_list_token(subtypes))
+        }
         CardFilter::PermanentWithManaValueAtMost(max) => format!("permanent_mv_lte_{max}"),
         CardFilter::NonlandPermanentWithManaValueAtMost(max) => {
             format!("nonland_permanent_mv_lte_{max}")
@@ -1005,6 +1029,12 @@ fn amount_token(amount: Amount) -> &'static str {
         Amount::TriggeringSpellManaValue => "triggering_spell_mana_value",
         Amount::TriggeringSpellManaSpent => "triggering_spell_mana_spent",
         Amount::SpellSacrificeCount => "spell_sacrifice_count",
+        Amount::SpellMultikickerCount => "spell_multikicker_count",
+        Amount::SpellFirstTargetManaValue => "spell_first_target_mana_value",
+        Amount::CardsDiscardedThisWay => "cards_discarded_this_way",
+        Amount::CreaturesSacrificedThisWay => "creatures_sacrificed_this_way",
+        Amount::Scaled { .. } => "scaled",
+        Amount::IfSpellCastDuringMainPhase { .. } => "if_spell_cast_during_main_phase",
         Amount::RevealedCreatureManaValue => "revealed_creature_mana_value",
         Amount::PermanentsDiedThisTurn => "permanents_died_this_turn",
         Amount::PermanentsDestroyedThisWay { .. } => "permanents_destroyed_this_way",
@@ -1080,6 +1110,8 @@ impl Effect {
                 bool_param("include_planeswalkers", include_planeswalkers),
                 optional_permanent_filter_param("filter", filter),
             ]),
+            Effect::Damage(Radiance { amount, .. }) => MessageRef::new(MessageKey::EFFECT_DAMAGE_RADIANCE)
+                .with_params(vec![amount_param("amount", amount)]),
             Effect::Damage(DamageEffect::EachPlayer { amount }) => {
                 MessageRef::new(MessageKey::EFFECT_DAMAGE_EACH_PLAYER)
                     .with_params(vec![amount_param("amount", amount)])
@@ -1132,7 +1164,7 @@ impl Effect {
             }
             Effect::Life(TargetPlayerGains { amount, opponent }) => {
                 MessageRef::new(MessageKey::EFFECT_LIFE_TARGET_PLAYER_GAINS)
-                    .with_params(vec![int_param("amount", amount), bool_param("opponent", opponent)])
+                    .with_params(vec![amount_param("amount", amount), bool_param("opponent", opponent)])
             }
             Effect::Life(EachOpponentDrain { amount, sum_gain }) => {
                 MessageRef::new(MessageKey::EFFECT_LIFE_EACH_OPPONENT_DRAIN)
@@ -1162,7 +1194,7 @@ impl Effect {
                     .with_params(vec![int_param("life_loss", life_loss)])
             }
             Effect::Destroy(DestroyEffect::Target { .. }) => MessageRef::new(MessageKey::EFFECT_DESTROY_TARGET),
-            Effect::Destroy(DestroyEffect::All { filter }) => {
+            Effect::Destroy(DestroyEffect::All { filter, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_DESTROY_ALL)
                     .with_params(vec![permanent_filter_param("filter", filter)])
             }
@@ -1226,6 +1258,8 @@ impl Effect {
             Effect::Control(GrantSourceAbilitiesUntilEndOfTurn) => {
                 MessageRef::new(MessageKey::EFFECT_CONTROL_GRANT_SOURCE_ABILITIES_UNTIL_END_OF_TURN)
             }
+            Effect::Control(TapAll { filter }) => MessageRef::new(MessageKey::EFFECT_CONTROL_TAP_ALL)
+                .with_params(vec![permanent_filter_param("filter", filter)]),
             Effect::Control(UntapAll { filter }) => {
                 MessageRef::new(MessageKey::EFFECT_CONTROL_UNTAP_ALL)
                     .with_params(vec![permanent_filter_param("filter", filter)])
@@ -1335,6 +1369,23 @@ impl Effect {
                     keyword_list_param("keywords", keywords),
                     permanent_filter_param("filter", filter),
                 ]),
+            Effect::Pump(GrantChosenColorProtectionUntilEndOfTurn { .. }) => {
+                MessageRef::new(MessageKey::EFFECT_PUMP_GRANT_CHOSEN_COLOR_PROTECTION_UNTIL_END_OF_TURN)
+            }
+            Effect::Pump(RadianceChosenColorProtectionUntilEndOfTurn { .. }) => {
+                MessageRef::new(MessageKey::EFFECT_PUMP_RADIANCE_CHOSEN_COLOR_PROTECTION_UNTIL_END_OF_TURN)
+            }
+            Effect::Pump(PumpEachCreatureUntilEndOfTurn {
+                power,
+                toughness,
+                keywords,
+                filter,
+            }) => MessageRef::new(MessageKey::EFFECT_PUMP_PUMP_EACH_CREATURE_UNTIL_END_OF_TURN).with_params(vec![
+                amount_param("power", power),
+                amount_param("toughness", toughness),
+                keyword_list_param("keywords", keywords),
+                permanent_filter_param("filter", filter),
+            ]),
             Effect::Pump(GrantKeywordsToPermanentsYouControlUntilEndOfTurn { keywords, filter }) => {
                 MessageRef::new(MessageKey::EFFECT_PUMP_GRANT_KEYWORDS_TO_PERMANENTS_YOU_CONTROL_UNTIL_END_OF_TURN)
                     .with_params(vec![keyword_list_param("keywords", keywords), permanent_filter_param("filter", filter)])
@@ -1512,6 +1563,9 @@ impl Effect {
             }
             Effect::Zone(ReturnFromGraveyardToHand { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_ZONE_RETURN_FROM_GRAVEYARD_TO_HAND)
+            }
+            Effect::Zone(ReanimateRandomFromTargetOpponentGraveyard { .. }) => {
+                MessageRef::new(MessageKey::EFFECT_ZONE_REANIMATE_RANDOM_FROM_TARGET_OPPONENT_GRAVEYARD)
             }
             Effect::Zone(ReanimateToBattlefield { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_ZONE_REANIMATE_TO_BATTLEFIELD)
@@ -1707,9 +1761,19 @@ impl Effect {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_PUT_LAND_FROM_HAND)
                     .with_params(vec![bool_param("tapped", tapped)])
             }
-            Effect::Choice(PutCreatureFromHand) => {
+            Effect::Choice(PutCreatureFromHand { keep: true, .. }) => {
+                MessageRef::new(MessageKey::EFFECT_CHOICE_PUT_CREATURE_FROM_HAND_ATTACKING)
+            }
+            Effect::Choice(PutCreatureFromHand { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_PUT_CREATURE_FROM_HAND)
             }
+            Effect::Choice(EachOpponentDiscards) => {
+                MessageRef::new(MessageKey::EFFECT_CHOICE_EACH_OPPONENT_DISCARDS)
+            }
+            Effect::Choice(EachPlayerChoosesWarOrPeace) => {
+                MessageRef::new(MessageKey::EFFECT_CHOICE_EACH_PLAYER_CHOOSES_WAR_OR_PEACE)
+            }
+            Effect::Choice(DiscardYourHand) => MessageRef::new(MessageKey::EFFECT_CHOICE_DISCARD_YOUR_HAND),
             Effect::Choice(CastCreatureFaceDown) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_CAST_CREATURE_FACE_DOWN)
             }
@@ -1799,10 +1863,15 @@ impl Effect {
                 MessageRef::new(MessageKey::EFFECT_STATIC_GRANT_MANA_ABILITY)
                     .with_params(vec![permanent_filter_param("filter", filter)])
             }
-            Effect::Static(KeywordAnthem { keywords, filter }) => {
-                MessageRef::new(MessageKey::EFFECT_STATIC_KEYWORD_ANTHEM)
-                    .with_params(vec![keyword_list_param("keywords", keywords), permanent_filter_param("filter", filter)])
-            }
+            Effect::Static(KeywordAnthem {
+                keywords,
+                filter,
+                all_players,
+            }) => MessageRef::new(MessageKey::EFFECT_STATIC_KEYWORD_ANTHEM).with_params(vec![
+                keyword_list_param("keywords", keywords),
+                permanent_filter_param("filter", filter),
+                bool_param("all_players", all_players),
+            ]),
             Effect::Static(Anthem {
                 power,
                 toughness,
@@ -1871,6 +1940,26 @@ impl Effect {
             Effect::Static(CounterScaledAttackTax) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_COUNTER_SCALED_ATTACK_TAX)
             }
+            Effect::Static(CantAttackIfCastThisTurn) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_CANT_ATTACK_IF_CAST_THIS_TURN)
+            }
+            Effect::Static(CantCastDuringCombat) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_CANT_CAST_DURING_COMBAT)
+            }
+            Effect::Static(CantCastIfAttackedThisTurn) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_CANT_CAST_IF_ATTACKED_THIS_TURN)
+            }
+            Effect::Static(MustAttackEachCombat) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_MUST_ATTACK_EACH_COMBAT)
+            }
+            Effect::Static(OpponentsCantSearchLibraries) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_OPPONENTS_CANT_SEARCH_LIBRARIES)
+            }
+            Effect::Static(ProtectionFromChosenColor) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_PROTECTION_FROM_CHOSEN_COLOR)
+            }
+            Effect::Static(CantBlockFilter { filter }) => MessageRef::new(MessageKey::EFFECT_STATIC_CANT_BLOCK_FILTER)
+                .with_params(vec![permanent_filter_param("filter", filter)]),
             Effect::Static(CantBeAttackedBy { filter }) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_CANT_BE_ATTACKED_BY)
                     .with_params(vec![permanent_filter_param("filter", filter)])
@@ -1928,6 +2017,13 @@ impl Effect {
             }
             Effect::Misc(SkipNextUntapOpponentCreatures) => {
                 MessageRef::new(MessageKey::EFFECT_MISC_SKIP_NEXT_UNTAP_OPPONENT_CREATURES)
+            }
+            Effect::Misc(MustAttackTarget) => MessageRef::new(MessageKey::EFFECT_MISC_MUST_ATTACK_TARGET),
+            Effect::Misc(YouChooseWhichCreaturesAttack) => {
+                MessageRef::new(MessageKey::EFFECT_MISC_YOU_CHOOSE_WHICH_CREATURES_ATTACK)
+            }
+            Effect::Misc(YouChooseWhichCreaturesBlock) => {
+                MessageRef::new(MessageKey::EFFECT_MISC_YOU_CHOOSE_WHICH_CREATURES_BLOCK)
             }
             Effect::Misc(MustAttackRandomOpponent) => {
                 MessageRef::new(MessageKey::EFFECT_MISC_MUST_ATTACK_RANDOM_OPPONENT)

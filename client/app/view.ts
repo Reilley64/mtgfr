@@ -148,7 +148,12 @@ function routeBody(model: Model) {
       case "LoginRoute":
         return authView(model.auth, model.apiVersion);
       case "LeaderboardRoute":
-        return leaderboardView(model.leaderboard, model.session.me?.username ?? "", model.apiVersion);
+        return leaderboardView(
+          model.leaderboard,
+          model.session.me?.username ?? "",
+          model.session.meGravatarHash,
+          model.apiVersion,
+        );
       case "NewDeckRoute":
         return deckBuilderView(model.decks.builder, model.apiVersion);
       case "DeckRoute":

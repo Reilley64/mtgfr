@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   audioContextForTests,
+  playTableFeelDestroy,
+  playTableFeelExile,
   playUnmuteTick,
   resetTableAudioForTests,
   setSoundEnabledForTests,
@@ -72,5 +74,36 @@ describe("tableAudio unlock", () => {
     const createOscillator = vi.spyOn(ac, "createOscillator");
     playUnmuteTick();
     expect(createOscillator).toHaveBeenCalled();
+  });
+});
+
+describe("tableAudio destroy and exile cues", () => {
+  beforeEach(() => {
+    resetTableAudioForTests();
+    setSoundEnabledForTests(true);
+    vi.stubGlobal("AudioContext", FakeAudioContext);
+  });
+  afterEach(() => {
+    resetTableAudioForTests();
+    setSoundEnabledForTests(null);
+    vi.unstubAllGlobals();
+  });
+
+  it("playTableFeelDestroy no-ops when muted", () => {
+    setSoundEnabledForTests(false);
+    unlockTableAudio();
+    const ac = audioContextForTests() as unknown as FakeAudioContext;
+    const spy = vi.spyOn(ac, "createOscillator");
+    playTableFeelDestroy();
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("playTableFeelExile plays when unlocked", () => {
+    unlockTableAudio();
+    const ac = audioContextForTests() as unknown as FakeAudioContext;
+    ac.state = "running";
+    const spy = vi.spyOn(ac, "createOscillator");
+    playTableFeelExile();
+    expect(spy).toHaveBeenCalled();
   });
 });

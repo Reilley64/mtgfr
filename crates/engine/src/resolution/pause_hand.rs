@@ -63,11 +63,20 @@ impl Game {
             // battlefield" pauses on the creature sibling of `PutLandFromHand`'s card-pick
             // choice (up to one hand creature, or decline). `source` is threaded through so the
             // answer can later schedule the end-step sacrifice against this same ability.
-            Effect::Choice(ChoiceEffect::PutCreatureFromHand) => pending::raise(
+            // Kaalia restricts eligibility to `subtypes`, sets `keep`, and carries the threaded
+            // `defender` so the put-in creature enters tapped and attacking that opponent.
+            Effect::Choice(ChoiceEffect::PutCreatureFromHand {
+                subtypes,
+                keep,
+                defender,
+            }) => pending::raise(
                 self,
                 pending::ChoiceRequest::PutCreatureFromHand {
                     player: controller,
                     source,
+                    subtypes,
+                    keep,
+                    defender,
                 },
             ),
             // Illusionary Mask's "you may cast a creature card in hand … face down as a 2/2"

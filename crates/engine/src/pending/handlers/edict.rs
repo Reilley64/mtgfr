@@ -383,6 +383,7 @@ impl Game {
         keep_one: bool,
         filter: PermanentFilter,
         life_loss: i32,
+        count: u32,
         follow_up: &'static [Effect],
         controller: PlayerId,
         source: ObjectId,
@@ -391,6 +392,9 @@ impl Game {
         // Scoped to this one edict (Deadly Brew's "if you sacrificed this way" gate) — overwrite,
         // not accumulate, so a prior edict earlier this game can't leak through.
         self.resolution_frame.sacrificed_by_edict_controller = false;
+        // Scoped to this one edict (Syphon Flesh's "for each creature sacrificed this way") —
+        // overwrite so a prior edict can't leak through.
+        self.resolution_frame.creatures_sacrificed_this_way = 0;
         if scope == EdictScope::TargetedPlayers {
             let legal = self.apnap_order();
             pending::raise(
@@ -404,6 +408,7 @@ impl Game {
                     keep_one,
                     filter,
                     life_loss,
+                    count,
                     then: follow_up,
                 },
             );
@@ -427,7 +432,7 @@ impl Game {
             }
         }
         self.prompt_next_sacrifice(
-            affected, keep_one, filter, follow_up, controller, source, events,
+            affected, keep_one, filter, count, follow_up, controller, source, events,
         );
     }
 
@@ -449,6 +454,7 @@ impl Game {
             keep_one,
             filter,
             life_loss,
+            count,
             then,
         }) = self.pending_choice.clone()
         else {
@@ -476,6 +482,7 @@ impl Game {
             players,
             keep_one,
             filter,
+            count,
             then,
             chooser,
             source,
@@ -492,6 +499,7 @@ impl Game {
         remaining: Vec<PlayerId>,
         keep_one: bool,
         filter: PermanentFilter,
+        count: u32,
         follow_up: &'static [Effect],
         controller: PlayerId,
         source: ObjectId,
@@ -503,6 +511,7 @@ impl Game {
                 remaining,
                 keep_one,
                 filter,
+                count,
                 follow_up,
                 controller,
                 source,
@@ -544,6 +553,7 @@ impl Game {
             keep_one,
             filter,
             remaining,
+            count,
             controller,
             source,
             follow_up,
@@ -551,7 +561,7 @@ impl Game {
         else {
             return Err(Reject::IllegalChoice);
         };
-        if !valid_sacrifice_choice(&sacrifices, &options, keep_one) {
+        if !valid_sacrifice_choice(&sacrifices, &options, keep_one, count) {
             return Err(Reject::IllegalChoice);
         }
         self.finish_answer();
@@ -576,11 +586,14 @@ impl Game {
                     def,
                 },
             );
+            // Syphon Flesh's "for each creature sacrificed this way".
+            self.resolution_frame.creatures_sacrificed_this_way += 1;
         }
         self.prompt_next_sacrifice(
             remaining,
             keep_one,
             filter,
+            count,
             follow_up,
             controller,
             source,

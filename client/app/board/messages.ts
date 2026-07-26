@@ -14,6 +14,7 @@ const ActionView: S.Schema<ActionViewT> = S.Any;
 const CatalogCard: S.Schema<CatalogCardT | null> = S.Any;
 const FlightPhase = S.Union([S.Literal("flying"), S.Literal("settled")]);
 const FlightKind = S.Union([S.Literal("battlefield"), S.Literal("stack"), S.Literal("from-stack")]);
+const ExitFxKind = S.Union([S.Literal("destroy"), S.Literal("exile")]);
 const HandBarZone = S.Union([S.Literal("hand"), S.Literal("command"), S.Literal("graveyard"), S.Literal("exile")]);
 const CardFlight = S.Struct({
   id: S.Number,
@@ -29,13 +30,28 @@ const CardFlight = S.Struct({
   kind: FlightKind,
   fromCardId: S.optional(S.Number),
 });
+const ExitFxStruct = S.Struct({
+  id: S.Number,
+  print: S.String,
+  name: S.String,
+  kind: ExitFxKind,
+  x: S.Number,
+  y: S.Number,
+  scale: S.Number,
+  progress: S.Number,
+  seed: S.Number,
+});
 
 export const ArtLoaded = m("ArtLoaded");
 export const BoardCameraZoomed = m("BoardCameraZoomed", { x: S.Number, y: S.Number, factor: S.Number });
 export const BoardPointerDown = m("BoardPointerDown", CanvasPoint);
 export const BoardPointerMove = m("BoardPointerMove", CanvasPoint);
 export const BoardPointerUp = m("BoardPointerUp", CanvasPoint);
-export const FlightsSynced = m("FlightsSynced", { now: S.Number, flights: S.Array(CardFlight) });
+export const FlightsSynced = m("FlightsSynced", {
+  now: S.Number,
+  flights: S.Array(CardFlight),
+  exitFx: S.Array(ExitFxStruct),
+});
 
 /** User activated a hand/command/graveyard/exile bar action (click / Enter / Space / drop above threshold). */
 export const HandActionActivated = m("HandActionActivated", {

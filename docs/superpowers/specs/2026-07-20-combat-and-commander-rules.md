@@ -78,6 +78,23 @@ Pillow-fort costs (CR 508.1g) — "creatures attacking you cost {N}" — are che
 - `Keyword::LesserPowerCantBlock` (Elusive Otter): blockers with less power than the attacker can't block it.
 - The attacker must be attacking `player` (not another defender).
 
+### Declaration overrides
+
+A card may move a declaration to another seat (Master Warcraft: "You choose which creatures attack
+this turn" / "…which creatures block this turn"). `CombatExtras::attack_declarer` and
+`::block_declarer` hold the chosen seat for the turn and clear at the next untap step.
+
+- `Game::attack_declarer()` is the active player unless overridden; `Game::block_declarer(defender)`
+  is that defender unless overridden. Either falls back to the default seat if the chosen player has
+  since lost (CR 104.3a).
+- The declaring seat submits the intent, but the creatures on offer stay their own controllers':
+  `declare_attackers` still declares the **active player's** creatures, and `declare_blockers`
+  declares for every attacked seat that declarer still answers for
+  (`Game::block_seats_for(declarer)`).
+- Legality is unchanged — the override moves who chooses, not what may be chosen.
+- Master Warcraft can only be cast before attackers are declared (`cast_only_before_attackers`),
+  since after that there is no declaration left to move.
+
 ### Combat damage
 
 - Attacking and blocking creatures deal damage simultaneously in the combat damage step (CR 510.1).

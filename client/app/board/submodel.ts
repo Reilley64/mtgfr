@@ -85,13 +85,15 @@ import { hitAvatar, hitTest } from "./geometry/hit-test";
 import {
   canSelectPermanent,
   combatMode,
+  declaresFor,
   fitCamera,
   type PointerPhase,
   pointerDown,
   pointerMove,
   pointerUp,
+  primaryActionFor,
 } from "./geometry/interaction";
-import { avatarPos, CARD_H, CARD_W, layout, type RenderCard, STEP, ZONE } from "./geometry/layout";
+import { avatarPos, CARD_H, CARD_W, layout, type RenderCard, ZONE } from "./geometry/layout";
 import { type RadialPress, radialPressDown, radialPressUp } from "./geometry/radial";
 import {
   STACK_HOLD_MAX_MS,
@@ -104,6 +106,7 @@ import { persistHintDismissed, readHintDismissed } from "./html/discoverability"
 import { HAND_BAR_H, HAND_INSPECT_STICKY_BAND, HAND_PLAY_SLACK_PX } from "./html/hand";
 import { CopyBoardLog } from "./log-commands";
 import { GyExileChosen, type Message } from "./messages";
+import { type ExitFx, spawnExitFx } from "./motion/exit-fx";
 import {
   type CardFlight,
   flyingCardIds,
@@ -129,15 +132,25 @@ export type HandDragState = {
   y: number;
 };
 
+type BattlefieldPose = {
+  x: number;
+  y: number;
+  scale: number;
+  print: string;
+  name: string;
+};
+
 export type BoardModel = {
   camera: Camera;
   cameraFitPlayers: number | null;
   /** True after the player pans/zooms — stops automatic fitCamera from fighting them. */
   cameraUserMoved: boolean;
+  exitFx: Map<number, ExitFx>;
   flights: Map<number, CardFlight>;
   handHidden: Set<number>;
   hideCardIds: Set<number>;
   lastFlightFrame: number | null;
+  lastBattlefieldPoses: Map<number, BattlefieldPose>;
   lastProvenanceSeq: number | null;
   ownedIds: Set<number>;
   pointer: PointerPhase;
@@ -227,10 +240,12 @@ export function initialBoardModel(): BoardModel {
     camera: { panX: 0, panY: 0, zoom: 1 },
     cameraFitPlayers: null,
     cameraUserMoved: false,
+    exitFx: new Map(),
     flights: new Map(),
     handHidden: new Set(),
     hideCardIds: new Set(),
     lastFlightFrame: null,
+    lastBattlefieldPoses: new Map(),
     lastProvenanceSeq: null,
     ownedIds: new Set(),
     pointer: { kind: "idle" },
@@ -405,22 +420,17 @@ function cardAt(fold: GameFoldState, model: BoardModel, x: number, y: number): R
   return cards.find((card) => card.id === hitId) ?? null;
 }
 
-function combatStepFor(fold: GameFoldState): boolean {
+/** The seats whose creatures this viewer may drag into a combat declaration right now — empty when
+ * no declaration is theirs to make. Usually just themselves; a moved declaration (Master Warcraft)
+ * hands them somebody else's creatures. */
+function stageableSeats(fold: GameFoldState): number[] {
   const state = fold.state;
-  if (state == null) return false;
-
-  const mode = combatMode(
-    state.step,
-    state.active_player === state.viewer,
-    false,
-    state.combat.attackers,
-    state.viewer,
-    {
-      attackersDeclared: state.combat.attackers_declared,
-      blockersDeclared: state.combat.blockers_declared.includes(state.viewer),
-    },
-  );
-  return mode != null;
+  if (state == null) return [];
+  const mode = combatMode(state.actions, false, {
+    attackersDeclared: state.combat.attackers_declared,
+    blockersDeclared: state.combat.blockers_declared.includes(state.viewer),
+  });
+  return declaresFor(state.actions, mode);
 }
 
 function stackTarget(model: BoardModel): Vec2 {
@@ -443,12 +453,53 @@ function retargetFlightToCard(flight: CardFlight, model: BoardModel, card: Rende
   return retargetFlight(flight, { x: target.x, y: target.y, scale: 1 });
 }
 
+function hiddenCardIds(
+  flights: ReadonlyMap<number, CardFlight>,
+  exitFx: ReadonlyMap<number, ExitFx>,
+): Set<number> {
+  const hidden = flyingCardIds(flights);
+  for (const id of exitFx.keys()) hidden.add(id);
+  return hidden;
+}
+
+function battlefieldPoseFromCard(camera: Camera, card: RenderCard): BattlefieldPose {
+  const target = cardTarget(camera, card);
+  return {
+    x: target.x,
+    y: target.y,
+    scale: 1,
+    print: card.print,
+    name: card.name,
+  };
+}
+
+function battlefieldPoseFromFlight(flight: CardFlight): BattlefieldPose {
+  return {
+    x: flight.x,
+    y: flight.y,
+    scale: flight.scale,
+    print: flight.print,
+    name: flight.name,
+  };
+}
+
+function currentBattlefieldPoses(model: BoardModel, cards: readonly RenderCard[]): Map<number, BattlefieldPose> {
+  const poses = new Map<number, BattlefieldPose>();
+  for (const card of cards) {
+    if (card.zone !== ZONE.Battlefield) continue;
+    poses.set(card.id, battlefieldPoseFromCard(model.camera, card));
+  }
+  return poses;
+}
+
 function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
   const state = fold.state;
   if (state == null) return model;
 
   const cards = layout(state, state.viewer);
   const cardsById = new Map(cards.map((card) => [card.id, card]));
+  const battlefieldExitIds = new Set(fold.provenance.battlefieldExits.keys());
+  const exitFx = new Map(model.exitFx);
   const handHidden = new Set(model.handHidden);
   let flights = new Map(model.flights);
 
@@ -461,6 +512,34 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
     if (flight.kind !== "stack") continue;
     const target = stackTarget(model);
     flights.set(id, retargetFlight(flight, { x: target.x, y: target.y, scale: stackFlightScale(model.camera.zoom) }));
+  }
+
+  for (const [id, zone] of fold.provenance.battlefieldExits) {
+    const from = fold.provenance.zoneMoves.get(id);
+    const flightId = flights.has(id) ? id : from != null && flights.has(from) ? from : null;
+    const flight = flightId == null ? undefined : flights.get(flightId);
+    const pose =
+      flight != null
+        ? battlefieldPoseFromFlight(flight)
+        : (from != null ? model.lastBattlefieldPoses.get(from) : undefined) ?? model.lastBattlefieldPoses.get(id);
+    if (flight != null && flightId != null) {
+      flights.delete(flightId);
+      if (flight.fromCardId != null) handHidden.delete(flight.fromCardId);
+    }
+    if (pose == null) continue;
+    exitFx.set(
+      id,
+      spawnExitFx({
+        id,
+        print: pose.print,
+        name: pose.name,
+        kind: zone === "graveyard" ? "destroy" : "exile",
+        x: pose.x,
+        y: pose.y,
+        scale: pose.scale,
+        seed: id,
+      }),
+    );
   }
 
   for (const [permanent, from] of fold.provenance.landPlayFrom) {
@@ -543,6 +622,7 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
   }
 
   for (const id of new Set([...fold.provenance.resolvedFromStack, ...fold.provenance.leftStackToPile])) {
+    if (battlefieldExitIds.has(id)) continue;
     const card = cardsById.get(id);
     if (card == null) continue;
 
@@ -577,6 +657,7 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
   }
 
   for (const [id, from] of fold.provenance.zoneMoves) {
+    if (battlefieldExitIds.has(id)) continue;
     if (flights.has(id)) continue;
     const card = cardsById.get(id);
     if (card == null) continue;
@@ -613,9 +694,11 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
 
   return {
     ...model,
+    exitFx,
     flights,
     handHidden,
-    hideCardIds: flyingCardIds(flights),
+    hideCardIds: hiddenCardIds(flights, exitFx),
+    lastBattlefieldPoses: currentBattlefieldPoses(model, cards),
     lastProvenanceSeq: fold.seq,
     ownedIds: new Set(flights.keys()),
   };
@@ -628,7 +711,7 @@ function pointerDownModel(model: BoardModel, fold: GameFoldState, x: number, y: 
   return {
     ...model,
     cursor: { x, y },
-    pointer: pointerDown(cardAt(fold, model, x, y), x, y, combatStepFor(fold), state.viewer),
+    pointer: pointerDown(cardAt(fold, model, x, y), x, y, stageableSeats(fold)),
   };
 }
 
@@ -940,8 +1023,14 @@ function submitPendingHandPick(
   return togglePendingObjectAimPick(idle, fold, pc, objectId);
 }
 
-function applyFlightsSynced(model: BoardModel, flightsIn: readonly CardFlight[], now: number): BoardModel {
+function applyFlightsSynced(
+  model: BoardModel,
+  flightsIn: readonly CardFlight[],
+  exitFxIn: readonly ExitFx[],
+  now: number,
+): BoardModel {
   const flights = new Map<number, CardFlight>();
+  const exitFx = new Map<number, ExitFx>(exitFxIn.map((fx) => [fx.id, fx]));
   const handHidden = new Set(model.handHidden);
   const retainedSourceIds = new Set<number>();
 
@@ -965,10 +1054,11 @@ function applyFlightsSynced(model: BoardModel, flightsIn: readonly CardFlight[],
 
   return {
     ...model,
+    exitFx,
     flights,
     handHidden,
-    hideCardIds: flyingCardIds(flights),
-    lastFlightFrame: flights.size === 0 ? null : now,
+    hideCardIds: hiddenCardIds(flights, exitFx),
+    lastFlightFrame: flights.size === 0 && exitFx.size === 0 ? null : now,
     ownedIds: new Set(flights.keys()),
   };
 }
@@ -1164,7 +1254,7 @@ function seedDropFromHand(
     ...model,
     flights,
     handHidden,
-    hideCardIds: flyingCardIds(flights),
+    hideCardIds: hiddenCardIds(flights, model.exitFx),
     ownedIds: new Set(flights.keys()),
   };
 }
@@ -1181,7 +1271,7 @@ function clearPlayOrigin(model: BoardModel, cardId: number): BoardModel {
     ...model,
     flights,
     handHidden,
-    hideCardIds: flyingCardIds(flights),
+    hideCardIds: hiddenCardIds(flights, model.exitFx),
     ownedIds: new Set(flights.keys()),
   };
 }
@@ -1535,26 +1625,18 @@ function primaryFor(
     state.actions?.find((a) => a.kind === "declare_attackers")?.required_attacks ?? [],
     model.attackersConfirmed || state.combat.attackers_declared,
   );
-  // Same-signature as primaryActionFor but done inline to avoid crate churn.
-  const step = state.step;
-  const me = state.viewer;
-  const active = state.active_player;
-  const declaredAttackers = state.combat.attackers;
-  const attackDone = model.attackersConfirmed || state.combat.attackers_declared || declaredAttackers.length > 0;
-  const blockDone = model.blockersConfirmed || state.combat.blockers_declared.includes(me);
-  const attackingMe = declaredAttackers.some((a) => a.defender === me);
-  if (step === STEP.DeclareAttackers && active === me && !attackDone) {
-    return attackers.length
-      ? { kind: "confirm-attackers", label: `Attack (${attackers.length})` }
-      : { kind: "confirm-attackers", label: "No attackers" };
-  }
-  if (step === STEP.DeclareBlockers && attackingMe && !blockDone) {
-    return model.combatBlocks.length
-      ? { kind: "confirm-blockers", label: `Block (${model.combatBlocks.length})` }
-      : { kind: "confirm-blockers", label: "No blockers" };
-  }
-  if (step === STEP.Draw && active === me) return { kind: "pass", label: "Draw" };
-  return { kind: "pass", label: "Next" };
+  return primaryActionFor({
+    step: state.step,
+    activePlayer: state.active_player,
+    me: state.viewer,
+    actions: state.actions,
+    attackers,
+    blocks: model.combatBlocks,
+    attackersConfirmed: model.attackersConfirmed,
+    blockersConfirmed: model.blockersConfirmed,
+    attackersDeclared: state.combat.attackers_declared,
+    blockersDeclared: state.combat.blockers_declared.includes(state.viewer),
+  });
 }
 
 /** Submit a ready multi-aim or on-board damage-assign draft; null when nothing to submit. */
@@ -1713,17 +1795,11 @@ function combatDropModel(
 ): BoardReturn {
   const state = fold.state;
   if (state == null || from == null) return [model, []];
-  const mode = combatMode(
-    state.step,
-    state.active_player === state.viewer,
-    false,
-    state.combat.attackers,
-    state.viewer,
-    {
-      attackersDeclared: model.attackersConfirmed || state.combat.attackers_declared,
-      blockersDeclared: model.blockersConfirmed || state.combat.blockers_declared.includes(state.viewer),
-    },
-  );
+  const mode = combatMode(state.actions, false, {
+    attackersDeclared: model.attackersConfirmed || state.combat.attackers_declared,
+    blockersDeclared: model.blockersConfirmed || state.combat.blockers_declared.includes(state.viewer),
+  });
+  const seats = declaresFor(state.actions, mode);
   const dropOn = blockAttackerId != null ? (state.objects.find((o) => o.id === blockAttackerId) ?? null) : null;
   // ObjectView.kind is a WireKind object; RenderCard.kind (what attackablePlaneswalker reads) is the
   // bare tag string — normalize so the planeswalker check is live, not a runtime type mismatch.
@@ -1734,7 +1810,9 @@ function combatDropModel(
     summoningSick: from.summoning_sick,
     hasHaste: from.has_haste,
   };
-  const opponents = state.players.map((p) => p.player).filter((p) => p !== state.viewer);
+  // Opponents of the seat being declared for, not of the viewer — a moved declaration attacks on
+  // someone else's behalf, and you may not send their creatures at their own planeswalker.
+  const opponents = state.players.map((p) => p.player).filter((p) => !seats.includes(p));
   const result = handleCombatDrop(
     mode,
     model.combatAttackers,
@@ -1743,7 +1821,7 @@ function combatDropModel(
     defenderSeat,
     dropTarget as unknown as Parameters<typeof handleCombatDrop>[5],
     state.combat.attackers,
-    state.viewer,
+    seats,
     opponents,
   );
   if (result.kind === "attackers") return [{ ...model, combatAttackers: result.value }, []];
@@ -1797,7 +1875,7 @@ export function updateBoard(
     case "BoardPointerUp":
       return pointerUpModel(model, fold, tableId, message.x, message.y);
     case "FlightsSynced":
-      return [applyFlightsSynced(model, message.flights, message.now), []];
+      return [applyFlightsSynced(model, message.flights, message.exitFx, message.now), []];
     case "HandActionActivated": {
       const x = message.x ?? model.viewport.width / 2;
       const y = message.y ?? model.viewport.height / 2;

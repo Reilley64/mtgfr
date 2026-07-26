@@ -14,6 +14,7 @@ export const LeaderboardSubmodel = S.Struct({
   total: S.Number,
   status: LeaderboardStatus,
   error: S.NullOr(S.String),
+  accountMenuOpen: S.Boolean,
 });
 export type LeaderboardSubmodel = typeof LeaderboardSubmodel.Type;
 
@@ -23,5 +24,6 @@ export function initialLeaderboardSubmodel(): LeaderboardSubmodel {
     total: 0,
     status: "idle",
     error: null,
+    accountMenuOpen: false,
   };
 }

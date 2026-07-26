@@ -81,9 +81,7 @@ test("stackEntryTargets prefers non-empty targets list", () => {
 });
 
 test("stackEntryTargets falls back to singular target", () => {
-  expect(stackEntryTargets(entry({ target: { kind: "object", id: 9 } }))).toEqual([
-    { kind: "object", id: 9 },
-  ]);
+  expect(stackEntryTargets(entry({ target: { kind: "object", id: 9 } }))).toEqual([{ kind: "object", id: 9 }]);
 });
 
 test("stackEntryTargets is empty when targetless", () => {

@@ -1,0 +1,42 @@
+# Flying
+# Players can't cast spells during combat.
+# {R}: Target creature attacks this turn if able.
+name = "Basandra, Battle Seraph"
+id = "4a480736-4cdc-4e3a-a8cb-d1c726982f9f"
+default_print = "df9359aa-1ffd-4451-a154-bd46622f60b9"
+otags = ["activated-ability", "flying", "legendary", "must-attack", "static", "taxing-effect"]
+oracle = "Flying\nPlayers can't cast spells during combat.\n{R}: Target creature attacks this turn if able."
+set = "cmd"
+subtypes = ["Angel"]
+legendary = true
+keywords = ["flying"]
+
+[cost]
+generic = 3
+red = 1
+white = 1
+
+[kind]
+type = "creature"
+power = 4
+toughness = 4
+
+# Players can't cast spells during combat.
+[[abilities]]
+timing = "static"
+
+[[abilities.effects]]
+type = "static"
+mode = "cant_cast_during_combat"
+
+# {R}: Target creature attacks this turn if able.
+[[abilities]]
+timing = "activated"
+
+[abilities.activation_cost]
+red = 1
+
+# Target creature attacks this turn if able.
+[[abilities.effects]]
+type = "misc"
+mode = "must_attack_target"

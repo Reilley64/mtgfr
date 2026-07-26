@@ -157,8 +157,14 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.choice_put_counter_then_may_become_copy_of_card_from_list": literal(
     "Put a +1/+1 counter on this creature, then you may have this creature become a copy of an artifact or creature card from among those cards until end of turn",
   ),
+  "effect.choice_discard_your_hand": literal("Discard your hand"),
+  "effect.choice_each_opponent_discards": literal("Each other player discards a card"),
+  "effect.choice_each_player_chooses_war_or_peace": literal("Each player chooses war or peace"),
   "effect.choice_put_creature_from_hand": literal(
     "You may put a creature card from your hand onto the battlefield. It gains haste. Sacrifice it at the beginning of the next end step",
+  ),
+  "effect.choice_put_creature_from_hand_attacking": literal(
+    "You may put a creature card from your hand onto the battlefield tapped and attacking",
   ),
   "effect.choice_put_from_hand_on_top": (params) =>
     `Put ${param(params, "count")} cards from your hand on top of your library in any order`,
@@ -202,6 +208,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.control_target_opponent_gains_control": literal(
     "Target opponent gains control of target permanent you control",
   ),
+  "effect.control_tap_all": (params) => `Tap all ${humanize(param(params, "filter", "permanents"))} you control`,
   "effect.control_untap_all": (params) => `Untap all ${humanize(param(params, "filter", "permanents"))} you control`,
   "effect.control_untap_target": literal("Untap target"),
   "effect.copy_change_target_of_target_spell_or_ability": (params) =>
@@ -248,6 +255,8 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     `Deal ${param(params, "amount")} damage to ${damageEachCreatureSubject(params)}`,
   "effect.damage_each_other_opponent": (params) => `Deal ${param(params, "amount")} damage to each other opponent`,
   "effect.damage_each_player": (params) => `Deal ${param(params, "amount")} damage to each player`,
+  "effect.damage_radiance": (params) =>
+    `Deal ${param(params, "amount")} damage to target creature and each other creature that shares a color with it`,
   "effect.damage_target": (params) => `Deal ${param(params, "amount")} damage`,
   "effect.damage_to_entering_permanent": (params) =>
     `Deal ${param(params, "amount")} damage to the permanent that entered`,
@@ -362,6 +371,11 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     "Until end of turn, any time you could activate a mana ability, you may pay 1 life. If you do, add {C}",
   ),
   "effect.misc_grant_flash_this_turn": literal("You may cast spells this turn as though they had flash"),
+  "effect.misc_must_attack_target": literal("Target creature attacks this turn if able"),
+  "effect.misc_you_choose_which_creatures_attack": literal("You choose which creatures attack this turn"),
+  "effect.misc_you_choose_which_creatures_block": literal(
+    "You choose which creatures block this turn and how those creatures block",
+  ),
   "effect.misc_must_attack_random_opponent": literal(
     "Choose an opponent at random. This attacks that player this combat if able",
   ),
@@ -385,14 +399,21 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     `Becomes a ${param(params, "base_power")}/${param(params, "base_toughness")} creature until end of turn`,
   "effect.pump_enchanted_attacker_pump_attacking_opponent_else_controller_loses_life": (params) =>
     `It gets +${param(params, "power")}/+${param(params, "toughness")} until end of turn if it's attacking one of your opponents. Otherwise, its controller loses ${param(params, "life")} life`,
+  "effect.pump_grant_chosen_color_protection_until_end_of_turn": literal(
+    "Target creature you control gains protection from the color of your choice until end of turn",
+  ),
   "effect.pump_grant_keywords_to_permanents_you_control_until_end_of_turn": (params) =>
     `Permanents you control gain ${humanize(param(params, "keywords"))} until end of turn`,
   "effect.pump_pump_creatures_you_control_until_end_of_turn": (params) =>
     pumpLabel(params, "Creatures you control get"),
+  "effect.pump_pump_each_creature_until_end_of_turn": (params) => pumpLabel(params, "Each creature gets"),
   "effect.pump_pump_other_attackers_attacking_your_opponents": (params) =>
     `Each other creature that's attacking one of your opponents gets +${param(params, "power")}/+${param(params, "toughness")} until end of turn`,
   "effect.pump_pump_self_until_end_of_turn": (params) => pumpLabel(params, ""),
   "effect.pump_pump_until_end_of_turn": (params) => pumpLabel(params, ""),
+  "effect.pump_radiance_chosen_color_protection_until_end_of_turn": literal(
+    "Target creature and each other creature that shares a color with it gain protection from the chosen color until end of turn",
+  ),
   "effect.pump_set_base_pt_creatures_you_control_until_end_of_turn": (params) =>
     `${bool(params, "other") ? "Other creatures" : "Creatures"} you control have base power and toughness ${param(params, "power")}/${param(params, "toughness")} until end of turn`,
   "effect.pump_set_base_pt_target_until_end_of_turn": (params) =>
@@ -420,7 +441,18 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.static_anthem": (params) => staticAnthem(params),
   "effect.static_attack_tax": (params) =>
     `Creatures can't attack you unless their controller pays {${param(params, "amount")}} for each creature they control that's attacking you`,
+  "effect.static_cant_attack_if_cast_this_turn": literal(
+    "Each opponent who cast a spell this turn can't attack with creatures",
+  ),
   "effect.static_cant_be_attacked_by": (params) => `${humanize(param(params, "filter", "Creatures"))} can't attack you`,
+  "effect.static_cant_block_filter": (params) => `${humanize(param(params, "filter", "Creatures"))} can't block`,
+  "effect.static_cant_cast_during_combat": literal("Players can't cast spells during combat"),
+  "effect.static_cant_cast_if_attacked_this_turn": literal(
+    "Each opponent who attacked with a creature this turn can't cast spells",
+  ),
+  "effect.static_must_attack_each_combat": literal("All creatures attack each combat if able"),
+  "effect.static_opponents_cant_search_libraries": literal("Your opponents can't search libraries"),
+  "effect.static_protection_from_chosen_color": literal("This creature has protection from the chosen color"),
   "effect.static_cast_x_replacement": (params) => `value of X: X x ${param(params, "times")}`,
   "effect.static_control_attached": literal("You control enchanted creature"),
   "effect.static_counter_replacement": (params) =>
@@ -438,7 +470,8 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     `${humanize(param(params, "filter", "Artifacts"))} you control gain a mana ability`,
   "effect.static_grant_to_attached": (params) =>
     `Attached creature gets +${param(params, "power")}/+${param(params, "toughness")}`,
-  "effect.static_keyword_anthem": (params) => `Permanents you control have ${humanize(param(params, "keywords"))}`,
+  "effect.static_keyword_anthem": (params) =>
+    `${bool(params, "all_players") ? "All permanents" : "Permanents you control"} have ${humanize(param(params, "keywords"))}`,
   "effect.static_life_gain_replacement": (params) => `life gained: n + ${param(params, "plus")}`,
   "effect.static_no_maximum_hand_size": literal("You have no maximum hand size"),
   "effect.static_play_from_graveyard_once_per_turn": literal(
@@ -503,6 +536,9 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     bool(params, "under_owner")
       ? "Return that card to the battlefield under its owner's control"
       : "Return it to the battlefield under your control",
+  "effect.zone_reanimate_random_from_target_opponent_graveyard": literal(
+    "Reanimate a random creature from target opponent's graveyard",
+  ),
   "effect.zone_reanimate_to_battlefield": literal("Reanimate to battlefield"),
   "effect.zone_reflexive_trigger": (_params, children) => children[0] ?? "",
   "effect.zone_return_all_to_hand": (params) =>

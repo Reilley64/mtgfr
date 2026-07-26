@@ -176,7 +176,7 @@ mod soc_deck_tests {
         cards: Vec<DeckCardEntry>,
     }
 
-    const FIXTURES: [&str; 9] = [
+    const FIXTURES: [&str; 10] = [
         "silverquill_influence",
         "prismari_artistry",
         "witherbloom_pestilence",
@@ -186,6 +186,7 @@ mod soc_deck_tests {
         "deathdancer_xira",
         "political_puppets",
         "mirror_mastery",
+        "heavenly_inferno",
     ];
 
     fn load(fixture: &str) -> DeckFixture {
@@ -276,6 +277,11 @@ mod soc_deck_tests {
     #[test]
     fn mirror_mastery_is_a_legal_commander_deck() {
         assert_legal("mirror_mastery");
+    }
+
+    #[test]
+    fn heavenly_inferno_is_a_legal_commander_deck() {
+        assert_legal("heavenly_inferno");
     }
 
     fn seed_four(first: &str) -> Game {
