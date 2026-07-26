@@ -105,6 +105,7 @@ const lobbyAppView = (model: Model) =>
         version: model.apiVersion,
         faithfulCount: model.faithfulCount,
         oracleTotal: model.oracleTotal,
+        coverageHref: "/coverage",
       },
       surface: model.route._tag === "PregameTableRoute" || model.route._tag === "GameTableRoute" ? "table" : "entry",
     },

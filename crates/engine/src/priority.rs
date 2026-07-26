@@ -537,8 +537,12 @@ impl Game {
                 paid.push((id, cost.mana, credit));
             }
             if !has_paid_mana {
-                for (cost, batch) in self.granted_mana_abilities(id) {
-                    if cost.taps_self && cost.mana == Cost::FREE {
+                for (cost, batch, single_color) in self.granted_mana_abilities(id) {
+                    // A `single_color` grant (Goldspan's "two mana of any one color") can't be
+                    // auto-tapped for the estimate: its color is a manual choice, so its batch
+                    // of "any" credits would overstate reachable colors — skip it like an own
+                    // `single_color` ability.
+                    if cost.taps_self && cost.mana == Cost::FREE && !single_color {
                         mana.merge(&batch);
                         contributed_free = true;
                     }
@@ -676,6 +680,16 @@ impl Game {
         spell: Option<SpellCharacteristics>,
     ) -> bool {
         available.can_pay(&cost, spell)
+    }
+
+    /// A card's printed non-mana ceiling on {X} (CR 601.2b — Open the Way's player-count bound),
+    /// or `None` when X is bounded only by affordability. Both the cast gate
+    /// ([`Game::validate_cast`]) and the snapshot's count-picker consult this so the offered
+    /// ceiling and the accepted ceiling can never diverge.
+    pub fn cast_x_ceiling(&self, def: &CardDef) -> Option<u32> {
+        match def.cast_x_max? {
+            CastXMax::PlayerCount => Some(u32::from(self.living_player_count())),
+        }
     }
 
     /// Largest X such that `available_mana` can pay `cost_at(x)`, or `0` when even X=0 fails.
@@ -1166,12 +1180,15 @@ impl Game {
                 }
             }
             let own_len = printed.abilities.len();
-            for (gi, (acost, batch)) in self.granted_mana_abilities(id).into_iter().enumerate() {
+            for (gi, (acost, batch, single_color)) in
+                self.granted_mana_abilities(id).into_iter().enumerate()
+            {
                 let index = own_len + gi;
                 if !acost.taps_self
                     || acost.mana != Cost::FREE
                     || acost.pay_life != Amount::Fixed(0)
                     || !matches!(acost.sacrifice, SacrificeCost::None)
+                    || single_color
                     || self.ability_activation_gate(player, id, index).is_err()
                 {
                     continue;
@@ -1877,6 +1894,7 @@ mod tests {
             halves: empty_slice(),
             suspend: None,
             vanishing: None,
+            cast_x_max: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,

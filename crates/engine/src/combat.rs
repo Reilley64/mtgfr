@@ -276,11 +276,17 @@ impl Game {
             if goaders.is_empty() || !self.can_attack(id) {
                 continue;
             }
-            let Some(defender) = self
+            // "If able" is gated on the attack tax (CR 508.1g): only defenders whose tax `player`
+            // can pay count, and among those a non-goader is preferred (CR 701.38a). A goaded
+            // creature with no affordable legal defender is not forced at all.
+            let affordable: Vec<PlayerId> = self
                 .living_players()
-                .filter(|&d| d != player)
-                .find(|d| !goaders.contains(d))
-                .or_else(|| self.living_players().find(|&d| d != player))
+                .filter(|&d| d != player && self.can_afford_attack_tax(player, id, d))
+                .collect();
+            let Some(&defender) = affordable
+                .iter()
+                .find(|&&d| !goaders.contains(&d))
+                .or_else(|| affordable.first())
             else {
                 continue;
             };
@@ -375,6 +381,32 @@ impl Game {
                 _ => 0,
             })
             .sum()
+    }
+
+    /// Whether `player` can currently pay the generic attack tax to send a single attacker at
+    /// `defender` (CR 508.1g), evaluated in isolation via [`Game::plan_auto_taps`] — the exact
+    /// affordability [`Game::settle_payment`] applies during declaration. An untaxed defender is
+    /// always affordable. Drives goad's "if able" clause (CR 701.38a): a goaded creature whose
+    /// controller can't pay a defender's tax is not able to attack that defender.
+    /// ponytail: single-attacker affordability — it ignores mana contention when several taxed
+    /// attackers would compete for the same mana in one declaration; no pool card goads two
+    /// creatures into two taxers at once, and the summed-tax `settle_payment` still gates the
+    /// declaration itself. (CR 508.1g, CR 701.38)
+    fn can_afford_attack_tax(
+        &self,
+        player: PlayerId,
+        attacker: ObjectId,
+        defender: PlayerId,
+    ) -> bool {
+        let tax = self.attacker_tax_owed(attacker, defender);
+        if tax == 0 {
+            return true;
+        }
+        let cost = Cost {
+            generic: tax as u8,
+            ..Default::default()
+        };
+        self.plan_auto_taps(player, cost, None, None).is_some()
     }
 
     /// The player `defender` resolves to when `declarer` declares an attack on it, or `None` when
@@ -557,18 +589,27 @@ impl Game {
             if goaders.is_empty() || !self.can_attack(id) {
                 continue;
             }
+            // "If able" includes affording the tax to reach a legal defender (CR 508.1g + CR
+            // 701.38a): a goaded creature whose controller can't pay any legal defender's attack
+            // tax is not forced. (Any attack it *is* declared into is still gated by the summed-tax
+            // `settle_payment` below.)
+            let affordable: Vec<PlayerId> = self
+                .living_players()
+                .filter(|&d| d != player && self.can_afford_attack_tax(player, id, d))
+                .collect();
+            if affordable.is_empty() {
+                continue; // not able — the tax can't be paid to reach any defender
+            }
             let Some(&(_, defender)) = attackers.iter().find(|&&(a, _)| a == id) else {
                 return Err(Reject::IllegalDeclaration); // a goaded able creature must attack
             };
-            let nongoader_available = self
-                .living_players()
-                .any(|d| d != player && !goaders.contains(&d));
-            // CR 701.38a: "attacks a *player* other than you if able" — attacking a goader's
-            // planeswalker is not attacking a player at all, so it doesn't satisfy the
-            // requirement either.
+            // CR 701.38a: "attacks a *player* other than you if able" — a non-goader only counts
+            // when its tax is affordable, and attacking a goader's planeswalker is not attacking a
+            // player at all, so neither satisfies the requirement.
+            let nongoader_affordable = affordable.iter().any(|d| !goaders.contains(d));
             let attacks_a_nongoader =
                 matches!(defender, Defender::Player(d) if !goaders.contains(&d));
-            if !attacks_a_nongoader && nongoader_available {
+            if !attacks_a_nongoader && nongoader_affordable {
                 return Err(Reject::IllegalDeclaration); // must attack a non-goader if able
             }
         }
@@ -627,10 +668,10 @@ impl Game {
         // lands via `settle_payment`) — the declaring player implicitly agrees to pay by
         // declaring; can't-afford ⇒ illegal declaration (CR 508.1g), rather than offered as an
         // explicit pay-or-decline choice. No pool card lets the tax be anything but generic, so
-        // auto-planning is exact. ponytail: goad + an unpayable tax — a goaded creature that
-        // "must attack" (CR 701.38) but whose controller can't pay is technically "not able"
-        // (CR 701.38 "if able"); the goad loop above still forces it. Unmodeled residual; no pool
-        // card exercises goad + a tax at once. (CR 701.38)
+        // auto-planning is exact. Goad + an unpayable tax is handled up front: the goad loop above
+        // treats a defender whose tax `player` can't pay as "not able" (CR 701.38a "if able") via
+        // `can_afford_attack_tax`, so a goaded creature is never forced into an attack it can't
+        // afford. (CR 701.38, CR 508.1g)
         let tax = self.attack_tax_owed(&resolved);
         if tax > 0 {
             let cost = Cost {

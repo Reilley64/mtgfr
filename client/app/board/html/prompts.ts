@@ -967,6 +967,10 @@ function cardPickDeclineLabel(pending: PendingChoiceView): string | null {
     case "choose_exiled_with_card_to_cast":
     case "choose_exiled_dig_to_cast_free":
       return "Don't cast";
+    case "may_return_from_graveyard":
+      return pending.mandatory ? null : "Don't return";
+    case "may_exile_discarded_to_play":
+      return "Don't exile";
     case "choose_attach_host":
       return pending.optional ? "Don't attach" : null;
     case "choose_target":
@@ -1050,6 +1054,12 @@ function cardPickConfig(pending: PendingChoiceView): {
       return { title: "Choose permanents that get counters", submitLabel: "Choose" };
     case "may_return_from_graveyard":
       return { title: "Choose cards to return from your graveyard", submitLabel: "Return" };
+    case "may_exile_discarded_to_play":
+      return {
+        title: "Choose a discarded nonland card to exile and play this turn",
+        submitLabel: "Exile",
+        declineLabel,
+      };
     case "may_discard":
       return { title: "Choose cards to discard", submitLabel: "Discard" };
     case "discard":
@@ -1084,6 +1094,9 @@ function cardPickConfig(pending: PendingChoiceView): {
         submitLabel: "Choose",
       };
     case "choose_copy_target":
+      if (pending.put_counter_on_creature) {
+        return { title: "Choose a creature to get a +1/+1 counter", submitLabel: "Put counter" };
+      }
       return { title: "Choose a copy target", submitLabel: "Copy" };
     case "choose_attach_host":
       return { title: "Choose what to attach to", submitLabel: "Attach", declineLabel };
@@ -1114,6 +1127,7 @@ function pendingGraveyardAimCoach(
   kind:
     | "exile_from_graveyard"
     | "may_return_from_graveyard"
+    | "may_exile_discarded_to_play"
     | "shuffle_from_graveyard"
     | "choose_dredge"
     | "pay_cumulative_upkeep_or_sacrifice"
@@ -1126,6 +1140,8 @@ function pendingGraveyardAimCoach(
       return oneClick ? "Click a card in the graveyard to exile" : "Click cards in the graveyard to exile";
     case "may_return_from_graveyard":
       return "Click cards in the graveyard to return";
+    case "may_exile_discarded_to_play":
+      return "Click a discarded nonland card in your graveyard to exile";
     case "shuffle_from_graveyard":
       return oneClick ? "Click a card in the graveyard to shuffle in" : "Click cards in the graveyard to shuffle in";
     case "choose_dredge":
@@ -1285,6 +1301,7 @@ function cardPickForKind(
     if (
       kind !== "exile_from_graveyard" &&
       kind !== "may_return_from_graveyard" &&
+      kind !== "may_exile_discarded_to_play" &&
       kind !== "shuffle_from_graveyard" &&
       kind !== "choose_dredge" &&
       kind !== "pay_cumulative_upkeep_or_sacrifice" &&
@@ -1318,11 +1335,13 @@ function cardPickForKind(
           ? "Exile"
           : kind === "may_return_from_graveyard"
             ? "Return"
-            : kind === "shuffle_from_graveyard"
-              ? "Shuffle"
-              : kind === "pay_cumulative_upkeep_or_sacrifice"
-                ? "Pay"
-                : "Confirm";
+            : kind === "may_exile_discarded_to_play"
+              ? "Exile"
+              : kind === "shuffle_from_graveyard"
+                ? "Shuffle"
+                : kind === "pay_cumulative_upkeep_or_sacrifice"
+                  ? "Pay"
+                  : "Confirm";
       actions.push(submitButton(submitLabel, !ready));
     }
     const decline = declineAnswer(pending);

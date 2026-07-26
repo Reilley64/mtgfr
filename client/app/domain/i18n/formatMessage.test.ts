@@ -50,6 +50,16 @@ describe("formatMessage", () => {
     expect(formatMessage({ key: "reject.illegal_target", params: [], children: [] })).toBe("Pick a legal target.");
   });
 
+  it("formats effect.life_each_player_loses", () => {
+    expect(
+      formatMessage({
+        key: "effect.life_each_player_loses",
+        params: [{ name: "amount", int_value: 3 }],
+        children: [],
+      }),
+    ).toBe("Each player loses 3");
+  });
+
   it("formats catalog keyword summaries", () => {
     expect(formatMessage({ key: "keyword.flying", params: [], children: [] })).toBe("Flying");
     expect(

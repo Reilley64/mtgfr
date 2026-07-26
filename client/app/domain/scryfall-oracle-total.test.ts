@@ -5,6 +5,7 @@ import {
   __resetOracleTotalCacheForTests,
   ensureOracleTotalRefresh,
   getCachedOracleTotal,
+  getCachedOracleTotalBySet,
   refreshOracleTotal,
 } from "./scryfall-oracle-total";
 
@@ -27,8 +28,8 @@ describe("scryfall oracle total cache", () => {
     expect(getCachedOracleTotal()).toBeNull();
   });
 
-  it("counts non-empty JSONL lines from oracle-cards bulk", async () => {
-    const gz = gzipJsonl(['{"id":"a"}', '{"id":"b"}', ""]);
+  it("counts oracle bulk rows and caches per-set totals from the same download", async () => {
+    const gz = gzipJsonl(['{"id":"a","set":"soc"}', '{"id":"b","set":"soc"}', '{"id":"c","set":"cmd"}', ""]);
     const fetchImpl = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
       const url = String(input);
       if (url.includes("/bulk-data/oracle-cards")) {
@@ -42,12 +43,30 @@ describe("scryfall oracle total cache", () => {
       return new Response(gz as unknown as BodyInit, { status: 200 });
     });
     const total = await refreshOracleTotal(fetchImpl as unknown as typeof fetch);
-    expect(total).toBe(2);
-    expect(getCachedOracleTotal()).toBe(2);
+    expect(total).toBe(3);
+    expect(getCachedOracleTotal()).toBe(3);
+    expect(getCachedOracleTotalBySet()).toEqual({ cmd: 1, soc: 2 });
     expect(fetchImpl.mock.calls[0]?.[0]).toEqual(expect.stringContaining("bulk-data/oracle-cards"));
     const init = fetchImpl.mock.calls[0]?.[1] as RequestInit | undefined;
     const headers = init?.headers as Record<string, string>;
     expect(headers["User-Agent"]).toBe("edh.reilley.dev/0.1");
+  });
+
+  it("skips blank lines and ignores rows without a string set for per-set totals", async () => {
+    const gz = gzipJsonl(['{"id":"a","set":"soc"}', '{"id":"b","set":7}', '{"id":"c"}', ""]);
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes("/bulk-data/oracle-cards")) {
+        return new Response(JSON.stringify({ jsonl_download_uri: "https://data.scryfall.io/x.jsonl.gz" }), {
+          status: 200,
+        });
+      }
+      return new Response(gz as unknown as BodyInit, { status: 200 });
+    });
+    const total = await refreshOracleTotal(fetchImpl as unknown as typeof fetch);
+    expect(total).toBe(3);
+    expect(getCachedOracleTotal()).toBe(3);
+    expect(getCachedOracleTotalBySet()).toEqual({ soc: 1 });
   });
 
   it("serves stale value when refresh fails after a warm cache", async () => {

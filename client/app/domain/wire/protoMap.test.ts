@@ -1,5 +1,7 @@
+import { create, toBinary } from "@bufbuild/protobuf";
 import * as Schema from "effect/Schema";
 import { describe, expect, it } from "vitest";
+import { PendingChoiceViewMayReturnFromGraveyardSchema } from "./generated/mtgfr/v1/stream_pb";
 import { catalogCardsFromProto, fromProtoWire, intentEnvelopeToProto } from "./protoMap";
 import type { ActionView, CatalogCard, IntentEnvelope } from "./types";
 import { MessageRef } from "./types";
@@ -111,6 +113,115 @@ describe("fromProtoWire", () => {
         params: [],
         children: [],
       },
+    });
+  });
+
+  it("decodes may_return_from_graveyard mandatory from proto choice payloads", () => {
+    const frame = fromProtoWire<{
+      state: { pending_choice: { kind: string; mandatory?: boolean; items: Array<{ id: number; label: string }> } };
+    }>({
+      state: {
+        pendingChoice: {
+          choice: {
+            case: "mayReturnFromGraveyard",
+            value: {
+              player: 0,
+              source: 7,
+              mandatory: true,
+              items: [{ id: 11, label: "Forest" }],
+            },
+          },
+        },
+      },
+    });
+
+    expect(frame.state.pending_choice).toEqual({
+      kind: "may_return_from_graveyard",
+      player: 0,
+      source: 7,
+      mandatory: true,
+      items: [{ id: 11, label: "Forest" }],
+    });
+  });
+
+  it("encodes may_return_from_graveyard as items=3 and mandatory=4", () => {
+    const binary = toBinary(
+      PendingChoiceViewMayReturnFromGraveyardSchema,
+      create(PendingChoiceViewMayReturnFromGraveyardSchema, {
+        player: 0,
+        source: 7,
+        items: [{ id: 11, label: "Forest" }],
+        mandatory: true,
+      }),
+    );
+
+    expect(Array.from(binary)).toEqual([16, 7, 26, 10, 8, 11, 18, 6, 70, 111, 114, 101, 115, 116, 32, 1]);
+  });
+
+  it("decodes choose_copy_target counter-primer wording from proto choice payloads", () => {
+    const frame = fromProtoWire<{
+      state: {
+        pending_choice: {
+          kind: string;
+          put_counter_on_creature?: boolean;
+          items: Array<{ id: number; label: string }>;
+        };
+      };
+    }>({
+      state: {
+        pendingChoice: {
+          choice: {
+            case: "chooseCopyTarget",
+            value: {
+              player: 0,
+              source: 7,
+              putCounterOnCreature: true,
+              items: [{ id: 11, label: "Forest" }],
+            },
+          },
+        },
+      },
+    });
+
+    expect(frame.state.pending_choice).toEqual({
+      kind: "choose_copy_target",
+      player: 0,
+      source: 7,
+      put_counter_on_creature: true,
+      items: [{ id: 11, label: "Forest" }],
+    });
+  });
+
+  it("decodes may_exile_discarded_to_play from proto choice payloads", () => {
+    const frame = fromProtoWire<{
+      state: {
+        pending_choice: {
+          kind: string;
+          player: number;
+          source: number;
+          items: Array<{ id: number; label: string }>;
+        };
+      };
+    }>({
+      state: {
+        pendingChoice: {
+          choice: {
+            case: "mayExileDiscardedToPlay",
+            value: {
+              player: 0,
+              source: 7,
+              items: [{ id: 11, label: "Lightning Bolt" }],
+            },
+          },
+        },
+      },
+    });
+
+    expect(frame.state.pending_choice).toEqual({
+      kind: "may_exile_discarded_to_play",
+      player: 0,
+      source: 7,
+      items: [{ id: 11, label: "Lightning Bolt" }],
     });
   });
 });

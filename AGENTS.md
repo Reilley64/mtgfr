@@ -55,7 +55,7 @@ Commits on `main`/`master` follow the [Angular commit message guidelines](https:
 
 Specs live in [`docs/superpowers/specs/`](docs/superpowers/specs/). Keep **one spec per code target / feature surface**, not per topic, PR, or wave. Document what exists today: no TBD, no Solid/migration history, and no historical client narrative. When a change splits, merges, or renames a target, update the relevant specs in the same change. Board specs are intentionally fine-grained (composition, battlefield, hand, stack, radial, prompts, inspect, and more); use the [README index](docs/superpowers/specs/README.md). Cite the relevant spec instead of inventing requirements.
 
-**Superpowers workflows (obra/superpowers skills — do not fork those skill files):** When brainstorming, writing plans, or implementing a change to a surface that already has a living module spec (e.g. `hand-and-zone-bar`, `flights`, `turn-and-priority-chrome`), **update that existing spec in the same change** so Behavior / Implementation / Testing still describe what ships. A new `*-design.md` (or a local plan under `docs/superpowers/plans/`, gitignored) is optional design input; it does **not** replace updating the surface spec. Prefer cross-linking the design from the module spec over leaving the module spec stale. Only create a new indexed feature spec when the work introduces a **new** code target / surface that has no home yet.
+**Superpowers workflows (Cursor `superpowers` plugin — do not vendor or fork those skill files into `.agents/skills/`):** When brainstorming, writing plans, or implementing a change to a surface that already has a living module spec (e.g. `hand-and-zone-bar`, `flights`, `turn-and-priority-chrome`), **update that existing spec in the same change** so Behavior / Implementation / Testing still describe what ships. A new `*-design.md` (or a local plan under `docs/superpowers/plans/`, gitignored) is optional design input; it does **not** replace updating the surface spec. Prefer cross-linking the design from the module spec over leaving the module spec stale. Only create a new indexed feature spec when the work introduces a **new** code target / surface that has no home yet.
 
 **Review gate:** Every code review (including autonomous continuous-loop reviews via `requesting-code-review`) must check Feature specs compliance on the diff. Violations — PR/wave-scoped design sidecars *without* the corresponding surface-spec update, migration/history prose in feature specs, shipped behavior missing from the surface spec, or wrong section template — are **merge-blocking**. Implementation plans may be written under `docs/superpowers/plans/` (gitignored; do not commit) and must not be indexed as feature specs.
 
@@ -67,7 +67,7 @@ Crate split: `engine` (pure, no I/O) / `cards` (TOML scripts) / `server` (tonic 
 
 - **Readability and maintainability are the top priority**, above cleverness or brevity.
 - **Guard-return-first (early return) style.** Handle error/edge/invalid cases up front and `return` (or `?` / `continue`) immediately.
-- **TDD is the default workflow.** Use the `test-driven-development` skill (obra/superpowers). Red → green → review. The engine is testable via direct API calls with no UI or network.
+- **TDD is the default workflow.** Use the `test-driven-development` skill (superpowers plugin). Red → green → review. The engine is testable via direct API calls with no UI or network.
 - **Every bug fix gets a regression test.** When you find a bug, add a test that fails on the broken behavior and passes with the fix — in the same change if you can. Place it at the lowest layer that catches the failure (engine unit test, schema projection test, client mapping test, HTTP integration test). Use `systematic-debugging` when the cause is unclear.
 - **Client UI: every surface gets a Scene test.** Shell routes and board overlays must be covered by `data-testid` Scene assertions in `client/app/shell/surfaces.test.ts` and `client/app/board/html/surfaces.test.ts` (plus focused tests). Do not ship a user-visible panel that only has update/logic tests. When adding a surface, add or extend those suites in the same change.
 - **Client interaction: assert outcomes, not only presence.** When changing pointer, keyboard, hover, drag, Mount hosts, lobby/host flow, or BFF env defaults, add or extend a unit/Scene test for the user-visible result (pin set, tile hidden, selected deck matches, art URL swapped, default URL works). Do not frame tests as migration/"parity" checks — name the product behavior. See [`docs/superpowers/specs/2026-07-22-client-interaction-test-policy-design.md`](docs/superpowers/specs/2026-07-22-client-interaction-test-policy-design.md).
@@ -78,13 +78,16 @@ Crate split: `engine` (pure, no I/O) / `cards` (TOML scripts) / `server` (tonic 
 
 ## Agent skills
 
-Project skills: `card-dsl`, `fidelity-grind`, `verify`, `effect-ts`.
+Project / installed skills under `.agents/skills/`: `card-dsl`, `fidelity-grind`, `verify`,
+`effect-ts`, `find-skills`, plus Foldkit skills (`foldkit`, `generate-program`, `audit-program`).
+`skills-lock.json` tracks only the GitHub-installed entries that remain there (`effect-ts`,
+`find-skills`).
 
-Workflow skills from **obra/superpowers** (see `skills-lock.json`): `brainstorming`,
-`test-driven-development`, `systematic-debugging`, `verification-before-completion`,
-`requesting-code-review`, `writing-plans`, `executing-plans`, `subagent-driven-development`,
-`dispatching-parallel-agents`, `using-git-worktrees`, `finishing-a-development-branch`,
-`receiving-code-review`, `using-superpowers`, `writing-skills`.
+Workflow skills from the Cursor **`superpowers`** plugin (enabled in `.cursor/settings.json`):
+`brainstorming`, `test-driven-development`, `systematic-debugging`,
+`verification-before-completion`, `requesting-code-review`, `writing-plans`, `executing-plans`,
+`subagent-driven-development`, `dispatching-parallel-agents`, `using-git-worktrees`,
+`finishing-a-development-branch`, `receiving-code-review`, `using-superpowers`, `writing-skills`.
 
 ## Cursor Cloud specific instructions
 

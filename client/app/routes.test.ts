@@ -5,6 +5,7 @@ import { init } from "./init";
 import {
   ClosedAccountMenu,
   GotAuthMessage,
+  GotCoverageMessage,
   GotDeckListMessage,
   GotLeaderboardMessage,
   NavigationCompleted,
@@ -15,6 +16,7 @@ import {
 } from "./messages";
 import type { Model } from "./model";
 import {
+  CoverageRoute,
   DeckRoute,
   GameTableRoute,
   HomeRoute,
@@ -27,6 +29,13 @@ import {
   routePath,
 } from "./routes";
 import * as Auth from "./shell/auth";
+import {
+  ChangedCoverageQuery,
+  CoverageLoadFailed,
+  ReceivedCoverageMeta,
+  RequestedCoverageRefresh,
+} from "./shell/coverage/messages";
+import { FetchCoverage } from "./shell/coverage/update";
 import * as DeckList from "./shell/decks/list";
 import { RequestedLeaderboardRefresh } from "./shell/leaderboard/messages";
 import { FetchLeaderboard } from "./shell/leaderboard/update";
@@ -58,6 +67,7 @@ function homeModel(overrides: Partial<Model> = {}): Model {
 test("parses the Foldkit shell routes", () => {
   expect(routeFromUrl(url("/"))).toEqual(HomeRoute());
   expect(routeFromUrl(url("/leaderboard"))).toEqual(LeaderboardRoute());
+  expect(routeFromUrl(url("/coverage"))).toEqual(CoverageRoute());
   expect(routeFromUrl(url("/decks/abc"))).toEqual(DeckRoute({ id: "abc" }));
 });
 
@@ -101,6 +111,7 @@ test("bare /play is not found", () => {
 });
 
 test("builds typed route paths", () => {
+  expect(routePath(CoverageRoute())).toBe("/coverage");
   expect(routePath(DeckRoute({ id: "abc" }))).toBe("/decks/abc");
   expect(routePath(LeaderboardRoute())).toBe("/leaderboard");
   expect(routePath(PlayRoute({ deckId: "7" }))).toBe("/play/7");
@@ -169,6 +180,47 @@ test("LeaderboardRoute loads the first page on protected route entry", () => {
     Story.model((m) => {
       expect(m.leaderboard.status).toBe("ready");
       expect(m.leaderboard.entries).toEqual([{ rank: 1, rating: 1200, user_id: 1, username: "alice" }]);
+    }),
+  );
+});
+
+test("CoverageRoute loads set coverage on protected route entry", () => {
+  const [model] = init(url("/coverage"));
+  const load = FetchCoverage();
+  const page = ReceivedCoverageMeta({
+    faithfulCount: 662,
+    oracleTotal: 28412,
+    sets: [
+      {
+        code: "soc",
+        name: "Secrets of Strixhaven",
+        releasedAt: "2026-04-01",
+        faithful: 10,
+        oracleTotal: 400,
+      },
+    ],
+  });
+
+  Story.story(
+    update,
+    Story.with(model),
+    Story.message(GotAuthMessage({ message: Auth.Message.ReceivedMe({ me }) })),
+    Story.Command.expectExact(load, HashMeGravatar({ email: me.email })),
+    Story.Command.resolve(load, page),
+    Story.Command.resolve(HashMeGravatar, ReceivedMeGravatarHash({ email: me.email, hash: "deadbeef" })),
+    Story.model((m) => {
+      expect(m.coverage.status).toBe("ready");
+      expect(m.coverage.faithfulCount).toBe(662);
+      expect(m.coverage.oracleTotal).toBe(28412);
+      expect(m.coverage.sets).toEqual([
+        {
+          code: "soc",
+          name: "Secrets of Strixhaven",
+          releasedAt: "2026-04-01",
+          faithful: 10,
+          oracleTotal: 400,
+        },
+      ]);
     }),
   );
 });
@@ -379,6 +431,82 @@ test("leaderboard retry refreshes from the first page after an error", () => {
   );
 });
 
+test("coverage retry clears rows and re-enters loading", () => {
+  const [base] = init(url("/coverage"));
+  const load = FetchCoverage();
+  const model = {
+    ...base,
+    coverage: {
+      ...base.coverage,
+      accountMenuOpen: true,
+      status: "error",
+      query: "soc",
+      sets: [
+        {
+          code: "soc",
+          name: "Secrets of Strixhaven",
+          releasedAt: "2026-04-01",
+          faithful: 10,
+          oracleTotal: 400,
+        },
+      ],
+      faithfulCount: 662,
+      oracleTotal: 28412,
+      error: "Could not load coverage.",
+    },
+  };
+
+  Story.story(
+    update,
+    Story.with(model),
+    Story.message(GotCoverageMessage({ message: RequestedCoverageRefresh() })),
+    Story.Command.expectExact(load),
+    Story.model((m) => {
+      expect(m.coverage.accountMenuOpen).toBe(false);
+      expect(m.coverage.status).toBe("loading");
+      expect(m.coverage.error).toBeNull();
+      expect(m.coverage.sets).toEqual([]);
+      expect(m.coverage.query).toBe("soc");
+    }),
+    Story.Command.resolve(load, CoverageLoadFailed({ message: "Could not load coverage." })),
+    Story.model((m) => {
+      expect(m.coverage.status).toBe("error");
+      expect(m.coverage.error).toBe("Could not load coverage.");
+      expect(m.coverage.sets).toEqual([]);
+    }),
+  );
+});
+
+test("coverage query updates in place", () => {
+  const [base] = init(url("/coverage"));
+
+  Story.story(
+    update,
+    Story.with(base),
+    Story.message(GotCoverageMessage({ message: ChangedCoverageQuery({ query: "strix" }) })),
+    Story.model((m) => {
+      expect(m.coverage.query).toBe("strix");
+    }),
+  );
+});
+
+test("CoverageRoute toggles and closes the account menu", () => {
+  const [base] = init(url("/coverage"));
+
+  Story.story(
+    update,
+    Story.with(base),
+    Story.message(ToggledAccountMenu()),
+    Story.model((m) => {
+      expect(m.coverage.accountMenuOpen).toBe(true);
+    }),
+    Story.message(ClosedAccountMenu()),
+    Story.model((m) => {
+      expect(m.coverage.accountMenuOpen).toBe(false);
+    }),
+  );
+});
+
 test("redirects unsigned protected play routes with path deck", () => {
   const [model] = init(url("/play/7"));
   const redirect = {
@@ -401,6 +529,23 @@ test("redirects unsigned protected leaderboard route", () => {
   const redirect = {
     name: "Redirect",
     args: { path: "/login?next=%2Fleaderboard" },
+    effect: Effect.succeed(NavigationCompleted()),
+  };
+
+  Story.story(
+    update,
+    Story.with(model),
+    Story.message(GotAuthMessage({ message: Auth.Message.ReceivedMe({ me: null }) })),
+    Story.Command.expectExact(redirect),
+    Story.Command.resolve(redirect, NavigationCompleted()),
+  );
+});
+
+test("redirects unsigned protected coverage route", () => {
+  const [model] = init(url("/coverage"));
+  const redirect = {
+    name: "Redirect",
+    args: { path: "/login?next=%2Fcoverage" },
     effect: Effect.succeed(NavigationCompleted()),
   };
 

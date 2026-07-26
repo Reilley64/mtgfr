@@ -8,6 +8,7 @@ import {
   CompletedPortraitGateModal,
   GotAuthMessage,
   GotBoardMessage,
+  GotCoverageMessage,
   GotDeckBuilderMessage,
   GotDeckListMessage,
   GotLeaderboardMessage,
@@ -16,8 +17,9 @@ import {
   PortraitGateCancelled,
 } from "./messages";
 import type { Model } from "./model";
-import { HomeRoute, isProtectedRoute, NewDeckRoute, routePath } from "./routes";
+import { CoverageRoute, HomeRoute, isProtectedRoute, NewDeckRoute, routePath } from "./routes";
 import * as Auth from "./shell/auth";
+import * as Coverage from "./shell/coverage";
 import * as DeckBuilder from "./shell/decks/builder";
 import * as DeckList from "./shell/decks/list";
 import * as Leaderboard from "./shell/leaderboard";
@@ -30,6 +32,7 @@ function chromeMeta(model: Model): AppChromeMeta {
     version: model.apiVersion,
     faithfulCount: model.faithfulCount,
     oracleTotal: model.oracleTotal,
+    coverageHref: routePath(CoverageRoute()),
   };
 }
 
@@ -147,6 +150,17 @@ function toParentLeaderboardMessage(message: Leaderboard.ViewMessage): Message {
   }
 }
 
+function toParentCoverageMessage(message: Coverage.ViewMessage): Message {
+  switch (message._tag) {
+    case "ClosedAccountMenu":
+    case "GotAuthMessage":
+    case "ToggledAccountMenu":
+      return message;
+    default:
+      return GotCoverageMessage({ message });
+  }
+}
+
 function boardMount(model: Model) {
   const tableId =
     model.game?.tableId ??
@@ -239,6 +253,18 @@ function routeBody(model: Model) {
             chrome: chromeMeta(model),
           },
           toParentMessage: toParentLeaderboardMessage,
+        });
+      case "CoverageRoute":
+        return h.submodel({
+          slotId: "coverage",
+          model: model.coverage,
+          view: Coverage.view,
+          viewInputs: {
+            username: model.session.me?.username ?? "",
+            meGravatarHash: model.session.meGravatarHash,
+            chrome: chromeMeta(model),
+          },
+          toParentMessage: toParentCoverageMessage,
         });
       case "NewDeckRoute":
         return h.submodel({

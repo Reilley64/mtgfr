@@ -42,6 +42,7 @@ These documents are **not superseded** and must stay current alongside the specs
 | [choices-actions-and-resolution](2026-07-20-choices-actions-and-resolution.md) | Engine choices, legal actions, payment, resolution |
 | [ci-and-release](2026-07-20-ci-and-release.md) | GitHub Actions verify/release/docker, Buildx GHA cache, semantic-release |
 | [combat-and-commander-rules](2026-07-20-combat-and-commander-rules.md) | Multiplayer combat, commander tax/damage, elimination |
+| [coverage-by-set](2026-07-26-coverage-by-set.md) | Auth-gated `/coverage` set table, search/filter, BFF coverage meta join, faithful-by-set health input |
 | [deck-list-and-builder](2026-07-20-deck-list-and-builder.md) | Deck list tiles, search, builder split-pane, card art CDN |
 | [engine-core-and-event-model](2026-07-20-engine-core-and-event-model.md) | Pure Rust engine zones, events, SBAs, determinism |
 | [flights](2026-07-20-flights.md) | Card movement animation, flight ownership, bitmap paint gating |
@@ -68,8 +69,12 @@ These documents are **not superseded** and must stay current alongside the specs
 | [client-interaction-test-policy](2026-07-22-client-interaction-test-policy-design.md) | Outcome-focused client interaction test policy (process doc; keep) |
 | [engine-refactor-program](2026-07-25-engine-refactor-program-design.md) | Design input for engine Waves A–F (interned defs, obligations, triggers, choices, CR 613/614); update living surface specs per wave |
 | [sba-fidelity-gaps](2026-07-26-sba-fidelity-gaps-design.md) | Design input for CR 704.5j legend rule + CR 704.5r counter annihilation; update living engine-core / choices / prompts / wire specs |
+| [soc-fidelity-program](2026-07-26-soc-fidelity-program-design.md) | Design input to finish the five SoC precons at full fidelity-grind bar (order, mega-PR, Wizards-list intake, per-deck smoke) |
 | [pool-coverage-badge](2026-07-26-pool-coverage-badge-design.md) | Design input for shell `% faithful` coverage above API version (faithful pool ÷ Scryfall oracle total); update shell-routes / meta at implement time |
 | [foldkit-submodels-pwa-and-play-routes](2026-07-26-foldkit-submodels-pwa-and-play-routes-design.md) | Design input: Foldkit 0.132 + Effect beta.101, `Got*`/`inform*`/`domain/`, play routes (in-game table-only), installable-only PWA; update shell/lobby/board specs per wave |
+| [coverage-by-set](2026-07-26-coverage-by-set-design.md) | Design input for `/coverage` set table (faithful-by-set ÷ Scryfall per-set oracle); badge navigates; depends on pool-coverage-badge |
+| [gha-server-verify-sharding](2026-07-26-gha-server-verify-sharding-design.md) | Design input for 3-shard nextest cold `verify-server` wall-clock; update `ci-and-release` at implement time |
+| [ci-rust-protoc-image](2026-07-26-ci-rust-protoc-image-design.md) | Design input for GHCR `mtgfr-ci` toolchain image (PR1 publish; PR2 containerize verify + migrate job); update `ci-and-release` per PR |
 
 ## Authoring conventions
 
@@ -82,7 +87,7 @@ Decisions → Testing Decisions → Out of Scope → Further Notes.
 - Follow the [`AGENTS.md` Feature specs section](../../../AGENTS.md#feature-specs).
 - **Superpowers:** If the change touches an existing surface, update that living module spec
   in the same change. A new `*-design.md` is design input only — it does not replace the
-  surface-spec update (see AGENTS.md). Do not edit vendored obra/superpowers skill files for
+  surface-spec update (see AGENTS.md). Do not edit Cursor `superpowers` plugin skill files for
   this policy; project rules in `AGENTS.md` govern.
 - Use [`CONTEXT.md`](../../../CONTEXT.md) vocabulary. Reference DTCG token names
   (`design.tokens.json`); canvas uses `design-tokens.generated.ts` for named colors; unnamed

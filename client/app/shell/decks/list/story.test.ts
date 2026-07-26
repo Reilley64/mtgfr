@@ -19,7 +19,7 @@ import { initialDeckListSubmodel } from "./submodel";
 import { FetchDecks, LookupDeckListCommanders, update } from "./update";
 import { BindDeckListContextMenu, BindDeckListContextMenuEscape, view } from "./view";
 
-const emptyChrome = { version: null, faithfulCount: null, oracleTotal: null };
+const emptyChrome = { version: null, faithfulCount: null, oracleTotal: null, coverageHref: null };
 
 const listView = Submodel.defineView<ReturnType<typeof initialDeckListSubmodel>, DeckListMessage>((model) =>
   view(model, { username: "alice", meGravatarHash: null, chrome: emptyChrome }),

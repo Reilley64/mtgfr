@@ -14,7 +14,6 @@ impl Game {
         target: Option<Target>,
         x: u32,
     ) -> Vec<Event> {
-        let source_name = self.source_name_of(source);
         match effect {
             TokenEffect::Create {
                 token,
@@ -218,6 +217,11 @@ impl Game {
                 let object =
                     entering.unwrap_or_else(|| expect_object_target(target, "a token copy"));
                 let def = self.def_id_of(object);
+                // CR 707.2: a copy uses the copied object's *current copiable* values, which
+                // include any copy-effect exception rider it already carries — so copying a
+                // first-generation copy (a Twinflame haste token, Muddle's myriad form) preserves
+                // that rider on the new token, not just its `def`.
+                let copied_rider = self.copiable_keywords(object);
                 let count = self.resolve_count(count, controller, source, target, x);
                 // Doubling Season (CR 614): the copies enter under `controller`.
                 let count = self.token_count_after_replacements(controller, count);
@@ -229,14 +233,22 @@ impl Game {
                         def,
                         creator: source,
                     });
-                    // Determined Iteration: "The token created this way gains haste."
+                    // "…a copy of that creature, except it has haste" (Twinflame, Determined
+                    // Iteration, Rionya): the haste is part of the copy's copiable values (CR
+                    // 707.2), so a copy of this token keeps it — a `CopyRiderKeywordsGranted`
+                    // rider, not a transient `TempBoost`.
                     if haste {
-                        events.push(Event::TempBoost {
+                        events.push(Event::CopyRiderKeywordsGranted {
                             object: token,
-                            power: 0,
-                            toughness: 0,
                             keywords: HASTE,
-                            source_name,
+                        });
+                    }
+                    // Carry the copied object's own copiable rider (CR 707.2) onto the new copy —
+                    // unioned with any `haste` this effect adds of its own.
+                    if !copied_rider.is_empty() {
+                        events.push(Event::CopyRiderKeywordsGranted {
+                            object: token,
+                            keywords: copied_rider,
                         });
                     }
                     // Determined Iteration: "Sacrifice it at the beginning of the next end step"
@@ -276,21 +288,32 @@ impl Game {
                 let chosen =
                     expect_object_target(target, "become-copy-of-target-creature-gaining-myriad");
                 let def = self.def_id_of(chosen);
+                // CR 707.2: if the chosen creature is itself already a copy carrying a rider (a
+                // Twinflame haste token you control), Muddle's copy keeps that rider too, unioned
+                // with the myriad this ability adds of its own.
+                let copied_rider = self.copiable_keywords(chosen);
                 const MYRIAD: &[Keyword] = &[Keyword::Myriad];
-                vec![
+                let mut events = vec![
                     Event::BecameCopy {
                         object: source,
                         def,
                         until_eot: true,
                     },
-                    Event::TempBoost {
+                    // "…except it has myriad" is a copiable value (CR 707.2): a copy of Muddle's
+                    // copied form keeps myriad — a `CopyRiderKeywordsGranted` rider, not a
+                    // transient `TempBoost`. Cleared when the until-end-of-turn copy reverts.
+                    Event::CopyRiderKeywordsGranted {
                         object: source,
-                        power: 0,
-                        toughness: 0,
                         keywords: MYRIAD,
-                        source_name,
                     },
-                ]
+                ];
+                if !copied_rider.is_empty() {
+                    events.push(Event::CopyRiderKeywordsGranted {
+                        object: source,
+                        keywords: copied_rider,
+                    });
+                }
+                events
             }
             // Myriad's payload (CR 702.114a): for each opponent other than the defending player,
             // mint a token copy of the attacker's current (possibly copied) characteristics that
@@ -358,12 +381,22 @@ impl Game {
                         continue;
                     }
                     let def = self.def_id_of(id);
+                    // CR 707.2: "a copy of that token" carries the copied token's own copy-effect
+                    // exception rider (a Twinflame haste token that entered this turn keeps haste
+                    // on its copy).
+                    let copied_rider = self.copiable_keywords(id);
                     events.push(Event::TokenCreated {
                         token: next,
                         controller: attacker,
                         def,
                         creator: source,
                     });
+                    if !copied_rider.is_empty() {
+                        events.push(Event::CopyRiderKeywordsGranted {
+                            object: next,
+                            keywords: copied_rider,
+                        });
+                    }
                     events.push(Event::Tapped { object: next });
                     events.push(Event::TokenEnteredAttacking {
                         token: next,

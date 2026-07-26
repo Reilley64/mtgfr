@@ -790,9 +790,20 @@ pub enum PendingChoiceView {
         target_player: u8,
         items: Vec<ChoiceItem>,
     },
-    /// This player may return one of `items` (a card in their own graveyard) to their hand, or
-    /// decline (CR 601.2f-style resolution-time optional rider — Deadly Brew).
+    /// This player returns one of `items` (a card in their own graveyard) to their hand. Optional
+    /// riders (Deadly Brew, Witch of the Moors) let the player decline; a mandatory "you return"
+    /// (Witherbloom Command mode 0) does not — the client must require a pick and hide Decline
+    /// while a legal card exists.
     MayReturnFromGraveyard {
+        player: u8,
+        source: ObjectId,
+        mandatory: bool,
+        items: Vec<ChoiceItem>,
+    },
+    /// This player may exile one of `items` (a nonland card they just discarded, in their own —
+    /// public — graveyard) face-up with impulse-play permission until end of turn, or decline
+    /// (Conspiracy Theorist's "you may exile one of them … you may cast it this turn").
+    MayExileDiscardedToPlay {
         player: u8,
         source: ObjectId,
         items: Vec<ChoiceItem>,
@@ -974,10 +985,13 @@ pub enum PendingChoiceView {
     /// This player (an entering permanent's controller) may have `source` enter as a copy of one
     /// of `items` (every other creature on the battlefield, public — CR 706/707.2, Altered Ego,
     /// Cursed Mirror). Answered with the chosen creature, or a decline (the "you may").
+    /// `put_counter_on_creature` marks the reused "put a +1/+1 counter on a creature" primer so
+    /// clients can swap the copy wording without needing a separate answer shape.
     ChooseCopyTarget {
         player: u8,
         source: ObjectId,
         items: Vec<ChoiceItem>,
+        put_counter_on_creature: bool,
     },
     /// This player (the deployed attachment's controller) must choose a host among `items` (the
     /// eligible battlefield creatures, public) for the Aura or Equipment it just put onto the
@@ -1027,6 +1041,7 @@ impl PendingChoiceView {
             | Self::CasterKeepPermanents { items, .. }
             | Self::ChooseCounterTargetForPlayer { items, .. }
             | Self::MayReturnFromGraveyard { items, .. }
+            | Self::MayExileDiscardedToPlay { items, .. }
             | Self::MayDiscard { items, .. }
             | Self::Discard { items, .. }
             | Self::PutFromHandOnTop { items, .. }

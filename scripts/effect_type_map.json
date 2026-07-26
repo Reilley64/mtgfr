@@ -527,6 +527,10 @@
     "family": "choice",
     "mode": "may_draw_up_to_then_opponent_may_repeat"
   },
+  "may_exile_discarded_nonland_may_play": {
+    "family": "choice",
+    "mode": "may_exile_discarded_nonland_may_play"
+  },
   "may_pay_to_copy_this": {
     "family": "copy",
     "mode": "may_pay_to_copy_this"
@@ -666,6 +670,10 @@
   "reflexive_trigger": {
     "family": "zone",
     "mode": "reflexive_trigger"
+  },
+  "reflexive_trigger_if_nonland_exiled": {
+    "family": "zone",
+    "mode": "reflexive_trigger_if_nonland_exiled"
   },
   "regenerate_shield": {
     "family": "control",

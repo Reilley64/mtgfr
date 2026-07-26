@@ -96,6 +96,7 @@ pub(super) fn may_return_from_graveyard(
     player: PlayerId,
     source: ObjectId,
     filter: CardFilter,
+    mandatory: bool,
 ) -> Option<PendingChoice> {
     let options: Vec<ObjectId> = game
         .live_object_ids()
@@ -110,6 +111,30 @@ pub(super) fn may_return_from_graveyard(
         return None;
     }
     Some(PendingChoice::MayReturnFromGraveyard {
+        player,
+        source,
+        options,
+        mandatory,
+    })
+}
+
+pub(super) fn may_exile_discarded_nonland_may_play(
+    game: &Game,
+    player: PlayerId,
+    source: ObjectId,
+    cards: &'static [ObjectId],
+) -> Option<PendingChoice> {
+    // Only the discarded nonland cards still sitting in this player's graveyard are eligible — a
+    // prior effect may have already moved one out (CR 400.7). No survivor skips the pause.
+    let options: Vec<ObjectId> = cards
+        .iter()
+        .copied()
+        .filter(|&id| game.zone_of(id) == crate::Zone::Graveyard && game.owner_of(id) == player)
+        .collect();
+    if options.is_empty() {
+        return None;
+    }
+    Some(PendingChoice::MayExileDiscardedToPlay {
         player,
         source,
         options,
@@ -131,6 +156,26 @@ pub(super) fn may_discard(
         source,
         options: hand,
         then,
+    })
+}
+
+pub(super) fn may_put_counter_on_creature(
+    game: &Game,
+    player: PlayerId,
+    source: ObjectId,
+) -> Option<PendingChoice> {
+    let options: Vec<ObjectId> = game
+        .battlefield()
+        .into_iter()
+        .filter(|&id| matches!(game.def_of(id).kind, crate::CardKind::Creature { .. }))
+        .collect();
+    if options.is_empty() {
+        return None;
+    }
+    Some(PendingChoice::MayPutCounterOnCreature {
+        player,
+        source,
+        options,
     })
 }
 

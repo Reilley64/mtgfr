@@ -51,6 +51,7 @@ pub(crate) enum ChoiceRequest {
         target: Option<crate::Target>,
         x: u32,
         modes: Arc<[crate::Effect]>,
+        at_placement: bool,
     },
     MayYesNo {
         player: crate::PlayerId,
@@ -104,12 +105,25 @@ pub(crate) enum ChoiceRequest {
         player: crate::PlayerId,
         source: crate::ObjectId,
         filter: crate::CardFilter,
+        mandatory: bool,
+    },
+    /// [`Effect::Choice(ChoiceEffect::MayExileDiscardedNonlandMayPlay)`] — no card still in the
+    /// graveyard skips (Conspiracy Theorist).
+    MayExileDiscardedNonlandMayPlay {
+        player: crate::PlayerId,
+        source: crate::ObjectId,
+        cards: &'static [crate::ObjectId],
     },
     /// [`Effect::Choice(ChoiceEffect::MayDiscard)`] — empty hand skips.
     MayDiscard {
         player: crate::PlayerId,
         source: crate::ObjectId,
         then: &'static [crate::Effect],
+    },
+    /// [`Effect::Choice(ChoiceEffect::MayPutCounterOnCreature)`] — no battlefield creature skips.
+    MayPutCounterOnCreature {
+        player: crate::PlayerId,
+        source: crate::ObjectId,
     },
     /// [`Effect::Choice(ChoiceEffect::Discard)`] — empty (or zero-count) hand skips.
     Discard {
@@ -398,12 +412,21 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
             player,
             source,
             filter,
-        } => optional::may_return_from_graveyard(game, player, source, filter),
+            mandatory,
+        } => optional::may_return_from_graveyard(game, player, source, filter, mandatory),
+        ChoiceRequest::MayExileDiscardedNonlandMayPlay {
+            player,
+            source,
+            cards,
+        } => optional::may_exile_discarded_nonland_may_play(game, player, source, cards),
         ChoiceRequest::MayDiscard {
             player,
             source,
             then,
         } => optional::may_discard(game, player, source, then),
+        ChoiceRequest::MayPutCounterOnCreature { player, source } => {
+            optional::may_put_counter_on_creature(game, player, source)
+        }
         ChoiceRequest::Discard {
             player,
             count,

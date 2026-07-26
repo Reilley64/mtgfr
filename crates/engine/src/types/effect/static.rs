@@ -128,6 +128,12 @@ pub enum StaticEffect {
         mana: ManaPool,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         restriction: Option<SpendRestriction>,
+        /// "Add N mana of any one color" (CR 106.4 — Goldspan Dragon's granted Treasure ability):
+        /// every credit locks to the one color the controller names, so activating pauses on
+        /// [`crate::PendingChoice::ChooseManaColor`] rather than producing independent wildcards.
+        /// The granted twin of [`ManaEffect::Add`]'s own `single_color`; `false` for a plain grant.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        single_color: bool,
     },
 
     GrantToAttached {
@@ -214,6 +220,11 @@ pub enum StaticEffect {
     SetAttachedTypes {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         add_types: TypeSet,
+        /// CR 613.4: when `true`, `add_types` are the host's *complete* card types (replacing its
+        /// printed ones — Darksteel Mutation's "loses all other … card types"), not merely unioned
+        /// on. Default `false` keeps the additive Angelic-Destiny behavior.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        set_types: bool,
         #[cfg_attr(
             feature = "card-dsl",
             serde(default, deserialize_with = "de::static_str_slice")

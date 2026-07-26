@@ -1156,15 +1156,23 @@ pub enum PendingChoice {
         overflow: Option<SearchDest>,
     },
     /// `player` (the trigger's controller) must choose one of `modes` for an [`Effect::ChooseOne`]
-    /// "choose one" triggered ability, resolving at the point the ability resolves. Answered by
-    /// [`Intent::ChooseMode`]; the chosen mode is run with the trigger's `source`/`target`/`x`
-    /// context. Mode labels for the wire come from `modes.len()` / each mode's [`Effect::message`].
+    /// "choose one" modal ability. Answered by [`Intent::ChooseMode`]; the chosen mode carries the
+    /// ability's `source`/`target`/`x` context. Mode labels for the wire come from `modes.len()` /
+    /// each mode's [`Effect::message`].
+    ///
+    /// `at_placement` distinguishes the two rules windows this pause serves (CR 603.3d vs CR 608.2):
+    /// a *triggered* modal ability chooses its mode as it goes on the stack (`at_placement = true`),
+    /// so [`Game::answer_choose_mode`] *places* the chosen branch — with its own target — on the
+    /// stack, and it resolves later straight down that branch with no mid-resolution mode pause; a
+    /// modal effect reached mid-resolution (a modal spell's own step — Zimone's Hypothesis)
+    /// keeps `at_placement = false` and runs the chosen branch immediately.
     ChooseMode {
         player: PlayerId,
         source: ObjectId,
         target: Option<Target>,
         x: u32,
         modes: Arc<[Effect]>,
+        at_placement: bool,
     },
     /// `player` may choose `choose` distinct modes of a modal *triggered* ability (`source`, CR
     /// 700.2's "choose two" extended to a trigger's own modes), each mode paired with its own
@@ -1310,8 +1318,25 @@ pub enum PendingChoice {
     /// ([`Effect::Choice(ChoiceEffect::MayReturnFromGraveyard)`] — Deadly Brew's "you may return another permanent card
     /// from your graveyard to your hand"). Answered by [`Intent::ChooseSacrifices`] (reusing its
     /// "empty list declines, one entry picks" wire shape): an empty list declines, one entry
-    /// returns that card. The graveyard-return twin of [`Self::MaySacrifice`].
+    /// returns that card. The graveyard-return twin of [`Self::MaySacrifice`]. When `mandatory`
+    /// (Witherbloom Command mode 0's "you return"), an empty (declining) answer is illegal — a
+    /// card must be chosen; the no-legal-card case never reaches here (it skips the pause).
     MayReturnFromGraveyard {
+        player: PlayerId,
+        source: ObjectId,
+        options: Vec<ObjectId>,
+        mandatory: bool,
+    },
+    /// `player` may exile one of `options` (a nonland card they just discarded, still in their
+    /// graveyard) face-up with impulse-play permission until end of turn, or decline
+    /// ([`Effect::Choice(ChoiceEffect::MayExileDiscardedNonlandMayPlay)`] — Conspiracy Theorist's
+    /// "you may exile one of them from your graveyard. If you do, you may cast it this turn").
+    /// Answered by [`Intent::ChooseSacrifices`] (reusing its "empty list declines, one entry
+    /// picks" wire shape, like [`Self::MayReturnFromGraveyard`]): an empty list declines, one
+    /// entry exiles that card with play permission. The impulse-play twin of
+    /// [`Self::MayReturnFromGraveyard`]; the choose-one batch payoff of
+    /// [`Trigger::YouDiscardNonland`](crate::Trigger).
+    MayExileDiscardedToPlay {
         player: PlayerId,
         source: ObjectId,
         options: Vec<ObjectId>,
@@ -1327,6 +1352,19 @@ pub enum PendingChoice {
         source: ObjectId,
         options: Vec<ObjectId>,
         then: &'static [Effect],
+    },
+    /// `player` may put a single +1/+1 counter on one of `options` (a creature on the
+    /// battlefield), or decline ([`Effect::Choice(ChoiceEffect::MayPutCounterOnCreature)`] —
+    /// Zimone's Hypothesis' primer). Answered by [`Intent::ChooseCopyTarget`] (its "one object or
+    /// none" wire shape): `None` declines, `Some(id)` puts the counter. Non-targeted — the pick
+    /// is made at resolution, never advertised on the stack. Distinct from the targeted cast-time
+    /// counter placement ([`CountersEffect::PutCounters`](crate::CountersEffect)); this is a
+    /// resolution-time optional, projected onto the same generic pick-or-decline client view as
+    /// [`Self::ChooseCopyTarget`].
+    MayPutCounterOnCreature {
+        player: PlayerId,
+        source: ObjectId,
+        options: Vec<ObjectId>,
     },
     /// `player` must discard down to the hand-size limit at cleanup (CR 514.3): choose exactly
     /// `count` of `hand` (their whole hand, kept for stable display/validation) to discard.
@@ -1813,7 +1851,9 @@ impl PendingChoice {
             | PendingChoice::JoinForcesPayment { player, .. }
             | PendingChoice::MaySacrifice { player, .. }
             | PendingChoice::MayReturnFromGraveyard { player, .. }
+            | PendingChoice::MayExileDiscardedToPlay { player, .. }
             | PendingChoice::MayDiscard { player, .. }
+            | PendingChoice::MayPutCounterOnCreature { player, .. }
             | PendingChoice::DiscardToHandSize { player, .. }
             | PendingChoice::DiscardCards { player, .. }
             | PendingChoice::PutFromHandOnTop { player, .. }
@@ -2220,6 +2260,17 @@ pub enum Event {
     },
     /// A permanent's until-end-of-turn boosts wore off (cleanup).
     TempBoostsEnded { object: ObjectId },
+    /// A copy effect made `object` a copy "except it has `keywords`" (CR 707.2 — Twinflame's
+    /// "except it has haste," Muddle's "except it has myriad," Cursed Mirror's haste). Unlike a
+    /// [`TempBoost`](Event::TempBoost) keyword grant, these are part of the object's **copiable**
+    /// characteristics: they union onto its effective keywords (via
+    /// [`Permanent::copy_rider_keywords`]) *and* ride along when it is copied again. Applied by
+    /// unioning into that field; never cleared at ordinary cleanup (a copiable value resets with
+    /// the object per CR 400.7), only when an until-end-of-turn copy reverts its `def`.
+    CopyRiderKeywordsGranted {
+        object: ObjectId,
+        keywords: &'static [Keyword],
+    },
     /// A permanent's base power/toughness was SET until end of turn (CR 613.3(7b) — Biomass
     /// Mutation, Quandrix Charm's "has base power and toughness X/X until end of turn"), stored on
     /// [`Permanent::base_pt_set_eot`] and cleared alongside the temp boosts at

@@ -881,7 +881,16 @@ impl Game {
                 }
                 // A discard (CR 701.8) — distinct from `MovedToGraveyard`, which also fires for a
                 // sacrifice/destroy: `YouDiscard` watches specifically for this marker.
-                Event::Discarded { card, player, .. } => self.queue_discard_triggers(player, card),
+                Event::Discarded { card, player, .. } => {
+                    self.queue_discard_triggers(player, card);
+                    // Conspiracy Theorist's "one or more nonland cards" (CR 701.8): record every
+                    // discard now, then drain once per batch below — mirrors
+                    // `graveyard_exits_this_batch`. The nonland filter happens on drain (a card's
+                    // types are stable across the batch).
+                    self.batch_trigger_scratch
+                        .discards_this_batch
+                        .push((player, card));
+                }
                 // Combat damage to a player (CR 510.2) — the combat-damage-to-player watch family
                 // and the broader "deals damage to an opponent" self-watch now dispatch via the
                 // watch table. Aura-host and other scratch-driven companions stay explicit.
@@ -992,6 +1001,37 @@ impl Game {
                 self.queue_controller_triggers(owner, Trigger::YouCreateToken, None);
             }
         }
+        // Conspiracy Theorist's "one or more nonland cards" (CR 701.8/603.3b): the whole
+        // simultaneous discard, not each card, is the trigger event, and it fires only when at
+        // least one discarded card was a nonland. Drain (group by discarder, filter to nonlands,
+        // then clear) and fire each qualifying discarder once. Same shape as the batches above.
+        if !self.batch_trigger_scratch.discards_this_batch.is_empty() {
+            let discards = std::mem::take(&mut self.batch_trigger_scratch.discards_this_batch);
+            let mut players: Vec<PlayerId> = discards.iter().map(|(p, _)| *p).collect();
+            players.sort_unstable_by_key(|p| p.0);
+            players.dedup();
+            for player in players {
+                // Only the nonland cards among this player's discards are "one of them" (CR
+                // 701.8); a land-only discard qualifies no one and fires nothing.
+                let nonland: Vec<ObjectId> = discards
+                    .iter()
+                    .filter(|(p, id)| {
+                        // "Nonland card" is any card that is not a land (CR 701.8) — an
+                        // instant/sorcery has no permanent type at all, so test the *absence* of
+                        // LAND rather than the presence of a NONLAND permanent type.
+                        *p == player && !self.def_of(*id).kind.types().intersects(TypeSet::LAND)
+                    })
+                    .map(|(_, id)| *id)
+                    .collect();
+                if nonland.is_empty() {
+                    continue;
+                }
+                // ponytail: leaked per fire so `TriggerContext` stays `Copy`, exactly like
+                //   `graveyard_exits_this_batch`'s `cards_left_graveyard` above.
+                let nonland: &'static [ObjectId] = Box::leak(nonland.into_boxed_slice());
+                self.queue_discard_nonland_triggers(player, nonland);
+            }
+        }
         // Laelia, the Blade Reforged's growth trigger: CR "one or more cards put into exile
         // from your library and/or your graveyard" batches to one trigger, not one per card.
         // Same drain-dedup-clear shape as the two accumulators above.
@@ -1086,7 +1126,10 @@ impl Game {
                         .player
                         .expect("controller-scoped battlefield watch requires a player");
                     for id in self.battlefield() {
-                        if Some(id) == event.exclude || self.owner_of(id) != player {
+                        // A live battlefield permanent's "your …" watch keys on its controller
+                        // (CR 109.4 / 603.3d), not its owner — a stolen or reanimated permanent
+                        // triggers for whoever controls it now, never its original owner.
+                        if Some(id) == event.exclude || self.controller_of(id) != player {
                             continue;
                         }
                         if watch.skip_graveyard_functional_on_battlefield
@@ -1117,7 +1160,9 @@ impl Game {
                         {
                             continue;
                         }
-                        let controller = self.owner_of(id);
+                        // The triggered ability belongs to the permanent's controller (CR 603.3d),
+                        // not its owner — matters for stolen/reanimated permanents on the battlefield.
+                        let controller = self.controller_of(id);
                         let ctx = self.trigger_watch_context(id, controller, watch.context, event);
                         self.queue_trigger_group(ctx, id, self.def_of(id), trigger);
                     }
@@ -1127,7 +1172,9 @@ impl Game {
                         .player
                         .expect("all-battlefield-except-player watch requires a player");
                     for id in self.battlefield() {
-                        let controller = self.owner_of(id);
+                        // Controller-scoped, not owner-scoped (CR 603.3d): both the "except this
+                        // player" test and the trigger's controller read the live controller.
+                        let controller = self.controller_of(id);
                         if controller == excluded {
                             continue;
                         }
@@ -1606,7 +1653,11 @@ impl Game {
                 continue;
             }
             for id in self.battlefield() {
-                if id == dying || self.owner_of(id) != owner {
+                // Controller-scoped watcher (CR 603.3d): a stolen/reanimated Starfield Mystic
+                // fires for its current controller. `owner` is the dying enchantment's
+                // controller-at-death stand-in (owner-based look-back for an object that already
+                // left the battlefield, per this deck's increment scope).
+                if id == dying || self.controller_of(id) != owner {
                     continue;
                 }
                 self.queue_trigger_group(
@@ -1994,6 +2045,38 @@ impl Game {
         }
     }
 
+    /// Enqueue a reflexive "when one or more nonland cards are exiled this way" triggered ability
+    /// (CR 603.3b — Augusta, Order Returned), the count-gated twin of
+    /// [`queue_reflexive_trigger`](Self::queue_reflexive_trigger). Each effect in `then` becomes
+    /// its own single-ability [`TriggerGroup`] with the settled `count` baked in
+    /// ([`Effect::with_reflexive_count`]), so it rides the normal APNAP placement path onto the
+    /// stack as a real, respondable object with its target chosen at placement (CR 601.2c) — after
+    /// the graveyard fan-out, in a real response window.
+    pub(crate) fn queue_reflexive_counter_trigger(
+        &mut self,
+        controller: PlayerId,
+        source: ObjectId,
+        then: &'static [Effect],
+        count: u32,
+    ) {
+        for effect in then {
+            self.pending_trigger_groups.push(TriggerGroup {
+                expanded: false,
+                controller,
+                source,
+                abilities: vec![Ability {
+                    timing: Timing::Triggered(Trigger::Upkeep),
+                    effect: effect.clone().with_reflexive_count(count),
+                    optional: false,
+                    min_level: 0,
+                    cost: Cost::FREE,
+                    condition: None,
+                    once_each_turn: false,
+                }],
+            });
+        }
+    }
+
     /// Queue watch-others *attack* triggers: a player attacked `attacked`, so scan every
     /// battlefield permanent and fire its `PlayerAttacksYourOpponent` ability when `attacked` is
     /// one of that permanent's controller's opponents (i.e. isn't the controller themself). The
@@ -2005,7 +2088,7 @@ impl Game {
     ) {
         let attacking_player = self.controller_of(attacker_object);
         for id in self.battlefield() {
-            let controller = self.owner_of(id);
+            let controller = self.controller_of(id);
             // "one of your opponents": skip watchers whose own controller was the one attacked.
             if controller == attacked {
                 continue;
@@ -2015,6 +2098,7 @@ impl Game {
                 active_player: None,
                 attack: Some((attacking_player, attacked)),
                 discarded: None,
+                discarded_nonland_cards: &[],
                 entering: None,
                 dying_source_stats: None,
                 cast_mana_value: None,
@@ -2083,7 +2167,7 @@ impl Game {
     ) {
         let total_attackers = attackers.len() as u8;
         for id in self.battlefield() {
-            let controller = self.owner_of(id);
+            let controller = self.controller_of(id);
             let against_controller = attackers
                 .iter()
                 .filter(|&&(_, defender)| defender == controller)
@@ -2232,6 +2316,7 @@ impl Game {
                 active_player: None,
                 attack: Some((host_controller, defender)),
                 discarded: None,
+                discarded_nonland_cards: &[],
                 entering: None,
                 dying_source_stats: None,
                 cast_mana_value: None,
@@ -2393,10 +2478,14 @@ impl Game {
             return;
         }
         for id in self.battlefield() {
+            // Controller-scoped (CR 603.3d): a stolen/reanimated Hateful Eidolon fires for its
+            // current controller, which also decides which dying-creature Auras count as "you
+            // controlled". (`batch_deaths` below already carries each dead watcher's
+            // controller-at-death — the CR 603.6c look-back — so those stay as captured.)
             self.queue_an_enchanted_creature_dies_watcher(
                 id,
                 self.def_of(id),
-                self.owner_of(id),
+                self.controller_of(id),
                 &auras,
             );
         }
@@ -2493,6 +2582,7 @@ impl Game {
             active_player: None,
             attack: None,
             discarded: Some(discarded),
+            discarded_nonland_cards: &[],
             entering: None,
             dying_source_stats: None,
             cast_mana_value: None,
@@ -2520,6 +2610,30 @@ impl Game {
                 continue;
             }
             self.queue_trigger_group(ctx, id, self.def_of(id), Trigger::YouDiscard);
+        }
+    }
+
+    /// Queue [`Trigger::YouDiscardNonland`] watchers on every permanent `player` controls
+    /// (Conspiracy Theorist's "Whenever you discard one or more nonland cards, you may exile one
+    /// of them …"): fires once per discard *event*, not once per card, and only when at least one
+    /// discarded card was a nonland. `nonland_cards` are the discarded nonland cards' new
+    /// graveyard-object ids (CR 603.10a last-known information), threaded into the
+    /// [`TriggerContext`] so the payoff can offer exactly "one of them" — mirrors
+    /// [`queue_cards_leave_graveyard_triggers`](Self::queue_cards_leave_graveyard_triggers).
+    pub(crate) fn queue_discard_nonland_triggers(
+        &mut self,
+        player: PlayerId,
+        nonland_cards: &'static [ObjectId],
+    ) {
+        let ctx = TriggerContext {
+            discarded_nonland_cards: nonland_cards,
+            ..TriggerContext::of(player)
+        };
+        for id in self.battlefield() {
+            if self.owner_of(id) != player {
+                continue;
+            }
+            self.queue_trigger_group(ctx, id, self.def_of(id), Trigger::YouDiscardNonland);
         }
     }
 
@@ -2589,7 +2703,11 @@ impl Game {
             if id == entering {
                 continue;
             }
-            let controller = self.owner_of(id);
+            // Controller-scoped (CR 603.3d / 603.6e): a battlefield watcher's "an enchantment you
+            // control enters" keys on who controls the watcher now (a stolen/reanimated Doomwake
+            // fires for its new controller). `controller_of` returns the owner for a
+            // graveyard-functional watcher, so that path is unchanged.
+            let controller = self.controller_of(id);
             let ctx = TriggerContext {
                 entering: Some(entering),
                 ..TriggerContext::of(controller)
@@ -2646,7 +2764,9 @@ impl Game {
     /// ([`queue_self_death_watcher`](Self::queue_self_death_watcher)), `entering` is already on
     /// the battlefield here, so this reads it directly rather than off a snapshot.
     fn queue_self_permanent_enters_trigger(&mut self, entering: ObjectId) {
-        let controller = self.owner_of(entering);
+        // `entering` is live on the battlefield, so its own ETB fires for its controller
+        // (CR 603.3d) — not its owner, which matters if it entered under another player's control.
+        let controller = self.controller_of(entering);
         let ctx = TriggerContext::of(controller);
         let abilities: Vec<Ability> = self
             .functional_abilities(entering)
@@ -2851,7 +2971,10 @@ impl Game {
         //   That's the intended reading ("their second spell" means the cast currently resolving
         //   is the second), not a bug to fix.
         for id in self.battlefield() {
-            let controller = self.owner_of(id);
+            // Controller-scoped (CR 603.3d): a stolen/reanimated cast-watcher (Sram, Kor
+            // Spiritdancer) fires for whoever controls it now, and its `You`/`Opponent` caster
+            // scope is judged against that controller.
+            let controller = self.controller_of(id);
             let ctx = TriggerContext {
                 cast_mana_value: Some(def.mana_value()),
                 // CR 601.2h: the mana actually spent on this cast, locked in when the trigger
@@ -3268,7 +3391,9 @@ impl Game {
     /// `Trigger` value.
     pub(crate) fn queue_player_draws_triggers(&mut self, drawer: PlayerId, nth: u32) {
         for id in self.battlefield() {
-            let controller = self.owner_of(id);
+            // Controller-scoped (CR 603.3d): a stolen/reanimated draw-watcher (Pearl-Ear) fires
+            // for its current controller, and its `You`/`Opponent` drawer scope keys on that.
+            let controller = self.controller_of(id);
             let ctx = TriggerContext::of(controller);
             let abilities: Vec<Ability> = self
                 .functional_abilities(id)
@@ -3589,6 +3714,10 @@ impl Game {
             // Dread Cacodemon/Reiver Demon: "if you cast it from your hand" — source-object-based
             // like the four conditions above.
             Condition::CastFromHand => self.as_permanent(source).is_some_and(|p| p.cast_from_hand),
+            // Plumb the Forbidden's reflexive "When you do": the copy trigger happens only if one
+            // or more creatures were sacrificed to the additional cost — source-object-based like
+            // the conditions above, reading the resolving spell's own recorded count (CR 601.2f).
+            Condition::SpellSacrificedToCast => self.spell_sacrifice_count(source) > 0,
             _ => self.condition_holds(condition, ctx),
         }
     }
@@ -3775,6 +3904,11 @@ impl Game {
             // (Dread Cacodemon's/Reiver Demon's ETB intervening-if, CR 603.4), which intercepts it
             // directly against its own `source` parameter before falling through here.
             Condition::CastFromHand => false,
+            // ponytail: source-object-based like `CastFromHand` above — `TriggerContext` carries
+            // no source id either. Reachable only through `Game::ability_condition_holds` (Plumb
+            // the Forbidden's reflexive "When you do" copy gate, CR 603.4), which intercepts it
+            // directly against its own `source` parameter before falling through here.
+            Condition::SpellSacrificedToCast => false,
             // ponytail: source-object-based like `SourceEnteredWithXAtLeast` above —
             // `TriggerContext` carries no source id either. Reachable only through the
             // `Effect::Conditional` resolve site (`Game::run`), which intercepts it directly
@@ -4068,6 +4202,31 @@ impl Game {
                     continue;
                 }
                 self.push_apply(events, Event::TriggeredAbilityThisTurn { source });
+            }
+
+            // "Choose one —" on a triggered ability (CR 603.3d / 700.2): the mode is chosen as the
+            // ability goes on the stack, not after players pass priority into resolution. Raise the
+            // mode choice now; once answered, the chosen branch — with its own target chosen too —
+            // is what goes on the stack (`answer_choose_mode`'s placement path), so the branch is
+            // public before any response window and resolution runs straight down it. A modal
+            // *spell*'s own resolution-step `ChooseOne` (Zimone's Hypothesis) is unaffected — it is
+            // never a trigger and so never reaches this loop.
+            if let Effect::ChooseOne { options } = effect {
+                if options.is_empty() {
+                    continue;
+                }
+                crate::pending::raise_choice(
+                    self,
+                    PendingChoice::ChooseMode {
+                        player,
+                        source,
+                        target: None,
+                        x: 0,
+                        modes: options,
+                        at_placement: true,
+                    },
+                );
+                return;
             }
 
             // An optional trigger pauses for a yes/no (or pay-or-decline) before the stack.
@@ -4791,6 +4950,7 @@ mod tests {
             halves: empty_slice(),
             suspend: None,
             vanishing: None,
+            cast_x_max: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,
@@ -4870,6 +5030,7 @@ mod tests {
             halves: empty_slice(),
             suspend: None,
             vanishing: None,
+            cast_x_max: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,

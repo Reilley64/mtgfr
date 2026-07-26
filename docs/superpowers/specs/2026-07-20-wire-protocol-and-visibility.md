@@ -171,15 +171,19 @@ payments (PayCost, PayOrCounter, PayEchoOrSacrifice, PayRecoverOrExile,
 PayCumulativeUpkeepOrSacrifice), combat damage assignment, library-top operations (Scry, Surveil,
 SelectFromTop, DistributeTop), search, sacrifice edicts, proliferate, phase-out choice, mode
 selection, copy target, legend-rule keep (`choose_legendary_keep` / `ChooseLegendaryKeep`,
-expand-only), mana color choice, piles, partition, dredge, and the other prompt surfaces the board
-renders. The wire shape is intentionally more generic than the engine internals:
+expand-only), mana color choice, piles, partition, dredge, `may_exile_discarded_to_play` for
+Conspiracy Theorist's "exile one of them from your graveyard" follow-up, and the other prompt
+surfaces the board renders. The wire shape is intentionally more generic than the engine internals:
 spell-target and ability-target pauses project as `choose_target { source, label, min, max, items
 }`; repeatable yes/no loops project as `may_yes_no`; repeatable draw-count loops project as
 `may_draw_up_to { label, max }`. Legacy card-named Trade Secrets wire variants and dedicated
 `choose_spell_targets` / `choose_ability_targets` oneof arms are gone. The `ChoiceItem` embedded in
 most variants carries the item's string `label` for visible object/seat identity so the prompt UI
-does not need to join against the object list. Effect titles, mode rows, trigger-order rows, and
-generic draw-count prompts use `MessageRef` labels.
+does not need to join against the object list. `choose_copy_target` also carries
+`put_counter_on_creature` for the one reused non-copy primer (`MayPutCounterOnCreature`), letting
+clients keep the same answer shape while swapping the prompt wording away from "copy target".
+Effect titles, mode rows, trigger-order rows, and generic draw-count prompts use `MessageRef`
+labels.
 
 ### Intent wire format
 

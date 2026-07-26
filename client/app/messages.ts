@@ -9,6 +9,7 @@ import { ModalOpened } from "./domain/ui/confirmDialog";
 import { Message as GameMessage } from "./game/messages";
 import { Message as AccountChromeMessage } from "./shell/account-chrome/messages";
 import { Message as AuthMessage } from "./shell/auth/messages";
+import { Message as CoverageMessage } from "./shell/coverage/messages";
 import { Message as DeckBuilderMessage } from "./shell/decks/builder/messages";
 import { Message as DeckListMessage } from "./shell/decks/list/messages";
 import { Message as LeaderboardMessage } from "./shell/leaderboard/messages";
@@ -30,6 +31,7 @@ export const ReceivedMeGravatarHash = m("ReceivedMeGravatarHash", { email: S.Str
 export const GotAuthMessage = m("GotAuthMessage", { message: AuthMessage });
 export const GotDeckListMessage = m("GotDeckListMessage", { message: DeckListMessage });
 export const GotDeckBuilderMessage = m("GotDeckBuilderMessage", { message: DeckBuilderMessage });
+export const GotCoverageMessage = m("GotCoverageMessage", { message: CoverageMessage });
 export const GotLeaderboardMessage = m("GotLeaderboardMessage", { message: LeaderboardMessage });
 export const GotLobbyMessage = m("GotLobbyMessage", { message: LobbyMessage });
 export const GotBoardMessage = m("GotBoardMessage", { message: BoardMessage });
@@ -49,6 +51,7 @@ export const Message = S.Union([
   GotAuthMessage,
   GotDeckListMessage,
   GotDeckBuilderMessage,
+  GotCoverageMessage,
   GotLeaderboardMessage,
   GotLobbyMessage,
   GotBoardMessage,

@@ -36,7 +36,7 @@ import { initialDeckBuilderSubmodel } from "./submodel";
 import { update as builderUpdate, NavigateHome, SaveDeck, SearchBuilderPrints } from "./update";
 import { BindBuilderCardPointer, view as builderView } from "./view";
 
-const emptyChrome = { version: null, faithfulCount: null, oracleTotal: null };
+const emptyChrome = { version: null, faithfulCount: null, oracleTotal: null, coverageHref: null };
 const me = { id: 1, email: "alice@example.com", username: "alice" };
 
 const url = (pathname: string, search = "") => ({

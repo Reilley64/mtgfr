@@ -381,6 +381,7 @@ type PendingGraveyardPickChoice = Extract<
     kind:
       | "exile_from_graveyard"
       | "may_return_from_graveyard"
+      | "may_exile_discarded_to_play"
       | "shuffle_from_graveyard"
       | "choose_dredge"
       | "pay_cumulative_upkeep_or_sacrifice"
@@ -393,6 +394,7 @@ function isPendingGraveyardPick(pc: PendingChoiceView): pc is PendingGraveyardPi
   return (
     pc.kind === "exile_from_graveyard" ||
     pc.kind === "may_return_from_graveyard" ||
+    pc.kind === "may_exile_discarded_to_play" ||
     pc.kind === "shuffle_from_graveyard" ||
     pc.kind === "choose_dredge" ||
     pc.kind === "pay_cumulative_upkeep_or_sacrifice" ||

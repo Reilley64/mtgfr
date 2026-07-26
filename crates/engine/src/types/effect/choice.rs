@@ -134,10 +134,39 @@ pub enum ChoiceEffect {
         count: Amount,
     },
 
+    /// A resolution-time optional "you may put a +1/+1 counter on a creature" (CR 601.2c —
+    /// Zimone's Hypothesis' primer): pauses the controller on a
+    /// [`PendingChoice::MayPutCounterOnCreature`](crate::PendingChoice) over every creature on the
+    /// battlefield; picking one puts a single +1/+1 counter on it, declining does nothing. Unlike
+    /// [`Self::MaySacrifice`]/[`Self::MayDiscard`] it carries no `then` — its follow-up (the mass
+    /// parity bounce) runs as the next step of the enclosing `Sequence` whether or not the counter
+    /// was placed, not "if you do". Non-targeted: nothing is advertised on the stack at cast.
+    MayPutCounterOnCreature,
+
+    /// A batch nonland-discard payoff (CR 701.8 — Conspiracy Theorist's "you may exile one of
+    /// them from your graveyard. If you do, you may cast it this turn"): pauses the controller on
+    /// a [`PendingChoice::MayExileDiscardedToPlay`](crate::PendingChoice) over `cards` (the nonland
+    /// cards discarded this event, still in the graveyard), choosing one exiles it face-up with
+    /// impulse-play permission until end of turn, declining does nothing. `cards` is baked in at
+    /// [`Trigger::YouDiscardNonland`](crate::Trigger) placement from
+    /// [`TriggerContext::discarded_nonland_cards`](crate::TriggerContext) via
+    /// `contextualize_effect`'s `fill_discarded_nonland_cards` — the graveyard-return twin of
+    /// [`Self::PutCounterThenMayBecomeCopyOfCardFromList`]. Non-targeted: nothing is advertised on
+    /// the stack. No legal card left (a prior effect moved them) quietly does nothing (no pause).
+    MayExileDiscardedNonlandMayPlay {
+        #[cfg_attr(feature = "card-dsl", serde(skip))]
+        cards: &'static [ObjectId],
+    },
+
     MayReturnFromGraveyard {
         filter: CardFilter,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         if_you_sacrificed_this_way: bool,
+        /// "you return" (Witherbloom Command mode 0) rather than "you may return" (Deadly Brew,
+        /// Witch of the Moors): a legal card *must* be chosen — declining is illegal (CR 700.2).
+        /// No legal card in the graveyard still quietly does nothing (no pause).
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        mandatory: bool,
     },
 
     MaySacrifice {

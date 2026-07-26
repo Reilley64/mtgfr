@@ -11,6 +11,7 @@ import { updateGame } from "./game";
 import {
   GotAuthMessage,
   GotBoardMessage,
+  GotCoverageMessage,
   GotDeckBuilderMessage,
   GotDeckListMessage,
   GotGameMessage,
@@ -36,6 +37,8 @@ import {
 } from "./routes";
 import * as Auth from "./shell/auth";
 import type { Message as AuthMessage } from "./shell/auth/messages";
+import * as Coverage from "./shell/coverage";
+import type { Message as CoverageMessage } from "./shell/coverage/messages";
 import * as DeckBuilder from "./shell/decks/builder";
 import type { Message as BuilderMessage } from "./shell/decks/builder/messages";
 import * as DeckList from "./shell/decks/list";
@@ -123,6 +126,13 @@ function enterLeaderboardRoute(
   return [{ ...model, leaderboard }, mapLeaderboardCommands(commands)];
 }
 
+function enterCoverageRoute(
+  model: Model,
+): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
+  const [coverage, commands] = Coverage.informRouteChanged(model.coverage);
+  return [{ ...model, coverage }, mapCoverageCommands(commands)];
+}
+
 function enterDeckBuilderRoute(
   model: Model,
   editingId: string | null,
@@ -186,6 +196,8 @@ function routeEntry(model: Model): readonly [Model, ReadonlyArray<FoldkitCommand
       return enterDeckListRoute(model);
     case "LeaderboardRoute":
       return enterLeaderboardRoute(model);
+    case "CoverageRoute":
+      return enterCoverageRoute(model);
     case "NewDeckRoute":
       return enterDeckBuilderRoute(model, null);
     case "DeckRoute":
@@ -256,6 +268,14 @@ function foldLeaderboard(
   return [{ ...model, leaderboard }, mapLeaderboardCommands(commands)];
 }
 
+function foldCoverage(
+  model: Model,
+  message: CoverageMessage,
+): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
+  const [coverage, commands] = Coverage.update(model.coverage, message);
+  return [{ ...model, coverage }, mapCoverageCommands(commands)];
+}
+
 function foldBoard(
   model: Model,
   message: BoardMessage,
@@ -299,6 +319,12 @@ function mapLeaderboardCommands(
   commands: ReadonlyArray<FoldkitCommand.Command<LeaderboardMessage, never, RpcClient>>,
 ): ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>> {
   return Command.mapMessages(commands, (message) => GotLeaderboardMessage({ message }));
+}
+
+function mapCoverageCommands(
+  commands: ReadonlyArray<FoldkitCommand.Command<CoverageMessage, never, RpcClient>>,
+): ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>> {
+  return Command.mapMessages(commands, (message) => GotCoverageMessage({ message }));
 }
 
 function mapLobbyCommands(
@@ -388,6 +414,7 @@ export const update = (
         return [{ ...model, game }, commands];
       },
       GotLeaderboardMessage: ({ message }) => foldLeaderboard(model, message),
+      GotCoverageMessage: ({ message }) => foldCoverage(model, message),
       GotLobbyMessage: ({ message }) => foldLobby(model, message),
       ToggledAccountMenu: () => {
         if (model.route._tag === "HomeRoute") {
@@ -419,6 +446,18 @@ export const update = (
             [],
           ];
         }
+        if (model.route._tag === "CoverageRoute") {
+          return [
+            {
+              ...model,
+              coverage: {
+                ...model.coverage,
+                accountMenuOpen: !model.coverage.accountMenuOpen,
+              },
+            },
+            [],
+          ];
+        }
         return [model, []];
       },
       ClosedAccountMenu: () => {
@@ -439,6 +478,15 @@ export const update = (
             {
               ...model,
               leaderboard: { ...model.leaderboard, accountMenuOpen: false },
+            },
+            [],
+          ];
+        }
+        if (model.route._tag === "CoverageRoute") {
+          return [
+            {
+              ...model,
+              coverage: { ...model.coverage, accountMenuOpen: false },
             },
             [],
           ];

@@ -415,6 +415,18 @@ pub enum Trigger {
     /// [`Game::create_object`]'s graveyard-exit detection, drained once per event batch by
     /// [`Game::enqueue_triggers`]; see `Game::graveyard_exits_this_batch`.
     CardsLeaveYourGraveyard,
+    /// Whenever the controller discards one or more **nonland** cards (CR 701.8 — Conspiracy
+    /// Theorist's "Whenever you discard one or more nonland cards, you may exile one of them …") —
+    /// a controller-scoped, batch-once trigger like
+    /// [`CardsLeaveYourGraveyard`](Self::CardsLeaveYourGraveyard): a single simultaneous discard of
+    /// several cards is one "you discard" event, not one fire per card, and it fires **only if at
+    /// least one discarded card was a nonland** (discarding only lands does not trigger it). The
+    /// nonland cards' graveyard-object ids ride in
+    /// [`TriggerContext::discarded_nonland_cards`](TriggerContext) so the payoff can offer "one of
+    /// them". Distinct from the unfiltered per-card [`YouDiscard`](Self::YouDiscard) (Containment
+    /// Construct / Currency Converter); fires off [`Event::Discarded`], drained once per event
+    /// batch by [`Game::enqueue_triggers`]; see `Game::discards_this_batch`.
+    YouDiscardNonland,
     /// Whenever one or more cards are put into exile from the controller's library and/or their
     /// graveyard (Laelia, the Blade Reforged's growth trigger) — the exile-destination twin of
     /// [`CardsLeaveYourGraveyard`](Self::CardsLeaveYourGraveyard), same batch-once controller-scoped
@@ -625,6 +637,16 @@ pub(crate) struct TriggerContext {
     /// effect can act on "that card" — Containment Construct). See
     /// [`Game::queue_discard_triggers`].
     pub(crate) discarded: Option<ObjectId>,
+    /// CR 701.8/603.10a last-known information: the graveyard-object ids of the **nonland** cards
+    /// discarded in the batch behind a [`Trigger::YouDiscardNonland`] fire (Conspiracy Theorist's
+    /// "you may exile one of them from your graveyard"), so the payoff can offer exactly "one of
+    /// them". `&[]` for every other trigger. Feeds
+    /// [`Effect::Choice(ChoiceEffect::MayExileDiscardedNonlandMayPlay)`] via `contextualize_effect`'s
+    /// `fill_discarded_nonland_cards`; `def_of`/`zone_of` still resolve each id after the discard.
+    /// See `Game::queue_discard_nonland_triggers` for where this is set.
+    /// ponytail: a leaked `&'static [ObjectId]` interned per fire so [`TriggerContext`] stays
+    ///   `Copy`, exactly like [`cards_left_graveyard`](Self::cards_left_graveyard).
+    pub(crate) discarded_nonland_cards: &'static [ObjectId],
     /// The id of the permanent that just entered, for a `PermanentEnters`/
     /// `PermanentEntersIncludingThis` trigger (so its effect can act on "it" — Marauding
     /// Raptor's "this creature deals 2 damage to it"). See
@@ -793,6 +815,7 @@ impl TriggerContext {
             active_player: None,
             attack: None,
             discarded: None,
+            discarded_nonland_cards: &[],
             entering: None,
             dying_source_stats: None,
             cast_mana_value: None,

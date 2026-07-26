@@ -33,6 +33,9 @@ enum ContinuousEffectKind {
     /// CR 613.4: type/subtype-changing effect.
     SetTypes {
         add_types: TypeSet,
+        /// When `true`, `add_types` *replaces* the host's printed card types (Darksteel Mutation),
+        /// rather than being unioned onto them (Angelic Destiny).
+        set_types: bool,
         set_subtypes: Option<&'static [&'static str]>,
         add_subtypes: &'static [&'static str],
     },
@@ -697,6 +700,7 @@ impl Game {
                     Timing::Static,
                     Effect::Static(StaticEffect::SetAttachedTypes {
                         add_types,
+                        set_types,
                         add_subtypes,
                         set_subtypes,
                         lose_all_abilities,
@@ -710,6 +714,7 @@ impl Game {
                     timestamp,
                     kind: ContinuousEffectKind::SetTypes {
                         add_types,
+                        set_types,
                         set_subtypes: (!set_subtypes.is_empty()).then_some(set_subtypes),
                         add_subtypes,
                     },
@@ -803,6 +808,7 @@ impl Game {
                 timestamp: p.added_types_eot_timestamp,
                 kind: ContinuousEffectKind::SetTypes {
                     add_types: p.added_types_eot,
+                    set_types: false,
                     set_subtypes: None,
                     add_subtypes: p.added_subtypes_eot,
                 },
@@ -821,6 +827,7 @@ impl Game {
                 timestamp: p.added_types_timestamp,
                 kind: ContinuousEffectKind::SetTypes {
                     add_types: p.added_types,
+                    set_types: false,
                     set_subtypes: None,
                     add_subtypes: p.added_subtypes,
                 },
@@ -872,6 +879,18 @@ impl Game {
                 timestamp: p.added_types_timestamp,
                 kind: ContinuousEffectKind::GrantKeywords {
                     keywords: p.granted_keywords,
+                },
+            });
+        }
+        // Copy-effect exception keywords (CR 707.2 — "except it has haste/myriad") are part of
+        // the object's copiable characteristics, so they grant the keyword the same as any other
+        // continuous grant. `copiable_keywords` reads the same field for the copy-again path.
+        if !p.copy_rider_keywords.is_empty() {
+            effects.push(ContinuousEffect {
+                source: object,
+                timestamp: self.static_continuous_timestamp(object),
+                kind: ContinuousEffectKind::GrantKeywords {
+                    keywords: p.copy_rider_keywords,
                 },
             });
         }
@@ -1119,6 +1138,7 @@ impl Game {
         host: ObjectId,
     ) -> (
         TypeSet,
+        bool,
         Option<&'static [&'static str]>,
         &'static [&'static str],
     ) {
@@ -1129,26 +1149,31 @@ impl Game {
             .collect();
         effects.sort_by_key(|effect| (effect.layer(), effect.timestamp, effect.source));
         let mut added_types = TypeSet::NONE;
+        let mut set_types = false;
         let mut set_subtypes: Option<&'static [&'static str]> = None;
         let mut added_subtypes: &'static [&'static str] = &[];
         for effect in effects {
             let ContinuousEffectKind::SetTypes {
                 add_types,
-                set_subtypes: set,
+                set_types: set,
+                set_subtypes: set_sub,
                 add_subtypes,
             } = effect.kind
             else {
                 continue;
             };
             added_types = added_types.union(add_types);
-            if let Some(set) = set {
-                set_subtypes = Some(set);
+            if set {
+                set_types = true;
+            }
+            if let Some(set_sub) = set_sub {
+                set_subtypes = Some(set_sub);
             }
             if !add_subtypes.is_empty() {
                 added_subtypes = add_subtypes;
             }
         }
-        (added_types, set_subtypes, added_subtypes)
+        (added_types, set_types, set_subtypes, added_subtypes)
     }
 
     /// Whether an attached [`Effect::Static(StaticEffect::SetAttachedTypes)`] Aura with `lose_all_abilities = true`
@@ -1206,8 +1231,14 @@ impl Game {
         if self.as_permanent(id).is_none() {
             return printed;
         }
-        let (attached_types, _, _) = self.attached_type_layer(id);
-        let mut types = printed.union(attached_types);
+        let (attached_types, set_types, _, _) = self.attached_type_layer(id);
+        // CR 613.4: a set-types Aura (Darksteel Mutation) replaces the host's printed card types
+        // outright; an additive Aura (Angelic Destiny) unions onto them.
+        let mut types = if set_types {
+            attached_types
+        } else {
+            printed.union(attached_types)
+        };
         let mut runtime_effects: Vec<_> = self
             .runtime_continuous_effects(id)
             .into_iter()
@@ -1241,7 +1272,7 @@ impl Game {
         if self.as_permanent(id).is_none() {
             return printed.to_vec();
         }
-        let (_, set, added) = self.attached_type_layer(id);
+        let (_, _, set, added) = self.attached_type_layer(id);
         let mut subtypes = match set {
             Some(set) => set.to_vec(),
             None => printed.to_vec(),
@@ -1698,7 +1729,7 @@ impl Game {
     pub(crate) fn granted_mana_abilities(
         &self,
         candidate: ObjectId,
-    ) -> Vec<(ActivationCost, ManaPool)> {
+    ) -> Vec<(ActivationCost, ManaPool, bool)> {
         let Some(candidate_permanent) = self.as_permanent(candidate) else {
             return Vec::new();
         };
@@ -1720,6 +1751,7 @@ impl Game {
                         cost,
                         mana,
                         restriction,
+                        single_color,
                     }),
                 ) = (ability.timing, ability.effect.clone())
                 else {
@@ -1729,7 +1761,7 @@ impl Game {
                     // Wrapped here, once, so every reader of a granted batch (this ability's
                     // own resolution and the `available_mana` estimate) sees it already
                     // spend-restricted (Galazeth Prismari) — see `ManaPool::restricted_by`.
-                    grants.push((cost, mana.restricted_by(restriction)));
+                    grants.push((cost, mana.restricted_by(restriction), single_color));
                 }
             }
         }
@@ -1786,7 +1818,7 @@ impl Game {
         }
         let granted_index = index - def.abilities.len();
         let mana_grants = self.granted_mana_abilities(object);
-        if let Some(&(cost, mana)) = mana_grants.get(granted_index) {
+        if let Some(&(cost, mana, single_color)) = mana_grants.get(granted_index) {
             return Some(Ability {
                 timing: Timing::Activated(cost),
                 effect: Effect::Mana(ManaEffect::Add {
@@ -1797,7 +1829,7 @@ impl Game {
                     opponent_colors: 0,
                     repeat: Amount::Fixed(1),
                     restriction: None,
-                    single_color: false,
+                    single_color,
                     track_provenance: false,
                     target: TargetSpec::None,
                     persist_until_end_of_turn: false,
@@ -2226,6 +2258,7 @@ mod cache_tests {
             halves: empty_slice(),
             suspend: None,
             vanishing: None,
+            cast_x_max: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,
@@ -2316,6 +2349,7 @@ mod cache_tests {
             halves: empty_slice(),
             suspend: None,
             vanishing: None,
+            cast_x_max: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,
@@ -2492,6 +2526,7 @@ mod cache_tests {
             halves: empty_slice(),
             suspend: None,
             vanishing: None,
+            cast_x_max: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,
@@ -2640,6 +2675,7 @@ mod characteristic_query_tests {
             halves: empty_slice(),
             suspend: None,
             vanishing: None,
+            cast_x_max: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,
@@ -2707,6 +2743,7 @@ mod characteristic_query_tests {
             halves: empty_slice(),
             suspend: None,
             vanishing: None,
+            cast_x_max: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,
@@ -2805,6 +2842,7 @@ mod characteristic_query_tests {
                 halves: empty_slice(),
                 suspend: None,
                 vanishing: None,
+                cast_x_max: None,
                 devour: None,
                 demonstrate: false,
                 enter_as_copy: None,
@@ -2891,6 +2929,7 @@ mod characteristic_query_tests {
                 halves: empty_slice(),
                 suspend: None,
                 vanishing: None,
+                cast_x_max: None,
                 devour: None,
                 demonstrate: false,
                 enter_as_copy: None,
@@ -2975,6 +3014,7 @@ mod characteristic_query_tests {
                 halves: empty_slice(),
                 suspend: None,
                 vanishing: None,
+                cast_x_max: None,
                 devour: None,
                 demonstrate: false,
                 enter_as_copy: None,
