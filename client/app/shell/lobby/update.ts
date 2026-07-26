@@ -98,7 +98,7 @@ export const JoinLobbyTable = Command.define(
   ReceivedLobbyView,
   LobbyRequestFailed,
 )(({ tableId, deckId }) =>
-  Effect.tryPromise(() => joinTable({ table_id: tableId, deck_id: deckId })).pipe(
+  Effect.tryPromise(() => joinTable(tableId, { deck_id: deckId })).pipe(
     Effect.map(viewResult),
     Effect.catch(() => Effect.succeed(LobbyRequestFailed({ message: UNREACHABLE }))),
   ),
@@ -111,7 +111,7 @@ export const ReadyLobby = Command.define(
   LobbyRequestFailed,
 )(({ tableId, ready }) =>
   Effect.sync(() => unlockTableAudio()).pipe(
-    Effect.flatMap(() => Effect.tryPromise(() => readyUp({ table_id: tableId, ready }))),
+    Effect.flatMap(() => Effect.tryPromise(() => readyUp(tableId, { ready }))),
     Effect.map(viewResult),
     Effect.catch(() => Effect.succeed(LobbyRequestFailed({ message: UNREACHABLE }))),
   ),
@@ -123,7 +123,7 @@ export const StartLobbyGame = Command.define(
   ReceivedLobbyView,
   LobbyRequestFailed,
 )(({ tableId }) =>
-  Effect.tryPromise(() => startGame({ table_id: tableId })).pipe(
+  Effect.tryPromise(() => startGame(tableId)).pipe(
     Effect.map(viewResult),
     Effect.catch(() => Effect.succeed(LobbyRequestFailed({ message: UNREACHABLE }))),
   ),
