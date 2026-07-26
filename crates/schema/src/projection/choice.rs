@@ -462,7 +462,18 @@ impl<'a> ChoiceCtx<'a> {
                 player,
                 source,
                 options,
+                mandatory,
             } => PendingChoiceView::MayReturnFromGraveyard {
+                player: player.0,
+                source,
+                mandatory,
+                items: self.label_items(options),
+            },
+            engine::PendingChoice::MayExileDiscardedToPlay {
+                player,
+                source,
+                options,
+            } => PendingChoiceView::MayExileDiscardedToPlay {
                 player: player.0,
                 source,
                 items: self.label_items(options),
@@ -476,6 +487,19 @@ impl<'a> ChoiceCtx<'a> {
                 player: player.0,
                 source,
                 items: private_items(player, self.viewer, options, |ids| self.label_items(ids)),
+            },
+            // Zimone's Hypothesis' "+1/+1 counter on a creature" primer is still a "pick one
+            // public object or decline" answer, so it reuses `ChooseCopyTarget` but flips a small
+            // discriminator so the client shows counter wording instead of copy wording.
+            engine::PendingChoice::MayPutCounterOnCreature {
+                player,
+                source,
+                options,
+            } => PendingChoiceView::ChooseCopyTarget {
+                player: player.0,
+                source,
+                items: self.label_items(options),
+                put_counter_on_creature: true,
             },
             engine::PendingChoice::ChooseOwnSacrifices {
                 player,
@@ -816,6 +840,7 @@ impl<'a> ChoiceCtx<'a> {
                 player: player.0,
                 source,
                 items: self.label_items(candidates),
+                put_counter_on_creature: false,
             },
         }
     }
@@ -1068,6 +1093,7 @@ mod coverage_tests {
                     target: None,
                     x: 0,
                     modes: CHOOSE_ONE_MODES.into(),
+                    at_placement: false,
                 },
                 |view| matches!(view, PendingChoiceView::ChooseMode { .. }),
             ),
@@ -1164,5 +1190,41 @@ mod coverage_tests {
             panic!("expected PayCost");
         };
         assert!(can_pay, "two untapped lands cover {{2}}");
+    }
+
+    #[test]
+    fn may_put_counter_on_creature_marks_the_reused_copy_target_view() {
+        let mut game = Game::new();
+        let source = game.spawn_on_battlefield(PlayerId(0), def("Zimone's Hypothesis"));
+        let creature = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
+        let view = project_pending_choice(
+            &game,
+            Some(PlayerId(0)),
+            PendingChoice::MayPutCounterOnCreature {
+                player: PlayerId(0),
+                source,
+                options: vec![creature],
+            },
+        );
+
+        let PendingChoiceView::ChooseCopyTarget {
+            source: view_source,
+            items,
+            put_counter_on_creature,
+            ..
+        } = view
+        else {
+            panic!("expected ChooseCopyTarget");
+        };
+        assert_eq!(view_source, source);
+        assert_eq!(
+            items.len(),
+            1,
+            "the player still chooses from the offered creatures"
+        );
+        assert!(
+            put_counter_on_creature,
+            "the reused copy-target view must advertise counter wording"
+        );
     }
 }

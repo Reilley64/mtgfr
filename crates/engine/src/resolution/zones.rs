@@ -320,6 +320,14 @@ impl Game {
                 if self.zone_of(creature) != Zone::Battlefield {
                     return Vec::new();
                 }
+                // CR 303.4g / 702.16e: this delayed "return this card attached to that creature"
+                // is a non-cast attach, so it must still be legal. If the creature gained
+                // protection that stops this Aura (or otherwise no longer satisfies its enchant
+                // restriction), the Aura can't attach — it stays in the graveyard rather than
+                // entering and immediately falling off.
+                if !self.noncast_attach_legal(card, creature) {
+                    return Vec::new();
+                }
                 let event = self.reanimate_event(card, self.owner_of(card), false);
                 let Event::ReanimatedToBattlefield { permanent, .. } = event else {
                     unreachable!("reanimate_event always returns a ReanimatedToBattlefield event")

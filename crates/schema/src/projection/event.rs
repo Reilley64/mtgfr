@@ -266,6 +266,15 @@ pub(crate) fn project_event(
             toughness,
         },
         Event::TempBoostsEnded { object } => VisibleEvent::TempBoostsEnded { object },
+        // A copy-effect exception keyword rider (CR 707.2 — "except it has haste/myriad") is a
+        // keyword-status change, so it surfaces to the client the same as a `TempBoost`: a
+        // re-snapshot signal, with no P/T delta. The client reads the object's live keyword set
+        // from the fresh snapshot each delta (same rationale as `TempBoost`'s dropped `keywords`).
+        Event::CopyRiderKeywordsGranted { object, .. } => VisibleEvent::TempBoost {
+            object,
+            power: 0,
+            toughness: 0,
+        },
         Event::BasePtSetUntilEndOfTurn {
             object,
             power,

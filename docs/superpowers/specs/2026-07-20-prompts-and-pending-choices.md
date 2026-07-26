@@ -8,7 +8,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 
 ## Solution
 
-`PromptHost` is `promptsView`. It prioritizes local board prompts first, then renders `state.pending_choice` only for the awaited player. Non-deciders and spectators see a passive waiting banner (`pending-choice-waiting`) naming the awaited seat. Engine choices use `FORMULATOR_FOR_KIND` to select a formulator and submit through `choiceIntent(pc, answer)`. Effect titles, mode labels, and trigger-order labels arrive as `MessageRef` and are formatted with `formatMessage`; `ChoiceItem.label` remains the visible object/seat name. Local choose-X uses a clamped Min/−/value/+/Max stepper with a live resolved-cost preview from wire `x_cost`.
+`PromptHost` is `promptsView`. It prioritizes local board prompts first, then renders `state.pending_choice` only for the awaited player. Non-deciders and spectators see a passive waiting banner (`pending-choice-waiting`) naming the awaited seat. Engine choices use `FORMULATOR_FOR_KIND` to select a formulator and submit through `choiceIntent(pc, answer)`. Effect titles, mode labels, and trigger-order labels arrive as `MessageRef` and are formatted with `formatMessage`; `ChoiceItem.label` remains the visible object/seat name. Public graveyard single-pick prompts such as `may_exile_discarded_to_play` reuse the graveyard card-pick path and still answer through `choose_sacrifices` with either one chosen id or an empty decline. Local choose-X uses a clamped Min/−/value/+/Max stepper with a live resolved-cost preview from wire `x_cost`.
 
 ## User Stories
 
@@ -39,6 +39,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - As a player choosing trigger modes, I multi-select mode rows in docked `pending-trigger-modes-aim` and Choose (or Cancel).
 - As a player choosing between two piles (`opponent_chooses_pile` / `choose_pile_for_hand`), I pick Pile A or Pile B in docked `pending-pile-aim`.
 - As a player choosing cards, prompts use the same cached card art behavior as hand and stack.
+- As a player resolving `may_exile_discarded_to_play`, I pick one discarded nonland card from my graveyard to exile and play this turn, or decline with explicit `Don't exile` chrome.
 
 ## Behavior
 
@@ -79,6 +80,8 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Engine `discard` / `may_discard` with every item in hand use `pending-discard-aim`: click toggles hand selection (raised face + Llanowar ring); Confirm / Continue submits when ready (including count 1). Local `discardPick` with choices in hand uses the same select → Confirm pattern on `discard-cost-aim` (`discard-cost-count`, `DiscardCostConfirmed`). `put_land_from_hand` / `put_creature_from_hand` / `put_from_hand_on_top` / `cast_creature_face_down` keep their existing hand-aim rules.
 - Local `gyExilePick` with every choice in one graveyard shows `gy-exile-cost-aim` plus a selectable pile overlay (`pile-card-{id}`) instead of the modal `gy-exile-pick` grid.
 - Engine GY card-picks (`exile_from_graveyard`, `may_return_from_graveyard`, `shuffle_from_graveyard`, `choose_dredge`, `pay_cumulative_upkeep_or_sacrifice`, GY-based `choose_activation_cost_targets`) and GY-only `choose_target` prompts with a shared pile show `pending-gy-aim` and the same selectable pile overlay instead of the modal card grid.
+- `may_exile_discarded_to_play` uses the same shared-graveyard `pending-gy-aim` path: the coach copy names the discarded nonland exile, `prompt-submit` reads `Exile`, and `prompt-decline` reads `Don't exile`; when the cards do not share one visible graveyard pile it falls back to the generic card-pick surface titled `Choose a discarded nonland card to exile and play this turn`.
+- `may_return_from_graveyard` carries a projected wire `mandatory` flag (from the card's `mandatory` DSL axis). When `false` (optional "you may return" — Deadly Brew, Witch of the Moors) the graveyard aim keeps an explicit `prompt-decline` (`Don't return`) and enables `Return` only after one card is picked. When `true` (mandatory "you return" — Witherbloom Command mode 0) the prompt hides `prompt-decline`, keeps `Return` disabled until one legal card is picked, and only appears when at least one matching card is in the graveyard (no legal card means the effect does nothing and no prompt is raised).
 - Battlefield `choose_activation_cost_targets` reuse `pending-target-aim` when every legal item is on the canvas.
 - Engine exile card-picks (`choose_exiled_*` / `opponent_chooses_exiled_nonland`) with a shared exile pile show `pending-exile-aim` and selectable exile pile cards.
 - `opponent_chooses_revealed_to_graveyard` shows docked `pending-revealed-aim` with one-click revealed faces (and Choose none) instead of the center card grid.
@@ -89,6 +92,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - `choose_trigger_modes` shows docked `pending-trigger-modes-aim` with multi-select mode rows, Choose, and Cancel (center `pending-choice` is unused for this kind).
 - `pay_any_amount_of_mana` (join forces) shows docked `pending-join-forces-aim` with Min/−/value/+/Max stepper and Pay submit.
 - `may_draw_up_to` shows docked `pending-draw-count-aim` with one-click number buttons (`0`…`max`) and a MessageRef-backed title. Trade Secrets uses this same generic draw-count prompt rather than a dedicated wire kind.
+- `choose_copy_target` keeps the docked card-pick surface, but when the wire carries `put_counter_on_creature = true` (the reused Zimone's Hypothesis primer) the chrome swaps from copy wording to `Choose a creature to get a +1/+1 counter` with a `Put counter` submit button.
 - `opponent_chooses_pile` / `choose_pile_for_hand` show docked `pending-pile-aim` with Pile A / Pile B (card labels + choose buttons).
 - `choose_target_players` / `choose_splitting_opponent` with seat-tagged items aim at life orbs (`pending-player-aim`); one-click when `max === 1` (or splitting); multi-pick accumulates seats in the player-pick draft with Confirm. Enter / Space submit when ready. Picked seats paint a solid Priority Gold ring (`pickedPlayers`). Items without seat tags fall back to docked `pending-player-pick-aim` player buttons (Choose/Cancel for multi-pick).
 - `scry` / `surveil` use docked `pending-arrange-aim` with two-lane arrange chrome (`prompt-arrange-lanes`): cards start in Bottom (library bottom or Graveyard for Surveil); click toggles a card between Top and Bottom, preserving left-to-right order in each lane. Done always submits `arrange_top` via partition draft `{ top, bottom }`. After Done, `promptSubmitInFlight` freezes that draft (no re-init into Bottom) until `pending_choice` changes or the intent is rejected.
@@ -138,6 +142,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Scene tests cover Space/Enter submitting ready scry / order_triggers / distribute_top drafts (and refusing incomplete distribute_top).
 - Scene/unit tests cover dredge decline (`Draw normally` → `dredger: null`) and single-pick readiness for Dredge.
 - Scene tests cover pay-cost button copy (`Pay {…}` and kind-specific declines).
+- Scene tests cover `choose_copy_target` wording for both the normal copy case and the reused counter-primer case.
 - Scene tests cover docked `pending-color-aim` for `choose_color` / `choose_mana_color` (mana pips; no center `pending-choice`).
 - Scene tests cover docked `pending-mode-aim` for `choose_mode` (mode buttons; no center `pending-choice`).
 - Scene/unit tests cover docked join-forces `pending-join-forces-aim` mana stepper (no per-N buttons; draft submit; no center `pending-choice`).
@@ -153,6 +158,8 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Scene tests cover on-board pending aim chrome (`pending-target-aim`, no card grid) and optional Decline → empty `choose_targets`.
 - Scene/pointer tests cover GY pile aim for `choose_target` when every legal item shares one graveyard (`pending-gy-aim`).
 - Scene tests cover `opponent_chooses_revealed_to_graveyard` docked aim (one-click face → `choose_exiled_with_card`, Choose none declines).
+- Scene/unit tests cover optional vs mandatory `may_return_from_graveyard` (`prompt-decline` present only when optional, `Return` disabled until a card is picked, `mandatory` decoded from wire).
+- Scene/unit tests cover `may_exile_discarded_to_play` proto decode, formulator registration, `pending-gy-aim` chrome (`Exile` / `Don't exile`), decline → empty `choose_sacrifices`, and submit → chosen discarded card.
 - Scene tests cover `revealed_card_to_battlefield_or_hand` docked destination aim (Battlefield / Hand intents).
 - Scene/pointer tests cover on-board `sacrifice_edict` one-click and `proliferate` accumulate → Confirm.
 - Scene/unit tests cover docked scry/surveil `pending-arrange-aim` Top↔Bottom (Graveyard) lanes and click toggle → `arrange_top`.
@@ -164,7 +171,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 
 ## Out of Scope
 
-- Changing `.proto` choice shapes.
+- Introducing brand-new pending-choice oneof arms when an expand-only field on an existing shape is enough.
 - Client-side inference of unavailable pending-choice kinds.
 - Sparse illegal-X denylists and oracle “enters as N/N” hints.
 - Engine `pending_choice` X formulators (none today); choose-X here is the board-local `xPrompt` path only.

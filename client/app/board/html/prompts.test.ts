@@ -4,6 +4,7 @@ import { Scene } from "foldkit/test";
 import { expect, test } from "vitest";
 import { choiceDraftKey } from "~/choice";
 import { testMessageRef } from "~/i18n/testMessageRef";
+import { fromProtoWire } from "~/wire/protoMap";
 import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/types";
 import type { GameFoldState } from "../../game/fold";
 import { SubmitIntent } from "../../game/intents";
@@ -60,6 +61,66 @@ function state(overrides: Partial<VisibleState> = {}): VisibleState {
     viewer: 0,
     ...overrides,
   };
+}
+
+function mayExileDiscardedState(overrides: Partial<VisibleState> = {}): VisibleState {
+  const pending = fromProtoWire<VisibleState>({
+    pendingChoice: {
+      choice: {
+        case: "mayExileDiscardedToPlay",
+        value: {
+          player: 0,
+          source: 1,
+          items: [
+            { id: 8, label: "Lightning Bolt" },
+            { id: 9, label: "Thrill of Possibility" },
+          ],
+        },
+      },
+    },
+  }).pending_choice;
+  return state({
+    objects: [
+      {
+        controller: 0,
+        has_haste: false,
+        id: 8,
+        is_commander: false,
+        kind: { kind: "instant" },
+        mana_cost: { generic: 1, colored: [0, 0, 0, 0, 0] },
+        marked_damage: 0,
+        name: "Lightning Bolt",
+        needs_target: false,
+        owner: 0,
+        plus_counters: 0,
+        power: 0,
+        summoning_sick: false,
+        tapped: false,
+        toughness: 0,
+        zone: ZONE.Graveyard,
+      },
+      {
+        controller: 0,
+        has_haste: false,
+        id: 9,
+        is_commander: false,
+        kind: { kind: "instant" },
+        mana_cost: { generic: 2, colored: [0, 0, 0, 1, 0] },
+        marked_damage: 0,
+        name: "Thrill of Possibility",
+        needs_target: false,
+        owner: 0,
+        plus_counters: 0,
+        power: 0,
+        summoning_sick: false,
+        tapped: false,
+        toughness: 0,
+        zone: ZONE.Graveyard,
+      },
+    ],
+    pending_choice: pending ?? null,
+    ...overrides,
+  });
 }
 
 function gameFold(s: VisibleState): GameFoldState {
@@ -645,6 +706,158 @@ test("search_library Fail to find declines", () => {
   });
   const intents = clickPromptIntent(s, Scene.click(Scene.testId("prompt-decline")));
   expect(intents).toEqual([{ kind: "search_library", player: 0, choice: null }]);
+});
+
+test("optional may_return_from_graveyard Decline emits empty choose_sacrifices", () => {
+  const s = state({
+    objects: [
+      {
+        controller: 0,
+        has_haste: false,
+        id: 8,
+        is_commander: false,
+        kind: { kind: "creature", power: 2, toughness: 2 },
+        mana_cost: { generic: 1, colored: [0, 0, 0, 0, 0] },
+        marked_damage: 0,
+        name: "Forest",
+        needs_target: false,
+        owner: 0,
+        plus_counters: 0,
+        power: 2,
+        summoning_sick: false,
+        tapped: false,
+        toughness: 2,
+        zone: ZONE.Graveyard,
+      },
+    ],
+    pending_choice: {
+      kind: "may_return_from_graveyard",
+      player: 0,
+      source: 1,
+      mandatory: false,
+      items: [{ id: 8, label: "Forest" }],
+    },
+  });
+  const commands: unknown[] = [];
+  const update = (model: ViewModel, message: Message): readonly [ViewModel, ReadonlyArray<never>] => {
+    const [board, nextCommands] = updateBoard(model.board, message, model.fold, model.tableId);
+    commands.push(...nextCommands);
+    return [{ ...model, board }, []];
+  };
+
+  Scene.scene(
+    { update, view },
+    Scene.with(
+      viewModel(s, {
+        ...initialBoardModel(),
+        pileExpand: { zone: ZONE.Graveyard, owner: 0 },
+      }),
+    ),
+    resolveBoardOverlayMounts(),
+    Scene.click(Scene.testId("prompt-decline")),
+  );
+
+  expect(commands.map(intentFromCommand)).toEqual([{ kind: "choose_sacrifices", player: 0, sacrifices: [] }]);
+});
+
+test("mandatory may_return_from_graveyard blocks empty submit until a card is chosen", () => {
+  const s = state({
+    pending_choice: {
+      kind: "may_return_from_graveyard",
+      player: 0,
+      source: 1,
+      mandatory: true,
+      items: [{ id: 8, label: "Forest" }],
+    },
+  });
+  const commands: unknown[] = [];
+  const update = (model: ViewModel, message: Message): readonly [ViewModel, ReadonlyArray<never>] => {
+    const [board, nextCommands] = updateBoard(model.board, message, model.fold, model.tableId);
+    commands.push(...nextCommands);
+    return [{ ...model, board }, []];
+  };
+
+  Scene.scene(
+    { update, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("prompt-submit")).toBeDisabled(),
+    Scene.expect(Scene.testId("prompt-decline")).toBeAbsent(),
+    Scene.click(Scene.testId("prompt-card-8")),
+    Scene.expect(Scene.testId("prompt-submit")).toBeEnabled(),
+    Scene.click(Scene.testId("prompt-submit")),
+  );
+
+  expect(commands.map(intentFromCommand)).toEqual([{ kind: "choose_sacrifices", player: 0, sacrifices: [8] }]);
+});
+
+test("may_exile_discarded_to_play shows exile and decline copy on graveyard aim", () => {
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(mayExileDiscardedState())),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("pending-gy-aim")).toExist(),
+    Scene.expect(Scene.testId("prompt-submit")).toHaveText("Exile"),
+    Scene.expect(Scene.testId("prompt-decline")).toHaveText("Don't exile"),
+  );
+});
+
+test("may_exile_discarded_to_play decline emits empty choose_sacrifices", () => {
+  const intents = clickPromptIntent(mayExileDiscardedState(), Scene.click(Scene.testId("prompt-decline")));
+  expect(intents).toEqual([{ kind: "choose_sacrifices", player: 0, sacrifices: [] }]);
+});
+
+test("may_exile_discarded_to_play submit emits the chosen discarded card", () => {
+  const s = mayExileDiscardedState();
+  const gf = gameFold(s);
+  const board = updateBoard(initialBoardModel(), PromptCardToggled({ id: 8 }), gf, "T1")[0];
+  const [, commands] = updateBoard(board, PromptSubmitted(), gf, "T1");
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "choose_sacrifices",
+    player: 0,
+    sacrifices: [8],
+  });
+});
+
+test("choose_copy_target swaps to counter wording for the MayPutCounterOnCreature primer", () => {
+  const s = state({
+    pending_choice: {
+      kind: "choose_copy_target",
+      player: 0,
+      source: 1,
+      put_counter_on_creature: true,
+      items: [{ id: 9, label: "Grizzly Bears" }],
+    },
+  });
+
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("pending-card-pick-aim")).toExist(),
+    Scene.expect(Scene.testId("pick-title")).toHaveText("Choose a creature to get a +1/+1 counter"),
+    Scene.expect(Scene.testId("prompt-submit")).toHaveText("Put counter"),
+  );
+});
+
+test("choose_copy_target keeps copy wording for real copy prompts", () => {
+  const s = state({
+    pending_choice: {
+      kind: "choose_copy_target",
+      player: 0,
+      source: 1,
+      items: [{ id: 9, label: "Grizzly Bears" }],
+    },
+  });
+
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("pending-card-pick-aim")).toExist(),
+    Scene.expect(Scene.testId("pick-title")).toHaveText("Choose a copy target"),
+    Scene.expect(Scene.testId("prompt-submit")).toHaveText("Copy"),
+  );
 });
 
 test("opponent_chooses_revealed_to_graveyard card click submits choose_exiled", () => {

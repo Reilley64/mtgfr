@@ -37,7 +37,8 @@ timing = "static"
 [[abilities.effects]]
 type = "static"
 mode = "set_attached_types"
-add_types = "artifact"
+add_types = ["artifact", "creature"]
+set_types = true
 set_subtypes = ["Insect"]
 lose_all_abilities = true
 

@@ -216,6 +216,17 @@ pub(crate) struct BatchTriggerScratch {
     /// shape (CR 603.3b's "one or more"). Pushed by [`Game::enqueue_triggers`]'s
     /// `Event::TokenCreated` handling, drained (deduped) and cleared at the end of every batch.
     pub creature_tokens_created_this_batch: Vec<PlayerId>,
+    /// `(discarding player, discarded card's graveyard-object id)` for every discard in the event
+    /// batch currently being applied — the accumulator behind
+    /// [`Trigger::YouDiscardNonland`](crate::Trigger::YouDiscardNonland) (Conspiracy Theorist's
+    /// "Whenever you discard one or more nonland cards …"). Same drain-dedup-clear shape as
+    /// [`graveyard_exits_this_batch`](Self::graveyard_exits_this_batch): pushed by
+    /// [`Game::enqueue_triggers`](crate::Game::enqueue_triggers)'s `Event::Discarded` handling
+    /// (alongside the per-card [`Trigger::YouDiscard`](crate::Trigger::YouDiscard) fan-out), then
+    /// drained once per batch — the whole simultaneous discard, not each card, is the trigger
+    /// event (CR 701.8), and only the **nonland** cards among it are threaded into
+    /// [`TriggerContext::discarded_nonland_cards`](crate::TriggerContext).
+    pub discards_this_batch: Vec<(PlayerId, ObjectId)>,
     /// `(dying creature's pre-move id, attached Aura's pre-move id, that Aura's controller, that
     /// Aura's def)` tuples — CR 603.6c last-known information for
     /// [`Trigger::EnchantedCreatureDies`](crate::Trigger::EnchantedCreatureDies). Captured by

@@ -278,6 +278,7 @@ message PendingChoiceView {
     PendingChoiceViewChooseCardName choose_card_name = 66;
     PendingChoiceViewPayAnyAmountOfMana pay_any_amount_of_mana = 67;
     PendingChoiceViewChooseLegendaryKeep choose_legendary_keep = 68;
+    PendingChoiceViewMayExileDiscardedToPlay may_exile_discarded_to_play = 69;
   }
 }
 
@@ -559,12 +560,22 @@ message PendingChoiceViewMayReturnFromGraveyard {
   uint32 player = 1;
   uint32 source = 2;
   repeated ChoiceItem items = 3;
+  bool mandatory = 4;
 }
 
 // This player may discard one of `items` (a card in their own hand, private to them) to gain a
 // rider effect, or decline (CR 608.2c-style resolution-time optional sub-action — Quintorius,
 // History Chaser's +1).
 message PendingChoiceViewMayDiscard {
+  uint32 player = 1;
+  uint32 source = 2;
+  repeated ChoiceItem items = 3;
+}
+
+// This player may exile one of `items` (a nonland card they just discarded, in their own public
+// graveyard) face-up with impulse-play permission until end of turn, or decline (Conspiracy
+// Theorist's "you may exile one of them from your graveyard … you may cast it this turn").
+message PendingChoiceViewMayExileDiscardedToPlay {
   uint32 player = 1;
   uint32 source = 2;
   repeated ChoiceItem items = 3;
@@ -739,11 +750,14 @@ message PendingChoiceViewChooseCardName {
 
 // This player (an entering permanent's controller) may have `source` enter as a copy of one of
 // `items` (every other creature on the battlefield, public — CR 706/707.2, Altered Ego, Cursed
-// Mirror). Answered with the chosen creature, or a decline (the "you may").
+// Mirror). Answered with the chosen creature, or a decline (the "you may"). Some non-copy choices
+// reuse the same "pick one object or decline" wire shape; `put_counter_on_creature` tells the
+// client to render "put a +1/+1 counter on a creature" copy instead of copy-entry wording.
 message PendingChoiceViewChooseCopyTarget {
   uint32 player = 1;
   uint32 source = 2;
   repeated ChoiceItem items = 3;
+  bool put_counter_on_creature = 4;
 }
 
 // This player (the deployed attachment's controller) must choose a host among `items` (the
