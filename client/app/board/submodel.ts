@@ -85,13 +85,15 @@ import { hitAvatar, hitTest } from "./geometry/hit-test";
 import {
   canSelectPermanent,
   combatMode,
+  declaresFor,
   fitCamera,
   type PointerPhase,
   pointerDown,
   pointerMove,
   pointerUp,
+  primaryActionFor,
 } from "./geometry/interaction";
-import { avatarPos, CARD_H, CARD_W, layout, type RenderCard, STEP, ZONE } from "./geometry/layout";
+import { avatarPos, CARD_H, CARD_W, layout, type RenderCard, ZONE } from "./geometry/layout";
 import { type RadialPress, radialPressDown, radialPressUp } from "./geometry/radial";
 import {
   STACK_HOLD_MAX_MS,
@@ -405,22 +407,17 @@ function cardAt(fold: GameFoldState, model: BoardModel, x: number, y: number): R
   return cards.find((card) => card.id === hitId) ?? null;
 }
 
-function combatStepFor(fold: GameFoldState): boolean {
+/** The seats whose creatures this viewer may drag into a combat declaration right now — empty when
+ * no declaration is theirs to make. Usually just themselves; a moved declaration (Master Warcraft)
+ * hands them somebody else's creatures. */
+function stageableSeats(fold: GameFoldState): number[] {
   const state = fold.state;
-  if (state == null) return false;
-
-  const mode = combatMode(
-    state.step,
-    state.active_player === state.viewer,
-    false,
-    state.combat.attackers,
-    state.viewer,
-    {
-      attackersDeclared: state.combat.attackers_declared,
-      blockersDeclared: state.combat.blockers_declared.includes(state.viewer),
-    },
-  );
-  return mode != null;
+  if (state == null) return [];
+  const mode = combatMode(state.actions, false, {
+    attackersDeclared: state.combat.attackers_declared,
+    blockersDeclared: state.combat.blockers_declared.includes(state.viewer),
+  });
+  return declaresFor(state.actions, mode);
 }
 
 function stackTarget(model: BoardModel): Vec2 {
@@ -628,7 +625,7 @@ function pointerDownModel(model: BoardModel, fold: GameFoldState, x: number, y: 
   return {
     ...model,
     cursor: { x, y },
-    pointer: pointerDown(cardAt(fold, model, x, y), x, y, combatStepFor(fold), state.viewer),
+    pointer: pointerDown(cardAt(fold, model, x, y), x, y, stageableSeats(fold)),
   };
 }
 
@@ -1535,26 +1532,18 @@ function primaryFor(
     state.actions?.find((a) => a.kind === "declare_attackers")?.required_attacks ?? [],
     model.attackersConfirmed || state.combat.attackers_declared,
   );
-  // Same-signature as primaryActionFor but done inline to avoid crate churn.
-  const step = state.step;
-  const me = state.viewer;
-  const active = state.active_player;
-  const declaredAttackers = state.combat.attackers;
-  const attackDone = model.attackersConfirmed || state.combat.attackers_declared || declaredAttackers.length > 0;
-  const blockDone = model.blockersConfirmed || state.combat.blockers_declared.includes(me);
-  const attackingMe = declaredAttackers.some((a) => a.defender === me);
-  if (step === STEP.DeclareAttackers && active === me && !attackDone) {
-    return attackers.length
-      ? { kind: "confirm-attackers", label: `Attack (${attackers.length})` }
-      : { kind: "confirm-attackers", label: "No attackers" };
-  }
-  if (step === STEP.DeclareBlockers && attackingMe && !blockDone) {
-    return model.combatBlocks.length
-      ? { kind: "confirm-blockers", label: `Block (${model.combatBlocks.length})` }
-      : { kind: "confirm-blockers", label: "No blockers" };
-  }
-  if (step === STEP.Draw && active === me) return { kind: "pass", label: "Draw" };
-  return { kind: "pass", label: "Next" };
+  return primaryActionFor({
+    step: state.step,
+    activePlayer: state.active_player,
+    me: state.viewer,
+    actions: state.actions,
+    attackers,
+    blocks: model.combatBlocks,
+    attackersConfirmed: model.attackersConfirmed,
+    blockersConfirmed: model.blockersConfirmed,
+    attackersDeclared: state.combat.attackers_declared,
+    blockersDeclared: state.combat.blockers_declared.includes(state.viewer),
+  });
 }
 
 /** Submit a ready multi-aim or on-board damage-assign draft; null when nothing to submit. */
@@ -1713,17 +1702,11 @@ function combatDropModel(
 ): BoardReturn {
   const state = fold.state;
   if (state == null || from == null) return [model, []];
-  const mode = combatMode(
-    state.step,
-    state.active_player === state.viewer,
-    false,
-    state.combat.attackers,
-    state.viewer,
-    {
-      attackersDeclared: model.attackersConfirmed || state.combat.attackers_declared,
-      blockersDeclared: model.blockersConfirmed || state.combat.blockers_declared.includes(state.viewer),
-    },
-  );
+  const mode = combatMode(state.actions, false, {
+    attackersDeclared: model.attackersConfirmed || state.combat.attackers_declared,
+    blockersDeclared: model.blockersConfirmed || state.combat.blockers_declared.includes(state.viewer),
+  });
+  const seats = declaresFor(state.actions, mode);
   const dropOn = blockAttackerId != null ? (state.objects.find((o) => o.id === blockAttackerId) ?? null) : null;
   // ObjectView.kind is a WireKind object; RenderCard.kind (what attackablePlaneswalker reads) is the
   // bare tag string — normalize so the planeswalker check is live, not a runtime type mismatch.
@@ -1734,7 +1717,9 @@ function combatDropModel(
     summoningSick: from.summoning_sick,
     hasHaste: from.has_haste,
   };
-  const opponents = state.players.map((p) => p.player).filter((p) => p !== state.viewer);
+  // Opponents of the seat being declared for, not of the viewer — a moved declaration attacks on
+  // someone else's behalf, and you may not send their creatures at their own planeswalker.
+  const opponents = state.players.map((p) => p.player).filter((p) => !seats.includes(p));
   const result = handleCombatDrop(
     mode,
     model.combatAttackers,
@@ -1743,7 +1728,7 @@ function combatDropModel(
     defenderSeat,
     dropTarget as unknown as Parameters<typeof handleCombatDrop>[5],
     state.combat.attackers,
-    state.viewer,
+    seats,
     opponents,
   );
   if (result.kind === "attackers") return [{ ...model, combatAttackers: result.value }, []];

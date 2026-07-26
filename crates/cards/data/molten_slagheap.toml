@@ -1,0 +1,51 @@
+# {T}: Add {C}.
+# {1}, {T}: Put a storage counter on this land.
+# {1}, Remove X storage counters from this land: Add X mana in any combination of {B} and/or {R}.
+name = "Molten Slagheap"
+id = "33587cb2-0fd3-4e4c-bc5e-e7299cc9dab5"
+default_print = "37454595-4735-4037-a718-98b186af6439"
+otags = ["activated-ability", "adds-multiple-mana", "aesthetic-counter", "counter-fuel-aesthetic", "cycle-tsp-storage-land", "ramp"]
+oracle = "{T}: Add {C}.\n{1}, {T}: Put a storage counter on this land.\n{1}, Remove X storage counters from this land: Add X mana in any combination of {B} and/or {R}."
+set = "cmd"
+
+[kind]
+type = "land"
+
+# {T}: Add {C}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add {C}.
+[[abilities.effects]]
+type = "mana"
+mode = "add"
+mana = ["colorless"]
+
+# {1}, {T}: Put a storage counter on this land.
+[[abilities]]
+timing = "activated"
+taps_self = true
+activation_cost = { generic = 1 }
+
+# Put a storage counter on this land.
+[[abilities.effects]]
+type = "counters"
+mode = "put_counters"
+count = 1
+target = "this"
+kind = "storage"
+
+# {1}, Remove X storage counters from this land: Add X mana in any combination of {B} and/or {R}.
+[[abilities]]
+timing = "activated"
+activation_cost = { generic = 1 }
+remove_counters_x = true
+remove_counters_kind = "storage"
+
+# Add X mana in any combination of {B} and/or {R}.
+[[abilities.effects]]
+type = "mana"
+mode = "add"
+mana = [["black", "red"]]
+repeat = "x"

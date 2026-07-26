@@ -176,6 +176,10 @@ impl Game {
     /// count itself (CR 702.108 — each payment is a full extra instance of the cost, unlike
     /// Strive's "beyond the first") — 0 for a spell with no Replicate, or when pricing without a
     /// declared count.
+    /// `multikicker_count` folds [`AdditionalCost::multikicker`]'s cost on top, multiplied by the
+    /// count itself (CR 702.33c — "any number of times," each payment a full extra instance of
+    /// the cost, mirroring Replicate's own fold rather than Strive's "beyond the first") — 0 for
+    /// a spell with no Multikicker, or when pricing without a declared count.
     /// `alternative_cost` charges [`CardDef::alternative_cost`]'s non-mana rider *instead of* the
     /// printed cost (CR 601.2f), same opt-in shape as `evoked` — `false` for a spell with none, or
     /// when pricing without declaring it. Unlike every other flag above, this replaces the whole
@@ -196,6 +200,7 @@ impl Game {
         evoked: bool,
         strive_count: u8,
         replicate_count: u8,
+        multikicker_count: u8,
         alternative_cost: bool,
     ) -> Cost {
         // A printed alternative cost (CR 601.2f — Invigorate): declaring it replaces the mana
@@ -341,6 +346,24 @@ impl Game {
                 .colorless
                 .saturating_add(replicate.colorless.saturating_mul(replicate_count));
         }
+        // Multikicker (CR 702.33c): "you may pay an additional [cost] any number of times as you
+        // cast this spell" — a kicker cost payable any number of times, so the declared count
+        // multiplies straight through like Replicate's own fold above rather than Strive's
+        // "beyond the first."
+        // ponytail: sums generic/colored/colorless pips only, mirroring kicker/strive/replicate's
+        // own pip-only fold above — Lightkeeper of Emeria's and Comet Storm's multikicker costs
+        // carry none.
+        if let Some(multikicker) = base.additional.multikicker {
+            cost.generic = cost
+                .generic
+                .saturating_add(multikicker.generic.saturating_mul(multikicker_count));
+            for (pip, per) in cost.colored.iter_mut().zip(multikicker.colored.iter()) {
+                *pip = pip.saturating_add(per.saturating_mul(multikicker_count));
+            }
+            cost.colorless = cost
+                .colorless
+                .saturating_add(multikicker.colorless.saturating_mul(multikicker_count));
+        }
         if let Some(Target::Object(id)) = target
             && self.controller_of(id) != player
             && let Some(n) = self.ward_amount(id)
@@ -366,6 +389,7 @@ impl Game {
         evoked: bool,
         strive_count: u8,
         replicate_count: u8,
+        multikicker_count: u8,
         alternative_cost: bool,
     ) -> Result<Vec<Event>, Reject> {
         self.cast_with_kind(
@@ -382,6 +406,7 @@ impl Game {
             evoked,
             strive_count,
             replicate_count,
+            multikicker_count,
             alternative_cost,
             playable::CastPlayKind::Full,
         )
@@ -403,6 +428,7 @@ impl Game {
         evoked: bool,
         strive_count: u8,
         replicate_count: u8,
+        multikicker_count: u8,
         alternative_cost: bool,
         kind: CastPlayKind,
     ) -> Result<Vec<Event>, Reject> {
@@ -421,6 +447,7 @@ impl Game {
                 evoked,
                 strive_count,
                 replicate_count,
+                multikicker_count,
                 alternative_cost,
             },
             kind,
@@ -557,6 +584,7 @@ impl Game {
                 bought_back,
                 strive_count,
                 replicate_count,
+                multikicker_count,
                 bestowed: false,
                 face_down: false,
                 masked: false,
@@ -823,6 +851,14 @@ impl Game {
         // CR 601.2c/601.2f/702.42: Strive's own sibling — Twinflame's target count is the
         // caster's declared pre-stack commitment (see `Intent::Cast::strive_count`'s own doc),
         // already recorded as `spell_strive_count` by the time this runs, same as sacrifice above.
+        // CR 601.2c/702.33c: Multikicker's own sibling, "1 + N" rather than "exactly N" — see the
+        // `multikicker_scaled` branch below.
+        // CR 702.33g: a kicked-conditional clause (Orim's Thunder's "If this spell was kicked, it
+        // deals damage ... to target creature") — unkicked collapses the whole clause to (0, 0), a
+        // wholly separate target instance from the card's other (unconditional) clause.
+        // CR 601.2c: a main-phase-conditional target (Return to Dust's "you may exile up to one
+        // *other* target artifact or enchantment") — outside a main phase, `max` caps down to
+        // `min`, since it's the same clause's optional second target, not a separate instance.
         let (min, max) = if count.x_scaled {
             let x = (self.spell(spell).x as usize).min(MAX_TARGETS) as u8;
             (if count.min == 0 { 0 } else { x }, x)
@@ -832,6 +868,24 @@ impl Game {
         } else if count.strive_scaled {
             let x = (self.spell_strive_count(spell) as usize).min(MAX_TARGETS) as u8;
             (x, x)
+        } else if count.multikicker_scaled {
+            // CR 601.2c/702.33c: Multikicker's own sibling — Comet Storm's "choose any target,
+            // then choose another target for each time this spell was kicked" is always one base
+            // target plus one per kick (1 + N), unlike the others above's "exactly N."
+            let x = (1 + self.spell_multikicker_count(spell) as usize).min(MAX_TARGETS) as u8;
+            (x, x)
+        } else if count.kicked_scaled {
+            if self.spell_was_kicked(spell) {
+                (count.min, count.max)
+            } else {
+                (0, 0)
+            }
+        } else if count.main_phase_scaled {
+            if self.spell_cast_during_main_phase(spell) {
+                (count.min, count.max)
+            } else {
+                (count.min, count.min)
+            }
         } else {
             (count.min, count.max)
         };
@@ -842,14 +896,17 @@ impl Game {
             max: hi,
             ..count
         };
-        // Forced: exactly one legal set (must take all `n`, no option to take fewer). Auto-fill,
-        // then chain into the next clause (or the divided-damage split once every clause is set).
-        if lo == hi && hi as usize == n {
+        // Forced: exactly one legal set — take all `n` (no option to take fewer), or, for a
+        // clause whose count settled to zero (Orim's Thunder's damage clause cast unkicked), take
+        // none however many are enumerated. Either way auto-fill, then chain into the next clause
+        // (or the divided-damage split once every clause is set). A `min: 0, max: 0` pause would
+        // advertise legal candidates the choice handler can only reject.
+        if lo == hi && (hi as usize == n || hi == 0) {
             self.push_apply(
                 events,
                 Event::SpellTargetsChosen {
                     spell,
-                    targets: TargetList::from_targets(&legal),
+                    targets: TargetList::from_targets(&legal[..hi as usize]),
                     clause: clause as u8,
                 },
             );
@@ -1431,8 +1488,9 @@ impl Game {
     /// Turn a face-down permanent face up: a special action (no stack) usable any time its
     /// controller has priority. Pay the reveal cost — a morph card's *morph* cost (CR 702.37c) if
     /// it has one, otherwise a manifest's hidden *printed* cost (CR 701.34e — Reality Shift) — then
-    /// clear the face-down flag to reveal it. Only a creature card may be turned face up (a
-    /// noncreature manifest stays a 2/2 forever).
+    /// clear the face-down flag to reveal it. Only a creature card may be turned face up from a
+    /// plain manifest (a noncreature manifest stays a 2/2 forever); a morph card has no such
+    /// restriction (CR 702.37c — Zoetic Cavern's real kind is Land).
     pub(crate) fn turn_face_up(
         &mut self,
         player: PlayerId,
@@ -1448,10 +1506,12 @@ impl Game {
             return Err(Reject::CannotActivate);
         }
         let def = card_def(perm.def);
-        // CR 701.34e: only a creature card may be turned face up.
-        let CardKind::Creature { .. } = &def.kind else {
+        // CR 701.34e: only a creature card may be turned face up — but that restriction is
+        // manifest's alone. A morph card (CR 702.37c) may be turned face up regardless of its
+        // real kind (Zoetic Cavern's is Land), since morph itself grants the turn-up permission.
+        if def.morph.is_none() && !matches!(def.kind, CardKind::Creature { .. }) {
             return Err(Reject::CannotActivate);
-        };
+        }
         // A morph card turns up for its morph cost (CR 702.37c); a manifest (no morph) pays the
         // hidden card's printed cost (CR 701.34e).
         // ponytail: a manifested *morph* card (CR 702.37j — pay either the {3}-back manifest turn
@@ -1576,6 +1636,7 @@ impl Game {
             false,
             0,
             0,
+            0,
             false,
         );
         let mut events = Vec::new();
@@ -1679,6 +1740,7 @@ impl Game {
             false,
             0,
             0,
+            0,
             false,
         );
         let mut events = Vec::new();
@@ -1772,6 +1834,7 @@ impl Game {
             false,
             false,
             false,
+            0,
             0,
             0,
             false,
@@ -1876,6 +1939,7 @@ impl Game {
                 bought_back: false,
                 strive_count: 0,
                 replicate_count: 0,
+                multikicker_count: 0,
                 bestowed: true,
                 face_down: false,
                 masked: false,
@@ -1969,6 +2033,7 @@ impl Game {
                 bought_back: false,
                 strive_count: 0,
                 replicate_count: 0,
+                multikicker_count: 0,
                 bestowed: false,
                 face_down: true,
                 masked,
@@ -2318,15 +2383,15 @@ impl Game {
         // later push dilutes the tail — Illusionary Mask's "the mana you spent on {X}" (CR 107.3)
         // reads this multiset when the ability resolves.
         let spent_mana = spent_counts_from(&events);
-        if cost.once_each_turn {
-            self.push_apply(
-                &mut events,
-                Event::AbilityActivatedThisTurn {
-                    object,
-                    ability_index,
-                },
-            );
-        }
+        // Record every activation, not just `once_each_turn`-capped ones — Dragon Whelp's
+        // "activated four or more times this turn" reads this same per-turn tally.
+        self.push_apply(
+            &mut events,
+            Event::AbilityActivatedThisTurn {
+                object,
+                ability_index,
+            },
+        );
         if cost.taps_self {
             self.push_apply(&mut events, Event::Tapped { object });
         }

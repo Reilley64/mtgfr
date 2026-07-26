@@ -500,8 +500,10 @@ impl Game {
     /// player — a fresh [`PendingChoice::SearchLibrary`] over their own library, same
     /// filter/destination/count. A no-op (single-searcher search, or the fan-out's last player
     /// just finished) when [`ResolutionFrame::search_fanout`](crate::resolution::ResolutionFrame::search_fanout)
-    /// is unset or its queue is empty.
-    fn continue_search_fanout(&mut self) {
+    /// is unset or its queue is empty. Recurses past a queued player Stranglehold denies (that
+    /// player's raise comes back without pausing, CR 701.19) so the rest of the fan-out still
+    /// runs instead of stalling on the first denied seat.
+    pub(crate) fn continue_search_fanout(&mut self) {
         let Some(SearchFanout {
             mut remaining,
             filter,
@@ -536,6 +538,9 @@ impl Game {
                 overflow,
             },
         );
+        if !self.resolution_is_paused() {
+            self.continue_search_fanout();
+        }
     }
 
     /// Answer a [`PendingChoice::PutLandFromHand`]: put the chosen land (one of the offered
@@ -572,15 +577,21 @@ impl Game {
     }
 
     /// Answer a [`PendingChoice::PutCreatureFromHand`]: put the chosen creature (one of the
-    /// offered candidates) onto the battlefield, grant it haste, and schedule its sacrifice at
-    /// the next end step (CR 603.7) — or decline (`choice = None`).
+    /// offered candidates) onto the battlefield — or decline (`choice = None`). Cauldron Dance
+    /// (`keep == false`) grants it haste and schedules its sacrifice at the next end step (CR
+    /// 603.7); Kaalia (`keep == true`, `defender == Some`) instead enters it tapped and attacking
+    /// that opponent (CR 508.4, reusing the token put-in-attacking path) and keeps it.
     pub(crate) fn put_creature_from_hand(
         &mut self,
         player: PlayerId,
         choice: Option<ObjectId>,
     ) -> Result<Vec<Event>, Reject> {
         let Some(PendingChoice::PutCreatureFromHand {
-            candidates, source, ..
+            candidates,
+            source,
+            keep,
+            defender,
+            ..
         }) = self.pending_choice.clone()
         else {
             return Err(Reject::IllegalChoice);
@@ -591,17 +602,34 @@ impl Game {
         self.finish_answer();
 
         let mut events = Vec::new();
-        if let Some(from) = choice {
-            let permanent = self.next_object_id();
-            self.push_apply_effect_event(
+        let Some(from) = choice else {
+            return Ok(events);
+        };
+        let permanent = self.next_object_id();
+        self.push_apply_effect_event(
+            &mut events,
+            Event::PutOntoBattlefieldFromHand {
+                permanent,
+                from,
+                controller: player,
+                tapped: defender.is_some(),
+            },
+        );
+        // Kaalia: the creature enters attacking the opponent Kaalia attacks — CR 508.4, not a
+        // declared attack, so `TokenEnteredAttacking` (shared with Combat Calligrapher) carries
+        // it rather than re-running `declare_attackers`.
+        if let Some(defender) = defender {
+            self.push_apply(
                 &mut events,
-                Event::PutOntoBattlefieldFromHand {
-                    permanent,
-                    from,
-                    controller: player,
-                    tapped: false,
+                Event::TokenEnteredAttacking {
+                    token: permanent,
+                    defender,
                 },
             );
+        }
+        // Cauldron Dance: the put-in creature gains haste and is sacrificed at the next end step;
+        // Kaalia keeps it (already attacking, no haste needed).
+        if !keep {
             const HASTE: &[Keyword] = &[Keyword::Haste];
             self.push_apply(
                 &mut events,

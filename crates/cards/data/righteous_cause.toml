@@ -1,0 +1,24 @@
+# Whenever a creature attacks, you gain 1 life.
+name = "Righteous Cause"
+id = "218f835b-4195-4ee8-a4ef-e5ba58fa5374"
+default_print = "bc632184-b330-42d8-808d-17a94b08c535"
+otags = ["attack-trigger", "repeatable-lifegain"]
+oracle = "Whenever a creature attacks, you gain 1 life."
+set = "cma"
+
+[cost]
+generic = 3
+white = 2
+
+[kind]
+type = "enchantment"
+
+# Whenever a creature attacks, you gain 1 life.
+[[abilities]]
+timing = "creature_attacks"
+
+# you gain 1 life.
+[[abilities.effects]]
+type = "life"
+mode = "gain"
+amount = 1

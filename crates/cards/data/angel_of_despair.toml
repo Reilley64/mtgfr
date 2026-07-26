@@ -1,0 +1,29 @@
+# Flying
+# When this creature enters, destroy target permanent.
+name = "Angel of Despair"
+id = "02520741-d7f0-46e6-acbe-010b65fc24c0"
+default_print = "a07809b2-dabe-4242-84c3-fd640d7d5998"
+oracle = "Flying\nWhen this creature enters, destroy target permanent."
+set = "uma"
+subtypes = ["Angel"]
+keywords = ["flying"]
+
+[cost]
+generic = 3
+white = 2
+black = 2
+
+[kind]
+type = "creature"
+power = 5
+toughness = 5
+
+# When this creature enters, destroy target permanent.
+[[abilities]]
+timing = "etb"
+
+# destroy target permanent.
+[[abilities.effects]]
+type = "destroy"
+mode = "target"
+target = { permanent = {} }

@@ -345,6 +345,10 @@ impl<'de> Deserialize<'de> for CardDef {
             /// absent (`false`) for every ordinary card.
             #[serde(default)]
             cast_only_during_combat: bool,
+            /// "Cast this spell only before attackers are declared" (CR 601.3e — Master Warcraft)
+            /// — `cast_only_before_attackers = true`; absent (`false`) for every ordinary card.
+            #[serde(default)]
+            cast_only_before_attackers: bool,
             #[serde(default)]
             approximates: Option<String>,
             #[serde(default)]
@@ -505,6 +509,7 @@ impl<'de> Deserialize<'de> for CardDef {
             free_cast_if: card.free_cast_if,
             alternative_cost: card.alternative_cost,
             cast_only_during_combat: card.cast_only_during_combat,
+            cast_only_before_attackers: card.cast_only_before_attackers,
             approximates: card.approximates.map(|s| &*Box::leak(s.into_boxed_str())),
             oracle: card.oracle.map(|s| &*Box::leak(s.into_boxed_str())),
             set: Box::leak(card.set.into_boxed_str()),
@@ -642,8 +647,10 @@ impl<'de> Deserialize<'de> for Cost {
 /// `buyback = { generic = 3 }` spells Buyback (CR 702.27) — same table shape.
 /// `strive = { generic = 2, red = 1 }` spells Strive (CR 702.42) — same table shape, the
 /// per-extra-target cost. `replicate = { generic = 2 }` spells Replicate (CR 702.108) — same
-/// table shape, the per-payment cost. `reveal_creature_from_hand = true` spells "reveal a
-/// creature card from your hand" (CR 601.2g — Disaster Radius).
+/// table shape, the per-payment cost. `multikicker = { white = 1 }` spells Multikicker (CR
+/// 702.33c) — same table shape, the per-payment cost (a kicker cost payable any number of
+/// times). `reveal_creature_from_hand = true` spells "reveal a creature card from your hand"
+/// (CR 601.2g — Disaster Radius).
 impl<'de> Deserialize<'de> for AdditionalCost {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         /// `pay_life` is a string marker (`"x"`) or a fixed count (`3`); untagged so TOML's own
@@ -693,6 +700,9 @@ impl<'de> Deserialize<'de> for AdditionalCost {
             /// `[cost.additional.replicate]` — Replicate (CR 702.108), the same table shape as
             /// `[cost]`.
             replicate: Option<Cost>,
+            /// `[cost.additional.multikicker]` — Multikicker (CR 702.33c), the same table shape
+            /// as `[cost]`.
+            multikicker: Option<Cost>,
         }
 
         let raw = Raw::deserialize(d)?;
@@ -739,6 +749,7 @@ impl<'de> Deserialize<'de> for AdditionalCost {
             buyback: raw.buyback.map(|c| &*Box::leak(Box::new(c))),
             strive: raw.strive.map(|c| &*Box::leak(Box::new(c))),
             replicate: raw.replicate.map(|c| &*Box::leak(Box::new(c))),
+            multikicker: raw.multikicker.map(|c| &*Box::leak(Box::new(c))),
         })
     }
 }
@@ -954,7 +965,8 @@ impl<'de> Deserialize<'de> for ProtectionScope {
 /// `"spells_cast_this_turn"`, `"commander_casts_from_command_zone"`, `"creatures_died_this_turn"`,
 /// `"nontoken_creatures_entered_this_turn"`,
 /// `"sacrificed_creature_power"`, `"commander_color_count"`, `"total_power_you_control"`,
-/// `"triggering_spell_mana_value"`, `"spell_sacrifice_count"`, `"revealed_creature_mana_value"`,
+/// `"triggering_spell_mana_value"`, `"spell_sacrifice_count"`, `"spell_multikicker_count"`,
+/// `"revealed_creature_mana_value"`,
 /// `"permanents_died_this_turn"`,
 /// `"mana_paid_this_way"`, `"past_votes"`, `"present_votes"`, `"total_mana_value_milled_this_way"`,
 /// `"exiled_card_mana_value_this_way"`, `"combat_damage_dealt"`, `"spells_cast_before_this_this_turn"`),
@@ -962,7 +974,9 @@ impl<'de> Deserialize<'de> for ProtectionScope {
 /// (`{ per_permanent = <filter>, zone = "graveyard" }`), a per-kind counter count
 /// (`{ per_counter_of_kind = "charge" }`), a conditional amount
 /// (`{ condition = <Condition>, then = <Amount> }` — 0 when `condition` doesn't hold), a
-/// kicked-branch amount (`{ if_kicked = <Amount>, else = <Amount> }` — CR 702.33d), or a
+/// kicked-branch amount (`{ if_kicked = <Amount>, else = <Amount> }` — CR 702.33d), a
+/// main-phase-branch amount (`{ if_main_phase = <Amount>, else = <Amount> }`, true when the
+/// resolving spell was cast during its controller's main phase), or a
 /// "destroyed this way" count (`{ permanents_destroyed_this_way = <filter> }`, filter optional
 /// — defaults to matching every destroyed permanent), or a count of Auras attached to the
 /// effect's source (`{ auras_attached_to_source = {} }`).
@@ -998,6 +1012,7 @@ impl<'de> Deserialize<'de> for Amount {
             "triggering_spell_mana_value",
             "triggering_spell_mana_spent",
             "spell_sacrifice_count",
+            "spell_multikicker_count",
             "revealed_creature_mana_value",
             "permanents_died_this_turn",
             "nonland_cards_exiled_this_way",
@@ -1015,6 +1030,9 @@ impl<'de> Deserialize<'de> for Amount {
             "combat_damage_dealt",
             "triggering_damage_dealt",
             "spells_cast_before_this_this_turn",
+            "cards_discarded_this_way",
+            "creatures_sacrificed_this_way",
+            "spell_first_target_mana_value",
         ];
 
         impl<'de> Visitor<'de> for AmountVisitor {
@@ -1064,6 +1082,7 @@ impl<'de> Deserialize<'de> for Amount {
                     "triggering_spell_mana_value" => Amount::TriggeringSpellManaValue,
                     "triggering_spell_mana_spent" => Amount::TriggeringSpellManaSpent,
                     "spell_sacrifice_count" => Amount::SpellSacrificeCount,
+                    "spell_multikicker_count" => Amount::SpellMultikickerCount,
                     "revealed_creature_mana_value" => Amount::RevealedCreatureManaValue,
                     "permanents_died_this_turn" => Amount::PermanentsDiedThisTurn,
                     "nonland_cards_exiled_this_way" => Amount::NonlandCardsExiledThisWay,
@@ -1089,6 +1108,9 @@ impl<'de> Deserialize<'de> for Amount {
                     "combat_damage_dealt" => Amount::CombatDamageDealt,
                     "triggering_damage_dealt" => Amount::TriggeringDamageDealt,
                     "spells_cast_before_this_this_turn" => Amount::SpellsCastBeforeThisThisTurn,
+                    "cards_discarded_this_way" => Amount::CardsDiscardedThisWay,
+                    "creatures_sacrificed_this_way" => Amount::CreaturesSacrificedThisWay,
+                    "spell_first_target_mana_value" => Amount::SpellFirstTargetManaValue,
                     other => return Err(E::unknown_variant(other, KEYWORDS)),
                 })
             }
@@ -1110,6 +1132,10 @@ impl<'de> Deserialize<'de> for Amount {
                     /// `{ if_kicked = 5, else = 1 }` — [`Amount::IfSpellKicked`] (CR 702.33d).
                     #[serde(default)]
                     if_kicked: Option<Amount>,
+                    /// `{ if_main_phase = 3, else = 2 }` — [`Amount::IfSpellCastDuringMainPhase`]
+                    /// (Sulfurous Blast's "cast during your main phase" bonus).
+                    #[serde(default)]
+                    if_main_phase: Option<Amount>,
                     #[serde(default, rename = "else")]
                     otherwise: Option<Amount>,
                     /// `{ permanents_destroyed_this_way = <filter> }` — [`Amount::PermanentsDestroyedThisWay`].
@@ -1122,6 +1148,12 @@ impl<'de> Deserialize<'de> for Amount {
                     /// `permanents_destroyed_this_way` table-vs-nullary-keyword split.
                     #[serde(default)]
                     auras_attached_to_source: Option<de::IgnoredAny>,
+                    /// `{ times = 2, per = "per_creature_on_battlefield" }` — [`Amount::Scaled`]
+                    /// (Congregate's "2 life for each creature on the battlefield").
+                    #[serde(default)]
+                    times: Option<i32>,
+                    #[serde(default)]
+                    per: Option<Amount>,
                 }
                 let t = Table::deserialize(de::value::MapAccessDeserializer::new(map))?;
                 match (
@@ -1130,41 +1162,97 @@ impl<'de> Deserialize<'de> for Amount {
                     t.condition,
                     t.then,
                     t.if_kicked,
+                    t.if_main_phase,
                     t.otherwise,
                     t.permanents_destroyed_this_way,
                     t.auras_attached_to_source,
+                    t.times,
+                    t.per,
                 ) {
-                    (Some(filter), None, None, None, None, None, None, None) => {
+                    (Some(filter), None, None, None, None, None, None, None, None, None, None) => {
                         Ok(Amount::PerPermanentMatching {
                             filter,
                             zone: t.zone,
                         })
                     }
-                    (None, Some(kind), None, None, None, None, None, None) => {
+                    (None, Some(kind), None, None, None, None, None, None, None, None, None) => {
                         Ok(Amount::PerCounterOfKindOnSource { kind })
                     }
-                    (None, None, Some(condition), Some(then), None, None, None, None) => {
-                        Ok(Amount::IfCondition {
-                            condition,
-                            then: &*Box::leak(Box::new(then)),
-                        })
-                    }
-                    (None, None, None, None, Some(if_kicked), Some(otherwise), None, None) => {
-                        Ok(Amount::IfSpellKicked {
-                            then: &*Box::leak(Box::new(if_kicked)),
-                            else_: &*Box::leak(Box::new(otherwise)),
-                        })
-                    }
-                    (None, None, None, None, None, None, Some(filter), None) => {
+                    (
+                        None,
+                        None,
+                        Some(condition),
+                        Some(then),
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                    ) => Ok(Amount::IfCondition {
+                        condition,
+                        then: &*Box::leak(Box::new(then)),
+                    }),
+                    (
+                        None,
+                        None,
+                        None,
+                        None,
+                        Some(if_kicked),
+                        None,
+                        Some(otherwise),
+                        None,
+                        None,
+                        None,
+                        None,
+                    ) => Ok(Amount::IfSpellKicked {
+                        then: &*Box::leak(Box::new(if_kicked)),
+                        else_: &*Box::leak(Box::new(otherwise)),
+                    }),
+                    (
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        Some(if_main_phase),
+                        Some(otherwise),
+                        None,
+                        None,
+                        None,
+                        None,
+                    ) => Ok(Amount::IfSpellCastDuringMainPhase {
+                        then: &*Box::leak(Box::new(if_main_phase)),
+                        else_: &*Box::leak(Box::new(otherwise)),
+                    }),
+                    (None, None, None, None, None, None, None, Some(filter), None, None, None) => {
                         Ok(Amount::PermanentsDestroyedThisWay { filter })
                     }
-                    (None, None, None, None, None, None, None, Some(_)) => {
+                    (None, None, None, None, None, None, None, None, Some(_), None, None) => {
                         Ok(Amount::AurasAttachedToSource)
                     }
+                    (
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        Some(times),
+                        Some(per),
+                    ) => Ok(Amount::Scaled {
+                        times,
+                        by: &*Box::leak(Box::new(per)),
+                    }),
                     _ => Err(de::Error::custom(
                         "an amount table needs exactly one of `per_permanent`, `per_counter_of_kind`, \
-                         `condition`+`then`, `if_kicked`+`else`, `permanents_destroyed_this_way`, or \
-                         `auras_attached_to_source`",
+                         `condition`+`then`, `if_kicked`+`else`, `if_main_phase`+`else`, \
+                         `permanents_destroyed_this_way`, \
+                         `auras_attached_to_source`, or `times`+`per`",
                     )),
                 }
             }
@@ -1188,7 +1276,17 @@ impl<'de> Deserialize<'de> for Amount {
 ///   target(s)" where X is the number sacrificed (Immoral Bargain). `strive_scaled` (default
 ///   `false`) is Strive's own sibling (see [`TargetCount::strive_scaled`]'s own doc): `{
 ///   strive_scaled = true }` is "exactly N target(s)" where N is the caster's declared Strive
-///   target count (Twinflame).
+///   target count (Twinflame). `multikicker_scaled` (default `false`) is Multikicker's own
+///   sibling (see [`TargetCount::multikicker_scaled`]'s own doc): `{ multikicker_scaled = true }`
+///   is "one target, then one more for each time this spell was kicked" (Comet Storm) — unlike
+///   the others, "exactly `1 + N`," not "exactly N." `kicked_scaled` (default `false`) is Kicker's
+///   own sibling (see [`TargetCount::kicked_scaled`]'s own doc): `{ min = 1, max = 1,
+///   kicked_scaled = true }` is a whole second target clause present only if kicked (Orim's
+///   Thunder), forced to `(0, 0)` otherwise (CR 702.33g) — unlike the others above, not a
+///   substituted count. `main_phase_scaled` (default `false`) is its cast-timing sibling (see
+///   [`TargetCount::main_phase_scaled`]'s own doc): `{ min = 1, max = 2, main_phase_scaled = true
+///   }` is "one mandatory target, plus one more only if cast during your main phase" (Return to
+///   Dust) — `max` caps down to `min` outside the caster's main phase; `min` is untouched.
 ///
 /// ponytail: no pool card needs a *fixed* range yet (Aether Gale is exactly six); the table form
 /// is here so "up to N"/"one or two" cards don't need a new deserializer when they land.
@@ -1219,6 +1317,9 @@ impl<'de> Deserialize<'de> for TargetCount {
                     x_scaled: false,
                     sacrifice_scaled: false,
                     strive_scaled: false,
+                    multikicker_scaled: false,
+                    kicked_scaled: false,
+                    main_phase_scaled: false,
                 })
             }
 
@@ -1243,6 +1344,12 @@ impl<'de> Deserialize<'de> for TargetCount {
                     sacrifice_scaled: bool,
                     #[serde(default)]
                     strive_scaled: bool,
+                    #[serde(default)]
+                    multikicker_scaled: bool,
+                    #[serde(default)]
+                    kicked_scaled: bool,
+                    #[serde(default)]
+                    main_phase_scaled: bool,
                 }
                 let t = Table::deserialize(de::value::MapAccessDeserializer::new(map))?;
                 if t.min > t.max {
@@ -1254,6 +1361,9 @@ impl<'de> Deserialize<'de> for TargetCount {
                     x_scaled: t.x_scaled,
                     sacrifice_scaled: t.sacrifice_scaled,
                     strive_scaled: t.strive_scaled,
+                    multikicker_scaled: t.multikicker_scaled,
+                    kicked_scaled: t.kicked_scaled,
+                    main_phase_scaled: t.main_phase_scaled,
                 })
             }
         }
@@ -1602,9 +1712,11 @@ impl<'de> Deserialize<'de> for SacrificeCost {
 enum TriggerTag {
     #[serde(alias = "etb_triggered")]
     Etb,
+    AsEnters,
     TurnedFaceUp,
     Attacks,
     BlocksOrBecomesBlocked,
+    AttacksOrBlocks,
     Dies,
     CreatureDies,
     CreatureYouControlDies,
@@ -1631,6 +1743,7 @@ enum TriggerTag {
     YouAttackWithCreatures,
     OpponentAttacksYouWithCreatures,
     AnotherPlayerAttacksWithCreatures,
+    CreatureAttacks,
     /// Equipment's own name for the same "whenever the permanent this is attached to attacks"
     /// firing path (CR 508.1) — Fractal Harness's "whenever equipped creature attacks". The
     /// underlying [`Trigger::EnchantedCreatureAttacks`] already fires off any attached permanent,
@@ -1850,9 +1963,11 @@ impl<'de> Deserialize<'de> for Ability {
         let timing = match flat.timing {
             TimingName::Trigger(tag) => Timing::Triggered(match tag {
                 TriggerTag::Etb => Trigger::Etb,
+                TriggerTag::AsEnters => Trigger::AsEnters,
                 TriggerTag::TurnedFaceUp => Trigger::TurnedFaceUp,
                 TriggerTag::Attacks => Trigger::Attacks,
                 TriggerTag::BlocksOrBecomesBlocked => Trigger::BlocksOrBecomesBlocked,
+                TriggerTag::AttacksOrBlocks => Trigger::AttacksOrBlocks,
                 TriggerTag::Dies => Trigger::Dies,
                 TriggerTag::CreatureDies => Trigger::CreatureDies,
                 TriggerTag::CreatureYouControlDies => Trigger::CreatureYouControlDies,
@@ -1899,6 +2014,7 @@ impl<'de> Deserialize<'de> for Ability {
                         at_least: flat.at_least,
                     }
                 }
+                TriggerTag::CreatureAttacks => Trigger::CreatureAttacks,
                 TriggerTag::EnchantedCreatureAttacks => Trigger::EnchantedCreatureAttacks,
                 TriggerTag::EnchantedCreatureDies => Trigger::EnchantedCreatureDies,
                 TriggerTag::EnchantedCreatureDealsDamage => Trigger::EnchantedCreatureDealsDamage,

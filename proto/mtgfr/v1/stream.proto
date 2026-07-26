@@ -191,6 +191,11 @@ message ActionView {
   bool taps_self = 22;
   // Stable card/action/ability label.
   MessageRef label = 23;
+  // The seats whose creatures this combat declaration covers: the active player for
+  // `declare_attackers` (CR 508.1a), each attacked player this seat still declares for on
+  // `declare_blockers` (CR 509.1a — ordinarily just the viewer, but a live Master Warcraft
+  // moves the choice). Empty for every other action kind.
+  repeated uint32 declare_for = 24;
 }
 
 // The current combat state a client renders: who's attacking and the declared blocks.
@@ -347,6 +352,8 @@ message PendingChoiceViewPayCost {
   reserved 4;
   // Stable label for the paid effect.
   MessageRef label = 5;
+  // Whether the player can actually produce this cost right now — false greys out Pay.
+  bool can_pay = 6;
 }
 
 // Pay `cost` to save `spell` from being countered, or decline and let it be countered (CR

@@ -166,9 +166,7 @@ test("catalog and decklist are independent overscroll-contained scroll hosts", (
     Scene.expect(Scene.selector('[data-testid="builder-pool-scroll"]')).toHaveClass("overflow-y-auto"),
     Scene.expect(Scene.selector('[data-testid="builder-pool-scroll"]')).toHaveClass("overscroll-contain"),
     Scene.expect(Scene.selector('[data-testid="builder-decklist-scroll"]')).toHaveClass("overflow-y-auto"),
-    Scene.expect(Scene.selector('[data-testid="builder-decklist-scroll"]')).toHaveClass(
-      "overscroll-contain",
-    ),
+    Scene.expect(Scene.selector('[data-testid="builder-decklist-scroll"]')).toHaveClass("overscroll-contain"),
     Scene.expect(Scene.selector('[data-testid="builder-print-picker"]')).not.toExist(),
   );
 });
@@ -198,15 +196,9 @@ test("print picker freezes catalog and decklist scroll while print grid stays sc
     Scene.expect(Scene.selector('[data-testid="builder-pool-scroll"]')).toHaveClass("overflow-hidden"),
     Scene.expect(Scene.selector('[data-testid="builder-pool-scroll"]')).not.toHaveClass("overflow-y-auto"),
     Scene.expect(Scene.selector('[data-testid="builder-decklist-scroll"]')).toHaveClass("overflow-hidden"),
-    Scene.expect(Scene.selector('[data-testid="builder-decklist-scroll"]')).not.toHaveClass(
-      "overflow-y-auto",
-    ),
-    Scene.expect(Scene.selector('[data-testid="builder-print-picker-scroll"]')).toHaveClass(
-      "overflow-y-auto",
-    ),
-    Scene.expect(Scene.selector('[data-testid="builder-print-picker-scroll"]')).toHaveClass(
-      "overscroll-contain",
-    ),
+    Scene.expect(Scene.selector('[data-testid="builder-decklist-scroll"]')).not.toHaveClass("overflow-y-auto"),
+    Scene.expect(Scene.selector('[data-testid="builder-print-picker-scroll"]')).toHaveClass("overflow-y-auto"),
+    Scene.expect(Scene.selector('[data-testid="builder-print-picker-scroll"]')).toHaveClass("overscroll-contain"),
   );
 });
 

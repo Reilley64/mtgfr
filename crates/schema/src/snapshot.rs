@@ -250,6 +250,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             auto_tap: Vec::new(),
             required_attacks: Vec::new(),
             taps_self: false,
+            declare_for: Vec::new(),
         },
         MeaningfulAction::Mulligan => ActionView {
             id: action.id,
@@ -274,6 +275,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             auto_tap: Vec::new(),
             required_attacks: Vec::new(),
             taps_self: false,
+            declare_for: Vec::new(),
         },
         MeaningfulAction::PlayLand { card, zone } => ActionView {
             id: action.id,
@@ -298,6 +300,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             auto_tap: Vec::new(),
             required_attacks: Vec::new(),
             taps_self: false,
+            declare_for: Vec::new(),
         },
         MeaningfulAction::Cast { card, zone } => {
             let def = game.def_of(card);
@@ -337,6 +340,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                         false,
                         0,
                         0,
+                        0,
                         false,
                     )
                 },
@@ -364,6 +368,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 auto_tap: Vec::new(),
                 required_attacks: Vec::new(),
                 taps_self: false,
+                declare_for: Vec::new(),
             }
         }
         MeaningfulAction::Activate { source, ability } => {
@@ -402,6 +407,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 auto_tap: Vec::new(),
                 required_attacks: Vec::new(),
                 taps_self,
+                declare_for: Vec::new(),
             }
         }
         MeaningfulAction::Cycle { card } => ActionView {
@@ -429,6 +435,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             auto_tap: Vec::new(),
             required_attacks: Vec::new(),
             taps_self: false,
+            declare_for: Vec::new(),
         },
         MeaningfulAction::ActivateHandAbility { card, index } => {
             let def = game.def_of(card);
@@ -472,6 +479,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 auto_tap: Vec::new(),
                 required_attacks: Vec::new(),
                 taps_self: false,
+                declare_for: Vec::new(),
             }
         }
         // The label must not leak the hidden card's identity (CR 708.2) — a plain "Cast face down".
@@ -498,6 +506,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             auto_tap: Vec::new(),
             required_attacks: Vec::new(),
             taps_self: false,
+            declare_for: Vec::new(),
         },
         MeaningfulAction::Suspend { card } => ActionView {
             id: action.id,
@@ -522,6 +531,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             auto_tap: Vec::new(),
             required_attacks: Vec::new(),
             taps_self: false,
+            declare_for: Vec::new(),
         },
         MeaningfulAction::Encore { card } => ActionView {
             id: action.id,
@@ -546,6 +556,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             auto_tap: Vec::new(),
             required_attacks: Vec::new(),
             taps_self: false,
+            declare_for: Vec::new(),
         },
         // The label must not leak the hidden card's identity (CR 708.2) — a plain "Turn face up".
         MeaningfulAction::TurnFaceUp { permanent } => ActionView {
@@ -571,6 +582,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             auto_tap: Vec::new(),
             required_attacks: Vec::new(),
             taps_self: false,
+            declare_for: Vec::new(),
         },
         MeaningfulAction::CastPrepared { source } => {
             let back = game
@@ -610,6 +622,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 auto_tap: Vec::new(),
                 required_attacks: Vec::new(),
                 taps_self: false,
+                declare_for: Vec::new(),
             }
         }
         // One action per half of a split card (CR 709.4a) — the label is the half's own name, which
@@ -652,6 +665,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 auto_tap: Vec::new(),
                 required_attacks: Vec::new(),
                 taps_self: false,
+                declare_for: Vec::new(),
             }
         }
         MeaningfulAction::DeclareAttackers => ActionView {
@@ -675,12 +689,15 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             max_x: 0,
             x_cost: None,
             auto_tap: Vec::new(),
+            // The attackers are always the *active player's* creatures, even when a live Master
+            // Warcraft made someone else the declarer (`action.player`).
             required_attacks: game
-                .required_attacks(action.player)
+                .required_attacks(game.active_player())
                 .into_iter()
                 .map(|pair| WireAttack::of(game, pair))
                 .collect(),
             taps_self: false,
+            declare_for: vec![game.active_player().0],
         },
         MeaningfulAction::DeclareBlockers => ActionView {
             id: action.id,
@@ -705,6 +722,11 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             auto_tap: Vec::new(),
             required_attacks: Vec::new(),
             taps_self: false,
+            declare_for: game
+                .block_seats_for(action.player)
+                .into_iter()
+                .map(|seat| seat.0)
+                .collect(),
         },
     };
     view.auto_tap = game.auto_tap_objects(action);
@@ -1233,6 +1255,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
         .unwrap();
@@ -1860,6 +1883,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
         .unwrap();
@@ -1989,6 +2013,7 @@ mod tests {
             free_cast_if: None,
             alternative_cost: None,
             cast_only_during_combat: false,
+            cast_only_before_attackers: false,
             approximates: None,
             oracle: None,
             set: "",
@@ -2055,6 +2080,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
         .unwrap();
@@ -2131,6 +2157,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
         .unwrap();
@@ -2249,6 +2276,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
         .expect("cast Martial Impetus");
@@ -2519,6 +2547,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
         .unwrap();
@@ -2549,6 +2578,7 @@ mod tests {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            multikicker_count: 0,
             bought_back: false,
             evoked: false,
             strive_count: 0,
@@ -2590,6 +2620,7 @@ mod tests {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            multikicker_count: 0,
             bought_back: false,
             evoked: false,
             strive_count: 0,
@@ -2630,6 +2661,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
         .unwrap();
@@ -2688,6 +2720,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
         .unwrap();
@@ -2798,6 +2831,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         })
         .unwrap();
@@ -2990,5 +3024,182 @@ mod tests {
         assert_eq!(beast_view.name, "Beast");
         assert_eq!(beast_view.print, "5871be0a-0fd6-441d-8f9e-76c66b5bd8bc");
         assert_eq!(beast_view.card_id, "6bb61f34-5d57-4eaa-a02c-f5d08c1ee920");
+    }
+
+    /// Master Warcraft (CR 508.1a) hands the attack declaration to its caster, so the client must
+    /// learn *whose* creatures to stage from the action itself — the caster's own battlefield is
+    /// the wrong answer, and so is the caster's own goad requirements.
+    #[test]
+    fn a_moved_declare_attackers_action_names_the_active_player_and_their_required_attacks() {
+        use engine::{Intent, Step};
+        let mut game = Game::with_players(3, 0);
+        let bear = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
+        game.goad(bear, PlayerId(1));
+        cast_master_warcraft(&mut game, PlayerId(1));
+
+        while game.current_step() != Step::DeclareAttackers {
+            game.submit(Intent::PassPriority {
+                player: game.priority_holder(),
+            })
+            .unwrap();
+        }
+
+        let caster = snapshot(&game, PlayerId(1));
+        let action = caster
+            .actions
+            .iter()
+            .find(|a| a.kind == "declare_attackers")
+            .expect("the caster declares this turn's attackers");
+        assert_eq!(
+            action.declare_for,
+            vec![0],
+            "the creatures on offer are the active player's"
+        );
+        assert_eq!(
+            action.required_attacks,
+            vec![WireAttack {
+                attacker: bear,
+                defender: 2,
+                defender_planeswalker: None,
+            }],
+            "the goaded creature belongs to the active player, not the declarer"
+        );
+        assert!(
+            !snapshot(&game, PlayerId(0))
+                .actions
+                .iter()
+                .any(|a| a.kind == "declare_attackers"),
+            "the active player no longer makes a declaration the engine would reject"
+        );
+    }
+
+    /// The block half moves *every* attacked seat's declaration at once (CR 509.1a), so one
+    /// action covers several players' creatures.
+    #[test]
+    fn a_moved_declare_blockers_action_names_every_attacked_seat() {
+        use engine::{Intent, Step};
+        let mut game = Game::with_players(4, 0);
+        let one = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
+        let two = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
+        // Each defender needs a creature of their own: a seat with nothing to block with is
+        // offered no declaration, moved or not.
+        game.spawn_on_battlefield(PlayerId(1), def("Grizzly Bear"));
+        game.spawn_on_battlefield(PlayerId(2), def("Grizzly Bear"));
+        cast_master_warcraft(&mut game, PlayerId(3));
+
+        while game.current_step() != Step::DeclareAttackers {
+            game.submit(Intent::PassPriority {
+                player: game.priority_holder(),
+            })
+            .unwrap();
+        }
+        game.submit(Intent::DeclareAttackers {
+            player: PlayerId(3),
+            attackers: vec![
+                (one, Defender::Player(PlayerId(1))),
+                (two, Defender::Player(PlayerId(2))),
+            ],
+        })
+        .unwrap();
+        while game.current_step() != Step::DeclareBlockers {
+            game.submit(Intent::PassPriority {
+                player: game.priority_holder(),
+            })
+            .unwrap();
+        }
+
+        let action = snapshot(&game, PlayerId(3))
+            .actions
+            .into_iter()
+            .find(|a| a.kind == "declare_blockers")
+            .expect("the caster declares every seat's blocks");
+        assert_eq!(action.declare_for, vec![1, 2]);
+        for defender in [PlayerId(1), PlayerId(2)] {
+            assert!(
+                !snapshot(&game, defender)
+                    .actions
+                    .iter()
+                    .any(|a| a.kind == "declare_blockers"),
+                "an attacked player whose declaration moved gets no block affordance"
+            );
+        }
+    }
+
+    /// An ordinary defender declares for themselves alone — the field is not Master-Warcraft-only
+    /// chrome, it is how the client learns whose creatures any block declaration covers.
+    #[test]
+    fn an_ordinary_declare_blockers_action_names_just_that_defender() {
+        use engine::{Intent, Step};
+        let mut game = Game::new();
+        let bear = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
+        game.spawn_on_battlefield(PlayerId(1), def("Grizzly Bear"));
+        while game.current_step() != Step::DeclareAttackers {
+            game.submit(Intent::PassPriority {
+                player: game.priority_holder(),
+            })
+            .unwrap();
+        }
+        game.submit(Intent::DeclareAttackers {
+            player: PlayerId(0),
+            attackers: vec![(bear, Defender::Player(PlayerId(1)))],
+        })
+        .unwrap();
+        while game.current_step() != Step::DeclareBlockers {
+            game.submit(Intent::PassPriority {
+                player: game.priority_holder(),
+            })
+            .unwrap();
+        }
+
+        let action = snapshot(&game, PlayerId(1))
+            .actions
+            .into_iter()
+            .find(|a| a.kind == "declare_blockers")
+            .expect("the attacked player declares their own blocks");
+        assert_eq!(action.declare_for, vec![1]);
+    }
+
+    /// Resolve a Master Warcraft cast by `caster` during the active player's begin-combat step,
+    /// leaving the game just before attackers are declared.
+    fn cast_master_warcraft(game: &mut Game, caster: PlayerId) {
+        use engine::{Intent, Step};
+        while game.current_step() != Step::BeginCombat {
+            game.submit(Intent::PassPriority {
+                player: game.priority_holder(),
+            })
+            .unwrap();
+        }
+        while game.priority_holder() != caster {
+            game.submit(Intent::PassPriority {
+                player: game.priority_holder(),
+            })
+            .unwrap();
+        }
+        let card = game.spawn_in_hand(caster, def("Master Warcraft"));
+        game.fund_mana(caster);
+        game.submit(Intent::Cast {
+            player: caster,
+            object: card,
+            target: None,
+            x: 0,
+            modes: vec![],
+            discard_cost: vec![],
+            graveyard_exile: vec![],
+            sacrifice_cost: vec![],
+            kicked: false,
+            bought_back: false,
+            evoked: false,
+            strive_count: 0,
+            replicate_count: 0,
+            multikicker_count: 0,
+            alternative_cost: false,
+        })
+        .unwrap();
+        while !game.stack().is_empty() {
+            game.submit(Intent::PassPriority {
+                player: game.priority_holder(),
+            })
+            .unwrap();
+        }
     }
 }

@@ -8,10 +8,7 @@ export function stackEntryTargets(entry: StackObjectView): WireTarget[] {
 
 function oneLabel(target: WireTarget, state: VisibleState): string {
   if (target.kind === "player") {
-    return (
-      state.players.find((p: PlayerView) => p.player === target.player)?.username ??
-      `Seat ${target.player + 1}`
-    );
+    return state.players.find((p: PlayerView) => p.player === target.player)?.username ?? `Seat ${target.player + 1}`;
   }
   const obj = state.objects.find((o) => o.id === target.id);
   return obj?.name ?? "";

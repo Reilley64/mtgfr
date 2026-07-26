@@ -1,0 +1,12 @@
+# Token: Zombie 2/2 black
+# Sources: syphon_flesh.toml
+name = "Zombie"
+id = "ddc8c973-c31e-463f-be45-f3fa7d632362"
+default_print = "17f001ab-514b-49e7-a657-b2872ad7a1de"
+colors = ["black"]
+subtypes = ["Zombie"]
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2

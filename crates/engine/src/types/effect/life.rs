@@ -55,7 +55,7 @@ pub enum LifeEffect {
     },
 
     TargetPlayerGains {
-        amount: i32,
+        amount: Amount,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         opponent: bool,
     },

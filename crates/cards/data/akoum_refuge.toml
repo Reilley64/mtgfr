@@ -1,0 +1,33 @@
+# This land enters tapped.
+# When this land enters, you gain 1 life.
+# {T}: Add {B} or {R}.
+name = "Akoum Refuge"
+oracle = "This land enters tapped.\nWhen this land enters, you gain 1 life.\n{T}: Add {B} or {R}."
+set = "c19"
+id = "354fecd1-2371-49e3-81c6-7e47728dbb1f"
+default_print = "51aecc57-f0cc-4e35-af38-ead25cf8a1b8"
+enters_tapped = true
+
+[kind]
+type = "land"
+
+# When this land enters, you gain 1 life.
+[[abilities]]
+timing = "etb"
+
+# you gain 1 life.
+[[abilities.effects]]
+type = "life"
+mode = "gain"
+amount = 1
+
+# {T}: Add {B} or {R}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add {B} or {R}.
+[[abilities.effects]]
+type = "mana"
+mode = "add"
+mana = [["black", "red"]]

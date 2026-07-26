@@ -421,6 +421,40 @@ impl Game {
         colors
     }
 
+    /// The old "Radiance" keyword action's target batch (Cleansing Beam, Bathe in Light): the
+    /// chosen `target` creature itself, plus every *other* creature on the battlefield sharing
+    /// at least one color with it (CR 105.2). Only `target` itself is a real target — CR 608.2b
+    /// legality/protection/hexproof gate only that one chosen creature at cast time; the rest of
+    /// the batch is swept in untargeted at resolution, the same way `DamageEffect::EachCreature`
+    /// sweeps its filter (protection still independently prevents each swept creature's own
+    /// share — checked per-creature by the caller). A colorless `target` shares no color with
+    /// anything, so its batch is itself alone.
+    pub(crate) fn radiance_batch(&self, target: ObjectId) -> Vec<ObjectId> {
+        let target_colors = self.colors_of(target);
+        self.battlefield()
+            .into_iter()
+            .filter(|&id| {
+                id == target
+                    || (self.is_creature_on_battlefield(id)
+                        && Color::ALL
+                            .iter()
+                            .any(|c| target_colors[c.index()] && self.colors_of(id)[c.index()]))
+            })
+            .collect()
+    }
+
+    /// The color named by a `choose_color` step for `object`, wherever it's stored: a permanent
+    /// (Mother of Runes, Flickering Ward's own [`Permanent::chosen_color`]) or a spell mid-
+    /// resolution (Bathe in Light's [`Spell::chosen_color`] — a spell isn't a permanent yet, so
+    /// it can't share that slot). `None` if `object` is neither, or named no color.
+    pub(crate) fn chosen_color_of(&self, object: ObjectId) -> Option<Color> {
+        match &self.objects[object as usize] {
+            Object::Permanent(p) => p.chosen_color,
+            Object::Spell(s) => s.chosen_color,
+            _ => None,
+        }
+    }
+
     /// `player`'s commander color identity (CR 903.4) — the [`color_identity`] of their
     /// commander card, wherever it currently is (command zone or battlefield). All-`false` if
     /// `player` has no object flagged as a commander (a bare test setup with no designated
@@ -883,18 +917,25 @@ impl Game {
                 continue;
             }
             let source = source as ObjectId;
-            if self.controller_of(source) != candidate_controller {
-                continue;
-            }
             let timestamp = self.static_continuous_timestamp(source);
             for ability in self.functional_abilities(source).iter().cloned() {
                 let (
                     Timing::Static,
-                    Effect::Static(StaticEffect::KeywordAnthem { keywords, filter }),
+                    Effect::Static(StaticEffect::KeywordAnthem {
+                        keywords,
+                        filter,
+                        all_players,
+                    }),
                 ) = (ability.timing, ability.effect.clone())
                 else {
                     continue;
                 };
+                // "You control" is per-ability, not a pre-filter: an `all_players` grant (Avatar of
+                // Slaughter's "All creatures have double strike") reaches creatures its controller
+                // doesn't control, so its source has to survive the scan.
+                if !all_players && self.controller_of(source) != candidate_controller {
+                    continue;
+                }
                 if !self.permanent_matches(&filter, candidate, candidate_controller, Some(source)) {
                     continue;
                 }
@@ -1418,6 +1459,24 @@ impl Game {
                 keywords.extend_from_slice(&self.def_of(source).keywords);
             }
         }
+        // Voice of All's own static "This creature has protection from the chosen color" (paired
+        // with its as-enters `choose_color`): the self-grant twin of `chosen_color_protection_grants`
+        // below, scoped to `object`'s own abilities rather than an attached Aura's. Suppressed
+        // alongside the printed keywords above while the host has lost all abilities.
+        if !removes_abilities
+            && self.def_of(object).abilities.iter().any(|a| {
+                matches!(
+                    (a.timing, a.effect.clone()),
+                    (
+                        Timing::Static,
+                        Effect::Static(StaticEffect::ProtectionFromChosenColor)
+                    )
+                )
+            })
+            && let Some(color) = self.as_permanent(object).and_then(|p| p.chosen_color)
+        {
+            keywords.push(Keyword::ProtectionFrom(ProtectionScope::Color(color)));
+        }
         keywords.extend(self.chosen_color_protection_grants(object));
         // "Lose ... and can't have" (CR 702.11e/702.18d — arcane_lighthouse): strip these off
         // the fully-unioned set last, so a keyword granted by any source above — including one
@@ -1483,6 +1542,7 @@ impl Game {
                         condition,
                         from_graveyard,
                         all_players,
+                        war_choice,
                         ..
                     }),
                 ) = (ability.timing, ability.effect.clone())
@@ -1544,6 +1604,17 @@ impl Game {
                     continue;
                 }
                 if has_counters && !self.has_any_counter(candidate) {
+                    continue;
+                }
+                // Archangel of Strife's "creatures controlled by players who chose war/peace" —
+                // read against the candidate's own seat rather than the anthem source's, through
+                // the same `owner`-as-controller proxy this whole scan uses for "you control".
+                // Keyed by `source` so a second Archangel's answers don't speak for the first's.
+                if let Some(wants_war) = war_choice
+                    && !self.players[owner.0 as usize]
+                        .war_choices
+                        .contains(&(source, wants_war))
+                {
                     continue;
                 }
                 // An "as long as …" gate (tendershoot_dryad's city's blessing) — evaluated
@@ -1800,6 +1871,28 @@ impl Game {
                         == (
                             Timing::Static,
                             Effect::Static(StaticEffect::PlayFromGraveyardOncePerTurn),
+                        )
+                })
+        })
+    }
+
+    /// Whether `searcher` is denied library search by an opponent's [`Effect::Static(StaticEffect::OpponentsCantSearchLibraries)`]
+    /// static ability (CR 701.19, Stranglehold's "Your opponents can't search libraries"): true if
+    /// any *other* player controls a permanent with that static live. The single choke every
+    /// library search raises through ([`crate::pending::raise::library::search_library`]), so a
+    /// denied search never even offers a `PendingChoice` — no shuffle either (the search and its
+    /// tied shuffle are one instruction; Stranglehold skips both, per the printed ruling).
+    pub(crate) fn opponent_search_denied(&self, searcher: PlayerId) -> bool {
+        self.objects.iter().any(|object| {
+            let Object::Permanent(p) = object else {
+                return false;
+            };
+            p.owner != searcher
+                && card_def(p.def).abilities.iter().any(|a| {
+                    (a.timing, a.effect.clone())
+                        == (
+                            Timing::Static,
+                            Effect::Static(StaticEffect::OpponentsCantSearchLibraries),
                         )
                 })
         })
@@ -2072,6 +2165,7 @@ mod cache_tests {
             buyback: None,
             strive: None,
             replicate: None,
+            multikicker: None,
         },
         reduce_own_generic: None,
     };
@@ -2104,6 +2198,7 @@ mod cache_tests {
             free_cast_if: None,
             alternative_cost: None,
             cast_only_during_combat: false,
+            cast_only_before_attackers: false,
             approximates: None,
             oracle: None,
             set: "",
@@ -2162,6 +2257,7 @@ mod cache_tests {
                 condition: None,
                 from_graveyard: false,
                 all_players: false,
+                war_choice: None,
             }),
             optional: false,
             min_level: 0,
@@ -2192,6 +2288,7 @@ mod cache_tests {
             free_cast_if: None,
             alternative_cost: None,
             cast_only_during_combat: false,
+            cast_only_before_attackers: false,
             approximates: None,
             oracle: None,
             set: "",
@@ -2281,11 +2378,13 @@ mod cache_tests {
                 targets_second: TargetList::default(),
                 commander: false,
                 x: 0,
+                chosen_color: None,
                 modes: Modes::default(),
                 copy: false,
                 flashback: false,
                 escape: false,
                 cast_from_hand: false,
+                cast_during_main_phase: false,
                 damage_division: DamageAssignment::default(),
                 damage_division_players: [None; MAX_TARGETS],
                 counter_division: DamageAssignment::default(),
@@ -2295,6 +2394,7 @@ mod cache_tests {
                 bought_back: false,
                 strive_count: 0,
                 replicate_count: 0,
+                multikicker_count: 0,
                 serra_recursion: false,
                 bestowed: false,
                 face_down: false,
@@ -2366,6 +2466,7 @@ mod cache_tests {
             free_cast_if: None,
             alternative_cost: None,
             cast_only_during_combat: false,
+            cast_only_before_attackers: false,
             approximates: None,
             oracle: None,
             set: "",
@@ -2478,6 +2579,7 @@ mod characteristic_query_tests {
             buyback: None,
             strive: None,
             replicate: None,
+            multikicker: None,
         },
         reduce_own_generic: None,
     };
@@ -2512,6 +2614,7 @@ mod characteristic_query_tests {
             free_cast_if: None,
             alternative_cost: None,
             cast_only_during_combat: false,
+            cast_only_before_attackers: false,
             approximates: None,
             oracle: None,
             set: "",
@@ -2578,6 +2681,7 @@ mod characteristic_query_tests {
             free_cast_if: None,
             alternative_cost: None,
             cast_only_during_combat: false,
+            cast_only_before_attackers: false,
             approximates: None,
             oracle: None,
             set: "",
@@ -2675,6 +2779,7 @@ mod characteristic_query_tests {
                 free_cast_if: None,
                 alternative_cost: None,
                 cast_only_during_combat: false,
+                cast_only_before_attackers: false,
                 approximates: None,
                 oracle: None,
                 set: "",
@@ -2760,6 +2865,7 @@ mod characteristic_query_tests {
                 free_cast_if: None,
                 alternative_cost: None,
                 cast_only_during_combat: false,
+                cast_only_before_attackers: false,
                 approximates: None,
                 oracle: None,
                 set: "",
@@ -2843,6 +2949,7 @@ mod characteristic_query_tests {
                 free_cast_if: None,
                 alternative_cost: None,
                 cast_only_during_combat: false,
+                cast_only_before_attackers: false,
                 approximates: None,
                 oracle: None,
                 set: "",

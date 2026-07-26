@@ -453,6 +453,13 @@ pub struct ActionView {
     /// chrome that the engine would reject.
     #[serde(default)]
     pub taps_self: bool,
+    /// The seats whose creatures this combat declaration covers — the active player for
+    /// `declare_attackers` (CR 508.1a), each attacked player this seat still declares for on
+    /// `declare_blockers` (CR 509.1a). Ordinarily that is just the viewer for blocks, but a live
+    /// Master Warcraft moves the choice, so the client stages *these* players' creatures rather
+    /// than re-deriving whose declaration it is. Empty for every other action kind.
+    #[serde(default)]
+    pub declare_for: Vec<u8>,
 }
 
 /// A modal spell's printed modes and how many of them the caster picks (CR 700.2).
@@ -578,6 +585,9 @@ pub enum PendingChoiceView {
         cost: WireCost,
         /// Short English for the paid effect (`Effect::label`) — e.g. "Create 1 Fungus Beast token(s)".
         label: MessageRef,
+        /// Whether `player` can actually produce `cost` right now (`Game::can_pay_cost`): false
+        /// greys out Pay instead of advertising a payment the engine would reject.
+        can_pay: bool,
     },
     /// Pay `cost` to save `spell` from being countered, or decline and let it be countered
     /// (CR 701.5c "unless its controller pays" — the mirror image of `PayCost`).
@@ -1419,12 +1429,14 @@ mod tests {
                     x_symbols: 0,
                 },
                 label: msg("effect.draw_cards"),
+                can_pay: true,
             })
             .unwrap(),
             serde_json::json!({
                 "kind": "pay_cost", "player": 3, "source": 7,
                 "cost": {"generic": 1, "colored": [0, 0, 1, 0, 0], "has_x": false, "x_symbols": 0},
                 "label": {"key": "effect.draw_cards", "params": [], "children": []},
+                "can_pay": true,
             }),
         );
         assert_eq!(

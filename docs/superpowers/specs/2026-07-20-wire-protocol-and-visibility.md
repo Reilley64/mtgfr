@@ -285,6 +285,12 @@ The engine/schema event model includes `MulliganTaken { player, mulligans_taken,
   authoring habits. This spec is a snapshot; `WIRE_COMPAT.md` is the ops reference.
 - `ActionView.auto_tap` carries the battlefield object ids `Game::plan_auto_taps` would tap —
   the client shows a visual preview of which lands would be consumed before the intent fires.
+- `ActionView.declare_for` carries the seats whose creatures a combat declaration covers: the
+  active player for `declare_attackers`, every attacked seat this declarer still answers for on
+  `declare_blockers`. It is normally just the viewer, so the client stages *those* seats' creatures
+  rather than re-deriving whose declaration it is — which a moved declaration would get wrong.
+  Empty for every other action kind. `required_attacks` on `declare_attackers` likewise always
+  describes the active player's must-attack creatures, not the declarer's.
 - `VisibleEvent` has ~130 arms (stream.proto). Each arm is a purpose-built message; the large
   oneof is intentional — it avoids a generic "event with arbitrary payload" design and makes
   every event type visible to the compiler and code-generation tooling.

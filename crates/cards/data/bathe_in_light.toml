@@ -1,0 +1,31 @@
+# Radiance — Choose a color. Target creature and each other creature that shares a color with
+# it gain protection from the chosen color until end of turn.
+name = "Bathe in Light"
+id = "8e862a8e-7954-43ad-9bc0-09ce7b9859f0"
+default_print = "d1d6dc01-278e-44cc-a488-7e3c2f2e0861"
+oracle = "Radiance — Choose a color. Target creature and each other creature that shares a color with it gain protection from the chosen color until end of turn."
+set = "cma"
+
+[cost]
+generic = 1
+white = 1
+
+[kind]
+type = "instant"
+
+# Radiance — Choose a color. Target creature and each other creature that shares a color with
+# it gain protection from the chosen color until end of turn.
+[[abilities]]
+timing = "spell"
+
+# Choose a color.
+[[abilities.effects]]
+type = "choice"
+mode = "choose_color"
+
+# Target creature and each other creature that shares a color with it gain protection from the
+# chosen color until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "radiance_chosen_color_protection_until_end_of_turn"
+target = "creature"

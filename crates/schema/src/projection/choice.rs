@@ -173,6 +173,7 @@ impl<'a> ChoiceCtx<'a> {
             } => PendingChoiceView::PayCost {
                 player: player.0,
                 source,
+                can_pay: self.game.can_pay_cost(player, cost),
                 cost: wire_cost(cost),
                 label: to_wire_message(effect.message()),
             },
@@ -514,6 +515,17 @@ impl<'a> ChoiceCtx<'a> {
                 count: count as u32,
                 items: private_items(player, self.viewer, hand, |ids| self.label_items(ids)),
             },
+            // Syphon Mind's per-opponent discard: exactly one card from a private hand — the same
+            // wire shape as a `DiscardCards` of one, with the options redacted from other viewers.
+            engine::PendingChoice::DiscardEdict { player, options, .. } => {
+                PendingChoiceView::Discard {
+                    player: player.0,
+                    count: 1,
+                    items: private_items(player, self.viewer, options, |ids| {
+                        self.label_items(ids)
+                    }),
+                }
+            }
             engine::PendingChoice::PutFromHandOnTop {
                 player,
                 hand,
@@ -985,6 +997,7 @@ mod coverage_tests {
                     player: PlayerId(0),
                     options: vec![source],
                     keep_one: true,
+                    count: 1,
                     filter: engine::PermanentFilter::default(),
                     remaining: vec![],
                     controller: PlayerId(0),
@@ -1028,6 +1041,8 @@ mod coverage_tests {
                     player: PlayerId(0),
                     source,
                     candidates: vec![hand_card],
+                    keep: false,
+                    defender: None,
                 },
                 |view| matches!(view, PendingChoiceView::PutCreatureFromHand { .. }),
             ),
@@ -1120,5 +1135,34 @@ mod coverage_tests {
             }
             other => panic!("expected PayCost, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn pay_cost_reports_whether_the_player_can_actually_pay() {
+        let mut game = Game::new();
+        let source = game.spawn_on_battlefield(PlayerId(0), def("Trudge Garden"));
+        let choice = PendingChoice::PayCost {
+            player: PlayerId(0),
+            source,
+            cost: engine::Cost {
+                generic: 2,
+                ..engine::Cost::default()
+            },
+            effect: draw_effect(),
+        };
+
+        let broke = project_pending_choice(&game, Some(PlayerId(0)), choice.clone());
+        let PendingChoiceView::PayCost { can_pay, .. } = broke else {
+            panic!("expected PayCost, got {broke:?}");
+        };
+        assert!(!can_pay, "an empty board cannot produce {{2}}");
+
+        game.spawn_on_battlefield(PlayerId(0), def("Mountain"));
+        game.spawn_on_battlefield(PlayerId(0), def("Mountain"));
+        let solvent = project_pending_choice(&game, Some(PlayerId(0)), choice);
+        let PendingChoiceView::PayCost { can_pay, .. } = solvent else {
+            panic!("expected PayCost");
+        };
+        assert!(can_pay, "two untapped lands cover {{2}}");
     }
 }

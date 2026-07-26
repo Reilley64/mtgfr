@@ -89,6 +89,14 @@ pub enum Intent {
         /// recorded on the resulting [`Spell::replicate_count`], read by the cast choke to mint
         /// that many copies (CR 702.108b).
         replicate_count: u8,
+        /// How many times the caster paid the spell's Multikicker cost
+        /// ([`AdditionalCost::multikicker`] — CR 702.33c), settled before the stack for the same
+        /// reason as `strive_count`/`replicate_count` above (its total cost depends on the
+        /// declared count). 0 (the default) for a spell with no Multikicker, or "pay it zero
+        /// times." Folded into the mana paid by [`Game::cast_cost`] and recorded on the resulting
+        /// [`Spell::multikicker_count`], read by [`Amount::SpellMultikickerCount`] and
+        /// [`TargetCount::multikicker_scaled`]'s cast-time target-count substitution.
+        multikicker_count: u8,
         /// Whether the caster is casting the spell for its printed alternative cost (CR 601.2f —
         /// [`CardDef::alternative_cost`]) instead of its printed mana cost — Invigorate's "rather
         /// than pay this spell's mana cost, you may have an opponent gain 3 life." Mirrors
@@ -1187,6 +1195,9 @@ pub enum PendingChoice {
         keep_one: bool,
         filter: PermanentFilter,
         remaining: Vec<PlayerId>,
+        /// How many of `options` this player sacrifices (Malfegor's "a creature … for each card
+        /// discarded this way"), capped at what they control. 1 for a plain edict.
+        count: u32,
         controller: PlayerId,
         source: ObjectId,
         follow_up: &'static [Effect],
@@ -1207,6 +1218,7 @@ pub enum PendingChoice {
         keep_one: bool,
         filter: PermanentFilter,
         life_loss: i32,
+        count: u32,
         then: &'static [Effect],
     },
     /// `player` must exile one of `options` (a card in their own graveyard) to a multi-player
@@ -1217,6 +1229,18 @@ pub enum PendingChoice {
     /// zone, so `options` are public (no redaction). No `follow_up`: the reflexive payoff rides in
     /// the enclosing `Sequence`, resumed once every player has answered.
     ExileFromGraveyard {
+        player: PlayerId,
+        source: ObjectId,
+        options: Vec<ObjectId>,
+        remaining: Vec<PlayerId>,
+    },
+    /// `player` must discard one of `options` (a card in their own hand) to a multi-player discard
+    /// fan-out ([`Effect::Choice(ChoiceEffect::EachOpponentDiscards)`] — Syphon Mind). Mandatory
+    /// (exactly one, when they have any). Answered by [`Intent::Discard`]. `remaining` are the
+    /// still-to-choose opponents (APNAP order) after this one; the hand is private, so `options`
+    /// are redacted from other seats. No `follow_up`: the "you draw a card for each card discarded
+    /// this way" payoff rides in the enclosing `Sequence`, resumed once every opponent has answered.
+    DiscardEdict {
         player: PlayerId,
         source: ObjectId,
         options: Vec<ObjectId>,
@@ -1343,14 +1367,18 @@ pub enum PendingChoice {
         tapped: bool,
         candidates: Vec<ObjectId>,
     },
-    /// `player` may put one of `candidates` (their hand's creature cards) onto the battlefield,
-    /// or decline ("up to one" — an [`Effect::Choice(ChoiceEffect::PutCreatureFromHand)`] resolving, Cauldron Dance).
+    /// `player` may put one of `candidates` (their hand's eligible creature cards) onto the
+    /// battlefield, or decline ("up to one" — an [`Effect::Choice(ChoiceEffect::PutCreatureFromHand)`] resolving, Cauldron Dance).
     /// `source` is the resolving ability, threaded through so the answer can schedule the
-    /// end-step sacrifice against it. Answered by [`Intent::PutCreatureFromHand`].
+    /// end-step sacrifice against it. `keep` suppresses that sacrifice (Kaalia); `defender`, when
+    /// set, enters the put-in creature tapped and attacking that opponent (Kaalia, CR 508.4).
+    /// Answered by [`Intent::PutCreatureFromHand`].
     PutCreatureFromHand {
         player: PlayerId,
         source: ObjectId,
         candidates: Vec<ObjectId>,
+        keep: bool,
+        defender: Option<PlayerId>,
     },
     /// `player` may cast one of `candidates` — the creature cards in their hand whose mana cost
     /// could be paid by some amount of, or all of, the mana spent on the `{X}` paid (CR 107.3,
@@ -1780,6 +1808,7 @@ impl PendingChoice {
             | PendingChoice::SacrificeEdict { player, .. }
             | PendingChoice::ChooseTargetPlayers { player, .. }
             | PendingChoice::ExileFromGraveyard { player, .. }
+            | PendingChoice::DiscardEdict { player, .. }
             | PendingChoice::CastVote { player, .. }
             | PendingChoice::JoinForcesPayment { player, .. }
             | PendingChoice::MaySacrifice { player, .. }
@@ -1962,6 +1991,9 @@ pub enum Event {
         /// How many times the caster paid Replicate (CR 702.108), 0 for a spell with no Replicate;
         /// see [`Spell::replicate_count`].
         replicate_count: u8,
+        /// How many times the caster paid Multikicker (CR 702.33c), 0 for a spell with no
+        /// Multikicker; see [`Spell::multikicker_count`].
+        multikicker_count: u8,
         /// Whether this was a bestow cast (CR 702.103 — for [`CardDef::bestow`], as an Aura spell);
         /// see [`Spell::bestowed`]. `false` for an ordinary cast.
         bestowed: bool,
@@ -2153,9 +2185,11 @@ pub enum Event {
     /// A planeswalker's once-per-turn loyalty-ability flag was set (`active = true`, when a loyalty
     /// ability is activated) or cleared (`active = false`, at its controller's untap). CR 606.3.
     LoyaltyActivated { object: ObjectId, active: bool },
-    /// A `once_each_turn`-capped activated ability was activated (CR 602.2b). Recorded so
-    /// [`Game::ability_activation_gate`] can reject a second activation of the same
-    /// (source, ability index) this turn; the tally clears at the start of every turn.
+    /// Any activated ability was activated (CR 602.2b), recorded for every activation, not just
+    /// `once_each_turn`-capped ones. Used by [`Game::ability_activation_gate`] to reject a second
+    /// activation of a capped (source, ability index) this turn, and doubles as a per-object
+    /// activation counter for conditions like `SourceActivatedThisTurnAtLeast` (Dragon Whelp); the
+    /// tally clears at the start of every turn.
     /// ponytail: keyed by (object id, ability index), so a freshly re-cast permanent (a new
     /// object id) starts with a clean cap — correct, since a new object is a new game object. (CR 602, CR 601, CR 113)
     AbilityActivatedThisTurn {
@@ -3038,6 +3072,41 @@ pub struct TargetCount {
     /// with that declared count (always "exactly N," like `sacrifice_scaled`'s "exactly X").
     /// Defaults to `false`. Parsed by the hand-written `Deserialize` impl in `de.rs`.
     pub strive_scaled: bool,
+    /// Multikicker's own sibling (CR 601.2c/702.33c) — Comet Storm's "Choose any target, then
+    /// choose another target for each time this spell was kicked." Unlike `x_scaled`/
+    /// `sacrifice_scaled`/`strive_scaled` (each "exactly N," substituting the declared/derived
+    /// count directly), Multikicker's count is always "one base target, plus one more per kick":
+    /// when `true`, `min`/`max` are placeholders
+    /// [`Game::choose_spell_targets`](crate::Game::choose_spell_targets) substitutes at cast time
+    /// with `1 + `[`Game::spell_multikicker_count`](crate::Game::spell_multikicker_count). Defaults
+    /// to `false`. Parsed by the hand-written `Deserialize` impl in `de.rs`.
+    pub multikicker_scaled: bool,
+    /// Kicker's own sibling (CR 702.33d/702.33g) — Orim's Thunder's "If this spell was kicked, it
+    /// deals damage equal to that permanent's mana value to target creature," a *whole second
+    /// target clause* (not this clause's own destroy target) present only when kicked. When
+    /// `true`, the authored `min`/`max` apply only if
+    /// [`Game::spell_was_kicked`](crate::Game::spell_was_kicked) holds for the resolving spell;
+    /// otherwise the clause is forced to `(0, 0)` — CR 702.33g's "the spell is cast as if it did
+    /// not have those targets." Unlike `x_scaled`/`sacrifice_scaled`/`strive_scaled`/
+    /// `multikicker_scaled` above (each substituting a *computed count* for the authored
+    /// placeholder), `kicked_scaled` never changes what the authored `min`/`max` mean when the
+    /// gate holds — it only zeroes the clause out when it doesn't. Defaults to `false`. Parsed by
+    /// the hand-written `Deserialize` impl in `de.rs`.
+    pub kicked_scaled: bool,
+    /// The timing-conditional sibling of [`Self::kicked_scaled`] (CR 601.2c's general
+    /// target-conditionality principle, applied to a cast-timing condition rather than an
+    /// additional cost) — Return to Dust's "you may exile up to one other target artifact or
+    /// enchantment" only if cast during the caster's main phase. When `true`, the authored `max`
+    /// applies only if
+    /// [`Game::spell_cast_during_main_phase`](crate::Game::spell_cast_during_main_phase) holds;
+    /// otherwise `max` is capped down to `min`. Unlike `kicked_scaled` (whose gated clause
+    /// vanishes to `(0, 0)` because it's a wholly separate "target creature" clause),
+    /// `main_phase_scaled`'s `min` is never touched: Return to Dust's mandatory first target and
+    /// its conditional second target are the *same* "target artifact or enchantment" clause (one
+    /// count range, not two), so the same-instance distinctness CR 601.2c already gives a
+    /// multi-target clause is what makes the second target "other" for free. Defaults to `false`.
+    /// Parsed by the hand-written `Deserialize` impl in `de.rs`.
+    pub main_phase_scaled: bool,
 }
 
 impl Default for TargetCount {
@@ -3048,6 +3117,9 @@ impl Default for TargetCount {
             x_scaled: false,
             sacrifice_scaled: false,
             strive_scaled: false,
+            multikicker_scaled: false,
+            kicked_scaled: false,
+            main_phase_scaled: false,
         }
     }
 }
@@ -3055,14 +3127,17 @@ impl Default for TargetCount {
 impl TargetCount {
     /// Whether this is the ubiquitous single-mandatory-target count — the fast path that keeps
     /// every existing spell on the untouched single-target plumbing. An `x_scaled`,
-    /// `sacrifice_scaled`, or `strive_scaled` count is never single even when its printed
-    /// `{min, max}` happens to be `{1, 1}` — its *effective* count depends on a cast-time
-    /// choice/cost and must go through the multi-target machinery.
+    /// `sacrifice_scaled`, `strive_scaled`, or `multikicker_scaled` count is never single even
+    /// when its printed `{min, max}` happens to be `{1, 1}` — its *effective* count depends on a
+    /// cast-time choice/cost and must go through the multi-target machinery.
     pub(crate) fn is_single(self) -> bool {
         self == TargetCount::default()
             && !self.x_scaled
             && !self.sacrifice_scaled
             && !self.strive_scaled
+            && !self.multikicker_scaled
+            && !self.kicked_scaled
+            && !self.main_phase_scaled
     }
 }
 

@@ -22,6 +22,24 @@ pub struct PlayerId(pub u8);
 /// A game object (a card in some zone), identified for its lifetime in the game.
 pub type ObjectId = u32;
 
+/// What a creature is attacking (CR 508.1): a player, or a planeswalker an opponent controls.
+/// The *defending player* — who declares blocks, pays pillow-fort taxes, and is read by every
+/// "attacks you" trigger (CR 509.1a) — is the player for `Player`, or the planeswalker's
+/// controller for `Planeswalker`. That mapping lives in [`Game::defender_of`], so the whole
+/// blocking/tax/trigger/goad machinery is unchanged by planeswalker attacks — only declaration
+/// legality and combat-damage delivery read the distinction.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AttackTarget {
+    Player(PlayerId),
+    Planeswalker(ObjectId),
+}
+
+impl From<PlayerId> for AttackTarget {
+    fn from(player: PlayerId) -> Self {
+        AttackTarget::Player(player)
+    }
+}
+
 /// The zones a card can occupy. Phase 0 only exercises hand → stack → battlefield → graveyard.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Zone {
@@ -36,7 +54,11 @@ pub enum Zone {
 
 /// A step within a turn. Combat's five steps are modelled explicitly so triggers and
 /// combat actions have precise timing slots. Untap and Cleanup have no priority window.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+///
+/// Variants are declared in turn order and `Ord` follows that order, so `step < Step::X` reads as
+/// "earlier in this turn than X" (Master Warcraft's "only before attackers are declared"). There's
+/// no extra-combat machinery, so a turn walks each variant at most once and the order is total.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 #[cfg_attr(
     feature = "card-dsl",
     derive(serde::Deserialize),
@@ -241,6 +263,9 @@ pub enum Keyword {
     /// Can be blocked only by artifact creatures and/or black creatures (CR 702.36b). See
     /// [`Game::can_block`].
     Fear,
+    /// Can be blocked only by artifact creatures and/or creatures that share a color with it
+    /// (CR 702.13b) — the color-sharing sibling of [`Fear`](Self::Fear). See [`Game::can_block`].
+    Intimidate,
     /// Elusive Otter's printed evasion static ("Creatures with power less than this creature's
     /// power can't block it") — MTG names no keyword for it.
     /// ponytail: modeled as a card-specific keyword-bag arm on the shared block-legality check
@@ -591,6 +616,12 @@ pub struct CardDef {
     /// [`Game::cast_timing_ok`]. `cast_only_during_combat = true` in TOML; `false` (every ordinary
     /// card) leaves timing to `kind`'s instant/sorcery speed alone.
     pub cast_only_during_combat: bool,
+    /// "Cast this spell only before attackers are declared" (CR 601.3e's named-window restriction
+    /// — Master Warcraft): legal from untap through the declare-attackers step, and inside that
+    /// step only until the declaration is made. Like [`Self::cast_only_during_combat`] it layers
+    /// on top of the ordinary instant-speed gate and is checked in [`Game::cast_timing_ok`].
+    /// `cast_only_before_attackers = true` in TOML; `false` for every ordinary card.
+    pub cast_only_before_attackers: bool,
     /// A one-line plain-English note on how this card's modeled behavior diverges from its
     /// printed rules text (a dropped clause, a coarsened trigger, a folded-together mechanic) —
     /// the same fact a `# ponytail:` TOML comment records, but as a datum the catalog/deck
@@ -1054,6 +1085,7 @@ pub(crate) fn fresh_permanent(
         chosen_subtype: None,
         chosen_color: None,
         entered_with_x: 0,
+        entered_multikicker_count: 0,
         cast_time_enchant_target: None,
         enchant_rewrite_host: None,
         vow_protected: None,
@@ -1066,6 +1098,7 @@ pub(crate) fn fresh_permanent(
         evoked: false,
         reverts_to_def_eot: None,
         spent_colors: [false; Color::COUNT],
+        cast_from_hand: false,
     }
 }
 
@@ -1178,6 +1211,7 @@ fn treasure_token_builtin() -> CardDef {
         free_cast_if: None,
         alternative_cost: None,
         cast_only_during_combat: false,
+        cast_only_before_attackers: false,
         approximates: None,
         oracle: None,
         set: "",
@@ -1246,6 +1280,7 @@ pub(crate) fn rogue_token_stub() -> CardDef {
         free_cast_if: None,
         alternative_cost: None,
         cast_only_during_combat: false,
+        cast_only_before_attackers: false,
         approximates: None,
         oracle: None,
         set: "",
@@ -1316,6 +1351,7 @@ pub(crate) fn illusion_token() -> CardDef {
         free_cast_if: None,
         alternative_cost: None,
         cast_only_during_combat: false,
+        cast_only_before_attackers: false,
         approximates: None,
         oracle: None,
         set: "",
@@ -1392,6 +1428,13 @@ pub(crate) struct Spell {
     pub(crate) commander: bool,
     /// The chosen `{X}` value, read by X-scaled effects at resolution (0 if the spell has no `{X}`).
     pub(crate) x: u32,
+    /// The color named by a resolution-time [`Effect::Choice(ChoiceEffect::ChooseColor)`] step
+    /// earlier in this spell's own effect `Sequence` (Bathe in Light's "Choose a color. Target
+    /// creature ... gain protection from the chosen color"). The permanent-side twin is
+    /// [`Permanent::chosen_color`] — a spell isn't a permanent while resolving, so it needs its
+    /// own slot rather than sharing that one. `None` until the choice is answered, and for every
+    /// spell without such a choice.
+    pub(crate) chosen_color: Option<Color>,
     /// A modal spell's chosen modes (CR 700.2), each with its own target. An empty selection for
     /// a non-modal spell (which uses `target` and runs every effect).
     pub(crate) modes: Modes,
@@ -1416,6 +1459,12 @@ pub(crate) struct Spell {
     /// hand"); read at [`Event::SpellCast`] apply time off the source card's zone before it
     /// moves to the stack (see `apply.rs`).
     pub(crate) cast_from_hand: bool,
+    /// Whether this spell was cast during its controller's own precombat or postcombat main phase
+    /// (CR 505.1a/505.1b) — Sulfurous Blast's "If you cast this spell during your main phase..."
+    /// rider, Return to Dust's optional second target. Computed the way `cast_from_hand` is: read
+    /// off ambient game state (active player/step) at [`Event::SpellCast`] apply time, not a
+    /// player-declared cost (unlike `kicked`/`multikicker_count` below, so no wire field needed).
+    pub(crate) cast_during_main_phase: bool,
     /// CR 601.2d's damage division for a `divided: true` `Effect::Damage(DamageEffect::Target)` on this spell
     /// (Magma Opus's "4 damage divided as you choose"): `(target, assigned amount)` pairs,
     /// settled right after `targets` above by [`Game::maybe_begin_damage_division`]. Empty for a
@@ -1473,6 +1522,12 @@ pub(crate) struct Spell {
     /// `strive_count` is; read at the [`Event::SpellCast`] choke to mint that many copies via
     /// [`Game::mint_spell_copies`] (CR 702.108b).
     pub(crate) replicate_count: u8,
+    /// How many times the caster paid this spell's Multikicker cost (CR 702.33c —
+    /// [`AdditionalCost::multikicker`]), 0 if the spell has no Multikicker cost or the caster
+    /// paid it zero times. Settled before the spell hits the stack the way `replicate_count` is;
+    /// read by [`Game::spell_multikicker_count`] (an [`Amount::SpellMultikickerCount`] read, and
+    /// [`TargetCount::multikicker_scaled`]'s cast-time target-count substitution).
+    pub(crate) multikicker_count: u8,
     /// Whether this spell was cast from a graveyard under Serra Paragon's permission (CR 118.9 —
     /// [`Effect::Static(StaticEffect::PlayFromGraveyardOncePerTurn)`]). Copied onto the resulting
     /// [`Permanent::serra_recursion`] when the spell resolves ([`Event::PermanentEntered`]), so the
@@ -1690,6 +1745,14 @@ pub(crate) struct Permanent {
     /// nothing places counters on Fractal Harness itself. 0 for a token or a permanent with no
     /// {X} in its cost.
     pub(crate) entered_with_x: u32,
+    /// How many times the spell that became this permanent paid its Multikicker cost (CR
+    /// 702.33c), fixed for the rest of this permanent's existence — copied from
+    /// [`Spell::multikicker_count`] as it enters, the same "read the spell's own info before
+    /// it's gone" idiom as `entered_with_x` above (Lightkeeper of Emeria's "gain 2 life for each
+    /// time it was kicked" ETB fires after the spell is already this permanent). Read back by
+    /// [`Game::spell_multikicker_count`]. 0 for a token, a permanent with no Multikicker cost, or
+    /// one paid zero times.
+    pub(crate) entered_multikicker_count: u8,
     /// The graveyard-card object id this Aura targeted when cast (CR 303.4a's "enchant creature
     /// card in a graveyard" — [`CardDef::enchant_graveyard`]), locked in as it enters, the same
     /// "read the spell's own info before it's gone" idiom as `entered_with_x` above (the spell
@@ -1792,6 +1855,14 @@ pub(crate) struct Permanent {
     /// any permanent whose casting spell paid no mana or isn't wired through yet (see
     /// [`Spell::spent_colors`]'s doc).
     pub(crate) spent_colors: [bool; Color::COUNT],
+    /// Whether the spell that became this permanent was cast from its controller's hand (CR
+    /// 601) — copied from [`Spell::cast_from_hand`] as it enters, the same "read the spell's own
+    /// info before it's gone" idiom as `entered_with_x`/`spent_colors` above. Read by
+    /// [`Condition::CastFromHand`] (Dread Cacodemon's/Reiver Demon's "if you cast it from your
+    /// hand" ETB intervening-if, CR 603.4). `false` for a token, a reanimated/searched/flickered/
+    /// manifested permanent, or anything else that never went through [`Event::PermanentEntered`]
+    /// — every one of those is, by definition, not a hand cast.
+    pub(crate) cast_from_hand: bool,
 }
 
 /// One slot in the object arena. A card's slot becomes [`Object::Moved`] when it changes
@@ -1930,6 +2001,11 @@ pub(crate) struct Player {
     /// [`Effect::Static(StaticEffect::PlayFromGraveyardOncePerTurn)`], read by [`Game::playable_zone`] to reject a
     /// second such play the same turn. `false` until the permission is used.
     pub(crate) graveyard_play_used_this_turn: bool,
+    /// Whether this player declared at least one attacker this turn (turn-scoped; reset each
+    /// turn at untap) — Angelic Arbiter's "Each opponent who attacked with a creature this turn
+    /// can't cast spells." Set by [`Event::AttackerDeclared`] (`Game::apply`), keyed by the
+    /// attacker's own controller; read by [`Game::cant_cast_if_attacked_this_turn`].
+    pub(crate) attacked_this_turn: bool,
     /// Monotonic counter for derive-per-op RNG — bumped once per random operation for this seat.
     pub(crate) op_iteration: u64,
     /// Times this player has cast their commander from the command zone (tax = 2× this).
@@ -1943,6 +2019,12 @@ pub(crate) struct Player {
     /// state-based action when the player controls ten or more permanents, and never cleared —
     /// CR 702.130's "for the rest of the game." Feeds [`Condition::YouHaveCitysBlessing`].
     pub(crate) has_citys_blessing: bool,
+    /// This player's answers to Archangel of Strife's "as this creature enters, each player
+    /// chooses war or peace", one `(Archangel, true = war)` entry per copy — CR 614.12 makes the
+    /// choice per permanent, so a second Archangel asks again and each copy's anthems read their
+    /// own answer. Sticky like `has_citys_blessing` above: never cleared once written — an entry
+    /// feeds its `war_choice` anthem for as long as that source lives, and does nothing after.
+    pub(crate) war_choices: Vec<(ObjectId, bool)>,
     /// Mana-provenance side-channel (CR 106.9-adjacent "spend this mana to …" tracking, Study
     /// Hall / Path of Ancestry / Opal Palace): one `(producing source, mana kind)` entry per unit
     /// of provenance-tagged mana this player currently holds, kept beside the summed

@@ -29,6 +29,10 @@ pub(crate) struct CastInputs<'a> {
     /// [`AdditionalCost::replicate`]); 0 for a spell with no Replicate, or "pay it zero times."
     /// See [`Intent::Cast`]'s own doc.
     pub replicate_count: u8,
+    /// How many times the caster paid the spell's Multikicker cost (CR 702.33c —
+    /// [`AdditionalCost::multikicker`]); 0 for a spell with no Multikicker, or "pay it zero
+    /// times." See [`Intent::Cast`]'s own doc.
+    pub multikicker_count: u8,
     /// Whether the caster is casting the spell for its printed alternative cost (CR 601.2f —
     /// [`CardDef::alternative_cost`]) instead of its printed mana cost. See [`Intent::Cast`]'s own
     /// doc.
@@ -107,6 +111,7 @@ impl Game {
                 evoked: false,
                 strive_count: 0,
                 replicate_count: 0,
+                multikicker_count: 0,
                 alternative_cost: false,
             },
             kind,
@@ -217,6 +222,15 @@ impl Game {
                 {
                     return Err(Reject::IllegalTarget);
                 }
+                // Multikicker (CR 601.2c/702.33c): "choose any target, then choose another
+                // target for each time this spell was kicked" — one base target plus one per
+                // kick, gated the same way Strive's declared count is above.
+                if count.multikicker_scaled
+                    && ((1 + inputs.multikicker_count) as usize > n
+                        || (1 + inputs.multikicker_count) as usize > MAX_TARGETS)
+                {
+                    return Err(Reject::IllegalTarget);
+                }
             }
             Modes::default()
         } else {
@@ -245,6 +259,7 @@ impl Game {
             inputs.evoked,
             inputs.strive_count,
             inputs.replicate_count,
+            inputs.multikicker_count,
             inputs.alternative_cost,
         );
 
@@ -310,6 +325,28 @@ impl Game {
         if def.cast_only_during_combat && !self.step.is_combat() {
             return false;
         }
+        // "Cast this spell only before attackers are declared" (CR 601.3e — Master Warcraft): the
+        // same shape of restriction as the combat window above. `Step`'s ordering is the turn
+        // order, so the window is everything up to and including the declare-attackers step —
+        // closed early inside that step the moment the declaration is actually made.
+        if def.cast_only_before_attackers
+            && (self.step > Step::DeclareAttackers || self.combat.attackers_declared)
+        {
+            return false;
+        }
+        // "Players can't cast spells during combat" (CR 601.2i-adjacent — Basandra, Battle
+        // Seraph): global and absolute — reaches every player, not just this ability's own
+        // controller, and overrides even an instant-speed / flash permission below.
+        if self.step.is_combat() && self.cant_cast_during_combat() {
+            return false;
+        }
+        // "Each opponent who attacked with a creature this turn can't cast spells" (Angelic
+        // Arbiter): a per-player lockout — reaches only players who attacked this turn, not
+        // everyone like Basandra's blanket combat ban above — and, like that ban, absolute:
+        // checked ahead of the instant-speed/flash bypass below so it can't be routed around.
+        if self.cant_cast_if_attacked_this_turn(player) {
+            return false;
+        }
         let sorcery_ok = self.can_take_sorcery_speed_action(player);
         // Alchemist's Refuge's "you may cast spells this turn as though they had flash" (CR 601.3a)
         // is an unfiltered per-player permission — every spell the granted player casts
@@ -334,6 +371,43 @@ impl Game {
             }
         }
         sorcery_ok
+    }
+
+    /// Whether any permanent on the battlefield carries a live
+    /// [`Effect::Static(StaticEffect::CantCastDuringCombat)`] static (Basandra, Battle Seraph's
+    /// "Players can't cast spells during combat"): a plain existence check, since the
+    /// restriction names no specific player — it reaches everyone at the table, including the
+    /// ability's own controller.
+    fn cant_cast_during_combat(&self) -> bool {
+        self.battlefield().into_iter().any(|source| {
+            self.functional_abilities(source).iter().any(|a| {
+                (a.timing, a.effect.clone())
+                    == (
+                        Timing::Static,
+                        Effect::Static(StaticEffect::CantCastDuringCombat),
+                    )
+            })
+        })
+    }
+
+    /// Whether `player` is locked out of casting spells by a live
+    /// [`Effect::Static(StaticEffect::CantCastIfAttackedThisTurn)`] static under a different
+    /// player's control (Angelic Arbiter's "Each opponent who attacked with a creature this
+    /// turn can't cast spells"): true only when `player` has declared an attacker this turn AND
+    /// some other player controls the static — an "opponent" of that controller's by
+    /// construction.
+    fn cant_cast_if_attacked_this_turn(&self, player: PlayerId) -> bool {
+        self.players[player.0 as usize].attacked_this_turn
+            && self.battlefield().into_iter().any(|source| {
+                self.controller_of(source) != player
+                    && self.functional_abilities(source).iter().any(|a| {
+                        (a.timing, a.effect.clone())
+                            == (
+                                Timing::Static,
+                                Effect::Static(StaticEffect::CantCastIfAttackedThisTurn),
+                            )
+                    })
+            })
     }
 
     /// After attackers are declared, each defending seat's declare-attackers priority is a
@@ -375,6 +449,7 @@ impl Game {
                 false,
                 false,
                 false,
+                0,
                 0,
                 0,
                 false,
@@ -546,6 +621,11 @@ impl Game {
         if inputs.replicate_count > 0 && cost.additional.replicate.is_none() {
             return Err(Reject::CannotPayCost);
         }
+        // Multikicker (CR 702.33c): only declarable if the spell actually has one, mirroring
+        // replicate's own gate above. Its mana is already folded into `cost` by `Game::cast_cost`.
+        if inputs.multikicker_count > 0 && cost.additional.multikicker.is_none() {
+            return Err(Reject::CannotPayCost);
+        }
         // Alternative cost (CR 601.2f — Invigorate): only declarable if the card actually has one,
         // mirroring evoke's own gate above, *and* only if its printed condition holds right now
         // ("If you control a Forest") — unlike evoke, which has no condition to re-check here.
@@ -579,6 +659,7 @@ mod tests {
         buyback: None,
         strive: None,
         replicate: None,
+        multikicker: None,
     };
 
     fn flash_cost(generic: u8) -> Cost {
@@ -623,6 +704,9 @@ mod tests {
                                 x_scaled: false,
                                 sacrifice_scaled: false,
                                 strive_scaled: false,
+                                multikicker_scaled: false,
+                                kicked_scaled: false,
+                                main_phase_scaled: false,
                             },
                             divided: false,
                         }),
@@ -636,6 +720,7 @@ mod tests {
                         timing: Timing::Spell,
                         effect: Effect::Destroy(DestroyEffect::All {
                             filter: PermanentFilter::of(TypeSet::ARTIFACT),
+                            cant_be_regenerated: false,
                         }),
                         optional: false,
                         min_level: 0,
@@ -657,6 +742,7 @@ mod tests {
             free_cast_if: None,
             alternative_cost: None,
             cast_only_during_combat: false,
+            cast_only_before_attackers: false,
             approximates: None,
             oracle: None,
             set: "",
@@ -748,6 +834,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         };
         assert!(
@@ -784,6 +871,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         };
         assert!(matches!(
@@ -813,6 +901,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         };
         assert!(
@@ -900,6 +989,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            multikicker_count: 0,
             alternative_cost: false,
         };
         assert!(matches!(

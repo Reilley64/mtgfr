@@ -1,0 +1,36 @@
+# Flying
+# Each opponent who cast a spell this turn can't attack with creatures.
+# Each opponent who attacked with a creature this turn can't cast spells.
+name = "Angelic Arbiter"
+id = "34dd789c-4d80-4ccc-a4f7-2e5388a9689d"
+default_print = "602a5e00-7e7f-4aec-bf8a-550b00f0864c"
+otags = ["flying", "static"]
+oracle = "Flying\nEach opponent who cast a spell this turn can't attack with creatures.\nEach opponent who attacked with a creature this turn can't cast spells."
+set = "cmd"
+subtypes = ["Angel"]
+keywords = ["flying"]
+
+[cost]
+generic = 5
+white = 2
+
+[kind]
+type = "creature"
+power = 5
+toughness = 6
+
+# Each opponent who cast a spell this turn can't attack with creatures.
+[[abilities]]
+timing = "static"
+
+[[abilities.effects]]
+type = "static"
+mode = "cant_attack_if_cast_this_turn"
+
+# Each opponent who attacked with a creature this turn can't cast spells.
+[[abilities]]
+timing = "static"
+
+[[abilities.effects]]
+type = "static"
+mode = "cant_cast_if_attacked_this_turn"

@@ -83,6 +83,11 @@ impl Game {
         let Object::Permanent(perm) = &self.objects[object as usize] else {
             return false;
         };
+        // CR 708.2: a face-down permanent has no abilities — a hidden land's `produces` sugar
+        // (Zoetic Cavern) is unavailable until it's turned face up.
+        if perm.face_down {
+            return false;
+        }
         let printed = card_def(perm.def);
         if let CardKind::Land {
             produces: Some(_), ..
@@ -132,6 +137,11 @@ impl Game {
         let Object::Permanent(ref perm) = self.objects[object as usize] else {
             return Err(Reject::CannotProduceMana);
         };
+        // CR 708.2: a face-down permanent has no abilities — a hidden land's `produces` sugar
+        // (Zoetic Cavern) is unavailable until it's turned face up.
+        if perm.face_down {
+            return Err(Reject::CannotProduceMana);
+        }
         let printed = card_def(perm.def);
         // A land with the `produces` sugar has a free base tap-for-one. Everything else that makes
         // mana does it with a real ability — Sol Ring, Arcane Signet, a mana dork, and a fetch-only
@@ -422,7 +432,8 @@ impl Game {
             let id = idx as ObjectId;
             // CR 602.2/605.3: a player's available mana counts the permanents they *control*, not
             // merely own — a stolen land contributes to its thief's pool, mirroring `tap_for_mana`.
-            if self.controller_of(id) != player || p.tapped {
+            // CR 708.2: a face-down permanent (Zoetic Cavern morphed down) has no abilities.
+            if self.controller_of(id) != player || p.tapped || p.face_down {
                 continue;
             }
             let printed = card_def(p.def);
@@ -595,7 +606,8 @@ impl Game {
             let Object::Permanent(p) = o else {
                 continue;
             };
-            if p.owner != player || p.tapped {
+            // CR 708.2: a face-down permanent has no abilities.
+            if p.owner != player || p.tapped || p.face_down {
                 continue;
             }
             let printed = card_def(p.def);
@@ -737,6 +749,16 @@ impl Game {
         self.players[player.0 as usize]
             .mana_pool
             .spend_plan(&cost, spell)
+    }
+
+    /// Can `player` still pay `cost`? The same planner [`Game::settle_payment`] runs, so a `false`
+    /// here is exactly the payment the pay path would reject — offer the payment only when this
+    /// says yes.
+    /// ponytail: sacrifice-cost sources (cracking a Treasure) aren't planned, so a board that can
+    /// only pay that way reads `false` until the player floats the mana by hand; teach
+    /// [`Game::plan_auto_taps`] sacrifice costs if that ever gates a real prompt.
+    pub fn can_pay_cost(&self, player: PlayerId, cost: Cost) -> bool {
+        self.plan_auto_taps(player, cost, None, None).is_some()
     }
 
     /// Plan which untapped mana sources to tap so `player` can pay `cost`: empty when the pool
@@ -1055,7 +1077,8 @@ impl Game {
             let Object::Permanent(p) = o else {
                 continue;
             };
-            if p.owner != player || p.tapped || Some(id) == exclude {
+            // CR 708.2: a face-down permanent has no abilities.
+            if p.owner != player || p.tapped || p.face_down || Some(id) == exclude {
                 continue;
             }
             let printed = card_def(p.def);
@@ -1207,6 +1230,7 @@ impl Game {
                         false,
                         0,
                         0,
+                        0,
                         false,
                     );
                     if let Some(plan) =
@@ -1236,6 +1260,7 @@ impl Game {
                         false,
                         0,
                         0,
+                        0,
                         false,
                     ),
                     None,
@@ -1259,6 +1284,7 @@ impl Game {
                         false,
                         false,
                         false,
+                        0,
                         0,
                         0,
                         false,
@@ -1825,6 +1851,7 @@ mod tests {
             free_cast_if: None,
             alternative_cost: None,
             cast_only_during_combat: false,
+            cast_only_before_attackers: false,
             approximates: None,
             oracle: None,
             set: "",

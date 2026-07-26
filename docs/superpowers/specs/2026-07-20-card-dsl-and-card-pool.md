@@ -15,7 +15,7 @@ Card behavior in Magic is vast and varied. Encoding it per-card in engine code w
 
 Each card is a TOML file in `crates/cards/data/` that deserializes into a `CardDef` struct in `crates/engine`. `CardDef` is `Clone`, not `Copy`. Printed list-like fields (`abilities`, `keywords`, `conditional_keywords`, `identity_pips`, `colors`, `subtypes`, `otags`, `hand_ability`, `halves`) deserialize into `Arc<[T]>`, while runtime game objects and events intern each printed definition into a `CardId -> Arc<CardDef>` table and carry the small handle instead. Nested `[back]` / `[adventure]` faces are interned during deserialization as stable `CardId`s, so flip/adventure/prepare flows read and restore them without minting new handles at runtime. Card behavior is expressed as `Ability { timing, effect }` pairs; the `Effect` enum is the vocabulary. The DSL grows **only when a real card demands it** (card-dsl-and-card-pool spec). Gaps are flagged via the `approximates` field and `# ponytail:` comments rather than forced approximations. Token profiles live in `data/tokens/` and are referenced by Scryfall oracle id from creating cards.
 
-Thirty-seven token profiles and 665 deckable card TOMLs are present as of 2026-07-25. Nine decklists live in `docs/decklists/*.md` (the five Secrets of Strixhaven decks and four additional non-SoC lists).
+Thirty-seven token profiles and 719 deckable card TOMLs are present as of 2026-07-26. Ten decklists live in `docs/decklists/*.md` (the five Secrets of Strixhaven decks and five additional non-SoC lists).
 
 ---
 
@@ -30,7 +30,7 @@ Thirty-seven token profiles and 665 deckable card TOMLs are present as of 2026-0
 7. As a **deck builder user**, I want oracle tags (`otags`) for thematic search (e.g. "typal-spirit", "ramp") even for cards whose rules aren't implemented as a tag.
 8. As a **test author**, I want to construct `CardDef` values inline in tests without parsing TOML, so unit tests are self-contained.
 9. As a **Commander player**, I want my commander's color identity enforced at deck-build time, so I can't accidentally include off-color cards.
-10. As a **player**, I want the pool's ~665 cards available for deck building, spanning the five SoC Commander precon lists and additional curated cards.
+10. As a **player**, I want the pool's ~719 cards available for deck building, spanning the five SoC Commander precon lists and additional curated cards.
 
 ---
 
@@ -103,6 +103,7 @@ Each ability block has a `timing` field and one or more `[[abilities.effects]]` 
 
 - `"spell"`: the card's own spell effect; fires on resolution.
 - `"etb"`: triggered on entering the battlefield (ETB trigger, CR 603.6a).
+- `"as_enters"`: "As this permanent enters, …" (CR 614.12) — a replacement effect, not a trigger. Watched off the same entry events as `"etb"` and queued ahead of it, but `Game::place_pending_triggers` runs the effect inline instead of placing it on the stack, so no player holds priority between the entry and the choice it raises.
 - `"activated"`: activated ability; requires a `[abilities.cost]` sub-table with `taps_self`, `mana`, `pay_life`, `sacrifice`, `discard`, `x`.
 - `"static"`: continuous effect active while the permanent is on the battlefield.
 - `"each_upkeep"` / `"your_upkeep"` / `"each_end_step"` / `"your_end_step"` / `"begin_combat"` / `"declare_attackers"` / `"this_attacks"` / `"this_attacks_or_blocks"` / `"this_leaves_battlefield"` / `"turned_face_up"` / `"this_dies"` / etc.: self-referential triggered timings.
@@ -166,10 +167,11 @@ Token profiles live in `data/tokens/*.toml`. They are full `CardDef` instances w
 
 ### Precon decklists and card pool scope
 
-Nine decklists live in `docs/decklists/*.md`:
+Ten decklists live in `docs/decklists/*.md`:
 
 - Five Secrets of Strixhaven (`soc`) Commander precons: Witherbloom Pestilence, Silverquill Influence, Quandrix Unlimited, Prismari Artistry, Lorehold Spirit.
-- Four additional lists: Political Puppets, Mirror Mastery, Enchantress Rubinia, Deathdancer Xira.
+- Five additional lists: Political Puppets, Mirror Mastery, Enchantress Rubinia, Deathdancer Xira,
+  Heavenly Inferno.
 
 These are the **first faithful target** (card-dsl-and-card-pool spec): every card in these lists should be faithfully representable in the DSL, with `approximates` notes for known gaps. The north star (card-dsl-and-card-pool spec) is any card, faithfully — the SoC decks are the proving ground, not the ceiling.
 

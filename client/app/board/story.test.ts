@@ -1,9 +1,17 @@
 import { Story } from "foldkit";
 import { expect, test } from "vitest";
-import type { VisibleState } from "~/wire/types";
+import { testMessageRef } from "~/i18n/testMessageRef";
+import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
 import type { Message } from "./messages";
-import { BoardCameraZoomed, BoardPointerDown, BoardPointerMove, FlightsSynced } from "./messages";
+import {
+  BoardCameraZoomed,
+  BoardPointerDown,
+  BoardPointerMove,
+  CombatAttackerDropped,
+  CombatBlockerDropped,
+  FlightsSynced,
+} from "./messages";
 import { spawnFlight } from "./motion/flights";
 import { type BoardModel, initialBoardModel, syncBoardWithGame, updateBoard } from "./submodel";
 
@@ -32,10 +40,10 @@ function state(): VisibleState {
   };
 }
 
-function gameFold(): GameFoldState {
+function gameFold(over: Partial<VisibleState> = {}): GameFoldState {
   return {
     seq: 1,
-    state: state(),
+    state: { ...state(), ...over },
     log: [],
     reject: null,
     provenance: {
@@ -50,6 +58,32 @@ function gameFold(): GameFoldState {
     },
     tableFeel: { land: false, stack: false, resolve: false, damage: false },
   };
+}
+
+function creature(id: number, controller: number): ObjectView {
+  return {
+    controller,
+    has_haste: false,
+    id,
+    is_commander: false,
+    kind: { kind: "creature", power: 2, toughness: 2 },
+    mana_cost: { colored: [0, 0, 0, 0, 0], generic: 2 },
+    marked_damage: 0,
+    name: "Grizzly Bears",
+    needs_target: false,
+    owner: controller,
+    plus_counters: 0,
+    power: 2,
+    summoning_sick: false,
+    tapped: false,
+    toughness: 2,
+    zone: 2, // battlefield
+  };
+}
+
+/** A combat declaration as the engine projects it: `declare_for` names the seats it covers. */
+function declareAction(kind: "declare_attackers" | "declare_blockers", declare_for: number[]): ActionView {
+  return { id: 1, kind, label: testMessageRef(kind), needs_target: false, section: "combat", declare_for };
 }
 
 test("pointer down on empty felt enters pan phase", () => {
@@ -278,4 +312,50 @@ test("syncBoardWithGame clears staged attackers/blocks when the step advances", 
   expect(advanced.combatBlocks).toEqual([]);
   expect(advanced.attackersConfirmed).toBe(false);
   expect(advanced.blockersConfirmed).toBe(false);
+});
+
+// Master Warcraft: the engine hands seat 0 the *active player's* attack declaration, so dropping
+// seat 1's creature onto seat 2's avatar has to stage it — the creature is not seat 0's own.
+test("a moved attack declaration stages the creatures of the seat it covers", () => {
+  const fold = gameFold({
+    active_player: 1,
+    step: 5, // declare attackers
+    objects: [creature(7, 1)],
+    actions: [declareAction("declare_attackers", [1])],
+  });
+
+  Story.story(
+    (model: BoardModel, message: Message) => updateBoard(model, message, fold, null),
+    Story.with(initialBoardModel()),
+    Story.message(CombatAttackerDropped({ attackerId: 7, defenderSeat: 2 })),
+    Story.model((model) => {
+      expect(model.combatAttackers).toEqual([{ attacker: 7, defender: 2 }]);
+    }),
+  );
+});
+
+// The block half is where the covered seats bite: seat 0 is not being attacked at all, so without
+// the engine's `declare_for` the drop is rejected as "nobody is attacking you".
+test("a moved block declaration stages blocks for the attacked seat, not the declarer", () => {
+  const attacked = gameFold({
+    active_player: 2,
+    step: 6, // declare blockers
+    objects: [creature(7, 2), creature(8, 1)],
+    combat: {
+      attackers: [{ attacker: 7, defender: 1 }],
+      blocks: [],
+      attackers_declared: true,
+      blockers_declared: [],
+    },
+    actions: [declareAction("declare_blockers", [1])],
+  });
+
+  Story.story(
+    (model: BoardModel, message: Message) => updateBoard(model, message, attacked, null),
+    Story.with(initialBoardModel()),
+    Story.message(CombatBlockerDropped({ attackerId: 7, blockerId: 8 })),
+    Story.model((model) => {
+      expect(model.combatBlocks).toEqual([{ blocker: 8, attacker: 7 }]);
+    }),
+  );
 });

@@ -178,10 +178,13 @@ pub(crate) enum ChoiceRequest {
         player: crate::PlayerId,
         tapped: bool,
     },
-    /// [`Effect::Choice(ChoiceEffect::PutCreatureFromHand)`] — no hand creature skips.
+    /// [`Effect::Choice(ChoiceEffect::PutCreatureFromHand)`] — no eligible hand creature skips.
     PutCreatureFromHand {
         player: crate::PlayerId,
         source: crate::ObjectId,
+        subtypes: &'static [&'static str],
+        keep: bool,
+        defender: Option<crate::PlayerId>,
     },
     /// [`Effect::Choice(ChoiceEffect::CastCreatureFaceDown)`] — no payable creature skips.
     CastCreatureFaceDown {
@@ -228,6 +231,11 @@ pub(crate) enum ChoiceRequest {
         remaining: Vec<crate::PlayerId>,
         source: crate::ObjectId,
     },
+    /// Next opponent in a discard fan-out (Syphon Mind) — empty-hand seats skipped.
+    NextDiscardEdict {
+        remaining: Vec<crate::PlayerId>,
+        source: crate::ObjectId,
+    },
     /// Next seat in Tragic Arrogance's caster-keep fan-out — empty remaining skips.
     NextCasterKeep {
         remaining: Vec<crate::PlayerId>,
@@ -263,6 +271,7 @@ pub(crate) enum ChoiceRequest {
         remaining: Vec<crate::PlayerId>,
         keep_one: bool,
         filter: crate::PermanentFilter,
+        count: u32,
         follow_up: &'static [crate::Effect],
         controller: crate::PlayerId,
         source: crate::ObjectId,
@@ -277,6 +286,7 @@ pub(crate) enum ChoiceRequest {
         keep_one: bool,
         filter: crate::PermanentFilter,
         life_loss: i32,
+        count: u32,
         then: &'static [crate::Effect],
     },
     /// Herald dig / cascade / Creative Technique — empty `candidates` → `None` (caller bottoms).
@@ -458,9 +468,13 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
         ChoiceRequest::PutLandFromHand { player, tapped } => {
             library::put_land_from_hand(game, player, tapped)
         }
-        ChoiceRequest::PutCreatureFromHand { player, source } => {
-            library::put_creature_from_hand(game, player, source)
-        }
+        ChoiceRequest::PutCreatureFromHand {
+            player,
+            source,
+            subtypes,
+            keep,
+            defender,
+        } => library::put_creature_from_hand(game, player, source, subtypes, keep, defender),
         ChoiceRequest::CastCreatureFaceDown { player, spent_mana } => {
             library::cast_creature_face_down(game, player, spent_mana)
         }
@@ -492,6 +506,9 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
         ChoiceRequest::NextGraveyardExile { remaining, source } => {
             fanout::next_graveyard_exile(game, remaining, source)
         }
+        ChoiceRequest::NextDiscardEdict { remaining, source } => {
+            fanout::next_discard_edict(game, remaining, source)
+        }
         ChoiceRequest::NextCasterKeep {
             remaining,
             caster,
@@ -517,11 +534,12 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
             remaining,
             keep_one,
             filter,
+            count,
             follow_up,
             controller,
             source,
         } => fanout::next_sacrifice_edict(
-            game, remaining, keep_one, filter, follow_up, controller, source,
+            game, remaining, keep_one, filter, count, follow_up, controller, source,
         ),
         ChoiceRequest::ChooseExiledDigToCastFree {
             player,

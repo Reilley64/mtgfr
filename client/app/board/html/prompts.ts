@@ -1728,6 +1728,9 @@ function payCostPrompt(
   const title = "label" in pending ? messageText(pending.label) : pendingChoiceTitle(pending);
   const payLabel = `Pay ${costText(pending.cost)}`;
   const declineLabel = payCostDeclineLabel(pending.kind);
+  // Only the optional-trigger prompt carries affordability; the "unless you pay" variants are a
+  // penalty either way, so declining is always a real answer there.
+  const canPay = !("can_pay" in pending) || pending.can_pay;
   return h.div(
     [
       h.DataAttribute("testid", "pending-pay-cost-aim"),
@@ -1741,7 +1744,7 @@ function payCostPrompt(
       h.div(
         [h.Class("flex flex-wrap justify-center gap-2")],
         [
-          answerButton(pending, "prompt-pay", payLabel, { kind: "pay", pay: true }, true, tableId == null),
+          answerButton(pending, "prompt-pay", payLabel, { kind: "pay", pay: true }, true, tableId == null || !canPay),
           answerButton(pending, "prompt-decline", declineLabel, { kind: "pay", pay: false }, false, tableId == null),
         ],
       ),

@@ -414,6 +414,10 @@ export type ActionView = {
   object?: null | number;
   x_cost?: null | WireCost;
   required_attacks?: Array<WireAttack>;
+  /** Seats whose creatures this combat declaration covers — the active player for
+   * `declare_attackers`, every attacked seat you still answer for on `declare_blockers`.
+   * Ordinarily just you; a live Master Warcraft moves the declaration to another seat. */
+  declare_for?: Array<number>;
   sacrifice_choices?: Array<number>;
   section: string;
   taps_self?: boolean;
@@ -441,7 +445,7 @@ export type PendingChoiceView =
     }
   | { kind: "may_yes_no"; label: MessageRef; player: number; source: U32 }
   | { items: Array<ChoiceItem>; kind: "decline_untap"; player: number }
-  | { cost: WireCost; kind: "pay_cost"; label: MessageRef; player: number; source: U32 }
+  | { can_pay: boolean; cost: WireCost; kind: "pay_cost"; label: MessageRef; player: number; source: U32 }
   | { cost: WireCost; kind: "pay_or_counter"; player: number; spell: U32 }
   | { controller: number; cost: WireCost; kind: "pay_or_controller_draws"; player: number }
   | { kind: "choose_countered_spell_destination"; player: number; spell: U32 }
@@ -554,6 +558,7 @@ export type WireIntent =
       kicked?: boolean;
       kind: "cast";
       modes?: Array<WireModeChoice>;
+      multikicker_count?: number;
       object: U32;
       player: number;
       replicate_count?: number;

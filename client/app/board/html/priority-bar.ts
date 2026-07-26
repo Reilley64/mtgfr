@@ -9,7 +9,7 @@ import { turnYieldRockerClass, turnYieldThumbClass, turnYieldTrackClass } from "
 import { gameButtonClass } from "~/ui/buttonClass";
 import type { VisibleState } from "~/wire/types";
 import { formatMessage } from "../../../lib/i18n/message";
-import { STEP } from "../geometry/layout";
+import { type PrimaryAction, primaryActionFor } from "../geometry/interaction";
 import {
   CancelActionClicked,
   type Message,
@@ -23,31 +23,21 @@ import { HAND_BAR_H } from "./hand";
 
 const h = html<Message>();
 
-/** Same shape as primaryFor() in submodel — repeated here for view-only reasoning. */
-type Primary = { kind: "pass" | "confirm-attackers" | "confirm-blockers"; label: string };
-
-function primaryFor(board: BoardModel, state: VisibleState): Primary {
-  const me = state.viewer;
-  const active = state.active_player;
-  const step = state.step;
-  const attackers = board.combatAttackers;
-  const blocks = board.combatBlocks;
-  const declaredAttackers = state.combat.attackers;
-  const attackDone = board.attackersConfirmed || state.combat.attackers_declared || declaredAttackers.length > 0;
-  const blockDone = board.blockersConfirmed || state.combat.blockers_declared.includes(me);
-  const attackingMe = declaredAttackers.some((a) => a.defender === me);
-  if (step === STEP.DeclareAttackers && active === me && !attackDone) {
-    return attackers.length
-      ? { kind: "confirm-attackers", label: `Attack (${attackers.length})` }
-      : { kind: "confirm-attackers", label: "No attackers" };
-  }
-  if (step === STEP.DeclareBlockers && attackingMe && !blockDone) {
-    return blocks.length
-      ? { kind: "confirm-blockers", label: `Block (${blocks.length})` }
-      : { kind: "confirm-blockers", label: "No blockers" };
-  }
-  if (step === STEP.Draw && active === me) return { kind: "pass", label: "Draw" };
-  return { kind: "pass", label: "Next" };
+/** The same decision the click path makes (`primaryActionFor`) — the button's label and what it
+ * submits must never disagree. */
+function primaryFor(board: BoardModel, state: VisibleState): PrimaryAction {
+  return primaryActionFor({
+    step: state.step,
+    activePlayer: state.active_player,
+    me: state.viewer,
+    actions: state.actions,
+    attackers: board.combatAttackers,
+    blocks: board.combatBlocks,
+    attackersConfirmed: board.attackersConfirmed,
+    blockersConfirmed: board.blockersConfirmed,
+    attackersDeclared: state.combat.attackers_declared,
+    blockersDeclared: state.combat.blockers_declared.includes(state.viewer),
+  });
 }
 
 function canResolveCard(state: VisibleState): boolean {

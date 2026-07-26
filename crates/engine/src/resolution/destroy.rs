@@ -30,7 +30,13 @@ impl Game {
                 }
                 vec![self.graveyard_or_command(object, self.next_object_id())]
             }
-            DestroyEffect::All { filter } => {
+            // Mass destruction: every matching permanent goes to the graveyard (a commander
+            // diverts; a token ceases to exist). Ids are minted sequentially, matching the order
+            // `apply` will push them (as the SBA death sweep does). (CR 704)
+            DestroyEffect::All {
+                filter,
+                cant_be_regenerated,
+            } => {
                 let mut next = self.next_object_id();
                 let mut events = Vec::new();
                 for id in self.battlefield() {
@@ -41,6 +47,13 @@ impl Game {
                         continue;
                     }
                     if self.has_keyword(id, Keyword::Indestructible) {
+                        continue;
+                    }
+                    // A regeneration shield replaces this permanent's own destroy with a
+                    // regeneration (CR 701.15b), unless "can't be regenerated" turns it off (CR
+                    // 701.15d) — same shield-honoring shape as `DestroyTarget`.
+                    if !cant_be_regenerated && p.regeneration_shields > 0 {
+                        events.push(Event::Regenerated { object: id });
                         continue;
                     }
                     if p.token {

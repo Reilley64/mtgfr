@@ -1,0 +1,39 @@
+# Flying
+# When Malfegor enters, discard your hand. Each opponent sacrifices a creature of their choice for
+# each card discarded this way.
+name = "Malfegor"
+id = "52e1546a-63eb-48d7-acc4-81b912aabc90"
+default_print = "32118f00-d9f3-4f01-b013-a010e1ab3ae1"
+oracle = "Flying\nWhen Malfegor enters, discard your hand. Each opponent sacrifices a creature of their choice for each card discarded this way."
+set = "cmd"
+legendary = true
+subtypes = ["Demon", "Dragon"]
+keywords = ["flying"]
+
+[cost]
+generic = 2
+black = 2
+red = 2
+
+[kind]
+type = "creature"
+power = 6
+toughness = 6
+
+# When Malfegor enters, discard your hand. Each opponent sacrifices a creature of their choice for
+# each card discarded this way.
+[[abilities]]
+timing = "etb"
+
+# discard your hand.
+[[abilities.effects]]
+type = "choice"
+mode = "discard_your_hand"
+
+# Each opponent sacrifices a creature of their choice for each card discarded this way.
+[[abilities.effects]]
+type = "choice"
+mode = "each_player_sacrifices"
+scope = "each_opponent"
+filter = "creature"
+count = "cards_discarded_this_way"

@@ -639,8 +639,14 @@ impl Game {
     }
 
     /// What casting the card at `id` targets (its first spell-timed targeting effect).
-    /// `TargetSpec::None` means the card takes no target.
+    /// `TargetSpec::None` means the card takes no target *in the cast intent* — either it targets
+    /// nothing at all, or it picks its targets after the cast (a post-cast clause like Return to
+    /// Dust's "up to one other target", answered by a `ChooseSpellTargets` pending choice), which
+    /// `validate_cast` rejects a cast-intent target for.
     pub fn target_spec_of(&self, id: ObjectId) -> TargetSpec {
+        if self.spell_multi_target(&self.def_of(id)).is_some() {
+            return TargetSpec::None;
+        }
         // ponytail: mode-less — a modal card's per-mode target need isn't surfaced here (the UI
         // picks a mode first). Reports None for a modal card; wire per-mode specs if the UI wants
         // to preview them.
@@ -779,6 +785,39 @@ impl Game {
         }
     }
 
+    /// Whether the spell at `id` was cast during its controller's own precombat or postcombat
+    /// main phase (CR 505.1a/505.1b — [`Spell::cast_during_main_phase`]), `false` if `id` isn't a
+    /// spell. The seam [`Amount::IfSpellCastDuringMainPhase`] and
+    /// [`TargetCount::main_phase_scaled`] read (Sulfurous Blast's "If you cast this spell during
+    /// your main phase..."; Return to Dust's optional second target), the cast-timing sibling of
+    /// [`Self::spell_was_kicked`]'s read.
+    pub fn spell_cast_during_main_phase(&self, id: ObjectId) -> bool {
+        match &self.objects[id as usize] {
+            Object::Spell(s) => s.cast_during_main_phase,
+            _ => false,
+        }
+    }
+
+    /// The mana value of the spell at `id`'s own *first* (clause 0) chosen target, `0` if `id`
+    /// isn't a spell or has no clause-0 target. The seam [`Amount::SpellFirstTargetManaValue`]
+    /// reads (Orim's Thunder's "damage equal to that permanent's mana value"), the cross-clause
+    /// sibling of [`Self::spell_sacrifice_count`]'s read — see that variant's own doc for why a
+    /// direct read (rather than a `ResolutionFrame` snapshot) is safe here.
+    pub(crate) fn spell_first_target_mana_value(&self, id: ObjectId) -> i32 {
+        let Object::Spell(s) = &self.objects[id as usize] else {
+            return 0;
+        };
+        match s.targets.primary() {
+            Some(t) => self
+                .def_of(expect_object_target(
+                    Some(t),
+                    "a spell-first-target mana-value amount",
+                ))
+                .mana_value() as i32,
+            None => 0,
+        }
+    }
+
     /// The colors of mana spent to cast the spell at `id` (CR 106.9 — [`Spell::spent_colors`]),
     /// `[false; Color::COUNT]` if `id` isn't a spell. The spell-side read
     /// [`Condition::ColorWasSpentToCastThis`] falls back to when `source` is still on the stack
@@ -813,6 +852,22 @@ impl Game {
         }
     }
 
+    /// How many times the spell at `id` had its Multikicker cost paid (CR 702.33c —
+    /// [`AdditionalCost::multikicker`]), 0 if `id` isn't a spell or has no Multikicker cost. The
+    /// Multikicker sibling of [`Self::spell_strive_count`]'s read — read by
+    /// [`Amount::SpellMultikickerCount`] and [`TargetCount::multikicker_scaled`]'s cast-time
+    /// target-count substitution. Also falls back to [`Permanent::entered_multikicker_count`] —
+    /// unlike Strive/Sacrifice, Multikicker's own payoff can be an ETB trigger (Lightkeeper of
+    /// Emeria's "gain 2 life for each time it was kicked"), which resolves after `id` has already
+    /// become the permanent rather than the spell.
+    pub(crate) fn spell_multikicker_count(&self, id: ObjectId) -> u8 {
+        match &self.objects[id as usize] {
+            Object::Spell(s) => s.multikicker_count,
+            Object::Permanent(p) => p.entered_multikicker_count,
+            _ => 0,
+        }
+    }
+
     /// The creatures currently declared as attackers.
     pub fn attackers(&self) -> Vec<ObjectId> {
         self.combat.attackers.clone()
@@ -837,5 +892,30 @@ impl Game {
     /// Seats that have already finalized their block declaration this combat (including empty).
     pub fn blockers_declared(&self) -> Vec<PlayerId> {
         self.combat.blocked_by.clone()
+    }
+
+    /// Who makes this turn's attack declaration — the active player (CR 508.1a) unless a live
+    /// "you choose which creatures attack this turn" effect (Master Warcraft) moved the choice to
+    /// someone else. The single choke `Game::declare_attackers`, the auto-seal and the affordance
+    /// list all read, so the override can't be routed around.
+    pub fn attack_declarer(&self) -> PlayerId {
+        self.live_declarer(self.combat_extras.attack_declarer, self.active_player)
+    }
+
+    /// Who makes this turn's block declarations — each attacked player for themselves (CR 509.1a)
+    /// unless Master Warcraft moved every one of them to a single seat, in which case that seat
+    /// declares for the whole table in one submission.
+    pub fn block_declarer(&self, defender: PlayerId) -> PlayerId {
+        self.live_declarer(self.combat_extras.block_declarer, defender)
+    }
+
+    /// A declaration override only holds while the chosen seat is still in the game — a player who
+    /// has lost makes no choices (CR 104.3a), so the declaration falls back to whoever would
+    /// ordinarily make it.
+    fn live_declarer(&self, override_seat: Option<PlayerId>, default: PlayerId) -> PlayerId {
+        match override_seat {
+            Some(seat) if !self.players[seat.0 as usize].lost => seat,
+            _ => default,
+        }
     }
 }

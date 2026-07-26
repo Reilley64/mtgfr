@@ -162,6 +162,10 @@ pub enum WireIntent {
         /// for a spell with no Replicate, or "pay it zero times." See [`engine::Intent::Cast`].
         #[serde(default)]
         replicate_count: u8,
+        /// How many times the caster paid the spell's Multikicker cost (CR 702.33c); 0 (default)
+        /// for a spell with no Multikicker, or "pay it zero times." See [`engine::Intent::Cast`].
+        #[serde(default)]
+        multikicker_count: u8,
         /// Whether the caster is casting the spell for its printed alternative cost (CR 601.2f);
         /// `false` for a spell with none, or to cast it normally. See [`engine::Intent::Cast`].
         #[serde(default)]
@@ -596,6 +600,7 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
             evoked,
             strive_count,
             replicate_count,
+            multikicker_count,
             alternative_cost,
             ..
         } => Cast {
@@ -612,6 +617,7 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
             evoked,
             strive_count,
             replicate_count,
+            multikicker_count,
             alternative_cost,
         },
         PlayLand { object, .. } => PlayLand { player, object },
@@ -789,6 +795,7 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
             evoked,
             strive_count,
             replicate_count,
+            multikicker_count,
             alternative_cost,
         } => Intent::Cast {
             player: PlayerId(player),
@@ -807,6 +814,7 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
             evoked,
             strive_count,
             replicate_count,
+            multikicker_count,
             alternative_cost,
         },
         WireIntent::PlayLand { player, object } => Intent::PlayLand {
