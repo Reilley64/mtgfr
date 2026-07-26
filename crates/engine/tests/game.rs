@@ -61424,11 +61424,33 @@ fn once_each_turn_caps_activation_beledros() {
 
 #[test]
 fn ominous_harvest_targets_a_player_to_draw_and_lose_life() {
+    // Cast as the turn's first spell, so Gravestorm's cast-time trigger snapshots 0 permanents
+    // and mints no copies — only the original resolves. It still sits above the spell, so the
+    // whole stack has to drain (the trigger, then the spell).
     let mut game = Game::new();
     let victim_top = game.stack_library(PlayerId(1), &[card("Forest")])[0];
     let harvest = game.spawn_in_hand(PlayerId(0), card("Ominous Harvest"));
 
-    cast_and_resolve(&mut game, harvest, Some(Target::Player(PlayerId(1))));
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: harvest,
+        target: Some(Target::Player(PlayerId(1))),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .expect("Ominous Harvest is castable");
+    resolve_whole_stack(&mut game);
 
     assert_eq!(
         game.zone_of(victim_top),
@@ -61439,12 +61461,13 @@ fn ominous_harvest_targets_a_player_to_draw_and_lose_life() {
 }
 
 #[test]
-fn ominous_harvest_gravestorm_copies_per_permanent_died_this_turn() {
-    // Gravestorm: "copy it for each permanent put into a graveyard from the battlefield this
-    // turn." Kill a creature and a noncreature permanent (Gravestorm counts every permanent
-    // type, not just creatures) before casting — the original plus 2 copies each pause on their
-    // own CR 707.10c retarget choice, then each independently draws its target a card and costs
-    // it 1 life.
+fn ominous_harvest_gravestorm_copies_from_cast_context_keeping_the_target() {
+    // Gravestorm: "When you cast this spell, copy it for each permanent put into a graveyard from
+    // the battlefield this turn." Kill a creature and a noncreature permanent (Gravestorm counts
+    // every permanent type, not just creatures) before casting. The Gravestorm trigger is a
+    // cast-time "when you cast this spell" trigger: it mints its 2 copies ON THE STACK ABOVE the
+    // original (CR 706.9), so all three resolve before the original's draw/life step runs. It has
+    // no "you may choose new targets," so every copy keeps the original's chosen target (P1).
     let mut game = TestGame::new();
     let bear = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
     let artifact = game.spawn_on_battlefield(PlayerId(0), NONCREATURE_PERMANENT_MV2.clone());
@@ -61453,37 +61476,48 @@ fn ominous_harvest_gravestorm_copies_per_permanent_died_this_turn() {
     let kill2 = game.spawn_in_hand(PlayerId(0), DESTROY_ANY_PERMANENT.clone());
     game.cast(kill2).at(Target::Object(artifact)).resolve();
 
-    game.stack_library(PlayerId(0), &[card("Forest"), card("Forest")]);
-    game.stack_library(PlayerId(1), &[card("Forest")]);
-    let life_before = game.life(PlayerId(0)) + game.life(PlayerId(1));
+    game.stack_library(
+        PlayerId(1),
+        &[card("Forest"), card("Forest"), card("Forest")],
+    );
+    let life_before = game.life(PlayerId(1));
 
     let harvest = game.spawn_in_hand(PlayerId(0), card("Ominous Harvest"));
     game.cast(harvest).at(Target::Player(PlayerId(1))).submit();
-    resolve_top_of_stack(&mut game); // the original resolves, then mints its first copy and pauses
 
-    // Answer each minted copy's retarget choice until the mint queue drains (see
-    // `Effect::Copy(CopyEffect::ThisSpell)`'s doc: one copy mints per `resolve_sequence` pause/resume step).
-    let mut copies = 0;
-    while let Some(PendingChoice::ChooseTarget { player, legal, .. }) = game.pending_choice() {
-        copies += 1;
-        game.submit(Intent::ChooseTargets {
-            player,
-            targets: vec![legal[0]],
-        })
-        .expect("a legal retarget");
-    }
-    assert_eq!(copies, 2, "one copy per permanent that died this turn");
-    resolve_whole_stack(&mut game); // resolve the two now-targeted copies
-
-    assert_eq!(
-        game.life(PlayerId(0)) + game.life(PlayerId(1)),
-        life_before - 3,
-        "the original and both copies each cost their target 1 life"
+    // The Gravestorm trigger sits above the original spell. Resolving it mints the two copies from
+    // cast context — no retarget pause is offered, and nothing has drawn or lost life yet.
+    resolve_top_of_stack(&mut game);
+    assert!(
+        game.pending_choice().is_none(),
+        "Gravestorm offers no \"choose new targets\" — the copies keep the original's target"
     );
     assert_eq!(
-        hand_ids(&game, PlayerId(0)).len() + hand_ids(&game, PlayerId(1)).len(),
+        game.stack().len(),
         3,
-        "the original and both copies each drew their target a card"
+        "the original plus its two copies sit on the stack, none resolved yet"
+    );
+    assert_eq!(
+        game.life(PlayerId(1)),
+        life_before,
+        "no copy or the original has resolved yet"
+    );
+
+    resolve_whole_stack(&mut game);
+
+    assert_eq!(
+        game.life(PlayerId(1)),
+        life_before - 3,
+        "the original and both copies each cost the shared target 1 life"
+    );
+    assert_eq!(
+        hand_ids(&game, PlayerId(1)).len(),
+        3,
+        "the original and both copies each drew the shared target a card"
+    );
+    assert!(
+        hand_ids(&game, PlayerId(0)).is_empty(),
+        "the copies kept the original's target — the caster never draws"
     );
 }
 
@@ -62276,14 +62310,17 @@ fn seize_the_spoils_additional_discard_cost_paid() {
 fn plumb_the_forbidden_records_sacrificed_count() {
     // Plumb the Forbidden (soc): "As an additional cost to cast this spell, you may sacrifice
     // one or more creatures. … You draw a card and lose 1 life." Paying the optional cost
-    // sacrifices exactly the named creatures, and the count is recorded on the resolved spell
-    // (the seam a copy-per-sacrifice rider — #83 — will read; nothing reads it yet).
+    // sacrifices exactly the named creatures, and the count is recorded on the cast (the seam the
+    // cast-time copy trigger reads to mint one copy per creature sacrificed this way).
     let mut game = TestGame::new();
     let plumb = game.spawn_in_hand(PlayerId(0), card("Plumb the Forbidden"));
     let fodder1 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
     let fodder2 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
     let keeper = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    let lib = game.stack_library(PlayerId(0), &[card("Forest")]);
+    game.stack_library(
+        PlayerId(0),
+        &[card("Forest"), card("Forest"), card("Forest")],
+    );
     let life_before = game.life(PlayerId(0));
 
     let events = game
@@ -62302,7 +62339,7 @@ fn plumb_the_forbidden_records_sacrificed_count() {
         2,
         "the cast context recorded how many were sacrificed"
     );
-    resolve_top_of_stack(&mut game);
+    resolve_whole_stack(&mut game);
 
     assert_eq!(game.zone_of(fodder1), Zone::Graveyard);
     assert_eq!(game.zone_of(fodder2), Zone::Graveyard);
@@ -62311,10 +62348,16 @@ fn plumb_the_forbidden_records_sacrificed_count() {
         Zone::Battlefield,
         "the un-sacrificed creature survives"
     );
-    assert_eq!(game.life(PlayerId(0)), life_before - 1, "lost 1 life");
-    let hand = hand_ids(&game, PlayerId(0));
-    assert_eq!(hand.len(), 1, "drew a card");
-    assert!(hand.contains(&game.current_id(lib[0])));
+    assert_eq!(
+        game.life(PlayerId(0)),
+        life_before - 3,
+        "the original plus its 2 copies each cost 1 life"
+    );
+    assert_eq!(
+        hand_ids(&game, PlayerId(0)).len(),
+        3,
+        "the original plus its 2 copies each drew a card"
+    );
 }
 
 // ── #83 storm-copy-count: an `Amount`-scaled copy rider on the landed `SpellCopied`/retarget
@@ -62323,9 +62366,10 @@ fn plumb_the_forbidden_records_sacrificed_count() {
 #[test]
 fn plumb_the_forbidden_copies_once_per_sacrifice() {
     // "... you may sacrifice one or more creatures. When you do, copy this spell for each
-    // creature sacrificed this way." Sacrificing 2 creatures mints 2 copies of the resolving
-    // spell on top of it — 3 total resolutions (the original plus both copies), each drawing a
-    // card and losing 1 life. Plumb has no target, so no copy needs a retarget choice.
+    // creature sacrificed this way." The "when you do" is a cast-time reflexive trigger: it mints
+    // its 2 copies ON THE STACK ABOVE the original (CR 706.9), so all 3 resolve — the original
+    // plus both copies — each drawing a card and losing 1 life. Plumb has no target, so no copy
+    // needs a retarget choice.
     let mut game = TestGame::new();
     let plumb = game.spawn_in_hand(PlayerId(0), card("Plumb the Forbidden"));
     let fodder1 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
@@ -62339,6 +62383,25 @@ fn plumb_the_forbidden_copies_once_per_sacrifice() {
     game.cast(plumb)
         .sacrificing(vec![fodder1, fodder2])
         .submit();
+
+    // Resolving the reflexive copy trigger mints both copies from cast context, above the
+    // original — nothing has drawn or lost life yet.
+    resolve_top_of_stack(&mut game);
+    assert!(
+        game.pending_choice().is_none(),
+        "no retarget — Plumb is untargeted"
+    );
+    assert_eq!(
+        game.stack().len(),
+        3,
+        "the original plus its two copies sit on the stack, none resolved yet"
+    );
+    assert_eq!(
+        game.life(PlayerId(0)),
+        life_before,
+        "no copy or the original has resolved yet"
+    );
+
     resolve_whole_stack(&mut game);
 
     assert_eq!(
@@ -62372,7 +62435,8 @@ fn plumb_the_forbidden_declining_the_sacrifice_is_legal() {
         })
         .unwrap();
     assert_eq!(game.spell_sacrifice_count(spell), 0);
-    resolve_top_of_stack(&mut game);
+    // The reflexive copy trigger fires but mints nothing (0 sacrificed); drain it and the spell.
+    resolve_whole_stack(&mut game);
 
     assert_eq!(
         game.zone_of(fodder),

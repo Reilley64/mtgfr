@@ -11,7 +11,14 @@ on an explicit approximation. The real residuals are narrow: cast-time self-copy
 (`Witherbloom Command`), and the already-declared `Final Act` mode family that still depends on
 surfaces the pool does not model.
 
-### 1. `cast-time-self-copy-from-cast-context` — 2 cards, M
+### 1. `cast-time-self-copy-from-cast-context` — 2 cards, M — **LANDED (2026-07-26)**
+
+Both cards now copy from cast-time context: their self-copy rider moved off the resolution-time
+`copy_this_spell` path onto a `timing = "when_you_cast_this"` ability using `copy_triggering_spell`,
+so the copies are minted on the stack *above* the original (CR 706.9) and resolve before it.
+`Ominous Harvest`'s Gravestorm reads `permanents_died_this_turn` and keeps the original's target
+(no "you may choose new targets"); `Plumb the Forbidden`'s reflexive "when you do" reads the
+already-recorded `spell_sacrifice_count` (0 copies when the optional sacrifice is declined).
 
 **Depends on:** none.
 **Cards:** `ominous_harvest.toml`, `plumb_the_forbidden.toml`

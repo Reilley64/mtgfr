@@ -18,8 +18,7 @@ sacrifice = { count = "one_or_more", filter = "creature" }
 [kind]
 type = "instant"
 
-# You draw a card and lose 1 life. When you do, copy this spell for each creature sacrificed
-# this way.
+# You draw a card and lose 1 life.
 [[abilities]]
 timing = "spell"
 
@@ -35,8 +34,15 @@ type = "life"
 mode = "lose"
 amount = 1
 
+# When you do [sacrifice creatures to the additional cost], copy this spell for each creature
+# sacrificed this way. A cast-time reflexive trigger, so the copies sit on the stack above the
+# original; `spell_sacrifice_count` reads the cost already paid at cast (0 copies if none were
+# sacrificed). Plumb is untargeted, so the copies need no retarget choice.
+[[abilities]]
+timing = "when_you_cast_this"
+
 # copy this spell for each creature sacrificed this way.
 [[abilities.effects]]
 type = "copy"
-mode = "this_spell"
+mode = "copy_triggering_spell"
 count = "spell_sacrifice_count"
