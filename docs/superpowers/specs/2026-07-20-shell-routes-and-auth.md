@@ -123,9 +123,11 @@ Browser Faro, BFF OTEL (`client/server/plugins/otel.server.ts`), scrub rules, Fa
 
 Single-page login/signup (toggled, not separate routes). `Login` and `Signup` are Foldkit commands wrapping `client.login` / `client.signup`. 401 → "Wrong email or password", 409 → "That email is already registered", anything else → "Something went wrong." On success the server sets an HttpOnly session cookie and the client navigates to `safeNext(params.next)`. `safeNext` enforces same-origin absolute paths only: rejects missing, relative, protocol-relative `//`, backslash `/\`, or scheme-carrying targets.
 
-### Build metadata (`client/lib/build-meta.ts`)
+### Build metadata (`client/lib/build-meta.ts`, `client/lib/ui/app-version.ts`)
 
 `appVersion()` and `gitCommit()` read from `VITE_APP_VERSION` and `VITE_GIT_COMMIT` env vars baked at build time. Consumed by the BFF OTEL SDK's `serviceVersion` and `vcs.ref.head.revision` resource attributes, and by the `AppVersion` component.
+
+Bottom-left shell chrome (`appVersionBadge`): when `apiVersion` is known, show `API {version}` (`data-testid="app-version"`). When `faithfulCount` and `oracleTotal` are also known and `oracleTotal > 0`, show `{n}% faithful` on the line above (`data-testid="pool-coverage"`). Percentage uses one decimal below 10%, otherwise whole percent (`formatFaithfulPercent`). Coverage comes from `GET /api/meta/version/v1` (`faithful_count` from API `/health/live`, `oracle_total` from BFF-cached Scryfall oracle-cards JSONL count, 24h TTL, non-blocking refresh). Incomplete coverage → version line only. Not shown on the in-game board.
 
 ### Production source maps (`vite.config.ts`, `client/lib/client-build-options.ts`)
 
@@ -149,7 +151,7 @@ Vite production builds set `build.sourcemap: true` (via `clientBuildSourcemap`) 
 
 - `client/app/shell/auth/**/*.test.ts` — auth stories and helpers, including `ReceivedMe` → `HashMeGravatar` session storage and stale-result guarding.
 - `client/app/routes.test.ts`, `client/app/smoke.test.ts` — routing and smoke; includes protected `/leaderboard` entry, auth redirect, home entry loading decks without a teaser fetch, and retry-from-page-one behavior.
-- `client/app/shell/surfaces.test.ts` — shell Scene coverage for auth, deck, leaderboard, and lobby surfaces, including shared account chrome and the `% faithful` + `API {version}` shell badge stack.
+- `client/app/shell/surfaces.test.ts` — shell Scene coverage for auth, deck, leaderboard, and lobby surfaces, including shared account chrome and the `% faithful` + `API {version}` shell badge stack; Scene asserts `pool-coverage` above `app-version` when the model has complete meta.
 - `client/lib/ui/app-version.test.ts` — percent formatting and stacked badge rendering rules.
 - `client/app/game/*.test.ts` — game fold, stream subscription.
 - `client/lib/rpc-client.test.ts` — Effect HTTP client (stubbed fetch).
@@ -184,3 +186,4 @@ Vite production builds set `build.sourcemap: true` (via `clientBuildSourcemap`) 
 - **Safe area insets.** The landscape rule applies to notched devices — `viewport-fit=cover` with safe-area insets. The portrait gate handles the notched-portrait case; landscape layout tightens padding but does not re-stack.
 - **`just client-check`** is the canonical verification: Biome format + lint (including sorted-class check) + TypeScript typecheck + Vitest. Always run before committing client changes.
 - **Live client architecture** is Foldkit + Nitro with `client/app/`, `client/lib/`, and `client/server/` as the module split.
+- **Pool coverage badge design input:** [2026-07-26-pool-coverage-badge-design.md](2026-07-26-pool-coverage-badge-design.md).
