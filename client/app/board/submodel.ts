@@ -52,6 +52,7 @@ import {
   planHandDrop,
   planHandPlay,
   planRunAction,
+  reconcilePlayModeModes,
   type StagedAction,
   settleSacrificePick,
   usedCostPick,
@@ -103,8 +104,8 @@ import {
   shouldAutoCollapseStackExpand,
   stackPeekFor,
 } from "./geometry/stackLayout";
-import { selectedRadialOptions } from "./html/activation-menu";
 import { modesForObject } from "./html/actions";
+import { selectedRadialOptions } from "./html/activation-menu";
 import { persistHintDismissed, readHintDismissed } from "./html/discoverability";
 import { HAND_BAR_H, HAND_INSPECT_STICKY_BAND, HAND_PLAY_SLACK_PX } from "./html/hand";
 import { CopyBoardLog } from "./log-commands";
@@ -333,7 +334,19 @@ export function syncBoardWithGame(model: BoardModel, fold: BoardFold): BoardMode
   if (next.lastProvenanceSeq !== fold.seq) {
     next = syncFlightsWithGame(next, fold);
   }
+  next = syncPlayModePick(next, fold);
   return syncStackChrome(next, fold);
+}
+
+function syncPlayModePick(model: BoardModel, fold: BoardFold): BoardModel {
+  const pick = model.playModePick;
+  if (pick == null) return model;
+
+  const modes = reconcilePlayModeModes(pick.modes, fold.state?.actions);
+  if (modes.length === 0) {
+    return { ...clearPlayOrigin(model, pick.card.id), playModePick: null };
+  }
+  return { ...model, playModePick: { ...pick, modes } };
 }
 
 function syncStackChrome(model: BoardModel, fold: BoardFold): BoardModel {
@@ -1440,6 +1453,27 @@ function continueAfterCostPick(
   return [model, []];
 }
 
+export function drainPlayModeIfSingleton(model: BoardModel, fold: GameFoldState, tableId: string | null): BoardReturn {
+  const pick = model.playModePick;
+  if (pick == null || pick.modes.length !== 1) return [model, []];
+
+  const chosen = pick.modes[0];
+  if (chosen == null) return [model, []];
+
+  const [next, commands] = continueAfterCostPick(
+    { ...model, playModePick: null, reject: null },
+    fold,
+    tableId,
+    chosen,
+    pick.card,
+    emptyCostPicks(),
+    pick.dropSeed,
+    pick.screenOrigin,
+  );
+  if (next.reject != null) return [clearPlayOrigin(next, pick.card.id), commands];
+  return [next, commands];
+}
+
 function hideHintOnHandUse(model: BoardModel): BoardModel {
   if (model.hintAutoHidden) return model;
   return { ...model, hintAutoHidden: true };
@@ -1512,7 +1546,9 @@ function handActivated(
   const dropSeed: Vec = { x: world.x - CARD_W / 2, y: world.y - CARD_H / 2 };
   const screenOrigin: Vec = { x, y };
   if (playPlan.kind === "choose") {
-    const card = objectByAction(fold, playPlan.modes[0]!) ?? objectByAction(fold, action);
+    const firstMode = playPlan.modes[0];
+    if (firstMode == null) return [{ ...withHint, reject: humanReason("UnknownObject") }, []];
+    const card = objectByAction(fold, firstMode) ?? objectByAction(fold, action);
     if (card == null) return [{ ...withHint, reject: humanReason("UnknownObject") }, []];
     const seeded = seedDropFromHand(clearActionSessionsForPlayMode(withHint), card, screenOrigin, "stack");
     return [

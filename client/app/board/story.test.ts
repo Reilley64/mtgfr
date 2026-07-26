@@ -88,6 +88,17 @@ function declareAction(kind: "declare_attackers" | "declare_blockers", declare_f
   return { id: 1, kind, label: testMessageRef(kind), needs_target: false, section: "combat", declare_for };
 }
 
+function handMode(id: number, kind: "cast" | "cycle", object: number): ActionView {
+  return {
+    id,
+    kind,
+    label: testMessageRef(`${kind}-${id}`),
+    needs_target: false,
+    object,
+    section: "hand",
+  };
+}
+
 test("pointer down on empty felt enters pan phase", () => {
   const fold = gameFold();
 
@@ -381,6 +392,88 @@ test("syncBoardWithGame clears staged attackers/blocks when the step advances", 
   expect(advanced.combatBlocks).toEqual([]);
   expect(advanced.attackersConfirmed).toBe(false);
   expect(advanced.blockersConfirmed).toBe(false);
+});
+
+test("syncBoardWithGame prunes illegal play modes and cancels when none remain", () => {
+  const card = creature(42, 0);
+  const castAction = handMode(7, "cast", card.id);
+  const cycleAction = handMode(8, "cycle", card.id);
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    playModePick: {
+      card,
+      modes: [castAction, cycleAction],
+      dropSeed: { x: 0, y: 0 },
+      screenOrigin: { x: 400, y: 200 },
+    },
+    flights: new Map([
+      [
+        card.id,
+        spawnFlight({
+          id: card.id,
+          kind: "stack",
+          name: card.name,
+          print: "",
+          x: 0,
+          y: 0,
+          scale: 1,
+          targetX: 0,
+          targetY: 0,
+          targetScale: 1,
+        }),
+      ],
+    ]),
+    handHidden: new Set([card.id]),
+    hideCardIds: new Set([card.id]),
+    ownedIds: new Set([card.id]),
+  };
+
+  const next = syncBoardWithGame(board, gameFold({ objects: [card], actions: [] }));
+
+  expect(next.playModePick).toBeNull();
+  expect(next.flights.has(card.id)).toBe(false);
+  expect(next.handHidden.has(card.id)).toBe(false);
+  expect(next.hideCardIds.has(card.id)).toBe(false);
+  expect(next.ownedIds.has(card.id)).toBe(false);
+});
+
+test("syncBoardWithGame keeps updated play modes when multiple remain legal", () => {
+  const card = creature(42, 0);
+  const staleCast = handMode(7, "cast", card.id);
+  const staleCycle = handMode(8, "cycle", card.id);
+  const freshCast = { ...staleCast, label: testMessageRef("fresh-cast") };
+  const freshCycle = { ...staleCycle, label: testMessageRef("fresh-cycle") };
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    playModePick: {
+      card,
+      modes: [staleCast, staleCycle],
+      dropSeed: { x: 0, y: 0 },
+      screenOrigin: { x: 400, y: 200 },
+    },
+  };
+
+  const next = syncBoardWithGame(board, gameFold({ objects: [card], actions: [freshCycle, freshCast] }));
+
+  expect(next.playModePick?.modes).toEqual([freshCast, freshCycle]);
+});
+
+test("syncBoardWithGame prunes play modes down to one remaining action", () => {
+  const card = creature(42, 0);
+  const castAction = handMode(7, "cast", card.id);
+  const cycleAction = handMode(8, "cycle", card.id);
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    playModePick: {
+      card,
+      modes: [castAction, cycleAction],
+      dropSeed: { x: 0, y: 0 },
+      screenOrigin: { x: 400, y: 200 },
+    },
+  };
+  const next = syncBoardWithGame(board, gameFold({ objects: [card], actions: [cycleAction] }));
+
+  expect(next.playModePick?.modes).toEqual([cycleAction]);
 });
 
 // Master Warcraft: the engine hands seat 0 the *active player's* attack declaration, so dropping
