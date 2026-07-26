@@ -1526,4 +1526,22 @@ mod tests {
             serde_json::json!({"kind": "discard", "player": 0, "count": 2, "items": []}),
         );
     }
+
+    #[test]
+    fn visible_state_json_defaults_commander_damage_enabled_to_true() {
+        let state: VisibleState = serde_json::from_value(serde_json::json!({
+            "viewer": 0,
+            "active_player": 0,
+            "step": 0,
+            "priority": 0,
+            "players": [],
+            "objects": [],
+            "stack": [],
+            "combat": { "attackers": [], "attackers_declared": false, "blockers_declared": [], "blocks": [] },
+            "can_act": false,
+        }))
+        .expect("stale snapshot JSON without commander_damage_enabled parses");
+
+        assert!(state.commander_damage_enabled);
+    }
 }

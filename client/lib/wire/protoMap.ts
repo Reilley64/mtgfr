@@ -130,6 +130,30 @@ export function fromProtoWire<T = unknown>(value: unknown): T {
   return convertFromProto(value) as T;
 }
 
+/** Product default: EDH tables track Commander damage unless explicitly disabled. */
+function withVisibleStateDefaults(state: Record<string, unknown>): Record<string, unknown> {
+  if (state.commander_damage_enabled === undefined) {
+    state.commander_damage_enabled = true;
+  }
+  return state;
+}
+
+function normalizeStreamFrame(frame: StreamFrame): StreamFrame {
+  if (frame.frame === "snapshot") {
+    return {
+      ...frame,
+      state: withVisibleStateDefaults({ ...frame.state }) as StreamFrame["state"],
+    };
+  }
+  if (frame.frame === "delta") {
+    return {
+      ...frame,
+      state: withVisibleStateDefaults({ ...frame.state }) as StreamFrame["state"],
+    };
+  }
+  return frame;
+}
+
 function looksLikeFlattenedUnion(value: Record<string, unknown>): value is Record<string, unknown> & { kind: string } {
   return typeof value.kind === "string";
 }
@@ -231,5 +255,5 @@ export function intentEnvelopeToProto(envelope: IntentEnvelope): ProtoIntentEnve
 }
 
 export function streamFrameFromProto(proto: unknown): StreamFrame {
-  return fromProtoWire<StreamFrame>(proto);
+  return normalizeStreamFrame(fromProtoWire<StreamFrame>(proto));
 }

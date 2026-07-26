@@ -1,6 +1,6 @@
 import * as Schema from "effect/Schema";
 import { describe, expect, it } from "vitest";
-import { catalogCardsFromProto, fromProtoWire, intentEnvelopeToProto, seedRequestToProto } from "./protoMap";
+import { catalogCardsFromProto, fromProtoWire, intentEnvelopeToProto, seedRequestToProto, streamFrameFromProto } from "./protoMap";
 import type { ActionView, CatalogCard, IntentEnvelope, StreamFrame } from "./types";
 import { MessageRef } from "./types";
 
@@ -114,8 +114,27 @@ describe("fromProtoWire", () => {
     });
   });
 
+  it("defaults missing commander_damage_enabled on snapshots to true", () => {
+    const frame = streamFrameFromProto({
+      frame: {
+        case: "snapshot",
+        value: {
+          seq: 1n,
+          state: {},
+        },
+      },
+    });
+
+    expect(frame).toMatchObject({
+      frame: "snapshot",
+      state: {
+        commander_damage_enabled: true,
+      },
+    });
+  });
+
   it("decodes commander damage toggle from visible snapshots", () => {
-    const frame = fromProtoWire<StreamFrame>({
+    const frame = streamFrameFromProto({
       frame: {
         case: "snapshot",
         value: {
