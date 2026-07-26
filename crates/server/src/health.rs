@@ -23,10 +23,9 @@ pub fn faithful_by_set() -> BTreeMap<String, u32> {
         if def.approximates.is_some() {
             continue;
         }
-        if def.set.is_empty() {
-            continue;
+        for set in def.sets.iter().filter(|set| !set.is_empty()) {
+            *map.entry(set.to_lowercase()).or_default() += 1;
         }
-        *map.entry(def.set.to_lowercase()).or_default() += 1;
     }
     map
 }
@@ -124,24 +123,27 @@ mod tests {
             if def.approximates.is_some() {
                 continue;
             }
-            if def.set.is_empty() {
-                continue;
+            for set in def.sets.iter().filter(|set| !set.is_empty()) {
+                *expected.entry(set.to_lowercase()).or_default() += 1;
             }
-            *expected.entry(def.set.to_lowercase()).or_default() += 1;
         }
         assert!(!expected.is_empty());
         let state = test_state().await;
         let Json(status) = live(State(state)).await;
         assert_eq!(status.faithful_by_set, expected);
         let sum: u32 = status.faithful_by_set.values().sum();
-        assert!(sum <= status.faithful_count);
+        let credited_faithful = cards::registry()
+            .values()
+            .filter(|d| d.approximates.is_none() && !d.sets.is_empty())
+            .count() as u32;
+        assert!(sum >= credited_faithful);
     }
 
     #[tokio::test]
     async fn live_faithful_by_set_omits_empty_set_and_approximates() {
         let approximated_with_set = cards::registry()
             .values()
-            .filter(|d| d.approximates.is_some() && !d.set.is_empty())
+            .filter(|d| d.approximates.is_some() && !d.sets.is_empty())
             .count();
         assert!(
             approximated_with_set > 0
@@ -154,7 +156,9 @@ mod tests {
         for (code, n) in &status.faithful_by_set {
             let registry_faithful = cards::registry()
                 .values()
-                .filter(|d| d.set == code.as_str() && d.approximates.is_none())
+                .filter(|d| {
+                    d.approximates.is_none() && d.sets.iter().any(|set| *set == code.as_str())
+                })
                 .count() as u32;
             assert_eq!(*n, registry_faithful);
         }

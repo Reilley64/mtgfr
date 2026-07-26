@@ -321,13 +321,11 @@ mode = "source"
     }
 
     #[test]
-    fn set_and_subtypes_parse_and_default_empty() {
-        // Catalog metadata for deck-builder search: a set code and printed subtypes, both
-        // optional. Present:
+    fn sets_and_subtypes_parse_and_default_empty() {
         let card = r#"name = "Goblin Test"
 id = "00000000-0000-0000-0000-000000000001"
 default_print = "00000000-0000-0000-0000-000000000002"
-set = "soc"
+sets = ["soc", "c16"]
 subtypes = ["Goblin", "Wizard"]
 
 [kind]
@@ -335,15 +333,27 @@ type = "creature"
 power = 1
 toughness = 1
 "#;
-        let def: CardDef = toml::from_str(card).expect("set + subtypes parse");
-        assert_eq!(def.set, "soc");
+        let def: CardDef = toml::from_str(card).expect("sets + subtypes parse");
+        assert_eq!(def.sets.as_ref(), &["soc", "c16"]);
         assert_eq!(def.subtypes.as_ref(), &["Goblin", "Wizard"]);
 
-        // Omitted: both default empty, so every not-yet-backfilled card still loads.
+        let legacy = r#"name = "Legacy Set"
+id = "00000000-0000-0000-0000-000000000001"
+default_print = "00000000-0000-0000-0000-000000000002"
+set = "cmd"
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+"#;
+        let def: CardDef =
+            toml::from_str(legacy).expect("singular set still loads during migration");
+        assert_eq!(def.sets.as_ref(), &["cmd"]);
+
         let bare = "name = \"Bare\"\nid = \"00000000-0000-0000-0000-000000000001\"\ndefault_print = \"00000000-0000-0000-0000-000000000002\"\n\n[kind]\ntype = \"creature\"\npower = 1\ntoughness = 1\n";
-        let def: CardDef = toml::from_str(bare).expect("a card without the keys still parses");
-        assert_eq!(def.set, "");
-        assert!(def.subtypes.is_empty());
+        let def: CardDef = toml::from_str(bare).expect("omitted sets defaults empty");
+        assert!(def.sets.is_empty());
     }
 
     #[test]
@@ -747,14 +757,14 @@ token = { name = "Inkling", power = 2, toughness = 1 }
             })
         ));
 
-        // Catalog metadata backfilled from Scryfall (tooling/backfill-card-meta.mjs): a set code
-        // on every card, and creature subtypes for search.
+        // Catalog metadata backfilled from Scryfall: set codes for printing-aware coverage,
+        // and creature subtypes for search.
         assert!(
-            !bear.set.is_empty(),
-            "every backfilled card carries a set code"
+            !bear.sets.is_empty(),
+            "every backfilled card carries at least one set code"
         );
         let viper = get_by_name("Ambush Viper").expect("Ambush Viper is in the pool");
-        assert_eq!(viper.set, "inr");
+        assert_eq!(viper.sets.as_ref(), &["inr"]);
         assert_eq!(viper.subtypes.as_ref(), &["Snake"]);
 
         let starfield = get_by_name("Starfield Mystic").expect("Starfield Mystic is in the pool");

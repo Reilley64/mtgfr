@@ -354,6 +354,8 @@ impl<'de> Deserialize<'de> for CardDef {
             #[serde(default)]
             oracle: Option<String>,
             #[serde(default)]
+            sets: Vec<String>,
+            #[serde(default)]
             set: String,
             #[serde(default)]
             subtypes: Vec<String>,
@@ -483,6 +485,13 @@ impl<'de> Deserialize<'de> for CardDef {
         }
 
         let card = Card::deserialize(d)?;
+        let sets = if !card.sets.is_empty() {
+            card.sets
+        } else if !card.set.is_empty() {
+            vec![card.set]
+        } else {
+            Vec::new()
+        };
         Ok(CardDef {
             id: Box::leak(card.id.into_boxed_str()),
             default_print: Box::leak(card.default_print.into_boxed_str()),
@@ -516,7 +525,7 @@ impl<'de> Deserialize<'de> for CardDef {
             cast_only_before_attackers: card.cast_only_before_attackers,
             approximates: card.approximates.map(|s| &*Box::leak(s.into_boxed_str())),
             oracle: card.oracle.map(|s| &*Box::leak(s.into_boxed_str())),
-            set: Box::leak(card.set.into_boxed_str()),
+            sets: arc_strs(sets),
             subtypes: arc_strs(card.subtypes),
             otags: arc_strs(card.otags),
             cycling: card.cycling,

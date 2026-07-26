@@ -412,7 +412,7 @@ pub fn catalog_card(def: &engine::CardDef) -> CatalogCard {
         color_identity: identity_indices(color_identity(def)),
         approximates: def.approximates.map(str::to_string),
         oracle: def.oracle.map(str::to_string),
-        set: def.set.to_string(),
+        set: def.sets.first().copied().unwrap_or_default().to_string(),
         subtypes: all_subtypes(def),
         otags: def.otags.iter().map(|s| s.to_string()).collect(),
         back: def.back.map(|id| {

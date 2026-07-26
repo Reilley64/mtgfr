@@ -633,10 +633,10 @@ pub struct CardDef {
     /// engine never parses it (behavior comes from `abilities`/`keywords`). A DFC joins its faces'
     /// text. `oracle = "…"` in TOML; `None` for a card whose text isn't recorded (or a vanilla).
     pub oracle: Option<&'static str>,
-    /// The card's set/edition code (Scryfall's lowercase code, e.g. `"soc"`). Pure catalog
-    /// metadata — the engine never consults it; it exists so the deck-builder search can match
-    /// on set. `set = "…"` in TOML; empty for a card whose set isn't recorded yet.
-    pub set: &'static str,
+    /// Scryfall set codes for every known printing of this card. Pure catalog + coverage
+    /// metadata — the engine never consults it for rules. `sets = ["soc", …]` in TOML; empty
+    /// for a card whose printings are not recorded yet.
+    pub sets: Arc<[&'static str]>,
     /// The card's printed subtypes (the segment after the "—": creature types like "Goblin",
     /// "Wizard"; also artifact/enchantment subtypes). Gameplay-relevant, not just catalog
     /// metadata: [`PermanentFilter::subtypes`] and [`Effect::Static(StaticEffect::Anthem)`]'s `subtypes` axis
@@ -1239,7 +1239,7 @@ fn treasure_token_builtin() -> CardDef {
         cast_only_before_attackers: false,
         approximates: None,
         oracle: None,
-        set: "",
+        sets: empty_slice(),
         subtypes: arc_slice(["Treasure"]),
         otags: empty_slice(),
         cycling: None,
@@ -1309,7 +1309,7 @@ pub(crate) fn rogue_token_stub() -> CardDef {
         cast_only_before_attackers: false,
         approximates: None,
         oracle: None,
-        set: "",
+        sets: empty_slice(),
         subtypes: arc_slice(["Rogue"]),
         otags: empty_slice(),
         cycling: None,
@@ -1381,7 +1381,7 @@ pub(crate) fn illusion_token() -> CardDef {
         cast_only_before_attackers: false,
         approximates: None,
         oracle: None,
-        set: "",
+        sets: empty_slice(),
         subtypes: arc_slice(["Illusion"]),
         otags: empty_slice(),
         cycling: None,
