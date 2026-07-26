@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import type { VisibleState } from "~/wire/types";
 import {
+  canArmEndTurn,
   combatStagingClearsOnStepChange,
   handleCombatDrop,
   mergeRequiredAttacks,
@@ -131,6 +133,40 @@ describe("stagedAttackersForDisplay", () => {
   it("does not re-merge required attacks after declaration is done (SSE lag)", () => {
     // Confirm clears local staging; required_attacks can linger on the old action until SSE.
     expect(stagedAttackersForDisplay([], required, true)).toEqual([]);
+  });
+});
+
+describe("canArmEndTurn", () => {
+  const base = {
+    active_player: 0,
+    viewer: 0,
+    stack: [] as VisibleState["stack"],
+    actions: [] as VisibleState["actions"],
+  } as VisibleState;
+
+  it("allows End Turn on an empty stack with no forced attackers", () => {
+    expect(canArmEndTurn(base, false)).toBe(true);
+  });
+
+  it("hides End Turn when goad requires an attack", () => {
+    const state = {
+      ...base,
+      actions: [
+        {
+          id: 1,
+          kind: "declare_attackers",
+          label: { key: "action.declare_attackers" },
+          needs_target: false,
+          section: "combat",
+          required_attacks: [{ attacker: 7, defender: 1 }],
+        },
+      ],
+    } as VisibleState;
+    expect(canArmEndTurn(state, false)).toBe(false);
+  });
+
+  it("hides End Turn while local attack staging is pending", () => {
+    expect(canArmEndTurn(base, true)).toBe(false);
   });
 });
 

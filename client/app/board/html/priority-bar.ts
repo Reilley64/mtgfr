@@ -9,6 +9,7 @@ import { turnYieldRockerClass, turnYieldThumbClass, turnYieldTrackClass } from "
 import { gameButtonClass } from "~/ui/buttonClass";
 import type { VisibleState } from "~/wire/types";
 import { formatMessage } from "../../domain/i18n/message";
+import { canArmEndTurn, stagedAttackersForDisplay } from "../geometry/combat-staging";
 import { type PrimaryAction, primaryActionFor } from "../geometry/interaction";
 import {
   CancelActionClicked,
@@ -26,12 +27,17 @@ const h = html<Message>();
 /** The same decision the click path makes (`primaryActionFor`) — the button's label and what it
  * submits must never disagree. */
 function primaryFor(board: BoardModel, state: VisibleState): PrimaryAction {
+  const attackers = stagedAttackersForDisplay(
+    board.combatAttackers,
+    state.actions?.find((a) => a.kind === "declare_attackers")?.required_attacks ?? [],
+    board.attackersConfirmed || state.combat.attackers_declared,
+  );
   return primaryActionFor({
     step: state.step,
     activePlayer: state.active_player,
     me: state.viewer,
     actions: state.actions,
-    attackers: board.combatAttackers,
+    attackers,
     blocks: board.combatBlocks,
     attackersConfirmed: board.attackersConfirmed,
     blockersConfirmed: board.blockersConfirmed,
@@ -49,11 +55,11 @@ function canArmStackYield(state: VisibleState, alreadyYielded: boolean): boolean
   return canResolveCard(state);
 }
 
+/** Show End Turn when it can be armed, or while already armed so the seat can cancel. */
 function showEndTurn(state: VisibleState, pendingAttackers: boolean): boolean {
   if (state.viewer !== state.active_player) return false;
-  if (state.stack.length > 0) return false;
-  if (pendingAttackers) return false;
-  return true;
+  if (state.turn_yielded) return true;
+  return canArmEndTurn(state, pendingAttackers);
 }
 
 function showTurnYield(state: VisibleState): boolean {

@@ -36,6 +36,7 @@ import {
   PendingChoiceAnswered,
   PileCardClicked,
   PlayModeChosen,
+  PrimaryClicked,
   PromptSubmitted,
   RadialOptionPicked,
   StackDwellChanged,
@@ -1348,6 +1349,39 @@ test("pointer up on non-target while staged clears drag without submitting", () 
   const gameFold = fold(state({ objects: [attacker, other] }));
   const [, commands] = updateBoard(board, BoardPointerUp({ x: 100, y: 100 }), gameFold, "T1");
   expect(commands).toEqual([]);
+});
+
+test("confirm attackers submits engine-required goad attacks when local staging is empty", () => {
+  const gameFold = fold(
+    state({
+      step: STEP.DeclareAttackers,
+      combat: {
+        attackers: [],
+        blocks: [],
+        attackers_declared: false,
+        blockers_declared: [],
+      },
+      actions: [
+        {
+          id: 1,
+          kind: "declare_attackers",
+          label: testMessageRef("Attack"),
+          needs_target: false,
+          section: "combat",
+          declare_for: [0],
+          required_attacks: [{ attacker: 7, defender: 1 }],
+        } as ActionView,
+      ],
+    }),
+  );
+  const [nextBoard, commands] = updateBoard(initialBoardModel(), PrimaryClicked(), gameFold, "T1");
+  expect(nextBoard.attackersConfirmed).toBe(true);
+  expect(commands).toHaveLength(1);
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "declare_attackers",
+    player: 0,
+    attackers: [{ attacker: 7, defender: 1 }],
+  });
 });
 
 test("pointer combat drop on opponent life orb stages an attacker", () => {

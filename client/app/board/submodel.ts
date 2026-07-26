@@ -81,6 +81,7 @@ import {
 import type { Camera, Vec2 } from "./geometry/camera";
 import { panBy, screenToWorld, worldToScreen, zoomAt } from "./geometry/camera";
 import {
+  canArmEndTurn,
   combatStagingClearsOnStepChange,
   handleCombatDrop,
   stagedAttackersForDisplay,
@@ -1910,7 +1911,14 @@ function primaryClickModel(model: BoardModel, fold: GameFoldState, tableId: stri
   const action = primaryFor(fold, model);
   const me = state.viewer;
   if (action.kind === "confirm-attackers") {
-    const intent: WireIntent = { kind: "declare_attackers", player: me, attackers: model.combatAttackers };
+    // Submit the same merged list the button label uses (goad required_attacks), not bare
+    // local staging — otherwise Attack (1) races an empty declare and latches confirmed.
+    const attackers = stagedAttackersForDisplay(
+      model.combatAttackers,
+      state.actions?.find((a) => a.kind === "declare_attackers")?.required_attacks ?? [],
+      model.attackersConfirmed || state.combat.attackers_declared,
+    );
+    const intent: WireIntent = { kind: "declare_attackers", player: me, attackers };
     return [{ ...model, combatAttackers: [], attackersConfirmed: true }, boardIntentSubmit(tableId, intent)];
   }
   if (action.kind === "confirm-blockers") {
@@ -2790,6 +2798,12 @@ export function updateBoard(
       if (tableId == null) return [model, []];
       const enabled = !(state.turn_yielded ?? false);
       if (me === active && state.stack.length === 0) {
+        // Arming End Turn only — cancelling "Ending turn…" stays available. Match the
+        // priority-bar gate so Enter cannot arm through a forced goad declaration.
+        const pendingAttackers = model.combatAttackers.length > 0 && !model.attackersConfirmed;
+        if (enabled && !canArmEndTurn(state, pendingAttackers)) {
+          return [model, []];
+        }
         return [model, [SetTurnYield({ tableId, enabled }) as unknown as BoardCmd]];
       }
       if (me !== active) {

@@ -515,13 +515,26 @@ fn auto_advance(
         // otherwise skip them and opponents could never respond during an end-turn walk.
         let active = game.active_player();
         let end_turn = turn_yields[active.0 as usize];
+        // Goad / must-attack: empty seal is illegal (CR 701.38). End Turn must not keep
+        // auto-passing the declarer — disarm the active seat's End Turn (and the declarer's
+        // yield, when a moved declaration made them different) and stop so a legal attack
+        // can be submitted.
+        let forced_attack_declaration = game.current_step() == engine::Step::DeclareAttackers
+            && !game.attackers_declared()
+            && holder == game.attack_declarer()
+            && !game.required_attacks(game.active_player()).is_empty();
+        if forced_attack_declaration && (turn_yields[holder.0 as usize] || end_turn) {
+            turn_yields[holder.0 as usize] = false;
+            turn_yields[active.0 as usize] = false;
+            break;
+        }
         let can_respond = end_turn
             && holder != active
             && game.stack_is_empty()
             && game.has_empty_stack_instant_play(holder);
         let skip = yields[holder.0 as usize]
             // End Turn response windows override the responder's until-my-turn (turn-priority-and-stack spec).
-            || (turn_yields[holder.0 as usize] && !can_respond)
+            || (turn_yields[holder.0 as usize] && !can_respond && !forced_attack_declaration)
             || (!game.has_meaningful_action(holder) && !can_respond);
         if !skip {
             break;
@@ -1418,6 +1431,61 @@ mod tests {
             game.meaningful_actions(PlayerId(1))
                 .contains(&MeaningfulAction::DeclareBlockers),
             "P1 still owes a declare-blockers decision"
+        );
+    }
+
+    /// End Turn while a goaded creature must attack must not leave the seat auto-passing forever:
+    /// empty seal is illegal (CR 701.38), so End Turn disarms and the declarer can still submit
+    /// a legal attack declaration.
+    #[test]
+    fn end_turn_with_goaded_creature_disarms_and_still_accepts_legal_declare() {
+        let bear = || cards::get_by_name("Grizzly Bear").expect("Grizzly Bear in pool");
+        let mut table = Table::empty();
+        let mut game = engine::Game::new();
+        let attacker = game.spawn_on_battlefield(PlayerId(0), bear());
+        game.goad(attacker, PlayerId(1));
+        table.game = Some(game);
+        advance_table_to_step(&mut table, engine::Step::DeclareAttackers);
+        assert_eq!(table.game.as_ref().unwrap().active_player(), PlayerId(0));
+
+        let (result, _) = TableSession::new(&mut table).set_turn_yield(PlayerId(0), true);
+        assert!(result.accepted);
+
+        let game = table.game.as_ref().unwrap();
+        assert_eq!(
+            game.current_step(),
+            engine::Step::DeclareAttackers,
+            "goad forbids empty seal — stay on declare attackers"
+        );
+        assert!(
+            !game.attackers_declared(),
+            "declaration stays open until a legal attack lands"
+        );
+        assert!(
+            !table.chrome.turn_yields()[0],
+            "End Turn must disarm when goad blocks the empty seal"
+        );
+        assert_eq!(
+            game.priority_holder(),
+            PlayerId(0),
+            "declarer keeps priority to submit a legal attack"
+        );
+
+        let (result, _) = TableSession::new(&mut table).submit(Intent::DeclareAttackers {
+            player: PlayerId(0),
+            attackers: vec![(attacker, Defender::Player(PlayerId(1)))],
+        });
+        assert!(
+            result.accepted,
+            "legal goaded attack must still land after End Turn bounced: {:?}",
+            result.reason
+        );
+        assert!(
+            result
+                .events
+                .iter()
+                .any(|e| matches!(e, Event::AttackerDeclared { .. })),
+            "legal goaded attack must emit AttackerDeclared after End Turn bounced"
         );
     }
 
