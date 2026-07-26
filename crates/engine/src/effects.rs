@@ -903,12 +903,14 @@ impl Game {
             // SacrificeSelfUnlessPay — may pause peel (`resolution/pause_may`).
             Effect::Choice(ChoiceEffect::MaySacrifice { .. })
             | Effect::Choice(ChoiceEffect::MayReturnFromGraveyard { .. })
+            | Effect::Choice(ChoiceEffect::MayExileDiscardedNonlandMayPlay { .. })
             | Effect::Choice(ChoiceEffect::MayDiscard { .. })
             | Effect::Choice(ChoiceEffect::MayDrawUnlessPays { .. })
             | Effect::Choice(ChoiceEffect::TargetPlayerMayDraw { .. })
             | Effect::Choice(ChoiceEffect::DamagingCreatureControllerMayDraw { .. })
             | Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             | Effect::Choice(ChoiceEffect::MayDrawUpToThenOpponentMayRepeat { .. })
+            | Effect::Choice(ChoiceEffect::MayPutCounterOnCreature)
             | Effect::Choice(ChoiceEffect::SacrificeSelfUnlessPay { .. }) => {
                 self.run_may_pause(effect, ctx)
             }
@@ -1074,6 +1076,7 @@ impl Game {
             Effect::Zone(ZoneEffect::UntapSearchedLand)
             | Effect::Zone(ZoneEffect::AttachTriggeringAuraToMintedToken { .. })
             | Effect::Zone(ZoneEffect::ReflexiveTrigger { .. })
+            | Effect::Zone(ZoneEffect::ReflexiveTriggerIfNonlandExiled { .. })
             | Effect::Zone(ZoneEffect::ReturnFromGraveyardAttachedToToken { .. })
             | Effect::Zone(ZoneEffect::AttachSelfToReanimated)
             | Effect::Zone(ZoneEffect::AttachSelfToMintedToken)

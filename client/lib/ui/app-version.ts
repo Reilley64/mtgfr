@@ -20,10 +20,7 @@ export function formatFaithfulPercent(faithfulCount: number, oracleTotal: number
 }
 
 /** Fixed bottom-left API badge — hidden until `version` is known (Solid AppVersion parity). */
-export function appVersionBadge<M>(
-  h: ReturnType<typeof createHtml<M>>,
-  meta: AppChromeMeta,
-): Html | null {
+export function appVersionBadge<M>(h: ReturnType<typeof createHtml<M>>, meta: AppChromeMeta): Html | null {
   if (meta.version == null) return null;
   const pct =
     meta.faithfulCount != null && meta.oracleTotal != null
@@ -44,9 +41,6 @@ export function appVersionBadge<M>(
           );
   return h.div(
     [h.Class(cn(appVersionClass(), "flex flex-col gap-0"))],
-    [
-      coverage,
-      h.div([h.DataAttribute("testid", "app-version")], [`API ${meta.version}`]),
-    ],
+    [coverage, h.div([h.DataAttribute("testid", "app-version")], [`API ${meta.version}`])],
   );
 }

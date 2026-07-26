@@ -48,10 +48,11 @@ impl Game {
                     until_end_of_turn: true,
                 },
             ),
-            // "Choose one —" on a triggered ability (CR 700.2): pause on a ChooseMode for the
-            // controller. The chosen mode resolves later through this same pipeline (see
-            // `answer_choose_mode`), carrying this ability's `source`/`target`/`x` context so a
-            // mode that needs them still has them. An empty mode list is a defensive no-op.
+            // "Choose one —" reached mid-resolution — a modal spell's own resolution step (CR
+            // 608.2, Zimone's Hypothesis), not a triggered ability (those choose their mode at
+            // placement, see `place_pending_triggers`). Pause on a ChooseMode; the chosen mode
+            // runs immediately through this same pipeline (see `answer_choose_mode`), carrying
+            // this effect's `source`/`target`/`x` context. An empty mode list is a defensive no-op.
             Effect::ChooseOne { options } => {
                 if options.is_empty() {
                     return;
@@ -64,6 +65,7 @@ impl Game {
                         target,
                         x,
                         modes: options,
+                        at_placement: false,
                     },
                 );
             }

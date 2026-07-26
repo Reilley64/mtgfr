@@ -14,6 +14,7 @@ import {
   type PromptDraft,
 } from "~/choice";
 import { testMessageRef } from "~/i18n/testMessageRef";
+import { fromProtoWire } from "~/wire/protoMap";
 import type { ObjectView, PendingChoiceView, VisibleState, WireIntent, WireModeChoice } from "~/wire/types";
 
 const ALL_PENDING_CHOICE_KINDS = [
@@ -50,6 +51,7 @@ const ALL_PENDING_CHOICE_KINDS = [
   "caster_keep_permanents",
   "choose_counter_target_for_player",
   "may_return_from_graveyard",
+  "may_exile_discarded_to_play",
   "may_discard",
   "discard",
   "put_land_from_hand",
@@ -108,6 +110,10 @@ test("pending choice kinds list is exhaustive", () => {
 test("FORMULATOR_FOR_KIND registers every pending choice kind", () => {
   assertAllKindsRegistered(ALL_PENDING_CHOICE_KINDS);
   expect(Object.keys(FORMULATOR_FOR_KIND).sort()).toEqual([...ALL_PENDING_CHOICE_KINDS].sort());
+});
+
+test("FORMULATOR_FOR_KIND registers may_exile_discarded_to_play", () => {
+  expect(FORMULATOR_FOR_KIND).toHaveProperty("may_exile_discarded_to_play", "cardPick");
 });
 
 test("choiceIntent maps discard answer", () => {
@@ -292,6 +298,80 @@ test("buildAnswerFromDraft builds proliferate from empty card-pick", () => {
   const pc = { kind: "proliferate" as const, items: [], player: 0, source: 1 };
   const draft: PromptDraft = { kind: "card-pick", picked: [] };
   expect(buildAnswerFromDraft(pc, draft)).toEqual({ kind: "sacrifice", ids: [] });
+});
+
+test("mandatory may_return_from_graveyard requires a pick and optional may_return can decline", () => {
+  const mandatory = {
+    kind: "may_return_from_graveyard" as const,
+    items: [{ id: 8, label: "Forest" }],
+    mandatory: true,
+    player: 0,
+    source: 1,
+  };
+  const optional = {
+    kind: "may_return_from_graveyard" as const,
+    items: [{ id: 8, label: "Forest" }],
+    mandatory: false,
+    player: 0,
+    source: 1,
+  };
+
+  expect(cardPickReady(mandatory, [])).toBe(false);
+  expect(cardPickReady(mandatory, [8])).toBe(true);
+  expect(declineAnswer(mandatory)).toBeNull();
+
+  expect(cardPickReady(optional, [])).toBe(false);
+  expect(cardPickReady(optional, [8])).toBe(true);
+  expect(declineAnswer(optional)).toEqual({ kind: "sacrifice", ids: [] });
+});
+
+test("may_exile_discarded_to_play chooses one discarded card or declines", () => {
+  const decoded = fromProtoWire<{ pending_choice: PendingChoiceView }>({
+    pendingChoice: {
+      choice: {
+        case: "mayExileDiscardedToPlay",
+        value: {
+          player: 0,
+          source: 1,
+          items: [
+            { id: 8, label: "Lightning Bolt" },
+            { id: 9, label: "Thrill of Possibility" },
+          ],
+        },
+      },
+    },
+  });
+  const pc = decoded.pending_choice;
+
+  expect(pc).toEqual({
+    kind: "may_exile_discarded_to_play",
+    player: 0,
+    source: 1,
+    items: [
+      { id: 8, label: "Lightning Bolt" },
+      { id: 9, label: "Thrill of Possibility" },
+    ],
+  });
+
+  expect(cardPickReady(pc, [])).toBe(false);
+  expect(cardPickReady(pc, [8])).toBe(true);
+  expect(declineAnswer(pc)).toEqual({ kind: "sacrifice", ids: [] });
+  expect(buildAnswerFromDraft(pc, { kind: "card-pick", picked: [9] })).toEqual({
+    kind: "sacrifice",
+    ids: [9],
+  });
+
+  const decline = declineAnswer(pc);
+  expect(decline).not.toBeNull();
+  if (decline == null) {
+    throw new Error("expected may_exile_discarded_to_play to support decline");
+  }
+  expect(choiceIntent(pc, decline)).toEqual({
+    kind: "choose_sacrifices",
+    player: 0,
+    sacrifices: [],
+  });
+  expectDraftIntent(pc, { kind: "card-pick", picked: [8] }, { kind: "choose_sacrifices", player: 0, sacrifices: [8] });
 });
 
 describe("answerFromDraft builds accepted intents", () => {

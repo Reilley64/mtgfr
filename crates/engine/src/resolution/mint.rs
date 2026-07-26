@@ -127,6 +127,7 @@ impl Game {
                 | ZoneEffect::UntapSearchedLand
                 | ZoneEffect::AttachTriggeringAuraToMintedToken { .. }
                 | ZoneEffect::ReflexiveTrigger { .. }
+                | ZoneEffect::ReflexiveTriggerIfNonlandExiled { .. }
                 | ZoneEffect::ReturnFromGraveyardAttachedToToken { .. }
                 | ZoneEffect::AttachSelfToReanimated
                 | ZoneEffect::AttachSelfToMintedToken

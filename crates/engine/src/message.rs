@@ -123,6 +123,8 @@ message_keys! {
     EFFECT_CHOICE_MAY_DRAW_UNLESS_PAYS => "effect.choice_may_draw_unless_pays",
     EFFECT_CHOICE_MAY_DRAW_UP_TO => "effect.choice_may_draw_up_to",
     EFFECT_CHOICE_MAY_DRAW_UP_TO_THEN_OPPONENT_MAY_REPEAT => "effect.choice_may_draw_up_to_then_opponent_may_repeat",
+    EFFECT_CHOICE_MAY_EXILE_DISCARDED_NONLAND_MAY_PLAY => "effect.choice_may_exile_discarded_nonland_may_play",
+    EFFECT_CHOICE_MAY_PUT_COUNTER_ON_CREATURE => "effect.choice_may_put_counter_on_creature",
     EFFECT_CHOICE_MAY_RETURN_FROM_GRAVEYARD => "effect.choice_may_return_from_graveyard",
     EFFECT_CHOICE_MAY_SACRIFICE => "effect.choice_may_sacrifice",
     EFFECT_CHOICE_PHASE_OUT => "effect.choice_phase_out",
@@ -189,6 +191,7 @@ message_keys! {
     EFFECT_LIFE_EACH_OPPONENT_DRAIN => "effect.life_each_opponent_drain",
     EFFECT_LIFE_EACH_OPPONENT_LOSES => "effect.life_each_opponent_loses",
     EFFECT_LIFE_EACH_PLAYER_BECOMES_HIGHEST => "effect.life_each_player_becomes_highest",
+    EFFECT_LIFE_EACH_PLAYER_LOSES => "effect.life_each_player_loses",
     EFFECT_LIFE_GAIN => "effect.life_gain",
     EFFECT_LIFE_GAIN_TARGET_CONTROLLER => "effect.life_gain_target_controller",
     EFFECT_LIFE_LOSE => "effect.life_lose",
@@ -1176,6 +1179,10 @@ impl Effect {
             Effect::Life(EachPlayerBecomesHighest) => {
                 MessageRef::new(MessageKey::EFFECT_LIFE_EACH_PLAYER_BECOMES_HIGHEST)
             }
+            Effect::Life(EachPlayerLoses { amount }) => {
+                MessageRef::new(MessageKey::EFFECT_LIFE_EACH_PLAYER_LOSES)
+                    .with_params(vec![amount_param("amount", amount)])
+            }
             Effect::Life(TargetPlayerLoses { amount }) => {
                 MessageRef::new(MessageKey::EFFECT_LIFE_TARGET_PLAYER_LOSES)
                     .with_params(vec![int_param("amount", amount)])
@@ -1500,7 +1507,8 @@ impl Effect {
             Effect::Zone(AttachTriggeringAuraToMintedToken { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_ZONE_ATTACH_TRIGGERING_AURA_TO_MINTED_TOKEN)
             }
-            Effect::Zone(ReflexiveTrigger { then }) => {
+            Effect::Zone(ReflexiveTrigger { then })
+            | Effect::Zone(ReflexiveTriggerIfNonlandExiled { then }) => {
                 MessageRef::new(MessageKey::EFFECT_ZONE_REFLEXIVE_TRIGGER)
                     .with_children(then.iter().map(|effect| effect.clone().message()).collect())
             }
@@ -1834,7 +1842,13 @@ impl Effect {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_MAY_RETURN_FROM_GRAVEYARD)
                     .with_params(vec![card_filter_param("filter", filter)])
             }
+            Effect::Choice(MayExileDiscardedNonlandMayPlay { .. }) => {
+                MessageRef::new(MessageKey::EFFECT_CHOICE_MAY_EXILE_DISCARDED_NONLAND_MAY_PLAY)
+            }
             Effect::Choice(MayDiscard { .. }) => MessageRef::new(MessageKey::EFFECT_CHOICE_MAY_DISCARD),
+            Effect::Choice(MayPutCounterOnCreature) => {
+                MessageRef::new(MessageKey::EFFECT_CHOICE_MAY_PUT_COUNTER_ON_CREATURE)
+            }
             Effect::Choice(MayDrawUnlessPays { cost, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_MAY_DRAW_UNLESS_PAYS)
                     .with_params(vec![amount_param("cost", cost)])

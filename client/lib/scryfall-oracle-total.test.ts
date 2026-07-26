@@ -29,12 +29,7 @@ describe("scryfall oracle total cache", () => {
   });
 
   it("counts oracle bulk rows and caches per-set totals from the same download", async () => {
-    const gz = gzipJsonl([
-      '{"id":"a","set":"soc"}',
-      '{"id":"b","set":"soc"}',
-      '{"id":"c","set":"cmd"}',
-      "",
-    ]);
+    const gz = gzipJsonl(['{"id":"a","set":"soc"}', '{"id":"b","set":"soc"}', '{"id":"c","set":"cmd"}', ""]);
     const fetchImpl = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
       const url = String(input);
       if (url.includes("/bulk-data/oracle-cards")) {
@@ -58,19 +53,13 @@ describe("scryfall oracle total cache", () => {
   });
 
   it("skips blank lines and ignores rows without a string set for per-set totals", async () => {
-    const gz = gzipJsonl([
-      '{"id":"a","set":"soc"}',
-      '{"id":"b","set":7}',
-      '{"id":"c"}',
-      "",
-    ]);
+    const gz = gzipJsonl(['{"id":"a","set":"soc"}', '{"id":"b","set":7}', '{"id":"c"}', ""]);
     const fetchImpl = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
       const url = String(input);
       if (url.includes("/bulk-data/oracle-cards")) {
-        return new Response(
-          JSON.stringify({ jsonl_download_uri: "https://data.scryfall.io/x.jsonl.gz" }),
-          { status: 200 },
-        );
+        return new Response(JSON.stringify({ jsonl_download_uri: "https://data.scryfall.io/x.jsonl.gz" }), {
+          status: 200,
+        });
       }
       return new Response(gz as unknown as BodyInit, { status: 200 });
     });
@@ -87,10 +76,9 @@ describe("scryfall oracle total cache", () => {
       if (fail) return new Response("nope", { status: 503 });
       const url = String(input);
       if (url.includes("/bulk-data/oracle-cards")) {
-        return new Response(
-          JSON.stringify({ jsonl_download_uri: "https://data.scryfall.io/x.jsonl.gz" }),
-          { status: 200 },
-        );
+        return new Response(JSON.stringify({ jsonl_download_uri: "https://data.scryfall.io/x.jsonl.gz" }), {
+          status: 200,
+        });
       }
       return new Response(gz as unknown as BodyInit, { status: 200 });
     });
@@ -107,10 +95,9 @@ describe("scryfall oracle total cache", () => {
     const fetchImpl = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
       const url = String(input);
       if (url.includes("/bulk-data/oracle-cards")) {
-        return new Response(
-          JSON.stringify({ jsonl_download_uri: "https://data.scryfall.io/x.jsonl.gz" }),
-          { status: 200 },
-        );
+        return new Response(JSON.stringify({ jsonl_download_uri: "https://data.scryfall.io/x.jsonl.gz" }), {
+          status: 200,
+        });
       }
       return new Response(gz as unknown as BodyInit, { status: 200 });
     });

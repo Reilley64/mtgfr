@@ -345,6 +345,12 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                     )
                 },
             );
+            // A printed non-mana X cap (Open the Way's player count, CR 601.2b) clamps the
+            // count-picker's ceiling to exactly what the cast gate will accept.
+            let max_x = match game.cast_x_ceiling(&def) {
+                Some(cap) => max_x.min(cap),
+                None => max_x,
+            };
             ActionView {
                 id: action.id,
                 kind: "cast".to_string(),
@@ -2044,6 +2050,7 @@ mod tests {
             halves: empty_slice(),
             suspend: None,
             vanishing: None,
+            cast_x_max: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,

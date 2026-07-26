@@ -687,6 +687,7 @@ impl Effect {
             | Effect::Static(StaticEffect::SetAttachedTypes { .. })
             | Effect::Life(LifeEffect::EachOpponentDrain { .. })
             | Effect::Life(LifeEffect::EachOpponentLoses { .. })
+            | Effect::Life(LifeEffect::EachPlayerLoses { .. })
             | Effect::Life(LifeEffect::EachPlayerBecomesHighest)
             | Effect::Dig(DigEffect::Scry { .. })
             | Effect::Dig(DigEffect::Surveil { .. })
@@ -749,6 +750,8 @@ impl Effect {
             | Effect::Choice(ChoiceEffect::MaySacrifice { .. })
             | Effect::Choice(ChoiceEffect::MayReturnFromGraveyard { .. })
             | Effect::Choice(ChoiceEffect::MayDiscard { .. })
+            | Effect::Choice(ChoiceEffect::MayExileDiscardedNonlandMayPlay { .. })
+            | Effect::Choice(ChoiceEffect::MayPutCounterOnCreature)
             | Effect::Choice(ChoiceEffect::MayDrawUnlessPays { .. })
             | Effect::Counters(CountersEffect::PutCountersEach { .. })
             | Effect::Choice(ChoiceEffect::Proliferate { .. })
@@ -868,6 +871,7 @@ impl Effect {
             // A reflexive trigger's own steps are placed as separate abilities, each choosing its
             // own target when placed — this scheduler step takes no target of its own.
             | Effect::Zone(ZoneEffect::ReflexiveTrigger { .. })
+            | Effect::Zone(ZoneEffect::ReflexiveTriggerIfNonlandExiled { .. })
             | Effect::Control(ControlEffect::AttachSelfToEntering { .. })
             | Effect::Zone(ZoneEffect::AttachSelfToReanimated)
             | Effect::Zone(ZoneEffect::AttachSelfToMintedToken)
@@ -1028,6 +1032,31 @@ impl Effect {
                     token: Some(token),
                 })
             }
+            other => other,
+        }
+    }
+
+    /// Bake this resolution's settled nonland-exile count into a reflexive
+    /// [`ReflexiveTriggerIfNonlandExiled`](ZoneEffect::ReflexiveTriggerIfNonlandExiled) body (CR
+    /// 603.3b — Augusta, Order Returned) so the follow-up reads the number even though it resolves
+    /// in its own later frame: an [`Amount::NonlandCardsExiledThisWay`](crate::Amount) count on a
+    /// [`PutCounters`](crate::CountersEffect::PutCounters) body becomes a fixed count. One effect
+    /// shape only — the reflexive-count analogue of [`with_reflexive_token`](Self::with_reflexive_token).
+    pub(crate) fn with_reflexive_count(self, count: u32) -> Effect {
+        match self {
+            Effect::Counters(CountersEffect::PutCounters {
+                count: Amount::NonlandCardsExiledThisWay,
+                target,
+                targets,
+                kind,
+                divided,
+            }) => Effect::Counters(CountersEffect::PutCounters {
+                count: Amount::Fixed(count as i32),
+                target,
+                targets,
+                kind,
+                divided,
+            }),
             other => other,
         }
     }
@@ -1634,6 +1663,16 @@ pub enum Condition {
     /// [`condition_holds`](Game::condition_holds) path (returns `false` there) — every ETB
     /// intervening-if goes through `ability_condition_holds` instead.
     CastFromHand,
+    /// "When you do [sacrifice one or more creatures]" (CR 603.4 — Plumb the Forbidden's reflexive
+    /// copy rider). Gates a spell's [`Trigger::YouCastThis`](crate::Trigger::YouCastThis) ability
+    /// on whether one or more permanents were actually sacrificed to pay the spell's additional
+    /// sacrifice cost (CR 601.2f): the reflexive trigger doesn't happen at all when nothing was
+    /// sacrificed, so no zero-count copy trigger ever goes on the stack. Source-object-based like
+    /// [`CastFromHand`](Self::CastFromHand) just above: `TriggerContext` carries no source id, so
+    /// [`Game::ability_condition_holds`] special-cases it directly against its own `source`
+    /// parameter, reading [`Game::spell_sacrifice_count`]. Unreachable through the ordinary
+    /// [`condition_holds`](Game::condition_holds) path (returns `false` there).
+    SpellSacrificedToCast,
     /// "if this ability has been activated `at_least` or more times this turn" (CR 602.2b —
     /// Dragon Whelp's "If this ability has been activated four or more times this turn,
     /// sacrifice this creature at the beginning of the next end step"). Source-object-based like
@@ -1852,6 +1891,14 @@ pub(crate) fn contextualize_effect(effect: Effect, ctx: TriggerContext) -> Effec
         effect
     } else {
         fill_cards_left_graveyard(effect, ctx.cards_left_graveyard)
+    };
+    // A `YouDiscardNonland` payoff that exiles one of the discarded nonland cards (Conspiracy
+    // Theorist) needs the batch's nonland card ids baked in — same shape as `cards_left_graveyard`
+    // above. `&[]` for every other trigger, so this is a no-op elsewhere.
+    let effect = if ctx.discarded_nonland_cards.is_empty() {
+        effect
+    } else {
+        fill_discarded_nonland_cards(effect, ctx.discarded_nonland_cards)
     };
     // A delayed one-shot's copy payoff (Thunderclap Drake) needs the spell that fired the
     // armed watch, not the attack tuple below — guarded separately for the same reason as
@@ -2176,6 +2223,19 @@ fn fill_cards_left_graveyard(effect: Effect, cards: &'static [ObjectId]) -> Effe
     match effect {
         Effect::Choice(ChoiceEffect::PutCounterThenMayBecomeCopyOfCardFromList { .. }) => {
             Effect::Choice(ChoiceEffect::PutCounterThenMayBecomeCopyOfCardFromList { cards })
+        }
+        other => other,
+    }
+}
+
+/// Rewrite a [`TriggerContext::discarded_nonland_cards`]-reading effect placeholder to the batch's
+/// nonland card ids: [`Effect::Choice(ChoiceEffect::MayExileDiscardedNonlandMayPlay)`] (Conspiracy
+/// Theorist, off [`Trigger::YouDiscardNonland`]) — mirrors [`fill_cards_left_graveyard`] above.
+/// `cards` is the already-leaked `&'static` slice off the trigger context, so no re-leak here.
+fn fill_discarded_nonland_cards(effect: Effect, cards: &'static [ObjectId]) -> Effect {
+    match effect {
+        Effect::Choice(ChoiceEffect::MayExileDiscardedNonlandMayPlay { .. }) => {
+            Effect::Choice(ChoiceEffect::MayExileDiscardedNonlandMayPlay { cards })
         }
         other => other,
     }

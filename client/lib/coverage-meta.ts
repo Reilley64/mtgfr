@@ -54,11 +54,7 @@ export async function fetchCoverageMeta(): Promise<CoverageMeta> {
     return {
       faithfulCount: parsed.faithfulCount,
       oracleTotal: getCachedOracleTotal(),
-      sets: joinCoverageSetRows(
-        getCachedScryfallSets(),
-        getCachedOracleTotalBySet(),
-        parsed.faithfulBySet,
-      ),
+      sets: joinCoverageSetRows(getCachedScryfallSets(), getCachedOracleTotalBySet(), parsed.faithfulBySet),
     };
   } catch {
     return unavailableCoverageMeta();

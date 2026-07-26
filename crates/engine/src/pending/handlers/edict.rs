@@ -191,17 +191,29 @@ impl Game {
                 },
             );
         }
-        // Cursed Mirror's "except it has haste."
+        // Cursed Mirror's "except it has haste" — a copiable value (CR 707.2): a copy of this
+        // copied form keeps haste, so it rides as a `CopyRiderKeywordsGranted` rider rather than
+        // a transient `TempBoost`. Cleared when the until-end-of-turn copy reverts.
         if gains_haste {
             const HASTE: &[Keyword] = &[Keyword::Haste];
             self.push_apply(
                 &mut events,
-                Event::TempBoost {
+                Event::CopyRiderKeywordsGranted {
                     object: source,
-                    power: 0,
-                    toughness: 0,
                     keywords: HASTE,
-                    source_name,
+                },
+            );
+        }
+        // CR 707.2: the copied creature's own copy-effect exception rider is part of its copiable
+        // values, so copying something already under a copy effect (Cursed Mirror copying Muddle's
+        // myriad form, or a Twinflame haste token) carries that rider onto this copy too.
+        let copied_rider = self.copiable_keywords(chosen);
+        if !copied_rider.is_empty() {
+            self.push_apply(
+                &mut events,
+                Event::CopyRiderKeywordsGranted {
+                    object: source,
+                    keywords: copied_rider,
                 },
             );
         }
@@ -244,6 +256,9 @@ impl Game {
         // as `Game::answer_enter_as_copy` (slice 2). Snapshot the other tokens up front, before
         // any `BecameCopy` applies.
         let def = self.def_id_of(chosen);
+        // CR 707.2: "a copy of that token" carries the chosen token's own copy-effect exception
+        // rider (Brudiclad copying a Twinflame haste token → each converted token keeps haste).
+        let copied_rider = self.copiable_keywords(chosen);
         let others: Vec<ObjectId> = candidates.into_iter().filter(|&id| id != chosen).collect();
         for other in others {
             self.push_apply(
@@ -254,6 +269,15 @@ impl Game {
                     until_eot: false,
                 },
             );
+            if !copied_rider.is_empty() {
+                self.push_apply(
+                    &mut events,
+                    Event::CopyRiderKeywordsGranted {
+                        object: other,
+                        keywords: copied_rider,
+                    },
+                );
+            }
         }
         Ok(events)
     }

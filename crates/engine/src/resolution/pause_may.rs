@@ -34,6 +34,7 @@ impl Game {
             Effect::Choice(ChoiceEffect::MayReturnFromGraveyard {
                 filter,
                 if_you_sacrificed_this_way,
+                mandatory,
             }) => {
                 if if_you_sacrificed_this_way
                     && !self.resolution_frame.sacrificed_by_edict_controller
@@ -46,6 +47,30 @@ impl Game {
                         player: controller,
                         source,
                         filter,
+                        mandatory,
+                    },
+                )
+            }
+            // A resolution-time optional "put a +1/+1 counter on a creature" (Zimone's Hypothesis'
+            // primer) pauses on a MayPutCounterOnCreature choice over every battlefield creature;
+            // declining runs nothing. No creature to offer skips the pause outright.
+            Effect::Choice(ChoiceEffect::MayPutCounterOnCreature) => pending::raise(
+                self,
+                pending::ChoiceRequest::MayPutCounterOnCreature {
+                    player: controller,
+                    source,
+                },
+            ),
+            // Conspiracy Theorist's batch nonland-discard payoff: "you may exile one of them from
+            // your graveyard." Pauses on a MayExileDiscardedToPlay choice over the discarded
+            // nonland cards still in the graveyard; declining (or none still there) runs nothing.
+            Effect::Choice(ChoiceEffect::MayExileDiscardedNonlandMayPlay { cards }) => {
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::MayExileDiscardedNonlandMayPlay {
+                        player: controller,
+                        source,
+                        cards,
                     },
                 )
             }

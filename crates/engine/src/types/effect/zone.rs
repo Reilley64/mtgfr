@@ -110,6 +110,24 @@ pub enum ZoneEffect {
         then: &'static [Effect],
     },
 
+    /// "When one or more nonland cards are exiled this way, …" (CR 603.3b — Augusta, Order
+    /// Returned). The reflexive twin of [`ReflexiveTrigger`](Self::ReflexiveTrigger) gated on a
+    /// count rather than a minted token: placed after the same resolution's
+    /// [`EachPlayerExilesFromGraveyard`](crate::ChoiceEffect::EachPlayerExilesFromGraveyard) fan-out,
+    /// it creates a reflexive triggered ability for each `then` effect **only when that fan-out
+    /// exiled one or more nonland cards** — none at all when the count is zero. The count
+    /// ([`ResolutionFrame::nonland_cards_exiled_this_way`](crate::resolution::ResolutionFrame)) is
+    /// baked into each `then` effect's [`Amount::NonlandCardsExiledThisWay`](crate::Amount) at
+    /// placement, so the follow-up reads the settled number even though it resolves in its own
+    /// later frame; its target is chosen when it goes on the stack (CR 601.2c), after the fan-out.
+    ReflexiveTriggerIfNonlandExiled {
+        #[cfg_attr(
+            feature = "card-dsl",
+            serde(default, deserialize_with = "de::static_slice")
+        )]
+        then: &'static [Effect],
+    },
+
     ReturnAllToHand {
         filter: PermanentFilter,
     },

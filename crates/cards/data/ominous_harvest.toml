@@ -14,8 +14,7 @@ black = 1
 [kind]
 type = "sorcery"
 
-# Gravestorm (When you cast this spell, copy it for each permanent put into a graveyard from the
-# battlefield this turn.) Target player draws a card and loses 1 life.
+# Target player draws a card and loses 1 life.
 [[abilities]]
 timing = "spell"
 
@@ -31,8 +30,14 @@ type = "life"
 mode = "target_player_loses"
 amount = 1
 
-# Gravestorm: copy it for each permanent put into a graveyard from the battlefield this turn.
+# Gravestorm (When you cast this spell, copy it for each permanent put into a graveyard from the
+# battlefield this turn.) — a cast-time trigger (CR 702.40a-style), so the copies sit on the stack
+# above the original. No "you may choose new targets," so each copy keeps the original's target.
+[[abilities]]
+timing = "when_you_cast_this"
+
+# copy it for each permanent put into a graveyard from the battlefield this turn.
 [[abilities.effects]]
 type = "copy"
-mode = "this_spell"
+mode = "copy_triggering_spell"
 count = "permanents_died_this_turn"

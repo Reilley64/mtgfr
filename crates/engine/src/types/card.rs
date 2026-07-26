@@ -879,6 +879,30 @@ pub struct CardDef {
     /// fabricated-single-ability `Game::queue_self_sacrifice_trigger` evoke also uses.
     /// `vanishing = N` in TOML.
     pub vanishing: Option<u8>,
+    /// A cast-time upper bound on the announced value of {X}, beyond the mana the caster can pay
+    /// (CR 601.2b — Open the Way's "X can't be greater than the number of players in the game").
+    /// `None` (every ordinary {X} spell) leaves X bounded only by affordability. `Some(cap)`
+    /// rejects a cast whose announced X exceeds the cap in [`Game::validate_cast`] and clamps the
+    /// count-picker's offered ceiling in the snapshot. `cast_x_max = "player_count"` in TOML;
+    /// ignored on a card with no {X}.
+    pub cast_x_max: Option<CastXMax>,
+}
+
+/// A cast-time ceiling on a spell's announced {X} that isn't derived from mana (CR 601.2b).
+/// See [`CardDef::cast_x_max`].
+/// ponytail: the pool has exactly one such cap (Open the Way's player-count bound), so this is a
+/// single-variant enum rather than a general `Amount`. Grow a variant (or fold in an `Amount`)
+/// when a second differently-bounded {X} spell lands.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "card-dsl",
+    derive(serde::Deserialize),
+    serde(rename_all = "snake_case")
+)]
+pub enum CastXMax {
+    /// "X can't be greater than the number of players in the game" — the count of living seats
+    /// (CR 800.4a losers drop out), read from [`Game::living_player_count`].
+    PlayerCount,
 }
 
 /// The riders on an [`CardDef::enter_as_copy`] replacement (CR 706/707.2). `Copy` — all scalars,
@@ -1099,6 +1123,7 @@ pub(crate) fn fresh_permanent(
         reverts_to_def_eot: None,
         spent_colors: [false; Color::COUNT],
         cast_from_hand: false,
+        copy_rider_keywords: &[],
     }
 }
 
@@ -1239,6 +1264,7 @@ fn treasure_token_builtin() -> CardDef {
         halves: empty_slice(),
         suspend: None,
         vanishing: None,
+        cast_x_max: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
@@ -1308,6 +1334,7 @@ pub(crate) fn rogue_token_stub() -> CardDef {
         halves: empty_slice(),
         suspend: None,
         vanishing: None,
+        cast_x_max: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
@@ -1379,6 +1406,7 @@ pub(crate) fn illusion_token() -> CardDef {
         halves: empty_slice(),
         suspend: None,
         vanishing: None,
+        cast_x_max: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
@@ -1863,6 +1891,17 @@ pub(crate) struct Permanent {
     /// manifested permanent, or anything else that never went through [`Event::PermanentEntered`]
     /// — every one of those is, by definition, not a hand cast.
     pub(crate) cast_from_hand: bool,
+    /// Copy-effect *exception* keywords that are part of this object's **copiable** values (CR
+    /// 707.2 — a copy made "except it has haste"/"except it has myriad": Twinflame, Cursed
+    /// Mirror, Muddle, Determined Iteration, Rionya). Unlike an ordinary until-end-of-turn
+    /// keyword grant (a `TempBoost`, unrelated EOT pump), these ride along when the object is
+    /// copied *again* — so a second-generation copy (Brudiclad, Rite of Replication) keeps the
+    /// rider. Unioned onto the effective keywords by [`Game::runtime_continuous_effects`] and
+    /// read back by [`Game::copiable_keywords`]; set by [`Event::CopyRiderKeywordsGranted`].
+    /// Not cleared at ordinary cleanup (a copiable characteristic resets with the object per CR
+    /// 400.7), but an *until-end-of-turn* copy clears it when its `def` reverts (Cursed Mirror,
+    /// Muddle — see [`Event::TempBoostsEnded`]). `&'static`, defaulted `&[]`.
+    pub(crate) copy_rider_keywords: &'static [Keyword],
 }
 
 /// One slot in the object arena. A card's slot becomes [`Object::Moved`] when it changes
