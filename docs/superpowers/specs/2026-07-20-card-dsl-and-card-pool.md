@@ -139,7 +139,7 @@ Representative modes by family:
 
 **`mana`:** `add` (one or more `Mana` values; optional `repeat: Amount` for scaled production).
 
-**`pump`:** `pump_until_end_of_turn` (target creature +N/+M until EOT); **`static`:** `anthem` (continuous anthem for matching permanents; `power`, `toughness`, `keywords` axes; optional filters), `grant_to_attached`, `enters_with_counters`.
+**`pump`:** `pump_until_end_of_turn` (target creature +N/+M until EOT); **`static`:** `anthem` (continuous anthem for matching permanents; `power`, `toughness`, `keywords` axes; optional filters), `grant_to_attached`, `enters_with_counters`, `grant_mana_ability` (grants every matching permanent an activated mana ability from an inline `filter` + `[…cost]` + `mana` list — e.g. Goldspan Dragon giving your Treasures "{T}, Sacrifice this artifact: Add two mana of any one color"; `single_color = true` locks all mana credits to one named color, so activating pauses on a `ChooseManaColor` choice rather than producing independent wildcards, CR 106.4).
 
 **`copy`:** `target_spell`, `this_spell`, `copy_triggering_spell`. Cast-time self-copy riders (Gravestorm, Storm, and Plumb the Forbidden's reflexive "When you do") live on a `timing = "when_you_cast_this"` ability using `copy_triggering_spell` (with a `count` `Amount` such as `permanents_died_this_turn`, `spells_cast_before_this`, or `spell_sacrifice_count`): the copies mint on the stack *above* the still-unresolved original (CR 706.9), unlike resolution-time `this_spell`. A reflexive "When you do" (Plumb) additionally carries a `condition` (`spell_sacrificed_to_cast`) so the trigger doesn't happen at all when nothing was sacrificed — no zero-count copy trigger reaches the stack — whereas a keyword Gravestorm/Storm trigger always fires and simply copies zero times when its count is 0.
 
@@ -193,6 +193,7 @@ These are the **first faithful target** (card-dsl-and-card-pool spec): every car
 - **`otags` and `set` are pure catalog metadata** — the engine never reads them. They exist for deck-builder search (`set`/`subtypes` + Postgres catalog search, accounts-decks-and-catalog spec) and Scryfall tagger integration.
 - **`oracle` is catalog metadata** — the engine never parses it; rules behavior comes from `abilities`/`keywords` only.
 - **`approximates` is surfaced in the card catalog** so the deck builder and audits see the same gap the engine runs. An absent `approximates` field means the card is faithful.
+- **`grant_mana_ability` is read live off the static scan, never resolved off the stack.** The granted `[…cost]` + `mana` pair is synthesized into an activated ability on each matching permanent (the mana twin of `grant_to_attached`), so it appears and disappears with the granting permanent. `single_color` is the granted twin of `ManaEffect::Add`'s own `single_color`: both reuse the `ChooseManaColor` pause and then emit one credit per `mana` entry in the chosen color (CR 106.4).
 
 ---
 
