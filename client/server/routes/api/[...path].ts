@@ -17,11 +17,9 @@ import {
   commitStart,
   createLobby,
   deleteTableRoute,
-  ensureLobbySchema,
   joinLobby,
   type LobbySnapshot,
   loadLobby,
-  probeLobbySchema,
   setReady,
   startError,
   sweepWebDb,
@@ -71,12 +69,6 @@ async function handleLobby(event: H3Event, path: string, env: GrpcRequestEnv): P
     return json({ version });
   }
 
-  // Ops probe: Host Unreachable when gravatar_hash is missing (no auth — schema shape only).
-  if (method === "GET" && path === "meta/web-schema/v1") {
-    const probe = await probeLobbySchema(webDb());
-    return json(probe, probe.gravatar_hash ? 200 : 503);
-  }
-
   const routeDelete = method === "DELETE" && /^tables\/[^/]+\/route\/v1$/.test(path);
   const isCreate = method === "POST" && path === "tables/v1";
   const isJoin = method === "POST" && path === "tables/join/v1";
@@ -90,7 +82,6 @@ async function handleLobby(event: H3Event, path: string, env: GrpcRequestEnv): P
   if (!me) return new Response("Unauthorized", { status: 401 });
 
   const db = webDb();
-  await ensureLobbySchema(db);
   await sweepWebDb(db);
 
   if (routeDelete) {

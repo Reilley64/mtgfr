@@ -1,18 +1,8 @@
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
 import { lobbies } from "../db/schema";
 import { createWebDb } from "../server/db/client";
-import {
-  createLobby,
-  ensureLobbySchema,
-  joinLobby,
-  type LobbySnapshot,
-  loadLobby,
-  probeLobbySchema,
-  resetLobbySchemaEnsureForTests,
-  startError,
-  toLobbyView,
-} from "./lobby-store";
+import { createLobby, joinLobby, type LobbySnapshot, loadLobby, startError, toLobbyView } from "./lobby-store";
 
 function snap(overrides: Partial<LobbySnapshot> = {}): LobbySnapshot {
   return {
@@ -103,32 +93,13 @@ describe.skipIf(!process.env.WEB_DATABASE_URL)("joinLobby gravatar persistence",
   });
 
   it("loadLobby succeeds on an empty table (missing gravatar_hash 500s Host as Unreachable)", async () => {
-    // Prod 3.100.2: POST /tables/v1 ok, then join/lobby GET 500 when lobby_seats lacks
-    // gravatar_hash — client decode maps that Nitro body to Unreachable.
+    // Schema must come from edh-web-migrate (0002/0003 + Job assert), not app self-heal.
+    // Without gravatar_hash, join/lobby GET 500 → client Unreachable.
     db = createWebDb();
     tableId = await createLobby(db, 9000);
     await expect(loadLobby(db, tableId)).resolves.toMatchObject({
       tableId,
       hostUserId: 9000,
-      seats: [],
-    });
-  });
-
-  it("ensureLobbySchema restores gravatar_hash so Host join works after migrate drift", async () => {
-    // 3.100.3/3.101.0 shipped migration 0003 but Argo image rolls without terraform
-    // edh-web-migrate left prod without the column. BFF ensure must self-heal.
-    db = createWebDb();
-    resetLobbySchemaEnsureForTests();
-    await db.execute(sql`ALTER TABLE "lobby_seats" DROP COLUMN IF EXISTS "gravatar_hash"`);
-    tableId = await createLobby(db, 9002);
-    await expect(loadLobby(db, tableId)).rejects.toThrow();
-    await expect(probeLobbySchema(db)).resolves.toMatchObject({ gravatar_hash: false });
-
-    await ensureLobbySchema(db);
-    await expect(probeLobbySchema(db)).resolves.toEqual({ gravatar_hash: true });
-    await expect(loadLobby(db, tableId)).resolves.toMatchObject({
-      tableId,
-      hostUserId: 9002,
       seats: [],
     });
   });
