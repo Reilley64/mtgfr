@@ -10404,6 +10404,72 @@ fn brudiclad_copying_a_twinflame_token_carries_its_haste_rider() {
 }
 
 #[test]
+fn recopying_a_vanilla_token_drops_a_prior_copy_effect_haste_rider() {
+    // Regression (copy-effect riders): a new copy effect overwrites the object's copiable values
+    // wholesale (CR 707.2), so a stale "except it has haste" rider left by a *prior* copied form
+    // must not survive. Brudiclad first makes a Myr token become a copy of a Twinflame haste token
+    // (picking up haste as a copiable rider), then on a later combat that same token becomes a copy
+    // of a plain Myr — its copiable haste rider must be gone, not carried over.
+    let mut game = Game::new();
+    // Stock libraries so crossing draw steps into a later turn does not deck anyone out.
+    game.stack_library(PlayerId(0), &vec![card("Forest"); 10]);
+    game.stack_library(PlayerId(1), &vec![card("Forest"); 10]);
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let twinflame = game.spawn_in_hand(PlayerId(0), card("Twinflame"));
+    cast_twinflame_and_resolve(&mut game, twinflame, 1);
+    let haste_token = battlefield_named(&game, PlayerId(0), "Grizzly Bear")
+        .into_iter()
+        .find(|&id| id != mine)
+        .expect("Twinflame minted a haste token");
+
+    game.spawn_on_battlefield(PlayerId(0), card("Brudiclad, Telchor Engineer"));
+
+    // First combat: Brudiclad mints a Myr and makes it a copy of the Twinflame haste token.
+    advance_until(&mut game, |g| g.current_step() == Step::BeginCombat);
+    resolve_top_of_stack(&mut game);
+    let grizzlies_before = battlefield_named(&game, PlayerId(0), "Grizzly Bear");
+    game.submit(Intent::ChooseCopyTarget {
+        player: PlayerId(0),
+        copy: Some(haste_token),
+    })
+    .unwrap();
+    let converted = battlefield_named(&game, PlayerId(0), "Grizzly Bear")
+        .into_iter()
+        .find(|&id| !grizzlies_before.contains(&id))
+        .expect("the Myr token became a copy of the Twinflame Grizzly");
+    assert!(
+        game.copiable_keywords(converted).contains(&Keyword::Haste),
+        "setup: the converted token picked up the copy-effect haste rider"
+    );
+
+    // Later combat: Brudiclad mints a fresh plain Myr and makes the earlier token a copy of it.
+    advance_until(&mut game, |g| g.active_player() != PlayerId(0));
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::BeginCombat
+    });
+    resolve_top_of_stack(&mut game);
+    let fresh_myr = battlefield_named(&game, PlayerId(0), "Myr")
+        .into_iter()
+        .next()
+        .expect("Brudiclad minted a fresh plain Myr");
+    game.submit(Intent::ChooseCopyTarget {
+        player: PlayerId(0),
+        copy: Some(fresh_myr),
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.def_of(converted).name,
+        "Myr",
+        "the earlier token became a copy of the plain Myr"
+    );
+    assert!(
+        !game.copiable_keywords(converted).contains(&Keyword::Haste),
+        "the prior copy's haste rider is cleared by the new copy effect (CR 707.2)"
+    );
+}
+
+#[test]
 fn muddle_magecraft_declined_no_copy() {
     // Declining the "up to one" pause leaves Muddle its printed self — no panic, no copy.
     let mut game = Game::new();

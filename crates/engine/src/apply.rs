@@ -1328,6 +1328,11 @@ impl Game {
                     p.reverts_to_def_eot = Some(p.def);
                 }
                 p.def = def;
+                // A new copy effect replaces the object's copiable characteristics wholesale (CR
+                // 707.2), so any "except it has <keywords>" rider from a *prior* copied form is
+                // dropped. This effect's own rider (if any) is re-established by the
+                // `CopyRiderKeywordsGranted` event(s) that follow this `BecameCopy`.
+                p.copy_rider_keywords = &[];
             }
             Event::TempBoostsEnded { object } => {
                 self.modifier_provenance
