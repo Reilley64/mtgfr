@@ -12,6 +12,7 @@ import type {
   WireModeChoice,
   WireTarget,
 } from "~/wire/types";
+import { orderPlayModes } from "../html/actions";
 import { type TargetMode, targetMode } from "./targeting";
 
 export type Vec = { x: number; y: number };
@@ -173,6 +174,42 @@ export function planCostPipeline(action: ActionView, card: ObjectView | null, pi
 export function planHandDrop(action: ActionView, card: ObjectView | null, y: number, threshold: number): HandDropPlan {
   if (y > threshold) return { kind: "ignore" };
   return planCostPipeline(action, card, emptyCostPicks());
+}
+
+export type PlayModePick = {
+  card: ObjectView;
+  modes: ActionView[];
+  dropSeed: Vec;
+  screenOrigin: Vec;
+};
+
+export type HandPlayPlan =
+  | { kind: "ignore" }
+  | { kind: "single"; action: ActionView }
+  | { kind: "choose"; modes: ActionView[] };
+
+export function planHandPlay(
+  modes: readonly ActionView[],
+  y: number,
+  threshold: number,
+): HandPlayPlan {
+  if (y > threshold) return { kind: "ignore" };
+  if (modes.length === 0) return { kind: "ignore" };
+  if (modes.length === 1) return { kind: "single", action: modes[0]! };
+  return { kind: "choose", modes: orderPlayModes(modes) };
+}
+
+export function reconcilePlayModeModes(
+  modes: readonly ActionView[],
+  legalActions: readonly ActionView[] | undefined,
+): ActionView[] {
+  const legal = new Map((legalActions ?? []).map((a) => [a.id, a]));
+  const next: ActionView[] = [];
+  for (const mode of modes) {
+    const fresh = legal.get(mode.id);
+    if (fresh != null) next.push(fresh);
+  }
+  return orderPlayModes(next);
 }
 
 export type RunActionPlan =
