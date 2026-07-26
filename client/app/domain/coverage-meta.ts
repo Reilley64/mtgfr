@@ -1,7 +1,7 @@
 import { apiUpstream, parseLiveStatus } from "./api-upstream-auth";
-import { ensureOracleTotalRefresh, getCachedOracleTotal } from "./scryfall-oracle-total";
-import { ensureSetOracleTotalsRefresh, getCachedSetOracleTotals } from "./scryfall-set-oracle-totals";
-import { ensureScryfallSetsRefresh, getCachedScryfallSets, type ScryfallSetRow } from "./scryfall-sets";
+import { loadOracleTotal } from "./scryfall-oracle-total";
+import { loadSetOracleTotals } from "./scryfall-set-oracle-totals";
+import { loadScryfallSets, type ScryfallSetRow } from "./scryfall-sets";
 
 export type CoverageSetRow = {
   code: string;
@@ -33,32 +33,44 @@ export function joinCoverageSetRows(
   }));
 }
 
-function unavailableCoverageMeta(): CoverageMeta {
-  return {
-    faithfulCount: null,
-    oracleTotal: getCachedOracleTotal(),
-    sets: joinCoverageSetRows(getCachedScryfallSets(), getCachedSetOracleTotals(), null),
-  };
-}
-
 export async function fetchCoverageMeta(): Promise<CoverageMeta> {
-  ensureOracleTotalRefresh();
-  ensureSetOracleTotalsRefresh();
-  ensureScryfallSetsRefresh();
+  // Coverage is useless with a cold default_cards cache (every Scryfall cell is "—").
+  // Await cold fills; warm paths return immediately and refresh in the background.
+  const [oracleTotal, setOracleTotals, sets] = await Promise.all([
+    loadOracleTotal(),
+    loadSetOracleTotals(),
+    loadScryfallSets(),
+  ]);
 
   try {
     const res = await fetch(`${apiUpstream()}/health/live`);
-    if (!res.ok) return unavailableCoverageMeta();
+    if (!res.ok) {
+      return {
+        faithfulCount: null,
+        oracleTotal,
+        sets: joinCoverageSetRows(sets, setOracleTotals, null),
+      };
+    }
 
     const parsed = parseLiveStatus(await res.json());
-    if (!parsed) return unavailableCoverageMeta();
+    if (!parsed) {
+      return {
+        faithfulCount: null,
+        oracleTotal,
+        sets: joinCoverageSetRows(sets, setOracleTotals, null),
+      };
+    }
 
     return {
       faithfulCount: parsed.faithfulCount,
-      oracleTotal: getCachedOracleTotal(),
-      sets: joinCoverageSetRows(getCachedScryfallSets(), getCachedSetOracleTotals(), parsed.faithfulBySet),
+      oracleTotal,
+      sets: joinCoverageSetRows(sets, setOracleTotals, parsed.faithfulBySet),
     };
   } catch {
-    return unavailableCoverageMeta();
+    return {
+      faithfulCount: null,
+      oracleTotal,
+      sets: joinCoverageSetRows(sets, setOracleTotals, null),
+    };
   }
 }

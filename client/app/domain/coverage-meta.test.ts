@@ -1,22 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fetchCoverageMeta, joinCoverageSetRows } from "./coverage-meta";
-import { ensureOracleTotalRefresh, getCachedOracleTotal } from "./scryfall-oracle-total";
-import { ensureSetOracleTotalsRefresh, getCachedSetOracleTotals } from "./scryfall-set-oracle-totals";
-import { ensureScryfallSetsRefresh, getCachedScryfallSets } from "./scryfall-sets";
+import { loadOracleTotal } from "./scryfall-oracle-total";
+import { loadSetOracleTotals } from "./scryfall-set-oracle-totals";
+import { loadScryfallSets } from "./scryfall-sets";
 
 vi.mock("./scryfall-oracle-total", () => ({
-  ensureOracleTotalRefresh: vi.fn(),
-  getCachedOracleTotal: vi.fn(),
+  loadOracleTotal: vi.fn(),
 }));
 
 vi.mock("./scryfall-set-oracle-totals", () => ({
-  ensureSetOracleTotalsRefresh: vi.fn(),
-  getCachedSetOracleTotals: vi.fn(),
+  loadSetOracleTotals: vi.fn(),
 }));
 
 vi.mock("./scryfall-sets", () => ({
-  ensureScryfallSetsRefresh: vi.fn(),
-  getCachedScryfallSets: vi.fn(),
+  loadScryfallSets: vi.fn(),
 }));
 
 function json(body: unknown, status = 200): Response {
@@ -68,22 +65,19 @@ describe("joinCoverageSetRows", () => {
 
 describe("fetchCoverageMeta", () => {
   beforeEach(() => {
-    vi.mocked(ensureOracleTotalRefresh).mockReset();
-    vi.mocked(getCachedOracleTotal).mockReset();
-    vi.mocked(ensureSetOracleTotalsRefresh).mockReset();
-    vi.mocked(getCachedSetOracleTotals).mockReset();
-    vi.mocked(ensureScryfallSetsRefresh).mockReset();
-    vi.mocked(getCachedScryfallSets).mockReset();
+    vi.mocked(loadOracleTotal).mockReset();
+    vi.mocked(loadSetOracleTotals).mockReset();
+    vi.mocked(loadScryfallSets).mockReset();
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
   });
 
-  it("returns joined live and cached coverage facts", async () => {
-    vi.mocked(getCachedOracleTotal).mockReturnValue(28412);
-    vi.mocked(getCachedSetOracleTotals).mockReturnValue({ soc: 400 });
-    vi.mocked(getCachedScryfallSets).mockReturnValue([
+  it("awaits cold Scryfall loads then joins live faithful_by_set", async () => {
+    vi.mocked(loadOracleTotal).mockResolvedValue(28412);
+    vi.mocked(loadSetOracleTotals).mockResolvedValue({ soc: 400 });
+    vi.mocked(loadScryfallSets).mockResolvedValue([
       {
         code: "soc",
         name: "Secrets of Strixhaven Commander",
@@ -115,8 +109,8 @@ describe("fetchCoverageMeta", () => {
         },
       ],
     });
-    expect(ensureOracleTotalRefresh).toHaveBeenCalledOnce();
-    expect(ensureSetOracleTotalsRefresh).toHaveBeenCalledOnce();
-    expect(ensureScryfallSetsRefresh).toHaveBeenCalledOnce();
+    expect(loadOracleTotal).toHaveBeenCalledOnce();
+    expect(loadSetOracleTotals).toHaveBeenCalledOnce();
+    expect(loadScryfallSets).toHaveBeenCalledOnce();
   });
 });

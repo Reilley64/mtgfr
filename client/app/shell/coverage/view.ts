@@ -107,7 +107,9 @@ export const view = Submodel.defineView<CoverageSubmodel, ViewMessage, ViewInput
     [
       h.Class(
         feltClass(
-          "flex h-full flex-col overflow-hidden p-xxl pt-[max(1.5rem,env(safe-area-inset-top))] pr-[max(1.5rem,env(safe-area-inset-right))] pb-[max(1.5rem,env(safe-area-inset-bottom))] pl-[max(1.5rem,env(safe-area-inset-left))]",
+          // h-dvh (not h-full): parent height is unconstrained, so h-full grows with the row
+          // list and overflow-y-auto on the body never engages — same lesson as deck-builder.
+          "flex h-dvh flex-col overflow-hidden p-xxl pt-[max(1.5rem,env(safe-area-inset-top))] pr-[max(1.5rem,env(safe-area-inset-right))] pb-[max(1.5rem,env(safe-area-inset-bottom))] pl-[max(1.5rem,env(safe-area-inset-left))]",
         ),
       ),
       h.DataAttribute("testid", "coverage-page"),
@@ -145,8 +147,8 @@ export const view = Submodel.defineView<CoverageSubmodel, ViewMessage, ViewInput
         [
           model.error == null
             ? null
-            : h.div([h.Role("alert"), h.Class("text-label text-reconnect-rust")], [model.error]),
-          status == null ? null : h.div([h.Class("text-label text-lichen")], [status]),
+            : h.div([h.Role("alert"), h.Class("shrink-0 text-label text-reconnect-rust")], [model.error]),
+          status == null ? null : h.div([h.Class("shrink-0 text-label text-lichen")], [status]),
           model.status !== "loading"
             ? h.input([
                 h.Type("search"),
@@ -155,7 +157,7 @@ export const view = Submodel.defineView<CoverageSubmodel, ViewMessage, ViewInput
                 h.Placeholder("Search sets…"),
                 h.Value(model.query),
                 h.OnInput((query) => ChangedCoverageQuery({ query })),
-                h.Class(fieldClass("mb-sm w-full max-w-[420px]")),
+                h.Class(fieldClass("mb-sm w-full max-w-[420px] shrink-0")),
               ])
             : null,
           model.status === "ready" && rows.length > 0
