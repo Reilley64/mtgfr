@@ -155,6 +155,19 @@ impl Game {
                     })
                     .collect()
             }
+            // Vandal's Edit: "Each player loses 2 life" — one simultaneous loss (CR 118.9)
+            // touching every living player, the ability's controller included, in seat order.
+            // Distinct from `EachOpponentLoses`, which carves the controller out.
+            LifeEffect::EachPlayerLoses { amount } => {
+                let amount = self.resolve_amount(amount, controller, source, target, x);
+                self.living_players()
+                    .map(|player| Event::LifeChanged {
+                        player,
+                        amount: -amount,
+                        source: Some(source),
+                    })
+                    .collect()
+            }
             // Arbiter of Knollridge: each player's life total becomes the highest life total
             // among all players (CR 118.5 — a set is a gain/loss of the difference). A player
             // already at the highest gets no event; every other living player's delta is routed

@@ -46157,6 +46157,75 @@ fn real_kirol_from_the_pool_prepares_and_casts_pack_a_punch() {
 }
 
 #[test]
+fn vandals_edit_each_player_loses_two_life_as_one_simultaneous_batch() {
+    // Defacing Duskmage's back face, Vandal's Edit: "Draw two cards. Each player loses 2 life."
+    // "Each player loses 2 life" is a single simultaneous loss touching every living player —
+    // the active caster included, in seat order — not each-opponent-then-you (CR 118.9).
+    let mut game = Game::with_players(4, 0);
+    game.fund_mana(PlayerId(0));
+    game.stack_library(PlayerId(0), &[card("Forest"), card("Forest")]); // for Vandal's Edit's draw
+    game.stack_library(PlayerId(1), &[card("Forest"), card("Forest")]); // for the preparing draws
+
+    let duskmage = game.spawn_on_battlefield(PlayerId(0), card("Defacing Duskmage"));
+
+    // An opponent's second draw this turn prepares the Duskmage.
+    let draw1 = game.spawn_in_hand(PlayerId(0), DRAW_ONE_TARGET.clone());
+    cast_and_resolve(&mut game, draw1, Some(Target::Player(PlayerId(1))));
+    resolve_whole_stack(&mut game);
+    let draw2 = game.spawn_in_hand(PlayerId(0), DRAW_ONE_TARGET.clone());
+    cast_and_resolve(&mut game, draw2, Some(Target::Player(PlayerId(1))));
+    resolve_whole_stack(&mut game);
+    assert!(
+        game.prepared(duskmage),
+        "an opponent's second draw this turn prepared the Duskmage",
+    );
+
+    let life_before: Vec<i32> = (0..4).map(|s| game.life(PlayerId(s))).collect();
+
+    game.submit(Intent::CastPrepared {
+        player: PlayerId(0),
+        source: duskmage,
+        target: None,
+        x: 0,
+    })
+    .expect("a prepared Duskmage with {1}{W}{B} can cast Vandal's Edit");
+
+    let mut events = Vec::new();
+    while !game.stack().is_empty() {
+        let holder = game.priority_holder();
+        events.extend(
+            game.submit(Intent::PassPriority { player: holder })
+                .unwrap(),
+        );
+    }
+
+    for s in 0..4 {
+        assert_eq!(
+            game.life(PlayerId(s)),
+            life_before[s as usize] - 2,
+            "player {s} lost 2 life to Vandal's Edit",
+        );
+    }
+
+    // One 2-life loss per living player, emitted together in seat order — the caster (P0) is
+    // not artificially resolved last as the old each-opponent-then-you sequence did.
+    let losers: Vec<PlayerId> = events
+        .iter()
+        .filter_map(|e| match e {
+            Event::LifeChanged {
+                player, amount: -2, ..
+            } => Some(*player),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        losers,
+        vec![PlayerId(0), PlayerId(1), PlayerId(2), PlayerId(3)],
+        "each player's 2-life loss is emitted once, in seat order",
+    );
+}
+
+#[test]
 fn cast_prepared_rejected_when_not_prepared() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));

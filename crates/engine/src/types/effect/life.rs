@@ -38,6 +38,10 @@ pub enum LifeEffect {
 
     EachPlayerBecomesHighest,
 
+    EachPlayerLoses {
+        amount: Amount,
+    },
+
     Gain {
         amount: Amount,
     },

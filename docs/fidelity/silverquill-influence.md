@@ -104,7 +104,7 @@ points at the increment(s) that clear it.
 - [ ] Coercive Impetus — #2
 - [ ] Combat Calligrapher — #1
 - [ ] Darksteel Mutation — #4
-- [ ] Defacing Duskmage — #1, #6
+- [ ] Defacing Duskmage — #1, #6 (#6 landed; still blocked on #1)
 - [ ] Doomwake Giant — #1
 - [ ] Eiganjo Dynastorian — #1
 - [ ] Eriette of the Charmed Apple — #1

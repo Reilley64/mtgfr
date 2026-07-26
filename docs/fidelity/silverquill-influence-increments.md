@@ -88,7 +88,11 @@ paying its mana cost as part of the same resolution, then bottom the rest afterw
 chooser machinery in `pending/handlers/dig.rs` is already close; the missing piece is a
 resolution-resume cast rather than a delayed `pending_next_cast` permission.
 
-### 6. `simultaneous-each-player-life-change` — 1 card, S
+### 6. `simultaneous-each-player-life-change` — 1 card, S — **LANDED** (2026-07-26)
+Landed: `LifeEffect::EachPlayerLoses { amount }` mints one simultaneous life-loss touching every
+living player (controller included) in seat order; `defacing_duskmage.toml` now uses the single
+`each_player_loses` effect instead of the each-opponent-then-you sequence, and its ponytail note is
+gone.
 **Depends on:** none.
 **Cards:** `defacing_duskmage.toml`
 **Sketch:** `Vandal's Edit` currently resolves "Each player loses 2 life" as

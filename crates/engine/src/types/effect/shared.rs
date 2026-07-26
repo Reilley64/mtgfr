@@ -637,6 +637,7 @@ impl Effect {
             | Effect::Static(StaticEffect::SetAttachedTypes { .. })
             | Effect::Life(LifeEffect::EachOpponentDrain { .. })
             | Effect::Life(LifeEffect::EachOpponentLoses { .. })
+            | Effect::Life(LifeEffect::EachPlayerLoses { .. })
             | Effect::Life(LifeEffect::EachPlayerBecomesHighest)
             | Effect::Dig(DigEffect::Scry { .. })
             | Effect::Dig(DigEffect::Surveil { .. })

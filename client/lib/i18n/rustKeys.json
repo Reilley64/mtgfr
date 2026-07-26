@@ -157,6 +157,7 @@
   "effect.life_each_opponent_drain",
   "effect.life_each_opponent_loses",
   "effect.life_each_player_becomes_highest",
+  "effect.life_each_player_loses",
   "effect.life_gain",
   "effect.life_gain_target_controller",
   "effect.life_lose",

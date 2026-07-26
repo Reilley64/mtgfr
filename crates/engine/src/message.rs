@@ -183,6 +183,7 @@ message_keys! {
     EFFECT_LIFE_EACH_OPPONENT_DRAIN => "effect.life_each_opponent_drain",
     EFFECT_LIFE_EACH_OPPONENT_LOSES => "effect.life_each_opponent_loses",
     EFFECT_LIFE_EACH_PLAYER_BECOMES_HIGHEST => "effect.life_each_player_becomes_highest",
+    EFFECT_LIFE_EACH_PLAYER_LOSES => "effect.life_each_player_loses",
     EFFECT_LIFE_GAIN => "effect.life_gain",
     EFFECT_LIFE_GAIN_TARGET_CONTROLLER => "effect.life_gain_target_controller",
     EFFECT_LIFE_LOSE => "effect.life_lose",
@@ -1143,6 +1144,10 @@ impl Effect {
             }
             Effect::Life(EachPlayerBecomesHighest) => {
                 MessageRef::new(MessageKey::EFFECT_LIFE_EACH_PLAYER_BECOMES_HIGHEST)
+            }
+            Effect::Life(EachPlayerLoses { amount }) => {
+                MessageRef::new(MessageKey::EFFECT_LIFE_EACH_PLAYER_LOSES)
+                    .with_params(vec![amount_param("amount", amount)])
             }
             Effect::Life(TargetPlayerLoses { amount }) => {
                 MessageRef::new(MessageKey::EFFECT_LIFE_TARGET_PLAYER_LOSES)
