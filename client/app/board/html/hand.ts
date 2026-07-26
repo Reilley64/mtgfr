@@ -11,7 +11,7 @@ import { type Attribute, type Html, html } from "foldkit/html";
 import { type CostPip, costPipPlate, costPips } from "~/costPips";
 import { cardArt } from "~/ui/card-art";
 import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/types";
-import { formatMessage } from "../../../lib/i18n/message";
+import { formatMessage } from "../../domain/i18n/message";
 import { HAND_BAR_PEEK, handBarHitHeight, handBarHitWidth, handBarRaiseTranslateY } from "../geometry/handBarHit";
 import { ZONE } from "../geometry/layout";
 import { DiscardChosen, HandActionActivated, InspectAuxHovered, type Message } from "../messages";

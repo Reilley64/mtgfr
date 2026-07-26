@@ -1,6 +1,6 @@
 # Lobby, Table Routing, and Live Game
 
-**Status:** Current (as of 2026-07-25)
+**Status:** Current (as of 2026-07-26)
 **Module:** `crates/server/src/table.rs`, `crates/server/src/lobby.rs`, `crates/server/src/session.rs`,
 `crates/server/src/game_loop.rs`, `crates/server/src/ratings.rs`, `crates/server/src/stream.rs`, `crates/server/src/chrome.rs`,
 `crates/server/src/health.rs`, `crates/server/src/main.rs`,
@@ -40,8 +40,10 @@ The system separates pre-game lobby from live-game concerns across two persisten
    public `gravatar_hash` values, and deck ids.
 5. `Tables.Seed` resolves and validates all decks, fetches a drand beacon master seed (or a configured fixed seed in dev/test), deals BO1-smoothed opening hands, enters the mulligan phase, inserts the
    `Table` into the in-memory `Registry`, and returns `SeedResponse { table_id, pod_dns, version }`.
-6. BFF writes `table_routes (table_id → pod_dns)` to `mtgfr_web`. Clients are redirected to
-   `/play/{deck_id}/{table_id}` so the chosen deck remains a required path param.
+6. BFF writes `table_routes (table_id → pod_dns)` to `mtgfr_web`. Pregame browser routes use
+   `/play/{deck_id}/{table_id}` while seated; once lobby poll reports `started`, the client
+   navigates to table-only `/play/{table_id}` for the live board. Deck choice stays on seats
+   in `mtgfr_web` and in the seed payload — not in the in-game URL.
 
 **In-game routing (lobby-table-routing-and-live-game spec):**
 
@@ -54,7 +56,8 @@ affinity cookie; `table_id` in the path is the sole routing key.
 **In-memory Registry and Table (lobby-table-routing-and-live-game spec):**
 
 One `Registry` per API pod process (a `std::sync::Mutex<HashMap<String, Table>>`). Table ids
-are random 128-bit hex strings (unguessable). Each `Table` holds:
+are six-character codes drawn from `23456789ABCDEFGHJKMNPQRSTUVWXYZ` and regenerated until they
+contain at least one letter. Each `Table` holds:
 - The `engine::Game` (pure, deterministic state machine).
 - The 32-byte master seed and `beacon_round` used to derive every engine random operation (`beacon_round = 0` for configured/test seeds).
 - A monotonic `seq` (event counter / stream resume watermark).
@@ -133,6 +136,19 @@ the BFF so that their absence does not block drain of an API pod that was never 
 ---
 
 ## Behavior
+
+### Client play routes (browser)
+
+Deck pick, lobby entry, pregame, and in-game paths are owned by the Foldkit client ([shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md), [lobby-entry-ui](2026-07-20-lobby-entry-ui.md)). Server/BFF routing keys only on `table_id` once the game is live.
+
+| Path | Phase |
+|---|---|
+| `/` | Deck pick (home deck list) |
+| `/play/:deckId` | Host/Join entry for the chosen deck |
+| `/play/:deckId/:tableId` | Pregame seated lobby (claim, ready, start) |
+| `/play/:tableId` | In-game board after start (table id only; generated table code containing at least one letter) |
+
+Host create and Join-with-code handoffs land on the two-segment pregame path. Start replaces that URL with the table-only in-game path while preserving the same `table_id` for BFF `table_routes` lookup and the game stream.
 
 ### Seed flow (`Tables.Seed` / `lobby::seed_table_core`)
 
@@ -307,9 +323,12 @@ seeded game; there are no "empty" table shells in the production registry.
 
 ## Further Notes
 
-- The `table_id` is a random 128-bit hex string (`format!("{:032x}", rand_u128)`). It is the
-  stable public identifier copied as a table code and stored in `table_routes`; browser routes keep
-  the player's required deck id in `/play/{deck_id}/{table_id}`.
+- The `table_id` is a six-character code drawn from `23456789ABCDEFGHJKMNPQRSTUVWXYZ` and
+  regenerated until it contains at least one letter. It is the stable public identifier copied as
+  a table code and stored in `table_routes`. Pregame browser routes keep the local player's deck in
+  `/play/{deck_id}/{table_id}`; after start the client strips to `/play/{table_id}` only. Share
+  links and `parseTableCode` accept both shapes (see
+  [lobby-entry-ui](2026-07-20-lobby-entry-ui.md)).
 - `SeedResponse.version` (the API binary's version string) lets the BFF detect a rolling deploy
   crossing versions mid-game — the BFF can surface a "game running on older version" warning
   if desired, though no UI for this currently exists.

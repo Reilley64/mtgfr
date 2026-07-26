@@ -100,7 +100,7 @@ impl Game {
                 // vanished — `def_of` would panic); no colors is the same "no protection filters"
                 // posture this ability had before source colors were wired at all.
                 let source_colors = match &self.objects[source as usize] {
-                    Object::Removed => [false; Color::COUNT],
+                    Object::Removed { .. } => [false; Color::COUNT],
                     _ => color_identity(&self.def_of(source)),
                 };
                 if !self.target_still_legal(
@@ -759,7 +759,7 @@ impl Game {
         allowed: &[Zone],
     ) -> Option<ObjectId> {
         let current = self.current_id(source);
-        if matches!(&self.objects[current as usize], Object::Removed) {
+        if matches!(&self.objects[current as usize], Object::Removed { .. }) {
             return None;
         }
         allowed.contains(&self.zone_of(current)).then_some(current)

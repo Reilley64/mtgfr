@@ -1,7 +1,7 @@
 import { Effect, Match as M } from "effect";
 import type { Command as FoldkitCommand } from "foldkit";
 import { Command } from "foldkit";
-import { coverageMeta } from "../../../lib/lobby/client";
+import { coverageMeta } from "../../domain/lobby/client";
 import type { RpcClient } from "../../resources";
 import { CoverageLoadFailed, type Message, ReceivedCoverageMeta } from "./messages";
 import type { CoverageSubmodel } from "./submodel";
@@ -51,6 +51,7 @@ export const update = (
   M.value(message).pipe(
     M.withReturnType<readonly [CoverageSubmodel, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>]>(),
     M.tagsExhaustive({
+      ChangedCoverageRoute: () => loadCoverage(model),
       RequestedCoverageRefresh: () => loadCoverage(model),
       ChangedCoverageQuery: ({ query }) => [{ ...model, query }, []],
       ReceivedCoverageMeta: ({ faithfulCount, oracleTotal, sets }) => [

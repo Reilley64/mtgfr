@@ -342,7 +342,7 @@ impl Game {
             }
             Object::Permanent(p) => p.def,
             Object::Moved { to } => self.def_id_of(*to),
-            Object::Removed => panic!("object {id} has left the game"),
+            Object::Removed { def, .. } => *def,
         }
     }
 
@@ -375,7 +375,9 @@ impl Game {
             }
             Object::Permanent(p) => card_def(p.def).as_ref().clone(),
             Object::Moved { to } => self.def_of(*to),
-            Object::Removed => panic!("object {id} has left the game"),
+            // CR 111.7 / 603.10a last-known information: a ceased token's stack ability still
+            // needs the printed face for wire art and effect provenance.
+            Object::Removed { def, .. } => card_def(*def).as_ref().clone(),
         }
     }
 
@@ -390,7 +392,7 @@ impl Game {
             Object::Spell(s) => card_def(s.def).as_ref().clone(),
             Object::Permanent(p) => card_def(p.def).as_ref().clone(),
             Object::Moved { to } => self.front_def_of(*to),
-            Object::Removed => panic!("object {id} has left the game"),
+            Object::Removed { def, .. } => card_def(*def).as_ref().clone(),
         }
     }
 
@@ -398,10 +400,7 @@ impl Game {
     /// (a Dies trigger whose source token vanished, or a mana ability whose sacrifice cost
     /// was paid before the effect resolves).
     pub(crate) fn source_name_of(&self, id: ObjectId) -> &'static str {
-        match &self.objects[id as usize] {
-            Object::Removed => "",
-            _ => self.def_of(id).name,
-        }
+        self.def_of(id).name
     }
 
     /// The owner of the object at `id` (a spell's controller counts as its owner here).
@@ -411,7 +410,7 @@ impl Game {
             Object::Spell(s) => s.controller,
             Object::Permanent(p) => p.owner,
             Object::Moved { to } => self.owner_of(*to),
-            Object::Removed => panic!("object {id} has left the game"),
+            Object::Removed { owner, .. } => *owner,
         }
     }
 
@@ -423,8 +422,25 @@ impl Game {
             Object::Spell(s) => s.controller,
             Object::Permanent(p) => self.permanent_controller(id, p.owner),
             Object::Moved { to } => self.controller_of(*to),
-            Object::Removed => panic!("object {id} has left the game"),
+            // Last-known owner stands in for controller once the object has left the game.
+            Object::Removed { owner, .. } => *owner,
         }
+    }
+
+    /// Tombstone `id` as [`Object::Removed`], capturing last-known `def`/`owner` from whatever
+    /// live form currently occupies the slot (or keeping an existing Removed identity).
+    pub(crate) fn mark_removed(&mut self, id: ObjectId) {
+        let (def, owner) = match &self.objects[id as usize] {
+            Object::Card(c) => (c.def, c.owner),
+            Object::Spell(s) => (s.def, s.controller),
+            Object::Permanent(p) => (p.def, p.owner),
+            Object::Moved { to } => {
+                let to = *to;
+                return self.mark_removed(to);
+            }
+            Object::Removed { def, owner } => (*def, *owner),
+        };
+        self.objects[id as usize] = Object::Removed { def, owner };
     }
 
     /// The controller of the permanent at `id` under CR 800.4a: when several control-changing

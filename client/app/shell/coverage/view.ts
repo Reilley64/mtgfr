@@ -1,15 +1,27 @@
+import { Submodel } from "foldkit";
 import { type Html, html } from "foldkit/html";
-import { type AppChromeMeta, appVersionBadge, formatFaithfulPercent } from "../../../lib/ui/app-version";
-import { buttonClass } from "../../../lib/ui/buttonClass";
-import { feltClass, fieldClass, listRowClass } from "../../../lib/ui/surfaces";
+import { type AppChromeMeta, appVersionBadge, formatFaithfulPercent } from "../../domain/ui/app-version";
+import { buttonClass } from "../../domain/ui/buttonClass";
+import { feltClass, fieldClass, listRowClass } from "../../domain/ui/surfaces";
+import type { ClosedAccountMenu, GotAuthMessage, ToggledAccountMenu } from "../../messages";
 import { HomeRoute, routePath } from "../../routes";
 import { accountChrome } from "../account-chrome/view";
-import { ChangedCoverageQuery, RequestedCoverageRefresh } from "./messages";
+import { ChangedCoverageQuery, type Message as CoverageMessage, RequestedCoverageRefresh } from "./messages";
 import type { CoverageSetRow, CoverageStatus, CoverageSubmodel } from "./submodel";
 
-type Message = typeof ChangedCoverageQuery.Type | typeof RequestedCoverageRefresh.Type;
+export type ViewMessage =
+  | CoverageMessage
+  | typeof ClosedAccountMenu.Type
+  | typeof GotAuthMessage.Type
+  | typeof ToggledAccountMenu.Type;
 
-const h = html<Message>();
+export type ViewInputs = {
+  username: string;
+  meGravatarHash: string | null;
+  chrome: AppChromeMeta;
+};
+
+const h = html<ViewMessage>();
 
 function statusCopy(status: CoverageStatus): string | null {
   switch (status) {
@@ -82,12 +94,8 @@ function tableRow(row: CoverageSetRow): Html {
   );
 }
 
-export function view(
-  model: CoverageSubmodel,
-  username: string,
-  meGravatarHash: string | null,
-  chrome: AppChromeMeta,
-): Html {
+export const view = Submodel.defineView<CoverageSubmodel, ViewMessage, ViewInputs>((model, viewInputs): Html => {
+  const { chrome, meGravatarHash, username } = viewInputs;
   const status = statusCopy(model.status);
   const rows = visibleCoverageRows(model);
   const globalPercent = coveragePercentText(model.faithfulCount, model.oracleTotal);
@@ -183,4 +191,4 @@ export function view(
       appVersionBadge(h, chrome),
     ],
   );
-}
+});

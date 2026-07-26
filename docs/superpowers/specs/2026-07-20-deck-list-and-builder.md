@@ -1,7 +1,7 @@
 # Deck List and Builder
 
 **Status:** Current (as of 2026-07-26)
-**Module:** `client/app/shell/decks/**`, `client/lib/deck-builder/**`, `client/lib/ui/card-art.ts`, `client/lib/image-cache.ts`, `client/lib/deck-builder/scryfall.ts`
+**Module:** `client/app/shell/decks/**`, `client/app/domain/deck-builder/**`, `client/app/domain/ui/card-art.ts`, `client/app/domain/image-cache.ts`, `client/app/domain/deck-builder/scryfall.ts`
 
 ---
 
@@ -13,7 +13,7 @@ Players need to browse saved and precon decks, open a deck into play or edit, an
 
 ## Solution
 
-The **deck list** at `/` is a compact commander-tile grid over the deck list submodel (shared account chrome, create tile, search, precon ordering, owned-deck context menu). The **deck builder** at `/decks/new` and `/decks/:id` is a split-pane pool + decklist UI over catalog search RPCs. Card art is keyed by Scryfall Printing UUID via `client/lib/deck-builder/scryfall.ts` and rendered through `client/lib/ui/card-art.ts` against `sharedImageCache` in `client/lib/image-cache.ts`. Deck persistence and legality rules are owned by [accounts-decks-and-catalog](2026-07-20-accounts-decks-and-catalog.md); route/auth shell by [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md).
+The **deck list** at `/` is a compact commander-tile grid over the deck list submodel (shared account chrome, create tile, search, precon ordering, owned-deck context menu). The **deck builder** at `/decks/new` and `/decks/:id` is a split-pane pool + decklist UI over catalog search RPCs. `client/app/view.ts` renders both surfaces through Foldkit submodel boundaries: deck-owned child messages lift into the app through `GotDeckListMessage` / `GotDeckBuilderMessage`, child Commands lift with `Command.mapMessages`, and route entry / post-session cold-load call the deck surfaces' `informRouteChanged` helpers so the children own their own reset/load transitions. Shared shell messages such as auth chrome toggles, modal open no-ops, card-art ticks, and deck-card FLIP ticks pass through unchanged. Card art is keyed by Scryfall Printing UUID via `client/app/domain/deck-builder/scryfall.ts` and rendered through `client/app/domain/ui/card-art.ts` against `sharedImageCache` in `client/app/domain/image-cache.ts`. Deck persistence and legality rules are owned by [accounts-decks-and-catalog](2026-07-20-accounts-decks-and-catalog.md); route/auth shell by [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md).
 
 ---
 
@@ -73,7 +73,7 @@ ascending id (newest release first). Right-click on an owned deck opens Edit
 - **Scroll.** The builder page shell is viewport-bounded (`h-dvh`, single `minmax(0,1fr)` grid row, `overflow-hidden`) and does not scroll. The left catalog grid and the right decklist are independent `overflow-y-auto` scrollports with `overscroll-contain` so wheel/trackpad in one pane does not move the other or the document. Both columns use `min-h-0` so their scroll hosts form real scrollports inside the grid instead of growing the page.
 - **Print picker scroll lock.** While the choose-printing `<dialog>` is open (`printPicker` set), catalog and decklist scrollports use `overflow-hidden` (background frozen). The print tile grid inside the dialog remains `overflow-y-auto` with `overscroll-contain`. Closing the picker restores independent pane scrolling.
 
-### Card art CDN (`client/lib/deck-builder/scryfall.ts`, `client/lib/ui/card-art.ts`, `client/lib/image-cache.ts`)
+### Card art CDN (`client/app/domain/deck-builder/scryfall.ts`, `client/app/domain/ui/card-art.ts`, `client/app/domain/image-cache.ts`)
 
 Art is keyed by Scryfall **Printing** UUID. `imageUrlByPrint(printId, size, face)` returns:
 - When `VITE_CARD_CDN` is set and `size === "art_crop"`: CDN
@@ -88,13 +88,14 @@ Missing ordinary (non-`art_crop`) CDN art stays empty after load failure (no Scr
 
 `cardBackUrl()` returns `/card-back.webp` for library piles and face-down cards.
 
-**Image cache and board preload:** `client/lib/image-cache.ts` provides a URL→HTMLImageElement cache (`sharedImageCache`) with a subscriber list for canvas redraws on image settle. HTML `cardArt` mounts subscribe to that cache. On the board bitmap Mount (`client/app/board/bitmap/mount.ts`), `preloadFrameArt` collects face/print URLs for the published frame's cards and flights and calls `sharedImageCache.preload(urls)` so gameplay paint hits the cache. There is no separate `deckImagePreload` / `preloadDecksIntoCache` module.
+**Image cache and board preload:** `client/app/domain/image-cache.ts` provides a URL→HTMLImageElement cache (`sharedImageCache`) with a subscriber list for canvas redraws on image settle. HTML `cardArt` mounts subscribe to that cache. On the board bitmap Mount (`client/app/board/bitmap/mount.ts`), `preloadFrameArt` collects face/print URLs for the published frame's cards and flights and calls `sharedImageCache.preload(urls)` so gameplay paint hits the cache. There is no separate `deckImagePreload` / `preloadDecksIntoCache` module.
 
 ---
 
 ## Implementation Decisions
 
 - **Deck-builder search is server-side.** The client holds no full catalog. `/api/rpc/cards/search` calls `Cards.Search` with tokenized LIKE over `search_blob` (includes `otags`) on the server ([accounts-decks-and-catalog](2026-07-20-accounts-decks-and-catalog.md)). The pool grid pages in 100-card chunks via IntersectionObserver — no client-side filtering of a local dataset.
+- **Route entry is child-owned.** Home and `/decks/...` entry run through deck-surface `informRouteChanged` helpers, which call the child update with route-change messages instead of having the parent mutate deck-list or builder state directly.
 - **Printing is art-preference only.** Card rules identity is the oracle id. Decks store `(id, count, print)` with `print` required. The engine is print-agnostic. Wire DTOs carry `print` for consistent art across all clients.
 - **`VITE_CARD_CDN` is build-time baked**, not runtime. Changing CDN requires a new image build.
 - **No Scryfall fallback for ordinary CDN art.** Missing non-`art_crop` CDN art does not hit Scryfall (avoids rate-limiting). The intentional exception is CDN `art_crop` load failure → Scryfall `version=art_crop` once.
@@ -104,9 +105,9 @@ Missing ordinary (non-`art_crop`) CDN art stays empty after load failure (no Scr
 ## Testing Decisions
 
 - `client/app/shell/decks/**/*.test.ts` — decks list/builder stories and helpers (including sequential multi-card remove and keyed decklist rows for pointer-Mount remount).
-- `client/lib/deck-builder/*.test.ts` — print prefs, menus, hover preview.
-- `client/lib/ui/card-art.test.ts` — art URL / host sync against `ImageCache`.
-- `client/lib/image-cache.test.ts` — cache settle / subscriber behavior.
+- `client/app/domain/deck-builder/*.test.ts` — print prefs, menus, hover preview.
+- `client/app/domain/ui/card-art.test.ts` — art URL / host sync against `ImageCache`.
+- `client/app/domain/image-cache.test.ts` — cache settle / subscriber behavior.
 - Scene coverage for shell deck surfaces lives with other shell Scene tests, including
   `header-leaderboard-link`, `account-menu-*`, `account-gravatar-link`, and
   `deck-list-new-deck`; the home surface does not render

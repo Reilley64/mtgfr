@@ -1,6 +1,6 @@
 import { colors } from "~/design-tokens.generated";
-import { cardBackUrl, imageUrlByPrint } from "../../../lib/deck-builder/scryfall";
-import type { ImageCache } from "../../../lib/image-cache";
+import { cardBackUrl, imageUrlByPrint } from "../../domain/deck-builder/scryfall";
+import type { ImageCache } from "../../domain/image-cache";
 import { TARGET_COLOR } from "../action/targeting";
 import { CARD_RESTING_OUTLINE, COMMANDER_GOLD } from "../chrome";
 import { type Camera, worldToScreen } from "../geometry/camera";

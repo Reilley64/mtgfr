@@ -1,4 +1,4 @@
-import type { DeckSummary } from "../../../../lib/wire/types";
+import type { DeckSummary } from "../../../domain/wire/types";
 
 type KnownCommander = {
   readonly name: string;

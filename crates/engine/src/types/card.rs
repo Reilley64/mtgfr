@@ -1919,8 +1919,14 @@ pub(crate) enum Object {
     Moved {
         to: ObjectId,
     },
-    /// The object left the game (its owner was eliminated) — no longer live (CR 800.4a).
-    Removed,
+    /// The object left the game — a token that ceased to exist (CR 111.7), a spell copy that
+    /// finished resolving (CR 707.10a), or an object owned by an eliminated player (CR 800.4a).
+    /// Carries last-known `def`/`owner` so stack abilities keyed by this id (Food sacrifice,
+    /// Dies triggers off a token) can still project art / provenance after the arena slot dies.
+    Removed {
+        def: CardId,
+        owner: PlayerId,
+    },
 }
 
 /// The default number of seats when a constructor doesn't specify one (the 1v1 games

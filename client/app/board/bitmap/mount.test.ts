@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { colors } from "~/design-tokens.generated";
 import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, PlayerView } from "~/wire/types";
-import { gravatarUrl } from "../../../lib/gravatar";
+import { gravatarUrl } from "../../domain/gravatar";
 import type { RenderCard } from "../geometry/layout";
 import { ZONE } from "../geometry/layout";
 import { spawnExitFx } from "../motion/exit-fx";

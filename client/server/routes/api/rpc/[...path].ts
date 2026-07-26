@@ -13,13 +13,13 @@ import {
   readRawBody,
   setCookie,
 } from "nitro/h3";
-import { grpcUpstreamFromPodDns } from "../../../../lib/api-upstream";
-import { grpcUpstream } from "../../../../lib/api-upstream-auth";
-import { lookupTableRoute } from "../../../../lib/lobby-store";
-import { grpcRequestEnv, runTracedRequest } from "../../../../lib/otel";
-import { GrpcCallError, httpStatusOf } from "../../../../lib/wire/grpcClient";
-import { dispatchRpc, type RpcOutcome } from "../../../../lib/wire/rpcServer";
-import type { StreamFrame } from "../../../../lib/wire/types";
+import { grpcUpstreamFromPodDns } from "../../../../app/domain/api-upstream";
+import { grpcUpstream } from "../../../../app/domain/api-upstream-auth";
+import { lookupTableRoute } from "../../../../app/domain/lobby-store";
+import { grpcRequestEnv, runTracedRequest } from "../../../../app/domain/otel";
+import { GrpcCallError, httpStatusOf } from "../../../../app/domain/wire/grpcClient";
+import { dispatchRpc, type RpcOutcome } from "../../../../app/domain/wire/rpcServer";
+import type { StreamFrame } from "../../../../app/domain/wire/types";
 import { createWebDb } from "../../../db/client";
 
 const SESSION_COOKIE = "session";

@@ -1,6 +1,6 @@
 # Table Audio
 **Status:** Current (as of 2026-07-26)
-**Module:** `client/lib/tableAudio.ts`, `client/app/board/html/audio-mount.ts`, `client/app/board/html/sound-chrome.ts`, `client/app/board/view.ts`, `client/app/shell/lobby/update.ts`, `client/app/game/fold.ts`
+**Module:** `client/app/domain/tableAudio.ts`, `client/app/board/html/audio-mount.ts`, `client/app/board/html/sound-chrome.ts`, `client/app/board/view.ts`, `client/app/shell/lobby/update.ts`, `client/app/game/fold.ts`
 
 ## Problem Statement
 
@@ -41,8 +41,8 @@ Use synthesized Web Audio cues from a shared `AudioContext`. Unlock the context 
 
 ## Testing Decisions
 
-- `client/lib/tableAudio.test.ts` uses reset/test helpers and stub `AudioContext` behavior to cover destroy / exile cue playback and mute/unlock paths.
-- `client/lib/event-fold.test.ts` and `client/app/game/fold.test.ts` cover battlefield exit provenance and the `tableFeel.destroy` / `tableFeel.exile` flags that drive the board `data-*` attributes.
+- `client/app/domain/tableAudio.test.ts` uses reset/test helpers and stub `AudioContext` behavior to cover destroy / exile cue playback and mute/unlock paths.
+- `client/app/domain/event-fold.test.ts` and `client/app/game/fold.test.ts` cover battlefield exit provenance and the `tableFeel.destroy` / `tableFeel.exile` flags that drive the board `data-*` attributes.
 - Lobby update tests assert Ready invokes unlock.
 - Board sound tests assert Sound-on invokes unlock and confirmation tick, and Sound-off does not.
 - Manual checks should verify Ready -> start -> land/priority produces audible cues without pressing Sound, and that destroy / exile cues stay silent only under reduced motion.

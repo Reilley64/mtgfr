@@ -1,5 +1,5 @@
 import { Schema as S } from "effect";
-import { LobbyView } from "../../../lib/lobby/types";
+import { LobbyView } from "../../domain/lobby/types";
 
 export const LobbyEntryMode = S.Union([S.Literal("choose"), S.Literal("join")]);
 export type LobbyEntryMode = typeof LobbyEntryMode.Type;
@@ -30,30 +30,5 @@ export function initialLobbySlice(): LobbySlice {
     copied: false,
     clipboardFallback: false,
     submitting: false,
-  };
-}
-
-export function enterLobby(
-  model: LobbySlice,
-  opts: { tableId: string | null; selectedDeckId: number | null },
-): LobbySlice {
-  if (model.tableId !== opts.tableId) {
-    return {
-      ...initialLobbySlice(),
-      tableId: opts.tableId,
-      selectedDeckId: opts.selectedDeckId ?? model.selectedDeckId,
-    };
-  }
-
-  if (model.tableId == null && opts.selectedDeckId != null && model.selectedDeckId !== opts.selectedDeckId) {
-    return {
-      ...initialLobbySlice(),
-      selectedDeckId: opts.selectedDeckId,
-    };
-  }
-
-  return {
-    ...model,
-    selectedDeckId: opts.selectedDeckId ?? model.selectedDeckId,
   };
 }

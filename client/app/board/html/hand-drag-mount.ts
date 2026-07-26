@@ -4,7 +4,7 @@
 import { Effect, Queue, Stream } from "effect";
 import * as Mount from "foldkit/mount";
 import type { ActionView, WireCost } from "~/wire/types";
-import { formatMessage } from "../../../lib/i18n/message";
+import { formatMessage } from "../../domain/i18n/message";
 import { HandActionHovered, HandDragEnded, HandDragMoved, HandDragStarted } from "../messages";
 
 type HandDragMessage =

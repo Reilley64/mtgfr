@@ -1,7 +1,7 @@
-import type { ZonePileEntrance } from "../../lib/event-fold";
-import { describe, extractProvenance } from "../../lib/event-fold";
-import { formatMessage } from "../../lib/i18n/message";
-import type { StreamFrame, VisibleState } from "../../lib/wire/types";
+import type { ZonePileEntrance } from "../domain/event-fold";
+import { describe, extractProvenance } from "../domain/event-fold";
+import { formatMessage } from "../domain/i18n/message";
+import type { StreamFrame, VisibleState } from "../domain/wire/types";
 
 export type DeltaEnvelope = Omit<Extract<StreamFrame, { frame: "delta" }>, "frame">;
 

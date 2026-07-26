@@ -269,7 +269,7 @@ export interface ClickContext {
   spectating: boolean;
   staged: ObjectView | null; // a targeted spell awaiting its target
   /** Object ids the staged spell may legally target, from the engine's own enumeration
-   * (`ActionView.targets`; see lib/targeting.ts). Empty when nothing is staged. */
+   * (`ActionView.targets`; see board/action/targeting.ts). Empty when nothing is staged. */
   stagedTargets: ReadonlySet<number>;
   attackers: WireAttack[]; // creatures staged as attackers this declaration
   blocks: WireBlock[]; // creatures staged as blockers this declaration

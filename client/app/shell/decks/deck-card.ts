@@ -1,8 +1,8 @@
 import type { Attribute, html as createHtml, Html } from "foldkit/html";
-import { manaFontClass } from "../../../lib/oracleText";
-import { cardArt } from "../../../lib/ui/card-art";
-import { listRowClass } from "../../../lib/ui/surfaces";
 import { BindDeckCardFlip } from "../../deck-card-nav";
+import { manaFontClass } from "../../domain/oracleText";
+import { cardArt } from "../../domain/ui/card-art";
+import { listRowClass } from "../../domain/ui/surfaces";
 import { identityPipCodes } from "./list/visible";
 
 export type DeckCardModel = {

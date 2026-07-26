@@ -1,5 +1,5 @@
 import { Context, Layer } from "effect";
-import { type Client, client } from "../lib/rpc-client";
+import { type Client, client } from "./domain/rpc-client";
 
 export class RpcClient extends Context.Service<RpcClient, Client>()("RpcClient") {}
 
