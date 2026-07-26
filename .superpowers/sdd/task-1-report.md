@@ -149,3 +149,15 @@ Result:
 - `server grpc::map::catalog::tests::save_deck_request_from_pb_preserves_card_and_commander_proxy_art_urls` passed
 - `server grpc::map::catalog::tests::deck_detail_to_pb_preserves_card_and_commander_proxy_art_urls` passed
 - `server grpc::map::stream::tests::rich_snapshot_preserves_choice_actions_and_oneof_kinds` passed
+
+## Review follow-up: living specs
+
+- Updated `docs/superpowers/specs/2026-07-20-accounts-decks-and-catalog.md` to document the shipped
+  deck contract fields: optional `DeckCardEntry.proxy_art_url` plus optional
+  `DeckDetail` / `SaveDeckRequest.commander_proxy_art_url`, with empty string meaning absent and
+  Printing UUIDs still required for legality.
+- Updated `docs/superpowers/specs/2026-07-20-wire-protocol-and-visibility.md` to document the
+  shipped optional `proxy_art_url` fields on `ObjectView`, `StackObjectView`, and `ChoiceItem`,
+  including the expand-only/additive compatibility rule and empty-string-as-absent semantics.
+- Docs-only follow-up: no new runtime tests were required. Verification for this pass is limited to
+  reviewing the spec diffs against the already-landed proto/DTO field names and semantics.

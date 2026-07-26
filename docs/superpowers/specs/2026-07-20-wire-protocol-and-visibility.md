@@ -75,6 +75,8 @@ rule): during a rolling deploy, the active SPA may talk to a Terminating API pod
 older binary. All concurrent binaries must share a parseable protocol. This means: additive
 optional fields only, new field numbers for new fields, new RPC/intent/event variants that old
 peers never send — never rename, remove, or reuse field numbers while older pods serve tables.
+The shipped `proxy_art_url` additions on `ObjectView`, `StackObjectView`, and `ChoiceItem` follow
+that rule: new optional string fields where empty string means absent.
 
 ---
 
@@ -136,8 +138,8 @@ BFF can pin later `table_id` hops to this pod.
 | `viewer` | Seat index, or 255 for a spectator |
 | `active_player`, `step`, `priority` | Turn structure discriminants |
 | `players` | Per-seat `PlayerView`: username, public `gravatar_hash` (SHA-256 hex; empty = monogram), life, commander tax, commander damage, `hand_count`, `library_count`, mana pool |
-| `objects` | Every `ObjectView` visible to this viewer: hand cards (own only), battlefield, stack, graveyard, exile, command zone |
-| `stack` | `StackObjectView` list, bottom-first; `MessageRef` label, optional primary `target`, `targets` list (clause 0 then clause 1; empty when targetless), and source art identity (`print` / `name` / `card_id`) for when `source` is omitted from `objects` (Moved tombstone or ceased token) |
+| `objects` | Every `ObjectView` visible to this viewer: hand cards (own only), battlefield, stack, graveyard, exile, command zone. Each view may also carry optional `proxy_art_url` as a display-only alter-art hint; empty string means absent. |
+| `stack` | `StackObjectView` list, bottom-first; `MessageRef` label, optional primary `target`, `targets` list (clause 0 then clause 1; empty when targetless), source art identity (`print` / `name` / `card_id`) for when `source` is omitted from `objects` (Moved tombstone or ceased token), and optional `proxy_art_url` with the same empty-means-none contract |
 | `combat` | `CombatView`: declared attackers with defenders, declared blocks, confirmed flags |
 | `pending_choice` | The `PendingChoiceView` the engine is blocked on, if any; effect/mode titles use `MessageRef` labels |
 | `actions` | `ActionView` list for this viewer's own legal actions with `MessageRef` labels (empty for spectators) |
@@ -179,7 +181,9 @@ spell-target and ability-target pauses project as `choose_target { source, label
 `may_draw_up_to { label, max }`. Legacy card-named Trade Secrets wire variants and dedicated
 `choose_spell_targets` / `choose_ability_targets` oneof arms are gone. The `ChoiceItem` embedded in
 most variants carries the item's string `label` for visible object/seat identity so the prompt UI
-does not need to join against the object list. `choose_copy_target` also carries
+does not need to join against the object list. `ChoiceItem` may also carry optional
+`proxy_art_url` as a display-only alter-art hint for object prompts; empty string means absent.
+`choose_copy_target` also carries
 `put_counter_on_creature` for the one reused non-copy primer (`MayPutCounterOnCreature`), letting
 clients keep the same answer shape while swapping the prompt wording away from "copy target".
 Effect titles, mode rows, trigger-order rows, and generic draw-count prompts use `MessageRef`
