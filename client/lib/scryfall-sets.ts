@@ -85,6 +85,7 @@ export async function refreshScryfallSets(
 
     const rows = parseScryfallSets((await res.json()) as unknown);
     if (rows == null) return cache?.rows ?? null;
+    if (rows.length === 0) return cache?.rows ?? null;
 
     cache = { rows, fetchedAt: Date.now() };
     return rows;

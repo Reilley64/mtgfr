@@ -64,6 +64,34 @@ describe("scryfall sets cache", () => {
     expect(getCachedScryfallSets()).toEqual(rows);
   });
 
+  it("serves stale sets when refresh returns an empty array after a warm cache", async () => {
+    let empty = false;
+    const fetchImpl = vi.fn(async () => {
+      if (empty) return new Response(JSON.stringify({ data: [] }), { status: 200 });
+      return new Response(
+        JSON.stringify({
+          data: [{ code: "soc", name: "Secrets of Strixhaven", released_at: "2026-04-01", card_count: 400 }],
+        }),
+        { status: 200 },
+      );
+    });
+
+    await refreshScryfallSets(fetchImpl as unknown as typeof fetch);
+    vi.setSystemTime(new Date("2026-07-28T00:00:00Z"));
+    empty = true;
+
+    const rows = await refreshScryfallSets(fetchImpl as unknown as typeof fetch);
+
+    expect(rows).toEqual([
+      {
+        code: "soc",
+        name: "Secrets of Strixhaven",
+        releasedAt: "2026-04-01",
+        cardCount: 400,
+      },
+    ]);
+  });
+
   it("serves stale sets when refresh fails after a warm cache", async () => {
     let fail = false;
     const fetchImpl = vi.fn(async () => {
