@@ -1,7 +1,7 @@
 import { Schema as S } from "effect";
 import { CatalogCardSchema } from "../../../domain/deck-builder/cards";
 import { ScryfallPrintSchema } from "../../../domain/deck-builder/scryfall";
-import { BuilderMenuItemSchema } from "./messages";
+import { BuilderMenuItemSchema, BuilderProxyArtTargetKind } from "./messages";
 
 export const DeckEntry = S.Struct({
   count: S.Number,
@@ -38,6 +38,7 @@ export type BuilderHover = typeof BuilderHover.Type;
 export const BuilderProxyArtPicker = S.Struct({
   cardId: S.String,
   error: S.NullOr(S.String),
+  target: BuilderProxyArtTargetKind,
   url: S.String,
 });
 export type BuilderProxyArtPicker = typeof BuilderProxyArtPicker.Type;

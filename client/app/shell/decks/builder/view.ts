@@ -15,6 +15,7 @@ import { feltClass, fieldClass } from "../../../domain/ui/surfaces";
 import type { CardArtTick, ModalOpened } from "../../../messages";
 import {
   ActivatedBuilderTarget,
+  type BuilderProxyArtTargetKind,
   CancelledBuilderDiscard,
   ChangedBuilderName,
   ChangedBuilderProxyArtUrl,
@@ -143,7 +144,10 @@ export const BindBuilderCardPointer = Mount.defineStream(
                 const dy = event.clientY - pressOrigin.y;
                 if (dx * dx + dy * dy > 100) clearPress();
               }
-              Queue.offerUnsafe(queue, MovedBuilderHover({ id: args.cardId, x: event.clientX, y: event.clientY }));
+              Queue.offerUnsafe(
+                queue,
+                MovedBuilderHover({ id: args.cardId, kind: args.kind, x: event.clientX, y: event.clientY }),
+              );
             };
 
             const onPointerLeave = () => {
@@ -214,6 +218,16 @@ export const BindBuilderCardPointer = Mount.defineStream(
 function proxyArtFor(model: DeckBuilderSubmodel, cardId: string): string | undefined {
   const entryProxyArt = model.entries[cardId]?.proxyArtUrl;
   if (entryProxyArt) return entryProxyArt;
+  if (model.commander.id === cardId) return model.commander.proxyArtUrl;
+  return undefined;
+}
+
+function proxyArtForTarget(
+  model: DeckBuilderSubmodel,
+  cardId: string,
+  target: BuilderProxyArtTargetKind,
+): string | undefined {
+  if (target === "entry") return model.entries[cardId]?.proxyArtUrl;
   if (model.commander.id === cardId) return model.commander.proxyArtUrl;
   return undefined;
 }
@@ -376,7 +390,7 @@ function proxyArtPicker(model: DeckBuilderSubmodel): Html {
   if (picker == null) return null;
 
   const cardName = model.known[picker.cardId]?.name ?? picker.cardId;
-  const hasSavedProxyArt = proxyArtFor(model, picker.cardId) != null;
+  const hasSavedProxyArt = proxyArtForTarget(model, picker.cardId, picker.target) != null;
   const canSave = picker.error == null && picker.url.trim() !== "";
 
   return h.dialog(

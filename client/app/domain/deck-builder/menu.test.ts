@@ -69,12 +69,16 @@ describe("rowMenuItems", () => {
 
   it("offers choose print and set proxy art for non-basics", () => {
     const solRing = card({ id: "sol-ring", name: "Sol Ring" });
-    expect(rowMenuItems({ card: solRing, total: 0 }).map((i) => i.label)).toEqual(["Choose print", "Set proxy art…"]);
+    const items = rowMenuItems({ card: solRing, total: 0 });
+    expect(items.map((i) => i.label)).toEqual(["Choose print", "Set proxy art…"]);
+    expect(items[1]?.action).toEqual({ kind: "setProxyArt", cardId: "sol-ring", target: "entry" });
   });
 });
 
 describe("commanderMenuItems", () => {
   it("offers choose print and set proxy art", () => {
-    expect(commanderMenuItems({ cardId: "cmd" }).map((i) => i.label)).toEqual(["Choose print", "Set proxy art…"]);
+    const items = commanderMenuItems({ cardId: "cmd" });
+    expect(items.map((i) => i.label)).toEqual(["Choose print", "Set proxy art…"]);
+    expect(items[1]?.action).toEqual({ kind: "setProxyArt", cardId: "cmd", target: "commander" });
   });
 });

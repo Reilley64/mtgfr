@@ -573,6 +573,7 @@ describe("shell surface scenes", () => {
               proxyArtPicker: {
                 cardId: "atraxa",
                 error: null,
+                target: "commander",
                 url: "https://example.com/atraxa.png",
               },
               searching: false,

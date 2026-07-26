@@ -41,3 +41,17 @@ Complete.
 
 - The focused builder Scene/story coverage exercises menu open, dialog validation, save, clear,
   proxy chips, and scroll lock.
+
+## Task 7 follow-up: commander vs entry proxy target
+
+### Red
+
+`bunx vitest run "app/shell/decks/builder/story.test.ts" -t "commander proxy art save does not write into the deck row when both share the same card id"`
+
+- failed because `commander.proxyArtUrl` stayed unset when the commander and a deck row shared the same oracle id
+
+### Green
+
+`bunx vitest run "app/shell/decks/builder/story.test.ts" -t "commander proxy art save does not write into the deck row when both share the same card id"`
+
+- passed after threading explicit `entry` vs `commander` proxy-art targets through the menu action, picker message, and picker state

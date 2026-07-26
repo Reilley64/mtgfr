@@ -22,6 +22,7 @@ import {
 import { RpcClient } from "../../../resources";
 import {
   type BuilderMenuActionSchema,
+  type BuilderProxyArtTargetKind,
   BuilderPrintSearchFailed,
   BuilderSearchFailed,
   DeckBuilderLoadFailed,
@@ -164,10 +165,23 @@ function proxyArtFor(model: DeckBuilderSubmodel, cardId: string): string | undef
   return undefined;
 }
 
-function proxyArtTargetKind(model: DeckBuilderSubmodel, cardId: string): "deck" | "commander" | null {
-  if (model.entries[cardId] != null) return "deck";
-  if (model.commander.id === cardId) return "commander";
-  return null;
+function proxyArtForTarget(
+  model: DeckBuilderSubmodel,
+  cardId: string,
+  target: BuilderProxyArtTargetKind,
+): string | undefined {
+  if (target === "entry") return model.entries[cardId]?.proxyArtUrl;
+  if (model.commander.id === cardId) return model.commander.proxyArtUrl;
+  return undefined;
+}
+
+function proxyArtForHover(
+  model: DeckBuilderSubmodel,
+  cardId: string,
+  kind: "pool" | "deck" | "commander",
+): string | undefined {
+  if (kind === "commander") return proxyArtForTarget(model, cardId, "commander");
+  return proxyArtFor(model, cardId);
 }
 
 function setCount(model: DeckBuilderSubmodel, card: BuilderCatalogCard, count: number): DeckBuilderSubmodel {
@@ -242,14 +256,16 @@ function saveBody(model: DeckBuilderSubmodel): SaveDeckRequestShape {
   };
 }
 
-function setProxyArt(model: DeckBuilderSubmodel, cardId: string, proxyArtUrl: string): DeckBuilderSubmodel {
-  const target = proxyArtTargetKind(model, cardId);
-  if (target == null) return { ...model, proxyArtPicker: null };
-
+function setProxyArt(
+  model: DeckBuilderSubmodel,
+  cardId: string,
+  target: BuilderProxyArtTargetKind,
+  proxyArtUrl: string,
+): DeckBuilderSubmodel {
   const normalized = proxyArtUrl.trim();
   if (!normalized) return { ...model, proxyArtPicker: null };
 
-  if (target === "deck") {
+  if (target === "entry") {
     const entry = model.entries[cardId];
     if (entry == null) return { ...model, proxyArtPicker: null };
     return {
@@ -261,6 +277,8 @@ function setProxyArt(model: DeckBuilderSubmodel, cardId: string, proxyArtUrl: st
     };
   }
 
+  if (model.commander.id !== cardId) return { ...model, proxyArtPicker: null };
+
   return {
     ...model,
     commander: { ...model.commander, proxyArtUrl: normalized },
@@ -270,11 +288,12 @@ function setProxyArt(model: DeckBuilderSubmodel, cardId: string, proxyArtUrl: st
   };
 }
 
-function clearProxyArt(model: DeckBuilderSubmodel, cardId: string): DeckBuilderSubmodel {
-  const target = proxyArtTargetKind(model, cardId);
-  if (target == null) return { ...model, proxyArtPicker: null };
-
-  if (target === "deck") {
+function clearProxyArt(
+  model: DeckBuilderSubmodel,
+  cardId: string,
+  target: BuilderProxyArtTargetKind,
+): DeckBuilderSubmodel {
+  if (target === "entry") {
     const entry = model.entries[cardId];
     if (entry == null) return { ...model, proxyArtPicker: null };
     const { proxyArtUrl: _proxyArtUrl, ...rest } = entry;
@@ -286,6 +305,8 @@ function clearProxyArt(model: DeckBuilderSubmodel, cardId: string): DeckBuilderS
       proxyArtPicker: null,
     };
   }
+
+  if (model.commander.id !== cardId) return { ...model, proxyArtPicker: null };
 
   const { proxyArtUrl: _proxyArtUrl, ...commander } = model.commander;
   return {
@@ -383,7 +404,8 @@ function runMenuAction(
           proxyArtPicker: {
             cardId: action.cardId,
             error: null,
-            url: proxyArtFor(closed, action.cardId) ?? "",
+            target: action.target,
+            url: proxyArtForTarget(closed, action.cardId, action.target) ?? "",
           },
         },
         [],
@@ -484,7 +506,7 @@ export const update = (
       },
       PickedBuilderPrint: ({ cardId, print }) => [pickPrint(model, cardId, print), []],
       ClosedBuilderPrintPicker: () => [{ ...model, printPicker: null }, []],
-      OpenedBuilderProxyArtPicker: ({ cardId }) => [
+      OpenedBuilderProxyArtPicker: ({ cardId, target }) => [
         {
           ...model,
           hover: null,
@@ -492,7 +514,8 @@ export const update = (
           proxyArtPicker: {
             cardId,
             error: null,
-            url: proxyArtFor(model, cardId) ?? "",
+            target,
+            url: proxyArtForTarget(model, cardId, target) ?? "",
           },
         },
         [],
@@ -515,12 +538,12 @@ export const update = (
         const picker = model.proxyArtPicker;
         if (picker == null) return [model, []];
         if (picker.error != null || picker.url.trim() === "") return [model, []];
-        return [setProxyArt(model, picker.cardId, picker.url), []];
+        return [setProxyArt(model, picker.cardId, picker.target, picker.url), []];
       },
       ClearedBuilderProxyArt: () => {
         const picker = model.proxyArtPicker;
         if (picker == null) return [model, []];
-        return [clearProxyArt(model, picker.cardId), []];
+        return [clearProxyArt(model, picker.cardId, picker.target), []];
       },
       ClosedBuilderProxyArtPicker: () => [{ ...model, proxyArtPicker: null }, []],
       SubmittedDeckSave: () => {
@@ -535,11 +558,14 @@ export const update = (
       },
       DeckSaved: () => [{ ...model, dirty: false, saving: false }, []],
       DeckSaveFailed: ({ problems }) => [{ ...model, problems: [...problems], saving: false }, []],
-      MovedBuilderHover: ({ id, x, y }) => {
+      MovedBuilderHover: ({ id, kind, x, y }) => {
         if (model.menu != null || model.printPicker != null || model.proxyArtPicker != null) {
           return [{ ...model, hover: null }, []];
         }
-        return [{ ...model, hover: { id, print: printFor(model, id), proxyArtUrl: proxyArtFor(model, id), x, y } }, []];
+        return [
+          { ...model, hover: { id, print: printFor(model, id), proxyArtUrl: proxyArtForHover(model, id, kind), x, y } },
+          [],
+        ];
       },
       ClearedBuilderHover: () => [{ ...model, hover: null }, []],
       OpenedBuilderMenu: ({ cardId, kind, x, y }) => [openMenu(model, { cardId, kind, x, y }), []],

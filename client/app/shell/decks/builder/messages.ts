@@ -7,13 +7,16 @@ import { DeckDetail } from "../../../domain/wire/types";
 export const BuilderMenuTargetKind = S.Union([S.Literal("pool"), S.Literal("deck"), S.Literal("commander")]);
 export type BuilderMenuTargetKind = typeof BuilderMenuTargetKind.Type;
 
+export const BuilderProxyArtTargetKind = S.Union([S.Literal("entry"), S.Literal("commander")]);
+export type BuilderProxyArtTargetKind = typeof BuilderProxyArtTargetKind.Type;
+
 export const BuilderMenuActionSchema = S.Union([
   S.Struct({ kind: S.Literal("add"), cardId: S.String, count: S.Number }),
   S.Struct({ kind: S.Literal("remove"), cardId: S.String, count: S.Number }),
   S.Struct({ kind: S.Literal("fill"), cardId: S.String, count: S.Number }),
   S.Struct({ kind: S.Literal("setCommander"), cardId: S.String }),
   S.Struct({ kind: S.Literal("choosePrint"), cardId: S.String, addOnPick: S.Boolean }),
-  S.Struct({ kind: S.Literal("setProxyArt"), cardId: S.String }),
+  S.Struct({ kind: S.Literal("setProxyArt"), cardId: S.String, target: BuilderProxyArtTargetKind }),
 ]);
 export type BuilderMenuActionSchema = typeof BuilderMenuActionSchema.Type;
 
@@ -47,7 +50,10 @@ export const ReceivedBuilderPrints = m("ReceivedBuilderPrints", {
 export const BuilderPrintSearchFailed = m("BuilderPrintSearchFailed", { cardId: S.String });
 export const PickedBuilderPrint = m("PickedBuilderPrint", { cardId: S.String, print: S.String });
 export const ClosedBuilderPrintPicker = m("ClosedBuilderPrintPicker");
-export const OpenedBuilderProxyArtPicker = m("OpenedBuilderProxyArtPicker", { cardId: S.String });
+export const OpenedBuilderProxyArtPicker = m("OpenedBuilderProxyArtPicker", {
+  cardId: S.String,
+  target: BuilderProxyArtTargetKind,
+});
 export const ChangedBuilderProxyArtUrl = m("ChangedBuilderProxyArtUrl", { url: S.String });
 export const SubmittedBuilderProxyArt = m("SubmittedBuilderProxyArt");
 export const ClearedBuilderProxyArt = m("ClearedBuilderProxyArt");
@@ -68,6 +74,7 @@ export const NavigatedAwayFromBuilder = m("NavigatedAwayFromBuilder");
 /** Cursor-follow card preview (Solid HoverPreview). Print resolved in update. */
 export const MovedBuilderHover = m("MovedBuilderHover", {
   id: S.String,
+  kind: BuilderMenuTargetKind,
   x: S.Number,
   y: S.Number,
 });

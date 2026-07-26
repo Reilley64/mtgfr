@@ -9,7 +9,7 @@ export type BuilderMenuAction =
   | { kind: "fill"; cardId: string; count: number }
   | { kind: "setCommander"; cardId: string }
   | { kind: "choosePrint"; cardId: string; addOnPick: boolean }
-  | { kind: "setProxyArt"; cardId: string };
+  | { kind: "setProxyArt"; cardId: string; target: "entry" | "commander" };
 
 export type BuilderMenuItem = { label: string; action: BuilderMenuAction };
 
@@ -69,7 +69,7 @@ export function rowMenuItems(args: {
     });
     items.push({
       label: "Set proxy art…",
-      action: { kind: "setProxyArt", cardId: card.id },
+      action: { kind: "setProxyArt", cardId: card.id, target: "entry" },
     });
   }
   return items;
@@ -83,7 +83,7 @@ export function commanderMenuItems(args: { cardId: string }): BuilderMenuItem[] 
     },
     {
       label: "Set proxy art…",
-      action: { kind: "setProxyArt", cardId: args.cardId },
+      action: { kind: "setProxyArt", cardId: args.cardId, target: "commander" },
     },
   ];
 }
