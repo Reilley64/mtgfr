@@ -40718,8 +40718,9 @@ fn prison_term_reattaches_to_entering_opponent_creature() {
     // Prison Term: "Whenever a creature an opponent controls enters, you may attach this Aura
     // to that creature." Accepting moves the Aura — and its "activated abilities can't be
     // activated" restriction — off its original host and onto the newly entering one.
+    // Non-legendary hosts so CR 704.5j does not pause before the re-attach MayYesNo.
     let mut game = Game::new();
-    let host_a = game.spawn_on_battlefield(PlayerId(1), card("Troyan, Gutsy Explorer"));
+    let host_a = game.spawn_on_battlefield(PlayerId(1), card("Llanowar Elves"));
     let mut test = TestGame { game };
     let prison_term = test.spawn_in_hand(PlayerId(0), card("Prison Term"));
     test.cast(prison_term).at(Target::Object(host_a)).resolve();
@@ -40730,7 +40731,7 @@ fn prison_term_reattaches_to_entering_opponent_creature() {
         game.submit(Intent::ActivateAbility {
             player: PlayerId(1),
             object: host_a,
-            ability_index: 0, // {T}: Add {G}{U}. (a mana ability — still banned under Prison Term)
+            ability_index: 0, // {T}: Add {G}. (a mana ability — still banned under Prison Term)
             target: None,
             sacrifice: vec![],
             discard_cost: vec![],
@@ -40740,13 +40741,13 @@ fn prison_term_reattaches_to_entering_opponent_creature() {
         "host A starts banned under Prison Term"
     );
 
-    // P1 — an opponent of Prison Term's controller P0 — casts a second Troyan on their own
+    // P1 — an opponent of Prison Term's controller P0 — casts a second Elves on their own
     // turn (creature spells are sorcery-speed).
     game.stack_library(PlayerId(1), &[card("Forest")]); // so P1's draw step doesn't deck out.
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(1) && g.current_step() == Step::Main1
     });
-    let host_b_card = game.spawn_in_hand(PlayerId(1), card("Troyan, Gutsy Explorer"));
+    let host_b_card = game.spawn_in_hand(PlayerId(1), card("Llanowar Elves"));
     game.fund_mana(PlayerId(1));
     game.submit(Intent::Cast {
         player: PlayerId(1),
@@ -40785,10 +40786,10 @@ fn prison_term_reattaches_to_entering_opponent_creature() {
     .unwrap();
     resolve_top_of_stack(&mut game); // the accepted re-attach resolves.
 
-    let host_b = battlefield_named(&game, PlayerId(1), "Troyan, Gutsy Explorer")
+    let host_b = battlefield_named(&game, PlayerId(1), "Llanowar Elves")
         .into_iter()
         .find(|&id| id != host_a)
-        .expect("the second Troyan entered the battlefield");
+        .expect("the second Llanowar Elves entered the battlefield");
     assert_eq!(
         game.attached_to(aura),
         Some(host_b),
