@@ -1124,6 +1124,40 @@ describe("flight clock helpers", () => {
     expect(Reflect.get(published, "sync")).toMatchObject({ flights: [], exitFx: [] });
   });
 
+  it("does not sync exit FX pose-only ticks but syncs completed membership changes", () => {
+    const activeExitFx = spawnExitFx({
+      id: 7,
+      kind: "destroy",
+      name: "Grizzly Bears",
+      print: "print-id",
+      x: 80,
+      y: 60,
+      scale: 1,
+    });
+    const activeTick = tickFlightClock(
+      flightClockState({ liveExitFx: [activeExitFx] }),
+      frame({ flights: [], exitFx: [activeExitFx] }),
+      16,
+      16,
+      false,
+    );
+
+    expect(activeTick.frame.exitFx).toEqual([{ ...activeExitFx, progress: 16 / 550 }]);
+    expect(activeTick.sync).toBeNull();
+
+    const completingExitFx = { ...activeExitFx, progress: 0.95 };
+    const completedTick = tickFlightClock(
+      flightClockState({ liveExitFx: [completingExitFx] }),
+      frame({ flights: [], exitFx: [completingExitFx] }),
+      32,
+      32,
+      false,
+    );
+
+    expect(completedTick.frame.exitFx).toEqual([]);
+    expect(completedTick.sync).toEqual({ flights: [], exitFx: [], now: 32 });
+  });
+
   it("steps exit FX forward and drops completed entries from the sync payload", () => {
     const exitFx = {
       ...spawnExitFx({

@@ -78,6 +78,7 @@ export function stepExitFx(
 
 export function particleAllowancePerFx(activeCount: number, maxTotal = EXIT_FX_MAX_PARTICLES): number {
   if (activeCount <= 0) return 0;
+  // Floor-at-1 keeps huge wipes visible, even if that can slightly exceed the nominal global cap.
   return Math.max(1, Math.floor(maxTotal / activeCount));
 }
 

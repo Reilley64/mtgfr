@@ -19,7 +19,8 @@ specs for the current module split, especially
 
    Flight animation is Mount-local rAF: mid-flight ticks paint only the flight
    canvas. Resting bitmap republishes when layout/chrome/hide sets change, not on
-   every pose tick. Model receives `FlightsSynced` when the flying set changes.
+   every pose tick. Model receives `FlightsSynced` when flying or `ExitFx`
+   membership changes.
 
 5. **Board submodel:** `client/app/board/submodel.ts` composes canvas, bitmap, motion, action-session, and HTML overlays. `view.ts` is the composition root.
 6. **HTML chrome:** `client/app/board/html/` — `stack.ts`, `turn-chrome.ts`, `priority-bar.ts`, `discoverability.ts`, `overlays.ts`, `hand.ts`, `mana-tray.ts`, `actions.ts`, `log-panel.ts`, `prompts.ts`, `activation-menu.ts`, `inspect.ts`.
@@ -83,7 +84,7 @@ specs for the current module split, especially
    6. Inspect (10) above everything else on the board, including system modals, while pinned.
    7. Under-card name labels are forbidden on resting permanents (not a separate layer — deleted).
 
-3. **Flight ownership:** while a flight owns an id, suppress duplicate HTML entrances and hide the resting face (`hideCardIds` / `flightOwnedIds`).
+3. **Flight ownership:** while a flight or active `ExitFx` owns an id, suppress duplicate HTML entrances and hide the resting face (`hideCardIds` / `flightOwnedIds`).
 4. **Hand/stack rest as HTML;** battlefield + zone piles + flights are canvas/Mount. Do not merge into one scene graph.
 5. **Canvas colors** are hex literals (see DESIGN.md); keep the legend swatches in sync when changing badge/outline colors.
 

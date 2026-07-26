@@ -162,7 +162,7 @@ export function tickFlightClock(
   const nextFlyingIds = flyingIds(liveFlights);
   const flyingMembershipChanged = !sameIdSet(prevFlyingIds, nextFlyingIds);
   const allSettled = prevFlyingIds.size > 0 && nextFlyingIds.size === 0;
-  const exitFxChangedNow = exitFxChanged(state.liveExitFx, liveExitFx);
+  const exitFxMembershipChanged = !sameIdSet(exitFxIds(state.liveExitFx), exitFxIds(liveExitFx));
 
   return {
     state: {
@@ -173,7 +173,7 @@ export function tickFlightClock(
     frame: { ...frame, flights: liveFlights, exitFx: liveExitFx },
     paintFlight: true,
     sync:
-      flyingMembershipChanged || allSettled || exitFxChangedNow
+      flyingMembershipChanged || allSettled || exitFxMembershipChanged
         ? { flights: liveFlights, exitFx: liveExitFx, now }
         : null,
   };
@@ -231,6 +231,10 @@ function exitFxChanged(prev: readonly ExitFx[], next: readonly ExitFx[]): boolea
 
 function flyingIds(flights: readonly CardFlight[]): Set<number> {
   return new Set(flights.filter((flight) => flight.phase === "flying").map((flight) => flight.id));
+}
+
+function exitFxIds(exitFx: readonly ExitFx[]): Set<number> {
+  return new Set(exitFx.map((fx) => fx.id));
 }
 
 function sameIdSet(a: ReadonlySet<number>, b: ReadonlySet<number>): boolean {
