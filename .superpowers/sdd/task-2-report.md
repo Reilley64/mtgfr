@@ -65,7 +65,7 @@ $ tsc --noEmit   # exit 0
 
 ## Commit
 
-- Pending local commit at report-write time; updated after commit below.
+- `6f525ac` — `feat(web): cache Scryfall sets and per-set oracle totals`
 
 ## Concerns
 
