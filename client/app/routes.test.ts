@@ -332,6 +332,11 @@ test("coverage retry clears rows and re-enters loading", () => {
       expect(m.coverage.query).toBe("soc");
     }),
     Story.Command.resolve(load, CoverageLoadFailed({ message: "Could not load coverage." })),
+    Story.model((m) => {
+      expect(m.coverage.status).toBe("error");
+      expect(m.coverage.error).toBe("Could not load coverage.");
+      expect(m.coverage.sets).toEqual([]);
+    }),
   );
 });
 

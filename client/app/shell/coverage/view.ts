@@ -33,8 +33,8 @@ function percentValue(row: CoverageSetRow): number {
   return row.faithful / row.oracleTotal;
 }
 
-export function coveragePercentText(faithfulCount: number, oracleTotal: number | null): string {
-  if (oracleTotal == null) return "—";
+export function coveragePercentText(faithfulCount: number | null, oracleTotal: number | null): string {
+  if (faithfulCount == null || oracleTotal == null) return "—";
   return formatFaithfulPercent(faithfulCount, oracleTotal) ?? "—";
 }
 
@@ -90,7 +90,7 @@ export function view(
 ): Html {
   const status = statusCopy(model.status);
   const rows = visibleCoverageRows(model);
-  const globalPercent = coveragePercentText(model.faithfulCount ?? 0, model.oracleTotal);
+  const globalPercent = coveragePercentText(model.faithfulCount, model.oracleTotal);
   const emptyCopy = model.query.trim() === "" ? "No set coverage available." : "No sets match.";
 
   return h.main(

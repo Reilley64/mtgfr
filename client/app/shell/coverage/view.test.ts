@@ -30,3 +30,7 @@ test("visibleCoverageRows filters by lowercase code or name query", () => {
 test("coveragePercentText shows em dash when oracle total is missing", () => {
   expect(coveragePercentText(10, null)).toBe("—");
 });
+
+test("coveragePercentText shows em dash when faithful count is missing", () => {
+  expect(coveragePercentText(null, 400)).toBe("—");
+});
