@@ -40,7 +40,7 @@ jobs:
           persist-credentials: true
 
       # Pin — `lts/*` resolves via the Node dist index / API and fails when those are degraded.
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
         # do NOT set registry-url — conflicts with semantic-release (see recipe pitfalls)
