@@ -42,7 +42,7 @@ Ship an authenticated `/coverage` shell route that renders a searchable set tabl
 - Each row shows the set code, set name, faithful count, oracle total, and formatted percent.
 - Search filters by lowercase substring match on set code or set name.
 - Rows sort by `releasedAt` descending, with null release dates after dated sets, then set name ascending, then set code ascending.
-- The page chrome, search field, and column headers remain pinned in the viewport; only `data-testid="coverage-table-body"` scrolls the visible row list.
+- The page shell is viewport-bounded (`h-dvh` + `overflow-hidden` on `coverage-page`) so the row list can overflow; chrome, search, and column headers stay pinned and only `data-testid="coverage-table-body"` (`overflow-y-auto`) scrolls.
 - Rows with `oracleTotal == null` render `—` in both the `Scryfall` and `%` columns.
 - Rows with `oracleTotal > 0` and `faithful = 0` render `0%`, not `—`.
 - Percent text reuses `formatFaithfulPercent`: one decimal below 10%, otherwise a whole percent.
@@ -50,8 +50,9 @@ Ship an authenticated `/coverage` shell route that renders a searchable set tabl
 ### Coverage meta pipeline
 
 - `GET /api/meta/coverage/v1` returns global `faithful_count`, global `oracle_total`, and a `sets` array shaped as `{ code, name, released_at, faithful, oracle_total }`.
-- The BFF triggers non-blocking refreshes for cached Scryfall `/sets` data, cached per-set unique-oracle totals from `default_cards`, and the cached global oracle-cards total on every coverage fetch, but serves immediately from the current cache instead of waiting for those refreshes to finish.
+- On each coverage fetch the BFF loads Scryfall `/sets`, per-set unique-oracle totals from `default_cards`, and the global oracle-cards total via `load*` helpers: cold caches are awaited so the first `/coverage` response is not all `—`; warm caches return immediately and refresh in the background (SWR).
 - Only Scryfall sets with `card_count > 0` appear in the joined set list.
+- Scryfall rows with `set_type` in `memorabilia`, `token`, `minigame`, or `vanguard` are omitted — they are not deckable pool targets (Art Series, tokens, minigames, vanguard/avatars).
 - Set rows always come from the cached Scryfall set list, not from the card registry alone, so zero-faithful sets still appear.
 - When the API live-status fetch succeeds, `faithful_by_set` joins into the cached set rows and missing set keys default to `faithful: 0`.
 - When the API live-status fetch fails or parses invalidly, the BFF still returns cached Scryfall rows with `faithful: 0`, cached global `oracle_total` when available, and `faithful_count: null`. The page stays in the ready state if the HTTP response still decodes.
@@ -73,7 +74,7 @@ Ship an authenticated `/coverage` shell route that renders a searchable set tabl
 - Reuse the shell badge formatter for both the page header and row percentages so `/coverage` and the fixed `% faithful` chrome never diverge on display rules.
 - Represent unavailable denominators as `null` on the wire and `—` in the UI. Do not coerce them to `0`.
 - Compute `faithful_by_set` from `cards::registry()` inside server health with no extra I/O.
-- Use 24-hour in-memory caches plus fire-and-forget refresh for Scryfall set metadata, `default_cards` per-set denominators, and the global oracle-cards total.
+- Use 24-hour in-memory caches for Scryfall set metadata, `default_cards` per-set denominators, and the global oracle-cards total; coverage awaits cold fills and SWR-refreshes when warm.
 - Align the coverage shell feature with other `Got*` submodels: `shell/coverage/index.ts` namespace exports, `informRouteChanged`, parent `GotCoverageMessage`, and `Command.mapMessages` lift — no flat coverage tags in the parent `Message` union.
 
 ## Testing Decisions
