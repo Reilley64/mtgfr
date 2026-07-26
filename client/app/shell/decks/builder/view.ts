@@ -395,7 +395,8 @@ export function view(model: DeckBuilderSubmodel, apiVersion: string | null): Htm
     [
       h.Class(
         feltClass(
-          "grid h-full min-h-screen grid-cols-[minmax(0,1fr)_minmax(220px,min(32vw,360px))] gap-5 overflow-hidden p-xxl pt-[max(1.5rem,env(safe-area-inset-top))] pr-[max(1.5rem,env(safe-area-inset-right))] pb-[max(1.5rem,env(safe-area-inset-bottom))] pl-[max(1.5rem,env(safe-area-inset-left))]",
+          // h-dvh (not min-h-screen): shell must stay viewport-tall so the catalog/decklist overflow-y-auto hosts actually overflow.
+          "grid h-dvh grid-cols-[minmax(0,1fr)_minmax(220px,min(32vw,360px))] grid-rows-[minmax(0,1fr)] gap-5 overflow-hidden p-xxl pt-[max(1.5rem,env(safe-area-inset-top))] pr-[max(1.5rem,env(safe-area-inset-right))] pb-[max(1.5rem,env(safe-area-inset-bottom))] pl-[max(1.5rem,env(safe-area-inset-left))]",
         ),
       ),
       h.DataAttribute("testid", "deck-builder-page"),

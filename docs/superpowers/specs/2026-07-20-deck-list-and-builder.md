@@ -61,7 +61,7 @@ deck grid still loads normally.
 - **Singleton enforcement.** Non-basic non-commander cards cap at 1. Commander is set via the context menu only; `canBeCommander` restricts to legendary creatures.
 - **Full Commander legality** is enforced server-side on save; the client surfaces validation errors returned as `CreateDeck422` / `UpdateDeck422` tagged Schema errors.
 - **Card lookup.** `lookupCardsByIds(ids, client)` fetches oracle data for deck hydration through `/api/rpc/cards/lookup`.
-- **Scroll.** The builder page shell does not scroll. The left catalog grid and the right decklist are independent `overflow-y-auto` scrollports with `overscroll-contain` so wheel/trackpad in one pane does not move the other or the document. The right column uses `min-h-0` so the decklist forms a real scrollport inside the grid.
+- **Scroll.** The builder page shell is viewport-bounded (`h-dvh`, single `minmax(0,1fr)` grid row, `overflow-hidden`) and does not scroll. The left catalog grid and the right decklist are independent `overflow-y-auto` scrollports with `overscroll-contain` so wheel/trackpad in one pane does not move the other or the document. Both columns use `min-h-0` so their scroll hosts form real scrollports inside the grid instead of growing the page.
 - **Print picker scroll lock.** While the choose-printing `<dialog>` is open (`printPicker` set), catalog and decklist scrollports use `overflow-hidden` (background frozen). The print tile grid inside the dialog remains `overflow-y-auto` with `overscroll-contain`. Closing the picker restores independent pane scrolling.
 
 ### Card art CDN (`client/lib/deck-builder/scryfall.ts`, `client/lib/ui/card-art.ts`, `client/lib/image-cache.ts`)
