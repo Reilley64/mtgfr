@@ -471,6 +471,7 @@ impl Effect {
             Effect::Damage(DamageEffect::Target { target, .. })
             | Effect::Pump(PumpEffect::PumpUntilEndOfTurn { target, .. })
             | Effect::Pump(PumpEffect::SetBasePtTargetUntilEndOfTurn { target, .. })
+            | Effect::Pump(PumpEffect::TargetBecomesTreasure { target })
             | Effect::Counters(CountersEffect::PutCounters { target, .. })
             | Effect::Counters(CountersEffect::DoubleCounters { target })
             | Effect::Counters(CountersEffect::DoubleCountersOnTargetCreatures { target, .. })

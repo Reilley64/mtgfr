@@ -253,6 +253,21 @@ impl Game {
                 })
                 .map(|object| Event::KeywordsStripped { object, keywords })
                 .collect(),
+            // Vraska, Betrayal's Sting's −2: the target creature becomes a Treasure artifact and
+            // loses all other card types and abilities (CR 613.1d/613.1f) — an indefinite def
+            // overwrite, so `BecameCopy`'s `until_eot: false` never restores it. A target that has
+            // left the battlefield since is skipped (CR 608.2b).
+            PumpEffect::TargetBecomesTreasure { .. } => {
+                let object = expect_object_target(target, "becomes a Treasure");
+                let Some(current) = self.as_permanent(object).map(|p| p.def) else {
+                    return Vec::new();
+                };
+                vec![Event::BecameCopy {
+                    object,
+                    def: becomes_treasure(current),
+                    until_eot: false,
+                }]
+            }
             // Mass weaken: every creature gets -power/-toughness until end of turn (a negative
             // TempBoost, cleared at cleanup). A 0-or-less-toughness creature dies to the next SBA. (CR 704, CR 514)
             PumpEffect::WeakenEachCreature {

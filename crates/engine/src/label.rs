@@ -557,6 +557,11 @@ impl Effect {
                     keyword_list_label(keywords)
                 )
             }
+            Effect::Pump(PumpEffect::TargetBecomesTreasure { .. }) => {
+                "Target creature becomes a Treasure artifact with \"{T}, Sacrifice this artifact: \
+                 Add one mana of any color\" and loses all other card types and abilities"
+                    .to_string()
+            }
             Effect::Static(StaticEffect::Anthem {
                 power,
                 toughness,

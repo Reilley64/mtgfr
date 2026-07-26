@@ -12,8 +12,6 @@ oracle = "Compleated ({B/P} can be paid with {B} or 2 life. If life was paid, th
 set = "ecc"
 subtypes = ["Vraska"]
 legendary = true
-approximates = "The −2's \"target creature becomes a Treasure artifact ... and loses all other card types and abilities\" mode is omitted entirely rather than approximated (increment #25)."
-
 [cost]
 generic = 4
 black = 1
@@ -45,6 +43,19 @@ amount = 1
 type = "choice"
 mode = "proliferate"
 times = 1
+
+# −2: Target creature becomes a Treasure artifact with "{T}, Sacrifice this artifact: Add one mana of
+# any color" and loses all other card types and abilities.
+[[abilities]]
+timing = "activated"
+loyalty = -2
+
+# Target creature becomes a Treasure artifact with "{T}, Sacrifice this artifact: Add one mana of any
+# color" and loses all other card types and abilities.
+[[abilities.effects]]
+type = "pump"
+mode = "target_becomes_treasure"
+target = "creature"
 
 # −9: If target player has fewer than nine poison counters, they get a number of poison counters equal to the
 # difference.

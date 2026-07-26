@@ -719,10 +719,23 @@ explaining the -1/-1 layer itself). Tests (`crates/engine/tests/game.rs`):
 `contagion_engine` keep their #17 proliferate `approximates` notes untouched — this increment
 doesn't clear those._
 
-### 25. `becomes-treasure-losing-all-else` — 1 card, M
+### 25. `becomes-treasure-losing-all-else` — 1 card, M — LANDED 2026-07-27
 Depends on: nothing.
 Vraska's −2: "target creature becomes a Treasure artifact with '{T}, Sacrifice this artifact: Add
 one mana of any color' and loses all other card types and abilities." A CR 613 layer-1/4/6 type-
 and-ability-setting effect. *Sketch:* an existing-permanent retype that clears printed abilities
 and grants one activated ability, distinct from the token/copy path. *Cards:*
 vraska_betrayals_sting.
+
+**LANDED 2026-07-27:** new `PumpEffect::TargetBecomesTreasure { target }`, resolved by reading the
+target permanent's current `def` and reusing the existing indefinite `Event::BecameCopy { until_eot:
+false, .. }` mint (CR 400.7 — no cleanup, resets only if the object leaves the battlefield) with a new
+`becomes_treasure(printed)` helper (`crates/engine/src/types/card.rs`, next to `treasure_token()`)
+that keeps the target's name/id/default_print/cost/legendary and replaces everything else with the
+Treasure profile — a type/ability-SET, not a CR 707 copy. `vraska_betrayals_sting_turns_a_creature_
+into_a_treasure` asserts the target becomes a plain artifact with the Treasure subtype, keeps its own
+name, and loses its printed keyword/abilities; `a_creature_that_became_a_treasure_sacrifices_for_mana_
+of_any_color` proves it gained the granted mana ability and — unlike a real Treasure *token* — is not
+a token, so sacrificing it lands in the graveyard rather than ceasing to exist. Increment #16
+(Compleated) already landed earlier in this lane, so `vraska_betrayals_sting.toml`'s `approximates`
+line is now fully cleared — the card is faithful.

@@ -1120,6 +1120,21 @@ pub fn treasure_token() -> CardDef {
     treasure_token_builtin()
 }
 
+/// A permanent that "becomes a Treasure artifact … and loses all other card types and abilities"
+/// (CR 613.1d/613.1f — Vraska, Betrayal's Sting's −2). Unlike a copy effect (CR 707) this is a
+/// type- and ability-SETTING effect: name, mana cost and identity are unchanged, only the card
+/// types, subtypes and abilities are replaced by the Treasure profile.
+pub(crate) fn becomes_treasure(printed: CardDef) -> CardDef {
+    CardDef {
+        name: printed.name,
+        id: printed.id,
+        default_print: printed.default_print,
+        cost: printed.cost,
+        legendary: printed.legendary,
+        ..treasure_token()
+    }
+}
+
 /// Builtin Treasure profile — keep in lockstep with `cards/data/tokens/treasure.toml`.
 fn treasure_token_builtin() -> CardDef {
     const ABILITIES: &[Ability] = &[Ability {

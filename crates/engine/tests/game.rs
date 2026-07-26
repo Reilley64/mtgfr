@@ -94435,7 +94435,7 @@ fn vraska_betrayals_sting_tops_a_target_player_up_to_nine_poison() {
     game.submit(Intent::ActivateAbility {
         player: PlayerId(0),
         object: vraska,
-        ability_index: 1,
+        ability_index: 2,
         target: Some(Target::Player(PlayerId(1))),
         sacrifice: vec![],
         discard_cost: vec![],
@@ -94463,7 +94463,7 @@ fn vraska_betrayals_sting_places_nothing_at_nine_or_more_poison() {
         .submit(Intent::ActivateAbility {
             player: PlayerId(0),
             object: vraska,
-            ability_index: 1,
+            ability_index: 2,
             target: Some(Target::Player(PlayerId(1))),
             sacrifice: vec![],
             discard_cost: vec![],
@@ -96090,5 +96090,123 @@ fn a_phyrexian_pip_falls_back_to_life_when_its_color_is_needed_for_generic() {
         game.life(PlayerId(0)),
         before - 2,
         "the {{B/P}} pip took the 2-life route because all five black paid {{4}}{{B}}"
+    );
+}
+
+#[test]
+fn vraska_betrayals_sting_turns_a_creature_into_a_treasure() {
+    // "−2: Target creature becomes a Treasure artifact with "{T}, Sacrifice this artifact: Add
+    // one mana of any color" and loses all other card types and abilities."
+    let mut game = Game::new();
+    let vraska = game.spawn_on_battlefield(PlayerId(0), card("Vraska, Betrayal's Sting"));
+    let flyer = game.spawn_on_battlefield(PlayerId(1), MUTABLE_FLYER);
+    assert!(
+        game.has_keyword(flyer, Keyword::Flying),
+        "the printed flyer has flying before Vraska's −2"
+    );
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: vraska,
+        ability_index: 1,
+        target: Some(Target::Object(flyer)),
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(game.loyalty(vraska), 4, "the −2 costs Vraska two loyalty");
+    assert_eq!(
+        game.def_of(flyer).kind,
+        CardKind::Artifact,
+        "the target lost its creature type — it's a plain artifact now, no longer a creature"
+    );
+    assert!(
+        game.def_of(flyer).subtypes.contains(&"Treasure"),
+        "the target gained the Treasure subtype"
+    );
+    assert_eq!(
+        game.def_of(flyer).name,
+        "Test Mutable Flyer",
+        "\"becomes\" (CR 613) keeps the object's own name, unlike a CR 707 copy effect"
+    );
+    assert!(
+        !game.has_keyword(flyer, Keyword::Flying),
+        "the printed flying is gone — it lost all other abilities"
+    );
+}
+
+#[test]
+fn a_creature_that_became_a_treasure_sacrifices_for_mana_of_any_color() {
+    // The strongest proof the converted permanent gained the granted mana ability and lost its
+    // printed ones. Unlike a real Treasure *token* (which ceases to exist when sacrificed, CR
+    // 111.7), this permanent is not a token, so it goes to the graveyard instead.
+    let mut game = Game::new();
+    let vraska = game.spawn_on_battlefield(PlayerId(0), card("Vraska, Betrayal's Sting"));
+    let flyer = game.spawn_on_battlefield(PlayerId(0), MUTABLE_FLYER);
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: vraska,
+        ability_index: 1,
+        target: Some(Target::Object(flyer)),
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    let shock = game.spawn_in_hand(PlayerId(0), card("Shock"));
+
+    // {T}, Sacrifice this artifact: add one mana of any color — the ONLY ability left, index 0
+    // (its printed flying/attack-trigger/activated abilities are gone with the rest of its card).
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: flyer,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+
+    // `zone_of` follows the zone-change chain to wherever this object ended up; a real Treasure
+    // *token* ceasing to exist would instead leave the chain dangling and panic here.
+    assert_eq!(
+        game.zone_of(flyer),
+        Zone::Graveyard,
+        "a converted (non-token) permanent goes to the graveyard when sacrificed, unlike a token"
+    );
+
+    // The "any" mana pays Shock's colored {R} pip — the cast succeeds off the converted
+    // permanent's granted ability alone.
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: shock,
+        target: Some(Target::Player(PlayerId(1))),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.life(PlayerId(1)),
+        18,
+        "Shock's 2 damage went through, paid entirely by the Treasure-granted mana"
     );
 }

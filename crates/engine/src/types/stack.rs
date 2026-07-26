@@ -2339,7 +2339,10 @@ pub enum Event {
     /// `until_eot`, the original `def` is stashed on [`Permanent::reverts_to_def_eot`] first and
     /// restored at cleanup ([`Event::TempBoostsEnded`], CR 514.2); otherwise the copy is
     /// indefinite (resets only when the object leaves the battlefield, CR 400.7). A copy is public
-    /// battlefield status — the projected object's name/types change accordingly.
+    /// battlefield status — the projected object's name/types change accordingly. Also carries a
+    /// non-copy type/ability-SETTING rewrite (CR 613.1d/613.1f — Vraska, Betrayal's Sting's −2:
+    /// "becomes a Treasure artifact … and loses all other card types and abilities"), always
+    /// `until_eot: false` there.
     BecameCopy {
         object: ObjectId,
         def: CardDef,
