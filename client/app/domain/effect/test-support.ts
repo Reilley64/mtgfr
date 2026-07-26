@@ -2,8 +2,11 @@
 // environment has none) and helpers to run a generated-client method against a stubbed `fetch`.
 
 import * as Effect from "effect/Effect";
+import * as Layer from "effect/Layer";
 import type * as Result from "effect/Result";
 import { vi } from "vitest";
+import { LobbyClient, RpcClient } from "../../resources";
+import { type Client as LobbyHttpClient, makeClient as makeLobbyClient } from "../lobby/client";
 import { type Client, makeClient } from "../rpc-client";
 
 /** Give the HTTP layer a same-origin base to resolve relative URLs against. Call once per file,
@@ -23,6 +26,30 @@ export function runEither<A, E>(
   use: (client: Client) => Effect.Effect<A, E>,
 ): Promise<Result.Result<A, E>> {
   return Effect.runPromise(Effect.result(use(makeClient(fetchImpl))));
+}
+
+/** Run a lobby client method against a stubbed `fetch`, returning the raw success value. */
+export function runLobby<A, E>(
+  fetchImpl: typeof fetch,
+  use: (client: LobbyHttpClient) => Effect.Effect<A, E>,
+): Promise<A> {
+  return Effect.runPromise(use(makeLobbyClient(fetchImpl)));
+}
+
+/** Run a lobby client method that may fail, returning a `Result` for failure assertions. */
+export function runLobbyEither<A, E>(
+  fetchImpl: typeof fetch,
+  use: (client: LobbyHttpClient) => Effect.Effect<A, E>,
+): Promise<Result.Result<A, E>> {
+  return Effect.runPromise(Effect.result(use(makeLobbyClient(fetchImpl))));
+}
+
+/** Merged RpcClient + LobbyClient layers for Command tests that need both wire surfaces. */
+export function wireTestResources(fetchImpl: typeof fetch): Layer.Layer<RpcClient | LobbyClient> {
+  return Layer.merge(
+    Layer.succeed(RpcClient, makeClient(fetchImpl)),
+    Layer.succeed(LobbyClient, makeLobbyClient(fetchImpl)),
+  );
 }
 
 /** A stub `fetch` that always returns the given web `Response`, ignoring the request. */
