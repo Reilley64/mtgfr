@@ -28,6 +28,7 @@ import {
 } from "../../../lib/lobby-store";
 import { grpcRequestEnv, runTracedRequest } from "../../../lib/otel";
 import type { GrpcRequestEnv } from "../../../lib/wire/grpcClient";
+import { parseTableOptionsBody } from "../../../lib/lobby/table-options";
 import { createWebDb } from "../../db/client";
 
 /** BFF session cookie — cookies terminate here; downstream calls use gRPC metadata. */
@@ -155,11 +156,18 @@ async function handleLobby(event: H3Event, path: string, env: GrpcRequestEnv): P
   }
 
   if (isOptions) {
-    const tableId = String(body.table_id ?? "");
-    const commanderDamageEnabled = Boolean(body.commander_damage_enabled);
-    const result = await setCommanderDamageEnabled(db, tableId, me.id, commanderDamageEnabled);
+    const parsed = parseTableOptionsBody(body);
+    if (parsed === "BadJson") {
+      return json({ error: "BadJson" }, 400);
+    }
+    const result = await setCommanderDamageEnabled(
+      db,
+      parsed.tableId,
+      me.id,
+      parsed.commanderDamageEnabled,
+    );
     if (!result.snap) {
-      return json(toLobbyView(unknownLobby(tableId), me.id, result.error), 404);
+      return json(toLobbyView(unknownLobby(parsed.tableId), me.id, result.error), 404);
     }
     return json(toLobbyView(result.snap, me.id, result.error));
   }
