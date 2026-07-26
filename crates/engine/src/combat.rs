@@ -797,11 +797,12 @@ impl Game {
             if self.combat_damage_prevented_to_creature(blocker) {
                 continue;
             }
-            // A blocking Phantom Centaur prevents this share and removes one of its own +1/+1
-            // counters instead (CR 615) — the same self-shield `deal_creature_damage` applies
-            // on the blocker-to-attacker path. The prevented share still counts as assigned.
+            // A blocking Phantom Centaur (or Bloatfly Swarm's scaling variant) prevents this
+            // share and removes +1/+1 counters instead (CR 615) — the same self-shield
+            // `deal_creature_damage` applies on the blocker-to-attacker path. The prevented share
+            // still counts as assigned.
             if self.phantom_shield_active(blocker) {
-                if let Some(removal) = self.phantom_shield_counter_removal(blocker) {
+                for removal in self.phantom_shield_counter_removal(blocker, amount) {
                     self.push_apply(events, removal);
                 }
                 continue;
@@ -921,9 +922,9 @@ impl Game {
         // Phantom Centaur (CR 615): "If damage would be dealt to Phantom Centaur, prevent that
         // damage. Remove a +1/+1 counter from Phantom Centaur." Self-only, but unlike Tajic's
         // noncombat-only static, this applies to combat damage too — checked regardless of
-        // `combat`.
+        // `combat`. Bloatfly Swarm's scaling variant (also CR 615) shares this same check.
         if self.phantom_shield_active(target) {
-            if let Some(removal) = self.phantom_shield_counter_removal(target) {
+            for removal in self.phantom_shield_counter_removal(target, amount) {
                 self.push_apply(events, removal);
             }
             return;

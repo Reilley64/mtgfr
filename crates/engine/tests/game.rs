@@ -94957,3 +94957,252 @@ fn proliferate_grows_a_players_rad_counters() {
         "2 + one more of a kind already there"
     );
 }
+
+// ── Increment 22: Bloatfly Swarm — a scaling self-shield giving each player rad (CR 615, CR
+// 122.1) ──────────────────────────────────────────────────────────────────────────────────
+// "Flying / This creature enters with five +1/+1 counters on it. / If damage would be dealt to
+// this creature while it has a +1/+1 counter on it, prevent that damage, remove that many +1/+1
+// counters from it, then give each player a rad counter for each +1/+1 counter removed this
+// way." Phantom Centaur's shape (a self-hosted CR 615 replacement removing +1/+1 counters), but
+// the count scales with the damage instead of always being one, and removing a counter this way
+// also gives every player — including the controller — a rad counter.
+
+/// A free instant that deals 3 (noncombat) damage to a target creature.
+const BURN_FIXED_3: CardDef = amount_spell!(
+    "Burn 3 (test)",
+    SpellSpeed::Instant,
+    Cost::FREE,
+    Effect::Damage(DamageEffect::Target {
+        amount: Amount::Fixed(3),
+        target: TargetSpec::Creature,
+        count: TargetCount {
+            min: 1,
+            max: 1,
+            x_scaled: false,
+            sacrifice_scaled: false,
+            strive_scaled: false,
+            total_mv_max: None,
+        },
+        divided: false,
+    })
+);
+
+/// A free instant that deals 5 (noncombat) damage to a target creature.
+const BURN_FIXED_5: CardDef = amount_spell!(
+    "Burn 5 (test)",
+    SpellSpeed::Instant,
+    Cost::FREE,
+    Effect::Damage(DamageEffect::Target {
+        amount: Amount::Fixed(5),
+        target: TargetSpec::Creature,
+        count: TargetCount {
+            min: 1,
+            max: 1,
+            x_scaled: false,
+            sacrifice_scaled: false,
+            strive_scaled: false,
+            total_mv_max: None,
+        },
+        divided: false,
+    })
+);
+
+/// A free instant that deals 9 (noncombat) damage to a target creature.
+const BURN_FIXED_9: CardDef = amount_spell!(
+    "Burn 9 (test)",
+    SpellSpeed::Instant,
+    Cost::FREE,
+    Effect::Damage(DamageEffect::Target {
+        amount: Amount::Fixed(9),
+        target: TargetSpec::Creature,
+        count: TargetCount {
+            min: 1,
+            max: 1,
+            x_scaled: false,
+            sacrifice_scaled: false,
+            strive_scaled: false,
+            total_mv_max: None,
+        },
+        divided: false,
+    })
+);
+
+#[test]
+fn bloatfly_swarm_prevents_damage_by_removing_that_many_plus_one_counters() {
+    let mut g = TestGame::new();
+    let swarm = g.spawn_on_battlefield(PlayerId(0), card("Bloatfly Swarm"));
+    for _ in 0..5 {
+        g.add_plus_counter(swarm); // as if it had entered with its five +1/+1 counters
+    }
+    let burn = g.spawn_in_hand(PlayerId(0), BURN_FIXED_3);
+
+    g.cast(burn).at(Target::Object(swarm)).resolve();
+
+    let swarm = g.current_id(swarm);
+    assert_eq!(
+        g.marked_damage(swarm),
+        0,
+        "the 3 damage is prevented outright"
+    );
+    assert_eq!(
+        g.plus_counters(swarm),
+        2,
+        "3 of the 5 +1/+1 counters are removed — one per damage prevented"
+    );
+}
+
+#[test]
+fn bloatfly_swarm_removes_only_the_counters_it_has() {
+    let mut g = TestGame::new();
+    let swarm = g.spawn_on_battlefield(PlayerId(0), card("Bloatfly Swarm"));
+    for _ in 0..5 {
+        g.add_plus_counter(swarm);
+    }
+    let burn = g.spawn_in_hand(PlayerId(0), BURN_FIXED_9);
+
+    g.cast(burn).at(Target::Object(swarm)).resolve();
+
+    let swarm = g.current_id(swarm);
+    assert_eq!(
+        g.zone_of(swarm),
+        Zone::Graveyard,
+        "only 5 counters existed to remove — Bloatfly Swarm is left a 0/0 and dies to state-based actions"
+    );
+}
+
+#[test]
+fn bloatfly_swarm_gives_each_player_a_rad_counter_per_counter_removed() {
+    // CR 102.1 — "each player" includes every seat, the controller's own included.
+    let mut g = Game::with_players(4, 0);
+    let swarm = g.spawn_on_battlefield(PlayerId(0), card("Bloatfly Swarm"));
+    for _ in 0..5 {
+        g.add_plus_counter(swarm);
+    }
+    let burn = g.spawn_in_hand(PlayerId(0), BURN_FIXED_3);
+    g.fund_mana(PlayerId(0));
+    g.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: burn,
+        target: Some(Target::Object(swarm)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    // All four seats must pass in succession (CR 117) for a 4-player game's spell to resolve —
+    // `resolve_top_of_stack_events`'s hardcoded two passes only covers a 2-player table.
+    for _ in 0..g.player_count() {
+        g.submit(Intent::PassPriority {
+            player: g.priority_holder(),
+        })
+        .unwrap();
+    }
+
+    for seat in 0..4 {
+        assert_eq!(
+            g.player_counters(PlayerId(seat), PlayerCounterKind::Rad),
+            3,
+            "seat {seat} gets a rad counter for each of the 3 +1/+1 counters removed"
+        );
+    }
+}
+
+#[test]
+fn bloatfly_swarm_takes_damage_normally_with_no_counters() {
+    // With no +1/+1 counters left, the replacement's predicate ("while it has a +1/+1 counter on
+    // it") is false, so the damage is dealt (and marked) normally rather than prevented.
+    let mut g = TestGame::new();
+    let swarm = g.spawn_on_battlefield(PlayerId(0), card("Bloatfly Swarm")); // 0/0, no counters
+    let burn = g.spawn_in_hand(PlayerId(0), BURN_FIXED_3);
+
+    g.cast(burn).at(Target::Object(swarm)).resolve();
+
+    assert_eq!(
+        g.zone_of(g.current_id(swarm)),
+        Zone::Graveyard,
+        "with no counters to shield it, the damage is dealt normally and a 0/0 dies to it"
+    );
+    assert_eq!(
+        g.player_counters(PlayerId(0), PlayerCounterKind::Rad),
+        0,
+        "no counters were removed, so no rad counters are given"
+    );
+    assert_eq!(
+        g.player_counters(PlayerId(1), PlayerCounterKind::Rad),
+        0,
+        "no counters were removed, so no rad counters are given"
+    );
+}
+
+#[test]
+fn phantom_centaur_still_removes_exactly_one_counter_per_damage_event() {
+    // Regression for the `phantom_shield_counter_removal` signature change (threading the damage
+    // amount through for Bloatfly Swarm): Phantom Centaur's own variant must still ignore the
+    // amount and remove exactly one counter, even against a 5-damage hit.
+    let mut g = TestGame::new();
+    let centaur = g.spawn_on_battlefield(PlayerId(0), card("Phantom Centaur"));
+    g.add_plus_counter(centaur);
+    g.add_plus_counter(centaur);
+    let burn = g.spawn_in_hand(PlayerId(0), BURN_FIXED_5);
+
+    g.cast(burn).at(Target::Object(centaur)).resolve();
+
+    let centaur = g.current_id(centaur);
+    assert_eq!(
+        g.marked_damage(centaur),
+        0,
+        "the 5 damage is prevented outright"
+    );
+    assert_eq!(
+        g.plus_counters(centaur),
+        1,
+        "Phantom Centaur removes exactly one counter regardless of the damage amount"
+    );
+}
+
+#[test]
+fn bloatfly_swarm_prevents_combat_damage_by_removing_that_many_plus_one_counters() {
+    // The replacement applies to combat damage too, on both the attacker-to-blocker and
+    // blocker-to-attacker paths (CR 615, mirroring Phantom Centaur's combat coverage).
+    let mut g = TestGame::new();
+    let attacker = g.spawn_on_battlefield(PlayerId(0), creature("Attacker 3/3", 3, 3, &[]));
+    let swarm = g.spawn_on_battlefield(PlayerId(1), card("Bloatfly Swarm"));
+    for _ in 0..5 {
+        g.add_plus_counter(swarm);
+    }
+
+    attack_with(&mut g, vec![attacker]);
+    block_with(&mut g, vec![(swarm, attacker)]).unwrap();
+    advance_until(&mut g, |g| g.current_step() == Step::EndCombat);
+
+    let swarm = g.current_id(swarm);
+    assert_eq!(
+        g.marked_damage(swarm),
+        0,
+        "the attacker's 3 combat damage is prevented"
+    );
+    assert_eq!(
+        g.plus_counters(swarm),
+        2,
+        "3 of the 5 +1/+1 counters are removed for the prevented combat damage"
+    );
+    assert_eq!(
+        g.player_counters(PlayerId(1), PlayerCounterKind::Rad),
+        3,
+        "Bloatfly Swarm's own controller gets a rad counter per counter removed"
+    );
+    assert_eq!(
+        g.player_counters(PlayerId(0), PlayerCounterKind::Rad),
+        3,
+        "the attacking opponent also gets a rad counter per counter removed"
+    );
+}

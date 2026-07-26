@@ -1404,17 +1404,24 @@ impl Game {
     }
 
     /// Whether `target` itself carries Phantom Centaur's self-shield (CR 615: "If damage would
-    /// be dealt to Phantom Centaur, prevent that damage."). Unlike
+    /// be dealt to Phantom Centaur, prevent that damage.") or Bloatfly Swarm's scaling variant
+    /// (also CR 615: "If damage would be dealt to this creature while it has a +1/+1 counter on
+    /// it, prevent that damage, remove that many +1/+1 counters from it, then give each player a
+    /// rad counter for each +1/+1 counter removed this way."). Unlike
     /// [`Game::noncombat_damage_prevented_to_creature`]'s "other creatures you control" scan,
     /// this is self-only — true iff `target` has a `(Timing::Static,
-    /// PreventDamageToSelfRemovingCounter)` ability of its own — and applies to combat damage
-    /// too (Tajic's static skips combat; Phantom Centaur's doesn't).
+    /// PreventDamageToSelfRemovingCounter | PreventDamageToSelfRemovingCountersGivingRad)`
+    /// ability of its own — and applies to combat damage too (Tajic's static skips combat;
+    /// neither of these does).
     pub(crate) fn phantom_shield_active(&self, target: ObjectId) -> bool {
         self.functional_abilities(target).iter().any(|ability| {
             ability.timing == Timing::Static
                 && matches!(
                     ability.effect,
                     Effect::Static(StaticEffect::PreventDamageToSelfRemovingCounter)
+                        | Effect::Static(
+                            StaticEffect::PreventDamageToSelfRemovingCountersGivingRad
+                        )
                 )
         })
     }
@@ -1450,16 +1457,51 @@ impl Game {
         })
     }
 
-    /// The "remove a +1/+1 counter" event Phantom Centaur's shield fires alongside each
-    /// prevented damage-dealing event (CR 615) — `None` when there's no counter left to remove
-    /// (the shield still applies; it just has nothing to take, CR 615's replacement effect
-    /// doesn't create counters from nothing).
-    pub(crate) fn phantom_shield_counter_removal(&self, target: ObjectId) -> Option<Event> {
-        (self.plus_counters(target) > 0).then_some(Event::CountersPlaced {
+    /// The events Phantom Centaur's shield or Bloatfly Swarm's scaling variant fire alongside
+    /// each prevented damage-dealing event (both CR 615): a `CountersPlaced` removing the
+    /// counters taken, plus — for Bloatfly Swarm's rad-counter rider only — one
+    /// `PlayerCountersPlaced` rad counter (CR 122.1) per player per counter removed. Empty when
+    /// there's no counter left to remove (the shield still applies; it just has nothing to take,
+    /// CR 615's replacement effect doesn't create counters from nothing). Phantom Centaur's own
+    /// variant always removes exactly one counter regardless of `amount` — "remove a +1/+1
+    /// counter" isn't scaled by the damage; Bloatfly Swarm's "remove that many" removes
+    /// `min(amount, counters present)`, since it can't remove counters that aren't there.
+    pub(crate) fn phantom_shield_counter_removal(
+        &self,
+        target: ObjectId,
+        amount: i32,
+    ) -> Vec<Event> {
+        let available = self.plus_counters(target);
+        if available <= 0 {
+            return Vec::new();
+        }
+        let scales = self.functional_abilities(target).iter().any(|ability| {
+            ability.timing == Timing::Static
+                && matches!(
+                    ability.effect,
+                    Effect::Static(StaticEffect::PreventDamageToSelfRemovingCountersGivingRad)
+                )
+        });
+        let removed = if scales { amount.min(available) } else { 1 };
+        if removed <= 0 {
+            return Vec::new();
+        }
+        let mut events = vec![Event::CountersPlaced {
             object: target,
-            count: -1,
+            count: -removed,
             source_name: self.def_of(target).name,
-        })
+        }];
+        if scales {
+            events.extend(
+                self.living_players()
+                    .map(|player| Event::PlayerCountersPlaced {
+                        player,
+                        kind: PlayerCounterKind::Rad,
+                        count: removed,
+                    }),
+            );
+        }
+        events
     }
 
     /// The total (power, toughness) bonus [`Game::matching_anthems`] grants to `candidate`.

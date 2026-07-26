@@ -124,13 +124,10 @@ impl Game {
                         if self.damage_prevented_by_protection(object, Some(source)) {
                             return Vec::new();
                         }
-                        // Phantom Centaur's self-shield prevents this damage outright and
-                        // removes one of its own +1/+1 counters instead (CR 615).
+                        // Phantom Centaur's self-shield (or Bloatfly Swarm's scaling variant)
+                        // prevents this damage outright and removes +1/+1 counters instead (CR 615).
                         if self.phantom_shield_active(object) {
-                            return self
-                                .phantom_shield_counter_removal(object)
-                                .into_iter()
-                                .collect();
+                            return self.phantom_shield_counter_removal(object, amount);
                         }
                         // Damage to a planeswalker removes that many loyalty counters instead of
                         // being marked (CR 120.3c/306.9) — checked ahead of Tajic's creature-only
@@ -245,21 +242,16 @@ impl Game {
                                 amount: -self.resolve_amount(amount, controller, object, target, x),
                             }];
                         }
-                        // Phantom Centaur's self-shield prevents its own share and removes one of
-                        // its own +1/+1 counters instead (CR 615) — a shielded creature swaps its
-                        // `DamageMarked` for that counter removal rather than being filtered out
-                        // outright.
+                        let object_amount =
+                            self.resolve_amount(amount, controller, object, target, x);
+                        // Phantom Centaur's self-shield (or Bloatfly Swarm's scaling variant)
+                        // prevents its own share and removes +1/+1 counters instead (CR 615) — a
+                        // shielded creature swaps its `DamageMarked` for that counter removal
+                        // rather than being filtered out outright.
                         if self.phantom_shield_active(object) {
-                            return self
-                                .phantom_shield_counter_removal(object)
-                                .into_iter()
-                                .collect();
+                            return self.phantom_shield_counter_removal(object, object_amount);
                         }
-                        self.creature_damage_events(
-                            source,
-                            object,
-                            self.resolve_amount(amount, controller, object, target, x),
-                        )
+                        self.creature_damage_events(source, object, object_amount)
                     })
                     .collect()
             }
@@ -324,13 +316,10 @@ impl Game {
                 if self.damage_prevented_by_protection(object, Some(source)) {
                     return Vec::new();
                 }
-                // Phantom Centaur's self-shield prevents this damage outright and removes one
-                // of its own +1/+1 counters instead (CR 615).
+                // Phantom Centaur's self-shield (or Bloatfly Swarm's scaling variant) prevents
+                // this damage outright and removes +1/+1 counters instead (CR 615).
                 if self.phantom_shield_active(object) {
-                    return self
-                        .phantom_shield_counter_removal(object)
-                        .into_iter()
-                        .collect();
+                    return self.phantom_shield_counter_removal(object, amount);
                 }
                 // Tajic prevents noncombat damage to its controller's other creatures (CR 615).
                 if self.noncombat_damage_prevented_to_creature(object) {

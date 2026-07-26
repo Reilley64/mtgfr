@@ -652,6 +652,12 @@ impl Effect {
                  counter from this creature"
                     .to_string()
             }
+            Effect::Static(StaticEffect::PreventDamageToSelfRemovingCountersGivingRad) => {
+                "If damage would be dealt to this creature while it has a +1/+1 counter on it, \
+                 prevent that damage, remove that many +1/+1 counters from it, then give each \
+                 player a rad counter for each +1/+1 counter removed this way"
+                    .to_string()
+            }
             Effect::Static(StaticEffect::NoMaximumHandSize) => "You have no maximum hand size".to_string(),
             Effect::Static(StaticEffect::PlayFromGraveyardOncePerTurn) => {
                 "Once during each of your turns, you may play a land or cast a permanent spell with \
