@@ -70,7 +70,14 @@ describe("pure game fold", () => {
     expect(next.seq).toBe(2);
     expect(next.state?.objects.map((object) => object.name)).toEqual(["Island"]);
     expect(next.provenance.landPlayFrom.size).toBe(0);
-    expect(next.tableFeel).toEqual({ land: false, stack: false, resolve: false, damage: false, destroy: false, exile: false });
+    expect(next.tableFeel).toEqual({
+      land: false,
+      stack: false,
+      resolve: false,
+      damage: false,
+      destroy: false,
+      exile: false,
+    });
   });
 
   it("applyDeltaPure records landPlayFrom provenance", () => {

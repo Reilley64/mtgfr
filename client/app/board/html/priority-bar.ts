@@ -153,6 +153,7 @@ export function priorityBarView(board: BoardModel, state: VisibleState): Html {
 
   const hasStaged =
     board.staged != null ||
+    board.playModePick != null ||
     board.xPrompt != null ||
     board.modalCast != null ||
     board.sacrificePick != null ||

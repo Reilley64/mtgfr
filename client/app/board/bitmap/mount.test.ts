@@ -1093,7 +1093,10 @@ describe("flight clock helpers", () => {
   it("strips exit FX before publish-time paint under reduced motion", () => {
     const calls: string[] = [];
     vi.stubGlobal("window", { devicePixelRatio: 1 });
-    vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: true })));
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn(() => ({ matches: true })),
+    );
     const canvas = {
       width: 0,
       height: 0,

@@ -92,6 +92,6 @@ describe("exit-fx", () => {
     const e = exitFxParticles({ ...exile, progress: 0.5 }, 8);
     expect(d.length).toBeGreaterThan(0);
     expect(e.length).toBeGreaterThan(0);
-    expect(d[0]!.color).not.toBe(e[0]!.color);
+    expect(d[0]?.color).not.toBe(e[0]?.color);
   });
 });

@@ -64,6 +64,7 @@ import {
   ModalModesChosen,
   ModalModeToggled,
   PendingChoiceAnswered,
+  PlayModeChosen,
   PromptCardFilterSet,
   PromptCardToggled,
   PromptDamageSet,
@@ -853,6 +854,28 @@ function modalPrompt(mc: NonNullable<BoardModel["modalCast"]>): Html {
       h.div(
         [h.Class("pointer-events-none text-center font-semibold text-body text-snow")],
         ["Pick a target for the chosen mode."],
+      ),
+      cancelButton(),
+    ],
+  );
+}
+
+function playModePrompt(pick: NonNullable<BoardModel["playModePick"]>): Html {
+  return h.div(
+    [
+      h.DataAttribute("testid", "play-mode-aim"),
+      h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+      h.Class(
+        "pointer-events-auto fixed left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+      ),
+    ],
+    [
+      h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], ["Choose how to play"]),
+      h.div(
+        [h.Class("flex w-full flex-col gap-1")],
+        pick.modes.map((mode, i) =>
+          itemButton(messageText(mode.label), `play-mode-${i}`, PlayModeChosen({ actionId: mode.id })),
+        ),
       ),
       cancelButton(),
     ],
@@ -2797,6 +2820,7 @@ function shouldShowPendingChoice(state: VisibleState): boolean {
 }
 
 export function promptsView(board: BoardModel, state: VisibleState, tableId: string | null): Html | null {
+  if (board.playModePick != null) return playModePrompt(board.playModePick);
   if (board.xPrompt != null) return boardXPrompt(board.xPrompt);
   if (board.modalCast != null) return modalPrompt(board.modalCast);
   if (board.sacrificePick != null) {

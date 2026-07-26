@@ -209,7 +209,16 @@ export function extractProvenance(
       Match.exhaustive,
     );
   }
-  return { moves, fromStack, fromStackExit, battlefieldExits, tokenCreators, landPlays, zonePileEntrances, stackEntrances };
+  return {
+    moves,
+    fromStack,
+    fromStackExit,
+    battlefieldExits,
+    tokenCreators,
+    landPlays,
+    zonePileEntrances,
+    stackEntrances,
+  };
 }
 
 // A human-readable log line for an event, joining object ids → names against the delta's
