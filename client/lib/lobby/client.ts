@@ -2,11 +2,15 @@ import { Option, Schema as S } from "effect";
 import { LobbyView } from "./types";
 
 const CreatedTable = S.Struct({ table_id: S.String });
-const ApiVersion = S.Struct({ version: S.String });
+const ApiMeta = S.Struct({
+  version: S.String,
+  faithful_count: S.optional(S.Number),
+  oracle_total: S.optional(S.Number),
+});
 
 const decodeLobbyView = S.decodeUnknownOption(LobbyView);
 const decodeCreatedTable = S.decodeUnknownOption(CreatedTable);
-const decodeApiVersion = S.decodeUnknownOption(ApiVersion);
+const decodeApiMeta = S.decodeUnknownOption(ApiMeta);
 
 async function lobbyFetchJson(path: string, init?: RequestInit): Promise<unknown | null> {
   const res = await fetch(`/api/${path}`, {
@@ -54,6 +58,22 @@ export async function lobbyState(table: string): Promise<LobbyView | null> {
 }
 
 export async function apiVersion(): Promise<{ version: string } | null> {
+  const meta = await apiMeta();
+  if (!meta) return null;
+  return { version: meta.version };
+}
+
+export async function apiMeta(): Promise<{
+  version: string;
+  faithfulCount: number | null;
+  oracleTotal: number | null;
+} | null> {
   const body = await lobbyFetchJson("meta/version/v1");
-  return decodeOrNull(decodeApiVersion, body);
+  const decoded = decodeOrNull(decodeApiMeta, body);
+  if (!decoded) return null;
+  return {
+    version: decoded.version,
+    faithfulCount: decoded.faithful_count ?? null,
+    oracleTotal: decoded.oracle_total ?? null,
+  };
 }

@@ -11,7 +11,7 @@ import {
   readRawBody,
 } from "nitro/h3";
 import { normalizePublicApiPath } from "../../../lib/api-upstream";
-import { fetchApiVersion, fetchDeckName, fetchMe, seedGame } from "../../../lib/api-upstream-auth";
+import { fetchApiMeta, fetchDeckName, fetchMe, seedGame } from "../../../lib/api-upstream-auth";
 import { gravatarHash } from "../../../lib/gravatar";
 import {
   commitStart,
@@ -65,8 +65,13 @@ async function handleLobby(event: H3Event, path: string, env: GrpcRequestEnv): P
   }
 
   if (method === "GET" && path === "meta/version/v1") {
-    const version = (await fetchApiVersion()) ?? "unknown";
-    return json({ version });
+    const meta = await fetchApiMeta();
+    const body: Record<string, unknown> = {
+      version: meta.version ?? "unknown",
+    };
+    if (meta.faithfulCount != null) body.faithful_count = meta.faithfulCount;
+    if (meta.oracleTotal != null) body.oracle_total = meta.oracleTotal;
+    return json(body);
   }
 
   const routeDelete = method === "DELETE" && /^tables\/[^/]+\/route\/v1$/.test(path);

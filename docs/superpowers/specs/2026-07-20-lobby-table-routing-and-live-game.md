@@ -99,7 +99,7 @@ On SIGTERM, the server sets `AppState.draining = true` (atomic bool). The drain 
 
 | Endpoint | Behavior |
 |----------|----------|
-| `GET /health/live` | Always 200; body `{"version": "…"}` |
+| `GET /health/live` | Always 200; body `{"version": "…", "faithful_count": N}` where `faithful_count` is the current count of deckable, non-`approximates` card defs in the loaded registry |
 | `GET /health/ready` | Always 200 while process is up; body `"ok"` |
 | `GET /health/drain` | `{"active_tables": N, "draining": bool}` — observation only; not reachable via public tunnel (NetworkPolicy) |
 

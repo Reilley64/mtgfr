@@ -69,6 +69,8 @@ The app model is the single UI state tree. `update(model, message)` is the only 
 
 Async work is expressed as Foldkit **Commands** backed by Effect programs. Commands depend on the `RpcClient` resource from `client/app/resources.ts`, so wire access is explicit at the runtime boundary. Session checks, auth submit, deck loading, catalog search, deck save/delete, leaderboard loading, lobby host/join, and table navigation all flow through commands.
 
+Boot also fetches `/api/meta/version/v1` through `client/lib/lobby/client.ts`. The `apiMeta()` helper decodes the required app `version` plus optional `faithful_count` / `oracle_total` fields from the BFF meta response. The shell currently stores only the version string in app state, so malformed or missing coverage fields are ignored without breaking chrome.
+
 Long-lived listeners are Foldkit **Subscriptions**. App subscriptions cover portrait orientation, lobby polling, and game stream frames. Dependency functions decide when each stream is active; returning `Stream.empty` stops work when the route or table changes. Components do not own long-lived fibers.
 
 ### Wire protocol (high-level; detail in [wire-protocol-and-visibility](2026-07-20-wire-protocol-and-visibility.md))
