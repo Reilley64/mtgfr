@@ -242,7 +242,7 @@ fn land_colors(def: &engine::CardDef) -> Vec<u8> {
             },
         }
     }
-    for ability in def.abilities {
+    for ability in def.abilities.iter() {
         let engine::Effect::Mana(engine::ManaEffect::Add { mana: produced, .. }) = ability.effect
         else {
             continue;
@@ -302,7 +302,7 @@ pub fn color_identity(def: &engine::CardDef) -> u8 {
             id |= 1 << c.index();
         }
     }
-    for c in def.identity_pips {
+    for &c in def.identity_pips.iter() {
         id |= 1 << c.index();
     }
     // Colorless {C}, "any color", the commander-identity credit, and the opponent-producible-
@@ -339,7 +339,7 @@ pub fn color_identity(def: &engine::CardDef) -> u8 {
             | engine::LandProduces::OpponentColors => {}
         }
     }
-    for ability in def.abilities {
+    for ability in def.abilities.iter() {
         if let engine::Effect::Mana(engine::ManaEffect::Add { mana: produced, .. }) = ability.effect
         {
             for c in COLORS {

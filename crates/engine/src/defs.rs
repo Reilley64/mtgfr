@@ -79,11 +79,11 @@ mod tests {
             modal_choose: 1,
             modal_choose_max: None,
             modal_choose_max_if_commander: false,
-            keywords: &[],
-            conditional_keywords: &[],
-            abilities: &[],
-            identity_pips: &[],
-            colors: &[],
+            keywords: empty_slice(),
+            conditional_keywords: empty_slice(),
+            abilities: empty_slice(),
+            identity_pips: empty_slice(),
+            colors: empty_slice(),
             devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
@@ -93,8 +93,8 @@ mod tests {
             approximates: None,
             oracle: None,
             set: "",
-            subtypes: &[],
-            otags: &[],
+            subtypes: empty_slice(),
+            otags: empty_slice(),
             cycling: None,
             cycling_sacrifice: SacrificeCost::None,
             flashback: None,
@@ -112,14 +112,14 @@ mod tests {
             functions_in_graveyard: false,
             back: None,
             adventure: None,
-            halves: &[],
+            halves: empty_slice(),
             suspend: None,
             vanishing: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,
             encore: None,
-            hand_ability: &[],
+            hand_ability: empty_slice(),
             forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,
@@ -145,11 +145,11 @@ mod tests {
             modal_choose: 1,
             modal_choose_max: None,
             modal_choose_max_if_commander: false,
-            keywords: &[],
-            conditional_keywords: &[],
-            abilities: &[],
-            identity_pips: &[],
-            colors: &[],
+            keywords: empty_slice(),
+            conditional_keywords: empty_slice(),
+            abilities: empty_slice(),
+            identity_pips: empty_slice(),
+            colors: empty_slice(),
             devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
@@ -159,8 +159,8 @@ mod tests {
             approximates: None,
             oracle: None,
             set: "",
-            subtypes: &[],
-            otags: &[],
+            subtypes: empty_slice(),
+            otags: empty_slice(),
             cycling: None,
             cycling_sacrifice: SacrificeCost::None,
             flashback: None,
@@ -178,14 +178,14 @@ mod tests {
             functions_in_graveyard: false,
             back: None,
             adventure: None,
-            halves: &[],
+            halves: empty_slice(),
             suspend: None,
             vanishing: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,
             encore: None,
-            hand_ability: &[],
+            hand_ability: empty_slice(),
             forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,
@@ -201,8 +201,8 @@ mod tests {
         }
     }
 
-    fn leak_halves(halves: Vec<CardDef>) -> &'static [CardDef] {
-        Box::leak(halves.into_boxed_slice())
+    fn intern_halves(halves: Vec<CardDef>) -> Arc<[CardId]> {
+        halves.into_iter().map(intern_card_def).collect()
     }
 
     fn interned_len() -> usize {
@@ -306,18 +306,26 @@ mod tests {
 
     #[test]
     fn split_half_restore_reuses_fused_card_id() {
+        let before_spawn = interned_len();
         let front = CardDef {
             name: "Fused Split",
             kind: CardKind::Spell {
                 speed: SpellSpeed::Sorcery,
             },
-            halves: leak_halves(vec![spell("Left Half"), spell("Right Half")]),
+            halves: intern_halves(vec![spell("Left Half"), spell("Right Half")]),
             ..vanilla_creature("Fused Split", "")
         };
         let mut game = Game::new();
         let source = game.spawn_in_hand(P0, front);
+        let after_spawn = interned_len();
         let fused_id = game.def_id_of(source);
         let spell = game.next_object_id();
+
+        assert_eq!(
+            after_spawn,
+            before_spawn + 3,
+            "interning a split card should also intern both castable halves"
+        );
 
         game.apply(&Event::SplitHalfSpellCast {
             spell,

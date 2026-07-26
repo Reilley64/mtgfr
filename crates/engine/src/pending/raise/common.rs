@@ -18,10 +18,13 @@ pub(super) fn map_identical(request: &ChoiceRequest) -> Option<PendingChoice> {
         } => Some(PendingChoice::ChooseTarget {
             player: *player,
             source: *source,
-            effect: effect.clone(),
+            effect: Some(effect.clone()),
             legal: legal.clone(),
-            count: count.clone(),
+            count: *count,
+            clause: 0,
+            target: None,
             x: *x,
+            spent_mana: [0; 6],
             activated: *activated,
         }),
         ChoiceRequest::PayOrCounter {

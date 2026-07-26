@@ -271,7 +271,7 @@ pub enum Trigger {
     /// [`CombatDamageScope::YourCreatures`] (Ohran Frostfang, Defiling Daemogoth — any creature
     /// this permanent's controller controls), or [`CombatDamageScope::YourTokens`] (Curiosity
     /// Crafter — any creature *token* this permanent's controller controls). A sixth,
-    /// bespoke-queued watch flavor like [`YouSacrifice`](Self::YouSacrifice): fires off
+    /// table-dispatched watch flavor like [`YouSacrifice`](Self::YouSacrifice): fires off
     /// [`Event::CombatDamageDealtToPlayer`], not `LifeChanged` (non-combat life loss — drain,
     /// pay-life — must not fire it); see [`Game::queue_combat_damage_triggers`].
     DealsCombatDamageToPlayer { who: CombatDamageScope },
@@ -319,7 +319,7 @@ pub enum Trigger {
     /// [`CasterScope::AnyPlayer`]); `nth_each_turn` restricts to exactly the caster's Nth spell
     /// that turn (CR "their second spell each turn" — `Some(2)`), read off
     /// [`Player::spells_cast_this_turn`] (`None` = every matching cast). A seventh,
-    /// bespoke-queued watch flavor like [`DealsCombatDamageToPlayer`](Self::DealsCombatDamageToPlayer):
+    /// table-dispatched watch flavor like [`DealsCombatDamageToPlayer`](Self::DealsCombatDamageToPlayer):
     /// fires off [`Event::SpellCast`]; see [`Game::queue_cast_spell_triggers`]. Distinct from
     /// [`Magecraft`](Self::Magecraft) — which stays its own fixed instant/sorcery-only, self-only,
     /// every-cast watch and also fires off `SpellCopied`, which this doesn't — rather than folding

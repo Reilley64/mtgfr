@@ -220,7 +220,7 @@ impl Game {
         let mut produced_bonuses = 0usize;
         let mut any_color_source: Option<ObjectId> = None;
         for id in self.battlefield() {
-            for ability in self.def_of(id).abilities {
+            for ability in self.def_of(id).abilities.iter().cloned() {
                 let (
                     Timing::Static,
                     Effect::Static(StaticEffect::TappedForManaBonus { scope, bonus_color }),
@@ -361,10 +361,10 @@ impl Game {
         }
         if def.modal {
             return mode
-                .and_then(|m| nth_mode(&def, m))
+                .and_then(|m| nth_mode(def, m))
                 .map_or(TargetSpec::None, |a| a.effect.target());
         }
-        for ability in def.abilities {
+        for ability in def.abilities.iter().cloned() {
             if matches!(ability.timing, Timing::Spell)
                 && ability.effect.target() != TargetSpec::None
             {
@@ -615,7 +615,7 @@ impl Game {
                     continue;
                 }
             }
-            for a in printed.abilities {
+            for a in printed.abilities.iter().cloned() {
                 let Timing::Activated(cost) = a.timing else {
                     continue;
                 };
@@ -1218,14 +1218,15 @@ impl Game {
                 return Vec::new();
             }
             MeaningfulAction::CastSplitHalf { card, half } => {
-                let Some(face) = self.def_of(card).halves.get(half as usize) else {
+                let Some(&face_id) = self.def_of(card).halves.get(half as usize) else {
                     return Vec::new();
                 };
+                let face = card_def(face_id);
                 (
                     self.cast_cost(
                         player,
                         card,
-                        face.clone(),
+                        face.as_ref().clone(),
                         None,
                         0,
                         Zone::Hand,
@@ -1274,7 +1275,12 @@ impl Game {
             }
             MeaningfulAction::ActivateHandAbility { card, index } => {
                 let def = self.def_of(card);
-                let Some(ability) = def.hand_ability.get(index).copied().or(def.forecast) else {
+                let Some(ability) = def
+                    .hand_ability
+                    .get(index)
+                    .cloned()
+                    .or(def.forecast.clone())
+                else {
                     return Vec::new();
                 };
                 (ability.cost, None, None)
@@ -1808,11 +1814,11 @@ mod tests {
             modal_choose: 1,
             modal_choose_max: None,
             modal_choose_max_if_commander: false,
-            keywords: &[],
-            conditional_keywords: &[],
-            abilities: &[],
-            identity_pips: &[],
-            colors: &[],
+            keywords: empty_slice(),
+            conditional_keywords: empty_slice(),
+            abilities: empty_slice(),
+            identity_pips: empty_slice(),
+            colors: empty_slice(),
             devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
@@ -1822,8 +1828,8 @@ mod tests {
             approximates: None,
             oracle: None,
             set: "",
-            subtypes: &[],
-            otags: &[],
+            subtypes: empty_slice(),
+            otags: empty_slice(),
             cycling: None,
             cycling_sacrifice: SacrificeCost::None,
             flashback: None,
@@ -1841,14 +1847,14 @@ mod tests {
             functions_in_graveyard: false,
             back: None,
             adventure: None,
-            halves: &[],
+            halves: empty_slice(),
             suspend: None,
             vanishing: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,
             encore: None,
-            hand_ability: &[],
+            hand_ability: empty_slice(),
             forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,

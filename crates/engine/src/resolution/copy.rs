@@ -25,7 +25,7 @@ impl Game {
             // Twincast: put a copy of the target spell on the stack under this controller, then
             // offer CR 707.10c's "you may choose new targets for the copy" — same
             // `choose_spell_targets` machinery a multi-target spell uses at cast (auto-fills a
-            // single legal target, else pauses on `ChooseSpellTargets`), just run here because
+            // single legal target, else pauses on `ChooseTarget`), just run here because
             // the copy doesn't exist until this event applies.
             Effect::Copy(CopyEffect::TargetSpell) => {
                 let original = expect_object_target(target, "a spell copy");
@@ -209,13 +209,17 @@ impl Game {
                 // via `Event::SpellTargetsChosen` (the same write-back a multi-target choice uses).
                 crate::pending::raise_choice(
                     self,
-                    PendingChoice::ChooseSpellTargets {
+                    PendingChoice::ChooseTarget {
                         player: controller,
-                        spell,
-                        min: 1,
-                        max: 1,
+                        source: spell,
+                        effect: None,
                         legal,
+                        count: TargetCount::default(),
                         clause: 0,
+                        target: None,
+                        x: self.spell(spell).x,
+                        spent_mana: [0; 6],
+                        activated: false,
                     },
                 );
             }
@@ -418,7 +422,7 @@ impl Game {
     /// left (moved to the graveyard by this same resolution's trailing steps). Each copy's own CR
     /// 707.10c retarget (which *does* pause) is then queued one at a time behind
     /// `run_sequence`'s pause/resume machinery via `RetargetSpellCopy`, so one copy's
-    /// `ChooseSpellTargets` doesn't clobber another's.
+    /// `ChooseTarget` doesn't clobber another's.
     pub(crate) fn mint_spell_copies(
         &mut self,
         count: Amount,

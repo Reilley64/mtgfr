@@ -220,7 +220,7 @@ mod tests {
         assert_eq!(from_helper.default_print, from_registry.default_print);
         assert_eq!(from_helper.name, "Treasure");
         assert_eq!(from_helper.kind, CardKind::Artifact);
-        assert_eq!(from_helper.subtypes, &["Treasure"]);
+        assert_eq!(from_helper.subtypes.as_ref(), &["Treasure"]);
         // Same ability shape: {T}, sac → add {any}.
         assert_eq!(from_helper.abilities.len(), from_registry.abilities.len());
         assert_eq!(
@@ -337,7 +337,7 @@ toughness = 1
 "#;
         let def: CardDef = toml::from_str(card).expect("set + subtypes parse");
         assert_eq!(def.set, "soc");
-        assert_eq!(def.subtypes, ["Goblin", "Wizard"]);
+        assert_eq!(def.subtypes.as_ref(), &["Goblin", "Wizard"]);
 
         // Omitted: both default empty, so every not-yet-backfilled card still loads.
         let bare = "name = \"Bare\"\nid = \"00000000-0000-0000-0000-000000000001\"\ndefault_print = \"00000000-0000-0000-0000-000000000002\"\n\n[kind]\ntype = \"creature\"\npower = 1\ntoughness = 1\n";
@@ -634,16 +634,16 @@ token = { name = "Inkling", power = 2, toughness = 1 }
 
         fn scan_card(def: &CardDef, out: &mut Vec<(String, &'static str, CardDef)>) {
             let mut tokens = Vec::new();
-            for ability in def.abilities {
+            for ability in def.abilities.iter() {
                 collect(&ability.effect, &mut tokens);
             }
-            for hand in def.hand_ability {
-                for effect in hand.effects {
+            for hand in def.hand_ability.iter() {
+                for effect in hand.effects.iter() {
                     collect(effect, &mut tokens);
                 }
             }
-            if let Some(forecast) = def.forecast {
-                for effect in forecast.effects {
+            if let Some(forecast) = def.forecast.clone() {
+                for effect in forecast.effects.iter() {
                     collect(effect, &mut tokens);
                 }
             }
@@ -755,7 +755,7 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         );
         let viper = get_by_name("Ambush Viper").expect("Ambush Viper is in the pool");
         assert_eq!(viper.set, "inr");
-        assert_eq!(viper.subtypes, ["Snake"]);
+        assert_eq!(viper.subtypes.as_ref(), &["Snake"]);
 
         let starfield = get_by_name("Starfield Mystic").expect("Starfield Mystic is in the pool");
         assert!(

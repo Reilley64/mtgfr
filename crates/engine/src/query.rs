@@ -105,7 +105,7 @@ impl Game {
                             &mut actions,
                             player,
                             id,
-                            printed.abilities,
+                            &printed.abilities,
                         );
                     }
                     // Encore (CR 702.140) — a keyword activated ability that functions from the
@@ -156,7 +156,7 @@ impl Game {
                 // A non-mana activated ability the player can afford, or a prepared back-face cast. (CR 602, CR 601, CR 113)
                 Object::Permanent(p) => {
                     let printed = card_def(p.def);
-                    self.push_activatable_abilities(&mut actions, player, id, printed.abilities);
+                    self.push_activatable_abilities(&mut actions, player, id, &printed.abilities);
                     if self.cast_prepared_listable(player, id) {
                         actions.push(MeaningfulAction::CastPrepared { source: id });
                     }
@@ -247,7 +247,7 @@ impl Game {
         if !printed.hand_ability.is_empty() {
             return;
         }
-        let Some(ability) = printed.forecast else {
+        let Some(ability) = printed.forecast.clone() else {
             return;
         };
         if self.step != Step::Upkeep || self.active_player != player {
@@ -457,8 +457,8 @@ impl Game {
         if self.playable_zone(card, player) != Some(Zone::Hand) {
             return;
         }
-        for (index, face) in self.def_of(card).halves.iter().enumerate() {
-            let face = face.clone();
+        for (index, &face_id) in self.def_of(card).halves.iter().enumerate() {
+            let face = card_def(face_id);
             if face.is_instant_speed() {
                 if !self.can_take_sorcery_speed_action(player)
                     && self.stack.is_empty()
@@ -474,7 +474,7 @@ impl Game {
                 self.cast_cost(
                     player,
                     card,
-                    face.clone(),
+                    face.as_ref().clone(),
                     target,
                     0,
                     Zone::Hand,
@@ -487,19 +487,19 @@ impl Game {
                     false,
                 )
             };
-            let spec = self.required_target(&face.clone(), None);
-            let affordable =
-                if spec == TargetSpec::None || self.spell_multi_target(&face.clone()).is_some() {
-                    self.plan_auto_taps(player, cost_for(None), None, spell)
-                        .is_some()
-                } else {
-                    self.legal_targets_for(spec, card, player, color_identity(&face), 0)
-                        .into_iter()
-                        .any(|t| {
-                            self.plan_auto_taps(player, cost_for.clone()(Some(t)), None, spell)
-                                .is_some()
-                        })
-                };
+            let spec = self.required_target(&face, None);
+            let affordable = if spec == TargetSpec::None || self.spell_multi_target(&face).is_some()
+            {
+                self.plan_auto_taps(player, cost_for(None), None, spell)
+                    .is_some()
+            } else {
+                self.legal_targets_for(spec, card, player, color_identity(&face), 0)
+                    .into_iter()
+                    .any(|t| {
+                        self.plan_auto_taps(player, cost_for(Some(t)), None, spell)
+                            .is_some()
+                    })
+            };
             if affordable {
                 actions.push(MeaningfulAction::CastSplitHalf {
                     card,
@@ -519,7 +519,7 @@ impl Game {
         actions: &mut Vec<MeaningfulAction>,
         player: PlayerId,
         source: ObjectId,
-        abilities: &'static [Ability],
+        abilities: &[Ability],
     ) {
         for (i, a) in abilities.iter().enumerate() {
             if a.effect.clone().is_mana_ability() {
@@ -1589,11 +1589,11 @@ mod permanent_filter_tests {
             modal_choose: 1,
             modal_choose_max: None,
             modal_choose_max_if_commander: false,
-            keywords: &[],
-            conditional_keywords: &[],
-            abilities: &[],
-            identity_pips: &[],
-            colors: &[],
+            keywords: empty_slice(),
+            conditional_keywords: empty_slice(),
+            abilities: empty_slice(),
+            identity_pips: empty_slice(),
+            colors: empty_slice(),
             devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
@@ -1603,8 +1603,8 @@ mod permanent_filter_tests {
             approximates: None,
             oracle: None,
             set: "",
-            subtypes: &[],
-            otags: &[],
+            subtypes: empty_slice(),
+            otags: empty_slice(),
             cycling: None,
             cycling_sacrifice: SacrificeCost::None,
             flashback: None,
@@ -1624,14 +1624,14 @@ mod permanent_filter_tests {
             enchant_graveyard: false,
             back: None,
             adventure: None,
-            halves: &[],
+            halves: empty_slice(),
             suspend: None,
             vanishing: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,
             encore: None,
-            hand_ability: &[],
+            hand_ability: empty_slice(),
             forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,

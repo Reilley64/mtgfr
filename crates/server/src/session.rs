@@ -623,8 +623,9 @@ mod tests {
     use crate::db;
     use crate::decks::{keep_all_hands, master_from_u64, seed_game};
     use crate::test_support::{as_user, seat_deck, user_with_deck};
-    use engine::{DamageEffect, Defender, PlayerId, SacrificeCost};
+    use engine::{DamageEffect, Defender, PlayerId, SacrificeCost, arc_slice, empty_slice};
     use schema::{IntentEnvelope, WireIntent, to_intent};
+    use std::sync::LazyLock;
 
     use crate::game_loop::{set_yield_core, submit_intent_core};
 
@@ -781,7 +782,7 @@ mod tests {
         );
     }
 
-    const FORCED_PINGER: engine::CardDef = engine::CardDef {
+    static FORCED_PINGER: LazyLock<engine::CardDef> = LazyLock::new(|| engine::CardDef {
         name: "Test Forced Pinger",
         id: "",
         default_print: "",
@@ -797,8 +798,8 @@ mod tests {
         modal_choose: 1,
         modal_choose_max: None,
         modal_choose_max_if_commander: false,
-        identity_pips: &[],
-        colors: &[],
+        identity_pips: empty_slice(),
+        colors: empty_slice(),
         devoid: false,
         enters_tapped: false,
         enters_tapped_unless: None,
@@ -808,11 +809,11 @@ mod tests {
         approximates: None,
         oracle: None,
         set: "",
-        subtypes: &[],
-        otags: &[],
-        keywords: &[],
-        conditional_keywords: &[],
-        abilities: &[engine::Ability {
+        subtypes: empty_slice(),
+        otags: empty_slice(),
+        keywords: empty_slice(),
+        conditional_keywords: empty_slice(),
+        abilities: arc_slice([engine::Ability {
             timing: engine::Timing::Triggered(engine::Trigger::Etb),
             effect: engine::Effect::Damage(DamageEffect::Target {
                 amount: engine::Amount::Fixed(1),
@@ -831,7 +832,7 @@ mod tests {
             condition: None,
             cost: engine::Cost::FREE,
             once_each_turn: false,
-        }],
+        }]),
         cycling: None,
         cycling_sacrifice: SacrificeCost::None,
         flashback: None,
@@ -851,18 +852,18 @@ mod tests {
         enchant_graveyard: false,
         back: None,
         adventure: None,
-        halves: &[],
+        halves: empty_slice(),
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
         encore: None,
-        hand_ability: &[],
+        hand_ability: empty_slice(),
         forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
         suspend: None,
         vanishing: None,
-    };
+    });
 
     fn held(disposition: Disposition) -> bool {
         disposition == Disposition::Live { stack_held: true }
@@ -913,7 +914,7 @@ mod tests {
     fn a_forced_single_legal_target_choice_auto_resolves_without_a_client_intent() {
         let mut table = Table::empty();
         let mut game = engine::Game::new();
-        let pinger = game.spawn_in_hand(PlayerId(0), FORCED_PINGER);
+        let pinger = game.spawn_in_hand(PlayerId(0), FORCED_PINGER.clone());
         table.game = Some(game);
         let mut rx = table.tx.subscribe();
 
@@ -954,7 +955,7 @@ mod tests {
             PlayerId(1),
             cards::get_by_name("Grizzly Bear").expect("pool card"),
         );
-        let pinger = game.spawn_in_hand(PlayerId(0), FORCED_PINGER);
+        let pinger = game.spawn_in_hand(PlayerId(0), FORCED_PINGER.clone());
         table.game = Some(game);
         let mut rx = table.tx.subscribe();
 

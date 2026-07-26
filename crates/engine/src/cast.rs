@@ -568,7 +568,7 @@ impl Game {
             self.push_apply(&mut events, Event::CommanderCastFromCommandZone { player });
         }
         // A multi-target spell now chooses its targets (CR 601.2c): auto-fill when the choice is
-        // forced (a single legal set — take them all), otherwise pause on a ChooseSpellTargets.
+        // forced (a single legal set — take them all), otherwise pause on a ChooseTarget.
         if let Some((spec, count)) = multi_target {
             self.choose_spell_targets(spell_id, spec, count, player, player, &mut events);
         }
@@ -671,8 +671,8 @@ impl Game {
         }
         def.abilities
             .iter()
-            .cloned()
             .filter(|a| matches!(a.timing, Timing::Spell))
+            .cloned()
             .flat_map(|a| {
                 let clauses = ability_target_clauses(&a);
                 if clauses.len() > 1 {
@@ -787,7 +787,7 @@ impl Game {
     /// `count.max` distinct legal targets — but capped at how many legal targets exist (CR 601.2c:
     /// "the maximum possible number"). When that's a single forced set (take every legal target, no
     /// room to choose fewer or which), it's auto-filled here with no pause and the next clause runs;
-    /// otherwise the caster answers a [`PendingChoice::ChooseSpellTargets`] carrying this `clause`.
+    /// otherwise the caster answers a [`PendingChoice::ChooseTarget`] carrying this `clause`.
     /// See [`Self::choose_spell_targets`] for `anchor`/`chooser`.
     #[allow(clippy::too_many_arguments)]
     fn choose_spell_target_clause(
@@ -837,6 +837,11 @@ impl Game {
         };
         let lo = (min as usize).min(n) as u8;
         let hi = (max as usize).min(n) as u8;
+        let count = TargetCount {
+            min: lo,
+            max: hi,
+            ..count
+        };
         // Forced: exactly one legal set (must take all `n`, no option to take fewer). Auto-fill,
         // then chain into the next clause (or the divided-damage split once every clause is set).
         if lo == hi && hi as usize == n {
@@ -853,13 +858,17 @@ impl Game {
         }
         crate::pending::raise_choice(
             self,
-            PendingChoice::ChooseSpellTargets {
+            PendingChoice::ChooseTarget {
                 player: chooser,
-                spell,
-                min: lo,
-                max: hi,
+                source: spell,
+                effect: None,
                 legal,
+                count,
                 clause: clause as u8,
+                target: None,
+                x: self.spell(spell).x,
+                spent_mana: [0; 6],
+                activated: false,
             },
         );
     }
@@ -1248,7 +1257,7 @@ impl Game {
         // ponytail: a hand ability's payload takes no target in the pool (Magma Opus's Treasure,
         // the landcyclers' library search); pushed with `None`. Thread a chosen target through
         // here if a targeted hand ability ever appears.
-        let effect = match ability.effects {
+        let effect = match ability.effects.as_ref() {
             [single] => single.clone(),
             steps => Effect::Sequence {
                 steps: steps.into(),
@@ -1722,9 +1731,10 @@ impl Game {
         if self.playable_zone(source, player) != Some(Zone::Hand) {
             return Err(Reject::NotCastable);
         }
-        let Some(face) = self.def_of(source).halves.get(half as usize) else {
+        let Some(&face_id) = self.def_of(source).halves.get(half as usize) else {
             return Err(Reject::NotCastable);
         };
+        let face = card_def(face_id);
         // Each half obeys its own timing (Fire and Ice are both instants; a sorcery half would be
         // sorcery-speed only).
         if !face.is_instant_speed() && !self.can_take_sorcery_speed_action(player) {
@@ -1734,13 +1744,13 @@ impl Game {
         let x = x.min(u8::MAX as u32);
         // Fire's "2 damage divided as you choose among one or two targets" is a multi-target
         // clause: its targets are chosen after the cast, like a directly-cast multi-target spell.
-        let multi_target = self.spell_multi_target(&face.clone());
+        let multi_target = self.spell_multi_target(&face);
         if let Some((spec, count)) = multi_target {
             if target.is_some() {
                 return Err(Reject::IllegalTarget);
             }
             let n = self
-                .legal_targets_for(spec, source, player, color_identity(&face.clone()), x)
+                .legal_targets_for(spec, source, player, color_identity(&face), x)
                 .len();
             if count.min > 0 && n == 0 {
                 return Err(Reject::IllegalTarget);
@@ -1754,7 +1764,7 @@ impl Game {
         let cost = self.cast_cost(
             player,
             source,
-            face.clone(),
+            face.as_ref().clone(),
             target,
             x,
             Zone::Hand,
@@ -1829,7 +1839,7 @@ impl Game {
         // returns `def.enchant` (any creature for Eidolon) for `CardKind::Aura`.
         let as_aura = CardDef {
             kind: CardKind::Aura,
-            ..def
+            ..def.clone()
         };
         if !self.targets_are_legal(object, &as_aura, target, player, None, 0) {
             return Err(Reject::IllegalTarget);
@@ -2389,7 +2399,7 @@ impl Game {
                 Event::TokenCeasedToExist {
                     token: object,
                     controller: perm.owner,
-                    def: perm.def.clone(),
+                    def: perm.def,
                 }
             } else {
                 Event::ReturnedToHand {
@@ -2408,7 +2418,7 @@ impl Game {
                 Event::TokenCeasedToExist {
                     token: object,
                     controller: perm.owner,
-                    def: perm.def.clone(),
+                    def: perm.def,
                 }
             } else {
                 Event::MovedToExile {

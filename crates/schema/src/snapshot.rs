@@ -434,8 +434,13 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             let def = game.def_of(card);
             // Distinguish which entry (Valley Rannet's mountaincycling vs forestcycling, CR
             // 702.29d) by its own effect, since both otherwise share the same discard chrome.
-            let label = match def.hand_ability.get(index).copied().or(def.forecast) {
-                Some(ability) => match ability.effects {
+            let label = match def
+                .hand_ability
+                .get(index)
+                .cloned()
+                .or(def.forecast.clone())
+            {
+                Some(ability) => match ability.effects.as_ref() {
                     [single] => child_message(
                         "action.discard_effect",
                         to_wire_message(single.clone().message()),
@@ -611,10 +616,11 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
         // is the only per-half text the client has to tell "Fire" from "Ice".
         MeaningfulAction::CastSplitHalf { card, half } => {
             let def = game.def_of(card);
-            let face = def
+            let &face_id = def
                 .halves
                 .get(half as usize)
                 .expect("CastSplitHalf implies the half exists");
+            let face = engine::card_def(face_id);
             let (spec, legal) = game.split_half_cast_targets(card, half);
             let (has_x, min_x, max_x, x_cost) = x_choice_fields(
                 game,
@@ -1975,8 +1981,8 @@ mod tests {
             modal_choose: 1,
             modal_choose_max: None,
             modal_choose_max_if_commander: false,
-            identity_pips: &[],
-            colors: &[],
+            identity_pips: empty_slice(),
+            colors: empty_slice(),
             devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
@@ -1986,11 +1992,11 @@ mod tests {
             approximates: None,
             oracle: None,
             set: "",
-            subtypes: &[],
-            otags: &[],
-            keywords: &[],
-            conditional_keywords: &[],
-            abilities: &ABILITIES,
+            subtypes: empty_slice(),
+            otags: empty_slice(),
+            keywords: empty_slice(),
+            conditional_keywords: empty_slice(),
+            abilities: ABILITIES.into(),
             cycling: None,
             cycling_sacrifice: SacrificeCost::None,
             flashback: None,
@@ -2010,14 +2016,14 @@ mod tests {
             enchant_graveyard: false,
             back: None,
             adventure: None,
-            halves: &[],
+            halves: empty_slice(),
             suspend: None,
             vanishing: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,
             encore: None,
-            hand_ability: &[],
+            hand_ability: empty_slice(),
             forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,

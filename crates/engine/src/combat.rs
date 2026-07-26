@@ -334,7 +334,13 @@ impl Game {
         // full object arena here.
         self.controlled_battlefield(defender)
             .into_iter()
-            .flat_map(|id| self.def_of(id).abilities)
+            .flat_map(|id| {
+                self.def_of(id)
+                    .abilities
+                    .iter()
+                    .cloned()
+                    .collect::<Vec<_>>()
+            })
             .map(|ability| match (ability.timing, ability.effect.clone()) {
                 (Timing::Static, Effect::Static(StaticEffect::AttackTax { amount })) => {
                     amount as u32
@@ -408,10 +414,12 @@ impl Game {
                 .controlled_battlefield(defender)
                 .into_iter()
                 .flat_map(|id| {
-                    self.def_of(id)
-                        .abilities
+                    let def = self.def_of(id);
+                    def.abilities
                         .iter()
+                        .cloned()
                         .map(move |ability| (id, ability))
+                        .collect::<Vec<_>>()
                 })
                 .any(
                     |(source, ability)| match (ability.timing, ability.effect.clone()) {

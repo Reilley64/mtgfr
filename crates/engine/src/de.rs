@@ -4,8 +4,8 @@
 //! the handful whose TOML spelling differs structurally from their Rust shape (a flat
 //! `[cost]` table of color names, the `instant`/`sorcery` split of [`CardKind::Spell`],
 //! the flat ability table that folds into [`Timing::Activated`]), plus the load helpers
-//! that still intern legacy `'static` data and the newer `Arc`-backed effect-list
-//! deserializers used by runtime-rebuilt sequence payloads.
+//! for the remaining `'static` payloads and the `Arc`-backed slice deserializers used by
+//! `CardDef` and runtime-rebuilt effect lists.
 //! See [`Effect`]'s doc comment for the invariant these helpers exist to satisfy.
 //!
 //! CR citations appear on individual fields where the DSL encodes a rules concept
@@ -137,6 +137,17 @@ pub(crate) fn intern_strs(strings: Vec<String>) -> &'static [&'static str] {
         .map(|s| &*Box::leak(s.into_boxed_str()))
         .collect();
     intern(leaked)
+}
+
+/// Convert owned strings into shared `Arc<[&'static str]>` storage for `CardDef` fields while
+/// still leaking the individual string data once at load.
+pub(crate) fn arc_strs(strings: Vec<String>) -> Arc<[&'static str]> {
+    Arc::from(
+        strings
+            .into_iter()
+            .map(|s| &*Box::leak(s.into_boxed_str()))
+            .collect::<Vec<_>>(),
+    )
 }
 
 /// `deserialize_with` for a `&'static [&'static str]` field (land subtypes, and the card-filter /
@@ -464,8 +475,7 @@ impl<'de> Deserialize<'de> for CardDef {
         }
 
         let card = Card::deserialize(d)?;
-        let halves = card.half;
-        let mut def = CardDef {
+        Ok(CardDef {
             id: Box::leak(card.id.into_boxed_str()),
             default_print: Box::leak(card.default_print.into_boxed_str()),
             name: Box::leak(card.name.into_boxed_str()),
@@ -479,16 +489,16 @@ impl<'de> Deserialize<'de> for CardDef {
             modal_choose: card.modal_choose,
             modal_choose_max: card.modal_choose_max,
             modal_choose_max_if_commander: card.modal_choose_max_if_commander,
-            keywords: intern(card.keywords),
-            conditional_keywords: intern(
+            keywords: Arc::from(card.keywords),
+            conditional_keywords: Arc::from(
                 card.conditional_keywords
                     .into_iter()
                     .map(|raw| (raw.condition, raw.keyword))
-                    .collect(),
+                    .collect::<Vec<_>>(),
             ),
-            abilities: intern(card.abilities),
-            identity_pips: intern(card.identity),
-            colors: intern(card.colors),
+            abilities: Arc::from(card.abilities),
+            identity_pips: Arc::from(card.identity),
+            colors: Arc::from(card.colors),
             devoid: card.devoid,
             enters_tapped: card.enters_tapped,
             enters_tapped_unless: card.enters_tapped_unless,
@@ -498,8 +508,8 @@ impl<'de> Deserialize<'de> for CardDef {
             approximates: card.approximates.map(|s| &*Box::leak(s.into_boxed_str())),
             oracle: card.oracle.map(|s| &*Box::leak(s.into_boxed_str())),
             set: Box::leak(card.set.into_boxed_str()),
-            subtypes: intern_strs(card.subtypes),
-            otags: intern_strs(card.otags),
+            subtypes: arc_strs(card.subtypes),
+            otags: arc_strs(card.otags),
             cycling: card.cycling,
             cycling_sacrifice: card.cycling_sacrifice,
             flashback: card.flashback,
@@ -522,18 +532,21 @@ impl<'de> Deserialize<'de> for CardDef {
             adventure: card.adventure.map(intern_card_def),
             suspend: card.suspend,
             enter_as_copy: card.enter_as_copy,
-            // Leak the encore cost to `'static` (like `suspend`'s cost) so a `Copy` `&'static Cost`
-            // reference can live on the `CardDef`.
+            // Leak the encore cost once at load so the `CardDef` can keep sharing the same
+            // nested `Cost` handle as today.
             encore: card.encore.map(|cost| &*Box::leak(Box::new(cost))),
-            hand_ability: intern(card.hand_ability),
+            hand_ability: Arc::from(card.hand_ability),
             forecast: card.forecast,
             may_choose_not_to_untap: card.may_choose_not_to_untap,
             dredge: card.dredge,
             vanishing: card.vanishing,
-            halves: &[],
-        };
-        def.halves = intern(halves);
-        Ok(def)
+            halves: Arc::from(
+                card.half
+                    .into_iter()
+                    .map(intern_card_def)
+                    .collect::<Vec<_>>(),
+            ),
+        })
     }
 }
 

@@ -548,7 +548,7 @@ impl Game {
             }
             _ => None,
         };
-        for ability in self.def_of(id).abilities {
+        for ability in self.def_of(id).abilities.iter().cloned() {
             if let Some(on_expiry) = payload(&ability.effect) {
                 return on_expiry;
             }
@@ -675,22 +675,23 @@ impl Game {
     /// Target need and legal targets for casting half `half` of the split card `card` (CR 709.4a).
     /// Empty when `card` has no such half, or when the half picks its targets *after* the cast
     /// (a multi-target clause like Fire's "divided among one or two targets" — a
-    /// `ChooseSpellTargets` pending choice handles those, exactly as for a directly-cast spell).
+    /// `ChooseTarget` pending choice handles those, exactly as for a directly-cast spell).
     pub fn split_half_cast_targets(&self, card: ObjectId, half: u8) -> (TargetSpec, Vec<Target>) {
-        let Some(face) = self.def_of(card).halves.get(half as usize) else {
+        let Some(&face_id) = self.def_of(card).halves.get(half as usize) else {
             return (TargetSpec::None, Vec::new());
         };
-        if self.spell_multi_target(face).is_some() {
+        let face = card_def(face_id);
+        if self.spell_multi_target(&face).is_some() {
             return (TargetSpec::None, Vec::new());
         }
-        let spec = self.required_target(face, None);
+        let spec = self.required_target(&face, None);
         if spec == TargetSpec::None {
             return (spec, Vec::new());
         }
         let controller = self.controller_of(card);
         (
             spec,
-            self.legal_targets_for(spec, card, controller, color_identity(face), 0),
+            self.legal_targets_for(spec, card, controller, color_identity(&face), 0),
         )
     }
 

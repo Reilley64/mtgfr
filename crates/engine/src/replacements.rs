@@ -61,7 +61,7 @@ impl ReplacementRegistry {
         }
         for source in game.battlefield() {
             let controller = game.controller_of(source);
-            for ability in game.functional_abilities(source) {
+            for ability in game.functional_abilities(source).iter().cloned() {
                 if ability.timing != Timing::Static {
                     continue;
                 }
