@@ -22,6 +22,10 @@ pub struct Cost {
     /// fixed `colored` pips. A cost with `{W/B}{W/B}` carries two entries. Empty for a cost with
     /// no hybrid symbols (the overwhelming majority).
     pub hybrid: &'static [(Color, Color)],
+    /// Phyrexian mana pips (CR 107.4f — `{a/P}`), one entry per symbol: each is payable with one
+    /// mana of its color `a` *or* by paying 2 life instead (Vraska, Betrayal's Sting's `{B/P}`).
+    /// Empty for a cost with no Phyrexian symbols (the overwhelming majority).
+    pub phyrexian: &'static [Color],
     /// An additional cost paid alongside mana, before the spell hits the stack (CR 601.2b/
     /// 601.2f–h) — e.g. Big Score's "As an additional cost to cast this spell, discard a card."
     pub additional: AdditionalCost,
@@ -48,6 +52,7 @@ impl Cost {
         colorless: 0,
         x: 0,
         hybrid: &[],
+        phyrexian: &[],
         additional: AdditionalCost {
             discard: 0,
             discard_land: false,
@@ -89,6 +94,8 @@ impl Cost {
     /// ponytail: `{C}` pips are treated as unpayable — the sixth bucket can't tell true colorless
     /// from an "any"/dual credit (mana of a color is never colorless); no pool creature card
     /// prints `{C}` in its cost. Split the bucket if one lands.
+    /// A Phyrexian pip (CR 107.4f, `phyrexian`) never appears in this check: it's always payable
+    /// via life instead of mana, so it neither consumes a unit of `spent` nor can fail this test.
     pub fn payable_from_multiset(&self, spent: &[u8; 6]) -> bool {
         if self.colorless > 0 {
             return false;
@@ -108,7 +115,8 @@ impl Cost {
     }
 
     /// Render this cost's mana pips as cost text (CR 202.3) — `{X}`, the generic number, `{C}`
-    /// colorless pips, WUBRG colored pips, then `{a/b}` hybrid pips. Ignores non-mana riders
+    /// colorless pips, WUBRG colored pips, `{a/b}` hybrid pips, then `{a/P}` Phyrexian pips.
+    /// Ignores non-mana riders
     /// (`additional`); used wherever a full `Cost` needs to read back as a pip string, e.g.
     /// [`Effect`](super::Effect)'s `SacrificeSelfUnlessPay` label (Keldon Vandals' `{2}{R}`).
     pub fn mana_label(&self) -> String {
@@ -129,6 +137,9 @@ impl Cost {
         }
         for &(a, b) in self.hybrid {
             out.push_str(&format!("{{{}/{}}}", a.letter(), b.letter()));
+        }
+        for &color in self.phyrexian {
+            out.push_str(&format!("{{{}/P}}", color.letter()));
         }
         out
     }
@@ -995,6 +1006,24 @@ impl ManaPool {
         }
         spend.colorless = cost.colorless;
 
+        // Phyrexian pips (CR 107.4f — `{a/P}`): CR 107.4f frames the mana-or-2-life choice as the
+        // caster's own, but this planner instead auto-picks a spare unit of the pip's own color
+        // (left over after every mono/hybrid/dual pip above) when there is one, life otherwise —
+        // never both. Never fails: a Phyrexian pip is always payable one way or the other.
+        // ponytail: no genuine choice offered (CR 107.4f) — a caster who'd rather bank the mana
+        // and spend life on purpose has no way to say so. Every pool cost carries at most one
+        // Phyrexian pip today, so this fixed pick order never costs a payment a real choice would
+        // find; widen to a raised choice (mirroring `PendingChoice::PayLifeOrEntersTapped`) if a
+        // second one ever needs to matter. `Game::settle_payment`'s caller re-derives which way a
+        // pip went from this spend's `colored` counts (see `phyrexian_life_paid_from` in cast.rs)
+        // rather than this fn threading the answer back itself.
+        for &color in cost.phyrexian {
+            if leftover_colored[color.index()] > 0 {
+                leftover_colored[color.index()] -= 1;
+                spend.colored[color.index()] += 1;
+            }
+        }
+
         // Generic: pay from any leftover mana (colored, then colorless, then dual/restricted
         // credits, then "any").
         let mut generic = cost.generic;
@@ -1283,6 +1312,51 @@ mod mana_pool_tests {
         assert!(!is_permutation(&[0, 0], 2));
         assert!(!is_permutation(&[2], 2));
         assert!(!is_permutation(&[0, 1], 3));
+    }
+
+    #[test]
+    fn mana_label_renders_a_phyrexian_pip() {
+        // Vraska, Betrayal's Sting: {4}{B}{B/P} (CR 107.4f).
+        let cost = Cost {
+            generic: 4,
+            colored: {
+                let mut pips = [0; Color::COUNT];
+                pips[Color::Black.index()] = 1;
+                pips
+            },
+            phyrexian: &[Color::Black],
+            ..Cost::FREE
+        };
+        assert_eq!(cost.mana_label(), "{4}{B}{B/P}");
+    }
+
+    #[test]
+    fn spend_plan_pays_a_phyrexian_pip_from_matching_mana_when_available() {
+        let pool = ManaPool::of(Mana::Color(Color::Black), 1);
+        let cost = Cost {
+            phyrexian: &[Color::Black],
+            ..Cost::FREE
+        };
+        let spend = pool
+            .spend_plan(&cost, None)
+            .expect("black mana pays the phyrexian pip (CR 107.4f)");
+        assert_eq!(spend.colored[Color::Black.index()], 1);
+    }
+
+    #[test]
+    fn spend_plan_pays_a_phyrexian_pip_from_nothing_when_no_matching_mana() {
+        // CR 107.4f's "or 2 life" route: the planner never fails to cover a Phyrexian pip, even
+        // from an empty pool — `Game::settle_payment`'s caller derives the life cost separately
+        // (see `phyrexian_life_paid_from` in cast.rs).
+        let pool = ManaPool::default();
+        let cost = Cost {
+            phyrexian: &[Color::Black],
+            ..Cost::FREE
+        };
+        let spend = pool
+            .spend_plan(&cost, None)
+            .expect("a phyrexian pip is always payable (mana or life)");
+        assert_eq!(spend.colored[Color::Black.index()], 0);
     }
 }
 

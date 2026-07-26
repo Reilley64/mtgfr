@@ -486,6 +486,21 @@ impl Game {
         // read right off the `Event::ManaSpent` `settle_payment` just appended, before any later
         // event dilutes the `events` tail.
         let spent_colors = spent_colors_from(&events);
+        // A Phyrexian pip (CR 107.4f — Vraska, Betrayal's Sting's `{B/P}`) `settle_payment` fell
+        // back to life on, read the same way: `ManaPool::spend_plan_unrestricted` already chose
+        // mana over life whenever a spare unit of the pip's own color was left over, so whatever
+        // it *didn't* fund that way owes 2 life apiece.
+        let phyrexian_life = phyrexian_life_paid_from(&cost, &events);
+        if phyrexian_life > 0 {
+            self.push_apply(
+                &mut events,
+                Event::LifeChanged {
+                    player,
+                    amount: -(2 * i32::from(phyrexian_life)),
+                    source: Some(object),
+                },
+            );
+        }
         // "Reveal a creature card from your hand" (CR 601.2g — Disaster Radius): read before any
         // of this cast's own discard/sacrifice picks touch the hand below. See
         // `AdditionalCost::reveal_creature_from_hand`'s own doc for why the pick is automatic
@@ -2665,6 +2680,30 @@ fn spent_counts_from(events: &[Event]) -> [u8; 6] {
         // unreachable: see `spent_colors_from`'s doc — `settle_payment` always ends with `ManaSpent`.
         _ => [0; 6],
     }
+}
+
+/// How many of `cost`'s Phyrexian pips (CR 107.4f — `{a/P}`) the payment [`Game::settle_payment`]
+/// just appended to `events` paid with life instead of mana, read the same way
+/// [`spent_colors_from`] reads colors: [`ManaPool::spend_plan_unrestricted`] spends a spare unit
+/// of a Phyrexian pip's own color when one is left over, so a color's spent count beyond `cost`'s
+/// own plain pip in that color is mana that funded a Phyrexian pip; whatever's left owes 2 life.
+/// ponytail: no card carries two Phyrexian pips of the same color, so this per-color tally can't
+/// misattribute which specific pip a life payment covers.
+fn phyrexian_life_paid_from(cost: &Cost, events: &[Event]) -> u8 {
+    let Some(Event::ManaSpent { mana, .. }) = events.last() else {
+        // unreachable: see `spent_colors_from`'s doc — `settle_payment` always ends with `ManaSpent`.
+        return 0;
+    };
+    let mut phyrexian_by_color = [0u8; Color::COUNT];
+    for &color in cost.phyrexian {
+        phyrexian_by_color[color.index()] += 1;
+    }
+    let mut paid_with_life = 0u8;
+    for (i, &pips) in phyrexian_by_color.iter().enumerate() {
+        let funded_by_mana = mana.colored[i].saturating_sub(cost.colored[i]).min(pips);
+        paid_with_life += pips - funded_by_mana;
+    }
+    paid_with_life
 }
 
 /// Build an [`Event::SpellDamageDivided`] from `(target, amount)` pairs (CR 601.2d), splitting

@@ -1580,6 +1580,7 @@ mod permanent_filter_tests {
                 colorless: 0,
                 x: 0,
                 hybrid: &[],
+                phyrexian: &[],
                 additional: AdditionalCost::default(),
                 reduce_own_generic: None,
             },

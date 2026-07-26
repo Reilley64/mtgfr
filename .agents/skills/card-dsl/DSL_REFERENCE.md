@@ -122,6 +122,15 @@ x = true         # cost includes {X}; or an integer pip count — x = 3 for {X}{
                  # [abilities.cost]'s {X} (an optional trigger's own pay-{X} rider — Decree of
                  # Justice's "you may pay {X}") is chosen when accepting it (Intent::PayOptionalCostX).
 hybrid = [["white", "black"]]   # hybrid pips (CR 107.4e): one two-color array per {A/B} symbol
+phyrexian = ["black"]           # Phyrexian pips (CR 107.4f): one color per {A/P} symbol — payable
+                                # with one mana of that color OR 2 life (Vraska, Betrayal's Sting's
+                                # {4}{B}{B/P}). Counts 1 toward mana value and contributes its
+                                # color to color identity, however it's paid.
+                                # ponytail: not a real choice — the payment planner spends a spare
+                                # unit of the pip's own color when one is left over after every
+                                # other pip, and pays 2 life otherwise. A caster who'd rather bank
+                                # the mana can't say so; widen to a raised PendingChoice if a
+                                # second Phyrexian pip ever makes the pick matter.
 reduce_own_generic = "per_creature_on_battlefield"   # an Amount (below); shaves this spell's OWN generic
 ```
 

@@ -149,16 +149,24 @@ that cares about fighting is told one happened. infectious_bite authored, fully 
 poison rider (`put_counters_on_player`, `each_opponent` scope) landed in #20 slice 1 as noted.
 Still blocked: nothing._
 
-### 8. `phyrexian-mana` — 1 card, S/M
+### 8. `phyrexian-mana` — 1 card, S/M — LANDED 2026-07-27
+_Landed 2026-07-27: `Cost::phyrexian: &'static [Color]` (TOML `phyrexian = ["black"]`, one entry
+per `{a/P}` symbol) is a real pip — it renders in `Cost::mana_label` as `{B/P}`, counts 1 toward
+`CardDef::mana_value`, and contributes its color to `color_identity` however it's paid (CR
+107.4f/105.2b). `ManaPool::spend_plan_unrestricted` settles each Phyrexian pip *after* every
+mono/hybrid/dual pip, taking a spare unit of the pip's own color when one is left over and life
+otherwise, so it can never make a cast unaffordable. `Game::cast` re-derives which way each pip
+went from the `Event::ManaSpent` tail (`phyrexian_life_paid_from`) and pushes one
+`Event::LifeChanged { amount: -2 }` per life-paid pip. Correction to this section's premise: the
+choice is **not** recorded on the spell — the derivation is per-cast and doesn't survive
+resolution, so #16's compleated rider still can't read it and must thread the outcome onto the
+resolved permanent itself. vraska_betrayals_sting's cost is now `{4}{B}{B/P}` and its
+`approximates` drops the "modeled as a plain {B}" residual. Still blocked: nothing.
+ponytail: the mana-or-life pick is automatic, not offered (CR 107.4f frames it as the caster's);
+every pool cost carries at most one Phyrexian pip, so the fixed pick order never costs a payment
+a real choice would find — widen to a raised `PendingChoice` (mirroring `PayLifeOrEntersTapped`)
+if a second one lands._
 Depends on: nothing.
-`{B/P}` is unsupported in `[cost]`. *Sketch:* a hybrid-with-life pip that the cost payer may
-settle with either the color or 2 life, recording *which* was chosen so #16's compleated rider
-can read it. *Cards:* vraska_betrayals_sting (with #16).
-
-**Pre-written brief** at `/private/tmp/claude-501/-Users-reilley-Repositories-mtgfr/a6559256-1122-41b4-8623-2c96d64f687b/scratchpad/brief-8.md`.
-#8 stalled 6/6 in wave 7 — the agent could not locate the mana-payment surface and burned its
-whole context searching. The brief names every site (`types/mana.rs:5/24/38/92/114/142/801/1219`
-plus the shockland pay-life-choice precedent). Use it as written; do not re-derive.
 
 ### 9. `total-mana-value-budget-targets` — 1 card, M — LANDED 2026-07-26
 _Landed 2026-07-26: `TargetCount::total_mv_max: Option<Amount>` (TOML `total_mv_max` on the count
@@ -357,11 +365,13 @@ damage amount via `fill_combat_damage`/`contextualize_effect`, so no new amount 
 the new `trigger` field, Equip {2} — no `approximates`. Still blocked: nothing.
 
 ### 16. `compleated` — 1 card, M
-Depends on: #8 phyrexian-mana.
+Depends on: #8 phyrexian-mana (LANDED — the pip is real, but see below).
 "If life was paid, this planeswalker enters with two fewer loyalty counters" — an as-enters
-replacement reading how the `{B/P}` pip was actually settled. *Sketch:* the cast records the
-life-paid choice on the spell; the planeswalker's enters-with-loyalty read subtracts 2 per pip
-paid with life. Also needs Vraska's −2 (#25). *Cards:* vraska_betrayals_sting.
+replacement reading how the `{B/P}` pip was actually settled. *Sketch:* #8 derives the life-paid
+answer inside `Game::cast` (`phyrexian_life_paid_from`) and throws it away once the life is
+deducted, so this increment's real work is **persisting** it — record the life-paid pip count on
+the spell and carry it to the resolved permanent, then have the planeswalker's enters-with-loyalty
+read subtract 2 per pip paid with life. Also needs Vraska's −2 (#25). *Cards:* vraska_betrayals_sting.
 
 ### 17. `proliferate-full-scope` — 9 cards + observers, L — LANDED 2026-07-27
 Depends on: #20 slice 1 (for the player half).

@@ -608,6 +608,9 @@ impl<'de> Deserialize<'de> for Cost {
             /// Hybrid mana pips (CR 107.4e — `{a/b}`): a list of two-color arrays, one per
             /// hybrid symbol (`hybrid = [["black", "green"]]` for one `{B/G}`).
             hybrid: Vec<[Color; 2]>,
+            /// Phyrexian mana pips (CR 107.4f — `{a/P}`): a list of colors, one per Phyrexian
+            /// symbol (`phyrexian = ["black"]` for one `{B/P}`, Vraska, Betrayal's Sting's cost).
+            phyrexian: Vec<Color>,
             /// `[cost.additional]` — an additional cost paid alongside mana (CR 601.2f).
             additional: AdditionalCost,
             /// A spell's own board-derived generic reduction (Blasphemous Act's "costs {1} less
@@ -638,6 +641,7 @@ impl<'de> Deserialize<'de> for Cost {
             colorless: pips.colorless,
             x: pips.x.into(),
             hybrid: intern(hybrid),
+            phyrexian: intern(pips.phyrexian),
             additional: pips.additional,
             reduce_own_generic: pips.reduce_own_generic,
         })

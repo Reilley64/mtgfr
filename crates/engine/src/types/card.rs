@@ -937,13 +937,15 @@ impl CardDef {
     /// (CR 202.3b), which is exactly how [`Cost`] stores it (the `x` marker adds nothing to the
     /// printed pips), so a graveyard/battlefield mana-value gate reads the printed value
     /// correctly. Each color/color hybrid pip counts 1 (CR 202.3f — both halves are one mana;
-    /// Balefire Liege's {2}{R/W}{R/W}{R/W} is mana value 5).
+    /// Balefire Liege's {2}{R/W}{R/W}{R/W} is mana value 5). A Phyrexian pip counts 1 too, however
+    /// it's paid (Vraska, Betrayal's Sting's {4}{B}{B/P} is mana value 6).
     pub fn mana_value(self) -> u32 {
         let cost = self.cost;
         cost.generic as u32
             + cost.colorless as u32
             + cost.colored.iter().map(|&pips| pips as u32).sum::<u32>()
             + cost.hybrid.len() as u32
+            + cost.phyrexian.len() as u32
     }
 
     /// Whether this card may be cast any time its owner has priority — an instant, or a
@@ -996,6 +998,11 @@ pub fn color_identity(def: CardDef) -> [bool; Color::COUNT] {
     for &(a, b) in def.cost.hybrid {
         identity[a.index()] = true;
         identity[b.index()] = true;
+    }
+    // A Phyrexian pip (CR 107.4f, {A/P}) contributes its color regardless of how it's paid (CR
+    // 105.2b/903.4) — Vraska, Betrayal's Sting's {B/P} makes her black.
+    for &color in def.cost.phyrexian {
+        identity[color.index()] = true;
     }
     identity
 }

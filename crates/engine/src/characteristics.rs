@@ -2255,6 +2255,7 @@ mod cache_tests {
         colorless: 0,
         x: 0,
         hybrid: &[],
+        phyrexian: &[],
         additional: AdditionalCost {
             discard: 0,
             discard_land: false,
@@ -2666,6 +2667,7 @@ mod characteristic_query_tests {
         colorless: 0,
         x: 0,
         hybrid: &[],
+        phyrexian: &[],
         additional: AdditionalCost {
             discard: 0,
             discard_land: false,

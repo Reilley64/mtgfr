@@ -581,6 +581,7 @@ mod tests {
             colorless: 0,
             x: 0,
             hybrid: &[],
+            phyrexian: &[],
             additional: NO_ADD,
             reduce_own_generic: None,
         }

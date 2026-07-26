@@ -488,6 +488,7 @@ const fn flash_cost(generic: u8, colored: [u8; 5], additional: AdditionalCost) -
         colorless: 0,
         x: 0,
         hybrid: &[],
+        phyrexian: &[],
         additional,
         reduce_own_generic: None,
     }
@@ -1925,6 +1926,7 @@ const TWO_ETB: CardDef = CardDef {
         colorless: 0,
         x: 0,
         hybrid: &[],
+        phyrexian: &[],
         additional: AdditionalCost {
             discard: 0,
             discard_land: false,
@@ -2235,6 +2237,7 @@ const MAY_PAY_DRAW: CardDef = CardDef {
             colorless: 0,
             x: 0,
             hybrid: &[],
+            phyrexian: &[],
             additional: AdditionalCost {
                 discard: 0,
                 discard_land: false,
@@ -18871,6 +18874,7 @@ const COLORLESS_ROCK: CardDef = CardDef {
         colorless: 1,
         x: 0,
         hybrid: &[],
+        phyrexian: &[],
         additional: AdditionalCost {
             discard: 0,
             discard_land: false,
@@ -19596,6 +19600,7 @@ const fn vanilla(name: &'static str, generic: u8, colored: [u8; 5]) -> CardDef {
             colorless: 0,
             x: 0,
             hybrid: &[],
+            phyrexian: &[],
             additional: AdditionalCost {
                 discard: 0,
                 discard_land: false,
@@ -20104,6 +20109,7 @@ fn hybrid_filter_land(name: &'static str, a: Color, b: Color) -> CardDef {
                 },
                 reduce_own_generic: None,
                 hybrid,
+                phyrexian: &[],
             },
             sacrifice: SacrificeCost::None,
             pay_life: Amount::Fixed(0),
@@ -26668,6 +26674,7 @@ fn echo_label_renders_colored_pips() {
         colorless: 0,
         x: 0,
         hybrid: &[],
+        phyrexian: &[],
         additional: NO_ADD,
         reduce_own_generic: None,
     };
@@ -26847,6 +26854,7 @@ fn generic_only_sacrifice_unless_pay_label() {
         colorless: 0,
         x: 0,
         hybrid: &[],
+        phyrexian: &[],
         additional: NO_ADD,
         reduce_own_generic: None,
     };
@@ -36527,6 +36535,7 @@ const NONCREATURE_PERMANENT_MV2: CardDef = CardDef {
         colorless: 0,
         x: 0,
         hybrid: &[],
+        phyrexian: &[],
         additional: AdditionalCost {
             discard: 0,
             discard_land: false,
@@ -36609,6 +36618,7 @@ const NONCREATURE_PERMANENT_MV4: CardDef = CardDef {
         colorless: 0,
         x: 0,
         hybrid: &[],
+        phyrexian: &[],
         additional: AdditionalCost {
             discard: 0,
             discard_land: false,
@@ -36916,6 +36926,7 @@ const NONCREATURE_PERMANENT_MV5: CardDef = CardDef {
         colorless: 0,
         x: 0,
         hybrid: &[],
+        phyrexian: &[],
         additional: AdditionalCost {
             discard: 0,
             discard_land: false,
@@ -62692,6 +62703,7 @@ const TEST_STEELBANE: CardDef = CardDef {
                     },
                     reduce_own_generic: None,
                     hybrid: &[],
+                    phyrexian: &[],
                 },
                 sacrifice: SacrificeCost::None,
                 pay_life: Amount::Fixed(0),
@@ -64373,6 +64385,7 @@ const TWO_MANA_VALUE_X_SORCERY: CardDef = CardDef {
         colorless: 0,
         x: 1,
         hybrid: &[],
+        phyrexian: &[],
         additional: NO_ADD,
         reduce_own_generic: None,
     },
@@ -94471,6 +94484,84 @@ fn vraska_betrayals_sting_places_nothing_at_nine_or_more_poison() {
         9
     );
     assert!(!game.has_lost(PlayerId(1)), "nine poison is not ten");
+}
+
+/// Tap `lands` (already on the battlefield) for mana, then cast Vraska, Betrayal's Sting
+/// ({4}{B}{B/P}) from hand.
+fn cast_vraska_with(game: &mut Game, lands: &[ObjectId]) {
+    let vraska = game.spawn_in_hand(PlayerId(0), card("Vraska, Betrayal's Sting"));
+    for &land in lands {
+        game.submit(Intent::TapForMana {
+            player: PlayerId(0),
+            object: land,
+        })
+        .unwrap();
+    }
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: vraska,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    assert_eq!(game.zone_of(vraska), Zone::Stack, "Vraska was cast");
+}
+
+#[test]
+fn a_phyrexian_pip_paid_with_life_costs_two_life() {
+    // Vraska, Betrayal's Sting's {4}{B}{B/P} (CR 107.4f): one Swamp funds the plain {B} and four
+    // Mountains the {4}, leaving no black for the Phyrexian pip — so it settles for 2 life.
+    let mut game = Game::new();
+    let swamp = game.spawn_on_battlefield(PlayerId(0), card("Swamp"));
+    let mountains: Vec<ObjectId> = (0..4)
+        .map(|_| game.spawn_on_battlefield(PlayerId(0), card("Mountain")))
+        .collect();
+    let before = game.life(PlayerId(0));
+
+    let mut lands = vec![swamp];
+    lands.extend(mountains);
+    cast_vraska_with(&mut game, &lands);
+
+    assert_eq!(
+        game.life(PlayerId(0)),
+        before - 2,
+        "the {{B/P}} pip was paid with 2 life, not mana"
+    );
+}
+
+#[test]
+fn a_phyrexian_pip_paid_with_matching_mana_costs_no_life() {
+    // Six Swamps cover {4}{B} with a black to spare, so the {B/P} takes the mana route (CR
+    // 107.4f) and life is untouched.
+    let mut game = Game::new();
+    let swamps: Vec<ObjectId> = (0..6)
+        .map(|_| game.spawn_on_battlefield(PlayerId(0), card("Swamp")))
+        .collect();
+    let before = game.life(PlayerId(0));
+
+    cast_vraska_with(&mut game, &swamps);
+
+    assert_eq!(
+        game.life(PlayerId(0)),
+        before,
+        "a spare black mana pays the {{B/P}} pip instead of life"
+    );
+    assert_eq!(
+        game.mana_in_pool(PlayerId(0), Color::Black),
+        0,
+        "all six black mana were spent on {{4}}{{B}}{{B/P}}"
+    );
 }
 
 #[test]
