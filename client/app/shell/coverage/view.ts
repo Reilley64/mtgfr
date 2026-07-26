@@ -6,11 +6,7 @@ import { feltClass, fieldClass, listRowClass } from "../../domain/ui/surfaces";
 import type { ClosedAccountMenu, GotAuthMessage, ToggledAccountMenu } from "../../messages";
 import { HomeRoute, routePath } from "../../routes";
 import { accountChrome } from "../account-chrome/view";
-import {
-  ChangedCoverageQuery,
-  type Message as CoverageMessage,
-  RequestedCoverageRefresh,
-} from "./messages";
+import { ChangedCoverageQuery, type Message as CoverageMessage, RequestedCoverageRefresh } from "./messages";
 import type { CoverageSetRow, CoverageStatus, CoverageSubmodel } from "./submodel";
 
 export type ViewMessage =
