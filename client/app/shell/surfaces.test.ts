@@ -153,6 +153,8 @@ describe("shell surface scenes", () => {
       { update, view },
       Scene.with(loginModel({ apiVersion: "1.2.3" })),
       Scene.expect(Scene.selector('[data-testid="auth-panel"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="auth-brand"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="auth-brand"]')).toHaveClass("font-display"),
       Scene.expect(Scene.selector('[data-testid="auth-form"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="auth-email"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="auth-password"]')).toExist(),
@@ -163,6 +165,11 @@ describe("shell surface scenes", () => {
       Scene.expect(Scene.text("API 1.2.3")).toExist(),
       Scene.expect(Scene.text("edh.reilley.dev")).toExist(),
       Scene.expect(Scene.text("mtgfr")).not.toExist(),
+      Scene.tap((sim) => {
+        const panel = findTestId(sim.html, "auth-panel");
+        expect(panel).not.toBeNull();
+        expect(textContent(panel)).not.toContain("edh.reilley.dev");
+      }),
     );
   });
 

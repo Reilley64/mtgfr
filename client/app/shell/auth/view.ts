@@ -24,21 +24,19 @@ export const view = Submodel.defineView<AuthSubmodel, Message, AppChromeMeta>((m
     atmosphere: "auth",
     chrome,
     stage: h.div(
-      [h.Class("flex justify-center py-xxl")],
+      [h.Class("flex flex-col items-center justify-center gap-md py-xxl text-center")],
       [
+        h.div(
+          [h.DataAttribute("testid", "auth-brand"), h.Class("m-0 font-display text-display tracking-[-0.02em]")],
+          ["edh.reilley.dev"],
+        ),
+        h.h1([h.Class("m-0 text-lichen text-title")], [isLogin ? "Sign in" : "Create account"]),
         h.section(
           [h.DataAttribute("testid", "auth-panel"), h.DataAttribute("ui", "panel"), h.Class(panelClass())],
           [
             h.form(
               [h.Class("contents"), h.DataAttribute("testid", "auth-form"), h.OnSubmit(SubmittedAuth())],
               [
-                h.div(
-                  [h.Class("flex flex-col gap-xs")],
-                  [
-                    h.div([h.Class("m-0 text-display tracking-[-0.02em]")], ["edh.reilley.dev"]),
-                    h.h1([h.Class("m-0 text-lichen text-title")], [isLogin ? "Sign in" : "Create account"]),
-                  ],
-                ),
                 h.label([h.Class("text-label text-lichen"), h.For("email")], ["Email"]),
                 h.input([
                   h.Id("email"),
