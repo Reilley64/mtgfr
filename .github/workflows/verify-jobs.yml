@@ -52,6 +52,9 @@ jobs:
 
       - uses: extractions/setup-just@v3
 
+      - name: Install protoc
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends protobuf-compiler
+
       - name: CR index + fmt + clippy
         run: |
           set -euo pipefail
