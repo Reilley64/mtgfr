@@ -3,9 +3,8 @@ import { type Html, html } from "foldkit/html";
 import * as Mount from "foldkit/mount";
 import { cn } from "../../../../lib/cn";
 import { appVersionBadge } from "../../../../lib/ui/app-version";
-import { buttonClass } from "../../../../lib/ui/buttonClass";
 import { confirmDialog } from "../../../../lib/ui/confirmDialog";
-import { feltClass, fieldClass } from "../../../../lib/ui/surfaces";
+import { feltClass, fieldClass, listRowClass } from "../../../../lib/ui/surfaces";
 import type { Message } from "../../../messages";
 import { DeckRoute, NewDeckRoute, PlayRoute, routePath } from "../../../routes";
 import { accountChrome } from "../../account-chrome/view";
@@ -207,7 +206,6 @@ export function view(
                 menuOpen: model.accountMenuOpen,
                 showLeaderboardLink: true,
               }),
-              h.a([h.Href(routePath(NewDeckRoute())), h.Class(buttonClass("primary"))], ["New deck"]),
             ],
           ),
         ],
@@ -219,9 +217,6 @@ export function view(
             ? null
             : h.div([h.Role("alert"), h.Class("text-label text-reconnect-rust")], [model.error]),
           model.loading ? h.div([h.Class("text-label text-lichen")], ["Loading decks…"]) : null,
-          !model.loading && model.decks.length === 0
-            ? h.div([h.Class("text-label text-lichen")], ["No decks yet — build one to get started."])
-            : null,
           !model.loading && model.decks.length > 0
             ? h.input([
                 h.Type("search"),
@@ -236,20 +231,38 @@ export function view(
           !model.loading && model.decks.length > 0 && visible.length === 0
             ? h.div([h.Class("text-label text-lichen")], ["No decks match."])
             : null,
-          !model.loading && visible.length > 0
+          !model.loading
             ? h.div(
                 [
                   h.DataAttribute("testid", "deck-list-grid"),
                   h.Class("mx-auto grid max-w-[960px] grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-md"),
                 ],
-                visible.map((deck) => {
-                  return renderDeckCard(h, deckCardModel(model, deck), {
-                    mode: "link",
-                    href: routePath(PlayRoute({ deckId: String(deck.id) })),
-                    rootAttrs: [h.OnMount(BindDeckListContextMenu({ deckId: deck.id }))],
-                    testId: `deck-tile-${deck.id}`,
-                  });
-                }),
+                [
+                  h.a(
+                    [
+                      h.Href(routePath(NewDeckRoute())),
+                      h.DataAttribute("testid", "deck-list-new-deck"),
+                      h.Class(
+                        listRowClass(
+                          "flex aspect-auto min-h-[200px] flex-col items-center justify-center gap-sm border border-dashed border-vine bg-transparent no-underline",
+                        ),
+                      ),
+                      h.AriaLabel("New deck"),
+                    ],
+                    [
+                      h.span([h.Class("text-title text-lichen")], ["+"]),
+                      h.span([h.Class("text-label font-semibold text-snow")], ["New deck"]),
+                    ],
+                  ),
+                  ...visible.map((deck) => {
+                    return renderDeckCard(h, deckCardModel(model, deck), {
+                      mode: "link",
+                      href: routePath(PlayRoute({ deckId: String(deck.id) })),
+                      rootAttrs: [h.OnMount(BindDeckListContextMenu({ deckId: deck.id }))],
+                      testId: `deck-tile-${deck.id}`,
+                    });
+                  }),
+                ],
               )
             : null,
         ],

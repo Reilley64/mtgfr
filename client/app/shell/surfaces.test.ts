@@ -19,6 +19,7 @@ import {
   NotFoundRoute,
   PlayRoute,
   TableRoute,
+  routePath,
 } from "../routes";
 import { view } from "../view";
 import { BindAccountMenuEscape } from "./account-chrome/escape";
@@ -165,6 +166,13 @@ describe("shell surface scenes", () => {
       Scene.expect(Scene.text("Sign out")).not.toExist(),
       Scene.expect(Scene.text("Your decks")).toExist(),
       Scene.expect(Scene.text("Superfriends")).toExist(),
+      Scene.expect(
+        Scene.selector(`[data-testid="deck-list-new-deck"][href="${routePath(NewDeckRoute())}"]`),
+      ).toExist(),
+      Scene.expect(Scene.text("New deck")).toExist(),
+      Scene.expect(
+        Scene.selector(`[data-testid="deck-list-header"] a[href="${routePath(NewDeckRoute())}"]`),
+      ).not.toExist(),
       Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), ClosedDeckListMenu()),
       Scene.Mount.resolve(BindDeckCardFlip({ deckId: 1 }), DeckCardFlipTick()),
       Scene.Mount.resolve(BindCardArt, CardArtTick()),
@@ -230,7 +238,7 @@ describe("shell surface scenes", () => {
     );
   });
 
-  it("renders deck list empty copy", () => {
+  it("shows a New deck create tile when the list is empty", () => {
     Scene.scene(
       { update, view },
       Scene.with(
@@ -245,7 +253,10 @@ describe("shell surface scenes", () => {
           },
         }),
       ),
-      Scene.expect(Scene.text("No decks yet — build one to get started.")).toExist(),
+      Scene.expect(Scene.text("No decks yet — build one to get started.")).not.toExist(),
+      Scene.expect(
+        Scene.selector(`[data-testid="deck-list-new-deck"][href="${routePath(NewDeckRoute())}"]`),
+      ).toExist(),
       Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
     );
   });
