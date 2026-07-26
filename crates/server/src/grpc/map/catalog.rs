@@ -116,6 +116,75 @@ mod tests {
     use super::*;
 
     #[test]
+    fn deck_card_entry_to_pb_preserves_proxy_art_url() {
+        let pb = deck_card_entry_to_pb(DeckCardEntry {
+            id: "card-1".to_string(),
+            count: 2,
+            print: "print-1".to_string(),
+            proxy_art_url: "https://example.com/cards/card-1-proxy.png".to_string(),
+        });
+
+        assert_eq!(pb.id, "card-1");
+        assert_eq!(
+            pb.proxy_art_url,
+            "https://example.com/cards/card-1-proxy.png"
+        );
+    }
+
+    #[test]
+    fn deck_detail_to_pb_preserves_card_and_commander_proxy_art_urls() {
+        let pb = deck_detail_to_pb(DeckDetail {
+            id: 7,
+            name: "Proxy Deck".to_string(),
+            commander: "commander-1".to_string(),
+            commander_print: "commander-print-1".to_string(),
+            cards: vec![DeckCardEntry {
+                id: "card-1".to_string(),
+                count: 1,
+                print: "print-1".to_string(),
+                proxy_art_url: "https://example.com/cards/card-1-proxy.png".to_string(),
+            }],
+            commander_proxy_art_url: "https://example.com/cards/commander-proxy.png".to_string(),
+        });
+
+        assert_eq!(pb.cards.len(), 1);
+        assert_eq!(
+            pb.cards[0].proxy_art_url,
+            "https://example.com/cards/card-1-proxy.png"
+        );
+        assert_eq!(
+            pb.commander_proxy_art_url,
+            "https://example.com/cards/commander-proxy.png"
+        );
+    }
+
+    #[test]
+    fn save_deck_request_from_pb_preserves_card_and_commander_proxy_art_urls() {
+        let request = save_deck_request_from_pb(pb::SaveDeckRequest {
+            name: "Proxy Deck".to_string(),
+            commander: "commander-1".to_string(),
+            commander_print: "commander-print-1".to_string(),
+            cards: vec![pb::DeckCardEntry {
+                id: "card-1".to_string(),
+                count: 1,
+                print: "print-1".to_string(),
+                proxy_art_url: "https://example.com/cards/card-1-proxy.png".to_string(),
+            }],
+            commander_proxy_art_url: "https://example.com/cards/commander-proxy.png".to_string(),
+        });
+
+        assert_eq!(request.cards.len(), 1);
+        assert_eq!(
+            request.cards[0].proxy_art_url,
+            "https://example.com/cards/card-1-proxy.png"
+        );
+        assert_eq!(
+            request.commander_proxy_art_url,
+            "https://example.com/cards/commander-proxy.png"
+        );
+    }
+
+    #[test]
     fn catalog_card_summary_preserves_message_refs() {
         let card = CatalogCard {
             id: "card-1".to_string(),

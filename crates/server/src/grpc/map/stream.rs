@@ -1684,7 +1684,7 @@ mod tests {
                 face_down: false,
                 attached_to: None,
                 modifiers: vec![],
-                proxy_art_url: String::new(),
+                proxy_art_url: "https://example.com/objects/bear-proxy.png".into(),
             }],
             stack: vec![StackObjectView {
                 kind: "spell".into(),
@@ -1696,7 +1696,7 @@ mod tests {
                 print: "shock-print".into(),
                 card_id: "shock-id".into(),
                 name: "Shock".into(),
-                proxy_art_url: String::new(),
+                proxy_art_url: "https://example.com/stack/shock-proxy.png".into(),
             }],
             combat: CombatView::default(),
             can_act: true,
@@ -1712,7 +1712,7 @@ mod tests {
                     id: 11,
                     label: "Goblin".into(),
                     print: String::new(),
-                    proxy_art_url: String::new(),
+                    proxy_art_url: "https://example.com/choices/goblin-proxy.png".into(),
                     player: None,
                 }],
                 min: 1,
@@ -1770,20 +1770,34 @@ mod tests {
         assert_eq!(st.viewer, 0);
         assert_eq!(st.objects.len(), 1);
         assert_eq!(
+            st.objects[0].proxy_art_url,
+            "https://example.com/objects/bear-proxy.png"
+        );
+        assert_eq!(
             st.objects[0].kind.as_ref().and_then(|k| k.kind.as_ref()),
             Some(&pb::wire_kind::Kind::Creature(pb::wire_kind::Creature {
                 power: 2,
                 toughness: 2,
             }))
         );
-        assert!(matches!(
-            st.pending_choice.as_ref().and_then(|c| c.choice.as_ref()),
-            Some(pb::pending_choice_view::Choice::ChooseTarget(_))
-        ));
+        let Some(pb::pending_choice_view::Choice::ChooseTarget(choice)) =
+            st.pending_choice.as_ref().and_then(|c| c.choice.as_ref())
+        else {
+            panic!("expected ChooseTarget pending choice");
+        };
+        assert_eq!(choice.items.len(), 1);
+        assert_eq!(
+            choice.items[0].proxy_art_url,
+            "https://example.com/choices/goblin-proxy.png"
+        );
         assert_eq!(st.actions.len(), 1);
         assert_eq!(
             st.actions[0].sacrifice_choices,
             object_id_list_to_pb(Some(vec![13, 14]))
+        );
+        assert_eq!(
+            st.stack[0].proxy_art_url,
+            "https://example.com/stack/shock-proxy.png"
         );
         assert_eq!(
             st.stack[0].target.as_ref().and_then(|t| t.kind.as_ref()),

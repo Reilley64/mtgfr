@@ -123,3 +123,29 @@ Finished `dev` profile [unoptimized + debuginfo] target(s) in 6.32s
 
 - `commander_proxy_art_url` is present on the wire/DTO contract, but Task 1 intentionally does not persist it yet; DB-backed `DeckDetail` still returns an empty string for that field until later tasks add storage.
 - I did not update living feature specs in this task because Task 1 lands only partial contract scaffolding, not the full persisted/visible behavior those specs would describe.
+
+## Review follow-up: non-empty gRPC map assertions
+
+- Extended `crates/server/src/grpc/map/catalog.rs` tests so non-empty `proxy_art_url` / `commander_proxy_art_url` are asserted across:
+  - `DeckCardEntry -> pb::DeckCardEntry`
+  - `DeckDetail -> pb::DeckDetail`
+  - `pb::SaveDeckRequest -> SaveDeckRequest`
+- Extended `crates/server/src/grpc/map/stream.rs`'s rich snapshot test to assert non-empty `proxy_art_url` survives for:
+  - `ObjectView -> pb::ObjectView`
+  - `StackObjectView -> pb::StackObjectView`
+  - `ChoiceItem -> pb::ChoiceItem`
+
+### Covering tests rerun
+
+```bash
+cargo nextest run --profile ci proxy_art_url
+cargo nextest run --profile ci rich_snapshot_preserves_choice_actions_and_oneof_kinds
+```
+
+Result:
+
+- `schema dto::tests::deck_card_entry_round_trips_proxy_art_url` passed
+- `server grpc::map::catalog::tests::deck_card_entry_to_pb_preserves_proxy_art_url` passed
+- `server grpc::map::catalog::tests::save_deck_request_from_pb_preserves_card_and_commander_proxy_art_urls` passed
+- `server grpc::map::catalog::tests::deck_detail_to_pb_preserves_card_and_commander_proxy_art_urls` passed
+- `server grpc::map::stream::tests::rich_snapshot_preserves_choice_actions_and_oneof_kinds` passed
