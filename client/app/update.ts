@@ -24,6 +24,8 @@ import {
 } from "./routes";
 import { initialAuthSubmodel } from "./shell/auth/submodel";
 import { update as updateAuth } from "./shell/auth/update";
+import type { Message as CoverageMessage } from "./shell/coverage/messages";
+import { loadCoverage, update as updateCoverage } from "./shell/coverage/update";
 import type { Message as BuilderMessage } from "./shell/decks/builder/messages";
 import { enterBuilder, update as updateBuilder } from "./shell/decks/builder/update";
 import type { Message as ListMessage } from "./shell/decks/list/messages";
@@ -117,6 +119,10 @@ function routeEntry(model: Model): readonly [Model, ReadonlyArray<FoldkitCommand
       const [leaderboard, commands] = loadLeaderboard(model.leaderboard);
       return [{ ...model, leaderboard }, commands];
     }
+    case "CoverageRoute": {
+      const [coverage, commands] = loadCoverage(model.coverage);
+      return [{ ...model, coverage }, commands];
+    }
     case "NewDeckRoute": {
       const [builder, commands] = enterBuilder(null);
       return [{ ...model, decks: { ...model.decks, builder } }, commands];
@@ -192,6 +198,14 @@ function foldLeaderboard(
 ): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
   const [leaderboard, commands] = updateLeaderboard(model.leaderboard, message);
   return [{ ...model, leaderboard }, commands];
+}
+
+function foldCoverage(
+  model: Model,
+  message: CoverageMessage,
+): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
+  const [coverage, commands] = updateCoverage(model.coverage, message);
+  return [{ ...model, coverage }, commands];
 }
 
 function foldBoard(
@@ -427,6 +441,18 @@ export const update = (
             [],
           ];
         }
+        if (model.route._tag === "CoverageRoute") {
+          return [
+            {
+              ...model,
+              coverage: {
+                ...model.coverage,
+                accountMenuOpen: !model.coverage.accountMenuOpen,
+              },
+            },
+            [],
+          ];
+        }
         return [model, []];
       },
       ClosedAccountMenu: () => {
@@ -451,8 +477,21 @@ export const update = (
             [],
           ];
         }
+        if (model.route._tag === "CoverageRoute") {
+          return [
+            {
+              ...model,
+              coverage: { ...model.coverage, accountMenuOpen: false },
+            },
+            [],
+          ];
+        }
         return [model, []];
       },
+      RequestedCoverageRefresh: (coverageMessage) => foldCoverage(model, coverageMessage),
+      ChangedCoverageQuery: (coverageMessage) => foldCoverage(model, coverageMessage),
+      ReceivedCoverageMeta: (coverageMessage) => foldCoverage(model, coverageMessage),
+      CoverageLoadFailed: (coverageMessage) => foldCoverage(model, coverageMessage),
       RequestedDecksRefresh: (decksMessage) => foldDeckList(model, decksMessage),
       ReceivedDecks: (decksMessage) => {
         const [nextModel, commands] = foldDeckList(model, decksMessage);

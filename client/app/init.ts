@@ -5,6 +5,7 @@ import type { Model } from "./model";
 import { nextFromUrl, normalizeAppRoute, pathWithSearch, routeFromUrl } from "./routes";
 import { initialAuthSubmodel } from "./shell/auth/submodel";
 import { FetchMe } from "./shell/auth/update";
+import { initialCoverageSubmodel } from "./shell/coverage/submodel";
 import { initialDecksSubmodel } from "./shell/decks/submodel";
 import { initialLeaderboardSubmodel } from "./shell/leaderboard/submodel";
 import { initialLobbySlice } from "./shell/lobby/submodel";
@@ -38,6 +39,7 @@ export const init = (
       auth: initialAuthSubmodel(next),
       decks: initialDecksSubmodel(),
       leaderboard: initialLeaderboardSubmodel(),
+      coverage: initialCoverageSubmodel(),
       lobby: initialLobbySlice(),
       game: null,
       portraitGate: { open: isPortraitPhone() },

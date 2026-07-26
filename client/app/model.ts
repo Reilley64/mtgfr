@@ -4,6 +4,7 @@ import { type BoardModel, initialBoardModel } from "./board/submodel";
 import { emptyGameFold, type GameFoldState } from "./game/fold";
 import { AppRoute } from "./routes";
 import { AuthSubmodel } from "./shell/auth/submodel";
+import { CoverageSubmodel } from "./shell/coverage/submodel";
 import { DecksSubmodel } from "./shell/decks/submodel";
 import { LeaderboardSubmodel } from "./shell/leaderboard/submodel";
 import { LobbySlice } from "./shell/lobby/submodel";
@@ -66,6 +67,7 @@ export const Model = S.Struct({
   auth: AuthSubmodel,
   decks: DecksSubmodel,
   leaderboard: LeaderboardSubmodel,
+  coverage: CoverageSubmodel,
   lobby: LobbySlice,
   game: S.NullOr(GameSlice),
   portraitGate: PortraitGateSlice,

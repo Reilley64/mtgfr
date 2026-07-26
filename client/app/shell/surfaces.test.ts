@@ -12,6 +12,7 @@ import { BindDeckCardFlip, DeckCardFlipTick } from "../deck-card-nav";
 import { init, update } from "../main-exports";
 import type { Model as AppModel } from "../model";
 import {
+  CoverageRoute,
   HomeRoute,
   LeaderboardRoute,
   LoginRoute,
@@ -150,6 +151,7 @@ describe("shell surface scenes", () => {
         expect(version).toBeGreaterThan(coverage);
       }),
       Scene.expect(Scene.selector('[data-testid="pool-coverage"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="pool-coverage"][href="/coverage"]')).toExist(),
       Scene.expect(Scene.text("2.3% faithful")).toExist(),
       Scene.expect(Scene.selector('[data-testid="app-version"]')).toExist(),
       Scene.expect(Scene.text("API 1.2.3")).toExist(),
@@ -344,6 +346,130 @@ describe("shell surface scenes", () => {
       Scene.expect(Scene.selector('[data-testid="account-menu-trigger"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="header-leaderboard-link"]')).not.toExist(),
       Scene.expect(Scene.text("Signed in as alice")).not.toExist(),
+    );
+  });
+
+  it("renders coverage page table and global percent", () => {
+    Scene.scene(
+      { update, view },
+      Scene.with(
+        authedModel(CoverageRoute(), {
+          coverage: {
+            ...init()[0].coverage,
+            status: "ready",
+            faithfulCount: 662,
+            oracleTotal: 28412,
+            sets: [
+              {
+                code: "soc",
+                name: "Secrets of Strixhaven",
+                releasedAt: "2026-04-01",
+                faithful: 10,
+                oracleTotal: 400,
+              },
+            ],
+          },
+        }),
+      ),
+      Scene.expect(Scene.selector('[data-testid="coverage-page"]')).toExist(),
+      Scene.expect(Scene.text("Coverage")).toExist(),
+      Scene.expect(Scene.selector('[data-testid="coverage-global-percent"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="coverage-search"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="coverage-row-soc"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="header-leaderboard-link"]')).toExist(),
+      Scene.expect(Scene.text("Secrets of Strixhaven")).toExist(),
+      Scene.expect(Scene.text("2.5%")).toExist(),
+    );
+  });
+
+  it("shows an honest global percent when either global count is missing", () => {
+    Scene.scene(
+      { update, view },
+      Scene.with(
+        authedModel(CoverageRoute(), {
+          coverage: {
+            ...init()[0].coverage,
+            status: "ready",
+            faithfulCount: null,
+            oracleTotal: 28412,
+            sets: [
+              {
+                code: "soc",
+                name: "Secrets of Strixhaven",
+                releasedAt: "2026-04-01",
+                faithful: 10,
+                oracleTotal: 400,
+              },
+            ],
+          },
+        }),
+      ),
+      Scene.expect(Scene.selector('[data-testid="coverage-global-percent"]')).toExist(),
+      Scene.expect(Scene.text("— faithful")).toExist(),
+    );
+  });
+
+  it("shows the coverage retry UI after a load failure", () => {
+    Scene.scene(
+      { update, view },
+      Scene.with(
+        authedModel(CoverageRoute(), {
+          coverage: {
+            ...init()[0].coverage,
+            status: "error",
+            faithfulCount: null,
+            oracleTotal: null,
+            error: "Could not load coverage.",
+          },
+        }),
+      ),
+      Scene.expect(Scene.selector('[data-testid="coverage-page"]')).toExist(),
+      Scene.expect(Scene.selector('[role="alert"]')).toExist(),
+      Scene.expect(Scene.text("Could not load coverage.")).toExist(),
+      Scene.expect(Scene.text("Try again")).toExist(),
+      Scene.expect(Scene.selector('[data-testid="coverage-search"]')).toExist(),
+    );
+  });
+
+  it("filters coverage rows and shows the empty state from search input", () => {
+    Scene.scene(
+      { update, view },
+      Scene.with(
+        authedModel(CoverageRoute(), {
+          coverage: {
+            ...init()[0].coverage,
+            status: "ready",
+            faithfulCount: 662,
+            oracleTotal: 28412,
+            sets: [
+              {
+                code: "soc",
+                name: "Secrets of Strixhaven",
+                releasedAt: "2026-04-01",
+                faithful: 10,
+                oracleTotal: 400,
+              },
+              {
+                code: "c16",
+                name: "Commander 2016",
+                releasedAt: "2016-11-11",
+                faithful: 5,
+                oracleTotal: 100,
+              },
+            ],
+          },
+        }),
+      ),
+      Scene.expect(Scene.selector('[data-testid="coverage-row-soc"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="coverage-row-c16"]')).toExist(),
+      Scene.type(Scene.selector('[data-testid="coverage-search"]'), "strix"),
+      Scene.expect(Scene.selector('[data-testid="coverage-row-soc"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="coverage-row-c16"]')).not.toExist(),
+      Scene.expect(Scene.text("No sets match.")).not.toExist(),
+      Scene.type(Scene.selector('[data-testid="coverage-search"]'), "zzzz"),
+      Scene.expect(Scene.selector('[data-testid="coverage-row-soc"]')).not.toExist(),
+      Scene.expect(Scene.selector('[data-testid="coverage-row-c16"]')).not.toExist(),
+      Scene.expect(Scene.text("No sets match.")).toExist(),
     );
   });
 

@@ -19,6 +19,7 @@ describe("parseLiveStatus", () => {
     expect(parseLiveStatus({ version: "1.2.3", faithful_count: 662 })).toEqual({
       version: "1.2.3",
       faithfulCount: 662,
+      faithfulBySet: null,
     });
   });
 
@@ -26,6 +27,7 @@ describe("parseLiveStatus", () => {
     expect(parseLiveStatus({ version: "1.2.3" })).toEqual({
       version: "1.2.3",
       faithfulCount: null,
+      faithfulBySet: null,
     });
   });
 
@@ -33,6 +35,25 @@ describe("parseLiveStatus", () => {
     expect(parseLiveStatus({ version: "1.2.3", faithful_count: Number.POSITIVE_INFINITY })).toEqual({
       version: "1.2.3",
       faithfulCount: null,
+      faithfulBySet: null,
+    });
+  });
+
+  it("reads finite faithful_by_set entries", () => {
+    expect(
+      parseLiveStatus({
+        version: "1.2.3",
+        faithful_count: 662,
+        faithful_by_set: {
+          soc: 10,
+          bad: "nope",
+          inf: Number.POSITIVE_INFINITY,
+        },
+      }),
+    ).toEqual({
+      version: "1.2.3",
+      faithfulCount: 662,
+      faithfulBySet: { soc: 10 },
     });
   });
 });

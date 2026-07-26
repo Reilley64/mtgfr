@@ -6,6 +6,7 @@ import { parseDeckIdParam } from "./deck-id";
 export const HomeRoute = r("HomeRoute");
 export const LoginRoute = r("LoginRoute");
 export const LeaderboardRoute = r("LeaderboardRoute");
+export const CoverageRoute = r("CoverageRoute");
 export const NewDeckRoute = r("NewDeckRoute");
 export const DeckRoute = r("DeckRoute", { id: S.String });
 export const PlayRoute = r("PlayRoute", { deckId: S.String });
@@ -16,6 +17,7 @@ export const AppRoute = S.Union([
   HomeRoute,
   LoginRoute,
   LeaderboardRoute,
+  CoverageRoute,
   NewDeckRoute,
   DeckRoute,
   PlayRoute,
@@ -27,12 +29,22 @@ export type AppRoute = typeof AppRoute.Type;
 const homeRouter = pipe(root, mapTo(HomeRoute));
 const loginRouter = pipe(literal("login"), mapTo(LoginRoute));
 const leaderboardRouter = pipe(literal("leaderboard"), mapTo(LeaderboardRoute));
+const coverageRouter = pipe(literal("coverage"), mapTo(CoverageRoute));
 const newDeckRouter = pipe(literal("decks"), slash(literal("new")), mapTo(NewDeckRoute));
 const deckRouter = pipe(literal("decks"), slash(string("id")), mapTo(DeckRoute));
 const playRouter = pipe(literal("play"), slash(string("deckId")), mapTo(PlayRoute));
 const tableRouter = pipe(literal("play"), slash(string("deckId")), slash(string("table")), mapTo(TableRoute));
 
-const appRouter = oneOf(homeRouter, loginRouter, leaderboardRouter, newDeckRouter, deckRouter, tableRouter, playRouter);
+const appRouter = oneOf(
+  homeRouter,
+  loginRouter,
+  leaderboardRouter,
+  coverageRouter,
+  newDeckRouter,
+  deckRouter,
+  tableRouter,
+  playRouter,
+);
 
 export const routeFromUrl = parseUrlWithFallback(appRouter, NotFoundRoute);
 
@@ -64,6 +76,7 @@ export function routePath(route: AppRoute): string {
       HomeRoute: () => homeRouter(),
       LoginRoute: () => loginRouter(),
       LeaderboardRoute: () => leaderboardRouter(),
+      CoverageRoute: () => coverageRouter(),
       NewDeckRoute: () => newDeckRouter(),
       DeckRoute: ({ id }) => deckRouter({ id }),
       PlayRoute: ({ deckId }) => playRouter({ deckId }),
