@@ -98,7 +98,7 @@ The browser talks only to the same-origin BFF via the hand-written Effect HTTP c
 
 Modules: `client/app/game/stream-subscription.ts`, `client/app/game/fold.ts`.
 
-The game stream is a Foldkit subscription keyed by route table id and active game table id. It opens only when the app is on a table-scoped play route (`/play/:deckId/:table` or `/play/:table`) and the game slice is active. Snapshot and delta frames become messages, then `update` folds them through `applySnapshotPure` / `applyDeltaPure`. `model.game.connected` drives the reconnect banner; rejected intents set `game.reject` and `board.reject`. The subscription goes empty after navigation or table mismatch, so no residual stream continues after leaving the board.
+The game stream is a Foldkit subscription keyed by route table id and active game table id. It opens only when the app is on a table-scoped play route (`/play/:deckId/:table` or `/play/:table`) and the game slice is active. When lobby start flips the seated pregame route into `/play/:table`, the same table id continues to key the live board, so the URL strip does not require a second table lookup or a deck segment. Snapshot and delta frames become messages, then `update` folds them through `applySnapshotPure` / `applyDeltaPure`. `model.game.connected` drives the reconnect banner; rejected intents set `game.reject` and `board.reject`. The subscription goes empty after navigation or table mismatch, so no residual stream continues after leaving the board.
 
 ### Design system (`DESIGN.md`, `design.tokens.json`, `client/styles/global.css`)
 

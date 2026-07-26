@@ -23,6 +23,7 @@ import {
 import { emptyGameSlice, type Model } from "./model";
 import type { RpcClient } from "./resources";
 import {
+  GameTableRoute,
   isProtectedRoute,
   NotFoundRoute,
   nextFromUrl,
@@ -255,14 +256,17 @@ function foldLobby(
         ? { ...model.game, active: true }
         : emptyGameSlice(lobby.tableId)
       : model.game;
-  const redirect =
-    model.route._tag === "PlayRoute" && lobby.tableId != null && lobby.selectedDeckId != null
-      ? [
-          Redirect({
-            path: routePath(PregameTableRoute({ deckId: String(lobby.selectedDeckId), table: lobby.tableId })),
-          }),
-        ]
-      : [];
+  const redirectPath =
+    lobby.tableId == null
+      ? null
+      : lobby.started
+        ? model.route._tag === "PlayRoute" || model.route._tag === "PregameTableRoute"
+          ? routePath(GameTableRoute({ table: lobby.tableId }))
+          : null
+        : model.route._tag === "PlayRoute" && lobby.selectedDeckId != null
+          ? routePath(PregameTableRoute({ deckId: String(lobby.selectedDeckId), table: lobby.tableId }))
+          : null;
+  const redirect = redirectPath == null ? [] : [Redirect({ path: redirectPath })];
   return [{ ...model, lobby, game }, [...mapLobbyCommands(commands), ...redirect]];
 }
 

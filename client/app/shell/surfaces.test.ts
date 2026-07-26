@@ -11,6 +11,7 @@ import { ModalOpened, OpenDialogAsModal } from "../domain/ui/confirmDialog";
 import type { CatalogCard } from "../domain/wire/types";
 import { init, update } from "../main-exports";
 import type { Model as AppModel } from "../model";
+import { emptyGameSlice } from "../model";
 import {
   GameTableRoute,
   HomeRoute,
@@ -547,6 +548,26 @@ describe("shell surface scenes", () => {
       Scene.expect(Scene.selector('[data-testid="lobby-table-code"]')).toExist(),
       Scene.expect(Scene.text("Not found")).not.toExist(),
       Scene.expect(Scene.text("No Foldkit route for /play/ABC123.")).not.toExist(),
+    );
+  });
+
+  it("renders the board mount from the table-only route once the game slice is active", () => {
+    Scene.scene(
+      { update, view },
+      Scene.with(
+        authedModel(GameTableRoute({ table: "ABC123" }), {
+          currentPath: "/play/ABC123",
+          game: emptyGameSlice("ABC123"),
+          lobby: {
+            ...initialLobbySlice(),
+            started: true,
+            tableId: "ABC123",
+          },
+        }),
+      ),
+      Scene.expect(Scene.testId("board-mount")).toExist(),
+      Scene.expect(Scene.testId("board-connecting")).toExist(),
+      Scene.expect(Scene.selector('[data-testid="lobby-table-code"]')).toBeAbsent(),
     );
   });
 
