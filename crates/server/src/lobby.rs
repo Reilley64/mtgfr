@@ -126,9 +126,6 @@ async fn resolve_deck(
     let mut prints = std::collections::HashMap::new();
     prints.insert(commander.id.to_string(), commander_print);
     let mut proxy_art_urls = std::collections::HashMap::new();
-    if !commander_proxy_art_url.is_empty() {
-        proxy_art_urls.insert(commander.id.to_string(), commander_proxy_art_url);
-    }
     let mut cards = Vec::with_capacity(entries.len());
     for e in &entries {
         let def = cards::get(&e.id).ok_or("UnknownCard")?;
@@ -137,6 +134,11 @@ async fn resolve_deck(
             proxy_art_urls.insert(def.id.to_string(), e.proxy_art_url.clone());
         }
         cards.push((def, e.count as usize));
+    }
+    if !commander_proxy_art_url.is_empty() {
+        // Live proxy-art overlays are keyed only by card id, so the commander URL must win when
+        // the commander also appears in the 99.
+        proxy_art_urls.insert(commander.id.to_string(), commander_proxy_art_url);
     }
     Ok(SeatDeck {
         commander,
@@ -269,6 +271,67 @@ mod tests {
         assert!(
             table.proxy_art_urls[1].is_empty(),
             "empty deck values should not seed a clobbering empty override map"
+        );
+    }
+
+    #[tokio::test]
+    async fn seed_table_prefers_non_empty_commander_proxy_art_when_commander_also_exists_in_the_99()
+    {
+        let state = AppState::for_test(db::connect("sqlite::memory:").await.expect("sqlite"));
+        let host_deck_id = user_with_deck(&state, "host@x.c").await;
+        let host_user_id = crate::test_support::as_user(&state, "host@x.c").await.0.id;
+        let guest_seat = seed_seat(&state, "guest@x.c", "guest").await;
+
+        let mut db = state.db.clone();
+        let mut host_deck = db::Deck::filter_by_id(host_deck_id)
+            .get(&mut db)
+            .await
+            .expect("host deck exists");
+        let mut cards: Vec<DeckCardEntry> =
+            serde_json::from_str(&host_deck.cards).expect("deck cards parse");
+        let line_proxy = "https://example.com/cards/tajic-line-proxy.png";
+        let commander_proxy = "https://example.com/cards/tajic-commander-proxy.png";
+        let commander_id = host_deck.commander.clone();
+        cards[0].id = commander_id.clone();
+        cards[0].print = host_deck.commander_print.clone();
+        cards[0].proxy_art_url = line_proxy.to_string();
+        let cards_json = serde_json::to_string(&cards).expect("deck cards serialize");
+        host_deck
+            .update()
+            .commander_proxy_art_url(commander_proxy)
+            .cards(&cards_json)
+            .exec(&mut db)
+            .await
+            .expect("deck update succeeds");
+
+        let host_seat = SeedSeat {
+            user_id: host_user_id,
+            username: "host".to_string(),
+            deck_id: host_deck_id,
+            gravatar_hash: String::new(),
+        };
+
+        seed_table_core(
+            &state,
+            host_user_id,
+            SeedRequest {
+                table_id: "tbl-proxy-art-commander-wins".to_string(),
+                host_user_id,
+                seats: vec![host_seat, guest_seat],
+            },
+        )
+        .await
+        .expect("seeding succeeds");
+
+        let reg = lock(&state.reg);
+        let table = reg
+            .get("tbl-proxy-art-commander-wins")
+            .expect("table inserted");
+        assert_eq!(
+            table.proxy_art_urls[0]
+                .get(&commander_id)
+                .map(String::as_str),
+            Some(commander_proxy)
         );
     }
 

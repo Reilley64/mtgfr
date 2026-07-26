@@ -162,4 +162,31 @@ describe("fetchProxyCardArt", () => {
     });
     expect(cancel).toHaveBeenCalledOnce();
   });
+
+  it("fails within the timeout when dns lookup never resolves", async () => {
+    const timeoutMs = 25;
+    const fetchImpl = vi.fn();
+    const lookupHost = vi.fn(
+      () =>
+        new Promise<ReadonlyArray<{ address: string; family: 4 | 6 }>>(() => undefined),
+    );
+    const startedAt = Date.now();
+    const fetchAttempt = fetchProxyCardArt("https://cdn.example.com/a.png", {
+      fetchImpl,
+      lookupHost,
+      timeoutMs,
+    });
+
+    const outcome = await Promise.race([
+      fetchAttempt.then((result) => ({ kind: "result" as const, result })),
+      new Promise<{ kind: "timed-out" }>((resolve) => setTimeout(() => resolve({ kind: "timed-out" }), timeoutMs * 4)),
+    ]);
+
+    expect(outcome).toEqual({
+      kind: "result",
+      result: { ok: false, status: 502 },
+    });
+    expect(Date.now() - startedAt).toBeLessThan(timeoutMs * 4);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
 });

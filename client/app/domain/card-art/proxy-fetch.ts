@@ -149,11 +149,46 @@ function isBlockedHostname(hostname: string): boolean {
   return isBlockedIpLiteral(normalized);
 }
 
-async function assertPublicResolvedHost(target: URL, lookupHost: LookupHost): Promise<ReadonlyArray<LookupAddress>> {
+function raceAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) {
+    return Promise.reject(abortError());
+  }
+
+  return new Promise<T>((resolve, reject) => {
+    const handleAbort = () => {
+      cleanup();
+      reject(abortError());
+    };
+    const cleanup = () => {
+      signal.removeEventListener("abort", handleAbort);
+    };
+
+    signal.addEventListener("abort", handleAbort, { once: true });
+    void promise.then(
+      (value) => {
+        cleanup();
+        resolve(value);
+      },
+      (error) => {
+        cleanup();
+        reject(error);
+      },
+    );
+  });
+}
+
+async function assertPublicResolvedHost(
+  target: URL,
+  lookupHost: LookupHost,
+  signal: AbortSignal,
+): Promise<ReadonlyArray<LookupAddress>> {
   let results: ReadonlyArray<LookupAddress>;
   try {
-    results = await lookupHost(target.hostname, { all: true, verbatim: true });
-  } catch {
+    results = await raceAbort(lookupHost(target.hostname, { all: true, verbatim: true }), signal);
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw error;
+    }
     throw new UpstreamProxyError("lookup failed");
   }
 
@@ -390,7 +425,7 @@ export async function fetchProxyCardArt(
 
   try {
     const target = assertSafeProxyTarget(raw);
-    const resolvedAddresses = await assertPublicResolvedHost(target, lookupHost);
+    const resolvedAddresses = await assertPublicResolvedHost(target, lookupHost, signal);
 
     const response = await fetchImpl(target, {
       headers: { accept: "image/*" },

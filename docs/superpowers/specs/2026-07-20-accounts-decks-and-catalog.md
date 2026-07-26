@@ -237,7 +237,8 @@ for hydrating a saved deck without fetching the full catalog.
   values must be credential-free `https` URLs no longer than 2048 characters. They never replace
   the required Printing UUID for legality or object identity, and the server does not fetch them at
   save time. When a deck seeds a live table, the server materializes non-empty proxy-art URLs into
-  the same per-seat `card_id` map shape it already uses for print overlays.
+  the same per-seat `card_id` map shape it already uses for print overlays; if the commander and a
+  deck line share a `card_id`, the non-empty commander proxy-art URL is written last and wins.
 - The engine is print-agnostic. Client art resolution keys on Printing UUID via `imageUrlByPrint()`
   (CDN when configured); CDN `art_crop` may fall back to Scryfall on load failure, other sizes do
   not. Optional `proxy_art_url` uses the same-origin BFF proxy first, then printing art
