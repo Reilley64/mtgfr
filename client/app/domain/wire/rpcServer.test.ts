@@ -125,6 +125,10 @@ vi.mock("./grpcClient", () => ({
 
 const { dispatchRpc } = await import("./rpcServer");
 
+function runDispatchRpc(...args: Parameters<typeof dispatchRpc>) {
+  return Effect.runPromise(dispatchRpc(...args));
+}
+
 const env = {
   sessionToken: "tok",
   traceparent: null as string | null,
@@ -138,17 +142,17 @@ beforeEach(() => {
 
 describe("dispatchRpc", () => {
   it("404s an unknown group", async () => {
-    const outcome = await dispatchRpc(["bogus"], "GET", undefined, new URLSearchParams(), env);
+    const outcome = await runDispatchRpc(["bogus"], "GET", undefined, new URLSearchParams(), env);
     expect(outcome).toEqual({ kind: "empty", status: 404 });
   });
 
   it("404s an unknown auth method", async () => {
-    const outcome = await dispatchRpc(["auth", "bogus"], "GET", undefined, new URLSearchParams(), env);
+    const outcome = await runDispatchRpc(["auth", "bogus"], "GET", undefined, new URLSearchParams(), env);
     expect(outcome).toEqual({ kind: "empty", status: 404 });
   });
 
   it("routes auth/login and carries the minted session token back for the route to Set-Cookie", async () => {
-    const outcome = await dispatchRpc(
+    const outcome = await runDispatchRpc(
       ["auth", "login"],
       "POST",
       { email: "a@b.c", password: "pw" },
@@ -161,26 +165,26 @@ describe("dispatchRpc", () => {
   });
 
   it("routes auth/logout and signals the route to clear the cookie", async () => {
-    const outcome = await dispatchRpc(["auth", "logout"], "POST", undefined, new URLSearchParams(), env);
+    const outcome = await runDispatchRpc(["auth", "logout"], "POST", undefined, new URLSearchParams(), env);
     expect(outcome).toEqual({ kind: "empty", status: 204, clearSession: true });
   });
 
   it("routes decks list (GET, no id) vs. create (POST, no id) by HTTP method", async () => {
-    const list = await dispatchRpc(["decks"], "GET", undefined, new URLSearchParams(), env);
+    const list = await runDispatchRpc(["decks"], "GET", undefined, new URLSearchParams(), env);
     expect(list).toMatchObject({ kind: "json", status: 200, body: [{ id: 1, name: "Deck" }] });
 
-    await dispatchRpc(["decks"], "POST", { name: "Deck" }, new URLSearchParams(), env);
+    await runDispatchRpc(["decks"], "POST", { name: "Deck" }, new URLSearchParams(), env);
     expect(calls.create).toEqual({ name: "Deck" });
   });
 
   it("routes decks/:id get vs. update vs. delete by HTTP method", async () => {
-    const got = await dispatchRpc(["decks", "5"], "GET", undefined, new URLSearchParams(), env);
+    const got = await runDispatchRpc(["decks", "5"], "GET", undefined, new URLSearchParams(), env);
     expect(got).toMatchObject({ kind: "json", status: 200, body: { id: 5, name: "Deck" } });
 
-    await dispatchRpc(["decks", "5"], "PUT", { name: "Renamed" }, new URLSearchParams(), env);
+    await runDispatchRpc(["decks", "5"], "PUT", { name: "Renamed" }, new URLSearchParams(), env);
     expect(calls.update).toEqual({ id: 5, req: { name: "Renamed" } });
 
-    const deleted = await dispatchRpc(["decks", "5"], "DELETE", undefined, new URLSearchParams(), env);
+    const deleted = await runDispatchRpc(["decks", "5"], "DELETE", undefined, new URLSearchParams(), env);
     expect(deleted).toEqual({ kind: "empty", status: 204 });
   });
 
@@ -188,7 +192,7 @@ describe("dispatchRpc", () => {
     mockClient.decks.create.mockReturnValueOnce(
       Effect.fail(new MockGrpcCallError("invalid_argument", "illegal deck: Too many cards; Illegal commander")),
     );
-    const outcome = await dispatchRpc(["decks"], "POST", { name: "Deck" }, new URLSearchParams(), env);
+    const outcome = await runDispatchRpc(["decks"], "POST", { name: "Deck" }, new URLSearchParams(), env);
     expect(outcome).toEqual({
       kind: "json",
       status: 422,
@@ -198,7 +202,7 @@ describe("dispatchRpc", () => {
 
   it("routes cards/search with q/limit/offset from the query string", async () => {
     const params = new URLSearchParams({ q: "goblin", limit: "10", offset: "20" });
-    await dispatchRpc(["cards", "search"], "GET", undefined, params, env);
+    await runDispatchRpc(["cards", "search"], "GET", undefined, params, env);
     expect(calls.search).toEqual({ q: "goblin", limit: 10, offset: 20 });
   });
 
@@ -206,13 +210,13 @@ describe("dispatchRpc", () => {
     const params = new URLSearchParams();
     params.append("ids", "a");
     params.append("ids", "b");
-    await dispatchRpc(["cards", "lookup"], "GET", undefined, params, env);
+    await runDispatchRpc(["cards", "lookup"], "GET", undefined, params, env);
     expect(calls.lookup).toEqual(["a", "b"]);
   });
 
   it("routes ratings/leaderboard with limit/offset from the query string", async () => {
     const params = new URLSearchParams({ limit: "25", offset: "25" });
-    const outcome = await dispatchRpc(["ratings", "leaderboard"], "GET", undefined, params, env);
+    const outcome = await runDispatchRpc(["ratings", "leaderboard"], "GET", undefined, params, env);
     expect(outcome).toEqual({
       kind: "json",
       status: 200,
@@ -225,7 +229,7 @@ describe("dispatchRpc", () => {
   });
 
   it("405s ratings/leaderboard for non-GET methods", async () => {
-    const outcome = await dispatchRpc(["ratings", "leaderboard"], "POST", undefined, new URLSearchParams(), env);
+    const outcome = await runDispatchRpc(["ratings", "leaderboard"], "POST", undefined, new URLSearchParams(), env);
     expect(outcome).toEqual({ kind: "empty", status: 405 });
   });
 
@@ -239,19 +243,19 @@ describe("dispatchRpc", () => {
       new URLSearchParams({ limit: "4294967296" }),
       new URLSearchParams({ offset: "4294967296" }),
     ]) {
-      const outcome = await dispatchRpc(["ratings", "leaderboard"], "GET", undefined, params, env);
+      const outcome = await runDispatchRpc(["ratings", "leaderboard"], "GET", undefined, params, env);
       expect(outcome).toEqual({ kind: "json", status: 400, body: { error: "BadQuery" } });
     }
     expect(calls.leaderboard).toBeUndefined();
   });
 
   it("defaults ratings/leaderboard limit/offset to 0 when query params are missing", async () => {
-    await dispatchRpc(["ratings", "leaderboard"], "GET", undefined, new URLSearchParams(), env);
+    await runDispatchRpc(["ratings", "leaderboard"], "GET", undefined, new URLSearchParams(), env);
     expect(calls.leaderboard).toEqual({ limit: 0, offset: 0 });
   });
 
   it("resolves the table's pod address for game calls and 404s an unresolvable table", async () => {
-    const outcome = await dispatchRpc(
+    const outcome = await runDispatchRpc(
       ["game", "ABC123", "intent"],
       "POST",
       { table_id: "ABC123" },
@@ -260,13 +264,13 @@ describe("dispatchRpc", () => {
     );
     expect(outcome).toMatchObject({ kind: "json", status: 200 });
 
-    const unknown = await dispatchRpc(["game", "unknown", "intent"], "POST", {}, new URLSearchParams(), env);
+    const unknown = await runDispatchRpc(["game", "unknown", "intent"], "POST", {}, new URLSearchParams(), env);
     expect(unknown).toEqual({ kind: "empty", status: 404 });
   });
 
   it("streams game/:table/stream instead of returning json", async () => {
     mockClient.game.stream.mockReturnValueOnce(Stream.make({ frame: "heartbeat" }));
-    const outcome = await dispatchRpc(["game", "ABC123", "stream"], "GET", undefined, new URLSearchParams(), env);
+    const outcome = await runDispatchRpc(["game", "ABC123", "stream"], "GET", undefined, new URLSearchParams(), env);
     expect(outcome.kind).toBe("stream");
   });
 });

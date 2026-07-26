@@ -129,14 +129,10 @@ const dispatchRpcTraced = Effect.fn(function* (args: RpcDispatchArgs) {
     "rpc.path": path,
   });
   const env = yield* grpcRequestEnv(args.sessionToken);
-  return yield* Effect.tryPromise({
-    try: () =>
-      dispatchRpc(args.segments, args.method, args.body, args.searchParams, {
-        ...env,
-        defaultAddress: grpcUpstream(),
-        resolveTableAddress,
-      }),
-    catch: (err) => (err instanceof Error ? err : new Error(String(err))),
+  return yield* dispatchRpc(args.segments, args.method, args.body, args.searchParams, {
+    ...env,
+    defaultAddress: grpcUpstream(),
+    resolveTableAddress,
   });
 });
 

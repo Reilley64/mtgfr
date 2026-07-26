@@ -122,6 +122,11 @@ Modules: `client/app/domain/rpc-client.ts`, `client/server/routes/api/rpc/[...pa
 
 The browser talks only to the same-origin BFF via the hand-written Effect HTTP client (`client/app/domain/rpc-client.ts`) over `/api/rpc`. The Nitro BFF dispatches `/api/rpc/**` requests and calls tonic gRPC through `client/app/domain/wire/grpcClient.ts`. There is no direct browser-to-gRPC communication. The proto wire is the sole contract.
 
+The `/api/rpc/[...path]` route opens exactly one `runTracedRequest` runtime edge around Effect
+dispatch. `dispatchRpc` returns an Effect that resolves to `RpcOutcome`, including mapped gRPC
+errors; the route sets or clears the HttpOnly session cookie imperatively only after that Effect
+finishes.
+
 `makeClient(fetch)` accepts a fetch implementation so tests can stub it. `client` is the app singleton (credentials: include, prepended `/api/rpc`). Wire types (`wire/types.ts`) are Effect Schema-decoded DTOs; `wire/protoMap.ts` maps them to/from proto.
 
 ### Game delta stream (high-level; board surfaces own paint)
@@ -189,6 +194,9 @@ Vite production builds set `build.sourcemap: true` (via `clientBuildSourcemap`) 
 - **Gzip LZ77 benefit from sorted classes.** Consistent Tailwind class ordering makes repeated utility sequences longer LZ77 matches under gzip on the shipped JS/HTML.
 - **Public client source maps.** Production uses `build.sourcemap: true` (not `"hidden"`) so DevTools/Faro can deminify the large first-party bundle. Original TypeScript is fetchable alongside the asset; acceptable for this friend-group deployment without a private map store.
 - **Service worker stays network-only.** Installability is in scope; offline play is not. Do not add precache or runtime caching without a fresh product decision because the authoritative game client still depends on live network state.
+- **BFF RPC dispatch runs as one Effect.** `/api/rpc/[...path]` does method/body/cookie handling in
+  Nitro, then runs `dispatchRpc` once through `runTracedRequest`; `dispatchRpc` performs gRPC calls
+  as Effects and returns outcome values instead of throwing for normal gRPC failures.
 
 ---
 
