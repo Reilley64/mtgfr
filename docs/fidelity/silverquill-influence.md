@@ -98,34 +98,34 @@ None. All 84 Silverquill nonbasics are already in the pool.
 These cards are scripted, but Silverquill makes their remaining engine gaps observable. Each card
 points at the increment(s) that clear it.
 
-- [ ] Ajani's Chosen — #1, #3
-- [ ] Archon of Sun's Grace — #1
-- [x] Breena, the Demagogue — #1 (slice 2 landed: attack watch now controller-scoped)
+- [x] Ajani's Chosen — #1, #3 (both landed)
+- [x] Archon of Sun's Grace — #1 (landed)
+- [x] Breena, the Demagogue — #1 (landed)
 - [ ] Coercive Impetus — #2
-- [ ] Combat Calligrapher — #1
+- [x] Combat Calligrapher — #1 (landed)
 - [x] Darksteel Mutation — #4 (landed)
-- [ ] Defacing Duskmage — #1, #6 (#6 landed; still blocked on #1)
-- [x] Doomwake Giant — #1 (slice 2 landed: constellation now controller-scoped)
-- [ ] Eiganjo Dynastorian — #1
-- [ ] Eriette of the Charmed Apple — #1
-- [ ] Firemane Commando — #1
+- [x] Defacing Duskmage — #1, #6 (both landed)
+- [x] Doomwake Giant — #1 (landed)
+- [x] Eiganjo Dynastorian — #1 (landed)
+- [x] Eriette of the Charmed Apple — #1 (landed)
+- [x] Firemane Commando — #1 (landed)
 - [ ] Ghostly Prison — #2
 - [x] Gift of Immortality — #3
 - [ ] Ghoulish Impetus — #2
-- [ ] Hateful Eidolon — #1
-- [ ] Herald of Amity — #1, #5
-- [x] Keen Duelist — #1 (slice 1 landed: upkeep watch now controller-scoped)
-- [ ] Killian, Decisive Mentor — #1, #2
-- [ ] Kor Spiritdancer — #1
-- [ ] Mangara, the Diplomat — #1
+- [x] Hateful Eidolon — #1 (landed)
+- [ ] Herald of Amity — #1 landed; still blocked on #5
+- [x] Keen Duelist — #1 (landed)
+- [ ] Killian, Decisive Mentor — #1 landed; still blocked on #2
+- [x] Kor Spiritdancer — #1 (landed)
+- [x] Mangara, the Diplomat — #1 (landed)
 - [ ] Martial Impetus — #2
-- [ ] Nils, Discipline Enforcer — #1, #2
+- [ ] Nils, Discipline Enforcer — #1 landed; still blocked on #2
 - [ ] Parasitic Impetus — #2
-- [ ] Pearl-Ear, Imperial Advisor — #1
+- [x] Pearl-Ear, Imperial Advisor — #1 (landed)
 - [ ] Redemption Arc — #2
-- [ ] Scriv, the Obligator — #1
-- [ ] Sram, Senior Edificer — #1
-- [ ] Starfield Mystic — #1
+- [x] Scriv, the Obligator — #1 (landed)
+- [x] Sram, Senior Edificer — #1 (landed)
+- [x] Starfield Mystic — #1 (landed)
 
 ## Observability re-audit
 

@@ -63073,6 +63073,69 @@ fn stolen_breena_attack_watch_fires_for_its_new_controller() {
 }
 
 #[test]
+fn stolen_sram_cast_watch_draws_for_its_new_controller() {
+    // Sram's "Whenever you cast an Aura … draw a card" keys on its *controller* casting. After P0
+    // steals P1's Sram (owner stays P1, CR 108.3), P0 casting an Aura fires Sram for P0 — P0
+    // draws. The cast-spell watch dispatch must read `controller_of`, not `owner_of`.
+    let mut game = Game::new();
+    let sram = game.spawn_on_battlefield(PlayerId(1), card("Sram, Senior Edificer"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
+    game.stack_library(PlayerId(0), &[card("Forest"), card("Island")]);
+    let steal = game.spawn_in_hand(PlayerId(0), STEAL_PERMANENT.clone());
+    cast_and_resolve(&mut game, steal, Some(Target::Object(sram)));
+    assert_eq!(game.controller_of(sram), PlayerId(0), "P0 controls Sram");
+    assert_eq!(
+        game.owner_of(sram),
+        PlayerId(1),
+        "P1 still owns it (CR 108.3)"
+    );
+
+    let aura = game.spawn_in_hand(PlayerId(0), card("Sentinel's Eyes"));
+    let lib_before = game.library_size(PlayerId(0));
+    cast_and_resolve(&mut game, aura, Some(Target::Object(bear)));
+    resolve_top_of_stack(&mut game); // resolve whichever of the Aura / Sram's draw remains
+
+    assert_eq!(
+        game.library_size(PlayerId(0)),
+        lib_before - 1,
+        "the stolen Sram drew a card for its new controller P0 when P0 cast an Aura",
+    );
+}
+
+#[test]
+fn stolen_starfield_mystic_enchantment_death_fires_for_its_new_controller() {
+    // Starfield Mystic's "Whenever an enchantment you control is put into a graveyard … put a
+    // +1/+1 counter on this creature" keys on its *controller*. After P0 steals P1's Mystic
+    // (owner stays P1, CR 108.3), an enchantment P0 controls dying fires it for P0. The
+    // enchantment-death watch dispatch must read `controller_of`, not `owner_of`.
+    let mut game = Game::new();
+    let mystic = game.spawn_on_battlefield(PlayerId(1), card("Starfield Mystic"));
+    let enchantment = game.spawn_on_battlefield(PlayerId(0), TEST_ENCHANTMENT.clone());
+    let steal = game.spawn_in_hand(PlayerId(0), STEAL_PERMANENT.clone());
+    cast_and_resolve(&mut game, steal, Some(Target::Object(mystic)));
+    assert_eq!(
+        game.controller_of(mystic),
+        PlayerId(0),
+        "P0 controls the Mystic"
+    );
+    assert_eq!(
+        game.owner_of(mystic),
+        PlayerId(1),
+        "P1 still owns it (CR 108.3)"
+    );
+
+    let destroy = game.spawn_in_hand(PlayerId(0), DESTROY_ANY_PERMANENT.clone());
+    cast_and_resolve(&mut game, destroy, Some(Target::Object(enchantment))); // P0's enchantment dies
+    resolve_top_of_stack(&mut game); // the Mystic's death trigger resolves
+
+    assert_eq!(
+        game.plus_counters(mystic),
+        1,
+        "the stolen Starfield Mystic got a +1/+1 counter for its controller P0's enchantment dying",
+    );
+}
+
+#[test]
 fn artifact_and_enchantment_creature_types_are_authored_from_toml() {
     // CR 306/307: a permanent's card types union — Doomwake Giant is an Enchantment
     // Creature and Brudiclad, Telchor Engineer is an Artifact Creature (#124's `also: TypeSet`

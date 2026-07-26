@@ -1609,7 +1609,11 @@ impl Game {
                 continue;
             }
             for id in self.battlefield() {
-                if id == dying || self.owner_of(id) != owner {
+                // Controller-scoped watcher (CR 603.3d): a stolen/reanimated Starfield Mystic
+                // fires for its current controller. `owner` is the dying enchantment's
+                // controller-at-death stand-in (owner-based look-back for an object that already
+                // left the battlefield, per this deck's increment scope).
+                if id == dying || self.controller_of(id) != owner {
                     continue;
                 }
                 self.queue_trigger_group(
@@ -2339,10 +2343,14 @@ impl Game {
             return;
         }
         for id in self.battlefield() {
+            // Controller-scoped (CR 603.3d): a stolen/reanimated Hateful Eidolon fires for its
+            // current controller, which also decides which dying-creature Auras count as "you
+            // controlled". (`batch_deaths` below already carries each dead watcher's
+            // controller-at-death — the CR 603.6c look-back — so those stay as captured.)
             self.queue_an_enchanted_creature_dies_watcher(
                 id,
                 self.def_of(id),
-                self.owner_of(id),
+                self.controller_of(id),
                 &auras,
             );
         }
@@ -2803,7 +2811,10 @@ impl Game {
         //   That's the intended reading ("their second spell" means the cast currently resolving
         //   is the second), not a bug to fix.
         for id in self.battlefield() {
-            let controller = self.owner_of(id);
+            // Controller-scoped (CR 603.3d): a stolen/reanimated cast-watcher (Sram, Kor
+            // Spiritdancer) fires for whoever controls it now, and its `You`/`Opponent` caster
+            // scope is judged against that controller.
+            let controller = self.controller_of(id);
             let ctx = TriggerContext {
                 cast_mana_value: Some(def.mana_value()),
                 // CR 601.2h: the mana actually spent on this cast, locked in when the trigger
@@ -3220,7 +3231,9 @@ impl Game {
     /// `Trigger` value.
     pub(crate) fn queue_player_draws_triggers(&mut self, drawer: PlayerId, nth: u32) {
         for id in self.battlefield() {
-            let controller = self.owner_of(id);
+            // Controller-scoped (CR 603.3d): a stolen/reanimated draw-watcher (Pearl-Ear) fires
+            // for its current controller, and its `You`/`Opponent` drawer scope keys on that.
+            let controller = self.controller_of(id);
             let ctx = TriggerContext::of(controller);
             let abilities: Vec<Ability> = self
                 .functional_abilities(id)

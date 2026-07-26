@@ -11,7 +11,16 @@ puts opponent-owned permanents under your control; the remaining clusters are go
 combat legality, non-cast Aura move legality, Darksteel Mutation's missing type-stripping layer,
 Herald of Amity's resolution-time cast, and Defacing Duskmage's all-player life-loss sequencing.
 
-### 1. `controller-scoped-battlefield-trigger-watches` — 20 cards, XL
+### 1. `controller-scoped-battlefield-trigger-watches` — 20 cards, XL — **LANDED** (2026-07-26)
+Landed across three slices: every live-battlefield triggered-watch dispatch in `triggers.rs` now
+reads `controller_of(id)` instead of `owner_of(id)`, so a stolen or reanimated permanent's
+battlefield-scoped triggers fire for whoever controls it now (owner-based look-back is kept only for
+objects that have already left the battlefield). Regressions:
+`stolen_upkeep_watcher_fires_for_its_controller_not_its_owner`,
+`stolen_doomwake_constellation_fires_for_its_new_controller`,
+`stolen_breena_attack_watch_fires_for_its_new_controller`,
+`stolen_sram_cast_watch_draws_for_its_new_controller`,
+`stolen_starfield_mystic_enchantment_death_fires_for_its_new_controller`.
 **Depends on:** none.
 **Cards:** `ajanis_chosen.toml`, `archon_of_suns_grace.toml`, `breena.toml`,
 `combat_calligrapher.toml`, `defacing_duskmage.toml`, `doomwake_giant.toml`,
@@ -44,10 +53,13 @@ perspective.
    battlefield). Regressions: `stolen_doomwake_constellation_fires_for_its_new_controller` (enters
    path) and `stolen_breena_attack_watch_fires_for_its_new_controller` (attack path). Slice 3 still
    pending (Killian also needs #2; Herald also needs #5).
-3. **Cast / draw / death special scanners (L).** Fix `queue_cast_spell_triggers`,
+3. **Cast / draw / death special scanners (L) — LANDED (2026-07-26).** `queue_cast_spell_triggers`,
    `queue_player_draws_triggers`, `queue_an_enchanted_creature_dies_triggers`, and
-   `queue_enchantment_death_watchers`; cover Sram, Kor Spiritdancer, Mangara, Pearl-Ear, Defacing
-   Duskmage, Hateful Eidolon, and Starfield Mystic.
+   `queue_enchantment_death_watchers` now read `controller_of(id)` on the live-battlefield watcher
+   loop (their `You`/`Opponent` caster/drawer scopes key on that controller too); the dying
+   permanent's owner-based look-back is unchanged. Regressions:
+   `stolen_sram_cast_watch_draws_for_its_new_controller` and
+   `stolen_starfield_mystic_enchantment_death_fires_for_its_new_controller`.
 
 ### 2. `goad-versus-attack-tax-if-able` — 8 cards, L
 **Depends on:** none.
