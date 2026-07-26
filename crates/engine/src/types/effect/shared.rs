@@ -1089,9 +1089,7 @@ pub enum CounterKind {
     /// counter sits on a card in *exile* (a suspended card), so it is tracked in
     /// [`Game::exile_time_counters`](crate::Game) keyed by object id rather than in
     /// [`Permanent::kind_counters`] (an exiled card is an [`Object::Card`], not a `Permanent`).
-    /// ponytail: proliferate (CR 701.27) reads only `Permanent::kind_counters`, so it can't yet
-    /// add a time counter to a suspended card — wire the exile store into proliferate when a pool
-    /// card wants that.
+    /// Out of proliferate's reach for that reason (CR 701.27 chooses only permanents and players).
     Time,
     /// A scream counter (All Hallow's Eve — CR 122.1's functional-reminder family). Mechanically a
     /// time counter with a different name: it sits on a card in *exile*, ticks down at the owner's
@@ -1164,16 +1162,23 @@ pub enum PlayerCounterKind {
     /// A poison counter (CR 122.1, CR 704.5c — ten or more loses the game). Placed by infect
     /// damage (CR 702.90), toxic (CR 702.164), and "gets a poison counter" effects.
     Poison,
+    /// A rad counter (CR 122.1, Fallout). No lose-the-game threshold — instead a turn-based
+    /// action at the beginning of each player's precombat main phase mills that many cards, and
+    /// each nonland card milled that way costs 1 life and removes one rad counter
+    /// (`Game::perform_rad_counter_mill`).
+    Rad,
 }
 
 impl PlayerCounterKind {
-    /// How many kinds [`Player::kind_counters`] has a slot for. Adding a kind (a rad counter,
-    /// say) is a one-line change here plus the variant, plus [`Self::ALL`].
-    pub(crate) const COUNT: usize = 1;
+    /// How many kinds [`Player::kind_counters`] has a slot for. Adding a kind is a one-line
+    /// change here plus the variant and an [`Self::ALL`] entry.
+    pub(crate) const COUNT: usize = 2;
 
-    /// Every kind, for enumerating "each kind present" ("each opponent loses all counters",
-    /// Final Act) — the [`CounterKind::ALL`] twin for player-side counters.
-    pub(crate) const ALL: [PlayerCounterKind; Self::COUNT] = [PlayerCounterKind::Poison];
+    /// Every kind, for enumerating "each kind present" — "each opponent loses all counters"
+    /// (Final Act) and "each kind already there" (CR 701.27, proliferate). The
+    /// [`CounterKind::ALL`] twin for player-side counters.
+    pub(crate) const ALL: [PlayerCounterKind; Self::COUNT] =
+        [PlayerCounterKind::Poison, PlayerCounterKind::Rad];
 }
 
 /// [`CardDef::cumulative_upkeep`](super::CardDef::cumulative_upkeep)'s upkeep cost (CR 702.24):

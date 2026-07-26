@@ -1,7 +1,13 @@
 //! Optional / skip-if-empty raises (board, hand, graveyard filters).
 
-use crate::{CardFilter, Effect, Game, ObjectId, PendingChoice, PermanentFilter, PlayerId};
+use crate::{
+    CardFilter, Effect, Game, ObjectId, PendingChoice, PermanentFilter, PlayerCounterKind,
+    PlayerId, ProliferateTarget,
+};
 
+/// Every permanent and player that currently has a counter (CR 701.27 — proliferate can only
+/// grow a counter of a kind "already there"). Permanents first, then players in seat order, so
+/// the offered set is deterministic.
 pub(super) fn proliferate(
     game: &Game,
     player: PlayerId,
@@ -11,13 +17,20 @@ pub(super) fn proliferate(
     if remaining == 0 {
         return None;
     }
-    let options: Vec<ObjectId> = game
-        .battlefield()
-        .into_iter()
-        .filter(|&id| {
-            let p = game.permanent(id);
-            p.plus_counters > 0 || p.kind_counters.iter().any(|&c| c > 0)
-        })
+    let permanents = game.battlefield().into_iter().filter(|&id| {
+        let p = game.permanent(id);
+        // A planeswalker's loyalty is loyalty counters (CR 306.5b), so it always has counters.
+        p.plus_counters > 0 || p.loyalty > 0 || p.kind_counters.iter().any(|&c| c > 0)
+    });
+    let players = (0..game.player_count() as u8).map(PlayerId).filter(|&p| {
+        !game.has_lost(p)
+            && PlayerCounterKind::ALL
+                .iter()
+                .any(|&kind| game.player_counters(p, kind) > 0)
+    });
+    let options: Vec<ProliferateTarget> = permanents
+        .map(ProliferateTarget::Permanent)
+        .chain(players.map(ProliferateTarget::Player))
         .collect();
     if options.is_empty() {
         return None;

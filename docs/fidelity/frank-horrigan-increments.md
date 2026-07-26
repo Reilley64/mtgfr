@@ -316,22 +316,33 @@ life-paid choice on the spell; the planeswalker's enters-with-loyalty read subtr
 paid with life. Also needs Vraska's −2 (#25). *Cards:* vraska_betrayals_sting.
 
 ### 17. `proliferate-full-scope` — 9 cards + observers, L
-Depends on: #20 slice 1 (for the player half). **Falsifies `types/effect/shared.rs:1035`**, whose
-note understates its own gap.
+Depends on: #20 slice 1 (for the player half).
 `proliferate()` (`pending/raise/optional.rs:14`) enumerates only `game.battlefield()` filtered on
-`plus_counters > 0 || kind_counters.any(...)`. It therefore silently omits **four** things:
-players (poison/rad), **loyalty** counters (a bare `Permanent::loyalty` i32, not a `CounterKind`),
-**Class level** counters (a bare `Permanent::level`), and the exiled-card time/scream counters the
-note actually mentions. The pool's one existing proliferate card already prints "any number of
+`plus_counters > 0 || kind_counters.any(...)`. It therefore silently omits **two** things:
+players (poison/rad) and **loyalty** counters (a bare `Permanent::loyalty` i32, not a
+`CounterKind`). The pool's one existing proliferate card already prints "any number of
 permanents **and/or players**" in its own reminder text, so this is a live wrong-behavior bug, not
 just a missing feature. *Sketch:* widen the choice's candidate enumeration and its answer
 validation to a `ProliferateTarget` sum (permanent | player), and make the "give another counter
-of each kind already there" step address loyalty, level, and the exile store alongside
-`kind_counters`. *Cards:* every proliferate source in the deck — agent_frank_horrigan, atomize,
+of each kind already there" step address loyalty alongside `kind_counters`. *Cards:* every
+proliferate source in the deck — agent_frank_horrigan, atomize,
 contagion_clasp, contagion_engine, karns_bastion, evolution_sage, thirsting_roots,
 unnatural_restoration, drown_in_ichor, glistening_sphere, contaminant_grafter, cankerbloom,
 blightbelly_rat, bloated_contaminator, vraska_betrayals_sting — plus the existing pool's
 expansion_algorithm.
+
+_Corrected 2026-07-27: two of the four originally-listed gaps are not gaps at all. A **Class's
+level is not a counter** (confirmed by design; proliferate does nothing to a Class), so
+`Permanent::level` is correctly out of scope. A **suspended card in exile is neither a permanent
+nor a player**, so CR 701.27 can never reach `Game::exile_time_counters` — the
+`CounterKind::Time` ponytail note claiming otherwise was wrong and has been deleted rather than
+trimmed._
+
+_Landed 2026-07-27: `ProliferateTarget { Permanent | Player }` is the choice's option and answer
+type; `Intent::ChooseProliferate { permanents, players }` (proto tag 58, `Answer::Proliferate`)
+replaces the borrowed `ChooseSacrifices` wire shape, since a seat can't ride a `Vec<ObjectId>`.
+`PlayerCounterKind::ALL` landed with its first consumer. Player counters are placed unreplaced —
+`counters_after_replacements` stays +1/+1-and-permanent-only until #19._
 
 ### 18. `whenever-you-proliferate-trigger` — 1 card, S
 Depends on: #17 (proliferate must emit a watchable event first).
@@ -481,6 +492,18 @@ player's precombat main phase, a player with rad counters mills that many cards,
 in the player store plus the rules action in the precombat-main step alongside the existing
 turn-based actions — it is a rules action, not a triggered ability, so it uses no stack and no
 player may respond to it. *Cards:* feral_ghoul, bloatfly_swarm (also needs #22).
+
+_Landed 2026-07-27: `PlayerCounterKind::Rad` sits beside `Poison` in the player counter store (no
+lose-the-game threshold — `LETHAL_POISON` stays poison-indexed), and
+`Game::perform_rad_counter_mill` runs it as a `Step::Main1` turn-based action in
+`perform_turn_based_actions`: no stack object, no priority window, only the active player's own
+counters. It reuses `Game::mill_events`, counts the non-`CardKind::Land` cards actually milled, and
+emits one `LifeChanged` of `-n` plus one `PlayerCountersPlaced` of `-n` from that real count, so a
+short library never removes more counters than it spent. `feral_ghoul.toml` is faithful — menace,
+the "another creature you control dies" +1/+1 trigger, and a `dies` trigger reading
+`Amount::SourcePower` off the existing CR 603.10a `dying_creature_stats` LKI capture. `PlayerView`
+carries a public `rad` count (`stream.proto` field 14). **bloatfly_swarm is still unbuilt** — it
+needs #22's damage replacement, which has not landed._
 
 ### 22. `damage-prevention-replacing-counters` — 1 card, M
 Depends on: #21.

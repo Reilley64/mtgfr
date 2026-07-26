@@ -199,9 +199,10 @@ pub enum VisibleEvent {
     },
     /// A named counter (CR 122.1 — poison) was placed on (`count` positive) or removed from
     /// (negative) a *player* — the player-side twin of [`Self::KindCountersPlaced`].
-    /// `counter_kind` mirrors `engine::PlayerCounterKind`'s discriminant (0 = poison), the same
-    /// raw-index convention its permanent-side sibling uses. Public: ten or more poison counters
-    /// lose the game (CR 704.5c), a win condition the client otherwise cannot see coming.
+    /// `counter_kind` mirrors `engine::PlayerCounterKind`'s discriminant (0 = poison, 1 = rad),
+    /// the same raw-index convention its permanent-side sibling uses. Public: ten or more poison
+    /// counters lose the game (CR 704.5c), and rad counters are a self-mill clock every seat can
+    /// see coming — neither is ever redacted.
     PlayerCountersPlaced {
         player: u8,
         counter_kind: u8,

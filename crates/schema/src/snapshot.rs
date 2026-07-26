@@ -738,6 +738,7 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                     })
                     .collect(),
                 poison: game.player_counters(pid, engine::PlayerCounterKind::Poison) as u32,
+                rad: game.player_counters(pid, engine::PlayerCounterKind::Rad) as u32,
             }
         })
         .collect();

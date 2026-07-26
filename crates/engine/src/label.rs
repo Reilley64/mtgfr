@@ -814,6 +814,7 @@ impl Effect {
             Effect::Counters(CountersEffect::PutCountersOnPlayer { kind, count, scope }) => {
                 let kind_name = match kind {
                     PlayerCounterKind::Poison => "poison",
+                    PlayerCounterKind::Rad => "rad",
                 };
                 let who = match scope {
                     EdictScope::AllPlayers => "Each player",
@@ -835,6 +836,7 @@ impl Effect {
             Effect::Counters(CountersEffect::TopUpCountersOnPlayer { kind, to }) => {
                 let kind_name = match kind {
                     PlayerCounterKind::Poison => "poison",
+                    PlayerCounterKind::Rad => "rad",
                 };
                 format!("Give target player {kind_name} counters up to {to}")
             }

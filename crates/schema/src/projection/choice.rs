@@ -396,7 +396,15 @@ impl<'a> ChoiceCtx<'a> {
             } => PendingChoiceView::Proliferate {
                 player: player.0,
                 source,
-                items: self.label_items(options),
+                // Counter-bearing permanents and players alike (CR 701.27). Both are public
+                // information — a poison total is visible to the whole table.
+                items: options
+                    .into_iter()
+                    .map(|target| match target {
+                        engine::ProliferateTarget::Permanent(id) => self.object_item(id),
+                        engine::ProliferateTarget::Player(seat) => self.player_item(seat),
+                    })
+                    .collect(),
             },
             engine::PendingChoice::PhaseOut {
                 player,

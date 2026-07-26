@@ -32,6 +32,10 @@ message PlayerView {
   bool can_mulligan = 12;
   // Poison counters on this player (CR 122.1). Ten or more eliminates them (CR 704.5c).
   uint32 poison = 13;
+  // Rad counters on this player (CR 122.1, Fallout). No lose-the-game threshold; at the beginning
+  // of their precombat main phase they mill this many cards, losing 1 life and one rad counter per
+  // nonland card milled.
+  uint32 rad = 14;
 }
 
 // One source card def's contributions to a permanent (Alt-inspect ledger).

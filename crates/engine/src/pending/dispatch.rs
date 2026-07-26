@@ -5,7 +5,7 @@
 //! lives on the same table: most arms are `None`; only singleton / no-real-choice cases
 //! return an Intent. Handlers under [`super::handlers`] still own apply logic.
 
-use crate::{Event, Game, Intent, PendingChoice, Reject};
+use crate::{Event, Game, Intent, PendingChoice, ProliferateTarget, Reject};
 
 /// Apply `intent` as the answer to the current [`PendingChoice`].
 ///
@@ -155,8 +155,17 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
             _ => Err(Reject::IllegalChoice),
         },
         PendingChoice::Proliferate { .. } => match intent {
-            Intent::ChooseSacrifices { player, sacrifices } => {
-                game.answer_proliferate(player, sacrifices)
+            Intent::ChooseProliferate {
+                player,
+                permanents,
+                players,
+            } => {
+                let chosen = permanents
+                    .into_iter()
+                    .map(ProliferateTarget::Permanent)
+                    .chain(players.into_iter().map(ProliferateTarget::Player))
+                    .collect();
+                game.answer_proliferate(player, chosen)
             }
             _ => Err(Reject::IllegalChoice),
         },

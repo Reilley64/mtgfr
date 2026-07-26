@@ -7,7 +7,6 @@ default_print = "dce72636-08e4-484e-ad81-4d1597a31ffb"
 otags = ["counters-matter", "proliferate", "triggered-ability", "activated-ability"]
 oracle = "When this artifact enters, put a -1/-1 counter on each creature target player controls.\n{4}, {T}: Proliferate twice. (Choose any number of permanents and/or players, then give each another counter of each kind already there. Then do it again.)"
 set = "som"
-approximates = "\"Proliferate\" (CR 701.27) only enumerates battlefield permanents with a counter — it can't choose players (poison/rad) or Class level/exiled time/scream counters, though this card's own reminder text says \"permanents and/or players\" (increment #17, not in this wave)."
 
 [cost]
 generic = 6

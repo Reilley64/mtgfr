@@ -39,6 +39,11 @@ pub enum Answer {
     Sacrifice {
         ids: Vec<ObjectId>,
     },
+    /// A proliferate answer (CR 701.27): the chosen counter-bearing permanents and players.
+    Proliferate {
+        permanents: Vec<ObjectId>,
+        players: Vec<u8>,
+    },
     Discard {
         cards: Vec<ObjectId>,
     },
@@ -169,6 +174,14 @@ pub fn encode_answer(view: &PendingChoiceView, answer: Answer) -> WireIntent {
         Answer::Sacrifice { ids } => WireIntent::ChooseSacrifices {
             player,
             sacrifices: ids,
+        },
+        Answer::Proliferate {
+            permanents,
+            players: chosen,
+        } => WireIntent::ChooseProliferate {
+            player,
+            permanents,
+            players: chosen,
         },
         Answer::Discard { cards } => WireIntent::Discard { player, cards },
         Answer::PutFromHandOnTop { cards } => WireIntent::PutFromHandOnTop { player, cards },
@@ -310,14 +323,22 @@ mod tests {
         }
     }
 
+    /// CR 701.27 offers permanents *and* players, so the answer names both lists.
     #[test]
-    fn sacrifice_shape_encodes_choose_sacrifices_for_proliferate() {
-        let intent = encode_answer(&proliferate(1), Answer::Sacrifice { ids: vec![7] });
+    fn proliferate_shape_encodes_chosen_permanents_and_players() {
+        let intent = encode_answer(
+            &proliferate(1),
+            Answer::Proliferate {
+                permanents: vec![7],
+                players: vec![2],
+            },
+        );
         assert_eq!(
             intent,
-            WireIntent::ChooseSacrifices {
+            WireIntent::ChooseProliferate {
                 player: 1,
-                sacrifices: vec![7],
+                permanents: vec![7],
+                players: vec![2],
             }
         );
     }

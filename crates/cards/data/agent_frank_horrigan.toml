@@ -11,7 +11,6 @@ set = "pip"
 subtypes = ["Mutant", "Warrior"]
 legendary = true
 keywords = ["trample"]
-approximates = "\"Proliferate\" (CR 701.27) only enumerates battlefield permanents with a counter — it can't choose players (poison/rad) or Class level/exiled time/scream counters, though this card's own reminder text says \"permanents and/or players\" (increment #17, not in this wave)."
 conditional_keywords = [
     { condition = { type = "source_attacked_this_turn" }, keyword = "indestructible" },
 ]

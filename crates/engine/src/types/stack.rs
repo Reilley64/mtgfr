@@ -306,6 +306,14 @@ pub enum Intent {
         to_bottom: Vec<ObjectId>,
         to_exile_may_play: Vec<ObjectId>,
     },
+    /// Answer a [`PendingChoice::Proliferate`]: the chosen permanents and players (CR 701.27 —
+    /// "any number of permanents and/or players"), a subset of the choice's `options` with no
+    /// repeats. Both lists empty is a legal "proliferate nothing."
+    ChooseProliferate {
+        player: PlayerId,
+        permanents: Vec<ObjectId>,
+        players: Vec<PlayerId>,
+    },
     /// Answer a [`PendingChoice::ShuffleFromGraveyard`]: `cards` are the graveyard cards this
     /// player shuffles into their library (any subset of the offered `candidates`, including
     /// none or all).
@@ -564,6 +572,7 @@ impl Intent {
             }
             Intent::ReturnLandOrSacrifice { land, .. } => land.iter().copied().collect(),
             Intent::ChooseSacrifices { sacrifices, .. } => sacrifices.clone(),
+            Intent::ChooseProliferate { permanents, .. } => permanents.clone(),
             Intent::Discard { cards, .. } | Intent::PutFromHandOnTop { cards, .. } => cards.clone(),
             Intent::DeclineUntap { keep_tapped, .. } => keep_tapped.clone(),
             Intent::ChooseDredge { dredger, .. } => dredger.iter().copied().collect(),
@@ -657,6 +666,7 @@ impl Intent {
             | Intent::ShuffleFromGraveyard { player, .. }
             | Intent::SearchLibrary { player, .. }
             | Intent::ChooseSacrifices { player, .. }
+            | Intent::ChooseProliferate { player, .. }
             | Intent::Discard { player, .. }
             | Intent::PutFromHandOnTop { player, .. }
             | Intent::PutLandFromHand { player, .. }
@@ -709,6 +719,7 @@ impl Intent {
             | Intent::ShuffleFromGraveyard { .. }
             | Intent::SearchLibrary { .. }
             | Intent::ChooseSacrifices { .. }
+            | Intent::ChooseProliferate { .. }
             | Intent::Discard { .. }
             | Intent::PutFromHandOnTop { .. }
             | Intent::PutLandFromHand { .. }
@@ -774,6 +785,14 @@ pub enum SplittingContinuation {
     /// and each takes a keep-on-top-or-bottom scry. Resumed via [`Game::resume_clash`] (which needs
     /// an `events` sink for the reveals), not the eventless [`Game::resume_splitting_opponent`].
     Clash,
+}
+
+/// One thing proliferate may choose (CR 701.27: "Choose any number of permanents and/or
+/// players"). A card in exile is neither, so a suspended card's time counters are out of reach.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProliferateTarget {
+    Permanent(ObjectId),
+    Player(PlayerId),
 }
 
 /// A decision the engine is waiting on. While one is pending, only the matching
@@ -1087,19 +1106,19 @@ pub enum PendingChoice {
         to_bottom: u32,
         to_exile_may_play: u32,
     },
-    /// `player` may choose any number of `options` (every permanent on the battlefield that
-    /// currently has a counter, any controller — CR 701.27) to proliferate: each chosen one
-    /// gets another counter of every kind already on it. Answered by
-    /// [`Intent::ChooseSacrifices`] (reusing its "any subset of the offered set" wire shape —
-    /// unlike [`SacrificeEdict`](Self::SacrificeEdict)/[`MaySacrifice`](Self::MaySacrifice)'s
-    /// exactly-one, an empty answer here is a legal "proliferate nothing"). `remaining` is how
-    /// many more times [`Effect::Choice(ChoiceEffect::Proliferate)`]'s `times` still has to run after this one; a
+    /// `player` may choose any number of `options` — every permanent on the battlefield and
+    /// every player that currently has a counter (CR 701.27: "Choose any number of permanents
+    /// and/or players") — to proliferate: each chosen one gets another counter of every kind
+    /// already there. Answered by [`Intent::ChooseProliferate`]; an empty answer is a legal
+    /// "proliferate nothing," unlike
+    /// [`SacrificeEdict`](Self::SacrificeEdict)/[`MaySacrifice`](Self::MaySacrifice)'s
+    /// exactly-one. `remaining` is how many more times [`Effect::Choice(ChoiceEffect::Proliferate)`]'s `times` still has to run after this one; a
     /// nonzero `remaining` re-pauses on a fresh `Proliferate` choice once this one's counters
     /// are placed, mirroring [`SearchLibrary`](Self::SearchLibrary)'s re-pause chaining.
     Proliferate {
         player: PlayerId,
         source: ObjectId,
-        options: Vec<ObjectId>,
+        options: Vec<ProliferateTarget>,
         remaining: u8,
     },
     /// `player` (Guardian of Faith's controller) may choose any number of `options` — the *other*

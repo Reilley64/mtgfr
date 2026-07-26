@@ -69292,9 +69292,10 @@ fn proliferate_expansion_algorithm() {
         matches!(g.pending_choice(), Some(PendingChoice::Proliferate { .. })),
         "proliferating pauses to choose counter-bearing permanents"
     );
-    g.submit(Intent::ChooseSacrifices {
+    g.submit(Intent::ChooseProliferate {
         player: PlayerId(0),
-        sacrifices: vec![bear, bloom],
+        permanents: vec![bear, bloom],
+        players: vec![],
     })
     .unwrap();
 
@@ -69323,9 +69324,10 @@ fn proliferate_x_2_re_pauses_for_a_second_iteration() {
     let algorithm = g.spawn_in_hand(PlayerId(0), card("Expansion Algorithm"));
     g.cast(algorithm).x(2).resolve();
 
-    g.submit(Intent::ChooseSacrifices {
+    g.submit(Intent::ChooseProliferate {
         player: PlayerId(0),
-        sacrifices: vec![bear],
+        permanents: vec![bear],
+        players: vec![],
     })
     .unwrap();
     assert_eq!(g.plus_counters(bear), 3, "first iteration: 2 + 1");
@@ -69334,9 +69336,10 @@ fn proliferate_x_2_re_pauses_for_a_second_iteration() {
         "X = 2 re-pauses for the second iteration"
     );
 
-    g.submit(Intent::ChooseSacrifices {
+    g.submit(Intent::ChooseProliferate {
         player: PlayerId(0),
-        sacrifices: vec![bear],
+        permanents: vec![bear],
+        players: vec![],
     })
     .unwrap();
     assert_eq!(g.plus_counters(bear), 4, "second iteration: 3 + 1");
@@ -69356,9 +69359,10 @@ fn proliferate_rejects_choosing_the_same_permanent_twice() {
     g.cast(algorithm).x(1).resolve();
 
     assert_eq!(
-        g.submit(Intent::ChooseSacrifices {
+        g.submit(Intent::ChooseProliferate {
             player: PlayerId(0),
-            sacrifices: vec![bear, bear],
+            permanents: vec![bear, bear],
+            players: vec![],
         }),
         Err(Reject::IllegalChoice),
         "the same permanent can't be chosen twice"
@@ -69390,9 +69394,10 @@ fn drown_in_ichor_debuffs_then_proliferates() {
         "the debuff resolves, then proliferate pauses to choose counter-bearing permanents"
     );
 
-    g.submit(Intent::ChooseSacrifices {
+    g.submit(Intent::ChooseProliferate {
         player: PlayerId(0),
-        sacrifices: vec![bear],
+        permanents: vec![bear],
+        players: vec![],
     })
     .unwrap();
 
@@ -92220,9 +92225,10 @@ fn contagion_engine_activated_ability_proliferates_twice() {
         ),
         "proliferating pauses to choose counter-bearing permanents"
     );
-    game.submit(Intent::ChooseSacrifices {
+    game.submit(Intent::ChooseProliferate {
         player: PlayerId(0),
-        sacrifices: vec![bear],
+        permanents: vec![bear],
+        players: vec![],
     })
     .unwrap();
     assert_eq!(
@@ -92238,9 +92244,10 @@ fn contagion_engine_activated_ability_proliferates_twice() {
         ),
         "\"then do it again\" re-pauses for a second, independent proliferate instance"
     );
-    game.submit(Intent::ChooseSacrifices {
+    game.submit(Intent::ChooseProliferate {
         player: PlayerId(0),
-        sacrifices: vec![bear],
+        permanents: vec![bear],
+        players: vec![],
     })
     .unwrap();
 
@@ -92283,9 +92290,10 @@ fn contagion_clasp_activated_ability_proliferates() {
         ),
         "proliferating pauses to choose counter-bearing permanents"
     );
-    game.submit(Intent::ChooseSacrifices {
+    game.submit(Intent::ChooseProliferate {
         player: PlayerId(0),
-        sacrifices: vec![bear],
+        permanents: vec![bear],
+        players: vec![],
     })
     .unwrap();
 
@@ -92319,9 +92327,10 @@ fn evolution_sage_landfall_proliferates() {
         ),
         "landfall triggers proliferate"
     );
-    game.submit(Intent::ChooseSacrifices {
+    game.submit(Intent::ChooseProliferate {
         player: PlayerId(0),
-        sacrifices: vec![bear],
+        permanents: vec![bear],
+        players: vec![],
     })
     .unwrap();
 
@@ -92426,9 +92435,10 @@ fn atomize_destroys_a_nonland_permanent_then_proliferates() {
         matches!(g.pending_choice(), Some(PendingChoice::Proliferate { .. })),
         "destroy resolves, then proliferate pauses to choose counter-bearing permanents"
     );
-    g.submit(Intent::ChooseSacrifices {
+    g.submit(Intent::ChooseProliferate {
         player: PlayerId(0),
-        sacrifices: vec![bear],
+        permanents: vec![bear],
+        players: vec![],
     })
     .unwrap();
     assert_eq!(g.plus_counters(bear), 3, "2 + one more of a kind present");
@@ -92460,9 +92470,10 @@ fn karns_bastion_activated_ability_proliferates() {
         matches!(g.pending_choice(), Some(PendingChoice::Proliferate { .. })),
         "the activated ability pauses to choose counter-bearing permanents"
     );
-    g.submit(Intent::ChooseSacrifices {
+    g.submit(Intent::ChooseProliferate {
         player: PlayerId(0),
-        sacrifices: vec![bear],
+        permanents: vec![bear],
+        players: vec![],
     })
     .unwrap();
     assert_eq!(g.plus_counters(bear), 3, "2 + one more of a kind present");
@@ -92512,9 +92523,10 @@ fn thirsting_roots_mode_1_proliferates() {
         matches!(g.pending_choice(), Some(PendingChoice::Proliferate { .. })),
         "mode 1 pauses to choose counter-bearing permanents"
     );
-    g.submit(Intent::ChooseSacrifices {
+    g.submit(Intent::ChooseProliferate {
         player: PlayerId(0),
-        sacrifices: vec![bear],
+        permanents: vec![bear],
+        players: vec![],
     })
     .unwrap();
     assert_eq!(g.plus_counters(bear), 3, "2 + one more of a kind present");
@@ -92550,9 +92562,10 @@ fn unnatural_restoration_returns_a_permanent_card_then_proliferates() {
         matches!(g.pending_choice(), Some(PendingChoice::Proliferate { .. })),
         "the return resolves, then proliferate pauses to choose counter-bearing permanents"
     );
-    g.submit(Intent::ChooseSacrifices {
+    g.submit(Intent::ChooseProliferate {
         player: PlayerId(0),
-        sacrifices: vec![bear],
+        permanents: vec![bear],
+        players: vec![],
     })
     .unwrap();
     assert_eq!(g.plus_counters(bear), 3, "2 + one more of a kind present");
@@ -94244,9 +94257,10 @@ fn blightbelly_rat_poisons_and_proliferates_when_it_dies() {
     let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
     fund_cast_resolve(&mut game, PlayerId(0), bolt, Some(Target::Object(rat)));
     resolve_top_of_stack(&mut game); // the dies trigger resolves → pauses on the proliferate choice
-    game.submit(Intent::ChooseSacrifices {
+    game.submit(Intent::ChooseProliferate {
         player: PlayerId(0),
-        sacrifices: vec![counter_holder],
+        permanents: vec![counter_holder],
+        players: vec![PlayerId(1)],
     })
     .unwrap();
 
@@ -94254,6 +94268,11 @@ fn blightbelly_rat_poisons_and_proliferates_when_it_dies() {
         game.plus_counters(counter_holder),
         2,
         "proliferate added a second +1/+1 counter"
+    );
+    assert_eq!(
+        game.player_counters(PlayerId(1), PlayerCounterKind::Poison),
+        2,
+        "and a second poison counter on the poisoned player (CR 701.27)"
     );
 }
 
@@ -94270,16 +94289,18 @@ fn bloated_contaminator_poisons_and_proliferates_on_connect() {
     attack_with(&mut game, vec![beast]);
     // The combat-damage trigger resolves mid-advance and pauses on its proliferate choice.
     advance_until(&mut game, |g| g.pending_choice().is_some());
-    game.submit(Intent::ChooseSacrifices {
+    game.submit(Intent::ChooseProliferate {
         player: PlayerId(0),
-        sacrifices: vec![counter_holder],
+        permanents: vec![counter_holder],
+        players: vec![PlayerId(1)],
     })
     .unwrap();
 
     assert_eq!(game.life(PlayerId(1)), 16, "four trample damage");
     assert_eq!(
         game.player_counters(PlayerId(1), PlayerCounterKind::Poison),
-        1
+        2,
+        "toxic 1, then proliferate grows it (CR 701.27)"
     );
     assert_eq!(
         game.plus_counters(counter_holder),
@@ -94527,9 +94548,10 @@ fn contaminant_grafter_batch_trigger_fires_once_for_two_connecting_attackers() {
 
     attack_with(&mut game, vec![grafter, bear]);
     advance_until(&mut game, |g| g.pending_choice().is_some());
-    game.submit(Intent::ChooseSacrifices {
+    game.submit(Intent::ChooseProliferate {
         player: PlayerId(0),
-        sacrifices: vec![counter_holder],
+        permanents: vec![counter_holder],
+        players: vec![],
     })
     .unwrap();
     advance_until(&mut game, |g| {
@@ -94595,4 +94617,293 @@ fn final_act_now_offers_four_modes() {
     // expressible modes raises `choose_max` from 3 to 4 — only "destroy all battles" (battles
     // aren't a modeled permanent type) is still dropped.
     assert_eq!(card("Final Act").modal_choose_max, Some(4));
+}
+
+// ── Increment #17: proliferate's full CR 701.27 scope — "permanents and/or players" ──
+
+#[test]
+fn proliferate_can_choose_a_player_with_poison_counters() {
+    // CR 701.27: "Choose any number of permanents and/or players, then give each another counter
+    // of each kind already there." A player sitting on two poison counters goes to three.
+    let mut g = TestGame::new();
+    g.place_player_counters(PlayerId(1), PlayerCounterKind::Poison, 2);
+    let algorithm = g.spawn_in_hand(PlayerId(0), card("Expansion Algorithm"));
+    g.cast(algorithm).x(1).resolve();
+
+    assert!(
+        matches!(g.pending_choice(), Some(PendingChoice::Proliferate { .. })),
+        "a poisoned player alone is enough to pause on a proliferate choice"
+    );
+    g.submit(Intent::ChooseProliferate {
+        player: PlayerId(0),
+        permanents: vec![],
+        players: vec![PlayerId(1)],
+    })
+    .unwrap();
+
+    assert_eq!(
+        g.player_counters(PlayerId(1), PlayerCounterKind::Poison),
+        3,
+        "2 + one more of a kind already there"
+    );
+}
+
+#[test]
+fn proliferate_does_not_offer_a_player_with_no_counters() {
+    // CR 701.27 only grows counters "already there" — a player with none is not a legal choice.
+    let mut g = TestGame::new();
+    g.place_player_counters(PlayerId(1), PlayerCounterKind::Poison, 1);
+    let algorithm = g.spawn_in_hand(PlayerId(0), card("Expansion Algorithm"));
+    g.cast(algorithm).x(1).resolve();
+
+    let options = match g.pending_choice() {
+        Some(PendingChoice::Proliferate { options, .. }) => options.clone(),
+        other => panic!("expected a proliferate choice, got {other:?}"),
+    };
+    assert_eq!(
+        options,
+        vec![ProliferateTarget::Player(PlayerId(1))],
+        "only the poisoned player carries a counter"
+    );
+    assert_eq!(
+        g.submit(Intent::ChooseProliferate {
+            player: PlayerId(0),
+            permanents: vec![],
+            players: vec![PlayerId(0)],
+        }),
+        Err(Reject::IllegalChoice),
+        "the uncountered proliferating player is not among the options"
+    );
+}
+
+#[test]
+fn proliferate_adds_a_loyalty_counter_to_a_planeswalker() {
+    // CR 306.5b: a planeswalker's loyalty *is* loyalty counters, so proliferate gives it one more.
+    let mut g = TestGame::new();
+    let walker = g.spawn_on_battlefield(PlayerId(0), test_planeswalker("Test Walker", 3));
+    let algorithm = g.spawn_in_hand(PlayerId(0), card("Expansion Algorithm"));
+    g.cast(algorithm).x(1).resolve();
+
+    g.submit(Intent::ChooseProliferate {
+        player: PlayerId(0),
+        permanents: vec![walker],
+        players: vec![],
+    })
+    .unwrap();
+
+    assert_eq!(g.loyalty(walker), 4, "3 loyalty counters + one more");
+}
+
+#[test]
+fn proliferate_twice_grows_a_players_poison_each_iteration() {
+    // CR 701.27b ("then do it again" — Contagion Engine, Agent Frank Horrigan): two separate
+    // proliferations, so the same poisoned player may be chosen in each.
+    let mut g = TestGame::new();
+    g.place_player_counters(PlayerId(1), PlayerCounterKind::Poison, 1);
+    let algorithm = g.spawn_in_hand(PlayerId(0), card("Expansion Algorithm"));
+    g.cast(algorithm).x(2).resolve();
+
+    g.submit(Intent::ChooseProliferate {
+        player: PlayerId(0),
+        permanents: vec![],
+        players: vec![PlayerId(1)],
+    })
+    .unwrap();
+    assert_eq!(
+        g.player_counters(PlayerId(1), PlayerCounterKind::Poison),
+        2,
+        "first proliferation: 1 + 1"
+    );
+    assert!(
+        matches!(g.pending_choice(), Some(PendingChoice::Proliferate { .. })),
+        "the second iteration re-pauses on a fresh choice"
+    );
+
+    g.submit(Intent::ChooseProliferate {
+        player: PlayerId(0),
+        permanents: vec![],
+        players: vec![PlayerId(1)],
+    })
+    .unwrap();
+    assert_eq!(
+        g.player_counters(PlayerId(1), PlayerCounterKind::Poison),
+        3,
+        "second proliferation: 2 + 1"
+    );
+    assert!(g.pending_choice().is_none(), "both iterations are spent");
+}
+
+#[test]
+fn proliferate_rejects_choosing_the_same_player_twice() {
+    // CR 701.27 chooses a *set* of permanents and/or players — a player can't be picked twice to
+    // double their poison.
+    let mut g = TestGame::new();
+    g.place_player_counters(PlayerId(1), PlayerCounterKind::Poison, 1);
+    let algorithm = g.spawn_in_hand(PlayerId(0), card("Expansion Algorithm"));
+    g.cast(algorithm).x(1).resolve();
+
+    assert_eq!(
+        g.submit(Intent::ChooseProliferate {
+            player: PlayerId(0),
+            permanents: vec![],
+            players: vec![PlayerId(1), PlayerId(1)],
+        }),
+        Err(Reject::IllegalChoice),
+        "the same player can't be chosen twice"
+    );
+    assert_eq!(
+        g.player_counters(PlayerId(1), PlayerCounterKind::Poison),
+        1,
+        "the illegal answer left the choice pending, unresolved"
+    );
+}
+
+// ── Increment 21: rad counters (Fallout — the precombat-main turn-based action) ──────
+
+#[test]
+fn rad_counters_mill_at_the_beginning_of_precombat_main() {
+    // "At the beginning of each player's precombat main phase, if that player has any rad
+    // counters, they mill that many cards." A turn-based action (CR 117.3a) — it uses no stack
+    // and no player may respond.
+    let mut game = Game::new();
+    game.stack_library(PlayerId(1), &[card("Tome Scour"); 10]);
+    game.place_player_counters(PlayerId(1), PlayerCounterKind::Rad, 3);
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Main1
+    });
+
+    assert_eq!(
+        cards_in_zone(&game, PlayerId(1), Zone::Graveyard),
+        3,
+        "three rad counters mill three cards"
+    );
+    assert!(
+        game.stack().is_empty(),
+        "the rad action is turn-based, not a triggered ability — nothing goes on the stack"
+    );
+    assert!(
+        game.pending_choice().is_none(),
+        "no player may respond to a turn-based action"
+    );
+    assert_eq!(
+        cards_in_zone(&game, PlayerId(0), Zone::Graveyard),
+        0,
+        "only the active player's rad counters resolve in their own precombat main"
+    );
+}
+
+#[test]
+fn rad_counters_are_removed_and_life_lost_only_for_nonland_cards_milled() {
+    // "For each nonland card milled this way, that player loses 1 life and removes one rad
+    // counter." Top card is drawn in the draw step; the next three are the milled ones.
+    let mut game = Game::new();
+    game.stack_library(
+        PlayerId(1),
+        &[
+            card("Forest"),     // drawn in the draw step
+            card("Forest"),     // milled — land, no life, no counter removed
+            card("Tome Scour"), // milled — nonland
+            card("Forest"),     // milled — land
+            card("Forest"),
+        ],
+    );
+    game.place_player_counters(PlayerId(1), PlayerCounterKind::Rad, 3);
+    let life_before = game.life(PlayerId(1));
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Main1
+    });
+
+    assert_eq!(
+        cards_in_zone(&game, PlayerId(1), Zone::Graveyard),
+        3,
+        "three rad counters mill three cards regardless of what they are"
+    );
+    assert_eq!(
+        game.life(PlayerId(1)),
+        life_before - 1,
+        "one life per nonland card milled"
+    );
+    assert_eq!(
+        game.player_counters(PlayerId(1), PlayerCounterKind::Rad),
+        2,
+        "one rad counter removed per nonland card milled — the other two persist"
+    );
+}
+
+#[test]
+fn rad_counters_survive_a_precombat_main_that_mills_only_lands() {
+    // Milling nothing but lands spends no rad counters and costs no life — the counters stay to
+    // mill again next turn.
+    let mut game = Game::new();
+    game.stack_library(PlayerId(1), &[card("Forest"); 10]);
+    game.place_player_counters(PlayerId(1), PlayerCounterKind::Rad, 3);
+    let life_before = game.life(PlayerId(1));
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Main1
+    });
+
+    assert_eq!(
+        game.player_counters(PlayerId(1), PlayerCounterKind::Rad),
+        3,
+        "no nonland card was milled, so no rad counter is removed"
+    );
+    assert_eq!(game.life(PlayerId(1)), life_before, "and no life is lost");
+}
+
+#[test]
+fn rad_counters_do_not_cause_a_player_to_lose_the_game() {
+    // Rad counters have no CR 704.5c-style threshold — only poison does. Ten or more rad is
+    // survivable.
+    let mut game = Game::new();
+    game.stack_library(PlayerId(1), &[card("Forest"); 30]);
+    game.place_player_counters(PlayerId(1), PlayerCounterKind::Rad, 12);
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Main1
+    });
+
+    assert!(
+        !game.has_lost(PlayerId(1)),
+        "twelve rad counters is not lethal the way twelve poison counters would be"
+    );
+    assert_eq!(
+        game.player_counters(PlayerId(1), PlayerCounterKind::Poison),
+        0,
+        "rad counters never land in the poison slot"
+    );
+}
+
+#[test]
+fn feral_ghoul_dies_giving_each_opponent_rad_counters_equal_to_its_power() {
+    // Feral Ghoul: "Whenever another creature you control dies, put a +1/+1 counter on this
+    // creature. When this creature dies, each opponent gets a number of rad counters equal to
+    // its power." Its power is last-known information (CR 603.10a) — the Ghoul is already in the
+    // graveyard when the trigger resolves.
+    let mut game = TestGame::new();
+    let ghoul = game.spawn_on_battlefield(PlayerId(0), card("Feral Ghoul"));
+    let pal = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let first_grasp = game.spawn_in_hand(PlayerId(0), card("Infernal Grasp"));
+    let second_grasp = game.spawn_in_hand(PlayerId(0), card("Infernal Grasp"));
+    game.fund_mana(PlayerId(0));
+
+    game.cast(first_grasp).at(Target::Object(pal)).resolve();
+    resolve_top_of_stack(&mut game); // the "another creature you control dies" trigger
+    assert_eq!(game.power(ghoul), 3, "a +1/+1 counter made the Ghoul a 3/3");
+
+    game.cast(second_grasp).at(Target::Object(ghoul)).resolve();
+    resolve_top_of_stack(&mut game); // the dies trigger
+
+    assert_eq!(
+        game.player_counters(PlayerId(1), PlayerCounterKind::Rad),
+        3,
+        "each opponent gets rad counters equal to the Ghoul's last-known power"
+    );
+    assert_eq!(
+        game.player_counters(PlayerId(0), PlayerCounterKind::Rad),
+        0,
+        "\"each opponent\" excludes the Ghoul's controller"
+    );
 }

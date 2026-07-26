@@ -1636,6 +1636,14 @@ impl Game {
                 let drawn = self.draw_card(active);
                 events.extend(drawn);
             }
+            // Rad counters (CR 122.1, Fallout): "At the beginning of each player's precombat main
+            // phase, if that player has any rad counters, they mill that many cards. For each
+            // nonland card milled this way, that player loses 1 life and removes one rad counter."
+            // A turn-based action, not a triggered ability — no stack object, no priority window,
+            // nothing to respond to. `Step::Main1` is the *precombat* main phase (`Main2` is
+            // postcombat), and "each player's" resolves in that player's own turn, so only the
+            // active player's counters fire here.
+            Step::Main1 => self.perform_rad_counter_mill(active, events),
             // The two combat damage steps deal their own batch (CR 510.5). The between-steps
             // SBA sweep and death triggers are handled by `submit` after this step, and a (CR 704, CR 603, CR 104.3)
             // priority window opens between them. (CR 117)
@@ -1741,6 +1749,50 @@ impl Game {
             }
             _ => {}
         }
+    }
+
+    /// The rad-counter turn-based action for `player`'s precombat main phase (CR 122.1, Fallout):
+    /// mill one card per rad counter, then lose 1 life and remove one rad counter for each
+    /// *nonland* card actually milled. A short library mills only what's there, so the life loss
+    /// and the removal follow the real nonland count — never the counter total.
+    fn perform_rad_counter_mill(&mut self, player: PlayerId, events: &mut Vec<Event>) {
+        let rad = self.player_counters(player, PlayerCounterKind::Rad);
+        if rad == 0 {
+            return;
+        }
+
+        let milled = self.mill_events(player, rad as u32);
+        let nonland = milled
+            .iter()
+            .filter(|event| match event {
+                Event::Milled { from, .. } => {
+                    !matches!(self.def_of(*from).kind, CardKind::Land { .. })
+                }
+                _ => false,
+            })
+            .count() as i32;
+        self.apply_all(&milled);
+        events.extend(milled);
+        if nonland == 0 {
+            return;
+        }
+
+        self.push_apply(
+            events,
+            Event::LifeChanged {
+                player,
+                amount: -nonland,
+                source: None,
+            },
+        );
+        self.push_apply(
+            events,
+            Event::PlayerCountersPlaced {
+                player,
+                kind: PlayerCounterKind::Rad,
+                count: -nonland,
+            },
+        );
     }
 
     /// Ids of the permanents `player` controls on the battlefield.

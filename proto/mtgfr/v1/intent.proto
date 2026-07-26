@@ -76,6 +76,7 @@ message WireIntent {
     WireIntentMulligan mulligan = 55;
     WireIntentChooseCardName choose_card_name = 56;
     WireIntentCastSplitHalf cast_split_half = 57;
+    WireIntentChooseProliferate choose_proliferate = 58;
   }
 }
 
@@ -246,6 +247,14 @@ message WireIntentSearchLibrary {
 message WireIntentChooseSacrifices {
   uint32 player = 1;
   repeated uint32 sacrifices = 2;
+}
+
+// Answer a proliferate choice (CR 701.27): the permanents and players chosen to get another
+// counter of each kind already there. Both lists empty declines.
+message WireIntentChooseProliferate {
+  uint32 player = 1;
+  repeated uint32 permanents = 2;
+  repeated uint32 players = 3;
 }
 
 // Answer a cleanup discard: the cards this player discards to reach the hand-size limit.
