@@ -9,6 +9,7 @@ export default defineHandler(async (event) => {
 
   return withLobbyAuth(event, `api tables/${tableId}/start/v1`, async ({ me, env, db }) => {
     const body = await readJsonObject(event);
+    // Body is required by route convention; no fields are consumed.
     if (!body) return json({ error: "BadJson" }, 400);
 
     const snap = await loadLobby(db, tableId);

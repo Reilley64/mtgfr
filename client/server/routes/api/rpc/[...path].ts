@@ -146,7 +146,7 @@ function routeSegments(event: H3Event): string[] {
 
 async function jsonBody(event: H3Event): Promise<unknown> {
   const raw = await event.req.text();
-  return JSON.parse(raw ?? "");
+  return JSON.parse(raw);
 }
 
 const ALLOWED_METHODS = new Set(["GET", "POST", "PUT", "DELETE"]);

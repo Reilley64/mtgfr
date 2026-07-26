@@ -24,7 +24,9 @@ export function tableParam(event: H3Event): string | null {
 export async function readJsonObject(event: H3Event): Promise<Record<string, unknown> | null> {
   try {
     const raw = await event.req.text();
-    return JSON.parse(raw || "") as Record<string, unknown>;
+    const value: unknown = JSON.parse(raw || "");
+    if (value === null || typeof value !== "object" || Array.isArray(value)) return null;
+    return value as Record<string, unknown>;
   } catch {
     return null;
   }
