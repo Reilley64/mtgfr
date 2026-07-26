@@ -867,6 +867,7 @@ mod tests {
         dredge: None,
         suspend: None,
         vanishing: None,
+        cast_x_max: None,
     });
 
     fn held(disposition: Disposition) -> bool {

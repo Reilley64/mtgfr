@@ -19,8 +19,8 @@ use serde::de::{self, Deserializer, IntoDeserializer, Visitor};
 
 use crate::{
     Ability, ActivationCost, AdditionalCost, AlternativeCost, Amount, AmountZone, CardDef,
-    CardFilter, CardKind, CasterScope, Color, ColorFilter, CombatDamageScope, Condition, Cost,
-    CounterKind, CumulativeUpkeepCost, EdictScope, Effect, EnterAsCopy, EnterController,
+    CardFilter, CardKind, CastXMax, CasterScope, Color, ColorFilter, CombatDamageScope, Condition,
+    Cost, CounterKind, CumulativeUpkeepCost, EdictScope, Effect, EnterAsCopy, EnterController,
     EscapeCost, FilterController, GrantedAbility, HandActivatedAbility, Keyword, LandProduces,
     Mana, ManaPool, Parity, PermanentFilter, ProtectionScope, ReanimateBecomes,
     SacrificeAdditionalCost, SacrificeAdditionalCostCount, SacrificeCost, SpellFilter, SpellSpeed,
@@ -476,6 +476,10 @@ impl<'de> Deserialize<'de> for CardDef {
             /// (`None`) for every other card.
             #[serde(default)]
             vanishing: Option<u8>,
+            /// A non-mana cast-time cap on {X} (CR 601.2b — Open the Way's player-count bound) —
+            /// `cast_x_max = "player_count"`; absent (`None`) for every ordinary {X} spell.
+            #[serde(default)]
+            cast_x_max: Option<CastXMax>,
         }
 
         let card = Card::deserialize(d)?;
@@ -545,6 +549,7 @@ impl<'de> Deserialize<'de> for CardDef {
             may_choose_not_to_untap: card.may_choose_not_to_untap,
             dredge: card.dredge,
             vanishing: card.vanishing,
+            cast_x_max: card.cast_x_max,
             halves: Arc::from(
                 card.half
                     .into_iter()

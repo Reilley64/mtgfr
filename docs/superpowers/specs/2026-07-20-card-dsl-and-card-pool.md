@@ -76,7 +76,7 @@ target = "any"
 
 **Entry modifiers:** `enters_tapped`, `enters_tapped_unless`, `may_choose_not_to_untap`, `free_cast_if`.
 
-**Miscellaneous:** `uncounterable`, `modal`/`choose`/`choose_max`/`choose_max_if_commander`, `enchant`, `enchant_graveyard`, `cycling`/`cycling_sacrifice`, `hand_ability`, `forecast`, `functions_in_graveyard`, `subtypes`, `cast_only_during_combat`, `enter_as_copy`, `hand_ability`.
+**Miscellaneous:** `uncounterable`, `modal`/`choose`/`choose_max`/`choose_max_if_commander`, `enchant`, `enchant_graveyard`, `cycling`/`cycling_sacrifice`, `hand_ability`, `forecast`, `functions_in_graveyard`, `subtypes`, `cast_only_during_combat`, `cast_x_max` (non-mana cast-time `{X}` ceiling; `"player_count"` — Open the Way), `enter_as_copy`, `hand_ability`.
 
 ### `[cost]`
 

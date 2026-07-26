@@ -682,6 +682,16 @@ impl Game {
         available.can_pay(&cost, spell)
     }
 
+    /// A card's printed non-mana ceiling on {X} (CR 601.2b — Open the Way's player-count bound),
+    /// or `None` when X is bounded only by affordability. Both the cast gate
+    /// ([`Game::validate_cast`]) and the snapshot's count-picker consult this so the offered
+    /// ceiling and the accepted ceiling can never diverge.
+    pub fn cast_x_ceiling(&self, def: &CardDef) -> Option<u32> {
+        match def.cast_x_max? {
+            CastXMax::PlayerCount => Some(u32::from(self.living_player_count())),
+        }
+    }
+
     /// Largest X such that `available_mana` can pay `cost_at(x)`, or `0` when even X=0 fails.
     ///
     /// A free cast has no mana-derived upper bound, so it returns zero. A cost whose X is paid
@@ -1884,6 +1894,7 @@ mod tests {
             halves: empty_slice(),
             suspend: None,
             vanishing: None,
+            cast_x_max: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,

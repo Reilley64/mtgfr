@@ -10,7 +10,13 @@ Quandrix's loud X/counter/copy core is largely already landed; the remaining gap
 one cast-time X legality cap, and one spell whose resolution-time choices are still exposed on the
 stack.
 
-### 1. `cast-x-cannot-exceed-player-count` — 1 card, S
+### 1. `cast-x-cannot-exceed-player-count` — 1 card, S — LANDED (2026-07-26)
+
+Landed as `CardDef::cast_x_max = Some(CastXMax::PlayerCount)` (`cast_x_max = "player_count"` in
+TOML), read by `Game::cast_x_ceiling`. `Game::validate_cast` rejects an announced X above the
+living-seat count with `Reject::IllegalChoice` (before payment — a legality cap, not a mana
+shortfall), and the snapshot's cast count-picker clamps its offered ceiling to the same bound.
+`open_the_way.toml` opts in and drops its residual note; `Open the Way` is now faithful.
 
 **Depends on:** none.
 **Cards:** `open_the_way.toml`
