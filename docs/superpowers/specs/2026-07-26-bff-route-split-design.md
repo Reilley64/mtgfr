@@ -1,7 +1,7 @@
 # BFF route split and h3 handler cutover (design)
 
-**Status:** Approved design input (2026-07-26).
-**Surfaces:** Nitro BFF `client/server/routes/api/**`, `client/server/lobby-http.ts`, `client/app/domain/lobby/client.ts`, `shell/lobby/update.ts`; living specs [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md), [lobby-table-routing-and-live-game](2026-07-20-lobby-table-routing-and-live-game.md), [lobby-entry-ui](2026-07-20-lobby-entry-ui.md), [coverage-by-set](2026-07-26-coverage-by-set.md).
+**Status:** Implemented (2026-07-26). Shipped behavior is documented in living specs: [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md) (BFF file-per-op map, `defineHandler`), [coverage-by-set](2026-07-26-coverage-by-set.md) (`api/meta/coverage/v1.get.ts`), [lobby-table-routing-and-live-game](2026-07-20-lobby-table-routing-and-live-game.md), [lobby-entry-ui](2026-07-20-lobby-entry-ui.md).
+**Surfaces:** Nitro BFF `client/server/routes/api/**`, `client/server/lobby-http.ts`, `client/app/domain/lobby/client.ts`, `shell/lobby/update.ts`.
 
 ---
 

@@ -1,6 +1,6 @@
 # Coverage by Set
 **Status:** Current (as of 2026-07-26)
-**Module:** `client/app/shell/coverage/**`, `client/app/domain/lobby/client.ts`, `client/app/domain/coverage-meta.ts`, `client/app/domain/scryfall-sets.ts`, `client/app/domain/scryfall-oracle-total.ts`, `client/server/routes/api/[...path].ts`, `crates/server/src/health.rs`
+**Module:** `client/app/shell/coverage/**`, `client/app/domain/lobby/client.ts`, `client/app/domain/coverage-meta.ts`, `client/app/domain/scryfall-sets.ts`, `client/app/domain/scryfall-oracle-total.ts`, `client/server/routes/api/meta/coverage/v1.get.ts`, `client/server/lobby-http.ts`, `crates/server/src/health.rs`
 
 ## Problem Statement
 
