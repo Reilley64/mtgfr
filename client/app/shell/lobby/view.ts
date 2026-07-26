@@ -116,7 +116,7 @@ function deckCardAndBack(
 
 function joinCardClass(): string {
   return cn(
-    "flex min-h-full flex-col gap-sm rounded-hud border border-dashed border-vine bg-glass-dim p-md text-left",
+    "flex min-h-full flex-col gap-sm rounded-hud border border-vine border-dashed bg-glass-dim p-md text-left",
     "hover:bg-white/8 disabled:opacity-60",
   );
 }
