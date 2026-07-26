@@ -17,9 +17,4 @@ export class LobbyDecodeError extends Schema.TaggedErrorClass<LobbyDecodeError>(
   message: Schema.String,
 }) {}
 
-export type LobbyClientError =
-  | LobbyUnauthorized
-  | LobbyNotFound
-  | LobbyBadRequest
-  | LobbyHttpError
-  | LobbyDecodeError;
+export type LobbyClientError = LobbyUnauthorized | LobbyNotFound | LobbyBadRequest | LobbyHttpError | LobbyDecodeError;
