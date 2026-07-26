@@ -1,7 +1,18 @@
 import * as Match from "effect/Match";
-import type { WireAttack, WireBlock, WireIntent } from "~/wire/types";
+import type { VisibleState, WireAttack, WireBlock, WireIntent } from "~/wire/types";
 import { attackablePlaneswalker, attackDrop, blockDrop, type CombatMode, type PrimaryAction } from "./interaction";
 import type { RenderCard } from "./layout";
+
+/** Whether the active seat may arm End Turn. Hidden while local combat staging is pending,
+ * or while the engine requires at least one attacker (goad / must-attack). */
+export function canArmEndTurn(state: VisibleState, pendingAttackers: boolean): boolean {
+  if (state.viewer !== state.active_player) return false;
+  if (state.stack.length > 0) return false;
+  if (pendingAttackers) return false;
+  const required = state.actions?.find((a) => a.kind === "declare_attackers")?.required_attacks?.length ?? 0;
+  if (required > 0) return false;
+  return true;
+}
 
 export type CombatDropResult =
   | { kind: "attackers"; value: WireAttack[] }

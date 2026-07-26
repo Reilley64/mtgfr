@@ -393,6 +393,30 @@ test("active player sees the end-turn affordance", () => {
   overlayScene(overlayModel(), Scene.expect(Scene.testId("board-end-turn")).toExist());
 });
 
+test("end turn is hidden when a goaded creature must attack", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        step: 5, // declare attackers
+        actions: [
+          {
+            id: 1,
+            kind: "declare_attackers",
+            label: testMessageRef("Declare attackers"),
+            needs_target: false,
+            section: "combat",
+            declare_for: [0],
+            required_attacks: [{ attacker: 7, defender: 1 }],
+          },
+        ],
+      }),
+    ),
+    Scene.expect(Scene.testId("board-end-turn")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toContainText("Attack (1)"),
+  );
+});
+
 test("non-active player sees the turn-yield rocker", () => {
   overlayScene(
     overlayModel(initialBoardModel(), gameState({ active_player: 1 })),

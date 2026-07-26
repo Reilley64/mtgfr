@@ -125,7 +125,7 @@ this turn" / "…which creatures block this turn"). `CombatExtras::attack_declar
 - A creature may appear multiple times if goaded by multiple players.
 - Goad clears at the start of the goading player's next untap step (one turn of effect, CR 701.38b).
 - Continuous goad-on-attachment (the Impetus cycle, Redemption Arc) is not stored in `goaded`; it is re-evaluated live off the attachment scan whenever goad state is queried.
-- `Game::required_attacks` and the declare-attackers goad-validation loop share the same affordability-aware logic so client staging and engine rejection cannot disagree.
+- `Game::required_attacks` and the declare-attackers goad-validation loop share the same affordability-aware logic so client staging and engine rejection cannot disagree. The client's confirm-attackers path submits the same merged list it displays (`stagedAttackersForDisplay`), and a rejected declare clears the optimistic `attackersConfirmed` latch so staging is not wedged for the rest of the step.
 
 ### Elimination during combat
 
