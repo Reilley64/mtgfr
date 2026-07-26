@@ -42,6 +42,10 @@ jobs:
     needs: verify-server-gate
     if: needs.verify-server-gate.outputs.cache-hit != 'true'
     runs-on: ubuntu-latest
+    # Image ships dash as /bin/sh; pipefail needs bash.
+    defaults:
+      run:
+        shell: bash
     container:
       image: ghcr.io/reilley64/mtgfr-ci:latest
       options: --user root
@@ -64,6 +68,9 @@ jobs:
     needs: verify-server-gate
     if: needs.verify-server-gate.outputs.cache-hit != 'true'
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
     container:
       image: ghcr.io/reilley64/mtgfr-ci:latest
       options: --user root
@@ -99,6 +106,9 @@ jobs:
     needs: verify-server-gate
     if: needs.verify-server-gate.outputs.cache-hit != 'true'
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
     container:
       image: ghcr.io/reilley64/mtgfr-ci:latest
       options: --user root
