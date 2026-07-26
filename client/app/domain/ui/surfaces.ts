@@ -27,6 +27,11 @@ export function fieldClass(...extra: Array<string | false | null | undefined>): 
   return cn("rounded-control border border-vine bg-glass px-md py-sm text-body text-snow", ...extra);
 }
 
+/** Inline shell alert / legality stack. Call sites still set `role="alert"`. */
+export function alertClass(...extra: Array<string | false | null | undefined>): string {
+  return cn("flex flex-col gap-[3px] text-label text-reconnect-rust", ...extra);
+}
+
 /** Fixed bottom-left API/build badge (Solid AppVersion silhouette). */
 export function appVersionClass(): string {
   return "pointer-events-none fixed bottom-md left-md z-10 text-label text-lichen/70";

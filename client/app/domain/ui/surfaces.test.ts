@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { feltClass, fieldClass, listRowClass, modalClass, panelClass } from "./surfaces";
+import { alertClass, feltClass, fieldClass, listRowClass, modalClass, panelClass } from "./surfaces";
 
 describe("surface classes", () => {
   it("panel is forest-surface with vine border and table shadow", () => {
@@ -35,5 +35,17 @@ describe("surface classes", () => {
     expect(c).toContain("border-vine");
     expect(c).toContain("bg-glass");
     expect(c).toContain("rounded-control");
+  });
+
+  it("alert is a readable reconnect-rust stack", () => {
+    const c = alertClass();
+    expect(c).toContain("flex");
+    expect(c).toContain("text-label");
+    expect(c).toContain("text-reconnect-rust");
+  });
+
+  it("alert tone can override to burn-red", () => {
+    expect(alertClass("text-burn-red")).toContain("text-burn-red");
+    expect(alertClass("text-burn-red")).not.toContain("text-reconnect-rust");
   });
 });
