@@ -18,10 +18,11 @@ import {
   NewDeckRoute,
   NotFoundRoute,
   PlayRoute,
-  routePath,
   TableRoute,
 } from "../routes";
 import { view } from "../view";
+import { BindAccountMenuEscape } from "./account-chrome/escape";
+import { ClosedAccountMenu } from "./account-chrome/messages";
 import { ClearedBuilderHover } from "./decks/builder/messages";
 import { initialDeckBuilderSubmodel } from "./decks/builder/submodel";
 import { BindBuilderCardPointer } from "./decks/builder/view";
@@ -154,16 +155,51 @@ describe("shell surface scenes", () => {
         }),
       ),
       Scene.expect(Scene.selector('[data-testid="decks-page"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="header-leaderboard-link"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="account-menu-trigger"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="seat-face-0"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="deck-list-search"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="deck-tile-1"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="delete-deck-1"]')).not.toExist(),
-      Scene.expect(Scene.selector('[data-testid="account-gravatar-link"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="account-gravatar-link"]')).not.toExist(),
+      Scene.expect(Scene.text("Sign out")).not.toExist(),
       Scene.expect(Scene.text("Your decks")).toExist(),
       Scene.expect(Scene.text("Superfriends")).toExist(),
       Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), ClosedDeckListMenu()),
       Scene.Mount.resolve(BindDeckCardFlip({ deckId: 1 }), DeckCardFlipTick()),
       Scene.Mount.resolve(BindCardArt, CardArtTick()),
       Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
+    );
+  });
+
+  it("opens the account menu from the home avatar", () => {
+    Scene.scene(
+      { update, view },
+      Scene.with(
+        authedModel(HomeRoute(), {
+          decks: {
+            ...init()[0].decks,
+            list: {
+              ...init()[0].decks.list,
+              decks: [deck],
+              knownCommanders: { atraxa },
+              loading: false,
+              accountMenuOpen: true,
+            },
+          },
+        }),
+      ),
+      Scene.expect(Scene.selector('[data-testid="account-menu"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="account-menu-username"]')).toExist(),
+      Scene.expect(Scene.text("alice")).toExist(),
+      Scene.expect(Scene.selector('[data-testid="account-gravatar-link"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="account-menu-sign-out"]')).toExist(),
+      Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), ClosedDeckListMenu()),
+      Scene.Mount.resolve(BindDeckCardFlip({ deckId: 1 }), DeckCardFlipTick()),
+      Scene.Mount.resolve(BindCardArt, CardArtTick()),
+      Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
+      Scene.Mount.resolve(BindAccountMenuEscape(), ClosedAccountMenu()),
+      Scene.Mount.expectEnded(BindAccountMenuEscape),
     );
   });
 
@@ -243,6 +279,7 @@ describe("shell surface scenes", () => {
               { rank: 1, rating: 1200, user_id: 1, username: "alice" },
               { rank: 2, rating: 1175, user_id: 2, username: "bruno" },
             ],
+            accountMenuOpen: false,
             error: null,
             status: "ready",
             total: 2,
@@ -267,6 +304,7 @@ describe("shell surface scenes", () => {
         authedModel(LeaderboardRoute(), {
           leaderboard: {
             entries: [{ rank: 1, rating: 1200, user_id: 1, username: "alice" }],
+            accountMenuOpen: false,
             error: "Could not load the leaderboard.",
             status: "error",
             total: 2,

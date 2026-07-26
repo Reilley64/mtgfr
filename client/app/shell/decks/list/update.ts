@@ -61,7 +61,7 @@ export const DeleteDeck = Command.define(
 export function loadDeckList(
   model: DeckListSubmodel,
 ): readonly [DeckListSubmodel, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
-  return [{ ...model, error: null, loading: true }, [FetchDecks()]];
+  return [{ ...model, accountMenuOpen: false, error: null, loading: true }, [FetchDecks()]];
 }
 
 export const update = (
@@ -84,7 +84,7 @@ export const update = (
       ChangedDeckListSearch: ({ query }) => [{ ...model, searchQuery: query }, []],
       OpenedDeckListMenu: ({ deckId, x, y }) => {
         if (!deckListContextMenuAllowed(deckId)) return [model, []];
-        return [{ ...model, contextMenu: { deckId, x, y } }, []];
+        return [{ ...model, accountMenuOpen: false, contextMenu: { deckId, x, y } }, []];
       },
       ClosedDeckListMenu: () => [{ ...model, contextMenu: null }, []],
       AskedDeckDelete: ({ id }) => [{ ...model, confirmingDeleteId: id, error: null, contextMenu: null }, []],

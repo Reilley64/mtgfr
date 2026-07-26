@@ -146,7 +146,7 @@ Vite production builds set `build.sourcemap: true` (via `clientBuildSourcemap`) 
 ## Testing Decisions
 
 - `client/app/shell/auth/**/*.test.ts` — auth stories and helpers, including `ReceivedMe` → `HashMeGravatar` session storage and stale-result guarding.
-- `client/app/routes.test.ts`, `client/app/smoke.test.ts` — routing and smoke; includes protected `/leaderboard` entry, auth redirect, home teaser fetch, and retry-from-page-one behavior.
+- `client/app/routes.test.ts`, `client/app/smoke.test.ts` — routing and smoke; includes protected `/leaderboard` entry, auth redirect, home deck-list entry, and retry-from-page-one behavior.
 - `client/app/shell/surfaces.test.ts` — shell Scene coverage for the `/leaderboard` surface and its retry/error chrome.
 - `client/app/game/*.test.ts` — game fold, stream subscription.
 - `client/lib/rpc-client.test.ts` — Effect HTTP client (stubbed fetch).

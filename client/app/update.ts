@@ -388,6 +388,62 @@ export const update = (
         const [auth, commands] = updateAuth(model.auth, authMessage);
         return [{ ...model, auth }, commands];
       },
+      ToggledAccountMenu: () => {
+        if (model.route._tag === "HomeRoute") {
+          const list = model.decks.list;
+          return [
+            {
+              ...model,
+              decks: {
+                ...model.decks,
+                list: {
+                  ...list,
+                  accountMenuOpen: !list.accountMenuOpen,
+                  contextMenu: null,
+                },
+              },
+            },
+            [],
+          ];
+        }
+        if (model.route._tag === "LeaderboardRoute") {
+          return [
+            {
+              ...model,
+              leaderboard: {
+                ...model.leaderboard,
+                accountMenuOpen: !model.leaderboard.accountMenuOpen,
+              },
+            },
+            [],
+          ];
+        }
+        return [model, []];
+      },
+      ClosedAccountMenu: () => {
+        if (model.route._tag === "HomeRoute") {
+          return [
+            {
+              ...model,
+              decks: {
+                ...model.decks,
+                list: { ...model.decks.list, accountMenuOpen: false },
+              },
+            },
+            [],
+          ];
+        }
+        if (model.route._tag === "LeaderboardRoute") {
+          return [
+            {
+              ...model,
+              leaderboard: { ...model.leaderboard, accountMenuOpen: false },
+            },
+            [],
+          ];
+        }
+        return [model, []];
+      },
       RequestedDecksRefresh: (decksMessage) => foldDeckList(model, decksMessage),
       ReceivedDecks: (decksMessage) => {
         const [nextModel, commands] = foldDeckList(model, decksMessage);

@@ -4,6 +4,7 @@ import { DeckSummary } from "../../../../lib/wire/types";
 
 export const DeckListSubmodel = S.Struct({
   searchQuery: S.String,
+  accountMenuOpen: S.Boolean,
   contextMenu: S.NullOr(S.Struct({ deckId: S.Number, x: S.Number, y: S.Number })),
   knownCommanders: S.Record(S.String, CatalogCardSchema),
   decks: S.Array(DeckSummary),
@@ -17,6 +18,7 @@ export type DeckListSubmodel = typeof DeckListSubmodel.Type;
 export function initialDeckListSubmodel(): DeckListSubmodel {
   return {
     searchQuery: "",
+    accountMenuOpen: false,
     contextMenu: null,
     knownCommanders: {},
     decks: [],

@@ -7,6 +7,7 @@ import { ModalOpened } from "../lib/ui/confirmDialog";
 import { Message as BoardMessage } from "./board/messages";
 import { DeckCardFlipTick } from "./deck-card-nav";
 import { Message as GameMessage } from "./game/messages";
+import { Message as AccountChromeMessage } from "./shell/account-chrome/messages";
 import { Message as AuthMessage } from "./shell/auth/messages";
 import { Message as DecksMessage } from "./shell/decks/messages";
 import { Message as LeaderboardMessage } from "./shell/leaderboard/messages";
@@ -37,6 +38,7 @@ export const Message = S.Union([
   CardArtTick,
   DeckCardFlipTick,
   BoardMessage,
+  AccountChromeMessage,
   AuthMessage,
   DecksMessage,
   LeaderboardMessage,
@@ -60,6 +62,10 @@ export {
   StreamStatus,
   StreamTerminalError,
 } from "./game/messages";
+export {
+  ClosedAccountMenu,
+  ToggledAccountMenu,
+} from "./shell/account-chrome/messages";
 export {
   AuthFailed,
   ChangedAuthEmail,
