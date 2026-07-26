@@ -4,7 +4,7 @@ import { fetchMe, type Me } from "../app/domain/api-upstream-auth";
 import { type LobbySnapshot, sweepWebDb } from "../app/domain/lobby-store";
 import { grpcRequestEnv, runTracedRequest } from "../app/domain/otel";
 import type { GrpcRequestEnv } from "../app/domain/wire/grpcClient";
-import { createWebDb } from "./db/client";
+import { runWebDb } from "./db/client";
 
 export const SESSION_COOKIE = "session";
 
@@ -44,7 +44,6 @@ function lobbyDbErrorMessage(err: unknown): string {
 type LobbyAuthCtx = {
   me: Me;
   env: GrpcRequestEnv;
-  db: ReturnType<typeof createWebDb>;
 };
 
 export async function withLobbyAuth(
@@ -68,9 +67,8 @@ export async function withLobbyAuth(
         if (!me) return new Response("Unauthorized", { status: 401 });
         return yield* Effect.tryPromise({
           try: async () => {
-            const db = createWebDb();
-            await sweepWebDb(db);
-            return fn({ me, env, db });
+            await runWebDb(sweepWebDb());
+            return fn({ me, env });
           },
           catch: (err) => (err instanceof Error ? err : new Error(String(err))),
         });

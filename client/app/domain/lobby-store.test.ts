@@ -1,7 +1,8 @@
 import { eq } from "drizzle-orm";
+import * as Effect from "effect/Effect";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { lobbies } from "../../db/schema";
-import { createWebDb } from "../../server/db/client";
+import { WebDb, WebDbLive } from "../../server/db/client";
 import {
   createLobby,
   joinLobby,
@@ -120,21 +121,27 @@ describe("randomTableCode", () => {
 // Client CI has no Postgres; run the round-trip only when WEB_DATABASE_URL is set
 // (local Cloud / migrate environments). Projection coverage above still runs in CI.
 describe.skipIf(!process.env.WEB_DATABASE_URL)("joinLobby gravatar persistence", () => {
-  let db: ReturnType<typeof createWebDb>;
+  const run = <A, E>(op: Effect.Effect<A, E, WebDb>): Promise<A> =>
+    Effect.runPromise(op.pipe(Effect.provide(WebDbLive)));
+
+  const deleteLobby = Effect.fn(function* (id: string) {
+    const db = yield* WebDb;
+    yield* db.delete(lobbies).where(eq(lobbies.tableId, id));
+  });
+
   let tableId: string | undefined;
 
   afterEach(async () => {
-    if (!tableId || db == null) return;
-    await db.delete(lobbies).where(eq(lobbies.tableId, tableId));
+    if (!tableId) return;
+    await run(deleteLobby(tableId));
     tableId = undefined;
   });
 
   it("loadLobby succeeds on an empty table (missing gravatar_hash 500s Host as Unreachable)", async () => {
     // Schema must come from edh-web-migrate (0002/0003 + Job assert), not app self-heal.
     // Without gravatar_hash, join/lobby GET 500 → client Unreachable.
-    db = createWebDb();
-    tableId = await createLobby(db, 9000);
-    await expect(loadLobby(db, tableId)).resolves.toMatchObject({
+    tableId = await run(createLobby(9000));
+    await expect(run(loadLobby(tableId))).resolves.toMatchObject({
       tableId,
       hostUserId: 9000,
       seats: [],
@@ -142,35 +149,38 @@ describe.skipIf(!process.env.WEB_DATABASE_URL)("joinLobby gravatar persistence",
   });
 
   it("writes gravatarHash on insert/update and loadLobby/toLobbyView read it back", async () => {
-    db = createWebDb();
-    tableId = await createLobby(db, 9001);
+    tableId = await run(createLobby(9001));
 
-    const joined = await joinLobby(db, {
-      tableId,
-      userId: 9001,
-      username: "alice",
-      gravatarHash: "hash-on-join",
-      deckId: 1,
-      deckName: "Test Deck",
-    });
+    const joined = await run(
+      joinLobby({
+        tableId,
+        userId: 9001,
+        username: "alice",
+        gravatarHash: "hash-on-join",
+        deckId: 1,
+        deckName: "Test Deck",
+      }),
+    );
     expect(joined.snap?.seats[0]?.gravatarHash).toBe("hash-on-join");
 
-    const loaded = await loadLobby(db, tableId);
+    const loaded = await run(loadLobby(tableId));
     expect(loaded?.seats[0]?.gravatarHash).toBe("hash-on-join");
     if (loaded == null) throw new Error("expected lobby to load");
     expect(toLobbyView(loaded, 9001).seats[0]?.gravatar_hash).toBe("hash-on-join");
 
-    const updated = await joinLobby(db, {
-      tableId,
-      userId: 9001,
-      username: "alice",
-      gravatarHash: "hash-updated",
-      deckId: 1,
-      deckName: "Test Deck",
-    });
+    const updated = await run(
+      joinLobby({
+        tableId,
+        userId: 9001,
+        username: "alice",
+        gravatarHash: "hash-updated",
+        deckId: 1,
+        deckName: "Test Deck",
+      }),
+    );
     expect(updated.snap?.seats[0]?.gravatarHash).toBe("hash-updated");
 
-    const reloaded = await loadLobby(db, tableId);
+    const reloaded = await run(loadLobby(tableId));
     expect(reloaded?.seats[0]?.gravatarHash).toBe("hash-updated");
     if (reloaded == null) throw new Error("expected lobby to reload");
     expect(toLobbyView(reloaded, 9001).seats[0]?.gravatar_hash).toBe("hash-updated");

@@ -4,10 +4,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { json, readJsonObject, tableParam, unknownLobby, withLobbyAuth } from "./lobby-http";
 
 const mocks = vi.hoisted(() => ({
-  createWebDb: vi.fn(),
   fetchMe: vi.fn(),
   grpcRequestEnv: vi.fn(),
   runTracedRequest: vi.fn(),
+  runWebDb: vi.fn(),
   sweepWebDb: vi.fn(),
 }));
 
@@ -25,10 +25,9 @@ vi.mock("../app/domain/otel", () => ({
 }));
 
 vi.mock("./db/client", () => ({
-  createWebDb: mocks.createWebDb,
+  runWebDb: mocks.runWebDb,
 }));
 
-const db = { kind: "db" };
 const env = { sessionToken: "session-token" };
 const me = { id: 42, email: "player@example.test", username: "Player" };
 
@@ -48,11 +47,11 @@ function authEvent(): H3Event {
 describe("lobby-http", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.createWebDb.mockReturnValue(db);
     mocks.fetchMe.mockReturnValue(Effect.succeed(me));
     mocks.grpcRequestEnv.mockReturnValue(Effect.succeed(env));
     mocks.runTracedRequest.mockImplementation((_traceparent, _spanName, body) => Effect.runPromise(body));
-    mocks.sweepWebDb.mockResolvedValue(undefined);
+    mocks.runWebDb.mockResolvedValue(undefined);
+    mocks.sweepWebDb.mockReturnValue(Effect.void);
   });
 
   it("json sets content-type and status", async () => {

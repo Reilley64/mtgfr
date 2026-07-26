@@ -17,7 +17,7 @@ import { grpcRequestEnv, runTracedRequest } from "../../../../app/domain/otel";
 import { GrpcCallError, httpStatusOf } from "../../../../app/domain/wire/grpcClient";
 import { dispatchRpc, type RpcOutcome } from "../../../../app/domain/wire/rpcServer";
 import type { StreamFrame } from "../../../../app/domain/wire/types";
-import { createWebDb } from "../../../db/client";
+import { runWebDb } from "../../../db/client";
 
 const SESSION_COOKIE = "session";
 const COOKIE_MAX_AGE_SECONDS = 30 * 24 * 60 * 60; // 30 days — mirrors crates/server/src/auth.rs
@@ -36,8 +36,7 @@ function cookieOptions() {
  * falls back to the default (unrouted) address in dev, where every table lives in one process —
  * same semantics as the retired HTTP `resolveGameUpstream`. */
 async function resolveTableAddress(tableId: string): Promise<string | null> {
-  const db = createWebDb();
-  const pod = await lookupTableRoute(db, tableId);
+  const pod = await runWebDb(lookupTableRoute(tableId));
   if (!pod) return null;
   // Legacy seed fallback wrote bare `instance_id` ("local"); that is not DNS.
   if (pod === "local") return grpcUpstream();
