@@ -79,13 +79,8 @@ Helpers also live in `client/lib/lobby/client.ts` for table URL / code parsing u
 
 - `client/app/shell/lobby/**/*.test.ts` — lobby stories and helpers (Host/Join entry, seated chrome, poll).
 - `client/lib/lobby-store.test.ts` — lobby state helpers; with `WEB_DATABASE_URL`, asserts
-<<<<<<< HEAD
-  `loadLobby` on an empty table (guards missing `gravatar_hash` / Host Unreachable).
-- Scene assertions for lobby entry / seated surfaces, including `seat-face-0` Gravatar/monogram chrome and the commander-damage options card / disabled guest switch, live with shell Scene coverage (`just client-check`).
-=======
   `loadLobby` on an empty table (requires migrate-applied `gravatar_hash`).
-- Scene assertions for lobby entry / seated surfaces, including `seat-face-0` Gravatar/monogram chrome, live with shell Scene coverage (`just client-check`).
->>>>>>> origin/main
+- Scene assertions for lobby entry / seated surfaces, including `seat-face-0` Gravatar/monogram chrome and the commander-damage options card / disabled guest switch, live with shell Scene coverage (`just client-check`).
 
 ---
 
