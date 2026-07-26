@@ -72,6 +72,7 @@ These documents are **not superseded** and must stay current alongside the specs
 | [soc-fidelity-program](2026-07-26-soc-fidelity-program-design.md) | Design input to finish the five SoC precons at full fidelity-grind bar (order, mega-PR, Wizards-list intake, per-deck smoke) |
 | [pool-coverage-badge](2026-07-26-pool-coverage-badge-design.md) | Design input for shell `% faithful` coverage above API version (faithful pool ÷ Scryfall oracle total); update shell-routes / meta at implement time |
 | [coverage-by-set](2026-07-26-coverage-by-set-design.md) | Design input for `/coverage` set table (faithful-by-set ÷ Scryfall per-set oracle); badge navigates; depends on pool-coverage-badge |
+| [gha-server-verify-sharding](2026-07-26-gha-server-verify-sharding-design.md) | Design input for 3-shard nextest cold `verify-server` wall-clock; update `ci-and-release` at implement time |
 
 ## Authoring conventions
 
