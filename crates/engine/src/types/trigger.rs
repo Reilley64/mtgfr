@@ -47,6 +47,12 @@ pub enum Trigger {
     /// trigger). Fires off [`Event::TurnedFaceUp`] by scanning the now-revealed object's own
     /// abilities. Spelled `"turned_face_up"` in TOML.
     TurnedFaceUp,
+    /// When this permanent becomes monstrous (CR 701.28b — Alpha Deathclaw's "…or becomes
+    /// monstrous…"). Fires off [`Event::BecameMonstrous`] by scanning the source's own
+    /// abilities — the same self-scan idiom as [`Self::TurnedFaceUp`] above, but never fires a
+    /// second time on a later no-op activation (CR 701.28c means no event is minted at all).
+    /// Spelled `"becomes_monstrous"` in TOML.
+    BecomesMonstrous,
     /// When this creature is declared as an attacker.
     Attacks,
     /// Whenever this creature blocks or becomes blocked (Goblin Cadets, CR 509/CR 509.1h): fires

@@ -36,6 +36,14 @@ pub enum CountersEffect {
         level: u8,
     },
 
+    /// "Monstrosity N" (CR 701.28a — Alpha Deathclaw's "{5}{B}{G}: Monstrosity 4"): a no-op if
+    /// the source is already monstrous (CR 701.28c); otherwise puts `count` +1/+1 counters on it
+    /// (through the replacement pipeline) and sets [`Permanent::monstrous`], mirroring
+    /// [`Self::LevelUp`]'s self-targeting, source-mutating shape.
+    Monstrosity {
+        count: u8,
+    },
+
     MoveCounters {
         target: TargetSpec,
         to_filter: PermanentFilter,

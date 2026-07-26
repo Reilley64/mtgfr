@@ -1598,6 +1598,7 @@ enum TriggerTag {
     #[serde(alias = "etb_triggered")]
     Etb,
     TurnedFaceUp,
+    BecomesMonstrous,
     Attacks,
     BlocksOrBecomesBlocked,
     Dies,
@@ -1846,6 +1847,7 @@ impl<'de> Deserialize<'de> for Ability {
             TimingName::Trigger(tag) => Timing::Triggered(match tag {
                 TriggerTag::Etb => Trigger::Etb,
                 TriggerTag::TurnedFaceUp => Trigger::TurnedFaceUp,
+                TriggerTag::BecomesMonstrous => Trigger::BecomesMonstrous,
                 TriggerTag::Attacks => Trigger::Attacks,
                 TriggerTag::BlocksOrBecomesBlocked => Trigger::BlocksOrBecomesBlocked,
                 TriggerTag::Dies => Trigger::Dies,

@@ -118,6 +118,7 @@ pub(crate) fn project_event(
             object: source,
             level,
         },
+        Event::BecameMonstrous { object } => VisibleEvent::BecameMonstrous { object },
         Event::Flipped { object } => VisibleEvent::Flipped { object },
         Event::PhasedOut { object } => VisibleEvent::PhasedOut { object },
         Event::PhasedIn { object } => VisibleEvent::PhasedIn { object },

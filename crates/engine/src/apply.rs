@@ -41,6 +41,35 @@ impl Game {
     pub(crate) fn check_state_based_actions(&self) -> Vec<Event> {
         let mut events = Vec::new();
 
+        // CR 704.5r: a permanent carrying both a +1/+1 counter and a -1/-1 counter has N of each
+        // removed, N being the smaller count. Checked before the death/toughness sweep below,
+        // though the ordering is immaterial in practice — the two kinds already contribute
+        // independent, opposite P/T deltas (`characteristics.rs`'s `pt_layers`), so a creature's
+        // net toughness is identical whether or not the pairs have annihilated yet. This sweep
+        // matters for *counter-counting* readers (has-a-counter checks, proliferate's candidate
+        // scan) rather than for P/T.
+        for id in self.battlefield() {
+            let Object::Permanent(p) = self.objects[id as usize] else {
+                continue;
+            };
+            let plus = p.plus_counters;
+            let minus = p.kind_counters[CounterKind::MinusOneMinusOne as usize] as i32;
+            let n = plus.min(minus);
+            if n <= 0 {
+                continue;
+            }
+            events.push(Event::CountersPlaced {
+                object: id,
+                count: -n,
+                source_name: self.def_of(id).name,
+            });
+            events.push(Event::KindCountersPlaced {
+                object: id,
+                kind: CounterKind::MinusOneMinusOne,
+                count: -n,
+            });
+        }
+
         // Deaths (and Aura state) are emitted before player eliminations: a player can lose in the
         // same sweep that kills one of their creatures, and `PlayerLost` tombstones every object
         // they own — so it must run last, after those death events have already been minted. The
@@ -776,6 +805,10 @@ impl Game {
             }
             Event::LeveledUp { source, level } => {
                 self.permanent_mut(source).level = level;
+            }
+            // CR 701.28b: a one-way flag, never cleared by the Untap `StepBegan` turn-boundary reset.
+            Event::BecameMonstrous { object } => {
+                self.permanent_mut(object).monstrous = true;
             }
             // CR 712: the permanent flips to its back face (one-way, permanent). Its live
             // characteristics now come from `def.back` (via `def_of`); the object is otherwise

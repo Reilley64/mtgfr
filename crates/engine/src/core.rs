@@ -609,6 +609,13 @@ impl Game {
         self.as_permanent(id).is_some_and(|p| p.phased_out)
     }
 
+    /// Whether the permanent at `id` is monstrous (CR 701.28b — has had a "Monstrosity N"
+    /// ability resolve on it). `false` if `id` isn't a permanent, including a fresh object that
+    /// left and re-entered the battlefield (a new object is never monstrous).
+    pub fn is_monstrous(&self, id: ObjectId) -> bool {
+        self.as_permanent(id).is_some_and(|p| p.monstrous)
+    }
+
     /// Whether the permanent at `id` is face down (CR 708 — a manifested card): a 2/2 colorless
     /// creature with no name/types/subtypes/abilities/mana cost until turned face up. `false` if
     /// `id` isn't a permanent. Read by the characteristics overrides and the wire redaction layer.

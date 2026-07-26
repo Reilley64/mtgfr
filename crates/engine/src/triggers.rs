@@ -83,6 +83,12 @@ impl Game {
                 Event::TurnedFaceUp { permanent } => {
                     self.queue_self_trigger(permanent, Trigger::TurnedFaceUp);
                 }
+                // CR 701.28b: the flag is already set (the apply ran first) — same self-scan idiom
+                // as `TurnedFaceUp` above. A no-op activation (CR 701.28c) mints no
+                // `BecameMonstrous` at all, so this never double-fires.
+                Event::BecameMonstrous { object } => {
+                    self.queue_self_trigger(object, Trigger::BecomesMonstrous);
+                }
                 Event::TokenCreated {
                     token,
                     controller,
@@ -3059,6 +3065,14 @@ impl Game {
                 .living_players()
                 .filter(|&p| p != ctx.controller)
                 .any(|p| self.lands_controlled(p) as u32 >= at_least),
+            // "you have two or more opponents": living seats only (CR 800.4a) — an eliminated
+            // player stops being an opponent, unlike the table's starting player count.
+            Condition::YouHaveOpponents { at_least } => {
+                self.living_players()
+                    .filter(|&p| p != ctx.controller)
+                    .count() as u32
+                    >= at_least
+            }
             Condition::HandHasLandWithSubtype { subtypes } => {
                 self.hand_has_land_with_subtype(ctx.controller, subtypes)
             }

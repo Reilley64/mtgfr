@@ -45,6 +45,7 @@ impl Game {
                 c @ (CountersEffect::AttackerDrawsControllerCounters { .. }
                 | CountersEffect::DoubleCounters { .. }
                 | CountersEffect::LevelUp { .. }
+                | CountersEffect::Monstrosity { .. }
                 | CountersEffect::PlaceVowCounters { .. }
                 | CountersEffect::PutCounters { .. }
                 | CountersEffect::PutCountersEach { .. }

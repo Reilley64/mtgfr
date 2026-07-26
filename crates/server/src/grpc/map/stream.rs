@@ -859,6 +859,9 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> Option<pb::VisibleEvent> {
             object,
             level: u32::from(level),
         }),
+        VisibleEvent::BecameMonstrous { object } => {
+            Event::BecameMonstrous(pb::VisibleEventBecameMonstrous { object })
+        }
         VisibleEvent::PhasedOut { object } => {
             Event::PhasedOut(pb::VisibleEventPhasedOut { object })
         }

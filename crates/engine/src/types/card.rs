@@ -1015,6 +1015,7 @@ pub(crate) fn fresh_permanent(
         summoning_sick,
         entered_this_turn: true,
         attacked_this_turn: false,
+        monstrous: false,
         plus_counters: 0,
         kind_counters: [0; CounterKind::COUNT],
         temp_power: 0,
@@ -1542,6 +1543,13 @@ pub(crate) struct Permanent {
     /// while the permanent is still in combat this turn: this stays `true` after end of combat,
     /// after the permanent is removed from combat, or after it changes controllers mid-combat.
     pub(crate) attacked_this_turn: bool,
+    /// Whether this permanent has become monstrous (CR 701.28b) — a one-way state, not
+    /// turn-scoped: it is never cleared at any Untap step, and a permanent that leaves the
+    /// battlefield and returns is a new object that starts `false` again ([`fresh_permanent`]).
+    /// Set by [`Event::BecameMonstrous`] the moment a [`CountersEffect::Monstrosity`] resolves
+    /// (Alpha Deathclaw's "{5}{B}{G}: Monstrosity 4"), even if a replacement effect drove the
+    /// accompanying +1/+1 counters to zero (CR 701.28c only silences a *second* activation).
+    pub(crate) monstrous: bool,
     /// Net +1/+1 counters (each adds +1 power and +1 toughness).
     pub(crate) plus_counters: i32,
     /// Named non-P/T counters (CR 122.1 — charge, story, …), indexed by [`CounterKind`] as

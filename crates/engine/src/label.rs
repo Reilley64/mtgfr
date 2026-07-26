@@ -1586,6 +1586,9 @@ impl Effect {
             Effect::Misc(MiscEffect::BecomePrepared) => "Become prepared".to_string(),
             Effect::Misc(MiscEffect::FlipSource) => "Flip this permanent".to_string(),
             Effect::Counters(CountersEffect::LevelUp { level }) => format!("Level {level}"),
+            Effect::Counters(CountersEffect::Monstrosity { count }) => {
+                format!("Monstrosity {count}")
+            }
             Effect::Misc(MiscEffect::ArmCombatDamageWatch) => {
                 "Arm a delayed watch: this creature becomes prepared when target creature deals \
                  combat damage to a player this combat"

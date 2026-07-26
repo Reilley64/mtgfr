@@ -1,0 +1,53 @@
+# Menace, trample
+# When this creature enters or becomes monstrous, destroy target permanent.
+# {5}{B}{G}: Monstrosity 4. (If this creature isn't monstrous, put four +1/+1 counters on it and
+# it becomes monstrous.)
+name = "Alpha Deathclaw"
+id = "0a7d0d1f-a5ac-4db9-860c-9fcbe3fd9e71"
+default_print = "1e2dc5b0-ac26-4829-9716-f213eda5df30"
+otags = ["activated-ability", "evasion", "monstrosity", "removal-destroy", "removal-permanent", "repeatable-crime", "repeatable-removal", "spot-removal", "triggered-ability"]
+oracle = "Menace, trample\nWhen this creature enters or becomes monstrous, destroy target permanent.\n{5}{B}{G}: Monstrosity 4. (If this creature isn't monstrous, put four +1/+1 counters on it and it becomes monstrous.)"
+set = "pip"
+subtypes = ["Lizard", "Mutant"]
+keywords = ["menace", "trample"]
+
+[cost]
+generic = 4
+black = 1
+green = 1
+
+[kind]
+type = "creature"
+power = 6
+toughness = 6
+
+# When this creature enters or becomes monstrous, destroy target permanent.
+[[abilities]]
+timing = "etb"
+
+# destroy target permanent.
+[[abilities.effects]]
+type = "destroy"
+mode = "target"
+target = { permanent = {} }
+
+# When this creature enters or becomes monstrous, destroy target permanent.
+[[abilities]]
+timing = "becomes_monstrous"
+
+# destroy target permanent.
+[[abilities.effects]]
+type = "destroy"
+mode = "target"
+target = { permanent = {} }
+
+# {5}{B}{G}: Monstrosity 4.
+[[abilities]]
+timing = "activated"
+activation_cost = { generic = 5, black = 1, green = 1 }
+
+# Monstrosity 4.
+[[abilities.effects]]
+type = "counters"
+mode = "monstrosity"
+count = 4

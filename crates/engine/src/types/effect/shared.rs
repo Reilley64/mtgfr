@@ -791,6 +791,8 @@ impl Effect {
             | Effect::Misc(MiscEffect::FlipSource)
             // "Level N" always raises the ability's own source's level, never a chosen target.
             | Effect::Counters(CountersEffect::LevelUp { .. })
+            // "Monstrosity N" always affects the ability's own source, never a chosen target.
+            | Effect::Counters(CountersEffect::Monstrosity { .. })
             // The as-enters creature-type/color choices always affect the ability's own source.
             | Effect::Choice(ChoiceEffect::ChooseCreatureType)
             | Effect::Choice(ChoiceEffect::ChooseColor)
@@ -1373,6 +1375,12 @@ pub enum Condition {
     /// *some* living opponent individually meets the threshold (not summed across opponents,
     /// unlike [`OpponentsControlLands`](Self::OpponentsControlLands)).
     AnOpponentControlsLands { at_least: u32 },
+    /// "if you have `at_least` or more opponents" (Undergrowth Stadium: "This land enters tapped
+    /// unless you have two or more opponents", `at_least = 2`). Every other player at the table
+    /// is an opponent (CR 102.3), but an eliminated seat no longer counts (CR 800.4a) — the
+    /// living-player count, not the table's starting size, so a four-player game that has gone
+    /// to heads-up reads *one* opponent.
+    YouHaveOpponents { at_least: u32 },
     /// "if you have a card with any of `subtypes` in hand" — the reveal lands (Vineglimmer Snarl
     /// and siblings) actually offer a choice whether to reveal, but revealing is strictly better
     /// (an untapped land vs. a tapped one) with no cost or downside, so there's no real decision

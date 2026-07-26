@@ -60,6 +60,10 @@ pub enum VisibleEvent {
         object: ObjectId,
         level: u8,
     },
+    /// A permanent became monstrous (CR 701.28b). Public battlefield status, like `LeveledUp`.
+    BecameMonstrous {
+        object: ObjectId,
+    },
     /// A permanent flipped (CR 712 — a Kamigawa flip card): it now uses its back face's
     /// characteristics. Public battlefield status, like `PreparedChanged`; the client swaps to the
     /// back face from its own card data.

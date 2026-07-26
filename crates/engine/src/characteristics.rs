@@ -1097,10 +1097,6 @@ impl Game {
             }));
             // CR 121.4/122.1: a -1/-1 counter subtracts 1/1, the mirror of a +1/+1 counter's
             // addition above.
-            // ponytail: skips CR 704.5r's +1/+1 ↔ -1/-1 annihilation SBA — both kinds are tracked
-            // independently rather than one signed pool, so a permanent could in principle carry
-            // both at once without them canceling. Unobservable today (no pool card puts both
-            // kinds on one creature); add the SBA sweep when one does.
             let minus_counters = p.kind_counters[CounterKind::MinusOneMinusOne as usize] as i32;
             layers.push(stamp(PtLayerKind::PtDelta {
                 power: -minus_counters,
@@ -2013,6 +2009,15 @@ impl Game {
             object,
             count: 1,
             source_name: self.def_of(object).name,
+        });
+    }
+
+    /// Test/setup helper: place a -1/-1 counter on a permanent (raw — bypasses replacements).
+    pub fn add_minus_counter(&mut self, object: ObjectId) {
+        self.apply(&Event::KindCountersPlaced {
+            object,
+            kind: CounterKind::MinusOneMinusOne,
+            count: 1,
         });
     }
 

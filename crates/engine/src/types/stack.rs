@@ -2035,6 +2035,10 @@ pub enum Event {
     /// A Class permanent gained a level (CR 717.2 — [`Effect::Counters(CountersEffect::LevelUp)`]): sets `source`'s
     /// [`Permanent::level`] to `level`. Public battlefield status, like [`Self::PreparedChanged`].
     LeveledUp { source: ObjectId, level: u8 },
+    /// A permanent became monstrous (CR 701.28b — [`Effect::Counters(CountersEffect::Monstrosity)`]):
+    /// sets [`Permanent::monstrous`], a one-way flag never cleared by [`Self::StepBegan`]'s
+    /// turn-boundary reset. Public battlefield status, like [`Self::LeveledUp`].
+    BecameMonstrous { object: ObjectId },
     /// `object` flipped (CR 712 — a Kamigawa flip card's [`Effect::Misc(MiscEffect::FlipSource)`]): sets
     /// [`Permanent::flipped`], so it permanently uses its [`CardDef::back`] face's characteristics.
     /// Public battlefield status, like [`Self::PreparedChanged`].

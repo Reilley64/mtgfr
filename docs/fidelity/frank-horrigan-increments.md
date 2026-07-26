@@ -75,7 +75,13 @@ Depends on: nothing.
 `Amount::GreatestPowerAmongCreaturesYouControl`, resolved off the same live-power scan
 (`Game::power`), 0 with no creatures. *Cards:* garruk_primal_hunter (−3).
 
-### 5. `opponent-count-condition` — 1 card, S
+### 5. `opponent-count-condition` — 1 card, S — LANDED 2026-07-26
+_Landed 2026-07-26: `Condition::YouHaveOpponents { at_least }` (TOML `"you_have_opponents"`) —
+`condition_holds`'s existing `living_players().filter(|&p| p != ctx.controller).count()` shape,
+matching `AnOpponentControlsLands`'s neighbouring arm. Every other seat is an opponent (CR 102.3);
+an eliminated seat drops out (CR 800.4a), so the count is live seats, not the table's starting
+size. undergrowth_stadium authored fresh (absent from the pool) and is fully faithful — a two-line
+land, no residual. Still blocked: nothing._
 Depends on: nothing.
 No condition counts *opponents* (`OpponentsControlLands` counts lands). *Sketch:*
 `Condition::YouHaveOpponents { at_least }` reading live seat count minus eliminated players — it
@@ -154,7 +160,19 @@ the spell, plus `Amount::TimesKicked` so "enters with a charge counter for each 
 kicked" can read it. The existing binary `if_kicked` stays as sugar for count ≥ 1. *Cards:*
 everflowing_chalice.
 
-### 12. `monstrosity` — 1 card, M
+### 12. `monstrosity` — 1 card, M — LANDED 2026-07-26
+_Landed 2026-07-26: `Permanent::monstrous: bool` (never cleared at Untap; a fresh object always
+starts `false`), `CountersEffect::Monstrosity { count }` (TOML `type = "counters"`,
+`mode = "monstrosity"`) — a no-op (CR 701.28c, not even the counters) if the source is already
+monstrous, otherwise its +1/+1 counters route through the same replacement pipeline `PutCounters`
+uses before `Event::BecameMonstrous` sets the flag, so Doubling Season/Hardened Scales apply and the
+flag sets even if a replacement drives the count to zero. `Trigger::BecomesMonstrous` (TOML
+`"becomes_monstrous"`) fires off that event via the same self-scan idiom as `TurnedFaceUp`, never on
+a later no-op activation. alpha_deathclaw authored fresh (absent from the pool) and is fully
+faithful — all three printed abilities (menace, trample; the "enters or becomes monstrous" destroy
+authored as two `[[abilities]]` blocks sharing one oracle sentence, like the commander's "enters or
+attacks"; the `{5}{B}{G}: Monstrosity 4` activated ability) with no residual. Still blocked:
+nothing._
 Depends on: nothing.
 Monstrosity (CR 701.28) is absent entirely. *Sketch:* a `monstrous: bool` on `Permanent`, an
 activated `monstrosity N` effect that is a no-op when already monstrous and otherwise places N
@@ -321,14 +339,30 @@ surfaced verbatim to users in the catalog. Restore the mode, raise `choose_max` 
 trim the note to the genuinely-remaining "destroy all battles" residual. *Cards:* final_act
 (existing pool).
 
-### 24. `plus-minus-counter-annihilation-sba` — observers, S
+### 24. `plus-minus-counter-annihilation-sba` — observers, S — LANDED 2026-07-26
 Depends on: nothing. **Falsifies `characteristics.rs:1100`.**
 CR 704.5r: a permanent with both +1/+1 and -1/-1 counters has N of each removed as a state-based
 action. The note calls this "unobservable today (no pool card puts both kinds on one creature)" —
-Contagion Clasp and Contagion Engine both place real -1/-1 counters, and infect damage places them
-too, onto a deck that stacks +1/+1 counters on nearly every creature. *Sketch:* one sweep in
-`check_state_based_actions` removing `min(plus, minus)` of each; delete the ponytail.
-*Cards:* contagion_clasp, contagion_engine, plus every infect source (#20 slice 2).
+Contagion Clasp and Contagion Engine both already place real -1/-1 counters onto a deck that stacks
++1/+1 counters on nearly every creature (infect does *not* land -1/-1 counters here — that's future
+#20 slice 2 work; corrected out of this section's premise, which previously claimed it did).
+*Sketch:* one sweep in `check_state_based_actions` removing `min(plus, minus)` of each; delete the
+ponytail. *Cards:* contagion_clasp, contagion_engine.
+_Landed 2026-07-26: a sweep at the top of `check_state_based_actions` (`apply.rs`) removes
+`min(plus_counters, kind_counters[MinusOneMinusOne])` of each kind via the same negative
+`CountersPlaced`/`KindCountersPlaced` idiom `remove_all_counters_events` uses, placed before the
+death/toughness sweep in the same function. Ordering is provably immaterial here — both kinds
+already contribute independent P/T deltas in `pt_layers`, so a creature's net toughness is
+identical whether or not annihilation has run yet; the sweep matters only for counter-counting
+readers (has-a-counter checks, proliferate's candidate scan), and `sweep_state_based_actions`'s
+existing fixpoint loop covers any residual ordering concern regardless. Deleted the falsified
+"unobservable today" ponytail paragraph in `characteristics.rs` (kept the CR 121.4/122.1 sentence
+explaining the -1/-1 layer itself). Tests (`crates/engine/tests/game.rs`):
+`plus_and_minus_counters_annihilate_as_a_state_based_action`,
+`plus_and_minus_counters_fully_annihilate_when_counts_are_equal`,
+`plus_and_minus_counter_annihilation_can_still_kill_in_the_same_sba_sweep`. `contagion_clasp` /
+`contagion_engine` keep their #17 proliferate `approximates` notes untouched — this increment
+doesn't clear those._
 
 ### 25. `becomes-treasure-losing-all-else` — 1 card, M
 Depends on: nothing.

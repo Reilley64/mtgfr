@@ -14198,6 +14198,100 @@ fn state_based_actions_spare_undamaged_creatures() {
     );
 }
 
+#[test]
+fn plus_and_minus_counters_annihilate_as_a_state_based_action() {
+    // CR 704.5r: "If a permanent has both a +1/+1 counter and a -1/-1 counter on it, N +1/+1
+    // and N -1/-1 counters are removed from it, where N is the smaller of the number of +1/+1
+    // and -1/-1 counters on it." A 2/2 with 3 +1/+1 and 2 -1/-1 counters annihilates 2 of each,
+    // leaving 1 +1/+1 counter and a 3/3.
+    let mut game = Game::new();
+    let bear = creature_on_battlefield(&mut game, PlayerId(0));
+    game.add_plus_counter(bear);
+    game.add_plus_counter(bear);
+    game.add_plus_counter(bear);
+    game.add_minus_counter(bear);
+    game.add_minus_counter(bear);
+
+    // Any action prompts a state-based-action sweep; player 0 just passes.
+    game.submit(Intent::PassPriority {
+        player: PlayerId(0),
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.plus_counters(bear),
+        1,
+        "2 of the 3 +1/+1 counters annihilated"
+    );
+    assert_eq!(
+        game.counters_of_kind(bear, CounterKind::MinusOneMinusOne),
+        0,
+        "both -1/-1 counters annihilated"
+    );
+    assert_eq!(
+        game.power(bear),
+        3,
+        "2/2 base plus the one surviving +1/+1 counter"
+    );
+    assert_eq!(game.zone_of(bear), Zone::Battlefield, "the bear survives");
+}
+
+#[test]
+fn plus_and_minus_counters_fully_annihilate_when_counts_are_equal() {
+    // CR 704.5r: equal counts annihilate to zero of each, leaving the permanent at its printed
+    // P/T with neither kind of counter on it.
+    let mut game = Game::new();
+    let bear = creature_on_battlefield(&mut game, PlayerId(0));
+    game.add_plus_counter(bear);
+    game.add_plus_counter(bear);
+    game.add_minus_counter(bear);
+    game.add_minus_counter(bear);
+
+    game.submit(Intent::PassPriority {
+        player: PlayerId(0),
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.plus_counters(bear),
+        0,
+        "both +1/+1 counters annihilated"
+    );
+    assert_eq!(
+        game.counters_of_kind(bear, CounterKind::MinusOneMinusOne),
+        0,
+        "both -1/-1 counters annihilated"
+    );
+    assert_eq!(game.power(bear), 2, "back to printed power");
+    assert_eq!(game.toughness(bear), 2, "back to printed toughness");
+    assert_eq!(game.zone_of(bear), Zone::Battlefield, "the bear survives");
+}
+
+#[test]
+fn plus_and_minus_counter_annihilation_can_still_kill_in_the_same_sba_sweep() {
+    // CR 704.5r's annihilation and CR 704.5f's 0-toughness death are both state-based actions
+    // checked (and re-checked) together: a 2/2 with 1 +1/+1 and 3 -1/-1 counters annihilates
+    // down to 0 +1/+1 / 2 -1/-1 counters, a net -2/-2 that drops toughness to 0 and kills it —
+    // all from the single `PassPriority` submission that triggers the sweep.
+    let mut game = Game::new();
+    let bear = creature_on_battlefield(&mut game, PlayerId(0));
+    game.add_plus_counter(bear);
+    game.add_minus_counter(bear);
+    game.add_minus_counter(bear);
+    game.add_minus_counter(bear);
+
+    game.submit(Intent::PassPriority {
+        player: PlayerId(0),
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.zone_of(bear),
+        Zone::Graveyard,
+        "0 toughness kills the bear"
+    );
+}
+
 /// A test-only creature that is itself a static anthem (+1/+1 to every creature its controller
 /// owns, the anthem source included) — modelling the pool's creature-based lords like Balefire
 /// Liege / Creakwood Liege, whose bonus counts their own body per `anthem_bonus`.
@@ -19743,6 +19837,56 @@ fn a_shockland_enters_tapped_below_the_life_cost_with_no_prompt() {
         "can't afford it, so it just enters tapped"
     );
     assert_eq!(game.life(PlayerId(0)), 1, "no life was taken");
+}
+
+// ── Undergrowth Stadium: "This land enters tapped unless you have two or more opponents." ──
+// (CR 102.3 — every other player is an opponent; CR 800.4a — an eliminated player is no
+// longer an opponent.)
+
+#[test]
+fn undergrowth_stadium_enters_untapped_with_two_opponents() {
+    let mut game = Game::with_players(4, 0);
+    let stadium = game.spawn_in_hand(PlayerId(0), card("Undergrowth Stadium"));
+
+    let events = game
+        .submit(Intent::PlayLand {
+            player: PlayerId(0),
+            object: stadium,
+        })
+        .unwrap();
+
+    let permanent = land_permanent(&events);
+    assert!(
+        !game.is_tapped(permanent),
+        "three living opponents clears the two-or-more threshold"
+    );
+}
+
+#[test]
+fn undergrowth_stadium_enters_tapped_after_opponents_are_eliminated() {
+    let mut game = Game::with_players(4, 0);
+    game.submit(Intent::Concede {
+        player: PlayerId(1),
+    })
+    .unwrap();
+    game.submit(Intent::Concede {
+        player: PlayerId(2),
+    })
+    .unwrap();
+
+    let stadium = game.spawn_in_hand(PlayerId(0), card("Undergrowth Stadium"));
+    let events = game
+        .submit(Intent::PlayLand {
+            player: PlayerId(0),
+            object: stadium,
+        })
+        .unwrap();
+
+    let permanent = land_permanent(&events);
+    assert!(
+        game.is_tapped(permanent),
+        "only one living opponent (PlayerId(3)) remains — below the two-or-more threshold"
+    );
 }
 
 #[test]
@@ -91883,4 +92027,284 @@ fn ichor_rats_entering_poisons_every_player_including_its_controller() {
             "{player:?} got a poison counter from Ichor Rats"
         );
     }
+}
+
+// ---------------------------------------------------------------------------
+// Monstrosity (#12 fidelity increment, CR 701.28): Permanent::monstrous,
+// Effect::Counters(CountersEffect::Monstrosity), Event::BecameMonstrous, Trigger::BecomesMonstrous.
+// ---------------------------------------------------------------------------
+
+/// A free activated "Monstrosity N" ability, so these tests exercise the counters/flag machinery
+/// without also exercising mana payment (Alpha Deathclaw's real cost is `{5}{B}{G}`).
+const fn monstrosity_ability(count: u8) -> Ability {
+    Ability {
+        timing: Timing::Activated(ActivationCost {
+            taps_self: false,
+            mana: Cost::FREE,
+            sacrifice: SacrificeCost::None,
+            pay_life: Amount::Fixed(0),
+            self_damage: 0,
+            loyalty: None,
+            once_each_turn: false,
+            sorcery_speed: false,
+            remove_counters: 0,
+            remove_counters_kind: None,
+            remove_counters_x: false,
+            return_self: false,
+            mill_self: 0,
+            discard_cost: 0,
+            exile_self: false,
+            graveyard_exile_target_count: 0,
+        }),
+        effect: Effect::Counters(CountersEffect::Monstrosity { count }),
+        optional: false,
+        min_level: 0,
+        once_each_turn: false,
+        condition: None,
+        cost: Cost::FREE,
+    }
+}
+
+/// A test-only 6/6 with a free "Monstrosity 4" ability (no becomes-monstrous rider).
+const MONSTROSITY_TEST_CREATURE: CardDef = CardDef {
+    name: "Test Monstrosity Beast",
+    kind: CardKind::Creature {
+        power: 6,
+        toughness: 6,
+        also: TypeSet::NONE,
+    },
+    abilities: &[monstrosity_ability(4)],
+    ..PINGER
+};
+
+/// A test-only 6/6 pairing the same free "Monstrosity 4" ability with a `becomes_monstrous`
+/// trigger (a life-gain rider stands in for Alpha Deathclaw's own "destroy target permanent", to
+/// isolate `Trigger::BecomesMonstrous` from the destroy effect).
+const MONSTROSITY_TRIGGER_CREATURE: CardDef = CardDef {
+    name: "Test Monstrosity Beast With Trigger",
+    kind: CardKind::Creature {
+        power: 6,
+        toughness: 6,
+        also: TypeSet::NONE,
+    },
+    abilities: &[
+        monstrosity_ability(4),
+        Ability {
+            timing: Timing::Triggered(Trigger::BecomesMonstrous),
+            effect: Effect::Life(LifeEffect::Gain {
+                amount: Amount::Fixed(7),
+            }),
+            optional: false,
+            min_level: 0,
+            once_each_turn: false,
+            condition: None,
+            cost: Cost::FREE,
+        },
+    ],
+    ..PINGER
+};
+
+/// Activate `beast`'s ability 0 (a "Monstrosity N" ability) and resolve it.
+fn activate_monstrosity(game: &mut Game, beast: ObjectId) {
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: beast,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(game);
+}
+
+#[test]
+fn monstrosity_places_counters_and_sets_the_flag() {
+    // CR 701.28a: "If this permanent isn't monstrous, put N +1/+1 counters on it and it becomes
+    // monstrous."
+    let mut game = Game::new();
+    let beast = game.spawn_on_battlefield(PlayerId(0), MONSTROSITY_TEST_CREATURE);
+    assert!(!game.is_monstrous(beast), "not monstrous before activation");
+
+    activate_monstrosity(&mut game, beast);
+
+    assert_eq!(
+        game.plus_counters(beast),
+        4,
+        "Monstrosity 4 places four +1/+1 counters"
+    );
+    assert_eq!(
+        game.power(beast),
+        10,
+        "6/6 plus four +1/+1 counters is 10/10"
+    );
+    assert!(game.is_monstrous(beast), "the permanent becomes monstrous");
+}
+
+#[test]
+fn monstrosity_does_nothing_when_already_monstrous() {
+    // CR 701.28c: if the permanent is already monstrous, "Monstrosity N" does nothing at all —
+    // not even a second helping of counters.
+    let mut game = Game::new();
+    let beast = game.spawn_on_battlefield(PlayerId(0), MONSTROSITY_TEST_CREATURE);
+
+    activate_monstrosity(&mut game, beast);
+    assert_eq!(game.plus_counters(beast), 4);
+
+    activate_monstrosity(&mut game, beast);
+    assert_eq!(
+        game.plus_counters(beast),
+        4,
+        "a second activation is a complete no-op (CR 701.28c)"
+    );
+}
+
+#[test]
+fn becomes_monstrous_trigger_fires_on_the_source() {
+    // "When this creature becomes monstrous" (Alpha Deathclaw's rider, modeled here with a
+    // life-gain effect standing in for "destroy target permanent"): fires once when Monstrosity
+    // actually resolves, and never on a later no-op activation.
+    let mut game = Game::new();
+    let beast = game.spawn_on_battlefield(PlayerId(0), MONSTROSITY_TRIGGER_CREATURE);
+    let start = game.life(PlayerId(0));
+
+    activate_monstrosity(&mut game, beast);
+    resolve_top_of_stack(&mut game); // the becomes-monstrous trigger resolves
+    assert_eq!(game.life(PlayerId(0)), start + 7, "the trigger fired once");
+
+    activate_monstrosity(&mut game, beast); // already monstrous: CR 701.28c no-op
+    assert_eq!(
+        game.life(PlayerId(0)),
+        start + 7,
+        "no BecameMonstrous event was minted, so the trigger doesn't fire a second time"
+    );
+}
+
+#[test]
+fn a_doubler_doubles_monstrositys_counters() {
+    // Monstrosity's +1/+1 counters route through the same replacement pipeline `PutCounters`
+    // uses (CR 614, CR 701.28a) — Doubling Season doubles four counters to eight.
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Doubling Season"));
+    let beast = game.spawn_on_battlefield(PlayerId(0), MONSTROSITY_TEST_CREATURE);
+
+    activate_monstrosity(&mut game, beast);
+
+    assert_eq!(
+        game.plus_counters(beast),
+        8,
+        "the doubler doubles Monstrosity 4's counters: 4 -> 8"
+    );
+    assert!(
+        game.is_monstrous(beast),
+        "it becomes monstrous regardless of the doubled count"
+    );
+}
+
+#[test]
+fn a_permanent_that_leaves_and_returns_is_not_monstrous() {
+    // "Monstrous" is a one-way state on the object, not the card (CR 701.28b) — a permanent that
+    // leaves the battlefield and returns is a new object (CR 400.7) and starts unmonstrous again.
+    let mut game = Game::new();
+    let beast = game.spawn_on_battlefield(PlayerId(0), MONSTROSITY_TEST_CREATURE);
+    activate_monstrosity(&mut game, beast);
+    assert!(game.is_monstrous(beast), "setup: it became monstrous");
+
+    let unsummon = game.spawn_in_hand(PlayerId(0), card("Unsummon"));
+    cast_and_resolve(&mut game, unsummon, Some(Target::Object(beast)));
+    let in_hand = game.current_id(beast);
+    assert_eq!(game.zone_of(in_hand), Zone::Hand, "bounced to hand");
+
+    cast_and_resolve(&mut game, in_hand, None);
+    let reentered = game.current_id(in_hand);
+    assert_eq!(
+        game.zone_of(reentered),
+        Zone::Battlefield,
+        "recast onto the battlefield"
+    );
+    assert!(
+        !game.is_monstrous(reentered),
+        "a fresh object never inherits the old one's monstrous flag"
+    );
+}
+
+#[test]
+fn alpha_deathclaw_destroys_on_etb_and_again_on_monstrosity() {
+    // Alpha Deathclaw (pip): "Menace, trample. When this creature enters or becomes monstrous,
+    // destroy target permanent. {5}{B}{G}: Monstrosity 4." — the same destroy ability fires off
+    // both trigger conditions, and the activated ability pays real colored mana.
+    let mut game = TestGame::new();
+    let etb_victim = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let monstrous_victim = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let deathclaw = game.spawn_in_hand(PlayerId(0), card("Alpha Deathclaw"));
+    game.fund_mana(PlayerId(0));
+
+    game.cast(deathclaw).resolve(); // enters; the mandatory ETB pauses to target
+    let deathclaw = game.current_id(deathclaw);
+    assert!(
+        game.has_keyword(deathclaw, Keyword::Menace),
+        "printed Menace"
+    );
+    assert!(
+        game.has_keyword(deathclaw, Keyword::Trample),
+        "printed Trample"
+    );
+
+    let Some(PendingChoice::ChooseTarget { legal, .. }) = game.pending_choice() else {
+        panic!(
+            "the mandatory ETB destroy pauses to choose a target, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(legal.contains(&Target::Object(etb_victim)));
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(etb_victim)],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.zone_of(etb_victim),
+        Zone::Graveyard,
+        "the ETB trigger destroyed its target"
+    );
+    assert!(!game.is_monstrous(deathclaw), "not monstrous yet");
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: deathclaw,
+        ability_index: 2,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("{5}{B}{G} paid from fund_mana's pool");
+    resolve_top_of_stack(&mut game); // Monstrosity 4 resolves: counters, flag, queues the trigger
+    assert_eq!(
+        game.power(deathclaw),
+        10,
+        "6/6 plus four +1/+1 counters is 10/10"
+    );
+    assert!(game.is_monstrous(deathclaw), "became monstrous");
+
+    let Some(PendingChoice::ChooseTarget { legal, .. }) = game.pending_choice() else {
+        panic!(
+            "becoming monstrous re-fires the same destroy ability, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(legal.contains(&Target::Object(monstrous_victim)));
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(monstrous_victim)],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.zone_of(monstrous_victim),
+        Zone::Graveyard,
+        "the becomes-monstrous trigger destroyed its target too"
+    );
 }

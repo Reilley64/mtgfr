@@ -195,6 +195,26 @@ impl Game {
             // A Class's "Level N" ability (CR 717.2): the activation gate only offered this while
             // the source sat at level N-1, so resolution just records the new level.
             CountersEffect::LevelUp { level } => vec![Event::LeveledUp { source, level }],
+            // "Monstrosity N" (CR 701.28a): already monstrous is a total no-op (CR 701.28c) — not
+            // even a `BecameMonstrous` event. Otherwise the +1/+1 counters route through the same
+            // replacement pipeline `PutCounters` uses, and the source becomes monstrous even if a
+            // replacement effect drove the count to zero.
+            CountersEffect::Monstrosity { count } => {
+                if self.permanent(source).monstrous {
+                    return Vec::new();
+                }
+                let n = self.counters_after_replacements(source, count as i32);
+                let mut events = Vec::new();
+                if n > 0 {
+                    events.push(Event::CountersPlaced {
+                        object: source,
+                        count: n,
+                        source_name,
+                    });
+                }
+                events.push(Event::BecameMonstrous { object: source });
+                events
+            }
             // Ingenious Prodigy: "you may remove a +1/+1 counter from it." A negative
             // `CountersPlaced`, mirroring `RemoveAllCountersThenDraw`'s removal above; guarded so
             // a source with none doesn't go negative (unreachable in practice — the enclosing

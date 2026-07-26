@@ -1046,6 +1046,7 @@ message VisibleEvent {
     VisibleEventBasePtSetIndefinite base_pt_set_indefinite = 130;
     VisibleEventSplitHalfSpellCast split_half_spell_cast = 131;
     VisibleEventPlayerCountersPlaced player_counters_placed = 132;
+    VisibleEventBecameMonstrous became_monstrous = 133;
   }
 }
 
@@ -1088,6 +1089,11 @@ message VisibleEventPhasedOut {
 // A permanent phased in (CR 702.26f — at its controller's untap). Public, the mirror of
 // `PhasedOut`.
 message VisibleEventPhasedIn {
+  uint32 object = 1;
+}
+
+// A permanent became monstrous (CR 701.28b). Public battlefield status, like `LeveledUp`.
+message VisibleEventBecameMonstrous {
   uint32 object = 1;
 }
 
