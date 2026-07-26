@@ -67,7 +67,8 @@ branch commit range.
   `docs/CR_INDEX.md`, and `scripts/gen_cr_index.py`. Key is computed once at
   restore on a clean checkout; the cache post-step saves that same key (do not
   re-`hashFiles` after checks). On miss: Postgres 16 + `just server-check`
-  (`engine-cr-index-check`, `cargo fmt --check`, clippy, migrate, nextest);
+  (`engine-cr-index-check`, `cargo fmt --check`, clippy with `-D warnings`,
+  migrate, nextest);
   JUnit upload + test summary. On hit: skip toolchain/setup/checks (Postgres
   service still starts with the job).
 - `verify-client`: Bun-only `just client-check` (tokens + mana-oracle + buf

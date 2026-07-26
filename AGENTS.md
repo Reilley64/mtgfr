@@ -13,7 +13,7 @@ cargo build
 cargo nextest run --profile ci           # all tests (via `just server-test`)
 cargo nextest run --profile ci <name>    # tests whose name matches <name>
 cargo nextest run --profile ci --nocapture  # show println! output from tests
-cargo clippy --all-targets      # lint — treat warnings as failures
+cargo clippy --all-targets -- -D warnings  # lint — treat warnings as failures (`just server-lint`)
 cargo fmt                       # format before committing
 just check                      # format + lint + typecheck + test (both sides)
 just format                     # server-format + client-format

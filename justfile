@@ -15,9 +15,9 @@ server-format-check:
     cargo fmt --check
 
 [group('server')]
-[doc("Lint Rust code")]
+[doc("Lint Rust code (warnings as errors)")]
 server-lint:
-    cargo clippy --all-targets
+    cargo clippy --all-targets -- -D warnings
 
 [group('server')]
 [doc("Build the workspace")]
