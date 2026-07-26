@@ -19,7 +19,7 @@ The **deck list** at `/` is a compact commander-tile grid over the deck list sub
 
 ## User Stories
 
-- As a returning player on `/`, I use the primary header `New deck` action (`deck-list-new-deck-header`) or the first grid tile — the dashed create tile (`deck-list-new-deck`) — to open `/decks/new`; when I have no saved decks yet, the page also shows an empty state (`deck-list-empty`) that points me to deck creation.
+- As a returning player on `/`, I use the first grid tile — the dashed create tile (`deck-list-new-deck`) — to open `/decks/new`; when I have no saved decks yet, the page also shows an empty state (`deck-list-empty`) that points me to deck creation.
 - As a returning player on `/`, I scan commander tiles (each link tile shows a Play label), search by name, click a tile to play, and right-click an owned deck to edit or delete it.
 - As a returning player on `/`, I use the header chrome to jump to `/leaderboard` or open my avatar menu to reach Gravatar settings or sign out.
 - As a returning player, I navigate directly to `/decks/new` and the deck builder loads, showing the full card pool on the left and a blank decklist on the right.
@@ -33,11 +33,10 @@ The **deck list** at `/` is a compact commander-tile grid over the deck list sub
 
 **Deck list** (`/`) shows saved decks from the deck list submodel as a compact tile grid.
 The page title (`Your decks`) lives in the shared `shellFrame` header title slot, not a
-custom left-side title block. The shared header trailing slot holds a primary `New deck`
-link (`deck-list-new-deck-header`) before account chrome: a `Leaderboard` link
-(`header-leaderboard-link`) plus an avatar trigger backed by the same circular
-Gravatar/monogram face helper used for seats. Opening the avatar menu shows a username
-title, an outbound `Change at Gravatar` link (`account-gravatar-link`) to
+custom left-side title block. The shared header trailing slot holds account chrome: a
+`Leaderboard` link (`header-leaderboard-link`) plus an avatar trigger backed by the same
+circular Gravatar/monogram face helper used for seats. Opening the avatar menu shows a
+username title, an outbound `Change at Gravatar` link (`account-gravatar-link`) to
 `https://gravatar.com`, and `Sign out`. Search and grid share one `max-w-[960px]` stage
 column.
 
@@ -113,9 +112,9 @@ Missing ordinary (non-`art_crop`) CDN art stays empty after load failure (no Scr
 - `client/app/domain/ui/card-art.test.ts` — art URL / host sync against `ImageCache`.
 - `client/app/domain/image-cache.test.ts` — cache settle / subscriber behavior.
 - Scene coverage for shell deck surfaces lives with other shell Scene tests, including
-  `deck-list-new-deck-header`, `header-leaderboard-link`, `account-menu-*`,
-  `account-gravatar-link`, `deck-list-empty`, and `deck-list-new-deck`; the home surface does not render
-  `data-testid="leaderboard-teaser"`. Route-entry Stories cover the home fetch path
+  `header-leaderboard-link`, `account-menu-*`, `account-gravatar-link`,
+  `deck-list-empty`, and `deck-list-new-deck`; the home surface does not render
+  `data-testid="leaderboard-teaser"` or a header `New deck` control. Route-entry Stories cover the home fetch path
   without a separate teaser request (see
   [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md) Testing Decisions /
   `just client-check`).

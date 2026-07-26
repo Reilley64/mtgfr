@@ -250,14 +250,8 @@ describe("shell surface scenes", () => {
       Scene.expect(Scene.text("Your decks")).toExist(),
       Scene.expect(Scene.text("Superfriends")).toExist(),
       Scene.expect(Scene.selector(`[data-testid="deck-list-new-deck"][href="${routePath(NewDeckRoute())}"]`)).toExist(),
-      Scene.expect(
-        Scene.selector(`[data-testid="deck-list-new-deck-header"][href="${routePath(NewDeckRoute())}"]`),
-      ).toExist(),
+      Scene.expect(Scene.selector('[data-testid="deck-list-new-deck-header"]')).not.toExist(),
       Scene.expect(Scene.text("New deck")).toExist(),
-      Scene.tap((sim) => {
-        const ids = collectTestIds(sim.html);
-        expect(ids.indexOf("deck-list-new-deck-header")).toBeLessThan(ids.indexOf("account-menu-trigger"));
-      }),
       Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), ClosedDeckListMenu()),
       Scene.Mount.resolve(BindDeckCardFlip({ deckId: 1 }), DeckCardFlipTick()),
       Scene.Mount.resolve(BindCardArt, CardArtTick()),

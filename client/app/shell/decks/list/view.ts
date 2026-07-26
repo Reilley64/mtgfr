@@ -187,25 +187,12 @@ export const view = Submodel.defineView<DeckListSubmodel, ViewMessage, ViewInput
     atmosphere: "shell",
     title: "Your decks",
     chrome: viewInputs.chrome,
-    trailing: h.div(
-      [h.Class("flex items-center gap-sm")],
-      [
-        h.a(
-          [
-            h.Href(routePath(NewDeckRoute())),
-            h.DataAttribute("testid", "deck-list-new-deck-header"),
-            h.Class(buttonClass("primary", "shrink-0 no-underline")),
-          ],
-          ["New deck"],
-        ),
-        accountChrome(h, {
-          username: viewInputs.username,
-          gravatarHash: viewInputs.meGravatarHash,
-          menuOpen: model.accountMenuOpen,
-          showLeaderboardLink: true,
-        }),
-      ],
-    ),
+    trailing: accountChrome(h, {
+      username: viewInputs.username,
+      gravatarHash: viewInputs.meGravatarHash,
+      menuOpen: model.accountMenuOpen,
+      showLeaderboardLink: true,
+    }),
     stage: h.div(
       [
         h.Class("h-full overflow-y-auto"),
