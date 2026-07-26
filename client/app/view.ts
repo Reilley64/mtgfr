@@ -1,12 +1,13 @@
 import { Effect } from "effect";
 import { type Document, html } from "foldkit/html";
 import * as Mount from "foldkit/mount";
-import { view as boardView } from "./board/view";
+import { view as boardView } from "./board";
 import { parseDeckIdParam, playDeckAccess } from "./deck-id";
 import type { AppChromeMeta } from "./domain/ui/app-version";
 import {
   CompletedPortraitGateModal,
   GotAuthMessage,
+  GotBoardMessage,
   GotDeckBuilderMessage,
   GotDeckListMessage,
   GotLeaderboardMessage,
@@ -156,7 +157,7 @@ function boardMount(model: Model) {
       slotId: "board",
       model: { board: game.board, fold: game, tableId, connected: game.connected },
       view: boardView,
-      toParentMessage: (message) => message,
+      toParentMessage: (message) => GotBoardMessage({ message }),
     });
   }
 

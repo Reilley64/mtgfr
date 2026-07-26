@@ -39,6 +39,7 @@ import {
   SetYield,
   SubmitIntent,
 } from "../game/intents";
+import type { Message as GameMessage } from "../game/messages";
 import type { RpcClient } from "../resources";
 import {
   buildTakeActionIntent,
@@ -1079,7 +1080,8 @@ function applyFlightsSynced(
 }
 
 type Vec = { x: number; y: number };
-type BoardCmd = FoldkitCommand.Command<Message, never, RpcClient>;
+export type OutMessage = Message | GameMessage;
+type BoardCmd = FoldkitCommand.Command<OutMessage, never, RpcClient>;
 type BoardReturn = readonly [BoardModel, ReadonlyArray<BoardCmd>];
 
 function undecidedMulliganInspectLock(state: VisibleState | null | undefined): boolean {
@@ -1187,9 +1189,8 @@ function submitCmd(tableId: string | null, intent: WireIntent): BoardCmd[] {
 }
 
 function boardIntentSubmit(tableId: string | null, intent: WireIntent): BoardCmd[] {
-  // SubmitIntent's Command emits app-level IntentAcked/IntentRejected. The top-level `update`
-  // folds those results into `game.board.reject`, so the board's own case handlers don't need to
-  // observe them directly.
+  // SubmitIntent's Command emits game acknowledgements, which the parent app now wraps through
+  // GotGameMessage before folding them back into `game.board.reject`.
   return submitCmd(tableId, intent);
 }
 

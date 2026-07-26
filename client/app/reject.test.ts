@@ -3,8 +3,9 @@
 
 import { describe, expect, it } from "vitest";
 import type { VisibleState } from "~/wire/types";
+import { IntentAcked, IntentRejected } from "./game/messages";
 import { init } from "./init";
-import { IntentAcked, IntentRejected } from "./messages";
+import { GotGameMessage } from "./messages";
 import { emptyGameSlice, type Model } from "./model";
 import { update } from "./update";
 
@@ -42,7 +43,7 @@ function modelWithGame(): Model {
 describe("intent reject wiring", () => {
   it("IntentRejected sets board.reject so priority-bar chrome shows the reason", () => {
     const initial = modelWithGame();
-    const [next] = update(initial, IntentRejected({ reason: "That's not your seat." }));
+    const [next] = update(initial, GotGameMessage({ message: IntentRejected({ reason: "That's not your seat." }) }));
     expect(next.game?.board.reject).toBe("That's not your seat.");
     expect(next.game?.reject).toBe("That's not your seat.");
   });
@@ -52,7 +53,7 @@ describe("intent reject wiring", () => {
     const game = seeded.game;
     if (game == null) throw new Error("test setup: game is null");
     seeded.game = { ...game, board: { ...game.board, promptSubmitInFlight: true } };
-    const [next] = update(seeded, IntentRejected({ reason: "Not your turn." }));
+    const [next] = update(seeded, GotGameMessage({ message: IntentRejected({ reason: "Not your turn." }) }));
     expect(next.game?.board.promptSubmitInFlight).toBe(false);
     expect(next.game?.board.reject).toBe("Not your turn.");
   });
@@ -62,7 +63,7 @@ describe("intent reject wiring", () => {
     const game = seeded.game;
     if (game == null) throw new Error("test setup: game is null");
     seeded.game = { ...game, board: { ...game.board, reject: "prior" }, reject: "prior" };
-    const [next] = update(seeded, IntentAcked());
+    const [next] = update(seeded, GotGameMessage({ message: IntentAcked() }));
     expect(next.game?.board.reject).toBeNull();
     expect(next.game?.reject).toBeNull();
   });

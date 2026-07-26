@@ -32,6 +32,8 @@ export const GotDeckListMessage = m("GotDeckListMessage", { message: DeckListMes
 export const GotDeckBuilderMessage = m("GotDeckBuilderMessage", { message: DeckBuilderMessage });
 export const GotLeaderboardMessage = m("GotLeaderboardMessage", { message: LeaderboardMessage });
 export const GotLobbyMessage = m("GotLobbyMessage", { message: LobbyMessage });
+export const GotBoardMessage = m("GotBoardMessage", { message: BoardMessage });
+export const GotGameMessage = m("GotGameMessage", { message: GameMessage });
 export { CardArtTick, DeckCardFlipTick, ModalOpened };
 
 export const Message = S.Union([
@@ -49,12 +51,12 @@ export const Message = S.Union([
   GotDeckBuilderMessage,
   GotLeaderboardMessage,
   GotLobbyMessage,
+  GotBoardMessage,
+  GotGameMessage,
   ModalOpened,
   CardArtTick,
   DeckCardFlipTick,
-  BoardMessage,
   AccountChromeMessage,
-  GameMessage,
 ]);
 export type Message = typeof Message.Type;
 

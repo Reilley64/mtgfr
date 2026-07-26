@@ -3,23 +3,24 @@ import type { Command as FoldkitCommand } from "foldkit";
 import { Command, Navigation } from "foldkit";
 import { toString as urlToString } from "foldkit/url";
 import type { Message as BoardMessage } from "./board/messages";
-import { drainPlayModeIfSingleton, syncBoardWithGame, updateBoard } from "./board/submodel";
+import { type OutMessage as BoardOutMessage, updateBoard } from "./board/submodel";
 import { captureDeckCardFlipForNav } from "./deck-card-nav";
 import { parseDeckIdParam, playDeckAccess } from "./deck-id";
 import { gravatarHash } from "./domain/gravatar";
-import { applyDeltaPure, applySnapshotPure, type DeltaEnvelope, setRejectPure } from "./game/fold";
+import { updateGame } from "./game";
 import {
   GotAuthMessage,
+  GotBoardMessage,
   GotDeckBuilderMessage,
   GotDeckListMessage,
+  GotGameMessage,
   GotLeaderboardMessage,
   GotLobbyMessage,
   type Message,
   NavigationCompleted,
-  type ReceivedDelta,
   ReceivedMeGravatarHash,
 } from "./messages";
-import { emptyGameSlice, type GameSlice, type Model } from "./model";
+import { emptyGameSlice, type Model } from "./model";
 import type { RpcClient } from "./resources";
 import {
   isProtectedRoute,
@@ -73,29 +74,24 @@ function loginRedirectFor(model: Model): string {
   return `/login?next=${encodeURIComponent(model.currentPath)}`;
 }
 
-function terminalStreamError(status: number): string {
-  if (status === 401) return "Session expired — sign in again.";
-  if (status === 404) return "Table no longer available.";
-  return `Lost connection to the table (${status}).`;
+function toAppBoardMessage(message: BoardOutMessage): Message {
+  switch (message._tag) {
+    case "ReceivedSnapshot":
+    case "ReceivedDelta":
+    case "StreamStatus":
+    case "StreamTerminalError":
+    case "IntentAcked":
+    case "IntentRejected":
+      return GotGameMessage({ message });
+    default:
+      return GotBoardMessage({ message });
+  }
 }
 
-function mergeGameFold(
-  game: GameSlice,
-  folded: ReturnType<typeof applyDeltaPure>,
-): readonly [GameSlice, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
-  const next = { ...game, ...folded };
-  const synced = { ...next, board: syncBoardWithGame(next.board, next) };
-  const [board, commands] = drainPlayModeIfSingleton(synced.board, synced, synced.tableId);
-  return [{ ...synced, board }, commands];
-}
-
-function deltaEnvelope(message: typeof ReceivedDelta.Type): DeltaEnvelope {
-  return {
-    seq: message.seq,
-    state: message.state,
-    events: [...message.events],
-    auto_actions: message.auto_actions == null ? undefined : [...message.auto_actions],
-  };
+function mapBoardCommands(
+  commands: ReadonlyArray<FoldkitCommand.Command<BoardOutMessage, never, RpcClient>>,
+): ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>> {
+  return Command.mapMessages(commands, toAppBoardMessage);
 }
 
 function sessionCommands(model: Model): ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>> {
@@ -224,9 +220,13 @@ function foldBoard(
   model: Model,
   message: BoardMessage,
 ): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
+  if (message._tag === "LeaveGame") {
+    const path = "/";
+    return [model, [Redirect({ path })]];
+  }
   if (model.game == null) return [model, []];
   const [board, commands] = updateBoard(model.game.board, message, model.game, model.game.tableId);
-  return [{ ...model, game: { ...model.game, board } }, commands];
+  return [{ ...model, game: { ...model.game, board } }, mapBoardCommands(commands)];
 }
 
 function foldLobby(
@@ -331,92 +331,7 @@ export const update = (
       ModalOpened: () => [model, []],
       CardArtTick: () => [model, []],
       DeckCardFlipTick: () => [model, []],
-      ArtLoaded: (boardMessage) => foldBoard(model, boardMessage),
-      BoardCameraZoomed: (boardMessage) => foldBoard(model, boardMessage),
-      BoardPointerDown: (boardMessage) => foldBoard(model, boardMessage),
-      BoardPointerMove: (boardMessage) => foldBoard(model, boardMessage),
-      BoardPointerUp: (boardMessage) => foldBoard(model, boardMessage),
-      FlightsSynced: (boardMessage) => foldBoard(model, boardMessage),
-      HandActionActivated: (boardMessage) => foldBoard(model, boardMessage),
-      HandDragStarted: (boardMessage) => foldBoard(model, boardMessage),
-      HandDragMoved: (boardMessage) => foldBoard(model, boardMessage),
-      HandDragEnded: (boardMessage) => foldBoard(model, boardMessage),
-      HandActionHovered: (boardMessage) => foldBoard(model, boardMessage),
-      PrimaryClicked: (boardMessage) => foldBoard(model, boardMessage),
-      PassClicked: (boardMessage) => foldBoard(model, boardMessage),
-      KeepHandClicked: (boardMessage) => foldBoard(model, boardMessage),
-      MulliganClicked: (boardMessage) => foldBoard(model, boardMessage),
-      StackYieldArmed: (boardMessage) => foldBoard(model, boardMessage),
-      TurnYieldToggled: (boardMessage) => foldBoard(model, boardMessage),
-      CancelActionClicked: (boardMessage) => foldBoard(model, boardMessage),
-      PlayModeChosen: (boardMessage) => foldBoard(model, boardMessage),
-      CommanderCastClicked: (boardMessage) => foldBoard(model, boardMessage),
-      TargetChosen: (boardMessage) => foldBoard(model, boardMessage),
-      ModalModesChosen: (boardMessage) => foldBoard(model, boardMessage),
-      ModalTargetChosen: (boardMessage) => foldBoard(model, boardMessage),
-      XDraftSet: (boardMessage) => foldBoard(model, boardMessage),
-      XSubmitted: (boardMessage) => foldBoard(model, boardMessage),
-      SacrificeChosen: (boardMessage) => foldBoard(model, boardMessage),
-      DiscardChosen: (boardMessage) => foldBoard(model, boardMessage),
-      GyExileChosen: (boardMessage) => foldBoard(model, boardMessage),
-      GyExileConfirmed: (boardMessage) => foldBoard(model, boardMessage),
-      DiscardCostConfirmed: (boardMessage) => foldBoard(model, boardMessage),
-      PileCardClicked: (boardMessage) => foldBoard(model, boardMessage),
-      CombatAttackerDropped: (boardMessage) => foldBoard(model, boardMessage),
-      CombatBlockerDropped: (boardMessage) => foldBoard(model, boardMessage),
-      CombatCancelAttacker: (boardMessage) => foldBoard(model, boardMessage),
-      CombatCancelBlocker: (boardMessage) => foldBoard(model, boardMessage),
-      PendingChoiceAnswered: (boardMessage) => foldBoard(model, boardMessage),
-      PromptCardToggled: (boardMessage) => foldBoard(model, boardMessage),
-      PromptSubmitted: (boardMessage) => foldBoard(model, boardMessage),
-      PromptDeclined: (boardMessage) => foldBoard(model, boardMessage),
-      PromptOrderMoved: (boardMessage) => foldBoard(model, boardMessage),
-      PromptOrderRowClicked: (boardMessage) => foldBoard(model, boardMessage),
-      PromptOrderDragEnded: (boardMessage) => foldBoard(model, boardMessage),
-      PromptDamageSet: (boardMessage) => foldBoard(model, boardMessage),
-      PromptStringSet: (boardMessage) => foldBoard(model, boardMessage),
-      PromptCardFilterSet: (boardMessage) => foldBoard(model, boardMessage),
-      PromptOptionFilterSet: (boardMessage) => foldBoard(model, boardMessage),
-      PromptNumberSet: (boardMessage) => foldBoard(model, boardMessage),
-      PromptModeChoiceToggled: (boardMessage) => foldBoard(model, boardMessage),
-      PromptPartitionSet: (boardMessage) => foldBoard(model, boardMessage),
-      ModalModeToggled: (boardMessage) => foldBoard(model, boardMessage),
-      StackDwellChanged: (boardMessage) => foldBoard(model, boardMessage),
-      StackExpandClicked: (boardMessage) => foldBoard(model, boardMessage),
-      StackCollapseClicked: (boardMessage) => foldBoard(model, boardMessage),
-      LogExpandToggled: (boardMessage) => foldBoard(model, boardMessage),
-      LogCopyRequested: (boardMessage) => foldBoard(model, boardMessage),
-      LogCopyCompleted: (boardMessage) => foldBoard(model, boardMessage),
-      RadialWedgeArmed: (boardMessage) => foldBoard(model, boardMessage),
-      RadialWedgeReleased: (boardMessage) => foldBoard(model, boardMessage),
-      RadialWedgeHovered: (boardMessage) => foldBoard(model, boardMessage),
-      RadialOptionPicked: (boardMessage) => foldBoard(model, boardMessage),
-      RadialDismissed: (boardMessage) => foldBoard(model, boardMessage),
-      AltDown: (boardMessage) => foldBoard(model, boardMessage),
-      AltUp: (boardMessage) => foldBoard(model, boardMessage),
-      InspectAuxHovered: (boardMessage) => foldBoard(model, boardMessage),
-      InspectCardFetched: (boardMessage) => foldBoard(model, boardMessage),
-      CardNameSuggestionsFetched: (boardMessage) => foldBoard(model, boardMessage),
-      InspectFlipFace: (boardMessage) => foldBoard(model, boardMessage),
-      InspectDismissed: (boardMessage) => foldBoard(model, boardMessage),
-      PileExpanded: (boardMessage) => foldBoard(model, boardMessage),
-      PileOverlayClosed: (boardMessage) => foldBoard(model, boardMessage),
-      ConcedeClicked: (boardMessage) => foldBoard(model, boardMessage),
-      ConcedeCancelled: (boardMessage) => foldBoard(model, boardMessage),
-      ConcedeConfirmed: (boardMessage) => foldBoard(model, boardMessage),
-      ResultSeen: (boardMessage) => foldBoard(model, boardMessage),
-      LeaveGame: () => {
-        const path = "/";
-        return [model, [Redirect({ path })]];
-      },
-      KeyboardSpacePressed: (boardMessage) => foldBoard(model, boardMessage),
-      KeyboardEnterPressed: (boardMessage) => foldBoard(model, boardMessage),
-      KeyboardEscape: (boardMessage) => foldBoard(model, boardMessage),
-      HintDismissed: (boardMessage) => foldBoard(model, boardMessage),
-      HintAutoHidden: (boardMessage) => foldBoard(model, boardMessage),
-      SoundToggled: (boardMessage) => foldBoard(model, boardMessage),
-      PriorityElapsed: (boardMessage) => foldBoard(model, boardMessage),
-      LegendToggled: (boardMessage) => foldBoard(model, boardMessage),
+      GotBoardMessage: ({ message }) => foldBoard(model, message),
       GotAuthMessage: ({ message }) => foldAuth(model, message),
       GotDeckListMessage: ({ message }) => {
         const [nextModel, commands] = foldDeckList(model, message);
@@ -424,6 +339,11 @@ export const update = (
         return [notFoundWhenPlayDeckMissing(nextModel), commands];
       },
       GotDeckBuilderMessage: ({ message }) => foldDeckBuilder(model, message),
+      GotGameMessage: ({ message }) => {
+        if (model.game == null) return [model, []];
+        const [game, commands] = updateGame(model.game, message);
+        return [{ ...model, game }, commands];
+      },
       GotLeaderboardMessage: ({ message }) => foldLeaderboard(model, message),
       GotLobbyMessage: ({ message }) => foldLobby(model, message),
       ToggledAccountMenu: () => {
@@ -481,51 +401,6 @@ export const update = (
           ];
         }
         return [model, []];
-      },
-      ReceivedSnapshot: ({ seq, state }) => {
-        if (model.game == null) return [model, []];
-        const [game, commands] = mergeGameFold(model.game, applySnapshotPure(model.game, seq, state));
-        return [{ ...model, game }, commands];
-      },
-      ReceivedDelta: (message) => {
-        if (model.game == null) return [model, []];
-        const [game, commands] = mergeGameFold(model.game, applyDeltaPure(model.game, deltaEnvelope(message)));
-        return [{ ...model, game }, commands];
-      },
-      StreamStatus: ({ connected }) => {
-        if (model.game == null) return [model, []];
-        return [{ ...model, game: { ...model.game, connected } }, []];
-      },
-      StreamTerminalError: ({ status }) => {
-        if (model.game == null) return [model, []];
-        const rejected = setRejectPure(model.game, terminalStreamError(status));
-        return [{ ...model, game: { ...model.game, ...rejected, connected: false } }, []];
-      },
-      IntentAcked: () => {
-        if (model.game == null) return [model, []];
-        return [
-          {
-            ...model,
-            game: { ...model.game, reject: null, board: { ...model.game.board, reject: null } },
-          },
-          [],
-        ];
-      },
-      IntentRejected: ({ reason }) => {
-        if (model.game == null) return [model, []];
-        const rejected = setRejectPure(model.game, reason);
-        return [
-          {
-            ...model,
-            game: {
-              ...model.game,
-              ...rejected,
-              // Re-enable the frozen prompt draft so the player can correct and resubmit.
-              board: { ...model.game.board, reject: reason, promptSubmitInFlight: false },
-            },
-          },
-          [],
-        ];
       },
     }),
   );
