@@ -287,6 +287,9 @@ The engine/schema event model includes `MulliganTaken { player, mulligans_taken,
 
 - `docs/WIRE_COMPAT.md` remains the **living authoritative** rule for roll windows and proto
   authoring habits. This spec is a snapshot; `WIRE_COMPAT.md` is the ops reference.
+- `ActionView.section` for `kind == "activate"` follows the source object's zone: `"battlefield"`
+  for permanent activates (radial / battlefield chrome), `"graveyard"` for
+  `functions_in_graveyard` activates (hand-bar Graveyard bucket, same as escape/encore).
 - `ActionView.auto_tap` carries the battlefield object ids `Game::plan_auto_taps` would tap —
   the client shows a visual preview of which lands would be consumed before the intent fires.
 - `ActionView.declare_for` carries the seats whose creatures a combat declaration covers: the

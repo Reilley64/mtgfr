@@ -32,6 +32,7 @@ Render a fixed DOM hand bar at the bottom of the board. It groups tiles in Arena
 - Unplayable hand/command tiles stay full brightness: no `brightness-[0.55]` or equivalent veil.
 - Resting faces use `--shadow-hand` (`shadow-hand`). The drag source fades with `opacity-25` and loses playable aura; the drag ghost carries the face, zone-aware `barZoneAura(zone, true)`, and the shared lift `--drop-shadow-drag` (same recipe as canvas flights; plus `shadow-hand`). Idle hits use `cursor-grab` when playable and `cursor-not-allowed` otherwise; an active drag sets `cursor-grabbing` on the document element.
 - Graveyard/exile bar tiles appear only for actions and use their zone outline colors when playable.
+- Graveyard-section actions include casts from that zone (flashback/escape/retrace), encore, and activated abilities whose source is in the graveyard (`functions_in_graveyard` — Teacher's Pest's `{B}{G}` self-return). Wire `ActionView.section` is `"graveyard"` for those activates so `bySection` buckets them here rather than the battlefield radial.
 - Hand and priority controls render only for active seated players, not spectators or eliminated players.
 
 ## Implementation Decisions
@@ -45,7 +46,8 @@ Render a fixed DOM hand bar at the bottom of the board. It groups tiles in Arena
 
 ## Testing Decisions
 
-- Scene/unit tests cover the hand bar, command/hand playable borders, unplayable no-dim behavior, drag-source opacity fade, and spectator suppression.
+- Scene/unit tests cover the hand bar, command/hand playable borders, unplayable no-dim behavior, drag-source opacity fade, spectator suppression, and a graveyard-section `activate` tile (Teacher's Pest–style self-return).
+- Schema snapshot tests lock `ActionView.section == "graveyard"` for a `functions_in_graveyard` activate.
 - Interaction checks should drag above and below the play threshold and assert commit versus cancel outcomes.
 - Scene tests cover multi-mode hand activation entering `playModePick`, local-session exclusivity, `PlayModeChosen` continuation, the single-mode auto path, stale legality prune/cancel behavior, stale `PlayModeChosen` without intent, and Cancel restoring the parked hand card.
 - Geometry lock in `handBarHit.test.ts` asserts face/peek/visible/`HAND_BAR_H` targets so a silent regress to the old dense values fails.
