@@ -47,8 +47,10 @@ import {
   emptyCostPicks,
   findCastActionForObject,
   type ModalCast,
+  type PlayModePick,
   planCostPipeline,
   planHandDrop,
+  planHandPlay,
   planRunAction,
   type StagedAction,
   settleSacrificePick,
@@ -102,6 +104,7 @@ import {
   stackPeekFor,
 } from "./geometry/stackLayout";
 import { selectedRadialOptions } from "./html/activation-menu";
+import { modesForObject } from "./html/actions";
 import { persistHintDismissed, readHintDismissed } from "./html/discoverability";
 import { HAND_BAR_H, HAND_INSPECT_STICKY_BAND, HAND_PLAY_SLACK_PX } from "./html/hand";
 import { CopyBoardLog } from "./log-commands";
@@ -163,6 +166,7 @@ export type BoardModel = {
   cursor: Vec2;
   // Action session state (pre-submit chrome, cost pipeline, staging).
   staged: StagedAction | null;
+  playModePick: PlayModePick | null;
   xPrompt: XPromptState | null;
   modalCast: ModalCast | null;
   sacrificePick: CostPickState | null;
@@ -255,6 +259,7 @@ export function initialBoardModel(): BoardModel {
     viewport: { ...BOARD_VIEWPORT },
     cursor: { x: 0, y: 0 },
     staged: null,
+    playModePick: null,
     xPrompt: null,
     modalCast: null,
     sacrificePick: null,
@@ -1500,13 +1505,30 @@ function handActivated(
     ];
   }
   const threshold = model.viewport.height - HAND_BAR_H + HAND_PLAY_SLACK_PX;
-  const card = objectByAction(fold, action);
-  const plan = planHandDrop(action, card, y, threshold);
-  if (plan.kind === "ignore") return [model, []];
+  const objectId = action.object;
+  const modes =
+    action.section === "hand" && objectId != null ? modesForObject(state?.actions ?? [], objectId) : [action];
+  const playPlan = planHandPlay(modes, y, threshold);
+  if (playPlan.kind === "ignore") return [model, []];
   const withHint = hideHintOnHandUse(model);
   const world = screenToWorld(withHint.camera, x, y);
   const dropSeed: Vec = { x: world.x - CARD_W / 2, y: world.y - CARD_H / 2 };
   const screenOrigin: Vec = { x, y };
+  if (playPlan.kind === "choose") {
+    const card = objectByAction(fold, playPlan.modes[0]!) ?? objectByAction(fold, action);
+    if (card == null) return [{ ...withHint, reject: humanReason("UnknownObject") }, []];
+    const seeded = seedDropFromHand(withHint, card, screenOrigin, "stack");
+    return [
+      {
+        ...seeded,
+        playModePick: { card, modes: playPlan.modes, dropSeed, screenOrigin },
+      },
+      [],
+    ];
+  }
+  const card = objectByAction(fold, playPlan.action);
+  const plan = planHandDrop(playPlan.action, card, y, threshold);
+  if (plan.kind === "ignore") return [model, []];
   if (plan.kind === "reject") return [{ ...withHint, reject: humanReason(plan.reason) }, []];
   if (plan.kind === "sacrifice-pick") {
     return [
@@ -1557,10 +1579,14 @@ function handActivated(
 }
 
 function cancelAll(model: BoardModel): BoardModel {
-  const clearedOrigin = model.staged != null ? clearPlayOrigin(model, model.staged.card.id) : model;
+  let clearedOrigin = model.staged != null ? clearPlayOrigin(model, model.staged.card.id) : model;
+  if (clearedOrigin.playModePick != null) {
+    clearedOrigin = clearPlayOrigin(clearedOrigin, clearedOrigin.playModePick.card.id);
+  }
   return {
     ...clearedOrigin,
     staged: null,
+    playModePick: null,
     xPrompt: null,
     modalCast: null,
     sacrificePick: null,

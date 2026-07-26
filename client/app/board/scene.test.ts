@@ -14,7 +14,7 @@ import { BindCardArt } from "~/ui/card-art";
 import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
 import type { GameFoldState, LogLine } from "../game/fold";
 import { SetStackDwell, SubmitIntent } from "../game/intents";
-import { emptyCostPicks } from "./action/execution";
+import { emptyCostPicks, type PlayModePick } from "./action/execution";
 import { worldToScreen } from "./geometry/camera";
 import type { RenderCard } from "./geometry/layout";
 import { avatarPos, layout, STEP, ZONE } from "./geometry/layout";
@@ -24,6 +24,7 @@ import { resolveBoardCardArtMounts, resolveBoardOverlayMounts, resolveLiveBoardM
 import { CopyBoardLog } from "./log-commands";
 import {
   BoardPointerUp,
+  CancelActionClicked,
   DiscardChosen,
   DiscardCostConfirmed,
   GyExileChosen,
@@ -255,6 +256,128 @@ test("hand-drop planner ignores release below the hand-bar threshold", () => {
   expect(commandsAbove[0]?.name).toBe(SubmitIntent.name);
 });
 
+test("HandActionActivated with two hand modes parks card and opens playModePick", () => {
+  const card = creature(42, 0, { name: "Valley Rannet", zone: ZONE.Hand });
+  const castAction: ActionView = {
+    id: 7,
+    kind: "cast",
+    label: testMessageRef("Cast Valley Rannet"),
+    needs_target: false,
+    object: card.id,
+    section: "hand",
+  };
+  const cycleAction: ActionView = {
+    id: 8,
+    kind: "cycle",
+    label: testMessageRef("Mountaincycling"),
+    needs_target: false,
+    object: card.id,
+    section: "hand",
+  };
+  const gameFold = fold(state({ objects: [card], actions: [cycleAction, castAction] }));
+
+  const [next, commands] = updateBoard(
+    initialBoardModel(),
+    HandActionActivated({ action: castAction, x: 400, y: 200 }),
+    gameFold,
+    "T1",
+  );
+
+  expect(commands).toEqual([]);
+  expect(playModePickOf(next)?.card.id).toBe(card.id);
+  expect(playModePickOf(next)?.modes.map((mode) => mode.id)).toEqual([7, 8]);
+  expect(next.handHidden.has(card.id)).toBe(true);
+  expect(next.flights.has(card.id)).toBe(true);
+});
+
+test("CancelActionClicked clears playModePick and restores the hand card", () => {
+  const card = creature(42, 0, { name: "Valley Rannet", zone: ZONE.Hand });
+  const castAction: ActionView = {
+    id: 7,
+    kind: "cast",
+    label: testMessageRef("Cast Valley Rannet"),
+    needs_target: false,
+    object: card.id,
+    section: "hand",
+  };
+  const cycleAction: ActionView = {
+    id: 8,
+    kind: "cycle",
+    label: testMessageRef("Mountaincycling"),
+    needs_target: false,
+    object: card.id,
+    section: "hand",
+  };
+  const gameFold = fold(state({ objects: [card], actions: [castAction, cycleAction] }));
+  let board = initialBoardModel();
+
+  [board] = updateBoard(board, HandActionActivated({ action: castAction, x: 400, y: 200 }), gameFold, "T1");
+  expect(playModePickOf(board)).not.toBeNull();
+
+  const [next, commands] = updateBoard(board, CancelActionClicked(), gameFold, "T1");
+
+  expect(commands).toEqual([]);
+  expect(playModePickOf(next)).toBeNull();
+  expect(next.handHidden.has(card.id)).toBe(false);
+  expect(next.flights.has(card.id)).toBe(false);
+});
+
+test("HandActionActivated with one mode does not open playModePick", () => {
+  const card = creature(42, 0, { name: "Lightning Bolt", zone: ZONE.Hand });
+  const action: ActionView = {
+    id: 7,
+    kind: "cast",
+    label: testMessageRef("Cast Lightning Bolt"),
+    needs_target: false,
+    object: card.id,
+    section: "hand",
+  };
+  const gameFold = fold(state({ objects: [card], actions: [action] }));
+
+  const [next, commands] = updateBoard(
+    initialBoardModel(),
+    HandActionActivated({ action, x: 400, y: 200 }),
+    gameFold,
+    "T1",
+  );
+
+  expect(playModePickOf(next)).toBeNull();
+  expect(commands).toHaveLength(1);
+  expect(commands[0]?.name).toBe(SubmitIntent.name);
+});
+
+test("priority bar shows Cancel while playModePick is parked", () => {
+  const card = creature(42, 0, { name: "Valley Rannet", zone: ZONE.Hand });
+  const castAction: ActionView = {
+    id: 7,
+    kind: "cast",
+    label: testMessageRef("Cast Valley Rannet"),
+    needs_target: false,
+    object: card.id,
+    section: "hand",
+  };
+  const cycleAction: ActionView = {
+    id: 8,
+    kind: "cycle",
+    label: testMessageRef("Mountaincycling"),
+    needs_target: false,
+    object: card.id,
+    section: "hand",
+  };
+  const playModePick: PlayModePick = {
+    card,
+    modes: [castAction, cycleAction],
+    dropSeed: { x: 0, y: 0 },
+    screenOrigin: { x: 400, y: 200 },
+  };
+  const model = viewModel(fold(state({ objects: [card], actions: [castAction, cycleAction] })));
+
+  overlayScene(
+    { ...model, board: { ...model.board, playModePick } as BoardModel & { playModePick: PlayModePick } },
+    Scene.expect(Scene.testId("board-cancel-target")).toExist(),
+  );
+});
+
 test("stack owns Resolve card, hides primary pass", () => {
   const model = viewModel(
     fold(
@@ -329,6 +452,10 @@ function renderStub(id: number): RenderCard {
 
 function intentFromCommand(cmd: unknown): unknown {
   return (cmd as { args: { intent: unknown } }).args.intent;
+}
+
+function playModePickOf(board: BoardModel): PlayModePick | null {
+  return board.playModePick;
 }
 
 test("pointer up on legal staged target emits SubmitIntent (target completion)", () => {

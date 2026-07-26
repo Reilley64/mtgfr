@@ -1,66 +1,64 @@
-# Task 4 Report: Leaderboard page uses shared account chrome
+# Task 4 Report: Enter / cancel `playModePick` (stack park)
 
 ## Status
 
-**Complete.** The leaderboard header now uses the shared avatar account chrome from home, keeps the Play link, hides the leaderboard self-link, and clears the menu when leaderboard loads start.
+Complete.
 
 ## Changes
 
-### `client/app/shell/leaderboard/view.ts`
-- Replaced the standalone `Sign out` button with `accountChrome(...)`.
-- Removed the `Signed in as ...` subtitle.
-- Added `meGravatarHash` to the view signature and passed `showLeaderboardLink: false`.
-
-### `client/app/view.ts`
-- Passed `model.session.meGravatarHash` into `leaderboardView(...)`.
-
-### `client/app/shell/leaderboard/update.ts`
-- Updated `loadLeaderboard(...)` to set `accountMenuOpen: false` whenever a leaderboard load starts.
-
-### `client/app/shell/surfaces.test.ts`
-- Extended the leaderboard scene to assert:
-  - `Play` remains visible.
-  - the avatar trigger exists.
-  - the shared chrome does not render the leaderboard self-link.
-  - the old `Signed in as alice` subtitle is gone.
-- Added a scene proving the leaderboard account menu renders and closes through `BindAccountMenuEscape`.
-
-### `client/app/routes.test.ts`
-- Extended the leaderboard refresh story to assert that retry/reset closes the account menu while re-entering the loading state.
+- Added `BoardModel.playModePick: PlayModePick | null`.
+- Reworked hand activation to re-resolve all current hand-section modes for the object.
+- Multi-mode hand plays now seed the stack flight, hide the hand card, and park a `playModePick`.
+- Single-mode hand plays continue through the existing cost / modal / target / submit pipeline.
+- `CancelActionClicked` now clears `playModePick`, removes the seeded flight, and restores the hand card.
+- Priority bar Cancel now appears while `playModePick` is parked.
+- Updated hand-bar and priority-chrome living specs.
 
 ## TDD evidence
 
-1. **RED:** `cd /workspace/client && bun test app/shell/surfaces.test.ts -t "leaderboard"`
-   Result: 2 failures — missing `account-menu-trigger`, missing open `account-menu`.
-2. **GREEN:** implemented the shared chrome wiring and load reset.
-3. **GREEN verification:** `cd /workspace/client && bun test app/shell/surfaces.test.ts app/routes.test.ts`
-   Result: `31 pass, 0 fail`.
+### RED
+
+Command:
+
+```sh
+cd /workspace/client && bun test app/board/scene.test.ts
+```
+
+Result:
+
+- `HandActionActivated with two hand modes parks card and opens playModePick` failed because the first bound action submitted immediately.
+- `CancelActionClicked clears playModePick and restores the hand card` failed because `playModePick` was not present.
+- `HandActionActivated with one mode does not open playModePick` failed because the model did not expose the null state yet.
+- `priority bar shows Cancel while playModePick is parked` failed because Cancel was absent.
+- Summary: `77 pass, 4 fail`.
+
+### GREEN
+
+Command:
+
+```sh
+cd /workspace/client && bun test app/board/scene.test.ts
+```
+
+Result: `81 pass, 0 fail`.
 
 ## Verification
 
 Passed:
 
-- `cd /workspace && just client-migrate`
-- `cd /workspace/client && bun run lint && bun run typecheck && bun test app/shell/surfaces.test.ts app/routes.test.ts lib/lobby-store.test.ts`
-
-Results:
-
-- lint: completed with existing repo warnings only
-- typecheck: pass
-- tests: `36 pass, 0 fail`
+- `cd /workspace/client && bun test app/board/scene.test.ts` -> `81 pass, 0 fail`
+- `cd /workspace && just client-typecheck` -> `tsc --noEmit` completed successfully
 
 ## Self-review
 
-No blocking issues found.
-
-- Scope stayed inside the task brief; living specs were not updated.
-- Reused the existing home/decks `accountChrome` pattern instead of duplicating header behavior.
-- Added coverage for both visible chrome and the `loadLeaderboard` menu-reset path.
+- Scope matches Task 4: model state, park/cancel, single-mode auto path only.
+- No docked chooser UI was added.
+- The unrelated existing `.superpowers/sdd/task-3-report.md` working-tree change was left untouched.
 
 ## Commit
 
-`feat(client): share leaderboard account chrome`
+`feat(client): park hand card while choosing play mode`
 
 ## Concerns
 
-- Repo lint still reports pre-existing `noNonNullAssertion` warnings outside this task (`app/board/motion/exit-fx.test.ts`, `lib/favicon-assets.test.ts`, `lib/gravatar.ts`), but they do not block the targeted verification above.
+- None.

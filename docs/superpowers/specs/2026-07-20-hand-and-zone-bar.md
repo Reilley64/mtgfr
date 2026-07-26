@@ -1,6 +1,6 @@
 # Hand and Zone Bar
-**Status:** Current (as of 2026-07-25)
-**Module:** `client/app/board/html/hand.ts`, `client/app/board/html/hand-drag-mount.ts`, `client/app/board/html/actions.ts`, `client/app/board/geometry/handBarHit.ts`, `client/app/board/motion/flights.ts`
+**Status:** Current (as of 2026-07-26)
+**Module:** `client/app/board/html/hand.ts`, `client/app/board/html/hand-drag-mount.ts`, `client/app/board/html/actions.ts`, `client/app/board/geometry/handBarHit.ts`, `client/app/board/motion/flights.ts`, `client/app/board/submodel.ts`
 
 ## Problem Statement
 
@@ -22,6 +22,7 @@ Render a fixed DOM hand bar at the bottom of the board. It groups tiles in Arena
 - Hand tiles fan with Arena-forward resting geometry (`HAND_FACE_W` 208, `HAND_BAR_PEEK` 92, `HAND_VISIBLE_H` 178, derived `HAND_BAR_H` 218 — pip-row 24 + bar bottom padding 16 are already implied by that height), hover raise, and cost pips above the card face.
 - Hovering a bar tile elevates that tile's root above all other action-bar tiles (`[z-index:var(--hand-z)]` resting + `hover:[z-index:50]` on the slot; resting z is not inline). Discard-selected raises and rings but does not elevate z.
 - A release above `HAND_BAR_H - HAND_PLAY_SLACK_PX` commits the drop (`HAND_PLAY_SLACK_PX` is 96); releasing below snaps back.
+- Hand activation re-resolves all current hand-section actions for that object. With exactly one legal mode, it follows the existing play/cost/target pipeline; with multiple legal modes, it seeds a stack flight and parks the card in local `playModePick` state until the mode chooser continues or Cancel restores the card.
 - `hiddenId`, `hiddenIds`, and flight ownership suppress tiles while a staged play or flight owns the card.
 - Playable hand/command tiles get the playable border from `barZoneAura(zone, playable)`.
 - Unplayable hand/command tiles stay full brightness: no `brightness-[0.55]` or equivalent veil.
@@ -42,6 +43,7 @@ Render a fixed DOM hand bar at the bottom of the board. It groups tiles in Arena
 
 - Scene/unit tests cover the hand bar, command/hand playable borders, unplayable no-dim behavior, drag-source opacity fade, and spectator suppression.
 - Interaction checks should drag above and below the play threshold and assert commit versus cancel outcomes.
+- Scene tests cover multi-mode hand activation entering `playModePick`, the single-mode auto path, and Cancel restoring the parked hand card.
 - Geometry lock in `handBarHit.test.ts` asserts face/peek/visible/`HAND_BAR_H` targets so a silent regress to the old dense values fails.
 - `hand.test.ts` locks hover elevate on `hand-tile-{id}` and asserts discard-selected does not add selection z elevate.
 
