@@ -171,12 +171,13 @@ export const view = Submodel.defineView<CoverageSubmodel, ViewMessage, ViewInput
                 )
               : null,
             model.status === "ready" && rows.length === 0
-              ? h.div([h.Class("text-label text-lichen")], [emptyCopy])
+              ? h.div([h.Class("text-label text-lichen"), h.DataAttribute("testid", "coverage-empty")], [emptyCopy])
               : null,
             model.status === "error"
               ? h.button(
                   [
                     h.Type("button"),
+                    h.DataAttribute("testid", "coverage-try-again"),
                     h.OnClick(RequestedCoverageRefresh()),
                     h.Class(buttonClass("ghost", "mt-md self-start")),
                   ],

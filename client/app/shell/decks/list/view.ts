@@ -6,7 +6,7 @@ import { cn } from "../../../domain/cn";
 import type { AppChromeMeta } from "../../../domain/ui/app-version";
 import { buttonClass } from "../../../domain/ui/buttonClass";
 import { confirmDialog } from "../../../domain/ui/confirmDialog";
-import { fieldClass, listRowClass } from "../../../domain/ui/surfaces";
+import { alertClass, fieldClass, listRowClass } from "../../../domain/ui/surfaces";
 import type { CardArtTick, DeckCardFlipTick, GotAuthMessage, ModalOpened } from "../../../messages";
 import { DeckRoute, NewDeckRoute, PlayRoute, routePath } from "../../../routes";
 import type { ClosedAccountMenu, ToggledAccountMenu } from "../../account-chrome/messages";
@@ -212,11 +212,9 @@ export const view = Submodel.defineView<DeckListSubmodel, ViewMessage, ViewInput
             })
           : null,
         h.section(
-          [h.Class("mx-auto max-w-[960px]")],
+          [h.Class("mx-auto w-full")],
           [
-            model.error == null
-              ? null
-              : h.div([h.Role("alert"), h.Class("text-label text-reconnect-rust")], [model.error]),
+            model.error == null ? null : h.div([h.Role("alert"), h.Class(alertClass())], [model.error]),
             model.loading ? h.div([h.Class("text-label text-lichen")], ["Loading decks…"]) : null,
             !model.loading && model.decks.length > 0
               ? h.input([
@@ -226,11 +224,14 @@ export const view = Submodel.defineView<DeckListSubmodel, ViewMessage, ViewInput
                   h.Placeholder("Search decks…"),
                   h.Value(model.searchQuery),
                   h.OnInput((value) => ChangedDeckListSearch({ query: value })),
-                  h.Class(fieldClass("mb-md w-full max-w-[960px]")),
+                  h.Class(fieldClass("mb-md w-full")),
                 ])
               : null,
             !model.loading && model.decks.length > 0 && visible.length === 0
-              ? h.div([h.Class("text-label text-lichen")], ["No decks match."])
+              ? h.div(
+                  [h.Class("text-label text-lichen"), h.DataAttribute("testid", "deck-list-filter-empty")],
+                  ["No decks match."],
+                )
               : null,
             !model.loading && model.decks.length === 0
               ? h.div(
@@ -243,7 +244,10 @@ export const view = Submodel.defineView<DeckListSubmodel, ViewMessage, ViewInput
                     ),
                   ],
                   [
-                    h.h2([h.Class("m-0 text-title text-snow")], ["Build your first Commander deck"]),
+                    h.h2(
+                      [h.Class("m-0 font-display text-title tracking-[-0.02em] text-snow")],
+                      ["Build your first Commander deck"],
+                    ),
                     h.p(
                       [h.Class("m-0 max-w-[34rem] text-label text-lichen")],
                       ["Create a deck, choose a commander, then use it to host or join a table."],
@@ -259,7 +263,7 @@ export const view = Submodel.defineView<DeckListSubmodel, ViewMessage, ViewInput
               ? h.div(
                   [
                     h.DataAttribute("testid", "deck-list-grid"),
-                    h.Class("mx-auto grid max-w-[960px] grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-md"),
+                    h.Class("mx-auto grid w-full grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-md"),
                   ],
                   [
                     h.a(

@@ -18,10 +18,6 @@ export function listRowClass(...extra: Array<string | false | null | undefined>)
   return cn("border border-vine-dim bg-glass-dim text-snow hover:bg-white/8", ...extra);
 }
 
-export function feltClass(...extra: Array<string | false | null | undefined>): string {
-  return cn("bg-forest-floor font-sans text-body text-snow", ...extra);
-}
-
 /** Glass + vine input field chrome. */
 export function fieldClass(...extra: Array<string | false | null | undefined>): string {
   return cn("rounded-control border border-vine bg-glass px-md py-sm text-body text-snow", ...extra);

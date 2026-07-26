@@ -33,7 +33,7 @@ Ship an authenticated `/coverage` shell route that renders a searchable set tabl
 - The search query is preserved across refreshes, including `Try again`.
 - If the `LobbyClient` request fails with a tagged transport/decode error, the page enters `status: "error"`, shows `Could not load coverage.` in an alert, keeps rows empty, and renders a `Try again` button.
 - The search field is hidden only while loading. It remains available during ready and error states.
-- Ready-with-no-rows copy depends on the query: `No set coverage available.` for an empty query and `No sets match.` for a non-empty query.
+- Ready-with-no-rows copy depends on the query: `No set coverage available.` for an empty query and `No sets match.` for a non-empty query (`coverage-empty`). After a load failure, `Try again` uses `coverage-try-again`.
 
 ### Table rows, sorting, filtering, and formatting
 

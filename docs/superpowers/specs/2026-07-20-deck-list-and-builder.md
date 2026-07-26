@@ -37,8 +37,8 @@ custom left-side title block. The shared header trailing slot holds account chro
 `Leaderboard` link (`header-leaderboard-link`) plus an avatar trigger backed by the same
 circular Gravatar/monogram face helper used for seats. Opening the avatar menu shows a
 username title, an outbound `Change at Gravatar` link (`account-gravatar-link`) to
-`https://gravatar.com`, and `Sign out`. Search and grid share one `max-w-[960px]` stage
-column.
+`https://gravatar.com`, and `Sign out`. Search and grid share the shell stage max-width
+column (no nested 960px wrappers).
 
 Tiles use a raised `minmax(220px, 1fr)` track, landscape commander `art_crop`
 (~1.37:1), deck name, color-identity pips, and a Precon chip when `id < 0`. Names stay
@@ -56,8 +56,9 @@ The whole deck tile links to `/play/{id}` and shows a quiet `Play` label
 (`deck-card-nav.ts`; skipped for reduced motion). A **Search decks…** field appears only
 when at least one actual deck exists and filters by deck name and commander display name
 (client-only). The create tile stays first and is never filtered out; if search matches
-no deck tiles, the grid keeps the create tile first and shows the existing `No decks
-match.` copy. Display order: owned decks first (API relative order), then precons by
+no deck tiles, the grid keeps the create tile first and shows `No decks match.`
+(`deck-list-filter-empty`). Load errors use the shared `alertClass` recipe. Display order:
+owned decks first (API relative order), then precons by
 ascending id (newest release first). Right-click on an owned deck opens Edit
 (`/decks/{id}`) and Delete (confirm dialog); precons do not open a context menu.
 

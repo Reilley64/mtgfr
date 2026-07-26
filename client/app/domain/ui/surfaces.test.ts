@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { alertClass, feltClass, fieldClass, listRowClass, modalClass, panelClass } from "./surfaces";
+import { alertClass, fieldClass, listRowClass, modalClass, panelClass } from "./surfaces";
 
 describe("surface classes", () => {
   it("panel is forest-surface with vine border and table shadow", () => {
@@ -9,11 +9,6 @@ describe("surface classes", () => {
     expect(c).toContain("shadow-table");
     expect(c).toContain("rounded-panel");
     expect(c).not.toContain("bg-black/20");
-  });
-
-  it("felt is forest-floor body snow", () => {
-    expect(feltClass()).toContain("bg-forest-floor");
-    expect(feltClass()).toContain("text-snow");
   });
 
   it("listRow uses glass-dim vine-dim with hover lift", () => {

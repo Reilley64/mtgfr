@@ -240,7 +240,7 @@
   /* Motion is state-conveying, never required to use the interface. */
   @media (prefers-reduced-motion: no-preference) {
     [data-lobby-entry-motion] {
-      animation: lobby-entry-swap 180ms ease-out;
+      animation: lobby-entry-swap 0.18s var(--ease-state);
     }
   }
 
