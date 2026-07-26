@@ -6,7 +6,7 @@ import { cardHoverPreviewView } from "../../../../lib/deck-builder/card-hover-pr
 import { DECK_SIZE, deckCount, sortedDeckList } from "../../../../lib/deck-builder/cards";
 import { formatReleasedAt } from "../../../../lib/deck-builder/print";
 import type { ScryfallPrint } from "../../../../lib/deck-builder/scryfall";
-import { appVersionBadge } from "../../../../lib/ui/app-version";
+import { type AppChromeMeta, appVersionBadge } from "../../../../lib/ui/app-version";
 import { buttonClass } from "../../../../lib/ui/buttonClass";
 import { cardArt } from "../../../../lib/ui/card-art";
 import { confirmDialog, OpenDialogAsModal } from "../../../../lib/ui/confirmDialog";
@@ -389,7 +389,7 @@ function skeletonTile(): Html {
   );
 }
 
-export function view(model: DeckBuilderSubmodel, apiVersion: string | null): Html {
+export function view(model: DeckBuilderSubmodel, chrome: AppChromeMeta): Html {
   const rows = sortedDeckList(model.entries, model.known);
   const count = deckCount(model.entries);
   const backgroundScrollLocked = model.printPicker != null;
@@ -582,7 +582,7 @@ export function view(model: DeckBuilderSubmodel, apiVersion: string | null): Htm
       hoverPreview(model),
       contextMenu(model),
       printPicker(model),
-      appVersionBadge(h, apiVersion),
+      appVersionBadge(h, chrome),
     ],
   );
 }

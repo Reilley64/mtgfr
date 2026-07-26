@@ -74,7 +74,11 @@ const lobbyAppView = (model: Model) =>
     model.decks.list.decks,
     model.decks.list.loading,
     model.decks.list.knownCommanders,
-    model.apiVersion,
+    {
+      version: model.apiVersion,
+      faithfulCount: model.faithfulCount,
+      oracleTotal: model.oracleTotal,
+    },
     model.route._tag === "TableRoute" ? "table" : "entry",
   );
 

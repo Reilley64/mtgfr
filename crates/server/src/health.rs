@@ -12,11 +12,20 @@ use crate::AppState;
 #[derive(Debug, Clone, Serialize)]
 pub struct LiveStatus {
     pub version: String,
+    pub faithful_count: u32,
+}
+
+pub fn faithful_pool_count() -> u32 {
+    cards::registry()
+        .values()
+        .filter(|def| def.approximates.is_none())
+        .count() as u32
 }
 
 pub async fn live(State(state): State<AppState>) -> Json<LiveStatus> {
     Json(LiveStatus {
         version: state.settings.version.clone(),
+        faithful_count: faithful_pool_count(),
     })
 }
 
@@ -56,6 +65,37 @@ mod tests {
         let expected = state.settings.version.clone();
         let Json(status) = live(State(state)).await;
         assert_eq!(status.version, expected);
+    }
+
+    #[tokio::test]
+    async fn live_reports_faithful_count_matching_registry() {
+        let state = test_state().await;
+        let expected = cards::registry()
+            .values()
+            .filter(|d| d.approximates.is_none())
+            .count() as u32;
+        assert!(expected > 0, "pool should have faithful cards in test env");
+        let Json(status) = live(State(state)).await;
+        assert_eq!(status.faithful_count, expected);
+        assert!(
+            status.faithful_count < cards::registry().len() as u32
+                || cards::registry().values().all(|d| d.approximates.is_none()),
+            "count must exclude approximates when any exist"
+        );
+    }
+
+    #[tokio::test]
+    async fn live_faithful_count_excludes_approximated_cards() {
+        let approximated = cards::registry()
+            .values()
+            .filter(|d| d.approximates.is_some())
+            .count() as u32;
+        let state = test_state().await;
+        let Json(status) = live(State(state)).await;
+        assert_eq!(
+            status.faithful_count + approximated,
+            cards::registry().len() as u32
+        );
     }
 
     #[tokio::test]

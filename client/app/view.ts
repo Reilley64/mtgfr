@@ -1,6 +1,7 @@
 import { Effect } from "effect";
 import { type Document, html } from "foldkit/html";
 import * as Mount from "foldkit/mount";
+import type { AppChromeMeta } from "../lib/ui/app-version";
 import { view as boardView } from "./board/view";
 import { parseDeckIdParam, playDeckAccess } from "./deck-id";
 import { CompletedPortraitGateModal, type Message, PortraitGateCancelled, RequestedLogout } from "./messages";
@@ -13,6 +14,14 @@ import { view as leaderboardView } from "./shell/leaderboard/view";
 import { view as lobbyView } from "./shell/lobby/view";
 
 const h = html<Message>();
+
+function chromeMeta(model: Model): AppChromeMeta {
+  return {
+    version: model.apiVersion,
+    faithfulCount: model.faithfulCount,
+    oracleTotal: model.oracleTotal,
+  };
+}
 
 export const OpenPortraitGateModal = Mount.define(
   "OpenPortraitGateModal",
@@ -143,21 +152,21 @@ function routeBody(model: Model) {
           model.decks.list,
           model.session.me?.username ?? "",
           model.session.meGravatarHash,
-          model.apiVersion,
+          chromeMeta(model),
         );
       case "LoginRoute":
-        return authView(model.auth, model.apiVersion);
+        return authView(model.auth, chromeMeta(model));
       case "LeaderboardRoute":
         return leaderboardView(
           model.leaderboard,
           model.session.me?.username ?? "",
           model.session.meGravatarHash,
-          model.apiVersion,
+          chromeMeta(model),
         );
       case "NewDeckRoute":
-        return deckBuilderView(model.decks.builder, model.apiVersion);
+        return deckBuilderView(model.decks.builder, chromeMeta(model));
       case "DeckRoute":
-        return deckBuilderView(model.decks.builder, model.apiVersion);
+        return deckBuilderView(model.decks.builder, chromeMeta(model));
       case "PlayRoute": {
         if (model.game?.active === true) return boardMount(model);
         const deckId = parseDeckIdParam(model.route.deckId);
@@ -168,7 +177,7 @@ function routeBody(model: Model) {
           model.decks.list.decks,
           model.decks.list.loading,
           model.decks.list.knownCommanders,
-          model.apiVersion,
+          chromeMeta(model),
           "entry",
         );
       }
@@ -182,7 +191,7 @@ function routeBody(model: Model) {
           model.decks.list.decks,
           model.decks.list.loading,
           model.decks.list.knownCommanders,
-          model.apiVersion,
+          chromeMeta(model),
           "table",
         );
       }

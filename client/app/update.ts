@@ -234,7 +234,10 @@ export const update = (
     M.withReturnType<readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>]>(),
     M.tagsExhaustive({
       Booted: () => [model, []],
-      ReceivedApiVersion: ({ version }) => [{ ...model, apiVersion: version }, []],
+      ReceivedApiVersion: ({ version, faithfulCount, oracleTotal }) => [
+        { ...model, apiVersion: version, faithfulCount, oracleTotal },
+        [],
+      ],
       UrlChanged: ({ url }) => {
         const currentPath = pathWithSearch(url);
         const nextModel = {
