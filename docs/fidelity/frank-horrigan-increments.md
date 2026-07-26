@@ -315,7 +315,7 @@ replacement reading how the `{B/P}` pip was actually settled. *Sketch:* the cast
 life-paid choice on the spell; the planeswalker's enters-with-loyalty read subtracts 2 per pip
 paid with life. Also needs Vraska's −2 (#25). *Cards:* vraska_betrayals_sting.
 
-### 17. `proliferate-full-scope` — 9 cards + observers, L
+### 17. `proliferate-full-scope` — 9 cards + observers, L — LANDED 2026-07-27
 Depends on: #20 slice 1 (for the player half).
 `proliferate()` (`pending/raise/optional.rs:14`) enumerates only `game.battlefield()` filtered on
 `plus_counters > 0 || kind_counters.any(...)`. It therefore silently omits **two** things:
@@ -342,7 +342,12 @@ _Landed 2026-07-27: `ProliferateTarget { Permanent | Player }` is the choice's o
 type; `Intent::ChooseProliferate { permanents, players }` (proto tag 58, `Answer::Proliferate`)
 replaces the borrowed `ChooseSacrifices` wire shape, since a seat can't ride a `Vec<ObjectId>`.
 `PlayerCounterKind::ALL` landed with its first consumer. Player counters are placed unreplaced —
-`counters_after_replacements` stays +1/+1-and-permanent-only until #19._
+`counters_after_replacements` stays +1/+1-and-permanent-only until #19. All 13 proliferate
+cards in the deck are faithful with no `approximates`. Still blocked: nothing in the engine —
+but the **client has not caught up**: `client/app/board/action/targeting.ts` still lists
+`proliferate` in `ONBOARD_CARD_PICK_KINDS` and answers it through the sacrifice multi-select
+path, which now returns `Reject::IllegalChoice`. It must send `Answer::Proliferate { permanents,
+players }` and let a seat be picked._
 
 ### 18. `whenever-you-proliferate-trigger` — 1 card, S
 Depends on: #17 (proliferate must emit a watchable event first).
@@ -468,9 +473,9 @@ Two watchers widened: `CombatDamageScope::YourCreaturesBatch` drains through
 damage step (CR 603.3b), and `Trigger::BecomesTargeted` gained a `who: BecomesTargetedScope` axis
 (`this` / `creature_you_control`, TOML sibling `targeted`) instead of a second trigger variant.
 contaminant_grafter, glistening_sphere, phyrexian_swarmlord (plus the `phyrexian_insect` token
-profile) and venerated_rotpriest are faithful except the shared #17 proliferate-scope
-`approximates` where proliferate is printed; vraska_betrayals_sting additionally names three
-residuals — the `{B/P}` pip modeled as plain `{B}` (#8), Compleated's enters-with-two-fewer that
+profile) and venerated_rotpriest are faithful with no `approximates` — the proliferate-scope note
+they were authored with was cleared when #17 landed in the same wave; vraska_betrayals_sting names
+three residuals — the `{B/P}` pip modeled as plain `{B}` (#8), Compleated's enters-with-two-fewer that
 therefore never applies (#16), and the −2 becomes-a-Treasure mode dropped rather than approximated
 (#25). Follow-up noticed: `striding_shotcaller.toml` still carries a `ponytail:` note saying its
 `who = "your_creatures"` approximates a batch watch — `"your_creatures_batch"` now expresses it
@@ -484,7 +489,7 @@ phyresis_outbreak.
 Landing rule: this XL is LANDED only when all five slices are built; slices get dated progress
 notes until then.
 
-### 21. `rad-counters` — 2 cards, L
+### 21. `rad-counters` — 2 cards, L — LANDED 2026-07-27
 Depends on: #20 slice 1 (the player counter store).
 Rad counters are a player counter with their own turn-based rules action: at the beginning of each
 player's precombat main phase, a player with rad counters mills that many cards, and for each
@@ -502,8 +507,9 @@ emits one `LifeChanged` of `-n` plus one `PlayerCountersPlaced` of `-n` from tha
 short library never removes more counters than it spent. `feral_ghoul.toml` is faithful — menace,
 the "another creature you control dies" +1/+1 trigger, and a `dies` trigger reading
 `Amount::SourcePower` off the existing CR 603.10a `dying_creature_stats` LKI capture. `PlayerView`
-carries a public `rad` count (`stream.proto` field 14). **bloatfly_swarm is still unbuilt** — it
-needs #22's damage replacement, which has not landed._
+carries a public `rad` count (`stream.proto` field 14). Still blocked: bloatfly_swarm is
+unbuilt — it needs #22's damage replacement, which has not landed. No client surface shows the
+`rad` count yet; the board needs a chip beside the poison indicator._
 
 ### 22. `damage-prevention-replacing-counters` — 1 card, M
 Depends on: #21.
@@ -514,7 +520,7 @@ is counter removal, capped by the counters actually present — the removal coun
 `min(damage, counters)`, and the rad counters follow that *actual* number. *Cards:*
 bloatfly_swarm.
 
-### 23. `final-act-player-counter-mode` — 1 existing card, S
+### 23. `final-act-player-counter-mode` — 1 existing card, S — LANDED 2026-07-27
 Depends on: #20 slice 1. **Falsifies `final_act.toml:13` and `:22`.**
 Final Act's fifth mode ("each opponent loses all counters") was dropped because "this pool tracks
 no player-level counters" — that justification dies with #20, and the `approximates` text is
@@ -525,8 +531,8 @@ trim the note to the genuinely-remaining "destroy all battles" residual. *Cards:
 _Landed 2026-07-27: new `CountersEffect::RemoveAllPlayerCounters { scope }` (mirrors
 `PutCountersOnPlayer`'s `EdictScope` shape, iterating every `PlayerCounterKind` via a new `ALL`
 const) restores the fifth mode as `final_act.toml` mode 3, `choose_max` raised to 4. The
-`approximates` note now names only the "destroy all battles" residual (battles aren't a modeled
-permanent type)._
+`approximates` note now names only the "destroy all battles" residual. Still blocked: that
+one mode — battles aren't a modeled permanent type, and no card in this deck makes one._
 
 ### 24. `plus-minus-counter-annihilation-sba` — observers, S — LANDED 2026-07-26
 Depends on: nothing. **Falsifies `characteristics.rs:1100`.**

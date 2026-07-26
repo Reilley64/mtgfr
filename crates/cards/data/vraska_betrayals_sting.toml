@@ -12,7 +12,7 @@ oracle = "Compleated ({B/P} can be paid with {B} or 2 life. If life was paid, th
 set = "ecc"
 subtypes = ["Vraska"]
 legendary = true
-approximates = "\"Proliferate\" (CR 701.27) only enumerates battlefield permanents with a counter — it can't choose players (poison/rad) or Class level/exiled time/scream counters, though this card's own reminder text says \"permanents and/or players\" (increment #17, not in this wave). Three further residuals, each its own unlanded increment: the printed {B/P} Phyrexian mana pip is modeled as a plain {B} (no \"or 2 life\" payment — increment #8), so Compleated's \"enters with two fewer loyalty counters\" when life was paid never applies (increment #16); and the −2 \"target creature becomes a Treasure artifact ... and loses all other card types and abilities\" mode is omitted entirely rather than approximated (increment #25). The 0 and −9 abilities are faithful."
+approximates = "Three residuals, each its own unlanded increment: the printed {B/P} Phyrexian mana pip is modeled as a plain {B} (no \"or 2 life\" payment — increment #8), so Compleated's \"enters with two fewer loyalty counters\" when life was paid never applies (increment #16); and the −2 \"target creature becomes a Treasure artifact ... and loses all other card types and abilities\" mode is omitted entirely rather than approximated (increment #25)."
 
 [cost]
 generic = 4

@@ -9,7 +9,6 @@ oracle = "Trample, toxic 1\nWhenever one or more creatures you control deal comb
 set = "onc"
 subtypes = ["Phyrexian", "Druid"]
 keywords = ["trample", { toxic = 1 }]
-approximates = "\"Proliferate\" (CR 701.27) only enumerates battlefield permanents with a counter — it can't choose players (poison/rad) or Class level/exiled time/scream counters, though this card's own reminder text says \"permanents and/or players\" (increment #17, not in this wave)."
 
 [cost]
 generic = 4

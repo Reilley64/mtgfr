@@ -8,7 +8,6 @@ default_print = "b825db05-7e95-400b-944b-526cfa6addc0"
 oracle = "This artifact enters tapped.\nWhen this artifact enters, proliferate.\n{T}: Add one mana of any color.\nCorrupted — {T}: Add three mana of any one color. Activate only if an opponent has three or more poison counters."
 set = "onc"
 enters_tapped = true
-approximates = "\"Proliferate\" (CR 701.27) only enumerates battlefield permanents with a counter — it can't choose players (poison/rad) or Class level/exiled time/scream counters, though this card's own reminder text says \"permanents and/or players\" (increment #17, not in this wave)."
 
 [cost]
 generic = 3

@@ -4,8 +4,6 @@
 # • Destroy all battles.
 # • Exile all graveyards.
 # • Each opponent loses all counters.
-# Final Act {4}{B}{B} — "Choose one or more —" destroy all creatures / all planeswalkers / all
-# battles / exile all graveyards / each opponent loses all counters.
 #
 # ponytail: the printed card has five modes; four are expressible (destroy all creatures, destroy
 # all planeswalkers, exile all graveyards, each opponent loses all counters), so `choose_max` opens

@@ -94907,3 +94907,53 @@ fn feral_ghoul_dies_giving_each_opponent_rad_counters_equal_to_its_power() {
         "\"each opponent\" excludes the Ghoul's controller"
     );
 }
+
+// ── Wave integration: `PlayerCounterKind::ALL` gained `Rad` (#21) after the two readers that
+// walk it were written against a poison-only `ALL` (#17 proliferate, #23 Final Act). These two
+// pin the merged behavior — a dropped `ALL` entry would silently skip rad in both. ──
+
+#[test]
+fn final_act_fifth_mode_removes_rad_counters_too() {
+    // "Each opponent loses all counters" is every *kind* (CR 122.1), not just poison — an
+    // opponent carrying both poison and rad loses both.
+    let mut g = TestGame::new();
+    g.place_player_counters(PlayerId(1), PlayerCounterKind::Poison, 3);
+    g.place_player_counters(PlayerId(1), PlayerCounterKind::Rad, 4);
+
+    let act = g.spawn_in_hand(PlayerId(0), card("Final Act"));
+    g.cast(act).mode(3, None).resolve();
+
+    assert_eq!(
+        g.player_counters(PlayerId(1), PlayerCounterKind::Poison),
+        0,
+        "poison counters are removed"
+    );
+    assert_eq!(
+        g.player_counters(PlayerId(1), PlayerCounterKind::Rad),
+        0,
+        "rad counters are counters too — \"all counters\" means every kind"
+    );
+}
+
+#[test]
+fn proliferate_grows_a_players_rad_counters() {
+    // CR 701.27 gives "another counter of each kind already there," so a player holding rad
+    // counters gets one more rad — the same walk over `PlayerCounterKind::ALL`.
+    let mut g = TestGame::new();
+    g.place_player_counters(PlayerId(1), PlayerCounterKind::Rad, 2);
+    let algorithm = g.spawn_in_hand(PlayerId(0), card("Expansion Algorithm"));
+    g.cast(algorithm).x(1).resolve();
+
+    g.submit(Intent::ChooseProliferate {
+        player: PlayerId(0),
+        permanents: vec![],
+        players: vec![PlayerId(1)],
+    })
+    .unwrap();
+
+    assert_eq!(
+        g.player_counters(PlayerId(1), PlayerCounterKind::Rad),
+        3,
+        "2 + one more of a kind already there"
+    );
+}
