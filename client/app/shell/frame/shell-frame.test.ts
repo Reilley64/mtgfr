@@ -97,6 +97,24 @@ describe("shellFrame", () => {
     expect(classNameOf(findByTestId(tree, "shell-frame"))).toContain("shell-atmosphere-shell");
   });
 
+  it("contains the viewport so stage children can own inner scroll", () => {
+    const tree = shellFrame(h, {
+      atmosphere: "shell",
+      title: "New deck",
+      stage: h.div([h.DataAttribute("testid", "stage-child")], ["Body"]),
+      chrome: { version: null, faithfulCount: null, oracleTotal: null, coverageHref: null },
+    });
+
+    expect(classNameOf(findByTestId(tree, "shell-frame"))).toContain("flex");
+    expect(classNameOf(findByTestId(tree, "shell-frame"))).toContain("flex-col");
+    expect(classNameOf(findByTestId(tree, "shell-frame"))).toContain("overflow-hidden");
+    expect(classNameOf(findByTestId(tree, "shell-frame"))).not.toContain("overflow-y-auto");
+    expect(classNameOf(findByTestId(tree, "shell-stage"))).toContain("min-h-0");
+    expect(classNameOf(findByTestId(tree, "shell-stage"))).toContain("flex-1");
+    expect(classNameOf(findByTestId(tree, "shell-stage"))).toContain("overflow-y-auto");
+    expect(classNameOf(findByTestId(tree, "shell-header"))).toContain("shrink-0");
+  });
+
   it("accepts Html subtitle nodes", () => {
     const tree = shellFrame(h, {
       atmosphere: "shell",
@@ -107,5 +125,18 @@ describe("shellFrame", () => {
     });
 
     expect(collectTestIds(tree)).toContain("coverage-global-percent");
+  });
+
+  it("locks stage scroll when tools pages own an inner scrollport", () => {
+    const tree = shellFrame(h, {
+      atmosphere: "shell",
+      title: "Coverage",
+      lockStageScroll: true,
+      stage: h.div([h.DataAttribute("testid", "stage-child")], ["Body"]),
+      chrome: { version: null, faithfulCount: null, oracleTotal: null, coverageHref: null },
+    });
+
+    expect(classNameOf(findByTestId(tree, "shell-stage"))).toContain("overflow-hidden");
+    expect(classNameOf(findByTestId(tree, "shell-stage"))).not.toContain("overflow-y-auto");
   });
 });
