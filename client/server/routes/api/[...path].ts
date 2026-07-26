@@ -17,6 +17,7 @@ import {
   commitStart,
   createLobby,
   deleteTableRoute,
+  ensureLobbySchema,
   joinLobby,
   type LobbySnapshot,
   loadLobby,
@@ -82,6 +83,7 @@ async function handleLobby(event: H3Event, path: string, env: GrpcRequestEnv): P
   if (!me) return new Response("Unauthorized", { status: 401 });
 
   const db = webDb();
+  await ensureLobbySchema(db);
   await sweepWebDb(db);
 
   if (routeDelete) {

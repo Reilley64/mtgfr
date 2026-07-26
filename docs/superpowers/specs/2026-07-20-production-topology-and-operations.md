@@ -233,7 +233,9 @@ Forward-only, expand-only. The `edh-web-migrate` Job is Terraform-owned (hash of
 `client/db/migrations/**`); an Argo-only web image roll does **not** apply new Drizzle
 files — run `terraform apply` when migrations change. If `lobby_seats.gravatar_hash` is
 missing, Host create still returns `table_id` but join/lobby GET 500 (client shows
-Unreachable). Repair migration `0003_lobby_seat_gravatar_if_not_exists` is idempotent.
+Unreachable). Repair migration `0003_lobby_seat_gravatar_if_not_exists` is idempotent;
+the BFF also runs `ensureLobbySchema` once per process on lobby routes (same
+`ADD COLUMN IF NOT EXISTS`) so a web roll self-heals when the Job was skipped.
 
 **`push_schema()` is dev/SQLite-test only.** Production pods assume `migration apply` ran
 first (via the K8s Job before the Deployment roll).

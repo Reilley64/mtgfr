@@ -1,8 +1,17 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
 import { lobbies } from "../db/schema";
 import { createWebDb } from "../server/db/client";
-import { createLobby, joinLobby, type LobbySnapshot, loadLobby, startError, toLobbyView } from "./lobby-store";
+import {
+  createLobby,
+  ensureLobbySchema,
+  joinLobby,
+  type LobbySnapshot,
+  loadLobby,
+  resetLobbySchemaEnsureForTests,
+  startError,
+  toLobbyView,
+} from "./lobby-store";
 
 function snap(overrides: Partial<LobbySnapshot> = {}): LobbySnapshot {
   return {
@@ -100,6 +109,23 @@ describe.skipIf(!process.env.WEB_DATABASE_URL)("joinLobby gravatar persistence",
     await expect(loadLobby(db, tableId)).resolves.toMatchObject({
       tableId,
       hostUserId: 9000,
+      seats: [],
+    });
+  });
+
+  it("ensureLobbySchema restores gravatar_hash so Host join works after migrate drift", async () => {
+    // 3.100.3/3.101.0 shipped migration 0003 but Argo image rolls without terraform
+    // edh-web-migrate left prod without the column. BFF ensure must self-heal.
+    db = createWebDb();
+    resetLobbySchemaEnsureForTests();
+    await db.execute(sql`ALTER TABLE "lobby_seats" DROP COLUMN IF EXISTS "gravatar_hash"`);
+    tableId = await createLobby(db, 9002);
+    await expect(loadLobby(db, tableId)).rejects.toThrow();
+
+    await ensureLobbySchema(db);
+    await expect(loadLobby(db, tableId)).resolves.toMatchObject({
+      tableId,
+      hostUserId: 9002,
       seats: [],
     });
   });

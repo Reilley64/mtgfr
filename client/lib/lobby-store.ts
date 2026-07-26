@@ -46,6 +46,30 @@ export function createLobbyTreatsAsCollision(err: unknown): boolean {
   return isUniqueViolation(err);
 }
 
+// Once per process: repair migrate drift when Argo rolls web without edh-web-migrate.
+let lobbySchemaEnsure: Promise<void> | null = null;
+
+/** Idempotent DDL so loadLobby/join do not 500 when gravatar_hash is missing. */
+export async function ensureLobbySchema(db: WebDb): Promise<void> {
+  if (lobbySchemaEnsure) return lobbySchemaEnsure;
+  lobbySchemaEnsure = db
+    .execute(
+      sql`ALTER TABLE "lobby_seats" ADD COLUMN IF NOT EXISTS "gravatar_hash" text DEFAULT '' NOT NULL`,
+    )
+    .then(() => undefined);
+  try {
+    await lobbySchemaEnsure;
+  } catch (err) {
+    lobbySchemaEnsure = null;
+    throw err;
+  }
+}
+
+/** Test-only: clear the once-per-process memo so a dropped column can be re-ensured. */
+export function resetLobbySchemaEnsureForTests(): void {
+  lobbySchemaEnsure = null;
+}
+
 export async function createLobby(db: WebDb, hostUserId: number): Promise<string> {
   let lastError: unknown;
   for (let attempt = 0; attempt < 8; attempt++) {
