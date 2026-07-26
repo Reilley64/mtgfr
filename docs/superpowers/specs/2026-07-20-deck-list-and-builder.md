@@ -85,10 +85,14 @@ Art is keyed by Scryfall **Printing** UUID. `imageUrlByPrint(printId, size, face
   (`https://api.scryfall.com/cards/{id}?format=image&version={size}`) (local/dev).
 
 `cardArt` resolves the final HTML host attributes. When `proxyArtUrl` is present, front-face art
-uses the same-origin BFF path `/api/card-art/proxy?url=...` first and keeps the printing URL in
-`data-art-fallback`, so a proxy fetch or decode failure swaps back to the printing. Back faces do
-not use the proxy; they continue to use the selected printing. When no proxy is present, existing
-art-crop CDN → Scryfall fallback behavior stays unchanged.
+uses the same-origin authenticated BFF path `/api/card-art/proxy?url=...` first and keeps the
+printing URL in `data-art-fallback`, so a proxy fetch or decode failure swaps back to the printing.
+The BFF route accepts only authenticated requests, requires `https` targets, rejects credentialed
+URLs plus private/link-local/metadata hosts (including private DNS resolutions), caps response size
+at 5 MiB, accepts only `image/jpeg|png|webp|gif`, uses `redirect: "manual"`, and never forwards the
+player's cookies to the remote host. Successful proxy responses return `Cache-Control: public,
+max-age=300`. Back faces do not use the proxy; they continue to use the selected printing. When no
+proxy is present, existing art-crop CDN → Scryfall fallback behavior stays unchanged.
 
 Missing ordinary (non-`art_crop`) CDN art stays empty after load failure (no Scryfall fallback in production). The CDN path replicates Scryfall's folder fan (`first two hex chars` of the UUID). DFC backs are fetched with `face=back` in the Scryfall path; CDN serves the same `large` webp. `imageFaceAfterLoadError` falls back from `back` to `front` on load error (DFC prepare/flip cards have no Scryfall `/back/` — transformer backs that exist load on first try).
 
@@ -112,10 +116,13 @@ Missing ordinary (non-`art_crop`) CDN art stays empty after load failure (no Scr
 
 - `client/app/shell/decks/**/*.test.ts` — decks list/builder stories and helpers (including sequential multi-card remove and keyed decklist rows for pointer-Mount remount).
 - `client/app/domain/deck-builder/*.test.ts` — print prefs, menus, hover preview.
+- `client/app/domain/card-art/proxy-fetch.test.ts` — SSRF guardrails and image proxy fetch caps.
 - `client/app/domain/card-art/proxy-url.test.ts` — proxy URL encoding and front/back face resolution.
 - `client/app/domain/ui/card-art.test.ts` — art URL / host sync against `ImageCache`, including
   proxy-to-print fallback and art-crop fallback.
 - `client/app/domain/image-cache.test.ts` — cache settle / subscriber behavior.
+- `client/server/routes/api/card-art/proxy.get.test.ts` — authenticated route gate, unsafe-target
+  rejection, and success response headers for the Nitro image proxy.
 - Scene coverage for shell deck surfaces lives with other shell Scene tests, including
   `header-leaderboard-link`, `account-menu-*`, `account-gravatar-link`, and
   `deck-list-new-deck`; the home surface does not render

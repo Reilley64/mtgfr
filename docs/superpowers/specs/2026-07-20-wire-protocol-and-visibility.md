@@ -38,15 +38,18 @@ that identify visible objects remain plain string data; hidden names must not be
 
 | Hop | Transport |
 |-----|-----------|
-| Browser → BFF | `@effect/rpc` over HTTP/JSON (same-origin `/api`) |
+| Browser → BFF | `@effect/rpc` over HTTP/JSON (same-origin `/api`) plus authenticated `GET /api/card-art/proxy?url=...` for alter-art images |
 | BFF → API pod | `@effect-grpc/effect-grpc` (Connect native-gRPC) → tonic on `:50051` |
 | Game stream | gRPC server-streaming `Game.Stream` → BFF bridges to SSE on `/api/rpc/.../stream` |
 
 The BFF (Nitro) handles cookie termination: the session cookie never
 travels beyond the BFF, and the resolved session token flows as gRPC metadata
-(`x-session-token`) to tonic. Health-check HTTP lives on `:8080` (Axum `GET /health/live`,
-`/health/ready`, `/health/drain`); all `Auth`, `Decks`, `Ratings`, `Cards`, `Game`, and
-`Tables` RPCs live on `:50051` (tonic).
+(`x-session-token`) to tonic. The separate `/api/card-art/proxy` route also terminates the
+browser cookie at Nitro, re-checks auth via `Auth.GetMe`, then fetches the remote image itself
+without forwarding cookies and with SSRF guardrails (`https` only, no credentials, no
+private/link-local/metadata hosts, 5 MiB cap, image allowlist, redirects disabled). Health-check
+HTTP lives on `:8080` (Axum `GET /health/live`, `/health/ready`, `/health/drain`); all `Auth`,
+`Decks`, `Ratings`, `Cards`, `Game`, and `Tables` RPCs live on `:50051` (tonic).
 
 **Per-viewer redaction** happens at the `schema` crate boundary, before any bytes leave the
 server process. The engine emits full-information canonical `Event`s and a full-information
@@ -259,6 +262,10 @@ The engine/schema event model includes `MulliganTaken { player, mulligans_taken,
 - Generated↔hand wire drift is guarded by `client/app/domain/wire/wire-case-coverage.test.ts`
   (PendingChoiceView / VisibleEvent oneof cases vs `FORMULATOR_FOR_KIND` /
   `VISIBLE_EVENT_KIND_PRESENCE`).
+- `client/app/domain/card-art/proxy-fetch.test.ts` and
+  `client/server/routes/api/card-art/proxy.get.test.ts` cover the same-origin image proxy's
+  SSRF/auth guardrails and response contract; this route is adjacent to the wire edge but outside
+  the protobuf schema itself.
 - Mulligan projection tests assert `mulliganing`, `mulligans_taken`, `hand_kept`, and `can_mulligan` are present in snapshots without exposing other players' hands.
 - Projection tests assert `complete_visible` and stream frames stamp `gravatar_hash` onto
   `PlayerView` while leaving empty strings for seats without a hash.
