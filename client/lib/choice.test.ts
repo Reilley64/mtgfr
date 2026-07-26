@@ -74,6 +74,7 @@ const ALL_PENDING_CHOICE_KINDS = [
   "choose_color",
   "choose_copy_target",
   "choose_attach_host",
+  "choose_legendary_keep",
   "put_from_hand_on_top",
   "opponent_chooses_revealed_to_graveyard",
   "pay_cumulative_upkeep_or_sacrifice",
@@ -817,6 +818,19 @@ describe("answerFromDraft builds accepted intents", () => {
       },
       { kind: "card-pick", picked: [42] },
       { kind: "choose_attach_host", host: 42, player: 0 },
+    );
+    expectDraftIntent(
+      {
+        kind: "choose_legendary_keep",
+        items: [
+          { id: 70, label: "Legendary Test Creature" },
+          { id: 71, label: "Legendary Test Creature" },
+        ],
+        name: "Legendary Test Creature",
+        player: 0,
+      },
+      { kind: "card-pick", picked: [70] },
+      { kind: "choose_legendary_keep", keep: 70, player: 0 },
     );
     expectDraftIntent(
       {

@@ -2017,6 +2017,15 @@ impl Game {
         });
     }
 
+    /// Test/setup helper: place one named counter on a permanent (raw — bypasses replacements).
+    pub fn add_kind_counter(&mut self, object: ObjectId, kind: CounterKind) {
+        self.apply(&Event::KindCountersPlaced {
+            object,
+            kind,
+            count: 1,
+        });
+    }
+
     /// Test/setup helper: place a finality counter on a permanent directly (raw — the normal
     /// path is a `finality = true` reanimation; see `Event::ReanimatedToBattlefield`).
     pub fn add_finality_counter(&mut self, object: ObjectId) {

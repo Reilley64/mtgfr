@@ -967,6 +967,44 @@ test("on-board choose_target aims instead of showing a card grid", () => {
   );
 });
 
+test("legend rule aim asks which legendary permanent to keep", () => {
+  const a = card(7, {
+    name: "Legendary Test Creature",
+    zone: ZONE.Battlefield,
+    kind: { kind: "creature", power: 2, toughness: 2 },
+    power: 2,
+    toughness: 2,
+  });
+  const b = card(8, {
+    name: "Legendary Test Creature",
+    zone: ZONE.Battlefield,
+    kind: { kind: "creature", power: 2, toughness: 2 },
+    power: 2,
+    toughness: 2,
+  });
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        objects: [a, b],
+        pending_choice: {
+          kind: "choose_legendary_keep",
+          name: "Legendary Test Creature",
+          player: 0,
+          items: [
+            { id: 7, label: "Legendary Test Creature" },
+            { id: 8, label: "Legendary Test Creature" },
+          ],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-target-aim")).toHaveText(
+      "Legend rule — choose which Legendary Test Creature to keep",
+    ),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+  );
+});
+
 test("on-board sacrifice_edict shows aim chrome instead of card grid", () => {
   const bear = card(7, {
     name: "Bear",

@@ -272,6 +272,7 @@ message PendingChoiceView {
     PendingChoiceViewMayDrawUpTo may_draw_up_to = 63;
     PendingChoiceViewChooseCardName choose_card_name = 66;
     PendingChoiceViewPayAnyAmountOfMana pay_any_amount_of_mana = 67;
+    PendingChoiceViewChooseLegendaryKeep choose_legendary_keep = 68;
   }
 }
 
@@ -747,6 +748,15 @@ message PendingChoiceViewChooseAttachHost {
   uint32 attachment = 2;
   repeated ChoiceItem items = 3;
   bool optional = 4;
+}
+
+// Legend rule (CR 704.5j): this player controls two or more legendary permanents named `name`
+// (`items`) and must choose exactly one to keep; the rest leave the battlefield. `items` are
+// public battlefield permanents.
+message PendingChoiceViewChooseLegendaryKeep {
+  uint32 player = 1;
+  string name = 2;
+  repeated ChoiceItem items = 3;
 }
 
 // This player (the active player at their untap step) may choose not to untap any of `items` —

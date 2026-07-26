@@ -41,6 +41,32 @@ impl Game {
     pub(crate) fn check_state_based_actions(&self) -> Vec<Event> {
         let mut events = Vec::new();
 
+        // CR 704.5r: if a permanent has both +1/+1 and −1/−1 counters on it, N of each are
+        // removed as a state-based action, where N is the smaller of the two counts. Emitted
+        // before death checks so `apply_all` still sees a live permanent when stripping pairs
+        // (a simultaneous 0-toughness death in the same snapshot still uses pre-annihilation P/T).
+        for id in self.battlefield() {
+            let Object::Permanent(ref p) = self.objects[id as usize] else {
+                continue;
+            };
+            let plus = p.plus_counters;
+            let minus = p.kind_counters[CounterKind::MinusOneMinusOne as usize] as i32;
+            let pairs = plus.min(minus);
+            if pairs <= 0 {
+                continue;
+            }
+            events.push(Event::CountersPlaced {
+                object: id,
+                count: -pairs,
+                source_name: "",
+            });
+            events.push(Event::KindCountersPlaced {
+                object: id,
+                kind: CounterKind::MinusOneMinusOne,
+                count: -pairs,
+            });
+        }
+
         // Deaths (and Aura state) are emitted before player eliminations: a player can lose in the
         // same sweep that kills one of their creatures, and `PlayerLost` tombstones every object
         // they own — so it must run last, after those death events have already been minted. The
@@ -223,6 +249,12 @@ impl Game {
             sba.extend(self.check_linked_exile_returns());
             sba.extend(self.check_leaves_battlefield_illusions());
             if sba.is_empty() {
+                // CR 704.5j: after event-producing SBAs settle, pause for the legend rule if a
+                // controller still has two+ legendary permanents with the same name. One conflict
+                // group per sweep (lowest seat, then name); the answer resumes the pipeline.
+                if let Some(choice) = self.legend_rule_choice() {
+                    pending::raise_choice(self, choice);
+                }
                 return;
             }
             self.apply_all(&sba);
@@ -232,6 +264,43 @@ impl Game {
         // something to limp past silently in release. Fail loudly; the server's catch_unwind
         // quarantines the one bad table rather than taking the process down (C3).
         panic!("state-based actions did not reach a fixpoint within {bound} sweeps");
+    }
+
+    /// First legend-rule conflict (CR 704.5j), if any: a living controller with two or more
+    /// legendary permanents that share a printed name. Groups are ordered by controller seat,
+    /// then name, so the raise is deterministic when several conflicts exist.
+    pub(crate) fn legend_rule_choice(&self) -> Option<PendingChoice> {
+        use std::collections::BTreeMap;
+
+        let mut groups: BTreeMap<(u8, &str), Vec<ObjectId>> = BTreeMap::new();
+        for id in self.battlefield() {
+            let Object::Permanent(ref p) = self.objects[id as usize] else {
+                continue;
+            };
+            let printed = card_def(p.def);
+            if !printed.legendary {
+                continue;
+            }
+            let controller = self.controller_of(id);
+            if self.players[controller.0 as usize].lost {
+                continue;
+            }
+            groups
+                .entry((controller.0, printed.name))
+                .or_default()
+                .push(id);
+        }
+        for ((seat, name), options) in groups {
+            if options.len() < 2 {
+                continue;
+            }
+            return Some(PendingChoice::ChooseLegendaryKeep {
+                player: PlayerId(seat),
+                name,
+                options,
+            });
+        }
+        None
     }
 
     /// CR 611.2b: for each condition-scoped control override whose [`ControlCondition`] no longer

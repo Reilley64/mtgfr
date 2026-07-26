@@ -526,10 +526,10 @@ proliferates / moves / removes generically). `Game::pt_layers` (characteristics.
 plus-counters layer; `label.rs` gets the `"-1/-1"` arm. `enters_with_counters` and
 `remove_counters_kind` needed no code change (already generic over `CounterKind`). wickerbough_elder
 authored fresh, fully faithful, no `approximates` (real card is `{3}{G}` 4/4 Treefolk Shaman — the
-brief's quoted cost/type was stale; verified against Scryfall). Still blocked: CR 704.5r's
-+1/+1↔-1/-1 annihilation SBA (ponytail-noted at the `pt_layers` site — add when a pool card puts both
-kinds on one creature). 3 engine tests in game.rs (P/T reduce, restore on removal, wickerbough
-integration).
+brief's quoted cost/type was stale; verified against Scryfall). **Unblocked (2026-07-26):** CR 704.5r
++1/+1↔−1/−1 annihilation SBA now runs in `check_state_based_actions` (see sba-fidelity-gaps design).
+3 engine tests in game.rs (P/T reduce, restore on removal, wickerbough integration) plus an
+annihilation SBA regression.
 
 ### 196. `color-set-until-eot` — 1 card, M
 Depends on: five-color choice pause machinery (landed); #169 (colors_of override plumbing

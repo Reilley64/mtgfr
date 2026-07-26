@@ -362,6 +362,12 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
             Intent::ChooseAttachHost { player, host } => game.choose_attach_host(player, host),
             _ => Err(Reject::IllegalChoice),
         },
+        PendingChoice::ChooseLegendaryKeep { .. } => match intent {
+            Intent::ChooseLegendaryKeep { player, keep } => {
+                game.answer_legendary_keep(player, keep)
+            }
+            _ => Err(Reject::IllegalChoice),
+        },
     }
 }
 
@@ -492,7 +498,8 @@ pub(crate) fn forced(game: &Game) -> Option<Intent> {
         | PendingChoice::ChooseCopyTarget { .. }
         | PendingChoice::ChooseTokenToCopy { .. }
         | PendingChoice::ChooseCopyCardFromList { .. }
-        | PendingChoice::ChooseAttachHost { .. } => None,
+        | PendingChoice::ChooseAttachHost { .. }
+        | PendingChoice::ChooseLegendaryKeep { .. } => None,
     }
 }
 

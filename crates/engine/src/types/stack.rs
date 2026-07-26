@@ -420,6 +420,10 @@ pub enum Intent {
         player: PlayerId,
         host: Option<ObjectId>,
     },
+    /// Answer a [`PendingChoice::ChooseLegendaryKeep`] (CR 704.5j legend rule): `keep` is the
+    /// one legendary permanent among the conflict options that remains on the battlefield; every
+    /// other option leaves (graveyard / command zone / token cease).
+    ChooseLegendaryKeep { player: PlayerId, keep: ObjectId },
     /// Answer a [`PendingChoice::ChooseCopyTarget`]: `copy = Some(creature)` has the entering
     /// permanent enter as a copy of that creature (one of the choice's `candidates`); `None`
     /// declines the "you may" and it enters as its printed self (CR 706/707.2 — Altered Ego,
@@ -563,6 +567,7 @@ impl Intent {
             Intent::DeclineUntap { keep_tapped, .. } => keep_tapped.clone(),
             Intent::ChooseDredge { dredger, .. } => dredger.iter().copied().collect(),
             Intent::ChooseAttachHost { host, .. } => host.iter().copied().collect(),
+            Intent::ChooseLegendaryKeep { keep, .. } => vec![*keep],
             Intent::ChooseCopyTarget { copy, .. } => copy.iter().copied().collect(),
             // The carried params reference real object ids (the action's own object is looked
             // up from the stored list); range-check them so a bad id can't panic the engine.
@@ -671,6 +676,7 @@ impl Intent {
             | Intent::ChooseCardName { player, .. }
             | Intent::ChooseCopyTarget { player, .. }
             | Intent::ChooseAttachHost { player, .. }
+            | Intent::ChooseLegendaryKeep { player, .. }
             | Intent::ChooseTopOrBottom { player, .. }
             | Intent::TakeAction { player, .. }
             | Intent::PassPriority { player }
@@ -723,6 +729,7 @@ impl Intent {
             | Intent::ChooseCardName { .. }
             | Intent::ChooseCopyTarget { .. }
             | Intent::ChooseAttachHost { .. }
+            | Intent::ChooseLegendaryKeep { .. }
             | Intent::ChooseTopOrBottom { .. } => true,
             Intent::KeepHand { .. }
             | Intent::Mulligan { .. }
@@ -1632,6 +1639,16 @@ pub enum PendingChoice {
         candidates: Vec<ObjectId>,
         optional: bool,
     },
+    /// Legend rule (CR 704.5j): `player` controls two or more legendary permanents named `name`
+    /// (`options`). They choose exactly one to keep; the rest are put into their owners'
+    /// graveyards (or cease, if tokens; commanders still divert). Answered by
+    /// [`Intent::ChooseLegendaryKeep`]. Raised from the SBA sweep after event-producing SBAs
+    /// settle — one conflict group per sweep.
+    ChooseLegendaryKeep {
+        player: PlayerId,
+        name: &'static str,
+        options: Vec<ObjectId>,
+    },
 }
 
 /// Every creature type printed on a creature card in the pool, offered as the candidate list
@@ -1797,7 +1814,8 @@ impl PendingChoice {
             | PendingChoice::ChooseCopyTarget { player, .. }
             | PendingChoice::ChooseTokenToCopy { player, .. }
             | PendingChoice::ChooseCopyCardFromList { player, .. }
-            | PendingChoice::ChooseAttachHost { player, .. } => *player,
+            | PendingChoice::ChooseAttachHost { player, .. }
+            | PendingChoice::ChooseLegendaryKeep { player, .. } => *player,
             // The answering seat is the caster, not the target player whose board is being pruned.
             PendingChoice::CasterKeepPermanents { caster, .. } => *caster,
             // The chooser (Nils' controller) answers, not the player whose creature is countered.
