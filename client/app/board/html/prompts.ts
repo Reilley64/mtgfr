@@ -944,6 +944,8 @@ function cardPickDeclineLabel(pending: PendingChoiceView): string | null {
     case "choose_exiled_with_card_to_cast":
     case "choose_exiled_dig_to_cast_free":
       return "Don't cast";
+    case "may_return_from_graveyard":
+      return pending.mandatory ? null : "Don't return";
     case "choose_attach_host":
       return pending.optional ? "Don't attach" : null;
     case "choose_target":

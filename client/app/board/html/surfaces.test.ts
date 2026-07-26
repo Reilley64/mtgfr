@@ -2168,6 +2168,56 @@ test("pending gy aim shows coach when exile_from_graveyard cards share a pile", 
   );
 });
 
+test("pending gy aim shows Decline only for optional may_return_from_graveyard", () => {
+  const gy = card(8, {
+    name: "Reanimate me",
+    zone: ZONE.Graveyard,
+    kind: { kind: "creature", power: 1, toughness: 1 },
+  });
+
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        pileExpand: { zone: ZONE.Graveyard, owner: 0 },
+      },
+      gameState({
+        objects: [gy],
+        pending_choice: {
+          kind: "may_return_from_graveyard",
+          player: 0,
+          source: 1,
+          mandatory: false,
+          items: [{ id: 8, label: "Reanimate me" }],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-gy-aim")).toExist(),
+    Scene.expect(Scene.testId("prompt-decline")).toExist(),
+  );
+
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        pileExpand: { zone: ZONE.Graveyard, owner: 0 },
+      },
+      gameState({
+        objects: [gy],
+        pending_choice: {
+          kind: "may_return_from_graveyard",
+          player: 0,
+          source: 1,
+          mandatory: true,
+          items: [{ id: 8, label: "Reanimate me" }],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-gy-aim")).toExist(),
+    Scene.expect(Scene.testId("prompt-decline")).toBeAbsent(),
+  );
+});
+
 test("pending revealed aim shows coach for opponent_chooses_revealed_to_graveyard", () => {
   overlayScene(
     overlayModel(

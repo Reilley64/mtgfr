@@ -462,10 +462,11 @@ impl<'a> ChoiceCtx<'a> {
                 player,
                 source,
                 options,
-                mandatory: _,
+                mandatory,
             } => PendingChoiceView::MayReturnFromGraveyard {
                 player: player.0,
                 source,
+                mandatory,
                 items: self.label_items(options),
             },
             engine::PendingChoice::MayDiscard {

@@ -647,6 +647,89 @@ test("search_library Fail to find declines", () => {
   expect(intents).toEqual([{ kind: "search_library", player: 0, choice: null }]);
 });
 
+test("optional may_return_from_graveyard Decline emits empty choose_sacrifices", () => {
+  const s = state({
+    objects: [
+      {
+        controller: 0,
+        has_haste: false,
+        id: 8,
+        is_commander: false,
+        kind: { kind: "creature", power: 2, toughness: 2 },
+        mana_cost: { generic: 1, colored: [0, 0, 0, 0, 0] },
+        marked_damage: 0,
+        name: "Forest",
+        needs_target: false,
+        owner: 0,
+        plus_counters: 0,
+        power: 2,
+        summoning_sick: false,
+        tapped: false,
+        toughness: 2,
+        zone: ZONE.Graveyard,
+      },
+    ],
+    pending_choice: {
+      kind: "may_return_from_graveyard",
+      player: 0,
+      source: 1,
+      mandatory: false,
+      items: [{ id: 8, label: "Forest" }],
+    },
+  });
+  const commands: unknown[] = [];
+  const update = (model: ViewModel, message: Message): readonly [ViewModel, ReadonlyArray<never>] => {
+    const [board, nextCommands] = updateBoard(model.board, message, model.fold, model.tableId);
+    commands.push(...nextCommands);
+    return [{ ...model, board }, []];
+  };
+
+  Scene.scene(
+    { update, view },
+    Scene.with(
+      viewModel(s, {
+        ...initialBoardModel(),
+        pileExpand: { zone: ZONE.Graveyard, owner: 0 },
+      }),
+    ),
+    resolveBoardOverlayMounts(),
+    Scene.click(Scene.testId("prompt-decline")),
+  );
+
+  expect(commands.map(intentFromCommand)).toEqual([{ kind: "choose_sacrifices", player: 0, sacrifices: [] }]);
+});
+
+test("mandatory may_return_from_graveyard blocks empty submit until a card is chosen", () => {
+  const s = state({
+    pending_choice: {
+      kind: "may_return_from_graveyard",
+      player: 0,
+      source: 1,
+      mandatory: true,
+      items: [{ id: 8, label: "Forest" }],
+    },
+  });
+  const commands: unknown[] = [];
+  const update = (model: ViewModel, message: Message): readonly [ViewModel, ReadonlyArray<never>] => {
+    const [board, nextCommands] = updateBoard(model.board, message, model.fold, model.tableId);
+    commands.push(...nextCommands);
+    return [{ ...model, board }, []];
+  };
+
+  Scene.scene(
+    { update, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("prompt-submit")).toBeDisabled(),
+    Scene.expect(Scene.testId("prompt-decline")).toBeAbsent(),
+    Scene.click(Scene.testId("prompt-card-8")),
+    Scene.expect(Scene.testId("prompt-submit")).toBeEnabled(),
+    Scene.click(Scene.testId("prompt-submit")),
+  );
+
+  expect(commands.map(intentFromCommand)).toEqual([{ kind: "choose_sacrifices", player: 0, sacrifices: [8] }]);
+});
+
 test("opponent_chooses_revealed_to_graveyard card click submits choose_exiled", () => {
   const s = state({
     pending_choice: {

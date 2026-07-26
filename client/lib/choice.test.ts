@@ -294,6 +294,31 @@ test("buildAnswerFromDraft builds proliferate from empty card-pick", () => {
   expect(buildAnswerFromDraft(pc, draft)).toEqual({ kind: "sacrifice", ids: [] });
 });
 
+test("mandatory may_return_from_graveyard requires a pick and optional may_return can decline", () => {
+  const mandatory = {
+    kind: "may_return_from_graveyard" as const,
+    items: [{ id: 8, label: "Forest" }],
+    mandatory: true,
+    player: 0,
+    source: 1,
+  };
+  const optional = {
+    kind: "may_return_from_graveyard" as const,
+    items: [{ id: 8, label: "Forest" }],
+    mandatory: false,
+    player: 0,
+    source: 1,
+  };
+
+  expect(cardPickReady(mandatory, [])).toBe(false);
+  expect(cardPickReady(mandatory, [8])).toBe(true);
+  expect(declineAnswer(mandatory)).toBeNull();
+
+  expect(cardPickReady(optional, [])).toBe(false);
+  expect(cardPickReady(optional, [8])).toBe(true);
+  expect(declineAnswer(optional)).toEqual({ kind: "sacrifice", ids: [] });
+});
+
 describe("answerFromDraft builds accepted intents", () => {
   test("builds an order answer for order_triggers", () => {
     expectDraftIntent(

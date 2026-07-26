@@ -532,6 +532,8 @@ export function declineAnswer(pc: PendingChoiceView): AnswerInput | null {
     case "opponent_chooses_exiled_nonland":
     case "opponent_chooses_revealed_to_graveyard":
       return { kind: "choose_exiled", choice: null };
+    case "may_return_from_graveyard":
+      return pc.mandatory ? null : { kind: "sacrifice", ids: [] };
     case "choose_exiled_with_card_to_cast":
       return { kind: "choose_exiled_cast", choice: null };
     case "choose_exiled_dig_to_cast_free":
@@ -566,6 +568,7 @@ export function cardPickRequiredCount(pc: PendingChoiceView): number | null {
     case "choose_legendary_keep":
     case "cast_creature_face_down":
     case "choose_dredge":
+    case "may_return_from_graveyard":
       return 1;
     case "choose_target":
       // Up to `max` targets (CR 601.2c — "up to two target lands"); `1` for the common case.
@@ -591,7 +594,6 @@ export function cardPickRequiredCount(pc: PendingChoiceView): number | null {
     case "exile_from_graveyard":
     case "caster_keep_permanents":
     case "choose_counter_target_for_player":
-    case "may_return_from_graveyard":
     case "may_discard":
       return null;
     default:

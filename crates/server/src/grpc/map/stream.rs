@@ -480,10 +480,12 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
         PendingChoiceView::MayReturnFromGraveyard {
             player,
             source,
+            mandatory,
             items,
         } => Choice::MayReturnFromGraveyard(pb::PendingChoiceViewMayReturnFromGraveyard {
             player: u32::from(player),
             source,
+            mandatory,
             items: choice_items_to_pb(items),
         }),
         PendingChoiceView::MayDiscard {

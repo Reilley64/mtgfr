@@ -113,6 +113,34 @@ describe("fromProtoWire", () => {
       },
     });
   });
+
+  it("decodes may_return_from_graveyard mandatory from proto choice payloads", () => {
+    const frame = fromProtoWire<{
+      state: { pending_choice: { kind: string; mandatory?: boolean; items: Array<{ id: number; label: string }> } };
+    }>({
+      state: {
+        pendingChoice: {
+          choice: {
+            case: "mayReturnFromGraveyard",
+            value: {
+              player: 0,
+              source: 7,
+              mandatory: true,
+              items: [{ id: 11, label: "Forest" }],
+            },
+          },
+        },
+      },
+    });
+
+    expect(frame.state.pending_choice).toEqual({
+      kind: "may_return_from_graveyard",
+      player: 0,
+      source: 7,
+      mandatory: true,
+      items: [{ id: 11, label: "Forest" }],
+    });
+  });
 });
 
 describe("catalogCardsFromProto", () => {

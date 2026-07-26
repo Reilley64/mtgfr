@@ -492,7 +492,7 @@ export type PendingChoiceView =
       source: U32;
       target_player: number;
     }
-  | { items: Array<ChoiceItem>; kind: "may_return_from_graveyard"; player: number; source: U32 }
+  | { items: Array<ChoiceItem>; kind: "may_return_from_graveyard"; mandatory: boolean; player: number; source: U32 }
   | { items: Array<ChoiceItem>; kind: "may_discard"; player: number; source: U32 }
   | { count: number; items: Array<ChoiceItem>; kind: "discard"; player: number }
   | { items: Array<ChoiceItem>; kind: "put_land_from_hand"; player: number }
