@@ -1,4 +1,6 @@
 import { defineHandler } from "nitro/h3";
-import { json } from "../../../../lobby-http";
+import { json, runMetaGet } from "../../../../lobby-http";
 
-export default defineHandler(async () => json({ ok: true }));
+export default defineHandler(async (event) =>
+  runMetaGet(event, "api meta/health/v1", async () => json({ ok: true })),
+);
