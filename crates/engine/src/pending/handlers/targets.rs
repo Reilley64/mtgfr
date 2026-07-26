@@ -161,6 +161,25 @@ impl Game {
                 return Err(Reject::IllegalTarget);
             }
         }
+        // A set-level mana-value budget (CR 601.2c — Rampaging Yao Guai's "destroy any number of
+        // target artifacts and/or enchantments with total mana value X or less"): the chosen
+        // set's *summed* mana value must not exceed the budget, resolved once against this
+        // ability's own source (its entered `{X}`, not `activation_x` — a trigger carries none of
+        // its own). An over-budget answer leaves the pending choice untouched (this function
+        // never took it, only cloned it), the same as the distinctness/legality rejects above.
+        if let Some(budget_amount) = count.total_mv_max {
+            let ability_x = self.ability_source_x(source);
+            let budget = self.resolve_amount(budget_amount, player, source, None, ability_x);
+            let total_mv: i32 = targets
+                .iter()
+                .map(|&t| {
+                    self.resolve_amount(Amount::TargetManaValue, player, source, Some(t), ability_x)
+                })
+                .sum();
+            if total_mv > budget {
+                return Err(Reject::IllegalChoice);
+            }
+        }
 
         self.finish_answer();
         let mut events = Vec::new();

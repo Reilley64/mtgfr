@@ -1,0 +1,38 @@
+# You draw two cards and you lose 2 life. Each opponent gets a poison counter.
+name = "Infectious Inquiry"
+otags = ["alliteration", "hand-positive", "life-for-cards", "poison-opponents", "pure-draw"]
+id = "66051196-53ea-4461-b241-205df9395b3b"
+default_print = "0a10f284-b043-4307-bdc7-6dad47cc9221"
+oracle = "You draw two cards and you lose 2 life. Each opponent gets a poison counter."
+set = "one"
+
+[cost]
+generic = 2
+black = 1
+
+[kind]
+type = "sorcery"
+
+# You draw two cards and you lose 2 life. Each opponent gets a poison counter.
+[[abilities]]
+timing = "spell"
+
+# You draw two cards
+[[abilities.effects]]
+type = "draw"
+mode = "cards"
+count = 2
+
+# and you lose 2 life.
+[[abilities.effects]]
+type = "life"
+mode = "lose"
+amount = 2
+
+# Each opponent gets a poison counter.
+[[abilities.effects]]
+type = "counters"
+mode = "put_counters_on_player"
+kind = "poison"
+count = 1
+scope = "each_opponent"

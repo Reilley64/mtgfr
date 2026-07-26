@@ -38,6 +38,11 @@ pub struct PlayerView {
     /// otherwise cannot see coming.
     #[serde(default)]
     pub commander_damage: Vec<CommanderDamageView>,
+    /// Poison counters on this player (CR 122.1). Ten or more eliminates them (CR 704.5c) — like
+    /// commander damage, a win condition the client otherwise cannot see coming. Public to every
+    /// seat and to spectators.
+    #[serde(default)]
+    pub poison: u32,
 }
 
 /// Wire form of [`engine::ManaPool`]: WUBRG counts, `{C}`, any, dual either-credits, and

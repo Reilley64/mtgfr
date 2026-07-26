@@ -69,6 +69,15 @@ pub enum CountersEffect {
         target_player: bool,
     },
 
+    /// "Each opponent gets a poison counter" (Infectious Inquiry, Vraska's Fall) / "each player
+    /// gets a poison counter" (Ichor Rats) — CR 122.1. Places `count` counters of `kind` on every
+    /// living player in `scope`, and targets nothing.
+    PutCountersOnPlayer {
+        kind: PlayerCounterKind,
+        count: Amount,
+        scope: EdictScope,
+    },
+
     RemoveAllCountersThenDraw {
         target: TargetSpec,
     },

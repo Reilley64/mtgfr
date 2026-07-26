@@ -163,7 +163,8 @@ impl Game {
         }
 
         // Player eliminations last (see the note above): a player at 0-or-less life, who tried to
-        // draw from an empty library, or who took lethal commander damage loses (CR 704.5a/c/g).
+        // draw from an empty library, who has ten or more poison counters, or who took lethal
+        // commander damage loses (CR 704.5a/b/c, CR 903.10a).
         for (id, player) in self.players.iter().enumerate() {
             if player.lost {
                 continue;
@@ -172,7 +173,14 @@ impl Game {
                 .commander_damage
                 .iter()
                 .any(|&(_, amount)| amount >= LETHAL_COMMANDER_DAMAGE);
-            if player.life <= 0 || player.attempted_empty_draw || lethal_commander_damage {
+            // CR 704.5c: ten or more poison counters loses the game.
+            let lethal_poison =
+                player.kind_counters[PlayerCounterKind::Poison as usize] >= LETHAL_POISON;
+            if player.life <= 0
+                || player.attempted_empty_draw
+                || lethal_poison
+                || lethal_commander_damage
+            {
                 events.push(Event::PlayerLost {
                     player: PlayerId(id as u8),
                 });
@@ -954,11 +962,14 @@ impl Game {
                     // expires at the next Untap — same behavior-exact turn-boundary idiom as the
                     // per-player Inkshield shield just above.
                     self.combat_extras.prevent_all_combat_damage_this_turn = false;
-                    // "Entered the battlefield this turn" (Oran-Rief, the Vastwood) expires at
-                    // the same turn boundary — every battlefield permanent's, not just the
-                    // active player's (a new turn, anyone's, ends "this turn").
+                    // "Entered the battlefield this turn" (Oran-Rief, the Vastwood) and "attacked
+                    // this turn" (Agent Frank Horrigan's indestructible grant, CR 508.1) both
+                    // expire at the same turn boundary — every battlefield permanent's, not just
+                    // the active player's (a new turn, anyone's, ends "this turn").
                     for id in self.battlefield() {
-                        self.permanent_mut(id).entered_this_turn = false;
+                        let p = self.permanent_mut(id);
+                        p.entered_this_turn = false;
+                        p.attacked_this_turn = false;
                     }
                 } else if step == Step::EndCombat {
                     // CR "this combat": an `ArmCombatDamageWatch` watch that never fired this
@@ -1046,6 +1057,14 @@ impl Game {
                 let current = self.permanent(object).kind_counters[kind as usize] as i32;
                 self.permanent_mut(object).kind_counters[kind as usize] =
                     (current + count).max(0) as u8;
+            }
+            Event::PlayerCountersPlaced {
+                player,
+                kind,
+                count,
+            } => {
+                let slot = &mut self.players[player.0 as usize].kind_counters[kind as usize];
+                *slot = (*slot as i32 + count).max(0) as u8;
             }
             Event::LoyaltyChanged { object, amount } => {
                 self.permanent_mut(object).loyalty += amount
@@ -1272,6 +1291,10 @@ impl Game {
                 let target = defender_planeswalker
                     .map_or(Defender::Player(defender), Defender::Planeswalker);
                 self.combat.attack_targets.push((object, target));
+                // CR 508.1: turn-scoped "attacked this turn" flag (`Condition::SourceAttackedThisTurn`)
+                // — set here, not in `declare_attackers` (event-sourced state: intents mint events,
+                // events mutate board facts); cleared at the next Untap step below.
+                self.permanent_mut(object).attacked_this_turn = true;
             }
             Event::TokenEnteredAttacking { token, defender } => {
                 self.combat.attackers.push(token);

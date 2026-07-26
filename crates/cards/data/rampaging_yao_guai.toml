@@ -1,0 +1,45 @@
+# Vigilance, trample
+# This creature enters with X +1/+1 counters on it.
+# When this creature enters, destroy any number of target artifacts and/or enchantments with
+# total mana value X or less.
+name = "Rampaging Yao Guai"
+id = "d37e8f75-c7cb-4270-bb2f-0125e972ed15"
+default_print = "63619236-a27a-4fdd-add6-7a295901f906"
+otags = ["gains-pp-counters", "removal-artifact", "removal-enchantment", "triggered-ability"]
+oracle = "Vigilance, trample\nThis creature enters with X +1/+1 counters on it.\nWhen this creature enters, destroy any number of target artifacts and/or enchantments with total mana value X or less."
+set = "pip"
+subtypes = ["Bear", "Mutant"]
+keywords = ["vigilance", "trample"]
+
+[cost]
+x = true
+green = 3
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# This creature enters with X +1/+1 counters on it.
+[[abilities]]
+timing = "static"
+
+# This creature enters with X +1/+1 counters on it.
+[[abilities.effects]]
+type = "static"
+mode = "enters_with_counters"
+count = "x"
+
+# When this creature enters, destroy any number of target artifacts and/or enchantments with
+# total mana value X or less.
+[[abilities]]
+timing = "etb"
+
+# destroy any number of target artifacts and/or enchantments with total mana value X or less.
+[[abilities.effects]]
+type = "destroy"
+mode = "target"
+target = { permanent = { types = "artifact_or_enchantment" } }
+# ponytail: "any number" has no printed upper bound; 255 (u8::MAX, the field's own ceiling) is
+# the honest cap — no legal battlefield ever offers close to that many legal targets.
+count = { max = 255, total_mv_max = "x" }

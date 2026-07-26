@@ -194,6 +194,22 @@ impl Game {
         &self.players[player.0 as usize].commander_damage
     }
 
+    /// How many counters of `kind` sit on `player` (CR 122.1). Public information — ten or more
+    /// poison counters loses the game (CR 704.5c).
+    pub fn player_counters(&self, player: PlayerId, kind: PlayerCounterKind) -> u8 {
+        self.players[player.0 as usize].kind_counters[kind as usize]
+    }
+
+    /// Test/setup helper: place `count` counters of `kind` on `player` (routed through an event so
+    /// state stays mutated only by [`Game::apply`], exactly as [`Game::deal_commander_damage`]).
+    pub fn place_player_counters(&mut self, player: PlayerId, kind: PlayerCounterKind, count: i32) {
+        self.apply(&Event::PlayerCountersPlaced {
+            player,
+            kind,
+            count,
+        });
+    }
+
     /// Whether a player has lost the game.
     pub fn has_lost(&self, player: PlayerId) -> bool {
         self.players[player.0 as usize].lost

@@ -1,0 +1,53 @@
+# +1: Create a 3/3 green Beast creature token.
+# −3: Draw cards equal to the greatest power among creatures you control.
+# −6: Create a 6/6 green Wurm creature token for each land you control.
+name = "Garruk, Primal Hunter"
+id = "298a7e1a-b254-442e-bc1d-2a3e5296d849"
+default_print = "79cfc0d7-fccb-47fb-87b6-08dd32528be6"
+oracle = "+1: Create a 3/3 green Beast creature token.\n−3: Draw cards equal to the greatest power among creatures you control.\n−6: Create a 6/6 green Wurm creature token for each land you control."
+set = "c21"
+subtypes = ["Garruk"]
+legendary = true
+
+[cost]
+generic = 2
+green = 3
+
+[kind]
+type = "planeswalker"
+loyalty = 3
+
+# +1: Create a 3/3 green Beast creature token.
+[[abilities]]
+timing = "activated"
+loyalty = 1
+
+# Create a 3/3 green Beast creature token.
+[[abilities.effects]]
+type = "token"
+mode = "create"
+token = "6bb61f34-5d57-4eaa-a02c-f5d08c1ee920"
+count = 1
+
+# −3: Draw cards equal to the greatest power among creatures you control.
+[[abilities]]
+timing = "activated"
+loyalty = -3
+
+# Draw cards equal to the greatest power among creatures you control.
+[[abilities.effects]]
+type = "draw"
+mode = "cards"
+count = "greatest_power_among_creatures_you_control"
+
+# −6: Create a 6/6 green Wurm creature token for each land you control.
+[[abilities]]
+timing = "activated"
+loyalty = -6
+
+# Create a 6/6 green Wurm creature token for each land you control.
+[[abilities.effects]]
+type = "token"
+mode = "create"
+token = "46a55586-cc9a-443c-b458-e628afc3c587"
+count = { per_permanent = { types = "land", controller = "you" } }

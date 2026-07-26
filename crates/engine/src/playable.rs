@@ -603,6 +603,7 @@ mod tests {
                                 x_scaled: false,
                                 sacrifice_scaled: false,
                                 strive_scaled: false,
+                                total_mv_max: None,
                             },
                             divided: false,
                         }),

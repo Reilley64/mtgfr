@@ -88,7 +88,7 @@ increments #3, #20 slice 2, and #24, all of which mint -1/-1 counters.
 Ranked increments live in [frank-horrigan-increments.md](frank-horrigan-increments.md); the
 increment that unblocks each card is in parentheses.
 
-- [ ] Agent Frank Horrigan (#1)
+- [ ] Agent Frank Horrigan (#1) — built 2026-07-26; still approximated (proliferate can't choose players, #17)
 - [ ] Alpha Deathclaw (#12)
 - [ ] Bilious Skulldweller (#20 slice 3)
 - [ ] Blightbelly Rat (#20 slice 3)
@@ -100,11 +100,11 @@ increment that unblocks each card is in parentheses.
 - [ ] Everflowing Chalice (#11)
 - [ ] Feral Ghoul (#21)
 - [ ] Garruk, Cursed Huntsman (#13)
-- [ ] Garruk, Primal Hunter (#4)
+- [x] Garruk, Primal Hunter (#4) — built 2026-07-26, faithful
 - [ ] Glistening Sphere (#20 slice 4)
-- [ ] Ichor Rats (#20 slices 1–2)
+- [ ] Ichor Rats (#20 slices 1–2) — ETB half built 2026-07-26; still approximated (Infect, slice 2)
 - [ ] Infectious Bite (#7, #20 slice 1)
-- [ ] Infectious Inquiry (#20 slice 1)
+- [x] Infectious Inquiry (#20 slice 1) — built 2026-07-26, faithful
 - [ ] Innkeeper's Talent (#2, #17, #19)
 - [ ] Inspiring Call (#2)
 - [ ] Lily Bowen, Raging Grandma (#14)
@@ -115,13 +115,13 @@ increment that unblocks each card is in parentheses.
 - [ ] Phyrexian Swarmlord (#20 slices 2, 4)
 - [ ] Plague Stinger (#20 slice 2)
 - [ ] Power Fist (#15)
-- [ ] Rampaging Yao Guai (#9)
+- [x] Rampaging Yao Guai (#9) — built 2026-07-26, faithful
 - [ ] Scheming Aspirant (#18)
 - [ ] Undergrowth Stadium (#5)
 - [ ] Venerated Rotpriest (#20 slices 1, 3)
 - [ ] Vorinclex, Monstrous Raider (#19)
 - [ ] Vraska, Betrayal's Sting (#8, #16, #25, #20 slices 1, 4)
-- [ ] Vraska's Fall (#20 slice 1)
+- [x] Vraska's Fall (#20 slice 1) — built 2026-07-26, faithful
 - [ ] Winding Constrictor (#19)
 
 ## Observability re-audit

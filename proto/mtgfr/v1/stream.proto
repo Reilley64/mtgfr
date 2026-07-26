@@ -30,6 +30,8 @@ message PlayerView {
   bool hand_kept = 11;
   // Whether this player may still take another pre-game mulligan.
   bool can_mulligan = 12;
+  // Poison counters on this player (CR 122.1). Ten or more eliminates them (CR 704.5c).
+  uint32 poison = 13;
 }
 
 // One source card def's contributions to a permanent (Alt-inspect ledger).
@@ -1034,6 +1036,7 @@ message VisibleEvent {
     VisibleEventPutFromHandOnTop put_from_hand_on_top = 129;
     VisibleEventBasePtSetIndefinite base_pt_set_indefinite = 130;
     VisibleEventSplitHalfSpellCast split_half_spell_cast = 131;
+    VisibleEventPlayerCountersPlaced player_counters_placed = 132;
   }
 }
 
@@ -1225,6 +1228,16 @@ message VisibleEventCountersPlaced {
 // than +1/+1. `counter_kind` mirrors `engine::CounterKind`'s discriminant.
 message VisibleEventKindCountersPlaced {
   uint32 object = 1;
+  uint32 counter_kind = 2;
+  int32 count = 3;
+}
+
+// A named counter (CR 122.1 — poison) was placed on (`count` positive) or removed from (negative)
+// a *player* — the player-side twin of `KindCountersPlaced`. `counter_kind` mirrors
+// `engine::PlayerCounterKind`'s discriminant. Public: ten or more poison loses the game
+// (CR 704.5c).
+message VisibleEventPlayerCountersPlaced {
+  uint32 player = 1;
   uint32 counter_kind = 2;
   int32 count = 3;
 }

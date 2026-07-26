@@ -130,6 +130,7 @@ pub fn player_view_to_pb(player: PlayerView) -> pb::PlayerView {
             .into_iter()
             .map(commander_damage_view_to_pb)
             .collect(),
+        poison: player.poison,
     }
 }
 
@@ -967,6 +968,15 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> Option<pb::VisibleEvent> {
             counter_kind: u32::from(counter_kind),
             count,
         }),
+        VisibleEvent::PlayerCountersPlaced {
+            player,
+            counter_kind,
+            count,
+        } => Event::PlayerCountersPlaced(pb::VisibleEventPlayerCountersPlaced {
+            player: u32::from(player),
+            counter_kind: u32::from(counter_kind),
+            count,
+        }),
         VisibleEvent::LoyaltyChanged { object, amount } => {
             Event::LoyaltyChanged(pb::VisibleEventLoyaltyChanged { object, amount })
         }
@@ -1644,6 +1654,7 @@ mod tests {
             can_mulligan: false,
             mana_pool: WireManaPool::default(),
             commander_damage: vec![],
+            poison: 0,
         }
     }
 

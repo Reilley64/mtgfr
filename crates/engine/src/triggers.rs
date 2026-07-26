@@ -3100,6 +3100,12 @@ impl Game {
             // through `Game::ability_condition_holds` (mana_bloom's upkeep trigger, queued via
             // `queue_trigger_group`), which intercepts it before falling through here.
             Condition::SourceHasNoCountersOfKind { .. } => false,
+            // ponytail: source-object-based like `SourceHasCounters` above — `TriggerContext`
+            // carries no source object. Reachable only directly against the object by the
+            // characteristics recompute's conditional-keyword gate (Agent Frank Horrigan's
+            // indestructible grant), which reads `Permanent::attacked_this_turn` itself rather
+            // than through `condition_holds`.
+            Condition::SourceAttackedThisTurn => false,
             Condition::YouControlColorPermanents { color, at_least } => {
                 self.battlefield()
                     .into_iter()

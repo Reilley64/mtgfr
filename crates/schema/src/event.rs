@@ -193,6 +193,16 @@ pub enum VisibleEvent {
         counter_kind: u8,
         count: i32,
     },
+    /// A named counter (CR 122.1 — poison) was placed on (`count` positive) or removed from
+    /// (negative) a *player* — the player-side twin of [`Self::KindCountersPlaced`].
+    /// `counter_kind` mirrors `engine::PlayerCounterKind`'s discriminant (0 = poison), the same
+    /// raw-index convention its permanent-side sibling uses. Public: ten or more poison counters
+    /// lose the game (CR 704.5c), a win condition the client otherwise cannot see coming.
+    PlayerCountersPlaced {
+        player: u8,
+        counter_kind: u8,
+        count: i32,
+    },
     /// A planeswalker's loyalty changed by `amount` (a loyalty ability's +N / 0 / −N cost).
     LoyaltyChanged {
         object: ObjectId,
@@ -835,6 +845,26 @@ mod tests {
             }
             other => panic!("expected CardDrawn, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn a_poison_counter_is_public_to_every_viewer() {
+        // Ten or more poison counters lose the game (CR 704.5c). A total nobody but the poisoned
+        // seat could see would be an invisible win condition, so this event is never redacted —
+        // not for the poisoned player, not for an opponent, not for a spectator.
+        let ev = Event::PlayerCountersPlaced {
+            player: PlayerId(1),
+            kind: engine::PlayerCounterKind::Poison,
+            count: 1,
+        };
+        let expected = VisibleEvent::PlayerCountersPlaced {
+            player: 1,
+            counter_kind: engine::PlayerCounterKind::Poison as u8,
+            count: 1,
+        };
+        assert_eq!(redact(&ev, PlayerId(1)), expected, "the poisoned player");
+        assert_eq!(redact(&ev, PlayerId(0)), expected, "an opponent");
+        assert_eq!(spectator_redact(&ev), expected, "a spectator");
     }
 
     #[test]

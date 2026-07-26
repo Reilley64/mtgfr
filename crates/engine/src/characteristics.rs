@@ -1180,9 +1180,22 @@ impl Game {
             if removes_abilities {
                 break;
             }
-            if let Condition::SourceHasCounters { at_least } = condition
-                && self.source_has_counters(object, *at_least)
-            {
+            // ponytail: `conditional_keywords` is a static keyword grant (CR 604.3), not a
+            // triggered ability's intervening-if — it has no `TriggerContext` to run through the
+            // general `Game::condition_holds` evaluator, so each source-object-based `Condition`
+            // this axis actually uses gets its own arm here rather than a generic dispatch. Grow
+            // this match (not a fallthrough to `condition_holds`, which is unreachable from here)
+            // when a future card conditions a keyword on something else.
+            let holds = match condition {
+                Condition::SourceHasCounters { at_least } => {
+                    self.source_has_counters(object, *at_least)
+                }
+                Condition::SourceAttackedThisTurn => self
+                    .as_permanent(object)
+                    .is_some_and(|p| p.attacked_this_turn),
+                _ => false,
+            };
+            if holds {
                 keywords.push(*keyword);
             }
         }

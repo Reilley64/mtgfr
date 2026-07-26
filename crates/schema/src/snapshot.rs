@@ -736,6 +736,7 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                         amount,
                     })
                     .collect(),
+                poison: game.player_counters(pid, engine::PlayerCounterKind::Poison) as u32,
             }
         })
         .collect();
@@ -1375,6 +1376,31 @@ mod tests {
             vec![CommanderDamageView { from: 1, amount: 7 }],
             "P0 has taken 7 from P1's commander",
         );
+    }
+
+    /// Poison is the other invisible win condition (ten or more loses, CR 704.5c) and it is public
+    /// information for every seat, so every player's total rides in the snapshot — not just the
+    /// viewer's own.
+    #[test]
+    fn a_snapshot_carries_every_players_poison_total() {
+        let mut game = Game::new();
+        let snap = snapshot(&game, PlayerId(0));
+        assert!(
+            snap.players.iter().all(|player| player.poison == 0),
+            "nobody is poisoned yet; got {:?}",
+            snap.players.iter().map(|p| p.poison).collect::<Vec<_>>(),
+        );
+
+        game.place_player_counters(PlayerId(1), engine::PlayerCounterKind::Poison, 3);
+
+        let snap = snapshot(&game, PlayerId(0));
+        let opponent = snap.players.iter().find(|p| p.player == 1).unwrap();
+        assert_eq!(
+            opponent.poison, 3,
+            "P0 can see P1's poison total — it is public",
+        );
+        let me = snap.players.iter().find(|p| p.player == 0).unwrap();
+        assert_eq!(me.poison, 0, "and P0's own total is untouched");
     }
 
     /// A modal spell's targets travel per mode (CR 700.2), so the cast action itself reports no

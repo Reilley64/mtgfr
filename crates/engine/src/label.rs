@@ -65,6 +65,9 @@ fn amount_label(amount: Amount) -> String {
             "the number of colors in your commander's color identity".to_string()
         }
         Amount::TotalPowerYouControl => "the total power of creatures you control".to_string(),
+        Amount::GreatestPowerAmongCreaturesYouControl => {
+            "the greatest power among creatures you control".to_string()
+        }
         Amount::PermanentsYouOwnOpponentsControl => {
             "the number of permanents you own that your opponents control".to_string()
         }
@@ -782,6 +785,17 @@ impl Effect {
             }
             Effect::Counters(CountersEffect::PutCountersEach { count, .. }) => {
                 format!("Put {} +1/+1 counters on each", amount_label(count))
+            }
+            Effect::Counters(CountersEffect::PutCountersOnPlayer { kind, count, scope }) => {
+                let kind_name = match kind {
+                    PlayerCounterKind::Poison => "poison",
+                };
+                let who = match scope {
+                    EdictScope::AllPlayers => "Each player",
+                    EdictScope::EachOpponent => "Each opponent",
+                    EdictScope::TargetedPlayers => "Each target player",
+                };
+                format!("{who} gets {} {kind_name} counters", amount_label(count))
             }
             Effect::Choice(ChoiceEffect::Proliferate { times }) => format!("Proliferate {} times", amount_label(times)),
             Effect::Counters(CountersEffect::MoveCounters { all_kinds, .. }) => {

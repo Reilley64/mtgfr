@@ -1,0 +1,47 @@
+# Trample
+# Agent Frank Horrigan has indestructible as long as it attacked this turn.
+# Whenever Agent Frank Horrigan enters or attacks, proliferate twice. (To proliferate, choose any
+# number of permanents and/or players, then give each another counter of each kind already there.)
+name = "Agent Frank Horrigan"
+id = "aedcde3b-3ed5-443c-a81c-03d785153e55"
+default_print = "91193a0b-9087-404f-b397-815e29d0fe12"
+otags = ["attacking-matters-self", "gains-indestructible", "proliferate", "titan-trigger"]
+oracle = "Trample\nAgent Frank Horrigan has indestructible as long as it attacked this turn.\nWhenever Agent Frank Horrigan enters or attacks, proliferate twice. (To proliferate, choose any number of permanents and/or players, then give each another counter of each kind already there.)"
+set = "pip"
+subtypes = ["Mutant", "Warrior"]
+legendary = true
+keywords = ["trample"]
+approximates = "\"Proliferate\" (CR 701.27) only enumerates battlefield permanents with a counter — it can't choose players (poison/rad) or Class level/exiled time/scream counters, though this card's own reminder text says \"permanents and/or players\" (increment #17, not in this wave)."
+conditional_keywords = [
+    { condition = { type = "source_attacked_this_turn" }, keyword = "indestructible" },
+]
+
+[cost]
+generic = 5
+black = 1
+green = 1
+
+[kind]
+type = "creature"
+power = 8
+toughness = 6
+
+# Whenever Agent Frank Horrigan enters or attacks, proliferate twice.
+[[abilities]]
+timing = "etb"
+
+# proliferate twice.
+[[abilities.effects]]
+type = "choice"
+mode = "proliferate"
+times = 2
+
+# Whenever Agent Frank Horrigan enters or attacks, proliferate twice.
+[[abilities]]
+timing = "attacks"
+
+# proliferate twice.
+[[abilities.effects]]
+type = "choice"
+mode = "proliferate"
+times = 2

@@ -88,6 +88,13 @@ pub enum Amount {
     /// The total power of creatures the effect's controller controls (Volcanic Salvo's "total
     /// power of creatures you control").
     TotalPowerYouControl,
+    /// The greatest power among creatures the effect's controller controls — a live
+    /// characteristic scan (CR 613) read at resolution, not at announcement, so a creature whose
+    /// power changes between the two is read as of resolution (Garruk, Primal Hunter's "Draw
+    /// cards equal to the greatest power among creatures you control"). 0 with no creatures
+    /// controlled (the twin of [`TotalPowerYouControl`](Self::TotalPowerYouControl), `.max()`
+    /// instead of `.sum()`).
+    GreatestPowerAmongCreaturesYouControl,
     /// The number of battlefield permanents the effect's controller *owns* but does not control —
     /// i.e. that an opponent controls (Zedruu the Greathearted's "the number of permanents you own
     /// that your opponents control"). Compares [`Game::owner_of`] against [`Game::controller_of`];
@@ -695,6 +702,8 @@ impl Effect {
             | Effect::Choice(ChoiceEffect::MayDiscard { .. })
             | Effect::Choice(ChoiceEffect::MayDrawUnlessPays { .. })
             | Effect::Counters(CountersEffect::PutCountersEach { .. })
+            // "Each player/opponent gets a poison counter" names its players by scope, not by target.
+            | Effect::Counters(CountersEffect::PutCountersOnPlayer { .. })
             | Effect::Choice(ChoiceEffect::Proliferate { .. })
             | Effect::Choice(ChoiceEffect::Discard {
                 target_player: false,
@@ -1070,8 +1079,10 @@ impl CounterKind {
     /// ponytail: a fixed slot array sized to exactly what the pool's cards consume (charge, story,
     /// study, vow) rather than an open-ended map — `Permanent` must stay `Copy`, so no
     /// `Vec`/`HashMap`. Grow this (and add the matching variant) when a future card needs
-    /// another named kind, or swap to a leaked `&'static [(CounterKind, u8)]`
-    /// slice if the kind set ever needs to be open-ended.
+    /// another named kind that sits on a *permanent*, or swap to a leaked
+    /// `&'static [(CounterKind, u8)]` slice if the kind set ever needs to be open-ended. A counter
+    /// kind that sits on a *player* (poison, CR 122.1) doesn't belong here at all — it has its own
+    /// parallel [`PlayerCounterKind`] and its own store on [`Player::kind_counters`].
     pub(crate) const COUNT: usize = 10;
 
     /// Every kind, for enumerating "each kind present" (proliferate, move/remove-all-counters).
@@ -1087,6 +1098,31 @@ impl CounterKind {
         CounterKind::Age,
         CounterKind::Storage,
     ];
+}
+
+/// A named counter kind that sits on a *player* rather than a permanent (CR 122.1), tracked on
+/// [`Player::kind_counters`]. Deliberately its own enum rather than more
+/// [`CounterKind`] variants: no [`CounterKind`] can legally sit on a player and no
+/// `PlayerCounterKind` can legally sit on a permanent, so one shared enum would make every
+/// `kind_counters` slot array half-invalid. The two keep parallel `COUNT`/`ALL` shapes so
+/// "each kind already there" walks (proliferate, CR 701.27) can iterate both the same way.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "card-dsl",
+    derive(serde::Deserialize),
+    serde(rename_all = "snake_case")
+)]
+pub enum PlayerCounterKind {
+    /// A poison counter (CR 122.1, CR 704.5c — ten or more loses the game). Placed by infect
+    /// damage (CR 702.90), toxic (CR 702.164), and "gets a poison counter" effects.
+    Poison,
+}
+
+impl PlayerCounterKind {
+    /// How many kinds [`Player::kind_counters`] has a slot for. Adding a kind (a rad counter,
+    /// say) is a one-line change here plus the variant. An `ALL` twin of [`CounterKind::ALL`],
+    /// for walking "each kind already there", lands with its first consumer.
+    pub(crate) const COUNT: usize = 1;
 }
 
 /// [`CardDef::cumulative_upkeep`](super::CardDef::cumulative_upkeep)'s upkeep cost (CR 702.24):
@@ -1404,6 +1440,13 @@ pub enum Condition {
     /// Primordial Hydra's trample gate). Source-object-based — reads the object's own
     /// `Permanent::plus_counters`, not a `TriggerContext` field.
     SourceHasCounters { at_least: u32 },
+    /// "has indestructible as long as it attacked this turn" (Agent Frank Horrigan).
+    /// Source-object-based like [`SourceHasCounters`](Self::SourceHasCounters) above, but reads
+    /// [`Permanent::attacked_this_turn`] — a turn-scoped flag set when the permanent is declared
+    /// as an attacker and cleared at the next Untap step, *not* [`PermanentFilter::attacking`],
+    /// which lapses the instant combat ends or the permanent leaves combat. The printed grant
+    /// persists through end of combat and the rest of the turn.
+    SourceAttackedThisTurn,
     /// "if this permanent has no `kind` counters on it" (CR 702 counters; mana_bloom's upkeep
     /// self-bounce: "if this enchantment has no charge counters on it, return it to its owner's
     /// hand"). Source-object-based like [`SourceHasCounters`](Self::SourceHasCounters) above.

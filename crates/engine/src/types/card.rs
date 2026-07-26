@@ -1006,6 +1006,7 @@ pub(crate) fn fresh_permanent(
         tapped: def.enters_tapped,
         summoning_sick,
         entered_this_turn: true,
+        attacked_this_turn: false,
         plus_counters: 0,
         kind_counters: [0; CounterKind::COUNT],
         temp_power: 0,
@@ -1521,6 +1522,15 @@ pub(crate) struct Permanent {
     /// back to `false` to keep their "as if it had been there since before the turn" contract,
     /// the same way they override `summoning_sick`.
     pub(crate) entered_this_turn: bool,
+    /// Whether this permanent was declared as an attacker this turn (CR 508.1, [`Event::AttackerDeclared`]).
+    /// Backs [`Condition::SourceAttackedThisTurn`] (Agent Frank Horrigan's "has indestructible as
+    /// long as it attacked this turn"). Turn-scoped like `entered_this_turn` above — set the
+    /// instant the permanent is declared an attacker and cleared for *every* battlefield
+    /// permanent at every Untap step (see [`Event::StepBegan`]'s turn-boundary reset block), not
+    /// just its controller's. Distinct from [`PermanentFilter::attacking`], which only holds
+    /// while the permanent is still in combat this turn: this stays `true` after end of combat,
+    /// after the permanent is removed from combat, or after it changes controllers mid-combat.
+    pub(crate) attacked_this_turn: bool,
     /// Net +1/+1 counters (each adds +1 power and +1 toughness).
     pub(crate) plus_counters: i32,
     /// Named non-P/T counters (CR 122.1 — charge, story, …), indexed by [`CounterKind`] as
@@ -1795,6 +1805,9 @@ pub(crate) const COMMANDER_LIFE: i32 = 40;
 /// Combat damage from a single commander that loses the game.
 pub(crate) const LETHAL_COMMANDER_DAMAGE: i32 = 21;
 
+/// Poison counters on a player that lose the game (CR 704.5c).
+pub(crate) const LETHAL_POISON: u8 = 10;
+
 /// The maximum hand size enforced by the cleanup step.
 pub(crate) const HAND_SIZE: usize = 7;
 
@@ -1906,6 +1919,10 @@ pub(crate) struct Player {
     /// Commander combat damage taken, keyed by the source commander's owner (each player
     /// has one commander); 21 from one source loses the game.
     pub(crate) commander_damage: Vec<(PlayerId, i32)>,
+    /// Named counters sitting on this *player* (CR 122.1), one slot per [`PlayerCounterKind`] —
+    /// the player-side twin of [`Permanent::kind_counters`]. Ten or more poison loses the game
+    /// (CR 704.5c).
+    pub(crate) kind_counters: [u8; PlayerCounterKind::COUNT],
     /// Set once the player has lost the game (a state-based action).
     pub(crate) lost: bool,
     /// Whether this player has the city's blessing (CR 702.131 ascend). Sticky: set once by a

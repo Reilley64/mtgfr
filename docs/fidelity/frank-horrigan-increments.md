@@ -15,7 +15,20 @@ ordinary card-shaped work.
 
 ---
 
-### 1. `attacked-this-turn-condition` — 1 card, S
+### 1. `attacked-this-turn-condition` — 1 card, S — LANDED 2026-07-26
+_Landed 2026-07-26: `Permanent::attacked_this_turn` (set in `apply.rs`'s `Event::AttackerDeclared`
+arm — event-sourced, not in `declare_attackers`; cleared for *every* battlefield permanent in the
+Untap `StepBegan` block beside `entered_this_turn`, so a new turn from any seat ends "this turn").
+`Condition::SourceAttackedThisTurn` is read directly by `characteristics.rs`'s
+`conditional_keywords` scanner — that hardcoded `if let SourceHasCounters` became a `match` with an
+arm per source-object condition, since a static keyword grant (CR 604.3) has no `TriggerContext` to
+route through `condition_holds`; `triggers.rs` keeps an unreachable `false` arm for exhaustiveness.
+`characteristics_cache.rs` invalidates the whole battlefield on Untap `StepBegan` (the same shape as
+`CombatCleared`). A token put onto the battlefield attacking is deliberately not flagged — it was
+never *declared* an attacker. agent_frank_horrigan authored; its "proliferate twice" is one
+`times = 2` effect (CR 701.27b repeats the process, each repetition its own choice). Still blocked:
+the card keeps one `approximates` — proliferate can't choose players, so its own reminder text's
+"permanents and/or players" is unmodeled until #17 lands._
 Depends on: nothing.
 `Condition::SourceAttackedThisTurn` for the commander's "has indestructible as long as it
 attacked this turn." Combat already records attackers; the condition reads that per-turn flag on
@@ -46,7 +59,14 @@ can only place +1/+1 counters. *Sketch:* add the same `kind: Option<CounterKind>
 singular `PutCounters` already has, routing to `Event::KindCountersPlaced`. *Cards:*
 contagion_engine.
 
-### 4. `greatest-power-amount` — 1 card, S
+### 4. `greatest-power-amount` — 1 card, S — LANDED 2026-07-26
+_Landed 2026-07-26: `Amount::GreatestPowerAmongCreaturesYouControl` (TOML
+`"greatest_power_among_creatures_you_control"`) — `TotalPowerYouControl`'s live-`Game::power` scan
+with `.max().unwrap_or(0)`. Negative-power edge needs no clamp: `Draw(DrawEffect::Cards)` already
+floors through `resolve_count`. While adding it, both this arm and the pre-existing
+`TotalPowerYouControl` were fixed to test `controller_of`, not `owner_of` — "creatures you control"
+is a control test (CR 109.4/CR 720), so a stolen creature counted for the wrong seat. garruk_primal_hunter
+authored (all three loyalty abilities), plus the 6/6 green Wurm token. Still blocked: nothing._
 Depends on: nothing.
 `Amount` offers `TotalPowerYouControl` but no per-creature maximum. *Sketch:*
 `Amount::GreatestPowerAmongCreaturesYouControl`, resolved off the same live-power scan
@@ -83,9 +103,19 @@ Depends on: nothing.
 settle with either the color or 2 life, recording *which* was chosen so #16's compleated rider
 can read it. *Cards:* vraska_betrayals_sting (with #16).
 
-### 9. `total-mana-value-budget-targets` — 1 card, M
+### 9. `total-mana-value-budget-targets` — 1 card, M — LANDED 2026-07-26
+_Landed 2026-07-26: `TargetCount::total_mv_max: Option<Amount>` (TOML `total_mv_max` on the count
+table, hand-written `Deserialize` in `de.rs`) — a set-level CR 601.2c budget checked once against
+the *summed* mana value of the whole chosen set, in `Game::choose_targets`'s
+`PendingChoice::ChooseTarget` arm. Over budget is `Reject::IllegalChoice` and leaves the pending
+choice untouched — never a silent truncation. The sketch pointed at `ChooseAbilityTargets`/second
+target clauses; that was wrong for this card, whose destroy is a first-clause multi-target ETB
+trigger (Numot's "up to two target lands" shape). Not projected to the wire, following
+`SelectFromTop`'s `mv_budget` precedent (server-side rejection is the whole enforcement).
+rampaging_yao_guai authored; "any number" takes the `u8` field ceiling (255) with a `ponytail:`
+note. Still blocked: nothing._
 Depends on: nothing.
-"Any number of target artifacts and/or enchantments with total mana value X or less" needs a
+"Destroy any number of target artifacts and/or enchantments with total mana value X or less" needs a
 *summed* budget across the chosen target set. `mv_budget` exists only on `dig`/`look_at_top`, and
 `x_scaled` caps the *number* of targets, not their total. *Sketch:* a `total_mv_max: Amount` on
 the target spec, validated when the target set is submitted (CR 601.2c — legality is checked over
@@ -217,6 +247,12 @@ the CR 704.5c "10 or more poison counters → that player loses the game" state-
 into the existing `check_state_based_actions` loss sweep beside the commander-damage check, and
 the `VisibleEvent` + projection arms (poison totals are public — do **not** redact them).
 *Cards:* infectious_inquiry, vraskas_fall, ichor_rats (ETB half).
+*2026-07-26 — slice 1 built (the XL is not LANDED; slices 2–5 remain).* `PlayerCounterKind` +
+`Player::kind_counters`, `CountersEffect::PutCountersOnPlayer { kind, count, scope }` (reusing
+`EdictScope`), `Event::PlayerCountersPlaced`, the CR 704.5c check in `apply.rs`'s elimination
+sweep, `Game::player_counters` / `place_player_counters`, and the public (unredacted)
+`VisibleEvent::PlayerCountersPlaced` + `PlayerView.poison` wire surface. infectious_inquiry and
+vraskas_fall are faithful; ichor_rats carries one `approximates` for the unmodeled Infect keyword.
 
 **Slice 2 — `Keyword::Infect`.** CR 702.90: damage to creatures becomes -1/-1 counters, damage to
 players becomes poison counters. This is a damage *replacement*, so it must sit at the shared

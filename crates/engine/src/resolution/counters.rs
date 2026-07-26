@@ -107,6 +107,33 @@ impl Game {
                     })
                     .collect()
             }
+            // "Each opponent gets a poison counter" (Infectious Inquiry, Vraska's Fall) / "each
+            // player gets a poison counter" (Ichor Rats): counters on the *players* in scope, not
+            // on any permanent (CR 122.1). A player who has already lost is no longer in the game
+            // and gets nothing (`living_players`).
+            CountersEffect::PutCountersOnPlayer { kind, count, scope } => {
+                let count = self.resolve_count(count, controller, source, target, x) as i32;
+                if count <= 0 {
+                    return Vec::new();
+                }
+                self.living_players()
+                    .filter(|&player| match scope {
+                        EdictScope::AllPlayers => true,
+                        EdictScope::EachOpponent => player != controller,
+                        // ponytail: no pool card places player counters on a chosen subset of
+                        // players, and the DSL surface for this mode documents only
+                        // all_players/each_opponent. Give this a real arm when one does.
+                        EdictScope::TargetedPlayers => unreachable!(
+                            "player counters have no targeted-players spelling in the card pool"
+                        ),
+                    })
+                    .map(|player| Event::PlayerCountersPlaced {
+                        player,
+                        kind,
+                        count,
+                    })
+                    .collect()
+            }
             // Promise of Loyalty's rider: place a vow counter on each surviving creature, marking
             // the controller (the caster — "can't attack *you*") as the protected player. Scans
             // every player's creatures matching `filter` (the survivors an all-players keep-one

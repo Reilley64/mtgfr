@@ -70,6 +70,7 @@ fn target_count_parses_scalar_and_table_forms() {
             x_scaled: false,
             sacrifice_scaled: false,
             strive_scaled: false,
+            total_mv_max: None,
         }
     );
 
@@ -89,6 +90,30 @@ max = 3
             x_scaled: false,
             sacrifice_scaled: false,
             strive_scaled: false,
+            total_mv_max: None,
+        }
+    );
+
+    // Rampaging Yao Guai's "any number of target artifacts and/or enchantments with total mana
+    // value X or less" (CR 601.2c): the budget rides on the count table, and a dropped
+    // `total_mv_max` would silently deserialize to `None` — no budget at all.
+    let budgeted: CountRow = toml::from_str(
+        r#"
+[count]
+max = 255
+total_mv_max = "x"
+"#,
+    )
+    .unwrap();
+    assert_eq!(
+        budgeted.count,
+        TargetCount {
+            min: 0,
+            max: 255,
+            x_scaled: false,
+            sacrifice_scaled: false,
+            strive_scaled: false,
+            total_mv_max: Some(Amount::X),
         }
     );
 

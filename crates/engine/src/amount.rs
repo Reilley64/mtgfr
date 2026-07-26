@@ -87,15 +87,27 @@ impl Game {
             Amount::NontokenCreaturesEnteredThisTurn => {
                 self.players[controller.0 as usize].nontoken_creatures_entered_this_turn as i32
             }
+            // "Creatures you control" is a *control* test (CR 109.4/CR 720) — a creature you own
+            // but an opponent has stolen is not yours to count, and one you stole is.
             Amount::TotalPowerYouControl => self
                 .battlefield()
                 .into_iter()
                 .filter(|&id| {
-                    self.owner_of(id) == controller
+                    self.controller_of(id) == controller
                         && matches!(self.def_of(id).kind, CardKind::Creature { .. })
                 })
                 .map(|id| self.power(id))
                 .sum(),
+            Amount::GreatestPowerAmongCreaturesYouControl => self
+                .battlefield()
+                .into_iter()
+                .filter(|&id| {
+                    self.controller_of(id) == controller
+                        && matches!(self.def_of(id).kind, CardKind::Creature { .. })
+                })
+                .map(|id| self.power(id))
+                .max()
+                .unwrap_or(0),
             // Zedruu's "permanents you own that your opponents control" — you own it, but its
             // controller isn't you (CR 108.3/720). A permanent you own is controlled by you or an
             // opponent, so owner-is-you-and-controller-isn't counts each donated permanent once.

@@ -227,6 +227,17 @@ pub(crate) fn project_event(
             counter_kind: kind as u8,
             count,
         },
+        // Public: a poison total is a visible win condition (CR 704.5c), so it passes through
+        // unredacted for every viewer, seated or spectating.
+        Event::PlayerCountersPlaced {
+            player,
+            kind,
+            count,
+        } => VisibleEvent::PlayerCountersPlaced {
+            player: player.0,
+            counter_kind: kind as u8,
+            count,
+        },
         Event::LoyaltyChanged { object, amount } => VisibleEvent::LoyaltyChanged { object, amount },
         Event::LoyaltyActivated { object, active } => {
             VisibleEvent::LoyaltyActivated { object, active }

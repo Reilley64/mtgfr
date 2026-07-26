@@ -826,7 +826,9 @@ impl PermanentFilter {
     }
 }
 
-/// Which players a multi-player sacrifice edict ([`Effect::Choice(ChoiceEffect::EachPlayerSacrifices)`]) affects.
+/// Which players a multi-player fan-out effect affects — a sacrifice edict
+/// ([`Effect::Choice(ChoiceEffect::EachPlayerSacrifices)`]) or a player-counter placement
+/// ([`Effect::Counters(CountersEffect::PutCountersOnPlayer)`], "each player/opponent gets a poison counter").
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(
     feature = "card-dsl",

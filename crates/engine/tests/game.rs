@@ -2034,6 +2034,7 @@ const PINGER: CardDef = CardDef {
                 x_scaled: false,
                 sacrifice_scaled: false,
                 strive_scaled: false,
+                total_mv_max: None,
             },
             divided: false,
         }),
@@ -5417,6 +5418,7 @@ const DESTROY: CardDef = CardDef {
                 x_scaled: false,
                 sacrifice_scaled: false,
                 strive_scaled: false,
+                total_mv_max: None,
             },
             cant_be_regenerated: false,
         }),
@@ -5503,6 +5505,7 @@ const DESTROY_NONARTIFACT_NONBLACK: CardDef = CardDef {
                 x_scaled: false,
                 sacrifice_scaled: false,
                 strive_scaled: false,
+                total_mv_max: None,
             },
             cant_be_regenerated: false,
         }),
@@ -5585,6 +5588,7 @@ const DESTROY_ANY_PERMANENT: CardDef = CardDef {
                 x_scaled: false,
                 sacrifice_scaled: false,
                 strive_scaled: false,
+                total_mv_max: None,
             },
             cant_be_regenerated: false,
         }),
@@ -5670,6 +5674,7 @@ const DESTROY_NONBASIC_LAND: CardDef = CardDef {
                 x_scaled: false,
                 sacrifice_scaled: false,
                 strive_scaled: false,
+                total_mv_max: None,
             },
             cant_be_regenerated: false,
         }),
@@ -5752,6 +5757,7 @@ const EXILE_FROM_ANY_GRAVEYARD: CardDef = CardDef {
                 x_scaled: false,
                 sacrifice_scaled: false,
                 strive_scaled: false,
+                total_mv_max: None,
             },
         }),
         optional: false,
@@ -5838,6 +5844,7 @@ const EXILE_ANY_CARD_FROM_ANY_GRAVEYARD: CardDef = CardDef {
                 x_scaled: false,
                 sacrifice_scaled: false,
                 strive_scaled: false,
+                total_mv_max: None,
             },
         }),
         optional: false,
@@ -5922,6 +5929,7 @@ const EXILE_NONCREATURE_ARTIFACT_OR_ENCHANTMENT: CardDef = CardDef {
                 x_scaled: false,
                 sacrifice_scaled: false,
                 strive_scaled: false,
+                total_mv_max: None,
             },
         }),
         optional: false,
@@ -6006,6 +6014,7 @@ const EXILE_SMALL_CREATURE: CardDef = CardDef {
                 x_scaled: false,
                 sacrifice_scaled: false,
                 strive_scaled: false,
+                total_mv_max: None,
             },
         }),
         optional: false,
@@ -6087,6 +6096,7 @@ const EXILE_ENCHANTMENT: CardDef = CardDef {
                 x_scaled: false,
                 sacrifice_scaled: false,
                 strive_scaled: false,
+                total_mv_max: None,
             },
         }),
         optional: false,
@@ -6168,6 +6178,7 @@ const EXILE_ARTIFACT: CardDef = CardDef {
                 x_scaled: false,
                 sacrifice_scaled: false,
                 strive_scaled: false,
+                total_mv_max: None,
             },
         }),
         optional: false,
@@ -6995,6 +7006,7 @@ const GROWTH: CardDef = CardDef {
                 x_scaled: false,
                 sacrifice_scaled: false,
                 strive_scaled: false,
+                total_mv_max: None,
             },
             kind: None,
             divided: false,
@@ -10287,6 +10299,7 @@ const LIFELINK_PINGER: CardDef = CardDef {
                 x_scaled: false,
                 sacrifice_scaled: false,
                 strive_scaled: false,
+                total_mv_max: None,
             },
             divided: false,
         }),
@@ -15776,6 +15789,7 @@ const DESTROY_ENCHANTMENT_TEST: CardDef = CardDef {
                 x_scaled: false,
                 sacrifice_scaled: false,
                 strive_scaled: false,
+                total_mv_max: None,
             },
             cant_be_regenerated: false,
         }),
@@ -20902,6 +20916,7 @@ const WATCHES_ANY_SACRIFICE: CardDef = CardDef {
                 x_scaled: false,
                 sacrifice_scaled: false,
                 strive_scaled: false,
+                total_mv_max: None,
             },
             kind: None,
             divided: false,
@@ -36407,6 +36422,7 @@ const RETURN_LAND_FROM_GRAVEYARD: CardDef = CardDef {
                 x_scaled: false,
                 sacrifice_scaled: false,
                 strive_scaled: false,
+                total_mv_max: None,
             },
         }),
         optional: false,
@@ -36536,6 +36552,7 @@ const RETURN_SORCERY_FROM_GRAVEYARD: CardDef = CardDef {
                 x_scaled: false,
                 sacrifice_scaled: false,
                 strive_scaled: false,
+                total_mv_max: None,
             },
         }),
         optional: false,
@@ -36798,6 +36815,7 @@ const EXILE_CARD_FROM_OPPONENTS_GRAVEYARD: CardDef = CardDef {
                 x_scaled: false,
                 sacrifice_scaled: false,
                 strive_scaled: false,
+                total_mv_max: None,
             },
         }),
         optional: false,
@@ -43243,6 +43261,7 @@ const CHOOSE_TWO: CardDef = CardDef {
                     x_scaled: false,
                     sacrifice_scaled: false,
                     strive_scaled: false,
+                    total_mv_max: None,
                 },
                 divided: false,
             }),
@@ -43598,6 +43617,7 @@ const CHOOSE_ONE_OR_MORE: CardDef = CardDef {
                     x_scaled: false,
                     sacrifice_scaled: false,
                     strive_scaled: false,
+                    total_mv_max: None,
                 },
                 divided: false,
             }),
@@ -45753,6 +45773,7 @@ static PACK_A_PUNCH: CardDef = CardDef {
                         x_scaled: false,
                         sacrifice_scaled: false,
                         strive_scaled: false,
+                        total_mv_max: None,
                     },
                     kind: None,
                     divided: false,
@@ -46123,6 +46144,7 @@ static PETTY_THEFT_TEST: CardDef = CardDef {
                 x_scaled: false,
                 sacrifice_scaled: false,
                 strive_scaled: false,
+                total_mv_max: None,
             },
         }),
         optional: false,
@@ -46284,6 +46306,7 @@ static GROVES_BOUNTY_TEST: CardDef = CardDef {
                 x_scaled: false,
                 sacrifice_scaled: false,
                 strive_scaled: false,
+                total_mv_max: None,
             },
             kind: None,
             divided: false,
@@ -49617,6 +49640,90 @@ fn primordial_hydra_has_trample_only_at_ten_or_more_plus_one_counters() {
     );
 }
 
+/// A creature with a conditional keyword gated on `Condition::SourceAttackedThisTurn` — the
+/// grant for the increment/test group below (Agent Frank Horrigan's "has indestructible as long
+/// as it attacked this turn").
+const ATTACKED_GRANTS_INDESTRUCTIBLE: CardDef = CardDef {
+    conditional_keywords: &[(Condition::SourceAttackedThisTurn, Keyword::Indestructible)],
+    ..creature("Attacked This Turn Test Creature", 2, 2, &[])
+};
+
+#[test]
+fn an_attacked_this_turn_grant_survives_end_of_combat() {
+    // `Condition::SourceAttackedThisTurn` is a turn-scoped flag (CR 508.1), not
+    // `PermanentFilter::attacking` — the near-miss reading that lapses the instant the creature
+    // leaves combat. The printed grant must still hold in the postcombat main phase and the end
+    // step, well after end of combat.
+    let mut game = Game::with_players(2, 0);
+    let attacker = game.spawn_on_battlefield(PlayerId(0), ATTACKED_GRANTS_INDESTRUCTIBLE);
+    assert!(
+        !game.has_keyword(attacker, Keyword::Indestructible),
+        "no grant before attacking"
+    );
+
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: vec![(attacker, Defender::Player(PlayerId(1)))],
+    })
+    .expect("a legal attack");
+    assert!(
+        game.has_keyword(attacker, Keyword::Indestructible),
+        "the grant is live once the creature has attacked"
+    );
+
+    advance_until(&mut game, |g| g.current_step() == Step::Main2);
+    assert!(
+        game.has_keyword(attacker, Keyword::Indestructible),
+        "the grant survives end of combat and into the postcombat main phase"
+    );
+
+    advance_until(&mut game, |g| g.current_step() == Step::End);
+    assert!(
+        game.has_keyword(attacker, Keyword::Indestructible),
+        "the grant persists all the way through the end step — it lapses at the next untap, not sooner"
+    );
+}
+
+#[test]
+fn an_attacked_this_turn_grant_clears_at_the_next_untap() {
+    // The turn-scoped flag clears for every battlefield permanent (not just the active player's)
+    // at the next Untap step — the same turn-boundary idiom as `entered_this_turn`.
+    let mut game = Game::with_players(2, 0);
+    let attacker = game.spawn_on_battlefield(PlayerId(0), ATTACKED_GRANTS_INDESTRUCTIBLE);
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: vec![(attacker, Defender::Player(PlayerId(1)))],
+    })
+    .expect("a legal attack");
+    assert!(game.has_keyword(attacker, Keyword::Indestructible));
+
+    pass_until_next_turn(&mut game);
+    assert!(
+        !game.has_keyword(attacker, Keyword::Indestructible),
+        "the grant lapsed at the next untap, a new turn"
+    );
+}
+
+#[test]
+fn an_attacked_this_turn_grant_never_applies_without_an_attack() {
+    // A creature that never attacked never gets the grant — this is the negative that
+    // distinguishes a real per-attack flag from an always-on keyword.
+    let mut game = Game::with_players(2, 0);
+    let bystander = game.spawn_on_battlefield(PlayerId(0), ATTACKED_GRANTS_INDESTRUCTIBLE);
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: vec![],
+    })
+    .expect("declining to attack is legal");
+    assert!(
+        !game.has_keyword(bystander, Keyword::Indestructible),
+        "a creature that never attacked never gets the grant"
+    );
+}
+
 #[test]
 fn gorma_the_gullet_puts_its_own_death_counter_with_no_target_choice() {
     // Gorma, the Gullet (soc): "Whenever another creature you control dies, put a +1/+1
@@ -52769,6 +52876,7 @@ const POPULATE_AT_END_STEP: CardDef = CardDef {
                 x_scaled: false,
                 sacrifice_scaled: false,
                 strive_scaled: false,
+                total_mv_max: None,
             },
             sacrifice_at_next_end_step: false,
             exile_at_next_end_step: false,
@@ -54832,6 +54940,7 @@ const RIONYA_TEST: CardDef = CardDef {
                 x_scaled: false,
                 sacrifice_scaled: false,
                 strive_scaled: false,
+                total_mv_max: None,
             },
             sacrifice_at_next_end_step: true,
             exile_at_next_end_step: false,
@@ -57485,6 +57594,7 @@ const BURN_CREATURE_OR_PW: CardDef = amount_spell!(
             x_scaled: false,
             sacrifice_scaled: false,
             strive_scaled: false,
+            total_mv_max: None,
         },
         divided: false,
     })
@@ -57502,6 +57612,7 @@ const BURN_TARGET_POWER: CardDef = amount_spell!(
             x_scaled: false,
             sacrifice_scaled: false,
             strive_scaled: false,
+            total_mv_max: None,
         },
         divided: false,
     })
@@ -57519,6 +57630,7 @@ const BURN_TARGET_MV: CardDef = amount_spell!(
             x_scaled: false,
             sacrifice_scaled: false,
             strive_scaled: false,
+            total_mv_max: None,
         },
         divided: false,
     })
@@ -61502,6 +61614,7 @@ const TEST_STEELBANE: CardDef = CardDef {
                     x_scaled: false,
                     sacrifice_scaled: false,
                     strive_scaled: false,
+                    total_mv_max: None,
                 },
                 cant_be_regenerated: false,
             }),
@@ -64596,6 +64709,7 @@ const TAP_TWO_PERMANENTS: CardDef = CardDef {
                 x_scaled: false,
                 sacrifice_scaled: false,
                 strive_scaled: false,
+                total_mv_max: None,
             },
         }),
         optional: false,
@@ -64679,6 +64793,7 @@ const COUNTER_EACH_UP_TO_TWO: CardDef = CardDef {
                 x_scaled: false,
                 sacrifice_scaled: false,
                 strive_scaled: false,
+                total_mv_max: None,
             },
             kind: None,
             divided: false,
@@ -73413,6 +73528,7 @@ const DEAL_ONE: CardDef = amount_spell!(
             x_scaled: false,
             sacrifice_scaled: false,
             strive_scaled: false,
+            total_mv_max: None,
         },
         divided: false,
     })
@@ -76234,6 +76350,7 @@ const CREATURE_BOLT: CardDef = CardDef {
             x_scaled: false,
             sacrifice_scaled: false,
             strive_scaled: false,
+            total_mv_max: None,
         },
         divided: false,
     }))],
@@ -76515,6 +76632,7 @@ const MULTI_BOLT: CardDef = CardDef {
                 x_scaled: false,
                 sacrifice_scaled: false,
                 strive_scaled: false,
+                total_mv_max: None,
             },
             divided: false,
         }),
@@ -77997,6 +78115,7 @@ const BURN_FIXED_2: CardDef = amount_spell!(
             x_scaled: false,
             sacrifice_scaled: false,
             strive_scaled: false,
+            total_mv_max: None,
         },
         divided: false,
     })
@@ -79506,6 +79625,7 @@ const OPPONENT_DAMAGE_WATCHER: CardDef = CardDef {
                     x_scaled: false,
                     sacrifice_scaled: false,
                     strive_scaled: false,
+                    total_mv_max: None,
                 },
                 divided: false,
             }),
@@ -83894,6 +84014,7 @@ const TEST_MINUS_ONE_COUNTER_CREATURE: CardDef = CardDef {
                     x_scaled: false,
                     sacrifice_scaled: false,
                     strive_scaled: false,
+                    total_mv_max: None,
                 },
                 cant_be_regenerated: false,
             }),
@@ -86337,6 +86458,250 @@ fn numot_choosing_zero_lands_is_legal() {
     );
 }
 
+// ── Set-level total-mana-value target budget (CR 601.2c, rampaging_yao_guai #9) ────
+
+/// A 2/2 that enters with X +1/+1 counters and, on entering, destroys any number of target
+/// artifacts and/or enchantments with total mana value X or less (Rampaging Yao Guai's shape,
+/// minus vigilance/trample — irrelevant to the target-budget check).
+const RAMPAGING_YAO_GUAI_TEST: CardDef = CardDef {
+    name: "Rampaging Yao Guai (test)",
+    id: "",
+    default_print: "",
+    cost: X_COST,
+    kind: CardKind::Creature {
+        power: 2,
+        toughness: 2,
+        also: TypeSet::NONE,
+    },
+    legendary: false,
+    uncounterable: false,
+    modal: false,
+    modal_choose: 1,
+    modal_choose_max: None,
+    modal_choose_max_if_commander: false,
+    identity_pips: &[],
+    colors: &[],
+    devoid: false,
+    enters_tapped: false,
+    enters_tapped_unless: None,
+    free_cast_if: None,
+    alternative_cost: None,
+    cast_only_during_combat: false,
+    approximates: None,
+    oracle: None,
+    set: "",
+    subtypes: &[],
+    otags: &[],
+    keywords: &[],
+    conditional_keywords: &[],
+    abilities: &[
+        Ability {
+            timing: Timing::Static,
+            effect: Effect::Static(StaticEffect::EntersWithCounters {
+                amount: Amount::X,
+                kind: None,
+            }),
+            optional: false,
+            min_level: 0,
+            once_each_turn: false,
+            condition: None,
+            cost: Cost::FREE,
+        },
+        Ability {
+            timing: Timing::Triggered(Trigger::Etb),
+            effect: Effect::Destroy(DestroyEffect::Target {
+                target: TargetSpec::Permanent(PermanentFilter::of(
+                    TypeSet::ARTIFACT.union(TypeSet::ENCHANTMENT),
+                )),
+                count: TargetCount {
+                    min: 0,
+                    // ponytail: "any number" has no printed upper bound; `u8::MAX` is the honest
+                    // ceiling for the `u8` field (clamped further to the actual legal-target count
+                    // at placement, `place_targeted_ability`'s existing clamp).
+                    max: u8::MAX,
+                    x_scaled: false,
+                    sacrifice_scaled: false,
+                    strive_scaled: false,
+                    total_mv_max: Some(Amount::X),
+                },
+                cant_be_regenerated: false,
+            }),
+            optional: false,
+            min_level: 0,
+            once_each_turn: false,
+            condition: None,
+            cost: Cost::FREE,
+        },
+    ],
+    cycling: None,
+    cycling_sacrifice: SacrificeCost::None,
+    flashback: None,
+    echo: None,
+    cumulative_upkeep: None,
+    recover: None,
+    bestow: None,
+    morph: None,
+    evoke: None,
+    delve: false,
+    escape: None,
+    retrace: false,
+    graveyard_cast_cost: None,
+    cascade: false,
+    functions_in_graveyard: false,
+    enchant: None,
+    enchant_graveyard: false,
+    back: None,
+    adventure: None,
+    halves: &[],
+    suspend: None,
+    vanishing: None,
+    devour: None,
+    demonstrate: false,
+    enter_as_copy: None,
+    encore: None,
+    hand_ability: &[],
+    forecast: None,
+    may_choose_not_to_untap: false,
+    dredge: None,
+};
+
+/// Cast [`RAMPAGING_YAO_GUAI_TEST`] with the given `x`, resolving up to (but not past) its ETB's
+/// `ChooseTarget` pause.
+fn cast_yao_guai_with_x(g: &mut TestGame, x: u32) {
+    let yao_guai = g.spawn_in_hand(PlayerId(0), RAMPAGING_YAO_GUAI_TEST);
+    g.cast(yao_guai).x(x).submit();
+    resolve_top_of_stack(g); // the creature spell resolves; its ETB pauses on ChooseTarget.
+}
+
+#[test]
+fn a_total_mana_value_budget_rejects_an_over_budget_target_set() {
+    // X = 3, three mv-2 artifacts offered: any two of them sum to 4, over budget.
+    let mut game = TestGame::new();
+    let a = game.spawn_on_battlefield(PlayerId(1), artifact("MV2 Artifact A", 2));
+    let b = game.spawn_on_battlefield(PlayerId(1), artifact("MV2 Artifact B", 2));
+    let c = game.spawn_on_battlefield(PlayerId(1), artifact("MV2 Artifact C", 2));
+    cast_yao_guai_with_x(&mut game, 3);
+
+    let result = game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(a), Target::Object(b)],
+    });
+    assert_eq!(
+        result,
+        Err(Reject::IllegalChoice),
+        "two mv-2 targets sum to 4, over the X=3 budget"
+    );
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::ChooseTarget { .. })
+        ),
+        "an over-budget answer leaves the choice pending, not silently truncated"
+    );
+    for permanent in [a, b, c] {
+        assert_eq!(
+            game.zone_of(permanent),
+            Zone::Battlefield,
+            "the rejected answer destroyed nothing"
+        );
+    }
+}
+
+#[test]
+fn a_total_mana_value_budget_accepts_a_set_within_the_budget() {
+    // X = 3, two mv-2 and mv-1 artifacts: their sum (3) is exactly the budget.
+    let mut game = TestGame::new();
+    let mv2 = game.spawn_on_battlefield(PlayerId(1), artifact("MV2 Artifact", 2));
+    let mv1 = game.spawn_on_battlefield(PlayerId(1), artifact("MV1 Artifact", 1));
+    cast_yao_guai_with_x(&mut game, 3);
+
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(mv2), Target::Object(mv1)],
+    })
+    .expect("mv 2 + mv 1 = 3, exactly the X=3 budget");
+    resolve_whole_stack(&mut game);
+
+    assert_eq!(game.zone_of(mv2), Zone::Graveyard, "destroyed");
+    assert_eq!(game.zone_of(mv1), Zone::Graveyard, "destroyed");
+}
+
+#[test]
+fn a_total_mana_value_budget_rejects_a_single_target_above_budget() {
+    // X = 3, a single mv-4 artifact: over budget alone, proving the check isn't only pairwise.
+    let mut game = TestGame::new();
+    let mv4 = game.spawn_on_battlefield(PlayerId(1), artifact("MV4 Artifact", 4));
+    cast_yao_guai_with_x(&mut game, 3);
+
+    let result = game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(mv4)],
+    });
+    assert_eq!(
+        result,
+        Err(Reject::IllegalChoice),
+        "a lone mv-4 target already exceeds the X=3 budget"
+    );
+    assert_eq!(
+        game.zone_of(mv4),
+        Zone::Battlefield,
+        "the rejected answer destroyed nothing"
+    );
+}
+
+#[test]
+fn a_total_mana_value_budget_allows_declining_all_targets() {
+    // "Any number" (min 0): choosing zero is always a legal, trivially-in-budget answer.
+    let mut game = TestGame::new();
+    let mv4 = game.spawn_on_battlefield(PlayerId(1), artifact("MV4 Artifact", 4));
+    cast_yao_guai_with_x(&mut game, 3);
+
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![],
+    })
+    .expect("an empty target set is trivially within any budget");
+
+    assert_eq!(
+        game.zone_of(mv4),
+        Zone::Battlefield,
+        "declining destroys nothing"
+    );
+}
+
+#[test]
+fn a_total_mana_value_budget_of_zero_only_allows_zero_mv_targets() {
+    // X = 0: the budget is 0, so only a mana-value-0 artifact is a legal choice.
+    let mut game = TestGame::new();
+    let mv0 = game.spawn_on_battlefield(PlayerId(1), artifact("MV0 Artifact", 0));
+    let mv1 = game.spawn_on_battlefield(PlayerId(1), artifact("MV1 Artifact", 1));
+    cast_yao_guai_with_x(&mut game, 0);
+
+    let rejected = game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(mv1)],
+    });
+    assert_eq!(
+        rejected,
+        Err(Reject::IllegalChoice),
+        "X=0 leaves no budget for a mana-value-1 target"
+    );
+
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(mv0)],
+    })
+    .expect("a mana-value-0 target fits an X=0 budget");
+    resolve_whole_stack(&mut game);
+
+    assert_eq!(game.zone_of(mv0), Zone::Graveyard, "destroyed");
+    assert_eq!(
+        game.zone_of(mv1),
+        Zone::Battlefield,
+        "never chosen — the rejected answer above didn't touch it"
+    );
+}
+
 // ── Intet, the Dreamer (exile face down, play it free while Intet remains) ────────────
 
 /// Attack with Intet, pay the {2}{U} rider, and resolve the trigger. Returns the exiled card's
@@ -88663,6 +89028,132 @@ fn garruk_wildspeaker_minus_four_pumps_your_creatures_and_grants_trample() {
     );
 }
 
+#[test]
+fn garruk_primal_hunter_minus_three_draws_the_greatest_power_not_the_sum() {
+    // Garruk, Primal Hunter: "−3: Draw cards equal to the greatest power among creatures you
+    // control." Two creatures of different power under the controller must yield the larger
+    // one's power, not their sum, and a bigger creature under an opponent must not count at all.
+    let mut game = Game::new();
+    game.stack_library(PlayerId(0), &[VANILLA; 10]);
+    let garruk = game.spawn_on_battlefield(PlayerId(0), card("Garruk, Primal Hunter"));
+    game.spawn_on_battlefield(PlayerId(0), creature("Ogre", 4, 4, &[]));
+    game.spawn_on_battlefield(PlayerId(0), creature("Bear", 2, 2, &[]));
+    game.spawn_on_battlefield(PlayerId(1), creature("Their Giant", 10, 10, &[]));
+
+    let before = game.hand(PlayerId(0)).len();
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: garruk,
+        ability_index: 1,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.hand(PlayerId(0)).len() - before,
+        4,
+        "the greatest power (4) is drawn — not the sum (6), and not the opponent's 10"
+    );
+}
+
+#[test]
+fn garruk_primal_hunter_minus_three_draws_zero_with_no_creatures() {
+    // Garruk, Primal Hunter: "−3: Draw cards equal to the greatest power among creatures you
+    // control." With no creatures controlled, the greatest-power scan is empty and must resolve
+    // to 0 — not panic, not draw a negative count.
+    let mut game = Game::new();
+    game.stack_library(PlayerId(0), &[VANILLA; 3]);
+    let garruk = game.spawn_on_battlefield(PlayerId(0), card("Garruk, Primal Hunter"));
+
+    let before = game.hand(PlayerId(0)).len();
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: garruk,
+        ability_index: 1,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.hand(PlayerId(0)).len(),
+        before,
+        "no creatures controlled draws zero cards"
+    );
+}
+
+#[test]
+fn garruk_primal_hunter_minus_three_reads_live_power_not_printed_power() {
+    // Garruk, Primal Hunter: "−3: Draw cards equal to the greatest power among creatures you
+    // control." The scan is a live characteristic read (CR 613) — a +1/+1 counter placed after
+    // the creature enters must raise the draw count above its printed power.
+    let mut game = Game::new();
+    game.stack_library(PlayerId(0), &[VANILLA; 10]);
+    let garruk = game.spawn_on_battlefield(PlayerId(0), card("Garruk, Primal Hunter"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), creature("Bear", 2, 2, &[]));
+    game.add_plus_counter(bear); // printed 2 power, live power 3
+
+    let before = game.hand(PlayerId(0)).len();
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: garruk,
+        ability_index: 1,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.hand(PlayerId(0)).len() - before,
+        3,
+        "live power (3, after the +1/+1 counter) is drawn, not the printed power (2)"
+    );
+}
+
+#[test]
+fn garruk_primal_hunter_minus_three_counts_creatures_you_control_not_creatures_you_own() {
+    // Garruk, Primal Hunter: "−3: Draw cards equal to the greatest power among creatures you
+    // control." CR 109.4/CR 720 — "you control" is a control test, not an ownership test, so a
+    // stolen creature counts for its new controller and not for its owner.
+    let mut game = TestGame::new();
+    let garruk = game.spawn_on_battlefield(PlayerId(0), card("Garruk, Primal Hunter"));
+    game.spawn_on_battlefield(PlayerId(0), creature("Bear", 2, 2, &[]));
+    let their_giant = game.spawn_on_battlefield(PlayerId(1), creature("Their Giant", 7, 7, &[]));
+    let steal = game.spawn_in_hand(PlayerId(0), STEAL_PERMANENT);
+    game.cast(steal).at(Target::Object(their_giant)).resolve();
+    assert_eq!(game.controller_of(their_giant), PlayerId(0));
+
+    game.stack_library(PlayerId(0), &[VANILLA; 10]);
+    let before = game.hand(PlayerId(0)).len();
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: garruk,
+        ability_index: 1,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.hand(PlayerId(0)).len() - before,
+        7,
+        "the stolen 7/7 counts for its controller, not its owner"
+    );
+}
+
 // ── Increment #196: `each_player_first_main_phase` trigger + `add_mana`'s `recipient` axis. ──
 
 #[test]
@@ -90611,4 +91102,278 @@ fn deathcap_glade_enters_tapped_unless_you_control_two_or_more_other_lands() {
         !game.is_tapped(land_permanent(&events)),
         "Deathcap Glade enters untapped controlling two other lands",
     );
+}
+
+/// Empty every player's priority pass until the stack is empty — `resolve_top_of_stack` assumes a
+/// two-player table, so a three/four-player table needs a pass from everyone in turn.
+fn resolve_top_of_stack_multiplayer(game: &mut Game) {
+    while !game.stack().is_empty() {
+        let player = game.priority_holder();
+        game.submit(Intent::PassPriority { player }).unwrap();
+    }
+}
+
+#[test]
+fn infectious_inquiry_gives_each_opponent_a_poison_counter() {
+    // Infectious Inquiry: "You draw two cards and you lose 2 life. Each opponent gets a poison
+    // counter."
+    let mut game = Game::with_players(4, 0);
+    game.stack_library(PlayerId(0), &[card("Swamp"); 4]);
+    let spell = game.spawn_in_hand(PlayerId(0), card("Infectious Inquiry"));
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: spell,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack_multiplayer(&mut game);
+
+    assert_eq!(game.hand(PlayerId(0)).len(), 2, "you draw two cards");
+    assert_eq!(game.life(PlayerId(0)), 18, "you lose 2 life");
+    for opponent in [PlayerId(1), PlayerId(2), PlayerId(3)] {
+        assert_eq!(
+            game.player_counters(opponent, PlayerCounterKind::Poison),
+            1,
+            "{opponent:?} got a poison counter"
+        );
+    }
+    assert_eq!(
+        game.player_counters(PlayerId(0), PlayerCounterKind::Poison),
+        0,
+        "the caster is not their own opponent"
+    );
+}
+
+#[test]
+fn poison_counters_accumulate_across_separate_spells() {
+    // Two castings of Infectious Inquiry leave each opponent with two poison counters — counters
+    // add, they don't replace (CR 122.1).
+    let mut game = Game::with_players(4, 0);
+    game.stack_library(PlayerId(0), &[card("Swamp"); 8]);
+    for _ in 0..2 {
+        let spell = game.spawn_in_hand(PlayerId(0), card("Infectious Inquiry"));
+        game.fund_mana(PlayerId(0));
+        game.submit(Intent::Cast {
+            player: PlayerId(0),
+            object: spell,
+            target: None,
+            x: 0,
+            modes: vec![],
+            discard_cost: vec![],
+            graveyard_exile: vec![],
+            sacrifice_cost: vec![],
+            kicked: false,
+            bought_back: false,
+            evoked: false,
+            strive_count: 0,
+            replicate_count: 0,
+            alternative_cost: false,
+        })
+        .unwrap();
+        resolve_top_of_stack_multiplayer(&mut game);
+    }
+
+    assert_eq!(
+        game.player_counters(PlayerId(1), PlayerCounterKind::Poison),
+        2,
+        "one poison counter per casting, accumulated"
+    );
+    assert_eq!(
+        game.player_counters(PlayerId(0), PlayerCounterKind::Poison),
+        0,
+        "poison is tracked per player — the caster still has none"
+    );
+}
+
+#[test]
+fn nine_poison_counters_do_not_lose_the_game_but_ten_do() {
+    // CR 704.5c: "If a player has ten or more poison counters, that player loses the game."
+    let mut game = Game::with_players(4, 0);
+    game.place_player_counters(PlayerId(1), PlayerCounterKind::Poison, 9);
+    let events = game
+        .submit(Intent::PassPriority {
+            player: game.priority_holder(),
+        })
+        .unwrap();
+    assert!(
+        !game.has_lost(PlayerId(1)),
+        "nine poison counters is one short of lethal"
+    );
+    assert!(
+        !events
+            .iter()
+            .any(|event| matches!(event, Event::PlayerLost { .. })),
+        "no elimination at nine poison counters"
+    );
+
+    game.place_player_counters(PlayerId(1), PlayerCounterKind::Poison, 1);
+    let events = game
+        .submit(Intent::PassPriority {
+            player: game.priority_holder(),
+        })
+        .unwrap();
+    assert!(
+        game.has_lost(PlayerId(1)),
+        "the tenth poison counter loses the game"
+    );
+    assert!(
+        events
+            .iter()
+            .any(|event| matches!(event, Event::PlayerLost { player } if *player == PlayerId(1))),
+        "the elimination is announced; got {events:?}"
+    );
+}
+
+#[test]
+fn a_player_already_lost_to_poison_is_not_eliminated_twice() {
+    // The elimination sweep skips a player who has already lost, so a poisoned-out seat doesn't
+    // re-emit `PlayerLost` on every later state-based-action check.
+    let mut game = Game::with_players(4, 0);
+    game.place_player_counters(PlayerId(1), PlayerCounterKind::Poison, 10);
+    game.submit(Intent::PassPriority {
+        player: game.priority_holder(),
+    })
+    .unwrap();
+    assert!(game.has_lost(PlayerId(1)));
+
+    let events = game
+        .submit(Intent::PassPriority {
+            player: game.priority_holder(),
+        })
+        .unwrap();
+    assert!(
+        !events
+            .iter()
+            .any(|event| matches!(event, Event::PlayerLost { .. })),
+        "an already-eliminated player isn't eliminated again; got {events:?}"
+    );
+}
+
+#[test]
+fn vraskas_fall_poisons_an_opponent_with_nothing_to_sacrifice() {
+    // Vraska's Fall: "Each opponent sacrifices a creature or planeswalker of their choice and gets
+    // a poison counter." The sacrifice and the counter are one clause — an opponent with no
+    // creature or planeswalker sacrifices nothing and still gets poisoned.
+    let mut game = Game::with_players(2, 0);
+    let spell = game.spawn_in_hand(PlayerId(0), card("Vraska's Fall"));
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: spell,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack_multiplayer(&mut game);
+
+    assert_eq!(
+        game.player_counters(PlayerId(1), PlayerCounterKind::Poison),
+        1,
+        "an opponent with nothing to sacrifice is still poisoned"
+    );
+    assert_eq!(
+        game.player_counters(PlayerId(0), PlayerCounterKind::Poison),
+        0,
+        "the caster is not their own opponent"
+    );
+}
+
+#[test]
+fn vraskas_fall_edicts_and_poisons_the_same_opponent() {
+    // The edict half and the poison half both land on each opponent.
+    let mut game = Game::with_players(2, 0);
+    let bear = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let spell = game.spawn_in_hand(PlayerId(0), card("Vraska's Fall"));
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: spell,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // pauses on the opponent's sacrifice choice
+    game.submit(Intent::ChooseSacrifices {
+        player: PlayerId(1),
+        sacrifices: vec![bear],
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.zone_of(bear),
+        Zone::Graveyard,
+        "the chosen creature is sacrificed"
+    );
+    assert_eq!(
+        game.player_counters(PlayerId(1), PlayerCounterKind::Poison),
+        1,
+        "and the same opponent gets a poison counter"
+    );
+}
+
+#[test]
+fn ichor_rats_entering_poisons_every_player_including_its_controller() {
+    // Ichor Rats: "When this creature enters, each player gets a poison counter." — each *player*,
+    // so its own controller is poisoned too.
+    let mut game = Game::with_players(4, 0);
+    let rats = game.spawn_in_hand(PlayerId(0), card("Ichor Rats"));
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: rats,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack_multiplayer(&mut game); // the creature resolves, then its ETB trigger
+
+    for player in [PlayerId(0), PlayerId(1), PlayerId(2), PlayerId(3)] {
+        assert_eq!(
+            game.player_counters(player, PlayerCounterKind::Poison),
+            1,
+            "{player:?} got a poison counter from Ichor Rats"
+        );
+    }
 }

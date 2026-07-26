@@ -199,6 +199,14 @@ impl Game {
             Event::AttackerDeclared { object, .. } => {
                 cache.invalidate_object(object);
             }
+            // Untap clears every battlefield permanent's `attacked_this_turn` (Agent Frank
+            // Horrigan's indestructible grant, CR 508.1) — same board-wide turn-boundary
+            // invalidation shape as `CombatCleared` below.
+            Event::StepBegan {
+                step: Step::Untap, ..
+            } => {
+                cache.invalidate_all_battlefield(self);
+            }
             // A chosen-type-gated anthem's newly-set source affects every creature the
             // controller owns, same scope as `LandPlayed`/`TokenCreated` above.
             Event::CreatureTypeChosen { object, .. } => {

@@ -2162,6 +2162,16 @@ pub enum Event {
         kind: CounterKind,
         count: i32,
     },
+    /// `count` of `kind`'s counters were placed on (positive) or removed from (negative) a
+    /// *player* (CR 122.1 — poison) — the player-side twin of
+    /// [`KindCountersPlaced`](Self::KindCountersPlaced) above. Mutates
+    /// [`Player::kind_counters`]; ten or more poison then loses the game via CR 704.5c's
+    /// state-based action. Public information — the whole table can see a poison total.
+    PlayerCountersPlaced {
+        player: PlayerId,
+        kind: PlayerCounterKind,
+        count: i32,
+    },
     /// A planeswalker's loyalty changed by `amount` (a loyalty ability's cost: +N / 0 / −N).
     LoyaltyChanged { object: ObjectId, amount: i32 },
     /// A planeswalker's once-per-turn loyalty-ability flag was set (`active = true`, when a loyalty
@@ -3049,6 +3059,21 @@ pub struct TargetCount {
     /// with that declared count (always "exactly N," like `sacrifice_scaled`'s "exactly X").
     /// Defaults to `false`. Parsed by the hand-written `Deserialize` impl in `de.rs`.
     pub strive_scaled: bool,
+    /// A set-level cap on the chosen targets' *summed* mana value (CR 601.2c: legality is
+    /// evaluated over the whole chosen set, not per target) — Rampaging Yao Guai's "destroy any
+    /// number of target artifacts and/or enchantments with total mana value X or less". `None`
+    /// (default) imposes no budget, matching every existing multi-target effect. `Some(amount)`
+    /// is resolved once, against the choosing ability's own source (its entered `{X}` for a
+    /// permanent's own ETB, via [`Game::ability_source_x`](crate::Game::ability_source_x)/
+    /// [`Game::resolve_amount`](crate::Game::resolve_amount)), and checked against the sum of
+    /// each chosen target's mana value ([`Amount::TargetManaValue`]) in
+    /// [`Game::choose_targets`](crate::Game::choose_targets) — an over-budget answer is
+    /// [`Reject::IllegalChoice`](crate::Reject::IllegalChoice), not a truncation. Distinct from
+    /// [`crate::types::effect::dig::DigEffect::LookAtTop`]'s own `mv_budget` (a per-card dig
+    /// filter, already resolved to a bare `u32` before the pause); this is a *target-count* axis
+    /// so it composes with `min`/`max`/`x_scaled` on any targeted effect, not just a dig. Parsed
+    /// by the hand-written `Deserialize` impl in `de.rs`.
+    pub total_mv_max: Option<Amount>,
 }
 
 impl Default for TargetCount {
@@ -3059,6 +3084,7 @@ impl Default for TargetCount {
             x_scaled: false,
             sacrifice_scaled: false,
             strive_scaled: false,
+            total_mv_max: None,
         }
     }
 }

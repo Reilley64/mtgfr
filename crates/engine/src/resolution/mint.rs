@@ -48,6 +48,7 @@ impl Game {
                 | CountersEffect::PlaceVowCounters { .. }
                 | CountersEffect::PutCounters { .. }
                 | CountersEffect::PutCountersEach { .. }
+                | CountersEffect::PutCountersOnPlayer { .. }
                 | CountersEffect::RemoveAllCountersThenDraw { .. }
                 | CountersEffect::RemoveCounterFromSelf) => {
                     self.mint_counters(c, controller, source, target, x)

@@ -932,6 +932,7 @@ impl<'de> Deserialize<'de> for ProtectionScope {
 /// `"spells_cast_this_turn"`, `"commander_casts_from_command_zone"`, `"creatures_died_this_turn"`,
 /// `"nontoken_creatures_entered_this_turn"`,
 /// `"sacrificed_creature_power"`, `"commander_color_count"`, `"total_power_you_control"`,
+/// `"greatest_power_among_creatures_you_control"`,
 /// `"triggering_spell_mana_value"`, `"spell_sacrifice_count"`, `"revealed_creature_mana_value"`,
 /// `"permanents_died_this_turn"`,
 /// `"mana_paid_this_way"`, `"past_votes"`, `"present_votes"`, `"total_mana_value_milled_this_way"`,
@@ -972,6 +973,7 @@ impl<'de> Deserialize<'de> for Amount {
             "sacrificed_creature_toughness",
             "commander_color_count",
             "total_power_you_control",
+            "greatest_power_among_creatures_you_control",
             "permanents_you_own_opponents_control",
             "triggering_spell_mana_value",
             "triggering_spell_mana_spent",
@@ -1036,6 +1038,9 @@ impl<'de> Deserialize<'de> for Amount {
                     "sacrificed_creature_toughness" => Amount::SacrificedCreatureToughness,
                     "commander_color_count" => Amount::CommanderColorCount,
                     "total_power_you_control" => Amount::TotalPowerYouControl,
+                    "greatest_power_among_creatures_you_control" => {
+                        Amount::GreatestPowerAmongCreaturesYouControl
+                    }
                     "permanents_you_own_opponents_control" => {
                         Amount::PermanentsYouOwnOpponentsControl
                     }
@@ -1166,7 +1171,10 @@ impl<'de> Deserialize<'de> for Amount {
 ///   target(s)" where X is the number sacrificed (Immoral Bargain). `strive_scaled` (default
 ///   `false`) is Strive's own sibling (see [`TargetCount::strive_scaled`]'s own doc): `{
 ///   strive_scaled = true }` is "exactly N target(s)" where N is the caster's declared Strive
-///   target count (Twinflame).
+///   target count (Twinflame). `total_mv_max` (an [`Amount`], default `None`) is a set-level cap
+///   on the chosen targets' *summed* mana value (see [`TargetCount::total_mv_max`]'s own doc):
+///   `{ min = 0, max = 255, total_mv_max = "x" }` is "any number of target artifacts and/or
+///   enchantments with total mana value X or less" (Rampaging Yao Guai).
 ///
 /// ponytail: no pool card needs a *fixed* range yet (Aether Gale is exactly six); the table form
 /// is here so "up to N"/"one or two" cards don't need a new deserializer when they land.
@@ -1197,6 +1205,7 @@ impl<'de> Deserialize<'de> for TargetCount {
                     x_scaled: false,
                     sacrifice_scaled: false,
                     strive_scaled: false,
+                    total_mv_max: None,
                 })
             }
 
@@ -1221,6 +1230,8 @@ impl<'de> Deserialize<'de> for TargetCount {
                     sacrifice_scaled: bool,
                     #[serde(default)]
                     strive_scaled: bool,
+                    #[serde(default)]
+                    total_mv_max: Option<Amount>,
                 }
                 let t = Table::deserialize(de::value::MapAccessDeserializer::new(map))?;
                 if t.min > t.max {
@@ -1232,6 +1243,7 @@ impl<'de> Deserialize<'de> for TargetCount {
                     x_scaled: t.x_scaled,
                     sacrifice_scaled: t.sacrifice_scaled,
                     strive_scaled: t.strive_scaled,
+                    total_mv_max: t.total_mv_max,
                 })
             }
         }
