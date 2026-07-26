@@ -6,6 +6,7 @@ export type AppChromeMeta = {
   version: string | null;
   faithfulCount: number | null;
   oracleTotal: number | null;
+  coverageHref: string | null;
 };
 
 export function formatFaithfulPercent(faithfulCount: number, oracleTotal: number): string | null {
@@ -30,7 +31,16 @@ export function appVersionBadge<M>(
   const coverage =
     pct == null
       ? null
-      : h.div([h.DataAttribute("testid", "pool-coverage")], [`${pct} faithful`]);
+      : meta.coverageHref == null
+        ? h.div([h.DataAttribute("testid", "pool-coverage")], [`${pct} faithful`])
+        : h.a(
+            [
+              h.Href(meta.coverageHref),
+              h.DataAttribute("testid", "pool-coverage"),
+              h.Class("pointer-events-auto underline-offset-2 hover:underline"),
+            ],
+            [`${pct} faithful`],
+          );
   return h.div(
     [h.Class(cn(appVersionClass(), "flex flex-col gap-0"))],
     [

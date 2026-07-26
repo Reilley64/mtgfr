@@ -4,7 +4,7 @@ import { ClosedDeckListMenu } from "./messages";
 import { initialDeckListSubmodel } from "./submodel";
 import { BindDeckListContextMenuEscape, view } from "./view";
 
-const emptyChrome = { version: null, faithfulCount: null, oracleTotal: null };
+const emptyChrome = { version: null, faithfulCount: null, oracleTotal: null, coverageHref: null };
 
 test("deck list errors use reconnect rust label styling", () => {
   Scene.scene(

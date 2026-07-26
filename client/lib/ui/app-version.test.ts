@@ -23,7 +23,12 @@ describe("formatFaithfulPercent", () => {
 describe("appVersionBadge", () => {
   it("renders nothing until the API version is known", () => {
     expect(
-      appVersionBadge(h, { version: null, faithfulCount: 1, oracleTotal: 100 }),
+      appVersionBadge(h, {
+        version: null,
+        faithfulCount: 1,
+        oracleTotal: 100,
+        coverageHref: null,
+      }),
     ).toBeNull();
   });
 
@@ -32,6 +37,7 @@ describe("appVersionBadge", () => {
       version: "1.2.3",
       faithfulCount: null,
       oracleTotal: null,
+      coverageHref: null,
     });
     const s = JSON.stringify(badge);
     expect(s).toContain("app-version");
@@ -44,11 +50,26 @@ describe("appVersionBadge", () => {
       version: "1.2.3",
       faithfulCount: 662,
       oracleTotal: 28412,
+      coverageHref: null,
     });
     const s = JSON.stringify(badge);
     expect(s).toContain("pool-coverage");
     expect(s).toContain("2.3% faithful");
     expect(s).toContain("API 1.2.3");
     expect(s.indexOf("pool-coverage")).toBeLessThan(s.indexOf("app-version"));
+  });
+
+  it("renders pool coverage as a link when coverageHref is set", () => {
+    const badge = appVersionBadge(h, {
+      version: "1.2.3",
+      faithfulCount: 662,
+      oracleTotal: 28412,
+      coverageHref: "/coverage",
+    });
+    const s = JSON.stringify(badge);
+    expect(s).toContain('"sel":"a"');
+    expect(s).toContain('"/coverage"');
+    expect(s).toContain("pool-coverage");
+    expect(s).toContain("pointer-events-auto");
   });
 });

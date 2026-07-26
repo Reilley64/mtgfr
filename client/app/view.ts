@@ -6,7 +6,7 @@ import { view as boardView } from "./board/view";
 import { parseDeckIdParam, playDeckAccess } from "./deck-id";
 import { CompletedPortraitGateModal, type Message, PortraitGateCancelled, RequestedLogout } from "./messages";
 import type { Model } from "./model";
-import { HomeRoute, isProtectedRoute, NewDeckRoute, routePath } from "./routes";
+import { CoverageRoute, HomeRoute, isProtectedRoute, NewDeckRoute, routePath } from "./routes";
 import { view as authView } from "./shell/auth/view";
 import { view as coverageView } from "./shell/coverage/view";
 import { view as deckBuilderView } from "./shell/decks/builder/view";
@@ -21,6 +21,7 @@ function chromeMeta(model: Model): AppChromeMeta {
     version: model.apiVersion,
     faithfulCount: model.faithfulCount,
     oracleTotal: model.oracleTotal,
+    coverageHref: routePath(CoverageRoute()),
   };
 }
 

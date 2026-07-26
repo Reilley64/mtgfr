@@ -151,6 +151,7 @@ describe("shell surface scenes", () => {
         expect(version).toBeGreaterThan(coverage);
       }),
       Scene.expect(Scene.selector('[data-testid="pool-coverage"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="pool-coverage"][href="/coverage"]')).toExist(),
       Scene.expect(Scene.text("2.3% faithful")).toExist(),
       Scene.expect(Scene.selector('[data-testid="app-version"]')).toExist(),
       Scene.expect(Scene.text("API 1.2.3")).toExist(),

@@ -78,6 +78,7 @@ const lobbyAppView = (model: Model) =>
       version: model.apiVersion,
       faithfulCount: model.faithfulCount,
       oracleTotal: model.oracleTotal,
+      coverageHref: "/coverage",
     },
     model.route._tag === "TableRoute" ? "table" : "entry",
   );
