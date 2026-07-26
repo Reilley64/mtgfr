@@ -51,6 +51,7 @@ pub(crate) enum ChoiceRequest {
         target: Option<crate::Target>,
         x: u32,
         modes: Arc<[crate::Effect]>,
+        at_placement: bool,
     },
     MayYesNo {
         player: crate::PlayerId,

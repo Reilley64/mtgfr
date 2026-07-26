@@ -10,10 +10,15 @@ shell is already landed. The live backlog is narrower trigger work: two modal di
 choose on resolution, one reflexive trigger still front-loads its target, and one discard trigger
 still treats every discarded card as a separate eligible impulse source.
 
-### 1. `triggered-modal-choices-must-be-chosen-on-placement` — 2 cards, M
+### 1. `triggered-modal-choices-must-be-chosen-on-placement` — 2 cards, M — LANDED (2026-07-26)
 
 **Depends on:** none.
 **Cards:** `ao_the_dawn_sky.toml`, `atsushi_the_blazing_sky.toml`
+**Landed:** a triggered `Effect::ChooseOne` now raises its `ChooseMode` at trigger-placement time
+(`place_pending_triggers`); the chosen branch — with its own target — is what goes on the stack
+(`answer_choose_mode`'s `at_placement` path), so it is public before any response window and
+resolves straight down that branch with no mid-resolution mode pause. A modal *spell*'s own
+resolution-step `ChooseOne` (Zimone's Hypothesis) is unaffected (`at_placement = false`).
 **Sketch:** Triggered modal abilities choose their mode when they are put onto the stack, not after
 players have passed priority into resolution (CR 603.3d, CR 700.2). Today Lorehold's two modal dies
 triggers pause on `ChooseMode` only once the trigger is already resolving, which hides information

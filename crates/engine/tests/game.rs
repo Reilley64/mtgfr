@@ -54743,13 +54743,14 @@ fn impulse_play_until_end_of_next_turn_atsushi() {
         alternative_cost: false,
     })
     .unwrap();
-    resolve_top_of_stack(&mut game); // Infernal Grasp resolves: destroy + life loss; dies queued
-    resolve_top_of_stack(&mut game); // the dies trigger resolves → pauses on the mode choice (CR 603.6, CR 603)
+    resolve_top_of_stack(&mut game); // Infernal Grasp resolves: destroy + life loss; dies trigger placed
+    // The mode is chosen as the dies trigger goes on the stack (CR 603.3d) — the pause is live now.
 
     let Some(PendingChoice::ChooseMode { player, .. }) = game.pending_choice() else {
         panic!("Atsushi's dies trigger pauses to choose a mode");
     };
     game.submit(Intent::ChooseMode { player, mode: 0 }).unwrap(); // exile-and-may-play mode
+    resolve_top_of_stack(&mut game); // the chosen exile-and-may-play branch resolves off the stack
 
     let forest = game.current_id(library[0]);
     assert_eq!(
@@ -57357,8 +57358,9 @@ fn kill_modal_dragon(game: &mut Game) {
         alternative_cost: false,
     })
     .unwrap();
-    resolve_top_of_stack(game); // Shock resolves → SBA kills the dragon. (CR 704)
-    resolve_top_of_stack(game); // the dies trigger resolves → pauses on the mode choice. (CR 603.6, CR 603)
+    resolve_top_of_stack(game); // Shock resolves → SBA kills the dragon → dies trigger placed. (CR 704, CR 603)
+    // The mode is chosen as the trigger goes on the stack (CR 603.3d), so the mode pause is
+    // already live — no further resolution before answering.
 }
 
 #[test]
@@ -57370,6 +57372,7 @@ fn modal_triggered_ability_atsushi_chooses_treasures() {
         mode: 1,
     })
     .expect("choosing the create-three-Treasures mode is legal");
+    resolve_top_of_stack(&mut game); // the chosen Treasures branch resolves off the stack
     assert_eq!(
         battlefield_named(&game, PlayerId(0), "Treasure").len(),
         3,
@@ -57387,6 +57390,7 @@ fn modal_triggered_ability_atsushi_chooses_exile() {
         mode: 0,
     })
     .expect("choosing the impulse-exile mode is legal");
+    resolve_top_of_stack(&mut game); // the chosen impulse-exile branch resolves off the stack
     for card_id in &top {
         let card_id = game.current_id(*card_id);
         assert_eq!(
@@ -57454,11 +57458,84 @@ fn atsushi_dies_trigger_offers_a_two_mode_choose_one() {
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the destroy resolves → Atsushi dies → dies trigger placed. (CR 603.6, CR 603)
-    resolve_top_of_stack(&mut game); // its dies trigger resolves → pauses on the mode choice. (CR 603.6, CR 603)
+    // The mode is chosen as the trigger goes on the stack (CR 603.3d), so the two-mode pause is
+    // already live the moment the dies trigger is placed.
     let Some(PendingChoice::ChooseMode { modes, .. }) = game.pending_choice() else {
         panic!("Atsushi's dies trigger should pause on a two-mode choice");
     };
     assert_eq!(modes.len(), 2, "impulse-exile • three Treasures");
+}
+
+#[test]
+fn modal_dies_trigger_chooses_its_mode_at_placement_then_resolves_the_branch() {
+    // Increment #1 (CR 603.3d / 700.2): a *triggered* "choose one" picks its mode as the ability
+    // goes on the stack, not after players pass priority into resolution. Atsushi's dies trigger
+    // therefore exposes the chosen branch — three Treasures — on the stack before anyone can
+    // respond, and only that concrete branch resolves.
+    let mut game = Game::new();
+    let atsushi = game.spawn_on_battlefield(PlayerId(0), card("Atsushi, the Blazing Sky"));
+    let destroy = game.spawn_in_hand(PlayerId(0), DESTROY.clone());
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: destroy,
+        target: Some(Target::Object(atsushi)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // the destroy resolves → Atsushi dies → dies trigger placed
+
+    // The mode pause is live the moment the trigger is placed: nothing is on the stack yet, and
+    // the branch has not run.
+    let Some(PendingChoice::ChooseMode {
+        player,
+        at_placement: true,
+        ..
+    }) = game.pending_choice()
+    else {
+        panic!(
+            "the dies trigger pauses on its mode choice at placement, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(
+        game.stack().is_empty(),
+        "the trigger is not on the stack until its mode is chosen"
+    );
+
+    game.submit(Intent::ChooseMode { player, mode: 1 }).unwrap(); // create three Treasures
+
+    // The chosen branch — a concrete Treasures ability, not a "choose one" — is now on the stack,
+    // public before any response window, and has not resolved yet.
+    match game.stack().last() {
+        Some(StackEntry::Ability { effect, .. }) => assert!(
+            matches!(effect, Effect::Token(TokenEffect::CreateTreasure { .. })),
+            "the chosen Treasures branch is what's on the stack, got {effect:?}"
+        ),
+        other => panic!("the chosen branch should be on the stack, got {other:?}"),
+    }
+    assert_eq!(
+        battlefield_named(&game, PlayerId(0), "Treasure").len(),
+        0,
+        "the branch has not resolved yet — it is still on the stack"
+    );
+
+    resolve_top_of_stack(&mut game); // the chosen branch resolves off the stack
+    assert_eq!(
+        battlefield_named(&game, PlayerId(0), "Treasure").len(),
+        3,
+        "resolving the placed branch created three Treasures"
+    );
 }
 
 // ── Discard trigger (CR 701.8) — "whenever you discard a card" ─────────────────────────
@@ -76328,12 +76405,12 @@ fn phasing_zero_creatures_is_legal_and_only_your_other_creatures_are_eligible() 
 
 // ── Total-mana-value budget selection (#122): ao_the_dawn_sky, dance_with_calamity ──────────
 
-/// Cast Infernal Grasp at `victim`, resolve it, and resolve the resulting dies trigger up to its
-/// mode choice — leaving a `ChooseMode` pause for a self-death modal trigger. (CR 603.6, CR 700.2, CR 601)
+/// Cast Infernal Grasp at `victim` and resolve it, leaving a `ChooseMode` pause for the resulting
+/// self-death modal trigger. The mode is chosen as the trigger goes on the stack (CR 603.3d), so
+/// the pause lands the moment the dies trigger is placed — no further resolution. (CR 603.6, CR 700.2)
 fn kill_and_reach_dies_mode(game: &mut TestGame, victim: ObjectId) {
     let grasp = game.spawn_in_hand(PlayerId(0), card("Infernal Grasp")); // "Destroy target creature."
     game.cast(grasp).at(Target::Object(victim)).resolve();
-    resolve_top_of_stack(game); // the dies trigger resolves → pauses on the mode choice (CR 603.6, CR 603)
 }
 
 #[test]
@@ -76366,6 +76443,7 @@ fn ao_the_dawn_sky_mode_1_puts_nonland_permanents_under_mv_budget_onto_battlefie
         );
     };
     game.submit(Intent::ChooseMode { player, mode: 0 }).unwrap(); // the dig mode
+    resolve_top_of_stack(&mut game); // the chosen dig branch resolves → pauses on the selection
 
     let Some(PendingChoice::SelectFromTop { cards, .. }) = game.pending_choice() else {
         panic!("mode 1 looks at the top seven and pauses to select");
@@ -76435,6 +76513,7 @@ fn ao_the_dawn_sky_mode_2_puts_two_counters_on_each_creature() {
         panic!("Ao's dies trigger pauses to choose a mode");
     };
     game.submit(Intent::ChooseMode { player, mode: 1 }).unwrap(); // the +1/+1-counters mode
+    resolve_top_of_stack(&mut game); // the chosen +1/+1-counters branch resolves off the stack
 
     assert_eq!(
         game.pending_choice(),

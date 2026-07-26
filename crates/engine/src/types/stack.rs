@@ -1156,15 +1156,23 @@ pub enum PendingChoice {
         overflow: Option<SearchDest>,
     },
     /// `player` (the trigger's controller) must choose one of `modes` for an [`Effect::ChooseOne`]
-    /// "choose one" triggered ability, resolving at the point the ability resolves. Answered by
-    /// [`Intent::ChooseMode`]; the chosen mode is run with the trigger's `source`/`target`/`x`
-    /// context. Mode labels for the wire come from `modes.len()` / each mode's [`Effect::message`].
+    /// "choose one" modal ability. Answered by [`Intent::ChooseMode`]; the chosen mode carries the
+    /// ability's `source`/`target`/`x` context. Mode labels for the wire come from `modes.len()` /
+    /// each mode's [`Effect::message`].
+    ///
+    /// `at_placement` distinguishes the two rules windows this pause serves (CR 603.3d vs CR 608.2):
+    /// a *triggered* modal ability chooses its mode as it goes on the stack (`at_placement = true`),
+    /// so [`Game::answer_choose_mode`] *places* the chosen branch — with its own target — on the
+    /// stack, and it resolves later straight down that branch with no mid-resolution mode pause; a
+    /// modal effect reached mid-resolution (a modal spell's own step — Zimone's Hypothesis)
+    /// keeps `at_placement = false` and runs the chosen branch immediately.
     ChooseMode {
         player: PlayerId,
         source: ObjectId,
         target: Option<Target>,
         x: u32,
         modes: Arc<[Effect]>,
+        at_placement: bool,
     },
     /// `player` may choose `choose` distinct modes of a modal *triggered* ability (`source`, CR
     /// 700.2's "choose two" extended to a trigger's own modes), each mode paired with its own

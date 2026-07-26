@@ -123,8 +123,8 @@ None. All 83 Lorehold nonbasics are already in the pool.
 
 ## D. In pool, not yet faithful; needs engine work (4)
 
-- [ ] Ao, the Dawn Sky — #1
-- [ ] Atsushi, the Blazing Sky — #1
+- [x] Ao, the Dawn Sky — #1 (LANDED)
+- [x] Atsushi, the Blazing Sky — #1 (LANDED)
 - [ ] Augusta, Order Returned — #2
 - [ ] Conspiracy Theorist — #3
 

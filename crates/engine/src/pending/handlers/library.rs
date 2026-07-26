@@ -750,9 +750,15 @@ impl Game {
         Ok(events)
     }
 
-    /// Answer a [`PendingChoice::ChooseMode`]: resolve the chosen mode of a "choose one" triggered
-    /// ability ([`Effect::ChooseOne`]) through the ordinary resolution pipeline, carrying the
-    /// trigger's own `source`/`target`/`x` context. The chosen sub-effect may itself pause.
+    /// Answer a [`PendingChoice::ChooseMode`]: pick the chosen mode of a "choose one" modal
+    /// ability ([`Effect::ChooseOne`]).
+    ///
+    /// A *triggered* modal ability (`at_placement`) chose its mode as it went on the stack (CR
+    /// 603.3d): *place* the chosen branch — choosing its own target now too — on the stack, so it
+    /// resolves later straight down that branch with no mid-resolution mode pause. A modal effect
+    /// reached mid-resolution (a modal spell's own step — Zimone's Hypothesis) runs the chosen
+    /// branch immediately, carrying the effect's own `source`/`target`/`x` context. Either chosen
+    /// sub-effect may itself pause.
     pub(crate) fn answer_choose_mode(
         &mut self,
         player: PlayerId,
@@ -763,6 +769,7 @@ impl Game {
             target,
             x,
             modes,
+            at_placement,
             ..
         }) = self.pending_choice.clone()
         else {
@@ -774,6 +781,10 @@ impl Game {
         self.finish_answer();
 
         let mut events = Vec::new();
+        if at_placement {
+            self.place_targeted_ability(player, source, modes[mode].clone(), 0, false, &mut events);
+            return Ok(events);
+        }
         self.run(
             modes[mode].clone(),
             ResolveCtx {

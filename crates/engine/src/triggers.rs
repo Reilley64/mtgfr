@@ -4105,6 +4105,31 @@ impl Game {
                 self.push_apply(events, Event::TriggeredAbilityThisTurn { source });
             }
 
+            // "Choose one —" on a triggered ability (CR 603.3d / 700.2): the mode is chosen as the
+            // ability goes on the stack, not after players pass priority into resolution. Raise the
+            // mode choice now; once answered, the chosen branch — with its own target chosen too —
+            // is what goes on the stack (`answer_choose_mode`'s placement path), so the branch is
+            // public before any response window and resolution runs straight down it. A modal
+            // *spell*'s own resolution-step `ChooseOne` (Zimone's Hypothesis) is unaffected — it is
+            // never a trigger and so never reaches this loop.
+            if let Effect::ChooseOne { options } = effect {
+                if options.is_empty() {
+                    continue;
+                }
+                crate::pending::raise_choice(
+                    self,
+                    PendingChoice::ChooseMode {
+                        player,
+                        source,
+                        target: None,
+                        x: 0,
+                        modes: options,
+                        at_placement: true,
+                    },
+                );
+                return;
+            }
+
             // An optional trigger pauses for a yes/no (or pay-or-decline) before the stack.
             if ability.optional {
                 crate::pending::raise_choice(
