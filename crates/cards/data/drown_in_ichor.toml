@@ -1,0 +1,32 @@
+# Target creature gets -4/-4 until end of turn. Proliferate. (Choose any number of permanents and/or players, then give
+# each another counter of each kind already there.)
+name = "Drown in Ichor"
+id = "e4912bc3-bee9-4a2f-a13e-3a99018f8a65"
+default_print = "bf148ef4-0ed7-4fbe-8ab6-01dd3981c8d3"
+oracle = "Target creature gets -4/-4 until end of turn. Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)"
+set = "one"
+
+[cost]
+generic = 1
+black = 1
+
+[kind]
+type = "sorcery"
+
+# Target creature gets -4/-4 until end of turn. Proliferate.
+[[abilities]]
+timing = "spell"
+
+# Target creature gets -4/-4 until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "pump_until_end_of_turn"
+power = -4
+toughness = -4
+target = "creature"
+
+# Proliferate.
+[[abilities.effects]]
+type = "choice"
+mode = "proliferate"
+times = 1

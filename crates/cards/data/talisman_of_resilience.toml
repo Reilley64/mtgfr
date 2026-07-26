@@ -1,0 +1,36 @@
+# {T}: Add {C}.
+# {T}: Add {B} or {G}. This artifact deals 1 damage to you.
+name = "Talisman of Resilience"
+id = "42b8aa14-10bc-4bd6-88d9-4bb287eadd19"
+default_print = "eff598b0-0b32-41d0-b980-584576e58626"
+oracle = "{T}: Add {C}.\n{T}: Add {B} or {G}. This artifact deals 1 damage to you."
+set = "dsc"
+
+[cost]
+generic = 2
+
+[kind]
+type = "artifact"
+
+# {T}: Add {C}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add {C}.
+[[abilities.effects]]
+type = "mana"
+mode = "add"
+mana = ["colorless"]
+
+# {T}: Add {B} or {G}. This artifact deals 1 damage to you.
+[[abilities]]
+timing = "activated"
+taps_self = true
+self_damage = 1
+
+# Add {B} or {G}. This artifact deals 1 damage to you.
+[[abilities.effects]]
+type = "mana"
+mode = "add"
+mana = [["black", "green"]]

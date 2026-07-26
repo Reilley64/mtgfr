@@ -18328,6 +18328,49 @@ fn hexproof_creature_targetable_by_controller_not_opponents() {
 }
 
 #[test]
+fn heroic_intervention_grants_hexproof_and_indestructible_to_permanents_you_control() {
+    // Heroic Intervention ({1}{G}) — "Permanents you control gain hexproof and indestructible (CR 702.11, CR 702.12)
+    // until end of turn."
+    let mut game = Game::new();
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let signet = game.spawn_on_battlefield(PlayerId(0), card("Arcane Signet")); // a noncreature permanent
+    let intervention = game.spawn_in_hand(PlayerId(0), card("Heroic Intervention"));
+    cast_and_resolve(&mut game, intervention, None);
+
+    assert!(game.has_keyword(bear, Keyword::Hexproof));
+    assert!(game.has_keyword(bear, Keyword::Indestructible));
+    assert!(
+        game.has_keyword(signet, Keyword::Hexproof),
+        "\"Permanents you control\" reaches noncreature permanents too"
+    );
+    assert!(game.has_keyword(signet, Keyword::Indestructible));
+
+    let opponents_destroy = game.spawn_in_hand(PlayerId(1), DESTROY);
+    assert!(
+        !game
+            .legal_targets(opponents_destroy, None)
+            .contains(&Target::Object(bear)),
+        "hexproof blocks an opponent's targeted removal"
+    );
+    let opponents_destroy_permanent = game.spawn_in_hand(PlayerId(1), DESTROY_ANY_PERMANENT);
+    assert!(
+        !game
+            .legal_targets(opponents_destroy_permanent, None)
+            .contains(&Target::Object(signet)),
+        "hexproof reaches the noncreature permanent's targetability too"
+    );
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Main1
+    });
+    assert!(
+        !game.has_keyword(bear, Keyword::Hexproof),
+        "the grant wore off at cleanup"
+    );
+    assert!(!game.has_keyword(bear, Keyword::Indestructible));
+}
+
+#[test]
 fn lightning_greaves_grants_shroud_to_equipped_creature() {
     // Lightning Greaves: "Equipped creature has haste and shroud. Equip {0}."
     let mut game = Game::new();
@@ -18353,6 +18396,39 @@ fn lightning_greaves_grants_shroud_to_equipped_creature() {
             .legal_targets(opponents_destroy, None)
             .contains(&Target::Object(bear)),
         "shroud granted by an attached Equipment reaches the equipped creature",
+    );
+}
+
+#[test]
+fn swiftfoot_boots_grants_hexproof_and_haste_to_equipped_creature() {
+    // Swiftfoot Boots ({2}) — "Equipped creature has hexproof and haste. ... Equip {1}" (CR 702.11, CR 702.10)
+    let mut game = Game::new();
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let boots = game.spawn_on_battlefield(PlayerId(0), card("Swiftfoot Boots"));
+    game.fund_mana(PlayerId(0));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: boots,
+        ability_index: 1, // index 0 is the static grant; 1 is Equip {1}
+        target: Some(Target::Object(bear)),
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("Equip {1} is a legal sorcery-speed activation on a creature you control");
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(game.attached_to(boots), Some(bear));
+    assert!(game.has_keyword(bear, Keyword::Haste));
+    assert!(game.has_keyword(bear, Keyword::Hexproof));
+
+    let opponents_destroy = game.spawn_in_hand(PlayerId(1), DESTROY);
+    assert!(
+        !game
+            .legal_targets(opponents_destroy, None)
+            .contains(&Target::Object(bear)),
+        "hexproof granted by an attached Equipment reaches the equipped creature",
     );
 }
 
@@ -68017,6 +68093,39 @@ fn proliferate_rejects_choosing_the_same_permanent_twice() {
     );
 }
 
+#[test]
+fn drown_in_ichor_debuffs_then_proliferates() {
+    // Drown in Ichor ({1}{B}) — "Target creature gets -4/-4 until end of turn. Proliferate." (CR 701.27, CR 122)
+    let mut g = TestGame::new();
+    let bear = g.spawn_on_battlefield(PlayerId(0), VANILLA); // 2/2
+    let growth_a = g.spawn_in_hand(PlayerId(0), GROWTH);
+    g.cast(growth_a).at(Target::Object(bear)).resolve(); // 2 +1/+1 counters -> 4/4
+    let growth_b = g.spawn_in_hand(PlayerId(0), GROWTH);
+    g.cast(growth_b).at(Target::Object(bear)).resolve(); // 2 more -> 6/6, 4 counters total
+
+    let ichor = g.spawn_in_hand(PlayerId(0), card("Drown in Ichor"));
+    g.cast(ichor).at(Target::Object(bear)).resolve();
+
+    assert_eq!(g.power(bear), 2, "6/6 - 4/-4 from the debuff");
+    assert_eq!(g.toughness(bear), 2);
+    assert!(
+        matches!(g.pending_choice(), Some(PendingChoice::Proliferate { .. })),
+        "the debuff resolves, then proliferate pauses to choose counter-bearing permanents"
+    );
+
+    g.submit(Intent::ChooseSacrifices {
+        player: PlayerId(0),
+        sacrifices: vec![bear],
+    })
+    .unwrap();
+
+    assert_eq!(g.plus_counters(bear), 5, "4 + one more of a kind present");
+    assert!(
+        g.pending_choice().is_none(),
+        "\"Proliferate\" with no X is exactly one iteration"
+    );
+}
+
 /// A test-only instant whose sole effect moves all +1/+1 counters from `target` (chosen at
 /// cast) onto a second nonland permanent you control (chosen at resolution).
 const MOVE_ALL_PLUS_COUNTERS: CardDef = CardDef {
@@ -89866,4 +89975,640 @@ fn artisan_of_kozilek_annihilates_the_planeswalkers_controller() {
     .unwrap();
     assert_eq!(game.zone_of(pw), Zone::Graveyard);
     assert_eq!(game.zone_of(bear), Zone::Graveyard);
+}
+
+// ── Birds of Paradise / Dark Ritual / Farseek / Talisman of Resilience / Tainted Wood ──
+
+#[test]
+fn birds_of_paradise_taps_for_one_mana_of_any_color() {
+    // Birds of Paradise: "Flying\n{T}: Add one mana of any color."
+    let mut game = Game::new();
+    let bird = game.spawn_on_battlefield(PlayerId(0), card("Birds of Paradise"));
+    assert_eq!(game.power(bird), 0);
+    assert_eq!(game.toughness(bird), 1);
+    assert!(game.has_keyword(bird, Keyword::Flying));
+
+    let victim = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let shock = game.spawn_in_hand(PlayerId(0), card("Shock"));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: bird,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+
+    // The "any" mana pays Shock's colored {R} pip — the caster starts with an empty pool, so the
+    // cast can only succeed off the Bird's mana.
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: shock,
+        target: Some(Target::Object(victim)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        alternative_cost: false,
+    })
+    .expect("Birds of Paradise's any-color mana pays Shock's {R}");
+}
+
+#[test]
+fn dark_ritual_adds_three_black_mana() {
+    // Dark Ritual: "Add {B}{B}{B}."
+    let mut game = Game::new();
+    let ritual = game.spawn_in_hand(PlayerId(0), card("Dark Ritual"));
+    let events = cast_and_collect(&mut game, ritual, None);
+    let black_added: u8 = events
+        .iter()
+        .filter_map(|e| match e {
+            Event::ManaAdded {
+                mana: Mana::Color(Color::Black),
+                amount,
+                ..
+            } => Some(*amount),
+            _ => None,
+        })
+        .sum();
+    assert_eq!(black_added, 3, "Dark Ritual adds three black mana");
+}
+
+#[test]
+fn farseek_fetches_a_swamp_but_not_a_forest() {
+    // Farseek: "Search your library for a Plains, Island, Swamp, or Mountain card, put it onto
+    // the battlefield tapped, then shuffle." Forest is deliberately excluded from the filter.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let lib = game.stack_library(
+        PlayerId(0),
+        &[card("Forest"), card("Tangled Islet"), card("Swamp")],
+    );
+    let forest = lib[0];
+    let islet = lib[1];
+    let swamp = lib[2];
+    let farseek = game.spawn_in_hand(PlayerId(0), card("Farseek"));
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: farseek,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    let Some(PendingChoice::SearchLibrary { matches, .. }) = game.pending_choice() else {
+        panic!("Farseek pauses on a library search");
+    };
+    assert!(matches.contains(&swamp), "the basic Swamp matches");
+    assert!(
+        matches.contains(&islet),
+        "the Forest/Island-typed dual matches on its Island subtype"
+    );
+    assert!(
+        !matches.contains(&forest),
+        "Farseek's filter excludes Forest",
+    );
+
+    game.submit(Intent::SearchLibrary {
+        player: PlayerId(0),
+        choice: Some(swamp),
+    })
+    .unwrap();
+    assert_eq!(game.zone_of(swamp), Zone::Battlefield);
+    let swamp_perm = game.current_id(swamp);
+    assert!(game.is_tapped(swamp_perm), "Farseek's find enters tapped");
+}
+
+#[test]
+fn talisman_of_resilience_taps_colorless_or_pings_for_black_or_green() {
+    // Talisman of Resilience: "{T}: Add {C}. / {T}: Add {B} or {G}. This artifact deals 1 damage
+    // to you."
+    let mut game = Game::new();
+    let talisman = game.spawn_on_battlefield(PlayerId(0), card("Talisman of Resilience"));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: talisman,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    assert_eq!(game.colorless_in_pool(PlayerId(0)), 1, "one {{C}} produced");
+    assert_eq!(game.life(PlayerId(0)), 20, "the {{C}} mode is painless");
+
+    let mut game = Game::new();
+    let talisman = game.spawn_on_battlefield(PlayerId(0), card("Talisman of Resilience"));
+    let events = game
+        .submit(Intent::ActivateAbility {
+            player: PlayerId(0),
+            object: talisman,
+            ability_index: 1,
+            target: None,
+            sacrifice: vec![],
+            discard_cost: vec![],
+            x: 0,
+        })
+        .unwrap();
+    assert!(
+        events.iter().any(|e| matches!(
+            e,
+            // Dual credits are normalized to WUBRG order: {B}/{G} interns as Either(Black, Green).
+            Event::ManaAdded {
+                mana: Mana::Either(Color::Black, Color::Green),
+                ..
+            }
+        )),
+        "the colored mode adds one {{B}}/{{G}} dual credit; got {events:?}",
+    );
+    assert_eq!(game.life(PlayerId(0)), 19, "the colored mode pings for 1");
+}
+
+#[test]
+fn tainted_wood_colored_mode_requires_a_swamp() {
+    // Tainted Wood: "{T}: Add {C}. / {T}: Add {B} or {G}. Activate only if you control a Swamp."
+    let mut game = Game::new();
+    let wood = game.spawn_on_battlefield(PlayerId(0), card("Tainted Wood"));
+    assert_eq!(
+        game.submit(Intent::ActivateAbility {
+            player: PlayerId(0),
+            object: wood,
+            ability_index: 1,
+            target: None,
+            sacrifice: vec![],
+            discard_cost: vec![],
+            x: 0,
+        }),
+        Err(Reject::CannotActivate),
+        "with no Swamp, the colored mode's activation restriction rejects it",
+    );
+
+    let mut game = Game::new();
+    let wood = game.spawn_on_battlefield(PlayerId(0), card("Tainted Wood"));
+    game.spawn_on_battlefield(PlayerId(0), card("Swamp"));
+    let events = game
+        .submit(Intent::ActivateAbility {
+            player: PlayerId(0),
+            object: wood,
+            ability_index: 1,
+            target: None,
+            sacrifice: vec![],
+            discard_cost: vec![],
+            x: 0,
+        })
+        .unwrap();
+    assert!(
+        events.iter().any(|e| matches!(
+            e,
+            Event::ManaAdded {
+                mana: Mana::Either(Color::Black, Color::Green),
+                ..
+            }
+        )),
+        "controlling a Swamp, the colored mode adds one {{B}}/{{G}} dual credit; got {events:?}",
+    );
+
+    let mut game = Game::new();
+    let wood = game.spawn_on_battlefield(PlayerId(0), card("Tainted Wood"));
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: wood,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    assert_eq!(
+        game.colorless_in_pool(PlayerId(0)),
+        1,
+        "the colorless mode needs no Swamp",
+    );
+}
+
+// ── Secrets of Strixhaven counters-matter authoring: Branching Evolution, Corpsejack Menace, ──
+// ── Contagion Clasp, Evolution Sage, Cathedral Acolyte (CR 121.4, CR 701.27) ───────────────────
+
+#[test]
+fn branching_evolution_doubles_counters_placed_on_your_creature() {
+    // Branching Evolution: "If one or more +1/+1 counters would be put on a creature you
+    // control, twice that many +1/+1 counters are put on that creature instead."
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Branching Evolution"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+
+    put_two_counters(&mut game, PlayerId(0), bear);
+    assert_eq!(game.plus_counters(bear), 4, "the doubler doubles: 2 -> 4");
+}
+
+#[test]
+fn corpsejack_menace_doubles_counters_placed_on_your_creature() {
+    // Corpsejack Menace: "If one or more +1/+1 counters would be put on a creature you
+    // control, twice that many +1/+1 counters are put on it instead."
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Corpsejack Menace"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+
+    put_two_counters(&mut game, PlayerId(0), bear);
+    assert_eq!(game.plus_counters(bear), 4, "the doubler doubles: 2 -> 4");
+}
+
+#[test]
+fn contagion_clasp_etb_puts_a_minus_one_minus_one_counter_on_target_creature() {
+    // Contagion Clasp: "When this artifact enters, put a -1/-1 counter on target creature."
+    let mut game = TestGame::new();
+    let bear = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let clasp = game.spawn_in_hand(PlayerId(0), card("Contagion Clasp"));
+    game.cast(clasp).resolve();
+
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::ChooseTarget { .. })
+        ),
+        "the ETB pauses to choose its target creature"
+    );
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(bear)],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.counters_of_kind(bear, CounterKind::MinusOneMinusOne),
+        1,
+        "a -1/-1 counter was placed"
+    );
+    assert_eq!(game.power(bear), 1, "2/2 base minus 1/1 from the counter");
+    // Regression: `check_state_based_actions` caches toughness on the SBA sweep that runs while
+    // this ETB trigger sits on the stack awaiting its target, so the cache is already warm when
+    // the counter lands. `Event::KindCountersPlaced` must invalidate it, or toughness reads a
+    // stale 2 while power correctly reads 1 (power isn't cached the same way).
+    assert_eq!(
+        game.toughness(bear),
+        1,
+        "2/2 base minus 1/1 from the counter"
+    );
+}
+
+#[test]
+fn contagion_clasp_activated_ability_proliferates() {
+    // Contagion Clasp: "{4}, {T}: Proliferate."
+    let mut game = Game::new();
+    let clasp = game.spawn_on_battlefield(PlayerId(0), card("Contagion Clasp"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    put_two_counters(&mut game, PlayerId(0), bear);
+    game.fund_mana(PlayerId(0));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: clasp,
+        ability_index: 1,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::Proliferate { .. })
+        ),
+        "proliferating pauses to choose counter-bearing permanents"
+    );
+    game.submit(Intent::ChooseSacrifices {
+        player: PlayerId(0),
+        sacrifices: vec![bear],
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.plus_counters(bear),
+        3,
+        "proliferate added one more +1/+1 counter"
+    );
+}
+
+#[test]
+fn evolution_sage_landfall_proliferates() {
+    // Evolution Sage: "Landfall — Whenever a land you control enters, proliferate."
+    let mut game = TestGame::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Evolution Sage"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    put_two_counters(&mut game, PlayerId(0), bear);
+
+    let forest = game.spawn_in_hand(PlayerId(0), card("Forest"));
+    game.submit(Intent::PlayLand {
+        player: PlayerId(0),
+        object: forest,
+    })
+    .expect("playing a land is legal");
+    resolve_top_of_stack(&mut game); // the landfall trigger
+
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::Proliferate { .. })
+        ),
+        "landfall triggers proliferate"
+    );
+    game.submit(Intent::ChooseSacrifices {
+        player: PlayerId(0),
+        sacrifices: vec![bear],
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.plus_counters(bear),
+        3,
+        "proliferate added one more +1/+1 counter"
+    );
+}
+
+#[test]
+fn cathedral_acolyte_grants_ward_to_creatures_with_a_counter() {
+    // Cathedral Acolyte: "Each creature you control with a counter on it has ward {1}."
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Cathedral Acolyte"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    assert!(
+        !game.has_keyword(bear, Keyword::Ward(1)),
+        "no counter yet, no ward"
+    );
+
+    put_two_counters(&mut game, PlayerId(0), bear);
+    assert!(
+        game.has_keyword(bear, Keyword::Ward(1)),
+        "a creature you control with a counter on it has ward {{1}}"
+    );
+}
+
+#[test]
+fn cathedral_acolyte_fizzles_against_a_creature_that_did_not_enter_this_turn() {
+    // Cathedral Acolyte: "{T}: Put a +1/+1 counter on target creature that entered this turn."
+    let mut game = Game::new();
+    let acolyte = game.spawn_on_battlefield(PlayerId(0), card("Cathedral Acolyte"));
+    let veteran = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+
+    // A creature that didn't enter this turn isn't a legal target for the "entered this turn"
+    // filter, so aiming the tap ability there fizzles on resolution (CR 608.2b) instead of
+    // being rejected at activation (see `deekah_grant_unblockable_lets_token_through`).
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: acolyte,
+        ability_index: 1, // {T}: put a +1/+1 counter on target creature that entered this turn
+        target: Some(Target::Object(veteran)),
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.plus_counters(veteran),
+        0,
+        "a creature that didn't enter this turn is not a legal target, so the ability fizzles"
+    );
+}
+
+#[test]
+fn cathedral_acolyte_taps_to_counter_a_creature_that_entered_this_turn() {
+    // Cathedral Acolyte: "{T}: Put a +1/+1 counter on target creature that entered this turn."
+    let mut game = TestGame::new();
+    let acolyte = game.spawn_on_battlefield(PlayerId(0), card("Cathedral Acolyte"));
+    let fresh_card = game.spawn_in_hand(PlayerId(0), VANILLA);
+    game.cast(fresh_card).resolve();
+    let fresh = game.current_id(fresh_card);
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: acolyte,
+        ability_index: 1, // {T}: put a +1/+1 counter on target creature that entered this turn
+        target: Some(Target::Object(fresh)),
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("a creature that entered this turn is a legal target");
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(game.plus_counters(fresh), 1, "a +1/+1 counter was placed");
+}
+
+// ── Frank Horrigan grind: proliferate cards (CR 701.27) ──
+
+#[test]
+fn atomize_destroys_a_nonland_permanent_then_proliferates() {
+    // Atomize: "Destroy target nonland permanent. Proliferate." (CR 701.27)
+    let mut g = TestGame::new();
+    let doomed = g.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let bear = g.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let growth = g.spawn_in_hand(PlayerId(0), GROWTH);
+    g.cast(growth).at(Target::Object(bear)).resolve(); // 2 +1/+1 counters on bear
+
+    let atomize = g.spawn_in_hand(PlayerId(0), card("Atomize"));
+    g.cast(atomize).at(Target::Object(doomed)).resolve();
+
+    assert_eq!(
+        g.zone_of(doomed),
+        Zone::Graveyard,
+        "the targeted nonland permanent was destroyed"
+    );
+    assert!(
+        matches!(g.pending_choice(), Some(PendingChoice::Proliferate { .. })),
+        "destroy resolves, then proliferate pauses to choose counter-bearing permanents"
+    );
+    g.submit(Intent::ChooseSacrifices {
+        player: PlayerId(0),
+        sacrifices: vec![bear],
+    })
+    .unwrap();
+    assert_eq!(g.plus_counters(bear), 3, "2 + one more of a kind present");
+}
+
+#[test]
+fn karns_bastion_activated_ability_proliferates() {
+    // Karn's Bastion: "{T}: Add {C}." "{4}, {T}: Proliferate." (CR 701.27)
+    let mut g = TestGame::new();
+    let bastion = g.spawn_on_battlefield(PlayerId(0), card("Karn's Bastion"));
+    let bear = g.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let growth = g.spawn_in_hand(PlayerId(0), GROWTH);
+    g.cast(growth).at(Target::Object(bear)).resolve(); // 2 +1/+1 counters on bear
+
+    g.fund_mana(PlayerId(0));
+    g.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: bastion,
+        ability_index: 0, // the `produces` sugar's base tap isn't in `abilities`; this is it
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("{4}, {T}: the proliferate ability is legal with mana funded");
+    resolve_top_of_stack(&mut g);
+
+    assert!(
+        matches!(g.pending_choice(), Some(PendingChoice::Proliferate { .. })),
+        "the activated ability pauses to choose counter-bearing permanents"
+    );
+    g.submit(Intent::ChooseSacrifices {
+        player: PlayerId(0),
+        sacrifices: vec![bear],
+    })
+    .unwrap();
+    assert_eq!(g.plus_counters(bear), 3, "2 + one more of a kind present");
+}
+
+#[test]
+fn thirsting_roots_mode_0_searches_a_basic_land_to_hand() {
+    // Thirsting Roots, mode 0: "Search your library for a basic land card, reveal it, put it
+    // into your hand, then shuffle."
+    let mut g = TestGame::new();
+    let lib = g.stack_library(PlayerId(0), &[card("Tangled Islet"), card("Forest")]);
+    let roots = g.spawn_in_hand(PlayerId(0), card("Thirsting Roots"));
+    g.cast(roots).mode(0, None).resolve();
+
+    let Some(PendingChoice::SearchLibrary { matches, dest, .. }) = g.pending_choice() else {
+        panic!(
+            "mode 0 pauses on a library search, got {:?}",
+            g.pending_choice()
+        );
+    };
+    assert_eq!(dest, SearchDest::Hand);
+    assert!(matches.contains(&lib[1]), "the basic Forest matches");
+    assert!(
+        !matches.contains(&lib[0]),
+        "a nonbasic Forest-typed dual is not a basic land"
+    );
+    g.submit(Intent::SearchLibrary {
+        player: PlayerId(0),
+        choice: Some(lib[1]),
+    })
+    .unwrap();
+    assert_eq!(g.zone_of(lib[1]), Zone::Hand);
+}
+
+#[test]
+fn thirsting_roots_mode_1_proliferates() {
+    // Thirsting Roots, mode 1: "Proliferate." (CR 701.27)
+    let mut g = TestGame::new();
+    let bear = g.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let growth = g.spawn_in_hand(PlayerId(0), GROWTH);
+    g.cast(growth).at(Target::Object(bear)).resolve(); // 2 +1/+1 counters on bear
+
+    let roots = g.spawn_in_hand(PlayerId(0), card("Thirsting Roots"));
+    g.cast(roots).mode(1, None).resolve();
+
+    assert!(
+        matches!(g.pending_choice(), Some(PendingChoice::Proliferate { .. })),
+        "mode 1 pauses to choose counter-bearing permanents"
+    );
+    g.submit(Intent::ChooseSacrifices {
+        player: PlayerId(0),
+        sacrifices: vec![bear],
+    })
+    .unwrap();
+    assert_eq!(g.plus_counters(bear), 3, "2 + one more of a kind present");
+}
+
+#[test]
+fn unnatural_restoration_returns_a_permanent_card_then_proliferates() {
+    // Unnatural Restoration: "Return target permanent card from your graveyard to your hand.
+    // Proliferate." (CR 701.27)
+    let mut g = TestGame::new();
+    let sorcery_card = g.spawn_in_graveyard(PlayerId(0), card("Rampant Growth"));
+    let permanent_card = g.spawn_in_graveyard(PlayerId(0), VANILLA);
+    let bear = g.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let growth = g.spawn_in_hand(PlayerId(0), GROWTH);
+    g.cast(growth).at(Target::Object(bear)).resolve(); // 2 +1/+1 counters on bear
+
+    let restoration = g.spawn_in_hand(PlayerId(0), card("Unnatural Restoration"));
+    g.cast(restoration)
+        .at(Target::Object(permanent_card))
+        .resolve();
+
+    assert_eq!(
+        g.zone_of(permanent_card),
+        Zone::Hand,
+        "the targeted permanent card returned to hand"
+    );
+    assert_eq!(
+        g.zone_of(sorcery_card),
+        Zone::Graveyard,
+        "an instant/sorcery card isn't a legal target"
+    );
+    assert!(
+        matches!(g.pending_choice(), Some(PendingChoice::Proliferate { .. })),
+        "the return resolves, then proliferate pauses to choose counter-bearing permanents"
+    );
+    g.submit(Intent::ChooseSacrifices {
+        player: PlayerId(0),
+        sacrifices: vec![bear],
+    })
+    .unwrap();
+    assert_eq!(g.plus_counters(bear), 3, "2 + one more of a kind present");
+}
+
+#[test]
+fn deathcap_glade_enters_tapped_unless_you_control_two_or_more_other_lands() {
+    // Deathcap Glade: "This land enters tapped unless you control two or more other lands."
+    // Tapped: no other lands controlled.
+    let mut game = Game::new();
+    let glade = game.spawn_in_hand(PlayerId(0), card("Deathcap Glade"));
+    let events = game
+        .submit(Intent::PlayLand {
+            player: PlayerId(0),
+            object: glade,
+        })
+        .unwrap();
+    assert!(
+        game.is_tapped(land_permanent(&events)),
+        "Deathcap Glade enters tapped controlling no other lands",
+    );
+
+    // Untapped: two other lands are already on the battlefield.
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    game.spawn_on_battlefield(PlayerId(0), card("Swamp"));
+    let glade = game.spawn_in_hand(PlayerId(0), card("Deathcap Glade"));
+    let events = game
+        .submit(Intent::PlayLand {
+            player: PlayerId(0),
+            object: glade,
+        })
+        .unwrap();
+    assert!(
+        !game.is_tapped(land_permanent(&events)),
+        "Deathcap Glade enters untapped controlling two other lands",
+    );
 }

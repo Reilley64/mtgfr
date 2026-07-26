@@ -94,6 +94,10 @@ impl Game {
     pub(crate) fn invalidate_characteristics_cache(&self, event: &Event) {
         self.characteristics_cache.write(|cache| match *event {
             Event::CountersPlaced { object, .. }
+            // -1/-1 counters change P/T just as +1/+1 counters do (CR 613.4c), so the
+            // kind-keyed sibling must drop the entry too. Invalidating on every named kind
+            // rather than only MinusOneMinusOne keeps this arm correct as kinds are added.
+            | Event::KindCountersPlaced { object, .. }
             | Event::TempBoost { object, .. }
             | Event::BasePtSetUntilEndOfTurn { object, .. }
             | Event::BasePtSetIndefinite { object, .. }

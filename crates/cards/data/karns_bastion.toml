@@ -1,0 +1,26 @@
+# {T}: Add {C}.
+# {4}, {T}: Proliferate. (Choose any number of permanents and/or players, then give each another counter of each
+# kind already there.)
+name = "Karn's Bastion"
+id = "9fb8cd81-403a-4988-8f1c-b8eccf8abd9c"
+default_print = "22017ec2-3552-4865-af76-dba042b141f5"
+otags = ["activated-ability", "counters-matter", "utility-land"]
+oracle = "{T}: Add {C}.\n{4}, {T}: Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)"
+set = "eoc"
+
+[kind]
+type = "land"
+produces = "colorless"
+
+# {4}, {T}: Proliferate.
+[[abilities]]
+timing = "activated"
+taps_self = true
+[abilities.activation_cost]
+generic = 4
+
+# Proliferate.
+[[abilities.effects]]
+type = "choice"
+mode = "proliferate"
+times = 1

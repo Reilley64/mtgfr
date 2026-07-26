@@ -1,0 +1,30 @@
+# If one or more +1/+1 counters would be put on a creature you control, twice that many +1/+1 counters are put on it
+# instead.
+name = "Corpsejack Menace"
+id = "ca0cc02b-b106-4eca-9388-d4b48dd3be49"
+default_print = "29538ff4-e28f-44d9-af23-6796edd56268"
+otags = ["counter-doubler", "pp-counters-matter"]
+oracle = "If one or more +1/+1 counters would be put on a creature you control, twice that many +1/+1 counters are put on it instead."
+set = "cm2"
+subtypes = ["Fungus"]
+
+[cost]
+generic = 2
+black = 1
+green = 1
+
+[kind]
+type = "creature"
+power = 4
+toughness = 4
+
+# If one or more +1/+1 counters would be put on a creature you control, twice that many +1/+1
+# counters are put on it instead.
+[[abilities]]
+timing = "static"
+
+# twice that many +1/+1 counters are put on it instead
+[[abilities.effects]]
+type = "static"
+mode = "counter_replacement"
+times = 2

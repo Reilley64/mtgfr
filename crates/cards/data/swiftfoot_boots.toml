@@ -1,0 +1,39 @@
+# Equipped creature has hexproof and haste. (It can't be the target of spells or abilities your opponents control. It
+# can attack and {T} no matter when it came under your control.)
+# Equip {1} ({1}: Attach to target creature you control. Equip only as a sorcery.)
+name = "Swiftfoot Boots"
+id = "c8b143ad-43ec-4e0d-a440-e348daa31391"
+default_print = "6675632d-d74a-4b1e-8539-ac678d5545a5"
+oracle = "Equipped creature has hexproof and haste. (It can't be the target of spells or abilities your opponents control. It can attack and {T} no matter when it came under your control.)\nEquip {1} ({1}: Attach to target creature you control. Equip only as a sorcery.)"
+set = "msc"
+subtypes = ["Equipment"]
+
+[cost]
+generic = 2
+
+[kind]
+type = "artifact"
+
+# Equipped creature has hexproof and haste.
+[[abilities]]
+timing = "static"
+
+# Equipped creature has hexproof and haste.
+[[abilities.effects]]
+type = "static"
+mode = "grant_to_attached"
+power = 0
+toughness = 0
+keywords = ["hexproof", "haste"]
+
+# Equip {1}
+[[abilities]]
+timing = "activated"
+
+[abilities.activation_cost]
+generic = 1
+
+# Equip {1}
+[[abilities.effects]]
+type = "control"
+mode = "equip"
