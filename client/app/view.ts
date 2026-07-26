@@ -8,6 +8,7 @@ import { CompletedPortraitGateModal, type Message, PortraitGateCancelled, Reques
 import type { Model } from "./model";
 import { HomeRoute, isProtectedRoute, NewDeckRoute, routePath } from "./routes";
 import { view as authView } from "./shell/auth/view";
+import { view as coverageView } from "./shell/coverage/view";
 import { view as deckBuilderView } from "./shell/decks/builder/view";
 import { view as deckListView } from "./shell/decks/list/view";
 import { view as leaderboardView } from "./shell/leaderboard/view";
@@ -159,6 +160,13 @@ function routeBody(model: Model) {
       case "LeaderboardRoute":
         return leaderboardView(
           model.leaderboard,
+          model.session.me?.username ?? "",
+          model.session.meGravatarHash,
+          chromeMeta(model),
+        );
+      case "CoverageRoute":
+        return coverageView(
+          model.coverage,
           model.session.me?.username ?? "",
           model.session.meGravatarHash,
           chromeMeta(model),

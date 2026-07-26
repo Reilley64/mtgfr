@@ -12,6 +12,7 @@ import { BindDeckCardFlip, DeckCardFlipTick } from "../deck-card-nav";
 import { init, update } from "../main-exports";
 import type { Model as AppModel } from "../model";
 import {
+  CoverageRoute,
   HomeRoute,
   LeaderboardRoute,
   LoginRoute,
@@ -344,6 +345,39 @@ describe("shell surface scenes", () => {
       Scene.expect(Scene.selector('[data-testid="account-menu-trigger"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="header-leaderboard-link"]')).not.toExist(),
       Scene.expect(Scene.text("Signed in as alice")).not.toExist(),
+    );
+  });
+
+  it("renders coverage page table and global percent", () => {
+    Scene.scene(
+      { update, view },
+      Scene.with(
+        authedModel(CoverageRoute(), {
+          coverage: {
+            ...init()[0].coverage,
+            status: "ready",
+            faithfulCount: 662,
+            oracleTotal: 28412,
+            sets: [
+              {
+                code: "soc",
+                name: "Secrets of Strixhaven",
+                releasedAt: "2026-04-01",
+                faithful: 10,
+                oracleTotal: 400,
+              },
+            ],
+          },
+        }),
+      ),
+      Scene.expect(Scene.selector('[data-testid="coverage-page"]')).toExist(),
+      Scene.expect(Scene.text("Coverage")).toExist(),
+      Scene.expect(Scene.selector('[data-testid="coverage-global-percent"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="coverage-search"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="coverage-row-soc"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="header-leaderboard-link"]')).toExist(),
+      Scene.expect(Scene.text("Secrets of Strixhaven")).toExist(),
+      Scene.expect(Scene.text("2.5%")).toExist(),
     );
   });
 

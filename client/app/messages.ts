@@ -9,6 +9,7 @@ import { DeckCardFlipTick } from "./deck-card-nav";
 import { Message as GameMessage } from "./game/messages";
 import { Message as AccountChromeMessage } from "./shell/account-chrome/messages";
 import { Message as AuthMessage } from "./shell/auth/messages";
+import { Message as CoverageMessage } from "./shell/coverage/messages";
 import { Message as DecksMessage } from "./shell/decks/messages";
 import { Message as LeaderboardMessage } from "./shell/leaderboard/messages";
 import { Message as LobbyMessage } from "./shell/lobby/messages";
@@ -44,6 +45,7 @@ export const Message = S.Union([
   BoardMessage,
   AccountChromeMessage,
   AuthMessage,
+  CoverageMessage,
   DecksMessage,
   LeaderboardMessage,
   LobbyMessage,
@@ -80,6 +82,12 @@ export {
   RequestedLogout,
   SubmittedAuth,
 } from "./shell/auth/messages";
+export {
+  ChangedCoverageQuery,
+  CoverageLoadFailed,
+  ReceivedCoverageMeta,
+  RequestedCoverageRefresh,
+} from "./shell/coverage/messages";
 export {
   ActivatedBuilderTarget,
   AddedBuilderCard,
