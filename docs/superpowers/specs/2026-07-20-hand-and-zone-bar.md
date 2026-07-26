@@ -23,6 +23,7 @@ Render a fixed DOM hand bar at the bottom of the board. It groups tiles in Arena
 - Hovering a bar tile elevates that tile's root above all other action-bar tiles (`[z-index:var(--hand-z)]` resting + `hover:[z-index:50]` on the slot; resting z is not inline). Discard-selected raises and rings but does not elevate z.
 - A release above `HAND_BAR_H - HAND_PLAY_SLACK_PX` commits the drop (`HAND_PLAY_SLACK_PX` is 96); releasing below snaps back.
 - Hand activation re-resolves all current hand-section actions for that object. With exactly one legal mode, it follows the existing play/cost/target pipeline; with multiple legal modes, it clears other local action sessions, seeds a stack flight, and parks the card in local `playModePick` state until `PlayModeChosen` continues the selected action through the same cost/target pipeline or Cancel restores the card.
+- While `playModePick` is open, snapshot and delta sync reconcile the parked modes against current legal actions. Pruned modes disappear; exactly one remaining mode auto-continues through the same play/cost/target pipeline; zero remaining modes cancel the session, return the card to hand, and submit no intent.
 - `hiddenId`, `hiddenIds`, and flight ownership suppress tiles while a staged play or flight owns the card.
 - Playable hand/command tiles get the playable border from `barZoneAura(zone, playable)`.
 - Unplayable hand/command tiles stay full brightness: no `brightness-[0.55]` or equivalent veil.
@@ -43,7 +44,7 @@ Render a fixed DOM hand bar at the bottom of the board. It groups tiles in Arena
 
 - Scene/unit tests cover the hand bar, command/hand playable borders, unplayable no-dim behavior, drag-source opacity fade, and spectator suppression.
 - Interaction checks should drag above and below the play threshold and assert commit versus cancel outcomes.
-- Scene tests cover multi-mode hand activation entering `playModePick`, local-session exclusivity, `PlayModeChosen` continuation, the single-mode auto path, and Cancel restoring the parked hand card.
+- Scene tests cover multi-mode hand activation entering `playModePick`, local-session exclusivity, `PlayModeChosen` continuation, the single-mode auto path, stale legality prune/cancel behavior, stale `PlayModeChosen` without intent, and Cancel restoring the parked hand card.
 - Geometry lock in `handBarHit.test.ts` asserts face/peek/visible/`HAND_BAR_H` targets so a silent regress to the old dense values fails.
 - `hand.test.ts` locks hover elevate on `hand-tile-{id}` and asserts discard-selected does not add selection z elevate.
 
@@ -57,3 +58,4 @@ Render a fixed DOM hand bar at the bottom of the board. It groups tiles in Arena
 
 - Zone pile expansion is handled separately by `PileOverlay`.
 - Flights suppress duplicate hand and resting battlefield faces through `hideCardIds`, `flightOwnedIds`, and `handHidden`. Stack faces hide only for `kind: "stack"` flights (see stack spec).
+- The play-mode behavior follows the local chooser design in [hand-play-mode-chooser-design](2026-07-26-hand-play-mode-chooser-design.md).

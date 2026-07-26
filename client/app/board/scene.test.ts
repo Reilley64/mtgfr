@@ -444,6 +444,67 @@ test("PlayModeChosen runs the selected action and clears playModePick", () => {
   });
 });
 
+test("PlayModeChosen with a stale pruned action clears playModePick without intent", () => {
+  const card = creature(42, 0, { name: "Valley Rannet", zone: ZONE.Hand });
+  const staleCastAction: ActionView = {
+    id: 7,
+    kind: "cast",
+    label: testMessageRef("Cast Valley Rannet"),
+    needs_target: false,
+    object: card.id,
+    section: "hand",
+  };
+  const remainingCycleAction: ActionView = {
+    id: 8,
+    kind: "cycle",
+    label: testMessageRef("Mountaincycling"),
+    needs_target: false,
+    object: card.id,
+    section: "hand",
+  };
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    playModePick: {
+      card,
+      modes: [remainingCycleAction],
+      dropSeed: { x: 0, y: 0 },
+      screenOrigin: { x: 400, y: 200 },
+    },
+    handHidden: new Set([card.id]),
+    flights: new Map([
+      [
+        card.id,
+        {
+          id: card.id,
+          print: "",
+          name: card.name,
+          x: 400,
+          y: 200,
+          scale: 1,
+          targetX: 720,
+          targetY: 140,
+          targetScale: 0.5,
+          phase: "flying",
+          kind: "stack",
+          fromCardId: card.id,
+        },
+      ],
+    ]),
+    hideCardIds: new Set([card.id]),
+    ownedIds: new Set([card.id]),
+  };
+  const gameFold = fold(state({ objects: [card], actions: [remainingCycleAction] }));
+
+  const [next, commands] = updateBoard(board, PlayModeChosen({ actionId: staleCastAction.id }), gameFold, "T1");
+
+  expect(commands).toEqual([]);
+  expect(playModePickOf(next)).toBeNull();
+  expect(next.handHidden.has(card.id)).toBe(false);
+  expect(next.flights.has(card.id)).toBe(false);
+  expect(next.hideCardIds.has(card.id)).toBe(false);
+  expect(next.ownedIds.has(card.id)).toBe(false);
+});
+
 test("PlayModeChosen restores the parked card when the selected action rejects", () => {
   const card = creature(42, 0, { name: "Valley Rannet", zone: ZONE.Hand });
   const castAction: ActionView = {
