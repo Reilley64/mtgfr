@@ -23,7 +23,8 @@ Cut cold **server verify wall-clock** with a **modest** parallelization budget: 
 | Parallelism | 2 nextest shards (`count:1/2` and `count:2/2`) |
 | Runner | Stay on `ubuntu-latest` (no larger / self-hosted runners in this pass) |
 | Local commands | `just server-test` / `just server-check` remain unsharded |
-| Pass marker | Same content-hash idea; **write only after lint + both shards succeed** |
+| Pass marker | Same content-hash idea; **restore-only gate + save-only mark after lint + both shards succeed** |
+| Cargo cache | Lint + both test shards share one `Swatinem/rust-cache` `shared-key` |
 | Required-check shape | Keep a single aggregator job named like today’s server gate |
 | Client / docker / release | Unchanged |
 
@@ -80,16 +81,59 @@ On cache miss, each shard:
 
 JUnit: keep the `ci` profile path; upload per-shard artifacts (e.g. `rust-junit-1`, `rust-junit-2`) and run test-summary on each when present.
 
-### Pass marker semantics
+### Caching (must keep working)
 
-- **Key inputs:** same file set as today’s `verify-server-v2-*` (crates, proto, Cargo/Toasty, nextest config, justfile, workflow, CR index scripts). Bump the key prefix to `verify-server-v3-*` when the workflow shape changes so old markers cannot skip a differently structured verify.
-- **Read:** gate (or each consumer job) restores the marker and skips work on hit.
-- **Write:** only `verify-server-mark`, and only when the run was a **miss** and **lint + both shards succeeded**. Neither test shard writes the marker alone (avoids caching a pass while the sibling or lint still fails).
-- On hit: keep today’s quirk — Postgres service containers may still start with matrix jobs that skip work. Do not block this design on eliminating that overhead.
+Two independent caches. Both must stay correct under the split; neither may false-pass.
+
+#### 1. Pass marker (skip unchanged server trees)
+
+Today one job restores `.ci-pass`, runs checks, then the cache **post-step** saves because the marker file was written in that same job. After the split, **restore and save must be separate jobs** so a green shard cannot publish a marker while lint or the other shard still fails.
+
+| Job | Cache API | Behavior |
+|---|---|---|
+| `verify-server-gate` | `actions/cache/restore` only | Clean checkout → same `hashFiles(...)` key → emit `outputs.cache-hit`. **Never** write `.ci-pass`. **Never** save. |
+| `verify-server-lint` / `verify-server-test` | none for pass marker | `if: needs.verify-server-gate.outputs.cache-hit != 'true'`. On hit these jobs are **skipped** (not “run empty”). |
+| `verify-server-mark` | `actions/cache/save` only | Runs only when gate was a **miss** and lint + **both** matrix shards succeeded. Checkout (so `hashFiles` matches) → `mkdir .ci-pass && echo ok > .ci-pass/marker` → save with the **identical** key expression as restore. |
+
+**Key**
+
+- Same input set as today’s `verify-server-v2-*` (`crates/**`, `proto/**`, Cargo/Toasty, `.config/nextest.toml`, `justfile`, `.github/workflows/verify-jobs.yml`, `docs/CR_INDEX.md`, `scripts/gen_cr_index.py`).
+- Bump prefix to `verify-server-v3-*` when this workflow ships so v2 markers cannot skip the new graph.
+- Compute the key only on a clean checkout (same rule as today: do not re-`hashFiles` after mutating the tree).
+
+**Invariants**
+
+- Marker present ⇒ lint + full suite (both partitions) previously succeeded for that content hash.
+- Partial success ⇒ no save.
+- Cancelled / failed needed job ⇒ no save; aggregator red.
+- Gate miss + empty `.ci-pass` must not produce a saved empty entry (restore-only gate + save-only mark).
+
+**Cache hit path:** gate reports hit → lint/test/mark skipped → aggregator green. Postgres may still start only if a non-skipped job keeps a `services:` block; with `if:` skip on lint/test, hit path should not start Postgres. Document the actual Actions behavior in the living spec after implement.
+
+#### 2. Cargo / rust-cache (compile reuse across shards)
+
+Lint and both test shards each need a toolchain on miss. Job names change from today’s single `verify-server`, so **default** `Swatinem/rust-cache` keys (which incorporate job identity) would cold-miss after the refactor.
+
+**Lock:** every miss-path Rust job (lint + both partitions) uses the same:
+
+```yaml
+- uses: Swatinem/rust-cache@v2
+  with:
+    shared-key: verify-server
+```
+
+So clippy and nextest shards share one Cargo cache namespace. Concurrent saves are acceptable (last writer wins); correctness does not depend on which shard saves last. Do **not** give each matrix cell a distinct cache key for this pass.
+
+Client pass-marker / bun install caching stays as today.
 
 ### Aggregator
 
-`verify-server` (or equivalently named) `needs` lint + the test matrix. It succeeds only if every needed job succeeded (or was correctly skipped on cache hit). This preserves a single server verify status for humans and required checks even though work is split.
+`verify-server` `needs: [verify-server-gate, verify-server-lint, verify-server-test]` (matrix collapses to one need). Use `if: always()` and succeed when:
+
+- `gate.outputs.cache-hit == 'true'`, or
+- gate miss **and** lint result `success` **and** test matrix result `success`
+
+Any other combination (failure, cancelled, unexpected skip on miss) → fail. This preserves a single server verify status for humans and required checks.
 
 ### Local / justfile
 
@@ -112,9 +156,11 @@ In the same implementation change, update [ci-and-release](2026-07-20-ci-and-rel
 
 ## Verification (when implementing)
 
-1. PR that touches `crates/**` → cache miss → lint + two shards run in parallel → aggregator green → both JUnit artifacts present.
-2. Follow-up commit that does not change server hash inputs → pass marker hit → shards/lint skip → aggregator green.
-3. Locally: `just server-check` still runs the full unsharded suite.
+1. PR that touches `crates/**` → pass-marker **miss** → lint + two shards run → mark job saves → aggregator green → both JUnit artifacts present.
+2. Immediate follow-up commit that does **not** change server hash inputs → gate **hit** → lint/test/mark skipped → aggregator green (proves pass-marker still short-circuits).
+3. Forced failure: break one shard (or lint) on a miss run → aggregator red **and** mark job does not run / does not save (proves no false pass marker). Revert before merge.
+4. On a miss run, confirm rust-cache restore reports the shared `verify-server` key on lint and both shards (not three disjoint cold keys).
+5. Locally: `just server-check` still runs the full unsharded suite.
 
 ## Out of Scope
 
