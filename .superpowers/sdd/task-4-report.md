@@ -1,3 +1,35 @@
+# Task 4 report: Seat-claim lobby UI
+
+## Status
+
+Implemented the Foldkit lobby options card and commander-damage switch above seats. The host can toggle it; watchers/non-hosts see a disabled switch. No board commander-damage paint or living specs were changed.
+
+## Changes
+
+- Added `RequestedLobbyCommanderDamage` to lobby messages.
+- Added `SetLobbyOptions` and host-only update handling around `setTableOptions`.
+- Routed the new lobby message through the app-level exhaustive update switch.
+- Rendered `lobby-commander-damage` and `lobby-commander-damage-switch` with the requested copy and reused `turnYieldChrome` rocker classes.
+- Broadened `NotHost` copy to `Only the host can change that.`
+- Added Scene coverage for host chrome and disabled watcher switch.
+- Added update coverage for host dispatch and non-host no-op.
+
+## TDD / verification
+
+- Red: `cd client && bun test app/shell/surfaces.test.ts app/shell/lobby/update.test.ts` failed for missing `lobby-commander-damage` chrome and missing `SetLobbyOptions`.
+- Green: `cd client && bun test app/shell/surfaces.test.ts app/shell/lobby/update.test.ts app/shell/lobby/entry.test.ts app/shell/lobby/story.test.ts` -> 40 pass / 0 fail.
+- Targeted quality: `cd client && bunx biome check --formatter-enabled=false app/update.ts app/shell/lobby/messages.ts app/shell/lobby/update.ts app/shell/lobby/update.test.ts app/shell/lobby/view.ts app/shell/surfaces.test.ts && bunx tsc --noEmit && bun test app/shell/surfaces.test.ts app/shell/lobby/update.test.ts app/shell/lobby/entry.test.ts app/shell/lobby/story.test.ts` -> pass.
+
+## Self-review
+
+- Placement matches the brief: after table-code / clipboard fallback and before seats.
+- Copy/testids match the brief exactly.
+- Host gating is enforced in both UI disabled state and update no-op.
+- The switch is disabled while submitting or after start, matching the brief snippet.
+
+## Concern
+
+- `just client-check` currently fails before lint/type/test at `bun run gen:tokens:check` because generated design token outputs are stale. I restored unrelated formatter churn and did not include token changes in this task.
 # Task 4 Report: Paint + Mount clock for exit FX
 
 ## Status

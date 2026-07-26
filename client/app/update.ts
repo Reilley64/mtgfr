@@ -445,6 +445,7 @@ export const update = (
       LobbyTableCreated: (lobbyMessage) => foldLobby(model, lobbyMessage),
       RequestedLobbyJoin: (lobbyMessage) => foldLobby(model, lobbyMessage),
       RequestedLobbyReady: (lobbyMessage) => foldLobby(model, lobbyMessage),
+      RequestedLobbyCommanderDamage: (lobbyMessage) => foldLobby(model, lobbyMessage),
       RequestedLobbyStart: (lobbyMessage) => foldLobby(model, lobbyMessage),
       RequestedLobbyCopy: (lobbyMessage) => foldLobby(model, lobbyMessage),
       LobbyCopyCompleted: (lobbyMessage) => foldLobby(model, lobbyMessage),

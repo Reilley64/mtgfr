@@ -432,14 +432,62 @@ describe("shell surface scenes", () => {
       ),
       Scene.expect(Scene.selector('[data-testid="lobby-table-code"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-copy-code"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="lobby-commander-damage"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="lobby-commander-damage-switch"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-seats"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-seat-0"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="seat-face-0"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-start-error"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-start-error"].text-caution-amber')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-error"]')).toExist(),
+      Scene.expect(Scene.text("Commander damage")).toExist(),
+      Scene.expect(Scene.text("Lose at 21 from one commander")).toExist(),
       Scene.expect(Scene.text("Need at least two players.")).toExist(),
       Scene.expect(Scene.text("That table link is stale or expired. Ask the host for a new code.")).toExist(),
+    );
+  });
+
+  it("disables commander damage switch for lobby watchers", () => {
+    Scene.scene(
+      { update, view },
+      Scene.with(
+        authedModel(TableRoute({ deckId: "1", table: "ABC123" }), {
+          decks: {
+            ...init()[0].decks,
+            list: { ...init()[0].decks.list, decks: [deck], knownCommanders: { atraxa }, loading: false },
+          },
+          lobby: {
+            ...initialLobbySlice(),
+            selectedDeckId: 1,
+            tableId: "ABC123",
+            view: {
+              error: null,
+              seats: [
+                {
+                  claimed: true,
+                  deck_id: 1,
+                  deck_name: "Superfriends",
+                  gravatar_hash: "ff8d9819fc0e12bf0d24892e45987e249a28dce836a85cad60e28eaaa8c6d976",
+                  is_host: false,
+                  is_you: false,
+                  player: 0,
+                  ready: false,
+                  username: "alice",
+                },
+              ],
+              start_error: null,
+              started: false,
+              table_id: "ABC123",
+              commander_damage_enabled: false,
+              you: null,
+            },
+          },
+        }),
+      ),
+      Scene.expect(Scene.selector('[data-testid="lobby-commander-damage"]')).toExist(),
+      Scene.expect(Scene.testId("lobby-commander-damage-switch")).toBeDisabled(),
+      Scene.Mount.resolve(BindDeckCardFlip({ deckId: 1 }), DeckCardFlipTick()),
+      Scene.Mount.resolve(BindCardArt, CardArtTick()),
     );
   });
 

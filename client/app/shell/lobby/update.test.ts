@@ -1,8 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as tableAudio from "../../../lib/tableAudio";
-import { RequestedLobbyCancelJoin, RequestedLobbyHost, RequestedLobbyOpenJoin, RequestedLobbyReady } from "./messages";
+import {
+  RequestedLobbyCancelJoin,
+  RequestedLobbyCommanderDamage,
+  RequestedLobbyHost,
+  RequestedLobbyOpenJoin,
+  RequestedLobbyReady,
+} from "./messages";
 import { initialLobbySlice } from "./submodel";
-import { CreateLobbyTable, ReadyLobby, update } from "./update";
+import { CreateLobbyTable, ReadyLobby, SetLobbyOptions, update } from "./update";
 
 describe("RequestedLobbyReady audio unlock", () => {
   afterEach(() => {
@@ -34,6 +40,75 @@ describe("RequestedLobbyHost deck selection", () => {
 
     expect(next.error).toBe("Pick a deck to bring first.");
     expect(next.selectedDeckId).toBeNull();
+    expect(commands).toHaveLength(0);
+  });
+});
+
+describe("RequestedLobbyCommanderDamage", () => {
+  it("host dispatches a lobby options command", () => {
+    const model = {
+      ...initialLobbySlice(),
+      tableId: "ABC123",
+      view: {
+        table_id: "ABC123",
+        commander_damage_enabled: true,
+        you: 0,
+        started: false,
+        error: null,
+        start_error: null,
+        seats: [
+          {
+            player: 0,
+            claimed: true,
+            username: "alice",
+            gravatar_hash: null,
+            deck_name: "Superfriends",
+            deck_id: 7,
+            ready: false,
+            is_host: true,
+            is_you: true,
+          },
+        ],
+      },
+    };
+
+    const [next, commands] = update(model, RequestedLobbyCommanderDamage({ enabled: false }), [7]);
+
+    expect(next.submitting).toBe(true);
+    expect(commands).toHaveLength(1);
+    expect(commands[0]?.name).toBe(SetLobbyOptions.name);
+  });
+
+  it("non-host does not submit lobby options", () => {
+    const model = {
+      ...initialLobbySlice(),
+      tableId: "ABC123",
+      view: {
+        table_id: "ABC123",
+        commander_damage_enabled: true,
+        you: 0,
+        started: false,
+        error: null,
+        start_error: null,
+        seats: [
+          {
+            player: 0,
+            claimed: true,
+            username: "alice",
+            gravatar_hash: null,
+            deck_name: "Superfriends",
+            deck_id: 7,
+            ready: false,
+            is_host: false,
+            is_you: true,
+          },
+        ],
+      },
+    };
+
+    const [next, commands] = update(model, RequestedLobbyCommanderDamage({ enabled: false }), [7]);
+
+    expect(next).toBe(model);
     expect(commands).toHaveLength(0);
   });
 });

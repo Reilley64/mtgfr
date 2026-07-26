@@ -1,6 +1,7 @@
 import { type Html, html } from "foldkit/html";
 import { cn } from "../../../lib/cn";
 import type { BuilderCatalogCard } from "../../../lib/deck-builder/cards";
+import { turnYieldRockerClass, turnYieldThumbClass, turnYieldTrackClass } from "../../../lib/turnYieldChrome";
 import { appVersionBadge } from "../../../lib/ui/app-version";
 import { buttonClass } from "../../../lib/ui/buttonClass";
 import { cardArt } from "../../../lib/ui/card-art";
@@ -13,6 +14,7 @@ import {
   ChangedLobbyCode,
   type Message,
   RequestedLobbyCancelJoin,
+  RequestedLobbyCommanderDamage,
   RequestedLobbyCopy,
   RequestedLobbyHost,
   RequestedLobbyJoin,
@@ -31,7 +33,7 @@ function humanError(code: string): string {
   const map: Record<string, string> = {
     TableFull: "That table is full.",
     AlreadyStarted: "The game already started.",
-    NotHost: "Only the host can start.",
+    NotHost: "Only the host can change that.",
     NeedTwoPlayers: "Need at least two players.",
     NotAllReady: "Waiting for everyone to Ready…",
     UnknownTable: "That table link is stale or expired. Ask the host for a new code.",
@@ -349,6 +351,44 @@ function seats(model: LobbySlice): Html {
   );
 }
 
+function commanderDamageOption(model: LobbySlice): Html {
+  const enabled = model.view?.commander_damage_enabled ?? true;
+
+  return h.div(
+    [
+      h.DataAttribute("testid", "lobby-commander-damage"),
+      h.Class("flex items-center justify-between gap-md rounded-hud border border-vine bg-glass-dim px-md py-sm"),
+    ],
+    [
+      h.div(
+        [h.Class("flex min-w-0 flex-col gap-0.5")],
+        [
+          h.span([h.Class("font-semibold")], ["Commander damage"]),
+          h.span([h.Class("text-caption text-lichen")], ["Lose at 21 from one commander"]),
+        ],
+      ),
+      h.button(
+        [
+          h.Type("button"),
+          h.Role("switch"),
+          h.DataAttribute("testid", "lobby-commander-damage-switch"),
+          h.Attribute("aria-checked", enabled ? "true" : "false"),
+          h.Attribute("aria-label", "Commander damage"),
+          h.Disabled(!lobbyHost(model) || model.submitting || model.view?.started === true),
+          h.OnClick(RequestedLobbyCommanderDamage({ enabled: !enabled })),
+          h.Class(turnYieldRockerClass(enabled)),
+        ],
+        [
+          h.span(
+            [h.Class(turnYieldTrackClass(enabled))],
+            [h.span([h.Class(turnYieldThumbClass(enabled)), h.Attribute("aria-hidden", "true")], [])],
+          ),
+        ],
+      ),
+    ],
+  );
+}
+
 function claimSeat(
   model: LobbySlice,
   decks: ReadonlyArray<DeckSummary>,
@@ -427,6 +467,7 @@ function tableLobby(
             h.Class(fieldClass("w-[120px] text-chip tracking-[0.06em]")),
           ])
         : null,
+      commanderDamageOption(model),
       seats(model),
       !joined && model.view != null && !model.view.started
         ? h.div(
