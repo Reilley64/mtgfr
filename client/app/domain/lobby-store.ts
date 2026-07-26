@@ -9,13 +9,18 @@ const ROUTE_TTL_MS = 24 * 60 * 60 * 1000;
 const CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
 
 export function randomTableCode(): string {
-  const bytes = new Uint8Array(6);
-  crypto.getRandomValues(bytes);
-  let out = "";
-  for (const b of bytes) {
-    out += CODE_ALPHABET.charAt(b % CODE_ALPHABET.length);
+  while (true) {
+    const bytes = new Uint8Array(6);
+    crypto.getRandomValues(bytes);
+    let out = "";
+    let hasLetter = false;
+    for (const b of bytes) {
+      const char = CODE_ALPHABET.charAt(b % CODE_ALPHABET.length);
+      out += char;
+      if (char >= "A" && char <= "Z") hasLetter = true;
+    }
+    if (hasLetter) return out;
   }
-  return out;
 }
 
 export type LobbySeatRow = {

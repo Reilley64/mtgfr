@@ -78,6 +78,18 @@ test("hex /play/:table is GameTableRoute", () => {
   expect(normalizeAppRoute(raw, "/play/ABC123DEF")).toEqual(GameTableRoute({ table: "ABC123DEF" }));
 });
 
+test("mixed six-character table code normalizes to GameTableRoute", () => {
+  const raw = routeFromUrl(url("/play/ABC123"));
+
+  expect(normalizeAppRoute(raw, "/play/ABC123")).toEqual(GameTableRoute({ table: "ABC123" }));
+});
+
+test("all-digit six-character play segment still normalizes to PlayRoute", () => {
+  const raw = routeFromUrl(url("/play/234567"));
+
+  expect(normalizeAppRoute(raw, "/play/234567")).toEqual(PlayRoute({ deckId: "234567" }));
+});
+
 test("pregame /play/:deckId/:table stays two-segment", () => {
   const raw = routeFromUrl(url("/play/7/ABC123"));
 
