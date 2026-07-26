@@ -155,6 +155,11 @@ Depends on: nothing.
 settle with either the color or 2 life, recording *which* was chosen so #16's compleated rider
 can read it. *Cards:* vraska_betrayals_sting (with #16).
 
+**Pre-written brief** at `/private/tmp/claude-501/-Users-reilley-Repositories-mtgfr/a6559256-1122-41b4-8623-2c96d64f687b/scratchpad/brief-8.md`.
+#8 stalled 6/6 in wave 7 — the agent could not locate the mana-payment surface and burned its
+whole context searching. The brief names every site (`types/mana.rs:5/24/38/92/114/142/801/1219`
+plus the shockland pay-life-choice precedent). Use it as written; do not re-derive.
+
 ### 9. `total-mana-value-budget-targets` — 1 card, M — LANDED 2026-07-26
 _Landed 2026-07-26: `TargetCount::total_mv_max: Option<Amount>` (TOML `total_mv_max` on the count
 table, hand-written `Deserialize` in `de.rs`) — a set-level CR 601.2c budget checked once against

@@ -93,13 +93,13 @@ increment that unblocks each card is in parentheses.
 - [x] Bilious Skulldweller (#20 slice 3) — built 2026-07-27, faithful
 - [x] Blightbelly Rat (#20 slice 3) — built 2026-07-27, faithful (#17 cleared the proliferate residual same day)
 - [x] Bloated Contaminator (#20 slice 3) — built 2026-07-27, faithful (#17 cleared the proliferate residual same day)
-- [ ] Bloatfly Swarm (#21, #22)
+- [x] Bloatfly Swarm (#21, #22) — built 2026-07-27, faithful
 - [x] Cankerbloom (#10) — built 2026-07-26, faithful (#17 cleared the proliferate residual 2026-07-27)
 - [x] Contagion Engine (#3) — built 2026-07-26, faithful (#17 cleared the proliferate residual 2026-07-27)
 - [x] Contaminant Grafter (#20 slices 3–4) — built 2026-07-27, faithful
 - [x] Everflowing Chalice (#11) — built 2026-07-26, faithful
 - [x] Feral Ghoul (#21) — built 2026-07-27, faithful
-- [ ] Garruk, Cursed Huntsman (#13) — not authored; #13's build agent stalled out on every attempt in wave 6
+- [ ] Garruk, Cursed Huntsman (#13a, #13b) — built 2026-07-27; still approximated (the −6 emblem mode is omitted — emblems don't exist in the engine; #13b)
 - [x] Garruk, Primal Hunter (#4) — built 2026-07-26, faithful
 - [x] Glistening Sphere (#20 slice 4) — built 2026-07-27, faithful
 - [x] Ichor Rats (#20 slices 1–2) — built 2026-07-26, faithful
@@ -127,7 +127,7 @@ increment that unblocks each card is in parentheses.
 ## Observability re-audit
 
 The mandatory re-audit found **nine** pool-absence claims this deck falsifies. Each is folded
-into the increment that clears it. Six are cleared as of 2026-07-27; three remain.
+into the increment that clears it. Seven are cleared as of 2026-07-27; two remain (both on #19).
 
 | Claim | Falsified by | Increment |
 |---|---|---|
@@ -138,7 +138,7 @@ into the increment that clears it. Six are cleared as of 2026-07-27; three remai
 | `characteristics.rs:1807` — `counters_after_replacements(object, base)` | Winding Constrictor, Vorinclex, Innkeeper's Talent L3 | #19 — the `ObjectId` signature gives "or on **you**" no call site, and the +1/+1-only scope silently skips every other kind |
 | ~~`characteristics.rs:1100` — CR 704.5r ±1/±1 annihilation SBA "unobservable today (no pool card puts both kinds on one creature)"~~ **cleared 2026-07-26** | Contagion Clasp and Contagion Engine place real `-1/-1` counters onto a deck full of `+1/+1` counters | #24 (landed) |
 | ~~`triggers.rs:2946` — "no pool Class gates one of those triggers"~~ **cleared 2026-07-26** | Innkeeper's Talent | #2 (landed) — the audit's "read at exactly **one** site" was itself wrong: `min_level` is read at four, and only `keyword_anthem_static_grants` was missing the gate |
-| `promise_of_loyalty.toml:3` — "unobservable while every attack target is a player (planeswalker defenders unmodeled)" | the three planeswalkers | #13 — the parenthetical was already false about its own engine (`Defender::Planeswalker` exists); a note fix, not a code fix |
+| ~~`promise_of_loyalty.toml:3` — "unobservable while every attack target is a player (planeswalker defenders unmodeled)"~~ **cleared 2026-07-27** | the three planeswalkers | #13a (landed) — the parenthetical was already false about its own engine; attack declaration resolves every attack to its defending player whether the declared target was that player or their planeswalker, so the card was always faithful. A note fix, not a code fix. Two `DSL_REFERENCE.md` rows (`counter_scaled_attack_tax`, `cant_be_attacked_by`) carried the same stale claim and were corrected with it |
 | ~~`types/mana.rs:223` — single-kicker only, "grow those from a real card that needs one"~~ **cleared 2026-07-26** | Everflowing Chalice | #11 (landed) |
 
 `ozolith_the_shattered_spire.toml:10` is a near miss kept on watch: its over-broad
