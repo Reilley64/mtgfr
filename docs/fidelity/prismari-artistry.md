@@ -9,13 +9,14 @@ Intake counts: 75 faithful / 0 approximated / 0 expressible / 10 needing engine 
 The classifier returned 85 A / 0 B / 0 missing, but the Prismari re-audit demoted 10 cards to D:
 the deck's own copy shell falsifies the engine's "first-generation copy only" shortcut, and
 `Goldspan Dragon` turns the current "two independent any-color credits" mana note into a real
-gameplay bug.
+gameplay bug. Both increments have since landed, clearing all 10.
 
-**Current state (2026-07-26): 85/85 nonbasic Prismari cards are in the pool — 75 fully faithful
-and 10 still blocked on two engine increments (#1 copy-effect exception riders becoming copiable,
-#2 linked same-color mana credits).**
+**Current state (2026-07-26): 85/85 nonbasic Prismari cards are in the pool and fully faithful.
+Both engine increments landed — #1 copy-effect exception riders are now copiable (`copy_rider_keywords`
+/ `Game::copiable_keywords`), and #2 `Goldspan Dragon`'s Treasure grant adds two mana of one chosen
+color via the `single_color` path.**
 
-## A. In pool, faithful at intake (75)
+## A. In pool, faithful (85)
 
 - [ ] Abrade
 - [ ] Abstract Performance
@@ -26,6 +27,7 @@ and 10 still blocked on two engine increments (#1 copy-effect exception riders b
 - [ ] Big Score
 - [ ] Blasphemous Act
 - [ ] Brazen Borrower
+- [ ] Brudiclad, Telchor Engineer
 - [ ] Cascade Bluffs
 - [ ] Chain Reaction
 - [ ] Chaos Warp
@@ -33,8 +35,10 @@ and 10 still blocked on two engine increments (#1 copy-effect exception riders b
 - [ ] Command Tower
 - [ ] Creative Technique
 - [ ] Curiosity Crafter
+- [ ] Cursed Mirror
 - [ ] Dance with Calamity
 - [ ] Deep Analysis
+- [ ] Determined Iteration
 - [ ] Dig Through Time
 - [ ] Dirgur Focusmage
 - [ ] Exotic Orchard
@@ -46,6 +50,7 @@ and 10 still blocked on two engine increments (#1 copy-effect exception riders b
 - [ ] Frostboil Snarl
 - [ ] Furygale Flocking
 - [ ] Galazeth Prismari
+- [ ] Goldspan Dragon
 - [ ] Hall of Oracles
 - [ ] Harmonic Prodigy
 - [ ] Inspired Skypainter
@@ -56,6 +61,7 @@ and 10 still blocked on two engine increments (#1 copy-effect exception riders b
 - [ ] Manaform Hellkite
 - [ ] Mirrorwing Dragon
 - [ ] Molten Tributary
+- [ ] Muddle, the Ever-Changing
 - [ ] Mystic Sanctuary
 - [ ] Path of Ancestry
 - [ ] Plargg and Nassari
@@ -64,10 +70,14 @@ and 10 still blocked on two engine increments (#1 copy-effect exception riders b
 - [ ] Prismari Command
 - [ ] Prismari Pianist
 - [ ] Reality Shift
+- [ ] Redoubled Stormsinger
 - [ ] Reliquary Tower
 - [ ] Renegade Bull
+- [ ] Replication Technique
 - [ ] Resculpt
 - [ ] Restless Spire
+- [ ] Rionya, Fire Dancer
+- [ ] Rite of Replication
 - [ ] Rootha, Mastering the Moment
 - [ ] Rootha, Mercurial Artist
 - [ ] Rousing Refrain
@@ -89,6 +99,7 @@ and 10 still blocked on two engine increments (#1 copy-effect exception riders b
 - [ ] Thunderclap Drake
 - [ ] Treasure Cruise
 - [ ] Turbulent Springs
+- [ ] Twinflame
 - [ ] Veyran, Voice of Duality
 - [ ] Volcanic Salvo
 - [ ] Volcanic Torrent
@@ -119,48 +130,39 @@ straight to D instead of sitting in B with a papered-over note.
 
 None. All 85 Prismari nonbasics are already in the pool.
 
-## D. In pool, not yet faithful; needs engine work (10)
+## D. In pool, not yet faithful; needs engine work (0)
 
-These cards are scripted, but Prismari makes their remaining engine gaps observable. Each card
-points at the increment(s) that clear it.
+None. The two increments the re-audit filed both landed (2026-07-26), so the 10 cards that were
+here are now faithful and counted in section A:
 
-- [ ] Brudiclad, Telchor Engineer — #1
-- [ ] Cursed Mirror — #1
-- [ ] Determined Iteration — #1
-- [ ] Goldspan Dragon — #2
-- [ ] Muddle, the Ever-Changing — #1
-- [ ] Redoubled Stormsinger — #1
-- [ ] Replication Technique — #1
-- [ ] Rite of Replication — #1
-- [ ] Rionya, Fire Dancer — #1
-- [ ] Twinflame — #1
+- Brudiclad, Telchor Engineer, Cursed Mirror, Determined Iteration, Muddle, the Ever-Changing,
+  Redoubled Stormsinger, Replication Technique, Rite of Replication, Rionya, Fire Dancer, and
+  Twinflame — cleared by #1 (copy-effect exception riders are copiable).
+- Goldspan Dragon — cleared by #2 (linked same-color Treasure mana).
 
 ## Observability re-audit
 
-### 1. Prismari falsifies the "no card copies something already under a copy effect" premise
+### 1. Prismari falsified the "no card copies something already under a copy effect" premise (increment #1, landed)
 
-`pending/handlers/edict.rs` and `cast.rs` still carry the old premise that no pool card will copy
-an object whose copy effect already added a copiable rider outside its printed `CardDef`. Prismari
-breaks that immediately. `Twinflame`, `Rionya, Fire Dancer`, and `Determined Iteration` make token
-copies that should stay "that creature, except it has haste"; `Muddle, the Ever-Changing` becomes a
-copy "except it has myriad"; then `Brudiclad, Telchor Engineer`, `Redoubled Stormsinger`,
+Prismari broke the old premise that no pool card would copy an object whose copy effect already
+added a copiable rider outside its printed `CardDef`. `Twinflame`, `Rionya, Fire Dancer`, and
+`Determined Iteration` make token copies "except it has haste"; `Muddle, the Ever-Changing` becomes
+a copy "except it has myriad"; then `Brudiclad, Telchor Engineer`, `Redoubled Stormsinger`,
 `Replication Technique`, `Rite of Replication`, `Cursed Mirror`, and `Muddle` itself can copy those
 objects again.
 
-Today those second-generation copy paths mostly read only `def_id_of(...)` and model the
-copy-exception keyword as a temporary boost, so the follow-on copy loses the copiable rider. A
-Brudiclad copy of a `Twinflame` token should keep haste; a `Replication Technique` token copy of a
-temporary `Cursed Mirror` creature should keep that copy's haste; a copy of Muddle's copied form
-should keep myriad. This is increment #1.
+Increment #1 landed the fix: those copy-exception keywords now live on `Permanent::copy_rider_keywords`
+(the copiable-value keyword half, read via `Game::copiable_keywords`) instead of a transient boost,
+and every token- and permanent-copy reader carries the rider onto the next copy (CR 707.2). A
+Brudiclad copy of a `Twinflame` token keeps haste; a copy of Muddle's copied form keeps myriad.
 
-### 2. `Goldspan Dragon`'s same-color Treasure note is now a real rules gap
+### 2. `Goldspan Dragon`'s same-color Treasure note was a real rules gap (increment #2, landed)
 
-`goldspan_dragon.toml` still says its "Add two mana of any one color" rider is harmlessly modeled
-as `mana = ["any", "any"]`. Prismari falsifies that premise because the deck is full of blue-red
-costs and color-intensive follow-ups. One Goldspan-boosted Treasure can currently split as one blue
-and one red toward cards like `Prismari Command`, `Muddle, the Ever-Changing`, or
-`Rootha, Mastering the Moment`, even though both mana must be the same chosen color. This is
-increment #2.
+Prismari is full of blue-red costs, so `Goldspan Dragon`'s old `mana = ["any", "any"]` shortcut was
+observable: one Goldspan-boosted Treasure could split as one blue and one red toward cards like
+`Prismari Command` or `Rootha, Mastering the Moment`, even though both mana must be the same chosen
+color. Increment #2 landed a `single_color` flag on the granted Treasure ability, so it now pauses
+on `ChooseManaColor` and adds two mana of the one chosen color (CR 106.4).
 
 ### 3. Prismari's magecraft-doubling risk stays in A after re-audit
 

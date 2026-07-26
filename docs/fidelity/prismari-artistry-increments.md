@@ -10,7 +10,7 @@ engine work. The live gaps are narrow but real: Prismari's second-generation cop
 copy-granted copiable riders like haste or myriad, and `Goldspan Dragon`'s "two mana of any one
 color" shortcut is now observable against the deck's blue-red costs.
 
-### 1. `copy-effect-exception-riders-must-be-copiable` — 9 cards, XL
+### 1. `copy-effect-exception-riders-must-be-copiable` — 9 cards, XL — LANDED 2026-07-26
 
 **Depends on:** none.
 **Cards:** `brudiclad_telchor_engineer.toml`, `cursed_mirror.toml`,
@@ -43,11 +43,16 @@ read that every permanent-copy and token-copy path consults.
    `Replication Technique`, `Rite of Replication`, `Rionya`, `Twinflame`, and `Redoubled
    Stormsinger` preserve the copied rider when they copy a first-generation copy (CR 707.2).
    Regression: `rite_of_replication_copying_a_twinflame_token_preserves_haste`.
-3. **Permanent-copy readers (L).** Route `answer_enter_as_copy`,
-   `answer_each_other_token_becomes_copy`, `answer_choose_copy_card_from_list`, and
-   `TokenEffect::BecomeCopyOfTargetCreatureGainingMyriad` through the same accessor so
-   `Cursed Mirror`, `Brudiclad`, and `Muddle` preserve copiable exception riders when the thing
-   they copy is already a copy.
+3. **Permanent-copy readers (L).** _LANDED 2026-07-26._ Routed `answer_enter_as_copy`
+   (`Cursed Mirror`), `answer_each_other_token_becomes_copy` (`Brudiclad`), and
+   `TokenEffect::BecomeCopyOfTargetCreatureGainingMyriad` (`Muddle`) through `copiable_keywords`,
+   so each carries the copied object's own copy-effect rider onto the new copy (CR 707.2), unioned
+   with any rider it adds itself. `answer_choose_copy_card_from_list` (Spirit of Resilience, not in
+   this pool) copies an artifact/creature *card* — never a battlefield permanent — so it can carry
+   no copiable rider and was left unrouted rather than adding a dead read. Regressions:
+   `muddle_copying_a_twinflame_haste_token_keeps_both_haste_and_myriad`,
+   `brudiclad_copying_a_twinflame_token_carries_its_haste_rider` (the `Cursed Mirror` reader shares
+   the same pattern and stays covered by its existing behavior test).
 
 ### 2. `linked-any-one-color-mana-credits` — 1 card, M — LANDED 2026-07-26
 

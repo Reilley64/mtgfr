@@ -10322,6 +10322,88 @@ fn muddle_copied_form_copiable_snapshot_carries_myriad() {
 }
 
 #[test]
+fn muddle_copying_a_twinflame_haste_token_keeps_both_haste_and_myriad() {
+    // Copy-effect exception riders slice 3 (permanent-copy readers): when Muddle becomes a copy
+    // of a creature that is *already* a copy carrying a rider (a Twinflame haste token you
+    // control), it keeps that creature's haste (CR 707.2) unioned with the myriad Muddle's own
+    // ability adds — neither rider is dropped.
+    let mut game = Game::new();
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let twinflame = game.spawn_in_hand(PlayerId(0), card("Twinflame"));
+
+    // Cast Twinflame while the Bear is the only creature, so it auto-targets it → one haste token.
+    cast_twinflame_and_resolve(&mut game, twinflame, 1);
+    let haste_token = battlefield_named(&game, PlayerId(0), "Grizzly Bear")
+        .into_iter()
+        .find(|&id| id != mine)
+        .expect("Twinflame minted a haste token");
+
+    let muddle = game.spawn_on_battlefield(PlayerId(0), card("Muddle, the Ever-Changing"));
+    let dummy = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
+    fire_muddle_magecraft(&mut game, dummy, true, Some(haste_token));
+    resolve_whole_stack(&mut game);
+
+    assert_eq!(
+        game.def_of(muddle).name,
+        "Grizzly Bear",
+        "Muddle became a copy of the Twinflame token"
+    );
+    assert!(
+        game.has_keyword(muddle, Keyword::Myriad),
+        "Muddle's own 'except it has myriad' rider"
+    );
+    assert!(
+        game.has_keyword(muddle, Keyword::Haste),
+        "the copied token's 'except it has haste' rider is preserved (CR 707.2)"
+    );
+    let riders = game.copiable_keywords(muddle);
+    assert!(riders.contains(&Keyword::Myriad) && riders.contains(&Keyword::Haste));
+}
+
+#[test]
+fn brudiclad_copying_a_twinflame_token_carries_its_haste_rider() {
+    // Copy-effect exception riders slice 3 (permanent-copy readers): Brudiclad's "each other
+    // token you control becomes a copy of that token" copies the chosen token's copiable values,
+    // including a copy-effect rider (a Twinflame haste token). The converted token keeps haste as
+    // a *copiable* rider (CR 707.2) — distinct from Brudiclad's own token-haste anthem, which
+    // grants no copiable value — so a further copy of it would keep haste too.
+    let mut game = Game::new();
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let twinflame = game.spawn_in_hand(PlayerId(0), card("Twinflame"));
+    cast_twinflame_and_resolve(&mut game, twinflame, 1);
+    let haste_token = battlefield_named(&game, PlayerId(0), "Grizzly Bear")
+        .into_iter()
+        .find(|&id| id != mine)
+        .expect("Twinflame minted a haste token");
+
+    game.spawn_on_battlefield(PlayerId(0), card("Brudiclad, Telchor Engineer"));
+    advance_until(&mut game, |g| g.current_step() == Step::BeginCombat);
+    resolve_top_of_stack(&mut game); // Brudiclad's begin-combat trigger mints a Myr, then pauses
+
+    let Some(PendingChoice::ChooseTokenToCopy { .. }) = game.pending_choice() else {
+        panic!(
+            "Brudiclad pauses to choose a token to copy, got {:?}",
+            game.pending_choice()
+        );
+    };
+    let grizzlies_before = battlefield_named(&game, PlayerId(0), "Grizzly Bear");
+    game.submit(Intent::ChooseCopyTarget {
+        player: PlayerId(0),
+        copy: Some(haste_token),
+    })
+    .unwrap();
+
+    let converted = battlefield_named(&game, PlayerId(0), "Grizzly Bear")
+        .into_iter()
+        .find(|&id| !grizzlies_before.contains(&id))
+        .expect("the Myr token became a copy of the Twinflame Grizzly");
+    assert!(
+        game.copiable_keywords(converted).contains(&Keyword::Haste),
+        "the copied token's haste rider is preserved as a copiable value (CR 707.2)"
+    );
+}
+
+#[test]
 fn muddle_magecraft_declined_no_copy() {
     // Declining the "up to one" pause leaves Muddle its printed self — no panic, no copy.
     let mut game = Game::new();

@@ -288,8 +288,12 @@ impl Game {
                 let chosen =
                     expect_object_target(target, "become-copy-of-target-creature-gaining-myriad");
                 let def = self.def_id_of(chosen);
+                // CR 707.2: if the chosen creature is itself already a copy carrying a rider (a
+                // Twinflame haste token you control), Muddle's copy keeps that rider too, unioned
+                // with the myriad this ability adds of its own.
+                let copied_rider = self.copiable_keywords(chosen);
                 const MYRIAD: &[Keyword] = &[Keyword::Myriad];
-                vec![
+                let mut events = vec![
                     Event::BecameCopy {
                         object: source,
                         def,
@@ -302,7 +306,14 @@ impl Game {
                         object: source,
                         keywords: MYRIAD,
                     },
-                ]
+                ];
+                if !copied_rider.is_empty() {
+                    events.push(Event::CopyRiderKeywordsGranted {
+                        object: source,
+                        keywords: copied_rider,
+                    });
+                }
+                events
             }
             // Myriad's payload (CR 702.114a): for each opponent other than the defending player,
             // mint a token copy of the attacker's current (possibly copied) characteristics that
