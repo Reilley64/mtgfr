@@ -12,6 +12,7 @@ import {
   CombatBlockerDropped,
   FlightsSynced,
 } from "./messages";
+import { spawnExitFx } from "./motion/exit-fx";
 import { spawnFlight } from "./motion/flights";
 import { type BoardModel, initialBoardModel, syncBoardWithGame, updateBoard } from "./submodel";
 
@@ -50,13 +51,14 @@ function gameFold(over: Partial<VisibleState> = {}): GameFoldState {
       zoneMoves: new Map(),
       resolvedFromStack: new Set(),
       leftStackToPile: new Set(),
+      battlefieldExits: new Map(),
       tokenCreators: new Map(),
       landPlayFrom: new Map(),
       zonePileEntrances: new Map(),
       stackEntrances: new Map(),
       priorStackObjectIds: new Set(),
     },
-    tableFeel: { land: false, stack: false, resolve: false, damage: false },
+    tableFeel: { land: false, stack: false, resolve: false, damage: false, destroy: false, exile: false },
   };
 }
 
@@ -121,12 +123,79 @@ test("FlightsSynced stores still-flying poses and hides the source card", () => 
   Story.story(
     (board: BoardModel, message: Message) => updateBoard(board, message, fold, null),
     Story.with(initialBoardModel()),
-    Story.message(FlightsSynced({ flights: [flight], now: 200 })),
+    Story.message(FlightsSynced({ flights: [flight], exitFx: [], now: 200 })),
     Story.model((board) => {
       expect(board.flights.get(1)).toEqual(flight);
       expect(board.handHidden.has(9)).toBe(true);
       expect(board.hideCardIds).toEqual(new Set([1]));
       expect(board.ownedIds).toEqual(new Set([1]));
+      expect(board.lastFlightFrame).toBe(200);
+    }),
+  );
+});
+
+test("FlightsSynced keeps exit FX ids hidden even without flights", () => {
+  const fold = gameFold();
+  const fx = spawnExitFx({
+    id: 7,
+    kind: "destroy",
+    name: "Grizzly Bears",
+    print: "print-id",
+    x: 80,
+    y: 60,
+    scale: 1,
+  });
+
+  Story.story(
+    (board: BoardModel, message: Message) => updateBoard(board, message, fold, null),
+    Story.with(initialBoardModel()),
+    Story.message(FlightsSynced({ flights: [], exitFx: [fx], now: 200 })),
+    Story.model((board) => {
+      expect(board.exitFx.get(7)).toEqual(fx);
+      expect(board.hideCardIds).toEqual(new Set([7]));
+      expect(board.ownedIds.size).toBe(0);
+      expect(board.lastFlightFrame).toBe(200);
+    }),
+  );
+});
+
+test("FlightsSynced keeps flyers and exit FX ids hidden together", () => {
+  const fold = gameFold();
+  const flight = {
+    ...spawnFlight({
+      id: 1,
+      kind: "battlefield",
+      name: "Grizzly Bears",
+      print: "print-flight",
+      scale: 0.8,
+      targetScale: 1,
+      targetX: 100,
+      targetY: 0,
+      x: 40,
+      y: 12,
+      fromCardId: 9,
+    }),
+    phase: "flying" as const,
+  };
+  const fx = spawnExitFx({
+    id: 7,
+    kind: "destroy",
+    name: "Exit Bear",
+    print: "print-fx",
+    x: 80,
+    y: 60,
+    scale: 1,
+  });
+
+  Story.story(
+    (board: BoardModel, message: Message) => updateBoard(board, message, fold, null),
+    Story.with(initialBoardModel()),
+    Story.message(FlightsSynced({ flights: [flight], exitFx: [fx], now: 200 })),
+    Story.model((board) => {
+      expect(board.flights.get(1)).toEqual(flight);
+      expect(board.exitFx.get(7)).toEqual(fx);
+      expect(board.hideCardIds).toEqual(new Set([1, 7]));
+      expect(board.handHidden).toEqual(new Set([9]));
       expect(board.lastFlightFrame).toBe(200);
     }),
   );
@@ -163,7 +232,7 @@ test("FlightsSynced clears hidden cards when flights disappear", () => {
   Story.story(
     (board: BoardModel, message: Message) => updateBoard(board, message, fold, null),
     Story.with(model),
-    Story.message(FlightsSynced({ flights: [], now: 200 })),
+    Story.message(FlightsSynced({ flights: [], exitFx: [], now: 200 })),
     Story.model((board) => {
       expect(board.flights.size).toBe(0);
       expect(board.handHidden.size).toBe(0);
@@ -223,7 +292,7 @@ test("FlightsSynced keeps flyers and drops settled entries in one payload", () =
   Story.story(
     (board: BoardModel, message: Message) => updateBoard(board, message, fold, null),
     Story.with(model),
-    Story.message(FlightsSynced({ flights: [flyer, settled], now: 90 })),
+    Story.message(FlightsSynced({ flights: [flyer, settled], exitFx: [], now: 90 })),
     Story.model((board) => {
       expect(board.flights.get(1)).toEqual(flyer);
       expect(board.flights.has(2)).toBe(false);
