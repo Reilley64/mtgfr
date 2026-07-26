@@ -7063,6 +7063,146 @@ fn quintorius_declining_the_may_discard_skips_the_whole_if_you_do_rider() {
 }
 
 #[test]
+fn quintorius_history_chaser_is_castable_as_a_planeswalker_commander() {
+    // "Quintorius, History Chaser can be your commander." The lone planeswalker face commander of
+    // the five soc precons: it starts in the command zone and casts from there onto the
+    // battlefield as a planeswalker with its printed starting loyalty (CR 606.5b).
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let cmd = game.designate_commander(PlayerId(0), card("Quintorius, History Chaser"));
+    assert_eq!(
+        game.zone_of(cmd),
+        Zone::Command,
+        "the commander starts in the command zone"
+    );
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: cmd,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .expect("the planeswalker commander is castable from the command zone");
+    assert_eq!(game.zone_of(cmd), Zone::Stack, "cast from the command zone");
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.zone_of(cmd),
+        Zone::Battlefield,
+        "the commander resolves onto the battlefield"
+    );
+    assert_eq!(
+        game.loyalty(game.current_id(cmd)),
+        5,
+        "it enters with its printed starting loyalty"
+    );
+}
+
+#[test]
+fn quintorius_history_chaser_loyalty_is_once_per_turn() {
+    // CR 606.3: only one loyalty ability of a given planeswalker may be activated each turn. After
+    // the +1 this turn, the −4 is illegal even though the loyalty (now 6) could pay for it.
+    let mut game = Game::new();
+    let pw = game.spawn_on_battlefield(PlayerId(0), card("Quintorius, History Chaser"));
+    game.spawn_in_hand(PlayerId(0), card("Forest")); // so the +1's may-discard actually pauses
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: pw,
+        ability_index: 0, // +1
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // the +1 resolves, pausing on its may-discard
+    game.submit(Intent::ChooseSacrifices {
+        player: PlayerId(0),
+        sacrifices: vec![],
+    })
+    .expect("declining the +1's may-discard is legal");
+    assert_eq!(game.loyalty(pw), 6, "the +1 raised loyalty 5 → 6");
+
+    let second = game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: pw,
+        ability_index: 1, // −4
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    });
+    assert_eq!(
+        second,
+        Err(Reject::CannotActivate),
+        "a second loyalty ability the same turn is illegal (CR 606.3)"
+    );
+}
+
+#[test]
+fn quintorius_history_chaser_graveyard_exit_makes_a_red_white_spirit() {
+    // "Whenever one or more cards leave your graveyard, create a 3/2 red and white Spirit creature
+    // token." Reanimate pulls one card out of P0's graveyard — one card leaving fires the token.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    game.spawn_on_battlefield(PlayerId(0), card("Quintorius, History Chaser"));
+    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let reanimate = game.spawn_in_hand(PlayerId(0), card("Reanimate"));
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: reanimate,
+        target: Some(Target::Object(corpse)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // Reanimate resolves: the creature leaves the graveyard
+    resolve_top_of_stack(&mut game); // the graveyard-exit trigger resolves: create the Spirit
+
+    let spirit = game
+        .live_object_ids()
+        .into_iter()
+        .find(|&id| {
+            game.zone_of(id) == Zone::Battlefield
+                && game.owner_of(id) == PlayerId(0)
+                && game.effective_subtypes(id).contains(&"Spirit")
+        })
+        .expect("the graveyard exit created a Spirit token");
+    assert_eq!(
+        (game.power(spirit), game.toughness(spirit)),
+        (3, 2),
+        "the Spirit token is 3/2"
+    );
+    let colors = game.colors_of(spirit);
+    assert!(
+        colors[Color::Red.index()] && colors[Color::White.index()],
+        "the Spirit token is red and white"
+    );
+}
+
+#[test]
 fn unblockable_prevents_any_block_declaration_this_turn() {
     let mut game = TestGame::new();
     game.fund_mana(PlayerId(0));
