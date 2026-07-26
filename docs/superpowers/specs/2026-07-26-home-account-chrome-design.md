@@ -1,6 +1,6 @@
 # Home Account Chrome Design
 
-**Status:** Accepted (pending implementation)
+**Status:** Implemented
 **Date:** 2026-07-26
 **Surface:** Home deck list (`/`), leaderboard (`/leaderboard`) account chrome
 
