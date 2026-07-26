@@ -1138,14 +1138,20 @@ pub enum PlayerCounterKind {
     /// A poison counter (CR 122.1, CR 704.5c — ten or more loses the game). Placed by infect
     /// damage (CR 702.90), toxic (CR 702.164), and "gets a poison counter" effects.
     Poison,
+    /// A rad counter (CR 122.1, Fallout). No lose-the-game threshold — instead a turn-based
+    /// action at the beginning of each player's precombat main phase mills that many cards, and
+    /// each nonland card milled that way costs 1 life and removes one rad counter
+    /// (`Game::perform_rad_counter_mill`).
+    Rad,
 }
 
 impl PlayerCounterKind {
     /// Every kind, for walking "each kind already there" (CR 701.27 — proliferate).
-    pub const ALL: [PlayerCounterKind; Self::COUNT] = [PlayerCounterKind::Poison];
-    /// How many kinds [`Player::kind_counters`] has a slot for. Adding a kind (a rad counter,
-    /// say) is a one-line change here plus the variant and an [`Self::ALL`] entry.
-    pub(crate) const COUNT: usize = 1;
+    pub const ALL: [PlayerCounterKind; Self::COUNT] =
+        [PlayerCounterKind::Poison, PlayerCounterKind::Rad];
+    /// How many kinds [`Player::kind_counters`] has a slot for. Adding a kind is a one-line
+    /// change here plus the variant and an [`Self::ALL`] entry.
+    pub(crate) const COUNT: usize = 2;
 }
 
 /// [`CardDef::cumulative_upkeep`](super::CardDef::cumulative_upkeep)'s upkeep cost (CR 702.24):

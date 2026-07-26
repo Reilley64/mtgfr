@@ -43,6 +43,12 @@ pub struct PlayerView {
     /// seat and to spectators.
     #[serde(default)]
     pub poison: u32,
+    /// Rad counters on this player (CR 122.1, Fallout). No lose-the-game threshold, but at the
+    /// beginning of their precombat main phase they mill this many cards, losing 1 life and one
+    /// rad counter per nonland card milled — a self-mill clock the client otherwise cannot see
+    /// coming. Public to every seat and to spectators.
+    #[serde(default)]
+    pub rad: u32,
 }
 
 /// Wire form of [`engine::ManaPool`]: WUBRG counts, `{C}`, any, dual either-credits, and

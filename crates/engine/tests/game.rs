@@ -94445,3 +94445,153 @@ fn proliferate_rejects_choosing_the_same_player_twice() {
         "the illegal answer left the choice pending, unresolved"
     );
 }
+
+// ── Increment 21: rad counters (Fallout — the precombat-main turn-based action) ──────
+
+#[test]
+fn rad_counters_mill_at_the_beginning_of_precombat_main() {
+    // "At the beginning of each player's precombat main phase, if that player has any rad
+    // counters, they mill that many cards." A turn-based action (CR 117.3a) — it uses no stack
+    // and no player may respond.
+    let mut game = Game::new();
+    game.stack_library(PlayerId(1), &[card("Tome Scour"); 10]);
+    game.place_player_counters(PlayerId(1), PlayerCounterKind::Rad, 3);
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Main1
+    });
+
+    assert_eq!(
+        cards_in_zone(&game, PlayerId(1), Zone::Graveyard),
+        3,
+        "three rad counters mill three cards"
+    );
+    assert!(
+        game.stack().is_empty(),
+        "the rad action is turn-based, not a triggered ability — nothing goes on the stack"
+    );
+    assert!(
+        game.pending_choice().is_none(),
+        "no player may respond to a turn-based action"
+    );
+    assert_eq!(
+        cards_in_zone(&game, PlayerId(0), Zone::Graveyard),
+        0,
+        "only the active player's rad counters resolve in their own precombat main"
+    );
+}
+
+#[test]
+fn rad_counters_are_removed_and_life_lost_only_for_nonland_cards_milled() {
+    // "For each nonland card milled this way, that player loses 1 life and removes one rad
+    // counter." Top card is drawn in the draw step; the next three are the milled ones.
+    let mut game = Game::new();
+    game.stack_library(
+        PlayerId(1),
+        &[
+            card("Forest"),     // drawn in the draw step
+            card("Forest"),     // milled — land, no life, no counter removed
+            card("Tome Scour"), // milled — nonland
+            card("Forest"),     // milled — land
+            card("Forest"),
+        ],
+    );
+    game.place_player_counters(PlayerId(1), PlayerCounterKind::Rad, 3);
+    let life_before = game.life(PlayerId(1));
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Main1
+    });
+
+    assert_eq!(
+        cards_in_zone(&game, PlayerId(1), Zone::Graveyard),
+        3,
+        "three rad counters mill three cards regardless of what they are"
+    );
+    assert_eq!(
+        game.life(PlayerId(1)),
+        life_before - 1,
+        "one life per nonland card milled"
+    );
+    assert_eq!(
+        game.player_counters(PlayerId(1), PlayerCounterKind::Rad),
+        2,
+        "one rad counter removed per nonland card milled — the other two persist"
+    );
+}
+
+#[test]
+fn rad_counters_survive_a_precombat_main_that_mills_only_lands() {
+    // Milling nothing but lands spends no rad counters and costs no life — the counters stay to
+    // mill again next turn.
+    let mut game = Game::new();
+    game.stack_library(PlayerId(1), &[card("Forest"); 10]);
+    game.place_player_counters(PlayerId(1), PlayerCounterKind::Rad, 3);
+    let life_before = game.life(PlayerId(1));
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Main1
+    });
+
+    assert_eq!(
+        game.player_counters(PlayerId(1), PlayerCounterKind::Rad),
+        3,
+        "no nonland card was milled, so no rad counter is removed"
+    );
+    assert_eq!(game.life(PlayerId(1)), life_before, "and no life is lost");
+}
+
+#[test]
+fn rad_counters_do_not_cause_a_player_to_lose_the_game() {
+    // Rad counters have no CR 704.5c-style threshold — only poison does. Ten or more rad is
+    // survivable.
+    let mut game = Game::new();
+    game.stack_library(PlayerId(1), &[card("Forest"); 30]);
+    game.place_player_counters(PlayerId(1), PlayerCounterKind::Rad, 12);
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Main1
+    });
+
+    assert!(
+        !game.has_lost(PlayerId(1)),
+        "twelve rad counters is not lethal the way twelve poison counters would be"
+    );
+    assert_eq!(
+        game.player_counters(PlayerId(1), PlayerCounterKind::Poison),
+        0,
+        "rad counters never land in the poison slot"
+    );
+}
+
+#[test]
+fn feral_ghoul_dies_giving_each_opponent_rad_counters_equal_to_its_power() {
+    // Feral Ghoul: "Whenever another creature you control dies, put a +1/+1 counter on this
+    // creature. When this creature dies, each opponent gets a number of rad counters equal to
+    // its power." Its power is last-known information (CR 603.10a) — the Ghoul is already in the
+    // graveyard when the trigger resolves.
+    let mut game = TestGame::new();
+    let ghoul = game.spawn_on_battlefield(PlayerId(0), card("Feral Ghoul"));
+    let pal = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let first_grasp = game.spawn_in_hand(PlayerId(0), card("Infernal Grasp"));
+    let second_grasp = game.spawn_in_hand(PlayerId(0), card("Infernal Grasp"));
+    game.fund_mana(PlayerId(0));
+
+    game.cast(first_grasp).at(Target::Object(pal)).resolve();
+    resolve_top_of_stack(&mut game); // the "another creature you control dies" trigger
+    assert_eq!(game.power(ghoul), 3, "a +1/+1 counter made the Ghoul a 3/3");
+
+    game.cast(second_grasp).at(Target::Object(ghoul)).resolve();
+    resolve_top_of_stack(&mut game); // the dies trigger
+
+    assert_eq!(
+        game.player_counters(PlayerId(1), PlayerCounterKind::Rad),
+        3,
+        "each opponent gets rad counters equal to the Ghoul's last-known power"
+    );
+    assert_eq!(
+        game.player_counters(PlayerId(0), PlayerCounterKind::Rad),
+        0,
+        "\"each opponent\" excludes the Ghoul's controller"
+    );
+}

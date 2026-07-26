@@ -813,6 +813,7 @@ impl Effect {
             Effect::Counters(CountersEffect::PutCountersOnPlayer { kind, count, scope }) => {
                 let kind_name = match kind {
                     PlayerCounterKind::Poison => "poison",
+                    PlayerCounterKind::Rad => "rad",
                 };
                 let who = match scope {
                     EdictScope::AllPlayers => "Each player",

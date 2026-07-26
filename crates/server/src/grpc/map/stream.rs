@@ -131,6 +131,7 @@ pub fn player_view_to_pb(player: PlayerView) -> pb::PlayerView {
             .map(commander_damage_view_to_pb)
             .collect(),
         poison: player.poison,
+        rad: player.rad,
     }
 }
 
@@ -1667,6 +1668,7 @@ mod tests {
             mana_pool: WireManaPool::default(),
             commander_damage: vec![],
             poison: 0,
+            rad: 0,
         }
     }
 

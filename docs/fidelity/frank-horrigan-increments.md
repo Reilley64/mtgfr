@@ -470,6 +470,18 @@ in the player store plus the rules action in the precombat-main step alongside t
 turn-based actions — it is a rules action, not a triggered ability, so it uses no stack and no
 player may respond to it. *Cards:* feral_ghoul, bloatfly_swarm (also needs #22).
 
+_Landed 2026-07-27: `PlayerCounterKind::Rad` sits beside `Poison` in the player counter store (no
+lose-the-game threshold — `LETHAL_POISON` stays poison-indexed), and
+`Game::perform_rad_counter_mill` runs it as a `Step::Main1` turn-based action in
+`perform_turn_based_actions`: no stack object, no priority window, only the active player's own
+counters. It reuses `Game::mill_events`, counts the non-`CardKind::Land` cards actually milled, and
+emits one `LifeChanged` of `-n` plus one `PlayerCountersPlaced` of `-n` from that real count, so a
+short library never removes more counters than it spent. `feral_ghoul.toml` is faithful — menace,
+the "another creature you control dies" +1/+1 trigger, and a `dies` trigger reading
+`Amount::SourcePower` off the existing CR 603.10a `dying_creature_stats` LKI capture. `PlayerView`
+carries a public `rad` count (`stream.proto` field 14). **bloatfly_swarm is still unbuilt** — it
+needs #22's damage replacement, which has not landed._
+
 ### 22. `damage-prevention-replacing-counters` — 1 card, M
 Depends on: #21.
 Bloatfly Swarm: "if damage would be dealt to this creature while it has a +1/+1 counter on it,
