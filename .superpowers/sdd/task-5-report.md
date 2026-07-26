@@ -68,3 +68,37 @@ Results:
 ## Concerns
 
 None.
+
+---
+
+## Wave 1: Duplicate title cleanup (thin-wrap follow-up)
+
+### Status
+
+DONE
+
+### Changes
+
+- `shellFrame` `title` is optional; empty/missing title omits the header `h1` while keeping the title column as a flex spacer.
+- Auth omits shell header title; stage panel keeps `edh.reilley.dev` + mode heading.
+- Lobby keeps shell header `title: "Lobby"`; removed inner panel brand block (`edh.reilley.dev` + duplicate `h1`).
+- Scanned other thin-wrapped surfaces (decks list, builder, leaderboard, coverage): no duplicate brand/title blocks found.
+
+### Tests
+
+Command:
+
+```bash
+cd /workspace/client && bun vitest run app/shell/frame/shell-frame.test.ts app/shell/surfaces.test.ts app/shell/auth app/shell/lobby
+```
+
+Result:
+
+- 9 test files passed.
+- 60 tests passed.
+
+Added `shell-frame.test.ts` coverage: empty/omitted title omits header `h1`; surfaces tests still find `auth-panel` / `lobby` (lobby no longer expects inner `edh.reilley.dev`).
+
+### Commit
+
+`fix(client): remove duplicate titles after shellFrame wrap`
