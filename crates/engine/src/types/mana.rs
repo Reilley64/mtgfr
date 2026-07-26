@@ -1007,21 +1007,32 @@ impl ManaPool {
         spend.colorless = cost.colorless;
 
         // Phyrexian pips (CR 107.4f — `{a/P}`): CR 107.4f frames the mana-or-2-life choice as the
-        // caster's own, but this planner instead auto-picks a spare unit of the pip's own color
-        // (left over after every mono/hybrid/dual pip above) when there is one, life otherwise —
-        // never both. Never fails: a Phyrexian pip is always payable one way or the other.
+        // caster's own, but this planner instead auto-picks a unit of the pip's own color when one
+        // is *genuinely* spare — left over after every mono/hybrid/dual pip above AND not needed
+        // by the generic pips below — and life otherwise, never both. Never fails: a Phyrexian pip
+        // is always payable one way or the other. The generic look-ahead matters: five Swamps are
+        // exactly Vraska, Betrayal's Sting's {4}{B}, and a pip that grabbed a black there would
+        // starve the {4} and reject a cast the 2-life route pays for.
         // ponytail: no genuine choice offered (CR 107.4f) — a caster who'd rather bank the mana
         // and spend life on purpose has no way to say so. Every pool cost carries at most one
         // Phyrexian pip today, so this fixed pick order never costs a payment a real choice would
         // find; widen to a raised choice (mirroring `PendingChoice::PayLifeOrEntersTapped`) if a
-        // second one ever needs to matter. `Game::settle_payment`'s caller re-derives which way a
-        // pip went from this spend's `colored` counts (see `phyrexian_life_paid_from` in cast.rs)
-        // rather than this fn threading the answer back itself.
+        // second one ever needs to matter. `Game::settle_payment`'s caller re-derives how many
+        // pips went the mana way from this spend's total (see `phyrexian_life_paid_from` in
+        // cast.rs) rather than this fn threading the answer back itself.
+        let sum = |xs: &[u8]| xs.iter().map(|&n| u32::from(n)).sum::<u32>();
+        let mut spare = sum(&leftover_colored)
+            + u32::from(self.colorless - spend.colorless)
+            + sum(&either_left)
+            + sum(&of_colors_left)
+            + u32::from(any_left);
         for &color in cost.phyrexian {
-            if leftover_colored[color.index()] > 0 {
-                leftover_colored[color.index()] -= 1;
-                spend.colored[color.index()] += 1;
+            if leftover_colored[color.index()] == 0 || spare <= u32::from(cost.generic) {
+                continue;
             }
+            leftover_colored[color.index()] -= 1;
+            spend.colored[color.index()] += 1;
+            spare -= 1;
         }
 
         // Generic: pay from any leftover mana (colored, then colorless, then dual/restricted

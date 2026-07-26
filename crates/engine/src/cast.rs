@@ -2683,27 +2683,26 @@ fn spent_counts_from(events: &[Event]) -> [u8; 6] {
 }
 
 /// How many of `cost`'s Phyrexian pips (CR 107.4f — `{a/P}`) the payment [`Game::settle_payment`]
-/// just appended to `events` paid with life instead of mana, read the same way
-/// [`spent_colors_from`] reads colors: [`ManaPool::spend_plan_unrestricted`] spends a spare unit
-/// of a Phyrexian pip's own color when one is left over, so a color's spent count beyond `cost`'s
-/// own plain pip in that color is mana that funded a Phyrexian pip; whatever's left owes 2 life.
-/// ponytail: no card carries two Phyrexian pips of the same color, so this per-color tally can't
-/// misattribute which specific pip a life payment covers.
+/// just appended to `events` paid with life instead of mana, read off its trailing
+/// [`Event::ManaSpent`] the way [`spent_colors_from`] reads colors. Every credit in a spend plan
+/// funds exactly one pip, so the plan's total beyond the cost's non-Phyrexian pips
+/// (`{X}` is already folded into `generic` by [`Cost::with_x`]) counts the pips
+/// [`ManaPool::spend_plan_unrestricted`] covered with mana; the rest owe 2 life apiece.
 fn phyrexian_life_paid_from(cost: &Cost, events: &[Event]) -> u8 {
+    let pips = cost.phyrexian.len() as u32;
+    if pips == 0 {
+        return 0;
+    }
     let Some(Event::ManaSpent { mana, .. }) = events.last() else {
         // unreachable: see `spent_colors_from`'s doc — `settle_payment` always ends with `ManaSpent`.
         return 0;
     };
-    let mut phyrexian_by_color = [0u8; Color::COUNT];
-    for &color in cost.phyrexian {
-        phyrexian_by_color[color.index()] += 1;
-    }
-    let mut paid_with_life = 0u8;
-    for (i, &pips) in phyrexian_by_color.iter().enumerate() {
-        let funded_by_mana = mana.colored[i].saturating_sub(cost.colored[i]).min(pips);
-        paid_with_life += pips - funded_by_mana;
-    }
-    paid_with_life
+    let non_phyrexian = u32::from(cost.generic)
+        + u32::from(cost.colorless)
+        + cost.colored.iter().map(|&n| u32::from(n)).sum::<u32>()
+        + cost.hybrid.len() as u32;
+    let paid_with_mana = mana.total().saturating_sub(non_phyrexian).min(pips);
+    (pips - paid_with_mana) as u8
 }
 
 /// Build an [`Event::SpellDamageDivided`] from `(target, amount)` pairs (CR 601.2d), splitting

@@ -165,7 +165,13 @@ resolved permanent itself. vraska_betrayals_sting's cost is now `{4}{B}{B/P}` an
 ponytail: the mana-or-life pick is automatic, not offered (CR 107.4f frames it as the caster's);
 every pool cost carries at most one Phyrexian pip, so the fixed pick order never costs a payment
 a real choice would find — widen to a raised `PendingChoice` (mirroring `PayLifeOrEntersTapped`)
-if a second one lands._
+if a second one lands.
+Reconciled 2026-07-27: as first landed the pick was **not** safe — it grabbed any leftover unit of
+the pip's colour before the generic pips were paid, so five Swamps (exactly `{4}{B}`) starved the
+`{4}` and rejected a cast the 2-life route pays for. "Spare" now means spare *after* generic too,
+and `phyrexian_life_paid_from` derives the life owed from the spend plan's total rather than a
+per-colour tally, which the greedier order would have misread. Regression:
+`a_phyrexian_pip_falls_back_to_life_when_its_color_is_needed_for_generic`._
 Depends on: nothing.
 
 ### 9. `total-mana-value-budget-targets` — 1 card, M — LANDED 2026-07-26
@@ -407,7 +413,7 @@ but the **client has not caught up**: `client/app/board/action/targeting.ts` sti
 path, which now returns `Reject::IllegalChoice`. It must send `Answer::Proliferate { permanents,
 players }` and let a seat be picked._
 
-### 18. `whenever-you-proliferate-trigger` — 1 card, S
+### 18. `whenever-you-proliferate-trigger` — 1 card, S — LANDED 2026-07-27
 Depends on: #17 (a real `answer_proliferate` handler to hook — landed).
 Proliferate is a resolution-time `ChoiceEffect` that emits no event, so there is nothing for a
 trigger to watch. *Sketch:* add `Trigger::YouProliferate`, controller-scoped and fieldless like
@@ -424,7 +430,7 @@ projection: the corrected sketch above (`Event::Proliferated` dropped) is the la
 brief authorized. `scheming_aspirant.toml` is fully faithful, no `approximates`. Still blocked:
 nothing._
 
-### 19. `counter-replacement-generalization` — 3 cards + observers, L
+### 19. `counter-replacement-generalization` — 3 cards + observers, L — LANDED 2026-07-27
 Depends on: #20 slice 1 (for the player half). **Falsifies `characteristics.rs:1807` and
 `characteristics.rs:1811`; puts `ozolith_the_shattered_spire.toml:10` on notice.**
 `counters_after_replacements(object: ObjectId, base: i32)` is +1/+1-only and keyed by an object,
@@ -464,6 +470,11 @@ Menace, Branching Evolution and Kami of Whispered Hopes gained their printed rec
 Ozolith's `ponytail:` is gone; Doubling Season is now `any_kind` (its oracle says "one or more
 counters", so a -1/-1 `PutCountersEach` on its controller's own creature is doubled — the pinned
 test that asserted the opposite was rewritten).
+
+Reconciled 2026-07-27: `doubling_season.toml`'s cost was a pre-existing frame mismatch — `{4}{G}{G}`
+against Scryfall's `{4}{G}` on every printing — carried in while this increment touched the file.
+Corrected to `green = 1`; `pearl_ear_affinity_for_auras_grants_no_reduction_with_zero_auras`, which
+pinned the wrong six-mana cost, now stands one short of the real five.
 
 Two sketch claims were wrong or overtaken. (1) The sketch's "re-key on a `CounterRecipient` and a
 `CounterKind` selector" implies threading a kind through every call site; only the +1/+1-vs-named

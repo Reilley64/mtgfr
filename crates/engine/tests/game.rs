@@ -45334,7 +45334,7 @@ fn starfield_mystic_reducer_only_discounts_enchantment_spells() {
 fn pearl_ear_affinity_for_auras_grants_no_reduction_with_zero_auras() {
     // Pearl-Ear, Imperial Advisor: "Enchantment spells you cast have affinity for Auras. (They
     // cost {1} less to cast for each Aura you control.)" With 0 Auras controlled, the discount
-    // is 0 — one generic short of Doubling Season's {4}{G}{G} still fails to pay.
+    // is 0 — one generic short of Doubling Season's {4}{G} still fails to pay.
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Pearl-Ear, Imperial Advisor"));
     let season = game.spawn_in_hand(PlayerId(0), card("Doubling Season"));
@@ -45342,7 +45342,7 @@ fn pearl_ear_affinity_for_auras_grants_no_reduction_with_zero_auras() {
         let forest = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
         tap(&mut game, PlayerId(0), forest);
     }
-    for _ in 0..3 {
+    for _ in 0..2 {
         let plains = game.spawn_on_battlefield(PlayerId(0), card("Plains"));
         tap(&mut game, PlayerId(0), plains);
     }
@@ -96015,4 +96015,23 @@ fn scheming_aspirant_does_not_trigger_when_an_opponent_proliferates() {
         "no drain — the trigger never fired"
     );
     assert_eq!(g.life(PlayerId(1)), 20);
+}
+
+#[test]
+fn a_phyrexian_pip_falls_back_to_life_when_its_color_is_needed_for_generic() {
+    // Five Swamps are exactly {4}{B} — the {B/P} can only be paid the other way (CR 107.4f), so
+    // the cast must succeed on 2 life rather than be rejected for wanting a sixth black.
+    let mut game = Game::new();
+    let swamps: Vec<ObjectId> = (0..5)
+        .map(|_| game.spawn_on_battlefield(PlayerId(0), card("Swamp")))
+        .collect();
+    let before = game.life(PlayerId(0));
+
+    cast_vraska_with(&mut game, &swamps);
+
+    assert_eq!(
+        game.life(PlayerId(0)),
+        before - 2,
+        "the {{B/P}} pip took the 2-life route because all five black paid {{4}}{{B}}"
+    );
 }

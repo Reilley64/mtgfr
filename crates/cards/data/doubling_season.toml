@@ -10,7 +10,7 @@ set = "fdn"
 
 [cost]
 generic = 4
-green = 2
+green = 1
 
 [kind]
 type = "enchantment"
