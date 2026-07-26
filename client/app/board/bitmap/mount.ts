@@ -135,9 +135,7 @@ export function applyPublishedFrame(
       flightsChanged(state.liveFlights, liveFlights) ||
       exitFxChanged(state.liveExitFx, liveExitFx),
     sync:
-      steppedExitFx.completedIds.length > 0
-        ? { flights: liveFlights, exitFx: liveExitFx, now: animationNow() }
-        : null,
+      steppedExitFx.completedIds.length > 0 ? { flights: liveFlights, exitFx: liveExitFx, now: animationNow() } : null,
     frame: mergedFrame,
   };
 }

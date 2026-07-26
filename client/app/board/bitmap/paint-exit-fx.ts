@@ -4,11 +4,7 @@ import type { ImageCache } from "../../../lib/image-cache";
 import { CARD_H, CARD_W } from "../geometry/layout";
 import type { ExitFx, ExitParticle } from "../motion/exit-fx";
 import { type BitmapImageCache, CARD_OUTLINE, roundRect } from "./paint-cards";
-import {
-  FLIGHT_SHADOW_BLUR,
-  FLIGHT_SHADOW_COLOR,
-  FLIGHT_SHADOW_OFFSET_Y,
-} from "./paint-flights";
+import { FLIGHT_SHADOW_BLUR, FLIGHT_SHADOW_COLOR, FLIGHT_SHADOW_OFFSET_Y } from "./paint-flights";
 
 type ExitFxCardRect = {
   x: number;
@@ -114,12 +110,7 @@ function paintDestroyVeil(ctx: CanvasRenderingContext2D, rect: ExitFxCardRect, p
   ctx.restore();
 }
 
-function applyExileSquash(
-  ctx: CanvasRenderingContext2D,
-  progress: number,
-  centerX: number,
-  centerY: number,
-): void {
+function applyExileSquash(ctx: CanvasRenderingContext2D, progress: number, centerX: number, centerY: number): void {
   const scaleX = Math.max(0.18, 1 - progress * 0.32);
   const scaleY = Math.max(0.08, 1 - progress * 0.62);
   ctx.translate(centerX, centerY);

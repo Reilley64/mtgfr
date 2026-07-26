@@ -12,9 +12,7 @@ describe("gravatarHash", () => {
 
 describe("gravatarUrl", () => {
   it("builds d=404 URL or null for empty hash", () => {
-    expect(gravatarUrl("abc", 128)).toBe(
-      "https://www.gravatar.com/avatar/abc?s=128&d=404",
-    );
+    expect(gravatarUrl("abc", 128)).toBe("https://www.gravatar.com/avatar/abc?s=128&d=404");
     expect(gravatarUrl("")).toBeNull();
     expect(gravatarUrl("   ")).toBeNull();
   });

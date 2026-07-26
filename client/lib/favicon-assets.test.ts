@@ -30,7 +30,7 @@ describe("favicon assets", () => {
     expect(ico[1]).toBe(0);
     expect(ico[2]).toBe(1);
     expect(ico[3]).toBe(0);
-    const count = ico[4]! | (ico[5]! << 8);
+    const count = ico.readUInt16LE(4);
     expect(count).toBeGreaterThanOrEqual(2);
   });
 

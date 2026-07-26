@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createTable, joinTable, lobbyState } from "./client";
+import { apiMeta, createTable, joinTable, lobbyState } from "./client";
 
 const unknownTable = {
   table_id: "GONE",
@@ -62,5 +62,18 @@ describe("lobby client", () => {
     );
 
     await expect(createTable()).resolves.toBeNull();
+  });
+
+  it("decodes meta version coverage fields when present", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => json({ version: "1.2.3", faithful_count: 662, oracle_total: 28412 }, 200)),
+    );
+
+    await expect(apiMeta()).resolves.toEqual({
+      version: "1.2.3",
+      faithfulCount: 662,
+      oracleTotal: 28412,
+    });
   });
 });

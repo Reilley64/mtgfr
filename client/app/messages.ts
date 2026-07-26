@@ -14,7 +14,11 @@ import { Message as LeaderboardMessage } from "./shell/leaderboard/messages";
 import { Message as LobbyMessage } from "./shell/lobby/messages";
 
 export const Booted = m("Booted");
-export const ReceivedApiVersion = m("ReceivedApiVersion", { version: S.NullOr(S.String) });
+export const ReceivedApiVersion = m("ReceivedApiVersion", {
+  version: S.NullOr(S.String),
+  faithfulCount: S.NullOr(S.Number),
+  oracleTotal: S.NullOr(S.Number),
+});
 export const UrlChanged = m("UrlChanged", { url: Url });
 export const UrlRequested = m("UrlRequested", { request: UrlRequest });
 export const NavigationCompleted = m("NavigationCompleted");

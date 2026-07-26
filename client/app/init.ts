@@ -33,6 +33,8 @@ export const init = (
       session: { me: null, meGravatarHash: null },
       sessionLoaded: false,
       apiVersion: null,
+      faithfulCount: null,
+      oracleTotal: null,
       auth: initialAuthSubmodel(next),
       decks: initialDecksSubmodel(),
       leaderboard: initialLeaderboardSubmodel(),

@@ -4,7 +4,7 @@ import { Command, Navigation } from "foldkit";
 import { toString as urlToString } from "foldkit/url";
 import { gravatarHash } from "../lib/gravatar";
 import type { Message as BoardMessage } from "./board/messages";
-import { syncBoardWithGame, updateBoard } from "./board/submodel";
+import { drainPlayModeIfSingleton, syncBoardWithGame, updateBoard } from "./board/submodel";
 import { captureDeckCardFlipForNav } from "./deck-card-nav";
 import { parseDeckIdParam, playDeckAccess } from "./deck-id";
 import { applyDeltaPure, applySnapshotPure, type DeltaEnvelope, setRejectPure } from "./game/fold";
@@ -70,9 +70,14 @@ function terminalStreamError(status: number): string {
   return `Lost connection to the table (${status}).`;
 }
 
-function mergeGameFold(game: GameSlice, folded: ReturnType<typeof applyDeltaPure>): GameSlice {
+function mergeGameFold(
+  game: GameSlice,
+  folded: ReturnType<typeof applyDeltaPure>,
+): readonly [GameSlice, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
   const next = { ...game, ...folded };
-  return { ...next, board: syncBoardWithGame(next.board, next) };
+  const synced = { ...next, board: syncBoardWithGame(next.board, next) };
+  const [board, commands] = drainPlayModeIfSingleton(synced.board, synced, synced.tableId);
+  return [{ ...synced, board }, commands];
 }
 
 function deltaEnvelope(message: typeof ReceivedDelta.Type): DeltaEnvelope {
@@ -229,7 +234,10 @@ export const update = (
     M.withReturnType<readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>]>(),
     M.tagsExhaustive({
       Booted: () => [model, []],
-      ReceivedApiVersion: ({ version }) => [{ ...model, apiVersion: version }, []],
+      ReceivedApiVersion: ({ version, faithfulCount, oracleTotal }) => [
+        { ...model, apiVersion: version, faithfulCount, oracleTotal },
+        [],
+      ],
       UrlChanged: ({ url }) => {
         const currentPath = pathWithSearch(url);
         const nextModel = {
@@ -281,6 +289,7 @@ export const update = (
       StackYieldArmed: (boardMessage) => foldBoard(model, boardMessage),
       TurnYieldToggled: (boardMessage) => foldBoard(model, boardMessage),
       CancelActionClicked: (boardMessage) => foldBoard(model, boardMessage),
+      PlayModeChosen: (boardMessage) => foldBoard(model, boardMessage),
       CommanderCastClicked: (boardMessage) => foldBoard(model, boardMessage),
       TargetChosen: (boardMessage) => foldBoard(model, boardMessage),
       ModalModesChosen: (boardMessage) => foldBoard(model, boardMessage),
@@ -506,11 +515,13 @@ export const update = (
       LobbyRequestFailed: (lobbyMessage) => foldLobby(model, lobbyMessage),
       ReceivedSnapshot: ({ seq, state }) => {
         if (model.game == null) return [model, []];
-        return [{ ...model, game: mergeGameFold(model.game, applySnapshotPure(model.game, seq, state)) }, []];
+        const [game, commands] = mergeGameFold(model.game, applySnapshotPure(model.game, seq, state));
+        return [{ ...model, game }, commands];
       },
       ReceivedDelta: (message) => {
         if (model.game == null) return [model, []];
-        return [{ ...model, game: mergeGameFold(model.game, applyDeltaPure(model.game, deltaEnvelope(message))) }, []];
+        const [game, commands] = mergeGameFold(model.game, applyDeltaPure(model.game, deltaEnvelope(message)));
+        return [{ ...model, game }, commands];
       },
       StreamStatus: ({ connected }) => {
         if (model.game == null) return [model, []];

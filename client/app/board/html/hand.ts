@@ -17,7 +17,7 @@ import { ZONE } from "../geometry/layout";
 import { DiscardChosen, HandActionActivated, InspectAuxHovered, type Message } from "../messages";
 import { HAND_FACE_W } from "../motion/flights";
 import type { HandDragState } from "../submodel";
-import { barZoneAura, byObject, bySection, handExtras } from "./actions";
+import { barZoneAura, byObject, bySection, handTileCaption, modesForObject } from "./actions";
 import { MountHandBarDrag } from "./hand-drag-mount";
 
 const h = html<Message>();
@@ -379,7 +379,6 @@ export function handView(inputs: HandViewInputs): Html {
   const viewer = state.viewer;
   const grouped = bySection(state.actions);
   const commandActionByObject = byObject(grouped.command);
-  const handActionByObject = byObject(grouped.hand);
   // Coerce wire numbers — proto/json sometimes delivers numeric fields as strings after folds.
   const commandCards: ObjectView[] = state.objects.filter(
     (o) => Number(o.zone) === ZONE.Command && Number(o.owner) === Number(viewer),
@@ -439,7 +438,8 @@ export function handView(inputs: HandViewInputs): Html {
   const handSlots: HandSlot[] = [];
   for (const c of handCards) {
     if (hiddenIds.has(c.id)) continue;
-    const action = handActionByObject.get(c.id) ?? null;
+    const modes = modesForObject(grouped.hand, c.id);
+    const action = modes[0] ?? null;
     handSlots.push({
       name: c.name,
       print: c.print ?? "",
@@ -449,26 +449,9 @@ export function handView(inputs: HandViewInputs): Html {
       manaCost: c.mana_cost,
       action,
       slotInert: slotInert(c.id),
-      caption: actionCaption(action?.kind ?? ""),
+      caption: handTileCaption(modes),
       discardSelectable: discardCostIds?.has(c.id) ?? false,
       discardSelected: discardSelectedIds?.has(c.id) ?? false,
-    });
-  }
-  for (const extra of handExtras(grouped.hand)) {
-    const meta = metaFor(extra.object);
-    const label = formatMessage(extra.label);
-    handSlots.push({
-      name: label.replace(/^[^:]+:\s*/, ""),
-      print: meta.print,
-      cardId: meta.cardId,
-      objectId: extra.object ?? undefined,
-      objectKind: meta.kind,
-      manaCost: meta.manaCost,
-      action: extra,
-      slotInert: false,
-      caption: actionCaption(extra.kind),
-      discardSelectable: extra.object != null ? (discardCostIds?.has(extra.object) ?? false) : false,
-      discardSelected: extra.object != null ? (discardSelectedIds?.has(extra.object) ?? false) : false,
     });
   }
   const handTiles = handSlots.map((slot, index) =>

@@ -102,6 +102,8 @@ export const TargetChosen = m("TargetChosen", { target: WireTarget });
 /** Modal step answers. */
 export const ModalModesChosen = m("ModalModesChosen", { chosen: S.Array(S.Number) });
 export const ModalTargetChosen = m("ModalTargetChosen", { target: WireTarget });
+/** Choose which legal hand action to continue after the card is parked on the stack. */
+export const PlayModeChosen = m("PlayModeChosen", { actionId: S.Number });
 
 /** Choose-X stepper draft adjusted (Min / − / + / Max). */
 export const XDraftSet = m("XDraftSet", { x: S.Number });
@@ -286,6 +288,7 @@ export const Message = S.Union([
   TargetChosen,
   ModalModesChosen,
   ModalTargetChosen,
+  PlayModeChosen,
   XDraftSet,
   XSubmitted,
   SacrificeChosen,

@@ -8,7 +8,9 @@ import {
   planCastClickResolution,
   planCostPipeline,
   planHandDrop,
+  planHandPlay,
   planRunAction,
+  reconcilePlayModeModes,
   settleSacrificePick,
   stagedCastSubmission,
   usedCostPick,
@@ -146,6 +148,29 @@ describe("findCastActionForObject", () => {
 
   it("returns undefined when no cast action exists", () => {
     expect(findCastActionForObject([mkAction({ kind: "play_land", object: 1 })], 1)).toBeUndefined();
+  });
+});
+
+describe("planHandPlay", () => {
+  it("ignores drops below the play threshold", () => {
+    expect(planHandPlay([mkAction()], 900, 800)).toEqual({ kind: "ignore" });
+  });
+  it("auto-selects when exactly one mode is legal", () => {
+    const action = mkAction({ id: 7 });
+    expect(planHandPlay([action], 100, 800)).toEqual({ kind: "single", action });
+  });
+  it("asks to choose when two or more modes are legal", () => {
+    const a = mkAction({ id: 1, kind: "cast" });
+    const b = mkAction({ id: 2, kind: "cycle" });
+    expect(planHandPlay([b, a], 100, 800)).toEqual({ kind: "choose", modes: [a, b] });
+  });
+});
+
+describe("reconcilePlayModeModes", () => {
+  it("drops modes whose action ids left the legal list", () => {
+    const a = mkAction({ id: 1 });
+    const b = mkAction({ id: 2 });
+    expect(reconcilePlayModeModes([a, b], [b]).map((x) => x.id)).toEqual([2]);
   });
 });
 
