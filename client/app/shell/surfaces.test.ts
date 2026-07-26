@@ -624,7 +624,7 @@ describe("shell surface scenes", () => {
       Scene.expect(Scene.selector('[data-testid="lobby-deck-card-1"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-join-code"]')).toBeAbsent(),
       Scene.expect(Scene.text("Lobby")).toExist(),
-      Scene.expect(Scene.text("edh.reilley.dev")).toExist(),
+      Scene.expect(Scene.text("edh.reilley.dev")).not.toExist(),
       Scene.Mount.resolve(BindDeckCardFlip({ deckId: 1 }), DeckCardFlipTick()),
       Scene.Mount.resolve(BindCardArt, CardArtTick()),
     );

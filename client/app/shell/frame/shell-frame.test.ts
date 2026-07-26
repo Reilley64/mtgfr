@@ -34,6 +34,14 @@ function classNameOf(node: unknown): string {
     .join(" ");
 }
 
+function collectTags(node: unknown, tag: string, out: unknown[] = []): unknown[] {
+  if (node == null || typeof node !== "object") return out;
+  const n = node as { sel?: string; children?: unknown[] };
+  if (n.sel === tag) out.push(node);
+  for (const child of n.children ?? []) collectTags(child, tag, out);
+  return out;
+}
+
 describe("shellFrame", () => {
   it("renders header slots, stage, auth atmosphere, and version badge", () => {
     const tree = shellFrame(h, {
@@ -57,6 +65,25 @@ describe("shellFrame", () => {
     expect(ids).toContain("app-version");
     expect(classNameOf(findByTestId(tree, "shell-frame"))).toContain("shell-atmosphere-auth");
     expect(classNameOf(findByTestId(tree, "shell-stage"))).toContain("shell-stage-enter");
+  });
+
+  it("omits header h1 when title is empty or omitted", () => {
+    const omitted = shellFrame(h, {
+      atmosphere: "auth",
+      stage: [],
+      chrome: { version: null, faithfulCount: null, oracleTotal: null, coverageHref: null },
+    });
+    const empty = shellFrame(h, {
+      atmosphere: "auth",
+      title: "",
+      stage: [],
+      chrome: { version: null, faithfulCount: null, oracleTotal: null, coverageHref: null },
+    });
+
+    expect(collectTags(omitted, "h1")).toHaveLength(0);
+    expect(collectTags(empty, "h1")).toHaveLength(0);
+    expect(findByTestId(omitted, "shell-header-title")).not.toBeNull();
+    expect(findByTestId(empty, "shell-header-title")).not.toBeNull();
   });
 
   it("uses shell atmosphere variant", () => {

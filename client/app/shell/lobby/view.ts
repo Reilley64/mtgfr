@@ -531,13 +531,6 @@ export const view = Submodel.defineView<LobbySlice, ViewMessage, ViewInputs>((mo
             h.Class(panelClass("max-w-[min(100%-2rem,640px)]")),
           ],
           [
-            h.div(
-              [h.Class("flex flex-col gap-xs")],
-              [
-                h.div([h.Class("m-0 text-display tracking-[-0.02em]")], ["edh.reilley.dev"]),
-                h.h1([h.Class("m-0 text-lichen text-title")], ["Lobby"]),
-              ],
-            ),
             body,
             model.error == null
               ? null

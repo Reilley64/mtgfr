@@ -6,7 +6,7 @@ export type ShellAtmosphere = "auth" | "shell";
 
 export type ShellFrameOptions = {
   atmosphere: ShellAtmosphere;
-  title: string;
+  title?: string;
   subtitle?: string;
   leading?: Html | null;
   trailing?: Html | null;
@@ -19,6 +19,8 @@ export type ShellFrameOptions = {
 export function shellFrame<Msg>(h: ReturnType<typeof createHtml<Msg>>, options: ShellFrameOptions): Html {
   const atmosphereClass = options.atmosphere === "auth" ? "shell-atmosphere-auth" : "shell-atmosphere-shell";
   const stageChildren = Array.isArray(options.stage) ? options.stage : [options.stage];
+  const title = options.title?.trim();
+  const hasTitle = title != null && title !== "";
 
   return h.main(
     [
@@ -47,7 +49,7 @@ export function shellFrame<Msg>(h: ReturnType<typeof createHtml<Msg>>, options: 
               h.Class("flex min-w-0 flex-col items-center text-center"),
             ],
             [
-              h.h1([h.Class("m-0 font-display text-display tracking-[-0.02em]")], [options.title]),
+              hasTitle ? h.h1([h.Class("m-0 font-display text-display tracking-[-0.02em]")], [title]) : null,
               options.subtitle ? h.p([h.Class("m-0 text-label text-lichen")], [options.subtitle]) : null,
             ],
           ),

@@ -22,7 +22,6 @@ export const view = Submodel.defineView<AuthSubmodel, Message, AppChromeMeta>((m
 
   return shellFrame(h, {
     atmosphere: "auth",
-    title: isLogin ? "Sign in" : "Create account",
     chrome,
     stage: h.div(
       [h.Class("flex justify-center py-xxl")],
