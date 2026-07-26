@@ -138,6 +138,11 @@ pub enum ChoiceEffect {
         filter: CardFilter,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         if_you_sacrificed_this_way: bool,
+        /// "you return" (Witherbloom Command mode 0) rather than "you may return" (Deadly Brew,
+        /// Witch of the Moors): a legal card *must* be chosen — declining is illegal (CR 700.2).
+        /// No legal card in the graveyard still quietly does nothing (no pause).
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        mandatory: bool,
     },
 
     MaySacrifice {

@@ -96,6 +96,7 @@ pub(super) fn may_return_from_graveyard(
     player: PlayerId,
     source: ObjectId,
     filter: CardFilter,
+    mandatory: bool,
 ) -> Option<PendingChoice> {
     let options: Vec<ObjectId> = game
         .live_object_ids()
@@ -113,6 +114,7 @@ pub(super) fn may_return_from_graveyard(
         player,
         source,
         options,
+        mandatory,
     })
 }
 

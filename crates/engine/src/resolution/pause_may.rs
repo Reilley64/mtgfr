@@ -34,6 +34,7 @@ impl Game {
             Effect::Choice(ChoiceEffect::MayReturnFromGraveyard {
                 filter,
                 if_you_sacrificed_this_way,
+                mandatory,
             }) => {
                 if if_you_sacrificed_this_way
                     && !self.resolution_frame.sacrificed_by_edict_controller
@@ -46,6 +47,7 @@ impl Game {
                         player: controller,
                         source,
                         filter,
+                        mandatory,
                     },
                 )
             }

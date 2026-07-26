@@ -9,12 +9,13 @@ Intake counts: 80 faithful / 1 approximated / 0 expressible / 3 needing engine w
 The classifier returned 83 A / 1 B / 0 missing, but the Witherbloom re-audit demoted three cards to
 D: `Ominous Harvest` and `Plumb the Forbidden` still copy themselves from resolution instead of
 cast-time context, and `Witherbloom Command`'s silent mandatory-vs-may land return becomes real in a
-graveyard-resource deck.
+graveyard-resource deck. All three D increments (#1, #2) have since landed.
 
-**Final state (2026-07-26): 84/84 nonbasic Witherbloom cards are in the pool — 80 fully faithful,
-one deliberate approximation (`Final Act`), and three cards still blocked on engine work.**
+**Final state (2026-07-26): 84/84 nonbasic Witherbloom cards are in the pool — 83 fully faithful and
+one deliberate approximation (`Final Act`, #3, still blocked on battles and player counters). Both
+eligible engine increments (#1 cast-time self-copy, #2 mandatory graveyard return) are LANDED.**
 
-## A. In pool, faithful at intake (80)
+## A. In pool, faithful (83)
 
 - [ ] Arcane Signet
 - [ ] Assassin's Trophy
@@ -61,11 +62,13 @@ one deliberate approximation (`Final Act`), and three cards still blocked on eng
 - [ ] Nether Traitor
 - [ ] Night's Whisper
 - [ ] Ohran Frostfang
+- [ ] Ominous Harvest — #1 (cast-time Gravestorm self-copy)
 - [ ] Ophiomancer
 - [ ] Path of Ancestry
 - [ ] Pawn of Ulamog
 - [ ] Pest Infestation
 - [ ] Pest Rescuer
+- [ ] Plumb the Forbidden — #1 (cast-time reflexive self-copy)
 - [ ] Priest of Forgotten Gods
 - [ ] Ribtruss Roaster
 - [ ] Sakura-Tribe Elder
@@ -92,6 +95,7 @@ one deliberate approximation (`Final Act`), and three cards still blocked on eng
 - [ ] Witch of the Moors
 - [ ] Witherbloom Campus
 - [ ] Witherbloom Charm
+- [ ] Witherbloom Command — #2 (mandatory land return)
 - [ ] Woe Strider
 - [ ] Woodland Cemetery
 - [ ] Yahenni, Undying Partisan
@@ -120,11 +124,13 @@ Notes on cards deliberately kept in A despite intake `ponytail:` prompts:
 
 None. All 84 Witherbloom nonbasics are already in the pool.
 
-## D. In pool, not yet faithful; needs engine work (3)
+## D. In pool, not yet faithful; needs engine work (0)
 
-- [ ] Ominous Harvest — #1
-- [ ] Plumb the Forbidden — #1
-- [ ] Witherbloom Command — #2
+All three demoted cards are now faithful:
+
+- [x] Ominous Harvest — #1 LANDED (cast-time Gravestorm self-copy)
+- [x] Plumb the Forbidden — #1 LANDED (cast-time reflexive self-copy)
+- [x] Witherbloom Command — #2 LANDED (mandatory land return)
 
 ## Observability re-audit
 
@@ -140,12 +146,13 @@ therefore does **not** demote the deck's whole aristocrats shell just because it
 
 ### 2. `CopyThisSpell` is still a real cast-vs-resolution gap for this deck
 
-`Ominous Harvest` and `Plumb the Forbidden` both still author their self-copy rider through the old
-resolution-time `CopyThisSpell` path. That is observably late: the copies should exist from
+`Ominous Harvest` and `Plumb the Forbidden` both authored their self-copy rider through the old
+resolution-time `CopyThisSpell` path. That was observably late: the copies should exist from
 cast-time context, above the original spell, rather than being minted only after the original
 starts resolving. Deathdancer Xira already recorded this as a pool residual; Witherbloom is the
-first SoC deck whose own game plan leans on both cards, so they move to D here. This is increment
-#1.
+first SoC deck whose own game plan leans on both cards, so they moved to D here. This was increment
+#1 — **now LANDED**: both cards copy via a `when_you_cast_this` / `copy_triggering_spell` cast
+trigger, so the copies sit on the stack above the original.
 
 ### 3. `Witherbloom Command`'s mandatory-return shortcut is not harmless here
 
@@ -153,7 +160,9 @@ The file says the printed "you return a land card" is modeled as "you may return
 a land is pure upside. Witherbloom falsifies that rationale: the deck deliberately uses the
 graveyard as a resource (`Woe Strider` escape, long-game sacrifice loops, and multiple recursion
 lines), so choosing to leave a land in the graveyard is sometimes strategically meaningful. The
-deck therefore treats this as a real fidelity gap, not a harmless ponytail. This is increment #2.
+deck therefore treats this as a real fidelity gap, not a harmless ponytail. This was increment #2 —
+**now LANDED**: `may_return_from_graveyard` grew a `mandatory` flag and mode 0 sets it, so declining
+with a legal land in the graveyard is illegal (no legal land still does nothing).
 
 ### 4. No stale pool-absence claim is falsified; the live problems are narrower
 

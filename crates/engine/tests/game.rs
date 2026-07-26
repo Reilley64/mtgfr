@@ -32656,6 +32656,7 @@ fn may_return_ungated() -> CardDef {
                 ChoiceEffect::MayReturnFromGraveyard {
                     filter: CardFilter::Permanent,
                     if_you_sacrificed_this_way: false,
+                    mandatory: false,
                 },
             ))])),
         )
@@ -44481,6 +44482,86 @@ fn witherbloom_command_mode_0_mills_then_returns_land() {
         g.zone_of(land_in_graveyard),
         Zone::Hand,
         "the returned land is in the caster's hand"
+    );
+}
+
+#[test]
+fn witherbloom_command_mode_0_land_return_is_mandatory() {
+    // Mode 0's "then you return a land card from your graveyard to your hand" is mandatory (CR
+    // 700.2). With a land in the caster's own graveyard, they must return one — declining (an
+    // empty choice) is illegal, unlike Deadly Brew / Witch of the Moors' "you may return."
+    let mut g = TestGame::new();
+    g.stack_library(
+        PlayerId(1),
+        &[card("Forest"), card("Forest"), card("Forest")],
+    );
+    let land_in_graveyard = g.spawn_in_graveyard(PlayerId(0), card("Forest"));
+    let command = g.spawn_in_hand(PlayerId(0), card("Witherbloom Command"));
+
+    g.cast(command)
+        .mode(0, Some(Target::Player(PlayerId(1))))
+        .mode(3, Some(Target::Player(PlayerId(1))))
+        .resolve();
+
+    let Some(PendingChoice::MayReturnFromGraveyard {
+        player: PlayerId(0),
+        ..
+    }) = g.pending_choice()
+    else {
+        panic!(
+            "mode 0's land return pauses on the caster's own graveyard; got {:?}",
+            g.pending_choice()
+        );
+    };
+
+    assert_eq!(
+        g.submit(Intent::ChooseSacrifices {
+            player: PlayerId(0),
+            sacrifices: vec![],
+        }),
+        Err(Reject::IllegalChoice),
+        "declining is illegal — a legal land card must be returned"
+    );
+
+    g.submit(Intent::ChooseSacrifices {
+        player: PlayerId(0),
+        sacrifices: vec![land_in_graveyard],
+    })
+    .expect("returning the land is legal");
+    assert!(g.pending_choice().is_none());
+    assert_eq!(
+        g.zone_of(land_in_graveyard),
+        Zone::Hand,
+        "the returned land is in the caster's hand"
+    );
+}
+
+#[test]
+fn witherbloom_command_mode_0_returns_nothing_with_no_land_in_graveyard() {
+    // Mandatory only when a legal card exists: with no land card in the caster's graveyard, the
+    // return does nothing at all (no pause, no wedge) — CR 608.2b.
+    let mut g = TestGame::new();
+    g.stack_library(
+        PlayerId(1),
+        &[card("Forest"), card("Forest"), card("Forest")],
+    );
+    // A nonland card in the graveyard is not a legal return for the land filter.
+    g.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let command = g.spawn_in_hand(PlayerId(0), card("Witherbloom Command"));
+
+    g.cast(command)
+        .mode(0, Some(Target::Player(PlayerId(1))))
+        .mode(3, Some(Target::Player(PlayerId(1))))
+        .resolve();
+
+    assert!(
+        g.pending_choice().is_none(),
+        "no legal land to return — the mandatory return quietly does nothing"
+    );
+    assert_eq!(
+        cards_in_zone(&g, PlayerId(1), Zone::Graveyard),
+        3,
+        "mode 0 still milled the target player three"
     );
 }
 

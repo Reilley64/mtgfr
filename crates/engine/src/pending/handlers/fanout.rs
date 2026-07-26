@@ -399,12 +399,17 @@ impl Game {
         _player: PlayerId,
         choice: Vec<ObjectId>,
     ) -> Result<Vec<Event>, Reject> {
-        let Some(PendingChoice::MayReturnFromGraveyard { options, .. }) =
-            self.pending_choice.clone()
+        let Some(PendingChoice::MayReturnFromGraveyard {
+            options, mandatory, ..
+        }) = self.pending_choice.clone()
         else {
             return Err(Reject::IllegalChoice);
         };
         if choice.len() > 1 || choice.iter().any(|id| !options.contains(id)) {
+            return Err(Reject::IllegalChoice);
+        }
+        // "you return" (mandatory): a legal card must be chosen — declining is illegal (CR 700.2).
+        if mandatory && choice.is_empty() {
             return Err(Reject::IllegalChoice);
         }
         self.finish_answer();

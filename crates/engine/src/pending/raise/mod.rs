@@ -104,6 +104,7 @@ pub(crate) enum ChoiceRequest {
         player: crate::PlayerId,
         source: crate::ObjectId,
         filter: crate::CardFilter,
+        mandatory: bool,
     },
     /// [`Effect::Choice(ChoiceEffect::MayDiscard)`] — empty hand skips.
     MayDiscard {
@@ -398,7 +399,8 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
             player,
             source,
             filter,
-        } => optional::may_return_from_graveyard(game, player, source, filter),
+            mandatory,
+        } => optional::may_return_from_graveyard(game, player, source, filter, mandatory),
         ChoiceRequest::MayDiscard {
             player,
             source,

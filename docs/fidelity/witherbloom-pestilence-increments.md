@@ -39,7 +39,13 @@ rather than stretching the resolution rider further.
    cast-time path, snapshotting `permanents_died_this_turn` the same way Storm snapshots prior
    spells cast.
 
-### 2. `mandatory-return-from-your-graveyard-to-hand` — 1 card, S
+### 2. `mandatory-return-from-your-graveyard-to-hand` — 1 card, S — **LANDED (2026-07-26)**
+
+`may_return_from_graveyard` gained a `mandatory` flag (default `false`, so Witch of the Moors /
+Deadly Brew's optional behavior is unchanged). `Witherbloom Command` mode 0 now sets
+`mandatory = true`: with a land card in the caster's own graveyard they must return one (an empty
+decline is rejected), while no legal land card still quietly does nothing (no pause). The prior
+"you may return" ponytail is gone.
 
 **Depends on:** none.
 **Cards:** `witherbloom_command.toml`

@@ -1310,11 +1310,14 @@ pub enum PendingChoice {
     /// ([`Effect::Choice(ChoiceEffect::MayReturnFromGraveyard)`] — Deadly Brew's "you may return another permanent card
     /// from your graveyard to your hand"). Answered by [`Intent::ChooseSacrifices`] (reusing its
     /// "empty list declines, one entry picks" wire shape): an empty list declines, one entry
-    /// returns that card. The graveyard-return twin of [`Self::MaySacrifice`].
+    /// returns that card. The graveyard-return twin of [`Self::MaySacrifice`]. When `mandatory`
+    /// (Witherbloom Command mode 0's "you return"), an empty (declining) answer is illegal — a
+    /// card must be chosen; the no-legal-card case never reaches here (it skips the pause).
     MayReturnFromGraveyard {
         player: PlayerId,
         source: ObjectId,
         options: Vec<ObjectId>,
+        mandatory: bool,
     },
     /// `player` may discard one of `options` (a card in their own hand); if they do, `then`
     /// resolves ([`Effect::Choice(ChoiceEffect::MayDiscard)`] — Quintorius, History Chaser's +1 "You may discard a
