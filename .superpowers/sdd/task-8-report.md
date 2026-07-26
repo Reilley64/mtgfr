@@ -56,3 +56,5 @@ Complete.
 
 - If future SDD briefs want a copy-pasteable client command for these files, prefer
   `bun run test -- ...` over `bun test ...` so Vitest environment annotations are honored.
+- Medium Task 8 follow-up: aligned `accounts-decks-and-catalog` art-resolution bullet with
+  `deck-list-and-builder` (CDN/`imageUrlByPrint`, `art_crop` Scryfall fallback, proxy BFF fallback).

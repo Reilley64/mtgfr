@@ -238,8 +238,10 @@ for hydrating a saved deck without fetching the full catalog.
   the required Printing UUID for legality or object identity, and the server does not fetch them at
   save time. When a deck seeds a live table, the server materializes non-empty proxy-art URLs into
   the same per-seat `card_id` map shape it already uses for print overlays.
-- The engine is print-agnostic. Art resolution (`imageUrlByPrint()`) is CDN-only by Printing UUID;
-  missing art is a broken image (no Scryfall image host fallback).
+- The engine is print-agnostic. Client art resolution keys on Printing UUID via `imageUrlByPrint()`
+  (CDN when configured); CDN `art_crop` may fall back to Scryfall on load failure, other sizes do
+  not. Optional `proxy_art_url` uses the same-origin BFF proxy first, then printing art
+  ([deck-list-and-builder](2026-07-20-deck-list-and-builder.md)).
 
 ---
 
