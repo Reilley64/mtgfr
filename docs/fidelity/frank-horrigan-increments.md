@@ -755,3 +755,33 @@ creature) left the cleanup revert live and `Event::TempBoostsEnded` snapped it b
 Cursed Mirror, undoing a durationless CR 613 effect. The indefinite branch now clears it
 (`a_treasure_conversion_outlasts_an_until_end_of_turn_copy_it_replaced`), with a `ponytail:` note
 that the rewrite still snapshots the live (copied) name/cost rather than recomputing layers.
+
+### 26. `counter-replacement-placing-player` — 2 cards, M/L
+Depends on: #19 (LANDED — it generalized the pipeline to every kind and to players; this closes
+the axis it left open).
+Added 2026-07-27 after #19 landed. Both of the deck's two remaining approximated cards fail the
+same way, and one of them is *actively inverted* rather than merely incomplete: Vorinclex,
+Monstrous Raider says "If you would put one or more counters on a permanent or player, put twice
+that many instead" / "If an opponent would put ... put half that many, rounded down". The engine
+keys both clauses off the **recipient's** side — the receiving permanent's controller, or the
+receiving player — not off who *would put* them. So your own Vorinclex halves the counters you
+put on an opponent's creature instead of doubling them: the opposite of the card. Innkeeper's
+Talent's Level 3 doubler has the same shape and so also fires on counters an opponent puts on
+your permanents.
+
+*Sketch:* thread a `placer: PlayerId` through the replacement pipeline.
+`Game::counters_after_replacements` (`characteristics.rs:1955`),
+`kind_counters_after_replacements` (`:1962`), `player_counters_after_replacements` (`:1969`) and
+the shared `Game::replaced_counters` (`:1989`) each gain the parameter; `replaced_counters`
+compares `placer` against the replacement's own controller instead of reading
+`CounterRecipient`'s side. There are **31 call sites** — `rg 'counters_after_replacements\('
+crates/engine/src --glob '*.rs'` lists all of them, in `pending/handlers/{common,fanout,targets,
+edict}.rs`, `effects.rs`, `resolution/{counters,tokens,resolve_misc,pause_edict}.rs`, `core.rs`,
+and `characteristics.rs` itself. At almost every one the placer is the controller of the
+resolving effect or ability, which is already in scope; for the as-enters replacements
+(`effects.rs:443/465/486`) it is the entering permanent's controller. Thread the real value at
+each — do **not** default to the recipient and call it done, that is the bug.
+
+CR 616.1's ordering choice stays deliberately unoffered (a halving and a doubler applying at once
+resolve additions → multipliers → halvings in fixed order); that residual is recorded on
+`Game::replaced_counters` and stays. *Cards:* vorinclex_monstrous_raider, innkeepers_talent.
