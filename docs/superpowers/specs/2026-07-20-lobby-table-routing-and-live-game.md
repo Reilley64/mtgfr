@@ -25,7 +25,7 @@ newest pod only.
 The system separates pre-game lobby from live-game concerns across two persistence boundaries:
 
 - **Pre-game lobby** lives on the Nitro BFF (`edh-web`) against Postgres `mtgfr_web`
-  (Drizzle), entirely outside the API pod.
+  (Drizzle over `@effect/sql-pg`), entirely outside the API pod.
 - **Live game** lives in the API pod's in-memory `Registry` (lobby-table-routing-and-live-game spec). No game state is
   persisted; the game is lost if the pod restarts.
 
@@ -251,6 +251,18 @@ seeded game; there are no "empty" table shells in the production registry.
 - **BFF-owned lobby** (lobby-table-routing-and-live-game spec): pre-game state lives on `mtgfr_web` (Drizzle). No lobby
   tables in the API pod; no lobby fan-out needed across pods. The BFF owns seat claim, ready-up,
   host start, and `table_routes`.
+- **Effect-native lobby store** (`client/app/domain/lobby-store.ts`): store operations are `Effect.fn`
+  programs that `yield* WebDb` (a `Context.Service` over Drizzle's `drizzle-orm/effect-postgres`
+  driver on `@effect/sql-pg`) and `yield*` each query as an Effect. Lobby table routes keep their
+  Nitro `defineHandler(async …)` boundary, then pass Effect bodies to `withLobbyAuth`; that helper
+  annotates the request span, authenticates, sweeps idle rows, and provides `WebDbLive` around the
+  traced Effect so route bodies yield store programs directly. The remaining Promise-edge caller,
+  `/api/rpc` `resolveTableAddress`, runs `lookupTableRoute` with `runWebDb(op)` from
+  `client/server/db/client.ts`, which reuses one pooled `ManagedRuntime` per `WEB_DATABASE_URL`.
+  There is no surrounding SQL
+  transaction: `createLobby` retries a fresh code on a unique-violation (Postgres `23505`,
+  surfaced as a `UniqueViolation` reason), `joinLobby` re-reads and reconciles on a seat/user race,
+  and `commitStart` deletes the freshly-written `table_routes` row if `markStarted` fails.
 - **Seat face privacy**: the BFF derives/stores lobby `gravatar_hash` from the authenticated
   user's email, then forwards only that hash in `Tables.Seed`. API table chrome and streams never
   receive or expose seat email. See [Gravatar Seat Faces Design](2026-07-25-gravatar-seat-faces-design.md).
@@ -342,3 +354,6 @@ seeded game; there are no "empty" table shells in the production registry.
   receiving the stream; a **watcher** is a client with no seat. The stream redaction path uses
   `Option<PlayerId>` (`None` = spectator projection), so non-seated signed-in watchers receive
   public zones and counts only.
+- Drizzle migrations for `mtgfr_web` are a squashed v3 baseline (`just client-migrate`). An
+  existing `mtgfr_web` that predates the squash needs a one-time reconcile of its
+  `__drizzle_migrations` journal against the v3 baseline before applying new migrations.

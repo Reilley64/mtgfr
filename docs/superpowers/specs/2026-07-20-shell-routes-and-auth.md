@@ -49,9 +49,10 @@ A single Foldkit event-reactor owns routing: `client/app/routes.ts` maps paths t
 
 Required identifiers live in path params ([wire-protocol-and-visibility](2026-07-20-wire-protocol-and-visibility.md) routing rule). Query params are optional: `?next=` is the post-login redirect target.
 
-### BFF lobby and meta HTTP (`client/server/routes/api/**`)
+### BFF lobby and meta HTTP (`client/server/routes/api/**`, `client/server/lobby-http.ts`)
 
 Lobby and meta HTTP are one Nitro route file per operation. Each handler exports `defineHandler` from `nitro/h3` inline; shared auth, tracing, and JSON helpers live in `client/server/lobby-http.ts`.
+Route files stay at the Nitro Promise boundary (`export default defineHandler(async …)`), but pass Effect bodies that yield `Response` values into `withLobbyAuth` / `runMetaGet`. `withLobbyAuth` handles the session cookie, `grpcRequestEnv`, `fetchMe`, span annotation, idle lobby sweep, and `WebDbLive` provisioning inside the traced Effect; table route bodies yield lobby-store Effects directly instead of calling `runWebDb`.
 
 | Route | File |
 |---|---|
@@ -86,7 +87,11 @@ Route entry and post-session cold-load call per-surface **`informRouteChanged`**
 
 Lobby Host/Join and seated chrome for `/play/:deckId`, `/play/:deckId/:table`, and `/play/:table` are specified in [lobby-entry-ui](2026-07-20-lobby-entry-ui.md). Deck list (`/`) and builder (`/decks/…`) are specified in [deck-list-and-builder](2026-07-20-deck-list-and-builder.md). The home route entry loads decks only; it does not issue a separate top-players teaser fetch. The leaderboard route (`/leaderboard`) renders a ranked list from `rpc.ratings.leaderboard({ limit, offset })`, showing rank (display emphasis), username, and rating (vine, not priority gold) for authenticated players, with header chrome that keeps `Play` back to `/` and reuses the shared avatar account menu instead of a standalone sign-out button. Route entry loads the first page as `limit = 50, offset = 0`; `Load more` (`leaderboard-load-more`) appends the next page. When a later page load fails after prior rows are already visible, the existing rows stay on screen, `Load more` is hidden, and `Try again` (`leaderboard-try-again`) clears the current rows and restarts from the first page.
 
+<<<<<<< HEAD
 The coverage route (`/coverage`) loads `coverageMeta()` from `GET /api/meta/coverage/v1` on route entry through `Coverage.informRouteChanged` / `GotCoverageMessage`, and renders a searchable set-completeness table for authenticated users. The shell header shows `Coverage`, a subtitle global `% faithful` line (`coverage-global-percent`), a `Play` link back to `/`, and the shared avatar account menu with the `Leaderboard` shortcut kept visible. Rows filter by lowercase match on set code or name, sort by release date descending with null release dates last, and show `Set`, `Faithful`, `Scryfall`, and `%` columns. Percentage formatting reuses the shared badge formatter; rows with missing `oracle_total` show `—` instead of inventing a denominator or percent, and the global header follows the same rule when either global count is missing. `Try again` restarts the coverage load from an empty loading state after errors, while the error alert stays visible and the search input remains available outside the loading state. Every shell surface that already showed the fixed bottom-left API badge now uses the shared two-line stack: `{n}% faithful` above `API {version}` when both coverage counts are present; when either coverage count is missing or invalid, the shell renders only the version line. The board remains out of scope for this chrome. When coverage meta is complete, the badge `% faithful` line links to `/coverage`. Detailed page behavior and the BFF/API join contract live in [coverage-by-set](2026-07-26-coverage-by-set.md).
+=======
+The coverage route (`/coverage`) loads `LobbyClient.coverageMeta()` from `GET /api/meta/coverage/v1` on route entry through `Coverage.informRouteChanged` / `GotCoverageMessage`, and renders a searchable set-completeness table for authenticated users. The page header shows `Coverage`, the global `% faithful` line, a `Play` link back to `/`, and the shared avatar account menu with the `Leaderboard` shortcut kept visible. Rows filter by lowercase match on set code or name, sort by release date descending with null release dates last, and show `Set`, `Faithful`, `Scryfall`, and `%` columns. Percentage formatting reuses the shared badge formatter; rows with missing `oracle_total` show `—` instead of inventing a denominator or percent, and the global header follows the same rule when either global count is missing. `Try again` restarts the coverage load from an empty loading state after errors, while the error alert stays visible and the search input remains available outside the loading state. Every shell surface that already showed the fixed bottom-left API badge now uses the shared two-line stack: `{n}% faithful` above `API {version}` when both coverage counts are present; when either coverage count is missing or invalid, the shell renders only the version line. The board remains out of scope for this chrome. When coverage meta is complete, the badge `% faithful` line links to `/coverage`. Detailed page behavior and the BFF/API join contract live in [coverage-by-set](2026-07-26-coverage-by-set.md).
+>>>>>>> origin/main
 
 ### Shell frame (`client/app/shell/frame/shell-frame.ts`)
 
@@ -110,9 +115,9 @@ Unsigned protected content never renders.
 
 The app model is the single UI state tree. `update(model, message)` is the only state transition point and returns `[Model, Command[]]`. Shell submodels own auth, deck list, deck builder, coverage, leaderboard, and lobby state; the board owns board interaction state while game deltas fold into `client/app/game/fold.ts`. Auth, deck list, deck builder, coverage, leaderboard, and lobby child updates all cross the parent boundary through `Got*Message` wrappers. Route entry and post-session cold-load re-entry call each surface's `informRouteChanged` helper so the child owns its reset/load transition while the parent still owns auth redirects and lobby-driven game-slice activation.
 
-Async work is expressed as Foldkit **Commands** backed by Effect programs. Commands depend on the `RpcClient` resource from `client/app/resources.ts`, so wire access is explicit at the runtime boundary. Session checks, auth submit, deck loading, catalog search, deck save/delete, leaderboard loading, lobby host/join, and table navigation all flow through commands.
+Async work is expressed as Foldkit **Commands** backed by Effect programs. Commands depend on resources from `client/app/resources.ts`: `RpcClient` for Effect RPC calls and `LobbyClient` for same-origin lobby/meta HTTP. Session checks, auth submit, deck loading, catalog search, deck save/delete, leaderboard loading, coverage loading, API-version metadata, lobby host/join/ready/start, and table navigation all flow through commands.
 
-Boot also fetches `/api/meta/version/v1` through `client/app/domain/lobby/client.ts`. The `apiMeta()` helper decodes the required app `version` plus optional `faithful_count` / `oracle_total` fields from the BFF meta response. The app model stores all three values (`apiVersion`, `faithfulCount`, `oracleTotal`) through the existing `FetchApiVersion` Foldkit command and threads them into shell views as shared `AppChromeMeta`. Malformed or missing coverage fields fold to `null`, so the version line still renders and the `% faithful` line is simply omitted. The same client module also exposes `coverageMeta()` for `GET /api/meta/coverage/v1`, decoding nullable global counts plus per-set rows (`code`, `name`, `released_at`, `faithful`, `oracle_total`) into camelCase shell data for the `/coverage` page.
+Boot also fetches `/api/meta/version/v1` through the `FetchApiVersion` Foldkit command and `LobbyClient.apiMeta()`. The client decodes the required app `version` plus optional `faithful_count` / `oracle_total` fields from the BFF meta response. The app model stores all three values (`apiVersion`, `faithfulCount`, `oracleTotal`) and threads them into shell views as shared `AppChromeMeta`. Tagged lobby/meta transport failures fold to null metadata, so the version line is omitted until a successful response and the `% faithful` line is omitted when coverage fields are incomplete. `LobbyClient.coverageMeta()` also decodes `GET /api/meta/coverage/v1` nullable global counts plus per-set rows (`code`, `name`, `released_at`, `faithful`, `oracle_total`) into camelCase shell data for the `/coverage` page.
 
 Long-lived listeners are Foldkit **Subscriptions**. App subscriptions cover portrait orientation, lobby polling, and game stream frames. Dependency functions decide when each stream is active; returning `Stream.empty` stops work when the route or table changes. Components do not own long-lived fibers.
 
@@ -121,6 +126,13 @@ Long-lived listeners are Foldkit **Subscriptions**. App subscriptions cover port
 Modules: `client/app/domain/rpc-client.ts`, `client/server/routes/api/rpc/[...path].ts`, `client/app/domain/wire/grpcClient.ts`.
 
 The browser talks only to the same-origin BFF via the hand-written Effect HTTP client (`client/app/domain/rpc-client.ts`) over `/api/rpc`. The Nitro BFF dispatches `/api/rpc/**` requests and calls tonic gRPC through `client/app/domain/wire/grpcClient.ts`. There is no direct browser-to-gRPC communication. The proto wire is the sole contract.
+
+The `/api/rpc/[...path]` route opens exactly one `runTracedRequest` runtime edge around Effect
+dispatch. `dispatchRpc` returns an Effect that resolves to `RpcOutcome`, including mapped gRPC
+errors; the route sets or clears the HttpOnly session cookie imperatively only after that Effect
+finishes. For in-game methods, `dispatchRpc` resolves the owning pod through `resolveTableAddress`,
+which runs the Effect-native `lookupTableRoute` store program via `runWebDb` (`client/server/db/client.ts`)
+— a pooled `ManagedRuntime` over the `WebDb` Drizzle `effect-postgres` service on `mtgfr_web`.
 
 `makeClient(fetch)` accepts a fetch implementation so tests can stub it. `client` is the app singleton (credentials: include, prepended `/api/rpc`). Wire types (`wire/types.ts`) are Effect Schema-decoded DTOs; `wire/protoMap.ts` maps them to/from proto.
 
@@ -189,6 +201,9 @@ Vite production builds set `build.sourcemap: true` (via `clientBuildSourcemap`) 
 - **Gzip LZ77 benefit from sorted classes.** Consistent Tailwind class ordering makes repeated utility sequences longer LZ77 matches under gzip on the shipped JS/HTML.
 - **Public client source maps.** Production uses `build.sourcemap: true` (not `"hidden"`) so DevTools/Faro can deminify the large first-party bundle. Original TypeScript is fetchable alongside the asset; acceptable for this friend-group deployment without a private map store.
 - **Service worker stays network-only.** Installability is in scope; offline play is not. Do not add precache or runtime caching without a fresh product decision because the authoritative game client still depends on live network state.
+- **BFF RPC dispatch runs as one Effect.** `/api/rpc/[...path]` does method/body/cookie handling in
+  Nitro, then runs `dispatchRpc` once through `runTracedRequest`; `dispatchRpc` performs gRPC calls
+  as Effects and returns outcome values instead of throwing for normal gRPC failures.
 
 ---
 

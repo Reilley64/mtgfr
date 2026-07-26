@@ -78,6 +78,7 @@ These documents are **not superseded** and must stay current alongside the specs
 | [ci-rust-protoc-image](2026-07-26-ci-rust-protoc-image-design.md) | Design input for GHCR `mtgfr-ci` toolchain image (PR1 publish; PR2 containerize verify + migrate job); update `ci-and-release` per PR |
 | [bff-route-split](2026-07-26-bff-route-split-design.md) | Design input: Nitro one-file-per lobby/meta op, `defineHandler` + h3 web APIs, path-param join/ready/start; update shell/lobby/coverage specs at implement time |
 | [shell-polish-redesign](2026-07-26-shell-polish-redesign-design.md) | Design input: shared shell frame, shell type pair, atmosphere step-up, CSS portrait→landscape rotate, per-surface reflows; update shell/deck/lobby/coverage/system-overlays/board-composition specs + `DESIGN.md` per wave |
+| [effect-deepening](2026-07-26-effect-deepening-design.md) | Design input: deepen Effect on client (LobbyClient, BFF gRPC Effect dispatch, Drizzle RC effect-postgres, Effect HTTP helpers); update shell/lobby/wire specs per wave |
 
 ## Authoring conventions
 

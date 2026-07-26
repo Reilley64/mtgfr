@@ -1,4 +1,5 @@
 import { Schema as S } from "effect";
+import * as Effect from "effect/Effect";
 
 export type ImageSize = "small" | "normal" | "large" | "png" | "art_crop";
 export type ImageFace = "front" | "back";
@@ -54,38 +55,48 @@ function readString(record: Record<string, unknown>, key: string): string | null
   return typeof value === "string" ? value : null;
 }
 
-export async function searchPrints(oracleId: string): Promise<ScryfallPrint[]> {
-  const q = encodeURIComponent(`oracleid:${oracleId}`);
-  const out: ScryfallPrint[] = [];
-  let url: string | null = `https://api.scryfall.com/cards/search?q=${q}&unique=prints&order=released`;
-  while (url) {
-    const res: Response = await fetch(url, {
-      headers: { Accept: "application/json", "User-Agent": "edh.reilley.dev/0.1" },
-    });
-    if (!res.ok) {
-      throw new Error(`Scryfall print search failed (${res.status})`);
-    }
-    const body: unknown = await res.json();
-    if (!isRecord(body)) return out;
-
-    const data = Array.isArray(body.data) ? body.data : [];
-    for (const value of data) {
-      if (!isRecord(value)) continue;
-      const id = readString(value, "id");
-      const set = readString(value, "set");
-      const setName = readString(value, "set_name");
-      const collectorNumber = readString(value, "collector_number");
-      if (id == null || set == null || setName == null || collectorNumber == null) continue;
-
-      out.push({
-        collector_number: collectorNumber,
-        id,
-        released_at: readString(value, "released_at") ?? "",
-        set,
-        set_name: setName,
+export function searchPrints(oracleId: string): Effect.Effect<ScryfallPrint[], Error> {
+  return Effect.gen(function* () {
+    const q = encodeURIComponent(`oracleid:${oracleId}`);
+    const out: ScryfallPrint[] = [];
+    let url: string | null = `https://api.scryfall.com/cards/search?q=${q}&unique=prints&order=released`;
+    while (url) {
+      const currentUrl = url;
+      const res = yield* Effect.tryPromise({
+        try: () =>
+          fetch(currentUrl, {
+            headers: { Accept: "application/json", "User-Agent": "edh.reilley.dev/0.1" },
+          }),
+        catch: (cause) => (cause instanceof Error ? cause : new Error(String(cause))),
       });
+      if (!res.ok) {
+        return yield* Effect.fail(new Error(`Scryfall print search failed (${res.status})`));
+      }
+      const body: unknown = yield* Effect.tryPromise({
+        try: () => res.json(),
+        catch: (cause) => (cause instanceof Error ? cause : new Error(String(cause))),
+      });
+      if (!isRecord(body)) return out;
+
+      const data = Array.isArray(body.data) ? body.data : [];
+      for (const value of data) {
+        if (!isRecord(value)) continue;
+        const id = readString(value, "id");
+        const set = readString(value, "set");
+        const setName = readString(value, "set_name");
+        const collectorNumber = readString(value, "collector_number");
+        if (id == null || set == null || setName == null || collectorNumber == null) continue;
+
+        out.push({
+          collector_number: collectorNumber,
+          id,
+          released_at: readString(value, "released_at") ?? "",
+          set,
+          set_name: setName,
+        });
+      }
+      url = body.has_more === true ? readString(body, "next_page") : null;
     }
-    url = body.has_more === true ? readString(body, "next_page") : null;
-  }
-  return out;
+    return out;
+  });
 }

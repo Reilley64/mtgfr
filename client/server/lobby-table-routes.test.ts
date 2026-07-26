@@ -1,3 +1,4 @@
+import * as Effect from "effect/Effect";
 import type { H3Event } from "nitro/h3";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import joinHandler from "./routes/api/tables/[table]/join/v1.post";
@@ -69,7 +70,6 @@ vi.mock("../app/domain/lobby-store", () => ({
   }),
 }));
 
-const db = { kind: "db" };
 const env = { sessionToken: "session-token" };
 const me = { id: 42, email: "player@example.test", username: "Player" };
 
@@ -86,39 +86,47 @@ function event(table: string | null, body: Record<string, unknown> = {}): H3Even
 describe("lobby table route files", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.withLobbyAuth.mockImplementation(async (_event, _span, fn) => fn({ me, env, db }));
-    mocks.createLobby.mockResolvedValue("NEWTBL");
-    mocks.fetchDeckName.mockResolvedValue("Mock Deck");
+    mocks.withLobbyAuth.mockImplementation(async (_event, _span, fn) => Effect.runPromise(fn({ me, env })));
+    mocks.createLobby.mockReturnValue(Effect.succeed("NEWTBL"));
+    mocks.commitStart.mockReturnValue(Effect.void);
+    mocks.deleteTableRoute.mockReturnValue(Effect.void);
+    mocks.fetchDeckName.mockReturnValue(Effect.succeed("Mock Deck"));
     mocks.gravatarHash.mockResolvedValue("avatar-hash");
-    mocks.joinLobby.mockResolvedValue({ snap: { tableId: "PATHID", hostUserId: me.id, startedAt: null, seats: [] } });
-    mocks.setReady.mockResolvedValue({ snap: { tableId: "PATHID", hostUserId: me.id, startedAt: null, seats: [] } });
-    mocks.loadLobby.mockResolvedValue({
-      tableId: "PATHID",
-      hostUserId: me.id,
-      startedAt: null,
-      seats: [
-        {
-          seat: 0,
-          userId: me.id,
-          username: me.username,
-          gravatarHash: "avatar-hash",
-          deckId: 7,
-          deckName: "Mock Deck",
-          ready: true,
-        },
-        {
-          seat: 1,
-          userId: 99,
-          username: "Friend",
-          gravatarHash: "friend-hash",
-          deckId: 8,
-          deckName: "Other Deck",
-          ready: true,
-        },
-      ],
-    });
+    mocks.joinLobby.mockReturnValue(
+      Effect.succeed({ snap: { tableId: "PATHID", hostUserId: me.id, startedAt: null, seats: [] } }),
+    );
+    mocks.setReady.mockReturnValue(
+      Effect.succeed({ snap: { tableId: "PATHID", hostUserId: me.id, startedAt: null, seats: [] } }),
+    );
+    mocks.loadLobby.mockReturnValue(
+      Effect.succeed({
+        tableId: "PATHID",
+        hostUserId: me.id,
+        startedAt: null,
+        seats: [
+          {
+            seat: 0,
+            userId: me.id,
+            username: me.username,
+            gravatarHash: "avatar-hash",
+            deckId: 7,
+            deckName: "Mock Deck",
+            ready: true,
+          },
+          {
+            seat: 1,
+            userId: 99,
+            username: "Friend",
+            gravatarHash: "friend-hash",
+            deckId: 8,
+            deckName: "Other Deck",
+            ready: true,
+          },
+        ],
+      }),
+    );
     mocks.startError.mockReturnValue(null);
-    mocks.seedGame.mockResolvedValue({ ok: true, data: { pod_dns: "pod.local" } });
+    mocks.seedGame.mockReturnValue(Effect.succeed({ ok: true, data: { pod_dns: "pod.local" } }));
   });
 
   it("exports all table handlers", () => {
@@ -136,11 +144,10 @@ describe("lobby table route files", () => {
     await startHandler(event("PATHID", { table_id: "BODYID" }));
 
     expect(mocks.joinLobby).toHaveBeenCalledWith(
-      db,
       expect.objectContaining({ tableId: "PATHID", userId: me.id, deckId: 7 }),
     );
-    expect(mocks.setReady).toHaveBeenCalledWith(db, "PATHID", me.id, true);
+    expect(mocks.setReady).toHaveBeenCalledWith("PATHID", me.id, true);
     expect(mocks.seedGame).toHaveBeenCalledWith(env, expect.objectContaining({ table_id: "PATHID" }));
-    expect(mocks.commitStart).toHaveBeenCalledWith(db, "PATHID", "pod.local");
+    expect(mocks.commitStart).toHaveBeenCalledWith("PATHID", "pod.local");
   });
 });

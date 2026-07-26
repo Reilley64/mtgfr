@@ -1,5 +1,5 @@
 import { Effect, Schedule, Stream } from "effect";
-import { lobbyState } from "../../domain/lobby/client";
+import { client as lobbyHttp } from "../../domain/lobby/client";
 import type { LobbyView } from "../../domain/lobby/types";
 
 type LobbyPollOptions = {
@@ -8,14 +8,15 @@ type LobbyPollOptions = {
 };
 
 function fetchLobbyState(tableId: string): Effect.Effect<LobbyView | null, never> {
-  return Effect.tryPromise(() => lobbyState(tableId)).pipe(Effect.catch(() => Effect.succeed(null)));
+  return lobbyHttp.lobbyState(tableId).pipe(Effect.catch(() => Effect.succeed(null)));
 }
 
 export function lobbyPoll(tableId: string, options: LobbyPollOptions = {}): Stream.Stream<LobbyView> {
-  const fetchLobby = options.fetchLobby ?? fetchLobbyState;
+  const fetchLobby: Effect.Effect<LobbyView | null, never> =
+    options.fetchLobby == null ? fetchLobbyState(tableId) : options.fetchLobby(tableId);
   const schedule = options.schedule ?? Schedule.spaced("1 second");
 
-  return Stream.fromEffectSchedule(fetchLobby(tableId), schedule).pipe(
+  return Stream.fromEffectSchedule(fetchLobby, schedule).pipe(
     Stream.filter((view): view is LobbyView => view != null),
     Stream.takeUntil((view) => view.started),
   );

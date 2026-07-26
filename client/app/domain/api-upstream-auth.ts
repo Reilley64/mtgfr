@@ -1,5 +1,6 @@
 // BFF helpers for the lobby route: me/deck/seed over gRPC; meta/version stays HTTP `/health/live`.
 
+import * as Effect from "effect/Effect";
 import { ensureOracleTotalRefresh, getCachedOracleTotal } from "./scryfall-oracle-total";
 import { GrpcCallError, type GrpcRequestEnv, grpcClientFor, httpStatusOf } from "./wire/grpcClient";
 import type { SaveDeckRequest, SeedRequest, SeedResponse } from "./wire/types";
@@ -16,6 +17,8 @@ export function grpcUpstream(): string {
 
 export type Me = { id: number; email: string; username: string };
 
+export type SeedGameResult = { ok: true; data: SeedResponse } | { ok: false; status: number };
+
 /** Parse a `Me` value. Returns null when `id` is missing (stale API) or the shape is wrong. */
 export function parseMePayload(body: unknown): Me | null {
   if (body === null || typeof body !== "object") return null;
@@ -25,24 +28,22 @@ export function parseMePayload(body: unknown): Me | null {
   return { id: rec.id, email: rec.email, username: rec.username };
 }
 
-export async function fetchMe(env: GrpcRequestEnv): Promise<Me | null> {
+export const fetchMe = Effect.fn(function* (env: GrpcRequestEnv) {
   if (!env.sessionToken) return null;
-  try {
-    return await grpcClientFor(grpcUpstream(), env).auth.getMe(env.sessionToken);
-  } catch {
-    return null;
-  }
-}
+  return yield* grpcClientFor(grpcUpstream(), env)
+    .auth.getMe(env.sessionToken)
+    .pipe(Effect.catch(() => Effect.succeed(null)));
+});
 
-export async function fetchDeckName(env: GrpcRequestEnv, deckId: number): Promise<string | null> {
+export const fetchDeckName = Effect.fn(function* (env: GrpcRequestEnv, deckId: number) {
   if (!env.sessionToken) return null;
-  try {
-    const deck = await grpcClientFor(grpcUpstream(), env).decks.get(deckId, env.sessionToken);
-    return deck.name ?? null;
-  } catch {
-    return null;
-  }
-}
+  return yield* grpcClientFor(grpcUpstream(), env)
+    .decks.get(deckId, env.sessionToken)
+    .pipe(
+      Effect.map((deck) => deck.name ?? null),
+      Effect.catch(() => Effect.succeed(null)),
+    );
+});
 
 export type LiveStatus = {
   version: string;
@@ -109,20 +110,25 @@ export async function fetchApiMeta(): Promise<{
 
 export type { SeedResponse };
 
-export async function seedGame(
-  env: GrpcRequestEnv,
-  body: SeedRequest,
-): Promise<{ ok: true; data: SeedResponse } | { ok: false; status: number }> {
-  if (!env.sessionToken) return { ok: false, status: 401 };
-  try {
-    const data = await grpcClientFor(grpcUpstream(), env).tables.seed(body, env.sessionToken);
-    return { ok: true, data };
-  } catch (err) {
-    if (err instanceof GrpcCallError) {
-      return { ok: false, status: httpStatusOf(err.code) };
-    }
-    return { ok: false, status: 500 };
-  }
+function seedOk(data: SeedResponse): SeedGameResult {
+  return { ok: true, data };
 }
+
+function seedError(status: number): SeedGameResult {
+  return { ok: false, status };
+}
+
+export const seedGame = Effect.fn(function* (env: GrpcRequestEnv, body: SeedRequest) {
+  if (!env.sessionToken) return seedError(401);
+  return yield* grpcClientFor(grpcUpstream(), env)
+    .tables.seed(body, env.sessionToken)
+    .pipe(
+      Effect.map(seedOk),
+      Effect.catch((err) => {
+        if (err instanceof GrpcCallError) return Effect.succeed(seedError(httpStatusOf(err.code)));
+        return Effect.succeed(seedError(500));
+      }),
+    );
+});
 
 export type { SaveDeckRequest };

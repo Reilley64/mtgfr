@@ -1,6 +1,9 @@
 import { and, eq, isNull, lt, sql } from "drizzle-orm";
+import type { EffectDrizzleQueryError } from "drizzle-orm/effect-core/errors";
+import * as Effect from "effect/Effect";
+import * as Result from "effect/Result";
 import { lobbies, lobbySeats, tableRoutes } from "../../db/schema";
-import type { WebDb } from "../../server/db/client";
+import { WebDb } from "../../server/db/client";
 import type { LobbyView } from "./lobby-types";
 
 const IDLE_LOBBY_MS = 30 * 60 * 1000;
@@ -40,10 +43,23 @@ export type LobbySnapshot = {
   seats: LobbySeatRow[];
 };
 
+export type LobbyMutation = { error?: string; snap?: LobbySnapshot };
+
+function messageChain(err: unknown): string {
+  let out = "";
+  let current: unknown = err;
+  for (let depth = 0; current != null && depth < 6; depth++) {
+    out += current instanceof Error ? `${current.message} ` : `${String(current)} `;
+    current = current instanceof Error ? current.cause : undefined;
+  }
+  return out;
+}
+
 function isUniqueViolation(err: unknown): boolean {
-  const msg = err instanceof Error ? err.message : String(err);
-  // Postgres unique_violation (23505) — drizzle/pg-proxy may wrap or stringify it.
-  return msg.includes("23505") || /duplicate key|unique constraint/i.test(msg);
+  // Postgres unique_violation (23505); effect-sql classifies it as a `UniqueViolation` reason.
+  // Walk the cause chain (drizzle query error → SqlError → reason → driver error).
+  const msg = messageChain(err);
+  return msg.includes("23505") || /duplicate key|unique constraint|UniqueViolation/i.test(msg);
 }
 
 /** Visible for unit tests — collision detection must not swallow unrelated insert failures. */
@@ -51,27 +67,26 @@ export function createLobbyTreatsAsCollision(err: unknown): boolean {
   return isUniqueViolation(err);
 }
 
-export async function createLobby(db: WebDb, hostUserId: number): Promise<string> {
+export const createLobby = Effect.fn(function* (hostUserId: number) {
+  const db = yield* WebDb;
   let lastError: unknown;
   for (let attempt = 0; attempt < 8; attempt++) {
     const tableId = randomTableCode();
-    try {
-      await db.insert(lobbies).values({ tableId, hostUserId });
-      return tableId;
-    } catch (err) {
-      lastError = err;
-      if (!isUniqueViolation(err)) throw err;
-      // primary-key collision on table_id — retry with a fresh code
-    }
+    const inserted = yield* Effect.result(db.insert(lobbies).values({ tableId, hostUserId }));
+    if (Result.isSuccess(inserted)) return tableId;
+    lastError = inserted.failure;
+    // primary-key collision on table_id — retry with a fresh code; re-raise anything else
+    if (!isUniqueViolation(inserted.failure)) return yield* Effect.fail(inserted.failure);
   }
-  throw new Error("Could not mint a unique table code", { cause: lastError });
-}
+  return yield* Effect.fail(new Error("Could not mint a unique table code", { cause: lastError }));
+});
 
-export async function loadLobby(db: WebDb, tableId: string): Promise<LobbySnapshot | null> {
-  const [lobby] = await db.select().from(lobbies).where(eq(lobbies.tableId, tableId)).limit(1);
+export const loadLobby = Effect.fn(function* (tableId: string) {
+  const db = yield* WebDb;
+  const [lobby] = yield* db.select().from(lobbies).where(eq(lobbies.tableId, tableId)).limit(1);
   if (!lobby) return null;
-  const seats = await db.select().from(lobbySeats).where(eq(lobbySeats.tableId, tableId));
-  return {
+  const seats = yield* db.select().from(lobbySeats).where(eq(lobbySeats.tableId, tableId));
+  const snap: LobbySnapshot = {
     tableId: lobby.tableId,
     hostUserId: lobby.hostUserId,
     startedAt: lobby.startedAt,
@@ -85,30 +100,37 @@ export async function loadLobby(db: WebDb, tableId: string): Promise<LobbySnapsh
       ready: s.ready,
     })),
   };
-}
+  return snap;
+});
 
-export async function touchLobby(db: WebDb, tableId: string): Promise<void> {
-  await db.update(lobbies).set({ lastActivity: sql`now()` }).where(eq(lobbies.tableId, tableId));
-}
+export const touchLobby = Effect.fn(function* (tableId: string) {
+  const db = yield* WebDb;
+  yield* db.update(lobbies).set({ lastActivity: sql`now()` }).where(eq(lobbies.tableId, tableId));
+});
 
-export async function joinLobby(
-  db: WebDb,
-  opts: {
-    tableId: string;
-    userId: number;
-    username: string;
-    gravatarHash: string;
-    deckId: number;
-    deckName: string;
-  },
-): Promise<{ error?: string; snap?: LobbySnapshot }> {
-  const snap = await loadLobby(db, opts.tableId);
+export const joinLobby: (opts: {
+  tableId: string;
+  userId: number;
+  username: string;
+  gravatarHash: string;
+  deckId: number;
+  deckName: string;
+}) => Effect.Effect<LobbyMutation, EffectDrizzleQueryError, WebDb> = Effect.fn(function* (opts: {
+  tableId: string;
+  userId: number;
+  username: string;
+  gravatarHash: string;
+  deckId: number;
+  deckName: string;
+}) {
+  const db = yield* WebDb;
+  const snap = yield* loadLobby(opts.tableId);
   if (!snap) return { error: "UnknownTable" };
   if (snap.startedAt) return { error: "AlreadyStarted", snap };
 
   const existing = snap.seats.find((s) => s.userId === opts.userId);
   if (existing) {
-    await db
+    yield* db
       .update(lobbySeats)
       .set({
         deckId: opts.deckId,
@@ -117,8 +139,8 @@ export async function joinLobby(
         gravatarHash: opts.gravatarHash,
       })
       .where(and(eq(lobbySeats.tableId, opts.tableId), eq(lobbySeats.seat, existing.seat)));
-    await touchLobby(db, opts.tableId);
-    const updated = await loadLobby(db, opts.tableId);
+    yield* touchLobby(opts.tableId);
+    const updated = yield* loadLobby(opts.tableId);
     if (!updated) return { error: "UnknownTable" };
     return { snap: updated };
   }
@@ -126,8 +148,8 @@ export async function joinLobby(
   if (snap.seats.length >= 4) return { error: "TableFull", snap };
 
   const seat = snap.seats.length;
-  try {
-    await db.insert(lobbySeats).values({
+  const inserted = yield* Effect.result(
+    db.insert(lobbySeats).values({
       tableId: opts.tableId,
       seat,
       userId: opts.userId,
@@ -136,39 +158,44 @@ export async function joinLobby(
       deckId: opts.deckId,
       deckName: opts.deckName,
       ready: false,
-    });
-  } catch {
-    // Unique seat/user race — pg-proxy has no transactions.
-    const again = await loadLobby(db, opts.tableId);
+    }),
+  );
+  if (Result.isFailure(inserted)) {
+    // Unique seat/user race — no surrounding transaction, so re-read and reconcile.
+    const again = yield* loadLobby(opts.tableId);
     if (!again) return { error: "UnknownTable" };
     if (again.seats.some((s) => s.userId === opts.userId)) return { snap: again };
     return { error: "TableFull", snap: again };
   }
-  await touchLobby(db, opts.tableId);
-  const joined = await loadLobby(db, opts.tableId);
+  yield* touchLobby(opts.tableId);
+  const joined = yield* loadLobby(opts.tableId);
   if (!joined) return { error: "UnknownTable" };
   return { snap: joined };
-}
+});
 
-export async function setReady(
-  db: WebDb,
+export const setReady: (
   tableId: string,
   userId: number,
   ready: boolean,
-): Promise<{ error?: string; snap?: LobbySnapshot }> {
-  const snap = await loadLobby(db, tableId);
+) => Effect.Effect<LobbyMutation, EffectDrizzleQueryError, WebDb> = Effect.fn(function* (
+  tableId: string,
+  userId: number,
+  ready: boolean,
+) {
+  const db = yield* WebDb;
+  const snap = yield* loadLobby(tableId);
   if (!snap) return { error: "UnknownTable" };
   const seat = snap.seats.find((s) => s.userId === userId);
   if (!seat) return { error: "NotSeated", snap };
-  await db
+  yield* db
     .update(lobbySeats)
     .set({ ready })
     .where(and(eq(lobbySeats.tableId, tableId), eq(lobbySeats.seat, seat.seat)));
-  await touchLobby(db, tableId);
-  const updated = await loadLobby(db, tableId);
+  yield* touchLobby(tableId);
+  const updated = yield* loadLobby(tableId);
   if (!updated) return { error: "UnknownTable" };
   return { snap: updated };
-}
+});
 
 export function startError(snap: LobbySnapshot, userId: number): string | null {
   if (snap.hostUserId !== userId) return "NotHost";
@@ -178,61 +205,65 @@ export function startError(snap: LobbySnapshot, userId: number): string | null {
   return null;
 }
 
-export async function markStarted(db: WebDb, tableId: string): Promise<void> {
-  await db.update(lobbies).set({ startedAt: sql`now()` }).where(eq(lobbies.tableId, tableId));
-}
+export const markStarted = Effect.fn(function* (tableId: string) {
+  const db = yield* WebDb;
+  yield* db.update(lobbies).set({ startedAt: sql`now()` }).where(eq(lobbies.tableId, tableId));
+});
 
-export async function putTableRoute(db: WebDb, tableId: string, podDns: string): Promise<void> {
+export const putTableRoute = Effect.fn(function* (tableId: string, podDns: string) {
+  const db = yield* WebDb;
   const expiresAt = new Date(Date.now() + ROUTE_TTL_MS);
-  await db
+  yield* db
     .insert(tableRoutes)
     .values({ tableId, podDns, expiresAt })
     .onConflictDoUpdate({
       target: tableRoutes.tableId,
       set: { podDns, expiresAt, createdAt: sql`now()` },
     });
-}
+});
 
-/** Route then mark started; roll back the route if mark fails (pg-proxy has no transactions). */
-export async function commitStart(db: WebDb, tableId: string, podDns: string): Promise<void> {
-  await putTableRoute(db, tableId, podDns);
-  try {
-    await markStarted(db, tableId);
-  } catch (err) {
-    await deleteTableRoute(db, tableId);
-    throw err;
-  }
-}
+/** Route then mark started; roll back the route if mark fails (no surrounding transaction). */
+export const commitStart = Effect.fn(function* (tableId: string, podDns: string) {
+  yield* putTableRoute(tableId, podDns);
+  const marked = yield* Effect.result(markStarted(tableId));
+  if (Result.isSuccess(marked)) return;
+  yield* deleteTableRoute(tableId);
+  return yield* Effect.fail(marked.failure);
+});
 
-export async function lookupTableRoute(db: WebDb, tableId: string): Promise<string | null> {
-  const [row] = await db.select().from(tableRoutes).where(eq(tableRoutes.tableId, tableId)).limit(1);
+export const lookupTableRoute = Effect.fn(function* (tableId: string) {
+  const db = yield* WebDb;
+  const [row] = yield* db.select().from(tableRoutes).where(eq(tableRoutes.tableId, tableId)).limit(1);
   if (!row) return null;
   if (row.expiresAt.getTime() < Date.now()) {
-    await db.delete(tableRoutes).where(eq(tableRoutes.tableId, tableId));
+    yield* db.delete(tableRoutes).where(eq(tableRoutes.tableId, tableId));
     return null;
   }
   const expiresAt = new Date(Date.now() + ROUTE_TTL_MS);
-  await db.update(tableRoutes).set({ expiresAt }).where(eq(tableRoutes.tableId, tableId));
+  yield* db.update(tableRoutes).set({ expiresAt }).where(eq(tableRoutes.tableId, tableId));
   return row.podDns;
-}
+});
 
-export async function deleteTableRoute(db: WebDb, tableId: string): Promise<void> {
-  await db.delete(tableRoutes).where(eq(tableRoutes.tableId, tableId));
-}
+export const deleteTableRoute = Effect.fn(function* (tableId: string) {
+  const db = yield* WebDb;
+  yield* db.delete(tableRoutes).where(eq(tableRoutes.tableId, tableId));
+});
 
-export async function sweepExpiredRoutes(db: WebDb): Promise<void> {
-  await db.delete(tableRoutes).where(lt(tableRoutes.expiresAt, new Date()));
-}
+export const sweepExpiredRoutes = Effect.fn(function* () {
+  const db = yield* WebDb;
+  yield* db.delete(tableRoutes).where(lt(tableRoutes.expiresAt, new Date()));
+});
 
-export async function sweepIdleLobbies(db: WebDb): Promise<void> {
+export const sweepIdleLobbies = Effect.fn(function* () {
+  const db = yield* WebDb;
   const cutoff = new Date(Date.now() - IDLE_LOBBY_MS);
-  await db.delete(lobbies).where(and(isNull(lobbies.startedAt), lt(lobbies.lastActivity, cutoff)));
-}
+  yield* db.delete(lobbies).where(and(isNull(lobbies.startedAt), lt(lobbies.lastActivity, cutoff)));
+});
 
-export async function sweepWebDb(db: WebDb): Promise<void> {
-  await sweepIdleLobbies(db);
-  await sweepExpiredRoutes(db);
-}
+export const sweepWebDb = Effect.fn(function* () {
+  yield* sweepIdleLobbies();
+  yield* sweepExpiredRoutes();
+});
 
 export function toLobbyView(snap: LobbySnapshot, userId: number | null, error?: string | null): LobbyView {
   const you = userId == null ? null : (snap.seats.find((s) => s.userId === userId)?.seat ?? null);

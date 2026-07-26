@@ -1,3 +1,4 @@
+import * as Effect from "effect/Effect";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { artCropFallbackUrl, buildImageUrl, scryfallImageUrl, searchPrints } from "./scryfall";
 
@@ -17,7 +18,7 @@ describe("searchPrints User-Agent", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    await searchPrints("00000000-0000-0000-0000-000000000000");
+    await Effect.runPromise(searchPrints("00000000-0000-0000-0000-000000000000"));
 
     expect(fetchMock).toHaveBeenCalled();
     const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
