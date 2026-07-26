@@ -1,7 +1,7 @@
 import { Effect } from "effect";
 import { type Document, html } from "foldkit/html";
 import * as Mount from "foldkit/mount";
-import { view as boardView } from "./board";
+import { type ViewMessage as BoardViewMessage, view as boardView } from "./board";
 import { parseDeckIdParam, playDeckAccess } from "./deck-id";
 import type { AppChromeMeta } from "./domain/ui/app-version";
 import {
@@ -139,6 +139,15 @@ function toParentLobbyMessage(message: Lobby.ViewMessage): Message {
   }
 }
 
+function toParentBoardMessage(message: BoardViewMessage): Message {
+  switch (message._tag) {
+    case "CardArtTick":
+      return message;
+    default:
+      return GotBoardMessage({ message });
+  }
+}
+
 function toParentLeaderboardMessage(message: Leaderboard.ViewMessage): Message {
   switch (message._tag) {
     case "ClosedAccountMenu":
@@ -173,7 +182,7 @@ function boardMount(model: Model) {
       slotId: "board",
       model: { board: game.board, fold: game, tableId, connected: game.connected },
       view: boardView,
-      toParentMessage: (message) => GotBoardMessage({ message }),
+      toParentMessage: toParentBoardMessage,
     });
   }
 

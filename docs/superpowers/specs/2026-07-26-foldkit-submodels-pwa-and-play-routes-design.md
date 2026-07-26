@@ -141,7 +141,7 @@ Parent union includes **only**:
 - `UrlChanged` / session-ready entry: resolve `AppRoute`, then call the relevant feature’s `informRouteChanged(model, childRouteSlice)` (and/or `informSessionReady`) instead of `routeEntry` calling `loadDeckList` / `enterBuilder` / `enterLobby` as direct state mutators.
 - Each `inform*` helper is `update(model, ChangedRoute({ route }))` (or equivalent internal message) so the child owns the transition.
 - Replace `enterLobby` direct resets with lobby `ChangedRoute` / `informRouteChanged` that returns `[LobbyModel, Command[]]`.
-- Board `h.submodel` `toParentMessage` wraps into `GotBoardMessage` (stop identity passthrough).
+- Board `h.submodel` `toParentMessage` wraps into `GotBoardMessage`, with passthrough for shared shell ticks (`CardArtTick` from board `cardArt` mounts) so Schema construction does not reject non-`BoardMessage` tags.
 
 #### OutMessages
 
