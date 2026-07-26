@@ -238,7 +238,6 @@ describe("handView playable outlines", () => {
             object: pest.id,
             section: "graveyard",
             kind: "activate",
-            ability_index: 1,
             label: testMessageRef("Return this card from your graveyard to the battlefield tapped"),
           }),
         ],
