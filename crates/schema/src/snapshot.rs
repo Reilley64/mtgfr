@@ -62,6 +62,9 @@ pub struct ViewExtras {
     /// Per-seat Card id → Printing UUID from the seat's deck (art preference). Empty maps mean
     /// every object uses its CardDef `default_print`.
     pub prints: [std::collections::HashMap<String, String>; 4],
+    /// Per-seat Card id → alter-art URL from the seat's deck. Empty maps mean no proxy-art
+    /// overlay; empty values must not clobber the existing state.
+    pub proxy_art_urls: [std::collections::HashMap<String, String>; 4],
 }
 
 /// Inputs for one viewer-facing delta frame: redact events + complete board in one call
@@ -135,6 +138,11 @@ pub fn complete_visible(
         {
             obj.print = print.clone();
         }
+        if let Some(proxy_art_url) = extras.proxy_art_urls[seat].get(&obj.card_id)
+            && !proxy_art_url.is_empty()
+        {
+            obj.proxy_art_url = proxy_art_url.clone();
+        }
     }
     // Same overlay for pending-choice items — library/scry picks never appear in `objects`
     // (libraries aren't itemized), so their art rides on ChoiceItem.print alone.
@@ -156,6 +164,11 @@ pub fn complete_visible(
             {
                 item.print = print.clone();
             }
+            if let Some(proxy_art_url) = extras.proxy_art_urls[seat].get(card_id)
+                && !proxy_art_url.is_empty()
+            {
+                item.proxy_art_url = proxy_art_url.clone();
+            }
         });
     }
     // Stack abilities keep `source` as the activation-time id (counter-ability targeting). After
@@ -173,6 +186,11 @@ pub fn complete_visible(
             && !print.is_empty()
         {
             entry.print = print.clone();
+        }
+        if let Some(proxy_art_url) = extras.proxy_art_urls[seat].get(&entry.card_id)
+            && !proxy_art_url.is_empty()
+        {
+            entry.proxy_art_url = proxy_art_url.clone();
         }
     }
     state
@@ -1134,6 +1152,7 @@ mod tests {
             usernames: ["alice".into(), "bob".into(), String::new(), String::new()],
             gravatar_hashes: Default::default(),
             prints: Default::default(),
+            proxy_art_urls: Default::default(),
         };
 
         let StreamFrame::Delta(env) = compose_delta(DeltaCompose {
@@ -1201,6 +1220,7 @@ mod tests {
             usernames: ["alice".into(), "bob".into(), String::new(), String::new()],
             gravatar_hashes: Default::default(),
             prints: Default::default(),
+            proxy_art_urls: Default::default(),
         };
 
         let seated = complete_visible(&game, Some(PlayerId(1)), &extras);
@@ -1292,6 +1312,34 @@ mod tests {
     }
 
     #[test]
+    fn complete_visible_overlays_seat_proxy_art_urls() {
+        let mut game = Game::new();
+        let p0 = PlayerId(0);
+        let shock = game.spawn_in_hand(p0, def("Shock"));
+        let shock_id = game.def_of(shock).id.to_string();
+        let preferred = "https://example.com/cards/shock-proxy.png";
+
+        let mut proxy_art_urls: [std::collections::HashMap<String, String>; 4] = Default::default();
+        proxy_art_urls[0].insert(shock_id.clone(), preferred.into());
+        proxy_art_urls[0].insert("unused".into(), String::new());
+
+        let extras = ViewExtras {
+            proxy_art_urls,
+            ..ViewExtras::default()
+        };
+        let snap = complete_visible(&game, Some(p0), &extras);
+        let obj = snap.objects.iter().find(|o| o.id == shock).expect("shock");
+        assert_eq!(obj.proxy_art_url, preferred);
+
+        // An empty map value must not clobber the default empty "no proxy art" state.
+        let mut empty_override = ViewExtras::default();
+        empty_override.proxy_art_urls[0].insert(shock_id, String::new());
+        let snap2 = complete_visible(&game, Some(p0), &empty_override);
+        let obj2 = snap2.objects.iter().find(|o| o.id == shock).expect("shock");
+        assert!(obj2.proxy_art_url.is_empty());
+    }
+
+    #[test]
     fn complete_visible_overlays_seat_prints_onto_library_search_items() {
         // Library cards never appear in `objects`, so ChoiceItem.print is the only art path —
         // deck-chosen Printings must overlay there too (accounts-decks-and-catalog spec).
@@ -1341,6 +1389,55 @@ mod tests {
                     items.iter().all(|it| !it.print.is_empty()),
                     "every library-search item carries a print"
                 );
+            }
+            other => panic!("expected SearchLibrary, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn complete_visible_overlays_seat_proxy_art_urls_onto_library_search_items() {
+        let mut game = Game::new();
+        let p0 = PlayerId(0);
+        game.fund_mana(p0);
+        game.stack_library(p0, &[def("Forest"), def("Grizzly Bear"), def("Island")]);
+        let tutor = game.spawn_in_hand(p0, def("Diabolic Tutor"));
+        game.submit(engine::Intent::Cast {
+            player: p0,
+            object: tutor,
+            target: None,
+            x: 0,
+            modes: vec![],
+            discard_cost: vec![],
+            graveyard_exile: vec![],
+            sacrifice_cost: vec![],
+            kicked: false,
+            bought_back: false,
+            evoked: false,
+            strive_count: 0,
+            replicate_count: 0,
+            multikicker_count: 0,
+            alternative_cost: false,
+        })
+        .unwrap();
+        resolve_top_of_stack(&mut game);
+
+        let forest_id = def("Forest").id.to_string();
+        let preferred = "https://example.com/cards/forest-proxy.png";
+        let mut proxy_art_urls: [std::collections::HashMap<String, String>; 4] = Default::default();
+        proxy_art_urls[0].insert(forest_id, preferred.into());
+        let extras = ViewExtras {
+            proxy_art_urls,
+            ..ViewExtras::default()
+        };
+
+        let snap = complete_visible(&game, Some(p0), &extras);
+        match snap.pending_choice {
+            Some(PendingChoiceView::SearchLibrary { items, .. }) => {
+                let forest = items
+                    .iter()
+                    .find(|it| it.label == "Forest")
+                    .expect("Forest among matches");
+                assert_eq!(forest.proxy_art_url, preferred);
             }
             other => panic!("expected SearchLibrary, got {other:?}"),
         }
@@ -3352,6 +3449,44 @@ mod tests {
             .find(|e| e.kind == "ability" && e.source == wilds)
             .expect("ability still on stack");
         assert_eq!(seated.print, preferred);
+    }
+
+    #[test]
+    fn sacrifice_as_cost_ability_overlays_proxy_art_url_on_the_stack_entry() {
+        let mut game = Game::new();
+        let p0 = PlayerId(0);
+        game.stack_library(p0, &[def("Forest")]);
+        let wilds = game.spawn_on_battlefield(p0, def("Evolving Wilds"));
+        let expected_card_id = game.def_of(wilds).id.to_string();
+        let preferred = "https://example.com/cards/evolving-wilds-proxy.png";
+
+        game.submit(engine::Intent::ActivateAbility {
+            player: p0,
+            object: wilds,
+            ability_index: 0,
+            target: None,
+            sacrifice: vec![],
+            discard_cost: vec![],
+            x: 0,
+        })
+        .expect("activate Evolving Wilds");
+
+        let mut proxy_art_urls: [std::collections::HashMap<String, String>; 4] = Default::default();
+        proxy_art_urls[0].insert(expected_card_id, preferred.into());
+        let with_seat = complete_visible(
+            &game,
+            Some(p0),
+            &ViewExtras {
+                proxy_art_urls,
+                ..ViewExtras::default()
+            },
+        );
+        let entry = with_seat
+            .stack
+            .iter()
+            .find(|e| e.kind == "ability" && e.source == wilds)
+            .expect("ability still on stack");
+        assert_eq!(entry.proxy_art_url, preferred);
     }
 
     /// Tokens cease to exist (`Object::Removed`) instead of becoming a graveyard card (CR 111.7).

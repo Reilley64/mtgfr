@@ -148,6 +148,9 @@ BFF can pin later `table_id` hops to this pod.
 | `mulliganing` | Whether the game is still in simultaneous pre-game mulligans |
 
 During mulligans, each `PlayerView` also carries `mulligans_taken`, `hand_kept`, and `can_mulligan`. These are public status fields; card identities remain private through the existing hand/object redaction rules. The local player's legal actions include setup-section `keep_hand` and `mulligan` actions while they are undecided.
+`complete_visible` overlays non-empty per-seat deck art maps onto `ObjectView.print` / `proxy_art_url`,
+`StackObjectView.print` / `proxy_art_url`, and `ChoiceItem.print` / `proxy_art_url`, so every viewer
+sees the same print and alter art for a seat's card without teaching the engine about URLs.
 
 ### Redaction rules
 

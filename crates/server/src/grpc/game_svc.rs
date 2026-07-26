@@ -60,6 +60,7 @@ impl pb::game_server::Game for GameSvc {
             viewer,
             seats,
             prints,
+            proxy_art_urls,
             snapshot_broadcast_seq,
         } = stream::subscribe(&self.state, &table_id, user.id)
             .map_err(|_| Status::not_found("unknown table or game not started"))?;
@@ -82,6 +83,7 @@ impl pb::game_server::Game for GameSvc {
                             &seats,
                             msg.stack_hold_remaining_ms,
                             &prints,
+                            &proxy_art_urls,
                         );
                         yield Ok(map::stream_frame_to_pb(stream::frame_for(
                             viewer,

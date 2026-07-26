@@ -26,6 +26,7 @@ pub(crate) fn seat_deck() -> SeatDeck {
         commander,
         cards: vec![(plains, 99)],
         prints,
+        proxy_art_urls: Default::default(),
     }
 }
 
@@ -76,6 +77,7 @@ pub(crate) async fn user_with_deck(state: &crate::AppState, email: &str) -> i64 
                 .unwrap()
                 .default_print,
         )
+        .commander_proxy_art_url("")
         .cards(legal_deck_json())
         .exec(&mut db)
         .await

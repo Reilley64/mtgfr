@@ -780,6 +780,7 @@ async fn deck_row(state: &AppState, user_id: i64) -> i64 {
         .name("deck")
         .commander(deck.commander.id)
         .commander_print(deck.commander.default_print)
+        .commander_proxy_art_url("")
         .cards(serde_json::to_string(&cards).unwrap())
         .exec(&mut db)
         .await

@@ -234,7 +234,8 @@ for hydrating a saved deck without fetching the full catalog.
   and `DeckDetail` / `SaveDeckRequest.commander_proxy_art_url`. Empty string means absent; non-empty
   values must be credential-free `https` URLs no longer than 2048 characters. They never replace
   the required Printing UUID for legality or object identity, and the server does not fetch them at
-  save time.
+  save time. When a deck seeds a live table, the server materializes non-empty proxy-art URLs into
+  the same per-seat `card_id` map shape it already uses for print overlays.
 - The engine is print-agnostic. Art resolution (`imageUrlByPrint()`) is CDN-only by Printing UUID;
   missing art is a broken image (no Scryfall image host fallback).
 
