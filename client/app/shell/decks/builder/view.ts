@@ -11,7 +11,7 @@ import type { AppChromeMeta } from "../../../domain/ui/app-version";
 import { buttonClass } from "../../../domain/ui/buttonClass";
 import { cardArt } from "../../../domain/ui/card-art";
 import { confirmDialog, OpenDialogAsModal } from "../../../domain/ui/confirmDialog";
-import { fieldClass } from "../../../domain/ui/surfaces";
+import { alertClass, fieldClass } from "../../../domain/ui/surfaces";
 import type {
   CardArtTick,
   ClosedAccountMenu,
@@ -423,12 +423,36 @@ export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewIn
     atmosphere: "shell",
     title: model.editingId == null ? "New deck" : "Edit deck",
     chrome: viewInputs.chrome,
-    trailing: accountChrome(h, {
-      username: viewInputs.username,
-      gravatarHash: viewInputs.meGravatarHash,
-      menuOpen: viewInputs.accountMenuOpen,
-      showLeaderboardLink: true,
-    }),
+    leading: h.button(
+      [
+        h.Type("button"),
+        h.DataAttribute("testid", "builder-cancel"),
+        h.OnClick(RequestedBuilderCancel()),
+        h.Class(buttonClass("ghost")),
+      ],
+      ["Cancel"],
+    ),
+    trailing: h.div(
+      [h.Class("flex items-center gap-sm")],
+      [
+        h.button(
+          [
+            h.Type("button"),
+            h.DataAttribute("testid", "save-deck"),
+            h.Disabled(model.saving),
+            h.OnClick(SubmittedDeckSave()),
+            h.Class(buttonClass("primary", "shrink-0")),
+          ],
+          [model.saving ? "Saving…" : "Save deck"],
+        ),
+        accountChrome(h, {
+          username: viewInputs.username,
+          gravatarHash: viewInputs.meGravatarHash,
+          menuOpen: viewInputs.accountMenuOpen,
+          showLeaderboardLink: true,
+        }),
+      ],
+    ),
     stage: h.div(
       [
         // h-dvh (not min-h-screen): shell must stay viewport-tall so the catalog/decklist overflow-y-auto hosts actually overflow.
@@ -441,7 +465,7 @@ export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewIn
         h.section(
           [h.Class("flex min-h-0 min-w-0 flex-col")],
           [
-            h.h1([h.Class("m-0 text-title")], ["Card pool"]),
+            h.h2([h.Class("m-0 font-display text-title tracking-[-0.02em]")], ["Card pool"]),
             h.div(
               [h.Class("text-label text-lichen"), h.DataAttribute("testid", "builder-pool-hint")],
               ["Click to add. Right-click or long-press for print and other options. Only basics may exceed one copy."],
@@ -488,7 +512,6 @@ export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewIn
         h.aside(
           [h.Class("flex min-h-0 min-w-0 flex-col gap-3")],
           [
-            h.h2([h.Class("m-0 text-title")], [model.editingId == null ? "New deck" : "Edit deck"]),
             h.label([h.Class("sr-only"), h.For("deck-name")], ["Deck name"]),
             h.input([
               h.Id("deck-name"),
@@ -574,25 +597,6 @@ export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewIn
                 ),
               ],
             ),
-            h.button(
-              [
-                h.Type("button"),
-                h.DataAttribute("testid", "save-deck"),
-                h.Disabled(model.saving),
-                h.OnClick(SubmittedDeckSave()),
-                h.Class(buttonClass("primary")),
-              ],
-              [model.saving ? "Saving…" : "Save deck"],
-            ),
-            h.button(
-              [
-                h.Type("button"),
-                h.DataAttribute("testid", "builder-cancel"),
-                h.OnClick(RequestedBuilderCancel()),
-                h.Class(buttonClass("ghost")),
-              ],
-              ["Cancel"],
-            ),
             model.confirmingDiscard
               ? confirmDialog(h, {
                   title: "Discard changes?",
@@ -607,8 +611,12 @@ export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewIn
             model.problems.length === 0
               ? null
               : h.div(
-                  [h.Role("alert"), h.DataAttribute("testid", "deck-problems"), h.Class("flex flex-col gap-[3px]")],
-                  [...model.problems.map((problem) => h.div([h.Class("text-burn-red text-caption")], [problem]))],
+                  [
+                    h.Role("alert"),
+                    h.DataAttribute("testid", "deck-problems"),
+                    h.Class(alertClass("text-burn-red")),
+                  ],
+                  [...model.problems.map((problem) => h.div([h.Class("text-caption")], [problem]))],
                 ),
           ],
         ),

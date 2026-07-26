@@ -604,6 +604,12 @@ describe("shell surface scenes", () => {
       Scene.expect(Scene.selector('[data-testid="builder-pool-hint"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="deck-problems"]')).toExist(),
       Scene.expect(Scene.text("Choose a commander first.")).toExist(),
+      Scene.tap((sim) => {
+        const ids = collectTestIds(sim.html);
+        expect(ids.indexOf("builder-cancel")).toBeLessThan(ids.indexOf("shell-header-title"));
+        expect(ids.indexOf("save-deck")).toBeLessThan(ids.indexOf("account-menu-trigger"));
+        expect(ids.indexOf("shell-header-trailing")).toBeLessThan(ids.indexOf("deck-name"));
+      }),
       Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "pool" }), ClearedBuilderHover()),
       Scene.Mount.resolve(OpenDialogAsModal(), ModalOpened()),
       Scene.Mount.resolve(BindCardArt, CardArtTick()),
