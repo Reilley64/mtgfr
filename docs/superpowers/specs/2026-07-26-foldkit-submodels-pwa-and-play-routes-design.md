@@ -116,7 +116,7 @@ Path alias: update `tsconfig` / Vite so `~/*` (or a dedicated alias) resolves to
 Parent union includes **only**:
 
 - App-owned tags: `Booted`, `UrlChanged`, `UrlRequested`, `NavigationCompleted`, portrait gate, API meta, gravatar hash, etc.
-- Wrappers: `GotAuthMessage`, `GotDeckListMessage`, `GotDeckBuilderMessage`, `GotLeaderboardMessage`, `GotLobbyMessage`, `GotBoardMessage`, and either `GotGameMessage` or explicit parent-owned stream tags (`ReceivedSnapshot`, …) — pick one style in implementation and use it consistently; prefer `GotGameMessage` if game gains a real submodel update.
+- Wrappers: `GotAuthMessage`, `GotDeckListMessage`, `GotDeckBuilderMessage`, `GotLeaderboardMessage`, `GotLobbyMessage`, `GotBoardMessage`, `GotGameMessage` (stream snapshot/delta/status fold through a game submodel `update`, not flattened parent tags).
 
 **No** re-export of every child constructor into the parent message module for view dispatch; views wrap with `message => GotXMessage({ message })`.
 
