@@ -191,7 +191,7 @@ Vite production builds set `build.sourcemap: true` (via `clientBuildSourcemap`) 
 ## Out of Scope
 
 - Server-side rendering of board state (SPA on Nitro; no SSR of the board).
-- Offline mode, precached app shell assets, and service-worker runtime caching.
+- Offline mode, precached app shell assets, service-worker runtime caching, and in-app install UI (browser-native install only).
 - Sitemaps, SEO meta, or marketing pages (`robots.txt` disallows all crawlers).
 - Multi-account switching within one browser session.
 - OAuth / social login (email+password only).

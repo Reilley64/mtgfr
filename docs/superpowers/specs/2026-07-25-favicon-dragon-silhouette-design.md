@@ -63,9 +63,14 @@ The current favicon is a blocky commander-gold **E** on an opaque `forest-floor`
 
 ---
 
+## Further Notes
+
+- **PWA install icons shipped (Wave 3).** `client/public/apple-touch-icon.png`, `pwa-192.png`, and `pwa-512.png` derive from the same dragon-on-disc art family as the favicon and are referenced by `client/index.html` and the generated manifest — see [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md) Brand display / Installable PWA.
+
+---
+
 ## Out of Scope
 
-- Apple-touch / PWA / manifest icon sets.
 - Dual light/dark marks (`prefers-color-scheme`).
 - Replacing the in-app shell wordmark (`edh.reilley.dev` text) with the dragon mark.
 - Gold accents, square plates, or lettermarks.
