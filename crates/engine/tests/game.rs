@@ -39983,6 +39983,79 @@ fn a_summoning_sick_goaded_creature_is_not_required_to_attack() {
     .expect("a summoning-sick goaded creature isn't forced to attack");
 }
 
+#[test]
+fn a_goaded_creature_whose_controller_cannot_pay_the_attack_tax_is_not_forced() {
+    // CR 701.38a "if able" + CR 508.1g: a goaded creature must attack, but only if its controller
+    // can actually pay the tax to reach a legal defender. P0's only opponent (P1) taxes attacks
+    // with Ghostly Prison and P0 has no mana, so the goaded creature is "not able" and is not
+    // forced — an empty declaration is legal instead of wedging the step.
+    let mut game = Game::with_players(2, 0);
+    let c = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
+    game.spawn_on_battlefield(PlayerId(1), card("Ghostly Prison"));
+    game.goad(c, PlayerId(1));
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+
+    assert!(
+        game.required_attacks(PlayerId(0)).is_empty(),
+        "an unaffordable goaded attack is not a required attack",
+    );
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: vec![],
+    })
+    .expect("a goaded creature whose tax can't be paid isn't forced to attack");
+}
+
+#[test]
+fn a_goaded_creature_whose_controller_can_pay_the_attack_tax_is_still_forced() {
+    // The affordable twin of the previous test: with {2} floating, P0 can pay Ghostly Prison's tax,
+    // so the goaded creature is "able" and must attack (empty is illegal); the paid attack lands.
+    let mut game = Game::with_players(2, 0);
+    let c = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
+    game.spawn_on_battlefield(PlayerId(1), card("Ghostly Prison"));
+    game.goad(c, PlayerId(1));
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+    float_green(&mut game, PlayerId(0), 2);
+
+    assert_eq!(
+        game.required_attacks(PlayerId(0)),
+        vec![(c, Defender::Player(PlayerId(1)))],
+        "an affordable goaded attack is still required (only opponent is the goader)",
+    );
+    assert_eq!(
+        game.submit(Intent::DeclareAttackers {
+            player: PlayerId(0),
+            attackers: vec![],
+        }),
+        Err(Reject::IllegalDeclaration),
+        "an affordable goaded creature must still attack",
+    );
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: vec![(c, Defender::Player(PlayerId(1)))],
+    })
+    .expect("paying the {2} tax lets the goaded creature attack its only (goader) opponent");
+}
+
+#[test]
+fn a_goaded_creature_may_attack_a_goader_when_the_only_nongoader_is_unaffordable() {
+    // CR 701.38a's "attacks a player other than you if able" is gated on the tax too: the lone
+    // non-goader (P2) taxes with Ghostly Prison and P0 has no mana, while the goader (P1) is free.
+    // So the "attack a non-goader if able" clause is not able — the goaded creature may (and must)
+    // attack the affordable goader P1 instead of wedging.
+    let mut game = Game::with_players(3, 0);
+    let c = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
+    game.spawn_on_battlefield(PlayerId(2), card("Ghostly Prison"));
+    game.goad(c, PlayerId(1)); // goaded only by P1; P2 is the (taxing) non-goader
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: vec![(c, Defender::Player(PlayerId(1)))],
+    })
+    .expect("with the only non-goader unaffordable, attacking the free goader satisfies goad");
+}
+
 // ── "Attacks this turn if able" requirement (CR 508.1a — Furygale Flocking) ───────────
 
 #[test]
