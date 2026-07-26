@@ -15,7 +15,7 @@ specs for the current module split, especially
 1. **Paint (pixels):** `client/app/board/canvas/scene.ts` builds the vector `BoardScene`; `felt.ts` / `avatars.ts` / `arrows.ts` are dumb paint helpers under `client/app/board/canvas/`.
 2. **Bitmaps (card art):** `client/app/board/bitmap/mount.ts` — Foldkit `Mount` regions blit card faces + flights on top of the canvas via the shared `ImageCache`.
 3. **Hits / camera:** `client/app/board/geometry/{camera,hit-test,density,layout,interaction}.ts` — pure geometry; used by the board submodel + `action/` planners.
-4. **Flights:** `client/app/board/motion/flights.ts` — canvas-owned in-flight cards; resting hand/stack stay HTML.
+4. **Flights:** `client/app/board/motion/flights.ts` — canvas-owned in-flight cards; battlefield exit FX share the same Mount flight layer; resting hand/stack stay HTML.
 
    Flight animation is Mount-local rAF: mid-flight ticks paint only the flight
    canvas. Resting bitmap republishes when layout/chrome/hide sets change, not on
@@ -39,8 +39,10 @@ specs for the current module split, especially
 | `app/board/bitmap/mount.ts` | Foldkit `Mount` regions for card faces |
 | `app/board/bitmap/paint-cards.ts` / `paint-flights.ts` | Bitmap draw routines using `ImageCache` |
 | `app/board/motion/flights.ts` | Flight spawn/step; `hideCardIds` / `flightOwnedIds` |
+| `app/board/motion/exit-fx.ts` | Battlefield destroy/exile FX step + particle budgeting |
 | `app/board/action/session.ts` | Play / target / combat staging session state |
 | `app/board/action/{execution,targeting,modal,chrome}.ts` | Pure action planners |
+| `app/board/bitmap/paint-exit-fx.ts` | Paint battlefield exit FX on the flight canvas |
 | `app/board/submodel.ts` | Board `Model`/`update` composition |
 | `app/board/view.ts` | Board composition root (canvas + Mount + HTML overlays) |
 | `app/board/html/stack.ts` | Stack DOM (pile / strip / full) |
@@ -65,7 +67,7 @@ specs for the current module split, especially
    | 3 | Resting battlefield permanents + avatars | Mount bitmap + Canvas vector (+ card chrome) | Battlefield faces paint first; avatar/life paint follows resting cards |
    | 4 | Arrows | Canvas | Committed attack/block, **declare-attackers drag aim**, spell aim — always above resting permanents |
    | 5 | Hand / stack / spell mana | HTML | Resting hand & stack; **spell/payment mana tray** (same layer as hand, above hand cards) |
-   | 6 | Flights | Mount / motion | In-flight play cards — **above** hand and stack |
+   | 6 | Flights | Mount / motion | In-flight play cards and battlefield exit FX — **above** hand and stack |
    | 7 | Combat / life hit targets | HTML | Interactive orbs when needed (paint stays in layer 2; hits here) |
    | 8 | Prompts / choice UI | HTML | `pending_choice` and related |
    | 9 | Turn HUD | HTML | Phase track, Next / End Turn, discoverability |
@@ -76,7 +78,7 @@ specs for the current module split, especially
    1. **Avatar paint** follows resting battlefield cards in layer 3; **clear bands** packing must not cover it. **Orb hits** stay in layer 7.
    2. **Two mana surfaces:** battlefield in-play mana (layer 2) vs spell/payment mana tray on the hand layer (5).
    3. No resting permanent paint or DOM card face may sit above layer 4 while combat/spell arrows are active. Declare-drag arrows use the **same arrow layer** as committed arrows.
-   4. Flights paint above hand/stack (layer 6 over 5).
+   4. Flights and battlefield exit FX paint above hand/stack (layer 6 over 5).
    5. Prompts (8) above combat/life hits (7).
    6. Inspect (10) above everything else on the board, including system modals, while pinned.
    7. Under-card name labels are forbidden on resting permanents (not a separate layer — deleted).
