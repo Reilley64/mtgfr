@@ -44,13 +44,18 @@ export async function fetchDeckName(env: GrpcRequestEnv, deckId: number): Promis
   }
 }
 
-export type LiveStatus = { version: string; faithfulCount: number };
+export type LiveStatus = { version: string; faithfulCount: number | null };
 
 export function parseLiveStatus(body: unknown): LiveStatus | null {
   if (body === null || typeof body !== "object") return null;
-  if (!("version" in body) || !("faithful_count" in body)) return null;
+  if (!("version" in body)) return null;
   if (typeof body.version !== "string" || body.version.length === 0) return null;
-  if (typeof body.faithful_count !== "number" || !Number.isFinite(body.faithful_count)) return null;
+  if (!("faithful_count" in body)) {
+    return { version: body.version, faithfulCount: null };
+  }
+  if (typeof body.faithful_count !== "number" || !Number.isFinite(body.faithful_count)) {
+    return { version: body.version, faithfulCount: null };
+  }
   return { version: body.version, faithfulCount: body.faithful_count };
 }
 

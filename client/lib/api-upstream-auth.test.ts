@@ -22,8 +22,18 @@ describe("parseLiveStatus", () => {
     });
   });
 
-  it("rejects missing faithful_count", () => {
-    expect(parseLiveStatus({ version: "1.2.3" })).toBeNull();
+  it("keeps version when faithful_count is missing", () => {
+    expect(parseLiveStatus({ version: "1.2.3" })).toEqual({
+      version: "1.2.3",
+      faithfulCount: null,
+    });
+  });
+
+  it("treats non-finite faithful_count as null", () => {
+    expect(parseLiveStatus({ version: "1.2.3", faithful_count: Number.POSITIVE_INFINITY })).toEqual({
+      version: "1.2.3",
+      faithfulCount: null,
+    });
   });
 });
 
@@ -47,6 +57,18 @@ describe("fetchApiMeta", () => {
     await expect(fetchApiMeta()).resolves.toEqual({
       version: "1.2.3",
       faithfulCount: 662,
+      oracleTotal: 28412,
+    });
+    expect(ensureOracleTotalRefresh).toHaveBeenCalledOnce();
+  });
+
+  it("keeps version when live coverage is absent", async () => {
+    vi.mocked(getCachedOracleTotal).mockReturnValue(28412);
+    vi.stubGlobal("fetch", vi.fn(async () => json({ version: "1.2.3" })));
+
+    await expect(fetchApiMeta()).resolves.toEqual({
+      version: "1.2.3",
+      faithfulCount: null,
       oracleTotal: 28412,
     });
     expect(ensureOracleTotalRefresh).toHaveBeenCalledOnce();

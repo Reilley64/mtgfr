@@ -64,3 +64,13 @@ $ tsc --noEmit
 ## Concerns
 
 - The brief’s `bun test ...` command uses Bun’s built-in runner, which lacks Vitest helpers used by this repo (`vi.stubGlobal`, `vi.mocked`). The correct project command is `bun run test -- ...`, which I used for green verification.
+
+## Review finding follow-up: preserve version without coverage
+
+Updated `parseLiveStatus()` to accept `{ version }` payloads and degrade `faithfulCount` to `null` when `faithful_count` is absent or invalid, so `fetchApiMeta()` preserves the upstream version instead of falling back to `"unknown"`.
+
+```bash
+$ cd /workspace/client && bun run test -- lib/api-upstream-auth.test.ts lib/lobby/client.test.ts
+Test Files  2 passed (2)
+Tests      12 passed (12)
+```
