@@ -81,6 +81,7 @@ function spellOnStack(
   sourceId: number,
   label: string,
   print: string,
+  proxyArtUrl?: string,
 ): { stack: VisibleState["stack"]; objects: ObjectView[] } {
   const spell: ObjectView = {
     controller: 0,
@@ -96,6 +97,7 @@ function spellOnStack(
     plus_counters: 0,
     power: 0,
     print,
+    ...(proxyArtUrl ? { proxy_art_url: proxyArtUrl } : {}),
     summoning_sick: false,
     tapped: false,
     toughness: 0,
@@ -103,12 +105,20 @@ function spellOnStack(
   };
   return {
     objects: [spell],
-    stack: [{ controller: 0, kind: "spell", label: testMessageRef(label), source: sourceId }],
+    stack: [
+      {
+        controller: 0,
+        kind: "spell",
+        label: testMessageRef(label),
+        source: sourceId,
+        ...(proxyArtUrl ? { proxy_art_url: proxyArtUrl } : {}),
+      },
+    ],
   };
 }
 
 test("stack overlay renders card art for spells on the stack", () => {
-  const { objects, stack } = spellOnStack(42, "Lightning Bolt", "bolt-print");
+  const { objects, stack } = spellOnStack(42, "Lightning Bolt", "bolt-print", "https://example.com/bolt.png");
   const model: ViewModel = {
     board: initialBoardModel(),
     fold: gameFold(gameState({ objects, stack })),
@@ -121,7 +131,7 @@ test("stack overlay renders card art for spells on the stack", () => {
     resolveBoardCardArtMounts(),
     Scene.expect(Scene.testId("stack-overlay")).toExist(),
     Scene.expect(Scene.testId("stack-face-0")).toExist(),
-    Scene.expect(Scene.selector("[data-art-url]")).toExist(),
+    Scene.expect(Scene.selector('[data-art-url^="/api/card-art/proxy"]')).toExist(),
   );
 });
 

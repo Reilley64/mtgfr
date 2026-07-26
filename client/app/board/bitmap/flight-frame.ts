@@ -20,6 +20,7 @@ function cardPaintKey(card: RenderCard): Record<string, unknown> {
     tapped: card.tapped ?? false,
     tapFrac: card.tapFrac ?? null,
     print: card.print ?? "",
+    proxyArtUrl: card.proxyArtUrl ?? "",
     faceDown: card.faceDown ?? false,
     summoningSick: card.summoningSick ?? false,
     hasHaste: card.hasHaste ?? false,

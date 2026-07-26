@@ -132,7 +132,7 @@ test("AltDown sets altDown flag", () => {
 });
 
 test("AltDown pins the face-up card under the cursor (no click)", () => {
-  const creature = battlefieldCreature(7, "Sol Ring");
+  const creature = battlefieldCreature(7, "Sol Ring", { proxy_art_url: "https://example.com/sol-ring.png" });
   const fold = gameFold({ objects: [creature] });
   const screen = screenCenterForCard(fold, 7);
 
@@ -142,7 +142,13 @@ test("AltDown pins the face-up card under the cursor (no click)", () => {
 
   expect(pinned.altDown).toBe(true);
   expect(pinned.inspectPin).toEqual(
-    expect.objectContaining({ name: "Sol Ring", objectId: 7, cardId: "card-1", print: "print-1" }),
+    expect.objectContaining({
+      name: "Sol Ring",
+      objectId: 7,
+      cardId: "card-1",
+      print: "print-1",
+      proxyArtUrl: "https://example.com/sol-ring.png",
+    }),
   );
   expect((cmds[0] as { name?: string } | undefined)?.name).toBe("FetchInspectCard");
 });
@@ -216,7 +222,12 @@ test("AltDown prefers hand aux hover over the battlefield hit under the cursor",
     model,
     InspectAuxHovered({
       source: "hand",
-      card: { name: "Hand Shock", cardId: "shock-id", print: "shock-print" },
+      card: {
+        name: "Hand Shock",
+        cardId: "shock-id",
+        print: "shock-print",
+        proxyArtUrl: "https://example.com/shock.png",
+      },
     }),
     fold,
     "table-1",
@@ -228,6 +239,7 @@ test("AltDown prefers hand aux hover over the battlefield hit under the cursor",
     prepared: false,
     cardId: "shock-id",
     print: "shock-print",
+    proxyArtUrl: "https://example.com/shock.png",
   });
 });
 

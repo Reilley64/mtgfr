@@ -13,6 +13,7 @@ export type FlightKind = "battlefield" | "stack" | "from-stack";
 export interface CardFlight {
   id: number;
   print: string;
+  proxyArtUrl?: string;
   name: string;
   x: number;
   y: number;
@@ -28,6 +29,7 @@ export interface CardFlight {
 export type FlightSpawn = {
   id: number;
   print: string;
+  proxyArtUrl?: string;
   name: string;
   x: number;
   y: number;
@@ -48,6 +50,7 @@ export function spawnFlight(spawn: FlightSpawn): CardFlight {
   return {
     id: spawn.id,
     print: spawn.print,
+    ...(spawn.proxyArtUrl ? { proxyArtUrl: spawn.proxyArtUrl } : {}),
     name: spawn.name,
     x: spawn.x,
     y: spawn.y,

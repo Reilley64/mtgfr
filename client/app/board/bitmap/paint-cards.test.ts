@@ -131,6 +131,30 @@ describe("paintCard", () => {
     expect(ctx.drawImage).toHaveBeenCalledWith(image, 10, 20, 96, 134);
   });
 
+  it("falls back to print art after a proxy cache failure", () => {
+    const ctx = mockCtx();
+    const fallback = {} as HTMLImageElement;
+    const proxyCard = {
+      ...card({ print: "proxy-print" }),
+      proxyArtUrl: "https://example.com/bolt.png",
+    };
+    const cache = {
+      get: vi.fn((url: string) => {
+        if (url.startsWith("/api/card-art/proxy")) return undefined;
+        if (url.includes("proxy-print")) return fallback;
+        return undefined;
+      }),
+      isFailed: vi.fn((url: string) => url.startsWith("/api/card-art/proxy")),
+    };
+
+    paintCard(ctx, { panX: 0, panY: 0, zoom: 1 }, proxyCard, cache, 0);
+
+    expect(cache.get).toHaveBeenNthCalledWith(1, expect.stringContaining("/api/card-art/proxy?url="));
+    expect(cache.isFailed).toHaveBeenCalledWith(expect.stringContaining("/api/card-art/proxy?url="));
+    expect(cache.get).toHaveBeenNthCalledWith(2, expect.stringContaining("proxy-print"));
+    expect(ctx.drawImage).toHaveBeenCalledWith(fallback, 10, 20, 96, 134);
+  });
+
   it("keeps commander gold when adding a playable outline", () => {
     const calls: string[] = [];
     const ctx = mockCtx(calls);

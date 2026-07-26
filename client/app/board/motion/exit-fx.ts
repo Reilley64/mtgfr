@@ -3,6 +3,7 @@ export type ExitFxKind = "destroy" | "exile";
 export type ExitFx = {
   id: number;
   print: string;
+  proxyArtUrl?: string;
   name: string;
   kind: ExitFxKind;
   x: number;
@@ -31,6 +32,7 @@ const EXILE_COLORS = ["#3DDC97", "#7ee8d0"] as const;
 export function spawnExitFx(input: {
   id: number;
   print: string;
+  proxyArtUrl?: string;
   name: string;
   kind: ExitFxKind;
   x: number;
@@ -41,6 +43,7 @@ export function spawnExitFx(input: {
   return {
     id: input.id,
     print: input.print,
+    ...(input.proxyArtUrl ? { proxyArtUrl: input.proxyArtUrl } : {}),
     name: input.name,
     kind: input.kind,
     x: input.x,

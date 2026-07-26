@@ -3,6 +3,7 @@ import { colors } from "~/design-tokens.generated";
 import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, PlayerView } from "~/wire/types";
 import { gravatarUrl } from "../../domain/gravatar";
+import { sharedImageCache } from "../../domain/image-cache";
 import type { RenderCard } from "../geometry/layout";
 import { ZONE } from "../geometry/layout";
 import { spawnExitFx } from "../motion/exit-fx";
@@ -14,6 +15,7 @@ import {
   type FlightClockState,
   paintBitmapLayer,
   paintFlightLayer,
+  publishBitmapFrame,
   tickFlightClock,
 } from "./mount";
 
@@ -55,6 +57,7 @@ if (nativeStubGlobal == null) {
 
 afterEach(() => {
   unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 function player(overrides: Partial<PlayerView> = {}): PlayerView {
@@ -203,6 +206,48 @@ function flightClockState(overrides: Partial<FlightClockState> = {}): FlightCloc
     ...overrides,
   };
 }
+
+describe("publishBitmapFrame", () => {
+  it("preloads proxy and print fallback urls for resting, flight, and exit art", () => {
+    const preload = vi.spyOn(sharedImageCache, "preload").mockImplementation(() => {});
+    const publishedCard = { ...card({ print: "resting-print" }), proxyArtUrl: "https://example.com/resting.png" };
+    const publishedFlight = spawnFlight({
+      id: 8,
+      kind: "battlefield",
+      name: "Flight",
+      print: "flight-print",
+      scale: 1,
+      targetScale: 1,
+      targetX: 120,
+      targetY: 180,
+      x: 20,
+      y: 40,
+      proxyArtUrl: "https://example.com/flight.png",
+    });
+    const publishedExitFx = spawnExitFx({
+      id: 9,
+      kind: "destroy",
+      name: "Exit",
+      print: "exit-print",
+      x: 80,
+      y: 60,
+      scale: 1,
+      proxyArtUrl: "https://example.com/exit.png",
+    });
+
+    publishBitmapFrame(frame({ cards: [publishedCard], flights: [publishedFlight], exitFx: [publishedExitFx] }));
+
+    const urls = Array.from(preload.mock.calls.at(-1)?.[0] ?? []);
+    expect(urls).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("/api/card-art/proxy?url="),
+        expect.stringContaining("resting-print"),
+        expect.stringContaining("flight-print"),
+        expect.stringContaining("exit-print"),
+      ]),
+    );
+  });
+});
 
 describe("paintBitmapLayer", () => {
   it("paints battlefield permanent chrome on the resting layer without under-card labels", () => {

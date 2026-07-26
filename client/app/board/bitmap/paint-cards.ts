@@ -1,5 +1,6 @@
 import { colors } from "~/design-tokens.generated";
-import { cardBackUrl, imageUrlByPrint } from "../../domain/deck-builder/scryfall";
+import { resolveCardFaceUrls } from "../../domain/card-art/proxy-url";
+import { cardBackUrl } from "../../domain/deck-builder/scryfall";
 import type { ImageCache } from "../../domain/image-cache";
 import { TARGET_COLOR } from "../action/targeting";
 import { CARD_RESTING_OUTLINE, COMMANDER_GOLD } from "../chrome";
@@ -76,7 +77,26 @@ export type CardPaintOptions = {
   autoTapPreview?: boolean;
 };
 
-export type BitmapImageCache = Pick<ImageCache, "get">;
+export type BitmapImageCache = Pick<ImageCache, "get"> & Partial<Pick<ImageCache, "isFailed">>;
+
+export function resolvedBitmapFaceUrls(print: string, proxyArtUrl?: string): string[] {
+  const { url, fallback } = resolveCardFaceUrls({ print, proxyArtUrl });
+  return fallback ? [url, fallback] : [url];
+}
+
+export function resolvedBitmapFaceImage(
+  cache: BitmapImageCache,
+  print: string,
+  proxyArtUrl?: string,
+): HTMLImageElement | undefined {
+  const { url, fallback } = resolveCardFaceUrls({ print, proxyArtUrl });
+  const primary = cache.get(url);
+  if (primary) return primary;
+  if (fallback && cache.isFailed?.(url) === true) {
+    return cache.get(fallback);
+  }
+  return undefined;
+}
 
 export function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
   ctx.beginPath();
@@ -171,8 +191,7 @@ export function paintCardArt(
   ctx.save();
   rotateCard(ctx, card, viewer, tl.x, tl.y, w, h);
 
-  const url = card.faceDown ? cardBackUrl() : imageUrlByPrint(card.print);
-  const image = cache.get(url);
+  const image = card.faceDown ? cache.get(cardBackUrl()) : resolvedBitmapFaceImage(cache, card.print, card.proxyArtUrl);
   if (image) {
     roundRect(ctx, tl.x, tl.y, w, h, r);
     ctx.clip();
@@ -355,7 +374,7 @@ function paintFaceUp(
   h: number,
   r: number,
 ): void {
-  const img = cache.get(imageUrlByPrint(card.print));
+  const img = resolvedBitmapFaceImage(cache, card.print, card.proxyArtUrl);
   if (img) {
     ctx.save();
     roundRect(ctx, x, y, w, h, r);

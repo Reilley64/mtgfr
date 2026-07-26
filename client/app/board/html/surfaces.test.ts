@@ -448,6 +448,7 @@ test("hand surfaces render cost pips and a drag ghost", () => {
   const handCard = card(42, {
     name: "Lightning Bolt",
     print: "bolt-print",
+    proxy_art_url: "https://example.com/bolt.png",
     mana_cost: cost({ generic: 1 }),
   });
   const castAction = action(7, {
@@ -455,33 +456,42 @@ test("hand surfaces render cost pips and a drag ghost", () => {
     object: handCard.id,
     section: "hand",
   });
+  const handDrag = {
+    action: castAction,
+    name: "Lightning Bolt",
+    print: "bolt-print",
+    proxyArtUrl: "https://example.com/bolt.png",
+    manaCost: handCard.mana_cost,
+    kind: "instant",
+    x: 200,
+    y: 300,
+  };
   overlayScene(
     overlayModel(
       {
         ...initialBoardModel(),
-        handDrag: {
-          action: castAction,
-          name: "Lightning Bolt",
-          print: "bolt-print",
-          manaCost: handCard.mana_cost,
-          kind: "instant",
-          x: 200,
-          y: 300,
-        },
+        handDrag,
       },
       gameState({ actions: [castAction], objects: [handCard] }),
     ),
     resolveBoardCardArtMounts(2),
     Scene.expect(Scene.testId("hand-cost-pips")).toExist(),
     Scene.expect(Scene.testId("hand-drag-ghost")).toExist(),
+    Scene.expect(Scene.selector('[data-art-url^="/api/card-art/proxy"]')).toExist(),
   );
 });
 
 test("inspect overlay renders from a pinned inspect card", () => {
+  const inspectPin = {
+    name: "Sol Ring",
+    prepared: false,
+    print: "sol-ring-print",
+    proxyArtUrl: "https://example.com/sol-ring.png",
+  };
   overlayScene(
     overlayModel({
       ...initialBoardModel(),
-      inspectPin: { name: "Sol Ring", prepared: false, print: "sol-ring-print" },
+      inspectPin,
       inspectCard: {
         id: "sol-ring",
         name: "Sol Ring",
@@ -502,6 +512,7 @@ test("inspect overlay renders from a pinned inspect card", () => {
     }),
     resolveBoardCardArtMounts(),
     Scene.expect(Scene.testId("inspect-overlay")).toExist(),
+    Scene.expect(Scene.selector('[data-art-url^="/api/card-art/proxy"]')).toExist(),
   );
 });
 
@@ -616,6 +627,7 @@ test("pile overlay renders with its close control", () => {
     zone: ZONE.Graveyard,
     name: "Dead Weight",
     print: "dead-weight-print",
+    proxy_art_url: "https://example.com/dead-weight.png",
   });
   overlayScene(
     overlayModel(
@@ -625,6 +637,7 @@ test("pile overlay renders with its close control", () => {
     resolveBoardCardArtMounts(),
     Scene.expect(Scene.testId("pile-overlay")).toExist(),
     Scene.expect(Scene.testId("pile-overlay-close")).toExist(),
+    Scene.expect(Scene.selector('[data-art-url^="/api/card-art/proxy"]')).toExist(),
   );
 });
 

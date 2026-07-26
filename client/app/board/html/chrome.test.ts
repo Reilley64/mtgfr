@@ -191,7 +191,7 @@ test("the active player whose attack declaration was moved away sees 'Next'", ()
 test("mulliganing undecided seat sees overlay and hides hand bar", () => {
   const state = gameState({
     mulliganing: true,
-    objects: [card(1)],
+    objects: [card(1, { proxy_art_url: "https://example.com/forest.png" })],
     players: [
       {
         ...player(0),
@@ -223,6 +223,7 @@ test("mulliganing undecided seat sees overlay and hides hand bar", () => {
     Scene.expect(Scene.testId("mulligan-keep")).toExist(),
     Scene.expect(Scene.testId("mulligan-take")).toExist(),
     Scene.expect(Scene.testId("mulligan-face-1")).toExist(),
+    Scene.expect(Scene.selector('[data-art-url^="/api/card-art/proxy"]')).toExist(),
     Scene.expect(Scene.testId("hand-bar")).not.toExist(),
     Scene.expect(Scene.testId("mulligan-bar")).not.toExist(),
     Scene.expect(Scene.testId("board-primary")).not.toExist(),

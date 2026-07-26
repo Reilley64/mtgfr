@@ -1,6 +1,6 @@
 # Battlefield
 
-**Status:** Current (as of 2026-07-25)
+**Status:** Current (as of 2026-07-26)
 **Module:** `client/app/board/canvas/`, `client/app/board/bitmap/`, `client/app/board/chrome.ts`, `client/app/board/geometry/layout.ts`, `client/app/board/geometry/density.ts`
 
 ---
@@ -44,7 +44,7 @@ Flights are always above resting cards and are covered in [`2026-07-20-flights.m
 
 ### Resting permanents
 
-`bitmap/mount.ts` paints resting battlefield permanents through `paintCard`. Card faces use `sharedImageCache` with fallback art/name paint when images are not decoded yet. The resting layer skips ids in `hideCardIds` so a flying card is not double-drawn.
+`bitmap/mount.ts` paints resting battlefield permanents through `paintCard`. Card faces resolve through `resolveCardFaceUrls`: when `proxyArtUrl` is present, Mount preloads the same-origin proxy URL first, keeps the printed art URL as the fallback, and explicitly switches to the print URL after a proxy cache failure. The resting layer still falls back to art/name paint when neither image is decoded yet and skips ids in `hideCardIds` so a flying card is not double-drawn.
 
 Resting permanent chrome includes:
 

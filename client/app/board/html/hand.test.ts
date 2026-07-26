@@ -145,6 +145,14 @@ function treeHasClass(node: unknown, token: string): boolean {
   return (n.children ?? []).some((child) => treeHasClass(child, token));
 }
 
+function treeHasAttrPrefix(node: unknown, name: string, prefix: string): boolean {
+  const value = attr(node, name);
+  if (value?.startsWith(prefix)) return true;
+  if (node == null || typeof node !== "object") return false;
+  const n = node as { children?: unknown[] };
+  return (n.children ?? []).some((child) => treeHasAttrPrefix(child, name, prefix));
+}
+
 describe("handView unplayable brightness", () => {
   it("does not darken unplayable hand tiles (borders carry castability)", () => {
     const castable = object(42, { name: "Lightning Bolt" });
@@ -190,6 +198,23 @@ describe("handView unplayable brightness", () => {
     const face = findTestId(tree, "hand-card-face-42");
     expect(face).not.toBeNull();
     expect(treeHasClass(face, "opacity-25")).toBe(true);
+  });
+});
+
+describe("handView proxy art", () => {
+  it("threads proxy art through the face host and drag payload attrs", () => {
+    const proxyCard = object(42, {
+      name: "Lightning Bolt",
+      print: "bolt-print",
+      proxy_art_url: "https://example.com/bolt.png",
+    });
+    const tree = renderHand(state({ objects: [proxyCard], actions: [action(7, { object: 42 })] }));
+
+    const hit = findTestId(tree, "hand-card-42");
+    const face = findTestId(tree, "hand-card-face-42");
+
+    expect(attr(hit, "data-card-proxy-art-url")).toBe("https://example.com/bolt.png");
+    expect(treeHasAttrPrefix(face, "data-art-url", "/api/card-art/proxy?url=")).toBe(true);
   });
 });
 

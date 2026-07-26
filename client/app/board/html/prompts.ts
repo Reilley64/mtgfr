@@ -161,16 +161,18 @@ function frame(testId: string, title: string, body: ReadonlyArray<Html>): Html {
   );
 }
 
-function choiceItemPrint(item: ChoiceItem, state: VisibleState): string {
-  if (item.print) return item.print;
+function choiceItemArt(item: ChoiceItem, state: VisibleState): { print: string; proxyArtUrl?: string } {
+  if (item.print) {
+    return { print: item.print, proxyArtUrl: item.proxy_art_url };
+  }
   const obj = state.objects.find((o) => o.id === item.id);
-  return obj?.print ?? "";
+  return { print: obj?.print ?? "", proxyArtUrl: obj?.proxy_art_url };
 }
 
 function cardPickButton(item: ChoiceItem, state: VisibleState, picked: ReadonlyArray<number>, ordered: boolean): Html {
   const selected = picked.includes(item.id);
   const pickOrder = picked.indexOf(item.id);
-  const print = choiceItemPrint(item, state);
+  const { print, proxyArtUrl } = choiceItemArt(item, state);
   return h.button(
     [
       h.Type("button"),
@@ -189,6 +191,7 @@ function cardPickButton(item: ChoiceItem, state: VisibleState, picked: ReadonlyA
       print
         ? cardArt(h, {
             print,
+            proxyArtUrl,
             size: "large",
             alt: "",
             className: "block aspect-[150/209] w-[120px] rounded-[6px] bg-morph-slate",
@@ -222,7 +225,7 @@ function arrangeLaneCard(
   ordered: boolean,
 ): Html {
   const pickOrder = laneIds.indexOf(item.id);
-  const print = choiceItemPrint(item, state);
+  const { print, proxyArtUrl } = choiceItemArt(item, state);
   return h.button(
     [
       h.Type("button"),
@@ -237,6 +240,7 @@ function arrangeLaneCard(
       print
         ? cardArt(h, {
             print,
+            proxyArtUrl,
             size: "large",
             alt: "",
             className: "block aspect-[150/209] w-[120px] rounded-[6px] bg-morph-slate",
@@ -652,6 +656,7 @@ function targetPickButton(target: WireTarget, state: VisibleState, testId: strin
       obj?.print
         ? cardArt(h, {
             print: obj.print,
+            proxyArtUrl: obj.proxy_art_url,
             size: "large",
             alt: "",
             className: "block aspect-[150/209] w-[150px] rounded-[9px] bg-morph-slate",
@@ -1225,7 +1230,7 @@ function revealedToGraveyardAim(
   tableId: string | null,
 ): Html {
   const cards = pending.items.map((item) => {
-    const print = choiceItemPrint(item, state);
+    const { print, proxyArtUrl } = choiceItemArt(item, state);
     return h.button(
       [
         h.Type("button"),
@@ -1245,6 +1250,7 @@ function revealedToGraveyardAim(
         print
           ? cardArt(h, {
               print,
+              proxyArtUrl,
               size: "large",
               alt: "",
               className: "block aspect-[150/209] w-[120px] rounded-[6px] bg-morph-slate",
@@ -2270,10 +2276,11 @@ function distributeTopLanesPrompt(
     const current = currentBucket(item.id);
     const next = nextDistributeBucket(current, counts, caps);
     const clickBucket = next ?? current;
-    const print = choiceItemPrint(item, state);
+    const { print, proxyArtUrl } = choiceItemArt(item, state);
     const face = print
       ? cardArt(h, {
           print,
+          proxyArtUrl,
           size: "large",
           alt: "",
           className: "block aspect-[150/209] w-[120px] rounded-[6px] bg-morph-slate",
@@ -2685,10 +2692,11 @@ function destinationPickPrompt(
       ],
     );
   }
-  const print = choiceItemPrint(pending.item, state);
+  const { print, proxyArtUrl } = choiceItemArt(pending.item, state);
   const face = print
     ? cardArt(h, {
         print,
+        proxyArtUrl,
         size: "large",
         alt: "",
         className: "block aspect-[150/209] w-[120px] rounded-[6px] bg-morph-slate",

@@ -2,7 +2,7 @@ import { Effect, type Queue as EffectQueue, Queue, Stream } from "effect";
 import * as Mount from "foldkit/mount";
 import { colors } from "~/design-tokens.generated";
 import type { ActionView, PlayerView, VisibleState, WireAttack, WireBlock } from "~/wire/types";
-import { cardBackUrl, imageUrlByPrint } from "../../domain/deck-builder/scryfall";
+import { cardBackUrl } from "../../domain/deck-builder/scryfall";
 import { gravatarUrl, monogramLetter } from "../../domain/gravatar";
 import { type ImageCache, sharedImageCache } from "../../domain/image-cache";
 import type { Vec } from "../action/targeting";
@@ -21,6 +21,7 @@ import {
   paintCardAssignAmount,
   paintCardPickedHighlight,
   paintCardTargetHighlight,
+  resolvedBitmapFaceUrls,
 } from "./paint-cards";
 import { paintExitFx } from "./paint-exit-fx";
 import { paintFlightCard } from "./paint-flights";
@@ -187,6 +188,7 @@ function flightsChanged(prev: readonly CardFlight[], next: readonly CardFlight[]
     if (
       before.id !== after.id ||
       before.print !== after.print ||
+      before.proxyArtUrl !== after.proxyArtUrl ||
       before.name !== after.name ||
       before.targetX !== after.targetX ||
       before.targetY !== after.targetY ||
@@ -212,6 +214,7 @@ function exitFxChanged(prev: readonly ExitFx[], next: readonly ExitFx[]): boolea
     if (
       before.id !== after.id ||
       before.print !== after.print ||
+      before.proxyArtUrl !== after.proxyArtUrl ||
       before.name !== after.name ||
       before.kind !== after.kind ||
       before.x !== after.x ||
@@ -574,13 +577,17 @@ function paintArrow(
 function preloadFrameArt(frame: BitmapFrame, cache: Pick<ImageCache, "preload">): void {
   const urls: string[] = [];
   for (const card of frame.cards) {
-    urls.push(card.faceDown ? cardBackUrl() : imageUrlByPrint(card.print));
+    if (card.faceDown) {
+      urls.push(cardBackUrl());
+      continue;
+    }
+    urls.push(...resolvedBitmapFaceUrls(card.print, card.proxyArtUrl));
   }
   for (const flight of frame.flights) {
-    if (flight.print) urls.push(imageUrlByPrint(flight.print));
+    if (flight.print) urls.push(...resolvedBitmapFaceUrls(flight.print, flight.proxyArtUrl));
   }
   for (const fx of frame.exitFx ?? []) {
-    if (fx.print) urls.push(imageUrlByPrint(fx.print));
+    if (fx.print) urls.push(...resolvedBitmapFaceUrls(fx.print, fx.proxyArtUrl));
   }
   for (const player of frame.players) {
     const url = gravatarUrl(player.gravatar_hash ?? "");

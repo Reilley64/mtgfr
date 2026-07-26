@@ -1,10 +1,9 @@
 import { colors } from "~/design-tokens.generated";
-import { imageUrlByPrint } from "../../domain/deck-builder/scryfall";
 import type { ImageCache } from "../../domain/image-cache";
 import { CARD_H, CARD_W } from "../geometry/layout";
 import { LIFT_SHADOW_BLUR, LIFT_SHADOW_COLOR, LIFT_SHADOW_OFFSET_Y } from "../lift-shadow";
 import type { CardFlight } from "../motion/flights";
-import { type BitmapImageCache, CARD_OUTLINE, roundRect } from "./paint-cards";
+import { type BitmapImageCache, CARD_OUTLINE, resolvedBitmapFaceImage, roundRect } from "./paint-cards";
 
 export const FLIGHT_SHADOW_BLUR = LIFT_SHADOW_BLUR;
 export const FLIGHT_SHADOW_OFFSET_Y = LIFT_SHADOW_OFFSET_Y;
@@ -35,7 +34,7 @@ export function paintFlightCard(
   ctx.lineWidth = Math.max(1, 2 * zoom);
   ctx.stroke();
 
-  const img = flight.print ? cache.get(imageUrlByPrint(flight.print)) : undefined;
+  const img = flight.print ? resolvedBitmapFaceImage(cache, flight.print, flight.proxyArtUrl) : undefined;
   if (img) {
     ctx.save();
     roundRect(ctx, x, y, w, h, r);
