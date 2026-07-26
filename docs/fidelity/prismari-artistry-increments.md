@@ -28,11 +28,15 @@ identity but drops those copy-granted riders. The fix is one shared "current cop
 read that every permanent-copy and token-copy path consults.
 
 **Slices:**
-1. **Copiable-snapshot infrastructure (M).** Add one accessor for an object's current copiable
-   values: copied `def`, plus copy-effect exceptions that must be copied again, but excluding
-   noncopiable state like counters, unrelated EOT pumps, or mere summoning sickness. Regressions:
-   copying a `Twinflame` token again preserves haste; copying Muddle's copied form again preserves
-   myriad.
+1. **Copiable-snapshot infrastructure (M).** _LANDED 2026-07-26._ Added `Permanent::copy_rider_keywords`
+   (set by the new `Event::CopyRiderKeywordsGranted`), unioned onto effective keywords by
+   `runtime_continuous_effects` and read back by the `Game::copiable_keywords` accessor — the
+   keyword half of the copiable snapshot (`def_id_of` is the def half). Twinflame/Rionya/Determined
+   Iteration token haste, Cursed Mirror's copy haste, and Muddle's myriad now ride this rider
+   instead of a transient `TempBoost`; an until-end-of-turn copy clears it when its `def` reverts.
+   Regressions: `twinflame_token_copiable_snapshot_carries_haste`,
+   `muddle_copied_form_copiable_snapshot_carries_myriad` (plus the existing haste/myriad behavior
+   tests, unchanged).
 2. **Token-copy readers (M).** Route `TokenEffect::CreateCopy` and
    `TokenEffect::CopyEachEnteredThisTurnTokenTappedAttacking` through that accessor so
    `Determined Iteration`, `Replication Technique`, `Rite of Replication`, `Rionya`, `Twinflame`,
@@ -43,10 +47,16 @@ read that every permanent-copy and token-copy path consults.
    `Cursed Mirror`, `Brudiclad`, and `Muddle` preserve copiable exception riders when the thing
    they copy is already a copy.
 
-### 2. `linked-any-one-color-mana-credits` — 1 card, M
+### 2. `linked-any-one-color-mana-credits` — 1 card, M — LANDED 2026-07-26
 
 **Depends on:** none.
 **Cards:** `goldspan_dragon.toml`
+**Landed:** `StaticEffect::GrantManaAbility` gained a `single_color` flag (threaded through
+`granted_mana_abilities` / `ability_at` and skipped by the auto-tap mana estimate), so Goldspan's
+granted Treasure ability reuses the existing "add N mana of any one color" path (CR 106.4): it
+pauses on `ChooseManaColor` and produces two mana of the one chosen color, never two independent
+wildcards. Regressions: `goldspan_dragon_grants_treasures_two_mana` (updated to the color-choice
+behavior) and `goldspan_treasure_cannot_split_across_two_colors`.
 **Sketch:** `Goldspan Dragon` currently grants Treasure
 `"{T}, Sacrifice this artifact: Add two mana of any one color."` as `mana = ["any", "any"]`,
 which produces two independent wildcard credits. Prismari makes that over-permissiveness

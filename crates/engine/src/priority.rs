@@ -537,8 +537,12 @@ impl Game {
                 paid.push((id, cost.mana, credit));
             }
             if !has_paid_mana {
-                for (cost, batch) in self.granted_mana_abilities(id) {
-                    if cost.taps_self && cost.mana == Cost::FREE {
+                for (cost, batch, single_color) in self.granted_mana_abilities(id) {
+                    // A `single_color` grant (Goldspan's "two mana of any one color") can't be
+                    // auto-tapped for the estimate: its color is a manual choice, so its batch
+                    // of "any" credits would overstate reachable colors — skip it like an own
+                    // `single_color` ability.
+                    if cost.taps_self && cost.mana == Cost::FREE && !single_color {
                         mana.merge(&batch);
                         contributed_free = true;
                     }
@@ -1166,12 +1170,15 @@ impl Game {
                 }
             }
             let own_len = printed.abilities.len();
-            for (gi, (acost, batch)) in self.granted_mana_abilities(id).into_iter().enumerate() {
+            for (gi, (acost, batch, single_color)) in
+                self.granted_mana_abilities(id).into_iter().enumerate()
+            {
                 let index = own_len + gi;
                 if !acost.taps_self
                     || acost.mana != Cost::FREE
                     || acost.pay_life != Amount::Fixed(0)
                     || !matches!(acost.sacrifice, SacrificeCost::None)
+                    || single_color
                     || self.ability_activation_gate(player, id, index).is_err()
                 {
                     continue;

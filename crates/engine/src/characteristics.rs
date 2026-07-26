@@ -882,6 +882,18 @@ impl Game {
                 },
             });
         }
+        // Copy-effect exception keywords (CR 707.2 — "except it has haste/myriad") are part of
+        // the object's copiable characteristics, so they grant the keyword the same as any other
+        // continuous grant. `copiable_keywords` reads the same field for the copy-again path.
+        if !p.copy_rider_keywords.is_empty() {
+            effects.push(ContinuousEffect {
+                source: object,
+                timestamp: self.static_continuous_timestamp(object),
+                kind: ContinuousEffectKind::GrantKeywords {
+                    keywords: p.copy_rider_keywords,
+                },
+            });
+        }
         effects
     }
 
@@ -1717,7 +1729,7 @@ impl Game {
     pub(crate) fn granted_mana_abilities(
         &self,
         candidate: ObjectId,
-    ) -> Vec<(ActivationCost, ManaPool)> {
+    ) -> Vec<(ActivationCost, ManaPool, bool)> {
         let Some(candidate_permanent) = self.as_permanent(candidate) else {
             return Vec::new();
         };
@@ -1739,6 +1751,7 @@ impl Game {
                         cost,
                         mana,
                         restriction,
+                        single_color,
                     }),
                 ) = (ability.timing, ability.effect.clone())
                 else {
@@ -1748,7 +1761,7 @@ impl Game {
                     // Wrapped here, once, so every reader of a granted batch (this ability's
                     // own resolution and the `available_mana` estimate) sees it already
                     // spend-restricted (Galazeth Prismari) — see `ManaPool::restricted_by`.
-                    grants.push((cost, mana.restricted_by(restriction)));
+                    grants.push((cost, mana.restricted_by(restriction), single_color));
                 }
             }
         }
@@ -1805,7 +1818,7 @@ impl Game {
         }
         let granted_index = index - def.abilities.len();
         let mana_grants = self.granted_mana_abilities(object);
-        if let Some(&(cost, mana)) = mana_grants.get(granted_index) {
+        if let Some(&(cost, mana, single_color)) = mana_grants.get(granted_index) {
             return Some(Ability {
                 timing: Timing::Activated(cost),
                 effect: Effect::Mana(ManaEffect::Add {
@@ -1816,7 +1829,7 @@ impl Game {
                     opponent_colors: 0,
                     repeat: Amount::Fixed(1),
                     restriction: None,
-                    single_color: false,
+                    single_color,
                     track_provenance: false,
                     target: TargetSpec::None,
                     persist_until_end_of_turn: false,

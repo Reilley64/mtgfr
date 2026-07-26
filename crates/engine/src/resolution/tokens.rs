@@ -14,7 +14,6 @@ impl Game {
         target: Option<Target>,
         x: u32,
     ) -> Vec<Event> {
-        let source_name = self.source_name_of(source);
         match effect {
             TokenEffect::Create {
                 token,
@@ -229,14 +228,14 @@ impl Game {
                         def,
                         creator: source,
                     });
-                    // Determined Iteration: "The token created this way gains haste."
+                    // "…a copy of that creature, except it has haste" (Twinflame, Determined
+                    // Iteration, Rionya): the haste is part of the copy's copiable values (CR
+                    // 707.2), so a copy of this token keeps it — a `CopyRiderKeywordsGranted`
+                    // rider, not a transient `TempBoost`.
                     if haste {
-                        events.push(Event::TempBoost {
+                        events.push(Event::CopyRiderKeywordsGranted {
                             object: token,
-                            power: 0,
-                            toughness: 0,
                             keywords: HASTE,
-                            source_name,
                         });
                     }
                     // Determined Iteration: "Sacrifice it at the beginning of the next end step"
@@ -283,12 +282,12 @@ impl Game {
                         def,
                         until_eot: true,
                     },
-                    Event::TempBoost {
+                    // "…except it has myriad" is a copiable value (CR 707.2): a copy of Muddle's
+                    // copied form keeps myriad — a `CopyRiderKeywordsGranted` rider, not a
+                    // transient `TempBoost`. Cleared when the until-end-of-turn copy reverts.
+                    Event::CopyRiderKeywordsGranted {
                         object: source,
-                        power: 0,
-                        toughness: 0,
                         keywords: MYRIAD,
-                        source_name,
                     },
                 ]
             }

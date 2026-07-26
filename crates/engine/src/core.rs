@@ -346,6 +346,19 @@ impl Game {
         }
     }
 
+    /// The copy-effect *exception* keywords that are part of the object's current **copiable**
+    /// values (CR 707.2 — a copy made "except it has haste"/"except it has myriad"). The keyword
+    /// half of the copiable snapshot every permanent- and token-copy path reads alongside
+    /// [`def_id_of`](Self::def_id_of), so a second-generation copy (Brudiclad copying a Twinflame
+    /// token, Rite of Replication copying Muddle's copied form) preserves the rider rather than
+    /// dropping it. Empty for a spell/card or a permanent under no copy-exception rider.
+    pub fn copiable_keywords(&self, id: ObjectId) -> &'static [Keyword] {
+        match self.as_permanent(id) {
+            Some(p) => p.copy_rider_keywords,
+            None => &[],
+        }
+    }
+
     /// The card definition of whatever live form the object at `id` currently has.
     pub fn def_of(&self, id: ObjectId) -> CardDef {
         match &self.objects[id as usize] {

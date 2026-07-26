@@ -191,17 +191,16 @@ impl Game {
                 },
             );
         }
-        // Cursed Mirror's "except it has haste."
+        // Cursed Mirror's "except it has haste" — a copiable value (CR 707.2): a copy of this
+        // copied form keeps haste, so it rides as a `CopyRiderKeywordsGranted` rider rather than
+        // a transient `TempBoost`. Cleared when the until-end-of-turn copy reverts.
         if gains_haste {
             const HASTE: &[Keyword] = &[Keyword::Haste];
             self.push_apply(
                 &mut events,
-                Event::TempBoost {
+                Event::CopyRiderKeywordsGranted {
                     object: source,
-                    power: 0,
-                    toughness: 0,
                     keywords: HASTE,
-                    source_name,
                 },
             );
         }

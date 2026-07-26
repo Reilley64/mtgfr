@@ -1099,6 +1099,7 @@ pub(crate) fn fresh_permanent(
         reverts_to_def_eot: None,
         spent_colors: [false; Color::COUNT],
         cast_from_hand: false,
+        copy_rider_keywords: &[],
     }
 }
 
@@ -1863,6 +1864,17 @@ pub(crate) struct Permanent {
     /// manifested permanent, or anything else that never went through [`Event::PermanentEntered`]
     /// — every one of those is, by definition, not a hand cast.
     pub(crate) cast_from_hand: bool,
+    /// Copy-effect *exception* keywords that are part of this object's **copiable** values (CR
+    /// 707.2 — a copy made "except it has haste"/"except it has myriad": Twinflame, Cursed
+    /// Mirror, Muddle, Determined Iteration, Rionya). Unlike an ordinary until-end-of-turn
+    /// keyword grant (a `TempBoost`, unrelated EOT pump), these ride along when the object is
+    /// copied *again* — so a second-generation copy (Brudiclad, Rite of Replication) keeps the
+    /// rider. Unioned onto the effective keywords by [`Game::runtime_continuous_effects`] and
+    /// read back by [`Game::copiable_keywords`]; set by [`Event::CopyRiderKeywordsGranted`].
+    /// Not cleared at ordinary cleanup (a copiable characteristic resets with the object per CR
+    /// 400.7), but an *until-end-of-turn* copy clears it when its `def` reverts (Cursed Mirror,
+    /// Muddle — see [`Event::TempBoostsEnded`]). `&'static`, defaulted `&[]`.
+    pub(crate) copy_rider_keywords: &'static [Keyword],
 }
 
 /// One slot in the object arena. A card's slot becomes [`Object::Moved`] when it changes

@@ -2223,6 +2223,17 @@ pub enum Event {
     },
     /// A permanent's until-end-of-turn boosts wore off (cleanup).
     TempBoostsEnded { object: ObjectId },
+    /// A copy effect made `object` a copy "except it has `keywords`" (CR 707.2 — Twinflame's
+    /// "except it has haste," Muddle's "except it has myriad," Cursed Mirror's haste). Unlike a
+    /// [`TempBoost`](Event::TempBoost) keyword grant, these are part of the object's **copiable**
+    /// characteristics: they union onto its effective keywords (via
+    /// [`Permanent::copy_rider_keywords`]) *and* ride along when it is copied again. Applied by
+    /// unioning into that field; never cleared at ordinary cleanup (a copiable value resets with
+    /// the object per CR 400.7), only when an until-end-of-turn copy reverts its `def`.
+    CopyRiderKeywordsGranted {
+        object: ObjectId,
+        keywords: &'static [Keyword],
+    },
     /// A permanent's base power/toughness was SET until end of turn (CR 613.3(7b) — Biomass
     /// Mutation, Quandrix Charm's "has base power and toughness X/X until end of turn"), stored on
     /// [`Permanent::base_pt_set_eot`] and cleared alongside the temp boosts at

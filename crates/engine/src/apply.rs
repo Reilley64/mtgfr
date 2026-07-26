@@ -1344,9 +1344,33 @@ impl Game {
                 p.added_colors_eot = &[];
                 p.set_color_eot = None;
                 // Revert an until-EOT enter-as-copy to the printed permanent (CR 514.2 — Cursed
-                // Mirror's "become a copy … until end of turn").
+                // Mirror's "become a copy … until end of turn"). The copy's "except it has
+                // haste/myriad" rider ends with the copy, so clear the copiable rider too (an
+                // indefinite copy or a token leaves it in place — it resets with the object).
                 if let Some(printed) = p.reverts_to_def_eot.take() {
                     p.def = printed;
+                    p.copy_rider_keywords = &[];
+                }
+            }
+            // A copy made "except it has <keywords>" (CR 707.2): union the exception keywords into
+            // the object's copiable characteristics (they persist and are copied again), rather
+            // than the until-end-of-turn `TempBoost` an ordinary keyword grant uses.
+            Event::CopyRiderKeywordsGranted { object, keywords } => {
+                let p = self.permanent_mut(object);
+                if p.copy_rider_keywords.is_empty() {
+                    p.copy_rider_keywords = keywords;
+                } else {
+                    // Union-not-clobber for a second rider landing on the same object (a copy of a
+                    // copy that itself carries a different rider). Leaks a small deduped slice to
+                    // keep `Permanent: Copy`, bounded by one leak per such collision (mirrors
+                    // `KeywordsStripped`'s own union above).
+                    let mut union: Vec<Keyword> = p.copy_rider_keywords.to_vec();
+                    for k in keywords {
+                        if !union.contains(k) {
+                            union.push(*k);
+                        }
+                    }
+                    p.copy_rider_keywords = Box::leak(union.into_boxed_slice());
                 }
             }
             Event::KeywordsStripped { object, keywords } => {

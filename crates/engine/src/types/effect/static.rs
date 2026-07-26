@@ -128,6 +128,12 @@ pub enum StaticEffect {
         mana: ManaPool,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         restriction: Option<SpendRestriction>,
+        /// "Add N mana of any one color" (CR 106.4 — Goldspan Dragon's granted Treasure ability):
+        /// every credit locks to the one color the controller names, so activating pauses on
+        /// [`crate::PendingChoice::ChooseManaColor`] rather than producing independent wildcards.
+        /// The granted twin of [`ManaEffect::Add`]'s own `single_color`; `false` for a plain grant.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        single_color: bool,
     },
 
     GrantToAttached {

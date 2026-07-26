@@ -9345,6 +9345,32 @@ fn twinflame_token_copy_gains_haste_and_exiles() {
 }
 
 #[test]
+fn twinflame_token_copiable_snapshot_carries_haste() {
+    // Copy-effect exception riders slice 1: Twinflame's "except it has haste" is part of the
+    // token's *copiable* values (CR 707.2), so its copiable snapshot reports haste — the rider a
+    // second-generation copy preserves — not merely a transient until-end-of-turn boost.
+    let mut game = Game::new();
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let twinflame = game.spawn_in_hand(PlayerId(0), card("Twinflame"));
+
+    cast_twinflame_and_resolve(&mut game, twinflame, 1);
+    let copy = battlefield_named(&game, PlayerId(0), "Grizzly Bear")
+        .into_iter()
+        .find(|&id| id != mine)
+        .expect("Twinflame minted a copy");
+
+    assert!(game.has_keyword(copy, Keyword::Haste), "the copy has haste");
+    assert!(
+        game.copiable_keywords(copy).contains(&Keyword::Haste),
+        "haste is a copiable rider, not a transient boost — a copy of this token keeps it"
+    );
+    assert!(
+        game.copiable_keywords(mine).is_empty(),
+        "the original Grizzly Bear carries no copy-exception rider"
+    );
+}
+
+#[test]
 fn a_token_copy_fires_the_originals_etb_trigger() {
     // Copying Elvish Visionary ("When this creature enters, draw a card") makes a token that
     // enters through the normal path — so its copied ETB fires and draws.
@@ -10209,6 +10235,32 @@ fn muddle_becomes_copy_of_chosen_creature_until_end_of_turn_on_magecraft() {
     assert!(
         !game.has_keyword(muddle, Keyword::Myriad),
         "myriad expires with the copy"
+    );
+}
+
+#[test]
+fn muddle_copied_form_copiable_snapshot_carries_myriad() {
+    // Copy-effect exception riders slice 1: Muddle's "except it has myriad" is part of its
+    // copied form's *copiable* values (CR 707.2), so the copiable snapshot reports myriad — the
+    // rider a second-generation copy of Muddle preserves — and it is cleared when the
+    // until-end-of-turn copy reverts.
+    let mut game = Game::new();
+    let muddle = game.spawn_on_battlefield(PlayerId(0), card("Muddle, the Ever-Changing"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), creature("Big Bear", 5, 5, &[]));
+    let dummy = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
+
+    fire_muddle_magecraft(&mut game, dummy, true, Some(bear));
+    resolve_whole_stack(&mut game);
+
+    assert!(
+        game.copiable_keywords(muddle).contains(&Keyword::Myriad),
+        "myriad is a copiable rider on Muddle's copied form"
+    );
+
+    pass_until_next_turn(&mut game);
+    assert!(
+        game.copiable_keywords(muddle).is_empty(),
+        "the until-end-of-turn copy reverting clears the copiable rider"
     );
 }
 
@@ -11681,6 +11733,7 @@ fn auto_tap_pays_with_a_free_granted_mana_ability() {
                 }; 4],
             },
             restriction: None,
+            single_color: false,
         }),
         optional: false,
         min_level: 0,
@@ -64745,39 +64798,85 @@ fn goldspan_dragon_grants_treasures_two_mana() {
     // two mana of any one color.'" The grant is a static ability read live off the board
     // (Game::granted_mana_abilities), addressed on the Treasure past its own ability (index
     // 0 is the Treasure's built-in "Add one mana of any color"; index 1 is the grant).
+    // "Any *one* color" (CR 106.4): both credits lock to the one color the controller names,
+    // so the ability pauses on ChooseManaColor rather than adding two independent wildcards.
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Goldspan Dragon"));
     let treasure = game.spawn_on_battlefield(PlayerId(0), treasure_token());
 
-    let events = game
-        .submit(Intent::ActivateAbility {
-            player: PlayerId(0),
-            object: treasure,
-            ability_index: 1,
-            target: None,
-            sacrifice: vec![],
-            discard_cost: vec![],
-            x: 0,
-        })
-        .unwrap();
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: treasure,
+        ability_index: 1,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
 
     assert_eq!(
         game.zone_of(treasure),
         Zone::Graveyard,
         "the granted ability's sacrifice cost consumed the Treasure"
     );
-    let added = events.iter().find_map(|e| match e {
-        Event::ManaAdded {
-            mana: Mana::Any,
-            amount,
-            ..
-        } => Some(*amount),
-        _ => None,
-    });
     assert_eq!(
-        added,
-        Some(2),
-        "the grant adds two mana, not the Treasure's own one"
+        game.pending_choice(),
+        Some(PendingChoice::ChooseManaColor {
+            player: PlayerId(0),
+            source: treasure,
+            amount: 2,
+        }),
+        "the grant adds two mana of one chosen color, pausing to name it"
+    );
+
+    game.submit(Intent::ChooseManaColor {
+        player: PlayerId(0),
+        color: Color::Red,
+    })
+    .unwrap();
+
+    assert_eq!(game.mana_in_pool(PlayerId(0), Color::Red), 2);
+    assert_eq!(
+        game.floating_mana(PlayerId(0)),
+        2,
+        "both credits lock to the one named color, not two independent wildcards"
+    );
+}
+
+#[test]
+fn goldspan_treasure_cannot_split_across_two_colors() {
+    // Regression for linked-any-one-color-mana-credits: one Goldspan-boosted Treasure can fund
+    // {R}{R} (or {U}{U}), but never one blue pip and one red pip — "two mana of any one color"
+    // means both mana are the same chosen color.
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Goldspan Dragon"));
+    let treasure = game.spawn_on_battlefield(PlayerId(0), treasure_token());
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: treasure,
+        ability_index: 1,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    game.submit(Intent::ChooseManaColor {
+        player: PlayerId(0),
+        color: Color::Red,
+    })
+    .unwrap();
+
+    // The pool now holds two concrete red — it can pay {R}{R}, but has no blue and no
+    // independent wildcard credit that could split off to fund a blue pip.
+    let pool = game.mana_pool(PlayerId(0));
+    assert_eq!(pool.colored[Color::Red.index()], 2);
+    assert_eq!(pool.colored[Color::Blue.index()], 0);
+    assert_eq!(
+        pool.any, 0,
+        "a single Goldspan Treasure leaves no any-color credit to split one blue and one red pip"
     );
 }
 
