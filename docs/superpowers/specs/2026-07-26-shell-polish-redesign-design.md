@@ -152,3 +152,4 @@ This document is design input only. Each implementation wave **must** update the
 - Concrete font pair selection belongs in the Wave 1 implementation plan (license, glyph coverage, file size, tracking with display titles).
 - `PRODUCT.md` “auth, lobby, and builder are quiet surfaces” is relaxed for shell atmosphere and auth brand beat; the board remains the hero and shell still must not invent reward chrome.
 - Landscape-first composition rules remain; portrait no longer blocks with a dialog — it renders those landscape compositions rotated.
+- Living specs that mention the portrait gate in z-order or out-of-scope notes (`card-inspect`, deck/lobby cross-links) should drop or rephrase the dialog when Wave 1 lands; no behavior change beyond removing a layer that no longer exists.
