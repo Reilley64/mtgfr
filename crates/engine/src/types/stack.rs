@@ -2050,6 +2050,9 @@ pub enum Event {
         /// The colors of mana actually spent to pay this cast's cost (CR 106.9); see
         /// [`Spell::spent_colors`].
         spent_colors: [bool; Color::COUNT],
+        /// How many Phyrexian mana pips were paid with life instead of mana (CR 107.4f); see
+        /// [`Spell::phyrexian_life_paid`].
+        phyrexian_life_paid: u8,
     },
     /// A multi-target spell's chosen targets (CR 601.2c) were recorded onto `spell` — either
     /// auto-filled at cast (when the choice was forced) or answered via [`Intent::ChooseTargets`].

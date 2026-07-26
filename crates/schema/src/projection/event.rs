@@ -103,6 +103,12 @@ pub(crate) fn project_event(
             // reasoning as `replicate_count` above — no UI reads it yet. Add it when a
             // Multikicker card's UI wants to show "cast with N charges."
             multikicker_count: _,
+            // ponytail: how many Phyrexian pips were paid with life (CR 107.4f) isn't surfaced on
+            // the wire either, same reasoning as `spent_colors` above — the client sees the
+            // resulting `LifeChanged` event, and Compleated's as-enters loyalty reduction shows up
+            // on the permanent's own loyalty total. Add it here if a UI wants to badge the cast
+            // itself as "Compleated, paid with life."
+            phyrexian_life_paid: _,
         } => VisibleEvent::SpellCast {
             spell,
             from,

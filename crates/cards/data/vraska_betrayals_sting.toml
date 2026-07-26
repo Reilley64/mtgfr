@@ -12,7 +12,7 @@ oracle = "Compleated ({B/P} can be paid with {B} or 2 life. If life was paid, th
 set = "ecc"
 subtypes = ["Vraska"]
 legendary = true
-approximates = "Two residuals, each its own unlanded increment: the {B/P} pip pays black mana or 2 life (auto-picked, not a real player choice — ponytail note on `ManaPool::spend_plan_unrestricted`) but which way it went isn't persisted past the cast, so Compleated's \"enters with two fewer loyalty counters\" when life was paid never applies (increment #16, which will need to thread that outcome onto the resolved permanent); and the −2 \"target creature becomes a Treasure artifact ... and loses all other card types and abilities\" mode is omitted entirely rather than approximated (increment #25)."
+approximates = "The −2's \"target creature becomes a Treasure artifact ... and loses all other card types and abilities\" mode is omitted entirely rather than approximated (increment #25)."
 
 [cost]
 generic = 4

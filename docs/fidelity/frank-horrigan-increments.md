@@ -370,7 +370,7 @@ damage amount via `fill_combat_damage`/`contextualize_effect`, so no new amount 
 `power_fist.toml` is faithful: trample via `GrantToAttached { keywords }`, the counters trigger via
 the new `trigger` field, Equip {2} — no `approximates`. Still blocked: nothing.
 
-### 16. `compleated` — 1 card, M
+### 16. `compleated` — 1 card, M — LANDED 2026-07-27
 Depends on: #8 phyrexian-mana (LANDED — the pip is real, but see below).
 "If life was paid, this planeswalker enters with two fewer loyalty counters" — an as-enters
 replacement reading how the `{B/P}` pip was actually settled. *Sketch:* #8 derives the life-paid
@@ -378,6 +378,20 @@ answer inside `Game::cast` (`phyrexian_life_paid_from`) and throws it away once 
 deducted, so this increment's real work is **persisting** it — record the life-paid pip count on
 the spell and carry it to the resolved permanent, then have the planeswalker's enters-with-loyalty
 read subtract 2 per pip paid with life. Also needs Vraska's −2 (#25). *Cards:* vraska_betrayals_sting.
+
+**LANDED 2026-07-27:** `Event::SpellCast` and `Spell` (`types/card.rs`) both gained
+`phyrexian_life_paid: u8`, threaded from the already-computed `phyrexian_life` at the primary cast
+site (`0` at every other `Event::SpellCast`/`Spell` construction site — adventure, split-half,
+prepared, spell-copy, the one test-only site in `characteristics.rs`). `Event::PermanentEntered`
+reads it back off the resolving `Spell` and subtracts `2 * phyrexian_life_paid` from the fresh
+permanent's `loyalty`, guard-return style (skipped when zero) — a one-shot as-enters adjustment,
+no new `Permanent` field. `crates/schema/src/projection/event.rs`'s `VisibleEvent::SpellCast`
+match gained a ponytail-noted `phyrexian_life_paid: _` (not surfaced on the wire yet, same as
+`spent_colors`). Tests: `compleated_vraska_enters_with_two_fewer_loyalty_when_life_paid` and
+`compleated_vraska_enters_with_full_loyalty_when_the_pip_took_mana`
+(`crates/engine/tests/game.rs`); `cast_vraska_with` now returns the cast `ObjectId`. Vraska's
+`approximates` is trimmed to the −2 Treasure-mode residual only (#25, unlanded) — the Compleated
+half is faithful.
 
 ### 17. `proliferate-full-scope` — 9 cards + observers, L — LANDED 2026-07-27
 Depends on: #20 slice 1 (for the player half).

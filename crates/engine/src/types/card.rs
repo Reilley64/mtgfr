@@ -1533,6 +1533,14 @@ pub(crate) struct Spell {
     /// cast) or a cast form (adventure, prepared copy) this snapshot isn't wired through yet — no
     /// pool card checks color-spent off those forms.
     pub(crate) spent_colors: [bool; Color::COUNT],
+    /// How many of this spell's Phyrexian mana pips (CR 107.4f — Vraska, Betrayal's Sting's
+    /// Compleated `{B/P}`) were paid with life instead of mana, snapshotted right before this
+    /// spell hits the stack (see `phyrexian_life_paid_from` in `cast.rs`). Copied onto the
+    /// resulting permanent's as-enters loyalty when the spell resolves
+    /// ([`Event::PermanentEntered`]) — CR 107.4f: "If life was paid, this planeswalker enters
+    /// with two fewer loyalty counters" per pip so paid. `0` for a spell with no Phyrexian pips
+    /// or one that paid them all with mana.
+    pub(crate) phyrexian_life_paid: u8,
 }
 
 /// A permanent on the battlefield, with its mutable per-object state.

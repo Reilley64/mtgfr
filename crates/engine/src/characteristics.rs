@@ -2500,6 +2500,7 @@ mod cache_tests {
                 masked: false,
                 evoked: false,
                 spent_colors: [false; Color::COUNT],
+                phyrexian_life_paid: 0,
             }),
         );
         let permanent = game.objects.len() as ObjectId;

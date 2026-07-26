@@ -490,6 +490,7 @@ impl Game {
                 masked,
                 evoked,
                 spent_colors,
+                phyrexian_life_paid,
             } => {
                 let (def, commander) = match self.objects[from as usize] {
                     Object::Card(c) => (c.def, c.commander),
@@ -545,6 +546,7 @@ impl Game {
                         masked,
                         evoked,
                         spent_colors,
+                        phyrexian_life_paid,
                     }),
                 );
                 if serra_recursion {
@@ -628,6 +630,9 @@ impl Game {
                         // the same `Event::ManaSpent` snapshot `Event::SpellCast` uses
                         // (`Game::cast_adventure`) if one ever does.
                         spent_colors: [false; Color::COUNT],
+                        // No pool adventure card has a Phyrexian pip; wire this the same way as
+                        // `spent_colors` above if one ever does.
+                        phyrexian_life_paid: 0,
                     }),
                 );
                 assert_eq!(id, spell);
@@ -701,6 +706,9 @@ impl Game {
                         // wire this from the same `Event::ManaSpent` snapshot `Event::SpellCast`
                         // uses if one ever does.
                         spent_colors: [false; Color::COUNT],
+                        // No pool split card has a Phyrexian pip; wire this the same way as
+                        // `spent_colors` above if one ever does.
+                        phyrexian_life_paid: 0,
                     }),
                 );
                 assert_eq!(id, spell);
@@ -795,6 +803,7 @@ impl Game {
                             evoked: false,
                             // A copy pays no cost (CR 707.10) — nothing was spent to "cast" it.
                             spent_colors: [false; Color::COUNT],
+                            phyrexian_life_paid: 0,
                         },
                     }),
                 );
@@ -890,6 +899,9 @@ impl Game {
                         // wire this from the same `Event::ManaSpent` snapshot `Event::SpellCast`
                         // uses if one ever does.
                         spent_colors: [false; Color::COUNT],
+                        // No pool prepare back face has a Phyrexian pip; wire this the same way as
+                        // `spent_colors` above if one ever does.
+                        phyrexian_life_paid: 0,
                     }),
                 );
                 assert_eq!(id, spell);
@@ -1676,6 +1688,7 @@ impl Game {
                     evoked,
                     multikicker_count,
                     spent_colors,
+                    phyrexian_life_paid,
                 ) = match self.objects[from as usize] {
                     Object::Spell(s) => (
                         s.def,
@@ -1691,6 +1704,7 @@ impl Game {
                         s.evoked,
                         s.multikicker_count,
                         s.spent_colors,
+                        s.phyrexian_life_paid,
                     ),
                     _ => panic!("PermanentEntered source {from} is not a spell"),
                 };
@@ -1731,6 +1745,13 @@ impl Game {
                 // was kicked" — locked in here while `from` is still the resolving Spell, the same
                 // idiom as `entered_with_x` above.
                 self.permanent_mut(permanent).entered_times_kicked = multikicker_count;
+                // Compleated (CR 107.4f — Vraska, Betrayal's Sting): a {a/P} pip paid with life
+                // means the planeswalker enters with two fewer loyalty counters, two per pip so
+                // paid. A one-shot as-enters adjustment, not durable state — no new `Permanent`
+                // field needed, the same idiom as `entered_with_x` above.
+                if phyrexian_life_paid > 0 {
+                    self.permanent_mut(permanent).loyalty -= 2 * i32::from(phyrexian_life_paid);
+                }
                 // See `Permanent::spent_colors`'s doc — same "read it before the spell is gone"
                 // idiom as `entered_with_x` above (Court Hussar's "unless {W} was spent to cast it").
                 self.permanent_mut(permanent).spent_colors = spent_colors;

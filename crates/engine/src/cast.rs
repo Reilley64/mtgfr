@@ -601,6 +601,7 @@ impl Game {
                 masked: false,
                 evoked,
                 spent_colors,
+                phyrexian_life_paid: phyrexian_life,
             },
         );
         if from_command {
@@ -1913,6 +1914,7 @@ impl Game {
                 masked: false,
                 evoked: false,
                 spent_colors,
+                phyrexian_life_paid: 0,
             },
         );
         // Casting is an action: reset the pass count; the caster keeps priority. (CR 117, CR 601)
@@ -2007,6 +2009,7 @@ impl Game {
                 masked,
                 evoked: false,
                 spent_colors,
+                phyrexian_life_paid: 0,
             },
         );
     }

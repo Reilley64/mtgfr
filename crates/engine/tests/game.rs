@@ -94487,8 +94487,8 @@ fn vraska_betrayals_sting_places_nothing_at_nine_or_more_poison() {
 }
 
 /// Tap `lands` (already on the battlefield) for mana, then cast Vraska, Betrayal's Sting
-/// ({4}{B}{B/P}) from hand.
-fn cast_vraska_with(game: &mut Game, lands: &[ObjectId]) {
+/// ({4}{B}{B/P}) from hand. Returns the spell's object id (still on the stack).
+fn cast_vraska_with(game: &mut Game, lands: &[ObjectId]) -> ObjectId {
     let vraska = game.spawn_in_hand(PlayerId(0), card("Vraska, Betrayal's Sting"));
     for &land in lands {
         game.submit(Intent::TapForMana {
@@ -94516,6 +94516,7 @@ fn cast_vraska_with(game: &mut Game, lands: &[ObjectId]) {
     })
     .unwrap();
     assert_eq!(game.zone_of(vraska), Zone::Stack, "Vraska was cast");
+    vraska
 }
 
 #[test]
@@ -94531,7 +94532,7 @@ fn a_phyrexian_pip_paid_with_life_costs_two_life() {
 
     let mut lands = vec![swamp];
     lands.extend(mountains);
-    cast_vraska_with(&mut game, &lands);
+    let _vraska = cast_vraska_with(&mut game, &lands);
 
     assert_eq!(
         game.life(PlayerId(0)),
@@ -94550,7 +94551,7 @@ fn a_phyrexian_pip_paid_with_matching_mana_costs_no_life() {
         .collect();
     let before = game.life(PlayerId(0));
 
-    cast_vraska_with(&mut game, &swamps);
+    let _vraska = cast_vraska_with(&mut game, &swamps);
 
     assert_eq!(
         game.life(PlayerId(0)),
@@ -94561,6 +94562,62 @@ fn a_phyrexian_pip_paid_with_matching_mana_costs_no_life() {
         game.mana_in_pool(PlayerId(0), Color::Black),
         0,
         "all six black mana were spent on {{4}}{{B}}{{B/P}}"
+    );
+}
+
+#[test]
+fn compleated_vraska_enters_with_two_fewer_loyalty_when_life_paid() {
+    // Compleated (CR 107.4f): "If life was paid, this planeswalker enters with two fewer
+    // loyalty counters." One Swamp + four Mountains leaves no black for the {B/P} pip, so it
+    // falls back to life — Vraska should enter at 6 − 2 = 4, not 6.
+    let mut game = Game::new();
+    let swamp = game.spawn_on_battlefield(PlayerId(0), card("Swamp"));
+    let mountains: Vec<ObjectId> = (0..4)
+        .map(|_| game.spawn_on_battlefield(PlayerId(0), card("Mountain")))
+        .collect();
+    let mut lands = vec![swamp];
+    lands.extend(mountains);
+
+    let _vraska = cast_vraska_with(&mut game, &lands);
+    let events = resolve_top_of_stack_events(&mut game);
+    let permanent = events
+        .iter()
+        .find_map(|e| match e {
+            Event::PermanentEntered { permanent, .. } => Some(*permanent),
+            _ => None,
+        })
+        .expect("Vraska resolved onto the battlefield");
+
+    assert_eq!(
+        game.loyalty(permanent),
+        4,
+        "Compleated: the {{B/P}} pip's life payment cost two fewer starting loyalty counters"
+    );
+}
+
+#[test]
+fn compleated_vraska_enters_with_full_loyalty_when_the_pip_took_mana() {
+    // Six Swamps leave a spare black for the {B/P} pip, so no life was paid and Compleated's
+    // as-enters reduction never applies — Vraska enters at her printed 6 loyalty.
+    let mut game = Game::new();
+    let swamps: Vec<ObjectId> = (0..6)
+        .map(|_| game.spawn_on_battlefield(PlayerId(0), card("Swamp")))
+        .collect();
+
+    let _vraska = cast_vraska_with(&mut game, &swamps);
+    let events = resolve_top_of_stack_events(&mut game);
+    let permanent = events
+        .iter()
+        .find_map(|e| match e {
+            Event::PermanentEntered { permanent, .. } => Some(*permanent),
+            _ => None,
+        })
+        .expect("Vraska resolved onto the battlefield");
+
+    assert_eq!(
+        game.loyalty(permanent),
+        6,
+        "no life was paid for the {{B/P}} pip, so no loyalty reduction applies"
     );
 }
 
@@ -96027,7 +96084,7 @@ fn a_phyrexian_pip_falls_back_to_life_when_its_color_is_needed_for_generic() {
         .collect();
     let before = game.life(PlayerId(0));
 
-    cast_vraska_with(&mut game, &swamps);
+    let _vraska = cast_vraska_with(&mut game, &swamps);
 
     assert_eq!(
         game.life(PlayerId(0)),
