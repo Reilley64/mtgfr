@@ -1,13 +1,13 @@
 # Coverage printing-aware sets (design)
 
-**Status:** Approved design input (2026-07-26).
-**Surfaces:** card pool TOML / `CardDef.sets`; `tooling/backfill-sets.mjs`; API `faithful_by_set`; BFF coverage meta denominators; `/coverage` sort + independent row scroll; catalog search / wire `sets`. Builds on and **supersedes the per-set metric and default sort** in [coverage-by-set design](2026-07-26-coverage-by-set-design.md) (route, badge entry, and BFF-mediated transport stay). Global badge remains [pool-coverage-badge](2026-07-26-pool-coverage-badge-design.md).
+**Status:** Implemented (as of 2026-07-26). Living behavior is documented in [coverage-by-set](2026-07-26-coverage-by-set.md), [card-dsl-and-card-pool](2026-07-20-card-dsl-and-card-pool.md), and [accounts-decks-and-catalog](2026-07-20-accounts-decks-and-catalog.md).
+**Surfaces:** card pool TOML / `CardDef` `sets`; `tooling/backfill-sets.mjs`; API `faithful_by_set`; BFF coverage meta denominators; `/coverage` sort + independent row scroll; catalog search / wire `sets`. Builds on and **supersedes the per-set metric and default sort** in [coverage-by-set design](2026-07-26-coverage-by-set-design.md) (route, badge entry, and BFF-mediated transport stay). Global badge remains [pool-coverage-badge](2026-07-26-pool-coverage-badge-design.md).
 
 ---
 
 ## Problem Statement
 
-`/coverage` currently credits each faithful card to a single TOML `set` (default printing) and divides by Scryfall oracle-cards rows whose **representative** printing is in that set. Reprint-heavy products such as Commander 2011 (`cmd`) show nonsense ratios (e.g. 84/37 → clamped 100%) because most CMD printings are not anyone’s current Scryfall default. Default table sort by % also buries recent sets.
+Before this change, `/coverage` credited each faithful card to a single TOML `set` (default printing) and divided by Scryfall oracle-cards rows whose single default-printing set matched that product. Reprint-heavy products such as Commander 2011 (`cmd`) showed nonsense ratios (e.g. 84/37 → clamped 100%) because most CMD printings were not anyone's current Scryfall default. Default table sort by % also buried recent sets.
 
 ## Goal
 
@@ -22,7 +22,7 @@
 | Decision | Choice |
 |---|---|
 | Per-set Scryfall (denominator) | Unique `oracle_id`s with ≥1 printing in set `X` (from Scryfall `default_cards` bulk on the BFF) |
-| Per-set Faithful (numerator) | Faithful pool cards (`approximates` none) that list `X` in `CardDef.sets` — one card may credit many sets |
+| Per-set Faithful (numerator) | Faithful pool cards (`approximates` none) that list `X` in their `sets` field — one card may credit many sets |
 | Join key / authorship | `CardDef.id` = Scryfall oracle id; `sets` authored/maintained by a backfill script |
 | TOML shape | Drop singular `set`; keep `default_print`; add `sets = ["…"]` (unique lowercase codes, sorted) |
 | Primary set | None — `default_print` is enough for art; search uses all of `sets` |
@@ -43,7 +43,7 @@
 
 ### Pool & script
 
-- Replace `CardDef.set: &'static str` with `sets: Arc<[&'static str]>` (same spirit as `otags`). Empty means “unrecorded” — card contributes to no per-set faithful counts.
+- Replace the singular card-pool `set` field with `sets: Arc<[&'static str]>` (same spirit as `otags`). Empty means “unrecorded” — card contributes to no per-set faithful counts.
 - TOML: remove `set = "…"`; add `sets = ["cmd", "c16", …]`.
 - Add `tooling/backfill-sets.mjs` alongside existing `tooling/backfill-*.mjs`:
   - Input: deckable card TOMLs with `id` (oracle id).
@@ -56,14 +56,14 @@
 ### API
 
 - `/health/live` keeps `version`, `faithful_count`, and `faithful_by_set`.
-- Recompute `faithful_by_set`: for each deckable def with `approximates.is_none()`, for each code in `def.sets` (skip empty), increment that lowercase key. A card in N sets increments N buckets.
-- Consequently the **sum of `faithful_by_set` values may exceed `faithful_count`** (multi-credit). Drop any test/invariant that required the sum ≤ global faithful.
+- Recompute `faithful_by_set`: for each deckable def with `approximates.is_none()`, for each code in its `sets` field (skip empty), increment that lowercase key. A card in N sets increments N buckets.
+- Consequently the aggregate of `faithful_by_set` values can exceed the global faithful count (multi-credit). Drop any test/invariant that required the aggregate to stay under global faithful.
 - No Scryfall calls. No new Postgres tables for set membership.
 
 ### BFF
 
 - Keep `GET /api/meta/coverage/v1` response shape (`faithful_count`, `oracle_total`, `sets[]` with `code`, `name`, `released_at`, `faithful`, `oracle_total`).
-- Change how `oracle_total` per set is derived: parse Scryfall **default_cards** bulk into a compact in-memory index — unique `oracle_id` count per set code — then discard the bulk. Do **not** use oracle-cards’ single representative `set` for per-set denominators.
+- Change how `oracle_total` per set is derived: parse Scryfall **default_cards** bulk into a compact in-memory index — unique `oracle_id` count per set code — then discard the bulk. Do **not** use oracle-cards' single default-printing `set` for per-set denominators.
 - Keep oracle-cards bulk (or equivalent) for the **global** `oracle_total` used by the badge and coverage header.
 - Keep `/sets` cache for names, `released_at`, and `card_count > 0` row filter.
 - Join: API `faithful_by_set[code]` (default 0) with cached per-set unique-oracle totals; missing denominator → `null` → client `—`.

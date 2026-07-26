@@ -46,7 +46,7 @@ name = "Lightning Bolt"
 id = "4457ed35-7c10-48c8-9776-456485fdf070"
 default_print = "7673784e-db4b-43a1-8d55-1bb9fc1e284f"
 oracle = "Lightning Bolt deals 3 damage to any target."
-set = "msc"
+sets = ["msc"]
 
 [cost]
 red = 1
@@ -66,7 +66,7 @@ target = "any"
 
 ### Top-level field categories
 
-**Identity:** `name` (registry key), `id` (Scryfall oracle id), `default_print` (Scryfall print UUID for art), `set` (set code), `oracle` (verbatim text for catalog hover), `otags` (Scryfall tagger slugs for search).
+**Identity:** `name` (registry key), `id` (Scryfall oracle id), `default_print` (Scryfall print UUID for art), `sets` (all Scryfall set codes with a printing of the oracle), `oracle` (verbatim text for catalog hover), `otags` (Scryfall tagger slugs for search).
 
 **Rules identity:** `legendary`, `colors` (explicit color override; empty = derive from cost pips), `devoid`, `identity_pips` (extra color-identity pips the simplified model would otherwise drop).
 
@@ -190,7 +190,7 @@ These are the **first closed fidelity target** (card-dsl-and-card-pool spec): ev
 - **Token profiles are pre-loaded into a `OnceLock<HashMap<&'static str, CardDef>>` before deckable cards.** `install_token_defs` must be called before any card TOML that references a token by id is deserialized. `cards` crate's `load` function handles this ordering, and token creation interns the selected profile before storing it on a live object/event.
 - **The `card-dsl` feature flag gates all DSL deserialization.** The engine can be compiled without TOML parsing (e.g. for pure engine tests that construct `CardDef` inline). The feature adds `serde` derives and `de.rs`.
 - **`de.rs` holds only structurally-divergent deserializers.** Types whose TOML spelling matches their Rust shape use serde derives on the definitions in `types/effect/`. Only when the TOML spelling differs structurally (flat cost table, `instant`/`sorcery` as separate strings, folded `Timing::Activated`) does `de.rs` provide a manual impl.
-- **`otags` and `set` are pure catalog metadata** — the engine never reads them. They exist for deck-builder search (`set`/`subtypes` + Postgres catalog search, accounts-decks-and-catalog spec) and Scryfall tagger integration.
+- **`otags` and `sets` are pure catalog metadata** — the engine never reads them for gameplay. They exist for deck-builder search (`sets`/`subtypes` + Postgres catalog search, accounts-decks-and-catalog spec), printing-aware coverage, and Scryfall tagger integration. `sets` is backfilled by `tooling/backfill-sets.mjs` from Scryfall printings; `default_print` remains the art/default-printing pointer.
 - **`oracle` is catalog metadata** — the engine never parses it; rules behavior comes from `abilities`/`keywords` only.
 - **`approximates` is surfaced in the card catalog** so the deck builder and audits see the same gap the engine runs. An absent `approximates` field means the card is faithful.
 - **`grant_mana_ability` is read live off the static scan, never resolved off the stack.** The granted `[…cost]` + `mana` pair is synthesized into an activated ability on each matching permanent (the mana twin of `grant_to_attached`), so it appears and disappears with the granting permanent. `single_color` is the granted twin of `ManaEffect::Add`'s own `single_color`: both reuse the `ChooseManaColor` pause and then emit one credit per `mana` entry in the chosen color (CR 106.4).

@@ -1,6 +1,6 @@
 # Coverage by set (design)
 
-**Status:** Approved design input (2026-07-26).
+**Status:** Superseded design input (2026-07-26). Route and badge entry still stand, but current metric, sort, scroll, and catalog-field behavior are superseded by [coverage-printing-aware-sets design](2026-07-26-coverage-printing-aware-sets-design.md) and documented in [coverage-by-set](2026-07-26-coverage-by-set.md).
 **Surfaces:** new `/coverage` shell route; `shell-routes-and-auth` (badge entry + routing); BFF `meta/coverage`; API faithful-by-set; builds on [pool-coverage-badge](2026-07-26-pool-coverage-badge-design.md).
 
 ---
@@ -11,24 +11,24 @@ The shell `% faithful` badge answers only the global question. Operators and pla
 
 ## Goal
 
-A bookmarkable **Coverage** page listing the **full Scryfall set catalog**, each row showing pool completeness versus Magic for that set: **faithful pool cards with default-print `set = X` ÷ unique Scryfall oracle cards in set `X`**. Entry is a click on the existing `% faithful` badge.
+A bookmarkable **Coverage** page listing the **full Scryfall set catalog**, each row showing pool completeness versus Magic for that set. Entry is a click on the existing `% faithful` badge.
 
 ## Locked decisions
 
 | Decision | Choice |
 |---|---|
-| Per-set metric | Faithful pool cards tagged `set = X` ÷ Scryfall unique oracle cards in set `X` |
+| Per-set metric | Superseded: current behavior credits every code in `sets` and uses `default_cards` unique-oracle denominators |
 | Set list | Full Scryfall set catalog (not pool-touched-only) |
 | Entry | Click bottom-left `% faithful` badge |
 | Navigation | Real route `/coverage` (bookmarkable; browser back works) |
 | Auth | Auth-gated like `/` and `/leaderboard` |
 | Transport | BFF-mediated meta (Approach 1); no browser→Scryfall for this surface |
-| Pool `set` meaning | `CardDef.set` = **default printing’s set** (existing catalog field). Reprints authored under `soc` count toward SoC, not first-print set — accepted for v1 |
+| Pool set metadata | Superseded: current card metadata is `sets = [...]`; `default_print` carries the art/default-printing pointer |
 | Freshness | Scryfall-derived set list + per-set oracle totals cached on BFF (~24h TTL, stale-while-revalidate). Faithful-by-set changes only on API deploy |
 
 ## Approaches considered
 
-1. **BFF set-coverage meta + `/coverage` shell route (chosen)** — API faithful-by-set map; BFF joins Scryfall `/sets` + oracle-cards bulk per-set counts; client table page; badge navigates to `/coverage`.
+1. **BFF set-coverage meta + `/coverage` shell route (chosen)** — API faithful-by-set map; BFF joins Scryfall `/sets` + Scryfall-derived per-set counts; client table page; badge navigates to `/coverage`.
 2. Client joins `Cards.Catalog` + live Scryfall — rate limits and chrome dependence on third-party from the browser.
 3. Bake static `coverage-by-set.json` at deploy — stale versus Scryfall until redeploy; fights runtime refresh used for the global badge.
 
@@ -36,8 +36,8 @@ A bookmarkable **Coverage** page listing the **full Scryfall set catalog**, each
 
 ### Metrics
 
-- **Per-set `faithful`:** Count of deckable registry cards with `def.set == code` and `approximates.is_none()`. Empty `set` is omitted from the map (not shown as a fake set).
-- **Per-set `oracle_total`:** Count of oracle-cards bulk objects whose representative `set` field equals that code (one row per oracle id in the bulk file).
+- **Per-set `faithful`:** Superseded by printing-aware `sets` multi-credit behavior in the living coverage spec.
+- **Per-set `oracle_total`:** Superseded by `default_cards` unique-oracle denominators in the living coverage spec.
 - **Global** `faithful_count` / `oracle_total` on the same response keep the page header aligned with the badge.
 - **Percentage:** `100 * faithful / oracle_total` when `oracle_total > 0`; format with one decimal below 10%, otherwise whole percent (same rules as the badge). When `oracle_total` is missing, show `—` (not `0%`). When `oracle_total > 0` and `faithful = 0`, show `0%`.
 
@@ -78,7 +78,7 @@ Computed from `cards::registry()`; no I/O. Tokens remain outside the registry.
 Cache strategy (TTL **24h**, stale-while-revalidate on failure):
 
 1. `GET https://api.scryfall.com/sets` — code, name, released_at, set_type, digital, card_count.
-2. One oracle-cards bulk download (`jsonl_download_uri`, gzip JSONL) — count lines per `set` field.
+2. Superseded: current behavior keeps oracle-cards for the global denominator and uses `default_cards` for per-set denominators.
 3. Emit one row per set from `/sets` with `card_count > 0` (or equivalent non-empty set). `faithful` defaults to `0` when absent from the API map. If a set has no oracle-bulk rows, omit `oracle_total` so the client shows `—`.
 
 User-Agent: `edh.reilley.dev/0.1`. Prefer deriving per-set oracle totals from the **same bulk** used for the global total (one download, two aggregates) rather than hundreds of `cards/search` calls. Fire-and-forget refresh; never block unrelated shell meta.
@@ -91,7 +91,7 @@ Keep `GET /api/meta/version/v1` for the badge (global only). Coverage page uses 
 - Badge (`pool-coverage`): clickable control that requests navigation to `/coverage` (pointer-events enabled on that line or the stack). Still omitted on the board. On `/coverage` itself, navigating again is a no-op or refresh.
 - Page chrome: match leaderboard shell (felt background, Play → `/`, account menu).
 - Header: **Coverage** + global `{n}% faithful`.
-- Body: client-filtered, client-sorted table — columns **Set** (code + name), **Faithful**, **Scryfall**, **%**. Default sort: **% descending**, then name. Search filters code/name.
+- Body: client-filtered, client-sorted table — columns **Set** (code + name), **Faithful**, **Scryfall**, **%**. Current default sort is release date descending, then name/code. Search filters code/name.
 - Loading / error / retry: leaderboard-style; do not invent rows or percentages.
 
 ### Error / degradation
@@ -105,7 +105,7 @@ Keep `GET /api/meta/version/v1` for the badge (global only). Coverage page uses 
 
 ### Testing
 
-- **Server:** faithful-by-set excludes `approximates`; keys match registry `set` values; sum of per-set faithful ≤ global faithful (equality when every faithful card has non-empty `set`).
+- **Server:** current faithful-by-set tests live in [coverage-by-set](2026-07-26-coverage-by-set.md) and cover `sets` multi-credit behavior.
 - **BFF:** join produces full catalog rows; pool-only sets not required; zero-faithful sets present; SWR on Scryfall failure.
 - **Client:** Scene — `/coverage` title, table, search; badge click navigates to `/coverage`; `%` formatting; `—` when oracle total missing.
 - **Specs at implement time:** update [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md); add a living surface spec for the coverage page (or extend shell-routes if the page stays thin). This file remains design input.
@@ -113,7 +113,7 @@ Keep `GET /api/meta/version/v1` for the badge (global only). Coverage page uses 
 ## Out of scope
 
 - Drill-down lists of cards in a set
-- Changing `CardDef.set` to first-print or “any printing in set”
+- Per-card primary-set selection beyond `default_print` art metadata
 - Deck-builder set filter chrome
 - Board / in-game coverage HUD
 - SEO / public unauthenticated marketing page

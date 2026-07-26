@@ -46,7 +46,7 @@ positive ids of user decks. Every user sees precons in their deck list alongside
 **Card catalog** is a Postgres projection of the engine's `cards::registry()`, populated on
 server boot into the `catalog_cards` table (DDL managed by Toasty migrations; data refreshed by
 `catalog_search::project()` truncate + reinsert). Each row holds a lowercased `search_blob`
-haystack (name + kind + subtypes + set + colors + keywords + Scryfall oracle-tag slugs) and the
+haystack (name + kind + subtypes + every `sets` code + colors + keywords + Scryfall oracle-tag slugs) and the
 card's full wire JSON. `Cards.Search` (BFF `/api/rpc/cards/search`) runs a tokenized `LIKE`
 query against `search_blob`; `Cards.Lookup` fetches specific cards by id for deck hydration on
 load.
@@ -70,7 +70,7 @@ Neither endpoint requires authentication.
   returns every problem at once: wrong commander type, wrong count, singleton violation, off-color
   cards, missing prints, unknown card ids.
 - As a **deck builder**, I browse the card catalog in the deck builder — searching by name,
-  type, color, keyword, subtype, set, or Scryfall oracle-tag slug. Results are capped at 200 per
+  type, color, keyword, subtype, any set code in `sets`, or Scryfall oracle-tag slug. Results are capped at 200 per
   query; I paginate by adjusting `offset`.
 - As a **deck builder**, I open an existing deck; the client calls `Cards.Lookup` with all card
   ids in the deck to hydrate names, stats, and art without fetching the full catalog.
@@ -198,10 +198,14 @@ Precon decklists are the same source of truth as the Phase 5.5 legality fixtures
 
 On server boot, `catalog_search::project()` truncates `catalog_cards` and reinserts one row per
 card in `cards::registry()`. The `search_blob` for each card is a lowercased concatenation of:
-name, card type (creature/instant/sorcery/enchantment/artifact/planeswalker/land), set code,
+name, card type (creature/instant/sorcery/enchantment/artifact/planeswalker/land), every code in `sets`,
 color identity words (white/blue/black/red/green or "colorless"), "legendary" if legendary,
 printed subtypes, keywords, and Scryfall oracle-tag slugs (both hyphenated and space-separated
 forms).
+
+Catalog rows expose `CatalogCard.sets` as every Scryfall set/edition code with a printing of the
+card's oracle. The older proto field `CatalogCard.set` remains field 12 for wire compatibility and
+is emitted empty; clients use `sets` for catalog search/display metadata.
 
 `Cards.Search` tokenizes the query `q` on whitespace and runs an AND of `LIKE '%<token>%'`
 against `search_blob`, with `limit` capped at 200 and `offset` for pagination. Bind placeholders
