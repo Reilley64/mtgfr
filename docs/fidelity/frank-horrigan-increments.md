@@ -756,7 +756,7 @@ Cursed Mirror, undoing a durationless CR 613 effect. The indefinite branch now c
 (`a_treasure_conversion_outlasts_an_until_end_of_turn_copy_it_replaced`), with a `ponytail:` note
 that the rewrite still snapshots the live (copied) name/cost rather than recomputing layers.
 
-### 26. `counter-replacement-placing-player` — 2 cards, M/L
+### 26. `counter-replacement-placing-player` — 2 cards, M/L — LANDED 2026-07-27
 Depends on: #19 (LANDED — it generalized the pipeline to every kind and to players; this closes
 the axis it left open).
 Added 2026-07-27 after #19 landed. Both of the deck's two remaining approximated cards fail the
@@ -785,3 +785,27 @@ each — do **not** default to the recipient and call it done, that is the bug.
 CR 616.1's ordering choice stays deliberately unoffered (a halving and a doubler applying at once
 resolve additions → multipliers → halvings in fixed order); that residual is recorded on
 `Game::replaced_counters` and stays. *Cards:* vorinclex_monstrous_raider, innkeepers_talent.
+
+Winding Constrictor is **not** on this axis, despite looking like it: its first clause is passive
+voice — "If one or more counters **would be put on** an artifact or creature you control" — so it
+keys off the recipient, and its second is "if **you would get**", also the recipient. Both are
+already exact. Do not give it a placer.
+
+**LANDED 2026-07-27:** `StaticEffect::CounterReplacement`'s `opponents: bool` (one TOML user, one
+read site) was replaced by `placer: Option<CounterPlacer>` with `CounterPlacer::{You, Opponents}`
+(`types/effect/static.rs`). `Game::replaced_counters` and its three wrappers each took a leading
+`placer: PlayerId`, and the single side test became a `match` on the new field: a placer-keyed
+clause compares the replacement's controller against the placing player, `None` keeps the old
+recipient-side test unchanged (Doubling Season, Hardened Scales, Winding Constrictor, Ozolith and
+the rest are untouched). All 31 call sites now thread the real placer — `mint_counters`'
+`controller`, `ResolveCtx::controller`, `spell.controller` for the as-enters replacements, and the
+answering player for each pending choice; `move_counters`, `move_counters_distributed`,
+`doubled_counters_event`, `proliferate_permanent` and `proliferate_player` gained the parameter to
+carry it. `Game::place_player_counters` is the one site with no real placer (a test/setup helper) —
+it passes `player` as a self-inflicted placement, with a `ponytail:` note. Tests:
+`vorinclex_doubles_counters_you_put_on_an_opponents_permanent` (was 1, now 4 — the headline
+inversion), `vorinclex_halves_counters_an_opponent_puts_on_your_permanent` (was 4, now 1),
+`innkeepers_talent_level_three_does_not_double_counters_an_opponent_puts_on_your_permanent`, plus
+`winding_constrictor_adds_to_counters_an_opponent_puts_on_your_creature` pinning the recipient-keyed
+half so the new axis can't drift onto it. Residual: CR 616.1's ordering choice, still unoffered and
+still the whole of Vorinclex's `approximates`.

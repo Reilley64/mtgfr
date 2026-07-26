@@ -26,7 +26,7 @@ impl Game {
             } => {
                 let object = expect_object_target(target, "a kind-counter effect");
                 let count = self.resolve_count(count, controller, source, target, x) as i32;
-                let count = self.kind_counters_after_replacements(object, count);
+                let count = self.kind_counters_after_replacements(controller, object, count);
                 if count <= 0 {
                     return Vec::new();
                 }
@@ -58,7 +58,7 @@ impl Game {
                 } else {
                     self.resolve_count(count, controller, source, target, x) as i32
                 };
-                let n = self.counters_after_replacements(object, count);
+                let n = self.counters_after_replacements(controller, object, count);
                 if n <= 0 {
                     return Vec::new();
                 }
@@ -71,7 +71,7 @@ impl Game {
             // Double the target's +1/+1 counters: place as many more as it already has (CR 614).
             CountersEffect::DoubleCounters { .. } => {
                 let object = expect_object_target(target, "a counter-doubling effect");
-                self.doubled_counters_event(object, source_name)
+                self.doubled_counters_event(controller, object, source_name)
                     .into_iter()
                     .collect()
             }
@@ -111,7 +111,8 @@ impl Game {
                     }
                     return matching
                         .filter_map(|object| {
-                            let n = self.kind_counters_after_replacements(object, count);
+                            let n =
+                                self.kind_counters_after_replacements(controller, object, count);
                             (n > 0).then_some(Event::KindCountersPlaced {
                                 object,
                                 kind,
@@ -122,7 +123,7 @@ impl Game {
                 }
                 matching
                     .filter_map(|object| {
-                        let n = self.counters_after_replacements(object, count);
+                        let n = self.counters_after_replacements(controller, object, count);
                         (n > 0).then_some(Event::CountersPlaced {
                             object,
                             count: n,
@@ -159,7 +160,7 @@ impl Game {
                     if !self.living_players().any(|p| p == player) {
                         return Vec::new();
                     }
-                    let count = self.player_counters_after_replacements(player, count);
+                    let count = self.player_counters_after_replacements(controller, player, count);
                     if count <= 0 {
                         return Vec::new();
                     }
@@ -183,7 +184,7 @@ impl Game {
                         EdictScope::TargetedOpponent => unreachable!("handled above"),
                     })
                     .filter_map(|player| {
-                        let n = self.player_counters_after_replacements(player, count);
+                        let n = self.player_counters_after_replacements(controller, player, count);
                         (n > 0).then_some(Event::PlayerCountersPlaced {
                             player,
                             kind,
@@ -243,7 +244,8 @@ impl Game {
                     return Vec::new();
                 }
                 let count = to.saturating_sub(self.player_counters(player, kind));
-                let count = self.player_counters_after_replacements(player, count as i32);
+                let count =
+                    self.player_counters_after_replacements(controller, player, count as i32);
                 if count <= 0 {
                     return Vec::new();
                 }
@@ -304,7 +306,7 @@ impl Game {
                 let drawer = attacker.expect("the attacking player is filled in at placement");
                 let object = expect_object_target(target, "Breena's counter half");
                 let mut events = self.draw_events(drawer, 1);
-                let n = self.counters_after_replacements(object, counters as i32);
+                let n = self.counters_after_replacements(controller, object, counters as i32);
                 if n > 0 {
                     events.push(Event::CountersPlaced {
                         object,
@@ -325,7 +327,7 @@ impl Game {
                 if self.permanent(source).monstrous {
                     return Vec::new();
                 }
-                let n = self.counters_after_replacements(source, count as i32);
+                let n = self.counters_after_replacements(controller, source, count as i32);
                 let mut events = Vec::new();
                 if n > 0 {
                     events.push(Event::CountersPlaced {
@@ -363,11 +365,12 @@ impl Game {
     /// [`CountersEffect::DoubleCounters`] and [`CountersEffect::DoubleCountersOnAttachedCreature`] both follow.
     pub(crate) fn doubled_counters_event(
         &self,
+        placer: PlayerId,
         object: ObjectId,
         source_name: &'static str,
     ) -> Option<Event> {
         let current = self.permanent(object).plus_counters;
-        let n = self.counters_after_replacements(object, current);
+        let n = self.counters_after_replacements(placer, object, current);
         (n > 0).then_some(Event::CountersPlaced {
             object,
             count: n,
@@ -384,6 +387,7 @@ impl Game {
         events: &mut Vec<Event>,
     ) {
         let ResolveCtx {
+            controller,
             source,
             targets_second,
             ..
@@ -396,7 +400,7 @@ impl Game {
             if self.as_permanent(object).is_none() {
                 continue;
             }
-            if let Some(event) = self.doubled_counters_event(object, source_name) {
+            if let Some(event) = self.doubled_counters_event(controller, object, source_name) {
                 self.push_apply(events, event);
             }
         }
@@ -411,11 +415,15 @@ impl Game {
         ctx: ResolveCtx,
         events: &mut Vec<Event>,
     ) {
-        let ResolveCtx { source, .. } = ctx;
+        let ResolveCtx {
+            controller, source, ..
+        } = ctx;
         let Some(object) = self.permanent(source).attached_to else {
             return;
         };
-        if let Some(event) = self.doubled_counters_event(object, self.def_of(source).name) {
+        if let Some(event) =
+            self.doubled_counters_event(controller, object, self.def_of(source).name)
+        {
             self.push_apply(events, event);
         }
     }

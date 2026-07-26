@@ -110,8 +110,11 @@ impl Game {
 
         let mut events = Vec::new();
         self.sacrifice_ids(&sacrifices, player, &mut events);
-        let counters =
-            self.counters_after_replacements(source, multiplier as i32 * sacrifices.len() as i32);
+        let counters = self.counters_after_replacements(
+            player,
+            source,
+            multiplier as i32 * sacrifices.len() as i32,
+        );
         if counters > 0 {
             self.push_apply(
                 &mut events,
@@ -179,7 +182,7 @@ impl Game {
         // copier's own locked-in cast {X} ([`Permanent::entered_with_x`]).
         let x = self.ability_source_x(source);
         let extra = self.resolve_count(extra_counters, player, source, None, x);
-        let n = self.counters_after_replacements(source, extra as i32);
+        let n = self.counters_after_replacements(player, source, extra as i32);
         if n > 0 {
             self.push_apply(
                 &mut events,

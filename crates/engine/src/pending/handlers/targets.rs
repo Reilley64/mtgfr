@@ -222,7 +222,7 @@ impl Game {
             // gets above.
             let from = expect_object_target(from, "a move-counters effect's stashed source");
             let to = expect_object_target(Some(target), "a move-counters effect's destination");
-            self.move_counters(from, to, all_kinds, &mut events);
+            self.move_counters(player, from, to, all_kinds, &mut events);
         } else if let Effect::Copy(CopyEffect::Demonstrate { spell }) = effect {
             // The chosen opponent (CR 702.147a) also gets a copy — mint the controller's own
             // copy now (with its usual CR 707.10c retarget); the opponent's copy is deferred to
@@ -282,8 +282,12 @@ impl Game {
         let mut events = Vec::new();
         for &target in &chosen {
             match target {
-                ProliferateTarget::Permanent(id) => self.proliferate_permanent(&mut events, id),
-                ProliferateTarget::Player(seat) => self.proliferate_player(&mut events, seat),
+                ProliferateTarget::Permanent(id) => {
+                    self.proliferate_permanent(player, &mut events, id)
+                }
+                ProliferateTarget::Player(seat) => {
+                    self.proliferate_player(player, &mut events, seat)
+                }
             }
         }
         // Whenever you proliferate (CR 701.27, Scheming Aspirant) — one instance just resolved,
@@ -306,9 +310,9 @@ impl Game {
     /// ponytail: a loyalty counter added here skips the CR 614 replacement pipeline — loyalty is
     /// the scalar [`Permanent::loyalty`], not a `kind_counters` slot. Route it once loyalty and
     /// named counters share a store.
-    fn proliferate_permanent(&mut self, events: &mut Vec<Event>, id: ObjectId) {
+    fn proliferate_permanent(&mut self, placer: PlayerId, events: &mut Vec<Event>, id: ObjectId) {
         if self.permanent(id).plus_counters > 0 {
-            let n = self.counters_after_replacements(id, 1);
+            let n = self.counters_after_replacements(placer, id, 1);
             if n > 0 {
                 self.push_apply(
                     events,
@@ -324,7 +328,7 @@ impl Game {
             if self.permanent(id).kind_counters[kind as usize] == 0 {
                 continue;
             }
-            let n = self.kind_counters_after_replacements(id, 1);
+            let n = self.kind_counters_after_replacements(placer, id, 1);
             if n > 0 {
                 self.push_apply(
                     events,
@@ -349,12 +353,12 @@ impl Game {
     }
 
     /// Give `seat` another counter of each kind already on them (CR 701.27 — poison).
-    fn proliferate_player(&mut self, events: &mut Vec<Event>, seat: PlayerId) {
+    fn proliferate_player(&mut self, placer: PlayerId, events: &mut Vec<Event>, seat: PlayerId) {
         for &kind in PlayerCounterKind::ALL.iter() {
             if self.player_counters(seat, kind) == 0 {
                 continue;
             }
-            let n = self.player_counters_after_replacements(seat, 1);
+            let n = self.player_counters_after_replacements(placer, seat, 1);
             if n > 0 {
                 self.push_apply(
                     events,

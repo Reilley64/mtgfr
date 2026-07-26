@@ -416,7 +416,7 @@ impl Game {
         let n_raw = self.resolve_amount(enters_with, controller, source, target, x);
         if n_raw > 0 {
             for id in minted {
-                let n = self.counters_after_replacements(id, n_raw);
+                let n = self.counters_after_replacements(controller, id, n_raw);
                 if n > 0 {
                     self.push_apply(
                         events,

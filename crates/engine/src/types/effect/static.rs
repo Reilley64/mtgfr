@@ -88,10 +88,12 @@ pub enum StaticEffect {
         /// "one or more +1/+1 counters" (Hardened Scales, Corpsejack Menace).
         #[cfg_attr(feature = "card-dsl", serde(default))]
         any_kind: bool,
-        /// Vorinclex's second clause: replaces an *opponent's* placements instead of its
-        /// controller's.
+        /// Vorinclex / Innkeeper's Talent Level 3: the clause keys off who *would put* the
+        /// counters (CR 614.1), not off whose permanent receives them. `None` keys off the
+        /// recipient's side instead (Doubling Season's "a permanent you control", Winding
+        /// Constrictor's passive "would be put on … you control").
         #[cfg_attr(feature = "card-dsl", serde(default))]
-        opponents: bool,
+        placer: Option<CounterPlacer>,
         /// Which recipients the replacement reaches (CR 122.1 — counters sit on permanents and on
         /// players).
         #[cfg_attr(feature = "card-dsl", serde(default))]
@@ -259,4 +261,18 @@ pub enum CounterRecipients {
     Permanents,
     Players,
     PermanentsAndPlayers,
+}
+
+/// Whose *placement* a [`StaticEffect::CounterReplacement`] replaces (CR 614.1) — the axis
+/// Vorinclex's "if **you would put**" / "if an **opponent would put**" reads. Distinct from
+/// [`CounterRecipients`] and from the effect's `filter`, which both gate the *recipient*.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "card-dsl",
+    derive(serde::Deserialize),
+    serde(rename_all = "snake_case")
+)]
+pub enum CounterPlacer {
+    You,
+    Opponents,
 }

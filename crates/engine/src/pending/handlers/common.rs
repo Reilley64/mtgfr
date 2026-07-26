@@ -35,6 +35,7 @@ impl Game {
     /// named kind present, through the any-kind half of that same pipeline.
     pub(crate) fn move_counters(
         &mut self,
+        placer: PlayerId,
         from: ObjectId,
         to: ObjectId,
         all_kinds: bool,
@@ -50,7 +51,7 @@ impl Game {
                     source_name: self.def_of(from).name,
                 },
             );
-            let n = self.counters_after_replacements(to, plus);
+            let n = self.counters_after_replacements(placer, to, plus);
             if n > 0 {
                 self.push_apply(
                     events,
@@ -78,7 +79,7 @@ impl Game {
                     count: -count,
                 },
             );
-            let n = self.kind_counters_after_replacements(to, count);
+            let n = self.kind_counters_after_replacements(placer, to, count);
             if n > 0 {
                 self.push_apply(
                     events,
@@ -100,6 +101,7 @@ impl Game {
     /// summing to at most the source's live count) by [`Self::divide_moved_counters`].
     pub(crate) fn move_counters_distributed(
         &mut self,
+        placer: PlayerId,
         from: ObjectId,
         assignment: &[(ObjectId, i32)],
         events: &mut Vec<Event>,
@@ -117,7 +119,7 @@ impl Game {
             },
         );
         for &(to, n) in assignment {
-            let n = self.counters_after_replacements(to, n);
+            let n = self.counters_after_replacements(placer, to, n);
             if n <= 0 {
                 continue;
             }

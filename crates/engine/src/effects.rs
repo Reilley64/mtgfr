@@ -440,7 +440,7 @@ impl Game {
         // nontoken creature doesn't pick up the bonus (no pool card observes that path;
         // extend to `ReanimateToBattlefield`'s own PermanentEntered if one needs it).
         let bonus = self.additional_enter_counters(entered, spell.controller);
-        let n = self.counters_after_replacements(entered, bonus);
+        let n = self.counters_after_replacements(spell.controller, entered, bonus);
         if n > 0 {
             self.push_apply(
                 events,
@@ -462,7 +462,7 @@ impl Game {
             .position(|&(id, _)| id == object)
         {
             let (_, bonus) = self.pending_enter_bonus_counters.remove(pos);
-            let n = self.counters_after_replacements(entered, bonus as i32);
+            let n = self.counters_after_replacements(spell.controller, entered, bonus as i32);
             if n > 0 {
                 self.push_apply(
                     events,
@@ -482,8 +482,11 @@ impl Game {
             && let Some(escape) = spell.def.escape
             && escape.plus_one_plus_one_counters > 0
         {
-            let n =
-                self.counters_after_replacements(entered, escape.plus_one_plus_one_counters as i32);
+            let n = self.counters_after_replacements(
+                spell.controller,
+                entered,
+                escape.plus_one_plus_one_counters as i32,
+            );
             if n > 0 {
                 self.push_apply(
                     events,
@@ -523,7 +526,7 @@ impl Game {
         let counters = self.resolve_count(amount, controller, perm, target, x);
         match kind {
             None => {
-                let n = self.counters_after_replacements(perm, counters as i32);
+                let n = self.counters_after_replacements(controller, perm, counters as i32);
                 if n > 0 {
                     self.push_apply(
                         events,
@@ -536,7 +539,7 @@ impl Game {
                 }
             }
             Some(kind) => {
-                let n = self.kind_counters_after_replacements(perm, counters as i32);
+                let n = self.kind_counters_after_replacements(controller, perm, counters as i32);
                 if n > 0 {
                     self.push_apply(
                         events,

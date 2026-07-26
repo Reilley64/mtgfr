@@ -156,7 +156,7 @@ impl Game {
     /// triggered ability's stack item carries no [`Spell`]-shaped bookkeeping to defer onto.
     pub(crate) fn divide_moved_counters(
         &mut self,
-        _player: PlayerId,
+        player: PlayerId,
         assignment: Vec<(ObjectId, i32)>,
     ) -> Result<Vec<Event>, Reject> {
         let Some(PendingChoice::DivideMovedCounters {
@@ -180,7 +180,7 @@ impl Game {
 
         self.finish_answer();
         let mut events = Vec::new();
-        self.move_counters_distributed(from, &assignment, &mut events);
+        self.move_counters_distributed(player, from, &assignment, &mut events);
         Ok(events)
     }
 }

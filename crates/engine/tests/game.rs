@@ -96314,3 +96314,106 @@ fn a_treasure_conversion_outlasts_an_until_end_of_turn_copy_it_replaced() {
         "the indefinite conversion survives the until-end-of-turn copy's cleanup revert"
     );
 }
+
+#[test]
+fn vorinclex_doubles_counters_you_put_on_an_opponents_permanent() {
+    // "If you would put one or more counters on a permanent or player, put twice that many of
+    // each of those kinds of counters on that permanent or player instead." The clause keys off
+    // who *would put* the counters (CR 614.1), not off whose permanent receives them — so your
+    // Vorinclex doubles the counters you put on an opponent's creature.
+    let mut game = TestGame {
+        game: Game::with_players(2, 0),
+    };
+    game.spawn_on_battlefield(PlayerId(0), card("Vorinclex, Monstrous Raider"));
+    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+
+    put_two_counters(&mut game, PlayerId(0), theirs);
+
+    assert_eq!(
+        game.plus_counters(theirs),
+        4,
+        "you put them, so your own clause doubles: 2 -> 4"
+    );
+}
+
+#[test]
+fn vorinclex_halves_counters_an_opponent_puts_on_your_permanent() {
+    // "If an opponent would put one or more counters on a permanent or player, they put half that
+    // many of each of those kinds of counters on that permanent or player instead, rounded down."
+    // The opponent is the one putting them, so the halving applies even though the receiving
+    // creature is yours.
+    let mut game = TestGame {
+        game: Game::with_players(2, 0),
+    };
+    game.spawn_on_battlefield(PlayerId(0), card("Vorinclex, Monstrous Raider"));
+    let yours = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    game.stack_library(PlayerId(1), &[card("Forest")]);
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Main1
+    });
+
+    put_two_counters(&mut game, PlayerId(1), yours);
+
+    assert_eq!(
+        game.plus_counters(yours),
+        1,
+        "an opponent put them, so half of 2, rounded down, is 1"
+    );
+}
+
+#[test]
+fn innkeepers_talent_level_three_does_not_double_counters_an_opponent_puts_on_your_permanent() {
+    // Level 3: "If you would put one or more counters on a permanent or player, put twice that
+    // many of each of those kinds of counters on that permanent or player instead." Only *your*
+    // placements are doubled — an opponent putting counters on your creature is untouched.
+    let mut game = TestGame {
+        game: Game::with_players(2, 0),
+    };
+    let class = game.spawn_on_battlefield(PlayerId(0), card("Innkeeper's Talent"));
+
+    game.fund_mana(PlayerId(0));
+    level_up_chirography(&mut game, class, 1); // {G}: Level 2
+    game.fund_mana(PlayerId(0));
+    level_up_chirography(&mut game, class, 3); // {3}{G}: Level 3
+
+    // Reach the opponent's main phase before any creature exists, so Level 1's begin-combat
+    // trigger finds no legal target and never asks for one.
+    game.stack_library(PlayerId(1), &[card("Forest")]);
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Main1
+    });
+
+    let yours = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    put_two_counters(&mut game, PlayerId(1), yours);
+
+    assert_eq!(
+        game.plus_counters(yours),
+        2,
+        "\"you would put\" — an opponent's placement is not doubled"
+    );
+}
+
+#[test]
+fn winding_constrictor_adds_to_counters_an_opponent_puts_on_your_creature() {
+    // "If one or more counters would be put on an artifact or creature you control, that many
+    // plus one of each of those kinds of counters are put on that permanent instead." Passive
+    // voice: this clause keys off the *recipient* (a permanent you control), not off who puts
+    // the counters, so an opponent's placement on your creature still gets the extra counter.
+    let mut game = TestGame {
+        game: Game::with_players(2, 0),
+    };
+    game.spawn_on_battlefield(PlayerId(0), card("Winding Constrictor"));
+    let yours = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    game.stack_library(PlayerId(1), &[card("Forest")]);
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Main1
+    });
+
+    put_two_counters(&mut game, PlayerId(1), yours);
+
+    assert_eq!(
+        game.plus_counters(yours),
+        3,
+        "a creature you control receives them, whoever put them: 2 + 1 = 3"
+    );
+}

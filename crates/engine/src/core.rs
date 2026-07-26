@@ -204,7 +204,11 @@ impl Game {
     /// state stays mutated only by [`Game::apply`], exactly as [`Game::deal_commander_damage`]).
     /// A real placement, so CR 614 replacements apply (Winding Constrictor, Vorinclex).
     pub fn place_player_counters(&mut self, player: PlayerId, kind: PlayerCounterKind, count: i32) {
-        let count = self.player_counters_after_replacements(player, count);
+        // ponytail: the helper has no real placing player, so the placement counts as
+        // self-inflicted — `player` puts them on themself. Real placements reach the pipeline
+        // through `Game::mint_counters` with the resolving controller as the placer; give this
+        // helper its own `placer` param if a test ever needs an opponent handing out poison.
+        let count = self.player_counters_after_replacements(player, player, count);
         if count == 0 {
             return;
         }

@@ -105,7 +105,7 @@ increment that unblocks each card is in parentheses.
 - [x] Ichor Rats (#20 slices 1–2) — built 2026-07-26, faithful
 - [x] Infectious Bite (#7, #20 slice 1) — built 2026-07-27, faithful
 - [x] Infectious Inquiry (#20 slice 1) — built 2026-07-26, faithful
-- [ ] Innkeeper's Talent (#2, #17, #19) — built 2026-07-26; still approximated (L3's replacement models as of #19, but keys off the recipient's side rather than the placing player; L2 ward misses the Class itself because level is a scalar, not CR 717.2 counters)
+- [ ] Innkeeper's Talent (#2, #17, #19, #26) — built 2026-07-26; still approximated (L3's replacement is faithful as of #26 — it keys off the placing player; L2 ward still misses the Class itself because level is a scalar, not CR 717.2 counters)
 - [x] Inspiring Call (#2) — built 2026-07-26, faithful
 - [x] Lily Bowen, Raging Grandma (#14) — built 2026-07-27, faithful
 - [x] Necrogen Communion (#20 slice 3) — built 2026-07-27, faithful
@@ -119,8 +119,8 @@ increment that unblocks each card is in parentheses.
 - [x] Scheming Aspirant (#18) — built 2026-07-27, faithful
 - [x] Undergrowth Stadium (#5) — built 2026-07-26, faithful
 - [x] Venerated Rotpriest (#20 slices 1, 3) — built 2026-07-27, faithful
-- [ ] Vorinclex, Monstrous Raider (#19) — built 2026-07-27; still approximated (both clauses key off the recipient's side, not the placing player, so counters you put on an opponent's permanent take the wrong clause; CR 616.1 ordering unoffered)
-- [ ] Vraska, Betrayal's Sting (#8, #16, #25, #20 slices 1, 4) — built 2026-07-27; still approximated ({B/P} is a real pip as of #8, but which way it was paid isn't persisted, so Compleated never applies (#16); −2 Treasure mode omitted (#25))
+- [x] Vorinclex, Monstrous Raider (#19, #26) — built 2026-07-27; both clauses key off the placing player as of #26 (residual: CR 616.1's ordering choice is unoffered — a halving and a doubler at once resolve additions → multipliers → halvings in fixed order)
+- [x] Vraska, Betrayal's Sting (#8, #16, #25, #20 slices 1, 4) — built 2026-07-27; faithful as of #25 (Compleated landed in #16, the −2 becomes-Treasure mode in #25; `approximates` cleared)
 - [x] Vraska's Fall (#20 slice 1) — built 2026-07-26, faithful
 - [x] Winding Constrictor (#19) — built 2026-07-27, faithful
 
@@ -135,7 +135,7 @@ into the increment that clears it. Seven are cleared as of 2026-07-27; two remai
 | ~~`types/effect/shared.rs:1035` — proliferate "can't yet add a time counter to a suspended card"~~ **cleared 2026-07-27** | 9 proliferate sources + 3 planeswalkers + Innkeeper's Talent | #17 (landed) — the note understated it: proliferate also omitted **players**, **loyalty**, and **Class level**. Players and loyalty now ship; the exile-store kinds (time/suspend) remain the residual |
 | ~~`types/effect/shared.rs:1070` — "grow this slot array when a future card needs another named kind"~~ **cleared 2026-07-27** | poison/rad | #20 slices 1 + #21 (landed) — the prescribed remedy could not work (the slot array lives on `Permanent`, poison/rad live on players); a separate `PlayerCounterKind` shipped instead |
 | `characteristics.rs:1811` — CR 616.1 ordering "documented rather than offered as a choice" because every pool replacement is the affected player's own adder | Vorinclex, Monstrous Raider | #19 (landed) — a *halving* owned by an opponent breaks all three premises at once; the note is rewritten on `Game::replaced_counters` and the ordering is **still** unoffered |
-| ~~`characteristics.rs:1807` — `counters_after_replacements(object, base)`~~ **cleared 2026-07-27** | Winding Constrictor, Vorinclex, Innkeeper's Talent L3 | #19 (landed) — `Game::replaced_counters` now keys on a `CounterRecipient` (permanent or player) and an any-kind axis; the residual is the *placing* player, not the recipient |
+| ~~`characteristics.rs:1807` — `counters_after_replacements(object, base)`~~ **cleared 2026-07-27** | Winding Constrictor, Vorinclex, Innkeeper's Talent L3 | #19 (landed), then #26 — `Game::replaced_counters` keys on a `CounterRecipient` (permanent or player), an any-kind axis, and, since #26, a `placer: PlayerId` threaded from every call site; nothing left on this axis |
 | ~~`characteristics.rs:1100` — CR 704.5r ±1/±1 annihilation SBA "unobservable today (no pool card puts both kinds on one creature)"~~ **cleared 2026-07-26** | Contagion Clasp and Contagion Engine place real `-1/-1` counters onto a deck full of `+1/+1` counters | #24 (landed) |
 | ~~`triggers.rs:2946` — "no pool Class gates one of those triggers"~~ **cleared 2026-07-26** | Innkeeper's Talent | #2 (landed) — the audit's "read at exactly **one** site" was itself wrong: `min_level` is read at four, and only `keyword_anthem_static_grants` was missing the gate |
 | ~~`promise_of_loyalty.toml:3` — "unobservable while every attack target is a player (planeswalker defenders unmodeled)"~~ **cleared 2026-07-27** | the three planeswalkers | #13a (landed) — the parenthetical was already false about its own engine; attack declaration resolves every attack to its defending player whether the declared target was that player or their planeswalker, so the card was always faithful. A note fix, not a code fix. Two `DSL_REFERENCE.md` rows (`counter_scaled_attack_tax`, `cant_be_attacked_by`) carried the same stale claim and were corrected with it |

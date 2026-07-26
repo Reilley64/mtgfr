@@ -1950,43 +1950,63 @@ impl Game {
         }
     }
 
-    /// The number of +1/+1 counters actually placed when `base` would be put on `object`
+    /// The number of +1/+1 counters actually placed when `placer` would put `base` on `object`
     /// (CR 614 — Hardened Scales, Doubling Season).
-    pub(crate) fn counters_after_replacements(&self, object: ObjectId, base: i32) -> i32 {
-        self.replaced_counters(CounterRecipient::Permanent(object), true, base)
+    pub(crate) fn counters_after_replacements(
+        &self,
+        placer: PlayerId,
+        object: ObjectId,
+        base: i32,
+    ) -> i32 {
+        self.replaced_counters(placer, CounterRecipient::Permanent(object), true, base)
     }
 
     /// The number of counters of a *named* kind (CR 122.1 — charge, -1/-1, …) actually placed when
-    /// `base` would be put on `object`. Only "one or more counters" replacements see these
+    /// `placer` would put `base` on `object`. Only "one or more counters" replacements see these
     /// (Winding Constrictor, Vorinclex); a "+1/+1 counters" replacement does not.
-    pub(crate) fn kind_counters_after_replacements(&self, object: ObjectId, base: i32) -> i32 {
-        self.replaced_counters(CounterRecipient::Permanent(object), false, base)
+    pub(crate) fn kind_counters_after_replacements(
+        &self,
+        placer: PlayerId,
+        object: ObjectId,
+        base: i32,
+    ) -> i32 {
+        self.replaced_counters(placer, CounterRecipient::Permanent(object), false, base)
     }
 
-    /// The number of counters actually placed when `base` would be put on `player` — the player
-    /// half of CR 122.1 (poison, rad, experience), reached by Winding Constrictor's "if you would
-    /// get one or more counters" and Vorinclex's "on a permanent or player".
-    pub(crate) fn player_counters_after_replacements(&self, player: PlayerId, base: i32) -> i32 {
-        self.replaced_counters(CounterRecipient::Player(player), false, base)
+    /// The number of counters actually placed when `placer` would put `base` on `player` — the
+    /// player half of CR 122.1 (poison, rad, experience), reached by Winding Constrictor's "if you
+    /// would get one or more counters" and Vorinclex's "on a permanent or player".
+    pub(crate) fn player_counters_after_replacements(
+        &self,
+        placer: PlayerId,
+        player: PlayerId,
+        base: i32,
+    ) -> i32 {
+        self.replaced_counters(placer, CounterRecipient::Player(player), false, base)
     }
 
     /// Shared body of the three wrappers above: every applicable
     /// [`Effect::Static(StaticEffect::CounterReplacement)`] on the battlefield applies once.
     ///
-    /// ponytail: "who would put the counters" is read as the recipient's own side — the receiving
-    /// permanent's controller, or the receiving player. That is exact for the recipient-keyed
-    /// cards ("counters … on a creature you control", "if you would get one or more counters") and
-    /// for the common case of a player growing their own board, but Vorinclex's putter-keyed
-    /// clauses ("if *you* would put … / if an *opponent* would put …") come out backwards when a
-    /// player puts counters on someone else's permanent. Thread the placing player through the
-    /// ~20 counter-placement call sites to fix it.
+    /// Two independent gates decide whether a replacement sees a placement. `placer` — who *would
+    /// put* the counters (CR 614.1) — answers Vorinclex's "if **you would put** …" / "if an
+    /// **opponent would put** …". The recipient axis (`recipients`, `filter`, and, when the
+    /// replacement names no placer, the receiving side itself) answers Winding Constrictor's
+    /// passive "if one or more counters **would be put on** an artifact or creature you control".
+    /// A card keys off one or the other, never both.
     ///
     /// ponytail: fixed order — additions, then multipliers, then halvings:
     /// `((base + Σadd) × Πtimes) ÷ 2^halvings`. CR 616.1 lets the *affected player* order
     /// simultaneous replacements, and once a halving (Vorinclex's opponent clause) is in the mix
     /// the order genuinely changes the result. Offer a real ordering choice when a board can hold
     /// both a halving and an adder/doubler at once.
-    fn replaced_counters(&self, recipient: CounterRecipient, plus_one: bool, base: i32) -> i32 {
+    fn replaced_counters(
+        &self,
+        placer: PlayerId,
+        recipient: CounterRecipient,
+        plus_one: bool,
+        base: i32,
+    ) -> i32 {
         if base <= 0 {
             return base;
         }
@@ -2010,7 +2030,7 @@ impl Game {
                         halve,
                         other,
                         any_kind,
-                        opponents,
+                        placer: placer_gate,
                         recipients,
                         filter,
                     }),
@@ -2023,9 +2043,15 @@ impl Game {
                 if ability.min_level > p.level {
                     continue;
                 }
-                // "…you control" / "…an opponent would put": which side of the table the
-                // placement happens on.
-                if (p.owner == side) == opponents {
+                // Which side of the table the replacement watches. A placer-keyed clause
+                // ("if you would put …" / "if an opponent would put …") reads who is putting the
+                // counters; everything else reads the recipient's own side ("… you control").
+                let watched = match placer_gate {
+                    Some(CounterPlacer::You) => p.owner == placer,
+                    Some(CounterPlacer::Opponents) => p.owner != placer,
+                    None => p.owner == side,
+                };
+                if !watched {
                     continue;
                 }
                 // "one or more +1/+1 counters" doesn't see a charge or -1/-1 counter.

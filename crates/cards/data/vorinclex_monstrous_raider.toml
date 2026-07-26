@@ -11,7 +11,7 @@ set = "khm"
 legendary = true
 subtypes = ["Phyrexian", "Praetor"]
 keywords = ["trample", "haste"]
-approximates = "Both replacement clauses key off who *would put* the counters; the engine reads that as the recipient's own side (the receiving permanent's controller, or the receiving player), so a player putting counters on someone else's permanent takes the wrong clause — your Vorinclex halves counters you put on an opponent's creature instead of doubling them. CR 616.1's ordering choice is also unoffered: a halving and a doubler applying at once resolve in the fixed order additions, multipliers, halvings rather than the affected player's chosen order."
+approximates = "CR 616.1's ordering choice is unoffered: a halving and a doubler applying at once resolve in the fixed order additions, multipliers, halvings rather than the affected player's chosen order."
 
 [cost]
 generic = 4
@@ -33,6 +33,7 @@ type = "static"
 mode = "counter_replacement"
 times = 2
 any_kind = true
+placer = "you"
 recipients = "permanents_and_players"
 
 # If an opponent would put one or more counters on a permanent or player, they put half that many
@@ -47,5 +48,5 @@ type = "static"
 mode = "counter_replacement"
 halve = true
 any_kind = true
-opponents = true
+placer = "opponents"
 recipients = "permanents_and_players"
