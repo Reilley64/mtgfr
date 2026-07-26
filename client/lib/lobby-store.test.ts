@@ -130,7 +130,7 @@ describe.skipIf(!process.env.WEB_DATABASE_URL)("joinLobby gravatar persistence",
             return Promise.resolve(result).then(async (rows: unknown) => {
               if (!armed || !Array.isArray(rows)) return rows;
               armed = false;
-              await markStarted(baseDb, id);
+              await markStarted(baseDb, id, true);
               return rows.map((row) => (isLobbyRow(row, id) ? { ...row, startedAt: null } : row));
             });
           };
@@ -226,9 +226,23 @@ describe.skipIf(!process.env.WEB_DATABASE_URL)("joinLobby gravatar persistence",
     const asGuest = await setCommanderDamageEnabled(db, tableId, 2, true);
     expect(asGuest.error).toBe("NotHost");
 
-    await markStarted(db, tableId);
+    await markStarted(db, tableId, false);
     const afterStart = await setCommanderDamageEnabled(db, tableId, 1, true);
     expect(afterStart.error).toBe("AlreadyStarted");
+  });
+
+  it("stores the seeded commander damage value when marking started", async () => {
+    db = createWebDb();
+    tableId = await createLobby(db, 1);
+
+    const disabled = await setCommanderDamageEnabled(db, tableId, 1, false);
+    expect(disabled.snap?.commanderDamageEnabled).toBe(false);
+
+    await markStarted(db, tableId, true);
+
+    const loaded = await loadLobby(db, tableId);
+    expect(loaded?.startedAt).toBeInstanceOf(Date);
+    expect(loaded?.commanderDamageEnabled).toBe(true);
   });
 
   it("rejects commander damage changes when the table starts after the first read", async () => {

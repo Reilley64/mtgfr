@@ -203,8 +203,8 @@ export function startError(snap: LobbySnapshot, userId: number): string | null {
   return null;
 }
 
-export async function markStarted(db: WebDb, tableId: string): Promise<void> {
-  await db.update(lobbies).set({ startedAt: sql`now()` }).where(eq(lobbies.tableId, tableId));
+export async function markStarted(db: WebDb, tableId: string, commanderDamageEnabled: boolean): Promise<void> {
+  await db.update(lobbies).set({ startedAt: sql`now()`, commanderDamageEnabled }).where(eq(lobbies.tableId, tableId));
 }
 
 export async function putTableRoute(db: WebDb, tableId: string, podDns: string): Promise<void> {
@@ -219,10 +219,15 @@ export async function putTableRoute(db: WebDb, tableId: string, podDns: string):
 }
 
 /** Route then mark started; roll back the route if mark fails (pg-proxy has no transactions). */
-export async function commitStart(db: WebDb, tableId: string, podDns: string): Promise<void> {
+export async function commitStart(
+  db: WebDb,
+  tableId: string,
+  podDns: string,
+  commanderDamageEnabled: boolean,
+): Promise<void> {
   await putTableRoute(db, tableId, podDns);
   try {
-    await markStarted(db, tableId);
+    await markStarted(db, tableId, commanderDamageEnabled);
   } catch (err) {
     await deleteTableRoute(db, tableId);
     throw err;

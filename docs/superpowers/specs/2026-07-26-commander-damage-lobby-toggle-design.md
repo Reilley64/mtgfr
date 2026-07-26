@@ -56,7 +56,7 @@ Host switch (seated lobby)
   → POST /api/tables/options/v1 { table_id, commander_damage_enabled }
   → lobbies.commander_damage_enabled (bool NOT NULL DEFAULT true)
   → GET …/lobby/v1 includes the flag (all clients via poll)
-  → Host Start → SeedRequest.commander_damage_enabled
+  → Host Start → optional SeedRequest.commander_damage_enabled (absence = true)
   → Engine Game stores the flag at seed (immutable for the match)
   → Snapshot exposes commander_damage_enabled
   → Board gates Cmd N + inspect panel on that flag
@@ -77,12 +77,15 @@ Host switch (seated lobby)
 - Add `commander_damage_enabled` boolean NOT NULL DEFAULT true on `lobbies`.
 - New host-only options route: `POST /api/tables/options/v1`. Errors:
   `NotHost`, `AlreadyStarted`, `UnknownTable`.
-- Start reads the column into `SeedRequest`. After `startedAt` is set, options
-  writes fail with `AlreadyStarted`.
+- Start reads the column into `SeedRequest`. After Seed succeeds, the start
+  commit writes `startedAt` and overwrites `lobbies.commander_damage_enabled`
+  with the exact seeded value; after `startedAt` is set, options writes fail
+  with `AlreadyStarted`.
 
 ### Wire / seed / snapshot
 
-- Proto: `SeedRequest.commander_damage_enabled` (bool).
+- Proto: optional `SeedRequest.commander_damage_enabled` (bool); absence means
+  enabled.
 - Schema / tonic mapping: carry the field through Seed.
 - Snapshot: add `commander_damage_enabled` on `VisibleState` (proto + schema
   projection) so the client does not infer from empty tallies.

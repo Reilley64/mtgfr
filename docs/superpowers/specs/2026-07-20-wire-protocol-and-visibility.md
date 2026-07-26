@@ -125,8 +125,9 @@ it sends `StreamFrame` (snapshot → deltas → heartbeats). Intent and yield ro
 
 **`Tables`** — `Seed`. Called by the BFF Start handler, never by the browser directly. Seeds a
 new game from a lobby the BFF already resolved; returns `SeedResponse` with `pod_dns` so the
-BFF can pin later `table_id` hops to this pod. `SeedRequest` carries `commander_damage_enabled`
-as field 4; the lobby defaults it to true and Start forwards the stored value.
+BFF can pin later `table_id` hops to this pod. `SeedRequest` carries optional
+`commander_damage_enabled` as field 4; absence defaults to true, the lobby defaults to true,
+and Start forwards the stored value.
 
 ### VisibleState
 
@@ -222,7 +223,7 @@ The engine/schema event model includes `MulliganTaken { player, mulligans_taken,
   client never needs a side refetch. Render assembly (`schema::snapshot`) lives in the wire
   layer, not in fat engine events.
 - **Mulligan UI is snapshot-driven**: until protobuf visible-event variants are added, mulligan decision progress comes from `VisibleState` fields on snapshots and deltas, not from the event log.
-- **Commander damage defaults on across old wire peers**: `SeedRequest.commander_damage_enabled` is a non-optional bool at field 4 because only the BFF sends seed requests; `VisibleState.commander_damage_enabled` is optional at field 16 so omitted snapshots from older APIs decode as enabled in the client and schema JSON defaults.
+- **Commander damage defaults on across old wire peers**: `SeedRequest.commander_damage_enabled` is optional at field 4 and omission defaults to enabled, matching the lobby default and older BFFs that do not send the field. `VisibleState.commander_damage_enabled` is optional at field 16 so omitted snapshots from older APIs decode as enabled in the client and schema JSON defaults.
 - **MessageRef is the game-text contract**: engine/schema/server projection paths emit keys and
   typed params for rejects, stack/action labels, prompt effect labels, mode labels, and
   `auto_actions`; the client catalog owns English copy.

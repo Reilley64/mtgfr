@@ -38,7 +38,8 @@ The system separates pre-game lobby from live-game concerns across two persisten
    claimed and all claimed seats are ready.
 5. The host clicks Start. The BFF calls `Tables.Seed` (gRPC, Service `edh-api`) on the
    **newest** active API pod. The seed request carries seat order, user ids, usernames,
-   public `gravatar_hash` values, deck ids, and `commander_damage_enabled`.
+   public `gravatar_hash` values, deck ids, and optional `commander_damage_enabled`
+   (absence defaults to enabled).
 6. `Tables.Seed` resolves and validates all decks, fetches a drand beacon master seed (or a configured fixed seed in dev/test), deals BO1-smoothed opening hands, enters the mulligan phase, inserts the
    `Table` into the in-memory `Registry`, and returns `SeedResponse { table_id, pod_dns, version }`.
 7. BFF writes `table_routes (table_id → pod_dns)` to `mtgfr_web`. Clients are redirected to
@@ -196,7 +197,7 @@ Options writes return the current lobby projection with structured errors in the
 - `AlreadyStarted` when the lobby has already been seeded.
 - `NotHost` when the authenticated user is not the lobby host.
 
-Changing the option touches the lobby for TTL purposes but does not clear Ready state. Start reads the column into `SeedRequest.commander_damage_enabled`; after `startedAt` is set, later option writes return `AlreadyStarted`.
+Changing the option touches the lobby for TTL purposes but does not clear Ready state. Start reads the column into optional `SeedRequest.commander_damage_enabled`; absence defaults to enabled. After Seed succeeds, the BFF commits start by writing `table_routes`, then setting `startedAt` and overwriting `lobbies.commander_damage_enabled` to the exact value used for Seed. After `startedAt` is set, later option writes return `AlreadyStarted`.
 
 ### Yield / dwell (`SetYield`, `SetTurnYield`, `SetStackDwell`)
 
@@ -294,7 +295,7 @@ seeded game; there are no "empty" table shells in the production registry.
   vs. non-seated auth). The same file also covers the Elo hook with a seeded-table concede that
   moves persisted ratings.
 - `crates/server/src/lobby.rs` tests assert `Tables.Seed` copies `commander_damage_enabled` into the engine game.
-- `client/lib/lobby-store.test.ts` asserts lobby creation defaults commander damage on, host writes can flip it, non-host writes return `NotHost`, and started lobbies return `AlreadyStarted`.
+- `client/lib/lobby-store.test.ts` asserts lobby creation defaults commander damage on, host writes can flip it, non-host writes return `NotHost`, start commit stores the exact seeded value, and started lobbies return `AlreadyStarted`.
 - `crates/server/src/ratings.rs` tests assert multi-loss `PlayerLost` batches are processed in
   event order when the unlock-tail persist hook runs.
 - Stream projection tests assert seeded table extras stamp usernames and `gravatar_hash` into

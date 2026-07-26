@@ -13,6 +13,7 @@ import {
 import { normalizePublicApiPath } from "../../../lib/api-upstream";
 import { fetchApiVersion, fetchDeckName, fetchMe, seedGame } from "../../../lib/api-upstream-auth";
 import { gravatarHash } from "../../../lib/gravatar";
+import { parseTableOptionsBody } from "../../../lib/lobby/table-options";
 import {
   commitStart,
   createLobby,
@@ -28,7 +29,6 @@ import {
 } from "../../../lib/lobby-store";
 import { grpcRequestEnv, runTracedRequest } from "../../../lib/otel";
 import type { GrpcRequestEnv } from "../../../lib/wire/grpcClient";
-import { parseTableOptionsBody } from "../../../lib/lobby/table-options";
 import { createWebDb } from "../../db/client";
 
 /** BFF session cookie — cookies terminate here; downstream calls use gRPC metadata. */
@@ -160,12 +160,7 @@ async function handleLobby(event: H3Event, path: string, env: GrpcRequestEnv): P
     if (parsed === "BadJson") {
       return json({ error: "BadJson" }, 400);
     }
-    const result = await setCommanderDamageEnabled(
-      db,
-      parsed.tableId,
-      me.id,
-      parsed.commanderDamageEnabled,
-    );
+    const result = await setCommanderDamageEnabled(db, parsed.tableId, me.id, parsed.commanderDamageEnabled);
     if (!result.snap) {
       return json(toLobbyView(unknownLobby(parsed.tableId), me.id, result.error), 404);
     }
@@ -202,7 +197,7 @@ async function handleLobby(event: H3Event, path: string, env: GrpcRequestEnv): P
       return json(toLobbyView(snap, me.id, seeded.status === 503 ? "Draining" : "SeedFailed"));
     }
     try {
-      await commitStart(db, tableId, seeded.data.pod_dns);
+      await commitStart(db, tableId, seeded.data.pod_dns, snap.commanderDamageEnabled);
     } catch {
       return json(toLobbyView(snap, me.id, "SeedFailed"));
     }
