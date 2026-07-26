@@ -77,6 +77,7 @@ These documents are **not superseded** and must stay current alongside the specs
 | [gha-server-verify-sharding](2026-07-26-gha-server-verify-sharding-design.md) | Design input for 3-shard nextest cold `verify-server` wall-clock; update `ci-and-release` at implement time |
 | [ci-rust-protoc-image](2026-07-26-ci-rust-protoc-image-design.md) | Design input for GHCR `mtgfr-ci` toolchain image (PR1 publish; PR2 containerize verify + migrate job); update `ci-and-release` per PR |
 | [bff-route-split](2026-07-26-bff-route-split-design.md) | Design input: Nitro one-file-per lobby/meta op, `defineHandler` + h3 web APIs, path-param join/ready/start; update shell/lobby/coverage specs at implement time |
+| [effect-deepening](2026-07-26-effect-deepening-design.md) | Design input: deepen Effect on client (LobbyClient, BFF gRPC Effect dispatch, Drizzle RC effect-postgres, Effect HTTP helpers); update shell/lobby/wire specs per wave |
 
 ## Authoring conventions
 
