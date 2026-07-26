@@ -44,11 +44,28 @@ A single Foldkit event-reactor owns routing: `client/app/routes.ts` maps paths t
 | `/play/:deckId` | Lobby Host/Join entry for a required deck id | auth submodel |
 | `/play/:deckId/:table` | Pregame lobby for a required deck id and table id | auth submodel |
 | `/play/:table` | Table-scoped lobby / board wrapper for a generated table code containing at least one letter | auth submodel |
-| `/api/[...path]` | lobby/table HTTP passthrough | — |
 | `/api/rpc/[...path]` | Effect RPC BFF | — |
 | `/api/faro/collect` | Faro proxy | — |
 
 Required identifiers live in path params ([wire-protocol-and-visibility](2026-07-20-wire-protocol-and-visibility.md) routing rule). Query params are optional: `?next=` is the post-login redirect target.
+
+### BFF lobby and meta HTTP (`client/server/routes/api/**`)
+
+Lobby and meta HTTP are one Nitro route file per operation. Each handler exports `defineHandler` from `nitro/h3` inline; shared auth, tracing, and JSON helpers live in `client/server/lobby-http.ts`.
+
+| Route | File |
+|---|---|
+| `GET /api/meta/health/v1` | `api/meta/health/v1.get.ts` |
+| `GET /api/meta/version/v1` | `api/meta/version/v1.get.ts` |
+| `GET /api/meta/coverage/v1` | `api/meta/coverage/v1.get.ts` |
+| `POST /api/tables/v1` | `api/tables/v1.post.ts` |
+| `GET /api/tables/{table}/lobby/v1` | `api/tables/[table]/lobby/v1.get.ts` |
+| `DELETE /api/tables/{table}/route/v1` | `api/tables/[table]/route/v1.delete.ts` |
+| `POST /api/tables/{table}/join/v1` | `api/tables/[table]/join/v1.post.ts` |
+| `POST /api/tables/{table}/ready/v1` | `api/tables/[table]/ready/v1.post.ts` |
+| `POST /api/tables/{table}/start/v1` | `api/tables/[table]/start/v1.post.ts` |
+
+Join, ready, and start take the required `{table}` id in the path; bodies carry only operation fields (`deck_id`, `ready`, or empty).
 Bare `/play` and `?deck=` entry points are Not found (hard cut). Single-segment `/play/...` paths are discriminated by segment shape: integer-looking segments normalize to `PlayRoute` deck entry, and table codes normalize to the table-scoped in-game route. Minted lobby table codes are six characters from `23456789ABCDEFGHJKMNPQRSTUVWXYZ` and are regenerated until they contain at least one letter, so generated share codes never collide with numeric deck ids.
 
 ### Installable PWA (`client/app/pwa.ts`, `client/app/sw.ts`, `vite.config.ts`)

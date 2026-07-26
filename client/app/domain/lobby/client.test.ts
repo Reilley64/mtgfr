@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { apiMeta, coverageMeta, createTable, joinTable, lobbyState } from "./client";
+import { apiMeta, coverageMeta, createTable, joinTable, lobbyState, readyUp, startGame } from "./client";
 
 const unknownTable = {
   table_id: "GONE",
@@ -41,7 +41,7 @@ describe("lobby client", () => {
     );
 
     await expect(lobbyState("ABC123")).resolves.toBeNull();
-    await expect(joinTable({ table_id: "ABC123", deck_id: 1 })).resolves.toBeNull();
+    await expect(joinTable("ABC123", { deck_id: 1 })).resolves.toBeNull();
   });
 
   it("returns null when lobby JSON uses camelCase tableId instead of table_id", async () => {
@@ -53,6 +53,40 @@ describe("lobby client", () => {
     );
 
     await expect(lobbyState("ABC123")).resolves.toBeNull();
+  });
+
+  it("posts join/ready/start with table id in the path and without table_id in the body", async () => {
+    const fetchMock = vi.fn(async () => json(unknownTable, 404));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await joinTable("ABC123", { deck_id: 7 });
+    await readyUp("ABC123", { ready: true });
+    await startGame("ABC123");
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "/api/tables/ABC123/join/v1",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ deck_id: 7 }),
+      }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "/api/tables/ABC123/ready/v1",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ ready: true }),
+      }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      "/api/tables/ABC123/start/v1",
+      expect.objectContaining({
+        method: "POST",
+        body: "{}",
+      }),
+    );
   });
 
   it("returns null when create-table JSON is missing table_id", async () => {
