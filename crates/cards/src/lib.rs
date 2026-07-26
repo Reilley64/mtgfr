@@ -766,7 +766,7 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         );
         let viper = get_by_name("Ambush Viper").expect("Ambush Viper is in the pool");
         assert!(
-            viper.sets.iter().any(|s| *s == "inr"),
+            viper.sets.contains(&"inr"),
             "Ambush Viper printings include inr: {:?}",
             viper.sets
         );
