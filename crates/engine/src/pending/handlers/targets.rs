@@ -251,14 +251,13 @@ impl Game {
         Ok(events)
     }
 
-    /// Every counter-removal event for `object` — one [`Event::CountersPlaced`] (negative) if it
-    /// has any +1/+1 counters, plus one [`Event::KindCountersPlaced`] (negative) per named kind
-    /// present — and the total count removed. Shared by `RemoveAllCountersThenDraw` (remove and
-    /// draw) and [`Self::move_counters`] (remove, then re-place on the destination).
+    /// Answer a [`PendingChoice::Proliferate`]: each chosen permanent or player gets one more
+    /// counter of every kind already there (CR 701.27). A nonzero `remaining` re-raises for the
+    /// next iteration of a "proliferate twice"/"proliferate X times".
     pub(crate) fn answer_proliferate(
         &mut self,
         player: PlayerId,
-        chosen: Vec<ObjectId>,
+        chosen: Vec<ProliferateTarget>,
     ) -> Result<Vec<Event>, Reject> {
         let Some(PendingChoice::Proliferate {
             source,
@@ -274,39 +273,17 @@ impl Game {
         let distinct = chosen
             .iter()
             .enumerate()
-            .all(|(i, id)| !chosen[..i].contains(id));
-        if !distinct || chosen.iter().any(|id| !options.contains(id)) {
+            .all(|(i, t)| !chosen[..i].contains(t));
+        if !distinct || chosen.iter().any(|t| !options.contains(t)) {
             return Err(Reject::IllegalChoice);
         }
         self.finish_answer();
 
         let mut events = Vec::new();
-        for &id in &chosen {
-            let plus = self.permanent(id).plus_counters;
-            if plus > 0 {
-                let n = self.counters_after_replacements(id, 1);
-                if n > 0 {
-                    self.push_apply(
-                        &mut events,
-                        Event::CountersPlaced {
-                            object: id,
-                            count: n,
-                            source_name: "",
-                        },
-                    );
-                }
-            }
-            for &kind in CounterKind::ALL.iter() {
-                if self.permanent(id).kind_counters[kind as usize] > 0 {
-                    self.push_apply(
-                        &mut events,
-                        Event::KindCountersPlaced {
-                            object: id,
-                            kind,
-                            count: 1,
-                        },
-                    );
-                }
+        for &target in &chosen {
+            match target {
+                ProliferateTarget::Permanent(id) => self.proliferate_permanent(&mut events, id),
+                ProliferateTarget::Player(seat) => self.proliferate_player(&mut events, seat),
             }
         }
         pending::raise(
@@ -318,6 +295,64 @@ impl Game {
             },
         );
         Ok(events)
+    }
+
+    /// Give `id` another counter of each kind already on it (CR 701.27).
+    /// ponytail: [`Game::counters_after_replacements`] is +1/+1-and-permanent-only, so a
+    /// replacement effect ("if a counter would be put on…") doesn't see the named-kind or
+    /// loyalty counters here — widen it with increment #19.
+    fn proliferate_permanent(&mut self, events: &mut Vec<Event>, id: ObjectId) {
+        if self.permanent(id).plus_counters > 0 {
+            let n = self.counters_after_replacements(id, 1);
+            if n > 0 {
+                self.push_apply(
+                    events,
+                    Event::CountersPlaced {
+                        object: id,
+                        count: n,
+                        source_name: "",
+                    },
+                );
+            }
+        }
+        for &kind in CounterKind::ALL.iter() {
+            if self.permanent(id).kind_counters[kind as usize] > 0 {
+                self.push_apply(
+                    events,
+                    Event::KindCountersPlaced {
+                        object: id,
+                        kind,
+                        count: 1,
+                    },
+                );
+            }
+        }
+        // A planeswalker's loyalty is loyalty counters (CR 306.5b), so it gets one more too.
+        if self.permanent(id).loyalty > 0 {
+            self.push_apply(
+                events,
+                Event::LoyaltyChanged {
+                    object: id,
+                    amount: 1,
+                },
+            );
+        }
+    }
+
+    /// Give `seat` another counter of each kind already on them (CR 701.27 — poison).
+    fn proliferate_player(&mut self, events: &mut Vec<Event>, seat: PlayerId) {
+        for &kind in PlayerCounterKind::ALL.iter() {
+            if self.player_counters(seat, kind) > 0 {
+                self.push_apply(
+                    events,
+                    Event::PlayerCountersPlaced {
+                        player: seat,
+                        kind,
+                        count: 1,
+                    },
+                );
+            }
+        }
     }
 
     /// Answer a [`PendingChoice::PhaseOut`]: every chosen creature (and everything attached to it)

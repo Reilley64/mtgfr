@@ -215,6 +215,15 @@ pub fn wire_intent_to_pb(intent: WireIntent) -> pb::WireIntent {
                 sacrifices,
             })
         }
+        WireIntent::ChooseProliferate {
+            player,
+            permanents,
+            players,
+        } => Intent::ChooseProliferate(pb::WireIntentChooseProliferate {
+            player: u32::from(player),
+            permanents,
+            players: players.into_iter().map(u32::from).collect(),
+        }),
         WireIntent::Discard { player, cards } => Intent::Discard(pb::WireIntentDiscard {
             player: u32::from(player),
             cards,
@@ -635,6 +644,15 @@ pub fn wire_intent_from_pb(intent: pb::WireIntent) -> Result<WireIntent, String>
                 sacrifices,
             }
         }
+        Intent::ChooseProliferate(pb::WireIntentChooseProliferate {
+            player,
+            permanents,
+            players,
+        }) => WireIntent::ChooseProliferate {
+            player: u8_trunc(player),
+            permanents,
+            players: players.into_iter().map(u8_trunc).collect(),
+        },
         Intent::Discard(pb::WireIntentDiscard { player, cards }) => WireIntent::Discard {
             player: u8_trunc(player),
             cards,

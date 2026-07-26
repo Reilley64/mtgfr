@@ -1065,9 +1065,7 @@ pub enum CounterKind {
     /// counter sits on a card in *exile* (a suspended card), so it is tracked in
     /// [`Game::exile_time_counters`](crate::Game) keyed by object id rather than in
     /// [`Permanent::kind_counters`] (an exiled card is an [`Object::Card`], not a `Permanent`).
-    /// ponytail: proliferate (CR 701.27) reads only `Permanent::kind_counters`, so it can't yet
-    /// add a time counter to a suspended card — wire the exile store into proliferate when a pool
-    /// card wants that.
+    /// Out of proliferate's reach for that reason (CR 701.27 chooses only permanents and players).
     Time,
     /// A scream counter (All Hallow's Eve — CR 122.1's functional-reminder family). Mechanically a
     /// time counter with a different name: it sits on a card in *exile*, ticks down at the owner's
@@ -1143,9 +1141,10 @@ pub enum PlayerCounterKind {
 }
 
 impl PlayerCounterKind {
+    /// Every kind, for walking "each kind already there" (CR 701.27 — proliferate).
+    pub const ALL: [PlayerCounterKind; Self::COUNT] = [PlayerCounterKind::Poison];
     /// How many kinds [`Player::kind_counters`] has a slot for. Adding a kind (a rad counter,
-    /// say) is a one-line change here plus the variant. An `ALL` twin of [`CounterKind::ALL`],
-    /// for walking "each kind already there", lands with its first consumer.
+    /// say) is a one-line change here plus the variant and an [`Self::ALL`] entry.
     pub(crate) const COUNT: usize = 1;
 }
 

@@ -212,6 +212,11 @@ fn intent_str(w: &WireIntent) -> String {
         WireIntent::ShuffleFromGraveyard { cards, .. } => format!("shuffle-gy {cards:?}"),
         WireIntent::SearchLibrary { choice, .. } => format!("search {}", opt_id(choice)),
         WireIntent::ChooseSacrifices { sacrifices, .. } => format!("sacrifice {sacrifices:?}"),
+        WireIntent::ChooseProliferate {
+            permanents,
+            players,
+            ..
+        } => format!("proliferate {permanents:?}/{players:?}"),
         WireIntent::Discard { cards, .. } => format!("discard {cards:?}"),
         WireIntent::PutFromHandOnTop { cards, .. } => format!("put-from-hand-on-top {cards:?}"),
         WireIntent::DeclineUntap { keep_tapped, .. } => format!("keep-tapped {keep_tapped:?}"),

@@ -9,7 +9,6 @@ oracle = "Toxic 1 (Players dealt combat damage by this creature also get a poiso
 set = "one"
 subtypes = ["Phyrexian", "Rat"]
 keywords = [{ toxic = 1 }]
-approximates = "\"Proliferate\" (CR 701.27) only enumerates battlefield permanents with a counter — it can't choose players (poison/rad) or Class level/exiled time/scream counters, though this card's own reminder text says \"permanents and/or players\" (increment #17, not in this wave)."
 
 [cost]
 generic = 1
