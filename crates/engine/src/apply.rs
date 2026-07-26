@@ -196,10 +196,11 @@ impl Game {
             if player.lost {
                 continue;
             }
-            let lethal_commander_damage = player
-                .commander_damage
-                .iter()
-                .any(|&(_, amount)| amount >= LETHAL_COMMANDER_DAMAGE);
+            let lethal_commander_damage = self.commander_damage_enabled
+                && player
+                    .commander_damage
+                    .iter()
+                    .any(|&(_, amount)| amount >= LETHAL_COMMANDER_DAMAGE);
             if player.life <= 0 || player.attempted_empty_draw || lethal_commander_damage {
                 events.push(Event::PlayerLost {
                     player: PlayerId(id as u8),

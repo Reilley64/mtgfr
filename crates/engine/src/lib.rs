@@ -208,6 +208,9 @@ pub struct Game {
     /// [`Game::finish_instant_sorcery_resolution`], so the one-spell-at-a-time resolution model
     /// is enough lifetime management.
     pub(crate) resolution_finish: Option<FinishPolicy>,
+    /// When false, combat does not emit commander-damage tallies and SBAs ignore the 21 clock.
+    /// Default true (CR 903.10a). Set at seed from the lobby host option; immutable thereafter.
+    pub(crate) commander_damage_enabled: bool,
 }
 
 impl Game {

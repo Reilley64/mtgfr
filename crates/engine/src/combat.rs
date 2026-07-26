@@ -1186,7 +1186,7 @@ impl Game {
                 source: Some(source),
             },
         );
-        if self.is_commander(source) {
+        if self.commander_damage_enabled && self.is_commander(source) {
             self.push_apply(
                 events,
                 Event::CommanderDamageDealt {

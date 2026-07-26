@@ -72,6 +72,7 @@ impl Game {
             pending_enter_bonus_counters: Vec::new(),
             exile_time_counters: Vec::new(),
             resolution_finish: None,
+            commander_damage_enabled: true,
         }
     }
 
@@ -189,6 +190,14 @@ impl Game {
     /// commanders that have actually connected appear. 21 from any single one is lethal (CR 903.10a).
     pub fn commander_damage(&self, player: PlayerId) -> &[(PlayerId, i32)] {
         &self.players[player.0 as usize].commander_damage
+    }
+
+    pub fn commander_damage_enabled(&self) -> bool {
+        self.commander_damage_enabled
+    }
+
+    pub fn set_commander_damage_enabled(&mut self, enabled: bool) {
+        self.commander_damage_enabled = enabled;
     }
 
     /// Whether a player has lost the game.
