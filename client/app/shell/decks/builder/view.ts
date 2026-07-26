@@ -611,11 +611,7 @@ export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewIn
             model.problems.length === 0
               ? null
               : h.div(
-                  [
-                    h.Role("alert"),
-                    h.DataAttribute("testid", "deck-problems"),
-                    h.Class(alertClass("text-burn-red")),
-                  ],
+                  [h.Role("alert"), h.DataAttribute("testid", "deck-problems"), h.Class(alertClass("text-burn-red"))],
                   [...model.problems.map((problem) => h.div([h.Class("text-caption")], [problem]))],
                 ),
           ],

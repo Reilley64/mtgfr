@@ -24,7 +24,7 @@ Ship an authenticated `/coverage` shell route that renders a searchable set tabl
 - `/coverage` is an auth-gated shell route. Unauthenticated entry redirects to `/login?next=%2Fcoverage`.
 - Route entry calls `Coverage.informRouteChanged`, which loads coverage through `coverageMeta()` from `GET /api/meta/coverage/v1`. Child commands and view events lift through `GotCoverageMessage`.
 - The page renders `data-testid="coverage-page"` on the same felt shell background family as leaderboard and deck surfaces.
-- Header chrome shows `Coverage`, a global `{n}% faithful` line or `— faithful`, a `Play` link back to `/`, and the shared avatar account menu with the `Leaderboard` shortcut still visible.
+- Header chrome shows `Coverage`, a shellFrame subtitle global `{n}% faithful` line or `— faithful` (`coverage-global-percent`), a `Play` link back to `/`, and the shared avatar account menu with the `Leaderboard` shortcut still visible. Per-set `%` uses vine display emphasis, not priority gold.
 - The fixed bottom-left shell badge still renders on this page when `apiVersion` is known. When global badge coverage meta is complete, the `pool-coverage` line links to `/coverage`.
 
 ### Loading, error, and retry states
