@@ -95810,3 +95810,118 @@ fn innkeepers_talent_level_three_doubles_counters_on_a_permanent_or_player() {
         "counters on a player are doubled too"
     );
 }
+
+// ── Increment #18: `Trigger::YouProliferate` (CR 701.27) — Scheming Aspirant ──────────────
+
+#[test]
+fn scheming_aspirant_triggers_when_you_proliferate() {
+    // "Whenever you proliferate, each opponent loses 2 life and you gain 2 life."
+    let mut g = TestGame::new();
+    let aspirant = g.spawn_on_battlefield(PlayerId(0), card("Scheming Aspirant"));
+    put_two_counters(&mut g, PlayerId(0), aspirant);
+    let algorithm = g.spawn_in_hand(PlayerId(0), card("Expansion Algorithm"));
+    g.cast(algorithm).x(1).resolve();
+
+    g.submit(Intent::ChooseProliferate {
+        player: PlayerId(0),
+        permanents: vec![aspirant],
+        players: vec![],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut g); // Scheming Aspirant's own trigger
+
+    assert_eq!(g.life(PlayerId(1)), 18, "the opponent loses 2 life");
+    assert_eq!(g.life(PlayerId(0)), 22, "you gain 2 life");
+}
+
+#[test]
+fn proliferating_twice_triggers_scheming_aspirant_twice() {
+    // CR 701.27b ("then do it again") is two separate proliferate instances, so "whenever you
+    // proliferate" fires once per instance — 4 life swung total, not 2.
+    let mut g = TestGame::new();
+    let aspirant = g.spawn_on_battlefield(PlayerId(0), card("Scheming Aspirant"));
+    put_two_counters(&mut g, PlayerId(0), aspirant);
+    let algorithm = g.spawn_in_hand(PlayerId(0), card("Expansion Algorithm"));
+    g.cast(algorithm).x(2).resolve();
+
+    g.submit(Intent::ChooseProliferate {
+        player: PlayerId(0),
+        permanents: vec![aspirant],
+        players: vec![],
+    })
+    .unwrap();
+    assert!(
+        matches!(g.pending_choice(), Some(PendingChoice::Proliferate { .. })),
+        "the second instance re-pauses"
+    );
+
+    g.submit(Intent::ChooseProliferate {
+        player: PlayerId(0),
+        permanents: vec![aspirant],
+        players: vec![],
+    })
+    .unwrap();
+    assert!(g.pending_choice().is_none(), "both instances are spent");
+
+    while !g.stack().is_empty() {
+        resolve_top_of_stack(&mut g); // two separate Scheming Aspirant triggers
+    }
+
+    assert_eq!(g.life(PlayerId(1)), 16, "each opponent loses 2, twice");
+    assert_eq!(g.life(PlayerId(0)), 24, "you gain 2, twice");
+}
+
+#[test]
+fn scheming_aspirant_triggers_even_when_you_proliferate_nothing() {
+    // CR 701.27 doesn't condition the proliferate instance on choosing anything — an empty
+    // answer ("proliferate nothing") is still an instance of "you proliferate."
+    let mut g = TestGame::new();
+    let aspirant = g.spawn_on_battlefield(PlayerId(0), card("Scheming Aspirant"));
+    put_two_counters(&mut g, PlayerId(0), aspirant);
+    let algorithm = g.spawn_in_hand(PlayerId(0), card("Expansion Algorithm"));
+    g.cast(algorithm).x(1).resolve();
+
+    g.submit(Intent::ChooseProliferate {
+        player: PlayerId(0),
+        permanents: vec![],
+        players: vec![],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut g);
+
+    assert_eq!(
+        g.life(PlayerId(1)),
+        18,
+        "the instance still fires even choosing nothing"
+    );
+    assert_eq!(g.life(PlayerId(0)), 22);
+}
+
+#[test]
+fn scheming_aspirant_does_not_trigger_when_an_opponent_proliferates() {
+    // Controller-scoped: player 1's Scheming Aspirant doesn't see player 0's proliferate.
+    let mut g = TestGame::new();
+    g.spawn_on_battlefield(PlayerId(1), card("Scheming Aspirant"));
+    let bear = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    put_two_counters(&mut g, PlayerId(0), bear);
+    let algorithm = g.spawn_in_hand(PlayerId(0), card("Expansion Algorithm"));
+    g.cast(algorithm).x(1).resolve();
+
+    g.submit(Intent::ChooseProliferate {
+        player: PlayerId(0),
+        permanents: vec![bear],
+        players: vec![],
+    })
+    .unwrap();
+
+    assert!(
+        g.stack().is_empty(),
+        "an opponent's proliferate doesn't queue this ability"
+    );
+    assert_eq!(
+        g.life(PlayerId(0)),
+        20,
+        "no drain — the trigger never fired"
+    );
+    assert_eq!(g.life(PlayerId(1)), 20);
+}

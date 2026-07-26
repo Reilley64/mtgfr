@@ -286,6 +286,11 @@ impl Game {
                 ProliferateTarget::Player(seat) => self.proliferate_player(&mut events, seat),
             }
         }
+        // Whenever you proliferate (CR 701.27, Scheming Aspirant) — one instance just resolved,
+        // regardless of whether `chosen` is empty (CR 701.27 doesn't condition the instance on a
+        // nonempty choice), so this fires unconditionally, once per answered instance. A
+        // "proliferate twice" re-raises below for the next instance, which fires this again.
+        self.queue_controller_triggers(player, Trigger::YouProliferate, None);
         pending::raise(
             self,
             pending::ChoiceRequest::Proliferate {

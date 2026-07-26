@@ -398,12 +398,21 @@ path, which now returns `Reject::IllegalChoice`. It must send `Answer::Prolifera
 players }` and let a seat be picked._
 
 ### 18. `whenever-you-proliferate-trigger` — 1 card, S
-Depends on: #17 (proliferate must emit a watchable event first).
+Depends on: #17 (a real `answer_proliferate` handler to hook — landed).
 Proliferate is a resolution-time `ChoiceEffect` that emits no event, so there is nothing for a
-trigger to watch. *Sketch:* emit an `Event::Proliferated { player }` once per proliferate
-instance and add `Trigger::YouProliferate`. Note the commander's "proliferate twice" is two
-instances (CR 701.27 — each is a separate proliferate), so Scheming Aspirant triggers twice off
-it; test that explicitly. *Cards:* scheming_aspirant.
+trigger to watch. *Sketch:* add `Trigger::YouProliferate`, controller-scoped and fieldless like
+`YouCreateToken`. Note the commander's "proliferate twice" is two instances (CR 701.27 — each is
+a separate proliferate), so Scheming Aspirant triggers twice off it; test that explicitly.
+*Cards:* scheming_aspirant.
+
+_Landed 2026-07-27: `Trigger::YouProliferate` (`crates/engine/src/types/trigger.rs`), TOML tag
+`you_proliferate` (`crates/engine/src/de.rs`), fired via
+`self.queue_controller_triggers(player, Trigger::YouProliferate, None)` directly inside
+`Game::answer_proliferate` after the per-target loop, once per answered instance —
+unconditionally, so proliferating nothing still fires it (CR 701.27). No new `Event` or wire
+projection: the corrected sketch above (`Event::Proliferated` dropped) is the lazier route the
+brief authorized. `scheming_aspirant.toml` is fully faithful, no `approximates`. Still blocked:
+nothing._
 
 ### 19. `counter-replacement-generalization` — 3 cards + observers, L
 Depends on: #20 slice 1 (for the player half). **Falsifies `characteristics.rs:1807` and

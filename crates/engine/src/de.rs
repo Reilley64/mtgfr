@@ -1715,6 +1715,7 @@ enum TriggerTag {
     SpendManaToCast,
     YouLoseLifeFirstTimeEachTurn,
     Cycled,
+    YouProliferate,
 }
 
 /// An `[[abilities]]` table is flat in TOML: the timing is a string, and an activated
@@ -2013,6 +2014,7 @@ impl<'de> Deserialize<'de> for Ability {
                 },
                 TriggerTag::YouLoseLifeFirstTimeEachTurn => Trigger::YouLoseLifeFirstTimeEachTurn,
                 TriggerTag::Cycled => Trigger::Cycled,
+                TriggerTag::YouProliferate => Trigger::YouProliferate,
             }),
             TimingName::Special(SpecialTiming::Spell) => Timing::Spell,
             TimingName::Special(SpecialTiming::Static) => Timing::Static,

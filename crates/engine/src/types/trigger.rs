@@ -509,6 +509,17 @@ pub enum Trigger {
     /// [`Game::cycle`](crate::Game::cycle). Fieldless: every pool consumer is self-only ("this
     /// card"), so no filter/scope axis exists yet (flag-don't-force).
     Cycled,
+    /// Whenever the ability's controller proliferates (CR 701.27 — "proliferate twice"/"proliferate
+    /// X times" is a *set* of separate proliferate instances, so this fires once per instance, not
+    /// once per resolution) — Scheming Aspirant: "Whenever you proliferate, each opponent loses 2
+    /// life and you gain 2 life." Fires unconditionally at the end of each answered instance inside
+    /// [`Game::answer_proliferate`], even when the player proliferates nothing (CR 701.27 doesn't
+    /// condition the instance on a nonempty choice). A controller-scoped "you did X" trigger like
+    /// [`YouCreateToken`](Self::YouCreateToken); see
+    /// [`Game::queue_controller_triggers`](super::Game::queue_controller_triggers).
+    /// ponytail: fieldless — "you" is the only scope any pool card needs (flag-don't-force; add an
+    /// opponent/any-player scope the moment a second consumer wants one).
+    YouProliferate,
 }
 
 /// Which cast a [`Trigger::SpendManaToCast`] watch accepts as "this mana was spent to cast …",
