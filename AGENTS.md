@@ -59,7 +59,7 @@ Specs live in [`docs/superpowers/specs/`](docs/superpowers/specs/). Keep **one s
 
 **Review gate:** Every code review (including autonomous continuous-loop reviews via `requesting-code-review`) must check Feature specs compliance on the diff. Violations — PR/wave-scoped design sidecars *without* the corresponding surface-spec update, migration/history prose in feature specs, shipped behavior missing from the surface spec, or wrong section template — are **merge-blocking**. Implementation plans may be written under `docs/superpowers/plans/` (gitignored; do not commit) and must not be indexed as feature specs.
 
-Crate split: `engine` (pure, no I/O) / `cards` (TOML scripts) / `server` (tonic + health Axum) / `schema` (projection DTOs; mapped to/from native proto at the gRPC edge). Client split: `client/app/` (Foldkit UI), `client/lib/` (shared wire/domain helpers), `client/server/` (Nitro BFF routes/plugins), `client/styles/` (Tailwind/design tokens).
+Crate split: `engine` (pure, no I/O) / `cards` (TOML scripts) / `server` (tonic + health Axum) / `schema` (projection DTOs; mapped to/from native proto at the gRPC edge). Client split: `client/app/` (Foldkit UI), `client/app/domain/` (shared wire/domain helpers), `client/server/` (Nitro BFF routes/plugins), `client/styles/` (Tailwind/design tokens).
 
 **Reference:** [Forge](https://github.com/Card-Forge/forge) — consult its card scripts and rules implementation for tricky interactions.
 

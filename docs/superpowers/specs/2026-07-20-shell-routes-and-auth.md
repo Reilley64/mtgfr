@@ -49,6 +49,16 @@ A single Foldkit event-reactor owns routing: `client/app/routes.ts` maps paths t
 Required identifiers live in path params ([wire-protocol-and-visibility](2026-07-20-wire-protocol-and-visibility.md) routing rule). Query params are optional: `?next=` is the post-login redirect target.
 Legacy `/play`, `/play/:table`, and `?deck=` entry points are Not found (hard cut).
 
+### App module layout (`client/app/messages.ts`, `client/app/domain/`, feature `index.ts`)
+
+Foldkit features live under `client/app/shell/**`, `client/app/board/**`, and `client/app/game/**`. Shared wire, RPC, i18n, UI helpers, and other non-TEA utilities live in `client/app/domain/` (sibling to features; `client/server/` and `client/styles/` stay outside the app TEA tree).
+
+The parent `Message` union in `client/app/messages.ts` carries app-level tags (`UrlChanged`, `ReceivedMeGravatarHash`, …), shared shell ticks (`CardArtTick`, `DeckCardFlipTick`, `ModalOpened`, account-chrome messages), and **`Got*Message` wrappers only** for child submodels — not flattened child tags. Wrappers: `GotAuthMessage`, `GotDeckListMessage`, `GotDeckBuilderMessage`, `GotLeaderboardMessage`, `GotLobbyMessage`, `GotBoardMessage`, `GotGameMessage`.
+
+Each shell feature exports a namespace from `index.ts` (`shell/auth`, `shell/decks/list`, `shell/decks/builder`, `shell/leaderboard`, `shell/lobby`). Views dispatch child messages as `message => GotXMessage({ message })`. Child commands and subscriptions lift back through `Command.mapMessages(cmds, m => GotXMessage({ message: m }))`. The board submodel's `toParentMessage` wraps into `GotBoardMessage` (no identity passthrough).
+
+Route entry and post-session cold-load call per-surface **`informRouteChanged`** helpers (`shell/*/inform.ts`) so the child owns reset/load transitions; the parent still owns auth redirects and lobby-driven game-slice activation after the lifted child fold.
+
 Lobby Host/Join and seated chrome for `/play/:deckId` and `/play/:deckId/:table` are specified in [lobby-entry-ui](2026-07-20-lobby-entry-ui.md). Deck list (`/`) and builder (`/decks/…`) are specified in [deck-list-and-builder](2026-07-20-deck-list-and-builder.md). The home route entry loads decks only; it does not issue a separate top-players teaser fetch. The leaderboard route (`/leaderboard`) renders a ranked list from `rpc.ratings.leaderboard({ limit, offset })`, showing rank, username, and rating for authenticated players, with header chrome that keeps `Play` back to `/` and reuses the shared avatar account menu instead of a standalone sign-out button. Route entry loads the first page as `limit = 50, offset = 0`; `Load more` appends the next page. When a later page load fails after prior rows are already visible, the existing rows stay on screen, `Load more` is hidden, and `Try again` clears the current rows and restarts from the first page. Every shell surface that already showed the fixed bottom-left API badge now uses the shared two-line stack: `{n}% faithful` above `API {version}` when both coverage counts are present; when either coverage count is missing or invalid, the shell renders only the version line. The board remains out of scope for this chrome.
 
 ### Portrait gate (`client/app/view.ts`, `client/app/subscriptions.ts`, DESIGN.md Landscape Rule)
