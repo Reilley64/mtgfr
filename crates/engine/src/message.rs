@@ -1506,7 +1506,8 @@ impl Effect {
             Effect::Zone(AttachTriggeringAuraToMintedToken { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_ZONE_ATTACH_TRIGGERING_AURA_TO_MINTED_TOKEN)
             }
-            Effect::Zone(ReflexiveTrigger { then }) => {
+            Effect::Zone(ReflexiveTrigger { then })
+            | Effect::Zone(ReflexiveTriggerIfNonlandExiled { then }) => {
                 MessageRef::new(MessageKey::EFFECT_ZONE_REFLEXIVE_TRIGGER)
                     .with_children(then.iter().map(|effect| effect.clone().message()).collect())
             }

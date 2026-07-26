@@ -870,6 +870,7 @@ impl Effect {
             // A reflexive trigger's own steps are placed as separate abilities, each choosing its
             // own target when placed — this scheduler step takes no target of its own.
             | Effect::Zone(ZoneEffect::ReflexiveTrigger { .. })
+            | Effect::Zone(ZoneEffect::ReflexiveTriggerIfNonlandExiled { .. })
             | Effect::Control(ControlEffect::AttachSelfToEntering { .. })
             | Effect::Zone(ZoneEffect::AttachSelfToReanimated)
             | Effect::Zone(ZoneEffect::AttachSelfToMintedToken)
@@ -1030,6 +1031,31 @@ impl Effect {
                     token: Some(token),
                 })
             }
+            other => other,
+        }
+    }
+
+    /// Bake this resolution's settled nonland-exile count into a reflexive
+    /// [`ReflexiveTriggerIfNonlandExiled`](ZoneEffect::ReflexiveTriggerIfNonlandExiled) body (CR
+    /// 603.3b — Augusta, Order Returned) so the follow-up reads the number even though it resolves
+    /// in its own later frame: an [`Amount::NonlandCardsExiledThisWay`](crate::Amount) count on a
+    /// [`PutCounters`](crate::CountersEffect::PutCounters) body becomes a fixed count. One effect
+    /// shape only — the reflexive-count analogue of [`with_reflexive_token`](Self::with_reflexive_token).
+    pub(crate) fn with_reflexive_count(self, count: u32) -> Effect {
+        match self {
+            Effect::Counters(CountersEffect::PutCounters {
+                count: Amount::NonlandCardsExiledThisWay,
+                target,
+                targets,
+                kind,
+                divided,
+            }) => Effect::Counters(CountersEffect::PutCounters {
+                count: Amount::Fixed(count as i32),
+                target,
+                targets,
+                kind,
+                divided,
+            }),
             other => other,
         }
     }

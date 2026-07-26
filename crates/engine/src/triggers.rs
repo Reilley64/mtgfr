@@ -2005,6 +2005,38 @@ impl Game {
         }
     }
 
+    /// Enqueue a reflexive "when one or more nonland cards are exiled this way" triggered ability
+    /// (CR 603.3b — Augusta, Order Returned), the count-gated twin of
+    /// [`queue_reflexive_trigger`](Self::queue_reflexive_trigger). Each effect in `then` becomes
+    /// its own single-ability [`TriggerGroup`] with the settled `count` baked in
+    /// ([`Effect::with_reflexive_count`]), so it rides the normal APNAP placement path onto the
+    /// stack as a real, respondable object with its target chosen at placement (CR 601.2c) — after
+    /// the graveyard fan-out, in a real response window.
+    pub(crate) fn queue_reflexive_counter_trigger(
+        &mut self,
+        controller: PlayerId,
+        source: ObjectId,
+        then: &'static [Effect],
+        count: u32,
+    ) {
+        for effect in then {
+            self.pending_trigger_groups.push(TriggerGroup {
+                expanded: false,
+                controller,
+                source,
+                abilities: vec![Ability {
+                    timing: Timing::Triggered(Trigger::Upkeep),
+                    effect: effect.clone().with_reflexive_count(count),
+                    optional: false,
+                    min_level: 0,
+                    cost: Cost::FREE,
+                    condition: None,
+                    once_each_turn: false,
+                }],
+            });
+        }
+    }
+
     /// Queue watch-others *attack* triggers: a player attacked `attacked`, so scan every
     /// battlefield permanent and fire its `PlayerAttacksYourOpponent` ability when `attacked` is
     /// one of that permanent's controller's opponents (i.e. isn't the controller themself). The

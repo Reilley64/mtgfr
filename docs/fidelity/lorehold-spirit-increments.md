@@ -33,10 +33,17 @@ Regression bar:
   unchanged once the mode is chosen,
 - the trigger no longer pauses on `ChooseMode` after resolution has begun.
 
-### 2. `reflexive-trigger-follow-up-targeting` — 1 card, M
+### 2. `reflexive-trigger-follow-up-targeting` — 1 card, M — LANDED (2026-07-26)
 
 **Depends on:** none.
 **Cards:** `augusta_order_returned.toml`
+**Landed:** new `ZoneEffect::ReflexiveTriggerIfNonlandExiled { then }` sequence step (the count-gated
+twin of `ReflexiveTrigger`): placed after `EachPlayerExilesFromGraveyard`, it creates a reflexive
+triggered ability for each `then` effect **only when the fan-out exiled one or more nonland cards**
+(`resolution_frame.nonland_cards_exiled_this_way > 0`), baking the settled count into the `then`
+counter payload (`Effect::with_reflexive_count`) so the follow-up — a real, respondable stack object
+that chooses its attacking-creature target at placement, after the fan-out — reads the right number.
+Zero nonland exiled creates no follow-up and no target prompt.
 **Sketch:** `Augusta, Order Returned` prints a reflexive trigger: first, each player exiles a card
 from their graveyard; then, **when one or more nonland cards are exiled this way**, a second trigger
 goes onto the stack targeting an attacking creature and putting that many +1/+1 counters on it.

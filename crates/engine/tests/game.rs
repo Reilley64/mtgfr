@@ -33518,17 +33518,13 @@ fn augusta_attack_exiles_each_graveyard_and_counters_target_per_nonland() {
 
     attack_with(&mut game, vec![augusta]);
 
-    // The attack trigger chooses its target attacking creature up front (Augusta is the only one).
-    let Some(PendingChoice::ChooseTarget { legal, .. }) = game.pending_choice() else {
-        panic!("Augusta's attack trigger pauses to choose a target attacking creature");
-    };
-    assert_eq!(legal, vec![Target::Object(augusta)]);
-    game.submit(Intent::ChooseTargets {
-        player: PlayerId(0),
-        targets: vec![Target::Object(augusta)],
-    })
-    .unwrap();
-    resolve_top_of_stack(&mut game);
+    // The attack trigger no longer front-loads a target: the counter target rides on the reflexive
+    // follow-up (chosen after the exiles), so the attack trigger goes straight on the stack.
+    assert!(
+        game.pending_choice().is_none(),
+        "no up-front target prompt — the target is chosen on the reflexive follow-up"
+    );
+    resolve_top_of_stack(&mut game); // the attack trigger resolves → graveyard fan-out begins
 
     // Each player exiles one graveyard card (APNAP): P0 then P1.
     game.submit(Intent::ChooseSacrifices {
@@ -33541,10 +33537,38 @@ fn augusta_attack_exiles_each_graveyard_and_counters_target_per_nonland() {
         sacrifices: vec![b_gy],
     })
     .unwrap();
-
-    assert!(game.pending_choice().is_none());
     assert_eq!(game.zone_of(a_gy), Zone::Exile);
     assert_eq!(game.zone_of(b_gy), Zone::Exile);
+
+    // Two nonland cards exiled → the reflexive trigger is created and only now chooses its target
+    // attacking creature, in a real window after the fan-out (Augusta is the only attacker).
+    let Some(PendingChoice::ChooseTarget { legal, .. }) = game.pending_choice() else {
+        panic!(
+            "the reflexive counter trigger pauses to choose a target attacking creature, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(legal, vec![Target::Object(augusta)]);
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(augusta)],
+    })
+    .unwrap();
+
+    // The reflexive trigger is a real, respondable stack object between the fan-out and the counter
+    // placement — it has not resolved yet, so no counters are on the attacker.
+    assert!(
+        matches!(game.stack().last(), Some(StackEntry::Ability { .. })),
+        "the reflexive counter trigger is on the stack, awaiting a response window"
+    );
+    assert_eq!(
+        game.plus_counters(augusta),
+        0,
+        "the counters are not placed until the reflexive trigger resolves"
+    );
+    resolve_top_of_stack(&mut game); // the reflexive trigger resolves → counters placed
+
+    assert!(game.pending_choice().is_none());
     assert_eq!(
         game.plus_counters(augusta),
         2,
@@ -33562,12 +33586,7 @@ fn augusta_attack_all_lands_exiled_gives_no_counters() {
     let b_gy = game.spawn_in_graveyard(PlayerId(1), card("Forest")); // land
 
     attack_with(&mut game, vec![augusta]);
-    game.submit(Intent::ChooseTargets {
-        player: PlayerId(0),
-        targets: vec![Target::Object(augusta)],
-    })
-    .unwrap();
-    resolve_top_of_stack(&mut game);
+    resolve_top_of_stack(&mut game); // the attack trigger resolves → graveyard fan-out begins
     game.submit(Intent::ChooseSacrifices {
         player: PlayerId(0),
         sacrifices: vec![a_gy],
@@ -33579,6 +33598,11 @@ fn augusta_attack_all_lands_exiled_gives_no_counters() {
     })
     .unwrap();
 
+    // Zero nonland cards exiled → no reflexive trigger is created at all, and no target prompt.
+    assert!(
+        game.pending_choice().is_none(),
+        "all-lands exile creates no second trigger and no target prompt"
+    );
     assert_eq!(
         game.zone_of(a_gy),
         Zone::Exile,
@@ -33602,12 +33626,7 @@ fn augusta_attack_short_graveyards_still_completes() {
     let b_gy = game.spawn_in_graveyard(PlayerId(1), VANILLA.clone());
 
     attack_with(&mut game, vec![augusta]);
-    game.submit(Intent::ChooseTargets {
-        player: PlayerId(0),
-        targets: vec![Target::Object(augusta)],
-    })
-    .unwrap();
-    resolve_top_of_stack(&mut game);
+    resolve_top_of_stack(&mut game); // the attack trigger resolves → graveyard fan-out begins
     // P0 is skipped (empty graveyard); P1 exiles their only card.
     assert_eq!(
         graveyard_exile_chooser(&game),
@@ -33619,6 +33638,20 @@ fn augusta_attack_short_graveyards_still_completes() {
         sacrifices: vec![b_gy],
     })
     .unwrap();
+
+    // One nonland exiled → the reflexive trigger targets the sole attacker, then resolves.
+    let Some(PendingChoice::ChooseTarget { .. }) = game.pending_choice() else {
+        panic!(
+            "the reflexive counter trigger pauses to choose a target attacking creature, got {:?}",
+            game.pending_choice()
+        );
+    };
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(augusta)],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // the reflexive trigger resolves → counter placed
 
     assert!(game.pending_choice().is_none());
     assert_eq!(game.zone_of(b_gy), Zone::Exile);

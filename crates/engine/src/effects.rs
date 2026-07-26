@@ -1075,6 +1075,7 @@ impl Game {
             Effect::Zone(ZoneEffect::UntapSearchedLand)
             | Effect::Zone(ZoneEffect::AttachTriggeringAuraToMintedToken { .. })
             | Effect::Zone(ZoneEffect::ReflexiveTrigger { .. })
+            | Effect::Zone(ZoneEffect::ReflexiveTriggerIfNonlandExiled { .. })
             | Effect::Zone(ZoneEffect::ReturnFromGraveyardAttachedToToken { .. })
             | Effect::Zone(ZoneEffect::AttachSelfToReanimated)
             | Effect::Zone(ZoneEffect::AttachSelfToMintedToken)

@@ -667,6 +667,10 @@
     "family": "zone",
     "mode": "reflexive_trigger"
   },
+  "reflexive_trigger_if_nonland_exiled": {
+    "family": "zone",
+    "mode": "reflexive_trigger_if_nonland_exiled"
+  },
   "regenerate_shield": {
     "family": "control",
     "mode": "regenerate_shield"
