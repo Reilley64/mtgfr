@@ -552,6 +552,50 @@ describe("shell surface scenes", () => {
     );
   });
 
+  it("renders the builder proxy-art dialog and commander proxy chip", () => {
+    Scene.scene(
+      { update, view },
+      Scene.with(
+        authedModel(NewDeckRoute(), {
+          decks: {
+            ...init()[0].decks,
+            builder: {
+              ...initialDeckBuilderSubmodel(),
+              atEnd: true,
+              commander: {
+                id: "atraxa",
+                print: "atraxa-print",
+                proxyArtUrl: "https://example.com/atraxa.png",
+              },
+              known: { atraxa },
+              pool: [atraxa],
+              preferredPrint: { atraxa: "atraxa-print" },
+              proxyArtPicker: {
+                cardId: "atraxa",
+                error: null,
+                url: "https://example.com/atraxa.png",
+              },
+              searching: false,
+            },
+          },
+        }),
+      ),
+      Scene.expect(Scene.selector('[data-testid="builder-proxy-art-picker"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="builder-proxy-art-url"]')).toHaveAttr(
+        "value",
+        "https://example.com/atraxa.png",
+      ),
+      Scene.expect(Scene.selector('[data-testid="builder-proxy-art-save"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="builder-proxy-art-clear"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="builder-commander-proxy-chip"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="builder-commander"] [data-art-url^="/api/card-art/proxy?url="]')).toExist(),
+      Scene.Mount.resolve(OpenDialogAsModal(), ModalOpened()),
+      Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "atraxa", kind: "pool" }), ClearedBuilderHover()),
+      Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "atraxa", kind: "commander" }), ClearedBuilderHover()),
+      Scene.Mount.resolveAll([BindCardArt, CardArtTick()], [BindCardArt, CardArtTick()]),
+    );
+  });
+
   it("renders lobby entry choose destinations with decks", () => {
     Scene.scene(
       { update, view },

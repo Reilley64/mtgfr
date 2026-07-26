@@ -10,9 +10,15 @@ export function formatReleasedAt(iso: string | undefined): string {
 /** Turn a loaded decklist into the builder's Card id -> row record. */
 export function reconcileEntries(
   cards: ReadonlyArray<DeckCardEntry>,
-): Record<string, { count: number; print: string }> {
-  const out: Record<string, { count: number; print: string }> = {};
-  for (const c of cards) out[c.id] = { count: c.count, print: c.print };
+): Record<string, { count: number; print: string; proxyArtUrl?: string }> {
+  const out: Record<string, { count: number; print: string; proxyArtUrl?: string }> = {};
+  for (const c of cards) {
+    out[c.id] = {
+      count: c.count,
+      print: c.print,
+      ...(c.proxy_art_url ? { proxyArtUrl: c.proxy_art_url } : {}),
+    };
+  }
   return out;
 }
 

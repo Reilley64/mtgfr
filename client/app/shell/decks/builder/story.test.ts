@@ -17,20 +17,27 @@ import {
   type Message as BuilderMessage,
   CancelledBuilderDiscard,
   ChangedBuilderName,
+  ChangedBuilderProxyArtUrl,
   ClearedBuilderHover,
+  ClearedBuilderProxyArt,
+  ClosedBuilderProxyArtPicker,
   ConfirmedBuilderDiscard,
   DeckSaveFailed,
   MovedBuilderHover,
   NavigatedAwayFromBuilder,
   OpenedBuilderMenu,
   OpenedBuilderPrintPicker,
+  OpenedBuilderProxyArtPicker,
   PickedBuilderPrint,
   RanBuilderMenuAction,
   ReceivedBuilderPrints,
   ReceivedBuilderSearchPage,
+  ReceivedDeckForBuilder,
   RemovedBuilderCard,
   RequestedBuilderCancel,
   SetBuilderCommander,
+  SubmittedBuilderProxyArt,
+  SubmittedDeckSave,
 } from "./messages";
 import { initialDeckBuilderSubmodel } from "./submodel";
 import { update as builderUpdate, NavigateHome, SaveDeck, SearchBuilderPrints } from "./update";
@@ -124,6 +131,7 @@ test("UrlChanged to DeckRoute resets stale builder state through the parent rout
           pool: [staleCard],
           preferredPrint: { [staleCard.id]: staleCard.default_print },
           printPicker: { addOnPick: false, cardId: staleCard.id, error: false, loading: false, prints: [] },
+          proxyArtPicker: null,
           problems: ["Could not save the deck."],
           query: "mana",
           saving: true,
@@ -437,6 +445,168 @@ test("choose-print menu action opens the print picker without adding a copy", ()
       expect(m.decks.builder.entries["sol-ring"]?.count).toBe(1);
     }),
   );
+});
+
+test("set-proxy-art menu action opens the dialog, locks scroll, and saves proxy art for a deck row", () => {
+  const solRing = card({ id: "sol-ring", name: "Sol Ring" });
+  const model = {
+    ...initialDeckBuilderSubmodel(),
+    atEnd: true,
+    entries: { "sol-ring": { count: 1, print: solRing.default_print } },
+    known: { "sol-ring": solRing },
+    menu: {
+      items: [{ label: "Set proxy art…", action: { kind: "setProxyArt" as const, cardId: "sol-ring" } }],
+      title: "Sol Ring",
+      x: 40,
+      y: 50,
+    },
+    preferredPrint: { "sol-ring": solRing.default_print },
+    searching: false,
+  };
+
+  Scene.scene(
+    { update: builderUpdate, view: (nextModel) => builderView(nextModel, { chrome: emptyChrome }) },
+    Scene.with(model),
+    Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "deck" }), ClearedBuilderHover()),
+    Scene.Mount.resolve(BindCardArt, ClearedBuilderHover() as never),
+    Scene.click(Scene.selector('[data-testid="builder-menu-item-0"]')),
+    Scene.Mount.resolve(OpenDialogAsModal(), ClearedBuilderHover()),
+    Scene.expect(Scene.selector('[data-testid="builder-proxy-art-picker"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="builder-pool-scroll"]')).toHaveClass("overflow-hidden"),
+    Scene.expect(Scene.selector('[data-testid="builder-decklist-scroll"]')).toHaveClass("overflow-hidden"),
+    Scene.type(Scene.selector('[data-testid="builder-proxy-art-url"]'), "https://example.com/a.png"),
+    Scene.expect(Scene.selector('[data-testid="builder-proxy-art-save"]')).toBeEnabled(),
+    Scene.click(Scene.selector('[data-testid="builder-proxy-art-save"]')),
+    Scene.Mount.expectEnded(OpenDialogAsModal()),
+    Scene.expect(Scene.selector('[data-testid="builder-proxy-art-picker"]')).not.toExist(),
+    Scene.expect(Scene.selector('[data-testid="builder-deck-proxy-chip-sol-ring"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="deck-row-sol-ring"] [data-art-url^="/api/card-art/proxy?url="]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="builder-pool-scroll"]')).toHaveClass("overflow-y-auto"),
+    Scene.expect(Scene.selector('[data-testid="builder-decklist-scroll"]')).toHaveClass("overflow-y-auto"),
+  );
+});
+
+test("proxy art dialog validates the url and clear removes the existing override", () => {
+  const solRing = card({ id: "sol-ring", name: "Sol Ring" });
+  const model = {
+    ...initialDeckBuilderSubmodel(),
+    atEnd: true,
+    entries: {
+      "sol-ring": {
+        count: 1,
+        print: solRing.default_print,
+        proxyArtUrl: "https://example.com/old.png",
+      },
+    },
+    known: { "sol-ring": solRing },
+    menu: {
+      items: [{ label: "Set proxy art…", action: { kind: "setProxyArt" as const, cardId: "sol-ring" } }],
+      title: "Sol Ring",
+      x: 40,
+      y: 50,
+    },
+    preferredPrint: { "sol-ring": solRing.default_print },
+    searching: false,
+  };
+
+  Scene.scene(
+    { update: builderUpdate, view: (nextModel) => builderView(nextModel, { chrome: emptyChrome }) },
+    Scene.with(model),
+    Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "deck" }), ClearedBuilderHover()),
+    Scene.Mount.resolve(BindCardArt, ClearedBuilderHover() as never),
+    Scene.click(Scene.selector('[data-testid="builder-menu-item-0"]')),
+    Scene.Mount.resolve(OpenDialogAsModal(), ClearedBuilderHover()),
+    Scene.expect(Scene.selector('[data-testid="builder-proxy-art-url"]')).toHaveAttr("value", "https://example.com/old.png"),
+    Scene.type(Scene.selector('[data-testid="builder-proxy-art-url"]'), "http://example.com/a.png"),
+    Scene.expect(Scene.selector('[data-testid="builder-proxy-art-error"]')).toContainText("https"),
+    Scene.expect(Scene.selector('[data-testid="builder-proxy-art-save"]')).toBeDisabled(),
+    Scene.click(Scene.selector('[data-testid="builder-proxy-art-clear"]')),
+    Scene.Mount.expectEnded(OpenDialogAsModal()),
+    Scene.expect(Scene.selector('[data-testid="builder-proxy-art-picker"]')).not.toExist(),
+    Scene.expect(Scene.selector('[data-testid="builder-deck-proxy-chip-sol-ring"]')).not.toExist(),
+    Scene.expect(Scene.selector('[data-testid="deck-row-sol-ring"] [data-art-url^="/api/card-art/proxy?url="]')).not.toExist(),
+  );
+});
+
+test("deck load and save round-trip proxy art urls for rows and commander", () => {
+  const [loaded] = builderUpdate(
+    initialDeckBuilderSubmodel("7"),
+    ReceivedDeckForBuilder({
+      deck: {
+        cards: [
+          {
+            count: 1,
+            id: "sol-ring",
+            print: "sol-ring-print",
+            proxy_art_url: "https://example.com/sol-ring.png",
+          },
+        ],
+        commander: "atraxa",
+        commander_print: "atraxa-print",
+        commander_proxy_art_url: "https://example.com/atraxa.png",
+        id: 7,
+        name: "Proxy Friends",
+      },
+    }),
+  );
+
+  expect(loaded.entries["sol-ring"]?.proxyArtUrl).toBe("https://example.com/sol-ring.png");
+  expect(loaded.commander.proxyArtUrl).toBe("https://example.com/atraxa.png");
+
+  const [saving, commands] = builderUpdate(loaded, SubmittedDeckSave());
+  expect(saving.saving).toBe(true);
+  expect(commands).toMatchObject([
+    {
+      name: "SaveDeck",
+      args: {
+        id: "7",
+        body: {
+          cards: [
+            {
+              count: 1,
+              id: "sol-ring",
+              print: "sol-ring-print",
+              proxy_art_url: "https://example.com/sol-ring.png",
+            },
+          ],
+          commander: "atraxa",
+          commander_print: "atraxa-print",
+          commander_proxy_art_url: "https://example.com/atraxa.png",
+          name: "Proxy Friends",
+        },
+      },
+    },
+  ]);
+});
+
+test("proxy art messages validate, save, clear, and close the dialog state", () => {
+  const solRing = card({ id: "sol-ring", name: "Sol Ring" });
+  const model = {
+    ...initialDeckBuilderSubmodel(),
+    entries: { "sol-ring": { count: 1, print: solRing.default_print } },
+    known: { "sol-ring": solRing },
+  };
+
+  const [opened] = builderUpdate(model, OpenedBuilderProxyArtPicker({ cardId: "sol-ring" }));
+  expect(opened.proxyArtPicker).toEqual({ cardId: "sol-ring", error: null, url: "" });
+
+  const [invalid] = builderUpdate(opened, ChangedBuilderProxyArtUrl({ url: "http://example.com/a.png" }));
+  expect(invalid.proxyArtPicker?.error).toContain("https");
+
+  const [valid] = builderUpdate(opened, ChangedBuilderProxyArtUrl({ url: "https://example.com/a.png" }));
+  expect(valid.proxyArtPicker?.error).toBeNull();
+
+  const [saved] = builderUpdate(valid, SubmittedBuilderProxyArt());
+  expect(saved.entries["sol-ring"]?.proxyArtUrl).toBe("https://example.com/a.png");
+  expect(saved.proxyArtPicker).toBeNull();
+
+  const [reopened] = builderUpdate(saved, OpenedBuilderProxyArtPicker({ cardId: "sol-ring" }));
+  const [cleared] = builderUpdate(reopened, ClearedBuilderProxyArt());
+  expect(cleared.entries["sol-ring"]?.proxyArtUrl).toBeUndefined();
+  expect(cleared.proxyArtPicker).toBeNull();
+
+  const [closed] = builderUpdate(opened, ClosedBuilderProxyArtPicker());
+  expect(closed.proxyArtPicker).toBeNull();
 });
 
 test("pool cards do not set a native title tooltip on hover", () => {

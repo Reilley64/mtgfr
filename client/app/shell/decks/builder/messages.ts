@@ -13,6 +13,7 @@ export const BuilderMenuActionSchema = S.Union([
   S.Struct({ kind: S.Literal("fill"), cardId: S.String, count: S.Number }),
   S.Struct({ kind: S.Literal("setCommander"), cardId: S.String }),
   S.Struct({ kind: S.Literal("choosePrint"), cardId: S.String, addOnPick: S.Boolean }),
+  S.Struct({ kind: S.Literal("setProxyArt"), cardId: S.String }),
 ]);
 export type BuilderMenuActionSchema = typeof BuilderMenuActionSchema.Type;
 
@@ -46,6 +47,11 @@ export const ReceivedBuilderPrints = m("ReceivedBuilderPrints", {
 export const BuilderPrintSearchFailed = m("BuilderPrintSearchFailed", { cardId: S.String });
 export const PickedBuilderPrint = m("PickedBuilderPrint", { cardId: S.String, print: S.String });
 export const ClosedBuilderPrintPicker = m("ClosedBuilderPrintPicker");
+export const OpenedBuilderProxyArtPicker = m("OpenedBuilderProxyArtPicker", { cardId: S.String });
+export const ChangedBuilderProxyArtUrl = m("ChangedBuilderProxyArtUrl", { url: S.String });
+export const SubmittedBuilderProxyArt = m("SubmittedBuilderProxyArt");
+export const ClearedBuilderProxyArt = m("ClearedBuilderProxyArt");
+export const ClosedBuilderProxyArtPicker = m("ClosedBuilderProxyArtPicker");
 export const SubmittedDeckSave = m("SubmittedDeckSave");
 export const DeckSaved = m("DeckSaved");
 export const DeckSaveFailed = m("DeckSaveFailed", { problems: S.Array(S.String) });
@@ -101,6 +107,11 @@ export const Message = S.Union([
   BuilderPrintSearchFailed,
   PickedBuilderPrint,
   ClosedBuilderPrintPicker,
+  OpenedBuilderProxyArtPicker,
+  ChangedBuilderProxyArtUrl,
+  SubmittedBuilderProxyArt,
+  ClearedBuilderProxyArt,
+  ClosedBuilderProxyArtPicker,
   SubmittedDeckSave,
   DeckSaved,
   DeckSaveFailed,

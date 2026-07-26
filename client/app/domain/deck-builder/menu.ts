@@ -8,7 +8,8 @@ export type BuilderMenuAction =
   | { kind: "remove"; cardId: string; count: number }
   | { kind: "fill"; cardId: string; count: number }
   | { kind: "setCommander"; cardId: string }
-  | { kind: "choosePrint"; cardId: string; addOnPick: boolean };
+  | { kind: "choosePrint"; cardId: string; addOnPick: boolean }
+  | { kind: "setProxyArt"; cardId: string };
 
 export type BuilderMenuItem = { label: string; action: BuilderMenuAction };
 
@@ -66,6 +67,10 @@ export function rowMenuItems(args: {
       label: "Choose print",
       action: { kind: "choosePrint", cardId: card.id, addOnPick: false },
     });
+    items.push({
+      label: "Set proxy art…",
+      action: { kind: "setProxyArt", cardId: card.id },
+    });
   }
   return items;
 }
@@ -75,6 +80,10 @@ export function commanderMenuItems(args: { cardId: string }): BuilderMenuItem[] 
     {
       label: "Choose print",
       action: { kind: "choosePrint", cardId: args.cardId, addOnPick: false },
+    },
+    {
+      label: "Set proxy art…",
+      action: { kind: "setProxyArt", cardId: args.cardId },
     },
   ];
 }
