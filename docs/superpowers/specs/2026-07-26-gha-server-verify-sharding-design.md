@@ -157,6 +157,8 @@ In the same implementation change, update [ci-and-release](2026-07-20-ci-and-rel
 
 ## Verification (when implementing)
 
+Task 3 records PR-run evidence in `.superpowers/sdd/2026-07-26-gha-server-verify-sharding/task-3-report.md`.
+
 1. PR that touches `crates/**` → pass-marker **miss** → lint + two shards run → mark job saves → aggregator green → both JUnit artifacts present.
 2. Immediate follow-up commit that does **not** change server hash inputs → gate **hit** → lint/test/mark skipped → aggregator green (proves pass-marker still short-circuits).
 3. Forced failure: break one shard (or lint) on a miss run → aggregator red **and** mark job does not run / does not save (proves no false pass marker). Revert before merge.
