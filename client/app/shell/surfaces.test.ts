@@ -157,6 +157,7 @@ describe("shell surface scenes", () => {
       ),
       Scene.expect(Scene.selector('[data-testid="decks-page"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="header-leaderboard-link"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="leaderboard-teaser"]')).not.toExist(),
       Scene.expect(Scene.selector('[data-testid="account-menu-trigger"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="seat-face-0"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="deck-list-search"]')).toExist(),
