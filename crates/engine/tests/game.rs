@@ -94957,3 +94957,98 @@ fn proliferate_grows_a_players_rad_counters() {
         "2 + one more of a kind already there"
     );
 }
+
+#[test]
+fn phyresis_outbreak_weakens_each_opponents_creature_by_its_controllers_poison() {
+    // Phyresis Outbreak: "Each opponent gets a poison counter. Then each creature your opponents
+    // control gets -1/-1 until end of turn for each poison counter its controller has."
+    // CR 122.1 counts poison per player, and "its controller" is read once per affected creature —
+    // two opponents on different poison totals weaken their creatures by different amounts.
+    let mut game = Game::with_players(3, 0);
+    let mine = game.spawn_on_battlefield(PlayerId(0), BIG); // 4/4
+    let clean_opponent = game.spawn_on_battlefield(PlayerId(1), BIG);
+    let poisoned_opponent = game.spawn_on_battlefield(PlayerId(2), BIG);
+    game.place_player_counters(PlayerId(2), PlayerCounterKind::Poison, 2);
+    let spell = game.spawn_in_hand(PlayerId(0), card("Phyresis Outbreak"));
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: spell,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack_multiplayer(&mut game);
+
+    assert_eq!(
+        game.power(clean_opponent),
+        3,
+        "P1 sits at one poison, so its creature is -1/-1"
+    );
+    assert_eq!(game.toughness(clean_opponent), 3);
+    assert_eq!(
+        game.power(poisoned_opponent),
+        1,
+        "P2 sits at three poison, so its creature is -3/-3"
+    );
+    assert_eq!(game.toughness(poisoned_opponent), 1);
+    assert_eq!(
+        game.power(mine),
+        4,
+        "the caster's own creature is not a creature your opponents control"
+    );
+    assert_eq!(game.toughness(mine), 4);
+}
+
+#[test]
+fn phyresis_outbreak_counts_the_poison_it_just_gave() {
+    // "Then" (CR 608.2) orders the two clauses within the one resolution: the poison counter is
+    // already on the opponent when the pump counts it, so an opponent starting at zero takes
+    // exactly -1/-1 rather than nothing.
+    let mut game = Game::with_players(2, 0);
+    let opponents_creature = game.spawn_on_battlefield(PlayerId(1), BIG);
+    let spell = game.spawn_in_hand(PlayerId(0), card("Phyresis Outbreak"));
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: spell,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack_multiplayer(&mut game);
+
+    assert_eq!(
+        game.player_counters(PlayerId(1), PlayerCounterKind::Poison),
+        1,
+        "the first clause poisons every opponent"
+    );
+    assert_eq!(
+        game.power(opponents_creature),
+        3,
+        "the pump counts the counter the same resolution just placed"
+    );
+    assert_eq!(game.toughness(opponents_creature), 3);
+}

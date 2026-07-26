@@ -1069,6 +1069,7 @@ impl<'de> Deserialize<'de> for Amount {
                     "target_mana_value" => Amount::TargetManaValue,
                     "per_counter_on_source" => Amount::PerCounterOnSource,
                     "opponents_poison_counters" => Amount::OpponentsPoisonCounters,
+                    "controllers_poison_counters" => Amount::ControllersPoisonCounters,
                     "life_gained_this_turn" => Amount::LifeGainedThisTurn,
                     "spells_cast_this_turn" => Amount::SpellsCastThisTurn,
                     "cards_in_target_player_hand" => Amount::CardsInTargetPlayerHand,

@@ -260,18 +260,28 @@ impl Game {
                 toughness,
                 opponents_only,
             } => {
-                let power = self.resolve_amount(power, controller, source, target, x);
-                let toughness = self.resolve_amount(toughness, controller, source, target, x);
+                // Both amounts are resolved once per affected creature, relative to *that*
+                // creature's controller, not the effect's — Phyresis Outbreak's "for each poison
+                // counter its controller has" (CR 122.1) gives each opponent's creatures a
+                // different -N/-N. `resolve_amount`'s `controller` argument is "the player this
+                // amount is relative to"; for a controller-independent amount (`Fixed`, `X`) that
+                // distinction is invisible, which is why the flat weakeners are unaffected.
                 self.battlefield()
                     .into_iter()
                     .filter(|&id| self.is_creature_on_battlefield(id))
                     .filter(|&id| !opponents_only || self.controller_of(id) != controller)
-                    .map(|object| Event::TempBoost {
-                        object,
-                        power: -power,
-                        toughness: -toughness,
-                        keywords: &[],
-                        source_name,
+                    .map(|object| {
+                        let relative_to = self.controller_of(object);
+                        let power = self.resolve_amount(power, relative_to, source, target, x);
+                        let toughness =
+                            self.resolve_amount(toughness, relative_to, source, target, x);
+                        Event::TempBoost {
+                            object,
+                            power: -power,
+                            toughness: -toughness,
+                            keywords: &[],
+                            source_name,
+                        }
                     })
                     .collect()
             }

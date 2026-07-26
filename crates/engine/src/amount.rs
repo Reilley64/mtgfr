@@ -260,6 +260,11 @@ impl Game {
                 .filter(|&p| p != controller)
                 .map(|p| self.player_counters(p, PlayerCounterKind::Poison) as i32)
                 .sum(),
+            // "for each poison counter its controller has" (Phyresis Outbreak): the poison on the
+            // single player this amount is relative to, CR 122.1.
+            Amount::ControllersPoisonCounters => {
+                self.player_counters(controller, PlayerCounterKind::Poison) as i32
+            }
         }
     }
 

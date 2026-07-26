@@ -321,6 +321,11 @@ pub enum Amount {
     /// read summed across every opponent, not a per-opponent maximum; a player who has already
     /// lost is out of the game and contributes nothing.
     OpponentsPoisonCounters,
+    /// The number of poison counters (CR 122.1) on the player this amount is resolved *relative
+    /// to* — Phyresis Outbreak's "for each poison counter its controller has." That player is
+    /// [`Game::resolve_amount`]'s `controller` argument, which a mass effect resolving
+    /// per-permanent passes as the affected permanent's controller, not the spell's controller.
+    ControllersPoisonCounters,
 }
 
 impl Default for Amount {

@@ -251,14 +251,26 @@ activated `monstrosity N` effect that is a no-op when already monstrous and othe
 `Trigger::BecomesMonstrous`. Alpha Deathclaw's "enters **or** becomes monstrous" is one ability
 with two trigger conditions, like the commander's "enters or attacks". *Cards:* alpha_deathclaw.
 
-### 13. `emblems` — 1 card, M
+### 13a. `garruk-cursed-huntsman-wolves` — 1 card, M
 Depends on: nothing. **Clears the stale note at `promise_of_loyalty.toml:3`** ("planeswalker
 defenders unmodeled" — already false; `Defender::Planeswalker` exists and `combat.rs:430` says so).
-*Sketch:* emblems are an ownerless, unremovable object in a command-zone-adjacent store carrying
-static effects only (CR 114). Garruk, Cursed Huntsman needs the emblem *and* a token-borne death
-trigger that puts a loyalty counter on each Garruk its controller controls — a token ability
-pointing at a permanent type, not at its creator, so it survives the creating walker's death.
-Fix the Promise of Loyalty note in the same change. *Cards:* garruk_cursed_huntsman.
+Garruk, Cursed Huntsman's `0` and `−3` abilities plus its Wolf token, whose own death trigger
+puts a loyalty counter on each Garruk its controller controls — a token ability pointing at a
+permanent type, not at its creator, so it survives the creating walker's death. Loyalty is the
+scalar `Permanent::loyalty`, mutated by the existing `Event::LoyaltyChanged`; no new
+`CounterKind`. The `−6` emblem mode is omitted and flagged in `approximates`. Fix the Promise
+of Loyalty note in the same change. *Cards:* garruk_cursed_huntsman.
+
+### 13b. `emblems` — clears 13a's residual, L
+Depends on: 13a. Emblems are an ownerless, unremovable, non-permanent object in a per-player
+store carrying static abilities only (CR 114.1–114.5). Garruk's is a `StaticEffect::Anthem`
+("Creatures you control get +3/+3 and have trample"), which already exists — the store is the
+only new machinery. Wire the `−6` and delete 13a's `approximates` line. No emblem removal,
+copying, or targeting: CR 114 says none exist.
+
+**Both 13a and 13b have pre-written briefs** at `/private/tmp/claude-501/-Users-reilley-Repositories-mtgfr/a6559256-1122-41b4-8623-2c96d64f687b/scratchpad/brief-13.md` (verbatim oracle text
+and `file:line` anchors). #13 stalled 6/6 in wave 6 as a single increment; the original sketch
+also misquoted the card (`0:`, not `+1:`). Use the briefs as written.
 
 ### 14. `double-counters-or-cull-and-gain` — 1 card, M — LANDED 2026-07-26
 _Landed 2026-07-26: the premise above overstated the gap — `CountersEffect::DoubleCounters`
@@ -288,7 +300,7 @@ with Branching Evolution out it is 2×, with it 4×), and "remove all but one +1
 gain 1 life for each removed **this way**" (`remove_all_counters_then_draw` draws instead, and the
 count must be the number actually removed). *Cards:* lily_bowen_raging_grandma.
 
-### 15. `grant-triggered-ability-to-attached` — 1 card, M
+### 15. `grant-triggered-ability-to-attached` — 1 card, M — LANDED 2026-07-26
 Depends on: nothing.
 `grant_to_attached`'s `granted_ability` is a `GrantedAbility { cost, effects }` — activated only.
 Power Fist (`{1}{G}` Equipment, Equip {2}) grants the equipped creature **trample** *and* a
@@ -381,7 +393,7 @@ because level counters route around this path) — fix Ozolith's filter in the s
 *Cards:* vorinclex_monstrous_raider, winding_constrictor, innkeepers_talent (L3), plus existing
 pool ozolith_the_shattered_spire, hardened_scales, doubling_season.
 
-### 20. `player-counters-poison-infect-toxic` — 17 cards, XL
+### 20. `player-counters-poison-infect-toxic` — 17 cards, XL — LANDED 2026-07-27
 Depends on: nothing (this is the foundation).
 **Falsifies `types/effect/shared.rs:1070`** — and the remedy that note prescribes ("grow this slot
 array, add the matching variant") **cannot work**: `kind_counters` is an array on `Permanent`, and
@@ -485,6 +497,16 @@ faithfully.
 -1/-1 until end of turn **for each poison counter its controller has**" — a per-permanent amount
 resolved against *that permanent's controller*, not the spell's controller. *Cards:*
 phyresis_outbreak.
+*2026-07-27 — slice 5 built; with it the XL is LANDED.* `Amount::ControllersPoisonCounters` (TOML
+`controllers_poison_counters`) reads the poison on the one player the amount is relative to, and
+`PumpEffect::WeakenEachCreature` now resolves both amounts **inside** its per-creature loop with
+that creature's own controller as `resolve_amount`'s `controller` argument — the parameter is "the
+player this amount is relative to", not "the effect's controller" (CR 122.1). The three existing
+weakeners (Massacre, Toxic Deluge, Doomwake Giant) pass `Fixed`/`X`, which ignore that argument, so
+the hoist-removal is behaviour-preserving for them. The two clauses are two ordered
+`[[abilities.effects]]` blocks, which is exactly the "Then" sequencing (CR 608.2): an opponent at
+zero poison ends the resolution at one and takes `-1/-1`. phyresis_outbreak is faithful with no
+`approximates`.
 
 Landing rule: this XL is LANDED only when all five slices are built; slices get dated progress
 notes until then.

@@ -18,6 +18,7 @@ fn amount_label(amount: Amount) -> String {
         Amount::PerCreatureYouControl => "1 per creature you control".to_string(),
         Amount::PerCreatureOnBattlefield => "1 per creature on the battlefield".to_string(),
         Amount::OpponentsPoisonCounters => "1 per poison counter your opponents have".to_string(),
+        Amount::ControllersPoisonCounters => "1 per poison counter its controller has".to_string(),
         Amount::PerPermanentMatching { filter, zone } => {
             let where_ = match zone {
                 AmountZone::Battlefield => "on the battlefield",

@@ -111,7 +111,7 @@ increment that unblocks each card is in parentheses.
 - [x] Necrogen Communion (#20 slice 3) — built 2026-07-27, faithful
 - [x] Overgrown Tomb (#6) — built 2026-07-26, faithful
 - [x] Phyresis (#20 slice 2) — built 2026-07-26, faithful
-- [ ] Phyresis Outbreak (#20 slice 5)
+- [x] Phyresis Outbreak (#20 slice 5) — built 2026-07-27, faithful
 - [x] Phyrexian Swarmlord (#20 slices 2, 4) — built 2026-07-27, faithful
 - [x] Plague Stinger (#20 slice 2) — built 2026-07-26, faithful
 - [x] Power Fist (#15) — built 2026-07-27, faithful
