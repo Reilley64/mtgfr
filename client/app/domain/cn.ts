@@ -19,7 +19,7 @@ export type { ClassValue };
 export const THEME_SCALES = {
   text: ["title", "body", "button", "label", "caption", "chip", "display", "game", "micro"],
   radius: ["panel", "modal", "hud", "control", "focus", "game"],
-  spacing: ["xs", "sm", "md", "lg", "xl", "xxl"],
+  spacing: ["xs", "sm", "md", "lg", "xl", "xxl", "shell-gutter", "shell-header-y"],
 } as const;
 
 const mergeTw = extendTailwindMerge({
