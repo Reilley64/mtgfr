@@ -18,9 +18,14 @@ export function parseTableCode(input: string, base = globalThis.location?.origin
 
   try {
     const url = trimmed.includes("://") ? new URL(trimmed) : new URL(trimmed, base);
-    const fromPath = url.pathname.match(/^\/play\/[^/]+\/([^/]+)$/);
-    if (fromPath)
-      return decodeURIComponent(fromPath[1] ?? "")
+    const fromPregame = url.pathname.match(/^\/play\/[^/]+\/([^/]+)$/);
+    if (fromPregame)
+      return decodeURIComponent(fromPregame[1] ?? "")
+        .trim()
+        .toUpperCase();
+    const fromGame = url.pathname.match(/^\/play\/([^/]+)$/);
+    if (fromGame)
+      return decodeURIComponent(fromGame[1] ?? "")
         .trim()
         .toUpperCase();
     const fromQuery = url.searchParams.get("table");

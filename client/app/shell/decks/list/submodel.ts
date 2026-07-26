@@ -1,6 +1,6 @@
 import { Schema as S } from "effect";
-import { CatalogCardSchema } from "../../../../lib/deck-builder/cards";
-import { DeckSummary } from "../../../../lib/wire/types";
+import { CatalogCardSchema } from "../../../domain/deck-builder/cards";
+import { DeckSummary } from "../../../domain/wire/types";
 
 export const DeckListSubmodel = S.Struct({
   searchQuery: S.String,

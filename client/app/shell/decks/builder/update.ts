@@ -8,16 +8,16 @@ import {
   DECK_SIZE,
   deckCount,
   PAGE,
-} from "../../../../lib/deck-builder/cards";
-import { lookupCardsByIds } from "../../../../lib/deck-builder/lookup-cards";
-import { commanderMenuItems, poolMenuItems, rowMenuItems } from "../../../../lib/deck-builder/menu";
-import { commanderPrintForRow, reconcileEntries } from "../../../../lib/deck-builder/print";
-import { searchPrints } from "../../../../lib/deck-builder/scryfall";
+} from "../../../domain/deck-builder/cards";
+import { lookupCardsByIds } from "../../../domain/deck-builder/lookup-cards";
+import { commanderMenuItems, poolMenuItems, rowMenuItems } from "../../../domain/deck-builder/menu";
+import { commanderPrintForRow, reconcileEntries } from "../../../domain/deck-builder/print";
+import { searchPrints } from "../../../domain/deck-builder/scryfall";
 import {
   type DeckCardEntry,
   SaveDeckRequest,
   type SaveDeckRequest as SaveDeckRequestShape,
-} from "../../../../lib/wire/types";
+} from "../../../domain/wire/types";
 import { RpcClient } from "../../../resources";
 import {
   type BuilderMenuActionSchema,
@@ -315,6 +315,7 @@ export const update = (
         { ...model, atEnd: false, offset: 0, pool: [], query, searching: true },
         [SearchDeckBuilderCards({ query, offset: 0 })],
       ],
+      ChangedBuilderRoute: ({ editingId }) => enterBuilder(editingId),
       RequestedNextBuilderPage: () => {
         if (model.atEnd || model.searching) return [model, []];
         const offset = model.offset + PAGE;

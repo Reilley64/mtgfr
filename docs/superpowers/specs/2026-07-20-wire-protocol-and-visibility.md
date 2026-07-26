@@ -1,7 +1,7 @@
 # Wire Protocol and Visibility
 
-**Status:** Current (as of 2026-07-25)
-**Module:** `proto/mtgfr/v1/`, `crates/schema/`, `crates/server/src/grpc/`, `client/lib/wire/`
+**Status:** Current (as of 2026-07-26)
+**Module:** `proto/mtgfr/v1/`, `crates/schema/`, `crates/server/src/grpc/`, `client/app/domain/wire/`
 (`types.ts`, `protoMap.ts`, `visibleEventKindPresence.ts`, `wire-case-coverage.test.ts`, generated/)
 
 ---
@@ -30,7 +30,7 @@ protocol — all trees are native protobuf.
 
 Player-facing server-authored game text is carried as `MessageRef` values: a stable `key`, typed
 `params`, and optional child `MessageRef`s for composed effects. English prose lives in the client
-catalog (`client/lib/i18n/catalog/en.ts`) and is rendered with `formatMessage`. Card/object names
+catalog (`client/app/domain/i18n/catalog/en.ts`) and is rendered with `formatMessage`. Card/object names
 that identify visible objects remain plain string data; hidden names must not be embedded in
 `MessageRef` params.
 
@@ -209,7 +209,7 @@ The engine/schema event model includes `MulliganTaken { player, mulligans_taken,
 
 - **`.proto` as sole contract** (wire-protocol-and-visibility spec): `crates/schema` remains the
   projection model; `crates/server/src/grpc/map/` converts at the gRPC edge to/from native proto.
-  `client/lib/wire/types.ts` holds hand-maintained TypeScript mirror types that the BFF maps via
+  `client/app/domain/wire/types.ts` holds hand-maintained TypeScript mirror types that the BFF maps via
   `protoMap.ts`. `VISIBLE_EVENT_KIND_PRESENCE` plus `wire-case-coverage.test.ts` keep those hand
   unions aligned with generated `PendingChoiceView` / `VisibleEvent` oneofs after codegen.
 - **BFF cookie termination**: cookies are host-only on `edh.example.com`; they never cross the
@@ -233,7 +233,7 @@ The engine/schema event model includes `MulliganTaken { player, mulligans_taken,
 - **Codegen lifecycle**: `just server-codegen` (Rust, via `build.rs` → `OUT_DIR`) and
   `bun run gen` (TypeScript: `buf generate` via `client/package.json` `gen:wire`, plus design
   tokens via `gen-tokens.mjs` / `gen:tokens`) regenerate bindings from `.proto` and token
-  outputs. Generated TS files under `client/lib/wire/generated/` are gitignored and regenerated
+  outputs. Generated TS files under `client/app/domain/wire/generated/` are gitignored and regenerated
   in-image for production builds. There is no `scripts/gen.sh`.
 
 ---
@@ -247,9 +247,9 @@ The engine/schema event model includes `MulliganTaken { player, mulligans_taken,
 - MessageRef projection tests assert keys and params on `Ack.reject_reason`, stack labels,
   actions, pending-choice labels, and `auto_actions`.
 - Catalog drift is guarded by `crates/engine` comparing `MessageKey::all()` to
-  `client/lib/i18n/rustKeys.json`, plus a client catalog coverage test that requires every
+  `client/app/domain/i18n/rustKeys.json`, plus a client catalog coverage test that requires every
   Rust key to exist in `enCatalog`.
-- Generated↔hand wire drift is guarded by `client/lib/wire/wire-case-coverage.test.ts`
+- Generated↔hand wire drift is guarded by `client/app/domain/wire/wire-case-coverage.test.ts`
   (PendingChoiceView / VisibleEvent oneof cases vs `FORMULATOR_FOR_KIND` /
   `VISIBLE_EVENT_KIND_PRESENCE`).
 - Mulligan projection tests assert `mulliganing`, `mulligans_taken`, `hand_kept`, and `can_mulligan` are present in snapshots without exposing other players' hands.
@@ -271,7 +271,7 @@ The engine/schema event model includes `MulliganTaken { player, mulligans_taken,
   field) is not in scope; English catalogs are client-side only today.
 - **Auth / lobby / deck-legality gRPC `Status` English messages**: outside the `MessageRef`
   game-text contract.
-- **Game-log narration**: `client/lib/event-fold.ts` `describe()` templates are not MessageRef
+- **Game-log narration**: `client/app/domain/event-fold.ts` `describe()` templates are not MessageRef
   keys.
 - **WebSocket transport**: the stream is bridged to SSE at the BFF; native WebSocket is not in
   the protocol.

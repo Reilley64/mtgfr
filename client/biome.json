@@ -6,7 +6,13 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!!**/dist", "!lib/wire/generated", "!styles/mana-oracle.css"]
+    "includes": [
+      "**",
+      "!!**/dist",
+      "!app/domain/wire/generated",
+      "!styles/tokens.generated.css",
+      "!styles/mana-oracle.css"
+    ]
   },
   "formatter": {
     "enabled": true,

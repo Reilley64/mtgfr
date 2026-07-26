@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buttonClass } from "./buttonClass";
 
-describe("buttonClass (design.tokens.json / client/lib/ui)", () => {
+describe("buttonClass (design.tokens.json / client/app/domain/ui)", () => {
   it("defaults to primary", () => {
     const c = buttonClass();
     expect(c).toContain("bg-llanowar");

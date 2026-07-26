@@ -2,7 +2,7 @@
 // Body size capped; no public CORS wildcards (browser posts same-origin).
 
 import { defineEventHandler, getMethod, getRequestHeader, type H3Event, readRawBody } from "nitro/h3";
-import { bodyCapped, upstreamUrl } from "../../../../lib/faro/collect";
+import { bodyCapped, upstreamUrl } from "../../../../app/domain/faro/collect";
 
 function arrayBufferOf(bytes: Uint8Array): ArrayBuffer {
   const copy = new Uint8Array(bytes.byteLength);

@@ -1,6 +1,6 @@
 import { Effect } from "effect";
 import { Command } from "foldkit";
-import { apiMeta } from "../lib/lobby/client";
+import { apiMeta } from "./domain/lobby/client";
 import { ReceivedApiVersion } from "./messages";
 
 export const FetchApiVersion = Command.define(

@@ -1,9 +1,9 @@
 import { Effect, Schema as S } from "effect";
 import { Command } from "foldkit";
-import { formatMessage } from "../../lib/i18n/message";
-import { statusOf } from "../../lib/rpc-client";
-import type { Ack, IntentEnvelope, WireIntent } from "../../lib/wire/types";
 import { CardNameSuggestionsFetched, InspectCardFetched } from "../board/messages";
+import { formatMessage } from "../domain/i18n/message";
+import { statusOf } from "../domain/rpc-client";
+import type { Ack, IntentEnvelope, WireIntent } from "../domain/wire/types";
 import { RpcClient } from "../resources";
 import { IntentAcked, IntentRejected } from "./messages";
 

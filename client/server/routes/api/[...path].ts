@@ -10,10 +10,10 @@ import {
   type H3Event,
   readRawBody,
 } from "nitro/h3";
-import { normalizePublicApiPath } from "../../../lib/api-upstream";
-import { fetchApiMeta, fetchDeckName, fetchMe, seedGame } from "../../../lib/api-upstream-auth";
-import { fetchCoverageMeta } from "../../../lib/coverage-meta";
-import { gravatarHash } from "../../../lib/gravatar";
+import { normalizePublicApiPath } from "../../../app/domain/api-upstream";
+import { fetchApiMeta, fetchDeckName, fetchMe, seedGame } from "../../../app/domain/api-upstream-auth";
+import { fetchCoverageMeta } from "../../../app/domain/coverage-meta";
+import { gravatarHash } from "../../../app/domain/gravatar";
 import {
   commitStart,
   createLobby,
@@ -25,9 +25,9 @@ import {
   startError,
   sweepWebDb,
   toLobbyView,
-} from "../../../lib/lobby-store";
-import { grpcRequestEnv, runTracedRequest } from "../../../lib/otel";
-import type { GrpcRequestEnv } from "../../../lib/wire/grpcClient";
+} from "../../../app/domain/lobby-store";
+import { grpcRequestEnv, runTracedRequest } from "../../../app/domain/otel";
+import type { GrpcRequestEnv } from "../../../app/domain/wire/grpcClient";
 import { createWebDb } from "../../db/client";
 
 /** BFF session cookie — cookies terminate here; downstream calls use gRPC metadata. */

@@ -9,7 +9,7 @@ import { type Attribute, type Html, html } from "foldkit/html";
 import { buttonClass } from "~/ui/buttonClass";
 import { cardArt } from "~/ui/card-art";
 import type { VisibleState } from "~/wire/types";
-import { formatMessage } from "../../../lib/i18n/message";
+import { formatMessage } from "../../domain/i18n/message";
 import { aimingObjectIds, stagedPickTargets } from "../action/targeting";
 import {
   STACK_CARD_W,

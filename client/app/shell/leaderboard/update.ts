@@ -42,6 +42,7 @@ export const update = (
       readonly [LeaderboardSubmodel, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>]
     >(),
     M.tagsExhaustive({
+      ChangedLeaderboardRoute: () => loadLeaderboard(model),
       RequestedLeaderboardRefresh: () => loadLeaderboard(model),
       RequestedLeaderboardNextPage: () => loadLeaderboard(model, model.entries.length),
       ReceivedLeaderboardPage: ({ leaderboard, offset }) => {

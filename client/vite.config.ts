@@ -2,7 +2,8 @@ import { foldkit } from "@foldkit/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
 import { nitro } from "nitro/vite";
 import { defineConfig } from "vite";
-import { clientBuildSourcemap } from "./lib/client-build-options";
+import { VitePWA } from "vite-plugin-pwa";
+import { clientBuildSourcemap } from "./app/domain/client-build-options";
 
 export default defineConfig({
   build: {
@@ -18,7 +19,7 @@ export default defineConfig({
     port: 3000,
   },
   resolve: {
-    // Vite 8+: single source of truth is tsconfig.json compilerOptions.paths (`~/*` → `./lib/*`).
+    // Vite 8+: single source of truth is tsconfig.json compilerOptions.paths (`~/*` → `./app/domain/*`).
     tsconfigPaths: true,
   },
   plugins: [
@@ -31,5 +32,49 @@ export default defineConfig({
       serverDir: "./server",
     }),
     tailwindcss(),
+    // Do not add precache/runtimeCaching without a product decision (Wave 3 design).
+    VitePWA({
+      strategies: "injectManifest",
+      outDir: ".output/public",
+      srcDir: "app",
+      filename: "sw.ts",
+      injectRegister: false,
+      registerType: "autoUpdate",
+      manifest: {
+        id: "/",
+        name: "edh.reilley.dev",
+        short_name: "edh.reilley.dev",
+        start_url: "/",
+        scope: "/",
+        display: "standalone",
+        background_color: "#0B1310",
+        theme_color: "#0B1310",
+        icons: [
+          {
+            src: "pwa-192.png",
+            sizes: "192x192",
+            type: "image/png",
+            purpose: "any",
+          },
+          {
+            src: "pwa-512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "any",
+          },
+          {
+            src: "pwa-512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "maskable",
+          },
+        ],
+      },
+      injectManifest: {
+        globPatterns: [],
+        injectionPoint: undefined,
+      },
+      devOptions: { enabled: false },
+    }),
   ],
 });

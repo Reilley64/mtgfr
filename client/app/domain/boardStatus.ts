@@ -1,6 +1,6 @@
 // Spoken board summary for AT / live regions. Uses wire `viewer`, not layout seat fallbacks.
 
-import { STEP_NAMES } from "../app/board/geometry/layout";
+import { STEP_NAMES } from "../board/geometry/layout";
 import { playerLabel } from "./players";
 import { SPECTATOR_VIEWER } from "./spectator";
 import type { VisibleState } from "./wire/types";

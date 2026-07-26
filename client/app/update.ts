@@ -2,39 +2,51 @@ import { Effect, Match as M, Schema as S } from "effect";
 import type { Command as FoldkitCommand } from "foldkit";
 import { Command, Navigation } from "foldkit";
 import { toString as urlToString } from "foldkit/url";
-import { gravatarHash } from "../lib/gravatar";
 import type { Message as BoardMessage } from "./board/messages";
-import { drainPlayModeIfSingleton, syncBoardWithGame, updateBoard } from "./board/submodel";
+import { type OutMessage as BoardOutMessage, updateBoard } from "./board/submodel";
 import { captureDeckCardFlipForNav } from "./deck-card-nav";
 import { parseDeckIdParam, playDeckAccess } from "./deck-id";
-import { applyDeltaPure, applySnapshotPure, type DeltaEnvelope, setRejectPure } from "./game/fold";
-import { type Message, NavigationCompleted, type ReceivedDelta, ReceivedMeGravatarHash } from "./messages";
-import { emptyGameSlice, type GameSlice, type Model } from "./model";
+import { gravatarHash } from "./domain/gravatar";
+import { updateGame } from "./game";
+import {
+  GotAuthMessage,
+  GotBoardMessage,
+  GotCoverageMessage,
+  GotDeckBuilderMessage,
+  GotDeckListMessage,
+  GotGameMessage,
+  GotLeaderboardMessage,
+  GotLobbyMessage,
+  type Message,
+  NavigationCompleted,
+  ReceivedMeGravatarHash,
+} from "./messages";
+import { emptyGameSlice, type Model } from "./model";
 import type { RpcClient } from "./resources";
 import {
+  GameTableRoute,
   isProtectedRoute,
   NotFoundRoute,
   nextFromUrl,
   normalizeAppRoute,
+  PregameTableRoute,
   pathWithSearch,
   routeFromUrl,
   routePath,
   safeNext,
-  TableRoute,
 } from "./routes";
-import { initialAuthSubmodel } from "./shell/auth/submodel";
-import { update as updateAuth } from "./shell/auth/update";
+import * as Auth from "./shell/auth";
+import type { Message as AuthMessage } from "./shell/auth/messages";
+import * as Coverage from "./shell/coverage";
 import type { Message as CoverageMessage } from "./shell/coverage/messages";
-import { loadCoverage, update as updateCoverage } from "./shell/coverage/update";
+import * as DeckBuilder from "./shell/decks/builder";
 import type { Message as BuilderMessage } from "./shell/decks/builder/messages";
-import { enterBuilder, update as updateBuilder } from "./shell/decks/builder/update";
+import * as DeckList from "./shell/decks/list";
 import type { Message as ListMessage } from "./shell/decks/list/messages";
-import { loadDeckList, update as updateDeckList } from "./shell/decks/list/update";
+import * as Leaderboard from "./shell/leaderboard";
 import type { Message as LeaderboardMessage } from "./shell/leaderboard/messages";
-import { loadLeaderboard, update as updateLeaderboard } from "./shell/leaderboard/update";
+import * as Lobby from "./shell/lobby";
 import type { Message as LobbyMessage } from "./shell/lobby/messages";
-import { enterLobby } from "./shell/lobby/submodel";
-import { update as updateLobby } from "./shell/lobby/update";
 
 const Redirect = Command.define(
   "Redirect",
@@ -66,29 +78,24 @@ function loginRedirectFor(model: Model): string {
   return `/login?next=${encodeURIComponent(model.currentPath)}`;
 }
 
-function terminalStreamError(status: number): string {
-  if (status === 401) return "Session expired — sign in again.";
-  if (status === 404) return "Table no longer available.";
-  return `Lost connection to the table (${status}).`;
+function toAppBoardMessage(message: BoardOutMessage): Message {
+  switch (message._tag) {
+    case "ReceivedSnapshot":
+    case "ReceivedDelta":
+    case "StreamStatus":
+    case "StreamTerminalError":
+    case "IntentAcked":
+    case "IntentRejected":
+      return GotGameMessage({ message });
+    default:
+      return GotBoardMessage({ message });
+  }
 }
 
-function mergeGameFold(
-  game: GameSlice,
-  folded: ReturnType<typeof applyDeltaPure>,
-): readonly [GameSlice, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
-  const next = { ...game, ...folded };
-  const synced = { ...next, board: syncBoardWithGame(next.board, next) };
-  const [board, commands] = drainPlayModeIfSingleton(synced.board, synced, synced.tableId);
-  return [{ ...synced, board }, commands];
-}
-
-function deltaEnvelope(message: typeof ReceivedDelta.Type): DeltaEnvelope {
-  return {
-    seq: message.seq,
-    state: message.state,
-    events: [...message.events],
-    auto_actions: message.auto_actions == null ? undefined : [...message.auto_actions],
-  };
+function mapBoardCommands(
+  commands: ReadonlyArray<FoldkitCommand.Command<BoardOutMessage, never, RpcClient>>,
+): ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>> {
+  return Command.mapMessages(commands, toAppBoardMessage);
 }
 
 function sessionCommands(model: Model): ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>> {
@@ -105,59 +112,108 @@ function sessionCommands(model: Model): ReadonlyArray<FoldkitCommand.Command<Mes
   return [];
 }
 
+function enterDeckListRoute(
+  model: Model,
+): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
+  const [list, commands] = DeckList.informRouteChanged(model.decks.list);
+  return [{ ...model, decks: { ...model.decks, list } }, mapDeckListCommands(commands)];
+}
+
+function enterLeaderboardRoute(
+  model: Model,
+): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
+  const [leaderboard, commands] = Leaderboard.informRouteChanged(model.leaderboard);
+  return [{ ...model, leaderboard }, mapLeaderboardCommands(commands)];
+}
+
+function enterCoverageRoute(
+  model: Model,
+): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
+  const [coverage, commands] = Coverage.informRouteChanged(model.coverage);
+  return [{ ...model, coverage }, mapCoverageCommands(commands)];
+}
+
+function enterDeckBuilderRoute(
+  model: Model,
+  editingId: string | null,
+): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
+  const [builder, commands] = DeckBuilder.informRouteChanged(model.decks.builder, editingId);
+  return [{ ...model, decks: { ...model.decks, builder } }, mapDeckBuilderCommands(commands)];
+}
+
+function enterLobbyRoute(
+  model: Model,
+  args: { tableId: string | null; selectedDeckId: number | null },
+): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
+  const [list, deckListCommands] = DeckList.informRouteChanged(model.decks.list);
+  const [lobby, lobbyCommands] = Lobby.informRouteChanged(model.lobby, args);
+  return [
+    {
+      ...model,
+      decks: { ...model.decks, list },
+      game: null,
+      lobby,
+    },
+    [...mapDeckListCommands(deckListCommands), ...mapLobbyCommands(lobbyCommands)],
+  ];
+}
+
+function gameSliceForTableRoute(model: Model, tableId: string) {
+  if (model.game?.tableId === tableId) {
+    return { ...model.game, active: true };
+  }
+
+  return emptyGameSlice(tableId);
+}
+
+function enterGameTableRoute(
+  model: Model,
+  tableId: string,
+): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
+  const [list, deckListCommands] = DeckList.informRouteChanged(model.decks.list);
+  const [lobby, lobbyCommands] = Lobby.informRouteChanged(model.lobby, {
+    tableId,
+    selectedDeckId: null,
+  });
+  return [
+    {
+      ...model,
+      decks: { ...model.decks, list },
+      game: gameSliceForTableRoute(model, tableId),
+      lobby,
+    },
+    [...mapDeckListCommands(deckListCommands), ...mapLobbyCommands(lobbyCommands)],
+  ];
+}
+
 function routeEntry(model: Model): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
   const authCommands = sessionCommands(model);
   if (authCommands.length > 0) return [model, authCommands];
   if (!model.sessionLoaded || model.session.me == null) return [model, []];
 
   switch (model.route._tag) {
-    case "HomeRoute": {
-      const [list, commands] = loadDeckList(model.decks.list);
-      return [{ ...model, decks: { ...model.decks, list } }, commands];
-    }
-    case "LeaderboardRoute": {
-      const [leaderboard, commands] = loadLeaderboard(model.leaderboard);
-      return [{ ...model, leaderboard }, commands];
-    }
-    case "CoverageRoute": {
-      const [coverage, commands] = loadCoverage(model.coverage);
-      return [{ ...model, coverage }, commands];
-    }
-    case "NewDeckRoute": {
-      const [builder, commands] = enterBuilder(null);
-      return [{ ...model, decks: { ...model.decks, builder } }, commands];
-    }
-    case "DeckRoute": {
-      const [builder, commands] = enterBuilder(model.route.id);
-      return [{ ...model, decks: { ...model.decks, builder } }, commands];
-    }
-    case "PlayRoute": {
-      const [list, commands] = loadDeckList(model.decks.list);
-      return [
-        {
-          ...model,
-          decks: { ...model.decks, list },
-          lobby: enterLobby(model.lobby, { tableId: null, selectedDeckId: parseDeckIdParam(model.route.deckId) }),
-          game: null,
-        },
-        commands,
-      ];
-    }
-    case "TableRoute": {
-      const [list, commands] = loadDeckList(model.decks.list);
-      return [
-        {
-          ...model,
-          decks: { ...model.decks, list },
-          lobby: enterLobby(model.lobby, {
-            tableId: model.route.table,
-            selectedDeckId: parseDeckIdParam(model.route.deckId),
-          }),
-          game: null,
-        },
-        commands,
-      ];
-    }
+    case "HomeRoute":
+      return enterDeckListRoute(model);
+    case "LeaderboardRoute":
+      return enterLeaderboardRoute(model);
+    case "CoverageRoute":
+      return enterCoverageRoute(model);
+    case "NewDeckRoute":
+      return enterDeckBuilderRoute(model, null);
+    case "DeckRoute":
+      return enterDeckBuilderRoute(model, model.route.id);
+    case "PlayRoute":
+      return enterLobbyRoute(model, {
+        tableId: null,
+        selectedDeckId: parseDeckIdParam(model.route.deckId),
+      });
+    case "PregameTableRoute":
+      return enterLobbyRoute(model, {
+        tableId: model.route.table,
+        selectedDeckId: parseDeckIdParam(model.route.deckId),
+      });
+    case "GameTableRoute":
+      return enterGameTableRoute(model, model.route.table);
     case "LoginRoute":
     case "NotFoundRoute":
       return [model, []];
@@ -168,16 +224,22 @@ function routeEntry(model: Model): readonly [Model, ReadonlyArray<FoldkitCommand
   }
 }
 
+function mapDeckListCommands(
+  commands: ReadonlyArray<FoldkitCommand.Command<ListMessage, never, RpcClient>>,
+): ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>> {
+  return Command.mapMessages(commands, (message) => GotDeckListMessage({ message }));
+}
+
 function foldDeckList(
   model: Model,
   message: ListMessage,
 ): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
-  const [list, commands] = updateDeckList(model.decks.list, message);
-  return [{ ...model, decks: { ...model.decks, list } }, commands];
+  const [list, commands] = DeckList.update(model.decks.list, message);
+  return [{ ...model, decks: { ...model.decks, list } }, mapDeckListCommands(commands)];
 }
 
 function notFoundWhenPlayDeckMissing(model: Model): Model {
-  if (model.route._tag !== "PlayRoute" && model.route._tag !== "TableRoute") return model;
+  if (model.route._tag !== "PlayRoute" && model.route._tag !== "PregameTableRoute") return model;
   const deckId = parseDeckIdParam(model.route.deckId);
   const access = playDeckAccess(deckId, model.decks.list.decks, model.decks.list.loading, model.decks.list.error);
   if (access !== "missing") return model;
@@ -188,33 +250,43 @@ function foldDeckBuilder(
   model: Model,
   message: BuilderMessage,
 ): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
-  const [builder, commands] = updateBuilder(model.decks.builder, message);
-  return [{ ...model, decks: { ...model.decks, builder } }, commands];
+  const [builder, commands] = DeckBuilder.update(model.decks.builder, message);
+  return [{ ...model, decks: { ...model.decks, builder } }, mapDeckBuilderCommands(commands)];
+}
+
+function mapDeckBuilderCommands(
+  commands: ReadonlyArray<FoldkitCommand.Command<BuilderMessage, never, RpcClient>>,
+): ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>> {
+  return Command.mapMessages(commands, (message) => GotDeckBuilderMessage({ message }));
 }
 
 function foldLeaderboard(
   model: Model,
   message: LeaderboardMessage,
 ): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
-  const [leaderboard, commands] = updateLeaderboard(model.leaderboard, message);
-  return [{ ...model, leaderboard }, commands];
+  const [leaderboard, commands] = Leaderboard.update(model.leaderboard, message);
+  return [{ ...model, leaderboard }, mapLeaderboardCommands(commands)];
 }
 
 function foldCoverage(
   model: Model,
   message: CoverageMessage,
 ): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
-  const [coverage, commands] = updateCoverage(model.coverage, message);
-  return [{ ...model, coverage }, commands];
+  const [coverage, commands] = Coverage.update(model.coverage, message);
+  return [{ ...model, coverage }, mapCoverageCommands(commands)];
 }
 
 function foldBoard(
   model: Model,
   message: BoardMessage,
 ): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
+  if (message._tag === "LeaveGame") {
+    const path = "/";
+    return [model, [Redirect({ path })]];
+  }
   if (model.game == null) return [model, []];
   const [board, commands] = updateBoard(model.game.board, message, model.game, model.game.tableId);
-  return [{ ...model, game: { ...model.game, board } }, commands];
+  return [{ ...model, game: { ...model.game, board } }, mapBoardCommands(commands)];
 }
 
 function foldLobby(
@@ -222,22 +294,65 @@ function foldLobby(
   message: LobbyMessage,
 ): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
   const deckIds = model.decks.list.decks.map((deck) => deck.id);
-  const [lobby, commands] = updateLobby(model.lobby, message, deckIds);
+  const [lobby, commands] = Lobby.update(model.lobby, message, deckIds);
   const game =
     lobby.started && lobby.tableId != null
       ? model.game?.tableId === lobby.tableId
         ? { ...model.game, active: true }
         : emptyGameSlice(lobby.tableId)
       : model.game;
-  const redirect =
-    model.route._tag === "PlayRoute" && lobby.tableId != null && lobby.selectedDeckId != null
-      ? [
-          Redirect({
-            path: routePath(TableRoute({ deckId: String(lobby.selectedDeckId), table: lobby.tableId })),
-          }),
-        ]
-      : [];
-  return [{ ...model, lobby, game }, [...commands, ...redirect]];
+  const redirectPath =
+    lobby.tableId == null
+      ? null
+      : lobby.started
+        ? model.route._tag === "PlayRoute" || model.route._tag === "PregameTableRoute"
+          ? routePath(GameTableRoute({ table: lobby.tableId }))
+          : null
+        : model.route._tag === "PlayRoute" && lobby.selectedDeckId != null
+          ? routePath(PregameTableRoute({ deckId: String(lobby.selectedDeckId), table: lobby.tableId }))
+          : null;
+  const redirect = redirectPath == null ? [] : [Redirect({ path: redirectPath })];
+  return [{ ...model, lobby, game }, [...mapLobbyCommands(commands), ...redirect]];
+}
+
+function mapLeaderboardCommands(
+  commands: ReadonlyArray<FoldkitCommand.Command<LeaderboardMessage, never, RpcClient>>,
+): ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>> {
+  return Command.mapMessages(commands, (message) => GotLeaderboardMessage({ message }));
+}
+
+function mapCoverageCommands(
+  commands: ReadonlyArray<FoldkitCommand.Command<CoverageMessage, never, RpcClient>>,
+): ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>> {
+  return Command.mapMessages(commands, (message) => GotCoverageMessage({ message }));
+}
+
+function mapLobbyCommands(
+  commands: ReadonlyArray<FoldkitCommand.Command<LobbyMessage, never, RpcClient>>,
+): ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>> {
+  return Command.mapMessages(commands, (message) => GotLobbyMessage({ message }));
+}
+
+function foldAuth(
+  model: Model,
+  message: AuthMessage,
+): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
+  const [auth, commands] = Auth.update(model.auth, message);
+  const mappedCommands = Command.mapMessages(commands, (child) => GotAuthMessage({ message: child }));
+
+  if (message._tag !== "ReceivedMe") {
+    return [{ ...model, auth }, mappedCommands];
+  }
+
+  const nextModel = {
+    ...model,
+    session: { me: message.me, meGravatarHash: null },
+    sessionLoaded: true,
+    auth: message.me == null ? auth : Auth.Model.initialAuthSubmodel(model.auth.next),
+  };
+  const [routeModel, routeCommands] = routeEntry(nextModel);
+  const gravatarCommands = message.me == null ? [] : [HashMeGravatar({ email: message.me.email })];
+  return [routeModel, [...mappedCommands, ...routeCommands, ...gravatarCommands]];
 }
 
 export const update = (
@@ -285,132 +400,22 @@ export const update = (
       ModalOpened: () => [model, []],
       CardArtTick: () => [model, []],
       DeckCardFlipTick: () => [model, []],
-      ArtLoaded: (boardMessage) => foldBoard(model, boardMessage),
-      BoardCameraZoomed: (boardMessage) => foldBoard(model, boardMessage),
-      BoardPointerDown: (boardMessage) => foldBoard(model, boardMessage),
-      BoardPointerMove: (boardMessage) => foldBoard(model, boardMessage),
-      BoardPointerUp: (boardMessage) => foldBoard(model, boardMessage),
-      FlightsSynced: (boardMessage) => foldBoard(model, boardMessage),
-      HandActionActivated: (boardMessage) => foldBoard(model, boardMessage),
-      HandDragStarted: (boardMessage) => foldBoard(model, boardMessage),
-      HandDragMoved: (boardMessage) => foldBoard(model, boardMessage),
-      HandDragEnded: (boardMessage) => foldBoard(model, boardMessage),
-      HandActionHovered: (boardMessage) => foldBoard(model, boardMessage),
-      PrimaryClicked: (boardMessage) => foldBoard(model, boardMessage),
-      PassClicked: (boardMessage) => foldBoard(model, boardMessage),
-      KeepHandClicked: (boardMessage) => foldBoard(model, boardMessage),
-      MulliganClicked: (boardMessage) => foldBoard(model, boardMessage),
-      StackYieldArmed: (boardMessage) => foldBoard(model, boardMessage),
-      TurnYieldToggled: (boardMessage) => foldBoard(model, boardMessage),
-      CancelActionClicked: (boardMessage) => foldBoard(model, boardMessage),
-      PlayModeChosen: (boardMessage) => foldBoard(model, boardMessage),
-      CommanderCastClicked: (boardMessage) => foldBoard(model, boardMessage),
-      TargetChosen: (boardMessage) => foldBoard(model, boardMessage),
-      ModalModesChosen: (boardMessage) => foldBoard(model, boardMessage),
-      ModalTargetChosen: (boardMessage) => foldBoard(model, boardMessage),
-      XDraftSet: (boardMessage) => foldBoard(model, boardMessage),
-      XSubmitted: (boardMessage) => foldBoard(model, boardMessage),
-      SacrificeChosen: (boardMessage) => foldBoard(model, boardMessage),
-      DiscardChosen: (boardMessage) => foldBoard(model, boardMessage),
-      GyExileChosen: (boardMessage) => foldBoard(model, boardMessage),
-      GyExileConfirmed: (boardMessage) => foldBoard(model, boardMessage),
-      DiscardCostConfirmed: (boardMessage) => foldBoard(model, boardMessage),
-      PileCardClicked: (boardMessage) => foldBoard(model, boardMessage),
-      CombatAttackerDropped: (boardMessage) => foldBoard(model, boardMessage),
-      CombatBlockerDropped: (boardMessage) => foldBoard(model, boardMessage),
-      CombatCancelAttacker: (boardMessage) => foldBoard(model, boardMessage),
-      CombatCancelBlocker: (boardMessage) => foldBoard(model, boardMessage),
-      PendingChoiceAnswered: (boardMessage) => foldBoard(model, boardMessage),
-      PromptCardToggled: (boardMessage) => foldBoard(model, boardMessage),
-      PromptSubmitted: (boardMessage) => foldBoard(model, boardMessage),
-      PromptDeclined: (boardMessage) => foldBoard(model, boardMessage),
-      PromptOrderMoved: (boardMessage) => foldBoard(model, boardMessage),
-      PromptOrderRowClicked: (boardMessage) => foldBoard(model, boardMessage),
-      PromptOrderDragEnded: (boardMessage) => foldBoard(model, boardMessage),
-      PromptDamageSet: (boardMessage) => foldBoard(model, boardMessage),
-      PromptStringSet: (boardMessage) => foldBoard(model, boardMessage),
-      PromptCardFilterSet: (boardMessage) => foldBoard(model, boardMessage),
-      PromptOptionFilterSet: (boardMessage) => foldBoard(model, boardMessage),
-      PromptNumberSet: (boardMessage) => foldBoard(model, boardMessage),
-      PromptModeChoiceToggled: (boardMessage) => foldBoard(model, boardMessage),
-      PromptPartitionSet: (boardMessage) => foldBoard(model, boardMessage),
-      ModalModeToggled: (boardMessage) => foldBoard(model, boardMessage),
-      StackDwellChanged: (boardMessage) => foldBoard(model, boardMessage),
-      StackExpandClicked: (boardMessage) => foldBoard(model, boardMessage),
-      StackCollapseClicked: (boardMessage) => foldBoard(model, boardMessage),
-      LogExpandToggled: (boardMessage) => foldBoard(model, boardMessage),
-      LogCopyRequested: (boardMessage) => foldBoard(model, boardMessage),
-      LogCopyCompleted: (boardMessage) => foldBoard(model, boardMessage),
-      RadialWedgeArmed: (boardMessage) => foldBoard(model, boardMessage),
-      RadialWedgeReleased: (boardMessage) => foldBoard(model, boardMessage),
-      RadialWedgeHovered: (boardMessage) => foldBoard(model, boardMessage),
-      RadialOptionPicked: (boardMessage) => foldBoard(model, boardMessage),
-      RadialDismissed: (boardMessage) => foldBoard(model, boardMessage),
-      AltDown: (boardMessage) => foldBoard(model, boardMessage),
-      AltUp: (boardMessage) => foldBoard(model, boardMessage),
-      InspectAuxHovered: (boardMessage) => foldBoard(model, boardMessage),
-      InspectCardFetched: (boardMessage) => foldBoard(model, boardMessage),
-      CardNameSuggestionsFetched: (boardMessage) => foldBoard(model, boardMessage),
-      InspectFlipFace: (boardMessage) => foldBoard(model, boardMessage),
-      InspectDismissed: (boardMessage) => foldBoard(model, boardMessage),
-      PileExpanded: (boardMessage) => foldBoard(model, boardMessage),
-      PileOverlayClosed: (boardMessage) => foldBoard(model, boardMessage),
-      ConcedeClicked: (boardMessage) => foldBoard(model, boardMessage),
-      ConcedeCancelled: (boardMessage) => foldBoard(model, boardMessage),
-      ConcedeConfirmed: (boardMessage) => foldBoard(model, boardMessage),
-      ResultSeen: (boardMessage) => foldBoard(model, boardMessage),
-      LeaveGame: () => {
-        const path = "/";
-        return [model, [Redirect({ path })]];
+      GotBoardMessage: ({ message }) => foldBoard(model, message),
+      GotAuthMessage: ({ message }) => foldAuth(model, message),
+      GotDeckListMessage: ({ message }) => {
+        const [nextModel, commands] = foldDeckList(model, message);
+        if (message._tag !== "ReceivedDecks") return [nextModel, commands];
+        return [notFoundWhenPlayDeckMissing(nextModel), commands];
       },
-      KeyboardSpacePressed: (boardMessage) => foldBoard(model, boardMessage),
-      KeyboardEnterPressed: (boardMessage) => foldBoard(model, boardMessage),
-      KeyboardEscape: (boardMessage) => foldBoard(model, boardMessage),
-      HintDismissed: (boardMessage) => foldBoard(model, boardMessage),
-      HintAutoHidden: (boardMessage) => foldBoard(model, boardMessage),
-      SoundToggled: (boardMessage) => foldBoard(model, boardMessage),
-      PriorityElapsed: (boardMessage) => foldBoard(model, boardMessage),
-      LegendToggled: (boardMessage) => foldBoard(model, boardMessage),
-      ChangedAuthMode: (authMessage) => {
-        const [auth, commands] = updateAuth(model.auth, authMessage);
-        return [{ ...model, auth }, commands];
+      GotDeckBuilderMessage: ({ message }) => foldDeckBuilder(model, message),
+      GotGameMessage: ({ message }) => {
+        if (model.game == null) return [model, []];
+        const [game, commands] = updateGame(model.game, message);
+        return [{ ...model, game }, commands];
       },
-      ChangedAuthEmail: (authMessage) => {
-        const [auth, commands] = updateAuth(model.auth, authMessage);
-        return [{ ...model, auth }, commands];
-      },
-      ChangedAuthUsername: (authMessage) => {
-        const [auth, commands] = updateAuth(model.auth, authMessage);
-        return [{ ...model, auth }, commands];
-      },
-      ChangedAuthPassword: (authMessage) => {
-        const [auth, commands] = updateAuth(model.auth, authMessage);
-        return [{ ...model, auth }, commands];
-      },
-      SubmittedAuth: (authMessage) => {
-        const [auth, commands] = updateAuth(model.auth, authMessage);
-        return [{ ...model, auth }, commands];
-      },
-      RequestedLogout: (authMessage) => {
-        const [auth, commands] = updateAuth(model.auth, authMessage);
-        return [{ ...model, auth }, commands];
-      },
-      ReceivedMe: (authMessage) => {
-        const [auth, commands] = updateAuth(model.auth, authMessage);
-        const nextModel = {
-          ...model,
-          session: { me: authMessage.me, meGravatarHash: null },
-          sessionLoaded: true,
-          auth: authMessage.me == null ? auth : initialAuthSubmodel(model.auth.next),
-        };
-        const [routeModel, routeCommands] = routeEntry(nextModel);
-        const gravatarCommands = authMessage.me == null ? [] : [HashMeGravatar({ email: authMessage.me.email })];
-        return [routeModel, [...commands, ...routeCommands, ...gravatarCommands]];
-      },
-      AuthFailed: (authMessage) => {
-        const [auth, commands] = updateAuth(model.auth, authMessage);
-        return [{ ...model, auth }, commands];
-      },
+      GotLeaderboardMessage: ({ message }) => foldLeaderboard(model, message),
+      GotCoverageMessage: ({ message }) => foldCoverage(model, message),
+      GotLobbyMessage: ({ message }) => foldLobby(model, message),
       ToggledAccountMenu: () => {
         if (model.route._tag === "HomeRoute") {
           const list = model.decks.list;
@@ -487,115 +492,6 @@ export const update = (
           ];
         }
         return [model, []];
-      },
-      RequestedCoverageRefresh: (coverageMessage) => foldCoverage(model, coverageMessage),
-      ChangedCoverageQuery: (coverageMessage) => foldCoverage(model, coverageMessage),
-      ReceivedCoverageMeta: (coverageMessage) => foldCoverage(model, coverageMessage),
-      CoverageLoadFailed: (coverageMessage) => foldCoverage(model, coverageMessage),
-      RequestedDecksRefresh: (decksMessage) => foldDeckList(model, decksMessage),
-      ReceivedDecks: (decksMessage) => {
-        const [nextModel, commands] = foldDeckList(model, decksMessage);
-        return [notFoundWhenPlayDeckMissing(nextModel), commands];
-      },
-      DecksLoadFailed: (decksMessage) => foldDeckList(model, decksMessage),
-      ReceivedDeckListCommanders: (decksMessage) => foldDeckList(model, decksMessage),
-      ChangedDeckListSearch: (decksMessage) => foldDeckList(model, decksMessage),
-      OpenedDeckListMenu: (decksMessage) => foldDeckList(model, decksMessage),
-      ClosedDeckListMenu: (decksMessage) => foldDeckList(model, decksMessage),
-      AskedDeckDelete: (decksMessage) => foldDeckList(model, decksMessage),
-      CancelledDeckDelete: (decksMessage) => foldDeckList(model, decksMessage),
-      RequestedDeckDelete: (decksMessage) => foldDeckList(model, decksMessage),
-      DeckDeleted: (decksMessage) => foldDeckList(model, decksMessage),
-      DeckDeleteFailed: (decksMessage) => foldDeckList(model, decksMessage),
-      RequestedLeaderboardRefresh: (leaderboardMessage) => foldLeaderboard(model, leaderboardMessage),
-      RequestedLeaderboardNextPage: (leaderboardMessage) => foldLeaderboard(model, leaderboardMessage),
-      ReceivedLeaderboardPage: (leaderboardMessage) => foldLeaderboard(model, leaderboardMessage),
-      LeaderboardLoadFailed: (leaderboardMessage) => foldLeaderboard(model, leaderboardMessage),
-      ChangedBuilderName: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      ChangedBuilderQuery: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      RequestedNextBuilderPage: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      ReceivedBuilderSearchPage: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      BuilderSearchFailed: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      ReceivedDeckForBuilder: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      DeckBuilderLoadFailed: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      HydratedBuilderCards: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      AddedBuilderCard: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      RemovedBuilderCard: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      SetBuilderCommander: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      OpenedBuilderPrintPicker: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      ReceivedBuilderPrints: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      BuilderPrintSearchFailed: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      PickedBuilderPrint: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      ClosedBuilderPrintPicker: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      SubmittedDeckSave: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      DeckSaved: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      DeckSaveFailed: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      MovedBuilderHover: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      ClearedBuilderHover: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      OpenedBuilderMenu: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      ClosedBuilderMenu: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      RanBuilderMenuAction: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      ActivatedBuilderTarget: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      RequestedBuilderCancel: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      ConfirmedBuilderDiscard: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      CancelledBuilderDiscard: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      NavigatedAwayFromBuilder: (decksMessage) => foldDeckBuilder(model, decksMessage),
-      ChangedLobbyCode: (lobbyMessage) => foldLobby(model, lobbyMessage),
-      RequestedLobbyHost: (lobbyMessage) => foldLobby(model, lobbyMessage),
-      RequestedLobbyOpenJoin: (lobbyMessage) => foldLobby(model, lobbyMessage),
-      RequestedLobbyCancelJoin: (lobbyMessage) => foldLobby(model, lobbyMessage),
-      LobbyTableCreated: (lobbyMessage) => foldLobby(model, lobbyMessage),
-      RequestedLobbyJoin: (lobbyMessage) => foldLobby(model, lobbyMessage),
-      RequestedLobbyReady: (lobbyMessage) => foldLobby(model, lobbyMessage),
-      RequestedLobbyStart: (lobbyMessage) => foldLobby(model, lobbyMessage),
-      RequestedLobbyCopy: (lobbyMessage) => foldLobby(model, lobbyMessage),
-      LobbyCopyCompleted: (lobbyMessage) => foldLobby(model, lobbyMessage),
-      ReceivedLobbyView: (lobbyMessage) => foldLobby(model, lobbyMessage),
-      LobbyRequestFailed: (lobbyMessage) => foldLobby(model, lobbyMessage),
-      ReceivedSnapshot: ({ seq, state }) => {
-        if (model.game == null) return [model, []];
-        const [game, commands] = mergeGameFold(model.game, applySnapshotPure(model.game, seq, state));
-        return [{ ...model, game }, commands];
-      },
-      ReceivedDelta: (message) => {
-        if (model.game == null) return [model, []];
-        const [game, commands] = mergeGameFold(model.game, applyDeltaPure(model.game, deltaEnvelope(message)));
-        return [{ ...model, game }, commands];
-      },
-      StreamStatus: ({ connected }) => {
-        if (model.game == null) return [model, []];
-        return [{ ...model, game: { ...model.game, connected } }, []];
-      },
-      StreamTerminalError: ({ status }) => {
-        if (model.game == null) return [model, []];
-        const rejected = setRejectPure(model.game, terminalStreamError(status));
-        return [{ ...model, game: { ...model.game, ...rejected, connected: false } }, []];
-      },
-      IntentAcked: () => {
-        if (model.game == null) return [model, []];
-        return [
-          {
-            ...model,
-            game: { ...model.game, reject: null, board: { ...model.game.board, reject: null } },
-          },
-          [],
-        ];
-      },
-      IntentRejected: ({ reason }) => {
-        if (model.game == null) return [model, []];
-        const rejected = setRejectPure(model.game, reason);
-        return [
-          {
-            ...model,
-            game: {
-              ...model.game,
-              ...rejected,
-              // Re-enable the frozen prompt draft so the player can correct and resubmit.
-              board: { ...model.game.board, reject: reason, promptSubmitInFlight: false },
-            },
-          },
-          [],
-        ];
       },
     }),
   );

@@ -1,19 +1,28 @@
-import { Submodel } from "foldkit";
+import { Story, Submodel } from "foldkit";
 import { Scene } from "foldkit/test";
-import { test } from "vitest";
-import { BindCardArt, CardArtTick } from "../../../../lib/ui/card-art";
-import { ModalOpened, OpenDialogAsModal } from "../../../../lib/ui/confirmDialog";
-import type { CatalogCard } from "../../../../lib/wire/types";
+import { expect, test } from "vitest";
 import { BindDeckCardFlip, DeckCardFlipTick } from "../../../deck-card-nav";
-import { ClosedDeckListMenu, type Message as DeckListMessage, OpenedDeckListMenu } from "./messages";
+import { BindCardArt, CardArtTick } from "../../../domain/ui/card-art";
+import { ModalOpened, OpenDialogAsModal } from "../../../domain/ui/confirmDialog";
+import type { CatalogCard } from "../../../domain/wire/types";
+import { update as appUpdate, init } from "../../../main-exports";
+import { GotDeckListMessage } from "../../../messages";
+import {
+  ClosedDeckListMenu,
+  type Message as DeckListMessage,
+  OpenedDeckListMenu,
+  ReceivedDeckListCommanders,
+  ReceivedDecks,
+  RequestedDecksRefresh,
+} from "./messages";
 import { initialDeckListSubmodel } from "./submodel";
-import { update } from "./update";
+import { FetchDecks, LookupDeckListCommanders, update } from "./update";
 import { BindDeckListContextMenu, BindDeckListContextMenuEscape, view } from "./view";
 
 const emptyChrome = { version: null, faithfulCount: null, oracleTotal: null, coverageHref: null };
 
 const listView = Submodel.defineView<ReturnType<typeof initialDeckListSubmodel>, DeckListMessage>((model) =>
-  view(model, "alice", null, emptyChrome),
+  view(model, { username: "alice", meGravatarHash: null, chrome: emptyChrome }),
 );
 type SceneListMessage = DeckListMessage | typeof ModalOpened.Type | { readonly _tag?: string } | undefined;
 
@@ -60,6 +69,22 @@ function card(overrides: Partial<CatalogCard> = {}): CatalogCard {
     ...overrides,
   };
 }
+
+test("GotDeckListMessage updates the deck list through the parent update", () => {
+  const [model] = init();
+
+  Story.story(
+    appUpdate,
+    Story.with(model),
+    Story.message(GotDeckListMessage({ message: RequestedDecksRefresh() })),
+    Story.model((m) => {
+      expect(m.decks.list.loading).toBe(true);
+      expect(m.decks.list.error).toBeNull();
+    }),
+    Story.Command.resolve(FetchDecks, ReceivedDecks({ decks: [] })),
+    Story.Command.resolve(LookupDeckListCommanders({ ids: [] }), ReceivedDeckListCommanders({ cards: [] })),
+  );
+});
 
 test("deck list chrome and tiles share the wide column classes", () => {
   Scene.scene(

@@ -1,7 +1,7 @@
 // Legal activates for a selected permanent, including synthesized tap-for-mana.
 
 import type { ActionView, WireCost } from "~/wire/types";
-import { formatMessage } from "../../../lib/i18n/message";
+import { formatMessage } from "../../domain/i18n/message";
 import { type Camera, worldToScreen } from "./camera";
 import type { RenderCard } from "./layout";
 

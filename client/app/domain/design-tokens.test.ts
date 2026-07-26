@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const cssPath = new URL("../styles/tokens.generated.css", import.meta.url);
+const cssPath = new URL("../../styles/tokens.generated.css", import.meta.url);
 const tsPath = new URL("./design-tokens.generated.ts", import.meta.url);
 
 describe("tokens.generated.css", () => {

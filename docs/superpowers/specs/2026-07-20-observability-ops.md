@@ -130,7 +130,7 @@ still drives `tracing` / fmt output.
 - Local: with `OTEL_EXPORTER_OTLP_ENDPOINT` unset, exporters no-op; client/server unit suites do not
   require Alloy.
 - Build metadata consumed by BFF OTEL resource attributes is covered by
-  `client/lib/build-meta.test.ts` ([shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md)).
+  `client/app/domain/build-meta.test.ts` ([shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md)).
 
 ---
 

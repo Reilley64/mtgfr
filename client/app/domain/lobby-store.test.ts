@@ -1,8 +1,16 @@
 import { eq } from "drizzle-orm";
-import { afterEach, describe, expect, it } from "vitest";
-import { lobbies } from "../db/schema";
-import { createWebDb } from "../server/db/client";
-import { createLobby, joinLobby, type LobbySnapshot, loadLobby, startError, toLobbyView } from "./lobby-store";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { lobbies } from "../../db/schema";
+import { createWebDb } from "../../server/db/client";
+import {
+  createLobby,
+  joinLobby,
+  type LobbySnapshot,
+  loadLobby,
+  randomTableCode,
+  startError,
+  toLobbyView,
+} from "./lobby-store";
 
 function snap(overrides: Partial<LobbySnapshot> = {}): LobbySnapshot {
   return {
@@ -77,6 +85,35 @@ describe("toLobbyView", () => {
 describe("startError", () => {
   it("does not treat started as a start_error code", () => {
     expect(startError(snap({ startedAt: new Date("2026-07-22T00:00:00Z") }), 1)).toBeNull();
+  });
+});
+
+describe("randomTableCode", () => {
+  beforeEach(() => {
+    let draws = 0;
+    vi.spyOn(globalThis.crypto, "getRandomValues").mockImplementation((array) => {
+      const next = draws === 0 ? [0, 1, 2, 3, 4, 5] : [8, 9, 10, 11, 12, 13];
+      draws += 1;
+      if (array == null) return array;
+      const bytes = new Uint8Array(array.buffer, array.byteOffset, array.byteLength);
+      bytes.set(next);
+      return array;
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("redraws when a generated table code would be all digits", () => {
+    expect(randomTableCode()).toBe("ABCDEF");
+    expect(globalThis.crypto.getRandomValues).toHaveBeenCalledTimes(2);
+  });
+
+  it("always includes at least one letter", () => {
+    const code = randomTableCode();
+    expect(code).toMatch(/[A-Z]/);
+    expect(code).toHaveLength(6);
   });
 });
 

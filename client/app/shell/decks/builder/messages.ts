@@ -1,8 +1,8 @@
 import { Schema as S } from "effect";
 import { m } from "foldkit/message";
-import { CatalogCardSchema } from "../../../../lib/deck-builder/cards";
-import { ScryfallPrintSchema } from "../../../../lib/deck-builder/scryfall";
-import { DeckDetail } from "../../../../lib/wire/types";
+import { CatalogCardSchema } from "../../../domain/deck-builder/cards";
+import { ScryfallPrintSchema } from "../../../domain/deck-builder/scryfall";
+import { DeckDetail } from "../../../domain/wire/types";
 
 export const BuilderMenuTargetKind = S.Union([S.Literal("pool"), S.Literal("deck"), S.Literal("commander")]);
 export type BuilderMenuTargetKind = typeof BuilderMenuTargetKind.Type;
@@ -24,6 +24,7 @@ export type BuilderMenuItemSchema = typeof BuilderMenuItemSchema.Type;
 
 export const ChangedBuilderName = m("ChangedBuilderName", { name: S.String });
 export const ChangedBuilderQuery = m("ChangedBuilderQuery", { query: S.String });
+export const ChangedBuilderRoute = m("ChangedBuilderRoute", { editingId: S.NullOr(S.String) });
 export const RequestedNextBuilderPage = m("RequestedNextBuilderPage");
 export const ReceivedBuilderSearchPage = m("ReceivedBuilderSearchPage", {
   cards: S.Array(CatalogCardSchema),
@@ -85,6 +86,7 @@ export const ActivatedBuilderTarget = m("ActivatedBuilderTarget", {
 export const Message = S.Union([
   ChangedBuilderName,
   ChangedBuilderQuery,
+  ChangedBuilderRoute,
   RequestedNextBuilderPage,
   ReceivedBuilderSearchPage,
   BuilderSearchFailed,

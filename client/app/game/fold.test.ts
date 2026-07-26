@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ObjectView, StreamFrame, VisibleEvent, VisibleState } from "../../lib/wire/types";
+import type { ObjectView, StreamFrame, VisibleEvent, VisibleState } from "../domain/wire/types";
 import { applyDeltaPure, applySnapshotPure, emptyGameFold, setRejectPure } from "./fold";
 
 type DeltaEnvelope = Omit<Extract<StreamFrame, { frame: "delta" }>, "frame">;

@@ -1,18 +1,42 @@
+import { Option } from "effect";
+import { html } from "foldkit/html";
 import { Scene } from "foldkit/test";
 import { expect, test } from "vitest";
-import { BindCardArt, CardArtTick } from "../../../lib/ui/card-art";
-import type { CatalogCard } from "../../../lib/wire/types";
 import { BindDeckCardFlip, DeckCardFlipTick } from "../../deck-card-nav";
+import { BindCardArt, CardArtTick } from "../../domain/ui/card-art";
+import type { CatalogCard } from "../../domain/wire/types";
 import { init, update } from "../../main-exports";
-import { ReceivedDecks } from "../../messages";
+import { GotAuthMessage, GotDeckListMessage, GotLobbyMessage, type Message } from "../../messages";
 import type { Model } from "../../model";
-import { PlayRoute, TableRoute } from "../../routes";
+import { PlayRoute, PregameTableRoute } from "../../routes";
 import { view as appView } from "../../view";
+import * as Auth from "../auth";
+import * as DeckList from "../decks/list";
 import { LobbyTableCreated, RequestedLobbyCancelJoin, RequestedLobbyOpenJoin } from "./messages";
 import { initialLobbySlice } from "./submodel";
-import { view as lobbyView } from "./view";
+import { type ViewMessage as LobbyViewMessage, view as lobbyView } from "./view";
 
 const me = { id: 1, email: "alice@example.com", username: "alice" };
+const h = html<Message>();
+
+const url = (pathname: string, search = "") => ({
+  protocol: "http:",
+  host: "localhost",
+  port: Option.none<string>(),
+  pathname,
+  search: search === "" ? Option.none<string>() : Option.some(search),
+  hash: Option.none<string>(),
+});
+
+function toParentLobbyMessage(message: LobbyViewMessage): Message {
+  switch (message._tag) {
+    case "CardArtTick":
+    case "DeckCardFlipTick":
+      return message;
+    default:
+      return GotLobbyMessage({ message });
+  }
+}
 
 const deck = {
   id: 7,
@@ -61,7 +85,7 @@ function tableLobbyModel(overrides: Partial<Model>): Model {
   const [model] = init();
   return {
     ...model,
-    route: TableRoute({ deckId: "7", table: "ABC123" }),
+    route: PregameTableRoute({ deckId: "7", table: "ABC123" }),
     sessionLoaded: true,
     session: { me, meGravatarHash: null },
     ...overrides,
@@ -69,19 +93,24 @@ function tableLobbyModel(overrides: Partial<Model>): Model {
 }
 
 const lobbyAppView = (model: Model) =>
-  lobbyView(
-    model.lobby,
-    model.decks.list.decks,
-    model.decks.list.loading,
-    model.decks.list.knownCommanders,
-    {
-      version: model.apiVersion,
-      faithfulCount: model.faithfulCount,
-      oracleTotal: model.oracleTotal,
-      coverageHref: "/coverage",
+  h.submodel({
+    slotId: "lobby-test",
+    model: model.lobby,
+    view: lobbyView,
+    viewInputs: {
+      decks: model.decks.list.decks,
+      decksLoading: model.decks.list.loading,
+      knownCommanders: model.decks.list.knownCommanders,
+      chrome: {
+        version: model.apiVersion,
+        faithfulCount: model.faithfulCount,
+        oracleTotal: model.oracleTotal,
+        coverageHref: "/coverage",
+      },
+      surface: model.route._tag === "PregameTableRoute" || model.route._tag === "GameTableRoute" ? "table" : "entry",
     },
-    model.route._tag === "TableRoute" ? "table" : "entry",
-  );
+    toParentMessage: toParentLobbyMessage,
+  });
 
 test("entry without a route deck asks the player to use deck play", () => {
   Scene.scene(
@@ -182,7 +211,7 @@ test("opening Join shows focused panel with Bringing strip and hides destination
     },
   });
 
-  const [joined] = update(base, RequestedLobbyOpenJoin());
+  const [joined] = update(base, GotLobbyMessage({ message: RequestedLobbyOpenJoin() }));
   expect(joined.lobby.entryMode).toBe("join");
 
   Scene.scene(
@@ -216,7 +245,7 @@ test("Cancel returns to choose and clears the table code", () => {
     },
   });
 
-  const [next] = update(open, RequestedLobbyCancelJoin());
+  const [next] = update(open, GotLobbyMessage({ message: RequestedLobbyCancelJoin() }));
   expect(next.lobby.entryMode).toBe("choose");
   expect(next.lobby.code).toBe("");
   expect(next.lobby.error).toBeNull();
@@ -241,7 +270,7 @@ test("unknown deck after load shows not-found, not lobby", () => {
         list: { ...init()[0].decks.list, decks: [], loading: true },
       },
     }),
-    ReceivedDecks({ decks: [deck] }),
+    GotDeckListMessage({ message: DeckList.Message.ReceivedDecks({ decks: [deck] }) }),
   );
 
   expect(next.route._tag).toBe("NotFoundRoute");
@@ -252,6 +281,37 @@ test("unknown deck after load shows not-found, not lobby", () => {
     Scene.expect(Scene.text("No Foldkit route for /play/99.")).toExist(),
     Scene.expect(Scene.selector('[data-testid="lobby"]')).toBeAbsent(),
   );
+});
+
+test("PregameTableRoute cold load resets stale lobby entry state through the parent route entry", () => {
+  const [base] = init(url("/play/9/XYZ789"));
+  const [next, commands] = update(
+    {
+      ...base,
+      lobby: {
+        ...initialLobbySlice(),
+        tableId: "OLD123",
+        selectedDeckId: 7,
+        code: "OLD123",
+        entryMode: "join",
+        started: true,
+        error: "UnknownTable",
+        copied: true,
+        clipboardFallback: true,
+        submitting: true,
+      },
+    },
+    GotAuthMessage({ message: Auth.Message.ReceivedMe({ me }) }),
+  );
+
+  expect(next.route).toEqual(PregameTableRoute({ deckId: "9", table: "XYZ789" }));
+  expect(next.decks.list.loading).toBe(true);
+  expect(next.lobby).toEqual({
+    ...initialLobbySlice(),
+    tableId: "XYZ789",
+    selectedDeckId: 9,
+  });
+  expect(commands).toMatchObject([{ name: "FetchDecks" }, { name: "HashMeGravatar", args: { email: me.email } }]);
 });
 
 test("claim seat with a pre-chosen deck has no picker", () => {
@@ -417,7 +477,7 @@ test("host redirect uses /play/:deckId/:table", () => {
     },
   });
 
-  const [, commands] = update(withDeck, LobbyTableCreated({ tableId: "XYZ789" }));
+  const [, commands] = update(withDeck, GotLobbyMessage({ message: LobbyTableCreated({ tableId: "XYZ789" }) }));
   const redirect = commands.find((c) => c.name === "Redirect") as { args?: { path?: string } } | undefined;
   expect(redirect?.args?.path).toBe("/play/7/XYZ789");
 });
@@ -431,12 +491,12 @@ test("host handoff on PlayRoute keeps entry UI (no claim-seat flash)", () => {
     },
   });
 
-  const [afterCreate] = update(withDeck, LobbyTableCreated({ tableId: "XYZ789" }));
+  const [afterCreate] = update(withDeck, GotLobbyMessage({ message: LobbyTableCreated({ tableId: "XYZ789" }) }));
   expect(afterCreate.route._tag).toBe("PlayRoute");
   expect(afterCreate.lobby.tableId).toBe("XYZ789");
 
   Scene.scene(
-    { update, view: appView },
+    { update, view: lobbyAppView },
     Scene.with(afterCreate),
     Scene.expect(Scene.testId("lobby-entry-choose")).toExist(),
     Scene.expect(Scene.testId("lobby-host")).toExist(),

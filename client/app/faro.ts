@@ -8,8 +8,8 @@
 
 import { getWebInstrumentations, initializeFaro } from "@grafana/faro-web-sdk";
 import { TracingInstrumentation } from "@grafana/faro-web-tracing";
-import { appVersion, gitCommit } from "../lib/build-meta";
-import { ensureFaroSessionSampled } from "../lib/faro/session";
+import { appVersion, gitCommit } from "./domain/build-meta";
+import { ensureFaroSessionSampled } from "./domain/faro/session";
 
 const COLLECT_URL = "/api/faro/collect";
 

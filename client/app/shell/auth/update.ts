@@ -1,7 +1,7 @@
 import { Effect, Match as M, Schema as S } from "effect";
 import type { Command as FoldkitCommand } from "foldkit";
 import { Command, Navigation } from "foldkit";
-import { statusOf } from "../../../lib/rpc-client";
+import { statusOf } from "../../domain/rpc-client";
 import { RpcClient } from "../../resources";
 import { safeNext } from "../../routes";
 import { AuthFailed, type Message, ReceivedMe } from "./messages";

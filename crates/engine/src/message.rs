@@ -2175,7 +2175,7 @@ mod tests {
     #[test]
     fn rust_keys_fixture_matches_message_key_all() {
         assert_eq!(
-            include_str!("../../../client/lib/i18n/rustKeys.json"),
+            include_str!("../../../client/app/domain/i18n/rustKeys.json"),
             rust_keys_fixture()
         );
     }

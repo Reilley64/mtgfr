@@ -1,18 +1,29 @@
 import { Effect } from "effect";
 import { type Document, html } from "foldkit/html";
 import * as Mount from "foldkit/mount";
-import type { AppChromeMeta } from "../lib/ui/app-version";
-import { view as boardView } from "./board/view";
+import { view as boardView } from "./board";
 import { parseDeckIdParam, playDeckAccess } from "./deck-id";
-import { CompletedPortraitGateModal, type Message, PortraitGateCancelled, RequestedLogout } from "./messages";
+import type { AppChromeMeta } from "./domain/ui/app-version";
+import {
+  CompletedPortraitGateModal,
+  GotAuthMessage,
+  GotBoardMessage,
+  GotCoverageMessage,
+  GotDeckBuilderMessage,
+  GotDeckListMessage,
+  GotLeaderboardMessage,
+  GotLobbyMessage,
+  type Message,
+  PortraitGateCancelled,
+} from "./messages";
 import type { Model } from "./model";
 import { CoverageRoute, HomeRoute, isProtectedRoute, NewDeckRoute, routePath } from "./routes";
-import { view as authView } from "./shell/auth/view";
-import { view as coverageView } from "./shell/coverage/view";
-import { view as deckBuilderView } from "./shell/decks/builder/view";
-import { view as deckListView } from "./shell/decks/list/view";
-import { view as leaderboardView } from "./shell/leaderboard/view";
-import { view as lobbyView } from "./shell/lobby/view";
+import * as Auth from "./shell/auth";
+import * as Coverage from "./shell/coverage";
+import * as DeckBuilder from "./shell/decks/builder";
+import * as DeckList from "./shell/decks/list";
+import * as Leaderboard from "./shell/leaderboard";
+import * as Lobby from "./shell/lobby";
 
 const h = html<Message>();
 
@@ -68,7 +79,11 @@ function nav(model: Model) {
           user == null
             ? h.a([h.Href("/login"), h.Class("underline")], ["Sign in"])
             : h.button(
-                [h.Type("button"), h.Class("hit-quiet underline"), h.OnClick(RequestedLogout())],
+                [
+                  h.Type("button"),
+                  h.Class("hit-quiet underline"),
+                  h.OnClick(GotAuthMessage({ message: Auth.Message.RequestedLogout() })),
+                ],
                 [`Sign out ${user.username}`],
               ),
         ],
@@ -90,9 +105,67 @@ function shell(model: Model, title: string, body: string) {
   );
 }
 
+function toParentDeckListMessage(message: DeckList.ViewMessage): Message {
+  switch (message._tag) {
+    case "ModalOpened":
+    case "CardArtTick":
+    case "DeckCardFlipTick":
+    case "GotAuthMessage":
+    case "ToggledAccountMenu":
+    case "ClosedAccountMenu":
+      return message;
+    default:
+      return GotDeckListMessage({ message });
+  }
+}
+
+function toParentDeckBuilderMessage(message: DeckBuilder.ViewMessage): Message {
+  switch (message._tag) {
+    case "ModalOpened":
+    case "CardArtTick":
+      return message;
+    default:
+      return GotDeckBuilderMessage({ message });
+  }
+}
+
+function toParentLobbyMessage(message: Lobby.ViewMessage): Message {
+  switch (message._tag) {
+    case "CardArtTick":
+    case "DeckCardFlipTick":
+      return message;
+    default:
+      return GotLobbyMessage({ message });
+  }
+}
+
+function toParentLeaderboardMessage(message: Leaderboard.ViewMessage): Message {
+  switch (message._tag) {
+    case "ClosedAccountMenu":
+    case "GotAuthMessage":
+    case "ToggledAccountMenu":
+      return message;
+    default:
+      return GotLeaderboardMessage({ message });
+  }
+}
+
+function toParentCoverageMessage(message: Coverage.ViewMessage): Message {
+  switch (message._tag) {
+    case "ClosedAccountMenu":
+    case "GotAuthMessage":
+    case "ToggledAccountMenu":
+      return message;
+    default:
+      return GotCoverageMessage({ message });
+  }
+}
+
 function boardMount(model: Model) {
   const tableId =
-    model.game?.tableId ?? model.lobby.tableId ?? (model.route._tag === "TableRoute" ? model.route.table : null);
+    model.game?.tableId ??
+    model.lobby.tableId ??
+    (model.route._tag === "PregameTableRoute" || model.route._tag === "GameTableRoute" ? model.route.table : null);
   const game = model.game;
 
   if (game != null) {
@@ -100,7 +173,7 @@ function boardMount(model: Model) {
       slotId: "board",
       model: { board: game.board, fold: game, tableId, connected: game.connected },
       view: boardView,
-      toParentMessage: (message) => message,
+      toParentMessage: (message) => GotBoardMessage({ message }),
     });
   }
 
@@ -150,60 +223,118 @@ function routeBody(model: Model) {
   return (() => {
     switch (model.route._tag) {
       case "HomeRoute":
-        return deckListView(
-          model.decks.list,
-          model.session.me?.username ?? "",
-          model.session.meGravatarHash,
-          chromeMeta(model),
-        );
+        return h.submodel({
+          slotId: "deck-list",
+          model: model.decks.list,
+          view: DeckList.view,
+          viewInputs: {
+            username: model.session.me?.username ?? "",
+            meGravatarHash: model.session.meGravatarHash,
+            chrome: chromeMeta(model),
+          },
+          toParentMessage: toParentDeckListMessage,
+        });
       case "LoginRoute":
-        return authView(model.auth, chromeMeta(model));
+        return h.submodel({
+          slotId: "auth",
+          model: model.auth,
+          view: Auth.view,
+          viewInputs: chromeMeta(model),
+          toParentMessage: (message) => GotAuthMessage({ message }),
+        });
       case "LeaderboardRoute":
-        return leaderboardView(
-          model.leaderboard,
-          model.session.me?.username ?? "",
-          model.session.meGravatarHash,
-          chromeMeta(model),
-        );
+        return h.submodel({
+          slotId: "leaderboard",
+          model: model.leaderboard,
+          view: Leaderboard.view,
+          viewInputs: {
+            username: model.session.me?.username ?? "",
+            meGravatarHash: model.session.meGravatarHash,
+            chrome: chromeMeta(model),
+          },
+          toParentMessage: toParentLeaderboardMessage,
+        });
       case "CoverageRoute":
-        return coverageView(
-          model.coverage,
-          model.session.me?.username ?? "",
-          model.session.meGravatarHash,
-          chromeMeta(model),
-        );
+        return h.submodel({
+          slotId: "coverage",
+          model: model.coverage,
+          view: Coverage.view,
+          viewInputs: {
+            username: model.session.me?.username ?? "",
+            meGravatarHash: model.session.meGravatarHash,
+            chrome: chromeMeta(model),
+          },
+          toParentMessage: toParentCoverageMessage,
+        });
       case "NewDeckRoute":
-        return deckBuilderView(model.decks.builder, chromeMeta(model));
+        return h.submodel({
+          slotId: "deck-builder",
+          model: model.decks.builder,
+          view: DeckBuilder.view,
+          viewInputs: { chrome: chromeMeta(model) },
+          toParentMessage: toParentDeckBuilderMessage,
+        });
       case "DeckRoute":
-        return deckBuilderView(model.decks.builder, chromeMeta(model));
+        return h.submodel({
+          slotId: "deck-builder",
+          model: model.decks.builder,
+          view: DeckBuilder.view,
+          viewInputs: { chrome: chromeMeta(model) },
+          toParentMessage: toParentDeckBuilderMessage,
+        });
       case "PlayRoute": {
         if (model.game?.active === true) return boardMount(model);
         const deckId = parseDeckIdParam(model.route.deckId);
         const access = playDeckAccess(deckId, model.decks.list.decks, model.decks.list.loading, model.decks.list.error);
         if (access === "missing") return shell(model, "Not found", `No Foldkit route for ${model.currentPath}.`);
-        return lobbyView(
-          model.lobby,
-          model.decks.list.decks,
-          model.decks.list.loading,
-          model.decks.list.knownCommanders,
-          chromeMeta(model),
-          "entry",
-        );
+        return h.submodel({
+          slotId: "lobby-entry",
+          model: model.lobby,
+          view: Lobby.view,
+          viewInputs: {
+            decks: model.decks.list.decks,
+            decksLoading: model.decks.list.loading,
+            knownCommanders: model.decks.list.knownCommanders,
+            chrome: chromeMeta(model),
+            surface: "entry",
+          },
+          toParentMessage: toParentLobbyMessage,
+        });
       }
-      case "TableRoute": {
+      case "PregameTableRoute": {
         if (model.game?.active === true) return boardMount(model);
         const deckId = parseDeckIdParam(model.route.deckId);
         const access = playDeckAccess(deckId, model.decks.list.decks, model.decks.list.loading, model.decks.list.error);
         if (access === "missing") return shell(model, "Not found", `No Foldkit route for ${model.currentPath}.`);
-        return lobbyView(
-          model.lobby,
-          model.decks.list.decks,
-          model.decks.list.loading,
-          model.decks.list.knownCommanders,
-          chromeMeta(model),
-          "table",
-        );
+        return h.submodel({
+          slotId: "lobby-table",
+          model: model.lobby,
+          view: Lobby.view,
+          viewInputs: {
+            decks: model.decks.list.decks,
+            decksLoading: model.decks.list.loading,
+            knownCommanders: model.decks.list.knownCommanders,
+            chrome: chromeMeta(model),
+            surface: "table",
+          },
+          toParentMessage: toParentLobbyMessage,
+        });
       }
+      case "GameTableRoute":
+        if (model.game?.active === true) return boardMount(model);
+        return h.submodel({
+          slotId: "lobby-table",
+          model: model.lobby,
+          view: Lobby.view,
+          viewInputs: {
+            decks: model.decks.list.decks,
+            decksLoading: model.decks.list.loading,
+            knownCommanders: model.decks.list.knownCommanders,
+            chrome: chromeMeta(model),
+            surface: "table",
+          },
+          toParentMessage: toParentLobbyMessage,
+        });
       case "NotFoundRoute":
         return shell(model, "Not found", `No Foldkit route for ${model.route.path}.`);
       default: {

@@ -1,6 +1,6 @@
 import { Effect, Schedule, Stream } from "effect";
-import { lobbyState } from "../../../lib/lobby/client";
-import type { LobbyView } from "../../../lib/lobby/types";
+import { lobbyState } from "../../domain/lobby/client";
+import type { LobbyView } from "../../domain/lobby/types";
 
 type LobbyPollOptions = {
   fetchLobby?: (tableId: string) => Effect.Effect<LobbyView | null, never>;

@@ -5,7 +5,7 @@ import {
   MessageRef as MessageRefSchema,
   type VisibleEvent,
   type VisibleState,
-} from "../../lib/wire/types";
+} from "../domain/wire/types";
 
 const VisibleStateSchema: S.Schema<VisibleState> = S.Any;
 const VisibleEventsSchema: S.Schema<ReadonlyArray<VisibleEvent>> = S.Array(S.Any);

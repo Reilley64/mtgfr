@@ -1,17 +1,18 @@
 import { Effect, Option, Queue, Schema as S, Stream } from "effect";
+import { Submodel } from "foldkit";
 import { type Html, html } from "foldkit/html";
 import * as Mount from "foldkit/mount";
-import { cn } from "../../../../lib/cn";
-import { cardHoverPreviewView } from "../../../../lib/deck-builder/card-hover-preview";
-import { DECK_SIZE, deckCount, sortedDeckList } from "../../../../lib/deck-builder/cards";
-import { formatReleasedAt } from "../../../../lib/deck-builder/print";
-import type { ScryfallPrint } from "../../../../lib/deck-builder/scryfall";
-import { type AppChromeMeta, appVersionBadge } from "../../../../lib/ui/app-version";
-import { buttonClass } from "../../../../lib/ui/buttonClass";
-import { cardArt } from "../../../../lib/ui/card-art";
-import { confirmDialog, OpenDialogAsModal } from "../../../../lib/ui/confirmDialog";
-import { feltClass, fieldClass } from "../../../../lib/ui/surfaces";
-import type { Message } from "../../../messages";
+import { cn } from "../../../domain/cn";
+import { cardHoverPreviewView } from "../../../domain/deck-builder/card-hover-preview";
+import { DECK_SIZE, deckCount, sortedDeckList } from "../../../domain/deck-builder/cards";
+import { formatReleasedAt } from "../../../domain/deck-builder/print";
+import type { ScryfallPrint } from "../../../domain/deck-builder/scryfall";
+import { type AppChromeMeta, appVersionBadge } from "../../../domain/ui/app-version";
+import { buttonClass } from "../../../domain/ui/buttonClass";
+import { cardArt } from "../../../domain/ui/card-art";
+import { confirmDialog, OpenDialogAsModal } from "../../../domain/ui/confirmDialog";
+import { feltClass, fieldClass } from "../../../domain/ui/surfaces";
+import type { CardArtTick, ModalOpened } from "../../../messages";
 import {
   ActivatedBuilderTarget,
   CancelledBuilderDiscard,
@@ -21,6 +22,7 @@ import {
   ClosedBuilderMenu,
   ClosedBuilderPrintPicker,
   ConfirmedBuilderDiscard,
+  type Message,
   MovedBuilderHover,
   OpenedBuilderMenu,
   PickedBuilderPrint,
@@ -31,7 +33,9 @@ import {
 } from "./messages";
 import type { DeckBuilderSubmodel } from "./submodel";
 
-const h = html<Message>();
+export type ViewMessage = Message | typeof ModalOpened.Type | typeof CardArtTick.Type;
+
+const h = html<ViewMessage>();
 
 const CONTEXT_MENU_PRESS_MS = 500;
 
@@ -389,7 +393,11 @@ function skeletonTile(): Html {
   );
 }
 
-export function view(model: DeckBuilderSubmodel, chrome: AppChromeMeta): Html {
+export type ViewInputs = {
+  readonly chrome: AppChromeMeta;
+};
+
+export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewInputs>((model, viewInputs) => {
   const rows = sortedDeckList(model.entries, model.known);
   const count = deckCount(model.entries);
   const backgroundScrollLocked = model.printPicker != null;
@@ -582,7 +590,7 @@ export function view(model: DeckBuilderSubmodel, chrome: AppChromeMeta): Html {
       hoverPreview(model),
       contextMenu(model),
       printPicker(model),
-      appVersionBadge(h, chrome),
+      appVersionBadge(h, viewInputs.chrome),
     ],
   );
-}
+});
