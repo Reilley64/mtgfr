@@ -121,9 +121,8 @@ export const view = Submodel.defineView<CoverageSubmodel, ViewMessage, ViewInput
     }),
     stage: h.div(
       [
-        // h-dvh (not h-full): parent height is unconstrained, so h-full grows with the row
-        // list and overflow-y-auto on the body never engages — same lesson as deck-builder.
-        h.Class("flex h-dvh flex-col overflow-hidden"),
+        // Fill the contained shell stage so only the table body scrolls (not the page).
+        h.Class("flex h-full min-h-0 flex-1 flex-col overflow-hidden"),
         h.DataAttribute("testid", "coverage-page"),
       ],
       [

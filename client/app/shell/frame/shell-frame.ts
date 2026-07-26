@@ -26,7 +26,9 @@ export function shellFrame<Msg>(h: ReturnType<typeof createHtml<Msg>>, options: 
   return h.main(
     [
       h.DataAttribute("testid", options.testId ?? "shell-frame"),
-      h.Class(cn("fixed inset-0 overflow-y-auto font-shell text-body text-snow", atmosphereClass)),
+      // Contained flex column: stage owns page scroll (or inner hosts like the builder catalog).
+      // overflow-y-auto on the root made h-dvh builder/coverage pages taller than the viewport.
+      h.Class(cn("fixed inset-0 flex flex-col overflow-hidden font-shell text-body text-snow", atmosphereClass)),
     ],
     [
       h.header(
@@ -34,7 +36,7 @@ export function shellFrame<Msg>(h: ReturnType<typeof createHtml<Msg>>, options: 
           h.DataAttribute("testid", "shell-header"),
           h.Class(
             cn(
-              "mx-auto flex w-full max-w-[var(--size-shell-stage-max)] items-center gap-md",
+              "mx-auto flex w-full max-w-[var(--size-shell-stage-max)] shrink-0 items-center gap-md",
               "px-[var(--spacing-shell-gutter)] py-[var(--spacing-shell-header-y)]",
             ),
           ),
@@ -70,8 +72,8 @@ export function shellFrame<Msg>(h: ReturnType<typeof createHtml<Msg>>, options: 
           h.DataAttribute("testid", "shell-stage"),
           h.Class(
             cn(
-              "shell-stage-enter mx-auto w-full max-w-[var(--size-shell-stage-max)]",
-              "px-[var(--spacing-shell-gutter)] pb-[var(--spacing-shell-gutter)]",
+              "shell-stage-enter mx-auto flex min-h-0 w-full max-w-[var(--size-shell-stage-max)] flex-1 flex-col",
+              "overflow-y-auto px-[var(--spacing-shell-gutter)] pb-[var(--spacing-shell-gutter)]",
             ),
           ),
         ],
