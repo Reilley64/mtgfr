@@ -4,6 +4,9 @@ name: Verify jobs
 # Each job skips setup + checks when a content-hash pass marker is already cached.
 # Cache key is computed once at restore (clean checkout); the post-step saves that
 # same key — do not re-hash after checks (mutations would make the marker unfindable).
+#
+# Server miss path runs lint / nextest / migrate inside ghcr.io/reilley64/mtgfr-ci:latest
+# (--user root so the GHA workspace mount is writable). Postgres is only on migrate.
 
 on:
   workflow_call:
@@ -31,7 +34,7 @@ jobs:
           if [[ "${{ steps.pass.outputs.cache-hit }}" == "true" ]]; then
             echo "Pass marker hit for server content hash."
           else
-            echo "Pass marker miss; lint + nextest shards will run."
+            echo "Pass marker miss; lint + nextest shards + migrate will run."
           fi
 
   verify-server-lint:
@@ -39,21 +42,19 @@ jobs:
     needs: verify-server-gate
     if: needs.verify-server-gate.outputs.cache-hit != 'true'
     runs-on: ubuntu-latest
+    # Image ships dash as /bin/sh; pipefail needs bash.
+    defaults:
+      run:
+        shell: bash
+    container:
+      image: ghcr.io/reilley64/mtgfr-ci:latest
+      options: --user root
     steps:
       - uses: actions/checkout@v5
-
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
 
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: verify-server
-
-      - uses: extractions/setup-just@v3
-
-      - name: Install protoc
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends protobuf-compiler
 
       - name: CR index + fmt + clippy
         run: |
@@ -67,10 +68,53 @@ jobs:
     needs: verify-server-gate
     if: needs.verify-server-gate.outputs.cache-hit != 'true'
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    container:
+      image: ghcr.io/reilley64/mtgfr-ci:latest
+      options: --user root
     strategy:
       fail-fast: false
       matrix:
         partition: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: verify-server
+
+      - name: Nextest shard
+        run: cargo nextest run --profile ci --partition count:${{ matrix.partition }}/3
+
+      - name: Upload Rust JUnit report
+        if: ${{ !cancelled() && hashFiles('target/nextest/ci/junit.xml') != '' }}
+        uses: actions/upload-artifact@v5
+        with:
+          name: rust-junit-${{ matrix.partition }}
+          path: target/nextest/ci/junit.xml
+
+      - name: Rust test summary
+        if: ${{ !cancelled() && hashFiles('target/nextest/ci/junit.xml') != '' }}
+        uses: test-summary/action@v2
+        with:
+          paths: target/nextest/ci/junit.xml
+
+  verify-server-migrate:
+    name: Verify (server migrate)
+    needs: verify-server-gate
+    if: needs.verify-server-gate.outputs.cache-hit != 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    container:
+      image: ghcr.io/reilley64/mtgfr-ci:latest
+      options: --user root
+    env:
+      # Service hostname when the job runs inside a container (not localhost).
+      DATABASE_URL: postgresql://mtgfr:mtgfr@postgres:5432/mtgfr
     services:
       postgres:
         image: postgres:16
@@ -88,48 +132,28 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: dtolnay/rust-toolchain@stable
-
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: verify-server
 
-      - uses: extractions/setup-just@v3
-
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: nextest
-
-      - name: Install protoc
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends protobuf-compiler
-
-      - name: Migrate + nextest shard
-        run: |
-          set -euo pipefail
-          just migrate
-          cargo nextest run --profile ci --partition count:${{ matrix.partition }}/3
-
-      - name: Upload Rust JUnit report
-        if: ${{ !cancelled() && hashFiles('target/nextest/ci/junit.xml') != '' }}
-        uses: actions/upload-artifact@v5
-        with:
-          name: rust-junit-${{ matrix.partition }}
-          path: target/nextest/ci/junit.xml
-
-      - name: Rust test summary
-        if: ${{ !cancelled() && hashFiles('target/nextest/ci/junit.xml') != '' }}
-        uses: test-summary/action@v2
-        with:
-          paths: target/nextest/ci/junit.xml
+      - name: Apply migrations
+        run: just migrate
 
   verify-server-mark:
     name: Verify (server mark)
-    needs: [verify-server-gate, verify-server-lint, verify-server-test]
+    needs:
+      [
+        verify-server-gate,
+        verify-server-lint,
+        verify-server-test,
+        verify-server-migrate,
+      ]
     if: |
       always()
       && needs.verify-server-gate.outputs.cache-hit != 'true'
       && needs.verify-server-lint.result == 'success'
       && needs.verify-server-test.result == 'success'
+      && needs.verify-server-migrate.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -144,7 +168,14 @@ jobs:
 
   verify-server:
     name: Verify (server)
-    needs: [verify-server-gate, verify-server-lint, verify-server-test, verify-server-mark]
+    needs:
+      [
+        verify-server-gate,
+        verify-server-lint,
+        verify-server-test,
+        verify-server-migrate,
+        verify-server-mark,
+      ]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -158,6 +189,7 @@ jobs:
           fi
           lint='${{ needs.verify-server-lint.result }}'
           test='${{ needs.verify-server-test.result }}'
+          migrate='${{ needs.verify-server-migrate.result }}'
           mark='${{ needs.verify-server-mark.result }}'
           if [[ "$lint" != "success" ]]; then
             echo "verify-server-lint result=$lint"
@@ -167,11 +199,15 @@ jobs:
             echo "verify-server-test result=$test"
             exit 1
           fi
+          if [[ "$migrate" != "success" ]]; then
+            echo "verify-server-migrate result=$migrate"
+            exit 1
+          fi
           if [[ "$mark" != "success" ]]; then
             echo "verify-server-mark result=$mark"
             exit 1
           fi
-          echo "Lint + all nextest shards + pass-marker save succeeded."
+          echo "Lint + nextest shards + migrate + pass-marker save succeeded."
 
   verify-client:
     name: Verify (client)
