@@ -1,6 +1,6 @@
 # Combat and Commander Rules
 
-**Status:** Current (as of 2026-07-20)
+**Status:** Current (as of 2026-07-26)
 **Module:** `crates/engine` (`src/combat.rs`, `src/apply.rs` SBA arm, `src/priority.rs` step advance, `src/state.rs` `CombatExtras`)
 
 ---
@@ -13,7 +13,7 @@ Commander is a multiplayer format where each player can independently attack any
 
 ## Solution
 
-Combat state is held in `Game::combat: CombatState` (attackers, block assignments, damage orderings) and `Game::combat_extras: CombatExtras` (goad, must-attack requirements, combat damage prevention shields). The five combat steps are distinct `Step` variants; each gates on a required declaration or advances automatically. Block legality and attacker legality are enforced at declaration time; damage assignment is a pending choice when multiple blockers exist or trample/deathtouch interact. Commander-specific rules (command zone, tax, 21-damage) are woven into the core casting, SBA, and damage paths.
+Combat state is held in `Game::combat: CombatState` (attackers, block assignments, damage orderings) and `Game::combat_extras: CombatExtras` (goad, must-attack requirements, combat damage prevention shields). The five combat steps are distinct `Step` variants; each gates on a required declaration or advances automatically. Block legality and attacker legality are enforced at declaration time; damage assignment is a pending choice when multiple blockers exist or trample/deathtouch interact. Commander-specific rules (command zone, tax, 21-damage) are woven into the core casting, SBA, and damage paths. Tables may disable commander-damage tallies and the 21-damage SBA through the approved [Commander damage lobby toggle](2026-07-26-commander-damage-lobby-toggle-design.md).
 
 ---
 
@@ -26,13 +26,14 @@ Combat state is held in `Game::combat: CombatState` (attackers, block assignment
 5. As a **player with trample attackers**, I want to be prompted to assign damage to blockers vs. the defending player (with lethal-to-each-blocker minimums).
 6. As a **player**, I want to know a creature is goaded so I understand why it must attack a non-goader each turn.
 7. As a **player**, I want the engine to track commander damage dealt by each opponent's commander, and lose when any one reaches 21.
-8. As a **player**, I want to redirect my commander to the command zone instead of the graveyard or exile when it would go there.
-9. As a **player**, I want each cast of my commander from the command zone to cost {2} more per previous command-zone cast (commander tax).
-10. As a **player**, I want eliminated players to be skipped from attack targets and blocker order, with their in-combat creatures simply removed.
-11. As a **player using a pillow-fort effect**, I want attackers to pay the cost or be prevented from attacking the protected player.
-12. As a **player with vigilance creatures**, I want them to not tap when they attack.
-13. As a **player with haste creatures**, I want them to be able to attack on the turn they entered the battlefield (not subject to summoning sickness).
-14. As a **spectator or opponent**, I want to see the combat view (each attacker paired with its defender and its blockers) so I can follow combat correctly.
+8. As a **player at a house-rule table**, I want the host's commander-damage-off option to preserve normal combat damage and life totals while disabling commander-damage tallies and the 21-damage loss condition.
+9. As a **player**, I want to redirect my commander to the command zone instead of the graveyard or exile when it would go there.
+10. As a **player**, I want each cast of my commander from the command zone to cost {2} more per previous command-zone cast (commander tax).
+11. As a **player**, I want eliminated players to be skipped from attack targets and blocker order, with their in-combat creatures simply removed.
+12. As a **player using a pillow-fort effect**, I want attackers to pay the cost or be prevented from attacking the protected player.
+13. As a **player with vigilance creatures**, I want them to not tap when they attack.
+14. As a **player with haste creatures**, I want them to be able to attack on the turn they entered the battlefield (not subject to summoning sickness).
+15. As a **spectator or opponent**, I want to see the combat view (each attacker paired with its defender and its blockers) so I can follow combat correctly.
 
 ---
 
@@ -111,6 +112,7 @@ this turn" / "…which creatures block this turn"). `CombatExtras::attack_declar
 - Each player has a `commander_damage: Vec<(ObjectId, i32)>` tracking total combat damage dealt from each specific commander object.
 - When a commander deals combat damage to a player and the total from that commander reaches **21 or more**, a `PlayerLost` SBA fires for the damage recipient (CR 903.10a).
 - Commander identity (the commander's `ObjectId`) is tracked per attacker, not per card def, because zone changes create new object ids; the `commander: bool` flag on `Card` in the command zone is what the engine uses to identify commanders.
+- `Game.commander_damage_enabled` defaults to `true`. When it is `false`, commander combat damage still reduces life and the Commander life total remains 40, but the engine does not emit `CommanderDamageDealt`, does not add to `Player::commander_damage`, and the 21-damage SBA is skipped.
 
 ### Commander replacement / command zone
 
@@ -159,6 +161,7 @@ this turn" / "…which creatures block this turn"). `CombatExtras::attack_declar
 - **Block legality and attack legality use the same predicates for listing and validation.** `Game::can_block` is shared between `Game::meaningful_actions` (listing legal blockers) and `Game::declare_blockers` (validation at submission) so they can never disagree.
 - **Goad enforcement mirrors must-attack.** Both are constraint loops in `declare_attackers` that validate the declaration against requirements; a declaration failing these is rejected with `Reject::AttackerDeclarationInvalid`.
 - **Commander damage uses object ids, not card def ids.** Because zone changes mint new object ids (CR 400.7), the commander is tracked as the current object id of the commander permanent in combat. This is consistent with how all other per-permanent effects are tracked.
+- **Commander damage can be disabled per seeded game.** `Game::set_commander_damage_enabled(false)` disables only commander-damage tallies and the 21-damage loss check; life loss, commander tax, and command-zone replacement behavior remain unchanged.
 - **Planeswalker combat damage is partially implemented.** The `target = "player_or_planeswalker"` filter exists in the DSL; direct planeswalker-takes-attacker-damage in the combat damage path follows the same route. A complete attack-a-planeswalker flow (declaring attack at a planeswalker object id rather than a player) is in progress.
 - **`CombatExtras::combat_damage_prevention_shields`** models per-player, per-token combat damage prevention (Inkshield pattern). A separate `prevent_all_combat_damage_this_turn` boolean handles table-wide prevention (Moment's Peace). Both are checked at all three combat-damage chokes.
 
@@ -170,6 +173,7 @@ this turn" / "…which creatures block this turn"). `CombatExtras::attack_declar
 - **Damage assignment tests** should trace through a trample declaration with multiple blockers and verify the resulting `marked_damage` values and player life total changes.
 - **Goad tests** should arm a goad entry and verify that a declaration not attacking a non-goader is rejected.
 - **Commander damage tests** should deal 20 cumulative points from one commander, then 1 more, and assert `PlayerLost` fires.
+- **Commander damage disabled tests** should deal 21 or more combat damage from a commander, then assert life dropped, no commander-damage tally was recorded, and the player did not lose to the 21-damage SBA.
 - **Commander redirect tests** should move a commander to the graveyard and verify `PendingChoice::CommanderRedirect` is raised, then accepting it moves the card to the command zone.
 - **Elimination mid-combat**: eliminate a defending player after attackers are declared and verify the game continues with the attacker going unblocked.
 - **Prior art**: `tests/game.rs` has multi-player combat and commander damage integration tests.

@@ -52,6 +52,7 @@ function player(): import("~/wire/types").PlayerView {
 function gameState(): VisibleState {
   return {
     active_player: 0,
+    commander_damage_enabled: true,
     can_act: true,
     combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
     objects: [],

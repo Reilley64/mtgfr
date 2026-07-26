@@ -33,6 +33,7 @@ function object(overrides: Partial<ObjectView> = {}): ObjectView {
 function state(objects: ObjectView[] = []): VisibleState {
   return {
     active_player: 0,
+    commander_damage_enabled: true,
     can_act: true,
     combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
     objects,

@@ -3,6 +3,7 @@ import type {
   SaveDeckRequest as ProtoSaveDeckRequest,
   SeedRequest as ProtoSeedRequest,
 } from "./generated/mtgfr/v1/catalog_effect_grpc";
+import { SeedRequestSchema as SeedRequestPbSchema } from "./generated/mtgfr/v1/catalog_pb";
 import type { IntentEnvelope as ProtoIntentEnvelope } from "./generated/mtgfr/v1/intent_effect_grpc";
 import { IntentEnvelopeSchema as IntentEnvelopePbSchema } from "./generated/mtgfr/v1/intent_pb";
 import type {
@@ -129,6 +130,30 @@ export function fromProtoWire<T = unknown>(value: unknown): T {
   return convertFromProto(value) as T;
 }
 
+/** Product default: EDH tables track Commander damage unless explicitly disabled. */
+function withVisibleStateDefaults<T extends { commander_damage_enabled?: unknown }>(state: T): T {
+  if (state.commander_damage_enabled === undefined) {
+    state.commander_damage_enabled = true;
+  }
+  return state;
+}
+
+function normalizeStreamFrame(frame: StreamFrame): StreamFrame {
+  if (frame.frame === "snapshot") {
+    return {
+      ...frame,
+      state: withVisibleStateDefaults({ ...frame.state }),
+    };
+  }
+  if (frame.frame === "delta") {
+    return {
+      ...frame,
+      state: withVisibleStateDefaults({ ...frame.state }),
+    };
+  }
+  return frame;
+}
+
 function looksLikeFlattenedUnion(value: Record<string, unknown>): value is Record<string, unknown> & { kind: string } {
   return typeof value.kind === "string";
 }
@@ -197,7 +222,7 @@ export function leaderboardFromProto(proto: unknown): Leaderboard {
 }
 
 export function seedRequestToProto(request: SeedRequest): ProtoSeedRequest {
-  return coerceBigints(toProtoWire(request)) as ProtoSeedRequest;
+  return create(SeedRequestPbSchema, coerceBigints(toProtoWire(request)) as never) as ProtoSeedRequest;
 }
 
 export function seedResponseFromProto(proto: unknown): SeedResponse {
@@ -230,5 +255,5 @@ export function intentEnvelopeToProto(envelope: IntentEnvelope): ProtoIntentEnve
 }
 
 export function streamFrameFromProto(proto: unknown): StreamFrame {
-  return fromProtoWire<StreamFrame>(proto);
+  return normalizeStreamFrame(fromProtoWire<StreamFrame>(proto));
 }

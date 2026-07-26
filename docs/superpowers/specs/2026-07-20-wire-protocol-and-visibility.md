@@ -1,6 +1,6 @@
 # Wire Protocol and Visibility
 
-**Status:** Current (as of 2026-07-25)
+**Status:** Current (as of 2026-07-26)
 **Module:** `proto/mtgfr/v1/`, `crates/schema/`, `crates/server/src/grpc/`, `client/lib/wire/`
 (`types.ts`, `protoMap.ts`, `visibleEventKindPresence.ts`, `wire-case-coverage.test.ts`, generated/)
 
@@ -125,7 +125,9 @@ it sends `StreamFrame` (snapshot → deltas → heartbeats). Intent and yield ro
 
 **`Tables`** — `Seed`. Called by the BFF Start handler, never by the browser directly. Seeds a
 new game from a lobby the BFF already resolved; returns `SeedResponse` with `pod_dns` so the
-BFF can pin later `table_id` hops to this pod.
+BFF can pin later `table_id` hops to this pod. `SeedRequest` carries optional
+`commander_damage_enabled` as field 4; absence defaults to true, the lobby defaults to true,
+and Start forwards the stored value.
 
 ### VisibleState
 
@@ -144,6 +146,7 @@ BFF can pin later `table_id` hops to this pod.
 | `can_act`, `yielded`, `turn_yielded` | Priority / yield state for auto-pass logic |
 | `stack_hold_remaining_ms` | Countdown until an uncontested stack auto-resolves |
 | `mulliganing` | Whether the game is still in simultaneous pre-game mulligans |
+| `commander_damage_enabled` | Optional field 16; omitted or `true` means standard Commander damage, explicit `false` tells clients to hide commander-damage chrome |
 
 During mulligans, each `PlayerView` also carries `mulligans_taken`, `hand_kept`, and `can_mulligan`. These are public status fields; card identities remain private through the existing hand/object redaction rules. The local player's legal actions include setup-section `keep_hand` and `mulligan` actions while they are undecided.
 
@@ -220,6 +223,7 @@ The engine/schema event model includes `MulliganTaken { player, mulligans_taken,
   client never needs a side refetch. Render assembly (`schema::snapshot`) lives in the wire
   layer, not in fat engine events.
 - **Mulligan UI is snapshot-driven**: until protobuf visible-event variants are added, mulligan decision progress comes from `VisibleState` fields on snapshots and deltas, not from the event log.
+- **Commander damage defaults on across old wire peers**: `SeedRequest.commander_damage_enabled` is optional at field 4 and omission defaults to enabled, matching the lobby default and older BFFs that do not send the field. `VisibleState.commander_damage_enabled` is optional at field 16 so omitted snapshots from older APIs decode as enabled in the client and schema JSON defaults.
 - **MessageRef is the game-text contract**: engine/schema/server projection paths emit keys and
   typed params for rejects, stack/action labels, prompt effect labels, mode labels, and
   `auto_actions`; the client catalog owns English copy.
@@ -251,6 +255,7 @@ The engine/schema event model includes `MulliganTaken { player, mulligans_taken,
 - Mulligan projection tests assert `mulliganing`, `mulligans_taken`, `hand_kept`, and `can_mulligan` are present in snapshots without exposing other players' hands.
 - Projection tests assert `complete_visible` and stream frames stamp `gravatar_hash` onto
   `PlayerView` while leaving empty strings for seats without a hash.
+- Wire mapping tests assert `SeedRequest.commander_damage_enabled` maps to proto field 4, `VisibleState.commander_damage_enabled` maps from proto field 16, and omitted snapshot values default to enabled.
 - `PendingChoice` variants are tested via `crates/engine/` unit tests that verify each choice
   kind is raised, answered, and produces the correct events.
 - Expand-only compliance is enforced by code review discipline for ordinary protocol changes;

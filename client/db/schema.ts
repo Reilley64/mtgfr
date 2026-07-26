@@ -6,6 +6,7 @@ export const lobbies = pgTable("lobbies", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   lastActivity: timestamp("last_activity", { withTimezone: true }).notNull().defaultNow(),
   startedAt: timestamp("started_at", { withTimezone: true }),
+  commanderDamageEnabled: boolean("commander_damage_enabled").notNull().default(true),
 });
 
 export const lobbySeats = pgTable(

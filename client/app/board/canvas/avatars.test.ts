@@ -89,4 +89,19 @@ describe("avatarShapes commander damage", () => {
     const cmdText = withDmg.find((s) => s._tag === "Text" && s.content === "Cmd 14");
     expect(cmdText?._tag === "Text" ? cmdText.fill : null).toBe("#db8664");
   });
+
+  it("omits Cmd N when commander damage is disabled on the table", () => {
+    const shapes = avatarShapes(
+      [player({ commander_damage: [{ from: 1, amount: 14 }] })],
+      { 0: { x: 100, y: 100 } },
+      0,
+      1,
+      new Set(),
+      0,
+      1,
+      false,
+    );
+
+    expect(textContents(shapes).some((t) => t.startsWith("Cmd "))).toBe(false);
+  });
 });

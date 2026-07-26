@@ -963,6 +963,7 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
         step: game.current_step() as u8,
         priority: game.priority_holder().0,
         mulliganing: game.mulliganing(),
+        commander_damage_enabled: game.commander_damage_enabled(),
         players,
         objects,
         stack,
@@ -1458,6 +1459,16 @@ mod tests {
             vec![CommanderDamageView { from: 1, amount: 7 }],
             "P0 has taken 7 from P1's commander",
         );
+    }
+
+    #[test]
+    fn snapshot_carries_commander_damage_enabled_flag() {
+        let mut game = Game::new();
+        game.set_commander_damage_enabled(false);
+
+        let snap = snapshot(&game, PlayerId(0));
+
+        assert!(!snap.commander_damage_enabled);
     }
 
     /// A modal spell's targets travel per mode (CR 700.2), so the cast action itself reports no

@@ -101,6 +101,7 @@ message SeedRequest {
   string table_id = 1;
   int64 host_user_id = 2;
   repeated SeedSeat seats = 3;
+  optional bool commander_damage_enabled = 4;
 }
 
 // The seeded game's location: which pod owns it (`pod_dns`) and the API version running there,

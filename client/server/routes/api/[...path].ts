@@ -13,6 +13,7 @@ import {
 import { normalizePublicApiPath } from "../../../lib/api-upstream";
 import { fetchApiVersion, fetchDeckName, fetchMe, seedGame } from "../../../lib/api-upstream-auth";
 import { gravatarHash } from "../../../lib/gravatar";
+import { parseTableOptionsBody } from "../../../lib/lobby/table-options";
 import {
   commitStart,
   createLobby,
@@ -20,6 +21,7 @@ import {
   joinLobby,
   type LobbySnapshot,
   loadLobby,
+  setCommanderDamageEnabled,
   setReady,
   startError,
   sweepWebDb,
@@ -44,7 +46,7 @@ function webDb() {
 }
 
 function unknownLobby(tableId: string): LobbySnapshot {
-  return { tableId, hostUserId: 0, startedAt: null, seats: [] };
+  return { tableId, hostUserId: 0, startedAt: null, commanderDamageEnabled: true, seats: [] };
 }
 
 function tableIdFromPath(path: string): string | null {
@@ -73,10 +75,11 @@ async function handleLobby(event: H3Event, path: string, env: GrpcRequestEnv): P
   const isCreate = method === "POST" && path === "tables/v1";
   const isJoin = method === "POST" && path === "tables/join/v1";
   const isReady = method === "POST" && path === "tables/ready/v1";
+  const isOptions = method === "POST" && path === "tables/options/v1";
   const isStart = method === "POST" && path === "tables/start/v1";
   const lobbyGet = method === "GET" && /^tables\/[^/]+\/lobby\/v1$/.test(path);
 
-  if (!routeDelete && !isCreate && !isJoin && !isReady && !isStart && !lobbyGet) return null;
+  if (!routeDelete && !isCreate && !isJoin && !isReady && !isOptions && !isStart && !lobbyGet) return null;
 
   const me = await fetchMe(env);
   if (!me) return new Response("Unauthorized", { status: 401 });
@@ -152,6 +155,18 @@ async function handleLobby(event: H3Event, path: string, env: GrpcRequestEnv): P
     return json(toLobbyView(result.snap, me.id, result.error));
   }
 
+  if (isOptions) {
+    const parsed = parseTableOptionsBody(body);
+    if (parsed === "BadJson") {
+      return json({ error: "BadJson" }, 400);
+    }
+    const result = await setCommanderDamageEnabled(db, parsed.tableId, me.id, parsed.commanderDamageEnabled);
+    if (!result.snap) {
+      return json(toLobbyView(unknownLobby(parsed.tableId), me.id, result.error), 404);
+    }
+    return json(toLobbyView(result.snap, me.id, result.error));
+  }
+
   if (isStart) {
     const tableId = String(body.table_id ?? "");
     const snap = await loadLobby(db, tableId);
@@ -167,6 +182,7 @@ async function handleLobby(event: H3Event, path: string, env: GrpcRequestEnv): P
     const seeded = await seedGame(env, {
       table_id: tableId,
       host_user_id: snap.hostUserId,
+      commander_damage_enabled: snap.commanderDamageEnabled,
       seats: snap.seats
         .slice()
         .sort((a, b) => a.seat - b.seat)
@@ -181,7 +197,7 @@ async function handleLobby(event: H3Event, path: string, env: GrpcRequestEnv): P
       return json(toLobbyView(snap, me.id, seeded.status === 503 ? "Draining" : "SeedFailed"));
     }
     try {
-      await commitStart(db, tableId, seeded.data.pod_dns);
+      await commitStart(db, tableId, seeded.data.pod_dns, snap.commanderDamageEnabled);
     } catch {
       return json(toLobbyView(snap, me.id, "SeedFailed"));
     }

@@ -62,6 +62,7 @@ function battlefieldAction(objectId: number): ActionView {
 function boardFixture(): VisibleState {
   return {
     active_player: 0,
+    commander_damage_enabled: true,
     can_act: true,
     combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
     objects: [object(), object({ id: 2, kind: { kind: "land", colors: [4] }, name: "Forest", power: 0, toughness: 0 })],

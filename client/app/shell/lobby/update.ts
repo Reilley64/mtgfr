@@ -1,7 +1,7 @@
 import { Effect, Match as M, Schema as S } from "effect";
 import type { Command as FoldkitCommand } from "foldkit";
 import { Command } from "foldkit";
-import { createTable, joinTable, readyUp, startGame } from "../../../lib/lobby/client";
+import { createTable, joinTable, readyUp, setTableOptions, startGame } from "../../../lib/lobby/client";
 import { parseTableCode } from "../../../lib/lobby/code";
 import { lobbyIsHost } from "../../../lib/lobby/seat";
 import type { LobbyView } from "../../../lib/lobby/types";
@@ -77,6 +77,20 @@ export const ReadyLobby = Command.define(
   ),
 );
 
+export const SetLobbyOptions = Command.define(
+  "SetLobbyOptions",
+  { tableId: S.String, commanderDamageEnabled: S.Boolean },
+  ReceivedLobbyView,
+  LobbyRequestFailed,
+)(({ tableId, commanderDamageEnabled }) =>
+  Effect.tryPromise(() =>
+    setTableOptions({ table_id: tableId, commander_damage_enabled: commanderDamageEnabled }),
+  ).pipe(
+    Effect.map(viewResult),
+    Effect.catch(() => Effect.succeed(LobbyRequestFailed({ message: UNREACHABLE }))),
+  ),
+);
+
 export const StartLobbyGame = Command.define(
   "StartLobbyGame",
   { tableId: S.String },
@@ -141,6 +155,13 @@ export const update = (
         if (model.tableId == null) return [model, []];
         unlockTableAudio();
         return [{ ...model, error: null, submitting: true }, [ReadyLobby({ tableId: model.tableId, ready })]];
+      },
+      RequestedLobbyCommanderDamage: ({ enabled }) => {
+        if (!lobbyHost(model) || model.tableId == null) return [model, []];
+        return [
+          { ...model, error: null, submitting: true },
+          [SetLobbyOptions({ tableId: model.tableId, commanderDamageEnabled: enabled })],
+        ];
       },
       RequestedLobbyStart: () => {
         if (model.tableId == null) return [model, []];

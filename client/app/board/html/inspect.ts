@@ -36,8 +36,9 @@ function commanderDamagePanel(
   player: PlayerView,
   players: ReadonlyArray<PlayerView>,
   objects: ReadonlyArray<ObjectView>,
+  commanderDamageEnabled = true,
 ): Html | null {
-  const rows = commanderDamageBreakdown(player, players, objects);
+  const rows = commanderDamageBreakdown(player, players, objects, commanderDamageEnabled);
   if (rows.length === 0) return null;
   return h.div(
     [h.DataAttribute("testid", "inspect-commander-damage"), h.Class(panelClass())],
@@ -54,6 +55,7 @@ function playerInspectView(
   pin: InspectPin,
   players: ReadonlyArray<PlayerView>,
   objects: ReadonlyArray<ObjectView>,
+  commanderDamageEnabled = true,
 ): Html {
   const seat = pin.playerSeat;
   const player = seat != null ? (players.find((p) => p.player === seat) ?? null) : null;
@@ -62,7 +64,7 @@ function playerInspectView(
     life != null
       ? h.div([h.DataAttribute("testid", "inspect-player-life"), h.Class(panelClass())], [`Life: ${life}`])
       : null;
-  const damageEl = player != null ? commanderDamagePanel(player, players, objects) : null;
+  const damageEl = player != null ? commanderDamagePanel(player, players, objects, commanderDamageEnabled) : null;
   const panels = [
     h.div(
       [
@@ -111,9 +113,10 @@ export function inspectView(
   liveObject?: ObjectView | null,
   players: ReadonlyArray<PlayerView> = [],
   objects: ReadonlyArray<ObjectView> = [],
+  commanderDamageEnabled = true,
 ): Html | null {
   if (pin == null) return null;
-  if (pin.playerSeat != null) return playerInspectView(pin, players, objects);
+  if (pin.playerSeat != null) return playerInspectView(pin, players, objects, commanderDamageEnabled);
 
   const back = card?.back ?? null;
   const hasBack = !!back?.name;

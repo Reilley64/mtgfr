@@ -3,8 +3,24 @@ import { describe, expect, it } from "vitest";
 import type { LobbyView } from "../../../lib/lobby/types";
 import { lobbyPoll } from "./poll";
 
-const waiting: LobbyView = { table_id: "ABC123", started: false, seats: [], you: null, start_error: null, error: null };
-const started: LobbyView = { table_id: "ABC123", started: true, seats: [], you: null, start_error: null, error: null };
+const waiting: LobbyView = {
+  table_id: "ABC123",
+  commander_damage_enabled: true,
+  started: false,
+  seats: [],
+  you: null,
+  start_error: null,
+  error: null,
+};
+const started: LobbyView = {
+  table_id: "ABC123",
+  commander_damage_enabled: true,
+  started: true,
+  seats: [],
+  you: null,
+  start_error: null,
+  error: null,
+};
 
 describe("lobbyPoll", () => {
   it("emits the started view and stops polling", async () => {

@@ -9,6 +9,7 @@ export const RequestedLobbyCancelJoin = m("RequestedLobbyCancelJoin");
 export const LobbyTableCreated = m("LobbyTableCreated", { tableId: S.String });
 export const RequestedLobbyJoin = m("RequestedLobbyJoin");
 export const RequestedLobbyReady = m("RequestedLobbyReady", { ready: S.Boolean });
+export const RequestedLobbyCommanderDamage = m("RequestedLobbyCommanderDamage", { enabled: S.Boolean });
 export const RequestedLobbyStart = m("RequestedLobbyStart");
 export const RequestedLobbyCopy = m("RequestedLobbyCopy");
 export const LobbyCopyCompleted = m("LobbyCopyCompleted", { ok: S.Boolean });
@@ -23,6 +24,7 @@ export const Message = S.Union([
   LobbyTableCreated,
   RequestedLobbyJoin,
   RequestedLobbyReady,
+  RequestedLobbyCommanderDamage,
   RequestedLobbyStart,
   RequestedLobbyCopy,
   LobbyCopyCompleted,

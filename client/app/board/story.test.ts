@@ -19,6 +19,7 @@ import { type BoardModel, initialBoardModel, syncBoardWithGame, updateBoard } fr
 function state(): VisibleState {
   return {
     active_player: 0,
+    commander_damage_enabled: true,
     can_act: true,
     combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
     objects: [],

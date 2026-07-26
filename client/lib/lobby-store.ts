@@ -32,6 +32,7 @@ export type LobbySnapshot = {
   tableId: string;
   hostUserId: number;
   startedAt: Date | null;
+  commanderDamageEnabled: boolean;
   seats: LobbySeatRow[];
 };
 
@@ -70,6 +71,7 @@ export async function loadLobby(db: WebDb, tableId: string): Promise<LobbySnapsh
     tableId: lobby.tableId,
     hostUserId: lobby.hostUserId,
     startedAt: lobby.startedAt,
+    commanderDamageEnabled: lobby.commanderDamageEnabled,
     seats: seats.map((s) => ({
       seat: s.seat,
       userId: s.userId,
@@ -165,6 +167,34 @@ export async function setReady(
   return { snap: updated };
 }
 
+export async function setCommanderDamageEnabled(
+  db: WebDb,
+  tableId: string,
+  userId: number,
+  enabled: boolean,
+): Promise<{ error?: string; snap?: LobbySnapshot }> {
+  const snap = await loadLobby(db, tableId);
+  if (!snap) return { error: "UnknownTable" };
+  if (snap.startedAt != null) return { error: "AlreadyStarted", snap };
+  if (snap.hostUserId !== userId) return { error: "NotHost", snap };
+  const updatedRows = await db
+    .update(lobbies)
+    .set({ commanderDamageEnabled: enabled })
+    .where(and(eq(lobbies.tableId, tableId), eq(lobbies.hostUserId, userId), isNull(lobbies.startedAt)))
+    .returning({ tableId: lobbies.tableId });
+  if (updatedRows.length === 0) {
+    const latest = await loadLobby(db, tableId);
+    if (!latest) return { error: "UnknownTable" };
+    if (latest.startedAt != null) return { error: "AlreadyStarted", snap: latest };
+    if (latest.hostUserId !== userId) return { error: "NotHost", snap: latest };
+    return { error: "UnknownTable" };
+  }
+  await touchLobby(db, tableId);
+  const updated = await loadLobby(db, tableId);
+  if (!updated) return { error: "UnknownTable" };
+  return { snap: updated };
+}
+
 export function startError(snap: LobbySnapshot, userId: number): string | null {
   if (snap.hostUserId !== userId) return "NotHost";
   if (!snap.seats.some((s) => s.userId === userId)) return "NotSeated";
@@ -173,8 +203,8 @@ export function startError(snap: LobbySnapshot, userId: number): string | null {
   return null;
 }
 
-export async function markStarted(db: WebDb, tableId: string): Promise<void> {
-  await db.update(lobbies).set({ startedAt: sql`now()` }).where(eq(lobbies.tableId, tableId));
+export async function markStarted(db: WebDb, tableId: string, commanderDamageEnabled: boolean): Promise<void> {
+  await db.update(lobbies).set({ startedAt: sql`now()`, commanderDamageEnabled }).where(eq(lobbies.tableId, tableId));
 }
 
 export async function putTableRoute(db: WebDb, tableId: string, podDns: string): Promise<void> {
@@ -189,10 +219,15 @@ export async function putTableRoute(db: WebDb, tableId: string, podDns: string):
 }
 
 /** Route then mark started; roll back the route if mark fails (pg-proxy has no transactions). */
-export async function commitStart(db: WebDb, tableId: string, podDns: string): Promise<void> {
+export async function commitStart(
+  db: WebDb,
+  tableId: string,
+  podDns: string,
+  commanderDamageEnabled: boolean,
+): Promise<void> {
   await putTableRoute(db, tableId, podDns);
   try {
-    await markStarted(db, tableId);
+    await markStarted(db, tableId, commanderDamageEnabled);
   } catch (err) {
     await deleteTableRoute(db, tableId);
     throw err;
@@ -247,6 +282,7 @@ export function toLobbyView(snap: LobbySnapshot, userId: number | null, error?: 
   });
   return {
     table_id: snap.tableId,
+    commander_damage_enabled: snap.commanderDamageEnabled,
     seats,
     you,
     started: snap.startedAt != null,

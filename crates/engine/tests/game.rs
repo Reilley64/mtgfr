@@ -3724,6 +3724,32 @@ fn twenty_one_commander_damage_loses_the_game() {
 }
 
 #[test]
+fn commander_damage_disabled_skips_tally_and_twenty_one_loss() {
+    let mut game = Game::new();
+    game.set_commander_damage_enabled(false);
+    let general = game.spawn_on_battlefield(PlayerId(0), creature("General", 21, 21, &[]));
+    game.set_commander(PlayerId(0), general);
+    game.set_life(PlayerId(1), 40);
+
+    attack_with(&mut game, vec![general]);
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(
+        game.life(PlayerId(1)),
+        19,
+        "combat damage still lowers life"
+    );
+    assert!(
+        game.commander_damage(PlayerId(1)).is_empty(),
+        "no commander-damage tallies when disabled"
+    );
+    assert!(
+        !game.has_lost(PlayerId(1)),
+        "21 combat damage from a commander is not lethal when the rule is off"
+    );
+}
+
+#[test]
 fn color_identity_validation_flags_off_color_cards() {
     // Treat Grizzly Bear ({1}{G}) as a mono-green commander.
     assert!(

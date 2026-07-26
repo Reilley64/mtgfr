@@ -13,7 +13,7 @@ After choosing a deck, a player must host or join a table, claim a seat, ready u
 
 ## Solution
 
-Lobby UI lives under `client/app/shell/lobby/**` on path-param play routes (`/play/:deckId` entry, `/play/:deckId/:table` seated/board). Host/Join uses `entryMode` (`choose` | `join`); seated chrome shows seat-color dots, Gravatar/monogram seat faces, Ready/Start, and table-code copy. Polling is a Foldkit subscription over `lobbyPoll`. Server lobby/seed/affinity mechanics are owned by [lobby-table-routing-and-live-game](2026-07-20-lobby-table-routing-and-live-game.md); the route table and auth guard by [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md). Face behavior follows [Gravatar Seat Faces Design](2026-07-25-gravatar-seat-faces-design.md).
+Lobby UI lives under `client/app/shell/lobby/**` on path-param play routes (`/play/:deckId` entry, `/play/:deckId/:table` seated/board). Host/Join uses `entryMode` (`choose` | `join`); seated chrome shows seat-color dots, Gravatar/monogram seat faces, Ready/Start, table-code copy, and the commander-damage option from [Commander damage lobby toggle](2026-07-26-commander-damage-lobby-toggle-design.md). Polling is a Foldkit subscription over `lobbyPoll`. Server lobby/seed/affinity mechanics are owned by [lobby-table-routing-and-live-game](2026-07-20-lobby-table-routing-and-live-game.md); the route table and auth guard by [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md). Face behavior follows [Gravatar Seat Faces Design](2026-07-25-gravatar-seat-faces-design.md).
 
 ---
 
@@ -22,7 +22,8 @@ Lobby UI lives under `client/app/shell/lobby/**` on path-param play routes (`/pl
 - As a player, I visit `/play/:deckId`, choose Host or Join for the selected deck, optionally paste a copied table code in the focused Join panel, ready up, and wait for the host to start.
 - As a host, after creating a table I land on `/play/:deckId/:table` without seeing claim-seat chrome flash on the entry route.
 - As a player, I can copy the table code (or fall back to a manual-copy input if clipboard permission is denied) and unlock table audio by pressing Ready.
-- As a signed-in watcher, I can stay on a table link without claiming a seat and understand that the game will open in spectator view when it starts.
+- As a host, I can turn commander damage on or off before Start; other players and watchers see the current setting but cannot change it.
+- As a signed-in watcher, I can stay on a table link without claiming a seat, see the current table options, and understand that the game will open in spectator view when it starts.
 - As a player following an old table link, I see stale-link copy that asks me to get a fresh code from the host.
 
 ---
@@ -54,6 +55,8 @@ On entry, `entryMode` is `choose` | `join`. **Choose** shows twin destination ca
 
 The lobby polls `GET /tables/{table}/lobby` via a Foldkit subscription until `started`. Seat rows show seat-color dots (`seat-forest`, `seat-island`, `seat-mountain`, `seat-arcane`) plus a circular face (`seat-face-{player}`) beside the username. When public `gravatar_hash` is present, the face is a Gravatar image loaded with `d=404`; otherwise it falls back to the username initial / seat number monogram. Lobby seats never carry email. A signed-in user on the seated lobby who has not claimed a seat sees `lobby-watch-note`, explaining that staying on the link enters spectator view when the host starts the game. The host (first joiner) sees a Start button when ≥2 seats are claimed and all are ready; while Start is disabled, `lobby-start-error` shows the gate reason in caution amber (`NeedTwoPlayers` → “Need at least two players.”, `NotAllReady` → “Waiting for everyone to Ready…”). Table-code copy uses `navigator.clipboard.writeText` from an Effect-backed command — denied permission reveals a manual-copy input instead of throwing. `unlockTableAudio()` is called on Ready-up (the required user-gesture unlock for the shared `AudioContext`).
 
+An Options card renders above the seat list and below table-code chrome (`lobby-commander-damage`). It shows title copy `Commander damage` and helper copy `Lose at 21 from one commander`. The switch (`lobby-commander-damage-switch`) reflects `LobbyView.commander_damage_enabled`, defaulting to on while the view is loading. The host can change it before Start. Guests, watchers, submitting clients, and started games see the same switch disabled with the polled value.
+
 ### Lobby poll and table lifecycle (`client/app/shell/lobby/poll.ts`, `client/app/shell/lobby/subscriptions.ts`, `client/lib/lobby-store.ts`)
 
 `lobbyPoll(tableId)` is an Effect stream consumed by a Foldkit subscription. The subscription polls lobby state while a table is present and stops when `started` is true. `client/lib/lobby/client.ts` decodes lobby JSON with the `LobbyView` schema and preserves structured non-2xx lobby bodies, so a 404 `UnknownTable` response reaches `model.error` instead of collapsing to `Unreachable`. Bodies that are not a valid `LobbyView` (for example Nitro 500 JSON missing `table_id`) decode to `null` → `Unreachable`, so Foldkit never constructs `ReceivedLobbyView` with an invalid payload (which would crash with `Missing key at ["view"]["table_id"]`). Host’s create→join path hits that Unreachable mapping when `loadLobby` 500s — notably if `mtgfr_web.lobby_seats` lacks `gravatar_hash`. Schema is asserted by `edh-web-migrate`, not the BFF (see [production-topology-and-operations](2026-07-20-production-topology-and-operations.md)). `UnknownTable` renders as stale-link copy: the table link is stale or expired and the player should ask the host for a new code. `client/lib/lobby-store.ts` holds lobby helpers for multi-seat coordination. Once the lobby moves to `started`, the app transitions from the lobby view to the board mount, preserving the table id in the route.
@@ -68,6 +71,7 @@ Helpers also live in `client/lib/lobby/client.ts` for table URL / code parsing u
 - **Seat faces share `seatFace`.** Claimed and open lobby seats use the same Gravatar/monogram helper as account chrome, keyed by public `gravatar_hash` rather than email.
 - **Clipboard denial is non-throwing.** Failed `navigator.clipboard.writeText` reveals a manual-copy input rather than surfacing an uncaught error.
 - **Ready unlocks audio.** `unlockTableAudio()` on Ready-up is the required user-gesture unlock for the shared `AudioContext` ([table-audio](2026-07-20-table-audio.md)).
+- **Commander damage is a table option.** The lobby reads the option from the polled view, sends host changes through `setTableOptions`, and keeps Ready state unchanged when the option changes.
 
 ---
 
@@ -76,7 +80,7 @@ Helpers also live in `client/lib/lobby/client.ts` for table URL / code parsing u
 - `client/app/shell/lobby/**/*.test.ts` — lobby stories and helpers (Host/Join entry, seated chrome, poll).
 - `client/lib/lobby-store.test.ts` — lobby state helpers; with `WEB_DATABASE_URL`, asserts
   `loadLobby` on an empty table (requires migrate-applied `gravatar_hash`).
-- Scene assertions for lobby entry / seated surfaces, including `seat-face-0` Gravatar/monogram chrome, live with shell Scene coverage (`just client-check`).
+- Scene assertions for lobby entry / seated surfaces, including `seat-face-0` Gravatar/monogram chrome and the commander-damage options card / disabled guest switch, live with shell Scene coverage (`just client-check`).
 
 ---
 

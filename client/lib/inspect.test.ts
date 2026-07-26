@@ -75,6 +75,15 @@ describe("commanderDamageBreakdown", () => {
       },
     ]);
   });
+
+  it("returns empty when commander damage is disabled", () => {
+    const victim = player(0, {
+      commander_damage: [{ from: 1, amount: 14 }],
+    });
+    const players = [victim, player(1, { username: "Bob" })];
+
+    expect(commanderDamageBreakdown(victim, players, [], false)).toEqual([]);
+  });
 });
 
 describe("pinFromPlayer", () => {

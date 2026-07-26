@@ -1,6 +1,6 @@
 # Lobby, Table Routing, and Live Game
 
-**Status:** Current (as of 2026-07-25)
+**Status:** Current (as of 2026-07-26)
 **Module:** `crates/server/src/table.rs`, `crates/server/src/lobby.rs`, `crates/server/src/session.rs`,
 `crates/server/src/game_loop.rs`, `crates/server/src/ratings.rs`, `crates/server/src/stream.rs`, `crates/server/src/chrome.rs`,
 `crates/server/src/health.rs`, `crates/server/src/main.rs`,
@@ -33,14 +33,16 @@ The system separates pre-game lobby from live-game concerns across two persisten
 
 1. User creates or joins a lobby on `mtgfr_web` (Nitro Effect RPC, Drizzle/Postgres).
 2. Each user claims a seat (bound to their account via session cookie) and picks a deck.
-3. Each user toggles ready. The host (first to join) sees the Start button when ≥2 seats are
+3. The host may set table options, including whether commander damage is enabled.
+4. Each user toggles ready. The host (first to join) sees the Start button when ≥2 seats are
    claimed and all claimed seats are ready.
-4. The host clicks Start. The BFF calls `Tables.Seed` (gRPC, Service `edh-api`) on the
+5. The host clicks Start. The BFF calls `Tables.Seed` (gRPC, Service `edh-api`) on the
    **newest** active API pod. The seed request carries seat order, user ids, usernames,
-   public `gravatar_hash` values, and deck ids.
-5. `Tables.Seed` resolves and validates all decks, fetches a drand beacon master seed (or a configured fixed seed in dev/test), deals BO1-smoothed opening hands, enters the mulligan phase, inserts the
+   public `gravatar_hash` values, deck ids, and optional `commander_damage_enabled`
+   (absence defaults to enabled).
+6. `Tables.Seed` resolves and validates all decks, fetches a drand beacon master seed (or a configured fixed seed in dev/test), deals BO1-smoothed opening hands, enters the mulligan phase, inserts the
    `Table` into the in-memory `Registry`, and returns `SeedResponse { table_id, pod_dns, version }`.
-6. BFF writes `table_routes (table_id → pod_dns)` to `mtgfr_web`. Clients are redirected to
+7. BFF writes `table_routes (table_id → pod_dns)` to `mtgfr_web`. Clients are redirected to
    `/play/{deck_id}/{table_id}` so the chosen deck remains a required path param.
 
 **In-game routing (lobby-table-routing-and-live-game spec):**
@@ -115,6 +117,8 @@ the BFF so that their absence does not block drain of an API pod that was never 
 
 - As a **host**, I pick a deck on Your decks, create a lobby, copy the table code, and wait for
   friends to join.
+- As a **host**, I can turn commander damage on or off before Start; the selected value is seeded
+  into the match.
 - As a **player joining by table code**, I pick a deck from my list (which includes precons), paste
   the code, claim the next open seat, and toggle ready.
 - As a **host**, once all claimed seats (≥2) are ready, I press Start. The game seeds and all
@@ -144,7 +148,7 @@ the BFF so that their absence does not block drain of an API pod that was never 
    registry lock — no DB await across the lock.
 5. Resolve entropy before inserting the table: `settings.master_seed` or `MTGFR_MASTER_SEED` supplies a fixed 64-hex-character master seed with `beacon_round = 0`; otherwise the API fetches `https://drand.cloudflare.com/public/latest`, retrying across `https://api.drand.sh/public/latest`. The drand `randomness` becomes the `[u8; 32]` engine master seed and `round` is recorded as `beacon_round`.
 6. If beacon entropy is unavailable or malformed and no fixed seed is configured, return 503. No partial table is created and there is no silent production fallback to `OsRng`.
-7. Under the lock: build `Table::seeded(...)`, record `table.seed` and `table.beacon_round`, copy
+7. Under the lock: build `Table::seeded(...)`, set the engine's `commander_damage_enabled` from the seed request, record `table.seed` and `table.beacon_round`, copy
    `SeedSeat.username` and public `SeedSeat.gravatar_hash` into table seat chrome, fill
    `table.prints` (Card id → Printing UUID per seat), seed game via `decks::seed_game`, call
    `registry.try_insert(table_id, table)`.
@@ -183,6 +187,17 @@ the BFF so that their absence does not block drain of an API pod that was never 
    settle loop, and stream fan-out still succeed.
 
 While the engine is `mulliganing`, clients submit `KeepHand` or `Mulligan` just like other intents. The server does not auto-advance priority or begin turn one until `MulligansFinished` has occurred; disconnected undecided seats remain undecided.
+
+### Lobby options (`POST tables/options/v1`)
+
+The Nitro BFF stores `lobbies.commander_damage_enabled` on `mtgfr_web` as a non-null boolean column with a default of `true`. `GET tables/{table}/lobby/v1` includes the value for hosts, seated players, and watchers. Host writes go through `POST tables/options/v1` with `{ table_id, commander_damage_enabled }`.
+
+Options writes return the current lobby projection with structured errors in the existing lobby `error` field:
+- `UnknownTable` when the table id does not resolve.
+- `AlreadyStarted` when the lobby has already been seeded.
+- `NotHost` when the authenticated user is not the lobby host.
+
+Changing the option touches the lobby for TTL purposes but does not clear Ready state. Start reads the column into optional `SeedRequest.commander_damage_enabled`; absence defaults to enabled. After Seed succeeds, the BFF commits start by writing `table_routes`, then setting `startedAt` and overwriting `lobbies.commander_damage_enabled` to the exact value used for Seed. After `startedAt` is set, later option writes return `AlreadyStarted`.
 
 ### Yield / dwell (`SetYield`, `SetTurnYield`, `SetStackDwell`)
 
@@ -234,7 +249,7 @@ seeded game; there are no "empty" table shells in the production registry.
   means a genuinely stale action id, not a replay gap.
 - **BFF-owned lobby** (lobby-table-routing-and-live-game spec): pre-game state lives on `mtgfr_web` (Drizzle). No lobby
   tables in the API pod; no lobby fan-out needed across pods. The BFF owns seat claim, ready-up,
-  host start, and `table_routes`.
+  host options, host start, and `table_routes`.
 - **Seat face privacy**: the BFF derives/stores lobby `gravatar_hash` from the authenticated
   user's email, then forwards only that hash in `Tables.Seed`. API table chrome and streams never
   receive or expose seat email. See [Gravatar Seat Faces Design](2026-07-25-gravatar-seat-faces-design.md).
@@ -279,6 +294,8 @@ seeded game; there are no "empty" table shells in the production registry.
   draining rejection, duplicate table id, invalid seat counts, beacon failure, and recorded beacon entropy) and `Game.SubmitIntent` (seated
   vs. non-seated auth). The same file also covers the Elo hook with a seeded-table concede that
   moves persisted ratings.
+- `crates/server/src/lobby.rs` tests assert `Tables.Seed` copies `commander_damage_enabled` into the engine game.
+- `client/lib/lobby-store.test.ts` asserts lobby creation defaults commander damage on, host writes can flip it, non-host writes return `NotHost`, start commit stores the exact seeded value, and started lobbies return `AlreadyStarted`.
 - `crates/server/src/ratings.rs` tests assert multi-loss `PlayerLost` batches are processed in
   event order when the unlock-tail persist hook runs.
 - Stream projection tests assert seeded table extras stamp usernames and `gravatar_hash` into

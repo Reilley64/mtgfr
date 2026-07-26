@@ -181,6 +181,7 @@ function card(id: number, overrides: Partial<ObjectView> = {}): ObjectView {
 function gameState(overrides: Partial<VisibleState> = {}): VisibleState {
   return {
     active_player: 0,
+    commander_damage_enabled: true,
     can_act: true,
     combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
     objects: [],
@@ -588,6 +589,31 @@ test("inspect overlay shows per-commander damage breakdown for a player pin", ()
     Scene.expect(Scene.testId("inspect-commander-damage")).toExist(),
     Scene.expect(Scene.testId("inspect-commander-damage-1")).toHaveText("Bob — Atraxa, Praetors' Voice: 14 / 21"),
     Scene.expect(Scene.testId("inspect-commander-damage-2")).toHaveText("Carol: 7 / 21"),
+  );
+});
+
+test("inspect overlay omits commander-damage block when the table disables commander damage", () => {
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        inspectPin: { name: "Alice", prepared: false, playerSeat: 0 },
+      },
+      gameState({
+        commander_damage_enabled: false,
+        players: [
+          player(0, {
+            username: "Alice",
+            life: 26,
+            commander_damage: [{ from: 1, amount: 14 }],
+          }),
+          player(1, { username: "Bob" }),
+        ],
+      }),
+    ),
+    Scene.expect(Scene.testId("inspect-overlay")).toExist(),
+    Scene.expect(Scene.testId("inspect-player-life")).toHaveText("Life: 26"),
+    Scene.expect(Scene.testId("inspect-commander-damage")).toBeAbsent(),
   );
 });
 

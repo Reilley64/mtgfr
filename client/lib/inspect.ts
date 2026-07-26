@@ -51,7 +51,9 @@ export function commanderDamageBreakdown(
   player: PlayerView,
   players: ReadonlyArray<PlayerView>,
   objects: ReadonlyArray<ObjectView>,
+  commanderDamageEnabled = true,
 ): CommanderDamageRow[] {
+  if (!commanderDamageEnabled) return [];
   const rows = player.commander_damage;
   if (rows == null || rows.length === 0) return [];
   return rows.map((row) => {

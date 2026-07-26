@@ -135,6 +135,7 @@ export function boardOverlays(
           inspectObject,
           state.players,
           state.objects,
+          state.commander_damage_enabled !== false,
         ),
   ];
 

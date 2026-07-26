@@ -43,6 +43,14 @@ export async function readyUp(payload: { table_id: string; ready: boolean }): Pr
   return decodeOrNull(decodeLobbyView, body);
 }
 
+export async function setTableOptions(payload: {
+  table_id: string;
+  commander_damage_enabled: boolean;
+}): Promise<LobbyView | null> {
+  const body = await lobbyFetchJson("tables/options/v1", { method: "POST", body: JSON.stringify(payload) });
+  return decodeOrNull(decodeLobbyView, body);
+}
+
 export async function startGame(payload: { table_id: string }): Promise<LobbyView | null> {
   const body = await lobbyFetchJson("tables/start/v1", { method: "POST", body: JSON.stringify(payload) });
   return decodeOrNull(decodeLobbyView, body);

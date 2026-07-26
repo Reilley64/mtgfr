@@ -78,6 +78,7 @@ export function restingPaintSnapshot(frame: Omit<BitmapFrame, "flights">): Resti
     height: frame.height,
     camera: frame.camera,
     viewer: frame.viewer,
+    commanderDamageEnabled: frame.commanderDamageEnabled !== false,
     priority: frame.priority,
     hideCardIds: sortedSetValues(frame.hideCardIds),
     targetObjects: sortedSetValues(frame.targetObjects),

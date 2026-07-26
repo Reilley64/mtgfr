@@ -2,13 +2,23 @@ import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
 import { lobbies } from "../db/schema";
 import { createWebDb } from "../server/db/client";
-import { createLobby, joinLobby, type LobbySnapshot, loadLobby, startError, toLobbyView } from "./lobby-store";
+import {
+  createLobby,
+  joinLobby,
+  type LobbySnapshot,
+  loadLobby,
+  markStarted,
+  setCommanderDamageEnabled,
+  startError,
+  toLobbyView,
+} from "./lobby-store";
 
 function snap(overrides: Partial<LobbySnapshot> = {}): LobbySnapshot {
   return {
     tableId: "ABC123",
     hostUserId: 1,
     startedAt: null,
+    commanderDamageEnabled: true,
     seats: [
       {
         seat: 0,
@@ -72,6 +82,11 @@ describe("toLobbyView", () => {
 
     expect(view.seats[0]?.gravatar_hash).toBe("abc");
   });
+
+  it("projects commander_damage_enabled on LobbyView", () => {
+    expect(toLobbyView(snap(), 1).commander_damage_enabled).toBe(true);
+    expect(toLobbyView(snap({ commanderDamageEnabled: false }), 1).commander_damage_enabled).toBe(false);
+  });
 });
 
 describe("startError", () => {
@@ -85,6 +100,69 @@ describe("startError", () => {
 describe.skipIf(!process.env.WEB_DATABASE_URL)("joinLobby gravatar persistence", () => {
   let db: ReturnType<typeof createWebDb>;
   let tableId: string | undefined;
+
+  function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null;
+  }
+
+  function isLobbyRow(value: unknown, id: string): value is Record<string, unknown> {
+    return isRecord(value) && value.tableId === id;
+  }
+
+  function startAfterFirstLobbyRead(
+    baseDb: ReturnType<typeof createWebDb>,
+    id: string,
+  ): ReturnType<typeof createWebDb> {
+    let armed = true;
+
+    function wrapLobbyQueryBuilder<T extends object>(builder: T): T {
+      return new Proxy(builder, {
+        get(target, prop, receiver) {
+          const value = Reflect.get(target, prop, receiver);
+          if (typeof value !== "function") return value;
+
+          return (...args: unknown[]) => {
+            const result = Reflect.apply(value, target, args);
+            if (prop !== "limit") {
+              return isRecord(result) ? wrapLobbyQueryBuilder(result) : result;
+            }
+
+            return Promise.resolve(result).then(async (rows: unknown) => {
+              if (!armed || !Array.isArray(rows)) return rows;
+              armed = false;
+              await markStarted(baseDb, id, true);
+              return rows.map((row) => (isLobbyRow(row, id) ? { ...row, startedAt: null } : row));
+            });
+          };
+        },
+      });
+    }
+
+    return new Proxy(baseDb, {
+      get(target, prop, receiver) {
+        const value = Reflect.get(target, prop, receiver);
+        if (prop !== "select" || typeof value !== "function") return value;
+
+        return (...args: unknown[]) => {
+          const selectBuilder = Reflect.apply(value, target, args);
+          if (!isRecord(selectBuilder)) return selectBuilder;
+
+          return new Proxy(selectBuilder, {
+            get(selectTarget, selectProp, selectReceiver) {
+              const selectValue = Reflect.get(selectTarget, selectProp, selectReceiver);
+              if (selectProp !== "from" || typeof selectValue !== "function") return selectValue;
+
+              return (table: unknown) => {
+                const fromBuilder = Reflect.apply(selectValue, selectTarget, [table]);
+                if (!isRecord(fromBuilder)) return fromBuilder;
+                return table === lobbies ? wrapLobbyQueryBuilder(fromBuilder) : fromBuilder;
+              };
+            },
+          });
+        };
+      },
+    });
+  }
 
   afterEach(async () => {
     if (!tableId || db == null) return;
@@ -137,5 +215,56 @@ describe.skipIf(!process.env.WEB_DATABASE_URL)("joinLobby gravatar persistence",
     expect(reloaded?.seats[0]?.gravatarHash).toBe("hash-updated");
     if (reloaded == null) throw new Error("expected lobby to reload");
     expect(toLobbyView(reloaded, 9001).seats[0]?.gravatar_hash).toBe("hash-updated");
+  });
+
+  it("host can flip commander damage; non-host and started are rejected", async () => {
+    db = createWebDb();
+    tableId = await createLobby(db, 1);
+    const loaded = await loadLobby(db, tableId);
+    expect(loaded?.commanderDamageEnabled).toBe(true);
+
+    const asHost = await setCommanderDamageEnabled(db, tableId, 1, false);
+    expect(asHost.error).toBeUndefined();
+    expect(asHost.snap?.commanderDamageEnabled).toBe(false);
+
+    await joinLobby(db, {
+      tableId,
+      userId: 2,
+      username: "bob",
+      gravatarHash: "x",
+      deckId: -2,
+      deckName: "D",
+    });
+    const asGuest = await setCommanderDamageEnabled(db, tableId, 2, true);
+    expect(asGuest.error).toBe("NotHost");
+
+    await markStarted(db, tableId, false);
+    const afterStart = await setCommanderDamageEnabled(db, tableId, 1, true);
+    expect(afterStart.error).toBe("AlreadyStarted");
+  });
+
+  it("stores the seeded commander damage value when marking started", async () => {
+    db = createWebDb();
+    tableId = await createLobby(db, 1);
+
+    const disabled = await setCommanderDamageEnabled(db, tableId, 1, false);
+    expect(disabled.snap?.commanderDamageEnabled).toBe(false);
+
+    await markStarted(db, tableId, true);
+
+    const loaded = await loadLobby(db, tableId);
+    expect(loaded?.startedAt).toBeInstanceOf(Date);
+    expect(loaded?.commanderDamageEnabled).toBe(true);
+  });
+
+  it("rejects commander damage changes when the table starts after the first read", async () => {
+    db = createWebDb();
+    tableId = await createLobby(db, 1);
+
+    const result = await setCommanderDamageEnabled(startAfterFirstLobbyRead(db, tableId), tableId, 1, false);
+
+    expect(result.error).toBe("AlreadyStarted");
+    expect(result.snap?.startedAt).toBeInstanceOf(Date);
+    expect(result.snap?.commanderDamageEnabled).toBe(true);
   });
 });
