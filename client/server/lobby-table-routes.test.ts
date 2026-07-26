@@ -16,15 +16,10 @@ const mocks = vi.hoisted(() => ({
   gravatarHash: vi.fn(),
   joinLobby: vi.fn(),
   loadLobby: vi.fn(),
-  runWebDb: vi.fn(),
   seedGame: vi.fn(),
   setReady: vi.fn(),
   startError: vi.fn(),
   withLobbyAuth: vi.fn(),
-}));
-
-vi.mock("./db/client", () => ({
-  runWebDb: mocks.runWebDb,
 }));
 
 vi.mock("./lobby-http", () => ({
@@ -91,38 +86,45 @@ function event(table: string | null, body: Record<string, unknown> = {}): H3Even
 describe("lobby table route files", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.withLobbyAuth.mockImplementation(async (_event, _span, fn) => fn({ me, env }));
-    mocks.runWebDb.mockImplementation((op) => Promise.resolve(op));
-    mocks.createLobby.mockReturnValue("NEWTBL");
+    mocks.withLobbyAuth.mockImplementation(async (_event, _span, fn) => Effect.runPromise(fn({ me, env })));
+    mocks.createLobby.mockReturnValue(Effect.succeed("NEWTBL"));
+    mocks.commitStart.mockReturnValue(Effect.void);
+    mocks.deleteTableRoute.mockReturnValue(Effect.void);
     mocks.fetchDeckName.mockReturnValue(Effect.succeed("Mock Deck"));
     mocks.gravatarHash.mockResolvedValue("avatar-hash");
-    mocks.joinLobby.mockReturnValue({ snap: { tableId: "PATHID", hostUserId: me.id, startedAt: null, seats: [] } });
-    mocks.setReady.mockReturnValue({ snap: { tableId: "PATHID", hostUserId: me.id, startedAt: null, seats: [] } });
-    mocks.loadLobby.mockReturnValue({
-      tableId: "PATHID",
-      hostUserId: me.id,
-      startedAt: null,
-      seats: [
-        {
-          seat: 0,
-          userId: me.id,
-          username: me.username,
-          gravatarHash: "avatar-hash",
-          deckId: 7,
-          deckName: "Mock Deck",
-          ready: true,
-        },
-        {
-          seat: 1,
-          userId: 99,
-          username: "Friend",
-          gravatarHash: "friend-hash",
-          deckId: 8,
-          deckName: "Other Deck",
-          ready: true,
-        },
-      ],
-    });
+    mocks.joinLobby.mockReturnValue(
+      Effect.succeed({ snap: { tableId: "PATHID", hostUserId: me.id, startedAt: null, seats: [] } }),
+    );
+    mocks.setReady.mockReturnValue(
+      Effect.succeed({ snap: { tableId: "PATHID", hostUserId: me.id, startedAt: null, seats: [] } }),
+    );
+    mocks.loadLobby.mockReturnValue(
+      Effect.succeed({
+        tableId: "PATHID",
+        hostUserId: me.id,
+        startedAt: null,
+        seats: [
+          {
+            seat: 0,
+            userId: me.id,
+            username: me.username,
+            gravatarHash: "avatar-hash",
+            deckId: 7,
+            deckName: "Mock Deck",
+            ready: true,
+          },
+          {
+            seat: 1,
+            userId: 99,
+            username: "Friend",
+            gravatarHash: "friend-hash",
+            deckId: 8,
+            deckName: "Other Deck",
+            ready: true,
+          },
+        ],
+      }),
+    );
     mocks.startError.mockReturnValue(null);
     mocks.seedGame.mockReturnValue(Effect.succeed({ ok: true, data: { pod_dns: "pod.local" } }));
   });
