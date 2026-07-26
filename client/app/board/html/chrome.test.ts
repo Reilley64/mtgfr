@@ -10,21 +10,15 @@ import { SPECTATOR_VIEWER } from "~/spectator";
 import { BindCardArt, CardArtTick } from "~/ui/card-art";
 import type { ObjectView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../../game/fold";
-import { update as appUpdate, init as appInit } from "../../main-exports";
+import { init as appInit, update as appUpdate } from "../../main-exports";
 import { emptyGameSlice } from "../../model";
 import { GameTableRoute } from "../../routes";
 import { initialLobbySlice } from "../../shell/lobby/submodel";
 import { view as appView } from "../../view";
+import { MountBitmapLayer, MountFlightLayer } from "../bitmap/mount";
 import { ZONE } from "../geometry/layout";
 import type { Message } from "../messages";
-import { MountBitmapLayer, MountFlightLayer } from "../bitmap/mount";
-import {
-  AltDown,
-  ArtLoaded,
-  BoardCameraZoomed,
-  HintAutoHidden,
-  PriorityElapsed,
-} from "../messages";
+import { AltDown, ArtLoaded, BoardCameraZoomed, HintAutoHidden, PriorityElapsed } from "../messages";
 import { type BoardModel, initialBoardModel } from "../submodel";
 import { type BoardViewModel, view as boardView } from "../view";
 import { MountBoardAudio, MountHintAutoHide, MountPriorityWatch } from "./audio-mount";
