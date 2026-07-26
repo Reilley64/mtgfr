@@ -167,38 +167,6 @@ describe("shell surface scenes", () => {
     );
   });
 
-  it("renders a leaderboard teaser on the deck list home", () => {
-    const list = {
-      ...init()[0].decks.list,
-      decks: [deck],
-      knownCommanders: { atraxa },
-      leaderboardTeaser: [{ rank: 1, rating: 1200, user_id: 1, username: "alice" }],
-      loading: false,
-    };
-
-    Scene.scene(
-      { update, view },
-      Scene.with(
-        authedModel(HomeRoute(), {
-          decks: {
-            ...init()[0].decks,
-            list,
-          },
-        }),
-      ),
-      Scene.expect(Scene.selector('[data-testid="leaderboard-teaser"]')).toExist(),
-      Scene.expect(
-        Scene.selector(`[data-testid="leaderboard-teaser-link"][href="${routePath(LeaderboardRoute())}"]`),
-      ).toExist(),
-      Scene.expect(Scene.text("alice")).toExist(),
-      Scene.expect(Scene.text("1200")).toExist(),
-      Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), ClosedDeckListMenu()),
-      Scene.Mount.resolve(BindDeckCardFlip({ deckId: 1 }), DeckCardFlipTick()),
-      Scene.Mount.resolve(BindCardArt, CardArtTick()),
-      Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
-    );
-  });
-
   it("renders the deck delete confirmation dialog", () => {
     Scene.scene(
       { update, view },

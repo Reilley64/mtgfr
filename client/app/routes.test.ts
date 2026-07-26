@@ -5,7 +5,6 @@ import { init } from "./init";
 import {
   NavigationCompleted,
   ReceivedDeckListCommanders,
-  ReceivedDeckListLeaderboardTeaser,
   ReceivedDecks,
   ReceivedLeaderboardPage,
   ReceivedMe,
@@ -22,7 +21,7 @@ import {
   routePath,
   TableRoute,
 } from "./routes";
-import { FetchDeckListLeaderboardTeaser, FetchDecks, LookupDeckListCommanders } from "./shell/decks/list/update";
+import { FetchDecks, LookupDeckListCommanders } from "./shell/decks/list/update";
 import { FetchLeaderboard } from "./shell/leaderboard/update";
 import { HashMeGravatar, update } from "./update";
 
@@ -109,24 +108,21 @@ test("LeaderboardRoute loads the first page on protected route entry", () => {
   );
 });
 
-test("HomeRoute loads decks and the leaderboard teaser on protected route entry", () => {
+test("HomeRoute loads decks on protected route entry", () => {
   const [model] = init(url("/"));
-  const loadTeaser = FetchDeckListLeaderboardTeaser({ limit: 5, offset: 0 });
   const decks = [{ id: 1, name: "Superfriends", commander: "atraxa", commander_print: "atraxa-print" }];
-  const teaser = [{ rank: 1, rating: 1200, user_id: 1, username: "alice" }];
 
   Story.story(
     update,
     Story.with(model),
     Story.message(ReceivedMe({ me })),
-    Story.Command.expectExact(FetchDecks, loadTeaser, HashMeGravatar({ email: me.email })),
+    Story.Command.expectExact(FetchDecks, HashMeGravatar({ email: me.email })),
     Story.Command.resolve(FetchDecks, ReceivedDecks({ decks })),
-    Story.Command.resolve(loadTeaser, ReceivedDeckListLeaderboardTeaser({ entries: teaser })),
     Story.Command.resolve(HashMeGravatar, ReceivedMeGravatarHash({ email: me.email, hash: "deadbeef" })),
     Story.Command.resolve(LookupDeckListCommanders({ ids: ["atraxa"] }), ReceivedDeckListCommanders({ cards: [] })),
     Story.model((m) => {
       expect(m.decks.list.decks).toEqual(decks);
-      expect(m.decks.list.leaderboardTeaser).toEqual(teaser);
+      expect("leaderboardTeaser" in m.decks.list).toBe(false);
     }),
   );
 });
