@@ -1,7 +1,7 @@
 # Commander damage lobby toggle — design
 
-**Status:** Draft pending user review (2026-07-26)  
-**Living surface specs to update at implement time:**
+**Status:** Approved (2026-07-26)
+**Living surface specs:**
 [`2026-07-20-lobby-entry-ui.md`](2026-07-20-lobby-entry-ui.md),
 [`2026-07-20-lobby-table-routing-and-live-game.md`](2026-07-20-lobby-table-routing-and-live-game.md),
 [`2026-07-20-combat-and-commander-rules.md`](2026-07-20-combat-and-commander-rules.md),
@@ -113,11 +113,11 @@ Host switch (seated lobby)
   non-host switch disabled; poll reflects value. Board: flag false → no `Cmd N`,
   inspect omits commander-damage panel.
 
-## Spec updates at implement time
+## Living specs
 
-Update the living surface specs listed in the header so Behavior /
-Implementation / Testing describe shipped behavior. This design file is input
-only and does not replace those updates.
+Behavior, implementation, and testing details live in the surface specs listed
+in the header. This design records the accepted shape of the feature; the
+surface specs remain the shipped-behavior source of truth.
 
 ## Out of scope
 

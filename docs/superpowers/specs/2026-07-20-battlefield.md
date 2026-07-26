@@ -1,6 +1,6 @@
 # Battlefield
 
-**Status:** Current (as of 2026-07-25)
+**Status:** Current (as of 2026-07-26)
 **Module:** `client/app/board/canvas/`, `client/app/board/bitmap/`, `client/app/board/chrome.ts`, `client/app/board/geometry/layout.ts`, `client/app/board/geometry/density.ts`
 
 ---
@@ -18,7 +18,7 @@ The board layer stack authority is [`docs/client-canvas-map.md`](../../client-ca
 ## User Stories
 
 - As a player, I can read each permanent and see relevant battlefield chrome.
-- As a player, I can identify each seat by Gravatar face or monogram, with life below the face and commander damage below the username when present.
+- As a player, I can identify each seat by Gravatar face or monogram, with life below the face and commander damage below the username when the match enables commander damage.
 - As a player with priority, I can tell which battlefield permanents have playable actions from their outline.
 - As a player declaring combat or targeting, arrows and target highlights stay above resting cards.
 - As a player on a crowded board, packing and clusters keep permanents inside their seat bands.
@@ -83,7 +83,7 @@ Avatars are painted on the Mount bitmap layer (`bitmap/mount.ts` `paintAvatars`)
 
 Avatar label offsets are locked in `geometry/layout.ts`: `Hand N` paints toward the battlefield (`pos.y - 29 * zoom` for upright seats, mirrored to `pos.y + 29 * zoom` for flipped seats). Life, username, and `Cmd N` paint on the outer side of the circle (`+48/+66/+80` for upright seats, mirrored to `-48/-66/-80` for flipped seats). HTML hit targets (`life-orb-{seat}`) remain on the circle so combat drops and player-targeting keep the same target.
 
-When a seat has taken commander damage, the avatar group paints `Cmd N` below the username (fill `#db8664`), where `N` is `maxCommanderDamage(player)` — the highest `amount` from any single entry in `PlayerView.commander_damage` (the 21-damage kill clock is per commander source). Omit the label when that max is 0 or the field is absent/empty. Lost seats still show `Cmd N` when present.
+When `VisibleState.commander_damage_enabled` is not `false` and a seat has taken commander damage, the avatar group paints `Cmd N` below the username (fill `#db8664`), where `N` is `maxCommanderDamage(player)` — the highest `amount` from any single entry in `PlayerView.commander_damage` (the 21-damage kill clock is per commander source). Omit the label when the match disables commander damage, that max is 0, or the field is absent/empty. Lost seats still show `Cmd N` when present and the flag is enabled.
 
 `restingPaintSnapshot` / `playerPaintKey` includes `gravatar_hash` and `commander_damage` so Mount resting repaint runs when only avatar identity or commander damage changes (life/hand/username unchanged).
 
@@ -124,12 +124,12 @@ These are visual/layout rules only; they do not collapse engine objects.
 - Keep avatar paint below HTML life-orb hit targets.
 - Mount `paintAvatars` is the authoritative visible avatar face/life chrome; keep `avatarShapes` in sync for fallback circles and label positions.
 - Load Gravatar faces through `sharedImageCache` and use `gravatar_hash` as part of the resting paint key; do not expose email to board paint.
-- Show only the max per-commander damage total on the orb (no per-source chip list).
+- Show only the max per-commander damage total on the orb (no per-source chip list), and gate it on `VisibleState.commander_damage_enabled`.
 
 ## Testing Decisions
 
 - Canvas scene tests assert felt, seat, avatar, and arrow ordering.
-- Avatar unit tests assert Gravatar image paint, monogram fallback, mirrored flipped/upright label offsets, and `Cmd N` paint from `commander_damage` (max source only; omitted at 0).
+- Avatar unit tests assert Gravatar image paint, monogram fallback, mirrored flipped/upright label offsets, and `Cmd N` paint from `commander_damage` (max source only; omitted at 0 or when commander damage is disabled).
 - Resting-snapshot tests assert `gravatar_hash`-only and `commander_damage`-only player changes invalidate Mount resting paint.
 - Bitmap paint tests assert playable, commander, target, auto-tap, P/T, loyalty, counter, and damage chrome on the resting layer.
 - Scene tests assert arrows and interactive life-orb hit targets remain layered correctly.
