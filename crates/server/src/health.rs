@@ -78,8 +78,7 @@ mod tests {
         let Json(status) = live(State(state)).await;
         assert_eq!(status.faithful_count, expected);
         assert!(
-            status.faithful_count
-                < cards::registry().len() as u32
+            status.faithful_count < cards::registry().len() as u32
                 || cards::registry().values().all(|d| d.approximates.is_none()),
             "count must exclude approximates when any exist"
         );

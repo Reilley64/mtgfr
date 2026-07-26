@@ -9,7 +9,7 @@ import {
 } from "./scryfall-oracle-total";
 
 function gzipJsonl(lines: string[]): Uint8Array {
-  return Uint8Array.from(gzipSync(Buffer.from(lines.join("\n") + "\n", "utf8")));
+  return Uint8Array.from(gzipSync(Buffer.from(`${lines.join("\n")}\n`, "utf8")));
 }
 
 describe("scryfall oracle total cache", () => {
@@ -44,7 +44,7 @@ describe("scryfall oracle total cache", () => {
     const total = await refreshOracleTotal(fetchImpl as unknown as typeof fetch);
     expect(total).toBe(2);
     expect(getCachedOracleTotal()).toBe(2);
-    expect(fetchImpl.mock.calls[0]![0]).toEqual(expect.stringContaining("bulk-data/oracle-cards"));
+    expect(fetchImpl.mock.calls[0]?.[0]).toEqual(expect.stringContaining("bulk-data/oracle-cards"));
     const init = fetchImpl.mock.calls[0]?.[1] as RequestInit | undefined;
     const headers = init?.headers as Record<string, string>;
     expect(headers["User-Agent"]).toBe("edh.reilley.dev/0.1");

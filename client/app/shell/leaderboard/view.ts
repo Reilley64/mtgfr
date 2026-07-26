@@ -1,5 +1,5 @@
 import { type Html, html } from "foldkit/html";
-import { appVersionBadge, type AppChromeMeta } from "../../../lib/ui/app-version";
+import { type AppChromeMeta, appVersionBadge } from "../../../lib/ui/app-version";
 import { buttonClass } from "../../../lib/ui/buttonClass";
 import { feltClass, listRowClass } from "../../../lib/ui/surfaces";
 import { HomeRoute, routePath } from "../../routes";

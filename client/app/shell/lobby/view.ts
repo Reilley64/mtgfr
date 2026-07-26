@@ -1,7 +1,7 @@
 import { type Html, html } from "foldkit/html";
 import { cn } from "../../../lib/cn";
 import type { BuilderCatalogCard } from "../../../lib/deck-builder/cards";
-import { appVersionBadge, type AppChromeMeta } from "../../../lib/ui/app-version";
+import { type AppChromeMeta, appVersionBadge } from "../../../lib/ui/app-version";
 import { buttonClass } from "../../../lib/ui/buttonClass";
 import { cardArt } from "../../../lib/ui/card-art";
 import { seatFace } from "../../../lib/ui/seat-face";

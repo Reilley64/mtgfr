@@ -6,7 +6,7 @@ import { cardHoverPreviewView } from "../../../../lib/deck-builder/card-hover-pr
 import { DECK_SIZE, deckCount, sortedDeckList } from "../../../../lib/deck-builder/cards";
 import { formatReleasedAt } from "../../../../lib/deck-builder/print";
 import type { ScryfallPrint } from "../../../../lib/deck-builder/scryfall";
-import { appVersionBadge, type AppChromeMeta } from "../../../../lib/ui/app-version";
+import { type AppChromeMeta, appVersionBadge } from "../../../../lib/ui/app-version";
 import { buttonClass } from "../../../../lib/ui/buttonClass";
 import { cardArt } from "../../../../lib/ui/card-art";
 import { confirmDialog, OpenDialogAsModal } from "../../../../lib/ui/confirmDialog";
