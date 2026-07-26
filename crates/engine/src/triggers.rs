@@ -2008,7 +2008,7 @@ impl Game {
     ) {
         let attacking_player = self.controller_of(attacker_object);
         for id in self.battlefield() {
-            let controller = self.owner_of(id);
+            let controller = self.controller_of(id);
             // "one of your opponents": skip watchers whose own controller was the one attacked.
             if controller == attacked {
                 continue;
@@ -2082,7 +2082,7 @@ impl Game {
     ) {
         let total_attackers = attackers.len() as u8;
         for id in self.battlefield() {
-            let controller = self.owner_of(id);
+            let controller = self.controller_of(id);
             let against_controller = attackers
                 .iter()
                 .filter(|&&(_, defender)| defender == controller)
@@ -2535,7 +2535,11 @@ impl Game {
             if id == entering {
                 continue;
             }
-            let controller = self.owner_of(id);
+            // Controller-scoped (CR 603.3d / 603.6e): a battlefield watcher's "an enchantment you
+            // control enters" keys on who controls the watcher now (a stolen/reanimated Doomwake
+            // fires for its new controller). `controller_of` returns the owner for a
+            // graveyard-functional watcher, so that path is unchanged.
+            let controller = self.controller_of(id);
             let ctx = TriggerContext {
                 entering: Some(entering),
                 ..TriggerContext::of(controller)
@@ -2592,7 +2596,9 @@ impl Game {
     /// ([`queue_self_death_watcher`](Self::queue_self_death_watcher)), `entering` is already on
     /// the battlefield here, so this reads it directly rather than off a snapshot.
     fn queue_self_permanent_enters_trigger(&mut self, entering: ObjectId) {
-        let controller = self.owner_of(entering);
+        // `entering` is live on the battlefield, so its own ETB fires for its controller
+        // (CR 603.3d) — not its owner, which matters if it entered under another player's control.
+        let controller = self.controller_of(entering);
         let ctx = TriggerContext::of(controller);
         let abilities: Vec<Ability> = self
             .functional_abilities(entering)

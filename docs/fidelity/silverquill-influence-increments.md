@@ -37,9 +37,13 @@ perspective.
    stolen/reanimated permanent's table-driven "your …" watches (e.g. Keen Duelist's upkeep) fire
    for its current controller, never its original owner. Regression:
    `stolen_upkeep_watcher_fires_for_its_controller_not_its_owner`. Slices 2–3 still pending.
-2. **Permanent-enters and attack watcher cleanup (M).** Fix `queue_permanent_enters_triggers`,
-   `queue_self_permanent_enters_trigger`, `queue_watch_attack_triggers`, and
-   `queue_batch_attack_triggers`; cover Doomwake, Breena, Firemane, Killian, Herald, and Scriv.
+2. **Permanent-enters and attack watcher cleanup (M) — LANDED (2026-07-26).**
+   `queue_permanent_enters_triggers`, `queue_self_permanent_enters_trigger`,
+   `queue_watch_attack_triggers`, and `queue_batch_attack_triggers` now read `controller_of(id)`
+   (graveyard-functional watchers are unaffected — `controller_of` returns the owner off the
+   battlefield). Regressions: `stolen_doomwake_constellation_fires_for_its_new_controller` (enters
+   path) and `stolen_breena_attack_watch_fires_for_its_new_controller` (attack path). Slice 3 still
+   pending (Killian also needs #2; Herald also needs #5).
 3. **Cast / draw / death special scanners (L).** Fix `queue_cast_spell_triggers`,
    `queue_player_draws_triggers`, `queue_an_enchanted_creature_dies_triggers`, and
    `queue_enchantment_death_watchers`; cover Sram, Kor Spiritdancer, Mangara, Pearl-Ear, Defacing

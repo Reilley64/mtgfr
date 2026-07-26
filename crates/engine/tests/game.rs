@@ -62975,6 +62975,104 @@ fn doomwake_giant_constellation_weakens_opponents_creatures() {
 }
 
 #[test]
+fn stolen_doomwake_constellation_fires_for_its_new_controller() {
+    // Doomwake Giant's constellation ("Whenever another enchantment you control enters, creatures
+    // your opponents control get -1/-1") keys on its *controller*, not its owner. After P0 steals
+    // P1's Doomwake (a permanent control change — CR 108.3 keeps P1 as owner), an enchantment P0
+    // plays fires the constellation for P0: it weakens P0's opponent P1's creature, not P0's own.
+    // The permanent-enters watch dispatch must read `controller_of`, not `owner_of`.
+    let mut game = Game::new();
+    let doomwake = game.spawn_on_battlefield(PlayerId(1), card("Doomwake Giant"));
+    let own_bear = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone()); // P0's — must be spared
+    let p1_bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear")); // P1's — weakened
+
+    let steal = game.spawn_in_hand(PlayerId(0), STEAL_PERMANENT.clone());
+    cast_and_resolve(&mut game, steal, Some(Target::Object(doomwake)));
+    assert_eq!(
+        game.controller_of(doomwake),
+        PlayerId(0),
+        "P0 controls Doomwake"
+    );
+    assert_eq!(
+        game.owner_of(doomwake),
+        PlayerId(1),
+        "P1 still owns it (CR 108.3)"
+    );
+
+    let enchantment = game.spawn_in_hand(PlayerId(0), TEST_ENCHANTMENT.clone());
+    cast_and_resolve(&mut game, enchantment, None); // enters under P0's control
+    resolve_top_of_stack(&mut game); // the constellation trigger resolves
+
+    assert_eq!(
+        game.power(p1_bear),
+        1,
+        "P0's opponent P1's creature is weakened to 1/1 by the stolen Doomwake",
+    );
+    assert_eq!(
+        game.power(own_bear),
+        2,
+        "P0's own creature is spared — the constellation fires for its new controller P0",
+    );
+}
+
+#[test]
+fn stolen_breena_attack_watch_fires_for_its_new_controller() {
+    // Breena's "Whenever a player attacks one of your opponents … you put two +1/+1 counters on a
+    // creature you control" watches its *controller's* opponents. After P0 steals P2's Breena
+    // (ownership stays with P2, CR 108.3), an attack on one of P0's opponents fires Breena for P0
+    // — it is P0, not owner P2, who chooses the counter target. The watch-attack dispatch must
+    // read `controller_of`, not `owner_of`.
+    let mut game = Game::with_players(3, 0);
+    let breena = game.spawn_on_battlefield(PlayerId(2), card("Breena, the Demagogue"));
+    let attacker = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
+    game.stack_library(PlayerId(0), &[card("Forest")]);
+    // Under P0's control, P0's opponents are P1 and P2; the attacked opponent (P1) must be ahead
+    // of the other (P2) for Breena's intervening-if to hold.
+    game.set_life(PlayerId(0), 20);
+    game.set_life(PlayerId(1), 25);
+    game.set_life(PlayerId(2), 20);
+
+    let steal = game.spawn_in_hand(PlayerId(0), STEAL_PERMANENT.clone());
+    cast_and_resolve_seated(
+        &mut game,
+        PlayerId(0),
+        3,
+        steal,
+        Some(Target::Object(breena)),
+    );
+    assert_eq!(
+        game.controller_of(breena),
+        PlayerId(0),
+        "P0 controls Breena"
+    );
+    assert_eq!(
+        game.owner_of(breena),
+        PlayerId(2),
+        "P2 still owns it (CR 108.3)"
+    );
+
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: vec![(attacker, Defender::Player(PlayerId(1)))],
+    })
+    .unwrap();
+
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::ChooseTarget {
+                player: PlayerId(0),
+                ..
+            })
+        ),
+        "the stolen Breena fires for its new controller P0 — P0 chooses the counter target; \
+         got {:?}",
+        game.pending_choice(),
+    );
+}
+
+#[test]
 fn artifact_and_enchantment_creature_types_are_authored_from_toml() {
     // CR 306/307: a permanent's card types union — Doomwake Giant is an Enchantment
     // Creature and Brudiclad, Telchor Engineer is an Artifact Creature (#124's `also: TypeSet`

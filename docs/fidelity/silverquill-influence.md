@@ -100,12 +100,12 @@ points at the increment(s) that clear it.
 
 - [ ] Ajani's Chosen — #1, #3
 - [ ] Archon of Sun's Grace — #1
-- [ ] Breena, the Demagogue — #1
+- [x] Breena, the Demagogue — #1 (slice 2 landed: attack watch now controller-scoped)
 - [ ] Coercive Impetus — #2
 - [ ] Combat Calligrapher — #1
 - [x] Darksteel Mutation — #4 (landed)
 - [ ] Defacing Duskmage — #1, #6 (#6 landed; still blocked on #1)
-- [ ] Doomwake Giant — #1
+- [x] Doomwake Giant — #1 (slice 2 landed: constellation now controller-scoped)
 - [ ] Eiganjo Dynastorian — #1
 - [ ] Eriette of the Charmed Apple — #1
 - [ ] Firemane Commando — #1
