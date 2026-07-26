@@ -12,6 +12,7 @@ import {
 } from "nitro/h3";
 import { normalizePublicApiPath } from "../../../lib/api-upstream";
 import { fetchApiMeta, fetchDeckName, fetchMe, seedGame } from "../../../lib/api-upstream-auth";
+import { fetchCoverageMeta } from "../../../lib/coverage-meta";
 import { gravatarHash } from "../../../lib/gravatar";
 import {
   commitStart,
@@ -72,6 +73,21 @@ async function handleLobby(event: H3Event, path: string, env: GrpcRequestEnv): P
     if (meta.faithfulCount != null) body.faithful_count = meta.faithfulCount;
     if (meta.oracleTotal != null) body.oracle_total = meta.oracleTotal;
     return json(body);
+  }
+
+  if (method === "GET" && path === "meta/coverage/v1") {
+    const meta = await fetchCoverageMeta();
+    return json({
+      faithful_count: meta.faithfulCount,
+      oracle_total: meta.oracleTotal,
+      sets: meta.sets.map((set) => ({
+        code: set.code,
+        name: set.name,
+        released_at: set.releasedAt,
+        faithful: set.faithful,
+        oracle_total: set.oracleTotal,
+      })),
+    });
   }
 
   const routeDelete = method === "DELETE" && /^tables\/[^/]+\/route\/v1$/.test(path);

@@ -44,19 +44,38 @@ export async function fetchDeckName(env: GrpcRequestEnv, deckId: number): Promis
   }
 }
 
-export type LiveStatus = { version: string; faithfulCount: number | null };
+export type LiveStatus = {
+  version: string;
+  faithfulCount: number | null;
+  faithfulBySet: Readonly<Record<string, number>> | null;
+};
+
+function readFaithfulBySet(value: unknown): Readonly<Record<string, number>> | null {
+  if (value === null || typeof value !== "object") return null;
+
+  const entries = Object.entries(value);
+  const faithfulBySet: Record<string, number> = {};
+
+  for (const [code, count] of entries) {
+    if (typeof count !== "number" || !Number.isFinite(count)) continue;
+    faithfulBySet[code] = count;
+  }
+
+  return faithfulBySet;
+}
 
 export function parseLiveStatus(body: unknown): LiveStatus | null {
   if (body === null || typeof body !== "object") return null;
   if (!("version" in body)) return null;
   if (typeof body.version !== "string" || body.version.length === 0) return null;
+  const faithfulBySet = "faithful_by_set" in body ? readFaithfulBySet(body.faithful_by_set) : null;
   if (!("faithful_count" in body)) {
-    return { version: body.version, faithfulCount: null };
+    return { version: body.version, faithfulCount: null, faithfulBySet };
   }
   if (typeof body.faithful_count !== "number" || !Number.isFinite(body.faithful_count)) {
-    return { version: body.version, faithfulCount: null };
+    return { version: body.version, faithfulCount: null, faithfulBySet };
   }
-  return { version: body.version, faithfulCount: body.faithful_count };
+  return { version: body.version, faithfulCount: body.faithful_count, faithfulBySet };
 }
 
 function unavailableApiMeta() {
