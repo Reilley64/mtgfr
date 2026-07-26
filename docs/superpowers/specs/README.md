@@ -75,6 +75,7 @@ These documents are **not superseded** and must stay current alongside the specs
 | [coverage-by-set](2026-07-26-coverage-by-set-design.md) | Design input for `/coverage` set table (faithful-by-set ÷ Scryfall per-set oracle); badge navigates; depends on pool-coverage-badge |
 | [gha-server-verify-sharding](2026-07-26-gha-server-verify-sharding-design.md) | Design input for 3-shard nextest cold `verify-server` wall-clock; update `ci-and-release` at implement time |
 | [ci-rust-protoc-image](2026-07-26-ci-rust-protoc-image-design.md) | Design input for GHCR `mtgfr-ci` toolchain image (PR1 publish; PR2 containerize verify + migrate job); update `ci-and-release` per PR |
+| [proxy-card-art](2026-07-26-proxy-card-art-design.md) | Design input for deck-saved alter image URLs (BFF-proxied, table-visible, fallback to printing); update deck/catalog/wire (+ art choke points) at implement time |
 
 ## Authoring conventions
 
