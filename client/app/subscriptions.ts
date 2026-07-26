@@ -1,7 +1,7 @@
 import { Subscription } from "foldkit";
 import { subscriptions as gameSubscriptions } from "./game/stream-subscription";
 import type { Message } from "./messages";
-import { PortraitGateChanged } from "./messages";
+import { GotLobbyMessage, PortraitGateChanged } from "./messages";
 import type { Model } from "./model";
 import { subscriptions as lobbySubscriptions } from "./shell/lobby/subscriptions";
 
@@ -28,6 +28,6 @@ export const subscriptions = Subscription.aggregate<Model, Message>()(
   gameSubscriptions,
   Subscription.lift(lobbySubscriptions)<Model, Message>({
     toChildModel: (model) => model.lobby,
-    toParentMessage: (message) => message,
+    toParentMessage: (message) => GotLobbyMessage({ message }),
   }),
 );

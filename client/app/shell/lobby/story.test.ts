@@ -2,8 +2,9 @@ import { Story } from "foldkit";
 import { expect, test } from "vitest";
 import type { LobbyView } from "../../domain/lobby/types";
 import { init, update } from "../../main-exports";
-import { ReceivedLobbyView } from "../../messages";
+import { GotLobbyMessage } from "../../messages";
 import { TableRoute } from "../../routes";
+import { ReceivedLobbyView } from "./messages";
 
 const me = { id: 1, email: "alice@example.com", username: "alice" };
 
@@ -28,7 +29,7 @@ test("started lobby view activates the board handoff", () => {
       session: { me, meGravatarHash: null },
       lobby: { ...model.lobby, tableId: "ABC123" },
     }),
-    Story.message(ReceivedLobbyView({ view: startedLobby })),
+    Story.message(GotLobbyMessage({ message: ReceivedLobbyView({ view: startedLobby }) })),
     Story.model((m) => {
       expect(m.lobby.started).toBe(true);
       expect(m.game?.active).toBe(true);

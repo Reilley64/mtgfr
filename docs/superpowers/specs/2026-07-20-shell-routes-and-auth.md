@@ -67,7 +67,7 @@ Unsigned protected content never renders.
 
 ### Foldkit state and effects (`client/app/model.ts`, `client/app/update.ts`, `client/app/subscriptions.ts`, `client/app/resources.ts`)
 
-The app model is the single UI state tree. `update(model, message)` is the only state transition point and returns `[Model, Command[]]`. Shell submodels own auth, deck list, deck builder, leaderboard, and lobby state; the board owns board interaction state while game deltas fold into `client/app/game/fold.ts`.
+The app model is the single UI state tree. `update(model, message)` is the only state transition point and returns `[Model, Command[]]`. Shell submodels own auth, deck list, deck builder, leaderboard, and lobby state; the board owns board interaction state while game deltas fold into `client/app/game/fold.ts`. Auth, deck list, deck builder, leaderboard, and lobby child updates all cross the parent boundary through `Got*Message` wrappers, while route-owned lobby resets run through `informRouteChanged` so the parent still owns redirect and game-slice activation after the lobby child update.
 
 Async work is expressed as Foldkit **Commands** backed by Effect programs. Commands depend on the `RpcClient` resource from `client/app/resources.ts`, so wire access is explicit at the runtime boundary. Session checks, auth submit, deck loading, catalog search, deck save/delete, leaderboard loading, lobby host/join, and table navigation all flow through commands.
 
@@ -140,6 +140,7 @@ Vite production builds set `build.sourcemap: true` (via `clientBuildSourcemap`) 
 ## Implementation Decisions
 
 - **Foldkit `update` is the state boundary.** UI state changes only through messages handled by `client/app/update.ts` and shell child updates. Async work returns messages through Foldkit commands and subscriptions, which gives consistent error folding, runtime resource injection, and automatic stream teardown.
+- **Shell children lift through wrappers, not raw parent tags.** Auth, deck list, deck builder, leaderboard, and lobby commands/subscriptions map back through `Got*Message`, and lobby route entry uses `informRouteChanged` instead of mutating the lobby slice directly from the parent. Parent-owned redirects and game activation still happen after the lifted lobby fold.
 - **`FetchMe` folds all failures to `null`.** Any 401, decode error, or transport failure during `client.me()` is "not signed in" — mirrors the guard's semantics. Route entry refreshes session state for protected routes to avoid stale login redirects.
 - **`safeNext` is checked both in-browser and server-side.** Open-redirect mitigations are layered: the client validates before navigation; the server validates before the session redirect.
 - **No `@apply`, no `@layer components`.** Foldkit views and shared UI helpers carry styling through Tailwind classes; inline style carries only CSS variable data. This is the Tailwind shell house rule.
@@ -154,6 +155,7 @@ Vite production builds set `build.sourcemap: true` (via `clientBuildSourcemap`) 
 - `client/app/shell/auth/**/*.test.ts` — auth stories and helpers, including `ReceivedMe` → `HashMeGravatar` session storage and stale-result guarding.
 - `client/app/update.test.ts` — parent-level regressions such as lifting auth child messages through `GotAuthMessage`.
 - `client/app/routes.test.ts`, `client/app/smoke.test.ts` — routing and smoke; includes protected `/leaderboard` entry, auth redirect, home entry loading decks without a teaser fetch, and retry-from-page-one behavior.
+- `client/app/shell/lobby/**/*.test.ts`, `client/app/shell/leaderboard/**/*.test.ts` — route-inform resets, wrapper-lifted parent folds (`GotLobbyMessage`, `GotLeaderboardMessage`), lobby redirect/game handoff, and leaderboard retry/load-more state.
 - `client/app/shell/surfaces.test.ts` — shell Scene coverage for auth, deck, leaderboard, and lobby surfaces, including shared account chrome and the `% faithful` + `API {version}` shell badge stack; Scene asserts `pool-coverage` above `app-version` when the model has complete meta.
 - `client/app/domain/ui/app-version.test.ts` — percent formatting and stacked badge rendering rules.
 - `client/app/game/*.test.ts` — game fold, stream subscription.

@@ -30,6 +30,8 @@ export const ReceivedMeGravatarHash = m("ReceivedMeGravatarHash", { email: S.Str
 export const GotAuthMessage = m("GotAuthMessage", { message: AuthMessage });
 export const GotDeckListMessage = m("GotDeckListMessage", { message: DeckListMessage });
 export const GotDeckBuilderMessage = m("GotDeckBuilderMessage", { message: DeckBuilderMessage });
+export const GotLeaderboardMessage = m("GotLeaderboardMessage", { message: LeaderboardMessage });
+export const GotLobbyMessage = m("GotLobbyMessage", { message: LobbyMessage });
 export { CardArtTick, DeckCardFlipTick, ModalOpened };
 
 export const Message = S.Union([
@@ -45,13 +47,13 @@ export const Message = S.Union([
   GotAuthMessage,
   GotDeckListMessage,
   GotDeckBuilderMessage,
+  GotLeaderboardMessage,
+  GotLobbyMessage,
   ModalOpened,
   CardArtTick,
   DeckCardFlipTick,
   BoardMessage,
   AccountChromeMessage,
-  LeaderboardMessage,
-  LobbyMessage,
   GameMessage,
 ]);
 export type Message = typeof Message.Type;
@@ -81,15 +83,3 @@ export {
   RequestedLeaderboardNextPage,
   RequestedLeaderboardRefresh,
 } from "./shell/leaderboard/messages";
-export {
-  ChangedLobbyCode,
-  LobbyCopyCompleted,
-  LobbyRequestFailed,
-  LobbyTableCreated,
-  ReceivedLobbyView,
-  RequestedLobbyCopy,
-  RequestedLobbyHost,
-  RequestedLobbyJoin,
-  RequestedLobbyReady,
-  RequestedLobbyStart,
-} from "./shell/lobby/messages";

@@ -6,10 +6,10 @@ import {
   ClosedAccountMenu,
   GotAuthMessage,
   GotDeckListMessage,
+  GotLeaderboardMessage,
   NavigationCompleted,
   ReceivedLeaderboardPage,
   ReceivedMeGravatarHash,
-  RequestedLeaderboardRefresh,
   ToggledAccountMenu,
 } from "./messages";
 import type { Model } from "./model";
@@ -25,6 +25,7 @@ import {
 } from "./routes";
 import * as Auth from "./shell/auth";
 import * as DeckList from "./shell/decks/list";
+import { RequestedLeaderboardRefresh } from "./shell/leaderboard/messages";
 import { FetchLeaderboard } from "./shell/leaderboard/update";
 import { HashMeGravatar, update } from "./update";
 
@@ -239,7 +240,7 @@ test("leaderboard retry refreshes from the first page after an error", () => {
   Story.story(
     update,
     Story.with(model),
-    Story.message(RequestedLeaderboardRefresh()),
+    Story.message(GotLeaderboardMessage({ message: RequestedLeaderboardRefresh() })),
     Story.Command.expectExact(load),
     Story.model((m) => {
       expect(m.leaderboard.accountMenuOpen).toBe(false);

@@ -1,9 +1,11 @@
+import { Submodel } from "foldkit";
 import { type Html, html } from "foldkit/html";
+import type { DeckCardFlipTick } from "../../deck-card-nav";
 import { cn } from "../../domain/cn";
 import type { BuilderCatalogCard } from "../../domain/deck-builder/cards";
 import { type AppChromeMeta, appVersionBadge } from "../../domain/ui/app-version";
 import { buttonClass } from "../../domain/ui/buttonClass";
-import { cardArt } from "../../domain/ui/card-art";
+import { type CardArtTick, cardArt } from "../../domain/ui/card-art";
 import { seatFace } from "../../domain/ui/seat-face";
 import { feltClass, fieldClass, panelClass } from "../../domain/ui/surfaces";
 import type { DeckSummary } from "../../domain/wire/types";
@@ -11,7 +13,7 @@ import { HomeRoute, routePath } from "../../routes";
 import { type DeckCardModel, renderDeckCard } from "../decks/deck-card";
 import {
   ChangedLobbyCode,
-  type Message,
+  type Message as LobbyMessage,
   RequestedLobbyCancelJoin,
   RequestedLobbyCopy,
   RequestedLobbyHost,
@@ -23,7 +25,18 @@ import {
 import type { LobbySlice } from "./submodel";
 import { lobbyHost, lobbyReady } from "./update";
 
-const h = html<Message>();
+export type ViewMessage = LobbyMessage | typeof CardArtTick.Type | typeof DeckCardFlipTick.Type;
+export type LobbySurface = "entry" | "table";
+
+export type ViewInputs = {
+  decks: ReadonlyArray<DeckSummary>;
+  decksLoading: boolean;
+  knownCommanders: Readonly<Record<string, BuilderCatalogCard>>;
+  chrome: AppChromeMeta;
+  surface: LobbySurface;
+};
+
+const h = html<ViewMessage>();
 
 const seatDots = ["bg-seat-forest", "bg-seat-island", "bg-seat-mountain", "bg-seat-arcane"];
 
@@ -476,16 +489,8 @@ function tableLobby(
   );
 }
 
-export type LobbySurface = "entry" | "table";
-
-export function view(
-  model: LobbySlice,
-  decks: ReadonlyArray<DeckSummary>,
-  decksLoading: boolean,
-  knownCommanders: Readonly<Record<string, BuilderCatalogCard>>,
-  chrome: AppChromeMeta,
-  surface: LobbySurface,
-): Html {
+export const view = Submodel.defineView<LobbySlice, ViewMessage, ViewInputs>((model, viewInputs): Html => {
+  const { chrome, decks, decksLoading, knownCommanders, surface } = viewInputs;
   // PlayRoute always paints entry — even after Host sets tableId and queues
   // Redirect — so we do not flash claim-seat / table chrome before navigation.
   const body =
@@ -527,4 +532,4 @@ export function view(
       appVersionBadge(h, chrome),
     ],
   );
-}
+});

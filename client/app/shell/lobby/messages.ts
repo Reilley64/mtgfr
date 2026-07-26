@@ -2,6 +2,10 @@ import { Schema as S } from "effect";
 import { m } from "foldkit/message";
 import { LobbyView } from "../../domain/lobby/types";
 
+export const ChangedLobbyRoute = m("ChangedLobbyRoute", {
+  tableId: S.NullOr(S.String),
+  selectedDeckId: S.NullOr(S.Number),
+});
 export const ChangedLobbyCode = m("ChangedLobbyCode", { code: S.String });
 export const RequestedLobbyHost = m("RequestedLobbyHost");
 export const RequestedLobbyOpenJoin = m("RequestedLobbyOpenJoin");
@@ -16,6 +20,7 @@ export const ReceivedLobbyView = m("ReceivedLobbyView", { view: LobbyView });
 export const LobbyRequestFailed = m("LobbyRequestFailed", { message: S.String });
 
 export const Message = S.Union([
+  ChangedLobbyRoute,
   ChangedLobbyCode,
   RequestedLobbyHost,
   RequestedLobbyOpenJoin,

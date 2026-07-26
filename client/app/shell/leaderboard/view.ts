@@ -1,15 +1,31 @@
+import { Submodel } from "foldkit";
 import { type Html, html } from "foldkit/html";
 import { type AppChromeMeta, appVersionBadge } from "../../domain/ui/app-version";
 import { buttonClass } from "../../domain/ui/buttonClass";
 import { feltClass, listRowClass } from "../../domain/ui/surfaces";
+import type { ClosedAccountMenu, GotAuthMessage, ToggledAccountMenu } from "../../messages";
 import { HomeRoute, routePath } from "../../routes";
 import { accountChrome } from "../account-chrome/view";
-import { RequestedLeaderboardNextPage, RequestedLeaderboardRefresh } from "./messages";
+import {
+  type Message as LeaderboardMessage,
+  RequestedLeaderboardNextPage,
+  RequestedLeaderboardRefresh,
+} from "./messages";
 import type { LeaderboardStatus, LeaderboardSubmodel } from "./submodel";
 
-const h = html<Message>();
+export type ViewMessage =
+  | LeaderboardMessage
+  | typeof ClosedAccountMenu.Type
+  | typeof GotAuthMessage.Type
+  | typeof ToggledAccountMenu.Type;
 
-type Message = typeof RequestedLeaderboardRefresh.Type | typeof RequestedLeaderboardNextPage.Type;
+export type ViewInputs = {
+  username: string;
+  meGravatarHash: string | null;
+  chrome: AppChromeMeta;
+};
+
+const h = html<ViewMessage>();
 
 function statusCopy(status: LeaderboardStatus): string | null {
   switch (status) {
@@ -42,12 +58,8 @@ function row(entry: LeaderboardSubmodel["entries"][number]): Html {
   );
 }
 
-export function view(
-  model: LeaderboardSubmodel,
-  username: string,
-  meGravatarHash: string | null,
-  chrome: AppChromeMeta,
-): Html {
+export const view = Submodel.defineView<LeaderboardSubmodel, ViewMessage, ViewInputs>((model, viewInputs): Html => {
+  const { chrome, meGravatarHash, username } = viewInputs;
   const status = statusCopy(model.status);
   const canLoadMore = model.status !== "error" && model.entries.length < model.total;
 
@@ -116,4 +128,4 @@ export function view(
       appVersionBadge(h, chrome),
     ],
   );
-}
+});

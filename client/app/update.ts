@@ -12,6 +12,8 @@ import {
   GotAuthMessage,
   GotDeckBuilderMessage,
   GotDeckListMessage,
+  GotLeaderboardMessage,
+  GotLobbyMessage,
   type Message,
   NavigationCompleted,
   type ReceivedDelta,
@@ -36,11 +38,10 @@ import * as DeckBuilder from "./shell/decks/builder";
 import type { Message as BuilderMessage } from "./shell/decks/builder/messages";
 import * as DeckList from "./shell/decks/list";
 import type { Message as ListMessage } from "./shell/decks/list/messages";
+import * as Leaderboard from "./shell/leaderboard";
 import type { Message as LeaderboardMessage } from "./shell/leaderboard/messages";
-import { loadLeaderboard, update as updateLeaderboard } from "./shell/leaderboard/update";
+import * as Lobby from "./shell/lobby";
 import type { Message as LobbyMessage } from "./shell/lobby/messages";
-import { enterLobby } from "./shell/lobby/submodel";
-import { update as updateLobby } from "./shell/lobby/update";
 
 const Redirect = Command.define(
   "Redirect",
@@ -122,8 +123,8 @@ function routeEntry(model: Model): readonly [Model, ReadonlyArray<FoldkitCommand
       return [{ ...model, decks: { ...model.decks, list } }, mapDeckListCommands(commands)];
     }
     case "LeaderboardRoute": {
-      const [leaderboard, commands] = loadLeaderboard(model.leaderboard);
-      return [{ ...model, leaderboard }, commands];
+      const [leaderboard, commands] = Leaderboard.loadLeaderboard(model.leaderboard);
+      return [{ ...model, leaderboard }, mapLeaderboardCommands(commands)];
     }
     case "NewDeckRoute": {
       const [builder, commands] = DeckBuilder.enterBuilder(null);
@@ -135,29 +136,34 @@ function routeEntry(model: Model): readonly [Model, ReadonlyArray<FoldkitCommand
     }
     case "PlayRoute": {
       const [list, commands] = DeckList.loadDeckList(model.decks.list);
+      const [lobby, lobbyCommands] = Lobby.informRouteChanged(model.lobby, {
+        tableId: null,
+        selectedDeckId: parseDeckIdParam(model.route.deckId),
+      });
       return [
         {
           ...model,
           decks: { ...model.decks, list },
-          lobby: enterLobby(model.lobby, { tableId: null, selectedDeckId: parseDeckIdParam(model.route.deckId) }),
+          lobby,
           game: null,
         },
-        mapDeckListCommands(commands),
+        [...mapDeckListCommands(commands), ...mapLobbyCommands(lobbyCommands)],
       ];
     }
     case "TableRoute": {
       const [list, commands] = DeckList.loadDeckList(model.decks.list);
+      const [lobby, lobbyCommands] = Lobby.informRouteChanged(model.lobby, {
+        tableId: model.route.table,
+        selectedDeckId: parseDeckIdParam(model.route.deckId),
+      });
       return [
         {
           ...model,
           decks: { ...model.decks, list },
-          lobby: enterLobby(model.lobby, {
-            tableId: model.route.table,
-            selectedDeckId: parseDeckIdParam(model.route.deckId),
-          }),
+          lobby,
           game: null,
         },
-        mapDeckListCommands(commands),
+        [...mapDeckListCommands(commands), ...mapLobbyCommands(lobbyCommands)],
       ];
     }
     case "LoginRoute":
@@ -210,8 +216,8 @@ function foldLeaderboard(
   model: Model,
   message: LeaderboardMessage,
 ): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
-  const [leaderboard, commands] = updateLeaderboard(model.leaderboard, message);
-  return [{ ...model, leaderboard }, commands];
+  const [leaderboard, commands] = Leaderboard.update(model.leaderboard, message);
+  return [{ ...model, leaderboard }, mapLeaderboardCommands(commands)];
 }
 
 function foldBoard(
@@ -228,7 +234,7 @@ function foldLobby(
   message: LobbyMessage,
 ): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
   const deckIds = model.decks.list.decks.map((deck) => deck.id);
-  const [lobby, commands] = updateLobby(model.lobby, message, deckIds);
+  const [lobby, commands] = Lobby.update(model.lobby, message, deckIds);
   const game =
     lobby.started && lobby.tableId != null
       ? model.game?.tableId === lobby.tableId
@@ -243,7 +249,19 @@ function foldLobby(
           }),
         ]
       : [];
-  return [{ ...model, lobby, game }, [...commands, ...redirect]];
+  return [{ ...model, lobby, game }, [...mapLobbyCommands(commands), ...redirect]];
+}
+
+function mapLeaderboardCommands(
+  commands: ReadonlyArray<FoldkitCommand.Command<LeaderboardMessage, never, RpcClient>>,
+): ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>> {
+  return Command.mapMessages(commands, (message) => GotLeaderboardMessage({ message }));
+}
+
+function mapLobbyCommands(
+  commands: ReadonlyArray<FoldkitCommand.Command<LobbyMessage, never, RpcClient>>,
+): ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>> {
+  return Command.mapMessages(commands, (message) => GotLobbyMessage({ message }));
 }
 
 function foldAuth(
@@ -406,6 +424,8 @@ export const update = (
         return [notFoundWhenPlayDeckMissing(nextModel), commands];
       },
       GotDeckBuilderMessage: ({ message }) => foldDeckBuilder(model, message),
+      GotLeaderboardMessage: ({ message }) => foldLeaderboard(model, message),
+      GotLobbyMessage: ({ message }) => foldLobby(model, message),
       ToggledAccountMenu: () => {
         if (model.route._tag === "HomeRoute") {
           const list = model.decks.list;
@@ -462,22 +482,6 @@ export const update = (
         }
         return [model, []];
       },
-      RequestedLeaderboardRefresh: (leaderboardMessage) => foldLeaderboard(model, leaderboardMessage),
-      RequestedLeaderboardNextPage: (leaderboardMessage) => foldLeaderboard(model, leaderboardMessage),
-      ReceivedLeaderboardPage: (leaderboardMessage) => foldLeaderboard(model, leaderboardMessage),
-      LeaderboardLoadFailed: (leaderboardMessage) => foldLeaderboard(model, leaderboardMessage),
-      ChangedLobbyCode: (lobbyMessage) => foldLobby(model, lobbyMessage),
-      RequestedLobbyHost: (lobbyMessage) => foldLobby(model, lobbyMessage),
-      RequestedLobbyOpenJoin: (lobbyMessage) => foldLobby(model, lobbyMessage),
-      RequestedLobbyCancelJoin: (lobbyMessage) => foldLobby(model, lobbyMessage),
-      LobbyTableCreated: (lobbyMessage) => foldLobby(model, lobbyMessage),
-      RequestedLobbyJoin: (lobbyMessage) => foldLobby(model, lobbyMessage),
-      RequestedLobbyReady: (lobbyMessage) => foldLobby(model, lobbyMessage),
-      RequestedLobbyStart: (lobbyMessage) => foldLobby(model, lobbyMessage),
-      RequestedLobbyCopy: (lobbyMessage) => foldLobby(model, lobbyMessage),
-      LobbyCopyCompleted: (lobbyMessage) => foldLobby(model, lobbyMessage),
-      ReceivedLobbyView: (lobbyMessage) => foldLobby(model, lobbyMessage),
-      LobbyRequestFailed: (lobbyMessage) => foldLobby(model, lobbyMessage),
       ReceivedSnapshot: ({ seq, state }) => {
         if (model.game == null) return [model, []];
         const [game, commands] = mergeGameFold(model.game, applySnapshotPure(model.game, seq, state));

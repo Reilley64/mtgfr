@@ -39,6 +39,46 @@ function tableForJoin(model: LobbySlice): string | null {
   return parseTableCode(model.code);
 }
 
+function applyRouteChange(
+  model: LobbySlice,
+  route: { tableId: string | null; selectedDeckId: number | null },
+): LobbySlice {
+  if (model.tableId !== route.tableId) {
+    return {
+      tableId: route.tableId,
+      selectedDeckId: route.selectedDeckId ?? model.selectedDeckId,
+      code: "",
+      entryMode: "choose",
+      view: null,
+      started: false,
+      error: null,
+      copied: false,
+      clipboardFallback: false,
+      submitting: false,
+    };
+  }
+
+  if (model.tableId == null && route.selectedDeckId != null && model.selectedDeckId !== route.selectedDeckId) {
+    return {
+      tableId: null,
+      selectedDeckId: route.selectedDeckId,
+      code: "",
+      entryMode: "choose",
+      view: null,
+      started: false,
+      error: null,
+      copied: false,
+      clipboardFallback: false,
+      submitting: false,
+    };
+  }
+
+  return {
+    ...model,
+    selectedDeckId: route.selectedDeckId ?? model.selectedDeckId,
+  };
+}
+
 export const CreateLobbyTable = Command.define(
   "CreateLobbyTable",
   LobbyTableCreated,
@@ -125,6 +165,7 @@ export const update = (
   M.value(message).pipe(
     M.withReturnType<readonly [LobbySlice, ReadonlyArray<FoldkitCommand.Command<Message>>]>(),
     M.tagsExhaustive({
+      ChangedLobbyRoute: ({ tableId, selectedDeckId }) => [applyRouteChange(model, { tableId, selectedDeckId }), []],
       ChangedLobbyCode: ({ code }) => [{ ...model, code }, []],
       RequestedLobbyOpenJoin: () => [{ ...model, entryMode: "join" }, []],
       RequestedLobbyCancelJoin: () => [{ ...model, entryMode: "choose", code: "", error: null }, []],

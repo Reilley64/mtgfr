@@ -1,19 +1,31 @@
+import { html } from "foldkit/html";
 import { Scene } from "foldkit/test";
 import { expect, test } from "vitest";
 import { BindDeckCardFlip, DeckCardFlipTick } from "../../deck-card-nav";
 import { BindCardArt, CardArtTick } from "../../domain/ui/card-art";
 import type { CatalogCard } from "../../domain/wire/types";
 import { init, update } from "../../main-exports";
-import { GotDeckListMessage } from "../../messages";
+import { GotDeckListMessage, GotLobbyMessage, type Message } from "../../messages";
 import type { Model } from "../../model";
 import { PlayRoute, TableRoute } from "../../routes";
 import { view as appView } from "../../view";
 import * as DeckList from "../decks/list";
 import { LobbyTableCreated, RequestedLobbyCancelJoin, RequestedLobbyOpenJoin } from "./messages";
 import { initialLobbySlice } from "./submodel";
-import { view as lobbyView } from "./view";
+import { type ViewMessage as LobbyViewMessage, view as lobbyView } from "./view";
 
 const me = { id: 1, email: "alice@example.com", username: "alice" };
+const h = html<Message>();
+
+function toParentLobbyMessage(message: LobbyViewMessage): Message {
+  switch (message._tag) {
+    case "CardArtTick":
+    case "DeckCardFlipTick":
+      return message;
+    default:
+      return GotLobbyMessage({ message });
+  }
+}
 
 const deck = {
   id: 7,
@@ -70,18 +82,23 @@ function tableLobbyModel(overrides: Partial<Model>): Model {
 }
 
 const lobbyAppView = (model: Model) =>
-  lobbyView(
-    model.lobby,
-    model.decks.list.decks,
-    model.decks.list.loading,
-    model.decks.list.knownCommanders,
-    {
-      version: model.apiVersion,
-      faithfulCount: model.faithfulCount,
-      oracleTotal: model.oracleTotal,
+  h.submodel({
+    slotId: "lobby-test",
+    model: model.lobby,
+    view: lobbyView,
+    viewInputs: {
+      decks: model.decks.list.decks,
+      decksLoading: model.decks.list.loading,
+      knownCommanders: model.decks.list.knownCommanders,
+      chrome: {
+        version: model.apiVersion,
+        faithfulCount: model.faithfulCount,
+        oracleTotal: model.oracleTotal,
+      },
+      surface: model.route._tag === "TableRoute" ? "table" : "entry",
     },
-    model.route._tag === "TableRoute" ? "table" : "entry",
-  );
+    toParentMessage: toParentLobbyMessage,
+  });
 
 test("entry without a route deck asks the player to use deck play", () => {
   Scene.scene(
@@ -182,7 +199,7 @@ test("opening Join shows focused panel with Bringing strip and hides destination
     },
   });
 
-  const [joined] = update(base, RequestedLobbyOpenJoin());
+  const [joined] = update(base, GotLobbyMessage({ message: RequestedLobbyOpenJoin() }));
   expect(joined.lobby.entryMode).toBe("join");
 
   Scene.scene(
@@ -216,7 +233,7 @@ test("Cancel returns to choose and clears the table code", () => {
     },
   });
 
-  const [next] = update(open, RequestedLobbyCancelJoin());
+  const [next] = update(open, GotLobbyMessage({ message: RequestedLobbyCancelJoin() }));
   expect(next.lobby.entryMode).toBe("choose");
   expect(next.lobby.code).toBe("");
   expect(next.lobby.error).toBeNull();
@@ -417,7 +434,7 @@ test("host redirect uses /play/:deckId/:table", () => {
     },
   });
 
-  const [, commands] = update(withDeck, LobbyTableCreated({ tableId: "XYZ789" }));
+  const [, commands] = update(withDeck, GotLobbyMessage({ message: LobbyTableCreated({ tableId: "XYZ789" }) }));
   const redirect = commands.find((c) => c.name === "Redirect") as { args?: { path?: string } } | undefined;
   expect(redirect?.args?.path).toBe("/play/7/XYZ789");
 });
@@ -431,12 +448,12 @@ test("host handoff on PlayRoute keeps entry UI (no claim-seat flash)", () => {
     },
   });
 
-  const [afterCreate] = update(withDeck, LobbyTableCreated({ tableId: "XYZ789" }));
+  const [afterCreate] = update(withDeck, GotLobbyMessage({ message: LobbyTableCreated({ tableId: "XYZ789" }) }));
   expect(afterCreate.route._tag).toBe("PlayRoute");
   expect(afterCreate.lobby.tableId).toBe("XYZ789");
 
   Scene.scene(
-    { update, view: appView },
+    { update, view: lobbyAppView },
     Scene.with(afterCreate),
     Scene.expect(Scene.testId("lobby-entry-choose")).toExist(),
     Scene.expect(Scene.testId("lobby-host")).toExist(),
