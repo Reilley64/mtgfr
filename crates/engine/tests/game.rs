@@ -69331,6 +69331,54 @@ fn reveal_top_mana_value_life_loss_keen_duelist() {
     );
 }
 
+#[test]
+fn stolen_upkeep_watcher_fires_for_its_controller_not_its_owner() {
+    // Control vs ownership on a live battlefield watcher: Keen Duelist's "At the beginning of your
+    // upkeep" keys on its *controller's* upkeep, not its owner's. When P0 steals P1's Keen Duelist
+    // (a permanent control change — ownership stays with P1, CR 108.3), the trigger fires on P0's
+    // upkeep and stays silent on P1's. The controller-scoped watch-table dispatch must read
+    // `controller_of`, not `owner_of`, for permanents still on the battlefield.
+    let mut game = Game::new();
+    game.stack_library(PlayerId(0), &[VANILLA.clone(), VANILLA.clone()]);
+    game.stack_library(PlayerId(1), &[VANILLA.clone(), VANILLA.clone()]);
+    let keen = game.spawn_on_battlefield(PlayerId(1), card("Keen Duelist"));
+    let steal = game.spawn_in_hand(PlayerId(0), STEAL_PERMANENT.clone());
+    cast_and_resolve(&mut game, steal, Some(Target::Object(keen)));
+    assert_eq!(
+        game.owner_of(keen),
+        PlayerId(1),
+        "P1 still owns it (CR 108.3)"
+    );
+    assert_eq!(game.controller_of(keen), PlayerId(0), "P0 now controls it");
+
+    // Its owner P1's upkeep comes first — the stolen watcher must stay silent there.
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Upkeep
+    });
+    assert!(
+        game.pending_choice().is_none(),
+        "stolen Keen Duelist must not trigger on its owner P1's upkeep (P0 controls it); \
+         got {:?}",
+        game.pending_choice(),
+    );
+
+    // P0's upkeep: the watcher fires for its controller, pausing to choose P0's target opponent.
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
+    });
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::ChooseTarget {
+                player: PlayerId(0),
+                ..
+            })
+        ),
+        "stolen Keen Duelist fires on its controller P0's upkeep; got {:?}",
+        game.pending_choice(),
+    );
+}
+
 // ── Reveal-until-a-count (#84, CR 701.30/120): open_the_way ────────────────────────────────
 
 #[test]

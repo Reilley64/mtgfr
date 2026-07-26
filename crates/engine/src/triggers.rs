@@ -1082,7 +1082,10 @@ impl Game {
                         .player
                         .expect("controller-scoped battlefield watch requires a player");
                     for id in self.battlefield() {
-                        if Some(id) == event.exclude || self.owner_of(id) != player {
+                        // A live battlefield permanent's "your …" watch keys on its controller
+                        // (CR 109.4 / 603.3d), not its owner — a stolen or reanimated permanent
+                        // triggers for whoever controls it now, never its original owner.
+                        if Some(id) == event.exclude || self.controller_of(id) != player {
                             continue;
                         }
                         if watch.skip_graveyard_functional_on_battlefield
@@ -1113,7 +1116,9 @@ impl Game {
                         {
                             continue;
                         }
-                        let controller = self.owner_of(id);
+                        // The triggered ability belongs to the permanent's controller (CR 603.3d),
+                        // not its owner — matters for stolen/reanimated permanents on the battlefield.
+                        let controller = self.controller_of(id);
                         let ctx = self.trigger_watch_context(id, controller, watch.context, event);
                         self.queue_trigger_group(ctx, id, self.def_of(id), trigger);
                     }
@@ -1123,7 +1128,9 @@ impl Game {
                         .player
                         .expect("all-battlefield-except-player watch requires a player");
                     for id in self.battlefield() {
-                        let controller = self.owner_of(id);
+                        // Controller-scoped, not owner-scoped (CR 603.3d): both the "except this
+                        // player" test and the trigger's controller read the live controller.
+                        let controller = self.controller_of(id);
                         if controller == excluded {
                             continue;
                         }

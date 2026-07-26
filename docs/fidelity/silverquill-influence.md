@@ -114,7 +114,7 @@ points at the increment(s) that clear it.
 - [ ] Ghoulish Impetus — #2
 - [ ] Hateful Eidolon — #1
 - [ ] Herald of Amity — #1, #5
-- [ ] Keen Duelist — #1
+- [x] Keen Duelist — #1 (slice 1 landed: upkeep watch now controller-scoped)
 - [ ] Killian, Decisive Mentor — #1, #2
 - [ ] Kor Spiritdancer — #1
 - [ ] Mangara, the Diplomat — #1

@@ -31,8 +31,12 @@ objects that have already left the battlefield. Add regression tests that reanim
 opponent-owned watcher with `Animate Dead`, then exercise the trigger from the new controller's
 perspective.
 **Slices:**
-1. **Generic watch-table controller cleanup (M).** Fix the recurring all-battlefield watch paths in
-   `triggers.rs` so step-begin / ETB / other table-driven controller scopes read `controller_of`.
+1. **Generic watch-table controller cleanup (M) — LANDED (2026-07-26).** The three live-battlefield
+   watch-dispatch arms in `triggers.rs` (`ControlledPlayer` filter, `AllBattlefield`,
+   `AllBattlefieldExceptPlayer`) now read `controller_of(id)` instead of `owner_of(id)`, so a
+   stolen/reanimated permanent's table-driven "your …" watches (e.g. Keen Duelist's upkeep) fire
+   for its current controller, never its original owner. Regression:
+   `stolen_upkeep_watcher_fires_for_its_controller_not_its_owner`. Slices 2–3 still pending.
 2. **Permanent-enters and attack watcher cleanup (M).** Fix `queue_permanent_enters_triggers`,
    `queue_self_permanent_enters_trigger`, `queue_watch_attack_triggers`, and
    `queue_batch_attack_triggers`; cover Doomwake, Breena, Firemane, Killian, Herald, and Scriv.
