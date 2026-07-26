@@ -371,6 +371,30 @@ describe("paintBitmapLayer", () => {
     expect(calls.filter((c) => /^text:Cmd \d+$/.test(c))).toHaveLength(1);
   });
 
+  it("omits Cmd N when commander damage is disabled on the table", () => {
+    const calls: string[] = [];
+    vi.stubGlobal("window", { devicePixelRatio: 1 });
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => mockCtx(calls)),
+      style: {},
+    } as unknown as HTMLCanvasElement;
+
+    paintBitmapLayer(
+      canvas,
+      frame({
+        commanderDamageEnabled: false,
+        cards: [],
+        players: [player({ commander_damage: [{ from: 1, amount: 14 }] })],
+      }),
+      { get: vi.fn(() => undefined) },
+    );
+
+    expect(calls).not.toContain("text:Cmd 14");
+    expect(calls.some((call) => /^text:Cmd \d+/.test(call))).toBe(false);
+  });
+
   it("mirrors flipped opponent label paint away from their card row", () => {
     const calls: string[] = [];
     vi.stubGlobal("window", { devicePixelRatio: 1 });

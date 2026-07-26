@@ -660,7 +660,7 @@ export type VisibleState = {
   actions?: Array<ActionView>;
   active_player: number;
   can_act: boolean;
-  commander_damage_enabled: boolean;
+  commander_damage_enabled?: boolean;
   combat: {
     attackers: Array<WireAttack>;
     attackers_declared: boolean;

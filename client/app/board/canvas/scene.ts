@@ -242,6 +242,7 @@ export function sceneShapes(state: VisibleState, options: SceneShapesOptions = {
       targeting?.targetPlayers ?? new Set(),
       state.viewer,
       count,
+      state.commander_damage_enabled !== false,
     ),
     ...arrowShapes({
       camera,

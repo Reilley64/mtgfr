@@ -43,6 +43,7 @@ export function avatarShapes(
   targetPlayers: ReadonlySet<number> = new Set(),
   viewer = 0,
   count = Math.max(1, players.length),
+  commanderDamageEnabled = true,
 ): Shape[] {
   const radius = AVATAR_R * zoom;
   const shapes: Shape[] = [];
@@ -102,7 +103,7 @@ export function avatarShapes(
     );
 
     const cmd = maxCommanderDamage(player);
-    if (cmd > 0) {
+    if (commanderDamageEnabled && cmd > 0) {
       shapes.push(
         Canvas.Text({
           x: pos.x,

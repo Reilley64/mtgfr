@@ -67,6 +67,13 @@ describe("restingPaintChanged", () => {
     expect(restingPaintChanged(before, after)).toBe(true);
   });
 
+  it("is true when only the commander damage table flag changes", () => {
+    const enabled = restingPaintSnapshot({ ...baseResting, commanderDamageEnabled: true } as never);
+    const disabled = restingPaintSnapshot({ ...baseResting, commanderDamageEnabled: false } as never);
+
+    expect(restingPaintChanged(enabled, disabled)).toBe(true);
+  });
+
   it("is true when only gravatar_hash changes on a player", () => {
     const before = restingPaintSnapshot({
       ...baseResting,

@@ -172,6 +172,7 @@ export const view = Submodel.defineView<BoardViewModel, Message>((model) => {
     cards,
     viewer: state.viewer,
     players: state.players,
+    commanderDamageEnabled: state.commander_damage_enabled !== false,
     priority: state.priority,
     combat: state.combat,
     stagedAttackers: model.board.combatAttackers,

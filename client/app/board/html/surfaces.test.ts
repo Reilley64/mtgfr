@@ -592,6 +592,31 @@ test("inspect overlay shows per-commander damage breakdown for a player pin", ()
   );
 });
 
+test("inspect overlay omits commander-damage block when the table disables commander damage", () => {
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        inspectPin: { name: "Alice", prepared: false, playerSeat: 0 },
+      },
+      gameState({
+        commander_damage_enabled: false,
+        players: [
+          player(0, {
+            username: "Alice",
+            life: 26,
+            commander_damage: [{ from: 1, amount: 14 }],
+          }),
+          player(1, { username: "Bob" }),
+        ],
+      }),
+    ),
+    Scene.expect(Scene.testId("inspect-overlay")).toExist(),
+    Scene.expect(Scene.testId("inspect-player-life")).toHaveText("Life: 26"),
+    Scene.expect(Scene.testId("inspect-commander-damage")).toBeAbsent(),
+  );
+});
+
 test("inspect overlay omits commander-damage block when the seat has none", () => {
   overlayScene(
     overlayModel(

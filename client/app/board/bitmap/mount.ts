@@ -32,6 +32,7 @@ export type BitmapFrame = {
   cards: readonly RenderCard[];
   viewer: number;
   players: readonly PlayerView[];
+  commanderDamageEnabled?: boolean;
   priority: number;
   combat: VisibleState["combat"];
   /** Attackers/blocks declared during the current staging session but not yet committed. */
@@ -490,7 +491,7 @@ function paintAvatars(ctx: CanvasRenderingContext2D, frame: BitmapFrame, cache: 
     ctx.fillText(`Hand ${player.hand_count}`, screen.x, screen.y + offsets.hand * frame.camera.zoom);
 
     const cmd = maxCommanderDamage(player);
-    if (cmd > 0) {
+    if (frame.commanderDamageEnabled !== false && cmd > 0) {
       ctx.fillStyle = "#db8664";
       ctx.font = `${Math.max(1, Math.round(12 * frame.camera.zoom))}px system-ui, sans-serif`;
       ctx.fillText(`Cmd ${cmd}`, screen.x, screen.y + offsets.commander * frame.camera.zoom);
