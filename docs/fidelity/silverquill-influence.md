@@ -101,7 +101,7 @@ points at the increment(s) that clear it.
 - [x] Ajani's Chosen — #1, #3 (both landed)
 - [x] Archon of Sun's Grace — #1 (landed)
 - [x] Breena, the Demagogue — #1 (landed)
-- [ ] Coercive Impetus — #2
+- [x] Coercive Impetus — #2 (landed)
 - [x] Combat Calligrapher — #1 (landed)
 - [x] Darksteel Mutation — #4 (landed)
 - [x] Defacing Duskmage — #1, #6 (both landed)
@@ -109,20 +109,20 @@ points at the increment(s) that clear it.
 - [x] Eiganjo Dynastorian — #1 (landed)
 - [x] Eriette of the Charmed Apple — #1 (landed)
 - [x] Firemane Commando — #1 (landed)
-- [ ] Ghostly Prison — #2
+- [x] Ghostly Prison — #2 (landed)
 - [x] Gift of Immortality — #3
-- [ ] Ghoulish Impetus — #2
+- [x] Ghoulish Impetus — #2 (landed)
 - [x] Hateful Eidolon — #1 (landed)
 - [ ] Herald of Amity — #1 landed; still blocked on #5
 - [x] Keen Duelist — #1 (landed)
-- [ ] Killian, Decisive Mentor — #1 landed; still blocked on #2
+- [x] Killian, Decisive Mentor — #1, #2 (both landed)
 - [x] Kor Spiritdancer — #1 (landed)
 - [x] Mangara, the Diplomat — #1 (landed)
-- [ ] Martial Impetus — #2
-- [ ] Nils, Discipline Enforcer — #1 landed; still blocked on #2
-- [ ] Parasitic Impetus — #2
+- [x] Martial Impetus — #2 (landed)
+- [x] Nils, Discipline Enforcer — #1, #2 (both landed)
+- [x] Parasitic Impetus — #2 (landed)
 - [x] Pearl-Ear, Imperial Advisor — #1 (landed)
-- [ ] Redemption Arc — #2
+- [x] Redemption Arc — #2 (landed)
 - [x] Scriv, the Obligator — #1 (landed)
 - [x] Sram, Senior Edificer — #1 (landed)
 - [x] Starfield Mystic — #1 (landed)

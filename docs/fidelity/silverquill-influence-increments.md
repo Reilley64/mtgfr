@@ -61,7 +61,18 @@ perspective.
    `stolen_sram_cast_watch_draws_for_its_new_controller` and
    `stolen_starfield_mystic_enchantment_death_fires_for_its_new_controller`.
 
-### 2. `goad-versus-attack-tax-if-able` — 8 cards, L
+### 2. `goad-versus-attack-tax-if-able` — 8 cards, L — **LANDED** (2026-07-26)
+Landed: added `Game::can_afford_attack_tax` (an exact `plan_auto_taps` probe of one attacker's
+generic tax) and routed goad's "if able" through it in both `required_attacks` and the
+declare-attackers goad-validation loop. A goaded creature is now forced only toward defenders whose
+attack tax its controller can actually pay (CR 508.1g), preferring an affordable non-goader
+(CR 701.38a); when no legal defender's tax is payable it is not forced at all, so `Ghostly Prison` /
+`Nils` paired with the goad-Aura package no longer wedges declare-attackers. Regressions:
+`a_goaded_creature_whose_controller_cannot_pay_the_attack_tax_is_not_forced`,
+`a_goaded_creature_whose_controller_can_pay_the_attack_tax_is_still_forced`,
+`a_goaded_creature_may_attack_a_goader_when_the_only_nongoader_is_unaffordable`. Residual (ponytail
+in `combat.rs`): affordability is judged per attacker in isolation, so simultaneous mana contention
+between several taxed goaded attackers is not modeled; no pool card creates that.
 **Depends on:** none.
 **Cards:** `coercive_impetus.toml`, `ghostly_prison.toml`, `ghoulish_impetus.toml`,
 `killian_decisive_mentor.toml`, `martial_impetus.toml`, `nils_discipline_enforcer.toml`,
