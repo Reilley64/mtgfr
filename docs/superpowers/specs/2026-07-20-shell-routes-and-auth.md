@@ -1,7 +1,7 @@
 # Shell Routes and Auth
 
 **Status:** Current (as of 2026-07-26)
-**Module:** `client/app/` (entry, routes, update/view, model, subscriptions, resources), `client/app/shell/auth/**`, `client/app/faro.ts`, `client/app/domain/rpc-client.ts`, `client/app/domain/wire/**`, `client/app/domain/build-meta.ts`, `client/app/domain/client-build-options.ts`, `client/app/domain/design-tokens.generated.ts`, `client/app/domain/ui/**`, `client/styles/global.css`, `client/styles/tokens.generated.css`, `vite.config.ts`
+**Module:** `client/app/` (entry, routes, update/view, model, subscriptions, resources, `pwa.ts`, `sw.ts`), `client/app/shell/auth/**`, `client/app/faro.ts`, `client/app/domain/rpc-client.ts`, `client/app/domain/wire/**`, `client/app/domain/build-meta.ts`, `client/app/domain/client-build-options.ts`, `client/app/domain/design-tokens.generated.ts`, `client/app/domain/ui/**`, `client/styles/global.css`, `client/styles/tokens.generated.css`, `vite.config.ts`
 
 ---
 
@@ -15,7 +15,7 @@ These concerns — routing, auth, Foldkit state/effects, the high-level wire/BFF
 
 ## Solution
 
-The client is a **Foldkit** SPA on **Nitro** (Vite). A single event-reactor owns all routes (`client/app/`: `Model` / `Message` / `update` / `view` with shell submodels). Async/wire work uses Effect at runtime boundaries (`client/app/domain/rpc-client.ts`, streams, BFF); Foldkit owns UI state. The wire contract is a hand-written Effect HTTP client over the same-origin `/api/rpc` BFF, which dials tonic gRPC. Design tokens are authored in `design.tokens.json` (DTCG) and generated under `bun run gen` into Tailwind v4 `@theme` (`client/styles/tokens.generated.css`) and canvas exports (`client/app/domain/design-tokens.generated.ts`). Biome handles format/lint. Observability: Grafana Faro (browser) + `@effect/opentelemetry` (BFF) + OTLP/tonic (API) — see [observability-ops](2026-07-20-observability-ops.md); exporters no-op locally unless OTLP is set.
+The client is a **Foldkit** SPA on **Nitro** (Vite). A single event-reactor owns all routes (`client/app/`: `Model` / `Message` / `update` / `view` with shell submodels). Async/wire work uses Effect at runtime boundaries (`client/app/domain/rpc-client.ts`, streams, BFF); Foldkit owns UI state. The wire contract is a hand-written Effect HTTP client over the same-origin `/api/rpc` BFF, which dials tonic gRPC. Design tokens are authored in `design.tokens.json` (DTCG) and generated under `bun run gen` into Tailwind v4 `@theme` (`client/styles/tokens.generated.css`) and canvas exports (`client/app/domain/design-tokens.generated.ts`). Vite also ships an installable-only PWA surface through `vite-plugin-pwa`: a generated manifest plus a checked-in network-only service worker registered once from app boot. Biome handles format/lint. Observability: Grafana Faro (browser) + `@effect/opentelemetry` (BFF) + OTLP/tonic (API) — see [observability-ops](2026-07-20-observability-ops.md); exporters no-op locally unless OTLP is set.
 
 ---
 
@@ -49,6 +49,12 @@ A single Foldkit event-reactor owns routing: `client/app/routes.ts` maps paths t
 
 Required identifiers live in path params ([wire-protocol-and-visibility](2026-07-20-wire-protocol-and-visibility.md) routing rule). Query params are optional: `?next=` is the post-login redirect target.
 Bare `/play` and `?deck=` entry points are Not found (hard cut). Single-segment `/play/...` paths are discriminated by segment shape: numeric segments normalize to `PlayRoute` deck entry, and non-numeric segments normalize to the table-scoped in-game route.
+
+### Installable PWA (`client/app/pwa.ts`, `client/app/sw.ts`, `vite.config.ts`)
+
+The shell is installable but not offline-capable. `vite-plugin-pwa` generates the manifest with `edh.reilley.dev` branding, `/` scope/id/start URL, standalone display, `#0B1310` theme/background colors, and the checked-in `pwa-192.png`, `pwa-512.png`, and Apple touch icon assets from `client/public/`. App boot calls `registerPwa()` once from `client/app/entry.ts`; service worker registration is not modeled as a Foldkit message.
+
+The checked-in worker is intentionally network-only. Its `fetch` handler always does `fetch(event.request)` and does not precache app assets, install an offline document fallback, or define runtime caching for `/api`, `/api/rpc`, or live game streams. `vite.config.ts` keeps `injectManifest.globPatterns` empty, disables the inject-manifest precache injection point, and leaves `devOptions.enabled` false so local Vite dev never installs a development worker by surprise.
 
 ### App module layout (`client/app/messages.ts`, `client/app/domain/`, feature `index.ts`)
 
@@ -158,6 +164,7 @@ Vite production builds set `build.sourcemap: true` (via `clientBuildSourcemap`) 
 - **Biome class sorting.** `nursery/useSortedClasses` is at error and configured for safe `cn` / `clsx` fixes. Keep class strings sorted in code review and use the editor or Biome fix path for drift.
 - **Gzip LZ77 benefit from sorted classes.** Consistent Tailwind class ordering makes repeated utility sequences longer LZ77 matches under gzip on the shipped JS/HTML.
 - **Public client source maps.** Production uses `build.sourcemap: true` (not `"hidden"`) so DevTools/Faro can deminify the large first-party bundle. Original TypeScript is fetchable alongside the asset; acceptable for this friend-group deployment without a private map store.
+- **Service worker stays network-only.** Installability is in scope; offline play is not. Do not add precache or runtime caching without a fresh product decision because the authoritative game client still depends on live network state.
 
 ---
 
@@ -175,6 +182,7 @@ Vite production builds set `build.sourcemap: true` (via `clientBuildSourcemap`) 
 - `client/app/domain/ui/*.test.ts`, `client/app/domain/cn.test.ts` — Foldkit UI helpers (`buttonClass`, surfaces).
 - `client/app/domain/build-meta.test.ts` — version/commit env var reading.
 - `client/app/domain/client-build-options.test.ts` — production `build.sourcemap` stays `true` and wired in `vite.config.ts`.
+- `client/app/pwa-html.test.ts`, `client/app/sw.network.test.ts` — HTML install metadata plus source guards that keep the worker/config network-only; production `bun run build` emits the manifest and custom worker.
 - Board geometry/paint/HTML tests live under `client/app/board/**` (see board specs / `docs/client-canvas-map.md`).
 - Integration test: `just client-check` runs Biome lint + typecheck + Vitest. The full check is `just check` (server + client).
 
@@ -183,7 +191,7 @@ Vite production builds set `build.sourcemap: true` (via `clientBuildSourcemap`) 
 ## Out of Scope
 
 - Server-side rendering of board state (SPA on Nitro; no SSR of the board).
-- Progressive Web App (PWA) / service worker / offline mode.
+- Offline mode, precached app shell assets, and service-worker runtime caching.
 - Sitemaps, SEO meta, or marketing pages (`robots.txt` disallows all crawlers).
 - Multi-account switching within one browser session.
 - OAuth / social login (email+password only).
