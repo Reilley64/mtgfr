@@ -215,6 +215,11 @@ const handleLobbyTraced = Effect.fn(function* (event: H3Event, path: string) {
 /** Nitro handler methods for lobby/meta. */
 const ALLOWED_METHODS = new Set(["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]);
 
+function lobbyDbErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message.slice(0, 300);
+  return String(err).slice(0, 300);
+}
+
 async function forward(event: H3Event) {
   const method = getMethod(event);
   if (!ALLOWED_METHODS.has(method)) {
@@ -226,12 +231,18 @@ async function forward(event: H3Event) {
     return new Response("Not Found", { status: 404 });
   }
 
-  const lobby = await runTracedRequest(
-    getRequestHeader(event, "traceparent") ?? null,
-    `api ${path}`,
-    handleLobbyTraced(event, path),
-  );
-  return lobby ?? new Response("Not Found", { status: 404 });
+  try {
+    const lobby = await runTracedRequest(
+      getRequestHeader(event, "traceparent") ?? null,
+      `api ${path}`,
+      handleLobbyTraced(event, path),
+    );
+    return lobby ?? new Response("Not Found", { status: 404 });
+  } catch (err) {
+    // Surface SQL/schema failures instead of opaque Nitro { unhandled: true } so Host
+    // Unreachable can be diagnosed from the response body (e.g. missing gravatar_hash).
+    return json({ error: "LobbyDb", message: lobbyDbErrorMessage(err) }, 500);
+  }
 }
 
 export default defineEventHandler(forward);
