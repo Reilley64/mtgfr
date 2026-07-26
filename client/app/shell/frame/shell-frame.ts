@@ -7,7 +7,8 @@ export type ShellAtmosphere = "auth" | "shell";
 export type ShellFrameOptions = {
   atmosphere: ShellAtmosphere;
   title?: string;
-  subtitle?: string;
+  /** Plain caption or rich Html (e.g. coverage global % with a test id). */
+  subtitle?: string | Html | null;
   leading?: Html | null;
   trailing?: Html | null;
   stage: Html | ReadonlyArray<Html | null | undefined | false>;
@@ -50,7 +51,9 @@ export function shellFrame<Msg>(h: ReturnType<typeof createHtml<Msg>>, options: 
             ],
             [
               hasTitle ? h.h1([h.Class("m-0 font-display text-display tracking-[-0.02em]")], [title]) : null,
-              options.subtitle ? h.p([h.Class("m-0 text-label text-lichen")], [options.subtitle]) : null,
+              typeof options.subtitle === "string"
+                ? h.p([h.Class("m-0 text-label text-lichen")], [options.subtitle])
+                : (options.subtitle ?? null),
             ],
           ),
           h.div(

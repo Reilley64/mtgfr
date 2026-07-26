@@ -2,7 +2,7 @@ import { Submodel } from "foldkit";
 import { type Html, html } from "foldkit/html";
 import type { AppChromeMeta } from "../../domain/ui/app-version";
 import { buttonClass } from "../../domain/ui/buttonClass";
-import { listRowClass } from "../../domain/ui/surfaces";
+import { alertClass, listRowClass } from "../../domain/ui/surfaces";
 import type { ClosedAccountMenu, GotAuthMessage, ToggledAccountMenu } from "../../messages";
 import { HomeRoute, routePath } from "../../routes";
 import { accountChrome } from "../account-chrome/view";
@@ -52,9 +52,9 @@ function row(entry: LeaderboardSubmodel["entries"][number]): Html {
       h.Class(listRowClass("grid grid-cols-[72px_1fr_96px] items-center gap-md rounded-control px-md py-sm")),
     ],
     [
-      h.span([h.Class("text-label text-lichen")], [`#${entry.rank}`]),
-      h.span([h.Class("min-w-0 truncate text-body")], [entry.username]),
-      h.span([h.Class("text-right text-game text-priority-gold")], [String(entry.rating)]),
+      h.span([h.Class("font-display text-title text-lichen")], [`#${entry.rank}`]),
+      h.span([h.Class("min-w-0 truncate text-body text-snow")], [entry.username]),
+      h.span([h.Class("text-right text-game text-vine")], [String(entry.rating)]),
     ],
   );
 }
@@ -81,9 +81,7 @@ export const view = Submodel.defineView<LeaderboardSubmodel, ViewMessage, ViewIn
         h.section(
           [h.Class("mx-auto flex max-w-[720px] flex-col gap-sm")],
           [
-            model.error == null
-              ? null
-              : h.div([h.Role("alert"), h.Class("text-label text-reconnect-rust")], [model.error]),
+            model.error == null ? null : h.div([h.Role("alert"), h.Class(alertClass())], [model.error]),
             status == null ? null : h.div([h.Class("text-label text-lichen")], [status]),
             model.status === "ready" && model.entries.length === 0
               ? h.div([h.Class("text-label text-lichen")], ["No rated games yet."])
@@ -93,6 +91,7 @@ export const view = Submodel.defineView<LeaderboardSubmodel, ViewMessage, ViewIn
               ? h.button(
                   [
                     h.Type("button"),
+                    h.DataAttribute("testid", "leaderboard-load-more"),
                     h.OnClick(RequestedLeaderboardNextPage()),
                     h.Class(buttonClass("ghost", "mt-md self-start")),
                     h.Disabled(model.status === "loading"),
@@ -104,6 +103,7 @@ export const view = Submodel.defineView<LeaderboardSubmodel, ViewMessage, ViewIn
               ? h.button(
                   [
                     h.Type("button"),
+                    h.DataAttribute("testid", "leaderboard-try-again"),
                     h.OnClick(RequestedLeaderboardRefresh()),
                     h.Class(buttonClass("ghost", "mt-md self-start")),
                   ],
