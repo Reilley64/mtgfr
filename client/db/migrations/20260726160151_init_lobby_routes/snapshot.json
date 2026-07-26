@@ -1,0 +1,326 @@
+{
+  "version": "8",
+  "dialect": "postgres",
+  "id": "20432e31-2872-4557-af5e-1259fc4a1dab",
+  "prevIds": [
+    "00000000-0000-0000-0000-000000000000"
+  ],
+  "ddl": [
+    {
+      "isRlsEnabled": false,
+      "name": "lobbies",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "lobby_seats",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "table_routes",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "table_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "lobbies"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "host_user_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "lobbies"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "lobbies"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "last_activity",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "lobbies"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "started_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "lobbies"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "table_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "lobby_seats"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "seat",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "lobby_seats"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "user_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "lobby_seats"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "username",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "lobby_seats"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "''",
+      "generated": null,
+      "identity": null,
+      "name": "gravatar_hash",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "lobby_seats"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "deck_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "lobby_seats"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "deck_name",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "lobby_seats"
+    },
+    {
+      "type": "boolean",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "false",
+      "generated": null,
+      "identity": null,
+      "name": "ready",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "lobby_seats"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "table_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "table_routes"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "pod_dns",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "table_routes"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "table_routes"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "expires_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "table_routes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "table_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "user_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "lobby_seats_table_user_uidx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "lobby_seats"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "table_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "lobbies",
+      "columnsTo": [
+        "table_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "lobby_seats_table_id_lobbies_table_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "lobby_seats"
+    },
+    {
+      "columns": [
+        "table_id",
+        "seat"
+      ],
+      "nameExplicit": false,
+      "name": "lobby_seats_pkey",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "lobby_seats"
+    },
+    {
+      "columns": [
+        "table_id"
+      ],
+      "nameExplicit": false,
+      "name": "lobbies_pkey",
+      "schema": "public",
+      "table": "lobbies",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "table_id"
+      ],
+      "nameExplicit": false,
+      "name": "table_routes_pkey",
+      "schema": "public",
+      "table": "table_routes",
+      "entityType": "pks"
+    }
+  ],
+  "renames": []
+}
