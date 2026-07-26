@@ -36,11 +36,21 @@ enum TriggerWatchContextKind {
     SelfCastX,
     ActivePlayer,
     Attack,
+    DamagedCreature,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TriggerWatchKind {
+    Exact(Trigger),
+    Magecraft,
+    CastSpell,
+    DealsCombatDamageToPlayer,
+    DealsDamageToOpponent,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct TriggerWatch {
-    trigger: Trigger,
+    kind: TriggerWatchKind,
     zone: TriggerWatchZone,
     scope: TriggerWatchScope,
     context: TriggerWatchContextKind,
@@ -50,7 +60,7 @@ struct TriggerWatch {
 impl TriggerWatch {
     const fn battlefield_self(trigger: Trigger, context: TriggerWatchContextKind) -> Self {
         Self {
-            trigger,
+            kind: TriggerWatchKind::Exact(trigger),
             zone: TriggerWatchZone::Battlefield,
             scope: TriggerWatchScope::SelfSource,
             context,
@@ -60,7 +70,7 @@ impl TriggerWatch {
 
     const fn battlefield_controller(trigger: Trigger) -> Self {
         Self {
-            trigger,
+            kind: TriggerWatchKind::Exact(trigger),
             zone: TriggerWatchZone::Battlefield,
             scope: TriggerWatchScope::ControlledPlayer,
             context: TriggerWatchContextKind::Controller,
@@ -70,7 +80,7 @@ impl TriggerWatch {
 
     const fn graveyard_controller(trigger: Trigger) -> Self {
         Self {
-            trigger,
+            kind: TriggerWatchKind::Exact(trigger),
             zone: TriggerWatchZone::Graveyard,
             scope: TriggerWatchScope::ControlledPlayer,
             context: TriggerWatchContextKind::Controller,
@@ -80,7 +90,7 @@ impl TriggerWatch {
 
     const fn battlefield_all(trigger: Trigger) -> Self {
         Self {
-            trigger,
+            kind: TriggerWatchKind::Exact(trigger),
             zone: TriggerWatchZone::Battlefield,
             scope: TriggerWatchScope::AllBattlefield,
             context: TriggerWatchContextKind::Controller,
@@ -90,7 +100,7 @@ impl TriggerWatch {
 
     const fn battlefield_all_with_active_player(trigger: Trigger) -> Self {
         Self {
-            trigger,
+            kind: TriggerWatchKind::Exact(trigger),
             zone: TriggerWatchZone::Battlefield,
             scope: TriggerWatchScope::AllBattlefield,
             context: TriggerWatchContextKind::ActivePlayer,
@@ -100,9 +110,39 @@ impl TriggerWatch {
 
     const fn battlefield_all_except_player(trigger: Trigger) -> Self {
         Self {
-            trigger,
+            kind: TriggerWatchKind::Exact(trigger),
             zone: TriggerWatchZone::Battlefield,
             scope: TriggerWatchScope::AllBattlefieldExceptPlayer,
+            context: TriggerWatchContextKind::Controller,
+            skip_graveyard_functional_on_battlefield: false,
+        }
+    }
+
+    const fn battlefield_controller_dynamic(kind: TriggerWatchKind) -> Self {
+        Self {
+            kind,
+            zone: TriggerWatchZone::Battlefield,
+            scope: TriggerWatchScope::ControlledPlayer,
+            context: TriggerWatchContextKind::Controller,
+            skip_graveyard_functional_on_battlefield: true,
+        }
+    }
+
+    const fn battlefield_all_dynamic(kind: TriggerWatchKind) -> Self {
+        Self {
+            kind,
+            zone: TriggerWatchZone::Battlefield,
+            scope: TriggerWatchScope::AllBattlefield,
+            context: TriggerWatchContextKind::Controller,
+            skip_graveyard_functional_on_battlefield: false,
+        }
+    }
+
+    const fn battlefield_self_dynamic(kind: TriggerWatchKind) -> Self {
+        Self {
+            kind,
+            zone: TriggerWatchZone::Battlefield,
+            scope: TriggerWatchScope::SelfSource,
             context: TriggerWatchContextKind::Controller,
             skip_graveyard_functional_on_battlefield: false,
         }
@@ -116,6 +156,12 @@ struct TriggerWatchEvent {
     active_player: Option<PlayerId>,
     attack: Option<(PlayerId, PlayerId)>,
     source_power: Option<i32>,
+    target: Option<Target>,
+    cast_x: Option<u32>,
+    cast_from_hand: Option<bool>,
+    mana_spent: Option<u32>,
+    damaged_creature: Option<ObjectId>,
+    combat_damage: Option<i32>,
     exclude: Option<ObjectId>,
 }
 
@@ -127,6 +173,12 @@ impl TriggerWatchEvent {
             active_player: None,
             attack: None,
             source_power: None,
+            target: None,
+            cast_x: None,
+            cast_from_hand: None,
+            mana_spent: None,
+            damaged_creature: None,
+            combat_damage: None,
             exclude: None,
         }
     }
@@ -138,6 +190,12 @@ impl TriggerWatchEvent {
             active_player: None,
             attack: None,
             source_power: None,
+            target: None,
+            cast_x: None,
+            cast_from_hand: None,
+            mana_spent: None,
+            damaged_creature: None,
+            combat_damage: None,
             exclude: None,
         }
     }
@@ -149,6 +207,12 @@ impl TriggerWatchEvent {
             active_player: Some(active_player),
             attack: None,
             source_power: None,
+            target: None,
+            cast_x: None,
+            cast_from_hand: None,
+            mana_spent: None,
+            damaged_creature: None,
+            combat_damage: None,
             exclude: None,
         }
     }
@@ -160,6 +224,87 @@ impl TriggerWatchEvent {
             active_player: None,
             attack: Some(attack),
             source_power: Some(source_power),
+            target: None,
+            cast_x: None,
+            cast_from_hand: None,
+            mana_spent: None,
+            damaged_creature: None,
+            combat_damage: None,
+            exclude: None,
+        }
+    }
+
+    const fn for_spell_cast(
+        spell: ObjectId,
+        controller: PlayerId,
+        target: Option<Target>,
+        x: u32,
+        cast_from_hand: bool,
+        mana_spent: u32,
+    ) -> Self {
+        Self {
+            source: Some(spell),
+            player: Some(controller),
+            active_player: None,
+            attack: None,
+            source_power: None,
+            target,
+            cast_x: Some(x),
+            cast_from_hand: Some(cast_from_hand),
+            mana_spent: Some(mana_spent),
+            damaged_creature: None,
+            combat_damage: None,
+            exclude: None,
+        }
+    }
+
+    const fn for_combat_damage_to_player(source: ObjectId, player: PlayerId, amount: i32) -> Self {
+        Self {
+            source: Some(source),
+            player: Some(player),
+            active_player: None,
+            attack: None,
+            source_power: None,
+            target: None,
+            cast_x: None,
+            cast_from_hand: None,
+            mana_spent: None,
+            damaged_creature: None,
+            combat_damage: Some(amount),
+            exclude: None,
+        }
+    }
+
+    const fn for_damage_to_player(source: ObjectId, player: PlayerId) -> Self {
+        Self {
+            source: Some(source),
+            player: Some(player),
+            active_player: None,
+            attack: None,
+            source_power: None,
+            target: None,
+            cast_x: None,
+            cast_from_hand: None,
+            mana_spent: None,
+            damaged_creature: None,
+            combat_damage: None,
+            exclude: None,
+        }
+    }
+
+    const fn for_combat_damage_to_creature(source: ObjectId, target: ObjectId) -> Self {
+        Self {
+            source: Some(source),
+            player: None,
+            active_player: None,
+            attack: None,
+            source_power: None,
+            target: None,
+            cast_x: None,
+            cast_from_hand: None,
+            mana_spent: None,
+            damaged_creature: Some(target),
+            combat_damage: None,
             exclude: None,
         }
     }
@@ -194,6 +339,23 @@ const DRAW_STEP_TRIGGER_WATCHES: &[TriggerWatch] =
 const UNTAP_STEP_TRIGGER_WATCHES: &[TriggerWatch] = &[TriggerWatch::battlefield_all_except_player(
     Trigger::EachOtherPlayerUntapStep,
 )];
+const SPELL_CAST_TRIGGER_WATCHES: &[TriggerWatch] = &[
+    TriggerWatch::battlefield_controller_dynamic(TriggerWatchKind::Magecraft),
+    TriggerWatch::battlefield_all_dynamic(TriggerWatchKind::CastSpell),
+];
+const COMBAT_DAMAGE_TO_PLAYER_TRIGGER_WATCHES: &[TriggerWatch] = &[
+    TriggerWatch::battlefield_all_dynamic(TriggerWatchKind::DealsCombatDamageToPlayer),
+    TriggerWatch::battlefield_self_dynamic(TriggerWatchKind::DealsDamageToOpponent),
+];
+const DAMAGE_TO_PLAYER_TRIGGER_WATCHES: &[TriggerWatch] =
+    &[TriggerWatch::battlefield_self_dynamic(
+        TriggerWatchKind::DealsDamageToOpponent,
+    )];
+const COMBAT_DAMAGE_TO_CREATURE_TRIGGER_WATCHES: &[TriggerWatch] =
+    &[TriggerWatch::battlefield_self(
+        Trigger::DealsCombatDamageToCreature,
+        TriggerWatchContextKind::DamagedCreature,
+    )];
 
 impl Game {
     /// Scan just-produced events and queue the triggered abilities they fire. Two flavors:
@@ -202,8 +364,9 @@ impl Game {
     /// player controls (their upkeep/end step began, they gained life, they cast a spell).
     pub(crate) fn enqueue_triggers(&mut self, events: &[Event]) {
         // Wave C: recurring self/controller/every-player watch families route through the
-        // `TriggerWatch` tables below. Residual explicit arms stay bespoke where the trigger needs
-        // batch look-back state, per-watcher filters, or event-specific scratch/context.
+        // `TriggerWatch` tables below, and the cast/player-damage families now enter through that
+        // same dispatcher too. Explicit arms stay bespoke only where the trigger needs batch
+        // look-back state or extra scratch/ordering handling that does not fit a table row cleanly.
         // CR 603.6c/603.10.1 "look back in time": a watch-others death trigger reads the game
         // state just *before* the deaths, so a watcher that dies in the same batch (a board wipe,
         // a combat sweep) still sees the *other* deaths in that batch. The dying watchers are
@@ -572,10 +735,10 @@ impl Game {
                         );
                     }
                 }
-                // Magecraft: casting an instant/sorcery. (The copy half is `SpellCopied`, below.)
-                // Also the general-purpose `CastSpell` watch (Monologue Tax's "an opponent casts
-                // their second spell", Killian's "targets a creature", …) — both fire off the
-                // same event, independently of each other.
+                // Spell-cast watch families route through the watch table now: Magecraft's
+                // instant-or-sorcery gate and the general-purpose `CastSpell{...}` filters still
+                // do their own per-watcher matching, but the event arm itself is just table
+                // dispatch. (Magecraft's copy half stays explicit on `SpellCopied`, below.)
                 Event::SpellCast {
                     spell,
                     controller,
@@ -584,9 +747,6 @@ impl Game {
                     ..
                 } => {
                     let def = self.def_of(spell);
-                    if matches!(def.kind, CardKind::Spell { .. }) {
-                        self.queue_magecraft_triggers(controller, def.mana_value());
-                    }
                     let cast_from_hand = self.spell(spell).cast_from_hand;
                     // The cast's payment rode a `ManaSpent` earlier in this same batch (CR
                     // 601.2h) — `None` for a free/alt cast that spent no mana (Manaform
@@ -596,14 +756,16 @@ impl Game {
                         Event::ManaSpent { player, mana } if player == controller => Some(mana),
                         _ => None,
                     });
-                    self.queue_cast_spell_triggers(
-                        controller,
-                        spell,
-                        def.clone(),
-                        target,
-                        x,
-                        cast_from_hand,
-                        mana_spent.map_or(0, |mana| mana.total()),
+                    self.queue_trigger_watch_table(
+                        SPELL_CAST_TRIGGER_WATCHES,
+                        TriggerWatchEvent::for_spell_cast(
+                            spell,
+                            controller,
+                            target,
+                            x,
+                            cast_from_hand,
+                            mana_spent.map_or(0, |mana| mana.total()),
+                        ),
                     );
                     // "When you spend this mana to cast …" (Study Hall / Path of Ancestry / Opal
                     // Palace): fire the producing land's `SpendManaToCast` if its tagged mana
@@ -716,28 +878,26 @@ impl Game {
                 // A discard (CR 701.8) — distinct from `MovedToGraveyard`, which also fires for a
                 // sacrifice/destroy: `YouDiscard` watches specifically for this marker.
                 Event::Discarded { card, player, .. } => self.queue_discard_triggers(player, card),
-                // Combat damage to a player (CR 510.2) — never a non-combat life loss, which
-                // only emits `LifeChanged`, and never combat damage to a *creature*, which (CR 510, CR 120.3, CR 506)
-                // emits `DamageMarked` instead.
+                // Combat damage to a player (CR 510.2) — the combat-damage-to-player watch family
+                // and the broader "deals damage to an opponent" self-watch now dispatch via the
+                // watch table. Aura-host and other scratch-driven companions stay explicit.
                 Event::CombatDamageDealtToPlayer {
                     source,
                     player,
                     amount,
                 } => {
-                    self.queue_combat_damage_triggers(source, player, amount);
+                    self.queue_trigger_watch_table(
+                        COMBAT_DAMAGE_TO_PLAYER_TRIGGER_WATCHES,
+                        TriggerWatchEvent::for_combat_damage_to_player(source, player, amount),
+                    );
                     // Armadillo Cloak's attached-host damage watch: this creature dealt combat
                     // damage to a player. See `queue_enchanted_creature_deals_damage_triggers`.
                     self.queue_enchanted_creature_deals_damage_triggers(source, amount);
-                    // Looter il-Kor's "deals damage to an opponent" — combat damage is the
-                    // combat half of that watch; the noncombat half is the arm below.
-                    self.queue_deals_damage_to_opponent_triggers(source, player);
                 }
-                // Combat damage to a creature (CR 510.2) — Stinkweed Imp's self-referential
-                // "deals combat damage to a creature" watch. Unlike `CombatDamageDealtToPlayer`'s
-                // multi-scope battlefield scan (`queue_combat_damage_triggers`), this fires
-                // directly off `source`'s own ability: the pool's only consumer needs no
-                // `who`-style scope (flag-don't-force). Never fired by plain `DamageMarked` alone
-                // — a fight (CR 701.12) or other noncombat creature damage only emits that.
+                // Combat damage to a creature (CR 510.2) — still needs the eliminated-source
+                // guard here, but the actual self trigger now queues through the watch table once
+                // that precondition is met. Never fired by plain `DamageMarked` alone — a fight
+                // (CR 701.12) or other noncombat creature damage only emits that.
                 Event::CombatDamageDealtToCreature { source, target, .. } => {
                     // CR 800.4a: if `source`'s owner left the game in this same SBA sweep (e.g. a
                     // blocker trading with its attacker in the same combat-damage batch that also
@@ -750,22 +910,19 @@ impl Game {
                     ) {
                         continue;
                     }
-                    let ctx = TriggerContext {
-                        damaged_creature: Some(target),
-                        ..TriggerContext::of(self.owner_of(source))
-                    };
-                    self.queue_trigger_group(
-                        ctx,
-                        source,
-                        self.def_of(source),
-                        Trigger::DealsCombatDamageToCreature,
+                    self.queue_trigger_watch_table(
+                        COMBAT_DAMAGE_TO_CREATURE_TRIGGER_WATCHES,
+                        TriggerWatchEvent::for_combat_damage_to_creature(source, target),
                     );
                 }
                 // Noncombat damage dealt to a player (CR 120.1) — the marker
                 // `Effect::Damage(DamageEffect::Target)`'s player arm pushes alongside its `LifeChanged`, never a
                 // non-damage life loss (drain, pay-life), which only emits `LifeChanged`.
                 Event::DamageDealtToPlayer { source, player, .. } => {
-                    self.queue_deals_damage_to_opponent_triggers(source, player);
+                    self.queue_trigger_watch_table(
+                        DAMAGE_TO_PLAYER_TRIGGER_WATCHES,
+                        TriggerWatchEvent::for_damage_to_player(source, player),
+                    );
                 }
                 // Damage marked on a creature (CR 120.3/506) — `Game::deal_creature_damage` is the
                 // shared choke behind both combat damage to a blocker/attacker and noncombat
@@ -896,6 +1053,10 @@ impl Game {
                 source_power: event.source_power,
                 ..TriggerContext::of(controller)
             },
+            TriggerWatchContextKind::DamagedCreature => TriggerContext {
+                damaged_creature: event.damaged_creature,
+                ..TriggerContext::of(controller)
+            },
         }
     }
 
@@ -906,76 +1067,134 @@ impl Game {
     }
 
     fn queue_trigger_watch(&mut self, watch: TriggerWatch, event: TriggerWatchEvent) {
-        match (watch.zone, watch.scope) {
-            (TriggerWatchZone::Battlefield, TriggerWatchScope::SelfSource) => {
+        match watch.kind {
+            TriggerWatchKind::Exact(trigger) => match (watch.zone, watch.scope) {
+                (TriggerWatchZone::Battlefield, TriggerWatchScope::SelfSource) => {
+                    let source = event
+                        .source
+                        .expect("self-source trigger watch requires an event source");
+                    let controller = self.owner_of(source);
+                    let ctx = self.trigger_watch_context(source, controller, watch.context, event);
+                    self.queue_trigger_group(ctx, source, self.def_of(source), trigger);
+                }
+                (TriggerWatchZone::Battlefield, TriggerWatchScope::ControlledPlayer) => {
+                    let player = event
+                        .player
+                        .expect("controller-scoped battlefield watch requires a player");
+                    for id in self.battlefield() {
+                        if Some(id) == event.exclude || self.owner_of(id) != player {
+                            continue;
+                        }
+                        if watch.skip_graveyard_functional_on_battlefield
+                            && self.def_of(id).functions_in_graveyard
+                        {
+                            continue;
+                        }
+                        let ctx = self.trigger_watch_context(id, player, watch.context, event);
+                        self.queue_trigger_group(ctx, id, self.def_of(id), trigger);
+                    }
+                }
+                (TriggerWatchZone::Graveyard, TriggerWatchScope::ControlledPlayer) => {
+                    let player = event
+                        .player
+                        .expect("controller-scoped graveyard watch requires a player");
+                    for id in self.graveyard_cards(player) {
+                        if !self.def_of(id).functions_in_graveyard {
+                            continue;
+                        }
+                        let ctx = self.trigger_watch_context(id, player, watch.context, event);
+                        self.queue_trigger_group(ctx, id, self.def_of(id), trigger);
+                    }
+                }
+                (TriggerWatchZone::Battlefield, TriggerWatchScope::AllBattlefield) => {
+                    for id in self.battlefield() {
+                        if watch.skip_graveyard_functional_on_battlefield
+                            && self.def_of(id).functions_in_graveyard
+                        {
+                            continue;
+                        }
+                        let controller = self.owner_of(id);
+                        let ctx = self.trigger_watch_context(id, controller, watch.context, event);
+                        self.queue_trigger_group(ctx, id, self.def_of(id), trigger);
+                    }
+                }
+                (TriggerWatchZone::Battlefield, TriggerWatchScope::AllBattlefieldExceptPlayer) => {
+                    let excluded = event
+                        .player
+                        .expect("all-battlefield-except-player watch requires a player");
+                    for id in self.battlefield() {
+                        let controller = self.owner_of(id);
+                        if controller == excluded {
+                            continue;
+                        }
+                        if watch.skip_graveyard_functional_on_battlefield
+                            && self.def_of(id).functions_in_graveyard
+                        {
+                            continue;
+                        }
+                        let ctx = self.trigger_watch_context(id, controller, watch.context, event);
+                        self.queue_trigger_group(ctx, id, self.def_of(id), trigger);
+                    }
+                }
+                (TriggerWatchZone::Graveyard, _) => {
+                    unreachable!("graveyard watches only support controller scope")
+                }
+            },
+            TriggerWatchKind::Magecraft => {
+                let player = event
+                    .player
+                    .expect("magecraft watch dispatch requires the casting player");
+                let spell = event
+                    .source
+                    .expect("magecraft watch dispatch requires the triggering spell");
+                if matches!(self.def_of(spell).kind, CardKind::Spell { .. }) {
+                    self.queue_magecraft_triggers(player, self.def_of(spell).mana_value());
+                }
+            }
+            TriggerWatchKind::CastSpell => {
+                let spell_controller = event
+                    .player
+                    .expect("cast watch dispatch requires the casting player");
+                let spell = event
+                    .source
+                    .expect("cast watch dispatch requires the triggering spell");
+                let cast_x = event.cast_x.expect("cast watch dispatch requires chosen x");
+                let cast_from_hand = event
+                    .cast_from_hand
+                    .expect("cast watch dispatch requires cast-from-hand state");
+                let mana_spent = event
+                    .mana_spent
+                    .expect("cast watch dispatch requires mana spent");
+                self.queue_cast_spell_triggers(
+                    spell_controller,
+                    spell,
+                    self.def_of(spell),
+                    event.target,
+                    cast_x,
+                    cast_from_hand,
+                    mana_spent,
+                );
+            }
+            TriggerWatchKind::DealsCombatDamageToPlayer => {
                 let source = event
                     .source
-                    .expect("self-source trigger watch requires an event source");
-                let controller = self.owner_of(source);
-                let ctx = self.trigger_watch_context(source, controller, watch.context, event);
-                self.queue_trigger_group(ctx, source, self.def_of(source), watch.trigger);
-            }
-            (TriggerWatchZone::Battlefield, TriggerWatchScope::ControlledPlayer) => {
+                    .expect("combat-damage watch dispatch requires the damaging source");
                 let player = event
                     .player
-                    .expect("controller-scoped battlefield watch requires a player");
-                for id in self.battlefield() {
-                    if Some(id) == event.exclude || self.owner_of(id) != player {
-                        continue;
-                    }
-                    if watch.skip_graveyard_functional_on_battlefield
-                        && self.def_of(id).functions_in_graveyard
-                    {
-                        continue;
-                    }
-                    let ctx = self.trigger_watch_context(id, player, watch.context, event);
-                    self.queue_trigger_group(ctx, id, self.def_of(id), watch.trigger);
-                }
+                    .expect("combat-damage watch dispatch requires the damaged player");
+                let amount = event
+                    .combat_damage
+                    .expect("combat-damage watch dispatch requires the damage amount");
+                self.queue_combat_damage_triggers(source, player, amount);
             }
-            (TriggerWatchZone::Graveyard, TriggerWatchScope::ControlledPlayer) => {
+            TriggerWatchKind::DealsDamageToOpponent => {
+                let source = event
+                    .source
+                    .expect("opponent-damage watch dispatch requires the damaging source");
                 let player = event
                     .player
-                    .expect("controller-scoped graveyard watch requires a player");
-                for id in self.graveyard_cards(player) {
-                    if !self.def_of(id).functions_in_graveyard {
-                        continue;
-                    }
-                    let ctx = self.trigger_watch_context(id, player, watch.context, event);
-                    self.queue_trigger_group(ctx, id, self.def_of(id), watch.trigger);
-                }
-            }
-            (TriggerWatchZone::Battlefield, TriggerWatchScope::AllBattlefield) => {
-                for id in self.battlefield() {
-                    if watch.skip_graveyard_functional_on_battlefield
-                        && self.def_of(id).functions_in_graveyard
-                    {
-                        continue;
-                    }
-                    let controller = self.owner_of(id);
-                    let ctx = self.trigger_watch_context(id, controller, watch.context, event);
-                    self.queue_trigger_group(ctx, id, self.def_of(id), watch.trigger);
-                }
-            }
-            (TriggerWatchZone::Battlefield, TriggerWatchScope::AllBattlefieldExceptPlayer) => {
-                let excluded = event
-                    .player
-                    .expect("all-battlefield-except-player watch requires a player");
-                for id in self.battlefield() {
-                    let controller = self.owner_of(id);
-                    if controller == excluded {
-                        continue;
-                    }
-                    if watch.skip_graveyard_functional_on_battlefield
-                        && self.def_of(id).functions_in_graveyard
-                    {
-                        continue;
-                    }
-                    let ctx = self.trigger_watch_context(id, controller, watch.context, event);
-                    self.queue_trigger_group(ctx, id, self.def_of(id), watch.trigger);
-                }
-            }
-            (TriggerWatchZone::Graveyard, _) => {
-                unreachable!("graveyard watches only support controller scope")
+                    .expect("opponent-damage watch dispatch requires the damaged player");
+                self.queue_deals_damage_to_opponent_triggers(source, player);
             }
         }
     }
@@ -4486,6 +4705,70 @@ mod tests {
         }
     }
 
+    fn test_spell_with_abilities(name: &'static str, abilities: &'static [Ability]) -> CardDef {
+        CardDef {
+            name,
+            id: "",
+            default_print: "",
+            cost: Cost::FREE,
+            kind: CardKind::Spell {
+                speed: SpellSpeed::Instant,
+            },
+            legendary: false,
+            uncounterable: false,
+            enchant: None,
+            enchant_graveyard: false,
+            modal: false,
+            modal_choose: 1,
+            modal_choose_max: None,
+            modal_choose_max_if_commander: false,
+            keywords: empty_slice(),
+            conditional_keywords: empty_slice(),
+            abilities: abilities.into(),
+            identity_pips: empty_slice(),
+            colors: empty_slice(),
+            devoid: false,
+            enters_tapped: false,
+            enters_tapped_unless: None,
+            free_cast_if: None,
+            alternative_cost: None,
+            cast_only_during_combat: false,
+            approximates: None,
+            oracle: None,
+            set: "",
+            subtypes: empty_slice(),
+            otags: empty_slice(),
+            cycling: None,
+            cycling_sacrifice: SacrificeCost::None,
+            flashback: None,
+            echo: None,
+            cumulative_upkeep: None,
+            recover: None,
+            bestow: None,
+            morph: None,
+            evoke: None,
+            delve: false,
+            escape: None,
+            retrace: false,
+            graveyard_cast_cost: None,
+            cascade: false,
+            functions_in_graveyard: false,
+            back: None,
+            adventure: None,
+            halves: empty_slice(),
+            suspend: None,
+            vanishing: None,
+            devour: None,
+            demonstrate: false,
+            enter_as_copy: None,
+            encore: None,
+            hand_ability: empty_slice(),
+            forecast: None,
+            may_choose_not_to_untap: false,
+            dredge: None,
+        }
+    }
+
     fn leak_abilities(abilities: Vec<Ability>) -> &'static [Ability] {
         Box::leak(abilities.into_boxed_slice())
     }
@@ -4527,6 +4810,64 @@ mod tests {
             .collect();
         sources.sort_unstable();
         let mut expected = vec![upkeep_source, each_upkeep_source, graveyard_source];
+        expected.sort_unstable();
+        assert_eq!(sources, expected);
+    }
+
+    #[test]
+    fn spell_cast_watch_table_dispatches_magecraft_and_cast_watchers() {
+        let mut game = Game::with_players(2, 0);
+        let magecraft_source = game.spawn_on_battlefield(
+            P0,
+            test_creature_with_abilities(
+                "Magecraft Source",
+                leak_abilities(vec![test_trigger_ability(Trigger::Magecraft)]),
+                false,
+            ),
+        );
+        let your_cast_source = game.spawn_on_battlefield(
+            P0,
+            test_creature_with_abilities(
+                "Your Cast Source",
+                leak_abilities(vec![test_trigger_ability(Trigger::CastSpell {
+                    filter: SpellFilter::AllSpells,
+                    caster: CasterScope::You,
+                    nth_each_turn: None,
+                    from_hand: false,
+                })]),
+                false,
+            ),
+        );
+        let opponent_cast_source = game.spawn_on_battlefield(
+            P1,
+            test_creature_with_abilities(
+                "Opponent Cast Source",
+                leak_abilities(vec![test_trigger_ability(Trigger::CastSpell {
+                    filter: SpellFilter::AllSpells,
+                    caster: CasterScope::Opponent,
+                    nth_each_turn: None,
+                    from_hand: false,
+                })]),
+                false,
+            ),
+        );
+        let spell = game.spawn_in_hand(
+            P0,
+            test_spell_with_abilities("Triggering Spell", leak_abilities(vec![])),
+        );
+
+        game.queue_trigger_watch_table(
+            SPELL_CAST_TRIGGER_WATCHES,
+            TriggerWatchEvent::for_spell_cast(spell, P0, None, 0, true, 0),
+        );
+
+        let mut sources: Vec<ObjectId> = game
+            .pending_trigger_groups
+            .iter()
+            .map(|group| group.source)
+            .collect();
+        sources.sort_unstable();
+        let mut expected = vec![magecraft_source, your_cast_source, opponent_cast_source];
         expected.sort_unstable();
         assert_eq!(sources, expected);
     }
