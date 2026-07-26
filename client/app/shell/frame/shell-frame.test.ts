@@ -126,4 +126,17 @@ describe("shellFrame", () => {
 
     expect(collectTestIds(tree)).toContain("coverage-global-percent");
   });
+
+  it("locks stage scroll when tools pages own an inner scrollport", () => {
+    const tree = shellFrame(h, {
+      atmosphere: "shell",
+      title: "Coverage",
+      lockStageScroll: true,
+      stage: h.div([h.DataAttribute("testid", "stage-child")], ["Body"]),
+      chrome: { version: null, faithfulCount: null, oracleTotal: null, coverageHref: null },
+    });
+
+    expect(classNameOf(findByTestId(tree, "shell-stage"))).toContain("overflow-hidden");
+    expect(classNameOf(findByTestId(tree, "shell-stage"))).not.toContain("overflow-y-auto");
+  });
 });

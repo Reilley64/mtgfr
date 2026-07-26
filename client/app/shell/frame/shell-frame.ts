@@ -13,6 +13,11 @@ export type ShellFrameOptions = {
   trailing?: Html | null;
   stage: Html | ReadonlyArray<Html | null | undefined | false>;
   chrome: AppChromeMeta;
+  /**
+   * When true, the stage does not scroll — children (builder catalog, coverage table)
+   * own overflow. Default false so list/lobby pages can scroll in the stage.
+   */
+  lockStageScroll?: boolean;
   /** Root test id; default `shell-frame`. */
   testId?: string;
 };
@@ -73,7 +78,8 @@ export function shellFrame<Msg>(h: ReturnType<typeof createHtml<Msg>>, options: 
           h.Class(
             cn(
               "shell-stage-enter mx-auto flex min-h-0 w-full max-w-[var(--size-shell-stage-max)] flex-1 flex-col",
-              "overflow-y-auto px-[var(--spacing-shell-gutter)] pb-[var(--spacing-shell-gutter)]",
+              "px-[var(--spacing-shell-gutter)] pb-[var(--spacing-shell-gutter)]",
+              options.lockStageScroll ? "overflow-hidden" : "overflow-y-auto",
             ),
           ),
         ],

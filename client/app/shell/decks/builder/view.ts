@@ -423,6 +423,7 @@ export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewIn
     atmosphere: "shell",
     title: model.editingId == null ? "New deck" : "Edit deck",
     chrome: viewInputs.chrome,
+    lockStageScroll: true,
     leading: h.button(
       [
         h.Type("button"),

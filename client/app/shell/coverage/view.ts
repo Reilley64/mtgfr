@@ -112,6 +112,7 @@ export const view = Submodel.defineView<CoverageSubmodel, ViewMessage, ViewInput
       [`${globalPercent} faithful`],
     ),
     chrome,
+    lockStageScroll: true,
     leading: h.a([h.Href(routePath(HomeRoute())), h.Class(buttonClass("ghost"))], ["Play"]),
     trailing: accountChrome(h, {
       username,
@@ -161,7 +162,7 @@ export const view = Submodel.defineView<CoverageSubmodel, ViewMessage, ViewInput
                     ),
                     h.div(
                       [
-                        h.Class("flex min-h-0 flex-1 flex-col gap-xs overflow-y-auto"),
+                        h.Class("flex min-h-0 flex-1 flex-col gap-xs overflow-y-auto overscroll-contain"),
                         h.DataAttribute("testid", "coverage-table-body"),
                       ],
                       rows.map(tableRow),
