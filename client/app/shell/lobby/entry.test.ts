@@ -1,3 +1,4 @@
+import { Option } from "effect";
 import { html } from "foldkit/html";
 import { Scene } from "foldkit/test";
 import { expect, test } from "vitest";
@@ -5,10 +6,11 @@ import { BindDeckCardFlip, DeckCardFlipTick } from "../../deck-card-nav";
 import { BindCardArt, CardArtTick } from "../../domain/ui/card-art";
 import type { CatalogCard } from "../../domain/wire/types";
 import { init, update } from "../../main-exports";
-import { GotDeckListMessage, GotLobbyMessage, type Message } from "../../messages";
+import { GotAuthMessage, GotDeckListMessage, GotLobbyMessage, type Message } from "../../messages";
 import type { Model } from "../../model";
 import { PlayRoute, TableRoute } from "../../routes";
 import { view as appView } from "../../view";
+import * as Auth from "../auth";
 import * as DeckList from "../decks/list";
 import { LobbyTableCreated, RequestedLobbyCancelJoin, RequestedLobbyOpenJoin } from "./messages";
 import { initialLobbySlice } from "./submodel";
@@ -16,6 +18,15 @@ import { type ViewMessage as LobbyViewMessage, view as lobbyView } from "./view"
 
 const me = { id: 1, email: "alice@example.com", username: "alice" };
 const h = html<Message>();
+
+const url = (pathname: string, search = "") => ({
+  protocol: "http:",
+  host: "localhost",
+  port: Option.none<string>(),
+  pathname,
+  search: search === "" ? Option.none<string>() : Option.some(search),
+  hash: Option.none<string>(),
+});
 
 function toParentLobbyMessage(message: LobbyViewMessage): Message {
   switch (message._tag) {
@@ -269,6 +280,37 @@ test("unknown deck after load shows not-found, not lobby", () => {
     Scene.expect(Scene.text("No Foldkit route for /play/99.")).toExist(),
     Scene.expect(Scene.selector('[data-testid="lobby"]')).toBeAbsent(),
   );
+});
+
+test("TableRoute cold load resets stale lobby entry state through the parent route entry", () => {
+  const [base] = init(url("/play/9/XYZ789"));
+  const [next, commands] = update(
+    {
+      ...base,
+      lobby: {
+        ...initialLobbySlice(),
+        tableId: "OLD123",
+        selectedDeckId: 7,
+        code: "OLD123",
+        entryMode: "join",
+        started: true,
+        error: "UnknownTable",
+        copied: true,
+        clipboardFallback: true,
+        submitting: true,
+      },
+    },
+    GotAuthMessage({ message: Auth.Message.ReceivedMe({ me }) }),
+  );
+
+  expect(next.route).toEqual(TableRoute({ deckId: "9", table: "XYZ789" }));
+  expect(next.decks.list.loading).toBe(true);
+  expect(next.lobby).toEqual({
+    ...initialLobbySlice(),
+    tableId: "XYZ789",
+    selectedDeckId: 9,
+  });
+  expect(commands).toMatchObject([{ name: "FetchDecks" }, { name: "HashMeGravatar", args: { email: me.email } }]);
 });
 
 test("claim seat with a pre-chosen deck has no picker", () => {

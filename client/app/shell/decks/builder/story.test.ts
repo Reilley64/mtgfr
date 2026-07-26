@@ -8,8 +8,9 @@ import { BindCardArt } from "../../../domain/ui/card-art";
 import { OpenDialogAsModal } from "../../../domain/ui/confirmDialog";
 import { type CatalogCard, CreateDeck422, type SaveDeckRequest } from "../../../domain/wire/types";
 import { update as appUpdate, init } from "../../../main-exports";
-import { GotDeckBuilderMessage } from "../../../messages";
+import { GotDeckBuilderMessage, UrlChanged } from "../../../messages";
 import { RpcClient } from "../../../resources";
+import { DeckRoute } from "../../../routes";
 import {
   ActivatedBuilderTarget,
   AddedBuilderCard,
@@ -36,6 +37,16 @@ import { update as builderUpdate, NavigateHome, SaveDeck, SearchBuilderPrints } 
 import { BindBuilderCardPointer, view as builderView } from "./view";
 
 const emptyChrome = { version: null, faithfulCount: null, oracleTotal: null };
+const me = { id: 1, email: "alice@example.com", username: "alice" };
+
+const url = (pathname: string, search = "") => ({
+  protocol: "http:",
+  host: "localhost",
+  port: Option.none<string>(),
+  pathname,
+  search: search === "" ? Option.none<string>() : Option.some(search),
+  hash: Option.none<string>(),
+});
 
 function appMessage(message: BuilderMessage) {
   return GotDeckBuilderMessage({ message });
@@ -82,6 +93,54 @@ test("GotDeckBuilderMessage updates the builder through the parent update", () =
       expect(m.decks.builder.dirty).toBe(true);
     }),
   );
+});
+
+test("UrlChanged to DeckRoute resets stale builder state through the parent route entry", () => {
+  const [base] = init();
+  const staleCard = card({ id: "sol-ring", name: "Sol Ring" });
+  const [next, commands] = appUpdate(
+    {
+      ...base,
+      currentPath: "/",
+      route: DeckRoute({ id: "old-deck" }),
+      sessionLoaded: true,
+      session: { me, meGravatarHash: null },
+      decks: {
+        ...base.decks,
+        builder: {
+          ...base.decks.builder,
+          atEnd: true,
+          commander: { id: staleCard.id, print: staleCard.default_print },
+          confirmingDiscard: true,
+          dirty: true,
+          editingId: "old-deck",
+          entries: { [staleCard.id]: { count: 1, print: staleCard.default_print } },
+          hover: { id: staleCard.id, print: staleCard.default_print, x: 10, y: 20 },
+          known: { [staleCard.id]: staleCard },
+          loadingDeck: false,
+          menu: { items: [], title: "Old deck", x: 10, y: 20 },
+          name: "Old deck",
+          offset: 50,
+          pool: [staleCard],
+          preferredPrint: { [staleCard.id]: staleCard.default_print },
+          printPicker: { addOnPick: false, cardId: staleCard.id, error: false, loading: false, prints: [] },
+          problems: ["Could not save the deck."],
+          query: "mana",
+          saving: true,
+          searching: false,
+        },
+      },
+    },
+    UrlChanged({ url: url("/decks/abc") }),
+  );
+
+  expect(next.route).toEqual(DeckRoute({ id: "abc" }));
+  expect(next.currentPath).toBe("/decks/abc");
+  expect(next.decks.builder).toEqual(initialDeckBuilderSubmodel("abc"));
+  expect(commands).toMatchObject([
+    { name: "SearchDeckBuilderCards", args: { query: "", offset: 0 } },
+    { name: "LoadDeckForBuilder", args: { id: "abc" } },
+  ]);
 });
 
 test("CreateDeck422 folds into problems list", () => {
