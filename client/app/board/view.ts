@@ -4,6 +4,7 @@ import { boardStatusSummary } from "~/boardStatus";
 import { colors } from "~/design-tokens.generated";
 import { isActivePlayer } from "~/spectator";
 import type { VisibleState } from "~/wire/types";
+import type { CardArtTick } from "../domain/ui/card-art";
 import type { GameFoldState } from "../game/fold";
 import {
   pendingDamageAssignOverlay,
@@ -27,7 +28,10 @@ import { boardOverlays } from "./html/overlays";
 import { BoardPointerDown, BoardPointerMove, BoardPointerUp, type Message } from "./messages";
 import type { BoardModel } from "./submodel";
 
-const h = html<Message>();
+/** Board TEA messages plus shell ticks emitted by shared mounts (e.g. `cardArt`). */
+export type ViewMessage = Message | typeof CardArtTick.Type;
+
+const h = html<ViewMessage>();
 
 export type BoardViewModel = {
   board: BoardModel;
@@ -85,7 +89,7 @@ function reconnectBannerText(model: BoardViewModel): string | null {
   return model.fold.reject ?? "Connection lost — reconnecting…";
 }
 
-export const view = Submodel.defineView<BoardViewModel, Message>((model) => {
+export const view = Submodel.defineView<BoardViewModel, ViewMessage>((model) => {
   const state = model.fold.state;
   if (state == null) return connectingBoard();
 

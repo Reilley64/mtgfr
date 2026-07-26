@@ -7,15 +7,23 @@ import { Scene } from "foldkit/test";
 import { beforeAll, test } from "vitest";
 import { testMessageRef } from "~/i18n/testMessageRef";
 import { SPECTATOR_VIEWER } from "~/spectator";
-import { BindCardArt } from "~/ui/card-art";
+import { BindCardArt, CardArtTick } from "~/ui/card-art";
 import type { ObjectView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../../game/fold";
+import { init as appInit, update as appUpdate } from "../../main-exports";
+import { emptyGameSlice } from "../../model";
+import { GameTableRoute } from "../../routes";
+import { initialLobbySlice } from "../../shell/lobby/submodel";
+import { view as appView } from "../../view";
+import { MountBitmapLayer, MountFlightLayer } from "../bitmap/mount";
 import { ZONE } from "../geometry/layout";
 import type { Message } from "../messages";
-import { ArtLoaded, PriorityElapsed } from "../messages";
+import { AltDown, ArtLoaded, BoardCameraZoomed, HintAutoHidden, PriorityElapsed } from "../messages";
 import { type BoardModel, initialBoardModel } from "../submodel";
 import { type BoardViewModel, view as boardView } from "../view";
-import { MountPriorityWatch } from "./audio-mount";
+import { MountBoardAudio, MountHintAutoHide, MountPriorityWatch } from "./audio-mount";
+import { MountBoardCameraGesture } from "./camera-gesture-mount";
+import { MountBoardKeyboard } from "./keyboard-mount";
 import { boardOverlays } from "./overlays";
 import { resolveBoardOverlayMounts, resolveLiveBoardMounts } from "./scene-helpers";
 
@@ -210,7 +218,7 @@ test("mulliganing undecided seat sees overlay and hides hand bar", () => {
   Scene.scene(
     { update: (m) => [m, []], view: overlayView },
     Scene.with(model),
-    Scene.Mount.resolveAll([MountPriorityWatch(), PriorityElapsed({ seconds: 0 })], [BindCardArt, ArtLoaded()]),
+    Scene.Mount.resolveAll([MountPriorityWatch(), PriorityElapsed({ seconds: 0 })], [BindCardArt, CardArtTick()]),
     Scene.expect(Scene.testId("mulligan-overlay")).toExist(),
     Scene.expect(Scene.testId("mulligan-keep")).toExist(),
     Scene.expect(Scene.testId("mulligan-take")).toExist(),
@@ -220,6 +228,47 @@ test("mulliganing undecided seat sees overlay and hides hand bar", () => {
     Scene.expect(Scene.testId("board-primary")).not.toExist(),
     Scene.expect(Scene.testId("board-concede")).toExist(),
     Scene.expect(Scene.testId("inspect-overlay")).not.toExist(),
+  );
+});
+
+// Regression: wrapping CardArtTick as GotBoardMessage throws (not a BoardMessage) and
+// tears down BindCardArt's cache subscription — mulligan faces stay on skeletons forever.
+test("live board submodel lifts mulligan CardArtTick without wrapping as GotBoardMessage", () => {
+  const [base] = appInit();
+  const state = gameState({
+    mulliganing: true,
+    objects: [card(1)],
+    players: [
+      { ...player(0), hand_kept: false, can_mulligan: true, mulligans_taken: 0 },
+      { ...player(1), hand_kept: false, can_mulligan: true, mulligans_taken: 0 },
+    ],
+  });
+  Scene.scene(
+    { update: appUpdate, view: appView },
+    Scene.with({
+      ...base,
+      route: GameTableRoute({ table: "ABC123" }),
+      currentPath: "/play/ABC123",
+      portraitGate: { open: false },
+      sessionLoaded: true,
+      session: { me: { id: 1, email: "alice@example.com", username: "alice" }, meGravatarHash: null },
+      game: { ...emptyGameSlice("ABC123"), seq: 1, state },
+      lobby: { ...initialLobbySlice(), started: true, tableId: "ABC123" },
+    }),
+    Scene.expect(Scene.testId("mulligan-overlay")).toExist(),
+    Scene.expect(Scene.selector("[data-art-url]")).toExist(),
+    // Undecided mulligan hides the hand bar, so MountHandBarDrag is absent.
+    Scene.Mount.resolveAll(
+      [MountBoardKeyboard(), AltDown()],
+      [MountBoardAudio(), ArtLoaded()],
+      [MountHintAutoHide(), HintAutoHidden()],
+      [MountBitmapLayer(), ArtLoaded()],
+      [MountFlightLayer(), ArtLoaded()],
+      [MountBoardCameraGesture(), BoardCameraZoomed({ x: 0, y: 0, factor: 1 })],
+      [MountPriorityWatch(), PriorityElapsed({ seconds: 0 })],
+      [BindCardArt, CardArtTick()],
+    ),
+    Scene.Mount.expectEnded(MountHintAutoHide),
   );
 });
 
@@ -249,7 +298,7 @@ test("mulligan take is disabled when can_mulligan is false", () => {
       fold: gameFold(state),
       tableId: "T1",
     }),
-    Scene.Mount.resolveAll([MountPriorityWatch(), PriorityElapsed({ seconds: 0 })], [BindCardArt, ArtLoaded()]),
+    Scene.Mount.resolveAll([MountPriorityWatch(), PriorityElapsed({ seconds: 0 })], [BindCardArt, CardArtTick()]),
     Scene.expect(Scene.testId("mulligan-overlay")).toExist(),
     Scene.expect(Scene.testId("mulligan-take")).toBeDisabled(),
   );
