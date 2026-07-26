@@ -91,8 +91,9 @@ The BFF route accepts only authenticated requests, requires `https` targets, rej
 URLs plus private/link-local/metadata hosts, resolves hostnames before connect, rejects blocked
 private/link-local/metadata resolutions, then pins the HTTPS request lookup to the vetted address
 set, caps response size at 5 MiB, accepts only `image/jpeg|png|webp|gif`, does not follow
-redirects, and never forwards the player's cookies to the remote host. Successful proxy responses
-return `Cache-Control: private, max-age=300`. Back faces do not use the proxy; they continue to use
+redirects, applies the same timeout budget to connection, headers, and full body download, and
+never forwards the player's cookies to the remote host. Successful proxy responses return
+`Cache-Control: private, max-age=300`. Back faces do not use the proxy; they continue to use
 the selected printing. When no
 proxy is present, existing art-crop CDN → Scryfall fallback behavior stays unchanged.
 

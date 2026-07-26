@@ -76,3 +76,20 @@ Complete.
     - passed: 2 files, 10 tests
   - `cd client && bun run typecheck`
     - passed
+
+## Review follow-up — 2026-07-26 (Task 6)
+
+- Fixed the proxy timeout gap so one `AbortSignal.timeout(timeoutMs)` now covers the full
+  upstream operation: DNS-vetted fetch, response headers, and body download.
+- `fetchPinnedHttps` keeps its abort hook active until the upstream response closes instead of
+  detaching it as soon as headers arrive.
+- `readResponseBodyCapped` now listens to the same signal, cancels the reader on abort, and fails
+  the proxy request instead of hanging forever on a stalled body read.
+- Regression coverage added in `client/app/domain/card-art/proxy-fetch.test.ts` with an injected
+  fetch response whose reader returns one chunk and then never resolves; the helper now returns
+  `{ ok: false, status: 502 }` within the timeout and cancels the reader.
+- Fresh verification:
+  - `cd client && bun run test app/domain/card-art/proxy-fetch.test.ts server/routes/api/card-art/proxy.get.test.ts`
+    - passed: 2 files, 11 tests
+  - `cd client && bun run typecheck`
+    - passed

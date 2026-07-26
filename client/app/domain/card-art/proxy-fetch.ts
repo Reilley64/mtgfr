@@ -42,6 +42,10 @@ export type FetchProxyCardArtDeps = {
 class UnsafeProxyTargetError extends Error {}
 class UpstreamProxyError extends Error {}
 
+function abortError(): DOMException {
+  return new DOMException("The operation was aborted.", "AbortError");
+}
+
 function normalizeHostname(hostname: string): string {
   return hostname
     .replaceAll(/^\[|\]$/g, "")
@@ -233,15 +237,16 @@ function responseBodyStream(response: IncomingMessage): ReadableStream<Uint8Arra
 async function fetchPinnedHttps(target: URL, init: ProxyFetchInit): Promise<Response> {
   return new Promise<Response>((resolve, reject) => {
     let settled = false;
+    let response: IncomingMessage | null = null;
 
     const cleanup = () => {
       init.signal.removeEventListener("abort", handleAbort);
+      response?.removeListener("close", cleanup);
     };
 
     const settle = (next: () => void) => {
       if (settled) return;
       settled = true;
-      cleanup();
       next();
     };
 
@@ -255,12 +260,14 @@ async function fetchPinnedHttps(target: URL, init: ProxyFetchInit): Promise<Resp
         port: target.port.length > 0 ? Number(target.port) : undefined,
         servername: target.hostname,
       },
-      (response) => {
+      (incomingResponse) => {
+        response = incomingResponse;
+        incomingResponse.once("close", cleanup);
         settle(() =>
           resolve(
-            new Response(responseBodyStream(response), {
-              headers: responseHeaders(response.headers),
-              status: response.statusCode ?? 502,
+            new Response(responseBodyStream(incomingResponse), {
+              headers: responseHeaders(incomingResponse.headers),
+              status: incomingResponse.statusCode ?? 502,
             }),
           ),
         );
@@ -268,11 +275,16 @@ async function fetchPinnedHttps(target: URL, init: ProxyFetchInit): Promise<Resp
     );
 
     const handleAbort = () => {
-      request.destroy(new DOMException("The operation was aborted.", "AbortError"));
+      const error = abortError();
+      response?.destroy(error);
+      request.destroy(error);
     };
 
     request.once("error", (error) => {
-      settle(() => reject(error));
+      settle(() => {
+        cleanup();
+        reject(error);
+      });
     });
 
     if (init.signal.aborted) {
@@ -294,7 +306,7 @@ function imageContentType(response: Response): string {
   return normalized;
 }
 
-async function readResponseBodyCapped(response: Response, maxBytes: number): Promise<Uint8Array> {
+async function readResponseBodyCapped(response: Response, maxBytes: number, signal: AbortSignal): Promise<Uint8Array> {
   if (contentLengthTooLarge(response.headers.get("content-length"), maxBytes)) {
     throw new UpstreamProxyError("body too large");
   }
@@ -306,16 +318,34 @@ async function readResponseBodyCapped(response: Response, maxBytes: number): Pro
   const reader = response.body.getReader();
   const chunks: Array<Uint8Array> = [];
   let total = 0;
+  let rejectAborted!: (error: unknown) => void;
+  const aborted = new Promise<never>((_, reject) => {
+    rejectAborted = reject;
+  });
+  const handleAbort = () => {
+    void reader.cancel(abortError()).catch(() => undefined);
+    rejectAborted(abortError());
+  };
 
-  while (true) {
-    const next = await reader.read();
-    if (next.done) break;
-    total += next.value.byteLength;
-    if (total > maxBytes) {
-      await reader.cancel().catch(() => undefined);
-      throw new UpstreamProxyError("body too large");
+  if (signal.aborted) {
+    handleAbort();
+  } else {
+    signal.addEventListener("abort", handleAbort, { once: true });
+  }
+
+  try {
+    while (true) {
+      const next = await Promise.race([reader.read(), aborted]);
+      if (next.done) break;
+      total += next.value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel().catch(() => undefined);
+        throw new UpstreamProxyError("body too large");
+      }
+      chunks.push(next.value);
     }
-    chunks.push(next.value);
+  } finally {
+    signal.removeEventListener("abort", handleAbort);
   }
 
   const body = new Uint8Array(total);
@@ -356,6 +386,7 @@ export async function fetchProxyCardArt(
   const lookupHost = deps.lookupHost ?? lookup;
   const maxBytes = deps.maxBytes ?? PROXY_ART_MAX_BYTES;
   const timeoutMs = deps.timeoutMs ?? PROXY_ART_TIMEOUT_MS;
+  const signal = AbortSignal.timeout(timeoutMs);
 
   try {
     const target = assertSafeProxyTarget(raw);
@@ -365,14 +396,14 @@ export async function fetchProxyCardArt(
       headers: { accept: "image/*" },
       lookup: pinnedLookup(resolvedAddresses),
       redirect: "manual",
-      signal: AbortSignal.timeout(timeoutMs),
+      signal,
     });
     if (!response.ok) {
       throw new UpstreamProxyError("upstream not ok");
     }
 
     const contentType = imageContentType(response);
-    const body = await readResponseBodyCapped(response, maxBytes);
+    const body = await readResponseBodyCapped(response, maxBytes, signal);
     return { ok: true, body, contentType };
   } catch (error) {
     if (error instanceof UnsafeProxyTargetError) {

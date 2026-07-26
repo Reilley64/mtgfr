@@ -122,4 +122,44 @@ describe("fetchProxyCardArt", () => {
       }),
     ).resolves.toEqual({ ok: false, status: 502 });
   });
+
+  it("fails within the timeout when the upstream body stalls after headers", async () => {
+    const timeoutMs = 25;
+    let reads = 0;
+    const cancel = vi.fn(async () => undefined);
+    const stalledResponse = new Response(null, {
+      status: 200,
+      headers: { "content-type": "image/png" },
+    });
+    Object.defineProperty(stalledResponse, "body", {
+      get: () => ({
+        getReader: () => ({
+          read: async () => {
+            reads += 1;
+            if (reads === 1) {
+              return { done: false as const, value: Uint8Array.from([1]) };
+            }
+            return new Promise<ReadableStreamReadResult<Uint8Array>>(() => undefined);
+          },
+          cancel,
+        }),
+      }),
+    });
+    const fetchAttempt = fetchProxyCardArt("https://cdn.example.com/a.png", {
+      fetchImpl: vi.fn(async () => stalledResponse),
+      lookupHost: vi.fn(async () => [{ address: "198.51.100.10", family: 4 }]),
+      timeoutMs,
+    });
+
+    const outcome = await Promise.race([
+      fetchAttempt.then((result) => ({ kind: "result" as const, result })),
+      new Promise<{ kind: "timed-out" }>((resolve) => setTimeout(() => resolve({ kind: "timed-out" }), timeoutMs * 4)),
+    ]);
+
+    expect(outcome).toEqual({
+      kind: "result",
+      result: { ok: false, status: 502 },
+    });
+    expect(cancel).toHaveBeenCalledOnce();
+  });
 });
