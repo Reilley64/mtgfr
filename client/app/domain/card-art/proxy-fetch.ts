@@ -2,8 +2,8 @@ import type { LookupAddress } from "node:dns";
 import { lookup } from "node:dns/promises";
 import type { IncomingMessage } from "node:http";
 import { request as httpsRequest } from "node:https";
-import { isIP } from "node:net";
 import type { LookupFunction } from "node:net";
+import { isIP } from "node:net";
 import { contentLengthTooLarge } from "../faro/collect";
 
 export const PROXY_ART_MAX_BYTES = 5 * 1024 * 1024;
