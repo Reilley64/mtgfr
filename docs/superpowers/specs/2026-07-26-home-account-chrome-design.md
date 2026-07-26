@@ -48,8 +48,8 @@ Dismiss: click outside / catcher (match deck-list context menu). Opening the acc
 - Dashed/empty create treatment: plus affordance + “New deck” label (no commander art, no Play label, no FLIP morph, no context menu).
 - Whole tile links to `/decks/new` (`data-testid="deck-list-new-deck"`).
 - Not part of the deck list model; not affected by search.
-- After load, shown whenever the grid renders — including **zero decks** (create tile alone). While `loading`, keep “Loading decks…” without the create tile.
-- Search still filters deck tiles only. If search matches nothing, keep the create tile first and retain the existing “No decks match.” copy.
+- After load, shown whenever the grid renders — including **zero decks** (create tile alone; drop the old “No decks yet — build one to get started.” empty copy). While `loading`, keep “Loading decks…” without the create tile.
+- Search field still appears only when there is at least one deck (unchanged). Search filters deck tiles only; the create tile stays first. If search matches nothing, keep the create tile first and retain the existing “No decks match.” copy.
 
 ### Home Top players teaser — removed
 
