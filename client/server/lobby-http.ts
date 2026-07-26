@@ -1,10 +1,10 @@
 import * as Effect from "effect/Effect";
 import { getCookie, type H3Event } from "nitro/h3";
-import { fetchMe } from "../app/domain/api-upstream-auth";
+import { fetchMe, type Me } from "../app/domain/api-upstream-auth";
 import { type LobbySnapshot, sweepWebDb } from "../app/domain/lobby-store";
 import { grpcRequestEnv, runTracedRequest } from "../app/domain/otel";
 import type { GrpcRequestEnv } from "../app/domain/wire/grpcClient";
-import { createWebDb } from "./db/client";
+import { type WebDb, WebDbLive } from "./db/client";
 
 export const SESSION_COOKIE = "session";
 
@@ -42,15 +42,14 @@ function lobbyDbErrorMessage(err: unknown): string {
 }
 
 type LobbyAuthCtx = {
-  me: NonNullable<Awaited<ReturnType<typeof fetchMe>>>;
+  me: Me;
   env: GrpcRequestEnv;
-  db: ReturnType<typeof createWebDb>;
 };
 
-export async function withLobbyAuth(
+export async function withLobbyAuth<E>(
   event: H3Event,
   spanName: string,
-  fn: (ctx: LobbyAuthCtx) => Promise<Response>,
+  body: (ctx: LobbyAuthCtx) => Effect.Effect<Response, E, WebDb>,
 ): Promise<Response> {
   const sessionToken = getCookie(event, SESSION_COOKIE) ?? null;
   const traceparent = event.req.headers.get("traceparent");
@@ -64,24 +63,22 @@ export async function withLobbyAuth(
           "http.route": spanName,
         });
         const env = yield* grpcRequestEnv(sessionToken);
-        return yield* Effect.tryPromise({
-          try: async () => {
-            const me = await fetchMe(env);
-            if (!me) return new Response("Unauthorized", { status: 401 });
-            const db = createWebDb();
-            await sweepWebDb(db);
-            return fn({ me, env, db });
-          },
-          catch: (err) => (err instanceof Error ? err : new Error(String(err))),
-        });
-      }),
+        const me = yield* fetchMe(env);
+        if (!me) return new Response("Unauthorized", { status: 401 });
+        yield* sweepWebDb();
+        return yield* body({ me, env });
+      }).pipe(Effect.provide(WebDbLive)),
     );
   } catch (err) {
     return json({ error: "LobbyDb", message: lobbyDbErrorMessage(err) }, 500);
   }
 }
 
-export async function runMetaGet(event: H3Event, spanName: string, fn: () => Promise<Response>): Promise<Response> {
+export async function runMetaGet<E>(
+  event: H3Event,
+  spanName: string,
+  body: () => Effect.Effect<Response, E>,
+): Promise<Response> {
   const traceparent = event.req.headers.get("traceparent");
   return runTracedRequest(
     traceparent,
@@ -91,10 +88,7 @@ export async function runMetaGet(event: H3Event, spanName: string, fn: () => Pro
         "http.method": event.req.method,
         "http.route": spanName,
       });
-      return yield* Effect.tryPromise({
-        try: fn,
-        catch: (err) => (err instanceof Error ? err : new Error(String(err))),
-      });
+      return yield* body();
     }),
   );
 }

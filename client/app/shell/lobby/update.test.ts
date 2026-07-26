@@ -1,8 +1,18 @@
+import * as Effect from "effect/Effect";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { client as lobbyHttpClient } from "../../domain/lobby/client";
+import { LobbyNotFound } from "../../domain/lobby/errors";
 import * as tableAudio from "../../domain/tableAudio";
-import { RequestedLobbyCancelJoin, RequestedLobbyHost, RequestedLobbyOpenJoin, RequestedLobbyReady } from "./messages";
+import { LobbyClient } from "../../resources";
+import {
+  LobbyRequestFailed,
+  RequestedLobbyCancelJoin,
+  RequestedLobbyHost,
+  RequestedLobbyOpenJoin,
+  RequestedLobbyReady,
+} from "./messages";
 import { initialLobbySlice } from "./submodel";
-import { CreateLobbyTable, ReadyLobby, update } from "./update";
+import { CreateLobbyTable, JoinLobbyTable, ReadyLobby, update } from "./update";
 
 describe("RequestedLobbyReady audio unlock", () => {
   afterEach(() => {
@@ -69,5 +79,20 @@ describe("lobby entryMode", () => {
     expect(next.submitting).toBe(true);
     expect(commands).toHaveLength(1);
     expect(commands[0]?.name).toBe(CreateLobbyTable.name);
+  });
+});
+
+describe("lobby commands", () => {
+  it("maps a missing lobby table to UnknownTable", async () => {
+    const failingClient = {
+      ...lobbyHttpClient,
+      joinTable: () => Effect.fail(new LobbyNotFound()),
+    };
+
+    const message = await Effect.runPromise(
+      JoinLobbyTable({ tableId: "GONE", deckId: 7 }).effect.pipe(Effect.provideService(LobbyClient, failingClient)),
+    );
+
+    expect(message).toEqual(LobbyRequestFailed({ message: "UnknownTable" }));
   });
 });

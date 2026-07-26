@@ -1,8 +1,7 @@
 import { Effect, Match as M } from "effect";
 import type { Command as FoldkitCommand } from "foldkit";
 import { Command } from "foldkit";
-import { coverageMeta } from "../../domain/lobby/client";
-import type { RpcClient } from "../../resources";
+import { LobbyClient } from "../../resources";
 import { CoverageLoadFailed, type Message, ReceivedCoverageMeta } from "./messages";
 import type { CoverageSubmodel } from "./submodel";
 
@@ -13,23 +12,23 @@ export const FetchCoverage = Command.define(
   ReceivedCoverageMeta,
   CoverageLoadFailed,
 )(
-  Effect.tryPromise(() => coverageMeta()).pipe(
-    Effect.map((response) =>
-      response == null
-        ? CoverageLoadFailed({ message: COVERAGE_LOAD_ERROR })
-        : ReceivedCoverageMeta({
-            faithfulCount: response.faithfulCount,
-            oracleTotal: response.oracleTotal,
-            sets: response.sets,
-          }),
-    ),
-    Effect.catch(() => Effect.succeed(CoverageLoadFailed({ message: COVERAGE_LOAD_ERROR }))),
-  ),
+  Effect.gen(function* () {
+    const lobby = yield* LobbyClient;
+    return yield* lobby.coverageMeta().pipe(
+      Effect.map((response) =>
+        ReceivedCoverageMeta({
+          faithfulCount: response.faithfulCount,
+          oracleTotal: response.oracleTotal,
+          sets: response.sets,
+        }),
+      ),
+    );
+  }).pipe(Effect.catch(() => Effect.succeed(CoverageLoadFailed({ message: COVERAGE_LOAD_ERROR })))),
 );
 
 export function loadCoverage(
   model: CoverageSubmodel,
-): readonly [CoverageSubmodel, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
+): readonly [CoverageSubmodel, ReadonlyArray<FoldkitCommand.Command<Message, never, LobbyClient>>] {
   return [
     {
       ...model,
@@ -47,9 +46,9 @@ export function loadCoverage(
 export const update = (
   model: CoverageSubmodel,
   message: Message,
-): readonly [CoverageSubmodel, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] =>
+): readonly [CoverageSubmodel, ReadonlyArray<FoldkitCommand.Command<Message, never, LobbyClient>>] =>
   M.value(message).pipe(
-    M.withReturnType<readonly [CoverageSubmodel, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>]>(),
+    M.withReturnType<readonly [CoverageSubmodel, ReadonlyArray<FoldkitCommand.Command<Message, never, LobbyClient>>]>(),
     M.tagsExhaustive({
       ChangedCoverageRoute: () => loadCoverage(model),
       RequestedCoverageRefresh: () => loadCoverage(model),

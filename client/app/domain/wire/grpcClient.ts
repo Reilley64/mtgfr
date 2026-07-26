@@ -2,13 +2,12 @@
 // Channels/runtimes are cached per base URL.
 //
 // Trace parenting: the gRPC ManagedRuntime is separate from the OTEL runtime.
-// Effect parent spans live in fiber Context and do NOT survive
-// `ManagedRuntime.runPromise` into this client — always pass `outboundTraceparent`
-// explicitly (see production-topology-and-operations spec). Do not reintroduce Node ALS for this.
+// Effect parent spans live in fiber Context from the BFF OTEL runtime; gRPC effects use this
+// client's ManagedRuntime context and always pass `outboundTraceparent` explicitly. Do not
+// reintroduce Node ALS for this.
 
 import { GrpcClientProtocol, type GrpcStatusCode, GrpcStatusError } from "@effect-grpc/effect-grpc";
 import * as Effect from "effect/Effect";
-import * as Fiber from "effect/Fiber";
 import * as Layer from "effect/Layer";
 import * as ManagedRuntime from "effect/ManagedRuntime";
 import * as Stream from "effect/Stream";
@@ -150,12 +149,19 @@ function runtimeFor(address: string): GrpcRuntime {
   return runtime;
 }
 
-function run<A>(address: string, effect: Effect.Effect<A, unknown, Clients>): Promise<A> {
-  return runtimeFor(address)
-    .runPromise(effect)
-    .catch((err: unknown) => {
-      throw toCallError(err);
-    });
+function run<A>(address: string, effect: Effect.Effect<A, unknown, Clients>): Effect.Effect<A, GrpcCallError> {
+  return runtimeFor(address).contextEffect.pipe(
+    Effect.flatMap((context) => Effect.provideContext(effect, context)),
+    Effect.mapError(toCallError),
+  );
+}
+
+function runStream<A>(address: string, stream: Stream.Stream<A, unknown, Clients>): Stream.Stream<A, GrpcCallError> {
+  return Stream.unwrap(
+    runtimeFor(address).contextEffect.pipe(
+      Effect.map((context) => stream.pipe(Stream.provideContext(context), Stream.mapError(toCallError))),
+    ),
+  );
 }
 
 export interface GrpcClient {
@@ -163,40 +169,47 @@ export interface GrpcClient {
     signup(
       req: { email: string; password: string; username: string },
       sessionToken: string | null,
-    ): Promise<{ me: Me; sessionToken: string }>;
+    ): Effect.Effect<{ me: Me; sessionToken: string }, GrpcCallError>;
     login(
       req: { email: string; password: string },
       sessionToken: string | null,
-    ): Promise<{ me: Me; sessionToken: string }>;
-    logout(sessionToken: string | null): Promise<void>;
-    getMe(sessionToken: string | null): Promise<Me>;
+    ): Effect.Effect<{ me: Me; sessionToken: string }, GrpcCallError>;
+    logout(sessionToken: string | null): Effect.Effect<void, GrpcCallError>;
+    getMe(sessionToken: string | null): Effect.Effect<Me, GrpcCallError>;
   };
   decks: {
-    create(req: SaveDeckRequest, sessionToken: string | null): Promise<DeckDetail>;
+    create(req: SaveDeckRequest, sessionToken: string | null): Effect.Effect<DeckDetail, GrpcCallError>;
     list(
       sessionToken: string | null,
-    ): Promise<Array<{ commander: string; commander_print?: string; id: number; name: string }>>;
-    get(id: number, sessionToken: string | null): Promise<DeckDetail>;
-    update(id: number, req: SaveDeckRequest, sessionToken: string | null): Promise<DeckDetail>;
-    delete(id: number, sessionToken: string | null): Promise<void>;
+    ): Effect.Effect<Array<{ commander: string; commander_print?: string; id: number; name: string }>, GrpcCallError>;
+    get(id: number, sessionToken: string | null): Effect.Effect<DeckDetail, GrpcCallError>;
+    update(id: number, req: SaveDeckRequest, sessionToken: string | null): Effect.Effect<DeckDetail, GrpcCallError>;
+    delete(id: number, sessionToken: string | null): Effect.Effect<void, GrpcCallError>;
   };
   ratings: {
-    getLeaderboard(req: { limit: number; offset: number }, sessionToken: string | null): Promise<Leaderboard>;
+    getLeaderboard(
+      req: { limit: number; offset: number },
+      sessionToken: string | null,
+    ): Effect.Effect<Leaderboard, GrpcCallError>;
   };
   cards: {
-    catalog(): Promise<Array<CatalogCard>>;
-    search(q: string, limit: number, offset: number): Promise<Array<CatalogCard>>;
-    lookup(ids: Array<string>): Promise<Array<CatalogCard>>;
+    catalog(): Effect.Effect<Array<CatalogCard>, GrpcCallError>;
+    search(q: string, limit: number, offset: number): Effect.Effect<Array<CatalogCard>, GrpcCallError>;
+    lookup(ids: Array<string>): Effect.Effect<Array<CatalogCard>, GrpcCallError>;
   };
   game: {
-    submitIntent(tableId: string, envelope: IntentEnvelope, sessionToken: string | null): Promise<Ack>;
-    setYield(tableId: string, enabled: boolean, sessionToken: string | null): Promise<Ack>;
-    setTurnYield(tableId: string, enabled: boolean, sessionToken: string | null): Promise<Ack>;
-    setStackDwell(tableId: string, dwelling: boolean, sessionToken: string | null): Promise<Ack>;
-    stream(tableId: string, sessionToken: string | null): AsyncIterable<StreamFrame>;
+    submitIntent(
+      tableId: string,
+      envelope: IntentEnvelope,
+      sessionToken: string | null,
+    ): Effect.Effect<Ack, GrpcCallError>;
+    setYield(tableId: string, enabled: boolean, sessionToken: string | null): Effect.Effect<Ack, GrpcCallError>;
+    setTurnYield(tableId: string, enabled: boolean, sessionToken: string | null): Effect.Effect<Ack, GrpcCallError>;
+    setStackDwell(tableId: string, dwelling: boolean, sessionToken: string | null): Effect.Effect<Ack, GrpcCallError>;
+    stream(tableId: string, sessionToken: string | null): Stream.Stream<StreamFrame, GrpcCallError>;
   };
   tables: {
-    seed(req: SeedRequest, sessionToken: string | null): Promise<SeedResponse>;
+    seed(req: SeedRequest, sessionToken: string | null): Effect.Effect<SeedResponse, GrpcCallError>;
   };
 }
 
@@ -232,7 +245,7 @@ export function grpcClient(address: string, outboundTraceparent: string | null =
           Effect.gen(function* () {
             const auth = yield* AuthClient;
             const res = yield* auth.signup(req, opts(sessionToken));
-            if (!res.me) throw new Error("AuthSession missing me");
+            if (!res.me) return yield* Effect.fail(new Error("AuthSession missing me"));
             return { me: meFromProto(res.me), sessionToken: res.sessionToken };
           }),
         ),
@@ -242,7 +255,7 @@ export function grpcClient(address: string, outboundTraceparent: string | null =
           Effect.gen(function* () {
             const auth = yield* AuthClient;
             const res = yield* auth.login(req, opts(sessionToken));
-            if (!res.me) throw new Error("AuthSession missing me");
+            if (!res.me) return yield* Effect.fail(new Error("AuthSession missing me"));
             return { me: meFromProto(res.me), sessionToken: res.sessionToken };
           }),
         ),
@@ -390,85 +403,16 @@ export function grpcClient(address: string, outboundTraceparent: string | null =
           }),
         ),
       stream(tableId, sessionToken) {
-        // Capture metadata now — the stream fiber starts later (first `next()`).
         const capturedOpts = opts(sessionToken);
-        // Pump the Effect stream into a buffer on a forked fiber so `return()` (SSE cancel /
-        // reconnect) can `Fiber.interrupt` and tear down the upstream tonic subscription —
-        // `Stream.toAsyncIterableEffect` alone does not interrupt when the consumer stops.
-        const runtime = runtimeFor(key);
-        let fiber: Fiber.Fiber<void, never> | undefined;
-        const buffer: StreamFrame[] = [];
-        const waiters: Array<{
-          resolve: (result: IteratorResult<StreamFrame>) => void;
-          reject: (err: unknown) => void;
-        }> = [];
-        let ended = false;
-        let failure: unknown;
-
-        const deliver = (result: IteratorResult<StreamFrame>) => {
-          const waiter = waiters.shift();
-          if (waiter) {
-            waiter.resolve(result);
-            return;
-          }
-          if (!result.done && result.value !== undefined) buffer.push(result.value);
-        };
-
-        const fail = (err: unknown) => {
-          failure = err;
-          ended = true;
-          while (waiters.length > 0) {
-            waiters.shift()?.reject(err);
-          }
-        };
-
-        const finish = () => {
-          ended = true;
-          while (waiters.length > 0) {
-            waiters.shift()?.resolve({ done: true, value: undefined });
-          }
-        };
-
-        const startFiber = () => {
-          fiber = runtime.runFork(
+        return runStream(
+          key,
+          Stream.unwrap(
             Effect.gen(function* () {
               const game = yield* GameClient;
-              yield* game.stream({ tableId }, capturedOpts).pipe(
-                Stream.map((msg) => streamFrameFromProto(msg)),
-                Stream.mapError(toCallError),
-                Stream.runForEach((frame) => Effect.sync(() => deliver({ done: false, value: frame }))),
-              );
-            }).pipe(
-              Effect.catch((err) => Effect.sync(() => fail(toCallError(err)))),
-              Effect.ensuring(Effect.sync(finish)),
-            ) as Effect.Effect<void, never, Clients>,
-          );
-        };
-
-        return {
-          [Symbol.asyncIterator]() {
-            return {
-              async next(): Promise<IteratorResult<StreamFrame>> {
-                if (!fiber) startFiber();
-                const buffered = buffer.shift();
-                if (buffered) return { done: false, value: buffered };
-                if (failure) throw failure;
-                if (ended) return { done: true, value: undefined };
-                return new Promise<IteratorResult<StreamFrame>>((resolve, reject) => {
-                  waiters.push({ resolve, reject });
-                });
-              },
-              async return(): Promise<IteratorResult<StreamFrame>> {
-                if (fiber) {
-                  await runtime.runPromise(Fiber.interrupt(fiber));
-                  fiber = undefined;
-                }
-                ended = true;
-                return { done: true, value: undefined };
-              },
-            };
-          },
-        };
+              return game.stream({ tableId }, capturedOpts).pipe(Stream.map((msg) => streamFrameFromProto(msg)));
+            }),
+          ),
+        );
       },
     },
     tables: {

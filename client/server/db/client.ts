@@ -1,73 +1,50 @@
-// Drizzle query builder over `@effect/sql-pg` via pg-proxy (`@effect/sql-drizzle` is still Effect 3).
+// Drizzle query builder over `@effect/sql-pg` via the native `drizzle-orm/effect-postgres` driver.
+// Queries are Effects: `yield* db.select().from(...)` inside an Effect that provides `WebDb`.
 
 import { PgClient } from "@effect/sql-pg";
-import type { PgRemoteDatabase } from "drizzle-orm/pg-proxy";
-import { drizzle } from "drizzle-orm/pg-proxy";
+import * as PgDrizzle from "drizzle-orm/effect-postgres";
+import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
+import * as Layer from "effect/Layer";
 import * as ManagedRuntime from "effect/ManagedRuntime";
 import * as Redacted from "effect/Redacted";
-import * as Result from "effect/Result";
-import { SqlClient } from "effect/unstable/sql";
-import * as schema from "../../db/schema";
 import { webDatabaseUrl } from "./url";
 
-export type WebDb = PgRemoteDatabase<typeof schema>;
 export { DEFAULT_WEB_DATABASE_URL, webDatabaseUrl } from "./url";
 
-type SqlRuntime = ManagedRuntime.ManagedRuntime<SqlClient.SqlClient | PgClient.PgClient, unknown>;
+const dbEffect = PgDrizzle.makeWithDefaults();
 
-type Cache = {
-  url: string;
-  runtime: SqlRuntime;
-  db: WebDb;
-};
+type WebDbHandle = Effect.Success<typeof dbEffect>;
 
-let cache: Cache | null = null;
+/** Effect Drizzle handle for `mtgfr_web`. Provide via `WebDbLive` (or a `webDbLayer(url)`). */
+export class WebDb extends Context.Service<WebDb, WebDbHandle>()("WebDb") {}
 
-function remoteCallback(runtime: SqlRuntime) {
-  return (sql: string, params: unknown[], method: "all" | "execute" | "get" | "values") => {
-    const program = Effect.gen(function* () {
-      const client = yield* SqlClient.SqlClient;
-      const statement = client.unsafe(sql, params as ReadonlyArray<unknown>);
-
-      if (method === "execute") {
-        const header = yield* statement.raw;
-        return { rows: [header] as unknown[] };
-      }
-
-      if (method === "all" || method === "values") {
-        const rows = yield* statement.values;
-        return { rows: rows as unknown[] };
-      }
-
-      const rows = yield* statement.withoutTransform;
-      if (method === "get") {
-        return { rows: [(rows[0] ?? []) as unknown] };
-      }
-      return { rows: rows as unknown[] };
-    });
-
-    return runtime.runPromise(Effect.result(program)).then((res) => {
-      if (Result.isFailure(res)) {
-        throw res.failure;
-      }
-      return res.success;
-    });
-  };
+/** Build a `WebDb` layer over a `PgClient` pool for `url`. */
+export function webDbLayer(url = webDatabaseUrl()) {
+  const client = PgClient.layer({
+    url: Redacted.make(url),
+    maxConnections: 4,
+  });
+  return Layer.effect(WebDb, dbEffect).pipe(Layer.provide(client));
 }
 
-export function createWebDb(url = webDatabaseUrl()): WebDb {
-  if (cache?.url === url) {
-    return cache.db;
-  }
+/** Default `WebDb` layer; reads `WEB_DATABASE_URL` when the layer is built (not at import). */
+export const WebDbLive = Layer.unwrap(Effect.sync(() => webDbLayer()));
 
-  const runtime = ManagedRuntime.make(
-    PgClient.layer({
-      url: Redacted.make(url),
-      maxConnections: 4,
-    }),
-  );
-  const db = drizzle(remoteCallback(runtime), { schema });
-  cache = { url, runtime, db };
-  return db;
+function makeRuntime(url: string) {
+  return ManagedRuntime.make(webDbLayer(url));
+}
+
+let cache: { url: string; runtime: ReturnType<typeof makeRuntime> } | null = null;
+
+/**
+ * Temporary Promise bridge for callers not yet running Effects at their edge.
+ * Prefer `yield* op.pipe(Effect.provide(WebDbLive))` inside an existing Effect;
+ * this reuses one pooled runtime per URL so store ops can run from Promise code.
+ */
+export function runWebDb<A, E>(effect: Effect.Effect<A, E, WebDb>, url = webDatabaseUrl()): Promise<A> {
+  if (cache?.url !== url) {
+    cache = { url, runtime: makeRuntime(url) };
+  }
+  return cache.runtime.runPromise(effect);
 }

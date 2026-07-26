@@ -227,17 +227,23 @@ apply`. Justfile: `just migrate`. Models: `User`, `Session`, `Deck`. `catalog_ca
 initial migration (data refreshed by `catalog_search::project()` on boot). Forward-only; expand-
 only during rolling deploys (nullable/default new columns; no rename/drop until drain completes).
 
-**`mtgfr_web` (BFF Postgres):** Drizzle ORM. CLI: `bun run drizzle-kit push`. Justfile:
-`just client-migrate`. Tables: `lobbies`, `lobby_seats` (includes `gravatar_hash`), `table_routes`.
-Forward-only, expand-only. The `edh-web-migrate` Job is Terraform-owned (hash of
-`client/db/migrations/**` plus a script rev); an Argo-only web image roll does **not**
-apply new Drizzle files — run `terraform apply` when migrations change. Schema
-correctness is the Job’s job: after `drizzle-kit migrate` it asserts
-`lobby_seats.gravatar_hash` exists (`ADD COLUMN IF NOT EXISTS` + `information_schema`
-check) so journal drift cannot leave Host broken. Repair migration
-`0003_lobby_seat_gravatar_if_not_exists` is idempotent. The BFF does **not** mutate or
-probe schema at request time; if the column is missing, join/lobby GET 500 (client
-Unreachable).
+**`mtgfr_web` (BFF Postgres):** Drizzle ORM (`drizzle-orm` / `drizzle-kit` pinned to `1.0.0-rc.4`).
+CLI: `bunx drizzle-kit migrate` (`client/scripts/migrate.sh`). Justfile: `just client-migrate`.
+Migrations are a single squashed **v3 baseline** (`db/migrations/20260726160151_init_lobby_routes`)
+that creates `lobbies`, `lobby_seats` (with `gravatar_hash text NOT NULL DEFAULT ''`), and
+`table_routes`, plus the `lobby_seats (table_id, user_id)` unique index and the
+`lobby_seats → lobbies` cascade FK. Forward-only, expand-only from here. The `edh-web-migrate` Job
+is Terraform-owned (hash of `client/db/migrations/**` plus a script rev); an Argo-only web image
+roll does **not** apply new Drizzle files — run `terraform apply` when migrations change. The BFF
+does **not** mutate or probe schema at request time; if `gravatar_hash` is missing, join/lobby GET
+500 (client Unreachable).
+
+An existing `mtgfr_web` provisioned before the v3 squash carries pre-squash rows in its
+`__drizzle_migrations` journal. That journal needs a one-time reconcile to the v3 baseline (its
+tables already match the baseline DDL) before `drizzle-kit migrate` will apply cleanly. The
+reconcile verifies `lobby_seats.gravatar_hash` exists before marking the v3 baseline applied; after
+drop-and-remigrate, verify the same column exists before treating the cutover as complete. A freshly
+created `mtgfr_web` applies the baseline directly.
 
 **`push_schema()` is dev/SQLite-test only.** Production pods assume `migration apply` ran
 first (via the K8s Job before the Deployment roll).

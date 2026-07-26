@@ -1,10 +1,10 @@
 import * as Effect from "effect/Effect";
+import * as Layer from "effect/Layer";
 import type { H3Event } from "nitro/h3";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { json, readJsonObject, tableParam, unknownLobby, withLobbyAuth } from "./lobby-http";
+import { json, readJsonObject, runMetaGet, tableParam, unknownLobby, withLobbyAuth } from "./lobby-http";
 
 const mocks = vi.hoisted(() => ({
-  createWebDb: vi.fn(),
   fetchMe: vi.fn(),
   grpcRequestEnv: vi.fn(),
   runTracedRequest: vi.fn(),
@@ -25,10 +25,9 @@ vi.mock("../app/domain/otel", () => ({
 }));
 
 vi.mock("./db/client", () => ({
-  createWebDb: mocks.createWebDb,
+  WebDbLive: Layer.empty,
 }));
 
-const db = { kind: "db" };
 const env = { sessionToken: "session-token" };
 const me = { id: 42, email: "player@example.test", username: "Player" };
 
@@ -48,11 +47,10 @@ function authEvent(): H3Event {
 describe("lobby-http", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.createWebDb.mockReturnValue(db);
-    mocks.fetchMe.mockResolvedValue(me);
+    mocks.fetchMe.mockReturnValue(Effect.succeed(me));
     mocks.grpcRequestEnv.mockReturnValue(Effect.succeed(env));
     mocks.runTracedRequest.mockImplementation((_traceparent, _spanName, body) => Effect.runPromise(body));
-    mocks.sweepWebDb.mockResolvedValue(undefined);
+    mocks.sweepWebDb.mockReturnValue(Effect.void);
   });
 
   it("json sets content-type and status", async () => {
@@ -100,9 +98,9 @@ describe("lobby-http", () => {
   });
 
   it("withLobbyAuth returns Unauthorized when fetchMe returns null", async () => {
-    mocks.fetchMe.mockResolvedValueOnce(null);
+    mocks.fetchMe.mockReturnValueOnce(Effect.succeed(null));
 
-    const res = await withLobbyAuth(authEvent(), "api test", async () => json({ ok: true }));
+    const res = await withLobbyAuth(authEvent(), "api test", () => Effect.succeed(json({ ok: true })));
 
     expect(res.status).toBe(401);
     await expect(res.text()).resolves.toBe("Unauthorized");
@@ -110,11 +108,16 @@ describe("lobby-http", () => {
 
   it("withLobbyAuth returns LobbyDb when the traced path throws", async () => {
     const message = "database offline";
-    const res = await withLobbyAuth(authEvent(), "api test", async () => {
-      throw new Error(message);
-    });
+    const res = await withLobbyAuth(authEvent(), "api test", () => Effect.fail(new Error(message)));
 
     expect(res.status).toBe(500);
     await expect(res.json()).resolves.toEqual({ error: "LobbyDb", message });
+  });
+
+  it("runMetaGet executes Effect response bodies", async () => {
+    const res = await runMetaGet(authEvent(), "api meta test", () => Effect.succeed(json({ ok: true })));
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({ ok: true });
   });
 });

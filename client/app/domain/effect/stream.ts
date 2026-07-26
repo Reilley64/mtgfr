@@ -1,4 +1,4 @@
-// Typed stream with manual reconnect (`client.streamSse` → `/api/rpc/game/:table/stream`).
+// Typed stream with manual reconnect (`client.streamSse` -> `/api/rpc/game/:table/stream`).
 
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
@@ -19,18 +19,30 @@ const STALE_TIMEOUT_MS = 15_000;
  * which the stream filters out before `onFrame` so the store never sees it. */
 export type GameFrame = Exclude<StreamFrame, { frame: "heartbeat" }>;
 
-export interface StreamCallbacks {
-  onFrame: (frame: GameFrame) => void;
-  onError?: (status: number) => void;
-  onStatus?: (connected: boolean) => void;
-}
+export type GameStreamEvent =
+  | { readonly kind: "frame"; readonly frame: GameFrame }
+  | { readonly kind: "status"; readonly connected: boolean }
+  | { readonly kind: "terminal-error"; readonly status: number };
+
+type RetryEvent = { readonly kind: "retry" };
+type StopEvent = { readonly kind: "stop" };
+type InternalStreamEvent = GameStreamEvent | RetryEvent | StopEvent;
+
+const retryEvent: RetryEvent = { kind: "retry" };
+const stopEvent: StopEvent = { kind: "stop" };
+
+const statusEvent = (connected: boolean): GameStreamEvent => ({ kind: "status", connected });
+const terminalErrorEvent = (status: number): GameStreamEvent => ({ kind: "terminal-error", status });
+const frameEvent = (frame: GameFrame): GameStreamEvent => ({ kind: "frame", frame });
+const retryStream = (): Stream.Stream<InternalStreamEvent> => Stream.make(retryEvent);
+const terminalStopStream = (status: number): Stream.Stream<InternalStreamEvent> =>
+  Stream.make(terminalErrorEvent(status), stopEvent);
 
 /**
- * Drive `cb` off the generated SSE delta stream for `table` until the returned effect is
- * interrupted. Reconnects with exponential backoff + full jitter (reset after a healthy
- * connection); stops forever on a 4xx (a bad table / expired session won't fix itself), reporting
- * it via `onError` exactly once. `random` is injectable so the jitter is deterministic under test
- * (CLAUDE.md: inject randomness rather than reading the RNG directly).
+ * Stream generated SSE deltas for `table`. Reconnects with exponential backoff + full jitter
+ * (reset after a healthy connection); stops forever on a 4xx (a bad table / expired session won't
+ * fix itself), emitting it as a terminal error exactly once. `random` is injectable so the jitter is
+ * deterministic under test (CLAUDE.md: inject randomness rather than reading the RNG directly).
  *
  * A silently-dead connection (killed upstream, no FIN) surfaces as neither a stream error nor a
  * close, so the fetch/TCP layer can't be relied on to notice. The server now emits a periodic
@@ -38,48 +50,82 @@ export interface StreamCallbacks {
  * (not even a heartbeat) arrives within `STALE_TIMEOUT_MS`, which the reconnect loop treats as a
  * drop. This replaces the old NDJSON byte-level watchdog that was dropped with NDJSON.
  */
-export const streamDeltas = Effect.fn("streamDeltas")(function* (
+export function streamDeltas(
   table: string,
-  cb: StreamCallbacks,
   random: () => number = Math.random,
   client: Client = defaultClient,
-) {
-  yield* Effect.annotateCurrentSpan({ table });
-  let backoff = RECONNECT_BASE_MS;
+): Stream.Stream<GameStreamEvent> {
+  return Stream.fromEffect(Effect.annotateCurrentSpan({ table })).pipe(
+    Stream.flatMap(() => reconnectingStream(table, RECONNECT_BASE_MS, random, client)),
+  );
+}
 
-  const connectOnce = Effect.gen(function* () {
+function reconnectingStream(
+  table: string,
+  backoff: number,
+  random: () => number,
+  client: Client,
+): Stream.Stream<GameStreamEvent> {
+  return Stream.suspend(() => {
     let healthy = false;
-    yield* client.streamSse(table).pipe(
+    let nextBackoff = backoff;
+
+    const connection: Stream.Stream<InternalStreamEvent> = client.streamSse(table).pipe(
       Stream.timeout(Duration.millis(STALE_TIMEOUT_MS)),
-      Stream.tap(() =>
+      Stream.mapEffect((frame) =>
         Effect.sync(() => {
-          if (healthy) return;
-          healthy = true;
-          cb.onStatus?.(true);
-          backoff = RECONNECT_BASE_MS;
+          const events: Array<InternalStreamEvent> = [];
+          if (!healthy) {
+            healthy = true;
+            nextBackoff = RECONNECT_BASE_MS;
+            events.push(statusEvent(true));
+          }
+          if (frame.frame !== "heartbeat") {
+            events.push(frameEvent(frame));
+          }
+          return events;
         }),
       ),
-      Stream.filter((frame): frame is GameFrame => frame.frame !== "heartbeat"),
-      Stream.runForEach((frame) => Effect.sync(() => cb.onFrame(frame))),
+      Stream.flatMap((events) => Stream.fromIterable(events)),
+      Stream.concat(retryStream()),
+      Stream.catch((error) => {
+        const status = statusOf(error);
+        if (status !== undefined && status >= 400 && status < 500) {
+          return terminalStopStream(status);
+        }
+        return retryStream();
+      }),
     );
-    return "retry" as const;
+
+    return connection.pipe(Stream.flatMap((event) => eventToStream(event, table, nextBackoff, random, client)));
   });
+}
 
-  const handleFailure = (error: unknown) => {
-    const status = statusOf(error);
-    if (status !== undefined && status >= 400 && status < 500) {
-      cb.onError?.(status);
-      return Effect.succeed("stop" as const);
+function eventToStream(
+  event: InternalStreamEvent,
+  table: string,
+  backoff: number,
+  random: () => number,
+  client: Client,
+): Stream.Stream<GameStreamEvent> {
+  switch (event.kind) {
+    case "frame":
+    case "status":
+    case "terminal-error":
+      return Stream.make(event);
+    case "retry": {
+      const wait = backoff * (0.5 + random() * 0.5);
+      const nextBackoff = Math.min(backoff * 2, RECONNECT_CAP_MS);
+      return Stream.make(statusEvent(false)).pipe(
+        Stream.concat(Stream.fromEffectDrain(Effect.sleep(Duration.millis(wait)))),
+        Stream.concat(reconnectingStream(table, nextBackoff, random, client)),
+      );
     }
-    return Effect.succeed("retry" as const);
-  };
-
-  while (true) {
-    const outcome = yield* connectOnce.pipe(Effect.catch(handleFailure));
-    if (outcome === "stop") return;
-    cb.onStatus?.(false);
-    const wait = backoff * (0.5 + random() * 0.5);
-    yield* Effect.sleep(Duration.millis(wait));
-    backoff = Math.min(backoff * 2, RECONNECT_CAP_MS);
+    case "stop":
+      return Stream.empty;
+    default: {
+      const _exhaustive: never = event;
+      return _exhaustive;
+    }
   }
-});
+}

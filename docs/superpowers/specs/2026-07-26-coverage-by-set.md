@@ -22,7 +22,7 @@ Ship an authenticated `/coverage` shell route that renders a searchable set tabl
 ### Route entry and shell chrome
 
 - `/coverage` is an auth-gated shell route. Unauthenticated entry redirects to `/login?next=%2Fcoverage`.
-- Route entry calls `Coverage.informRouteChanged`, which loads coverage through `coverageMeta()` from `GET /api/meta/coverage/v1`. Child commands and view events lift through `GotCoverageMessage`.
+- Route entry calls `Coverage.informRouteChanged`, which loads coverage through `LobbyClient.coverageMeta()` from `GET /api/meta/coverage/v1`. Child commands and view events lift through `GotCoverageMessage`.
 - The page renders `data-testid="coverage-page"` on the same felt shell background family as leaderboard and deck surfaces.
 - Header chrome shows `Coverage`, a global `{n}% faithful` line or `— faithful`, a `Play` link back to `/`, and the shared avatar account menu with the `Leaderboard` shortcut still visible.
 - The fixed bottom-left shell badge still renders on this page when `apiVersion` is known. When global badge coverage meta is complete, the `pool-coverage` line links to `/coverage`.
@@ -31,7 +31,7 @@ Ship an authenticated `/coverage` shell route that renders a searchable set tabl
 
 - While loading, the page shows `Loading coverage...`, clears any prior rows, clears prior global counts, clears the prior error, and closes the account menu.
 - The search query is preserved across refreshes, including `Try again`.
-- If the client request fails or decodes to `null`, the page enters `status: "error"`, shows `Could not load coverage.` in an alert, keeps rows empty, and renders a `Try again` button.
+- If the `LobbyClient` request fails with a tagged transport/decode error, the page enters `status: "error"`, shows `Could not load coverage.` in an alert, keeps rows empty, and renders a `Try again` button.
 - The search field is hidden only while loading. It remains available during ready and error states.
 - Ready-with-no-rows copy depends on the query: `No set coverage available.` for an empty query and `No sets match.` for a non-empty query.
 
@@ -76,6 +76,7 @@ Ship an authenticated `/coverage` shell route that renders a searchable set tabl
 - Compute `faithful_by_set` from `cards::registry()` inside server health with no extra I/O.
 - Use 24-hour in-memory caches for Scryfall set metadata, `default_cards` per-set denominators, and the global oracle-cards total; coverage awaits cold fills and SWR-refreshes when warm.
 - Align the coverage shell feature with other `Got*` submodels: `shell/coverage/index.ts` namespace exports, `informRouteChanged`, parent `GotCoverageMessage`, and `Command.mapMessages` lift — no flat coverage tags in the parent `Message` union.
+- Keep coverage HTTP behind the `LobbyClient` Effect service so tests can inject the same same-origin meta client used by lobby commands.
 
 ## Testing Decisions
 
@@ -84,6 +85,7 @@ Ship an authenticated `/coverage` shell route that renders a searchable set tabl
 - `client/app/domain/coverage-meta.test.ts` asserts the BFF join uses Scryfall rows as the source of truth for the set list, joins printing-aware per-set oracle totals, and leaves missing per-set oracle totals as `null`.
 - `client/app/shell/coverage/view.test.ts` asserts release-date-desc row sorting, lowercase filtering, and `—` formatting when either count is missing.
 - `client/app/shell/coverage/story.test.ts` asserts `GotCoverageMessage` parent folding for refresh.
+- `client/app/shell/coverage/update.test.ts` asserts `FetchCoverage` loads through `LobbyClient` and folds tagged failures to `Could not load coverage.`.
 - `client/app/routes.test.ts` asserts `/coverage` route parsing, auth redirect, and retry behavior that clears rows while preserving the query, with messages wrapped as `GotCoverageMessage` / `GotAuthMessage`.
 - `client/app/shell/surfaces.test.ts` asserts the coverage page scene, `coverage-table-body` row scroller, search/filter empty state, and shell badge link to `/coverage`.
 - Verification for this task runs focused server nextest filters, focused client Vitest suites, `just client-typecheck`, `just client-lint`, and `just server-format-check`.
