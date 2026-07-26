@@ -103,7 +103,9 @@ import {
   STACK_HOLD_MAX_MS,
   STACK_VERTICAL_RESERVED,
   shouldAutoCollapseStackExpand,
+  stackFaceScreenOrigin,
   stackPeekFor,
+  stackPresentation,
 } from "./geometry/stackLayout";
 import { modesForObject } from "./html/actions";
 import { selectedRadialOptions } from "./html/activation-menu";
@@ -452,8 +454,38 @@ function stageableSeats(fold: GameFoldState): number[] {
   return declaresFor(state.actions, mode);
 }
 
-function stackTarget(model: BoardModel): Vec2 {
-  return { x: model.viewport.width - 160, y: model.viewport.height / 2 };
+/** Screen pose + scale for a stack flight so settle matches the resting HTML face. */
+function stackFlightAim(
+  model: BoardModel,
+  opts: { count: number; row: number },
+): { x: number; y: number; scale: number } {
+  const count = Math.max(1, opts.count);
+  const row = Math.max(0, Math.min(count - 1, opts.row));
+  const presentation = stackPresentation({
+    count,
+    expandedOpen: model.stackExpand,
+    viewportW: model.viewport.width,
+    viewportH: model.viewport.height,
+  });
+  const origin = stackFaceScreenOrigin({
+    presentation,
+    viewportW: model.viewport.width,
+    viewportH: model.viewport.height,
+    count,
+    row,
+    peek: presentation === "pile" ? stackPeekFor(count, model.viewport.height) : undefined,
+  });
+  return { x: origin.x, y: origin.y, scale: stackFlightScale(model.camera.zoom) };
+}
+
+function stackFlightAimForSource(
+  model: BoardModel,
+  stack: ReadonlyArray<{ source: number }>,
+  sourceId: number,
+): { x: number; y: number; scale: number } {
+  const count = Math.max(1, stack.length);
+  const row = stack.findIndex((entry) => entry.source === sourceId);
+  return stackFlightAim(model, { count, row: row >= 0 ? row : count - 1 });
 }
 
 function cardTarget(camera: Camera, card: RenderCard): Vec2 {
@@ -461,7 +493,10 @@ function cardTarget(camera: Camera, card: RenderCard): Vec2 {
 }
 
 function playerOrigin(model: BoardModel, fold: BoardFold, seat: number): Vec2 {
-  if (fold.state == null) return stackTarget(model);
+  if (fold.state == null) {
+    const aim = stackFlightAim(model, { count: 1, row: 0 });
+    return { x: aim.x, y: aim.y };
+  }
   const count = Math.max(1, fold.state.players.length);
   const pos = avatarPos(seat, fold.state.viewer, count);
   return worldToScreen(model.camera, pos.x, pos.y);
@@ -526,8 +561,8 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
       continue;
     }
     if (flight.kind !== "stack") continue;
-    const target = stackTarget(model);
-    flights.set(id, retargetFlight(flight, { x: target.x, y: target.y, scale: stackFlightScale(model.camera.zoom) }));
+    const aim = stackFlightAimForSource(model, state.stack, id);
+    flights.set(id, retargetFlight(flight, { x: aim.x, y: aim.y, scale: aim.scale }));
   }
 
   for (const [id, zone] of fold.provenance.battlefieldExits) {
@@ -595,7 +630,7 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
   }
 
   for (const [spell, meta] of fold.provenance.stackEntrances) {
-    const target = stackTarget(model);
+    const aim = stackFlightAimForSource(model, state.stack, spell);
     if (!flights.has(spell) && flights.has(meta.from)) {
       flights = rebindFlightId(flights, meta.from, spell);
     }
@@ -607,9 +642,9 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
         retargetFlight(
           { ...existing, kind: "stack", fromCardId: meta.from },
           {
-            x: target.x,
-            y: target.y,
-            scale: stackFlightScale(model.camera.zoom),
+            x: aim.x,
+            y: aim.y,
+            scale: aim.scale,
           },
         ),
       );
@@ -627,9 +662,9 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
         x: start.x,
         y: start.y,
         scale: handFlightScale(model.camera.zoom),
-        targetX: target.x,
-        targetY: target.y,
-        targetScale: stackFlightScale(model.camera.zoom),
+        targetX: aim.x,
+        targetY: aim.y,
+        targetScale: aim.scale,
         kind: "stack",
         fromCardId: meta.from,
       }),
@@ -653,7 +688,10 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
       continue;
     }
 
-    const start = stackTarget(model);
+    const startAim = stackFlightAim(model, {
+      count: Math.max(1, state.stack.length + 1),
+      row: state.stack.length,
+    });
     const target = cardTarget(model.camera, card);
     flights.set(
       id,
@@ -661,9 +699,9 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
         id,
         print: card.print,
         name: card.name,
-        x: start.x,
-        y: start.y,
-        scale: stackFlightScale(model.camera.zoom),
+        x: startAim.x,
+        y: startAim.y,
+        scale: startAim.scale,
         targetX: target.x,
         targetY: target.y,
         targetScale: 1,
@@ -680,16 +718,19 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
 
     const target = cardTarget(model.camera, card);
     const prior = cardsById.get(from);
-    const start = prior == null ? stackTarget(model) : cardTarget(model.camera, prior);
+    const startAim =
+      prior == null
+        ? stackFlightAim(model, { count: Math.max(1, state.stack.length + 1), row: state.stack.length })
+        : { ...cardTarget(model.camera, prior), scale: 1 };
     flights.set(
       id,
       spawnFlight({
         id,
         print: card.print,
         name: card.name,
-        x: start.x,
-        y: start.y,
-        scale: prior == null ? stackFlightScale(model.camera.zoom) : 1,
+        x: startAim.x,
+        y: startAim.y,
+        scale: startAim.scale,
         targetX: target.x,
         targetY: target.y,
         targetScale: 1,
@@ -1241,14 +1282,15 @@ function seedDropFromHand(
   card: ObjectView,
   screenOrigin: Vec,
   kind: "battlefield" | "stack",
+  stackCount = 0,
 ): BoardModel {
   const flights = new Map(model.flights);
   const handHidden = new Set(model.handHidden);
   const startScale = handFlightScale(model.camera.zoom);
-  const stackAim = stackTarget(model);
-  const targetX = kind === "stack" ? stackAim.x : screenOrigin.x;
-  const targetY = kind === "stack" ? stackAim.y : screenOrigin.y;
-  const targetScale = kind === "stack" ? stackFlightScale(model.camera.zoom) : 1;
+  const stackAim =
+    kind === "stack"
+      ? stackFlightAim(model, { count: Math.max(1, stackCount + 1), row: stackCount })
+      : { x: screenOrigin.x, y: screenOrigin.y, scale: 1 };
   flights.set(
     card.id,
     spawnFlight({
@@ -1258,9 +1300,9 @@ function seedDropFromHand(
       x: screenOrigin.x,
       y: screenOrigin.y,
       scale: startScale,
-      targetX,
-      targetY,
-      targetScale,
+      targetX: stackAim.x,
+      targetY: stackAim.y,
+      targetScale: stackAim.scale,
       kind,
       fromCardId: card.id,
     }),
@@ -1308,7 +1350,7 @@ function runAction(
     return [{ ...model, reject: humanReason(plan.reason) }, []];
   }
   if (plan.kind === "stage") {
-    const seeded = seedDropFromHand(model, plan.card, screenOrigin, "stack");
+    const seeded = seedDropFromHand(model, plan.card, screenOrigin, "stack", fold.state?.stack.length ?? 0);
     return [
       {
         ...seeded,
@@ -1329,7 +1371,8 @@ function runAction(
     return [seeded, boardIntentSubmit(tableId, takeAction(fold, action, null, 0, [], plan.picks))];
   }
   if (plan.kind === "cast") {
-    const seeded = card != null ? seedDropFromHand(model, card, screenOrigin, "stack") : model;
+    const seeded =
+      card != null ? seedDropFromHand(model, card, screenOrigin, "stack", fold.state?.stack.length ?? 0) : model;
     const xPrompt = ensureXPrompt(fold, plan.action, null, [], plan.picks);
     if (xPrompt != null) return [{ ...seeded, xPrompt }, []];
     return [seeded, boardIntentSubmit(tableId, takeAction(fold, plan.action, null, 0, [], plan.picks))];
@@ -1551,7 +1594,13 @@ function handActivated(
     if (firstMode == null) return [{ ...withHint, reject: humanReason("UnknownObject") }, []];
     const card = objectByAction(fold, firstMode) ?? objectByAction(fold, action);
     if (card == null) return [{ ...withHint, reject: humanReason("UnknownObject") }, []];
-    const seeded = seedDropFromHand(clearActionSessionsForPlayMode(withHint), card, screenOrigin, "stack");
+    const seeded = seedDropFromHand(
+      clearActionSessionsForPlayMode(withHint),
+      card,
+      screenOrigin,
+      "stack",
+      fold.state?.stack.length ?? 0,
+    );
     return [
       {
         ...seeded,
