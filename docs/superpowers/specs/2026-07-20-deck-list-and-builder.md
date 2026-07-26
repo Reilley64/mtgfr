@@ -120,7 +120,7 @@ Missing ordinary (non-`art_crop`) CDN art stays empty after load failure (no Scr
 
 ## Out of Scope
 
-- Auth routing and portrait gate ([shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md)).
+- Auth routing and CSS landscape rotate ([shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md)).
 - Lobby Host/Join and seated table chrome ([lobby-entry-ui](2026-07-20-lobby-entry-ui.md)).
 - Server catalog projection and legality engine ([accounts-decks-and-catalog](2026-07-20-accounts-decks-and-catalog.md)).
 - Card art CDN origin operations (`cards.example.com` / CDN infra) — only client URL selection and cache behavior here.

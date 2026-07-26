@@ -87,7 +87,7 @@ Helpers also live in `client/app/domain/lobby/client.ts` for table URL / code pa
 ## Out of Scope
 
 - Server lobby tables, seed affinity, and drain ([lobby-table-routing-and-live-game](2026-07-20-lobby-table-routing-and-live-game.md)).
-- Full route/auth table and portrait gate ([shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md)).
+- Full route/auth table and CSS landscape rotate ([shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md)).
 - Deck list tile grid and builder ([deck-list-and-builder](2026-07-20-deck-list-and-builder.md)).
 - Cross-browser clipboard fallbacks beyond the existing try/catch reveal pattern.
 
