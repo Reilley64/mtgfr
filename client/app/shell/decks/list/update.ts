@@ -6,18 +6,14 @@ import { RpcClient } from "../../../resources";
 import {
   DeckDeleted,
   DeckDeleteFailed,
-  DeckListLeaderboardTeaserLoadFailed,
   DecksLoadFailed,
   type Message,
   ReceivedDeckListCommanders,
-  ReceivedDeckListLeaderboardTeaser,
   ReceivedDecks,
 } from "./messages";
 
 import type { DeckListSubmodel } from "./submodel";
 import { deckListContextMenuAllowed } from "./visible";
-
-const DECK_LIST_LEADERBOARD_TEASER_LIMIT = 5;
 
 export const FetchDecks = Command.define(
   "FetchDecks",
@@ -47,21 +43,6 @@ export const LookupDeckListCommanders = Command.define(
   }),
 );
 
-export const FetchDeckListLeaderboardTeaser = Command.define(
-  "FetchDeckListLeaderboardTeaser",
-  { limit: S.Number, offset: S.Number },
-  ReceivedDeckListLeaderboardTeaser,
-  DeckListLeaderboardTeaserLoadFailed,
-)(({ limit, offset }) =>
-  Effect.gen(function* () {
-    const rpc = yield* RpcClient;
-    return yield* rpc.ratings.leaderboard({ limit, offset }).pipe(
-      Effect.map((leaderboard) => ReceivedDeckListLeaderboardTeaser({ entries: leaderboard.entries })),
-      Effect.catch(() => Effect.succeed(DeckListLeaderboardTeaserLoadFailed())),
-    );
-  }),
-);
-
 export const DeleteDeck = Command.define(
   "DeleteDeck",
   { id: S.Number },
@@ -77,21 +58,10 @@ export const DeleteDeck = Command.define(
   }),
 );
 
-type LoadDeckListOptions = {
-  includeLeaderboardTeaser?: boolean;
-};
-
 export function loadDeckList(
   model: DeckListSubmodel,
-  options: LoadDeckListOptions = {},
 ): readonly [DeckListSubmodel, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
-  const commands = [
-    FetchDecks(),
-    ...(options.includeLeaderboardTeaser
-      ? [FetchDeckListLeaderboardTeaser({ limit: DECK_LIST_LEADERBOARD_TEASER_LIMIT, offset: 0 })]
-      : []),
-  ];
-  return [{ ...model, error: null, loading: true }, commands];
+  return [{ ...model, accountMenuOpen: false, error: null, loading: true }, [FetchDecks()]];
 }
 
 export const update = (
@@ -111,12 +81,10 @@ export const update = (
         { ...model, knownCommanders: Object.fromEntries(cards.map((card) => [card.id, card])) },
         [],
       ],
-      ReceivedDeckListLeaderboardTeaser: ({ entries }) => [{ ...model, leaderboardTeaser: [...entries] }, []],
-      DeckListLeaderboardTeaserLoadFailed: () => [{ ...model, leaderboardTeaser: [] }, []],
       ChangedDeckListSearch: ({ query }) => [{ ...model, searchQuery: query }, []],
       OpenedDeckListMenu: ({ deckId, x, y }) => {
         if (!deckListContextMenuAllowed(deckId)) return [model, []];
-        return [{ ...model, contextMenu: { deckId, x, y } }, []];
+        return [{ ...model, accountMenuOpen: false, contextMenu: { deckId, x, y } }, []];
       },
       ClosedDeckListMenu: () => [{ ...model, contextMenu: null }, []],
       AskedDeckDelete: ({ id }) => [{ ...model, confirmingDeleteId: id, error: null, contextMenu: null }, []],

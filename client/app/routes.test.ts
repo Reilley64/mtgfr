@@ -3,15 +3,18 @@ import { Story } from "foldkit";
 import { expect, test } from "vitest";
 import { init } from "./init";
 import {
+  ClosedAccountMenu,
   NavigationCompleted,
+  OpenedDeckListMenu,
   ReceivedDeckListCommanders,
-  ReceivedDeckListLeaderboardTeaser,
   ReceivedDecks,
   ReceivedLeaderboardPage,
   ReceivedMe,
   ReceivedMeGravatarHash,
   RequestedLeaderboardRefresh,
+  ToggledAccountMenu,
 } from "./messages";
+import type { Model } from "./model";
 import {
   DeckRoute,
   HomeRoute,
@@ -22,7 +25,7 @@ import {
   routePath,
   TableRoute,
 } from "./routes";
-import { FetchDeckListLeaderboardTeaser, FetchDecks, LookupDeckListCommanders } from "./shell/decks/list/update";
+import { FetchDecks, LookupDeckListCommanders } from "./shell/decks/list/update";
 import { FetchLeaderboard } from "./shell/leaderboard/update";
 import { HashMeGravatar, update } from "./update";
 
@@ -37,6 +40,17 @@ const url = (pathname: string, search = "") => ({
 });
 
 const me = { id: 1, email: "alice@example.com", username: "alice" };
+
+function homeModel(overrides: Partial<Model> = {}): Model {
+  const [base] = init(url("/"));
+  return {
+    ...base,
+    route: HomeRoute(),
+    session: { me, meGravatarHash: null },
+    sessionLoaded: true,
+    ...overrides,
+  };
+}
 
 test("parses the Foldkit shell routes", () => {
   expect(routeFromUrl(url("/"))).toEqual(HomeRoute());
@@ -109,24 +123,90 @@ test("LeaderboardRoute loads the first page on protected route entry", () => {
   );
 });
 
-test("HomeRoute loads decks and the leaderboard teaser on protected route entry", () => {
+test("HomeRoute loads decks on protected route entry", () => {
   const [model] = init(url("/"));
-  const loadTeaser = FetchDeckListLeaderboardTeaser({ limit: 5, offset: 0 });
   const decks = [{ id: 1, name: "Superfriends", commander: "atraxa", commander_print: "atraxa-print" }];
-  const teaser = [{ rank: 1, rating: 1200, user_id: 1, username: "alice" }];
 
   Story.story(
     update,
     Story.with(model),
     Story.message(ReceivedMe({ me })),
-    Story.Command.expectExact(FetchDecks, loadTeaser, HashMeGravatar({ email: me.email })),
+    Story.Command.expectExact(FetchDecks, HashMeGravatar({ email: me.email })),
     Story.Command.resolve(FetchDecks, ReceivedDecks({ decks })),
-    Story.Command.resolve(loadTeaser, ReceivedDeckListLeaderboardTeaser({ entries: teaser })),
     Story.Command.resolve(HashMeGravatar, ReceivedMeGravatarHash({ email: me.email, hash: "deadbeef" })),
     Story.Command.resolve(LookupDeckListCommanders({ ids: ["atraxa"] }), ReceivedDeckListCommanders({ cards: [] })),
     Story.model((m) => {
       expect(m.decks.list.decks).toEqual(decks);
-      expect(m.decks.list.leaderboardTeaser).toEqual(teaser);
+      expect("leaderboardTeaser" in m.decks.list).toBe(false);
+    }),
+  );
+});
+
+test("HomeRoute toggles the account menu open and clears the deck context menu", () => {
+  const model = homeModel();
+
+  Story.story(
+    update,
+    Story.with({
+      ...model,
+      decks: {
+        ...model.decks,
+        list: {
+          ...model.decks.list,
+          accountMenuOpen: false,
+          contextMenu: { deckId: 7, x: 10, y: 20 },
+        },
+      },
+    }),
+    Story.message(ToggledAccountMenu()),
+    Story.model((m) => {
+      expect(m.decks.list.accountMenuOpen).toBe(true);
+      expect(m.decks.list.contextMenu).toBeNull();
+    }),
+  );
+});
+
+test("HomeRoute closes the account menu when requested", () => {
+  const model = homeModel();
+
+  Story.story(
+    update,
+    Story.with({
+      ...model,
+      decks: {
+        ...model.decks,
+        list: {
+          ...model.decks.list,
+          accountMenuOpen: true,
+        },
+      },
+    }),
+    Story.message(ClosedAccountMenu()),
+    Story.model((m) => {
+      expect(m.decks.list.accountMenuOpen).toBe(false);
+    }),
+  );
+});
+
+test("HomeRoute opening a deck context menu closes the account menu", () => {
+  const model = homeModel();
+
+  Story.story(
+    update,
+    Story.with({
+      ...model,
+      decks: {
+        ...model.decks,
+        list: {
+          ...model.decks.list,
+          accountMenuOpen: true,
+        },
+      },
+    }),
+    Story.message(OpenedDeckListMenu({ deckId: 7, x: 10, y: 20 })),
+    Story.model((m) => {
+      expect(m.decks.list.accountMenuOpen).toBe(false);
+      expect(m.decks.list.contextMenu).toEqual({ deckId: 7, x: 10, y: 20 });
     }),
   );
 });
@@ -142,6 +222,7 @@ test("leaderboard retry refreshes from the first page after an error", () => {
     ...base,
     leaderboard: {
       ...base.leaderboard,
+      accountMenuOpen: true,
       entries: [{ rank: 1, rating: 1200, user_id: 1, username: "alice" }],
       error: "Could not load the leaderboard.",
       status: "error",
@@ -155,6 +236,7 @@ test("leaderboard retry refreshes from the first page after an error", () => {
     Story.message(RequestedLeaderboardRefresh()),
     Story.Command.expectExact(load),
     Story.model((m) => {
+      expect(m.leaderboard.accountMenuOpen).toBe(false);
       expect(m.leaderboard.entries).toEqual([]);
       expect(m.leaderboard.error).toBeNull();
       expect(m.leaderboard.status).toBe("loading");

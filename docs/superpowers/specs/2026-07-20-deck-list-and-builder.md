@@ -1,6 +1,6 @@
 # Deck List and Builder
 
-**Status:** Current (as of 2026-07-25)
+**Status:** Current (as of 2026-07-26)
 **Module:** `client/app/shell/decks/**`, `client/lib/deck-builder/**`, `client/lib/ui/card-art.ts`, `client/lib/image-cache.ts`, `client/lib/deck-builder/scryfall.ts`
 
 ---
@@ -13,14 +13,15 @@ Players need to browse saved and precon decks, open a deck into play or edit, an
 
 ## Solution
 
-The **deck list** at `/` is a compact commander-tile grid over the deck list submodel (search, top-5 leaderboard teaser, precon ordering, owned-deck context menu). The **deck builder** at `/decks/new` and `/decks/:id` is a split-pane pool + decklist UI over catalog search RPCs. Card art is keyed by Scryfall Printing UUID via `client/lib/deck-builder/scryfall.ts` and rendered through `client/lib/ui/card-art.ts` against `sharedImageCache` in `client/lib/image-cache.ts`. Deck persistence and legality rules are owned by [accounts-decks-and-catalog](2026-07-20-accounts-decks-and-catalog.md); route/auth shell by [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md).
+The **deck list** at `/` is a compact commander-tile grid over the deck list submodel (shared account chrome, create tile, search, precon ordering, owned-deck context menu). The **deck builder** at `/decks/new` and `/decks/:id` is a split-pane pool + decklist UI over catalog search RPCs. Card art is keyed by Scryfall Printing UUID via `client/lib/deck-builder/scryfall.ts` and rendered through `client/lib/ui/card-art.ts` against `sharedImageCache` in `client/lib/image-cache.ts`. Deck persistence and legality rules are owned by [accounts-decks-and-catalog](2026-07-20-accounts-decks-and-catalog.md); route/auth shell by [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md).
 
 ---
 
 ## User Stories
 
+- As a returning player on `/`, I click the first grid tile — the dashed create tile (`deck-list-new-deck`) — to open `/decks/new`; when I have no saved decks yet, that tile alone fills the grid.
 - As a returning player on `/`, I scan commander tiles (each link tile shows a Play label), search by name, click a tile to play, and right-click an owned deck to edit or delete it.
-- As a returning player on `/`, I also glance at the top 5 leaderboard teaser and jump to the full `/leaderboard` page when I want the broader standings.
+- As a returning player on `/`, I use the header chrome to jump to `/leaderboard` or open my avatar menu to reach Gravatar settings or sign out.
 - As a returning player, I navigate directly to `/decks/new` and the deck builder loads, showing the full card pool on the left and a blank decklist on the right.
 - As a deck builder, I click a pool card to add it, right-click to pick a different printing (art preference), and see the commander picker auto-populate with legendary creatures in my list.
 
@@ -31,25 +32,33 @@ The **deck list** at `/` is a compact commander-tile grid over the deck list sub
 ### Deck list (`client/app/shell/decks/**`, `/`)
 
 **Deck list** (`/`) shows saved decks from the deck list submodel as a compact tile grid.
-Header, search, and grid share one `max-w-[960px]` column. Tiles use a raised
-`minmax(220px, 1fr)` track, landscape commander `art_crop` (~1.37:1), deck name,
-color-identity pips, and a Precon chip when `id < 0`. Names stay single-line truncate.
-There is no cursor-follow card hover preview on this surface. A compact **Top players**
-teaser can appear above the search/grid column when the home route has top-5 leaderboard
-data; it lists rank, username, and rating, and links to `/leaderboard` without adding
-extra stats chrome or deck-related controls. The whole tile links to
-`/play/{id}` and shows a quiet `Play` label (`deck-play-label`) in link mode; static
-lobby deck-card chrome omits that label. Home ↔ `/play/{id}` morphs the shared deck-card chrome with a short
-FLIP animation (`deck-card-nav.ts`; skipped for reduced motion). A **Search decks…** field filters by deck name and commander display
-name (client-only). Display order: owned decks first (API relative order), then precons
-by ascending id (newest release first). Right-click on an owned deck opens Edit
-(`/decks/{id}`) and Delete (confirm dialog); precons do not open a context menu. A New
-Deck button navigates to `/decks/new`. Signed-in account chrome in the header shows
-the username with the same circular Gravatar/monogram face helper used for seats and
-an outbound `Change at Gravatar` link (`account-gravatar-link`) to `https://gravatar.com`.
-The home route loads the teaser separately from the deck list (`Ratings.GetLeaderboard`
-via `limit = 5, offset = 0`); if that request fails, the teaser clears to empty and the
-deck grid still loads normally.
+Header, search, and grid share one `max-w-[960px]` column. The header keeps the page
+title on the left and uses shared account chrome on the right: a `Leaderboard` link
+(`header-leaderboard-link`) plus an avatar trigger backed by the same circular
+Gravatar/monogram face helper used for seats. Opening the avatar menu shows a username
+title, an outbound `Change at Gravatar` link (`account-gravatar-link`) to
+`https://gravatar.com`, and `Sign out`.
+
+Tiles use a raised `minmax(220px, 1fr)` track, landscape commander `art_crop`
+(~1.37:1), deck name, color-identity pips, and a Precon chip when `id < 0`. Names stay
+single-line truncate. There is no cursor-follow card hover preview on this surface. The
+first grid cell is always a dashed create tile linking to `/decks/new`
+(`deck-list-new-deck`) whenever the grid renders; it uses the same footprint as deck
+tiles, shows no commander art, no `Play` label, no FLIP morph, and no context menu. If
+the player has zero decks after loading, the create tile is the entire grid and the old
+empty-copy block does not render. While `loading`, the page still shows `Loading decks…`
+instead of the grid.
+
+The whole deck tile links to `/play/{id}` and shows a quiet `Play` label
+(`deck-play-label`) in link mode; static lobby deck-card chrome omits that label. Home ↔
+`/play/{id}` morphs the shared deck-card chrome with a short FLIP animation
+(`deck-card-nav.ts`; skipped for reduced motion). A **Search decks…** field appears only
+when at least one actual deck exists and filters by deck name and commander display name
+(client-only). The create tile stays first and is never filtered out; if search matches
+no deck tiles, the grid keeps the create tile first and shows the existing `No decks
+match.` copy. Display order: owned decks first (API relative order), then precons by
+ascending id (newest release first). Right-click on an owned deck opens Edit
+(`/decks/{id}`) and Delete (confirm dialog); precons do not open a context menu.
 
 ### Deck builder (`client/app/shell/decks/builder/**`, `/decks/new`, `/decks/:id`)
 
@@ -99,9 +108,11 @@ Missing ordinary (non-`art_crop`) CDN art stays empty after load failure (no Scr
 - `client/lib/ui/card-art.test.ts` — art URL / host sync against `ImageCache`.
 - `client/lib/image-cache.test.ts` — cache settle / subscriber behavior.
 - Scene coverage for shell deck surfaces lives with other shell Scene tests, including
-  `account-gravatar-link` and the home leaderboard teaser (`data-testid="leaderboard-teaser"`);
-  route-entry Stories cover the home fetch path, the separate teaser fetch, and its load-success
-  path (see [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md) Testing Decisions /
+  `header-leaderboard-link`, `account-menu-*`, `account-gravatar-link`, and
+  `deck-list-new-deck`; the home surface does not render
+  `data-testid="leaderboard-teaser"`. Route-entry Stories cover the home fetch path
+  without a separate teaser request (see
+  [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md) Testing Decisions /
   `just client-check`).
 
 ---

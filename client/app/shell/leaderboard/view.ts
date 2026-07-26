@@ -2,17 +2,14 @@ import { type Html, html } from "foldkit/html";
 import { appVersionBadge } from "../../../lib/ui/app-version";
 import { buttonClass } from "../../../lib/ui/buttonClass";
 import { feltClass, listRowClass } from "../../../lib/ui/surfaces";
-import { RequestedLogout } from "../../messages";
 import { HomeRoute, routePath } from "../../routes";
+import { accountChrome } from "../account-chrome/view";
 import { RequestedLeaderboardNextPage, RequestedLeaderboardRefresh } from "./messages";
 import type { LeaderboardStatus, LeaderboardSubmodel } from "./submodel";
 
 const h = html<Message>();
 
-type Message =
-  | typeof RequestedLogout.Type
-  | typeof RequestedLeaderboardRefresh.Type
-  | typeof RequestedLeaderboardNextPage.Type;
+type Message = typeof RequestedLeaderboardRefresh.Type | typeof RequestedLeaderboardNextPage.Type;
 
 function statusCopy(status: LeaderboardStatus): string | null {
   switch (status) {
@@ -45,7 +42,12 @@ function row(entry: LeaderboardSubmodel["entries"][number]): Html {
   );
 }
 
-export function view(model: LeaderboardSubmodel, username: string, apiVersion: string | null): Html {
+export function view(
+  model: LeaderboardSubmodel,
+  username: string,
+  meGravatarHash: string | null,
+  apiVersion: string | null,
+): Html {
   const status = statusCopy(model.status);
   const canLoadMore = model.status !== "error" && model.entries.length < model.total;
 
@@ -62,18 +64,17 @@ export function view(model: LeaderboardSubmodel, username: string, apiVersion: s
       h.div(
         [h.Class("mx-auto mb-5 flex max-w-[720px] flex-wrap items-center justify-between gap-md")],
         [
-          h.div(
-            [h.Class("flex min-w-0 flex-col gap-xs")],
-            [
-              h.h1([h.Class("m-0 text-title")], ["Leaderboard"]),
-              h.p([h.Class("m-0 text-label text-lichen")], [`Signed in as ${username}`]),
-            ],
-          ),
+          h.div([h.Class("flex min-w-0 flex-col gap-xs")], [h.h1([h.Class("m-0 text-title")], ["Leaderboard"])]),
           h.div(
             [h.Class("flex flex-wrap items-center gap-md")],
             [
               h.a([h.Href(routePath(HomeRoute())), h.Class(buttonClass("ghost"))], ["Play"]),
-              h.button([h.Type("button"), h.OnClick(RequestedLogout()), h.Class(buttonClass("ghost"))], ["Sign out"]),
+              accountChrome(h, {
+                username,
+                gravatarHash: meGravatarHash,
+                menuOpen: model.accountMenuOpen,
+                showLeaderboardLink: false,
+              }),
             ],
           ),
         ],
