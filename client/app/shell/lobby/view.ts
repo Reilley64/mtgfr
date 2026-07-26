@@ -3,14 +3,17 @@ import { type Html, html } from "foldkit/html";
 import type { DeckCardFlipTick } from "../../deck-card-nav";
 import { cn } from "../../domain/cn";
 import type { BuilderCatalogCard } from "../../domain/deck-builder/cards";
-import { type AppChromeMeta, appVersionBadge } from "../../domain/ui/app-version";
+import type { AppChromeMeta } from "../../domain/ui/app-version";
 import { buttonClass } from "../../domain/ui/buttonClass";
 import { type CardArtTick, cardArt } from "../../domain/ui/card-art";
 import { seatFace } from "../../domain/ui/seat-face";
-import { feltClass, fieldClass, panelClass } from "../../domain/ui/surfaces";
+import { fieldClass, panelClass } from "../../domain/ui/surfaces";
 import type { DeckSummary } from "../../domain/wire/types";
+import type { ClosedAccountMenu, GotAuthMessage, ToggledAccountMenu } from "../../messages";
 import { HomeRoute, routePath } from "../../routes";
+import { accountChrome } from "../account-chrome/view";
 import { type DeckCardModel, renderDeckCard } from "../decks/deck-card";
+import { shellFrame } from "../frame/shell-frame";
 import {
   ChangedLobbyCode,
   type Message as LobbyMessage,
@@ -25,7 +28,13 @@ import {
 import type { LobbySlice } from "./submodel";
 import { lobbyHost, lobbyReady } from "./update";
 
-export type ViewMessage = LobbyMessage | typeof CardArtTick.Type | typeof DeckCardFlipTick.Type;
+export type ViewMessage =
+  | LobbyMessage
+  | typeof CardArtTick.Type
+  | typeof DeckCardFlipTick.Type
+  | typeof ClosedAccountMenu.Type
+  | typeof GotAuthMessage.Type
+  | typeof ToggledAccountMenu.Type;
 export type LobbySurface = "entry" | "table";
 
 export type ViewInputs = {
@@ -34,6 +43,9 @@ export type ViewInputs = {
   knownCommanders: Readonly<Record<string, BuilderCatalogCard>>;
   chrome: AppChromeMeta;
   surface: LobbySurface;
+  username: string;
+  meGravatarHash: string | null;
+  accountMenuOpen: boolean;
 };
 
 const h = html<ViewMessage>();
@@ -490,7 +502,8 @@ function tableLobby(
 }
 
 export const view = Submodel.defineView<LobbySlice, ViewMessage, ViewInputs>((model, viewInputs): Html => {
-  const { chrome, decks, decksLoading, knownCommanders, surface } = viewInputs;
+  const { accountMenuOpen, chrome, decks, decksLoading, knownCommanders, meGravatarHash, surface, username } =
+    viewInputs;
   // PlayRoute always paints entry — even after Host sets tableId and queues
   // Redirect — so we do not flash claim-seat / table chrome before navigation.
   const body =
@@ -498,38 +511,43 @@ export const view = Submodel.defineView<LobbySlice, ViewMessage, ViewInputs>((mo
       ? entry(model, decks, decksLoading, knownCommanders)
       : tableLobby(model, decks, decksLoading, knownCommanders);
 
-  return h.main(
-    [h.Class(feltClass("fixed inset-0 overflow-y-auto"))],
-    [
-      h.div(
-        [h.Class("flex min-h-full items-center justify-center p-xxl")],
-        [
-          h.section(
-            [
-              h.DataAttribute("testid", "lobby"),
-              h.DataAttribute("ui", "panel"),
-              h.Class(panelClass("max-w-[min(100%-2rem,640px)]")),
-            ],
-            [
-              h.div(
-                [h.Class("flex flex-col gap-xs")],
-                [
-                  h.div([h.Class("m-0 text-display tracking-[-0.02em]")], ["edh.reilley.dev"]),
-                  h.h1([h.Class("m-0 text-lichen text-title")], ["Lobby"]),
-                ],
-              ),
-              body,
-              model.error == null
-                ? null
-                : h.div(
-                    [h.Role("alert"), h.DataAttribute("testid", "lobby-error"), h.Class("text-burn-red text-caption")],
-                    [humanError(model.error)],
-                  ),
-            ],
-          ),
-        ],
-      ),
-      appVersionBadge(h, chrome),
-    ],
-  );
+  return shellFrame(h, {
+    atmosphere: "shell",
+    title: "Lobby",
+    chrome,
+    trailing: accountChrome(h, {
+      username,
+      gravatarHash: meGravatarHash,
+      menuOpen: accountMenuOpen,
+      showLeaderboardLink: true,
+    }),
+    stage: h.div(
+      [h.Class("flex justify-center py-xxl")],
+      [
+        h.section(
+          [
+            h.DataAttribute("testid", "lobby"),
+            h.DataAttribute("ui", "panel"),
+            h.Class(panelClass("max-w-[min(100%-2rem,640px)]")),
+          ],
+          [
+            h.div(
+              [h.Class("flex flex-col gap-xs")],
+              [
+                h.div([h.Class("m-0 text-display tracking-[-0.02em]")], ["edh.reilley.dev"]),
+                h.h1([h.Class("m-0 text-lichen text-title")], ["Lobby"]),
+              ],
+            ),
+            body,
+            model.error == null
+              ? null
+              : h.div(
+                  [h.Role("alert"), h.DataAttribute("testid", "lobby-error"), h.Class("text-burn-red text-caption")],
+                  [humanError(model.error)],
+                ),
+          ],
+        ),
+      ],
+    ),
+  });
 });

@@ -415,7 +415,14 @@ export const update = (
       GotCoverageMessage: ({ message }) => foldCoverage(model, message),
       GotLobbyMessage: ({ message }) => foldLobby(model, message),
       ToggledAccountMenu: () => {
-        if (model.route._tag === "HomeRoute") {
+        if (
+          model.route._tag === "HomeRoute" ||
+          model.route._tag === "NewDeckRoute" ||
+          model.route._tag === "DeckRoute" ||
+          model.route._tag === "PlayRoute" ||
+          model.route._tag === "PregameTableRoute" ||
+          model.route._tag === "GameTableRoute"
+        ) {
           const list = model.decks.list;
           return [
             {
@@ -459,7 +466,14 @@ export const update = (
         return [model, []];
       },
       ClosedAccountMenu: () => {
-        if (model.route._tag === "HomeRoute") {
+        if (
+          model.route._tag === "HomeRoute" ||
+          model.route._tag === "NewDeckRoute" ||
+          model.route._tag === "DeckRoute" ||
+          model.route._tag === "PlayRoute" ||
+          model.route._tag === "PregameTableRoute" ||
+          model.route._tag === "GameTableRoute"
+        ) {
           return [
             {
               ...model,

@@ -1,11 +1,12 @@
 import { Submodel } from "foldkit";
 import { type Html, html } from "foldkit/html";
-import { type AppChromeMeta, appVersionBadge } from "../../domain/ui/app-version";
+import type { AppChromeMeta } from "../../domain/ui/app-version";
 import { buttonClass } from "../../domain/ui/buttonClass";
-import { feltClass, listRowClass } from "../../domain/ui/surfaces";
+import { listRowClass } from "../../domain/ui/surfaces";
 import type { ClosedAccountMenu, GotAuthMessage, ToggledAccountMenu } from "../../messages";
 import { HomeRoute, routePath } from "../../routes";
 import { accountChrome } from "../account-chrome/view";
+import { shellFrame } from "../frame/shell-frame";
 import {
   type Message as LeaderboardMessage,
   RequestedLeaderboardNextPage,
@@ -63,69 +64,55 @@ export const view = Submodel.defineView<LeaderboardSubmodel, ViewMessage, ViewIn
   const status = statusCopy(model.status);
   const canLoadMore = model.status !== "error" && model.entries.length < model.total;
 
-  return h.main(
-    [
-      h.Class(
-        feltClass(
-          "h-full overflow-y-auto p-xxl pt-[max(1.5rem,env(safe-area-inset-top))] pr-[max(1.5rem,env(safe-area-inset-right))] pb-[max(1.5rem,env(safe-area-inset-bottom))] pl-[max(1.5rem,env(safe-area-inset-left))]",
+  return shellFrame(h, {
+    atmosphere: "shell",
+    title: "Leaderboard",
+    chrome,
+    leading: h.a([h.Href(routePath(HomeRoute())), h.Class(buttonClass("ghost"))], ["Play"]),
+    trailing: accountChrome(h, {
+      username,
+      gravatarHash: meGravatarHash,
+      menuOpen: model.accountMenuOpen,
+      showLeaderboardLink: false,
+    }),
+    stage: h.div(
+      [h.Class("h-full overflow-y-auto"), h.DataAttribute("testid", "leaderboard-page")],
+      [
+        h.section(
+          [h.Class("mx-auto flex max-w-[720px] flex-col gap-sm")],
+          [
+            model.error == null
+              ? null
+              : h.div([h.Role("alert"), h.Class("text-label text-reconnect-rust")], [model.error]),
+            status == null ? null : h.div([h.Class("text-label text-lichen")], [status]),
+            model.status === "ready" && model.entries.length === 0
+              ? h.div([h.Class("text-label text-lichen")], ["No rated games yet."])
+              : null,
+            ...model.entries.map(row),
+            canLoadMore
+              ? h.button(
+                  [
+                    h.Type("button"),
+                    h.OnClick(RequestedLeaderboardNextPage()),
+                    h.Class(buttonClass("ghost", "mt-md self-start")),
+                    h.Disabled(model.status === "loading"),
+                  ],
+                  [model.status === "loading" ? "Loading..." : "Load more"],
+                )
+              : null,
+            model.status === "error"
+              ? h.button(
+                  [
+                    h.Type("button"),
+                    h.OnClick(RequestedLeaderboardRefresh()),
+                    h.Class(buttonClass("ghost", "mt-md self-start")),
+                  ],
+                  ["Try again"],
+                )
+              : null,
+          ],
         ),
-      ),
-      h.DataAttribute("testid", "leaderboard-page"),
-    ],
-    [
-      h.div(
-        [h.Class("mx-auto mb-5 flex max-w-[720px] flex-wrap items-center justify-between gap-md")],
-        [
-          h.div([h.Class("flex min-w-0 flex-col gap-xs")], [h.h1([h.Class("m-0 text-title")], ["Leaderboard"])]),
-          h.div(
-            [h.Class("flex flex-wrap items-center gap-md")],
-            [
-              h.a([h.Href(routePath(HomeRoute())), h.Class(buttonClass("ghost"))], ["Play"]),
-              accountChrome(h, {
-                username,
-                gravatarHash: meGravatarHash,
-                menuOpen: model.accountMenuOpen,
-                showLeaderboardLink: false,
-              }),
-            ],
-          ),
-        ],
-      ),
-      h.section(
-        [h.Class("mx-auto flex max-w-[720px] flex-col gap-sm")],
-        [
-          model.error == null
-            ? null
-            : h.div([h.Role("alert"), h.Class("text-label text-reconnect-rust")], [model.error]),
-          status == null ? null : h.div([h.Class("text-label text-lichen")], [status]),
-          model.status === "ready" && model.entries.length === 0
-            ? h.div([h.Class("text-label text-lichen")], ["No rated games yet."])
-            : null,
-          ...model.entries.map(row),
-          canLoadMore
-            ? h.button(
-                [
-                  h.Type("button"),
-                  h.OnClick(RequestedLeaderboardNextPage()),
-                  h.Class(buttonClass("ghost", "mt-md self-start")),
-                  h.Disabled(model.status === "loading"),
-                ],
-                [model.status === "loading" ? "Loading..." : "Load more"],
-              )
-            : null,
-          model.status === "error"
-            ? h.button(
-                [
-                  h.Type("button"),
-                  h.OnClick(RequestedLeaderboardRefresh()),
-                  h.Class(buttonClass("ghost", "mt-md self-start")),
-                ],
-                ["Try again"],
-              )
-            : null,
-        ],
-      ),
-      appVersionBadge(h, chrome),
-    ],
-  );
+      ],
+    ),
+  });
 });

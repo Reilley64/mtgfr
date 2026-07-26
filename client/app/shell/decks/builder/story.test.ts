@@ -38,6 +38,12 @@ import { BindBuilderCardPointer, view as builderView } from "./view";
 
 const emptyChrome = { version: null, faithfulCount: null, oracleTotal: null, coverageHref: null };
 const me = { id: 1, email: "alice@example.com", username: "alice" };
+const emptyViewInputs = {
+  chrome: emptyChrome,
+  username: me.username,
+  meGravatarHash: null,
+  accountMenuOpen: false,
+};
 
 const url = (pathname: string, search = "") => ({
   protocol: "http:",
@@ -242,7 +248,7 @@ test("catalog and decklist are independent overscroll-contained scroll hosts", (
   };
 
   Scene.scene(
-    { update: builderUpdate, view: (model) => builderView(model, { chrome: emptyChrome }) },
+    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
     Scene.with(model),
     Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "deck" }), ClearedBuilderHover()),
     Scene.Mount.resolve(BindCardArt, ClearedBuilderHover() as never),
@@ -272,7 +278,7 @@ test("print picker freezes catalog and decklist scroll while print grid stays sc
   };
 
   Scene.scene(
-    { update: builderUpdate, view: (model) => builderView(model, { chrome: emptyChrome }) },
+    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
     Scene.with(model),
     Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "deck" }), ClearedBuilderHover()),
     Scene.Mount.resolve(OpenDialogAsModal(), ClearedBuilderHover()),
@@ -303,7 +309,7 @@ test("print selection renders a Scryfall tile picker instead of a UUID input", (
   };
 
   Scene.scene(
-    { update: builderUpdate, view: (model) => builderView(model, { chrome: emptyChrome }) },
+    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
     Scene.with(model),
     Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "deck" }), ClearedBuilderHover()),
     Scene.Mount.resolve(OpenDialogAsModal(), ClearedBuilderHover()),
@@ -398,7 +404,7 @@ test("decklist rows are keyed by card id so pointer mounts remount after remove"
 
   // Keys force snabbdom to destroy/recreate rows; without them BindBuilderCardPointer
   // keeps the removed cardId after the first click (Mount args are mount-time only).
-  const html = builderView(model, { chrome: emptyChrome });
+  const html = builderView(model, emptyViewInputs);
   expect(html).not.toBeNull();
   if (html == null) return;
   for (const id of ["mana-crypt", "sol-ring"] as const) {
@@ -451,7 +457,7 @@ test("pool cards do not set a native title tooltip on hover", () => {
   };
 
   Scene.scene(
-    { update: builderUpdate, view: (model) => builderView(model, { chrome: emptyChrome }) },
+    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
     Scene.with(model),
     Scene.expect(Scene.selector('[data-testid="pool-card-sol-ring"]')).toExist(),
     Scene.expect(Scene.selector('[data-testid="pool-card-sol-ring"][title]')).toBeAbsent(),
@@ -483,7 +489,7 @@ test("hover preview and context menu render when present in the model", () => {
   };
 
   Scene.scene(
-    { update: builderUpdate, view: (model) => builderView(model, { chrome: emptyChrome }) },
+    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
     Scene.with(model),
     Scene.expect(Scene.selector('[data-testid="builder-hover-preview"]')).toExist(),
     Scene.expect(Scene.selector('[data-testid="builder-context-menu"]')).toExist(),
@@ -583,7 +589,7 @@ test("Cancel button renders in builder view", () => {
   };
 
   Scene.scene(
-    { update: builderUpdate, view: (model) => builderView(model, { chrome: emptyChrome }) },
+    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
     Scene.with(model),
     Scene.expect(Scene.selector('[data-testid="builder-cancel"]')).toExist(),
   );
@@ -598,7 +604,7 @@ test("discard confirm dialog renders when confirmingDiscard is true", () => {
   };
 
   Scene.scene(
-    { update: builderUpdate, view: (model) => builderView(model, { chrome: emptyChrome }) },
+    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
     Scene.with(model),
     Scene.Mount.resolve(OpenDialogAsModal(), ClearedBuilderHover()),
     Scene.expect(Scene.selector('[data-testid="builder-discard-confirm"]')).toExist(),

@@ -67,6 +67,14 @@ function textContent(node: unknown): string {
   return (n.children ?? []).map(textContent).join("");
 }
 
+function expectShellFrame() {
+  return [
+    Scene.expect(Scene.selector('[data-testid="shell-frame"]')).toExist(),
+    Scene.expect(Scene.selector("#portrait-gate")).not.toExist(),
+    Scene.expect(Scene.selector('[data-testid="shell-stage"] main')).not.toExist(),
+  ] as const;
+}
+
 const atraxa = card({
   color_identity: [2, 4, 5],
   cost: { colored: [0, 0, 1, 1, 1], generic: 4 },
@@ -149,6 +157,8 @@ describe("shell surface scenes", () => {
       Scene.expect(Scene.selector('[data-testid="auth-email"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="auth-password"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="auth-submit"]')).toExist(),
+      ...expectShellFrame(),
+      Scene.expect(Scene.selector('[data-testid="shell-frame"]')).toHaveClass("shell-atmosphere-auth"),
       Scene.expect(Scene.selector('[data-testid="app-version"]')).toExist(),
       Scene.expect(Scene.text("API 1.2.3")).toExist(),
       Scene.expect(Scene.text("edh.reilley.dev")).toExist(),
@@ -219,6 +229,8 @@ describe("shell surface scenes", () => {
         }),
       ),
       Scene.expect(Scene.selector('[data-testid="decks-page"]')).toExist(),
+      ...expectShellFrame(),
+      Scene.expect(Scene.selector('[data-testid="shell-header"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="header-leaderboard-link"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="leaderboard-teaser"]')).not.toExist(),
       Scene.expect(Scene.selector('[data-testid="account-menu-trigger"]')).toExist(),
@@ -358,6 +370,7 @@ describe("shell surface scenes", () => {
         }),
       ),
       Scene.expect(Scene.selector('[data-testid="leaderboard-page"]')).toExist(),
+      ...expectShellFrame(),
       Scene.expectAll(Scene.all.selector('[data-testid="leaderboard-row"]')).toHaveCount(2),
       Scene.expect(Scene.text("#1")).toExist(),
       Scene.expect(Scene.text("alice")).toExist(),
@@ -395,6 +408,7 @@ describe("shell surface scenes", () => {
         }),
       ),
       Scene.expect(Scene.selector('[data-testid="coverage-page"]')).toExist(),
+      ...expectShellFrame(),
       Scene.expect(Scene.selector('[data-testid="coverage-page"]')).toHaveClass("h-dvh"),
       Scene.expect(Scene.selector('[data-testid="coverage-page"]')).toHaveClass("overflow-hidden"),
       Scene.expect(Scene.selector('[data-testid="coverage-page"]')).not.toHaveClass("h-full"),
@@ -575,6 +589,8 @@ describe("shell surface scenes", () => {
         }),
       ),
       Scene.expect(Scene.selector('[data-testid="deck-builder-page"]')).toExist(),
+      ...expectShellFrame(),
+      Scene.expect(Scene.selector('[data-testid="account-menu-trigger"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="deck-name"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="save-deck"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="builder-cancel"]')).toExist(),
@@ -600,6 +616,8 @@ describe("shell surface scenes", () => {
         }),
       ),
       Scene.expect(Scene.selector('[data-testid="lobby-entry-choose"]')).toExist(),
+      ...expectShellFrame(),
+      Scene.expect(Scene.selector('[data-testid="account-menu-trigger"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-host"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-open-join"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-deck-card"]')).toExist(),
@@ -670,6 +688,8 @@ describe("shell surface scenes", () => {
         }),
       ),
       Scene.expect(Scene.selector('[data-testid="lobby-table-code"]')).toExist(),
+      ...expectShellFrame(),
+      Scene.expect(Scene.selector('[data-testid="account-menu-trigger"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-copy-code"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-seats"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-seat-0"]')).toExist(),
@@ -736,6 +756,7 @@ describe("shell surface scenes", () => {
     Scene.scene(
       { update, view },
       Scene.with(authedModel(NotFoundRoute({ path: "/missing" }))),
+      ...expectShellFrame(),
       Scene.expect(Scene.text("Not found")).toExist(),
       Scene.expect(Scene.text("No Foldkit route for /missing.")).toExist(),
     );

@@ -18,6 +18,7 @@ import * as Auth from "./shell/auth";
 import * as Coverage from "./shell/coverage";
 import * as DeckBuilder from "./shell/decks/builder";
 import * as DeckList from "./shell/decks/list";
+import { shellFrame } from "./shell/frame/shell-frame";
 import * as Leaderboard from "./shell/leaderboard";
 import * as Lobby from "./shell/lobby";
 
@@ -61,16 +62,15 @@ function nav(model: Model) {
 }
 
 function shell(model: Model, title: string, body: string) {
-  return h.main(
-    [h.Class("min-h-screen bg-forest-floor text-snow")],
-    [
-      nav(model),
-      h.section(
-        [h.Class("mx-auto flex max-w-[960px] flex-col gap-md p-xxl")],
-        [h.h1([h.Class("m-0 text-title text-lichen")], [title]), h.p([h.Class("m-0 text-body text-snow/80")], [body])],
-      ),
-    ],
-  );
+  return shellFrame(h, {
+    atmosphere: "shell",
+    title,
+    chrome: chromeMeta(model),
+    stage: h.section(
+      [h.Class("mx-auto flex max-w-[960px] flex-col gap-md")],
+      [h.p([h.Class("m-0 text-body text-snow/80")], [body])],
+    ),
+  });
 }
 
 function toParentDeckListMessage(message: DeckList.ViewMessage): Message {
@@ -89,8 +89,11 @@ function toParentDeckListMessage(message: DeckList.ViewMessage): Message {
 
 function toParentDeckBuilderMessage(message: DeckBuilder.ViewMessage): Message {
   switch (message._tag) {
+    case "ClosedAccountMenu":
+    case "GotAuthMessage":
     case "ModalOpened":
     case "CardArtTick":
+    case "ToggledAccountMenu":
       return message;
     default:
       return GotDeckBuilderMessage({ message });
@@ -100,7 +103,10 @@ function toParentDeckBuilderMessage(message: DeckBuilder.ViewMessage): Message {
 function toParentLobbyMessage(message: Lobby.ViewMessage): Message {
   switch (message._tag) {
     case "CardArtTick":
+    case "ClosedAccountMenu":
     case "DeckCardFlipTick":
+    case "GotAuthMessage":
+    case "ToggledAccountMenu":
       return message;
     default:
       return GotLobbyMessage({ message });
@@ -229,7 +235,12 @@ function routeBody(model: Model) {
           slotId: "deck-builder",
           model: model.decks.builder,
           view: DeckBuilder.view,
-          viewInputs: { chrome: chromeMeta(model) },
+          viewInputs: {
+            chrome: chromeMeta(model),
+            username: model.session.me?.username ?? "",
+            meGravatarHash: model.session.meGravatarHash,
+            accountMenuOpen: model.decks.list.accountMenuOpen,
+          },
           toParentMessage: toParentDeckBuilderMessage,
         });
       case "DeckRoute":
@@ -237,7 +248,12 @@ function routeBody(model: Model) {
           slotId: "deck-builder",
           model: model.decks.builder,
           view: DeckBuilder.view,
-          viewInputs: { chrome: chromeMeta(model) },
+          viewInputs: {
+            chrome: chromeMeta(model),
+            username: model.session.me?.username ?? "",
+            meGravatarHash: model.session.meGravatarHash,
+            accountMenuOpen: model.decks.list.accountMenuOpen,
+          },
           toParentMessage: toParentDeckBuilderMessage,
         });
       case "PlayRoute": {
@@ -255,6 +271,9 @@ function routeBody(model: Model) {
             knownCommanders: model.decks.list.knownCommanders,
             chrome: chromeMeta(model),
             surface: "entry",
+            username: model.session.me?.username ?? "",
+            meGravatarHash: model.session.meGravatarHash,
+            accountMenuOpen: model.decks.list.accountMenuOpen,
           },
           toParentMessage: toParentLobbyMessage,
         });
@@ -274,6 +293,9 @@ function routeBody(model: Model) {
             knownCommanders: model.decks.list.knownCommanders,
             chrome: chromeMeta(model),
             surface: "table",
+            username: model.session.me?.username ?? "",
+            meGravatarHash: model.session.meGravatarHash,
+            accountMenuOpen: model.decks.list.accountMenuOpen,
           },
           toParentMessage: toParentLobbyMessage,
         });
@@ -290,6 +312,9 @@ function routeBody(model: Model) {
             knownCommanders: model.decks.list.knownCommanders,
             chrome: chromeMeta(model),
             surface: "table",
+            username: model.session.me?.username ?? "",
+            meGravatarHash: model.session.meGravatarHash,
+            accountMenuOpen: model.decks.list.accountMenuOpen,
           },
           toParentMessage: toParentLobbyMessage,
         });
