@@ -88,20 +88,20 @@ increments #3, #20 slice 2, and #24, all of which mint -1/-1 counters.
 Ranked increments live in [frank-horrigan-increments.md](frank-horrigan-increments.md); the
 increment that unblocks each card is in parentheses.
 
-- [ ] Agent Frank Horrigan (#1) — built 2026-07-26; still approximated (proliferate can't choose players, #17)
+- [x] Agent Frank Horrigan (#1) — built 2026-07-26, faithful (#17 cleared the proliferate residual 2026-07-27)
 - [x] Alpha Deathclaw (#12) — built 2026-07-26, faithful
 - [x] Bilious Skulldweller (#20 slice 3) — built 2026-07-27, faithful
-- [ ] Blightbelly Rat (#20 slice 3) — built 2026-07-27; still approximated (proliferate can't choose players, #17)
-- [ ] Bloated Contaminator (#20 slice 3) — built 2026-07-27; still approximated (proliferate can't choose players, #17)
+- [x] Blightbelly Rat (#20 slice 3) — built 2026-07-27, faithful (#17 cleared the proliferate residual same day)
+- [x] Bloated Contaminator (#20 slice 3) — built 2026-07-27, faithful (#17 cleared the proliferate residual same day)
 - [ ] Bloatfly Swarm (#21, #22)
-- [x] Cankerbloom (#10) — built 2026-07-26; still approximated (proliferate can't choose players, #17)
-- [ ] Contagion Engine (#3) — built 2026-07-26; still approximated (proliferate can't choose players, #17)
-- [ ] Contaminant Grafter (#20 slices 3–4)
+- [x] Cankerbloom (#10) — built 2026-07-26, faithful (#17 cleared the proliferate residual 2026-07-27)
+- [x] Contagion Engine (#3) — built 2026-07-26, faithful (#17 cleared the proliferate residual 2026-07-27)
+- [x] Contaminant Grafter (#20 slices 3–4) — built 2026-07-27, faithful
 - [x] Everflowing Chalice (#11) — built 2026-07-26, faithful
-- [ ] Feral Ghoul (#21)
-- [ ] Garruk, Cursed Huntsman (#13)
+- [x] Feral Ghoul (#21) — built 2026-07-27, faithful
+- [ ] Garruk, Cursed Huntsman (#13) — not authored; #13's build agent stalled out on every attempt in wave 6
 - [x] Garruk, Primal Hunter (#4) — built 2026-07-26, faithful
-- [ ] Glistening Sphere (#20 slice 4)
+- [x] Glistening Sphere (#20 slice 4) — built 2026-07-27, faithful
 - [x] Ichor Rats (#20 slices 1–2) — built 2026-07-26, faithful
 - [x] Infectious Bite (#7, #20 slice 1) — built 2026-07-27, faithful
 - [x] Infectious Inquiry (#20 slice 1) — built 2026-07-26, faithful
@@ -112,28 +112,28 @@ increment that unblocks each card is in parentheses.
 - [x] Overgrown Tomb (#6) — built 2026-07-26, faithful
 - [x] Phyresis (#20 slice 2) — built 2026-07-26, faithful
 - [ ] Phyresis Outbreak (#20 slice 5)
-- [ ] Phyrexian Swarmlord (#20 slices 2, 4)
+- [x] Phyrexian Swarmlord (#20 slices 2, 4) — built 2026-07-27, faithful
 - [x] Plague Stinger (#20 slice 2) — built 2026-07-26, faithful
 - [x] Power Fist (#15) — built 2026-07-27, faithful
 - [x] Rampaging Yao Guai (#9) — built 2026-07-26, faithful
 - [ ] Scheming Aspirant (#18)
 - [x] Undergrowth Stadium (#5) — built 2026-07-26, faithful
-- [ ] Venerated Rotpriest (#20 slices 1, 3)
+- [x] Venerated Rotpriest (#20 slices 1, 3) — built 2026-07-27, faithful
 - [ ] Vorinclex, Monstrous Raider (#19)
-- [ ] Vraska, Betrayal's Sting (#8, #16, #25, #20 slices 1, 4)
+- [ ] Vraska, Betrayal's Sting (#8, #16, #25, #20 slices 1, 4) — built 2026-07-27; still approximated ({B/P} modeled as {B} (#8), so Compleated never applies (#16); −2 Treasure mode omitted (#25))
 - [x] Vraska's Fall (#20 slice 1) — built 2026-07-26, faithful
 - [ ] Winding Constrictor (#19)
 
 ## Observability re-audit
 
 The mandatory re-audit found **nine** pool-absence claims this deck falsifies. Each is folded
-into the increment that clears it.
+into the increment that clears it. Six are cleared as of 2026-07-27; three remain.
 
 | Claim | Falsified by | Increment |
 |---|---|---|
-| `final_act.toml:13,22` — "each opponent loses all counters" dropped; "this pool tracks no player-level counters" | the whole infect/rad suite | #23 |
-| `types/effect/shared.rs:1035` — proliferate "can't yet add a time counter to a suspended card" | 9 proliferate sources + 3 planeswalkers + Innkeeper's Talent | #17 (the note understates it: proliferate also omits **players**, **loyalty**, and **Class level** counters) |
-| `types/effect/shared.rs:1070` — "grow this slot array when a future card needs another named kind" | poison/rad | #20 slice 1 — the prescribed remedy *cannot work*: the slot array lives on `Permanent`, and poison/rad live on players |
+| ~~`final_act.toml:13,22` — "each opponent loses all counters" dropped; "this pool tracks no player-level counters"~~ **cleared 2026-07-27** | the whole infect/rad suite | #23 (landed) — the fifth mode is restored; only "destroy all battles" remains dropped |
+| ~~`types/effect/shared.rs:1035` — proliferate "can't yet add a time counter to a suspended card"~~ **cleared 2026-07-27** | 9 proliferate sources + 3 planeswalkers + Innkeeper's Talent | #17 (landed) — the note understated it: proliferate also omitted **players**, **loyalty**, and **Class level**. Players and loyalty now ship; the exile-store kinds (time/suspend) remain the residual |
+| ~~`types/effect/shared.rs:1070` — "grow this slot array when a future card needs another named kind"~~ **cleared 2026-07-27** | poison/rad | #20 slices 1 + #21 (landed) — the prescribed remedy could not work (the slot array lives on `Permanent`, poison/rad live on players); a separate `PlayerCounterKind` shipped instead |
 | `characteristics.rs:1811` — CR 616.1 ordering "documented rather than offered as a choice" because every pool replacement is the affected player's own adder | Vorinclex, Monstrous Raider | #19 — a *halving* owned by an opponent breaks all three premises at once |
 | `characteristics.rs:1807` — `counters_after_replacements(object, base)` | Winding Constrictor, Vorinclex, Innkeeper's Talent L3 | #19 — the `ObjectId` signature gives "or on **you**" no call site, and the +1/+1-only scope silently skips every other kind |
 | ~~`characteristics.rs:1100` — CR 704.5r ±1/±1 annihilation SBA "unobservable today (no pool card puts both kinds on one creature)"~~ **cleared 2026-07-26** | Contagion Clasp and Contagion Engine place real `-1/-1` counters onto a deck full of `+1/+1` counters | #24 (landed) |
