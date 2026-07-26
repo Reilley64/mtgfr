@@ -158,7 +158,42 @@ pub fn complete_visible(
             }
         });
     }
+    // Stack abilities keep `source` as the activation-time id (counter-ability targeting). After
+    // sacrifice-as-cost that id is a Moved tombstone omitted from `objects`, so stack art + deck
+    // seat prints ride on the entry itself.
+    for entry in &mut state.stack {
+        if entry.card_id.is_empty() {
+            continue;
+        }
+        let seat = game.owner_of(entry.source).0 as usize;
+        if seat >= extras.prints.len() {
+            continue;
+        }
+        if let Some(print) = extras.prints[seat].get(&entry.card_id)
+            && !print.is_empty()
+        {
+            entry.print = print.clone();
+        }
+    }
     state
+}
+
+/// Print / catalog identity for a stack spell or ability source. Follows `Object::Moved` so a
+/// sacrificed source still yields art even though the tombstone is absent from `objects`.
+fn stack_source_art(game: &engine::Game, source: engine::ObjectId) -> (String, String, String) {
+    let def = game.def_of(source);
+    let front = game.front_def_of(source);
+    let card_id_src = if def.id.is_empty() { &front } else { &def };
+    let print_src = if def.default_print.is_empty() {
+        &front
+    } else {
+        &def
+    };
+    (
+        print_src.default_print.to_string(),
+        card_id_src.id.to_string(),
+        def.name.to_string(),
+    )
 }
 
 /// Wire form of one of `game`'s stored [`engine::LegalAction`]s. `MeaningfulAction::PlayLand`/
@@ -907,6 +942,7 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                     .into_iter()
                     .map(WireTarget::of)
                     .collect();
+                let (print, card_id, name) = stack_source_art(game, id);
                 StackObjectView {
                     kind: "spell".to_string(),
                     source: id,
@@ -914,6 +950,9 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                     label: named_message("card.name", game.def_of(id).name),
                     target: game.spell_target(id).map(WireTarget::of),
                     targets,
+                    print,
+                    card_id,
+                    name,
                 }
             }
             engine::StackEntry::Ability {
@@ -923,6 +962,7 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                 target,
             } => {
                 let targets: Vec<WireTarget> = target.map(WireTarget::of).into_iter().collect();
+                let (print, card_id, name) = stack_source_art(game, source);
                 StackObjectView {
                     kind: "ability".to_string(),
                     source,
@@ -930,6 +970,9 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                     label: to_wire_message(effect.message()),
                     target: targets.first().copied(),
                     targets,
+                    print,
+                    card_id,
+                    name,
                 }
             }
         })
@@ -3208,5 +3251,116 @@ mod tests {
             })
             .unwrap();
         }
+    }
+
+    /// Sacrifice-as-cost (Evolving Wilds) leaves a Moved tombstone as the ability's `source`.
+    /// That id is omitted from `objects` (`live_object_ids` skips Moved), so stack art cannot
+    /// join against the object list — `StackObjectView.print` / `name` / `card_id` must ride on
+    /// the stack entry itself (same reason `ChoiceItem.print` exists for library picks).
+    #[test]
+    fn sacrifice_as_cost_ability_projects_source_art_on_the_stack_entry() {
+        let mut game = Game::new();
+        let p0 = PlayerId(0);
+        game.stack_library(p0, &[def("Forest")]);
+        let wilds = game.spawn_on_battlefield(p0, def("Evolving Wilds"));
+        let wilds_def = game.def_of(wilds);
+        let expected_print = wilds_def.default_print.to_string();
+        let expected_card_id = wilds_def.id.to_string();
+
+        game.submit(engine::Intent::ActivateAbility {
+            player: p0,
+            object: wilds,
+            ability_index: 0,
+            target: None,
+            sacrifice: vec![],
+            discard_cost: vec![],
+            x: 0,
+        })
+        .expect("activate Evolving Wilds");
+
+        assert_eq!(game.zone_of(wilds), engine::Zone::Graveyard);
+        assert_ne!(
+            game.current_id(wilds),
+            wilds,
+            "sacrifice mints a new graveyard object id"
+        );
+
+        let snap = snapshot(&game, p0);
+        assert!(
+            snap.objects.iter().all(|o| o.id != wilds),
+            "Moved tombstone must not appear in objects"
+        );
+        let entry = snap
+            .stack
+            .iter()
+            .find(|e| e.kind == "ability" && e.source == wilds)
+            .expect("ability on stack keyed by the activation source id");
+        assert_eq!(entry.print, expected_print);
+        assert_eq!(entry.name, "Evolving Wilds");
+        assert_eq!(entry.card_id, expected_card_id);
+
+        // Deck-chosen Printings overlay onto stack entries the same way as ChoiceItem picks.
+        let preferred = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+        let mut prints: [std::collections::HashMap<String, String>; 4] = Default::default();
+        prints[0].insert(expected_card_id, preferred.into());
+        let with_seat = complete_visible(
+            &game,
+            Some(p0),
+            &ViewExtras {
+                prints,
+                ..ViewExtras::default()
+            },
+        );
+        let seated = with_seat
+            .stack
+            .iter()
+            .find(|e| e.kind == "ability" && e.source == wilds)
+            .expect("ability still on stack");
+        assert_eq!(seated.print, preferred);
+    }
+
+    /// Tokens cease to exist (`Object::Removed`) instead of becoming a graveyard card (CR 111.7).
+    /// A Food's "{2}, {T}, Sacrifice this: gain 3 life" still leaves an ability on the stack keyed
+    /// by that Removed id — stack art must read last-known identity, not panic / blank.
+    #[test]
+    fn sacrifice_as_cost_token_ability_projects_source_art_on_the_stack_entry() {
+        let mut game = Game::new();
+        let p0 = PlayerId(0);
+        game.fund_mana(p0);
+        let food_def =
+            cards::get_token("a468338f-635e-4206-89d6-72d723071d45").expect("Food token profile");
+        let expected_print = food_def.default_print.to_string();
+        let expected_card_id = food_def.id.to_string();
+        let food = game.spawn_token_on_battlefield(p0, food_def);
+
+        game.submit(engine::Intent::ActivateAbility {
+            player: p0,
+            object: food,
+            ability_index: 0,
+            target: None,
+            sacrifice: vec![],
+            discard_cost: vec![],
+            x: 0,
+        })
+        .expect("activate Food");
+
+        assert!(
+            !game.live_object_ids().contains(&food),
+            "Food token ceases to exist as the activation cost"
+        );
+
+        let snap = snapshot(&game, p0);
+        assert!(
+            snap.objects.iter().all(|o| o.id != food),
+            "Removed token must not appear in objects"
+        );
+        let entry = snap
+            .stack
+            .iter()
+            .find(|e| e.kind == "ability" && e.source == food)
+            .expect("Food ability on stack keyed by the sacrificed token id");
+        assert_eq!(entry.print, expected_print);
+        assert_eq!(entry.name, "Food");
+        assert_eq!(entry.card_id, expected_card_id);
     }
 }

@@ -55,7 +55,7 @@ impl Game {
             Object::Spell(_) => Zone::Stack,
             Object::Permanent(_) => Zone::Battlefield,
             Object::Moved { to } => self.zone_of(*to),
-            Object::Removed => panic!("object {object} has left the game"),
+            Object::Removed { .. } => panic!("object {object} has left the game"),
         }
     }
 

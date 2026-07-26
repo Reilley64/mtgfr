@@ -66,12 +66,17 @@ function stackItems(board: BoardModel, state: VisibleState, showStaged: boolean)
   const items: StackItem[] = state.stack.map((entry, row) => {
     const meta = objectMeta(state, entry.source);
     const label = formatMessage(entry.label);
+    // Prefer live object art; fall back to entry-carried identity when `source` is a Moved
+    // tombstone (sacrifice-as-cost) omitted from `objects`.
+    const print = meta.print || entry.print || "";
+    const name = meta.name || entry.name || null;
+    const cardId = meta.cardId || entry.card_id || undefined;
     return {
       row,
       source: entry.source,
-      imageName: entry.kind === "spell" ? label : meta.name,
-      print: meta.print,
-      cardId: meta.cardId,
+      imageName: entry.kind === "spell" ? label : name,
+      print,
+      cardId,
       label,
       staged: false,
     };

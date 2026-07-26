@@ -247,7 +247,7 @@ impl Game {
                     // object left the game entirely (`def_of` would panic). Every other consumer
                     // (Thunderclap Drake) keeps the plain "nothing left to copy" no-op.
                     if !last_known_information
-                        || matches!(self.objects[original as usize], Object::Removed)
+                        || matches!(self.objects[original as usize], Object::Removed { .. })
                     {
                         return;
                     }

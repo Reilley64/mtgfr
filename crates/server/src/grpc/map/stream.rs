@@ -66,6 +66,9 @@ pub fn stack_object_view_to_pb(entry: StackObjectView) -> pb::StackObjectView {
         label: Some(message_ref_to_pb(entry.label)),
         target: entry.target.map(wire_target_to_pb),
         targets: entry.targets.into_iter().map(wire_target_to_pb).collect(),
+        print: entry.print,
+        card_id: entry.card_id,
+        name: entry.name,
     }
 }
 
@@ -1686,6 +1689,9 @@ mod tests {
                 label: MessageRef::key("test.shock"),
                 target: Some(schema::WireTarget::Player { player: 1 }),
                 targets: vec![schema::WireTarget::Player { player: 1 }],
+                print: "shock-print".into(),
+                card_id: "shock-id".into(),
+                name: "Shock".into(),
             }],
             combat: CombatView::default(),
             can_act: true,

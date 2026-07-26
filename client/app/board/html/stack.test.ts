@@ -239,6 +239,41 @@ test("ability stack face keeps card art while its source permanent is mid-battle
   );
 });
 
+test("ability stack face uses entry print when the source id is no longer in objects", () => {
+  // Evolving Wilds / other sacrifice-as-cost activations: stack.source is the Moved tombstone id,
+  // which never appears in VisibleState.objects. Art must come from StackObjectView.print.
+  const model: ViewModel = {
+    board: initialBoardModel(),
+    fold: gameFold(
+      gameState({
+        objects: [],
+        stack: [
+          {
+            controller: 0,
+            kind: "ability",
+            label: testMessageRef("Search your library for a basic land card"),
+            source: 77,
+            print: "evolving-wilds-print",
+            name: "Evolving Wilds",
+            card_id: "evolving-wilds-id",
+          },
+        ],
+      }),
+    ),
+    tableId: "T1",
+  };
+  Scene.scene(
+    { update: (m) => [m, []], view: overlayView },
+    Scene.with(model),
+    resolveBoardOverlayMounts(),
+    resolveBoardCardArtMounts(),
+    Scene.expect(Scene.testId("stack-overlay")).toExist(),
+    Scene.expect(Scene.testId("stack-face-0")).toExist(),
+    // BindCardArt only mounts when print+name resolve — proves entry.print was used.
+    Scene.expect(Scene.selector("[data-art-url]")).toExist(),
+  );
+});
+
 test("ability stack face keeps card art while its source permanent is mid from-stack flight", () => {
   Scene.scene(
     { update: (m) => [m, []], view: overlayView },

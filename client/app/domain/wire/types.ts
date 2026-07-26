@@ -218,9 +218,12 @@ export type ObjectView = {
   zone: number;
 };
 export type StackObjectView = {
+  card_id?: string;
   controller: number;
   kind: string;
   label: MessageRef;
+  name?: string;
+  print?: string;
   source: number;
   target?: null | WireTarget;
   targets?: Array<WireTarget>;

@@ -477,7 +477,7 @@ impl Game {
                     // `Game::dying_creature_lki` captured before the slot was tombstoned.
                     if matches!(
                         &self.objects[self.current_id(from) as usize],
-                        Object::Removed
+                        Object::Removed { .. }
                     ) {
                         if let Some(&(_, ref def, owner)) = self
                             .batch_trigger_scratch
@@ -636,7 +636,7 @@ impl Game {
                     // would panic reading it.
                     if matches!(
                         &self.objects[self.current_id(from) as usize],
-                        Object::Removed
+                        Object::Removed { .. }
                     ) {
                         continue;
                     }
@@ -919,7 +919,7 @@ impl Game {
                     // false` case above.
                     if matches!(
                         &self.objects[self.current_id(source) as usize],
-                        Object::Removed
+                        Object::Removed { .. }
                     ) {
                         continue;
                     }
@@ -1454,7 +1454,7 @@ impl Game {
         for source in sources {
             if matches!(
                 &self.objects[self.current_id(source) as usize],
-                Object::Removed
+                Object::Removed { .. }
             ) {
                 continue;
             }
@@ -1575,7 +1575,7 @@ impl Game {
                     // the graveyard — no death to watch (matches the guard in `enqueue_triggers`).
                     if matches!(
                         &self.objects[self.current_id(from) as usize],
-                        Object::Removed
+                        Object::Removed { .. }
                     ) {
                         continue;
                     }
@@ -1627,7 +1627,7 @@ impl Game {
                     // guard in `enqueue_triggers`/`batch_creature_deaths`).
                     if matches!(
                         &self.objects[self.current_id(from) as usize],
-                        Object::Removed
+                        Object::Removed { .. }
                     ) {
                         continue;
                     }
@@ -1694,7 +1694,7 @@ impl Game {
                     // guard in `enqueue_triggers`/`batch_creature_deaths`).
                     if matches!(
                         &self.objects[self.current_id(from) as usize],
-                        Object::Removed
+                        Object::Removed { .. }
                     ) {
                         continue;
                     }
@@ -4119,11 +4119,12 @@ impl Game {
             // off its vanishing) can't be modal — no pool token is a modal card — and `def_of`
             // panics on a fully-`Removed` object, so that case is excluded up front rather than
             // read.
-            let modal_modes = (!matches!(&self.objects[group.source as usize], Object::Removed))
-                .then(|| self.def_of(group.source))
-                .filter(|def| {
-                    def.modal && !def.abilities.iter().any(|a| a.timing == Timing::Spell)
-                });
+            let modal_modes =
+                (!matches!(&self.objects[group.source as usize], Object::Removed { .. }))
+                    .then(|| self.def_of(group.source))
+                    .filter(|def| {
+                        def.modal && !def.abilities.iter().any(|a| a.timing == Timing::Spell)
+                    });
             if let Some(def) = modal_modes {
                 let group = self.pending_trigger_groups.remove(0);
                 crate::pending::raise_choice(
@@ -4497,7 +4498,7 @@ impl Game {
         // Dies-trigger source token may already be `Object::Removed` by placement time, same
         // guard `Game::resolve_top`'s own re-check uses.
         let source_colors = match &self.objects[source as usize] {
-            Object::Removed => [false; Color::COUNT],
+            Object::Removed { .. } => [false; Color::COUNT],
             _ => color_identity(&self.def_of(source)),
         };
         let legality_x = self.ability_source_x(source);
