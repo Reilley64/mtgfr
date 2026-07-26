@@ -1,6 +1,6 @@
 # CI and Release
 
-**Status:** Current (as of 2026-07-26)
+**Status:** Current (as of 2026-07-26; verify uses `mtgfr-ci` + migrate job)
 **Module:** `.github/workflows/`, root `package.json`, `.husky/commit-msg`,
 `.cursor/scripts/wire-cloud-git-hooks.sh`
 
@@ -61,25 +61,33 @@ branch commit range.
 ### `verify-jobs.yml` (reusable)
 
 **`verify-jobs.yml`** (reusable):
-- `verify-server`: pass-marker gate + parallel lint/tests + mark + aggregator.
-  Pass marker `verify-server-v3-*` hashes `crates/**`, `proto/**`, Cargo/Toasty
-  lockfiles, `toasty/**`, `.config/nextest.toml`, `justfile`, this workflow,
-  `docs/CR_INDEX.md`, and `scripts/gen_cr_index.py`. Key is computed once at
-  restore on a clean checkout; save uses that same key (do not re-`hashFiles`
-  after checks).
+- `verify-server`: pass-marker gate + parallel lint / nextest / migrate + mark +
+  aggregator. Pass marker `verify-server-v3-*` hashes `crates/**`, `proto/**`,
+  Cargo/Toasty lockfiles, `toasty/**`, `.config/nextest.toml`, `justfile`, this
+  workflow, `docs/CR_INDEX.md`, and `scripts/gen_cr_index.py`. Key is computed
+  on a clean checkout at restore and again at save (identical inputs; do not
+  re-`hashFiles` after mutating the tree).
   - `verify-server-gate`: `actions/cache/restore@v5` on `.ci-pass`; emits
     `cache-hit`.
-  - On miss: `verify-server-lint` (CR index + fmt + clippy; installs protoc;
-    `Swatinem/rust-cache` `shared-key: verify-server`) runs in parallel with
-    `verify-server-test` matrix partitions `1`, `2`, and `3` (Postgres 16 +
-    migrate + `cargo nextest run --profile ci --partition count:i/3`; same
-    `shared-key: verify-server`; per-shard JUnit upload + test summary).
+  - On miss: `verify-server-lint`, `verify-server-test` (matrix partitions
+    `1`/`2`/`3`), and `verify-server-migrate` run in parallel inside
+    `ghcr.io/reilley64/mtgfr-ci:latest` (`container.options: --user root` so the
+    GHA workspace mount is writable). Each uses `Swatinem/rust-cache`
+    `shared-key: verify-server`.
+    - Lint: CR index + fmt + clippy (tools from the image; no host rustup/protoc
+      installs).
+    - Test shards: `cargo nextest run --profile ci --partition count:i/3` only —
+      **no** Postgres service (tests use in-memory SQLite). Per-shard JUnit
+      upload + test summary.
+    - Migrate: Postgres 16 service + `just migrate` only;
+      `DATABASE_URL=postgresql://mtgfr:mtgfr@postgres:5432/mtgfr` (service
+      hostname, not `localhost`).
   - `verify-server-mark`: `actions/cache/save@v5` only when gate miss and lint +
-    all test shards succeeded.
+    all test shards + migrate succeeded.
   - Aggregator job `Verify (server)`: green on cache hit, or on miss when lint +
-    tests + mark succeeded.
-  - On hit: lint, test, and mark jobs are skipped (`if:`); Postgres does not
-    start for skipped test jobs.
+    tests + migrate + mark succeeded.
+  - On hit: lint, test, migrate, and mark jobs are skipped (`if:`); Postgres does
+    not start for skipped migrate.
 - `verify-client`: Bun-only `just client-check` (tokens + mana-oracle + buf
   codegen + format + lint + typecheck + vitest). Pass marker
   `verify-client-v3-*` hashes `client/**`, `proto/**`,
@@ -109,8 +117,8 @@ persisted across jobs.
 **`ci-image.yml`:** on push to `main`/`master` when `docker/ci/**` or this workflow
 changes, and on `workflow_dispatch`, builds/pushes `ghcr.io/<owner>/mtgfr-ci:latest`
 with Buildx GHA cache scope `mtgfr-ci`, then attempts to mark the package public
-(`docker-ci-visibility`, `continue-on-error`). Server verify (`verify-jobs.yml`) still
-installs toolchain/protoc/just/nextest on the runner (does not use `mtgfr-ci` yet).
+(`docker-ci-visibility`, `continue-on-error`). Server verify miss-path jobs pull that
+image (`ghcr.io/reilley64/mtgfr-ci:latest`).
 
 ### Root package / semantic-release
 
@@ -133,8 +141,11 @@ Not published to npm. `@semantic-release/npm` bumps `package.json` version only 
 ## Implementation Decisions
 
 - **Server pass-marker restore/save split**: `verify-server-gate` restores only;
-  `verify-server-mark` saves only after lint + both nextest shards succeed. Lint
-  and test shards share one `Swatinem/rust-cache` `shared-key: verify-server`.
+  `verify-server-mark` saves only after lint + all nextest shards + migrate
+  succeed. Lint, test, and migrate jobs share `Swatinem/rust-cache`
+  `shared-key: verify-server` and run in `mtgfr-ci` (`--user root`).
+- **Migrate isolated from nextest**: Postgres exists only on
+  `verify-server-migrate`; nextest shards have no DB service.
 - **No `.releaserc`, no custom release rules**: semantic-release default config only. Version
   bumps follow the built-in Angular analyzer. `@semantic-release/git` not used (no committed
   `CHANGELOG.md`).
