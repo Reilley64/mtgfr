@@ -34,7 +34,8 @@ The client is a single Foldkit SPA with feature folders, but it drifts from Fold
 | PWA tooling | **Approach 2** — `vite-plugin-pwa` with **injectManifest** (or equivalent) and a hand-authored **network-only** SW (no precache, no runtime caching) |
 | Install UX | Browser-native only — no in-app Install button / `beforeinstallprompt` chrome |
 | Foldkit version | `foldkit` **`^0.132.0`** (from `^0.131.0`); bump `@foldkit/vite-plugin` / `@foldkit/devtools-mcp` only if 0.132 peers or changelog require it |
-| Effect version | **`effect` and every `@effect/*` dependency pinned to the same exact `4.0.0-beta.101`** (from `4.0.0-beta.97`) — AGENTS.md same-beta rule |
+| Effect version | **`effect` and every direct `@effect/*` dependency pinned to the same exact `4.0.0-beta.101`** (from `4.0.0-beta.97`) — AGENTS.md same-beta rule |
+| Effect platform packages | Direct deps match runtimes: `@effect/platform-browser` (SPA). **Do not** keep unused `@effect/platform-node` (Nitro BFF is Bun). Add `@effect/platform-bun@4.0.0-beta.101` only when a BFF Effect Layer actually needs it; `@effect-grpc/codegen` may still pull `platform-node` transitively |
 | Route lazy-load / workspace packages | Out of scope for this design |
 
 ## Approaches considered
@@ -66,7 +67,7 @@ Implement as **four waves** (separate PRs or stacked commits; each wave that cha
 
 | Wave | Deliverable |
 |---|---|
-| **0** | Dependency bump: `foldkit` `^0.132.0`; `effect` + `@effect/opentelemetry` + `@effect/platform-browser` + `@effect/platform-node` + `@effect/sql-pg` (and any other direct `@effect/*` pins) all **`4.0.0-beta.101`**; refresh `bun.lock`; fix compile/test breakages from the bump only — no protocol/route/PWA work in this wave unless required to compile |
+| **0** | Dependency bump: `foldkit` `^0.132.0`; `effect` + `@effect/opentelemetry` + `@effect/platform-browser` + `@effect/sql-pg` (and any other direct `@effect/*` pins) all **`4.0.0-beta.101`**; **remove** unused direct `@effect/platform-node` (BFF is Bun; add `@effect/platform-bun` only when needed); refresh `bun.lock`; fix compile/test breakages from the bump only — no protocol/route/PWA work in this wave unless required to compile |
 | **1** | Foldkit submodel protocol + `client/app/domain/` move + feature `index.ts` namespaces |
 | **2** | Play route reshape (in-game table-only URL) + lobby/parse/share updates |
 | **3** | Installable PWA (`vite-plugin-pwa`, icons, network-only SW, `entry` registration) |
@@ -76,7 +77,8 @@ Wave 0 is a prerequisite for Waves 1–3 (new Foldkit APIs / examples track 0.13
 #### Wave 0 — dependency bump (detail)
 
 - Edit `client/package.json` pins; run `bun install` in `client/`.
-- Do **not** leave mixed Effect betas (fiber/type skew).
+- Do **not** leave mixed Effect betas (fiber/type skew) among **direct** `@effect/*` pins.
+- Drop unused direct `@effect/platform-node`. Prefer `@effect/platform-bun` for any future BFF platform Layers (Nitro `preset: "bun"`).
 - `@effect-grpc/*` stays on its own beta line unless the install fails peer resolution — then bump only as far as needed and document in the Wave 0 PR.
 - Verify: `just client-check` (and Foldkit DevTools still connect if `@foldkit/devtools-mcp` / vite-plugin versions change).
 
@@ -221,7 +223,7 @@ Router `oneOf` order: two-segment pregame **before** one-segment game **before**
 
 ### Wave 0
 
-- Lockfile and `package.json` show `foldkit` `^0.132.0` and Effect family `4.0.0-beta.101` with no stray `beta.97` direct deps.
+- Lockfile and `package.json` show `foldkit` `^0.132.0` and Effect family `4.0.0-beta.101` with no stray `beta.97` **direct** deps; no unused direct `@effect/platform-node`.
 - `just client-check` green; no intentional product behavior changes.
 
 ### Wave 1
