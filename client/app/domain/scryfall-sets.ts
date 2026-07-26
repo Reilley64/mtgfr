@@ -63,8 +63,10 @@ function parseScryfallSets(body: unknown): ReadonlyArray<ScryfallSetRow> | null 
     const setType = readString(value, "set_type");
     if (code == null || name == null || cardCount == null) continue;
     if (cardCount <= 0) continue;
-    // Art Series and other memorabilia aren't deckable pool targets.
-    if (setType === "memorabilia") continue;
+    // Not deckable pool targets (Art Series, tokens, minigames, vanguard/avatars).
+    if (setType === "memorabilia" || setType === "token" || setType === "minigame" || setType === "vanguard") {
+      continue;
+    }
 
     rows.push({
       code,
