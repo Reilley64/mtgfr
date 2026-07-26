@@ -2,9 +2,7 @@
   "version": "8",
   "dialect": "postgres",
   "id": "20432e31-2872-4557-af5e-1259fc4a1dab",
-  "prevIds": [
-    "00000000-0000-0000-0000-000000000000"
-  ],
+  "prevIds": ["00000000-0000-0000-0000-000000000000"],
   "ddl": [
     {
       "isRlsEnabled": false,
@@ -275,14 +273,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "table_id"
-      ],
+      "columns": ["table_id"],
       "schemaTo": "public",
       "tableTo": "lobbies",
-      "columnsTo": [
-        "table_id"
-      ],
+      "columnsTo": ["table_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "name": "lobby_seats_table_id_lobbies_table_id_fkey",
@@ -291,10 +285,7 @@
       "table": "lobby_seats"
     },
     {
-      "columns": [
-        "table_id",
-        "seat"
-      ],
+      "columns": ["table_id", "seat"],
       "nameExplicit": false,
       "name": "lobby_seats_pkey",
       "entityType": "pks",
@@ -302,9 +293,7 @@
       "table": "lobby_seats"
     },
     {
-      "columns": [
-        "table_id"
-      ],
+      "columns": ["table_id"],
       "nameExplicit": false,
       "name": "lobbies_pkey",
       "schema": "public",
@@ -312,9 +301,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "table_id"
-      ],
+      "columns": ["table_id"],
       "nameExplicit": false,
       "name": "table_routes_pkey",
       "schema": "public",
