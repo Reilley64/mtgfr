@@ -315,6 +315,7 @@ export const update = (
         { ...model, atEnd: false, offset: 0, pool: [], query, searching: true },
         [SearchDeckBuilderCards({ query, offset: 0 })],
       ],
+      ChangedBuilderRoute: ({ editingId }) => enterBuilder(editingId),
       RequestedNextBuilderPage: () => {
         if (model.atEnd || model.searching) return [model, []];
         const offset = model.offset + PAGE;

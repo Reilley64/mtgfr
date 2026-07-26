@@ -11,6 +11,7 @@ import {
   ReceivedLeaderboardPage,
   ReceivedMeGravatarHash,
   ToggledAccountMenu,
+  UrlChanged,
 } from "./messages";
 import type { Model } from "./model";
 import {
@@ -142,6 +143,83 @@ test("HomeRoute loads decks on protected route entry", () => {
       expect(m.decks.list.decks).toEqual(decks);
       expect("leaderboardTeaser" in m.decks.list).toBe(false);
     }),
+  );
+});
+
+test("UrlChanged to HomeRoute clears transient deck list UI before loading decks", () => {
+  const [base] = init(url("/leaderboard"));
+
+  Story.story(
+    update,
+    Story.with({
+      ...base,
+      currentPath: "/leaderboard",
+      route: LeaderboardRoute(),
+      session: { me, meGravatarHash: null },
+      sessionLoaded: true,
+      decks: {
+        ...base.decks,
+        list: {
+          ...base.decks.list,
+          accountMenuOpen: true,
+          confirmingDeleteId: 7,
+          contextMenu: { deckId: 7, x: 10, y: 20 },
+          error: "Could not load decks.",
+        },
+      },
+    }),
+    Story.message(UrlChanged({ url: url("/") })),
+    Story.Command.expectExact(DeckList.FetchDecks),
+    Story.model((m) => {
+      expect(m.route).toEqual(HomeRoute());
+      expect(m.decks.list.loading).toBe(true);
+      expect(m.decks.list.accountMenuOpen).toBe(false);
+      expect(m.decks.list.confirmingDeleteId).toBeNull();
+      expect(m.decks.list.contextMenu).toBeNull();
+      expect(m.decks.list.error).toBeNull();
+    }),
+    Story.Command.resolve(DeckList.FetchDecks, DeckList.Message.ReceivedDecks({ decks: [] })),
+    Story.Command.resolve(
+      DeckList.LookupDeckListCommanders({ ids: [] }),
+      DeckList.Message.ReceivedDeckListCommanders({ cards: [] }),
+    ),
+  );
+});
+
+test("HomeRoute cold load clears transient deck list UI through the same route entry path", () => {
+  const [base] = init(url("/"));
+
+  Story.story(
+    update,
+    Story.with({
+      ...base,
+      decks: {
+        ...base.decks,
+        list: {
+          ...base.decks.list,
+          accountMenuOpen: true,
+          confirmingDeleteId: 7,
+          contextMenu: { deckId: 7, x: 10, y: 20 },
+          error: "Could not load decks.",
+        },
+      },
+    }),
+    Story.message(GotAuthMessage({ message: Auth.Message.ReceivedMe({ me }) })),
+    Story.Command.expectExact(DeckList.FetchDecks, HashMeGravatar({ email: me.email })),
+    Story.model((m) => {
+      expect(m.route).toEqual(HomeRoute());
+      expect(m.decks.list.loading).toBe(true);
+      expect(m.decks.list.accountMenuOpen).toBe(false);
+      expect(m.decks.list.confirmingDeleteId).toBeNull();
+      expect(m.decks.list.contextMenu).toBeNull();
+      expect(m.decks.list.error).toBeNull();
+    }),
+    Story.Command.resolve(DeckList.FetchDecks, DeckList.Message.ReceivedDecks({ decks: [] })),
+    Story.Command.resolve(HashMeGravatar, ReceivedMeGravatarHash({ email: me.email, hash: "deadbeef" })),
+    Story.Command.resolve(
+      DeckList.LookupDeckListCommanders({ ids: [] }),
+      DeckList.Message.ReceivedDeckListCommanders({ cards: [] }),
+    ),
   );
 });
 

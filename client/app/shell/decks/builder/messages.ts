@@ -24,6 +24,7 @@ export type BuilderMenuItemSchema = typeof BuilderMenuItemSchema.Type;
 
 export const ChangedBuilderName = m("ChangedBuilderName", { name: S.String });
 export const ChangedBuilderQuery = m("ChangedBuilderQuery", { query: S.String });
+export const ChangedBuilderRoute = m("ChangedBuilderRoute", { editingId: S.NullOr(S.String) });
 export const RequestedNextBuilderPage = m("RequestedNextBuilderPage");
 export const ReceivedBuilderSearchPage = m("ReceivedBuilderSearchPage", {
   cards: S.Array(CatalogCardSchema),
@@ -85,6 +86,7 @@ export const ActivatedBuilderTarget = m("ActivatedBuilderTarget", {
 export const Message = S.Union([
   ChangedBuilderName,
   ChangedBuilderQuery,
+  ChangedBuilderRoute,
   RequestedNextBuilderPage,
   ReceivedBuilderSearchPage,
   BuilderSearchFailed,

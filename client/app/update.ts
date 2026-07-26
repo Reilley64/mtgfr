@@ -108,60 +108,69 @@ function sessionCommands(model: Model): ReadonlyArray<FoldkitCommand.Command<Mes
   return [];
 }
 
+function enterDeckListRoute(
+  model: Model,
+): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
+  const [list, commands] = DeckList.informRouteChanged(model.decks.list);
+  return [{ ...model, decks: { ...model.decks, list } }, mapDeckListCommands(commands)];
+}
+
+function enterLeaderboardRoute(
+  model: Model,
+): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
+  const [leaderboard, commands] = Leaderboard.informRouteChanged(model.leaderboard);
+  return [{ ...model, leaderboard }, mapLeaderboardCommands(commands)];
+}
+
+function enterDeckBuilderRoute(
+  model: Model,
+  editingId: string | null,
+): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
+  const [builder, commands] = DeckBuilder.informRouteChanged(model.decks.builder, editingId);
+  return [{ ...model, decks: { ...model.decks, builder } }, mapDeckBuilderCommands(commands)];
+}
+
+function enterLobbyRoute(
+  model: Model,
+  args: { tableId: string | null; selectedDeckId: number | null },
+): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
+  const [list, deckListCommands] = DeckList.informRouteChanged(model.decks.list);
+  const [lobby, lobbyCommands] = Lobby.informRouteChanged(model.lobby, args);
+  return [
+    {
+      ...model,
+      decks: { ...model.decks, list },
+      game: null,
+      lobby,
+    },
+    [...mapDeckListCommands(deckListCommands), ...mapLobbyCommands(lobbyCommands)],
+  ];
+}
+
 function routeEntry(model: Model): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
   const authCommands = sessionCommands(model);
   if (authCommands.length > 0) return [model, authCommands];
   if (!model.sessionLoaded || model.session.me == null) return [model, []];
 
   switch (model.route._tag) {
-    case "HomeRoute": {
-      const [list, commands] = DeckList.loadDeckList(model.decks.list);
-      return [{ ...model, decks: { ...model.decks, list } }, mapDeckListCommands(commands)];
-    }
-    case "LeaderboardRoute": {
-      const [leaderboard, commands] = Leaderboard.loadLeaderboard(model.leaderboard);
-      return [{ ...model, leaderboard }, mapLeaderboardCommands(commands)];
-    }
-    case "NewDeckRoute": {
-      const [builder, commands] = DeckBuilder.enterBuilder(null);
-      return [{ ...model, decks: { ...model.decks, builder } }, mapDeckBuilderCommands(commands)];
-    }
-    case "DeckRoute": {
-      const [builder, commands] = DeckBuilder.enterBuilder(model.route.id);
-      return [{ ...model, decks: { ...model.decks, builder } }, mapDeckBuilderCommands(commands)];
-    }
-    case "PlayRoute": {
-      const [list, commands] = DeckList.loadDeckList(model.decks.list);
-      const [lobby, lobbyCommands] = Lobby.informRouteChanged(model.lobby, {
+    case "HomeRoute":
+      return enterDeckListRoute(model);
+    case "LeaderboardRoute":
+      return enterLeaderboardRoute(model);
+    case "NewDeckRoute":
+      return enterDeckBuilderRoute(model, null);
+    case "DeckRoute":
+      return enterDeckBuilderRoute(model, model.route.id);
+    case "PlayRoute":
+      return enterLobbyRoute(model, {
         tableId: null,
         selectedDeckId: parseDeckIdParam(model.route.deckId),
       });
-      return [
-        {
-          ...model,
-          decks: { ...model.decks, list },
-          lobby,
-          game: null,
-        },
-        [...mapDeckListCommands(commands), ...mapLobbyCommands(lobbyCommands)],
-      ];
-    }
-    case "TableRoute": {
-      const [list, commands] = DeckList.loadDeckList(model.decks.list);
-      const [lobby, lobbyCommands] = Lobby.informRouteChanged(model.lobby, {
+    case "TableRoute":
+      return enterLobbyRoute(model, {
         tableId: model.route.table,
         selectedDeckId: parseDeckIdParam(model.route.deckId),
       });
-      return [
-        {
-          ...model,
-          decks: { ...model.decks, list },
-          lobby,
-          game: null,
-        },
-        [...mapDeckListCommands(commands), ...mapLobbyCommands(lobbyCommands)],
-      ];
-    }
     case "LoginRoute":
     case "NotFoundRoute":
       return [model, []];

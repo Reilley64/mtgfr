@@ -64,6 +64,22 @@ export function loadDeckList(
   return [{ ...model, accountMenuOpen: false, error: null, loading: true }, [FetchDecks()]];
 }
 
+function enterDeckListRoute(
+  model: DeckListSubmodel,
+): readonly [DeckListSubmodel, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
+  return [
+    {
+      ...model,
+      accountMenuOpen: false,
+      confirmingDeleteId: null,
+      contextMenu: null,
+      error: null,
+      loading: true,
+    },
+    [FetchDecks()],
+  ];
+}
+
 export const update = (
   model: DeckListSubmodel,
   message: Message,
@@ -71,6 +87,7 @@ export const update = (
   M.value(message).pipe(
     M.withReturnType<readonly [DeckListSubmodel, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>]>(),
     M.tagsExhaustive({
+      ChangedDeckListRoute: () => enterDeckListRoute(model),
       RequestedDecksRefresh: () => loadDeckList(model),
       ReceivedDecks: ({ decks }) => {
         const ids = [...new Set(decks.map((deck) => deck.commander).filter(Boolean))];
