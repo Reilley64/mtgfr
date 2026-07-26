@@ -12,14 +12,15 @@ import type { CatalogCard } from "../domain/wire/types";
 import { init, update } from "../main-exports";
 import type { Model as AppModel } from "../model";
 import {
+  GameTableRoute,
   HomeRoute,
   LeaderboardRoute,
   LoginRoute,
   NewDeckRoute,
   NotFoundRoute,
   PlayRoute,
+  PregameTableRoute,
   routePath,
-  TableRoute,
 } from "../routes";
 import { view } from "../view";
 import { BindAccountMenuEscape } from "./account-chrome/escape";
@@ -473,7 +474,7 @@ describe("shell surface scenes", () => {
     Scene.scene(
       { update, view },
       Scene.with(
-        authedModel(TableRoute({ deckId: "1", table: "ABC123" }), {
+        authedModel(PregameTableRoute({ deckId: "1", table: "ABC123" }), {
           decks: {
             ...init()[0].decks,
             list: { ...init()[0].decks.list, decks: [deck], knownCommanders: { atraxa }, loading: false },
@@ -519,6 +520,36 @@ describe("shell surface scenes", () => {
     );
   });
 
+  it("renders the table-only game route without a deck-path guard", () => {
+    Scene.scene(
+      { update, view },
+      Scene.with(
+        authedModel(GameTableRoute({ table: "ABC123" }), {
+          currentPath: "/play/ABC123",
+          decks: {
+            ...init()[0].decks,
+            list: { ...init()[0].decks.list, decks: [], knownCommanders: {}, loading: false },
+          },
+          lobby: {
+            ...initialLobbySlice(),
+            tableId: "ABC123",
+            view: {
+              error: null,
+              seats: [],
+              start_error: null,
+              started: false,
+              table_id: "ABC123",
+              you: null,
+            },
+          },
+        }),
+      ),
+      Scene.expect(Scene.selector('[data-testid="lobby-table-code"]')).toExist(),
+      Scene.expect(Scene.text("Not found")).not.toExist(),
+      Scene.expect(Scene.text("No Foldkit route for /play/ABC123.")).not.toExist(),
+    );
+  });
+
   it("renders the app not-found route", () => {
     Scene.scene(
       { update, view },
@@ -529,6 +560,6 @@ describe("shell surface scenes", () => {
   });
 
   // The board-mount placeholder is unreachable through routeBody today:
-  // PlayRoute/TableRoute only call boardMount when model.game?.active === true,
+  // PlayRoute/PregameTableRoute/GameTableRoute only call boardMount when model.game?.active === true,
   // and boardMount immediately renders the board submodel whenever model.game exists.
 });

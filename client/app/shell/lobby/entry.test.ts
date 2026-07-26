@@ -8,7 +8,7 @@ import type { CatalogCard } from "../../domain/wire/types";
 import { init, update } from "../../main-exports";
 import { GotAuthMessage, GotDeckListMessage, GotLobbyMessage, type Message } from "../../messages";
 import type { Model } from "../../model";
-import { PlayRoute, TableRoute } from "../../routes";
+import { PlayRoute, PregameTableRoute } from "../../routes";
 import { view as appView } from "../../view";
 import * as Auth from "../auth";
 import * as DeckList from "../decks/list";
@@ -85,7 +85,7 @@ function tableLobbyModel(overrides: Partial<Model>): Model {
   const [model] = init();
   return {
     ...model,
-    route: TableRoute({ deckId: "7", table: "ABC123" }),
+    route: PregameTableRoute({ deckId: "7", table: "ABC123" }),
     sessionLoaded: true,
     session: { me, meGravatarHash: null },
     ...overrides,
@@ -106,7 +106,7 @@ const lobbyAppView = (model: Model) =>
         faithfulCount: model.faithfulCount,
         oracleTotal: model.oracleTotal,
       },
-      surface: model.route._tag === "TableRoute" ? "table" : "entry",
+      surface: model.route._tag === "PregameTableRoute" || model.route._tag === "GameTableRoute" ? "table" : "entry",
     },
     toParentMessage: toParentLobbyMessage,
   });
@@ -282,7 +282,7 @@ test("unknown deck after load shows not-found, not lobby", () => {
   );
 });
 
-test("TableRoute cold load resets stale lobby entry state through the parent route entry", () => {
+test("PregameTableRoute cold load resets stale lobby entry state through the parent route entry", () => {
   const [base] = init(url("/play/9/XYZ789"));
   const [next, commands] = update(
     {
@@ -303,7 +303,7 @@ test("TableRoute cold load resets stale lobby entry state through the parent rou
     GotAuthMessage({ message: Auth.Message.ReceivedMe({ me }) }),
   );
 
-  expect(next.route).toEqual(TableRoute({ deckId: "9", table: "XYZ789" }));
+  expect(next.route).toEqual(PregameTableRoute({ deckId: "9", table: "XYZ789" }));
   expect(next.decks.list.loading).toBe(true);
   expect(next.lobby).toEqual({
     ...initialLobbySlice(),

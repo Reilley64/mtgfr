@@ -27,11 +27,11 @@ import {
   NotFoundRoute,
   nextFromUrl,
   normalizeAppRoute,
+  PregameTableRoute,
   pathWithSearch,
   routeFromUrl,
   routePath,
   safeNext,
-  TableRoute,
 } from "./routes";
 import * as Auth from "./shell/auth";
 import type { Message as AuthMessage } from "./shell/auth/messages";
@@ -166,10 +166,15 @@ function routeEntry(model: Model): readonly [Model, ReadonlyArray<FoldkitCommand
         tableId: null,
         selectedDeckId: parseDeckIdParam(model.route.deckId),
       });
-    case "TableRoute":
+    case "PregameTableRoute":
       return enterLobbyRoute(model, {
         tableId: model.route.table,
         selectedDeckId: parseDeckIdParam(model.route.deckId),
+      });
+    case "GameTableRoute":
+      return enterLobbyRoute(model, {
+        tableId: model.route.table,
+        selectedDeckId: null,
       });
     case "LoginRoute":
     case "NotFoundRoute":
@@ -196,7 +201,7 @@ function foldDeckList(
 }
 
 function notFoundWhenPlayDeckMissing(model: Model): Model {
-  if (model.route._tag !== "PlayRoute" && model.route._tag !== "TableRoute") return model;
+  if (model.route._tag !== "PlayRoute" && model.route._tag !== "PregameTableRoute") return model;
   const deckId = parseDeckIdParam(model.route.deckId);
   const access = playDeckAccess(deckId, model.decks.list.decks, model.decks.list.loading, model.decks.list.error);
   if (access !== "missing") return model;
@@ -254,7 +259,7 @@ function foldLobby(
     model.route._tag === "PlayRoute" && lobby.tableId != null && lobby.selectedDeckId != null
       ? [
           Redirect({
-            path: routePath(TableRoute({ deckId: String(lobby.selectedDeckId), table: lobby.tableId })),
+            path: routePath(PregameTableRoute({ deckId: String(lobby.selectedDeckId), table: lobby.tableId })),
           }),
         ]
       : [];

@@ -52,7 +52,8 @@ export const subscriptions = Subscription.make<Model, GameMessage>()((entry) => 
     { table: S.NullOr(S.String), gameTable: S.NullOr(S.String), active: S.Boolean },
     {
       modelToDependencies: (model) => {
-        const table = model.route._tag === "TableRoute" ? model.route.table : null;
+        const table =
+          model.route._tag === "PregameTableRoute" || model.route._tag === "GameTableRoute" ? model.route.table : null;
         return {
           table,
           gameTable: model.game?.tableId ?? null,

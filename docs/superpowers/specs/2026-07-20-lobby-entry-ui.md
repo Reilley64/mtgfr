@@ -13,7 +13,7 @@ After choosing a deck, a player must host or join a table, claim a seat, ready u
 
 ## Solution
 
-Lobby UI lives under `client/app/shell/lobby/**` on path-param play routes (`/play/:deckId` entry, `/play/:deckId/:table` seated/board). The lobby submodel boundary lifts through `GotLobbyMessage`; route entry and post-session cold-load call `informRouteChanged` so lobby reset/load stays child-owned while the parent keeps auth redirects and game-slice activation. Host/Join uses `entryMode` (`choose` | `join`); seated chrome shows seat-color dots, Gravatar/monogram seat faces, Ready/Start, and table-code copy. Polling is a Foldkit subscription over `lobbyPoll`. Server lobby/seed/affinity mechanics are owned by [lobby-table-routing-and-live-game](2026-07-20-lobby-table-routing-and-live-game.md); the route table and auth guard by [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md). Face behavior follows [Gravatar Seat Faces Design](2026-07-25-gravatar-seat-faces-design.md).
+Lobby UI lives under `client/app/shell/lobby/**` on path-param play routes (`/play/:deckId` entry, `/play/:deckId/:table` seated pregame, `/play/:table` table-scoped table/game links). The lobby submodel boundary lifts through `GotLobbyMessage`; route entry and post-session cold-load call `informRouteChanged` so lobby reset/load stays child-owned while the parent keeps auth redirects and game-slice activation. Host/Join uses `entryMode` (`choose` | `join`); seated chrome shows seat-color dots, Gravatar/monogram seat faces, Ready/Start, and table-code copy. Polling is a Foldkit subscription over `lobbyPoll`. Server lobby/seed/affinity mechanics are owned by [lobby-table-routing-and-live-game](2026-07-20-lobby-table-routing-and-live-game.md); the route table and auth guard by [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md). Face behavior follows [Gravatar Seat Faces Design](2026-07-25-gravatar-seat-faces-design.md).
 
 ---
 
@@ -37,12 +37,13 @@ Required identifiers live in path params (see route table in [shell-routes-and-a
 |---|---|
 | `/play/:deckId` | Entry (`surface: "entry"`) — Host/Join choose or focused join panel |
 | `/play/:deckId/:table` | Seated lobby / board mount after start |
+| `/play/:table` | Table-scoped seated lobby / board mount for non-numeric table ids |
 
-Legacy `/play`, `/play/:table`, and `?deck=` entry points are Not found (hard cut). Malformed / not-in-library deck ids still 404.
+Bare `/play` and `?deck=` entry points are Not found (hard cut). Single-segment `/play/...` paths normalize by segment shape: numeric segments stay deck-entry routes, while non-numeric segments become table-scoped routes. Malformed / not-in-library deck ids still 404.
 
-`tableId()` reads the table id from `/play/:deckId/:table` path. `parseTableCode` normalizes bare codes and pasted play URLs, reading the table segment from `/play/:deckId/:table`. `setTableUrl` reflects a joined table into the URL via `history.replaceState`.
+`tableId()` reads the table id from either `/play/:deckId/:table` or `/play/:table`. `parseTableCode` still normalizes bare codes and pasted play URLs from the pregame two-segment shape; table-only paste support is tracked with the broader Wave 2 route work. `setTableUrl` reflects a joined table into the URL via `history.replaceState`.
 
-`selectedDeckId` is set from the required play route deck id. Lobby paint is route-keyed: `/play/:deckId` always renders the entry surface (`surface: "entry"`), and `/play/:deckId/:table` renders the seated surface — so Host’s create→redirect handoff does not flash claim-seat chrome while `tableId` is already set on the entry route.
+`selectedDeckId` is set from the required play route deck id when the route carries one. Lobby paint is route-keyed: `/play/:deckId` always renders the entry surface (`surface: "entry"`), while `/play/:deckId/:table` and `/play/:table` render the seated surface — so Host’s create→redirect handoff does not flash claim-seat chrome while `tableId` is already set on the entry route.
 
 Home ↔ `/play/{id}` morphs the shared deck-card chrome with a short FLIP animation (`deck-card-nav.ts`; skipped for reduced motion) — list-side detail in [deck-list-and-builder](2026-07-20-deck-list-and-builder.md).
 
@@ -77,7 +78,7 @@ Helpers also live in `client/app/domain/lobby/client.ts` for table URL / code pa
 - `client/app/shell/lobby/**/*.test.ts` — lobby stories and helpers (Host/Join entry, seated chrome, poll, `GotLobbyMessage` / `informRouteChanged` route entry).
 - `client/app/domain/lobby-store.test.ts` — lobby state helpers; with `WEB_DATABASE_URL`, asserts
   `loadLobby` on an empty table (requires migrate-applied `gravatar_hash`).
-- Scene assertions for lobby entry / seated surfaces, including `seat-face-0` Gravatar/monogram chrome, live with shell Scene coverage (`just client-check`).
+- Scene assertions for lobby entry / seated surfaces, including `seat-face-0` Gravatar/monogram chrome and the table-only `/play/:table` shell route, live with shell Scene coverage (`just client-check`).
 
 ---
 

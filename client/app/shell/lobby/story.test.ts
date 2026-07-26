@@ -3,7 +3,7 @@ import { expect, test } from "vitest";
 import type { LobbyView } from "../../domain/lobby/types";
 import { init, update } from "../../main-exports";
 import { GotLobbyMessage } from "../../messages";
-import { TableRoute } from "../../routes";
+import { PregameTableRoute } from "../../routes";
 import { ReceivedLobbyView } from "./messages";
 
 const me = { id: 1, email: "alice@example.com", username: "alice" };
@@ -24,7 +24,7 @@ test("started lobby view activates the board handoff", () => {
     update,
     Story.with({
       ...model,
-      route: TableRoute({ deckId: "0", table: "ABC123" }),
+      route: PregameTableRoute({ deckId: "0", table: "ABC123" }),
       sessionLoaded: true,
       session: { me, meGravatarHash: null },
       lobby: { ...model.lobby, tableId: "ABC123" },

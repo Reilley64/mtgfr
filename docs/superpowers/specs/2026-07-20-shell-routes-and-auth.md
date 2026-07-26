@@ -40,14 +40,15 @@ A single Foldkit event-reactor owns routing: `client/app/routes.ts` maps paths t
 | `/leaderboard` | Leaderboard | auth submodel |
 | `/decks/new` | Deck builder | auth submodel |
 | `/decks/:id` | Deck builder (edit) | auth submodel |
-| `/play/:deckId` | Lobby / board wrapper for a required deck id | auth submodel |
-| `/play/:deckId/:table` | Play (with deck id and table id) | auth submodel |
+| `/play/:deckId` | Lobby Host/Join entry for a required deck id | auth submodel |
+| `/play/:deckId/:table` | Pregame lobby for a required deck id and table id | auth submodel |
+| `/play/:table` | Table-scoped lobby / board wrapper for a non-numeric table id | auth submodel |
 | `/api/[...path]` | lobby/table HTTP passthrough | — |
 | `/api/rpc/[...path]` | Effect RPC BFF | — |
 | `/api/faro/collect` | Faro proxy | — |
 
 Required identifiers live in path params ([wire-protocol-and-visibility](2026-07-20-wire-protocol-and-visibility.md) routing rule). Query params are optional: `?next=` is the post-login redirect target.
-Legacy `/play`, `/play/:table`, and `?deck=` entry points are Not found (hard cut).
+Bare `/play` and `?deck=` entry points are Not found (hard cut). Single-segment `/play/...` paths are discriminated by segment shape: numeric segments normalize to `PlayRoute` deck entry, and non-numeric segments normalize to the table-scoped in-game route.
 
 ### App module layout (`client/app/messages.ts`, `client/app/domain/`, feature `index.ts`)
 
@@ -59,7 +60,7 @@ Each shell feature exports a namespace from `index.ts` (`shell/auth`, `shell/dec
 
 Route entry and post-session cold-load call per-surface **`informRouteChanged`** helpers (`shell/*/inform.ts`) so the child owns reset/load transitions; the parent still owns auth redirects and lobby-driven game-slice activation after the lifted child fold.
 
-Lobby Host/Join and seated chrome for `/play/:deckId` and `/play/:deckId/:table` are specified in [lobby-entry-ui](2026-07-20-lobby-entry-ui.md). Deck list (`/`) and builder (`/decks/…`) are specified in [deck-list-and-builder](2026-07-20-deck-list-and-builder.md). The home route entry loads decks only; it does not issue a separate top-players teaser fetch. The leaderboard route (`/leaderboard`) renders a ranked list from `rpc.ratings.leaderboard({ limit, offset })`, showing rank, username, and rating for authenticated players, with header chrome that keeps `Play` back to `/` and reuses the shared avatar account menu instead of a standalone sign-out button. Route entry loads the first page as `limit = 50, offset = 0`; `Load more` appends the next page. When a later page load fails after prior rows are already visible, the existing rows stay on screen, `Load more` is hidden, and `Try again` clears the current rows and restarts from the first page. Every shell surface that already showed the fixed bottom-left API badge now uses the shared two-line stack: `{n}% faithful` above `API {version}` when both coverage counts are present; when either coverage count is missing or invalid, the shell renders only the version line. The board remains out of scope for this chrome.
+Lobby Host/Join and seated chrome for `/play/:deckId`, `/play/:deckId/:table`, and `/play/:table` are specified in [lobby-entry-ui](2026-07-20-lobby-entry-ui.md). Deck list (`/`) and builder (`/decks/…`) are specified in [deck-list-and-builder](2026-07-20-deck-list-and-builder.md). The home route entry loads decks only; it does not issue a separate top-players teaser fetch. The leaderboard route (`/leaderboard`) renders a ranked list from `rpc.ratings.leaderboard({ limit, offset })`, showing rank, username, and rating for authenticated players, with header chrome that keeps `Play` back to `/` and reuses the shared avatar account menu instead of a standalone sign-out button. Route entry loads the first page as `limit = 50, offset = 0`; `Load more` appends the next page. When a later page load fails after prior rows are already visible, the existing rows stay on screen, `Load more` is hidden, and `Try again` clears the current rows and restarts from the first page. Every shell surface that already showed the fixed bottom-left API badge now uses the shared two-line stack: `{n}% faithful` above `API {version}` when both coverage counts are present; when either coverage count is missing or invalid, the shell renders only the version line. The board remains out of scope for this chrome.
 
 ### Portrait gate (`client/app/view.ts`, `client/app/subscriptions.ts`, DESIGN.md Landscape Rule)
 
@@ -97,7 +98,7 @@ The browser talks only to the same-origin BFF via the hand-written Effect HTTP c
 
 Modules: `client/app/game/stream-subscription.ts`, `client/app/game/fold.ts`.
 
-The game stream is a Foldkit subscription keyed by route table id and active game table id. It opens only when the app is on `/play/:deckId/:table` and the game slice is active. Snapshot and delta frames become messages, then `update` folds them through `applySnapshotPure` / `applyDeltaPure`. `model.game.connected` drives the reconnect banner; rejected intents set `game.reject` and `board.reject`. The subscription goes empty after navigation or table mismatch, so no residual stream continues after leaving the board.
+The game stream is a Foldkit subscription keyed by route table id and active game table id. It opens only when the app is on a table-scoped play route (`/play/:deckId/:table` or `/play/:table`) and the game slice is active. Snapshot and delta frames become messages, then `update` folds them through `applySnapshotPure` / `applyDeltaPure`. `model.game.connected` drives the reconnect banner; rejected intents set `game.reject` and `board.reject`. The subscription goes empty after navigation or table mismatch, so no residual stream continues after leaving the board.
 
 ### Design system (`DESIGN.md`, `design.tokens.json`, `client/styles/global.css`)
 
@@ -164,7 +165,7 @@ Vite production builds set `build.sourcemap: true` (via `clientBuildSourcemap`) 
 
 - `client/app/shell/auth/**/*.test.ts` — auth stories and helpers, including `ReceivedMe` → `HashMeGravatar` session storage and stale-result guarding.
 - `client/app/update.test.ts` — parent-level regressions such as lifting auth child messages through `GotAuthMessage`.
-- `client/app/routes.test.ts`, `client/app/smoke.test.ts` — routing and smoke; includes protected `/leaderboard` entry, auth redirect, home entry loading decks without a teaser fetch, and retry-from-page-one behavior.
+- `client/app/routes.test.ts`, `client/app/smoke.test.ts` — routing and smoke; includes protected `/leaderboard` entry, auth redirect, home entry loading decks without a teaser fetch, retry-from-page-one behavior, and numeric-vs-table single-segment `/play/...` discrimination.
 - `client/app/shell/lobby/**/*.test.ts`, `client/app/shell/leaderboard/**/*.test.ts` — route-inform resets, wrapper-lifted parent folds (`GotLobbyMessage`, `GotLeaderboardMessage`), lobby redirect/game handoff, and leaderboard retry/load-more state.
 - `client/app/shell/surfaces.test.ts` — shell Scene coverage for auth, deck, leaderboard, and lobby surfaces, including shared account chrome and the `% faithful` + `API {version}` shell badge stack; Scene asserts `pool-coverage` above `app-version` when the model has complete meta.
 - `client/app/domain/ui/app-version.test.ts` — percent formatting and stacked badge rendering rules.

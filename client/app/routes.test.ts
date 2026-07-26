@@ -16,13 +16,15 @@ import {
 import type { Model } from "./model";
 import {
   DeckRoute,
+  GameTableRoute,
   HomeRoute,
   LeaderboardRoute,
+  normalizeAppRoute,
   PlayRoute,
+  PregameTableRoute,
   pathWithSearch,
   routeFromUrl,
   routePath,
-  TableRoute,
 } from "./routes";
 import * as Auth from "./shell/auth";
 import * as DeckList from "./shell/decks/list";
@@ -61,7 +63,25 @@ test("parses the Foldkit shell routes", () => {
 
 test("parses play routes with required deckId", () => {
   expect(routeFromUrl(url("/play/7"))).toEqual(PlayRoute({ deckId: "7" }));
-  expect(routeFromUrl(url("/play/-1/ABC123"))).toEqual(TableRoute({ deckId: "-1", table: "ABC123" }));
+  expect(routeFromUrl(url("/play/-1/ABC123"))).toEqual(PregameTableRoute({ deckId: "-1", table: "ABC123" }));
+});
+
+test("numeric /play/:deckId is PlayRoute", () => {
+  const raw = routeFromUrl(url("/play/7"));
+
+  expect(normalizeAppRoute(raw, "/play/7")).toEqual(PlayRoute({ deckId: "7" }));
+});
+
+test("hex /play/:table is GameTableRoute", () => {
+  const raw = routeFromUrl(url("/play/ABC123DEF"));
+
+  expect(normalizeAppRoute(raw, "/play/ABC123DEF")).toEqual(GameTableRoute({ table: "ABC123DEF" }));
+});
+
+test("pregame /play/:deckId/:table stays two-segment", () => {
+  const raw = routeFromUrl(url("/play/7/ABC123"));
+
+  expect(normalizeAppRoute(raw, "/play/7/ABC123")).toEqual(PregameTableRoute({ deckId: "7", table: "ABC123" }));
 });
 
 test("bare /play is not found", () => {
@@ -72,7 +92,8 @@ test("builds typed route paths", () => {
   expect(routePath(DeckRoute({ id: "abc" }))).toBe("/decks/abc");
   expect(routePath(LeaderboardRoute())).toBe("/leaderboard");
   expect(routePath(PlayRoute({ deckId: "7" }))).toBe("/play/7");
-  expect(routePath(TableRoute({ deckId: "7", table: "ABC123" }))).toBe("/play/7/ABC123");
+  expect(routePath(PregameTableRoute({ deckId: "7", table: "ABC123" }))).toBe("/play/7/ABC123");
+  expect(routePath(GameTableRoute({ table: "ABC123" }))).toBe("/play/ABC123");
 });
 
 test("pathWithSearch inserts ? for Foldkit search without a leading ?", () => {
@@ -84,13 +105,13 @@ test("pathWithSearch returns pathname only when search is empty", () => {
   expect(pathWithSearch(url("/play", ""))).toBe("/play");
 });
 
-test("non-integer play deckId becomes NotFound after normalize", () => {
+test("non-numeric single-segment play path becomes GameTableRoute after normalize", () => {
   const raw = routeFromUrl(url("/play/table-1"));
   expect(raw).toEqual(PlayRoute({ deckId: "table-1" }));
 
   const [base] = init(url("/play/table-1"));
 
-  expect(base.route._tag).toBe("NotFoundRoute");
+  expect(base.route).toEqual(GameTableRoute({ table: "table-1" }));
 });
 
 test("PlayRoute /play/-1 sets lobby.selectedDeckId to -1", () => {

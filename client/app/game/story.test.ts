@@ -8,7 +8,7 @@ import { SubmitIntent } from "../game/intents";
 import { init, update } from "../main-exports";
 import { GotGameMessage } from "../messages";
 import { emptyGameSlice } from "../model";
-import { TableRoute } from "../routes";
+import { PregameTableRoute } from "../routes";
 import { ReceivedDelta } from "./messages";
 
 function object(overrides: Partial<ObjectView> = {}): ObjectView {
@@ -81,7 +81,7 @@ test("ReceivedDelta folds into game seq", () => {
     update,
     Story.with({
       ...model,
-      route: TableRoute({ deckId: "0", table: "ABC123" }),
+      route: PregameTableRoute({ deckId: "0", table: "ABC123" }),
       game: { ...emptyGameSlice(), active: true, tableId: "ABC123" },
     }),
     Story.message(
@@ -109,7 +109,7 @@ test("ReceivedDelta auto-continues a play mode pick that sync prunes to one acti
   const [next, commands] = update(
     {
       ...model,
-      route: TableRoute({ deckId: "0", table: tableId }),
+      route: PregameTableRoute({ deckId: "0", table: tableId }),
       game: {
         ...game,
         active: true,
@@ -147,7 +147,7 @@ test("ReceivedDelta with land_played provenance spawns a board flight", () => {
     update,
     Story.with({
       ...model,
-      route: TableRoute({ deckId: "0", table: "ABC123" }),
+      route: PregameTableRoute({ deckId: "0", table: "ABC123" }),
       game: { ...emptyGameSlice(), active: true, tableId: "ABC123" },
     }),
     Story.message(

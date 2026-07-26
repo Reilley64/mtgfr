@@ -149,7 +149,9 @@ function toParentLeaderboardMessage(message: Leaderboard.ViewMessage): Message {
 
 function boardMount(model: Model) {
   const tableId =
-    model.game?.tableId ?? model.lobby.tableId ?? (model.route._tag === "TableRoute" ? model.route.table : null);
+    model.game?.tableId ??
+    model.lobby.tableId ??
+    (model.route._tag === "PregameTableRoute" || model.route._tag === "GameTableRoute" ? model.route.table : null);
   const game = model.game;
 
   if (game != null) {
@@ -273,7 +275,7 @@ function routeBody(model: Model) {
           toParentMessage: toParentLobbyMessage,
         });
       }
-      case "TableRoute": {
+      case "PregameTableRoute": {
         if (model.game?.active === true) return boardMount(model);
         const deckId = parseDeckIdParam(model.route.deckId);
         const access = playDeckAccess(deckId, model.decks.list.decks, model.decks.list.loading, model.decks.list.error);
@@ -292,6 +294,21 @@ function routeBody(model: Model) {
           toParentMessage: toParentLobbyMessage,
         });
       }
+      case "GameTableRoute":
+        if (model.game?.active === true) return boardMount(model);
+        return h.submodel({
+          slotId: "lobby-table",
+          model: model.lobby,
+          view: Lobby.view,
+          viewInputs: {
+            decks: model.decks.list.decks,
+            decksLoading: model.decks.list.loading,
+            knownCommanders: model.decks.list.knownCommanders,
+            chrome: chromeMeta(model),
+            surface: "table",
+          },
+          toParentMessage: toParentLobbyMessage,
+        });
       case "NotFoundRoute":
         return shell(model, "Not found", `No Foldkit route for ${model.route.path}.`);
       default: {
