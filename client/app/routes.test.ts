@@ -123,6 +123,19 @@ test("PlayRoute /play/-1 sets lobby.selectedDeckId to -1", () => {
   expect(model.lobby.selectedDeckId).toBe(-1);
 });
 
+test("navigating from PlayRoute to GameTableRoute clears lobby.selectedDeckId", () => {
+  const [base] = init(url("/play/7"));
+  const [authed] = update(base, GotAuthMessage({ message: Auth.Message.ReceivedMe({ me }) }));
+
+  const [model] = update(authed, UrlChanged({ url: url("/play/ABC123") }));
+
+  expect(authed.route).toEqual(PlayRoute({ deckId: "7" }));
+  expect(authed.lobby.selectedDeckId).toBe(7);
+  expect(model.route).toEqual(GameTableRoute({ table: "ABC123" }));
+  expect(model.lobby.tableId).toBe("ABC123");
+  expect(model.lobby.selectedDeckId).toBeNull();
+});
+
 test("LeaderboardRoute loads the first page on protected route entry", () => {
   const [model] = init(url("/leaderboard"));
   const load = FetchLeaderboard({ limit: 50, offset: 0 });

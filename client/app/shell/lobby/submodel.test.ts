@@ -42,3 +42,27 @@ test("informRouteChanged resets lobby state when the table changes", () => {
   });
   expect(commands).toEqual([]);
 });
+
+test("informRouteChanged clears a stale selected deck when a table route carries no deck", () => {
+  const model = {
+    ...initialLobbySlice(),
+    tableId: "ABC123",
+    selectedDeckId: 7,
+    entryMode: "join" as const,
+    code: "ABC123",
+    started: true,
+    copied: true,
+    clipboardFallback: true,
+    submitting: true,
+    error: "UnknownTable",
+  };
+
+  const [next, commands] = informRouteChanged(model, { tableId: "XYZ789", selectedDeckId: null });
+
+  expect(next).toEqual({
+    ...initialLobbySlice(),
+    tableId: "XYZ789",
+    selectedDeckId: null,
+  });
+  expect(commands).toEqual([]);
+});

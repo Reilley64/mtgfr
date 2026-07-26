@@ -43,7 +43,7 @@ Bare `/play` and `?deck=` entry points are Not found (hard cut). Single-segment 
 
 `tableId()` reads the table id from either `/play/:deckId/:table` or `/play/:table`. `parseTableCode` still normalizes bare codes and pasted play URLs from the pregame two-segment shape; table-only paste support is tracked with the broader Wave 2 route work. `setTableUrl` reflects a joined table into the URL via `history.replaceState`.
 
-`selectedDeckId` is set from the required play route deck id when the route carries one. Lobby paint is route-keyed: `/play/:deckId` always renders the entry surface (`surface: "entry"`), while `/play/:deckId/:table` and `/play/:table` render the seated surface — so Host’s create→redirect handoff does not flash claim-seat chrome while `tableId` is already set on the entry route.
+`selectedDeckId` is set from the required play route deck id when the route carries one. When the route carries no deck (`/play/:table`), route entry clears `selectedDeckId` to `null` even if the previous play route had a deck selected, so claim-seat/watcher chrome cannot reuse stale deck state. Lobby paint is route-keyed: `/play/:deckId` always renders the entry surface (`surface: "entry"`), while `/play/:deckId/:table` and `/play/:table` render the seated surface — so Host’s create→redirect handoff does not flash claim-seat chrome while `tableId` is already set on the entry route.
 
 Home ↔ `/play/{id}` morphs the shared deck-card chrome with a short FLIP animation (`deck-card-nav.ts`; skipped for reduced motion) — list-side detail in [deck-list-and-builder](2026-07-20-deck-list-and-builder.md).
 
@@ -66,6 +66,7 @@ Helpers also live in `client/app/domain/lobby/client.ts` for table URL / code pa
 ## Implementation Decisions
 
 - **Route entry is child-owned.** Play-route entry runs through lobby `informRouteChanged`, which calls the child update with route-change messages instead of having the parent mutate lobby state directly.
+- **Table-only routes clear deck choice.** `ChangedLobbyRoute` treats an explicit `selectedDeckId: null` as authoritative, so `/play/:table` wipes any prior deck-picked lobby state instead of preserving it.
 - **Route-keyed lobby paint** prevents Host create→redirect from flashing seated/claim chrome on `/play/:deckId` while `tableId` may already be set in memory.
 - **Seat faces share `seatFace`.** Claimed and open lobby seats use the same Gravatar/monogram helper as account chrome, keyed by public `gravatar_hash` rather than email.
 - **Clipboard denial is non-throwing.** Failed `navigator.clipboard.writeText` reveals a manual-copy input rather than surfacing an uncaught error.
@@ -75,7 +76,7 @@ Helpers also live in `client/app/domain/lobby/client.ts` for table URL / code pa
 
 ## Testing Decisions
 
-- `client/app/shell/lobby/**/*.test.ts` — lobby stories and helpers (Host/Join entry, seated chrome, poll, `GotLobbyMessage` / `informRouteChanged` route entry).
+- `client/app/shell/lobby/**/*.test.ts` — lobby stories and helpers (Host/Join entry, seated chrome, poll, `GotLobbyMessage` / `informRouteChanged` route entry, including `/play/:table` clearing stale deck selection).
 - `client/app/domain/lobby-store.test.ts` — lobby state helpers; with `WEB_DATABASE_URL`, asserts
   `loadLobby` on an empty table (requires migrate-applied `gravatar_hash`).
 - Scene assertions for lobby entry / seated surfaces, including `seat-face-0` Gravatar/monogram chrome and the table-only `/play/:table` shell route, live with shell Scene coverage (`just client-check`).

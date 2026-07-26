@@ -46,7 +46,7 @@ function applyRouteChange(
   if (model.tableId !== route.tableId) {
     return {
       tableId: route.tableId,
-      selectedDeckId: route.selectedDeckId ?? model.selectedDeckId,
+      selectedDeckId: route.selectedDeckId,
       code: "",
       entryMode: "choose",
       view: null,
@@ -75,7 +75,7 @@ function applyRouteChange(
 
   return {
     ...model,
-    selectedDeckId: route.selectedDeckId ?? model.selectedDeckId,
+    selectedDeckId: route.selectedDeckId,
   };
 }
 
