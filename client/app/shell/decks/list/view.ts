@@ -4,6 +4,7 @@ import { type Html, html } from "foldkit/html";
 import * as Mount from "foldkit/mount";
 import { cn } from "../../../domain/cn";
 import type { AppChromeMeta } from "../../../domain/ui/app-version";
+import { buttonClass } from "../../../domain/ui/buttonClass";
 import { confirmDialog } from "../../../domain/ui/confirmDialog";
 import { fieldClass, listRowClass } from "../../../domain/ui/surfaces";
 import type { CardArtTick, DeckCardFlipTick, GotAuthMessage, ModalOpened } from "../../../messages";
@@ -186,12 +187,25 @@ export const view = Submodel.defineView<DeckListSubmodel, ViewMessage, ViewInput
     atmosphere: "shell",
     title: "Your decks",
     chrome: viewInputs.chrome,
-    trailing: accountChrome(h, {
-      username: viewInputs.username,
-      gravatarHash: viewInputs.meGravatarHash,
-      menuOpen: model.accountMenuOpen,
-      showLeaderboardLink: true,
-    }),
+    trailing: h.div(
+      [h.Class("flex items-center gap-sm")],
+      [
+        h.a(
+          [
+            h.Href(routePath(NewDeckRoute())),
+            h.DataAttribute("testid", "deck-list-new-deck-header"),
+            h.Class(buttonClass("primary", "shrink-0 no-underline")),
+          ],
+          ["New deck"],
+        ),
+        accountChrome(h, {
+          username: viewInputs.username,
+          gravatarHash: viewInputs.meGravatarHash,
+          menuOpen: model.accountMenuOpen,
+          showLeaderboardLink: true,
+        }),
+      ],
+    ),
     stage: h.div(
       [
         h.Class("h-full overflow-y-auto"),
@@ -210,7 +224,6 @@ export const view = Submodel.defineView<DeckListSubmodel, ViewMessage, ViewInput
               testId: "confirm-delete-dialog",
             })
           : null,
-        h.div([h.Class("mx-auto mb-5 max-w-[960px]"), h.DataAttribute("testid", "deck-list-header")], []),
         h.section(
           [h.Class("mx-auto max-w-[960px]")],
           [
@@ -231,6 +244,29 @@ export const view = Submodel.defineView<DeckListSubmodel, ViewMessage, ViewInput
               : null,
             !model.loading && model.decks.length > 0 && visible.length === 0
               ? h.div([h.Class("text-label text-lichen")], ["No decks match."])
+              : null,
+            !model.loading && model.decks.length === 0
+              ? h.div(
+                  [
+                    h.DataAttribute("testid", "deck-list-empty"),
+                    h.Class(
+                      listRowClass(
+                        "mb-md flex flex-col items-center gap-sm rounded-panel border border-dashed border-vine bg-glass p-xl text-center",
+                      ),
+                    ),
+                  ],
+                  [
+                    h.h2([h.Class("m-0 text-title text-snow")], ["Build your first Commander deck"]),
+                    h.p(
+                      [h.Class("m-0 max-w-[34rem] text-label text-lichen")],
+                      ["Create a deck, choose a commander, then use it to host or join a table."],
+                    ),
+                    h.a(
+                      [h.Href(routePath(NewDeckRoute())), h.Class(buttonClass("primary", "mt-xs no-underline"))],
+                      ["Create a deck"],
+                    ),
+                  ],
+                )
               : null,
             !model.loading
               ? h.div(
