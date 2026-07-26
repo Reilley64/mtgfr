@@ -1,3 +1,4 @@
+import * as Effect from "effect/Effect";
 import { defineHandler } from "nitro/h3";
 import { fetchDeckName } from "../../../../../../app/domain/api-upstream-auth";
 import { gravatarHash } from "../../../../../../app/domain/gravatar";
@@ -13,7 +14,7 @@ export default defineHandler(async (event) => {
     if (!body) return json({ error: "BadJson" }, 400);
 
     const deckId = Number(body.deck_id);
-    const deckName = await fetchDeckName(env, deckId);
+    const deckName = await Effect.runPromise(fetchDeckName(env, deckId));
     if (!deckName) {
       const snap = await loadLobby(db, tableId);
       if (!snap) {

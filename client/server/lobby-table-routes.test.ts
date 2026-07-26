@@ -1,3 +1,4 @@
+import * as Effect from "effect/Effect";
 import type { H3Event } from "nitro/h3";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import joinHandler from "./routes/api/tables/[table]/join/v1.post";
@@ -88,7 +89,7 @@ describe("lobby table route files", () => {
     vi.clearAllMocks();
     mocks.withLobbyAuth.mockImplementation(async (_event, _span, fn) => fn({ me, env, db }));
     mocks.createLobby.mockResolvedValue("NEWTBL");
-    mocks.fetchDeckName.mockResolvedValue("Mock Deck");
+    mocks.fetchDeckName.mockReturnValue(Effect.succeed("Mock Deck"));
     mocks.gravatarHash.mockResolvedValue("avatar-hash");
     mocks.joinLobby.mockResolvedValue({ snap: { tableId: "PATHID", hostUserId: me.id, startedAt: null, seats: [] } });
     mocks.setReady.mockResolvedValue({ snap: { tableId: "PATHID", hostUserId: me.id, startedAt: null, seats: [] } });
@@ -118,7 +119,7 @@ describe("lobby table route files", () => {
       ],
     });
     mocks.startError.mockReturnValue(null);
-    mocks.seedGame.mockResolvedValue({ ok: true, data: { pod_dns: "pod.local" } });
+    mocks.seedGame.mockReturnValue(Effect.succeed({ ok: true, data: { pod_dns: "pod.local" } }));
   });
 
   it("exports all table handlers", () => {

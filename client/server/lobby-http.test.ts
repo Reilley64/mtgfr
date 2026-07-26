@@ -49,7 +49,7 @@ describe("lobby-http", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.createWebDb.mockReturnValue(db);
-    mocks.fetchMe.mockResolvedValue(me);
+    mocks.fetchMe.mockReturnValue(Effect.succeed(me));
     mocks.grpcRequestEnv.mockReturnValue(Effect.succeed(env));
     mocks.runTracedRequest.mockImplementation((_traceparent, _spanName, body) => Effect.runPromise(body));
     mocks.sweepWebDb.mockResolvedValue(undefined);
@@ -100,7 +100,7 @@ describe("lobby-http", () => {
   });
 
   it("withLobbyAuth returns Unauthorized when fetchMe returns null", async () => {
-    mocks.fetchMe.mockResolvedValueOnce(null);
+    mocks.fetchMe.mockReturnValueOnce(Effect.succeed(null));
 
     const res = await withLobbyAuth(authEvent(), "api test", async () => json({ ok: true }));
 
