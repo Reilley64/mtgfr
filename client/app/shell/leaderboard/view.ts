@@ -1,5 +1,5 @@
 import { type Html, html } from "foldkit/html";
-import { appVersionBadge } from "../../../lib/ui/app-version";
+import { type AppChromeMeta, appVersionBadge } from "../../../lib/ui/app-version";
 import { buttonClass } from "../../../lib/ui/buttonClass";
 import { feltClass, listRowClass } from "../../../lib/ui/surfaces";
 import { HomeRoute, routePath } from "../../routes";
@@ -46,7 +46,7 @@ export function view(
   model: LeaderboardSubmodel,
   username: string,
   meGravatarHash: string | null,
-  apiVersion: string | null,
+  chrome: AppChromeMeta,
 ): Html {
   const status = statusCopy(model.status);
   const canLoadMore = model.status !== "error" && model.entries.length < model.total;
@@ -113,7 +113,7 @@ export function view(
             : null,
         ],
       ),
-      appVersionBadge(h, apiVersion),
+      appVersionBadge(h, chrome),
     ],
   );
 }

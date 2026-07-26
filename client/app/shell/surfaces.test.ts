@@ -4,7 +4,7 @@
  * See AGENTS.md: "Client UI: every surface gets a Scene test."
  */
 import { Scene } from "foldkit/test";
-import { describe, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { BindCardArt, CardArtTick } from "../../lib/ui/card-art";
 import { ModalOpened, OpenDialogAsModal } from "../../lib/ui/confirmDialog";
 import type { CatalogCard } from "../../lib/wire/types";
@@ -32,6 +32,18 @@ import { BindDeckListContextMenu, BindDeckListContextMenuEscape } from "./decks/
 import { initialLobbySlice } from "./lobby/submodel";
 
 const me = { id: 1, email: "alice@example.com", username: "alice" };
+
+/** Preorder `data-testid` walk for DOM-order assertions in Scene tests. */
+function collectTestIds(node: unknown, out: string[] = []): string[] {
+  if (node == null || typeof node !== "object") return out;
+  const n = node as { data?: { attrs?: Record<string, string> }; children?: unknown[] };
+  const id = n.data?.attrs?.["data-testid"];
+  if (typeof id === "string") out.push(id);
+  for (const child of n.children ?? []) {
+    if (typeof child === "object" && child != null) collectTestIds(child, out);
+  }
+  return out;
+}
 
 const atraxa = card({
   color_identity: [2, 4, 5],
@@ -85,6 +97,8 @@ function loginModel(overrides: Partial<AppModel> = {}): AppModel {
     portraitGate: { open: false },
     sessionLoaded: true,
     session: { me: null, meGravatarHash: null },
+    faithfulCount: null,
+    oracleTotal: null,
     ...overrides,
   };
 }
@@ -115,6 +129,30 @@ describe("shell surface scenes", () => {
       Scene.expect(Scene.text("API 1.2.3")).toExist(),
       Scene.expect(Scene.text("edh.reilley.dev")).toExist(),
       Scene.expect(Scene.text("mtgfr")).not.toExist(),
+    );
+  });
+
+  it("renders pool coverage above API version when meta is complete", () => {
+    const chrome = {
+      apiVersion: "1.2.3",
+      faithfulCount: 662,
+      oracleTotal: 28412,
+    };
+
+    Scene.scene(
+      { update, view },
+      Scene.with(loginModel(chrome)),
+      Scene.tap((sim) => {
+        const ids = collectTestIds(sim.html);
+        const coverage = ids.indexOf("pool-coverage");
+        const version = ids.indexOf("app-version");
+        expect(coverage).toBeGreaterThan(-1);
+        expect(version).toBeGreaterThan(coverage);
+      }),
+      Scene.expect(Scene.selector('[data-testid="pool-coverage"]')).toExist(),
+      Scene.expect(Scene.text("2.3% faithful")).toExist(),
+      Scene.expect(Scene.selector('[data-testid="app-version"]')).toExist(),
+      Scene.expect(Scene.text("API 1.2.3")).toExist(),
     );
   });
 

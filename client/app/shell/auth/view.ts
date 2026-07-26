@@ -1,5 +1,5 @@
 import { html } from "foldkit/html";
-import { appVersionBadge } from "../../../lib/ui/app-version";
+import { type AppChromeMeta, appVersionBadge } from "../../../lib/ui/app-version";
 import { buttonClass } from "../../../lib/ui/buttonClass";
 import { feltClass, fieldClass, panelClass } from "../../../lib/ui/surfaces";
 import {
@@ -14,7 +14,7 @@ import type { AuthSubmodel } from "./submodel";
 
 const h = html<Message>();
 
-export function view(model: AuthSubmodel, apiVersion: string | null) {
+export function view(model: AuthSubmodel, chrome: AppChromeMeta) {
   const isLogin = model.mode === "login";
   const modeToggle = isLogin ? ChangedAuthMode({ mode: "signup" }) : ChangedAuthMode({ mode: "login" });
 
@@ -110,7 +110,7 @@ export function view(model: AuthSubmodel, apiVersion: string | null) {
           ),
         ],
       ),
-      appVersionBadge(h, apiVersion),
+      appVersionBadge(h, chrome),
     ],
   );
 }

@@ -1,5 +1,6 @@
-// BFF helpers for the lobby route: me/deck/seed over gRPC; version stays HTTP `/health/live`.
+// BFF helpers for the lobby route: me/deck/seed over gRPC; meta/version stays HTTP `/health/live`.
 
+import { ensureOracleTotalRefresh, getCachedOracleTotal } from "./scryfall-oracle-total";
 import { GrpcCallError, type GrpcRequestEnv, grpcClientFor, httpStatusOf } from "./wire/grpcClient";
 import type { SaveDeckRequest, SeedRequest, SeedResponse } from "./wire/types";
 
@@ -43,11 +44,48 @@ export async function fetchDeckName(env: GrpcRequestEnv, deckId: number): Promis
   }
 }
 
-export async function fetchApiVersion(): Promise<string | null> {
-  const res = await fetch(`${apiUpstream()}/health/live`);
-  if (!res.ok) return null;
-  const body = (await res.json()) as { version?: string };
-  return body.version ?? null;
+export type LiveStatus = { version: string; faithfulCount: number | null };
+
+export function parseLiveStatus(body: unknown): LiveStatus | null {
+  if (body === null || typeof body !== "object") return null;
+  if (!("version" in body)) return null;
+  if (typeof body.version !== "string" || body.version.length === 0) return null;
+  if (!("faithful_count" in body)) {
+    return { version: body.version, faithfulCount: null };
+  }
+  if (typeof body.faithful_count !== "number" || !Number.isFinite(body.faithful_count)) {
+    return { version: body.version, faithfulCount: null };
+  }
+  return { version: body.version, faithfulCount: body.faithful_count };
+}
+
+function unavailableApiMeta() {
+  return {
+    version: null,
+    faithfulCount: null,
+    oracleTotal: getCachedOracleTotal(),
+  };
+}
+
+export async function fetchApiMeta(): Promise<{
+  version: string | null;
+  faithfulCount: number | null;
+  oracleTotal: number | null;
+}> {
+  ensureOracleTotalRefresh();
+  try {
+    const res = await fetch(`${apiUpstream()}/health/live`);
+    if (!res.ok) return unavailableApiMeta();
+    const parsed = parseLiveStatus(await res.json());
+    if (!parsed) return unavailableApiMeta();
+    return {
+      version: parsed.version,
+      faithfulCount: parsed.faithfulCount,
+      oracleTotal: getCachedOracleTotal(),
+    };
+  } catch {
+    return unavailableApiMeta();
+  }
 }
 
 export type { SeedResponse };

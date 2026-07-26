@@ -61,6 +61,8 @@ export const Model = S.Struct({
   session: SessionSlice,
   sessionLoaded: S.Boolean,
   apiVersion: S.NullOr(S.String),
+  faithfulCount: S.NullOr(S.Number),
+  oracleTotal: S.NullOr(S.Number),
   auth: AuthSubmodel,
   decks: DecksSubmodel,
   leaderboard: LeaderboardSubmodel,
