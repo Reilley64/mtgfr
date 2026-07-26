@@ -765,7 +765,16 @@ token = { name = "Inkling", power = 2, toughness = 1 }
             "every backfilled card carries at least one set code"
         );
         let viper = get_by_name("Ambush Viper").expect("Ambush Viper is in the pool");
-        assert_eq!(viper.sets.as_ref(), &["inr"]);
+        assert!(
+            viper.sets.iter().any(|s| *s == "inr"),
+            "Ambush Viper printings include inr: {:?}",
+            viper.sets
+        );
+        assert!(
+            viper.sets.len() > 1,
+            "backfill lists every printing set, not only the old singular default: {:?}",
+            viper.sets
+        );
         assert_eq!(viper.subtypes.as_ref(), &["Snake"]);
 
         let starfield = get_by_name("Starfield Mystic").expect("Starfield Mystic is in the pool");
