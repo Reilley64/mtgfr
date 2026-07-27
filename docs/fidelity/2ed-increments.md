@@ -669,7 +669,7 @@ whether the creature attacked, which is `attacked_this_turn` (#1's neighbourhood
 effect. Also needs the cast-timing restriction "only before the combat damage step."
 *Cards:* berserk.
 
-### 46. `mana-from-variable-amount` — 1 card, S
+### 46. `mana-from-variable-amount` — 1 card, S — **done**
 Depends on: nothing.
 Sacrifice — "Add an amount of {B} equal to the sacrificed creature's mana value." Mana effects add
 fixed quantities; `Amount::SacrificedCreaturePower` exists but not mana value, and the mana effect
@@ -677,6 +677,18 @@ takes no amount. *Sketch:* an `amount: Amount` on the mana-add effect, plus
 `Amount::SacrificedCreatureManaValue`. The additional cost (`[cost.additional]` sacrifice) already
 exists.
 *Cards:* sacrifice.
+
+*Landed:* half the sketch was already there. `ManaEffect::Add` carries a `repeat: Amount` that
+multiplies the whole mana batch, so no `amount` field was needed — `mana = ["black"]` with
+`repeat = "spell_sacrificed_mana_value"` is the card. The real work was the *channel*: Sacrifice is
+a spell, not an activated ability, so `contextualize_sacrifice_effect` (which fills
+`Amount::SacrificedCreaturePower` at `activate_ability`) doesn't reach it. A spell's effect is read
+off its def at resolution, by which time the fodder is a graveyard card. The cast context is the
+seam — `Spell::sacrifice_count` and `Spell::revealed_creature_mana_value` already ride
+`Event::SpellCast` for exactly this reason, so `sacrificed_mana_value` joins them and
+`Amount::SpellSacrificedManaValue` reads it off the resolving spell. Naming matters here: it is a
+`spell_*` sibling, *not* a `sacrificed_creature_*` one, because the two families use different
+mechanisms and mixing them up is a silent wrong answer.
 
 ### 47. `lich-life-replacement` — 1 card, L
 Depends on: #22.

@@ -64070,6 +64070,32 @@ fn seize_the_spoils_additional_discard_cost_paid() {
 // ── Additional cast costs (#92): optional "sacrifice any number" (CR 601.2f) ────────────
 
 #[test]
+fn sacrifice_adds_black_equal_to_the_sacrificed_creatures_mana_value() {
+    // Sacrifice (2ed): "As an additional cost to cast this spell, sacrifice a creature. Add an
+    // amount of {B} equal to the sacrificed creature's mana value." The creature is in the
+    // graveyard before the spell resolves, so the mana value has to ride the cast (CR 601.2f).
+    let mut game = TestGame::new();
+    let sac = game.spawn_in_hand(PlayerId(0), card("Sacrifice"));
+    // {1}{R}{R} 2/3 — mana value 3 disagrees with both its power and its toughness.
+    let fodder = game.spawn_on_battlefield(PlayerId(0), card("Hurloon Minotaur"));
+
+    game.cast(sac).sacrificing(vec![fodder]).submit();
+    let black_before = game.mana_pool(PlayerId(0)).colored[Color::Black.index()];
+    resolve_whole_stack(&mut game);
+
+    assert_eq!(
+        game.zone_of(fodder),
+        Zone::Graveyard,
+        "the fodder was eaten"
+    );
+    assert_eq!(
+        game.mana_pool(PlayerId(0)).colored[Color::Black.index()],
+        black_before + 3,
+        "the ritual paid back the Minotaur's mana value, not its power or its toughness"
+    );
+}
+
+#[test]
 fn plumb_the_forbidden_records_sacrificed_count() {
     // Plumb the Forbidden (soc): "As an additional cost to cast this spell, you may sacrifice
     // one or more creatures. … You draw a card and lose 1 life." Paying the optional cost

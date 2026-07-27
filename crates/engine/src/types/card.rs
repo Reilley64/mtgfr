@@ -1631,6 +1631,15 @@ pub(crate) struct Spell {
     /// such cost or the caster declined. Read by a copy-per-sacrifice rider once one exists (no
     /// pool card reads it yet); recorded here the way `x` is, for the same reason.
     pub(crate) sacrifice_count: u8,
+    /// The total mana value of the permanents counted by [`Self::sacrifice_count`] (Sacrifice's
+    /// "Add an amount of {B} equal to the sacrificed creature's mana value"), 0 when nothing was
+    /// sacrificed. Recorded here because the fodder is a graveyard card by the time the spell
+    /// resolves, exactly like [`Self::revealed_creature_mana_value`] below. Read by
+    /// [`Amount::SpellSacrificedManaValue`] via [`Game::spell_sacrificed_mana_value`].
+    /// ponytail: a *total*, because a spell that eats several (Plumb the Forbidden) would
+    /// otherwise need an arbitrary pick; the one card that reads it eats exactly one, so the
+    /// total and "the sacrificed creature's" agree.
+    pub(crate) sacrificed_mana_value: u8,
     /// The mana value of the creature card revealed to pay this spell's
     /// [`AdditionalCost::reveal_creature_from_hand`] (CR 601.2g — Disaster Radius's "reveal a
     /// creature card from your hand"), 0 if the spell has no such cost. Chosen automatically at

@@ -840,6 +840,18 @@ impl Game {
         }
     }
 
+    /// The total mana value of the permanents sacrificed to pay the spell at `id`'s
+    /// [`AdditionalCost::sacrifice`] (CR 601.2f — Sacrifice's "an amount of {B} equal to the
+    /// sacrificed creature's mana value"), 0 if `id` isn't a spell or nothing was sacrificed.
+    /// The seam [`Amount::SpellSacrificedManaValue`] reads, the value sibling of
+    /// [`Self::spell_sacrifice_count`]'s count.
+    pub fn spell_sacrificed_mana_value(&self, id: ObjectId) -> u8 {
+        match &self.objects[id as usize] {
+            Object::Spell(s) => s.sacrificed_mana_value,
+            _ => 0,
+        }
+    }
+
     /// The mana value of the creature card revealed to pay the spell at `id`'s
     /// [`AdditionalCost::reveal_creature_from_hand`] (CR 601.2g — Disaster Radius's "reveal a
     /// creature card from your hand"), 0 if `id` isn't a spell or has no such cost. The seam

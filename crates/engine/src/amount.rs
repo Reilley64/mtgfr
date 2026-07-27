@@ -158,6 +158,7 @@ impl Game {
             // `fill_cast_mana_spent` rewrites it to `Fixed` before the ability reaches the stack.
             Amount::TriggeringSpellManaSpent => 0,
             Amount::SpellSacrificeCount => self.spell_sacrifice_count(source) as i32,
+            Amount::SpellSacrificedManaValue => self.spell_sacrificed_mana_value(source) as i32,
             Amount::SpellMultikickerCount => self.spell_multikicker_count(source) as i32,
             Amount::RevealedCreatureManaValue => self.revealed_creature_mana_value(source) as i32,
             Amount::PermanentsDiedThisTurn => self.permanents_died_this_turn as i32,

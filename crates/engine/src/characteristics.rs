@@ -2688,6 +2688,7 @@ mod cache_tests {
                 damage_division_players: [None; MAX_TARGETS],
                 counter_division: DamageAssignment::default(),
                 sacrifice_count: 0,
+                sacrificed_mana_value: 0,
                 revealed_creature_mana_value: 0,
                 kicked: false,
                 bought_back: false,

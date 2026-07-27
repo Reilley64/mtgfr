@@ -166,6 +166,13 @@ pub enum Amount {
     /// way". Reads [`Game::spell_sacrifice_count`] off the effect's `source` (the resolving
     /// spell itself).
     SpellSacrificeCount,
+    /// The total mana value of those same sacrificed permanents — Sacrifice's "add an amount of
+    /// {B} equal to the sacrificed creature's mana value." Reads
+    /// [`Game::spell_sacrificed_mana_value`] off the effect's `source`, the value sibling of
+    /// [`SpellSacrificeCount`](Self::SpellSacrificeCount)'s count. Not a placeholder: the value
+    /// is recorded on the spell at cast time (the fodder is already in the graveyard), so it is
+    /// still there to read at resolution.
+    SpellSacrificedManaValue,
     /// How many times the resolving spell's Multikicker cost (CR 702.33c) was paid — Lightkeeper
     /// of Emeria's "you gain 2 life for each time it was kicked." Reads
     /// [`Game::spell_multikicker_count`] off the effect's `source` (the resolving spell itself),

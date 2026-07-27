@@ -1082,6 +1082,7 @@ fn amount_token(amount: Amount) -> &'static str {
         Amount::TriggeringSpellManaValue => "triggering_spell_mana_value",
         Amount::TriggeringSpellManaSpent => "triggering_spell_mana_spent",
         Amount::SpellSacrificeCount => "spell_sacrifice_count",
+        Amount::SpellSacrificedManaValue => "spell_sacrificed_mana_value",
         Amount::SpellMultikickerCount => "spell_multikicker_count",
         Amount::SpellFirstTargetManaValue => "spell_first_target_mana_value",
         Amount::CardsDiscardedThisWay => "cards_discarded_this_way",

@@ -284,7 +284,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Reverse Damage** {1}{W}{W} · Instant — increment 4, 5
 - [x] **Righteousness** {W} · Instant — increment 52
 - [ ] **Rock Hydra** {X}{R}{R} · Creature — Hydra — increment 4, 28
-- [ ] **Sacrifice** {B} · Instant — increment 46
+- [x] **Sacrifice** {B} · Instant — increment 46
 - [x] **Samite Healer** {1}{W} · Creature — Human Cleric — increment 4
 - [x] **Scavenging Ghoul** {3}{B} · Creature — Zombie — increment 28
 - [ ] **Sea Serpent** {5}{U} · Creature — Serpent — increment 24

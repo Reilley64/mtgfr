@@ -1550,6 +1550,13 @@ Write one of:
 - `"spell_sacrifice_count"` — how many creatures were sacrificed to pay the resolving spell's
   additional sacrifice cost (CR 601.2f); only meaningful on that spell's own effect (Plumb the
   Forbidden's copy rider)
+- `"spell_sacrificed_mana_value"` — the *total mana value* of those same sacrificed permanents,
+  recorded at cast time (the fodder is a graveyard card by resolution). Sacrifice's "Add an amount
+  of {B} equal to the sacrificed creature's mana value" is `mana = ["black"]` with
+  `repeat = "spell_sacrificed_mana_value"` — the `repeat` field already scales a mana batch, so
+  no separate amount key on the effect. Distinct from `"sacrificed_creature_power"` /
+  `"sacrificed_creature_toughness"`, which are *activated-ability* placeholders filled at
+  activation; this one reads a spell's own recorded cast context, like its `spell_*` siblings
 - `"spell_multikicker_count"` — how many times the resolving spell's Multikicker cost was paid (CR
   702.33c); meaningful both on that spell's own effect and on a `permanent_enters`/`etb` ability of
   the permanent it became — Lightkeeper of Emeria's "you gain 2 life for each time it was kicked"

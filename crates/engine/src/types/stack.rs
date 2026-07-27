@@ -2109,6 +2109,9 @@ pub enum Event {
         /// How many permanents were sacrificed to pay [`AdditionalCost::sacrifice`] (0 for a
         /// spell with no such cost, or a decline); see [`Spell::sacrifice_count`].
         sacrifice_count: u8,
+        /// The total mana value of those sacrificed permanents (0 when none were); see
+        /// [`Spell::sacrificed_mana_value`].
+        sacrificed_mana_value: u8,
         /// The mana value of the creature card revealed to pay
         /// [`AdditionalCost::reveal_creature_from_hand`] (0 for a spell with no such cost); see
         /// [`Spell::revealed_creature_mana_value`].

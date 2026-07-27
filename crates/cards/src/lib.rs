@@ -167,9 +167,9 @@ mod tests {
         Condition, ControlEffect, CopyEffect, Cost, CountersEffect, DamageEffect, DestroyEffect,
         DigEffect, DrawEffect, Effect, EnterController, ExileEffect, GraveyardScope, Keyword,
         LandProduces, LandTapBonusColor, LandTapScope, LifeEffect, Mana, ManaEffect, MillEffect,
-        MiscEffect, PermanentFilter, ProtectionScope, PumpEffect, SacrificeCost, SacrificeEffect,
-        SearchDest, SpellFilter, SpellSpeed, StaticEffect, TargetCount, TargetSpec, Timing,
-        TokenEffect, Trigger, TypeSet, ZoneEffect,
+        MiscEffect, PermanentFilter, ProtectionScope, PumpEffect, SacrificeAdditionalCostCount,
+        SacrificeCost, SacrificeEffect, SearchDest, SpellFilter, SpellSpeed, StaticEffect,
+        TargetCount, TargetSpec, Timing, TokenEffect, Trigger, TypeSet, ZoneEffect,
     };
 
     #[test]
@@ -2797,6 +2797,30 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                 Effect::Damage(DamageEffect::EachPlayer { amount: Amount::X }),
             ],
             "X to each flier and X to each player — the caster included"
+        );
+    }
+
+    /// Sacrifice's ritual is sized by its own cast cost — the fodder's mana value, recorded when
+    /// the cost was paid, not read off a creature that is in the graveyard by then.
+    #[test]
+    fn unlimited_sacrifice_scales_its_ritual_by_the_fodders_mana_value() {
+        let sac = get_by_name("Sacrifice").expect("Sacrifice is in the pool");
+        assert_eq!(
+            sac.cost
+                .additional
+                .sacrifice
+                .map(|s| (s.count, s.filter.types)),
+            Some((SacrificeAdditionalCostCount::Exactly(1), TypeSet::CREATURE)),
+            "as an additional cost to cast this spell, sacrifice a creature"
+        );
+        let Effect::Mana(ManaEffect::Add { mana, repeat, .. }) = sac.abilities[0].effect else {
+            panic!("Sacrifice's only effect adds mana");
+        };
+        assert_eq!(mana.colored[Color::Black.index()], 1, "an amount of {{B}}");
+        assert_eq!(
+            repeat,
+            Amount::SpellSacrificedManaValue,
+            "equal to the sacrificed creature's mana value"
         );
     }
 

@@ -57,6 +57,9 @@ pub(crate) fn project_event(
             // `x`/`modes` above — no UI reads it yet (it feeds a copy-per-sacrifice rider that
             // doesn't exist). Add it when that UI does.
             sacrifice_count: _,
+            // ponytail: nor their total mana value, same reasoning as `sacrifice_count` above —
+            // the client sees the resulting `ManaAdded` events instead.
+            sacrificed_mana_value: _,
             // ponytail: the revealed creature card's mana value (CR 601.2g) isn't surfaced on the
             // wire either, same reasoning as `sacrifice_count` above — no UI reads it yet (the
             // client sees the resulting damage event instead). Add it when a UI wants to show

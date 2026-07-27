@@ -544,6 +544,14 @@ impl Game {
         // An optional additional sacrifice cost (CR 601.2f — Plumb the Forbidden's "you may
         // sacrifice one or more creatures"), paid pre-stack like the discard loop above. Routes
         // through the normal death events so "when this/a creature dies" watchers fire off it.
+        // The fodder's mana value is read here, before it moves, for Sacrifice's "add an amount
+        // of {B} equal to the sacrificed creature's mana value" — it's a graveyard card by
+        // resolution.
+        let sacrificed_mana_value = sacrifice_cost
+            .iter()
+            .map(|&id| self.def_of(id).mana_value())
+            .sum::<u32>()
+            .min(u8::MAX as u32) as u8;
         for &id in sacrifice_cost {
             let def = self.def_id_of(id);
             let event = self.sacrifice_event(id);
@@ -594,6 +602,7 @@ impl Game {
                 flashback: cast_via_flashback,
                 escape: cast_via_escape,
                 sacrifice_count: sacrifice_cost.len() as u8,
+                sacrificed_mana_value,
                 revealed_creature_mana_value,
                 kicked,
                 bought_back,
@@ -1987,6 +1996,7 @@ impl Game {
                 flashback: false,
                 escape: false,
                 sacrifice_count: 0,
+                sacrificed_mana_value: 0,
                 revealed_creature_mana_value: 0,
                 kicked: false,
                 bought_back: false,
@@ -2082,6 +2092,7 @@ impl Game {
                 flashback: false,
                 escape: false,
                 sacrifice_count: 0,
+                sacrificed_mana_value: 0,
                 revealed_creature_mana_value: 0,
                 kicked: false,
                 bought_back: false,
