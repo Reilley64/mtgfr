@@ -29858,6 +29858,7 @@ const FALLEN_IDEAL_GRANT: GrantedAbility = GrantedAbility {
         keywords: &[],
     })],
     trigger: None,
+    optional: false,
 };
 
 /// A test-only Aura shaped like Fallen Ideal: its host gains flying and the granted "Sacrifice a
@@ -104874,6 +104875,56 @@ fn mind_twist_for_more_than_the_hand_holds_just_empties_it() {
         .resolve();
 
     assert!(hand_ids(&game, PlayerId(1)).is_empty(), "the hand is empty");
+}
+
+// ── An Aura granting a triggered ability to its host (fidelity #36) ──────────────────────────
+
+#[test]
+fn farmstead_gives_its_enchanted_land_an_upkeep_pay_for_life_trigger() {
+    // "Enchanted land has 'At the beginning of your upkeep, you may pay {W}{W}. If you do, you
+    // gain 1 life.'" The trigger belongs to the *land*, not the Aura — and "your" upkeep is the
+    // land's controller's.
+    let mut game = Game::new();
+    let plains = game.spawn_on_battlefield(PlayerId(0), card("Plains"));
+    let aura = game.spawn_in_hand(PlayerId(0), card("Farmstead"));
+    cast_and_resolve(&mut game, aura, Some(Target::Object(plains)));
+    // Survive the draw-step draw between here and the next upkeep.
+    game.spawn_in_library(PlayerId(0), VANILLA.clone());
+
+    advance_to_next_upkeep(&mut game, PlayerId(0));
+    // CR 500.4 empties the pool at every step boundary, so fund only once the pause is up.
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::PayOptionalCost {
+        player: PlayerId(0),
+        pay: true,
+        discard_cost: vec![],
+    })
+    .expect("the granted upkeep trigger's optional {W}{W}");
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(game.life(PlayerId(0)), 21, "paid {{W}}{{W}}, gained 1");
+}
+
+#[test]
+fn farmsteads_granted_trigger_leaves_with_the_aura() {
+    // The grant is live only while the Aura is attached — destroy Farmstead and the land is a
+    // plain land again, with nothing to trigger at the next upkeep.
+    let mut game = Game::new();
+    let plains = game.spawn_on_battlefield(PlayerId(0), card("Plains"));
+    let aura = game.spawn_in_hand(PlayerId(0), card("Farmstead"));
+    cast_and_resolve(&mut game, aura, Some(Target::Object(plains)));
+    let aura_perm = game.attachments(plains)[0];
+    let fracture = game.spawn_in_hand(PlayerId(0), card("Fracture"));
+    cast_and_resolve(&mut game, fracture, Some(Target::Object(aura_perm)));
+    game.spawn_in_library(PlayerId(0), VANILLA.clone());
+
+    advance_to_next_upkeep(&mut game, PlayerId(0));
+
+    assert!(
+        game.pending_choice().is_none(),
+        "no grant, no pay-or-decline pause"
+    );
+    assert_eq!(game.life(PlayerId(0)), 20);
 }
 
 // ── A lord granting an activated ability to a filter (fidelity #66) ──────────────────────────

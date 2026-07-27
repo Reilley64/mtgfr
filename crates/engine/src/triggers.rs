@@ -2932,9 +2932,8 @@ impl Game {
                 combat_damage_source_controller: Some(source_controller),
                 ..TriggerContext::of(controller)
             };
-            // ponytail: only this scanner consults granted triggered abilities — the pool's one
-            // consumer (Power Fist). Move onto a shared owned-abilities accessor the moment a
-            // second granted trigger flavor lands (see `Game::granted_attachment_triggers`).
+            // This scanner is bespoke — it doesn't route through `queue_trigger_group`, where
+            // every other flavor picks attachment grants up — so it consults them itself.
             let granted_triggers = self.granted_attachment_triggers(id);
             let abilities: Vec<Ability> = self
                 .functional_abilities(id)
@@ -3798,11 +3797,17 @@ impl Game {
         // A Backup grant (CR 702.166) makes `source` gain another permanent's abilities until end
         // of turn — so scan those too, alongside its own def's, addressing them as `source`'s.
         let granted = self.granted_source_abilities(source);
+        // An Aura/Equipment attached to `source` can grant it a triggered ability too (Farmstead's
+        // "Enchanted land has \"At the beginning of your upkeep, …\""). Scanned here, at the shared
+        // choke, so every trigger flavor routed through `queue_trigger_group` picks a grant up
+        // without its own scanner learning about attachments.
+        let attached = self.granted_attachment_triggers(source);
         let abilities: Vec<Ability> = def
             .abilities
             .iter()
             .cloned()
             .chain(granted)
+            .chain(attached)
             .filter(|a| {
                 a.timing == Timing::Triggered(trigger)
                     && a.min_level <= source_level

@@ -4070,6 +4070,24 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         assert!(cost.taps_self);
     }
 
+    /// Farmstead grants a *triggered* ability, so its `GrantedAbility` carries a trigger and the
+    /// `optional` flag that raises the "you may pay {W}{W}" pause — an activated grant has
+    /// neither.
+    #[test]
+    fn unlimited_farmstead_grants_its_land_an_optional_upkeep_trigger() {
+        let farmstead = get_by_name("Farmstead").expect("Farmstead is in the pool");
+        let Effect::Static(StaticEffect::GrantToAttached {
+            granted_ability: Some(granted),
+            ..
+        }) = farmstead.abilities[0].effect
+        else {
+            panic!("an attachment-scoped grant");
+        };
+        assert_eq!(granted.trigger, Some(Trigger::Upkeep));
+        assert!(granted.optional, "\"you may pay {{W}}{{W}}\"");
+        assert_eq!(granted.cost.mana.colored[Color::White.index()], 2);
+    }
+
     /// Zombie Master's second clause has to be a filter-scoped grant, not the attachment-scoped
     /// `GrantToAttached` one — the Master enchants nothing, so an attachment grant would reach no
     /// permanent at all. The `other` axis is what keeps the lord from regenerating itself.

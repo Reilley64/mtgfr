@@ -2037,9 +2037,9 @@ impl Game {
     /// ([`Game::granted_activated_abilities`]), there is no `ability_at` index to address, since
     /// a triggered ability isn't activated. Recomputed live off the same attachment scan, so it
     /// disappears the instant the Aura/Equipment leaves (CR 702.26e for a phased-out one).
-    /// ponytail: only the combat-damage-to-a-player scanner consults granted triggered abilities —
-    /// the pool's one consumer (Power Fist). Move this onto a shared owned-abilities accessor the
-    /// moment a second granted trigger flavor lands.
+    /// Read by [`Game::queue_trigger_group`], the shared choke most trigger flavors route
+    /// through, and separately by the combat-damage-to-a-player scanner, which is bespoke and
+    /// doesn't route through it.
     pub(crate) fn granted_attachment_triggers(&self, host: ObjectId) -> Vec<Ability> {
         self.attachments(host)
             .into_iter()
@@ -2066,9 +2066,14 @@ impl Game {
                             Ability {
                                 timing: Timing::Triggered(trigger),
                                 effect,
-                                optional: false,
+                                optional: g.optional,
                                 min_level: 0,
-                                cost: Cost::FREE,
+                                // Only the mana half of the grant's `cost` is a *triggered*
+                                // ability's cost (Farmstead's "you may pay {W}{W}") — an
+                                // `Ability::cost` is a `Cost`, and the rest of an
+                                // `ActivationCost` (tapping, sacrificing) has no meaning for
+                                // something that was never activated.
+                                cost: g.cost.mana,
                                 condition: None,
                                 once_each_turn: false,
                             }

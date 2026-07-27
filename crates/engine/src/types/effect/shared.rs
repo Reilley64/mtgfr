@@ -1449,6 +1449,12 @@ pub struct GrantedAbility {
         serde(default, deserialize_with = "de::opt_granted_trigger")
     )]
     pub trigger: Option<Trigger>,
+    /// "You **may** pay {W}{W}. If you do, …" on a *triggered* grant (Farmstead) — the granted
+    /// ability's own [`Ability::optional`], which pairs with `cost`'s mana to raise the same
+    /// pay-or-decline pause an authored optional trigger does. Ignored on an activated grant,
+    /// where declining is just not activating.
+    #[cfg_attr(feature = "card-dsl", serde(default))]
+    pub optional: bool,
 }
 
 /// The indefinite characteristics set an [`Effect::Zone(ZoneEffect::ReanimateToBattlefield)`] with a `becomes`

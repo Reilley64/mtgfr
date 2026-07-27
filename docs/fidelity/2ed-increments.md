@@ -658,7 +658,7 @@ permanent yet — that is this same card's cast enumeration (CR 303.4a), not a t
 already-attached Aura might have. The indestructible half is exactly the ordinary keyword grant the
 sketch predicted, so both printed clauses ride one static.
 
-### 36. `grant-triggered-ability-to-attached` — 1 card, M
+### 36. `grant-triggered-ability-to-attached` — 1 card, M — **done**
 Depends on: nothing.
 Farmstead grants the enchanted *land* a triggered ability ("At the beginning of your upkeep, you
 may pay {W}{W}…"). `grant_to_attached` grants keywords and `grant_source_abilities_until_end_of_turn`
@@ -668,6 +668,26 @@ host — `triggers.rs` already has a granted-triggered-abilities scanner (its po
 one consumer today), so this widens that path rather than adding one. The payload is #10's
 optional-mana-payment shape.
 *Cards:* farmstead.
+
+*Landed:* no new effect and no new payload — `grant_to_attached`'s `granted_ability` already carried
+an optional `trigger`, so the whole grant is one new field (`optional`) plus one new granted-trigger
+flavor (`Trigger::Upkeep`, fieldless, `{ upkeep = {} }`). The "optional-mana-payment shape" the
+sketch reached for is already what a triggered `Ability` does: setting `optional: true` and
+`cost: g.cost.mana` on the synthesized ability raises the same pay-or-decline pause an authored
+optional trigger raises, so `Intent::PayOptionalCost` works unchanged. Only the *mana* half of the
+grant's `ActivationCost` transfers — an `Ability::cost` is a `Cost`, and tapping or sacrificing has
+no meaning for something that was never activated.
+
+The sketch's "widen the existing scanner" was half right. `granted_attachment_triggers` did exist,
+but its one consumer was the bespoke combat-damage-to-a-player scanner, which does *not* route
+through `queue_trigger_group` — the shared choke every other trigger flavor goes through. So the
+fix was a `.chain(attached)` in `queue_trigger_group` itself, next to the `granted_source_abilities`
+chain that was already there; upkeep and every other choke-routed flavor picked the grant up at
+once. The combat scanner keeps its own call.
+
+Not folded into `functional_abilities`, the other candidate: that returns a cheap `Arc<[Ability]>`
+clone and is called in tight battlefield loops by the static scans, so a per-call attachment walk
+plus a `Vec` allocation would have been a real regression for a grant only the trigger paths read.
 
 ### 37. `aura-reattachment-on-trigger` — 1 card, M
 Depends on: nothing.

@@ -119,8 +119,8 @@ where
 /// [`Timing`]'s `TriggerTag`, which pairs a `timing` tag with sibling fields on the *ability's own
 /// table* because an [`Ability`] already has a flat `timing` column to piggyback on; a
 /// [`GrantedAbility`] has no such column, so its `trigger` nests instead.
-/// ponytail: only `DealsCombatDamageToPlayer` is wired — extend this tag (mirroring
-/// `TriggerTag`) the moment a second granted-trigger card needs a different flavor.
+/// ponytail: only the flavors below are wired — extend this tag (mirroring `TriggerTag`) the
+/// moment a granted-trigger card needs a different one.
 #[derive(Deserialize)]
 #[serde(rename_all = "snake_case")]
 enum GrantedTriggerTag {
@@ -128,6 +128,10 @@ enum GrantedTriggerTag {
         #[serde(default)]
         who: CombatDamageScope,
     },
+    /// Farmstead's "Enchanted land has \"At the beginning of your upkeep, …\"" — fieldless, so
+    /// it is spelled `trigger = { upkeep = {} }`. "Your" is the *host's* controller, which is
+    /// who a granted ability belongs to.
+    Upkeep {},
 }
 
 /// `deserialize_with` for [`GrantedAbility`]'s `trigger`. Only called when the key is present (a
@@ -140,6 +144,7 @@ where
         GrantedTriggerTag::DealsCombatDamageToPlayer { who } => {
             Trigger::DealsCombatDamageToPlayer { who }
         }
+        GrantedTriggerTag::Upkeep {} => Trigger::Upkeep,
     }))
 }
 
