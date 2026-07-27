@@ -2,13 +2,8 @@ import { Effect } from "effect";
 import type { html as createHtml, Html } from "foldkit/html";
 import { m } from "foldkit/message";
 import * as Mount from "foldkit/mount";
-import {
-  artCropFallbackUrl,
-  cardBackUrl,
-  type ImageFace,
-  type ImageSize,
-  imageUrlByPrint,
-} from "../deck-builder/scryfall";
+import { resolveCardFaceUrls } from "../card-art/proxy-url";
+import { cardBackUrl, type ImageFace, type ImageSize, imageUrlByPrint } from "../deck-builder/scryfall";
 import { type ImageCache, sharedImageCache } from "../image-cache";
 
 export function cardArtUrl(print: string, size: ImageSize = "large", face: ImageFace = "front"): string {
@@ -92,6 +87,7 @@ export function cardArt<M>(
   h: ReturnType<typeof createHtml<M>>,
   opts: {
     print: string;
+    proxyArtUrl?: string;
     size?: ImageSize;
     face?: ImageFace;
     alt: string;
@@ -102,8 +98,12 @@ export function cardArt<M>(
 ): Html {
   const size = opts.size ?? "large";
   const face = opts.face ?? "front";
-  const url = cardArtUrl(opts.print, size, face);
-  const fallback = size === "art_crop" ? artCropFallbackUrl(opts.print, face) : null;
+  const { url, fallback } = resolveCardFaceUrls({
+    print: opts.print,
+    proxyArtUrl: opts.proxyArtUrl,
+    size,
+    face,
+  });
   return h.div(
     [
       h.Class(`${opts.className} relative overflow-hidden`),

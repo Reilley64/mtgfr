@@ -75,6 +75,7 @@ function costPipView(ms: string, code: string, sizePx: number): Html {
 function tile(args: {
   name: string;
   print: string;
+  proxyArtUrl?: string;
   cardId?: string;
   zone: "hand" | "command" | "graveyard" | "exile";
   objectId?: number;
@@ -93,6 +94,7 @@ function tile(args: {
   const {
     name,
     print,
+    proxyArtUrl,
     cardId,
     zone,
     objectId,
@@ -174,6 +176,7 @@ function tile(args: {
           name,
           ...(cardId ? { cardId } : {}),
           ...(print ? { print } : {}),
+          ...(proxyArtUrl ? { proxyArtUrl } : {}),
         },
       }),
     ),
@@ -184,6 +187,7 @@ function tile(args: {
     hitAttrs.push(h.DataAttribute("action-payload", JSON.stringify(action)));
     hitAttrs.push(h.DataAttribute("card-name", name));
     hitAttrs.push(h.DataAttribute("card-print", print));
+    if (proxyArtUrl) hitAttrs.push(h.DataAttribute("card-proxy-art-url", proxyArtUrl));
     hitAttrs.push(h.DataAttribute("mana-cost", JSON.stringify(manaCost)));
     hitAttrs.push(h.DataAttribute("action-kind", action.kind));
     hitAttrs.push(h.DataAttribute("needs-target", action.needs_target ? "1" : "0"));
@@ -238,6 +242,7 @@ function tile(args: {
   const art: Html = print
     ? cardArt(h, {
         print,
+        proxyArtUrl,
         alt: name,
         className: artClass,
         style: cardBoxStyle,
@@ -357,6 +362,7 @@ function handDragGhost(drag: HandDragState): Html {
       drag.print
         ? cardArt(h, {
             print: drag.print,
+            proxyArtUrl: drag.proxyArtUrl,
             alt: drag.name,
             className: artClass,
             style: { width: `${HAND_CARD_W}px`, height: `${HAND_CARD_H}px` },
@@ -395,6 +401,7 @@ export function handView(inputs: HandViewInputs): Html {
     const obj = id != null ? objectsById.get(id) : undefined;
     return {
       print: obj?.print ?? "",
+      proxyArtUrl: obj?.proxy_art_url,
       cardId: obj?.card_id,
       kind: obj?.kind?.kind,
       manaCost: obj?.mana_cost ?? emptyCost(),
@@ -408,6 +415,7 @@ export function handView(inputs: HandViewInputs): Html {
     tile({
       name: c.name,
       print: c.print ?? "",
+      proxyArtUrl: c.proxy_art_url,
       cardId: c.card_id,
       zone: "command",
       objectId: c.id,
@@ -425,6 +433,7 @@ export function handView(inputs: HandViewInputs): Html {
   type HandSlot = {
     name: string;
     print: string;
+    proxyArtUrl?: string;
     cardId?: string;
     objectId?: number;
     objectKind?: string;
@@ -443,6 +452,7 @@ export function handView(inputs: HandViewInputs): Html {
     handSlots.push({
       name: c.name,
       print: c.print ?? "",
+      proxyArtUrl: c.proxy_art_url,
       cardId: c.card_id,
       objectId: c.id,
       objectKind: c.kind.kind,
@@ -473,6 +483,7 @@ export function handView(inputs: HandViewInputs): Html {
       return tile({
         name: formatMessage(a.label),
         print: meta.print,
+        proxyArtUrl: meta.proxyArtUrl,
         cardId: meta.cardId,
         zone,
         objectId: id,

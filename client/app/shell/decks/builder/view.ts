@@ -23,12 +23,16 @@ import { accountChrome } from "../../account-chrome/view";
 import { shellFrame } from "../../frame/shell-frame";
 import {
   ActivatedBuilderTarget,
+  type BuilderProxyArtTargetKind,
   CancelledBuilderDiscard,
   ChangedBuilderName,
+  ChangedBuilderProxyArtUrl,
   ChangedBuilderQuery,
   ClearedBuilderHover,
+  ClearedBuilderProxyArt,
   ClosedBuilderMenu,
   ClosedBuilderPrintPicker,
+  ClosedBuilderProxyArtPicker,
   ConfirmedBuilderDiscard,
   type Message,
   MovedBuilderHover,
@@ -37,6 +41,7 @@ import {
   RanBuilderMenuAction,
   RequestedBuilderCancel,
   RequestedNextBuilderPage,
+  SubmittedBuilderProxyArt,
   SubmittedDeckSave,
 } from "./messages";
 import type { DeckBuilderSubmodel } from "./submodel";
@@ -72,6 +77,8 @@ const PRINT_TILE = cn(
 const PRINT_PICKER_GRID = "grid w-fit grid-cols-2 gap-md";
 const PRINT_BADGE =
   "rounded-full border border-vine-dim bg-glass-dim px-[7px] py-px font-semibold text-chip text-lichen";
+const PROXY_CHIP =
+  "rounded-full border border-vine/50 bg-vine/12 px-[7px] py-px font-semibold text-chip text-vine";
 const CARD_ART = cn("aspect-[0.72] w-full rounded-control object-cover");
 const PRINT_SKELETON = cn(PRINT_PICKER_COL, "flex cursor-default flex-col items-center gap-1.5 p-md");
 
@@ -151,7 +158,10 @@ export const BindBuilderCardPointer = Mount.defineStream(
                 const dy = event.clientY - pressOrigin.y;
                 if (dx * dx + dy * dy > 100) clearPress();
               }
-              Queue.offerUnsafe(queue, MovedBuilderHover({ id: args.cardId, x: event.clientX, y: event.clientY }));
+              Queue.offerUnsafe(
+                queue,
+                MovedBuilderHover({ id: args.cardId, kind: args.kind, x: event.clientX, y: event.clientY }),
+              );
             };
 
             const onPointerLeave = () => {
@@ -219,8 +229,25 @@ export const BindBuilderCardPointer = Mount.defineStream(
     ),
 );
 
-function builderCardArt(print: string, alt: string, className: string): Html {
-  return cardArt(h, { print, alt, className });
+function proxyArtFor(model: DeckBuilderSubmodel, cardId: string): string | undefined {
+  const entryProxyArt = model.entries[cardId]?.proxyArtUrl;
+  if (entryProxyArt) return entryProxyArt;
+  if (model.commander.id === cardId) return model.commander.proxyArtUrl;
+  return undefined;
+}
+
+function proxyArtForTarget(
+  model: DeckBuilderSubmodel,
+  cardId: string,
+  target: BuilderProxyArtTargetKind,
+): string | undefined {
+  if (target === "entry") return model.entries[cardId]?.proxyArtUrl;
+  if (model.commander.id === cardId) return model.commander.proxyArtUrl;
+  return undefined;
+}
+
+function builderCardArt(print: string, proxyArtUrl: string | undefined, alt: string, className: string): Html {
+  return cardArt(h, { print, proxyArtUrl, alt, className });
 }
 
 function hoverPreview(model: DeckBuilderSubmodel): Html | null {
@@ -235,7 +262,7 @@ function hoverPreview(model: DeckBuilderSubmodel): Html | null {
 
 function contextMenu(model: DeckBuilderSubmodel): Html {
   const menu = model.menu;
-  if (menu == null || model.printPicker != null) return null;
+  if (menu == null || model.printPicker != null || model.proxyArtPicker != null) return null;
 
   const vw = typeof window !== "undefined" ? window.innerWidth : 1280;
   const vh = typeof window !== "undefined" ? window.innerHeight : 720;
@@ -291,7 +318,7 @@ function printTile(cardId: string, print: ScryfallPrint): Html {
       h.OnClick(PickedBuilderPrint({ cardId, print: print.id })),
     ],
     [
-      builderCardArt(print.id, `${print.set_name} #${print.collector_number}`, CARD_ART),
+      builderCardArt(print.id, undefined, `${print.set_name} #${print.collector_number}`, CARD_ART),
       h.div(
         [h.Class("flex w-full flex-wrap items-center justify-center gap-1")],
         [
@@ -372,6 +399,94 @@ function printPicker(model: DeckBuilderSubmodel): Html {
   );
 }
 
+function proxyArtPicker(model: DeckBuilderSubmodel): Html {
+  const picker = model.proxyArtPicker;
+  if (picker == null) return null;
+
+  const cardName = model.known[picker.cardId]?.name ?? picker.cardId;
+  const hasSavedProxyArt = proxyArtForTarget(model, picker.cardId, picker.target) != null;
+  const canSave = picker.error == null && picker.url.trim() !== "";
+
+  return h.dialog(
+    [
+      h.DataAttribute("testid", "builder-proxy-art-picker"),
+      h.Class(
+        "m-auto w-[min(92vw,640px)] rounded-modal border border-vine bg-forest-surface p-xl text-body text-snow shadow-table backdrop:bg-black/60",
+      ),
+      h.OnMount(OpenDialogAsModal()),
+      h.OnCancel(ClosedBuilderProxyArtPicker()),
+    ],
+    [
+      h.div(
+        [h.Class("flex flex-col gap-md")],
+        [
+          h.div(
+            [h.Class("flex items-center justify-between gap-lg")],
+            [
+              h.div([h.Class("min-w-0")], [
+                h.div([h.Class("font-semibold text-body")], ["Set proxy art"]),
+                h.div([h.Class("truncate text-label text-lichen")], [cardName]),
+              ]),
+              h.button(
+                [
+                  h.Type("button"),
+                  h.DataAttribute("testid", "close-proxy-art-picker"),
+                  h.OnClick(ClosedBuilderProxyArtPicker()),
+                  h.Class(buttonClass("ghost")),
+                ],
+                ["Close"],
+              ),
+            ],
+          ),
+          h.label([h.Class("sr-only"), h.For("builder-proxy-art-url")], ["Proxy art URL"]),
+          h.input([
+            h.Id("builder-proxy-art-url"),
+            h.Type("url"),
+            h.Value(picker.url),
+            h.Autocomplete("off"),
+            h.Spellcheck(false),
+            h.Placeholder("https://example.com/card.png"),
+            h.DataAttribute("testid", "builder-proxy-art-url"),
+            h.OnInput((url) => ChangedBuilderProxyArtUrl({ url })),
+            h.Class(fieldClass("w-full")),
+          ]),
+          picker.error == null
+            ? null
+            : h.div(
+                [h.Role("alert"), h.DataAttribute("testid", "builder-proxy-art-error"), h.Class("text-burn-red text-caption")],
+                [picker.error],
+              ),
+          h.div(
+            [h.Class("flex flex-wrap justify-end gap-sm")],
+            [
+              h.button(
+                [
+                  h.Type("button"),
+                  h.DataAttribute("testid", "builder-proxy-art-clear"),
+                  h.Disabled(!hasSavedProxyArt),
+                  h.OnClick(ClearedBuilderProxyArt()),
+                  h.Class(buttonClass("ghost")),
+                ],
+                ["Clear"],
+              ),
+              h.button(
+                [
+                  h.Type("button"),
+                  h.DataAttribute("testid", "builder-proxy-art-save"),
+                  h.Disabled(!canSave),
+                  h.OnClick(SubmittedBuilderProxyArt()),
+                  h.Class(buttonClass("primary")),
+                ],
+                ["Save"],
+              ),
+            ],
+          ),
+        ],
+      ),
+    ],
+  );
+}
+
 function offIdentity(model: DeckBuilderSubmodel, card: DeckBuilderSubmodel["pool"][number]): boolean {
   if (!model.commander.id) return false;
   const identity = model.known[model.commander.id]?.color_identity ?? [];
@@ -380,6 +495,7 @@ function offIdentity(model: DeckBuilderSubmodel, card: DeckBuilderSubmodel["pool
 
 function poolTile(model: DeckBuilderSubmodel, card: DeckBuilderSubmodel["pool"][number]): Html {
   const print = model.preferredPrint[card.id] ?? card.default_print;
+  const proxyArtUrl = proxyArtFor(model, card.id);
   return h.button(
     [
       // Key by oracle id: BindBuilderCardPointer captures cardId at mount; without a
@@ -391,7 +507,7 @@ function poolTile(model: DeckBuilderSubmodel, card: DeckBuilderSubmodel["pool"][
       h.OnMount(BindBuilderCardPointer({ cardId: card.id, kind: "pool" })),
     ],
     [
-      builderCardArt(print, card.name, CARD_ART),
+      builderCardArt(print, proxyArtUrl, card.name, CARD_ART),
       h.span([h.Class("text-center leading-[1.1]")], [`${card.legendary ? "★ " : ""}${card.name}`]),
     ],
   );
@@ -417,7 +533,7 @@ export type ViewInputs = {
 export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewInputs>((model, viewInputs) => {
   const rows = sortedDeckList(model.entries, model.known);
   const count = deckCount(model.entries);
-  const backgroundScrollLocked = model.printPicker != null;
+  const backgroundScrollLocked = model.printPicker != null || model.proxyArtPicker != null;
 
   return shellFrame(h, {
     atmosphere: "shell",
@@ -540,12 +656,21 @@ export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewIn
                   [
                     builderCardArt(
                       model.commander.print,
+                      model.commander.proxyArtUrl,
                       model.known[model.commander.id]?.name ?? model.commander.id,
                       "aspect-[0.72] w-10 rounded-focus object-cover",
                     ),
-                    h.span(
-                      [h.Class("min-w-0 flex-1 truncate font-semibold")],
-                      [`★ ${model.known[model.commander.id]?.name ?? model.commander.id}`],
+                    h.div(
+                      [h.Class("flex min-w-0 flex-1 items-center gap-xs")],
+                      [
+                        h.span(
+                          [h.Class("min-w-0 flex-1 truncate font-semibold")],
+                          [`★ ${model.known[model.commander.id]?.name ?? model.commander.id}`],
+                        ),
+                        model.commander.proxyArtUrl
+                          ? h.span([h.Class(PROXY_CHIP), h.DataAttribute("testid", "builder-commander-proxy-chip")], ["Proxy"])
+                          : null,
+                      ],
                     ),
                   ],
                 ),
@@ -582,7 +707,12 @@ export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewIn
                       h.OnMount(BindBuilderCardPointer({ cardId: row.id, kind: "deck" })),
                     ],
                     [
-                      builderCardArt(row.print, "", "aspect-[0.72] w-7 shrink-0 rounded-[3px] object-cover"),
+                      builderCardArt(
+                        row.print,
+                        model.entries[row.id]?.proxyArtUrl,
+                        "",
+                        "aspect-[0.72] w-7 shrink-0 rounded-[3px] object-cover",
+                      ),
                       h.span(
                         [h.Class("min-w-0 flex-1 truncate")],
                         [
@@ -592,6 +722,9 @@ export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewIn
                             : null,
                         ],
                       ),
+                      model.entries[row.id]?.proxyArtUrl
+                        ? h.span([h.Class(PROXY_CHIP), h.DataAttribute("testid", `builder-deck-proxy-chip-${row.id}`)], ["Proxy"])
+                        : null,
                       h.span([h.Class("shrink-0 text-label text-lichen")], [`×${row.count}`]),
                     ],
                   ),
@@ -620,6 +753,7 @@ export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewIn
         hoverPreview(model),
         contextMenu(model),
         printPicker(model),
+        proxyArtPicker(model),
       ],
     ),
   });

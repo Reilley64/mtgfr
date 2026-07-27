@@ -12,13 +12,15 @@ use engine::{CardDef, Game, Intent, PlayerId};
 const OPENING_HAND: u32 = 7;
 
 /// A seat's resolved deck: the commander, the 99 as `(card, copies)`, and Card-id→Printing
-/// for art (including the commander).
+/// / proxy-art overlays for display (including the commander).
 #[derive(Debug, Clone)]
 pub struct SeatDeck {
     pub commander: CardDef,
     pub cards: Vec<(CardDef, usize)>,
     /// Card id → Printing UUID chosen for this seat's deck.
     pub prints: std::collections::HashMap<String, String>,
+    /// Card id → proxy-art URL chosen for this seat's deck.
+    pub proxy_art_urls: std::collections::HashMap<String, String>,
 }
 
 fn expand(list: &[(CardDef, usize)]) -> Vec<CardDef> {
@@ -87,6 +89,7 @@ mod tests {
                 commander,
                 cards: vec![(plains, 99)],
                 prints,
+                proxy_art_urls: Default::default(),
             }
         };
         let seats = [(PlayerId(0), deck()), (PlayerId(1), deck())];
@@ -122,6 +125,7 @@ mod tests {
                 commander,
                 cards: vec![(plains, 99)],
                 prints,
+                proxy_art_urls: Default::default(),
             }
         };
         let seats = [(PlayerId(0), deck()), (PlayerId(1), deck())];
@@ -147,6 +151,7 @@ mod tests {
                 commander,
                 cards: vec![(plains, 99)],
                 prints,
+                proxy_art_urls: Default::default(),
             }
         };
         let seats = [(PlayerId(0), deck()), (PlayerId(1), deck())];
@@ -217,6 +222,7 @@ mod soc_deck_tests {
             commander,
             cards,
             prints,
+            proxy_art_urls: Default::default(),
         }
     }
 

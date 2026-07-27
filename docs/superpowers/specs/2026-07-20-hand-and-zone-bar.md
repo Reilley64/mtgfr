@@ -39,7 +39,7 @@ Render a fixed DOM hand bar at the bottom of the board. It groups tiles in Arena
 
 - The bar is DOM, not canvas, so real buttons, keyboard activation, and drag data attributes stay available.
 - `slotInert` is reserved for staged/in-flight cards; it is not a visual dimming signal for unplayable cards.
-- `cardArt(h, opts)` is used for DOM faces and accepts optional `style` for precise tile sizing.
+- `cardArt(h, opts)` is used for DOM faces and accepts optional `style` for precise tile sizing. When a visible hand/command/graveyard/exile card carries `proxy_art_url`, the bar threads it as `proxyArtUrl` so the shared art host prefers the proxy URL, keeps printed art fallback metadata, and mirrors the proxy URL into drag/inspect payload attributes.
 - Alt-inspect hover metadata is attached to every face-up bar tile, playable or not.
 - Resting bar spacing is hand-tuned Arena-forward constants (not a single global scale factor). Hit height, raise translate, sticky inspect band, and drag play threshold derive from those constants.
 - Ghost aura must use the dragged tile's **zone** for `barZoneAura` (not hard-coded `"hand"` when dragging command/gy/exile).

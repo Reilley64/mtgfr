@@ -38,15 +38,18 @@ that identify visible objects remain plain string data; hidden names must not be
 
 | Hop | Transport |
 |-----|-----------|
-| Browser → BFF | `@effect/rpc` over HTTP/JSON (same-origin `/api`) |
+| Browser → BFF | `@effect/rpc` over HTTP/JSON (same-origin `/api`) plus authenticated `GET /api/card-art/proxy?url=...` for alter-art images |
 | BFF → API pod | `@effect-grpc/effect-grpc` (Connect native-gRPC) → tonic on `:50051` |
 | Game stream | gRPC server-streaming `Game.Stream` → BFF bridges to SSE on `/api/rpc/.../stream` |
 
 The BFF (Nitro) handles cookie termination: the session cookie never
 travels beyond the BFF, and the resolved session token flows as gRPC metadata
-(`x-session-token`) to tonic. Health-check HTTP lives on `:8080` (Axum `GET /health/live`,
-`/health/ready`, `/health/drain`); all `Auth`, `Decks`, `Ratings`, `Cards`, `Game`, and
-`Tables` RPCs live on `:50051` (tonic).
+(`x-session-token`) to tonic. The separate `/api/card-art/proxy` route also terminates the
+browser cookie at Nitro, re-checks auth via `Auth.GetMe`, then fetches the remote image itself
+without forwarding cookies and with SSRF guardrails (`https` only, no credentials, no
+private/link-local/metadata hosts, 5 MiB cap, image allowlist, redirects disabled). Health-check
+HTTP lives on `:8080` (Axum `GET /health/live`, `/health/ready`, `/health/drain`); all `Auth`,
+`Decks`, `Ratings`, `Cards`, `Game`, and `Tables` RPCs live on `:50051` (tonic).
 
 The `/api/rpc/[...path]` BFF route runs one `runTracedRequest` per request and dispatches the
 matched RPC as an Effect. `dispatchRpc` maps gRPC failures into `RpcOutcome` values at the dispatch
@@ -82,6 +85,12 @@ rule): during a rolling deploy, the active SPA may talk to a Terminating API pod
 older binary. All concurrent binaries must share a parseable protocol. This means: additive
 optional fields only, new field numbers for new fields, new RPC/intent/event variants that old
 peers never send — never rename, remove, or reuse field numbers while older pods serve tables.
+The shipped proxy-art additions follow that rule: `catalog.proto` adds
+`DeckCardEntry.proxy_art_url = 4`, `DeckDetail.commander_proxy_art_url = 6`, and
+`SaveDeckRequest.commander_proxy_art_url = 5`; `stream.proto` adds
+`ObjectView.proxy_art_url = 28`, `StackObjectView.proxy_art_url = 11`, and
+`ChoiceItem.proxy_art_url = 5`. Each is a new optional string field where empty string means
+absent.
 
 ---
 
@@ -112,8 +121,10 @@ the session token; the BFF sets it as an HttpOnly cookie (`session`) on the brow
 resolves the token from `x-session-token` metadata.
 
 **`Decks`** — `Create`, `List`, `Get`, `Update`, `Delete`. All operations require auth. Decks
-are owned by the authenticated user; `DeckDetail` carries the full `(id, count, print)` card
-list with Printing UUIDs.
+are owned by the authenticated user. `DeckSummary` stays list-view chrome only; the full
+`DeckDetail` / `SaveDeckRequest` contract carries the chosen commander/card Printing UUIDs plus
+optional display-only proxy-art fields (`commander_proxy_art_url`, `DeckCardEntry.proxy_art_url`)
+where empty string means absent.
 
 **`Ratings`** — `GetLeaderboard`. Requires auth. `limit == 0` uses the default page size, values
 above the server max clamp to that max, and `offset` pages the global ratings table ordered by
@@ -143,8 +154,8 @@ BFF can pin later `table_id` hops to this pod.
 | `viewer` | Seat index, or 255 for a spectator |
 | `active_player`, `step`, `priority` | Turn structure discriminants |
 | `players` | Per-seat `PlayerView`: username, public `gravatar_hash` (SHA-256 hex; empty = monogram), life, commander tax, commander damage, `hand_count`, `library_count`, mana pool |
-| `objects` | Every `ObjectView` visible to this viewer: hand cards (own only), battlefield, stack, graveyard, exile, command zone |
-| `stack` | `StackObjectView` list, bottom-first; `MessageRef` label, optional primary `target`, `targets` list (clause 0 then clause 1; empty when targetless), and source art identity (`print` / `name` / `card_id`) for when `source` is omitted from `objects` (Moved tombstone or ceased token) |
+| `objects` | Every `ObjectView` visible to this viewer: hand cards (own only), battlefield, stack, graveyard, exile, command zone. Each view may also carry optional `proxy_art_url` as a display-only alter-art hint; empty string means absent. |
+| `stack` | `StackObjectView` list, bottom-first; `MessageRef` label, optional primary `target`, `targets` list (clause 0 then clause 1; empty when targetless), source art identity (`print` / `name` / `card_id`) for when `source` is omitted from `objects` (Moved tombstone or ceased token), and optional `proxy_art_url` with the same empty-means-none contract |
 | `combat` | `CombatView`: declared attackers with defenders, declared blocks, confirmed flags |
 | `pending_choice` | The `PendingChoiceView` the engine is blocked on, if any; effect/mode titles use `MessageRef` labels |
 | `actions` | `ActionView` list for this viewer's own legal actions with `MessageRef` labels (empty for spectators) |
@@ -153,6 +164,11 @@ BFF can pin later `table_id` hops to this pod.
 | `mulliganing` | Whether the game is still in simultaneous pre-game mulligans |
 
 During mulligans, each `PlayerView` also carries `mulligans_taken`, `hand_kept`, and `can_mulligan`. These are public status fields; card identities remain private through the existing hand/object redaction rules. The local player's legal actions include setup-section `keep_hand` and `mulligan` actions while they are undecided.
+`complete_visible` overlays non-empty per-seat deck art maps onto `ObjectView.print` / `proxy_art_url`,
+`StackObjectView.print` / `proxy_art_url`, and `ChoiceItem.print` / `proxy_art_url`, so every viewer
+sees the same print and alter art for a seat's card without teaching the engine about URLs. Those
+live proxy-art overlays key by `card_id`, so if a commander and a deck line share the same
+`card_id`, a non-empty commander proxy-art URL wins over the deck-line URL.
 
 ### Redaction rules
 
@@ -186,7 +202,9 @@ spell-target and ability-target pauses project as `choose_target { source, label
 `may_draw_up_to { label, max }`. Legacy card-named Trade Secrets wire variants and dedicated
 `choose_spell_targets` / `choose_ability_targets` oneof arms are gone. The `ChoiceItem` embedded in
 most variants carries the item's string `label` for visible object/seat identity so the prompt UI
-does not need to join against the object list. `choose_copy_target` also carries
+does not need to join against the object list. `ChoiceItem` may also carry optional
+`proxy_art_url` as a display-only alter-art hint for object prompts; empty string means absent.
+`choose_copy_target` also carries
 `put_counter_on_creature` for the one reused non-copy primer (`MayPutCounterOnCreature`), letting
 clients keep the same answer shape while swapping the prompt wording away from "copy target".
 Effect titles, mode rows, trigger-order rows, and generic draw-count prompts use `MessageRef`
@@ -262,6 +280,10 @@ The engine/schema event model includes `MulliganTaken { player, mulligans_taken,
 - Generated↔hand wire drift is guarded by `client/app/domain/wire/wire-case-coverage.test.ts`
   (PendingChoiceView / VisibleEvent oneof cases vs `FORMULATOR_FOR_KIND` /
   `VISIBLE_EVENT_KIND_PRESENCE`).
+- `client/app/domain/card-art/proxy-fetch.test.ts` and
+  `client/server/routes/api/card-art/proxy.get.test.ts` cover the same-origin image proxy's
+  SSRF/auth guardrails and response contract; this route is adjacent to the wire edge but outside
+  the protobuf schema itself.
 - Mulligan projection tests assert `mulliganing`, `mulligans_taken`, `hand_kept`, and `can_mulligan` are present in snapshots without exposing other players' hands.
 - Projection tests assert `complete_visible` and stream frames stamp `gravatar_hash` onto
   `PlayerView` while leaving empty strings for seats without a hash.

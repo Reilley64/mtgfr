@@ -25,6 +25,7 @@ function cardThumb(card: ObjectView, selectable: boolean, selected: boolean): Ht
   const face = card.print
     ? cardArt(h, {
         print: card.print,
+        proxyArtUrl: card.proxy_art_url,
         size: "large",
         alt: card.name,
         className: "block rounded-md",

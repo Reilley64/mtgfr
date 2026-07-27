@@ -176,6 +176,44 @@ describe("syncBoardWithGame exit FX", () => {
     expect(after.hideCardIds.has(bearId)).toBe(true);
   });
 
+  it("retargeting a flight to a non-proxy card clears stale proxy art", () => {
+    const bearId = 34;
+    const board: BoardModel = {
+      ...initialBoardModel(),
+      flights: new Map([
+        [
+          bearId,
+          spawnFlight({
+            id: bearId,
+            kind: "battlefield",
+            name: "Proxy Bear",
+            print: "print-proxy",
+            proxyArtUrl: "https://example.com/proxy-bear.png",
+            x: 144,
+            y: 188,
+            scale: 0.8,
+            targetX: 300,
+            targetY: 300,
+            targetScale: 1,
+          }),
+        ],
+      ]),
+    };
+    const battlefieldBear = creature(bearId, 0, {
+      name: "Plain Bear",
+      print: "print-plain",
+      zone: ZONE.Battlefield,
+    });
+
+    const after = syncBoardWithGame(board, gameFold(state({ objects: [battlefieldBear] }), { seq: 2 }));
+
+    expect(after.flights.get(bearId)).toMatchObject({
+      print: "print-plain",
+      name: "Plain Bear",
+    });
+    expect(after.flights.get(bearId)?.proxyArtUrl).toBeUndefined();
+  });
+
   it("BF exit rebinds to the prior battlefield id pose when provenance changes ids", () => {
     const priorBattlefieldId = 19;
     const exitId = 20;

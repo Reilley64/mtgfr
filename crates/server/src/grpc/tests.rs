@@ -268,7 +268,9 @@ async fn decks_round_trip_create_list_get_update_delete() {
             id: plains.id.to_string(),
             count: 99,
             print: plains.default_print.to_string(),
+            proxy_art_url: String::new(),
         }],
+        commander_proxy_art_url: String::new(),
     };
 
     let deck = decks_svc
@@ -769,6 +771,7 @@ async fn deck_row(state: &AppState, user_id: i64) -> i64 {
             id: def.id.to_string(),
             count: *count as u32,
             print: def.default_print.to_string(),
+            proxy_art_url: String::new(),
         })
         .collect();
     let mut db = state.db.clone();
@@ -777,6 +780,7 @@ async fn deck_row(state: &AppState, user_id: i64) -> i64 {
         .name("deck")
         .commander(deck.commander.id)
         .commander_print(deck.commander.default_print)
+        .commander_proxy_art_url("")
         .cards(serde_json::to_string(&cards).unwrap())
         .exec(&mut db)
         .await

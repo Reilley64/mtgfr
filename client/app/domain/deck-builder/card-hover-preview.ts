@@ -8,6 +8,7 @@ import { cardArt } from "../ui/card-art";
 export type CardHover = {
   id: string;
   print: string;
+  proxyArtUrl?: string;
   x: number;
   y: number;
 };
@@ -31,6 +32,7 @@ export type FollowPreviewArgs = {
 export type DockPreviewArgs<M> = {
   mode: "dock";
   print: string;
+  proxyArtUrl?: string;
   name: string;
   oracle?: string | null;
   approximates?: string | null;
@@ -95,9 +97,16 @@ function textPanel<M>(
   );
 }
 
-function artColumn<M>(h: HtmlFactory<M>, print: string, name: string, face: "front" | "back" | undefined): Html {
+function artColumn<M>(
+  h: HtmlFactory<M>,
+  print: string,
+  proxyArtUrl: string | undefined,
+  name: string,
+  face: "front" | "back" | undefined,
+): Html {
   return cardArt(h, {
     print,
+    proxyArtUrl,
     size: "large",
     face,
     alt: name,
@@ -130,12 +139,25 @@ function followPreviewView<M>(h: HtmlFactory<M>, args: FollowPreviewArgs): Html 
       ),
       h.Style({ "--x": `${left}px`, "--y": `${top}px` }),
     ],
-    [artColumn(h, print, card?.name ?? "", undefined), textPanel(h, oracle, approximates, `${PREVIEW_H}px`)],
+    [
+      artColumn(h, print, hover.proxyArtUrl, card?.name ?? "", undefined),
+      textPanel(h, oracle, approximates, `${PREVIEW_H}px`),
+    ],
   );
 }
 
 function dockPreviewView<M>(h: HtmlFactory<M>, args: DockPreviewArgs<M>): Html {
-  const { print, name, oracle, approximates, face, extras, onDismiss, testId = "card-hover-preview" } = args;
+  const {
+    print,
+    proxyArtUrl,
+    name,
+    oracle,
+    approximates,
+    face,
+    extras,
+    onDismiss,
+    testId = "card-hover-preview",
+  } = args;
 
   const text = textPanel(h, oracle, approximates, `${PREVIEW_H}px`);
   const rightColumn =
@@ -148,7 +170,7 @@ function dockPreviewView<M>(h: HtmlFactory<M>, args: DockPreviewArgs<M>): Html {
       h.DataAttribute("testid", `${testId}-content`),
       h.Class("pointer-events-auto relative z-10 m-lg flex flex-row items-start gap-3"),
     ],
-    [artColumn(h, print, name, face), rightColumn],
+    [artColumn(h, print, proxyArtUrl, name, face), rightColumn],
   );
   const backdrop = h.div(
     [

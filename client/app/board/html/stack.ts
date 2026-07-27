@@ -43,6 +43,7 @@ type StackItem = {
   source: number;
   imageName: string | null;
   print: string;
+  proxyArtUrl?: string;
   cardId?: string;
   label: string;
   staged: boolean;
@@ -59,9 +60,17 @@ function hideStackRestingFace(board: BoardModel, source: number): boolean {
   return flight.phase === "flying" || flight.hold === true;
 }
 
-function objectMeta(state: VisibleState, source: number): { print: string; name: string | null; cardId?: string } {
+function objectMeta(
+  state: VisibleState,
+  source: number,
+): { print: string; proxyArtUrl?: string; name: string | null; cardId?: string } {
   const obj = state.objects.find((o) => o.id === source);
-  return { print: obj?.print ?? "", name: obj?.name ?? null, cardId: obj?.card_id };
+  return {
+    print: obj?.print ?? "",
+    proxyArtUrl: obj?.proxy_art_url,
+    name: obj?.name ?? null,
+    cardId: obj?.card_id,
+  };
 }
 
 function stackItems(board: BoardModel, state: VisibleState, showStaged: boolean): StackItem[] {
@@ -71,6 +80,7 @@ function stackItems(board: BoardModel, state: VisibleState, showStaged: boolean)
     // Prefer live object art; fall back to entry-carried identity when `source` is a Moved
     // tombstone (sacrifice-as-cost) omitted from `objects`.
     const print = meta.print || entry.print || "";
+    const proxyArtUrl = meta.proxyArtUrl ?? entry.proxy_art_url;
     const name = meta.name || entry.name || null;
     const cardId = meta.cardId || entry.card_id || undefined;
     return {
@@ -78,6 +88,7 @@ function stackItems(board: BoardModel, state: VisibleState, showStaged: boolean)
       source: entry.source,
       imageName: entry.kind === "spell" ? label : name,
       print,
+      proxyArtUrl,
       cardId,
       label,
       staged: false,
@@ -90,6 +101,7 @@ function stackItems(board: BoardModel, state: VisibleState, showStaged: boolean)
       source: card.id,
       imageName: card.name,
       print: card.print ?? "",
+      proxyArtUrl: card.proxy_art_url,
       cardId: card.card_id,
       label: card.name,
       staged: true,
@@ -103,6 +115,7 @@ function stackFace(opts: {
   source: number;
   imageName: string | null;
   print: string;
+  proxyArtUrl?: string;
   cardId?: string;
   label: string;
   isTop: boolean;
@@ -127,6 +140,7 @@ function stackFace(opts: {
     opts.imageName && opts.print
       ? cardArt(h, {
           print: opts.print,
+          proxyArtUrl: opts.proxyArtUrl,
           size: "large",
           alt: opts.imageName,
           className: "block rounded-game",
@@ -162,6 +176,7 @@ function stackFace(opts: {
             name: opts.imageName,
             ...(opts.cardId ? { cardId: opts.cardId } : {}),
             ...(opts.print ? { print: opts.print } : {}),
+            ...(opts.proxyArtUrl ? { proxyArtUrl: opts.proxyArtUrl } : {}),
           },
         }),
       ),
@@ -248,6 +263,7 @@ function pileView(
         source: item.source,
         imageName: item.imageName,
         print: item.print,
+        proxyArtUrl: item.proxyArtUrl,
         cardId: item.cardId,
         label: item.label,
         isTop,
@@ -343,6 +359,7 @@ function stripView(
         source: item.source,
         imageName: item.imageName,
         print: item.print,
+        proxyArtUrl: item.proxyArtUrl,
         cardId: item.cardId,
         label: item.label,
         isTop,

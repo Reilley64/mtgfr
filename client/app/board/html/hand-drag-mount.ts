@@ -42,6 +42,7 @@ export function readHandDragPayload(hit: HTMLElement, x: number, y: number): typ
     action,
     name: hit.dataset.cardName ?? formatMessage(action.label),
     print: hit.dataset.cardPrint ?? "",
+    proxyArtUrl: hit.dataset.cardProxyArtUrl,
     manaCost: readManaCost(hit.dataset.manaCost),
     kind: hit.dataset.objectKind,
     zone,

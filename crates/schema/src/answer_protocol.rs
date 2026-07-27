@@ -325,6 +325,7 @@ mod tests {
                 id: 7,
                 label: "Beast".into(),
                 print: String::new(),
+                proxy_art_url: String::new(),
                 player: None,
             }],
         }

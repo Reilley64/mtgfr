@@ -23,6 +23,7 @@ pub fn view_extras(
     seats: &[Seat; 4],
     stack_hold_remaining_ms: u32,
     prints: &[std::collections::HashMap<String, String>; 4],
+    proxy_art_urls: &[std::collections::HashMap<String, String>; 4],
 ) -> ViewExtras {
     ViewExtras {
         yields: *yields,
@@ -41,6 +42,7 @@ pub fn view_extras(
                 .unwrap_or_default()
         }),
         prints: prints.clone(),
+        proxy_art_urls: proxy_art_urls.clone(),
     }
 }
 
@@ -55,6 +57,7 @@ pub struct TableSubscription {
     pub viewer: Option<PlayerId>,
     pub seats: [Seat; 4],
     pub prints: [std::collections::HashMap<String, String>; 4],
+    pub proxy_art_urls: [std::collections::HashMap<String, String>; 4],
     /// The table's `broadcast_seq` at snapshot time — later messages at or below this are
     /// already reflected in the snapshot (see [`should_deliver`]).
     pub snapshot_broadcast_seq: u64,
@@ -93,6 +96,7 @@ pub fn subscribe(
         viewer,
         seats: table.seats.clone(),
         prints: table.prints.clone(),
+        proxy_art_urls: table.proxy_art_urls.clone(),
         snapshot_broadcast_seq: table.broadcast_seq,
     })
 }
@@ -106,6 +110,7 @@ pub fn table_view_extras(table: &crate::Table) -> ViewExtras {
         &table.seats,
         table.stack_hold_remaining_ms(),
         &table.prints,
+        &table.proxy_art_urls,
     )
 }
 
@@ -234,7 +239,14 @@ mod tests {
         seats[1].username = Some("bob".into());
         let yields = [true, false, false, false];
         let turn_yields = [false, true, false, false];
-        let extras = view_extras(&yields, &turn_yields, &seats, 900, &Default::default());
+        let extras = view_extras(
+            &yields,
+            &turn_yields,
+            &seats,
+            900,
+            &Default::default(),
+            &Default::default(),
+        );
 
         let StreamFrame::Delta(DeltaEnvelope { state, .. }) =
             frame_for(Some(PlayerId(0)), 1, &[], &game, vec![], &extras)

@@ -25,7 +25,7 @@ Alt/Option pins a card into a shared preview `dock` mode. The dock has a full-bo
 - `AltUp` dismisses the dock and clears fetched card data.
 - Prepared DFC pins default to the back face until catalog data arrives.
 - The Flip button appears for cards with a back face.
-- `InspectPin` carries name, object/card ids, print, prepared state, and optional `playerSeat` for life-orb pins.
+- `InspectPin` carries name, object/card ids, print, optional `proxyArtUrl`, prepared state, and optional `playerSeat` for life-orb pins.
 - `FetchInspectCard` loads catalog data for oracle and faces (card pins only).
 - Battlefield object modifiers render as a grouped modifier ledger by source name.
 - When the pinned live object has `marked_damage > 0`, the dock shows a `Marked damage: N` line (`inspect-marked-damage`) above the modifier ledger.
@@ -36,6 +36,7 @@ Alt/Option pins a card into a shared preview `dock` mode. The dock has a full-bo
 ## Implementation Decisions
 
 - Board inspect reuses `cardHoverPreviewView` with `mode: "dock"` for card pins; player pins use a matching backdrop/content shell without BindCardArt.
+- Board inspect reuses `cardHoverPreviewView` with `mode: "dock"` for card pins; when the pinned card metadata carries `proxyArtUrl`, the shared art host prefers the proxy URL and keeps printed art fallback metadata. Player pins use a matching backdrop/content shell without BindCardArt.
 - `inspectView` is a thin board wrapper that supplies live modifier extras, player commander-damage extras, and board messages.
 - `commanderDamageBreakdown` in `client/app/domain/inspect.ts` labels sources by owner username (fallback `P{seat}`) and appends a visible `is_commander` object name when present.
 - Dismissal has no close button in the dock; backdrop/Escape/Alt release are the dismissal paths.

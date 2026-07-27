@@ -25,7 +25,7 @@ import {
 } from "../messages";
 import { type BoardModel, initialBoardModel, syncBoardWithGame, updateBoard } from "../submodel";
 import { boardOverlays } from "./overlays";
-import { resolveBoardOverlayMounts } from "./scene-helpers";
+import { resolveBoardCardArtMounts, resolveBoardOverlayMounts } from "./scene-helpers";
 
 const h = html<Message>();
 
@@ -94,6 +94,8 @@ function mayExileDiscardedState(overrides: Partial<VisibleState> = {}): VisibleS
         owner: 0,
         plus_counters: 0,
         power: 0,
+        print: "bolt-print",
+        proxy_art_url: "https://example.com/bolt.png",
         summoning_sick: false,
         tapped: false,
         toughness: 0,
@@ -112,6 +114,8 @@ function mayExileDiscardedState(overrides: Partial<VisibleState> = {}): VisibleS
         owner: 0,
         plus_counters: 0,
         power: 0,
+        print: "thrill-print",
+        proxy_art_url: "https://example.com/thrill.png",
         summoning_sick: false,
         tapped: false,
         toughness: 0,
@@ -857,6 +861,31 @@ test("choose_copy_target keeps copy wording for real copy prompts", () => {
     Scene.expect(Scene.testId("pending-card-pick-aim")).toExist(),
     Scene.expect(Scene.testId("pick-title")).toHaveText("Choose a copy target"),
     Scene.expect(Scene.testId("prompt-submit")).toHaveText("Copy"),
+  );
+});
+
+test("revealed_card_to_battlefield_or_hand threads proxy art into the revealed face", () => {
+  const s = state({
+    pending_choice: {
+      kind: "revealed_card_to_battlefield_or_hand",
+      player: 0,
+      item: {
+        id: 17,
+        label: "Oracle of Mul Daya",
+        print: "oracle-print",
+        proxy_art_url: "https://example.com/oracle.png",
+      },
+    },
+  });
+
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    resolveBoardCardArtMounts(),
+    Scene.expect(Scene.testId("pending-revealed-destination-aim")).toExist(),
+    Scene.expect(Scene.testId("prompt-revealed-face")).toExist(),
+    Scene.expect(Scene.selector('[data-art-url^="/api/card-art/proxy"]')).toExist(),
   );
 });
 

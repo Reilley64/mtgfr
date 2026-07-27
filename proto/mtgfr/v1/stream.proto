@@ -94,6 +94,8 @@ message ObjectView {
   optional uint32 attached_to = 26;
   // Live sourced modifiers for Alt-inspect (grouped by source card def name).
   repeated ModifierSourceView modifiers = 27;
+  // Optional https image URL for alter art (display only). Empty = none.
+  string proxy_art_url = 28;
 }
 
 // One entry on the stack, for the stack panel. Bottom-first in `VisibleState.stack`.
@@ -118,6 +120,8 @@ message StackObjectView {
   string card_id = 9;
   // Source card's display name for art alt text / inspect (empty when anonymized).
   string name = 10;
+  // Optional https image URL for alter art (display only). Empty = none.
+  string proxy_art_url = 11;
 }
 
 // One labelled item offered by a pending choice (a legal target, or a blocker to assign damage
@@ -130,6 +134,8 @@ message ChoiceItem {
   optional uint32 player = 3;
   // Scryfall Printing UUID for card art. Empty for player seats and face-down / redacted items.
   string print = 4;
+  // Optional https image URL for alter art (display only). Empty = none.
+  string proxy_art_url = 5;
 }
 
 // One printed mode of a modal spell.

@@ -46,6 +46,7 @@ A single Foldkit event-reactor owns routing: `client/app/routes.ts` maps paths t
 | `/play/:table` | Table-scoped lobby / board wrapper for a generated table code containing at least one letter | auth submodel |
 | `/api/rpc/[...path]` | Effect RPC BFF | — |
 | `/api/faro/collect` | Faro proxy | — |
+| `/api/card-art/proxy` | authenticated image proxy for alter art | session cookie required |
 
 Required identifiers live in path params ([wire-protocol-and-visibility](2026-07-20-wire-protocol-and-visibility.md) routing rule). Query params are optional: `?next=` is the post-login redirect target.
 
@@ -121,7 +122,7 @@ Long-lived listeners are Foldkit **Subscriptions**. App subscriptions cover port
 
 Modules: `client/app/domain/rpc-client.ts`, `client/server/routes/api/rpc/[...path].ts`, `client/app/domain/wire/grpcClient.ts`.
 
-The browser talks only to the same-origin BFF via the hand-written Effect HTTP client (`client/app/domain/rpc-client.ts`) over `/api/rpc`. The Nitro BFF dispatches `/api/rpc/**` requests and calls tonic gRPC through `client/app/domain/wire/grpcClient.ts`. There is no direct browser-to-gRPC communication. The proto wire is the sole contract.
+The browser talks only to the same-origin BFF via the hand-written Effect HTTP client (`client/app/domain/rpc-client.ts`) over `/api/rpc`, plus the authenticated image passthrough `GET /api/card-art/proxy?url=...` for alter-art fetches. The Nitro BFF dispatches `/api/rpc/**` requests and calls tonic gRPC through `client/app/domain/wire/grpcClient.ts`. `GET /api/card-art/proxy` terminates the browser session cookie at Nitro, re-checks auth with `fetchMe`, then fetches the remote image itself without forwarding cookies. There is no direct browser-to-gRPC communication. The proto wire is the sole contract.
 
 The `/api/rpc/[...path]` route opens exactly one `runTracedRequest` runtime edge around Effect
 dispatch. `dispatchRpc` returns an Effect that resolves to `RpcOutcome`, including mapped gRPC
@@ -215,6 +216,8 @@ Vite production builds set `build.sourcemap: true` (via `clientBuildSourcemap`) 
 - `client/app/game/*.test.ts` — game fold, stream subscription.
 - `client/app/domain/rpc-client.test.ts` — Effect HTTP client (stubbed fetch).
 - `client/app/domain/wire/*.test.ts` — BFF gRPC / RPC method gate.
+- `client/server/routes/api/card-art/proxy.get.test.ts` — session gate plus unsafe-target/success
+  responses for the authenticated image proxy.
 - `client/app/domain/ui/*.test.ts`, `client/app/domain/cn.test.ts` — Foldkit UI helpers (`buttonClass`, surfaces).
 - `client/app/domain/build-meta.test.ts` — version/commit env var reading.
 - `client/app/domain/client-build-options.test.ts` — production `build.sourcemap` stays `true` and wired in `vite.config.ts`.

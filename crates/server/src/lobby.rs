@@ -60,6 +60,7 @@ pub(crate) async fn seed_table_core_with_entropy(
     let mut table = Table::seeded(req.host_user_id, &req.seats);
     for (player, deck) in &resolved {
         table.prints[player.0 as usize] = deck.prints.clone();
+        table.proxy_art_urls[player.0 as usize] = deck.proxy_art_urls.clone();
     }
     table.seed = entropy.master_seed;
     table.beacon_round = entropy.beacon_round;
@@ -91,39 +92,59 @@ async fn resolve_deck(
     deck_id: i64,
     seat_user_id: i64,
 ) -> Result<SeatDeck, &'static str> {
-    let (commander_id, commander_print, entries): (String, String, Vec<DeckCardEntry>) =
-        if let Some(precon) = precons::get(deck_id) {
-            (
-                precon.commander.clone(),
-                precon.commander_print.clone(),
-                precon.cards.clone(),
-            )
-        } else {
-            let mut db = state.db.clone();
-            let deck = Deck::filter_by_id(deck_id)
-                .get(&mut db)
-                .await
-                .map_err(|_| "UnknownDeck")?;
-            if deck.user_id != seat_user_id {
-                return Err("NotOwner");
-            }
-            let entries = serde_json::from_str(&deck.cards).map_err(|_| "CorruptDeck")?;
-            (deck.commander, deck.commander_print, entries)
-        };
+    let (commander_id, commander_print, commander_proxy_art_url, entries): (
+        String,
+        String,
+        String,
+        Vec<DeckCardEntry>,
+    ) = if let Some(precon) = precons::get(deck_id) {
+        (
+            precon.commander.clone(),
+            precon.commander_print.clone(),
+            precon.commander_proxy_art_url.clone(),
+            precon.cards.clone(),
+        )
+    } else {
+        let mut db = state.db.clone();
+        let deck = Deck::filter_by_id(deck_id)
+            .get(&mut db)
+            .await
+            .map_err(|_| "UnknownDeck")?;
+        if deck.user_id != seat_user_id {
+            return Err("NotOwner");
+        }
+        let entries = serde_json::from_str(&deck.cards).map_err(|_| "CorruptDeck")?;
+        (
+            deck.commander,
+            deck.commander_print,
+            deck.commander_proxy_art_url,
+            entries,
+        )
+    };
     legality::validate(&commander_id, &commander_print, &entries).map_err(|_| "IllegalDeck")?;
     let commander = cards::get(&commander_id).ok_or("UnknownCard")?;
     let mut prints = std::collections::HashMap::new();
     prints.insert(commander.id.to_string(), commander_print);
+    let mut proxy_art_urls = std::collections::HashMap::new();
     let mut cards = Vec::with_capacity(entries.len());
     for e in &entries {
         let def = cards::get(&e.id).ok_or("UnknownCard")?;
         prints.insert(def.id.to_string(), e.print.clone());
+        if !e.proxy_art_url.is_empty() {
+            proxy_art_urls.insert(def.id.to_string(), e.proxy_art_url.clone());
+        }
         cards.push((def, e.count as usize));
+    }
+    if !commander_proxy_art_url.is_empty() {
+        // Live proxy-art overlays are keyed only by card id, so the commander URL must win when
+        // the commander also appears in the 99.
+        proxy_art_urls.insert(commander.id.to_string(), commander_proxy_art_url);
     }
     Ok(SeatDeck {
         commander,
         cards,
         prints,
+        proxy_art_urls,
     })
 }
 
@@ -184,6 +205,134 @@ mod tests {
             ]
         );
         assert_eq!(table.beacon_round, 0);
+    }
+
+    #[tokio::test]
+    async fn seed_table_copies_non_empty_proxy_art_urls_onto_the_table() {
+        let state = AppState::for_test(db::connect("sqlite::memory:").await.expect("sqlite"));
+        let host_deck_id = user_with_deck(&state, "host@x.c").await;
+        let host_user_id = crate::test_support::as_user(&state, "host@x.c").await.0.id;
+        let guest_seat = seed_seat(&state, "guest@x.c", "guest").await;
+
+        let mut db = state.db.clone();
+        let mut host_deck = db::Deck::filter_by_id(host_deck_id)
+            .get(&mut db)
+            .await
+            .expect("host deck exists");
+        let mut cards: Vec<DeckCardEntry> =
+            serde_json::from_str(&host_deck.cards).expect("deck cards parse");
+        let line_proxy = "https://example.com/cards/savannah-lions-proxy.png";
+        let commander_proxy = "https://example.com/cards/tajic-proxy.png";
+        cards[0].proxy_art_url = line_proxy.to_string();
+        let line_card_id = cards[0].id.clone();
+        let commander_id = host_deck.commander.clone();
+        let cards_json = serde_json::to_string(&cards).expect("deck cards serialize");
+        host_deck
+            .update()
+            .commander_proxy_art_url(commander_proxy)
+            .cards(&cards_json)
+            .exec(&mut db)
+            .await
+            .expect("deck update succeeds");
+
+        let host_seat = SeedSeat {
+            user_id: host_user_id,
+            username: "host".to_string(),
+            deck_id: host_deck_id,
+            gravatar_hash: String::new(),
+        };
+
+        seed_table_core(
+            &state,
+            host_user_id,
+            SeedRequest {
+                table_id: "tbl-proxy-art".to_string(),
+                host_user_id,
+                seats: vec![host_seat, guest_seat],
+            },
+        )
+        .await
+        .expect("seeding succeeds");
+
+        let reg = lock(&state.reg);
+        let table = reg.get("tbl-proxy-art").expect("table inserted");
+        assert_eq!(
+            table.proxy_art_urls[0]
+                .get(&line_card_id)
+                .map(String::as_str),
+            Some(line_proxy)
+        );
+        assert_eq!(
+            table.proxy_art_urls[0]
+                .get(&commander_id)
+                .map(String::as_str),
+            Some(commander_proxy)
+        );
+        assert!(
+            table.proxy_art_urls[1].is_empty(),
+            "empty deck values should not seed a clobbering empty override map"
+        );
+    }
+
+    #[tokio::test]
+    async fn seed_table_prefers_non_empty_commander_proxy_art_when_commander_also_exists_in_the_99()
+    {
+        let state = AppState::for_test(db::connect("sqlite::memory:").await.expect("sqlite"));
+        let host_deck_id = user_with_deck(&state, "host@x.c").await;
+        let host_user_id = crate::test_support::as_user(&state, "host@x.c").await.0.id;
+        let guest_seat = seed_seat(&state, "guest@x.c", "guest").await;
+
+        let mut db = state.db.clone();
+        let mut host_deck = db::Deck::filter_by_id(host_deck_id)
+            .get(&mut db)
+            .await
+            .expect("host deck exists");
+        let mut cards: Vec<DeckCardEntry> =
+            serde_json::from_str(&host_deck.cards).expect("deck cards parse");
+        let line_proxy = "https://example.com/cards/tajic-line-proxy.png";
+        let commander_proxy = "https://example.com/cards/tajic-commander-proxy.png";
+        let commander_id = host_deck.commander.clone();
+        cards[0].id = commander_id.clone();
+        cards[0].print = host_deck.commander_print.clone();
+        cards[0].proxy_art_url = line_proxy.to_string();
+        let cards_json = serde_json::to_string(&cards).expect("deck cards serialize");
+        host_deck
+            .update()
+            .commander_proxy_art_url(commander_proxy)
+            .cards(&cards_json)
+            .exec(&mut db)
+            .await
+            .expect("deck update succeeds");
+
+        let host_seat = SeedSeat {
+            user_id: host_user_id,
+            username: "host".to_string(),
+            deck_id: host_deck_id,
+            gravatar_hash: String::new(),
+        };
+
+        seed_table_core(
+            &state,
+            host_user_id,
+            SeedRequest {
+                table_id: "tbl-proxy-art-commander-wins".to_string(),
+                host_user_id,
+                seats: vec![host_seat, guest_seat],
+            },
+        )
+        .await
+        .expect("seeding succeeds");
+
+        let reg = lock(&state.reg);
+        let table = reg
+            .get("tbl-proxy-art-commander-wins")
+            .expect("table inserted");
+        assert_eq!(
+            table.proxy_art_urls[0]
+                .get(&commander_id)
+                .map(String::as_str),
+            Some(commander_proxy)
+        );
     }
 
     #[tokio::test]

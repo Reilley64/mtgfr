@@ -72,11 +72,13 @@ stage body is a split-pane layout (no duplicate page title in the decklist pane)
 - **Left: card pool grid.** Loads from `/api/rpc/cards/search` in 100-card pages via an `IntersectionObserver` sentinel at the grid bottom. Filters: text search (tokenized LIKE over `search_blob`), set, subtypes ([accounts-decks-and-catalog](2026-07-20-accounts-decks-and-catalog.md)). Pool tiles are `POOL_CARD` style: art thumbnail + name + type + cost pips, click-to-add. Right-click (or 500 ms long-press) opens a context menu with printing options and basics shortcuts.
 - **Right: decklist panel.** Deck name field (`deck-name`), commander picker (legendary creatures in the list), 99-card decklist with per-card counts and a running total, and client legality problems (`deck-problems`) via the shared `alertClass` recipe. Click a row to remove one. Decklist rows (and pool tiles / commander chip) are keyed by oracle id so `BindBuilderCardPointer` remounts after list churn — Mount args are captured at insert, so unkeyed reuse left later rows activating the removed card until refresh. Deck save calls `/api/rpc/decks` or `/api/rpc/decks/:id` with `SaveDeckRequest` from the header Save control.
 - **Printing preference.** Card identity is the Scryfall oracle id (`CardDef.id`); a Printing is a Scryfall UUID used only for art ([accounts-decks-and-catalog](2026-07-20-accounts-decks-and-catalog.md)). `preferredPrint` is session-sticky per oracle id — once you pick a printing for a card, adding it again reuses that choice. `searchPrints(oracleId)` fetches Scryfall prints for the picker. On HTTP **429**, it waits `Retry-After` (integer seconds or HTTP-date; default **30s** when absent/invalid, clamped to **60s**) and retries the same page up to **2** times before failing into the print-picker error state. Non-429 failures fail immediately with no wait.
+- **Proxy art override.** Deck rows and the commander chip add a separate **Set proxy art…** context-menu item next to **Choose print**. It opens a small `<dialog>` with the card name, a single URL field, and **Save** / **Clear** / **Close** actions. The picker state records whether it was opened for the commander chip or an entry surface, so cards that are both the commander and present in the main deck still preload, save, and clear the correct field. The client validates the same shape the deck-save API accepts (`https` only, 2048 characters or fewer, no credentials in the URL) and shows inline error copy instead of saving bad input. Saving writes `DeckCardEntry.proxy_art_url` or `commander_proxy_art_url` into the in-builder model, closing the dialog and marking the builder dirty; clearing removes that override and restores printing art immediately. Deck load hydration preserves those URLs, and deck save sends them back in `SaveDeckRequest`.
 - **Singleton enforcement.** Non-basic non-commander cards cap at 1. Commander is set via the context menu only; `canBeCommander` restricts to legendary creatures.
 - **Full Commander legality** is enforced server-side on save; the client surfaces validation errors returned as `CreateDeck422` / `UpdateDeck422` tagged Schema errors.
 - **Card lookup.** `lookupCardsByIds(ids, client)` fetches oracle data for deck hydration through `/api/rpc/cards/lookup`.
 - **Scroll.** `shellFrame` is a viewport-contained flex column (`overflow-hidden`); the builder passes `lockStageScroll` so the stage is `flex-1 min-h-0 overflow-hidden`. The builder page fills that stage (`h-full min-h-0 flex-1`, single `minmax(0,1fr)` grid row, `overflow-hidden`) and does not scroll the page. The left catalog grid and the right decklist are independent `overflow-y-auto` scrollports with `overscroll-contain` so wheel/trackpad in one pane does not move the other or the document. Both columns use `min-h-0` so their scroll hosts form real scrollports inside the grid instead of growing the page.
-- **Print picker scroll lock.** While the choose-printing `<dialog>` is open (`printPicker` set), catalog and decklist scrollports use `overflow-hidden` (background frozen). The print tile grid inside the dialog remains `overflow-y-auto` with `overscroll-contain`. Closing the picker restores independent pane scrolling.
+- **Dialog scroll lock.** While either builder art dialog is open (`printPicker` or `proxyArtPicker` set), catalog and decklist scrollports use `overflow-hidden` (background frozen). The print tile grid inside the choose-printing dialog remains `overflow-y-auto` with `overscroll-contain`. Closing either dialog restores independent pane scrolling.
+- **Builder proxy indicator.** Rows and the commander chip with a saved proxy override render a quiet `Proxy` chip. Builder thumbnails (pool tile, deck row, commander chip, hover preview) pass that `proxyArtUrl` into `cardArt`, so front-face preview art follows the same proxy-first, printing-fallback path as the board.
 
 ### Card art CDN (`client/app/domain/deck-builder/scryfall.ts`, `client/app/domain/ui/card-art.ts`, `client/app/domain/image-cache.ts`)
 
@@ -88,6 +90,19 @@ Art is keyed by Scryfall **Printing** UUID. `imageUrlByPrint(printId, size, face
   `VITE_CARD_CDN/large/{face}/{a}/{b}/{id}.webp` — missing `large` does **not** fall back to Scryfall.
 - When `VITE_CARD_CDN` is unset: Scryfall image API
   (`https://api.scryfall.com/cards/{id}?format=image&version={size}`) (local/dev).
+
+`cardArt` resolves the final HTML host attributes. When `proxyArtUrl` is present, front-face art
+uses the same-origin authenticated BFF path `/api/card-art/proxy?url=...` first and keeps the
+printing URL in `data-art-fallback`, so a proxy fetch or decode failure swaps back to the printing.
+The BFF route accepts only authenticated requests, requires `https` targets, rejects credentialed
+URLs plus private/link-local/metadata hosts, resolves hostnames before connect, rejects blocked
+private/link-local/metadata resolutions, then pins the HTTPS request lookup to the vetted address
+set, caps response size at 5 MiB, accepts only `image/jpeg|png|webp|gif`, does not follow
+redirects, applies the same timeout budget to connection, headers, and full body download, and
+never forwards the player's cookies to the remote host. Successful proxy responses return
+`Cache-Control: private, max-age=300`. Back faces do not use the proxy; they continue to use
+the selected printing. When no
+proxy is present, existing art-crop CDN → Scryfall fallback behavior stays unchanged.
 
 Missing ordinary (non-`art_crop`) CDN art stays empty after load failure (no Scryfall fallback in production). The CDN path replicates Scryfall's folder fan (`first two hex chars` of the UUID). DFC backs are fetched with `face=back` in the Scryfall path; CDN serves the same `large` webp. `imageFaceAfterLoadError` falls back from `back` to `front` on load error (DFC prepare/flip cards have no Scryfall `/back/` — transformer backs that exist load on first try).
 
@@ -102,6 +117,7 @@ Missing ordinary (non-`art_crop`) CDN art stays empty after load failure (no Scr
 - **Deck-builder search is server-side.** The client holds no full catalog. `/api/rpc/cards/search` calls `Cards.Search` with tokenized LIKE over `search_blob` (includes `otags`) on the server ([accounts-decks-and-catalog](2026-07-20-accounts-decks-and-catalog.md)). The pool grid pages in 100-card chunks via IntersectionObserver — no client-side filtering of a local dataset.
 - **Route entry is child-owned.** Home and `/decks/...` entry run through deck-surface `informRouteChanged` helpers, which call the child update with route-change messages instead of having the parent mutate deck-list or builder state directly.
 - **Printing is art-preference only.** Card rules identity is the oracle id. Decks store `(id, count, print)` with `print` required. The engine is print-agnostic. Wire DTOs carry `print` for consistent art across all clients.
+- **Proxy art is a separate display override.** Proxy URLs never replace the chosen printing or participate in legality; they are optional per deck row and commander and ride beside `print` in the builder and wire DTOs.
 - **`VITE_CARD_CDN` is build-time baked**, not runtime. Changing CDN requires a new image build.
 - **No Scryfall fallback for ordinary CDN art.** Missing non-`art_crop` CDN art does not hit Scryfall (avoids rate-limiting). The intentional exception is CDN `art_crop` load failure → Scryfall `version=art_crop` once.
 
@@ -110,13 +126,21 @@ Missing ordinary (non-`art_crop`) CDN art stays empty after load failure (no Scr
 ## Testing Decisions
 
 - `client/app/shell/decks/**/*.test.ts` — decks list/builder stories and helpers (including sequential multi-card remove and keyed decklist rows for pointer-Mount remount).
+- `client/app/domain/deck-builder/menu.test.ts` — builder context-menu labels, including the separate proxy-art action on rows and commander.
 - `client/app/domain/deck-builder/*.test.ts` — print prefs, menus, hover preview; `scryfall.test.ts` covers `Retry-After` parsing and 429 wait-then-retry for `searchPrints`.
-- `client/app/domain/ui/card-art.test.ts` — art URL / host sync against `ImageCache`.
+- `client/app/domain/card-art/proxy-fetch.test.ts` — SSRF guardrails and image proxy fetch caps.
+- `client/app/domain/card-art/proxy-url.test.ts` — proxy URL encoding and front/back face resolution.
+- `client/app/domain/ui/card-art.test.ts` — art URL / host sync against `ImageCache`, including
+  proxy-to-print fallback and art-crop fallback.
 - `client/app/domain/image-cache.test.ts` — cache settle / subscriber behavior.
+- `client/server/routes/api/card-art/proxy.get.test.ts` — authenticated route gate, unsafe-target
+  rejection, and success response headers for the Nitro image proxy.
 - Scene coverage for shell deck surfaces lives with other shell Scene tests, including
   `header-leaderboard-link`, `account-menu-*`, `account-gravatar-link`,
-  `deck-list-empty`, and `deck-list-new-deck`; the home surface does not render
-  `data-testid="leaderboard-teaser"` or a header `New deck` control. Route-entry Stories cover the home fetch path
+  `deck-list-empty`, and `deck-list-new-deck`; deck-builder Scene/story coverage also
+  exercises the proxy-art dialog open/save/clear flow, inline validation, proxy chips,
+  and scroll lock. The home surface does not render `data-testid="leaderboard-teaser"`
+  or a header `New deck` control. Route-entry Stories cover the home fetch path
   without a separate teaser request (see
   [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md) Testing Decisions /
   `just client-check`).

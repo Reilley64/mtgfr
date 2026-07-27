@@ -49,6 +49,8 @@ pub struct Deck {
     pub commander: String,
     /// Printing UUID for the commander's art.
     pub commander_print: String,
+    /// Optional https image URL for the commander's alter art (display only). Empty = none.
+    pub commander_proxy_art_url: String,
     /// `serde_json` of `Vec<schema::DeckCardEntry>` — the whole 99, read/written as a unit.
     /// ponytail: a JSON blob, not a `deck_cards` join table; add relations only if per-card
     /// queries ever appear (they won't for legality).
@@ -108,10 +110,15 @@ mod tests {
             .name("Test")
             .commander(tajic.id)
             .commander_print(tajic.default_print)
+            .commander_proxy_art_url("https://example.com/cards/commander-proxy.png")
             .cards("[]")
             .exec(&mut db)
             .await
             .expect("create deck");
         assert_eq!(deck.user_id, user.id);
+        assert_eq!(
+            deck.commander_proxy_art_url,
+            "https://example.com/cards/commander-proxy.png"
+        );
     }
 }

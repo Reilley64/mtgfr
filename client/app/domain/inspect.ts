@@ -24,6 +24,8 @@ export type InspectPin = {
   cardId?: string;
   /** Printing UUID; absent falls back to catalog `default_print`. */
   print?: string;
+  /** Optional server-projected remote art URL for the front face. */
+  proxyArtUrl?: string;
   /** Life-orb seat when Alt-pinning a player for commander-damage inspect. */
   playerSeat?: number;
 };
@@ -70,7 +72,14 @@ export function commanderDamageBreakdown(
 /** True when a new Alt-pin should replace the current pin (different card, object, or seat). */
 export function inspectPinChanged(prev: InspectPin | null, next: InspectPin): boolean {
   if (!prev) return true;
-  return prev.name !== next.name || prev.objectId !== next.objectId || prev.playerSeat !== next.playerSeat;
+  return (
+    prev.name !== next.name ||
+    prev.objectId !== next.objectId ||
+    prev.playerSeat !== next.playerSeat ||
+    prev.cardId !== next.cardId ||
+    prev.print !== next.print ||
+    prev.proxyArtUrl !== next.proxyArtUrl
+  );
 }
 
 /** Build an InspectPin from a clicked RenderCard hit, when alt is held. Returns null if not pinnable. */
@@ -85,6 +94,7 @@ export function pinFromCard(
     pile?: number;
     cardId?: string;
     print?: string;
+    proxyArtUrl?: string;
   } | null,
   battlefieldZone: number,
 ): InspectPin | null {
@@ -98,6 +108,7 @@ export function pinFromCard(
     ...(onBattlefield ? { objectId: hit.id } : {}),
     ...(hit.cardId ? { cardId: hit.cardId } : {}),
     ...(hit.print ? { print: hit.print } : {}),
+    ...(hit.proxyArtUrl ? { proxyArtUrl: hit.proxyArtUrl } : {}),
   };
 }
 

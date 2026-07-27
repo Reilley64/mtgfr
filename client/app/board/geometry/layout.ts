@@ -91,6 +91,8 @@ export interface RenderCard {
   cardId: string;
   /** Printing UUID for this object's art (accounts-decks-and-catalog spec); empty renders a broken image. */
   print: string;
+  /** Optional server-provided remote art URL, proxied through the BFF when present. */
+  proxyArtUrl?: string;
   pt: string;
   tapped: boolean;
   counters: number;
@@ -323,6 +325,7 @@ function toCard(o: ObjectView): RenderCard {
     name: o.name,
     cardId: o.card_id ?? "",
     print: o.print ?? "",
+    ...(o.proxy_art_url ? { proxyArtUrl: o.proxy_art_url } : {}),
     pt: pt(o),
     tapped: o.tapped,
     counters: o.plus_counters,

@@ -55,20 +55,31 @@ describe("poolMenuItems", () => {
 });
 
 describe("rowMenuItems", () => {
-  it("adds bulk remove for basics plus choose print", () => {
+  it("adds bulk remove for basics plus choose print and set proxy art", () => {
     const island = card({ id: "island", kind: { kind: "land", colors: [1] }, name: "Island" });
     const items = rowMenuItems({ card: island, total: 50 });
-    expect(items.map((i) => i.label)).toEqual(["Fill deck", "Remove 1", "Remove 2", "Remove 5", "Choose print"]);
+    expect(items.map((i) => i.label)).toEqual([
+      "Fill deck",
+      "Remove 1",
+      "Remove 2",
+      "Remove 5",
+      "Choose print",
+      "Set proxy art…",
+    ]);
   });
 
-  it("offers only choose print for non-basics", () => {
+  it("offers choose print and set proxy art for non-basics", () => {
     const solRing = card({ id: "sol-ring", name: "Sol Ring" });
-    expect(rowMenuItems({ card: solRing, total: 0 }).map((i) => i.label)).toEqual(["Choose print"]);
+    const items = rowMenuItems({ card: solRing, total: 0 });
+    expect(items.map((i) => i.label)).toEqual(["Choose print", "Set proxy art…"]);
+    expect(items[1]?.action).toEqual({ kind: "setProxyArt", cardId: "sol-ring", target: "entry" });
   });
 });
 
 describe("commanderMenuItems", () => {
-  it("only offers choose print", () => {
-    expect(commanderMenuItems({ cardId: "cmd" }).map((i) => i.label)).toEqual(["Choose print"]);
+  it("offers choose print and set proxy art", () => {
+    const items = commanderMenuItems({ cardId: "cmd" });
+    expect(items.map((i) => i.label)).toEqual(["Choose print", "Set proxy art…"]);
+    expect(items[1]?.action).toEqual({ kind: "setProxyArt", cardId: "cmd", target: "commander" });
   });
 });

@@ -1,17 +1,19 @@
 import { Schema as S } from "effect";
 import { CatalogCardSchema } from "../../../domain/deck-builder/cards";
 import { ScryfallPrintSchema } from "../../../domain/deck-builder/scryfall";
-import { BuilderMenuItemSchema } from "./messages";
+import { BuilderMenuItemSchema, BuilderProxyArtTargetKind } from "./messages";
 
 export const DeckEntry = S.Struct({
   count: S.Number,
   print: S.String,
+  proxyArtUrl: S.optional(S.String),
 });
 export type DeckEntry = typeof DeckEntry.Type;
 
 export const BuilderCommander = S.Struct({
   id: S.String,
   print: S.String,
+  proxyArtUrl: S.optional(S.String),
 });
 export type BuilderCommander = typeof BuilderCommander.Type;
 
@@ -27,10 +29,19 @@ export type BuilderPrintPicker = typeof BuilderPrintPicker.Type;
 export const BuilderHover = S.Struct({
   id: S.String,
   print: S.String,
+  proxyArtUrl: S.optional(S.String),
   x: S.Number,
   y: S.Number,
 });
 export type BuilderHover = typeof BuilderHover.Type;
+
+export const BuilderProxyArtPicker = S.Struct({
+  cardId: S.String,
+  error: S.NullOr(S.String),
+  target: BuilderProxyArtTargetKind,
+  url: S.String,
+});
+export type BuilderProxyArtPicker = typeof BuilderProxyArtPicker.Type;
 
 export const BuilderContextMenu = S.Struct({
   items: S.Array(BuilderMenuItemSchema),
@@ -56,6 +67,7 @@ export const DeckBuilderSubmodel = S.Struct({
   pool: S.Array(CatalogCardSchema),
   preferredPrint: S.Record(S.String, S.String),
   printPicker: S.NullOr(BuilderPrintPicker),
+  proxyArtPicker: S.NullOr(BuilderProxyArtPicker),
   problems: S.Array(S.String),
   query: S.String,
   saving: S.Boolean,
@@ -80,6 +92,7 @@ export function initialDeckBuilderSubmodel(editingId: string | null = null): Dec
     pool: [],
     preferredPrint: {},
     printPicker: null,
+    proxyArtPicker: null,
     problems: [],
     query: "",
     saving: false,

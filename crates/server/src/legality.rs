@@ -119,6 +119,7 @@ mod tests {
             id: def.id.to_string(),
             count,
             print: def.default_print.to_string(),
+            proxy_art_url: String::new(),
         }
     }
 
@@ -183,6 +184,7 @@ mod tests {
                 id: def.id.to_string(),
                 count: 99,
                 print: String::new(),
+                proxy_art_url: String::new(),
             }],
         )
         .unwrap_err();
@@ -217,6 +219,7 @@ mod tests {
                 id: def.id.to_string(),
                 count: 99,
                 print: "bad-print".to_string(),
+                proxy_art_url: String::new(),
             }],
         )
         .unwrap_err();

@@ -13,6 +13,7 @@ pub fn deck_card_entry_to_pb(entry: DeckCardEntry) -> pb::DeckCardEntry {
         id: entry.id,
         count: entry.count,
         print: entry.print,
+        proxy_art_url: entry.proxy_art_url,
     }
 }
 
@@ -21,6 +22,7 @@ pub fn deck_card_entry_from_pb(entry: pb::DeckCardEntry) -> DeckCardEntry {
         id: entry.id,
         count: entry.count,
         print: entry.print,
+        proxy_art_url: entry.proxy_art_url,
     }
 }
 
@@ -40,6 +42,7 @@ pub fn deck_detail_to_pb(deck: DeckDetail) -> pb::DeckDetail {
         commander: deck.commander,
         commander_print: deck.commander_print,
         cards: deck.cards.into_iter().map(deck_card_entry_to_pb).collect(),
+        commander_proxy_art_url: deck.commander_proxy_art_url,
     }
 }
 
@@ -49,6 +52,7 @@ pub fn save_deck_request_from_pb(req: pb::SaveDeckRequest) -> SaveDeckRequest {
         commander: req.commander,
         commander_print: req.commander_print,
         cards: req.cards.into_iter().map(deck_card_entry_from_pb).collect(),
+        commander_proxy_art_url: req.commander_proxy_art_url,
     }
 }
 
@@ -111,6 +115,75 @@ mod tests {
     use schema::{MessageParam, MessageRef, WireCost, WireKind};
 
     use super::*;
+
+    #[test]
+    fn deck_card_entry_to_pb_preserves_proxy_art_url() {
+        let pb = deck_card_entry_to_pb(DeckCardEntry {
+            id: "card-1".to_string(),
+            count: 2,
+            print: "print-1".to_string(),
+            proxy_art_url: "https://example.com/cards/card-1-proxy.png".to_string(),
+        });
+
+        assert_eq!(pb.id, "card-1");
+        assert_eq!(
+            pb.proxy_art_url,
+            "https://example.com/cards/card-1-proxy.png"
+        );
+    }
+
+    #[test]
+    fn deck_detail_to_pb_preserves_card_and_commander_proxy_art_urls() {
+        let pb = deck_detail_to_pb(DeckDetail {
+            id: 7,
+            name: "Proxy Deck".to_string(),
+            commander: "commander-1".to_string(),
+            commander_print: "commander-print-1".to_string(),
+            cards: vec![DeckCardEntry {
+                id: "card-1".to_string(),
+                count: 1,
+                print: "print-1".to_string(),
+                proxy_art_url: "https://example.com/cards/card-1-proxy.png".to_string(),
+            }],
+            commander_proxy_art_url: "https://example.com/cards/commander-proxy.png".to_string(),
+        });
+
+        assert_eq!(pb.cards.len(), 1);
+        assert_eq!(
+            pb.cards[0].proxy_art_url,
+            "https://example.com/cards/card-1-proxy.png"
+        );
+        assert_eq!(
+            pb.commander_proxy_art_url,
+            "https://example.com/cards/commander-proxy.png"
+        );
+    }
+
+    #[test]
+    fn save_deck_request_from_pb_preserves_card_and_commander_proxy_art_urls() {
+        let request = save_deck_request_from_pb(pb::SaveDeckRequest {
+            name: "Proxy Deck".to_string(),
+            commander: "commander-1".to_string(),
+            commander_print: "commander-print-1".to_string(),
+            cards: vec![pb::DeckCardEntry {
+                id: "card-1".to_string(),
+                count: 1,
+                print: "print-1".to_string(),
+                proxy_art_url: "https://example.com/cards/card-1-proxy.png".to_string(),
+            }],
+            commander_proxy_art_url: "https://example.com/cards/commander-proxy.png".to_string(),
+        });
+
+        assert_eq!(request.cards.len(), 1);
+        assert_eq!(
+            request.cards[0].proxy_art_url,
+            "https://example.com/cards/card-1-proxy.png"
+        );
+        assert_eq!(
+            request.commander_proxy_art_url,
+            "https://example.com/cards/commander-proxy.png"
+        );
+    }
 
     #[test]
     fn catalog_card_summary_preserves_message_refs() {

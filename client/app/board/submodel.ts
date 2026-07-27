@@ -139,6 +139,7 @@ export type HandDragState = {
   action: ActionView;
   name: string;
   print: string;
+  proxyArtUrl?: string;
   manaCost: WireCost;
   kind?: string;
   zone?: "hand" | "command" | "graveyard" | "exile";
@@ -151,6 +152,7 @@ type BattlefieldPose = {
   y: number;
   scale: number;
   print: string;
+  proxyArtUrl?: string;
   name: string;
 };
 
@@ -513,7 +515,11 @@ function playerOrigin(model: BoardModel, fold: BoardFold, seat: number): Vec2 {
 
 function retargetFlightToCard(flight: CardFlight, model: BoardModel, card: RenderCard): CardFlight {
   const target = cardTarget(model.camera, card);
-  return retargetFlight(flight, { x: target.x, y: target.y, scale: 1 });
+  const next = retargetFlight(flight, { x: target.x, y: target.y, scale: 1 });
+  if (!card.proxyArtUrl) {
+    return { ...next, print: card.print, proxyArtUrl: undefined, name: card.name };
+  }
+  return { ...next, print: card.print, proxyArtUrl: card.proxyArtUrl, name: card.name };
 }
 
 function hiddenCardIds(flights: ReadonlyMap<number, CardFlight>, exitFx: ReadonlyMap<number, ExitFx>): Set<number> {
@@ -529,6 +535,7 @@ function battlefieldPoseFromCard(camera: Camera, card: RenderCard): BattlefieldP
     y: target.y,
     scale: 1,
     print: card.print,
+    proxyArtUrl: card.proxyArtUrl,
     name: card.name,
   };
 }
@@ -539,6 +546,7 @@ function battlefieldPoseFromFlight(flight: CardFlight): BattlefieldPose {
     y: flight.y,
     scale: flight.scale,
     print: flight.print,
+    proxyArtUrl: flight.proxyArtUrl,
     name: flight.name,
   };
 }
@@ -595,6 +603,7 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
       spawnExitFx({
         id,
         print: pose.print,
+        proxyArtUrl: pose.proxyArtUrl,
         name: pose.name,
         kind: zone === "graveyard" ? "destroy" : "exile",
         x: pose.x,
@@ -627,6 +636,7 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
       spawnFlight({
         id: permanent,
         print: card.print,
+        proxyArtUrl: card.proxyArtUrl,
         name: card.name,
         x: start.x,
         y: start.y,
@@ -677,6 +687,7 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
       spawnFlight({
         id: spell,
         print: "",
+        proxyArtUrl: undefined,
         name: "",
         x: start.x,
         y: start.y,
@@ -717,6 +728,7 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
       spawnFlight({
         id,
         print: card.print,
+        proxyArtUrl: card.proxyArtUrl,
         name: card.name,
         x: startAim.x,
         y: startAim.y,
@@ -746,6 +758,7 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
       spawnFlight({
         id,
         print: card.print,
+        proxyArtUrl: card.proxyArtUrl,
         name: card.name,
         x: startAim.x,
         y: startAim.y,
@@ -1223,6 +1236,7 @@ export type InspectAuxCard = {
   name: string;
   cardId?: string;
   print?: string;
+  proxyArtUrl?: string;
 };
 
 function applyInspectPin(model: BoardModel, pin: InspectPin | null): BoardReturn {
@@ -1273,6 +1287,7 @@ function tryPinInspect(model: BoardModel, fold: GameFoldState): InspectPin | nul
       prepared: false,
       ...(aux.cardId ? { cardId: aux.cardId } : {}),
       ...(aux.print ? { print: aux.print } : {}),
+      ...(aux.proxyArtUrl ? { proxyArtUrl: aux.proxyArtUrl } : {}),
     };
   }
   const hit = cardAt(fold, model, model.cursor.x, model.cursor.y);
@@ -1288,6 +1303,7 @@ function tryPinInspect(model: BoardModel, fold: GameFoldState): InspectPin | nul
         pile: hit.pile,
         cardId: hit.cardId || undefined,
         print: hit.print || undefined,
+        proxyArtUrl: hit.proxyArtUrl,
       },
       ZONE.Battlefield,
     );
@@ -1376,6 +1392,7 @@ function seedDropFromHand(
     spawnFlight({
       id: card.id,
       print: card.print ?? "",
+      proxyArtUrl: card.proxy_art_url,
       name: card.name,
       x: screenOrigin.x,
       y: screenOrigin.y,
@@ -2122,6 +2139,7 @@ export function updateBoard(
             action: message.action,
             name: message.name,
             print: message.print,
+            proxyArtUrl: message.proxyArtUrl,
             manaCost: message.manaCost,
             kind: message.kind,
             zone: message.zone,

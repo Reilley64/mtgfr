@@ -49,6 +49,8 @@ pub struct Table {
     pub chrome: ChromeState,
     /// Per-seat Card id → Printing UUID from the seat's deck (art preference for ObjectView).
     pub prints: [std::collections::HashMap<String, String>; 4],
+    /// Per-seat Card id → proxy-art URL from the seat's deck (display-only alter overlay).
+    pub proxy_art_urls: [std::collections::HashMap<String, String>; 4],
     /// When `Game.Stream` last went quiet (`None` = has/had listeners, grace not armed).
     /// Seed starts `Some(now)`; subscribe clears to `None`; drain arms `Some(now)` on the
     /// first no-listener sweep so reconnect grace is not skipped off a stale seed timestamp.
@@ -76,6 +78,7 @@ impl Table {
             tx,
             chrome: ChromeState::default(),
             prints: Default::default(),
+            proxy_art_urls: Default::default(),
             quiet_since: Some(Instant::now()),
         }
     }

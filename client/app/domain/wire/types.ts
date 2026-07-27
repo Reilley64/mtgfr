@@ -58,6 +58,7 @@ export const DeckCardEntry = Schema.Struct({
   count: Schema.Number,
   id: Schema.String,
   print: Schema.String,
+  proxy_art_url: Schema.optional(Schema.String),
 });
 export type DeckCardEntry = typeof DeckCardEntry.Type;
 
@@ -92,6 +93,7 @@ export const DeckDetail = Schema.Struct({
   cards: Schema.Array(DeckCardEntry),
   commander: Schema.String,
   commander_print: Schema.String,
+  commander_proxy_art_url: Schema.optional(Schema.String),
   id: Schema.Number,
   name: Schema.String,
 });
@@ -101,6 +103,7 @@ export const SaveDeckRequest = Schema.Struct({
   cards: Schema.Array(DeckCardEntry),
   commander: Schema.String,
   commander_print: Schema.String,
+  commander_proxy_art_url: Schema.optional(Schema.String),
   name: Schema.String,
 });
 export type SaveDeckRequest = typeof SaveDeckRequest.Type;
@@ -123,7 +126,7 @@ export class UpdateDeck422 extends Schema.TaggedErrorClass<UpdateDeck422>()("Upd
   cause: DeckError,
 }) {}
 
-export type ChoiceItem = { id: number; label: string; print?: string; player?: number };
+export type ChoiceItem = { id: number; label: string; print?: string; player?: number; proxy_art_url?: string };
 export type CommanderDamageView = { amount: number; from: number };
 export type ModifierSourceView = { contributions: Array<string>; source_card_id?: string; source_name: string };
 export type SeatView = {
@@ -217,6 +220,7 @@ export type ObjectView = {
   power: number;
   prepared?: boolean;
   print?: string;
+  proxy_art_url?: string;
   summoning_sick: boolean;
   tapped: boolean;
   taps_for_mana?: boolean;
@@ -230,6 +234,7 @@ export type StackObjectView = {
   label: MessageRef;
   name?: string;
   print?: string;
+  proxy_art_url?: string;
   source: number;
   target?: null | WireTarget;
   targets?: Array<WireTarget>;

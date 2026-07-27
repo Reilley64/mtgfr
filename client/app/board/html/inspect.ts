@@ -163,6 +163,7 @@ export function inspectView(
   return cardHoverPreviewView(h, {
     mode: "dock",
     print: artPrint,
+    proxyArtUrl: pin.proxyArtUrl,
     name: displayName,
     oracle,
     approximates,

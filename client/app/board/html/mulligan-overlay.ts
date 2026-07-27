@@ -47,6 +47,7 @@ export function mulliganOverlayView(state: VisibleState): Html | null {
                   obj.print
                     ? cardArt(h, {
                         print: obj.print,
+                        proxyArtUrl: obj.proxy_art_url,
                         size: "large",
                         alt: obj.name,
                         className:

@@ -19,6 +19,7 @@ const HandBarZone = S.Union([S.Literal("hand"), S.Literal("command"), S.Literal(
 const CardFlight = S.Struct({
   id: S.Number,
   print: S.String,
+  proxyArtUrl: S.optional(S.String),
   name: S.String,
   x: S.Number,
   y: S.Number,
@@ -34,6 +35,7 @@ const CardFlight = S.Struct({
 const ExitFxStruct = S.Struct({
   id: S.Number,
   print: S.String,
+  proxyArtUrl: S.optional(S.String),
   name: S.String,
   kind: ExitFxKind,
   x: S.Number,
@@ -67,6 +69,7 @@ export const HandDragStarted = m("HandDragStarted", {
   action: ActionView,
   name: S.String,
   print: S.String,
+  proxyArtUrl: S.optional(S.String),
   manaCost: S.Any,
   kind: S.optional(S.String),
   zone: S.optional(HandBarZone),
@@ -210,6 +213,7 @@ export const InspectAuxHovered = m("InspectAuxHovered", {
       name: S.String,
       cardId: S.optional(S.String),
       print: S.optional(S.String),
+      proxyArtUrl: S.optional(S.String),
     }),
   ),
 });

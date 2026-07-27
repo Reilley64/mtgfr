@@ -11,6 +11,7 @@ use crate::db::Deck;
 use crate::elo::STARTING_RATING;
 use crate::legality;
 use crate::precons;
+use crate::proxy_art::is_valid_proxy_art_url;
 
 /// A deck read/write failure, in transport-agnostic form.
 #[derive(Debug)]
@@ -35,13 +36,37 @@ fn detail_of(deck: Deck) -> Result<DeckDetail, DeckOpError> {
         commander: deck.commander,
         commander_print: deck.commander_print,
         cards,
+        commander_proxy_art_url: deck.commander_proxy_art_url,
     })
 }
 
 /// Validate a save request; `Err` carries every legality problem found.
 fn check(req: &SaveDeckRequest) -> Result<(), DeckOpError> {
-    legality::validate(&req.commander, &req.commander_print, &req.cards)
-        .map_err(DeckOpError::Illegal)
+    let mut problems = legality::validate(&req.commander, &req.commander_print, &req.cards)
+        .err()
+        .unwrap_or_default();
+
+    if !req.commander_proxy_art_url.is_empty()
+        && !is_valid_proxy_art_url(&req.commander_proxy_art_url)
+    {
+        problems.push("invalid commander proxy art url".to_string());
+    }
+
+    for entry in &req.cards {
+        if entry.proxy_art_url.is_empty() {
+            continue;
+        }
+        if is_valid_proxy_art_url(&entry.proxy_art_url) {
+            continue;
+        }
+        problems.push(format!("invalid proxy art url on {}", entry.id));
+    }
+
+    if problems.is_empty() {
+        return Ok(());
+    }
+
+    Err(DeckOpError::Illegal(problems))
 }
 
 /// Create a deck for the signed-in user (422 with all legality problems if illegal). Called by
@@ -59,6 +84,7 @@ pub(crate) async fn create_deck_core(
         .name(&req.name)
         .commander(&req.commander)
         .commander_print(&req.commander_print)
+        .commander_proxy_art_url(&req.commander_proxy_art_url)
         .cards(&cards)
         .exec(&mut db)
         .await
@@ -136,6 +162,7 @@ pub(crate) async fn update_deck_core(
         .name(&req.name)
         .commander(&req.commander)
         .commander_print(&req.commander_print)
+        .commander_proxy_art_url(&req.commander_proxy_art_url)
         .cards(&cards)
         .exec(&mut db)
         .await
@@ -206,6 +233,7 @@ mod tests {
                 id: def.id.to_string(),
                 count,
                 print: def.default_print.to_string(),
+                proxy_art_url: String::new(),
             }
         };
         let mut cards: Vec<DeckCardEntry> = nonbasics.iter().map(|n| entry(n, 1)).collect();
@@ -216,6 +244,7 @@ mod tests {
             commander: tajic.id.to_string(),
             commander_print: tajic.default_print.to_string(),
             cards,
+            commander_proxy_art_url: String::new(),
         }
     }
 
@@ -223,8 +252,12 @@ mod tests {
     async fn a_legal_deck_saves_lists_and_reads_back() {
         let state = test_state().await;
         let alice = user(&state, "a@b.c").await;
+        let mut request = legal_deck();
+        request.commander_proxy_art_url =
+            "https://example.com/cards/commander-proxy.png".to_string();
+        request.cards[0].proxy_art_url = "https://example.com/cards/line-proxy.png".to_string();
 
-        let created = create_deck_core(&state, alice, legal_deck())
+        let created = create_deck_core(&state, alice, request.clone())
             .await
             .expect("save legal deck");
         let id = created.id;
@@ -238,6 +271,14 @@ mod tests {
             cards::get_by_name("Tajic, Legion's Edge").unwrap().id
         );
         assert_eq!(got.cards.iter().map(|c| c.count).sum::<u32>(), 99);
+        assert_eq!(
+            got.commander_proxy_art_url,
+            "https://example.com/cards/commander-proxy.png"
+        );
+        assert_eq!(
+            got.cards[0].proxy_art_url,
+            "https://example.com/cards/line-proxy.png"
+        );
     }
 
     #[tokio::test]
@@ -248,6 +289,43 @@ mod tests {
         deck.cards.pop(); // now well short of 99
         let err = create_deck_core(&state, alice, deck).await.unwrap_err();
         assert!(matches!(err, DeckOpError::Illegal(_)));
+    }
+
+    #[tokio::test]
+    async fn an_invalid_proxy_art_url_is_rejected_with_problems() {
+        let state = test_state().await;
+        let alice = user(&state, "a@b.c").await;
+        let mut deck = legal_deck();
+        deck.commander_proxy_art_url = "http://example.com/cards/commander-proxy.png".to_string();
+
+        let err = create_deck_core(&state, alice, deck).await.unwrap_err();
+        let DeckOpError::Illegal(problems) = err else {
+            panic!("expected illegal problems");
+        };
+        assert!(
+            problems
+                .iter()
+                .any(|problem| problem == "invalid commander proxy art url"),
+            "got {problems:?}",
+        );
+    }
+
+    #[tokio::test]
+    async fn an_invalid_card_line_proxy_art_url_is_rejected_with_problems() {
+        let state = test_state().await;
+        let alice = user(&state, "a@b.c").await;
+        let mut deck = legal_deck();
+        let expected = format!("invalid proxy art url on {}", deck.cards[0].id);
+        deck.cards[0].proxy_art_url = "http://example.com/cards/line-proxy.png".to_string();
+
+        let err = create_deck_core(&state, alice, deck).await.unwrap_err();
+        let DeckOpError::Illegal(problems) = err else {
+            panic!("expected illegal problems");
+        };
+        assert!(
+            problems.iter().any(|problem| problem == &expected),
+            "got {problems:?}",
+        );
     }
 
     #[tokio::test]
@@ -265,6 +343,7 @@ mod tests {
             id: bolt.id.to_string(),
             count: 1,
             print: bolt.default_print.to_string(),
+            proxy_art_url: String::new(),
         };
 
         let updated = update_deck_core(&state, alice, created.id, revised.clone())
