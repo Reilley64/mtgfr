@@ -1,6 +1,6 @@
-//! Card DSL `Deserialize` coverage for `engine::de` (requires `card-dsl` feature).
+//! Card DSL `Deserialize` coverage for `cards::de` (requires `card-dsl` feature).
 
-use engine::*;
+use cards::*;
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -25,7 +25,7 @@ struct CountRow {
 
 #[test]
 fn cost_toml_schema_lists_pip_keys() {
-    let schema = schemars::schema_for!(engine::toml_surface::CostToml);
+    let schema = schemars::schema_for!(cards::toml_surface::CostToml);
     let json = serde_json::to_value(schema).unwrap();
     let props = json["properties"].as_object().expect("properties");
     assert!(props.contains_key("generic"));
@@ -35,7 +35,7 @@ fn cost_toml_schema_lists_pip_keys() {
 
 #[test]
 fn kind_toml_schema_includes_instant_and_creature() {
-    let schema = schemars::schema_for!(engine::toml_surface::KindToml);
+    let schema = schemars::schema_for!(cards::toml_surface::KindToml);
     let json = serde_json::to_value(schema).unwrap();
     let text = json.to_string();
     assert!(text.contains("instant"), "{text}");
@@ -44,7 +44,7 @@ fn kind_toml_schema_includes_instant_and_creature() {
 
 #[test]
 fn card_toml_schema_includes_name_and_damage_effect() {
-    let schema = schemars::schema_for!(engine::toml_surface::CardToml);
+    let schema = schemars::schema_for!(cards::toml_surface::CardToml);
     let text = serde_json::to_string(&schema).unwrap();
     assert!(text.contains("\"name\""));
     assert!(text.contains("damage"));
@@ -74,11 +74,11 @@ mode = "target"
 amount = 3
 target = "creature"
 "#;
-    let toml_card: engine::toml_surface::CardToml = toml::from_str(raw).expect("CardToml parse");
+    let toml_card: cards::toml_surface::CardToml = toml::from_str(raw).expect("CardToml parse");
     assert_eq!(toml_card.name, "Abrade");
-    let def: engine::CardDef = toml_card.into();
+    let def: cards::CardDef = toml_card.into();
     assert_eq!(def.name, "Abrade");
-    assert!(matches!(def.abilities[0].effect, engine::Effect::Damage(_)));
+    assert!(matches!(def.abilities[0].effect, cards::Effect::Damage(_)));
 }
 
 #[test]
@@ -95,7 +95,7 @@ toughness = 2
 
 keywords = ["flying"]
 "#;
-    let def: engine::CardDef = toml::from_str(raw).expect("CardDef parse");
+    let def: cards::CardDef = toml::from_str(raw).expect("CardDef parse");
     assert_eq!(def.name, "Late Keywords");
     assert!(matches!(
         def.kind,

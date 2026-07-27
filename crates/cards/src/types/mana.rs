@@ -463,7 +463,7 @@ pub fn color_pair_index(a: Color, b: Color) -> usize {
 /// Distinct spend-restricted (base, restriction) combos a pool holds concurrently
 /// ([`ManaPool::restricted`]) — generous headroom over the 2 the card pool exercises today (a
 /// player controlling both Troyan and a Galazeth-granted artifact holds 2 at once).
-pub(crate) const RESTRICTED_SLOTS: usize = 4;
+pub const RESTRICTED_SLOTS: usize = 4;
 
 /// One [`Mana::Restricted`] (base, restriction) bucket and how much of it is pooled — see
 /// [`ManaPool::restricted`]. `key = None` marks an unused slot.
@@ -539,7 +539,7 @@ impl ManaPool {
     /// Remove one credit of exactly `mana`'s kind if present, returning whether it was. Used by
     /// [`Game::queue_spend_to_cast_triggers`](crate::Game) to walk a spend multiset and match it
     /// against provenance-tagged credits one at a time.
-    pub(crate) fn take_one(&mut self, mana: Mana) -> bool {
+    pub fn take_one(&mut self, mana: Mana) -> bool {
         let slot: &mut u8 = match mana {
             Mana::Color(c) => &mut self.colored[c.index()],
             Mana::Colorless => &mut self.colorless,
@@ -594,7 +594,7 @@ impl ManaPool {
     /// ponytail: only color/colorless/"any" credits convert — a dual ([`Mana::Either`]) or
     /// restricted-set ([`Mana::OfColors`]) credit under a restriction passes through
     /// unrestricted; no pool card restricts one. Widen if a future card does.
-    pub(crate) fn restricted_by(self, restriction: Option<SpendRestriction>) -> ManaPool {
+    pub fn restricted_by(self, restriction: Option<SpendRestriction>) -> ManaPool {
         let Some(restriction) = restriction else {
             return self;
         };
@@ -631,7 +631,7 @@ impl ManaPool {
 
     /// Add another pool's contents into this one, component-wise (saturating — a pool holds at
     /// most 255 of any one kind, which the auto-pass heuristic that uses this never approaches).
-    pub(crate) fn merge(&mut self, other: &ManaPool) {
+    pub fn merge(&mut self, other: &ManaPool) {
         for i in 0..Color::COUNT {
             self.colored[i] = self.colored[i].saturating_add(other.colored[i]);
         }
@@ -651,7 +651,7 @@ impl ManaPool {
     }
 
     /// Remove a multiset (a computed payment) from this pool.
-    pub(crate) fn subtract(&mut self, other: &ManaPool) {
+    pub fn subtract(&mut self, other: &ManaPool) {
         for i in 0..Color::COUNT {
             self.colored[i] -= other.colored[i];
         }
@@ -686,7 +686,7 @@ impl ManaPool {
     /// never resolves to one specific color in this model (see this type's own doc), so paying,
     /// say, a generic cost entirely from a Tundra never counts as white (or blue) spent here. No
     /// pool card's mana base exercises that gap yet; widen if a dual/filter-land-heavy deck needs it.
-    pub(crate) fn colors_spent(&self) -> [bool; Color::COUNT] {
+    pub fn colors_spent(&self) -> [bool; Color::COUNT] {
         self.colored.map(|n| n > 0)
     }
 
@@ -696,7 +696,7 @@ impl ManaPool {
     /// in this model — colorless, "any", dual, restricted-set, and spend-restricted credits (the
     /// same modeling line as [`ManaPool::colors_spent`]'s ponytail; those pay only generic pips).
     /// Read off the exact payment [`ManaPool::spend_plan`] returns, like `colors_spent`.
-    pub(crate) fn spent_counts(&self) -> [u8; 6] {
+    pub fn spent_counts(&self) -> [u8; 6] {
         let sum = |xs: &[u8]| xs.iter().map(|&n| u32::from(n)).sum::<u32>();
         let other = u32::from(self.colorless)
             + u32::from(self.any)
@@ -720,7 +720,7 @@ impl ManaPool {
     /// slots as-is. No pool card produces persistent *restricted* mana (Rousing Refrain's `{R}`
     /// isn't restricted), so the gap is unobserved; widen to a per-(base, restriction) min if one
     /// ever does.
-    pub(crate) fn componentwise_min(&self, cap: &ManaPool) -> ManaPool {
+    pub fn componentwise_min(&self, cap: &ManaPool) -> ManaPool {
         let mut out = ManaPool {
             restricted: self.restricted,
             ..ManaPool::default()
@@ -747,11 +747,7 @@ impl ManaPool {
     /// real vs. restricted usage (real mana first, an arbitrary but deterministic tie-break
     /// between otherwise-equivalent legal spends). Returns the exact multiset to spend, or
     /// `None` if the pool can't cover it. Pure — the caller applies it.
-    pub(crate) fn spend_plan(
-        &self,
-        cost: &Cost,
-        spell: Option<SpellCharacteristics>,
-    ) -> Option<ManaPool> {
+    pub fn spend_plan(&self, cost: &Cost, spell: Option<SpellCharacteristics>) -> Option<ManaPool> {
         let mut effective = *self;
         effective.restricted = [RestrictedSlot::default(); RESTRICTED_SLOTS];
         for slot in self.restricted {
@@ -1067,7 +1063,7 @@ impl ManaPool {
 
     /// Whether this pool can cover `cost`, given the spell it's paying for (see
     /// [`ManaPool::spend_plan`]).
-    pub(crate) fn can_pay(&self, cost: &Cost, spell: Option<SpellCharacteristics>) -> bool {
+    pub fn can_pay(&self, cost: &Cost, spell: Option<SpellCharacteristics>) -> bool {
         self.spend_plan(cost, spell).is_some()
     }
 }
@@ -1314,18 +1310,6 @@ mod mana_pool_tests {
     }
 
     #[test]
-    fn is_permutation_accepts_valid_orders() {
-        assert!(is_permutation(&[1, 0, 2], 3));
-    }
-
-    #[test]
-    fn is_permutation_rejects_duplicates_and_out_of_range() {
-        assert!(!is_permutation(&[0, 0], 2));
-        assert!(!is_permutation(&[2], 2));
-        assert!(!is_permutation(&[0, 1], 3));
-    }
-
-    #[test]
     fn mana_label_renders_a_phyrexian_pip() {
         // Vraska, Betrayal's Sting: {4}{B}{B/P} (CR 107.4f).
         let cost = Cost {
@@ -1370,6 +1354,3 @@ mod mana_pool_tests {
         assert_eq!(spend.colored[Color::Black.index()], 0);
     }
 }
-
-// ── Objects: a card takes a different form (and a *new* [`ObjectId`]) in each zone,
-//    matching MTG's rule that a card becomes a new object when it changes zones.

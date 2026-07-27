@@ -15,20 +15,14 @@
 //! `docs/fidelity/` (per-deck increments via fidelity-grind), `docs/agent-navigation.md`, and `docs/CR_INDEX.md`
 //! for vocabulary, gaps, and CR lookup.
 
-/// Card-DSL deserialization (the `card-dsl` feature): manual impls for the types whose
-/// TOML spelling differs structurally from their Rust shape, plus interning/default
-/// helpers referenced by the `cfg_attr` serde derives on the types below.
-#[cfg(feature = "card-dsl")]
-mod de;
-
-#[cfg(feature = "card-dsl")]
-pub mod toml_surface;
-
-/// Install / look up token profiles (`data/tokens/*.toml`) for card-DSL load.
-#[cfg(feature = "card-dsl")]
-pub use de::{install_token_defs, token_def};
-#[cfg(feature = "card-dsl")]
-pub use toml_surface::CardToml;
+/// The card-DSL vocabulary — `CardDef`, `Effect` and its families, filters, mana, triggers —
+/// is defined by the `cards` crate (which also owns the TOML surface, its JSON Schema, and the
+/// generated `DSL_REFERENCE.md`). The engine implements the rules logic around those types and
+/// re-exports them so `engine::Effect` and friends keep resolving for `schema` / `server`.
+pub use cards::types::*;
+pub use cards::{
+    CardId, CardToml, card_def, install_token_defs, intern_card_def, interned_len, token_def,
+};
 
 mod amount;
 mod apply;
@@ -37,7 +31,6 @@ mod characteristics;
 mod characteristics_cache;
 mod combat;
 mod core;
-mod defs;
 mod effects;
 mod hand_smooth;
 mod message;
@@ -56,7 +49,6 @@ mod triggers;
 mod types;
 mod zones;
 
-pub use defs::{CardId, card_def, intern_card_def};
 pub use message::*;
 pub use mulligan::hand_size_after_mulligans;
 /// What a would-be counter placement is aimed at — see [`replacements::CounterRecipient`].

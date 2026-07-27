@@ -1,4 +1,4 @@
-use super::Keyword;
+use crate::Keyword;
 
 /// One inspect-ledger contribution from a source card def.
 #[derive(Debug, Clone, PartialEq, Eq)]

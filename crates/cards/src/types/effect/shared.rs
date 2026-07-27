@@ -486,7 +486,7 @@ impl Effect {
     /// A plain "add `amount` {C}" mana ability, built at runtime so a delayed trigger can bake in a
     /// count known only at schedule time (Scattering Stroke's {C}-per-mana-value rider). Every other
     /// [`ManaEffect::Add`](crate::ManaEffect::Add) field takes its ordinary card default.
-    pub(crate) fn add_colorless(amount: u8) -> Effect {
+    pub fn add_colorless(amount: u8) -> Effect {
         Effect::Mana(ManaEffect::Add {
             mana: ManaPool::of(Mana::Colorless, amount),
             identity: 0,
@@ -502,7 +502,7 @@ impl Effect {
     }
 
     /// What this effect targets (most effects target nothing).
-    pub(crate) fn target(&self) -> TargetSpec {
+    pub fn target(&self) -> TargetSpec {
         match self.clone() {
             Effect::Damage(DamageEffect::Target { target, .. })
             | Effect::Damage(DamageEffect::Radiance { target, .. })
@@ -993,7 +993,7 @@ impl Effect {
     /// something else besides (Brass Infiniscope's `{T}: Add {C}{C}. When you next cast a spell
     /// with {X} …` arms a delayed trigger too) is still a mana ability as long as it targets
     /// nothing, so a `Sequence` counts if any of its steps does.
-    pub(crate) fn is_mana_ability(&self) -> bool {
+    pub fn is_mana_ability(&self) -> bool {
         match self.clone() {
             Effect::Mana(ManaEffect::Add { .. }) => true,
             Effect::Sequence { steps } => steps.iter().any(|s| matches!(s, Effect::Mana(ManaEffect::Add { .. }))),
@@ -1005,7 +1005,7 @@ impl Effect {
     /// [`Player::mana_provenance`](crate::state) — an [`Effect::Mana(ManaEffect::Add)`] with `track_provenance`
     /// set (recursing a `Sequence` like [`is_mana_ability`](Self::is_mana_ability)). Read by
     /// `Game::activate_ability` to decide whether to tag the batch it just resolved.
-    pub(crate) fn tracks_mana_provenance(&self) -> bool {
+    pub fn tracks_mana_provenance(&self) -> bool {
         match self.clone() {
             Effect::Mana(ManaEffect::Add {
                 track_provenance, ..
@@ -1024,7 +1024,7 @@ impl Effect {
     /// and/or enchantments"), [`CountersEffect::PutCounters`](crate::CountersEffect::PutCounters) (Silkguard's "each of up to
     /// X"), and [`DigEffect::ExileTargetGraveyardSpellCastFree`](crate::DigEffect::ExileTargetGraveyardSpellCastFree)
     /// (Renegade Bull's "up to one target," `{0, 1}`) carry a real count.
-    pub(crate) fn target_count(&self) -> TargetCount {
+    pub fn target_count(&self) -> TargetCount {
         match self.clone() {
             Effect::Zone(ZoneEffect::ReturnToHand { count, .. })
             | Effect::Zone(ZoneEffect::ReturnFromGraveyardToHand { count, .. })
@@ -1062,7 +1062,7 @@ impl Effect {
     /// Distinguishes a genuinely independent clause from a `Sequence` step that merely shares the
     /// one chosen target (Killian's goad), so [`Game::place_ability_second_clause`] only chooses a
     /// second set of targets for the former.
-    pub(crate) fn reads_second_target_clause(&self) -> bool {
+    pub fn reads_second_target_clause(&self) -> bool {
         matches!(
             self,
             Effect::Counters(CountersEffect::DoubleCountersOnTargetCreatures { .. })
@@ -1076,7 +1076,7 @@ impl Effect {
     /// on the stack, versus dropping outright when every step needs the same declined target
     /// (Killian, Decisive Mentor's "tap up to one target creature and goad it" — goad has nothing
     /// to goad without a tapped creature, so parking it on the stack to do nothing is pure noise).
-    pub(crate) fn has_target_independent_step(&self) -> bool {
+    pub fn has_target_independent_step(&self) -> bool {
         match self.clone() {
             Effect::Sequence { steps } => steps.iter().any(|s| s.clone().target() == TargetSpec::None),
             other => other.target() == TargetSpec::None,
@@ -1086,7 +1086,7 @@ impl Effect {
     /// Thread the token a reflexive trigger's parent just minted (CR 603.3b — Forum Filibuster)
     /// into this effect, so its resolution can attach to it — the reflexive-ability analogue of
     /// [`fill_entering_permanent`]'s trigger-placement threading. One effect variant only.
-    pub(crate) fn with_reflexive_token(self, token: ObjectId) -> Effect {
+    pub fn with_reflexive_token(self, token: ObjectId) -> Effect {
         match self {
             Effect::Zone(ZoneEffect::ReturnFromGraveyardAttachedToToken { filter, .. }) => {
                 Effect::Zone(ZoneEffect::ReturnFromGraveyardAttachedToToken {
@@ -1104,7 +1104,7 @@ impl Effect {
     /// in its own later frame: an [`Amount::NonlandCardsExiledThisWay`](crate::Amount) count on a
     /// [`PutCounters`](crate::CountersEffect::PutCounters) body becomes a fixed count. One effect
     /// shape only — the reflexive-count analogue of [`with_reflexive_token`](Self::with_reflexive_token).
-    pub(crate) fn with_reflexive_count(self, count: u32) -> Effect {
+    pub fn with_reflexive_count(self, count: u32) -> Effect {
         match self {
             Effect::Counters(CountersEffect::PutCounters {
                 count: Amount::NonlandCardsExiledThisWay,
@@ -1239,10 +1239,10 @@ impl CounterKind {
     /// `&'static [(CounterKind, u8)]` slice if the kind set ever needs to be open-ended. A counter
     /// kind that sits on a *player* (poison, CR 122.1) doesn't belong here at all — it has its own
     /// parallel [`PlayerCounterKind`] and its own store on [`Player::kind_counters`].
-    pub(crate) const COUNT: usize = 10;
+    pub const COUNT: usize = 10;
 
     /// Every kind, for enumerating "each kind present" (proliferate, move/remove-all-counters).
-    pub(crate) const ALL: [CounterKind; Self::COUNT] = [
+    pub const ALL: [CounterKind; Self::COUNT] = [
         CounterKind::Charge,
         CounterKind::Story,
         CounterKind::Study,
@@ -1282,12 +1282,12 @@ pub enum PlayerCounterKind {
 impl PlayerCounterKind {
     /// How many kinds [`Player::kind_counters`] has a slot for. Adding a kind is a one-line
     /// change here plus the variant and an [`Self::ALL`] entry.
-    pub(crate) const COUNT: usize = 2;
+    pub const COUNT: usize = 2;
 
     /// Every kind, for enumerating "each kind present" — "each opponent loses all counters"
     /// (Final Act) and "each kind already there" (CR 701.27, proliferate). The
     /// [`CounterKind::ALL`] twin for player-side counters.
-    pub(crate) const ALL: [PlayerCounterKind; Self::COUNT] =
+    pub const ALL: [PlayerCounterKind; Self::COUNT] =
         [PlayerCounterKind::Poison, PlayerCounterKind::Rad];
 }
 
@@ -1837,7 +1837,7 @@ pub enum Condition {
 /// fewer creatures than `count` sacrifices all of them — CR 601-style "as many as you can"). (The
 /// caller only prompts when there's a real choice, so `options` is non-empty and, for `keep_one`,
 /// holds at least two.)
-pub(crate) fn valid_sacrifice_choice(
+pub fn valid_sacrifice_choice(
     sacrifices: &[ObjectId],
     options: &[ObjectId],
     keep_one: bool,
@@ -1861,7 +1861,7 @@ pub(crate) fn valid_sacrifice_choice(
 /// Whether `players` is a legal answer to a "choose any number of target players" pause
 /// ([`PendingChoice::ChooseTargetPlayers`](super::PendingChoice::ChooseTargetPlayers) — CR
 /// 601.2c/608.2b): every entry a distinct one of `legal`, and the count within `[min, max]`.
-pub(crate) fn valid_target_player_choice(
+pub fn valid_target_player_choice(
     players: &[PlayerId],
     legal: &[PlayerId],
     min: u8,
@@ -1879,7 +1879,7 @@ pub(crate) fn valid_target_player_choice(
 
 /// Unwrap a creature-targeting effect's chosen target to its object id. These effects only
 /// accept `TargetSpec::Creature`, so a resolved target is always an object (never a player).
-pub(crate) fn expect_object_target(target: Option<Target>, what: &str) -> ObjectId {
+pub fn expect_object_target(target: Option<Target>, what: &str) -> ObjectId {
     match target {
         Some(Target::Object(id)) => id,
         other => panic!("{what} resolves with a chosen creature target, got {other:?}"),
@@ -1889,7 +1889,7 @@ pub(crate) fn expect_object_target(target: Option<Target>, what: &str) -> Object
 /// Fill a watch-others effect's context-dependent fields from the triggering context. Breena's
 /// composite effect and Parasitic Impetus's drain both need the attacking (enchanted creature's)
 /// controller baked in at placement; every other effect passes through unchanged.
-pub(crate) fn contextualize_effect(effect: Effect, ctx: TriggerContext) -> Effect {
+pub fn contextualize_effect(effect: Effect, ctx: TriggerContext) -> Effect {
     // CR 603.10a last-known information: a Dies trigger's `Amount::SourcePower`/
     // `Amount::PerCounterOnSource` reads must resolve to the source's pre-death snapshot, not
     // its now-graveyard-card values (which read 0) — rewrite before the rest of this function's
@@ -2940,7 +2940,7 @@ fn fill_source_power(effect: Effect, power: i32) -> Effect {
 /// Essence Brewer's "gain X life *and* put X counters") shares one recorded value across both
 /// steps; every other effect passes through unchanged. Called at [`Game::activate_ability`],
 /// mirroring how [`contextualize_effect`] fills a triggered ability's context at placement.
-pub(crate) fn contextualize_sacrifice_effect(effect: Effect, power: i32, toughness: i32) -> Effect {
+pub fn contextualize_sacrifice_effect(effect: Effect, power: i32, toughness: i32) -> Effect {
     let fill = |amount: Amount| match amount {
         Amount::SacrificedCreaturePower => Amount::Fixed(power),
         Amount::SacrificedCreatureToughness => Amount::Fixed(toughness),

@@ -2,7 +2,7 @@
 
 **Status:** Approved design input (2026-07-27; revised same day — full generation from
 CardDef TOML surface + generated `DSL_REFERENCE`).
-**Surfaces:** `card-dsl-and-card-pool` (`crates/cards/data/`, `crates/engine` `de` /
+**Surfaces:** `card-dsl-and-card-pool` (`crates/cards/data/`, `crates/cards` `de` /
 `CardDef` / `Effect`), `.agents/skills/card-dsl/`.
 
 Related: [card-dsl-and-card-pool](2026-07-20-card-dsl-and-card-pool.md),
@@ -35,7 +35,7 @@ Both artifacts should be **projections of one Rust TOML surface**, not parallel 
    CardDef TOML deserialize surface (not a hand-maintained skeleton).
 2. **`DSL_REFERENCE.md`** — generated from the same surface (rustdoc / structured field
    metadata), with `--check` drift detection.
-3. Keep **runtime deserialize into `CardDef`** as the engine authority; schema and markdown are
+3. Keep **runtime deserialize into `CardDef`** as the authority; schema and markdown are
    projections for tools and people.
 
 ---
@@ -75,7 +75,7 @@ Both artifacts should be **projections of one Rust TOML surface**, not parallel 
 ### Architecture
 
 ```text
-  crates/engine (card-dsl)
+  crates/cards (card-dsl)
        │
        ├─ TOML surface types  (CardToml, KindToml, AbilityToml, Effect, …)
        │     serde Deserialize  ──►  fold / Into  ──►  CardDef (runtime)

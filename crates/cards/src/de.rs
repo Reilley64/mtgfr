@@ -49,11 +49,11 @@ pub fn token_def(id: &str) -> Option<CardDef> {
 /// Leak an owned `Vec<T>` into the `&'static [T]` a `Copy` [`CardDef`]/[`Effect`] field needs.
 /// The one place that actually calls `Box::leak` on a plain vec-to-slice; every other site in
 /// this module (and [`static_slice`] below) should go through this rather than leaking directly.
-pub(crate) fn intern<T>(v: Vec<T>) -> &'static [T] {
+pub fn intern<T>(v: Vec<T>) -> &'static [T] {
     Box::leak(v.into_boxed_slice())
 }
 
-pub(crate) fn static_slice<'de, D, T>(d: D) -> Result<&'static [T], D::Error>
+pub fn static_slice<'de, D, T>(d: D) -> Result<&'static [T], D::Error>
 where
     D: Deserializer<'de>,
     T: Deserialize<'de> + 'static,
@@ -63,7 +63,7 @@ where
 
 /// Deserialize an owned list into shared `Arc<[T]>` storage — used by effect payloads that may
 /// be rebuilt at runtime without leaking.
-pub(crate) fn arc_slice<'de, D, T>(d: D) -> Result<Arc<[T]>, D::Error>
+pub fn arc_slice<'de, D, T>(d: D) -> Result<Arc<[T]>, D::Error>
 where
     D: Deserializer<'de>,
     T: Deserialize<'de>,
@@ -74,7 +74,7 @@ where
 /// Leak one owned `Effect` into the `&'static Effect` a nested `Copy` field needs (a single-value
 /// sibling of [`static_slice`] — `Effect` can't hold itself by value, so
 /// [`Effect::Misc(MiscEffect::ScheduleAtNextUpkeep)`]'s `then` is the one-element leaked case instead).
-pub(crate) fn static_effect<'de, D>(d: D) -> Result<&'static Effect, D::Error>
+pub fn static_effect<'de, D>(d: D) -> Result<&'static Effect, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -84,7 +84,7 @@ where
 /// Leak one owned [`Cost`] into the `&'static Cost` a `Copy` field needs (the `Cost` sibling of
 /// [`static_effect`] — [`Suspend::cost`] can't hold a `Cost` by value without bloating a `Copy`
 /// [`CardDef`], since `Cost` embeds an [`AdditionalCost`]).
-pub(crate) fn leaked_cost<'de, D>(d: D) -> Result<&'static Cost, D::Error>
+pub fn leaked_cost<'de, D>(d: D) -> Result<&'static Cost, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -95,9 +95,7 @@ where
 /// [`GrantedAbility`] the sub-table spells into the `&'static` a `Copy` [`Effect`] needs. Only
 /// called when the key is present (a `#[serde(default)]` absent key stays `None`), so it always
 /// yields `Some`.
-pub(crate) fn opt_static_granted_ability<'de, D>(
-    d: D,
-) -> Result<Option<&'static GrantedAbility>, D::Error>
+pub fn opt_static_granted_ability<'de, D>(d: D) -> Result<Option<&'static GrantedAbility>, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -123,7 +121,7 @@ enum GrantedTriggerTag {
 
 /// `deserialize_with` for [`GrantedAbility`]'s `trigger`. Only called when the key is present (a
 /// `#[serde(default)]` absent key stays `None`), so it always yields `Some`.
-pub(crate) fn opt_granted_trigger<'de, D>(d: D) -> Result<Option<Trigger>, D::Error>
+pub fn opt_granted_trigger<'de, D>(d: D) -> Result<Option<Trigger>, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -137,7 +135,7 @@ where
 /// `deserialize_with` for [`Effect::Zone(ZoneEffect::ReanimateToBattlefield)`]'s `becomes`: leak the one owned
 /// [`ReanimateBecomes`] the sub-table spells into the `&'static` a `Copy` [`Effect`] needs. Only
 /// called when the key is present (an absent `#[serde(default)]` key stays `None`).
-pub(crate) fn opt_static_reanimate_becomes<'de, D>(
+pub fn opt_static_reanimate_becomes<'de, D>(
     d: D,
 ) -> Result<Option<&'static ReanimateBecomes>, D::Error>
 where
@@ -152,7 +150,7 @@ where
 /// str]`. Unlike [`static_slice`], `&str` can't derive `Deserialize<'static>` directly (same
 /// borrow-vs-`'static` problem as `CardDef::name` — see the module doc), so this leaks each
 /// string too rather than delegating to it.
-pub(crate) fn intern_strs(strings: Vec<String>) -> &'static [&'static str] {
+pub fn intern_strs(strings: Vec<String>) -> &'static [&'static str] {
     let leaked: Vec<&'static str> = strings
         .into_iter()
         .map(|s| &*Box::leak(s.into_boxed_str()))
@@ -162,7 +160,7 @@ pub(crate) fn intern_strs(strings: Vec<String>) -> &'static [&'static str] {
 
 /// Convert owned strings into shared `Arc<[&'static str]>` storage for `CardDef` fields while
 /// still leaking the individual string data once at load.
-pub(crate) fn arc_strs(strings: Vec<String>) -> Arc<[&'static str]> {
+pub fn arc_strs(strings: Vec<String>) -> Arc<[&'static str]> {
     Arc::from(
         strings
             .into_iter()
@@ -173,19 +171,19 @@ pub(crate) fn arc_strs(strings: Vec<String>) -> Arc<[&'static str]> {
 
 /// `deserialize_with` for a `&'static [&'static str]` field (land subtypes, and the card-filter /
 /// [`Condition`] arms that filter or gate on them) — TOML spells it as a plain array of strings.
-pub(crate) fn static_str_slice<'de, D: Deserializer<'de>>(
+pub fn static_str_slice<'de, D: Deserializer<'de>>(
     d: D,
 ) -> Result<&'static [&'static str], D::Error> {
     Ok(intern_strs(Vec::<String>::deserialize(d)?))
 }
 
 /// serde default for a `CounterReplacement`'s `times` (the multiplicative identity).
-pub(crate) fn one() -> i32 {
+pub fn one() -> i32 {
     1
 }
 
 /// serde default for `modal_choose`: a modal spell chooses one mode unless it says more.
-pub(crate) fn one_u8() -> u8 {
+pub fn one_u8() -> u8 {
     1
 }
 
@@ -195,7 +193,7 @@ pub(crate) fn one_u8() -> u8 {
 /// `PayLife` marker-or-fixed shape. `"any"` becomes `u8::MAX` — no real library holds anywhere
 /// close to that many cards, so the search re-pauses until the searcher fails to find or the
 /// matches run out, same as a genuinely unbounded count.
-pub(crate) fn count_or_any<'de, D: Deserializer<'de>>(d: D) -> Result<u8, D::Error> {
+pub fn count_or_any<'de, D: Deserializer<'de>>(d: D) -> Result<u8, D::Error> {
     #[derive(Deserialize)]
     #[serde(untagged)]
     enum CountOrAny {
@@ -212,22 +210,22 @@ pub(crate) fn count_or_any<'de, D: Deserializer<'de>>(d: D) -> Result<u8, D::Err
 }
 
 /// serde default for [`Effect::Dig(DigEffect::LookAtTop)`]'s `up_to`: the printed "put *that card*" ⇒ one.
-pub(crate) fn one_u32() -> u32 {
+pub fn one_u32() -> u32 {
     1
 }
 
 /// serde default for [`Effect::Dig(DigEffect::LookAtTop)`]'s `filter`: a filterless look sees any card.
-pub(crate) fn any_card_filter() -> CardFilter {
+pub fn any_card_filter() -> CardFilter {
     CardFilter::AnyCard
 }
 
 /// serde default for an edict's `scope`: "each player" is the common wording.
-pub(crate) fn all_players() -> EdictScope {
+pub fn all_players() -> EdictScope {
     EdictScope::AllPlayers
 }
 
 /// serde default for an edict's `filter`: a creature is the common sacrifice.
-pub(crate) fn creature_edict() -> PermanentFilter {
+pub fn creature_edict() -> PermanentFilter {
     PermanentFilter::of(TypeSet::CREATURE)
 }
 
@@ -235,7 +233,7 @@ pub(crate) fn creature_edict() -> PermanentFilter {
 /// (`token = "37c4adc8-…"`) resolved against the registry installed by [`install_token_defs`].
 /// Token characteristics live in `cards/data/tokens/*.toml`; after resolve the effect embeds a
 /// full [`CardDef`] so mint paths stay pool-agnostic.
-pub(crate) fn token_profile<'de, D: Deserializer<'de>>(d: D) -> Result<CardDef, D::Error> {
+pub fn token_profile<'de, D: Deserializer<'de>>(d: D) -> Result<CardDef, D::Error> {
     let id = String::deserialize(d)?;
     if id.is_empty() {
         return Err(de::Error::custom(
@@ -255,7 +253,7 @@ pub(crate) fn token_profile<'de, D: Deserializer<'de>>(d: D) -> Result<CardDef, 
 /// A `deserialize_with` on the [`Effect::Mana(ManaEffect::Add)`] `mana` field rather than a `Deserialize`
 /// on [`ManaPool`] itself — the pool is runtime game state (events, replays), and its
 /// canonical serde shape shouldn't be a card-DSL spelling.
-pub(crate) fn mana_batch<'de, D: Deserializer<'de>>(d: D) -> Result<ManaPool, D::Error> {
+pub fn mana_batch<'de, D: Deserializer<'de>>(d: D) -> Result<ManaPool, D::Error> {
     let mut pool = ManaPool::default();
     for symbol in Vec::<Mana>::deserialize(d)? {
         pool.add(symbol, 1);
@@ -264,19 +262,19 @@ pub(crate) fn mana_batch<'de, D: Deserializer<'de>>(d: D) -> Result<ManaPool, D:
 }
 
 /// The default `repeat`/`count` for an amount-bearing field that omits one — a single copy.
-pub(crate) fn one_amount() -> Amount {
+pub fn one_amount() -> Amount {
     Amount::Fixed(1)
 }
 
 /// The default for an amount-bearing field that omits one and means "none" rather than "one" —
 /// `create_token`'s `enters_with` (no counters unless a card says otherwise).
-pub(crate) fn zero_amount() -> Amount {
+pub fn zero_amount() -> Amount {
     Amount::Fixed(0)
 }
 
 /// The default `spend_predicate` for an ability that isn't a `spend_mana_to_cast` trigger (the
 /// field is unread there) — an arbitrary variant so the derive has a default.
-pub(crate) fn default_spend_predicate() -> SpendToCastPredicate {
+pub fn default_spend_predicate() -> SpendToCastPredicate {
     SpendToCastPredicate::Commander
 }
 
@@ -1021,7 +1019,7 @@ fn type_bits(name: &str) -> Option<TypeSet> {
     })
 }
 
-pub(crate) const TYPE_NAMES: &[&str] = &[
+pub const TYPE_NAMES: &[&str] = &[
     "creature",
     "artifact",
     "enchantment",
@@ -1034,7 +1032,7 @@ pub(crate) const TYPE_NAMES: &[&str] = &[
     "artifact_or_creature",
 ];
 
-pub(crate) const PERMANENT_FILTER_SHORTHANDS: &[&str] = &[
+pub const PERMANENT_FILTER_SHORTHANDS: &[&str] = &[
     "shares_type_with_dying_permanent",
     "creatures",
     "creature",
@@ -1051,7 +1049,7 @@ pub(crate) const PERMANENT_FILTER_SHORTHANDS: &[&str] = &[
     "artifact_or_creature",
 ];
 
-pub(crate) const SACRIFICE_COST_SHORTHANDS: &[&str] = &["none", "this", "creature"];
+pub const SACRIFICE_COST_SHORTHANDS: &[&str] = &["none", "this", "creature"];
 
 /// A [`TypeSet`] in TOML: one type name (`"artifact"`) or a list of them
 /// (`["creature", "artifact"]`, their union). An empty list is the empty set.

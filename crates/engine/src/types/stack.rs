@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
-use super::*;
-use crate::CardId;
+use crate::*;
 
 /// What an attacking creature is attacking (CR 506.2/508.1a): the defending player, or a
 /// planeswalker that player controls. (Battles — CR 506.2c — have no card in the pool yet; add a
@@ -3189,129 +3188,6 @@ pub(crate) fn is_partition(top: &[ObjectId], bottom: &[ObjectId], cards: &[Objec
     combined == expected
 }
 
-/// How many distinct targets an effect chooses (CR 601.2c): between `min` and `max`, inclusive.
-/// The default `{1, 1}` is the ubiquitous single mandatory target, so every existing effect is
-/// untouched. `count = N` in TOML is sugar for `{N, N}` (an exact "N target"); an explicit
-/// `{ min, max }` spells "up to"/"one or two" ranges (see `de::TargetCount`).
-/// ponytail: scalar `u8`s keep the authored target count tiny and easy to copy.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct TargetCount {
-    pub min: u8,
-    pub max: u8,
-    /// When `true`, `min`/`max` are placeholders substituted at cast time by the spell's own
-    /// chosen `{X}` (CR 601.2b — X is fixed before targets are chosen): `Game::choose_spell_targets`
-    /// reads the spell's `x` and overrides the effective count, per the rule on that field's own
-    /// doc. `{ min: 0, max: 0, x_scaled: true }` is "up to X target(s)" (Silkguard, "up to X" —
-    /// fully declinable); `{ min: 1, max: 1, x_scaled: true }` is "exactly X target(s)" (Curse of
-    /// the Swine's "exile X target creatures" — X could be 0, but the caster can't decline once
-    /// X is chosen positive since `min` only zeroes out when the printed `min` is 0). Defaults to
-    /// `false` (every other multi-target effect keeps a fixed count). Parsed by the hand-written
-    /// `Deserialize` impl in `de.rs` (not a derive), so no `serde` attribute belongs here.
-    pub x_scaled: bool,
-    /// The sibling of [`Self::x_scaled`] for a card whose X is never chosen as `{X}` but is
-    /// instead *defined* by an additional cost (CR 601.2b/601.2f) — Immoral Bargain's "As an
-    /// additional cost to cast this spell, sacrifice X creatures. Destroy X target nonland
-    /// permanents." When `true`, `min`/`max` are placeholders `Game::choose_spell_targets`
-    /// substitutes at cast time with [`Game::spell_sacrifice_count`] (always "exactly X", unlike
-    /// `x_scaled`'s declinable "up to X" case — no pool card sacrifice-scales an optional count).
-    /// Defaults to `false`. Parsed by the hand-written `Deserialize` impl in `de.rs`.
-    pub sacrifice_scaled: bool,
-    /// Strive's own sibling of [`Self::sacrifice_scaled`] (CR 601.2c/601.2f/702.42) — Twinflame's
-    /// "Choose any number of target creatures you control" paired with "This spell costs {2}{R}
-    /// more to cast for each target beyond the first." Unlike `sacrifice_scaled` (whose X is the
-    /// count of permanents already paid as a cost), Strive's target count is a bare number the
-    /// caster commits to *before* the stack (CR 601.2c precedes 601.2f) — carried on
-    /// [`crate::Intent::Cast`] and recorded as [`crate::types::card::Spell::strive_count`] (read via
-    /// [`crate::Game::spell_strive_count`]). When `true`, `min`/`max` are placeholders
-    /// [`Game::choose_spell_targets`](crate::Game::choose_spell_targets) substitutes at cast time
-    /// with that declared count (always "exactly N," like `sacrifice_scaled`'s "exactly X").
-    /// Defaults to `false`. Parsed by the hand-written `Deserialize` impl in `de.rs`.
-    pub strive_scaled: bool,
-    /// A set-level cap on the chosen targets' *summed* mana value (CR 601.2c: legality is
-    /// evaluated over the whole chosen set, not per target) — Rampaging Yao Guai's "destroy any
-    /// number of target artifacts and/or enchantments with total mana value X or less". `None`
-    /// (default) imposes no budget, matching every existing multi-target effect. `Some(amount)`
-    /// is resolved once, against the choosing ability's own source (its entered `{X}` for a
-    /// permanent's own ETB, via [`Game::ability_source_x`](crate::Game::ability_source_x)/
-    /// [`Game::resolve_amount`](crate::Game::resolve_amount)), and checked against the sum of
-    /// each chosen target's mana value ([`Amount::TargetManaValue`]) in
-    /// [`Game::choose_targets`](crate::Game::choose_targets) — an over-budget answer is
-    /// [`Reject::IllegalChoice`](crate::Reject::IllegalChoice), not a truncation. Distinct from
-    /// [`crate::types::effect::dig::DigEffect::LookAtTop`]'s own `mv_budget` (a per-card dig
-    /// filter, already resolved to a bare `u32` before the pause); this is a *target-count* axis
-    /// so it composes with `min`/`max`/`x_scaled` on any targeted effect, not just a dig. Parsed
-    /// by the hand-written `Deserialize` impl in `de.rs`.
-    pub total_mv_max: Option<Amount>,
-    /// Multikicker's own sibling (CR 601.2c/702.33c) — Comet Storm's "Choose any target, then
-    /// choose another target for each time this spell was kicked." Unlike `x_scaled`/
-    /// `sacrifice_scaled`/`strive_scaled` (each "exactly N," substituting the declared/derived
-    /// count directly), Multikicker's count is always "one base target, plus one more per kick":
-    /// when `true`, `min`/`max` are placeholders
-    /// [`Game::choose_spell_targets`](crate::Game::choose_spell_targets) substitutes at cast time
-    /// with `1 + `[`Game::spell_multikicker_count`](crate::Game::spell_multikicker_count). Defaults
-    /// to `false`. Parsed by the hand-written `Deserialize` impl in `de.rs`.
-    pub multikicker_scaled: bool,
-    /// Kicker's own sibling (CR 702.33d/702.33g) — Orim's Thunder's "If this spell was kicked, it
-    /// deals damage equal to that permanent's mana value to target creature," a *whole second
-    /// target clause* (not this clause's own destroy target) present only when kicked. When
-    /// `true`, the authored `min`/`max` apply only if
-    /// [`Game::spell_was_kicked`](crate::Game::spell_was_kicked) holds for the resolving spell;
-    /// otherwise the clause is forced to `(0, 0)` — CR 702.33g's "the spell is cast as if it did
-    /// not have those targets." Unlike `x_scaled`/`sacrifice_scaled`/`strive_scaled`/
-    /// `multikicker_scaled` above (each substituting a *computed count* for the authored
-    /// placeholder), `kicked_scaled` never changes what the authored `min`/`max` mean when the
-    /// gate holds — it only zeroes the clause out when it doesn't. Defaults to `false`. Parsed by
-    /// the hand-written `Deserialize` impl in `de.rs`.
-    pub kicked_scaled: bool,
-    /// The timing-conditional sibling of [`Self::kicked_scaled`] (CR 601.2c's general
-    /// target-conditionality principle, applied to a cast-timing condition rather than an
-    /// additional cost) — Return to Dust's "you may exile up to one other target artifact or
-    /// enchantment" only if cast during the caster's main phase. When `true`, the authored `max`
-    /// applies only if
-    /// [`Game::spell_cast_during_main_phase`](crate::Game::spell_cast_during_main_phase) holds;
-    /// otherwise `max` is capped down to `min`. Unlike `kicked_scaled` (whose gated clause
-    /// vanishes to `(0, 0)` because it's a wholly separate "target creature" clause),
-    /// `main_phase_scaled`'s `min` is never touched: Return to Dust's mandatory first target and
-    /// its conditional second target are the *same* "target artifact or enchantment" clause (one
-    /// count range, not two), so the same-instance distinctness CR 601.2c already gives a
-    /// multi-target clause is what makes the second target "other" for free. Defaults to `false`.
-    /// Parsed by the hand-written `Deserialize` impl in `de.rs`.
-    pub main_phase_scaled: bool,
-}
-
-impl Default for TargetCount {
-    fn default() -> Self {
-        TargetCount {
-            min: 1,
-            max: 1,
-            x_scaled: false,
-            sacrifice_scaled: false,
-            strive_scaled: false,
-            total_mv_max: None,
-            multikicker_scaled: false,
-            kicked_scaled: false,
-            main_phase_scaled: false,
-        }
-    }
-}
-
-impl TargetCount {
-    /// Whether this is the ubiquitous single-mandatory-target count — the fast path that keeps
-    /// every existing spell on the untouched single-target plumbing. An `x_scaled`,
-    /// `sacrifice_scaled`, `strive_scaled`, or `multikicker_scaled` count is never single even
-    /// when its printed `{min, max}` happens to be `{1, 1}` — its *effective* count depends on a
-    /// cast-time choice/cost and must go through the multi-target machinery.
-    pub(crate) fn is_single(self) -> bool {
-        self == TargetCount::default()
-            && !self.x_scaled
-            && !self.sacrifice_scaled
-            && !self.strive_scaled
-            && !self.multikicker_scaled
-            && !self.kicked_scaled
-            && !self.main_phase_scaled
-    }
-}
-
 /// The most targets any multi-target spell in the pool chooses (Aether Gale's six). Bounds the
 /// fixed, `Copy` array in [`TargetList`] so `Spell`/`Event` stay `Copy` (the id-indexed object
 /// arena requires it), mirroring [`MAX_MODES`]. ponytail: bump when a card targets more.
@@ -3538,4 +3414,21 @@ pub(crate) fn is_permutation(order: &[usize], len: usize) -> bool {
         seen[i] = true;
     }
     true
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn is_permutation_accepts_valid_orders() {
+        assert!(is_permutation(&[1, 0, 2], 3));
+    }
+
+    #[test]
+    fn is_permutation_rejects_duplicates_and_out_of_range() {
+        assert!(!is_permutation(&[0, 0], 2));
+        assert!(!is_permutation(&[2], 2));
+        assert!(!is_permutation(&[0, 1], 3));
+    }
 }

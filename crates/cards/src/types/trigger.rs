@@ -664,21 +664,21 @@ pub enum BecomesTargetedScope {
 /// the ability's controller, and — for a `PlayerAttacksYourOpponent` trigger — the attacking and
 /// attacked players. Most triggers only need the controller.
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct TriggerContext {
-    pub(crate) controller: PlayerId,
+pub struct TriggerContext {
+    pub controller: PlayerId,
     /// The active player, for a [`Trigger::EachDrawStep`] ability's "**that player** draws an
     /// additional card" payoff (Howling Mine) — the player whose draw step this is, which need
     /// not be this ability's controller — or a [`Trigger::EachPlayerFirstMainPhase`] ability's
     /// "**that player** adds {G}{G}" payoff (Magus of the Vineyard), same shape one step over.
     /// `None` for every other trigger; set by [`Game::queue_each_draw_step_triggers`]/
     /// [`Game::queue_each_player_first_main_phase_triggers`].
-    pub(crate) active_player: Option<PlayerId>,
+    pub active_player: Option<PlayerId>,
     /// `(attacking player, attacked player)` for a `PlayerAttacksYourOpponent` trigger.
-    pub(crate) attack: Option<(PlayerId, PlayerId)>,
+    pub attack: Option<(PlayerId, PlayerId)>,
     /// The graveyard-object id of the card just discarded, for a `YouDiscard` trigger (so its
     /// effect can act on "that card" — Containment Construct). See
     /// [`Game::queue_discard_triggers`].
-    pub(crate) discarded: Option<ObjectId>,
+    pub discarded: Option<ObjectId>,
     /// CR 701.8/603.10a last-known information: the graveyard-object ids of the **nonland** cards
     /// discarded in the batch behind a [`Trigger::YouDiscardNonland`] fire (Conspiracy Theorist's
     /// "you may exile one of them from your graveyard"), so the payoff can offer exactly "one of
@@ -688,18 +688,18 @@ pub(crate) struct TriggerContext {
     /// See `Game::queue_discard_nonland_triggers` for where this is set.
     /// ponytail: a leaked `&'static [ObjectId]` interned per fire so [`TriggerContext`] stays
     ///   `Copy`, exactly like [`cards_left_graveyard`](Self::cards_left_graveyard).
-    pub(crate) discarded_nonland_cards: &'static [ObjectId],
+    pub discarded_nonland_cards: &'static [ObjectId],
     /// The id of the permanent that just entered, for a `PermanentEnters`/
     /// `PermanentEntersIncludingThis` trigger (so its effect can act on "it" — Marauding
     /// Raptor's "this creature deals 2 damage to it"). See
     /// [`Game::queue_permanent_enters_triggers`].
-    pub(crate) entering: Option<ObjectId>,
+    pub entering: Option<ObjectId>,
     /// CR 603.10a last-known information: the dying source's power/+1/+1-counter count the
     /// instant before it died, for a `Dies` trigger's `Amount::SourcePower`/
     /// `Amount::PerCounterOnSource` reads (Lifeblood Hydra, Hangarback Walker). `None` for every
     /// non-death trigger, so a living source's amount reads stay live. See
     /// `Game::dying_creature_stats` for where this is captured.
-    pub(crate) dying_source_stats: Option<(i32, i32)>,
+    pub dying_source_stats: Option<(i32, i32)>,
     /// The triggering spell's mana value (CR 202.3), for a `Trigger::CastSpell` (magecraft)
     /// ability's `Amount::TriggeringSpellManaValue`/`Condition::TriggeringSpellManaValueAtLeast`
     /// reads (Prismari Pianist's "if that spell's mana value is 5 or greater"; Renegade Bull's
@@ -707,7 +707,7 @@ pub(crate) struct TriggerContext {
     /// so other triggers' amount/condition reads are unaffected. Locked in at trigger placement,
     /// same CR 603.4 reasoning as `dying_source_stats` above. See
     /// `Game::queue_cast_spell_triggers` for where this is captured.
-    pub(crate) cast_mana_value: Option<u32>,
+    pub cast_mana_value: Option<u32>,
     /// The mana actually spent to cast the triggering spell (CR 601.2h/202.3), for a
     /// `Trigger::CastSpell` ability's `Amount::TriggeringSpellManaSpent` reads (Manaform
     /// Hellkite's "X is the amount of mana spent to cast that spell") — the mana-*spent* sibling
@@ -716,7 +716,7 @@ pub(crate) struct TriggerContext {
     /// preceding `Event::ManaSpent` in the same batch, same CR 603.4 last-known-information
     /// reasoning as `cast_mana_value`. See `Game::queue_cast_spell_triggers` for where this is
     /// captured.
-    pub(crate) cast_mana_spent: Option<u32>,
+    pub cast_mana_spent: Option<u32>,
     /// The casting spell's chosen `{X}` (CR 603.4), for a [`Trigger::YouCastThis`] self-cast
     /// ability's `Amount::X`/`Amount::HalfXRoundedDown` reads (Hydroid Krasis's "you gain half X
     /// life and draw half X cards, rounded down"), a [`Trigger::CastSpell`] watcher's own `X`
@@ -727,40 +727,40 @@ pub(crate) struct TriggerContext {
     /// (CR 601.2i), so it resolves even if the spell is later countered. See
     /// `Game::enqueue_triggers`'s `Event::SpellCast` arm, `Game::queue_cast_spell_triggers`, and
     /// `Game::queue_self_trigger` for where this is captured.
-    pub(crate) cast_x: Option<u32>,
+    pub cast_x: Option<u32>,
     /// How many Auras the watcher's controller controlled that were attached to the dying
     /// creature, for a [`Trigger::AnEnchantedCreatureDies`] watch's
     /// `Amount::AurasYouControlledAttachedToDyingCreature` reads (Hateful Eidolon). `None` for
     /// every other trigger. Locked in at placement — same CR 603.10a last-known-information
     /// reasoning as `dying_source_stats` above. See
     /// [`Game::queue_an_enchanted_creature_dies_triggers`] for where this is captured.
-    pub(crate) auras_you_controlled_attached_to_dying_creature: Option<u32>,
+    pub auras_you_controlled_attached_to_dying_creature: Option<u32>,
     /// CR 510.2/603.10a last-known information: the amount of combat damage the source just
     /// dealt to a player, for a [`Trigger::DealsCombatDamageToPlayer`] watch's reanimation target
     /// bound (Venerable Warsinger: "return target creature card with mana value X or less …
     /// where X is the amount of damage this creature dealt to that player"). `None` for every
     /// other trigger, same shape as `dying_source_stats` above. See
     /// [`Game::queue_combat_damage_triggers`] for where this is captured.
-    pub(crate) combat_damage: Option<i32>,
+    pub combat_damage: Option<i32>,
     /// CR 510.2/603.10a last-known information: the player the source just dealt combat damage
     /// to, for a [`Trigger::DealsCombatDamageToPlayer`] watch whose payoff excludes them (Hydra
     /// Omnivore: "it deals that much damage to each **other** opponent"). `None` for every other
     /// trigger, same shape as `combat_damage` above. See
     /// [`Game::queue_combat_damage_triggers`] for where this is captured.
-    pub(crate) combat_damage_recipient: Option<PlayerId>,
+    pub combat_damage_recipient: Option<PlayerId>,
     /// CR 510.2/603.10a last-known information: who controlled the creature that just dealt the
     /// combat damage, for a [`Trigger::DealsCombatDamageToPlayer`] watch whose payoff belongs to
     /// that player rather than the watcher's controller (Edric, Spymaster of Trest: "**its
     /// controller** may draw a card"). `None` for every other trigger, same shape as
     /// `combat_damage_recipient` above.
-    pub(crate) combat_damage_source_controller: Option<PlayerId>,
+    pub combat_damage_source_controller: Option<PlayerId>,
     /// CR 609.7/603.10a last-known information: the amount of damage the enchanted host just
     /// dealt (combat or noncombat alike), for a [`Trigger::EnchantedCreatureDealsDamage`] watch's
     /// `Amount::TriggeringDamageDealt` reads (Armadillo Cloak's "you gain that much life"). `None`
     /// for every other trigger, same shape as `combat_damage` above (which this doesn't reuse: that
     /// field is specifically CR 510.2 combat damage *to a player*). See
     /// [`Game::queue_enchanted_creature_deals_damage_triggers`] for where this is captured.
-    pub(crate) triggering_damage_dealt: Option<i32>,
+    pub triggering_damage_dealt: Option<i32>,
     /// The dying creature's graveyard-object id, for a [`Trigger::EnchantedCreatureDies`]
     /// ability's look-back reanimation payoff (Changing Loyalty's "return it to the battlefield
     /// under your control", Gift of Immortality's "return that card … under its owner's
@@ -769,7 +769,7 @@ pub(crate) struct TriggerContext {
     /// `def_of`/`owner_of`/`zone_of` all still resolve this id correctly after the death (they
     /// follow the object's `Moved` lineage into its new graveyard card, and on into wherever it
     /// moves next).
-    pub(crate) dying_enchanted_creature: Option<ObjectId>,
+    pub dying_enchanted_creature: Option<ObjectId>,
     /// CR 510.2/603.10a last-known information: the creature a [`Trigger::DealsCombatDamageToCreature`]
     /// watch's source just dealt combat damage to (Stinkweed Imp's "destroy that creature"),
     /// named separately from `dying_enchanted_creature`/`dead_creature` above since the damaged
@@ -779,14 +779,14 @@ pub(crate) struct TriggerContext {
     /// has since left. See the `Event::CombatDamageDealtToCreature` arm of
     /// [`Game::enqueue_triggers`] for where this is captured. Named so a future "all damage this
     /// source dealt this turn" generalization (fidelity increment #194) can extend it.
-    pub(crate) damaged_creature: Option<ObjectId>,
+    pub damaged_creature: Option<ObjectId>,
     /// The triggering spell's stack object id, for a delayed [`Trigger::CastSpell`] one-shot
     /// armed by [`Effect::Misc(MiscEffect::ScheduleNextCastTrigger)`] whose `then` copies that spell (Thunderclap
     /// Drake's "when you next cast an instant or sorcery spell this turn, copy it") — CR 603.4
     /// last-known information, same shape as `cast_x` above but naming the spell itself rather
     /// than its `{X}`. `None` for every other trigger. See
     /// [`Game::fire_next_cast_triggers`] for where this is captured.
-    pub(crate) triggering_spell: Option<ObjectId>,
+    pub triggering_spell: Option<ObjectId>,
     /// CR 702.40a's storm count: the game-wide tally of spells cast before this one this turn
     /// (every player, not just the caster), for a [`Trigger::YouCastThis`] Storm ability's
     /// `Amount::SpellsCastBeforeThisThisTurn` reads (Reaping the Graves). Locked in when the
@@ -794,14 +794,14 @@ pub(crate) struct TriggerContext {
     /// so a response cast in front of the storm trigger (or the storm spell's own later-minted
     /// copies) can't inflate it. `None` for every other trigger. See `Game::enqueue_triggers`'s
     /// `Event::SpellCast` arm for where this is captured.
-    pub(crate) spells_cast_before_this: Option<u32>,
+    pub spells_cast_before_this: Option<u32>,
     /// CR 510.2/603.10a last-known information: the trigger's own source permanent's power at the
     /// instant the trigger goes on the stack, for an [`Trigger::Attacks`] ability's reanimation
     /// target bound (Guardian Scalelord: "return target nonland permanent card with mana value X
     /// or less … where X is this creature's power"). `None` for every trigger that doesn't read
     /// its source's power, same shape as `combat_damage` above. See the `Event::AttackerDeclared`
     /// arm of `Game::enqueue_triggers` for where this is captured.
-    pub(crate) source_power: Option<i32>,
+    pub source_power: Option<i32>,
     /// CR 603.10a last-known information: the just-dead creature's graveyard-object id, for a
     /// [`Trigger::CreatureYouControlDies`]-family watch's exile-and-copy payoff (Hofri Ghostforge's
     /// "exile it. If you do, create a token that's a copy of that creature"). `None` for every
@@ -809,14 +809,14 @@ pub(crate) struct TriggerContext {
     /// [`Effect::Zone(ZoneEffect::ExileDeadCreatureCreateCopyWithSubtype)`] via `contextualize_effect`; `def_of`/
     /// `owner_of`/`zone_of` all still resolve it after the death (following the `Moved` lineage into
     /// its new graveyard card). See [`Game::queue_death_watcher`] for where this is captured.
-    pub(crate) dead_creature: Option<ObjectId>,
+    pub dead_creature: Option<ObjectId>,
     /// CR 603.10a last-known information: the dying permanent's own card types, for a
     /// [`Trigger::NonlandPermanentYouControlDiesIncludingThis`] watch's dynamic edict payoff
     /// (Martyr's Bond's "each opponent sacrifices a permanent that shares a card type with it").
     /// `None` for every other trigger. Feeds `Effect::Choice(ChoiceEffect::EachPlayerSacrifices)`'s
     /// `shares_type_with_dying_permanent`-marked filter via `contextualize_effect`; see
     /// [`Game::queue_nonland_permanent_death_watchers`] for where this is captured.
-    pub(crate) dying_permanent_types: Option<TypeSet>,
+    pub dying_permanent_types: Option<TypeSet>,
     /// CR 603.10a last-known information: the graveyard-object ids of the cards that left this
     /// batch, for a [`Trigger::CardsLeaveYourGraveyard`] payoff that becomes a copy of one of them
     /// (Spirit of Resilience's "become a copy of an artifact or creature card from among those
@@ -826,32 +826,32 @@ pub(crate) struct TriggerContext {
     /// `Moved` lineage). See `Game::queue_cards_leave_graveyard_triggers` for where this is set.
     /// ponytail: a leaked `&'static [ObjectId]` interned per fire so [`TriggerContext`] stays
     ///   `Copy`; move to a runtime carrier if a long game's repeated fires make the leak matter.
-    pub(crate) cards_left_graveyard: &'static [ObjectId],
+    pub cards_left_graveyard: &'static [ObjectId],
     /// CR 603.10a last-known information: the permanent this object was attached to the instant
     /// it left the battlefield, for a [`Trigger::ThisPermanentLeavesBattlefield`] ability's
     /// payoff (Animate Dead's "that creature's controller sacrifices it"). `None` for every
     /// other trigger, and also `None` for a `ThisPermanentLeavesBattlefield` fire off a permanent
     /// that wasn't itself attached to anything. See `Game::queue_leaves_battlefield_triggers` for
     /// where this is captured.
-    pub(crate) left_battlefield_host: Option<ObjectId>,
+    pub left_battlefield_host: Option<ObjectId>,
     /// The source permanent of the activated ability that fired a [`Trigger::ActivateAbility`]
     /// watch (Unbound Flourishing), for its [`Effect::Copy(CopyEffect::CopyTriggeringAbility)`] payoff — the copy
     /// finds that ability still on the stack (its trigger sits directly above it, CR 603.3b) by
     /// this source and copies its effect/target/`{X}`. `None` for every other trigger. See
     /// [`Game::queue_activate_ability_triggers`] for where this is captured.
-    pub(crate) triggering_ability: Option<ObjectId>,
+    pub triggering_ability: Option<ObjectId>,
     /// The player who cast the triggering spell, for a [`Trigger::CastSpell`] watch's own
     /// "unless that player pays" payoff (Rhystic Study's "you may draw a card unless that player
     /// pays {1}" — [`Effect::Choice(ChoiceEffect::MayDrawUnlessPays)`]). Distinct from `TriggerContext::controller`
     /// (the watcher's own controller) precisely when `caster: CasterScope::Opponent`/`AnyPlayer`
     /// — `controller` alone can't name the payer for those scopes. `None` for every other
     /// trigger. See [`Game::queue_cast_spell_triggers`] for where this is captured.
-    pub(crate) triggering_caster: Option<PlayerId>,
+    pub triggering_caster: Option<PlayerId>,
 }
 
 impl TriggerContext {
     /// Context for a trigger whose only relevant player is its controller.
-    pub(crate) fn of(controller: PlayerId) -> Self {
+    pub fn of(controller: PlayerId) -> Self {
         Self {
             controller,
             active_player: None,

@@ -72,7 +72,7 @@ pub struct CostToml {
 }
 
 impl CostToml {
-    pub(crate) fn validate_hybrid<E: de::Error>(&self) -> Result<(), E> {
+    pub fn validate_hybrid<E: de::Error>(&self) -> Result<(), E> {
         for [a, b] in &self.hybrid {
             if a == b {
                 return Err(de::Error::custom(
@@ -84,7 +84,7 @@ impl CostToml {
     }
 }
 
-pub(crate) fn deserialize_cost_toml<'de, D>(d: D) -> Result<CostToml, D::Error>
+pub fn deserialize_cost_toml<'de, D>(d: D) -> Result<CostToml, D::Error>
 where
     D: Deserializer<'de>,
 {

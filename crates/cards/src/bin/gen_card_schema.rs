@@ -23,7 +23,7 @@ fn main() -> ExitCode {
 }
 
 fn card_schema() -> Value {
-    let mut schema = serde_json::to_value(schemars::schema_for!(engine::toml_surface::CardToml))
+    let mut schema = serde_json::to_value(schemars::schema_for!(cards::toml_surface::CardToml))
         .expect("CardToml schema serializes");
     normalize_schema(&mut schema, "mtgfr card TOML");
     schema

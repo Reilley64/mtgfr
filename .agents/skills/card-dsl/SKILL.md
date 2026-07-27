@@ -13,7 +13,7 @@ by Scryfall oracle id (`token = "<id>"` on `create_token` — no inline token ta
 **Full field reference: [`DSL_REFERENCE.md`](DSL_REFERENCE.md)** (in this skill folder). Read
 it before writing or editing a card TOML. It is generated from the TOML surface; keep §0
 process discipline here in `SKILL.md`. **Source of truth for shapes** is `crates/engine/src/toml_surface/`,
-`crates/engine/src/types/effect/`, and `crates/engine/src/de.rs` — if the reference and code
+`crates/cards/src/types/effect/`, and `crates/cards/src/de.rs` — if the reference and code
 disagree, the code wins. Engine gaps for a deck live in that deck's
 `docs/fidelity/<slug>-increments.md` (created by the `fidelity-grind` skill) — flag with
 `approximates` / `# ponytail:` on the card rather than contorting the model.

@@ -28,14 +28,14 @@ is the intended design. Verify "landed" claims against the code, not the prose.
 `docs/agent-navigation.md` maps the layout — grep to confirm, module boundaries move.
 Fixed points:
 
-- `crates/engine/src/types/` — `CardDef`, `Effect`, `Trigger`, filters, amounts, costs,
+- `crates/cards/src/types/` — `CardDef`, `Effect`, `Trigger`, filters, amounts, costs,
   stack types, with the serde derives (feature `card-dsl`). Open
   `docs/agent-navigation.md` first, then the relevant files under `types/` (module
   boundaries move). Runtime objects carry interned `CardId`s; card definitions are loaded as
   `Arc<CardDef>`. `CardDef` / `Effect` are `Clone`, and list-like fields in the current types
   use `Arc<[T]>` (see `card.rs`, `stack.rs`, `effect/shared.rs`) rather than assuming leaked
   `&'static [T]` slices.
-- `crates/engine/src/de.rs` — the TOML→CardDef deserializer. `deny_unknown_fields` is on,
+- `crates/cards/src/de.rs` — the TOML→CardDef deserializer. `deny_unknown_fields` is on,
   so any new TOML key requires a matching struct field/enum variant.
 - `crates/engine/src/effects.rs` — resolves `Effect` arms; `triggers.rs` — trigger
   placement/firing; `pending/` — pending-choice pause/answer machinery.
@@ -60,7 +60,7 @@ Fixed points:
 4. **Style:** guard-return-first; readability over cleverness.
 5. **Card data follows the current interned layout** — runtime references use `CardId`,
    definitions are `Clone` and interned behind `Arc`, and new list-like card-data fields
-   should follow the existing `Arc<[T]>` pattern in `crates/engine/src/types/`.
+   should follow the existing `Arc<[T]>` pattern in `crates/cards/src/types/`.
 6. **Only touch what your increment needs.** No unrelated refactors; no premature
    generalization of the DSL.
 7. **Faithful cards lose their note.** Delete `approximates` when fully faithful, or trim
