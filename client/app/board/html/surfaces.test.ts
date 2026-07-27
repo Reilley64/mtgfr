@@ -862,6 +862,9 @@ test("modal waiting chrome docks when modes are chosen and a target is still nee
     overlayModel({ ...initialBoardModel(), modalCast }),
     Scene.expect(Scene.testId("modal-waiting-aim")).toExist(),
     Scene.expect(Scene.testId("modal-waiting")).toBeAbsent(),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-cancel"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="modal-waiting-aim"] [data-testid="prompt-cancel"]')).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
   );
 });
 
@@ -960,6 +963,37 @@ test("choose_splitting_opponent off-board list shows docked pending-player-pick-
     Scene.expect(Scene.testId("pending-player-pick-aim")).toExist(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-player-1")).toExist(),
+  );
+});
+
+test("on-board choose_target_players Confirm lives in the primary bar", () => {
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        promptDraft: { kind: "player-pick", players: [1] },
+      },
+      gameState({
+        players: [player(0), player(1), player(2)],
+        pending_choice: {
+          kind: "choose_target_players",
+          label: testMessageRef("Choose opponents"),
+          min: 1,
+          max: 2,
+          player: 0,
+          source: 1,
+          items: [
+            { id: 0, player: 1, label: "Player 2" },
+            { id: 0, player: 2, label: "Player 3" },
+          ],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-player-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-submit"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="pending-player-aim"] [data-testid="prompt-submit"]')).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
   );
 });
 
@@ -1177,7 +1211,7 @@ test("multi on-board choose_target shows Confirm count chrome", () => {
   );
 });
 
-test("optional on-board choose_target aim shows Decline", () => {
+test("optional on-board choose_target Decline lives in the primary bar", () => {
   const bear = card(7, {
     name: "Bear",
     zone: ZONE.Battlefield,
@@ -1202,7 +1236,9 @@ test("optional on-board choose_target aim shows Decline", () => {
       }),
     ),
     Scene.expect(Scene.testId("pending-target-aim")).toExist(),
-    Scene.expect(Scene.testId("prompt-decline")).toExist(),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-decline"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="pending-target-aim"] [data-testid="prompt-decline"]')).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
   );
 });
 
@@ -1866,7 +1902,10 @@ test("divide_spell_damage on-board aim shows coach when targets are battlefield"
     Scene.expect(Scene.testId("pending-divide-aim")).toExist(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-damage-assigned")).toHaveText("assigned 3 / 3"),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-submit"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="pending-divide-aim"] [data-testid="prompt-submit"]')).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-submit")).not.toBeDisabled(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-damage-0-inc")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-damage-1-inc")).toBeAbsent(),
   );
@@ -1918,7 +1957,10 @@ test("on-board assign_combat_damage hides steppers when blockers are battlefield
     Scene.expect(Scene.testId("prompt-damage-assigned")).toHaveText("assigned 4 / 4"),
     Scene.expect(Scene.testId("prompt-damage-20-inc")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-damage-21-inc")).toBeAbsent(),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-submit"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="pending-damage-aim"] [data-testid="prompt-submit"]')).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-submit")).not.toBeDisabled(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
   );
 });
 
@@ -1960,7 +2002,12 @@ test("divide_counters on-board aim shows coach when targets are battlefield", ()
     Scene.expect(Scene.testId("pending-divide-counters-aim")).toExist(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-damage-assigned")).toHaveText("assigned 2 / 2"),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-submit"]')).toExist(),
+    Scene.expect(
+      Scene.selector('[data-testid="pending-divide-counters-aim"] [data-testid="prompt-submit"]'),
+    ).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-submit")).not.toBeDisabled(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
   );
 });
 
@@ -1994,9 +2041,12 @@ test("sacrifice pick prompt renders as a board surface", () => {
       gameState({ objects: [sacrificeBody] }),
     ),
     Scene.expect(Scene.testId("sacrifice-cost-aim")).toExist(),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-cancel"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="sacrifice-cost-aim"] [data-testid="prompt-cancel"]')).toBeAbsent(),
     Scene.expect(Scene.testId("sacrifice-pick")).toBeAbsent(),
     Scene.expect(Scene.testId("sacrifice-pick-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("sacrifice-pick-55")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
   );
 });
 
@@ -2067,10 +2117,15 @@ test("discard cost aim shows coach when choices are in hand", () => {
       gameState({ objects: [caster, fodder] }),
     ),
     Scene.expect(Scene.testId("discard-cost-aim")).toExist(),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-submit"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-cancel"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="discard-cost-aim"] [data-testid="prompt-submit"]')).toBeAbsent(),
+    Scene.expect(Scene.selector('[data-testid="discard-cost-aim"] [data-testid="prompt-cancel"]')).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-submit")).toBeDisabled(),
     Scene.expect(Scene.testId("discard-cost-count")).toHaveText("0 / 1 selected"),
     Scene.expect(Scene.testId("discard-pick")).toBeAbsent(),
     Scene.expect(Scene.testId("discard-pick-aim")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
   );
 });
 
@@ -2339,9 +2394,11 @@ test("pending exile aim shows coach when choose_exiled cards share a pile", () =
       }),
     ),
     Scene.expect(Scene.testId("pending-exile-aim")).toExist(),
-    Scene.expect(Scene.testId("prompt-decline")).toExist(),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-decline"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="pending-exile-aim"] [data-testid="prompt-decline"]')).toBeAbsent(),
     Scene.expect(Scene.testId("pile-card-30")).toExist(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
   );
 });
 
@@ -2369,9 +2426,11 @@ test("pending gy aim shows coach for cumulative upkeep when cards share a pile",
       }),
     ),
     Scene.expect(Scene.testId("pending-gy-aim")).toExist(),
-    Scene.expect(Scene.testId("prompt-decline")).toExist(),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-decline"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="pending-gy-aim"] [data-testid="prompt-decline"]')).toBeAbsent(),
     Scene.expect(Scene.testId("pile-card-8")).toExist(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
   );
 });
 
@@ -2510,8 +2569,10 @@ test("pending revealed aim shows coach for opponent_chooses_revealed_to_graveyar
     Scene.expect(Scene.testId("pending-revealed-aim")).toExist(),
     Scene.expect(Scene.testId("prompt-card-21")).toExist(),
     Scene.expect(Scene.testId("prompt-card-22")).toExist(),
-    Scene.expect(Scene.testId("prompt-decline")).toExist(),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-decline"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="pending-revealed-aim"] [data-testid="prompt-decline"]')).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
   );
 });
 
@@ -2582,10 +2643,13 @@ test("gy exile cost aim shows coach when choices share a graveyard", () => {
       gameState({ objects: [caster, gy] }),
     ),
     Scene.expect(Scene.testId("gy-exile-cost-aim")).toExist(),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-cancel"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="gy-exile-cost-aim"] [data-testid="prompt-cancel"]')).toBeAbsent(),
     Scene.expect(Scene.testId("pile-overlay")).toExist(),
     Scene.expect(Scene.testId("pile-card-8")).toExist(),
     Scene.expect(Scene.testId("gy-exile-pick")).toBeAbsent(),
     Scene.expect(Scene.testId("gy-exile-pick-aim")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
   );
 });
 
@@ -2631,8 +2695,10 @@ test("pending put-from-hand aim shows coach when cards are in hand", () => {
       }),
     ),
     Scene.expect(Scene.testId("pending-hand-aim")).toExist(),
-    Scene.expect(Scene.testId("prompt-decline")).toExist(),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-decline"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="pending-hand-aim"] [data-testid="prompt-decline"]')).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
   );
 });
 
