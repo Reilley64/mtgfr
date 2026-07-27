@@ -220,7 +220,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Fastbond** {G} · Enchantment — increment 29
 - [ ] **Feedback** {2}{U} · Enchantment — Aura — increment 61
 - [ ] **Fireball** {X}{R} · Sorcery — increment 53
-- [ ] **Flashfires** {3}{R} · Sorcery — increment 51
+- [x] **Flashfires** {3}{R} · Sorcery — increment 51
 - [x] **Force of Nature** {2}{G}{G}{G}{G} · Creature — Elemental — increment 20
 - [ ] **Forcefield** {3} · Artifact — increment 4
 - [ ] **Fork** {R}{R} · Instant — increment 13
@@ -305,7 +305,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Time Vault** {2} · Artifact — increment 7, 18
 - [ ] **Time Walk** {1}{U} · Sorcery — increment 18
 - [ ] **Timetwister** {2}{U} · Sorcery — increment 38
-- [ ] **Tsunami** {3}{G} · Sorcery — increment 51
+- [x] **Tsunami** {3}{G} · Sorcery — increment 51
 - [ ] **Two-Headed Giant of Foriys** {4}{R} · Creature — Giant — increment 11
 - [ ] **Vesuvan Doppelganger** {3}{U}{U} · Creature — Shapeshifter — increment 12
 - [ ] **Veteran Bodyguard** {3}{W}{W} · Creature — Human — increment 6

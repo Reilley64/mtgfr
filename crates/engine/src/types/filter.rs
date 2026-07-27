@@ -684,6 +684,9 @@ pub struct PermanentFilter {
     /// control" — `["Treasure"]`, distinguishing a Treasure from any other artifact); empty
     /// matches every subtype. Same shape/rationale as [`Effect::Static(StaticEffect::Anthem)`]'s own `subtypes`
     /// field (a separate axis there since an anthem always targets creatures specifically).
+    /// Matches against [`Game::effective_subtypes`], which reports a land's own type line too
+    /// (CR 305.6), so `{ types = "land", subtypes = ["Plains"] }` is Flashfires' "Destroy all
+    /// Plains" — the basic and every dual sharing the type.
     /// Deserialized by hand alongside the rest of [`PermanentFilter`]'s table form (see `de.rs`)
     /// rather than a derive attribute — `PermanentFilter` has a hand-written `Deserialize` impl
     /// for its bare-string shorthand, so there's no derive for a field attribute to hang off.

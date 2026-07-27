@@ -104915,3 +104915,49 @@ fn castle_buffs_only_untapped_creatures_you_control() {
         "untapping in your untap step gets it back"
     );
 }
+
+// Flashfires and Tsunami name a land type, not a land: "Destroy all Plains" catches the basic and
+// every dual that shares the type. A land's types live under `[kind].subtypes` (CR 305.6), which
+// `effective_subtypes` has to report like any other subtype line.
+
+#[test]
+fn flashfires_destroys_every_land_with_the_plains_type() {
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let plains = game.spawn_on_battlefield(PlayerId(0), card("Plains"));
+    let plateau = game.spawn_on_battlefield(PlayerId(0), card("Plateau")); // Mountain Plains
+    let forest = game.spawn_on_battlefield(PlayerId(1), card("Forest"));
+    let spell = game.spawn_in_hand(PlayerId(0), card("Flashfires"));
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: spell,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(game.zone_of(plains), Zone::Graveyard, "the basic Plains");
+    assert_eq!(
+        game.zone_of(plateau),
+        Zone::Graveyard,
+        "a dual with the Plains type is a Plains"
+    );
+    assert_eq!(
+        game.zone_of(forest),
+        Zone::Battlefield,
+        "every other land, whoever controls it, is untouched"
+    );
+}

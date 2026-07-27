@@ -1,0 +1,24 @@
+# Destroy all Plains.
+name = "Flashfires"
+otags = ["hate-plains", "mass-land-denial", "removal-destroy", "removal-land", "single-english-word-name", "sweeper"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "8ed", "9ed", "ced", "cei", "fbb", "lea", "leb", "por", "sum"]
+id = "c281f436-8c77-48f7-b31c-d40cd7f9ed6a"
+default_print = "c2990a78-54fc-4fae-a6c9-e03c5c39eee3"
+oracle = "Destroy all Plains."
+
+[cost]
+generic = 3
+red = 1
+
+[kind]
+type = "sorcery"
+
+# Destroy all Plains.
+[[abilities]]
+timing = "spell"
+
+# Destroy all Plains.
+[[abilities.effects]]
+type = "destroy"
+mode = "all"
+filter = { types = "land", subtypes = ["Plains"] }

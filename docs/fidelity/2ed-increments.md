@@ -726,7 +726,7 @@ fidelity hazard for every future grind, not a card gap.
 leaf). Nothing in the existing pool turned red — no card was relying on an ignored key.
 *Cards:* none — a guard against silently unfaithful cards.
 
-### 51. `land-subtype-permanent-filter` — 2 cards, S
+### 51. `land-subtype-permanent-filter` — 2 cards, S — **done**
 Depends on: nothing.
 A land's printed types live under `[kind].subtypes` (CR 305), but `PermanentFilter::subtypes`
 matches against `Game::effective_subtypes`, which reads only the card's **top-level** `subtypes`.
@@ -736,6 +736,14 @@ mass land-hate spells have no faithful shape. *Sketch:* fold a land's `[kind].su
 existing `subtypes` axis covers both halves and `CardFilter::LandWithSubtype` gets a battlefield
 twin for free.
 *Cards:* flashfires, tsunami.
+*Landed:* the whole fix is four lines in `Game::effective_subtypes` — a land's `[kind].subtypes`
+unioned into the printed line before the CR 613.4 layers run. No new filter axis, and nothing at
+either call site: `permanent_matches` already routed its `subtypes` check through
+`effective_subtypes`, so the sweepers are ordinary `{ types = "land", subtypes = ["Plains"] }`
+filters. `CardFilter::LandWithSubtype` got no twin either — it reads a *card* (a library search),
+never a battlefield object, so it never shared the broken path. One read stays on the printed line
+deliberately: `destroyed_this_way_matches` matches a snapshot of an already-destroyed permanent,
+which has no live object to ask.
 
 ### 52. `blocking-creature-filter` — 1 card, S — **done**
 Depends on: nothing.

@@ -1316,14 +1316,23 @@ impl Game {
         if self.is_bestowed_and_attached(id) {
             return vec!["Aura"];
         }
-        let printed = self.def_of(id).subtypes;
+        let def = self.def_of(id);
+        // CR 305.6: a land's types are printed on its type line like any other subtype, but they
+        // live under [`CardKind::Land`]'s own `subtypes` (see [`CardDef::subtypes`]). Union them in
+        // here, the one read every subtype check routes through, so "Destroy all Plains"
+        // (Flashfires) catches the basic and every dual that shares the type. A `set_subtypes`
+        // layer below still replaces the whole line, land types included (CR 613.4).
+        let mut printed = def.subtypes.to_vec();
+        if let CardKind::Land { subtypes, .. } = def.kind {
+            printed.extend_from_slice(subtypes);
+        }
         if self.as_permanent(id).is_none() {
-            return printed.to_vec();
+            return printed;
         }
         let (_, _, set, added) = self.attached_type_layer(id);
         let mut subtypes = match set {
             Some(set) => set.to_vec(),
-            None => printed.to_vec(),
+            None => printed,
         };
         subtypes.extend_from_slice(added);
         let mut runtime_effects: Vec<_> = self

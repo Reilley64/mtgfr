@@ -2376,6 +2376,21 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         );
     }
 
+    /// The set's two land-type sweepers name a type, not a card: an ordinary `subtypes` axis,
+    /// which reaches a land's own type line through `Game::effective_subtypes`.
+    #[test]
+    fn unlimited_flashfires_and_tsunami_sweep_by_land_type() {
+        for (name, subtype) in [("Flashfires", "Plains"), ("Tsunami", "Island")] {
+            let card = get_by_name(name).unwrap_or_else(|| panic!("{name} is in the pool"));
+            let Effect::Destroy(DestroyEffect::All { filter, .. }) = &card.abilities[0].effect
+            else {
+                panic!("{name} destroys all {subtype}s");
+            };
+            assert_eq!(filter.types, TypeSet::LAND, "lands only");
+            assert_eq!(filter.subtypes, [subtype], "of that land type");
+        }
+    }
+
     /// Castle's anthem is gated on the candidate's tapped state — an axis that lives on
     /// `anthem` beside `attacking_only`/`blocking_only` rather than on a filter.
     #[test]

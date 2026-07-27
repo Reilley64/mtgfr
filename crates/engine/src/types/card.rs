@@ -713,7 +713,8 @@ pub struct CardDef {
     /// metadata: [`PermanentFilter::subtypes`] and [`Effect::Static(StaticEffect::Anthem)`]'s `subtypes` axis
     /// both match against this (Goldspan Dragon's "Treasures you control", a tribal anthem). A
     /// *land's* types stay on [`CardKind::Land::subtypes`] (rules use those); `schema::catalog_card`
-    /// unions the two for the wire. `subtypes = […]` in TOML; empty when unrecorded or genuinely
+    /// unions the two for the wire, and so does [`Game::effective_subtypes`], so a `subtypes` axis
+    /// reads both halves without caring which one a card stores its types on. `subtypes = […]` in TOML; empty when unrecorded or genuinely
     /// none — including most token profiles today (grown card by card as tribal payoffs need them).
     pub subtypes: Arc<[&'static str]>,
     /// Scryfall Tagger oracle-tag slugs (catalog metadata for deck-builder search). Pure catalog
