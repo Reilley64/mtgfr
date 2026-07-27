@@ -13674,6 +13674,82 @@ fn cast_and_resolve(game: &mut Game, object: ObjectId, target: Option<Target>) {
     fund_cast_resolve(game, PlayerId(0), object, target);
 }
 
+#[test]
+fn a_blocked_attacker_deals_no_player_damage_after_its_blocker_leaves() {
+    // CR 509.1h: remains blocked even if all blocking creatures are removed.
+    let mut game = Game::with_players(2, 0);
+    let attacker = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
+    let blocker = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: vec![(attacker, Defender::Player(PlayerId(1)))],
+    })
+    .unwrap();
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareBlockers);
+    game.submit(Intent::DeclareBlockers {
+        player: PlayerId(1),
+        blocks: vec![(blocker, attacker)],
+    })
+    .unwrap();
+
+    // Kill the blocker before combat damage (Lightning Bolt is lethal to a 2/2).
+    let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+    cast_and_resolve(&mut game, bolt, Some(Target::Object(blocker)));
+    assert_eq!(
+        game.zone_of(blocker),
+        Zone::Graveyard,
+        "blocker must have left the battlefield"
+    );
+    assert!(
+        game.blocks().is_empty(),
+        "living block pairs are pruned when the blocker leaves"
+    );
+    assert!(
+        game.blocked_attackers().contains(&attacker),
+        "attacker must remain marked blocked for the rest of combat"
+    );
+
+    let life_before = game.life(PlayerId(1));
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+    assert_eq!(
+        game.life(PlayerId(1)),
+        life_before,
+        "non-trample blocked attacker deals no damage to the player after blockers leave"
+    );
+}
+
+#[test]
+fn a_blocked_trampler_deals_full_power_after_its_blocker_leaves() {
+    // CR 702.19b: blocked trample with no blockers assigns all damage to the player/PW.
+    let mut game = Game::with_players(2, 0);
+    let attacker = game.spawn_on_battlefield(PlayerId(0), TRAMPLER.clone());
+    let blocker = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: vec![(attacker, Defender::Player(PlayerId(1)))],
+    })
+    .unwrap();
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareBlockers);
+    game.submit(Intent::DeclareBlockers {
+        player: PlayerId(1),
+        blocks: vec![(blocker, attacker)],
+    })
+    .unwrap();
+
+    let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+    cast_and_resolve(&mut game, bolt, Some(Target::Object(blocker)));
+
+    let life_before = game.life(PlayerId(1));
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+    assert_eq!(
+        game.life(PlayerId(1)),
+        life_before - 4,
+        "trample assigns full power to the player when no blockers remain"
+    );
+}
+
 /// [`cast_and_resolve`] for an arbitrary caster (a non-P0 player casting on their own turn).
 fn fund_cast_resolve(game: &mut Game, player: PlayerId, object: ObjectId, target: Option<Target>) {
     game.fund_mana(player);

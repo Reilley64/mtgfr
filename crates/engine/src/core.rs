@@ -956,6 +956,11 @@ impl Game {
         self.combat.blocks.clone()
     }
 
+    /// Attackers that became blocked this combat (CR 509.1h), including those whose blockers left.
+    pub fn blocked_attackers(&self) -> Vec<ObjectId> {
+        self.combat.blocked_attackers.clone()
+    }
+
     /// Seats that have already finalized their block declaration this combat (including empty).
     pub fn blockers_declared(&self) -> Vec<PlayerId> {
         self.combat.blocked_by.clone()
