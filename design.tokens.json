@@ -5,7 +5,11 @@
         "$type": "color",
         "$value": {
           "colorSpace": "oklch",
-          "components": [0.177355, 0.013649, 169.618301]
+          "components": [
+            0.177355,
+            0.013649,
+            169.618301
+          ]
         },
         "$description": "Canvas / app background"
       },
@@ -13,79 +17,240 @@
         "$type": "color",
         "$value": {
           "colorSpace": "oklch",
-          "components": [0.980563, 0.029516, 154.720631]
+          "components": [
+            0.980563,
+            0.029516,
+            154.720631
+          ]
         }
+      },
+      "forest-surface": {
+        "$type": "color",
+        "$value": "#101816FA"
+      },
+      "forest-hud": {
+        "$type": "color",
+        "$value": "#0C1412EB"
+      },
+      "llanowar": {
+        "$type": "color",
+        "$value": "#2F7D46"
+      },
+      "llanowar-deep": {
+        "$type": "color",
+        "$value": "#276B3C"
+      },
+      "vine": {
+        "$type": "color",
+        "$value": "#22CC44"
+      },
+      "vine-dim": {
+        "$type": "color",
+        "$value": "#11CC33"
+      },
+      "snow": {
+        "$type": "color",
+        "$value": "#EEFFFF"
+      },
+      "seafoam": {
+        "$type": "color",
+        "$value": "#DDFFEE"
+      },
+      "mist": {
+        "$type": "color",
+        "$value": "#CCDDEE"
+      },
+      "lichen": {
+        "$type": "color",
+        "$value": "#99CCBB"
+      },
+      "fog": {
+        "$type": "color",
+        "$value": "#8899AA"
+      },
+      "glass": {
+        "$type": "color",
+        "$value": "#FFFFFF0F"
+      },
+      "glass-dim": {
+        "$type": "color",
+        "$value": "#FFFFFF0D"
+      },
+      "priority-gold": {
+        "$type": "color",
+        "$value": "#FFD76A"
+      },
+      "commander-gold": {
+        "$type": "color",
+        "$value": "#E9B84A"
+      },
+      "graveyard-outline": {
+        "$type": "color",
+        "$value": "#7B5CFF"
+      },
+      "exile-outline": {
+        "$type": "color",
+        "$value": "#3DDC97"
+      },
+      "oracle-ivory": {
+        "$type": "color",
+        "$value": "#E8E4D8"
+      },
+      "morph-slate": {
+        "$type": "color",
+        "$value": "#2A3742"
+      },
+      "mountain-red": {
+        "$type": "color",
+        "$value": "#FF5555"
+      },
+      "wall-green": {
+        "$type": "color",
+        "$value": "#66FF99"
+      },
+      "island-blue": {
+        "$type": "color",
+        "$value": "#77CCFF"
+      },
+      "burn-red": {
+        "$type": "color",
+        "$value": "#FF8888"
+      },
+      "caution-amber": {
+        "$type": "color",
+        "$value": "#FFEE88"
+      },
+      "damage-crimson": {
+        "$type": "color",
+        "$value": "#8F2F2F"
+      },
+      "tapped-out": {
+        "$type": "color",
+        "$value": "#24312B"
+      },
+      "tapped-ink": {
+        "$type": "color",
+        "$value": "#66786E"
+      },
+      "seat-forest": {
+        "$type": "color",
+        "$value": "#5AC88C"
+      },
+      "seat-island": {
+        "$type": "color",
+        "$value": "#5A96F0"
+      },
+      "seat-mountain": {
+        "$type": "color",
+        "$value": "#F0785A"
+      },
+      "seat-arcane": {
+        "$type": "color",
+        "$value": "#C88CF0"
+      },
+      "turn-mint": {
+        "$type": "color",
+        "$value": "#8FDCAA"
+      },
+      "turn-ember": {
+        "$type": "color",
+        "$value": "#E0A878"
+      },
+      "phase-mint": {
+        "$type": "color",
+        "$value": "#55CC99"
+      },
+      "phase-ember": {
+        "$type": "color",
+        "$value": "#CC8855"
+      },
+      "note-gold": {
+        "$type": "color",
+        "$value": "#F0C674"
+      },
+      "auto-moss": {
+        "$type": "color",
+        "$value": "#3A7D52"
+      },
+      "reconnect-rust": {
+        "$type": "color",
+        "$value": "#7A3B13"
+      },
+      "assign-clover": {
+        "$type": "color",
+        "$value": "#99FF99"
+      },
+      "watch-sage": {
+        "$type": "color",
+        "$value": "#9FB4A8"
+      },
+      "watch-flare": {
+        "$type": "color",
+        "$value": "#F87171"
+      },
+      "ready-sprout": {
+        "$type": "color",
+        "$value": "#8FE3A8"
+      },
+      "phase-fern": {
+        "$type": "color",
+        "$value": "#8FA398"
+      },
+      "preview-ash": {
+        "$type": "color",
+        "$value": "#E8E8EA"
+      },
+      "hud-edge": {
+        "$type": "color",
+        "$value": "#5A786966"
+      },
+      "yielded": {
+        "$type": "color",
+        "$value": "#6B5A1F"
+      },
+      "yielded-hover": {
+        "$type": "color",
+        "$value": "#7D6A26"
+      },
+      "yielded-ink": {
+        "$type": "color",
+        "$value": "#FFE9A8"
+      },
+      "quiet-hover": {
+        "$type": "color",
+        "$value": "#2C3F35"
+      }
+    },
+    "space": {
+      "xs": {
+        "$type": "dimension",
+        "$value": "6px"
+      },
+      "sm": {
+        "$type": "dimension",
+        "$value": "8px"
+      },
+      "md": {
+        "$type": "dimension",
+        "$value": "10px"
+      },
+      "lg": {
+        "$type": "dimension",
+        "$value": "14px"
+      },
+      "xl": {
+        "$type": "dimension",
+        "$value": "16px"
+      },
+      "xxl": {
+        "$type": "dimension",
+        "$value": "24px"
+      },
+      "shell-header-y": {
+        "$type": "dimension",
+        "$value": "14px"
       }
     }
-  },
-  "font": {
-    "sans": {
-      "$type": "fontFamily",
-      "$value": "system-ui, sans-serif",
-      "$description": "Board HUD / canvas chrome face (dense game UI)"
-    },
-    "shell": {
-      "$type": "fontFamily",
-      "$value": "\"Manrope\", system-ui, sans-serif",
-      "$description": "Shell UI sans — geometric game-client body/controls"
-    },
-    "display": {
-      "$type": "fontFamily",
-      "$value": "\"Space Grotesk\", system-ui, sans-serif",
-      "$description": "Shell display sans — titles, brand, table code emphasis"
-    }
-  },
-  "text": {
-    "title": {
-      "$type": "dimension",
-      "$value": "18px",
-      "font-weight": { "$type": "number", "$value": 700 }
-    },
-    "body": {
-      "$type": "dimension",
-      "$value": "14px",
-      "line-height": { "$type": "number", "$value": 1.5 }
-    },
-    "button": {
-      "$type": "dimension",
-      "$value": "14px",
-      "font-weight": { "$type": "number", "$value": 600 }
-    },
-    "label": { "$type": "dimension", "$value": "13px" },
-    "caption": { "$type": "dimension", "$value": "12px" },
-    "chip": { "$type": "dimension", "$value": "11px" },
-    "micro": { "$type": "dimension", "$value": "10px" },
-    "game": {
-      "$type": "dimension",
-      "$value": "15px",
-      "font-weight": { "$type": "number", "$value": 600 }
-    },
-    "display": {
-      "$type": "dimension",
-      "$value": "22px",
-      "font-weight": { "$type": "number", "$value": 700 }
-    }
-  },
-  "radius": {
-    "panel": { "$type": "dimension", "$value": "12px" },
-    "modal": { "$type": "dimension", "$value": "10px" },
-    "game": { "$type": "dimension", "$value": "10px" },
-    "hud": { "$type": "dimension", "$value": "8px" },
-    "control": { "$type": "dimension", "$value": "6px" },
-    "focus": { "$type": "dimension", "$value": "4px" }
-  },
-  "spacing": {
-    "xs": { "$type": "dimension", "$value": "6px" },
-    "sm": { "$type": "dimension", "$value": "8px" },
-    "md": { "$type": "dimension", "$value": "10px" },
-    "lg": { "$type": "dimension", "$value": "14px" },
-    "xl": { "$type": "dimension", "$value": "16px" },
-    "xxl": { "$type": "dimension", "$value": "24px" },
-    "shell-gutter": { "$type": "dimension", "$value": "24px" },
-    "shell-header-y": { "$type": "dimension", "$value": "14px" }
-  },
-  "size": {
-    "shell-stage-max": { "$type": "dimension", "$value": "1100px" }
   },
   "semantic": {
     "color": {
@@ -94,102 +259,485 @@
         "$value": "{primitive.color.forest-floor}",
         "$description": "Canvas / app background"
       },
-      "forest-surface": { "$type": "color", "$value": "#101816FA" },
-      "forest-hud": { "$type": "color", "$value": "#0C1412EB" },
-      "llanowar": { "$type": "color", "$value": "#2F7D46" },
-      "llanowar-deep": { "$type": "color", "$value": "#276B3C" },
-      "vine": { "$type": "color", "$value": "#22CC44" },
-      "vine-dim": { "$type": "color", "$value": "#11CC33" },
-      "snow": { "$type": "color", "$value": "#EEFFFF" },
-      "seafoam": { "$type": "color", "$value": "#DDFFEE" },
-      "mist": { "$type": "color", "$value": "#CCDDEE" },
-      "lichen": { "$type": "color", "$value": "#99CCBB" },
-      "fog": { "$type": "color", "$value": "#8899AA" },
-      "snow-mint": { "$type": "color", "$value": "{primitive.color.snow-mint}" },
-      "glass": { "$type": "color", "$value": "#FFFFFF0F" },
-      "glass-dim": { "$type": "color", "$value": "#FFFFFF0D" },
+      "forest-surface": {
+        "$type": "color",
+        "$value": "{primitive.color.forest-surface}"
+      },
+      "forest-hud": {
+        "$type": "color",
+        "$value": "{primitive.color.forest-hud}"
+      },
+      "llanowar": {
+        "$type": "color",
+        "$value": "{primitive.color.llanowar}"
+      },
+      "llanowar-deep": {
+        "$type": "color",
+        "$value": "{primitive.color.llanowar-deep}"
+      },
+      "vine": {
+        "$type": "color",
+        "$value": "{primitive.color.vine}"
+      },
+      "vine-dim": {
+        "$type": "color",
+        "$value": "{primitive.color.vine-dim}"
+      },
+      "snow": {
+        "$type": "color",
+        "$value": "{primitive.color.snow}"
+      },
+      "seafoam": {
+        "$type": "color",
+        "$value": "{primitive.color.seafoam}"
+      },
+      "mist": {
+        "$type": "color",
+        "$value": "{primitive.color.mist}"
+      },
+      "lichen": {
+        "$type": "color",
+        "$value": "{primitive.color.lichen}"
+      },
+      "fog": {
+        "$type": "color",
+        "$value": "{primitive.color.fog}"
+      },
+      "snow-mint": {
+        "$type": "color",
+        "$value": "{primitive.color.snow-mint}"
+      },
+      "glass": {
+        "$type": "color",
+        "$value": "{primitive.color.glass}"
+      },
+      "glass-dim": {
+        "$type": "color",
+        "$value": "{primitive.color.glass-dim}"
+      },
       "priority-gold": {
         "$type": "color",
-        "$value": "#FFD76A",
+        "$value": "{primitive.color.priority-gold}",
         "$description": "Gold Means Act — a decision is owed"
       },
-      "playable-border": { "$type": "color", "$value": "{semantic.color.snow-mint}" },
-      "commander-gold": { "$type": "color", "$value": "#E9B84A" },
-      "graveyard-outline": { "$type": "color", "$value": "#7B5CFF" },
-      "exile-outline": { "$type": "color", "$value": "#3DDC97" },
-      "oracle-ivory": { "$type": "color", "$value": "#E8E4D8" },
-      "morph-slate": { "$type": "color", "$value": "#2A3742" },
-      "mountain-red": { "$type": "color", "$value": "#FF5555" },
-      "wall-green": { "$type": "color", "$value": "#66FF99" },
-      "island-blue": { "$type": "color", "$value": "#77CCFF" },
-      "burn-red": { "$type": "color", "$value": "#FF8888" },
-      "caution-amber": { "$type": "color", "$value": "#FFEE88" },
-      "damage-crimson": { "$type": "color", "$value": "#8F2F2F" },
-      "tapped-out": { "$type": "color", "$value": "#24312B" },
-      "tapped-ink": { "$type": "color", "$value": "#66786E" },
-      "seat-forest": { "$type": "color", "$value": "#5AC88C" },
-      "seat-island": { "$type": "color", "$value": "#5A96F0" },
-      "seat-mountain": { "$type": "color", "$value": "#F0785A" },
-      "seat-arcane": { "$type": "color", "$value": "#C88CF0" },
-      "turn-mint": { "$type": "color", "$value": "#8FDCAA" },
-      "turn-ember": { "$type": "color", "$value": "#E0A878" },
-      "phase-mint": { "$type": "color", "$value": "#55CC99" },
-      "phase-ember": { "$type": "color", "$value": "#CC8855" },
-      "note-gold": { "$type": "color", "$value": "#F0C674" },
-      "auto-moss": { "$type": "color", "$value": "#3A7D52" },
-      "reconnect-rust": { "$type": "color", "$value": "#7A3B13" },
-      "assign-clover": { "$type": "color", "$value": "#99FF99" },
-      "watch-sage": { "$type": "color", "$value": "#9FB4A8" },
-      "watch-flare": { "$type": "color", "$value": "#F87171" },
-      "ready-sprout": { "$type": "color", "$value": "#8FE3A8" },
-      "phase-fern": { "$type": "color", "$value": "#8FA398" },
-      "preview-ash": { "$type": "color", "$value": "#E8E8EA" },
-      "hud-edge": { "$type": "color", "$value": "#5A786966" },
-      "yielded": { "$type": "color", "$value": "#6B5A1F" },
-      "yielded-hover": { "$type": "color", "$value": "#7D6A26" },
-      "yielded-ink": { "$type": "color", "$value": "#FFE9A8" },
-      "quiet-hover": { "$type": "color", "$value": "#2C3F35" }
+      "playable-border": {
+        "$type": "color",
+        "$value": "{semantic.color.snow-mint}"
+      },
+      "commander-gold": {
+        "$type": "color",
+        "$value": "{primitive.color.commander-gold}"
+      },
+      "graveyard-outline": {
+        "$type": "color",
+        "$value": "{primitive.color.graveyard-outline}"
+      },
+      "exile-outline": {
+        "$type": "color",
+        "$value": "{primitive.color.exile-outline}"
+      },
+      "oracle-ivory": {
+        "$type": "color",
+        "$value": "{primitive.color.oracle-ivory}"
+      },
+      "morph-slate": {
+        "$type": "color",
+        "$value": "{primitive.color.morph-slate}"
+      },
+      "mountain-red": {
+        "$type": "color",
+        "$value": "{primitive.color.mountain-red}"
+      },
+      "wall-green": {
+        "$type": "color",
+        "$value": "{primitive.color.wall-green}"
+      },
+      "island-blue": {
+        "$type": "color",
+        "$value": "{primitive.color.island-blue}"
+      },
+      "burn-red": {
+        "$type": "color",
+        "$value": "{primitive.color.burn-red}"
+      },
+      "caution-amber": {
+        "$type": "color",
+        "$value": "{primitive.color.caution-amber}"
+      },
+      "damage-crimson": {
+        "$type": "color",
+        "$value": "{primitive.color.damage-crimson}"
+      },
+      "tapped-out": {
+        "$type": "color",
+        "$value": "{primitive.color.tapped-out}"
+      },
+      "tapped-ink": {
+        "$type": "color",
+        "$value": "{primitive.color.tapped-ink}"
+      },
+      "seat-forest": {
+        "$type": "color",
+        "$value": "{primitive.color.seat-forest}"
+      },
+      "seat-island": {
+        "$type": "color",
+        "$value": "{primitive.color.seat-island}"
+      },
+      "seat-mountain": {
+        "$type": "color",
+        "$value": "{primitive.color.seat-mountain}"
+      },
+      "seat-arcane": {
+        "$type": "color",
+        "$value": "{primitive.color.seat-arcane}"
+      },
+      "turn-mint": {
+        "$type": "color",
+        "$value": "{primitive.color.turn-mint}"
+      },
+      "turn-ember": {
+        "$type": "color",
+        "$value": "{primitive.color.turn-ember}"
+      },
+      "phase-mint": {
+        "$type": "color",
+        "$value": "{primitive.color.phase-mint}"
+      },
+      "phase-ember": {
+        "$type": "color",
+        "$value": "{primitive.color.phase-ember}"
+      },
+      "note-gold": {
+        "$type": "color",
+        "$value": "{primitive.color.note-gold}"
+      },
+      "auto-moss": {
+        "$type": "color",
+        "$value": "{primitive.color.auto-moss}"
+      },
+      "reconnect-rust": {
+        "$type": "color",
+        "$value": "{primitive.color.reconnect-rust}"
+      },
+      "assign-clover": {
+        "$type": "color",
+        "$value": "{primitive.color.assign-clover}"
+      },
+      "watch-sage": {
+        "$type": "color",
+        "$value": "{primitive.color.watch-sage}"
+      },
+      "watch-flare": {
+        "$type": "color",
+        "$value": "{primitive.color.watch-flare}"
+      },
+      "ready-sprout": {
+        "$type": "color",
+        "$value": "{primitive.color.ready-sprout}"
+      },
+      "phase-fern": {
+        "$type": "color",
+        "$value": "{primitive.color.phase-fern}"
+      },
+      "preview-ash": {
+        "$type": "color",
+        "$value": "{primitive.color.preview-ash}"
+      },
+      "hud-edge": {
+        "$type": "color",
+        "$value": "{primitive.color.hud-edge}"
+      },
+      "yielded": {
+        "$type": "color",
+        "$value": "{primitive.color.yielded}"
+      },
+      "yielded-hover": {
+        "$type": "color",
+        "$value": "{primitive.color.yielded-hover}"
+      },
+      "yielded-ink": {
+        "$type": "color",
+        "$value": "{primitive.color.yielded-ink}"
+      },
+      "quiet-hover": {
+        "$type": "color",
+        "$value": "{primitive.color.quiet-hover}"
+      }
+    },
+    "font": {
+      "sans": {
+        "$type": "fontFamily",
+        "$value": "system-ui, sans-serif",
+        "$description": "Board HUD / canvas chrome face (dense game UI)"
+      },
+      "shell": {
+        "$type": "fontFamily",
+        "$value": "\"Manrope\", system-ui, sans-serif",
+        "$description": "Shell UI sans — geometric game-client body/controls"
+      },
+      "display": {
+        "$type": "fontFamily",
+        "$value": "\"Space Grotesk\", system-ui, sans-serif",
+        "$description": "Shell display sans — titles, brand, table code emphasis"
+      }
+    },
+    "text": {
+      "title": {
+        "$type": "dimension",
+        "$value": "18px",
+        "font-weight": {
+          "$type": "number",
+          "$value": 700
+        }
+      },
+      "body": {
+        "$type": "dimension",
+        "$value": "14px",
+        "line-height": {
+          "$type": "number",
+          "$value": 1.5
+        }
+      },
+      "button": {
+        "$type": "dimension",
+        "$value": "14px",
+        "font-weight": {
+          "$type": "number",
+          "$value": 600
+        }
+      },
+      "label": {
+        "$type": "dimension",
+        "$value": "13px"
+      },
+      "caption": {
+        "$type": "dimension",
+        "$value": "12px"
+      },
+      "chip": {
+        "$type": "dimension",
+        "$value": "11px"
+      },
+      "micro": {
+        "$type": "dimension",
+        "$value": "10px"
+      },
+      "game": {
+        "$type": "dimension",
+        "$value": "15px",
+        "font-weight": {
+          "$type": "number",
+          "$value": 600
+        }
+      },
+      "display": {
+        "$type": "dimension",
+        "$value": "22px",
+        "font-weight": {
+          "$type": "number",
+          "$value": 700
+        }
+      }
+    },
+    "radius": {
+      "panel": {
+        "$type": "dimension",
+        "$value": "12px"
+      },
+      "modal": {
+        "$type": "dimension",
+        "$value": "10px"
+      },
+      "game": {
+        "$type": "dimension",
+        "$value": "10px"
+      },
+      "hud": {
+        "$type": "dimension",
+        "$value": "8px"
+      },
+      "control": {
+        "$type": "dimension",
+        "$value": "6px"
+      },
+      "focus": {
+        "$type": "dimension",
+        "$value": "4px"
+      }
+    },
+    "spacing": {
+      "xs": {
+        "$type": "dimension",
+        "$value": "{primitive.space.xs}"
+      },
+      "sm": {
+        "$type": "dimension",
+        "$value": "{primitive.space.sm}"
+      },
+      "md": {
+        "$type": "dimension",
+        "$value": "{primitive.space.md}"
+      },
+      "lg": {
+        "$type": "dimension",
+        "$value": "{primitive.space.lg}"
+      },
+      "xl": {
+        "$type": "dimension",
+        "$value": "{primitive.space.xl}"
+      },
+      "xxl": {
+        "$type": "dimension",
+        "$value": "{primitive.space.xxl}"
+      },
+      "shell-gutter": {
+        "$type": "dimension",
+        "$value": "{primitive.space.xxl}"
+      },
+      "shell-header-y": {
+        "$type": "dimension",
+        "$value": "{primitive.space.shell-header-y}"
+      }
+    },
+    "size": {
+      "shell-stage-max": {
+        "$type": "dimension",
+        "$value": "1100px"
+      }
     },
     "ease": {
       "state": {
         "$type": "cubicBezier",
-        "$value": [0.22, 1, 0.36, 1]
+        "$value": [
+          0.22,
+          1,
+          0.36,
+          1
+        ]
       }
     },
     "duration": {
-      "stack-in": { "$type": "duration", "$value": { "value": 0.25, "unit": "s" } },
-      "stack-return": { "$type": "duration", "$value": { "value": 0.22, "unit": "s" } },
-      "stack-resolve": { "$type": "duration", "$value": { "value": 0.22, "unit": "s" } },
-      "breathe": { "$type": "duration", "$value": { "value": 1.8, "unit": "s" } },
-      "skeleton": { "$type": "duration", "$value": { "value": 1.2, "unit": "s" } },
-      "shell-enter": { "$type": "duration", "$value": { "value": 0.2, "unit": "s" } }
+      "stack-in": {
+        "$type": "duration",
+        "$value": {
+          "value": 0.25,
+          "unit": "s"
+        }
+      },
+      "stack-return": {
+        "$type": "duration",
+        "$value": {
+          "value": 0.22,
+          "unit": "s"
+        }
+      },
+      "stack-resolve": {
+        "$type": "duration",
+        "$value": {
+          "value": 0.22,
+          "unit": "s"
+        }
+      },
+      "breathe": {
+        "$type": "duration",
+        "$value": {
+          "value": 1.8,
+          "unit": "s"
+        }
+      },
+      "skeleton": {
+        "$type": "duration",
+        "$value": {
+          "value": 1.2,
+          "unit": "s"
+        }
+      },
+      "shell-enter": {
+        "$type": "duration",
+        "$value": {
+          "value": 0.2,
+          "unit": "s"
+        }
+      }
     },
     "shadow": {
       "table": {
         "$type": "shadow",
         "$value": {
-          "offsetX": { "value": 0, "unit": "px" },
-          "offsetY": { "value": 12, "unit": "px" },
-          "blur": { "value": 40, "unit": "px" },
-          "color": { "colorSpace": "srgb", "components": [0, 0, 0], "alpha": 0.6 }
+          "offsetX": {
+            "value": 0,
+            "unit": "px"
+          },
+          "offsetY": {
+            "value": 12,
+            "unit": "px"
+          },
+          "blur": {
+            "value": 40,
+            "unit": "px"
+          },
+          "color": {
+            "colorSpace": "srgb",
+            "components": [
+              0,
+              0,
+              0
+            ],
+            "alpha": 0.6
+          }
         }
       },
       "hand": {
         "$type": "shadow",
         "$value": {
-          "offsetX": { "value": 0, "unit": "px" },
-          "offsetY": { "value": 6, "unit": "px" },
-          "blur": { "value": 18, "unit": "px" },
-          "color": { "colorSpace": "srgb", "components": [0, 0, 0], "alpha": 0.5 }
+          "offsetX": {
+            "value": 0,
+            "unit": "px"
+          },
+          "offsetY": {
+            "value": 6,
+            "unit": "px"
+          },
+          "blur": {
+            "value": 18,
+            "unit": "px"
+          },
+          "color": {
+            "colorSpace": "srgb",
+            "components": [
+              0,
+              0,
+              0
+            ],
+            "alpha": 0.5
+          }
         }
       },
       "hud": {
         "$type": "shadow",
         "$value": {
-          "offsetX": { "value": 0, "unit": "px" },
-          "offsetY": { "value": 6, "unit": "px" },
-          "blur": { "value": 20, "unit": "px" },
-          "color": { "colorSpace": "srgb", "components": [0, 0, 0], "alpha": 0.45 }
+          "offsetX": {
+            "value": 0,
+            "unit": "px"
+          },
+          "offsetY": {
+            "value": 6,
+            "unit": "px"
+          },
+          "blur": {
+            "value": 20,
+            "unit": "px"
+          },
+          "color": {
+            "colorSpace": "srgb",
+            "components": [
+              0,
+              0,
+              0
+            ],
+            "alpha": 0.45
+          }
         }
       },
       "press": {
@@ -197,16 +745,50 @@
         "$value": [
           {
             "inset": true,
-            "offsetX": { "value": 0, "unit": "px" },
-            "offsetY": { "value": 1, "unit": "px" },
-            "blur": { "value": 0, "unit": "px" },
-            "color": { "colorSpace": "srgb", "components": [1, 1, 1], "alpha": 0.16 }
+            "offsetX": {
+              "value": 0,
+              "unit": "px"
+            },
+            "offsetY": {
+              "value": 1,
+              "unit": "px"
+            },
+            "blur": {
+              "value": 0,
+              "unit": "px"
+            },
+            "color": {
+              "colorSpace": "srgb",
+              "components": [
+                1,
+                1,
+                1
+              ],
+              "alpha": 0.16
+            }
           },
           {
-            "offsetX": { "value": 0, "unit": "px" },
-            "offsetY": { "value": 6, "unit": "px" },
-            "blur": { "value": 16, "unit": "px" },
-            "color": { "colorSpace": "srgb", "components": [0, 0, 0], "alpha": 0.4 }
+            "offsetX": {
+              "value": 0,
+              "unit": "px"
+            },
+            "offsetY": {
+              "value": 6,
+              "unit": "px"
+            },
+            "blur": {
+              "value": 16,
+              "unit": "px"
+            },
+            "color": {
+              "colorSpace": "srgb",
+              "components": [
+                0,
+                0,
+                0
+              ],
+              "alpha": 0.4
+            }
           }
         ]
       },
@@ -215,16 +797,50 @@
         "$value": [
           {
             "inset": true,
-            "offsetX": { "value": 0, "unit": "px" },
-            "offsetY": { "value": 1, "unit": "px" },
-            "blur": { "value": 0, "unit": "px" },
-            "color": { "colorSpace": "srgb", "components": [1, 1, 1], "alpha": 0.1 }
+            "offsetX": {
+              "value": 0,
+              "unit": "px"
+            },
+            "offsetY": {
+              "value": 1,
+              "unit": "px"
+            },
+            "blur": {
+              "value": 0,
+              "unit": "px"
+            },
+            "color": {
+              "colorSpace": "srgb",
+              "components": [
+                1,
+                1,
+                1
+              ],
+              "alpha": 0.1
+            }
           },
           {
-            "offsetX": { "value": 0, "unit": "px" },
-            "offsetY": { "value": 3, "unit": "px" },
-            "blur": { "value": 10, "unit": "px" },
-            "color": { "colorSpace": "srgb", "components": [0, 0, 0], "alpha": 0.4 }
+            "offsetX": {
+              "value": 0,
+              "unit": "px"
+            },
+            "offsetY": {
+              "value": 3,
+              "unit": "px"
+            },
+            "blur": {
+              "value": 10,
+              "unit": "px"
+            },
+            "color": {
+              "colorSpace": "srgb",
+              "components": [
+                0,
+                0,
+                0
+              ],
+              "alpha": 0.4
+            }
           }
         ]
       },
@@ -233,29 +849,75 @@
         "$value": [
           {
             "inset": true,
-            "offsetX": { "value": 0, "unit": "px" },
-            "offsetY": { "value": 1, "unit": "px" },
-            "blur": { "value": 0, "unit": "px" },
-            "color": { "colorSpace": "srgb", "components": [1, 1, 1], "alpha": 0.18 }
-          },
-          {
-            "offsetX": { "value": 0, "unit": "px" },
-            "offsetY": { "value": 0, "unit": "px" },
-            "blur": { "value": 0, "unit": "px" },
-            "spread": { "value": 2, "unit": "px" },
+            "offsetX": {
+              "value": 0,
+              "unit": "px"
+            },
+            "offsetY": {
+              "value": 1,
+              "unit": "px"
+            },
+            "blur": {
+              "value": 0,
+              "unit": "px"
+            },
             "color": {
               "colorSpace": "srgb",
-              "components": [0.35294117647058826, 0.7843137254901961, 0.5490196078431373],
+              "components": [
+                1,
+                1,
+                1
+              ],
+              "alpha": 0.18
+            }
+          },
+          {
+            "offsetX": {
+              "value": 0,
+              "unit": "px"
+            },
+            "offsetY": {
+              "value": 0,
+              "unit": "px"
+            },
+            "blur": {
+              "value": 0,
+              "unit": "px"
+            },
+            "spread": {
+              "value": 2,
+              "unit": "px"
+            },
+            "color": {
+              "colorSpace": "srgb",
+              "components": [
+                0.35294117647058826,
+                0.7843137254901961,
+                0.5490196078431373
+              ],
               "alpha": 0.55
             }
           },
           {
-            "offsetX": { "value": 0, "unit": "px" },
-            "offsetY": { "value": 6, "unit": "px" },
-            "blur": { "value": 20, "unit": "px" },
+            "offsetX": {
+              "value": 0,
+              "unit": "px"
+            },
+            "offsetY": {
+              "value": 6,
+              "unit": "px"
+            },
+            "blur": {
+              "value": 20,
+              "unit": "px"
+            },
             "color": {
               "colorSpace": "srgb",
-              "components": [0.1843137254901961, 0.5490196078431373, 0.35294117647058826],
+              "components": [
+                0.1843137254901961,
+                0.5490196078431373,
+                0.35294117647058826
+              ],
               "alpha": 0.45
             }
           }
@@ -265,20 +927,53 @@
         "$type": "shadow",
         "$value": [
           {
-            "offsetX": { "value": 0, "unit": "px" },
-            "offsetY": { "value": 0, "unit": "px" },
-            "blur": { "value": 0, "unit": "px" },
-            "spread": { "value": 3, "unit": "px" },
+            "offsetX": {
+              "value": 0,
+              "unit": "px"
+            },
+            "offsetY": {
+              "value": 0,
+              "unit": "px"
+            },
+            "blur": {
+              "value": 0,
+              "unit": "px"
+            },
+            "spread": {
+              "value": 3,
+              "unit": "px"
+            },
             "color": {
               "colorSpace": "srgb",
-              "components": [0.13333333333333333, 0.8, 0.26666666666666666]
+              "components": [
+                0.13333333333333333,
+                0.8,
+                0.26666666666666666
+              ]
             }
           },
           {
-            "offsetX": { "value": 0, "unit": "px" },
-            "offsetY": { "value": 10, "unit": "px" },
-            "blur": { "value": 24, "unit": "px" },
-            "color": { "colorSpace": "srgb", "components": [0, 0, 0], "alpha": 0.6 }
+            "offsetX": {
+              "value": 0,
+              "unit": "px"
+            },
+            "offsetY": {
+              "value": 10,
+              "unit": "px"
+            },
+            "blur": {
+              "value": 24,
+              "unit": "px"
+            },
+            "color": {
+              "colorSpace": "srgb",
+              "components": [
+                0,
+                0,
+                0
+              ],
+              "alpha": 0.6
+            }
           }
         ]
       }
@@ -287,10 +982,27 @@
       "drag": {
         "$type": "shadow",
         "$value": {
-          "offsetX": { "value": 0, "unit": "px" },
-          "offsetY": { "value": 16, "unit": "px" },
-          "blur": { "value": 36, "unit": "px" },
-          "color": { "colorSpace": "srgb", "components": [0, 0, 0], "alpha": 0.72 }
+          "offsetX": {
+            "value": 0,
+            "unit": "px"
+          },
+          "offsetY": {
+            "value": 16,
+            "unit": "px"
+          },
+          "blur": {
+            "value": 36,
+            "unit": "px"
+          },
+          "color": {
+            "colorSpace": "srgb",
+            "components": [
+              0,
+              0,
+              0
+            ],
+            "alpha": 0.72
+          }
         }
       }
     }

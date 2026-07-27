@@ -5,6 +5,10 @@ const cssPath = new URL("../../styles/tokens.generated.css", import.meta.url);
 const tsPath = new URL("./design-tokens.generated.ts", import.meta.url);
 const tokensPath = new URL("../../../design.tokens.json", import.meta.url);
 
+function readTokens() {
+  return JSON.parse(readFileSync(tokensPath, "utf8"));
+}
+
 describe("design.tokens.json", () => {
   it("has no $type css passthroughs", () => {
     const raw = readFileSync(tokensPath, "utf8");
@@ -12,9 +16,41 @@ describe("design.tokens.json", () => {
   });
 
   it("uses primitive and semantic top-level groups", () => {
-    const json = JSON.parse(readFileSync(tokensPath, "utf8"));
+    const json = readTokens();
+    expect(Object.keys(json).sort()).toEqual(["primitive", "semantic"]);
     expect(json.primitive?.color).toBeTypeOf("object");
+    expect(json.primitive?.space).toBeTypeOf("object");
     expect(json.semantic?.color).toBeTypeOf("object");
+    expect(json.semantic?.font).toBeTypeOf("object");
+    expect(json.semantic?.text).toBeTypeOf("object");
+    expect(json.semantic?.radius).toBeTypeOf("object");
+    expect(json.semantic?.spacing).toBeTypeOf("object");
+    expect(json.semantic?.size).toBeTypeOf("object");
+  });
+
+  it("keeps color literals private to primitives and publishes semantic aliases", () => {
+    const json = readTokens();
+    const primitiveColors = json.primitive.color;
+    const semanticColors = json.semantic.color;
+
+    for (const [name, token] of Object.entries(primitiveColors)) {
+      expect(token, name).toMatchObject({ $type: "color" });
+      expect(String(token.$value), name).not.toMatch(/^\{/);
+    }
+
+    for (const [name, token] of Object.entries(semanticColors)) {
+      expect(token, name).toMatchObject({ $type: "color" });
+      expect(token.$value, name).toMatch(/^\{(?:primitive|semantic)\.color\.[a-z0-9-]+\}$/);
+    }
+
+    expect(semanticColors["playable-border"].$value).toBe("{semantic.color.snow-mint}");
+  });
+
+  it("aliases public spacing through primitive space tokens", () => {
+    const json = readTokens();
+    expect(json.semantic.spacing.xxl.$value).toBe("{primitive.space.xxl}");
+    expect(json.semantic.spacing["shell-gutter"].$value).toBe("{primitive.space.xxl}");
+    expect(json.semantic.spacing["shell-header-y"].$value).toBe("{primitive.space.shell-header-y}");
   });
 });
 
