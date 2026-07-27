@@ -2534,6 +2534,68 @@ test("pending exile aim shows coach when choose_exiled cards share a pile", () =
   );
 });
 
+test("simple prompt primary bar stacks above pile and prompt modal backdrops", () => {
+  const a = card(30, {
+    name: "Bear",
+    zone: ZONE.Exile,
+    kind: { kind: "creature", power: 2, toughness: 2 },
+  });
+  const b = card(31, {
+    name: "Bolt",
+    zone: ZONE.Exile,
+    kind: { kind: "instant" },
+  });
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        pileExpand: { zone: ZONE.Exile, owner: 0 },
+        promptDraft: { kind: "card-pick", picked: [] },
+      },
+      gameState({
+        objects: [a, b],
+        pending_choice: {
+          kind: "choose_exiled_to_cast_free",
+          player: 0,
+          source: 1,
+          count: 2,
+          items: [
+            { id: 30, label: "Bear" },
+            { id: 31, label: "Bolt" },
+          ],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pile-overlay")).toExist(),
+    Scene.expect(Scene.testId("pile-overlay")).toHaveClass("z-29"),
+    Scene.expect(Scene.testId("pending-exile-aim")).toExist(),
+    Scene.expect(Scene.testId("priority-context-bar")).toHaveClass("z-45"),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-submit"]')).toBeEnabled(),
+    Scene.expect(Scene.testId("pending-exile-count")).toContainText("0 / up to 2"),
+    Scene.tap((sim) => {
+      const ids = collectTestIds(sim.html);
+      expect(ids.indexOf("priority-context-bar")).toBeGreaterThan(ids.indexOf("pile-overlay"));
+    }),
+  );
+});
+
+test("centered prompt modal backdrop stays below the primary bar layer token", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        pending_choice: {
+          kind: "choose_color",
+          player: 0,
+          source: 1,
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-color-modal")).toHaveClass("z-40"),
+    Scene.expect(Scene.testId("priority-context-bar")).toBeAbsent(),
+  );
+});
+
 test("pending gy aim shows coach for cumulative upkeep when cards share a pile", () => {
   const gy = card(8, {
     name: "Fodder",
