@@ -135,4 +135,13 @@ describe("foldkit scaffold", () => {
     expect(globalCss).toContain("env(safe-area-inset-bottom)");
     expect(globalCss).toContain("env(safe-area-inset-left)");
   });
+
+  it("disables shell stage enter animation under reduced motion", () => {
+    const globalCss = readFileSync(new URL("../styles/global.css", import.meta.url), "utf8");
+    expect(globalCss).toContain(".shell-stage-enter");
+    expect(globalCss).toMatch(
+      /@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{\s*\.shell-stage-enter\s*\{\s*animation:\s*none;/,
+    );
+    expect(globalCss).toContain("var(--ease-state)");
+  });
 });

@@ -112,6 +112,7 @@ export const view = Submodel.defineView<CoverageSubmodel, ViewMessage, ViewInput
       [`${globalPercent} faithful`],
     ),
     chrome,
+    lockStageScroll: true,
     leading: h.a([h.Href(routePath(HomeRoute())), h.Class(buttonClass("ghost"))], ["Play"]),
     trailing: accountChrome(h, {
       username,
@@ -121,9 +122,8 @@ export const view = Submodel.defineView<CoverageSubmodel, ViewMessage, ViewInput
     }),
     stage: h.div(
       [
-        // h-dvh (not h-full): parent height is unconstrained, so h-full grows with the row
-        // list and overflow-y-auto on the body never engages — same lesson as deck-builder.
-        h.Class("flex h-dvh flex-col overflow-hidden"),
+        // Fill the contained shell stage so only the table body scrolls (not the page).
+        h.Class("flex h-full min-h-0 flex-1 flex-col overflow-hidden"),
         h.DataAttribute("testid", "coverage-page"),
       ],
       [
@@ -162,7 +162,7 @@ export const view = Submodel.defineView<CoverageSubmodel, ViewMessage, ViewInput
                     ),
                     h.div(
                       [
-                        h.Class("flex min-h-0 flex-1 flex-col gap-xs overflow-y-auto"),
+                        h.Class("flex min-h-0 flex-1 flex-col gap-xs overflow-y-auto overscroll-contain"),
                         h.DataAttribute("testid", "coverage-table-body"),
                       ],
                       rows.map(tableRow),
@@ -171,12 +171,13 @@ export const view = Submodel.defineView<CoverageSubmodel, ViewMessage, ViewInput
                 )
               : null,
             model.status === "ready" && rows.length === 0
-              ? h.div([h.Class("text-label text-lichen")], [emptyCopy])
+              ? h.div([h.Class("text-label text-lichen"), h.DataAttribute("testid", "coverage-empty")], [emptyCopy])
               : null,
             model.status === "error"
               ? h.button(
                   [
                     h.Type("button"),
+                    h.DataAttribute("testid", "coverage-try-again"),
                     h.OnClick(RequestedCoverageRefresh()),
                     h.Class(buttonClass("ghost", "mt-md self-start")),
                   ],

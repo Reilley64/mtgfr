@@ -33,7 +33,7 @@ Ship an authenticated `/coverage` shell route that renders a searchable set tabl
 - The search query is preserved across refreshes, including `Try again`.
 - If the `LobbyClient` request fails with a tagged transport/decode error, the page enters `status: "error"`, shows `Could not load coverage.` in an alert, keeps rows empty, and renders a `Try again` button.
 - The search field is hidden only while loading. It remains available during ready and error states.
-- Ready-with-no-rows copy depends on the query: `No set coverage available.` for an empty query and `No sets match.` for a non-empty query.
+- Ready-with-no-rows copy depends on the query: `No set coverage available.` for an empty query and `No sets match.` for a non-empty query (`coverage-empty`). After a load failure, `Try again` uses `coverage-try-again`.
 
 ### Table rows, sorting, filtering, and formatting
 
@@ -42,7 +42,7 @@ Ship an authenticated `/coverage` shell route that renders a searchable set tabl
 - Each row shows the set code, set name, faithful count, oracle total, and formatted percent.
 - Search filters by lowercase substring match on set code or set name.
 - Rows sort by `releasedAt` descending, with null release dates after dated sets, then set name ascending, then set code ascending.
-- The page shell is viewport-bounded (`h-dvh` + `overflow-hidden` on `coverage-page`) so the row list can overflow; chrome, search, and column headers stay pinned and only `data-testid="coverage-table-body"` (`overflow-y-auto`) scrolls.
+- The page shell fills a scroll-locked `shellFrame` stage (`lockStageScroll`, `h-full min-h-0 flex-1` + `overflow-hidden` on `coverage-page`) so the row list can overflow; chrome, search, and column headers stay pinned and only `data-testid="coverage-table-body"` (`overflow-y-auto overscroll-contain`) scrolls.
 - Rows with `oracleTotal == null` render `—` in both the `Scryfall` and `%` columns.
 - Rows with `oracleTotal > 0` and `faithful = 0` render `0%`, not `—`.
 - Percent text reuses `formatFaithfulPercent`: one decimal below 10%, otherwise a whole percent.

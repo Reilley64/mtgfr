@@ -84,7 +84,10 @@ export const view = Submodel.defineView<LeaderboardSubmodel, ViewMessage, ViewIn
             model.error == null ? null : h.div([h.Role("alert"), h.Class(alertClass())], [model.error]),
             status == null ? null : h.div([h.Class("text-label text-lichen")], [status]),
             model.status === "ready" && model.entries.length === 0
-              ? h.div([h.Class("text-label text-lichen")], ["No rated games yet."])
+              ? h.div(
+                  [h.Class("text-label text-lichen"), h.DataAttribute("testid", "leaderboard-empty")],
+                  ["No rated games yet."],
+                )
               : null,
             ...model.entries.map(row),
             canLoadMore

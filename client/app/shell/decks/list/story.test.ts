@@ -87,7 +87,7 @@ test("GotDeckListMessage updates the deck list through the parent update", () =>
   );
 });
 
-test("deck list chrome and tiles share the wide column classes", () => {
+test("deck list chrome and tiles use the shell stage width", () => {
   Scene.scene(
     listProgram,
     Scene.with({
@@ -97,8 +97,10 @@ test("deck list chrome and tiles share the wide column classes", () => {
         atraxa: card({ id: "atraxa", name: "Atraxa, Praetors' Voice", default_print: "atraxa-print" }),
       },
     }),
-    Scene.expect(Scene.selector('[data-testid="deck-list-search"]')).toHaveClass("max-w-[960px]"),
-    Scene.expect(Scene.selector('[data-testid="deck-list-grid"]')).toHaveClass("max-w-[960px]"),
+    Scene.expect(Scene.selector('[data-testid="deck-list-search"]')).toHaveClass("w-full"),
+    Scene.expect(Scene.selector('[data-testid="deck-list-search"]')).not.toHaveClass("max-w-[960px]"),
+    Scene.expect(Scene.selector('[data-testid="deck-list-grid"]')).toHaveClass("w-full"),
+    Scene.expect(Scene.selector('[data-testid="deck-list-grid"]')).not.toHaveClass("max-w-[960px]"),
     Scene.expect(Scene.selector('[data-testid="deck-list-grid"]')).toHaveClass(
       "grid-cols-[repeat(auto-fill,minmax(220px,1fr))]",
     ),
@@ -203,6 +205,7 @@ test("tile Play href uses /play/:deckId and search filters tiles", () => {
     Scene.expect(Scene.selector('[data-testid="deck-tile--9"]')).toExist(),
     Scene.type(Scene.selector('[data-testid="deck-list-search"]'), "zzzz"),
     Scene.Mount.expectEnded(BindDeckListContextMenu, BindDeckCardFlip, BindCardArt),
+    Scene.expect(Scene.selector('[data-testid="deck-list-filter-empty"]')).toExist(),
     Scene.expect(Scene.text("No decks match.")).toExist(),
   );
 });

@@ -423,6 +423,7 @@ export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewIn
     atmosphere: "shell",
     title: model.editingId == null ? "New deck" : "Edit deck",
     chrome: viewInputs.chrome,
+    lockStageScroll: true,
     leading: h.button(
       [
         h.Type("button"),
@@ -455,9 +456,9 @@ export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewIn
     ),
     stage: h.div(
       [
-        // h-dvh (not min-h-screen): shell must stay viewport-tall so the catalog/decklist overflow-y-auto hosts actually overflow.
+        // Fill the contained shell stage (not h-dvh): header + 100dvh overflowed the viewport and scrolled the page.
         h.Class(
-          "grid h-dvh grid-cols-[minmax(0,1fr)_minmax(220px,min(32vw,360px))] grid-rows-[minmax(0,1fr)] gap-5 overflow-hidden",
+          "grid h-full min-h-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(220px,min(32vw,360px))] grid-rows-[minmax(0,1fr)] gap-5 overflow-hidden",
         ),
         h.DataAttribute("testid", "deck-builder-page"),
       ],

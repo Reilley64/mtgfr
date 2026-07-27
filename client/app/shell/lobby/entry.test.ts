@@ -149,6 +149,7 @@ test("shows build-a-deck copy when the player has no decks", () => {
         },
       }),
     ),
+    Scene.expect(Scene.selector('[data-testid="lobby-empty"]')).toExist(),
     Scene.expect(Scene.text("Build a deck first (Your decks → New deck).")).toExist(),
     Scene.expect(Scene.selector('[data-testid="lobby-host"]')).not.toExist(),
   );

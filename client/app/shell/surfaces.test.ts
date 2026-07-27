@@ -392,6 +392,25 @@ describe("shell surface scenes", () => {
     );
   });
 
+  it("shows a quiet leaderboard empty state when there are no rated games", () => {
+    Scene.scene(
+      { update, view },
+      Scene.with(
+        authedModel(LeaderboardRoute(), {
+          leaderboard: {
+            entries: [],
+            accountMenuOpen: false,
+            error: null,
+            status: "ready",
+            total: 0,
+          },
+        }),
+      ),
+      Scene.expect(Scene.selector('[data-testid="leaderboard-empty"]')).toExist(),
+      Scene.expect(Scene.text("No rated games yet.")).toExist(),
+    );
+  });
+
   it("renders coverage page table and global percent", () => {
     Scene.scene(
       { update, view },
@@ -416,15 +435,19 @@ describe("shell surface scenes", () => {
       ),
       Scene.expect(Scene.selector('[data-testid="coverage-page"]')).toExist(),
       ...expectShellFrame(),
-      Scene.expect(Scene.selector('[data-testid="coverage-page"]')).toHaveClass("h-dvh"),
+      Scene.expect(Scene.selector('[data-testid="coverage-page"]')).toHaveClass("h-full"),
+      Scene.expect(Scene.selector('[data-testid="coverage-page"]')).toHaveClass("min-h-0"),
       Scene.expect(Scene.selector('[data-testid="coverage-page"]')).toHaveClass("overflow-hidden"),
-      Scene.expect(Scene.selector('[data-testid="coverage-page"]')).not.toHaveClass("h-full"),
+      Scene.expect(Scene.selector('[data-testid="coverage-page"]')).not.toHaveClass("h-dvh"),
       Scene.expect(Scene.text("Coverage")).toExist(),
       Scene.expect(Scene.selector('[data-testid="coverage-global-percent"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="coverage-search"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="coverage-table"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="coverage-table-body"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="coverage-table-body"]')).toHaveClass("overflow-y-auto"),
+      Scene.expect(Scene.selector('[data-testid="coverage-table-body"]')).toHaveClass("overscroll-contain"),
+      Scene.expect(Scene.selector('[data-testid="shell-stage"]')).toHaveClass("overflow-hidden"),
+      Scene.expect(Scene.selector('[data-testid="shell-stage"]')).not.toHaveClass("overflow-y-auto"),
       Scene.expect(Scene.selector('[data-testid="coverage-row-soc"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="header-leaderboard-link"]')).toExist(),
       Scene.expect(Scene.text("Secrets of Strixhaven")).toExist(),
@@ -487,6 +510,7 @@ describe("shell surface scenes", () => {
       Scene.expect(Scene.selector('[data-testid="coverage-page"]')).toExist(),
       Scene.expect(Scene.selector('[role="alert"]')).toExist(),
       Scene.expect(Scene.text("Could not load coverage.")).toExist(),
+      Scene.expect(Scene.selector('[data-testid="coverage-try-again"]')).toExist(),
       Scene.expect(Scene.text("Try again")).toExist(),
       Scene.expect(Scene.selector('[data-testid="coverage-search"]')).toExist(),
     );
@@ -526,10 +550,12 @@ describe("shell surface scenes", () => {
       Scene.type(Scene.selector('[data-testid="coverage-search"]'), "strix"),
       Scene.expect(Scene.selector('[data-testid="coverage-row-soc"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="coverage-row-c16"]')).not.toExist(),
+      Scene.expect(Scene.selector('[data-testid="coverage-empty"]')).not.toExist(),
       Scene.expect(Scene.text("No sets match.")).not.toExist(),
       Scene.type(Scene.selector('[data-testid="coverage-search"]'), "zzzz"),
       Scene.expect(Scene.selector('[data-testid="coverage-row-soc"]')).not.toExist(),
       Scene.expect(Scene.selector('[data-testid="coverage-row-c16"]')).not.toExist(),
+      Scene.expect(Scene.selector('[data-testid="coverage-empty"]')).toExist(),
       Scene.expect(Scene.text("No sets match.")).toExist(),
     );
   });
@@ -602,6 +628,7 @@ describe("shell surface scenes", () => {
       ),
       Scene.expect(Scene.selector('[data-testid="deck-builder-page"]')).toExist(),
       ...expectShellFrame(),
+      Scene.expect(Scene.selector('[data-testid="shell-stage"]')).toHaveClass("overflow-hidden"),
       Scene.expect(Scene.selector('[data-testid="account-menu-trigger"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="deck-name"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="save-deck"]')).toExist(),

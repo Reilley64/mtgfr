@@ -2,7 +2,7 @@ import { Submodel } from "foldkit";
 import { html } from "foldkit/html";
 import type { AppChromeMeta } from "../../domain/ui/app-version";
 import { buttonClass } from "../../domain/ui/buttonClass";
-import { fieldClass, panelClass } from "../../domain/ui/surfaces";
+import { alertClass, fieldClass, panelClass } from "../../domain/ui/surfaces";
 import { shellFrame } from "../frame/shell-frame";
 import {
   ChangedAuthEmail,
@@ -30,7 +30,7 @@ export const view = Submodel.defineView<AuthSubmodel, Message, AppChromeMeta>((m
           [h.DataAttribute("testid", "auth-brand"), h.Class("m-0 font-display text-display tracking-[-0.02em]")],
           ["edh.reilley.dev"],
         ),
-        h.h1([h.Class("m-0 text-lichen text-title")], [isLogin ? "Sign in" : "Create account"]),
+        h.h1([h.Class("m-0 font-display text-lichen text-title")], [isLogin ? "Sign in" : "Create account"]),
         h.section(
           [h.DataAttribute("testid", "auth-panel"), h.DataAttribute("ui", "panel"), h.Class(panelClass())],
           [
@@ -81,7 +81,7 @@ export const view = Submodel.defineView<AuthSubmodel, Message, AppChromeMeta>((m
                 model.error == null
                   ? null
                   : h.div(
-                      [h.Role("alert"), h.Class("text-burn-red text-caption"), h.DataAttribute("testid", "auth-error")],
+                      [h.Role("alert"), h.Class(alertClass("text-burn-red")), h.DataAttribute("testid", "auth-error")],
                       [model.error],
                     ),
                 h.div(

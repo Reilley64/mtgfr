@@ -7,7 +7,7 @@ import type { AppChromeMeta } from "../../domain/ui/app-version";
 import { buttonClass } from "../../domain/ui/buttonClass";
 import { type CardArtTick, cardArt } from "../../domain/ui/card-art";
 import { seatFace } from "../../domain/ui/seat-face";
-import { fieldClass, panelClass } from "../../domain/ui/surfaces";
+import { alertClass, fieldClass, panelClass } from "../../domain/ui/surfaces";
 import type { DeckSummary } from "../../domain/wire/types";
 import type { ClosedAccountMenu, GotAuthMessage, ToggledAccountMenu } from "../../messages";
 import { HomeRoute, routePath } from "../../routes";
@@ -165,7 +165,7 @@ function chooseEntry(
               h.div(
                 [h.Class("flex flex-col gap-xs")],
                 [
-                  h.div([h.Class("font-semibold text-title")], ["Ready to play?"]),
+                  h.div([h.Class("font-display font-semibold text-title tracking-[-0.02em]")], ["Ready to play?"]),
                   h.div([h.Class("text-label text-lichen")], ["Host a fresh Commander table with this deck."]),
                 ],
               ),
@@ -198,7 +198,7 @@ function chooseEntry(
                 ],
                 ["#"],
               ),
-              h.div([h.Class("font-semibold")], ["Join a table"]),
+              h.div([h.Class("font-display font-semibold text-title tracking-[-0.02em]")], ["Join a table"]),
               h.div([h.Class("text-label text-lichen")], ["enter a code"]),
             ],
           ),
@@ -264,7 +264,7 @@ function joinEntry(
           ),
         ],
       ),
-      h.div([h.Class("font-semibold text-title")], ["Join a table"]),
+      h.div([h.Class("font-display font-semibold text-title tracking-[-0.02em]")], ["Join a table"]),
       h.div([h.Class("text-label text-lichen")], ["Paste the code your host shared"]),
       h.label([h.For("table-code"), h.Class("sr-only")], ["Table code"]),
       h.input([
@@ -316,11 +316,11 @@ function entry(
   }
 
   if (!decksLoading && decks.length === 0 && model.selectedDeckId == null) {
-    return h.div([h.Class("text-caution-amber text-label")], ["Build a deck first (Your decks → New deck)."]);
+    return lobbyEmpty("Build a deck first (Your decks → New deck).");
   }
 
   if (model.selectedDeckId == null) {
-    return h.div([h.Class("text-caution-amber text-label")], ["Pick a deck to play first (Your decks → Play)."]);
+    return lobbyEmpty("Pick a deck to play first (Your decks → Play).");
   }
 
   const deck = decks.find((item) => item.id === model.selectedDeckId);
@@ -413,10 +413,14 @@ function claimSeat(
   }
 
   if (decks.length === 0) {
-    return h.div([h.Class("text-caution-amber text-label")], ["Build a deck first (Your decks → New deck)."]);
+    return lobbyEmpty("Build a deck first (Your decks → New deck).");
   }
 
-  return h.div([h.Class("text-caution-amber text-label")], ["Pick a deck to play first (Your decks → Play)."]);
+  return lobbyEmpty("Pick a deck to play first (Your decks → Play).");
+}
+
+function lobbyEmpty(message: string): Html {
+  return h.div([h.Class("text-caution-amber text-label"), h.DataAttribute("testid", "lobby-empty")], [message]);
 }
 
 function tableLobby(
@@ -544,7 +548,7 @@ export const view = Submodel.defineView<LobbySlice, ViewMessage, ViewInputs>((mo
             model.error == null
               ? null
               : h.div(
-                  [h.Role("alert"), h.DataAttribute("testid", "lobby-error"), h.Class("text-burn-red text-caption")],
+                  [h.Role("alert"), h.DataAttribute("testid", "lobby-error"), h.Class(alertClass("text-burn-red"))],
                   [humanError(model.error)],
                 ),
           ],

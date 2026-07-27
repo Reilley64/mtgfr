@@ -37,8 +37,8 @@ custom left-side title block. The shared header trailing slot holds account chro
 `Leaderboard` link (`header-leaderboard-link`) plus an avatar trigger backed by the same
 circular Gravatar/monogram face helper used for seats. Opening the avatar menu shows a
 username title, an outbound `Change at Gravatar` link (`account-gravatar-link`) to
-`https://gravatar.com`, and `Sign out`. Search and grid share one `max-w-[960px]` stage
-column.
+`https://gravatar.com`, and `Sign out`. Search and grid share the shell stage max-width
+column (no nested 960px wrappers).
 
 Tiles use a raised `minmax(220px, 1fr)` track, landscape commander `art_crop`
 (~1.37:1), deck name, color-identity pips, and a Precon chip when `id < 0`. Names stay
@@ -56,8 +56,9 @@ The whole deck tile links to `/play/{id}` and shows a quiet `Play` label
 (`deck-card-nav.ts`; skipped for reduced motion). A **Search decks…** field appears only
 when at least one actual deck exists and filters by deck name and commander display name
 (client-only). The create tile stays first and is never filtered out; if search matches
-no deck tiles, the grid keeps the create tile first and shows the existing `No decks
-match.` copy. Display order: owned decks first (API relative order), then precons by
+no deck tiles, the grid keeps the create tile first and shows `No decks match.`
+(`deck-list-filter-empty`). Load errors use the shared `alertClass` recipe. Display order:
+owned decks first (API relative order), then precons by
 ascending id (newest release first). Right-click on an owned deck opens Edit
 (`/decks/{id}`) and Delete (confirm dialog); precons do not open a context menu.
 
@@ -74,7 +75,7 @@ stage body is a split-pane layout (no duplicate page title in the decklist pane)
 - **Singleton enforcement.** Non-basic non-commander cards cap at 1. Commander is set via the context menu only; `canBeCommander` restricts to legendary creatures.
 - **Full Commander legality** is enforced server-side on save; the client surfaces validation errors returned as `CreateDeck422` / `UpdateDeck422` tagged Schema errors.
 - **Card lookup.** `lookupCardsByIds(ids, client)` fetches oracle data for deck hydration through `/api/rpc/cards/lookup`.
-- **Scroll.** The builder page shell is viewport-bounded (`h-dvh`, single `minmax(0,1fr)` grid row, `overflow-hidden`) and does not scroll. The left catalog grid and the right decklist are independent `overflow-y-auto` scrollports with `overscroll-contain` so wheel/trackpad in one pane does not move the other or the document. Both columns use `min-h-0` so their scroll hosts form real scrollports inside the grid instead of growing the page.
+- **Scroll.** `shellFrame` is a viewport-contained flex column (`overflow-hidden`); the builder passes `lockStageScroll` so the stage is `flex-1 min-h-0 overflow-hidden`. The builder page fills that stage (`h-full min-h-0 flex-1`, single `minmax(0,1fr)` grid row, `overflow-hidden`) and does not scroll the page. The left catalog grid and the right decklist are independent `overflow-y-auto` scrollports with `overscroll-contain` so wheel/trackpad in one pane does not move the other or the document. Both columns use `min-h-0` so their scroll hosts form real scrollports inside the grid instead of growing the page.
 - **Print picker scroll lock.** While the choose-printing `<dialog>` is open (`printPicker` set), catalog and decklist scrollports use `overflow-hidden` (background frozen). The print tile grid inside the dialog remains `overflow-y-auto` with `overscroll-contain`. Closing the picker restores independent pane scrolling.
 
 ### Card art CDN (`client/app/domain/deck-builder/scryfall.ts`, `client/app/domain/ui/card-art.ts`, `client/app/domain/image-cache.ts`)
