@@ -1192,6 +1192,7 @@ pub(crate) fn fresh_permanent(
         echo_unpaid: printed.echo.is_some(),
         chosen_subtype: None,
         chosen_color: None,
+        chosen_opponent: None,
         entered_with_x: 0,
         entered_multikicker_count: 0,
         cast_time_enchant_target: None,
@@ -1930,6 +1931,11 @@ pub(crate) struct Permanent {
     /// enchanted creature. `None` until the choice is answered (see [`Effect::Choice(ChoiceEffect::ChooseColor)`]), and
     /// for every permanent without such a choice.
     pub(crate) chosen_color: Option<Color>,
+    /// The opponent named by an as-enters choice (CR 614.12-style "as this artifact enters, choose
+    /// an opponent" — Black Vise), read back by a [`Condition::ChosenPlayersUpkeep`] gate on this
+    /// permanent's own `each_upkeep` trigger. `None` until the choice is answered (see
+    /// [`Effect::Choice(ChoiceEffect::ChooseOpponent)`]), and for every permanent without one.
+    pub(crate) chosen_opponent: Option<PlayerId>,
     /// The {X} chosen for the spell that became this permanent (CR 601.2b), fixed for the rest
     /// of this permanent's existence — read by [`Game::ability_source_x`] so a later-resolving
     /// ability (an ETB trigger, an `mv_max_x` filter) can still reference "X" once the casting

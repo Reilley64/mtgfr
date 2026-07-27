@@ -761,6 +761,12 @@ impl Game {
                     },
                 );
             }
+            // Black Vise: nothing to raise — record the choice on the asking permanent and stop.
+            SplittingContinuation::RememberAsChosenOpponent => {
+                if let Object::Permanent(p) = &mut self.objects[source as usize] {
+                    p.chosen_opponent = Some(opponent);
+                }
+            }
             // Clash resumes through `resume_clash` (it needs an events sink for the reveals), never
             // here — `choose_splitting_opponent_answer` and `begin_clash`'s collapse both bypass this.
             SplittingContinuation::Clash => {

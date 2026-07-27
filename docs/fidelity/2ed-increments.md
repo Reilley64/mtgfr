@@ -403,7 +403,7 @@ for (`no_creatures_on_battlefield` is the same idea).
 *Landed:* the restriction wanted a filter, not a condition. `StaticEffect::CantAttackUnlessDefenderControls { filter }` is the exact mirror of the `CantBeAttackedBy` static sitting one screen away in `declare_attackers` — that one rides the defender, this one rides the attacker — so it reuses `permanent_matches` over the defending player's battlefield and renders through the filter machinery that already existed. Trying it as a `Condition` first was the wrong rung: conditions have no message rendering, so the card text would have projected as a blank. Animate Wall needed no new static at all, only a `may_attack_ignoring_defender` bool on the existing `grant_to_attached` bag beside `cant_attack` — "as though it didn't have defender" waives `can_attack`'s one check without touching the keyword, which is what the printed "as though" says. The restriction is also folded into `can_attack`'s legal-defender clause, because leaving it out lets goad demand an attack the card forbids and no legal declaration exists (CR 509.1a) — a soft-lock, not a rules nicety. `Condition::ControlsNoLandsWithSubtype` is new because `controls_lands_with_subtype` only counts upward and `count = 0` holds vacuously. What did *not* land: "When you control no Islands, sacrifice this creature" is a state trigger (CR 603.8) and the engine has no state-trigger shape — Pyrohemia's `no_creatures_on_battlefield`, which the sketch called the same idea, is a printed end-step trigger, not a state trigger. Both ships carry an `approximates` marker and the end-step approximation; see #77.
 *Cards:* animate_wall, pirate_ship, sea_serpent.
 
-### 25. `amount-arithmetic` — 2 cards, S
+### 25. `amount-arithmetic` — 2 cards, S → M — **done**
 Depends on: #1 (Aspect of Wolf only).
 "X damage … where X is the number of cards in their hand minus 4" and "half the number of Forests
 you control, rounded down / rounded up." `Amount` has `half_x` and `half_x_rounded_down` for the
@@ -412,6 +412,26 @@ multiply variants — `Amount::Offset { inner: Box<Amount>, delta: i32, floor_ze
 `Amount::Half { inner: Box<Amount>, round_up: bool }`, resolved recursively in `amount.rs`. Black
 Vise clamps at zero (a 3-card hand deals no damage, not negative damage).
 *Cards:* aspect_of_wolf, black_vise.
+*Landed:* split in two. Aspect of Wolf's half went out with increment #75 as `Amount::Half`, and
+`Amount::Offset { of, delta }` here is its twin — same leaked-`&'static` wrap, same early return
+ahead of the deserializer's exactly-one-of table. The clamp is unconditional rather than the
+sketch's `floor_zero` flag: every offset the pool prints lands in a damage or count slot where a
+negative reads as none anyway (CR 120.8), so the flag would have had one value forever.
+The arithmetic was the small half. Black Vise's real cost is the clause the sketch never
+mentioned — "as this artifact enters, choose an opponent," which the pool had no way to express.
+No new picker was needed: `PendingChoice::ChooseSplittingOpponent` is already the shared
+"an opponent ..." pause (clash rides it too, splitting nothing), so this is one more
+`SplittingContinuation` — `RememberAsChosenOpponent`, whose whole body writes
+`Permanent::chosen_opponent` and raises nothing. That keeps the wire untouched: no new
+`PendingChoiceView`, no proto field, no client case. Writing the answer straight onto the
+permanent instead of through an `Event` follows Archangel of Strife's `Player::war_choices`; only
+`chosen_color` needs an event, because it feeds the characteristics cache and this doesn't.
+The trigger half is increment 61's shape exactly — `each_upkeep` plus an intervening-if
+(`Condition::ChosenPlayersUpkeep`) rather than a trigger variant of its own — and the payoff
+addressing is increment 60's `damage/to_triggering_player`, which resolves its amount against the
+*recipient*, so `"cards_in_your_hand"` under it counts the taxed player's hand with no `who` axis
+added. A two-player table never sees the choice at all: the picker collapses on a single legal
+opponent.
 
 ### 26. `forced-attack-with-delayed-punishment` — 2 cards, M
 Depends on: #21 (subtype exclusion).

@@ -18,6 +18,15 @@ pub enum ChoiceEffect {
 
     ChooseCreatureType,
 
+    /// Black Vise's "as this artifact enters, choose an opponent." Reuses the shared
+    /// "an opponent ..." picker
+    /// ([`Game::choose_splitting_opponent`](crate::Game)) with a
+    /// [`SplittingContinuation::RememberAsChosenOpponent`](crate::SplittingContinuation) tail, so
+    /// a table with one opponent left collapses the pause and a table with more asks. The answer
+    /// is written to the source's own [`Permanent::chosen_opponent`], read back by a
+    /// [`Condition::ChosenPlayersUpkeep`] gate on its upkeep trigger.
+    ChooseOpponent,
+
     CouncilsDilemmaVote {
         #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_str_slice"))]
         options: &'static [&'static str],

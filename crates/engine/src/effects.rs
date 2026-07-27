@@ -931,6 +931,7 @@ impl Game {
             // Demonstrate / Proliferate / PhaseOut — choose pause peel (`resolution/pause_choose`).
             Effect::Choice(ChoiceEffect::ChooseCreatureType)
             | Effect::Choice(ChoiceEffect::ChooseColor)
+            | Effect::Choice(ChoiceEffect::ChooseOpponent)
             | Effect::Choice(ChoiceEffect::SetOwnColorUntilEndOfTurn)
             | Effect::ChooseOne { .. }
             | Effect::Copy(CopyEffect::Demonstrate { .. })

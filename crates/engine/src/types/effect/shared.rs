@@ -393,6 +393,15 @@ pub enum Amount {
         of: &'static Amount,
         round_up: bool,
     },
+    /// `of` plus `delta`, floored at zero (Black Vise's "X is the number of cards in their hand
+    /// minus 4"). `of` is `&'static` (leaked) for the same reason [`Half`](Self::Half)'s is.
+    /// ponytail: always floors at zero — the offsets the pool prints all feed a damage or count
+    ///   slot where a negative result reads as none anyway (CR 120.8). Add a `floor` field if a
+    ///   card ever wants the negative itself.
+    Offset {
+        of: &'static Amount,
+        delta: i32,
+    },
     /// How many cards were discarded during this resolution's edict fan-out (Syphon Mind's "for
     /// each card discarded this way"; Malfegor's discarded hand size) — a resolution-local tally on
     /// [`ResolutionFrame::cards_discarded_this_way`].
@@ -974,9 +983,12 @@ impl Effect {
             | Effect::Counters(CountersEffect::LevelUp { .. })
             // "Monstrosity N" always affects the ability's own source, never a chosen target.
             | Effect::Counters(CountersEffect::Monstrosity { .. })
-            // The as-enters creature-type/color choices always affect the ability's own source.
+            // The as-enters creature-type/color/opponent choices always affect the ability's own
+            // source. Black Vise's opponent is *chosen*, not targeted (CR 115.10a) — no "target"
+            // on the card, so no shroud/protection check and no target-legality recheck.
             | Effect::Choice(ChoiceEffect::ChooseCreatureType)
             | Effect::Choice(ChoiceEffect::ChooseColor)
+            | Effect::Choice(ChoiceEffect::ChooseOpponent)
             | Effect::Choice(ChoiceEffect::SetOwnColorUntilEndOfTurn)
             // Removes a counter from the ability's own source, never a chosen target.
             | Effect::Counters(CountersEffect::RemoveCounterFromSelf)
@@ -1758,6 +1770,15 @@ pub enum Condition {
     ///   is filtered out at placement never reaches the stack, so it is indistinguishable from one
     ///   that never fired. Give it a real variant if a card ever needs to *see* the non-fire.
     EnchantedPermanentsControllersUpkeep,
+    /// The gate that turns "at the beginning of **each** upkeep" into "at the beginning of the
+    /// **chosen player's** upkeep" (Black Vise): holds only on the upkeep of the opponent this
+    /// permanent's as-enters [`Effect::Choice(ChoiceEffect::ChooseOpponent)`] named. The
+    /// chosen-opponent twin of
+    /// [`EnchantedPermanentsControllersUpkeep`](Self::EnchantedPermanentsControllersUpkeep) above —
+    /// source-object-based, reads `TriggerContext::active_player`, and belongs on a
+    /// [`Trigger::EachUpkeep`] ability for the same reasons. Never holds before the choice is
+    /// answered.
+    ChosenPlayersUpkeep,
     /// "if enchanted creature has `keyword`" (Earthbind's enters trigger: "if enchanted creature
     /// has flying"). Source-object-based like
     /// [`EnchantedPermanentsControllersUpkeep`](Self::EnchantedPermanentsControllersUpkeep) above —

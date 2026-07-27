@@ -37,6 +37,13 @@ impl Game {
                     until_end_of_turn: false,
                 },
             ),
+            // Black Vise's "As this artifact enters, choose an opponent": the shared "an opponent
+            // ..." picker, which collapses on its own when only one opponent is alive.
+            Effect::Choice(ChoiceEffect::ChooseOpponent) => self.choose_splitting_opponent(
+                controller,
+                source,
+                SplittingContinuation::RememberAsChosenOpponent,
+            ),
             // Wild Mongrel's "...and becomes the color of your choice until end of turn": the same (CR 613.3c)
             // ChooseColor picker as `ChooseColor` above, but the answer sets an until-end-of-turn
             // color-SET instead of the indefinite `chosen_color`.

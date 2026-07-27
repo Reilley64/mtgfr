@@ -2491,6 +2491,29 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         );
     }
 
+    /// Black Vise's upkeep trigger must carry the chosen-player gate: without it, `each_upkeep`
+    /// bills every seat at the table instead of the one opponent the card named as it entered.
+    #[test]
+    fn unlimited_black_vise_taxes_only_the_upkeep_of_the_opponent_it_chose() {
+        let vise = get_by_name("Black Vise").expect("Black Vise is in the pool");
+        let [enters, upkeep] = &vise.abilities[..] else {
+            panic!("an as-enters choice and an each-upkeep tax");
+        };
+        assert_eq!(enters.effect, Effect::Choice(ChoiceEffect::ChooseOpponent));
+        assert_eq!(upkeep.condition, Some(Condition::ChosenPlayersUpkeep));
+        let Effect::Damage(DamageEffect::ToTriggeringPlayer { amount, .. }) = upkeep.effect else {
+            panic!("it damages the player whose upkeep it is");
+        };
+        assert_eq!(
+            amount,
+            Amount::Offset {
+                of: &Amount::CardsInYourHand,
+                delta: -4,
+            },
+            "the hand it counts is the taxed player's own, four cards free"
+        );
+    }
+
     /// Aspect of Wolf's two halves round *opposite* ways off the same count — swap them and the
     /// card is wrong on every odd number of Forests, which is the only interesting case.
     #[test]

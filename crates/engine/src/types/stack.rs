@@ -785,7 +785,9 @@ impl Intent {
     }
 }
 
-/// What [`PendingChoice::ChooseSplittingOpponent`] resumes into once the opponent is chosen. The
+/// What [`PendingChoice::ChooseSplittingOpponent`] resumes into once the opponent is chosen. Named
+/// for the pile-splitting cards it was built for, but it is the tail of every "an opponent ..." /
+/// "choose an opponent" pause now — clash and Black Vise's as-enters choice split no piles. The
 /// split data (piles/reveal) was already computed before the chooser pause — it doesn't depend on
 /// which opponent answers — so this just carries it across that pause to the next one.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -804,6 +806,11 @@ pub enum SplittingContinuation {
     /// and each takes a keep-on-top-or-bottom scry. Resumed via [`Game::resume_clash`] (which needs
     /// an `events` sink for the reveals), not the eventless [`Game::resume_splitting_opponent`].
     Clash,
+    /// Black Vise's "as this artifact enters, choose an opponent": no follow-up pause at all — the
+    /// answer is written straight to the asking permanent's [`Permanent::chosen_opponent`], the way
+    /// Archangel of Strife's vote lands on [`Player::war_choices`], and the card's upkeep trigger
+    /// reads it back from there.
+    RememberAsChosenOpponent,
 }
 
 /// One thing proliferate may choose (CR 701.27: "Choose any number of permanents and/or

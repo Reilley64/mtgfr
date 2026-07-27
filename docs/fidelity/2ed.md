@@ -180,7 +180,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Basalt Monolith** {3} · Artifact — increment 7
 - [ ] **Benalish Hero** {W} · Creature — Human Soldier — increment 14
 - [ ] **Berserk** {G} · Instant — increment 45
-- [ ] **Black Vise** {1} · Artifact — increment 25
+- [x] **Black Vise** {1} · Artifact — increment 25
 - [ ] **Blaze of Glory** {W} · Instant — increment 11
 - [x] **Blue Elemental Blast** {U} · Instant — increment 9
 - [x] **Bog Wraith** {3}{B} · Creature — Wraith — increment 3

@@ -1233,6 +1233,12 @@ impl<'de> Deserialize<'de> for Amount {
                     half: Option<Amount>,
                     #[serde(default)]
                     round_up: bool,
+                    /// `{ offset = "cards_in_your_hand", delta = -4 }` — [`Amount::Offset`]
+                    /// (Black Vise's "the number of cards in their hand minus 4").
+                    #[serde(default)]
+                    offset: Option<Amount>,
+                    #[serde(default)]
+                    delta: i32,
                 }
                 let t = Table::deserialize(de::value::MapAccessDeserializer::new(map))?;
                 // `half` wraps another amount rather than naming a count of its own, so it is
@@ -1241,6 +1247,13 @@ impl<'de> Deserialize<'de> for Amount {
                     return Ok(Amount::Half {
                         of: &*Box::leak(Box::new(of)),
                         round_up: t.round_up,
+                    });
+                }
+                // `offset` wraps another amount too, so it is answered alongside `half`.
+                if let Some(of) = t.offset {
+                    return Ok(Amount::Offset {
+                        of: &*Box::leak(Box::new(of)),
+                        delta: t.delta,
                     });
                 }
                 match (

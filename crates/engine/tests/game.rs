@@ -106026,3 +106026,122 @@ fn aspect_of_wolf_splits_half_your_forests_between_power_and_toughness() {
     );
     assert_eq!(game.toughness(host), 2 + 2);
 }
+
+// Black Vise: "As this artifact enters, choose an opponent. At the beginning of the chosen
+// player's upkeep, this artifact deals X damage to that player, where X is the number of cards in
+// their hand minus 4."
+
+#[test]
+fn black_vise_bills_the_chosen_opponent_for_every_card_over_four() {
+    // With one opponent alive there is nothing to choose, so this is the arithmetic half: a hand
+    // of four or fewer is no damage at all, and every card past the fourth is one more.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let vise = game.spawn_in_hand(PlayerId(0), card("Black Vise"));
+    for p in 0..2u8 {
+        game.stack_library(PlayerId(p), &vec![card("Plains"); 8]);
+    }
+    for _ in 0..3 {
+        game.spawn_in_hand(PlayerId(1), card("Plains"));
+    }
+    cast_and_resolve(&mut game, vise, None);
+    assert!(
+        game.pending_choice().is_none(),
+        "one opponent is no choice at all"
+    );
+
+    pass_until_next_turn(&mut game);
+    advance_until(&mut game, |g| g.current_step() == Step::Main1);
+    assert_eq!(
+        game.life(PlayerId(1)),
+        20,
+        "three cards is one short of four — minus four is negative, and negative damage is none"
+    );
+
+    // Their draw step made it four; three more by hand makes seven — the most they may hold at
+    // cleanup, so nothing is discarded away before the Vise reads the hand again.
+    for _ in 0..3 {
+        game.spawn_in_hand(PlayerId(1), card("Plains"));
+    }
+    pass_until_next_turn(&mut game);
+    advance_until(&mut game, |g| g.current_step() == Step::Main1);
+    assert_eq!(
+        game.life(PlayerId(0)),
+        20,
+        "the Vise's own controller is not the chosen opponent"
+    );
+
+    pass_until_next_turn(&mut game);
+    advance_until(&mut game, |g| g.current_step() == Step::Main1);
+    assert_eq!(
+        game.life(PlayerId(1)),
+        17,
+        "seven cards in hand is three damage"
+    );
+}
+
+#[test]
+fn black_vise_asks_which_opponent_when_more_than_one_is_alive() {
+    // "Choose an opponent" is a real choice at a four-player table, and only the chosen seat pays.
+    let mut game = Game::with_players(4, 7);
+    game.fund_mana(PlayerId(0));
+    let vise = game.spawn_in_hand(PlayerId(0), card("Black Vise"));
+    for p in 0..4u8 {
+        game.stack_library(PlayerId(p), &vec![card("Plains"); 8]);
+        for _ in 0..6 {
+            game.spawn_in_hand(PlayerId(p), card("Plains"));
+        }
+    }
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: vise,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack_multiplayer(&mut game);
+
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::ChooseSplittingOpponent {
+                player: PlayerId(0),
+                ..
+            })
+        ),
+        "the as-enters choice pauses for the Vise's controller to name an opponent"
+    );
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Player(PlayerId(2))],
+    })
+    .unwrap();
+
+    pass_until_next_turn(&mut game);
+    advance_until(&mut game, |g| g.current_step() == Step::Main1);
+    assert_eq!(
+        game.life(PlayerId(1)),
+        20,
+        "an opponent who wasn't chosen pays nothing on their upkeep"
+    );
+
+    pass_until_next_turn(&mut game);
+    advance_until(&mut game, |g| g.current_step() == Step::Main1);
+    assert_eq!(
+        game.life(PlayerId(2)),
+        18,
+        "the chosen seat's six cards is two damage — their draw step is still ahead of them"
+    );
+}

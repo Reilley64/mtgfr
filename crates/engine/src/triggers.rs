@@ -3840,6 +3840,13 @@ impl Game {
             Condition::EnchantedPermanentsControllersUpkeep => self
                 .attached_to(source)
                 .is_some_and(|host| Some(self.controller_of(host)) == ctx.active_player),
+            // Black Vise: "at the beginning of the chosen player's upkeep" — the same `EachUpkeep`
+            // narrowing as the Aura cycle above, reading the opponent this permanent named as it
+            // entered rather than a host's controller.
+            Condition::ChosenPlayersUpkeep => self
+                .as_permanent(source)
+                .and_then(|p| p.chosen_opponent)
+                .is_some_and(|chosen| Some(chosen) == ctx.active_player),
             // Earthbind: "if enchanted creature has flying" — source-object-based like the
             // upkeep gate above, reading this Aura's host rather than its controller.
             Condition::EnchantedCreatureHasKeyword { keyword } => self
@@ -3997,6 +4004,11 @@ impl Game {
             // at trigger placement (the only site that has a source id) before falling through
             // here.
             Condition::EnchantedPermanentsControllersUpkeep => false,
+            // ponytail: source-object-based like `EnchantedPermanentsControllersUpkeep` above —
+            // Black Vise's gate needs the permanent's own chosen opponent, so
+            // `Game::ability_condition_holds` intercepts it at trigger placement before it can
+            // fall through here.
+            Condition::ChosenPlayersUpkeep => false,
             // ponytail: source-object-based like `EnchantedPermanentsControllersUpkeep` above —
             // Earthbind's gate needs the Aura's host, so `Game::ability_condition_holds` intercepts
             // it at trigger placement before it can fall through here.

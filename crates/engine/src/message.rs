@@ -112,6 +112,7 @@ message_keys! {
     EFFECT_CHOICE_CASTER_KEEPS_ONE_OF_EACH_TYPE_PER_PLAYER => "effect.choice_caster_keeps_one_of_each_type_per_player",
     EFFECT_CHOICE_CHOOSE_COLOR => "effect.choice_choose_color",
     EFFECT_CHOICE_CHOOSE_CREATURE_TYPE => "effect.choice_choose_creature_type",
+    EFFECT_CHOICE_CHOOSE_OPPONENT => "effect.choice_choose_opponent",
     EFFECT_CHOICE_COUNCILS_DILEMMA_VOTE => "effect.choice_councils_dilemma_vote",
     EFFECT_CHOICE_DAMAGING_CREATURE_CONTROLLER_MAY_DRAW => "effect.choice_damaging_creature_controller_may_draw",
     EFFECT_CHOICE_DEFENDING_PLAYER_SACRIFICES => "effect.choice_defending_player_sacrifices",
@@ -1104,6 +1105,7 @@ fn amount_token(amount: Amount) -> &'static str {
         Amount::CreaturesSacrificedThisWay => "creatures_sacrificed_this_way",
         Amount::Scaled { .. } => "scaled",
         Amount::Half { .. } => "half",
+        Amount::Offset { .. } => "offset",
         Amount::IfSpellCastDuringMainPhase { .. } => "if_spell_cast_during_main_phase",
         Amount::RevealedCreatureManaValue => "revealed_creature_mana_value",
         Amount::PermanentsDiedThisTurn => "permanents_died_this_turn",
@@ -1973,6 +1975,9 @@ impl Effect {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_CHOOSE_CREATURE_TYPE)
             }
             Effect::Choice(ChooseColor) => MessageRef::new(MessageKey::EFFECT_CHOICE_CHOOSE_COLOR),
+            Effect::Choice(ChooseOpponent) => {
+                MessageRef::new(MessageKey::EFFECT_CHOICE_CHOOSE_OPPONENT)
+            }
             Effect::Choice(SetOwnColorUntilEndOfTurn) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_SET_OWN_COLOR_UNTIL_END_OF_TURN)
             }
