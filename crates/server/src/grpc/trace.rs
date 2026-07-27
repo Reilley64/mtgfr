@@ -10,7 +10,9 @@ use tower::{Layer, Service};
 use tracing::Instrument;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
-use crate::otel_semconv::{RPC_METHOD, RPC_SERVICE, RPC_SYSTEM, parse_grpc_path, rpc_span_name};
+use crate::otel_semconv::{
+    RPC_GRPC_STATUS_CODE, RPC_METHOD, RPC_SERVICE, RPC_SYSTEM, parse_grpc_path, rpc_span_name,
+};
 
 struct HeaderExtractor<'a>(&'a http::HeaderMap);
 
@@ -34,6 +36,7 @@ pub fn span_for_http_request(path: &str, headers: &http::HeaderMap) -> tracing::
         rpc.system = tracing::field::Empty,
         rpc.service = tracing::field::Empty,
         rpc.method = tracing::field::Empty,
+        rpc.grpc.status_code = tracing::field::Empty,
         mtgfr.table.id = tracing::field::Empty,
         mtgfr.intent.kind = tracing::field::Empty,
         mtgfr.intent.accepted = tracing::field::Empty,
@@ -48,6 +51,16 @@ pub fn span_for_http_request(path: &str, headers: &http::HeaderMap) -> tracing::
     });
     let _ = span.set_parent(parent);
     span
+}
+
+fn record_grpc_status_from_headers(headers: &http::HeaderMap) {
+    let status = headers
+        .get("grpc-status")
+        .and_then(|value| value.to_str().ok())
+        .map(str::trim)
+        .filter(|status| !status.is_empty())
+        .unwrap_or("0");
+    tracing::Span::current().record(RPC_GRPC_STATUS_CODE, tracing::field::display(status));
 }
 
 #[derive(Clone, Copy, Default)]
@@ -85,7 +98,14 @@ where
         // Clone before call so `poll_ready` reservation stays correct (tower clone pattern).
         let mut inner = self.inner.clone();
         let span = span_for_http_request(req.uri().path(), req.headers());
-        Box::pin(async move { inner.call(req).instrument(span).await })
+        Box::pin(async move {
+            let result = inner.call(req).instrument(span.clone()).await;
+            if let Ok(response) = &result {
+                let _enter = span.enter();
+                record_grpc_status_from_headers(response.headers());
+            }
+            result
+        })
     }
 }
 
@@ -97,8 +117,8 @@ mod tests {
     use std::sync::{Arc, Mutex};
 
     use crate::otel_semconv::{
-        MTGFR_INTENT_ACCEPTED, MTGFR_INTENT_KIND, MTGFR_TABLE_ID, MTGFR_USER_ID, RPC_METHOD,
-        RPC_SERVICE, RPC_SYSTEM,
+        MTGFR_INTENT_ACCEPTED, MTGFR_INTENT_KIND, MTGFR_TABLE_ID, MTGFR_USER_ID,
+        RPC_GRPC_STATUS_CODE, RPC_METHOD, RPC_SERVICE, RPC_SYSTEM,
     };
     use opentelemetry_sdk::propagation::TraceContextPropagator;
     use tracing::field::{Field, Visit};
@@ -229,6 +249,7 @@ mod tests {
             observed.values.get(RPC_METHOD).map(String::as_str),
             Some("GetMe")
         );
+        assert!(observed.fields.contains(RPC_GRPC_STATUS_CODE));
         assert!(observed.fields.contains(MTGFR_TABLE_ID));
         assert!(observed.fields.contains(MTGFR_INTENT_KIND));
         assert!(observed.fields.contains(MTGFR_INTENT_ACCEPTED));
@@ -271,6 +292,65 @@ mod tests {
                 .get(RPC_METHOD)
                 .is_none_or(|method| method != garbage_path),
             "rpc.method must not contain the raw HTTP path"
+        );
+    }
+
+    #[test]
+    fn response_grpc_status_is_recorded_on_current_span() {
+        opentelemetry::global::set_text_map_propagator(TraceContextPropagator::new());
+        let headers = http::HeaderMap::new();
+        let mut response_headers = http::HeaderMap::new();
+        response_headers.insert("grpc-status", "7".parse().unwrap());
+        let layer = CapturingLayer::default();
+        let observed = layer.observed.clone();
+        let subscriber = tracing_subscriber::registry().with(layer);
+
+        tracing::subscriber::with_default(subscriber, || {
+            let span = span_for_http_request("/mtgfr.v1.Game/SubmitIntent", &headers);
+            let _enter = span.enter();
+            record_grpc_status_from_headers(&response_headers);
+        });
+
+        let observed = observed
+            .lock()
+            .expect("observed span lock")
+            .take()
+            .expect("span was created");
+        assert_eq!(
+            observed
+                .values
+                .get(RPC_GRPC_STATUS_CODE)
+                .map(String::as_str),
+            Some("7")
+        );
+    }
+
+    #[test]
+    fn missing_response_grpc_status_records_ok() {
+        opentelemetry::global::set_text_map_propagator(TraceContextPropagator::new());
+        let headers = http::HeaderMap::new();
+        let response_headers = http::HeaderMap::new();
+        let layer = CapturingLayer::default();
+        let observed = layer.observed.clone();
+        let subscriber = tracing_subscriber::registry().with(layer);
+
+        tracing::subscriber::with_default(subscriber, || {
+            let span = span_for_http_request("/mtgfr.v1.Game/SubmitIntent", &headers);
+            let _enter = span.enter();
+            record_grpc_status_from_headers(&response_headers);
+        });
+
+        let observed = observed
+            .lock()
+            .expect("observed span lock")
+            .take()
+            .expect("span was created");
+        assert_eq!(
+            observed
+                .values
+                .get(RPC_GRPC_STATUS_CODE)
+                .map(String::as_str),
+            Some("0")
         );
     }
 }

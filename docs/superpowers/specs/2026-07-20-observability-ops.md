@@ -33,6 +33,9 @@ port-forward`; no tunnel hostname for the observability plane. Exporters no-op l
 - As an **operator**, I run `kubectl -n observability port-forward svc/grafana 3000:80` and open
   Grafana; I see latency, error rate, and can correlate a browser trace to a BFF span to an API
   span via Tempo trace links in Loki.
+- As an **operator**, I open the `mtgfr OTEL RED` dashboard and see BFF HTTP rate/error/latency by
+  `http.route`, plus API gRPC rate/error/latency by `rpc.service`, `rpc.method`, and
+  `rpc.grpc.status_code`.
 - As an **operator**, I open Grafana (via port-forward) and see browser → BFF → API traces
   correlated by W3C `traceparent`, with no hand/library contents in any span.
 
@@ -113,6 +116,20 @@ kubectl -n observability port-forward svc/grafana 3000:80
 # or: kubectl -n observability get secret grafana-admin -o jsonpath='{.data.admin-password}' | base64 -d
 ```
 
+### RED dashboard
+
+Grafana provisions one operator dashboard from
+`iac/grafana/dashboards/mtgfr-otel-red.json` via the Helm chart's `dashboardProviders` and
+`dashboards` values. The dashboard uses Tempo TraceQL metrics panels rather than Prometheus
+spanmetrics because the current Alloy/Tempo topology does not configure a spanmetrics connector or
+Tempo metrics-generator.
+
+Panels:
+- BFF HTTP rate, 5xx rate, and p95 latency grouped by `http.route` for `service.name=edh-web`.
+- API gRPC rate, non-OK rate, and p95 latency grouped by `rpc.service`, `rpc.method`, and
+  `rpc.grpc.status_code` for `service.name=edh-api`.
+- A Tempo trace-search table for API spans carrying `mtgfr.table.id`.
+
 ### Local / dev
 
 **Local/dev:** OTEL exporters no-op when `OTEL_EXPORTER_OTLP_ENDPOINT` is unset. `RUST_LOG`
@@ -133,6 +150,9 @@ still drives `tracing` / fmt output.
   Retained on pod prune. PVC names include `instanceId` to avoid collisions across rolling
   Deployments ([production-topology-and-operations](2026-07-20-production-topology-and-operations.md)
   container image notes).
+- **RED dashboard queries traces directly:** Terraform provisions the dashboard through Grafana
+  Helm values; panels use Tempo datasource UID `tempo` and TraceQL metrics functions because
+  Prometheus does not receive generated spanmetrics in this stack.
 
 ---
 
@@ -148,6 +168,9 @@ still drives `tracing` / fmt output.
   `client/app/domain/otel/semconv.test.ts`.
 - Build metadata consumed by BFF OTEL resource attributes is covered by
   `client/app/domain/build-meta.test.ts` ([shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md)).
+- Dashboard provisioning changes are validated with JSON syntax checks and `terraform validate`
+  from `iac/`; dashboard query behavior is checked manually through operator Grafana after
+  port-forwarding.
 
 ---
 

@@ -29,7 +29,8 @@ images and infrastructure.
 
 Observability is self-hosted **LGTM** in namespace `observability` — see
 [observability-ops](2026-07-20-observability-ops.md). Grafana is operator-only via `kubectl
-port-forward`; no tunnel hostname for the observability plane.
+port-forward`; no tunnel hostname for the observability plane. Terraform provisions the
+`mtgfr OTEL RED` Grafana dashboard with BFF HTTP and API gRPC RED panels.
 
 ---
 
@@ -203,6 +204,7 @@ Loaded once at startup via `Settings::load()`:
 | `VERSION` | `version` | crate version | image release tag |
 | `RUST_LOG` | (tracing) | `info` | `info` |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | (OTEL exporter) | — | `http://alloy.observability.svc:4318` |
+| `DEPLOYMENT_ENVIRONMENT` | (OTEL resource attr) | — | `production` |
 
 Source precedence (later wins): built-in defaults → `config/mtgfr.toml` (committed, non-secret)
 → environment variables (`__` separator for nested keys; flat vars like `DATABASE_URL` also work).
@@ -217,6 +219,7 @@ Web BFF env (Nitro `edh-web`):
 | `WEB_DATABASE_URL` | `postgresql://mtgfr:<pw>@postgres:5432/mtgfr_web` |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://alloy.observability.svc:4318` |
 | `FARO_COLLECT_UPSTREAM` | `http://alloy.observability.svc:12347/collect` |
+| `DEPLOYMENT_ENVIRONMENT` | `production` OTEL resource attr |
 
 OTEL / Faro exporter behavior and scrub rules: [observability-ops](2026-07-20-observability-ops.md).
 
@@ -302,6 +305,8 @@ CI/Buildx cache and release tag cascade: [ci-and-release](2026-07-20-ci-and-rele
 
 - `iac/` is validated in CI via `terraform validate` (plan not run in CI — apply machine needs
   cluster access).
+- Grafana dashboard JSON is syntax-checked locally; Terraform validation covers dashboard provider
+  and file wiring.
 - `crates/server/src/settings.rs` unit tests cover: default loading, env-var override, toml
   override, cors\_origin validation (valid and invalid).
 - `crates/server/src/health.rs` unit tests cover: `live` version, `ready` always 200 while
