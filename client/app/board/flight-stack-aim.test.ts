@@ -505,7 +505,11 @@ describe("stack flight settle handoff", () => {
       }),
     );
 
-    expect(afterGame.flights.size).toBe(0);
+    // Near but still flying — keep the glide; do not clear into a short correction retarget.
+    const leftover = afterGame.flights.get(permanentId);
+    expect(leftover).toBeDefined();
+    expect(leftover?.hold).toBe(true);
+    expect(leftover?.phase).toBe("flying");
   });
 
   it("does not start a short second glide when sync arrives near the end of a stack seed", () => {
@@ -550,12 +554,86 @@ describe("stack flight settle handoff", () => {
       ),
     );
 
-    // Must hand off — leaving a flying flight here is the short second ease.
-    expect(afterGame.flights.size).toBe(0);
+    // Near-end: finish the current glide — never clear hold and retarget the last inches.
     const leftover = afterGame.flights.get(spellId);
-    if (leftover != null) {
+    if (leftover == null) {
+      expect(afterGame.flights.size).toBe(0);
+    } else {
+      expect(leftover.hold).toBe(true);
+      expect(leftover.phase).toBe("flying");
       const remaining = Math.hypot(leftover.targetX - leftover.x, leftover.targetY - leftover.y);
-      expect(remaining).toBeGreaterThan(120);
+      expect(remaining).toBeLessThanOrEqual(72);
     }
+  });
+
+  it("keeps hold when a far stack seed retargets so a later settle sync can hand off", () => {
+    const handId = 7;
+    const spellId = 42;
+    const bolt = spell(spellId, "Lightning Bolt");
+    const board0 = { ...initialBoardModel(), viewport: { ...BOARD_VIEWPORT }, cameraFitPlayers: 2 };
+    const face = restingStackFace(board0, 1, 0);
+    const scale = stackFlightScale(board0.camera.zoom);
+    const far = spawnFlight({
+      id: handId,
+      print: bolt.print ?? "",
+      name: bolt.name,
+      x: 200,
+      y: 700,
+      scale: handFlightScale(board0.camera.zoom),
+      targetX: 200,
+      targetY: 700,
+      targetScale: handFlightScale(board0.camera.zoom),
+      kind: "stack",
+      fromCardId: handId,
+      hold: true,
+    });
+
+    const afterEntrance = syncBoardWithGame(
+      {
+        ...board0,
+        flights: new Map([[handId, far]]),
+        handHidden: new Set([handId]),
+        hideCardIds: new Set([handId]),
+        ownedIds: new Set([handId]),
+      },
+      gameFold(
+        state({
+          objects: [bolt],
+          stack: [{ controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId }],
+        }),
+        {
+          stackEntrances: new Map([[spellId, { from: handId, controller: 0 }]]),
+        },
+      ),
+    );
+
+    const mid = afterEntrance.flights.get(spellId);
+    expect(mid).toBeDefined();
+    expect(mid?.hold).toBe(true);
+    expect(mid?.phase).toBe("flying");
+    expect(mid?.targetX).toBe(face.x);
+    expect(mid?.targetY).toBe(face.y);
+
+    // Later fold without stackEntrances — parked held seed must hand off, not short-retarget.
+    const parked = {
+      ...mid!,
+      x: face.x,
+      y: face.y,
+      scale,
+      targetX: face.x,
+      targetY: face.y,
+      targetScale: scale,
+      phase: "settled" as const,
+      hold: true,
+    };
+    const afterSettle = syncBoardWithGame(
+      {
+        ...afterEntrance,
+        flights: new Map([[spellId, parked]]),
+      },
+      // New seq so syncFlightsWithGame runs again (lastProvenanceSeq gates repeats).
+      { ...gameFold(state({ objects: [bolt], stack: [{ controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId }] })), seq: 2 },
+    );
+    expect(afterSettle.flights.size).toBe(0);
   });
 });

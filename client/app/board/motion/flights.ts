@@ -138,14 +138,20 @@ export function rebindFlightId(
   return next;
 }
 
-export function retargetFlight(flight: CardFlight, target: { x: number; y: number; scale: number }): CardFlight {
+export function retargetFlight(
+  flight: CardFlight,
+  target: { x: number; y: number; scale: number },
+  opts?: { retainHold?: boolean },
+): CardFlight {
   return {
     ...flight,
     targetX: target.x,
     targetY: target.y,
     targetScale: target.scale,
     phase: "flying",
-    hold: false,
+    // Local seeds keep hold through authority aim updates so later sync can hand off cleanly
+    // instead of clearing hold and inviting a short second ease / early HTML reveal.
+    hold: opts?.retainHold === true ? flight.hold : false,
   };
 }
 

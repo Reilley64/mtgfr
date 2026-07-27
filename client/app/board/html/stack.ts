@@ -55,8 +55,9 @@ type StackItem = {
 function hideStackRestingFace(board: BoardModel, source: number): boolean {
   const flight = board.flights.get(source);
   if (flight == null || flight.kind !== "stack") return false;
-  // Held seeds park as settled while awaiting rebind — keep the resting face suppressed.
-  return flight.phase === "flying" || flight.hold === true;
+  // Any in-model stack flight still owns the face — including settled frames before FlightsSynced
+  // drops it. Revealing HTML while the canvas flight is still painted reads as a short second ease.
+  return true;
 }
 
 function objectMeta(state: VisibleState, source: number): { print: string; name: string | null; cardId?: string } {
