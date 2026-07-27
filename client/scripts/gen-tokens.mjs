@@ -142,6 +142,29 @@ function serializeShadow(value) {
   return layers.map(serializeShadowLayer).join(", ");
 }
 
+function normalizeRgbForCanvas(color) {
+  const match = color.trim().match(/^rgb\(\s*(\d+)\s+(\d+)\s+(\d+)\s*\/\s*([0-9.]+)\s*\)$/);
+  if (!match) {
+    return color;
+  }
+  const [, r, g, b, alpha] = match;
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function parseCssShadowLayer(css) {
+  const match = css.trim().match(/^0\s+(-?[0-9.]+)px\s+([0-9.]+)px\s+(.+)$/);
+  if (!match) {
+    return null;
+  }
+  const [, offsetY, blur, color] = match;
+  return {
+    css,
+    offsetY: Number(offsetY),
+    blur: Number(blur),
+    color: normalizeRgbForCanvas(color),
+  };
+}
+
 function serializeCubicBezier(value) {
   const [a, b, c, d] = value;
   return `cubic-bezier(${a}, ${b}, ${c}, ${d})`;
@@ -313,6 +336,9 @@ function publicColorKey(path) {
 
 function buildShadowDragExport(root) {
   const node = getNode(root, ["semantic", "drop-shadow", "drag"]) ?? getNode(root, ["drop-shadow", "drag"]);
+  if (node?.$type === "css" && typeof node.$value === "string") {
+    return parseCssShadowLayer(node.$value);
+  }
   if (node?.$type !== "shadow") {
     return null;
   }
@@ -326,7 +352,7 @@ function buildShadowDragExport(root) {
     css: serializeShadow(node.$value),
     offsetY: Number(layer.offsetY?.value ?? layer.offsetY ?? 0),
     blur: Number(layer.blur?.value ?? layer.blur ?? 0),
-    color: serializeColor(layer.color),
+    color: normalizeRgbForCanvas(serializeColor(layer.color)),
   };
 }
 
@@ -481,6 +507,7 @@ async function main() {
 
 export {
   ANIMATE_RECIPES,
+  buildShadowDragExport,
   getNode,
   isAlias,
   parseAlias,

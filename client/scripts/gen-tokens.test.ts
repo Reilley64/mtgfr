@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { publicCssVarName, resolveAliases, serializeTokenCss, serializeTokenValue } from "./gen-tokens.mjs";
+import {
+  buildShadowDragExport,
+  publicCssVarName,
+  resolveAliases,
+  serializeTokenCss,
+  serializeTokenValue,
+} from "./gen-tokens.mjs";
 
 describe("gen-tokens helpers", () => {
   it("resolves DTCG aliases without mutating the source tree", () => {
@@ -29,6 +35,40 @@ describe("gen-tokens helpers", () => {
       components: [0.97, 0.03, 145],
     });
     expect(root.semantic.color.playable.$value).toBe("{primitive.color.snow}");
+  });
+
+  it("throws when aliases are circular", () => {
+    const root = {
+      color: {
+        a: { $type: "color", $value: "{color.b}" },
+        b: { $type: "color", $value: "{color.a}" },
+      },
+    };
+
+    expect(() => resolveAliases(root)).toThrow("circular alias");
+  });
+
+  it("throws when an alias target is missing", () => {
+    const root = {
+      color: {
+        playable: { $type: "color", $value: "{color.missing}" },
+      },
+    };
+
+    expect(() => resolveAliases(root)).toThrow("alias target missing: color.missing");
+  });
+
+  it("throws when an alias target has a different type", () => {
+    const root = {
+      color: {
+        playable: { $type: "color", $value: "{duration.fast}" },
+      },
+      duration: {
+        fast: { $type: "duration", $value: { value: 0.2, unit: "s" } },
+      },
+    };
+
+    expect(() => resolveAliases(root)).toThrow("alias type mismatch: color.playable -> duration.fast");
   });
 
   it("maps public CSS names for semantic tokens and skips primitives", () => {
@@ -63,5 +103,49 @@ describe("gen-tokens helpers", () => {
         },
       }),
     ).toBe("oklch(0.97 0.03 145)");
+  });
+
+  it("maps the current CSS drag drop-shadow token to the canvas shadow shape", () => {
+    const root = {
+      "drop-shadow": {
+        drag: { $type: "css", $value: "0 16px 36px rgb(0 0 0 / 0.72)" },
+      },
+    };
+
+    expect(buildShadowDragExport(root)).toEqual({
+      css: "0 16px 36px rgb(0 0 0 / 0.72)",
+      offsetY: 16,
+      blur: 36,
+      color: "rgba(0,0,0,0.72)",
+    });
+  });
+
+  it("maps a typed drag drop-shadow token to the canvas shadow shape", () => {
+    const root = {
+      semantic: {
+        "drop-shadow": {
+          drag: {
+            $type: "shadow",
+            $value: {
+              offsetX: { value: 0, unit: "px" },
+              offsetY: { value: 16, unit: "px" },
+              blur: { value: 36, unit: "px" },
+              color: {
+                colorSpace: "srgb",
+                components: [0, 0, 0],
+                alpha: 0.72,
+              },
+            },
+          },
+        },
+      },
+    };
+
+    expect(buildShadowDragExport(root)).toEqual({
+      css: "0px 16px 36px rgb(0 0 0 / 0.72)",
+      offsetY: 16,
+      blur: 36,
+      color: "rgba(0,0,0,0.72)",
+    });
   });
 });
