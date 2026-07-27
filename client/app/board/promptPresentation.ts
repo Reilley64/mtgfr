@@ -11,7 +11,7 @@ import {
   pendingPlayerAimSeats,
   pendingDivideSpellObjectIndexes,
   sacrificeCostObjectIds,
-  stagedPickTargets,
+  targetMode,
 } from "./action/targeting";
 import { ZONE } from "./geometry/layout";
 
@@ -74,7 +74,7 @@ function localPresentation(board: BoardModel, state: VisibleState): PromptPresen
   }
 
   if (board.staged != null) {
-    return stagedPickTargets(board.staged, state) != null ? modal("local") : none();
+    return targetMode(board.staged.action, state).kind === "pick" ? modal("local") : none();
   }
 
   return null;

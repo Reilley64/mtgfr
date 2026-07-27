@@ -243,6 +243,75 @@ describe("promptPresentation", () => {
     expect(presentation).toEqual({ mode: "simple", source: "local", boardAim: true });
   });
 
+  it("classifies local discardPick hand aim as simple boardAim", () => {
+    const caster = card(10, {
+      name: "Caster",
+      zone: ZONE.Hand,
+      kind: { kind: "instant" },
+    });
+    const fodder = card(11, {
+      name: "Island",
+      zone: ZONE.Hand,
+      kind: { kind: "land", colors: [0, 1, 0, 0, 0] },
+    });
+    const presentation = promptPresentation(
+      {
+        ...initialBoardModel(),
+        discardPick: {
+          action: action(50, {
+            kind: "cast",
+            label: testMessageRef("Cast"),
+            discard_choices: [11],
+            object: 10,
+            section: "hand",
+          }),
+          card: caster,
+          dropSeed: { x: 0, y: 0 },
+          screenOrigin: { x: 0, y: 0 },
+          picks: emptyCostPicks(),
+        },
+      },
+      state({ objects: [caster, fodder] }),
+    );
+
+    expect(presentation).toEqual({ mode: "simple", source: "local", boardAim: true });
+  });
+
+  it("classifies local gyExilePick pile aim as simple boardAim", () => {
+    const caster = card(10, {
+      name: "Caster",
+      zone: ZONE.Hand,
+      kind: { kind: "instant" },
+    });
+    const graveyardCard = card(8, {
+      name: "Corpse",
+      zone: ZONE.Graveyard,
+    });
+    const presentation = promptPresentation(
+      {
+        ...initialBoardModel(),
+        gyExilePick: {
+          action: action(50, {
+            kind: "cast",
+            label: testMessageRef("Cast"),
+            graveyard_exile_choices: [8],
+            graveyard_exile_min: 1,
+            graveyard_exile_max: 1,
+            object: 10,
+            section: "hand",
+          }),
+          card: caster,
+          dropSeed: { x: 0, y: 0 },
+          screenOrigin: { x: 0, y: 0 },
+          picks: emptyCostPicks(),
+        },
+      },
+      state({ objects: [caster, graveyardCard] }),
+    );
+
+    expect(presentation).toEqual({ mode: "simple", source: "local", boardAim: true });
+  });
+
   it("classifies staged off-board target pick as modal", () => {
     const corpse = card(22, {
       name: "Corpse",
@@ -314,5 +383,69 @@ describe("promptPresentation", () => {
     );
 
     expect(presentation).toEqual({ mode: "none" });
+  });
+
+  it("keeps staged preferPick on-board targeting as none after a cost dialog", () => {
+    const target = card(22, {
+      controller: 1,
+      owner: 1,
+      name: "Bear",
+    });
+    const spell = card(10, {
+      kind: { kind: "sorcery" },
+      name: "Shock",
+      owner: 0,
+      controller: 0,
+      zone: ZONE.Hand,
+    });
+    const presentation = promptPresentation(
+      {
+        ...initialBoardModel(),
+        staged: {
+          card: spell,
+          action: action(10, {
+            object: spell.id,
+            label: testMessageRef("Cast Shock"),
+            needs_target: true,
+            targets: [{ kind: "object", id: 22 }],
+          }),
+          picks: emptyCostPicks(),
+          preferPick: true,
+          playOrigin: { x: 0, y: 0 },
+          playOriginScreen: { x: 0, y: 0 },
+        },
+      },
+      state({ objects: [target] }),
+    );
+
+    expect(presentation).toEqual({ mode: "none" });
+  });
+
+  // PendingChoiceView.kind is exhaustive in typed tests, so this off-board choose_target case
+  // covers the same modal fallback contract future unknown kinds should preserve at runtime.
+  it("classifies off-board choose_target as modal fallback", () => {
+    const exiledCard = card(22, {
+      controller: 1,
+      owner: 1,
+      name: "Exiled Card",
+      zone: ZONE.Exile,
+    });
+    const presentation = promptPresentation(
+      initialBoardModel(),
+      state({
+        objects: [exiledCard],
+        pending_choice: {
+          kind: "choose_target",
+          label: testMessageRef("Target creature card"),
+          min: 1,
+          max: 1,
+          player: 0,
+          source: 1,
+          items: [{ id: 22, label: "Exiled Card" }],
+        },
+      }),
+    );
+
+    expect(presentation).toEqual({ mode: "modal", source: "pending" });
   });
 });
