@@ -25,6 +25,11 @@ export interface CardFlight {
   phase: FlightPhase;
   kind: FlightKind;
   fromCardId?: number;
+  /**
+   * Local seed awaiting authoritative rebind/retarget. Settles at the aim pose but stays in the
+   * flight set so game sync can continue the same flight instead of spawning a second one.
+   */
+  hold?: boolean;
 }
 
 export type FlightSpawn = {
@@ -39,6 +44,7 @@ export type FlightSpawn = {
   targetScale: number;
   kind: FlightKind;
   fromCardId?: number;
+  hold?: boolean;
 };
 
 export type FlightStepResult = {
@@ -60,11 +66,16 @@ export function spawnFlight(spawn: FlightSpawn): CardFlight {
     phase: "flying",
     kind: spawn.kind,
     fromCardId: spawn.fromCardId,
+    hold: spawn.hold,
   };
 }
 
 export function flightSettled(flight: CardFlight): boolean {
   return flight.phase === "settled";
+}
+
+export function flightOwnsId(flight: CardFlight): boolean {
+  return flight.phase === "flying" || flight.hold === true;
 }
 
 export function handFlightScale(zoom: number): number {
@@ -131,13 +142,14 @@ export function retargetFlight(flight: CardFlight, target: { x: number; y: numbe
     targetY: target.y,
     targetScale: target.scale,
     phase: "flying",
+    hold: false,
   };
 }
 
 export function flyingCardIds(flights: ReadonlyMap<number, CardFlight>): Set<number> {
   const ids = new Set<number>();
   for (const [id, flight] of flights) {
-    if (flight.phase === "flying") ids.add(id);
+    if (flightOwnsId(flight)) ids.add(id);
   }
   return ids;
 }

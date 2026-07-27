@@ -123,7 +123,36 @@ describe("mergeFlightPoses", () => {
       x: 40,
       y: 80,
       scale: 1,
-      phase: live[0].phase,
+      phase: "flying",
+    });
+  });
+
+  it("releases a parked settled flight when authority marks it flying again", () => {
+    const live = [
+      {
+        ...spawnFlight({
+          id: 7,
+          print: "p",
+          name: "Bolt",
+          x: 40,
+          y: 80,
+          scale: 1,
+          targetX: 100,
+          targetY: 200,
+          targetScale: 1,
+          kind: "stack",
+          hold: true,
+        }),
+        phase: "settled" as const,
+      },
+    ];
+    const incoming = [{ ...live[0], hold: false, phase: "flying" as const, targetX: 120, targetY: 210 }];
+    expect(mergeFlightPoses(live, incoming)[0]).toMatchObject({
+      x: 40,
+      y: 80,
+      phase: "flying",
+      hold: false,
+      targetX: 120,
     });
   });
 });

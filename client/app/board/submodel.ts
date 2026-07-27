@@ -116,6 +116,7 @@ import { GyExileChosen, type Message } from "./messages";
 import { type ExitFx, spawnExitFx } from "./motion/exit-fx";
 import {
   type CardFlight,
+  flightOwnsId,
   flyingCardIds,
   handFlightScale,
   rebindFlightId,
@@ -555,6 +556,9 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
   let flights = new Map(model.flights);
 
   for (const [id, flight] of flights) {
+    // Local seeds hold until landPlayFrom / stackEntrances rebind them. Retargeting here would
+    // clear hold and let a settle sync drop the flight before provenance arrives.
+    if (flight.hold) continue;
     const card = cardsById.get(id);
     if (card != null) {
       flights.set(id, retargetFlightToCard(flight, model, card));
@@ -743,6 +747,7 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
   const pendingResolve = fold.provenance.resolvedFromStack.size > 0 || fold.provenance.leftStackToPile.size > 0;
   for (const [id, flight] of flights) {
     if (flight.kind !== "stack") continue;
+    if (flight.hold) continue;
     if (stackSources.has(id)) continue;
     if (pendingResolve) continue;
     flights.delete(id);
@@ -1094,7 +1099,9 @@ function applyFlightsSynced(
   for (const flight of flightsIn) {
     if (flight.fromCardId != null) retainedSourceIds.add(flight.fromCardId);
 
-    if (flight.phase === "flying") {
+    // Keep held seeds after they park at the aim pose so stack/land sync can rebind them
+    // instead of spawning a second flight from the avatar.
+    if (flightOwnsId(flight)) {
       flights.set(flight.id, flight);
       if (flight.fromCardId != null) handHidden.add(flight.fromCardId);
       continue;
@@ -1305,6 +1312,7 @@ function seedDropFromHand(
       targetScale: stackAim.scale,
       kind,
       fromCardId: card.id,
+      hold: true,
     }),
   );
   handHidden.add(card.id);
