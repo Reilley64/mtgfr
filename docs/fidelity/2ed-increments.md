@@ -1091,7 +1091,7 @@ Controller, not owner: after the host dies, `controller_of` follows it to the gr
 answers its *owner*, so Creature Bond on a creature stolen by Control Magic would have billed
 the wrong seat without the snapshot.
 
-### 63. `whenever-this-is-dealt-damage` — 1 card, M
+### 63. `whenever-this-is-dealt-damage` — 1 card, M — **done**
 Depends on: nothing.
 Fungusaur grows every time it is dealt damage, from any source — combat, a burn spell, a ping.
 The damage-shaped triggers in the pool all watch damage *this permanent deals*
@@ -1101,6 +1101,20 @@ and it fires once per damage event rather than once per combat. *Sketch:* a
 `Trigger::ThisIsDealtDamage` queued off the damage-marking path with the amount on the context (a
 "dealt damage" watcher that scales with the amount is the obvious next consumer, so thread it
 even though Fungusaur ignores it). *Cards:* fungusaur.
+
+*Landed:* `Trigger::ThisIsDealtDamage` as one row in the `TriggerWatch` table — self-scoped, with
+the watch event's `source` set to the *damaged* permanent rather than the dealer, which is the whole
+trick. It rides `Event::DamageMarked`, the choke already shared by combat damage, fight damage, and
+a plain ping, so all three count with no per-path work.
+
+*The amount was not threaded onto `TriggerContext`* — the sketch asked for it speculatively and
+Fungusaur ignores it, so it stays a `ponytail:` note on the variant. Adding the slot later is a
+one-line `TriggerWatchContextKind` arm.
+
+The `DamageMarked` arm did have to widen from `source: Some(source)` to any source: the two tallies
+already there (Armadillo Cloak's host watch, Vampiric Dragon's damaged-this-turn list) are
+dealer-keyed and stay behind a `let Some(source) = source else { continue }`, while a receiving-end
+watch has to fire for sourceless damage too.
 
 ### 64. `fixed-color-tapped-for-mana-bonus` — 1 card, S — **done**
 Depends on: nothing.

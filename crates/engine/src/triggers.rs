@@ -363,6 +363,12 @@ const COMBAT_DAMAGE_TO_CREATURE_TRIGGER_WATCHES: &[TriggerWatch] =
         Trigger::DealsCombatDamageToCreature,
         TriggerWatchContextKind::DamagedCreature,
     )];
+// Fungusaur's "whenever this creature is dealt damage": self-scoped on the *damaged* permanent,
+// so the watch event's `source` is the victim rather than the dealer.
+const DAMAGE_MARKED_TRIGGER_WATCHES: &[TriggerWatch] = &[TriggerWatch::battlefield_self(
+    Trigger::ThisIsDealtDamage,
+    TriggerWatchContextKind::Controller,
+)];
 
 impl Game {
     /// Scan just-produced events and queue the triggered abilities they fire. Two flavors:
@@ -972,11 +978,20 @@ impl Game {
                 // creature damage (fight, CR 701.12), so this one event arm covers both for
                 // Armadillo Cloak's attached-host damage watch.
                 Event::DamageMarked {
-                    source: Some(source),
+                    source,
                     object,
                     amount,
                     ..
                 } => {
+                    // Fungusaur's receiving-end watch fires for *any* damage, including the
+                    // sourceless kind, so it sits ahead of the two source-keyed tallies below.
+                    self.queue_trigger_watch_table(
+                        DAMAGE_MARKED_TRIGGER_WATCHES,
+                        TriggerWatchEvent::for_source(object),
+                    );
+                    let Some(source) = source else {
+                        continue;
+                    };
                     self.queue_enchanted_creature_deals_damage_triggers(source, amount);
                     // Vampiric Dragon's turn-scoped "a creature dealt damage by this creature
                     // this turn dies" tally (fidelity increment #194) — every creature-damage choke

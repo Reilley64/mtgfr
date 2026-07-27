@@ -331,6 +331,14 @@ pub enum Trigger {
     /// can act on "that creature". See the `Event::CombatDamageDealtToCreature` arm of
     /// [`Game::enqueue_triggers`].
     DealsCombatDamageToCreature,
+    /// Whenever this permanent is dealt damage (CR 119.3, Fungusaur: "Whenever this creature is
+    /// dealt damage, put a +1/+1 counter on it") — the *receiving* end, the mirror of every other
+    /// damage trigger here. Self-scoped and fieldless: it fires once per damage event off
+    /// [`Event::DamageMarked`], the shared choke behind combat damage, fight damage, and a plain
+    /// ping alike, so source and combat-ness are both invisible to it.
+    /// ponytail: the amount isn't threaded onto [`TriggerContext`] — the pool's only consumer
+    ///   ignores it. Add a context slot when a card scales with the damage taken.
+    ThisIsDealtDamage,
     /// Whenever a creature dealt damage by this permanent *this turn* dies (CR 603.10a
     /// last-known information, Vampiric Dragon: "Whenever a creature dealt damage by this
     /// creature this turn dies, put a +1/+1 counter on this creature."). Self-scoped and

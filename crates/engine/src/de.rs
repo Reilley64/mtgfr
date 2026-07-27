@@ -1908,6 +1908,7 @@ enum TriggerTag {
     YouPlayALand,
     DealsCombatDamageToPlayer,
     DealsCombatDamageToCreature,
+    ThisIsDealtDamage,
     CreatureDealtDamageByThisDies,
     DealsDamageToOpponent,
     CastSpell,
@@ -2191,6 +2192,7 @@ impl<'de> Deserialize<'de> for Ability {
                     Trigger::DealsCombatDamageToPlayer { who: flat.who }
                 }
                 TriggerTag::DealsCombatDamageToCreature => Trigger::DealsCombatDamageToCreature,
+                TriggerTag::ThisIsDealtDamage => Trigger::ThisIsDealtDamage,
                 TriggerTag::CreatureDealtDamageByThisDies => Trigger::CreatureDealtDamageByThisDies,
                 TriggerTag::DealsDamageToOpponent => Trigger::DealsDamageToOpponent,
                 TriggerTag::CastSpell => Trigger::CastSpell {

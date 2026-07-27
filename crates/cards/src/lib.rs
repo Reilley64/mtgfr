@@ -4070,6 +4070,19 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         assert!(cost.taps_self);
     }
 
+    /// Fungusaur watches damage it *takes*, which is a different trigger from the three
+    /// damage-shaped ones already in the pool — every one of those watches damage the permanent
+    /// *deals*. Reading `deals_combat_damage_to_creature` onto this card would also silently
+    /// narrow it to combat.
+    #[test]
+    fn unlimited_fungusaur_watches_damage_it_takes_not_damage_it_deals() {
+        let saur = get_by_name("Fungusaur").expect("Fungusaur is in the pool");
+        let [grow] = &saur.abilities[..] else {
+            panic!("one triggered ability");
+        };
+        assert_eq!(grow.timing, Timing::Triggered(Trigger::ThisIsDealtDamage));
+    }
+
     /// Library of Leng's two halves are independent statics, and the replacement is fieldless —
     /// it reads the discarding player off the discard itself, so nothing on the card says
     /// "you". Losing the `no_maximum_hand_size` half would quietly hand its controller a cleanup

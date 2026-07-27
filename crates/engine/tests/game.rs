@@ -104876,6 +104876,66 @@ fn mind_twist_for_more_than_the_hand_holds_just_empties_it() {
     assert!(hand_ids(&game, PlayerId(1)).is_empty(), "the hand is empty");
 }
 
+// ── "Whenever this creature is dealt damage" (fidelity #63) ──────────────────────────────────
+
+#[test]
+fn fungusaur_grows_from_a_noncombat_ping() {
+    // "Whenever this creature is dealt damage, put a +1/+1 counter on it." Damage *received*,
+    // from any source — every other damage trigger in the pool watches damage a permanent deals.
+    let mut game = Game::new();
+    let saur = game.spawn_on_battlefield(PlayerId(1), card("Fungusaur"));
+    let tim = game.spawn_on_battlefield(PlayerId(0), card("Prodigal Sorcerer"));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: tim,
+        ability_index: 0,
+        target: Some(Target::Object(saur)),
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("the Sorcerer's tap ability");
+    resolve_top_of_stack(&mut game); // the ping
+    resolve_top_of_stack(&mut game); // the growth trigger it put on the stack
+
+    assert_eq!(game.power(saur), 3, "a 2/2 that took one +1/+1 counter");
+    assert_eq!(game.toughness(saur), 3);
+}
+
+#[test]
+fn fungusaur_doesnt_grow_from_the_damage_it_deals() {
+    // The watch is one-directional: an unblocked Fungusaur deals damage and takes none, so
+    // nothing triggers. (Its blocked twin below is where both halves happen at once.)
+    let mut game = Game::new();
+    let saur = game.spawn_on_battlefield(PlayerId(0), card("Fungusaur"));
+
+    attack_with(&mut game, vec![saur]);
+    advance_until(&mut game, |g| g.current_step() == Step::Main2);
+
+    assert_eq!(game.life(PlayerId(1)), 18, "the 2/2 connected");
+    assert_eq!(game.power(saur), 2, "it was never dealt damage itself");
+}
+
+#[test]
+fn a_blocked_fungusaur_grows_from_the_blockers_damage() {
+    let mut game = Game::new();
+    let saur = game.spawn_on_battlefield(PlayerId(0), card("Fungusaur"));
+    // A 1/1 blocker, not a 2/2: lethal damage kills the Fungusaur at the next state-based check
+    // (CR 704.5g) long before its own trigger could resolve, counter or no counter.
+    let blocker = game.spawn_on_battlefield(PlayerId(1), card("Prodigal Sorcerer"));
+
+    attack_with(&mut game, vec![saur]);
+    block_with(&mut game, vec![(blocker, saur)]).expect("a legal block");
+    advance_until(&mut game, |g| g.current_step() == Step::Main2);
+
+    assert_eq!(
+        game.power(saur),
+        3,
+        "the blocker's 1 damage grew it — the counter outlives the damage, which wears off at cleanup"
+    );
+}
+
 // ── Library of Leng's discard replacement (fidelity #33) ─────────────────────────────────────
 
 #[test]
