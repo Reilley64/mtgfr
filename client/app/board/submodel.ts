@@ -784,11 +784,15 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
       }
       flights.set(
         id,
-        retargetFlight(flight, { x: aim.x, y: aim.y, scale: aim.scale }, {
-          retainHold: true,
-          zone: "stack",
-          note: "post-hold-refresh",
-        }),
+        retargetFlight(
+          flight,
+          { x: aim.x, y: aim.y, scale: aim.scale },
+          {
+            retainHold: true,
+            zone: "stack",
+            note: "post-hold-refresh",
+          },
+        ),
       );
       continue;
     }
@@ -802,10 +806,7 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
       if (flight.fromCardId != null) handHidden.delete(flight.fromCardId);
       continue;
     }
-    flights.set(
-      id,
-      retargetFlight(flight, aim, { retainHold: true, zone: "land", note: "post-hold-refresh" }),
-    );
+    flights.set(id, retargetFlight(flight, aim, { retainHold: true, zone: "land", note: "post-hold-refresh" }));
   }
 
   for (const id of new Set([...fold.provenance.resolvedFromStack, ...fold.provenance.leftStackToPile])) {

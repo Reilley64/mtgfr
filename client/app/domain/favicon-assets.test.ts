@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { hexFallbacks } from "./design-tokens.generated";
 
 const root = resolve(import.meta.dirname, "../..");
 
@@ -17,7 +18,7 @@ describe("favicon assets", () => {
   it("ships a forest-floor circle with transparent dragon cutout", () => {
     expect(svg).toContain('viewBox="0 0 32 32"');
     expect(svg).toContain('aria-label="edh.reilley.dev"');
-    expect(svg).toContain('fill="#0B1310"');
+    expect(svg).toContain(`fill="${hexFallbacks.forestFloor}"`);
     expect(svg).toMatch(/fill-rule=["']evenodd["']/);
     expect(svg).not.toMatch(/<rect\b/i);
     expect(svg).not.toMatch(/#E9B84A/i);

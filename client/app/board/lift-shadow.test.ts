@@ -1,8 +1,10 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { shadowDrag } from "~/design-tokens.generated";
 import { DROP_SHADOW_DRAG_CSS, LIFT_SHADOW_BLUR, LIFT_SHADOW_COLOR, LIFT_SHADOW_OFFSET_Y } from "./lift-shadow";
 
 const cssPath = new URL("../../styles/tokens.generated.css", import.meta.url);
+const sourcePath = new URL("./lift-shadow.ts", import.meta.url);
 
 describe("lift shadow (drag token)", () => {
   it("matches --drop-shadow-drag in tokens.generated.css", () => {
@@ -11,9 +13,16 @@ describe("lift shadow (drag token)", () => {
   });
 
   it("maps the drag token to canvas shadow fields", () => {
-    expect(DROP_SHADOW_DRAG_CSS).toBe("0 16px 36px rgb(0 0 0 / 0.72)");
-    expect(LIFT_SHADOW_OFFSET_Y).toBe(16);
-    expect(LIFT_SHADOW_BLUR).toBe(36);
-    expect(LIFT_SHADOW_COLOR).toBe("rgba(0,0,0,0.72)");
+    expect(DROP_SHADOW_DRAG_CSS).toBe(shadowDrag.css);
+    expect(LIFT_SHADOW_OFFSET_Y).toBe(shadowDrag.offsetY);
+    expect(LIFT_SHADOW_BLUR).toBe(shadowDrag.blur);
+    expect(LIFT_SHADOW_COLOR).toBe(shadowDrag.color);
+  });
+
+  it("uses the generated token export instead of duplicated literals", () => {
+    const source = readFileSync(sourcePath, "utf8");
+    expect(source).toContain('import { shadowDrag } from "~/design-tokens.generated";');
+    expect(source).not.toContain('"0 16px 36px rgb(0 0 0 / 0.72)"');
+    expect(source).not.toContain('"rgba(0,0,0,0.72)"');
   });
 });

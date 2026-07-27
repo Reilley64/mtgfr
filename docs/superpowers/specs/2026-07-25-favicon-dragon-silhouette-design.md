@@ -45,7 +45,7 @@ The current favicon is a blocky commander-gold **E** on an opaque `forest-floor`
   ```
 
 - Prefer SVG; ICO remains the fallback for older clients.
-- Fill color `#0B1310` is hardcoded in the SVG (same token value as `design.tokens.json`); no favicon codegen.
+- Fill color matches `hexFallbacks.forestFloor`, generated from the OKLCH `forest-floor` token; no separate favicon palette is maintained.
 
 ### Docs on ship
 
