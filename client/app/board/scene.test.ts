@@ -445,6 +445,69 @@ test("PlayModeChosen runs the selected action and clears playModePick", () => {
   });
 });
 
+test("PlayModeChosen cast keeps the in-flight seed pose instead of restarting from origin", () => {
+  // Choose already seeded a stack flight mid-glide. Casting must not spawnDrop again from
+  // screenOrigin — that reset is the visible double animation on multi-mode hand cards.
+  const card = creature(42, 0, { name: "Valley Rannet", zone: ZONE.Hand });
+  const castAction: ActionView = {
+    id: 7,
+    kind: "cast",
+    label: testMessageRef("Cast Valley Rannet"),
+    needs_target: false,
+    object: card.id,
+    section: "hand",
+  };
+  const cycleAction: ActionView = {
+    id: 8,
+    kind: "cycle",
+    label: testMessageRef("Mountaincycling"),
+    needs_target: false,
+    object: card.id,
+    section: "hand",
+  };
+  const midFlight = {
+    id: card.id,
+    print: "print-rannet",
+    name: card.name,
+    x: 510,
+    y: 320,
+    scale: 1.4,
+    targetX: 720,
+    targetY: 140,
+    targetScale: 0.5,
+    phase: "flying" as const,
+    kind: "stack" as const,
+    fromCardId: card.id,
+    hold: true,
+  };
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    playModePick: {
+      card,
+      modes: [castAction, cycleAction],
+      dropSeed: { x: 0, y: 0 },
+      screenOrigin: { x: 400, y: 700 },
+    },
+    handHidden: new Set([card.id]),
+    flights: new Map([[card.id, midFlight]]),
+    hideCardIds: new Set([card.id]),
+    ownedIds: new Set([card.id]),
+  };
+  const gameFold = fold(state({ objects: [card], actions: [castAction, cycleAction] }));
+
+  const [next, commands] = updateBoard(board, PlayModeChosen({ actionId: castAction.id }), gameFold, "T1");
+
+  expect(playModePickOf(next)).toBeNull();
+  expect(commands).toHaveLength(1);
+  const flight = next.flights.get(card.id);
+  expect(flight).toBeDefined();
+  expect(flight?.x).toBe(510);
+  expect(flight?.y).toBe(320);
+  expect(flight?.scale).toBe(1.4);
+  expect(flight?.hold).toBe(true);
+  expect(flight?.kind).toBe("stack");
+});
+
 test("PlayModeChosen with a stale pruned action clears playModePick without intent", () => {
   const card = creature(42, 0, { name: "Valley Rannet", zone: ZONE.Hand });
   const staleCastAction: ActionView = {
