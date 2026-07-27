@@ -3352,3 +3352,34 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         }
     }
 }
+
+#[cfg(test)]
+mod creature_type_tests {
+    use super::*;
+    use engine::{CREATURE_TYPES, CardKind};
+
+    /// `CREATURE_TYPES` is the candidate list a "choose a creature type" prompt offers, and its
+    /// contract is "every creature type printed in the pool". Nothing regenerates it, so this is
+    /// what keeps it honest as cards arrive: a new creature whose type is missing fails here
+    /// rather than silently narrowing every such prompt.
+    #[test]
+    fn every_creature_type_printed_in_the_pool_can_be_chosen() {
+        let mut missing: Vec<String> = registry()
+            .values()
+            .filter(|def| matches!(def.kind, CardKind::Creature { .. }))
+            .flat_map(|def| {
+                def.subtypes
+                    .iter()
+                    .filter(|ty| !CREATURE_TYPES.contains(ty))
+                    .map(|ty| format!("{ty} ({})", def.name))
+            })
+            .collect();
+        missing.sort();
+        missing.dedup();
+        assert!(
+            missing.is_empty(),
+            "add these to CREATURE_TYPES: {}",
+            missing.join(", ")
+        );
+    }
+}

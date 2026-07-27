@@ -395,14 +395,19 @@ entry) as a filter axis, plus a delayed end-step trigger that checks the existin
 `attacked_this_turn` flag — which #1's neighbourhood already maintains.
 *Cards:* nettling_imp, siren_s_call.
 
-### 27. `widen-creature-types` — 0 cards, S
+### 27. `widen-creature-types` — 0 cards, S — **done**
 Depends on: nothing.
 Re-audit fallout, not a card blocker. `CREATURE_TYPES` in `types/stack.rs` is the candidate list
 for "choose a creature type" prompts and its own ponytail says to widen it when a card needs a
-type not printed on anything in the pool. 2ed prints 21 such types: Archer, Assassin, Barbarian,
-Basilisk, Cockatrice, Gargoyle, Illusion, Juggernaut, Minotaur, Nightmare, Nymph, Ogre, Pegasus,
-Pirate, Serpent, Shade, Specter, Spider, Unicorn, Wall, Wraith. *Sketch:* add them to the list.
-Land it in the same wave as the first batch of 2ed creatures so the two stay consistent.
+type not printed on anything in the pool.
+*Landed:* the audit was wider than the sketch — 24 types were missing, not the 21 this set prints,
+because the same drift had accumulated from earlier grinds (Centaur, Crab, Drone, Hag, Kithkin,
+Leviathan, Phelddagrif, Praetor, Ranger, Rebel, Sphinx were already printed and already
+unchoosable). The list is now 112 entries and, more to the point, no longer maintained by
+vigilance: `CREATURE_TYPES` is `pub` and a `cards` test walks the registry, so a creature authored
+with a type the list lacks fails the suite. The remaining 2ed types the sketch named — Barbarian,
+Basilisk, Cockatrice, Juggernaut, Nightmare, Pegasus, Pirate, Serpent — arrive with their cards,
+and that test is what will demand them.
 *Cards:* none directly — every "choose a creature type" card in the pool gains the options.
 
 ### 28. `counter-kinds` — 5 cards, S — **corpse landed, 3 kinds left**

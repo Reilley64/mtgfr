@@ -17353,7 +17353,8 @@ fn patchwork_banner_offers_newly_printed_creature_types() {
         panic!("expected a ChooseCreatureType pause");
     };
     for newly_printed in [
-        "Kavu", "Imp", "Plant", "Avatar", "Treefolk", "Mutant", "Boar",
+        "Kavu", "Imp", "Plant", "Avatar", "Treefolk", "Mutant", "Boar", "Wall", "Specter",
+        "Unicorn", "Wraith",
     ] {
         assert!(
             options.contains(&newly_printed),
