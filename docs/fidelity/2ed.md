@@ -7,8 +7,8 @@ Engine backlog for section D: [`2ed-increments.md`](2ed-increments.md).
 | --- | --- | ---: |
 | A | In the pool, faithful | 28 |
 | B | In the pool, approximated | 0 |
-| C | New, expressible with today's DSL | 127 |
-| D | New, needs engine work | 133 |
+| C | New, expressible with today's DSL | 125 |
+| D | New, needs engine work | 135 |
 | — | Out of scope (flag-don't-force) | 4 |
 
 ## A. In the pool, faithful
@@ -75,10 +75,9 @@ Authorable in Phase 3 with no engine change. TDD each one.
 - [x] **Demonic Tutor** {1}{B} · Sorcery
 - [ ] **Dingus Egg** {4} · Artifact
 - [x] **Disenchant** {1}{W} · Instant
-- [ ] **Disrupting Scepter** {3} · Artifact
-- [ ] **Drudge Skeletons** {1}{B} · Creature — Skeleton
-- [ ] **Dwarven Demolition Team** {2}{R} · Creature — Dwarf
-- [ ] **Dwarven Warriors** {2}{R} · Creature — Dwarf Warrior
+- [x] **Drudge Skeletons** {1}{B} · Creature — Skeleton
+- [x] **Dwarven Demolition Team** {2}{R} · Creature — Dwarf
+- [x] **Dwarven Warriors** {2}{R} · Creature — Dwarf Warrior
 - [x] **Earth Elemental** {3}{R}{R} · Creature — Elemental
 - [x] **Elvish Archers** {1}{G} · Creature — Elf Archer
 - [x] **Fear** {B}{B} · Enchantment — Aura
@@ -87,12 +86,12 @@ Authorable in Phase 3 with no engine change. TDD each one.
 - [x] **Firebreathing** {R} · Enchantment — Aura
 - [x] **Flight** {U} · Enchantment — Aura
 - [x] **Fog** {G} · Instant
-- [ ] **Frozen Shade** {2}{B} · Creature — Shade
+- [x] **Frozen Shade** {2}{B} · Creature — Shade
 - [ ] **Fungusaur** {3}{G} · Creature — Fungus Dinosaur
 - [x] **Giant Growth** {G} · Instant
 - [x] **Giant Spider** {3}{G} · Creature — Spider
-- [ ] **Goblin Balloon Brigade** {R} · Creature — Goblin Warrior
-- [ ] **Granite Gargoyle** {2}{R} · Creature — Gargoyle
+- [x] **Goblin Balloon Brigade** {R} · Creature — Goblin Warrior
+- [x] **Granite Gargoyle** {2}{R} · Creature — Gargoyle
 - [x] **Gray Ogre** {2}{R} · Creature — Ogre
 - [x] **Green Ward** {W} · Enchantment — Aura
 - [x] **Hill Giant** {3}{R} · Creature — Giant
@@ -102,14 +101,13 @@ Authorable in Phase 3 with no engine change. TDD each one.
 - [x] **Hurloon Minotaur** {1}{R}{R} · Creature — Minotaur
 - [x] **Hurricane** {X}{G} · Sorcery
 - [x] **Ice Storm** {2}{G} · Sorcery
-- [ ] **Icy Manipulator** {4} · Artifact
+- [x] **Icy Manipulator** {4} · Artifact
 - [x] **Ironroot Treefolk** {4}{G} · Creature — Treefolk
-- [ ] **Jade Statue** {4} · Artifact
-- [ ] **Jayemdae Tome** {4} · Artifact — Book
+- [x] **Jayemdae Tome** {4} · Artifact — Book
 - [x] **Jump** {U} · Instant
 - [x] **Lance** {W} · Enchantment — Aura
-- [ ] **Ley Druid** {2}{G} · Creature — Human Druid
-- [ ] **Living Wall** {4} · Artifact Creature — Wall
+- [x] **Ley Druid** {2}{G} · Creature — Human Druid
+- [x] **Living Wall** {4} · Artifact Creature — Wall
 - [x] **Mahamoti Djinn** {4}{U}{U} · Creature — Djinn
 - [x] **Merfolk of the Pearl Trident** {U} · Creature — Merfolk
 - [x] **Mons's Goblin Raiders** {R} · Creature — Goblin
@@ -118,38 +116,38 @@ Authorable in Phase 3 with no engine change. TDD each one.
 - [x] **Mox Pearl** {0} · Artifact
 - [x] **Mox Ruby** {0} · Artifact
 - [x] **Mox Sapphire** {0} · Artifact
-- [ ] **Nevinyrral's Disk** {4} · Artifact
-- [ ] **Northern Paladin** {2}{W}{W} · Creature — Human Knight
+- [x] **Nevinyrral's Disk** {4} · Artifact
+- [x] **Northern Paladin** {2}{W}{W} · Creature — Human Knight
 - [x] **Obsianus Golem** {6} · Artifact Creature — Golem
-- [ ] **Orcish Artillery** {1}{R}{R} · Creature — Orc Warrior
+- [x] **Orcish Artillery** {1}{R}{R} · Creature — Orc Warrior
 - [ ] **Orcish Oriflamme** {3}{R} · Enchantment
 - [x] **Pearled Unicorn** {2}{W} · Creature — Unicorn
 - [ ] **Pestilence** {2}{B}{B} · Enchantment
 - [ ] **Phantasmal Forces** {3}{U} · Creature — Illusion
 - [x] **Phantom Monster** {3}{U} · Creature — Illusion
 - [x] **Plateau** — · Land — Mountain Plains
-- [ ] **Prodigal Sorcerer** {2}{U} · Creature — Human Wizard Sorcerer
+- [x] **Prodigal Sorcerer** {2}{U} · Creature — Human Wizard Sorcerer
 - [x] **Psionic Blast** {2}{U} · Instant
 - [x] **Red Ward** {W} · Enchantment — Aura
 - [ ] **Regeneration** {1}{G} · Enchantment — Aura
 - [x] **Regrowth** {1}{G} · Sorcery
 - [x] **Roc of Kher Ridges** {3}{R} · Creature — Bird
-- [ ] **Rod of Ruin** {4} · Artifact
-- [ ] **Royal Assassin** {1}{B}{B} · Creature — Human Assassin
+- [x] **Rod of Ruin** {4} · Artifact
+- [x] **Royal Assassin** {1}{B}{B} · Creature — Human Assassin
 - [x] **Savannah** — · Land — Forest Plains
 - [x] **Scathe Zombies** {2}{B} · Creature — Zombie
 - [x] **Scrubland** — · Land — Plains Swamp
 - [x] **Scryb Sprites** {G} · Creature — Faerie
-- [ ] **Sedge Troll** {2}{R} · Creature — Troll
+- [x] **Sedge Troll** {2}{R} · Creature — Troll
 - [ ] **Sengir Vampire** {3}{B}{B} · Creature — Vampire
 - [x] **Shatter** {1}{R} · Instant
-- [ ] **Shivan Dragon** {4}{R}{R} · Creature — Dragon
+- [x] **Shivan Dragon** {4}{R}{R} · Creature — Dragon
 - [x] **Sinkhole** {B}{B} · Sorcery
 - [x] **Steal Artifact** {2}{U}{U} · Enchantment — Aura
 - [x] **Stone Rain** {2}{R} · Sorcery
 - [x] **Stream of Life** {X}{G} · Sorcery
 - [x] **Taiga** — · Land — Mountain Forest
-- [ ] **The Hive** {5} · Artifact
+- [x] **The Hive** {5} · Artifact
 - [x] **Tranquility** {2}{G} · Sorcery
 - [x] **Tropical Island** — · Land — Forest Island
 - [x] **Tundra** — · Land — Plains Island
@@ -157,17 +155,17 @@ Authorable in Phase 3 with no engine change. TDD each one.
 - [x] **Twiddle** {U} · Instant
 - [x] **Underground Sea** — · Land — Island Swamp
 - [x] **Unholy Strength** {B} · Enchantment — Aura
-- [ ] **Uthden Troll** {2}{R} · Creature — Troll
+- [x] **Uthden Troll** {2}{R} · Creature — Troll
 - [ ] **Verduran Enchantress** {1}{G}{G} · Creature — Human Druid
 - [x] **Volcanic Island** — · Land — Island Mountain
 - [x] **Wall of Air** {1}{U}{U} · Creature — Wall
-- [ ] **Wall of Bone** {2}{B} · Creature — Skeleton Wall
-- [ ] **Wall of Brambles** {2}{G} · Creature — Plant Wall
-- [ ] **Wall of Fire** {1}{R}{R} · Creature — Wall
+- [x] **Wall of Bone** {2}{B} · Creature — Skeleton Wall
+- [x] **Wall of Brambles** {2}{G} · Creature — Plant Wall
+- [x] **Wall of Fire** {1}{R}{R} · Creature — Wall
 - [x] **Wall of Ice** {2}{G} · Creature — Wall
 - [x] **Wall of Stone** {1}{R}{R} · Creature — Wall
 - [x] **Wall of Swords** {3}{W} · Creature — Wall
-- [ ] **Wall of Water** {1}{U}{U} · Creature — Wall
+- [x] **Wall of Water** {1}{U}{U} · Creature — Wall
 - [x] **Wall of Wood** {G} · Creature — Wall
 - [ ] **Wanderlust** {2}{G} · Enchantment — Aura
 - [x] **War Mammoth** {3}{G} · Creature — Elephant
@@ -177,7 +175,7 @@ Authorable in Phase 3 with no engine change. TDD each one.
 - [x] **Web** {G} · Enchantment — Aura
 - [x] **White Ward** {W} · Enchantment — Aura
 - [ ] **Wild Growth** {G} · Enchantment — Aura
-- [ ] **Will-o'-the-Wisp** {B} · Creature — Spirit
+- [x] **Will-o'-the-Wisp** {B} · Creature — Spirit
 - [x] **Wrath of God** {2}{W}{W} · Sorcery
 
 ## D. New, needs engine work
@@ -217,6 +215,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Deathlace** {B} · Instant — increment 15
 - [ ] **Demonic Hordes** {3}{B}{B}{B} · Creature — Demon — increment 20, 41
 - [ ] **Disintegrate** {X}{R} · Sorcery — increment 34
+- [ ] **Disrupting Scepter** {3} · Artifact — increment 56
 - [ ] **Drain Life** {X}{1}{B} · Sorcery — increment 54
 - [ ] **Drain Power** {U}{U} · Sorcery — increment 23, 49
 - [ ] **Earthbind** {R} · Enchantment — Aura — increment 44
@@ -245,6 +244,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Island Sanctuary** {1}{W} · Enchantment — increment 3
 - [ ] **Ivory Cup** {1} · Artifact — increment 9, 10
 - [ ] **Jade Monolith** {4} · Artifact — increment 6
+- [ ] **Jade Statue** {4} · Artifact — increment 57
 - [ ] **Juggernaut** {4} · Artifact Creature — Juggernaut — increment 11
 - [ ] **Karma** {2}{W}{W} · Enchantment — increment 1
 - [ ] **Keldon Warlord** {2}{R}{R} · Creature — Human Barbarian — increment 1, 2

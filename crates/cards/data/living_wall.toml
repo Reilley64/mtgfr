@@ -1,0 +1,31 @@
+# Defender (This creature can't attack.)
+# {1}: Regenerate this creature.
+name = "Living Wall"
+sets = ["2ed", "30a", "3ed", "ced", "cei", "fbb", "lea", "leb", "me4", "sum"]
+id = "4844312c-3c9d-4ca1-986d-4ad35e68454e"
+default_print = "3035651f-a2b5-49c1-a768-1f510a31a9d8"
+oracle = "Defender (This creature can't attack.)\n{1}: Regenerate this creature."
+subtypes = ["Wall"]
+keywords = ["defender"]
+
+[cost]
+generic = 4
+
+[kind]
+type = "creature"
+power = 0
+toughness = 6
+also = ["artifact"]
+
+# {1}: Regenerate this creature.
+[[abilities]]
+timing = "activated"
+
+[abilities.activation_cost]
+generic = 1
+
+# Regenerate this creature.
+[[abilities.effects]]
+type = "control"
+mode = "regenerate_shield"
+target = "this"

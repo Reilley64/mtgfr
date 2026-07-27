@@ -1,0 +1,32 @@
+# Defender (This creature can't attack.)
+# {U}: This creature gets +1/+0 until end of turn.
+name = "Wall of Water"
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
+id = "608cc65c-f99a-4ca3-be24-190d2556b411"
+default_print = "f97f5b6e-7997-498a-9b27-ac2873f425dd"
+oracle = "Defender (This creature can't attack.)\n{U}: This creature gets +1/+0 until end of turn."
+subtypes = ["Wall"]
+keywords = ["defender"]
+
+[cost]
+generic = 1
+blue = 2
+
+[kind]
+type = "creature"
+power = 0
+toughness = 5
+
+# {U}: This creature gets +1/+0 until end of turn.
+[[abilities]]
+timing = "activated"
+
+[abilities.activation_cost]
+blue = 1
+
+# This creature gets +1/+0 until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "pump_self_until_end_of_turn"
+power = 1
+toughness = 0

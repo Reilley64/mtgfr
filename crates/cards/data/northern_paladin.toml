@@ -1,0 +1,30 @@
+# {W}{W}, {T}: Destroy target black permanent.
+name = "Northern Paladin"
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "7ed", "ced", "cei", "fbb", "lea", "leb", "sld", "sum"]
+id = "f5975294-508a-453e-893a-2fbea2487d17"
+default_print = "309cd081-13bb-428b-b561-60b7a81c0f1d"
+oracle = "{W}{W}, {T}: Destroy target black permanent."
+subtypes = ["Human", "Knight"]
+
+[cost]
+generic = 2
+white = 2
+
+[kind]
+type = "creature"
+power = 3
+toughness = 3
+
+# {W}{W}, {T}: Destroy target black permanent.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+[abilities.activation_cost]
+white = 2
+
+# Destroy target black permanent.
+[[abilities.effects]]
+type = "destroy"
+mode = "target"
+target = { permanent = { color = "black" } }

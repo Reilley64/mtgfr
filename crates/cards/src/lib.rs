@@ -163,10 +163,10 @@ fn load_from_data_dir() -> Pool {
 mod tests {
     use super::*;
     use engine::{
-        Amount, CardFilter, CardKind, ChoiceEffect, Color, Condition, ControlEffect, CopyEffect,
-        Cost, CountersEffect, DamageEffect, DestroyEffect, DigEffect, DrawEffect, Effect,
-        EnterController, ExileEffect, GraveyardScope, Keyword, LandProduces, LifeEffect, Mana,
-        ManaEffect, MillEffect, MiscEffect, PermanentFilter, ProtectionScope, PumpEffect,
+        Amount, CardFilter, CardKind, ChoiceEffect, Color, ColorFilter, Condition, ControlEffect,
+        CopyEffect, Cost, CountersEffect, DamageEffect, DestroyEffect, DigEffect, DrawEffect,
+        Effect, EnterController, ExileEffect, GraveyardScope, Keyword, LandProduces, LifeEffect,
+        Mana, ManaEffect, MillEffect, MiscEffect, PermanentFilter, ProtectionScope, PumpEffect,
         SacrificeCost, SacrificeEffect, SearchDest, SpellFilter, SpellSpeed, StaticEffect,
         TargetCount, TargetSpec, Timing, TokenEffect, Trigger, TypeSet, ZoneEffect,
     };
@@ -2635,6 +2635,284 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                 }),
             ],
             "tap or untap, same legal targets either way"
+        );
+    }
+
+    /// The set's mana-sink permanents: a regeneration cycle and a self-pump cycle, each paying one
+    /// pip of its own color for a repeatable effect on its own source.
+    #[test]
+    fn unlimited_mana_sinks_pay_one_pip_to_shield_or_pump_themselves() {
+        let regenerators: &[(&str, Color, u8)] = &[
+            ("Drudge Skeletons", Color::Black, 0),
+            ("Uthden Troll", Color::Red, 0),
+            ("Wall of Bone", Color::Black, 0),
+            ("Wall of Brambles", Color::Green, 0),
+            ("Will-o'-the-Wisp", Color::Black, 0),
+        ];
+        for (name, color, generic) in regenerators {
+            let card = get_by_name(name).unwrap_or_else(|| panic!("{name} is in the pool"));
+            let ability = card
+                .abilities
+                .iter()
+                .find(|a| matches!(a.timing, Timing::Activated(_)))
+                .unwrap_or_else(|| panic!("{name} has an activated ability"));
+            let Timing::Activated(activation) = ability.timing else {
+                unreachable!()
+            };
+            assert_eq!(activation.mana.generic, *generic, "{name}'s generic cost");
+            assert_eq!(
+                activation.mana.colored[color.index()],
+                1,
+                "{name} pays one pip of its own color"
+            );
+            assert!(!activation.taps_self, "{name} regenerates without tapping");
+            assert_eq!(
+                ability.effect,
+                Effect::Control(ControlEffect::RegenerateShield {
+                    target: TargetSpec::ThisPermanent,
+                }),
+                "{name} shields itself"
+            );
+        }
+
+        // Living Wall's regeneration is the cycle's odd one out — a generic {1}, no colored pip.
+        let living_wall = get_by_name("Living Wall").expect("Living Wall is in the pool");
+        let Timing::Activated(activation) = living_wall.abilities[0].timing else {
+            panic!("Living Wall regenerates on an activated ability");
+        };
+        assert_eq!(
+            (activation.mana.generic, activation.mana.colored),
+            (1, [0; Color::COUNT]),
+            "Living Wall regenerates for a colorless {{1}}"
+        );
+
+        let pumpers: &[(&str, Color, i32, i32, &[Keyword])] = &[
+            ("Frozen Shade", Color::Black, 1, 1, &[]),
+            ("Wall of Fire", Color::Red, 1, 0, &[]),
+            ("Wall of Water", Color::Blue, 1, 0, &[]),
+            ("Granite Gargoyle", Color::Red, 0, 1, &[]),
+            ("Shivan Dragon", Color::Red, 1, 0, &[]),
+            (
+                "Goblin Balloon Brigade",
+                Color::Red,
+                0,
+                0,
+                &[Keyword::Flying],
+            ),
+        ];
+        for (name, color, power, toughness, keywords) in pumpers {
+            let card = get_by_name(name).unwrap_or_else(|| panic!("{name} is in the pool"));
+            let ability = &card.abilities[0];
+            let Timing::Activated(activation) = ability.timing else {
+                panic!("{name} pumps on an activated ability");
+            };
+            assert_eq!(
+                activation.mana.colored[color.index()],
+                1,
+                "{name} pays one pip of its own color"
+            );
+            assert_eq!(
+                ability.effect,
+                Effect::Pump(PumpEffect::PumpSelfUntilEndOfTurn {
+                    power: Amount::Fixed(*power),
+                    toughness: Amount::Fixed(*toughness),
+                    keywords,
+                }),
+                "{name} pumps itself"
+            );
+        }
+    }
+
+    /// Sedge Troll carries both halves at once — a conditional self-anthem and a regeneration.
+    #[test]
+    fn sedge_troll_grows_only_while_its_controller_holds_a_swamp() {
+        let troll = get_by_name("Sedge Troll").expect("Sedge Troll is in the pool");
+        let Effect::Static(StaticEffect::Anthem {
+            power,
+            toughness,
+            self_only,
+            condition,
+            ..
+        }) = troll.abilities[0].effect
+        else {
+            panic!("Sedge Troll's first ability is its conditional self-anthem");
+        };
+        assert_eq!(
+            (power, toughness, self_only),
+            (Amount::Fixed(1), Amount::Fixed(1), true),
+            "+1/+1, and only to itself"
+        );
+        assert_eq!(
+            condition,
+            Some(Condition::ControlsLandsWithSubtype {
+                subtypes: &["Swamp"],
+                count: 1,
+            }),
+            "the +1/+1 is live only while you control a Swamp"
+        );
+        assert!(
+            troll.abilities.iter().any(|a| a.effect
+                == Effect::Control(ControlEffect::RegenerateShield {
+                    target: TargetSpec::ThisPermanent
+                })),
+            "Sedge Troll also regenerates"
+        );
+    }
+
+    /// The tap-to-do-something permanents: pingers, a card drawer, a tapper, and the removal.
+    #[test]
+    fn unlimited_tap_abilities_carry_their_printed_effects() {
+        let expected: &[(&str, Effect)] = &[
+            (
+                "Prodigal Sorcerer",
+                Effect::Damage(DamageEffect::Target {
+                    amount: Amount::Fixed(1),
+                    target: TargetSpec::AnyTarget,
+                    count: TargetCount::default(),
+                    divided: false,
+                }),
+            ),
+            (
+                "Rod of Ruin",
+                Effect::Damage(DamageEffect::Target {
+                    amount: Amount::Fixed(1),
+                    target: TargetSpec::AnyTarget,
+                    count: TargetCount::default(),
+                    divided: false,
+                }),
+            ),
+            (
+                "Jayemdae Tome",
+                Effect::Draw(DrawEffect::Cards {
+                    count: Amount::Fixed(1),
+                }),
+            ),
+            (
+                "Royal Assassin",
+                Effect::Destroy(DestroyEffect::Target {
+                    target: TargetSpec::Permanent(PermanentFilter {
+                        types: TypeSet::CREATURE,
+                        tapped: Some(true),
+                        ..PermanentFilter::default()
+                    }),
+                    count: TargetCount::default(),
+                    cant_be_regenerated: false,
+                }),
+            ),
+            (
+                "Northern Paladin",
+                Effect::Destroy(DestroyEffect::Target {
+                    target: TargetSpec::Permanent(PermanentFilter {
+                        color: ColorFilter::Black,
+                        ..PermanentFilter::default()
+                    }),
+                    count: TargetCount::default(),
+                    cant_be_regenerated: false,
+                }),
+            ),
+            (
+                "Dwarven Demolition Team",
+                Effect::Destroy(DestroyEffect::Target {
+                    target: TargetSpec::Permanent(PermanentFilter {
+                        types: TypeSet::CREATURE,
+                        subtypes: &["Wall"],
+                        ..PermanentFilter::default()
+                    }),
+                    count: TargetCount::default(),
+                    cant_be_regenerated: false,
+                }),
+            ),
+            (
+                "Ley Druid",
+                Effect::Control(ControlEffect::UntapTarget {
+                    target: TargetSpec::Permanent(PermanentFilter {
+                        types: TypeSet::LAND,
+                        ..PermanentFilter::default()
+                    }),
+                    count: TargetCount::default(),
+                }),
+            ),
+            (
+                "Dwarven Warriors",
+                // "Can't be blocked this turn" is the `unblockable` keyword with no stat change.
+                Effect::Pump(PumpEffect::PumpUntilEndOfTurn {
+                    power: Amount::Fixed(0),
+                    toughness: Amount::Fixed(0),
+                    target: TargetSpec::Permanent(PermanentFilter {
+                        types: TypeSet::CREATURE,
+                        power_max: Some(2),
+                        ..PermanentFilter::default()
+                    }),
+                    keywords: &[Keyword::Unblockable],
+                }),
+            ),
+        ];
+        for (name, effect) in expected {
+            let card = get_by_name(name).unwrap_or_else(|| panic!("{name} is in the pool"));
+            let ability = &card.abilities[0];
+            assert!(
+                matches!(ability.timing, Timing::Activated(a) if a.taps_self),
+                "{name} taps to activate"
+            );
+            assert_eq!(&ability.effect, effect, "{name}'s printed effect");
+        }
+
+        // Orcish Artillery's ping costs its own controller more life than it deals.
+        let artillery = get_by_name("Orcish Artillery").expect("Orcish Artillery is in the pool");
+        let Effect::Sequence { steps } = &artillery.abilities[0].effect else {
+            panic!("Orcish Artillery deals damage twice");
+        };
+        assert_eq!(
+            steps.as_ref(),
+            &[
+                Effect::Damage(DamageEffect::Target {
+                    amount: Amount::Fixed(2),
+                    target: TargetSpec::AnyTarget,
+                    count: TargetCount::default(),
+                    divided: false,
+                }),
+                Effect::Damage(DamageEffect::ToSelf {
+                    amount: Amount::Fixed(3)
+                }),
+            ],
+            "2 to any target, 3 to you"
+        );
+    }
+
+    /// Nevinyrral's Disk and The Hive: the set's two artifacts whose frame carries a rider.
+    #[test]
+    fn unlimited_artifacts_enter_tapped_and_mint_their_named_token() {
+        let disk = get_by_name("Nevinyrral's Disk").expect("Nevinyrral's Disk is in the pool");
+        assert!(disk.enters_tapped, "the Disk enters tapped");
+        assert_eq!(
+            disk.abilities[0].effect,
+            Effect::Destroy(DestroyEffect::All {
+                filter: PermanentFilter {
+                    types: TypeSet::ARTIFACT
+                        .union(TypeSet::CREATURE)
+                        .union(TypeSet::ENCHANTMENT),
+                    ..PermanentFilter::default()
+                },
+                cant_be_regenerated: false,
+            }),
+            "the Disk sweeps artifacts, creatures and enchantments — itself included"
+        );
+
+        let hive = get_by_name("The Hive").expect("The Hive is in the pool");
+        let Effect::Token(TokenEffect::Create { token: wasp, .. }) = &hive.abilities[0].effect
+        else {
+            panic!("The Hive mints a token");
+        };
+        assert_eq!(wasp.name, "Wasp");
+        assert_eq!(wasp.keywords.as_ref(), &[Keyword::Flying]);
+        assert_eq!(
+            wasp.kind,
+            CardKind::Creature {
+                power: 1,
+                toughness: 1,
+                also: TypeSet::ARTIFACT,
+            },
+            "a 1/1 artifact creature"
         );
     }
 }

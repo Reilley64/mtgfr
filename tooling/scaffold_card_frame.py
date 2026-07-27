@@ -180,6 +180,8 @@ def frame(card: dict) -> str:
         lines.append(f"oracle = {toml_str(oracle)}")
     if "Legendary" in type_line:
         lines.append("legendary = true")
+    if re.search(r"\benters tapped\b", oracle):
+        lines.append("enters_tapped = true")
     if subtypes and "Land" not in type_line:
         lines.append("subtypes = [" + ", ".join(toml_str(s) for s in subtypes) + "]")
     keywords = [k.lower() for k in card.get("keywords", []) if k.lower() in BARE_KEYWORDS]

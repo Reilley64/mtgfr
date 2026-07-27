@@ -648,3 +648,25 @@ top three of **target player's** library, reorders them, and may then have that 
 already has "put back in any order" for scry/surveil — reuse that pending-choice shape) and an
 optional shuffle step.
 *Cards:* natural_selection.
+
+### 56. `activate-only-during-your-turn` — 1 card, S
+Depends on: nothing.
+`sorcery_speed` is the only activation-timing gate the DSL has, and it is stricter than what
+Disrupting Scepter prints: "Activate only during your turn" allows activation in combat, in
+either end step, and with the stack non-empty, all of which `sorcery_speed` forbids (CR 602.5b vs
+a plain turn check). Authoring it as `sorcery_speed` would quietly narrow a card, so the Scepter
+waits. *Sketch:* a `your_turn_only` bool on the activated-ability cost fields, checked in
+`ability_activation_gate` next to `sorcery_speed` — an independent axis, not a widening of it.
+*Cards:* disrupting_scepter.
+
+### 57. `until-end-of-combat-animation` — 1 card, M
+Depends on: 56 (`activate-only-during-your-turn`) — both are activation/duration gates on the
+same ability shape, and the combat-window check is the same kind of predicate.
+Jade Statue needs two things at once: `animate_self_until_end_of_turn` only knows the
+until-end-of-turn duration, and there is no "activate only during combat" gate for an activated
+ability (`cast_only_during_combat` is a *spell*-level field). An until-EOT animation is strictly
+better than the printed one — the Statue would survive past combat as a 3/6 — so this can't be
+approximated down. *Sketch:* a `duration` field on the animation effect (`end_of_turn` /
+`end_of_combat`, cleared at the end-of-combat step alongside the existing cleanup) plus a
+`combat_only` activation gate reusing `cast_only_during_combat`'s own window predicate.
+*Cards:* jade_statue.

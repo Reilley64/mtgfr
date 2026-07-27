@@ -1,0 +1,30 @@
+# {T}: Target creature with power 2 or less can't be blocked this turn.
+name = "Dwarven Warriors"
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "hoc", "lea", "leb", "sum"]
+id = "cfc553cd-3b4c-47a9-bffb-e5790befb32c"
+default_print = "113d518a-2ce9-4747-9e6f-c6a464a78a49"
+oracle = "{T}: Target creature with power 2 or less can't be blocked this turn."
+subtypes = ["Dwarf", "Warrior"]
+
+[cost]
+generic = 2
+red = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# {T}: Target creature with power 2 or less can't be blocked this turn.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Target creature with power 2 or less can't be blocked this turn.
+[[abilities.effects]]
+type = "pump"
+mode = "pump_until_end_of_turn"
+target = { permanent = { types = "creature", power_max = 2 } }
+power = 0
+toughness = 0
+keywords = ["unblockable"]

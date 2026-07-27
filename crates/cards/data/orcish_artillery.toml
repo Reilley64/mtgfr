@@ -1,0 +1,34 @@
+# {T}: This creature deals 2 damage to any target and 3 damage to you.
+name = "Orcish Artillery"
+sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "9ed", "ced", "cei", "fbb", "itp", "lea", "leb", "plst", "rqs", "sum"]
+id = "c000811e-bde7-4840-a3bb-9714d5c977eb"
+default_print = "da899c3d-c424-4901-ae5a-2a8e0c66e631"
+oracle = "{T}: This creature deals 2 damage to any target and 3 damage to you."
+subtypes = ["Orc", "Warrior"]
+
+[cost]
+generic = 1
+red = 2
+
+[kind]
+type = "creature"
+power = 1
+toughness = 3
+
+# {T}: This creature deals 2 damage to any target and 3 damage to you.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# This creature deals 2 damage to any target ...
+[[abilities.effects]]
+type = "damage"
+mode = "target"
+amount = 2
+target = "any"
+
+# ... and 3 damage to you.
+[[abilities.effects]]
+type = "damage"
+mode = "to_self"
+amount = 3
