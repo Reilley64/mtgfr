@@ -103,4 +103,31 @@ describe("scryfall oracle total cache", () => {
     await __inflightOracleTotalForTests();
     expect(getCachedOracleTotal()).toBe(3);
   });
+
+  it("streams the gzip body instead of buffering via arrayBuffer + gunzipSync", async () => {
+    const gz = gzipJsonl(['{"id":"a"}', '{"id":"b"}']);
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(gz);
+        controller.close();
+      },
+    });
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes("/bulk-data/oracle-cards")) {
+        return new Response(JSON.stringify({ jsonl_download_uri: "https://data.scryfall.io/x.jsonl.gz" }), {
+          status: 200,
+        });
+      }
+      const res = new Response(stream, { status: 200 });
+      res.arrayBuffer = async () => {
+        throw new Error("arrayBuffer must not be used for oracle bulk (blocks the Nitro event loop)");
+      };
+      return res;
+    });
+
+    const total = await refreshOracleTotal(fetchImpl as unknown as typeof fetch);
+    expect(total).toBe(2);
+    expect(getCachedOracleTotal()).toBe(2);
+  });
 });
