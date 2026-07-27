@@ -109,13 +109,13 @@ describe("combatArrowEndpoints", () => {
     expect(endpoints[0]?.to).not.toEqual({ x: 100, y: 40 });
   });
 
-  it("omits blocked attackers with no living blockers after every defender declares blockers", () => {
+  it("omits blocked attackers when block record references a blocker absent from cards", () => {
     const endpoints = combatArrowEndpoints({
       camera: { panX: 0, panY: 0, zoom: 1 },
       cards: [card(10, { x: 0, y: 0 })],
       avatars: { 1: { x: 100, y: 40 } },
       attackers: [{ attacker: 10, defender: 1 }],
-      blocks: [],
+      blocks: [{ blocker: 20, attacker: 10 }],
       blockersDeclared: [1],
       blockedAttackers: [10],
     });
