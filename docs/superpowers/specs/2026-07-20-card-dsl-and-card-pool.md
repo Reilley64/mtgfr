@@ -93,7 +93,8 @@ Discriminates on `type`:
 - `"enchantment"` / `"artifact"` / `"planeswalker"` / `"battle"`: non-creature permanents. Planeswalker requires `loyalty: i32`; battle requires `defense: i32` (stored in `Permanent::loyalty`).
 - `"aura"`: permanent Aura; the `enchant` top-level field supplies the attach filter.
 - `"land"`: optional `produces` (what mana it taps for), `subtypes` (Forest/Island/Plains/Swamp/Mountain for basic subtypes), `basic: true`.
-- `"token"`: used only in `data/tokens/*.toml` files; not a deckable card type.
+
+There is no `"token"` `[kind]` tag. Token profiles are separate TOMLs under `data/tokens/` (see Token profiles below); they use these ordinary kinds.
 
 ### `[[abilities]]`
 
@@ -157,7 +158,7 @@ Representative modes by family:
 
 ### Token profiles
 
-Token profiles live in `data/tokens/*.toml`. They are full `CardDef` instances with `[kind] type = "token"`. They carry `colors`, `subtypes`, and optional abilities (e.g. a Pest token that gains life on death). Creating cards reference them by oracle id: `token = "uuid"`. The `install_token_defs` / `token_def` APIs load and query the registry, and token creation interns the chosen definition into a `CardId` before attaching it to a live object or event. Current tokens: 37 profiles covering Angel, Beast, Cat, Dragon, Elemental, Food, Fractal, Goat, Inkling, Insect, Myr, Pest, Saproling, Snake, Soldier, Spirit, Treasure, Thopter, Zombie, and others.
+Token profiles live in `data/tokens/*.toml` as separate files from deckable cards in `data/`. Each profile is a full `CardDef` authored with the same `[kind]` vocabulary as deckable cards (`creature`, `artifact`, `aura`, `sorcery`, …) — not a dedicated `type = "token"` kind. They carry `colors`, `subtypes`, and optional abilities (e.g. a Pest token that gains life on death). Creating cards reference them by Scryfall oracle id: `token = "uuid"`. The `install_token_defs` / `token_def` APIs load and query the registry, and token creation interns the chosen definition into a `CardId` before attaching it to a live object or event. Current tokens: 39 profiles covering Angel, Beast, Cat, Dragon, Elemental, Food, Fractal, Goat, Inkling, Insect, Myr, Pest, Saproling, Snake, Soldier, Spirit, Treasure, Thopter, Zombie, and others.
 
 ### Fidelity discipline
 
