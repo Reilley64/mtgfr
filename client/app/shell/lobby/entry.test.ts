@@ -190,6 +190,7 @@ test("entry shows deck hero, Host primary, and soft-inline Join", () => {
       }),
     ),
     Scene.expect(Scene.testId("lobby-entry")).toExist(),
+    Scene.expect(Scene.selector('[data-testid="lobby"][data-ui="panel"]')).toBeAbsent(),
     Scene.expect(Scene.testId("lobby-host")).toExist(),
     Scene.expect(Scene.testId("lobby-host")).toHaveClass("bg-llanowar"),
     Scene.expect(Scene.testId("lobby-join-code")).toExist(),

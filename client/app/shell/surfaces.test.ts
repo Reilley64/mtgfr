@@ -661,6 +661,7 @@ describe("shell surface scenes", () => {
         }),
       ),
       Scene.expect(Scene.selector('[data-testid="lobby-entry"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="lobby"][data-ui="panel"]')).toBeAbsent(),
       ...expectShellFrame(),
       Scene.expect(Scene.selector('[data-testid="account-menu-trigger"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-host"]')).toExist(),
