@@ -46,6 +46,26 @@ describe("restingPaintChanged", () => {
     expect(restingPaintChanged(flat, fanned)).toBe(true);
   });
 
+  it("is true when only stack declared targets change", () => {
+    const before = restingPaintSnapshot({
+      ...baseResting,
+      stack: [{ controller: 0, kind: "spell", label: { key: "card.name", params: [] }, source: 9 }],
+    } as never);
+    const after = restingPaintSnapshot({
+      ...baseResting,
+      stack: [
+        {
+          controller: 0,
+          kind: "spell",
+          label: { key: "card.name", params: [] },
+          source: 9,
+          target: { kind: "object", id: 1 },
+        },
+      ],
+    } as never);
+    expect(restingPaintChanged(before, after)).toBe(true);
+  });
+
   it("is true when only commander_damage changes on a player", () => {
     const before = restingPaintSnapshot({
       ...baseResting,

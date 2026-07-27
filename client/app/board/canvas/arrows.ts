@@ -81,20 +81,20 @@ export function stackPileFaceOrigin(
   });
 }
 
-/** Declared stack targets → Island Blue arrows (presentation-aware origins). */
-export function stackTargetArrowShapes(input: {
+/** Declared stack targets → Island Blue arrow endpoints (presentation-aware origins). */
+export function stackTargetArrowEndpoints(input: {
   viewport: { width: number; height: number };
   stack: ReadonlyArray<StackObjectView>;
   cards: ReadonlyArray<RenderCard>;
   avatars: AvatarScreenPositions;
   camera: Camera;
   presentation?: StackPresentation;
-}): Shape[] {
+}): Array<{ from: Vec; to: Vec }> {
   const count = input.stack.length;
   if (count === 0) return [];
   const presentation = input.presentation ?? "pile";
   const byId = new Map(input.cards.map((card) => [card.id, card]));
-  const shapes: Shape[] = [];
+  const endpoints: Array<{ from: Vec; to: Vec }> = [];
   for (let row = 0; row < count; row++) {
     const entry = input.stack[row];
     if (entry == null) continue;
@@ -114,8 +114,24 @@ export function stackTargetArrowShapes(input: {
         if (card != null) to = cardCenter(input.camera, card);
       }
       if (to == null) continue;
-      shapes.push(...arrowPath(from, to, TARGET_COLOR));
+      endpoints.push({ from, to });
     }
+  }
+  return endpoints;
+}
+
+/** Declared stack targets → Island Blue arrows (presentation-aware origins). */
+export function stackTargetArrowShapes(input: {
+  viewport: { width: number; height: number };
+  stack: ReadonlyArray<StackObjectView>;
+  cards: ReadonlyArray<RenderCard>;
+  avatars: AvatarScreenPositions;
+  camera: Camera;
+  presentation?: StackPresentation;
+}): Shape[] {
+  const shapes: Shape[] = [];
+  for (const { from, to } of stackTargetArrowEndpoints(input)) {
+    shapes.push(...arrowPath(from, to, TARGET_COLOR));
   }
   return shapes;
 }

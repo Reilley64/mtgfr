@@ -1,16 +1,18 @@
 import { Effect, type Queue as EffectQueue, Queue, Stream } from "effect";
 import * as Mount from "foldkit/mount";
 import { colors } from "~/design-tokens.generated";
-import type { ActionView, PlayerView, VisibleState, WireAttack, WireBlock } from "~/wire/types";
+import type { ActionView, PlayerView, StackObjectView, VisibleState, WireAttack, WireBlock } from "~/wire/types";
 import { cardBackUrl, imageUrlByPrint } from "../../domain/deck-builder/scryfall";
 import { gravatarUrl, monogramLetter } from "../../domain/gravatar";
 import { type ImageCache, sharedImageCache } from "../../domain/image-cache";
 import type { Vec } from "../action/targeting";
 import { TARGET_COLOR } from "../action/targeting";
+import { stackTargetArrowEndpoints } from "../canvas/arrows";
 import { clockChips } from "../canvas/avatars";
 import { PLAYABLE_BORDER, playableBattlefieldObjectIds } from "../chrome";
 import { type Camera, worldToScreen } from "../geometry/camera";
 import { AVATAR_R, avatarLabelOffsets, avatarPos, type RenderCard, seatColor } from "../geometry/layout";
+import type { StackPresentation } from "../geometry/stackLayout";
 import { ArtLoaded, FlightsSynced } from "../messages";
 import { type ExitFx, exitFxParticles, particleAllowancePerFx, stepExitFx } from "../motion/exit-fx";
 import { type CardFlight, stepFlights } from "../motion/flights";
@@ -37,6 +39,9 @@ export type BitmapFrame = {
   /** Attackers/blocks declared during the current staging session but not yet committed. */
   stagedAttackers: readonly WireAttack[];
   stagedBlocks: readonly WireBlock[];
+  /** Stack entries for declared-target arrows (Mount layer 4, above resting permanents). */
+  stack?: readonly StackObjectView[];
+  stackPresentation?: StackPresentation;
   flights: readonly CardFlight[];
   exitFx?: readonly ExitFx[];
   hideCardIds: ReadonlySet<number>;
@@ -308,6 +313,7 @@ export function paintBitmapLayer(canvas: HTMLCanvasElement, frame: BitmapFrame, 
 
   paintAvatars(ctx, frame, cache);
   paintCombatArrows(ctx, frame);
+  paintStackTargetArrows(ctx, frame);
   paintStagingAimArrow(ctx, frame);
   if (frame.combatDragFrom != null && frame.combatDragStroke != null) {
     paintArrow(ctx, frame.combatDragFrom, frame.cursor, frame.combatDragStroke);
@@ -520,6 +526,28 @@ function paintCombatArrows(ctx: CanvasRenderingContext2D, frame: BitmapFrame): v
     const to = cardsById.get(block.attacker);
     if (from == null || to == null) continue;
     paintArrow(ctx, cardCenter(frame.camera, from), cardCenter(frame.camera, to), colors.wallGreen);
+  }
+}
+
+/** Stack→target arrows must share Mount layer 4 with combat/aim — Canvas vector sits under resting art. */
+function paintStackTargetArrows(ctx: CanvasRenderingContext2D, frame: BitmapFrame): void {
+  const stack = frame.stack ?? [];
+  if (stack.length === 0) return;
+  const count = Math.max(1, frame.players.length);
+  const avatars: Record<number, { x: number; y: number }> = {};
+  for (const player of frame.players) {
+    const pos = avatarPos(player.player, frame.viewer, count);
+    avatars[player.player] = worldToScreen(frame.camera, pos.x, pos.y);
+  }
+  for (const { from, to } of stackTargetArrowEndpoints({
+    viewport: { width: frame.width, height: frame.height },
+    stack,
+    cards: frame.cards,
+    avatars,
+    camera: frame.camera,
+    presentation: frame.stackPresentation ?? "pile",
+  })) {
+    paintArrow(ctx, from, to, TARGET_COLOR);
   }
 }
 

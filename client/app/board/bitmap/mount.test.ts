@@ -319,6 +319,74 @@ describe("paintBitmapLayer", () => {
     expect(calls.indexOf("arrow")).toBeGreaterThan(calls.indexOf("avatar"));
   });
 
+  it("paints stack target arrows above resting permanents (not under card art)", () => {
+    // Stack→target arrows used to live only on the Foldkit Canvas under the Mount bitmap,
+    // so Island Blue arrows disappeared under permanent faces. Mount layer 4 must paint them.
+    const calls: string[] = [];
+    vi.stubGlobal("window", { devicePixelRatio: 1 });
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => mockCtx(calls)),
+      style: {},
+    } as unknown as HTMLCanvasElement;
+    const image = (label: string) => ({ label }) as unknown as HTMLImageElement;
+    const cache = {
+      get: vi.fn((url: string) => {
+        if (url.includes("resting-print")) return image("resting");
+        return undefined;
+      }),
+    };
+
+    paintBitmapLayer(
+      canvas,
+      {
+        width: 800,
+        height: 600,
+        camera: { panX: 0, panY: 0, zoom: 1 },
+        cards: [card()],
+        viewer: 0,
+        players: [player(), player({ player: 1, username: "Bob" })],
+        priority: 0,
+        combat: {
+          attackers: [],
+          blocks: [],
+          attackers_declared: false,
+          blockers_declared: [],
+        },
+        stagedAttackers: [],
+        stagedBlocks: [],
+        stack: [
+          {
+            controller: 0,
+            kind: "spell",
+            label: testMessageRef("Lightning Bolt"),
+            source: 9,
+            target: { kind: "object", id: 1 },
+          },
+        ],
+        stackPresentation: "pile",
+        flights: [],
+        hideCardIds: new Set(),
+        targetObjects: new Set(),
+        pickedObjects: new Set(),
+        assignAmounts: new Map(),
+        targetPlayers: new Set(),
+        pickedPlayers: new Set(),
+        aimFrom: null,
+        cursor: { x: 0, y: 0 },
+        combatDragFrom: null,
+        combatDragStroke: null,
+        paymentPreviewIds: new Set(),
+      },
+      cache,
+    );
+
+    expect(calls.includes("arrow")).toBe(true);
+    expect(calls.indexOf("arrow")).toBeGreaterThan(calls.indexOf("image:resting"));
+    expect(calls.indexOf("arrow")).toBeGreaterThan(calls.indexOf("avatar"));
+  });
+
   it("paints Cmd N on life orbs from max commander_damage", () => {
     const calls: string[] = [];
     vi.stubGlobal("window", { devicePixelRatio: 1 });
