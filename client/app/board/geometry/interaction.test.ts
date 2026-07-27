@@ -326,7 +326,7 @@ describe("resolveClick", () => {
     return {
       active_player: 0,
       can_act: true,
-      combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+      combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
       objects: [],
       players: [],
       priority: 0,
@@ -471,6 +471,7 @@ describe("resolveClick", () => {
         blocks: [],
         attackers_declared: true,
         blockers_declared: [],
+        blocked_attackers: [],
       },
     });
     const creature = card({ id: 3, zone: ZONE.Battlefield, controller: 0, kind: "creature" });
