@@ -673,7 +673,15 @@ describe("stack flight settle handoff", () => {
         flights: new Map([[spellId, parked]]),
       },
       // New seq so syncFlightsWithGame runs again (lastProvenanceSeq gates repeats).
-      { ...gameFold(state({ objects: [bolt], stack: [{ controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId }] })), seq: 2 },
+      {
+        ...gameFold(
+          state({
+            objects: [bolt],
+            stack: [{ controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId }],
+          }),
+        ),
+        seq: 2,
+      },
     );
     expect(afterSettle.flights.size).toBe(0);
   });

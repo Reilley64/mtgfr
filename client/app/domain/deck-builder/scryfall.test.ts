@@ -1,12 +1,6 @@
 import * as Effect from "effect/Effect";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  artCropFallbackUrl,
-  buildImageUrl,
-  parseRetryAfterMs,
-  scryfallImageUrl,
-  searchPrints,
-} from "./scryfall";
+import { artCropFallbackUrl, buildImageUrl, parseRetryAfterMs, scryfallImageUrl, searchPrints } from "./scryfall";
 
 afterEach(() => {
   vi.useRealTimers();

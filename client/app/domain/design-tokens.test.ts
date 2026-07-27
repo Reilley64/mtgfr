@@ -5,11 +5,13 @@ const cssPath = new URL("../../styles/tokens.generated.css", import.meta.url);
 const tsPath = new URL("./design-tokens.generated.ts", import.meta.url);
 const tokensPath = new URL("../../../design.tokens.json", import.meta.url);
 
-type ColorValue = string | {
-  colorSpace: string;
-  components: number[];
-  alpha?: number;
-};
+type ColorValue =
+  | string
+  | {
+      colorSpace: string;
+      components: number[];
+      alpha?: number;
+    };
 
 type DtcgToken = {
   $type?: string;

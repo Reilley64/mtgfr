@@ -18,9 +18,7 @@ describe("stepFlights", () => {
       kind: "battlefield",
       hold: true,
     });
-    expect(
-      poseNearHandoff(flight, { x: flight.targetX, y: flight.targetY, scale: flight.targetScale }),
-    ).toBe(true);
+    expect(poseNearHandoff(flight, { x: flight.targetX, y: flight.targetY, scale: flight.targetScale })).toBe(true);
 
     const stepped = stepFlights(new Map([[1, flight]]), 16, false);
     const next = stepped.flights.get(1);

@@ -1092,7 +1092,9 @@ test("choose_trigger_modes shows docked pending-trigger-modes-aim", () => {
     Scene.expect(Scene.testId("pending-choice-waiting")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-mode-choice-0")).toExist(),
     Scene.expect(Scene.testId("prompt-mode-choice-1")).toExist(),
-    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-submit"]')).not.toBeDisabled(),
+    Scene.expect(
+      Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-submit"]'),
+    ).not.toBeDisabled(),
     Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-cancel"]')).toExist(),
     Scene.expect(
       Scene.selector('[data-testid="pending-trigger-modes-aim"] [data-testid="prompt-submit"]'),
