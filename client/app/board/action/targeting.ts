@@ -712,6 +712,23 @@ export function pendingPlayerAimOverlay(pc: PendingChoiceView | null | undefined
   };
 }
 
+/**
+ * Seats that should paint a solid Priority Gold ring while multi-aim is live.
+ * `choose_target_players` uses `player-pick`; proliferate (CR 701.27) stores seats on
+ * `card-pick.players` alongside permanent ids in `picked`.
+ */
+export function pickedPlayersFromDraft(
+  aiming: boolean,
+  draft: PromptDraft | null | undefined,
+): ReadonlySet<number> {
+  if (!aiming || draft == null) return new Set();
+  if (draft.kind === "player-pick") return new Set(draft.players);
+  if (draft.kind === "card-pick" && draft.players != null && draft.players.length > 0) {
+    return new Set(draft.players);
+  }
+  return new Set();
+}
+
 /** Object ids that are legal arrow targets while staged or pending aim is live. */
 export function aimingObjectIds(
   staged: StagedAction | null,

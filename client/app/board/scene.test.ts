@@ -1355,6 +1355,51 @@ test("pointer up on a proliferate avatar accumulates the seat and answers with b
   });
 });
 
+// Clicking a permanent after a seat must keep both lists — otherwise Confirm quietly drops
+// the player pick and proliferate feels like the avatar click did nothing.
+test("proliferate permanent toggle keeps previously picked seats through Confirm", () => {
+  const bear = creature(31, 0);
+  const pending = {
+    kind: "proliferate" as const,
+    player: 0,
+    source: 1,
+    items: [
+      { id: bear.id, label: "Bear" },
+      { id: 0, label: "Player 2", player: 1 },
+    ],
+  };
+  const players = [player(), player({ player: 1, username: "Bob" })];
+  const gameFold = fold(state({ objects: [bear], pending_choice: pending, players }));
+  let board: BoardModel = initialBoardModel();
+  const world = avatarPos(1, 0, 2);
+  const screen = worldToScreen(board.camera, world.x, world.y);
+  let commands: ReturnType<typeof updateBoard>[1];
+  [board, commands] = updateBoard(board, BoardPointerUp({ x: screen.x, y: screen.y }), gameFold, "T1");
+  expect(commands).toEqual([]);
+  expect(board.promptDraft).toMatchObject({ kind: "card-pick", players: [1] });
+
+  board = {
+    ...board,
+    pointer: { kind: "drag", card: renderStub(bear.id), x: 100, y: 100, moved: false },
+  };
+  [board, commands] = updateBoard(board, BoardPointerUp({ x: 100, y: 100 }), gameFold, "T1");
+  expect(commands).toEqual([]);
+  expect(board.promptDraft).toEqual({
+    kind: "card-pick",
+    picked: [bear.id],
+    filter: "",
+    players: [1],
+  });
+
+  [, commands] = updateBoard(board, PromptSubmitted(), gameFold, "T1");
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "choose_proliferate",
+    player: 0,
+    permanents: [bear.id],
+    players: [1],
+  });
+});
+
 test("pointer up on non-target while staged clears drag without submitting", () => {
   const attacker = creature(11, 0);
   const other = creature(99, 1);
@@ -1454,6 +1499,115 @@ test("pointer combat drop on opponent life orb stages an attacker", () => {
   expect(commands).toEqual([]);
   expect(nextBoard.combatAttackers).toEqual([{ attacker: myCreature.id, defender: 1 }]);
   expect(nextBoard.pointer).toEqual({ kind: "idle" });
+});
+
+test("clicking a staged attacker un-stages it", () => {
+  const myCreature = creature(30, 0, { has_haste: true });
+  const gameFold = fold(
+    state({
+      step: STEP.DeclareAttackers,
+      objects: [myCreature],
+      combat: {
+        attackers: [],
+        blocks: [],
+        attackers_declared: false,
+        blockers_declared: [],
+      },
+      actions: [
+        {
+          id: 1,
+          kind: "declare_attackers",
+          label: testMessageRef("Attack"),
+          needs_target: false,
+          section: "combat",
+          declare_for: [0],
+        } as ActionView,
+      ],
+    }),
+  );
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    combatAttackers: [{ attacker: myCreature.id, defender: 1 }],
+    pointer: { kind: "drag", card: renderStub(myCreature.id), x: 100, y: 100, moved: false },
+  };
+  const [nextBoard, commands] = updateBoard(board, BoardPointerUp({ x: 100, y: 100 }), gameFold, "T1");
+  expect(commands).toEqual([]);
+  expect(nextBoard.combatAttackers).toEqual([]);
+  expect(nextBoard.pointer).toEqual({ kind: "idle" });
+  expect(nextBoard.selectedId).toBeNull();
+});
+
+test("clicking a staged blocker un-stages it", () => {
+  const attacker = creature(7, 1, { has_haste: true });
+  const blocker = creature(8, 0);
+  const gameFold = fold(
+    state({
+      step: STEP.DeclareBlockers,
+      active_player: 1,
+      objects: [attacker, blocker],
+      combat: {
+        attackers: [{ attacker: attacker.id, defender: 0 }],
+        blocks: [],
+        attackers_declared: true,
+        blockers_declared: [],
+      },
+      actions: [
+        {
+          id: 1,
+          kind: "declare_blockers",
+          label: testMessageRef("Block"),
+          needs_target: false,
+          section: "combat",
+          declare_for: [0],
+        } as ActionView,
+      ],
+    }),
+  );
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    combatBlocks: [{ blocker: blocker.id, attacker: attacker.id }],
+    pointer: { kind: "drag", card: renderStub(blocker.id), x: 100, y: 100, moved: false },
+  };
+  const [nextBoard, commands] = updateBoard(board, BoardPointerUp({ x: 100, y: 100 }), gameFold, "T1");
+  expect(commands).toEqual([]);
+  expect(nextBoard.combatBlocks).toEqual([]);
+  expect(nextBoard.pointer).toEqual({ kind: "idle" });
+  expect(nextBoard.selectedId).toBeNull();
+});
+
+test("clicking a required goad attacker does not un-stage it", () => {
+  const goaded = creature(7, 0, { has_haste: true });
+  const gameFold = fold(
+    state({
+      step: STEP.DeclareAttackers,
+      objects: [goaded],
+      combat: {
+        attackers: [],
+        blocks: [],
+        attackers_declared: false,
+        blockers_declared: [],
+      },
+      actions: [
+        {
+          id: 1,
+          kind: "declare_attackers",
+          label: testMessageRef("Attack"),
+          needs_target: false,
+          section: "combat",
+          declare_for: [0],
+          required_attacks: [{ attacker: goaded.id, defender: 1 }],
+        } as ActionView,
+      ],
+    }),
+  );
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    combatAttackers: [{ attacker: goaded.id, defender: 1 }],
+    pointer: { kind: "drag", card: renderStub(goaded.id), x: 100, y: 100, moved: false },
+  };
+  const [nextBoard, commands] = updateBoard(board, BoardPointerUp({ x: 100, y: 100 }), gameFold, "T1");
+  expect(commands).toEqual([]);
+  expect(nextBoard.combatAttackers).toEqual([{ attacker: goaded.id, defender: 1 }]);
 });
 
 test("PendingChoiceAnswered folds into a SubmitIntent command", () => {
