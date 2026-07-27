@@ -93,11 +93,10 @@ export function boardOverlays(
           })(),
           discardSelectedIds: (() => {
             if (board.discardPick != null) return new Set(board.discardPick.picks.discard_cost);
+            // Same gate as discardCostIds: any on-hand pending hand pick (discard, put land/creature,
+            // face-down cast, put on top, pay-cost discard) paints Llanowar on draft picks.
             if (
-              state.pending_choice != null &&
-              (state.pending_choice.kind === "discard" ||
-                state.pending_choice.kind === "may_discard" ||
-                (state.pending_choice.kind === "pay_cost" && (state.pending_choice.discard_count ?? 0) > 0)) &&
+              pendingHandPickIds(state.pending_choice, state) != null &&
               board.promptDraft?.kind === "card-pick"
             ) {
               return new Set(board.promptDraft.picked);

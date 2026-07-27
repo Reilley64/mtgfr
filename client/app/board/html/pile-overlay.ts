@@ -37,7 +37,6 @@ function cardThumb(card: ObjectView, selectable: boolean, selected: boolean): Ht
         ],
         [card.name],
       );
-  const ring = selected ? "ring-2 ring-priority-gold" : selectable ? "ring-2 ring-dashed ring-island-blue" : "";
   if (!selectable) {
     return h.div([h.Class("relative"), h.Attribute("title", card.name)], [face]);
   }
@@ -45,9 +44,17 @@ function cardThumb(card: ObjectView, selectable: boolean, selected: boolean): Ht
     [
       h.Type("button"),
       h.DataAttribute("testid", `pile-card-${card.id}`),
+      h.DataAttribute("selected", selected ? "true" : "false"),
+      h.DataAttribute("selectable", "true"),
       h.Attribute("title", card.name),
       h.OnClick(PileCardClicked({ id: card.id })),
-      h.Class(["relative rounded-md", ring].filter(Boolean).join(" ")),
+      h.Class(
+        [
+          "group/pile-card relative rounded-md ring-2",
+          "data-[selected=true]:ring-priority-gold",
+          "data-[selected=false]:ring-dashed data-[selected=false]:ring-island-blue",
+        ].join(" "),
+      ),
     ],
     [face],
   );

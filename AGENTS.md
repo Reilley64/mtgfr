@@ -75,6 +75,7 @@ Crate split: `engine` (pure, no I/O) / `cards` (TOML scripts) / `server` (tonic 
 - **Verify before claiming done.** Use `verification-before-completion` (and the project `verify` skill for live games). Live or Scene checks must exercise the surfaces you changed (cold load, route entry), not only unit green.
 - **Keep the engine pure.** No I/O, no networking, no wall-clock or randomness that isn't injected.
 - **Use Magic terminology and semantics wherever possible.** The ubiquitous language lives in `CONTEXT.md`; keep code and glossary aligned. When rules and simplicity genuinely conflict, name the rule approximated in a `ponytail:` comment.
+- **Client Tailwind: prefer `data-*` + named `group` over JS class ternaries for interactive chrome.** When a tile/button has selected / selectable / pressed / hover-linked styles (raise, ring, hit height, brightness), put stable boolean attrs on the interactive root (`data-selected="true"|"false"`, `data-selectable="true"`, …) and a named group (`group/hand-tile`, `group/pile-card`, …). Encode the look with Tailwind variants — `group-hover/…`, `group-data-[selected=true]/…`, `data-[selected=true]:…` — so JS only sets attributes. Keep playable / zone aura helpers when they are not selection state. Assert the data attrs (and the variant class tokens) in Scene/unit tests rather than reconstructing which ring class a ternary would have emitted. Reference: hand-bar pick chrome in `client/app/board/html/hand.ts` and [`hand-and-zone-bar`](docs/superpowers/specs/2026-07-20-hand-and-zone-bar.md).
 
 ## Agent skills
 

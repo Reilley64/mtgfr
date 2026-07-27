@@ -22,7 +22,7 @@ Render a fixed DOM hand bar at the bottom of the board. It groups tiles in Arena
 - One DOM tile per hand card; multiple legal hand-section actions on the same object do not mint extra tiles.
 - Hand tiles fan with Arena-forward resting geometry (`HAND_FACE_W` 208, `HAND_BAR_PEEK` 92, `HAND_VISIBLE_H` 178, derived `HAND_BAR_H` 218 — pip-row 24 + bar bottom padding 16 are already implied by that height), hover raise, and cost pips above the card face.
 - Resting cost pips show the card's printed cast cost, not cycle or hand-ability costs. Multi-legal-mode tiles omit Cycle/Discard captions; a sole legal `cycle` or `activate_hand_ability` keeps that caption.
-- Hovering a bar tile elevates that tile's root above all other action-bar tiles (`[z-index:var(--hand-z)]` resting + `hover:[z-index:50]` on the slot; resting z is not inline). Discard-selected raises and rings but does not elevate z.
+- Hovering a bar tile elevates that tile's root above all other action-bar tiles (`[z-index:var(--hand-z)]` resting + `hover:[z-index:50]` on the slot; resting z is not inline). Discard / hand-put pick chrome uses `group/hand-tile` with `data-selected` / `data-selectable` on the tile root: Tailwind `group-data-[selected=true]/hand-tile:…` raises and rings Llanowar; unselected legal choices use `group-data-[selected=false]/hand-tile:group-data-[selectable=true]/hand-tile:…` Island blue. Selection alone does not elevate z; hover still brings a selected tile to the front. Non-choices omit those data attrs and stay off target chrome.
 - A release above `HAND_BAR_H - HAND_PLAY_SLACK_PX` commits the drop (`HAND_PLAY_SLACK_PX` is 96); releasing below snaps back.
 - Activating a hand tile with exactly one legal mode runs the existing play/cost/target pipeline immediately. With two or more legal modes, activation clears other local action sessions, seeds a stack flight, parks the card in local `playModePick` state, and opens docked `play-mode-aim` until `PlayModeChosen` continues the selected action through the same cost/target pipeline or Cancel restores the card.
 - Design: [`2026-07-26-hand-play-mode-chooser-design.md`](2026-07-26-hand-play-mode-chooser-design.md).
@@ -38,6 +38,7 @@ Render a fixed DOM hand bar at the bottom of the board. It groups tiles in Arena
 ## Implementation Decisions
 
 - The bar is DOM, not canvas, so real buttons, keyboard activation, and drag data attributes stay available.
+- Hand-pick selection chrome is Tailwind-first: the tile root is `group/hand-tile` and carries `data-selected` / `data-selectable`; raise, hit height, and Llanowar / Island rings are `group-hover` / `group-data-*` utilities rather than JS class ternaries.
 - `slotInert` is reserved for staged/in-flight cards; it is not a visual dimming signal for unplayable cards.
 - `cardArt(h, opts)` is used for DOM faces and accepts optional `style` for precise tile sizing.
 - Alt-inspect hover metadata is attached to every face-up bar tile, playable or not.
@@ -51,7 +52,7 @@ Render a fixed DOM hand bar at the bottom of the board. It groups tiles in Arena
 - Interaction checks should drag above and below the play threshold and assert commit versus cancel outcomes.
 - Scene tests cover multi-mode hand activation entering `playModePick`, local-session exclusivity, `PlayModeChosen` continuation, the single-mode auto path, stale legality prune/cancel behavior, stale `PlayModeChosen` without intent, and Cancel restoring the parked hand card.
 - Geometry lock in `handBarHit.test.ts` asserts face/peek/visible/`HAND_BAR_H` targets so a silent regress to the old dense values fails.
-- `hand.test.ts` locks hover elevate on `hand-tile-{id}` and asserts discard-selected does not add selection z elevate.
+- `hand.test.ts` locks hover elevate on `hand-tile-{id}`, asserts discard-selected does not add selection z elevate (`hover:[z-index:50]` remains for hover+selected), and locks `data-selected` / `group-data-[selected=true]/hand-tile:ring-llanowar` pick chrome.
 
 ## Out of Scope
 

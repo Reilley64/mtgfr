@@ -24,7 +24,7 @@ Compose system overlays in `boardOverlays` as DOM layers above the board surface
 - Result overlay root uses `pointer-events-auto` so Stay/Leave receive clicks under the board overlays `pointer-events-none` layer.
 - Concede is a top-right button for active seated players.
 - Concede confirmation submits a real `concede` intent only after confirmation.
-- `PileOverlay` opens for non-battlefield zone piles, shows an art grid, and closes by backdrop, Close, or Escape.
+- `PileOverlay` opens for non-battlefield zone piles, shows an art grid, and closes by backdrop, Close, or Escape. When `selectableIds` is set, thumbs carry `data-selectable` / `data-selected` and paint Island blue / Priority Gold rings via Tailwind `data-[selected=…]` utilities.
 - Reconnect banner appears fixed top-center when the stream is disconnected. A transient disconnect says `Connection lost — reconnecting…`. Terminal stream failures use specific copy: 401 says the session expired and asks the player to sign in again; 404 says the table is no longer available. The banner keeps `data-testid="board-reconnecting"` for all reconnect states.
 - Inspect renders above result, concede, pile, HUD, and prompts.
 
@@ -32,7 +32,7 @@ Compose system overlays in `boardOverlays` as DOM layers above the board surface
 
 - System overlays remain DOM, not canvas.
 - Concede is game action chrome, not navigation.
-- Pile overlay uses `cardArt(h, opts)` for card thumbnails and falls back to card names when art is unavailable.
+- Pile overlay uses `cardArt(h, opts)` for card thumbnails and falls back to card names when art is unavailable. Selectable thumbs follow the AGENTS.md `data-selected` / `data-selectable` Tailwind pattern.
 - Escape priority dismisses inspect, the activation menu, stack expansion, and then local action/pile state.
 
 ## Testing Decisions
