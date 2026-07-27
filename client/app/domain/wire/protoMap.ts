@@ -1,14 +1,20 @@
 import { create } from "@bufbuild/protobuf";
-import type { SeedRequest as ProtoSeedRequest } from "./generated/mtgfr/v1/catalog_effect_grpc";
+import type {
+  DeckSaveBody as ProtoDeckSaveBody,
+  SeedRequest as ProtoSeedRequest,
+} from "./generated/mtgfr/v1/catalog_effect_grpc";
 import type { IntentEnvelope as ProtoIntentEnvelope } from "./generated/mtgfr/v1/intent_effect_grpc";
 import { IntentEnvelopeSchema as IntentEnvelopePbSchema } from "./generated/mtgfr/v1/intent_pb";
 import type {
   CreateRequest as ProtoCreateRequest,
+  LoginRequest as ProtoLoginRequest,
+  SignupRequest as ProtoSignupRequest,
   UpdateRequest as ProtoUpdateRequest,
 } from "./generated/mtgfr/v1/mtgfr_effect_grpc";
 import type {
   Ack,
   CatalogCard,
+  Credentials,
   DeckDetail,
   DeckSummary,
   IntentEnvelope,
@@ -16,6 +22,7 @@ import type {
   SaveDeckRequest,
   SeedRequest,
   SeedResponse,
+  SignupCredentials,
   StreamFrame,
 } from "./types";
 
@@ -185,7 +192,15 @@ export function deckSummaryListFromProto(proto: readonly unknown[]): DeckSummary
   return proto.map((item) => fromProtoWire<DeckSummary>(item));
 }
 
-export function createDeckToProto(deck: SaveDeckRequest): ProtoCreateRequest {
+export function signupRequestToProto(req: SignupCredentials): ProtoSignupRequest {
+  return { email: req.email, password: req.password, username: req.username };
+}
+
+export function loginRequestToProto(req: Credentials): ProtoLoginRequest {
+  return { email: req.email, password: req.password };
+}
+
+export function createDeckSaveBodyToProto(deck: SaveDeckRequest): ProtoDeckSaveBody {
   return {
     cards: deck.cards.map((card) => ({ count: card.count, id: card.id, print: card.print })),
     commander: deck.commander,
@@ -194,10 +209,14 @@ export function createDeckToProto(deck: SaveDeckRequest): ProtoCreateRequest {
   };
 }
 
+export function createDeckToProto(deck: SaveDeckRequest): ProtoCreateRequest {
+  return createDeckSaveBodyToProto(deck);
+}
+
 export function updateDeckToProto(id: number, deck: SaveDeckRequest): ProtoUpdateRequest {
   return {
     id: BigInt(id),
-    request: createDeckToProto(deck),
+    request: createDeckSaveBodyToProto(deck),
   };
 }
 

@@ -40,8 +40,10 @@ import {
   deckSummaryListFromProto,
   intentEnvelopeToProto,
   leaderboardFromProto,
+  loginRequestToProto,
   seedRequestToProto,
   seedResponseFromProto,
+  signupRequestToProto,
   streamFrameFromProto,
   updateDeckToProto,
 } from "./protoMap";
@@ -251,7 +253,7 @@ export function grpcClient(address: string, outboundTraceparent: string | null =
           key,
           Effect.gen(function* () {
             const auth = yield* AuthServiceClient;
-            const res = yield* auth.signup(req, opts(sessionToken));
+            const res = yield* auth.signup(signupRequestToProto(req), opts(sessionToken));
             if (!res.me) return yield* Effect.fail(new Error("SignupResponse missing me"));
             return { me: meFromProto(res.me), sessionToken: res.sessionToken };
           }),
@@ -261,7 +263,7 @@ export function grpcClient(address: string, outboundTraceparent: string | null =
           key,
           Effect.gen(function* () {
             const auth = yield* AuthServiceClient;
-            const res = yield* auth.login(req, opts(sessionToken));
+            const res = yield* auth.login(loginRequestToProto(req), opts(sessionToken));
             if (!res.me) return yield* Effect.fail(new Error("LoginResponse missing me"));
             return { me: meFromProto(res.me), sessionToken: res.sessionToken };
           }),
