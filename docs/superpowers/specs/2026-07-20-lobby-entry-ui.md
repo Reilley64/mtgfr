@@ -81,7 +81,7 @@ Helpers also live in `client/app/domain/lobby/client.ts` for table URL / code pa
 - `client/app/domain/lobby/code.test.ts` — `parseTableCode` for both `/play/:deckId/:table` and `/play/:table` path shapes, bare codes, and junk rejection (`/play/`, three+ segments).
 - `client/app/domain/lobby-store.test.ts` — lobby state helpers; with `WEB_DATABASE_URL`, asserts
   `loadLobby` on an empty table (requires migrate-applied `gravatar_hash`).
-- Layout C lobby entry Scene coverage in `client/app/shell/surfaces.test.ts` and `client/app/shell/lobby/entry.test.ts` asserts `lobby-entry` (no enclosing panel), Host primary (`bg-llanowar`), ghost Join/Back (`text-snow-mint`, not solid Llanowar), and absence of legacy choose/join controls; seated surfaces including `seat-face-0` Gravatar/monogram chrome and the table-only `/play/:table` shell route are covered there too (`just client-check`).
+- Layout C lobby entry Scene coverage in `client/app/shell/surfaces.test.ts` asserts `lobby-entry` renders panel-free with Host as the primary Llanowar CTA and the soft-inline Join composition; `client/app/shell/lobby/entry.test.ts` asserts ghost Join/Back (`text-snow-mint`, not solid Llanowar) plus absence of legacy choose/join controls. Seated surfaces including `seat-face-0` Gravatar/monogram chrome and the table-only `/play/:table` shell route are covered there too (`just client-check`).
 
 ---
 

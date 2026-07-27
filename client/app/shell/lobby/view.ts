@@ -139,11 +139,11 @@ function entrySurface(
     [
       h.DataAttribute("testid", "lobby-entry"),
       h.DataAttribute("lobby-entry-motion", "1"),
-      h.Class("grid grid-cols-[minmax(0,240px)_minmax(0,1fr)] items-center gap-xl max-w-[min(100%,720px)]"),
+      h.Class("grid grid-cols-[minmax(0,320px)_minmax(0,1fr)] items-center gap-xl max-w-[min(100%,720px)]"),
     ],
     [
       h.div(
-        [h.Class("max-w-[240px]"), h.DataAttribute("testid", "lobby-deck-card")],
+        [h.Class("max-w-[320px]"), h.DataAttribute("testid", "lobby-deck-card")],
         [selectedDeckCard(deck, decksLoading, knownCommanders)],
       ),
       h.div(
