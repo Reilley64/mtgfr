@@ -27,7 +27,7 @@ jobs:
         id: pass
         with:
           path: .ci-pass
-          key: verify-server-v3-${{ hashFiles('crates/**', 'proto/**', 'Cargo.toml', 'Cargo.lock', 'Toasty.toml', 'toasty/**', '.config/nextest.toml', 'justfile', '.github/workflows/verify-jobs.yml', 'docs/CR_INDEX.md', 'scripts/gen_cr_index.py') }}
+          key: verify-server-v3-${{ hashFiles('crates/**', 'proto/**', 'Cargo.toml', 'Cargo.lock', 'Toasty.toml', 'toasty/**', '.config/nextest.toml', 'justfile', '.github/workflows/verify-jobs.yml', 'docs/CR_INDEX.md', 'scripts/gen_cr_index.py', '.agents/skills/card-dsl/DSL_REFERENCE.md') }}
 
       - name: Report pass-marker status
         run: |
@@ -56,11 +56,12 @@ jobs:
         with:
           shared-key: verify-server
 
-      - name: CR index + card schema + fmt + clippy
+      - name: CR index + card schema + DSL reference + fmt + clippy
         run: |
           set -euo pipefail
           just engine-cr-index-check
           just cards-schema-check
+          just cards-dsl-ref-check
           just server-format-check
           just server-lint
 
@@ -165,7 +166,7 @@ jobs:
       - uses: actions/cache/save@v6
         with:
           path: .ci-pass
-          key: verify-server-v3-${{ hashFiles('crates/**', 'proto/**', 'Cargo.toml', 'Cargo.lock', 'Toasty.toml', 'toasty/**', '.config/nextest.toml', 'justfile', '.github/workflows/verify-jobs.yml', 'docs/CR_INDEX.md', 'scripts/gen_cr_index.py') }}
+          key: verify-server-v3-${{ hashFiles('crates/**', 'proto/**', 'Cargo.toml', 'Cargo.lock', 'Toasty.toml', 'toasty/**', '.config/nextest.toml', 'justfile', '.github/workflows/verify-jobs.yml', 'docs/CR_INDEX.md', 'scripts/gen_cr_index.py', '.agents/skills/card-dsl/DSL_REFERENCE.md') }}
 
   verify-server:
     name: Verify (server)

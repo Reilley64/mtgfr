@@ -219,7 +219,7 @@ These are the **first closed fidelity target** (card-dsl-and-card-pool spec): ev
 - **Fidelity regression tests**: for each card in `docs/decklists/*.md`, a CI test verifies the card TOML is present and parses without error. Presence of `approximates` is tracked but not a failure.
 - **Effect roundtrip test**: for each `Effect` variant, at least one card TOML in the pool should exercise it (verified by the fidelity audit tooling).
 - **Token profile tests**: `install_token_defs` is called with the full token set; `token_def(id)` returns the correct profile for known ids.
-- The `.agents/skills/card-dsl/SKILL.md` and hand-maintained `DSL_REFERENCE.md` are the authoring guide for card authors in Wave A; the skill specifies validation commands and non-negotiable discipline.
+- The `.agents/skills/card-dsl/SKILL.md` and generated `DSL_REFERENCE.md` are the authoring guide for card authors; the skill specifies validation commands and non-negotiable discipline (§0 Oracle-comment, `approximates`, `# ponytail:`).
 
 ---
 
@@ -242,5 +242,5 @@ These are the **first closed fidelity target** (card-dsl-and-card-pool spec): ev
 - See `2026-07-20-choices-actions-and-resolution.md` for how effect types map to `PendingChoice` variants.
 - `CONTEXT.md` defines **card**, **effect**, **ability**, **timing**, **keyword**, **populate**, and related terms.
 - Per-deck `docs/fidelity/<slug>-increments.md` files (created by `fidelity-grind`) are the living engine-capability backlogs.
-- `.agents/skills/card-dsl/DSL_REFERENCE.md` is the hand-maintained authoring field reference until Wave B ships the generated reference.
+- `.agents/skills/card-dsl/DSL_REFERENCE.md` is the generated authoring field reference; regenerate with `just cards-dsl-ref` and check with `just cards-dsl-ref-check`.
 - The `just engine-cr-index` recipe regenerates `docs/CR_INDEX.md` from CR citations across the engine; check it after adding new rules behaviors.

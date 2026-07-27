@@ -64,7 +64,8 @@ branch commit range.
 - `verify-server`: pass-marker gate + parallel lint / nextest / migrate + mark +
   aggregator. Pass marker `verify-server-v3-*` hashes `crates/**`, `proto/**`,
   Cargo/Toasty lockfiles, `toasty/**`, `.config/nextest.toml`, `justfile`, this
-  workflow, `docs/CR_INDEX.md`, and `scripts/gen_cr_index.py`. Key is computed
+  workflow, `docs/CR_INDEX.md`, `scripts/gen_cr_index.py`, and
+  `.agents/skills/card-dsl/DSL_REFERENCE.md`. Key is computed
   on a clean checkout at restore and again at save (identical inputs; do not
   re-`hashFiles` after mutating the tree).
   - `verify-server-gate`: `actions/cache/restore@v5` on `.ci-pass`; emits
@@ -74,8 +75,9 @@ branch commit range.
     `ghcr.io/reilley64/mtgfr-ci:latest` (`container.options: --user root` so the
     GHA workspace mount is writable). Each uses `Swatinem/rust-cache`
     `shared-key: verify-server`.
-    - Lint: CR index + card JSON Schema drift (`cards-schema-check`) + fmt +
-      clippy (tools from the image; no host rustup/protoc installs).
+    - Lint: CR index + card JSON Schema drift (`cards-schema-check`) + DSL
+      reference drift (`cards-dsl-ref-check`) + fmt + clippy (tools from the
+      image; no host rustup/protoc installs).
     - Test shards: `cargo nextest run --profile ci --partition count:i/3` only —
       **no** Postgres service (tests use in-memory SQLite). Per-shard JUnit
       upload + test summary.
