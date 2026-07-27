@@ -271,6 +271,41 @@ describe("pendingTargetingOverlay", () => {
     expect([...overlay.targetObjects]).toEqual([7]);
   });
 
+  it("aims from the pending source ghost slot when the ability is not yet on the stack", () => {
+    const talent = object({ id: 3, name: "Innkeeper's Talent", print: "talent-print" });
+    const bear = object({ id: 7 });
+    const game = state([talent, bear]);
+    game.pending_choice = {
+      kind: "choose_target",
+      label: testMessageRef("Put a +1/+1 counter"),
+      min: 1,
+      max: 1,
+      player: 0,
+      source: 3,
+      items: [{ id: 7, label: "Bear" }],
+    };
+    const overlay = pendingTargetingOverlay(game.pending_choice, game, { width: 1440, height: 900 }, 0);
+    expect(overlay.aimFrom).toEqual(stackAimOrigin(1440, 900, 1));
+  });
+
+  it("aims at the existing stack face when the spell source is already on the stack", () => {
+    const bolt = object({ id: 42, zone: ZONE.Stack, name: "Bolt", print: "bolt-print" });
+    const bear = object({ id: 7 });
+    const game = state([bolt, bear]);
+    game.stack = [{ controller: 0, kind: "spell", label: testMessageRef("Bolt"), source: 42 }];
+    game.pending_choice = {
+      kind: "choose_target",
+      label: testMessageRef("Bolt"),
+      min: 1,
+      max: 1,
+      player: 0,
+      source: 42,
+      items: [{ id: 7, label: "Bear" }],
+    };
+    const overlay = pendingTargetingOverlay(game.pending_choice, game, { width: 1440, height: 900 }, 1);
+    expect(overlay.aimFrom).toEqual(stackAimOrigin(1440, 900, 1));
+  });
+
   it("aims for multi-target choose_target when all items are on the battlefield", () => {
     const a = object({ id: 1 });
     const b = object({ id: 2 });

@@ -176,6 +176,12 @@ export const view = Submodel.defineView<BoardViewModel, ViewMessage>((model) => 
           }),
         )
       : null;
+  const stackMode = stackPresentation({
+    count: state.stack.length,
+    expandedOpen: model.board.stackExpand,
+    viewportW: model.board.viewport.width,
+    viewportH: model.board.viewport.height,
+  });
   publishBitmapFrame({
     width: model.board.viewport.width,
     height: model.board.viewport.height,
@@ -187,6 +193,8 @@ export const view = Submodel.defineView<BoardViewModel, ViewMessage>((model) => 
     combat: state.combat,
     stagedAttackers: model.board.combatAttackers,
     stagedBlocks: model.board.combatBlocks,
+    stack: state.stack,
+    stackPresentation: stackMode,
     flights: [...model.board.flights.values()],
     exitFx: [...model.board.exitFx.values()],
     hideCardIds: model.board.hideCardIds,
@@ -292,12 +300,7 @@ export const view = Submodel.defineView<BoardViewModel, ViewMessage>((model) => 
           stagedBlocks: model.board.combatBlocks,
           stagedTargeting,
           combatDrag: combatDragShapes,
-          stackPresentation: stackPresentation({
-            count: state.stack.length,
-            expandedOpen: model.board.stackExpand,
-            viewportW: model.board.viewport.width,
-            viewportH: model.board.viewport.height,
-          }),
+          stackPresentation: stackMode,
         }),
         onPointerDown: ({ x, y }) => BoardPointerDown({ x, y }),
         onPointerMove: ({ x, y }) => BoardPointerMove({ x, y }),
