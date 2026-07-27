@@ -620,6 +620,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "keyword.haste": literal("Haste"),
   "keyword.hexproof": literal("Hexproof"),
   "keyword.indestructible": literal("Indestructible"),
+  "keyword.landwalk": (params) => `${param(params, "land")}walk`,
   "keyword.lesser_power_cant_block": literal("Lesser-power creatures can't block it"),
   "keyword.lifelink": literal("Lifelink"),
   "keyword.menace": literal("Menace"),

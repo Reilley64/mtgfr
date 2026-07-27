@@ -183,8 +183,8 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Black Vise** {1} · Artifact — increment 25
 - [ ] **Blaze of Glory** {W} · Instant — increment 11
 - [ ] **Blue Elemental Blast** {U} · Instant — increment 9
-- [ ] **Bog Wraith** {3}{B} · Creature — Wraith — increment 3
-- [ ] **Burrowing** {R} · Enchantment — Aura — increment 3
+- [x] **Bog Wraith** {3}{B} · Creature — Wraith — increment 3
+- [x] **Burrowing** {R} · Enchantment — Aura — increment 3
 - [ ] **Camouflage** {G} · Instant — increment 48
 - [ ] **Castle** {3}{W} · Enchantment — increment 40
 - [ ] **Chaoslace** {R} · Instant — increment 15
@@ -229,7 +229,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Gauntlet of Might** {4} · Artifact — increment 19
 - [ ] **Glasses of Urza** {1} · Artifact — increment 31
 - [ ] **Gloom** {2}{B} · Enchantment — increment 9
-- [ ] **Goblin King** {1}{R}{R} · Creature — Goblin — increment 3
+- [x] **Goblin King** {1}{R}{R} · Creature — Goblin — increment 3
 - [ ] **Guardian Angel** {X}{W} · Instant — increment 4
 - [ ] **Healing Salve** {W} · Instant — increment 4
 - [ ] **Helm of Chatzuk** {1} · Artifact — increment 14
@@ -238,7 +238,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Invisibility** {U}{U} · Enchantment — Aura — increment 11
 - [ ] **Iron Star** {1} · Artifact — increment 9, 10
 - [ ] **Ironclaw Orcs** {1}{R} · Creature — Orc — increment 11
-- [ ] **Island Sanctuary** {1}{W} · Enchantment — increment 3
+- [ ] **Island Sanctuary** {1}{W} · Enchantment — increment 65
 - [ ] **Ivory Cup** {1} · Artifact — increment 9, 10
 - [ ] **Jade Monolith** {4} · Artifact — increment 6
 - [ ] **Jade Statue** {4} · Artifact — increment 57
@@ -254,7 +254,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Lifetap** {U}{U} · Enchantment — increment 19
 - [ ] **Living Artifact** {G} · Enchantment — Aura — increment 22, 28
 - [ ] **Living Lands** {3}{G} · Enchantment — increment 8
-- [ ] **Lord of Atlantis** {U}{U} · Creature — Merfolk — increment 3
+- [x] **Lord of Atlantis** {U}{U} · Creature — Merfolk — increment 3
 - [ ] **Lord of the Pit** {4}{B}{B}{B} · Creature — Demon — increment 20
 - [ ] **Lure** {1}{G}{G} · Enchantment — Aura — increment 11
 - [ ] **Magical Hack** {U} · Instant — increment 16
@@ -288,7 +288,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Samite Healer** {1}{W} · Creature — Human Cleric — increment 4
 - [ ] **Scavenging Ghoul** {3}{B} · Creature — Zombie — increment 28
 - [ ] **Sea Serpent** {5}{U} · Creature — Serpent — increment 24
-- [ ] **Shanodin Dryads** {G} · Creature — Nymph Dryad — increment 3
+- [x] **Shanodin Dryads** {G} · Creature — Nymph Dryad — increment 3
 - [ ] **Simulacrum** {1}{B} · Instant — increment 22
 - [ ] **Siren's Call** {U} · Instant — increment 26
 - [ ] **Sleight of Mind** {U} · Instant — increment 16
@@ -316,7 +316,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Winter Orb** {2} · Artifact — increment 7
 - [ ] **Wooden Sphere** {1} · Artifact — increment 9, 10
 - [ ] **Word of Command** {B}{B} · Instant — increment 49
-- [ ] **Zombie Master** {1}{B}{B} · Creature — Zombie — increment 3
+- [ ] **Zombie Master** {1}{B}{B} · Creature — Zombie — increment 66
 
 ## Out of scope
 

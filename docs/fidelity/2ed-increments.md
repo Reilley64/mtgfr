@@ -68,7 +68,7 @@ Artifact are the Aura form — the same static, scoped to `enchanted_host` rathe
 `set_attached_base_pt` (Darksteel Mutation) already has a scope for.
 *Cards:* animate_artifact, aspect_of_wolf, gaea_s_liege, keldon_warlord, nightmare, plague_rats.
 
-### 3. `landwalk` — 7 cards, S
+### 3. `landwalk` — 5 cards, S — **done**
 Depends on: nothing.
 Plains-/island-/swamp-/mountain-/forestwalk (CR 702.14) — an evasion keyword parameterised by a
 basic land type. The `Keyword` enum has no parameterised variant except `Protection(Color)`, so
@@ -77,11 +77,12 @@ legality check in combat gains one arm — a creature with landwalk can't be blo
 defending player controls a land with that type (read from `CardKind::Land::subtypes`, the
 rules-relevant list, not `CardDef::subtypes`). Grants come free: Goblin King, Lord of Atlantis,
 and Zombie Master use the existing `keyword_anthem` static, Burrowing uses `grant_to_attached`.
-Island Sanctuary's "can't be attacked except by creatures with flying and/or islandwalk" reuses
-the existing `cant_be_attacked_by` static (Ghostly Prison's neighbourhood) once the keyword
-exists.
-*Cards:* bog_wraith, burrowing, goblin_king, island_sanctuary, lord_of_atlantis, shanodin_dryads,
-zombie_master.
+*Landed:* `Keyword::Landwalk(BasicLandType)`, one arm in `Game::can_block` reading the
+*defending* player's printed land subtypes through the existing
+`Game::lands_with_subtype_controlled`. Printed, Aura-granted, and lord-granted landwalk all fell
+out of shapes that already existed. Two of the seven cards did not fit after all and moved to
+their own increments: Island Sanctuary (#65) and Zombie Master (#66).
+*Cards:* bog_wraith, burrowing, goblin_king, lord_of_atlantis, shanodin_dryads.
 
 ### 4. `damage-prevention-shields` — 13 cards, M
 Depends on: nothing.
@@ -749,3 +750,33 @@ Growth adds an additional **{G}** specifically — strictly narrower than `AnyCo
 to `Produced`, so neither approximation is faithful. *Sketch:* a
 `LandTapBonusColor::Fixed(Color)` arm, credited without the `ChooseManaColor` pause `AnyColor`
 raises. *Cards:* wild_growth.
+
+### 65. `skip-your-draw-step-for-an-attack-shield` — 1 card, M
+Depends on: #3 (landwalk), which supplies half the exemption.
+Island Sanctuary — "If you would draw a card during your draw step, instead you may skip that
+draw. If you do, until your next turn, you can't be attacked except by creatures with flying
+and/or islandwalk." Three things the engine lacks at once. First, an *optional replacement* on
+the draw-step draw (`may skip`) — the existing draw-replacement shapes are mandatory. Second, a
+`CantBeAttackedBy { filter }` whose filter is the *exempt* set rather than the banned set, and one
+that reads keywords rather than types/colors — today's filter has no keyword axis. Third, an
+"until your next turn" duration, which is longer than the until-end-of-turn temporaries the
+engine keeps and shorter than a permanent static.
+*Sketch:* an as-would-draw replacement raising a yes/no `PendingChoice`; on yes, record a
+per-player shield with an expiry of the controller's next upkeep and read it in
+`declare_attackers` as "this attacker must have flying or islandwalk." The keyword axis on
+`PermanentFilter` is the reusable part — Island Sanctuary is the first card to need one, but
+"creatures with flying can't …" is a common template.
+*Cards:* island_sanctuary.
+
+### 66. `grant-an-activated-ability-to-a-filter` — 1 card, M
+Depends on: nothing.
+Zombie Master's second clause — "Other Zombies have '{B}: Regenerate this permanent.'" The engine
+can grant an activated ability, but only from an *attachment*: `GrantToAttached`'s
+`granted_ability` is read by `Game::granted_attachment_abilities`, which walks
+`Game::attachments(host)`. A lord grants to everything matching a filter, which that scan can't
+see. (Its first clause, swampwalk, is plain #3 work and lands the moment this one does.)
+*Sketch:* give `Anthem` the same optional `granted_ability` sub-table `GrantToAttached` already
+has, and widen the granted-ability lookup from the attachment scan to the same
+`matching_anthems`-style filter scan the keyword grants already use, so `ability_at` addresses
+both sources through one accessor. Zombie Master then becomes two anthem blocks.
+*Cards:* zombie_master.

@@ -9976,6 +9976,79 @@ fn shadow_cannot_block_a_non_shadow_attacker() {
 }
 
 #[test]
+fn landwalk_reads_the_defending_players_lands_not_the_attackers() {
+    // CR 702.14b: "This creature can't be blocked as long as defending player controls a
+    // [land type]." The attacker's own Swamps are irrelevant — only the blocking player's.
+    let mut game = Game::new();
+    let wraith = game.spawn_on_battlefield(PlayerId(0), card("Bog Wraith"));
+    game.spawn_on_battlefield(PlayerId(0), card("Swamp"));
+    let blocker = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
+
+    attack_with(&mut game, vec![wraith]);
+    assert!(
+        block_with(&mut game, vec![(blocker, wraith)]).is_ok(),
+        "swampwalk is inert against a defender who controls no Swamp"
+    );
+
+    let mut game = Game::new();
+    let wraith = game.spawn_on_battlefield(PlayerId(0), card("Bog Wraith"));
+    let blocker = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
+    game.spawn_on_battlefield(PlayerId(1), card("Swamp"));
+
+    attack_with(&mut game, vec![wraith]);
+    assert!(
+        block_with(&mut game, vec![(blocker, wraith)]).is_err(),
+        "the defender's Swamp turns swampwalk on"
+    );
+}
+
+#[test]
+fn a_dual_land_satisfies_every_land_type_it_prints() {
+    // Landwalk reads printed land subtypes (CR 305.6), so Tundra — a Plains Island — lets both
+    // a plainswalker and an islandwalker through, though it is no basic land.
+    let mut game = Game::new();
+    let merfolk = game.spawn_on_battlefield(PlayerId(0), card("Lord of Atlantis"));
+    let other = game.spawn_on_battlefield(PlayerId(0), card("Lord of Atlantis"));
+    let blocker = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
+    game.spawn_on_battlefield(PlayerId(1), card("Tundra"));
+
+    attack_with(&mut game, vec![merfolk, other]);
+    assert!(
+        block_with(&mut game, vec![(blocker, merfolk)]).is_err(),
+        "each Lord grants the other islandwalk, and Tundra is an Island"
+    );
+}
+
+#[test]
+fn a_lord_grants_landwalk_to_others_but_not_to_itself() {
+    // "Other Goblins get +1/+1 and have mountainwalk" — `exclude_source` keeps the King home.
+    let mut game = Game::new();
+    let king = game.spawn_on_battlefield(PlayerId(0), card("Goblin King"));
+    let goblin = game.spawn_on_battlefield(PlayerId(0), card("Mogg Fanatic"));
+    game.spawn_on_battlefield(PlayerId(1), card("Mountain"));
+    let blocker = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
+
+    assert!(
+        game.has_keyword(goblin, Keyword::Landwalk(BasicLandType::Mountain)),
+        "another Goblin has mountainwalk"
+    );
+    assert!(
+        !game.has_keyword(king, Keyword::Landwalk(BasicLandType::Mountain)),
+        "the King grants to Goblins other than itself"
+    );
+
+    attack_with(&mut game, vec![king, goblin]);
+    assert!(
+        block_with(&mut game, vec![(blocker, goblin)]).is_err(),
+        "the granted mountainwalk is live in combat"
+    );
+    assert!(
+        block_with(&mut game, vec![(blocker, king)]).is_ok(),
+        "the King itself is blockable"
+    );
+}
+
+#[test]
 fn fear_cannot_be_blocked_by_a_colorless_nonartifact_creature() {
     // CR 702.36b: "A creature with fear can't be blocked except by artifact creatures and/or
     // black creatures."

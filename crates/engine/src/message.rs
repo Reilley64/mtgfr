@@ -44,6 +44,7 @@ message_keys! {
     KEYWORD_HASTE => "keyword.haste",
     KEYWORD_HEXPROOF => "keyword.hexproof",
     KEYWORD_INDESTRUCTIBLE => "keyword.indestructible",
+    KEYWORD_LANDWALK => "keyword.landwalk",
     KEYWORD_LESSER_POWER_CANT_BLOCK => "keyword.lesser_power_cant_block",
     KEYWORD_LIFELINK => "keyword.lifelink",
     KEYWORD_MENACE => "keyword.menace",
@@ -587,6 +588,8 @@ fn keyword_token(keyword: Keyword) -> String {
         Keyword::ProtectionFrom(scope) => {
             format!("protection_from_{}", protection_scope_token(scope))
         }
+        // The printed keyword names itself after the land: "islandwalk", "forestwalk", …
+        Keyword::Landwalk(land) => format!("{}walk", land.as_str().to_lowercase()),
         Keyword::Hexproof => "hexproof".to_string(),
         Keyword::Infect => "infect".to_string(),
         Keyword::Toxic(n) => format!("toxic_{n}"),

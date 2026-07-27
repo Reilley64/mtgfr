@@ -199,6 +199,36 @@ pub enum ProtectionScope {
     Multicolored,
 }
 
+/// A basic land type (CR 205.3i) — the parameter of [`Keyword::Landwalk`]. Kept as a closed
+/// five-variant enum rather than a subtype string so `Keyword` stays `Copy`; nonbasic land types
+/// (Desert, Gate, Locus) never appear in a landwalk ability, so there is nothing to widen for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "card-dsl",
+    derive(serde::Deserialize),
+    serde(rename_all = "snake_case")
+)]
+pub enum BasicLandType {
+    Plains,
+    Island,
+    Swamp,
+    Mountain,
+    Forest,
+}
+
+impl BasicLandType {
+    /// The printed land subtype string, as it appears in [`CardKind::Land`]'s `subtypes`.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            BasicLandType::Plains => "Plains",
+            BasicLandType::Island => "Island",
+            BasicLandType::Swamp => "Swamp",
+            BasicLandType::Mountain => "Mountain",
+            BasicLandType::Forest => "Forest",
+        }
+    }
+}
+
 /// The evergreen keywords that change combat/timing math in the Phase 1 pool.
 ///
 /// In TOML a keyword is a bare string (`"flying"`) or, for the parametrized ones, a
@@ -242,6 +272,12 @@ pub enum Keyword {
     /// blocked/targeted/damaged by a source of that quality. See [`Game::protection_scopes`].
     #[cfg_attr(feature = "card-dsl", serde(rename = "protection"))]
     ProtectionFrom(ProtectionScope),
+    /// Landwalk (CR 702.14): can't be blocked as long as the defending player controls a land of
+    /// that type. The check reads the defender's *printed land subtypes*
+    /// ([`CardKind::Land`]'s `subtypes`), so a dual land grants passage to both walkers. In TOML,
+    /// `{ landwalk = "island" }`. See [`Game::can_block`].
+    #[cfg_attr(feature = "card-dsl", serde(rename = "landwalk"))]
+    Landwalk(BasicLandType),
     /// Can't be the target of spells or abilities *opponents* control (CR 702.11). Its own
     /// controller can still target it. See the target-legality retain in
     /// [`Game::legal_targets_for`].

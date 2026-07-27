@@ -343,13 +343,14 @@ unchanged).
 Parametrized keywords are a single-key table:
 
 ```toml
-keywords = ["flying", { ward = 2 }, { protection = "red" }, { toxic = 1 }]
+keywords = ["flying", { ward = 2 }, { protection = "red" }, { toxic = 1 }, { landwalk = "island" }]
 ```
 
 | Tag | Shape | Meaning |
 |-----|-------|---------|
 | `ward` | `{ ward = N }` (u8) | Ward N (CR 702.21): an opponent targeting this must pay `{N}` or the spell/ability is countered. Modeled as a cast-time tax (`Game::cast`). |
 | `toxic` | `{ toxic = N }` (u8) | Toxic N (CR 702.164): a player dealt **combat** damage by this creature also gets N `poison` counters. Unlike `infect` it does *not* reshape the damage (CR 702.164a) — the life loss still happens and the counters land on top. Multiple instances add (CR 702.164b), so `Game::toxic_amount` sums every instance instead of taking the first. Applied at the combat choke `Game::damage_player`, below its prevention guards — wholly prevented combat damage places no counters — and nowhere else, so noncombat damage from a toxic source grants no poison. Printed (`bilious_skulldweller.toml`, `bloated_contaminator.toml`) and granted (`necrogen_communion.toml`'s `grant_to_attached`) toxic behave identically, and toxic stacks with `infect` on the same creature. |
+| `landwalk` | `{ landwalk = "<basic land type>" }` (`"plains"` / `"island"` / `"swamp"` / `"mountain"` / `"forest"`) | Landwalk (CR 702.14): can't be blocked while the **defending** player controls a land with that printed subtype. The check reads printed land subtypes (`CardKind::Land`'s `subtypes`, via `Game::lands_with_subtype_controlled`), not basic-ness — a dual land like Tundra turns on both plainswalk and islandwalk. Attacker-side lands are irrelevant. Printed (`bog_wraith.toml`), granted by an Aura (`burrowing.toml`'s `grant_to_attached`), and lorded to a subtype (`goblin_king.toml`'s `anthem`) behave identically. |
 | `protection` | `{ protection = "<value>" }` | Protection from a fixed color (CR 702.16, the "can't be blocked/targeted/damaged/blocked-by/dealt-damage-by that quality" core), or one of the non-color qualities `"creatures"` (a card type) / `"multicolored"` (CR 105.4, ≥2 colors). No "protection from everything" or "choose a color/type as this enters" — the value is fixed at print. `Creatures` is checked at the blocking and combat-damage sites (both have the source's `ObjectId`); at the targeting site it's never evaluated (no source `ObjectId` threaded there — see `Game::protection_blocks_source_colors`'s doc). |
 
 All keywords are engine-effective (affect combat/timing/targeting/casting). Used on the card, in

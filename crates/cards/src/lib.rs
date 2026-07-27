@@ -163,12 +163,13 @@ fn load_from_data_dir() -> Pool {
 mod tests {
     use super::*;
     use engine::{
-        Amount, CardFilter, CardKind, CasterScope, ChoiceEffect, Color, ColorFilter, Condition,
-        ControlEffect, CopyEffect, Cost, CountersEffect, DamageEffect, DestroyEffect, DigEffect,
-        DrawEffect, Effect, EnterController, ExileEffect, GraveyardScope, Keyword, LandProduces,
-        LifeEffect, Mana, ManaEffect, MillEffect, MiscEffect, PermanentFilter, ProtectionScope,
-        PumpEffect, SacrificeCost, SacrificeEffect, SearchDest, SpellFilter, SpellSpeed,
-        StaticEffect, TargetCount, TargetSpec, Timing, TokenEffect, Trigger, TypeSet, ZoneEffect,
+        Amount, BasicLandType, CardFilter, CardKind, CasterScope, ChoiceEffect, Color, ColorFilter,
+        Condition, ControlEffect, CopyEffect, Cost, CountersEffect, DamageEffect, DestroyEffect,
+        DigEffect, DrawEffect, Effect, EnterController, ExileEffect, GraveyardScope, Keyword,
+        LandProduces, LifeEffect, Mana, ManaEffect, MillEffect, MiscEffect, PermanentFilter,
+        ProtectionScope, PumpEffect, SacrificeCost, SacrificeEffect, SearchDest, SpellFilter,
+        SpellSpeed, StaticEffect, TargetCount, TargetSpec, Timing, TokenEffect, Trigger, TypeSet,
+        ZoneEffect,
     };
 
     #[test]
@@ -3105,5 +3106,62 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
             knight.abilities.is_empty(),
             "both halves are keywords — nothing to script"
         );
+    }
+
+    /// The three shapes landwalk arrives in: printed on the creature, granted by an Aura, and
+    /// granted to a subtype by a lord.
+    #[test]
+    fn unlimited_landwalk_is_printed_granted_and_lorded() {
+        for (name, land) in [
+            ("Bog Wraith", BasicLandType::Swamp),
+            ("Shanodin Dryads", BasicLandType::Forest),
+        ] {
+            let def = get_by_name(name).expect("in the pool");
+            assert_eq!(def.keywords.as_ref(), &[Keyword::Landwalk(land)]);
+            assert!(def.abilities.is_empty(), "landwalk is the whole card");
+        }
+
+        let burrowing = get_by_name("Burrowing").expect("Burrowing is in the pool");
+        let Effect::Static(StaticEffect::GrantToAttached {
+            keywords,
+            power,
+            toughness,
+            ..
+        }) = &burrowing.abilities[0].effect
+        else {
+            panic!("Burrowing grants to its host");
+        };
+        assert_eq!(*keywords, &[Keyword::Landwalk(BasicLandType::Mountain)]);
+        assert_eq!(
+            (*power, *toughness),
+            (Amount::Fixed(0), Amount::Fixed(0)),
+            "the Aura grants evasion only — it is no strength Aura"
+        );
+
+        // Both lords buff and grant across the table ("Other Goblins", not "Goblins you
+        // control"), and neither one buffs itself.
+        for (name, subtype, land) in [
+            ("Goblin King", "Goblin", BasicLandType::Mountain),
+            ("Lord of Atlantis", "Merfolk", BasicLandType::Island),
+        ] {
+            let def = get_by_name(name).expect("in the pool");
+            let Effect::Static(StaticEffect::Anthem {
+                power,
+                toughness,
+                keywords,
+                subtypes,
+                exclude_source,
+                all_players,
+                ..
+            }) = &def.abilities[0].effect
+            else {
+                panic!("{name} is an anthem");
+            };
+            assert_eq!((*power, *toughness), (Amount::Fixed(1), Amount::Fixed(1)));
+            assert_eq!(*keywords, &[Keyword::Landwalk(land)]);
+            assert_eq!(*subtypes, &[subtype]);
+            assert!(*exclude_source, "{name} says \"Other\"");
+            assert!(*all_players, "{name} does not say \"you control\"");
+        }
     }
 }

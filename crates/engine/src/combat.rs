@@ -87,6 +87,17 @@ impl Game {
         {
             return false;
         }
+        // Landwalk (CR 702.14b): unblockable while the defending player controls a land of the
+        // named type. Scoped to `player` — the player declaring these blocks — so a creature with
+        // islandwalk is still blockable by an opponent who runs no Islands.
+        if self.effective_keywords(attacker).iter().any(|&k| match k {
+            Keyword::Landwalk(land) => {
+                self.lands_with_subtype_controlled(player, &[land.as_str()]) > 0
+            }
+            _ => false,
+        }) {
+            return false;
+        }
         // Shadow (CR 702.28b/c): a Shadow creature can only block/be blocked by other Shadow
         // creatures — the restriction runs both directions.
         if self.has_keyword(attacker, Keyword::Shadow) != self.has_keyword(blocker, Keyword::Shadow)
