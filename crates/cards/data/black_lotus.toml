@@ -1,0 +1,22 @@
+# {T}, Sacrifice this artifact: Add three mana of any one color.
+name = "Black Lotus"
+sets = ["2ed", "30a", "ced", "cei", "lea", "leb", "o90p", "ovnt", "prm", "vma", "ydmu"]
+id = "5089ec1a-f881-4d55-af14-5d996171203b"
+default_print = "4a2e428c-dd25-484c-bbc8-2d6ce10ef42c"
+oracle = "{T}, Sacrifice this artifact: Add three mana of any one color."
+
+[kind]
+type = "artifact"
+
+# {T}, Sacrifice this artifact: Add three mana of any one color.
+[[abilities]]
+timing = "activated"
+taps_self = true
+sacrifice = "this"
+
+# Add three mana of any one color.
+[[abilities.effects]]
+type = "mana"
+mode = "add"
+mana = ["any", "any", "any"]
+single_color = true

@@ -59,11 +59,11 @@ Authorable in Phase 3 with no engine change. TDD each one.
 - [x] **Badlands** — · Land — Swamp Mountain
 - [x] **Bayou** — · Land — Swamp Forest
 - [ ] **Black Knight** {B}{B} · Creature — Human Knight
-- [ ] **Black Lotus** {0} · Artifact
+- [x] **Black Lotus** {0} · Artifact
 - [ ] **Black Ward** {W} · Enchantment — Aura
 - [ ] **Blessing** {W}{W} · Enchantment — Aura
 - [ ] **Blue Ward** {W} · Enchantment — Aura
-- [ ] **Celestial Prism** {3} · Artifact
+- [x] **Celestial Prism** {3} · Artifact
 - [ ] **Control Magic** {2}{U}{U} · Enchantment — Aura
 - [ ] **Copper Tablet** {2} · Artifact
 - [ ] **Counterspell** {U}{U} · Instant
@@ -116,11 +116,11 @@ Authorable in Phase 3 with no engine change. TDD each one.
 - [x] **Mahamoti Djinn** {4}{U}{U} · Creature — Djinn
 - [x] **Merfolk of the Pearl Trident** {U} · Creature — Merfolk
 - [x] **Mons's Goblin Raiders** {R} · Creature — Goblin
-- [ ] **Mox Emerald** {0} · Artifact
-- [ ] **Mox Jet** {0} · Artifact
-- [ ] **Mox Pearl** {0} · Artifact
-- [ ] **Mox Ruby** {0} · Artifact
-- [ ] **Mox Sapphire** {0} · Artifact
+- [x] **Mox Emerald** {0} · Artifact
+- [x] **Mox Jet** {0} · Artifact
+- [x] **Mox Pearl** {0} · Artifact
+- [x] **Mox Ruby** {0} · Artifact
+- [x] **Mox Sapphire** {0} · Artifact
 - [ ] **Natural Selection** {G} · Instant
 - [ ] **Nevinyrral's Disk** {4} · Artifact
 - [ ] **Northern Paladin** {2}{W}{W} · Creature — Human Knight

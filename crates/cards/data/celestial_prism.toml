@@ -1,0 +1,26 @@
+# {2}, {T}: Add one mana of any color.
+name = "Celestial Prism"
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
+id = "eb228a6c-bceb-45c3-a258-3f209682e1c6"
+default_print = "cb119f5e-a47f-4910-b170-561d6315fdc3"
+oracle = "{2}, {T}: Add one mana of any color."
+
+[cost]
+generic = 3
+
+[kind]
+type = "artifact"
+
+# {2}, {T}: Add one mana of any color.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+[abilities.activation_cost]
+generic = 2
+
+# Add one mana of any color.
+[[abilities.effects]]
+type = "mana"
+mode = "add"
+mana = ["any"]

@@ -1,0 +1,20 @@
+# {T}: Add {R}.
+name = "Mox Ruby"
+sets = ["2ed", "30a", "ced", "cei", "lea", "leb", "ovnt", "prm", "vma", "ydmu"]
+id = "ed85fa82-e4fa-434b-92a8-36b6075708d1"
+default_print = "21b7cbae-6647-4f36-b02d-5535ac88b1a6"
+oracle = "{T}: Add {R}."
+
+[kind]
+type = "artifact"
+
+# {T}: Add {R}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add {R}.
+[[abilities.effects]]
+type = "mana"
+mode = "add"
+mana = ["red"]

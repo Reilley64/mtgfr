@@ -584,3 +584,14 @@ widened for the duration. Drain Power is the tractable half — its action set i
 land for mana", so it can be modelled as a direct effect without a real control handoff. Word of
 Command is the hard half and should be the last thing attempted in this set.
 *Cards:* drain_power, word_of_command.
+
+### 50. `deny-unknown-fields-on-carddef` — 0 cards, S
+Depends on: nothing.
+Found while authoring this set, not by reading a card. `[[abilities]]` blocks reject unknown keys
+(the pool has a test for it), but the **top-level** card table does not: appending
+`bogus_field_check = 7` to a card TOML loads clean. A typo'd top-level key — `keyword` for
+`keywords`, `subtype` for `subtypes` — therefore silently drops the field, and the card ships
+missing a printed characteristic with a green suite. This is a fidelity hazard for every future
+grind, not a card gap. *Sketch:* `#[serde(deny_unknown_fields)]` on `CardDef`'s `card-dsl`
+deserialize, then fix whatever in the existing pool it turns red.
+*Cards:* none — a guard against silently unfaithful cards.

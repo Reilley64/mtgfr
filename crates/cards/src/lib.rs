@@ -2181,4 +2181,59 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
             assert!(land.abilities.is_empty(), "{name} has no rules text");
         }
     }
+
+    /// Unlimited's mana artifacts. The Moxen tap for one colored mana; Black Lotus sacrifices for
+    /// three of one color (CR 106.4, the `single_color` lock); Celestial Prism filters {2} into one
+    /// mana of any color.
+    #[test]
+    fn unlimited_mana_artifacts_add_their_printed_mana() {
+        for (name, color) in [
+            ("Mox Pearl", Color::White),
+            ("Mox Sapphire", Color::Blue),
+            ("Mox Jet", Color::Black),
+            ("Mox Ruby", Color::Red),
+            ("Mox Emerald", Color::Green),
+        ] {
+            let mox = get_by_name(name).unwrap_or_else(|| panic!("{name} is in the pool"));
+            assert_eq!(mox.kind, CardKind::Artifact, "{name} is an artifact");
+            assert_eq!(mox.cost, Cost::FREE, "{name} costs {{0}}");
+            let ability = &mox.abilities[0];
+            let Timing::Activated(activation) = ability.timing else {
+                panic!("{name} has an activated ability");
+            };
+            assert!(activation.taps_self, "{name} taps for its mana");
+            let Effect::Mana(ManaEffect::Add { mana, .. }) = ability.effect else {
+                panic!("{name} has a mana ability");
+            };
+            assert_eq!(mana.colored[color.index()], 1, "{name} adds one {color:?}");
+        }
+
+        let lotus = get_by_name("Black Lotus").expect("Black Lotus is in the pool");
+        let ability = &lotus.abilities[0];
+        let Timing::Activated(activation) = ability.timing else {
+            panic!("Black Lotus has an activated ability");
+        };
+        assert!(activation.taps_self);
+        assert_eq!(activation.sacrifice, SacrificeCost::This);
+        let Effect::Mana(ManaEffect::Add {
+            mana, single_color, ..
+        }) = ability.effect
+        else {
+            panic!("Black Lotus has a mana ability");
+        };
+        assert_eq!(mana.any, 3, "three mana");
+        assert!(single_color, "…of any one color, not three different ones");
+
+        let prism = get_by_name("Celestial Prism").expect("Celestial Prism is in the pool");
+        let ability = &prism.abilities[0];
+        let Timing::Activated(activation) = ability.timing else {
+            panic!("Celestial Prism has an activated ability");
+        };
+        assert!(activation.taps_self);
+        assert_eq!(activation.mana.generic, 2, "{{2}} in the activation cost");
+        let Effect::Mana(ManaEffect::Add { mana, .. }) = ability.effect else {
+            panic!("Celestial Prism has a mana ability");
+        };
+        assert_eq!(mana.any, 1, "one mana of any color");
+    }
 }
