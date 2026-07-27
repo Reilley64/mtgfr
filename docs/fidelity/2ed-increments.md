@@ -1,0 +1,586 @@
+# Unlimited Edition (`2ed`) increments (2026-07-27)
+
+Set report: [2ed.md](2ed.md). This file is the sole engine-capability backlog for `2ed`
+(ranked increments + per-card exotics). Numbering is local to this file.
+
+This is a **set** grind, not a deck grind — intake is Scryfall `set:2ed unique:cards`, not an
+Archidekt link, and there is no precon to ship at the end. 292 unique cards: 28 already in the
+pool, 134 authorable today, 127 blocked here, 4 out of scope.
+
+Ranked S-first within dependency order. The centre of gravity is three clusters that between
+them gate 51 cards:
+
+- **Damage prevention** (#4, #5, #6) — 1993 white and artifact are built almost entirely out of
+  prevention shields, and the engine has none. 18 cards.
+- **Continuous characteristic-defining values** (#1, #2) — `*/*` creatures and "damage equal to
+  the number of Swamps" both want a permanent count as a live amount. 11 cards.
+- **Untap-step manipulation** (#7, #18) — Stasis, Winter Orb, Mana Vault, Time Vault. 10 cards.
+
+Below those, 1993 leans hard on combat rules the engine skips entirely: banding (#14), landwalk
+(#3), and block restriction/requirement (#11).
+
+### Observability re-audit
+
+Six pool-absence claims in `crates/engine/src` are falsified by 2ed. Each is folded into the
+increment that clears it:
+
+| Claim | Where | Falsified by | Increment |
+| --- | --- | --- | --- |
+| "the pool's own creature types … widen this when a card needs a type not yet printed" | `types/stack.rs` `CREATURE_TYPES` | 21 types (Wall, Unicorn, Pegasus, Specter, Wraith, Shade, Nightmare, …) | #27 |
+| "a color filter … grows from a real card that wants one" | `types/filter.rs` `SpellFilter` | Blue/Red Elemental Blast, Deathgrip, Lifeforce, Gloom | #9 |
+| "no card in the pool changes a permanent's name (CR 707.9), so a copiable-name-vs-current-name distinction doesn't arise" | `types/filter.rs` `PermanentFilter::name` | Clone, Vesuvan Doppelganger, Copy Artifact | #12 |
+| "a fixed slot array sized to exactly what the pool's cards consume (charge, story, …)" | `types/effect/shared.rs` | +1/+0 (Clockwork Beast), corpse (Scavenging Ghoul), mire (Cyclopean Tomb), vitality (Living Artifact) | #28 |
+| "a single bool covers the pool's one keyword-exclusion need … generalize to a `without_keyword` if a second turns up" | `types/filter.rs` `PermanentFilter::without_flying` | "non-Wall creature" ×4 (Cockatrice, Thicket Basilisk, Keldon Warlord, Siren's Call, Nettling Imp) — subtype exclusion, same shape | #21 |
+| "no pool card needs a *fixed* range yet" | `de.rs` | not falsified — left as is | — |
+
+No `approximates` field in `crates/cards/data` rests on a 2ed absence: every 2ed card already in
+the pool is faithful, so section B is empty.
+
+---
+
+### 1. `permanent-count-amount` — 7 cards, M
+Depends on: nothing.
+`Amount` can count creatures you control, creatures that died, cards in a hand — but it cannot
+count *permanents matching a filter that a given player controls*. Every "equal to the number of
+Swamps" card in 2ed wants exactly that, and #2 is built on top of it. *Sketch:* an
+`Amount::PermanentsControlled { filter: PermanentFilter, who: Who }` variant resolved in
+`amount.rs` through the existing `Game::permanent_matches`, with `who` reusing the
+`This`/`TargetPlayer`/`EachPlayer` axis the damage effects already thread. Karma and Power Surge
+resolve it per-player inside an each-upkeep trigger, so it must be evaluated at resolution
+against the *triggering* player, not the source's controller. Power Surge additionally needs the
+count snapshotted at the beginning of the turn rather than read live — a turn-scoped
+`untapped_lands_at_turn_start` per player, set in the Untap step.
+*Cards:* gaea_s_liege, karma, keldon_warlord, nightmare, plague_rats, power_surge,
+volcanic_eruption.
+
+### 2. `characteristic-defining-power-toughness` — 6 cards, M
+Depends on: #1.
+`*/*` creatures. The pool has `set_own_base_pt_from_amount` (Trench Gorger), but that is a
+one-shot resolution effect that writes a fixed number; a CDA (CR 604.3) is continuous — it
+re-reads its count every time characteristics are computed, in layer 7a, before any other P/T
+effect. Nightmare gaining a Swamp mid-combat must grow immediately. *Sketch:* a
+`StaticEffect::BasePowerToughnessFromAmount { amount }` read by `characteristics.rs`'s existing
+base-P/T resolution *before* the layer-7b pump pass, with `characteristics_cache.rs` invalidating
+on any battlefield change (the amounts are all permanent counts, so the existing
+permanent-entered/left invalidation hooks cover it). Gaea's Liege switches its count on whether
+it is attacking, so the CDA amount is evaluated in combat context. Aspect of Wolf and Animate
+Artifact are the Aura form — the same static, scoped to `enchanted_host` rather than self, which
+`set_attached_base_pt` (Darksteel Mutation) already has a scope for.
+*Cards:* animate_artifact, aspect_of_wolf, gaea_s_liege, keldon_warlord, nightmare, plague_rats.
+
+### 3. `landwalk` — 7 cards, S
+Depends on: nothing.
+Plains-/island-/swamp-/mountain-/forestwalk (CR 702.14) — an evasion keyword parameterised by a
+basic land type. The `Keyword` enum has no parameterised variant except `Protection(Color)`, so
+this follows that shape exactly. *Sketch:* `Keyword::Landwalk(BasicLandType)`; the blocking
+legality check in combat gains one arm — a creature with landwalk can't be blocked if the
+defending player controls a land with that type (read from `CardKind::Land::subtypes`, the
+rules-relevant list, not `CardDef::subtypes`). Grants come free: Goblin King, Lord of Atlantis,
+and Zombie Master use the existing `keyword_anthem` static, Burrowing uses `grant_to_attached`.
+Island Sanctuary's "can't be attacked except by creatures with flying and/or islandwalk" reuses
+the existing `cant_be_attacked_by` static (Ghostly Prison's neighbourhood) once the keyword
+exists.
+*Cards:* bog_wraith, burrowing, goblin_king, island_sanctuary, lord_of_atlantis, shanodin_dryads,
+zombie_master.
+
+### 4. `damage-prevention-shields` — 13 cards, M
+Depends on: nothing.
+"Prevent the next N damage that would be dealt to any target this turn" (CR 615). The engine has
+prevention *statics* — `prevent_all_combat_damage_this_turn` (Fog), `prevent_combat_damage`,
+`prevent_damage_to_self_removing_counter` (Phantom Centaur) — but no consumable shield: a
+turn-scoped counter attached to a permanent or player that damage decrements as it is dealt.
+Nine white/artifact cards in 2ed are this one shape. *Sketch:* a turn-scoped
+`Vec<PreventionShield { target: Target, amount: u32, source_filter: Option<…> }>` on `Game`,
+cleared at cleanup alongside the other until-end-of-turn state, consulted in the single
+`deal_damage` path (all damage already funnels through it, so this is one guard, not one per
+caller) and decremented in place. Forcefield's "prevent all but 1" and Rock Hydra's
+per-1-damage counter removal are the same consumption hook with different arithmetic. Guardian
+Angel's repeatable top-up ("you may pay {1} … prevent the next 1") adds to an existing shield.
+*Cards:* circle_of_protection_black, circle_of_protection_blue, circle_of_protection_green,
+circle_of_protection_red, circle_of_protection_white, conservator, forcefield, guardian_angel,
+healing_salve, power_leak, reverse_damage, rock_hydra, samite_healer.
+
+### 5. `source-of-your-choice-prevention` — 6 cards, M
+Depends on: #4, #9.
+The Circle of Protection cycle. Beyond #4 this needs the shield to be keyed to a *source chosen
+on activation* rather than the damaged object — "the next time a black source of your choice
+would deal damage to you." *Sketch:* `PendingChoice::ChooseDamageSource` offering every object
+matching a `ColorFilter` (from #9) that could deal damage — battlefield permanents plus objects
+on the stack, since a source need not be a permanent (CR 609.7) — recorded as the shield's
+`source_filter`. Reverse Damage is the same shield with a life-gain rider on consumption, so the
+shield needs to report how much it prevented.
+*Cards:* circle_of_protection_black, circle_of_protection_blue, circle_of_protection_green,
+circle_of_protection_red, circle_of_protection_white, reverse_damage.
+
+### 6. `damage-redirection` — 3 cards, M
+Depends on: #4.
+"That source deals that damage to you instead" (CR 615.10). A redirection is a replacement, not a
+prevention, but it hangs off the same hook in `deal_damage` and must not loop. *Sketch:* the
+shield record gains a `redirect_to: Option<Target>`; on consumption the damage event is re-issued
+against the new target with a recursion guard (one redirect per damage event, CR 616.1). Veteran
+Bodyguard is the static form — "all damage that would be dealt to you by unblocked creatures is
+dealt to this creature instead", conditioned on the bodyguard being untapped, so it is a
+`StaticEffect` scanned at damage time rather than an activated shield.
+*Cards:* jade_monolith, personal_incarnation, veteran_bodyguard.
+
+### 7. `untap-step-restrictions` — 9 cards, M
+Depends on: nothing.
+"Doesn't untap during your untap step" / "players skip their untap steps" / "can't untap more
+than one." The untap step currently untaps everything a player controls unconditionally.
+*Sketch:* the untap step consults three new scanners before building its untap set — a per-
+permanent `doesnt_untap` (printed static: Mana Vault, Basalt Monolith, Time Vault; granted:
+Paralyze; conditional: Meekstone's power ≥ 3), a per-player `skips_untap_step` (Stasis), and a
+per-player cap on how many permanents of a filter may untap (Smoke: one creature; Winter Orb: one
+land, and only while Winter Orb is untapped). The cap needs a `PendingChoice::ChooseUntapSet`
+because the player picks which one. `DeclineUntap` already exists as a pending choice, so the
+step already knows how to pause. Instill Energy is the inverse — an *extra* untap outside the
+step, which is an ordinary `untap_target` gated to once each turn.
+*Cards:* basalt_monolith, instill_energy, mana_vault, meekstone, paralyze, smoke, stasis,
+time_vault, winter_orb.
+
+### 8. `basic-land-type-changing` — 7 cards, M
+Depends on: nothing.
+"Enchanted land is a Swamp" / "All Mountains are Plains" / "All Forests are 1/1 creatures that
+are still lands." Layer 4 (type-changing) with a layer-7b rider in two cases. `set_attached_types`
+exists (Darksteel Mutation) but overwrites the whole type line and doesn't touch land subtypes or
+the mana abilities they imply. *Sketch:* a `StaticEffect::SetLandSubtypes { scope, subtypes,
+replace: bool }` applied in `characteristics.rs` before mana-ability derivation, so a land that
+becomes a Swamp taps for {B} and *loses* its old intrinsic ability (CR 305.7 — changing a land's
+subtype replaces its mana abilities). Kormus Bell and Living Lands add the creature type and a
+base P/T on top, which is #2's static in its non-CDA fixed form. Cyclopean Tomb's mire counters
+key the change to a counter rather than an Aura, and its leaves-the-battlefield clause schedules
+an unbounded series of upkeep triggers — model that as a delayed trigger that re-registers itself
+until no mire counters it placed remain.
+*Cards:* conversion, cyclopean_tomb, evil_presence, gaea_s_liege, kormus_bell, living_lands,
+phantasmal_terrain.
+
+### 9. `color-filters-on-spells` — 10 cards, S
+Depends on: nothing.
+Falsifies the `SpellFilter` ponytail. Counterspell-style filters are type-shaped today
+(`noncreature`, `instant_or_sorcery`, `creature`, `artifact_or_enchantment`) with no color axis;
+`PermanentFilter` already has `color: ColorFilter`, so this is bringing spells up to parity.
+*Sketch:* add `color: ColorFilter` to the spell-filter struct and read it wherever spell filters
+are matched — the counter-target path and `reduce_spell_cost`. Gloom needs the cost hook to go
+the other way (an *increase*), so `ReduceSpellCost`'s amount becomes signed or gains an
+`Increase` sibling; its second clause ("activated abilities of white enchantments cost {3} more")
+is an activation-cost tax keyed to a permanent filter, which the existing `attack_tax` shape
+(Propaganda) is the closest neighbour to.
+*Cards:* blue_elemental_blast, crystal_rod, deathgrip, gloom, iron_star, ivory_cup, lifeforce,
+red_elemental_blast, throne_of_bone, wooden_sphere.
+
+### 10. `optional-mana-payment-in-trigger` — 6 cards, S
+Depends on: #9 (for the five cast-triggered ones).
+"Whenever a player casts a white spell, you may pay {1}. If you do, you gain 1 life." The engine
+has optional triggers (`optional = true`, a yes/no prompt) and it has cost payment on activation,
+but a trigger whose *resolution* offers a mana payment has no shape. *Sketch:* reuse
+`PendingChoice::PayCost` — the same one `sacrifice_self_unless_pay` raises — from inside trigger
+resolution, with the remaining effects gated on payment rather than on the pay-or-else penalty.
+The five artifact "rods" also need a cast trigger filtered by spell color (#9) and scoped to *any*
+player, not just the controller. Soul Net is the same shape on a creature-dies trigger and needs
+no color filter, so it can land first as the walking skeleton.
+*Cards:* crystal_rod, iron_star, ivory_cup, soul_net, throne_of_bone, wooden_sphere.
+
+### 11. `block-restrictions-and-requirements` — 7 cards, L
+Depends on: nothing.
+1993 combat is full of "can't be blocked except by X", "all creatures able to block it do so",
+and "can block an additional creature." The engine's blocking legality check knows keywords
+(flying, menace, fear, `can_block_only_flyers`, `lesser_power_cant_block`) but has no general
+restriction/requirement pass and no per-creature block count above one. *Sketch:* split the
+declare-blockers validation into two passes matching CR 509.1b/509.1c — collect restrictions
+(Invisibility's "except by Walls", Juggernaut's "not by Walls", Ironclaw Orcs' "can't block power
+≥ 2") and requirements (Lure's "all able to block it do so", Blaze of Glory's "blocks each
+attacking creature if able"), then verify the declared set satisfies the maximum possible number
+of requirements without violating any restriction. A per-creature `max_blocks` (Two-Headed Giant
+of Foriys, Blaze of Glory's "any number") rides along. False Orders is the odd one — removing a
+blocker mid-combat and re-declaring it — and `remove_from_combat` already exists for the first
+half. This is the prerequisite most likely to grow: #14 (banding) sits on the same pass.
+*Cards:* blaze_of_glory, false_orders, invisibility, ironclaw_orcs, juggernaut, lure,
+two_headed_giant_of_foriys.
+
+### 12. `copy-a-permanent` — 3 cards, L
+Depends on: nothing.
+"You may have this creature enter as a copy of any creature on the battlefield" (CR 707).
+Falsifies the `PermanentFilter::name` ponytail — a copy changes the permanent's name, so
+copiable-values-vs-current-values becomes a real distinction. The engine copies *spells*
+(`copy_triggering_spell`, `create_copy`) and has one bespoke creature-copy
+(`become_copy_of_target_creature_gaining_myriad`), but no general as-enters copy. *Sketch:* a
+`CopyableValues` snapshot on `Permanent` — the copiable characteristics (name, mana cost, color,
+types, subtypes, abilities, base P/T) read from the copied permanent's own copiable values, not
+its current ones (CR 707.2), so copying a Clone copies what that Clone copied. `characteristics.rs`
+reads from that snapshot when present instead of the `CardDef`. Vesuvan Doppelganger layers two
+exceptions on top (doesn't copy color; keeps its own upkeep ability) plus an upkeep re-copy;
+Copy Artifact adds "it's an enchantment in addition to its other types."
+*Cards:* clone, copy_artifact, vesuvan_doppelganger.
+
+### 13. `copy-target-spell` — 1 card, M
+Depends on: nothing.
+Fork. `copy_triggering_spell` copies the spell that *triggered* the ability; Fork copies a
+targeted spell on the stack, may choose new targets, and the copy is red regardless of the
+original. *Sketch:* an `Effect::CopyTargetSpell { new_targets: bool, set_color: Option<Color> }`
+reusing the existing stack-copy machinery with the target chosen at cast time
+(`instant_or_sorcery_spell_on_stack` already exists as a target spec) and a
+`PendingChoice::ChooseTarget` raised at resolution for the copy's targets.
+*Cards:* fork.
+
+### 14. `banding` — 4 cards, L
+Depends on: #11.
+Banding (CR 702.22). Attacking as a band, being blocked as a group, and the defining ugly part:
+when a banding creature blocks or is blocked, *its controller* — not the attacking creature's
+controller — assigns that creature's combat damage. *Sketch:* an attack-declaration grouping
+(bands are declared with the attackers and can't change), block legality treating a band as one
+object, and a damage-assignment ownership flip in the existing `AssignCombatDamage` pending
+choice, which already knows how to ask a player to divide damage among blockers — it needs to ask
+a *different* player. Helm of Chatzuk grants it until end of turn, so it must be a real
+`Keyword`, not a card flag.
+*Cards:* benalish_hero, helm_of_chatzuk, mesa_pegasus, timber_wolves.
+
+### 15. `color-changing-effects` — 5 cards, M
+Depends on: nothing.
+The lace cycle. `set_own_color_until_end_of_turn` exists but is self-scoped and turn-scoped;
+these target a spell *or* permanent and last indefinitely (layer 5, no duration). *Sketch:* an
+`Effect::SetColor { target, colors, replace: true }` written into a permanent-level or
+stack-object-level color override that `characteristics.rs` applies in layer 5, with no cleanup
+hook. The target spec needs a "spell or permanent" variant — the pool has
+`single_target_spell_on_stack` and permanent targets, but nothing that accepts either.
+*Cards:* chaoslace, deathlace, lifelace, purelace, thoughtlace.
+
+### 16. `text-changing-effects` — 2 cards, L
+Depends on: #3, #15.
+Magical Hack and Sleight of Mind — layer 3, rewriting a word in the printed text. This is only
+tractable because the engine's card model is structured, not textual: the two cards each rewrite
+exactly one *enumerated* thing. *Sketch:* a permanent-level substitution map
+(`BasicLandType → BasicLandType` for Magical Hack, `Color → Color` for Sleight of Mind) applied
+in `characteristics.rs` at layer 3 to every enumerated land-type and color field on the object's
+abilities before later layers read them. Nothing textual is parsed. The scope is deliberately
+narrow and its ceiling is the printed cards: it will not rewrite a word the card model doesn't
+already store as an enum.
+*Cards:* magical_hack, sleight_of_mind.
+
+### 17. `random-discard` — 2 cards, S
+Depends on: nothing.
+"Discards a card at random" / "discards X cards at random." No `mode = "random"` or `at_random`
+exists anywhere in the pool. The engine's determinism rule means this must draw from the injected
+RNG the engine already threads for shuffling, never a wall-clock or thread-local source.
+*Sketch:* a `random: bool` on the existing discard effect; when set, the controller does not
+choose — the discarded cards are picked by the injected RNG. Card identity stays hidden from the
+opponent's projection through the existing visibility filter (the discard *event* is public, the
+hand it was drawn from is not).
+*Cards:* hypnotic_specter, mind_twist.
+
+### 18. `extra-turns` — 2 cards, M
+Depends on: #7 (Time Vault only).
+"Take an extra turn after this one" (CR 505.6a). The turn structure advances through a fixed
+player rotation with no concept of an inserted turn. *Sketch:* a `Vec<PlayerId>` extra-turn queue
+on `Game`, consumed by the turn-advance path before consulting the normal rotation, so multiple
+extra turns stack in the right order (last created, first taken). Time Vault additionally needs
+its skip-your-turn replacement, which is the other half of #7's untap-step work.
+*Cards:* time_vault, time_walk.
+
+### 19. `land-tap-triggers-and-bonuses` — 5 cards, M
+Depends on: nothing.
+"Whenever a player taps a land for mana" (Mana Flare, Manabarbs, Gauntlet of Might) and "whenever
+enchanted land becomes tapped" (Psychic Venom, Lifetap). `tapped_for_mana_bonus` (Fertile Ground,
+Wild Growth) exists but is a *static* on the enchanted host that adds mana; there is no trigger,
+and no way to scope it to every land of a type across all players. *Sketch:* two things — (a) a
+`Timing::LandTappedForMana` trigger carrying the land and its controller, fired from the mana-
+ability path; (b) widening `tapped_for_mana_bonus`'s `scope` beyond `enchanted_host` to a
+permanent filter, so Gauntlet of Might's "whenever a Mountain is tapped for mana, its controller
+adds an additional {R}" is the existing static over a wider scope. Psychic Venom triggers on *any*
+tap, not just for mana, so it hangs off the tap event rather than the mana path.
+*Cards:* gauntlet_of_might, lifetap, mana_flare, manabarbs, psychic_venom.
+
+### 20. `pay-or-consequence-upkeep` — 3 cards, S
+Depends on: nothing.
+"At the beginning of your upkeep, this creature deals 8 damage to you unless you pay {G}{G}{G}{G}."
+`sacrifice_self_unless_pay` and `PayEchoOrSacrifice` cover pay-or-sacrifice; there is no
+pay-or-damage, and Lord of the Pit's is pay-a-*sacrifice*-or-damage. *Sketch:* generalize the
+existing `SacrificeUnlessPay` pending choice into `PayOrElse { cost, otherwise: Vec<Effect> }` so
+the penalty is an effect list rather than a hardcoded sacrifice — the three cards then differ only
+in their `otherwise`. Demonic Hordes' penalty also needs #41.
+*Cards:* demonic_hordes, force_of_nature, lord_of_the_pit.
+
+### 21. `blocks-or-blocked-by-trigger` — 2 cards, M
+Depends on: nothing.
+"Whenever this creature blocks or becomes blocked by a non-Wall creature, destroy that creature at
+end of combat." Two gaps meet here. (a) No trigger fires on the blocking relationship itself —
+the pool has attack triggers and damage triggers, not block triggers. (b) "non-Wall" is a subtype
+*exclusion*, which falsifies the `without_flying` ponytail's "generalize if a second keyword
+exclusion turns up" — 2ed has five non-Wall clauses. *Sketch:* a `Timing::BlocksOrBlocked` firing
+once per blocking pair at declare-blockers with the other creature as `triggering_creature`, plus
+`PermanentFilter::subtypes_exclude: &[&str]` replacing the ad-hoc bools. The delayed destroy is an
+end-of-combat scheduled effect, which `schedule_*` effects already have a shape for.
+*Cards:* cockatrice, thicket_basilisk.
+
+### 22. `damage-taken-history` — 3 cards, M
+Depends on: nothing.
+"You gain life equal to the damage dealt to you this turn" / "whenever you're dealt damage, put
+that many vitality counters." `triggering_damage_dealt` exists as an amount but only inside the
+triggering ability; nothing accumulates per-player damage across a turn, and there is no
+"whenever you're dealt damage" trigger at all. *Sketch:* a turn-scoped `damage_taken_this_turn`
+per player on `Game`, incremented in the single `deal_damage` path and cleared at cleanup, exposed
+as an `Amount`; plus a `Timing::PlayerDealtDamage` firing with the amount. Both are cheap once
+`deal_damage` is already being touched for #4 — sequence this after that increment.
+*Cards:* lich, living_artifact, simulacrum.
+
+### 23. `mana-emptying` — 3 cards, M
+Depends on: nothing.
+"That player loses all unspent mana" — a 1993 artefact of mana burn that survives in the Oracle
+text. The engine's mana pool empties at step boundaries; nothing empties it on demand, and Power
+Sink's "they tap all lands with mana abilities they control" is a filtered mass tap the existing
+`tap_all` doesn't filter by ability. *Sketch:* an `Effect::EmptyManaPool { who }` plus a filter on
+`tap_all`. Power Sink is otherwise the standard counter-unless-pays shape.
+*Cards:* drain_power, mana_short, power_sink.
+
+### 24. `attack-restrictions-by-defender` — 3 cards, S
+Depends on: nothing.
+"This creature can't attack unless defending player controls an Island" and Animate Wall's "can
+attack as though it didn't have defender." Attack legality checks keywords and tapped state but
+takes no per-attacker predicate against the *defending player's* board. *Sketch:* a
+`StaticEffect::CantAttackUnless { condition }` evaluated per candidate defender in the declare-
+attackers legality check (a creature may be legal against one opponent and not another — this is
+the multiplayer wrinkle the printed card never had to consider), and a
+`StaticEffect::IgnoresDefender` consulted beside the `Defender` keyword check. Pirate Ship and Sea
+Serpent's "when you control no Islands, sacrifice this" is a state trigger the engine has a shape
+for (`no_creatures_on_battlefield` is the same idea).
+*Cards:* animate_wall, pirate_ship, sea_serpent.
+
+### 25. `amount-arithmetic` — 2 cards, S
+Depends on: #1 (Aspect of Wolf only).
+"X damage … where X is the number of cards in their hand minus 4" and "half the number of Forests
+you control, rounded down / rounded up." `Amount` has `half_x` and `half_x_rounded_down` for the
+X-cost case only; there is no way to halve or offset any other amount. *Sketch:* wrap rather than
+multiply variants — `Amount::Offset { inner: Box<Amount>, delta: i32, floor_zero: bool }` and
+`Amount::Half { inner: Box<Amount>, round_up: bool }`, resolved recursively in `amount.rs`. Black
+Vise clamps at zero (a 3-card hand deals no damage, not negative damage).
+*Cards:* aspect_of_wolf, black_vise.
+
+### 26. `forced-attack-with-delayed-punishment` — 2 cards, M
+Depends on: #21 (subtype exclusion).
+"That creature attacks this turn if able. Destroy it at the beginning of the next end step if it
+didn't attack." `must_attack_target` (Basandra) and `must_attack_each_combat` exist; the
+punishment half does not, and neither does the "has controlled continuously since the beginning of
+the turn" qualifier that both cards use to exempt freshly-arrived creatures. *Sketch:* a
+`controlled_since_turn_start` flag on `Permanent` (set at untap, cleared on control change or
+entry) as a filter axis, plus a delayed end-step trigger that checks the existing
+`attacked_this_turn` flag — which #1's neighbourhood already maintains.
+*Cards:* nettling_imp, siren_s_call.
+
+### 27. `widen-creature-types` — 0 cards, S
+Depends on: nothing.
+Re-audit fallout, not a card blocker. `CREATURE_TYPES` in `types/stack.rs` is the candidate list
+for "choose a creature type" prompts and its own ponytail says to widen it when a card needs a
+type not printed on anything in the pool. 2ed prints 21 such types: Archer, Assassin, Barbarian,
+Basilisk, Cockatrice, Gargoyle, Illusion, Juggernaut, Minotaur, Nightmare, Nymph, Ogre, Pegasus,
+Pirate, Serpent, Shade, Specter, Spider, Unicorn, Wall, Wraith. *Sketch:* add them to the list.
+Land it in the same wave as the first batch of 2ed creatures so the two stay consistent.
+*Cards:* none directly — every "choose a creature type" card in the pool gains the options.
+
+### 28. `counter-kinds` — 5 cards, S
+Depends on: nothing.
+Falsifies the fixed counter-slot array in `types/effect/shared.rs`. 2ed needs four kinds it
+doesn't have: +1/+0 (Clockwork Beast), corpse (Scavenging Ghoul), mire (Cyclopean Tomb), vitality
+(Living Artifact). Three are inert bookkeeping counters; +1/+0 is a real P/T counter that
+`characteristics.rs` must apply in layer 7d beside +1/+1. *Sketch:* extend the slot array and add
+the +1/+0 arm to the counter-based P/T computation. Clockwork Beast additionally caps its own
+activation ("can't cause the total to be greater than seven"), which is a bound on the effect's
+amount, not a new counter concept.
+*Cards:* clockwork_beast, cyclopean_tomb, living_artifact, rock_hydra, scavenging_ghoul.
+
+### 29. `extra-land-plays-and-land-play-trigger` — 1 card, S
+Depends on: nothing.
+Fastbond. "You may play any number of lands on each of your turns" plus "whenever you play a land,
+if it wasn't the first land you played this turn." The engine enforces one land per turn with a
+counter; the counter exists, nothing lifts the cap and nothing triggers on the play. *Sketch:* a
+`StaticEffect::AdditionalLandPlays { count: Option<u32> }` (`None` = unlimited) consulted by the
+land-play legality check, and a `Timing::LandPlayed` trigger carrying the per-turn ordinal so the
+intervening-if reads it directly.
+*Cards:* fastbond.
+
+### 30. `counter-spell-with-mana-value-x` — 1 card, S
+Depends on: nothing.
+Spell Blast. `counter_target_spell` filters by type; it can't gate on the target's mana value
+matching the X paid. *Sketch:* the target legality check for the counter gains a
+`mana_value_equals: Option<Amount>` resolved against the X already paid — an X-dependent target
+restriction, checked at cast time when X is locked in.
+*Cards:* spell_blast.
+
+### 31. `look-at-target-players-hand` — 1 card, S
+Depends on: nothing.
+Glasses of Urza. The engine reveals cards and looks at library tops but has no "look at a hand"
+— it is purely a visibility grant to one player, with the server-side per-player filter being the
+thing that has to change. *Sketch:* a one-shot `Effect::LookAtHand { target_player }` that widens
+the activating player's projection of that hand for the duration of the resolution, threaded
+through the same visibility filter that already special-cases revealed cards. No game state
+changes; this is a projection-layer effect.
+*Cards:* glasses_of_urza.
+
+### 32. `spend-mana-as-another-color` — 1 card, S
+Depends on: nothing.
+Sunglasses of Urza. The mana payment path matches colors exactly. *Sketch:* a
+`StaticEffect::SpendManaAsThoughAnotherColor { from: Color, to: Color }` consulted by the payment
+matcher as a fallback when an exact match fails. Cost *reduction* already hooks the payment path,
+so the seam exists.
+*Cards:* sunglasses_of_urza.
+
+### 33. `discard-to-library-top-replacement` — 1 card, S
+Depends on: nothing.
+Library of Leng. "If an effect causes you to discard a card, discard it, but you may put it on
+top of your library instead." `no_maximum_hand_size` (the card's other half) already exists.
+*Sketch:* a replacement consulted in the discard path offering
+`PendingChoice::ChooseDiscardDestination`. Note the Oracle wording — the card *is* discarded
+(discard triggers still fire), it just lands elsewhere.
+*Cards:* library_of_leng.
+
+### 34. `exile-instead-of-dying-replacement` — 1 card, S
+Depends on: nothing.
+Disintegrate. `cant_be_regenerated` exists (Terror); the "if it would die this turn, exile it
+instead" rider does not. *Sketch:* a turn-scoped per-permanent `exile_instead_of_dying` flag
+consulted by the dies replacement, set alongside the existing `cant_be_regenerated` flag by the
+same effect.
+*Cards:* disintegrate.
+
+### 35. `aura-attachment-restriction` — 1 card, S
+Depends on: nothing.
+Consecrate Land's "can't be enchanted by other Auras." *Sketch:* a
+`StaticEffect::CantBeEnchanted` consulted by the Aura target-legality check and by the
+state-based Aura-attachment sweep. The indestructible half is an ordinary keyword grant.
+*Cards:* consecrate_land.
+
+### 36. `grant-triggered-ability-to-attached` — 1 card, M
+Depends on: nothing.
+Farmstead grants the enchanted *land* a triggered ability ("At the beginning of your upkeep, you
+may pay {W}{W}…"). `grant_to_attached` grants keywords and `grant_source_abilities_until_end_of_turn`
+grants a whole ability set; neither grants a single authored triggered ability to a host.
+*Sketch:* let `grant_to_attached` carry an `abilities` list the trigger scanner picks up on the
+host — `triggers.rs` already has a granted-triggered-abilities scanner (its ponytail notes it has
+one consumer today), so this widens that path rather than adding one. The payload is #10's
+optional-mana-payment shape.
+*Cards:* farmstead.
+
+### 37. `aura-reattachment-on-trigger` — 1 card, M
+Depends on: nothing.
+Kudzu — when the enchanted land becomes tapped, destroy it, and *that land's controller* attaches
+Kudzu to a land of their choice. Two novelties: an Aura surviving its host's destruction (rather
+than being swept as an orphan) and a re-attachment choice made by an opponent. *Sketch:* an
+`Effect::ReattachSelf { chooser, filter }` raising a `PendingChoice::ChooseAttachTarget` for the
+named player, with the state-based orphan sweep exempting the Aura for the window between host
+destruction and the choice resolving — the same exemption `enchant_graveyard` already carves out.
+*Cards:* kudzu.
+
+### 38. `shuffle-hand-and-graveyard-then-draw` — 1 card, S
+Depends on: nothing.
+Timetwister. `each_player_discards_hand_then_draws` (Wheel of Fortune, already in the pool) is the
+neighbour; Timetwister shuffles hand *and* graveyard into the library instead of discarding, and
+Timetwister itself goes to the graveyard after (so it isn't shuffled in). *Sketch:* a sibling mode
+on that effect with the zones to shuffle and no discard step.
+*Cards:* timetwister.
+
+### 39. `graveyard-position-recursion` — 1 card, M
+Depends on: nothing.
+Nether Shadow — "if this card is in your graveyard with three or more creature cards above it."
+The graveyard is ordered in the model but nothing reads position. *Sketch:* a
+`Condition::CardsAboveThisInGraveyard { at_least, filter }` reading the existing ordering, plus
+the upkeep trigger firing from the graveyard (triggers from a non-battlefield zone — check whether
+the scanner already sweeps graveyards for `may_return_from_graveyard`; if it does, this is only
+the condition).
+*Cards:* nether_shadow.
+
+### 40. `untapped-conditioned-anthem` — 1 card, S
+Depends on: nothing.
+Castle's "untapped creatures you control get +0/+2." `anthem` filters by color, subtype, and
+controller but not by tapped state — and this one must re-evaluate the instant a creature taps.
+*Sketch:* a `tapped: Option<bool>` axis on `PermanentFilter`, with `characteristics_cache.rs`
+invalidating on tap/untap (confirm it already does — the cache invalidates on
+`CombatCleared` and battlefield changes; a bare tap may not be one).
+*Cards:* castle.
+
+### 41. `opponent-chosen-sacrifice` — 1 card, S
+Depends on: nothing.
+Demonic Hordes' "sacrifice a land of an opponent's choice." Sacrifice effects always let the
+sacrificing player choose. *Sketch:* a `chooser: Who` field on the sacrifice effect routing the
+existing `PendingChoice` to a different player. In a 4-player game "an opponent's choice" is
+underspecified by the printed card — pick the one whose upkeep-trigger controller is being
+punished, i.e. raise the choice to the next opponent in turn order, and record that as an
+`approximates` on the card.
+*Cards:* demonic_hordes.
+
+### 42. `filter-comparing-to-source` — 1 card, S
+Depends on: nothing.
+Stone Giant's "target creature you control with toughness less than this creature's power."
+Filters compare against constants, never against the source's own live characteristics.
+*Sketch:* a `toughness_less_than: Option<Amount>` on `PermanentFilter` resolved at target-legality
+time with the source in scope — `Amount::SourcePower` already exists, so this is a filter axis, not
+a new amount.
+*Cards:* stone_giant.
+
+### 43. `mass-symmetrical-rebalancing` — 1 card, L
+Depends on: nothing.
+Balance. Three sequential symmetrical operations, each finding the minimum across players and
+making everyone else match: sacrifice lands down to the fewest, discard down to the fewest, and
+sacrifice creatures down to the fewest — with each affected player choosing which of their own.
+*Sketch:* a `BalanceZone { zone, filter }` effect that computes the minimum, then fans out one
+`PendingChoice` per player over-threshold in APNAP order (CR 101.4). `each_player_sacrifices`
+exists but takes a fixed count; the novelty is the derived per-player count and the three-phase
+sequencing.
+*Cards:* balance.
+
+### 44. `aura-etb-conditional-self-grant` — 1 card, S
+Depends on: nothing.
+Earthbind — "When this Aura enters, **if** enchanted creature has flying, this Aura deals 2 damage
+to that creature **and this Aura gains** 'Enchanted creature loses flying.'" The intervening-if
+exists; the self-granted static does not — the Aura only strips flying if the check passed on
+entry, so it can't be a plain printed static. *Sketch:* a
+`Effect::GrantStaticToSelf { effect }` writing a granted-static onto the permanent that
+`characteristics.rs`'s static scanners read alongside printed ones.
+*Cards:* earthbind.
+
+### 45. `pump-by-own-power-with-delayed-destroy` — 1 card, S
+Depends on: nothing.
+Berserk. `Amount::TargetPower` exists, so "+X/+0 where X is its power" is close — but it must
+snapshot at resolution, not track live. The rider is a delayed end-step destroy conditioned on
+whether the creature attacked, which is `attacked_this_turn` (#1's neighbourhood) plus a scheduled
+effect. Also needs the cast-timing restriction "only before the combat damage step."
+*Cards:* berserk.
+
+### 46. `mana-from-variable-amount` — 1 card, S
+Depends on: nothing.
+Sacrifice — "Add an amount of {B} equal to the sacrificed creature's mana value." Mana effects add
+fixed quantities; `Amount::SacrificedCreaturePower` exists but not mana value, and the mana effect
+takes no amount. *Sketch:* an `amount: Amount` on the mana-add effect, plus
+`Amount::SacrificedCreatureManaValue`. The additional cost (`[cost.additional]` sacrifice) already
+exists.
+*Cards:* sacrifice.
+
+### 47. `lich-life-replacement` — 1 card, L
+Depends on: #22.
+Lich. Four interlocking replacements: you don't lose at 0 or less life, life gain becomes card
+draw, damage taken becomes a sacrifice of that many permanents, and losing the enchantment loses
+the game. `life_gain_replacement` exists (Pest Rescuer); the loss-prevention does not, and the
+state-based-action check for 0 life is unconditional. *Sketch:* a per-player
+`ignores_zero_life_loss` flag consulted by the SBA check, plus the damage-taken trigger from #22.
+Worth landing last — it touches the loss condition, which every other test in the suite implicitly
+depends on.
+*Cards:* lich.
+
+### 48. `pile-based-block-assignment` — 2 cards, XL
+Depends on: #11.
+Camouflage and Raging River — both replace declare-blockers with a pile-division ritual, and
+Camouflage assigns piles to attackers *at random*. This is the least valuable work in the file
+(two cards, no reuse, and the mechanic was abandoned in 1994) and the most invasive (it replaces
+the declare-blockers step rather than constraining it). *Sketch:* deferred — do not start this
+until every other increment has landed, and reconsider whether an `approximates` is the honest
+answer instead.
+*Cards:* camouflage, raging_river.
+
+### 49. `controlling-another-players-actions` — 2 cards, XL
+Depends on: nothing.
+Word of Command ("you control that player until this finishes resolving") and Drain Power ("target
+player activates a mana ability of each land they control"). One player making decisions on
+another's behalf, mid-resolution, with a restricted legal-action set. The engine's submit path is
+built around a single acting player per pending choice, so this is a structural change to the
+choice model, not an effect. *Sketch:* a `PendingChoice` variant carrying both an `acting_player`
+(who answers) and a `subject_player` (whose resources are spent), with the visibility filter
+widened for the duration. Drain Power is the tractable half — its action set is exactly "tap each
+land for mana", so it can be modelled as a direct effect without a real control handoff. Word of
+Command is the hard half and should be the last thing attempted in this set.
+*Cards:* drain_power, word_of_command.

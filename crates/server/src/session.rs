@@ -687,7 +687,7 @@ mod tests {
     fn answering_a_choice_that_emits_no_events_still_broadcasts() {
         use engine::{Game, Intent, Step};
 
-        let bear = || cards::get_by_name("Grizzly Bear").expect("Grizzly Bear in pool");
+        let bear = || cards::get_by_name("Grizzly Bears").expect("Grizzly Bears in pool");
 
         let mut game = Game::new();
         let attacker = game.spawn_on_battlefield(PlayerId(0), bear());
@@ -922,7 +922,7 @@ mod tests {
         );
         keep_all_hands(&mut game);
         game.fund_mana(PlayerId(0));
-        let bear = game.spawn_in_hand(PlayerId(0), cards::get_by_name("Grizzly Bear").unwrap());
+        let bear = game.spawn_in_hand(PlayerId(0), cards::get_by_name("Grizzly Bears").unwrap());
         table.game = Some(game);
         (table, bear)
     }
@@ -975,7 +975,7 @@ mod tests {
         let mut game = engine::Game::new();
         game.spawn_on_battlefield(
             PlayerId(1),
-            cards::get_by_name("Grizzly Bear").expect("pool card"),
+            cards::get_by_name("Grizzly Bears").expect("pool card"),
         );
         let pinger = game.spawn_in_hand(PlayerId(0), FORCED_PINGER.clone());
         table.game = Some(game);
@@ -1131,7 +1131,7 @@ mod tests {
     fn turn_yield_clears_only_for_the_player_being_attacked() {
         use engine::{Game, Intent, Step};
 
-        let bear = || cards::get_by_name("Grizzly Bear").expect("Grizzly Bear in pool");
+        let bear = || cards::get_by_name("Grizzly Bears").expect("Grizzly Bears in pool");
         let mut table = Table::empty();
         let mut game = Game::with_players(3, 0);
         let attacker = game.spawn_on_battlefield(PlayerId(0), bear());
@@ -1192,7 +1192,7 @@ mod tests {
     fn attacked_seat_can_cast_an_instant_before_blockers() {
         use engine::{Event, Game, Intent, Step, Zone};
 
-        let bear = || cards::get_by_name("Grizzly Bear").expect("Grizzly Bear in pool");
+        let bear = || cards::get_by_name("Grizzly Bears").expect("Grizzly Bears in pool");
         let mut table = Table::empty();
         let mut game = Game::new();
         let attacker = game.spawn_on_battlefield(PlayerId(0), bear());
@@ -1287,7 +1287,7 @@ mod tests {
     fn helpless_attacked_seat_auto_passes_without_turn_yield() {
         use engine::{Game, Intent, MeaningfulAction, Step};
 
-        let bear = || cards::get_by_name("Grizzly Bear").expect("Grizzly Bear in pool");
+        let bear = || cards::get_by_name("Grizzly Bears").expect("Grizzly Bears in pool");
         let mut table = Table::empty();
         let mut game = Game::new();
         let attacker = game.spawn_on_battlefield(PlayerId(0), bear());
@@ -1320,7 +1320,7 @@ mod tests {
     fn unaffordable_instant_does_not_stop_attack_response() {
         use engine::{Game, Intent, Step};
 
-        let bear = || cards::get_by_name("Grizzly Bear").expect("Grizzly Bear in pool");
+        let bear = || cards::get_by_name("Grizzly Bears").expect("Grizzly Bears in pool");
         let mut table = Table::empty();
         let mut game = Game::new();
         let attacker = game.spawn_on_battlefield(PlayerId(0), bear());
@@ -1354,7 +1354,7 @@ mod tests {
         let mut game = Game::new();
         game.spawn_on_battlefield(
             PlayerId(0),
-            cards::get_by_name("Grizzly Bear").expect("Grizzly Bear in pool"),
+            cards::get_by_name("Grizzly Bears").expect("Grizzly Bears in pool"),
         );
         // Walk to declare attackers on the engine alone so auto-advance cannot race ahead
         // into P1's Untap (which would clear turn yield for a different reason).
@@ -1403,7 +1403,7 @@ mod tests {
     fn after_attack_helpless_defender_still_stops_for_blockers() {
         use engine::{Game, Intent, MeaningfulAction, Step};
 
-        let bear = || cards::get_by_name("Grizzly Bear").expect("Grizzly Bear in pool");
+        let bear = || cards::get_by_name("Grizzly Bears").expect("Grizzly Bears in pool");
         let mut table = Table::empty();
         let mut game = Game::new();
         let attacker = game.spawn_on_battlefield(PlayerId(0), bear());
@@ -1442,7 +1442,7 @@ mod tests {
     /// a legal attack declaration.
     #[test]
     fn end_turn_with_goaded_creature_disarms_and_still_accepts_legal_declare() {
-        let bear = || cards::get_by_name("Grizzly Bear").expect("Grizzly Bear in pool");
+        let bear = || cards::get_by_name("Grizzly Bears").expect("Grizzly Bears in pool");
         let mut table = Table::empty();
         let mut game = engine::Game::new();
         let attacker = game.spawn_on_battlefield(PlayerId(0), bear());
@@ -1505,7 +1505,7 @@ mod tests {
         game.spawn_in_hand(PlayerId(1), cards::get_by_name("Shock").unwrap());
         game.spawn_on_battlefield(
             PlayerId(0),
-            cards::get_by_name("Grizzly Bear").expect("Grizzly Bear in pool"),
+            cards::get_by_name("Grizzly Bears").expect("Grizzly Bears in pool"),
         );
         table.game = Some(game);
         advance_table_to_step(&mut table, engine::Step::DeclareAttackers);
@@ -1534,7 +1534,7 @@ mod tests {
     /// preserve End Turn (event-clear already ignores it; intent-clear must too).
     #[test]
     fn end_turn_survives_racing_empty_declare_attackers() {
-        let bear = || cards::get_by_name("Grizzly Bear").expect("Grizzly Bear in pool");
+        let bear = || cards::get_by_name("Grizzly Bears").expect("Grizzly Bears in pool");
         let mut table = Table::empty();
         let mut game = engine::Game::new();
         game.fund_mana(PlayerId(0));
@@ -1572,7 +1572,7 @@ mod tests {
     /// Choosing real attackers is an intentional act — it must still cancel End Turn / turn yield.
     #[test]
     fn non_empty_declare_attackers_still_clears_turn_yield() {
-        let bear = || cards::get_by_name("Grizzly Bear").expect("Grizzly Bear in pool");
+        let bear = || cards::get_by_name("Grizzly Bears").expect("Grizzly Bears in pool");
         let mut table = Table::empty();
         let mut game = engine::Game::new();
         let attacker = game.spawn_on_battlefield(PlayerId(0), bear());
@@ -1594,7 +1594,7 @@ mod tests {
     /// Symmetric to empty declare-attackers: "No blockers" must not clear turn yield.
     #[test]
     fn empty_declare_blockers_does_not_clear_turn_yield() {
-        let bear = || cards::get_by_name("Grizzly Bear").expect("Grizzly Bear in pool");
+        let bear = || cards::get_by_name("Grizzly Bears").expect("Grizzly Bears in pool");
         let mut table = Table::empty();
         let mut game = engine::Game::new();
         // P0 keeps a post-combat instant so auto-advance cannot wrap to P1 Untap (which would
@@ -1672,7 +1672,7 @@ mod tests {
     fn end_turn_clears_when_another_player_acts() {
         use engine::{Intent, Target};
 
-        let bear = || cards::get_by_name("Grizzly Bear").expect("Grizzly Bear in pool");
+        let bear = || cards::get_by_name("Grizzly Bears").expect("Grizzly Bears in pool");
         let mut table = Table::empty();
         let mut game = engine::Game::new();
         let bear_id = game.spawn_on_battlefield(PlayerId(0), bear());
@@ -1723,7 +1723,7 @@ mod tests {
     /// End Turn response windows must open even when the responder already armed until-my-turn.
     #[test]
     fn end_turn_stops_for_turn_yielded_opponent_with_an_instant() {
-        let bear = || cards::get_by_name("Grizzly Bear").expect("Grizzly Bear in pool");
+        let bear = || cards::get_by_name("Grizzly Bears").expect("Grizzly Bears in pool");
         let mut table = Table::empty();
         let mut game = engine::Game::new();
         let _bear = game.spawn_on_battlefield(PlayerId(0), bear());
@@ -2180,7 +2180,7 @@ mod tests {
         let mut game = Game::new();
         game.fund_mana(PlayerId(0));
         let bear =
-            game.spawn_on_battlefield(PlayerId(0), cards::get_by_name("Grizzly Bear").unwrap());
+            game.spawn_on_battlefield(PlayerId(0), cards::get_by_name("Grizzly Bears").unwrap());
         let eyes =
             game.spawn_in_graveyard(PlayerId(0), cards::get_by_name("Sentinel's Eyes").unwrap());
         let fodder: Vec<_> = (0..2)

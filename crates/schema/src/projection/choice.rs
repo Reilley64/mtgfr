@@ -932,9 +932,9 @@ mod coverage_tests {
     #[test]
     fn pending_choice_projection_covers_each_variant() {
         let mut game = Game::new();
-        let source = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
+        let source = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bears"));
         let spell = game.spawn_in_hand(PlayerId(0), def("Shock"));
-        let blocker = game.spawn_on_battlefield(PlayerId(1), def("Grizzly Bear"));
+        let blocker = game.spawn_on_battlefield(PlayerId(1), def("Grizzly Bears"));
         let hand_card = game.spawn_in_hand(PlayerId(0), def("Forest"));
 
         type Case = (PendingChoice, fn(PendingChoiceView) -> bool);
@@ -1179,7 +1179,7 @@ mod coverage_tests {
     #[test]
     fn cast_creature_face_down_candidates_are_redacted_for_non_owner() {
         let mut game = Game::new();
-        let hand_card = game.spawn_in_hand(PlayerId(0), def("Grizzly Bear"));
+        let hand_card = game.spawn_in_hand(PlayerId(0), def("Grizzly Bears"));
         let choice = PendingChoice::CastCreatureFaceDown {
             player: PlayerId(0),
             candidates: vec![hand_card],
@@ -1257,7 +1257,7 @@ mod coverage_tests {
     fn may_put_counter_on_creature_marks_the_reused_copy_target_view() {
         let mut game = Game::new();
         let source = game.spawn_on_battlefield(PlayerId(0), def("Zimone's Hypothesis"));
-        let creature = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
+        let creature = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bears"));
         let view = project_pending_choice(
             &game,
             Some(PlayerId(0)),
@@ -1294,7 +1294,7 @@ mod coverage_tests {
     #[test]
     fn choose_exiled_dig_to_cast_free_projects_cast_targets_for_aura() {
         let mut game = Game::new();
-        let host = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
+        let host = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bears"));
         let aura = game.spawn_in_hand(PlayerId(0), def("Spirit Mantle"));
         let source = game.spawn_on_battlefield(PlayerId(0), def("Herald of Amity"));
         let view = project_pending_choice(
@@ -1328,8 +1328,8 @@ mod coverage_tests {
     #[test]
     fn choose_exiled_dig_to_cast_free_omits_cast_targets_for_untargeted() {
         let mut game = Game::new();
-        let _host = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
-        let bear = game.spawn_in_hand(PlayerId(0), def("Grizzly Bear"));
+        let _host = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bears"));
+        let bear = game.spawn_in_hand(PlayerId(0), def("Grizzly Bears"));
         let source = game.spawn_on_battlefield(PlayerId(0), def("Herald of Amity"));
         let view = project_pending_choice(
             &game,

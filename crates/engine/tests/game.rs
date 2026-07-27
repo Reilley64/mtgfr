@@ -328,7 +328,7 @@ fn an_intent_referencing_an_unknown_object_is_rejected_not_panicked() {
 #[test]
 fn snapshot_read_queries_expose_object_facts() {
     let mut game = Game::new();
-    let creature = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let creature = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     game.add_plus_counter(creature);
 
     assert_eq!(game.controller_of(creature), PlayerId(0));
@@ -366,7 +366,7 @@ fn a_new_turn_untaps_the_active_player_and_draws_them_a_card() {
         object: land,
     })
     .unwrap();
-    let library = game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Shock")]);
+    let library = game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Shock")]);
     assert!(game.is_tapped(land));
 
     // Roll forward into player 1's turn, up to their draw step.
@@ -453,10 +453,10 @@ fn tapping_a_land_adds_mana_of_its_color_to_the_pool() {
 #[test]
 fn casting_pays_the_spells_cost_from_the_pool() {
     let mut game = Game::new();
-    // Grizzly Bear costs {1}{G}: two Forests pay the {G} and the {1}.
+    // Grizzly Bears costs {1}{G}: two Forests pay the {G} and the {1}.
     let f1 = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
     let f2 = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     game.submit(Intent::TapForMana {
         player: PlayerId(0),
         object: f1,
@@ -696,7 +696,7 @@ fn tap_forests(game: &mut Game, count: usize) {
 #[test]
 fn flashback_casts_a_spell_from_the_graveyard_then_exiles_it() {
     let mut game = Game::new();
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
     let looting = game.spawn_in_graveyard(PlayerId(0), FLASHBACK_DRAW.clone());
     tap_forests(&mut game, 2); // flashback {2} (CR 702.34)
 
@@ -799,7 +799,7 @@ fn flashback_rejected_when_card_lacks_flashback() {
 #[test]
 fn flashback_pays_the_flashback_cost_not_the_printed_cost() {
     let mut game = Game::new();
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
     // Printed {5}, flashback {1}: with only one mana available, casting can only succeed if the (CR 702.34, CR 601)
     // flashback cost — not the printed cost — is charged. (CR 702.34)
     let cheap_flashback = CardDef {
@@ -897,7 +897,7 @@ fn flashback_with_pay_life_additional_cost() {
 
     // A player with enough life casts and loses 3 life.
     let mut game = Game::new();
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
     let object = game.spawn_in_graveyard(PlayerId(0), with_life.clone());
     game.fund_mana(PlayerId(0));
     let before = game.life(PlayerId(0));
@@ -973,7 +973,7 @@ fn tap_plains(game: &mut Game, count: usize) {
 #[test]
 fn raffines_guidance_casts_from_graveyard_for_alt_cost() {
     let mut game = Game::new();
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // printed 2/2
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears")); // printed 2/2
     let guidance = game.spawn_in_graveyard(PlayerId(0), card("Raffine's Guidance"));
     tap_forests(&mut game, 2); // the alt cost's {2}
     tap_plains(&mut game, 1); // the alt cost's {W} (CR 118.9): {2}{W}, not the printed {W}
@@ -1018,7 +1018,7 @@ fn raffines_guidance_casts_from_graveyard_for_alt_cost() {
 #[test]
 fn raffines_guidance_graveyard_cast_charges_the_alt_cost_not_the_printed_cost() {
     let mut game = Game::new();
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let guidance = game.spawn_in_graveyard(PlayerId(0), card("Raffine's Guidance"));
     tap_plains(&mut game, 1); // enough for the printed {W} only, not the alt {2}{W}
 
@@ -1092,7 +1092,7 @@ fn retrace_recasts_from_graveyard_by_discarding_a_land() {
 fn retrace_requires_a_land_in_hand() {
     let mut game = Game::new();
     let throes = game.spawn_in_graveyard(PlayerId(0), card("Throes of Chaos"));
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     game.fund_mana(PlayerId(0));
 
     // No land named at all is short on the required count.
@@ -1246,7 +1246,7 @@ fn call_the_skybreaker_retrace_casts_from_graveyard_by_discarding_a_land() {
 fn call_the_skybreaker_retrace_requires_a_land_in_hand() {
     let mut game = Game::new();
     let skybreaker = game.spawn_in_graveyard(PlayerId(0), card("Call the Skybreaker"));
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     game.fund_mana(PlayerId(0));
 
     // No land named at all is short on the required count.
@@ -1455,7 +1455,7 @@ fn escape_requires_exactly_four_other_cards() {
 #[test]
 fn escape_casts_sentinels_eyes_onto_a_creature() {
     let mut game = TestGame::new();
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let eyes = game.spawn_in_graveyard(PlayerId(0), card("Sentinel's Eyes"));
     let fodder: Vec<ObjectId> = (0..2)
         .map(|_| game.spawn_in_graveyard(PlayerId(0), card("Plains")))
@@ -1876,8 +1876,8 @@ fn serra_paragon_graveyard_play_budget_resets_next_turn() {
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Serra Paragon"));
     // Stock both libraries so the turn cycle's draw steps don't deck anyone out.
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
     let f1 = game.spawn_in_graveyard(PlayerId(0), card("Forest"));
     let f2 = game.spawn_in_graveyard(PlayerId(0), card("Forest"));
 
@@ -3548,7 +3548,7 @@ fn capstone_a_scripted_game_plays_to_a_win() {
 #[test]
 fn a_commander_starts_in_the_command_zone_with_forty_life() {
     let mut game = Game::new();
-    let cmd = game.designate_commander(PlayerId(0), card("Grizzly Bear"));
+    let cmd = game.designate_commander(PlayerId(0), card("Grizzly Bears"));
 
     assert_eq!(game.zone_of(cmd), Zone::Command);
     assert_eq!(game.life(PlayerId(0)), 40);
@@ -3558,7 +3558,7 @@ fn a_commander_starts_in_the_command_zone_with_forty_life() {
 fn casting_the_commander_from_the_command_zone_taxes_each_recast() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let cmd = game.designate_commander(PlayerId(0), card("Grizzly Bear")); // {1}{G}
+    let cmd = game.designate_commander(PlayerId(0), card("Grizzly Bears")); // {1}{G}
 
     game.submit(Intent::Cast {
         player: PlayerId(0),
@@ -3596,7 +3596,7 @@ fn commander_casts_amount_scales_draw_commanders_insight() {
     // coincidentally reading the wrong player.
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let p0_commander = game.designate_commander(PlayerId(0), card("Grizzly Bear")); // {1}{G}
+    let p0_commander = game.designate_commander(PlayerId(0), card("Grizzly Bears")); // {1}{G}
     game.submit(Intent::Cast {
         player: PlayerId(0),
         object: p0_commander,
@@ -3696,7 +3696,7 @@ fn commander_casts_amount_scales_draw_commanders_insight() {
 fn a_dying_commander_returns_to_the_command_zone() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let cmd = game.designate_commander(PlayerId(0), card("Grizzly Bear")); // 2/2
+    let cmd = game.designate_commander(PlayerId(0), card("Grizzly Bears")); // 2/2
     game.submit(Intent::Cast {
         player: PlayerId(0),
         object: cmd,
@@ -3763,13 +3763,13 @@ fn twenty_one_commander_damage_loses_the_game() {
 
 #[test]
 fn color_identity_validation_flags_off_color_cards() {
-    // Treat Grizzly Bear ({1}{G}) as a mono-green commander.
+    // Treat Grizzly Bears ({1}{G}) as a mono-green commander.
     assert!(
-        within_identity(&card("Llanowar Elves"), &card("Grizzly Bear")),
+        within_identity(&card("Llanowar Elves"), &card("Grizzly Bears")),
         "a green card is within a green identity"
     );
     assert!(
-        !within_identity(&card("Shock"), &card("Grizzly Bear")),
+        !within_identity(&card("Shock"), &card("Grizzly Bears")),
         "a red card is outside a green identity"
     );
 }
@@ -4137,7 +4137,7 @@ fn token_combat_damage_draws_curiosity_crafter() {
     game.spawn_on_battlefield(PlayerId(0), card("Curiosity Crafter"));
     let token = game.spawn_token_on_battlefield(PlayerId(0), VANILLA.clone());
     let non_token = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
-    let library = game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Elvish Mystic")]);
+    let library = game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Elvish Mystic")]);
 
     attack_with(&mut game, vec![token, non_token]);
     advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
@@ -4164,7 +4164,7 @@ fn your_creatures_combat_damage_draws_ohran_frostfang() {
     let unblocked = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
     let blocked = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
     let blocker = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
-    let library = game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Elvish Mystic")]);
+    let library = game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Elvish Mystic")]);
 
     attack_with(&mut game, vec![unblocked, blocked]);
     block_with(&mut game, vec![(blocker, blocked)]).unwrap();
@@ -4189,7 +4189,7 @@ fn this_creature_combat_damage_draws_leitmotif_composer() {
     let mut game = Game::new();
     let composer = game.spawn_on_battlefield(PlayerId(0), card("Leitmotif Composer"));
     let other = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
-    let library = game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Elvish Mystic")]);
+    let library = game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Elvish Mystic")]);
 
     attack_with(&mut game, vec![composer, other]);
     advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
@@ -5211,7 +5211,7 @@ fn an_illegal_damage_assignment_is_rejected_and_the_choice_stays() {
 #[test]
 fn a_plus_one_counter_raises_power_and_toughness() {
     let mut game = Game::new();
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // base 2/2
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears")); // base 2/2
 
     game.add_plus_counter(bear);
 
@@ -5223,8 +5223,8 @@ fn a_plus_one_counter_raises_power_and_toughness() {
 fn a_pump_lasts_until_end_of_turn() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // 2/2
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears")); // 2/2
     let pump = game.spawn_in_hand(PlayerId(0), card("Brute Force"));
 
     game.submit(Intent::Cast {
@@ -5266,7 +5266,7 @@ fn a_pump_lasts_until_end_of_turn() {
 #[test]
 fn layered_pt_recompute_matches_additive_stack() {
     let mut game = Game::new();
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // 2/2 printed
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears")); // 2/2 printed
 
     // 7b base-P/T-set: Darksteel Mutation sets the enchanted creature's base to 0/1.
     let mutation = game.spawn_in_hand(PlayerId(0), card("Darksteel Mutation"));
@@ -6838,7 +6838,7 @@ static GRANT_UNBLOCKABLE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
 fn a_granted_keyword_prevents_a_destroy_during_the_turn_and_wears_off_at_cleanup() {
     let mut game = TestGame::new();
     game.fund_mana(PlayerId(0));
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
     let bear = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
     let grant = game.spawn_in_hand(PlayerId(0), GRANT_INDESTRUCTIBLE.clone());
     let destroy = game.spawn_in_hand(PlayerId(0), DESTROY.clone());
@@ -6874,8 +6874,8 @@ fn a_granted_keyword_prevents_a_destroy_during_the_turn_and_wears_off_at_cleanup
 fn two_until_end_of_turn_keyword_grants_on_the_same_permanent_union_instead_of_replacing() {
     let mut game = TestGame::new();
     game.fund_mana(PlayerId(0));
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
     let bear = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
     let blocker = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
     let grant_indestructible = game.spawn_in_hand(PlayerId(0), GRANT_INDESTRUCTIBLE.clone());
@@ -6930,7 +6930,7 @@ fn two_until_end_of_turn_keyword_grants_on_the_same_permanent_union_instead_of_r
 fn mass_keyword_grant_hits_all_and_only_your_creatures() {
     let mut game = TestGame::new();
     game.fund_mana(PlayerId(0));
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
     let mine_1 = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
     let mine_2 = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
     let theirs = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
@@ -7228,7 +7228,7 @@ fn quintorius_history_chaser_graveyard_exit_makes_a_red_white_spirit() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     game.spawn_on_battlefield(PlayerId(0), card("Quintorius, History Chaser"));
-    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let reanimate = game.spawn_in_hand(PlayerId(0), card("Reanimate"));
 
     game.submit(Intent::Cast {
@@ -7449,7 +7449,7 @@ static GROWTH: LazyLock<CardDef> = LazyLock::new(|| CardDef {
 #[test]
 fn a_counter_effect_permanently_grows_the_target() {
     let mut game = Game::new();
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // 2/2
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears")); // 2/2
     let growth = game.spawn_in_hand(PlayerId(0), GROWTH.clone());
 
     game.submit(Intent::Cast {
@@ -8552,13 +8552,13 @@ fn beast_withins_compensation_beast_belongs_to_the_destroyed_permanents_controll
 /// Chaos Warp (msc): "The owner of target permanent shuffles it into their library, then
 /// reveals the top card of their library. If it's a permanent card, they put it onto the
 /// battlefield." A 2-card library shuffle under the engine's fixed seed-0 PRNG: the pre-seeded
-/// Grizzly Bear stays on top (deterministic — see the sibling `chaos_warp_leaves_nonpermanent_on_top`
+/// Grizzly Bears stays on top (deterministic — see the sibling `chaos_warp_leaves_nonpermanent_on_top`
 /// test for the same locked outcome), so it's the one that gets revealed and redeployed, while
 /// the tucked target itself ends up buried in the library.
 #[test]
 fn chaos_warp_tucks_permanent_then_deploys_revealed_permanent() {
     let mut game = TestGame::new();
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
     let target = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
     let chaos_warp = game.spawn_in_hand(PlayerId(0), card("Chaos Warp"));
 
@@ -8569,11 +8569,11 @@ fn chaos_warp_tucks_permanent_then_deploys_revealed_permanent() {
         Zone::Library,
         "the targeted permanent was shuffled into its owner's library and stayed there"
     );
-    let deployed = battlefield_named(&game, PlayerId(0), "Grizzly Bear");
+    let deployed = battlefield_named(&game, PlayerId(0), "Grizzly Bears");
     assert_eq!(
         deployed.len(),
         1,
-        "the revealed top permanent card (Grizzly Bear) was put onto the battlefield"
+        "the revealed top permanent card (Grizzly Bears) was put onto the battlefield"
     );
     assert_eq!(
         game.library_size(PlayerId(0)),
@@ -8667,7 +8667,7 @@ fn chaos_warp_tucked_token_ceases_to_exist() {
 #[test]
 fn temporal_spring_puts_permanent_on_top_of_owners_library() {
     let mut game = TestGame::new();
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears")]);
     let opponents_permanent = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
     let temporal_spring = game.spawn_in_hand(PlayerId(0), card("Temporal Spring"));
 
@@ -8694,7 +8694,7 @@ fn temporal_spring_puts_permanent_on_top_of_owners_library() {
 #[test]
 fn condemn_tucks_attacking_creature_to_bottom() {
     let mut game = TestGame::new();
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
     let attacker = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
     let condemn = game.spawn_in_hand(PlayerId(0), card("Condemn"));
 
@@ -8723,7 +8723,7 @@ fn condemn_tucks_attacking_creature_to_bottom() {
 #[test]
 fn condemn_controller_gains_life_equal_to_creature_toughness() {
     let mut game = TestGame::new();
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
     let attacker = game.spawn_on_battlefield(PlayerId(0), creature("Big (test)", 5, 3, &[]));
     let condemn = game.spawn_in_hand(PlayerId(0), card("Condemn"));
     let before_life = game.life(PlayerId(0));
@@ -8794,7 +8794,7 @@ fn tuck_permanent_token_ceases_to_exist() {
 #[test]
 fn oblation_tucks_target_and_its_owner_draws_two() {
     let mut game = TestGame::new();
-    let filler = game.stack_library(PlayerId(1), &[card("Grizzly Bear")])[0];
+    let filler = game.stack_library(PlayerId(1), &[card("Grizzly Bears")])[0];
     let opponents_permanent = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
     let oblation = game.spawn_in_hand(PlayerId(0), card("Oblation"));
 
@@ -8826,7 +8826,7 @@ fn oblation_tucks_target_and_its_owner_draws_two() {
 #[test]
 fn oblation_on_a_token_shuffles_nothing_but_owner_still_draws_two() {
     let mut game = TestGame::new();
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Shock")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Shock")]);
     let token = game.spawn_token_on_battlefield(PlayerId(1), VANILLA.clone());
     let library_before = game.library_size(PlayerId(1));
     let oblation = game.spawn_in_hand(PlayerId(0), card("Oblation"));
@@ -9474,14 +9474,14 @@ fn battlefield_named(game: &Game, player: PlayerId, name: &str) -> Vec<ObjectId>
 #[test]
 fn a_token_copy_duplicates_a_creatures_copiable_characteristics() {
     // Rite of Replication ("Create a token that's a copy of target creature") aimed at a
-    // 2/2 Grizzly Bear makes a second 2/2 Grizzly Bear under the caster's control.
+    // 2/2 Grizzly Bears makes a second 2/2 Grizzly Bears under the caster's control.
     let mut game = Game::new();
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let rite = game.spawn_in_hand(PlayerId(0), card("Rite of Replication"));
 
     cast_and_resolve(&mut game, rite, Some(Target::Object(bear)));
 
-    let copies: Vec<ObjectId> = battlefield_named(&game, PlayerId(0), "Grizzly Bear")
+    let copies: Vec<ObjectId> = battlefield_named(&game, PlayerId(0), "Grizzly Bears")
         .into_iter()
         .filter(|&id| id != bear)
         .collect();
@@ -9502,7 +9502,7 @@ fn a_token_copy_duplicates_a_creatures_copiable_characteristics() {
     let shock = game.spawn_in_hand(PlayerId(0), card("Shock"));
     cast_and_resolve(&mut game, shock, Some(Target::Object(copy)));
     assert!(
-        battlefield_named(&game, PlayerId(0), "Grizzly Bear")
+        battlefield_named(&game, PlayerId(0), "Grizzly Bears")
             .iter()
             .all(|&id| id == bear),
         "the token copy left the battlefield"
@@ -9511,7 +9511,7 @@ fn a_token_copy_duplicates_a_creatures_copiable_characteristics() {
         game.live_object_ids()
             .into_iter()
             .all(|id| !(game.zone_of(id) == Zone::Graveyard
-                && game.def_of(id).name == "Grizzly Bear")),
+                && game.def_of(id).name == "Grizzly Bears")),
         "a dead token copy ceases to exist — it never lingers in the graveyard (CR 111.7)"
     );
 }
@@ -9549,8 +9549,8 @@ fn twinflame_can_only_target_a_creature_you_control() {
     // Twinflame is "target creature(s) you control" — an opponent's creature is not a legal
     // target.
     let mut game = Game::new();
-    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let twinflame = game.spawn_in_hand(PlayerId(0), card("Twinflame"));
 
     let legal = game.legal_targets(twinflame, None);
@@ -9564,7 +9564,7 @@ fn twinflame_can_only_target_a_creature_you_control() {
     );
 
     cast_twinflame_and_resolve(&mut game, twinflame, 1);
-    let copies: Vec<ObjectId> = battlefield_named(&game, PlayerId(0), "Grizzly Bear")
+    let copies: Vec<ObjectId> = battlefield_named(&game, PlayerId(0), "Grizzly Bears")
         .into_iter()
         .filter(|&id| id != mine)
         .collect();
@@ -9576,11 +9576,11 @@ fn twinflame_token_copy_gains_haste_and_exiles() {
     // Twinflame: "...create a token that's a copy of that creature, except it has haste. Exile
     // those tokens at the beginning of the next end step."
     let mut game = Game::new();
-    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let twinflame = game.spawn_in_hand(PlayerId(0), card("Twinflame"));
 
     cast_twinflame_and_resolve(&mut game, twinflame, 1);
-    let copy = battlefield_named(&game, PlayerId(0), "Grizzly Bear")
+    let copy = battlefield_named(&game, PlayerId(0), "Grizzly Bears")
         .into_iter()
         .find(|&id| id != mine)
         .expect("Twinflame minted a copy");
@@ -9592,7 +9592,7 @@ fn twinflame_token_copy_gains_haste_and_exiles() {
     advance_until(&mut game, |g| g.current_step() == Step::End);
     resolve_top_of_stack(&mut game); // the delayed exile resolves
     assert!(
-        !battlefield_named(&game, PlayerId(0), "Grizzly Bear").contains(&copy),
+        !battlefield_named(&game, PlayerId(0), "Grizzly Bears").contains(&copy),
         "\"exile those tokens at the beginning of the next end step\""
     );
     assert_eq!(
@@ -9608,11 +9608,11 @@ fn twinflame_token_copiable_snapshot_carries_haste() {
     // token's *copiable* values (CR 707.2), so its copiable snapshot reports haste — the rider a
     // second-generation copy preserves — not merely a transient until-end-of-turn boost.
     let mut game = Game::new();
-    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let twinflame = game.spawn_in_hand(PlayerId(0), card("Twinflame"));
 
     cast_twinflame_and_resolve(&mut game, twinflame, 1);
-    let copy = battlefield_named(&game, PlayerId(0), "Grizzly Bear")
+    let copy = battlefield_named(&game, PlayerId(0), "Grizzly Bears")
         .into_iter()
         .find(|&id| id != mine)
         .expect("Twinflame minted a copy");
@@ -9624,7 +9624,7 @@ fn twinflame_token_copiable_snapshot_carries_haste() {
     );
     assert!(
         game.copiable_keywords(mine).is_empty(),
-        "the original Grizzly Bear carries no copy-exception rider"
+        "the original Grizzly Bears carries no copy-exception rider"
     );
 }
 
@@ -9635,12 +9635,12 @@ fn rite_of_replication_copying_a_twinflame_token_preserves_haste() {
     // copy carrying a copiable rider (a Twinflame haste token), the second-generation copy keeps
     // haste (CR 707.2 — the copy uses the copied object's current copiable values).
     let mut game = Game::new();
-    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let twinflame = game.spawn_in_hand(PlayerId(0), card("Twinflame"));
     let rite = game.spawn_in_hand(PlayerId(0), card("Rite of Replication"));
 
     cast_twinflame_and_resolve(&mut game, twinflame, 1);
-    let haste_token = battlefield_named(&game, PlayerId(0), "Grizzly Bear")
+    let haste_token = battlefield_named(&game, PlayerId(0), "Grizzly Bears")
         .into_iter()
         .find(|&id| id != mine)
         .expect("Twinflame minted a haste token");
@@ -9649,7 +9649,7 @@ fn rite_of_replication_copying_a_twinflame_token_preserves_haste() {
             .contains(&Keyword::Haste)
     );
 
-    let before: Vec<ObjectId> = battlefield_named(&game, PlayerId(0), "Grizzly Bear");
+    let before: Vec<ObjectId> = battlefield_named(&game, PlayerId(0), "Grizzly Bears");
     game.fund_mana(PlayerId(0));
     game.submit(Intent::Cast {
         player: PlayerId(0),
@@ -9671,7 +9671,7 @@ fn rite_of_replication_copying_a_twinflame_token_preserves_haste() {
     .expect("Rite is castable");
     resolve_top_of_stack(&mut game);
 
-    let second_gen = battlefield_named(&game, PlayerId(0), "Grizzly Bear")
+    let second_gen = battlefield_named(&game, PlayerId(0), "Grizzly Bears")
         .into_iter()
         .find(|&id| !before.contains(&id))
         .expect("Rite minted a second-generation copy");
@@ -9690,7 +9690,7 @@ fn a_token_copy_fires_the_originals_etb_trigger() {
     // Copying Elvish Visionary ("When this creature enters, draw a card") makes a token that
     // enters through the normal path — so its copied ETB fires and draws.
     let mut game = Game::new();
-    let library = game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    let library = game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
     let visionary = game.spawn_on_battlefield(PlayerId(0), card("Elvish Visionary"));
     let rite = game.spawn_in_hand(PlayerId(0), card("Rite of Replication"));
 
@@ -9825,7 +9825,7 @@ static HERALD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
 #[test]
 fn an_attack_trigger_goes_on_the_stack_and_resolves() {
     let mut game = Game::new();
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
     let herald = game.spawn_on_battlefield(PlayerId(0), HERALD.clone()); // not summoning sick
     let before = game.library_size(PlayerId(0));
 
@@ -10589,12 +10589,12 @@ fn muddle_copying_a_twinflame_haste_token_keeps_both_haste_and_myriad() {
     // control), it keeps that creature's haste (CR 707.2) unioned with the myriad Muddle's own
     // ability adds — neither rider is dropped.
     let mut game = Game::new();
-    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let twinflame = game.spawn_in_hand(PlayerId(0), card("Twinflame"));
 
     // Cast Twinflame while the Bear is the only creature, so it auto-targets it → one haste token.
     cast_twinflame_and_resolve(&mut game, twinflame, 1);
-    let haste_token = battlefield_named(&game, PlayerId(0), "Grizzly Bear")
+    let haste_token = battlefield_named(&game, PlayerId(0), "Grizzly Bears")
         .into_iter()
         .find(|&id| id != mine)
         .expect("Twinflame minted a haste token");
@@ -10606,7 +10606,7 @@ fn muddle_copying_a_twinflame_haste_token_keeps_both_haste_and_myriad() {
 
     assert_eq!(
         game.def_of(muddle).name,
-        "Grizzly Bear",
+        "Grizzly Bears",
         "Muddle became a copy of the Twinflame token"
     );
     assert!(
@@ -10629,10 +10629,10 @@ fn brudiclad_copying_a_twinflame_token_carries_its_haste_rider() {
     // a *copiable* rider (CR 707.2) — distinct from Brudiclad's own token-haste anthem, which
     // grants no copiable value — so a further copy of it would keep haste too.
     let mut game = Game::new();
-    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let twinflame = game.spawn_in_hand(PlayerId(0), card("Twinflame"));
     cast_twinflame_and_resolve(&mut game, twinflame, 1);
-    let haste_token = battlefield_named(&game, PlayerId(0), "Grizzly Bear")
+    let haste_token = battlefield_named(&game, PlayerId(0), "Grizzly Bears")
         .into_iter()
         .find(|&id| id != mine)
         .expect("Twinflame minted a haste token");
@@ -10647,14 +10647,14 @@ fn brudiclad_copying_a_twinflame_token_carries_its_haste_rider() {
             game.pending_choice()
         );
     };
-    let grizzlies_before = battlefield_named(&game, PlayerId(0), "Grizzly Bear");
+    let grizzlies_before = battlefield_named(&game, PlayerId(0), "Grizzly Bears");
     game.submit(Intent::ChooseCopyTarget {
         player: PlayerId(0),
         copy: Some(haste_token),
     })
     .unwrap();
 
-    let converted = battlefield_named(&game, PlayerId(0), "Grizzly Bear")
+    let converted = battlefield_named(&game, PlayerId(0), "Grizzly Bears")
         .into_iter()
         .find(|&id| !grizzlies_before.contains(&id))
         .expect("the Myr token became a copy of the Twinflame Grizzly");
@@ -10675,10 +10675,10 @@ fn recopying_a_vanilla_token_drops_a_prior_copy_effect_haste_rider() {
     // Stock libraries so crossing draw steps into a later turn does not deck anyone out.
     game.stack_library(PlayerId(0), &vec![card("Forest"); 10]);
     game.stack_library(PlayerId(1), &vec![card("Forest"); 10]);
-    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let twinflame = game.spawn_in_hand(PlayerId(0), card("Twinflame"));
     cast_twinflame_and_resolve(&mut game, twinflame, 1);
-    let haste_token = battlefield_named(&game, PlayerId(0), "Grizzly Bear")
+    let haste_token = battlefield_named(&game, PlayerId(0), "Grizzly Bears")
         .into_iter()
         .find(|&id| id != mine)
         .expect("Twinflame minted a haste token");
@@ -10688,13 +10688,13 @@ fn recopying_a_vanilla_token_drops_a_prior_copy_effect_haste_rider() {
     // First combat: Brudiclad mints a Myr and makes it a copy of the Twinflame haste token.
     advance_until(&mut game, |g| g.current_step() == Step::BeginCombat);
     resolve_top_of_stack(&mut game);
-    let grizzlies_before = battlefield_named(&game, PlayerId(0), "Grizzly Bear");
+    let grizzlies_before = battlefield_named(&game, PlayerId(0), "Grizzly Bears");
     game.submit(Intent::ChooseCopyTarget {
         player: PlayerId(0),
         copy: Some(haste_token),
     })
     .unwrap();
-    let converted = battlefield_named(&game, PlayerId(0), "Grizzly Bear")
+    let converted = battlefield_named(&game, PlayerId(0), "Grizzly Bears")
         .into_iter()
         .find(|&id| !grizzlies_before.contains(&id))
         .expect("the Myr token became a copy of the Twinflame Grizzly");
@@ -10970,7 +10970,7 @@ fn vow_of_duty_is_faithful() {
     let mut game = Game::new();
     game.stack_library(PlayerId(0), std::slice::from_ref(&*VANILLA));
     game.stack_library(PlayerId(1), std::slice::from_ref(&*VANILLA));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // 2/2
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears")); // 2/2
     let vow = game.spawn_in_hand(PlayerId(1), card("Vow of Duty"));
 
     pass_until_next_turn(&mut game); // → P1's turn, so P1 can cast the sorcery-speed Aura
@@ -11003,7 +11003,7 @@ fn vow_of_wildness_pumps_and_grants_trample_and_bans_attacking_you() {
     let mut game = Game::new();
     game.stack_library(PlayerId(0), std::slice::from_ref(&*VANILLA));
     game.stack_library(PlayerId(1), std::slice::from_ref(&*VANILLA));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // 2/2
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears")); // 2/2
     let vow = game.spawn_in_hand(PlayerId(1), card("Vow of Wildness"));
 
     pass_until_next_turn(&mut game); // → P1's turn, so P1 can cast the sorcery-speed Aura
@@ -11278,9 +11278,9 @@ fn a_creature_with_defender_cannot_attack() {
 #[test]
 fn an_anthem_boosts_only_its_controllers_creatures() {
     let mut game = Game::new();
-    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // 2/2
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears")); // 2/2
     let _anthem = game.spawn_on_battlefield(PlayerId(0), card("Glorious Anthem"));
-    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear")); // 2/2
+    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears")); // 2/2
 
     assert_eq!(game.power(mine), 3, "anthem boosts my creature");
     assert_eq!(game.toughness(mine), 3);
@@ -11291,7 +11291,7 @@ fn an_anthem_boosts_only_its_controllers_creatures() {
 fn effective_toughness_governs_lethal_damage() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     game.add_plus_counter(bear); // now 3/3
     let shock = game.spawn_in_hand(PlayerId(0), card("Shock"));
 
@@ -11829,8 +11829,8 @@ fn a_freshly_cast_noncreature_artifact_is_not_summoning_sick() {
 fn the_untap_step_clears_summoning_sickness() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
     let elf = game.spawn_in_hand(PlayerId(0), card("Llanowar Elves"));
     game.submit(Intent::Cast {
         player: PlayerId(0),
@@ -11989,7 +11989,7 @@ fn cast_intent(player: PlayerId, object: ObjectId, target: Option<Target>) -> In
 #[test]
 fn a_cast_with_an_empty_pool_auto_taps_lands_to_pay() {
     let mut game = Game::new();
-    let spell = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear")); // {1}{G}
+    let spell = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears")); // {1}{G}
     let f1 = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
     let f2 = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
 
@@ -12010,7 +12010,7 @@ fn a_cast_with_an_empty_pool_auto_taps_lands_to_pay() {
 #[test]
 fn an_unaffordable_cast_rejects_before_any_tap() {
     let mut game = Game::new();
-    let spell = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear")); // {1}{G}
+    let spell = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears")); // {1}{G}
     let forest = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
 
     assert_eq!(
@@ -12083,7 +12083,7 @@ fn auto_tap_pays_pain_when_the_color_has_no_other_source() {
 #[test]
 fn floating_mana_is_spent_before_tapping_lands() {
     let mut game = Game::new();
-    let spell = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear")); // {1}{G}
+    let spell = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears")); // {1}{G}
     let f1 = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
     let f2 = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
     let f3 = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
@@ -12109,7 +12109,7 @@ fn take_action_cast_auto_taps_lands() {
     // The client's one-click flow end to end: the listed cast action is taken by id with an
     // empty pool, and the engine taps the lands as part of paying.
     let mut game = Game::new();
-    let spell = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear")); // {1}{G}
+    let spell = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears")); // {1}{G}
     let f1 = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
     let f2 = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
     let f3 = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
@@ -12185,7 +12185,7 @@ fn auto_tap_skips_a_summoning_sick_mana_dork() {
 #[test]
 fn auto_tap_prefers_lands_over_mana_rocks() {
     let mut game = Game::new();
-    let spell = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear")); // {1}{G}
+    let spell = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears")); // {1}{G}
     let f1 = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
     let f2 = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
     let ring = game.spawn_on_battlefield(PlayerId(0), card("Sol Ring"));
@@ -12206,7 +12206,7 @@ fn auto_tap_prefers_lands_over_mana_rocks() {
 #[test]
 fn auto_tap_uses_a_rock_only_for_land_shortfall() {
     let mut game = Game::new();
-    let spell = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear")); // {1}{G}
+    let spell = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears")); // {1}{G}
     let forest = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
     let ring = game.spawn_on_battlefield(PlayerId(0), card("Sol Ring"));
 
@@ -12418,8 +12418,8 @@ fn auto_tap_pays_with_a_free_granted_mana_ability() {
 fn sacrifice_candidates_lists_the_creatures_that_can_pay_the_cost() {
     let mut game = Game::with_players(4, 0);
     let seer = game.spawn_on_battlefield(PlayerId(0), card("Viscera Seer")); // Sacrifice a creature: Scry 1
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
 
     let mut candidates = game
         .sacrifice_candidates(seer, 0)
@@ -12480,7 +12480,7 @@ fn sacrifice_another_creature_excludes_the_abilitys_own_source() {
         "\"sacrifice another creature\" rejects naming the source itself",
     );
 
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     assert_eq!(
         game.sacrifice_candidates(izoni, 1),
         Some(vec![bear]),
@@ -12617,7 +12617,7 @@ fn conceding_while_you_owe_the_game_a_choice_drops_that_choice() {
 #[test]
 fn modes_of_lists_each_printed_mode_with_its_own_legal_targets() {
     let mut game = Game::new();
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let command = game.spawn_in_hand(PlayerId(0), card("Prismari Command"));
 
     let modes = game.modes_of(command);
@@ -12727,7 +12727,7 @@ fn taps_for_mana_marks_exactly_the_clickable_mana_sources() {
     let forest = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
     let elf = game.spawn_on_battlefield(PlayerId(0), card("Llanowar Elves"));
     let ring = game.spawn_on_battlefield(PlayerId(0), card("Sol Ring"));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let vista = game.spawn_on_battlefield(PlayerId(0), card("Prismatic Vista"));
 
     assert!(game.taps_for_mana(forest));
@@ -13185,7 +13185,7 @@ fn auto_pass_ignores_a_land_that_only_taps_for_unspendable_mana() {
 fn an_etb_trigger_goes_on_the_stack_and_resolves() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let library = game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    let library = game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
     let visionary = game.spawn_in_hand(PlayerId(0), card("Elvish Visionary"));
 
     game.submit(Intent::Cast {
@@ -13222,8 +13222,8 @@ fn an_etb_trigger_goes_on_the_stack_and_resolves() {
 fn the_stack_query_exposes_spells_and_abilities_in_resolution_order() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let visionary = game.spawn_in_hand(PlayerId(0), card("Elvish Visionary"));
     let shock = game.spawn_in_hand(PlayerId(0), card("Shock"));
 
@@ -13294,8 +13294,8 @@ fn the_stack_query_exposes_spells_and_abilities_in_resolution_order() {
 #[test]
 fn legal_targets_lists_battlefield_creatures_for_a_targeted_spell() {
     let mut game = Game::new();
-    let bear0 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    let bear1 = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear0 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let bear1 = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let pump = game.spawn_in_hand(PlayerId(0), card("Brute Force"));
 
     let mut targets: Vec<ObjectId> = game
@@ -13318,7 +13318,7 @@ fn legal_targets_lists_battlefield_creatures_for_a_targeted_spell() {
 #[test]
 fn legal_targets_is_empty_for_a_nontarget_spell() {
     let mut game = Game::new();
-    game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let visionary = game.spawn_in_hand(PlayerId(0), card("Elvish Visionary"));
     assert!(
         game.legal_targets(visionary, None).is_empty(),
@@ -13354,7 +13354,7 @@ fn noncreature_filter_excludes_artifact_creatures() {
     let mut game = Game::new();
     let plain_artifact = game.spawn_on_battlefield(PlayerId(0), card("Arcane Signet"));
     let artifact_creature = game.spawn_on_battlefield(PlayerId(0), card("Solemn Simulacrum"));
-    let plain_creature = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let plain_creature = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let exile = game.spawn_in_hand(
         PlayerId(0),
         EXILE_NONCREATURE_ARTIFACT_OR_ENCHANTMENT.clone(),
@@ -13613,7 +13613,7 @@ fn target_spec_of_reports_whether_a_card_needs_a_target() {
 fn damage_events_carry_their_source_for_the_log() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let shock = game.spawn_in_hand(PlayerId(0), card("Shock"));
 
     let cast = game
@@ -13702,7 +13702,7 @@ fn fund_cast_resolve(game: &mut Game, player: PlayerId, object: ObjectId, target
 fn a_burn_spell_deals_damage_to_a_creature() {
     // Lightning Bolt ("3 damage to any target") aimed at a creature marks 3 damage on it.
     let mut game = Game::new();
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
 
     cast_and_resolve(&mut game, bolt, Some(Target::Object(bear)));
@@ -13967,7 +13967,7 @@ fn a_targeted_etb_trigger_pauses_for_a_target_then_deals_damage() {
 #[test]
 fn an_optional_trigger_fires_only_when_accepted() {
     let mut game = Game::new();
-    let library = game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    let library = game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
     let creature = game.spawn_in_hand(PlayerId(0), MAY_DRAW.clone());
 
     game.submit(Intent::Cast {
@@ -14015,7 +14015,7 @@ fn an_optional_trigger_fires_only_when_accepted() {
 #[test]
 fn a_declined_optional_trigger_is_skipped() {
     let mut game = Game::new();
-    let library = game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    let library = game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
     let creature = game.spawn_in_hand(PlayerId(0), MAY_DRAW.clone());
 
     game.submit(Intent::Cast {
@@ -14060,7 +14060,7 @@ fn a_declined_optional_trigger_is_skipped() {
 fn a_pay_cost_trigger_fires_only_after_paying() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let library = game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    let library = game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
     let creature = game.spawn_in_hand(PlayerId(0), MAY_PAY_DRAW.clone());
 
     game.submit(Intent::Cast {
@@ -14214,7 +14214,7 @@ fn trudge_gardens_pay_2_trigger_creates_a_fungus_beast_only_after_paying() {
 fn simultaneous_triggers_from_one_permanent_are_ordered_by_their_controller() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let library = game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    let library = game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
     let creature = game.spawn_in_hand(PlayerId(0), TWO_ETB.clone());
 
     game.submit(Intent::Cast {
@@ -14282,8 +14282,8 @@ fn stonecloaker_both_ordered_etbs_choose_targets() {
     // target as *it* goes on the stack, in the chosen order — neither may silently fizzle.
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    let graveyard_card = game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let graveyard_card = game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bears"));
     let stonecloaker = game.spawn_in_hand(PlayerId(0), card("Stonecloaker"));
 
     game.submit(Intent::Cast {
@@ -14379,7 +14379,7 @@ fn stonecloaker_both_ordered_etbs_choose_targets() {
 fn a_creature_cannot_be_cast_at_instant_speed() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     // Leave the main phase — creatures are sorcery-speed.
     advance_until(&mut game, |g| g.current_step() == Step::BeginCombat);
 
@@ -14473,7 +14473,7 @@ fn alchemists_refuge_grants_flash_permission_for_the_turn() {
     // flash." — CR 601.3a timing permission, unfiltered (every spell, not just a subset).
     let mut game = Game::new();
     let refuge = game.spawn_on_battlefield(PlayerId(0), card("Alchemist's Refuge"));
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     // Leave the main phase — creatures are sorcery-speed.
     advance_until(&mut game, |g| g.current_step() == Step::BeginCombat);
     game.fund_mana(PlayerId(0)); // mana pools empty between steps — fund after advancing
@@ -14545,7 +14545,7 @@ fn alchemists_refuge_flash_permission_expires_at_the_next_untap() {
     game.stack_library(PlayerId(1), &[card("Forest"), card("Forest")]);
 
     let refuge = game.spawn_on_battlefield(PlayerId(0), card("Alchemist's Refuge"));
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     game.fund_mana(PlayerId(0));
     game.submit(Intent::ActivateAbility {
         player: PlayerId(0),
@@ -14677,7 +14677,7 @@ fn a_creature_targeting_spell_rejects_a_non_creature_target() {
 #[test]
 fn casting_without_enough_mana_is_rejected() {
     let mut game = Game::new();
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
 
     let result = game.submit(Intent::Cast {
         player: PlayerId(0),
@@ -14709,7 +14709,7 @@ fn casting_without_enough_mana_is_rejected() {
 fn casting_a_creature_moves_it_to_the_stack() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
 
     let events = game
         .submit(Intent::Cast {
@@ -14744,7 +14744,7 @@ fn casting_a_creature_moves_it_to_the_stack() {
 fn passing_priority_in_succession_resolves_a_creature_onto_the_battlefield() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     game.submit(Intent::Cast {
         player: PlayerId(0),
         object: bear,
@@ -14786,7 +14786,7 @@ fn passing_priority_in_succession_resolves_a_creature_onto_the_battlefield() {
 /// Resolve a creature onto the battlefield and hand priority back to player 0. (CR 117, CR 402.5, CR 403.5)
 fn creature_on_battlefield(game: &mut Game, controller: PlayerId) -> ObjectId {
     game.fund_mana(controller);
-    let creature = game.spawn_in_hand(controller, card("Grizzly Bear"));
+    let creature = game.spawn_in_hand(controller, card("Grizzly Bears"));
     game.submit(Intent::Cast {
         player: controller,
         object: creature,
@@ -14875,7 +14875,7 @@ fn lethal_damage_kills_the_creature_via_a_state_based_action() {
 fn drawing_takes_the_top_card_of_the_library_into_hand() {
     let mut game = Game::new();
     // stack_library sets a known order: index 0 is the top of the library.
-    let top = game.stack_library(PlayerId(0), &[card("Shock"), card("Grizzly Bear")]);
+    let top = game.stack_library(PlayerId(0), &[card("Shock"), card("Grizzly Bears")]);
 
     let events = game.draw_card(PlayerId(0));
 
@@ -14902,11 +14902,11 @@ fn drawing_takes_the_top_card_of_the_library_into_hand() {
 #[test]
 fn the_same_seed_shuffles_a_library_identically() {
     let deck = [
-        card("Grizzly Bear"),
+        card("Grizzly Bears"),
         card("Shock"),
-        card("Grizzly Bear"),
+        card("Grizzly Bears"),
         card("Shock"),
-        card("Grizzly Bear"),
+        card("Grizzly Bears"),
     ];
     let draw_order = |seed: u64| {
         let mut game = Game::with_seed(seed);
@@ -14931,11 +14931,11 @@ fn the_same_seed_shuffles_a_library_identically() {
 #[test]
 fn the_same_master_seed_and_iteration_shuffles_identically() {
     let deck = [
-        card("Grizzly Bear"),
+        card("Grizzly Bears"),
         card("Shock"),
-        card("Grizzly Bear"),
+        card("Grizzly Bears"),
         card("Shock"),
-        card("Grizzly Bear"),
+        card("Grizzly Bears"),
     ];
     let order = |seed: u64| {
         let mut game = Game::with_players(2, seed);
@@ -14955,7 +14955,7 @@ fn the_same_master_seed_and_iteration_shuffles_identically() {
 #[test]
 fn different_players_get_independent_shuffle_streams() {
     let deck = [
-        card("Grizzly Bear"),
+        card("Grizzly Bears"),
         card("Shock"),
         card("Island"),
         card("Mountain"),
@@ -15414,7 +15414,7 @@ fn feral_appetite_exiles_creature_card_and_makes_pest() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     let feral_appetite = game.spawn_on_battlefield(PlayerId(0), card("Feral Appetite"));
-    let bear = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
 
     game.submit(Intent::ActivateAbility {
         player: PlayerId(0),
@@ -15492,7 +15492,7 @@ fn feral_appetite_pest_dies_gains_life() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     let feral_appetite = game.spawn_on_battlefield(PlayerId(0), card("Feral Appetite"));
-    let bear = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     game.submit(Intent::ActivateAbility {
         player: PlayerId(0),
         object: feral_appetite,
@@ -17509,7 +17509,7 @@ fn vanguard_spirit_anthem_scales_with_commander_casts_from_the_command_zone() {
     // `controller`, unlike Commander's Insight's chosen-player read).
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let commander = game.designate_commander(PlayerId(0), card("Grizzly Bear")); // {1}{G}
+    let commander = game.designate_commander(PlayerId(0), card("Grizzly Bears")); // {1}{G}
 
     game.spawn_on_battlefield(PlayerId(0), card("Vanguard of the Restless"));
     let other_spirit = game.spawn_on_battlefield(
@@ -18084,7 +18084,7 @@ fn meaningful_actions_enumerates_the_available_plays() {
     let mut game = Game::new();
     let forest = game.spawn_in_hand(PlayerId(0), card("Forest"));
     game.fund_mana(PlayerId(0));
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
 
     let actions = game.meaningful_actions(PlayerId(0));
     assert!(
@@ -18099,7 +18099,7 @@ fn meaningful_actions_enumerates_the_available_plays() {
             card: bear,
             zone: Zone::Hand
         }),
-        "the funded Grizzly Bear is castable; got {actions:?}",
+        "the funded Grizzly Bears is castable; got {actions:?}",
     );
     assert_eq!(actions.len(), 2, "no other plays exist; got {actions:?}");
 }
@@ -18118,18 +18118,18 @@ fn a_player_with_a_land_to_play_has_a_meaningful_action() {
 fn an_affordable_castable_spell_is_a_meaningful_action() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    game.spawn_in_hand(PlayerId(0), card("Grizzly Bear")); // {1}{G}, funded
+    game.spawn_in_hand(PlayerId(0), card("Grizzly Bears")); // {1}{G}, funded
     assert!(game.has_meaningful_action(PlayerId(0)));
 }
 
 #[test]
 fn a_spell_payable_by_untapped_lands_is_a_meaningful_action() {
     let mut game = Game::new();
-    // Two untapped Forests and a Grizzly Bear ({1}{G}) in hand — the pool is empty, but the
+    // Two untapped Forests and a Grizzly Bears ({1}{G}) in hand — the pool is empty, but the
     // lands can pay for it, so it must count (else auto-pass would skip the player's own turn).
     game.spawn_on_battlefield(PlayerId(0), card("Forest"));
     game.spawn_on_battlefield(PlayerId(0), card("Forest"));
-    game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     assert!(
         game.has_meaningful_action(PlayerId(0)),
         "a spell payable by untapping lands is a meaningful action",
@@ -18139,7 +18139,7 @@ fn a_spell_payable_by_untapped_lands_is_a_meaningful_action() {
 #[test]
 fn an_instant_only_stops_auto_pass_in_your_main_phase() {
     let mut game = Game::new();
-    game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear")); // a legal Shock target
+    game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears")); // a legal Shock target
     game.spawn_on_battlefield(PlayerId(0), card("Mountain")); // untapped {R} source
     game.spawn_in_hand(PlayerId(0), card("Shock")); // instant {R}
 
@@ -18161,7 +18161,7 @@ fn an_instant_stops_auto_pass_while_the_stack_is_not_empty() {
     // instant in response must not be auto-passed — that window is where instants get to react.
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     game.spawn_on_battlefield(PlayerId(1), card("Mountain")); // untapped {R} for the response
     game.spawn_in_hand(PlayerId(1), card("Shock"));
 
@@ -18202,9 +18202,9 @@ fn a_sorcery_speed_spell_is_never_a_reaction() {
     // sorcery-speed spells stay sorcery-only (CR 307.1) even in the reaction window.
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     game.fund_mana(PlayerId(1));
-    game.spawn_in_hand(PlayerId(1), card("Grizzly Bear"));
+    game.spawn_in_hand(PlayerId(1), card("Grizzly Bears"));
 
     game.submit(Intent::Cast {
         player: PlayerId(0),
@@ -18238,7 +18238,7 @@ fn casting_requires_priority() {
     // enforce whose window it actually is.
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     game.fund_mana(PlayerId(1));
     let shock = game.spawn_in_hand(PlayerId(1), card("Shock"));
 
@@ -18317,7 +18317,7 @@ fn next_pass_resolves_stack_flags_only_the_final_pass() {
     // completes the round of priority with a non-empty stack (CR 608.1), nothing else.
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     assert!(
         !game.next_pass_resolves_stack(),
         "an empty stack never resolves — a full round of passes ends the step instead",
@@ -18415,7 +18415,7 @@ fn legal_targets_exclude_creatures_protected_from_the_spells_color() {
     // gate already rejects the target, so the highlight set must not offer it either.
     let mut game = Game::new();
     let knight = game.spawn_on_battlefield(PlayerId(1), card("White Knight"));
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let grasp = game.spawn_in_hand(PlayerId(0), card("Infernal Grasp"));
 
     let targets = game.legal_targets(grasp, None);
@@ -18486,7 +18486,7 @@ fn a_spell_affordable_only_through_a_per_target_reducer_is_a_meaningful_action()
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Swamp"));
     game.spawn_in_hand(PlayerId(0), card("Infernal Grasp")); // {1}{B}
-    game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear")); // the creature to target
+    game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears")); // the creature to target
     assert!(
         !game.has_meaningful_action(PlayerId(0)),
         "{{1}}{{B}} is unaffordable from a single Swamp without the reducer",
@@ -18585,7 +18585,7 @@ fn protection_from_multicolored_cr_702_16c_stonecoil_serpent_cant_be_blocked_by_
         "a multicolored creature can't block Stonecoil Serpent",
     );
 
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear")); // monocolored (green)
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears")); // monocolored (green)
     block_with(&mut game, vec![(bear, stonecoil)]).expect("a monocolored creature can still block");
     advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
     assert_eq!(
@@ -19368,7 +19368,7 @@ fn hexproof_creature_targetable_by_controller_not_opponents() {
 fn lightning_greaves_grants_shroud_to_equipped_creature() {
     // Lightning Greaves: "Equipped creature has haste and shroud. Equip {0}."
     let mut game = Game::new();
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let greaves = game.spawn_on_battlefield(PlayerId(0), card("Lightning Greaves"));
 
     game.submit(Intent::ActivateAbility {
@@ -19410,7 +19410,7 @@ fn a_modal_spell_with_no_playable_mode_is_not_a_meaningful_action() {
 fn a_modal_spell_with_one_playable_mode_is_a_meaningful_action() {
     // Abrade mode 0 wants a creature; an opponent's bear makes that mode choosable.
     let mut game = Game::new();
-    game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     game.spawn_in_hand(PlayerId(0), card("Abrade"));
     game.fund_mana(PlayerId(0));
     assert!(
@@ -19423,7 +19423,7 @@ fn a_modal_spell_with_one_playable_mode_is_a_meaningful_action() {
 fn a_multi_target_spell_short_of_its_minimum_is_not_a_meaningful_action() {
     // Ashes to Ashes exiles exactly two nonartifact creatures. One bear isn't enough.
     let mut game = Game::new();
-    game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     game.spawn_in_hand(PlayerId(0), card("Ashes to Ashes"));
     game.fund_mana(PlayerId(0));
     assert!(
@@ -19469,7 +19469,7 @@ fn spare_lands_after_the_land_drop_are_not_a_meaningful_action() {
     let mut game = Game::new();
     let played = game.spawn_in_hand(PlayerId(0), card("Forest"));
     game.spawn_in_hand(PlayerId(0), card("Forest")); // a spare land, still in hand
-    game.spawn_in_hand(PlayerId(0), card("Grizzly Bear")); // {1}{G} — unaffordable (one Forest)
+    game.spawn_in_hand(PlayerId(0), card("Grizzly Bears")); // {1}{G} — unaffordable (one Forest)
 
     game.submit(Intent::PlayLand {
         player: PlayerId(0),
@@ -19674,10 +19674,10 @@ fn colorless_mana_pays_a_colorless_cost_pip() {
 
 #[test]
 fn colorless_mana_cannot_pay_a_colored_pip() {
-    // Grizzly Bear is {1}{G}: colorless can cover the {1} but never the {G}.
+    // Grizzly Bears is {1}{G}: colorless can cover the {1} but never the {G}.
     let mut game = Game::new();
     let sol_ring = game.spawn_on_battlefield(PlayerId(0), card("Sol Ring"));
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     game.submit(Intent::ActivateAbility {
         player: PlayerId(0),
         object: sol_ring,
@@ -19721,7 +19721,7 @@ fn any_color_mana_pays_a_colored_and_a_generic_pip() {
     let mut game = Game::new();
     let t1 = game.spawn_on_battlefield(PlayerId(0), treasure_token());
     let t2 = game.spawn_on_battlefield(PlayerId(0), treasure_token());
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear")); // {1}{G}
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears")); // {1}{G}
 
     for treasure in [t1, t2] {
         game.submit(Intent::ActivateAbility {
@@ -19870,10 +19870,10 @@ fn arcane_signet_taps_for_commander_identity() {
 
 #[test]
 fn identity_mana_monocolor_commander() {
-    // Grizzly Bear as a (stand-in) mono-green commander: the identity credit is a plain
+    // Grizzly Bears as a (stand-in) mono-green commander: the identity credit is a plain
     // Color(Green), not an Either — a one-color identity has no "either" to restrict to.
     let mut game = Game::new();
-    game.designate_commander(PlayerId(0), card("Grizzly Bear")); // {1}{G}
+    game.designate_commander(PlayerId(0), card("Grizzly Bears")); // {1}{G}
     let tower = game.spawn_on_battlefield(PlayerId(0), card("Command Tower"));
     let signet = game.spawn_on_battlefield(PlayerId(0), card("Arcane Signet"));
 
@@ -20946,7 +20946,7 @@ static DIES_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
 fn a_dies_trigger_fires_when_the_creature_is_destroyed() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
     let victim = game.spawn_on_battlefield(PlayerId(0), DIES_DRAW.clone()); // 1/1
     let shock = game.spawn_in_hand(PlayerId(0), card("Shock")); // 2 damage
 
@@ -21034,7 +21034,7 @@ fn blood_artist_drains_a_target_player_when_any_creature_dies() {
     game.fund_mana(PlayerId(0));
     game.spawn_on_battlefield(PlayerId(0), card("Blood Artist"));
     // An *opponent's* creature dying still fires Blood Artist ("whenever a creature dies").
-    let victim = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let victim = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
 
     shock_to_death(&mut game, victim, PlayerId(1));
 
@@ -21051,7 +21051,7 @@ fn zulaport_drains_each_opponent_when_your_own_creature_dies() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     game.spawn_on_battlefield(PlayerId(0), card("Zulaport Cutthroat"));
-    let victim = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // P0's creature
+    let victim = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears")); // P0's creature
 
     shock_to_death(&mut game, victim, PlayerId(1));
 
@@ -21064,7 +21064,7 @@ fn zulaport_does_not_fire_when_an_opponents_creature_dies() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     game.spawn_on_battlefield(PlayerId(0), card("Zulaport Cutthroat"));
-    let victim = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear")); // P1's creature
+    let victim = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears")); // P1's creature
 
     shock_to_death(&mut game, victim, PlayerId(1));
 
@@ -21082,7 +21082,7 @@ fn yahenni_grows_when_opponent_creature_dies_not_yours() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     let yahenni = game.spawn_on_battlefield(PlayerId(0), card("Yahenni, Undying Partisan"));
-    let opponents_bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let opponents_bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
 
     shock_to_death(&mut game, opponents_bear, PlayerId(1));
 
@@ -21092,7 +21092,7 @@ fn yahenni_grows_when_opponent_creature_dies_not_yours() {
         "an opponent's creature dying grew Yahenni"
     );
 
-    let own_bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let own_bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     shock_to_death(&mut game, own_bear, PlayerId(1));
 
     assert_eq!(
@@ -21183,7 +21183,7 @@ fn pawn_of_ulamog_fires_on_its_own_death_and_nontoken_only() {
     );
 
     // Another nontoken creature you control dying fires it — a "may" pause, accepted here.
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     shock_and_settle(&mut game, bear);
     assert_eq!(
         named_in_zone(&game, Zone::Battlefield, "Eldrazi Spawn"),
@@ -21261,7 +21261,7 @@ fn starfield_mystic_grows_when_your_enchantment_dies() {
          controller's own enchantments only"
     );
 
-    let own_bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let own_bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     shock_to_death(&mut game, own_bear, PlayerId(1));
 
     assert_eq!(
@@ -21387,7 +21387,7 @@ fn blood_artist_and_zulaport_both_fire_from_one_of_your_creatures_dying() {
     game.fund_mana(PlayerId(0));
     game.spawn_on_battlefield(PlayerId(0), card("Blood Artist"));
     game.spawn_on_battlefield(PlayerId(0), card("Zulaport Cutthroat"));
-    let victim = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let victim = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     shock_to_death(&mut game, victim, PlayerId(1));
 
@@ -21424,7 +21424,7 @@ fn blood_artist_still_triggers_on_another_creatures_death() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     game.spawn_on_battlefield(PlayerId(0), card("Blood Artist"));
-    let victim = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let victim = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
 
     shock_to_death(&mut game, victim, PlayerId(1));
 
@@ -21968,8 +21968,8 @@ fn smothering_abomination_draws_when_its_controller_sacrifices_a_creature() {
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Smothering Abomination"));
     let market = game.spawn_on_battlefield(PlayerId(0), card("High Market"));
-    let fodder = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    let library = game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    let fodder = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let library = game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
 
     game.submit(Intent::ActivateAbility {
         player: PlayerId(0),
@@ -22000,8 +22000,8 @@ fn smothering_abomination_does_not_fire_when_an_opponent_sacrifices() {
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Smothering Abomination"));
     let market = game.spawn_on_battlefield(PlayerId(1), card("High Market"));
-    let fodder = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
-    let library = game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    let fodder = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
+    let library = game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
 
     game.submit(Intent::ActivateAbility {
         player: PlayerId(1),
@@ -22034,8 +22034,8 @@ fn smothering_abomination_upkeep_mandatory_sacrifice_auto_resolves_with_one_crea
     // instead of pausing on a choice (CR 700.2's "as many as possible").
     let mut game = Game::new();
     let abomination = game.spawn_on_battlefield(PlayerId(0), card("Smothering Abomination"));
-    game.stack_library(PlayerId(0), &vec![card("Grizzly Bear"); 2]); // avoid decking out
-    game.stack_library(PlayerId(1), &vec![card("Grizzly Bear"); 2]);
+    game.stack_library(PlayerId(0), &vec![card("Grizzly Bears"); 2]); // avoid decking out
+    game.stack_library(PlayerId(1), &vec![card("Grizzly Bears"); 2]);
 
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
@@ -22060,10 +22060,10 @@ fn smothering_abomination_upkeep_mandatory_sacrifice_pauses_with_several_creatur
     // choice (CR 701.16a) — pauses on a ChooseOwnSacrifices, not an automatic pick.
     let mut game = Game::new();
     let abomination = game.spawn_on_battlefield(PlayerId(0), card("Smothering Abomination"));
-    let bear_a = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    let bear_b = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    game.stack_library(PlayerId(0), &vec![card("Grizzly Bear"); 2]); // avoid decking out
-    game.stack_library(PlayerId(1), &vec![card("Grizzly Bear"); 2]);
+    let bear_a = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let bear_b = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    game.stack_library(PlayerId(0), &vec![card("Grizzly Bears"); 2]); // avoid decking out
+    game.stack_library(PlayerId(1), &vec![card("Grizzly Bears"); 2]);
 
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
@@ -22113,7 +22113,7 @@ fn a_watch_any_player_sacrifice_trigger_fires_off_any_players_sacrifice() {
     let mut game = Game::new();
     let watcher = game.spawn_on_battlefield(PlayerId(0), WATCHES_ANY_SACRIFICE.clone());
     let market = game.spawn_on_battlefield(PlayerId(1), card("High Market"));
-    let fodder = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let fodder = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
 
     game.submit(Intent::ActivateAbility {
         player: PlayerId(1),
@@ -22191,7 +22191,7 @@ fn merchant_of_venom_gains_counter_when_any_player_sacrifices() {
     let mut game = Game::new();
     let merchant = game.spawn_on_battlefield(PlayerId(0), card("Merchant of Venom"));
     let opp_market = game.spawn_on_battlefield(PlayerId(1), card("High Market"));
-    let opp_fodder = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let opp_fodder = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
 
     // An opponent's sacrifice fires the watch trigger.
     game.submit(Intent::ActivateAbility {
@@ -22215,7 +22215,7 @@ fn merchant_of_venom_gains_counter_when_any_player_sacrifices() {
 
     // Its own controller's sacrifice also fires the watch trigger — no "other" exclusion.
     let own_market = game.spawn_on_battlefield(PlayerId(0), card("High Market"));
-    let own_fodder = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let own_fodder = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     game.submit(Intent::ActivateAbility {
         player: PlayerId(0),
         object: own_market,
@@ -22245,8 +22245,8 @@ fn a_watcher_dying_in_a_wipe_still_drains_for_the_creatures_it_died_with() {
     // two (the pre-#51 self-exclusion).
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Blood Artist"));
-    game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let wipe = game.spawn_in_hand(PlayerId(0), card("Blasphemous Act")); // 13 to each creature
 
     cast_and_resolve(&mut game, wipe, None); // the wipe resolves; all three creatures die at once
@@ -22364,7 +22364,7 @@ fn a_sac_a_creature_outlet_sacrifices_the_chosen_creature_and_fires_a_death_trig
     let mut game = Game::new();
     let market = game.spawn_on_battlefield(PlayerId(0), card("High Market"));
     game.spawn_on_battlefield(PlayerId(0), card("Blood Artist"));
-    let fodder = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let fodder = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     game.submit(Intent::ActivateAbility {
         player: PlayerId(0),
@@ -22435,7 +22435,7 @@ fn sacrificing_a_creature_you_do_not_control_or_naming_none_is_rejected() {
     // High Market's sac outlet needs a creature you control named to sacrifice.
     let mut game = Game::new();
     let market = game.spawn_on_battlefield(PlayerId(0), card("High Market"));
-    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
 
     assert_eq!(
         game.submit(Intent::ActivateAbility {
@@ -22549,10 +22549,10 @@ static UPKEEP_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
 fn an_upkeep_trigger_fires_at_the_controllers_upkeep() {
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), UPKEEP_DRAW.clone());
-    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
     // Give P1 a library so it doesn't deck out over the intervening turn (which would leave
     // one living player and let a single pass resolve the stack).
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
 
     // Roll forward to P0's *next* upkeep (turn 1 started in Main1, skipping its upkeep).
     advance_until(&mut game, |g| {
@@ -22678,8 +22678,8 @@ fn graveyard_upkeep_trigger_returns_card_from_graveyard_to_hand() {
     // controller's upkeep it fires from the graveyard and returns the card to hand (Squee).
     let mut game = Game::new();
     let squee = game.spawn_in_graveyard(PlayerId(0), GRAVEYARD_UPKEEP_RETURN.clone());
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
 
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
@@ -22699,8 +22699,8 @@ fn graveyard_functional_trigger_does_not_fire_from_the_battlefield() {
     // battlefield at its controller's upkeep queues nothing.
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), GRAVEYARD_UPKEEP_RETURN.clone());
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
 
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
@@ -22718,8 +22718,8 @@ fn non_graveyard_card_upkeep_trigger_still_ignores_graveyard() {
     // inert — only graveyard-functional cards are scanned there.
     let mut game = Game::new();
     game.spawn_in_graveyard(PlayerId(0), BATTLEFIELD_UPKEEP_RETURN.clone());
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
 
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
@@ -22738,8 +22738,8 @@ fn squee_returns_itself_from_the_graveyard_at_its_controllers_upkeep() {
     // yes/no; accepting returns Squee to hand.
     let mut game = Game::new();
     let squee = game.spawn_in_graveyard(PlayerId(0), card("Squee, Goblin Nabob"));
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
 
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
@@ -22778,7 +22778,7 @@ fn nether_traitor_returns_itself_from_graveyard_when_your_creature_dies() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     let traitor = game.spawn_in_graveyard(PlayerId(0), card("Nether Traitor"));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     let shock = game.spawn_in_hand(PlayerId(0), card("Shock"));
     game.submit(Intent::Cast {
@@ -22838,7 +22838,7 @@ fn nether_traitor_declining_the_cost_leaves_it_in_the_graveyard() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     let traitor = game.spawn_in_graveyard(PlayerId(0), card("Nether Traitor"));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     let shock = game.spawn_in_hand(PlayerId(0), card("Shock"));
     game.submit(Intent::Cast {
@@ -22884,11 +22884,11 @@ fn punishing_fire_returns_from_graveyard_when_an_opponent_gains_life() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     let fire = game.spawn_in_hand(PlayerId(0), card("Punishing Fire"));
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     // Rolling forward a whole turn draws each player a card; keep both libraries stocked so
     // nobody decks out along the way (CR 104.3c).
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
 
     game.submit(Intent::Cast {
         player: PlayerId(0),
@@ -23228,8 +23228,8 @@ fn an_each_upkeep_trigger_fires_on_a_non_controllers_upkeep() {
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), EACH_UPKEEP_DRAW.clone());
     game.spawn_on_battlefield(PlayerId(0), UPKEEP_DRAW.clone());
-    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
 
     // The game's very first upkeep step belongs to P1 (turn 1 started in Main1, skipping P0's
     // own upkeep) — P0 controls both permanents here, so only the each-upkeep one may fire.
@@ -23254,8 +23254,8 @@ fn an_each_upkeep_trigger_fires_on_a_non_controllers_upkeep() {
 fn an_each_upkeep_trigger_also_fires_on_its_controllers_own_upkeep() {
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), EACH_UPKEEP_DRAW.clone());
-    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
 
     // Roll forward to P0's own upkeep (turn 3 — turn 1 skipped it by starting in Main1).
     advance_until(&mut game, |g| {
@@ -23350,7 +23350,7 @@ static END_STEP_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
 fn an_end_step_trigger_fires_at_the_controllers_end_step() {
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), END_STEP_DRAW.clone());
-    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
 
     // Turn 1 (P0) reaches its End step without any draw step (the game started in Main1).
     advance_until(&mut game, |g| {
@@ -23445,7 +23445,7 @@ static BEGIN_COMBAT_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
 fn a_begin_combat_trigger_fires_at_the_controllers_begin_combat_step() {
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), BEGIN_COMBAT_DRAW.clone());
-    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
 
     // Turn 1 (P0) starts in Main1; pass to BeginCombat, where the trigger is already queued.
     advance_until(&mut game, |g| g.current_step() == Step::BeginCombat);
@@ -23462,8 +23462,8 @@ fn a_begin_combat_trigger_fires_at_the_controllers_begin_combat_step() {
 fn a_begin_combat_trigger_does_not_fire_on_upkeep_or_the_opponents_turn() {
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), BEGIN_COMBAT_DRAW.clone());
-    game.stack_library(PlayerId(0), &vec![card("Grizzly Bear"); 6]);
-    game.stack_library(PlayerId(1), &vec![card("Grizzly Bear"); 6]);
+    game.stack_library(PlayerId(0), &vec![card("Grizzly Bears"); 6]);
+    game.stack_library(PlayerId(1), &vec![card("Grizzly Bears"); 6]);
 
     // P0's own turn 1: the trigger fires at BeginCombat — resolve it so it doesn't linger on
     // the stack while the later steps are checked.
@@ -23648,7 +23648,7 @@ static LIFE_GAIN_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
 fn a_you_gain_life_trigger_fires_when_the_controller_gains_life() {
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), LIFE_GAIN_DRAW.clone());
-    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
     let gainer = game.spawn_in_hand(PlayerId(0), GAIN_LIFE_ETB.clone());
     let before_life = game.life(PlayerId(0));
 
@@ -23698,11 +23698,11 @@ fn arbiter_sets_each_player_life_to_highest_cr_118_5() {
     // P1 controls a "whenever you gain life, draw a card" watcher — it must fire off the
     // routed gain, not a raw life-total write.
     game.spawn_on_battlefield(PlayerId(1), LIFE_GAIN_DRAW.clone());
-    let lib1 = game.stack_library(PlayerId(1), &[card("Grizzly Bear")]);
+    let lib1 = game.stack_library(PlayerId(1), &[card("Grizzly Bears")]);
     // P0 (already at the highest) controls the same watcher — its zero delta must NOT be a
     // "gain" at all, so this must stay unfired.
     game.spawn_on_battlefield(PlayerId(0), LIFE_GAIN_DRAW.clone());
-    let lib0 = game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    let lib0 = game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
 
     game.fund_mana(PlayerId(0));
     let arbiter = game.spawn_in_hand(PlayerId(0), card("Arbiter of Knollridge"));
@@ -23838,7 +23838,7 @@ fn a_magecraft_trigger_fires_when_the_controller_casts_an_instant_or_sorcery() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     game.spawn_on_battlefield(PlayerId(0), MAGECRAFT_DRAW.clone());
-    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
     let dummy = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone()); // a legal Shock target
     let shock = game.spawn_in_hand(PlayerId(0), card("Shock"));
 
@@ -23924,7 +23924,7 @@ fn prowess_does_not_pump_on_creature_cast() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     let bear = game.spawn_on_battlefield(PlayerId(0), PROWESS_CREATURE.clone());
-    let grizzly = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let grizzly = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
 
     game.submit(Intent::Cast {
         player: PlayerId(0),
@@ -23944,7 +23944,7 @@ fn prowess_does_not_pump_on_creature_cast() {
         alternative_cost: false,
     })
     .unwrap();
-    resolve_top_of_stack(&mut game); // Grizzly Bear resolves onto the battlefield.
+    resolve_top_of_stack(&mut game); // Grizzly Bears resolves onto the battlefield.
 
     assert_eq!(
         game.power(bear),
@@ -24162,7 +24162,7 @@ fn rhystic_study_draws_when_opponent_declines_to_pay() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(1));
     game.spawn_on_battlefield(PlayerId(0), card("Rhystic Study"));
-    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
 
     cast_and_reach_rhystic_may_draw_pause(&mut game, PlayerId(0), PlayerId(1));
     game.submit(Intent::AnswerMay {
@@ -24198,7 +24198,7 @@ fn rhystic_study_no_draw_when_opponent_pays() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(1));
     game.spawn_on_battlefield(PlayerId(0), card("Rhystic Study"));
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
 
     cast_and_reach_rhystic_may_draw_pause(&mut game, PlayerId(0), PlayerId(1));
     game.submit(Intent::AnswerMay {
@@ -24562,7 +24562,7 @@ fn cast_spell_trigger_respects_spell_filter() {
     let lib = game.stack_library(PlayerId(0), &[card("Forest")]);
 
     // Casting a non-Aura spell (a creature) doesn't match the Aura filter.
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     cast_and_resolve(&mut game, bear, None);
     assert_eq!(
         game.zone_of(lib[0]),
@@ -24851,7 +24851,7 @@ fn teshar_ancestors_apostle_reanimates_on_a_historic_spell_cast() {
     // artifacts, legendaries, and Sagas are historic.
     let mut g = TestGame::new();
     g.spawn_on_battlefield(PlayerId(0), card("Teshar, Ancestor's Apostle"));
-    let corpse = g.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let corpse = g.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
 
     // A nonhistoric spell (a plain creature, no artifact/legendary/Saga type) doesn't fire it.
     let plain = g.spawn_in_hand(PlayerId(0), VANILLA.clone());
@@ -24911,7 +24911,7 @@ fn animar_grows_when_you_cast_a_creature_spell() {
     // resolves (and the counter lands) before the creature spell itself resolves.
     let mut g = TestGame::new();
     let animar = g.spawn_on_battlefield(PlayerId(0), card("Animar, Soul of Elements"));
-    let bear = g.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = g.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
 
     g.cast(bear).submit();
     assert_eq!(
@@ -25908,11 +25908,11 @@ static COUNTER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
 
 #[test]
 fn a_countered_spell_goes_to_its_owners_graveyard_and_never_resolves() {
-    // P0 casts Grizzly Bear; P1 counters it. The bear never enters — its spell leaves the stack
+    // P0 casts Grizzly Bears; P1 counters it. The bear never enters — its spell leaves the stack
     // to P0's (its owner's) graveyard.
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     let counter = game.spawn_in_hand(PlayerId(1), COUNTER.clone());
 
     game.submit(Intent::Cast {
@@ -25932,7 +25932,7 @@ fn a_countered_spell_goes_to_its_owners_graveyard_and_never_resolves() {
         multikicker_count: 0,
         alternative_cost: false,
     })
-    .expect("Grizzly Bear is castable");
+    .expect("Grizzly Bears is castable");
     let bear_on_stack = top_spell(&game);
     game.submit(Intent::PassPriority {
         player: PlayerId(0),
@@ -25961,13 +25961,13 @@ fn a_countered_spell_goes_to_its_owners_graveyard_and_never_resolves() {
 
     // No creature entered, and the bear is a card in P0's graveyard.
     assert!(
-        battlefield_named(&game, PlayerId(0), "Grizzly Bear").is_empty(),
+        battlefield_named(&game, PlayerId(0), "Grizzly Bears").is_empty(),
         "the countered creature never entered the battlefield"
     );
     let bear_in_graveyard = game.live_object_ids().into_iter().any(|id| {
         game.zone_of(id) == Zone::Graveyard
             && game.owner_of(id) == PlayerId(0)
-            && game.def_of(id).name == "Grizzly Bear"
+            && game.def_of(id).name == "Grizzly Bears"
     });
     assert!(
         bear_in_graveyard,
@@ -25977,11 +25977,11 @@ fn a_countered_spell_goes_to_its_owners_graveyard_and_never_resolves() {
 
 #[test]
 fn countering_a_spell_that_already_left_the_stack_does_nothing() {
-    // P0 casts Grizzly Bear; P1 stacks two counters onto it. The first resolves and puts the bear
+    // P0 casts Grizzly Bears; P1 stacks two counters onto it. The first resolves and puts the bear
     // in the graveyard; the second resolves with its target gone and simply does nothing (no crash).
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     let counter_a = game.spawn_in_hand(PlayerId(1), COUNTER.clone());
     let counter_b = game.spawn_in_hand(PlayerId(1), COUNTER.clone());
 
@@ -26002,7 +26002,7 @@ fn countering_a_spell_that_already_left_the_stack_does_nothing() {
         multikicker_count: 0,
         alternative_cost: false,
     })
-    .expect("Grizzly Bear is castable");
+    .expect("Grizzly Bears is castable");
     let bear_on_stack = top_spell(&game);
     game.submit(Intent::PassPriority {
         player: PlayerId(0),
@@ -26049,11 +26049,13 @@ fn countering_a_spell_that_already_left_the_stack_does_nothing() {
     resolve_whole_stack(&mut game);
 
     // The bear is countered exactly once; the redundant counter fizzled without panicking.
-    assert!(battlefield_named(&game, PlayerId(0), "Grizzly Bear").is_empty());
+    assert!(battlefield_named(&game, PlayerId(0), "Grizzly Bears").is_empty());
     let bears_in_graveyard = game
         .live_object_ids()
         .into_iter()
-        .filter(|&id| game.zone_of(id) == Zone::Graveyard && game.def_of(id).name == "Grizzly Bear")
+        .filter(|&id| {
+            game.zone_of(id) == Zone::Graveyard && game.def_of(id).name == "Grizzly Bears"
+        })
         .count();
     assert_eq!(
         bears_in_graveyard, 1,
@@ -26149,7 +26151,7 @@ fn counter_unless_pays_none_is_hard_counter() {
     // immediately, exactly as before — no PayOrCounter choice raised.
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     let counter = game.spawn_in_hand(PlayerId(1), COUNTER.clone());
 
     game.submit(Intent::Cast {
@@ -26169,7 +26171,7 @@ fn counter_unless_pays_none_is_hard_counter() {
         multikicker_count: 0,
         alternative_cost: false,
     })
-    .expect("Grizzly Bear is castable");
+    .expect("Grizzly Bears is castable");
     let bear_on_stack = top_spell(&game);
     game.submit(Intent::PassPriority {
         player: PlayerId(0),
@@ -26207,12 +26209,12 @@ fn counter_unless_pays_none_is_hard_counter() {
     );
 }
 
-/// Cast Grizzly Bear for P0 and Quandrix Charm mode 0 for P1, targeting the bear — leaving the
+/// Cast Grizzly Bears for P0 and Quandrix Charm mode 0 for P1, targeting the bear — leaving the
 /// game paused on the resulting [`PendingChoice::PayOrCounter`]. Returns the bear's stack id.
 fn cast_quandrix_charm_counter_mode(game: &mut Game) -> ObjectId {
     game.fund_mana(PlayerId(0));
     game.fund_mana(PlayerId(1));
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     let charm = game.spawn_in_hand(PlayerId(1), card("Quandrix Charm"));
 
     game.submit(Intent::Cast {
@@ -26232,7 +26234,7 @@ fn cast_quandrix_charm_counter_mode(game: &mut Game) -> ObjectId {
         multikicker_count: 0,
         alternative_cost: false,
     })
-    .expect("Grizzly Bear is castable");
+    .expect("Grizzly Bears is castable");
     let bear_on_stack = top_spell(game);
     game.submit(Intent::PassPriority {
         player: PlayerId(0),
@@ -26355,14 +26357,14 @@ fn counter_unless_pays_paid_saves_spell() {
 
     resolve_top_of_stack(&mut game); // The bear resolves normally.
     assert!(
-        !battlefield_named(&game, PlayerId(0), "Grizzly Bear").is_empty(),
+        !battlefield_named(&game, PlayerId(0), "Grizzly Bears").is_empty(),
         "the saved spell resolves into a creature as normal"
     );
 }
 
 // ── Hinder's countered-spell destination rider (CR 701.5b) ──────────────────────────
 
-/// Cast Grizzly Bear for P0 and Hinder for P1 targeting the bear, resolving Hinder — leaving the
+/// Cast Grizzly Bears for P0 and Hinder for P1 targeting the bear, resolving Hinder — leaving the
 /// game paused on the resulting [`PendingChoice::ChooseCounteredSpellDestination`]. Returns the
 /// bear's stack id. `filler` is stacked atop P0's library so a subsequent draw can prove which
 /// end of the library the countered bear landed on.
@@ -26370,7 +26372,7 @@ fn cast_hinder_countering_bear(game: &mut Game, filler: CardDef) -> ObjectId {
     game.fund_mana(PlayerId(0));
     game.fund_mana(PlayerId(1));
     game.stack_library(PlayerId(0), &[filler]);
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     let hinder = game.spawn_in_hand(PlayerId(1), card("Hinder"));
 
     game.submit(Intent::Cast {
@@ -26390,7 +26392,7 @@ fn cast_hinder_countering_bear(game: &mut Game, filler: CardDef) -> ObjectId {
         multikicker_count: 0,
         alternative_cost: false,
     })
-    .expect("Grizzly Bear is castable");
+    .expect("Grizzly Bears is castable");
     let bear_on_stack = top_spell(game);
     game.submit(Intent::PassPriority {
         player: PlayerId(0),
@@ -26497,7 +26499,7 @@ fn hinder_countering_flashback_spell_exiles_it() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     game.fund_mana(PlayerId(1));
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
     let looting = game.spawn_in_graveyard(PlayerId(0), FLASHBACK_DRAW.clone());
     tap_forests(&mut game, 2); // flashback {2} (CR 702.34)
     let hinder = game.spawn_in_hand(PlayerId(1), card("Hinder"));
@@ -26571,7 +26573,7 @@ fn spell_crumple_counters_a_spell_to_the_bottom_of_its_owners_library() {
     game.stack_library(PlayerId(0), &[card("Forest")]);
     game.stack_library(PlayerId(1), &[card("Forest")]);
 
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     let crumple = game.spawn_in_hand(PlayerId(1), card("Spell Crumple"));
 
     game.submit(Intent::Cast {
@@ -26591,7 +26593,7 @@ fn spell_crumple_counters_a_spell_to_the_bottom_of_its_owners_library() {
         multikicker_count: 0,
         alternative_cost: false,
     })
-    .expect("Grizzly Bear is castable");
+    .expect("Grizzly Bears is castable");
     let bear_on_stack = top_spell(&game);
     game.submit(Intent::PassPriority {
         player: PlayerId(0),
@@ -27021,8 +27023,8 @@ fn echo_offers_a_pay_or_sacrifice_choice_at_the_controllers_first_upkeep() {
     let mut game = Game::new();
     let karmic_guide = game.spawn_on_battlefield(PlayerId(0), card("Karmic Guide"));
     // Libraries so neither player decks out crossing into P0's next upkeep.
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
 
     // Turn 1 started in Main1 (its upkeep already passed) — roll to P0's *next* upkeep.
     advance_until(&mut game, |g| {
@@ -27046,8 +27048,8 @@ fn echo_offers_a_pay_or_sacrifice_choice_at_the_controllers_first_upkeep() {
 fn echo_paid_keeps_the_creature_and_does_not_retrigger() {
     let mut game = Game::new();
     let karmic_guide = game.spawn_on_battlefield(PlayerId(0), card("Karmic Guide"));
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
 
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
@@ -27102,8 +27104,8 @@ fn echo_paid_keeps_the_creature_and_does_not_retrigger() {
 fn echo_declined_sacrifices_the_creature() {
     let mut game = Game::new();
     let karmic_guide = game.spawn_on_battlefield(PlayerId(0), card("Karmic Guide"));
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
 
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
@@ -27240,10 +27242,10 @@ fn jotun_grunt_cumulative_upkeep_adds_age_counter_and_scales_cost() {
     let mut game = Game::new();
     let grunt = game.spawn_on_battlefield(PlayerId(0), card("Jotun Grunt"));
     // Libraries so neither player decks out crossing into P0's next upkeep.
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
-    let gy1 = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
-    let gy2 = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    let gy1 = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
+    let gy2 = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
 
     // Turn 1 started in Main1 (its upkeep already passed) — roll to P0's *next* upkeep.
     advance_until(&mut game, |g| {
@@ -27287,10 +27289,10 @@ fn jotun_grunt_cumulative_upkeep_adds_age_counter_and_scales_cost() {
     );
 
     // Second upkeep: two age counters, so the cost scales to 4 cards.
-    let gy3 = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
-    let gy4 = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
-    let gy5 = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
-    let gy6 = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let gy3 = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
+    let gy4 = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
+    let gy5 = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
+    let gy6 = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
 
     pass_until_next_turn(&mut game); // → P1's turn
     pass_until_next_turn(&mut game); // → P0's turn, parked at its next upkeep
@@ -27325,8 +27327,8 @@ fn jotun_grunt_cumulative_upkeep_adds_age_counter_and_scales_cost() {
 fn jotun_grunt_sacrificed_when_upkeep_cost_unpaid() {
     let mut game = Game::new();
     let grunt = game.spawn_on_battlefield(PlayerId(0), card("Jotun Grunt"));
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
 
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
@@ -27359,11 +27361,11 @@ fn jotun_grunt_upkeep_cards_go_to_bottom_of_owners_library() {
     // Reaching P0's *next* upkeep crosses all of P1's own turn 2 first (including P1's normal
     // draw step), so P1's library needs a second filler surviving on top of the paid cards —
     // drawing it after the tuck proves the paid cards landed on the *bottom*, not the top.
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
     // The payment comes from P1's graveyard (an opponent's), not the controller's own.
-    let opp1 = game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bear"));
-    let opp2 = game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bear"));
+    let opp1 = game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bears"));
+    let opp2 = game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bears"));
 
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
@@ -27632,7 +27634,7 @@ fn darigaazs_caldera_taps_for_one_mana_of_a_chosen_color_not_all_three() {
 fn mulldrifter_normal_cast_stays() {
     let mut game = TestGame::new();
     let mulldrifter = game.spawn_in_hand(PlayerId(0), card("Mulldrifter"));
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
     let hand_before = hand_ids(&game, PlayerId(0)).len();
 
     game.cast(mulldrifter).resolve();
@@ -27662,7 +27664,7 @@ fn mulldrifter_normal_cast_stays() {
 fn mulldrifter_evoked_draws_two_then_is_sacrificed() {
     let mut game = TestGame::new();
     let mulldrifter = game.spawn_in_hand(PlayerId(0), card("Mulldrifter"));
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
     let hand_before = hand_ids(&game, PlayerId(0)).len();
 
     game.cast(mulldrifter).evoked(true).resolve();
@@ -27780,8 +27782,8 @@ fn schedule_draw_one() -> CardDef {
 fn schedule_at_next_upkeep_fires_once_at_next_upkeep() {
     let mut game = TestGame::new();
     let spell = game.spawn_in_hand(PlayerId(0), schedule_draw_one());
-    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
 
     game.cast(spell).resolve();
     assert!(
@@ -27826,8 +27828,8 @@ fn arcane_denial_counters_then_schedules_both_draws() {
     game.fund_mana(PlayerId(1));
     let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
     let denial = game.spawn_in_hand(PlayerId(1), card("Arcane Denial"));
-    let p0_lib = game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
-    let p1_lib = game.stack_library(PlayerId(1), &[card("Grizzly Bear")]);
+    let p0_lib = game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    let p1_lib = game.stack_library(PlayerId(1), &[card("Grizzly Bears")]);
 
     game.submit(Intent::Cast {
         player: PlayerId(0),
@@ -27940,8 +27942,8 @@ fn arcane_denial_controller_may_draw_up_to_two_at_next_upkeep() {
     game.fund_mana(PlayerId(1));
     let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
     let denial = game.spawn_in_hand(PlayerId(1), card("Arcane Denial"));
-    let p0_lib = game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear")]);
+    let p0_lib = game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears")]);
 
     game.submit(Intent::Cast {
         player: PlayerId(0),
@@ -28068,8 +28070,8 @@ fn reach_may_draw_up_to_pause(game: &mut Game) {
 fn may_draw_up_to_lets_the_player_draw_fewer_than_the_maximum() {
     let mut game = TestGame::new();
     let spell = game.spawn_in_hand(PlayerId(0), schedule_may_draw_up_to_two());
-    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
 
     game.cast(spell).resolve();
     reach_may_draw_up_to_pause(&mut game);
@@ -28101,8 +28103,8 @@ fn may_draw_up_to_lets_the_player_draw_fewer_than_the_maximum() {
 fn may_draw_up_to_zero_draws_nothing() {
     let mut game = TestGame::new();
     let spell = game.spawn_in_hand(PlayerId(0), schedule_may_draw_up_to_two());
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
 
     game.cast(spell).resolve();
     reach_may_draw_up_to_pause(&mut game);
@@ -28127,8 +28129,8 @@ fn may_draw_up_to_zero_draws_nothing() {
 fn may_draw_up_to_rejects_an_over_draw() {
     let mut game = TestGame::new();
     let spell = game.spawn_in_hand(PlayerId(0), schedule_may_draw_up_to_two());
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
 
     game.cast(spell).resolve();
     reach_may_draw_up_to_pause(&mut game);
@@ -28177,8 +28179,8 @@ fn may_draw_up_to_rejects_an_over_draw() {
 fn trade_secrets_target_opponent_draws_two_then_caster_may_draw_up_to_four() {
     let mut game = TestGame::new();
     let spell = game.spawn_in_hand(PlayerId(0), card("Trade Secrets"));
-    game.stack_library(PlayerId(1), &vec![card("Grizzly Bear"); 2]);
-    game.stack_library(PlayerId(0), &vec![card("Grizzly Bear"); 4]);
+    game.stack_library(PlayerId(1), &vec![card("Grizzly Bears"); 2]);
+    game.stack_library(PlayerId(0), &vec![card("Grizzly Bears"); 4]);
 
     game.cast(spell).at(Target::Player(PlayerId(1))).resolve();
 
@@ -28205,8 +28207,8 @@ fn trade_secrets_target_opponent_draws_two_then_caster_may_draw_up_to_four() {
 fn trade_secrets_opponent_repeats_the_process_until_they_decline() {
     let mut game = TestGame::new();
     let spell = game.spawn_in_hand(PlayerId(0), card("Trade Secrets"));
-    game.stack_library(PlayerId(1), &vec![card("Grizzly Bear"); 4]);
-    game.stack_library(PlayerId(0), &vec![card("Grizzly Bear"); 4]);
+    game.stack_library(PlayerId(1), &vec![card("Grizzly Bears"); 4]);
+    game.stack_library(PlayerId(0), &vec![card("Grizzly Bears"); 4]);
 
     game.cast(spell).at(Target::Player(PlayerId(1))).resolve();
 
@@ -28289,8 +28291,8 @@ fn trade_secrets_opponent_repeats_the_process_until_they_decline() {
 fn trade_secrets_only_the_target_opponent_may_answer_the_repeat() {
     let mut game = TestGame::new();
     let spell = game.spawn_in_hand(PlayerId(0), card("Trade Secrets"));
-    game.stack_library(PlayerId(1), &vec![card("Grizzly Bear"); 2]);
-    game.stack_library(PlayerId(0), &vec![card("Grizzly Bear"); 4]);
+    game.stack_library(PlayerId(1), &vec![card("Grizzly Bears"); 2]);
+    game.stack_library(PlayerId(0), &vec![card("Grizzly Bears"); 4]);
 
     game.cast(spell).at(Target::Player(PlayerId(1))).resolve();
     game.submit(Intent::ChooseDrawCount {
@@ -28534,7 +28536,7 @@ fn thunderclap_drake_copies_next_instant_per_commander_cast() {
     // command zone this game. You may choose new targets for the copies."
     let mut g = TestGame::new();
     g.fund_mana(PlayerId(0));
-    let cmd = g.designate_commander(PlayerId(0), card("Grizzly Bear")); // {1}{G}, 2/2
+    let cmd = g.designate_commander(PlayerId(0), card("Grizzly Bears")); // {1}{G}, 2/2
     g.submit(Intent::Cast {
         player: PlayerId(0),
         object: cmd,
@@ -28668,7 +28670,7 @@ fn thunderclap_drake_only_copies_instant_or_sorcery() {
     // doesn't consume it; the next instant/sorcery still copies.
     let mut g = TestGame::new();
     g.fund_mana(PlayerId(0));
-    let cmd = g.designate_commander(PlayerId(0), card("Grizzly Bear"));
+    let cmd = g.designate_commander(PlayerId(0), card("Grizzly Bears"));
     g.submit(Intent::Cast {
         player: PlayerId(0),
         object: cmd,
@@ -28724,7 +28726,7 @@ fn thunderclap_drake_copy_noops_if_spell_countered() {
     // trigger resolves, the copy effect no-ops instead of panicking.
     let mut g = TestGame::new();
     g.fund_mana(PlayerId(0));
-    let cmd = g.designate_commander(PlayerId(0), card("Grizzly Bear"));
+    let cmd = g.designate_commander(PlayerId(0), card("Grizzly Bears"));
     g.submit(Intent::Cast {
         player: PlayerId(0),
         object: cmd,
@@ -28979,8 +28981,8 @@ fn unbound_flourishing_ignores_instant_or_sorcery_without_x() {
 fn mirrorwing_dragon_copies_spell_targeting_only_it_per_other_creature() {
     let mut g = TestGame::new();
     let dragon = g.spawn_on_battlefield(PlayerId(0), card("Mirrorwing Dragon"));
-    let ally1 = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    let ally2 = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let ally1 = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let ally2 = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     let shock = g.spawn_in_hand(PlayerId(0), card("Shock"));
     g.cast(shock).at(Target::Object(dragon)).submit();
@@ -29048,7 +29050,7 @@ fn mirrorwing_no_copies_when_spell_targets_another_creature() {
     // doesn't consume it.
     let mut g = TestGame::new();
     let dragon = g.spawn_on_battlefield(PlayerId(0), card("Mirrorwing Dragon"));
-    let ally = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let ally = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     let shock = g.spawn_in_hand(PlayerId(0), card("Shock"));
     g.cast(shock).at(Target::Object(ally)).resolve();
@@ -29072,7 +29074,7 @@ fn mirrorwing_no_copies_when_spell_targets_more_than_just_it() {
     // permanent doesn't qualify either.
     let mut g = TestGame::new();
     let dragon = g.spawn_on_battlefield(PlayerId(0), card("Mirrorwing Dragon"));
-    let ally = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let ally = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     let gale = g.spawn_in_hand(PlayerId(0), card("Aether Gale")); // "return six target nonland permanents"
     g.cast(gale).resolve(); // fewer than six legal targets: forced, auto-fills both
@@ -29486,7 +29488,7 @@ fn removing_a_set_base_aura_reverts_to_the_printed_base() {
 #[test]
 fn darksteel_mutation_makes_its_host_a_zero_one() {
     let mut game = Game::new();
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // printed 2/2
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears")); // printed 2/2
     let mutation = game.spawn_in_hand(PlayerId(0), card("Darksteel Mutation"));
     cast_and_resolve(&mut game, mutation, Some(Target::Object(bear)));
 
@@ -29539,7 +29541,7 @@ static ANGEL_ANTHEM: LazyLock<CardDef> = LazyLock::new(|| CardDef {
 fn angelic_destiny_makes_enchanted_creature_an_angel() {
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), ANGEL_ANTHEM.clone());
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // 2/2 Bear, not Angel
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears")); // 2/2 Bear, not Angel
     assert!(
         !game.effective_subtypes(bear).contains(&"Angel"),
         "the printed Bear is not yet an Angel"
@@ -29586,7 +29588,7 @@ fn angelic_destiny_makes_enchanted_creature_an_angel() {
 #[test]
 fn darksteel_mutation_sets_type_line() {
     let mut game = Game::new();
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // 2/2 Bear
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears")); // 2/2 Bear
     let mutation = game.spawn_in_hand(PlayerId(0), card("Darksteel Mutation"));
     cast_and_resolve(&mut game, mutation, Some(Target::Object(bear)));
 
@@ -29901,7 +29903,7 @@ fn plain_aura_does_not_remove_abilities() {
 fn an_aura_buffs_its_host_and_grants_a_keyword() {
     // Sentinel's Eyes: enchanted creature gets +1/+1 and has vigilance.
     let mut game = Game::new();
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // 2/2
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears")); // 2/2
     let eyes = game.spawn_in_hand(PlayerId(0), card("Sentinel's Eyes"));
     assert_eq!(game.power(bear), 2);
 
@@ -29922,7 +29924,7 @@ fn an_aura_buffs_its_host_and_grants_a_keyword() {
 #[test]
 fn modifier_sources_attributes_an_aura_grant_to_the_aura_card_def() {
     let mut game = Game::new();
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let eyes = game.spawn_in_hand(PlayerId(0), card("Sentinel's Eyes"));
     cast_and_resolve(&mut game, eyes, Some(Target::Object(bear)));
 
@@ -29952,7 +29954,7 @@ fn modifier_sources_attributes_an_aura_grant_to_the_aura_card_def() {
 fn modifier_sources_attributes_a_pump_to_the_spell_card_def() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let pump = game.spawn_in_hand(PlayerId(0), card("Brute Force"));
     game.submit(Intent::Cast {
         player: PlayerId(0),
@@ -29994,7 +29996,7 @@ fn modifier_sources_attributes_a_pump_to_the_spell_card_def() {
 #[test]
 fn modifier_sources_attributes_counters_to_the_placing_spell() {
     let mut game = Game::new();
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let growth = game.spawn_in_hand(PlayerId(0), GROWTH.clone());
     cast_and_resolve(&mut game, growth, Some(Target::Object(bear)));
 
@@ -30014,7 +30016,7 @@ fn modifier_sources_attributes_counters_to_the_placing_spell() {
 #[test]
 fn modifier_sources_attributes_an_anthem_to_the_anthem_permanent() {
     let mut game = Game::new();
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let _anthem = game.spawn_on_battlefield(PlayerId(0), card("Glorious Anthem"));
 
     let groups = game.modifier_sources(bear);
@@ -30038,8 +30040,8 @@ fn modifier_sources_attributes_an_anthem_to_the_anthem_permanent() {
 fn modifier_sources_clears_eot_pump_at_cleanup() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let pump = game.spawn_in_hand(PlayerId(0), card("Brute Force"));
     game.submit(Intent::Cast {
         player: PlayerId(0),
@@ -30083,7 +30085,7 @@ fn modifier_sources_clears_eot_pump_at_cleanup() {
 #[test]
 fn modifier_batches_clear_when_permanent_is_exiled() {
     let mut game = Game::new();
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let growth = game.spawn_in_hand(PlayerId(0), GROWTH.clone());
     cast_and_resolve(&mut game, growth, Some(Target::Object(bear)));
     assert_eq!(game.plus_counters(bear), 2);
@@ -30116,7 +30118,7 @@ fn an_aura_granting_flying_makes_its_host_unblockable_by_grounders() {
 #[test]
 fn an_aura_falls_to_the_graveyard_when_its_host_dies() {
     let mut game = Game::new();
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // 2/2
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears")); // 2/2
     let eyes = game.spawn_in_hand(PlayerId(0), card("Sentinel's Eyes"));
     cast_and_resolve(&mut game, eyes, Some(Target::Object(bear)));
     let aura = game.attachments(bear)[0];
@@ -30296,8 +30298,8 @@ fn chains_of_custody_can_only_enchant_a_creature_you_control() {
     // Chains of Custody is "Enchant creature you control" (CR 303.4a) — an opponent's creature
     // is not a legal cast target, even though it's a legal target in general.
     let mut game = Game::new();
-    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let chains = game.spawn_in_hand(PlayerId(0), card("Chains of Custody"));
 
     let legal = game.legal_targets(chains, None);
@@ -30314,8 +30316,8 @@ fn chains_of_custody_can_only_enchant_a_creature_you_control() {
 #[test]
 fn sheltered_by_ghosts_can_only_enchant_a_creature_you_control() {
     let mut game = Game::new();
-    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let ghosts = game.spawn_in_hand(PlayerId(0), card("Sheltered by Ghosts"));
 
     let legal = game.legal_targets(ghosts, None);
@@ -30331,7 +30333,7 @@ fn chains_of_custody_fizzles_to_the_graveyard_if_its_host_leaves_your_control() 
     // first and steals control — so Chains of Custody's "you control" restriction is no longer
     // met when it resolves.
     let mut game = Game::new();
-    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let chains = game.spawn_in_hand(PlayerId(0), card("Chains of Custody"));
     let steal = game.spawn_in_hand(PlayerId(1), CONTROL_ATTACHED_AURA.clone());
     game.fund_mana(PlayerId(0));
@@ -30394,7 +30396,7 @@ fn chains_of_custody_fizzles_to_the_graveyard_if_its_host_leaves_your_control() 
 #[test]
 fn equipment_buffs_its_creature_then_survives_when_that_creature_dies() {
     let mut game = Game::new();
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // 2/2
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears")); // 2/2
     let bonesplitter = game.spawn_on_battlefield(PlayerId(0), card("Bonesplitter"));
     game.fund_mana(PlayerId(0));
 
@@ -30511,7 +30513,7 @@ fn kor_spiritdancer_draws_on_casting_an_aura() {
     let lib = game.stack_library(PlayerId(0), &[card("Forest"), card("Forest")]);
 
     // Casting a non-Aura spell doesn't fire the trigger.
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     game.cast(bear).resolve();
     assert_eq!(
         game.zone_of(lib[0]),
@@ -30546,7 +30548,7 @@ fn kor_spiritdancer_draws_on_casting_an_aura() {
 #[test]
 fn equip_moves_the_equipment_from_one_creature_to_another() {
     let mut game = Game::new();
-    let first = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let first = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let second = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
     let bonesplitter = game.spawn_on_battlefield(PlayerId(0), card("Bonesplitter"));
     game.fund_mana(PlayerId(0));
@@ -30584,7 +30586,7 @@ fn equip_moves_the_equipment_from_one_creature_to_another() {
 #[test]
 fn equip_only_lists_creatures_you_control_as_targets() {
     let mut game = Game::new();
-    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let theirs = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
     let bonesplitter = game.spawn_on_battlefield(PlayerId(0), card("Bonesplitter"));
     game.fund_mana(PlayerId(0));
@@ -30615,7 +30617,7 @@ fn champions_helm_grants_hexproof_only_while_equipped_creature_is_legendary() {
     // hexproof." The +2/+2 is unconditional; the hexproof gate flips live off the host's own
     // legendary status, not off anything the Equipment itself carries.
     let mut game = Game::new();
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // 2/2, nonlegendary
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears")); // 2/2, nonlegendary
     let legend = game.spawn_on_battlefield(PlayerId(0), LEGENDARY_CREATURE.clone()); // 2/2, legendary
     let helm = game.spawn_on_battlefield(PlayerId(0), card("Champion's Helm"));
     game.fund_mana(PlayerId(0));
@@ -30667,7 +30669,7 @@ fn shielded_by_faith_reattaches_to_the_next_entering_creature() {
     // you may attach this Aura to that creature." Accepting moves the Aura — and with it the
     // indestructible grant — off its original host and onto the newly entering creature. (CR 702.12)
     let mut game = TestGame::new();
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let shield = game.spawn_in_hand(PlayerId(0), card("Shielded by Faith"));
     game.cast(shield).at(Target::Object(bear)).resolve();
     let aura = game.attachments(bear)[0];
@@ -30713,7 +30715,7 @@ fn an_aura_with_an_illegal_target_on_resolution_goes_to_the_graveyard() {
     // CR 303.4f: the Aura's target dies in response, so the Aura never enters — it's put
     // into the graveyard from the stack instead.
     let mut game = Game::new();
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear")); // 2/2
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears")); // 2/2
     let eyes = game.spawn_in_hand(PlayerId(0), card("Sentinel's Eyes"));
     let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
     game.fund_mana(PlayerId(0));
@@ -30773,8 +30775,8 @@ fn coercive_impetus_triggers_when_its_enchanted_creature_attacks() {
     // Coercive Impetus: enchanted creature gets +1/+1 and is goaded; whenever it attacks, its
     // controller (Coercive Impetus's own controller) draws a card and loses 1 life.
     let mut game = Game::new();
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
-    let host = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // 2/2
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    let host = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears")); // 2/2
     let other = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone()); // unenchanted — must not trigger
     let impetus = game.spawn_in_hand(PlayerId(0), card("Coercive Impetus"));
     cast_and_resolve(&mut game, impetus, Some(Target::Object(host)));
@@ -30811,9 +30813,9 @@ fn coercive_impetus_fires_under_its_own_controller_on_an_opponents_creature() {
     // The Impetus cycle's usual home: your Aura on an OPPONENT's creature. The trigger's
     // controller is the Aura's controller (P0), not the enchanted creature's controller (P1).
     let mut game = Game::new();
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear")]); // P1 draws crossing into their turn
-    let host = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears")]); // P1 draws crossing into their turn
+    let host = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let impetus = game.spawn_in_hand(PlayerId(0), card("Coercive Impetus"));
     game.fund_mana(PlayerId(0));
     game.submit(Intent::Cast {
@@ -30874,8 +30876,8 @@ fn parasitic_impetus_drains_its_hosts_controller_when_it_attacks() {
     // Parasitic Impetus: enchanted creature gets +2/+2 and is goaded; whenever it attacks, its
     // controller loses 2 life and Parasitic Impetus's controller gains 2.
     let mut game = Game::new();
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear")]); // P1 draws crossing into their turn
-    let host = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears")]); // P1 draws crossing into their turn
+    let host = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let impetus = game.spawn_in_hand(PlayerId(0), card("Parasitic Impetus"));
     game.fund_mana(PlayerId(0));
     game.submit(Intent::Cast {
@@ -31063,7 +31065,7 @@ fn scriv_the_obligator_mints_a_contract_aura_attached_to_an_opponents_creature()
     // "Whenever Scriv enters or attacks, create a white Aura enchantment token named Contract
     // attached to target creature an opponent controls."
     let mut game = Game::new();
-    let victim = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let victim = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let scriv = game.spawn_in_hand(PlayerId(0), card("Scriv, the Obligator"));
     cast_scriv_targeting(&mut game, PlayerId(0), scriv, victim);
 
@@ -31101,7 +31103,7 @@ fn contract_pumps_the_enchanted_creature_attacking_one_of_your_opponents() {
     // another opponent of Scriv's controller P0 → the +2/+0 branch fires.
     let mut game = Game::with_players(3, 0);
     game.stack_library(PlayerId(1), &[card("Forest")]); // P1 draws crossing into their turn
-    let victim = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear")); // 2/2
+    let victim = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears")); // 2/2
     let scriv = game.spawn_in_hand(PlayerId(0), card("Scriv, the Obligator"));
     cast_scriv_targeting(&mut game, PlayerId(0), scriv, victim);
 
@@ -31137,7 +31139,7 @@ fn contract_drains_the_hosts_controller_when_not_attacking_your_opponents() {
     // controller, not one of P0's opponents — so the life-loss branch fires instead of the pump.
     let mut game = Game::new();
     game.stack_library(PlayerId(1), &[card("Forest")]); // P1 draws crossing into their turn
-    let victim = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear")); // 2/2
+    let victim = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears")); // 2/2
     let scriv = game.spawn_in_hand(PlayerId(0), card("Scriv, the Obligator"));
     cast_scriv_targeting(&mut game, PlayerId(0), scriv, victim);
 
@@ -31171,8 +31173,8 @@ fn scriv_attack_trigger_mints_another_contract() {
     let mut game = Game::new();
     game.stack_library(PlayerId(0), &[card("Forest"), card("Forest")]); // survive to turn 3
     game.stack_library(PlayerId(1), &[card("Forest"), card("Forest")]);
-    let etb_victim = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
-    let attack_victim = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let etb_victim = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
+    let attack_victim = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let scriv = game.spawn_in_hand(PlayerId(0), card("Scriv, the Obligator"));
     cast_scriv_targeting(&mut game, PlayerId(0), scriv, etb_victim);
     assert_eq!(
@@ -31490,7 +31492,7 @@ fn enchanted_creature_dies_trigger_fires_under_the_auras_own_controller() {
     // creature. The trigger's controller is the Aura's controller (P0), not the enchanted
     // creature's controller (P1) — mirrors #25's `EnchantedCreatureAttacks` attribution.
     let mut game = Game::new();
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
     let host = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
     let aura = game.spawn_in_hand(PlayerId(0), WATCHES_HOST_DIES_DRAW.clone());
     cast_and_resolve(&mut game, aura, Some(Target::Object(host)));
@@ -31602,7 +31604,7 @@ fn hateful_eidolon_draws_per_attached_aura() {
         "both Auras entered attached"
     );
 
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
     let library_before = game.library_size(PlayerId(0));
     let destroy = game.spawn_in_hand(PlayerId(0), DESTROY.clone());
     cast_and_resolve(&mut game, destroy, Some(Target::Object(host)));
@@ -31687,7 +31689,7 @@ fn hateful_eidolon_survives_own_death_in_batch() {
         alternative_cost: false,
     })
     .expect("the spell is castable");
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
     let library_before = game.library_size(PlayerId(0));
     resolve_top_of_stack(&mut game);
     assert_eq!(
@@ -31748,7 +31750,7 @@ fn sages_reverie_draws_and_pumps_per_aura_you_control() {
     let aura1 = game.spawn_in_hand(PlayerId(0), AURA_WITH_SUBTYPE.clone());
     cast_and_resolve(&mut game, aura1, Some(Target::Object(host)));
 
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
     let library_before = game.library_size(PlayerId(0));
     let reverie = game.spawn_in_hand(PlayerId(0), card("Sage's Reverie"));
     cast_and_resolve(&mut game, reverie, Some(Target::Object(host))); // the Aura resolves attached
@@ -31783,8 +31785,8 @@ fn empyrial_armor_tracks_hand_size() {
     // your hand."
     let mut game = Game::new();
     let host = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone()); // 2/2
-    game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
-    game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
+    game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     let armor = game.spawn_in_hand(PlayerId(0), card("Empyrial Armor"));
     cast_and_resolve(&mut game, armor, Some(Target::Object(host))); // Empyrial Armor leaves hand
 
@@ -31796,7 +31798,7 @@ fn empyrial_armor_tracks_hand_size() {
     assert_eq!(game.toughness(host), 2 + 2);
 
     // Live tracking: a card entering hand grows the buff without touching the attachment.
-    game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     assert_eq!(
         game.power(host),
         2 + 3,
@@ -31826,7 +31828,7 @@ fn killian_draws_when_enchanted_creature_attacks() {
     let aura = game.spawn_in_hand(PlayerId(0), PLAIN_AURA.clone());
     cast_and_resolve(&mut game, aura, Some(Target::Object(attacker)));
     decline_killians_enchantment_watch(&mut game); // the Aura is also an enchantment entering — decline the unrelated first ability
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
     let library_before = game.library_size(PlayerId(0));
 
     attack_with(&mut game, vec![attacker]);
@@ -31849,7 +31851,7 @@ fn killian_draws_when_enchanted_creature_attacks() {
     let aura2 = game.spawn_in_hand(PlayerId(0), PLAIN_AURA.clone());
     cast_and_resolve(&mut game, aura2, Some(Target::Object(a2)));
     decline_killians_enchantment_watch(&mut game);
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
     let library_before = game.library_size(PlayerId(0));
 
     attack_with(&mut game, vec![a1, a2]);
@@ -31865,7 +31867,7 @@ fn killian_draws_when_enchanted_creature_attacks() {
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Killian, Decisive Mentor"));
     let attacker = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
     let library_before = game.library_size(PlayerId(0));
 
     attack_with(&mut game, vec![attacker]);
@@ -31892,9 +31894,9 @@ fn annihilator_defending_player_sacrifices_two() {
         "the +10/+10 grant"
     );
 
-    let p1a = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
-    let p1b = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
-    let p1c = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let p1a = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
+    let p1b = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
+    let p1c = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
 
     attack_with(&mut game, vec![host]); // attacks P1
     resolve_top_of_stack(&mut game); // the annihilator trigger resolves → pause on the choice
@@ -32631,7 +32633,7 @@ fn exile_until_aura_leaves_sheltered_by_ghosts() {
     // pattern), alongside its already-modeled +1/+0/lifelink/ward {2} grant. (CR 702.21)
     let mut game = Game::new();
     let host = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
-    let victim = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let victim = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let aura_card = game.spawn_in_hand(PlayerId(0), card("Sheltered by Ghosts"));
 
     cast_and_resolve(&mut game, aura_card, Some(Target::Object(host)));
@@ -32684,7 +32686,7 @@ fn exiled_permanent_stays_while_source_present() {
     // As long as the Aura remains on the battlefield, the linked exile doesn't end early.
     let mut game = Game::new();
     let host = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
-    let victim = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let victim = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let aura_card = game.spawn_in_hand(PlayerId(0), card("Sheltered by Ghosts"));
 
     cast_and_resolve(&mut game, aura_card, Some(Target::Object(host)));
@@ -32713,7 +32715,7 @@ fn exile_returns_when_the_auras_host_dies_in_the_same_sweep_chains_of_custody() 
     // resolve, not lag a sweep behind.
     let mut game = Game::new();
     let host = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
-    let victim = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let victim = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let aura_card = game.spawn_in_hand(PlayerId(0), card("Chains of Custody"));
 
     cast_and_resolve(&mut game, aura_card, Some(Target::Object(host)));
@@ -33002,7 +33004,7 @@ static CONTROL_ATTACHED_AURA: LazyLock<CardDef> = LazyLock::new(|| CardDef {
 #[test]
 fn a_control_changing_aura_makes_you_control_the_enchanted_creature() {
     let mut game = Game::new();
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear")); // P1's creature
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears")); // P1's creature
     let aura = game.spawn_in_hand(PlayerId(0), CONTROL_ATTACHED_AURA.clone());
     assert_eq!(
         game.controller_of(bear),
@@ -33031,7 +33033,7 @@ fn a_stolen_creature_can_attack_for_its_new_controller_after_it_untaps() {
     // Stock libraries so neither player decks out (and is eliminated) over the turns we pass.
     game.stack_library(PlayerId(0), &[VANILLA.clone(), VANILLA.clone()]);
     game.stack_library(PlayerId(1), &[VANILLA.clone(), VANILLA.clone()]);
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let aura = game.spawn_in_hand(PlayerId(0), CONTROL_ATTACHED_AURA.clone());
     cast_and_resolve(&mut game, aura, Some(Target::Object(bear)));
     assert!(
@@ -33054,7 +33056,7 @@ fn a_stolen_creature_can_attack_for_its_new_controller_after_it_untaps() {
 #[test]
 fn destroying_the_control_aura_returns_control_to_the_owner() {
     let mut game = Game::new();
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let aura = game.spawn_in_hand(PlayerId(0), CONTROL_ATTACHED_AURA.clone());
     cast_and_resolve(&mut game, aura, Some(Target::Object(bear)));
     let aura_perm = game.attachments(bear)[0];
@@ -34115,12 +34117,12 @@ fn fateful_tempest_all_vote_past_mills_and_damages() {
     let lib = game.stack_library(
         PlayerId(0),
         &[
-            card("Grizzly Bear"), // {1}{G} — MV 2
-            card("Serra Angel"),  // {3}{W}{W} — MV 5
-            card("Grizzly Bear"), // MV 2
-            card("Serra Angel"),  // MV 5
-            card("Forest"),       // spare
-            card("Forest"),       // spare
+            card("Grizzly Bears"), // {1}{G} — MV 2
+            card("Serra Angel"),   // {3}{W}{W} — MV 5
+            card("Grizzly Bears"), // MV 2
+            card("Serra Angel"),   // MV 5
+            card("Forest"),        // spare
+            card("Forest"),        // spare
         ],
     );
     cast_fateful_tempest_to_vote(&mut game);
@@ -34222,11 +34224,11 @@ fn fateful_tempest_mixed_votes_split_outcomes() {
     let lib = game.stack_library(
         PlayerId(0),
         &[
-            card("Grizzly Bear"), // milled — MV 2
-            card("Serra Angel"),  // milled — MV 5
-            card("Forest"),       // exiled
-            card("Forest"),       // exiled
-            card("Forest"),       // spare
+            card("Grizzly Bears"), // milled — MV 2
+            card("Serra Angel"),   // milled — MV 5
+            card("Forest"),        // exiled
+            card("Forest"),        // exiled
+            card("Forest"),        // spare
         ],
     );
     cast_fateful_tempest_to_vote(&mut game);
@@ -34818,7 +34820,7 @@ fn millikin_ability_illegal_with_an_empty_library() {
 #[test]
 fn wild_mongrel_discard_cost_pumps_until_end_of_turn() {
     let mut game = Game::new();
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
     let mongrel = game.spawn_on_battlefield(PlayerId(0), card("Wild Mongrel")); // 2/2
     let fodder = game.spawn_in_hand(PlayerId(0), card("Forest"));
 
@@ -34877,7 +34879,7 @@ fn wild_mongrel_ability_rejected_with_no_legal_discard_pick() {
         "an empty hand can't pay a \"discard a card\" cost"
     );
 
-    let not_in_hand = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let not_in_hand = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     assert_eq!(
         game.submit(Intent::ActivateAbility {
             player: PlayerId(0),
@@ -34919,7 +34921,7 @@ fn wild_mongrel_discard_cost_fires_you_discard_watchers() {
     let library_before = game.library_size(PlayerId(0));
     let mongrel = game.spawn_on_battlefield(PlayerId(0), card("Wild Mongrel"));
     game.spawn_on_battlefield(PlayerId(0), YOU_DISCARD_WATCHER.clone());
-    let fodder = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let fodder = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
 
     game.submit(Intent::ActivateAbility {
         player: PlayerId(0),
@@ -34946,7 +34948,7 @@ fn wild_mongrel_discard_cost_fires_you_discard_watchers() {
 #[test]
 fn wild_mongrel_discard_cost_becomes_the_chosen_color_until_end_of_turn() {
     let mut game = Game::new();
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
     let mongrel = game.spawn_on_battlefield(PlayerId(0), card("Wild Mongrel")); // 2/2 green
     let fodder = game.spawn_in_hand(PlayerId(0), card("Forest"));
 
@@ -34988,7 +34990,7 @@ fn wild_mongrel_discard_cost_becomes_the_chosen_color_until_end_of_turn() {
 #[test]
 fn wild_mongrel_color_choice_reverts_at_cleanup() {
     let mut game = Game::new();
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
     let mongrel = game.spawn_on_battlefield(PlayerId(0), card("Wild Mongrel"));
     let fodder = game.spawn_in_hand(PlayerId(0), card("Forest"));
 
@@ -35139,7 +35141,7 @@ fn relic_of_progenitus_exile_self_exiles_all_graveyards_and_draws_a_card() {
     game.stack_library(PlayerId(0), std::slice::from_ref(&*VANILLA)); // a card to draw — a fresh test game's library is empty
     let relic = game.spawn_on_battlefield(PlayerId(0), card("Relic of Progenitus"));
     let own_gy = game.spawn_in_graveyard(PlayerId(0), card("Mountain"));
-    let their_gy = game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bear"));
+    let their_gy = game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bears"));
     let hand_before = hand_ids(&game, PlayerId(0)).len();
 
     game.submit(Intent::ActivateAbility {
@@ -35190,7 +35192,7 @@ fn cards_in_zone(game: &Game, player: PlayerId, zone: Zone) -> usize {
 fn exile_removes_a_creature_to_the_exile_zone_not_the_graveyard() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let swords = game.spawn_in_hand(PlayerId(0), card("Swords to Plowshares"));
 
     game.submit(Intent::Cast {
@@ -35225,7 +35227,7 @@ fn exile_removes_a_creature_to_the_exile_zone_not_the_graveyard() {
 fn exiling_a_commander_diverts_it_to_the_command_zone() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     game.set_commander(PlayerId(1), bear);
     let swords = game.spawn_in_hand(PlayerId(0), card("Swords to Plowshares"));
 
@@ -35260,7 +35262,7 @@ fn exiling_a_commander_diverts_it_to_the_command_zone() {
 fn a_commander_diverted_from_exile_can_still_be_recast_from_the_command_zone() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let cmd = game.designate_commander(PlayerId(0), card("Grizzly Bear")); // {1}{G}
+    let cmd = game.designate_commander(PlayerId(0), card("Grizzly Bears")); // {1}{G}
     game.submit(Intent::Cast {
         player: PlayerId(0),
         object: cmd,
@@ -35338,7 +35340,7 @@ fn a_commander_diverted_from_exile_can_still_be_recast_from_the_command_zone() {
 fn bounce_returns_a_creature_to_its_owners_hand() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let hand_before = cards_in_zone(&game, PlayerId(1), Zone::Hand);
     let unsummon = game.spawn_in_hand(PlayerId(0), card("Unsummon"));
 
@@ -35660,7 +35662,7 @@ fn tyvars_stand_pumps_by_x_and_grants_hexproof_and_indestructible_until_end_of_t
     // targeting a 2/2 the caster controls.
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // 2/2
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears")); // 2/2
 
     let stand = game.spawn_in_hand(PlayerId(0), card("Tyvar's Stand"));
     game.submit(Intent::Cast {
@@ -35706,7 +35708,7 @@ fn primal_might_pumps_the_chosen_creature_by_x_until_end_of_turn() {
     // scripted (see the TOML note); this test covers that half in isolation. Cast for X=2.
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // 2/2
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears")); // 2/2
 
     let might = game.spawn_in_hand(PlayerId(0), card("Primal Might"));
     game.submit(Intent::Cast {
@@ -35917,7 +35919,7 @@ fn quandrix_charm_mode_three_sets_target_base_pt_5_5() {
     // turn." A CR 613.3(7b) until-end-of-turn base-P/T SET on one target, with 7c deltas
     // layering on top of the set base.
     let mut game = TestGame::new();
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // 2/2
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears")); // 2/2
 
     let charm = game.spawn_in_hand(PlayerId(0), card("Quandrix Charm"));
     game.cast(charm)
@@ -36344,7 +36346,7 @@ fn the_mana_paid_scales_with_the_chosen_x() {
 fn raise_dead_returns_a_creature_from_your_graveyard_to_your_hand() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let raise = game.spawn_in_hand(PlayerId(0), card("Raise Dead"));
     assert_eq!(game.zone_of(corpse), Zone::Graveyard);
 
@@ -36383,7 +36385,7 @@ fn reanimate_puts_a_creature_onto_the_battlefield_and_fires_its_etb() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     // A card to draw proves the creature entered via the ETB path (Elvish Visionary draws).
-    let library = game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    let library = game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
     let corpse = game.spawn_in_graveyard(PlayerId(0), card("Elvish Visionary"));
     let reanimate = game.spawn_in_hand(PlayerId(0), card("Reanimate"));
 
@@ -36437,7 +36439,7 @@ fn reanimated_enters_with_counters_apply_as_enters_replacements() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     game.spawn_on_battlefield(PlayerId(0), card("Hardened Scales"));
-    game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     game.spawn_in_graveyard(PlayerId(0), card("Elvish Visionary"));
     let troll = game.spawn_in_graveyard(PlayerId(0), card("Golgari Grave-Troll"));
     let reanimate = game.spawn_in_hand(PlayerId(0), card("Reanimate"));
@@ -36481,7 +36483,7 @@ fn animate_dead_targets_graveyard_creature_at_cast() {
     // target — a respondable CR 601.2c choice, like any other Aura's enchant subject — not a
     // fresh pick made after the Aura's already on the battlefield.
     let mut game = Game::new();
-    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let animate = game.spawn_in_hand(PlayerId(0), card("Animate Dead"));
     game.fund_mana(PlayerId(0));
 
@@ -36541,7 +36543,7 @@ fn animate_dead_fizzles_if_target_exiled_in_response() {
     // it resolves leaves the Aura with no legal object — it goes to the graveyard instead of
     // entering, the same fizzle CR 303.4f gives a battlefield-targeting Aura.
     let mut game = Game::new();
-    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let animate = game.spawn_in_hand(PlayerId(0), card("Animate Dead"));
     game.fund_mana(PlayerId(0));
 
@@ -36599,7 +36601,7 @@ fn animate_dead_sacrifices_host_when_destroyed() {
     // sacrifices it." A leaves-to-ANY-zone self-trigger (not the graveyard-only
     // `ThisAuraLeaves`/Fallen Ideal shape): destroying the Aura fires it.
     let mut game = Game::new();
-    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let (bear, aura) = reanimate_with_animate_dead(&mut game, corpse);
 
     let destroy = game.spawn_in_hand(PlayerId(0), DESTROY_ANY_PERMANENT.clone());
@@ -36624,7 +36626,7 @@ fn animate_dead_sacrifices_host_when_exiled() {
     // Same clause, proving the leaves-*any*-zone thread: exile (not just the graveyard) also
     // fires the sacrifice.
     let mut game = Game::new();
-    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let (bear, aura) = reanimate_with_animate_dead(&mut game, corpse);
 
     let exile = game.spawn_in_hand(PlayerId(0), EXILE_ENCHANTMENT.clone());
@@ -36644,13 +36646,13 @@ fn animate_dead_sacrifices_host_when_exiled() {
 fn animate_dead_host_gets_minus_one_zero() {
     // Animate Dead: "Enchanted creature gets -1/-0."
     let mut game = Game::new();
-    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let (bear, _aura) = reanimate_with_animate_dead(&mut game, corpse);
 
     assert_eq!(
         game.power(bear),
         1,
-        "Grizzly Bear's printed 2 power, minus 1"
+        "Grizzly Bears's printed 2 power, minus 1"
     );
     assert_eq!(game.toughness(bear), 2, "toughness unaffected");
 }
@@ -36662,7 +36664,7 @@ fn animate_dead_dies_via_sba_when_host_leaves_first() {
     // nothing) is put into its owner's graveyard in the same SBA sweep as the host's death — it
     // doesn't linger unattached on the battlefield.
     let mut game = Game::new();
-    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let (bear, aura) = reanimate_with_animate_dead(&mut game, corpse);
 
     let destroy_host = game.spawn_in_hand(PlayerId(0), DESTROY.clone());
@@ -36681,7 +36683,7 @@ fn animate_dead_dies_via_sba_when_host_leaves_first() {
 fn reanimate_can_target_an_opponents_graveyard_under_your_control() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let corpse = game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bear"));
+    let corpse = game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bears"));
     let reanimate = game.spawn_in_hand(PlayerId(0), card("Reanimate"));
 
     game.submit(Intent::Cast {
@@ -36718,7 +36720,7 @@ fn a_declined_sun_titan_trigger_reanimates_nothing() {
     // on the stack and leaves the graveyard creature where it is.
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let titan = game.spawn_in_hand(PlayerId(0), card("Sun Titan"));
 
     game.submit(Intent::Cast {
@@ -36772,7 +36774,7 @@ fn an_accepted_sun_titan_trigger_pauses_to_choose_its_reanimation_target() {
     // Accepting an optional *and* targeted trigger raises the target choice, then reanimates.
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let titan = game.spawn_in_hand(PlayerId(0), card("Sun Titan"));
 
     game.submit(Intent::Cast {
@@ -36937,7 +36939,7 @@ fn excava_reanimates_with_finality_counter() {
     game.fund_mana(PlayerId(0));
 
     let excava = game.spawn_on_battlefield(PlayerId(0), card("Excava, the Risen Past"));
-    let cheap = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear")); // mana value 2.
+    let cheap = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears")); // mana value 2.
     let pricey = game.spawn_in_graveyard(PlayerId(0), NONCREATURE_PERMANENT_MV4.clone());
 
     attack_with(&mut game, vec![excava]);
@@ -37120,7 +37122,7 @@ fn plain_reanimate_does_not_set_type() {
     // and types untouched — proving the type set is Excava-specific, not baked into reanimation.
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let bear = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear")); // 2/2.
+    let bear = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears")); // 2/2.
     let reanimate = game.spawn_in_hand(PlayerId(0), card("Reanimate"));
     game.submit(Intent::Cast {
         player: PlayerId(0),
@@ -37211,7 +37213,7 @@ fn raise_dead_rejects_illegal_graveyard_targets() {
     );
 
     // A creature in an *opponent's* graveyard is out of scope for "your graveyard."
-    let opp_corpse = game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bear"));
+    let opp_corpse = game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bears"));
     assert_eq!(
         game.submit(Intent::Cast {
             player: PlayerId(0),
@@ -37513,8 +37515,8 @@ fn tuck_graveyard_card_to_bottom_of_library_mistveil() {
     // for the ability; the *known* two-card library is stacked only after that roll, replacing the
     // filler, so the turn's own draw step doesn't eat one of the two known cards the test relies
     // on below.
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears")]);
     let mistveil = game.spawn_on_battlefield(PlayerId(0), card("Mistveil Plains"));
     game.spawn_on_battlefield(PlayerId(0), vanilla("White Knight A", 0, [1, 0, 0, 0, 0]));
     game.spawn_on_battlefield(PlayerId(0), vanilla("White Knight B", 0, [1, 0, 0, 0, 0]));
@@ -37525,7 +37527,7 @@ fn tuck_graveyard_card_to_bottom_of_library_mistveil() {
         g.active_player() == PlayerId(0) && g.current_step() == Step::Main1
     });
     let known_library =
-        game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+        game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
     let corpse = game.spawn_in_graveyard(PlayerId(0), card("Elvish Visionary"));
     game.fund_mana(PlayerId(0));
 
@@ -37813,8 +37815,8 @@ fn karmic_guide_reanimates_only_from_your_own_graveyard() {
     // creature is NOT a legal target (`whose = "yours"`), only the controller's own.
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let opp_corpse = game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bear"));
-    let own_corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let opp_corpse = game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bears"));
+    let own_corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let guide = game.spawn_in_hand(PlayerId(0), card("Karmic Guide"));
 
     game.submit(Intent::Cast {
@@ -37872,7 +37874,7 @@ fn lorehold_charm_mode_reanimates_a_cheap_artifact_or_creature() {
     let mut game = Game::new();
     let charm = game.spawn_in_hand(PlayerId(0), card("Lorehold Charm"));
     let cheap_artifact = game.spawn_in_graveyard(PlayerId(0), NONCREATURE_PERMANENT_MV2.clone());
-    let cheap_creature = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear")); // mv 2
+    let cheap_creature = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears")); // mv 2
     let pricey_artifact = game.spawn_in_graveyard(PlayerId(0), NONCREATURE_PERMANENT_MV4.clone());
     let land = game.spawn_in_graveyard(PlayerId(0), card("Forest"));
 
@@ -37995,7 +37997,7 @@ static RETURN_LAND_FROM_GRAVEYARD: LazyLock<CardDef> = LazyLock::new(|| CardDef 
 fn return_land_from_graveyard_to_hand() {
     let mut game = Game::new();
     let land = game.spawn_in_graveyard(PlayerId(0), card("Forest"));
-    let creature = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let creature = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let spell = game.spawn_in_hand(PlayerId(0), RETURN_LAND_FROM_GRAVEYARD.clone());
 
     let legal = game.legal_targets(spell, None);
@@ -38135,7 +38137,7 @@ fn card_filter_sorcery_matches_only_sorcery_cards() {
     let spell = game.spawn_in_hand(PlayerId(0), RETURN_SORCERY_FROM_GRAVEYARD.clone());
     let sorcery = game.spawn_in_graveyard(PlayerId(0), card("Blasphemous Act")); // sorcery
     let instant = game.spawn_in_graveyard(PlayerId(0), card("Shock")); // instant
-    let creature = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let creature = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
 
     let legal = game.legal_targets(spell, None);
     assert!(
@@ -38161,7 +38163,7 @@ fn life_from_the_loam_returns_up_to_three_lands() {
     let land1 = game.spawn_in_graveyard(PlayerId(0), card("Forest"));
     let land2 = game.spawn_in_graveyard(PlayerId(0), card("Forest"));
     let land3 = game.spawn_in_graveyard(PlayerId(0), card("Forest"));
-    let creature = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let creature = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     game.fund_mana(PlayerId(0));
     let loam = game.spawn_in_hand(PlayerId(0), card("Life from the Loam"));
     game.submit(Intent::Cast {
@@ -38270,7 +38272,7 @@ fn life_from_the_loam_returns_just_one_land_when_only_one_is_available() {
 #[test]
 fn raise_dead_still_returns_exactly_one_card_with_default_count() {
     let mut game = Game::new();
-    let creature = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let creature = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     game.fund_mana(PlayerId(0));
     let raise_dead = game.spawn_in_hand(PlayerId(0), card("Raise Dead"));
     game.submit(Intent::Cast {
@@ -38404,8 +38406,8 @@ fn card_in_opponents_graveyard_is_targetable() {
     // CR "target card in an opponent's graveyard" — a living opponent's graveyard is fair game,
     // but the chooser's own graveyard is not, under `whose = "opponents"`.
     let mut game = Game::new();
-    let opponents_card = game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bear"));
-    let own_card = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let opponents_card = game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bears"));
+    let own_card = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let spell = game.spawn_in_hand(PlayerId(0), EXILE_CARD_FROM_OPPONENTS_GRAVEYARD.clone());
 
     let legal = game.legal_targets(spell, None);
@@ -38424,7 +38426,7 @@ fn card_in_lost_players_graveyard_is_not_targetable_as_opponents_graveyard() {
     // CR 800.4a: a departing player's owned cards leave the game, and with no living opponents
     // left, `whose = "opponents"` has nothing to offer.
     let mut game = Game::new();
-    game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bear"));
+    game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bears"));
     let spell = game.spawn_in_hand(PlayerId(0), EXILE_CARD_FROM_OPPONENTS_GRAVEYARD.clone());
 
     game.set_life(PlayerId(1), 0);
@@ -38599,7 +38601,7 @@ fn mass_return_enchantments_from_graveyard_replenish() {
     let mut game = Game::new();
     let enchantment_a = game.spawn_in_graveyard(PlayerId(0), TEST_ENCHANTMENT.clone());
     let enchantment_b = game.spawn_in_graveyard(PlayerId(0), TEST_ENCHANTMENT.clone());
-    let creature = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let creature = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let opponents_enchantment = game.spawn_in_graveyard(PlayerId(1), TEST_ENCHANTMENT.clone());
     let replenish = game.spawn_in_hand(PlayerId(0), REPLENISH.clone());
 
@@ -38737,8 +38739,8 @@ static MASS_RETURN_ALL_CREATURES: LazyLock<CardDef> = LazyLock::new(|| CardDef {
 #[test]
 fn mass_return_creatures_from_all_graveyards() {
     let mut game = Game::with_players(2, 0);
-    let my_creature = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
-    let opponents_creature = game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bear"));
+    let my_creature = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
+    let opponents_creature = game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bears"));
     // A noncreature card in a graveyard stays put — the filter is creatures only.
     let opponents_land = game.spawn_in_graveyard(PlayerId(1), card("Forest"));
     let spell = game.spawn_in_hand(PlayerId(0), MASS_RETURN_ALL_CREATURES.clone());
@@ -38796,8 +38798,8 @@ fn mass_return_creatures_from_all_graveyards() {
 #[test]
 fn all_hallows_eve_returns_all_graveyard_creatures_on_expiry() {
     let mut game = Game::with_players(2, 0);
-    let my_creature = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
-    let opponents_creature = game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bear"));
+    let my_creature = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
+    let opponents_creature = game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bears"));
     // Libraries so neither player decks out while the two upkeeps roll by.
     game.stack_library(PlayerId(0), &vec![card("Forest"); 20]);
     game.stack_library(PlayerId(1), &vec![card("Forest"); 20]);
@@ -38876,8 +38878,8 @@ fn mistveil_plains_activates_only_with_two_white_permanents() {
     // Library filler so both players survive the draw steps rolled through below (Mistveil
     // Plains enters tapped, so it needs an untap step before its {T} cost is payable — see
     // `tuck_graveyard_card_to_bottom_of_library_mistveil`'s comment for the same roll-forward).
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears")]);
     let mistveil = game.spawn_on_battlefield(PlayerId(0), card("Mistveil Plains"));
     let corpse = game.spawn_in_graveyard(PlayerId(0), card("Elvish Visionary"));
     advance_until(&mut game, |g| {
@@ -39134,8 +39136,8 @@ fn look_at_top_select_land_to_hand_quandrix_apprentice() {
         PlayerId(0),
         &[
             card("Forest"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
             card("Island"),
         ],
     );
@@ -39217,9 +39219,9 @@ fn look_at_top_no_match_is_clean_no_op() {
     let lib = game.stack_library(
         PlayerId(0),
         &[
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
             card("Island"),
         ],
     );
@@ -39259,8 +39261,8 @@ fn look_at_top_may_decline_leaves_cards() {
         PlayerId(0),
         &[
             card("Forest"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
             card("Island"),
         ],
     );
@@ -39337,8 +39339,8 @@ fn look_at_top_puts_aura_or_equipment_onto_battlefield() {
         PlayerId(0),
         &[
             card("Bonesplitter"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
             card("Island"),
         ],
     );
@@ -39434,9 +39436,9 @@ fn look_at_top_battlefield_filter_excludes_non_aura_equipment() {
     let lib = game.stack_library(
         PlayerId(0),
         &[
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
             card("Island"),
         ],
     );
@@ -39483,11 +39485,11 @@ fn armored_skyhunter_digs_and_deploys_equipment() {
         PlayerId(0),
         &[
             card("Bonesplitter"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
             card("Island"),
         ],
     );
@@ -39556,11 +39558,11 @@ fn armored_skyhunter_attaches_deployed_equipment() {
         PlayerId(0),
         &[
             card("Bonesplitter"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
             card("Island"),
         ],
     );
@@ -39616,11 +39618,11 @@ fn armored_skyhunter_bottoms_rest_in_random_order() {
         PlayerId(0),
         &[
             card("Bonesplitter"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
             card("Island"), // untouched remainder below the looked-at six
         ],
     );
@@ -39672,11 +39674,11 @@ fn armored_skyhunter_attaches_deployed_aura() {
         PlayerId(0),
         &[
             card("Redemption Arc"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
             card("Island"),
         ],
     );
@@ -39728,12 +39730,12 @@ fn expressive_iteration_routes_top_three() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     let iteration = game.spawn_in_hand(PlayerId(0), card("Expressive Iteration"));
-    // Top→bottom: [Forest, Grizzly Bear, Island, Mountain]. Only the top three are looked at.
+    // Top→bottom: [Forest, Grizzly Bears, Island, Mountain]. Only the top three are looked at.
     let lib = game.stack_library(
         PlayerId(0),
         &[
             card("Forest"),
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
             card("Island"),
             card("Mountain"),
         ],
@@ -39780,7 +39782,7 @@ fn expressive_iteration_routes_top_three() {
         Err(Reject::IllegalChoice),
     );
 
-    // Route: Grizzly Bear → hand, Island → bottom, Forest → exile (may play this turn).
+    // Route: Grizzly Bears → hand, Island → bottom, Forest → exile (may play this turn).
     game.submit(Intent::DistributeTop {
         player: PlayerId(0),
         to_hand: vec![lib[1]],
@@ -39862,11 +39864,11 @@ fn dig_through_time_must_take_two() {
         PlayerId(0),
         &[
             card("Forest"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
             card("Island"),
             card("Forest"),
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
             card("Island"),
         ],
     );
@@ -39941,7 +39943,7 @@ fn prophetic_bolt_deals_four_then_puts_one_of_top_four_in_hand() {
         PlayerId(0),
         &[
             card("Forest"),
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
             card("Island"),
             card("Mountain"),
             card("Swamp"),
@@ -39988,7 +39990,7 @@ fn prophetic_bolt_deals_four_then_puts_one_of_top_four_in_hand() {
     assert_eq!(
         game.zone_of(lib[1]),
         Zone::Hand,
-        "the chosen Grizzly Bear is now in hand",
+        "the chosen Grizzly Bears is now in hand",
     );
     assert_eq!(
         game.library_size(PlayerId(0)),
@@ -40163,9 +40165,9 @@ fn a_creature_cost_reducer_shaves_generic_from_a_creature_spell() {
     let mut game = Game::new();
     // Marauding Raptor: "Creature spells you cast cost {1} less to cast."
     game.spawn_on_battlefield(PlayerId(0), card("Marauding Raptor"));
-    // Grizzly Bear is {1}{G}; reduced to just {G}, one Forest covers it.
+    // Grizzly Bears is {1}{G}; reduced to just {G}, one Forest covers it.
     let forest = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     tap(&mut game, PlayerId(0), forest);
 
     game.submit(Intent::Cast {
@@ -40420,7 +40422,7 @@ fn killian_reduces_only_spells_that_target_a_creature() {
     let mut game = Game::new();
     // Killian, Ink Duelist: "Spells you cast that target a creature cost {2} less to cast."
     game.spawn_on_battlefield(PlayerId(0), card("Killian, Ink Duelist"));
-    let creature = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let creature = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let mountain = game.spawn_on_battlefield(PlayerId(0), card("Mountain"));
     tap(&mut game, PlayerId(0), mountain);
 
@@ -40481,7 +40483,7 @@ fn aura_cost_reducer_only_discounts_aura_spells_transcendent_envoy() {
     let mut game = Game::new();
     // Transcendent Envoy: "Aura spells you cast cost {1} less to cast."
     game.spawn_on_battlefield(PlayerId(0), card("Transcendent Envoy"));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     // Darksteel Mutation is {1}{W} — an Aura; the {1}-off leaves only the {W} pip to pay.
     let mutation = game.spawn_in_hand(PlayerId(0), card("Darksteel Mutation"));
@@ -40539,7 +40541,7 @@ fn instant_or_sorcery_reducer_stormcatch_mentor() {
     let mut game = Game::new();
     // Stormcatch Mentor: "Instant and sorcery spells you cast cost {1} less to cast."
     game.spawn_on_battlefield(PlayerId(0), card("Stormcatch Mentor"));
-    let victim = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let victim = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     // Infernal Grasp is {1}{B} — an instant; the {1}-off leaves only the {B} pip to pay.
     let grasp = game.spawn_in_hand(PlayerId(0), card("Infernal Grasp"));
@@ -40568,7 +40570,7 @@ fn instant_or_sorcery_reducer_stormcatch_mentor() {
     advance_until(&mut game, |g| g.stack().is_empty());
 
     // Besmirch is {1}{R}{R} — a sorcery; the {1}-off leaves only {R}{R}.
-    let goat = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // a fresh target
+    let goat = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears")); // a fresh target
     let besmirch = game.spawn_in_hand(PlayerId(0), card("Besmirch"));
     let mountains: Vec<ObjectId> = (0..2)
         .map(|_| game.spawn_on_battlefield(PlayerId(0), card("Mountain")))
@@ -40634,9 +40636,9 @@ fn blasphemous_act_costs_one_less_per_creature_on_battlefield() {
     // creatures on the battlefield (across two players — a live board count, not "you control"),
     // Blasphemous Act's {8}{R} generic drops by 3 to {5}{R}.
     let mut game = Game::new();
-    game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let act = game.spawn_in_hand(PlayerId(0), card("Blasphemous Act"));
 
     let forests: Vec<ObjectId> = (0..5)
@@ -40677,7 +40679,7 @@ fn blasphemous_act_costs_one_less_per_creature_on_battlefield() {
     // {R} pip is owed (CR 601.2f — cost reduction never goes below 0 remaining generic).
     let mut game = Game::new();
     for _ in 0..8 {
-        game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+        game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     }
     let act = game.spawn_in_hand(PlayerId(0), card("Blasphemous Act"));
     let mountain = game.spawn_on_battlefield(PlayerId(0), card("Mountain"));
@@ -40709,10 +40711,10 @@ fn self_reduction_absent_leaves_cost_unchanged() {
     // its printed cost regardless of how many creatures are on the battlefield — the per-creature
     // discount is Blasphemous Act's own clause, not a blanket board-count reducer.
     let mut game = Game::new();
-    game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear")); // {1}{G}
+    game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears")); // {1}{G}
     let forest = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
     tap(&mut game, PlayerId(0), forest);
 
@@ -40735,7 +40737,7 @@ fn self_reduction_absent_leaves_cost_unchanged() {
             alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
-        "3 creatures on the battlefield must not shave Grizzly Bear's generic — it has no self reduction",
+        "3 creatures on the battlefield must not shave Grizzly Bears's generic — it has no self reduction",
     );
 }
 
@@ -41306,7 +41308,7 @@ fn a_tapped_goaded_creature_is_not_required_to_attack() {
 fn a_summoning_sick_goaded_creature_is_not_required_to_attack() {
     let mut game = Game::with_players(3, 0);
     game.fund_mana(PlayerId(0));
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     game.submit(Intent::Cast {
         player: PlayerId(0),
         object: bear,
@@ -42419,7 +42421,7 @@ fn reattach_effect_rechecks_the_auras_enchant_filter_at_the_move() {
     // trigger filter are both a plain "creature"), so this is a control case against a
     // deliberately mismatched test Aura.
     let mut game = Game::new();
-    let small_host = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear")); // 2/2
+    let small_host = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears")); // 2/2
     let mut test = TestGame { game };
     let aura_card = test.spawn_in_hand(PlayerId(0), NARROW_REATTACH.clone());
     test.cast(aura_card)
@@ -44605,8 +44607,8 @@ fn kinetic_ooze_x10_doubling_targets_are_chosen_at_placement() {
     let junk = game.spawn_on_battlefield(PlayerId(1), artifact("Junk Artifact", 5));
     // Two other creatures carrying +1/+1 counters — one the Ooze controller's, one an opponent's
     // (the clause targets "any" creature, not just yours).
-    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     for _ in 0..3 {
         game.add_plus_counter(mine); // 3 counters
     }
@@ -44724,7 +44726,7 @@ fn kinetic_ooze_x10_cannot_target_hexproof_creature() {
 fn kinetic_ooze_x10_declines_doubling_targets() {
     let mut game = TestGame::new();
     let junk = game.spawn_on_battlefield(PlayerId(1), artifact("Junk Artifact", 5));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     game.add_plus_counter(bear); // 1 counter
     let ooze = game.spawn_in_hand(PlayerId(0), card("Kinetic Ooze"));
     let library = game.stack_library(PlayerId(0), &[card("Forest")]);
@@ -44769,7 +44771,7 @@ fn kinetic_ooze_x10_declines_doubling_targets() {
 fn kinetic_ooze_x9_no_double_counters_clause() {
     let mut game = TestGame::new();
     let junk = game.spawn_on_battlefield(PlayerId(1), artifact("Junk Artifact", 5));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     game.add_plus_counter(bear); // 1 counter
     let ooze = game.spawn_in_hand(PlayerId(0), card("Kinetic Ooze"));
     let library = game.stack_library(PlayerId(0), &[card("Forest")]);
@@ -44816,7 +44818,7 @@ fn kinetic_ooze_x9_no_double_counters_clause() {
 #[test]
 fn a_modal_spell_resolves_only_its_chosen_mode() {
     let mut g = TestGame::new();
-    let bear = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let charm = g.spawn_in_hand(PlayerId(0), card("Silverquill Charm"));
     let opp_life = g.life(PlayerId(1));
 
@@ -44838,7 +44840,7 @@ fn a_modal_spell_resolves_only_its_chosen_mode() {
 #[test]
 fn a_modal_spell_resolves_a_different_mode_when_that_one_is_chosen() {
     let mut g = TestGame::new();
-    let bear = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let charm = g.spawn_in_hand(PlayerId(0), card("Silverquill Charm"));
     let (me, opp) = (g.life(PlayerId(0)), g.life(PlayerId(1)));
 
@@ -44865,7 +44867,7 @@ fn a_modal_creature_targeting_mode_validates_its_target() {
     assert_eq!(g.zone_of(charm), Zone::Hand, "an illegal cast is undone");
 
     // With a creature target the same mode is legal and its counters land.
-    let bear = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     g.cast(charm).mode(0, Some(Target::Object(bear))).resolve();
     assert_eq!(g.plus_counters(bear), 2, "mode 0 put two +1/+1 counters");
 }
@@ -44873,7 +44875,7 @@ fn a_modal_creature_targeting_mode_validates_its_target() {
 #[test]
 fn a_modal_non_targeting_mode_rejects_a_target() {
     let mut g = TestGame::new();
-    let bear = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let charm = g.spawn_in_hand(PlayerId(0), card("Silverquill Charm"));
 
     // Mode 2 takes no target; supplying one makes the cast illegal.
@@ -44902,7 +44904,7 @@ fn an_out_of_range_or_missing_modal_mode_is_rejected() {
 #[test]
 fn a_mode_chosen_for_a_non_modal_spell_is_rejected() {
     let mut g = TestGame::new();
-    let bear = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let shock = g.spawn_in_hand(PlayerId(0), card("Shock"));
 
     // Shock is not modal — offering a mode is illegal.
@@ -45050,7 +45052,7 @@ static CHOOSE_TWO: LazyLock<CardDef> = LazyLock::new(|| CardDef {
 #[test]
 fn a_choose_two_spell_resolves_both_chosen_modes_and_no_others() {
     let mut g = TestGame::new();
-    let bear = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let spell = g.spawn_in_hand(PlayerId(0), CHOOSE_TWO.clone());
     let life_before = g.life(PlayerId(0));
 
@@ -45115,7 +45117,7 @@ fn a_choose_two_spell_rejects_the_wrong_count_or_a_duplicate_mode() {
 #[test]
 fn prismari_command_resolves_its_two_chosen_modes() {
     let mut g = TestGame::new();
-    let bear = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let command = g.spawn_in_hand(PlayerId(0), card("Prismari Command"));
 
     // Choose two: mode 0 (deal 2 to the bear) and mode 2 (create a Treasure, targeting self).
@@ -45190,7 +45192,7 @@ fn prismari_command_mode_two_creates_treasure_under_targeted_players_control() {
     // Mode 2: "Target player creates a Treasure token" (CR 111.4) — the Treasure enters under
     // the targeted player's control, not the caster's.
     let mut g = TestGame::new();
-    let bear = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let command = g.spawn_in_hand(PlayerId(0), card("Prismari Command"));
 
     g.cast(command)
@@ -45339,7 +45341,7 @@ fn witherbloom_command_mode_0_returns_nothing_with_no_land_in_graveyard() {
         &[card("Forest"), card("Forest"), card("Forest")],
     );
     // A nonland card in the graveyard is not a legal return for the land filter.
-    g.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    g.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let command = g.spawn_in_hand(PlayerId(0), card("Witherbloom Command"));
 
     g.cast(command)
@@ -45469,7 +45471,7 @@ static CHOOSE_ONE_OR_MORE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
 #[test]
 fn modal_choose_one_or_more_picks_two() {
     let mut g = TestGame::new();
-    let bear = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let spell = g.spawn_in_hand(PlayerId(0), CHOOSE_ONE_OR_MORE.clone());
     let life_before = g.life(PlayerId(0));
 
@@ -45494,7 +45496,7 @@ fn modal_choose_one_or_more_picks_two() {
 #[test]
 fn modal_choose_one_or_more_picks_just_one() {
     let mut g = TestGame::new();
-    let bear = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let spell = g.spawn_in_hand(PlayerId(0), CHOOSE_ONE_OR_MORE.clone());
     let life_before = g.life(PlayerId(0));
 
@@ -45541,7 +45543,7 @@ fn casualties_of_war_mode_four_planeswalker_needs_the_lifted_mode_cap() {
     // legality instead (Reject::IllegalTarget) — no planeswalker exists in the pool, so a
     // creature target for mode 4 is always illegal, but which rejection fires proves the cap.
     let mut g = TestGame::new();
-    let bear = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let casualties = g.spawn_in_hand(PlayerId(0), card("Casualties of War"));
 
     assert_eq!(
@@ -45589,7 +45591,7 @@ fn casualties_of_war_destroys_an_artifact_and_an_enchantment_in_the_same_cast() 
 #[test]
 fn casualties_of_war_choosing_one_mode_is_legal_and_targets_are_checked_per_mode() {
     let mut g = TestGame::new();
-    let bear = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let casualties = g.spawn_in_hand(PlayerId(0), card("Casualties of War"));
 
     // Mode 3 is "destroy target land" — a creature isn't a legal target for it, even though
@@ -45678,8 +45680,8 @@ fn shadrix_begin_combat_choosing_two_modes_targets_two_distinct_players() {
 fn shadrix_mode_two_puts_a_counter_on_the_targeted_players_creatures_not_the_casters() {
     let mut game = Game::with_players(3, 0);
     game.spawn_on_battlefield(PlayerId(0), card("Shadrix Silverquill"));
-    let casters_bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    let targets_bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let casters_bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let targets_bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
 
     advance_until(&mut game, |g| g.current_step() == Step::BeginCombat);
 
@@ -45958,7 +45960,7 @@ fn decisive_denial_mode1_counters_only_a_noncreature_spell() {
     // Decisive Denial mode 1: "Counter target noncreature spell unless its controller pays {3}."
     // A creature spell on the stack is not a legal target; an instant is.
     let mut g = TestGame::new();
-    let bear = g.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = g.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     let counter = g.spawn_in_hand(PlayerId(0), COUNTER.clone());
     let denial = g.spawn_in_hand(PlayerId(0), card("Decisive Denial"));
     g.fund_mana(PlayerId(0));
@@ -45980,7 +45982,7 @@ fn decisive_denial_mode1_counters_only_a_noncreature_spell() {
         multikicker_count: 0,
         alternative_cost: false,
     })
-    .expect("Grizzly Bear is castable");
+    .expect("Grizzly Bears is castable");
     let bear_on_stack = top_spell(&g);
 
     // Stack a noncreature instant (the test-only hard counter) on top, targeting the bear.
@@ -46023,7 +46025,7 @@ fn quandrix_command_mode1_counters_only_an_artifact_or_enchantment_spell() {
     // Quandrix Command mode 1: "Counter target artifact or enchantment spell."
     let mut g = TestGame::new();
     let anchor = g.spawn_on_battlefield(PlayerId(0), creature("Anchor 1/1", 1, 1, &[]));
-    let bear = g.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = g.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     g.fund_mana(PlayerId(0));
     g.submit(Intent::Cast {
         player: PlayerId(0),
@@ -46042,7 +46044,7 @@ fn quandrix_command_mode1_counters_only_an_artifact_or_enchantment_spell() {
         multikicker_count: 0,
         alternative_cost: false,
     })
-    .expect("Grizzly Bear is castable");
+    .expect("Grizzly Bears is castable");
     let bear_on_stack = top_spell(&g);
 
     let command_a = g.spawn_in_hand(PlayerId(0), card("Quandrix Command"));
@@ -46334,9 +46336,9 @@ fn pearl_ear_affinity_for_auras_does_not_reduce_creature_spells() {
     .expect("Darksteel Mutation is castable");
     resolve_top_of_stack(&mut game); // 1 Aura now controlled.
 
-    // Grizzly Bear is {1}{G}; one green alone (missing its {1} generic) must still fail — a
+    // Grizzly Bears is {1}{G}; one green alone (missing its {1} generic) must still fail — a
     // creature spell never gets the affinity-for-Auras discount.
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     let forest_b = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
     tap(&mut game, PlayerId(0), forest_b);
     assert_eq!(
@@ -46556,7 +46558,7 @@ fn zimone_does_not_reduce_non_x_spells() {
     for _ in 0..3 {
         game.add_plus_counter(zimone);
     }
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear")); // {1}{G}
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears")); // {1}{G}
     let forest = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
     tap(&mut game, PlayerId(0), forest);
     assert_eq!(
@@ -46650,8 +46652,8 @@ fn animar_reduction_floors_at_zero_generic_and_never_touches_colored_pips() {
     for _ in 0..3 {
         game.add_plus_counter(animar);
     }
-    // Grizzly Bear is {1}{G}: only 1 generic to shave, even though Animar carries 3 counters.
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    // Grizzly Bears is {1}{G}: only 1 generic to shave, even though Animar carries 3 counters.
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     assert_eq!(
         game.submit(Intent::Cast {
             player: PlayerId(0),
@@ -46705,7 +46707,7 @@ fn sram_senior_edificer_draws_on_casting_an_aura_but_not_a_plain_creature() {
     let lib = game.stack_library(PlayerId(0), &[card("Forest"), card("Forest")]);
 
     // Casting a plain creature spell doesn't match Sram's Aura/Equipment/Vehicle filter.
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     cast_and_resolve(&mut game, bear, None);
     assert_eq!(
         game.zone_of(lib[0]),
@@ -46876,7 +46878,7 @@ fn sorcery_speed_gates_activation_ozolith() {
     // sorcery" ability is a legal sorcery-speed moment (CR 602.5b), so it may be activated.
     let mut game = Game::new();
     let ozolith = game.spawn_on_battlefield(PlayerId(0), card("Ozolith, the Shattered Spire"));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     game.fund_mana(PlayerId(0));
     game.submit(Intent::ActivateAbility {
         player: PlayerId(0),
@@ -46899,7 +46901,7 @@ fn sorcery_speed_gates_activation_ozolith() {
     // restriction rejects the activation.
     let mut game = Game::new();
     let ozolith = game.spawn_on_battlefield(PlayerId(0), card("Ozolith, the Shattered Spire"));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     advance_until(&mut game, |g| g.current_step() == Step::BeginCombat);
     game.fund_mana(PlayerId(0));
     let rejected = game.submit(Intent::ActivateAbility {
@@ -46920,7 +46922,7 @@ fn hall_of_oracles_counter_ability_requires_an_instant_or_sorcery_cast_this_turn
     // only as a sorcery and only if you've cast an instant or sorcery spell this turn."
     let mut game = TestGame::new();
     let hall = game.spawn_on_battlefield(PlayerId(0), card("Hall of Oracles"));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     assert_eq!(
         game.submit(Intent::ActivateAbility {
@@ -46986,7 +46988,7 @@ fn witch_of_the_moors_single_trigger_edict_then_optional_return() {
     game.fund_mana(PlayerId(0));
     game.spawn_on_battlefield(PlayerId(0), card("Witch of the Moors"));
     let their_creature = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
-    let in_graveyard = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let in_graveyard = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let gainer = game.spawn_in_hand(PlayerId(0), GAIN_LIFE_ETB.clone());
     game.submit(Intent::Cast {
         player: PlayerId(0),
@@ -47047,7 +47049,7 @@ fn witch_of_the_moors_single_trigger_edict_then_optional_return() {
     // False: no life gained — the condition fails and the end step passes with no trigger.
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Witch of the Moors"));
-    game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     pass_until_next_turn(&mut game);
     assert_eq!(
         game.active_player(),
@@ -47063,7 +47065,7 @@ fn relic_retriever_makes_a_treasure_only_after_a_card_left_your_graveyard() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     game.spawn_on_battlefield(PlayerId(0), card("Relic Retriever"));
-    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let reanimate = game.spawn_in_hand(PlayerId(0), card("Reanimate"));
     game.submit(Intent::Cast {
         player: PlayerId(0),
@@ -47097,7 +47099,7 @@ fn relic_retriever_makes_a_treasure_only_after_a_card_left_your_graveyard() {
     // False: nothing leaves the graveyard, so the end-step trigger never fires.
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Relic Retriever"));
-    game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     pass_until_next_turn(&mut game);
     assert!(
         battlefield_named(&game, PlayerId(0), "Treasure").is_empty(),
@@ -47113,7 +47115,7 @@ fn relic_retriever_fires_on_each_players_end_step() {
     // active turn here.
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Relic Retriever"));
-    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let reanimate = game.spawn_in_hand(PlayerId(1), card("Reanimate"));
     // P1's turn 2 draw step needs a library card, or the empty-library draw loses P1 the game.
     game.stack_library(PlayerId(1), &[card("Forest")]);
@@ -47163,7 +47165,7 @@ fn relic_retriever_fires_on_each_players_end_step() {
 fn drumbellower_untaps_your_creatures_during_each_other_players_untap_step() {
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Drumbellower"));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     game.tap(bear);
 
     // Turn 1 is P0's (the game starts mid-turn in Main1, skipping P0's own untap/upkeep); turn 2
@@ -47299,7 +47301,7 @@ fn cards_leaving_graveyard_fires_the_trigger() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     game.spawn_on_battlefield(PlayerId(0), GRAVEYARD_EXIT_WATCHER.clone());
-    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let reanimate = game.spawn_in_hand(PlayerId(0), card("Reanimate"));
 
     game.submit(Intent::Cast {
@@ -47335,7 +47337,7 @@ fn trigger_is_batch_once_for_multiple_cards() {
     // CR "one or more cards leave your graveyard" is a single event, not one per card: Remorseful
     // Cleric's "exile target player's graveyard" removes two cards in one batch.
     let mut game = Game::new();
-    game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     game.spawn_in_graveyard(PlayerId(0), card("Forest"));
     game.spawn_on_battlefield(PlayerId(0), GRAVEYARD_EXIT_WATCHER.clone());
     let cleric = game.spawn_on_battlefield(PlayerId(0), card("Remorseful Cleric"));
@@ -47368,7 +47370,7 @@ fn only_your_graveyard_counts() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     game.spawn_on_battlefield(PlayerId(0), GRAVEYARD_EXIT_WATCHER.clone());
-    let corpse = game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bear"));
+    let corpse = game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bears"));
     let reanimate = game.spawn_in_hand(PlayerId(0), card("Reanimate"));
 
     game.submit(Intent::Cast {
@@ -47753,10 +47755,10 @@ fn kirol() -> CardDef {
     }
 }
 
-/// Reanimate a Grizzly Bear out of P0's own graveyard (one card leaving) to fire Kirol's
+/// Reanimate a Grizzly Bears out of P0's own graveyard (one card leaving) to fire Kirol's
 /// graveyard-exit trigger, returning the reanimated creature's battlefield id.
 fn prepare_kirol_via_graveyard_exit(game: &mut Game, kirol: ObjectId) -> ObjectId {
-    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let reanimate = game.spawn_in_hand(PlayerId(0), card("Reanimate"));
     game.submit(Intent::Cast {
         player: PlayerId(0),
@@ -47956,7 +47958,7 @@ fn cast_prepared_rejected_when_not_prepared() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     let kirol = game.spawn_on_battlefield(PlayerId(0), kirol());
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     let err = game.submit(Intent::CastPrepared {
         player: PlayerId(0),
@@ -47978,9 +47980,9 @@ fn cast_prepared_rejected_without_the_mana() {
     // No mana funded. Prepare Kirol via a *free* graveyard-exit (Remorseful Cleric's "{T}, Sac:
     // exile target player's graveyard"), so the setup itself spends nothing.
     let kirol = game.spawn_on_battlefield(PlayerId(0), kirol());
-    game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let cleric = game.spawn_on_battlefield(PlayerId(0), card("Remorseful Cleric"));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     game.submit(Intent::ActivateAbility {
         player: PlayerId(0),
         object: cleric,
@@ -48392,7 +48394,7 @@ fn brazen_borrower_cast_petty_theft_then_creature_from_exile() {
     game.fund_mana(PlayerId(0));
     let brazen = game.spawn_in_hand(PlayerId(0), brazen_borrower_test());
     // A nonland permanent an opponent (P1) controls — Petty Theft's target.
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
 
     game.submit(Intent::CastAdventure {
         player: PlayerId(0),
@@ -48472,7 +48474,7 @@ fn elusive_otter_groves_bounty_puts_counters_then_exiles() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     let otter = game.spawn_in_hand(PlayerId(0), elusive_otter_test());
-    let target = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let target = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     // Grove's Bounty with X=2 — {2}{G}.
     game.submit(Intent::CastAdventure {
@@ -48514,7 +48516,7 @@ fn groves_bounty_distributes_x_counters_among_target_creatures() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     let otter = game.spawn_in_hand(PlayerId(0), card("Elusive Otter"));
-    let bear = card("Grizzly Bear");
+    let bear = card("Grizzly Bears");
     let t1 = game.spawn_on_battlefield(PlayerId(0), bear.clone());
     let t2 = game.spawn_on_battlefield(PlayerId(0), bear.clone());
     let t3 = game.spawn_on_battlefield(PlayerId(0), bear);
@@ -48561,7 +48563,7 @@ fn groves_bounty_division_must_cover_each_target_and_sum_to_x() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     let otter = game.spawn_in_hand(PlayerId(0), card("Elusive Otter"));
-    let bear = card("Grizzly Bear");
+    let bear = card("Grizzly Bears");
     let t1 = game.spawn_on_battlefield(PlayerId(0), bear.clone());
     let t2 = game.spawn_on_battlefield(PlayerId(0), bear);
 
@@ -48619,7 +48621,7 @@ fn real_adventure_cards_from_the_pool_cast_their_halves() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     let brazen = game.spawn_in_hand(PlayerId(0), card("Brazen Borrower"));
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
 
     game.submit(Intent::CastAdventure {
         player: PlayerId(0),
@@ -48688,9 +48690,9 @@ fn lorehold_archivist_prepares_with_three_graveyard_artifacts_and_creatures() {
     game.stack_library(PlayerId(0), &[card("Forest"), card("Forest")]);
     game.stack_library(PlayerId(1), &[card("Forest"), card("Forest")]);
     let lorehold = game.spawn_on_battlefield(PlayerId(0), card("Lorehold Archivist"));
-    game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
-    game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
-    game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
+    game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
+    game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     assert!(
         !game.prepared(lorehold),
         "Lorehold Archivist starts unprepared"
@@ -48714,8 +48716,8 @@ fn lorehold_archivist_stays_unprepared_with_only_two_graveyard_artifacts_and_cre
     game.stack_library(PlayerId(0), &[card("Forest"), card("Forest")]);
     game.stack_library(PlayerId(1), &[card("Forest"), card("Forest")]);
     let lorehold = game.spawn_on_battlefield(PlayerId(0), card("Lorehold Archivist"));
-    game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
-    game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
+    game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
 
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
@@ -48736,9 +48738,9 @@ fn restore_relic_exiles_graveyard_card_and_creates_token_copy() {
     game.stack_library(PlayerId(0), &[card("Forest"), card("Forest")]);
     game.stack_library(PlayerId(1), &[card("Forest"), card("Forest")]);
     let lorehold = game.spawn_on_battlefield(PlayerId(0), card("Lorehold Archivist"));
-    let bear = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
-    game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
-    game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
+    game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
+    game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let land = game.spawn_in_graveyard(PlayerId(0), card("Forest"));
 
     advance_until(&mut game, |g| {
@@ -48786,7 +48788,7 @@ fn restore_relic_exiles_graveyard_card_and_creates_token_copy() {
         .expect("Restore Relic minted a token copy");
     assert_eq!(game.zone_of(token), Zone::Battlefield);
     assert_eq!(game.controller_of(token), PlayerId(0));
-    assert_eq!(game.def_of(token).name, "Grizzly Bear");
+    assert_eq!(game.def_of(token).name, "Grizzly Bears");
     assert!(
         !game.prepared(lorehold),
         "casting the copy unprepared Lorehold Archivist"
@@ -48860,7 +48862,7 @@ fn inspired_skypainter_maestros_gift_copies_target_creature_with_haste() {
     // unprepares the front (CR: doing so unprepares it).
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let target = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let target = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let skypainter = game.spawn_in_hand(PlayerId(0), card("Inspired Skypainter"));
 
     // Cast the front face and resolve its ETB become-prepared trigger.
@@ -48909,7 +48911,7 @@ fn inspired_skypainter_maestros_gift_copies_target_creature_with_haste() {
         .expect("Maestro's Gift minted a token copy");
     assert_eq!(game.zone_of(token), Zone::Battlefield);
     assert_eq!(game.controller_of(token), PlayerId(0));
-    assert_eq!(game.def_of(token).name, "Grizzly Bear");
+    assert_eq!(game.def_of(token).name, "Grizzly Bears");
     assert!(
         game.has_keyword(token, Keyword::Haste),
         "the copy gains haste until end of turn",
@@ -49346,7 +49348,7 @@ fn striding_run_the_play_counters_and_flies_up_to_x_creatures() {
     let attacker = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
     let creature_a = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
     let creature_b = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
-    let library = game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    let library = game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
 
     attack_with(&mut game, vec![attacker]);
     advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
@@ -49406,7 +49408,7 @@ fn striding_run_the_play_x_zero_draws_only() {
     let striding = game.spawn_on_battlefield(PlayerId(0), card("Striding Shotcaller"));
     let attacker = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
     let creature = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
-    let library = game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    let library = game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
 
     attack_with(&mut game, vec![attacker]);
     advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
@@ -51101,7 +51103,7 @@ fn put_two_counters(game: &mut Game, caster: PlayerId, creature: ObjectId) {
 fn hardened_scales_adds_one_to_counters_placed_on_your_creature() {
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Hardened Scales"));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     // "…that many plus one." Two would-be counters become three.
     put_two_counters(&mut game, PlayerId(0), bear);
@@ -51118,7 +51120,7 @@ fn hardened_scales_adds_one_to_counters_placed_on_your_creature() {
 fn a_doubler_doubles_counters_placed_on_your_creature() {
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Doubling Season"));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     // "…twice that many." Two would-be counters become four.
     put_two_counters(&mut game, PlayerId(0), bear);
@@ -51130,7 +51132,7 @@ fn hardened_scales_and_a_doubler_combine_add_then_multiply() {
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Hardened Scales"));
     game.spawn_on_battlefield(PlayerId(0), card("Doubling Season"));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     // Both apply once, in the documented order: additions then multipliers -> (2 + 1) * 2 = 6.
     put_two_counters(&mut game, PlayerId(0), bear);
@@ -51142,7 +51144,7 @@ fn counter_replacements_only_affect_creatures_you_control() {
     let mut game = Game::new();
     // Player 0 controls Hardened Scales; the counters land on player 1's creature.
     game.spawn_on_battlefield(PlayerId(0), card("Hardened Scales"));
-    let their_bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let their_bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
 
     put_two_counters(&mut game, PlayerId(0), their_bear);
     assert_eq!(
@@ -51156,7 +51158,7 @@ fn counter_replacements_only_affect_creatures_you_control() {
 fn benevolent_hydra_doubler_excludes_its_own_counters() {
     let mut game = Game::new();
     let hydra = game.spawn_on_battlefield(PlayerId(0), card("Benevolent Hydra"));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     // "…on another creature you control…" — counters on a different creature you control
     // get the +1 doubler bonus: two become three.
@@ -51183,7 +51185,7 @@ fn benevolent_hydra_pays_a_counter_and_cant_target_itself() {
     // creature you control."
     let mut game = Game::new();
     let hydra = game.spawn_on_battlefield(PlayerId(0), card("Benevolent Hydra"));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     assert_eq!(game.plus_counters(hydra), 0, "no counters yet");
     assert_eq!(
@@ -51319,9 +51321,9 @@ fn lifeblood_hydra_dies_trigger_reads_pre_death_power_lki() {
     let lib = g.stack_library(
         PlayerId(0),
         &[
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
         ],
     );
 
@@ -51393,7 +51395,7 @@ fn context_amount_fill_shared_walker_preserves_dying_and_cast_x() {
     // Dying source: Lifeblood Hydra's Dies trigger fills `SourcePower` from LKI. (CR 603.6, CR 603)
     let hydra = cast_lifeblood_hydra_with_x(&mut g, 2); // 0/0 base + 2 counters = 2/2
     let life_before = g.life(PlayerId(0));
-    g.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    g.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
     let destroy = g.spawn_in_hand(PlayerId(0), DESTROY.clone());
     g.cast(destroy).at(Target::Object(hydra)).resolve();
     resolve_top_of_stack(&mut g);
@@ -51408,7 +51410,7 @@ fn context_amount_fill_shared_walker_preserves_dying_and_cast_x() {
     let host = g.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
     let aura = g.spawn_in_hand(PlayerId(0), PLAIN_AURA.clone());
     g.cast(aura).at(Target::Object(host)).resolve();
-    g.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    g.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
     let lib_before = g.library_size(PlayerId(0));
     let destroy2 = g.spawn_in_hand(PlayerId(0), DESTROY.clone());
     g.cast(destroy2).at(Target::Object(host)).resolve();
@@ -51467,10 +51469,10 @@ fn put_counters_on_each_creature_you_control_mazirek() {
     // drives the trigger→mass-counter payoff end to end.
     let mut game = Game::new();
     let mazirek = game.spawn_on_battlefield(PlayerId(0), card("Mazirek, Kraul Death Priest"));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    let opponent_bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let opponent_bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let market = game.spawn_on_battlefield(PlayerId(1), card("High Market"));
-    let fodder = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let fodder = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
 
     game.submit(Intent::ActivateAbility {
         player: PlayerId(1),
@@ -51511,10 +51513,10 @@ fn oran_rief_counters_only_green_creatures_that_entered_this_turn() {
     let oran_rief = g.spawn_on_battlefield(PlayerId(0), card("Oran-Rief, the Vastwood"));
     g.untap(oran_rief); // it enters tapped; the test taps it for its own ability instead
     // A green creature "since before the turn" — the entered-this-turn axis must reject it.
-    let old_bear = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let old_bear = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     // A green creature that enters THIS turn — both axes should let it through.
-    let new_bear_card = g.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let new_bear_card = g.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     g.cast(new_bear_card).resolve();
     let new_bear = g
         .live_object_ids()
@@ -51568,8 +51570,8 @@ fn double_plus_one_counters_primordial_hydra() {
     // self-target-spec: "this creature" is a fixed reference, not a real target (CR 115) —
     // a second eligible creature under the same controller is never offered a choice.
     let mut g = TestGame::new();
-    g.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
-    g.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    g.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    g.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
     let hydra_card = g.spawn_in_hand(PlayerId(0), card("Primordial Hydra"));
     g.cast(hydra_card).x(3).resolve();
     let hydra = g
@@ -51579,7 +51581,7 @@ fn double_plus_one_counters_primordial_hydra() {
         .expect("the hydra entered the battlefield");
     assert_eq!(g.plus_counters(hydra), 3, "entered with X = 3 counters");
     // A second creature the same controller controls — must never be a legal doubling target.
-    let bear = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     // Turn 1 starts in Main1 (skipping P0's own upkeep) — roll to P0's next upkeep.
     advance_until(&mut g, |g| {
@@ -51636,9 +51638,9 @@ fn gorma_the_gullet_puts_its_own_death_counter_with_no_target_choice() {
     // never offered as an option and no PendingChoice pauses the trigger.
     let mut g = TestGame::new();
     let gorma = g.spawn_on_battlefield(PlayerId(0), card("Gorma, the Gullet"));
-    let second = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let second = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let market = g.spawn_on_battlefield(PlayerId(0), card("High Market"));
-    let fodder = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let fodder = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     g.submit(Intent::ActivateAbility {
         player: PlayerId(0),
@@ -51680,7 +51682,7 @@ fn hangarback_walker_pumps_itself_with_no_target_choice() {
     let walker = g.spawn_on_battlefield(PlayerId(0), card("Hangarback Walker"));
     g.add_plus_counter(walker);
     g.add_plus_counter(walker);
-    let other = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let other = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     g.fund_mana(PlayerId(0));
 
     g.submit(Intent::ActivateAbility {
@@ -51718,8 +51720,8 @@ fn yahenni_gains_indestructible_with_no_target_choice() {
     // Yahenni, never on the sacrificed creature's replacement or another creature you control.
     let mut g = TestGame::new();
     let yahenni = g.spawn_on_battlefield(PlayerId(0), card("Yahenni, Undying Partisan"));
-    let other = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    let fodder = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let other = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let fodder = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     g.submit(Intent::ActivateAbility {
         player: PlayerId(0),
@@ -51757,8 +51759,8 @@ fn redemption_arc_exiles_only_its_enchanted_host() {
     // ability only ever hits the Aura's own host — a different creature the controller controls
     // is never a legal target, and the ability has no legal target when unattached.
     let mut g = TestGame::new();
-    let host = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    let other = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let host = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let other = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let aura_card = g.spawn_in_hand(PlayerId(0), card("Redemption Arc"));
     cast_and_resolve(&mut g, aura_card, Some(Target::Object(host)));
     let aura = g
@@ -51830,8 +51832,8 @@ fn leonin_vanguard_pumps_itself_until_end_of_turn() {
     // self-target-spec authors the self-pump half via the landed `PumpSelfUntilEndOfTurn`.
     let mut g = TestGame::new();
     let vanguard = g.spawn_on_battlefield(PlayerId(0), card("Leonin Vanguard"));
-    g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let starting_life = g.life(PlayerId(0));
 
     advance_until(&mut g, |g| g.current_step() == Step::BeginCombat);
@@ -51981,7 +51983,7 @@ fn a_tutor_finds_a_card_puts_it_in_hand_and_shuffles() {
         PlayerId(0),
         &[
             card("Forest"),
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
             card("Island"),
             card("Shock"),
         ],
@@ -52030,7 +52032,7 @@ fn a_tutor_finds_a_card_puts_it_in_hand_and_shuffles() {
         Err(Reject::ChoicePending),
     );
 
-    // Fetch the Grizzly Bear.
+    // Fetch the Grizzly Bears.
     let bear = lib[1];
     game.submit(Intent::SearchLibrary {
         player: PlayerId(0),
@@ -52166,7 +52168,7 @@ fn land_tax_searches_up_to_three_basics_in_one_shuffle() {
             card("Forest"),
             card("Shock"),
             card("Plains"),
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
             card("Swamp"),
         ],
     );
@@ -52259,7 +52261,7 @@ fn land_tax_searches_up_to_three_basics_in_one_shuffle() {
     );
 
     // The library was shuffled exactly once: a fresh game replaying only the post-pick
-    // remainder (Shock, Grizzly Bear, Swamp — Forest and Plains removed) through a single
+    // remainder (Shock, Grizzly Bears, Swamp — Forest and Plains removed) through a single
     // `shuffle()` call, from the same seed, reproduces the exact draw order iff the real
     // search also shuffled exactly once (the injected PRNG's only consumer is `shuffle`, so a
     // second shuffle call — or shuffling before removing the found cards — would consume a
@@ -52267,7 +52269,7 @@ fn land_tax_searches_up_to_three_basics_in_one_shuffle() {
     let mut reference = Game::with_seed(seed);
     reference.stack_library(
         PlayerId(0),
-        &[card("Shock"), card("Grizzly Bear"), card("Swamp")],
+        &[card("Shock"), card("Grizzly Bears"), card("Swamp")],
     );
     reference.shuffle(PlayerId(0));
     let expected_order: Vec<&str> = (0..3)
@@ -52298,7 +52300,7 @@ fn buried_alive_puts_up_to_three_creatures_into_graveyard() {
     let lib = game.stack_library(
         PlayerId(0),
         &[
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
             card("Shock"),
             card("Elvish Mystic"),
             card("Llanowar Elves"),
@@ -52383,7 +52385,7 @@ fn buried_alive_up_to_three_allows_fewer_or_zero_picks() {
     // offered creatures is legal, and fail-to-find (picking none at all) is also always legal.
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Shock")]);
+    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Shock")]);
     let bear = lib[0];
     let alive = game.spawn_in_hand(PlayerId(0), card("Buried Alive"));
 
@@ -52422,7 +52424,7 @@ fn buried_alive_up_to_three_allows_fewer_or_zero_picks() {
     // A fresh game where the searcher declines the only offered creature outright.
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Shock")]);
+    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Shock")]);
     let bear = lib[0];
     let alive = game.spawn_in_hand(PlayerId(0), card("Buried Alive"));
 
@@ -52748,7 +52750,7 @@ fn cultivate_finds_two_lands_one_to_battlefield_tapped_one_to_hand() {
             card("Forest"),
             card("Shock"),
             card("Plains"),
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
         ],
     );
     let forest = lib[0];
@@ -52829,10 +52831,10 @@ fn cultivate_finds_two_lands_one_to_battlefield_tapped_one_to_hand() {
     );
 
     // The library was shuffled exactly once: a fresh game replaying only the post-pick
-    // remainder (Shock, Grizzly Bear) through a single `shuffle()` call, from the same seed,
+    // remainder (Shock, Grizzly Bears) through a single `shuffle()` call, from the same seed,
     // reproduces the exact draw order iff the real search also shuffled exactly once.
     let mut reference = Game::with_seed(seed);
-    reference.stack_library(PlayerId(0), &[card("Shock"), card("Grizzly Bear")]);
+    reference.stack_library(PlayerId(0), &[card("Shock"), card("Grizzly Bears")]);
     reference.shuffle(PlayerId(0));
     let expected_order: Vec<&str> = (0..2)
         .map(|_| {
@@ -53111,7 +53113,7 @@ fn put_land_from_hand_onto_battlefield_eureka_moment() {
     let mut game = TestGame::new();
     let forest = game.spawn_in_hand(PlayerId(0), card("Forest"));
     // Non-land draw fodder, so the land candidate stays exactly the pre-existing Forest.
-    game.stack_library(PlayerId(0), &[card("Shock"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Shock"), card("Grizzly Bears")]);
     let spell = game.spawn_in_hand(PlayerId(0), card("Eureka Moment"));
 
     game.cast(spell).resolve();
@@ -53153,7 +53155,7 @@ fn put_land_from_hand_onto_battlefield_eureka_moment() {
 #[test]
 fn put_land_from_hand_is_a_no_op_with_no_land_in_hand() {
     let mut game = TestGame::new();
-    game.stack_library(PlayerId(0), &[card("Shock"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Shock"), card("Grizzly Bears")]);
     let spell = game.spawn_in_hand(PlayerId(0), card("Eureka Moment"));
 
     game.cast(spell).resolve();
@@ -53287,7 +53289,7 @@ fn put_land_from_hand_does_not_consume_the_turns_land_drop() {
 #[test]
 fn cauldron_dance_reanimates_with_haste_and_returns_at_end_step() {
     let mut game = TestGame::new();
-    let target = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let target = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let spell = game.spawn_in_hand(PlayerId(0), card("Cauldron Dance"));
     advance_until(&mut game, |g| g.current_step() == Step::BeginCombat);
 
@@ -53328,7 +53330,7 @@ fn cauldron_dance_reanimated_return_is_noop_if_it_already_left() {
     // hand is a no-op (CR 603.10a last-known information) — it stays in the graveyard rather
     // than snapping back to hand.
     let mut game = TestGame::new();
-    let target = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let target = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let spell = game.spawn_in_hand(PlayerId(0), card("Cauldron Dance"));
     advance_until(&mut game, |g| g.current_step() == Step::BeginCombat);
 
@@ -53363,8 +53365,8 @@ fn cauldron_dance_reanimated_return_is_noop_if_it_already_left() {
 #[test]
 fn cauldron_dance_puts_a_creature_from_hand_with_haste_and_sacrifices_at_end() {
     let mut game = TestGame::new();
-    let reanimate_target = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
-    let hand_creature = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let reanimate_target = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
+    let hand_creature = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     let spell = game.spawn_in_hand(PlayerId(0), card("Cauldron Dance"));
     advance_until(&mut game, |g| g.current_step() == Step::BeginCombat);
 
@@ -53415,8 +53417,8 @@ fn cauldron_dance_hand_put_is_optional_and_empty_hand_is_a_noop() {
     // "You may put a creature card from your hand onto the battlefield" (CR 608.2b): declining
     // leaves the offered creature in hand; no creature in hand at all raises no choice at all.
     let mut game = TestGame::new();
-    let reanimate_target = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
-    let hand_creature = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let reanimate_target = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
+    let hand_creature = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     let spell = game.spawn_in_hand(PlayerId(0), card("Cauldron Dance"));
     advance_until(&mut game, |g| g.current_step() == Step::BeginCombat);
 
@@ -53443,7 +53445,8 @@ fn cauldron_dance_hand_put_is_optional_and_empty_hand_is_a_noop() {
     );
 
     let mut no_creature_game = TestGame::new();
-    let no_creature_target = no_creature_game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let no_creature_target =
+        no_creature_game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let no_creature_spell = no_creature_game.spawn_in_hand(PlayerId(0), card("Cauldron Dance"));
     advance_until(&mut no_creature_game, |g| {
         g.current_step() == Step::BeginCombat
@@ -53467,7 +53470,7 @@ fn kaalia_puts_angel_demon_dragon_from_hand_tapped_and_attacking_and_keeps_it() 
     let mut game = TestGame::new();
     let kaalia = game.spawn_on_battlefield(PlayerId(0), card("Kaalia of the Vast"));
     let angel = game.spawn_in_hand(PlayerId(0), card("Serra Angel")); // an Angel — eligible
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear")); // not Angel/Demon/Dragon
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears")); // not Angel/Demon/Dragon
 
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
@@ -54152,7 +54155,7 @@ fn azorius_guildmage_taps_target_creature() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     let guildmage = game.spawn_on_battlefield(PlayerId(0), card("Azorius Guildmage"));
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
 
     game.submit(Intent::ActivateAbility {
         player: PlayerId(0),
@@ -54233,7 +54236,7 @@ fn failing_to_find_is_legal_and_still_shuffles() {
 #[test]
 fn a_creature_search_cannot_find_a_land() {
     let mut game = Game::new();
-    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Forest")]);
+    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Forest")]);
     let bear = lib[0];
     let forest = lib[1];
     let tutor = game.spawn_in_hand(PlayerId(0), CREATURE_TUTOR.clone());
@@ -54421,7 +54424,7 @@ fn veteran_explorer_dies_each_player_may_search_two_basics() {
                     card("Forest"),
                     card("Shock"),
                     card("Plains"),
-                    card("Grizzly Bear"),
+                    card("Grizzly Bears"),
                 ],
             )
         })
@@ -54489,11 +54492,11 @@ fn veteran_explorer_dies_each_player_may_search_two_basics() {
     }
 
     // P0's library was shuffled exactly once (CR 701.19f): a fresh game replaying only its
-    // post-pick remainder (Shock, Grizzly Bear) through a single `shuffle()` call, from the same
+    // post-pick remainder (Shock, Grizzly Bears) through a single `shuffle()` call, from the same
     // seed, reproduces the exact draw order iff P0's search also shuffled exactly once — no other
     // randomness is consumed before the very first player's shuffle in the fan-out.
     let mut reference = Game::with_seed(seed);
-    reference.stack_library(PlayerId(0), &[card("Shock"), card("Grizzly Bear")]);
+    reference.stack_library(PlayerId(0), &[card("Shock"), card("Grizzly Bears")]);
     reference.shuffle(PlayerId(0));
     let expected_order: Vec<&str> = (0..2)
         .map(|_| {
@@ -54530,7 +54533,7 @@ fn veteran_explorer_search_may_be_declined_per_player() {
                     card("Forest"),
                     card("Shock"),
                     card("Plains"),
-                    card("Grizzly Bear"),
+                    card("Grizzly Bears"),
                 ],
             )
         })
@@ -54781,7 +54784,7 @@ fn mass_bounce_returns_each_creature_to_its_own_owners_hand() {
     // Two players each control a creature; a land is also out. A mass bounce returns both
     // creatures — each to *its own owner's* hand, not the caster's — and leaves the land.
     let mut game = Game::new();
-    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let theirs = game.spawn_on_battlefield(PlayerId(1), card("Serra Angel"));
     let land = game.spawn_on_battlefield(PlayerId(0), card("Plains"));
     let spell = game.spawn_in_hand(PlayerId(0), MASS_BOUNCE_CREATURES.clone());
@@ -54817,7 +54820,7 @@ fn perplexing_test_mode_returns_only_creature_tokens() {
     // exist rather than reaching hand (CR 111.7); a nontoken creature is untouched.
     let mut g = TestGame::new();
     g.spawn_token_on_battlefield(PlayerId(0), creature("Squirrel", 1, 1, &[]));
-    let nontoken = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let nontoken = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let spell = g.spawn_in_hand(PlayerId(0), card("Perplexing Test"));
 
     g.cast(spell).mode(0, None).resolve();
@@ -54839,7 +54842,7 @@ fn perplexing_test_mode_returns_only_nontoken_creatures() {
     // returns to its owner's hand; a creature token is untouched.
     let mut g = TestGame::new();
     g.spawn_token_on_battlefield(PlayerId(0), creature("Squirrel", 1, 1, &[]));
-    let nontoken = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let nontoken = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let spell = g.spawn_in_hand(PlayerId(0), card("Perplexing Test"));
 
     g.cast(spell).mode(1, None).resolve();
@@ -55287,7 +55290,7 @@ fn impulse_play_until_end_of_next_turn_atsushi() {
 fn a_board_wipe_destroys_all_creatures_but_lands_survive() {
     // Winds of Rath ("destroy all creatures") wipes both players' creatures; a land is untouched.
     let mut game = Game::new();
-    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let theirs = game.spawn_on_battlefield(PlayerId(1), card("Serra Angel"));
     let land = game.spawn_on_battlefield(PlayerId(0), card("Plains"));
     let wipe = game.spawn_in_hand(PlayerId(0), card("Winds of Rath"));
@@ -55317,7 +55320,7 @@ fn oversimplify_exiles_every_creature_including_indestructible_ones_and_tokens()
     // indestructible (CR 702.12b) does not save a creature the way it would from Winds of Rath.
     // A token among the exiled ceases to exist rather than reaching exile (CR 111.7).
     let mut game = Game::new();
-    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let theirs = game.spawn_on_battlefield(PlayerId(1), card("Serra Angel"));
     let land = game.spawn_on_battlefield(PlayerId(0), card("Plains"));
     let token = game.spawn_token_on_battlefield(PlayerId(0), VANILLA.clone());
@@ -55482,7 +55485,7 @@ fn breath_of_darigaaz_unkicked_deals_one_to_nonfliers_and_each_player() {
     // opponent-only carve-out, unlike `each_opponent_loses_life`).
     let mut game = Game::with_players(4, 0);
     let flier = game.spawn_on_battlefield(PlayerId(1), card("Drumbellower")); // 2/1 flying
-    let bear = game.spawn_on_battlefield(PlayerId(2), card("Grizzly Bear")); // 2/2, no flying
+    let bear = game.spawn_on_battlefield(PlayerId(2), card("Grizzly Bears")); // 2/2, no flying
     let breath = game.spawn_in_hand(PlayerId(0), card("Breath of Darigaaz"));
 
     game.fund_mana(PlayerId(0));
@@ -55537,7 +55540,7 @@ fn breath_of_darigaaz_kicked_deals_four_to_nonfliers_and_each_player() {
     // flier is still exempt; the 2/2 nonflier now dies, and every player loses 4.
     let mut game = Game::with_players(4, 0);
     let flier = game.spawn_on_battlefield(PlayerId(1), card("Drumbellower")); // 2/1 flying
-    let bear = game.spawn_on_battlefield(PlayerId(2), card("Grizzly Bear")); // 2/2, no flying
+    let bear = game.spawn_on_battlefield(PlayerId(2), card("Grizzly Bears")); // 2/2, no flying
     let breath = game.spawn_in_hand(PlayerId(0), card("Breath of Darigaaz"));
 
     game.fund_mana(PlayerId(0));
@@ -55591,7 +55594,7 @@ fn noncreature_removal_enumerates_only_valid_permanents_and_destroys_one() {
     // a creature; aiming it at the creature is rejected, and it destroys the artifact.
     let mut game = Game::new();
     let rock = game.spawn_on_battlefield(PlayerId(1), card("Sol Ring"));
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let fracture = game.spawn_in_hand(PlayerId(0), card("Fracture"));
 
     let legal = game.legal_targets(fracture, None);
@@ -57630,7 +57633,7 @@ fn advanced_reconstruction_mills_then_exiles_a_graveyard_card_at_random_to_play(
     game.spawn_on_battlefield(PlayerId(0), card("Advanced Reconstruction"));
     // A deck of Forests, deep enough to absorb the draw step that now precedes the Main1 trigger.
     game.stack_library(PlayerId(0), &vec![card("Forest"); 6]);
-    game.stack_library(PlayerId(1), &vec![card("Grizzly Bear"); 4]);
+    game.stack_library(PlayerId(1), &vec![card("Grizzly Bears"); 4]);
 
     // The trigger fires at P0's first main phase (Main1), not upkeep — roll to P0's next turn's
     // Main1 (the game already opens in P0's Main1, before the enchantment was on the battlefield).
@@ -57699,7 +57702,7 @@ fn laelia_grows_when_cards_exiled_from_your_library_or_graveyard() {
     );
 
     // Two graveyard cards exiled in the same batch still fire the trigger exactly once.
-    game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     game.spawn_in_graveyard(PlayerId(0), card("Mountain"));
     let cleric = game.spawn_on_battlefield(PlayerId(0), card("Remorseful Cleric"));
     game.submit(Intent::ActivateAbility {
@@ -57721,7 +57724,7 @@ fn laelia_grows_when_cards_exiled_from_your_library_or_graveyard() {
     );
 
     // Exiling a permanent off the battlefield is neither a library nor a graveyard exit.
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     game.fund_mana(PlayerId(0));
     let swords = game.spawn_in_hand(PlayerId(0), card("Swords to Plowshares"));
     game.submit(Intent::Cast {
@@ -58630,7 +58633,7 @@ fn cash_out_land_makes_treasure_currency_converter() {
 fn cash_out_nonland_makes_two_two_currency_converter() {
     let mut game = Game::new();
     let converter = game.spawn_on_battlefield(PlayerId(0), card("Currency Converter"));
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
 
     discard_one(&mut game, bear);
     game.submit(Intent::AnswerMay {
@@ -58728,7 +58731,7 @@ fn end_step_exiles_target_noncreature_nonland_card_and_makes_a_spirit_quintorius
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Quintorius, Loremaster"));
     let shock = game.spawn_in_graveyard(PlayerId(0), card("Shock"));
-    let bear = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
 
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(0) && g.current_step() == Step::End
@@ -58942,7 +58945,7 @@ fn quintorius_free_cast_spell_goes_to_library_bottom_on_resolve() {
     let mut game = Game::new();
     let (quintorius, shock, spirit) = quintorius_end_step_exile_shock(&mut game);
     let known_library =
-        game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+        game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
 
     game.submit(Intent::ActivateAbility {
         player: PlayerId(0),
@@ -59252,7 +59255,7 @@ fn a_burn_spell_fizzles_when_its_target_is_bounced_in_response() {
     // target is illegal at resolution, so the bolt fizzles (CR 608.2b) — no panic, and the bolt
     // still goes to its owner's graveyard.
     let mut g = TestGame::new();
-    let bear = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let bolt = g.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
     let unsummon = g.spawn_in_hand(PlayerId(0), card("Unsummon"));
 
@@ -59261,12 +59264,12 @@ fn a_burn_spell_fizzles_when_its_target_is_bounced_in_response() {
     resolve_whole_stack(&mut g);
 
     assert_eq!(
-        named_in_zone(&g, Zone::Hand, "Grizzly Bear"),
+        named_in_zone(&g, Zone::Hand, "Grizzly Bears"),
         1,
         "the bear was bounced to its owner's hand and the fizzled bolt left it there"
     );
     assert_eq!(
-        named_in_zone(&g, Zone::Graveyard, "Grizzly Bear"),
+        named_in_zone(&g, Zone::Graveyard, "Grizzly Bears"),
         0,
         "the fizzled bolt dealt no damage"
     );
@@ -59280,7 +59283,7 @@ fn a_burn_spell_fizzles_when_its_target_is_bounced_in_response() {
 #[test]
 fn a_pump_spell_fizzles_when_its_target_is_bounced_in_response() {
     let mut g = TestGame::new();
-    let bear = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let pump = g.spawn_in_hand(PlayerId(0), card("Brute Force"));
     let unsummon = g.spawn_in_hand(PlayerId(0), card("Unsummon"));
 
@@ -59289,7 +59292,7 @@ fn a_pump_spell_fizzles_when_its_target_is_bounced_in_response() {
     resolve_whole_stack(&mut g);
 
     assert_eq!(
-        named_in_zone(&g, Zone::Hand, "Grizzly Bear"),
+        named_in_zone(&g, Zone::Hand, "Grizzly Bears"),
         1,
         "the bear is safely in hand; the pump fizzled without panicking"
     );
@@ -59299,7 +59302,7 @@ fn a_pump_spell_fizzles_when_its_target_is_bounced_in_response() {
 #[test]
 fn a_bounce_spell_fizzles_when_its_target_is_destroyed_in_response() {
     let mut g = TestGame::new();
-    let bear = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let unsummon = g.spawn_in_hand(PlayerId(0), card("Unsummon"));
     let grasp = g.spawn_in_hand(PlayerId(0), card("Infernal Grasp"));
 
@@ -59308,12 +59311,12 @@ fn a_bounce_spell_fizzles_when_its_target_is_destroyed_in_response() {
     resolve_whole_stack(&mut g);
 
     assert_eq!(
-        named_in_zone(&g, Zone::Graveyard, "Grizzly Bear"),
+        named_in_zone(&g, Zone::Graveyard, "Grizzly Bears"),
         1,
         "the bear was destroyed exactly once; the fizzled bounce didn't touch it"
     );
     assert_eq!(
-        named_in_zone(&g, Zone::Hand, "Grizzly Bear"),
+        named_in_zone(&g, Zone::Hand, "Grizzly Bears"),
         0,
         "the fizzled Unsummon returned nothing to hand"
     );
@@ -59324,7 +59327,7 @@ fn a_destroy_spell_fizzles_when_its_target_is_bounced_in_response() {
     // The corruption case from the audit: DestroyTarget resolving against a Moved tombstone used
     // to mint a *duplicate* graveyard bear. The fizzle must leave exactly one bear, in hand.
     let mut g = TestGame::new();
-    let bear = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let grasp = g.spawn_in_hand(PlayerId(0), card("Infernal Grasp"));
     let unsummon = g.spawn_in_hand(PlayerId(0), card("Unsummon"));
 
@@ -59333,12 +59336,12 @@ fn a_destroy_spell_fizzles_when_its_target_is_bounced_in_response() {
     resolve_whole_stack(&mut g);
 
     assert_eq!(
-        named_in_zone(&g, Zone::Hand, "Grizzly Bear"),
+        named_in_zone(&g, Zone::Hand, "Grizzly Bears"),
         1,
         "the bear is in its owner's hand"
     );
     assert_eq!(
-        named_in_zone(&g, Zone::Graveyard, "Grizzly Bear"),
+        named_in_zone(&g, Zone::Graveyard, "Grizzly Bears"),
         0,
         "the fizzled destroy minted no duplicate graveyard bear"
     );
@@ -59356,14 +59359,14 @@ fn infernal_grasp_with_a_legal_target_destroys_and_loses_life() {
     // Contrast case: no response bounces the target, so both halves of Infernal Grasp resolve —
     // the creature dies AND its caster loses 2 life.
     let mut g = TestGame::new();
-    let bear = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let grasp = g.spawn_in_hand(PlayerId(0), card("Infernal Grasp"));
 
     g.cast(grasp).at(Target::Object(bear)).submit();
     resolve_whole_stack(&mut g);
 
     assert_eq!(
-        named_in_zone(&g, Zone::Graveyard, "Grizzly Bear"),
+        named_in_zone(&g, Zone::Graveyard, "Grizzly Bears"),
         1,
         "the legally-targeted bear was destroyed"
     );
@@ -59378,12 +59381,12 @@ fn infernal_grasp_with_a_legal_target_destroys_and_loses_life() {
 fn an_untargeted_spell_still_resolves_normally_despite_the_fizzle_check() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
 
     cast_and_resolve(&mut game, bear, None);
 
     assert_eq!(
-        battlefield_named(&game, PlayerId(0), "Grizzly Bear").len(),
+        battlefield_named(&game, PlayerId(0), "Grizzly Bears").len(),
         1,
         "an untargeted spell is unaffected by the resolution-time target re-check"
     );
@@ -59396,7 +59399,7 @@ fn an_equip_ability_fizzles_when_its_creature_dies_in_response() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     game.fund_mana(PlayerId(1));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let bonesplitter = game.spawn_on_battlefield(PlayerId(0), card("Bonesplitter"));
     let grasp = game.spawn_in_hand(PlayerId(1), card("Infernal Grasp"));
 
@@ -60733,12 +60736,12 @@ fn disaster_radius_cant_be_cast_without_a_creature_card_in_hand() {
 fn disaster_radius_deals_revealed_creatures_mana_value_to_each_opponents_creature() {
     // "As an additional cost to cast this spell, reveal a creature card from your hand. Disaster
     // Radius deals X damage to each creature your opponents control, where X is the revealed
-    // card's mana value." Grizzly Bear (mana value 2, the only creature card in hand) is the
+    // card's mana value." Grizzly Bears (mana value 2, the only creature card in hand) is the
     // automatic reveal — no genuine choice to make when revealing has no downside.
     let mut game = TestGame::new();
     let opp_creature = game.spawn_on_battlefield(PlayerId(1), creature("Opp (test)", 3, 3, &[]));
     let mine = game.spawn_on_battlefield(PlayerId(0), creature("Mine (test)", 3, 3, &[]));
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear")); // {1}{G}, MV 2
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears")); // {1}{G}, MV 2
     let radius = game.spawn_in_hand(PlayerId(0), card("Disaster Radius"));
 
     game.cast(radius).resolve();
@@ -60765,7 +60768,7 @@ fn reanimate_loses_life_equal_to_the_reanimated_cards_mana_value() {
     let mut game = TestGame::new();
     game.fund_mana(PlayerId(0));
     let before_life = game.life(PlayerId(0));
-    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear")); // {1}{G}, MV 2
+    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears")); // {1}{G}, MV 2
     let reanimate = game.spawn_in_hand(PlayerId(0), card("Reanimate"));
 
     game.cast(reanimate).at(Target::Object(corpse)).resolve();
@@ -61097,7 +61100,7 @@ fn a_sequence_draws_then_pauses_to_discard_the_drawn_cards() {
     let loot = game.spawn_in_hand(PlayerId(0), loot());
     let lib = game.stack_library(
         PlayerId(0),
-        &[card("Shock"), card("Forest"), card("Grizzly Bear")],
+        &[card("Shock"), card("Forest"), card("Grizzly Bears")],
     );
 
     game.cast(loot).resolve();
@@ -61149,7 +61152,7 @@ fn pull_from_tomorrow_draws_x_for_caster() {
     let pull = game.spawn_in_hand(PlayerId(0), card("Pull from Tomorrow"));
     let lib = game.stack_library(
         PlayerId(0),
-        &[card("Shock"), card("Forest"), card("Grizzly Bear")],
+        &[card("Shock"), card("Forest"), card("Grizzly Bears")],
     );
 
     // No target-player choice is needed to cast a controller-draws-X spell.
@@ -61199,7 +61202,7 @@ fn compulsive_research_discard_two_or_one_land() {
     let forest = game.spawn_in_hand(PlayerId(0), card("Forest"));
     game.stack_library(
         PlayerId(0),
-        &[card("Shock"), card("Grizzly Bear"), card("Shock")],
+        &[card("Shock"), card("Grizzly Bears"), card("Shock")],
     );
     let research = game.spawn_in_hand(PlayerId(0), card("Compulsive Research"));
 
@@ -61243,7 +61246,7 @@ fn compulsive_research_discard_two_nonland() {
     let forest = game.spawn_in_hand(PlayerId(0), card("Forest"));
     let lib = game.stack_library(
         PlayerId(0),
-        &[card("Shock"), card("Grizzly Bear"), card("Shock")],
+        &[card("Shock"), card("Grizzly Bears"), card("Shock")],
     );
     let research = game.spawn_in_hand(PlayerId(0), card("Compulsive Research"));
 
@@ -61275,7 +61278,7 @@ fn compulsive_research_no_land_collapses() {
     let mut game = TestGame::new();
     let lib = game.stack_library(
         PlayerId(0),
-        &[card("Shock"), card("Grizzly Bear"), card("Shock")],
+        &[card("Shock"), card("Grizzly Bears"), card("Shock")],
     );
     let research = game.spawn_in_hand(PlayerId(0), card("Compulsive Research"));
 
@@ -61313,7 +61316,7 @@ fn compulsive_research_no_land_collapses() {
 fn brainstorm_puts_two_hand_cards_on_top_of_library_in_order() {
     let mut game = TestGame::new();
     let brainstorm = game.spawn_in_hand(PlayerId(0), card("Brainstorm"));
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     let lib = game.stack_library(
         PlayerId(0),
         &[card("Shock"), card("Forest"), card("Mountain")],
@@ -61424,7 +61427,7 @@ fn a_sequence_defers_the_rest_until_a_pausing_step_is_answered() {
     let spell = game.spawn_in_hand(PlayerId(0), surveil_then_draw());
     let lib = game.stack_library(
         PlayerId(0),
-        &[card("Shock"), card("Forest"), card("Grizzly Bear")],
+        &[card("Shock"), card("Forest"), card("Grizzly Bears")],
     );
 
     game.cast(spell).resolve();
@@ -61517,7 +61520,7 @@ fn refresh_via_mana_tap(game: &mut Game, tapland: ObjectId) {
 fn legal_actions_lists_the_priority_holders_plays_with_zones() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let commander = game.designate_commander(PlayerId(0), card("Grizzly Bear"));
+    let commander = game.designate_commander(PlayerId(0), card("Grizzly Bears"));
     let hand_land = game.spawn_in_hand(PlayerId(0), card("Forest"));
     let tapland = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
     refresh_via_mana_tap(&mut game, tapland);
@@ -61557,7 +61560,7 @@ fn take_action_casts_exactly_like_the_equivalent_cast_intent() {
     fn setup() -> (Game, ObjectId, ObjectId) {
         let mut game = Game::new();
         game.fund_mana(PlayerId(0));
-        let victim = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+        let victim = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
         let spell = game.spawn_in_hand(PlayerId(0), card("Brute Force"));
         let tapland = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
         refresh_via_mana_tap(&mut game, tapland);
@@ -61639,7 +61642,7 @@ fn take_action_escapes_sentinels_eyes_with_exile_and_target() {
     // Mirrors the client path after Exile + creature pick: TakeAction { graveyard_exile, target }.
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let eyes = game.spawn_in_graveyard(PlayerId(0), card("Sentinel's Eyes"));
     let fodder: Vec<ObjectId> = (0..2)
         .map(|_| game.spawn_in_graveyard(PlayerId(0), card("Plains")))
@@ -61793,7 +61796,7 @@ fn take_action_cycles_a_hand_card() {
 fn take_action_activates_viscera_seer_with_a_creature_sacrifice() {
     let mut game = Game::new();
     let seer = game.spawn_on_battlefield(PlayerId(0), card("Viscera Seer"));
-    let fodder = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let fodder = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     game.stack_library(PlayerId(0), &[card("Forest")]);
     game.begin_first_turn();
 
@@ -61829,7 +61832,7 @@ fn cycling_requires_priority() {
     game.stack_library(PlayerId(0), &[card("Forest")]);
     // Put a spell on the stack and pass so P1 holds priority. (CR 117, CR 405, CR 601)
     let shock = game.spawn_in_hand(PlayerId(0), card("Shock"));
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     game.submit(Intent::Cast {
         player: PlayerId(0),
         object: shock,
@@ -61881,7 +61884,7 @@ fn cycling_with_a_spell_on_the_stack_resets_passes_and_keeps_priority() {
     game.stack_library(PlayerId(1), &[card("Forest")]);
     let massif = game.spawn_in_hand(PlayerId(1), card("Glittering Massif"));
     let shock = game.spawn_in_hand(PlayerId(0), card("Shock"));
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     game.submit(Intent::Cast {
         player: PlayerId(0),
         object: shock,
@@ -61943,7 +61946,7 @@ fn edge_of_autumn_cycling_requires_naming_a_land() {
     // sacrifice; CR 602.2b — an unnamed or illegal sacrifice pick makes the activation illegal.
     let mut game = Game::new();
     let edge = game.spawn_in_hand(PlayerId(0), card("Edge of Autumn"));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     assert_eq!(
         game.submit(Intent::Cycle {
@@ -62168,7 +62171,7 @@ fn take_action_rejects_a_bogus_or_foreign_action_id() {
 fn a_state_change_keeps_surviving_action_ids_and_drops_vanished_ones() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let commander = game.designate_commander(PlayerId(0), card("Grizzly Bear"));
+    let commander = game.designate_commander(PlayerId(0), card("Grizzly Bears"));
     let hand_land = game.spawn_in_hand(PlayerId(0), card("Forest"));
     let tapland = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
     refresh_via_mana_tap(&mut game, tapland);
@@ -62210,7 +62213,7 @@ fn a_state_change_keeps_surviving_action_ids_and_drops_vanished_ones() {
 #[test]
 fn a_mana_tap_between_listing_and_taking_keeps_the_action_id_valid() {
     let mut game = Game::new();
-    let spell = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let spell = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     game.spawn_on_battlefield(PlayerId(0), card("Forest"));
     let land_b = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
     let land_a = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
@@ -62239,7 +62242,7 @@ fn a_mana_tap_between_listing_and_taking_keeps_the_action_id_valid() {
 #[test]
 fn legal_actions_is_empty_while_a_choice_is_pending() {
     let mut game = Game::new();
-    game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let pinger = game.spawn_in_hand(PlayerId(0), PINGER.clone());
     game.submit(Intent::Cast {
         player: PlayerId(0),
@@ -62285,10 +62288,10 @@ fn killian_taps_and_goads_when_your_enchantment_enters() {
     // control — not the ETB-on-Killian-himself stand-in the TOML used to carry.
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Killian, Decisive Mentor"));
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     game.fund_mana(PlayerId(0));
 
-    let other_bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let other_bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     game.submit(Intent::Cast {
         player: PlayerId(0),
         object: other_bear,
@@ -62362,7 +62365,7 @@ fn killian_decisive_mentor_tap_and_goad_target_is_declinable() {
     // target). (CR 701.38, CR 108.3, CR 601.2c)
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Killian, Decisive Mentor"));
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     game.fund_mana(PlayerId(0));
 
     let anthem = game.spawn_in_hand(PlayerId(0), card("Glorious Anthem"));
@@ -62407,7 +62410,7 @@ fn killian_own_entry_does_not_fire_his_enchantment_watch() {
     // besides — his own ETB must not tap-and-goad (proves this is no longer the ETB stand-in
     // the card's TOML used to carry).
     let mut game = Game::new();
-    game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let killian = game.spawn_in_hand(PlayerId(0), card("Killian, Decisive Mentor"));
     game.fund_mana(PlayerId(0));
 
@@ -63235,7 +63238,7 @@ fn perpetual_timepiece_shuffles_chosen_graveyard_cards_into_library() {
     game.fund_mana(PlayerId(0));
     let timepiece = game.spawn_on_battlefield(PlayerId(0), card("Perpetual Timepiece"));
     let forest = game.spawn_in_graveyard(PlayerId(0), card("Forest"));
-    let bear = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let starting_library = game.library_size(PlayerId(0));
 
     game.submit(Intent::ActivateAbility {
@@ -63299,7 +63302,7 @@ fn perpetual_timepiece_shuffle_can_choose_subset() {
     game.fund_mana(PlayerId(0));
     let timepiece = game.spawn_on_battlefield(PlayerId(0), card("Perpetual Timepiece"));
     let forest = game.spawn_in_graveyard(PlayerId(0), card("Forest"));
-    let bear = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let starting_library = game.library_size(PlayerId(0));
 
     game.submit(Intent::ActivateAbility {
@@ -63339,7 +63342,7 @@ fn exile_target_players_graveyard_bojuka_bog() {
     // Bojuka Bog (soc): "This land enters tapped. When this land enters, exile target player's
     // graveyard. {T}: Add {B}."
     let mut game = Game::new();
-    game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bear"));
+    game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bears"));
     game.spawn_in_graveyard(PlayerId(1), card("Forest"));
     game.spawn_in_graveyard(PlayerId(0), card("Mountain"));
 
@@ -63384,7 +63387,7 @@ fn exile_target_players_graveyard_bojuka_bog() {
 fn sacrifice_to_exile_graveyard_remorseful_cleric() {
     // Remorseful Cleric (soc): "Flying. Sacrifice this creature: Exile target player's graveyard."
     let mut game = Game::new();
-    game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bear"));
+    game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bears"));
     game.spawn_in_graveyard(PlayerId(1), card("Forest"));
 
     let cleric = game.spawn_on_battlefield(PlayerId(0), card("Remorseful Cleric"));
@@ -63425,7 +63428,7 @@ fn big_score_additional_discard_cost_paid() {
     // cards and create two Treasure tokens."
     let mut game = TestGame::new();
     let big_score = game.spawn_in_hand(PlayerId(0), card("Big Score"));
-    let filler = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let filler = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     let lib = game.stack_library(PlayerId(0), &[card("Forest"), card("Mountain")]);
 
     game.cast(big_score).discarding(vec![filler]).resolve();
@@ -63479,7 +63482,7 @@ fn casting_with_a_foreign_card_named_for_the_discard_cost_is_rejected() {
     let mut game = TestGame::new();
     let big_score = game.spawn_in_hand(PlayerId(0), card("Big Score"));
     let _pitch = game.spawn_in_hand(PlayerId(0), card("Mountain"));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     assert_eq!(
         game.cast(big_score).discarding(vec![bear]).try_submit(),
@@ -63519,7 +63522,7 @@ fn spell_without_additional_cost_is_unaffected() {
     // as before — the default path stays unchanged.
     let mut game = TestGame::new();
     let bolt = game.spawn_in_hand(PlayerId(0), card("Shock"));
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
 
     game.cast(bolt).at(Target::Object(bear)).resolve();
 
@@ -63536,7 +63539,7 @@ fn seize_the_spoils_additional_discard_cost_paid() {
     // two cards and create a Treasure token."
     let mut game = TestGame::new();
     let seize = game.spawn_in_hand(PlayerId(0), card("Seize the Spoils"));
-    let filler = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let filler = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     let lib = game.stack_library(PlayerId(0), &[card("Forest"), card("Mountain")]);
 
     game.cast(seize).discarding(vec![filler]).resolve();
@@ -63566,9 +63569,9 @@ fn plumb_the_forbidden_records_sacrificed_count() {
     // cast-time copy trigger reads to mint one copy per creature sacrificed this way).
     let mut game = TestGame::new();
     let plumb = game.spawn_in_hand(PlayerId(0), card("Plumb the Forbidden"));
-    let fodder1 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    let fodder2 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    let keeper = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let fodder1 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let fodder2 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let keeper = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     game.stack_library(
         PlayerId(0),
         &[card("Forest"), card("Forest"), card("Forest")],
@@ -63624,8 +63627,8 @@ fn plumb_the_forbidden_copies_once_per_sacrifice() {
     // needs a retarget choice.
     let mut game = TestGame::new();
     let plumb = game.spawn_in_hand(PlayerId(0), card("Plumb the Forbidden"));
-    let fodder1 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    let fodder2 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let fodder1 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let fodder2 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     game.stack_library(
         PlayerId(0),
         &[card("Forest"), card("Forest"), card("Forest")],
@@ -63674,7 +63677,7 @@ fn plumb_the_forbidden_declining_the_sacrifice_is_legal() {
     // life loss still happen (they aren't gated on the cost).
     let mut game = TestGame::new();
     let plumb = game.spawn_in_hand(PlayerId(0), card("Plumb the Forbidden"));
-    let fodder = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let fodder = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     game.stack_library(PlayerId(0), &[card("Forest")]);
     let life_before = game.life(PlayerId(0));
 
@@ -63727,7 +63730,7 @@ fn plumb_the_forbidden_naming_a_noncreature_permanent_is_rejected() {
 fn plumb_the_forbidden_naming_an_opponents_creature_is_rejected() {
     let mut game = TestGame::new();
     let plumb = game.spawn_in_hand(PlayerId(0), card("Plumb the Forbidden"));
-    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
 
     assert_eq!(
         game.cast(plumb).sacrificing(vec![theirs]).try_submit(),
@@ -63956,10 +63959,10 @@ fn dread_return_flashback_sacrifices_three_creatures_and_reanimates() {
     // battlefield.
     let mut game = TestGame::new();
     let dread_return = game.spawn_in_graveyard(PlayerId(0), card("Dread Return"));
-    let target = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
-    let fodder1 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    let fodder2 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    let fodder3 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let target = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
+    let fodder1 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let fodder2 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let fodder3 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     game.cast(dread_return)
         .at(Target::Object(target))
@@ -63985,9 +63988,9 @@ fn dread_return_flashback_sacrifices_three_creatures_and_reanimates() {
 fn dread_return_flashback_rejects_too_few_sacrifices() {
     let mut game = TestGame::new();
     let dread_return = game.spawn_in_graveyard(PlayerId(0), card("Dread Return"));
-    let target = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
-    let fodder1 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    let fodder2 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let target = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
+    let fodder1 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let fodder2 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     assert_eq!(
         game.cast(dread_return)
@@ -64003,11 +64006,11 @@ fn dread_return_flashback_rejects_too_few_sacrifices() {
 fn dread_return_flashback_rejects_too_many_sacrifices() {
     let mut game = TestGame::new();
     let dread_return = game.spawn_in_graveyard(PlayerId(0), card("Dread Return"));
-    let target = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
-    let fodder1 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    let fodder2 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    let fodder3 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    let fodder4 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let target = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
+    let fodder1 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let fodder2 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let fodder3 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let fodder4 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     assert_eq!(
         game.cast(dread_return)
@@ -64023,9 +64026,9 @@ fn dread_return_flashback_rejects_too_many_sacrifices() {
 fn dread_return_flashback_rejects_a_duplicate_sacrifice() {
     let mut game = TestGame::new();
     let dread_return = game.spawn_in_graveyard(PlayerId(0), card("Dread Return"));
-    let target = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
-    let fodder1 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    let fodder2 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let target = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
+    let fodder1 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let fodder2 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     assert_eq!(
         game.cast(dread_return)
@@ -64041,9 +64044,9 @@ fn dread_return_flashback_rejects_a_duplicate_sacrifice() {
 fn dread_return_flashback_rejects_a_noncreature_sacrifice() {
     let mut game = TestGame::new();
     let dread_return = game.spawn_in_graveyard(PlayerId(0), card("Dread Return"));
-    let target = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
-    let fodder1 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    let fodder2 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let target = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
+    let fodder1 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let fodder2 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let land = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
 
     assert_eq!(
@@ -64062,7 +64065,7 @@ fn dread_return_front_face_casts_from_hand_without_a_sacrifice() {
     // only. Casting normally from hand needs no sacrifice at all.
     let mut game = TestGame::new();
     let dread_return = game.spawn_in_hand(PlayerId(0), card("Dread Return"));
-    let target = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let target = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
 
     game.cast(dread_return)
         .at(Target::Object(target))
@@ -64822,7 +64825,7 @@ fn constellation_does_not_fire_on_its_own_entry_or_for_a_mismatched_type() {
         "the watcher's own entry did not fire its own constellation trigger"
     );
 
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     game.cast(bear).resolve();
 
     assert!(
@@ -64838,7 +64841,7 @@ fn ajanis_chosen_attaches_the_triggering_aura_to_the_minted_cat_token() {
     // minted Cat; a non-Aura enchantment entering still creates a Cat but attaches nothing.
     let mut game = TestGame::new();
     game.spawn_on_battlefield(PlayerId(0), card("Ajani's Chosen"));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let eyes = game.spawn_in_hand(PlayerId(0), card("Sentinel's Eyes"));
 
     game.cast(eyes).at(Target::Object(bear)).resolve(); // the Aura enters attached to the bear...
@@ -65029,8 +65032,8 @@ fn forum_filibuster_reflexive_return_is_a_separate_stack_object() {
     game.spawn_on_battlefield(PlayerId(0), card("Forum Filibuster"));
     let aura = game.spawn_in_graveyard(PlayerId(0), card("Sentinel's Eyes"));
     // Give both players a library so nobody decks out over the intervening turn.
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears")]);
 
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
@@ -65105,8 +65108,8 @@ fn forum_filibuster_reflexive_declined() {
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Forum Filibuster"));
     game.spawn_in_graveyard(PlayerId(0), card("Sentinel's Eyes"));
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears")]);
 
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
@@ -65140,8 +65143,8 @@ fn forum_filibuster_reflexive_no_op_if_token_gone() {
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Forum Filibuster"));
     let aura = game.spawn_in_graveyard(PlayerId(0), card("Sentinel's Eyes"));
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears")]);
 
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
@@ -65180,8 +65183,8 @@ fn forum_filibuster_mints_the_token_with_nothing_to_return() {
     // No Aura/Equipment in the graveyard: the token still mints, with no pause at all.
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Forum Filibuster"));
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears")]);
 
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
@@ -65208,8 +65211,8 @@ fn landfall_fires_only_for_an_opponents_land_not_your_own() {
     game.spawn_on_battlefield(PlayerId(0), WATCHES_OPPONENT_LANDFALL.clone());
     let own_land = game.spawn_in_hand(PlayerId(0), card("Forest"));
     let opponent_land = game.spawn_in_hand(PlayerId(1), card("Forest"));
-    let own_library = game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear")]); // so P1's turn-draw doesn't deck them out
+    let own_library = game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears")]); // so P1's turn-draw doesn't deck them out
 
     game.submit(Intent::PlayLand {
         player: PlayerId(0),
@@ -65252,7 +65255,7 @@ fn doomwake_giant_constellation_weakens_opponents_creatures() {
     let mut game = TestGame::new();
     game.spawn_on_battlefield(PlayerId(0), card("Doomwake Giant"));
     let own_bear = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone()); // 2/2 — survives at 1/1
-    let opponent_bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear")); // 2/2 — survives at 1/1
+    let opponent_bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears")); // 2/2 — survives at 1/1
     let enchantment = game.spawn_in_hand(PlayerId(0), TEST_ENCHANTMENT.clone());
 
     game.cast(enchantment).resolve();
@@ -65295,7 +65298,7 @@ fn stolen_doomwake_constellation_fires_for_its_new_controller() {
     let mut game = Game::new();
     let doomwake = game.spawn_on_battlefield(PlayerId(1), card("Doomwake Giant"));
     let own_bear = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone()); // P0's — must be spared
-    let p1_bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear")); // P1's — weakened
+    let p1_bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears")); // P1's — weakened
 
     let steal = game.spawn_in_hand(PlayerId(0), STEAL_PERMANENT.clone());
     cast_and_resolve(&mut game, steal, Some(Target::Object(doomwake)));
@@ -65454,7 +65457,7 @@ fn artifact_and_enchantment_creature_types_are_authored_from_toml() {
     let mut game = Game::new();
     let doomwake = game.spawn_on_battlefield(PlayerId(0), card("Doomwake Giant"));
     let brudiclad = game.spawn_on_battlefield(PlayerId(0), card("Brudiclad, Telchor Engineer"));
-    let plain_bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let plain_bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     let exile_enchantment = game.spawn_in_hand(PlayerId(0), EXILE_ENCHANTMENT.clone());
     let enchantment_targets = game.legal_targets(exile_enchantment, None);
@@ -65488,7 +65491,7 @@ fn doomwake_giant_constellation_fires_off_its_own_etb() {
     // the opponent's creature.
     let mut game = TestGame::new();
     let doomwake = game.spawn_in_hand(PlayerId(0), card("Doomwake Giant"));
-    let opponent_bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear")); // 2/2 -> 1/1
+    let opponent_bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears")); // 2/2 -> 1/1
 
     game.cast(doomwake).resolve(); // Doomwake Giant's creature spell resolves onto the battlefield.
     resolve_top_of_stack(&mut game); // the constellation trigger, fired off its own ETB, resolves.
@@ -65551,7 +65554,7 @@ fn archaeomancers_map_checks_the_land_playing_opponents_lands_not_any_opponents(
         game.spawn_on_battlefield(PlayerId(2), card("Forest")); // P2, a bystander opponent: 5 lands
     }
     game.spawn_on_battlefield(PlayerId(1), card("Forest")); // P1 starts at 1 land
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear")]); // so P1's turn-draw doesn't deck them out
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears")]); // so P1's turn-draw doesn't deck them out
     let p1_second_land = game.spawn_in_hand(PlayerId(1), card("Forest"));
 
     advance_until(&mut game, |g| {
@@ -65578,7 +65581,7 @@ fn moldervine_reclamation_gains_life_and_draws_from_a_single_trigger() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     game.spawn_on_battlefield(PlayerId(0), card("Moldervine Reclamation"));
-    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
     let victim = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone()); // 2/2
     let shock = game.spawn_in_hand(PlayerId(0), card("Shock")); // 2 damage — lethal to the 2/2
     let starting_life = game.life(PlayerId(0));
@@ -66704,7 +66707,7 @@ fn steelbane_hydra_destroys_target_artifact_or_enchantment_only() {
     let hydra = game.spawn_on_battlefield(PlayerId(0), card("Steelbane Hydra"));
     let artifact = game.spawn_on_battlefield(PlayerId(1), card("Arcane Signet"));
     let enchantment = game.spawn_on_battlefield(PlayerId(1), card("Awakening Zone"));
-    game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
 
     assert_eq!(
         game.legal_targets(hydra, Some(1)),
@@ -66749,7 +66752,7 @@ fn quandrix_command_bounces_a_planeswalker() {
     // planeswalker, not just a creature; mode 2 still runs normally as the paired mode.
     let mut g = TestGame::new();
     let walker = g.spawn_on_battlefield(PlayerId(1), card("Quintorius, History Chaser"));
-    let creature = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let creature = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let command = g.spawn_in_hand(PlayerId(0), card("Quandrix Command"));
 
     g.cast(command)
@@ -66779,9 +66782,9 @@ fn quandrix_command_mode_shuffles_target_players_graveyard() {
     // pause must still let the modal instant finish (deferred `resume.spell_finish`)
     // instead of hanging on the stack.
     let mut g = TestGame::new();
-    let creature = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let creature = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let forest = g.spawn_in_graveyard(PlayerId(1), card("Forest"));
-    let bear = g.spawn_in_graveyard(PlayerId(1), card("Grizzly Bear"));
+    let bear = g.spawn_in_graveyard(PlayerId(1), card("Grizzly Bears"));
     let command = g.spawn_in_hand(PlayerId(0), card("Quandrix Command"));
     let caster_starting_library = g.library_size(PlayerId(0));
     let opponent_starting_library = g.library_size(PlayerId(1));
@@ -66867,10 +66870,10 @@ fn quandrix_command_mode_shuffle_capped_at_three() {
     // illegal, but any three (or fewer) is legal.
     let mut g = TestGame::new();
     let a = g.spawn_in_graveyard(PlayerId(0), card("Forest"));
-    let b = g.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let b = g.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let c = g.spawn_in_graveyard(PlayerId(0), card("Forest"));
-    let d = g.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
-    let creature = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let d = g.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
+    let creature = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let command = g.spawn_in_hand(PlayerId(0), card("Quandrix Command"));
     let starting_library = g.library_size(PlayerId(0));
 
@@ -66955,7 +66958,7 @@ fn witherbloom_command_mode_destroys_only_a_cheap_noncreature_permanent() {
     let mut game = Game::new();
     let command = game.spawn_in_hand(PlayerId(0), card("Witherbloom Command"));
     let cheap_artifact = game.spawn_on_battlefield(PlayerId(1), card("Arcane Signet")); // mv 2
-    game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear")); // mv 2, but a creature
+    game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears")); // mv 2, but a creature
     game.spawn_on_battlefield(PlayerId(1), card("Awakening Zone")); // mv 3, over the gate
 
     assert_eq!(
@@ -66971,7 +66974,7 @@ fn witherbloom_charm_mode_destroys_only_a_cheap_nonland_permanent() {
     // is excluded (mv_max) and a land is excluded (nonland).
     let mut game = Game::new();
     let charm = game.spawn_in_hand(PlayerId(0), card("Witherbloom Charm"));
-    let cheap_creature = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear")); // mv 2
+    let cheap_creature = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears")); // mv 2
     game.spawn_on_battlefield(PlayerId(1), card("Serra Angel")); // mv 5, over the gate
     game.spawn_on_battlefield(PlayerId(1), card("Plains")); // a land
 
@@ -66987,7 +66990,7 @@ fn witherbloom_charm_mode0_optional_sacrifice_gates_draw() {
     // Mode 0 — "You may sacrifice a permanent. If you do, draw two cards." Declining the
     // resolution-time optional cost draws nothing; paying it draws two.
     let mut declined = TestGame::new();
-    let fodder = declined.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let fodder = declined.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let charm = declined.spawn_in_hand(PlayerId(0), card("Witherbloom Charm"));
     let hand_before = hand_ids(&declined, PlayerId(0)).len();
     declined.cast(charm).mode(0, None).resolve();
@@ -67022,7 +67025,7 @@ fn witherbloom_charm_mode0_optional_sacrifice_gates_draw() {
 
     let mut paid = TestGame::new();
     paid.stack_library(PlayerId(0), &[VANILLA.clone(), VANILLA.clone()]); // cards to draw
-    let fodder = paid.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let fodder = paid.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let charm = paid.spawn_in_hand(PlayerId(0), card("Witherbloom Charm"));
     let hand_before = hand_ids(&paid, PlayerId(0)).len();
     paid.cast(charm).mode(0, None).resolve();
@@ -67061,7 +67064,7 @@ fn ozolith_targets_an_artifact_you_control_and_doubles_its_counter() {
     let mut game = Game::new();
     let ozolith = game.spawn_on_battlefield(PlayerId(0), card("Ozolith, the Shattered Spire"));
     let my_artifact = game.spawn_on_battlefield(PlayerId(0), card("Arcane Signet"));
-    let my_creature = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let my_creature = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     game.spawn_on_battlefield(PlayerId(1), card("Arcane Signet"));
 
     assert_eq!(
@@ -67101,7 +67104,7 @@ fn ozolith_grows_creature_counters_but_not_llanowar_reborn_etb() {
     // counter) does not.
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Ozolith, the Shattered Spire"));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     put_two_counters(&mut game, PlayerId(0), bear);
     assert_eq!(
         game.plus_counters(bear),
@@ -67574,7 +67577,7 @@ fn zimones_hypothesis_choosing_odd_returns_only_odd_power_creatures() {
     // primer and the parity are resolution-time choices; nothing is announced on the stack at cast.
     let mut g = TestGame::new();
     let odd = g.spawn_on_battlefield(PlayerId(1), card("Augury Owl")); // power 1
-    let even = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // power 2
+    let even = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears")); // power 2
     let spell = g.spawn_in_hand(PlayerId(0), card("Zimone's Hypothesis"));
 
     g.cast(spell).submit(); // no mode, no target — parity is chosen during resolution
@@ -67596,10 +67599,10 @@ fn zimones_hypothesis_choosing_odd_returns_only_odd_power_creatures() {
 
 #[test]
 fn zimones_hypothesis_choosing_even_returns_only_even_power_creatures() {
-    // Zero counts as even (Grizzly Bear's power 2 is a plain even example).
+    // Zero counts as even (Grizzly Bears's power 2 is a plain even example).
     let mut g = TestGame::new();
     let odd = g.spawn_on_battlefield(PlayerId(1), card("Augury Owl")); // power 1
-    let even = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // power 2
+    let even = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears")); // power 2
     let spell = g.spawn_in_hand(PlayerId(0), card("Zimone's Hypothesis"));
 
     g.cast(spell).submit();
@@ -67659,7 +67662,7 @@ fn zimones_hypothesis_primer_puts_counter_then_bounces_by_parity() {
 fn zimones_hypothesis_primer_declined() {
     let mut g = TestGame::new();
     let odd = g.spawn_on_battlefield(PlayerId(1), card("Augury Owl")); // power 1
-    let even = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // power 2
+    let even = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears")); // power 2
     let spell = g.spawn_in_hand(PlayerId(0), card("Zimone's Hypothesis"));
 
     g.cast(spell).submit();
@@ -67688,7 +67691,7 @@ fn zimones_hypothesis_primer_declined() {
 fn zimones_hypothesis_resolves_when_a_creature_leaves_before_resolution() {
     let mut g = TestGame::new();
     let victim = g.spawn_on_battlefield(PlayerId(0), creature("Two (test)", 2, 2, &[])); // even
-    let survivor = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear")); // power 2, even
+    let survivor = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears")); // power 2, even
     let spell = g.spawn_in_hand(PlayerId(0), card("Zimone's Hypothesis"));
 
     g.cast(spell).submit(); // Hypothesis on the stack; player 0 keeps priority
@@ -69361,7 +69364,7 @@ fn silkguard_hexproof_on_equipment_wears_off_at_cleanup() {
     // Same until-end-of-turn duration as the creature clause — proves the `TempBoost` /
     // `TempBoostsEnded` cleanup path reaches a noncreature grant too. (CR 514.2)
     let mut game = TestGame::new();
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
     let bonesplitter = game.spawn_on_battlefield(PlayerId(0), card("Bonesplitter"));
     let equip_target = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
     game.fund_mana(PlayerId(0));
@@ -69696,8 +69699,8 @@ fn immoral_bargain_destroys_one_per_creature_sacrificed() {
     // targets among the three legal nonland permanents (a creature and an artifact controlled by
     // the opponent, plus an untargeted creature the caster keeps).
     let mut game = TestGame::new();
-    let fodder1 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    let fodder2 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let fodder1 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let fodder2 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let victim_creature = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
     let victim_artifact = game.spawn_on_battlefield(PlayerId(1), card("Sol Ring"));
     let untouched = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
@@ -69754,7 +69757,7 @@ fn immoral_bargain_target_count_tracks_sacrifice_count() {
     // though its effective count is {1, 1}, because `sacrifice_scaled` counts are excluded from
     // `TargetCount::is_single()` exactly like `x_scaled` counts are.
     let mut game = TestGame::new();
-    let fodder = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let fodder = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let victim_a = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
     let victim_b = game.spawn_on_battlefield(PlayerId(1), card("Sol Ring"));
     let bargain = game.spawn_in_hand(PlayerId(0), card("Immoral Bargain"));
@@ -69839,7 +69842,7 @@ fn a_single_target_destroy_card_is_unaffected_by_the_new_sacrifice_scaled_field(
 #[test]
 fn twinflame_single_target_pays_base_cost_one_copy() {
     let mut game = TestGame::new();
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let twinflame = game.spawn_in_hand(PlayerId(0), card("Twinflame"));
 
     // Only one legal target ("creature you control") exists, so declaring a Strive count of 1
@@ -69862,7 +69865,7 @@ fn twinflame_single_target_pays_base_cost_one_copy() {
 
     resolve_top_of_stack(&mut game);
 
-    let bears = battlefield_named(&game, PlayerId(0), "Grizzly Bear");
+    let bears = battlefield_named(&game, PlayerId(0), "Grizzly Bears");
     assert_eq!(bears.len(), 2, "the original bear plus one haste copy");
     let copy = *bears.iter().find(|&&id| id != bear).unwrap();
     assert!(
@@ -69874,9 +69877,9 @@ fn twinflame_single_target_pays_base_cost_one_copy() {
 #[test]
 fn twinflame_strive_scales_cost_by_targets() {
     let mut game = Game::new();
-    let bear1 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    let bear2 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    let bear3 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear1 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let bear2 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let bear3 = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let twinflame = game.spawn_in_hand(PlayerId(0), card("Twinflame"));
 
     // Fund only the printed {1}{R} (two tapped Mountains): declaring 3 targets needs
@@ -69956,7 +69959,7 @@ fn twinflame_strive_scales_cost_by_targets() {
     // All three legal targets ("creature you control") auto-fill exactly N=3, so no
     // `ChooseTarget` pause is offered.
     resolve_top_of_stack(&mut game);
-    let bears = battlefield_named(&game, PlayerId(0), "Grizzly Bear");
+    let bears = battlefield_named(&game, PlayerId(0), "Grizzly Bears");
     assert_eq!(
         bears.len(),
         6,
@@ -70021,7 +70024,7 @@ fn twinflame_tokens_exiled_at_next_end_step() {
 #[test]
 fn twinflame_strive_count_cannot_exceed_legal_targets() {
     let mut game = TestGame::new();
-    game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let twinflame = game.spawn_in_hand(PlayerId(0), card("Twinflame"));
 
     assert_eq!(
@@ -71540,7 +71543,7 @@ fn nexus_mentality_remove_and_draw_mode() {
     let a = g.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
     let growth = g.spawn_in_hand(PlayerId(0), GROWTH.clone());
     g.cast(growth).at(Target::Object(a)).resolve(); // A: 2 +1/+1 counters
-    g.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    g.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
 
     let nexus = g.spawn_in_hand(PlayerId(0), card("Nexus Mentality"));
     let hand_before = hand_ids(&g, PlayerId(0)).len();
@@ -71569,7 +71572,7 @@ fn nexus_mentality_chooses_both_modes_when_controlling_a_commander() {
     g.cast(growth_a).at(Target::Object(a)).resolve(); // A: 2 +1/+1 counters
     let growth_c = g.spawn_in_hand(PlayerId(0), GROWTH.clone());
     g.cast(growth_c).at(Target::Object(c)).resolve(); // C: 2 +1/+1 counters
-    g.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    g.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
 
     let nexus = g.spawn_in_hand(PlayerId(0), card("Nexus Mentality"));
     let hand_before = hand_ids(&g, PlayerId(0)).len();
@@ -71877,8 +71880,8 @@ fn ingenious_prodigy_upkeep_removes_counter_to_draw() {
     // following that same upkeep; P1 also needs enough to survive their own turn crossed while
     // rolling forward to P0's next upkeep (mirrors `double_plus_one_counters_primordial_hydra`'s
     // setup).
-    g.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
-    g.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    g.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    g.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
     let prodigy_card = g.spawn_in_hand(PlayerId(0), card("Ingenious Prodigy"));
     g.cast(prodigy_card).x(3).resolve();
     let prodigy = g
@@ -71943,7 +71946,7 @@ fn ingenious_prodigy_no_counters_no_upkeep_draw() {
     // pending choice and no draw at upkeep.
     let mut g = TestGame::new();
     // P1's own draw step is crossed while rolling forward to P0's first upkeep.
-    g.stack_library(PlayerId(1), &[card("Grizzly Bear")]);
+    g.stack_library(PlayerId(1), &[card("Grizzly Bears")]);
     let prodigy_card = g.spawn_in_hand(PlayerId(0), card("Ingenious Prodigy"));
     g.cast(prodigy_card).x(0).resolve();
     let prodigy = g
@@ -71997,7 +72000,7 @@ fn final_act_exile_all_graveyards_mode_empties_every_graveyard() {
     // whichever player it's aimed at.
     let mut g = TestGame::new();
     let mountain = g.spawn_in_graveyard(PlayerId(0), card("Mountain"));
-    let bear = g.spawn_in_graveyard(PlayerId(1), card("Grizzly Bear"));
+    let bear = g.spawn_in_graveyard(PlayerId(1), card("Grizzly Bears"));
     let forest = g.spawn_in_graveyard(PlayerId(1), card("Forest"));
 
     let act = g.spawn_in_hand(PlayerId(0), card("Final Act"));
@@ -72029,7 +72032,7 @@ fn final_act_exile_all_graveyards_mode_empties_every_graveyard() {
 fn final_act_destroy_all_battles_mode_destroys_battles() {
     let mut g = TestGame::new();
     let battle = g.spawn_on_battlefield(PlayerId(1), card("Invasion of Mercadia"));
-    let bear = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
 
     let act = g.spawn_in_hand(PlayerId(0), card("Final Act"));
     g.cast(act).mode(2, None).resolve();
@@ -72086,7 +72089,7 @@ fn reveal_top_goblin_guide_lands_to_hand() {
     // If it's a land card, that player puts it into their hand."
     let mut game = Game::new();
     let guide = game.spawn_on_battlefield(PlayerId(0), card("Goblin Guide"));
-    let top = game.stack_library(PlayerId(1), &[card("Forest"), card("Grizzly Bear")])[0];
+    let top = game.stack_library(PlayerId(1), &[card("Forest"), card("Grizzly Bears")])[0];
 
     attack_with(&mut game, vec![guide]);
     resolve_top_of_stack(&mut game); // the attack trigger resolves: reveal, land to hand
@@ -72107,7 +72110,7 @@ fn reveal_top_goblin_guide_lands_to_hand() {
 fn reveal_top_goblin_guide_nonland_stays_on_top() {
     let mut game = Game::new();
     let guide = game.spawn_on_battlefield(PlayerId(0), card("Goblin Guide"));
-    let top = game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Forest")])[0];
+    let top = game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Forest")])[0];
 
     attack_with(&mut game, vec![guide]);
     resolve_top_of_stack(&mut game);
@@ -72178,8 +72181,8 @@ fn reveal_top_mana_value_life_loss_keen_duelist() {
     game.spawn_on_battlefield(PlayerId(0), card("Keen Duelist"));
     let p0_top = game.stack_library(PlayerId(0), &[card("Lightning Bolt")])[0]; // mv 1
     // P1's own draw step (their intervening turn 2) consumes the Forest filler first, leaving
-    // the Grizzly Bear on top by the time P0's next upkeep fires the trigger.
-    let p1_reveal = game.stack_library(PlayerId(1), &[card("Forest"), card("Grizzly Bear")])[1];
+    // the Grizzly Bears on top by the time P0's next upkeep fires the trigger.
+    let p1_reveal = game.stack_library(PlayerId(1), &[card("Forest"), card("Grizzly Bears")])[1];
 
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
@@ -72206,7 +72209,7 @@ fn reveal_top_mana_value_life_loss_keen_duelist() {
 
     assert_eq!(
         game.life(PlayerId(0)),
-        p0_life - card("Grizzly Bear").mana_value() as i32,
+        p0_life - card("Grizzly Bears").mana_value() as i32,
         "P0 loses life equal to the mana value of P1's revealed card"
     );
     assert_eq!(
@@ -72287,11 +72290,11 @@ fn open_the_way_reveals_until_x_lands() {
     let lib = game.stack_library(
         PlayerId(0),
         &[
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
             card("Forest"),
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
             card("Forest"),
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
         ],
     );
     let spell = game.spawn_in_hand(PlayerId(0), card("Open the Way"));
@@ -72356,11 +72359,11 @@ fn open_the_way_bottoms_rest_in_random_order() {
     let lib = game.stack_library(
         PlayerId(0),
         &[
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
             card("Forest"), // X=1 stop after this land
             card("Island"), // untouched remainder
         ],
@@ -72415,7 +72418,7 @@ fn open_the_way_short_library_puts_every_land_found() {
     game.fund_mana(PlayerId(0));
     let lib = game.stack_library(
         PlayerId(0),
-        &[card("Grizzly Bear"), card("Forest"), card("Grizzly Bear")],
+        &[card("Grizzly Bears"), card("Forest"), card("Grizzly Bears")],
     );
     let spell = game.spawn_in_hand(PlayerId(0), card("Open the Way"));
     game.submit(Intent::Cast {
@@ -72519,7 +72522,7 @@ fn songbirds_blessing_attaches_deployed_aura_to_chosen_creature() {
         PlayerId(0),
         &[
             card("Forest"),         // land — not an Aura, bottomed
-            card("Grizzly Bear"),   // nonaura creature — not an Aura, bottomed
+            card("Grizzly Bears"),  // nonaura creature — not an Aura, bottomed
             card("Redemption Arc"), // the first Aura — the reveal's stop point
             card("Island"),         // untouched remainder below the stop point
         ],
@@ -72776,7 +72779,11 @@ fn songbirds_blessing_declining_goes_to_hand() {
     let host = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
     let lib = game.stack_library(
         PlayerId(0),
-        &[card("Grizzly Bear"), card("Redemption Arc"), card("Island")],
+        &[
+            card("Grizzly Bears"),
+            card("Redemption Arc"),
+            card("Island"),
+        ],
     );
     let blessing = game.spawn_in_hand(PlayerId(0), card("Songbirds' Blessing"));
     game.fund_mana(PlayerId(0));
@@ -72837,7 +72844,7 @@ fn songbirds_blessing_no_aura_in_library_is_a_noop() {
     let host = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
     let lib = game.stack_library(
         PlayerId(0),
-        &[card("Grizzly Bear"), card("Forest"), card("Island")],
+        &[card("Grizzly Bears"), card("Forest"), card("Island")],
     );
     let blessing = game.spawn_in_hand(PlayerId(0), card("Songbirds' Blessing"));
     game.fund_mana(PlayerId(0));
@@ -72882,7 +72889,7 @@ fn songbirds_blessing_bottoms_rest_in_prng_order() {
         PlayerId(0),
         &[
             card("Forest"),
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
             card("Mountain"),
             card("Redemption Arc"), // the Aura — the reveal's stop point
             card("Island"),         // untouched remainder below the stop point
@@ -72955,7 +72962,7 @@ fn songbirds_blessing_bottoms_rest_in_prng_order() {
         PlayerId(0),
         &[
             card("Forest"),
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
             card("Mountain"),
             card("Redemption Arc"),
             card("Island"),
@@ -73018,7 +73025,7 @@ fn creative_technique_reveals_until_nonland_exiles_and_casts_free() {
     let mut game = TestGame::new();
     let library = game.stack_library(
         PlayerId(0),
-        &[card("Forest"), card("Grizzly Bear"), card("Island")],
+        &[card("Forest"), card("Grizzly Bears"), card("Island")],
     );
     let (forest, bear, island) = (library[0], library[1], library[2]);
 
@@ -73081,7 +73088,7 @@ fn creative_technique_shuffles_first() {
     // "Shuffle your library, then reveal…" — the mandatory shuffle happens before any card is
     // revealed, not after (CR 701.19).
     let mut game = TestGame::new();
-    game.stack_library(PlayerId(0), &[card("Forest"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Forest"), card("Grizzly Bears")]);
     let technique = game.spawn_in_hand(PlayerId(0), card("Creative Technique"));
     game.cast(technique).submit();
     decline_demonstrate(&mut game); // not exercising the Demonstrate rider here — see #83
@@ -73110,7 +73117,7 @@ fn creative_technique_bottoms_rest_in_prng_order() {
         card("Forest"),
         card("Island"),
         card("Swamp"),
-        card("Grizzly Bear"), // the lone nonland — the reveal's stop point
+        card("Grizzly Bears"), // the lone nonland — the reveal's stop point
         card("Mountain"),
     ];
     let bottom_pile = |seed: u64| -> (Vec<ObjectId>, Vec<ObjectId>) {
@@ -73218,10 +73225,10 @@ fn animists_awakening_reveals_top_x_and_deploys_all_lands() {
         PlayerId(0),
         &[
             card("Forest"),
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
             card("Forest"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
         ],
     );
     let spell = game.spawn_in_hand(PlayerId(0), card("Animist's Awakening"));
@@ -73288,11 +73295,11 @@ fn animists_awakening_bottoms_rest_in_random_order() {
     let lib = game.stack_library(
         PlayerId(0),
         &[
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
             card("Forest"), // land among the revealed six — deployed, not bottomed
         ],
     );
@@ -73343,7 +73350,7 @@ fn animists_awakening_reveals_exactly_x() {
     let lib = game.stack_library(
         PlayerId(0),
         &[
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
             card("Forest"),
             card("Forest"), // never revealed — outside the top 2
         ],
@@ -73395,7 +73402,7 @@ fn animists_awakening_reveals_as_many_as_possible() {
     // CR 120.3: X larger than the library reveals every remaining card instead of panicking.
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let lib = game.stack_library(PlayerId(0), &[card("Forest"), card("Grizzly Bear")]);
+    let lib = game.stack_library(PlayerId(0), &[card("Forest"), card("Grizzly Bears")]);
     let spell = game.spawn_in_hand(PlayerId(0), card("Animist's Awakening"));
     game.submit(Intent::Cast {
         player: PlayerId(0),
@@ -73431,7 +73438,7 @@ fn animists_awakening_spell_mastery_untaps_deployed_lands() {
     game.fund_mana(PlayerId(0));
     game.spawn_in_graveyard(PlayerId(0), card("Abrade")); // instant
     game.spawn_in_graveyard(PlayerId(0), card("Blasphemous Act")); // sorcery
-    let lib = game.stack_library(PlayerId(0), &[card("Forest"), card("Grizzly Bear")]);
+    let lib = game.stack_library(PlayerId(0), &[card("Forest"), card("Grizzly Bears")]);
     let spell = game.spawn_in_hand(PlayerId(0), card("Animist's Awakening"));
     game.submit(Intent::Cast {
         player: PlayerId(0),
@@ -73468,7 +73475,7 @@ fn animists_awakening_no_spell_mastery_leaves_lands_tapped() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     game.spawn_in_graveyard(PlayerId(0), card("Abrade")); // only one instant/sorcery card
-    let lib = game.stack_library(PlayerId(0), &[card("Forest"), card("Grizzly Bear")]);
+    let lib = game.stack_library(PlayerId(0), &[card("Forest"), card("Grizzly Bears")]);
     let spell = game.spawn_in_hand(PlayerId(0), card("Animist's Awakening"));
     game.submit(Intent::Cast {
         player: PlayerId(0),
@@ -73523,7 +73530,7 @@ fn coiling_oracle_reveals_land_to_battlefield_else_hand() {
 #[test]
 fn coiling_oracle_reveals_nonland_to_hand() {
     let mut game = TestGame::new();
-    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
     let oracle = game.spawn_in_hand(PlayerId(0), card("Coiling Oracle"));
     game.cast(oracle).resolve(); // the creature enters
     resolve_top_of_stack(&mut game); // the ETB trigger resolves
@@ -73546,7 +73553,7 @@ fn rite_of_replication_kicked_makes_five_copies() {
     // five of those tokens instead." Declining the kicker spends only the printed {2}{U}{U} and
     // makes 1 token; paying it spends {2}{U}{U} plus {5} = 9 mana and makes 5.
     let mut game = TestGame::new();
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     let unkicked = game.spawn_in_hand(PlayerId(0), card("Rite of Replication"));
     let events = game.cast(unkicked).at(Target::Object(bear)).submit();
@@ -73566,7 +73573,7 @@ fn rite_of_replication_kicked_makes_five_copies() {
     );
     resolve_top_of_stack(&mut game);
     assert_eq!(
-        battlefield_named(&game, PlayerId(0), "Grizzly Bear").len(),
+        battlefield_named(&game, PlayerId(0), "Grizzly Bears").len(),
         2,
         "the original bear plus 1 un-kicked token copy"
     );
@@ -73593,7 +73600,7 @@ fn rite_of_replication_kicked_makes_five_copies() {
     );
     resolve_top_of_stack(&mut game);
     assert_eq!(
-        battlefield_named(&game, PlayerId(0), "Grizzly Bear").len(),
+        battlefield_named(&game, PlayerId(0), "Grizzly Bears").len(),
         7,
         "5 more token copies from the kicked cast, on top of the earlier 2"
     );
@@ -73605,7 +73612,7 @@ fn kicked_is_rejected_on_a_spell_with_no_kicker_cost() {
     // spell whose text actually says "Kicker").
     let mut game = TestGame::new();
     let shock = game.spawn_in_hand(PlayerId(0), card("Shock"));
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
 
     assert_eq!(
         game.cast(shock)
@@ -74721,13 +74728,13 @@ fn herald_of_amity_etb_exiles_top_eight_and_casts_chosen_aura_free() {
         PlayerId(0),
         &[
             card("Spirit Mantle"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
         ],
     );
     let rest = library[1..].to_vec();
@@ -74802,13 +74809,13 @@ fn herald_of_amity_etb_declining_the_cast_bottoms_all_eight() {
         PlayerId(0),
         &[
             card("Redemption Arc"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
         ],
     );
 
@@ -74852,14 +74859,14 @@ fn herald_of_amity_etb_with_no_aura_among_eight_bottoms_all_without_pausing() {
     let library = game.stack_library(
         PlayerId(0),
         &[
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
         ],
     );
 
@@ -74890,9 +74897,9 @@ fn cascade_exiles_until_cheaper_nonland_and_casts_it_free() {
     let library = game.stack_library(
         PlayerId(0),
         &[
-            card("Forest"),       // land — skipped, exiled and bottomed
-            card("Grizzly Bear"), // nonland, mana value 2 < 5 — the cascade hit
-            card("Island"),       // untouched remainder below the stop point
+            card("Forest"),        // land — skipped, exiled and bottomed
+            card("Grizzly Bears"), // nonland, mana value 2 < 5 — the cascade hit
+            card("Island"),        // untouched remainder below the stop point
             card("Mountain"),
             card("Plains"), // the pre-existing bottom card
         ],
@@ -74937,7 +74944,7 @@ fn cascade_exiles_until_cheaper_nonland_and_casts_it_free() {
     assert_eq!(
         game.zone_of(bear),
         Zone::Exile,
-        "the hit is the cheaper nonland — the Grizzly Bear"
+        "the hit is the cheaper nonland — the Grizzly Bears"
     );
 
     let events = game
@@ -75037,7 +75044,7 @@ fn cascade_declining_the_free_cast_bottoms_the_hit_too() {
     let mut game = TestGame::new();
     let library = game.stack_library(
         PlayerId(0),
-        &[card("Forest"), card("Grizzly Bear"), card("Island")],
+        &[card("Forest"), card("Grizzly Bears"), card("Island")],
     );
     let bear = library[1];
 
@@ -75069,8 +75076,8 @@ fn a_spell_without_cascade_places_no_cascade_trigger() {
     // Regression: the cascade placement guard fires only on `CardDef::cascade` — a plain spell
     // triggers nothing.
     let mut game = TestGame::new();
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     game.cast(bear).submit();
 
     assert_eq!(game.stack().len(), 1, "just the spell — no cascade trigger");
@@ -75083,7 +75090,7 @@ fn throes_of_chaos_cascades_on_cast() {
     // trigger above the spell. Cast from hand, retrace's discard-a-land rider (CR 702.83a) does
     // not apply — it's owed only when casting from the graveyard.
     let mut game = TestGame::new();
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
     let throes = game.spawn_in_hand(PlayerId(0), card("Throes of Chaos"));
     game.cast(throes).submit();
 
@@ -75335,8 +75342,8 @@ fn creative_technique_demonstrate_reruns_body() {
     // without paying its mana cost." Accepting re-runs this whole body once for the caster's
     // copy and once for the chosen opponent's.
     let mut game = TestGame::new();
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears")]);
     let technique = game.spawn_in_hand(PlayerId(0), card("Creative Technique"));
 
     game.cast(technique).submit();
@@ -75935,8 +75942,8 @@ fn devour_enters_with_counters_per_sacrificed_creature() {
     // Mycoloth: "Devour 2 (As this creature enters, you may sacrifice any number of creatures.
     // It enters with twice that many +1/+1 counters on it.)"
     let mut game = Game::new();
-    let a = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    let b = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let a = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let b = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let mycoloth = cast_devour_creature(&mut game, "Mycoloth");
     let entered = game.current_id(mycoloth);
 
@@ -75969,7 +75976,7 @@ fn devour_enters_with_counters_per_sacrificed_creature() {
 fn devour_decline_places_no_counters() {
     // Declining (an empty selection) is always legal — devour is a "may".
     let mut game = Game::new();
-    let a = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let a = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let mycoloth = cast_devour_creature(&mut game, "Mycoloth");
     let entered = game.current_id(mycoloth);
 
@@ -76007,7 +76014,7 @@ fn devour_counters_scale_through_doubler() {
     // `counters_after_replacements`, so Devour 2 × 1 creature = 2, then doubled to 4.
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Doubling Season"));
-    let a = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let a = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let mycoloth = cast_devour_creature(&mut game, "Mycoloth");
     let entered = game.current_id(mycoloth);
 
@@ -76029,9 +76036,9 @@ fn mycoloth_upkeep_makes_a_saproling_per_devoured_counter() {
     // Devour 2, sacrifice 1 creature → 2 +1/+1 counters; the already-authored upkeep ability
     // then makes one 1/1 green Saproling per counter (CR — "for each +1/+1 counter on this").
     let mut game = Game::new();
-    let a = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    game.stack_library(PlayerId(0), &vec![card("Grizzly Bear"); 3]); // avoid decking out
-    game.stack_library(PlayerId(1), &vec![card("Grizzly Bear"); 3]);
+    let a = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    game.stack_library(PlayerId(0), &vec![card("Grizzly Bears"); 3]); // avoid decking out
+    game.stack_library(PlayerId(1), &vec![card("Grizzly Bears"); 3]);
     let mycoloth = cast_devour_creature(&mut game, "Mycoloth");
     let entered = game.current_id(mycoloth);
 
@@ -76059,10 +76066,10 @@ fn ribtruss_roaster_end_step_makes_pests_with_dies_lifegain() {
     // Ribtruss Roaster: Devour 1, sacrifice 2 → 2 +1/+1 counters; its end-step ability makes one
     // 1/1 black-green Pest per counter, each with "When this token dies, you gain 1 life."
     let mut game = Game::new();
-    let a = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    let b = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    game.stack_library(PlayerId(0), &vec![card("Grizzly Bear"); 3]); // avoid decking out
-    game.stack_library(PlayerId(1), &vec![card("Grizzly Bear"); 3]);
+    let a = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let b = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    game.stack_library(PlayerId(0), &vec![card("Grizzly Bears"); 3]); // avoid decking out
+    game.stack_library(PlayerId(1), &vec![card("Grizzly Bears"); 3]);
     let ribtruss = cast_devour_creature(&mut game, "Ribtruss Roaster");
     let entered = game.current_id(ribtruss);
 
@@ -76136,7 +76143,7 @@ fn abstract_performance_opponent_picks_pile_controller_casts_one_free_rest_to_ha
             card("Forest"),
             card("Forest"),
             card("Forest"),
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
             card("Forest"),
             card("Forest"),
             card("Forest"),
@@ -76165,7 +76172,7 @@ fn abstract_performance_opponent_picks_pile_controller_casts_one_free_rest_to_ha
     let grizzly = pile_b
         .iter()
         .copied()
-        .find(|&id| game.def_of(id).name == "Grizzly Bear")
+        .find(|&id| game.def_of(id).name == "Grizzly Bears")
         .expect("the castable creature is in the second pile");
 
     // The opponent puts the first (creatureless) pile into the caster's graveyard.
@@ -76266,7 +76273,7 @@ fn abstract_performance_declining_the_free_cast_puts_the_whole_kept_pile_into_ha
             card("Forest"),
             card("Forest"),
             card("Forest"),
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
             card("Forest"),
             card("Forest"),
             card("Forest"),
@@ -76310,7 +76317,7 @@ fn plargg_and_nassari_upkeep_opponent_picks_a_nonland_controller_casts_up_to_two
     game.spawn_on_battlefield(PlayerId(0), card("Plargg and Nassari"));
     // Buffer libraries so nobody decks out over the intervening turns before P0's next upkeep.
     for p in 0..3u8 {
-        game.stack_library(PlayerId(p), &vec![card("Grizzly Bear"); 6]);
+        game.stack_library(PlayerId(p), &vec![card("Grizzly Bears"); 6]);
     }
 
     advance_until(&mut game, |g| {
@@ -76322,7 +76329,7 @@ fn plargg_and_nassari_upkeep_opponent_picks_a_nonland_controller_casts_up_to_two
     // nonland.
     game.stack_library(
         PlayerId(0),
-        &[card("Forest"), card("Grizzly Bear"), card("Forest")],
+        &[card("Forest"), card("Grizzly Bears"), card("Forest")],
     );
     game.stack_library(PlayerId(1), &[card("Elvish Mystic"), card("Forest")]);
     game.stack_library(PlayerId(2), &[card("Savannah Lions"), card("Forest")]);
@@ -76385,7 +76392,7 @@ fn plargg_and_nassari_upkeep_opponent_picks_a_nonland_controller_casts_up_to_two
     names.sort_unstable();
     assert_eq!(
         names,
-        vec!["Grizzly Bear", "Savannah Lions"],
+        vec!["Grizzly Bears", "Savannah Lions"],
         "only the other castable (nonland) cards are offered; the picked Mystic and the exiled \
          land are not"
     );
@@ -76447,13 +76454,13 @@ fn plargg_and_nassari_casts_only_what_is_available_when_fewer_than_two_others() 
     // pod exiles two nonlands, one of which the opponent picks), the controller casts just it.
     let mut game = Game::with_players(2, 0);
     game.spawn_on_battlefield(PlayerId(0), card("Plargg and Nassari"));
-    game.stack_library(PlayerId(0), &vec![card("Grizzly Bear"); 6]);
-    game.stack_library(PlayerId(1), &vec![card("Grizzly Bear"); 6]);
+    game.stack_library(PlayerId(0), &vec![card("Grizzly Bears"); 6]);
+    game.stack_library(PlayerId(1), &vec![card("Grizzly Bears"); 6]);
 
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
     });
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Forest")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Forest")]);
     game.stack_library(PlayerId(1), &[card("Elvish Mystic"), card("Forest")]);
     advance_until(&mut game, |g| g.pending_choice().is_some());
 
@@ -76464,7 +76471,7 @@ fn plargg_and_nassari_casts_only_what_is_available_when_fewer_than_two_others() 
     let grizzly = nonlands
         .iter()
         .copied()
-        .find(|&id| game.def_of(id).name == "Grizzly Bear")
+        .find(|&id| game.def_of(id).name == "Grizzly Bears")
         .expect("P0's exiled nonland");
     game.submit(Intent::ChooseExiledWithCard {
         player: PlayerId(1),
@@ -76513,7 +76520,7 @@ fn opponent_chooses_pile_answer_from_the_controller_is_rejected() {
     // The opponent-addressed pause is answerable only by the stored opponent — the controller
     // submitting the pile choice is rejected while the choice is pending.
     let mut game = TestGame::new();
-    game.stack_library(PlayerId(0), &vec![card("Grizzly Bear"); 8]);
+    game.stack_library(PlayerId(0), &vec![card("Grizzly Bears"); 8]);
     let ap = game.spawn_in_hand(PlayerId(0), card("Abstract Performance"));
     game.cast(ap).resolve();
 
@@ -76547,7 +76554,7 @@ fn abstract_performance_controller_chooses_which_opponent_splits() {
     let mut game = Game::with_players(4, 0);
     let refuge = game.spawn_on_battlefield(PlayerId(2), card("Alchemist's Refuge"));
     let ap = game.spawn_in_hand(PlayerId(2), card("Abstract Performance"));
-    game.stack_library(PlayerId(2), &vec![card("Grizzly Bear"); 8]);
+    game.stack_library(PlayerId(2), &vec![card("Grizzly Bears"); 8]);
     game.fund_mana(PlayerId(2));
 
     // Let priority reach P2 during P0's own Main1 (P0 and P1 pass with nothing to do).
@@ -76658,9 +76665,9 @@ fn fact_or_fiction_opponent_splits_controller_takes_pile() {
     let revealed = game.stack_library(
         PlayerId(0),
         &[
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
             card("Forest"),
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
             card("Forest"),
             card("Forest"),
         ],
@@ -76693,7 +76700,7 @@ fn fact_or_fiction_opponent_splits_controller_takes_pile() {
         "all five revealed cards are offered"
     );
 
-    // The opponent splits 3/2: the two Grizzly Bear plus one Forest into pile A.
+    // The opponent splits 3/2: the two Grizzly Bears plus one Forest into pile A.
     let pile_a_choice = vec![revealed[0], revealed[2], revealed[1]];
     game.submit(Intent::ChooseSacrifices {
         player: PlayerId(1),
@@ -76860,7 +76867,7 @@ fn plargg_and_nassari_offers_up_to_two_free_casts_from_the_other_exiled_nonlands
     let mut game = Game::with_players(3, 0);
     game.spawn_on_battlefield(PlayerId(0), card("Plargg and Nassari"));
     for p in 0..3u8 {
-        game.stack_library(PlayerId(p), &vec![card("Grizzly Bear"); 6]);
+        game.stack_library(PlayerId(p), &vec![card("Grizzly Bears"); 6]);
     }
 
     advance_until(&mut game, |g| {
@@ -76868,7 +76875,7 @@ fn plargg_and_nassari_offers_up_to_two_free_casts_from_the_other_exiled_nonlands
     });
     game.stack_library(
         PlayerId(0),
-        &[card("Forest"), card("Grizzly Bear"), card("Forest")],
+        &[card("Forest"), card("Grizzly Bears"), card("Forest")],
     );
     game.stack_library(PlayerId(1), &[card("Elvish Mystic"), card("Forest")]);
     game.stack_library(PlayerId(2), &[card("Savannah Lions"), card("Forest")]);
@@ -76978,7 +76985,7 @@ fn plargg_and_nassari_next_opponent_in_turn_order_picks() {
     let mut game = Game::with_players(4, 0);
     game.spawn_on_battlefield(PlayerId(1), card("Plargg and Nassari"));
     for p in 0..4u8 {
-        game.stack_library(PlayerId(p), &vec![card("Grizzly Bear"); 6]);
+        game.stack_library(PlayerId(p), &vec![card("Grizzly Bears"); 6]);
     }
 
     advance_until(&mut game, |g| {
@@ -76986,11 +76993,11 @@ fn plargg_and_nassari_next_opponent_in_turn_order_picks() {
     });
     game.stack_library(
         PlayerId(0),
-        &[card("Forest"), card("Grizzly Bear"), card("Forest")],
+        &[card("Forest"), card("Grizzly Bears"), card("Forest")],
     );
     game.stack_library(
         PlayerId(1),
-        &[card("Forest"), card("Grizzly Bear"), card("Forest")],
+        &[card("Forest"), card("Grizzly Bears"), card("Forest")],
     );
     game.stack_library(PlayerId(2), &[card("Elvish Mystic"), card("Forest")]);
     game.stack_library(PlayerId(3), &[card("Savannah Lions"), card("Forest")]);
@@ -77175,7 +77182,7 @@ fn a_regeneration_shield_does_not_save_a_creature_from_a_zero_toughness_sba() {
 #[test]
 fn a_regeneration_shield_expires_at_end_of_turn() {
     let mut game = TestGame::new();
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
     let bear = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
     let regen = game.spawn_in_hand(PlayerId(0), REGENERATE.clone());
 
@@ -77496,8 +77503,8 @@ fn ao_the_dawn_sky_mode_1_puts_nonland_permanents_under_mv_budget_onto_battlefie
     game.stack_library(
         PlayerId(0),
         &[
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
             card("Savannah Lions"),
             card("Elvish Mystic"),
             card("Angel of Indemnity"),
@@ -77576,10 +77583,10 @@ fn ao_the_dawn_sky_mode_2_puts_two_counters_on_each_creature_or_vehicle() {
     // creature or Vehicle."
     let mut game = TestGame::new();
     let ao = game.spawn_on_battlefield(PlayerId(0), card("Ao, the Dawn Sky"));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let copter = game.spawn_on_battlefield(PlayerId(0), card("Smuggler's Copter"));
     let sol_ring = game.spawn_on_battlefield(PlayerId(0), card("Sol Ring"));
-    let opp_bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let opp_bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     kill_and_reach_dies_mode(&mut game, ao);
 
     let Some(PendingChoice::ChooseMode { player, .. }) = game.pending_choice() else {
@@ -77702,7 +77709,7 @@ fn dance_with_calamity_casts_exiled_free_when_total_mv_at_most_13() {
     // Dance with Calamity: exile the top cards one at a time; with the total mana value at 13 or
     // less, cast any number of them for free. Six Bears (mv 2 each) → total 12, under the gate.
     let mut game = TestGame::new();
-    game.stack_library(PlayerId(0), &vec![card("Grizzly Bear"); 10]);
+    game.stack_library(PlayerId(0), &vec![card("Grizzly Bears"); 10]);
     let dance = game.spawn_in_hand(PlayerId(0), card("Dance with Calamity"));
     game.cast(dance).submit();
     resolve_top_of_stack(&mut game); // shuffle, then pause on the first exile-or-stop choice
@@ -77798,7 +77805,7 @@ fn dance_with_calamity_bust_over_13_grants_no_free_cast() {
     // Dance with Calamity bust: exile past a total mana value of 13 and the cards stay exiled with
     // no free-cast permission. Seven Bears (mv 2 each) → total 14, over the gate.
     let mut game = TestGame::new();
-    game.stack_library(PlayerId(0), &vec![card("Grizzly Bear"); 10]);
+    game.stack_library(PlayerId(0), &vec![card("Grizzly Bears"); 10]);
     let dance = game.spawn_in_hand(PlayerId(0), card("Dance with Calamity"));
     game.cast(dance).submit();
     resolve_top_of_stack(&mut game);
@@ -77924,7 +77931,7 @@ fn bloodghast_returns_from_graveyard_on_landfall() {
     let mut game = TestGame::new();
     let bloodghast = game.spawn_in_graveyard(PlayerId(0), card("Bloodghast"));
 
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     game.cast(bear).resolve();
     assert_eq!(
         game.pending_choice(),
@@ -77982,7 +77989,7 @@ fn anger_grants_haste_from_graveyard_with_mountain() {
     // Anger (soc): "As long as this card is in your graveyard and you control a Mountain,
     // creatures you control have haste." A keyword anthem that functions from the graveyard.
     let mut game = TestGame::new();
-    let creature = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let creature = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     game.spawn_in_graveyard(PlayerId(0), card("Anger"));
 
     assert!(
@@ -78002,7 +78009,7 @@ fn anger_on_the_battlefield_does_not_anthem_your_creatures() {
     // The graveyard anthem functions only from the graveyard — the same card on the battlefield
     // grants nothing to your other creatures (it keeps only its own printed body haste).
     let mut game = TestGame::new();
-    let creature = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let creature = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     game.spawn_on_battlefield(PlayerId(0), card("Mountain"));
     let anger = game.spawn_on_battlefield(PlayerId(0), card("Anger"));
 
@@ -78373,7 +78380,7 @@ fn advanced_reconstruction_level_two_burns_each_opponent_on_graveyard_leave() {
 
     // Before leveling: a card leaving the graveyard does nothing to opponents.
     let opp_start = game.life(PlayerId(1));
-    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let reanimate = game.spawn_in_hand(PlayerId(0), card("Reanimate"));
     game.submit(Intent::Cast {
         player: PlayerId(0),
@@ -78415,7 +78422,7 @@ fn advanced_reconstruction_level_two_burns_each_opponent_on_graveyard_leave() {
 
     // Now a card leaving the graveyard burns each opponent for 2.
     let opp_before = game.life(PlayerId(1));
-    let corpse2 = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let corpse2 = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let reanimate2 = game.spawn_in_hand(PlayerId(0), card("Reanimate"));
     game.submit(Intent::Cast {
         player: PlayerId(0),
@@ -78463,7 +78470,7 @@ fn advanced_reconstruction_level_two_emits_damage_dealt_to_player() {
     .unwrap();
     resolve_top_of_stack(&mut game);
 
-    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let reanimate = game.spawn_in_hand(PlayerId(0), card("Reanimate"));
     game.submit(Intent::Cast {
         player: PlayerId(0),
@@ -78786,7 +78793,7 @@ fn modified_creature_died_flag_set_when_modified_creature_dies() {
     // True: an equipped (modified, CR 701.29) creature dying under P0's control sets the flag.
     let mut game = Game::new();
     let watcher = game.spawn_on_battlefield(PlayerId(0), TEST_MODIFIED_DEATH_WATCHER.clone());
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let bonesplitter = game.spawn_on_battlefield(PlayerId(0), card("Bonesplitter"));
     assert_eq!(
         game.submit(Intent::ActivateAbility {
@@ -78818,7 +78825,7 @@ fn modified_creature_died_flag_set_when_modified_creature_dies() {
     // Control: an *unmodified* creature dying does not set the flag.
     let mut game = Game::new();
     let watcher = game.spawn_on_battlefield(PlayerId(0), TEST_MODIFIED_DEATH_WATCHER.clone());
-    let plain_bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let plain_bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
     cast_and_resolve(&mut game, bolt, Some(Target::Object(plain_bear)));
     assert_eq!(
@@ -78845,7 +78852,7 @@ fn modified_creature_died_flag_set_when_modified_creature_dies() {
 fn modified_creature_died_flag_resets_at_untap() {
     let mut game = Game::new();
     let watcher = game.spawn_on_battlefield(PlayerId(0), TEST_MODIFIED_DEATH_WATCHER.clone());
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let bonesplitter = game.spawn_on_battlefield(PlayerId(0), card("Bonesplitter"));
     equip_and_kill(&mut game, bonesplitter, bear);
     game.submit(Intent::ActivateAbility {
@@ -78885,7 +78892,7 @@ fn modified_creature_died_flag_keyed_by_controller_not_owner() {
     // too).
     let mut game = Game::new();
     let watcher = game.spawn_on_battlefield(PlayerId(0), TEST_MODIFIED_DEATH_WATCHER.clone());
-    let host = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear")); // owner P1
+    let host = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears")); // owner P1
 
     let steal = game.spawn_in_hand(PlayerId(0), STEAL_UNTIL_EOT.clone());
     cast_and_resolve(&mut game, steal, Some(Target::Object(host)));
@@ -78972,7 +78979,7 @@ fn intermediate_chirography_level_3_makes_inkling_on_morbid_modified() {
     let mut game = Game::new();
     chirography_at_level_3(&mut game);
 
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let bonesplitter = game.spawn_on_battlefield(PlayerId(0), card("Bonesplitter"));
     equip_and_kill(&mut game, bonesplitter, bear);
 
@@ -79006,7 +79013,7 @@ fn intermediate_chirography_level_3_gated_below_level_3() {
     let (class, _) = cast_chirography(&mut game);
     level_up_chirography(&mut game, class, 1); // {1}{B}: Level 2 only — stays below level 3
 
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let bonesplitter = game.spawn_on_battlefield(PlayerId(0), card("Bonesplitter"));
     equip_and_kill(&mut game, bonesplitter, bear);
 
@@ -79413,7 +79420,7 @@ static SCREAM_EXILE_RETURN_CREATURES: LazyLock<CardDef> = LazyLock::new(|| CardD
 fn scream_counter_expiry_moves_to_graveyard_and_runs_payload() {
     let mut game = Game::with_players(2, 0);
     // A creature waiting in the caster's graveyard for the expiry payload to return it.
-    let bear = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     // Libraries so neither player decks out while the turns roll by.
     game.stack_library(PlayerId(0), &vec![card("Forest"); 20]);
     game.stack_library(PlayerId(1), &vec![card("Forest"); 20]);
@@ -79757,8 +79764,8 @@ fn reality_shift_exiles_and_manifests_top_card() {
     let mut game = TestGame::new();
     let opponents_creature = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
     let shift = game.spawn_in_hand(PlayerId(0), card("Reality Shift"));
-    // P1's top card is a real creature (Grizzly Bear) — the manifest hides its identity.
-    let p1_lib = game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Forest")]);
+    // P1's top card is a real creature (Grizzly Bears) — the manifest hides its identity.
+    let p1_lib = game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Forest")]);
     let top = p1_lib[0];
     let p1_library_before = game.library_size(PlayerId(1));
 
@@ -79800,19 +79807,19 @@ fn reality_shift_exiles_and_manifests_top_card() {
     );
     assert!(
         game.effective_subtypes(manifested).is_empty(),
-        "a face-down manifest exposes no printed subtypes (Grizzly Bear's Bear is hidden)"
+        "a face-down manifest exposes no printed subtypes (Grizzly Bears's Bear is hidden)"
     );
 }
 
 /// A manifested creature card can be turned face up any time for its mana cost (CR 701.34e — a
-/// special action, no stack): Grizzly Bear ({1}{G}) manifested by Reality Shift reveals as a 2/2
+/// special action, no stack): Grizzly Bears ({1}{G}) manifested by Reality Shift reveals as a 2/2
 /// Bear.
 #[test]
 fn manifest_creature_can_be_turned_face_up_for_its_mana_cost() {
     let mut game = TestGame::new();
     let opponents_creature = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
     let shift = game.spawn_in_hand(PlayerId(0), card("Reality Shift"));
-    let p1_lib = game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Forest")]);
+    let p1_lib = game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Forest")]);
     let top = p1_lib[0];
 
     game.cast(shift)
@@ -79847,12 +79854,12 @@ fn manifest_creature_can_be_turned_face_up_for_its_mana_cost() {
     assert_eq!(
         (game.power(manifested), game.toughness(manifested)),
         (2, 2),
-        "Grizzly Bear's real P/T (also 2/2) is showing"
+        "Grizzly Bears's real P/T (also 2/2) is showing"
     );
     assert_eq!(
         game.effective_subtypes(manifested),
         vec!["Bear"],
-        "the real Grizzly Bear subtype is revealed once face up"
+        "the real Grizzly Bears subtype is revealed once face up"
     );
 }
 
@@ -79864,7 +79871,7 @@ fn manifest_noncreature_cannot_be_turned_face_up() {
     let opponents_creature = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
     let shift = game.spawn_in_hand(PlayerId(0), card("Reality Shift"));
     // A land on top — a noncreature manifest, so paying its (free) cost still can't reveal it.
-    let p1_lib = game.stack_library(PlayerId(1), &[card("Forest"), card("Grizzly Bear")]);
+    let p1_lib = game.stack_library(PlayerId(1), &[card("Forest"), card("Grizzly Bears")]);
     let top = p1_lib[0];
 
     game.cast(shift)
@@ -81284,7 +81291,7 @@ fn cast_free(game: &mut Game, player: PlayerId, object: ObjectId) {
 #[test]
 fn harmonic_prodigy_doubles_a_wizards_triggered_ability() {
     let mut game = Game::new();
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
     game.spawn_on_battlefield(PlayerId(0), card("Harmonic Prodigy"));
     let wizard = game.spawn_in_hand(PlayerId(0), WIZARD_ETB.clone());
 
@@ -81328,7 +81335,7 @@ fn harmonic_prodigy_does_not_double_its_own_prowess() {
 #[test]
 fn harmonic_prodigy_ignores_a_non_shaman_non_wizard() {
     let mut game = Game::new();
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
     game.spawn_on_battlefield(PlayerId(0), card("Harmonic Prodigy"));
     let human = game.spawn_in_hand(PlayerId(0), HUMAN_ETB.clone());
 
@@ -81430,9 +81437,9 @@ fn two_doublers_triple_the_trigger() {
     game.stack_library(
         PlayerId(0),
         &[
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
         ],
     );
     game.spawn_on_battlefield(PlayerId(0), card("Harmonic Prodigy"));
@@ -83818,8 +83825,8 @@ fn raven_familiar_etb_puts_one_of_top_three_in_hand_rest_on_bottom() {
 fn raven_familiar_echo_paid_keeps_it() {
     let mut game = Game::new();
     let raven = game.spawn_on_battlefield(PlayerId(0), card("Raven Familiar"));
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
 
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
@@ -83854,8 +83861,8 @@ fn raven_familiar_echo_paid_keeps_it() {
 fn raven_familiar_echo_declined_sacrifices_it() {
     let mut game = Game::new();
     let raven = game.spawn_on_battlefield(PlayerId(0), card("Raven Familiar"));
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
 
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
@@ -83882,7 +83889,7 @@ fn auramancer_returns_an_enchantment_or_aura_card_but_not_a_creature_card() {
     let mut game = TestGame::new();
     let enchantment = game.spawn_in_graveyard(PlayerId(0), card("Feral Appetite"));
     let aura = game.spawn_in_graveyard(PlayerId(0), card("Chains of Custody"));
-    let creature_card = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let creature_card = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let mancer = game.spawn_in_hand(PlayerId(0), card("Auramancer"));
     game.cast(mancer).resolve(); // enters; the optional ETB pauses for yes/no
 
@@ -84352,7 +84359,7 @@ fn dismantling_blow_unkicked_destroys_without_drawing() {
     // artifact; "If this spell was kicked, draw two cards" does nothing (CR 702.33d).
     let mut game = TestGame::new();
     let stone = game.spawn_on_battlefield(PlayerId(1), card("Mind Stone"));
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
     let blow = game.spawn_in_hand(PlayerId(0), card("Dismantling Blow"));
 
     let events = game.cast(blow).at(Target::Object(stone)).submit();
@@ -84388,7 +84395,7 @@ fn dismantling_blow_kicked_pays_the_kicker_and_draws_two() {
     // Paying the {2}{U} kicker makes the total {4}{W}{U} (6 mana) and draws two cards.
     let mut game = TestGame::new();
     let stone = game.spawn_on_battlefield(PlayerId(1), card("Mind Stone"));
-    let library = game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    let library = game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
     let blow = game.spawn_in_hand(PlayerId(0), card("Dismantling Blow"));
 
     let events = game
@@ -84428,7 +84435,7 @@ fn oblivion_ring_exiles_until_it_leaves_the_battlefield() {
     // Oblivion Ring: the ETB exile is linked to the leave-return (CR 603.6e) — destroying the
     // Ring returns the exiled card to the battlefield under its owner's control.
     let mut game = TestGame::new();
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let ring_card = game.spawn_in_hand(PlayerId(0), card("Oblivion Ring"));
 
     game.cast(ring_card).resolve();
@@ -84481,13 +84488,13 @@ fn overwhelming_intellect_counters_a_creature_spell_and_draws_its_mana_value() {
     let library = game.stack_library(
         PlayerId(0),
         &[
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
         ],
     );
     // P1 draws at their draw step on the way to their main phase — an empty library would lose.
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears")]);
 
     // P1 can't cast a creature at instant speed on P0's turn — roll to P1's main phase.
     // Mana is funded after the roll (pools empty as each step ends).
@@ -84557,7 +84564,7 @@ fn overwhelming_intellect_cannot_target_a_noncreature_spell() {
     let bolt = game.spawn_in_hand(PlayerId(1), card("Lightning Bolt"));
     let intellect = game.spawn_in_hand(PlayerId(0), card("Overwhelming Intellect"));
     // P1 draws at their draw step on the way to their main phase — an empty library would lose.
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears")]);
 
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(1) && g.current_step() == Step::Main1
@@ -84614,7 +84621,7 @@ fn overwhelming_intellect_cannot_target_a_noncreature_spell() {
 fn resurrection_returns_your_creature_card_to_the_battlefield() {
     // Resurrection: "Return target creature card from your graveyard to the battlefield."
     let mut game = TestGame::new();
-    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let resurrection = game.spawn_in_hand(PlayerId(0), card("Resurrection"));
 
     game.cast(resurrection).at(Target::Object(corpse)).resolve();
@@ -84635,7 +84642,7 @@ fn resurrection_returns_your_creature_card_to_the_battlefield() {
 fn resurrection_cannot_target_an_opponents_graveyard_card() {
     // "your graveyard" — an opponent's graveyard card is not a legal target.
     let mut game = TestGame::new();
-    let corpse = game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bear"));
+    let corpse = game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bears"));
     let resurrection = game.spawn_in_hand(PlayerId(0), card("Resurrection"));
 
     assert_eq!(
@@ -84812,7 +84819,7 @@ fn enlightened_tutor_reveals_and_puts_an_artifact_or_enchantment_card_on_top() {
         PlayerId(0),
         &[
             card("Forest"),          // land — no match
-            card("Grizzly Bear"),    // creature — no match
+            card("Grizzly Bears"),   // creature — no match
             card("Sol Ring"),        // artifact — a match
             card("Glorious Anthem"), // enchantment — a match
         ],
@@ -84905,7 +84912,7 @@ fn sterling_grove_tutors_an_enchantment_to_the_top() {
         PlayerId(0),
         &[
             card("Forest"),          // land — no match
-            card("Grizzly Bear"),    // creature — no match
+            card("Grizzly Bears"),   // creature — no match
             card("Glorious Anthem"), // enchantment — a match
         ],
     );
@@ -85004,9 +85011,9 @@ fn cast_court_hussar_funding_generic_with(game: &mut Game, generic_source: &str)
     game.stack_library(
         PlayerId(0),
         &[
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
+            card("Grizzly Bears"),
         ],
     );
     for _ in 0..2 {
@@ -85447,7 +85454,7 @@ fn questing_phelddagrif_blue_lets_opponent_may_draw() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     let phelddagrif = game.spawn_on_battlefield(PlayerId(0), card("Questing Phelddagrif"));
-    let lib = game.stack_library(PlayerId(1), &[card("Grizzly Bear")]);
+    let lib = game.stack_library(PlayerId(1), &[card("Grizzly Bears")]);
 
     game.submit(Intent::ActivateAbility {
         player: PlayerId(0),
@@ -85713,7 +85720,7 @@ fn miraris_wake_no_bonus_when_non_land_taps_for_mana() {
 fn miraris_wake_anthem_gives_your_creatures_plus_one_plus_one() {
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Mirari's Wake"));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // printed 2/2
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears")); // printed 2/2
 
     assert_eq!(
         (game.power(bear), game.toughness(bear)),
@@ -86437,7 +86444,7 @@ fn eternal_witness_etb_regrowths_any_card_type_from_your_graveyard() {
     let mut game = TestGame::new();
     let instant = game.spawn_in_graveyard(PlayerId(0), card("Shock"));
     let land = game.spawn_in_graveyard(PlayerId(0), card("Forest"));
-    let creature_card = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let creature_card = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let witness = game.spawn_in_hand(PlayerId(0), card("Eternal Witness"));
     game.cast(witness).resolve(); // enters; the optional ETB pauses for yes/no
 
@@ -86516,7 +86523,7 @@ fn flametongue_kavu_etb_must_target_a_creature_even_your_own() {
     // MANDATORY trigger targeted at placement: with only your own creatures on the battlefield,
     // one of them (the Kavu itself included) must be chosen.
     let mut game = TestGame::new();
-    let own_bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let own_bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let kavu = game.spawn_in_hand(PlayerId(0), card("Flametongue Kavu"));
     game.cast(kavu).resolve();
 
@@ -86606,7 +86613,7 @@ fn yavimaya_elder_sacrifices_itself_for_two_mana_to_draw() {
     // Yavimaya Elder: "{2}, Sacrifice this creature: Draw a card." — the sacrifice is a cost, so
     // its own dies trigger fires before the drawn card arrives; declining the search still draws.
     let mut game = TestGame::new();
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
     let elder = game.spawn_on_battlefield(PlayerId(0), card("Yavimaya Elder"));
     game.fund_mana(PlayerId(0));
     let hand_before = hand_ids(&game, PlayerId(0)).len();
@@ -86648,7 +86655,7 @@ fn carrion_feeder_sac_outlet_grows_itself_and_cannot_block() {
     // this creature." — a free sacrifice outlet whose counter always lands on the Feeder.
     let mut game = TestGame::new();
     let feeder = game.spawn_on_battlefield(PlayerId(0), card("Carrion Feeder"));
-    let fodder = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let fodder = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     assert!(
         game.has_keyword(feeder, Keyword::CantBlock),
         "this creature can't block"
@@ -86686,9 +86693,9 @@ fn abyssal_gatekeeper_dies_edict_makes_each_player_sacrifice_a_creature() {
     // choice." — every player, its controller included, picks their own creature.
     let mut game = TestGame::new();
     let gatekeeper = game.spawn_on_battlefield(PlayerId(0), card("Abyssal Gatekeeper"));
-    let own_bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    let opp_a = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
-    let opp_b = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let own_bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let opp_a = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
+    let opp_b = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
 
     let destroy = game.spawn_in_hand(PlayerId(0), DESTROY.clone());
     game.cast(destroy).at(Target::Object(gatekeeper)).resolve();
@@ -86753,7 +86760,7 @@ fn brawn_grants_trample_from_graveyard_with_forest() {
     // Brawn: "As long as this card is in your graveyard and you control a Forest, creatures
     // you control have trample." Anger's Forest-gated twin.
     let mut game = TestGame::new();
-    let creature = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let creature = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     game.spawn_in_graveyard(PlayerId(0), card("Brawn"));
 
     assert!(
@@ -86772,7 +86779,7 @@ fn brawn_grants_trample_from_graveyard_with_forest() {
 fn brawn_on_the_battlefield_does_not_anthem_your_creatures() {
     // The graveyard anthem functions only from the graveyard (Anger's shape).
     let mut game = TestGame::new();
-    let creature = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let creature = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     game.spawn_on_battlefield(PlayerId(0), card("Forest"));
     let brawn = game.spawn_on_battlefield(PlayerId(0), card("Brawn"));
 
@@ -86792,9 +86799,9 @@ fn genesis_pays_2g_at_upkeep_to_regrow_a_creature_card_from_its_graveyard() {
     // pay {2}{G}. If you do, return target creature card from your graveyard to your hand."
     let mut game = Game::new();
     game.spawn_in_graveyard(PlayerId(0), card("Genesis"));
-    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
 
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
@@ -86847,9 +86854,9 @@ fn genesis_pays_2g_at_upkeep_to_regrow_a_creature_card_from_its_graveyard() {
 fn genesis_declining_the_upkeep_payment_returns_nothing() {
     let mut game = Game::new();
     game.spawn_in_graveyard(PlayerId(0), card("Genesis"));
-    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
 
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
@@ -86877,7 +86884,7 @@ fn fires_of_yavimaya_anthems_haste_and_sacrifices_itself_to_pump() {
     // Fires of Yavimaya: "Creatures you control have haste. / Sacrifice this enchantment:
     // Target creature gets +2/+2 until end of turn."
     let mut game = Game::new();
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let fires = game.spawn_on_battlefield(PlayerId(0), card("Fires of Yavimaya"));
 
     assert!(
@@ -86916,8 +86923,8 @@ fn phyrexian_arena_upkeep_draws_a_card_and_loses_1_life() {
     // — one trigger, draw then lose, in a single resolution.
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Phyrexian Arena"));
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
 
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
@@ -87028,7 +87035,7 @@ fn phyrexian_arena_controller_dies_mid_upkeep_with_pending_trigger() {
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), MAY_DRAW_UPKEEP.clone());
     let arena = game.spawn_on_battlefield(PlayerId(0), card("Phyrexian Arena"));
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
 
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
@@ -87078,7 +87085,7 @@ fn player_lost_purge_is_scoped_to_the_departed_player() {
     // test's own assertions run — a decked-out player 1 would confound the scoping this test
     // means to isolate (advancing to player 0's *second* upkeep already rolls player 1 through
     // one full turn of their own).
-    game.stack_library(PlayerId(1), &vec![card("Grizzly Bear"); 10]);
+    game.stack_library(PlayerId(1), &vec![card("Grizzly Bears"); 10]);
 
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
@@ -87129,8 +87136,8 @@ fn skullclamp_draws_two_when_the_equipped_creature_dies() {
     // cards. / Equip {1}"
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let clamp = game.spawn_on_battlefield(PlayerId(0), card("Skullclamp"));
 
     game.submit(Intent::ActivateAbility {
@@ -87186,7 +87193,7 @@ fn skullclamp_equip_killing_the_one_toughness_bearer_still_draws_two() {
     // (0 toughness state-based action) and the dies-trigger still draws two.
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
     let fodder = game.spawn_on_battlefield(PlayerId(0), creature("Fodder 1/1", 1, 1, &[]));
     let clamp = game.spawn_on_battlefield(PlayerId(0), card("Skullclamp"));
     let hand_before = hand_ids(&game, PlayerId(0)).len();
@@ -87251,8 +87258,8 @@ fn keldon_vandals_echo_unpaid_sacrifices_it_at_upkeep() {
     // "Echo {2}{R}" — at the controller's first upkeep after it entered, pay or sacrifice.
     let mut game = Game::new();
     let vandals = game.spawn_on_battlefield(PlayerId(0), card("Keldon Vandals"));
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
 
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
@@ -87289,7 +87296,7 @@ fn xira_arien_taps_for_brg_so_a_target_player_draws() {
     // activation.
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears")]);
     let xira = game.spawn_on_battlefield(PlayerId(0), card("Xira Arien"));
     let opp_hand_before = hand_ids(&game, PlayerId(1)).len();
 
@@ -87319,7 +87326,7 @@ fn hissing_iguanar_pings_a_player_when_another_creature_dies() {
     // damage to target player or planeswalker."
     let mut game = TestGame::new();
     game.spawn_on_battlefield(PlayerId(0), card("Hissing Iguanar"));
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let destroy = game.spawn_in_hand(PlayerId(0), DESTROY.clone());
 
     game.cast(destroy).at(Target::Object(bear)).resolve(); // the bear dies; the watch fires
@@ -87468,7 +87475,7 @@ fn grim_harvest_recover_offers_a_pay_or_exile_choice_when_a_creature_dies() {
     // this card."
     let mut game = TestGame::new();
     let grim_harvest = game.spawn_in_graveyard(PlayerId(0), card("Grim Harvest"));
-    let victim = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let victim = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let shock = game.spawn_in_hand(PlayerId(0), card("Shock"));
     game.fund_mana(PlayerId(0));
 
@@ -87512,7 +87519,7 @@ fn grim_harvest_recover_offers_a_pay_or_exile_choice_when_a_creature_dies() {
 fn grim_harvest_recover_paid_returns_it_to_hand() {
     let mut game = TestGame::new();
     let grim_harvest = game.spawn_in_graveyard(PlayerId(0), card("Grim Harvest"));
-    let victim = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let victim = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let shock = game.spawn_in_hand(PlayerId(0), card("Shock"));
     game.fund_mana(PlayerId(0));
     game.submit(Intent::Cast {
@@ -87558,7 +87565,7 @@ fn grim_harvest_recover_paid_returns_it_to_hand() {
 fn grim_harvest_recover_declined_exiles_it() {
     let mut game = TestGame::new();
     let grim_harvest = game.spawn_in_graveyard(PlayerId(0), card("Grim Harvest"));
-    let victim = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let victim = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let shock = game.spawn_in_hand(PlayerId(0), card("Shock"));
     game.fund_mana(PlayerId(0));
     game.submit(Intent::Cast {
@@ -87633,7 +87640,7 @@ fn milled_creature_death_does_not_offer_recover() {
 fn grim_harvest_returns_a_creature_card_from_the_graveyard_to_hand() {
     // "Return target creature card from your graveyard to your hand."
     let mut game = TestGame::new();
-    let bear = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let grim_harvest = game.spawn_in_hand(PlayerId(0), card("Grim Harvest"));
     game.fund_mana(PlayerId(0));
 
@@ -88695,7 +88702,7 @@ fn golgari_thug_dies_tucks_a_creature_to_top_of_library() {
     // graveyard on top of your library."
     let mut game = Game::new();
     let thug = game.spawn_on_battlefield(PlayerId(0), card("Golgari Thug"));
-    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     game.fund_mana(PlayerId(0));
     let shock = game.spawn_in_hand(PlayerId(0), card("Shock")); // 2 damage — lethal to the 1/1.
 
@@ -88754,7 +88761,7 @@ fn shambling_shell_sacrifices_itself_to_put_a_counter_on_target_creature() {
     // Shambling Shell (rvr): "Sacrifice this creature: Put a +1/+1 counter on target creature."
     let mut game = Game::new();
     let shell = game.spawn_on_battlefield(PlayerId(0), card("Shambling Shell"));
-    let target = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let target = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     game.submit(Intent::ActivateAbility {
         player: PlayerId(0),
@@ -89229,7 +89236,7 @@ fn two_controllers_death_watch_orders_apnap() {
     assert_eq!(game.active_player(), PlayerId(0), "seat 0 starts active");
     game.spawn_on_battlefield(PlayerId(0), card("Hissing Iguanar")); // active player's watcher
     game.spawn_on_battlefield(PlayerId(1), card("Hissing Iguanar")); // next player's watcher
-    let bear = game.spawn_on_battlefield(PlayerId(2), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(2), card("Grizzly Bears"));
     let destroy = game.spawn_in_hand(PlayerId(0), DESTROY.clone());
     game.fund_mana(PlayerId(0));
 
@@ -89302,7 +89309,7 @@ fn animate_dead_trigger_does_nothing_if_the_aura_leaves_first() {
     // card to the battlefield..." — destroying the Aura in response to its own ETB trigger
     // makes the intervening-if (CR 603.4) fail at resolution: nothing is returned.
     let mut game = Game::new();
-    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let animate = game.spawn_in_hand(PlayerId(0), card("Animate Dead"));
     cast_and_resolve(&mut game, animate, Some(Target::Object(corpse)));
     // The Aura is on the battlefield; its ETB trigger is on the stack. Respond by
@@ -89340,11 +89347,11 @@ fn animate_dead_rewritten_enchant_holds_it_to_the_reanimated_creature() {
     // Aura to exactly the object it reanimated (not the default enchant-creature filter): it
     // stays attached across sweeps, and falls off in the same sweep that object dies.
     let mut game = Game::new();
-    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let (bear, aura) = reanimate_with_animate_dead(&mut game, corpse);
     // A resolution (and its CR 704.5 sweep) with another creature on the battlefield: the
     // rewritten enchant holds the Aura to its reanimated creature — it stays attached.
-    let other = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let other = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let destroy = game.spawn_in_hand(PlayerId(0), DESTROY.clone());
     cast_and_resolve(&mut game, destroy, Some(Target::Object(other)));
 
@@ -89441,7 +89448,7 @@ fn evolving_wilds_fetches_a_tapped_basic() {
     // Evolving Wilds: "{T}, Sacrifice this land: Search your library for a basic land card,
     // put it onto the battlefield tapped, then shuffle."
     let mut game = Game::new();
-    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Forest")]);
+    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Forest")]);
     let wilds = game.spawn_on_battlefield(PlayerId(0), card("Evolving Wilds"));
 
     game.submit(Intent::ActivateAbility {
@@ -89589,7 +89596,7 @@ fn prophetic_prism_draws_on_entry_and_filters_a_mana_into_any_color() {
     let mut game = Game::new();
     let prism = game.spawn_on_battlefield(PlayerId(0), card("Prophetic Prism"));
     let forest = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
-    let victim = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let victim = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let shock = game.spawn_in_hand(PlayerId(0), card("Shock"));
 
     game.submit(Intent::TapForMana {
@@ -89623,7 +89630,7 @@ fn armillary_sphere_fetches_up_to_two_basics_to_hand() {
     let mut game = Game::new();
     let lib = game.stack_library(
         PlayerId(0),
-        &[card("Forest"), card("Grizzly Bear"), card("Swamp")],
+        &[card("Forest"), card("Grizzly Bears"), card("Swamp")],
     );
     let sphere = game.spawn_on_battlefield(PlayerId(0), card("Armillary Sphere"));
     game.fund_mana(PlayerId(0));
@@ -89687,8 +89694,8 @@ fn false_prophet_dies_and_exiles_all_creatures() {
     // sweep from the graveyard trigger, hitting every player's creatures.
     let mut game = TestGame::new();
     let prophet = game.spawn_on_battlefield(PlayerId(0), card("False Prophet"));
-    let own_bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    let opp_bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let own_bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let opp_bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
 
     let destroy = game.spawn_in_hand(PlayerId(0), DESTROY.clone());
     game.cast(destroy).at(Target::Object(prophet)).resolve();
@@ -89846,7 +89853,7 @@ fn izzet_chronarch_etb_returns_an_instant_or_sorcery_from_your_graveyard() {
     // are legal.
     let mut game = TestGame::new();
     let own_instant = game.spawn_in_graveyard(PlayerId(0), card("Shock"));
-    let own_creature_card = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let own_creature_card = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let opponents_instant = game.spawn_in_graveyard(PlayerId(1), card("Shock"));
     let chronarch = game.spawn_in_hand(PlayerId(0), card("Izzet Chronarch"));
 
@@ -89889,7 +89896,7 @@ fn journey_to_nowhere_exiles_a_creature_until_it_leaves() {
     // enchantment leaves the battlefield, return the exiled card to the battlefield under its
     // owner's control." — the linked O-Ring pair (CR 603.6e), creature targets only.
     let mut game = TestGame::new();
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let rock = game.spawn_on_battlefield(PlayerId(1), card("Mind Stone"));
     let journey_card = game.spawn_in_hand(PlayerId(0), card("Journey to Nowhere"));
 
@@ -89936,9 +89943,9 @@ fn perilous_research_draws_two_then_its_caster_sacrifices_a_permanent() {
     // choice (CR 701.16a), not a target.
     let mut game = TestGame::new();
     let lib = game.stack_library(PlayerId(0), &[card("Forest"), card("Forest")]);
-    let own_bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let own_bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let own_land = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
-    let opponents_bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let opponents_bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let research = game.spawn_in_hand(PlayerId(0), card("Perilous Research"));
 
     game.cast(research).resolve();
@@ -89982,7 +89989,7 @@ fn repulse_bounces_a_creature_and_draws_a_card() {
     // the cantrip resolve as one spell.
     let mut game = TestGame::new();
     let lib = game.stack_library(PlayerId(0), &[card("Forest")]);
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let repulse = game.spawn_in_hand(PlayerId(0), card("Repulse"));
 
     game.cast(repulse).at(Target::Object(bear)).resolve();
@@ -90533,7 +90540,7 @@ fn cast_lash_out_keep_tops(
 fn clash_controller_wins_on_higher_mana_value() {
     // Lash Out (di): "Clash with an opponent. Lash Out deals 4 damage to target creature. If you
     // win the clash, Lash Out deals 2 damage to that creature's controller." P0's Serra Angel
-    // (MV 5) beats P1's Grizzly Bear (MV 2), so the win rider fires.
+    // (MV 5) beats P1's Grizzly Bears (MV 2), so the win rider fires.
     let mut game = Game::new();
     let creature = game.spawn_on_battlefield(PlayerId(1), card("Serra Angel"));
     let before = game.life(PlayerId(1));
@@ -90542,7 +90549,7 @@ fn clash_controller_wins_on_higher_mana_value() {
         &mut game,
         creature,
         card("Serra Angel"),
-        card("Grizzly Bear"),
+        card("Grizzly Bears"),
     );
 
     assert_eq!(
@@ -90559,7 +90566,7 @@ fn clash_controller_wins_on_higher_mana_value() {
 
 #[test]
 fn clash_tie_does_not_win() {
-    // Equal mana values (Grizzly Bear vs Grizzly Bear, MV 2 each) is not "strictly greater": no
+    // Equal mana values (Grizzly Bears vs Grizzly Bears, MV 2 each) is not "strictly greater": no
     // win, so the controller takes no rider damage.
     let mut game = Game::new();
     let creature = game.spawn_on_battlefield(PlayerId(1), card("Serra Angel"));
@@ -90568,8 +90575,8 @@ fn clash_tie_does_not_win() {
     let events = cast_lash_out_keep_tops(
         &mut game,
         creature,
-        card("Grizzly Bear"),
-        card("Grizzly Bear"),
+        card("Grizzly Bears"),
+        card("Grizzly Bears"),
     );
 
     assert_eq!(
@@ -90586,12 +90593,13 @@ fn clash_tie_does_not_win() {
 
 #[test]
 fn clash_lower_mana_value_does_not_win() {
-    // P0's Forest (MV 0) loses to P1's Grizzly Bear (MV 2): only the 4 to the creature lands.
+    // P0's Forest (MV 0) loses to P1's Grizzly Bears (MV 2): only the 4 to the creature lands.
     let mut game = Game::new();
     let creature = game.spawn_on_battlefield(PlayerId(1), card("Serra Angel"));
     let before = game.life(PlayerId(1));
 
-    let events = cast_lash_out_keep_tops(&mut game, creature, card("Forest"), card("Grizzly Bear"));
+    let events =
+        cast_lash_out_keep_tops(&mut game, creature, card("Forest"), card("Grizzly Bears"));
 
     assert_eq!(
         damage_marked(&events, creature),
@@ -90611,7 +90619,7 @@ fn clash_keep_or_bottom_moves_the_revealed_card() {
     let mut game = Game::new();
     let creature = game.spawn_on_battlefield(PlayerId(1), card("Serra Angel"));
     let mine = game.stack_library(PlayerId(0), &[card("Serra Angel"), card("Island")]);
-    let theirs = game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Island")]);
+    let theirs = game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Island")]);
     let lash = game.spawn_in_hand(PlayerId(0), card("Lash Out"));
     game.fund_mana(PlayerId(0));
     game.submit(Intent::Cast {
@@ -90645,7 +90653,7 @@ fn clash_keep_or_bottom_moves_the_revealed_card() {
     })
     .unwrap();
 
-    // P1 keeps its revealed Grizzly Bear on top.
+    // P1 keeps its revealed Grizzly Bears on top.
     assert!(
         matches!(game.pending_choice(), Some(PendingChoice::ArrangeTop { player, .. }) if player == PlayerId(1))
     );
@@ -90716,10 +90724,10 @@ fn advance_to_next_main1(game: &mut Game, who: PlayerId) {
 fn scattering_stroke_win_adds_colorless_for_countered_spell_mana_value() {
     // Scattering Stroke (all): "Clash with an opponent. Counter target spell. If you win the clash,
     // at the beginning of your next main phase, add {C} for each 1 mana in that spell's mana cost."
-    // P0 counters a Grizzly Bear (MV 2); winning the clash schedules {C}{C} for P0's next main.
+    // P0 counters a Grizzly Bears (MV 2); winning the clash schedules {C}{C} for P0's next main.
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     game.submit(Intent::Cast {
         player: PlayerId(0),
         object: bear,
@@ -90737,7 +90745,7 @@ fn scattering_stroke_win_adds_colorless_for_countered_spell_mana_value() {
         multikicker_count: 0,
         alternative_cost: false,
     })
-    .expect("Grizzly Bear is castable");
+    .expect("Grizzly Bears is castable");
     let bear_on_stack = top_spell(&game);
 
     // Rig P0's clash top above P1's so the controller wins.
@@ -90769,7 +90777,7 @@ fn scattering_stroke_win_adds_colorless_for_countered_spell_mana_value() {
     // The bear is countered (in P0's graveyard).
     assert!(
         game.live_object_ids().into_iter().any(|id| {
-            game.zone_of(id) == Zone::Graveyard && game.def_of(id).name == "Grizzly Bear"
+            game.zone_of(id) == Zone::Graveyard && game.def_of(id).name == "Grizzly Bears"
         }),
         "the target spell was countered"
     );
@@ -90786,17 +90794,17 @@ fn scattering_stroke_win_adds_colorless_for_countered_spell_mana_value() {
     assert_eq!(
         game.colorless_in_pool(PlayerId(0)),
         2,
-        "colorless for each of Grizzly Bear's 2 mana value at the next main phase"
+        "colorless for each of Grizzly Bears's 2 mana value at the next main phase"
     );
 }
 
 #[test]
 fn scattering_stroke_loss_counters_but_schedules_no_mana() {
-    // Losing the clash (P0's Forest MV 0 under P1's Grizzly Bear MV 2) still counters the spell, but
+    // Losing the clash (P0's Forest MV 0 under P1's Grizzly Bears MV 2) still counters the spell, but
     // the delayed-mana rider never fires.
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
     game.submit(Intent::Cast {
         player: PlayerId(0),
         object: bear,
@@ -90817,7 +90825,7 @@ fn scattering_stroke_loss_counters_but_schedules_no_mana() {
     .unwrap();
     let bear_on_stack = top_spell(&game);
     let mine = game.stack_library(PlayerId(0), &[card("Forest"), card("Forest")]);
-    let theirs = game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Forest")]);
+    let theirs = game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Forest")]);
     let scatter = game.spawn_in_hand(PlayerId(0), card("Scattering Stroke"));
     game.fund_mana(PlayerId(0));
     game.submit(Intent::Cast {
@@ -90843,7 +90851,7 @@ fn scattering_stroke_loss_counters_but_schedules_no_mana() {
 
     assert!(
         game.live_object_ids().into_iter().any(|id| {
-            game.zone_of(id) == Zone::Graveyard && game.def_of(id).name == "Grizzly Bear"
+            game.zone_of(id) == Zone::Graveyard && game.def_of(id).name == "Grizzly Bears"
         }),
         "losing the clash still counters the spell"
     );
@@ -90859,9 +90867,9 @@ fn scattering_stroke_loss_counters_but_schedules_no_mana() {
 fn pollen_lullaby_win_keeps_opponents_creatures_tapped_through_their_untap() {
     // Pollen Lullaby (tsp): "Clash with an opponent. Prevent all combat damage that would be dealt
     // this turn. If you win the clash, creatures your opponents control don't untap during their
-    // controllers' next untap steps." P1's tapped Grizzly Bear stays tapped through P1's untap step.
+    // controllers' next untap steps." P1's tapped Grizzly Bears stays tapped through P1's untap step.
     let mut game = Game::new();
-    let opp_creature = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let opp_creature = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     game.tap(opp_creature);
     assert!(game.is_tapped(opp_creature));
 
@@ -90911,7 +90919,7 @@ fn whirlpool_whelm_loss_puts_creature_on_top_win_second_from_top() {
     // clash, instead put that creature into its owner's library second from the top."
     // Loss branch: the creature lands on top (drawn first).
     let mut game = Game::new();
-    let creature = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let creature = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     // P1's library has a known top card; the tucked creature must sit relative to it.
     let lib = game.stack_library(PlayerId(1), &[card("Island"), card("Forest")]);
     let mine = game.stack_library(PlayerId(0), &[card("Forest"), card("Forest")]);
@@ -90959,7 +90967,7 @@ fn whirlpool_whelm_loss_puts_creature_on_top_win_second_from_top() {
 #[test]
 fn whirlpool_whelm_win_puts_creature_second_from_top() {
     let mut game = Game::new();
-    let creature = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let creature = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let lib = game.stack_library(PlayerId(1), &[card("Forest"), card("Swamp")]);
     // Rig P0's clash top above P1's so the controller wins.
     let mine = game.stack_library(PlayerId(0), &[card("Serra Angel"), card("Forest")]);
@@ -91174,8 +91182,8 @@ fn strife_counters_accumulate_each_upkeep_and_pump_attackers_and_blockers() {
     let blocker = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
     // Two turns' worth of draws elapse before combat — stock both libraries so neither player
     // loses to an empty draw along the way (CR 104.3c).
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
 
     // Roll through P1's upkeep, then P0's upkeep (turn 3) — two strife counters total.
     advance_until(&mut game, |g| {
@@ -91221,7 +91229,7 @@ fn murmurs_from_beyond_opponent_picks_one_to_graveyard_rest_to_hand() {
     let mut game = TestGame::new();
     let revealed = game.stack_library(
         PlayerId(0),
-        &[card("Grizzly Bear"), card("Forest"), card("Grizzly Bear")],
+        &[card("Grizzly Bears"), card("Forest"), card("Grizzly Bears")],
     );
     let murmurs = game.spawn_in_hand(PlayerId(0), card("Murmurs from Beyond"));
     game.cast(murmurs).resolve();
@@ -91358,7 +91366,7 @@ fn howling_mine_untapped_each_player_draws_an_extra_card_at_their_draw_step() {
     // first non-skipped draw of the game, CR 103.8a) still fires it for "that player" — player 1.
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Howling Mine"));
-    let library = game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Shock")]);
+    let library = game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Shock")]);
 
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(1) && g.current_step() == Step::Draw
@@ -91389,7 +91397,7 @@ fn howling_mine_tapped_grants_no_extra_draw() {
     let mut game = Game::new();
     let mine = game.spawn_on_battlefield(PlayerId(0), card("Howling Mine"));
     game.tap(mine);
-    let library = game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Shock")]);
+    let library = game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Shock")]);
 
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(1) && g.current_step() == Step::Draw
@@ -91418,7 +91426,7 @@ fn howling_mine_tapped_in_response_grants_no_draw_cr_603_4() {
     // the trigger resolves, so the additional draw is suppressed.
     let mut game = Game::new();
     let mine = game.spawn_on_battlefield(PlayerId(0), card("Howling Mine"));
-    let library = game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Shock")]);
+    let library = game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Shock")]);
 
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(1) && g.current_step() == Step::Draw
@@ -92208,7 +92216,7 @@ fn aethersnipe_evoked_bounces_a_nonland_permanent_then_is_sacrificed() {
     // ETB trigger on the stack).
     let mut game = TestGame::new();
     let snipe = game.spawn_in_hand(PlayerId(0), card("Aethersnipe"));
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
 
     game.cast(snipe).evoked(true).resolve();
     game.submit(Intent::ChooseTargets {
@@ -92238,7 +92246,7 @@ fn aethersnipe_etb_cannot_target_a_land() {
     let mut game = TestGame::new();
     let snipe = game.spawn_in_hand(PlayerId(0), card("Aethersnipe"));
     let forest = game.spawn_on_battlefield(PlayerId(1), card("Forest"));
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
 
     game.cast(snipe).resolve();
     let Some(PendingChoice::ChooseTarget { legal, .. }) = game.pending_choice() else {
@@ -92456,7 +92464,7 @@ fn spitebellows_deals_six_damage_when_it_leaves_the_battlefield() {
     // creature." + "Evoke {1}{R}{R}" — evoke's own sacrifice is what makes it leave.
     let mut game = TestGame::new();
     let bellows = game.spawn_in_hand(PlayerId(0), card("Spitebellows"));
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
 
     game.cast(bellows).evoked(true).resolve();
     resolve_top_of_stack(&mut game); // evoke's self-sacrifice — the permanent leaves
@@ -92555,8 +92563,8 @@ fn garruk_wildspeaker_minus_four_pumps_your_creatures_and_grants_trample() {
     game.stack_library(PlayerId(0), &vec![VANILLA.clone(); 5]);
     game.stack_library(PlayerId(1), &vec![VANILLA.clone(); 5]);
     let garruk = game.spawn_on_battlefield(PlayerId(0), card("Garruk Wildspeaker"));
-    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let lands: Vec<ObjectId> = (0..2)
         .map(|_| game.spawn_on_battlefield(PlayerId(0), card("Forest")))
         .collect();
@@ -92846,7 +92854,7 @@ fn riku_does_not_trigger_on_your_creature_spell() {
     // offer ability one's pay-{U}{R}-to-copy trigger.
     let mut g = TestGame::new();
     g.spawn_on_battlefield(PlayerId(0), card("Riku of Two Reflections"));
-    let bear = g.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = g.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
 
     g.cast(bear).submit();
     assert!(
@@ -92862,10 +92870,10 @@ fn riku_token_copies_another_nontoken_creature_that_enters_when_you_pay_gu() {
     // {G}{U}. If you do, create a token that's a copy of that creature."
     let mut g = TestGame::new();
     g.spawn_on_battlefield(PlayerId(0), card("Riku of Two Reflections"));
-    let bear = g.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let bear = g.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
 
     g.cast(bear).submit();
-    resolve_top_of_stack(&mut g); // Grizzly Bear enters, Riku's watch raises the pay-or-decline
+    resolve_top_of_stack(&mut g); // Grizzly Bears enters, Riku's watch raises the pay-or-decline
     assert!(
         matches!(
             g.pending_choice(),
@@ -92887,9 +92895,9 @@ fn riku_token_copies_another_nontoken_creature_that_enters_when_you_pay_gu() {
     resolve_top_of_stack(&mut g);
 
     assert_eq!(
-        battlefield_named(&g, PlayerId(0), "Grizzly Bear").len(),
+        battlefield_named(&g, PlayerId(0), "Grizzly Bears").len(),
         2,
-        "the original Grizzly Bear plus a token copy"
+        "the original Grizzly Bears plus a token copy"
     );
 }
 
@@ -92928,7 +92936,7 @@ fn riku_does_not_trigger_on_a_token() {
 /// Stack both libraries deep enough that neither player decks out while a test rolls through
 /// several whole turns of upkeeps.
 fn stack_filler_libraries(game: &mut Game, cards: usize) {
-    let filler: Vec<CardDef> = (0..cards).map(|_| card("Grizzly Bear")).collect();
+    let filler: Vec<CardDef> = (0..cards).map(|_| card("Grizzly Bears")).collect();
     game.stack_library(PlayerId(0), &filler);
     game.stack_library(PlayerId(1), &filler);
 }
@@ -93024,7 +93032,7 @@ fn deadwood_treefolk_returns_another_creature_card_when_it_enters() {
     // "When this creature enters or leaves the battlefield, return another target creature card
     // from your graveyard to your hand."
     let mut game = TestGame::new();
-    let bear = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let sorcery = game.spawn_in_graveyard(PlayerId(0), card("Recollect"));
     let treefolk = game.spawn_in_hand(PlayerId(0), card("Deadwood Treefolk"));
     game.cast(treefolk).resolve();
@@ -93064,8 +93072,8 @@ fn deadwood_treefolk_leaving_cannot_target_itself() {
     // the leaves-the-battlefield half of its trigger.
     let mut game = TestGame::new();
     stack_filler_libraries(&mut game, 12);
-    let first_bear = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
-    let second_bear = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let first_bear = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
+    let second_bear = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let treefolk = game.spawn_in_hand(PlayerId(0), card("Deadwood Treefolk"));
 
     game.cast(treefolk).resolve();
@@ -93168,7 +93176,7 @@ fn trench_gorger_exiles_any_number_of_lands_and_sets_base_pt_to_that_count() {
         PlayerId(0),
         &[
             card("Forest"),
-            card("Grizzly Bear"),
+            card("Grizzly Bears"),
             card("Plains"),
             card("Shock"),
             card("Swamp"),
@@ -93278,7 +93286,7 @@ fn trench_gorger_exiling_zero_lands_makes_it_zero_zero_and_it_dies() {
     // matching lands still sets base P/T to 0/0 (CR 613.3(7b)), which then dies to the CR 704.5f
     // zero-toughness state-based action.
     let mut game = TestGame::new();
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Shock")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Shock")]);
 
     let gorger = game.spawn_in_hand(PlayerId(0), card("Trench Gorger"));
     game.cast(gorger).resolve();
@@ -93771,7 +93779,7 @@ fn edric_spymaster_of_trest_draws_the_damaging_creatures_controller() {
     let mut game = Game::with_players(4, 0);
     game.spawn_on_battlefield(PlayerId(0), card("Edric, Spymaster of Trest"));
     let attacker = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
-    let library = game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    let library = game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
 
     attack_with(&mut game, vec![attacker]);
     advance_until(&mut game, |g| g.pending_choice().is_some());
@@ -93812,7 +93820,7 @@ fn edric_spymaster_of_trest_draws_an_opponent_who_attacks_another_opponent() {
     // library[0] feeds P1's own draw step; library[1] is the only card the trigger can draw.
     let library = game.stack_library(
         PlayerId(1),
-        &[card("Forest"), card("Grizzly Bear"), card("Elvish Mystic")],
+        &[card("Forest"), card("Grizzly Bears"), card("Elvish Mystic")],
     );
 
     pass_until_next_turn(&mut game);
@@ -93889,7 +93897,7 @@ fn artisan_of_kozilek_reanimates_a_creature_card_when_cast() {
     // (CR 601.2i/603.3), so the reanimated creature arrives first.
     let mut game = Game::new();
     let artisan = game.spawn_in_hand(PlayerId(0), card("Artisan of Kozilek"));
-    let bear = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
 
     game.fund_mana(PlayerId(0));
     game.submit(Intent::Cast {
@@ -93937,7 +93945,7 @@ fn artisan_of_kozilek_annihilates_the_planeswalkers_controller() {
     let mut game = Game::new();
     let artisan = game.spawn_on_battlefield(PlayerId(0), card("Artisan of Kozilek"));
     let pw = game.spawn_on_battlefield(PlayerId(1), test_planeswalker("Test Walker", 5));
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     game.spawn_on_battlefield(PlayerId(1), card("Forest"));
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
@@ -94781,7 +94789,7 @@ fn secluded_steppe_enters_tapped_taps_for_white_and_cycles() {
     // Cycling {W}: discard from hand to draw.
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
     let steppe = game.spawn_in_hand(PlayerId(0), card("Secluded Steppe"));
     game.submit(Intent::Cycle {
         player: PlayerId(0),
@@ -95018,8 +95026,8 @@ fn oni_of_wild_places_upkeep_returns_a_red_creature_you_control() {
         game.spawn_on_battlefield(PlayerId(0), vanilla("Red Bear", 0, [0, 0, 0, 1, 0]));
     // Both players need a library so neither decks out over the intervening turn (which would
     // end the game and remove the objects under test).
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
 
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
@@ -95059,7 +95067,7 @@ fn akromas_vengeance_destroys_artifacts_creatures_and_enchantments() {
     // (a `destroy_all` over the union of the three types) clears one of each.
     let mut game = TestGame::new();
     let artifact = game.spawn_on_battlefield(PlayerId(1), card("Sol Ring"));
-    let creature = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let creature = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let enchantment = game.spawn_on_battlefield(PlayerId(1), card("Doubling Season"));
     let vengeance = game.spawn_in_hand(PlayerId(0), card("Akroma's Vengeance"));
 
@@ -95155,7 +95163,7 @@ fn earthquake_deals_x_to_nonfliers_and_each_player() {
     // flier is exempt (`without_flying` filter), a 2/2 nonflier dies, and every player loses 2.
     let mut game = TestGame::new();
     let flier = game.spawn_on_battlefield(PlayerId(1), card("Drumbellower")); // 2/1 flying
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear")); // 2/2, no flying
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears")); // 2/2, no flying
     let quake = game.spawn_in_hand(PlayerId(0), card("Earthquake"));
 
     game.cast(quake).x(2).resolve();
@@ -95184,7 +95192,7 @@ fn evincars_justice_buyback_deals_two_and_returns_to_hand() {
     // Evincar's Justice: "Buyback {3} ... deals 2 damage to each creature and each player."
     // Paying buyback still deals the 2 to everything, then returns Evincar's Justice to hand.
     let mut game = TestGame::new();
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear")); // 2/2 — dies
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears")); // 2/2 — dies
     let justice = game.spawn_in_hand(PlayerId(0), card("Evincar's Justice"));
 
     game.cast(justice).bought_back(true).resolve();
@@ -95253,7 +95261,7 @@ fn gwyllion_hedge_mage_etb_puts_minus_counter_with_two_swamps() {
     let mut game = TestGame::new();
     game.spawn_on_battlefield(PlayerId(0), card("Swamp"));
     game.spawn_on_battlefield(PlayerId(0), card("Swamp"));
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear")); // 2/2
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears")); // 2/2
     let gwyllion = game.spawn_in_hand(PlayerId(0), card("Gwyllion Hedge-Mage"));
 
     game.cast(gwyllion).submit();
@@ -95294,8 +95302,8 @@ fn shattered_angel_gains_three_when_an_opponent_land_enters() {
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Shattered Angel"));
     let opponent_land = game.spawn_in_hand(PlayerId(1), card("Forest"));
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear")]); // so P1's turn-draw doesn't deck out
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears")]); // so P1's turn-draw doesn't deck out
 
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(1) && g.current_step() == Step::Main1
@@ -96081,7 +96089,7 @@ fn stranglehold_denies_an_opponents_fetchland_search() {
     // tied shuffle are one instruction, so denying it skips both.
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Stranglehold"));
-    let lib = game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Forest")]);
+    let lib = game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Forest")]);
     let wilds = game.spawn_on_battlefield(PlayerId(1), card("Evolving Wilds"));
 
     game.submit(Intent::ActivateAbility {
@@ -96119,7 +96127,7 @@ fn stranglehold_does_not_deny_its_controllers_own_search() {
     // controller's fetchland still finds a card normally.
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Stranglehold"));
-    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Forest")]);
+    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Forest")]);
     let wilds = game.spawn_on_battlefield(PlayerId(0), card("Evolving Wilds"));
 
     game.submit(Intent::ActivateAbility {
@@ -96165,7 +96173,7 @@ fn stranglehold_denial_lifts_once_it_leaves_the_battlefield() {
     let mut game = Game::new();
     let stranglehold = game.spawn_on_battlefield(PlayerId(0), card("Stranglehold"));
     game.fund_mana(PlayerId(0));
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Forest")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Forest")]);
     let first_wilds = game.spawn_on_battlefield(PlayerId(1), card("Evolving Wilds"));
 
     game.submit(Intent::ActivateAbility {
@@ -96213,7 +96221,7 @@ fn stranglehold_denial_lifts_once_it_leaves_the_battlefield() {
         "Stranglehold is destroyed"
     );
 
-    let lib = game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Island")]);
+    let lib = game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Island")]);
     let second_wilds = game.spawn_on_battlefield(PlayerId(1), card("Evolving Wilds"));
     game.submit(Intent::ActivateAbility {
         player: PlayerId(1),
@@ -96265,8 +96273,8 @@ fn activate_pyrohemia(game: &mut Game, pyro: ObjectId) {
 fn pyrohemia_ability_damages_every_creature_and_every_player() {
     let mut game = TestGame::new();
     let pyro = game.spawn_on_battlefield(PlayerId(0), card("Pyrohemia"));
-    let own_bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    let their_bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let own_bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let their_bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     game.fund_mana(PlayerId(0));
 
     activate_pyrohemia(&mut game, pyro);
@@ -96293,7 +96301,7 @@ fn pyrohemia_ability_damages_every_creature_and_every_player() {
 fn pyrohemia_sacrifices_itself_at_end_step_when_no_creatures_remain() {
     let mut game = TestGame::new();
     let pyro = game.spawn_on_battlefield(PlayerId(0), card("Pyrohemia"));
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear")); // 2/2
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears")); // 2/2
     game.fund_mana(PlayerId(0));
 
     activate_pyrohemia(&mut game, pyro);
@@ -96323,7 +96331,7 @@ fn pyrohemia_sacrifices_itself_at_end_step_when_no_creatures_remain() {
 fn pyrohemia_does_not_sacrifice_while_a_creature_survives() {
     let mut game = TestGame::new();
     let pyro = game.spawn_on_battlefield(PlayerId(0), card("Pyrohemia"));
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear")); // 2/2
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears")); // 2/2
     game.fund_mana(PlayerId(0));
 
     activate_pyrohemia(&mut game, pyro); // 1 marked damage — the 2/2 survives
@@ -96345,14 +96353,14 @@ fn pyrohemia_does_not_sacrifice_while_a_creature_survives() {
 
 #[test]
 fn pyrohemia_fires_on_an_opponents_end_step_too() {
-    // P0 controls Pyrohemia; a Grizzly Bear survives P0's own end step (so the trigger doesn't
+    // P0 controls Pyrohemia; a Grizzly Bears survives P0's own end step (so the trigger doesn't
     // fire on P0's turn), then dies to Pyrohemia's ability on P1's turn — proving the
     // self-sacrifice fires on P1's end step too, not only P0's own. This is the reason this
     // increment exists: pre-templating "at the beginning of the end step" wording means every
     // end step in the game, not just the controller's own.
     let mut game = TestGame::new();
     let pyro = game.spawn_on_battlefield(PlayerId(0), card("Pyrohemia"));
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear")); // 2/2
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears")); // 2/2
     game.stack_library(PlayerId(1), &[card("Forest")]);
 
     advance_until(&mut game, |g| {
@@ -96406,7 +96414,7 @@ fn pyrohemia_creature_created_in_response_suppresses_sacrifice_cr_603_4() {
         "Pyrohemia's end-step trigger fired — no creatures were on the battlefield"
     );
 
-    game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear")); // a creature enters in response
+    game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears")); // a creature enters in response
     resolve_top_of_stack(&mut game);
 
     assert_eq!(
@@ -96427,7 +96435,7 @@ fn bladewing_the_risen_etb_reanimates_only_a_dragon_from_your_own_graveyard() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     let dragon = game.spawn_in_graveyard(PlayerId(0), card("Dragon Whelp"));
-    let bear = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bears"));
     let their_dragon = game.spawn_in_graveyard(PlayerId(1), card("Dragon Whelp"));
     let bladewing = game.spawn_in_hand(PlayerId(0), card("Bladewing the Risen"));
 
@@ -96504,7 +96512,7 @@ fn bladewing_the_risen_pump_boosts_every_dragon_regardless_of_controller_until_e
     game.fund_mana(PlayerId(0));
     let bladewing = game.spawn_on_battlefield(PlayerId(0), card("Bladewing the Risen")); // 4/4
     let their_dragon = game.spawn_on_battlefield(PlayerId(1), card("Dragon Whelp")); // 2/3
-    let their_bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear")); // 2/2
+    let their_bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears")); // 2/2
 
     game.submit(Intent::ActivateAbility {
         player: PlayerId(0),
@@ -96545,7 +96553,7 @@ fn tariel_reanimates_a_random_creature_from_target_opponents_graveyard_under_you
     // noncreature card sharing that graveyard is never eligible to be picked.
     let mut game = Game::with_seed(7);
     let tariel = game.spawn_on_battlefield(PlayerId(0), card("Tariel, Reckoner of Souls"));
-    let bear = game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bear"));
+    let bear = game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bears"));
     let dragon = game.spawn_in_graveyard(PlayerId(1), card("Dragon Whelp"));
     let forest = game.spawn_in_graveyard(PlayerId(1), card("Forest"));
 
@@ -96624,8 +96632,8 @@ fn avatar_of_slaughter_grants_double_strike_to_every_creature_on_the_battlefield
     // battlefield — including an opponent's.
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Avatar of Slaughter"));
-    let own_bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    let opponent_bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let own_bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let opponent_bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
 
     assert!(
         game.has_keyword(own_bear, Keyword::DoubleStrike),
@@ -96644,7 +96652,7 @@ fn avatar_of_slaughter_forces_every_untapped_creature_to_attack_if_able() {
     // is named, unlike Ruhan of the Fomori's random-opponent requirement).
     let mut game = Game::new();
     let avatar = game.spawn_on_battlefield(PlayerId(0), card("Avatar of Slaughter"));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
 
     assert_eq!(
@@ -96671,7 +96679,7 @@ fn avatar_of_slaughter_leaving_battlefield_lifts_the_must_attack_requirement() {
     // Slaughter is destroyed, an idle creature is no longer forced to attack.
     let mut game = TestGame::new();
     let avatar = game.spawn_on_battlefield(PlayerId(0), card("Avatar of Slaughter"));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let terror = game.spawn_in_hand(PlayerId(0), card("Terror"));
     game.cast(terror).at(Target::Object(avatar)).resolve();
     assert_eq!(
@@ -97183,7 +97191,7 @@ fn multikicker_is_rejected_on_a_spell_with_no_multikicker_cost() {
     // `kicked_is_rejected_on_a_spell_with_no_kicker_cost` above.
     let mut game = TestGame::new();
     let shock = game.spawn_in_hand(PlayerId(0), card("Shock"));
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
 
     assert_eq!(
         game.cast(shock)
@@ -97331,7 +97339,7 @@ fn comet_storm_multikicker_cost_scales_mana_spent() {
     // the required 1 + 2 = 3 legal targets so this cast is left paused on `ChooseTargets` rather
     // than rejected outright.
     let mut game = TestGame::new();
-    game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let comet_storm = game.spawn_in_hand(PlayerId(0), card("Comet Storm"));
 
     let events = game.cast(comet_storm).x(1).multikicked(2).submit();
@@ -97363,7 +97371,7 @@ fn orims_thunder_unkicked_destroys_without_dealing_damage() {
     let stone = game.spawn_on_battlefield(PlayerId(1), artifact("Mox Stone", 4));
     // A decoy so clause 0 is a real choice (a lone legal target auto-fills, CR 601.2c).
     let _decoy = game.spawn_on_battlefield(PlayerId(1), artifact("Decoy Stone", 1));
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let thunder = game.spawn_in_hand(PlayerId(0), card("Orim's Thunder"));
 
     game.cast(thunder)
@@ -98071,7 +98079,7 @@ fn heroic_intervention_grants_hexproof_and_indestructible_to_permanents_you_cont
     // Heroic Intervention ({1}{G}) — "Permanents you control gain hexproof and indestructible (CR 702.11, CR 702.12)
     // until end of turn."
     let mut game = Game::new();
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let signet = game.spawn_on_battlefield(PlayerId(0), card("Arcane Signet")); // a noncreature permanent
     let intervention = game.spawn_in_hand(PlayerId(0), card("Heroic Intervention"));
     cast_and_resolve(&mut game, intervention, None);
@@ -98114,7 +98122,7 @@ fn heroic_intervention_grants_hexproof_and_indestructible_to_permanents_you_cont
 fn swiftfoot_boots_grants_hexproof_and_haste_to_equipped_creature() {
     // Swiftfoot Boots ({2}) — "Equipped creature has hexproof and haste. ... Equip {1}" (CR 702.11, CR 702.10)
     let mut game = Game::new();
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let boots = game.spawn_on_battlefield(PlayerId(0), card("Swiftfoot Boots"));
     game.fund_mana(PlayerId(0));
 
@@ -98360,7 +98368,7 @@ fn power_fist_grants_trample_and_the_combat_damage_counters_trigger() {
     // combat damage to a player, put that many +1/+1 counters on it.' Equip {2}." Unblocked, its
     // printed 2 power deals 2 combat damage, so two +1/+1 counters.
     let mut game = Game::new();
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // 2/2
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears")); // 2/2
     let fist = game.spawn_on_battlefield(PlayerId(0), card("Power Fist"));
     game.fund_mana(PlayerId(0));
 
@@ -98431,7 +98439,7 @@ fn power_fists_trigger_stops_once_it_moves_to_another_creature() {
     // The grant is read live off the attachment scan: once Power Fist moves to a second
     // creature, the first no longer has the trigger, even though it's still on the battlefield.
     let mut game = Game::new();
-    let first = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // 2/2
+    let first = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears")); // 2/2
     let second = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
     let fist = game.spawn_on_battlefield(PlayerId(0), card("Power Fist"));
     game.fund_mana(PlayerId(0));
@@ -99292,7 +99300,7 @@ fn branching_evolution_doubles_counters_placed_on_your_creature() {
     // control, twice that many +1/+1 counters are put on that creature instead."
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Branching Evolution"));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     put_two_counters(&mut game, PlayerId(0), bear);
     assert_eq!(game.plus_counters(bear), 4, "the doubler doubles: 2 -> 4");
@@ -99304,7 +99312,7 @@ fn corpsejack_menace_doubles_counters_placed_on_your_creature() {
     // control, twice that many +1/+1 counters are put on it instead."
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Corpsejack Menace"));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     put_two_counters(&mut game, PlayerId(0), bear);
     assert_eq!(game.plus_counters(bear), 4, "the doubler doubles: 2 -> 4");
@@ -100353,7 +100361,7 @@ fn phyresis_grants_infect_to_the_enchanted_creature() {
     // Phyresis: "Enchanted creature has infect." — the grant runs through the same keyword check
     // the printed keyword does, so the Bear's combat damage becomes poison counters.
     let mut game = Game::new();
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // 2/2
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears")); // 2/2
     let aura = game.spawn_in_hand(PlayerId(0), card("Phyresis"));
     fund_cast_resolve(&mut game, PlayerId(0), aura, Some(Target::Object(bear)));
 
@@ -100676,7 +100684,7 @@ fn inspiring_call_draws_one_card_per_creature_with_a_plus_one_counter() {
     game.add_plus_counter(countered1);
     game.add_plus_counter(countered2);
 
-    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
     game.fund_mana(PlayerId(0));
     let call = game.spawn_in_hand(PlayerId(0), card("Inspiring Call"));
     let library_before = game.library_size(PlayerId(0));
@@ -101051,7 +101059,7 @@ fn multikicker_count_is_rejected_on_a_spell_without_multikicker() {
     // to a spell whose text actually says "Multikicker").
     let mut game = TestGame::new();
     let shock = game.spawn_in_hand(PlayerId(0), card("Shock"));
-    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
 
     assert_eq!(
         game.cast(shock)
@@ -101174,8 +101182,8 @@ fn lily_bowen_doubles_counters_while_at_sixteen_power_or_less() {
     // beginning of your upkeep, double the number of +1/+1 counters on Lily Bowen if its power
     // is 16 or less." Doubles at 2 (well under 16), and again right at the 16-power boundary.
     let mut game = TestGame::new();
-    game.stack_library(PlayerId(0), &vec![card("Grizzly Bear"); 5]);
-    game.stack_library(PlayerId(1), &vec![card("Grizzly Bear"); 5]);
+    game.stack_library(PlayerId(0), &vec![card("Grizzly Bears"); 5]);
+    game.stack_library(PlayerId(1), &vec![card("Grizzly Bears"); 5]);
     let lily_card = game.spawn_in_hand(PlayerId(0), card("Lily Bowen, Raging Grandma"));
     game.cast(lily_card).resolve();
     let lily = find_battlefield_permanent(&game, "Lily Bowen, Raging Grandma");
@@ -101221,8 +101229,8 @@ fn lily_bowen_culls_to_one_and_gains_life_above_sixteen_power() {
     // Lily Bowen, Raging Grandma: "Otherwise, remove all but one +1/+1 counter from it, then you
     // gain 1 life for each +1/+1 counter removed this way." Above the 16-power threshold.
     let mut game = TestGame::new();
-    game.stack_library(PlayerId(0), &vec![card("Grizzly Bear"); 2]);
-    game.stack_library(PlayerId(1), &vec![card("Grizzly Bear"); 2]);
+    game.stack_library(PlayerId(0), &vec![card("Grizzly Bears"); 2]);
+    game.stack_library(PlayerId(1), &vec![card("Grizzly Bears"); 2]);
     let lily_card = game.spawn_in_hand(PlayerId(0), card("Lily Bowen, Raging Grandma"));
     game.cast(lily_card).resolve();
     let lily = find_battlefield_permanent(&game, "Lily Bowen, Raging Grandma");
@@ -101253,8 +101261,8 @@ fn lily_bowens_upkeep_doubling_goes_through_counter_replacements() {
     // printed ruling describes as *tripling*, not quadrupling, with one doubler present: 2
     // existing + (2 base more, doubled by the replacement to 4) = 6, not 8.
     let mut game = TestGame::new();
-    game.stack_library(PlayerId(0), &vec![card("Grizzly Bear"); 2]);
-    game.stack_library(PlayerId(1), &vec![card("Grizzly Bear"); 2]);
+    game.stack_library(PlayerId(0), &vec![card("Grizzly Bears"); 2]);
+    game.stack_library(PlayerId(1), &vec![card("Grizzly Bears"); 2]);
     let lily_card = game.spawn_in_hand(PlayerId(0), card("Lily Bowen, Raging Grandma"));
     game.cast(lily_card).resolve();
     let lily = find_battlefield_permanent(&game, "Lily Bowen, Raging Grandma");
@@ -101545,7 +101553,7 @@ fn blightbelly_rat_poisons_and_proliferates_when_it_dies() {
     // Blightbelly Rat: "Toxic 1 / When this creature dies, proliferate."
     let mut game = Game::new();
     let rat = game.spawn_on_battlefield(PlayerId(0), card("Blightbelly Rat"));
-    let counter_holder = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let counter_holder = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     game.add_plus_counter(counter_holder);
 
     attack_with(&mut game, vec![rat]);
@@ -101584,7 +101592,7 @@ fn bloated_contaminator_poisons_and_proliferates_on_connect() {
     // player, proliferate." The toxic counter lands first, so proliferate has something to grow.
     let mut game = Game::new();
     let beast = game.spawn_on_battlefield(PlayerId(0), card("Bloated Contaminator"));
-    let counter_holder = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let counter_holder = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     game.add_plus_counter(counter_holder);
     assert!(game.has_keyword(beast, Keyword::Trample));
 
@@ -101663,8 +101671,8 @@ fn corrupted_end_step_trigger_needs_three_poison_on_an_opponent() {
     // threshold the ability never goes on the stack at all.
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Contaminant Grafter"));
-    game.stack_library(PlayerId(0), &vec![card("Grizzly Bear"); 12]);
-    game.stack_library(PlayerId(1), &vec![card("Grizzly Bear"); 12]);
+    game.stack_library(PlayerId(0), &vec![card("Grizzly Bears"); 12]);
+    game.stack_library(PlayerId(1), &vec![card("Grizzly Bears"); 12]);
 
     game.place_player_counters(PlayerId(1), PlayerCounterKind::Poison, 2);
     advance_until(&mut game, |g| g.current_step() == Step::End);
@@ -101918,7 +101926,7 @@ fn venerated_rotpriest_poisons_when_a_creature_you_control_is_targeted() {
     // controller controls, not just itself.
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Venerated Rotpriest"));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let destroy = game.spawn_in_hand(PlayerId(0), DESTROY.clone());
 
     game.fund_mana(PlayerId(0));
@@ -101960,7 +101968,7 @@ fn venerated_rotpriest_ignores_a_spell_targeting_an_opponents_creature() {
     // "a creature **you control**" — an opponent's creature being targeted is not the watch.
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Venerated Rotpriest"));
-    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
     let destroy = game.spawn_in_hand(PlayerId(0), DESTROY.clone());
 
     cast_and_resolve(&mut game, destroy, Some(Target::Object(theirs)));
@@ -101979,7 +101987,7 @@ fn contaminant_grafter_batch_trigger_fires_once_for_two_connecting_attackers() {
     // creatures connected.
     let mut game = Game::new();
     let grafter = game.spawn_on_battlefield(PlayerId(0), card("Contaminant Grafter"));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     let counter_holder = game.spawn_on_battlefield(PlayerId(0), card("Llanowar Elves"));
     game.add_plus_counter(counter_holder);
 
@@ -102639,7 +102647,7 @@ fn garruk_cursed_huntsman_minus_three_destroys_a_creature_and_draws() {
     let mut game = Game::new();
     game.stack_library(PlayerId(0), std::slice::from_ref(&*VANILLA));
     let garruk = game.spawn_on_battlefield(PlayerId(0), card("Garruk, Cursed Huntsman"));
-    let victim = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let victim = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
 
     game.submit(Intent::ActivateAbility {
         player: PlayerId(0),
@@ -103019,8 +103027,8 @@ fn garruks_emblem_anthem_applies_to_creatures_you_control() {
     // The emblem's only ability: "Creatures you control get +3/+3 and have trample."
     let mut game = Game::new();
     let garruk = game.spawn_on_battlefield(PlayerId(0), card("Garruk, Cursed Huntsman"));
-    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
-    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
 
     garruk_emblem_ultimate(&mut game, garruk, 7);
 
@@ -103046,7 +103054,7 @@ fn garruks_emblem_applies_to_creatures_that_enter_after_it() {
     let garruk = game.spawn_on_battlefield(PlayerId(0), card("Garruk, Cursed Huntsman"));
 
     garruk_emblem_ultimate(&mut game, garruk, 7);
-    let latecomer = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let latecomer = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     assert_eq!(
         (game.power(latecomer), game.toughness(latecomer)),
@@ -103062,7 +103070,7 @@ fn garruks_emblem_survives_garruk_leaving_the_battlefield() {
     // the graveyard (CR 704.5i), and the emblem keeps working.
     let mut game = Game::new();
     let garruk = game.spawn_on_battlefield(PlayerId(0), card("Garruk, Cursed Huntsman"));
-    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     garruk_emblem_ultimate(&mut game, garruk, 6);
 
@@ -103110,7 +103118,7 @@ fn hardened_scales_still_adds_one_plus_one_plus_one_counter() {
     // pipeline widens to other counter kinds and to players.
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Hardened Scales"));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     put_two_counters(&mut game, PlayerId(0), bear);
 
@@ -103139,7 +103147,7 @@ fn winding_constrictor_adds_one_of_each_kind_to_a_creature_you_control() {
         "one -1/-1 counter plus one of that kind = 2"
     );
 
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     put_two_counters(&mut game, PlayerId(0), bear);
     assert_eq!(game.plus_counters(bear), 3, "+1/+1 counters: 2 + 1 = 3");
 }
@@ -103172,7 +103180,7 @@ fn vorinclex_doubles_counters_you_put_on_a_permanent_or_player() {
     // each of those kinds of counters on that permanent or player instead."
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Vorinclex, Monstrous Raider"));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     put_two_counters(&mut game, PlayerId(0), bear);
     assert_eq!(game.plus_counters(bear), 4, "twice that many: 2 -> 4");
@@ -103191,7 +103199,7 @@ fn vorinclexes_opponent_halves_their_counters_rounded_down() {
     // many of each of those kinds of counters on that permanent or player instead, rounded down."
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(1), card("Vorinclex, Monstrous Raider"));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     put_two_counters(&mut game, PlayerId(0), bear);
     assert_eq!(game.plus_counters(bear), 1, "half of 2 = 1");
@@ -103211,7 +103219,7 @@ fn ozoliths_replacement_only_applies_to_artifacts_and_creatures() {
     let mut game = TestGame::new();
     game.spawn_on_battlefield(PlayerId(0), card("Ozolith, the Shattered Spire"));
     let forest = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     let grower = game.spawn_in_hand(PlayerId(0), TEST_PLUS_COUNTERS_ON_YOUR_LANDS.clone());
     game.cast(grower).resolve();
@@ -103237,7 +103245,7 @@ fn innkeepers_talent_level_three_doubles_counters_on_a_permanent_or_player() {
     // replacement functions only at level 3 (CR 717.5).
     let mut game = Game::new();
     let class = game.spawn_on_battlefield(PlayerId(0), card("Innkeeper's Talent"));
-    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
 
     put_two_counters(&mut game, PlayerId(0), bear);
     assert_eq!(
@@ -103251,7 +103259,7 @@ fn innkeepers_talent_level_three_doubles_counters_on_a_permanent_or_player() {
     game.fund_mana(PlayerId(0));
     level_up_chirography(&mut game, class, 3); // {3}{G}: Level 3
 
-    let other = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let other = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     put_two_counters(&mut game, PlayerId(0), other);
     assert_eq!(game.plus_counters(other), 4, "level 3 doubles: 2 -> 4");
 
@@ -103354,7 +103362,7 @@ fn scheming_aspirant_does_not_trigger_when_an_opponent_proliferates() {
     // Controller-scoped: player 1's Scheming Aspirant doesn't see player 0's proliferate.
     let mut g = TestGame::new();
     g.spawn_on_battlefield(PlayerId(1), card("Scheming Aspirant"));
-    let bear = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let bear = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     put_two_counters(&mut g, PlayerId(0), bear);
     let algorithm = g.spawn_in_hand(PlayerId(0), card("Expansion Algorithm"));
     g.cast(algorithm).x(1).resolve();
@@ -103629,7 +103637,7 @@ fn vorinclex_doubles_counters_you_put_on_an_opponents_permanent() {
         game: Game::with_players(2, 0),
     };
     game.spawn_on_battlefield(PlayerId(0), card("Vorinclex, Monstrous Raider"));
-    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
 
     put_two_counters(&mut game, PlayerId(0), theirs);
 
@@ -103650,7 +103658,7 @@ fn vorinclex_halves_counters_an_opponent_puts_on_your_permanent() {
         game: Game::with_players(2, 0),
     };
     game.spawn_on_battlefield(PlayerId(0), card("Vorinclex, Monstrous Raider"));
-    let yours = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let yours = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     game.stack_library(PlayerId(1), &[card("Forest")]);
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(1) && g.current_step() == Step::Main1
@@ -103687,7 +103695,7 @@ fn innkeepers_talent_level_three_does_not_double_counters_an_opponent_puts_on_yo
         g.active_player() == PlayerId(1) && g.current_step() == Step::Main1
     });
 
-    let yours = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let yours = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     put_two_counters(&mut game, PlayerId(1), yours);
 
     assert_eq!(
@@ -103707,7 +103715,7 @@ fn winding_constrictor_adds_to_counters_an_opponent_puts_on_your_creature() {
         game: Game::with_players(2, 0),
     };
     game.spawn_on_battlefield(PlayerId(0), card("Winding Constrictor"));
-    let yours = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let yours = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
     game.stack_library(PlayerId(1), &[card("Forest")]);
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(1) && g.current_step() == Step::Main1

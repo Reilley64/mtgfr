@@ -797,7 +797,7 @@ token = { name = "Inkling", power = 2, toughness = 1 }
 
     #[test]
     fn the_pool_loads_with_expected_card_shapes() {
-        let bear = get_by_name("Grizzly Bear").expect("Grizzly Bear is in the pool");
+        let bear = get_by_name("Grizzly Bears").expect("Grizzly Bears is in the pool");
         assert_eq!(
             bear.kind,
             CardKind::Creature {
