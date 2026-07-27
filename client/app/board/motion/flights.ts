@@ -99,7 +99,10 @@ export function stepFlights(
   const alpha = 1 - Math.exp(-dtMs / TAU_MS);
 
   for (const [id, cur] of prev) {
-    if (reducedMotion || alreadyAtTarget(cur)) {
+    const aim = { x: cur.targetX, y: cur.targetY, scale: cur.targetScale };
+    // Snap the last inches — exponential ease otherwise crawls for hundreds of ms after the
+    // card looks "arrived", which reads as a second land/stack settle animation every time.
+    if (reducedMotion || alreadyAtTarget(cur) || poseNearHandoff(cur, aim)) {
       flights.set(id, snapToTarget(cur));
       continue;
     }
@@ -112,7 +115,7 @@ export function stepFlights(
       phase: "flying" as const,
     };
 
-    if (alreadyAtTarget(next)) {
+    if (alreadyAtTarget(next) || poseNearHandoff(next, aim)) {
       flights.set(id, snapToTarget(next));
       continue;
     }

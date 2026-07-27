@@ -129,7 +129,17 @@ export function restingPaintChanged(prev: RestingPaintSnapshot | null, next: Res
 export function mergeFlightPoses(live: readonly CardFlight[], incoming: readonly CardFlight[]): CardFlight[] {
   const liveById = new Map(live.map((f) => [f.id, f]));
   return incoming.map((inc) => {
-    const prev = liveById.get(inc.id);
+    // Same id, or land/stack rebind where the permanent/spell id replaces the hand seed id.
+    // Without the fromCardId match, publish resets to the stale model spawn pose and the card
+    // restarts its glide — the every-time land double animation.
+    const prev =
+      liveById.get(inc.id) ??
+      (inc.fromCardId != null ? liveById.get(inc.fromCardId) : undefined) ??
+      live.find(
+        (flight) =>
+          (inc.fromCardId != null && flight.fromCardId === inc.fromCardId) ||
+          (flight.fromCardId != null && flight.fromCardId === inc.id),
+      );
     if (prev == null) return inc;
     return {
       ...inc,
