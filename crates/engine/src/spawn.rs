@@ -146,7 +146,14 @@ impl Game {
         // ponytail: a commander with a finality counter is a CR 616 choice between two
         // replacements; we skip it (the `!is_commander` guard below lets the command-zone
         // diversion win) — no pool card is a commander with a finality counter.
-        if self.as_permanent(from).is_some_and(|p| p.finality_counter) && !self.is_commander(from) {
+        // Disintegrate's "if it would die this turn, exile it instead" is the same replacement
+        // under a different name, so it rides the same guard and inherits the same commander
+        // ponytail above.
+        if self
+            .as_permanent(from)
+            .is_some_and(|p| p.finality_counter || p.exile_instead_of_dying_this_turn)
+            && !self.is_commander(from)
+        {
             return Event::MovedToExile { card: new_id, from };
         }
         // Serra Paragon's granted rider (CR 118.9 — "When this permanent is put into a graveyard

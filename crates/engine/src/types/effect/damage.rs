@@ -53,6 +53,15 @@ pub enum DamageEffect {
         count: TargetCount,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         divided: bool,
+        /// Disintegrate's "If it's a creature, it can't be regenerated this turn" (CR 701.15d) —
+        /// a rider on the damaged creature rather than on a destruction, since the damage is what
+        /// marks it and the state-based action that later kills it carries nothing.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        cant_be_regenerated: bool,
+        /// Disintegrate's "and if it would die this turn, exile it instead" — the same dies
+        /// replacement a finality counter applies (CR 614.12), but nameless and turn-scoped.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        exile_instead_of_dying: bool,
     },
 
     ToEnteringPermanent {

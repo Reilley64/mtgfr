@@ -450,12 +450,20 @@ top of your library instead." `no_maximum_hand_size` (the card's other half) alr
 (discard triggers still fire), it just lands elsewhere.
 *Cards:* library_of_leng.
 
-### 34. `exile-instead-of-dying-replacement` — 1 card, S
+### 34. `exile-instead-of-dying-replacement` — 1 card, S — **done**
 Depends on: nothing.
-Disintegrate. `cant_be_regenerated` exists (Terror); the "if it would die this turn, exile it
-instead" rider does not. *Sketch:* a turn-scoped per-permanent `exile_instead_of_dying` flag
-consulted by the dies replacement, set alongside the existing `cant_be_regenerated` flag by the
-same effect.
+Disintegrate. The sketch's premise was wrong on one point: the existing `cant_be_regenerated` is a
+field on the *destroy* effect, not a mark on the permanent, so a damage rider had nothing to sit
+alongside — Disintegrate needed both halves, not just the exile one. Shipped as two turn-scoped
+`Permanent` flags (`cant_be_regenerated_this_turn`, `exile_instead_of_dying_this_turn`) set by two
+new rider fields on `Effect::Damage(DamageEffect::Target)`, carried there on `Event::DamageMarked`.
+The exile flag ORs into the `finality_counter` guard at `Game::graveyard_or_command`, the one dies
+choke, which already implemented CR 614.12; the regeneration flag went into a new
+`Game::regeneration_shield_available`, which all four shield-consuming sites (the lethal-damage
+SBA and the three `destroy` paths) now route through instead of reading `regeneration_shields`
+directly. Nothing reached the wire — `project_event` drops the two rider fields, since what the
+client sees is the consequence (a creature that doesn't regenerate, a `MovedToExile` where a
+`MovedToGraveyard` would have been) as events it already renders.
 *Cards:* disintegrate.
 
 ### 35. `aura-attachment-restriction` — 1 card, S

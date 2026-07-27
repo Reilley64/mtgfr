@@ -1183,6 +1183,8 @@ pub(crate) fn fresh_permanent(
         loyalty: starting_loyalty(&printed),
         loyalty_activated: false,
         finality_counter: false,
+        cant_be_regenerated_this_turn: false,
+        exile_instead_of_dying_this_turn: false,
         regeneration_shields: 0,
         prepared: false,
         echo_unpaid: printed.echo.is_some(),
@@ -1866,6 +1868,20 @@ pub(crate) struct Permanent {
     /// a flag rather than a count (unlike `plus_counters`). Set only by a reanimation with
     /// `finality = true` (Excava, the Risen Past); default `false`.
     pub(crate) finality_counter: bool,
+    /// Whether a damage rider has marked this creature "it can't be regenerated this turn"
+    /// (Disintegrate, CR 701.15d). Read by the lethal-damage state-based action alongside
+    /// `regeneration_shields`, and by the same shield check the destroy path runs — the flag is
+    /// the permanent-side twin of [`Effect::Destroy(DestroyEffect::DestroyTarget)::cant_be_regenerated`],
+    /// which is carried by the destruction itself and so needs no marking. Set by
+    /// [`Event::DamageMarked`](crate::Event); cleared at the next Untap step with the other
+    /// "this turn" state.
+    pub(crate) cant_be_regenerated_this_turn: bool,
+    /// Whether a damage rider has marked this creature "if it would die this turn, exile it
+    /// instead" (Disintegrate). Read at the single dies choke `Game::graveyard_or_command`, where
+    /// it does exactly what a `finality_counter` does — the difference is only that this one is a
+    /// nameless turn-scoped mark rather than a real counter, so it shows up in no counter count
+    /// and expires at the next Untap step. Set by [`Event::DamageMarked`](crate::Event).
+    pub(crate) exile_instead_of_dying_this_turn: bool,
     /// How many regeneration shields this permanent currently has (CR 701.15b): each is a
     /// replacement effect that replaces the next "destroy" this turn with a regeneration (tap,
     /// remove from combat, heal all damage). Consumed one at a time by the destroy path unless

@@ -2529,6 +2529,8 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                     target: TargetSpec::AnyTarget,
                     count: TargetCount::default(),
                     divided: false,
+                    cant_be_regenerated: false,
+                    exile_instead_of_dying: false,
                 }),
                 // The 2 to its own caster is damage, not life loss — Psionic Blast can be
                 // prevented, redirected, or seen by a damage watcher like any other 2 damage.
@@ -2783,6 +2785,8 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                     target: TargetSpec::AnyTarget,
                     count: TargetCount::default(),
                     divided: false,
+                    cant_be_regenerated: false,
+                    exile_instead_of_dying: false,
                 }),
             ),
             (
@@ -2792,6 +2796,8 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                     target: TargetSpec::AnyTarget,
                     count: TargetCount::default(),
                     divided: false,
+                    cant_be_regenerated: false,
+                    exile_instead_of_dying: false,
                 }),
             ),
             (
@@ -2883,6 +2889,8 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                     target: TargetSpec::AnyTarget,
                     count: TargetCount::default(),
                     divided: false,
+                    cant_be_regenerated: false,
+                    exile_instead_of_dying: false,
                 }),
                 Effect::Damage(DamageEffect::ToSelf {
                     amount: Amount::Fixed(3)

@@ -2796,10 +2796,20 @@ pub enum Event {
     },
     /// Damage was marked on a permanent. `source` is what dealt it (a spell/ability/attacker),
     /// carried for the game log; `None` for engine-internal adjustments.
+    ///
+    /// The two rider flags carry Disintegrate's "if it's a creature, it can't be regenerated this
+    /// turn, and if it would die this turn, exile it instead" — riders on the *damaged creature*,
+    /// not on the damage, so they ride the event that lands the damage and are applied onto
+    /// [`Permanent::cant_be_regenerated_this_turn`]/[`Permanent::exile_instead_of_dying_this_turn`].
+    /// `false` for every ordinary damage. Deliberately not mirrored to `VisibleEvent` — the
+    /// consequences (a creature not regenerating, a creature exiling instead of dying) reach the
+    /// client as the events they already are.
     DamageMarked {
         object: ObjectId,
         amount: i32,
         source: Option<ObjectId>,
+        cant_be_regenerated: bool,
+        exile_instead_of_dying: bool,
     },
     /// `from` was moved to the graveyard (by resolution or an SBA) as the card `card`.
     MovedToGraveyard { card: ObjectId, from: ObjectId },

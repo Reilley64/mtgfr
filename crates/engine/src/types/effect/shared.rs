@@ -2975,11 +2975,15 @@ pub(crate) fn contextualize_sacrifice_effect(effect: Effect, power: i32, toughne
             target,
             count,
             divided,
+            cant_be_regenerated,
+            exile_instead_of_dying,
         }) => Effect::Damage(DamageEffect::Target {
             amount: fill(amount),
             target,
             count,
             divided,
+            cant_be_regenerated,
+            exile_instead_of_dying,
         }),
         Effect::Counters(CountersEffect::PutCounters {
             count,

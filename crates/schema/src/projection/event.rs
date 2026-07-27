@@ -641,10 +641,14 @@ pub(crate) fn project_event(
             controller: controller.0,
         },
         Event::SpellCeasedToExist { spell } => VisibleEvent::SpellCeasedToExist { spell },
+        // The event's Disintegrate riders stay engine-side: what the client sees is the
+        // consequence — a creature that doesn't regenerate, a `MovedToExile` where a
+        // `MovedToGraveyard` would have been — as events it already renders.
         Event::DamageMarked {
             object,
             amount,
             source,
+            ..
         } => VisibleEvent::DamageMarked {
             object,
             amount,

@@ -26,11 +26,34 @@ impl Game {
         object: ObjectId,
         amount: i32,
     ) -> Vec<Event> {
+        self.creature_damage_events_with_riders(source, object, amount, false, false)
+    }
+
+    /// [`creature_damage_events`](Self::creature_damage_events) plus Disintegrate's two riders on
+    /// the damaged creature — "it can't be regenerated this turn, and if it would die this turn,
+    /// exile it instead." Only [`Effect::Damage(DamageEffect::Target)`] carries them; every other
+    /// damage path takes the three-argument form above.
+    ///
+    /// ponytail: the riders travel on the damage event, so a hit that never marks damage never
+    /// marks the creature either — an infect Disintegrate (counters instead of damage), or one
+    /// whose damage is prevented outright. CR reads "if it's a creature" off the *target*, not off
+    /// the damage actually landing. No pool card creates either case; the upgrade path is a
+    /// separate marking event emitted alongside the guards in the `Target` arm.
+    pub(crate) fn creature_damage_events_with_riders(
+        &self,
+        source: ObjectId,
+        object: ObjectId,
+        amount: i32,
+        cant_be_regenerated: bool,
+        exile_instead_of_dying: bool,
+    ) -> Vec<Event> {
         if !self.has_keyword(source, Keyword::Infect) {
             return vec![Event::DamageMarked {
                 object,
                 amount,
                 source: Some(source),
+                cant_be_regenerated,
+                exile_instead_of_dying,
             }];
         }
         // 0 or less damage is never dealt (CR 120.8) — and never placed as counters.
@@ -87,7 +110,11 @@ impl Game {
         let _source_name = self.source_name_of(source);
         match effect {
             DamageEffect::Target {
-                amount, divided, ..
+                amount,
+                divided,
+                cant_be_regenerated,
+                exile_instead_of_dying,
+                ..
             } => {
                 let chosen = target.expect("a targeted effect resolves with a chosen target");
                 // A divided spell's per-target amount was already settled (CR 601.2d) right
@@ -142,7 +169,13 @@ impl Game {
                         if self.noncombat_damage_prevented_to_creature(object) {
                             return Vec::new();
                         }
-                        self.creature_damage_events(source, object, amount)
+                        self.creature_damage_events_with_riders(
+                            source,
+                            object,
+                            amount,
+                            cant_be_regenerated,
+                            exile_instead_of_dying,
+                        )
                     }
                     // Damage to a player is life loss. ponytail: the commander-damage tally is
                     // combat-only (CR 903.10a), so a burn spell never adds to it.
@@ -292,6 +325,8 @@ impl Game {
                             object,
                             amount,
                             source: Some(source),
+                            cant_be_regenerated: false,
+                            exile_instead_of_dying: false,
                         }]
                     })
                     .collect()

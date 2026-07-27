@@ -25,7 +25,7 @@ impl Game {
                 if self.has_keyword(object, Keyword::Indestructible) {
                     return Vec::new();
                 }
-                if !cant_be_regenerated && self.permanent(object).regeneration_shields > 0 {
+                if !cant_be_regenerated && self.regeneration_shield_available(object) {
                     return vec![Event::Regenerated { object }];
                 }
                 vec![self.graveyard_or_command(object, self.next_object_id())]
@@ -52,7 +52,7 @@ impl Game {
                     // A regeneration shield replaces this permanent's own destroy with a
                     // regeneration (CR 701.15b), unless "can't be regenerated" turns it off (CR
                     // 701.15d) — same shield-honoring shape as `DestroyTarget`.
-                    if !cant_be_regenerated && p.regeneration_shields > 0 {
+                    if !cant_be_regenerated && self.regeneration_shield_available(id) {
                         events.push(Event::Regenerated { object: id });
                         continue;
                     }
@@ -79,7 +79,7 @@ impl Game {
                 if self.has_keyword(id, Keyword::Indestructible) {
                     return Vec::new();
                 }
-                if self.permanent(id).regeneration_shields > 0 {
+                if self.regeneration_shield_available(id) {
                     return vec![Event::Regenerated { object: id }];
                 }
                 vec![self.graveyard_or_command(id, self.next_object_id())]

@@ -119,7 +119,7 @@ impl Game {
             // 704.5f's 0-toughness death is not a "destroy" and isn't replaceable this way, so the
             // shield only applies when toughness is still positive (i.e. lethal damage or
             // deathtouch is the reason, not 0-or-less toughness).
-            if p.regeneration_shields > 0
+            if self.regeneration_shield_available(id)
                 && matches!(&printed.kind, CardKind::Creature { .. })
                 && self.toughness(id) > 0
             {
@@ -1121,6 +1121,9 @@ impl Game {
                         let p = self.permanent_mut(id);
                         p.entered_this_turn = false;
                         p.attacked_this_turn = false;
+                        // Disintegrate's "this turn" riders expire at the same boundary.
+                        p.cant_be_regenerated_this_turn = false;
+                        p.exile_instead_of_dying_this_turn = false;
                     }
                 } else if step == Step::EndCombat {
                     // CR "this combat": an `ArmCombatDamageWatch` watch that never fired this
@@ -2018,8 +2021,19 @@ impl Game {
                     owner: controller,
                 };
             }
-            Event::DamageMarked { object, amount, .. } => {
-                self.permanent_mut(object).marked_damage += amount
+            Event::DamageMarked {
+                object,
+                amount,
+                cant_be_regenerated,
+                exile_instead_of_dying,
+                ..
+            } => {
+                let p = self.permanent_mut(object);
+                p.marked_damage += amount;
+                // Disintegrate's riders mark the creature, not the damage — they stay set for the
+                // rest of the turn even when this hit isn't the one that kills it.
+                p.cant_be_regenerated_this_turn |= cant_be_regenerated;
+                p.exile_instead_of_dying_this_turn |= exile_instead_of_dying;
             }
             // A pure signal event for trigger-scanning (`Game::queue_sacrifice_triggers`) — the
             // actual zone change is a separate event (`MovedToGraveyard`/`MovedToCommandZone`/

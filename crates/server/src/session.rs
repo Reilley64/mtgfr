@@ -846,6 +846,8 @@ mod tests {
                     main_phase_scaled: false,
                 },
                 divided: false,
+                cant_be_regenerated: false,
+                exile_instead_of_dying: false,
             }),
             optional: false,
             min_level: 0,

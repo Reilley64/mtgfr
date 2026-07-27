@@ -972,6 +972,7 @@ impl Game {
                     source: Some(source),
                     object,
                     amount,
+                    ..
                 } => {
                     self.queue_enchanted_creature_deals_damage_triggers(source, amount);
                     // Vampiric Dragon's turn-scoped "a creature dealt damage by this creature

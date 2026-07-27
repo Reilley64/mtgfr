@@ -2108,6 +2108,8 @@ static PINGER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 main_phase_scaled: false,
             },
             divided: false,
+            cant_be_regenerated: false,
+            exile_instead_of_dying: false,
         }),
         optional: false,
         min_level: 0,
@@ -11221,6 +11223,8 @@ static LIFELINK_PINGER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 main_phase_scaled: false,
             },
             divided: false,
+            cant_be_regenerated: false,
+            exile_instead_of_dying: false,
         }),
         optional: false,
         min_level: 0,
@@ -45349,6 +45353,8 @@ static CHOOSE_TWO: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                     main_phase_scaled: false,
                 },
                 divided: false,
+                cant_be_regenerated: false,
+                exile_instead_of_dying: false,
             }),
             optional: false,
             min_level: 0,
@@ -45792,6 +45798,8 @@ static CHOOSE_ONE_OR_MORE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                     main_phase_scaled: false,
                 },
                 divided: false,
+                cant_be_regenerated: false,
+                exile_instead_of_dying: false,
             }),
             optional: false,
             min_level: 0,
@@ -60407,6 +60415,8 @@ static BURN_CREATURE_OR_PW: LazyLock<CardDef> = LazyLock::new(|| {
                 main_phase_scaled: false,
             },
             divided: false,
+            cant_be_regenerated: false,
+            exile_instead_of_dying: false,
         })
     )
 });
@@ -60430,6 +60440,8 @@ static BURN_TARGET_POWER: LazyLock<CardDef> = LazyLock::new(|| {
                 main_phase_scaled: false,
             },
             divided: false,
+            cant_be_regenerated: false,
+            exile_instead_of_dying: false,
         })
     )
 });
@@ -60453,6 +60465,8 @@ static BURN_TARGET_MV: LazyLock<CardDef> = LazyLock::new(|| {
                 main_phase_scaled: false,
             },
             divided: false,
+            cant_be_regenerated: false,
+            exile_instead_of_dying: false,
         })
     )
 });
@@ -77431,6 +77445,8 @@ static DEAL_ONE: LazyLock<CardDef> = LazyLock::new(|| {
                 main_phase_scaled: false,
             },
             divided: false,
+            cant_be_regenerated: false,
+            exile_instead_of_dying: false,
         })
     )
 });
@@ -77492,6 +77508,68 @@ fn a_regeneration_shield_replaces_the_next_destroy_and_then_wears_off() {
         game.zone_of(bear),
         Zone::Graveyard,
         "with no shield remaining the destroy goes through"
+    );
+}
+
+#[test]
+fn disintegrate_beats_a_regeneration_shield_and_exiles_what_it_kills() {
+    // "Disintegrate deals X damage to any target. If it's a creature, it can't be regenerated this
+    // turn, and if it would die this turn, exile it instead." Both riders mark the *creature*, so
+    // the lethal-damage state-based action — not the damage — is what they have to survive to.
+    let mut game = TestGame::new();
+    let bear = game.spawn_on_battlefield(PlayerId(1), VANILLA.clone());
+    let regen = game.spawn_in_hand(PlayerId(0), REGENERATE.clone());
+    let disintegrate = game.spawn_in_hand(PlayerId(0), card("Disintegrate"));
+
+    game.cast(regen).at(Target::Object(bear)).resolve();
+    assert_eq!(game.regeneration_shields(bear), 1, "one shield granted");
+
+    game.cast(disintegrate)
+        .x(2)
+        .at(Target::Object(bear))
+        .resolve();
+
+    // The shield would otherwise have replaced the lethal-damage destroy and left the bear on the
+    // battlefield, tapped (see `a_regeneration_shield_replaces_the_next_destroy_and_then_wears_off`).
+    assert_eq!(
+        game.zone_of(bear),
+        Zone::Exile,
+        "it couldn't be regenerated, died to the 2 damage, and exiled instead of hitting the graveyard"
+    );
+}
+
+#[test]
+fn disintegrates_riders_expire_at_the_turn_boundary() {
+    // "…this turn": a creature that survives the damage is unmarked again next turn, so a later
+    // death is an ordinary trip to the graveyard.
+    let mut game = TestGame::new();
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    let bear = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
+    let disintegrate = game.spawn_in_hand(PlayerId(0), card("Disintegrate"));
+    let destroy = game.spawn_in_hand(PlayerId(0), DESTROY.clone());
+
+    // X = 1 on a 2/2: marked, but not lethal.
+    game.cast(disintegrate)
+        .x(1)
+        .at(Target::Object(bear))
+        .resolve();
+    assert_eq!(
+        game.zone_of(bear),
+        Zone::Battlefield,
+        "1 damage doesn't kill a 2/2"
+    );
+
+    // Roll into P1's turn — casting still needs priority in a main phase. (CR 117, CR 500)
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1)
+            && g.current_step() == Step::Main1
+            && g.priority_holder() == PlayerId(0)
+    });
+    game.cast(destroy).at(Target::Object(bear)).resolve();
+    assert_eq!(
+        game.zone_of(bear),
+        Zone::Graveyard,
+        "the exile rider expired with the turn — this death is an ordinary one"
     );
 }
 
@@ -80416,6 +80494,8 @@ static CREATURE_BOLT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             main_phase_scaled: false,
         },
         divided: false,
+        cant_be_regenerated: false,
+        exile_instead_of_dying: false,
     }))]),
     ..creature("Test Creature Bolt", 0, 0, &[])
 });
@@ -80701,6 +80781,8 @@ static MULTI_BOLT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 main_phase_scaled: false,
             },
             divided: false,
+            cant_be_regenerated: false,
+            exile_instead_of_dying: false,
         }),
         optional: false,
         min_level: 0,
@@ -82222,6 +82304,8 @@ static BURN_FIXED_2: LazyLock<CardDef> = LazyLock::new(|| {
                 main_phase_scaled: false,
             },
             divided: false,
+            cant_be_regenerated: false,
+            exile_instead_of_dying: false,
         })
     )
 });
@@ -83739,6 +83823,8 @@ static OPPONENT_DAMAGE_WATCHER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                     main_phase_scaled: false,
                 },
                 divided: false,
+                cant_be_regenerated: false,
+                exile_instead_of_dying: false,
             }),
             optional: false,
             min_level: 0,
@@ -94502,6 +94588,8 @@ static BLACK_BOLT: LazyLock<CardDef> = LazyLock::new(|| {
                 main_phase_scaled: false,
             },
             divided: false,
+            cant_be_regenerated: false,
+            exile_instead_of_dying: false,
         })
     )
 });
@@ -101720,6 +101808,8 @@ static TOXIC_PINGER_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 main_phase_scaled: false,
             },
             divided: false,
+            cant_be_regenerated: false,
+            exile_instead_of_dying: false,
         }),
         optional: false,
         min_level: 0,
@@ -103081,6 +103171,8 @@ static BURN_FIXED_3: LazyLock<CardDef> = LazyLock::new(|| {
                 main_phase_scaled: false,
             },
             divided: false,
+            cant_be_regenerated: false,
+            exile_instead_of_dying: false,
         })
     )
 });
@@ -103106,6 +103198,8 @@ static BURN_FIXED_5: LazyLock<CardDef> = LazyLock::new(|| {
                 main_phase_scaled: false,
             },
             divided: false,
+            cant_be_regenerated: false,
+            exile_instead_of_dying: false,
         })
     )
 });
@@ -103131,6 +103225,8 @@ static BURN_FIXED_9: LazyLock<CardDef> = LazyLock::new(|| {
                 main_phase_scaled: false,
             },
             divided: false,
+            cant_be_regenerated: false,
+            exile_instead_of_dying: false,
         })
     )
 });

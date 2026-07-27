@@ -643,6 +643,17 @@ impl Game {
         self.as_permanent(id).map_or(0, |p| p.regeneration_shields)
     }
 
+    /// Whether a regeneration shield on `id` is actually available to replace a destruction
+    /// (CR 701.15b) — it has one, and nothing has marked it "can't be regenerated this turn"
+    /// (CR 701.15d, Disintegrate). Every shield-consuming path asks this rather than reading
+    /// [`regeneration_shields`](Self::regeneration_shields) directly, so the mark reaches the
+    /// lethal-damage state-based action and every `destroy` effect alike. A destruction that
+    /// carries its own `cant_be_regenerated` (Terror) turns the shield off on top of this.
+    pub(crate) fn regeneration_shield_available(&self, id: ObjectId) -> bool {
+        self.as_permanent(id)
+            .is_some_and(|p| p.regeneration_shields > 0 && !p.cant_be_regenerated_this_turn)
+    }
+
     /// Whether the permanent at `id` has any counter on it at all — CR 122.1's unqualified
     /// "counter" (Nev, the Practical Dean's "with counters on them"), covering +1/+1, every
     /// named kind, and the finality counter. `false` if `id` isn't a permanent.
