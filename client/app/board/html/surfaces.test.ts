@@ -722,6 +722,19 @@ test("result overlay renders watch and leave actions", () => {
   );
 });
 
+// boardOverlays roots are pointer-events-none; interactive layers must re-enable hits.
+test("result overlay Stay/Leave controls are clickable under the overlays root", () => {
+  overlaySceneWithoutMounts(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        players: [player(0, { lost: true }), player(1)],
+      }),
+    ),
+    Scene.expect(Scene.testId("result-overlay")).toHaveClass("pointer-events-auto"),
+  );
+});
+
 test("x prompt uses a center modal with a live cost preview", () => {
   const xPrompt: XPromptState = {
     action: action(12, { label: testMessageRef("Comet Storm"), has_x: true, max_x: 3, min_x: 0 }),
