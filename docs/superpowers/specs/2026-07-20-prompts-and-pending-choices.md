@@ -1,5 +1,5 @@
 # Prompts and Pending Choices
-**Status:** Current (as of 2026-07-26)
+**Status:** Current (as of 2026-07-27)
 **Module:** `client/app/board/html/prompts.ts`, `client/app/board/html/prompt-bar-actions.ts`, `client/app/board/html/pending-choice-waiting.ts`, `client/app/domain/choice.ts`, `client/app/domain/choiceWaiting.ts`, `client/app/domain/cardPickSearch.ts`, `client/app/domain/optionFilter.ts`, `client/app/domain/xCost.ts`, `client/app/board/action/execution.ts`, `client/app/domain/ui/card-art.ts`, `client/app/domain/wire/types.ts`
 
 ## Problem Statement
@@ -46,6 +46,10 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 ## Behavior
 
 - Local prompts render in this order: hand play-mode chooser, X prompt, modal cast, sacrifice pick, discard pick, graveyard-exile pick, staged target picker.
+- `promptPresentation(board, state)` owns prompt classification for both local sessions and engine `pending_choice`: local prompt sessions win first, then the seated viewer's own `pending_choice`, and pure staged on-board targeting that keeps the ordinary Cancel/priority path stays `none`.
+- Classified `simple` prompts keep only informational coach chrome at the bottom dock (`*-aim`, title/count copy only) while their answer buttons move into `priority-context-bar`.
+- Classified `modal` prompts use centered `*-modal` shells with a dimmed backdrop and keep answer actions inside the modal; the primary priority controls stay hidden while that modal is open.
+- Pending-choice kinds without a dedicated simple mapping fall back to `modal` so new or off-board pickers do not invent primary-bar buttons.
 - Local `playModePick` is board session chrome alongside `modalCast`, cost picks, and staged targets (not an engine `pending_choice`). Multi-action hand cards use docked `play-mode-aim` as a title-only coach while `priority-context-bar` carries one `play-mode-{i}` button per legal mode plus Cancel; choosing a row dispatches `PlayModeChosen` and keeps the parked stack flight while the selected action continues through cost, modal, target, or submit steps. Cancel clears the park and returns the card to hand without submitting an intent.
 - While `play-mode-aim` is open, snapshot and delta sync prune buttons whose action ids are no longer legal. Exactly one remaining mode auto-continues that mode; zero remaining modes cancel the session, return the card to hand, and submit no intent. A stale `PlayModeChosen` for a pruned action id clears `playModePick`, returns the card to hand, and emits no command.
 - Local modal spells use docked `modal-mode-aim` as a title-only coach while `priority-context-bar` carries the mode rows plus Cast/Cancel (center `modal-mode-picker` unused). Multi-select mode rows keep toggle semantics via `aria-pressed` so the selected set is exposed to assistive tech. After modes are chosen and a target is still needed, docked `modal-waiting-aim` replaces center `modal-waiting`, and its Cancel action also lives in `priority-context-bar`.
@@ -120,10 +124,13 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Waiting copy lives in `client/app/domain/choiceWaiting.ts`; the banner is composed in `boardOverlays` (not inside `promptsView`) so spectators see it without seated prompt chrome.
 - Library-search filter helpers live in `client/app/domain/cardPickSearch.ts`; filter draft is optional `filter` on `PromptDraft` `card-pick`, updated via `PromptCardFilterSet`.
 - Prompt text from the engine stays as `MessageRef` until the view edge; formulators use formatted text for titles but submit only structured answers.
+- `promptPresentation(board, state)` is the single presentation classifier for prompt chrome; it returns `none`, `simple`, or `modal`, tags whether a `simple` prompt is board-aim, and defaults uncategorized engine kinds to `modal`.
+- `promptsView` renders content only: bottom-docked coach strips for `simple` flows and centered `promptModalFrame` shells for `modal` flows, including the dimmed backdrop and in-modal action rows.
 
 ## Testing Decisions
 
 - Formulator registry tests ensure every `PendingChoiceView["kind"]` maps to a formulator.
+- `promptPresentation.test.ts` covers `none` / `simple` / `modal`, local-before-pending precedence, board-aim simple prompts, staged on-board targeting staying `none`, and the modal fallback for uncategorized/off-board pending prompts.
 - `client/app/domain/wire/wire-case-coverage.test.ts` asserts hand `FORMULATOR_FOR_KIND` keys match the
   generated `PendingChoiceView` proto oneof (camel→snake), so codegen drift fails `just client-check`.
 - Scene tests cover awaited-player prompt visibility and non-decider/spectator suppression plus waiting-banner copy.
@@ -185,3 +192,4 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 
 - Wire projection may still send redacted `pending_choice` data to non-deciders; the interactive formulator gate is client-side.
 - The local hand play-mode prompt follows [hand-play-mode-chooser-design](2026-07-26-hand-play-mode-chooser-design.md).
+- Prompt presentation ownership and primary-bar takeover details are designed in [prompt-primary-bar-takeover-design](2026-07-27-prompt-primary-bar-takeover-design.md).
