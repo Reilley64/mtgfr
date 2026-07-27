@@ -83,6 +83,7 @@ These documents are **not superseded** and must stay current alongside the specs
 | [effect-deepening](2026-07-26-effect-deepening-design.md) | Design input: deepen Effect on client (LobbyClient, BFF gRPC Effect dispatch, Drizzle RC effect-postgres, Effect HTTP helpers); update shell/lobby/wire specs per wave |
 | [prompt-primary-bar-takeover](2026-07-27-prompt-primary-bar-takeover-design.md) | Design input: simple prompt actions own the primary-bar slot; rich pickers are center modals; board-aim coaches stay bottom-docked; update prompts + turn-and-priority-chrome at implement time |
 | [unified-screen-motion](2026-07-27-unified-screen-motion-design.md) | Design input: unify hand-drag ghost + flights + ExitFx onto the Mount flight / screen-motion paint layer; update flights + hand-and-zone-bar |
+| [dtcg-token-architecture](2026-07-27-dtcg-token-architecture-design.md) | Design input: DTCG 2025.10 typed composites (drop `$type: css`), aliases, primitive→semantic tiers, CSS Color 4 OKLCH; update shell-routes + `DESIGN.md` at implement time |
 
 ## Authoring conventions
 
