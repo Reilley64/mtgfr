@@ -282,7 +282,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Raging River** {R}{R} · Enchantment — increment 48
 - [x] **Red Elemental Blast** {R} · Instant — increment 9
 - [ ] **Reverse Damage** {1}{W}{W} · Instant — increment 4, 5
-- [ ] **Righteousness** {W} · Instant — increment 52
+- [x] **Righteousness** {W} · Instant — increment 52
 - [ ] **Rock Hydra** {X}{R}{R} · Creature — Hydra — increment 4, 28
 - [ ] **Sacrifice** {B} · Instant — increment 46
 - [x] **Samite Healer** {1}{W} · Creature — Human Cleric — increment 4

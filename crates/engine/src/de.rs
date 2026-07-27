@@ -1531,7 +1531,7 @@ impl<'de> Deserialize<'de> for TypeSet {
 /// composable axes (`types`, `controller`, `token`, `other`, `enchanted`, `attached_to_creature`,
 /// `enchanted_by_you`, `mv_max`, `mv_min`, `mv_eq_x`, `mv_max_x`, `power_max`, `power_parity`,
 /// `noncreature`, `exclude`, `color`, `not_color`, `modified`, `attacking`, `attacking_you`,
-/// `power_less_than_source`, `entered_this_turn`, `nonbasic`, `nonlegendary`, `nonlair`,
+/// `blocking`, `power_less_than_source`, `entered_this_turn`, `nonbasic`, `nonlegendary`, `nonlair`,
 /// `without_flying`, `with_flying`, `with_counter`). `noncreature` is sugar for `exclude = "creature"`;
 /// `not_color` is sugar for `color`'s negated-color arm — both fold into the same
 /// [`PermanentFilter`] fields as their general spelling (see below).
@@ -1623,6 +1623,8 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     #[serde(default)]
                     attacking_you: bool,
                     #[serde(default)]
+                    blocking: bool,
+                    #[serde(default)]
                     power_less_than_source: bool,
                     #[serde(default)]
                     entered_this_turn: bool,
@@ -1683,6 +1685,7 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     modified: t.modified,
                     attacking: t.attacking,
                     attacking_you: t.attacking_you,
+                    blocking: t.blocking,
                     power_less_than_source: t.power_less_than_source,
                     entered_this_turn: t.entered_this_turn,
                     nonbasic: t.nonbasic,

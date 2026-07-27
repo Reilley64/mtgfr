@@ -758,6 +758,11 @@ pub struct PermanentFilter {
     /// who its declared defender is. Reads [`Game::defender_of`], the same declared-defender
     /// lookup goad/attack-tax already use. `false` (default) imposes no restriction.
     pub attacking_you: bool,
+    /// Restrict to creatures currently blocking some attacker (Righteousness — "target
+    /// *blocking* creature"). `false` (default) imposes no restriction. Reads
+    /// [`CombatState::blocks`], the same declared-blocks list `anthem_static`'s own
+    /// `blocking_only` axis consults.
+    pub blocking: bool,
     /// Power strictly less than the filter's own source permanent's power (Mentor, CR 702.121a
     /// "lesser power"). `false` (default) imposes no restriction. Meaningless without a `source`
     /// (see [`Game::permanent_matches`]) — every filter that sets this pairs it with a targeted
@@ -868,6 +873,7 @@ impl PermanentFilter {
             modified: false,
             attacking: false,
             attacking_you: false,
+            blocking: false,
             power_less_than_source: false,
             entered_this_turn: false,
             nonbasic: false,

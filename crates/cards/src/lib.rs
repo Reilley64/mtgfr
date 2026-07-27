@@ -2690,6 +2690,21 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
             ],
             "tap or untap, same legal targets either way"
         );
+
+        // Righteousness only reaches a creature that's already blocking — the whole card is that
+        // restriction, so it's the one thing its shape has to carry.
+        let righteousness = get_by_name("Righteousness").expect("Righteousness is in the pool");
+        let Effect::Pump(PumpEffect::PumpUntilEndOfTurn { target, power, .. }) =
+            righteousness.abilities[0].effect
+        else {
+            panic!("Righteousness pumps");
+        };
+        assert_eq!(power, Amount::Fixed(7));
+        let TargetSpec::Permanent(filter) = target else {
+            panic!("Righteousness targets a permanent");
+        };
+        assert!(filter.blocking, "only a creature that's blocking");
+        assert_eq!(filter.types, TypeSet::CREATURE);
     }
 
     /// The set's mana-sink permanents: a regeneration cycle and a self-pump cycle, each paying one

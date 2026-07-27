@@ -847,6 +847,9 @@ fn permanent_filter_token(filter: PermanentFilter) -> String {
     if filter.attacking_you {
         parts.push("attacking_you".to_string());
     }
+    if filter.blocking {
+        parts.push("blocking".to_string());
+    }
     if filter.power_less_than_source {
         parts.push("power_lt_source".to_string());
     }

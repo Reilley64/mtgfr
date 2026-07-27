@@ -1557,6 +1557,10 @@ impl Game {
         if filter.attacking_you && self.defending_player_of(id) != Some(you) {
             return false;
         }
+        // Currently blocking some attacker (Righteousness — "target blocking creature").
+        if filter.blocking && !self.combat.blocks.iter().any(|&(b, _)| b == id) {
+            return false;
+        }
         // Nonlegendary exclusion (CR 205.4a — Muddle, the Ever-Changing's "nonlegendary
         // creature you control"). Reads the current (possibly copied) def.
         if filter.nonlegendary && self.def_of(id).legendary {

@@ -104483,3 +104483,41 @@ fn a_starving_lord_of_the_pit_mauls_its_controller_for_seven() {
         "the Lord never eats itself"
     );
 }
+
+// "Target blocking creature gets +7/+7 until end of turn." — the blocking twin of the filter's
+// `attacking` axis, and the only thing that makes a creature a legal Righteousness target.
+
+#[test]
+fn righteousness_pumps_a_creature_that_blocked() {
+    let mut g = TestGame::new();
+    let attacker = g.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
+    let blocker = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
+    let righteousness = g.spawn_in_hand(PlayerId(0), card("Righteousness"));
+
+    attack_with(&mut g, vec![attacker]);
+    block_with(&mut g, vec![(blocker, attacker)]).unwrap();
+    g.cast(righteousness).at(Target::Object(blocker)).resolve();
+
+    assert_eq!(g.power(blocker), 2 + 7, "+7/+7 on the blocking Bears");
+    assert_eq!(g.toughness(blocker), 2 + 7);
+}
+
+#[test]
+fn righteousness_cant_target_a_creature_that_stayed_home() {
+    let mut g = TestGame::new();
+    let attacker = g.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
+    let blocker = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
+    let bystander = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
+    let righteousness = g.spawn_in_hand(PlayerId(0), card("Righteousness"));
+
+    attack_with(&mut g, vec![attacker]);
+    block_with(&mut g, vec![(blocker, attacker)]).unwrap();
+
+    assert_eq!(
+        g.cast(righteousness)
+            .at(Target::Object(bystander))
+            .try_submit(),
+        Err(Reject::IllegalTarget),
+        "a creature that didn't block isn't a legal target"
+    );
+}

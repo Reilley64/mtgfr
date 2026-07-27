@@ -673,13 +673,17 @@ existing `subtypes` axis covers both halves and `CardFilter::LandWithSubtype` ge
 twin for free.
 *Cards:* flashfires, tsunami.
 
-### 52. `blocking-creature-filter` — 1 card, S
+### 52. `blocking-creature-filter` — 1 card, S — **done**
 Depends on: nothing.
 `PermanentFilter` has an `attacking` axis but no `blocking` one, so "target blocking creature"
 can't be expressed. `anthem_static`'s own `blocking_only` already reads `CombatState::blocks` for
-Crescendo of War — this is the same read, hoisted onto the shared filter. *Sketch:* add
-`blocking: bool` to `PermanentFilter`, checked against `Game::blockers_of` in
-`permanent_matches`, and drop `anthem_static::blocking_only` in favour of it.
+Crescendo of War — this is the same read, hoisted onto the shared filter.
+*Landed:* `blocking: bool` on `PermanentFilter`, one early return in `permanent_matches` reading
+`CombatState::blocks` directly (not `blockers_of`, which answers the other question — who blocks a
+*given* attacker — and would mean scanning every attacker to ask about one blocker). The sketch's
+second half didn't happen: `anthem_static` carries its own inline filter fields rather than a
+`PermanentFilter`, so `blocking_only` isn't a duplicate of this axis and dropping it would mean
+converting that whole effect to take a filter — a refactor no card is asking for.
 *Cards:* righteousness.
 
 ### 53. `evenly-divided-damage-and-per-target-cost` — 1 card, M
