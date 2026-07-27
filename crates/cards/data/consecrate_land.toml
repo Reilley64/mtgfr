@@ -1,0 +1,27 @@
+# Enchant land
+# Enchanted land has indestructible and can't be enchanted by other Auras.
+name = "Consecrate Land"
+otags = ["gives-indestructible", "hate-aura", "protects-land"]
+sets = ["2ed", "30a", "ced", "cei", "lea", "leb", "tsb"]
+id = "4627691c-4ed4-4add-9cc3-2e019be2f9fd"
+default_print = "9efb29d2-550f-4ede-b024-7b0e15c2e986"
+oracle = "Enchant land\nEnchanted land has indestructible and can't be enchanted by other Auras."
+subtypes = ["Aura"]
+enchant = { types = "land" }
+
+[cost]
+white = 1
+
+[kind]
+type = "aura"
+
+# Enchanted land has indestructible and can't be enchanted by other Auras.
+[[abilities]]
+timing = "static"
+
+# Enchanted land has indestructible and can't be enchanted by other Auras.
+[[abilities.effects]]
+type = "static"
+mode = "grant_to_attached"
+keywords = ["indestructible"]
+cant_be_enchanted = true

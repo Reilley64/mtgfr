@@ -187,6 +187,11 @@ pub enum StaticEffect {
         cant_block: bool,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         cant_attack_controller: bool,
+        /// Consecrate Land's "can't be enchanted by other Auras": no *other* Aura may attach to
+        /// this host — none can be cast targeting it, and one already there falls off (CR
+        /// 704.5n). See [`Game::host_cant_be_enchanted_by`](crate::Game::host_cant_be_enchanted_by).
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        cant_be_enchanted: bool,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         activated_abilities: Option<AbilityRestriction>,
         #[cfg_attr(feature = "card-dsl", serde(default))]

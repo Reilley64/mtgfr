@@ -500,12 +500,25 @@ client sees is the consequence (a creature that doesn't regenerate, a `MovedToEx
 `MovedToGraveyard` would have been) as events it already renders.
 *Cards:* disintegrate.
 
-### 35. `aura-attachment-restriction` — 1 card, S
+### 35. `aura-attachment-restriction` — 1 card, S — **done**
 Depends on: nothing.
 Consecrate Land's "can't be enchanted by other Auras." *Sketch:* a
 `StaticEffect::CantBeEnchanted` consulted by the Aura target-legality check and by the
 state-based Aura-attachment sweep. The indestructible half is an ordinary keyword grant.
 *Cards:* consecrate_land.
+
+*Landed:* not a new static — a `cant_be_enchanted` bool on `grant_to_attached`, beside the
+`cant_attack` / `cant_block` / `cant_attack_controller` flags that already model "the Aura forbids
+its host something." Those are read by little `host_cant_*` scans over `attachments(host)`, and the
+new `Game::host_cant_be_enchanted_by(host, aura)` is that same scan with one extra clause: it skips
+`aura` itself. That skip is the whole of "*other* Auras" — the Aura granting the restriction never
+closes the door on itself, so it never sweeps itself into the graveyard. Two enforcement points,
+both already-existing chokes: `attachment_host_legal` (which the CR 704.5n sweep runs over every
+attachment on each state-based check, so an Aura already on the land falls off the moment Consecrate
+Land enters) and the target-retain tail of `legal_targets_for`, scoped to an Aura that isn't a
+permanent yet — that is this same card's cast enumeration (CR 303.4a), not a targeted ability an
+already-attached Aura might have. The indestructible half is exactly the ordinary keyword grant the
+sketch predicted, so both printed clauses ride one static.
 
 ### 36. `grant-triggered-ability-to-attached` — 1 card, M
 Depends on: nothing.

@@ -196,7 +196,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Clockwork Beast** {6} · Artifact Creature — Beast — increment 28
 - [ ] **Clone** {3}{U} · Creature — Shapeshifter — increment 12
 - [ ] **Cockatrice** {3}{G}{G} · Creature — Cockatrice — increment 21
-- [ ] **Consecrate Land** {W} · Enchantment — Aura — increment 35
+- [x] **Consecrate Land** {W} · Enchantment — Aura — increment 35
 - [x] **Conservator** {4} · Artifact — increment 4
 - [ ] **Conversion** {2}{W}{W} · Enchantment — increment 8
 - [ ] **Copper Tablet** {2} · Artifact — increment 60

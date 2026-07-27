@@ -2334,6 +2334,37 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         assert_eq!(white_ward.cost.colored[Color::White.index()], 1);
     }
 
+    /// The set's one Aura that enchants a land. Both printed halves ride a single
+    /// `grant_to_attached`: the keyword and the closed door.
+    #[test]
+    fn unlimited_consecrate_land_shields_its_land_and_closes_it_to_other_auras() {
+        let consecrate = get_by_name("Consecrate Land").expect("Consecrate Land is in the pool");
+        assert_eq!(
+            consecrate.kind,
+            CardKind::Aura,
+            "Consecrate Land is an Aura"
+        );
+        assert_eq!(
+            consecrate.enchant,
+            Some(PermanentFilter {
+                types: TypeSet::LAND,
+                ..PermanentFilter::default()
+            }),
+            "Enchant land"
+        );
+        assert!(
+            matches!(
+                consecrate.abilities[0].effect,
+                Effect::Static(StaticEffect::GrantToAttached {
+                    keywords: &[Keyword::Indestructible],
+                    cant_be_enchanted: true,
+                    ..
+                })
+            ),
+            "enchanted land has indestructible and can't be enchanted by other Auras"
+        );
+    }
+
     /// The three Auras that hand their host a repeatable pump — the ability lives on the Aura and
     /// affects the enchanted creature, so it is activated, not granted.
     #[test]

@@ -1104,6 +1104,32 @@ impl Game {
         })
     }
 
+    /// Whether a live Aura attached to `host` *other than* `aura` carries a static
+    /// [`Effect::Static(StaticEffect::GrantToAttached)`] with `cant_be_enchanted = true`
+    /// (Consecrate Land — "Enchanted land … can't be enchanted by other Auras"). Skipping `aura`
+    /// itself is what makes the restriction apply to *other* Auras: the one granting it never
+    /// closes the door on itself. Read by [`Game::attachment_host_legal`] (so an Aura already
+    /// there falls off, CR 704.5n) and by the Aura-spell target enumeration in
+    /// [`Game::legal_targets_for`] (so one can't be cast there in the first place, CR 303.4a).
+    pub(crate) fn host_cant_be_enchanted_by(&self, host: ObjectId, aura: ObjectId) -> bool {
+        self.attachments(host).into_iter().any(|id| {
+            id != aura
+                && !self.is_phased_out(id)
+                && self.def_of(id).abilities.iter().any(|a| {
+                    matches!(
+                        (a.timing, a.effect.clone()),
+                        (
+                            Timing::Static,
+                            Effect::Static(StaticEffect::GrantToAttached {
+                                cant_be_enchanted: true,
+                                ..
+                            })
+                        )
+                    )
+                })
+        })
+    }
+
     /// The strictest [`AbilityRestriction`] a live attached Aura's [`Effect::Static(StaticEffect::GrantToAttached)`]
     /// imposes on `host`'s own activated abilities (Faith's Fetters' `mana_only` carve-out vs
     /// Prison Term's unqualified `none`), or `None` if no attached Aura restricts them.

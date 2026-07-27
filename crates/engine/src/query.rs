@@ -1165,6 +1165,17 @@ impl Game {
             }
             Target::Player(_) => true,
         });
+        // An Aura is cast targeting what it will enchant (CR 303.4a), so a host closed off by
+        // Consecrate Land's "can't be enchanted by other Auras" is never a legal choice. Scoped to
+        // an Aura that isn't a permanent yet — that's this same card's cast enumeration, not a
+        // targeted ability an already-attached Aura might have.
+        if matches!(self.def_of(source).kind, CardKind::Aura) && self.as_permanent(source).is_none()
+        {
+            targets.retain(|t| match *t {
+                Target::Object(id) => !self.host_cant_be_enchanted_by(id, source),
+                Target::Player(_) => true,
+            });
+        }
         targets
     }
 

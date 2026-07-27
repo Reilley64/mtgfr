@@ -15,6 +15,15 @@ impl Game {
     /// below, so an Aura like Confiscate ("Enchant permanent") isn't held to the default
     /// enchant-creature restriction its `enchant` filter doesn't actually impose.
     pub(crate) fn attachment_host_legal(&self, attachment: ObjectId, host: ObjectId) -> bool {
+        // A host another Aura has closed off (Consecrate Land's "can't be enchanted by other
+        // Auras") is illegal for every Aura but that one — so an Aura already sitting there when
+        // the closing Aura arrives goes to the graveyard on the CR 704.5n sweep below. Equipment
+        // is untouched: it attaches, it doesn't enchant.
+        if matches!(self.def_of(attachment).kind, CardKind::Aura)
+            && self.host_cant_be_enchanted_by(host, attachment)
+        {
+            return false;
+        }
         // An enchant-graveyard Aura's printed enchant names a graveyard card, which no
         // battlefield host satisfies; only its own ETB rewrite ("enchant creature put onto the
         // battlefield with this Aura") makes a host legal — exactly the one it reanimated.

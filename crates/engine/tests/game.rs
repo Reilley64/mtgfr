@@ -29494,6 +29494,7 @@ static FLIGHT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             cant_attack: false,
             cant_block: false,
             cant_attack_controller: false,
+            cant_be_enchanted: false,
             activated_abilities: None,
             legendary_only: false,
         }),
@@ -29583,6 +29584,7 @@ static PRO_WHITE_CLOAK: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             cant_attack: false,
             cant_block: false,
             cant_attack_controller: false,
+            cant_be_enchanted: false,
             activated_abilities: None,
             legendary_only: false,
         }),
@@ -29674,6 +29676,7 @@ static FALLEN_IDEAL_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             cant_attack: false,
             cant_block: false,
             cant_attack_controller: false,
+            cant_be_enchanted: false,
             activated_abilities: None,
             legendary_only: false,
         }),
@@ -29702,6 +29705,7 @@ static VOW_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             cant_attack: false,
             cant_block: false,
             cant_attack_controller: true,
+            cant_be_enchanted: false,
             activated_abilities: None,
             legendary_only: false,
         }),
@@ -101795,6 +101799,7 @@ static TOXIC_AURA_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             cant_attack: false,
             cant_block: false,
             cant_attack_controller: false,
+            cant_be_enchanted: false,
             activated_abilities: None,
             legendary_only: false,
         }),
@@ -104587,5 +104592,72 @@ fn stone_giant_cant_throw_a_creature_as_tough_as_its_power() {
     assert!(
         !offered.contains(&Target::Object(theirs)),
         "a Giant only throws its own"
+    );
+}
+
+// "Enchant land / Enchanted land has indestructible and can't be enchanted by other Auras."
+// (Consecrate Land) — the second clause closes the land off to every Aura but this one, before the
+// fact (an Aura spell can't choose it) and after (an Aura already there falls off, CR 704.5n).
+
+#[test]
+fn consecrate_land_makes_its_land_indestructible() {
+    let mut game = Game::new();
+    let forest = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    let consecrate = game.spawn_in_hand(PlayerId(0), card("Consecrate Land"));
+    cast_and_resolve(&mut game, consecrate, Some(Target::Object(forest)));
+
+    let rain = game.spawn_in_hand(PlayerId(0), card("Stone Rain")); // "Destroy target land."
+    cast_and_resolve(&mut game, rain, Some(Target::Object(forest)));
+
+    assert_eq!(
+        game.zone_of(forest),
+        Zone::Battlefield,
+        "the consecrated land shrugs off land destruction"
+    );
+}
+
+#[test]
+fn an_aura_spell_cant_choose_a_consecrated_land() {
+    let mut game = Game::new();
+    let consecrated = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    let open = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    let consecrate = game.spawn_in_hand(PlayerId(0), card("Consecrate Land"));
+    cast_and_resolve(&mut game, consecrate, Some(Target::Object(consecrated)));
+
+    let fertile = game.spawn_in_hand(PlayerId(0), card("Fertile Ground")); // Enchant land
+    let offered = game.legal_targets(fertile, None);
+
+    assert!(
+        !offered.contains(&Target::Object(consecrated)),
+        "the consecrated land is closed to other Auras"
+    );
+    assert!(
+        offered.contains(&Target::Object(open)),
+        "an unconsecrated land is still fair game"
+    );
+}
+
+#[test]
+fn consecrate_land_puts_an_aura_already_on_the_land_into_the_graveyard() {
+    let mut game = Game::new();
+    let forest = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    let fertile = game.spawn_in_hand(PlayerId(0), card("Fertile Ground"));
+    cast_and_resolve(&mut game, fertile, Some(Target::Object(forest)));
+    let fertile = game.current_id(fertile);
+    assert_eq!(game.attached_to(fertile), Some(forest), "it went on first");
+
+    let consecrate = game.spawn_in_hand(PlayerId(0), card("Consecrate Land"));
+    cast_and_resolve(&mut game, consecrate, Some(Target::Object(forest)));
+    let consecrate = game.current_id(consecrate);
+
+    assert_eq!(
+        game.zone_of(fertile),
+        Zone::Graveyard,
+        "the earlier Aura is now attached illegally (CR 704.5n)"
+    );
+    assert_eq!(
+        game.attached_to(consecrate),
+        Some(forest),
+        "the Aura doing the closing isn't an *other* Aura"
     );
 }
