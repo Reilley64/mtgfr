@@ -1369,6 +1369,27 @@ test("may_yes_no aim shows docked Yes and No", () => {
   );
 });
 
+test("may_yes_no hides idle priority actions", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        active_player: 1,
+        pending_choice: {
+          kind: "may_yes_no",
+          label: testMessageRef("Draw a card?"),
+          player: 0,
+          source: 1,
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-end-turn")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-pass")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-turn-yield")).toBeAbsent(),
+  );
+});
+
 test("may_yes_no may-reveal land label surfaces from MessageRef", () => {
   overlayScene(
     overlayModel(
@@ -1528,6 +1549,28 @@ test("library search aim shows docked filter chrome instead of center modal", ()
     Scene.expect(Scene.testId("prompt-card-4")).toExist(),
     Scene.expect(Scene.testId("prompt-card-2")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-decline")).toHaveText("Fail to find"),
+  );
+});
+
+test("library search hides idle priority actions", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        pending_choice: {
+          kind: "search_library",
+          player: 0,
+          items: [
+            { id: 1, label: "Sol Ring" },
+            { id: 2, label: "Forest" },
+          ],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-end-turn")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-pass")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-stack-yield")).toBeAbsent(),
   );
 });
 

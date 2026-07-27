@@ -1,19 +1,19 @@
 import type { VisibleState } from "~/wire/types";
-import { type BoardModel } from "./submodel";
 import {
   gyExileCostObjectIds,
   pendingBoardTargetMode,
   pendingDamageAssignBlockers,
   pendingDigCastHostMode,
+  pendingDivideSpellObjectIndexes,
   pendingExilePickIds,
   pendingGraveyardPickIds,
   pendingHandPickIds,
   pendingPlayerAimSeats,
-  pendingDivideSpellObjectIndexes,
   sacrificeCostObjectIds,
   targetMode,
 } from "./action/targeting";
 import { ZONE } from "./geometry/layout";
+import type { BoardModel } from "./submodel";
 
 export type PromptPresentation =
   | { mode: "none" }

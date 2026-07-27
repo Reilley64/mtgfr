@@ -623,7 +623,7 @@ test("HandActionActivated with one mode does not open playModePick", () => {
   expect(commands[0]?.name).toBe(SubmitIntent.name);
 });
 
-test("priority bar shows Cancel while playModePick is parked", () => {
+test("playModePick prompt hides bar-level Cancel and keeps prompt Cancel", () => {
   const card = creature(42, 0, { name: "Valley Rannet", zone: ZONE.Hand });
   const castAction: ActionView = {
     id: 7,
@@ -651,7 +651,8 @@ test("priority bar shows Cancel while playModePick is parked", () => {
 
   overlayScene(
     { ...model, board: { ...model.board, playModePick } as BoardModel & { playModePick: PlayModePick } },
-    Scene.expect(Scene.testId("board-cancel-target")).toExist(),
+    Scene.expect(Scene.testId("board-cancel-target")).toBeAbsent(),
+    Scene.expect(Scene.testId("prompt-cancel")).toExist(),
   );
 });
 

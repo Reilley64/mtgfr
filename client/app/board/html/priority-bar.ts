@@ -19,6 +19,7 @@ import {
   StackYieldArmed,
   TurnYieldToggled,
 } from "../messages";
+import { promptPresentation } from "../promptPresentation";
 import type { BoardModel } from "../submodel";
 import { HAND_BAR_H } from "./hand";
 
@@ -67,6 +68,22 @@ function showTurnYield(state: VisibleState): boolean {
 }
 
 export function priorityBarView(board: BoardModel, state: VisibleState): Html {
+  const presentation = promptPresentation(board, state);
+  if (presentation.mode !== "none") {
+    return h.div(
+      [
+        h.DataAttribute("testid", "priority-context-bar"),
+        h.Class("pointer-events-auto fixed right-md z-25 flex flex-col items-end gap-sm"),
+        h.Style({ bottom: `${HAND_BAR_H + 10}px` }),
+      ],
+      [
+        board.reject != null
+          ? h.div([h.DataAttribute("testid", "board-reject"), h.Class("text-caption text-burn-red")], [board.reject])
+          : null,
+      ].filter((v): v is Html => v !== null),
+    );
+  }
+
   const primary = primaryFor(board, state);
   const yours = state.can_act && state.priority === state.viewer;
   const stackLen = state.stack.length;
