@@ -121,6 +121,8 @@ describe("syncBoardWithGame exit FX", () => {
     const bearId = 33;
     const board: BoardModel = {
       ...initialBoardModel(),
+      // Match fold player count so auto fitCamera does not remap flight scale mid-assertion.
+      cameraFitPlayers: 2,
       flights: new Map([
         [
           bearId,

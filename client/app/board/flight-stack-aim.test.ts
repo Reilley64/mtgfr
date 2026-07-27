@@ -2,11 +2,10 @@ import { describe, expect, it } from "vitest";
 import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ObjectView, PlayerView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
-import { worldToScreen } from "./geometry/camera";
-import { avatarPos, CARD_W, ZONE } from "./geometry/layout";
+import { CARD_W, ZONE } from "./geometry/layout";
 import { STACK_CARD_W, stackFaceScreenOrigin, stackPeekFor, stackPresentation } from "./geometry/stackLayout";
-import { FlightsSynced } from "./messages";
-import { spawnFlight, stackFlightScale, stepFlights } from "./motion/flights";
+import { FlightsSynced, HandActionActivated } from "./messages";
+import { handFlightScale, spawnFlight, stackFlightScale, stepFlights } from "./motion/flights";
 import { BOARD_VIEWPORT, initialBoardModel, syncBoardWithGame, updateBoard } from "./submodel";
 
 function player(overrides: Partial<PlayerView> = {}): PlayerView {
@@ -278,14 +277,91 @@ describe("stack flight settle handoff", () => {
       ),
     );
 
-    const flight = afterGame.flights.get(spellId);
-    expect(flight).toBeDefined();
-    expect(afterGame.flights.has(handId)).toBe(false);
+    // Already on the resting face — hand off immediately (no second flying settle pulse).
+    expect(afterGame.flights.size).toBe(0);
+    expect(afterGame.hideCardIds.size).toBe(0);
+    expect(afterGame.handHidden.has(handId)).toBe(false);
+  });
 
-    const avatar = worldToScreen(afterGame.camera, avatarPos(0, 0, 2).x, avatarPos(0, 0, 2).y);
-    // Continuity: rebound flight keeps the parked stack pose, not a fresh avatar spawn.
-    expect(flight?.x).toBeCloseTo(face.x, 0);
-    expect(flight?.y).toBeCloseTo(face.y, 0);
-    expect(Math.hypot((flight?.x ?? 0) - avatar.x, (flight?.y ?? 0) - avatar.y)).toBeGreaterThan(80);
+  it("keeps parked stack seed screen size when sync fits the camera", () => {
+    const handId = 7;
+    const spellId = 42;
+    const bolt = spell(spellId, "Lightning Bolt");
+    const board0 = { ...initialBoardModel(), viewport: { ...BOARD_VIEWPORT }, cameraFitPlayers: 0 };
+    const face = restingStackFace(board0, 1, 0);
+    const targetScale = stackFlightScale(board0.camera.zoom);
+    const parked = {
+      ...spawnFlight({
+        id: handId,
+        print: bolt.print ?? "",
+        name: bolt.name,
+        x: face.x,
+        y: face.y,
+        scale: targetScale,
+        targetX: face.x,
+        targetY: face.y,
+        targetScale,
+        kind: "stack",
+        fromCardId: handId,
+        hold: true,
+      }),
+      phase: "settled" as const,
+    };
+
+    const afterGame = syncBoardWithGame(
+      {
+        ...board0,
+        flights: new Map([[handId, parked]]),
+        handHidden: new Set([handId]),
+        hideCardIds: new Set([handId]),
+        ownedIds: new Set([handId]),
+      },
+      gameFold(
+        state({
+          objects: [bolt],
+          stack: [{ controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId }],
+        }),
+        {
+          stackEntrances: new Map([[spellId, { from: handId, controller: 0 }]]),
+        },
+      ),
+    );
+
+    // Camera fit must not leave a second scale glide; hand off once size is preserved.
+    expect(afterGame.camera.zoom).not.toBe(board0.camera.zoom);
+    expect(afterGame.flights.size).toBe(0);
+  });
+
+  it("parks a battlefield seed at drop scale so land sync is the only glide", () => {
+    const handId = 9;
+    const land: ObjectView = {
+      ...spell(handId, "Forest"),
+      kind: { kind: "land" },
+      zone: ZONE.Hand,
+      print: "forest-print",
+    };
+    const action = {
+      id: 3,
+      kind: "play_land" as const,
+      label: testMessageRef("Play Forest"),
+      needs_target: false,
+      object: handId,
+      section: "hand" as const,
+    };
+    const fold = gameFold(state({ objects: [land], actions: [action] }));
+    const [afterPlay] = updateBoard(
+      { ...initialBoardModel(), viewport: { ...BOARD_VIEWPORT } },
+      HandActionActivated({ action, x: 500, y: 400 }),
+      fold,
+      "T1",
+    );
+    const flight = afterPlay.flights.get(handId);
+    expect(flight).toBeDefined();
+    expect(flight?.hold).toBe(true);
+    expect(flight?.kind).toBe("battlefield");
+    expect(flight?.scale).toBe(handFlightScale(afterPlay.camera.zoom));
+    expect(flight?.targetScale).toBe(flight?.scale);
+    expect(flight?.targetX).toBe(500);
+    expect(flight?.targetY).toBe(400);
   });
 });

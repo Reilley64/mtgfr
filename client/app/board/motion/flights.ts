@@ -154,11 +154,38 @@ export function flyingCardIds(flights: ReadonlyMap<number, CardFlight>): Set<num
   return ids;
 }
 
-function alreadyAtTarget(flight: CardFlight): boolean {
+/** True when pose is within settle epsilon of the target (shared by step + authority handoff). */
+export function poseAtTarget(
+  pose: { x: number; y: number; scale: number },
+  target: { x: number; y: number; scale: number },
+): boolean {
   return (
-    Math.hypot(flight.targetX - flight.x, flight.targetY - flight.y) <= EPSILON_PX &&
-    Math.abs(flight.targetScale - flight.scale) <= EPSILON_SCALE
+    Math.hypot(target.x - pose.x, target.y - pose.y) <= EPSILON_PX &&
+    Math.abs(target.scale - pose.scale) <= EPSILON_SCALE
   );
+}
+
+/** Preserve on-screen flight size when camera zoom changes (scale is zoom-coupled in paint). */
+export function remapFlightsForZoom(
+  flights: ReadonlyMap<number, CardFlight>,
+  oldZoom: number,
+  newZoom: number,
+): Map<number, CardFlight> {
+  if (!(oldZoom > 0) || !(newZoom > 0) || oldZoom === newZoom) return new Map(flights);
+  const factor = oldZoom / newZoom;
+  const next = new Map<number, CardFlight>();
+  for (const [id, flight] of flights) {
+    next.set(id, {
+      ...flight,
+      scale: flight.scale * factor,
+      targetScale: flight.targetScale * factor,
+    });
+  }
+  return next;
+}
+
+function alreadyAtTarget(flight: CardFlight): boolean {
+  return poseAtTarget(flight, { x: flight.targetX, y: flight.targetY, scale: flight.targetScale });
 }
 
 function snapToTarget(flight: CardFlight): CardFlight {
