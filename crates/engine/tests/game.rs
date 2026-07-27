@@ -26049,6 +26049,64 @@ fn a_countered_spell_goes_to_its_owners_graveyard_and_never_resolves() {
 }
 
 #[test]
+fn a_color_filtered_counter_only_targets_a_spell_of_that_color() {
+    // Blue Elemental Blast's first mode is "Counter target red spell." A green creature spell is
+    // not a legal target; a red burn spell is, and dies before dealing its damage.
+    let mut g = TestGame::new();
+    let bear = g.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
+    let bolt = g.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+    let blast = g.spawn_in_hand(PlayerId(0), card("Blue Elemental Blast"));
+
+    g.cast(bear).submit();
+    let bear_spell = top_spell(&g);
+    assert_eq!(
+        g.cast(blast)
+            .mode(0, Some(Target::Object(bear_spell)))
+            .try_submit(),
+        Err(Reject::IllegalTarget),
+        "a green creature spell is not a red spell"
+    );
+    resolve_whole_stack(&mut g);
+
+    let opp_life = g.life(PlayerId(1));
+    g.cast(bolt).at(Target::Player(PlayerId(1))).submit();
+    let bolt_spell = top_spell(&g);
+    g.cast(blast)
+        .mode(0, Some(Target::Object(bolt_spell)))
+        .resolve();
+    resolve_whole_stack(&mut g);
+
+    assert_eq!(
+        g.life(PlayerId(1)),
+        opp_life,
+        "the red spell was countered before it dealt its damage"
+    );
+}
+
+#[test]
+fn a_color_filtered_destroy_only_targets_a_permanent_of_that_color() {
+    // Blue Elemental Blast's second mode is "Destroy target red permanent."
+    let mut g = TestGame::new();
+    let bear = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
+    let goblin = g.spawn_on_battlefield(PlayerId(1), card("Goblin Balloon Brigade"));
+    let blast = g.spawn_in_hand(PlayerId(0), card("Blue Elemental Blast"));
+
+    assert_eq!(
+        g.cast(blast)
+            .mode(1, Some(Target::Object(bear)))
+            .try_submit(),
+        Err(Reject::IllegalTarget),
+        "a green creature is not a red permanent"
+    );
+
+    g.cast(blast)
+        .mode(1, Some(Target::Object(goblin)))
+        .resolve();
+    assert_eq!(g.zone_of(goblin), Zone::Graveyard, "the red goblin died");
+    assert_eq!(g.zone_of(bear), Zone::Battlefield, "the green bear did not");
+}
+
+#[test]
 fn countering_a_spell_that_already_left_the_stack_does_nothing() {
     // P0 casts Grizzly Bears; P1 stacks two counters onto it. The first resolves and puts the bear
     // in the graveyard; the second resolves with its target gone and simply does nothing (no crash).

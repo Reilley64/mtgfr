@@ -155,30 +155,31 @@ until no mire counters it placed remain.
 *Cards:* conversion, cyclopean_tomb, evil_presence, gaea_s_liege, kormus_bell, living_lands,
 phantasmal_terrain.
 
-### 9. `color-filters-on-spells` — 10 cards, S
+### 9. `color-filters-on-spells` — 4 cards, S — **done**
 Depends on: nothing.
-Falsifies the `SpellFilter` ponytail. Counterspell-style filters are type-shaped today
-(`noncreature`, `instant_or_sorcery`, `creature`, `artifact_or_enchantment`) with no color axis;
-`PermanentFilter` already has `color: ColorFilter`, so this is bringing spells up to parity.
-*Sketch:* add `color: ColorFilter` to the spell-filter struct and read it wherever spell filters
-are matched — the counter-target path and `reduce_spell_cost`. Gloom needs the cost hook to go
-the other way (an *increase*), so `ReduceSpellCost`'s amount becomes signed or gains an
-`Increase` sibling; its second clause ("activated abilities of white enchantments cost {3} more")
-is an activation-cost tax keyed to a permanent filter, which the existing `attack_tax` shape
-(Propaganda) is the closest neighbour to.
-*Cards:* blue_elemental_blast, crystal_rod, deathgrip, gloom, iron_star, ivory_cup, lifeforce,
-red_elemental_blast, throne_of_bone, wooden_sphere.
+*Landed:* no engine change. The premise was stale — the colour axis was already there and already
+read. `SpellFilter::Color(Color)` (TOML `filter = { color = "red" }`) is matched by
+`Game::spell_matches_filter` against `color_identity`, and that is exactly what
+`TargetSpec::SpellOnStack` consults when it checks counter-target legality; `PermanentFilter.color`
+has been there since Northern Paladin. All four cards were pure authoring. The Blasts are
+cast-time modal (`modal = true`, one `spell`-timed ability per mode), not a resolution-time
+`choose_one` — a spell's "Choose one —" is picked as it is cast (CR 601.2b).
+Six cards left over the split. `Trigger::CastSpell` carries a `SpellFilter` too, so nothing here
+blocked the five artifact "rods" either; they moved wholesale to #10, the shape they actually
+need. Gloom's cost-increase work is now #67.
+*Cards:* blue_elemental_blast, deathgrip, lifeforce, red_elemental_blast.
 
 ### 10. `optional-mana-payment-in-trigger` — 6 cards, S
-Depends on: #9 (for the five cast-triggered ones).
+Depends on: nothing.
 "Whenever a player casts a white spell, you may pay {1}. If you do, you gain 1 life." The engine
 has optional triggers (`optional = true`, a yes/no prompt) and it has cost payment on activation,
 but a trigger whose *resolution* offers a mana payment has no shape. *Sketch:* reuse
 `PendingChoice::PayCost` — the same one `sacrifice_self_unless_pay` raises — from inside trigger
 resolution, with the remaining effects gated on payment rather than on the pay-or-else penalty.
-The five artifact "rods" also need a cast trigger filtered by spell color (#9) and scoped to *any*
-player, not just the controller. Soul Net is the same shape on a creature-dies trigger and needs
-no color filter, so it can land first as the walking skeleton.
+The five artifact "rods" also want their cast trigger scoped to *any* player, not just the
+controller; their colour filter needs nothing (`Trigger::CastSpell` already carries a
+`SpellFilter`, and `SpellFilter::Color` already exists — see #9). Soul Net is the same shape on a
+creature-dies trigger, so it can land first as the walking skeleton.
 *Cards:* crystal_rod, iron_star, ivory_cup, soul_net, throne_of_bone, wooden_sphere.
 
 ### 11. `block-restrictions-and-requirements` — 7 cards, L
@@ -780,3 +781,19 @@ has, and widen the granted-ability lookup from the attachment scan to the same
 `matching_anthems`-style filter scan the keyword grants already use, so `ability_at` addresses
 both sources through one accessor. Zombie Master then becomes two anthem blocks.
 *Cards:* zombie_master.
+
+### 67. `spells-and-abilities-cost-more` — 1 card, M
+Depends on: nothing.
+Split out of #9, which turned out to be pure authoring. Gloom is the one 2ed card that taxes
+rather than discounts: "White spells cost {3} more to cast" and "Activated abilities of white
+enchantments cost {3} more to activate." The engine only ever moves a cost *down* —
+`StaticEffect::ReduceSpellCost { amount, filter, .. }` is subtracted at the cast choke — and it
+has no hook at all on the *activation* choke (`AttackTax` is the nearest tax in shape, but it
+gates attacking, not activating).
+*Sketch:* let the cost delta be signed rather than adding an `Increase` twin — one `Amount` that
+can go either way keeps the single subtraction at the cast choke and the mana-planning path
+untouched. The second clause needs a genuinely new hook: an activation-cost tax keyed to a
+`PermanentFilter`, read where an activated ability's cost is assembled, the same place
+`ActivationCost::mana` is spent from. The spell half alone is worth landing first; the ability
+half is what makes this M rather than S.
+*Cards:* gloom.

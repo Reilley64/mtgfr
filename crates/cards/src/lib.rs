@@ -3164,4 +3164,56 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
             assert!(*all_players, "{name} does not say \"you control\"");
         }
     }
+
+    /// Unlimited's hosers name a colour in the filter, and each names the *enemy* one. The Blasts
+    /// carry it on both halves of a cast-time modal choice; the enchantments on a repeatable
+    /// activated ability.
+    #[test]
+    fn unlimited_colour_hosers_counter_and_destroy_the_enemy_colour() {
+        for (name, colour, permanent_colour) in [
+            ("Blue Elemental Blast", Color::Red, ColorFilter::Red),
+            ("Red Elemental Blast", Color::Blue, ColorFilter::Blue),
+        ] {
+            let def = get_by_name(name).expect("in the pool");
+            assert!(def.modal, "{name} is \"Choose one —\"");
+            assert_eq!(def.abilities.len(), 2, "{name} prints two modes");
+
+            let Effect::Misc(MiscEffect::CounterTargetSpell { filter, .. }) =
+                &def.abilities[0].effect
+            else {
+                panic!("{name} mode 0 counters");
+            };
+            assert_eq!(*filter, SpellFilter::Color(colour));
+
+            let Effect::Destroy(DestroyEffect::Target { target, .. }) = &def.abilities[1].effect
+            else {
+                panic!("{name} mode 1 destroys");
+            };
+            let TargetSpec::Permanent(filter) = target else {
+                panic!("{name} mode 1 targets a permanent");
+            };
+            assert_eq!(filter.color, permanent_colour);
+        }
+
+        for (name, own, countered) in [
+            ("Deathgrip", Color::Black, Color::Green),
+            ("Lifeforce", Color::Green, Color::Black),
+        ] {
+            let def = get_by_name(name).expect("in the pool");
+            let ability = &def.abilities[0];
+            let Timing::Activated(cost) = &ability.timing else {
+                panic!("{name} counters off a repeatable activated ability, not a one-shot");
+            };
+            assert_eq!(
+                cost.mana.colored[own.index()],
+                2,
+                "{name} activates for two of its own colour"
+            );
+            let Effect::Misc(MiscEffect::CounterTargetSpell { filter, .. }) = &ability.effect
+            else {
+                panic!("{name} counters");
+            };
+            assert_eq!(*filter, SpellFilter::Color(countered));
+        }
+    }
 }
