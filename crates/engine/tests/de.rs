@@ -43,6 +43,14 @@ fn kind_toml_schema_includes_instant_and_creature() {
 }
 
 #[test]
+fn card_toml_schema_includes_name_and_damage_effect() {
+    let schema = schemars::schema_for!(engine::toml_surface::CardToml);
+    let text = serde_json::to_string(&schema).unwrap();
+    assert!(text.contains("\"name\""));
+    assert!(text.contains("damage"));
+}
+
+#[test]
 fn card_toml_round_trips_abrade_name_and_effect_type() {
     let raw = r#"
 name = "Abrade"
