@@ -207,7 +207,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Cyclopean Tomb** {4} · Artifact — increment 8, 28
 - [x] **Deathgrip** {B}{B} · Enchantment — increment 9
 - [ ] **Deathlace** {B} · Instant — increment 15
-- [ ] **Demonic Hordes** {3}{B}{B}{B} · Creature — Demon — increment 41
+- [x] **Demonic Hordes** {3}{B}{B}{B} · Creature — Demon — increment 41
 - [ ] **Dingus Egg** {4} · Artifact — increment 59
 - [x] **Disintegrate** {X}{R} · Sorcery — increment 34
 - [x] **Disrupting Scepter** {3} · Artifact — increment 56

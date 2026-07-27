@@ -219,6 +219,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.control_regenerate_shield": literal("Regenerate target"),
   "effect.control_remove_from_combat": literal("Remove target from combat"),
   "effect.control_revert_all_creatures_to_owners": literal("Each player gains control of all creatures they own"),
+  "effect.control_tap_source": literal("Tap this permanent"),
   "effect.control_tap_target": literal("Tap target"),
   "effect.control_target_opponent_gains_control": literal(
     "Target opponent gains control of target permanent you control",

@@ -32,6 +32,7 @@ impl Game {
                 | ControlEffect::RemoveFromCombat { .. }
                 | ControlEffect::RevertAllCreaturesToOwners
                 | ControlEffect::TapAll { .. }
+                | ControlEffect::TapSource
                 | ControlEffect::TapTarget { .. }
                 | ControlEffect::UntapAll { .. }
                 | ControlEffect::UntapTarget { .. }) => {

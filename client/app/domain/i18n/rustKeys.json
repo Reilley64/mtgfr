@@ -48,6 +48,7 @@
   "effect.control_regenerate_shield",
   "effect.control_remove_from_combat",
   "effect.control_revert_all_creatures_to_owners",
+  "effect.control_tap_source",
   "effect.control_tap_target",
   "effect.control_target_opponent_gains_control",
   "effect.control_tap_all",

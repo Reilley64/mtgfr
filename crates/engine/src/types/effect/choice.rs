@@ -248,6 +248,13 @@ pub enum ChoiceEffect {
     SacrificeOwn {
         filter: PermanentFilter,
         count: u32,
+        /// "…sacrifice a land of **an opponent's choice**" (Demonic Hordes). The controller still
+        /// loses the permanent — only the pick moves, which is the one thing CR 701.16a's "the
+        /// permanents' controller chooses" default doesn't allow. ponytail: "an opponent" is
+        /// underspecified at a pod, so the next living seat in turn order answers; see the card's
+        /// `approximates`.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        opponent_chooses: bool,
     },
 
     /// "…unless you pay `cost`" (CR 701.16's optional-cost shape): the controller is offered the

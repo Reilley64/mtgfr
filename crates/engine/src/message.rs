@@ -74,6 +74,7 @@ message_keys! {
     EFFECT_CONTROL_REGENERATE_SHIELD => "effect.control_regenerate_shield",
     EFFECT_CONTROL_REMOVE_FROM_COMBAT => "effect.control_remove_from_combat",
     EFFECT_CONTROL_REVERT_ALL_CREATURES_TO_OWNERS => "effect.control_revert_all_creatures_to_owners",
+    EFFECT_CONTROL_TAP_SOURCE => "effect.control_tap_source",
     EFFECT_CONTROL_TAP_TARGET => "effect.control_tap_target",
     EFFECT_CONTROL_TARGET_OPPONENT_GAINS_CONTROL => "effect.control_target_opponent_gains_control",
     EFFECT_CONTROL_TAP_ALL => "effect.control_tap_all",
@@ -1348,6 +1349,7 @@ impl Effect {
             }
             Effect::Control(TapAll { filter }) => MessageRef::new(MessageKey::EFFECT_CONTROL_TAP_ALL)
                 .with_params(vec![permanent_filter_param("filter", filter)]),
+            Effect::Control(TapSource) => MessageRef::new(MessageKey::EFFECT_CONTROL_TAP_SOURCE),
             Effect::Control(UntapAll { filter }) => {
                 MessageRef::new(MessageKey::EFFECT_CONTROL_UNTAP_ALL)
                     .with_params(vec![permanent_filter_param("filter", filter)])
@@ -1960,7 +1962,7 @@ impl Effect {
             Effect::Choice(SetOwnColorUntilEndOfTurn) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_SET_OWN_COLOR_UNTIL_END_OF_TURN)
             }
-            Effect::Choice(SacrificeOwn { filter, count }) => {
+            Effect::Choice(SacrificeOwn { filter, count, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_SACRIFICE_OWN)
                     .with_params(vec![permanent_filter_param("filter", filter), int_param("count", count)])
             }

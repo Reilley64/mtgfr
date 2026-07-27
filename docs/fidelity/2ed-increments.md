@@ -646,7 +646,7 @@ replacement rather than emitting a `Tapped`); the ETB-tapped rider is already co
 `PermanentEntered`'s board-wide drop. Each one invalidates just the permanent that turned, since
 the axis reads the candidate's own `tapped`.
 
-### 41. `opponent-chosen-sacrifice` — 1 card, S
+### 41. `opponent-chosen-sacrifice` — 1 card, S — **done**
 Depends on: #20 (landed).
 Demonic Hordes' "At the beginning of your upkeep, unless you pay {B}{B}{B}, tap this creature and
 sacrifice a land of an opponent's choice." The pay-or-else half is #20's landed `pay_or_else`; what
@@ -656,6 +656,7 @@ player. In a 4-player game "an opponent's choice" is underspecified by the print
 one whose upkeep-trigger controller is being punished, i.e. raise the choice to the next opponent
 in turn order, and record that as an `approximates` on the card. The penalty's other half, "tap
 this creature", has no effect either — the pool taps *targets*, not the source.
+*Landed:* `PendingChoice::ChooseOwnSacrifices` already carried the whole shape — it just used one `player` field for two jobs, "whose permanents" and "who answers". Splitting them cost one field on the *raise* request (`owner`) and nothing on the pending choice, the DTO, or the wire: `player` now means the chooser, which is what every routing, visibility and answer-protocol site was already asking it. `sacrifice_ids` lost its `by` parameter instead of gaining one — it reads each permanent's own controller live, which every existing caller was already passing and which is the only correct answer once a set can span seats (CR 701.16a credits the sacrifice to the controller no matter who pointed at it). "Tap this creature" is a new one-shot `tap_source`, not a filter trick: `tap_all` is scoped to the controller's whole board and would have rendered the wrong card text. In a pod "an opponent's choice" names nobody, so the next living seat in turn order answers and the card carries an `approximates` saying so.
 *Cards:* demonic_hordes.
 
 ### 42. `filter-comparing-to-source` — 1 card, S — **done**

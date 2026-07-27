@@ -237,6 +237,15 @@ impl Game {
                 .map(|object| Event::Tapped { object })
                 .collect(),
 
+            // Demonic Hordes' "tap this creature": no scan and no filter, just the one permanent
+            // the ability came from — gone from the battlefield, it taps nothing (CR 608.2b).
+            ControlEffect::TapSource => self
+                .battlefield()
+                .contains(&source)
+                .then_some(Event::Tapped { object: source })
+                .into_iter()
+                .collect(),
+
             _ => unreachable!("control family mint received a non-family effect"),
         }
     }

@@ -104799,6 +104799,187 @@ fn force_of_nature_paid_off_deals_no_damage() {
     assert_eq!(game.life(PlayerId(0)), 20, "the paid Force deals nothing");
 }
 
+// "At the beginning of your upkeep, unless you pay {B}{B}{B}, tap this creature and sacrifice a
+// land of an opponent's choice." — a pay-or-else penalty whose sacrifice is directed by somebody
+// other than the player losing the permanent (CR 701.16a's usual "the permanents' controller
+// chooses" is exactly what this card overrides).
+
+#[test]
+fn demonic_hordes_hands_the_land_choice_to_an_opponent() {
+    let mut game = Game::with_players(3, 0);
+    let hordes = game.spawn_on_battlefield(PlayerId(0), card("Demonic Hordes"));
+    let swamp = game.spawn_on_battlefield(PlayerId(0), card("Swamp"));
+    let forest = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    let their_island = game.spawn_on_battlefield(PlayerId(1), card("Island"));
+    for seat in 0..3 {
+        game.stack_library(
+            PlayerId(seat),
+            &[card("Grizzly Bears"), card("Grizzly Bears")],
+        );
+    }
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
+    });
+    resolve_top_of_stack_multiplayer(&mut game);
+    eprintln!(
+        "DBG step={:?} pending={:?} stack={:?}",
+        game.current_step(),
+        game.pending_choice(),
+        game.stack()
+    );
+    game.submit(Intent::PayOptionalCost {
+        player: PlayerId(0),
+        pay: false,
+        discard_cost: vec![],
+    })
+    .expect("declining {B}{B}{B} is legal");
+
+    let Some(PendingChoice::ChooseOwnSacrifices {
+        player,
+        options,
+        count,
+        ..
+    }) = game.pending_choice()
+    else {
+        panic!("the unpaid Hordes pauses on a land sacrifice");
+    };
+    assert_eq!(
+        player,
+        PlayerId(1),
+        "the seat after the Hordes' controller directs it"
+    );
+    assert_eq!(count, 1);
+    assert_eq!(
+        options,
+        vec![swamp, forest],
+        "the opponent picks from the Hordes' controller's lands, not their own"
+    );
+    assert!(
+        game.is_tapped(hordes),
+        "the penalty taps the Hordes as well as taking the land"
+    );
+
+    game.submit(Intent::ChooseSacrifices {
+        player: PlayerId(1),
+        sacrifices: vec![forest],
+    })
+    .expect("the opponent names the land that goes");
+
+    assert_eq!(game.zone_of(forest), Zone::Graveyard);
+    assert_eq!(
+        game.zone_of(swamp),
+        Zone::Battlefield,
+        "only the one land they named"
+    );
+    assert_eq!(
+        game.zone_of(their_island),
+        Zone::Battlefield,
+        "the chooser sacrifices nothing of their own"
+    );
+}
+
+#[test]
+fn demonic_hordes_paid_off_stays_untapped_and_keeps_its_lands() {
+    let mut game = Game::with_players(3, 0);
+    let hordes = game.spawn_on_battlefield(PlayerId(0), card("Demonic Hordes"));
+    let swamp = game.spawn_on_battlefield(PlayerId(0), card("Swamp"));
+    game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    for seat in 0..3 {
+        game.stack_library(
+            PlayerId(seat),
+            &[card("Grizzly Bears"), card("Grizzly Bears")],
+        );
+    }
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
+    });
+    resolve_top_of_stack_multiplayer(&mut game);
+    game.fund_mana(PlayerId(0)); // mana empties each step — fund it here, at the pause.
+
+    game.submit(Intent::PayOptionalCost {
+        player: PlayerId(0),
+        pay: true,
+        discard_cost: vec![],
+    })
+    .expect("paying {B}{B}{B} is legal");
+
+    assert!(game.pending_choice().is_none(), "nothing left to direct");
+    assert!(!game.is_tapped(hordes), "the paid Hordes never taps");
+    assert_eq!(game.zone_of(swamp), Zone::Battlefield);
+}
+
+#[test]
+fn demonic_hordes_with_one_land_left_takes_it_without_asking() {
+    // CR 700.2: with no more permanents than the effect demands there is nothing to direct, so the
+    // opponent is never paused on a choice of one.
+    let mut game = Game::with_players(3, 0);
+    let swamp = game.spawn_on_battlefield(PlayerId(0), card("Swamp"));
+    game.spawn_on_battlefield(PlayerId(0), card("Demonic Hordes"));
+    for seat in 0..3 {
+        game.stack_library(
+            PlayerId(seat),
+            &[card("Grizzly Bears"), card("Grizzly Bears")],
+        );
+    }
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
+    });
+    resolve_top_of_stack_multiplayer(&mut game);
+    game.submit(Intent::PayOptionalCost {
+        player: PlayerId(0),
+        pay: false,
+        discard_cost: vec![],
+    })
+    .expect("declining is legal");
+
+    assert!(game.pending_choice().is_none());
+    assert_eq!(game.zone_of(swamp), Zone::Graveyard);
+}
+
+#[test]
+fn demonic_hordes_taps_to_destroy_a_land() {
+    let mut game = Game::with_players(3, 0);
+    let hordes = game.spawn_on_battlefield(PlayerId(0), card("Demonic Hordes"));
+    let island = game.spawn_on_battlefield(PlayerId(1), card("Island"));
+    for seat in 0..3 {
+        game.stack_library(
+            PlayerId(seat),
+            &[card("Grizzly Bears"), card("Grizzly Bears")],
+        );
+    }
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
+    });
+    resolve_top_of_stack_multiplayer(&mut game);
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::PayOptionalCost {
+        player: PlayerId(0),
+        pay: true,
+        discard_cost: vec![],
+    })
+    .expect("pay the upkeep so the Hordes is still untapped to activate");
+    advance_until(&mut game, |g| g.current_step() == Step::Main1);
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: hordes,
+        ability_index: 0,
+        target: Some(Target::Object(island)),
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("tapping the Hordes at a land is legal");
+    resolve_top_of_stack_multiplayer(&mut game);
+
+    assert_eq!(game.zone_of(island), Zone::Graveyard);
+    assert!(game.is_tapped(hordes));
+}
+
 // "At the beginning of your upkeep, sacrifice a creature other than this creature. If you can't,
 // this creature deals 7 damage to you." — a mandatory sacrifice whose fallback fires on
 // *inability*, not on a declined payment.

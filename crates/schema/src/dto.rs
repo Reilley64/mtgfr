@@ -788,9 +788,10 @@ pub enum PendingChoiceView {
         source: ObjectId,
         items: Vec<ChoiceItem>,
     },
-    /// This player must choose exactly `count` of `items` (their own permanents) to sacrifice —
-    /// a forced sacrifice they direct (CR 701.16a — Lotus Field's ETB, Smothering Abomination's
-    /// upkeep). Unlike [`MaySacrifice`], declining isn't legal.
+    /// This player must choose exactly `count` of `items` to sacrifice — a forced sacrifice they
+    /// direct (CR 701.16a — Lotus Field's ETB, Smothering Abomination's upkeep). Usually their own
+    /// permanents; Demonic Hordes' "a land of an opponent's choice" points this seat at somebody
+    /// else's board. Unlike [`MaySacrifice`], declining isn't legal.
     ChooseOwnSacrifices {
         player: u8,
         source: ObjectId,

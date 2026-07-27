@@ -62,6 +62,11 @@ pub enum ControlEffect {
         filter: PermanentFilter,
     },
 
+    /// "Tap this creature" as an *effect* (Demonic Hordes' unpaid-upkeep penalty), not as the
+    /// `{T}` in an activation cost — the source taps itself on resolution, with nothing chosen and
+    /// nothing targeted. A permanent that has already left the battlefield taps nothing.
+    TapSource,
+
     TapTarget {
         target: TargetSpec,
         #[cfg_attr(feature = "card-dsl", serde(default))]

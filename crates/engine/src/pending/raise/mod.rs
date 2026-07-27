@@ -240,9 +240,11 @@ pub(crate) enum ChoiceRequest {
         cards: &'static [crate::ObjectId],
     },
     /// [`Effect::Choice(ChoiceEffect::SacrificeOwn)`] / annihilator — `options.len() <= count` → `None` (caller
-    /// sacrifices all).
+    /// sacrifices all). `player` answers; `owner` is whose battlefield the options come off, the
+    /// same seat everywhere but Demonic Hordes' "a land of an opponent's choice".
     ChooseOwnSacrifices {
         player: crate::PlayerId,
+        owner: crate::PlayerId,
         source: crate::ObjectId,
         filter: crate::PermanentFilter,
         count: u32,
@@ -529,10 +531,11 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
         } => copy::choose_copy_card_from_list(game, player, source, cards),
         ChoiceRequest::ChooseOwnSacrifices {
             player,
+            owner,
             source,
             filter,
             count,
-        } => edict::choose_own_sacrifices(game, player, source, filter, count),
+        } => edict::choose_own_sacrifices(game, player, owner, source, filter, count),
         ChoiceRequest::NextGraveyardExile { remaining, source } => {
             fanout::next_graveyard_exile(game, remaining, source)
         }

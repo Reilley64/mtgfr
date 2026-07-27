@@ -1630,10 +1630,13 @@ pub enum PendingChoice {
     /// [`Intent::RevealedCardToBattlefieldOrHand`]. `card` was already publicly revealed
     /// ([`Event::RevealedTopOfLibrary`]), so it is public.
     RevealedCardToBattlefieldOrHand { player: PlayerId, card: ObjectId },
-    /// `player` must sacrifice exactly `count` of `options` (their own permanents matching
-    /// `filter`) — a forced sacrifice cost/effect the affected player directs (CR 701.16a: "the
-    /// permanents' controller chooses which ones" — Lotus Field's ETB "sacrifice two lands",
-    /// Smothering Abomination's upkeep "sacrifice a creature"). Unlike
+    /// `player` must name exactly `count` of `options` (permanents matching `filter`) to be
+    /// sacrificed — a forced sacrifice the affected player directs (CR 701.16a: "the permanents'
+    /// controller chooses which ones" — Lotus Field's ETB "sacrifice two lands", Smothering
+    /// Abomination's upkeep "sacrifice a creature"). `options` are usually `player`'s own, but
+    /// Demonic Hordes' "sacrifice a land of an opponent's choice" splits the two: the seat
+    /// answering here isn't the seat losing the land, and each sacrifice is still credited to its
+    /// own controller. Unlike
     /// [`MaySacrifice`](Self::MaySacrifice), this is mandatory — declining isn't legal. Only
     /// raised when `options` outnumbers `count` (a real choice); with `count` or fewer legal
     /// permanents, raising [`crate::pending::ChoiceRequest::ChooseOwnSacrifices`] sacrifices all

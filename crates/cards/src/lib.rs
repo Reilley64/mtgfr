@@ -2473,6 +2473,33 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         }
     }
 
+    /// Demonic Hordes' unpaid upkeep taps itself *and* gives up a land, and the land is picked by
+    /// someone else — the order matters (the tap is part of the same penalty, not a cost) and so
+    /// does `opponent_chooses`, which is the only thing separating this from an ordinary edict.
+    #[test]
+    fn unlimited_demonic_hordes_penalty_taps_itself_then_yields_a_land_to_an_opponent() {
+        let hordes = get_by_name("Demonic Hordes").expect("Demonic Hordes is in the pool");
+        let upkeep = hordes
+            .abilities
+            .iter()
+            .find(|a| a.timing == Timing::Triggered(Trigger::Upkeep))
+            .expect("its upkeep tax");
+        let Effect::Choice(ChoiceEffect::PayOrElse { otherwise, .. }) = upkeep.effect else {
+            panic!("the upkeep is a pay-or-else");
+        };
+        assert!(matches!(
+            otherwise,
+            [
+                Effect::Control(ControlEffect::TapSource),
+                Effect::Choice(ChoiceEffect::SacrificeOwn {
+                    count: 1,
+                    opponent_chooses: true,
+                    ..
+                }),
+            ]
+        ));
+    }
+
     /// "Can't attack unless defending player controls an Island": the restriction rides the
     /// *attacker*, and its filter names the Island without a controller axis — the scan is already
     /// scoped to the defending player's battlefield, so a `controller = "you"` here would read the
@@ -3639,7 +3666,8 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         else {
             panic!("Lord of the Pit eats, or bites");
         };
-        let [Effect::Choice(ChoiceEffect::SacrificeOwn { filter, count })] = *then.as_ref() else {
+        let [Effect::Choice(ChoiceEffect::SacrificeOwn { filter, count, .. })] = *then.as_ref()
+        else {
             panic!("the fed branch is a single own-sacrifice");
         };
         assert_eq!(count, 1);

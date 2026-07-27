@@ -200,11 +200,23 @@ impl Game {
             // lands", Smothering Abomination's upkeep "sacrifice a creature") pauses on a
             // ChooseOwnSacrifices choice; with count-or-fewer legal permanents it resolves
             // immediately instead (CR 700.2's "as many as possible").
-            Effect::Choice(ChoiceEffect::SacrificeOwn { filter, count }) => {
+            Effect::Choice(ChoiceEffect::SacrificeOwn {
+                filter,
+                count,
+                opponent_chooses,
+            }) => {
+                // Demonic Hordes hands the pick to the next living seat in turn order; every other
+                // card leaves it with the player losing the permanents (CR 701.16a).
+                let chooser = if opponent_chooses {
+                    self.next_player(controller)
+                } else {
+                    controller
+                };
                 pending::raise(
                     self,
                     pending::ChoiceRequest::ChooseOwnSacrifices {
-                        player: controller,
+                        player: chooser,
+                        owner: controller,
                         source,
                         filter,
                         count,
@@ -212,7 +224,7 @@ impl Game {
                 );
                 if !self.resolution_is_paused() {
                     let options = self.edict_options(controller, filter, Some(source));
-                    self.sacrifice_ids(&options, controller, events);
+                    self.sacrifice_ids(&options, events);
                 }
             }
             // Annihilator N (Eldrazi Conscription): the defending player, not the controller,
@@ -224,6 +236,7 @@ impl Game {
                     self,
                     pending::ChoiceRequest::ChooseOwnSacrifices {
                         player: defender,
+                        owner: defender,
                         source,
                         filter,
                         count: count as u32,
@@ -231,7 +244,7 @@ impl Game {
                 );
                 if !self.resolution_is_paused() {
                     let options = self.edict_options(defender, filter, Some(source));
-                    self.sacrifice_ids(&options, defender, events);
+                    self.sacrifice_ids(&options, events);
                 }
             }
             // Treva's Ruins' own ETB trigger: "sacrifice it unless you return a non-Lair land you

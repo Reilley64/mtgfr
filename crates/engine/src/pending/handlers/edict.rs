@@ -38,13 +38,11 @@ impl Game {
     /// the [`Event::Sacrificed`] marker for each — the shared tail
     /// [`ChoiceRequest::ChooseOwnSacrifices`]'s no-real-choice path and
     /// [`Game::choose_own_sacrifices`]'s answer path both run.
-    pub(crate) fn sacrifice_ids(
-        &mut self,
-        ids: &[ObjectId],
-        by: PlayerId,
-        events: &mut Vec<Event>,
-    ) {
+    pub(crate) fn sacrifice_ids(&mut self, ids: &[ObjectId], events: &mut Vec<Event>) {
         for &id in ids {
+            // Read live, before anything moves: a sacrifice is always made by the permanent's own
+            // controller (CR 701.16a), even when somebody else picked it (Demonic Hordes).
+            let by = self.controller_of(id);
             let def = self.def_id_of(id);
             let event = self.sacrifice_event(id);
             self.push_apply(events, event);
@@ -67,12 +65,8 @@ impl Game {
         _player: PlayerId,
         sacrifices: Vec<ObjectId>,
     ) -> Result<Vec<Event>, Reject> {
-        let Some(PendingChoice::ChooseOwnSacrifices {
-            player,
-            options,
-            count,
-            ..
-        }) = self.pending_choice.clone()
+        let Some(PendingChoice::ChooseOwnSacrifices { options, count, .. }) =
+            self.pending_choice.clone()
         else {
             return Err(Reject::IllegalChoice);
         };
@@ -87,7 +81,7 @@ impl Game {
         self.finish_answer();
 
         let mut events = Vec::new();
-        self.sacrifice_ids(&sacrifices, player, &mut events);
+        self.sacrifice_ids(&sacrifices, &mut events);
         Ok(events)
     }
 
@@ -116,7 +110,7 @@ impl Game {
         self.finish_answer();
 
         let mut events = Vec::new();
-        self.sacrifice_ids(&sacrifices, player, &mut events);
+        self.sacrifice_ids(&sacrifices, &mut events);
         let counters = self.counters_after_replacements(
             player,
             source,

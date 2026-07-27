@@ -1030,7 +1030,8 @@ impl Effect {
             | Effect::Zone(ZoneEffect::TuckSelfAndBlockedCreatures)
             // Homeward Path enumerates every mismatched creature on the battlefield internally
             // — no chosen target (see the variant doc).
-            | Effect::Control(ControlEffect::RevertAllCreaturesToOwners) => TargetSpec::None,
+            | Effect::Control(ControlEffect::RevertAllCreaturesToOwners)
+            | Effect::Control(ControlEffect::TapSource) => TargetSpec::None,
         }
     }
 
