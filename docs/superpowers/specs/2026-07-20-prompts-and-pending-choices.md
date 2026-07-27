@@ -142,6 +142,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Scene tests cover centered `target-pick-modal` for off-board staged targets (no `target-pick-aim`).
 - Scene tests cover centered `sacrifice-pick-modal` / `discard-pick-modal` for off-board cost fallbacks and the shared-pile `gy-exile-cost-aim` graveyard coach path.
 - Scene tests cover engine `pending-discard-aim` and local `discard-cost-aim` select-then-Confirm (`pending-discard-count` / `discard-cost-count`, disabled Discard until ready, Llanowar selected chrome on hand faces).
+- Scene/unit tests cover `put_creature_from_hand` select → Confirm (`pending-hand-count`, Put onto battlefield in `priority-context-bar`, hand click toggles draft without submitting).
 - Unit tests cover `clampX`, `costWithChosenX` (multi-symbol X and colored pips), and `costText` for large generics.
 - Unit tests cover `damageAssignReady` for exact-sum non-trample and under-assign / over-assign / negative trample cases.
 - Unit tests cover `clickDamageAssign` redistribution and trample under-assign.
