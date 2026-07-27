@@ -42,7 +42,7 @@ import {
   StackDwellChanged,
   TargetChosen,
 } from "./messages";
-import { BOARD_VIEWPORT, type BoardModel, initialBoardModel, updateBoard } from "./submodel";
+import { BOARD_VIEWPORT, type BoardModel, initialBoardModel, syncBoardWithGame, updateBoard } from "./submodel";
 import { type BoardViewModel, view as boardView } from "./view";
 
 const h = html<Message>();
@@ -855,6 +855,55 @@ test("pointer up on proliferate accumulates picks until Confirm", () => {
     kind: "choose_proliferate",
     player: 0,
     permanents: [1, 2],
+    players: [],
+  });
+});
+
+// CR 701.27b "proliferate twice" re-raises with the same items/source. choiceDraftKey stays
+// identical, so a frozen promptSubmitInFlight must clear when authority advances — otherwise the
+// second Confirm is a silent no-op.
+test("proliferate twice unfreezes Confirm after the second iteration arrives", () => {
+  const a = creature(1, 0, { name: "A" });
+  const pending = {
+    kind: "proliferate" as const,
+    player: 0,
+    source: 9,
+    items: [{ id: 1, label: "A" }],
+  };
+  const firstFold = fold(state({ objects: [a], pending_choice: pending }));
+  let board = syncBoardWithGame(initialBoardModel(), firstFold);
+  board = {
+    ...board,
+    pointer: { kind: "drag", card: renderStub(1), x: 100, y: 100, moved: false },
+  };
+  [board] = updateBoard(board, BoardPointerUp({ x: 100, y: 100 }), firstFold, "T1");
+  const [submitted, firstCommands] = updateBoard(board, PromptSubmitted(), firstFold, "T1");
+  expect(intentFromCommand(firstCommands[0])).toEqual({
+    kind: "choose_proliferate",
+    player: 0,
+    permanents: [1],
+    players: [],
+  });
+  expect(submitted.promptSubmitInFlight).toBe(true);
+
+  const secondFold: GameFoldState = {
+    ...firstFold,
+    seq: firstFold.seq + 1,
+    state: state({ objects: [a], pending_choice: pending }),
+  };
+  board = syncBoardWithGame(submitted, secondFold);
+  expect(board.promptSubmitInFlight).toBe(false);
+
+  board = {
+    ...board,
+    pointer: { kind: "drag", card: renderStub(1), x: 100, y: 100, moved: false },
+  };
+  [board] = updateBoard(board, BoardPointerUp({ x: 100, y: 100 }), secondFold, "T1");
+  const [, secondCommands] = updateBoard(board, PromptSubmitted(), secondFold, "T1");
+  expect(intentFromCommand(secondCommands[0])).toEqual({
+    kind: "choose_proliferate",
+    player: 0,
+    permanents: [1],
     players: [],
   });
 });

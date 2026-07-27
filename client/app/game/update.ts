@@ -86,6 +86,7 @@ export function updateGame(
             ...game.board,
             reject: message.reason,
             promptSubmitInFlight: false,
+            promptSubmitSeq: null,
             attackersConfirmed: false,
             blockersConfirmed: false,
           },
