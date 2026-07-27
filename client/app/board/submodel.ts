@@ -540,7 +540,7 @@ function retargetFlightToCard(
   flight: CardFlight,
   model: BoardModel,
   card: RenderCard,
-  opts?: { retainHold?: boolean },
+  opts?: { retainHold?: boolean; zone?: "stack" | "land" | "from-stack" | "battlefield"; note?: string },
 ): CardFlight {
   const target = cardTarget(model.camera, card);
   return retargetFlight(flight, { x: target.x, y: target.y, scale: 1 }, opts);
@@ -670,22 +670,12 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
         handHidden.delete(from);
         continue;
       }
-      {
-        const remainingPx = Math.hypot(aim.x - existing.x, aim.y - existing.y);
-        traceFlightSync({
-          op: "retarget",
-          zone: "land",
-          id: permanent,
-          hold: existing.hold === true,
-          phase: existing.phase,
-          remainingPx,
-          retainedHold: existing.hold === true,
-        });
-      }
       flights.set(
         permanent,
         retargetFlightToCard({ ...existing, kind: "battlefield", fromCardId: from }, model, card, {
           retainHold: existing.hold === true,
+          zone: "land",
+          note: "landPlayFrom",
         }),
       );
       handHidden.add(from);
@@ -744,18 +734,6 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
         if (meta.from != null) handHidden.delete(meta.from);
         continue;
       }
-      {
-        const remainingPx = Math.hypot(aim.x - existing.x, aim.y - existing.y);
-        traceFlightSync({
-          op: "retarget",
-          zone: "stack",
-          id: spell,
-          hold: existing.hold === true,
-          phase: existing.phase,
-          remainingPx,
-          retainedHold: existing.hold === true,
-        });
-      }
       flights.set(
         spell,
         retargetFlight(
@@ -765,7 +743,7 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
             y: aim.y,
             scale: aim.scale,
           },
-          { retainHold: existing.hold === true },
+          { retainHold: existing.hold === true, zone: "stack", note: "stackEntrances" },
         ),
       );
       handHidden.add(meta.from);
@@ -804,7 +782,14 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
         if (flight.fromCardId != null) handHidden.delete(flight.fromCardId);
         continue;
       }
-      flights.set(id, retargetFlight(flight, { x: aim.x, y: aim.y, scale: aim.scale }, { retainHold: true }));
+      flights.set(
+        id,
+        retargetFlight(flight, { x: aim.x, y: aim.y, scale: aim.scale }, {
+          retainHold: true,
+          zone: "stack",
+          note: "post-hold-refresh",
+        }),
+      );
       continue;
     }
     if (flight.kind !== "battlefield") continue;
@@ -817,7 +802,10 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
       if (flight.fromCardId != null) handHidden.delete(flight.fromCardId);
       continue;
     }
-    flights.set(id, retargetFlight(flight, aim, { retainHold: true }));
+    flights.set(
+      id,
+      retargetFlight(flight, aim, { retainHold: true, zone: "land", note: "post-hold-refresh" }),
+    );
   }
 
   for (const id of new Set([...fold.provenance.resolvedFromStack, ...fold.provenance.leftStackToPile])) {
@@ -1296,6 +1284,15 @@ function applyFlightsSynced(
     // screen-space flight would hide the resting face and track the camera until the next
     // provenance sync.
     if (flight.phase === "settled" && flight.hold === true && authorityOwnsFlightDestination(fold, flight)) {
+      traceFlightSync({
+        op: "synced-drop",
+        zone: flight.kind,
+        id: flight.id,
+        hold: true,
+        phase: flight.phase,
+        remainingPx: Math.hypot(flight.targetX - flight.x, flight.targetY - flight.y),
+        note: "authority-owns-destination",
+      });
       if (flight.fromCardId != null) handHidden.delete(flight.fromCardId);
       continue;
     }
@@ -1303,11 +1300,29 @@ function applyFlightsSynced(
     // Keep held seeds after they park at the aim pose so stack/land sync can rebind them
     // instead of spawning a second flight from the avatar.
     if (flightOwnsId(flight)) {
+      traceFlightSync({
+        op: "synced-keep",
+        zone: flight.kind,
+        id: flight.id,
+        hold: flight.hold === true,
+        phase: flight.phase,
+        remainingPx: Math.hypot(flight.targetX - flight.x, flight.targetY - flight.y),
+        toTarget: { x: flight.targetX, y: flight.targetY, scale: flight.targetScale },
+      });
       flights.set(flight.id, flight);
       if (flight.fromCardId != null) handHidden.add(flight.fromCardId);
       continue;
     }
 
+    traceFlightSync({
+      op: "synced-drop",
+      zone: flight.kind,
+      id: flight.id,
+      hold: flight.hold === true,
+      phase: flight.phase,
+      remainingPx: Math.hypot(flight.targetX - flight.x, flight.targetY - flight.y),
+      note: "unowned-settled",
+    });
     if (flight.fromCardId != null) handHidden.delete(flight.fromCardId);
   }
 
@@ -1508,30 +1523,83 @@ function seedDropFromHand(
 ): BoardModel {
   const flights = new Map(model.flights);
   const handHidden = new Set(model.handHidden);
-  const startScale = handFlightScale(model.camera.zoom);
   const aim =
     kind === "stack"
       ? stackFlightAim(model, { count: Math.max(1, stackCount + 1), row: stackCount })
       : fold != null
         ? provisionalLandAim(model, fold, card.controller)
         : { x: screenOrigin.x, y: screenOrigin.y, scale: 1 };
-  flights.set(
-    card.id,
-    spawnFlight({
+
+  // Play-mode / cost pipelines may seed before the final runAction cast. Replacing that flight
+  // from screenOrigin restarts the glide and reads as a second animation.
+  const existing =
+    flights.get(card.id) ??
+    [...flights.values()].find((flight) => flight.fromCardId === card.id || flight.id === card.id);
+  if (existing != null) {
+    if (existing.id !== card.id) flights.delete(existing.id);
+    const continued = {
+      ...existing,
       id: card.id,
-      print: card.print ?? "",
+      print: card.print ?? existing.print,
       name: card.name,
-      x: screenOrigin.x,
-      y: screenOrigin.y,
-      scale: startScale,
       targetX: aim.x,
       targetY: aim.y,
       targetScale: aim.scale,
       kind,
       fromCardId: card.id,
       hold: true,
-    }),
-  );
+      phase: "flying" as const,
+    };
+    traceFlightSync({
+      op: "seed",
+      zone: kind === "stack" ? "stack" : "land",
+      id: card.id,
+      hold: true,
+      phase: existing.phase,
+      remainingPx: Math.hypot(aim.x - existing.x, aim.y - existing.y),
+      aimDeltaPx: Math.hypot(aim.x - existing.targetX, aim.y - existing.targetY),
+      aimDeltaScale: Math.abs(aim.scale - existing.targetScale),
+      fromTarget: { x: existing.targetX, y: existing.targetY, scale: existing.targetScale },
+      toTarget: { x: aim.x, y: aim.y, scale: aim.scale },
+      note: `seedDrop continue kind=${kind}`,
+    });
+    flights.set(card.id, continued);
+    handHidden.add(card.id);
+    return {
+      ...model,
+      flights,
+      handHidden,
+      hideCardIds: hiddenCardIds(flights, model.exitFx),
+      ownedIds: new Set(flights.keys()),
+    };
+  }
+
+  const startScale = handFlightScale(model.camera.zoom);
+  const seeded = spawnFlight({
+    id: card.id,
+    print: card.print ?? "",
+    name: card.name,
+    x: screenOrigin.x,
+    y: screenOrigin.y,
+    scale: startScale,
+    targetX: aim.x,
+    targetY: aim.y,
+    targetScale: aim.scale,
+    kind,
+    fromCardId: card.id,
+    hold: true,
+  });
+  traceFlightSync({
+    op: "seed",
+    zone: kind === "stack" ? "stack" : "land",
+    id: card.id,
+    hold: true,
+    phase: "flying",
+    remainingPx: Math.hypot(aim.x - screenOrigin.x, aim.y - screenOrigin.y),
+    toTarget: { x: aim.x, y: aim.y, scale: aim.scale },
+    note: `seedDrop kind=${kind}`,
+  });
+  flights.set(card.id, seeded);
   handHidden.add(card.id);
   return {
     ...model,
