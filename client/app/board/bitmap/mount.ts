@@ -193,7 +193,8 @@ function flightsChanged(prev: readonly CardFlight[], next: readonly CardFlight[]
       before.targetScale !== after.targetScale ||
       before.phase !== after.phase ||
       before.kind !== after.kind ||
-      before.fromCardId !== after.fromCardId
+      before.fromCardId !== after.fromCardId ||
+      before.hold !== after.hold
     ) {
       return true;
     }

@@ -29,6 +29,7 @@ const CardFlight = S.Struct({
   phase: FlightPhase,
   kind: FlightKind,
   fromCardId: S.optional(S.Number),
+  hold: S.optional(S.Boolean),
 });
 const ExitFxStruct = S.Struct({
   id: S.Number,
