@@ -80,7 +80,9 @@ function stackEntryPaintKey(entry: StackObjectView): string {
   return `${entry.source}:${entry.kind}:${targets}`;
 }
 
-export function restingPaintSnapshot(frame: Omit<BitmapFrame, "flights" | "exitFx" | "dragGhost">): RestingPaintSnapshot {
+export function restingPaintSnapshot(
+  frame: Omit<BitmapFrame, "flights" | "exitFx" | "dragGhost">,
+): RestingPaintSnapshot {
   const cursorActive = frame.aimFrom != null || (frame.combatDragFrom != null && frame.combatDragStroke != null);
 
   const payload = {

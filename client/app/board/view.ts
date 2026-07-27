@@ -198,9 +198,7 @@ export const view = Submodel.defineView<BoardViewModel, ViewMessage>((model) => 
     stackPresentation: stackMode,
     flights: [...(model.board.flights instanceof Map ? model.board.flights.values() : [])],
     dragGhost:
-      model.board.handDrag == null
-        ? null
-        : dragGhostFromHandDrag(model.board.handDrag, model.board.camera.zoom),
+      model.board.handDrag == null ? null : dragGhostFromHandDrag(model.board.handDrag, model.board.camera.zoom),
     exitFx: [...(model.board.exitFx instanceof Map ? model.board.exitFx.values() : [])],
     hideCardIds: model.board.hideCardIds,
     targetObjects: overlay.targetObjects,

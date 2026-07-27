@@ -137,14 +137,14 @@ describe("paintCard", () => {
     const cache = { get: vi.fn(() => undefined) };
 
     paintCard(ctx, { panX: 0, panY: 0, zoom: 1 }, card({ isCommander: true, pt: "" }), cache, 0, {
-      outline: { color: "#EAFFF0", dash: [] },
+      outline: { color: colors.playableBorder, dash: [] },
     });
 
-    expect(calls).toContain("stroke:#E9B84A");
-    expect(calls).toContain("stroke:#EAFFF0");
+    expect(calls).toContain(`stroke:${colors.commanderGold}`);
+    expect(calls).toContain(`stroke:${colors.playableBorder}`);
     expect(calls).not.toContain("fill:rgba(0,0,0,0.45)");
-    const goldAt = calls.lastIndexOf("stroke:#E9B84A");
-    const playableAt = calls.lastIndexOf("stroke:#EAFFF0");
+    const goldAt = calls.lastIndexOf(`stroke:${colors.commanderGold}`);
+    const playableAt = calls.lastIndexOf(`stroke:${colors.playableBorder}`);
     // Playable border on the card edge, then gold as the outer halo.
     expect(playableAt).toBeGreaterThan(-1);
     expect(goldAt).toBeGreaterThan(playableAt);

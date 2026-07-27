@@ -755,7 +755,7 @@ describe("paintBitmapLayer", () => {
 
     paintBitmapLayer(canvas, frame, cache);
 
-    expect(calls).toContain("stroke:#EAFFF0");
+    expect(calls).toContain(`stroke:${colors.playableBorder}`);
     expect(calls).toContain("stroke:#1a1a1a");
     expect(calls).not.toContain("fill:rgba(0,0,0,0.45)");
   });
@@ -798,7 +798,7 @@ describe("paintBitmapLayer", () => {
 
     paintBitmapLayer(canvas, frame, cache);
 
-    expect(calls).not.toContain("stroke:#EAFFF0");
+    expect(calls).not.toContain(`stroke:${colors.playableBorder}`);
     expect(calls).toContain("stroke:#1a1a1a");
   });
 
@@ -1155,10 +1155,7 @@ describe("flight clock helpers", () => {
     };
     const first = applyPublishedFrame(flightClockState(), frame({ dragGhost: ghost, cards: [] }));
     expect(first.paintFlight).toBe(true);
-    const moved = applyPublishedFrame(
-      first.state,
-      frame({ dragGhost: { ...ghost, x: 140, y: 180 }, cards: [] }),
-    );
+    const moved = applyPublishedFrame(first.state, frame({ dragGhost: { ...ghost, x: 140, y: 180 }, cards: [] }));
     expect(moved.paintResting).toBe(false);
     expect(moved.paintFlight).toBe(true);
   });

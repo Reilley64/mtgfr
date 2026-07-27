@@ -276,34 +276,31 @@ function tile(args: {
     tileAttrs.push(h.DataAttribute("selectable", discardSelectable || discardSelected ? "true" : "false"));
   }
 
-  return h.div(
-    tileAttrs,
-    [
-      h.div(
-        [h.Class(faceClass), h.Style({ width: `${HAND_CARD_W}px` })],
-        [
-          pipRow,
-          h.div(
-            cardFaceAttrs,
-            [
-              art,
-              caption
-                ? h.div(
-                    [
-                      h.Class(
-                        "pointer-events-none absolute right-0 bottom-2 left-0 mx-1.5 overflow-hidden text-ellipsis whitespace-nowrap rounded-control bg-forest-hud px-1 py-0.5 text-center font-semibold text-micro text-snow",
-                      ),
-                    ],
-                    [caption],
-                  )
-                : null,
-            ].filter((v): v is Html => v !== null),
-          ),
-        ].filter((v): v is Html => v !== null),
-      ),
-      h.div(hitAttrs, []),
-    ],
-  );
+  return h.div(tileAttrs, [
+    h.div(
+      [h.Class(faceClass), h.Style({ width: `${HAND_CARD_W}px` })],
+      [
+        pipRow,
+        h.div(
+          cardFaceAttrs,
+          [
+            art,
+            caption
+              ? h.div(
+                  [
+                    h.Class(
+                      "pointer-events-none absolute right-0 bottom-2 left-0 mx-1.5 overflow-hidden text-ellipsis whitespace-nowrap rounded-control bg-forest-hud px-1 py-0.5 text-center font-semibold text-micro text-snow",
+                    ),
+                  ],
+                  [caption],
+                )
+              : null,
+          ].filter((v): v is Html => v !== null),
+        ),
+      ].filter((v): v is Html => v !== null),
+    ),
+    h.div(hitAttrs, []),
+  ]);
 }
 
 function section(name: string, tiles: ReadonlyArray<Html>): Html | null {
