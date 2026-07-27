@@ -153,7 +153,8 @@ export type FlightSyncTrace = {
 export function traceFlightSync(ev: Omit<FlightSyncTrace, "t">): void {
   if (!import.meta.env.DEV) return;
   const g = globalThis as typeof globalThis & { __flightSyncEvents?: FlightSyncTrace[] };
-  const list = (g.__flightSyncEvents ??= []);
+  if (g.__flightSyncEvents == null) g.__flightSyncEvents = [];
+  const list = g.__flightSyncEvents;
   list.push({ ...ev, t: performance.now() });
   if (list.length > 200) list.splice(0, list.length - 200);
 }

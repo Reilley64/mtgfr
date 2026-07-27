@@ -477,15 +477,16 @@ describe("stack flight settle handoff", () => {
     const laidOut = syncBoardWithGame(board0, gameFold(state({ objects: [forest] })));
     const slot = laidOut.lastBattlefieldPoses.get(permanentId);
     expect(slot).toBeDefined();
+    if (slot == null) throw new Error("expected land slot pose");
     const near = spawnFlight({
       id: handId,
       print: forest.print ?? "",
       name: forest.name,
-      x: slot!.x,
-      y: slot!.y + 40,
+      x: slot.x,
+      y: slot.y + 40,
       scale: 1,
-      targetX: slot!.x,
-      targetY: slot!.y + 40,
+      targetX: slot.x,
+      targetY: slot.y + 40,
       targetScale: 1,
       kind: "battlefield",
       fromCardId: handId,
@@ -609,14 +610,15 @@ describe("stack flight settle handoff", () => {
 
     const mid = afterEntrance.flights.get(spellId);
     expect(mid).toBeDefined();
-    expect(mid?.hold).toBe(true);
-    expect(mid?.phase).toBe("flying");
-    expect(mid?.targetX).toBe(face.x);
-    expect(mid?.targetY).toBe(face.y);
+    if (mid == null) throw new Error("expected retained stack flight");
+    expect(mid.hold).toBe(true);
+    expect(mid.phase).toBe("flying");
+    expect(mid.targetX).toBe(face.x);
+    expect(mid.targetY).toBe(face.y);
 
     // Later fold without stackEntrances — parked held seed must hand off, not short-retarget.
     const parked = {
-      ...mid!,
+      ...mid,
       x: face.x,
       y: face.y,
       scale,
