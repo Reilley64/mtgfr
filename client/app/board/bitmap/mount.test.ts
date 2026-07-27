@@ -755,7 +755,7 @@ describe("paintBitmapLayer", () => {
 
     paintBitmapLayer(canvas, frame, cache);
 
-    expect(calls).toContain("stroke:#EAFFF0");
+    expect(calls).toContain(`stroke:${colors.playableBorder}`);
     expect(calls).toContain("stroke:#1a1a1a");
     expect(calls).not.toContain("fill:rgba(0,0,0,0.45)");
   });
@@ -798,7 +798,7 @@ describe("paintBitmapLayer", () => {
 
     paintBitmapLayer(canvas, frame, cache);
 
-    expect(calls).not.toContain("stroke:#EAFFF0");
+    expect(calls).not.toContain(`stroke:${colors.playableBorder}`);
     expect(calls).toContain("stroke:#1a1a1a");
   });
 
