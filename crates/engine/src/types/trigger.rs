@@ -781,6 +781,13 @@ pub(crate) struct TriggerContext {
     /// follow the object's `Moved` lineage into its new graveyard card, and on into wherever it
     /// moves next).
     pub(crate) dying_enchanted_creature: Option<ObjectId>,
+    /// `(toughness, controller)` that same dying creature last had on the battlefield, for a
+    /// [`Trigger::EnchantedCreatureDies`] ability that reads its *host* rather than itself
+    /// (Creature Bond's "damage equal to that creature's toughness to the creature's
+    /// controller") — CR 603.10a last-known information, the host-facing twin of
+    /// `dying_source_stats` above. `None` for every other trigger. See
+    /// [`Game::queue_enchanted_creature_dies_triggers`] for where this is captured.
+    pub(crate) dying_enchanted_creature_stats: Option<(i32, PlayerId)>,
     /// CR 510.2/603.10a last-known information: the creature a [`Trigger::DealsCombatDamageToCreature`]
     /// watch's source just dealt combat damage to (Stinkweed Imp's "destroy that creature"),
     /// named separately from `dying_enchanted_creature`/`dead_creature` above since the damaged
@@ -880,6 +887,7 @@ impl TriggerContext {
             combat_damage_source_controller: None,
             triggering_damage_dealt: None,
             dying_enchanted_creature: None,
+            dying_enchanted_creature_stats: None,
             damaged_creature: None,
             triggering_spell: None,
             spells_cast_before_this: None,

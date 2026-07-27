@@ -133,6 +133,14 @@ pub enum Amount {
     /// sacrificed creature's toughness at ability placement — resolving this variant directly is
     /// a bug (see [`Game::resolve_amount`]'s panic).
     SacrificedCreatureToughness,
+    /// The toughness the *enchanted* creature last had before it died, on an
+    /// [`Trigger::EnchantedCreatureDies`](crate::Trigger::EnchantedCreatureDies) ability (Creature
+    /// Bond's "damage equal to that creature's toughness"). Same placeholder shape as
+    /// [`SacrificedCreatureToughness`](Self::SacrificedCreatureToughness), filled by
+    /// [`contextualize_effect`] from [`TriggerContext::dying_enchanted_creature_stats`] at trigger
+    /// placement — the host is a graveyard card by resolution and reads 0 there (CR 603.10a), so
+    /// resolving this variant directly is a bug (see [`Game::resolve_amount`]'s panic).
+    DyingEnchantedCreatureToughness,
     /// The number of colors in the effect's controller's commander's color identity (CR 903.4) —
     /// War Room's "pay life equal to the number of colors in your commander's color identity".
     CommanderColorCount,
@@ -870,6 +878,7 @@ impl Effect {
             | Effect::Damage(DamageEffect::ToEnteringPermanent { .. })
             | Effect::Damage(DamageEffect::ToEnteringPermanentController { .. })
             | Effect::Damage(DamageEffect::ToTriggeringPlayer { .. })
+            | Effect::Damage(DamageEffect::ToDyingEnchantedCreaturesController { .. })
             | Effect::Zone(ZoneEffect::ReanimateDyingEnchantedCreature { .. })
             | Effect::Zone(ZoneEffect::ExileDeadCreatureCreateCopyWithSubtype { .. })
             | Effect::Zone(ZoneEffect::ReturnThisToHand)
@@ -1937,6 +1946,14 @@ pub(crate) fn contextualize_effect(effect: Effect, ctx: TriggerContext) -> Effec
         Some((power, counters)) => fill_dying_source_amounts(effect, power, counters),
         None => effect,
     };
+    // The same snapshot for the Aura watching someone else die: Creature Bond reads its host's
+    // toughness and controller, neither of which survives the host's trip to the graveyard.
+    let effect = match ctx.dying_enchanted_creature_stats {
+        Some((toughness, controller)) => {
+            fill_dying_enchanted_creature_payoff(effect, toughness, controller)
+        }
+        None => effect,
+    };
     // Same CR 603.10a last-known-information shape, one step over: an `AnEnchantedCreatureDies`
     // watch's `Amount::AurasYouControlledAttachedToDyingCreature` reads the pre-move attachment
     // count baked in at placement.
@@ -2284,6 +2301,40 @@ fn fill_dying_enchanted_creature(effect: Effect, dying: ObjectId) -> Effect {
             let filled: Vec<Effect> = steps
                 .iter()
                 .map(|step| fill_dying_enchanted_creature(step.clone(), dying))
+                .collect();
+            Effect::Sequence {
+                steps: Arc::from(filled),
+            }
+        }
+        other => other,
+    }
+}
+
+/// Rewrite an `EnchantedCreatureDies` trigger's payoff that reads the *host* rather than the Aura
+/// (Creature Bond's "damage equal to that creature's toughness to the creature's controller") —
+/// both halves come from the same CR 603.10a snapshot, so they fill together.
+fn fill_dying_enchanted_creature_payoff(
+    effect: Effect,
+    toughness: i32,
+    controller: PlayerId,
+) -> Effect {
+    let fill = |amount: Amount| match amount {
+        Amount::DyingEnchantedCreatureToughness => Amount::Fixed(toughness),
+        other => other,
+    };
+    match effect {
+        Effect::Damage(DamageEffect::ToDyingEnchantedCreaturesController { amount, .. }) => {
+            Effect::Damage(DamageEffect::ToDyingEnchantedCreaturesController {
+                player: Some(controller),
+                amount: fill(amount),
+            })
+        }
+        Effect::Sequence { steps } => {
+            let filled: Vec<Effect> = steps
+                .iter()
+                .map(|step| {
+                    fill_dying_enchanted_creature_payoff(step.clone(), toughness, controller)
+                })
                 .collect();
             Effect::Sequence {
                 steps: Arc::from(filled),

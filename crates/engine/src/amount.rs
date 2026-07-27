@@ -139,6 +139,11 @@ impl Game {
             Amount::SacrificedCreatureToughness => panic!(
                 "Amount::SacrificedCreatureToughness must be contextualized to Fixed before resolving"
             ),
+            // A placeholder [`contextualize_effect`] must have already rewritten to `Fixed` at
+            // trigger placement — see the variant's own doc comment.
+            Amount::DyingEnchantedCreatureToughness => panic!(
+                "Amount::DyingEnchantedCreatureToughness must be contextualized to Fixed before resolving"
+            ),
             Amount::CommanderColorCount => self
                 .commander_identity_of(controller)
                 .iter()

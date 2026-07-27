@@ -154,6 +154,7 @@ message_keys! {
     EFFECT_DAMAGE_EACH_PLAYER => "effect.damage_each_player",
     EFFECT_DAMAGE_RADIANCE => "effect.damage_radiance",
     EFFECT_DAMAGE_TARGET => "effect.damage_target",
+    EFFECT_DAMAGE_TO_DYING_ENCHANTED_CREATURES_CONTROLLER => "effect.damage_to_dying_enchanted_creatures_controller",
     EFFECT_DAMAGE_TO_ENTERING_PERMANENT => "effect.damage_to_entering_permanent",
     EFFECT_DAMAGE_TO_ENTERING_PERMANENT_CONTROLLER => "effect.damage_to_entering_permanent_controller",
     EFFECT_DAMAGE_TO_SELF => "effect.damage_to_self",
@@ -1073,6 +1074,7 @@ fn amount_token(amount: Amount) -> &'static str {
         Amount::NontokenCreaturesEnteredThisTurn => "nontoken_creatures_entered_this_turn",
         Amount::SacrificedCreaturePower => "sacrificed_creature_power",
         Amount::SacrificedCreatureToughness => "sacrificed_creature_toughness",
+        Amount::DyingEnchantedCreatureToughness => "dying_enchanted_creature_toughness",
         Amount::CommanderColorCount => "commander_color_count",
         Amount::TotalPowerYouControl => "total_power_you_control",
         Amount::PermanentsYouOwnOpponentsControl => "permanents_you_own_opponents_control",
@@ -1190,6 +1192,10 @@ impl Effect {
             }
             Effect::Damage(ToTriggeringPlayer { amount, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_DAMAGE_TO_TRIGGERING_PLAYER)
+                    .with_params(vec![amount_param("amount", amount)])
+            }
+            Effect::Damage(ToDyingEnchantedCreaturesController { amount, .. }) => {
+                MessageRef::new(MessageKey::EFFECT_DAMAGE_TO_DYING_ENCHANTED_CREATURES_CONTROLLER)
                     .with_params(vec![amount_param("amount", amount)])
             }
             Effect::Draw(Cards { count }) => MessageRef::new(MessageKey::EFFECT_DRAW_CARDS)

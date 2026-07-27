@@ -881,7 +881,7 @@ site with a source id) and falls through to `false` in `condition_holds`, exactl
 `SourceUntapped`. Type-agnostic for free: each card's own `enchant` restriction does the
 typing, so all four Auras share one ability shape and one shape test.
 
-### 62. `damage-equal-to-the-dying-creatures-toughness` — 1 card, M
+### 62. `damage-equal-to-the-dying-creatures-toughness` — 1 card, M — **done**
 Depends on: 61 (`upkeep-of-the-enchanted-permanents-controller`) — both are Aura payoffs aimed at
 the host's controller, so they want the same context plumbing.
 Creature Bond's `Trigger::EnchantedCreatureDies` watch already exists, but the payoff needs two
@@ -891,6 +891,15 @@ dying creature's controller as the damage recipient. `Amount` has no last-known-
 *Sketch:* an `Amount::DyingPermanentToughness` fed from the death snapshot `Game::apply` already
 captures for the `*IncludingThis` arms, plus the increment-61 "damage the host's controller"
 recipient. *Cards:* creature_bond.
+*Landed:* the snapshot the sketch wanted already existed — `dying_creature_stats`, captured in
+`Game::apply` the instant a creature's death event applies — it just didn't record toughness or
+controller. Widening it from a `(id, power, +1/+1 counters)` tuple to a `DyingCreatureStats`
+struct with both was the whole cost; `Amount::DyingEnchantedCreatureToughness` and
+`DamageEffect::ToDyingEnchantedCreaturesController` are then ordinary placement-time
+placeholders, filled together off one new `TriggerContext` field.
+Controller, not owner: after the host dies, `controller_of` follows it to the graveyard card and
+answers its *owner*, so Creature Bond on a creature stolen by Control Magic would have billed
+the wrong seat without the snapshot.
 
 ### 63. `whenever-this-is-dealt-damage` — 1 card, M
 Depends on: nothing.

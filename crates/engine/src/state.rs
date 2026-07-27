@@ -253,16 +253,18 @@ pub(crate) struct BatchTriggerScratch {
     /// [`Game::queue_enchanted_creature_dies_triggers`](crate::Game::queue_enchanted_creature_dies_triggers), cleared wholesale at the end of every
     /// [`Game::enqueue_triggers`](crate::Game::enqueue_triggers) batch.
     pub dying_creature_attachments: Vec<(ObjectId, ObjectId, PlayerId, CardDef)>,
-    /// `(dying creature's pre-move id, power, +1/+1 counters)` — CR 603.10a last-known
-    /// information for a Dies trigger's [`Amount::SourcePower`](crate::Amount::SourcePower) /
+    /// CR 603.10a last-known information about each creature that died this batch — for a Dies
+    /// trigger's [`Amount::SourcePower`](crate::Amount::SourcePower) /
     /// [`Amount::PerCounterOnSource`](crate::Amount::PerCounterOnSource) reads (Lifeblood
     /// Hydra's "gain life and draw cards equal to its power", Hangarback Walker's Thopter
-    /// swarm). Captured at the same choke point and for the same reason as
+    /// swarm), and for an [`Trigger::EnchantedCreatureDies`](crate::Trigger::EnchantedCreatureDies)
+    /// Aura's reads of its *host* (Creature Bond's "damage equal to that creature's toughness to
+    /// the creature's controller"). Captured at the same choke point and for the same reason as
     /// [`dying_creature_attachments`](Self::dying_creature_attachments) — the creature is still
     /// a live permanent the instant its death event applies, before `create_object` tombstones
     /// it. Read (not drained) by `Game::enqueue_triggers`'s `MovedToGraveyard`/
     /// `TokenCeasedToExist` trigger-scan arms, cleared wholesale at the end of every batch.
-    pub dying_creature_stats: Vec<(ObjectId, i32, i32)>,
+    pub dying_creature_stats: Vec<DyingCreatureStats>,
     /// Pre-move ids of objects that were live battlefield [`Object::Permanent`]s the instant
     /// they were put into a graveyard this batch (CR "put into a graveyard from the
     /// battlefield") — the accumulator behind
@@ -307,6 +309,23 @@ pub(crate) struct BatchTriggerScratch {
     /// drained) by `Game::enqueue_triggers`'s `Event::MovedToGraveyard` arm, cleared wholesale at
     /// the end of every batch.
     pub dying_creature_lki: Vec<(ObjectId, CardDef, PlayerId)>,
+}
+
+/// One creature's characteristics the instant before it died — the payload of
+/// [`BatchTriggerScratch::dying_creature_stats`]. Everything here reads 0/owner off the
+/// graveyard card it becomes, so a Dies trigger's payoff has to have been handed these values at
+/// placement (CR 603.10a).
+#[derive(Debug, Clone, Copy)]
+pub struct DyingCreatureStats {
+    /// The creature's pre-move object id — what callers match on.
+    pub id: ObjectId,
+    pub power: i32,
+    pub toughness: i32,
+    pub plus_counters: i32,
+    /// Who controlled it, which is not who owned it once anything has stolen it (Control Magic) —
+    /// a stolen creature dies to its owner's graveyard while the thief is still "the creature's
+    /// controller" for a payoff that names one.
+    pub controller: PlayerId,
 }
 
 /// Once-per-turn activation and trigger caps, reset at each untap step.

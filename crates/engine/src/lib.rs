@@ -61,7 +61,7 @@ pub(crate) use resolution::ResolveCtx;
 /// All-players search fan-out continuation state (Veteran Explorer) — see
 /// [`resolution::SearchFanout`].
 pub(crate) use resolution::SearchFanout;
-pub use state::ControlCondition;
+pub use state::{ControlCondition, DyingCreatureStats};
 pub use types::*;
 
 /// Keyword-trigger obligations queued outside ordinary triggered abilities and drained when the

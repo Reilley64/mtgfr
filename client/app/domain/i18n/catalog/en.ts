@@ -282,6 +282,8 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.damage_radiance": (params) =>
     `Deal ${param(params, "amount")} damage to target creature and each other creature that shares a color with it`,
   "effect.damage_target": (params) => `Deal ${param(params, "amount")} damage`,
+  "effect.damage_to_dying_enchanted_creatures_controller": (params) =>
+    `Deals ${param(params, "amount")} damage to that creature's controller`,
   "effect.damage_to_entering_permanent": (params) =>
     `Deal ${param(params, "amount")} damage to the permanent that entered`,
   "effect.damage_to_entering_permanent_controller": (params) =>

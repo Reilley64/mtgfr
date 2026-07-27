@@ -2175,6 +2175,7 @@ impl Game {
                 combat_damage_source_controller: None,
                 triggering_damage_dealt: None,
                 dying_enchanted_creature: None,
+                dying_enchanted_creature_stats: None,
                 damaged_creature: None,
                 triggering_spell: None,
                 spells_cast_before_this: None,
@@ -2393,6 +2394,7 @@ impl Game {
                 combat_damage_source_controller: None,
                 triggering_damage_dealt: None,
                 dying_enchanted_creature: None,
+                dying_enchanted_creature_stats: None,
                 damaged_creature: None,
                 triggering_spell: None,
                 spells_cast_before_this: None,
@@ -2502,12 +2504,19 @@ impl Game {
             .filter(|&&(host, ..)| host == dying)
             .map(|&(_, aura, controller, ref def)| (aura, controller, def.clone()))
             .collect();
+        // CR 603.10a: what the host last was, for the payoffs that read it rather than the Aura
+        // (Creature Bond). A creature always has a row here by the time this runs — the same
+        // `Game::apply` arm that captured the attachments above captured this.
+        let host_stats = self
+            .dying_creature_stats(dying)
+            .map(|stats| (stats.toughness, stats.controller));
         for (aura, controller, def) in auras {
             if self.players[controller.0 as usize].lost {
                 continue;
             }
             let ctx = TriggerContext {
                 dying_enchanted_creature: Some(dying),
+                dying_enchanted_creature_stats: host_stats,
                 ..TriggerContext::of(controller)
             };
             self.queue_trigger_group(ctx, aura, def, Trigger::EnchantedCreatureDies);
@@ -2664,6 +2673,7 @@ impl Game {
             combat_damage_source_controller: None,
             triggering_damage_dealt: None,
             dying_enchanted_creature: None,
+            dying_enchanted_creature_stats: None,
             damaged_creature: None,
             triggering_spell: None,
             spells_cast_before_this: None,
@@ -3706,11 +3716,19 @@ impl Game {
     /// `source` the instant before it died, for a `Dies` trigger's `TriggerContext` — `None` if
     /// `source` didn't die this batch (every non-death trigger).
     fn dying_source_stats(&self, source: ObjectId) -> Option<(i32, i32)> {
+        self.dying_creature_stats(source)
+            .map(|stats| (stats.power, stats.plus_counters))
+    }
+
+    /// This batch's whole `Game::dying_creature_stats` entry for `id` — `None` if `id` didn't die
+    /// this batch. The narrower [`dying_source_stats`](Self::dying_source_stats) above is the
+    /// self-watch view of the same row; an `EnchantedCreatureDies` Aura reads it for its *host*.
+    fn dying_creature_stats(&self, id: ObjectId) -> Option<DyingCreatureStats> {
         self.batch_trigger_scratch
             .dying_creature_stats
             .iter()
-            .find(|&&(id, ..)| id == source)
-            .map(|&(_, power, counters)| (power, counters))
+            .copied()
+            .find(|stats| stats.id == id)
     }
 
     /// Queue `def`'s abilities matching `trigger` (and whose intervening-if condition, if any,

@@ -31913,6 +31913,37 @@ fn enchanted_creature_dies_trigger_fires_under_the_auras_own_controller() {
     );
 }
 
+// Creature Bond: "When enchanted creature dies, this Aura deals damage equal to that creature's
+// toughness to the creature's controller." Both halves look back at a creature that is already gone
+// by resolution (CR 603.10a) — the amount and the player being billed.
+
+#[test]
+fn creature_bond_bills_the_hosts_controller_for_its_last_known_toughness() {
+    let mut game = Game::new();
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
+    let bond = game.spawn_in_hand(PlayerId(0), card("Creature Bond"));
+    cast_and_resolve(&mut game, bond, Some(Target::Object(bear)));
+
+    // Pumped before it dies, so the printed 2 and the last-known 5 disagree.
+    let growth = game.spawn_in_hand(PlayerId(0), card("Giant Growth"));
+    cast_and_resolve(&mut game, growth, Some(Target::Object(bear)));
+
+    let destroy = game.spawn_in_hand(PlayerId(0), DESTROY.clone());
+    cast_and_resolve(&mut game, destroy, Some(Target::Object(bear)));
+    resolve_top_of_stack(&mut game); // the EnchantedCreatureDies trigger resolves
+
+    assert_eq!(
+        game.life(PlayerId(1)),
+        15,
+        "the host's controller takes its toughness as it last was, not as it was printed"
+    );
+    assert_eq!(
+        game.life(PlayerId(0)),
+        20,
+        "the Aura's controller is not the one being billed"
+    );
+}
+
 // ── Watch-any-enchanted-creature triggers (#108, Hateful Eidolon / Killian's second ability) ──
 
 /// A test-only Aura with no abilities of its own — isolates the attach relationship (who

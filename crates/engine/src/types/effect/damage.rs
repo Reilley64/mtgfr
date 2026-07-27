@@ -101,6 +101,18 @@ pub enum DamageEffect {
         amount: Amount,
     },
 
+    /// Creature Bond's "when enchanted creature dies … deals damage equal to that creature's
+    /// toughness to **the creature's controller**" — the host's controller, snapshotted from
+    /// [`TriggerContext::dying_enchanted_creature_stats`] at trigger placement because the host is
+    /// a graveyard card by resolution and `controller_of` would answer its owner (CR 603.10a).
+    /// Distinct from [`ToTriggeringPlayer`](Self::ToTriggeringPlayer), which names the player whose
+    /// step it is.
+    ToDyingEnchantedCreaturesController {
+        #[cfg_attr(feature = "card-dsl", serde(skip))]
+        player: Option<PlayerId>,
+        amount: Amount,
+    },
+
     ToSelf {
         amount: Amount,
     },

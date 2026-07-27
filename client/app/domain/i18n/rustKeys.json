@@ -128,6 +128,7 @@
   "effect.damage_each_player",
   "effect.damage_radiance",
   "effect.damage_target",
+  "effect.damage_to_dying_enchanted_creatures_controller",
   "effect.damage_to_entering_permanent",
   "effect.damage_to_entering_permanent_controller",
   "effect.damage_to_self",

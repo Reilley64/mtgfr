@@ -2024,11 +2024,15 @@ impl Game {
                         ));
                     }
                     // CR 603.10a last-known information — see `Game::dying_creature_stats`.
-                    self.batch_trigger_scratch.dying_creature_stats.push((
-                        token,
-                        self.power(token),
-                        self.plus_counters(token),
-                    ));
+                    self.batch_trigger_scratch
+                        .dying_creature_stats
+                        .push(DyingCreatureStats {
+                            id: token,
+                            power: self.power(token),
+                            toughness: self.toughness(token),
+                            plus_counters: self.plus_counters(token),
+                            controller: self.controller_of(token),
+                        });
                     // CR 700.4/701.29 last-known information: a token ceasing to exist is a
                     // "died" too — read `is_modified` before `Object::Removed` below erases its
                     // attachments/counters. Feeds `Condition::ModifiedCreatureDiedThisTurn`.
@@ -2123,11 +2127,15 @@ impl Game {
                         ));
                     }
                     // CR 603.10a last-known information — see `Game::dying_creature_stats`.
-                    self.batch_trigger_scratch.dying_creature_stats.push((
-                        from,
-                        self.power(from),
-                        self.plus_counters(from),
-                    ));
+                    self.batch_trigger_scratch
+                        .dying_creature_stats
+                        .push(DyingCreatureStats {
+                            id: from,
+                            power: self.power(from),
+                            toughness: self.toughness(from),
+                            plus_counters: self.plus_counters(from),
+                            controller: self.controller_of(from),
+                        });
                     // CR 800.4a last-known information: def/owner for a death-watch scan that
                     // must still run if `PlayerLost` (later in this same batch) tombstones `from`
                     // out from under it — see `Game::dying_creature_lki`.

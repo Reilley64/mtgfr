@@ -201,7 +201,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Conversion** {2}{W}{W} · Enchantment — increment 8
 - [x] **Copper Tablet** {2} · Artifact — increment 60
 - [ ] **Copy Artifact** {1}{U} · Enchantment — increment 12
-- [ ] **Creature Bond** {1}{U} · Enchantment — Aura — increment 62
+- [x] **Creature Bond** {1}{U} · Enchantment — Aura — increment 62
 - [x] **Crystal Rod** {1} · Artifact — increment 10
 - [x] **Cursed Land** {2}{B}{B} · Enchantment — Aura — increment 61
 - [ ] **Cyclopean Tomb** {4} · Artifact — increment 8, 28

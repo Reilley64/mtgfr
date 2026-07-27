@@ -1061,6 +1061,7 @@ impl<'de> Deserialize<'de> for Amount {
             "nontoken_creatures_entered_this_turn",
             "sacrificed_creature_power",
             "sacrificed_creature_toughness",
+            "dying_enchanted_creature_toughness",
             "commander_color_count",
             "total_power_you_control",
             "greatest_power_among_creatures_you_control",
@@ -1135,6 +1136,7 @@ impl<'de> Deserialize<'de> for Amount {
                     }
                     "sacrificed_creature_power" => Amount::SacrificedCreaturePower,
                     "sacrificed_creature_toughness" => Amount::SacrificedCreatureToughness,
+                    "dying_enchanted_creature_toughness" => Amount::DyingEnchantedCreatureToughness,
                     "commander_color_count" => Amount::CommanderColorCount,
                     "total_power_you_control" => Amount::TotalPowerYouControl,
                     "greatest_power_among_creatures_you_control" => {

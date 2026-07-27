@@ -2411,6 +2411,29 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         );
     }
 
+    /// Creature Bond reads its host twice over — the amount and the player billed — so both are
+    /// last-known-information placeholders the trigger fills, not live reads.
+    #[test]
+    fn unlimited_creature_bond_bills_the_dying_host() {
+        let bond = get_by_name("Creature Bond").expect("Creature Bond is in the pool");
+        let ability = &bond.abilities[0];
+        assert!(
+            matches!(
+                ability.timing,
+                Timing::Triggered(Trigger::EnchantedCreatureDies)
+            ),
+            "when enchanted creature dies"
+        );
+        assert_eq!(
+            ability.effect,
+            Effect::Damage(DamageEffect::ToDyingEnchantedCreaturesController {
+                player: None,
+                amount: Amount::DyingEnchantedCreatureToughness,
+            }),
+            "damage equal to that creature's toughness to the creature's controller"
+        );
+    }
+
     /// The upkeep-tax Aura cycle taxes the *host's* controller, so each one is an each-upkeep
     /// trigger narrowed by an intervening-if to the one upkeep that belongs to its host — not an
     /// `Upkeep` trigger, which would read the Aura's own controller.
