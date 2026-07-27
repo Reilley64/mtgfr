@@ -8,6 +8,9 @@ export { STACK_CARD_W };
 const TAU_MS = 75;
 const EPSILON_PX = 0.5;
 const EPSILON_SCALE = 0.02;
+/** Authority handoff radius — near enough that a correction ease would read as a second short glide. */
+export const FLIGHT_HANDOFF_PX = 72;
+export const FLIGHT_HANDOFF_SCALE = 0.25;
 
 export type FlightPhase = "flying" | "settled";
 export type FlightKind = "battlefield" | "stack" | "from-stack";
@@ -162,6 +165,20 @@ export function poseAtTarget(
   return (
     Math.hypot(target.x - pose.x, target.y - pose.y) <= EPSILON_PX &&
     Math.abs(target.scale - pose.scale) <= EPSILON_SCALE
+  );
+}
+
+/**
+ * True when a held local seed is close enough to the authoritative pose that retargeting would
+ * only play a short second ease after the main glide.
+ */
+export function poseNearHandoff(
+  pose: { x: number; y: number; scale: number },
+  target: { x: number; y: number; scale: number },
+): boolean {
+  return (
+    Math.hypot(target.x - pose.x, target.y - pose.y) <= FLIGHT_HANDOFF_PX &&
+    Math.abs(target.scale - pose.scale) <= FLIGHT_HANDOFF_SCALE
   );
 }
 

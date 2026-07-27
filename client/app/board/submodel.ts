@@ -125,6 +125,7 @@ import {
   flyingCardIds,
   handFlightScale,
   poseAtTarget,
+  poseNearHandoff,
   rebindFlightId,
   remapFlightsForZoom,
   retargetFlight,
@@ -619,8 +620,9 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
     if (existing != null) {
       const target = cardTarget(model.camera, card);
       const aim = { x: target.x, y: target.y, scale: 1 };
-      // Provisional land-row seed already on the real slot — show the permanent without a second glide.
-      if (existing.hold && existing.phase === "settled" && poseAtTarget(existing, aim)) {
+      // Near the real slot (or on it) — hand off. Settled-at-provisional-row must still retarget;
+      // only near-aim handoff kills the short second ease.
+      if (existing.hold && poseNearHandoff(existing, aim)) {
         flights.delete(permanent);
         handHidden.delete(from);
         continue;
@@ -659,9 +661,12 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
 
     const existing = flights.get(spell);
     if (existing != null) {
-      // Parked local seeds already finished their glide — hand off to HTML even if the authoritative
-      // face is a few px off (pile recenter). A correction retarget reads as a second animation.
-      if (existing.hold && existing.phase === "settled") {
+      // Held local seed finished or nearly at the face — hand off. Retargeting here is the
+      // "full glide then a short second one" the player sees when sync arrives near the end.
+      if (
+        existing.hold &&
+        (existing.phase === "settled" || poseNearHandoff(existing, aim) || poseAtTarget(existing, aim))
+      ) {
         flights.delete(spell);
         if (meta.from != null) handHidden.delete(meta.from);
         continue;
