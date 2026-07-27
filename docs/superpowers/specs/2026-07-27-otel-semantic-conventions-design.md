@@ -35,7 +35,7 @@ weakening scrub rules or inventing a new product-surface feature spec.
 | Decision | Choice |
 |---|---|
 | Adoption depth | **Medium** — resource + HTTP + RPC + safe DB + exception type/status |
-| Custom game fields | Keep; rename to `mtgfr.*` (`mtgfr.table.id`, `mtgfr.intent.kind`, `mtgfr.intent.accepted`) |
+| Custom game fields | Keep; rename to `mtgfr.*` (`mtgfr.table.id`, `mtgfr.intent.kind`, `mtgfr.intent.accepted`, `mtgfr.user.id`) |
 | Dashboards | **In implement PR** — RED panels for BFF HTTP and API gRPC |
 | DB attributes | Allowlist safe keys only; **forbid** `db.query.text` / statement bodies |
 | Verification | Unit/golden fixtures only (no CI whole-tree grep gate in v1) |
@@ -148,8 +148,12 @@ guarantee that, hand-set system / operation / namespace only.
 | `mtgfr.table.id` | Table id | Correlate ops without payload |
 | `mtgfr.intent.kind` | Intent type enum only | Filter `SubmitIntent` without body |
 | `mtgfr.intent.accepted` | bool ack outcome | Success/reject without payload |
+| `mtgfr.user.id` | Authenticated user id | Pre-existing `user_id` on submit path; identifier only |
 
-**Migrate away from:** bare `table_id`, `intent.kind`, `accepted`.
+**Migrate away from:** bare `table_id`, `intent.kind`, `accepted`, `user_id` (as span
+attribute keys). Also migrate BFF’s current non-semconv annotations (`http.method` →
+`http.request.method`; drop free-form `rpc.path` in favor of proper `rpc.*` on the
+outbound gRPC client span).
 
 **Forbid:** `mtgfr.intent.payload`, hand/library fields, auth tokens, free-form keys outside
 this dictionary.
@@ -190,7 +194,7 @@ rule. Engine remains pure — no OTEL exporters in `crates/engine`.
 | `db.query.text` | Forbid |
 | `exception.type` + span status | Allow |
 | `exception.message` with payloads | Forbid |
-| `mtgfr.table.id` / `mtgfr.intent.kind` / `mtgfr.intent.accepted` | Allow (deliberate) |
+| `mtgfr.table.id` / `mtgfr.intent.kind` / `mtgfr.intent.accepted` / `mtgfr.user.id` | Allow (deliberate) |
 | Intent payload / hand / library | Forbid |
 
 ### Dashboards / Tempo (implement PR)
