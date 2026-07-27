@@ -42,7 +42,7 @@ impl Game {
                         Event::TokenCreated {
                             token: minted,
                             controller: player,
-                            def: token,
+                            def: intern_card_def(token.clone()),
                             creator: source,
                         },
                     );
@@ -79,6 +79,15 @@ impl Game {
                         self.push_apply(events, event);
                     }
                 }
+            }
+            // Malfegor's "discard your hand": the controller discards their whole hand (no choice,
+            // so no `PendingChoice`), setting `cards_discarded_this_way` to its size so a following
+            // Sequence step (Malfegor's each-opponent sacrifice) reads "for each card discarded
+            // this way".
+            Effect::Choice(ChoiceEffect::DiscardYourHand) => {
+                let hand = self.hand_of(controller);
+                self.resolution_frame.cards_discarded_this_way = hand.len() as u32;
+                self.discard_ids(&hand, controller, events);
             }
             // Advanced Reconstruction's base ability: "exile a card from your graveyard at
             // random. You may play the exiled card this turn." The card is picked by the
@@ -121,6 +130,48 @@ impl Game {
                     },
                 );
             }
+            // Basandra, Battle Seraph's {R} ability: "Target creature attacks this turn if able."
+            // Reuses the same `must_attack` requirement plumbing as `MustAttackRandomOpponent`
+            // above, but names no specific required opponent — recording the target's own
+            // controller as the `defender` is the sentinel `declare_attackers` already reads as
+            // "must attack, any legal defender" (its `required_legal` gate short-circuits on
+            // `required == player`, the same escape hatch `must_attack_each_combat_static` uses).
+            Effect::Misc(MiscEffect::MustAttackTarget) => {
+                let Some(Target::Object(creature)) = target else {
+                    return;
+                };
+                self.push_apply(
+                    events,
+                    Event::MustAttackDeclared {
+                        object: creature,
+                        defender: self.controller_of(creature),
+                    },
+                );
+            }
+            // Tariel, Reckoner of Souls: "Choose a creature card at random from target opponent's
+            // graveyard. Put that card onto the battlefield under your control." The opponent is
+            // a real target (`target`, already resolved ahead of this resolution — hexproof/
+            // protection already checked); the creature card among their graveyard is picked by
+            // the injected RNG here (needs `&mut self`), then reuses the same reanimation event
+            // `ReanimateToBattlefield` mints through.
+            Effect::Zone(ZoneEffect::ReanimateRandomFromTargetOpponentGraveyard { .. }) => {
+                let Some(Target::Player(opponent)) = target else {
+                    unreachable!("resolves against a targeted opponent")
+                };
+                let creatures: Vec<ObjectId> = self
+                    .graveyard_cards(opponent)
+                    .into_iter()
+                    .filter(|&id| matches!(self.def_of(id).kind, CardKind::Creature { .. }))
+                    .collect();
+                // No creature card in that graveyard — nothing to choose, a no-op.
+                if creatures.is_empty() {
+                    return;
+                }
+                let idx = self.with_op_rng(controller, |rng| rng.gen_index(creatures.len()));
+                let card = creatures[idx];
+                let event = self.reanimate_event(card, controller, false);
+                self.push_apply(events, event);
+            }
             // Inkshield (CR 615): arm a this-turn combat-damage prevention shield protecting the
             // ability's controller ("dealt to *you*"), carrying the Inkling profile minted per
             // point prevented. The tokens are created at the prevention itself (in `damage_player`),
@@ -136,24 +187,33 @@ impl Game {
             Effect::Misc(MiscEffect::PreventAllCombatDamageThisTurn) => {
                 self.combat_extras.prevent_all_combat_damage_this_turn = true;
             }
+            // Master Warcraft: hand the attack / block declaration to this spell's controller for
+            // the rest of the turn. Runtime orchestration state like the shields above — the
+            // declarations themselves stay ordinary, only the seat that makes them moves.
+            Effect::Misc(MiscEffect::YouChooseWhichCreaturesAttack) => {
+                self.combat_extras.attack_declarer = Some(controller);
+            }
+            Effect::Misc(MiscEffect::YouChooseWhichCreaturesBlock) => {
+                self.combat_extras.block_declarer = Some(controller);
+            }
             // "Exile [this card] with N time counters on it" (Rousing Refrain): mark the resolving
             // spell so `finish_instant_sorcery_resolution` sends it to exile with time counters
             // instead of the graveyard (the resolving spell, `source`, is the card exiled).
             Effect::Zone(ZoneEffect::ExileSelfWithTimeCounters { counters, .. }) => {
-                self.self_exile_time_counters = Some(counters);
+                self.resolution_finish = Some(FinishPolicy::ExileWithTimeCounters(counters));
             }
             // "Then put [this card] on the bottom of its owner's library" (Spell Crumple): mark
             // the resolving spell so `finish_instant_sorcery_resolution` sends it to the bottom
             // of its owner's library instead of the graveyard (`source`, the resolving spell
             // itself, is the card tucked).
             Effect::Zone(ZoneEffect::TuckSelfToLibraryBottom) => {
-                self.self_tuck_to_library_bottom = true;
+                self.resolution_finish = Some(FinishPolicy::TuckLibraryBottom);
             }
             // "Exile [this card]" (Vengeful Rebirth): mark the resolving spell so
             // `finish_instant_sorcery_resolution` sends it to exile instead of the graveyard
             // (`source`, the resolving spell itself, is the card exiled).
             Effect::Zone(ZoneEffect::ExileSelfOnResolve) => {
-                self.self_exile_on_resolve = true;
+                self.resolution_finish = Some(FinishPolicy::Exile);
             }
             // Opal Palace's spend-to-cast rider: the commander spell (baked in as
             // `triggering_spell` when the `SpendManaToCast` trigger fired) is still on the stack, so

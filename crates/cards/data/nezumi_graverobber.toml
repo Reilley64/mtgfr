@@ -4,11 +4,11 @@
 # [Nighteyes the Desecrator]
 # {4}{B}: Put target creature card from a graveyard onto the battlefield under your control.
 name = "Nezumi Graverobber"
+sets = ["chk", "cm2", "cmd", "phuk", "plst", "psal", "td0"]
 id = "1373fa8d-0a39-4451-a482-ce2071438dc8"
 default_print = "77ffd913-8efa-48e5-a5cf-293d3068dbbf"
 otags = ["activated-ability", "flip-card", "hate-graveyard", "reanimate-creature"]
 oracle = "{1}{B}: Exile target card from an opponent's graveyard. If no cards are in that graveyard, flip this creature. // {4}{B}: Put target creature card from a graveyard onto the battlefield under your control."
-set = "chk"
 subtypes = ["Rat", "Rogue"]
 
 [cost]
@@ -43,7 +43,6 @@ then = [{ type = "misc", mode = "flip_source" }]
 
 [back]
 name = "Nighteyes the Desecrator"
-set = "chk"
 legendary = true
 subtypes = ["Rat", "Wizard"]
 

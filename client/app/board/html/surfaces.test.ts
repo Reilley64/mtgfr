@@ -9,9 +9,11 @@ import { Submodel } from "foldkit";
 import { html } from "foldkit/html";
 import { Scene } from "foldkit/test";
 import { beforeAll, expect, test } from "vitest";
+import { testMessageRef } from "~/i18n/testMessageRef";
+import { fromProtoWire } from "~/wire/protoMap";
 import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/types";
 import type { GameFoldState, LogLine } from "../../game/fold";
-import { emptyCostPicks, type ModalCast, type XPromptState } from "../action/execution";
+import { emptyCostPicks, type ModalCast, type PlayModePick, type XPromptState } from "../action/execution";
 import { ZONE } from "../geometry/layout";
 import type { Message } from "../messages";
 import { type BoardModel, initialBoardModel } from "../submodel";
@@ -63,6 +65,24 @@ function dataAttr(node: unknown, name: string): string | null {
   const n = node as { data?: { attrs?: Record<string, string> } };
   const value = n.data?.attrs?.[`data-${name}`];
   return typeof value === "string" ? value : null;
+}
+
+function attr(node: unknown, name: string): string | null {
+  if (node == null || typeof node !== "object") return null;
+  const n = node as { data?: { attrs?: Record<string, string> } };
+  const value = n.data?.attrs?.[name];
+  return typeof value === "string" ? value : null;
+}
+
+function findAttr(node: unknown, name: string, value: string): unknown | null {
+  if (attr(node, name) === value) return node;
+  if (node == null || typeof node !== "object") return null;
+  const n = node as { children?: unknown[] };
+  for (const child of n.children ?? []) {
+    const found = findAttr(child, name, value);
+    if (found != null) return found;
+  }
+  return null;
 }
 
 function findParentOfTestId(node: unknown, id: string): unknown | null {
@@ -129,7 +149,7 @@ function action(id: number, overrides: Partial<ActionView> = {}): ActionView {
   return {
     id,
     kind: "cast",
-    label: `Action ${id}`,
+    label: testMessageRef(`Action ${id}`),
     needs_target: false,
     section: "hand",
     ...overrides,
@@ -185,13 +205,14 @@ function gameFold(state: VisibleState | null = gameState(), log: ReadonlyArray<L
       zoneMoves: new Map(),
       resolvedFromStack: new Set(),
       leftStackToPile: new Set(),
+      battlefieldExits: new Map(),
       tokenCreators: new Map(),
       landPlayFrom: new Map(),
       zonePileEntrances: new Map(),
       stackEntrances: new Map(),
       priorStackObjectIds: new Set(),
     },
-    tableFeel: { land: false, stack: false, resolve: false, damage: false },
+    tableFeel: { land: false, stack: false, resolve: false, damage: false, destroy: false, exile: false },
   };
 }
 
@@ -208,7 +229,7 @@ function stagedBoard(overrides: Partial<BoardModel> = {}): BoardModel {
       card: spell,
       action: action(10, {
         object: spell.id,
-        label: "Cast Shock",
+        label: testMessageRef("Cast Shock"),
         needs_target: true,
         targets: [{ kind: "object", id: 22 }],
       }),
@@ -280,7 +301,7 @@ test("smoke scene keeps existing chrome visible", () => {
     mana_cost: cost({ generic: 1 }),
   });
   const handAction = action(1, {
-    label: "Cast Lightning Bolt",
+    label: testMessageRef("Cast Lightning Bolt"),
     object: handCard.id,
     section: "hand",
   });
@@ -346,7 +367,7 @@ test("turn chrome renders banner and label", () => {
 
 test("stack context renders resolve stack affordance and top caption", () => {
   const state = gameState({
-    stack: [{ controller: 1, kind: "ability", label: "Ward 2", source: 99 }],
+    stack: [{ controller: 1, kind: "ability", label: testMessageRef("Ward 2"), source: 99 }],
   });
   overlayScene(
     overlayModel(initialBoardModel(), state),
@@ -359,7 +380,10 @@ test("armed stack yield state renders separately", () => {
   overlayScene(
     overlayModel(
       initialBoardModel(),
-      gameState({ stack: [{ controller: 1, kind: "spell", label: "Bolt", source: 77 }], yielded: true }),
+      gameState({
+        stack: [{ controller: 1, kind: "spell", label: testMessageRef("Bolt"), source: 77 }],
+        yielded: true,
+      }),
     ),
     Scene.expect(Scene.testId("board-stack-yield-armed")).toExist(),
   );
@@ -367,6 +391,30 @@ test("armed stack yield state renders separately", () => {
 
 test("active player sees the end-turn affordance", () => {
   overlayScene(overlayModel(), Scene.expect(Scene.testId("board-end-turn")).toExist());
+});
+
+test("end turn is hidden when a goaded creature must attack", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        step: 5, // declare attackers
+        actions: [
+          {
+            id: 1,
+            kind: "declare_attackers",
+            label: testMessageRef("Declare attackers"),
+            needs_target: false,
+            section: "combat",
+            declare_for: [0],
+            required_attacks: [{ attacker: 7, defender: 1 }],
+          },
+        ],
+      }),
+    ),
+    Scene.expect(Scene.testId("board-end-turn")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toContainText("Attack (1)"),
+  );
 });
 
 test("non-active player sees the turn-yield rocker", () => {
@@ -386,10 +434,30 @@ test("staged targeting shows cancel affordance and staged hint", () => {
     toughness: 2,
     name: "Bear",
   });
+  const board = stagedBoard();
+  if (board.staged == null) throw new Error("expected staged board fixture");
   overlayScene(
-    overlayModel(stagedBoard(), gameState({ objects: [target] })),
+    overlayModel(
+      {
+        ...board,
+        staged: {
+          ...board.staged,
+          action: action(10, {
+            object: 10,
+            label: {
+              key: "effect.life_gain",
+              params: [{ name: "amount", int_value: 1 }],
+              children: [],
+            },
+            needs_target: true,
+            targets: [{ kind: "object", id: 22 }],
+          }),
+        },
+      },
+      gameState({ objects: [target] }),
+    ),
     Scene.expect(Scene.testId("board-cancel-target")).toExist(),
-    Scene.expect(Scene.testId("board-staged-hint")).toContainText("Cast Shock"),
+    Scene.expect(Scene.testId("board-staged-hint")).toHaveText("Gain 1 life: click a highlighted card"),
   );
 });
 
@@ -407,7 +475,7 @@ test("hand surfaces render cost pips and a drag ghost", () => {
     mana_cost: cost({ generic: 1 }),
   });
   const castAction = action(7, {
-    label: "Cast Lightning Bolt",
+    label: testMessageRef("Cast Lightning Bolt"),
     object: handCard.id,
     section: "hand",
   });
@@ -451,9 +519,10 @@ test("inspect overlay renders from a pinned inspect card", () => {
         kind: { kind: "artifact" },
         legendary: false,
         otags: [],
-        set: "soc",
+        set: "",
+        sets: ["soc"],
         subtypes: [],
-        summary: "Mana rock",
+        summary: [],
       },
     }),
     resolveBoardCardArtMounts(),
@@ -494,9 +563,10 @@ test("inspect overlay shows marked damage for a damaged battlefield permanent", 
           kind: { kind: "creature", power: 2, toughness: 2 },
           legendary: false,
           otags: [],
-          set: "soc",
+          set: "",
+          sets: ["soc"],
           subtypes: ["Bear"],
-          summary: "Bear",
+          summary: [],
         },
       },
       gameState({ objects: [bear] }),
@@ -609,7 +679,7 @@ test("result overlay renders watch and leave actions", () => {
 
 test("x prompt shows stepper controls and a live cost preview", () => {
   const xPrompt: XPromptState = {
-    action: action(12, { label: "Comet Storm", has_x: true, max_x: 3, min_x: 0 }),
+    action: action(12, { label: testMessageRef("Comet Storm"), has_x: true, max_x: 3, min_x: 0 }),
     target: null,
     picks: emptyCostPicks(),
     modes: [],
@@ -654,7 +724,7 @@ test("off-board staged target pick shows docked target-pick-aim instead of cente
           card: spell,
           action: action(10, {
             object: spell.id,
-            label: "Cast Reanimate",
+            label: testMessageRef("Cast Reanimate"),
             needs_target: true,
             targets: [{ kind: "object", id: 22 }],
           }),
@@ -676,19 +746,19 @@ test("off-board staged target pick shows docked target-pick-aim instead of cente
 test("modal mode picker renders before modes are chosen", () => {
   const modalCast: ModalCast = {
     action: action(13, {
-      label: "Cryptic Command",
+      label: testMessageRef("Cryptic Command"),
       modal: {
         choose: 2,
         choose_max: 2,
         modes: [
-          { label: "Counter target spell", needs_target: false, targets: [] },
-          { label: "Draw a card", needs_target: false, targets: [] },
+          { label: testMessageRef("Counter target spell"), needs_target: false, targets: [] },
+          { label: testMessageRef("Draw a card"), needs_target: false, targets: [] },
         ],
       },
     }),
     modes: [
-      { label: "Counter target spell", needs_target: false, targets: [] },
-      { label: "Draw a card", needs_target: false, targets: [] },
+      { label: testMessageRef("Counter target spell"), needs_target: false, targets: [] },
+      { label: testMessageRef("Draw a card"), needs_target: false, targets: [] },
     ],
     picks: emptyCostPicks(),
     chosen: null,
@@ -705,17 +775,48 @@ test("modal mode picker renders before modes are chosen", () => {
   );
 });
 
+test("playModePick shows docked play-mode-aim with one button per mode", () => {
+  const valleyRannet = card(42, { name: "Valley Rannet" });
+  const playModePick: PlayModePick = {
+    card: valleyRannet,
+    modes: [
+      action(1, { kind: "cast", object: valleyRannet.id, label: testMessageRef("Valley Rannet") }),
+      action(2, {
+        kind: "activate_hand_ability",
+        object: valleyRannet.id,
+        label: testMessageRef("Discard: Mountain"),
+      }),
+      action(3, {
+        kind: "activate_hand_ability",
+        object: valleyRannet.id,
+        label: testMessageRef("Discard: Forest"),
+      }),
+    ],
+    dropSeed: { x: 0, y: 0 },
+    screenOrigin: { x: 400, y: 200 },
+  };
+
+  overlayScene(
+    overlayModel({ ...initialBoardModel(), playModePick }),
+    Scene.expect(Scene.testId("play-mode-aim")).toExist(),
+    Scene.expect(Scene.testId("play-mode-0")).toExist(),
+    Scene.expect(Scene.testId("play-mode-1")).toExist(),
+    Scene.expect(Scene.testId("play-mode-2")).toExist(),
+    Scene.expect(Scene.testId("prompt-cancel")).toExist(),
+  );
+});
+
 test("modal waiting chrome docks when modes are chosen and a target is still needed", () => {
   const modalCast: ModalCast = {
     action: action(13, {
-      label: "Fact or Fiction",
+      label: testMessageRef("Fact or Fiction"),
       modal: {
         choose: 1,
         choose_max: 1,
-        modes: [{ label: "Counter", needs_target: true, targets: [] }],
+        modes: [{ label: testMessageRef("Counter"), needs_target: true, targets: [] }],
       },
     }),
-    modes: [{ label: "Counter", needs_target: true, targets: [] }],
+    modes: [{ label: testMessageRef("Counter"), needs_target: true, targets: [] }],
     picks: emptyCostPicks(),
     chosen: [0],
     answers: [],
@@ -759,6 +860,7 @@ test("may_draw_up_to shows docked pending-draw-count-aim with number buttons", (
       gameState({
         pending_choice: {
           kind: "may_draw_up_to",
+          label: testMessageRef("You may draw up to 3"),
           max: 3,
           player: 0,
         },
@@ -780,7 +882,7 @@ test("choose_target_players off-board list shows docked pending-player-pick-aim"
         players: [player(0), player(1), player(2)],
         pending_choice: {
           kind: "choose_target_players",
-          label: "Choose opponents",
+          label: testMessageRef("Choose opponents"),
           min: 1,
           max: 2,
           player: 0,
@@ -809,7 +911,7 @@ test("choose_splitting_opponent off-board list shows docked pending-player-pick-
         players: [player(0), player(1), player(2)],
         pending_choice: {
           kind: "choose_splitting_opponent",
-          label: "Choose an opponent",
+          label: testMessageRef("Choose an opponent"),
           player: 0,
           source: 1,
           items: [
@@ -825,25 +927,6 @@ test("choose_splitting_opponent off-board list shows docked pending-player-pick-
   );
 });
 
-test("trade_secrets_caster_draw shows docked pending-draw-count-aim", () => {
-  overlayScene(
-    overlayModel(
-      initialBoardModel(),
-      gameState({
-        pending_choice: {
-          kind: "trade_secrets_caster_draw",
-          max: 2,
-          opponent: 1,
-          player: 0,
-        },
-      }),
-    ),
-    Scene.expect(Scene.testId("pending-draw-count-aim")).toExist(),
-    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
-    Scene.expect(Scene.testId("prompt-number-2")).toExist(),
-  );
-});
-
 test("choose_trigger_modes shows docked pending-trigger-modes-aim", () => {
   overlayScene(
     overlayModel(
@@ -853,8 +936,8 @@ test("choose_trigger_modes shows docked pending-trigger-modes-aim", () => {
           kind: "choose_trigger_modes",
           choose: 1,
           modes: [
-            { label: "Draw a card", needs_target: false, targets: [] },
-            { label: "Gain 1 life", needs_target: false, targets: [] },
+            { label: testMessageRef("Draw a card"), needs_target: false, targets: [] },
+            { label: testMessageRef("Gain 1 life"), needs_target: false, targets: [] },
           ],
           optional: false,
           player: 0,
@@ -928,9 +1011,9 @@ test("on-board choose_target aims instead of showing a card grid", () => {
         objects: [bear],
         pending_choice: {
           kind: "choose_target",
-          label: "Target creature",
+          label: testMessageRef("Target creature"),
+          min: 1,
           max: 1,
-          optional: false,
           player: 0,
           source: 1,
           items: [{ id: 7, label: "Bear" }],
@@ -940,6 +1023,44 @@ test("on-board choose_target aims instead of showing a card grid", () => {
     Scene.expect(Scene.testId("pending-target-aim")).toHaveText("Target creature"),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-card-7")).toBeAbsent(),
+  );
+});
+
+test("legend rule aim asks which legendary permanent to keep", () => {
+  const a = card(7, {
+    name: "Legendary Test Creature",
+    zone: ZONE.Battlefield,
+    kind: { kind: "creature", power: 2, toughness: 2 },
+    power: 2,
+    toughness: 2,
+  });
+  const b = card(8, {
+    name: "Legendary Test Creature",
+    zone: ZONE.Battlefield,
+    kind: { kind: "creature", power: 2, toughness: 2 },
+    power: 2,
+    toughness: 2,
+  });
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        objects: [a, b],
+        pending_choice: {
+          kind: "choose_legendary_keep",
+          name: "Legendary Test Creature",
+          player: 0,
+          items: [
+            { id: 7, label: "Legendary Test Creature" },
+            { id: 8, label: "Legendary Test Creature" },
+          ],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-target-aim")).toHaveText(
+      "Legend rule — choose which Legendary Test Creature to keep",
+    ),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
   );
 });
 
@@ -992,9 +1113,9 @@ test("multi on-board choose_target shows Confirm count chrome", () => {
         objects: [a, b],
         pending_choice: {
           kind: "choose_target",
-          label: "Target creatures",
+          label: testMessageRef("Target creatures"),
+          min: 1,
           max: 2,
-          optional: false,
           player: 0,
           source: 1,
           items: [
@@ -1026,9 +1147,9 @@ test("optional on-board choose_target aim shows Decline", () => {
         objects: [bear],
         pending_choice: {
           kind: "choose_target",
-          label: "Target creature",
+          label: testMessageRef("Target creature"),
+          min: 0,
           max: 1,
-          optional: true,
           player: 0,
           source: 1,
           items: [{ id: 7, label: "Bear" }],
@@ -1074,7 +1195,7 @@ test("order_triggers aim shows docked drag rows, click-to-place, and arrow contr
         pending_choice: {
           kind: "order_triggers",
           count: 2,
-          labels: ["ETB draw", "ETB treasure"],
+          labels: [testMessageRef("ETB draw"), testMessageRef("ETB treasure")],
           player: 0,
           source: 4,
         },
@@ -1213,8 +1334,9 @@ test("pay_cost aim shows docked Pay and decline", () => {
       gameState({
         pending_choice: {
           kind: "pay_cost",
+          can_pay: true,
           cost: { colored: [0, 0, 0, 1, 0], generic: 2 },
-          label: "Create a Fungus Beast",
+          label: testMessageRef("Create a Fungus Beast"),
           player: 0,
           source: 1,
         },
@@ -1234,7 +1356,7 @@ test("may_yes_no aim shows docked Yes and No", () => {
       gameState({
         pending_choice: {
           kind: "may_yes_no",
-          label: "Scry?",
+          label: testMessageRef("Scry?"),
           player: 0,
           source: 3,
         },
@@ -1292,7 +1414,7 @@ test("choose_mode aim shows docked mode buttons instead of center modal", () => 
       gameState({
         pending_choice: {
           kind: "choose_mode",
-          labels: ["Draw a card", "Create a token"],
+          labels: [testMessageRef("Draw a card"), testMessageRef("Create a token")],
           player: 0,
           source: 1,
         },
@@ -1313,7 +1435,7 @@ test("non-decider sees waiting banner instead of pending-choice controls", () =>
         viewer: 1,
         pending_choice: {
           kind: "may_yes_no",
-          label: "Scry?",
+          label: testMessageRef("Scry?"),
           player: 0,
           source: 3,
         },
@@ -1400,9 +1522,9 @@ test("choose_target player buttons show docked pending-player-pick-aim instead o
         objects: [yard],
         pending_choice: {
           kind: "choose_target",
-          label: "Choose a target",
+          label: testMessageRef("Choose a target"),
+          min: 1,
           max: 1,
-          optional: false,
           player: 0,
           source: 1,
           items: [
@@ -1668,7 +1790,7 @@ test("divide_counters on-board aim shows coach when targets are battlefield", ()
 test("sacrifice pick prompt renders as a board surface", () => {
   const sacrificeAction = action(14, {
     kind: "activate",
-    label: "Village Rites",
+    label: testMessageRef("Village Rites"),
     sacrifice_choices: [55],
     object: 14,
     section: "hand",
@@ -1704,7 +1826,7 @@ test("sacrifice pick prompt renders as a board surface", () => {
 test("off-board sacrifice cost shows docked sacrifice-pick-aim instead of center modal", () => {
   const sacrificeAction = action(14, {
     kind: "activate",
-    label: "Village Rites",
+    label: testMessageRef("Village Rites"),
     sacrifice_choices: [55],
     object: 14,
     section: "hand",
@@ -1748,7 +1870,7 @@ test("discard cost aim shows coach when choices are in hand", () => {
   });
   const castAction = action(50, {
     kind: "cast",
-    label: "Cast",
+    label: testMessageRef("Cast"),
     discard_choices: [11],
     object: 10,
     section: "hand",
@@ -1788,7 +1910,7 @@ test("selected discard-cost hand card paints Llanowar selected chrome", () => {
   });
   const castAction = action(50, {
     kind: "cast",
-    label: "Cast",
+    label: testMessageRef("Cast"),
     discard_choices: [11],
     object: 10,
     section: "hand",
@@ -1830,7 +1952,7 @@ test("discard cost aim enables confirm when one card selected", () => {
   });
   const castAction = action(50, {
     kind: "cast",
-    label: "Cast",
+    label: testMessageRef("Cast"),
     discard_choices: [11],
     object: 10,
     section: "hand",
@@ -1862,7 +1984,7 @@ test("off-board discard cost shows docked discard-pick-aim instead of center mod
   });
   const castAction = action(50, {
     kind: "cast",
-    label: "Cast",
+    label: testMessageRef("Cast"),
     discard_choices: [11],
     object: 10,
     section: "hand",
@@ -2104,6 +2226,94 @@ test("pending gy aim shows coach when exile_from_graveyard cards share a pile", 
   );
 });
 
+test("pending gy aim shows Decline only for optional may_return_from_graveyard", () => {
+  const gy = card(8, {
+    name: "Reanimate me",
+    zone: ZONE.Graveyard,
+    kind: { kind: "creature", power: 1, toughness: 1 },
+  });
+
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        pileExpand: { zone: ZONE.Graveyard, owner: 0 },
+      },
+      gameState({
+        objects: [gy],
+        pending_choice: {
+          kind: "may_return_from_graveyard",
+          player: 0,
+          source: 1,
+          mandatory: false,
+          items: [{ id: 8, label: "Reanimate me" }],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-gy-aim")).toExist(),
+    Scene.expect(Scene.testId("prompt-decline")).toExist(),
+  );
+
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        pileExpand: { zone: ZONE.Graveyard, owner: 0 },
+      },
+      gameState({
+        objects: [gy],
+        pending_choice: {
+          kind: "may_return_from_graveyard",
+          player: 0,
+          source: 1,
+          mandatory: true,
+          items: [{ id: 8, label: "Reanimate me" }],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-gy-aim")).toExist(),
+    Scene.expect(Scene.testId("prompt-decline")).toBeAbsent(),
+  );
+});
+
+test("pending gy aim shows Exile and Don't exile for may_exile_discarded_to_play", () => {
+  const bolt = card(8, {
+    name: "Lightning Bolt",
+    zone: ZONE.Graveyard,
+    kind: { kind: "instant" },
+  });
+
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        pileExpand: { zone: ZONE.Graveyard, owner: 0 },
+      },
+      gameState({
+        objects: [bolt],
+        pending_choice:
+          fromProtoWire<VisibleState>({
+            pendingChoice: {
+              choice: {
+                case: "mayExileDiscardedToPlay",
+                value: {
+                  player: 0,
+                  source: 1,
+                  items: [{ id: 8, label: "Lightning Bolt" }],
+                },
+              },
+            },
+          }).pending_choice ?? null,
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-gy-aim")).toExist(),
+    Scene.expect(Scene.testId("pile-card-8")).toExist(),
+    Scene.expect(Scene.testId("prompt-submit")).toHaveText("Exile"),
+    Scene.expect(Scene.testId("prompt-decline")).toHaveText("Don't exile"),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+  );
+});
+
 test("pending revealed aim shows coach for opponent_chooses_revealed_to_graveyard", () => {
   overlayScene(
     overlayModel(
@@ -2144,9 +2354,9 @@ test("pending gy aim shows coach for choose_target when cards share a pile", () 
         objects: [gy],
         pending_choice: {
           kind: "choose_target",
-          label: "Target creature card in a graveyard",
+          label: testMessageRef("Target creature card in a graveyard"),
+          min: 1,
           max: 1,
-          optional: false,
           player: 0,
           source: 1,
           items: [{ id: 8, label: "Reanimate me" }],
@@ -2172,7 +2382,7 @@ test("gy exile cost aim shows coach when choices share a graveyard", () => {
   });
   const castAction = action(50, {
     kind: "cast",
-    label: "Cast",
+    label: testMessageRef("Cast"),
     graveyard_exile_choices: [8],
     graveyard_exile_min: 1,
     graveyard_exile_max: 1,
@@ -2256,6 +2466,13 @@ test("full board view mounts the bitmap layer", () => {
   );
 });
 
+test("full board view mounts the camera gesture host", () => {
+  liveBoardScene(
+    fullBoardModel(initialBoardModel(), gameState()),
+    Scene.expect(Scene.testId("board-camera-gesture-mount")).toExist(),
+  );
+});
+
 test("board root disables native text selection", () => {
   liveBoardScene(
     fullBoardModel(initialBoardModel(), gameState()),
@@ -2269,6 +2486,24 @@ test("full board view mounts the flight layer above the hand bar", () => {
     Scene.expect(Scene.testId("board-flight-layer")).toExist(),
     // z-30 sits above the hand bar (z-20) and below prompts (z-40).
     Scene.expect(Scene.testId("board-flight-layer")).toHaveClass("z-30"),
+  );
+});
+
+test("tiny board HUD close controls keep coarse pointer hit targets", () => {
+  const stack = Array.from({ length: 6 }, (_, index) => ({
+    controller: index % 2,
+    kind: "spell" as const,
+    label: testMessageRef(`Spell ${index}`),
+    source: 100 + index,
+  }));
+  overlayScene(
+    overlayModel({ ...initialBoardModel(), legendOpen: true, stackExpand: true }, gameState({ stack })),
+    resolveBoardCardArtMounts(0),
+    Scene.tap((sim) => {
+      expect(className(findAttr(sim.html, "aria-label", "Dismiss hint"))).toContain("hit-quiet");
+      expect(className(findAttr(sim.html, "aria-label", "Close legend"))).toContain("hit-quiet");
+      expect(className(findTestId(sim.html, "stack-collapse"))).toContain("hit-quiet");
+    }),
   );
 });
 

@@ -1,0 +1,23 @@
+# Target player gains 2 life for each creature on the battlefield.
+name = "Congregate"
+sets = ["a25", "cma", "cmd", "dmr", "hop", "m14", "m15", "plst", "usg"]
+id = "d139294c-36bb-4a1e-800d-50c4a4ae9877"
+default_print = "fd0e6027-1516-4587-8f16-9f2354074503"
+oracle = "Target player gains 2 life for each creature on the battlefield."
+
+[cost]
+generic = 3
+white = 1
+
+[kind]
+type = "instant"
+
+# Target player gains 2 life for each creature on the battlefield.
+[[abilities]]
+timing = "spell"
+
+# Target player gains 2 life for each creature on the battlefield.
+[[abilities.effects]]
+type = "life"
+mode = "target_player_gains"
+amount = { times = 2, per = "per_creature_on_battlefield" }

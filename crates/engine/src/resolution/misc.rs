@@ -104,7 +104,7 @@ impl Game {
                     controller: player,
                     source,
                     fire_at,
-                    effect: *then,
+                    effect: then.clone(),
                 }]
             }
             // Scattering Stroke's win rider (CR 603.7): schedule a delayed one-shot for the

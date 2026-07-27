@@ -20,7 +20,7 @@ use crate::*;
 /// dropping the *whole* ability outright.
 fn multi_target_steps(a: Ability, targets: TargetList) -> Vec<(Ability, Option<Target>)> {
     if targets.iter().next().is_some() {
-        return targets.iter().map(|t| (a, Some(t))).collect();
+        return targets.iter().map(|t| (a.clone(), Some(t))).collect();
     }
     if a.effect.target_count().min == 0 && a.effect.has_target_independent_step() {
         return vec![(a, None)];
@@ -46,13 +46,25 @@ fn ability_clause_steps(
     let mut clause = 0usize;
     steps
         .iter()
-        .map(|&step| {
+        .map(|step| {
             if step.target() == TargetSpec::None {
-                return (Ability { effect: step, ..a }, None);
+                return (
+                    Ability {
+                        effect: step.clone(),
+                        ..a
+                    },
+                    None,
+                );
             }
             let target = if clause == 0 { targets } else { targets_second }.primary();
             clause += 1;
-            (Ability { effect: step, ..a }, target)
+            (
+                Ability {
+                    effect: step.clone(),
+                    ..a
+                },
+                target,
+            )
         })
         .collect()
 }
@@ -61,7 +73,8 @@ impl Game {
     /// Resolve the top item of the stack, applying its events into `events`. Resolution
     /// applies incrementally so newly-minted object ids stay in sync with the arena.
     pub(crate) fn resolve_top(&mut self, events: &mut Vec<Event>) {
-        match *self.stack.last().expect("stack is non-empty") {
+        let top = self.stack.last().expect("stack is non-empty").clone();
+        match top {
             StackItem::Spell(object) => self.resolve_spell(object, events),
             StackItem::Ability {
                 controller,
@@ -86,9 +99,9 @@ impl Game {
                 // The source may already be `Object::Removed` (a Dies-trigger source token that
                 // vanished — `def_of` would panic); no colors is the same "no protection filters"
                 // posture this ability had before source colors were wired at all.
-                let source_colors = match self.objects[source as usize] {
-                    Object::Removed => [false; Color::COUNT],
-                    _ => color_identity(self.def_of(source)),
+                let source_colors = match &self.objects[source as usize] {
+                    Object::Removed { .. } => [false; Color::COUNT],
+                    _ => color_identity(&self.def_of(source)),
                 };
                 if !self.target_still_legal(
                     effect.target(),
@@ -128,18 +141,27 @@ impl Game {
     /// Resolve a cast spell: a creature/enchantment enters; an instant/sorcery runs its
     /// effects then goes to the graveyard.
     pub(crate) fn resolve_spell(&mut self, object: ObjectId, events: &mut Vec<Event>) {
-        let spell = *self.spell(object);
+        let spell = self.spell(object).clone();
+        let printed = card_def(spell.def);
         // Resolution-scoped scratch: a *fizzled* graveyard-return clause never writes this, so it
         // has to be cleared here or Vengeful Rebirth's damage clause would read the mana value an
         // earlier resolution recorded (CR 608.2b — an illegal target's step simply doesn't happen).
         self.resolution_frame.returned_nonland_card_mana_value = None;
         // A bestowed spell (CR 702.103d) resolves as an Aura — it enters attached to its target
         // through the same path a `CardKind::Aura` spell uses, not as a creature (its printed
-        // `kind` stays `Creature` for when it later stops being attached, CR 702.103i).
-        let kind = if spell.bestowed {
+        // `kind` stays `Creature` for when it later stops being attached, CR 702.103i). A
+        // face-down morph spell (CR 702.37b/708.2) resolves as a plain 2/2 colorless creature
+        // regardless of its hidden real kind (Zoetic Cavern's is Land) — same override shape.
+        let kind = if spell.face_down {
+            CardKind::Creature {
+                power: 2,
+                toughness: 2,
+                also: TypeSet::NONE,
+            }
+        } else if spell.bestowed {
             CardKind::Aura
         } else {
-            spell.def.kind
+            printed.kind
         };
         match kind {
             // Animate Dead (CR 303.4a's "enchant creature card in a graveyard"): a real Aura, but
@@ -150,7 +172,7 @@ impl Game {
             // `attach_self_to_reanimated` effects do the reanimate-then-attach, see
             // `CardDef::enchant_graveyard`'s doc). Every ordinary Aura keeps the immediate-attach
             // arm below.
-            CardKind::Aura if spell.def.enchant_graveyard => {
+            CardKind::Aura if printed.enchant_graveyard => {
                 self.resolve_permanent_enter(spell, object, events);
             }
             CardKind::Creature { .. }
@@ -207,7 +229,7 @@ impl Game {
                 // A modal spell runs only its chosen modes, in printed order, each with its own
                 // target (CR 700.2 — modes are validated at cast, so `nth_mode` is `Some`); a
                 // non-modal spell runs every one of its spell abilities against its single target.
-                let steps: Vec<(Ability, Option<Target>)> = if spell.def.modal {
+                let steps: Vec<(Ability, Option<Target>)> = if printed.modal {
                     // A chosen mode's own effect may itself be multi-target (Prismari Charm
                     // mode 1's "one or two targets") or carry more than one independent target
                     // clause (Hull Breach mode 2's "target artifact and target enchantment"):
@@ -218,9 +240,11 @@ impl Game {
                     spell
                         .modes
                         .chosen()
-                        .filter_map(|(i, target)| nth_mode(spell.def, i).map(|a| (a, target)))
+                        .filter_map(|(i, target)| {
+                            nth_mode(printed.as_ref(), i).map(|a| (a, target))
+                        })
                         .flat_map(|(a, target)| {
-                            if ability_target_clauses(a).len() > 1 {
+                            if ability_target_clauses(&a).len() > 1 {
                                 ability_clause_steps(a, spell.targets, spell.targets_second)
                             } else if a.effect.target_count().is_single() {
                                 vec![(a, target)]
@@ -241,23 +265,22 @@ impl Game {
                     // graveyard-return clause 0 and "any target" damage clause 1), split the same
                     // way the modal branch above splits Hull Breach's third mode.
                     let mut clause = 0usize;
-                    spell
-                        .def
+                    printed
                         .abilities
                         .iter()
-                        .copied()
                         .filter(|a| matches!(a.timing, Timing::Spell))
+                        .cloned()
                         .flat_map(|a| {
-                            if ability_target_clauses(a).len() > 1 {
-                                clause += ability_target_clauses(a).len();
+                            if ability_target_clauses(&a).len() > 1 {
+                                clause += ability_target_clauses(&a).len();
                                 return ability_clause_steps(
-                                    a,
+                                    a.clone(),
                                     spell.targets,
                                     spell.targets_second,
                                 );
                             }
                             if a.effect.target_count().is_single() {
-                                return vec![(a, spell.targets.primary())];
+                                return vec![(a.clone(), spell.targets.primary())];
                             }
                             // ponytail: two independent clauses (0 → `targets`, 1 → `targets_second`);
                             // a third clause would need a `[TargetList; N]` — no pool spell prints one.
@@ -267,7 +290,7 @@ impl Game {
                                 spell.targets_second
                             };
                             clause += 1;
-                            multi_target_steps(a, list)
+                            multi_target_steps(a.clone(), list)
                         })
                         .collect()
                 };
@@ -287,7 +310,7 @@ impl Game {
                             object,
                             *t,
                             spell.controller,
-                            color_identity(spell.def),
+                            color_identity(printed.as_ref()),
                             spell.x,
                         )
                     });
@@ -302,7 +325,7 @@ impl Game {
                             object,
                             target,
                             spell.controller,
-                            color_identity(spell.def),
+                            color_identity(printed.as_ref()),
                             spell.x,
                         ) {
                             continue;
@@ -345,6 +368,7 @@ impl Game {
     /// [`Self::resolve_spell`] so a card that's `CardKind::Aura` but enters unattached (its own
     /// ETB ability does the attaching) can share this generic entry with the non-Aura kinds.
     fn resolve_permanent_enter(&mut self, spell: Spell, object: ObjectId, events: &mut Vec<Event>) {
+        let printed = card_def(spell.def);
         // Animate Dead (CR 303.4a/608.2b): its own cast-time "enchant creature card in a
         // graveyard" target can fizzle the same way an Aura's battlefield host can — an
         // opponent exiling the chosen graveyard card in response leaves it with no legal
@@ -352,13 +376,13 @@ impl Game {
         // instead of entering unattached. The pool's only card with a cast-time graveyard
         // target, so this re-check is scoped to `enchant_graveyard` rather than folded
         // into the `CardKind::Aura` fizzle branch in `resolve_spell`.
-        if spell.def.enchant_graveyard
+        if printed.enchant_graveyard
             && !self.target_still_legal(
                 TargetSpec::CreatureCardInAnyGraveyard,
                 object,
                 spell.targets.primary(),
                 spell.controller,
-                color_identity(spell.def),
+                color_identity(printed.as_ref()),
                 spell.x,
             )
         {
@@ -387,7 +411,7 @@ impl Game {
         // sacrifice any number of the other creatures they control; the counters are
         // applied when that choice is answered (see `Game::answer_devour`). With no other
         // creature to give up there's nothing to choose — resolution runs on unpaused.
-        if let Some(multiplier) = spell.def.devour {
+        if let Some(multiplier) = printed.devour {
             pending::raise(
                 self,
                 pending::ChoiceRequest::Devour {
@@ -406,7 +430,7 @@ impl Game {
         // counters, and haste are applied when that choice is answered (see
         // `Game::answer_enter_as_copy`). With no creature to copy there's nothing to
         // choose — resolution runs on unpaused.
-        if let Some(marker) = spell.def.enter_as_copy {
+        if let Some(marker) = printed.enter_as_copy {
             pending::raise(
                 self,
                 pending::ChoiceRequest::EnterAsCopy {
@@ -422,7 +446,7 @@ impl Game {
         // "Enters with N +1/+1 counters" (hydras: N = the spell's {X}) / "Enters with N
         // `kind` counters" (mana_bloom/astral_cornucopia) — see `Game::push_enters_with_counters`.
         self.push_enters_with_counters(
-            spell.def,
+            printed.as_ref(),
             entered,
             spell.controller,
             spell.targets.primary(),
@@ -435,10 +459,8 @@ impl Game {
         // `CreaturesYouControlEnterWithCounters` ability on another permanent that matches
         // the just-entered permanent (a static never modifies its own permanent's entry —
         // see `Game::additional_enter_counters`'s doc), sum, and place through the same
-        // doubler/Hardened-Scales replacement pipeline as any other counter placement.
-        // ponytail: only wired at this cast-resolution choke — a reanimated or blinked-in
-        // nontoken creature doesn't pick up the bonus (no pool card observes that path;
-        // extend to `ReanimateToBattlefield`'s own PermanentEntered if one needs it).
+        // doubler/Hardened-Scales replacement pipeline as any other counter placement. Non-spell
+        // battlefield-entry events reuse the same reads through `push_apply_effect_event`.
         let bonus = self.additional_enter_counters(entered, spell.controller);
         let n = self.counters_after_replacements(spell.controller, entered, bonus);
         if n > 0 {
@@ -447,7 +469,7 @@ impl Game {
                 Event::CountersPlaced {
                     object: entered,
                     count: n,
-                    source_name: spell.def.name,
+                    source_name: printed.name,
                 },
             );
         }
@@ -469,7 +491,7 @@ impl Game {
                     Event::CountersPlaced {
                         object: entered,
                         count: n,
-                        source_name: spell.def.name,
+                        source_name: printed.name,
                     },
                 );
             }
@@ -479,7 +501,7 @@ impl Game {
         // actually cast via escape (a card with escape usually has a normal cast mode (CR 702.19, CR 601)
         // too, which gets no counters).
         if spell.escape
-            && let Some(escape) = spell.def.escape
+            && let Some(escape) = printed.escape
             && escape.plus_one_plus_one_counters > 0
         {
             let n = self.counters_after_replacements(
@@ -493,7 +515,7 @@ impl Game {
                     Event::CountersPlaced {
                         object: entered,
                         count: n,
-                        source_name: spell.def.name,
+                        source_name: printed.name,
                     },
                 );
             }
@@ -506,14 +528,12 @@ impl Game {
     /// (CR 702.63a), placed as `perm` enters the battlefield. A `None` kind (+1/+1) is grown by any
     /// counter-replacement static (Hardened Scales, a doubler) reading `controller`; a named `kind`
     /// instead places the raw amount — no replacement static touches a named kind. Shared by
-    /// [`Self::resolve_permanent_enter`]'s cast-resolution choke and [`Self::play_land`], the land
-    /// special action's own ETB site with no spell/target context (`target = None`, `x = 0`).
-    /// ponytail: those two are the only entry sites — a permanent reanimated, blinked, or searched
-    /// straight onto the battlefield still enters with no counters. Wire the remaining
-    /// `*ToBattlefield` events through here when a pool card needs it.
+    /// [`Self::resolve_permanent_enter`]'s cast-resolution choke, [`Self::play_land`]'s land-entry
+    /// site, and the non-spell battlefield-entry helper threaded through
+    /// `push_apply_effect_event` / `apply_effect_events_with_replacements`.
     pub(crate) fn push_enters_with_counters(
         &mut self,
-        def: CardDef,
+        def: &CardDef,
         perm: ObjectId,
         controller: PlayerId,
         target: Option<Target>,
@@ -566,7 +586,7 @@ impl Game {
         object: ObjectId,
         events: &mut Vec<Event>,
     ) {
-        let spell = *self.spell(object);
+        let spell = self.spell(object).clone();
         // A copy ceases to exist (CR 707.10a); a cast instant/sorcery goes to the graveyard.
         if spell.copy {
             // A copy that ran a self-move rider (Spell Crumple's `TuckSelfToLibraryBottom`,
@@ -574,9 +594,7 @@ impl Game {
             // `ExileSelfOnResolve`) never reaches a library/exile — it just ceases to exist.
             // Discard those scratch marks here so they can't leak past this resolution and
             // redirect the *next* spell that finishes.
-            self.self_tuck_to_library_bottom = false;
-            self.self_exile_time_counters = None;
-            self.self_exile_on_resolve = false;
+            self.resolution_finish = None;
             self.push_apply(events, Event::SpellCeasedToExist { spell: object });
             return;
         }
@@ -626,42 +644,47 @@ impl Game {
             );
             return;
         }
-        // Spell Crumple's own "Then put Spell Crumple on the bottom of its owner's library"
-        // rider: an `Effect::Zone(ZoneEffect::TuckSelfToLibraryBottom)` step this resolution ran marked the spell
-        // to tuck itself rather than reach the graveyard below — the self-referential sibling of
-        // the buyback fork above.
-        if std::mem::take(&mut self.self_tuck_to_library_bottom) {
-            self.push_apply(
-                events,
-                Event::TuckedToLibrary {
-                    card: self.next_object_id(),
-                    from: object,
-                    to_top: false,
-                    second_from_top: false,
-                },
-            );
-            return;
-        }
-        // Rousing Refrain's "Exile [this card] with three time counters on it" (CR 702.62): an
-        // `Effect::Zone(ZoneEffect::ExileSelfWithTimeCounters)` step this resolution ran marked the spell to exile
-        // itself (with counters) rather than reach the graveyard below.
-        if let Some(counters) = self.self_exile_time_counters.take() {
-            self.push_exile_with_time_counters(object, counters, events);
-            return;
-        }
-        // Vengeful Rebirth's own "Exile Vengeful Rebirth" rider: an `Effect::Zone(ZoneEffect::ExileSelfOnResolve)`
-        // step this resolution ran marked the spell to exile itself (plain, no time counters)
-        // rather than reach the graveyard below — the counter-less sibling of the time-counter
-        // fork above.
-        if std::mem::take(&mut self.self_exile_on_resolve) {
-            self.push_apply(
-                events,
-                Event::MovedToExile {
-                    card: self.next_object_id(),
-                    from: object,
-                },
-            );
-            return;
+        if let Some(policy) = self.resolution_finish.take() {
+            match policy {
+                // Spell Crumple's own "Then put Spell Crumple on the bottom of its owner's
+                // library" rider: an `Effect::Zone(ZoneEffect::TuckSelfToLibraryBottom)` step this
+                // resolution ran marked the spell to tuck itself rather than reach the graveyard
+                // below — the self-referential sibling of the buyback fork above.
+                FinishPolicy::TuckLibraryBottom => {
+                    self.push_apply(
+                        events,
+                        Event::TuckedToLibrary {
+                            card: self.next_object_id(),
+                            from: object,
+                            to_top: false,
+                            second_from_top: false,
+                        },
+                    );
+                    return;
+                }
+                // Rousing Refrain's "Exile [this card] with three time counters on it" (CR
+                // 702.62): an `Effect::Zone(ZoneEffect::ExileSelfWithTimeCounters)` step this
+                // resolution ran marked the spell to exile itself (with counters) rather than
+                // reach the graveyard below.
+                FinishPolicy::ExileWithTimeCounters(counters) => {
+                    self.push_exile_with_time_counters(object, counters, events);
+                    return;
+                }
+                // Vengeful Rebirth's own "Exile Vengeful Rebirth" rider: an
+                // `Effect::Zone(ZoneEffect::ExileSelfOnResolve)` step this resolution ran marked
+                // the spell to exile itself (plain, no time counters) rather than reach the
+                // graveyard below — the counter-less sibling of the time-counter fork above.
+                FinishPolicy::Exile => {
+                    self.push_apply(
+                        events,
+                        Event::MovedToExile {
+                            card: self.next_object_id(),
+                            from: object,
+                        },
+                    );
+                    return;
+                }
+            }
         }
         // Quintorius, Loremaster's CR 614.6 rider: "If that spell would be put into a graveyard,
         // put it on the bottom of its owner's library instead." `object` is the spell's live id;
@@ -721,7 +744,7 @@ impl Game {
     /// otherwise land (countered here; resolving, via `finish_instant_sorcery_resolution`'s own
     /// check). `false` for a non-spell or an ordinary, non-copy spell.
     pub(crate) fn is_copy_object(&self, object: ObjectId) -> bool {
-        matches!(self.objects[object as usize], Object::Spell(s) if s.copy)
+        matches!(&self.objects[object as usize], Object::Spell(s) if s.copy)
     }
 
     /// The live current id of a "return this" ability's own source — or `None` if it has left
@@ -741,7 +764,7 @@ impl Game {
         allowed: &[Zone],
     ) -> Option<ObjectId> {
         let current = self.current_id(source);
-        if matches!(self.objects[current as usize], Object::Removed) {
+        if matches!(&self.objects[current as usize], Object::Removed { .. }) {
             return None;
         }
         allowed.contains(&self.zone_of(current)).then_some(current)
@@ -845,6 +868,8 @@ impl Game {
             }
             // Edict / fan-out pauses — edict pause peel (`resolution/pause_edict`).
             Effect::Choice(ChoiceEffect::EachPlayerSacrifices { .. })
+            | Effect::Choice(ChoiceEffect::EachPlayerChoosesWarOrPeace)
+            | Effect::Choice(ChoiceEffect::EachOpponentDiscards)
             | Effect::Choice(ChoiceEffect::EachPlayerExilesFromGraveyard)
             | Effect::Choice(ChoiceEffect::TargetPlayerExilesFromGraveyard { .. })
             | Effect::Choice(ChoiceEffect::CasterKeepsOneOfEachTypePerPlayer)
@@ -883,12 +908,14 @@ impl Game {
             // SacrificeSelfUnlessPay — may pause peel (`resolution/pause_may`).
             Effect::Choice(ChoiceEffect::MaySacrifice { .. })
             | Effect::Choice(ChoiceEffect::MayReturnFromGraveyard { .. })
+            | Effect::Choice(ChoiceEffect::MayExileDiscardedNonlandMayPlay { .. })
             | Effect::Choice(ChoiceEffect::MayDiscard { .. })
             | Effect::Choice(ChoiceEffect::MayDrawUnlessPays { .. })
             | Effect::Choice(ChoiceEffect::TargetPlayerMayDraw { .. })
             | Effect::Choice(ChoiceEffect::DamagingCreatureControllerMayDraw { .. })
             | Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
             | Effect::Choice(ChoiceEffect::MayDrawUpToThenOpponentMayRepeat { .. })
+            | Effect::Choice(ChoiceEffect::MayPutCounterOnCreature)
             | Effect::Choice(ChoiceEffect::SacrificeSelfUnlessPay { .. }) => {
                 self.run_may_pause(effect, ctx)
             }
@@ -966,7 +993,7 @@ impl Game {
             Effect::Choice(ChoiceEffect::Discard { .. })
             | Effect::Choice(ChoiceEffect::PutFromHandOnTop { .. })
             | Effect::Choice(ChoiceEffect::PutLandFromHand { .. })
-            | Effect::Choice(ChoiceEffect::PutCreatureFromHand)
+            | Effect::Choice(ChoiceEffect::PutCreatureFromHand { .. })
             | Effect::Choice(ChoiceEffect::CastCreatureFaceDown) => {
                 self.run_hand_pause(effect, ctx)
             }
@@ -978,7 +1005,7 @@ impl Game {
             }
             // A sequence runs its steps in order, sharing this target/{X}; a pausing step defers
             // the rest until answered.
-            Effect::Sequence { steps } => self.run_sequence(steps, ctx, events),
+            Effect::Sequence { steps } => self.run_sequence(steps.as_ref(), ctx, events),
             // A per-step gate: run `then` only if `condition` holds (negated by `negate`) right
             // now (mid-resolution), sharing this target/{X}. Reuses the same intervening-if
             // evaluator triggers use, except `TargetPowerAtLeast` (Yavimaya Bloomsage's power-7
@@ -1031,10 +1058,22 @@ impl Game {
                     Condition::SourceUntapped => {
                         self.as_permanent(source).is_some_and(|p| !p.tapped)
                     }
+                    // Dragon Whelp: "If this ability has been activated four or more times this
+                    // turn" — counts this turn's `once_per_turn.activated` entries for `source`
+                    // (every activated-ability activation records one, not just a
+                    // `once_each_turn`-capped one — see `Game::activate_ability`).
+                    Condition::SourceActivatedThisTurnAtLeast { at_least } => {
+                        self.once_per_turn
+                            .activated
+                            .iter()
+                            .filter(|&&(object, _)| object == source)
+                            .count() as u32
+                            >= at_least
+                    }
                     _ => self.condition_holds(condition, TriggerContext::of(controller)),
                 };
                 if holds != negate {
-                    self.run_sequence(then, ctx, events);
+                    self.run_sequence(then.as_ref(), ctx, events);
                 } else if !otherwise.is_empty() {
                     self.run_sequence(otherwise, ctx, events);
                 }
@@ -1052,6 +1091,7 @@ impl Game {
             Effect::Zone(ZoneEffect::UntapSearchedLand)
             | Effect::Zone(ZoneEffect::AttachTriggeringAuraToMintedToken { .. })
             | Effect::Zone(ZoneEffect::ReflexiveTrigger { .. })
+            | Effect::Zone(ZoneEffect::ReflexiveTriggerIfNonlandExiled { .. })
             | Effect::Zone(ZoneEffect::ReturnFromGraveyardAttachedToToken { .. })
             | Effect::Zone(ZoneEffect::AttachSelfToReanimated)
             | Effect::Zone(ZoneEffect::AttachSelfToMintedToken)
@@ -1097,6 +1137,10 @@ impl Game {
             Effect::Choice(ChoiceEffect::EachPlayerDiscardsHandThenDraws { .. }) => {
                 self.run_misc_choreo(effect, ctx, events)
             }
+            // Malfegor's "discard your hand" — see `resolution/resolve_misc.rs`.
+            Effect::Choice(ChoiceEffect::DiscardYourHand) => {
+                self.run_misc_choreo(effect, ctx, events)
+            }
             // `CreateToken`'s `enters_with` choreography — see
             // `resolution/tokens.rs::resolve_create_token`.
             Effect::Token(token @ TokenEffect::Create { .. }) => {
@@ -1110,9 +1154,20 @@ impl Game {
             Effect::Misc(MiscEffect::MustAttackRandomOpponent) => {
                 self.run_misc_choreo(effect, ctx, events)
             }
+            // Basandra, Battle Seraph's {R} ability — see `resolution/resolve_misc.rs`.
+            Effect::Misc(MiscEffect::MustAttackTarget) => self.run_misc_choreo(effect, ctx, events),
+            // Tariel, Reckoner of Souls — see `resolution/resolve_misc.rs`.
+            Effect::Zone(ZoneEffect::ReanimateRandomFromTargetOpponentGraveyard { .. }) => {
+                self.run_misc_choreo(effect, ctx, events)
+            }
             // Inkshield / Moment's Peace — see `resolution/resolve_misc.rs`.
             Effect::Misc(MiscEffect::PreventCombatDamageToYouCreatingTokens { .. })
             | Effect::Misc(MiscEffect::PreventAllCombatDamageThisTurn) => {
+                self.run_misc_choreo(effect, ctx, events)
+            }
+            // Master Warcraft — see `resolution/resolve_misc.rs`.
+            Effect::Misc(MiscEffect::YouChooseWhichCreaturesAttack)
+            | Effect::Misc(MiscEffect::YouChooseWhichCreaturesBlock) => {
                 self.run_misc_choreo(effect, ctx, events)
             }
             // Each of these draws may be replaced by dredge (CR 702.52): `draw_with_dredge` draws one
@@ -1125,8 +1180,7 @@ impl Game {
             }
             _ => {
                 let evs = self.execute_effect(effect, controller, source, target, x);
-                self.apply_all(&evs);
-                events.extend(evs);
+                self.apply_effect_events_with_replacements(evs, events);
             }
         }
     }

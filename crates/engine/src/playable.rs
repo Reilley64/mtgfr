@@ -29,7 +29,7 @@ pub(crate) struct CastInputs<'a> {
     /// [`AdditionalCost::replicate`]); 0 for a spell with no Replicate, or "pay it zero times."
     /// See [`Intent::Cast`]'s own doc.
     pub replicate_count: u8,
-    /// How many times the caster paid the spell's Multikicker cost (CR 702.34 —
+    /// How many times the caster paid the spell's Multikicker cost (CR 702.33c —
     /// [`AdditionalCost::multikicker`]); 0 for a spell with no Multikicker, or "pay it zero
     /// times." See [`Intent::Cast`]'s own doc.
     pub multikicker_count: u8,
@@ -131,12 +131,13 @@ impl Game {
         let Object::Card(card) = &self.objects[object as usize] else {
             return Err(Reject::NotCastable);
         };
-        if matches!(card.def.kind, CardKind::Land { .. }) {
+        let printed = card_def(card.def);
+        if matches!(&printed.kind, CardKind::Land { .. }) {
             return Err(Reject::NotCastable);
         }
         // A split card is cast as one of its halves (CR 709.4a — `Intent::CastSplitHalf`), never
         // as the fused card this `CardDef` describes.
-        if !card.def.halves.is_empty() {
+        if !printed.halves.is_empty() {
             return Err(Reject::NotCastable);
         }
         let Some(zone) = self.playable_zone(object, player) else {
@@ -145,19 +146,19 @@ impl Game {
         if !kind.is_enumeration() && player != self.priority {
             return Err(Reject::NotYourPriority);
         }
-        if !self.cast_timing_ok(player, object, card.def, kind) {
+        if !self.cast_timing_ok(player, object, printed.as_ref().clone(), kind) {
             return Err(Reject::WrongTiming);
         }
         let from_command = zone == Zone::Command;
         let from_graveyard = zone == Zone::Graveyard;
-        let cast_via_flashback = from_graveyard && card.def.flashback.is_some();
-        let cast_via_escape = from_graveyard && card.def.escape.is_some();
+        let cast_via_flashback = from_graveyard && printed.flashback.is_some();
+        let cast_via_escape = from_graveyard && printed.escape.is_some();
 
         // Clause 0 of the non-modal spell's post-cast target clauses (CR 601.2c) — `None` for the
         // single-target majority, the first of one-per-multi-target-ability (Magma Opus), or the
         // first of a single multi-clause ability's own clauses (Vengeful Rebirth's graveyard
         // return + "any target" damage). Later clauses are chosen at their own pauses.
-        let mut multi_target = self.spell_multi_target(card.def);
+        let mut multi_target = self.spell_multi_target(printed.as_ref());
 
         // CR 601.2b: {X} (and modes) are chosen before targets (CR 601.2c) — computed here,
         // ahead of every target-legality check below, so a `PermanentFilter::mv_eq_x` target
@@ -166,25 +167,41 @@ impl Game {
         // of directly) at this point in the cast sequence.
         let x = inputs.x.min(u8::MAX as u32);
 
-        let chosen = if card.def.modal {
+        // A printed non-mana ceiling on X (CR 601.2b — Open the Way's "X can't be greater than
+        // the number of players in the game"): rejected before payment, so it's an illegal
+        // announcement rather than a mana shortfall. Enumeration (list) requests announce X=0, so
+        // they never trip it.
+        if let Some(cap) = self.cast_x_ceiling(printed.as_ref())
+            && x > cap
+        {
+            return Err(Reject::IllegalChoice);
+        }
+
+        let chosen = if printed.modal {
             if inputs.target.is_some() {
                 return Err(Reject::IllegalMode);
             }
             if kind.is_enumeration() {
                 Modes::default()
             } else {
-                self.validate_modes(object, card.def, inputs.modes, player, x)?;
+                self.validate_modes(object, printed.as_ref().clone(), inputs.modes, player, x)?;
                 // The chosen mode may need post-cast target selection — either a same-spec
                 // multi-target mode (Prismari Charm's "one or two targets") or a multi-clause
                 // mode (Hull Breach's "target artifact and target enchantment", two independent
                 // single-target clauses) — same post-cast target-choice shape as a non-modal
                 // multi-target spell, just scoped to the mode that was picked. Every clause the
                 // mode carries needs at least one legal target, not just the first.
-                let clauses = self.modal_target_clauses(card.def, inputs.modes);
+                let clauses = self.modal_target_clauses(printed.as_ref(), inputs.modes);
                 multi_target = clauses.first().copied();
                 for (spec, count) in clauses {
                     let n = self
-                        .legal_targets_for(spec, object, player, color_identity(card.def), x)
+                        .legal_targets_for(
+                            spec,
+                            object,
+                            player,
+                            color_identity(printed.as_ref()),
+                            x,
+                        )
                         .len();
                     if count.min > 0 && n == 0 {
                         return Err(Reject::IllegalTarget);
@@ -198,7 +215,7 @@ impl Game {
             }
             if !kind.is_enumeration() {
                 let n = self
-                    .legal_targets_for(spec, object, player, color_identity(card.def), x)
+                    .legal_targets_for(spec, object, player, color_identity(printed.as_ref()), x)
                     .len();
                 if count.min > 0 && n == 0 {
                     return Err(Reject::IllegalTarget);
@@ -215,6 +232,15 @@ impl Game {
                 {
                     return Err(Reject::IllegalTarget);
                 }
+                // Multikicker (CR 601.2c/702.33c): "choose any target, then choose another
+                // target for each time this spell was kicked" — one base target plus one per
+                // kick, gated the same way Strive's declared count is above.
+                if count.multikicker_scaled
+                    && ((1 + inputs.multikicker_count) as usize > n
+                        || (1 + inputs.multikicker_count) as usize > MAX_TARGETS)
+                {
+                    return Err(Reject::IllegalTarget);
+                }
             }
             Modes::default()
         } else {
@@ -222,7 +248,7 @@ impl Game {
                 return Err(Reject::IllegalMode);
             }
             if !kind.is_enumeration()
-                && !self.targets_are_legal(object, card.def, inputs.target, player, None, x)
+                && !self.targets_are_legal(object, printed.as_ref(), inputs.target, player, None, x)
             {
                 return Err(Reject::IllegalTarget);
             }
@@ -233,7 +259,7 @@ impl Game {
         let cost = self.cast_cost(
             player,
             object,
-            card.def,
+            printed.as_ref().clone(),
             inputs.target,
             x,
             zone,
@@ -248,12 +274,12 @@ impl Game {
         );
 
         if kind.is_enumeration() {
-            if !self.cast_affordable_list(player, object, card.def, zone) {
+            if !self.cast_affordable_list(player, object, printed.as_ref().clone(), zone) {
                 return Err(Reject::CannotPayCost);
             }
             return Ok(ValidatedCast {
                 zone,
-                def: card.def,
+                def: printed.as_ref().clone(),
                 cost,
                 from_command,
                 cast_via_flashback,
@@ -269,7 +295,7 @@ impl Game {
         self.validate_cast_cost_picks(
             player,
             object,
-            card.def,
+            printed.as_ref().clone(),
             cost,
             zone,
             cast_via_escape,
@@ -278,7 +304,7 @@ impl Game {
 
         Ok(ValidatedCast {
             zone,
-            def: card.def,
+            def: printed.as_ref().clone(),
             cost,
             from_command,
             cast_via_flashback,
@@ -309,6 +335,28 @@ impl Game {
         if def.cast_only_during_combat && !self.step.is_combat() {
             return false;
         }
+        // "Cast this spell only before attackers are declared" (CR 601.3e — Master Warcraft): the
+        // same shape of restriction as the combat window above. `Step`'s ordering is the turn
+        // order, so the window is everything up to and including the declare-attackers step —
+        // closed early inside that step the moment the declaration is actually made.
+        if def.cast_only_before_attackers
+            && (self.step > Step::DeclareAttackers || self.combat.attackers_declared)
+        {
+            return false;
+        }
+        // "Players can't cast spells during combat" (CR 601.2i-adjacent — Basandra, Battle
+        // Seraph): global and absolute — reaches every player, not just this ability's own
+        // controller, and overrides even an instant-speed / flash permission below.
+        if self.step.is_combat() && self.cant_cast_during_combat() {
+            return false;
+        }
+        // "Each opponent who attacked with a creature this turn can't cast spells" (Angelic
+        // Arbiter): a per-player lockout — reaches only players who attacked this turn, not
+        // everyone like Basandra's blanket combat ban above — and, like that ban, absolute:
+        // checked ahead of the instant-speed/flash bypass below so it can't be routed around.
+        if self.cant_cast_if_attacked_this_turn(player) {
+            return false;
+        }
         let sorcery_ok = self.can_take_sorcery_speed_action(player);
         // Alchemist's Refuge's "you may cast spells this turn as though they had flash" (CR 601.3a)
         // is an unfiltered per-player permission — every spell the granted player casts
@@ -335,6 +383,43 @@ impl Game {
         sorcery_ok
     }
 
+    /// Whether any permanent on the battlefield carries a live
+    /// [`Effect::Static(StaticEffect::CantCastDuringCombat)`] static (Basandra, Battle Seraph's
+    /// "Players can't cast spells during combat"): a plain existence check, since the
+    /// restriction names no specific player — it reaches everyone at the table, including the
+    /// ability's own controller.
+    fn cant_cast_during_combat(&self) -> bool {
+        self.battlefield().into_iter().any(|source| {
+            self.functional_abilities(source).iter().any(|a| {
+                (a.timing, a.effect.clone())
+                    == (
+                        Timing::Static,
+                        Effect::Static(StaticEffect::CantCastDuringCombat),
+                    )
+            })
+        })
+    }
+
+    /// Whether `player` is locked out of casting spells by a live
+    /// [`Effect::Static(StaticEffect::CantCastIfAttackedThisTurn)`] static under a different
+    /// player's control (Angelic Arbiter's "Each opponent who attacked with a creature this
+    /// turn can't cast spells"): true only when `player` has declared an attacker this turn AND
+    /// some other player controls the static — an "opponent" of that controller's by
+    /// construction.
+    fn cant_cast_if_attacked_this_turn(&self, player: PlayerId) -> bool {
+        self.players[player.0 as usize].attacked_this_turn
+            && self.battlefield().into_iter().any(|source| {
+                self.controller_of(source) != player
+                    && self.functional_abilities(source).iter().any(|a| {
+                        (a.timing, a.effect.clone())
+                            == (
+                                Timing::Static,
+                                Effect::Static(StaticEffect::CantCastIfAttackedThisTurn),
+                            )
+                    })
+            })
+    }
+
     /// After attackers are declared, each defending seat's declare-attackers priority is a
     /// reaction window for empty-stack instants (before blockers).
     pub(crate) fn in_attack_response_window(&self, player: PlayerId) -> bool {
@@ -350,7 +435,6 @@ impl Game {
         def: CardDef,
         zone: Zone,
     ) -> bool {
-        let available = self.available_mana(player);
         // Delve (CR 702.66) can reduce generic — list as affordable when some exile count
         // in 0..=graveyard size makes the cost payable (otherwise Treasure Cruise never appears
         // until the caster already has {7}{U} floating).
@@ -360,49 +444,64 @@ impl Game {
             0
         };
         let spell = Some(def.spell_characteristics());
+        // Same planner settle uses — `available_mana` over-counts mutually exclusive free
+        // modes on one permanent (painland {{C}} + colored), which would mint-border a cast
+        // the payment path then rejects.
         let affordable = |target: Option<Target>, delve: u8| {
             let cost = self.cast_cost(
-                player, object, def, target, 0, zone, delve, false, false, false, 0, 0, 0, false,
+                player,
+                object,
+                def.clone(),
+                target,
+                0,
+                zone,
+                delve,
+                false,
+                false,
+                false,
+                0,
+                0,
+                0,
+                false,
             );
-            Self::affordable_from(available, cost, spell)
-                && self
-                    .cast_additional_cost_gate(player, object, cost, 0, zone)
-                    .is_ok()
+            self.cast_additional_cost_gate(player, object, cost, 0, zone)
+                .is_ok()
+                && self.plan_auto_taps(player, cost, None, spell).is_some()
         };
         let any_delve = |target: Option<Target>| (0..=max_delve).any(|d| affordable(target, d));
 
         // Modal: mana first, then enough playable modes for `modal_choose` (CR 700.2) — an Abrade
         // with nothing to hit must not brighten the hand or stop auto-pass.
         if def.modal {
-            return any_delve(None) && self.modal_modes_listable(object, player, def);
+            return any_delve(None) && self.modal_modes_listable(object, player, &def);
         }
         // Post-cast target clauses: clause 0 needs at least `count.min` legal targets (an "up to
         // N" with min 0 stays listable on an empty board; Ashes to Ashes with one creature does
         // not). Only clause 0 is gated, matching `validate_cast`'s own clause-0-only check.
-        if let Some((spec, count)) = self.spell_multi_target(def) {
+        if let Some((spec, count)) = self.spell_multi_target(&def) {
             let n = self
-                .legal_targets_for(spec, object, player, color_identity(def), 0)
+                .legal_targets_for(spec, object, player, color_identity(&def), 0)
                 .len();
             return n >= count.min as usize && any_delve(None);
         }
-        let spec = self.required_target(def, None);
+        let spec = self.required_target(&def, None);
         if spec == TargetSpec::None {
             return any_delve(None);
         }
         // Single-target: try each legal target so a per-target reducer (Killian) can make the
         // cast affordable against one creature but not another.
-        self.legal_targets_for(spec, object, player, color_identity(def), 0)
+        self.legal_targets_for(spec, object, player, color_identity(&def), 0)
             .into_iter()
             .any(|t| any_delve(Some(t)))
     }
 
     /// Whether `def`'s modal spell has at least [`CardDef::modal_choose`] modes the caster can
     /// actually pick right now (each mode either needs no target, or has enough legal ones).
-    fn modal_modes_listable(&self, object: ObjectId, player: PlayerId, def: CardDef) -> bool {
+    fn modal_modes_listable(&self, object: ObjectId, player: PlayerId, def: &CardDef) -> bool {
         let colors = color_identity(def);
         let available = (0..MAX_MODES)
             .map_while(|m| nth_mode(def, m))
-            .filter(|a| self.effect_targets_listable(a.effect, object, player, colors, 0))
+            .filter(|a| self.effect_targets_listable(a.effect.clone(), object, player, colors, 0))
             .count();
         available >= def.modal_choose as usize
     }
@@ -532,9 +631,8 @@ impl Game {
         if inputs.replicate_count > 0 && cost.additional.replicate.is_none() {
             return Err(Reject::CannotPayCost);
         }
-        // Multikicker (CR 702.34): only declarable if the spell actually has one, mirroring
-        // strive/replicate's own gates above. Its mana is already folded into `cost` by
-        // `Game::cast_cost`.
+        // Multikicker (CR 702.33c): only declarable if the spell actually has one, mirroring
+        // replicate's own gate above. Its mana is already folded into `cost` by `Game::cast_cost`.
         if inputs.multikicker_count > 0 && cost.additional.multikicker.is_none() {
             return Err(Reject::CannotPayCost);
         }
@@ -602,10 +700,10 @@ mod tests {
             modal_choose: 1,
             modal_choose_max: None,
             modal_choose_max_if_commander: false,
-            keywords: &[],
-            conditional_keywords: &[],
+            keywords: empty_slice(),
+            conditional_keywords: empty_slice(),
             abilities: if modal {
-                Box::leak(Box::new([
+                arc_slice([
                     Ability {
                         timing: Timing::Spell,
                         effect: Effect::Damage(DamageEffect::Target {
@@ -618,6 +716,9 @@ mod tests {
                                 sacrifice_scaled: false,
                                 strive_scaled: false,
                                 total_mv_max: None,
+                                multikicker_scaled: false,
+                                kicked_scaled: false,
+                                main_phase_scaled: false,
                             },
                             divided: false,
                         }),
@@ -631,6 +732,7 @@ mod tests {
                         timing: Timing::Spell,
                         effect: Effect::Destroy(DestroyEffect::All {
                             filter: PermanentFilter::of(TypeSet::ARTIFACT),
+                            cant_be_regenerated: false,
                         }),
                         optional: false,
                         min_level: 0,
@@ -638,14 +740,14 @@ mod tests {
                         condition: None,
                         once_each_turn: false,
                     },
-                ]))
+                ])
             } else {
-                Box::leak(Box::new([spell_ability(Effect::Draw(DrawEffect::Cards {
+                arc_slice([spell_ability(Effect::Draw(DrawEffect::Cards {
                     count: Amount::Fixed(1),
-                }))]))
+                }))])
             },
-            identity_pips: &[],
-            colors: &[],
+            identity_pips: empty_slice(),
+            colors: empty_slice(),
             devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
@@ -653,11 +755,12 @@ mod tests {
             free_cast_if: None,
             alternative_cost: None,
             cast_only_during_combat: false,
+            cast_only_before_attackers: false,
             approximates: None,
             oracle: None,
-            set: "",
-            subtypes: &[],
-            otags: &[],
+            sets: empty_slice(),
+            subtypes: empty_slice(),
+            otags: empty_slice(),
             cycling: None,
             cycling_sacrifice: SacrificeCost::None,
             flashback: None,
@@ -677,14 +780,15 @@ mod tests {
             enchant_graveyard: false,
             back: None,
             adventure: None,
-            halves: &[],
+            halves: empty_slice(),
             suspend: None,
             vanishing: None,
+            cast_x_max: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,
             encore: None,
-            hand_ability: &[],
+            hand_ability: empty_slice(),
             forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,
@@ -841,7 +945,7 @@ mod tests {
         let object = game.spawn_in_hand(
             P0,
             CardDef {
-                abilities: Box::leak(Box::new([
+                abilities: arc_slice([
                     Ability {
                         timing: Timing::Spell,
                         effect: Effect::Damage(DamageEffect::Target {
@@ -869,7 +973,7 @@ mod tests {
                         condition: None,
                         once_each_turn: false,
                     },
-                ])),
+                ]),
                 ..spell_def("ModalNoTargets", flash_cost(2), true)
             },
         );

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView } from "~/wire/types";
 import { playableBattlefieldObjectIds } from "./chrome";
 
@@ -6,7 +7,7 @@ function activate(object: number, over: Partial<ActionView> = {}): ActionView {
   return {
     id: object + 100,
     kind: "activate",
-    label: "Activate",
+    label: testMessageRef("Activate"),
     needs_target: false,
     object,
     section: "battlefield",

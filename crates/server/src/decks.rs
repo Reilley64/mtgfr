@@ -23,24 +23,19 @@ pub struct SeatDeck {
 
 fn expand(list: &[(CardDef, usize)]) -> Vec<CardDef> {
     list.iter()
-        .flat_map(|&(card, n)| std::iter::repeat_n(card, n))
+        .flat_map(|(card, n)| std::iter::repeat_n(card.clone(), *n))
         .collect()
 }
 
 /// Build a game for the given seated players (`(seat, deck)`, seats contiguous from 0):
-/// designate each commander, seed and shuffle each library, draw opening hands, and wait for
+/// designate each commander, seed each library, deal smoothed opening hands, and wait for
 /// each player to keep or mulligan.
 pub fn seed_game(seats: &[(PlayerId, SeatDeck)], master_seed: [u8; 32]) -> Game {
     let mut game = Game::with_master_seed(seats.len() as u8, master_seed);
     for (player, deck) in seats {
-        game.designate_commander(*player, deck.commander);
+        game.designate_commander(*player, deck.commander.clone());
         game.stack_library(*player, &expand(&deck.cards));
-        game.shuffle(*player);
-    }
-    for _ in 0..OPENING_HAND {
-        for (player, _) in seats {
-            game.draw_card(*player);
-        }
+        game.deal_smoothed_hand(*player, OPENING_HAND as u8);
     }
     game.begin_mulligans();
     game
@@ -136,6 +131,32 @@ mod tests {
         assert_eq!(game.current_step(), engine::Step::Main1);
         assert_eq!(game.active_player(), PlayerId(0));
     }
+
+    #[test]
+    fn seed_game_smoothed_opening_burns_two_ops_per_seat() {
+        let deck = || {
+            let commander = card("Tajic, Legion's Edge");
+            let plains = card("Plains");
+            let mut prints = std::collections::HashMap::new();
+            prints.insert(
+                commander.id.to_string(),
+                commander.default_print.to_string(),
+            );
+            prints.insert(plains.id.to_string(), plains.default_print.to_string());
+            SeatDeck {
+                commander,
+                cards: vec![(plains, 99)],
+                prints,
+            }
+        };
+        let seats = [(PlayerId(0), deck()), (PlayerId(1), deck())];
+        let game = seed_game(&seats, master_from_u64(0x50c_2026));
+
+        for (player, _) in &seats {
+            assert_eq!(game.op_iteration(*player), 2);
+            assert_eq!(game.hand(*player).len(), OPENING_HAND as usize);
+        }
+    }
 }
 
 #[cfg(test)]
@@ -155,7 +176,7 @@ mod soc_deck_tests {
         cards: Vec<DeckCardEntry>,
     }
 
-    const FIXTURES: [&str; 9] = [
+    const FIXTURES: [&str; 10] = [
         "silverquill_influence",
         "prismari_artistry",
         "witherbloom_pestilence",
@@ -165,6 +186,7 @@ mod soc_deck_tests {
         "deathdancer_xira",
         "political_puppets",
         "mirror_mastery",
+        "heavenly_inferno",
     ];
 
     fn load(fixture: &str) -> DeckFixture {
@@ -255,6 +277,11 @@ mod soc_deck_tests {
     #[test]
     fn mirror_mastery_is_a_legal_commander_deck() {
         assert_legal("mirror_mastery");
+    }
+
+    #[test]
+    fn heavenly_inferno_is_a_legal_commander_deck() {
+        assert_legal("heavenly_inferno");
     }
 
     fn seed_four(first: &str) -> Game {

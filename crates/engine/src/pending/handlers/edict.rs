@@ -38,7 +38,7 @@ impl Game {
         events: &mut Vec<Event>,
     ) {
         for &id in ids {
-            let def = self.def_of(id);
+            let def = self.def_id_of(id);
             let event = self.sacrifice_event(id);
             self.push_apply(events, event);
             self.push_apply(
@@ -168,7 +168,8 @@ impl Game {
         // ponytail: `BecameCopy` overwrites `def` *after* `PermanentEntered` fired, so an ETB
         // trigger of the *copied* creature is missed (the trigger watcher saw the pre-copy def).
         // Neither Altered Ego nor Cursed Mirror copies a creature with an ETB; revisit when one does.
-        let def = self.def_of(chosen);
+        let def = self.def_id_of(chosen);
+        let printed = card_def(def);
         self.push_apply(
             &mut events,
             Event::BecameCopy {
@@ -193,17 +194,29 @@ impl Game {
                 },
             );
         }
-        // Cursed Mirror's "except it has haste."
+        // Cursed Mirror's "except it has haste" — a copiable value (CR 707.2): a copy of this
+        // copied form keeps haste, so it rides as a `CopyRiderKeywordsGranted` rider rather than
+        // a transient `TempBoost`. Cleared when the until-end-of-turn copy reverts.
         if gains_haste {
             const HASTE: &[Keyword] = &[Keyword::Haste];
             self.push_apply(
                 &mut events,
-                Event::TempBoost {
+                Event::CopyRiderKeywordsGranted {
                     object: source,
-                    power: 0,
-                    toughness: 0,
                     keywords: HASTE,
-                    source_name,
+                },
+            );
+        }
+        // CR 707.2: the copied creature's own copy-effect exception rider is part of its copiable
+        // values, so copying something already under a copy effect (Cursed Mirror copying Muddle's
+        // myriad form, or a Twinflame haste token) carries that rider onto this copy too.
+        let copied_rider = self.copiable_keywords(chosen);
+        if !copied_rider.is_empty() {
+            self.push_apply(
+                &mut events,
+                Event::CopyRiderKeywordsGranted {
+                    object: source,
+                    keywords: copied_rider,
                 },
             );
         }
@@ -211,7 +224,7 @@ impl Game {
         // unattached above (`BecameCopy` only overwrites `def`), so it must now pause to choose a
         // host among legal enchant targets — the same deployed-Aura attach path a searched-out or
         // reanimated Aura uses.
-        if def.kind == CardKind::Aura {
+        if matches!(&printed.kind, CardKind::Aura) {
             self.maybe_pause_attach_deployed_aura(source, player);
         }
         Ok(events)
@@ -245,7 +258,10 @@ impl Game {
         // full read of any copy-layer modifications already on it — exact for this pool, same note
         // as `Game::answer_enter_as_copy` (slice 2). Snapshot the other tokens up front, before
         // any `BecameCopy` applies.
-        let def = self.def_of(chosen);
+        let def = self.def_id_of(chosen);
+        // CR 707.2: "a copy of that token" carries the chosen token's own copy-effect exception
+        // rider (Brudiclad copying a Twinflame haste token → each converted token keeps haste).
+        let copied_rider = self.copiable_keywords(chosen);
         let others: Vec<ObjectId> = candidates.into_iter().filter(|&id| id != chosen).collect();
         for other in others {
             self.push_apply(
@@ -256,6 +272,15 @@ impl Game {
                     until_eot: false,
                 },
             );
+            if !copied_rider.is_empty() {
+                self.push_apply(
+                    &mut events,
+                    Event::CopyRiderKeywordsGranted {
+                        object: other,
+                        keywords: copied_rider,
+                    },
+                );
+            }
         }
         Ok(events)
     }
@@ -293,7 +318,7 @@ impl Game {
             &mut events,
             Event::BecameCopy {
                 object: source,
-                def: self.def_of(chosen),
+                def: self.def_id_of(chosen),
                 until_eot: true,
             },
         );
@@ -311,7 +336,7 @@ impl Game {
     ) {
         for &id in ids {
             let card = self.next_object_id();
-            let def = self.def_of(id);
+            let def = self.def_id_of(id);
             self.push_apply(events, Event::MovedToGraveyard { card, from: id });
             self.push_apply(
                 events,
@@ -385,6 +410,7 @@ impl Game {
         keep_one: bool,
         filter: PermanentFilter,
         life_loss: i32,
+        count: u32,
         follow_up: &'static [Effect],
         controller: PlayerId,
         source: ObjectId,
@@ -393,6 +419,9 @@ impl Game {
         // Scoped to this one edict (Deadly Brew's "if you sacrificed this way" gate) — overwrite,
         // not accumulate, so a prior edict earlier this game can't leak through.
         self.resolution_frame.sacrificed_by_edict_controller = false;
+        // Scoped to this one edict (Syphon Flesh's "for each creature sacrificed this way") —
+        // overwrite so a prior edict can't leak through.
+        self.resolution_frame.creatures_sacrificed_this_way = 0;
         if scope == EdictScope::TargetedPlayers {
             let legal = self.apnap_order();
             pending::raise(
@@ -406,6 +435,7 @@ impl Game {
                     keep_one,
                     filter,
                     life_loss,
+                    count,
                     then: follow_up,
                 },
             );
@@ -429,7 +459,7 @@ impl Game {
             }
         }
         self.prompt_next_sacrifice(
-            affected, keep_one, filter, follow_up, controller, source, events,
+            affected, keep_one, filter, count, follow_up, controller, source, events,
         );
     }
 
@@ -451,6 +481,7 @@ impl Game {
             keep_one,
             filter,
             life_loss,
+            count,
             then,
         }) = self.pending_choice.clone()
         else {
@@ -478,6 +509,7 @@ impl Game {
             players,
             keep_one,
             filter,
+            count,
             then,
             chooser,
             source,
@@ -494,6 +526,7 @@ impl Game {
         remaining: Vec<PlayerId>,
         keep_one: bool,
         filter: PermanentFilter,
+        count: u32,
         follow_up: &'static [Effect],
         controller: PlayerId,
         source: ObjectId,
@@ -505,6 +538,7 @@ impl Game {
                 remaining,
                 keep_one,
                 filter,
+                count,
                 follow_up,
                 controller,
                 source,
@@ -513,9 +547,9 @@ impl Game {
         if self.resolution_is_paused() {
             return;
         }
-        for &effect in follow_up {
+        for effect in follow_up {
             self.run(
-                effect,
+                effect.clone(),
                 ResolveCtx {
                     controller,
                     source,
@@ -546,6 +580,7 @@ impl Game {
             keep_one,
             filter,
             remaining,
+            count,
             controller,
             source,
             follow_up,
@@ -553,7 +588,7 @@ impl Game {
         else {
             return Err(Reject::IllegalChoice);
         };
-        if !valid_sacrifice_choice(&sacrifices, &options, keep_one) {
+        if !valid_sacrifice_choice(&sacrifices, &options, keep_one, count) {
             return Err(Reject::IllegalChoice);
         }
         self.finish_answer();
@@ -567,7 +602,7 @@ impl Game {
         let mut events = Vec::new();
         // Sacrifices route through the normal death events, so "when this/a creature dies" fires.
         for &id in &sacrifices {
-            let def = self.def_of(id);
+            let def = self.def_id_of(id);
             let event = self.sacrifice_event(id);
             self.push_apply(&mut events, event);
             self.push_apply(
@@ -578,11 +613,14 @@ impl Game {
                     def,
                 },
             );
+            // Syphon Flesh's "for each creature sacrificed this way".
+            self.resolution_frame.creatures_sacrificed_this_way += 1;
         }
         self.prompt_next_sacrifice(
             remaining,
             keep_one,
             filter,
+            count,
             follow_up,
             controller,
             source,
@@ -638,7 +676,7 @@ impl Game {
         // Sacrifice every nonland permanent not kept, routed through the normal death events so
         // "when this/a creature dies" fires.
         for id in options.into_iter().filter(|id| !keeps.contains(id)) {
-            let def = self.def_of(id);
+            let def = self.def_id_of(id);
             let event = self.sacrifice_event(id);
             self.push_apply(&mut events, event);
             self.push_apply(
@@ -685,5 +723,46 @@ impl Game {
             .map(|&id| self.def_of(id).kind.types())
             .collect();
         keeps.len() == super::max_distinct_slots(&option_masks, &slots)
+    }
+
+    /// Answer a [`PendingChoice::ChooseLegendaryKeep`] (CR 704.5j): keep `keep` on the battlefield
+    /// and put every other option into its owner's graveyard (commanders divert; tokens cease).
+    pub(crate) fn answer_legendary_keep(
+        &mut self,
+        player: PlayerId,
+        keep: ObjectId,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::ChooseLegendaryKeep {
+            player: chooser,
+            options,
+            ..
+        }) = self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        if player != chooser || !options.contains(&keep) {
+            return Err(Reject::IllegalChoice);
+        }
+        self.finish_answer();
+
+        let mut events = Vec::new();
+        for id in options.into_iter().filter(|&id| id != keep) {
+            let Some((is_token, owner, def)) =
+                self.as_permanent(id).map(|p| (p.token, p.owner, p.def))
+            else {
+                continue;
+            };
+            let event = if is_token {
+                Event::TokenCeasedToExist {
+                    token: id,
+                    controller: owner,
+                    def,
+                }
+            } else {
+                self.graveyard_or_command(id, self.next_object_id())
+            };
+            self.push_apply(&mut events, event);
+        }
+        Ok(events)
     }
 }

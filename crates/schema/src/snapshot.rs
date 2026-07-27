@@ -11,11 +11,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::catalog::{wire_cost, wire_kind};
 use crate::dto::{
-    ActionView, CombatView, CommanderDamageView, ModalView, ModeView, ModifierSourceView,
-    ObjectView, PlayerView, StackObjectView, VisibleState, WireKind, WireManaPool,
+    ActionView, CombatView, CommanderDamageView, MessageRef, ModalView, ModeView,
+    ModifierSourceView, ObjectView, PlayerView, StackObjectView, VisibleState, WireKind,
+    WireManaPool,
 };
 use crate::event::DeltaEnvelope;
 use crate::intent::{WireAttack, WireBlock, WireTarget};
+use crate::message::{child_message, message, named_message, to_wire_message};
 use crate::projection::project_pending_choice;
 
 fn format_modifier_contribution(contribution: engine::ModifierContribution) -> String {
@@ -47,14 +49,16 @@ pub const SPECTATOR_VIEWER: u8 = u8::MAX;
 
 /// Table-owned facts that finish a [`VisibleState`]. Pure data — no `Seat` / tokio coupling.
 ///
-/// Yield, stack-hold remaining, and display names live on the server's `Table`, not the `Game`
-/// (turn-priority-and-stack spec). Callers map table state into this DTO and pass it to [`complete_visible`].
+/// Yield, stack-hold remaining, display names, and avatar hashes live on the server's `Table`,
+/// not the `Game` (turn-priority-and-stack spec). Callers map table state into this DTO and pass
+/// it to [`complete_visible`].
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ViewExtras {
     pub yields: [bool; 4],
     pub turn_yields: [bool; 4],
     pub stack_hold_remaining_ms: u32,
     pub usernames: [String; 4],
+    pub gravatar_hashes: [String; 4],
     /// Per-seat Card id → Printing UUID from the seat's deck (art preference). Empty maps mean
     /// every object uses its CardDef `default_print`.
     pub prints: [std::collections::HashMap<String, String>; 4],
@@ -68,7 +72,7 @@ pub struct DeltaCompose<'a> {
     pub viewer: Option<engine::PlayerId>,
     pub seq: u64,
     pub events: &'a [engine::Event],
-    pub auto_actions: Vec<String>,
+    pub auto_actions: Vec<MessageRef>,
     pub extras: &'a ViewExtras,
 }
 
@@ -96,7 +100,7 @@ pub fn compose_delta(input: DeltaCompose<'_>) -> StreamFrame {
 /// One wire-complete [`VisibleState`] for `viewer` (`Some` = seated, `None` = spectator).
 ///
 /// Redacts private zones, projects the board, then stamps Table policy from `extras` in one
-/// pass — yield, hold remaining, and usernames. Incomplete board projection is not a public
+/// pass — yield, hold remaining, usernames, and avatar hashes. Incomplete board projection is not a public
 /// wire path (lobby-table-routing-and-live-game spec / wire-protocol-and-visibility spec). Opening snapshots use this directly; live deltas use
 /// [`compose_delta`].
 pub fn complete_visible(
@@ -115,6 +119,7 @@ pub fn complete_visible(
     state.stack_hold_remaining_ms = extras.stack_hold_remaining_ms;
     for (i, player) in state.players.iter_mut().enumerate() {
         player.username = extras.usernames[i].clone();
+        player.gravatar_hash = extras.gravatar_hashes[i].clone();
     }
     // Overlay deck-chosen Printings onto objects (by owner seat + Card id).
     for obj in &mut state.objects {
@@ -153,12 +158,48 @@ pub fn complete_visible(
             }
         });
     }
+    // Stack abilities keep `source` as the activation-time id (counter-ability targeting). After
+    // sacrifice-as-cost that id is a Moved tombstone omitted from `objects`, so stack art + deck
+    // seat prints ride on the entry itself.
+    for entry in &mut state.stack {
+        if entry.card_id.is_empty() {
+            continue;
+        }
+        let seat = game.owner_of(entry.source).0 as usize;
+        if seat >= extras.prints.len() {
+            continue;
+        }
+        if let Some(print) = extras.prints[seat].get(&entry.card_id)
+            && !print.is_empty()
+        {
+            entry.print = print.clone();
+        }
+    }
     state
 }
 
+/// Print / catalog identity for a stack spell or ability source. Follows `Object::Moved` so a
+/// sacrificed source still yields art even though the tombstone is absent from `objects`.
+fn stack_source_art(game: &engine::Game, source: engine::ObjectId) -> (String, String, String) {
+    let def = game.def_of(source);
+    let front = game.front_def_of(source);
+    let card_id_src = if def.id.is_empty() { &front } else { &def };
+    let print_src = if def.default_print.is_empty() {
+        &front
+    } else {
+        &def
+    };
+    (
+        print_src.default_print.to_string(),
+        card_id_src.id.to_string(),
+        def.name.to_string(),
+    )
+}
+
 /// Wire form of one of `game`'s stored [`engine::LegalAction`]s. `MeaningfulAction::PlayLand`/
-/// `Cast` bucket by their carried zone; `Activate` is always "battlefield"; the combat
-/// declarations are "combat" (the board UI drives them, not the action bar).
+/// `Cast` bucket by their carried zone; `Activate` buckets by the source's zone (battlefield
+/// radial vs graveyard bar for `functions_in_graveyard`); the combat declarations are "combat"
+/// (the board UI drives them, not the action bar).
 fn x_choice_fields(
     game: &engine::Game,
     player: engine::PlayerId,
@@ -198,12 +239,12 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             // when the card's modal_choose_max_if_commander asks for it (Nexus Mentality) — the
             // same check `validate_modes` enforces, so the prompt never offers a range the cast
             // would reject.
-            choose_max: game.modal_choose_max(def, action.player),
+            choose_max: game.modal_choose_max(&def, action.player),
             modes: game
                 .modes_of(card)
                 .into_iter()
                 .map(|m| ModeView {
-                    label: m.label,
+                    label: to_wire_message(m.label),
                     needs_target: m.needs_target,
                     targets: m.targets.into_iter().map(WireTarget::of).collect(),
                 })
@@ -228,7 +269,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             object: None,
             ability_index: None,
             section: "setup".to_string(),
-            label: "Keep hand".to_string(),
+            label: message("action.keep_hand"),
             needs_target: false,
             targets: Vec::new(),
             modal: None,
@@ -245,6 +286,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             auto_tap: Vec::new(),
             required_attacks: Vec::new(),
             taps_self: false,
+            declare_for: Vec::new(),
         },
         MeaningfulAction::Mulligan => ActionView {
             id: action.id,
@@ -252,7 +294,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             object: None,
             ability_index: None,
             section: "setup".to_string(),
-            label: "Mulligan".to_string(),
+            label: message("action.mulligan"),
             needs_target: false,
             targets: Vec::new(),
             modal: None,
@@ -269,6 +311,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             auto_tap: Vec::new(),
             required_attacks: Vec::new(),
             taps_self: false,
+            declare_for: Vec::new(),
         },
         MeaningfulAction::PlayLand { card, zone } => ActionView {
             id: action.id,
@@ -276,7 +319,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             object: Some(card),
             ability_index: None,
             section: section_of(zone).to_string(),
-            label: game.def_of(card).name.to_string(),
+            label: named_message("action.card_name", game.def_of(card).name),
             needs_target: false,
             targets: Vec::new(),
             modal: None,
@@ -293,6 +336,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             auto_tap: Vec::new(),
             required_attacks: Vec::new(),
             taps_self: false,
+            declare_for: Vec::new(),
         },
         MeaningfulAction::Cast { card, zone } => {
             let def = game.def_of(card);
@@ -322,7 +366,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                     game.cast_cost(
                         action.player,
                         card,
-                        def,
+                        def.clone(),
                         None,
                         x,
                         zone,
@@ -337,13 +381,19 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                     )
                 },
             );
+            // A printed non-mana X cap (Open the Way's player count, CR 601.2b) clamps the
+            // count-picker's ceiling to exactly what the cast gate will accept.
+            let max_x = match game.cast_x_ceiling(&def) {
+                Some(cap) => max_x.min(cap),
+                None => max_x,
+            };
             ActionView {
                 id: action.id,
                 kind: "cast".to_string(),
                 object: Some(card),
                 ability_index: None,
                 section: section_of(zone).to_string(),
-                label: def.name.to_string(),
+                label: named_message("action.card_name", def.name),
                 needs_target: game.target_spec_of(card) != TargetSpec::None,
                 targets: targets(card, None),
                 modal: modal(card),
@@ -360,11 +410,12 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 auto_tap: Vec::new(),
                 required_attacks: Vec::new(),
                 taps_self: false,
+                declare_for: Vec::new(),
             }
         }
         MeaningfulAction::Activate { source, ability } => {
             let activation = game.ability_at(source, ability);
-            let (paid, taps_self) = match activation.map(|a| a.timing) {
+            let (paid, taps_self) = match activation.as_ref().map(|a| a.timing) {
                 Some(engine::Timing::Activated(cost)) => (Some(cost.mana), cost.taps_self),
                 _ => (None, false),
             };
@@ -372,13 +423,22 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 Some(paid) => x_choice_fields(game, action.player, paid, None, |x| paid.with_x(x)),
                 None => (false, 0, 0, None),
             };
+            // CR 112.6/603.6e: a `functions_in_graveyard` activate (Teacher's Pest) lives in the
+            // GY bar with escape/encore. Ordinary permanent activates stay "battlefield".
+            let section = match game.zone_of(source) {
+                Zone::Graveyard => "graveyard",
+                _ => "battlefield",
+            };
             ActionView {
                 id: action.id,
                 kind: "activate".to_string(),
                 object: Some(source),
                 ability_index: Some(ability as u32),
-                section: "battlefield".to_string(),
-                label: activation.map(|a| a.effect.label()).unwrap_or_default(),
+                section: section.to_string(),
+                label: activation
+                    .as_ref()
+                    .map(|ability| to_wire_message(ability.effect.clone().message()))
+                    .unwrap_or_else(|| message("action.activate")),
                 needs_target: game.ability_target_spec(source, ability) != TargetSpec::None,
                 targets: targets(source, Some(ability)),
                 modal: None,
@@ -395,6 +455,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 auto_tap: Vec::new(),
                 required_attacks: Vec::new(),
                 taps_self,
+                declare_for: Vec::new(),
             }
         }
         MeaningfulAction::Cycle { card } => ActionView {
@@ -403,7 +464,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             object: Some(card),
             ability_index: None,
             section: "hand".to_string(),
-            label: format!("Cycle: {}", game.def_of(card).name),
+            label: named_message("action.cycle", game.def_of(card).name),
             needs_target: false,
             targets: Vec::new(),
             modal: None,
@@ -422,17 +483,26 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             auto_tap: Vec::new(),
             required_attacks: Vec::new(),
             taps_self: false,
+            declare_for: Vec::new(),
         },
         MeaningfulAction::ActivateHandAbility { card, index } => {
             let def = game.def_of(card);
             // Distinguish which entry (Valley Rannet's mountaincycling vs forestcycling, CR
-            // 702.29d) by its own effect, since both otherwise share the same "Discard: {name}".
-            let detail = match def.hand_ability.get(index).copied().or(def.forecast) {
-                Some(ability) => match ability.effects {
-                    [single] => Some(single.label()),
-                    _ => None,
+            // 702.29d) by its own effect, since both otherwise share the same discard chrome.
+            let label = match def
+                .hand_ability
+                .get(index)
+                .cloned()
+                .or(def.forecast.clone())
+            {
+                Some(ability) => match ability.effects.as_ref() {
+                    [single] => child_message(
+                        "action.discard_effect",
+                        to_wire_message(single.clone().message()),
+                    ),
+                    _ => named_message("action.discard_card", def.name),
                 },
-                None => None,
+                None => named_message("action.discard_card", def.name),
             };
             ActionView {
                 id: action.id,
@@ -440,10 +510,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 object: Some(card),
                 ability_index: Some(index as u32),
                 section: "hand".to_string(),
-                label: match detail {
-                    Some(detail) => format!("Discard: {detail}"),
-                    None => format!("Discard: {}", def.name),
-                },
+                label,
                 needs_target: false,
                 targets: Vec::new(),
                 modal: None,
@@ -460,6 +527,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 auto_tap: Vec::new(),
                 required_attacks: Vec::new(),
                 taps_self: false,
+                declare_for: Vec::new(),
             }
         }
         // The label must not leak the hidden card's identity (CR 708.2) — a plain "Cast face down".
@@ -469,7 +537,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             object: Some(card),
             ability_index: None,
             section: "hand".to_string(),
-            label: "Cast face down".to_string(),
+            label: message("action.cast_face_down"),
             needs_target: false,
             targets: Vec::new(),
             modal: None,
@@ -486,6 +554,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             auto_tap: Vec::new(),
             required_attacks: Vec::new(),
             taps_self: false,
+            declare_for: Vec::new(),
         },
         MeaningfulAction::Suspend { card } => ActionView {
             id: action.id,
@@ -493,7 +562,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             object: Some(card),
             ability_index: None,
             section: "hand".to_string(),
-            label: format!("Suspend: {}", game.def_of(card).name),
+            label: named_message("action.suspend", game.def_of(card).name),
             needs_target: false,
             targets: Vec::new(),
             modal: None,
@@ -510,6 +579,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             auto_tap: Vec::new(),
             required_attacks: Vec::new(),
             taps_self: false,
+            declare_for: Vec::new(),
         },
         MeaningfulAction::Encore { card } => ActionView {
             id: action.id,
@@ -517,7 +587,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             object: Some(card),
             ability_index: None,
             section: "graveyard".to_string(),
-            label: format!("Encore: {}", game.def_of(card).name),
+            label: named_message("action.encore", game.def_of(card).name),
             needs_target: false,
             targets: Vec::new(),
             modal: None,
@@ -534,6 +604,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             auto_tap: Vec::new(),
             required_attacks: Vec::new(),
             taps_self: false,
+            declare_for: Vec::new(),
         },
         // The label must not leak the hidden card's identity (CR 708.2) — a plain "Turn face up".
         MeaningfulAction::TurnFaceUp { permanent } => ActionView {
@@ -542,7 +613,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             object: Some(permanent),
             ability_index: None,
             section: "battlefield".to_string(),
-            label: "Turn face up".to_string(),
+            label: message("action.turn_face_up"),
             needs_target: false,
             targets: Vec::new(),
             modal: None,
@@ -559,13 +630,14 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             auto_tap: Vec::new(),
             required_attacks: Vec::new(),
             taps_self: false,
+            declare_for: Vec::new(),
         },
         MeaningfulAction::CastPrepared { source } => {
             let back = game
                 .def_of(source)
                 .back
                 .expect("CastPrepared implies a back face");
-            let back_def = *back;
+            let back_def = engine::card_def(back);
             let (spec, legal) = game.prepared_cast_targets(source);
             let (has_x, min_x, max_x, x_cost) = x_choice_fields(
                 game,
@@ -580,7 +652,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 object: Some(source),
                 ability_index: None,
                 section: "battlefield".to_string(),
-                label: back_def.name.to_string(),
+                label: named_message("action.card_name", back_def.name),
                 needs_target: spec != TargetSpec::None,
                 targets: legal.into_iter().map(WireTarget::of).collect(),
                 modal: None,
@@ -598,16 +670,18 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 auto_tap: Vec::new(),
                 required_attacks: Vec::new(),
                 taps_self: false,
+                declare_for: Vec::new(),
             }
         }
         // One action per half of a split card (CR 709.4a) — the label is the half's own name, which
         // is the only per-half text the client has to tell "Fire" from "Ice".
         MeaningfulAction::CastSplitHalf { card, half } => {
-            let face = *game
-                .def_of(card)
+            let def = game.def_of(card);
+            let &face_id = def
                 .halves
                 .get(half as usize)
                 .expect("CastSplitHalf implies the half exists");
+            let face = engine::card_def(face_id);
             let (spec, legal) = game.split_half_cast_targets(card, half);
             let (has_x, min_x, max_x, x_cost) = x_choice_fields(
                 game,
@@ -622,7 +696,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 object: Some(card),
                 ability_index: Some(half as u32),
                 section: "hand".to_string(),
-                label: face.name.to_string(),
+                label: named_message("action.card_name", face.name),
                 needs_target: spec != TargetSpec::None,
                 targets: legal.into_iter().map(WireTarget::of).collect(),
                 modal: None,
@@ -639,6 +713,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 auto_tap: Vec::new(),
                 required_attacks: Vec::new(),
                 taps_self: false,
+                declare_for: Vec::new(),
             }
         }
         MeaningfulAction::DeclareAttackers => ActionView {
@@ -647,7 +722,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             object: None,
             ability_index: None,
             section: "combat".to_string(),
-            label: "Declare attackers".to_string(),
+            label: message("action.declare_attackers"),
             needs_target: false,
             targets: Vec::new(),
             modal: None,
@@ -662,12 +737,15 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             max_x: 0,
             x_cost: None,
             auto_tap: Vec::new(),
+            // The attackers are always the *active player's* creatures, even when a live Master
+            // Warcraft made someone else the declarer (`action.player`).
             required_attacks: game
-                .required_attacks(action.player)
+                .required_attacks(game.active_player())
                 .into_iter()
                 .map(|pair| WireAttack::of(game, pair))
                 .collect(),
             taps_self: false,
+            declare_for: vec![game.active_player().0],
         },
         MeaningfulAction::DeclareBlockers => ActionView {
             id: action.id,
@@ -675,7 +753,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             object: None,
             ability_index: None,
             section: "combat".to_string(),
-            label: "Declare blockers".to_string(),
+            label: message("action.declare_blockers"),
             needs_target: false,
             targets: Vec::new(),
             modal: None,
@@ -692,14 +770,19 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             auto_tap: Vec::new(),
             required_attacks: Vec::new(),
             taps_self: false,
+            declare_for: game
+                .block_seats_for(action.player)
+                .into_iter()
+                .map(|seat| seat.0)
+                .collect(),
         },
     };
     view.auto_tap = game.auto_tap_objects(action);
     view
 }
 
-/// Redacted board projection only — yield / hold / usernames stay at their incomplete defaults
-/// until [`complete_visible`] stamps them. Not a public wire entry point.
+/// Redacted board projection only — yield / hold / usernames / avatar hashes stay at their
+/// incomplete defaults until [`complete_visible`] stamps them. Not a public wire entry point.
 fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> VisibleState {
     use engine::{PlayerId, TargetSpec, Zone};
 
@@ -717,6 +800,7 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
             PlayerView {
                 player: p,
                 username: String::new(),
+                gravatar_hash: String::new(),
                 life: game.life(pid),
                 commander_tax: game.commander_tax(pid),
                 lost: game.has_lost(pid),
@@ -762,11 +846,11 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
             // `card_id`/`print` (the client's art + oracle lookup) whenever the live face lacks its
             // own; unflipped permanents read `front == def`, so this is a no-op there.
             let front = game.front_def_of(id);
-            let card_id_src = if def.id.is_empty() { front } else { def };
+            let card_id_src = if def.id.is_empty() { &front } else { &def };
             let print_src = if def.default_print.is_empty() {
-                front
+                &front
             } else {
-                def
+                &def
             };
             // CR 708.2: a face-down permanent (a manifest) is anonymized — its real name, card
             // kind, and mana cost are hidden from every viewer (the engine already reports its
@@ -807,7 +891,7 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                         toughness: 2,
                     }
                 } else {
-                    wire_kind(def)
+                    wire_kind(&def)
                 },
                 mana_cost: if face_down {
                     wire_cost(engine::Cost::FREE)
@@ -861,25 +945,45 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
         .stack()
         .into_iter()
         .map(|entry| match entry {
-            engine::StackEntry::Spell(id) => StackObjectView {
-                kind: "spell".to_string(),
-                source: id,
-                controller: game.controller_of(id).0,
-                label: game.def_of(id).name.to_string(),
-                target: game.spell_target(id).map(WireTarget::of),
-            },
+            engine::StackEntry::Spell(id) => {
+                let targets: Vec<WireTarget> = game
+                    .spell_targets(id)
+                    .into_iter()
+                    .map(WireTarget::of)
+                    .collect();
+                let (print, card_id, name) = stack_source_art(game, id);
+                StackObjectView {
+                    kind: "spell".to_string(),
+                    source: id,
+                    controller: game.controller_of(id).0,
+                    label: named_message("card.name", game.def_of(id).name),
+                    target: game.spell_target(id).map(WireTarget::of),
+                    targets,
+                    print,
+                    card_id,
+                    name,
+                }
+            }
             engine::StackEntry::Ability {
                 controller,
                 source,
                 effect,
                 target,
-            } => StackObjectView {
-                kind: "ability".to_string(),
-                source,
-                controller: controller.0,
-                label: effect.label(),
-                target: target.map(WireTarget::of),
-            },
+            } => {
+                let targets: Vec<WireTarget> = target.map(WireTarget::of).into_iter().collect();
+                let (print, card_id, name) = stack_source_art(game, source);
+                StackObjectView {
+                    kind: "ability".to_string(),
+                    source,
+                    controller: controller.0,
+                    label: to_wire_message(effect.message()),
+                    target: targets.first().copied(),
+                    targets,
+                    print,
+                    card_id,
+                    name,
+                }
+            }
         })
         .collect();
 
@@ -949,9 +1053,11 @@ pub enum StreamFrame {
 
 #[cfg(test)]
 mod tests {
-    use crate::dto::{CommanderDamageView, PendingChoiceView, WireKind};
+    use crate::dto::{CommanderDamageView, MessageRef, PendingChoiceView, WireKind};
     use crate::intent::{WireAttack, WireTarget};
-    use crate::test_support::{def, pass_until_choice, refresh_via_mana_tap, resolve_top_of_stack};
+    use crate::test_support::{
+        card_id, def, pass_until_choice, refresh_via_mana_tap, resolve_top_of_stack,
+    };
     use engine::{Defender, Effect, Game, ObjectId, PlayerId, TokenEffect};
 
     use super::{SPECTATOR_VIEWER, StreamFrame, ViewExtras, complete_visible};
@@ -963,6 +1069,14 @@ mod tests {
 
     fn spectator_snapshot(game: &Game) -> crate::dto::VisibleState {
         complete_visible(game, None, &ViewExtras::default())
+    }
+
+    fn message_name(label: &MessageRef) -> Option<&str> {
+        label
+            .params
+            .iter()
+            .find(|param| param.name == "name")
+            .and_then(|param| param.string_value.as_deref())
     }
 
     /// CR 709.4a: a split card is cast one half at a time, so the client needs one labelled
@@ -985,9 +1099,12 @@ mod tests {
         assert_eq!(
             halves
                 .iter()
-                .map(|a| (a.label.as_str(), a.ability_index, a.section.as_str()))
+                .map(|a| (message_name(&a.label), a.ability_index, a.section.as_str()))
                 .collect::<Vec<_>>(),
-            vec![("Fire", Some(0), "hand"), ("Ice", Some(1), "hand")],
+            vec![
+                (Some("Fire"), Some(0), "hand"),
+                (Some("Ice"), Some(1), "hand")
+            ],
         );
         assert!(
             !halves[0].needs_target,
@@ -1007,13 +1124,14 @@ mod tests {
             player: PlayerId(0),
             object: 7,
             from: 3,
-            card: def("Shock"),
+            card: card_id("Shock"),
         };
         let extras = ViewExtras {
             yields: [true, false, false, false],
             turn_yields: [false, true, false, false],
             stack_hold_remaining_ms: 900,
             usernames: ["alice".into(), "bob".into(), String::new(), String::new()],
+            gravatar_hashes: Default::default(),
             prints: Default::default(),
         };
 
@@ -1022,7 +1140,7 @@ mod tests {
             viewer: Some(PlayerId(0)),
             seq: 5,
             events: std::slice::from_ref(&draw),
-            auto_actions: vec!["Only one legal target — chosen automatically".into()],
+            auto_actions: vec![MessageRef::key("auto.only_one_legal_target")],
             extras: &extras,
         }) else {
             panic!("expected a delta frame");
@@ -1043,8 +1161,11 @@ mod tests {
         assert_eq!(env.state.stack_hold_remaining_ms, 900);
         assert_eq!(env.state.players[0].username, "alice");
         assert_eq!(
-            env.auto_actions,
-            vec!["Only one legal target — chosen automatically"]
+            env.auto_actions
+                .iter()
+                .map(|m| m.key.as_str())
+                .collect::<Vec<_>>(),
+            vec!["auto.only_one_legal_target"]
         );
 
         let StreamFrame::Delta(spectator) = compose_delta(DeltaCompose {
@@ -1077,6 +1198,7 @@ mod tests {
             turn_yields: [true, false, false, false],
             stack_hold_remaining_ms: 1500,
             usernames: ["alice".into(), "bob".into(), String::new(), String::new()],
+            gravatar_hashes: Default::default(),
             prints: Default::default(),
         };
 
@@ -1100,6 +1222,21 @@ mod tests {
         );
         assert_eq!(spectating.stack_hold_remaining_ms, 1500);
         assert_eq!(spectating.players[0].username, "alice");
+    }
+
+    #[test]
+    fn complete_visible_stamps_gravatar_hashes() {
+        let game = Game::new();
+        let extras = ViewExtras {
+            usernames: ["alice".into(), "bob".into(), String::new(), String::new()],
+            gravatar_hashes: ["abc".into(), String::new(), String::new(), String::new()],
+            ..ViewExtras::default()
+        };
+
+        let snap = complete_visible(&game, Some(PlayerId(0)), &extras);
+
+        assert_eq!(snap.players[0].gravatar_hash, "abc");
+        assert_eq!(snap.players[1].gravatar_hash, "");
     }
 
     #[test]
@@ -1541,7 +1678,8 @@ mod tests {
             mine.actions.iter().any(|a| a.kind == "play_land"
                 && a.object == Some(hand_land)
                 && a.section == "hand"
-                && a.label == "Forest"
+                && a.label.key == "action.card_name"
+                && message_name(&a.label) == Some("Forest")
                 && !a.needs_target),
             "the hand land is a play_land action from the hand section; got {:?}",
             mine.actions,
@@ -1550,7 +1688,8 @@ mod tests {
             mine.actions.iter().any(|a| a.kind == "cast"
                 && a.object == Some(commander)
                 && a.section == "command"
-                && a.label == "Grizzly Bear"
+                && a.label.key == "action.card_name"
+                && message_name(&a.label) == Some("Grizzly Bear")
                 && !a.needs_target),
             "the castable commander is a cast action from the command section; got {:?}",
             mine.actions,
@@ -1707,6 +1846,31 @@ mod tests {
     }
 
     #[test]
+    fn a_graveyard_activated_ability_buckets_under_the_graveyard_section() {
+        // Teacher's Pest (sos): "{B}{G}: Return this card from your graveyard to the battlefield
+        // tapped." Engine lists the activate from the GY; the wire section must match so the
+        // hand-bar Graveyard bucket (and not the battlefield radial) can offer it.
+        let mut game = Game::new();
+        game.fund_mana(PlayerId(0));
+        let pest = game.spawn_in_graveyard(PlayerId(0), def("Teacher's Pest"));
+        // Tap a land so `refresh_actions` runs (spawn helpers don't); mana is already funded.
+        let tapland = game.spawn_on_battlefield(PlayerId(0), def("Swamp"));
+        refresh_via_mana_tap(&mut game, tapland);
+
+        let snap = snapshot(&game, PlayerId(0));
+        let action = snap
+            .actions
+            .iter()
+            .find(|a| a.kind == "activate" && a.object == Some(pest))
+            .expect("Teacher's Pest GY activate is listed");
+        assert_eq!(
+            action.section, "graveyard",
+            "functions_in_graveyard activates bucket with escape/encore, not battlefield"
+        );
+        assert_eq!(action.ability_index, Some(1));
+    }
+
+    #[test]
     fn a_cycle_action_is_listed_from_the_hand() {
         let mut game = Game::new();
         game.fund_mana(PlayerId(0));
@@ -1747,7 +1911,8 @@ mod tests {
             .find(|a| a.kind == "cycle" && a.object == Some(massif))
             .expect("cycling land lists a cycle action");
         assert_eq!(cycle.section, "hand");
-        assert!(cycle.label.starts_with("Cycle:"));
+        assert_eq!(cycle.label.key, "action.cycle");
+        assert_eq!(message_name(&cycle.label), Some("Glittering Massif"));
         assert!(!cycle.needs_target);
         // Plain cycling has no sacrifice cost — the client must not open a sacrifice pick.
         assert_eq!(cycle.sacrifice_choices, None);
@@ -1843,7 +2008,8 @@ mod tests {
             .find(|a| a.kind == "cast_prepared" && a.object == Some(kirol))
             .expect("prepared Kirol lists cast_prepared");
         assert_eq!(action.section, "battlefield");
-        assert_eq!(action.label, "Pack a Punch");
+        assert_eq!(action.label.key, "action.card_name");
+        assert_eq!(message_name(&action.label), Some("Pack a Punch"));
         assert!(action.needs_target);
         assert!(
             !action.has_x,
@@ -1877,7 +2043,7 @@ mod tests {
             .expect("Equip is a listed activate action");
         assert_eq!(equip.ability_index, Some(1));
         assert_eq!(equip.section, "battlefield");
-        assert_eq!(equip.label, "Equip");
+        assert_eq!(equip.label.key, "effect.control_equip");
         assert!(
             equip.needs_target,
             "Equip targets the creature to attach to"
@@ -1947,8 +2113,8 @@ mod tests {
             modal_choose: 1,
             modal_choose_max: None,
             modal_choose_max_if_commander: false,
-            identity_pips: &[],
-            colors: &[],
+            identity_pips: empty_slice(),
+            colors: empty_slice(),
             devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
@@ -1956,14 +2122,15 @@ mod tests {
             free_cast_if: None,
             alternative_cost: None,
             cast_only_during_combat: false,
+            cast_only_before_attackers: false,
             approximates: None,
             oracle: None,
-            set: "",
-            subtypes: &[],
-            otags: &[],
-            keywords: &[],
-            conditional_keywords: &[],
-            abilities: &ABILITIES,
+            sets: empty_slice(),
+            subtypes: empty_slice(),
+            otags: empty_slice(),
+            keywords: empty_slice(),
+            conditional_keywords: empty_slice(),
+            abilities: ABILITIES.into(),
             cycling: None,
             cycling_sacrifice: SacrificeCost::None,
             flashback: None,
@@ -1983,14 +2150,15 @@ mod tests {
             enchant_graveyard: false,
             back: None,
             adventure: None,
-            halves: &[],
+            halves: empty_slice(),
             suspend: None,
             vanishing: None,
+            cast_x_max: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,
             encore: None,
-            hand_ability: &[],
+            hand_ability: empty_slice(),
             forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,
@@ -2041,7 +2209,10 @@ mod tests {
         match snap.pending_choice {
             Some(PendingChoiceView::OrderTriggers { count, labels, .. }) => {
                 assert_eq!(count, 2);
-                assert_eq!(labels, vec!["Gain 1 life", "Draw 1"]);
+                assert_eq!(
+                    labels.iter().map(|m| m.key.as_str()).collect::<Vec<_>>(),
+                    vec!["effect.life_gain", "effect.draw_cards"],
+                );
             }
             other => panic!("expected an OrderTriggers choice, got {other:?}"),
         }
@@ -2494,8 +2665,84 @@ mod tests {
         let snap = snapshot(&game, PlayerId(0));
         assert_eq!(snap.stack.len(), 1, "Shock is on the stack");
         assert_eq!(snap.stack[0].kind, "spell");
-        assert_eq!(snap.stack[0].label, "Shock");
+        assert_eq!(snap.stack[0].label.key, "card.name");
+        assert_eq!(message_name(&snap.stack[0].label), Some("Shock"));
         assert_eq!(snap.stack[0].target, Some(WireTarget::Object { id: bear }));
+        assert_eq!(snap.stack[0].targets, vec![WireTarget::Object { id: bear }]);
+    }
+
+    #[test]
+    fn a_snapshot_lists_all_targets_for_a_multi_target_spell() {
+        let mut game = Game::new();
+        game.fund_mana(PlayerId(0));
+        let bear = game.spawn_on_battlefield(PlayerId(1), def("Grizzly Bear"));
+        let elf = game.spawn_on_battlefield(PlayerId(1), def("Llanowar Elves"));
+        let bolt = game.spawn_in_hand(PlayerId(0), def("Electrolyze"));
+        game.submit(engine::Intent::Cast {
+            player: PlayerId(0),
+            object: bolt,
+            target: None,
+            x: 0,
+            modes: vec![],
+            discard_cost: vec![],
+            graveyard_exile: vec![],
+            sacrifice_cost: vec![],
+            kicked: false,
+            multikicker_count: 0,
+            bought_back: false,
+            evoked: false,
+            strive_count: 0,
+            replicate_count: 0,
+            alternative_cost: false,
+        })
+        .unwrap();
+        game.submit(engine::Intent::ChooseTargets {
+            player: PlayerId(0),
+            targets: vec![engine::Target::Object(bear), engine::Target::Object(elf)],
+        })
+        .unwrap();
+        // Divided damage may pause next; targets must already be on the spell.
+        let snap = snapshot(&game, PlayerId(0));
+        assert_eq!(snap.stack.len(), 1);
+        assert_eq!(
+            snap.stack[0].targets,
+            vec![
+                WireTarget::Object { id: bear },
+                WireTarget::Object { id: elf },
+            ]
+        );
+        assert_eq!(snap.stack[0].target, Some(WireTarget::Object { id: bear }));
+    }
+
+    #[test]
+    fn a_snapshot_lists_modal_spell_targets_from_chosen_modes() {
+        let mut game = Game::new();
+        game.fund_mana(PlayerId(0));
+        let bear = game.spawn_on_battlefield(PlayerId(1), def("Grizzly Bear"));
+        let abrade = game.spawn_in_hand(PlayerId(0), def("Abrade"));
+        game.submit(engine::Intent::Cast {
+            player: PlayerId(0),
+            object: abrade,
+            target: None,
+            x: 0,
+            modes: vec![(0, Some(engine::Target::Object(bear)))],
+            discard_cost: vec![],
+            graveyard_exile: vec![],
+            sacrifice_cost: vec![],
+            kicked: false,
+            multikicker_count: 0,
+            bought_back: false,
+            evoked: false,
+            strive_count: 0,
+            replicate_count: 0,
+            alternative_cost: false,
+        })
+        .unwrap();
+
+        let snap = snapshot(&game, PlayerId(0));
+        assert_eq!(snap.stack.len(), 1);
+        assert_eq!(snap.stack[0].target, Some(WireTarget::Object { id: bear }));
+        assert_eq!(snap.stack[0].targets, vec![WireTarget::Object { id: bear }]);
     }
 
     #[test]
@@ -2858,13 +3105,13 @@ mod tests {
         let p0 = PlayerId(0);
         let treasure = game.spawn_token_on_battlefield(p0, engine::treasure_token());
         let beast = cards::get_by_name("Beast Within").expect("Beast Within in pool");
-        let Effect::Sequence { steps } = beast.abilities[0].effect else {
+        let Effect::Sequence { steps } = &beast.abilities[0].effect else {
             panic!("Beast Within spell body");
         };
-        let Effect::Token(TokenEffect::Create { token, .. }) = steps[1] else {
+        let Effect::Token(TokenEffect::Create { token, .. }) = &steps[1] else {
             panic!("Beast Within create_token step");
         };
-        let beast_token = game.spawn_token_on_battlefield(p0, token);
+        let beast_token = game.spawn_token_on_battlefield(p0, token.clone());
 
         let snap = snapshot(&game, p0);
         let treasure_view = snap
@@ -2887,5 +3134,293 @@ mod tests {
         assert_eq!(beast_view.name, "Beast");
         assert_eq!(beast_view.print, "5871be0a-0fd6-441d-8f9e-76c66b5bd8bc");
         assert_eq!(beast_view.card_id, "6bb61f34-5d57-4eaa-a02c-f5d08c1ee920");
+    }
+
+    /// Master Warcraft (CR 508.1a) hands the attack declaration to its caster, so the client must
+    /// learn *whose* creatures to stage from the action itself — the caster's own battlefield is
+    /// the wrong answer, and so is the caster's own goad requirements.
+    #[test]
+    fn a_moved_declare_attackers_action_names_the_active_player_and_their_required_attacks() {
+        use engine::{Intent, Step};
+        let mut game = Game::with_players(3, 0);
+        let bear = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
+        game.goad(bear, PlayerId(1));
+        cast_master_warcraft(&mut game, PlayerId(1));
+
+        while game.current_step() != Step::DeclareAttackers {
+            game.submit(Intent::PassPriority {
+                player: game.priority_holder(),
+            })
+            .unwrap();
+        }
+
+        let caster = snapshot(&game, PlayerId(1));
+        let action = caster
+            .actions
+            .iter()
+            .find(|a| a.kind == "declare_attackers")
+            .expect("the caster declares this turn's attackers");
+        assert_eq!(
+            action.declare_for,
+            vec![0],
+            "the creatures on offer are the active player's"
+        );
+        assert_eq!(
+            action.required_attacks,
+            vec![WireAttack {
+                attacker: bear,
+                defender: 2,
+                defender_planeswalker: None,
+            }],
+            "the goaded creature belongs to the active player, not the declarer"
+        );
+        assert!(
+            !snapshot(&game, PlayerId(0))
+                .actions
+                .iter()
+                .any(|a| a.kind == "declare_attackers"),
+            "the active player no longer makes a declaration the engine would reject"
+        );
+    }
+
+    /// The block half moves *every* attacked seat's declaration at once (CR 509.1a), so one
+    /// action covers several players' creatures.
+    #[test]
+    fn a_moved_declare_blockers_action_names_every_attacked_seat() {
+        use engine::{Intent, Step};
+        let mut game = Game::with_players(4, 0);
+        let one = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
+        let two = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
+        // Each defender needs a creature of their own: a seat with nothing to block with is
+        // offered no declaration, moved or not.
+        game.spawn_on_battlefield(PlayerId(1), def("Grizzly Bear"));
+        game.spawn_on_battlefield(PlayerId(2), def("Grizzly Bear"));
+        cast_master_warcraft(&mut game, PlayerId(3));
+
+        while game.current_step() != Step::DeclareAttackers {
+            game.submit(Intent::PassPriority {
+                player: game.priority_holder(),
+            })
+            .unwrap();
+        }
+        game.submit(Intent::DeclareAttackers {
+            player: PlayerId(3),
+            attackers: vec![
+                (one, Defender::Player(PlayerId(1))),
+                (two, Defender::Player(PlayerId(2))),
+            ],
+        })
+        .unwrap();
+        while game.current_step() != Step::DeclareBlockers {
+            game.submit(Intent::PassPriority {
+                player: game.priority_holder(),
+            })
+            .unwrap();
+        }
+
+        let action = snapshot(&game, PlayerId(3))
+            .actions
+            .into_iter()
+            .find(|a| a.kind == "declare_blockers")
+            .expect("the caster declares every seat's blocks");
+        assert_eq!(action.declare_for, vec![1, 2]);
+        for defender in [PlayerId(1), PlayerId(2)] {
+            assert!(
+                !snapshot(&game, defender)
+                    .actions
+                    .iter()
+                    .any(|a| a.kind == "declare_blockers"),
+                "an attacked player whose declaration moved gets no block affordance"
+            );
+        }
+    }
+
+    /// An ordinary defender declares for themselves alone — the field is not Master-Warcraft-only
+    /// chrome, it is how the client learns whose creatures any block declaration covers.
+    #[test]
+    fn an_ordinary_declare_blockers_action_names_just_that_defender() {
+        use engine::{Intent, Step};
+        let mut game = Game::new();
+        let bear = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
+        game.spawn_on_battlefield(PlayerId(1), def("Grizzly Bear"));
+        while game.current_step() != Step::DeclareAttackers {
+            game.submit(Intent::PassPriority {
+                player: game.priority_holder(),
+            })
+            .unwrap();
+        }
+        game.submit(Intent::DeclareAttackers {
+            player: PlayerId(0),
+            attackers: vec![(bear, Defender::Player(PlayerId(1)))],
+        })
+        .unwrap();
+        while game.current_step() != Step::DeclareBlockers {
+            game.submit(Intent::PassPriority {
+                player: game.priority_holder(),
+            })
+            .unwrap();
+        }
+
+        let action = snapshot(&game, PlayerId(1))
+            .actions
+            .into_iter()
+            .find(|a| a.kind == "declare_blockers")
+            .expect("the attacked player declares their own blocks");
+        assert_eq!(action.declare_for, vec![1]);
+    }
+
+    /// Resolve a Master Warcraft cast by `caster` during the active player's begin-combat step,
+    /// leaving the game just before attackers are declared.
+    fn cast_master_warcraft(game: &mut Game, caster: PlayerId) {
+        use engine::{Intent, Step};
+        while game.current_step() != Step::BeginCombat {
+            game.submit(Intent::PassPriority {
+                player: game.priority_holder(),
+            })
+            .unwrap();
+        }
+        while game.priority_holder() != caster {
+            game.submit(Intent::PassPriority {
+                player: game.priority_holder(),
+            })
+            .unwrap();
+        }
+        let card = game.spawn_in_hand(caster, def("Master Warcraft"));
+        game.fund_mana(caster);
+        game.submit(Intent::Cast {
+            player: caster,
+            object: card,
+            target: None,
+            x: 0,
+            modes: vec![],
+            discard_cost: vec![],
+            graveyard_exile: vec![],
+            sacrifice_cost: vec![],
+            kicked: false,
+            bought_back: false,
+            evoked: false,
+            strive_count: 0,
+            replicate_count: 0,
+            multikicker_count: 0,
+            alternative_cost: false,
+        })
+        .unwrap();
+        while !game.stack().is_empty() {
+            game.submit(Intent::PassPriority {
+                player: game.priority_holder(),
+            })
+            .unwrap();
+        }
+    }
+
+    /// Sacrifice-as-cost (Evolving Wilds) leaves a Moved tombstone as the ability's `source`.
+    /// That id is omitted from `objects` (`live_object_ids` skips Moved), so stack art cannot
+    /// join against the object list — `StackObjectView.print` / `name` / `card_id` must ride on
+    /// the stack entry itself (same reason `ChoiceItem.print` exists for library picks).
+    #[test]
+    fn sacrifice_as_cost_ability_projects_source_art_on_the_stack_entry() {
+        let mut game = Game::new();
+        let p0 = PlayerId(0);
+        game.stack_library(p0, &[def("Forest")]);
+        let wilds = game.spawn_on_battlefield(p0, def("Evolving Wilds"));
+        let wilds_def = game.def_of(wilds);
+        let expected_print = wilds_def.default_print.to_string();
+        let expected_card_id = wilds_def.id.to_string();
+
+        game.submit(engine::Intent::ActivateAbility {
+            player: p0,
+            object: wilds,
+            ability_index: 0,
+            target: None,
+            sacrifice: vec![],
+            discard_cost: vec![],
+            x: 0,
+        })
+        .expect("activate Evolving Wilds");
+
+        assert_eq!(game.zone_of(wilds), engine::Zone::Graveyard);
+        assert_ne!(
+            game.current_id(wilds),
+            wilds,
+            "sacrifice mints a new graveyard object id"
+        );
+
+        let snap = snapshot(&game, p0);
+        assert!(
+            snap.objects.iter().all(|o| o.id != wilds),
+            "Moved tombstone must not appear in objects"
+        );
+        let entry = snap
+            .stack
+            .iter()
+            .find(|e| e.kind == "ability" && e.source == wilds)
+            .expect("ability on stack keyed by the activation source id");
+        assert_eq!(entry.print, expected_print);
+        assert_eq!(entry.name, "Evolving Wilds");
+        assert_eq!(entry.card_id, expected_card_id);
+
+        // Deck-chosen Printings overlay onto stack entries the same way as ChoiceItem picks.
+        let preferred = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+        let mut prints: [std::collections::HashMap<String, String>; 4] = Default::default();
+        prints[0].insert(expected_card_id, preferred.into());
+        let with_seat = complete_visible(
+            &game,
+            Some(p0),
+            &ViewExtras {
+                prints,
+                ..ViewExtras::default()
+            },
+        );
+        let seated = with_seat
+            .stack
+            .iter()
+            .find(|e| e.kind == "ability" && e.source == wilds)
+            .expect("ability still on stack");
+        assert_eq!(seated.print, preferred);
+    }
+
+    /// Tokens cease to exist (`Object::Removed`) instead of becoming a graveyard card (CR 111.7).
+    /// A Food's "{2}, {T}, Sacrifice this: gain 3 life" still leaves an ability on the stack keyed
+    /// by that Removed id — stack art must read last-known identity, not panic / blank.
+    #[test]
+    fn sacrifice_as_cost_token_ability_projects_source_art_on_the_stack_entry() {
+        let mut game = Game::new();
+        let p0 = PlayerId(0);
+        game.fund_mana(p0);
+        let food_def =
+            cards::get_token("a468338f-635e-4206-89d6-72d723071d45").expect("Food token profile");
+        let expected_print = food_def.default_print.to_string();
+        let expected_card_id = food_def.id.to_string();
+        let food = game.spawn_token_on_battlefield(p0, food_def);
+
+        game.submit(engine::Intent::ActivateAbility {
+            player: p0,
+            object: food,
+            ability_index: 0,
+            target: None,
+            sacrifice: vec![],
+            discard_cost: vec![],
+            x: 0,
+        })
+        .expect("activate Food");
+
+        assert!(
+            !game.live_object_ids().contains(&food),
+            "Food token ceases to exist as the activation cost"
+        );
+
+        let snap = snapshot(&game, p0);
+        assert!(
+            snap.objects.iter().all(|o| o.id != food),
+            "Removed token must not appear in objects"
+        );
+        let entry = snap
+            .stack
+            .iter()
+            .find(|e| e.kind == "ability" && e.source == food)
+            .expect("Food ability on stack keyed by the sacrificed token id");
+        assert_eq!(entry.print, expected_print);
+        assert_eq!(entry.name, "Food");
+        assert_eq!(entry.card_id, expected_card_id);
     }
 }

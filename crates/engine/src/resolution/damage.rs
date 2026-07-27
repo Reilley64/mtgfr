@@ -195,6 +195,17 @@ impl Game {
                             *else_
                         }
                     }
+                    // Sulfurous Blast's "If you cast this spell during your main phase... instead"
+                    // reads the resolving *spell's* own cast-timing flag, not any one creature's —
+                    // same "pick it once against the true source" reasoning as `IfSpellKicked`
+                    // above.
+                    Amount::IfSpellCastDuringMainPhase { then, else_ } => {
+                        if self.spell_cast_during_main_phase(source) {
+                            *then
+                        } else {
+                            *else_
+                        }
+                    }
                     // Disaster Radius's "X is the revealed card's mana value" (CR 601.2g) reads
                     // the resolving *spell's* own reveal-cost record, not any one creature's —
                     // same "pick it once against the true source" reasoning as `IfSpellKicked`
@@ -255,6 +266,37 @@ impl Game {
                     })
                     .collect()
             }
+            // The old "Radiance" keyword action (Cleansing Beam): "deals `amount` damage to
+            // target creature and each other creature that shares a color with it" (CR 105.2).
+            // `target` is the one real target — already re-checked by `target_still_legal` for
+            // legality/protection/hexproof before this runs — and expands into
+            // `Game::radiance_batch`; `amount` doesn't vary per creature (no pool Radiance card
+            // reads `Amount::SourcePower`), so it's resolved once, like `DamageEffect::Target`.
+            // Each swept creature still gets its own protection/Phantom Centaur/Tajic check,
+            // same as `EachCreature`'s per-creature checks above — only the chosen target was a
+            // real target, the rest of the batch is untargeted.
+            DamageEffect::Radiance { amount, .. } => {
+                let chosen = expect_object_target(target, "a radiance target");
+                let amount = self.resolve_amount(amount, controller, source, target, x);
+                self.radiance_batch(chosen)
+                    .into_iter()
+                    .filter(|&id| !self.damage_prevented_by_protection(id, Some(source)))
+                    .filter(|&id| !self.noncombat_damage_prevented_to_creature(id))
+                    .flat_map(|object| {
+                        // Phantom Centaur's self-shield prevents its own share and removes one
+                        // of its own +1/+1 counters instead (CR 615).
+                        if self.phantom_shield_active(object) {
+                            return self.phantom_shield_counter_removal(object, amount);
+                        }
+                        vec![Event::DamageMarked {
+                            object,
+                            amount,
+                            source: Some(source),
+                        }]
+                    })
+                    .collect()
+            }
+
             // Breath of Darigaaz's "... and each player": real damage to every player, the
             // ability's own controller included — mirrors `DealDamage`'s `Target::Player` arm
             // (life loss + `DamageDealtToPlayer` + lifelink), fanned out once per living player

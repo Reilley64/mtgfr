@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/types";
 import { ZONE } from "../geometry/layout";
 import { handView } from "./hand";
@@ -38,7 +39,7 @@ function action(id: number, overrides: Partial<ActionView> = {}): ActionView {
   return {
     id,
     kind: "cast",
-    label: `Cast ${id}`,
+    label: testMessageRef(`Cast ${id}`),
     needs_target: false,
     object: id,
     section: "hand",
@@ -101,6 +102,26 @@ function findTestId(node: unknown, id: string): unknown | null {
   return null;
 }
 
+function collectTestIds(node: unknown): string[] {
+  const ids: string[] = [];
+  const walk = (current: unknown) => {
+    const id = testId(current);
+    if (id != null) ids.push(id);
+    if (current == null || typeof current !== "object") return;
+    const n = current as { children?: unknown[] };
+    for (const child of n.children ?? []) walk(child);
+  };
+  walk(node);
+  return ids;
+}
+
+function attr(node: unknown, name: string): string | undefined {
+  if (node == null || typeof node !== "object") return undefined;
+  const n = node as { data?: { attrs?: Record<string, string> } };
+  const value = n.data?.attrs?.[name];
+  return typeof value === "string" ? value : undefined;
+}
+
 function className(node: unknown): string {
   if (node == null || typeof node !== "object") return "";
   const n = node as { data?: { class?: Record<string, boolean> } };
@@ -108,6 +129,13 @@ function className(node: unknown): string {
     .filter(([, active]) => active)
     .map(([name]) => name)
     .join(" ");
+}
+
+function styleValue(node: unknown, name: string): string | undefined {
+  if (node == null || typeof node !== "object") return undefined;
+  const n = node as { data?: { style?: Record<string, string> } };
+  const value = n.data?.style?.[name];
+  return typeof value === "string" ? value : undefined;
 }
 
 function treeHasClass(node: unknown, token: string): boolean {
@@ -196,6 +224,32 @@ describe("handView playable outlines", () => {
     expect(exile).toContain("outline-exile-outline");
   });
 
+  it("shows a graveyard-section activate on the graveyard bar (Teacher's Pest self-return)", () => {
+    const pest = object(62, {
+      zone: ZONE.Graveyard,
+      name: "Teacher's Pest",
+      kind: { kind: "creature", power: 1, toughness: 1 },
+    });
+    const tree = renderHand(
+      state({
+        objects: [pest],
+        actions: [
+          action(62, {
+            object: pest.id,
+            section: "graveyard",
+            kind: "activate",
+            label: testMessageRef("Return this card from your graveyard to the battlefield tapped"),
+          }),
+        ],
+      }),
+    );
+
+    const face = findTestId(tree, "hand-card-face-62");
+    expect(face).not.toBeNull();
+    expect(className(face)).toContain("ring-playable-border");
+    expect(className(face)).toContain("outline-graveyard-outline");
+  });
+
   it("keeps commander gold on an unplayable command-zone commander", () => {
     const commander = object(9, {
       zone: ZONE.Command,
@@ -232,5 +286,181 @@ describe("handView playable outlines", () => {
     const face = className(findTestId(tree, "hand-card-face-9"));
     expect(face).toContain("ring-playable-border");
     expect(face).toContain("outline-commander-gold");
+  });
+});
+
+describe("handView drag chrome", () => {
+  it("moves playable border from source to ghost while dragging", () => {
+    const castable = object(42, { name: "Lightning Bolt" });
+    const cast = action(7, { object: 42 });
+    const tree = handView({
+      state: state({ objects: [castable], actions: [cast] }),
+      hiddenId: null,
+      flyingIds: new Set(),
+      hiddenIds: new Set(),
+      handDrag: {
+        action: cast,
+        name: "Lightning Bolt",
+        print: "bolt-print",
+        manaCost: cost(),
+        zone: "hand",
+        x: 10,
+        y: 10,
+      },
+    });
+    const source = findTestId(tree, "hand-card-face-42");
+    expect(className(source)).not.toContain("ring-playable-border");
+    expect(treeHasClass(source, "opacity-25")).toBe(true);
+    const ghost = findTestId(tree, "hand-drag-ghost");
+    expect(ghost).not.toBeNull();
+    expect(treeHasClass(ghost, "ring-playable-border")).toBe(true);
+    expect(treeHasClass(ghost, "drop-shadow-drag")).toBe(true);
+  });
+
+  it("applies drop-shadow-drag on name-only drag ghost fallback", () => {
+    const castable = object(42, { name: "Lightning Bolt", print: "" });
+    const cast = action(7, { object: 42 });
+    const tree = handView({
+      state: state({ objects: [castable], actions: [cast] }),
+      hiddenId: null,
+      flyingIds: new Set(),
+      hiddenIds: new Set(),
+      handDrag: {
+        action: cast,
+        name: "Lightning Bolt",
+        print: "",
+        manaCost: cost(),
+        zone: "hand",
+        x: 10,
+        y: 10,
+      },
+    });
+    const ghost = findTestId(tree, "hand-drag-ghost");
+    expect(ghost).not.toBeNull();
+    expect(treeHasClass(ghost, "drop-shadow-drag")).toBe(true);
+  });
+
+  it("uses command playable aura classes on a command-zone drag ghost", () => {
+    const commander = object(9, {
+      zone: ZONE.Command,
+      is_commander: true,
+      name: "Zimone, Quandrix Prodigy",
+    });
+    const cast = action(9, { object: 9, section: "command", kind: "cast" });
+    const tree = handView({
+      state: state({ objects: [commander], actions: [cast] }),
+      hiddenId: null,
+      flyingIds: new Set(),
+      hiddenIds: new Set(),
+      handDrag: {
+        action: cast,
+        name: commander.name,
+        print: "",
+        manaCost: commander.mana_cost,
+        zone: "command",
+        x: 10,
+        y: 10,
+      },
+    });
+    const ghost = findTestId(tree, "hand-drag-ghost");
+    expect(ghost).not.toBeNull();
+    expect(treeHasClass(ghost, "ring-playable-border")).toBe(true);
+    expect(treeHasClass(ghost, "outline-commander-gold")).toBe(true);
+  });
+
+  it("uses not-allowed on unplayable and grab on playable hit strips", () => {
+    const castable = object(42, { name: "Lightning Bolt" });
+    const uncastable = object(43, { name: "Cancel" });
+    const tree = renderHand(state({ objects: [castable, uncastable], actions: [action(7, { object: 42 })] }));
+    const playableHit = findTestId(tree, "hand-card-42");
+    const unplayableHit = findTestId(tree, "hand-card-43");
+    expect(className(playableHit)).toContain("cursor-grab");
+    expect(className(playableHit)).not.toContain("cursor-not-allowed");
+    expect(className(unplayableHit)).toContain("cursor-not-allowed");
+    expect(className(unplayableHit)).not.toContain("cursor-grab");
+  });
+});
+
+describe("handView multi-action cards", () => {
+  it("renders one hand tile when cast and two hand abilities are legal", () => {
+    const card = object(42, { name: "Valley Rannet", kind: { kind: "creature", power: 6, toughness: 3 } });
+    const tree = renderHand(
+      state({
+        objects: [card],
+        actions: [
+          action(1, { object: 42, kind: "cast" }),
+          action(2, { object: 42, kind: "activate_hand_ability", label: testMessageRef("Discard: Mountain") }),
+          action(3, { object: 42, kind: "activate_hand_ability", label: testMessageRef("Discard: Forest") }),
+        ],
+      }),
+    );
+    expect(findTestId(tree, "hand-card-42")).not.toBeNull();
+    expect(findTestId(tree, "hand-card-face-42")).not.toBeNull();
+    const faces = collectTestIds(tree).filter((id) => id.startsWith("hand-card-face-"));
+    expect(faces).toEqual(["hand-card-face-42"]);
+  });
+
+  it("omits Discard caption when multiple modes are legal", () => {
+    const card = object(42, { name: "Valley Rannet" });
+    const tree = renderHand(
+      state({
+        objects: [card],
+        actions: [
+          action(2, { object: 42, kind: "activate_hand_ability" }),
+          action(3, { object: 42, kind: "activate_hand_ability" }),
+        ],
+      }),
+    );
+    const hit = findTestId(tree, "hand-card-42");
+    expect(className(hit)).not.toContain("Discard");
+    expect(findTestId(tree, "hand-caption-42")).toBeNull();
+    expect(attr(hit, "aria-label")).toBe("Valley Rannet");
+  });
+});
+
+describe("handView hover stacking", () => {
+  it("keeps resting hand z overridable from the tile root", () => {
+    const a = object(42, { name: "Lightning Bolt" });
+    const b = object(43, { name: "Cancel" });
+    const tree = renderHand(state({ objects: [a, b], actions: [action(7, { object: 42 })] }));
+
+    const root = findTestId(tree, "hand-tile-42");
+    expect(root).not.toBeNull();
+    expect(treeHasClass(root, "group/hand-tile")).toBe(true);
+    expect(treeHasClass(root, "[z-index:var(--hand-z)]")).toBe(true);
+    expect(treeHasClass(root, "hover:[z-index:50]")).toBe(true);
+    expect(styleValue(root, "--hand-z")).toBe("1");
+    expect(styleValue(root, "z-index")).toBeUndefined();
+
+    const face = findTestId(tree, "hand-card-face-42");
+    expect(className(face)).not.toContain("group-hover/hand-tile:z-30");
+    // Face may still live under a wrapper — assert the tree no longer uses face hover z-30:
+    expect(treeHasClass(tree, "group-hover/hand-tile:z-30")).toBe(false);
+  });
+
+  it("does not elevate z for discard-selected without relying on selection z", () => {
+    const a = object(42, { name: "Lightning Bolt" });
+    const tree = handView({
+      state: state({ objects: [a], actions: [] }),
+      hiddenId: null,
+      flyingIds: new Set(),
+      hiddenIds: new Set(),
+      handDrag: null,
+      discardCostIds: new Set([42]),
+      discardSelectedIds: new Set([42]),
+    });
+    const root = findTestId(tree, "hand-tile-42");
+    expect(root).not.toBeNull();
+    // Root still has hover elevate available, but selection alone must not add a selected z class.
+    expect(treeHasClass(root, "[z-index:var(--hand-z)]")).toBe(true);
+    expect(treeHasClass(root, "hover:[z-index:50]")).toBe(true);
+    expect(styleValue(root, "--hand-z")).toBe("1");
+    expect(styleValue(root, "z-index")).toBeUndefined();
+    expect(className(root)).not.toContain("z-30");
+    expect(treeHasClass(root, "z-50")).toBe(false); // bare z-50 without hover: prefix
+    const face = findTestId(tree, "hand-card-face-42");
+    expect(className(face)).toContain("ring-llanowar");
+    // Face raise for selection must not use elevated z-30:
+    expect(treeHasClass(findTestId(tree, "hand-tile-42"), "z-30")).toBe(false);
   });
 });

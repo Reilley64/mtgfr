@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
 import {
   buildTakeActionIntent,
@@ -7,7 +8,9 @@ import {
   planCastClickResolution,
   planCostPipeline,
   planHandDrop,
+  planHandPlay,
   planRunAction,
+  reconcilePlayModeModes,
   settleSacrificePick,
   stagedCastSubmission,
   usedCostPick,
@@ -16,7 +19,7 @@ import {
 const mkAction = (over: Partial<ActionView> = {}): ActionView => ({
   id: 1,
   kind: "cast",
-  label: "Bolt",
+  label: testMessageRef("Bolt"),
   needs_target: false,
   section: "hand",
   ...over,
@@ -127,7 +130,7 @@ describe("planCastClickResolution", () => {
 
 describe("stagedCastSubmission", () => {
   it("keeps escape exile picks when the player names a target", () => {
-    const action = mkAction({ id: 42, needs_target: true, label: "Sentinel's Eyes" });
+    const action = mkAction({ id: 42, needs_target: true, label: testMessageRef("Sentinel's Eyes") });
     const picks = { ...emptyCostPicks(), graveyard_exile: [8, 9], gy_exile_settled: true };
     const sub = stagedCastSubmission({ action, picks }, { kind: "object", id: 3 });
     const intent = buildTakeActionIntent(0, sub.action.id, sub.target, 0, [], sub.picks);
@@ -145,6 +148,29 @@ describe("findCastActionForObject", () => {
 
   it("returns undefined when no cast action exists", () => {
     expect(findCastActionForObject([mkAction({ kind: "play_land", object: 1 })], 1)).toBeUndefined();
+  });
+});
+
+describe("planHandPlay", () => {
+  it("ignores drops below the play threshold", () => {
+    expect(planHandPlay([mkAction()], 900, 800)).toEqual({ kind: "ignore" });
+  });
+  it("auto-selects when exactly one mode is legal", () => {
+    const action = mkAction({ id: 7 });
+    expect(planHandPlay([action], 100, 800)).toEqual({ kind: "single", action });
+  });
+  it("asks to choose when two or more modes are legal", () => {
+    const a = mkAction({ id: 1, kind: "cast" });
+    const b = mkAction({ id: 2, kind: "cycle" });
+    expect(planHandPlay([b, a], 100, 800)).toEqual({ kind: "choose", modes: [a, b] });
+  });
+});
+
+describe("reconcilePlayModeModes", () => {
+  it("drops modes whose action ids left the legal list", () => {
+    const a = mkAction({ id: 1 });
+    const b = mkAction({ id: 2 });
+    expect(reconcilePlayModeModes([a, b], [b]).map((x) => x.id)).toEqual([2]);
   });
 });
 
@@ -190,7 +216,7 @@ describe("planHandDrop", () => {
         { kind: "object", id: 3 },
       ],
       sacrifice_choices: [3, 4],
-      label: "Gain life and put counters",
+      label: testMessageRef("Gain life and put counters"),
     });
     const picks = { ...emptyCostPicks(), sacrifice: 3 };
     expect(planCostPipeline(action, card(1), picks)).toEqual({
@@ -286,7 +312,7 @@ describe("planRunAction", () => {
     const action = mkAction({
       id: 42,
       object: 77,
-      label: "Sentinel's Eyes",
+      label: testMessageRef("Sentinel's Eyes"),
       needs_target: true,
       targets: [{ kind: "object", id: 2 }],
       graveyard_exile_choices: [8, 9],

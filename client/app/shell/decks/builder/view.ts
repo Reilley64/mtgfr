@@ -1,17 +1,26 @@
 import { Effect, Option, Queue, Schema as S, Stream } from "effect";
+import { Submodel } from "foldkit";
 import { type Html, html } from "foldkit/html";
 import * as Mount from "foldkit/mount";
-import { cn } from "../../../../lib/cn";
-import { cardHoverPreviewView } from "../../../../lib/deck-builder/card-hover-preview";
-import { DECK_SIZE, deckCount, sortedDeckList } from "../../../../lib/deck-builder/cards";
-import { formatReleasedAt } from "../../../../lib/deck-builder/print";
-import type { ScryfallPrint } from "../../../../lib/deck-builder/scryfall";
-import { appVersionBadge } from "../../../../lib/ui/app-version";
-import { buttonClass } from "../../../../lib/ui/buttonClass";
-import { cardArt } from "../../../../lib/ui/card-art";
-import { confirmDialog, OpenDialogAsModal } from "../../../../lib/ui/confirmDialog";
-import { feltClass, fieldClass } from "../../../../lib/ui/surfaces";
-import type { Message } from "../../../messages";
+import { cn } from "../../../domain/cn";
+import { cardHoverPreviewView } from "../../../domain/deck-builder/card-hover-preview";
+import { DECK_SIZE, deckCount, sortedDeckList } from "../../../domain/deck-builder/cards";
+import { formatReleasedAt } from "../../../domain/deck-builder/print";
+import type { ScryfallPrint } from "../../../domain/deck-builder/scryfall";
+import type { AppChromeMeta } from "../../../domain/ui/app-version";
+import { buttonClass } from "../../../domain/ui/buttonClass";
+import { cardArt } from "../../../domain/ui/card-art";
+import { confirmDialog, OpenDialogAsModal } from "../../../domain/ui/confirmDialog";
+import { alertClass, fieldClass } from "../../../domain/ui/surfaces";
+import type {
+  CardArtTick,
+  ClosedAccountMenu,
+  GotAuthMessage,
+  ModalOpened,
+  ToggledAccountMenu,
+} from "../../../messages";
+import { accountChrome } from "../../account-chrome/view";
+import { shellFrame } from "../../frame/shell-frame";
 import {
   ActivatedBuilderTarget,
   CancelledBuilderDiscard,
@@ -21,6 +30,7 @@ import {
   ClosedBuilderMenu,
   ClosedBuilderPrintPicker,
   ConfirmedBuilderDiscard,
+  type Message,
   MovedBuilderHover,
   OpenedBuilderMenu,
   PickedBuilderPrint,
@@ -31,7 +41,15 @@ import {
 } from "./messages";
 import type { DeckBuilderSubmodel } from "./submodel";
 
-const h = html<Message>();
+export type ViewMessage =
+  | Message
+  | typeof ModalOpened.Type
+  | typeof CardArtTick.Type
+  | typeof ClosedAccountMenu.Type
+  | typeof GotAuthMessage.Type
+  | typeof ToggledAccountMenu.Type;
+
+const h = html<ViewMessage>();
 
 const CONTEXT_MENU_PRESS_MS = 500;
 
@@ -329,7 +347,10 @@ function printPicker(model: DeckBuilderSubmodel): Html {
             ],
           ),
           h.div(
-            [h.Class(cn(PRINT_PICKER_GRID, "max-h-[min(60vh,720px)] overflow-y-auto"))],
+            [
+              h.Class(cn(PRINT_PICKER_GRID, "max-h-[min(60vh,720px)] overflow-y-auto overscroll-contain")),
+              h.DataAttribute("testid", "builder-print-picker-scroll"),
+            ],
             [
               !picker.loading && picker.error
                 ? h.div(
@@ -361,6 +382,9 @@ function poolTile(model: DeckBuilderSubmodel, card: DeckBuilderSubmodel["pool"][
   const print = model.preferredPrint[card.id] ?? card.default_print;
   return h.button(
     [
+      // Key by oracle id: BindBuilderCardPointer captures cardId at mount; without a
+      // stable key, snabbdom reuses the node after list churn and clicks keep the old id.
+      h.Key(card.id),
       h.Type("button"),
       h.DataAttribute("testid", `pool-card-${card.id}`),
       h.Class(cn(POOL_CARD, offIdentity(model, card) && "opacity-40")),
@@ -383,182 +407,220 @@ function skeletonTile(): Html {
   );
 }
 
-export function view(model: DeckBuilderSubmodel, apiVersion: string | null): Html {
+export type ViewInputs = {
+  readonly chrome: AppChromeMeta;
+  readonly username: string;
+  readonly meGravatarHash: string | null;
+  readonly accountMenuOpen: boolean;
+};
+
+export const view = Submodel.defineView<DeckBuilderSubmodel, ViewMessage, ViewInputs>((model, viewInputs) => {
   const rows = sortedDeckList(model.entries, model.known);
   const count = deckCount(model.entries);
+  const backgroundScrollLocked = model.printPicker != null;
 
-  return h.main(
-    [
-      h.Class(
-        feltClass(
-          "grid h-full min-h-screen grid-cols-[minmax(0,1fr)_minmax(220px,min(32vw,360px))] gap-5 overflow-hidden p-xxl pt-[max(1.5rem,env(safe-area-inset-top))] pr-[max(1.5rem,env(safe-area-inset-right))] pb-[max(1.5rem,env(safe-area-inset-bottom))] pl-[max(1.5rem,env(safe-area-inset-left))]",
+  return shellFrame(h, {
+    atmosphere: "shell",
+    title: model.editingId == null ? "New deck" : "Edit deck",
+    chrome: viewInputs.chrome,
+    lockStageScroll: true,
+    leading: h.button(
+      [
+        h.Type("button"),
+        h.DataAttribute("testid", "builder-cancel"),
+        h.OnClick(RequestedBuilderCancel()),
+        h.Class(buttonClass("ghost")),
+      ],
+      ["Cancel"],
+    ),
+    trailing: h.div(
+      [h.Class("flex items-center gap-sm")],
+      [
+        h.button(
+          [
+            h.Type("button"),
+            h.DataAttribute("testid", "save-deck"),
+            h.Disabled(model.saving),
+            h.OnClick(SubmittedDeckSave()),
+            h.Class(buttonClass("primary", "shrink-0")),
+          ],
+          [model.saving ? "Saving…" : "Save deck"],
         ),
-      ),
-      h.DataAttribute("testid", "deck-builder-page"),
-    ],
-    [
-      h.section(
-        [h.Class("flex min-h-0 min-w-0 flex-col")],
-        [
-          h.h1([h.Class("m-0 text-title")], ["Card pool"]),
-          h.div(
-            [h.Class("text-label text-lichen"), h.DataAttribute("testid", "builder-pool-hint")],
-            ["Click to add. Right-click or long-press for print and other options. Only basics may exceed one copy."],
-          ),
-          h.label([h.Class("sr-only"), h.For("pool-search")], ["Search card pool"]),
-          h.input([
-            h.Id("pool-search"),
-            h.Type("search"),
-            h.Value(model.query),
-            h.Placeholder("Search name, type, subtype, color, set, tag…"),
-            h.OnInput((query) => ChangedBuilderQuery({ query })),
-            h.Class(fieldClass("mt-2 w-full")),
-          ]),
-          h.div(
-            [
-              h.Class(
-                "mt-3 grid min-h-0 flex-1 grid-cols-[repeat(auto-fill,minmax(120px,1fr))] content-start gap-md overflow-y-auto",
-              ),
-            ],
-            [
-              ...model.pool.map((card) => poolTile(model, card)),
-              ...(model.searching ? Array.from({ length: 10 }, () => skeletonTile()) : []),
-              !model.searching && model.pool.length === 0
-                ? h.div([h.Class("col-span-full text-label text-lichen")], ["No cards match."])
-                : null,
-              model.atEnd
-                ? null
-                : h.div(
-                    [
-                      h.Class("col-span-full h-px"),
-                      h.DataAttribute("testid", "builder-scroll-sentinel"),
-                      h.OnMount(ObserveBuilderSentinel()),
-                    ],
-                    [],
+        accountChrome(h, {
+          username: viewInputs.username,
+          gravatarHash: viewInputs.meGravatarHash,
+          menuOpen: viewInputs.accountMenuOpen,
+          showLeaderboardLink: true,
+        }),
+      ],
+    ),
+    stage: h.div(
+      [
+        // Fill the contained shell stage (not h-dvh): header + 100dvh overflowed the viewport and scrolled the page.
+        h.Class(
+          "grid h-full min-h-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(220px,min(32vw,360px))] grid-rows-[minmax(0,1fr)] gap-5 overflow-hidden",
+        ),
+        h.DataAttribute("testid", "deck-builder-page"),
+      ],
+      [
+        h.section(
+          [h.Class("flex min-h-0 min-w-0 flex-col")],
+          [
+            h.h2([h.Class("m-0 font-display text-title tracking-[-0.02em]")], ["Card pool"]),
+            h.div(
+              [h.Class("text-label text-lichen"), h.DataAttribute("testid", "builder-pool-hint")],
+              ["Click to add. Right-click or long-press for print and other options. Only basics may exceed one copy."],
+            ),
+            h.label([h.Class("sr-only"), h.For("pool-search")], ["Search card pool"]),
+            h.input([
+              h.Id("pool-search"),
+              h.Type("search"),
+              h.Value(model.query),
+              h.Placeholder("Search name, type, subtype, color, set, tag…"),
+              h.OnInput((query) => ChangedBuilderQuery({ query })),
+              h.Class(fieldClass("mt-2 w-full")),
+            ]),
+            h.div(
+              [
+                h.Class(
+                  cn(
+                    "mt-3 grid min-h-0 flex-1 grid-cols-[repeat(auto-fill,minmax(120px,1fr))] content-start gap-md overscroll-contain",
+                    backgroundScrollLocked ? "overflow-hidden" : "overflow-y-auto",
                   ),
-            ],
-          ),
-        ],
-      ),
-      h.aside(
-        [h.Class("flex min-w-0 flex-col gap-3")],
-        [
-          h.h2([h.Class("m-0 text-title")], [model.editingId == null ? "New deck" : "Edit deck"]),
-          h.label([h.Class("sr-only"), h.For("deck-name")], ["Deck name"]),
-          h.input([
-            h.Id("deck-name"),
-            h.DataAttribute("testid", "deck-name"),
-            h.Value(model.name),
-            h.OnInput((name) => ChangedBuilderName({ name })),
-            h.Class(fieldClass("w-full")),
-          ]),
-          h.div([h.Class("text-label text-lichen")], ["Commander"]),
-          model.commander.id === ""
-            ? h.div(
-                [h.Class("text-label text-lichen")],
-                ["Right-click or long-press a legendary creature to set commander or choose its art."],
-              )
-            : h.button(
-                [
-                  h.Type("button"),
-                  h.DataAttribute("testid", "builder-commander"),
-                  h.Class(
-                    "flex w-full cursor-pointer items-center gap-sm rounded-control border border-vine bg-glass-dim px-sm py-xs text-left",
-                  ),
-                  h.OnMount(BindBuilderCardPointer({ cardId: model.commander.id, kind: "commander" })),
-                ],
-                [
-                  builderCardArt(
-                    model.commander.print,
-                    model.known[model.commander.id]?.name ?? model.commander.id,
-                    "aspect-[0.72] w-10 rounded-focus object-cover",
-                  ),
-                  h.span(
-                    [h.Class("min-w-0 flex-1 truncate font-semibold")],
-                    [`★ ${model.known[model.commander.id]?.name ?? model.commander.id}`],
-                  ),
-                ],
-              ),
-          h.div(
-            [h.Class("flex items-center justify-between gap-sm")],
-            [
-              h.b([], ["Cards"]),
-              h.span(
-                [h.Class(cn("shrink-0 text-caution-amber", count === DECK_SIZE && "text-vine"))],
-                [`${count}/${DECK_SIZE}${model.commander.id ? " + commander" : ""}`],
-              ),
-            ],
-          ),
-          h.div(
-            [h.Class("flex max-h-[40vh] min-h-0 flex-1 flex-col gap-1 overflow-y-auto")],
-            [
-              ...rows.map((row) =>
-                h.button(
+                ),
+                h.DataAttribute("testid", "builder-pool-scroll"),
+              ],
+              [
+                ...model.pool.map((card) => poolTile(model, card)),
+                ...(model.searching ? Array.from({ length: 10 }, () => skeletonTile()) : []),
+                !model.searching && model.pool.length === 0
+                  ? h.div([h.Class("col-span-full text-label text-lichen")], ["No cards match."])
+                  : null,
+                model.atEnd
+                  ? null
+                  : h.div(
+                      [
+                        h.Class("col-span-full h-px"),
+                        h.DataAttribute("testid", "builder-scroll-sentinel"),
+                        h.OnMount(ObserveBuilderSentinel()),
+                      ],
+                      [],
+                    ),
+              ],
+            ),
+          ],
+        ),
+        h.aside(
+          [h.Class("flex min-h-0 min-w-0 flex-col gap-3")],
+          [
+            h.label([h.Class("sr-only"), h.For("deck-name")], ["Deck name"]),
+            h.input([
+              h.Id("deck-name"),
+              h.DataAttribute("testid", "deck-name"),
+              h.Value(model.name),
+              h.OnInput((name) => ChangedBuilderName({ name })),
+              h.Class(fieldClass("w-full")),
+            ]),
+            h.div([h.Class("text-label text-lichen")], ["Commander"]),
+            model.commander.id === ""
+              ? h.div(
+                  [h.Class("text-label text-lichen")],
+                  ["Right-click or long-press a legendary creature to set commander or choose its art."],
+                )
+              : h.button(
                   [
+                    h.Key(model.commander.id),
                     h.Type("button"),
-                    h.DataAttribute("testid", `deck-row-${row.id}`),
-                    h.Class(DECK_ROW),
-                    h.OnMount(BindBuilderCardPointer({ cardId: row.id, kind: "deck" })),
+                    h.DataAttribute("testid", "builder-commander"),
+                    h.Class(
+                      "flex w-full cursor-pointer items-center gap-sm rounded-control border border-vine bg-glass-dim px-sm py-xs text-left",
+                    ),
+                    h.OnMount(BindBuilderCardPointer({ cardId: model.commander.id, kind: "commander" })),
                   ],
                   [
-                    builderCardArt(row.print, "", "aspect-[0.72] w-7 shrink-0 rounded-[3px] object-cover"),
-                    h.span(
-                      [h.Class("min-w-0 flex-1 truncate")],
-                      [
-                        `${row.legendary ? "★ " : ""}${row.name}`,
-                        row.id === model.commander.id
-                          ? h.span([h.Class("text-label text-lichen")], [" (commander)"])
-                          : null,
-                      ],
+                    builderCardArt(
+                      model.commander.print,
+                      model.known[model.commander.id]?.name ?? model.commander.id,
+                      "aspect-[0.72] w-10 rounded-focus object-cover",
                     ),
-                    h.span([h.Class("shrink-0 text-label text-lichen")], [`×${row.count}`]),
+                    h.span(
+                      [h.Class("min-w-0 flex-1 truncate font-semibold")],
+                      [`★ ${model.known[model.commander.id]?.name ?? model.commander.id}`],
+                    ),
                   ],
                 ),
-              ),
-            ],
-          ),
-          h.button(
-            [
-              h.Type("button"),
-              h.DataAttribute("testid", "save-deck"),
-              h.Disabled(model.saving),
-              h.OnClick(SubmittedDeckSave()),
-              h.Class(buttonClass("primary")),
-            ],
-            [model.saving ? "Saving…" : "Save deck"],
-          ),
-          h.button(
-            [
-              h.Type("button"),
-              h.DataAttribute("testid", "builder-cancel"),
-              h.OnClick(RequestedBuilderCancel()),
-              h.Class(buttonClass("ghost")),
-            ],
-            ["Cancel"],
-          ),
-          model.confirmingDiscard
-            ? confirmDialog(h, {
-                title: "Discard changes?",
-                body: "Everything you've edited since the deck loaded will be lost.",
-                confirmLabel: "Discard",
-                danger: true,
-                onConfirm: ConfirmedBuilderDiscard(),
-                onCancel: CancelledBuilderDiscard(),
-                testId: "builder-discard-confirm",
-              })
-            : null,
-          model.problems.length === 0
-            ? null
-            : h.div(
-                [h.Role("alert"), h.DataAttribute("testid", "deck-problems"), h.Class("flex flex-col gap-[3px]")],
-                [...model.problems.map((problem) => h.div([h.Class("text-burn-red text-caption")], [problem]))],
-              ),
-        ],
-      ),
-      hoverPreview(model),
-      contextMenu(model),
-      printPicker(model),
-      appVersionBadge(h, apiVersion),
-    ],
-  );
-}
+            h.div(
+              [h.Class("flex items-center justify-between gap-sm")],
+              [
+                h.b([], ["Cards"]),
+                h.span(
+                  [h.Class(cn("shrink-0 text-caution-amber", count === DECK_SIZE && "text-vine"))],
+                  [`${count}/${DECK_SIZE}${model.commander.id ? " + commander" : ""}`],
+                ),
+              ],
+            ),
+            h.div(
+              [
+                h.Class(
+                  cn(
+                    "flex max-h-[40vh] min-h-0 flex-1 flex-col gap-1 overscroll-contain",
+                    backgroundScrollLocked ? "overflow-hidden" : "overflow-y-auto",
+                  ),
+                ),
+                h.DataAttribute("testid", "builder-decklist-scroll"),
+              ],
+              [
+                ...rows.map((row) =>
+                  h.button(
+                    [
+                      // Key by oracle id so removing a row remounts BindBuilderCardPointer
+                      // for the next card (Mount args are captured once at insert).
+                      h.Key(row.id),
+                      h.Type("button"),
+                      h.DataAttribute("testid", `deck-row-${row.id}`),
+                      h.Class(DECK_ROW),
+                      h.OnMount(BindBuilderCardPointer({ cardId: row.id, kind: "deck" })),
+                    ],
+                    [
+                      builderCardArt(row.print, "", "aspect-[0.72] w-7 shrink-0 rounded-[3px] object-cover"),
+                      h.span(
+                        [h.Class("min-w-0 flex-1 truncate")],
+                        [
+                          `${row.legendary ? "★ " : ""}${row.name}`,
+                          row.id === model.commander.id
+                            ? h.span([h.Class("text-label text-lichen")], [" (commander)"])
+                            : null,
+                        ],
+                      ),
+                      h.span([h.Class("shrink-0 text-label text-lichen")], [`×${row.count}`]),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            model.confirmingDiscard
+              ? confirmDialog(h, {
+                  title: "Discard changes?",
+                  body: "Everything you've edited since the deck loaded will be lost.",
+                  confirmLabel: "Discard",
+                  danger: true,
+                  onConfirm: ConfirmedBuilderDiscard(),
+                  onCancel: CancelledBuilderDiscard(),
+                  testId: "builder-discard-confirm",
+                })
+              : null,
+            model.problems.length === 0
+              ? null
+              : h.div(
+                  [h.Role("alert"), h.DataAttribute("testid", "deck-problems"), h.Class(alertClass("text-burn-red"))],
+                  [...model.problems.map((problem) => h.div([h.Class("text-caption")], [problem]))],
+                ),
+          ],
+        ),
+        hoverPreview(model),
+        contextMenu(model),
+        printPicker(model),
+      ],
+    ),
+  });
+});

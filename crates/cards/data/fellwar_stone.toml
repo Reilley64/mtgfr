@@ -1,10 +1,10 @@
 # {T}: Add one mana of any color that a land an opponent controls could produce.
 name = "Fellwar Stone"
+sets = ["4bb", "4ed", "5ed", "9ed", "afc", "blc", "brc", "c15", "c16", "c17", "clb", "cm2", "cmd", "cmm", "dmc", "drk", "dsc", "ecc", "me3", "mkc", "moc", "msc", "ncc", "nec", "onc", "otc", "plst", "ptc", "ren", "sld", "soc", "tdc", "woc"]
 id = "95560508-7ac9-4be9-8a3f-3c7d5b52807b"
 default_print = "385b9f5e-81dd-49f6-a644-59d53245e3dc"
 otags = ["activated-ability", "mana-rock", "refund"]
 oracle = "{T}: Add one mana of any color that a land an opponent controls could produce."
-set = "soc"
 
 [cost]
 generic = 2

@@ -1,6 +1,8 @@
 //! `mtgfr.v1.Auth` — signup/login mint a session and hand the raw token back as
 //! `AuthSession.session_token` (cookies terminate at the BFF, which does the `Set-Cookie`).
 
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use axum::http::StatusCode;
 use tonic::{Request, Response, Status};
 
@@ -10,6 +12,7 @@ use crate::auth::{
     verify_password,
 };
 use crate::db::User;
+use crate::elo::STARTING_RATING;
 use crate::grpc::auth_ctx;
 use crate::grpc::pb;
 
@@ -50,10 +53,16 @@ impl pb::auth_server::Auth for AuthSvc {
         let username = validate_username(&cred.username).map_err(status_of)?;
         let mut db = self.state.db.clone();
         let hash = hash_password(&cred.password);
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|duration| duration.as_secs() as i64)
+            .unwrap_or(0);
         let user = User::create()
             .email(&cred.email)
             .username(&username)
             .password_hash(&hash)
+            .rating(STARTING_RATING)
+            .rating_set_at(now)
             .exec(&mut db)
             .await
             .map_err(|e| status_of(signup_create_error(e)))?;

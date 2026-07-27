@@ -1,11 +1,19 @@
 import { describe, expect, it } from "vitest";
+import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView } from "~/wire/types";
-import { autoTapPreviewIds, barZoneAura, paymentPreviewAction } from "./actions";
+import {
+  autoTapPreviewIds,
+  barZoneAura,
+  handTileCaption,
+  modesForObject,
+  orderPlayModes,
+  paymentPreviewAction,
+} from "./actions";
 
 const castAction = {
   id: 3,
   kind: "cast",
-  label: "Cast",
+  label: testMessageRef("Cast"),
   needs_target: true,
   section: "hand",
   auto_tap: [10, 11],
@@ -14,7 +22,7 @@ const castAction = {
 const hoverAction = {
   id: 9,
   kind: "cast",
-  label: "Other",
+  label: testMessageRef("Other"),
   needs_target: false,
   section: "hand",
   auto_tap: [20],
@@ -103,5 +111,53 @@ describe("barZoneAura", () => {
     expect(aura).toContain("outline-exile-outline");
     expect(aura).toContain("outline-offset-2");
     expect(aura).not.toMatch(/shadow-\[0_0_0_2px/);
+  });
+});
+
+function act(id: number, kind: string, object: number, section = "hand"): ActionView {
+  return {
+    id,
+    kind,
+    label: testMessageRef(`${kind}-${id}`),
+    needs_target: false,
+    object,
+    section,
+  } as ActionView;
+}
+
+describe("modesForObject", () => {
+  it("collects only hand-section actions for that object", () => {
+    const actions = [
+      act(1, "cast", 10),
+      act(2, "activate_hand_ability", 10),
+      act(3, "cycle", 11),
+      act(4, "activate", 10, "battlefield"),
+    ];
+    expect(modesForObject(actions, 10).map((a) => a.id)).toEqual([1, 2]);
+  });
+});
+
+describe("orderPlayModes", () => {
+  it("orders cast/play_land, then cycle, then hand abilities by action id", () => {
+    const modes = [
+      act(30, "activate_hand_ability", 1),
+      act(10, "cycle", 1),
+      act(5, "cast", 1),
+      act(31, "activate_hand_ability", 1),
+    ];
+    expect(orderPlayModes(modes).map((a) => a.id)).toEqual([5, 10, 30, 31]);
+  });
+});
+
+describe("handTileCaption", () => {
+  it("omits caption when multiple modes are legal", () => {
+    expect(handTileCaption([act(1, "cast", 1), act(2, "cycle", 1)])).toBeUndefined();
+  });
+  it("keeps Cycle/Discard for a sole ability mode", () => {
+    expect(handTileCaption([act(1, "cycle", 1)])).toBe("Cycle");
+    expect(handTileCaption([act(1, "activate_hand_ability", 1)])).toBe("Discard");
+  });
+  it("omits caption for sole cast", () => {
+    expect(handTileCaption([act(1, "cast", 1)])).toBeUndefined();
   });
 });

@@ -16,6 +16,16 @@ pub(crate) struct ResolutionFrame {
     /// Nonland cards this resolution's [`Effect::Choice(ChoiceEffect::EachPlayerExilesFromGraveyard)`](crate::Effect::Choice(ChoiceEffect::EachPlayerExilesFromGraveyard))
     /// exiled (`Amount::NonlandCardsExiledThisWay`).
     pub(crate) nonland_cards_exiled_this_way: u32,
+    /// Cards discarded during this resolution's discard fan-out (Syphon Mind's "for each card
+    /// discarded this way") or by [`ChoiceEffect::DiscardYourHand`](crate::ChoiceEffect) (Malfegor's
+    /// discarded hand size), read by [`Amount::CardsDiscardedThisWay`](crate::Amount). Reset to 0
+    /// when the fan-out / discard begins, incremented per card discarded.
+    pub(crate) cards_discarded_this_way: u32,
+    /// Creatures sacrificed during this resolution's edict fan-out (Syphon Flesh's "for each
+    /// creature sacrificed this way"), read by
+    /// [`Amount::CreaturesSacrificedThisWay`](crate::Amount). Reset to 0 when the edict begins,
+    /// incremented per creature sacrificed.
+    pub(crate) creatures_sacrificed_this_way: u32,
     /// Cards this resolution's own [`Effect::Dig(DigEffect::SearchLibrary)`](crate::Effect::Dig(DigEffect::SearchLibrary)) step
     /// just moved to an [`Exile`](crate::SearchDest::Exile) destination (Trench Gorger's "the
     /// number of cards exiled this way", `Amount::CardsExiledBySearchThisWay`). Reset to 0 when

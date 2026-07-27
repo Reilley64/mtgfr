@@ -11,12 +11,13 @@ import { type Attribute, type Html, html } from "foldkit/html";
 import { type CostPip, costPipPlate, costPips } from "~/costPips";
 import { cardArt } from "~/ui/card-art";
 import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/types";
+import { formatMessage } from "../../domain/i18n/message";
 import { HAND_BAR_PEEK, handBarHitHeight, handBarHitWidth, handBarRaiseTranslateY } from "../geometry/handBarHit";
 import { ZONE } from "../geometry/layout";
 import { DiscardChosen, HandActionActivated, InspectAuxHovered, type Message } from "../messages";
 import { HAND_FACE_W } from "../motion/flights";
 import type { HandDragState } from "../submodel";
-import { barZoneAura, byObject, bySection, handExtras } from "./actions";
+import { barZoneAura, byObject, bySection, handTileCaption, modesForObject } from "./actions";
 import { MountHandBarDrag } from "./hand-drag-mount";
 
 const h = html<Message>();
@@ -116,8 +117,8 @@ function tile(args: {
   const faceClass = [
     "pointer-events-none absolute top-0 right-0 transition-transform duration-[120ms] ease-state",
     discardSelected
-      ? "z-30 [transform:translateY(var(--raise-y))]"
-      : "group-hover/hand-tile:z-30 group-hover/hand-tile:[transform:translateY(var(--raise-y))]",
+      ? "[transform:translateY(var(--raise-y))]"
+      : "group-hover/hand-tile:[transform:translateY(var(--raise-y))]",
   ].join(" ");
 
   // Solid parity: the drag source fades so the ghost carries the face; inert slots stay non-interactive.
@@ -135,7 +136,9 @@ function tile(args: {
       ? "ring-2 ring-llanowar shadow-[0_0_12px_rgba(47,125,70,0.55)]"
       : discardSelectable
         ? "ring-2 ring-island-blue shadow-[0_0_12px_rgba(74,158,255,0.45)]"
-        : barZoneAura(zone, playable),
+        : dragSource
+          ? ""
+          : barZoneAura(zone, playable),
   ]
     .filter((v) => v !== "")
     .join(" ");
@@ -143,7 +146,7 @@ function tile(args: {
   const hitClass = [
     "pointer-events-auto absolute bottom-0",
     discardSelected ? "[height:var(--hit-raised-h)]" : "group-hover/hand-tile:[height:var(--hit-raised-h)]",
-    playable ? "cursor-grab" : "cursor-default",
+    playable ? "cursor-grab" : "cursor-not-allowed",
   ].join(" ");
 
   const hitAttrs: Attribute<Message>[] = [
@@ -257,15 +260,18 @@ function tile(args: {
 
   return h.div(
     [
-      h.Class("group/hand-tile pointer-events-none relative shrink-0 origin-bottom overflow-visible"),
+      h.Class(
+        "group/hand-tile pointer-events-none relative shrink-0 origin-bottom overflow-visible [z-index:var(--hand-z)] hover:[z-index:50]",
+      ),
       h.Style({
         width: `${HAND_CARD_PEEK}px`,
         height: `${HAND_VISIBLE_H}px`,
         transform: fanTransform(index, count),
         "--raise-y": `${raiseY}px`,
-        "z-index": String(index + 1),
+        "--hand-z": String(index + 1),
       }),
       h.DataAttribute("hand-index", String(index)),
+      ...(objectId != null ? [h.DataAttribute("testid", `hand-tile-${objectId}`)] : []),
     ],
     [
       h.div(
@@ -323,7 +329,9 @@ export type HandViewInputs = {
 
 function handDragGhost(drag: HandDragState): Html {
   const pips = costPips(drag.manaCost, { showZero: drag.kind != null && drag.kind !== "land" });
-  const artClass = `pointer-events-none block touch-none rounded-game object-cover drop-shadow-drag shadow-hand ${barZoneAura("hand")}`;
+  const zone = drag.zone ?? "hand";
+  const aura = barZoneAura(zone, true);
+  const artClass = `pointer-events-none block touch-none rounded-game object-cover drop-shadow-drag shadow-hand ${aura}`;
 
   return h.div(
     [
@@ -356,7 +364,7 @@ function handDragGhost(drag: HandDragState): Html {
         : h.div(
             [
               h.Class(
-                `flex items-center justify-center rounded-game bg-forest-shadow p-1 text-center text-caption text-snow shadow-hand ${barZoneAura("hand")}`,
+                `flex items-center justify-center rounded-game bg-forest-shadow p-1 text-center text-caption text-snow drop-shadow-drag shadow-hand ${aura}`,
               ),
               h.Style({ width: `${HAND_CARD_W}px`, height: `${HAND_CARD_H}px` }),
             ],
@@ -371,7 +379,6 @@ export function handView(inputs: HandViewInputs): Html {
   const viewer = state.viewer;
   const grouped = bySection(state.actions);
   const commandActionByObject = byObject(grouped.command);
-  const handActionByObject = byObject(grouped.hand);
   // Coerce wire numbers — proto/json sometimes delivers numeric fields as strings after folds.
   const commandCards: ObjectView[] = state.objects.filter(
     (o) => Number(o.zone) === ZONE.Command && Number(o.owner) === Number(viewer),
@@ -431,7 +438,8 @@ export function handView(inputs: HandViewInputs): Html {
   const handSlots: HandSlot[] = [];
   for (const c of handCards) {
     if (hiddenIds.has(c.id)) continue;
-    const action = handActionByObject.get(c.id) ?? null;
+    const modes = modesForObject(grouped.hand, c.id);
+    const action = modes[0] ?? null;
     handSlots.push({
       name: c.name,
       print: c.print ?? "",
@@ -441,25 +449,9 @@ export function handView(inputs: HandViewInputs): Html {
       manaCost: c.mana_cost,
       action,
       slotInert: slotInert(c.id),
-      caption: actionCaption(action?.kind ?? ""),
+      caption: handTileCaption(modes),
       discardSelectable: discardCostIds?.has(c.id) ?? false,
       discardSelected: discardSelectedIds?.has(c.id) ?? false,
-    });
-  }
-  for (const extra of handExtras(grouped.hand)) {
-    const meta = metaFor(extra.object);
-    handSlots.push({
-      name: extra.label.replace(/^[^:]+:\s*/, ""),
-      print: meta.print,
-      cardId: meta.cardId,
-      objectId: extra.object ?? undefined,
-      objectKind: meta.kind,
-      manaCost: meta.manaCost,
-      action: extra,
-      slotInert: false,
-      caption: actionCaption(extra.kind),
-      discardSelectable: extra.object != null ? (discardCostIds?.has(extra.object) ?? false) : false,
-      discardSelected: extra.object != null ? (discardSelectedIds?.has(extra.object) ?? false) : false,
     });
   }
   const handTiles = handSlots.map((slot, index) =>
@@ -479,7 +471,7 @@ export function handView(inputs: HandViewInputs): Html {
       const meta = metaFor(a.object);
       const id = a.object ?? undefined;
       return tile({
-        name: a.label,
+        name: formatMessage(a.label),
         print: meta.print,
         cardId: meta.cardId,
         zone,

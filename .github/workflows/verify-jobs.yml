@@ -2,6 +2,11 @@ name: Verify jobs
 
 # Reusable server/client verify jobs. Called from ci.yml and verify-and-release.yml.
 # Each job skips setup + checks when a content-hash pass marker is already cached.
+# Cache key is computed once at restore (clean checkout); the post-step saves that
+# same key — do not re-hash after checks (mutations would make the marker unfindable).
+#
+# Server miss path runs lint / nextest / migrate inside ghcr.io/reilley64/mtgfr-ci:latest
+# (--user root so the GHA workspace mount is writable). Postgres is only on migrate.
 
 on:
   workflow_call:
@@ -10,9 +15,106 @@ env:
   DATABASE_URL: postgresql://mtgfr:mtgfr@localhost:5432/mtgfr
 
 jobs:
-  verify-server:
-    name: Verify (server)
+  verify-server-gate:
+    name: Verify (server gate)
     runs-on: ubuntu-latest
+    outputs:
+      cache-hit: ${{ steps.pass.outputs.cache-hit }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/cache/restore@v6
+        id: pass
+        with:
+          path: .ci-pass
+          key: verify-server-v3-${{ hashFiles('crates/**', 'proto/**', 'Cargo.toml', 'Cargo.lock', 'Toasty.toml', 'toasty/**', '.config/nextest.toml', 'justfile', '.github/workflows/verify-jobs.yml', 'docs/CR_INDEX.md', 'scripts/gen_cr_index.py') }}
+
+      - name: Report pass-marker status
+        run: |
+          if [[ "${{ steps.pass.outputs.cache-hit }}" == "true" ]]; then
+            echo "Pass marker hit for server content hash."
+          else
+            echo "Pass marker miss; lint + nextest shards + migrate will run."
+          fi
+
+  verify-server-lint:
+    name: Verify (server lint)
+    needs: verify-server-gate
+    if: needs.verify-server-gate.outputs.cache-hit != 'true'
+    runs-on: ubuntu-latest
+    # Image ships dash as /bin/sh; pipefail needs bash.
+    defaults:
+      run:
+        shell: bash
+    container:
+      image: ghcr.io/reilley64/mtgfr-ci:latest
+      options: --user root
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: verify-server
+
+      - name: CR index + fmt + clippy
+        run: |
+          set -euo pipefail
+          just engine-cr-index-check
+          just server-format-check
+          just server-lint
+
+  verify-server-test:
+    name: Verify (server test)
+    needs: verify-server-gate
+    if: needs.verify-server-gate.outputs.cache-hit != 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    container:
+      image: ghcr.io/reilley64/mtgfr-ci:latest
+      options: --user root
+    strategy:
+      fail-fast: false
+      matrix:
+        partition: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: verify-server
+
+      - name: Nextest shard
+        run: cargo nextest run --profile ci --partition count:${{ matrix.partition }}/3
+
+      - name: Upload Rust JUnit report
+        if: ${{ !cancelled() && hashFiles('target/nextest/ci/junit.xml') != '' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: rust-junit-${{ matrix.partition }}
+          path: target/nextest/ci/junit.xml
+
+      - name: Rust test summary
+        if: ${{ !cancelled() && hashFiles('target/nextest/ci/junit.xml') != '' }}
+        uses: test-summary/action@v2
+        with:
+          paths: target/nextest/ci/junit.xml
+
+  verify-server-migrate:
+    name: Verify (server migrate)
+    needs: verify-server-gate
+    if: needs.verify-server-gate.outputs.cache-hit != 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    container:
+      image: ghcr.io/reilley64/mtgfr-ci:latest
+      options: --user root
+    env:
+      # Service hostname when the job runs inside a container (not localhost).
+      DATABASE_URL: postgresql://mtgfr:mtgfr@postgres:5432/mtgfr
     services:
       postgres:
         image: postgres:16
@@ -27,83 +129,102 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
-
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/cache@v4
-        id: pass
-        with:
-          path: .ci-pass
-          key: verify-server-v2-${{ hashFiles('crates/**', 'proto/**', 'Cargo.toml', 'Cargo.lock', 'Toasty.toml', 'toasty/**', '.config/nextest.toml', 'justfile', '.github/workflows/verify-jobs.yml', 'docs/CR_INDEX.md', 'scripts/gen_cr_index.py') }}
-
-      - name: Skip — server hash already verified
-        if: steps.pass.outputs.cache-hit == 'true'
-        run: echo "Pass marker hit for server content hash; skipping setup and checks."
-
-      - uses: dtolnay/rust-toolchain@stable
-        if: steps.pass.outputs.cache-hit != 'true'
-        with:
-          components: rustfmt, clippy
+      - uses: actions/checkout@v7
 
       - uses: Swatinem/rust-cache@v2
-        if: steps.pass.outputs.cache-hit != 'true'
-
-      - uses: extractions/setup-just@v3
-        if: steps.pass.outputs.cache-hit != 'true'
-
-      - uses: taiki-e/install-action@v2
-        if: steps.pass.outputs.cache-hit != 'true'
         with:
-          tool: nextest
+          shared-key: verify-server
 
-      - name: Install protoc
-        if: steps.pass.outputs.cache-hit != 'true'
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends protobuf-compiler
+      - name: Apply migrations
+        run: just migrate
 
-      - name: just server-check (fmt + clippy + CR index + migrate + nextest)
-        if: steps.pass.outputs.cache-hit != 'true'
-        run: just server-check
-
-      - name: Upload Rust JUnit report
-        if: ${{ steps.pass.outputs.cache-hit != 'true' && !cancelled() && hashFiles('target/nextest/ci/junit.xml') != '' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: rust-junit
-          path: target/nextest/ci/junit.xml
-
-      - name: Rust test summary
-        if: ${{ steps.pass.outputs.cache-hit != 'true' && !cancelled() && hashFiles('target/nextest/ci/junit.xml') != '' }}
-        uses: test-summary/action@v2
-        with:
-          paths: target/nextest/ci/junit.xml
+  verify-server-mark:
+    name: Verify (server mark)
+    needs:
+      [
+        verify-server-gate,
+        verify-server-lint,
+        verify-server-test,
+        verify-server-migrate,
+      ]
+    if: |
+      always()
+      && needs.verify-server-gate.outputs.cache-hit != 'true'
+      && needs.verify-server-lint.result == 'success'
+      && needs.verify-server-test.result == 'success'
+      && needs.verify-server-migrate.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
 
       - name: Write pass marker
-        if: steps.pass.outputs.cache-hit != 'true'
         run: mkdir -p .ci-pass && echo ok > .ci-pass/marker
+
+      - uses: actions/cache/save@v6
+        with:
+          path: .ci-pass
+          key: verify-server-v3-${{ hashFiles('crates/**', 'proto/**', 'Cargo.toml', 'Cargo.lock', 'Toasty.toml', 'toasty/**', '.config/nextest.toml', 'justfile', '.github/workflows/verify-jobs.yml', 'docs/CR_INDEX.md', 'scripts/gen_cr_index.py') }}
+
+  verify-server:
+    name: Verify (server)
+    needs:
+      [
+        verify-server-gate,
+        verify-server-lint,
+        verify-server-test,
+        verify-server-migrate,
+        verify-server-mark,
+      ]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Aggregate server verify
+        run: |
+          set -euo pipefail
+          hit='${{ needs.verify-server-gate.outputs.cache-hit }}'
+          if [[ "$hit" == "true" ]]; then
+            echo "Pass marker hit; server verify skipped."
+            exit 0
+          fi
+          lint='${{ needs.verify-server-lint.result }}'
+          test='${{ needs.verify-server-test.result }}'
+          migrate='${{ needs.verify-server-migrate.result }}'
+          mark='${{ needs.verify-server-mark.result }}'
+          if [[ "$lint" != "success" ]]; then
+            echo "verify-server-lint result=$lint"
+            exit 1
+          fi
+          if [[ "$test" != "success" ]]; then
+            echo "verify-server-test result=$test"
+            exit 1
+          fi
+          if [[ "$migrate" != "success" ]]; then
+            echo "verify-server-migrate result=$migrate"
+            exit 1
+          fi
+          if [[ "$mark" != "success" ]]; then
+            echo "verify-server-mark result=$mark"
+            exit 1
+          fi
+          echo "Lint + nextest shards + migrate + pass-marker save succeeded."
 
   verify-client:
     name: Verify (client)
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         id: pass
         with:
           path: .ci-pass
-          key: verify-client-v2-${{ hashFiles('client/**', 'proto/**', 'crates/**', 'Cargo.toml', 'Cargo.lock', '.bun-version', 'justfile', '.github/workflows/verify-jobs.yml') }}
+          key: verify-client-v3-${{ hashFiles('client/**', 'proto/**', 'design.tokens.json', '.bun-version', 'justfile', '.github/workflows/verify-jobs.yml') }}
 
       - name: Skip — client hash already verified
         if: steps.pass.outputs.cache-hit == 'true'
         run: echo "Pass marker hit for client content hash; skipping setup and checks."
-
-      - uses: dtolnay/rust-toolchain@stable
-        if: steps.pass.outputs.cache-hit != 'true'
-
-      - uses: Swatinem/rust-cache@v2
-        if: steps.pass.outputs.cache-hit != 'true'
 
       # Pin — `latest` resolves via GitHub API and fails when API is degraded.
       - uses: oven-sh/setup-bun@v2
@@ -111,7 +232,7 @@ jobs:
         with:
           bun-version-file: .bun-version
 
-      - uses: extractions/setup-just@v3
+      - uses: extractions/setup-just@v4
         if: steps.pass.outputs.cache-hit != 'true'
 
       - name: Install client dependencies
@@ -121,6 +242,19 @@ jobs:
       - name: just client-check (tokens + mana-oracle + codegen + format + lint + typecheck + vitest)
         if: steps.pass.outputs.cache-hit != 'true'
         run: just client-check
+
+      - name: Upload client JUnit report
+        if: ${{ steps.pass.outputs.cache-hit != 'true' && !cancelled() && hashFiles('client/junit.xml') != '' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: client-junit
+          path: client/junit.xml
+
+      - name: Client test summary
+        if: ${{ steps.pass.outputs.cache-hit != 'true' && !cancelled() && hashFiles('client/junit.xml') != '' }}
+        uses: test-summary/action@v2
+        with:
+          paths: client/junit.xml
 
       - name: Write pass marker
         if: steps.pass.outputs.cache-hit != 'true'

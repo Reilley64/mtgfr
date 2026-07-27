@@ -1,6 +1,6 @@
 # Card Inspect
-**Status:** Current (as of 2026-07-23)
-**Module:** `client/app/board/html/inspect.ts`, `client/lib/deck-builder/card-hover-preview.ts`, `client/lib/inspect.ts`, `client/app/board/html/keyboard-mount.ts`, `client/app/board/submodel.ts`
+**Status:** Current (as of 2026-07-26)
+**Module:** `client/app/board/html/inspect.ts`, `client/app/domain/deck-builder/card-hover-preview.ts`, `client/app/domain/inspect.ts`, `client/app/board/html/keyboard-mount.ts`, `client/app/board/submodel.ts`
 
 ## Problem Statement
 
@@ -31,13 +31,13 @@ Alt/Option pins a card into a shared preview `dock` mode. The dock has a full-bo
 - When the pinned live object has `marked_damage > 0`, the dock shows a `Marked damage: N` line (`inspect-marked-damage`) above the modifier ledger.
 - Player pins render a text-only dock (`inspect-overlay`) with `Life: N` (`inspect-player-life`) and, when `commander_damage` has rows, a `Commander damage` panel (`inspect-commander-damage`) listing each source as `Owner[: — Commander]: amount / 21` (`inspect-commander-damage-{seat}`). Orb paint stays max-only `Cmd N`.
 - Space is blocked while the dock is open through keyboard dismissal priority.
-- Inspect is topmost in the board layer stack: above prompts, HUD, pile overlay, concede dialog, result overlay, and portrait gate when present.
+- Inspect is topmost in the board layer stack: above prompts, HUD, pile overlay, concede dialog, and result overlay.
 
 ## Implementation Decisions
 
 - Board inspect reuses `cardHoverPreviewView` with `mode: "dock"` for card pins; player pins use a matching backdrop/content shell without BindCardArt.
 - `inspectView` is a thin board wrapper that supplies live modifier extras, player commander-damage extras, and board messages.
-- `commanderDamageBreakdown` in `client/lib/inspect.ts` labels sources by owner username (fallback `P{seat}`) and appends a visible `is_commander` object name when present.
+- `commanderDamageBreakdown` in `client/app/domain/inspect.ts` labels sources by owner username (fallback `P{seat}`) and appends a visible `is_commander` object name when present.
 - Dismissal has no close button in the dock; backdrop/Escape/Alt release are the dismissal paths.
 - The overlay is rendered last in `boardOverlays`.
 

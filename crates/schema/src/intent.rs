@@ -162,14 +162,14 @@ pub enum WireIntent {
         /// for a spell with no Replicate, or "pay it zero times." See [`engine::Intent::Cast`].
         #[serde(default)]
         replicate_count: u8,
+        /// How many times the caster paid the spell's Multikicker cost (CR 702.33c); 0 (default)
+        /// for a spell with no Multikicker, or "pay it zero times." See [`engine::Intent::Cast`].
+        #[serde(default)]
+        multikicker_count: u8,
         /// Whether the caster is casting the spell for its printed alternative cost (CR 601.2f);
         /// `false` for a spell with none, or to cast it normally. See [`engine::Intent::Cast`].
         #[serde(default)]
         alternative_cost: bool,
-        /// How many times the caster paid the spell's Multikicker cost (CR 702.34); 0 (default)
-        /// for a spell with no Multikicker, or "pay it zero times." See [`engine::Intent::Cast`].
-        #[serde(default)]
-        multikicker_count: u8,
     },
     PlayLand {
         player: u8,
@@ -431,6 +431,12 @@ pub enum WireIntent {
         player: u8,
         host: Option<ObjectId>,
     },
+    /// Answer a legend-rule choice (CR 704.5j): `keep` is the one legendary permanent that
+    /// remains. See [`engine::Intent::ChooseLegendaryKeep`].
+    ChooseLegendaryKeep {
+        player: u8,
+        keep: ObjectId,
+    },
     /// Answer an enter-as-copy choice (CR 706/707.2 — Altered Ego, Cursed Mirror): `copy` is the
     /// chosen creature the entering permanent becomes a copy of, or `None` to decline (the "you
     /// may"). See [`engine::Intent::ChooseCopyTarget`].
@@ -601,8 +607,8 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
             evoked,
             strive_count,
             replicate_count,
-            alternative_cost,
             multikicker_count,
+            alternative_cost,
             ..
         } => Cast {
             player,
@@ -618,8 +624,8 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
             evoked,
             strive_count,
             replicate_count,
-            alternative_cost,
             multikicker_count,
+            alternative_cost,
         },
         PlayLand { object, .. } => PlayLand { player, object },
         TapForMana { object, .. } => TapForMana { player, object },
@@ -702,6 +708,7 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
         ChooseColor { color, .. } => ChooseColor { player, color },
         ChooseCardName { name, .. } => ChooseCardName { player, name },
         ChooseAttachHost { host, .. } => ChooseAttachHost { player, host },
+        ChooseLegendaryKeep { keep, .. } => ChooseLegendaryKeep { player, keep },
         ChooseCopyTarget { copy, .. } => ChooseCopyTarget { player, copy },
         ChooseTopOrBottom { top, .. } => ChooseTopOrBottom { player, top },
         ChooseMode { mode, .. } => ChooseMode { player, mode },
@@ -804,8 +811,8 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
             evoked,
             strive_count,
             replicate_count,
-            alternative_cost,
             multikicker_count,
+            alternative_cost,
         } => Intent::Cast {
             player: PlayerId(player),
             object,
@@ -823,8 +830,8 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
             evoked,
             strive_count,
             replicate_count,
-            alternative_cost,
             multikicker_count,
+            alternative_cost,
         },
         WireIntent::PlayLand { player, object } => Intent::PlayLand {
             player: PlayerId(player),
@@ -1056,6 +1063,10 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
         WireIntent::ChooseAttachHost { player, host } => Intent::ChooseAttachHost {
             player: PlayerId(player),
             host,
+        },
+        WireIntent::ChooseLegendaryKeep { player, keep } => Intent::ChooseLegendaryKeep {
+            player: PlayerId(player),
+            keep,
         },
         WireIntent::ChooseCopyTarget { player, copy } => Intent::ChooseCopyTarget {
             player: PlayerId(player),

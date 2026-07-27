@@ -10,6 +10,7 @@
 
 import { colors } from "~/design-tokens.generated";
 import type { ActionView, PendingChoiceView, VisibleState, WireTarget } from "~/wire/types";
+import { formatMessage } from "../../domain/i18n/message";
 import { ZONE } from "../geometry/layout";
 import type { StagedAction } from "./execution";
 
@@ -141,6 +142,7 @@ const ONBOARD_CARD_PICK_KINDS = new Set<PendingChoiceView["kind"]>([
   "phase_out",
   "decline_untap",
   "choose_attach_host",
+  "choose_legendary_keep",
   "sacrifice_unless_return_land",
   "choose_copy_target",
   "choose_counter_target_for_player",
@@ -159,8 +161,6 @@ export function pendingBoardTargetMode(
 
   if (pc.kind === "choose_target") {
     if (pc.max < 1) return null;
-  } else if (pc.kind === "choose_spell_targets" || pc.kind === "choose_ability_targets") {
-    if (pc.max < 1) return null;
   } else if (!ONBOARD_CARD_PICK_KINDS.has(pc.kind)) {
     return null;
   }
@@ -172,12 +172,10 @@ export function pendingBoardTargetMode(
 
 /** One legal click completes the answer; otherwise clicks accumulate until Confirm. */
 export function pendingTargetOneClick(pc: PendingChoiceView): boolean {
-  if (pc.kind === "choose_target") return pc.max === 1;
-  if (pc.kind === "choose_spell_targets" || pc.kind === "choose_ability_targets") {
-    return pc.min === 1 && pc.max === 1;
-  }
+  if (pc.kind === "choose_target") return pc.min === 1 && pc.max === 1;
   if (
     pc.kind === "choose_attach_host" ||
+    pc.kind === "choose_legendary_keep" ||
     pc.kind === "sacrifice_unless_return_land" ||
     pc.kind === "choose_copy_target"
   ) {
@@ -383,13 +381,12 @@ type PendingGraveyardPickChoice = Extract<
     kind:
       | "exile_from_graveyard"
       | "may_return_from_graveyard"
+      | "may_exile_discarded_to_play"
       | "shuffle_from_graveyard"
       | "choose_dredge"
       | "pay_cumulative_upkeep_or_sacrifice"
       | "choose_activation_cost_targets"
-      | "choose_target"
-      | "choose_spell_targets"
-      | "choose_ability_targets";
+      | "choose_target";
   }
 >;
 
@@ -397,13 +394,12 @@ function isPendingGraveyardPick(pc: PendingChoiceView): pc is PendingGraveyardPi
   return (
     pc.kind === "exile_from_graveyard" ||
     pc.kind === "may_return_from_graveyard" ||
+    pc.kind === "may_exile_discarded_to_play" ||
     pc.kind === "shuffle_from_graveyard" ||
     pc.kind === "choose_dredge" ||
     pc.kind === "pay_cumulative_upkeep_or_sacrifice" ||
     pc.kind === "choose_activation_cost_targets" ||
-    pc.kind === "choose_target" ||
-    pc.kind === "choose_spell_targets" ||
-    pc.kind === "choose_ability_targets"
+    pc.kind === "choose_target"
   );
 }
 
@@ -411,10 +407,7 @@ function isPendingGraveyardPick(pc: PendingChoiceView): pc is PendingGraveyardPi
 export function pendingGraveyardPickOneClick(pc: PendingChoiceView | null | undefined): boolean {
   if (pc == null || !isPendingGraveyardPick(pc)) return false;
   if (pc.kind === "choose_dredge") return true;
-  if (pc.kind === "choose_target") return pc.max === 1;
-  if (pc.kind === "choose_spell_targets" || pc.kind === "choose_ability_targets") {
-    return pc.min === 1 && pc.max === 1;
-  }
+  if (pc.kind === "choose_target") return pc.min === 1 && pc.max === 1;
   if (pc.kind === "shuffle_from_graveyard") return pc.max === 1;
   if (pc.kind === "pay_cumulative_upkeep_or_sacrifice" || pc.kind === "choose_activation_cost_targets") {
     return pc.count === 1;
@@ -652,8 +645,9 @@ export function aimingObjectIds(
 /** Title while the player is aiming a staged cast or activation before submitting. */
 export function stagedTargetTitle(staged: StagedAction): string {
   const { card, action } = staged;
-  if (action.kind === "activate" && action.label !== card.name) {
-    return `${action.label} — ${card.name}`;
+  const label = formatMessage(action.label);
+  if (action.kind === "activate" && label !== card.name) {
+    return `${label} — ${card.name}`;
   }
-  return action.label;
+  return label;
 }

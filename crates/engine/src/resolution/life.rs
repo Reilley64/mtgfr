@@ -110,6 +110,7 @@ impl Game {
                 let Some(Target::Player(gainer)) = target else {
                     panic!("target-player-gains-life resolves with a chosen player target");
                 };
+                let amount = self.resolve_amount(amount, controller, source, target, x);
                 vec![Event::LifeChanged {
                     player: gainer,
                     amount: self.life_gain_after_replacements(gainer, amount),
@@ -150,6 +151,19 @@ impl Game {
                     .filter(|&p| p != controller)
                     .map(|opponent| Event::LifeChanged {
                         player: opponent,
+                        amount: -amount,
+                        source: Some(source),
+                    })
+                    .collect()
+            }
+            // Vandal's Edit: "Each player loses 2 life" — one simultaneous loss (CR 118.9)
+            // touching every living player, the ability's controller included, in seat order.
+            // Distinct from `EachOpponentLoses`, which carves the controller out.
+            LifeEffect::EachPlayerLoses { amount } => {
+                let amount = self.resolve_amount(amount, controller, source, target, x);
+                self.living_players()
+                    .map(|player| Event::LifeChanged {
+                        player,
                         amount: -amount,
                         source: Some(source),
                     })

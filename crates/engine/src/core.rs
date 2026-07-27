@@ -44,9 +44,7 @@ impl Game {
             priority: PlayerId(0),
             consecutive_passes: 0,
             pending_trigger_groups: Vec::new(),
-            pending_echo: Vec::new(),
-            pending_recover: Vec::new(),
-            pending_cumulative_upkeep: Vec::new(),
+            pending_obligations: Vec::new(),
             pending_choice: None,
             resume: crate::resolution::ResumeState::default(),
             clash_won: false,
@@ -55,6 +53,7 @@ impl Game {
             combat_extras: state::CombatExtras::default(),
             play_permissions: state::PlayPermissions::default(),
             next_control_timestamp: 0,
+            next_continuous_timestamp: 0,
             modifier_provenance: state::ModifierProvenance::default(),
             once_per_turn: state::OncePerTurnLimits::default(),
             exile_links: state::ExileLinks::default(),
@@ -72,9 +71,7 @@ impl Game {
             abilities_granted_until_eot: Vec::new(),
             pending_enter_bonus_counters: Vec::new(),
             exile_time_counters: Vec::new(),
-            self_exile_time_counters: None,
-            self_tuck_to_library_bottom: false,
-            self_exile_on_resolve: false,
+            resolution_finish: None,
         }
     }
 
@@ -159,8 +156,8 @@ impl Game {
     pub fn stack(&self) -> Vec<StackEntry> {
         self.stack
             .iter()
-            .map(|item| match *item {
-                StackItem::Spell(id) => StackEntry::Spell(id),
+            .map(|item| match item {
+                StackItem::Spell(id) => StackEntry::Spell(*id),
                 // `x` (the ability's chosen `{X}`) and `targets_second` (a second target clause's
                 // chosen targets) are internal resolution state, not rendered on the stack view, so
                 // they're dropped from the public `StackEntry` (which shows the primary target).
@@ -174,10 +171,10 @@ impl Game {
                     spent_mana: _,
                     activated: _,
                 } => StackEntry::Ability {
-                    controller,
-                    source,
-                    effect,
-                    target,
+                    controller: *controller,
+                    source: *source,
+                    effect: effect.clone(),
+                    target: *target,
                 },
             })
             .collect()
@@ -283,13 +280,13 @@ impl Game {
         // being countered, a tuck), so the restore lives here rather than in each of them.
         if let Object::Card(card) = &mut object
             && let Some(from) = from
-            && let Some(&(_, fused)) = self
+            && let Some((_, fused)) = self
                 .play_permissions
                 .split_halves_on_stack
                 .iter()
                 .find(|&&(spell, _)| spell == from)
         {
-            card.def = fused;
+            card.def = *fused;
         }
         // A card leaving a graveyard (reanimation, graveyard recursion, cast-from-graveyard) marks
         // its owner's turn-scoped "a card left your graveyard this turn" flag — the CR 603.4
@@ -297,7 +294,7 @@ impl Game {
         // point catches every graveyard-exit path; a graveyard is only ever left, never entered
         // from itself, so a `from` card in the graveyard is always an exit.
         if let Some(from) = from
-            && let Object::Card(c) = self.objects[from as usize]
+            && let Object::Card(c) = &self.objects[from as usize]
             && c.zone == Zone::Graveyard
         {
             self.players[c.owner.0 as usize].card_left_graveyard_this_turn = true;
@@ -312,7 +309,7 @@ impl Game {
         // library/graveyard→exile path (impulse draw, mill-to-exile, graveyard hate) — pushed
         // unconditionally here, deduped on drain like `graveyard_exits_this_batch` above.
         if let Some(from) = from
-            && let Object::Card(c) = self.objects[from as usize]
+            && let Object::Card(c) = &self.objects[from as usize]
             && matches!(c.zone, Zone::Library | Zone::Graveyard)
             && let Object::Card(new) = &object
             && new.zone == Zone::Exile
@@ -366,18 +363,53 @@ impl Game {
         }
     }
 
-    /// The card definition of whatever live form the object at `id` currently has.
-    pub fn def_of(&self, id: ObjectId) -> CardDef {
-        match self.objects[id as usize] {
+    /// The live card-definition handle of the object at `id`.
+    pub(crate) fn def_id_of(&self, id: ObjectId) -> CardId {
+        match &self.objects[id as usize] {
             Object::Card(c) => c.def,
             Object::Spell(s) => s.def,
+            Object::Permanent(p) if p.flipped => {
+                let def = card_def(p.def);
+                def.back.unwrap_or(p.def)
+            }
+            Object::Permanent(p) => p.def,
+            Object::Moved { to } => self.def_id_of(*to),
+            Object::Removed { def, .. } => *def,
+        }
+    }
+
+    /// The copy-effect *exception* keywords that are part of the object's current **copiable**
+    /// values (CR 707.2 — a copy made "except it has haste"/"except it has myriad"). The keyword
+    /// half of the copiable snapshot every permanent- and token-copy path reads alongside
+    /// [`def_id_of`](Self::def_id_of), so a second-generation copy (Brudiclad copying a Twinflame
+    /// token, Rite of Replication copying Muddle's copied form) preserves the rider rather than
+    /// dropping it. Empty for a spell/card or a permanent under no copy-exception rider.
+    pub fn copiable_keywords(&self, id: ObjectId) -> &'static [Keyword] {
+        match self.as_permanent(id) {
+            Some(p) => p.copy_rider_keywords,
+            None => &[],
+        }
+    }
+
+    /// The card definition of whatever live form the object at `id` currently has.
+    pub fn def_of(&self, id: ObjectId) -> CardDef {
+        match &self.objects[id as usize] {
+            Object::Card(c) => card_def(c.def).as_ref().clone(),
+            Object::Spell(s) => card_def(s.def).as_ref().clone(),
             // CR 712: a flipped permanent (a Kamigawa flip card) permanently uses its back face's
             // characteristics — every accessor that reads `def_of` (name, types, subtypes,
             // abilities, and `pt_base`) sees the back face at once.
-            Object::Permanent(p) if p.flipped => p.def.back.copied().unwrap_or(p.def),
-            Object::Permanent(p) => p.def,
-            Object::Moved { to } => self.def_of(to),
-            Object::Removed => panic!("object {id} has left the game"),
+            Object::Permanent(p) if p.flipped => {
+                let def = card_def(p.def);
+                def.back
+                    .map(|back| card_def(back).as_ref().clone())
+                    .unwrap_or_else(|| def.as_ref().clone())
+            }
+            Object::Permanent(p) => card_def(p.def).as_ref().clone(),
+            Object::Moved { to } => self.def_of(*to),
+            // CR 111.7 / 603.10a last-known information: a ceased token's stack ability still
+            // needs the printed face for wire art and effect provenance.
+            Object::Removed { def, .. } => card_def(*def).as_ref().clone(),
         }
     }
 
@@ -387,12 +419,12 @@ impl Game {
     /// flipped. Used by the wire snapshot to keep a flipped permanent's `card_id`/`print` (art,
     /// oracle lookup) on the shared physical print while name/type/P-T display the back face.
     pub fn front_def_of(&self, id: ObjectId) -> CardDef {
-        match self.objects[id as usize] {
-            Object::Card(c) => c.def,
-            Object::Spell(s) => s.def,
-            Object::Permanent(p) => p.def,
-            Object::Moved { to } => self.front_def_of(to),
-            Object::Removed => panic!("object {id} has left the game"),
+        match &self.objects[id as usize] {
+            Object::Card(c) => card_def(c.def).as_ref().clone(),
+            Object::Spell(s) => card_def(s.def).as_ref().clone(),
+            Object::Permanent(p) => card_def(p.def).as_ref().clone(),
+            Object::Moved { to } => self.front_def_of(*to),
+            Object::Removed { def, .. } => card_def(*def).as_ref().clone(),
         }
     }
 
@@ -400,33 +432,47 @@ impl Game {
     /// (a Dies trigger whose source token vanished, or a mana ability whose sacrifice cost
     /// was paid before the effect resolves).
     pub(crate) fn source_name_of(&self, id: ObjectId) -> &'static str {
-        match self.objects[id as usize] {
-            Object::Removed => "",
-            _ => self.def_of(id).name,
-        }
+        self.def_of(id).name
     }
 
     /// The owner of the object at `id` (a spell's controller counts as its owner here).
     pub fn owner_of(&self, id: ObjectId) -> PlayerId {
-        match self.objects[id as usize] {
+        match &self.objects[id as usize] {
             Object::Card(c) => c.owner,
             Object::Spell(s) => s.controller,
             Object::Permanent(p) => p.owner,
-            Object::Moved { to } => self.owner_of(to),
-            Object::Removed => panic!("object {id} has left the game"),
+            Object::Moved { to } => self.owner_of(*to),
+            Object::Removed { owner, .. } => *owner,
         }
     }
 
     /// The player currently controlling `id` (owner for cards/permanents, caster for a
     /// spell on the stack). Distinct from [`owner_of`] once control-changing effects exist.
     pub fn controller_of(&self, id: ObjectId) -> PlayerId {
-        match self.objects[id as usize] {
+        match &self.objects[id as usize] {
             Object::Card(c) => c.owner,
             Object::Spell(s) => s.controller,
             Object::Permanent(p) => self.permanent_controller(id, p.owner),
-            Object::Moved { to } => self.controller_of(to),
-            Object::Removed => panic!("object {id} has left the game"),
+            Object::Moved { to } => self.controller_of(*to),
+            // Last-known owner stands in for controller once the object has left the game.
+            Object::Removed { owner, .. } => *owner,
         }
+    }
+
+    /// Tombstone `id` as [`Object::Removed`], capturing last-known `def`/`owner` from whatever
+    /// live form currently occupies the slot (or keeping an existing Removed identity).
+    pub(crate) fn mark_removed(&mut self, id: ObjectId) {
+        let (def, owner) = match &self.objects[id as usize] {
+            Object::Card(c) => (c.def, c.owner),
+            Object::Spell(s) => (s.def, s.controller),
+            Object::Permanent(p) => (p.def, p.owner),
+            Object::Moved { to } => {
+                let to = *to;
+                return self.mark_removed(to);
+            }
+            Object::Removed { def, owner } => (*def, *owner),
+        };
+        self.objects[id as usize] = Object::Removed { def, owner };
     }
 
     /// The controller of the permanent at `id` under CR 800.4a: when several control-changing
@@ -479,6 +525,14 @@ impl Game {
         ts
     }
 
+    /// The next continuous-effect timestamp (CR 613.7), consuming it. Static-permanent effects
+    /// stamp when they start applying; runtime base/type sets stamp when they resolve.
+    pub(crate) fn stamp_continuous_timestamp(&mut self) -> u64 {
+        let ts = self.next_continuous_timestamp;
+        self.next_continuous_timestamp += 1;
+        ts
+    }
+
     /// The control-changing Aura (CR 720 — [`Effect::Static(StaticEffect::ControlAttached)`]) currently attached to
     /// `host`, if any — the object whose owner controls `host` while it stays attached. `None`
     /// when no such Aura is attached. Applied additively over the base owner (engine-core-and-event-model spec), so the
@@ -487,7 +541,7 @@ impl Game {
         self.attachments(host).into_iter().find(|&aura| {
             self.def_of(aura).abilities.iter().any(|a| {
                 matches!(
-                    (a.timing, a.effect),
+                    (a.timing, a.effect.clone()),
                     (
                         Timing::Static,
                         Effect::Static(StaticEffect::ControlAttached)
@@ -555,11 +609,11 @@ impl Game {
             }
             _ => None,
         };
-        for ability in self.def_of(id).abilities {
+        for ability in self.def_of(id).abilities.iter().cloned() {
             if let Some(on_expiry) = payload(&ability.effect) {
                 return on_expiry;
             }
-            if let Effect::Sequence { steps } = ability.effect
+            if let Effect::Sequence { steps } = &ability.effect
                 && let Some(on_expiry) = steps.iter().find_map(payload)
             {
                 return on_expiry;
@@ -645,20 +699,26 @@ impl Game {
     /// permanent's own face-down status is [`Self::is_face_down`]). Read by the wire redaction
     /// layer.
     pub fn is_card_face_down(&self, id: ObjectId) -> bool {
-        match self.objects[id as usize] {
+        match &self.objects[id as usize] {
             Object::Card(c) => c.face_down,
-            Object::Moved { to } => self.is_card_face_down(to),
+            Object::Moved { to } => self.is_card_face_down(*to),
             _ => false,
         }
     }
 
     /// What casting the card at `id` targets (its first spell-timed targeting effect).
-    /// `TargetSpec::None` means the card takes no target.
+    /// `TargetSpec::None` means the card takes no target *in the cast intent* — either it targets
+    /// nothing at all, or it picks its targets after the cast (a post-cast clause like Return to
+    /// Dust's "up to one other target", answered by a `ChooseSpellTargets` pending choice), which
+    /// `validate_cast` rejects a cast-intent target for.
     pub fn target_spec_of(&self, id: ObjectId) -> TargetSpec {
+        if self.spell_multi_target(&self.def_of(id)).is_some() {
+            return TargetSpec::None;
+        }
         // ponytail: mode-less — a modal card's per-mode target need isn't surfaced here (the UI
         // picks a mode first). Reports None for a modal card; wire per-mode specs if the UI wants
         // to preview them.
-        self.required_target(self.def_of(id), None)
+        self.required_target(&self.def_of(id), None)
     }
 
     /// Target need and legal targets for casting a prepared permanent's back face.
@@ -670,40 +730,42 @@ impl Game {
         if !perm.prepared {
             return (TargetSpec::None, Vec::new());
         }
-        let Some(back) = perm.def.back else {
+        let printed = card_def(perm.def);
+        let Some(back) = printed.back else {
             return (TargetSpec::None, Vec::new());
         };
-        let back = *back;
+        let back = card_def(back);
         let controller = self.controller_of(source);
-        let spec = self.required_target(back, None);
+        let spec = self.required_target(&back, None);
         if spec == TargetSpec::None {
             return (spec, Vec::new());
         }
         (
             spec,
-            self.legal_targets_for(spec, source, controller, color_identity(back), 0),
+            self.legal_targets_for(spec, source, controller, color_identity(&back), 0),
         )
     }
 
     /// Target need and legal targets for casting half `half` of the split card `card` (CR 709.4a).
     /// Empty when `card` has no such half, or when the half picks its targets *after* the cast
     /// (a multi-target clause like Fire's "divided among one or two targets" — a
-    /// `ChooseSpellTargets` pending choice handles those, exactly as for a directly-cast spell).
+    /// `ChooseTarget` pending choice handles those, exactly as for a directly-cast spell).
     pub fn split_half_cast_targets(&self, card: ObjectId, half: u8) -> (TargetSpec, Vec<Target>) {
-        let Some(&face) = self.def_of(card).halves.get(half as usize) else {
+        let Some(&face_id) = self.def_of(card).halves.get(half as usize) else {
             return (TargetSpec::None, Vec::new());
         };
-        if self.spell_multi_target(face).is_some() {
+        let face = card_def(face_id);
+        if self.spell_multi_target(&face).is_some() {
             return (TargetSpec::None, Vec::new());
         }
-        let spec = self.required_target(face, None);
+        let spec = self.required_target(&face, None);
         if spec == TargetSpec::None {
             return (spec, Vec::new());
         }
         let controller = self.controller_of(card);
         (
             spec,
-            self.legal_targets_for(spec, card, controller, color_identity(face), 0),
+            self.legal_targets_for(spec, card, controller, color_identity(&face), 0),
         )
     }
 
@@ -722,6 +784,24 @@ impl Game {
         match &self.objects[id as usize] {
             Object::Spell(s) => s.targets.primary().or_else(|| s.modes.first_target()),
             _ => None,
+        }
+    }
+
+    /// All declared targets on spell `id`, first clause then second (`targets_second`).
+    /// Modal spells that keep their choices on `modes` report chosen mode targets in printed
+    /// mode order when no clause targets are present.
+    /// Empty when `id` is not a spell or has no chosen targets.
+    pub fn spell_targets(&self, id: ObjectId) -> Vec<Target> {
+        match &self.objects[id as usize] {
+            Object::Spell(s) => {
+                let mut targets: Vec<Target> =
+                    s.targets.iter().chain(s.targets_second.iter()).collect();
+                if targets.is_empty() {
+                    targets.extend(s.modes.chosen().filter_map(|(_, target)| target));
+                }
+                targets
+            }
+            _ => Vec::new(),
         }
     }
 
@@ -773,6 +853,39 @@ impl Game {
         }
     }
 
+    /// Whether the spell at `id` was cast during its controller's own precombat or postcombat
+    /// main phase (CR 505.1a/505.1b — [`Spell::cast_during_main_phase`]), `false` if `id` isn't a
+    /// spell. The seam [`Amount::IfSpellCastDuringMainPhase`] and
+    /// [`TargetCount::main_phase_scaled`] read (Sulfurous Blast's "If you cast this spell during
+    /// your main phase..."; Return to Dust's optional second target), the cast-timing sibling of
+    /// [`Self::spell_was_kicked`]'s read.
+    pub fn spell_cast_during_main_phase(&self, id: ObjectId) -> bool {
+        match &self.objects[id as usize] {
+            Object::Spell(s) => s.cast_during_main_phase,
+            _ => false,
+        }
+    }
+
+    /// The mana value of the spell at `id`'s own *first* (clause 0) chosen target, `0` if `id`
+    /// isn't a spell or has no clause-0 target. The seam [`Amount::SpellFirstTargetManaValue`]
+    /// reads (Orim's Thunder's "damage equal to that permanent's mana value"), the cross-clause
+    /// sibling of [`Self::spell_sacrifice_count`]'s read — see that variant's own doc for why a
+    /// direct read (rather than a `ResolutionFrame` snapshot) is safe here.
+    pub(crate) fn spell_first_target_mana_value(&self, id: ObjectId) -> i32 {
+        let Object::Spell(s) = &self.objects[id as usize] else {
+            return 0;
+        };
+        match s.targets.primary() {
+            Some(t) => self
+                .def_of(expect_object_target(
+                    Some(t),
+                    "a spell-first-target mana-value amount",
+                ))
+                .mana_value() as i32,
+            None => 0,
+        }
+    }
+
     /// The colors of mana spent to cast the spell at `id` (CR 106.9 — [`Spell::spent_colors`]),
     /// `[false; Color::COUNT]` if `id` isn't a spell. The spell-side read
     /// [`Condition::ColorWasSpentToCastThis`] falls back to when `source` is still on the stack
@@ -807,15 +920,18 @@ impl Game {
         }
     }
 
-    /// How many times the object at `id` had its Multikicker cost paid (CR 702.34 —
-    /// [`AdditionalCost::multikicker`]), 0 for anything else. [`Amount::TimesKicked`]'s read:
-    /// `source` is still the resolving [`Object::Spell`] for a cast-time cost, but is the fresh
-    /// [`Object::Permanent`] by the time an `enters_with_counters` effect resolves (CR 702.34c),
-    /// so both shapes are checked — a spell-only read would silently return 0 there.
-    pub fn times_kicked(&self, id: ObjectId) -> u8 {
+    /// How many times the spell at `id` had its Multikicker cost paid (CR 702.33c —
+    /// [`AdditionalCost::multikicker`]), 0 if `id` isn't a spell or has no Multikicker cost. The
+    /// Multikicker sibling of [`Self::spell_strive_count`]'s read — read by
+    /// [`Amount::SpellMultikickerCount`] and [`TargetCount::multikicker_scaled`]'s cast-time
+    /// target-count substitution. Also falls back to [`Permanent::entered_multikicker_count`] —
+    /// unlike Strive/Sacrifice, Multikicker's own payoff can be an ETB trigger (Lightkeeper of
+    /// Emeria's "gain 2 life for each time it was kicked"), which resolves after `id` has already
+    /// become the permanent rather than the spell.
+    pub(crate) fn spell_multikicker_count(&self, id: ObjectId) -> u8 {
         match &self.objects[id as usize] {
             Object::Spell(s) => s.multikicker_count,
-            Object::Permanent(p) => p.entered_times_kicked,
+            Object::Permanent(p) => p.entered_multikicker_count,
             _ => 0,
         }
     }
@@ -844,5 +960,30 @@ impl Game {
     /// Seats that have already finalized their block declaration this combat (including empty).
     pub fn blockers_declared(&self) -> Vec<PlayerId> {
         self.combat.blocked_by.clone()
+    }
+
+    /// Who makes this turn's attack declaration — the active player (CR 508.1a) unless a live
+    /// "you choose which creatures attack this turn" effect (Master Warcraft) moved the choice to
+    /// someone else. The single choke `Game::declare_attackers`, the auto-seal and the affordance
+    /// list all read, so the override can't be routed around.
+    pub fn attack_declarer(&self) -> PlayerId {
+        self.live_declarer(self.combat_extras.attack_declarer, self.active_player)
+    }
+
+    /// Who makes this turn's block declarations — each attacked player for themselves (CR 509.1a)
+    /// unless Master Warcraft moved every one of them to a single seat, in which case that seat
+    /// declares for the whole table in one submission.
+    pub fn block_declarer(&self, defender: PlayerId) -> PlayerId {
+        self.live_declarer(self.combat_extras.block_declarer, defender)
+    }
+
+    /// A declaration override only holds while the chosen seat is still in the game — a player who
+    /// has lost makes no choices (CR 104.3a), so the declaration falls back to whoever would
+    /// ordinarily make it.
+    fn live_declarer(&self, override_seat: Option<PlayerId>, default: PlayerId) -> PlayerId {
+        match override_seat {
+            Some(seat) if !self.players[seat.0 as usize].lost => seat,
+            _ => default,
+        }
     }
 }

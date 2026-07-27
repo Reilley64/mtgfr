@@ -66,6 +66,19 @@ describe("restingPaintChanged", () => {
     } as never);
     expect(restingPaintChanged(before, after)).toBe(true);
   });
+
+  it("is true when only gravatar_hash changes on a player", () => {
+    const before = restingPaintSnapshot({
+      ...baseResting,
+      players: [{ player: 0, life: 40, lost: false, username: "Alice", hand_count: 7, gravatar_hash: "" }],
+    } as never);
+    const after = restingPaintSnapshot({
+      ...baseResting,
+      players: [{ player: 0, life: 40, lost: false, username: "Alice", hand_count: 7, gravatar_hash: "abc123" }],
+    } as never);
+
+    expect(restingPaintChanged(before, after)).toBe(true);
+  });
 });
 
 describe("mergeFlightPoses", () => {

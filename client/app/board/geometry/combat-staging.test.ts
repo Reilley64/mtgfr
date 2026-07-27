@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import type { VisibleState } from "~/wire/types";
 import {
+  canArmEndTurn,
   combatStagingClearsOnStepChange,
   handleCombatDrop,
   mergeRequiredAttacks,
@@ -21,19 +23,19 @@ const creature = (id: number, over: Partial<RenderCard> = {}): RenderCard =>
 
 describe("handleCombatDrop", () => {
   it("stages an attacker onto a defender seat", () => {
-    const result = handleCombatDrop("attackers", [], [], creature(3), 1, null, [], 0);
+    const result = handleCombatDrop("attackers", [], [], creature(3), 1, null, [], [0]);
     expect(result).toEqual({ kind: "attackers", value: [{ attacker: 3, defender: 1 }] });
   });
 
   it("retargets an already-staged attacker", () => {
-    const result = handleCombatDrop("attackers", [{ attacker: 3, defender: 1 }], [], creature(3), 2, null, [], 0);
+    const result = handleCombatDrop("attackers", [{ attacker: 3, defender: 1 }], [], creature(3), 2, null, [], [0]);
     expect(result).toEqual({ kind: "attackers", value: [{ attacker: 3, defender: 2 }] });
   });
 
   it("stages a blocker onto an attacker aimed at me", () => {
     const declared = [{ attacker: 9, defender: 0 }];
     const target = creature(9, { zone: ZONE.Battlefield, controller: 1 });
-    const result = handleCombatDrop("blockers", [], [], creature(4), null, target, declared, 0);
+    const result = handleCombatDrop("blockers", [], [], creature(4), null, target, declared, [0]);
     expect(result).toEqual({ kind: "blockers", value: [{ blocker: 4, attacker: 9 }] });
   });
 
@@ -41,7 +43,7 @@ describe("handleCombatDrop", () => {
   // face — the seat avatar under the drop point loses to the permanent on top of it.
   it("stages an attacker onto an opponent's planeswalker instead of their face", () => {
     const pw = creature(9, { kind: "planeswalker", zone: ZONE.Battlefield, controller: 1 });
-    const result = handleCombatDrop("attackers", [], [], creature(3), 1, pw, [], 0, [1, 2, 3]);
+    const result = handleCombatDrop("attackers", [], [], creature(3), 1, pw, [], [0], [1, 2, 3]);
     expect(result).toEqual({
       kind: "attackers",
       value: [{ attacker: 3, defender: 1, defender_planeswalker: 9 }],
@@ -50,12 +52,12 @@ describe("handleCombatDrop", () => {
 
   it("dropping on a non-planeswalker permanent still attacks the seat under it", () => {
     const bear = creature(9, { zone: ZONE.Battlefield, controller: 1 });
-    const result = handleCombatDrop("attackers", [], [], creature(3), 1, bear, [], 0, [1, 2, 3]);
+    const result = handleCombatDrop("attackers", [], [], creature(3), 1, bear, [], [0], [1, 2, 3]);
     expect(result).toEqual({ kind: "attackers", value: [{ attacker: 3, defender: 1 }] });
   });
 
   it("returns none outside a combat mode", () => {
-    expect(handleCombatDrop(null, [], [], creature(3), 1, null, [], 0)).toEqual({ kind: "none" });
+    expect(handleCombatDrop(null, [], [], creature(3), 1, null, [], [0])).toEqual({ kind: "none" });
   });
 });
 
@@ -131,6 +133,40 @@ describe("stagedAttackersForDisplay", () => {
   it("does not re-merge required attacks after declaration is done (SSE lag)", () => {
     // Confirm clears local staging; required_attacks can linger on the old action until SSE.
     expect(stagedAttackersForDisplay([], required, true)).toEqual([]);
+  });
+});
+
+describe("canArmEndTurn", () => {
+  const base = {
+    active_player: 0,
+    viewer: 0,
+    stack: [] as VisibleState["stack"],
+    actions: [] as VisibleState["actions"],
+  } as VisibleState;
+
+  it("allows End Turn on an empty stack with no forced attackers", () => {
+    expect(canArmEndTurn(base, false)).toBe(true);
+  });
+
+  it("hides End Turn when goad requires an attack", () => {
+    const state = {
+      ...base,
+      actions: [
+        {
+          id: 1,
+          kind: "declare_attackers",
+          label: { key: "action.declare_attackers" },
+          needs_target: false,
+          section: "combat",
+          required_attacks: [{ attacker: 7, defender: 1 }],
+        },
+      ],
+    } as VisibleState;
+    expect(canArmEndTurn(state, false)).toBe(false);
+  });
+
+  it("hides End Turn while local attack staging is pending", () => {
+    expect(canArmEndTurn(base, true)).toBe(false);
   });
 });
 

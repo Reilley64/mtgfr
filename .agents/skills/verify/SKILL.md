@@ -14,20 +14,56 @@ When a live drive fails mysteriously, use **`systematic-debugging`** before patc
 - **Dev loop is usually already running**: `just dev` = `bacon server` (auto-rebuilds+restarts `target/debug/server serve` — health on :8080, gRPC on :50051 — on source change) + vite on :5173. Check `lsof -nP -i :8080` — if `server`'s parent is `bacon server`, the running binary already has your changes (bacon restarted it after your last build). Don't start a second server; listen addrs come from `Settings` (`config/mtgfr.toml` / env).
 - Cold start: `DATABASE_URL="sqlite::memory:" cargo run -p server` + `cd client && bun run dev`.
 - Confirm the API is up: `curl -s localhost:8080/health/live`. Every game/auth/decks/cards route is gRPC now (wire-protocol-and-visibility spec) — there's no `/openapi.json` or REST path to curl directly; drive it through the BFF's `/api/rpc` (below) or a gRPC client against `:50051`.
+- **An isolated stack may pick its own HTTP, Vite and Postgres ports — never its own gRPC port.**
+  Routed table calls ignore `GRPC_UPSTREAM`: the BFF maps a table's `pod_dns` through
+  `grpcUpstreamFromPodDns` (`client/app/domain/api-upstream.ts`), which pins every pod to `:50051`.
+  `GRPC_UPSTREAM` only covers the *unrouted* default path (auth/decks/cards), so a second server
+  on another gRPC port signs you in fine and then fails every game stream with
+  `503 connect ECONNREFUSED 127.0.0.1:50051`.
 
-## Seating a 2-player game via the BFF (no UI needed)
+## Seating a 4-player game via the BFF (no UI needed)
 
-The client talks to the BFF at `client/src/routes/api/rpc/[...path].ts`, which dials tonic. Drive the same calls with `curl` against the BFF (`localhost:3000` in dev) rather than the API directly — cookies still carry the session (`-c jar.txt` on signup, `-b jar.txt` after). See `client/src/wire/rpcs.ts` for the RPC names/shapes, or use a gRPC client (e.g. `grpcurl`) straight against `:50051` with `x-session-token` metadata (see `crates/server/src/grpc/auth_ctx.rs`).
+The client talks to the BFF at `client/server/routes/api/rpc/[...path].ts` (lobby/table routes in
+`client/server/routes/api/[...path].ts`), which dials tonic. Drive the same calls with `curl`
+against the BFF (`localhost:5173` in dev) rather than the API directly — cookies still carry the
+session (`-c jar.txt` on signup, `-b jar.txt` after). See `client/app/domain/wire/rpcs.ts` for the RPC
+names/shapes, or use a gRPC client (e.g. `grpcurl`) straight against `:50051` with
+`x-session-token` metadata (see `crates/server/src/grpc/auth_ctx.rs`).
 
-1. Sign up per player (fresh throwaway emails — the dev DB persists).
-2. List decks — precons have negative ids (-1 Silverquill … -5 Quandrix, -6 Enchantress Rubinia, -7 Deathdancer Xira); usable by anyone, no deck building.
-3. Seed a table (`Tables.Seed` / the BFF's seed RPC) with both seats' user id + deck id.
+1. Sign up per player, `POST /api/rpc/auth/signup` (fresh throwaway emails — the dev DB persists).
+2. Precons have negative ids (`crates/server/src/precons.rs`: -1 Silverquill … -5 Quandrix,
+   -6 Enchantress Rubinia, -7 Deathdancer Xira, -8 Political Puppets, -9 Mirror Mastery,
+   -10 Heavenly Inferno); usable by anyone, no deck building.
+3. Lobby, one cookie jar per seat: `POST /api/tables/v1` (host — returns `{table_id}`) →
+   `POST /api/tables/join/v1 {table_id, deck_id}` per seat → `POST /api/tables/ready/v1
+   {table_id, ready:true}` → `POST /api/tables/start/v1 {table_id}`.
 
 ## Reading state / driving intents
 
-- State: the first frame of `Game.Stream` is a full snapshot for that caller's seat — take the first frame where `frame == "snapshot"`.
-- Intents: `Game.SubmitIntent` with `{"table_id","client_seq":<int, monotonic>,"intent":{...}}`. Useful kinds: `take_action {player,id}` (ids from `state.actions`), `pass_priority {player}`, `discard {player,cards}`, `arrange_top {player,top,bottom}` (answers scry).
-- `scratchpad/drive.py` pattern from past runs: loop { answer pending_choice (discard/scry), play a land if offered, else pass } until the state you want. Precon games hit real choices (cleanup discards, scry lands) — handle or the loop wedges.
+- State: the first frame of `Game.Stream` (BFF: `GET /api/rpc/game/<table>/stream`, SSE) is a full snapshot for that caller's seat — take the first frame where `frame == "snapshot"`, then hang up.
+- Intents: `Game.SubmitIntent` (BFF: `POST /api/rpc/game/<table>/intent`) with `{"table_id","client_seq":<int, monotonic>,"intent":{...}}`. Useful kinds: `take_action {player,id}` (ids from `state.actions`), `pass_priority {player}`, `discard {player,cards}`, `arrange_top {player,top,bottom}` (answers scry).
+- **A rejected intent still acks HTTP 200.** The ack is `{accepted, reject_reason}` — a driver that
+  trusts the status code re-sends the same illegal intent forever and looks like an engine wedge.
+  Branch on `accepted`, and remember the rejected `(action id, target)` pair so the search advances.
+- **Never invent targets.** `ActionView.targets` already carries `Game::legal_targets` for that
+  action; guessing from the battlefield turns one legal cast into dozens of
+  `reject.illegal_target` acks (6083 of them in one heavenly-inferno drive, 330 accepted).
+  Guess only when `targets` is empty and `needs_target` is true (modal casts carry targets per mode).
+- **Pay the cost the action names.** An `ActionView` carries its own cost picks —
+  `sacrifice_choices` (Fallen Angel's "Sacrifice a creature"), `discard_choices`/`discard_count`,
+  `graveyard_exile_choices`, `has_x`/`min_x`. Omitting one is `reject.cannot_activate` /
+  `reject.cannot_pay_cost`, not an engine bug; `Some([])` means the cost exists and nothing can
+  pay it, so skip the action entirely.
+- **A listed action must be submittable exactly as listed.** When a drive's rejects cluster on one
+  card, suspect the *advertisement* before the driver: a `needs_target` the cast gate then rejects
+  is a real client-facing bug (post-cast target clauses, CR 601.2c, were exactly this). The same
+  holds for a `PendingChoice`: equip listing opponents' creatures and a `ChooseSpellTargets` raised
+  at `min: 0, max: 0` with a full `legal` list were the next two clusters, each hidden behind the
+  last — so re-run the drive after every fix.
+- **`logs/actions.<TABLE>.toon` is the drive-debugging oracle.** Every intent the server saw, one
+  row: seq, player, intent, accepted, reject reason, step/active/priority/pending after it, and the
+  full event list. Diagnose a wedge from that trace before touching engine code.
+- `scratchpad/drive.py` pattern from past runs: loop { answer pending_choice (discard/scry), play a land if offered, else pass } until the state you want. Precon games hit real choices (cleanup discards, scry lands) — handle or the loop wedges. Mirror `client/app/domain/choice.ts` for the answer shapes, and keep a fallback chain per choice (decline the cost, answer "no", try each single target, then empty) — the first answer the UI would send is not always payable.
 - Per-stack yield: `Game.SetYield` `{table_id, enabled}`.
 
 ## Watching in the browser

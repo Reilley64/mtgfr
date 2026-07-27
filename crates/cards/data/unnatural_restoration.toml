@@ -5,7 +5,7 @@ id = "05d1e797-bda2-4411-a546-919493768650"
 default_print = "4d4e6a91-59cc-4f7f-af25-16acabdafb1a"
 otags = ["counters-matter", "hand-neutral", "regrowth-permanent"]
 oracle = "Return target permanent card from your graveyard to your hand. Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)"
-set = "one"
+sets = ["one"]
 
 [cost]
 generic = 1

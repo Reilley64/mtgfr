@@ -12,11 +12,11 @@
 # so the modal indices below don't line up 1:1 with the print (mode 3 here is the print's fifth
 # mode).
 name = "Final Act"
+sets = ["m3c", "mar", "soc"]
 id = "335a6c6a-030f-45d4-806c-467a22962eed"
 default_print = "a86671d1-4f4b-486e-a0b3-671608974a82"
 otags = ["modal", "removal-battle", "removal-creature", "removal-destroy", "removal-planeswalker", "remove-counters-other", "remove-counters-player", "sweeper", "sweeper-graveyard"]
 oracle = "Choose one or more —\n• Destroy all creatures.\n• Destroy all planeswalkers.\n• Destroy all battles.\n• Exile all graveyards.\n• Each opponent loses all counters."
-set = "soc"
 approximates = "\"destroy all battles\" is dropped — battles aren't a modeled permanent type. \"Choose one or more\" is offered over the remaining four modes (destroy all creatures / destroy all planeswalkers / exile all graveyards / each opponent loses all counters)."
 modal = true
 choose = 1

@@ -4,8 +4,11 @@
 //! [`settle_after_apply`]. gRPC adapters call the `*_core` entry points only.
 
 use engine::PlayerId;
+use schema::MessageRef;
 use schema::{IntentEnvelope, to_intent_for_seat};
 use serde::{Deserialize, Serialize};
+
+use tracing::Instrument;
 
 use crate::session::{ApplyResult, Disposition, DwellResult, TableSession, settle_after_apply};
 use crate::{AppState, Registry, Table, lock};
@@ -15,14 +18,14 @@ use crate::{AppState, Registry, Table, lock};
 pub struct Ack {
     pub accepted: bool,
     /// Why the intent was rejected, if it was.
-    pub reason: Option<String>,
+    pub reject_reason: Option<MessageRef>,
 }
 
 impl From<ApplyResult> for Ack {
     fn from(result: ApplyResult) -> Self {
         Self {
             accepted: result.accepted,
-            reason: result.reason,
+            reject_reason: result.reason,
         }
     }
 }
@@ -31,7 +34,7 @@ impl From<DwellResult> for Ack {
     fn from(result: DwellResult) -> Self {
         Self {
             accepted: result.accepted,
-            reason: result.reason,
+            reject_reason: result.reason,
         }
     }
 }
@@ -43,17 +46,23 @@ struct DriveOutcome {
     log_row: String,
 }
 
+struct RatingSnapshot {
+    seats: Vec<crate::Seat>,
+    game: engine::Game,
+    events: Vec<engine::Event>,
+}
+
 /// Lock → seated table → `drive` → settle → unlock → append action log.
 ///
 /// The sole place callers learn the unlock-tail ordering invariant (Disposition requires
 /// [`settle_after_apply`]). Dwell does not use this path — it never produces a Disposition.
-fn with_seated_drive(
+async fn with_seated_drive(
     state: &AppState,
     user_id: i64,
     table_id: &str,
     drive: impl FnOnce(&mut Table, u8) -> DriveOutcome,
 ) -> Ack {
-    let (ack, log_row) = {
+    let (ack, log_row, rating_snapshot) = {
         let mut reg = lock(&state.reg);
         let (table, seat) = match seated_table(&mut reg, table_id, user_id) {
             Ok(pair) => pair,
@@ -65,11 +74,27 @@ fn with_seated_drive(
             log_row,
         } = drive(table, seat);
         let seq = table.seq;
+        let rating_snapshot = result.accepted.then(|| {
+            table.game.as_ref().map(|game| RatingSnapshot {
+                seats: table.seats.to_vec(),
+                game: game.clone(),
+                events: result.events.clone(),
+            })
+        });
         let ack = Ack::from(result);
         settle_after_apply(&mut reg, state, table_id, disposition, seq);
-        (ack, log_row)
+        (ack, log_row, rating_snapshot.flatten())
     };
     crate::action_log::append(table_id, &log_row);
+    if let Some(snapshot) = rating_snapshot {
+        crate::ratings::persist_player_lost(
+            &state.db,
+            &snapshot.seats,
+            &snapshot.game,
+            &snapshot.events,
+        )
+        .await;
+    }
     ack
 }
 
@@ -90,7 +115,6 @@ pub(crate) async fn submit_intent_core(
         user_id = user_id,
         accepted = tracing::field::Empty,
     );
-    let _enter = span.enter();
 
     let ack = with_seated_drive(state, user_id, table_id, |table, seat| {
         let intent = to_intent_for_seat(env.intent.clone(), PlayerId(seat));
@@ -108,7 +132,9 @@ pub(crate) async fn submit_intent_core(
             disposition,
             log_row,
         }
-    });
+    })
+    .instrument(span.clone())
+    .await;
     span.record("accepted", ack.accepted);
     ack
 }
@@ -122,13 +148,13 @@ fn seated_table<'r>(
     user_id: i64,
 ) -> Result<(&'r mut Table, u8), Ack> {
     let Some(table) = reg.get_mut(table_id) else {
-        return Err(reject("UnknownTable"));
+        return Err(reject("reject.unknown_table"));
     };
     if table.game.is_none() {
-        return Err(reject("GameNotStarted"));
+        return Err(reject("reject.game_not_started"));
     }
     let Some(seat) = table.seat_of(user_id) else {
-        return Err(reject("NotSeated"));
+        return Err(reject("reject.not_seated"));
     };
     Ok((table, seat))
 }
@@ -162,6 +188,7 @@ pub(crate) async fn set_yield_core(
             log_row,
         }
     })
+    .await
 }
 
 /// Mark (or clear) a seat's turn yield: auto-pass until that seat's next turn, or until they
@@ -196,6 +223,7 @@ pub(crate) async fn set_turn_yield_core(
             log_row,
         }
     })
+    .await
 }
 
 /// Helpless-reader hover on the stack during a hold. No settle: dwell never produces a
@@ -215,9 +243,9 @@ pub(crate) fn set_stack_dwell_core(
 }
 
 /// A rejected ack with a reason.
-fn reject(reason: &str) -> Ack {
+fn reject(key: &str) -> Ack {
     Ack {
         accepted: false,
-        reason: Some(reason.to_string()),
+        reject_reason: Some(MessageRef::key(key)),
     }
 }

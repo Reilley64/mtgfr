@@ -9,28 +9,34 @@ import { html } from "foldkit/html";
 import { Scene } from "foldkit/test";
 import { beforeAll, expect, test } from "vitest";
 import { buildAnswerFromDraft, choiceDraftKey, choiceIntent } from "~/choice";
+import { testMessageRef } from "~/i18n/testMessageRef";
 import { BindCardArt } from "~/ui/card-art";
 import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
-import type { GameFoldState } from "../game/fold";
+import type { GameFoldState, LogLine } from "../game/fold";
 import { SetStackDwell, SubmitIntent } from "../game/intents";
-import { emptyCostPicks } from "./action/execution";
+import { emptyCostPicks, type PlayModePick } from "./action/execution";
 import { worldToScreen } from "./geometry/camera";
 import type { RenderCard } from "./geometry/layout";
 import { avatarPos, layout, STEP, ZONE } from "./geometry/layout";
 import { ACTIVATION_MENU_WIDTH_PX, activationMenuEstimatedHeight, activationMenuPlacement } from "./geometry/radial";
 import { boardOverlays } from "./html/overlays";
 import { resolveBoardCardArtMounts, resolveBoardOverlayMounts, resolveLiveBoardMounts } from "./html/scene-helpers";
+import { CopyBoardLog } from "./log-commands";
 import {
   BoardPointerUp,
+  CancelActionClicked,
   DiscardChosen,
   DiscardCostConfirmed,
   GyExileChosen,
   HandActionActivated,
   KeyboardEnterPressed,
   KeyboardSpacePressed,
+  LogCopyRequested,
   type Message,
   PendingChoiceAnswered,
   PileCardClicked,
+  PlayModeChosen,
+  PrimaryClicked,
   PromptSubmitted,
   RadialOptionPicked,
   StackDwellChanged,
@@ -103,14 +109,22 @@ function fold(state: VisibleState | null): GameFoldState {
       zoneMoves: new Map(),
       resolvedFromStack: new Set(),
       leftStackToPile: new Set(),
+      battlefieldExits: new Map(),
       tokenCreators: new Map(),
       landPlayFrom: new Map(),
       zonePileEntrances: new Map(),
       stackEntrances: new Map(),
       priorStackObjectIds: new Set(),
     },
-    tableFeel: { land: false, stack: false, resolve: false, damage: false },
+    tableFeel: { land: false, stack: false, resolve: false, damage: false, destroy: false, exile: false },
   };
+}
+
+function logLines(count: number): LogLine[] {
+  return Array.from({ length: count }, (_, i) => {
+    const seq = i + 1;
+    return { seq, text: `entry-${String(seq).padStart(3, "0")}` };
+  });
 }
 
 function viewModel(fold: GameFoldState): ViewModel {
@@ -182,7 +196,7 @@ test("hand tile activates when clicked (below hand-bar threshold)", () => {
   const action: ActionView = {
     id: 7,
     kind: "cast",
-    label: "Cast Lightning Bolt",
+    label: testMessageRef("Cast Lightning Bolt"),
     needs_target: false,
     object: 42,
     section: "hand",
@@ -220,7 +234,7 @@ test("hand-drop planner ignores release below the hand-bar threshold", () => {
   const action: ActionView = {
     id: 7,
     kind: "cast",
-    label: "Cast",
+    label: testMessageRef("Cast"),
     needs_target: false,
     object: 42,
     section: "hand",
@@ -244,11 +258,408 @@ test("hand-drop planner ignores release below the hand-bar threshold", () => {
   expect(commandsAbove[0]?.name).toBe(SubmitIntent.name);
 });
 
+test("HandActionActivated with two hand modes parks card and opens playModePick", () => {
+  const card = creature(42, 0, { name: "Valley Rannet", zone: ZONE.Hand });
+  const castAction: ActionView = {
+    id: 7,
+    kind: "cast",
+    label: testMessageRef("Cast Valley Rannet"),
+    needs_target: false,
+    object: card.id,
+    section: "hand",
+  };
+  const cycleAction: ActionView = {
+    id: 8,
+    kind: "cycle",
+    label: testMessageRef("Mountaincycling"),
+    needs_target: false,
+    object: card.id,
+    section: "hand",
+  };
+  const gameFold = fold(state({ objects: [card], actions: [cycleAction, castAction] }));
+
+  const [next, commands] = updateBoard(
+    initialBoardModel(),
+    HandActionActivated({ action: castAction, x: 400, y: 200 }),
+    gameFold,
+    "T1",
+  );
+
+  expect(commands).toEqual([]);
+  expect(playModePickOf(next)?.card.id).toBe(card.id);
+  expect(playModePickOf(next)?.modes.map((mode) => mode.id)).toEqual([7, 8]);
+  expect(next.handHidden.has(card.id)).toBe(true);
+  expect(next.flights.has(card.id)).toBe(true);
+});
+
+test("HandActionActivated choose branch clears other local action sessions", () => {
+  const card = creature(42, 0, { name: "Valley Rannet", zone: ZONE.Hand });
+  const castAction: ActionView = {
+    id: 7,
+    kind: "cast",
+    label: testMessageRef("Cast Valley Rannet"),
+    needs_target: false,
+    object: card.id,
+    section: "hand",
+  };
+  const cycleAction: ActionView = {
+    id: 8,
+    kind: "cycle",
+    label: testMessageRef("Mountaincycling"),
+    needs_target: false,
+    object: card.id,
+    section: "hand",
+  };
+  const staleAction: ActionView = {
+    id: 9,
+    kind: "cast",
+    label: testMessageRef("Stale"),
+    needs_target: false,
+    object: card.id,
+    section: "hand",
+  };
+  const gameFold = fold(state({ objects: [card], actions: [castAction, cycleAction] }));
+  const staleSessions: BoardModel = {
+    ...initialBoardModel(),
+    staged: {
+      card,
+      action: staleAction,
+      picks: emptyCostPicks(),
+      preferPick: false,
+      playOrigin: { x: 1, y: 2 },
+      playOriginScreen: { x: 3, y: 4 },
+    },
+    xPrompt: {
+      action: staleAction,
+      target: null,
+      picks: emptyCostPicks(),
+      modes: [],
+      name: "Stale",
+      minX: 0,
+      maxX: 1,
+      draftX: 1,
+      xCost: { generic: 0, colored: [0, 0, 0, 0, 0], has_x: true, x_symbols: 1 },
+    },
+    modalCast: {
+      action: staleAction,
+      modes: [],
+      picks: emptyCostPicks(),
+      chosen: null,
+      answers: [],
+      modeDraft: [],
+    },
+    sacrificePick: {
+      action: staleAction,
+      card,
+      dropSeed: { x: 0, y: 0 },
+      screenOrigin: { x: 0, y: 0 },
+      picks: emptyCostPicks(),
+    },
+    gyExilePick: {
+      action: staleAction,
+      card,
+      dropSeed: { x: 0, y: 0 },
+      screenOrigin: { x: 0, y: 0 },
+      picks: emptyCostPicks(),
+    },
+  };
+
+  const [next, commands] = updateBoard(
+    staleSessions,
+    HandActionActivated({ action: castAction, x: 400, y: 200 }),
+    gameFold,
+    "T1",
+  );
+
+  expect(commands).toEqual([]);
+  expect(playModePickOf(next)?.modes.map((mode) => mode.id)).toEqual([7, 8]);
+  expect(next.staged).toBeNull();
+  expect(next.xPrompt).toBeNull();
+  expect(next.modalCast).toBeNull();
+  expect(next.sacrificePick).toBeNull();
+  expect(next.discardPick).toBeNull();
+  expect(next.gyExilePick).toBeNull();
+});
+
+test("PlayModeChosen runs the selected action and clears playModePick", () => {
+  const card = creature(42, 0, { name: "Valley Rannet", zone: ZONE.Hand });
+  const castAction: ActionView = {
+    id: 7,
+    kind: "cast",
+    label: testMessageRef("Cast Valley Rannet"),
+    needs_target: false,
+    object: card.id,
+    section: "hand",
+  };
+  const cycleAction: ActionView = {
+    id: 8,
+    kind: "cycle",
+    label: testMessageRef("Mountaincycling"),
+    needs_target: false,
+    object: card.id,
+    section: "hand",
+  };
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    playModePick: {
+      card,
+      modes: [castAction, cycleAction],
+      dropSeed: { x: 0, y: 0 },
+      screenOrigin: { x: 400, y: 200 },
+    },
+    handHidden: new Set([card.id]),
+    flights: new Map([
+      [
+        card.id,
+        {
+          id: card.id,
+          print: "",
+          name: card.name,
+          x: 400,
+          y: 200,
+          scale: 1,
+          targetX: 720,
+          targetY: 140,
+          targetScale: 0.5,
+          phase: "flying",
+          kind: "stack",
+          fromCardId: card.id,
+        },
+      ],
+    ]),
+    hideCardIds: new Set([card.id]),
+    ownedIds: new Set([card.id]),
+  };
+  const gameFold = fold(state({ objects: [card], actions: [castAction, cycleAction] }));
+
+  const [next, commands] = updateBoard(board, PlayModeChosen({ actionId: cycleAction.id }), gameFold, "T1");
+
+  expect(playModePickOf(next)).toBeNull();
+  expect(next.handHidden.has(card.id)).toBe(true);
+  expect(next.flights.has(card.id)).toBe(true);
+  expect(commands).toHaveLength(1);
+  expect(commands[0]?.name).toBe(SubmitIntent.name);
+  expect(intentFromCommand(commands[0])).toMatchObject({
+    kind: "take_action",
+    id: cycleAction.id,
+  });
+});
+
+test("PlayModeChosen with a stale pruned action clears playModePick without intent", () => {
+  const card = creature(42, 0, { name: "Valley Rannet", zone: ZONE.Hand });
+  const staleCastAction: ActionView = {
+    id: 7,
+    kind: "cast",
+    label: testMessageRef("Cast Valley Rannet"),
+    needs_target: false,
+    object: card.id,
+    section: "hand",
+  };
+  const remainingCycleAction: ActionView = {
+    id: 8,
+    kind: "cycle",
+    label: testMessageRef("Mountaincycling"),
+    needs_target: false,
+    object: card.id,
+    section: "hand",
+  };
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    playModePick: {
+      card,
+      modes: [remainingCycleAction],
+      dropSeed: { x: 0, y: 0 },
+      screenOrigin: { x: 400, y: 200 },
+    },
+    handHidden: new Set([card.id]),
+    flights: new Map([
+      [
+        card.id,
+        {
+          id: card.id,
+          print: "",
+          name: card.name,
+          x: 400,
+          y: 200,
+          scale: 1,
+          targetX: 720,
+          targetY: 140,
+          targetScale: 0.5,
+          phase: "flying",
+          kind: "stack",
+          fromCardId: card.id,
+        },
+      ],
+    ]),
+    hideCardIds: new Set([card.id]),
+    ownedIds: new Set([card.id]),
+  };
+  const gameFold = fold(state({ objects: [card], actions: [remainingCycleAction] }));
+
+  const [next, commands] = updateBoard(board, PlayModeChosen({ actionId: staleCastAction.id }), gameFold, "T1");
+
+  expect(commands).toEqual([]);
+  expect(playModePickOf(next)).toBeNull();
+  expect(next.handHidden.has(card.id)).toBe(false);
+  expect(next.flights.has(card.id)).toBe(false);
+  expect(next.hideCardIds.has(card.id)).toBe(false);
+  expect(next.ownedIds.has(card.id)).toBe(false);
+});
+
+test("PlayModeChosen restores the parked card when the selected action rejects", () => {
+  const card = creature(42, 0, { name: "Valley Rannet", zone: ZONE.Hand });
+  const castAction: ActionView = {
+    id: 7,
+    kind: "cast",
+    label: testMessageRef("Cast Valley Rannet"),
+    needs_target: false,
+    object: card.id,
+    section: "hand",
+  };
+  const rejectedAction: ActionView = {
+    id: 8,
+    kind: "cycle",
+    label: testMessageRef("Mountaincycling"),
+    needs_target: false,
+    object: card.id,
+    sacrifice_choices: [],
+    section: "hand",
+  };
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    playModePick: {
+      card,
+      modes: [castAction, rejectedAction],
+      dropSeed: { x: 0, y: 0 },
+      screenOrigin: { x: 400, y: 200 },
+    },
+    handHidden: new Set([card.id]),
+    flights: new Map([
+      [
+        card.id,
+        {
+          id: card.id,
+          print: "",
+          name: card.name,
+          x: 400,
+          y: 200,
+          scale: 1,
+          targetX: 720,
+          targetY: 140,
+          targetScale: 0.5,
+          phase: "flying",
+          kind: "stack",
+          fromCardId: card.id,
+        },
+      ],
+    ]),
+    hideCardIds: new Set([card.id]),
+    ownedIds: new Set([card.id]),
+  };
+  const gameFold = fold(state({ objects: [card], actions: [castAction, rejectedAction] }));
+
+  const [next, commands] = updateBoard(board, PlayModeChosen({ actionId: rejectedAction.id }), gameFold, "T1");
+
+  expect(commands).toEqual([]);
+  expect(playModePickOf(next)).toBeNull();
+  expect(next.reject).toBe("That ability isn't available.");
+  expect(next.handHidden.has(card.id)).toBe(false);
+  expect(next.flights.has(card.id)).toBe(false);
+});
+
+test("CancelActionClicked clears playModePick and restores the hand card", () => {
+  const card = creature(42, 0, { name: "Valley Rannet", zone: ZONE.Hand });
+  const castAction: ActionView = {
+    id: 7,
+    kind: "cast",
+    label: testMessageRef("Cast Valley Rannet"),
+    needs_target: false,
+    object: card.id,
+    section: "hand",
+  };
+  const cycleAction: ActionView = {
+    id: 8,
+    kind: "cycle",
+    label: testMessageRef("Mountaincycling"),
+    needs_target: false,
+    object: card.id,
+    section: "hand",
+  };
+  const gameFold = fold(state({ objects: [card], actions: [castAction, cycleAction] }));
+  let board = initialBoardModel();
+
+  [board] = updateBoard(board, HandActionActivated({ action: castAction, x: 400, y: 200 }), gameFold, "T1");
+  expect(playModePickOf(board)).not.toBeNull();
+
+  const [next, commands] = updateBoard(board, CancelActionClicked(), gameFold, "T1");
+
+  expect(commands).toEqual([]);
+  expect(playModePickOf(next)).toBeNull();
+  expect(next.handHidden.has(card.id)).toBe(false);
+  expect(next.flights.has(card.id)).toBe(false);
+});
+
+test("HandActionActivated with one mode does not open playModePick", () => {
+  const card = creature(42, 0, { name: "Lightning Bolt", zone: ZONE.Hand });
+  const action: ActionView = {
+    id: 7,
+    kind: "cast",
+    label: testMessageRef("Cast Lightning Bolt"),
+    needs_target: false,
+    object: card.id,
+    section: "hand",
+  };
+  const gameFold = fold(state({ objects: [card], actions: [action] }));
+
+  const [next, commands] = updateBoard(
+    initialBoardModel(),
+    HandActionActivated({ action, x: 400, y: 200 }),
+    gameFold,
+    "T1",
+  );
+
+  expect(playModePickOf(next)).toBeNull();
+  expect(commands).toHaveLength(1);
+  expect(commands[0]?.name).toBe(SubmitIntent.name);
+});
+
+test("priority bar shows Cancel while playModePick is parked", () => {
+  const card = creature(42, 0, { name: "Valley Rannet", zone: ZONE.Hand });
+  const castAction: ActionView = {
+    id: 7,
+    kind: "cast",
+    label: testMessageRef("Cast Valley Rannet"),
+    needs_target: false,
+    object: card.id,
+    section: "hand",
+  };
+  const cycleAction: ActionView = {
+    id: 8,
+    kind: "cycle",
+    label: testMessageRef("Mountaincycling"),
+    needs_target: false,
+    object: card.id,
+    section: "hand",
+  };
+  const playModePick: PlayModePick = {
+    card,
+    modes: [castAction, cycleAction],
+    dropSeed: { x: 0, y: 0 },
+    screenOrigin: { x: 400, y: 200 },
+  };
+  const model = viewModel(fold(state({ objects: [card], actions: [castAction, cycleAction] })));
+
+  overlayScene(
+    { ...model, board: { ...model.board, playModePick } as BoardModel & { playModePick: PlayModePick } },
+    Scene.expect(Scene.testId("board-cancel-target")).toExist(),
+  );
+});
+
 test("stack owns Resolve card, hides primary pass", () => {
   const model = viewModel(
     fold(
       state({
-        stack: [{ controller: 1, kind: "spell", label: "Lightning Bolt", source: 99 }],
+        stack: [{ controller: 1, kind: "spell", label: testMessageRef("Lightning Bolt"), source: 99 }],
       }),
     ),
   );
@@ -320,13 +731,17 @@ function intentFromCommand(cmd: unknown): unknown {
   return (cmd as { args: { intent: unknown } }).args.intent;
 }
 
+function playModePickOf(board: BoardModel): PlayModePick | null {
+  return board.playModePick;
+}
+
 test("pointer up on legal staged target emits SubmitIntent (target completion)", () => {
   const attacker = creature(11, 0);
   const target = creature(22, 1, { name: "Grizzly Bears" });
   const castAction: ActionView = {
     id: 9,
     kind: "cast",
-    label: "Cast Bolt",
+    label: testMessageRef("Cast Bolt"),
     needs_target: true,
     object: attacker.id,
     section: "hand",
@@ -362,9 +777,9 @@ test("pointer up on on-board pending choose_target submits choose_targets", () =
       objects: [bear],
       pending_choice: {
         kind: "choose_target",
-        label: "Target creature",
+        label: testMessageRef("Target creature"),
+        min: 1,
         max: 1,
-        optional: false,
         player: 0,
         source: 1,
         items: [{ id: 22, label: "Grizzly Bears" }],
@@ -448,9 +863,9 @@ test("pointer up on multi on-board choose_target accumulates picks until Confirm
   const b = creature(2, 1, { name: "B" });
   const pending = {
     kind: "choose_target" as const,
-    label: "Target creatures",
+    label: testMessageRef("Target creatures"),
+    min: 1,
     max: 2,
-    optional: false,
     player: 0,
     source: 1,
     items: [
@@ -488,9 +903,9 @@ test("Enter confirms multi on-board choose_target when draft is ready", () => {
   const b = creature(2, 1, { name: "B" });
   const pending = {
     kind: "choose_target" as const,
-    label: "Target creatures",
+    label: testMessageRef("Target creatures"),
+    min: 1,
     max: 2,
-    optional: false,
     player: 0,
     source: 1,
     items: [
@@ -522,9 +937,9 @@ test("Space confirms multi on-board choose_target when draft is ready", () => {
   const b = creature(2, 1, { name: "B" });
   const pending = {
     kind: "choose_target" as const,
-    label: "Target creatures",
+    label: testMessageRef("Target creatures"),
+    min: 1,
     max: 2,
-    optional: false,
     player: 0,
     source: 1,
     items: [
@@ -536,7 +951,7 @@ test("Space confirms multi on-board choose_target when draft is ready", () => {
     state({
       objects: [a, b],
       pending_choice: pending,
-      stack: [{ controller: 0, kind: "spell", label: "Hold", source: 9 }],
+      stack: [{ controller: 0, kind: "spell", label: testMessageRef("Hold"), source: 9 }],
     }),
   );
   const board: BoardModel = {
@@ -574,7 +989,7 @@ test("Space confirms on-board assign_combat_damage when draft is ready", () => {
     state({
       objects: [attacker, bear, elf],
       pending_choice: pending,
-      stack: [{ controller: 0, kind: "spell", label: "Hold", source: 9 }],
+      stack: [{ controller: 0, kind: "spell", label: testMessageRef("Hold"), source: 9 }],
     }),
   );
   const board: BoardModel = {
@@ -600,9 +1015,9 @@ test("TargetChosen accumulates multi on-board stack targets until Confirm", () =
   const spellB = creature(41, 0, { name: "Spell B", zone: ZONE.Stack });
   const pending = {
     kind: "choose_target" as const,
-    label: "Target spells",
+    label: testMessageRef("Target spells"),
+    min: 1,
     max: 2,
-    optional: false,
     player: 0,
     source: 1,
     items: [
@@ -614,8 +1029,8 @@ test("TargetChosen accumulates multi on-board stack targets until Confirm", () =
     state({
       objects: [spellA, spellB],
       stack: [
-        { controller: 0, kind: "spell", label: "Spell A", source: 40 },
-        { controller: 0, kind: "spell", label: "Spell B", source: 41 },
+        { controller: 0, kind: "spell", label: testMessageRef("Spell A"), source: 40 },
+        { controller: 0, kind: "spell", label: testMessageRef("Spell B"), source: 41 },
       ],
       pending_choice: pending,
     }),
@@ -809,7 +1224,7 @@ test("Enter confirms order_triggers when draft is ready", () => {
     player: 0,
     count: 2,
     source: 1,
-    labels: ["A", "B"],
+    labels: [testMessageRef("A"), testMessageRef("B")],
   };
   const gameFold = fold(state({ pending_choice: pending }));
   const board: BoardModel = {
@@ -888,7 +1303,7 @@ test("Space does not confirm distribute_top when a lane is short", () => {
 test("pointer up on choose_target_players avatar accumulates seat picks", () => {
   const pending = {
     kind: "choose_target_players" as const,
-    label: "Choose opponents",
+    label: testMessageRef("Choose opponents"),
     min: 1,
     max: 2,
     player: 0,
@@ -946,7 +1361,7 @@ test("pointer up on non-target while staged clears drag without submitting", () 
   const castAction: ActionView = {
     id: 9,
     kind: "cast",
-    label: "Cast Bolt",
+    label: testMessageRef("Cast Bolt"),
     needs_target: true,
     object: attacker.id,
     section: "hand",
@@ -969,6 +1384,39 @@ test("pointer up on non-target while staged clears drag without submitting", () 
   expect(commands).toEqual([]);
 });
 
+test("confirm attackers submits engine-required goad attacks when local staging is empty", () => {
+  const gameFold = fold(
+    state({
+      step: STEP.DeclareAttackers,
+      combat: {
+        attackers: [],
+        blocks: [],
+        attackers_declared: false,
+        blockers_declared: [],
+      },
+      actions: [
+        {
+          id: 1,
+          kind: "declare_attackers",
+          label: testMessageRef("Attack"),
+          needs_target: false,
+          section: "combat",
+          declare_for: [0],
+          required_attacks: [{ attacker: 7, defender: 1 }],
+        } as ActionView,
+      ],
+    }),
+  );
+  const [nextBoard, commands] = updateBoard(initialBoardModel(), PrimaryClicked(), gameFold, "T1");
+  expect(nextBoard.attackersConfirmed).toBe(true);
+  expect(commands).toHaveLength(1);
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "declare_attackers",
+    player: 0,
+    attackers: [{ attacker: 7, defender: 1 }],
+  });
+});
+
 test("pointer combat drop on opponent life orb stages an attacker", () => {
   const myCreature = creature(30, 0, { has_haste: true });
   const gameFold = fold(
@@ -982,7 +1430,13 @@ test("pointer combat drop on opponent life orb stages an attacker", () => {
         blockers_declared: [],
       },
       actions: [
-        { id: 1, kind: "declare_attackers", label: "Attack", needs_target: false, section: "combat" } as ActionView,
+        {
+          id: 1,
+          kind: "declare_attackers",
+          label: testMessageRef("Attack"),
+          needs_target: false,
+          section: "combat",
+        } as ActionView,
       ],
     }),
   );
@@ -1016,7 +1470,7 @@ test("PendingChoiceAnswered folds into a SubmitIntent command", () => {
 });
 
 test("may_yes_no prompt mounts only for the awaited seat", () => {
-  const pendingChoice = { kind: "may_yes_no", label: "Cast?", player: 0, source: 1 } as const;
+  const pendingChoice = { kind: "may_yes_no", label: testMessageRef("Cast?"), player: 0, source: 1 } as const;
   overlayScene(
     viewModel(fold(state({ pending_choice: pendingChoice, viewer: 0 }))),
     Scene.expect(Scene.testId("prompt-yes")).toExist(),
@@ -1042,7 +1496,7 @@ test("handHidden suppresses a hand tile that would otherwise render", () => {
   const action: ActionView = {
     id: 4,
     kind: "cast",
-    label: "Cast",
+    label: testMessageRef("Cast"),
     needs_target: false,
     object: 77,
     section: "hand",
@@ -1227,7 +1681,7 @@ test("RadialOptionPicked submits the selected activate action id", () => {
   const action: ActionView = {
     id: 91,
     kind: "activate",
-    label: "Scry 1",
+    label: testMessageRef("Scry 1"),
     needs_target: false,
     object: seer.id,
     section: "battlefield",
@@ -1259,7 +1713,7 @@ test("RadialOptionPicked opens sacrifice picker before submitting a payable acti
   const action: ActionView = {
     id: 92,
     kind: "activate",
-    label: "Sacrifice a creature: Scry 1",
+    label: testMessageRef("Sacrifice a creature: Scry 1"),
     needs_target: false,
     object: seer.id,
     sacrifice_choices: [fodder.id],
@@ -1282,7 +1736,7 @@ test("pointer up on sacrifice-cost permanent settles the cost pick", () => {
   const action: ActionView = {
     id: 92,
     kind: "activate",
-    label: "Sacrifice a creature: Scry 1",
+    label: testMessageRef("Sacrifice a creature: Scry 1"),
     needs_target: false,
     object: seer.id,
     sacrifice_choices: [fodder.id],
@@ -1317,7 +1771,7 @@ test("HandActionActivated during discardPick toggles discard_cost selection", ()
   const castAction: ActionView = {
     id: 50,
     kind: "cast",
-    label: "Cast",
+    label: testMessageRef("Cast"),
     needs_target: false,
     object: caster.id,
     discard_choices: [fodder.id],
@@ -1326,7 +1780,7 @@ test("HandActionActivated during discardPick toggles discard_cost selection", ()
   const fodderAction: ActionView = {
     id: 51,
     kind: "cast",
-    label: "Cast Island",
+    label: testMessageRef("Cast Island"),
     needs_target: false,
     object: fodder.id,
     section: "hand",
@@ -1359,7 +1813,7 @@ test("DiscardChosen off-board discard-pick one-shots discard cost", () => {
   const castAction: ActionView = {
     id: 50,
     kind: "cast",
-    label: "Cast",
+    label: testMessageRef("Cast"),
     needs_target: false,
     object: caster.id,
     discard_choices: [11],
@@ -1392,7 +1846,7 @@ test("HandActionActivated during discardPick toggles discard_cost off on second 
   const castAction: ActionView = {
     id: 50,
     kind: "cast",
-    label: "Cast",
+    label: testMessageRef("Cast"),
     needs_target: false,
     object: caster.id,
     discard_choices: [fodder.id],
@@ -1401,7 +1855,7 @@ test("HandActionActivated during discardPick toggles discard_cost off on second 
   const fodderAction: ActionView = {
     id: 51,
     kind: "cast",
-    label: "Cast Island",
+    label: testMessageRef("Cast Island"),
     needs_target: false,
     object: fodder.id,
     section: "hand",
@@ -1434,7 +1888,7 @@ test("DiscardChosen during discardPick toggles discard_cost selection on hand", 
   const castAction: ActionView = {
     id: 50,
     kind: "cast",
-    label: "Cast",
+    label: testMessageRef("Cast"),
     needs_target: false,
     object: caster.id,
     discard_choices: [fodder.id],
@@ -1463,7 +1917,7 @@ test("DiscardChosen during discardPick toggles discard_cost off on second click"
   const castAction: ActionView = {
     id: 50,
     kind: "cast",
-    label: "Cast",
+    label: testMessageRef("Cast"),
     needs_target: false,
     object: caster.id,
     discard_choices: [fodder.id],
@@ -1491,7 +1945,7 @@ test("DiscardCostConfirmed settles local discard cost when one card selected", (
   const castAction: ActionView = {
     id: 50,
     kind: "cast",
-    label: "Cast",
+    label: testMessageRef("Cast"),
     needs_target: false,
     object: caster.id,
     discard_choices: [11],
@@ -1523,7 +1977,7 @@ test("Space confirms local discard cost when one card selected", () => {
   const castAction: ActionView = {
     id: 50,
     kind: "cast",
-    label: "Cast",
+    label: testMessageRef("Cast"),
     needs_target: false,
     object: caster.id,
     discard_choices: [11],
@@ -1534,7 +1988,7 @@ test("Space confirms local discard cost when one card selected", () => {
       objects: [caster],
       actions: [castAction],
       can_act: true,
-      stack: [{ controller: 0, kind: "spell", label: "Hold", source: 9 }],
+      stack: [{ controller: 0, kind: "spell", label: testMessageRef("Hold"), source: 9 }],
     }),
   );
   const board: BoardModel = {
@@ -1562,7 +2016,7 @@ test("Enter confirms local discard cost when one card selected", () => {
   const castAction: ActionView = {
     id: 50,
     kind: "cast",
-    label: "Cast",
+    label: testMessageRef("Cast"),
     needs_target: false,
     object: caster.id,
     discard_choices: [11],
@@ -1595,7 +2049,7 @@ test("Space does not pass while local discard cost is unready", () => {
   const castAction: ActionView = {
     id: 50,
     kind: "cast",
-    label: "Cast",
+    label: testMessageRef("Cast"),
     needs_target: false,
     object: caster.id,
     discard_choices: [11],
@@ -1623,7 +2077,7 @@ test("Enter does not yield while local discard cost is unready", () => {
   const castAction: ActionView = {
     id: 50,
     kind: "cast",
-    label: "Cast",
+    label: testMessageRef("Cast"),
     needs_target: false,
     object: caster.id,
     discard_choices: [11],
@@ -1662,7 +2116,7 @@ test("engine hand discard count 2 submits both cards after two toggles and Confi
   const actionA: ActionView = {
     id: 51,
     kind: "cast",
-    label: "Cast A",
+    label: testMessageRef("Cast A"),
     needs_target: false,
     object: 11,
     section: "hand",
@@ -1670,7 +2124,7 @@ test("engine hand discard count 2 submits both cards after two toggles and Confi
   const actionB: ActionView = {
     id: 52,
     kind: "cast",
-    label: "Cast B",
+    label: testMessageRef("Cast B"),
     needs_target: false,
     object: 12,
     section: "hand",
@@ -1711,7 +2165,7 @@ test("HandActionActivated during pending discard toggles card-pick draft", () =>
   const fodderAction: ActionView = {
     id: 51,
     kind: "cast",
-    label: "Cast A",
+    label: testMessageRef("Cast A"),
     needs_target: false,
     object: 11,
     section: "hand",
@@ -1749,7 +2203,7 @@ test("HandActionActivated during pending discard toggles selection off", () => {
   const fodderAction: ActionView = {
     id: 51,
     kind: "cast",
-    label: "Cast A",
+    label: testMessageRef("Cast A"),
     needs_target: false,
     object: 11,
     section: "hand",
@@ -1786,7 +2240,7 @@ test("HandActionActivated during put_land_from_hand submits put_land intent", ()
   const landAction: ActionView = {
     id: 60,
     kind: "play_land",
-    label: "Play Forest",
+    label: testMessageRef("Play Forest"),
     needs_target: false,
     object: 20,
     section: "hand",
@@ -1953,9 +2407,9 @@ test("PileCardClicked during choose_target in graveyard submits choose_targets",
   const gy = creature(8, 0, { name: "Reanimate me", zone: ZONE.Graveyard });
   const pending = {
     kind: "choose_target" as const,
-    label: "Target creature card in a graveyard",
+    label: testMessageRef("Target creature card in a graveyard"),
+    min: 1,
     max: 1,
-    optional: false,
     player: 0,
     source: 1,
     items: [{ id: 8, label: "Reanimate me" }],
@@ -1988,7 +2442,7 @@ test("GyExileChosen during gyExilePick settles a one-card exile cost", () => {
   const castAction: ActionView = {
     id: 50,
     kind: "cast",
-    label: "Cast",
+    label: testMessageRef("Cast"),
     needs_target: false,
     object: caster.id,
     graveyard_exile_choices: [8],
@@ -2026,7 +2480,7 @@ test("second GyExileChosen auto-settles exact multi gy-exile cost", () => {
   const castAction: ActionView = {
     id: 50,
     kind: "cast",
-    label: "Cast",
+    label: testMessageRef("Cast"),
     needs_target: false,
     object: caster.id,
     graveyard_exile_choices: [8, 9],
@@ -2152,9 +2606,66 @@ test("log panel shows last lines with AUTO chip", () => {
   );
 });
 
+test("log panel collapsed shows only the last 30 lines", () => {
+  const model = viewModel({ ...fold(state()), log: logLines(31) });
+  overlayScene(
+    model,
+    Scene.expect(Scene.testId("board-log")).toExist(),
+    Scene.expect(Scene.testId("board-log")).not.toContainText("entry-001"),
+    Scene.expect(Scene.testId("board-log")).toContainText("entry-031"),
+  );
+});
+
+test("log panel expands to show older fold-buffer lines", () => {
+  const model = viewModel({ ...fold(state()), log: logLines(31) });
+  overlayScene(
+    model,
+    Scene.expect(Scene.testId("board-log")).not.toContainText("entry-001"),
+    Scene.click(Scene.testId("board-log-expand")),
+    Scene.expect(Scene.testId("board-log")).toContainText("entry-001"),
+  );
+});
+
+test("log panel exposes a copy action", () => {
+  const model = viewModel({ ...fold(state()), log: logLines(2) });
+  overlayScene(
+    model,
+    Scene.expect(Scene.testId("board-log-toolbar")).toExist(),
+    Scene.expect(Scene.testId("board-log-copy")).toExist(),
+  );
+});
+
+test("log panel shows copy feedback states", () => {
+  const copied = viewModel({ ...fold(state()), log: logLines(2) });
+  overlayScene(
+    { ...copied, board: { ...copied.board, logCopied: true } },
+    Scene.expect(Scene.testId("board-log-copy")).toHaveText("Copied"),
+  );
+
+  const failed = viewModel({ ...fold(state()), log: logLines(2) });
+  overlayScene(
+    { ...failed, board: { ...failed.board, logCopyFailed: true } },
+    Scene.expect(Scene.testId("board-log-copy")).toHaveText("Copy failed"),
+  );
+});
+
+test("LogCopyRequested emits CopyBoardLog with the full fold buffer", () => {
+  const gameFold = { ...fold(state()), log: logLines(31) };
+  const [next, commands] = updateBoard({ ...initialBoardModel(), logCopied: true }, LogCopyRequested(), gameFold, "T1");
+  expect(next.logCopied).toBe(false);
+  expect(commands).toHaveLength(1);
+  expect(commands[0]?.name).toBe(CopyBoardLog.name);
+  expect(commands[0]?.args).toEqual({ text: gameFold.log.map((line) => line.text).join("\n") });
+});
+
 test("log panel hidden when log is empty", () => {
   const model = viewModel(fold(state()));
-  overlayScene(model, Scene.expect(Scene.testId("board-log")).toBeAbsent());
+  overlayScene(
+    model,
+    Scene.expect(Scene.testId("board-log")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-log-toolbar")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-log-copy")).toBeAbsent(),
+  );
 });
 
 test("board hosts keyboard and audio mounts on separate elements", () => {
@@ -2195,9 +2706,10 @@ test("inspect overlay docks left with backdrop when pinned", () => {
         name: "Sol Ring",
         oracle: "{T}: Add {C}.",
         otags: [],
-        set: "soc",
+        set: "",
+        sets: ["soc"],
         subtypes: [],
-        summary: "Mana rock",
+        summary: [],
       },
     },
     fold: fold(state()),
@@ -2240,9 +2752,10 @@ test("inspect Flip keeps the dock open while backdrop click dismisses it", () =>
         name: "Front Face",
         oracle: "Front oracle.",
         otags: [],
-        set: "soc",
+        set: "",
+        sets: ["soc"],
         subtypes: [],
-        summary: "DFC",
+        summary: [],
       },
     },
     fold: fold(state()),

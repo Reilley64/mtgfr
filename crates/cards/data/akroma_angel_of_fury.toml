@@ -1,0 +1,39 @@
+# This spell can't be countered.
+# Flying, trample, protection from white and from blue
+# {R}: Akroma, Angel of Fury gets +1/+0 until end of turn.
+# Morph {3}{R}{R}{R} (You may cast this card face down as a 2/2 creature for {3}. Turn it face up
+# any time for its morph cost.)
+name = "Akroma, Angel of Fury"
+sets = ["a25", "cma", "cmd", "mkc", "plc", "sld", "tsr", "v15"]
+id = "2b80faaf-92fd-4fa0-a3f6-8bb263e7ff1d"
+default_print = "2a81f0b5-5116-4946-89fc-18479bf85305"
+oracle = "This spell can't be countered.\nFlying, trample, protection from white and from blue\n{R}: Akroma gets +1/+0 until end of turn.\nMorph {3}{R}{R}{R} (You may cast this card face down as a 2/2 creature for {3}. Turn it face up any time for its morph cost.)"
+subtypes = ["Angel"]
+uncounterable = true
+keywords = ["flying", "trample", { protection = "white" }, { protection = "blue" }]
+
+[cost]
+generic = 5
+red = 3
+
+[kind]
+type = "creature"
+power = 6
+toughness = 6
+
+# Morph {3}{R}{R}{R}
+[morph]
+generic = 3
+red = 3
+
+# {R}: Akroma, Angel of Fury gets +1/+0 until end of turn.
+[[abilities]]
+timing = "activated"
+activation_cost = { red = 1 }
+
+# Akroma, Angel of Fury gets +1/+0 until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "pump_self_until_end_of_turn"
+power = 1
+toughness = 0

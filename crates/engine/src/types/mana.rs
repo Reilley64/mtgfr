@@ -234,8 +234,7 @@ pub struct AdditionalCost {
     /// type. TOML `[cost.additional.kicker]` — the same shape as `[cost]`.
     /// ponytail: single-kicker only (one kicker cost, paid or not) — a two-kicker-costs card
     /// (Rite of Flame-style "Kicker {1}, Kicker {R}") isn't modeled; grow that from a real card
-    /// that needs one. Multikicker (`{N}` any number of times, CR 702.34) is
-    /// [`Self::multikicker`], its own field, below.
+    /// that needs one. See [`Self::multikicker`] for the "any number of times" variant.
     pub kicker: Option<&'static Cost>,
     /// Buyback (CR 702.27) — "You may pay an additional [cost] as you cast this spell. If you
     /// do, put this card into your hand as it resolves" (Capsize's "Buyback {3}"). `None` for a
@@ -260,8 +259,7 @@ pub struct AdditionalCost {
     /// for the same recursive-`Cost` reason as [`Self::kicker`]. TOML `[cost.additional.strive]`
     /// — the same shape as `[cost.additional.kicker]`.
     /// ponytail: exactly one per-extra-target cost (Strive's own shape) — not a generalized
-    /// N-times multiplier cost (escalate); grow that from a card that needs it. Multikicker's own
-    /// N-times shape (CR 702.34) is [`Self::multikicker`], below, not folded into this field.
+    /// N-times multiplier cost (escalate); grow that from a card that needs it.
     pub strive: Option<&'static Cost>,
     /// Replicate (CR 702.108) — "You may pay [cost] any number of times as you cast this spell.
     /// When you cast this spell, copy it for each time you paid its replicate cost" (Changing
@@ -277,17 +275,20 @@ pub struct AdditionalCost {
     /// ponytail: single replicate cost only (Changing Loyalty is the pool's only replicate
     /// card) — grow a per-card cap or multi-replicate-cost shape from a real card that needs one.
     pub replicate: Option<&'static Cost>,
-    /// Multikicker (CR 702.34) — "You may pay an additional [cost] any number of times as you
-    /// cast this spell" (Everflowing Chalice's "Multikicker {2}"). `None` for a spell with no
-    /// multikicker. Same shape as [`Self::replicate`] (a cost paid N times, unlike Strive's "per
-    /// target beyond the first"): the caster's declared payment count settles pre-stack on
-    /// [`crate::Intent::Cast`]'s `multikicker_count`, multiplies this cost by that count in
-    /// [`Game::cast_cost`], and is recorded on the resulting [`Spell::multikicker_count`] so
-    /// [`Amount::TimesKicked`] can read it back once the permanent enters (CR 702.34c). A
-    /// `&'static` reference for the same recursive-`Cost` reason as [`Self::kicker`]. TOML
+    /// Multikicker (CR 702.33c) — "You may pay an additional [cost] any number of times as you
+    /// cast this spell" (Lightkeeper of Emeria's "Multikicker {W}"). `None` for a spell with no
+    /// multikicker. A multikicker cost is a kicker cost (CR 702.33c), but unlike [`Self::kicker`]
+    /// (paid or not) it can be paid any number of times, so its total depends on *how many*
+    /// times the caster pays it — mirroring [`Self::replicate`]'s own pre-stack declared-count
+    /// shape: the caster declares a count on [`crate::Intent::Cast`]'s `multikicker_count`,
+    /// [`Game::cast_cost`] multiplies this cost by that count and adds it in, and the count is
+    /// recorded on the resulting [`Spell::multikicker_count`] (read by
+    /// [`Amount::SpellMultikickerCount`] and [`TargetCount::multikicker_scaled`]). Unlike
+    /// Replicate, no copies are minted — the count instead feeds an amount and/or target count.
+    /// A `&'static` reference for the same recursive-`Cost` reason as [`Self::kicker`]. TOML
     /// `[cost.additional.multikicker]` — the same shape as `[cost.additional.kicker]`.
-    /// ponytail: a card printing both a single Kicker and a Multikicker cost isn't modeled — no
-    /// pool card does; grow that from a real card that needs it.
+    /// ponytail: single multikicker cost only — no pool card prints two; grow that if one ever
+    /// does.
     pub multikicker: Option<&'static Cost>,
 }
 

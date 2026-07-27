@@ -1,10 +1,15 @@
 import { Schema as S } from "effect";
 import { m } from "foldkit/message";
-import type { VisibleEvent, VisibleState } from "../../lib/wire/types";
+import {
+  type MessageRef,
+  MessageRef as MessageRefSchema,
+  type VisibleEvent,
+  type VisibleState,
+} from "../domain/wire/types";
 
 const VisibleStateSchema: S.Schema<VisibleState> = S.Any;
 const VisibleEventsSchema: S.Schema<ReadonlyArray<VisibleEvent>> = S.Array(S.Any);
-const AutoActionsSchema: S.Schema<ReadonlyArray<string> | undefined> = S.optional(S.Array(S.String));
+const AutoActionsSchema: S.Schema<ReadonlyArray<MessageRef> | undefined> = S.optional(S.Array(MessageRefSchema));
 
 export const ReceivedSnapshot = m("ReceivedSnapshot", {
   seq: S.Number,

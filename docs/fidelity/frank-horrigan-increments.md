@@ -230,13 +230,12 @@ copied end to end from Replicate, not folded into the existing binary `kicker`/`
 `alternative_cost = 14`), threaded through `Game::cast_cost`'s ×N pip fold beside Replicate's,
 `Event::SpellCast`, and `Object::Spell::multikicker_count`; `playable.rs` rejects a nonzero count
 declared against a spell with no Multikicker cost, mirroring Replicate's own gate.
-`Permanent::entered_times_kicked: u8` is locked in from `Spell::multikicker_count` at
+`Permanent::entered_multikicker_count: u8` is locked in from `Spell::multikicker_count` at
 `Event::PermanentEntered` (`from` is still the resolving Spell at that point, the same "read it
-before the spell is gone" idiom as `evoked`), and the new `Amount::TimesKicked` (TOML
-`"times_kicked"`) reads a new `Game::times_kicked` helper that checks *both* `Object::Spell` and
-`Object::Permanent` — the enters-with-counters site's `source` is already the fresh permanent by
-resolution time, so a spell-only read would have silently returned 0 (caught by a dedicated TDD
-test). Not surfaced on the wire to the client (`VisibleEvent::SpellCast` drops it with a
+before the spell is gone" idiom as `evoked`), and `Amount::SpellMultikickerCount` (TOML
+`"spell_multikicker_count"`) reads `Game::spell_multikicker_count`, which checks *both*
+`Object::Spell` and `Object::Permanent` — the enters-with-counters site's `source` is already the
+fresh permanent by resolution time, so a spell-only read would have silently returned 0. Not surfaced on the wire to the client (`VisibleEvent::SpellCast` drops it with a
 `ponytail:` note, same as `replicate_count`); client codegen not required (gitignored, no client
 reader). everflowing_chalice authored fresh and is fully faithful (`{0}` cost needed an explicit
 `[cost]\ngeneric = 0` table for the frame audit to match Scryfall's printed `{0}`, since an absent
@@ -247,8 +246,8 @@ isn't modeled — none in the pool does). Still blocked: nothing._
 Depends on: nothing. **Falsifies `types/mana.rs:223`** ("single-kicker only … grow those from a
 real card that needs one" — the deferral condition is now met).
 *Sketch:* a `multikicker` cost that may be paid any number of times, recording the *count* paid on
-the spell, plus `Amount::TimesKicked` so "enters with a charge counter for each time it was
-kicked" can read it. The existing binary `if_kicked` stays as sugar for count ≥ 1. *Cards:*
+the spell, plus `Amount::SpellMultikickerCount` so "enters with a charge counter for each time it
+was kicked" can read it. The existing binary `if_kicked` stays as sugar for count ≥ 1. *Cards:*
 everflowing_chalice.
 
 ### 12. `monstrosity` — 1 card, M — LANDED 2026-07-26

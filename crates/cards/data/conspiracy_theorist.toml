@@ -1,9 +1,9 @@
 name = "Conspiracy Theorist"
+sets = ["prm", "pstx", "soc", "stx"]
 id = "fa81e7ff-0f2c-40df-9169-c0a22f00cd76"
 default_print = "dd6797f7-ecc4-4c45-b1e4-26963a1614dc"
 otags = ["attack-trigger", "attacking-matters-self", "discarded-type-matters", "impulsive-recursion", "repeatable-rummage", "self-discard-matters"]
 oracle = "Whenever this creature attacks, you may pay {1} and discard a card. If you do, draw a card.\nWhenever you discard one or more nonland cards, you may exile one of them from your graveyard. If you do, you may cast it this turn."
-set = "soc"
 subtypes = ["Human", "Shaman"]
 
 [cost]
@@ -39,16 +39,14 @@ mode = "cards"
 count = 1
 
 # Whenever you discard one or more nonland cards, you may exile one of them from your graveyard.
-# If you do, you may cast it this turn.
-# ponytail: `Trigger::YouDiscard` is unfiltered (fires on a discarded land too) and fires once per
-# discarded card rather than once per discard event offering a choice among "one of them" — both
-# are strictly upside/unobservable divergences from the printed "nonland … one of them" wording;
-# upgrade to a filtered, batch-choose discard trigger if a card ever punishes either.
+# If you do, you may cast it this turn. A CR 701.8 batch trigger: one simultaneous discard is one
+# "you discard" event (fires once, not once per card), gated to fire only when a nonland was
+# discarded (a lone land discard does nothing), and the payoff offers a choice among exactly the
+# nonland cards discarded this way ("one of them").
 [[abilities]]
-timing = "you_discard"
-optional = true
+timing = "you_discard_nonland"
 
 # you may exile one of them from your graveyard. If you do, you may cast it this turn.
 [[abilities.effects]]
-type = "mill"
-mode = "exile_from_graveyard_may_play"
+type = "choice"
+mode = "may_exile_discarded_nonland_may_play"

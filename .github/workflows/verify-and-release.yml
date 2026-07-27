@@ -32,7 +32,7 @@ jobs:
       issues: write # comment on released issues (default plugin behavior)
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # required — semantic-release needs full history
           # PAT so git/API tag creation is attributed to RELEASE_TOKEN (cascades to docker.yml).
@@ -40,7 +40,7 @@ jobs:
           persist-credentials: true
 
       # Pin — `lts/*` resolves via the Node dist index / API and fails when those are degraded.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
         # do NOT set registry-url — conflicts with semantic-release (see recipe pitfalls)

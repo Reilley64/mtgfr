@@ -1,0 +1,31 @@
+# Flying
+# Whenever a land an opponent controls enters, you may gain 3 life.
+name = "Shattered Angel"
+sets = ["cma", "cmd", "moc", "nph", "plst"]
+id = "e339c6cb-c75d-4dd4-8c1a-78f844983242"
+default_print = "58e4fb9b-76bc-4daf-b0a3-4bf62757902d"
+oracle = "Flying\nWhenever a land an opponent controls enters, you may gain 3 life."
+subtypes = ["Phyrexian", "Angel"]
+keywords = ["flying"]
+
+[cost]
+generic = 3
+white = 2
+
+[kind]
+type = "creature"
+power = 3
+toughness = 3
+
+# Whenever a land an opponent controls enters, you may gain 3 life.
+[[abilities]]
+timing = "permanent_enters"
+controller = "opponent"
+filter = { types = "land" }
+optional = true
+
+# gain 3 life
+[[abilities.effects]]
+type = "life"
+mode = "gain"
+amount = 3

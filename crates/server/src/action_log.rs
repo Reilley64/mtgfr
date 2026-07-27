@@ -107,7 +107,10 @@ pub fn format_labeled(
         player.to_string(),
         intent_label.to_string(),
         if result.accepted { "t" } else { "f" }.to_string(),
-        result.reason.clone().unwrap_or_else(|| "-".to_string()),
+        result
+            .reason
+            .as_ref()
+            .map_or_else(|| "-".to_string(), |reason| reason.key.clone()),
         step,
         active,
         priority,
@@ -251,6 +254,7 @@ fn intent_str(w: &WireIntent) -> String {
         WireIntent::ChooseColor { color, .. } => format!("color {color}"),
         WireIntent::ChooseCardName { name, .. } => format!("card-name {name}"),
         WireIntent::ChooseAttachHost { host, .. } => format!("attach-host {}", opt_id(host)),
+        WireIntent::ChooseLegendaryKeep { keep, .. } => format!("legendary-keep {keep}"),
         WireIntent::ChooseCopyTarget { copy, .. } => format!("copy-target {}", opt_id(copy)),
         WireIntent::ChooseTopOrBottom { top, .. } => format!("top-or-bottom {top}"),
         WireIntent::Cycle { card, .. } => format!("cycle {card}"),
@@ -332,7 +336,7 @@ mod tests {
     fn rejected(reason: &str) -> ApplyResult {
         ApplyResult {
             accepted: false,
-            reason: Some(reason.to_string()),
+            reason: Some(schema::MessageRef::key(reason)),
             events: Vec::new(),
         }
     }
@@ -365,12 +369,12 @@ mod tests {
             7,
             1,
             &WireIntent::PassPriority { player: 1 },
-            &rejected("EngineError"),
+            &rejected("reject.engine_error"),
             &[],
             None,
         );
         assert!(
-            row.starts_with("7,1,pass,f,EngineError,-,-,-,-,"),
+            row.starts_with("7,1,pass,f,reject.engine_error,-,-,-,-,"),
             "panic row without game: {row}"
         );
     }

@@ -2,11 +2,14 @@
 //
 // Legal stack targets are clickable while arrow-aiming (Counterspell-style). Hovering the overlay
 // emits `StackDwellChanged` when the player has priority (dwell-suppresses helpless auto-resolve).
+// Resting faces hide only for in-flight `kind: "stack"` objects — not for battlefield flights that
+// share an ability's source permanent id.
 
 import { type Attribute, type Html, html } from "foldkit/html";
 import { buttonClass } from "~/ui/buttonClass";
 import { cardArt } from "~/ui/card-art";
-import type { PlayerView, StackObjectView, VisibleState } from "~/wire/types";
+import type { VisibleState } from "~/wire/types";
+import { formatMessage } from "../../domain/i18n/message";
 import { aimingObjectIds, stagedPickTargets } from "../action/targeting";
 import {
   STACK_CARD_W,
@@ -22,6 +25,7 @@ import {
   stackStripPeek,
   TARGET_COLOR,
 } from "../geometry/stackLayout";
+import { formatStackTargetSuffix, stackEntryTargets } from "../geometry/stackTargets";
 import {
   InspectAuxHovered,
   type Message,
@@ -44,32 +48,36 @@ type StackItem = {
   staged: boolean;
 };
 
+/** Hide a resting stack face only while a *stack* flight owns that object id.
+ * Ability entries reuse the source permanent's id — a battlefield / from-stack flight for that
+ * permanent must not blank the ability face (ETB triggers would otherwise show only the effect
+ * caption). */
+function hideStackRestingFace(board: BoardModel, source: number): boolean {
+  const flight = board.flights.get(source);
+  return flight != null && flight.phase === "flying" && flight.kind === "stack";
+}
+
 function objectMeta(state: VisibleState, source: number): { print: string; name: string | null; cardId?: string } {
   const obj = state.objects.find((o) => o.id === source);
   return { print: obj?.print ?? "", name: obj?.name ?? null, cardId: obj?.card_id };
 }
 
-function targetLabel(target: StackObjectView["target"], state: VisibleState): string {
-  if (target == null) return "";
-  if (target.kind === "player") {
-    const name =
-      state.players.find((p: PlayerView) => p.player === target.player)?.username ?? `Seat ${target.player + 1}`;
-    return ` → ${name}`;
-  }
-  const obj = state.objects.find((o) => o.id === target.id);
-  return obj ? ` → ${obj.name}` : "";
-}
-
 function stackItems(board: BoardModel, state: VisibleState, showStaged: boolean): StackItem[] {
   const items: StackItem[] = state.stack.map((entry, row) => {
     const meta = objectMeta(state, entry.source);
+    const label = formatMessage(entry.label);
+    // Prefer live object art; fall back to entry-carried identity when `source` is a Moved
+    // tombstone (sacrifice-as-cost) omitted from `objects`.
+    const print = meta.print || entry.print || "";
+    const name = meta.name || entry.name || null;
+    const cardId = meta.cardId || entry.card_id || undefined;
     return {
       row,
       source: entry.source,
-      imageName: entry.kind === "spell" ? entry.label : meta.name,
-      print: meta.print,
-      cardId: meta.cardId,
-      label: entry.label,
+      imageName: entry.kind === "spell" ? label : name,
+      print,
+      cardId,
+      label,
       staged: false,
     };
   });
@@ -169,9 +177,7 @@ function holdBar(holdMs: number, holdPeak: number, show: boolean): Html | null {
   return h.div(
     [
       h.DataAttribute("testid", "stack-hold-bar"),
-      h.Class(
-        "pointer-events-none h-1.5 overflow-hidden rounded-full bg-white/15 opacity-0 transition-opacity duration-150 group-hover/stack:opacity-100",
-      ),
+      h.Class("pointer-events-none h-1.5 overflow-hidden rounded-full bg-white/15"),
       h.Style({ width: `${STACK_CARD_W}px` }),
       h.Attribute("aria-hidden", "true"),
     ],
@@ -200,8 +206,8 @@ function pileCaption(state: VisibleState, showStaged: boolean): Html | null {
   }
   const top = state.stack[state.stack.length - 1];
   if (top == null) return null;
-  const target = top.target != null ? targetLabel(top.target, state) : "";
-  const ability = top.kind === "ability" ? top.label : "";
+  const target = formatStackTargetSuffix(stackEntryTargets(top), state);
+  const ability = top.kind === "ability" ? formatMessage(top.label) : "";
   if (ability === "" && target === "") return null;
   return h.div(
     [
@@ -232,7 +238,7 @@ function pileView(
   const showHold = holdMs > 0 && !showStaged;
 
   const faces = items
-    .filter((item) => !board.hideCardIds.has(item.source))
+    .filter((item) => !hideStackRestingFace(board, item.source))
     .map((item) => {
       const isTop = item.row === items.length - 1;
       return stackFace({
@@ -325,7 +331,7 @@ function stripView(
   const showHold = holdMs > 0 && !showStaged;
 
   const faces = items
-    .filter((item) => !board.hideCardIds.has(item.source))
+    .filter((item) => !hideStackRestingFace(board, item.source))
     .map((item) => {
       const col = item.row % perRow;
       const rowY = Math.floor(item.row / perRow);
@@ -376,7 +382,7 @@ function stripView(
             h.Type("button"),
             h.DataAttribute("testid", "stack-collapse"),
             h.OnClick(StackCollapseClicked()),
-            h.Class(buttonClass("ghost", "px-2 py-1 text-chip")),
+            h.Class(buttonClass("ghost", "hit-quiet px-2 py-1 text-chip")),
             h.Attribute("aria-label", "Collapse stack"),
           ],
           ["✕"],

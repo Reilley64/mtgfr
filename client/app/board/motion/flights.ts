@@ -1,7 +1,9 @@
 import { CARD_W } from "../geometry/layout";
+import { STACK_CARD_W } from "../geometry/stackLayout";
 
 export const HAND_FACE_W = 208;
-export const STACK_CARD_W = 112;
+/** Re-export resting stack face width so flight scale stays coupled to the HTML stack. */
+export { STACK_CARD_W };
 
 const TAU_MS = 75;
 const EPSILON_PX = 0.5;

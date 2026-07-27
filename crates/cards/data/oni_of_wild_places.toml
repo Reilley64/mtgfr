@@ -1,0 +1,28 @@
+# Haste
+# At the beginning of your upkeep, return a red creature you control to its owner's hand.
+name = "Oni of Wild Places"
+sets = ["cma", "cmd", "ddn", "sok"]
+id = "f551093d-40b7-43ac-8023-4cfbb6c646da"
+default_print = "ddd1e712-826a-47ee-9578-ca61f2d65221"
+oracle = "Haste\nAt the beginning of your upkeep, return a red creature you control to its owner's hand."
+subtypes = ["Demon", "Spirit"]
+keywords = ["haste"]
+
+[cost]
+generic = 5
+red = 1
+
+[kind]
+type = "creature"
+power = 6
+toughness = 5
+
+# At the beginning of your upkeep, return a red creature you control to its owner's hand.
+[[abilities]]
+timing = "upkeep"
+
+# return a red creature you control to its owner's hand.
+[[abilities.effects]]
+type = "zone"
+mode = "return_to_hand"
+target = { permanent = { types = "creature", color = "red", controller = "you" } }

@@ -55,11 +55,11 @@ An attacking creature must:
 - Not have the "can't attack" keyword or continuous restriction.
 - Not be phased out.
 
-Goaded creatures (CR 701.38) **must** attack if able, and must attack a player who did not goad them if any such defending player exists. The engine enforces this as a constraint on the declaration: a goaded creature whose declaration does not satisfy these requirements causes `Reject::AttackerDeclarationInvalid`.
+Goaded creatures (CR 701.38) **must** attack if able, and must attack a player who did not goad them if any such defending player exists. "If able" is gated on CR 508.1g attack-tax affordability (`Game::can_afford_attack_tax`): a goaded creature is forced only toward defenders whose tax its controller can actually pay; if no affordable defender exists, it is not forced at all. When at least one affordable non-goader exists, the declaration must send the goaded creature there; when the only affordable defenders are goaders, attacking a goader satisfies goad. A goaded creature whose declaration does not satisfy these requirements causes `Reject::IllegalDeclaration`.
 
 "Must attack this turn" requirements (`CombatExtras::must_attack`, from e.g. Furygale Flocking's tokens) are enforced similarly.
 
-Pillow-fort costs (CR 508.1g) — "creatures attacking you cost {N}" — are checked at declaration; if a player can't or won't pay, those creatures can't attack that player (the declaration must exclude them or assign them to other defenders).
+Pillow-fort costs (CR 508.1g) — "creatures attacking you cost {N}" — are checked at declaration; if a player can't or won't pay, those creatures can't attack that player (the declaration must exclude them or assign them to other defenders). Goad's "if able" uses the same affordability probe before forcing an attack.
 
 ### Block legality
 
@@ -77,6 +77,23 @@ Pillow-fort costs (CR 508.1g) — "creatures attacking you cost {N}" — are che
 - `Keyword::CanBlockOnlyFlyers` (Brazen Borrower): may only block flying attackers.
 - `Keyword::LesserPowerCantBlock` (Elusive Otter): blockers with less power than the attacker can't block it.
 - The attacker must be attacking `player` (not another defender).
+
+### Declaration overrides
+
+A card may move a declaration to another seat (Master Warcraft: "You choose which creatures attack
+this turn" / "…which creatures block this turn"). `CombatExtras::attack_declarer` and
+`::block_declarer` hold the chosen seat for the turn and clear at the next untap step.
+
+- `Game::attack_declarer()` is the active player unless overridden; `Game::block_declarer(defender)`
+  is that defender unless overridden. Either falls back to the default seat if the chosen player has
+  since lost (CR 104.3a).
+- The declaring seat submits the intent, but the creatures on offer stay their own controllers':
+  `declare_attackers` still declares the **active player's** creatures, and `declare_blockers`
+  declares for every attacked seat that declarer still answers for
+  (`Game::block_seats_for(declarer)`).
+- Legality is unchanged — the override moves who chooses, not what may be chosen.
+- Master Warcraft can only be cast before attackers are declared (`cast_only_before_attackers`),
+  since after that there is no declaration left to move.
 
 ### Combat damage
 
@@ -103,11 +120,12 @@ Pillow-fort costs (CR 508.1g) — "creatures attacking you cost {N}" — are che
 
 ### Goad
 
-- A goaded creature (CR 701.38) must attack each combat if able, and must attack a player who did not goad it if any such player exists.
+- A goaded creature (CR 701.38) must attack each combat if able, and must attack a player who did not goad it if any such player exists. "If able" intersects CR 508.1g: `Game::can_afford_attack_tax` probes whether the controller can pay the pillow-fort tax to attack each potential defender; a goaded creature is only forced toward affordable defenders, preferring an affordable non-goader when one exists.
 - Goad state lives in `CombatExtras::goaded: Vec<(ObjectId, PlayerId, &'static str)>` — a list of `(goaded creature, the player who goaded it, source card name for the inspect ledger)`.
 - A creature may appear multiple times if goaded by multiple players.
 - Goad clears at the start of the goading player's next untap step (one turn of effect, CR 701.38b).
 - Continuous goad-on-attachment (the Impetus cycle, Redemption Arc) is not stored in `goaded`; it is re-evaluated live off the attachment scan whenever goad state is queried.
+- `Game::required_attacks` and the declare-attackers goad-validation loop share the same affordability-aware logic so client staging and engine rejection cannot disagree. The client's confirm-attackers path submits the same merged list it displays (`stagedAttackersForDisplay`), and a rejected declare clears the optimistic `attackersConfirmed` latch so staging is not wedged for the rest of the step.
 
 ### Elimination during combat
 
@@ -140,7 +158,7 @@ Pillow-fort costs (CR 508.1g) — "creatures attacking you cost {N}" — are che
 
 - **`CombatState` is separate from `Permanent` fields.** `Permanent` is `Copy`; attacker/block tracking needs mutable `Vec`s, so they live in `Game::combat`.
 - **Block legality and attack legality use the same predicates for listing and validation.** `Game::can_block` is shared between `Game::meaningful_actions` (listing legal blockers) and `Game::declare_blockers` (validation at submission) so they can never disagree.
-- **Goad enforcement mirrors must-attack.** Both are constraint loops in `declare_attackers` that validate the declaration against requirements; a declaration failing these is rejected with `Reject::AttackerDeclarationInvalid`.
+- **Goad enforcement mirrors must-attack.** Both are constraint loops in `declare_attackers` that validate the declaration against requirements; goad's "if able" is gated on `Game::can_afford_attack_tax` (CR 508.1g). A declaration failing these is rejected with `Reject::IllegalDeclaration`.
 - **Commander damage uses object ids, not card def ids.** Because zone changes mint new object ids (CR 400.7), the commander is tracked as the current object id of the commander permanent in combat. This is consistent with how all other per-permanent effects are tracked.
 - **Planeswalker combat damage is partially implemented.** The `target = "player_or_planeswalker"` filter exists in the DSL; direct planeswalker-takes-attacker-damage in the combat damage path follows the same route. A complete attack-a-planeswalker flow (declaring attack at a planeswalker object id rather than a player) is in progress.
 - **`CombatExtras::combat_damage_prevention_shields`** models per-player, per-token combat damage prevention (Inkshield pattern). A separate `prevent_all_combat_damage_this_turn` boolean handles table-wide prevention (Moment's Peace). Both are checked at all three combat-damage chokes.
@@ -151,7 +169,7 @@ Pillow-fort costs (CR 508.1g) — "creatures attacking you cost {N}" — are che
 
 - **Block legality tests** should construct a board with specific keyword combinations and assert `can_block` returns the correct boolean for each case.
 - **Damage assignment tests** should trace through a trample declaration with multiple blockers and verify the resulting `marked_damage` values and player life total changes.
-- **Goad tests** should arm a goad entry and verify that a declaration not attacking a non-goader is rejected.
+- **Goad tests** should arm a goad entry and verify that a declaration not attacking a non-goader is rejected; tax affordability gates "if able" (unaffordable tax ⇒ not forced; affordable non-goader preferred over goader).
 - **Commander damage tests** should deal 20 cumulative points from one commander, then 1 more, and assert `PlayerLost` fires.
 - **Commander redirect tests** should move a commander to the graveyard and verify `PendingChoice::CommanderRedirect` is raised, then accepting it moves the card to the command zone.
 - **Elimination mid-combat**: eliminate a defending player after attackers are declared and verify the game continues with the attacker going unblocked.

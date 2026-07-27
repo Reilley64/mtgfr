@@ -1,0 +1,24 @@
+# Destroy target creature or land.
+name = "Wrecking Ball"
+sets = ["cma", "cmd", "dis", "gk2", "mm2"]
+id = "0a1b0910-3b0c-4aa3-b47f-8eb069122743"
+default_print = "9a8fafff-e9b1-49e1-9bba-5f3c82cac894"
+oracle = "Destroy target creature or land."
+
+[cost]
+generic = 2
+black = 1
+red = 1
+
+[kind]
+type = "instant"
+
+# Destroy target creature or land.
+[[abilities]]
+timing = "spell"
+
+# Destroy target creature or land.
+[[abilities.effects]]
+type = "destroy"
+mode = "target"
+target = { permanent = { types = ["creature", "land"] } }

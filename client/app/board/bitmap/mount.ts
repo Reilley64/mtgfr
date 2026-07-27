@@ -2,17 +2,19 @@ import { Effect, type Queue as EffectQueue, Queue, Stream } from "effect";
 import * as Mount from "foldkit/mount";
 import { colors } from "~/design-tokens.generated";
 import type { ActionView, PlayerView, VisibleState, WireAttack, WireBlock } from "~/wire/types";
-import { cardBackUrl, imageUrlByPrint } from "../../../lib/deck-builder/scryfall";
-import { type ImageCache, sharedImageCache } from "../../../lib/image-cache";
+import { cardBackUrl, imageUrlByPrint } from "../../domain/deck-builder/scryfall";
+import { gravatarUrl, monogramLetter } from "../../domain/gravatar";
+import { type ImageCache, sharedImageCache } from "../../domain/image-cache";
 import type { Vec } from "../action/targeting";
 import { TARGET_COLOR } from "../action/targeting";
 import { clockChips } from "../canvas/avatars";
 import { PLAYABLE_BORDER, playableBattlefieldObjectIds } from "../chrome";
 import { type Camera, worldToScreen } from "../geometry/camera";
-import { AVATAR_R, avatarPos, type RenderCard, seatColor } from "../geometry/layout";
+import { AVATAR_R, avatarLabelOffsets, avatarPos, type RenderCard, seatColor } from "../geometry/layout";
 import { ArtLoaded, FlightsSynced } from "../messages";
+import { type ExitFx, exitFxParticles, particleAllowancePerFx, stepExitFx } from "../motion/exit-fx";
 import { type CardFlight, stepFlights } from "../motion/flights";
-import { mergeFlightPoses, restingPaintChanged, restingPaintSnapshot } from "./flight-frame";
+import { mergeExitFxPoses, mergeFlightPoses, restingPaintChanged, restingPaintSnapshot } from "./flight-frame";
 import {
   paintAutoTapPreview,
   paintCard,
@@ -20,6 +22,7 @@ import {
   paintCardPickedHighlight,
   paintCardTargetHighlight,
 } from "./paint-cards";
+import { paintExitFx } from "./paint-exit-fx";
 import { paintFlightCard } from "./paint-flights";
 
 export type BitmapFrame = {
@@ -35,6 +38,7 @@ export type BitmapFrame = {
   stagedAttackers: readonly WireAttack[];
   stagedBlocks: readonly WireBlock[];
   flights: readonly CardFlight[];
+  exitFx?: readonly ExitFx[];
   hideCardIds: ReadonlySet<number>;
   targetObjects: ReadonlySet<number>;
   /** Multi-aim picks already toggled in the pending draft (Priority Gold solid ring). */
@@ -54,14 +58,17 @@ export type BitmapFrame = {
 
 export type FlightClockState = {
   liveFlights: CardFlight[];
+  liveExitFx: ExitFx[];
   lastRestingSnapshot: ReturnType<typeof restingPaintSnapshot> | null;
 };
 
 type LayerQueue = EffectQueue.Enqueue<typeof ArtLoaded.Type | typeof FlightsSynced.Type>;
+type FlightSync = { flights: CardFlight[]; exitFx: ExitFx[]; now: number };
 
 let currentFrame: BitmapFrame | null = null;
 let flightClockState: FlightClockState = {
   liveFlights: [],
+  liveExitFx: [],
   lastRestingSnapshot: null,
 };
 const mountedLayers = new Set<BitmapMountHandle>();
@@ -72,6 +79,7 @@ type BitmapMountHandle = {
   render: (canvas: HTMLCanvasElement) => void;
   /** Only the flight layer self-animates; the permanents/arrows layer repaints on publish. */
   animates: boolean;
+  queue: LayerQueue;
   unsubscribe: () => void;
   rafId: number;
   lastFlightTick: number | null;
@@ -86,6 +94,7 @@ export function publishBitmapFrame(frame: BitmapFrame): void {
   for (const handle of mountedLayers) {
     if (handle.animates) {
       if (published.paintFlight) handle.render(handle.canvas);
+      if (published.sync != null) Queue.offerUnsafe(handle.queue, FlightsSynced(published.sync));
       handle.kickRaf();
       continue;
     }
@@ -96,19 +105,37 @@ export function publishBitmapFrame(frame: BitmapFrame): void {
 export function applyPublishedFrame(
   state: FlightClockState,
   frame: BitmapFrame,
-): { state: FlightClockState; paintResting: boolean; paintFlight: boolean; frame: BitmapFrame } {
+): {
+  state: FlightClockState;
+  paintResting: boolean;
+  paintFlight: boolean;
+  frame: BitmapFrame;
+  sync: FlightSync | null;
+} {
   const liveFlights = mergeFlightPoses(state.liveFlights, frame.flights);
-  const mergedFrame = { ...frame, flights: liveFlights };
-  const { flights: _flights, ...restingFrame } = mergedFrame;
+  const steppedExitFx = stepExitFx(
+    new Map(mergeExitFxPoses(state.liveExitFx, frame.exitFx ?? []).map((fx) => [fx.id, fx])),
+    0,
+    prefersReducedMotion(),
+  );
+  const liveExitFx = [...steppedExitFx.exitFx.values()];
+  const mergedFrame = { ...frame, flights: liveFlights, exitFx: liveExitFx };
+  const { flights: _flights, exitFx: _exitFx, ...restingFrame } = mergedFrame;
   const nextRestingSnapshot = restingPaintSnapshot(restingFrame);
 
   return {
     state: {
       liveFlights,
+      liveExitFx,
       lastRestingSnapshot: nextRestingSnapshot,
     },
     paintResting: restingPaintChanged(state.lastRestingSnapshot, nextRestingSnapshot),
-    paintFlight: state.lastRestingSnapshot == null || flightsChanged(state.liveFlights, liveFlights),
+    paintFlight:
+      state.lastRestingSnapshot == null ||
+      flightsChanged(state.liveFlights, liveFlights) ||
+      exitFxChanged(state.liveExitFx, liveExitFx),
+    sync:
+      steppedExitFx.completedIds.length > 0 ? { flights: liveFlights, exitFx: liveExitFx, now: animationNow() } : null,
     frame: mergedFrame,
   };
 }
@@ -123,23 +150,30 @@ export function tickFlightClock(
   state: FlightClockState;
   frame: BitmapFrame;
   paintFlight: boolean;
-  sync: { flights: CardFlight[]; now: number } | null;
+  sync: { flights: CardFlight[]; exitFx: ExitFx[]; now: number } | null;
 } {
   const stepped = stepFlights(new Map(state.liveFlights.map((flight) => [flight.id, flight])), dtMs, reducedMotion);
   const liveFlights = [...stepped.flights.values()];
+  const steppedExitFx = stepExitFx(new Map(state.liveExitFx.map((fx) => [fx.id, fx])), dtMs, reducedMotion);
+  const liveExitFx = [...steppedExitFx.exitFx.values()];
   const prevFlyingIds = flyingIds(state.liveFlights);
   const nextFlyingIds = flyingIds(liveFlights);
   const flyingMembershipChanged = !sameIdSet(prevFlyingIds, nextFlyingIds);
   const allSettled = prevFlyingIds.size > 0 && nextFlyingIds.size === 0;
+  const exitFxMembershipChanged = !sameIdSet(exitFxIds(state.liveExitFx), exitFxIds(liveExitFx));
 
   return {
     state: {
       ...state,
       liveFlights,
+      liveExitFx,
     },
-    frame: { ...frame, flights: liveFlights },
+    frame: { ...frame, flights: liveFlights, exitFx: liveExitFx },
     paintFlight: true,
-    sync: flyingMembershipChanged || allSettled ? { flights: liveFlights, now } : null,
+    sync:
+      flyingMembershipChanged || allSettled || exitFxMembershipChanged
+        ? { flights: liveFlights, exitFx: liveExitFx, now }
+        : null,
   };
 }
 
@@ -168,8 +202,37 @@ function flightsChanged(prev: readonly CardFlight[], next: readonly CardFlight[]
   return false;
 }
 
+function exitFxChanged(prev: readonly ExitFx[], next: readonly ExitFx[]): boolean {
+  if (prev.length !== next.length) return true;
+
+  for (let index = 0; index < prev.length; index += 1) {
+    const before = prev[index];
+    const after = next[index];
+    if (before == null || after == null) return true;
+    if (
+      before.id !== after.id ||
+      before.print !== after.print ||
+      before.name !== after.name ||
+      before.kind !== after.kind ||
+      before.x !== after.x ||
+      before.y !== after.y ||
+      before.scale !== after.scale ||
+      before.progress !== after.progress ||
+      before.seed !== after.seed
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 function flyingIds(flights: readonly CardFlight[]): Set<number> {
   return new Set(flights.filter((flight) => flight.phase === "flying").map((flight) => flight.id));
+}
+
+function exitFxIds(exitFx: readonly ExitFx[]): Set<number> {
+  return new Set(exitFx.map((fx) => fx.id));
 }
 
 function sameIdSet(a: ReadonlySet<number>, b: ReadonlySet<number>): boolean {
@@ -184,12 +247,15 @@ function resetClockState(): void {
   currentFrame = null;
   flightClockState = {
     liveFlights: [],
+    liveExitFx: [],
     lastRestingSnapshot: null,
   };
 }
 
-export function bitmapFrameNeedsRaf(frame: Pick<BitmapFrame, "flights"> | null): boolean {
-  return frame?.flights.some((flight) => flight.phase === "flying") ?? false;
+export function bitmapFrameNeedsRaf(frame: Pick<BitmapFrame, "flights" | "exitFx"> | null): boolean {
+  if (frame == null) return false;
+  if (frame.flights.some((flight) => flight.phase === "flying")) return true;
+  return (frame.exitFx?.length ?? 0) > 0;
 }
 
 /** Size the backing store to the DPR, reset the transform, and clear. Returns the 2D context. */
@@ -239,7 +305,7 @@ export function paintBitmapLayer(canvas: HTMLCanvasElement, frame: BitmapFrame, 
     }
   }
 
-  paintAvatars(ctx, frame);
+  paintAvatars(ctx, frame, cache);
   paintCombatArrows(ctx, frame);
   paintStagingAimArrow(ctx, frame);
   if (frame.combatDragFrom != null && frame.combatDragStroke != null) {
@@ -254,6 +320,11 @@ export function paintFlightLayer(canvas: HTMLCanvasElement, frame: BitmapFrame, 
 
   for (const flight of frame.flights) {
     paintFlightCard(ctx, flight, frame.camera.zoom, cache);
+  }
+  const exitFx = frame.exitFx ?? [];
+  const particleAllowance = particleAllowancePerFx(exitFx.length);
+  for (const fx of exitFx) {
+    paintExitFx(ctx, fx, frame.camera.zoom, cache, exitFxParticles(fx, particleAllowance));
   }
 }
 
@@ -303,7 +374,7 @@ function registerLayer(
     }
     handle.rafId = requestAnimationFrame(frame);
   };
-  handle = { canvas: element, render, animates, unsubscribe, rafId: 0, lastFlightTick: null, kickRaf };
+  handle = { canvas: element, render, animates, queue, unsubscribe, rafId: 0, lastFlightTick: null, kickRaf };
   mountedLayers.add(handle);
   render(handle.canvas);
   kickRaf();
@@ -341,20 +412,42 @@ function defineLayerMount(name: string, render: (canvas: HTMLCanvasElement) => v
 export const MountBitmapLayer = defineLayerMount("MountBitmapLayer", renderBoardLayer, false);
 export const MountFlightLayer = defineLayerMount("MountFlightLayer", renderFlightLayer, true);
 
-function paintAvatars(ctx: CanvasRenderingContext2D, frame: BitmapFrame): void {
+function paintAvatars(ctx: CanvasRenderingContext2D, frame: BitmapFrame, cache: Pick<ImageCache, "get">): void {
   const count = Math.max(1, frame.players.length);
   const radius = AVATAR_R * frame.camera.zoom;
 
   for (const player of frame.players) {
     const pos = avatarPos(player.player, frame.viewer, count);
     const screen = worldToScreen(frame.camera, pos.x, pos.y);
+    const offsets = avatarLabelOffsets(player.player, frame.viewer, count);
     const stroke = frame.priority === player.player ? colors.priorityGold : seatColor(player.player, 0.9);
+    const url = gravatarUrl(player.gravatar_hash ?? "");
+    const img = url ? cache.get(url) : undefined;
 
     ctx.save();
     ctx.beginPath();
     ctx.arc(screen.x, screen.y, radius, 0, Math.PI * 2);
-    ctx.fillStyle = player.lost ? "rgba(14,26,20,0.5)" : "rgba(14,26,20,0.95)";
-    ctx.fill();
+    ctx.clip();
+    if (img) {
+      ctx.drawImage(img, screen.x - radius, screen.y - radius, radius * 2, radius * 2);
+      if (player.lost) {
+        ctx.fillStyle = "rgba(14,26,20,0.45)";
+        ctx.fillRect(screen.x - radius, screen.y - radius, radius * 2, radius * 2);
+      }
+    } else {
+      ctx.fillStyle = player.lost ? "rgba(14,26,20,0.5)" : seatColor(player.player, 0.95);
+      ctx.fill();
+      ctx.fillStyle = "#eff";
+      ctx.font = `700 ${Math.max(1, Math.round(22 * frame.camera.zoom))}px system-ui, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(monogramLetter(player.username, player.player), screen.x, screen.y);
+    }
+    ctx.restore();
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(screen.x, screen.y, radius, 0, Math.PI * 2);
     ctx.strokeStyle = stroke;
     ctx.lineWidth = frame.priority === player.player ? 4 : 2;
     ctx.stroke();
@@ -377,23 +470,27 @@ function paintAvatars(ctx: CanvasRenderingContext2D, frame: BitmapFrame): void {
     }
 
     ctx.fillStyle = "#eff";
-    ctx.font = `700 ${Math.max(1, Math.round(30 * frame.camera.zoom))}px system-ui, sans-serif`;
+    ctx.font = `700 ${Math.max(1, Math.round(18 * frame.camera.zoom))}px system-ui, sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(`${player.life}`, screen.x, screen.y + 4 * frame.camera.zoom);
+    ctx.fillText(`${player.life}`, screen.x, screen.y + offsets.life * frame.camera.zoom);
 
     ctx.fillStyle = "#9cb";
     ctx.font = `${Math.max(1, Math.round(14 * frame.camera.zoom))}px system-ui, sans-serif`;
-    ctx.fillText(player.username?.trim() || `P${player.player}`, screen.x, screen.y + 27 * frame.camera.zoom);
+    ctx.fillText(
+      player.username?.trim() || `P${player.player}`,
+      screen.x,
+      screen.y + offsets.username * frame.camera.zoom,
+    );
 
     ctx.fillStyle = "#89a";
     ctx.font = `${Math.max(1, Math.round(12 * frame.camera.zoom))}px system-ui, sans-serif`;
-    ctx.fillText(`Hand ${player.hand_count}`, screen.x, screen.y - 29 * frame.camera.zoom);
+    ctx.fillText(`Hand ${player.hand_count}`, screen.x, screen.y + offsets.hand * frame.camera.zoom);
 
     ctx.font = `${Math.max(1, Math.round(12 * frame.camera.zoom))}px system-ui, sans-serif`;
     for (const [row, chip] of clockChips(player).entries()) {
       ctx.fillStyle = chip.fill;
-      ctx.fillText(chip.label, screen.x, screen.y + (42 + row * 14) * frame.camera.zoom);
+      ctx.fillText(chip.label, screen.x, screen.y + (offsets.commander + row * 14) * frame.camera.zoom);
     }
     ctx.restore();
   }
@@ -481,9 +578,20 @@ function preloadFrameArt(frame: BitmapFrame, cache: Pick<ImageCache, "preload">)
   for (const flight of frame.flights) {
     if (flight.print) urls.push(imageUrlByPrint(flight.print));
   }
+  for (const fx of frame.exitFx ?? []) {
+    if (fx.print) urls.push(imageUrlByPrint(fx.print));
+  }
+  for (const player of frame.players) {
+    const url = gravatarUrl(player.gravatar_hash ?? "");
+    if (url != null) urls.push(url);
+  }
   cache.preload(urls);
 }
 
 function prefersReducedMotion(): boolean {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function animationNow(): number {
+  return typeof performance === "object" && typeof performance.now === "function" ? performance.now() : 0;
 }

@@ -65,8 +65,9 @@ impl Game {
         let Object::Permanent(perm) = &self.objects[object as usize] else {
             return None;
         };
-        perm.def.abilities.iter().position(|a| {
-            a.effect.is_mana_ability()
+        let printed = card_def(perm.def);
+        printed.abilities.iter().position(|a| {
+            a.effect.clone().is_mana_ability()
                 && matches!(a.timing, Timing::Activated(cost)
                     if cost.taps_self
                         && cost.mana == Cost::FREE
@@ -82,9 +83,15 @@ impl Game {
         let Object::Permanent(perm) = &self.objects[object as usize] else {
             return false;
         };
+        // CR 708.2: a face-down permanent has no abilities — a hidden land's `produces` sugar
+        // (Zoetic Cavern) is unavailable until it's turned face up.
+        if perm.face_down {
+            return false;
+        }
+        let printed = card_def(perm.def);
         if let CardKind::Land {
             produces: Some(_), ..
-        } = perm.def.kind
+        } = &printed.kind
         {
             return true;
         }
@@ -127,9 +134,15 @@ impl Game {
         player: PlayerId,
         object: ObjectId,
     ) -> Result<Vec<Event>, Reject> {
-        let Object::Permanent(perm) = self.objects[object as usize] else {
+        let Object::Permanent(ref perm) = self.objects[object as usize] else {
             return Err(Reject::CannotProduceMana);
         };
+        // CR 708.2: a face-down permanent has no abilities — a hidden land's `produces` sugar
+        // (Zoetic Cavern) is unavailable until it's turned face up.
+        if perm.face_down {
+            return Err(Reject::CannotProduceMana);
+        }
+        let printed = card_def(perm.def);
         // A land with the `produces` sugar has a free base tap-for-one. Everything else that makes
         // mana does it with a real ability — Sol Ring, Arcane Signet, a mana dork, and a fetch-only
         // land's *non*-mana ability (which finds none, and rejects below). Delegate so the one (CR 605, CR 113)
@@ -137,7 +150,7 @@ impl Game {
         let CardKind::Land {
             produces: Some(produces),
             ..
-        } = perm.def.kind
+        } = &printed.kind
         else {
             let Some(index) = self.free_tap_mana_ability(object) else {
                 return Err(Reject::CannotProduceMana);
@@ -154,7 +167,7 @@ impl Game {
         // and "any color that a land an opponent controls could produce" (Exotic Orchard) both
         // resolve to a real credit here — an empty identity/producible set taps for nothing.
         let mana = match produces {
-            LandProduces::Mana(m) => Some(m),
+            LandProduces::Mana(m) => Some(*m),
             LandProduces::CommanderIdentity => self.commander_identity_credit(player),
             LandProduces::OpponentColors => self.opponent_producible_colors_credit(player),
         };
@@ -196,7 +209,8 @@ impl Game {
         let Some(perm) = self.as_permanent(land) else {
             return;
         };
-        if !matches!(perm.def.kind, CardKind::Land { .. }) {
+        let printed = card_def(perm.def);
+        if !matches!(&printed.kind, CardKind::Land { .. }) {
             return;
         }
         // "Tapped for mana" means it produced mana (CR 106.11) — the type this tap made, read back
@@ -216,11 +230,11 @@ impl Game {
         let mut produced_bonuses = 0usize;
         let mut any_color_source: Option<ObjectId> = None;
         for id in self.battlefield() {
-            for ability in self.def_of(id).abilities {
+            for ability in self.def_of(id).abilities.iter().cloned() {
                 let (
                     Timing::Static,
                     Effect::Static(StaticEffect::TappedForManaBonus { scope, bonus_color }),
-                ) = (ability.timing, ability.effect)
+                ) = (ability.timing, ability.effect.clone())
                 else {
                     continue;
                 };
@@ -317,7 +331,7 @@ impl Game {
     pub(crate) fn targets_are_legal(
         &self,
         object: ObjectId,
-        def: CardDef,
+        def: &CardDef,
         target: Option<Target>,
         controller: PlayerId,
         mode: Option<usize>,
@@ -337,7 +351,7 @@ impl Game {
     /// a creature-targeting mode requires a creature and a non-targeting mode requires none. A
     /// mode-less query on a modal card (snapshot / auto-pass, which don't know the pick) reports
     /// no requirement.
-    pub(crate) fn required_target(&self, def: CardDef, mode: Option<usize>) -> TargetSpec {
+    pub(crate) fn required_target(&self, def: &CardDef, mode: Option<usize>) -> TargetSpec {
         // Animate Dead (CR 303.4a's "enchant creature card in a graveyard"): the pool's one Aura
         // whose enchant subject is a graveyard card, not a battlefield permanent — checked ahead
         // of the ordinary `CardKind::Aura` battlefield-permanent case below (see
@@ -360,7 +374,7 @@ impl Game {
                 .and_then(|m| nth_mode(def, m))
                 .map_or(TargetSpec::None, |a| a.effect.target());
         }
-        for ability in def.abilities {
+        for ability in def.abilities.iter().cloned() {
             if matches!(ability.timing, Timing::Spell)
                 && ability.effect.target() != TargetSpec::None
             {
@@ -400,9 +414,12 @@ impl Game {
     /// paid ability is included only when the running estimate can pay its activation cost, via
     /// spend-then-merge (never gross-only). Used by [`has_meaningful_action`] so an untapped
     /// board counts as castable mana.
-    /// A painland's two free modes are both summed, over-counting a single land's output, but
-    /// over-counting only makes auto-pass stop *more* often (never wrongly skip), the safe
-    /// direction (turn-priority-and-stack spec). (CR 605, CR 108.3, CR 113)
+    /// A painland's two free modes are both summed, over-counting a single land's output.
+    /// Callers that gate *listable* casts / activates must not use this alone — use
+    /// [`Game::plan_auto_taps`] (as [`Game::cast_affordable_list`] and
+    /// [`Game::activation_mana_payable`] do) so exclusive modes cannot invent a second pip.
+    /// Optimistic over-count remains acceptable for upper bounds such as [`Game::max_payable_x`].
+    /// (CR 605, CR 108.3, CR 113)
     pub(crate) fn available_mana(&self, player: PlayerId) -> ManaPool {
         let mut mana = self.players[player.0 as usize].mana_pool;
         let mut used = vec![false; self.objects.len()];
@@ -415,13 +432,15 @@ impl Game {
             let id = idx as ObjectId;
             // CR 602.2/605.3: a player's available mana counts the permanents they *control*, not
             // merely own — a stolen land contributes to its thief's pool, mirroring `tap_for_mana`.
-            if self.controller_of(id) != player || p.tapped {
+            // CR 708.2: a face-down permanent (Zoetic Cavern morphed down) has no abilities.
+            if self.controller_of(id) != player || p.tapped || p.face_down {
                 continue;
             }
+            let printed = card_def(p.def);
             // Permanents with a paid tap-for-mana ability (Fetid Heath filter, Study Hall any)
             // are counted only via the fixed-point below — adding their free mode here would
             // mark them used and hide the paid mode when duals are required.
-            let has_paid_mana = p.def.abilities.iter().any(|a| {
+            let has_paid_mana = printed.abilities.iter().any(|a| {
                 let Timing::Activated(cost) = a.timing else {
                     return false;
                 };
@@ -440,10 +459,10 @@ impl Game {
                 && let CardKind::Land {
                     produces: Some(produces),
                     ..
-                } = p.def.kind
+                } = &printed.kind
             {
                 let credit = match produces {
-                    LandProduces::Mana(m) => Some(m),
+                    LandProduces::Mana(m) => Some(*m),
                     LandProduces::CommanderIdentity => self.commander_identity_credit(player),
                     LandProduces::OpponentColors => self.opponent_producible_colors_credit(player),
                 };
@@ -452,7 +471,7 @@ impl Game {
                     contributed_free = true;
                 }
             }
-            for (i, a) in p.def.abilities.iter().enumerate() {
+            for (i, a) in printed.abilities.iter().enumerate() {
                 let Timing::Activated(cost) = a.timing else {
                     continue;
                 };
@@ -518,8 +537,12 @@ impl Game {
                 paid.push((id, cost.mana, credit));
             }
             if !has_paid_mana {
-                for (cost, batch) in self.granted_mana_abilities(id) {
-                    if cost.taps_self && cost.mana == Cost::FREE {
+                for (cost, batch, single_color) in self.granted_mana_abilities(id) {
+                    // A `single_color` grant (Goldspan's "two mana of any one color") can't be
+                    // auto-tapped for the estimate: its color is a manual choice, so its batch
+                    // of "any" credits would overstate reachable colors — skip it like an own
+                    // `single_color` ability.
+                    if cost.taps_self && cost.mana == Cost::FREE && !single_color {
                         mana.merge(&batch);
                         contributed_free = true;
                     }
@@ -587,16 +610,18 @@ impl Game {
             let Object::Permanent(p) = o else {
                 continue;
             };
-            if p.owner != player || p.tapped {
+            // CR 708.2: a face-down permanent has no abilities.
+            if p.owner != player || p.tapped || p.face_down {
                 continue;
             }
+            let printed = card_def(p.def);
             if let CardKind::Land {
                 produces: Some(produces),
                 ..
-            } = p.def.kind
+            } = &printed.kind
             {
                 let credit = match produces {
-                    LandProduces::Mana(m) => Some(m),
+                    LandProduces::Mana(m) => Some(*m),
                     LandProduces::CommanderIdentity => self.commander_identity_credit(player),
                     LandProduces::OpponentColors => self.opponent_producible_colors_credit(player),
                 };
@@ -606,7 +631,7 @@ impl Game {
                     continue;
                 }
             }
-            for a in p.def.abilities {
+            for a in printed.abilities.iter().cloned() {
                 let Timing::Activated(cost) = a.timing else {
                     continue;
                 };
@@ -655,6 +680,16 @@ impl Game {
         spell: Option<SpellCharacteristics>,
     ) -> bool {
         available.can_pay(&cost, spell)
+    }
+
+    /// A card's printed non-mana ceiling on {X} (CR 601.2b — Open the Way's player-count bound),
+    /// or `None` when X is bounded only by affordability. Both the cast gate
+    /// ([`Game::validate_cast`]) and the snapshot's count-picker consult this so the offered
+    /// ceiling and the accepted ceiling can never diverge.
+    pub fn cast_x_ceiling(&self, def: &CardDef) -> Option<u32> {
+        match def.cast_x_max? {
+            CastXMax::PlayerCount => Some(u32::from(self.living_player_count())),
+        }
     }
 
     /// Largest X such that `available_mana` can pay `cost_at(x)`, or `0` when even X=0 fails.
@@ -728,6 +763,16 @@ impl Game {
         self.players[player.0 as usize]
             .mana_pool
             .spend_plan(&cost, spell)
+    }
+
+    /// Can `player` still pay `cost`? The same planner [`Game::settle_payment`] runs, so a `false`
+    /// here is exactly the payment the pay path would reject — offer the payment only when this
+    /// says yes.
+    /// ponytail: sacrifice-cost sources (cracking a Treasure) aren't planned, so a board that can
+    /// only pay that way reads `false` until the player floats the mana by hand; teach
+    /// [`Game::plan_auto_taps`] sacrifice costs if that ever gates a real prompt.
+    pub fn can_pay_cost(&self, player: PlayerId, cost: Cost) -> bool {
+        self.plan_auto_taps(player, cost, None, None).is_some()
     }
 
     /// Plan which untapped mana sources to tap so `player` can pay `cost`: empty when the pool
@@ -1046,13 +1091,15 @@ impl Game {
             let Object::Permanent(p) = o else {
                 continue;
             };
-            if p.owner != player || p.tapped || Some(id) == exclude {
+            // CR 708.2: a face-down permanent has no abilities.
+            if p.owner != player || p.tapped || p.face_down || Some(id) == exclude {
                 continue;
             }
-            let nonland = !matches!(p.def.kind, CardKind::Land { .. });
-            if let CardKind::Land { produces, .. } = p.def.kind {
+            let printed = card_def(p.def);
+            let nonland = !matches!(&printed.kind, CardKind::Land { .. });
+            if let CardKind::Land { produces, .. } = &printed.kind {
                 let base_credit = match produces {
-                    Some(LandProduces::Mana(m)) => Some(m),
+                    Some(LandProduces::Mana(m)) => Some(*m),
                     Some(LandProduces::CommanderIdentity) => self.commander_identity_credit(player),
                     Some(LandProduces::OpponentColors) => {
                         self.opponent_producible_colors_credit(player)
@@ -1071,7 +1118,7 @@ impl Game {
                     });
                 }
             }
-            for (i, a) in p.def.abilities.iter().enumerate() {
+            for (i, a) in printed.abilities.iter().enumerate() {
                 let Timing::Activated(acost) = a.timing else {
                     continue;
                 };
@@ -1132,13 +1179,16 @@ impl Game {
                     });
                 }
             }
-            let own_len = p.def.abilities.len();
-            for (gi, (acost, batch)) in self.granted_mana_abilities(id).into_iter().enumerate() {
+            let own_len = printed.abilities.len();
+            for (gi, (acost, batch, single_color)) in
+                self.granted_mana_abilities(id).into_iter().enumerate()
+            {
                 let index = own_len + gi;
                 if !acost.taps_self
                     || acost.mana != Cost::FREE
                     || acost.pay_life != Amount::Fixed(0)
                     || !matches!(acost.sacrifice, SacrificeCost::None)
+                    || single_color
                     || self.ability_activation_gate(player, id, index).is_err()
                 {
                     continue;
@@ -1185,7 +1235,19 @@ impl Game {
                 };
                 for delve in (0..=max_delve).rev() {
                     let cost = self.cast_cost(
-                        player, card, def, None, 0, zone, delve, false, false, false, 0, 0, 0,
+                        player,
+                        card,
+                        def.clone(),
+                        None,
+                        0,
+                        zone,
+                        delve,
+                        false,
+                        false,
+                        false,
+                        0,
+                        0,
+                        0,
                         false,
                     );
                     if let Some(plan) =
@@ -1197,14 +1259,15 @@ impl Game {
                 return Vec::new();
             }
             MeaningfulAction::CastSplitHalf { card, half } => {
-                let Some(&face) = self.def_of(card).halves.get(half as usize) else {
+                let Some(&face_id) = self.def_of(card).halves.get(half as usize) else {
                     return Vec::new();
                 };
+                let face = card_def(face_id);
                 (
                     self.cast_cost(
                         player,
                         card,
-                        face,
+                        face.as_ref().clone(),
                         None,
                         0,
                         Zone::Hand,
@@ -1222,15 +1285,15 @@ impl Game {
                 )
             }
             MeaningfulAction::CastPrepared { source } => {
-                let Some(back) = self.def_of(source).back else {
+                let Some(back) = card_def(self.permanent(source).def).back else {
                     return Vec::new();
                 };
-                let back = *back;
+                let back = card_def(back);
                 (
                     self.cast_cost(
                         player,
                         source,
-                        back,
+                        back.as_ref().clone(),
                         None,
                         0,
                         Zone::Battlefield,
@@ -1255,7 +1318,12 @@ impl Game {
             }
             MeaningfulAction::ActivateHandAbility { card, index } => {
                 let def = self.def_of(card);
-                let Some(ability) = def.hand_ability.get(index).copied().or(def.forecast) else {
+                let Some(ability) = def
+                    .hand_ability
+                    .get(index)
+                    .cloned()
+                    .or(def.forecast.clone())
+                else {
                     return Vec::new();
                 };
                 (ability.cost, None, None)
@@ -1854,11 +1922,11 @@ mod tests {
             modal_choose: 1,
             modal_choose_max: None,
             modal_choose_max_if_commander: false,
-            keywords: &[],
-            conditional_keywords: &[],
-            abilities: &[],
-            identity_pips: &[],
-            colors: &[],
+            keywords: empty_slice(),
+            conditional_keywords: empty_slice(),
+            abilities: empty_slice(),
+            identity_pips: empty_slice(),
+            colors: empty_slice(),
             devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
@@ -1866,11 +1934,12 @@ mod tests {
             free_cast_if: None,
             alternative_cost: None,
             cast_only_during_combat: false,
+            cast_only_before_attackers: false,
             approximates: None,
             oracle: None,
-            set: "",
-            subtypes: &[],
-            otags: &[],
+            sets: empty_slice(),
+            subtypes: empty_slice(),
+            otags: empty_slice(),
             cycling: None,
             cycling_sacrifice: SacrificeCost::None,
             flashback: None,
@@ -1888,14 +1957,15 @@ mod tests {
             functions_in_graveyard: false,
             back: None,
             adventure: None,
-            halves: &[],
+            halves: empty_slice(),
             suspend: None,
             vanishing: None,
+            cast_x_max: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,
             encore: None,
-            hand_ability: &[],
+            hand_ability: empty_slice(),
             forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,

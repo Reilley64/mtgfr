@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, ObjectView } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
 import { ZONE } from "./geometry/layout";
@@ -38,13 +39,14 @@ function fold(objects: ObjectView[], actions: ActionView[]): GameFoldState {
       zoneMoves: new Map(),
       resolvedFromStack: new Set(),
       leftStackToPile: new Set(),
+      battlefieldExits: new Map(),
       tokenCreators: new Map(),
       landPlayFrom: new Map(),
       zonePileEntrances: new Map(),
       stackEntrances: new Map(),
       priorStackObjectIds: new Set(),
     },
-    tableFeel: { land: false, stack: false, resolve: false, damage: false },
+    tableFeel: { land: false, stack: false, resolve: false, damage: false, destroy: false, exile: false },
   };
 }
 
@@ -71,7 +73,7 @@ const bolt: ObjectView = {
 const castAction: ActionView = {
   id: 7,
   kind: "cast",
-  label: "Cast Lightning Bolt",
+  label: testMessageRef("Cast Lightning Bolt"),
   needs_target: false,
   object: 42,
   section: "hand",

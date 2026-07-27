@@ -1,9 +1,9 @@
 # When this creature enters, return target instant or sorcery card from your graveyard to your hand.
 name = "Izzet Chronarch"
+sets = ["c17", "cmd", "ddj", "gpt"]
 id = "1da438f3-db1c-4713-a60c-e078f31d809c"
 default_print = "29681b0d-1aed-4b50-9710-9c15f3c83c72"
 oracle = "When this creature enters, return target instant or sorcery card from your graveyard to your hand."
-set = "cmd"
 subtypes = ["Human", "Wizard"]
 
 [cost]

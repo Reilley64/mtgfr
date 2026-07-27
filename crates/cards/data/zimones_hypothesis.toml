@@ -3,19 +3,12 @@
 # Zimone's Hypothesis {3}{U}{U} — an instant (soc). Oracle:
 #   "You may put a +1/+1 counter on a creature. Then choose odd or even. Return each creature with
 #    power of the chosen quality to its owner's hand. (Zero is even.)"
-# ponytail: "choose odd or even" is modeled as a modal "choose one" (`modal = true`) between the
-# two ReturnAllToHand filters, and the "may put a +1/+1 counter on a creature" primer rides along
-# as each mode's own up-to-one `put_counters` target — both the counter target and the parity are
-# picked at cast, instead of the printed order (put counter, then choose parity). Behaviorally
-# identical for the pool: the mass bounce still reads post-counter power at resolution, and no
-# player can respond between the two picks.
 name = "Zimone's Hypothesis"
+sets = ["dsc", "soc"]
 id = "ae27fa09-ab73-44b4-8e86-44d626ec221d"
 default_print = "f91afbaf-e035-47cd-b493-0d5817fefa76"
 otags = ["even-odd-matters", "gives-pp-counters", "namesake-spell", "removal-bounce", "removal-creature", "sweeper-one-sided"]
 oracle = "You may put a +1/+1 counter on a creature. Then choose odd or even. Return each creature with power of the chosen quality to its owner's hand. (Zero is even.)"
-set = "soc"
-modal = true
 
 [cost]
 generic = 3
@@ -24,42 +17,25 @@ blue = 2
 [kind]
 type = "instant"
 
-# You may put a +1/+1 counter on a creature. Then choose odd or even. Return each creature with
-# power of the chosen quality to its owner's hand.
-# Mode 0 — odd.
+# The whole printed sequence resolves in order (CR 608): the two effects auto-compose into a
+# Sequence — the optional counter primer, then the parity choose-one — so the mass bounce reads
+# each creature's post-counter power, and neither the counter target nor odd/even is announced on
+# the stack at cast.
 [[abilities]]
 timing = "spell"
 
-# You may put a +1/+1 counter on a creature.
+# You may put a +1/+1 counter on a creature. (A resolution-time, non-targeted optional — declining
+# still runs the parity bounce below, since it's the next Sequence step, not this primer's "if you
+# do".)
 [[abilities.effects]]
-type = "counters"
-mode = "put_counters"
-count = 1
-target = "creature"
-targets = { min = 0, max = 1 }
+type = "choice"
+mode = "may_put_counter_on_creature"
 
-# Return each creature with power of the chosen quality to its owner's hand.
+# Then choose odd or even. Return each creature with power of the chosen quality to its owner's
+# hand. A resolution-time "choose one" between the two parities (zero is even).
 [[abilities.effects]]
-type = "zone"
-mode = "return_all_to_hand"
-filter = { types = "creature", power_parity = "odd" }
-
-# You may put a +1/+1 counter on a creature. Then choose odd or even. Return each creature with
-# power of the chosen quality to its owner's hand.
-# Mode 1 — even.
-[[abilities]]
-timing = "spell"
-
-# You may put a +1/+1 counter on a creature.
-[[abilities.effects]]
-type = "counters"
-mode = "put_counters"
-count = 1
-target = "creature"
-targets = { min = 0, max = 1 }
-
-# Return each creature with power of the chosen quality to its owner's hand.
-[[abilities.effects]]
-type = "zone"
-mode = "return_all_to_hand"
-filter = { types = "creature", power_parity = "even" }
+type = "choose_one"
+options = [
+    { type = "zone", mode = "return_all_to_hand", filter = { types = "creature", power_parity = "odd" } },
+    { type = "zone", mode = "return_all_to_hand", filter = { types = "creature", power_parity = "even" } },
+]

@@ -1,17 +1,22 @@
 import { Schema as S } from "effect";
-import { Me } from "../lib/wire/types";
 import { type BoardModel, initialBoardModel } from "./board/submodel";
+import { Me } from "./domain/wire/types";
 import { emptyGameFold, type GameFoldState } from "./game/fold";
 import { AppRoute } from "./routes";
 import { AuthSubmodel } from "./shell/auth/submodel";
+import { CoverageSubmodel } from "./shell/coverage/submodel";
 import { DecksSubmodel } from "./shell/decks/submodel";
+import { LeaderboardSubmodel } from "./shell/leaderboard/submodel";
 import { LobbySlice } from "./shell/lobby/submodel";
 
-export const SessionSlice = S.Struct({ me: S.NullOr(Me) });
+export const SessionSlice = S.Struct({
+  me: S.NullOr(Me),
+  meGravatarHash: S.NullOr(S.String),
+});
 export type SessionSlice = typeof SessionSlice.Type;
 
-export const PortraitGateSlice = S.Struct({ open: S.Boolean });
-export type PortraitGateSlice = typeof PortraitGateSlice.Type;
+export const LandscapeRotateSlice = S.Struct({ active: S.Boolean });
+export type LandscapeRotateSlice = typeof LandscapeRotateSlice.Type;
 
 export type GameSlice = GameFoldState & {
   active: boolean;
@@ -35,6 +40,8 @@ export const GameSlice = S.Struct({
     stack: S.Boolean,
     resolve: S.Boolean,
     damage: S.Boolean,
+    destroy: S.Boolean,
+    exile: S.Boolean,
   }),
 });
 
@@ -55,11 +62,15 @@ export const Model = S.Struct({
   session: SessionSlice,
   sessionLoaded: S.Boolean,
   apiVersion: S.NullOr(S.String),
+  faithfulCount: S.NullOr(S.Number),
+  oracleTotal: S.NullOr(S.Number),
   auth: AuthSubmodel,
   decks: DecksSubmodel,
+  leaderboard: LeaderboardSubmodel,
+  coverage: CoverageSubmodel,
   lobby: LobbySlice,
   game: S.NullOr(GameSlice),
-  portraitGate: PortraitGateSlice,
+  landscapeRotate: LandscapeRotateSlice,
 });
 type ModelFromSchema = typeof Model.Type;
 export type Model = Omit<ModelFromSchema, "game"> & { game: GameSlice | null };

@@ -1,1 +1,8 @@
-npx --no -- commitlint --edit "$1"
+#!/usr/bin/env sh
+# Lint the commit message with commitlint (Angular). Works when invoked via
+# Husky (.husky/_) or directly by Cursor's agent-hooks dispatcher.
+set -e
+root="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
+cd "$root"
+export PATH="$root/node_modules/.bin:$PATH"
+exec npx --no -- commitlint --edit "$1"

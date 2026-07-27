@@ -9,6 +9,7 @@ use std::sync::Arc;
 use crate::table::Table;
 use crate::{AppState, lock};
 use engine::{Event, Game, Intent, PendingChoice, PlayerId, Reject};
+use schema::{MessageParam, MessageRef};
 use tokio::time::Instant;
 
 /// How long an uncontested spell or ability visibly sits on the stack before the server
@@ -34,7 +35,7 @@ pub struct PublishedDelta {
     pub broadcast_seq: u64,
     pub events: Vec<Event>,
     pub game: Game,
-    pub auto_actions: Vec<String>,
+    pub auto_actions: Vec<MessageRef>,
     pub yields: [bool; 4],
     pub turn_yields: [bool; 4],
     /// Stack-hold countdown for clients (ms); `0` when no hold is active.
@@ -43,6 +44,20 @@ pub struct PublishedDelta {
 
 /// Fan-out payload: `Arc` so subscribers clone a pointer, not the payload.
 pub type Broadcast = Arc<PublishedDelta>;
+
+struct RatingSnapshot {
+    seats: Vec<crate::Seat>,
+    game: Game,
+    events: Vec<Event>,
+}
+
+enum HoldResolution {
+    Continue,
+    Applied {
+        log_row: String,
+        rating_snapshot: Option<Box<RatingSnapshot>>,
+    },
+}
 
 /// What became of a table after applying an intent, decided under the lock and acted on by the
 /// caller once the borrow ends.
@@ -62,7 +77,7 @@ pub(crate) enum Disposition {
 pub struct ApplyResult {
     pub accepted: bool,
     /// Why the intent was rejected, if it was.
-    pub reason: Option<String>,
+    pub reason: Option<MessageRef>,
     /// Events produced (empty on reject/panic). Fed to the debug action log.
     pub events: Vec<Event>,
 }
@@ -72,7 +87,7 @@ pub struct ApplyResult {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DwellResult {
     pub accepted: bool,
-    pub reason: Option<String>,
+    pub reason: Option<MessageRef>,
 }
 
 /// Server policy for one live table: the three chrome verbs (submit / yield / dwell), then
@@ -111,7 +126,7 @@ impl<'a> TableSession<'a> {
     pub fn set_yield(&mut self, seat: PlayerId, enabled: bool) -> (ApplyResult, Disposition) {
         if !enabled {
             return (
-                reject("StackYieldOneShot"),
+                reject("reject.stack_yield_one_shot"),
                 Disposition::Live { stack_held: false },
             );
         }
@@ -150,7 +165,7 @@ impl<'a> TableSession<'a> {
             if !helpless {
                 return DwellResult {
                     accepted: false,
-                    reason: Some("NotHelpless".into()),
+                    reason: Some(message("reject.not_helpless")),
                 };
             }
         } else {
@@ -219,11 +234,11 @@ impl<'a> TableSession<'a> {
         }));
         let (events, labels, stack_held) = match submitted {
             Err(_panic) => {
-                return (reject("EngineError"), Disposition::Panicked);
+                return (reject("reject.engine_error"), Disposition::Panicked);
             }
             Ok(Err(rejected)) => {
                 return (
-                    reject(&format!("{rejected:?}")),
+                    reject_engine(rejected),
                     Disposition::Live { stack_held: false },
                 );
             }
@@ -365,48 +380,78 @@ fn schedule_stack_resolution(state: AppState, table_id: String, seq: u64) {
         }
         loop {
             tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-            let mut reg = lock(&state.reg);
-            let Some(table) = reg.get_mut(&table_id) else {
-                return;
+            let resolution = {
+                let mut reg = lock(&state.reg);
+                let Some(table) = reg.get_mut(&table_id) else {
+                    return;
+                };
+                if table.seq != seq {
+                    table.chrome.clear_hold_if_seq(seq);
+                    return;
+                }
+                let Some((_, started)) = table.chrome.stack_hold() else {
+                    return;
+                };
+                let now = Instant::now();
+                let any_dwell = table.chrome.any_dwell();
+                if now < hold_deadline(started, any_dwell) {
+                    HoldResolution::Continue
+                } else {
+                    table.chrome.clear_hold();
+                    let Some(game) = table.game.as_ref() else {
+                        return;
+                    };
+                    let Some(holder) =
+                        stack_hold_pass(game, table.chrome.yields(), table.chrome.turn_yields())
+                    else {
+                        return;
+                    };
+                    let mut session = TableSession::new(table);
+                    let wire = schema::WireIntent::PassPriority { player: holder.0 };
+                    let (result, disposition) =
+                        session.submit_system(Intent::PassPriority { player: holder });
+                    let log_row = crate::action_log::format_row(
+                        table.seq,
+                        holder.0,
+                        &wire,
+                        &result,
+                        &result.events,
+                        table.game.as_ref(),
+                    );
+                    let seq = table.seq;
+                    let rating_snapshot = result.accepted.then(|| {
+                        table.game.as_ref().map(|game| RatingSnapshot {
+                            seats: table.seats.to_vec(),
+                            game: game.clone(),
+                            events: result.events.clone(),
+                        })
+                    });
+                    settle_after_apply(&mut reg, &state, &table_id, disposition, seq);
+                    HoldResolution::Applied {
+                        log_row,
+                        rating_snapshot: rating_snapshot.flatten().map(Box::new),
+                    }
+                }
             };
-            if table.seq != seq {
-                table.chrome.clear_hold_if_seq(seq);
-                return;
+            match resolution {
+                HoldResolution::Continue => continue,
+                HoldResolution::Applied {
+                    log_row,
+                    rating_snapshot,
+                } => {
+                    crate::action_log::append(&table_id, &log_row);
+                    if let Some(snapshot) = rating_snapshot {
+                        crate::ratings::persist_player_lost(
+                            &state.db,
+                            &snapshot.seats,
+                            &snapshot.game,
+                            &snapshot.events,
+                        )
+                        .await;
+                    }
+                    return;
+                }
             }
-            let Some((_, started)) = table.chrome.stack_hold() else {
-                return;
-            };
-            let now = Instant::now();
-            let any_dwell = table.chrome.any_dwell();
-            if now < hold_deadline(started, any_dwell) {
-                continue;
-            }
-            table.chrome.clear_hold();
-            let Some(game) = table.game.as_ref() else {
-                return;
-            };
-            let Some(holder) =
-                stack_hold_pass(game, table.chrome.yields(), table.chrome.turn_yields())
-            else {
-                return;
-            };
-            let mut session = TableSession::new(table);
-            let wire = schema::WireIntent::PassPriority { player: holder.0 };
-            let (result, disposition) =
-                session.submit_system(Intent::PassPriority { player: holder });
-            let log_row = crate::action_log::format_row(
-                table.seq,
-                holder.0,
-                &wire,
-                &result,
-                &result.events,
-                table.game.as_ref(),
-            );
-            let seq = table.seq;
-            settle_after_apply(&mut reg, &state, &table_id, disposition, seq);
-            drop(reg);
-            crate::action_log::append(&table_id, &log_row);
-            return;
         }
     });
 }
@@ -427,7 +472,7 @@ fn auto_advance(
     game: &mut Game,
     yields: &mut [bool; 4],
     turn_yields: &mut [bool; 4],
-) -> (Vec<Event>, Vec<String>, bool) {
+) -> (Vec<Event>, Vec<MessageRef>, bool) {
     if game.mulliganing() {
         return (Vec::new(), Vec::new(), false);
     }
@@ -446,7 +491,7 @@ fn auto_advance(
             let Some(intent) = game.forced_action() else {
                 break;
             };
-            let label = forced_action_label(game, &choice);
+            let label = forced_action_message(game, &choice);
             match game.submit(intent) {
                 Ok(more) => {
                     // Clear turn yield as soon as Untap begins or this seat is attacked —
@@ -470,13 +515,26 @@ fn auto_advance(
         // otherwise skip them and opponents could never respond during an end-turn walk.
         let active = game.active_player();
         let end_turn = turn_yields[active.0 as usize];
+        // Goad / must-attack: empty seal is illegal (CR 701.38). End Turn must not keep
+        // auto-passing the declarer — disarm the active seat's End Turn (and the declarer's
+        // yield, when a moved declaration made them different) and stop so a legal attack
+        // can be submitted.
+        let forced_attack_declaration = game.current_step() == engine::Step::DeclareAttackers
+            && !game.attackers_declared()
+            && holder == game.attack_declarer()
+            && !game.required_attacks(game.active_player()).is_empty();
+        if forced_attack_declaration && (turn_yields[holder.0 as usize] || end_turn) {
+            turn_yields[holder.0 as usize] = false;
+            turn_yields[active.0 as usize] = false;
+            break;
+        }
         let can_respond = end_turn
             && holder != active
             && game.stack_is_empty()
             && game.has_empty_stack_instant_play(holder);
         let skip = yields[holder.0 as usize]
             // End Turn response windows override the responder's until-my-turn (turn-priority-and-stack spec).
-            || (turn_yields[holder.0 as usize] && !can_respond)
+            || (turn_yields[holder.0 as usize] && !can_respond && !forced_attack_declaration)
             || (!game.has_meaningful_action(holder) && !can_respond);
         if !skip {
             break;
@@ -527,35 +585,48 @@ fn clear_turn_yields_from_events(turn_yields: &mut [bool; 4], events: &[Event]) 
     }
 }
 
-fn reject(reason: &str) -> ApplyResult {
+fn reject(key: &str) -> ApplyResult {
     ApplyResult {
         events: Vec::new(),
         accepted: false,
-        reason: Some(reason.to_string()),
+        reason: Some(message(key)),
     }
+}
+
+fn reject_engine(reject: Reject) -> ApplyResult {
+    ApplyResult {
+        events: Vec::new(),
+        accepted: false,
+        reason: Some(engine::reject_message(reject).into()),
+    }
+}
+
+fn message(key: &str) -> MessageRef {
+    MessageRef::key(key)
 }
 
 /// A short human sentence for a forced choice `auto_advance` is about to submit, read from the
 /// pending choice it answers (not the resolved `Intent`, which has already lost the choice
 /// variant that motivated it). One label per forced submit — no attempt to describe *why* the
 /// choice was forced beyond what a player glancing at the log needs.
-fn forced_action_label(game: &Game, choice: &PendingChoice) -> String {
+fn forced_action_message(game: &Game, choice: &PendingChoice) -> MessageRef {
     use PendingChoice::*;
     match choice {
-        DiscardToHandSize { .. } => "Discarded to hand size (forced)".to_string(),
-        DiscardCards { .. } => "Discarded (forced)".to_string(),
-        ChooseTarget { .. } => "Only one legal target — chosen automatically".to_string(),
-        OrderTriggers { .. } => "Trigger order was forced".to_string(),
+        DiscardToHandSize { .. } => message("auto.discarded_to_hand_size"),
+        DiscardCards { .. } => message("auto.discarded"),
+        ChooseTarget { .. } => message("auto.only_one_legal_target"),
+        OrderTriggers { .. } => message("auto.trigger_order_forced"),
         // The only sacrifice a `forced_action` ever picks alone is a single-option edict.
         SacrificeEdict { options, .. } => {
             let name = options
                 .first()
                 .map(|&id| game.def_of(id).name)
                 .unwrap_or("a permanent");
-            format!("Sacrificed {name} (forced)")
+            MessageRef::key("auto.sacrificed_forced")
+                .with_params(vec![MessageParam::string("name", name)])
         }
         // `forced_action` never returns `Some` for any other pending-choice kind.
-        _ => "Automatic".to_string(),
+        _ => message("auto.automatic"),
     }
 }
 
@@ -565,8 +636,9 @@ mod tests {
     use crate::db;
     use crate::decks::{keep_all_hands, master_from_u64, seed_game};
     use crate::test_support::{as_user, seat_deck, user_with_deck};
-    use engine::{DamageEffect, Defender, PlayerId, SacrificeCost};
+    use engine::{DamageEffect, Defender, PlayerId, SacrificeCost, arc_slice, empty_slice};
     use schema::{IntentEnvelope, WireIntent, to_intent};
+    use std::sync::LazyLock;
 
     use crate::game_loop::{set_yield_core, submit_intent_core};
 
@@ -723,7 +795,7 @@ mod tests {
         );
     }
 
-    const FORCED_PINGER: engine::CardDef = engine::CardDef {
+    static FORCED_PINGER: LazyLock<engine::CardDef> = LazyLock::new(|| engine::CardDef {
         name: "Test Forced Pinger",
         id: "",
         default_print: "",
@@ -739,8 +811,8 @@ mod tests {
         modal_choose: 1,
         modal_choose_max: None,
         modal_choose_max_if_commander: false,
-        identity_pips: &[],
-        colors: &[],
+        identity_pips: empty_slice(),
+        colors: empty_slice(),
         devoid: false,
         enters_tapped: false,
         enters_tapped_unless: None,
@@ -748,14 +820,15 @@ mod tests {
         free_cast_if: None,
         alternative_cost: None,
         cast_only_during_combat: false,
+        cast_only_before_attackers: false,
         approximates: None,
         oracle: None,
-        set: "",
-        subtypes: &[],
-        otags: &[],
-        keywords: &[],
-        conditional_keywords: &[],
-        abilities: &[engine::Ability {
+        sets: empty_slice(),
+        subtypes: empty_slice(),
+        otags: empty_slice(),
+        keywords: empty_slice(),
+        conditional_keywords: empty_slice(),
+        abilities: arc_slice([engine::Ability {
             timing: engine::Timing::Triggered(engine::Trigger::Etb),
             effect: engine::Effect::Damage(DamageEffect::Target {
                 amount: engine::Amount::Fixed(1),
@@ -767,6 +840,9 @@ mod tests {
                     sacrifice_scaled: false,
                     strive_scaled: false,
                     total_mv_max: None,
+                    multikicker_scaled: false,
+                    kicked_scaled: false,
+                    main_phase_scaled: false,
                 },
                 divided: false,
             }),
@@ -775,7 +851,7 @@ mod tests {
             condition: None,
             cost: engine::Cost::FREE,
             once_each_turn: false,
-        }],
+        }]),
         cycling: None,
         cycling_sacrifice: SacrificeCost::None,
         flashback: None,
@@ -795,18 +871,19 @@ mod tests {
         enchant_graveyard: false,
         back: None,
         adventure: None,
-        halves: &[],
+        halves: empty_slice(),
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
         encore: None,
-        hand_ability: &[],
+        hand_ability: empty_slice(),
         forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
         suspend: None,
         vanishing: None,
-    };
+        cast_x_max: None,
+    });
 
     fn held(disposition: Disposition) -> bool {
         disposition == Disposition::Live { stack_held: true }
@@ -858,7 +935,7 @@ mod tests {
     fn a_forced_single_legal_target_choice_auto_resolves_without_a_client_intent() {
         let mut table = Table::empty();
         let mut game = engine::Game::new();
-        let pinger = game.spawn_in_hand(PlayerId(0), FORCED_PINGER);
+        let pinger = game.spawn_in_hand(PlayerId(0), FORCED_PINGER.clone());
         table.game = Some(game);
         let mut rx = table.tx.subscribe();
 
@@ -872,8 +949,23 @@ mod tests {
         let game = table.game.as_ref().unwrap();
         assert!(game.pending_choice().is_none());
         let broadcast = rx.try_recv().expect("the resolution frame broadcasts");
-        assert!(!broadcast.auto_actions.is_empty());
+        assert_eq!(broadcast.auto_actions[0].key, "auto.only_one_legal_target");
         assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn engine_rejects_are_returned_as_message_refs() {
+        let (mut table, _bear) = bear_table();
+
+        let (result, _) = TableSession::new(&mut table).submit(Intent::PassPriority {
+            player: PlayerId(1),
+        });
+
+        assert!(!result.accepted);
+        assert_eq!(
+            result.reason.as_ref().map(|reason| reason.key.as_str()),
+            Some("reject.not_your_priority")
+        );
     }
 
     #[test]
@@ -884,7 +976,7 @@ mod tests {
             PlayerId(1),
             cards::get_by_name("Grizzly Bear").expect("pool card"),
         );
-        let pinger = game.spawn_in_hand(PlayerId(0), FORCED_PINGER);
+        let pinger = game.spawn_in_hand(PlayerId(0), FORCED_PINGER.clone());
         table.game = Some(game);
         let mut rx = table.tx.subscribe();
 
@@ -1344,6 +1436,61 @@ mod tests {
         );
     }
 
+    /// End Turn while a goaded creature must attack must not leave the seat auto-passing forever:
+    /// empty seal is illegal (CR 701.38), so End Turn disarms and the declarer can still submit
+    /// a legal attack declaration.
+    #[test]
+    fn end_turn_with_goaded_creature_disarms_and_still_accepts_legal_declare() {
+        let bear = || cards::get_by_name("Grizzly Bear").expect("Grizzly Bear in pool");
+        let mut table = Table::empty();
+        let mut game = engine::Game::new();
+        let attacker = game.spawn_on_battlefield(PlayerId(0), bear());
+        game.goad(attacker, PlayerId(1));
+        table.game = Some(game);
+        advance_table_to_step(&mut table, engine::Step::DeclareAttackers);
+        assert_eq!(table.game.as_ref().unwrap().active_player(), PlayerId(0));
+
+        let (result, _) = TableSession::new(&mut table).set_turn_yield(PlayerId(0), true);
+        assert!(result.accepted);
+
+        let game = table.game.as_ref().unwrap();
+        assert_eq!(
+            game.current_step(),
+            engine::Step::DeclareAttackers,
+            "goad forbids empty seal — stay on declare attackers"
+        );
+        assert!(
+            !game.attackers_declared(),
+            "declaration stays open until a legal attack lands"
+        );
+        assert!(
+            !table.chrome.turn_yields()[0],
+            "End Turn must disarm when goad blocks the empty seal"
+        );
+        assert_eq!(
+            game.priority_holder(),
+            PlayerId(0),
+            "declarer keeps priority to submit a legal attack"
+        );
+
+        let (result, _) = TableSession::new(&mut table).submit(Intent::DeclareAttackers {
+            player: PlayerId(0),
+            attackers: vec![(attacker, Defender::Player(PlayerId(1)))],
+        });
+        assert!(
+            result.accepted,
+            "legal goaded attack must still land after End Turn bounced: {:?}",
+            result.reason
+        );
+        assert!(
+            result
+                .events
+                .iter()
+                .any(|e| matches!(e, Event::AttackerDeclared { .. })),
+            "legal goaded attack must emit AttackerDeclared after End Turn bounced"
+        );
+    }
+
     /// End Turn from Declare Attackers must seal an empty attack and finish the turn in one arm —
     /// the client often still has "No attackers" beside End Turn; a single End Turn click must not
     /// leave the seat stuck needing a second click.
@@ -1613,8 +1760,16 @@ mod tests {
         let mut table = Table::empty();
         table.game = Some(engine::Game::new());
 
-        // Reach End with an empty hand, then overfill so Cleanup must pause on discard.
-        advance_table_to_step(&mut table, engine::Step::End);
+        // Stock a library first: an empty-library draw decks P0, and a player who has left the
+        // game takes no turn-based actions at all (CR 800.4e) — discard included.
+        {
+            let game = table.game.as_mut().unwrap();
+            for _ in 0..8 {
+                game.spawn_in_library(PlayerId(0), plains());
+            }
+        }
+        // Reach a late-turn priority window, then overfill so Cleanup must pause on discard.
+        advance_table_to_step(&mut table, engine::Step::Main2);
         {
             let game = table.game.as_mut().unwrap();
             for _ in 0..8 {
@@ -1670,9 +1825,40 @@ mod tests {
         let before = table.seq;
         let (result, _) = TableSession::new(&mut table).set_yield(PlayerId(1), false);
         assert!(!result.accepted);
-        assert_eq!(result.reason.as_deref(), Some("StackYieldOneShot"));
+        assert_eq!(
+            result.reason.as_ref().map(|reason| reason.key.as_str()),
+            Some("reject.stack_yield_one_shot")
+        );
         assert!(table.chrome.yields()[1], "still armed");
         assert_eq!(table.seq, before, "reject must not advance seq");
+    }
+
+    #[test]
+    fn server_message_keys_are_in_the_closed_catalog() {
+        let keys = engine::MessageKey::all()
+            .iter()
+            .map(|key| key.as_str())
+            .collect::<Vec<_>>();
+
+        for expected in [
+            "auto.discarded_to_hand_size",
+            "auto.discarded",
+            "auto.only_one_legal_target",
+            "auto.trigger_order_forced",
+            "auto.sacrificed_forced",
+            "auto.automatic",
+            "reject.unknown_table",
+            "reject.game_not_started",
+            "reject.not_seated",
+            "reject.engine_error",
+            "reject.stack_yield_one_shot",
+            "reject.not_helpless",
+        ] {
+            assert!(
+                keys.contains(&expected),
+                "{expected} must be discoverable via MessageKey::all()"
+            );
+        }
     }
 
     #[test]

@@ -23,6 +23,29 @@ pub(super) fn next_graveyard_exile(
     None
 }
 
+/// Next opponent with a card to discard (Syphon Mind, "Each other player discards a card") —
+/// skipping any with an empty hand, the discard twin of [`next_graveyard_exile`].
+pub(super) fn next_discard_edict(
+    game: &Game,
+    mut remaining: Vec<PlayerId>,
+    source: ObjectId,
+) -> Option<PendingChoice> {
+    while !remaining.is_empty() {
+        let player = remaining.remove(0);
+        let options = game.hand_of(player);
+        if options.is_empty() {
+            continue;
+        }
+        return Some(PendingChoice::DiscardEdict {
+            player,
+            source,
+            options,
+            remaining,
+        });
+    }
+    None
+}
+
 pub(super) fn next_caster_keep(
     game: &Game,
     mut remaining: Vec<PlayerId>,
@@ -125,11 +148,13 @@ pub(super) fn next_card_name(
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn next_sacrifice_edict(
     game: &Game,
     mut remaining: Vec<PlayerId>,
     keep_one: bool,
     filter: PermanentFilter,
+    count: u32,
     follow_up: &'static [Effect],
     controller: PlayerId,
     source: ObjectId,
@@ -146,6 +171,7 @@ pub(super) fn next_sacrifice_edict(
             keep_one,
             filter,
             remaining,
+            count,
             controller,
             source,
             follow_up,

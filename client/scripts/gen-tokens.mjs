@@ -1,8 +1,8 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 // Regenerate Tailwind @theme CSS + canvas TS from repo-root design.tokens.json (DTCG).
 // Usage:
-//   node scripts/gen-tokens.mjs          # write
-//   node scripts/gen-tokens.mjs --check  # fail if stale
+//   bun scripts/gen-tokens.mjs          # write
+//   bun scripts/gen-tokens.mjs --check  # fail if stale
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -14,7 +14,7 @@ const clientRoot = join(here, "..");
 const repoRoot = join(clientRoot, "..");
 const tokensPath = join(repoRoot, "design.tokens.json");
 const cssOut = join(clientRoot, "styles/tokens.generated.css");
-const tsOut = join(clientRoot, "lib/design-tokens.generated.ts");
+const tsOut = join(clientRoot, "app/domain/design-tokens.generated.ts");
 
 function kebabToCamel(kebab) {
   return kebab.replace(/-([a-z0-9])/g, (_, c) => c.toUpperCase());

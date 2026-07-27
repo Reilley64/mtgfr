@@ -1,9 +1,10 @@
 import { Canvas } from "foldkit";
 import { colors } from "~/design-tokens.generated";
 import type { PlayerView } from "~/wire/types";
+import { monogramLetter } from "../../domain/gravatar";
 import { TARGET_COLOR } from "../action/targeting";
 import { type Camera, worldToScreen } from "../geometry/camera";
-import { AVATAR_R, avatarPos, seatColor } from "../geometry/layout";
+import { AVATAR_R, avatarLabelOffsets, avatarPos, seatColor } from "../geometry/layout";
 
 type Shape = Canvas.Shape;
 
@@ -53,6 +54,8 @@ export function avatarShapes(
   priority: number,
   zoom: number,
   targetPlayers: ReadonlySet<number> = new Set(),
+  viewer = 0,
+  count = Math.max(1, players.length),
 ): Shape[] {
   const radius = AVATAR_R * zoom;
   const shapes: Shape[] = [];
@@ -61,6 +64,7 @@ export function avatarShapes(
     const pos = positions[player.player];
     if (pos == null) continue;
 
+    const offsets = avatarLabelOffsets(player.player, viewer, count);
     const stroke = priority === player.player ? colors.priorityGold : seatColor(player.player, 0.9);
     const targeted = targetPlayers.has(player.player);
     shapes.push(
@@ -68,22 +72,31 @@ export function avatarShapes(
         x: pos.x,
         y: pos.y,
         radius,
-        fill: player.lost ? "rgba(14,26,20,0.5)" : "rgba(14,26,20,0.95)",
+        fill: player.lost ? "rgba(14,26,20,0.5)" : seatColor(player.player, 0.95),
         stroke,
         lineWidth: priority === player.player ? 4 : 2,
       }),
       Canvas.Text({
         x: pos.x,
-        y: pos.y + 4 * zoom,
-        content: `${player.life}`,
-        font: `700 ${Math.max(1, Math.round(30 * zoom))}px system-ui, sans-serif`,
+        y: pos.y,
+        content: monogramLetter(player.username, player.player),
+        font: `700 ${Math.max(1, Math.round(22 * zoom))}px system-ui, sans-serif`,
         fill: "#eff",
         align: "Center",
         baseline: "Middle",
       }),
       Canvas.Text({
         x: pos.x,
-        y: pos.y + 27 * zoom,
+        y: pos.y + offsets.life * zoom,
+        content: `${player.life}`,
+        font: `700 ${Math.max(1, Math.round(18 * zoom))}px system-ui, sans-serif`,
+        fill: "#eff",
+        align: "Center",
+        baseline: "Middle",
+      }),
+      Canvas.Text({
+        x: pos.x,
+        y: pos.y + offsets.username * zoom,
         content: player.username?.trim() || `P${player.player}`,
         font: `${Math.max(1, Math.round(14 * zoom))}px system-ui, sans-serif`,
         fill: "#9cb",
@@ -92,7 +105,7 @@ export function avatarShapes(
       }),
       Canvas.Text({
         x: pos.x,
-        y: pos.y - 29 * zoom,
+        y: pos.y + offsets.hand * zoom,
         content: `Hand ${player.hand_count}`,
         font: `${Math.max(1, Math.round(12 * zoom))}px system-ui, sans-serif`,
         fill: "#89a",
@@ -105,7 +118,7 @@ export function avatarShapes(
       shapes.push(
         Canvas.Text({
           x: pos.x,
-          y: pos.y + (42 + row * 14) * zoom,
+          y: pos.y + (offsets.commander + row * 14) * zoom,
           content: chip.label,
           font: `${Math.max(1, Math.round(12 * zoom))}px system-ui, sans-serif`,
           fill: chip.fill,

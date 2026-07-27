@@ -7,6 +7,7 @@ mod cards_svc;
 mod decks_svc;
 mod game_svc;
 pub(crate) mod map;
+mod ratings_svc;
 mod tables_svc;
 #[cfg(test)]
 mod tests;
@@ -40,6 +41,9 @@ pub async fn serve(
         )))
         .add_service(pb::decks_server::DecksServer::new(
             decks_svc::DecksSvc::new(state.clone()),
+        ))
+        .add_service(pb::ratings_server::RatingsServer::new(
+            ratings_svc::RatingsSvc::new(state.clone()),
         ))
         .add_service(pb::cards_server::CardsServer::new(
             cards_svc::CardsSvc::new(state.clone()),

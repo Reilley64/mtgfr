@@ -5,16 +5,25 @@ import { Submodel } from "foldkit";
 import { html } from "foldkit/html";
 import { Scene } from "foldkit/test";
 import { beforeAll, test } from "vitest";
+import { testMessageRef } from "~/i18n/testMessageRef";
 import { SPECTATOR_VIEWER } from "~/spectator";
-import { BindCardArt } from "~/ui/card-art";
+import { BindCardArt, CardArtTick } from "~/ui/card-art";
 import type { ObjectView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../../game/fold";
+import { init as appInit, update as appUpdate } from "../../main-exports";
+import { emptyGameSlice } from "../../model";
+import { GameTableRoute } from "../../routes";
+import { initialLobbySlice } from "../../shell/lobby/submodel";
+import { view as appView } from "../../view";
+import { MountBitmapLayer, MountFlightLayer } from "../bitmap/mount";
 import { ZONE } from "../geometry/layout";
 import type { Message } from "../messages";
-import { ArtLoaded, PriorityElapsed } from "../messages";
+import { AltDown, ArtLoaded, BoardCameraZoomed, HintAutoHidden, PriorityElapsed } from "../messages";
 import { type BoardModel, initialBoardModel } from "../submodel";
 import { type BoardViewModel, view as boardView } from "../view";
-import { MountPriorityWatch } from "./audio-mount";
+import { MountBoardAudio, MountHintAutoHide, MountPriorityWatch } from "./audio-mount";
+import { MountBoardCameraGesture } from "./camera-gesture-mount";
+import { MountBoardKeyboard } from "./keyboard-mount";
 import { boardOverlays } from "./overlays";
 import { resolveBoardOverlayMounts, resolveLiveBoardMounts } from "./scene-helpers";
 
@@ -85,23 +94,24 @@ function gameState(overrides: Partial<VisibleState> = {}): VisibleState {
   };
 }
 
-function gameFold(state: VisibleState | null = gameState()): GameFoldState {
+function gameFold(state: VisibleState | null = gameState(), reject: string | null = null): GameFoldState {
   return {
     seq: 1,
     state,
     log: [],
-    reject: null,
+    reject,
     provenance: {
       zoneMoves: new Map(),
       resolvedFromStack: new Set(),
       leftStackToPile: new Set(),
+      battlefieldExits: new Map(),
       tokenCreators: new Map(),
       landPlayFrom: new Map(),
       zonePileEntrances: new Map(),
       stackEntrances: new Map(),
       priorStackObjectIds: new Set(),
     },
-    tableFeel: { land: false, stack: false, resolve: false, damage: false },
+    tableFeel: { land: false, stack: false, resolve: false, damage: false, destroy: false, exile: false },
   };
 }
 
@@ -141,6 +151,43 @@ test("active player sees hand, priority bar, concede, and hint chrome", () => {
   );
 });
 
+// Master Warcraft (CR 508.1a): the caster declares somebody else's attackers, so the engine hands
+// *them* the declaration. The button follows the engine's action list, not the seat's own turn.
+test("a seat handed a moved attack declaration gets the confirm button, not 'Next'", () => {
+  const state = gameState({
+    active_player: 1,
+    step: 5, // declare attackers
+    viewer: 0,
+    actions: [
+      {
+        id: 1,
+        kind: "declare_attackers",
+        label: testMessageRef("Declare attackers"),
+        needs_target: false,
+        section: "combat",
+        declare_for: [1],
+      },
+    ],
+  });
+  Scene.scene(
+    { update: (m) => [m, []], view: overlayView },
+    Scene.with({ board: initialBoardModel(), fold: gameFold(state), tableId: "T1" }),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("board-primary")).toContainText("No attackers"),
+  );
+});
+
+// ...and the active player it was taken from just passes, so two seats can't both declare.
+test("the active player whose attack declaration was moved away sees 'Next'", () => {
+  const state = gameState({ active_player: 0, step: 5, viewer: 0, actions: [] });
+  Scene.scene(
+    { update: (m) => [m, []], view: overlayView },
+    Scene.with({ board: initialBoardModel(), fold: gameFold(state), tableId: "T1" }),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("board-primary")).toContainText("Next"),
+  );
+});
+
 test("mulliganing undecided seat sees overlay and hides hand bar", () => {
   const state = gameState({
     mulliganing: true,
@@ -171,7 +218,7 @@ test("mulliganing undecided seat sees overlay and hides hand bar", () => {
   Scene.scene(
     { update: (m) => [m, []], view: overlayView },
     Scene.with(model),
-    Scene.Mount.resolveAll([MountPriorityWatch(), PriorityElapsed({ seconds: 0 })], [BindCardArt, ArtLoaded()]),
+    Scene.Mount.resolveAll([MountPriorityWatch(), PriorityElapsed({ seconds: 0 })], [BindCardArt, CardArtTick()]),
     Scene.expect(Scene.testId("mulligan-overlay")).toExist(),
     Scene.expect(Scene.testId("mulligan-keep")).toExist(),
     Scene.expect(Scene.testId("mulligan-take")).toExist(),
@@ -181,6 +228,47 @@ test("mulliganing undecided seat sees overlay and hides hand bar", () => {
     Scene.expect(Scene.testId("board-primary")).not.toExist(),
     Scene.expect(Scene.testId("board-concede")).toExist(),
     Scene.expect(Scene.testId("inspect-overlay")).not.toExist(),
+  );
+});
+
+// Regression: wrapping CardArtTick as GotBoardMessage throws (not a BoardMessage) and
+// tears down BindCardArt's cache subscription — mulligan faces stay on skeletons forever.
+test("live board submodel lifts mulligan CardArtTick without wrapping as GotBoardMessage", () => {
+  const [base] = appInit();
+  const state = gameState({
+    mulliganing: true,
+    objects: [card(1)],
+    players: [
+      { ...player(0), hand_kept: false, can_mulligan: true, mulligans_taken: 0 },
+      { ...player(1), hand_kept: false, can_mulligan: true, mulligans_taken: 0 },
+    ],
+  });
+  Scene.scene(
+    { update: appUpdate, view: appView },
+    Scene.with({
+      ...base,
+      route: GameTableRoute({ table: "ABC123" }),
+      currentPath: "/play/ABC123",
+      landscapeRotate: { active: false },
+      sessionLoaded: true,
+      session: { me: { id: 1, email: "alice@example.com", username: "alice" }, meGravatarHash: null },
+      game: { ...emptyGameSlice("ABC123"), seq: 1, state },
+      lobby: { ...initialLobbySlice(), started: true, tableId: "ABC123" },
+    }),
+    Scene.expect(Scene.testId("mulligan-overlay")).toExist(),
+    Scene.expect(Scene.selector("[data-art-url]")).toExist(),
+    // Undecided mulligan hides the hand bar, so MountHandBarDrag is absent.
+    Scene.Mount.resolveAll(
+      [MountBoardKeyboard(), AltDown()],
+      [MountBoardAudio(), ArtLoaded()],
+      [MountHintAutoHide(), HintAutoHidden()],
+      [MountBitmapLayer(), ArtLoaded()],
+      [MountFlightLayer(), ArtLoaded()],
+      [MountBoardCameraGesture(), BoardCameraZoomed({ x: 0, y: 0, factor: 1 })],
+      [MountPriorityWatch(), PriorityElapsed({ seconds: 0 })],
+      [BindCardArt, CardArtTick()],
+    ),
+    Scene.Mount.expectEnded(MountHintAutoHide),
   );
 });
 
@@ -210,7 +298,7 @@ test("mulligan take is disabled when can_mulligan is false", () => {
       fold: gameFold(state),
       tableId: "T1",
     }),
-    Scene.Mount.resolveAll([MountPriorityWatch(), PriorityElapsed({ seconds: 0 })], [BindCardArt, ArtLoaded()]),
+    Scene.Mount.resolveAll([MountPriorityWatch(), PriorityElapsed({ seconds: 0 })], [BindCardArt, CardArtTick()]),
     Scene.expect(Scene.testId("mulligan-overlay")).toExist(),
     Scene.expect(Scene.testId("mulligan-take")).toBeDisabled(),
   );
@@ -328,8 +416,28 @@ test("reconnect banner appears only when disconnected with live state", () => {
     Scene.with(boardModel(gameFold(), false)),
     resolveLiveBoardMounts(),
     Scene.expect(Scene.testId("board-reconnecting")).toExist(),
-    Scene.expect(Scene.text("Reconnecting…")).toExist(),
+    Scene.expect(Scene.text("Connection lost — reconnecting…")).toExist(),
     Scene.expect(Scene.testId("board-status")).not.toExist(),
+  );
+});
+
+test("reconnect banner explains an expired session terminal error", () => {
+  Scene.scene(
+    { update: (m) => [m, []], view: fullBoardView },
+    Scene.with(boardModel(gameFold(gameState(), "Session expired — sign in again."), false)),
+    resolveLiveBoardMounts(),
+    Scene.expect(Scene.testId("board-reconnecting")).toExist(),
+    Scene.expect(Scene.text("Session expired — sign in again.")).toExist(),
+  );
+});
+
+test("reconnect banner explains a missing table terminal error", () => {
+  Scene.scene(
+    { update: (m) => [m, []], view: fullBoardView },
+    Scene.with(boardModel(gameFold(gameState(), "Table no longer available."), false)),
+    resolveLiveBoardMounts(),
+    Scene.expect(Scene.testId("board-reconnecting")).toExist(),
+    Scene.expect(Scene.text("Table no longer available.")).toExist(),
   );
 });
 

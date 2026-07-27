@@ -14,6 +14,8 @@ const ActionView: S.Schema<ActionViewT> = S.Any;
 const CatalogCard: S.Schema<CatalogCardT | null> = S.Any;
 const FlightPhase = S.Union([S.Literal("flying"), S.Literal("settled")]);
 const FlightKind = S.Union([S.Literal("battlefield"), S.Literal("stack"), S.Literal("from-stack")]);
+const ExitFxKind = S.Union([S.Literal("destroy"), S.Literal("exile")]);
+const HandBarZone = S.Union([S.Literal("hand"), S.Literal("command"), S.Literal("graveyard"), S.Literal("exile")]);
 const CardFlight = S.Struct({
   id: S.Number,
   print: S.String,
@@ -28,12 +30,28 @@ const CardFlight = S.Struct({
   kind: FlightKind,
   fromCardId: S.optional(S.Number),
 });
+const ExitFxStruct = S.Struct({
+  id: S.Number,
+  print: S.String,
+  name: S.String,
+  kind: ExitFxKind,
+  x: S.Number,
+  y: S.Number,
+  scale: S.Number,
+  progress: S.Number,
+  seed: S.Number,
+});
 
 export const ArtLoaded = m("ArtLoaded");
+export const BoardCameraZoomed = m("BoardCameraZoomed", { x: S.Number, y: S.Number, factor: S.Number });
 export const BoardPointerDown = m("BoardPointerDown", CanvasPoint);
 export const BoardPointerMove = m("BoardPointerMove", CanvasPoint);
 export const BoardPointerUp = m("BoardPointerUp", CanvasPoint);
-export const FlightsSynced = m("FlightsSynced", { now: S.Number, flights: S.Array(CardFlight) });
+export const FlightsSynced = m("FlightsSynced", {
+  now: S.Number,
+  flights: S.Array(CardFlight),
+  exitFx: S.Array(ExitFxStruct),
+});
 
 /** User activated a hand/command/graveyard/exile bar action (click / Enter / Space / drop above threshold). */
 export const HandActionActivated = m("HandActionActivated", {
@@ -50,6 +68,7 @@ export const HandDragStarted = m("HandDragStarted", {
   print: S.String,
   manaCost: S.Any,
   kind: S.optional(S.String),
+  zone: S.optional(HandBarZone),
   x: S.Number,
   y: S.Number,
 });
@@ -83,6 +102,8 @@ export const TargetChosen = m("TargetChosen", { target: WireTarget });
 /** Modal step answers. */
 export const ModalModesChosen = m("ModalModesChosen", { chosen: S.Array(S.Number) });
 export const ModalTargetChosen = m("ModalTargetChosen", { target: WireTarget });
+/** Choose which legal hand action to continue after the card is parked on the stack. */
+export const PlayModeChosen = m("PlayModeChosen", { actionId: S.Number });
 
 /** Choose-X stepper draft adjusted (Min / − / + / Max). */
 export const XDraftSet = m("XDraftSet", { x: S.Number });
@@ -156,6 +177,13 @@ export const StackDwellChanged = m("StackDwellChanged", { dwelling: S.Boolean })
 export const StackExpandClicked = m("StackExpandClicked");
 /** Collapse the expanded stack overlay back to the pile. */
 export const StackCollapseClicked = m("StackCollapseClicked");
+
+/** Expand/collapse the board log between recent lines and the full fold buffer. */
+export const LogExpandToggled = m("LogExpandToggled");
+/** Copy the full board fold log to the clipboard. */
+export const LogCopyRequested = m("LogCopyRequested");
+/** Clipboard write completed for the board fold log. */
+export const LogCopyCompleted = m("LogCopyCompleted", { ok: S.Boolean });
 
 /** Activation radial: arm a wedge on pointer down. */
 export const RadialWedgeArmed = m("RadialWedgeArmed", { index: S.Number });
@@ -239,6 +267,7 @@ export const LegendToggled = m("LegendToggled");
 
 export const Message = S.Union([
   ArtLoaded,
+  BoardCameraZoomed,
   BoardPointerDown,
   BoardPointerMove,
   BoardPointerUp,
@@ -259,6 +288,7 @@ export const Message = S.Union([
   TargetChosen,
   ModalModesChosen,
   ModalTargetChosen,
+  PlayModeChosen,
   XDraftSet,
   XSubmitted,
   SacrificeChosen,
@@ -288,6 +318,9 @@ export const Message = S.Union([
   StackDwellChanged,
   StackExpandClicked,
   StackCollapseClicked,
+  LogExpandToggled,
+  LogCopyRequested,
+  LogCopyCompleted,
   RadialWedgeArmed,
   RadialWedgeReleased,
   RadialWedgeHovered,

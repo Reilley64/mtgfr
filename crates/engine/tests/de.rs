@@ -71,6 +71,9 @@ fn target_count_parses_scalar_and_table_forms() {
             sacrifice_scaled: false,
             strive_scaled: false,
             total_mv_max: None,
+            multikicker_scaled: false,
+            kicked_scaled: false,
+            main_phase_scaled: false,
         }
     );
 
@@ -91,6 +94,9 @@ max = 3
             sacrifice_scaled: false,
             strive_scaled: false,
             total_mv_max: None,
+            multikicker_scaled: false,
+            kicked_scaled: false,
+            main_phase_scaled: false,
         }
     );
 
@@ -114,6 +120,9 @@ total_mv_max = "x"
             sacrifice_scaled: false,
             strive_scaled: false,
             total_mv_max: Some(Amount::X),
+            multikicker_scaled: false,
+            kicked_scaled: false,
+            main_phase_scaled: false,
         }
     );
 

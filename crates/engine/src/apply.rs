@@ -22,7 +22,7 @@ impl Game {
             // Like the filter path below, a host that is no longer a live permanent is never
             // legal — the rewrite names an object, and that object has left the battlefield.
             return self.permanent(attachment).enchant_rewrite_host == Some(host)
-                && matches!(self.objects[host as usize], Object::Permanent(_));
+                && matches!(&self.objects[host as usize], Object::Permanent(_));
         }
         let filter = self
             .def_of(attachment)
@@ -36,37 +36,45 @@ impl Game {
         )
     }
 
+    /// Whether an Aura may be attached to `host` by an effect that isn't a normal cast (Ajani's
+    /// Chosen's "you may attach it to the token", Gift of Immortality's delayed "return this card
+    /// attached to that creature"). A cast Aura gets its legality from a target choice (CR 601.2c),
+    /// but these force-attach with no target step, so this is the only gate: `host` must satisfy
+    /// the Aura's `enchant` restriction (CR 303.4f) *and* not have protection that stops the Aura
+    /// (CR 702.16e). Reuses [`Game::attachment_host_legal`] so the check stays one seam.
+    pub(crate) fn noncast_attach_legal(&self, attachment: ObjectId, host: ObjectId) -> bool {
+        self.attachment_host_legal(attachment, host)
+            && !self.protection_blocks_source(host, attachment)
+    }
+
     /// Re-check state-based actions and return the events they produce.
     /// A player at 0-or-less life loses; a creature with lethal marked damage dies.
     pub(crate) fn check_state_based_actions(&self) -> Vec<Event> {
         let mut events = Vec::new();
 
-        // CR 704.5r: a permanent carrying both a +1/+1 counter and a -1/-1 counter has N of each
-        // removed, N being the smaller count. Checked before the death/toughness sweep below,
-        // though the ordering is immaterial in practice — the two kinds already contribute
-        // independent, opposite P/T deltas (`characteristics.rs`'s `pt_layers`), so a creature's
-        // net toughness is identical whether or not the pairs have annihilated yet. This sweep
-        // matters for *counter-counting* readers (has-a-counter checks, proliferate's candidate
-        // scan) rather than for P/T.
+        // CR 704.5r: if a permanent has both +1/+1 and −1/−1 counters on it, N of each are
+        // removed as a state-based action, where N is the smaller of the two counts. Emitted
+        // before death checks so `apply_all` still sees a live permanent when stripping pairs
+        // (a simultaneous 0-toughness death in the same snapshot still uses pre-annihilation P/T).
         for id in self.battlefield() {
-            let Object::Permanent(p) = self.objects[id as usize] else {
+            let Object::Permanent(ref p) = self.objects[id as usize] else {
                 continue;
             };
             let plus = p.plus_counters;
             let minus = p.kind_counters[CounterKind::MinusOneMinusOne as usize] as i32;
-            let n = plus.min(minus);
-            if n <= 0 {
+            let pairs = plus.min(minus);
+            if pairs <= 0 {
                 continue;
             }
             events.push(Event::CountersPlaced {
                 object: id,
-                count: -n,
-                source_name: self.def_of(id).name,
+                count: -pairs,
+                source_name: "",
             });
             events.push(Event::KindCountersPlaced {
                 object: id,
                 kind: CounterKind::MinusOneMinusOne,
-                count: -n,
+                count: -pairs,
             });
         }
 
@@ -81,12 +89,13 @@ impl Game {
         // detaches simultaneously (CR 704.5), rather than one SBA sweep behind.
         let mut leaving = Vec::new();
         for id in self.battlefield() {
-            let Object::Permanent(p) = self.objects[id as usize] else {
+            let Object::Permanent(ref p) = self.objects[id as usize] else {
                 continue;
             };
+            let printed = card_def(p.def);
             // A creature with lethal marked damage dies (CR 704.5g); a planeswalker with 0 loyalty
             // is put into its owner's graveyard (CR 704.5i).
-            let dies = match p.def.kind {
+            let dies = match &printed.kind {
                 // CR 702.103e: a bestowed permanent that's attached is an Aura, not a creature —
                 // the toughness-≤0 / lethal-damage creature death SBAs don't apply to it.
                 CardKind::Creature { .. } if !self.is_bestowed_and_attached(id) => {
@@ -111,7 +120,7 @@ impl Game {
             // shield only applies when toughness is still positive (i.e. lethal damage or
             // deathtouch is the reason, not 0-or-less toughness).
             if p.regeneration_shields > 0
-                && matches!(p.def.kind, CardKind::Creature { .. })
+                && matches!(&printed.kind, CardKind::Creature { .. })
                 && self.toughness(id) > 0
             {
                 events.push(Event::Regenerated { object: id });
@@ -142,9 +151,10 @@ impl Game {
             _ => None,
         };
         for id in self.battlefield() {
-            let Object::Permanent(p) = self.objects[id as usize] else {
+            let Object::Permanent(ref p) = self.objects[id as usize] else {
                 continue;
             };
+            let printed = card_def(p.def);
             let host_illegal = match p.attached_to {
                 // unattached Aura is illegal, unless it's this Aura awaiting its host choice, or
                 // Animate Dead's own reanimator Aura freshly entered and still waiting on its own
@@ -158,9 +168,9 @@ impl Game {
                 // exemption naturally lapses — the ordinary CR 704.5m sweep then applies to it,
                 // both while it's still unattached and later, once its reanimated host dies.
                 None => {
-                    matches!(p.def.kind, CardKind::Aura)
+                    matches!(&printed.kind, CardKind::Aura)
                         && awaiting_host != Some(id)
-                        && !(p.def.enchant_graveyard
+                        && !(printed.enchant_graveyard
                             && p.cast_time_enchant_target
                                 .is_some_and(|card| self.zone_of(card) == Zone::Graveyard))
                 }
@@ -169,7 +179,7 @@ impl Game {
             if !host_illegal {
                 continue;
             }
-            if matches!(p.def.kind, CardKind::Aura) {
+            if matches!(&printed.kind, CardKind::Aura) {
                 // CR 111.7: a token Aura (a Replicate copy, CR 707.10a) that falls off ceases to
                 // exist rather than becoming a graveyard card, the same token-cease rule any other
                 // token's death/leaves-the-battlefield path already honors.
@@ -258,6 +268,12 @@ impl Game {
             sba.extend(self.check_linked_exile_returns());
             sba.extend(self.check_leaves_battlefield_illusions());
             if sba.is_empty() {
+                // CR 704.5j: after event-producing SBAs settle, pause for the legend rule if a
+                // controller still has two+ legendary permanents with the same name. One conflict
+                // group per sweep (lowest seat, then name); the answer resumes the pipeline.
+                if let Some(choice) = self.legend_rule_choice() {
+                    pending::raise_choice(self, choice);
+                }
                 return;
             }
             self.apply_all(&sba);
@@ -267,6 +283,43 @@ impl Game {
         // something to limp past silently in release. Fail loudly; the server's catch_unwind
         // quarantines the one bad table rather than taking the process down (C3).
         panic!("state-based actions did not reach a fixpoint within {bound} sweeps");
+    }
+
+    /// First legend-rule conflict (CR 704.5j), if any: a living controller with two or more
+    /// legendary permanents that share a printed name. Groups are ordered by controller seat,
+    /// then name, so the raise is deterministic when several conflicts exist.
+    pub(crate) fn legend_rule_choice(&self) -> Option<PendingChoice> {
+        use std::collections::BTreeMap;
+
+        let mut groups: BTreeMap<(u8, &str), Vec<ObjectId>> = BTreeMap::new();
+        for id in self.battlefield() {
+            let Object::Permanent(ref p) = self.objects[id as usize] else {
+                continue;
+            };
+            let printed = card_def(p.def);
+            if !printed.legendary {
+                continue;
+            }
+            let controller = self.controller_of(id);
+            if self.players[controller.0 as usize].lost {
+                continue;
+            }
+            groups
+                .entry((controller.0, printed.name))
+                .or_default()
+                .push(id);
+        }
+        for ((seat, name), options) in groups {
+            if options.len() < 2 {
+                continue;
+            }
+            return Some(PendingChoice::ChooseLegendaryKeep {
+                player: PlayerId(seat),
+                name,
+                options,
+            });
+        }
+        None
     }
 
     /// CR 611.2b: for each condition-scoped control override whose [`ControlCondition`] no longer
@@ -311,10 +364,10 @@ impl Game {
         let mut next = self.next_object_id();
         let mut events = Vec::new();
         for &(source, exiled) in &self.exile_links.until_source_leaves {
-            if matches!(self.objects[source as usize], Object::Permanent(_)) {
+            if matches!(&self.objects[source as usize], Object::Permanent(_)) {
                 continue; // the source is still on the battlefield — the link is still live.
             }
-            let Object::Card(card) = self.objects[exiled as usize] else {
+            let Object::Card(ref card) = self.objects[exiled as usize] else {
                 continue;
             };
             if card.zone != Zone::Exile {
@@ -345,10 +398,10 @@ impl Game {
         let mut next = self.next_object_id();
         let mut events = Vec::new();
         for &(source, exiled) in &self.exile_links.illusion_on_source_leave {
-            if matches!(self.objects[source as usize], Object::Permanent(_)) {
+            if matches!(&self.objects[source as usize], Object::Permanent(_)) {
                 continue; // the source is still on the battlefield — the link is still live.
             }
-            let Object::Card(card) = self.objects[exiled as usize] else {
+            let Object::Card(ref card) = self.objects[exiled as usize] else {
                 continue;
             };
             if card.zone != Zone::Exile {
@@ -366,7 +419,7 @@ impl Game {
             events.push(Event::TokenCreated {
                 token: next,
                 controller: card.owner,
-                def,
+                def: intern_card_def(def),
                 creator: source,
             });
             next += 1;
@@ -468,7 +521,7 @@ impl Game {
     /// already-event-sourced attacks/blocks, not facts of their own.
     pub(crate) fn apply(&mut self, event: &Event) {
         self.invalidate_characteristics_cache(event);
-        match *event {
+        match event.clone() {
             Event::SpellCast {
                 spell,
                 from,
@@ -492,14 +545,20 @@ impl Game {
                 spent_colors,
                 phyrexian_life_paid,
             } => {
-                let (def, commander) = match self.objects[from as usize] {
+                let (def, commander) = match &self.objects[from as usize] {
                     Object::Card(c) => (c.def, c.commander),
                     _ => panic!("cast source {from} is not a card"),
                 };
+                let printed = card_def(def);
                 // Cast zone is read off `from` before `create_object` below moves it onto the
                 // stack (CR 601's default cast zone — Dirgur Focusmage's "from your hand").
                 let from_zone = self.zone_of(from);
                 let cast_from_hand = from_zone == Zone::Hand;
+                // CR 505.1a/505.1b: read off ambient timing state (like `cast_from_hand` above),
+                // not a player-declared cost — Sulfurous Blast's/Return to Dust's cast-timing
+                // rider needs no wire field, unlike kicked/multikicker.
+                let cast_during_main_phase = self.active_player == controller
+                    && matches!(self.step, Step::Main1 | Step::Main2);
                 // Serra Paragon (CR 118.9): a permanent spell cast from the graveyard by neither
                 // flashback nor escape can only be its once-per-turn permission — flashback/escape (CR 702.34, CR 702.19, CR 500)
                 // set their own flags, and no permanent card has retrace. The tag rides to the
@@ -507,12 +566,12 @@ impl Game {
                 let serra_recursion = from_zone == Zone::Graveyard
                     && !flashback
                     && !escape
-                    && !matches!(def.kind, CardKind::Spell { .. });
+                    && !matches!(&printed.kind, CardKind::Spell { .. });
                 // CR 107.3: a static cast-X modification (Unbound Flourishing) doubles the value of
                 // X on the caster's permanent X-spells *after* payment. This is the single point
                 // where the spell's X is frozen for its whole life, so the doubled value flows to
                 // enters-with-X counters and every `Amount::X` reader downstream.
-                let x = self.cast_x_after_replacements(controller, &def, x);
+                let x = self.cast_x_after_replacements(controller, &printed, x);
                 let id = self.create_object(
                     Some(from),
                     Object::Spell(Spell {
@@ -525,11 +584,13 @@ impl Game {
                         targets_second: TargetList::default(),
                         commander,
                         x,
+                        chosen_color: None,
                         modes,
                         copy: false,
                         flashback,
                         escape,
                         cast_from_hand,
+                        cast_during_main_phase,
                         damage_division: DamageAssignment::default(),
                         damage_division_players: [None; MAX_TARGETS],
                         counter_division: DamageAssignment::default(),
@@ -562,7 +623,7 @@ impl Game {
                 self.players[controller.0 as usize].spells_cast_this_turn += 1;
                 // Feeds the `has_x` `nth_each_turn` gate (Nev, Zimone Infinite Analyst) —
                 // SpellFilter::HasXInCost's own predicate (characteristics.rs).
-                if def.cost.x > 0 {
+                if printed.cost.x > 0 {
                     self.players[controller.0 as usize].x_spells_cast_this_turn += 1;
                 }
                 // Feeds Condition::CastInstantOrSorceryThisTurn (Hall of Oracles's activation gate),
@@ -571,12 +632,12 @@ impl Game {
                 // cast this turn"), and Amount::OnePlusInstantsAndSorceriesCastThisTurn (Rionya,
                 // Fire Dancer's "X is one plus the number of instant and sorcery spells you've
                 // cast this turn").
-                if matches!(def.kind, CardKind::Spell { .. }) {
+                if matches!(&printed.kind, CardKind::Spell { .. }) {
                     let player = &mut self.players[controller.0 as usize];
                     player.instant_or_sorcery_cast_this_turn = true;
                     player.greatest_instant_or_sorcery_mana_value_cast_this_turn = player
                         .greatest_instant_or_sorcery_mana_value_cast_this_turn
-                        .max(def.mana_value());
+                        .max(printed.mana_value());
                     player.instants_and_sorceries_cast_this_turn += 1;
                 }
             }
@@ -590,26 +651,33 @@ impl Game {
                 // The card's *main* face is the creature (front); its `adventure` is the spell
                 // being cast now. The card moves from hand onto the stack as a spell whose def is
                 // the adventure face, stashing the front face to restore on resolution.
-                let front = self.def_of(source);
-                let adventure = *front
+                let front = self.def_id_of(source);
+                let adventure = card_def(front)
                     .adventure
                     .expect("an adventure cast's source card has an adventure half");
+                let def = adventure;
+                let adventure = card_def(adventure);
                 let commander = self.is_commander(source);
+                // CR 505.1a/505.1b: same ambient-timing read `Event::SpellCast` uses above.
+                let cast_during_main_phase = self.active_player == controller
+                    && matches!(self.step, Step::Main1 | Step::Main2);
                 let id = self.create_object(
                     Some(source),
                     Object::Spell(Spell {
-                        def: adventure,
+                        def,
                         controller,
                         targets: TargetList::single(target),
                         targets_second: TargetList::default(),
                         commander,
                         x,
+                        chosen_color: None,
                         modes: Modes::default(),
                         copy: false,
                         flashback: false,
                         escape: false,
                         // Cast from the card's owner's hand (CR 601's default cast zone).
                         cast_from_hand: true,
+                        cast_during_main_phase,
                         damage_division: DamageAssignment::default(),
                         damage_division_players: [None; MAX_TARGETS],
                         counter_division: DamageAssignment::default(),
@@ -665,27 +733,36 @@ impl Game {
                 // Only the cast half is on the stack (CR 709.4); the card moves from hand onto the
                 // stack as that face. `create_object` restores the fused card on the way out, off
                 // the `split_halves_on_stack` entry recorded below.
-                let fused = self.def_of(source);
-                let face = *fused
-                    .halves
-                    .get(half as usize)
-                    .expect("a split-half cast names one of the card's halves");
+                let fused = self.def_id_of(source);
+                let fused_def = card_def(fused);
+                let face = card_def(
+                    *fused_def
+                        .halves
+                        .get(half as usize)
+                        .expect("a split-half cast names one of the card's halves"),
+                );
+                let def = face.as_ref().clone();
                 let commander = self.is_commander(source);
+                // CR 505.1a/505.1b: same ambient-timing read `Event::SpellCast` uses above.
+                let cast_during_main_phase = self.active_player == controller
+                    && matches!(self.step, Step::Main1 | Step::Main2);
                 let id = self.create_object(
                     Some(source),
                     Object::Spell(Spell {
-                        def: face,
+                        def: intern_card_def(def.clone()),
                         controller,
                         targets: TargetList::single(target),
                         targets_second: TargetList::default(),
                         commander,
                         x,
+                        chosen_color: None,
                         modes: Modes::default(),
                         copy: false,
                         flashback: false,
                         escape: false,
                         // Cast from the card's owner's hand (CR 601's default cast zone).
                         cast_from_hand: true,
+                        cast_during_main_phase,
                         damage_division: DamageAssignment::default(),
                         damage_division_players: [None; MAX_TARGETS],
                         counter_division: DamageAssignment::default(),
@@ -718,16 +795,16 @@ impl Game {
                     .push((spell, fused));
                 // Casting a half is casting a spell — the same bookkeeping `SpellCast` does.
                 self.players[controller.0 as usize].spells_cast_this_turn += 1;
-                if face.cost.x > 0 {
+                if def.cost.x > 0 {
                     self.players[controller.0 as usize].x_spells_cast_this_turn += 1;
                 }
                 // Both halves of a split card are instants or sorceries (CR 709.1).
-                if matches!(face.kind, CardKind::Spell { .. }) {
+                if matches!(def.kind, CardKind::Spell { .. }) {
                     let player = &mut self.players[controller.0 as usize];
                     player.instant_or_sorcery_cast_this_turn = true;
                     player.greatest_instant_or_sorcery_mana_value_cast_this_turn = player
                         .greatest_instant_or_sorcery_mana_value_cast_this_turn
-                        .max(face.mana_value());
+                        .max(def.mana_value());
                     player.instants_and_sorceries_cast_this_turn += 1;
                 }
             }
@@ -767,25 +844,28 @@ impl Game {
                 // step `mint_spell_copies` always queues.
                 let id = self.create_object(
                     None,
-                    Object::Spell(match self.objects[original as usize] {
+                    Object::Spell(match &self.objects[original as usize] {
                         Object::Spell(src) => Spell {
                             controller,
                             commander: false,
                             copy: true,
-                            ..src
+                            ..src.clone()
                         },
                         _ => Spell {
-                            def: self.def_of(original),
+                            def: self.def_id_of(original),
                             controller,
                             targets: TargetList::default(),
                             targets_second: TargetList::default(),
                             commander: false,
                             x: 0,
+                            chosen_color: None,
                             modes: Modes::default(),
                             copy: true,
                             flashback: false,
                             escape: false,
                             cast_from_hand: false,
+                            // A copy isn't "cast" (CR 707.10) — no ambient timing to read.
+                            cast_during_main_phase: false,
                             damage_division: DamageAssignment::default(),
                             damage_division_players: [None; MAX_TARGETS],
                             counter_division: DamageAssignment::default(),
@@ -812,7 +892,7 @@ impl Game {
             }
             Event::SpellCeasedToExist { spell } => {
                 self.remove_spell_from_stack(spell);
-                self.objects[spell as usize] = Object::Removed;
+                self.mark_removed(spell);
             }
             Event::PreparedChanged { object, prepared } => {
                 self.permanent_mut(object).prepared = prepared;
@@ -843,9 +923,14 @@ impl Game {
             Event::CreatureTypeChosen { object, subtype } => {
                 self.permanent_mut(object).chosen_subtype = Some(subtype);
             }
-            Event::ColorChosen { object, color } => {
-                self.permanent_mut(object).chosen_color = Some(color);
-            }
+            // Most choose_color sources are permanents (Mother of Runes, Flickering Ward's
+            // as-enters self); Bathe in Light's is the spell itself mid-resolution, which isn't
+            // a permanent, so it gets its own `Spell::chosen_color` slot instead.
+            Event::ColorChosen { object, color } => match &mut self.objects[object as usize] {
+                Object::Permanent(p) => p.chosen_color = Some(color),
+                Object::Spell(s) => s.chosen_color = Some(color),
+                other => panic!("object {object} can't record a chosen color: {other:?}"),
+            },
             Event::ColorSetUntilEndOfTurn { object, color } => {
                 self.permanent_mut(object).set_color_eot = Some(color);
             }
@@ -858,19 +943,24 @@ impl Game {
             } => {
                 // The spell's characteristics come from the source permanent's back face — the
                 // front permanent stays on the battlefield, so there's no card leaving a zone.
-                let back = *self
-                    .def_of(source)
+                let back = card_def(self.permanent(source).def)
                     .back
                     .expect("a prepared cast's source has a back face");
+                // CR 505.1a/505.1b: same ambient-timing read `Event::SpellCast` uses above.
+                let cast_during_main_phase = self.active_player == controller
+                    && matches!(self.step, Step::Main1 | Step::Main2);
+                let def = back;
+                let back = card_def(back);
                 let id = self.create_object(
                     None,
                     Object::Spell(Spell {
-                        def: back,
+                        def,
                         controller,
                         targets: TargetList::single(target),
                         targets_second: TargetList::default(),
                         commander: false,
                         x,
+                        chosen_color: None,
                         modes: Modes::default(),
                         // "Cast a **copy**" (CR): it ceases to exist on resolve rather than
                         // becoming a graveyard card (there is no card behind it).
@@ -879,6 +969,7 @@ impl Game {
                         escape: false,
                         // Cast from the source permanent's prepared state, not the hand.
                         cast_from_hand: false,
+                        cast_during_main_phase,
                         damage_division: DamageAssignment::default(),
                         damage_division_players: [None; MAX_TARGETS],
                         counter_division: DamageAssignment::default(),
@@ -981,6 +1072,7 @@ impl Game {
                         player.flash_permission_this_turn = false;
                         player.channel_colorless_mana_this_turn = false;
                         player.graveyard_play_used_this_turn = false;
+                        player.attacked_this_turn = false;
                     }
                     // "Activate only once each turn" (CR 602.2b) resets at the start of every
                     // turn, not just the capped ability's controller's own — same boundary as
@@ -1017,6 +1109,14 @@ impl Game {
                     // this turn" (Agent Frank Horrigan's indestructible grant, CR 508.1) both
                     // expire at the same turn boundary — every battlefield permanent's, not just
                     // the active player's (a new turn, anyone's, ends "this turn").
+                    // "You choose which creatures attack/block this turn" (Master Warcraft)
+                    // expires at the same turn boundary as the shields above — combat is always
+                    // within the turn, so clearing at Untap is behavior-exact for "this turn".
+                    self.combat_extras.attack_declarer = None;
+                    self.combat_extras.block_declarer = None;
+                    // "Entered the battlefield this turn" (Oran-Rief, the Vastwood) expires at
+                    // the same turn boundary — every battlefield permanent's, not just the
+                    // active player's (a new turn, anyone's, ends "this turn").
                     for id in self.battlefield() {
                         let p = self.permanent_mut(id);
                         p.entered_this_turn = false;
@@ -1034,7 +1134,8 @@ impl Game {
                 from,
                 player,
             } => {
-                let def = self.def_of(from);
+                let def = self.def_id_of(from);
+                let printed = card_def(def);
                 let commander = self.is_commander(from);
                 // Serra Paragon (CR 118.9): a land can only be played from the graveyard under its
                 // once-per-turn permission (no other effect plays lands from there), so a
@@ -1044,9 +1145,11 @@ impl Game {
                 perm.serra_recursion = serra_recursion;
                 // A land's own `enters_tapped` is unconditional; a conditional gate (check
                 // lands, slowlands, reveal lands) is resolved here instead, at this one ETB site.
-                perm.tapped = self.enters_tapped(def, player);
+                perm.tapped = self.enters_tapped(&printed, player);
                 let id = self.create_object(Some(from), Object::Permanent(perm));
                 assert_eq!(id, permanent);
+                self.permanent_mut(permanent).continuous_timestamp =
+                    self.stamp_continuous_timestamp();
                 self.players[player.0 as usize].lands_played += 1;
                 if serra_recursion {
                     self.players[player.0 as usize].graveyard_play_used_this_turn = true;
@@ -1136,6 +1239,10 @@ impl Game {
                 if host.is_some() && self.def_of(object).enchant_graveyard {
                     self.permanent_mut(object).enchant_rewrite_host = host;
                 }
+                if host.is_some() {
+                    self.permanent_mut(object).continuous_timestamp =
+                        self.stamp_continuous_timestamp();
+                }
                 // CR 302.6/720.3: gaining control of a permanent (here via a control-changing
                 // Aura becoming attached) makes it summoning-sick for its new controller until
                 // that controller's next untap — it hasn't been under their control since their
@@ -1146,7 +1253,7 @@ impl Game {
                 if let Some(host) = host {
                     let grants_control = self.def_of(object).abilities.iter().any(|a| {
                         matches!(
-                            (a.timing, a.effect),
+                            (a.timing, a.effect.clone()),
                             (
                                 Timing::Static,
                                 Effect::Static(StaticEffect::ControlAttached)
@@ -1188,7 +1295,10 @@ impl Game {
                 power,
                 toughness,
             } => {
-                self.permanent_mut(object).base_pt_set_eot = Some((power, toughness));
+                let ts = self.stamp_continuous_timestamp();
+                let p = self.permanent_mut(object);
+                p.base_pt_set_eot = Some((power, toughness));
+                p.base_pt_set_eot_timestamp = ts;
             }
             Event::TypesAddedUntilEndOfTurn {
                 object,
@@ -1196,8 +1306,10 @@ impl Game {
                 subtypes,
                 colors,
             } => {
+                let ts = self.stamp_continuous_timestamp();
                 let p = self.permanent_mut(object);
                 p.added_types_eot = types;
+                p.added_types_eot_timestamp = ts;
                 p.added_subtypes_eot = subtypes;
                 p.added_colors_eot = colors;
             }
@@ -1211,10 +1323,13 @@ impl Game {
                 base_toughness,
                 keywords,
             } => {
+                let ts = self.stamp_continuous_timestamp();
                 let p = self.permanent_mut(object);
                 p.added_types = add_types;
+                p.added_types_timestamp = ts;
                 p.added_subtypes = add_subtypes;
                 p.set_base_pt = Some((base_power, base_toughness));
+                p.set_base_pt_timestamp = ts;
                 p.granted_keywords = keywords;
             }
             // Hofri Ghostforge's minted copy (CR 613.4): the indefinite subtype set, written as the
@@ -1232,33 +1347,38 @@ impl Game {
                 power,
                 toughness,
             } => {
-                self.permanent_mut(object).set_base_pt = Some((power, toughness));
+                let ts = self.stamp_continuous_timestamp();
+                let p = self.permanent_mut(object);
+                p.set_base_pt = Some((power, toughness));
+                p.set_base_pt_timestamp = ts;
             }
             // A permanent became a copy of another creature as it entered (CR 706/707.2). Overwrite
             // its `def` with the copied `def`; for an until-EOT copy, stash the original first so
-            // cleanup can restore it (Cursed Mirror). `CardDef: Copy`, so both are plain moves.
+            // cleanup can restore it (Cursed Mirror). These are `CardId` handle swaps, not full
+            // `CardDef` clones.
             Event::BecameCopy {
                 object,
                 def,
                 until_eot,
             } => {
                 let p = self.permanent_mut(object);
-                // For an until-EOT copy, leak the original printed def to `'static` (like
-                // `CardDef::back`) so the revert reference lives on the `Copy` `Permanent`.
-                // Bounded — one leak per until-EOT copy, freed only at process exit — the same
-                // shape as the `KeywordsStripped` union leak below. An *indefinite* rewrite
-                // (CR 400.7) instead disarms any revert already armed on this permanent:
-                // otherwise `Event::TempBoostsEnded` would restore the pre-copy def at cleanup
-                // and undo a later-timestamped, durationless effect (Vraska, Betrayal's Sting's
-                // −2 on a Cursed Mirror that is currently copying a creature).
+                // An *indefinite* rewrite (CR 400.7) disarms any revert already armed on this
+                // permanent: otherwise `Event::TempBoostsEnded` would restore the pre-copy def at
+                // cleanup and undo a later-timestamped, durationless effect (Vraska, Betrayal's
+                // Sting's −2 on a Cursed Mirror that is currently copying a creature).
                 // ponytail: that rewrite snapshots whatever def is live now, so it inherits the
                 // copy's name/cost rather than the printed card's — a CR 613 layered
                 // recomputation would keep the printed copiable values under the layer-4/6 set.
                 p.reverts_to_def_eot = match until_eot {
-                    true => Some(Box::leak(Box::new(p.def))),
+                    true => Some(p.def),
                     false => None,
                 };
                 p.def = def;
+                // A new copy effect replaces the object's copiable characteristics wholesale (CR
+                // 707.2), so any "except it has <keywords>" rider from a *prior* copied form is
+                // dropped. This effect's own rider (if any) is re-established by the
+                // `CopyRiderKeywordsGranted` event(s) that follow this `BecameCopy`.
+                p.copy_rider_keywords = &[];
             }
             Event::TempBoostsEnded { object } => {
                 self.modifier_provenance
@@ -1268,14 +1388,40 @@ impl Game {
                 let p = self.permanent_mut(object);
                 p.temp_lost_keywords = &[];
                 p.base_pt_set_eot = None;
+                p.base_pt_set_eot_timestamp = 0;
                 p.added_types_eot = TypeSet::NONE;
+                p.added_types_eot_timestamp = 0;
                 p.added_subtypes_eot = &[];
                 p.added_colors_eot = &[];
                 p.set_color_eot = None;
                 // Revert an until-EOT enter-as-copy to the printed permanent (CR 514.2 — Cursed
-                // Mirror's "become a copy … until end of turn").
+                // Mirror's "become a copy … until end of turn"). The copy's "except it has
+                // haste/myriad" rider ends with the copy, so clear the copiable rider too (an
+                // indefinite copy or a token leaves it in place — it resets with the object).
                 if let Some(printed) = p.reverts_to_def_eot.take() {
-                    p.def = *printed;
+                    p.def = printed;
+                    p.copy_rider_keywords = &[];
+                }
+            }
+            // A copy made "except it has <keywords>" (CR 707.2): union the exception keywords into
+            // the object's copiable characteristics (they persist and are copied again), rather
+            // than the until-end-of-turn `TempBoost` an ordinary keyword grant uses.
+            Event::CopyRiderKeywordsGranted { object, keywords } => {
+                let p = self.permanent_mut(object);
+                if p.copy_rider_keywords.is_empty() {
+                    p.copy_rider_keywords = keywords;
+                } else {
+                    // Union-not-clobber for a second rider landing on the same object (a copy of a
+                    // copy that itself carries a different rider). Leaks a small deduped slice to
+                    // keep `Permanent: Copy`, bounded by one leak per such collision (mirrors
+                    // `KeywordsStripped`'s own union above).
+                    let mut union: Vec<Keyword> = p.copy_rider_keywords.to_vec();
+                    for k in keywords {
+                        if !union.contains(k) {
+                            union.push(*k);
+                        }
+                    }
+                    p.copy_rider_keywords = Box::leak(union.into_boxed_slice());
                 }
             }
             Event::KeywordsStripped { object, keywords } => {
@@ -1354,6 +1500,10 @@ impl Game {
                 // — set here, not in `declare_attackers` (event-sourced state: intents mint events,
                 // events mutate board facts); cleared at the next Untap step below.
                 self.permanent_mut(object).attacked_this_turn = true;
+                // Angelic Arbiter's "attacked with a creature this turn" tracking (turn-scoped;
+                // reset at Untap alongside the other this-turn tallies above).
+                let controller = self.controller_of(object);
+                self.players[controller.0 as usize].attacked_this_turn = true;
             }
             Event::TokenEnteredAttacking { token, defender } => {
                 self.combat.attackers.push(token);
@@ -1458,7 +1608,7 @@ impl Game {
                 face_down,
                 free_while_source,
             } => {
-                let def = self.def_of(from);
+                let def = self.def_id_of(from);
                 let commander = self.is_commander(from);
                 let id = self.create_object(
                     Some(from),
@@ -1496,7 +1646,7 @@ impl Game {
                 from,
                 face_down,
             } => {
-                let def = self.def_of(from);
+                let def = self.def_id_of(from);
                 let commander = self.is_commander(from);
                 let id = self.create_object(
                     Some(from),
@@ -1528,7 +1678,7 @@ impl Game {
                 .play_from_exile
                 .retain(|&(_, _, extended)| extended),
             Event::ExiledFromGraveyardMayPlay { player, card, from } => {
-                let def = self.def_of(from);
+                let def = self.def_id_of(from);
                 let owner = self.owner_of(from);
                 let commander = self.is_commander(from);
                 let id = self.create_object(
@@ -1597,9 +1747,9 @@ impl Game {
             // nothing itself.
             Event::CombatDamagePrevented { .. } => {}
             Event::MovedToCommandZone { card, from } => {
-                let def = self.def_of(from);
+                let def = self.def_id_of(from);
                 let owner = self.owner_of(from);
-                if matches!(self.objects[from as usize], Object::Permanent(_)) {
+                if matches!(&self.objects[from as usize], Object::Permanent(_)) {
                     self.clear_modifier_provenance(from);
                 }
                 let id = self.create_object(
@@ -1629,7 +1779,7 @@ impl Game {
                 let id = self.create_object(
                     None,
                     Object::Card(Card {
-                        def,
+                        def: intern_card_def(def),
                         owner: controller,
                         zone: Zone::Command,
                         commander: false,
@@ -1697,7 +1847,8 @@ impl Game {
                     multikicker_count,
                     spent_colors,
                     phyrexian_life_paid,
-                ) = match self.objects[from as usize] {
+                    cast_from_hand,
+                ) = match &self.objects[from as usize] {
                     Object::Spell(s) => (
                         s.def,
                         s.controller,
@@ -1713,6 +1864,7 @@ impl Game {
                         s.multikicker_count,
                         s.spent_colors,
                         s.phyrexian_life_paid,
+                        s.cast_from_hand,
                     ),
                     _ => panic!("PermanentEntered source {from} is not a spell"),
                 };
@@ -1721,9 +1873,14 @@ impl Game {
                     Object::Permanent(fresh_permanent(def, owner, true, commander)),
                 );
                 assert_eq!(id, permanent);
+                self.permanent_mut(permanent).continuous_timestamp =
+                    self.stamp_continuous_timestamp();
                 // See `Permanent::entered_with_x`'s doc — locked in here while `from` is still
                 // the resolving Spell, before `remove_spell_from_stack` below takes it away.
                 self.permanent_mut(permanent).entered_with_x = x;
+                // See `Permanent::entered_multikicker_count`'s doc — same "read it before the
+                // spell is gone" idiom as `entered_with_x` above (Lightkeeper of Emeria's ETB).
+                self.permanent_mut(permanent).entered_multikicker_count = multikicker_count;
                 // See `Permanent::cast_time_enchant_target`'s doc — same "read it before the
                 // spell is gone" idiom as `entered_with_x` above. Harmless to set for every
                 // permanent (not just `enchant_graveyard` ones): `ThisAurasGraveyardTarget` is
@@ -1749,10 +1906,6 @@ impl Game {
                 // alongside the permanent's ETB triggers (`Game::enqueue_triggers`), so an ETB
                 // payoff (Mulldrifter's draw two) still resolves first.
                 self.permanent_mut(permanent).evoked = evoked;
-                // Multikicker (CR 702.34c): "enters with a charge counter on it for each time it
-                // was kicked" — locked in here while `from` is still the resolving Spell, the same
-                // idiom as `entered_with_x` above.
-                self.permanent_mut(permanent).entered_times_kicked = multikicker_count;
                 // Compleated (CR 107.4f — Vraska, Betrayal's Sting): a {a/P} pip paid with life
                 // means the planeswalker enters with two fewer loyalty counters, two per pip so
                 // paid. A one-shot as-enters adjustment, not durable state — no new `Permanent`
@@ -1763,6 +1916,9 @@ impl Game {
                 // See `Permanent::spent_colors`'s doc — same "read it before the spell is gone"
                 // idiom as `entered_with_x` above (Court Hussar's "unless {W} was spent to cast it").
                 self.permanent_mut(permanent).spent_colors = spent_colors;
+                // Dread Cacodemon/Reiver Demon: "if you cast it from your hand" — same
+                // "read it before the spell is gone" idiom as `spent_colors` just above.
+                self.permanent_mut(permanent).cast_from_hand = cast_from_hand;
                 // CR 707.10a: a copy of a permanent spell becomes a token as it resolves — it
                 // ceases to exist (rather than going to the graveyard) once it leaves the
                 // battlefield, via the same `Permanent::token` machinery any other token uses.
@@ -1776,7 +1932,7 @@ impl Game {
                 finality,
                 tapped,
             } => {
-                let def = self.def_of(from);
+                let def = self.def_id_of(from);
                 let commander = self.is_commander(from);
                 // ponytail: the engine conflates control with ownership for permanents (there is no
                 // separate controller field — `controller_of` returns the owner), so "under your
@@ -1789,6 +1945,8 @@ impl Game {
                     Object::Permanent(fresh_permanent(def, controller, true, commander)),
                 );
                 assert_eq!(id, permanent);
+                self.permanent_mut(permanent).continuous_timestamp =
+                    self.stamp_continuous_timestamp();
                 // Excava, the Risen Past (CR 614.12): the finality counter is present the instant
                 // the reanimated permanent enters — mirrors `EntersWithCounters`'s `plus_counters`
                 // set right after `create_object`, above.
@@ -1807,17 +1965,19 @@ impl Game {
             } => {
                 let id = self.create_object(None, Object::Permanent(fresh_token(def, controller)));
                 assert_eq!(id, token);
+                self.permanent_mut(token).continuous_timestamp = self.stamp_continuous_timestamp();
             }
             Event::TokenCeasedToExist {
                 token,
                 controller,
                 def,
             } => {
+                let printed = card_def(def);
                 // CR 603.6c/704.5m last-known information: capture the Aura(s) attached to this
                 // token *before* it vanishes, so `Trigger::EnchantedCreatureDies` can still find
                 // them once the token's arena slot (and the Aura's own `attached_to`) is gone —
                 // see `Game::dying_creature_attachments`.
-                if matches!(def.kind, CardKind::Creature { .. }) {
+                if matches!(&printed.kind, CardKind::Creature { .. }) {
                     for aura in self.attachments(token) {
                         let aura_controller = self.controller_of(aura);
                         let aura_def = self.def_of(aura);
@@ -1853,7 +2013,10 @@ impl Game {
                 // for a later same-`Sequence` step (Oblation's `target_owner_draws` rider) that
                 // would otherwise panic reading `owner_of` a now-`Object::Removed` id.
                 self.resolution_frame.vanished_permanent_owner = Some((token, controller));
-                self.objects[token as usize] = Object::Removed;
+                self.objects[token as usize] = Object::Removed {
+                    def,
+                    owner: controller,
+                };
             }
             Event::DamageMarked { object, amount, .. } => {
                 self.permanent_mut(object).marked_damage += amount
@@ -1869,7 +2032,7 @@ impl Game {
                 // 700.4's "died" — put into a graveyard from the battlefield. A token's death is
                 // the separate `TokenCeasedToExist` event, not counted here (see that `Amount`
                 // variant's doc).
-                if matches!(self.objects[from as usize], Object::Permanent(_)) {
+                if matches!(&self.objects[from as usize], Object::Permanent(_)) {
                     self.permanents_died_this_turn += 1;
                     // CR "put into a graveyard from the battlefield" — `Trigger::ThisAuraLeaves`
                     // (Fallen Ideal) reads this in `enqueue_triggers`, once the pre-move object
@@ -1892,7 +2055,8 @@ impl Game {
                         self.batch_trigger_scratch.serra_recursion_deaths.push(from);
                     }
                 }
-                let def = self.def_of(from);
+                let def = self.def_id_of(from);
+                let printed = card_def(def);
                 let owner = self.owner_of(from);
                 let commander = self.is_commander(from);
                 // CR 603.6c/704.5m last-known information: capture the Aura(s) attached to this
@@ -1901,7 +2065,7 @@ impl Game {
                 // orphan-to-graveyard SBA hasn't run yet, so it's still attached right now. Read (CR 704, CR 303.4, CR 403.5)
                 // back by `Trigger::EnchantedCreatureDies` in `enqueue_triggers`; see
                 // `Game::dying_creature_attachments`.
-                if matches!(def.kind, CardKind::Creature { .. }) {
+                if matches!(&printed.kind, CardKind::Creature { .. }) {
                     for aura in self.attachments(from) {
                         let aura_controller = self.controller_of(aura);
                         let aura_def = self.def_of(aura);
@@ -1921,9 +2085,11 @@ impl Game {
                     // CR 800.4a last-known information: def/owner for a death-watch scan that
                     // must still run if `PlayerLost` (later in this same batch) tombstones `from`
                     // out from under it — see `Game::dying_creature_lki`.
-                    self.batch_trigger_scratch
-                        .dying_creature_lki
-                        .push((from, def, owner));
+                    self.batch_trigger_scratch.dying_creature_lki.push((
+                        from,
+                        printed.as_ref().clone(),
+                        owner,
+                    ));
                     // CR 700.4/701.29 last-known information: read `is_modified` before
                     // `clear_modifier_provenance`/`create_object` below tear down its
                     // attachments/counters. Feeds `Condition::ModifiedCreatureDiedThisTurn`
@@ -1935,7 +2101,7 @@ impl Game {
                         self.players[controller.0 as usize].modified_creature_died_this_turn = true;
                     }
                 }
-                if matches!(self.objects[from as usize], Object::Permanent(_)) {
+                if matches!(&self.objects[from as usize], Object::Permanent(_)) {
                     self.clear_modifier_provenance(from);
                 }
                 let id = self.create_object(
@@ -1952,10 +2118,10 @@ impl Game {
                 self.remove_spell_from_stack(from);
             }
             Event::MovedToExile { card, from } => {
-                let def = self.def_of(from);
+                let def = self.def_id_of(from);
                 let owner = self.owner_of(from);
                 let commander = self.is_commander(from);
-                if matches!(self.objects[from as usize], Object::Permanent(_)) {
+                if matches!(&self.objects[from as usize], Object::Permanent(_)) {
                     // CR 603.10a last-known information — see `MovedToGraveyard`'s
                     // `permanents_left_battlefield` push above.
                     self.batch_trigger_scratch
@@ -2031,7 +2197,7 @@ impl Game {
             // as `card` — deliberately not routed through `MovedToGraveyard`'s "died" bookkeeping
             // (see the variant doc).
             Event::ReturnedExiledCardToGraveyard { card, from } => {
-                let def = self.def_of(from);
+                let def = self.def_id_of(from);
                 let owner = self.owner_of(from);
                 let commander = self.is_commander(from);
                 let id = self.create_object(
@@ -2088,7 +2254,7 @@ impl Game {
                 controller,
                 source,
             } => {
-                let def = self.def_of(from);
+                let def = self.def_id_of(from);
                 let commander = self.is_commander(from);
                 let id = self.create_object(
                     Some(from),
@@ -2107,7 +2273,7 @@ impl Game {
                 from,
                 controller,
             } => {
-                let def = self.def_of(from);
+                let def = self.def_id_of(from);
                 let commander = self.is_commander(from);
                 let id = self.create_object(
                     Some(from),
@@ -2117,7 +2283,8 @@ impl Game {
             }
             Event::ReturnedToHand { card, from } => {
                 // A bounce sends the permanent to its *owner's* hand, not the caster's.
-                let def = self.def_of(from);
+                let def = self.def_id_of(from);
+                let printed = card_def(def);
                 let owner = self.owner_of(from);
                 // Vengeful Rebirth's "If you return a nonland card to your hand this way" — record
                 // it for a later step of this same resolution (`Amount::ReturnedNonlandCardManaValue`).
@@ -2125,10 +2292,10 @@ impl Game {
                 // apply-time-scratch shape `vanished_permanent_owner` uses.
                 self.resolution_frame.returned_nonland_card_mana_value = (self.zone_of(from)
                     == Zone::Graveyard
-                    && !matches!(def.kind, CardKind::Land { .. }))
-                .then(|| def.mana_value());
+                    && !matches!(&printed.kind, CardKind::Land { .. }))
+                .then(|| printed.mana_value());
                 let commander = self.is_commander(from);
-                if matches!(self.objects[from as usize], Object::Permanent(_)) {
+                if matches!(&self.objects[from as usize], Object::Permanent(_)) {
                     // CR 603.10a last-known information — see `MovedToGraveyard`'s
                     // `permanents_left_battlefield` push above.
                     self.batch_trigger_scratch
@@ -2155,10 +2322,10 @@ impl Game {
                 to_top,
                 second_from_top,
             } => {
-                let def = self.def_of(from);
+                let def = self.def_id_of(from);
                 let owner = self.owner_of(from);
                 let commander = self.is_commander(from);
-                if matches!(self.objects[from as usize], Object::Permanent(_)) {
+                if matches!(&self.objects[from as usize], Object::Permanent(_)) {
                     // CR 603.10a last-known information — see `MovedToGraveyard`'s
                     // `permanents_left_battlefield` push above.
                     self.batch_trigger_scratch
@@ -2224,7 +2391,7 @@ impl Game {
                 controller,
                 tapped,
             } => {
-                let def = self.def_of(from);
+                let def = self.def_id_of(from);
                 let commander = self.is_commander(from);
                 let mut perm = fresh_permanent(def, controller, true, commander);
                 perm.tapped = tapped;
@@ -2240,7 +2407,7 @@ impl Game {
                 controller,
                 tapped,
             } => {
-                let def = self.def_of(from);
+                let def = self.def_id_of(from);
                 let commander = self.is_commander(from);
                 let mut perm = fresh_permanent(def, controller, true, commander);
                 perm.tapped = tapped;
@@ -2255,7 +2422,7 @@ impl Game {
                 from,
                 controller,
             } => {
-                let def = self.def_of(from);
+                let def = self.def_id_of(from);
                 let commander = self.is_commander(from);
                 let mut perm = fresh_permanent(def, controller, true, commander);
                 perm.face_down = true;
@@ -2270,7 +2437,7 @@ impl Game {
                 self.permanent_mut(permanent).face_down = false;
             }
             Event::Milled { player, card, from } => {
-                let def = self.def_of(from);
+                let def = self.def_id_of(from);
                 let commander = self.is_commander(from);
                 let id = self.create_object(
                     Some(from),
@@ -2310,14 +2477,18 @@ impl Game {
                 // permanent they own but someone else controls (a donation they made stays owned by
                 // them, so it leaves too).
                 for slot in self.objects.iter_mut() {
-                    let owned = match slot {
-                        Object::Card(c) => c.owner == player,
-                        Object::Spell(s) => s.controller == player,
-                        Object::Permanent(p) => p.owner == player,
-                        Object::Moved { .. } | Object::Removed => false,
+                    let identity = match slot {
+                        Object::Card(c) if c.owner == player => Some((c.def, c.owner)),
+                        Object::Spell(s) if s.controller == player => Some((s.def, s.controller)),
+                        Object::Permanent(p) if p.owner == player => Some((p.def, p.owner)),
+                        Object::Moved { .. }
+                        | Object::Removed { .. }
+                        | Object::Card(_)
+                        | Object::Spell(_)
+                        | Object::Permanent(_) => None,
                     };
-                    if owned {
-                        *slot = Object::Removed;
+                    if let Some((def, owner)) = identity {
+                        *slot = Object::Removed { def, owner };
                     }
                 }
                 // CR 800.4a: any effect that gives the departing player control of an object also
@@ -2336,10 +2507,10 @@ impl Game {
                 // Drop any now-removed objects off the stack and out of combat (disjoint
                 // field borrows: the closure reads `objects`, retain mutates other fields).
                 let objects = &self.objects;
-                let removed = |o: ObjectId| matches!(objects[o as usize], Object::Removed);
-                self.stack.retain(|item| match *item {
-                    StackItem::Spell(id) => !removed(id),
-                    StackItem::Ability { source, .. } => !removed(source),
+                let removed = |o: ObjectId| matches!(objects[o as usize], Object::Removed { .. });
+                self.stack.retain(|item| match item {
+                    StackItem::Spell(id) => !removed(*id),
+                    StackItem::Ability { source, .. } => !removed(*source),
                 });
                 self.combat.attackers.retain(|&a| !removed(a));
                 self.combat.attack_targets.retain(|&(a, d)| {
@@ -2357,10 +2528,8 @@ impl Game {
                 // must be dropped here, not placed once tombstoned.
                 self.pending_trigger_groups
                     .retain(|g| g.controller != player);
-                self.pending_echo.retain(|&source| !removed(source));
-                self.pending_recover.retain(|&source| !removed(source));
-                self.pending_cumulative_upkeep
-                    .retain(|&source| !removed(source));
+                self.pending_obligations
+                    .retain(|obligation| !removed(obligation.object()));
                 if self
                     .pending_choice
                     .as_ref()
@@ -2372,10 +2541,10 @@ impl Game {
                 self.pending_enter_bonus_counters
                     .retain(|&(object, _)| !removed(object));
                 self.exile_time_counters.retain(|&(card, _)| !removed(card));
-                // ponytail: `self_exile_time_counters` is read back synchronously in the same
-                // resolution that sets it (`Game::finish_instant_sorcery_resolution`, right after
-                // the spell's own effects run) — it never survives past one `PlayerLost` batch to
-                // go stale, so it carries no cross-player state to purge here.
+                // ponytail: `resolution_finish` is consumed synchronously in the same resolution
+                // that sets it (`Game::finish_instant_sorcery_resolution`, right after the
+                // spell's own effects run) — it never survives past one `PlayerLost` batch to go
+                // stale, so it carries no cross-player state to purge here.
                 self.delayed_triggers
                     .scheduled
                     .retain(|&(controller, ..)| controller != player);
@@ -2429,6 +2598,9 @@ impl Game {
             // library (CR 701.19-style). The order isn't event-sourced (like scry / `Game::
             // shuffle`'s other callers) — mutate the library directly.
             Event::LibraryShuffled { player } => self.shuffle(player),
+            Event::LibraryHandSmoothed { player, hand_size } => {
+                self.smoothed_shuffle_for_hand(player, hand_size)
+            }
             // A reveal is not a zone change (CR 701.30) — the card stays exactly where it is;
             // nothing to mutate here.
             Event::RevealedTopOfLibrary { .. } => {}

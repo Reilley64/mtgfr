@@ -1,7 +1,7 @@
 import { Subscription } from "foldkit";
-import { subscriptions as gameSubscriptions } from "./game/stream-subscription";
+import { subscriptions as gameSubscriptions } from "./game";
 import type { Message } from "./messages";
-import { PortraitGateChanged } from "./messages";
+import { GotGameMessage, GotLobbyMessage, LandscapeRotateChanged } from "./messages";
 import type { Model } from "./model";
 import { subscriptions as lobbySubscriptions } from "./shell/lobby/subscriptions";
 
@@ -14,20 +14,23 @@ export function isPortraitPhone(): boolean {
 }
 
 const appSubscriptions = Subscription.make<Model, Message>()(() => ({
-  portraitGate: Subscription.persistent(
+  landscapeRotate: Subscription.persistent(
     Subscription.fromEvent<Event, Message>({
       target: () => (typeof window.matchMedia === "function" ? window.matchMedia(PORTRAIT_QUERY) : window),
       type: "change",
-      toMessage: () => PortraitGateChanged({ open: isPortraitPhone() }),
+      toMessage: () => LandscapeRotateChanged({ active: isPortraitPhone() }),
     }),
   ),
 }));
 
 export const subscriptions = Subscription.aggregate<Model, Message>()(
   appSubscriptions,
-  gameSubscriptions,
+  Subscription.lift(gameSubscriptions)<Model, Message>({
+    toChildModel: (model) => model,
+    toParentMessage: (message) => GotGameMessage({ message }),
+  }),
   Subscription.lift(lobbySubscriptions)<Model, Message>({
     toChildModel: (model) => model.lobby,
-    toParentMessage: (message) => message,
+    toParentMessage: (message) => GotLobbyMessage({ message }),
   }),
 );

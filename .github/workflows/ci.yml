@@ -2,7 +2,6 @@ name: CI
 
 # Deploy PRD §GitHub Actions — PR verify via reusable verify-jobs.yml; terraform validates iac/.
 # Mirrors verify in verify-and-release.yml; no release steps here.
-# Wave 1: cancel superseded PR runs; path-skip terraform; cheap always-on guards.
 
 on:
   pull_request:
@@ -21,9 +20,9 @@ jobs:
     outputs:
       iac: ${{ steps.filter.outputs.iac }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@v4
         id: filter
         with:
           filters: |
@@ -31,23 +30,25 @@ jobs:
               - 'iac/**'
               - '.github/workflows/ci.yml'
 
+  # Squash-merge uses the PR title as the main commit subject (semantic-release).
+  # Branch commits are gated locally / in Cloud via Husky commit-msg — not here.
   commitlint:
-    name: Commitlint
+    name: Commitlint (PR title)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
           cache: npm
 
       - run: npm clean-install
 
-      - name: Lint PR commits
-        run: npx commitlint --from "origin/${{ github.base_ref }}" --to "${{ github.event.pull_request.head.sha }}" --verbose
+      - name: Lint PR title
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: printf '%s\n' "$TITLE" | npx commitlint
 
   verify:
     name: Verify
@@ -59,9 +60,9 @@ jobs:
     if: needs.changes.outputs.iac == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_wrapper: false
 
@@ -76,19 +77,3 @@ jobs:
       - name: terraform validate
         working-directory: iac
         run: terraform validate
-
-  docker-cache-guard:
-    name: Docker workflow cache guard
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Assert docker.yml Buildx GHA cache wiring
-        run: ./scripts/check-docker-workflow-cache.sh
-
-  ci-wave1-guard:
-    name: CI Wave 1 guard
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Assert CI Wave 1 wiring
-        run: ./scripts/check-ci-wave1.sh

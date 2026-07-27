@@ -2,11 +2,11 @@
 # Whenever Augusta attacks, each player exiles a card from their graveyard. When one or more nonland cards are exiled
 # this way, put that many +1/+1 counters on target attacking creature.
 name = "Augusta, Order Returned"
+sets = ["soc"]
 id = "a80a1f84-ea49-4c8d-912d-c7036b814a6c"
 default_print = "a0d1df84-0cb6-44fb-9916-d766d93f1519"
 otags = ["attack-trigger", "attacking-matters", "attacking-matters-self", "evasion", "gives-pp-counters", "graveyard-fuel", "hate-graveyard", "reflexive-trigger", "repeatable-pp-counters"]
 oracle = "Flying, vigilance\nWhenever Augusta attacks, each player exiles a card from their graveyard. When one or more nonland cards are exiled this way, put that many +1/+1 counters on target attacking creature."
-set = "soc"
 subtypes = ["Spirit", "Advisor"]
 legendary = true
 keywords = ["flying", "vigilance"]
@@ -22,11 +22,6 @@ toughness = 3
 
 # Whenever Augusta attacks, each player exiles a card from their graveyard. When one or more
 # nonland cards are exiled this way, put that many +1/+1 counters on target attacking creature.
-# ponytail: the reflexive "when one or more nonland cards are exiled this way" trigger is modeled
-# as a same-resolution sequenced payoff — its target attacking creature is chosen when the attack
-# trigger goes on the stack (before the exiles), and a zero-nonland exile is a no-op (0 counters)
-# rather than the payoff never being created. Upgrade to a real reflexive trigger that chooses its
-# target after the exiles resolve when reflexive-trigger machinery lands.
 [[abilities]]
 timing = "attacks"
 
@@ -35,8 +30,16 @@ timing = "attacks"
 type = "choice"
 mode = "each_player_exiles_from_graveyard"
 
-# put that many +1/+1 counters on target attacking creature
+# When one or more nonland cards are exiled this way, put that many +1/+1 counters on target
+# attacking creature. A CR 603.3b reflexive trigger: it is created only when the fan-out exiled a
+# nonland card, and its target attacking creature is chosen when the follow-up goes on the stack —
+# after the exiles resolve, in a real response window — not before the graveyard fan-out.
 [[abilities.effects]]
+type = "zone"
+mode = "reflexive_trigger_if_nonland_exiled"
+
+# put that many +1/+1 counters on target attacking creature
+[[abilities.effects.then]]
 type = "counters"
 mode = "put_counters"
 count = "nonland_cards_exiled_this_way"

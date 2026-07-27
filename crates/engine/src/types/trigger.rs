@@ -43,6 +43,13 @@ pub enum Trigger {
     /// When this permanent enters the battlefield (ETB). Spelled `"etb"` in TOML (`"etb_triggered"`
     /// is an accepted alias — see `de::TriggerTag`).
     Etb,
+    /// "As this permanent enters, …" (CR 614.12) — a replacement effect, *not* a triggered
+    /// ability, so it never uses the stack: [`Game::place_pending_triggers`] runs its effect
+    /// inline instead of placing it, and no player gets priority between the entry and the
+    /// choice. Watched off the same entry events as [`Etb`](Self::Etb) (and queued ahead of it,
+    /// so a card carrying both makes its as-enters choice before its ETB trigger is placed).
+    /// Spelled `"as_enters"` in TOML.
+    AsEnters,
     /// When this permanent is turned face up (CR 702.37f — a morph/megamorph turned-face-up
     /// trigger). Fires off [`Event::TurnedFaceUp`] by scanning the now-revealed object's own
     /// abilities. Spelled `"turned_face_up"` in TOML.
@@ -62,6 +69,14 @@ pub enum Trigger {
     /// [`Game::declare_blockers`] (batch-deduped, like [`Trigger::YouAttackWithCreatures`]'s
     /// [`Game::queue_batch_attack_triggers`]), not [`Game::enqueue_triggers`]'s per-event scan.
     BlocksOrBecomesBlocked,
+    /// Whenever this creature attacks or blocks (Mana-Charged Dragon, CR 508.1a / CR 509.3a) —
+    /// unlike [`BlocksOrBecomesBlocked`](Self::BlocksOrBecomesBlocked), the *attacker* half of a
+    /// block declaration doesn't fire this (an attacker "becomes blocked", it doesn't "block").
+    /// Queued alongside [`Attacks`](Self::Attacks) off [`Event::AttackerDeclared`] for the attack
+    /// half; the block half is a batch-scan from [`Game::declare_blockers`] over the *blocker*
+    /// side only, deduped like [`Game::queue_blocks_or_becomes_blocked_triggers`] so a creature
+    /// blocking multiple attackers still fires once.
+    AttacksOrBlocks,
     /// When this creature dies (moves from the battlefield to the graveyard, or — for a
     /// token — ceases to exist).
     Dies,
@@ -202,6 +217,14 @@ pub enum Trigger {
     /// [`TriggerContext`]'s `attack` tuple so the payoff effect can address "they". See
     /// [`Game::queue_batch_attack_triggers`].
     AnotherPlayerAttacksWithCreatures { at_least: u8 },
+    /// Whenever a creature attacks (CR 508.1, Righteous Cause) — any controller, any defender,
+    /// fired once per attacker declared this combat. Unlike the batch-count triggers above
+    /// (which fire once per combat, gated on a threshold), this one fires once *per attacker* —
+    /// three attackers in one combat means three separate triggers — so
+    /// [`Game::queue_batch_attack_triggers`] gives it its own per-attacker loop over the
+    /// committed attacker set rather than joining the single-pass-per-watcher filter chain the
+    /// count triggers share. Spelled `"creature_attacks"` in TOML.
+    CreatureAttacks,
     /// Whenever the creature this Aura is attached to is declared as an attacker (CR 508.1, the
     /// Impetus cycle: "Whenever enchanted creature attacks, …"). A watch-attached trigger: placed
     /// on the Aura, but its controller is the Aura's own controller — not the enchanted
@@ -277,7 +300,7 @@ pub enum Trigger {
     /// [`CombatDamageScope::YourCreatures`] (Ohran Frostfang, Defiling Daemogoth — any creature
     /// this permanent's controller controls), or [`CombatDamageScope::YourTokens`] (Curiosity
     /// Crafter — any creature *token* this permanent's controller controls). A sixth,
-    /// bespoke-queued watch flavor like [`YouSacrifice`](Self::YouSacrifice): fires off
+    /// table-dispatched watch flavor like [`YouSacrifice`](Self::YouSacrifice): fires off
     /// [`Event::CombatDamageDealtToPlayer`], not `LifeChanged` (non-combat life loss — drain,
     /// pay-life — must not fire it); see [`Game::queue_combat_damage_triggers`].
     DealsCombatDamageToPlayer { who: CombatDamageScope },
@@ -325,7 +348,7 @@ pub enum Trigger {
     /// [`CasterScope::AnyPlayer`]); `nth_each_turn` restricts to exactly the caster's Nth spell
     /// that turn (CR "their second spell each turn" — `Some(2)`), read off
     /// [`Player::spells_cast_this_turn`] (`None` = every matching cast). A seventh,
-    /// bespoke-queued watch flavor like [`DealsCombatDamageToPlayer`](Self::DealsCombatDamageToPlayer):
+    /// table-dispatched watch flavor like [`DealsCombatDamageToPlayer`](Self::DealsCombatDamageToPlayer):
     /// fires off [`Event::SpellCast`]; see [`Game::queue_cast_spell_triggers`]. Distinct from
     /// [`Magecraft`](Self::Magecraft) — which stays its own fixed instant/sorcery-only, self-only,
     /// every-cast watch and also fires off `SpellCopied`, which this doesn't — rather than folding
@@ -398,6 +421,18 @@ pub enum Trigger {
     /// [`Game::create_object`]'s graveyard-exit detection, drained once per event batch by
     /// [`Game::enqueue_triggers`]; see `Game::graveyard_exits_this_batch`.
     CardsLeaveYourGraveyard,
+    /// Whenever the controller discards one or more **nonland** cards (CR 701.8 — Conspiracy
+    /// Theorist's "Whenever you discard one or more nonland cards, you may exile one of them …") —
+    /// a controller-scoped, batch-once trigger like
+    /// [`CardsLeaveYourGraveyard`](Self::CardsLeaveYourGraveyard): a single simultaneous discard of
+    /// several cards is one "you discard" event, not one fire per card, and it fires **only if at
+    /// least one discarded card was a nonland** (discarding only lands does not trigger it). The
+    /// nonland cards' graveyard-object ids ride in
+    /// [`TriggerContext::discarded_nonland_cards`](TriggerContext) so the payoff can offer "one of
+    /// them". Distinct from the unfiltered per-card [`YouDiscard`](Self::YouDiscard) (Containment
+    /// Construct / Currency Converter); fires off [`Event::Discarded`], drained once per event
+    /// batch by [`Game::enqueue_triggers`]; see `Game::discards_this_batch`.
+    YouDiscardNonland,
     /// Whenever one or more cards are put into exile from the controller's library and/or their
     /// graveyard (Laelia, the Blade Reforged's growth trigger) — the exile-destination twin of
     /// [`CardsLeaveYourGraveyard`](Self::CardsLeaveYourGraveyard), same batch-once controller-scoped
@@ -644,6 +679,16 @@ pub(crate) struct TriggerContext {
     /// effect can act on "that card" — Containment Construct). See
     /// [`Game::queue_discard_triggers`].
     pub(crate) discarded: Option<ObjectId>,
+    /// CR 701.8/603.10a last-known information: the graveyard-object ids of the **nonland** cards
+    /// discarded in the batch behind a [`Trigger::YouDiscardNonland`] fire (Conspiracy Theorist's
+    /// "you may exile one of them from your graveyard"), so the payoff can offer exactly "one of
+    /// them". `&[]` for every other trigger. Feeds
+    /// [`Effect::Choice(ChoiceEffect::MayExileDiscardedNonlandMayPlay)`] via `contextualize_effect`'s
+    /// `fill_discarded_nonland_cards`; `def_of`/`zone_of` still resolve each id after the discard.
+    /// See `Game::queue_discard_nonland_triggers` for where this is set.
+    /// ponytail: a leaked `&'static [ObjectId]` interned per fire so [`TriggerContext`] stays
+    ///   `Copy`, exactly like [`cards_left_graveyard`](Self::cards_left_graveyard).
+    pub(crate) discarded_nonland_cards: &'static [ObjectId],
     /// The id of the permanent that just entered, for a `PermanentEnters`/
     /// `PermanentEntersIncludingThis` trigger (so its effect can act on "it" — Marauding
     /// Raptor's "this creature deals 2 damage to it"). See
@@ -812,6 +857,7 @@ impl TriggerContext {
             active_player: None,
             attack: None,
             discarded: None,
+            discarded_nonland_cards: &[],
             entering: None,
             dying_source_stats: None,
             cast_mana_value: None,

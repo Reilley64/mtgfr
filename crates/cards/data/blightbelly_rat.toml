@@ -6,7 +6,7 @@ id = "b0102259-7a2c-470e-b04b-4a1f615d057c"
 default_print = "9255cd01-a611-4fec-b9ec-b271687740ba"
 otags = ["bear-with-set-s-mechanic", "death-trigger-self", "mix-and-match", "poisonous"]
 oracle = "Toxic 1 (Players dealt combat damage by this creature also get a poison counter.)\nWhen this creature dies, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)"
-set = "one"
+sets = ["one"]
 subtypes = ["Phyrexian", "Rat"]
 keywords = [{ toxic = 1 }]
 

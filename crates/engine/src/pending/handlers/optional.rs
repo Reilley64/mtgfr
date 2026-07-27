@@ -4,11 +4,38 @@ use crate::*;
 
 impl Game {
     pub(crate) fn answer_may(&mut self, player: PlayerId, yes: bool) -> Result<Vec<Event>, Reject> {
-        let Some(PendingChoice::MayYesNo { source, effect, .. }) = self.pending_choice.clone()
+        let Some(PendingChoice::MayYesNo {
+            source,
+            effect,
+            resume,
+            ..
+        }) = self.pending_choice.clone()
         else {
             return Err(Reject::IllegalChoice);
         };
         self.finish_answer();
+        if let MayYesNoResume::TradeSecretsRepeat { caster, max } = resume {
+            if !yes {
+                return Ok(Vec::new());
+            }
+            let events = self.draw_events(player, 2);
+            self.apply_all(&events);
+            pending::raise_choice(
+                self,
+                PendingChoice::MayDrawUpTo {
+                    player: caster,
+                    max,
+                    effect: Effect::Choice(ChoiceEffect::MayDrawUpToThenOpponentMayRepeat {
+                        count: Amount::Fixed(i32::from(max)),
+                    }),
+                    resume: MayDrawUpToResume::TradeSecretsRepeat {
+                        opponent: player,
+                        source,
+                    },
+                },
+            );
+            return Ok(events);
+        }
         let mut events = Vec::new();
         if yes {
             // A resolution-time "may copy this spell" rider (`Effect::Copy(CopyEffect::ThisSpell)`'s
@@ -98,39 +125,15 @@ impl Game {
     }
 
     /// Answer a [`PendingChoice::MayDrawUpTo`] (CR 120.4 / 601.2c — Arcane Denial's "may draw up to
-    /// two cards"): draw exactly `count` cards, any number `0..=max`. An out-of-range `count` is
-    /// rejected with the pause left live so the player can answer again.
+    /// two cards", Trade Secrets' caster draw, and similar count choices): draw exactly `count`
+    /// cards, any number `0..=max`. An out-of-range `count` is rejected with the pause left live so
+    /// the player can answer again.
     pub(crate) fn answer_may_draw_up_to(
         &mut self,
         player: PlayerId,
         count: u8,
     ) -> Result<Vec<Event>, Reject> {
-        let Some(PendingChoice::MayDrawUpTo { max, .. }) = self.pending_choice else {
-            return Err(Reject::IllegalChoice);
-        };
-        if count > max {
-            return Err(Reject::IllegalChoice);
-        }
-        self.finish_answer();
-        let events = self.draw_events(player, count as u32);
-        self.apply_all(&events);
-        Ok(events)
-    }
-
-    /// Answer a [`PendingChoice::TradeSecretsCasterDraw`]: draw exactly `count` cards (`0..=max`),
-    /// then pause `opponent` on [`PendingChoice::TradeSecretsRepeat`] to decide whether to run the
-    /// whole process again. An out-of-range `count` is rejected with the pause left live.
-    pub(crate) fn answer_trade_secrets_caster_draw(
-        &mut self,
-        player: PlayerId,
-        count: u8,
-    ) -> Result<Vec<Event>, Reject> {
-        let Some(PendingChoice::TradeSecretsCasterDraw {
-            max,
-            opponent,
-            source,
-            ..
-        }) = self.pending_choice
+        let Some(PendingChoice::MayDrawUpTo { max, resume, .. }) = self.pending_choice.clone()
         else {
             return Err(Reject::IllegalChoice);
         };
@@ -140,51 +143,22 @@ impl Game {
         self.finish_answer();
         let events = self.draw_events(player, count as u32);
         self.apply_all(&events);
-        pending::raise_choice(
-            self,
-            PendingChoice::TradeSecretsRepeat {
-                player: opponent,
-                caster: player,
-                max,
-                source,
-            },
-        );
-        Ok(events)
-    }
-
-    /// Answer a [`PendingChoice::TradeSecretsRepeat`]: on `yes`, `player` (the target opponent)
-    /// draws two more cards, then `caster` is paused again on
-    /// [`PendingChoice::TradeSecretsCasterDraw`] (self-rescheduling, like
-    /// [`Game::dance_exile_more`]). On `no`, the loop stops.
-    pub(crate) fn answer_trade_secrets_repeat(
-        &mut self,
-        player: PlayerId,
-        yes: bool,
-    ) -> Result<Vec<Event>, Reject> {
-        let Some(PendingChoice::TradeSecretsRepeat {
-            caster,
-            max,
-            source,
-            ..
-        }) = self.pending_choice
-        else {
-            return Err(Reject::IllegalChoice);
-        };
-        self.finish_answer();
-        if !yes {
-            return Ok(Vec::new());
+        if let MayDrawUpToResume::TradeSecretsRepeat { opponent, source } = resume {
+            pending::raise_choice(
+                self,
+                PendingChoice::MayYesNo {
+                    player: opponent,
+                    source,
+                    effect: Effect::Choice(ChoiceEffect::MayDrawUpToThenOpponentMayRepeat {
+                        count: Amount::Fixed(i32::from(max)),
+                    }),
+                    resume: MayYesNoResume::TradeSecretsRepeat {
+                        caster: player,
+                        max,
+                    },
+                },
+            );
         }
-        let events = self.draw_events(player, 2);
-        self.apply_all(&events);
-        pending::raise_choice(
-            self,
-            PendingChoice::TradeSecretsCasterDraw {
-                player: caster,
-                max,
-                opponent: player,
-                source,
-            },
-        );
         Ok(events)
     }
 
@@ -599,7 +573,7 @@ impl Game {
         if pay {
             self.push_apply(&mut events, Event::Untapped { object: permanent });
         }
-        self.push_enters_with_counters(def, permanent, player, None, 0, &mut events);
+        self.push_enters_with_counters(&def, permanent, player, None, 0, &mut events);
         Ok(events)
     }
 

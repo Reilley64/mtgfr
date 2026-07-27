@@ -159,7 +159,7 @@ impl Game {
                 let mut next = self.next_object_id();
                 let mut events = Vec::new();
                 for id in self.battlefield() {
-                    let Object::Permanent(p) = self.objects[id as usize] else {
+                    let Object::Permanent(ref p) = self.objects[id as usize] else {
                         continue;
                     };
                     if !self.permanent_matches(&filter, id, controller, Some(source)) {
@@ -258,7 +258,7 @@ impl Game {
                 if self.zone_of(card) != Zone::Graveyard {
                     return Vec::new();
                 }
-                let def = self.def_of(card);
+                let def = self.def_id_of(card);
                 let exiled = self.next_object_id();
                 let move_event = self.exile_or_command(card, exiled);
                 let token = exiled + 1;
@@ -320,6 +320,14 @@ impl Game {
                 if self.zone_of(creature) != Zone::Battlefield {
                     return Vec::new();
                 }
+                // CR 303.4g / 702.16e: this delayed "return this card attached to that creature"
+                // is a non-cast attach, so it must still be legal. If the creature gained
+                // protection that stops this Aura (or otherwise no longer satisfies its enchant
+                // restriction), the Aura can't attach — it stays in the graveyard rather than
+                // entering and immediately falling off.
+                if !self.noncast_attach_legal(card, creature) {
+                    return Vec::new();
+                }
                 let event = self.reanimate_event(card, self.owner_of(card), false);
                 let Event::ReanimatedToBattlefield { permanent, .. } = event else {
                     unreachable!("reanimate_event always returns a ReanimatedToBattlefield event")
@@ -360,7 +368,7 @@ impl Game {
                     return vec![Event::TokenCeasedToExist {
                         token: object,
                         controller: owner,
-                        def: self.def_of(object),
+                        def: self.def_id_of(object),
                     }];
                 }
                 vec![Event::TuckedToLibrary {
@@ -453,7 +461,7 @@ impl Game {
                         if self.zone_of(id) != Zone::Graveyard || self.owner_of(id) != owner {
                             continue;
                         }
-                        if !filter.matches(self.def_of(id)) {
+                        if !filter.matches(&self.def_of(id)) {
                             continue;
                         }
                         events.push(Event::ReanimatedToBattlefield {
@@ -554,11 +562,11 @@ impl Game {
             Event::RevealedTopOfLibrary {
                 player: owner,
                 card,
-                def,
+                def: self.def_id_of(card),
             },
         );
-        if CardFilter::Permanent.matches(def) {
-            self.push_apply(
+        if CardFilter::Permanent.matches(&def) {
+            self.push_apply_effect_event(
                 events,
                 Event::SearchedToBattlefield {
                     permanent: self.next_object_id(),
@@ -582,7 +590,7 @@ impl Game {
             return vec![Event::TokenCeasedToExist {
                 token: object,
                 controller: owner,
-                def: self.def_of(object),
+                def: self.def_id_of(object),
             }];
         }
         vec![

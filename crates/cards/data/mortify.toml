@@ -1,0 +1,24 @@
+# Destroy target creature or enchantment.
+name = "Mortify"
+sets = ["40k", "acr", "c16", "c17", "c18", "cm2", "cma", "cmd", "cns", "ddk", "dmc", "e02", "fdn", "fic", "gpt", "ltc", "moc", "onc", "p07", "plst", "prm", "prna", "rna", "sch", "sld", "tsr"]
+id = "faa01ed1-ccfa-4e58-951f-cd81f9068027"
+default_print = "88e85619-3a7d-48c2-b9b0-20718c913696"
+oracle = "Destroy target creature or enchantment."
+
+[cost]
+generic = 1
+white = 1
+black = 1
+
+[kind]
+type = "instant"
+
+# Destroy target creature or enchantment.
+[[abilities]]
+timing = "spell"
+
+# Destroy target creature or enchantment.
+[[abilities.effects]]
+type = "destroy"
+mode = "target"
+target = { permanent = { types = ["creature", "enchantment"] } }

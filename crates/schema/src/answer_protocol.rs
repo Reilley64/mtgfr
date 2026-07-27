@@ -124,6 +124,9 @@ pub enum Answer {
     AttachHost {
         host: Option<ObjectId>,
     },
+    LegendaryKeep {
+        keep: ObjectId,
+    },
     CopyTarget {
         copy: Option<ObjectId>,
     },
@@ -227,6 +230,7 @@ pub fn encode_answer(view: &PendingChoiceView, answer: Answer) -> WireIntent {
             WireIntent::RevealedCardToBattlefieldOrHand { player, choice }
         }
         Answer::AttachHost { host } => WireIntent::ChooseAttachHost { player, host },
+        Answer::LegendaryKeep { keep } => WireIntent::ChooseLegendaryKeep { player, keep },
         Answer::CopyTarget { copy } => WireIntent::ChooseCopyTarget { player, copy },
         Answer::TopOrBottom { top } => WireIntent::ChooseTopOrBottom { player, top },
     }
@@ -236,13 +240,10 @@ fn view_player(view: &PendingChoiceView) -> u8 {
     match view {
         PendingChoiceView::OrderTriggers { player, .. }
         | PendingChoiceView::ChooseTarget { player, .. }
-        | PendingChoiceView::ChooseSpellTargets { player, .. }
         | PendingChoiceView::ChooseTargetPlayers { player, .. }
         | PendingChoiceView::MayYesNo { player, .. }
         | PendingChoiceView::MayDrawUpTo { player, .. }
         | PendingChoiceView::PayAnyAmountOfMana { player, .. }
-        | PendingChoiceView::TradeSecretsCasterDraw { player, .. }
-        | PendingChoiceView::TradeSecretsRepeat { player, .. }
         | PendingChoiceView::DeclineUntap { player, .. }
         | PendingChoiceView::ChooseDredge { player, .. }
         | PendingChoiceView::PayCost { player, .. }
@@ -267,7 +268,6 @@ fn view_player(view: &PendingChoiceView) -> u8 {
         | PendingChoiceView::SacrificeEdict { player, .. }
         | PendingChoiceView::Proliferate { player, .. }
         | PendingChoiceView::PhaseOut { player, .. }
-        | PendingChoiceView::ChooseAbilityTargets { player, .. }
         | PendingChoiceView::ChooseActivationCostTargets { player, .. }
         | PendingChoiceView::MaySacrifice { player, .. }
         | PendingChoiceView::ChooseOwnSacrifices { player, .. }
@@ -276,6 +276,7 @@ fn view_player(view: &PendingChoiceView) -> u8 {
         | PendingChoiceView::CasterKeepPermanents { player, .. }
         | PendingChoiceView::ChooseCounterTargetForPlayer { player, .. }
         | PendingChoiceView::MayReturnFromGraveyard { player, .. }
+        | PendingChoiceView::MayExileDiscardedToPlay { player, .. }
         | PendingChoiceView::MayDiscard { player, .. }
         | PendingChoiceView::Discard { player, .. }
         | PendingChoiceView::PutFromHandOnTop { player, .. }
@@ -301,6 +302,7 @@ fn view_player(view: &PendingChoiceView) -> u8 {
         | PendingChoiceView::ChooseColor { player, .. }
         | PendingChoiceView::ChooseCardName { player, .. }
         | PendingChoiceView::ChooseAttachHost { player, .. }
+        | PendingChoiceView::ChooseLegendaryKeep { player, .. }
         | PendingChoiceView::ChooseCopyTarget { player, .. } => *player,
     }
 }
@@ -308,7 +310,7 @@ fn view_player(view: &PendingChoiceView) -> u8 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::dto::ChoiceItem;
+    use crate::dto::{ChoiceItem, MessageRef};
 
     fn proliferate(player: u8) -> PendingChoiceView {
         PendingChoiceView::Proliferate {
@@ -348,7 +350,7 @@ mod tests {
         let view = PendingChoiceView::MayYesNo {
             player: 0,
             source: 3,
-            label: "Draw a card".into(),
+            label: MessageRef::key("effect.draw_cards"),
         };
         assert_eq!(
             encode_answer(&view, Answer::May { yes: false }),

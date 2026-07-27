@@ -5,6 +5,7 @@ import { Submodel } from "foldkit";
 import { html } from "foldkit/html";
 import { Scene } from "foldkit/test";
 import { expect, test } from "vitest";
+import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../../game/fold";
 import { SubmitIntent } from "../../game/intents";
@@ -12,6 +13,7 @@ import { emptyCostPicks } from "../action/execution";
 import { ZONE } from "../geometry/layout";
 import { STACK_EXPAND_COUNT } from "../geometry/stackLayout";
 import { type Message, StackCollapseClicked, TargetChosen } from "../messages";
+import { spawnFlight } from "../motion/flights";
 import { type BoardModel, initialBoardModel, updateBoard } from "../submodel";
 import { boardOverlays } from "./overlays";
 import { resolveBoardCardArtMounts, resolveBoardOverlayMounts } from "./scene-helpers";
@@ -64,13 +66,14 @@ function gameFold(state: VisibleState): GameFoldState {
       zoneMoves: new Map(),
       resolvedFromStack: new Set(),
       leftStackToPile: new Set(),
+      battlefieldExits: new Map(),
       tokenCreators: new Map(),
       landPlayFrom: new Map(),
       zonePileEntrances: new Map(),
       stackEntrances: new Map(),
       priorStackObjectIds: new Set(),
     },
-    tableFeel: { land: false, stack: false, resolve: false, damage: false },
+    tableFeel: { land: false, stack: false, resolve: false, damage: false, destroy: false, exile: false },
   };
 }
 
@@ -100,7 +103,7 @@ function spellOnStack(
   };
   return {
     objects: [spell],
-    stack: [{ controller: 0, kind: "spell", label, source: sourceId }],
+    stack: [{ controller: 0, kind: "spell", label: testMessageRef(label), source: sourceId }],
   };
 }
 
@@ -119,6 +122,220 @@ test("stack overlay renders card art for spells on the stack", () => {
     Scene.expect(Scene.testId("stack-overlay")).toExist(),
     Scene.expect(Scene.testId("stack-face-0")).toExist(),
     Scene.expect(Scene.selector("[data-art-url]")).toExist(),
+  );
+});
+
+test("spell stack face stays hidden while its stack entrance flight is in progress", () => {
+  const { objects, stack } = spellOnStack(42, "Lightning Bolt", "bolt-print");
+  const flight = {
+    ...spawnFlight({
+      id: 42,
+      kind: "stack",
+      name: "Lightning Bolt",
+      print: "bolt-print",
+      scale: 0.8,
+      targetScale: 1,
+      targetX: 100,
+      targetY: 40,
+      x: 20,
+      y: 10,
+      fromCardId: 7,
+    }),
+    phase: "flying" as const,
+  };
+  const model: ViewModel = {
+    board: {
+      ...initialBoardModel(),
+      flights: new Map([[42, flight]]),
+      hideCardIds: new Set([42]),
+      ownedIds: new Set([42]),
+    },
+    fold: gameFold(gameState({ objects, stack })),
+    tableId: "T1",
+  };
+  Scene.scene(
+    { update: (m) => [m, []], view: overlayView },
+    Scene.with(model),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("stack-overlay")).toExist(),
+    Scene.expect(Scene.testId("stack-face-0")).toBeAbsent(),
+  );
+});
+
+function abilityDuringSourceFlight(kind: "battlefield" | "from-stack"): ViewModel {
+  // Trigger on the stack: entry.source is the permanent id. A battlefield / from-stack flight for
+  // that same id puts it in hideCardIds so the resting battlefield face stays hidden — but the
+  // ability on the stack is a different resting face and must still show the source's art (not
+  // only the effect caption).
+  const sourceId = 99;
+  const permanent: ObjectView = {
+    controller: 0,
+    has_haste: false,
+    id: sourceId,
+    is_commander: false,
+    kind: { kind: "creature", power: 2, toughness: 2 },
+    mana_cost: { generic: 1, colored: [0, 0, 1, 0, 0] },
+    marked_damage: 0,
+    name: "Elvish Visionary",
+    needs_target: false,
+    owner: 0,
+    plus_counters: 0,
+    power: 2,
+    print: "visionary-print",
+    summoning_sick: true,
+    tapped: false,
+    toughness: 2,
+    zone: ZONE.Battlefield,
+  };
+  const flight = {
+    ...spawnFlight({
+      id: sourceId,
+      kind,
+      name: permanent.name,
+      print: permanent.print ?? "",
+      scale: 0.8,
+      targetScale: 1,
+      targetX: 100,
+      targetY: 40,
+      x: 20,
+      y: 10,
+    }),
+    phase: "flying" as const,
+  };
+  return {
+    board: {
+      ...initialBoardModel(),
+      flights: new Map([[sourceId, flight]]),
+      hideCardIds: new Set([sourceId]),
+      ownedIds: new Set([sourceId]),
+    },
+    fold: gameFold(
+      gameState({
+        objects: [permanent],
+        stack: [
+          {
+            controller: 0,
+            kind: "ability",
+            label: testMessageRef("Draw a card"),
+            source: sourceId,
+          },
+        ],
+      }),
+    ),
+    tableId: "T1",
+  };
+}
+
+test("ability stack face keeps card art while its source permanent is mid-battlefield flight", () => {
+  Scene.scene(
+    { update: (m) => [m, []], view: overlayView },
+    Scene.with(abilityDuringSourceFlight("battlefield")),
+    resolveBoardOverlayMounts(),
+    resolveBoardCardArtMounts(),
+    Scene.expect(Scene.testId("stack-overlay")).toExist(),
+    Scene.expect(Scene.testId("stack-face-0")).toExist(),
+    Scene.expect(Scene.selector("[data-art-url]")).toExist(),
+    Scene.expect(Scene.testId("stack-top-caption")).toContainText("Draw a card"),
+  );
+});
+
+test("ability stack face uses entry print when the source id is no longer in objects", () => {
+  // Evolving Wilds / other sacrifice-as-cost activations: stack.source is the Moved tombstone id,
+  // which never appears in VisibleState.objects. Art must come from StackObjectView.print.
+  const model: ViewModel = {
+    board: initialBoardModel(),
+    fold: gameFold(
+      gameState({
+        objects: [],
+        stack: [
+          {
+            controller: 0,
+            kind: "ability",
+            label: testMessageRef("Search your library for a basic land card"),
+            source: 77,
+            print: "evolving-wilds-print",
+            name: "Evolving Wilds",
+            card_id: "evolving-wilds-id",
+          },
+        ],
+      }),
+    ),
+    tableId: "T1",
+  };
+  Scene.scene(
+    { update: (m) => [m, []], view: overlayView },
+    Scene.with(model),
+    resolveBoardOverlayMounts(),
+    resolveBoardCardArtMounts(),
+    Scene.expect(Scene.testId("stack-overlay")).toExist(),
+    Scene.expect(Scene.testId("stack-face-0")).toExist(),
+    // BindCardArt only mounts when print+name resolve — proves entry.print was used.
+    Scene.expect(Scene.selector("[data-art-url]")).toExist(),
+  );
+});
+
+test("ability stack face keeps card art while its source permanent is mid from-stack flight", () => {
+  Scene.scene(
+    { update: (m) => [m, []], view: overlayView },
+    Scene.with(abilityDuringSourceFlight("from-stack")),
+    resolveBoardOverlayMounts(),
+    resolveBoardCardArtMounts(),
+    Scene.expect(Scene.testId("stack-overlay")).toExist(),
+    Scene.expect(Scene.testId("stack-face-0")).toExist(),
+    Scene.expect(Scene.selector("[data-art-url]")).toExist(),
+    Scene.expect(Scene.testId("stack-top-caption")).toContainText("Draw a card"),
+  );
+});
+
+test("stack pile caption lists every declared target", () => {
+  const { objects } = spellOnStack(42, "Electrolyze", "electrolyze-print");
+  const bear: ObjectView = {
+    controller: 1,
+    has_haste: false,
+    id: 22,
+    is_commander: false,
+    kind: { kind: "creature", power: 2, toughness: 2 },
+    mana_cost: { generic: 2, colored: [0, 0, 0, 0, 0] },
+    marked_damage: 0,
+    name: "Bear",
+    needs_target: false,
+    owner: 1,
+    plus_counters: 0,
+    power: 2,
+    print: "bear-print",
+    summoning_sick: false,
+    tapped: false,
+    toughness: 2,
+    zone: ZONE.Battlefield,
+  };
+  const model: ViewModel = {
+    board: initialBoardModel(),
+    fold: gameFold(
+      gameState({
+        objects: [...objects, bear],
+        stack: [
+          {
+            controller: 0,
+            kind: "spell",
+            label: testMessageRef("Electrolyze"),
+            source: 42,
+            targets: [
+              { kind: "object", id: 22 },
+              { kind: "player", player: 1 },
+            ],
+          },
+        ],
+      }),
+    ),
+    tableId: "T1",
+  };
+  Scene.scene(
+    { update: (m) => [m, []], view: overlayView },
+    Scene.with(model),
+    resolveBoardOverlayMounts(),
+    resolveBoardCardArtMounts(),
+    Scene.expect(Scene.testId("stack-top-caption")).toContainText("Bear"),
+    Scene.expect(Scene.testId("stack-top-caption")).toContainText("Bob"),
   );
 });
 
@@ -163,7 +380,7 @@ test("staged ghost appears on the stack during arrow targeting", () => {
   const castAction: ActionView = {
     id: 9,
     kind: "cast",
-    label: "Cast Shock",
+    label: testMessageRef("Cast Shock"),
     needs_target: true,
     object: handCard.id,
     section: "hand",
@@ -220,7 +437,7 @@ test("legal stack face is highlighted and click submits take_action", () => {
   const castAction: ActionView = {
     id: 3,
     kind: "cast",
-    label: "Cast Counterspell",
+    label: testMessageRef("Cast Counterspell"),
     needs_target: true,
     object: counter.id,
     section: "hand",
@@ -292,7 +509,7 @@ test("expand button appears for a tall stack and opens strip view", () => {
       toughness: 0,
       zone: ZONE.Stack,
     });
-    stack.push({ controller: 0, kind: "spell", label: `Spell ${i}`, source: id });
+    stack.push({ controller: 0, kind: "spell", label: testMessageRef(`Spell ${i}`), source: id });
   }
   const model: ViewModel = {
     board: initialBoardModel(),
@@ -335,5 +552,6 @@ test("hold bar renders when stack_hold_remaining_ms is positive", () => {
     resolveBoardOverlayMounts(),
     resolveBoardCardArtMounts(),
     Scene.expect(Scene.testId("stack-hold-bar")).toExist(),
+    Scene.expect(Scene.selector('[data-testid="stack-hold-bar"].opacity-0')).not.toExist(),
   );
 });

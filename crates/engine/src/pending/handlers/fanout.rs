@@ -108,6 +108,46 @@ impl Game {
         Ok(events)
     }
 
+    /// Pause on the next opponent with a card to discard (skipping any with an empty hand), or —
+    /// when none remain — return, letting the enclosing sequence resume into the draw payoff.
+    pub(crate) fn prompt_next_discard_edict(&mut self, remaining: Vec<PlayerId>, source: ObjectId) {
+        crate::pending::raise(
+            self,
+            crate::pending::ChoiceRequest::NextDiscardEdict { remaining, source },
+        );
+    }
+
+    /// Answer a [`PendingChoice::DiscardEdict`]: discard the one chosen hand card (Syphon Mind's
+    /// "Each other player discards a card"), tallying it into
+    /// [`ResolutionFrame::cards_discarded_this_way`](crate::resolution::ResolutionFrame), then move
+    /// on to the next opponent — the discard twin of [`Self::choose_graveyard_exile`].
+    pub(crate) fn answer_discard_edict(
+        &mut self,
+        player: PlayerId,
+        discards: Vec<ObjectId>,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::DiscardEdict {
+            options,
+            remaining,
+            source,
+            ..
+        }) = self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        // Mandatory: exactly one of the offered cards (declining isn't legal when they have one).
+        if discards.len() != 1 || !options.contains(&discards[0]) {
+            return Err(Reject::IllegalChoice);
+        }
+        self.finish_answer();
+
+        let mut events = Vec::new();
+        self.discard_ids(&discards, player, &mut events);
+        self.resolution_frame.cards_discarded_this_way += 1;
+        self.prompt_next_discard_edict(remaining, source);
+        Ok(events)
+    }
+
     /// Pause on the next player to vote, or — when none remain — return, letting the enclosing
     /// sequence resume into the tally-scaled outcome steps. Unlike a graveyard fan-out, no seat is
     /// ever skipped: every living player votes (CR 701.32a).
@@ -180,8 +220,10 @@ impl Game {
         Ok(events)
     }
 
-    /// Answer a [`PendingChoice::CastVote`]: `choice` is the index into the ballot's `options`
-    /// (0 = past, 1 = present). Tally the vote, then move on to the next player.
+    /// Answer a [`PendingChoice::CastVote`]: `choice` is the index into the ballot's `options`.
+    /// A council's-dilemma ballot (`["past", "present"]`) tallies the vote; Archangel of Strife's
+    /// war/peace ballot instead records the voter's own answer against the asking permanent on
+    /// `Player::war_choices`. Either way, move on to the next player.
     pub(crate) fn answer_vote(
         &mut self,
         player: PlayerId,
@@ -204,12 +246,21 @@ impl Game {
         };
         self.finish_answer();
 
-        // ponytail: past/present hardcoded — Fateful Tempest is the pool's only council's-dilemma
-        // card. Generalize to a label→tally map when a differently-balloted voting card lands.
+        // ponytail: ballots hardcoded to the pool's two voting cards. Generalize to a
+        // label→outcome map when a third, differently-balloted voting card lands.
         match ballot {
             "past" => self.resolution_frame.council_past_votes += 1,
             "present" => self.resolution_frame.council_present_votes += 1,
-            other => panic!("unknown council's-dilemma ballot {other:?}"),
+            "war" | "peace" => {
+                self.players[voter.0 as usize]
+                    .war_choices
+                    .push((source, ballot == "war"));
+                // A `war_choice`-gated anthem just started/stopped applying to every creature
+                // this voter owns — same scope as `Event::CitysBlessingGained`'s invalidation.
+                self.characteristics_cache
+                    .write(|cache| cache.invalidate_owner(self, voter));
+            }
+            other => panic!("unknown vote ballot {other:?}"),
         }
         self.prompt_next_vote(remaining, source, options);
         Ok(Vec::new())
@@ -259,12 +310,13 @@ impl Game {
 
         let mut events = Vec::new();
         if let Some(&card) = self.players[player.0 as usize].library.first() {
-            let def = self.def_of(card);
+            let def = self.def_id_of(card);
+            let printed = card_def(def);
             self.push_apply(
                 &mut events,
                 Event::RevealedTopOfLibrary { player, card, def },
             );
-            if def.name == chosen {
+            if printed.name == chosen {
                 self.push_apply(
                     &mut events,
                     Event::SearchedToHand {
@@ -306,7 +358,7 @@ impl Game {
 
         let mut events = Vec::new();
         for &id in &sacrifices {
-            let def = self.def_of(id);
+            let def = self.def_id_of(id);
             let event = self.sacrifice_event(id);
             self.push_apply(&mut events, event);
             self.push_apply(
@@ -339,6 +391,44 @@ impl Game {
         Ok(events)
     }
 
+    /// Answer a [`PendingChoice::MayPutCounterOnCreature`]: `choice` is `None` to decline, or one
+    /// of the choice's `options` (a battlefield creature) to put a single +1/+1 counter on
+    /// (Zimone's Hypothesis' primer, CR 601.2c). Non-targeted, so a `Some` id must be a currently
+    /// offered creature; the enclosing `Sequence`'s next step (the parity bounce) runs regardless,
+    /// resumed by [`Game::resume_deferred_sequence`] after this returns.
+    pub(crate) fn answer_may_put_counter_on_creature(
+        &mut self,
+        _player: PlayerId,
+        choice: Option<ObjectId>,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::MayPutCounterOnCreature {
+            source, options, ..
+        }) = self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        if choice.is_some_and(|id| !options.contains(&id)) {
+            return Err(Reject::IllegalChoice);
+        }
+        self.finish_answer();
+
+        let mut events = Vec::new();
+        if let Some(object) = choice {
+            let n = self.counters_after_replacements(_player, object, 1);
+            if n > 0 {
+                self.push_apply(
+                    &mut events,
+                    Event::CountersPlaced {
+                        object,
+                        count: n,
+                        source_name: self.source_name_of(source),
+                    },
+                );
+            }
+        }
+        Ok(events)
+    }
+
     /// Answer a [`PendingChoice::MayReturnFromGraveyard`]: `choice` is empty to decline, or names
     /// the one graveyard card (one of the choice's `options`) returned to `player`'s hand
     /// ([`Effect::Choice(ChoiceEffect::MayReturnFromGraveyard)`] — Deadly Brew's rider).
@@ -347,8 +437,48 @@ impl Game {
         _player: PlayerId,
         choice: Vec<ObjectId>,
     ) -> Result<Vec<Event>, Reject> {
-        let Some(PendingChoice::MayReturnFromGraveyard { options, .. }) =
-            self.pending_choice.clone()
+        let Some(PendingChoice::MayReturnFromGraveyard {
+            options, mandatory, ..
+        }) = self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        if choice.len() > 1 || choice.iter().any(|id| !options.contains(id)) {
+            return Err(Reject::IllegalChoice);
+        }
+        // "you return" (mandatory): a legal card must be chosen — declining is illegal (CR 700.2).
+        if mandatory && choice.is_empty() {
+            return Err(Reject::IllegalChoice);
+        }
+        self.finish_answer();
+
+        let mut events = Vec::new();
+        for &id in &choice {
+            self.push_apply(
+                &mut events,
+                Event::ReturnedToHand {
+                    card: self.next_object_id(),
+                    from: id,
+                },
+            );
+        }
+        Ok(events)
+    }
+
+    /// Answer a [`PendingChoice::MayExileDiscardedToPlay`]: `choice` is empty to decline, or names
+    /// the one discarded nonland card (one of the choice's `options`) exiled from `player`'s
+    /// graveyard face-up with impulse-play permission
+    /// ([`Effect::Choice(ChoiceEffect::MayExileDiscardedNonlandMayPlay)`] — Conspiracy Theorist).
+    /// The impulse-play twin of [`Self::answer_may_return_from_graveyard`] — minting the same
+    /// [`Event::ExiledFromGraveyardMayPlay`] as [`MillEffect::ExileFromGraveyardMayPlay`].
+    pub(crate) fn answer_may_exile_discarded_to_play(
+        &mut self,
+        _player: PlayerId,
+        choice: Vec<ObjectId>,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::MayExileDiscardedToPlay {
+            player, options, ..
+        }) = self.pending_choice.clone()
         else {
             return Err(Reject::IllegalChoice);
         };
@@ -361,7 +491,8 @@ impl Game {
         for &id in &choice {
             self.push_apply(
                 &mut events,
-                Event::ReturnedToHand {
+                Event::ExiledFromGraveyardMayPlay {
+                    player,
                     card: self.next_object_id(),
                     from: id,
                 },
@@ -402,7 +533,7 @@ impl Game {
         let all_in_hand = cards.iter().all(|c| hand.contains(c));
         let full_discard = cards.len() == count && distinct == cards.len();
         let land_escape = or_one_matching
-            .is_some_and(|filter| cards.len() == 1 && filter.matches(self.def_of(cards[0])));
+            .is_some_and(|filter| cards.len() == 1 && filter.matches(&self.def_of(cards[0])));
         if player != chooser || !all_in_hand || !(full_discard || land_escape) {
             return Err(Reject::IllegalChoice); // invalid — the choice stays pending
         }
@@ -447,7 +578,7 @@ impl Game {
         let mut events = Vec::new();
         for &from in cards.iter().rev() {
             let card = self.next_object_id();
-            let def = self.def_of(from);
+            let def = self.def_id_of(from);
             self.push_apply(
                 &mut events,
                 Event::PutFromHandOnTop {

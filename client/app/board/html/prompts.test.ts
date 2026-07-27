@@ -3,6 +3,8 @@ import { html } from "foldkit/html";
 import { Scene } from "foldkit/test";
 import { expect, test } from "vitest";
 import { choiceDraftKey } from "~/choice";
+import { testMessageRef } from "~/i18n/testMessageRef";
+import { fromProtoWire } from "~/wire/protoMap";
 import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/types";
 import type { GameFoldState } from "../../game/fold";
 import { SubmitIntent } from "../../game/intents";
@@ -21,7 +23,7 @@ import {
   XDraftSet,
   XSubmitted,
 } from "../messages";
-import { type BoardModel, initialBoardModel, updateBoard } from "../submodel";
+import { type BoardModel, initialBoardModel, syncBoardWithGame, updateBoard } from "../submodel";
 import { boardOverlays } from "./overlays";
 import { resolveBoardOverlayMounts } from "./scene-helpers";
 
@@ -61,6 +63,66 @@ function state(overrides: Partial<VisibleState> = {}): VisibleState {
   };
 }
 
+function mayExileDiscardedState(overrides: Partial<VisibleState> = {}): VisibleState {
+  const pending = fromProtoWire<VisibleState>({
+    pendingChoice: {
+      choice: {
+        case: "mayExileDiscardedToPlay",
+        value: {
+          player: 0,
+          source: 1,
+          items: [
+            { id: 8, label: "Lightning Bolt" },
+            { id: 9, label: "Thrill of Possibility" },
+          ],
+        },
+      },
+    },
+  }).pending_choice;
+  return state({
+    objects: [
+      {
+        controller: 0,
+        has_haste: false,
+        id: 8,
+        is_commander: false,
+        kind: { kind: "instant" },
+        mana_cost: { generic: 1, colored: [0, 0, 0, 0, 0] },
+        marked_damage: 0,
+        name: "Lightning Bolt",
+        needs_target: false,
+        owner: 0,
+        plus_counters: 0,
+        power: 0,
+        summoning_sick: false,
+        tapped: false,
+        toughness: 0,
+        zone: ZONE.Graveyard,
+      },
+      {
+        controller: 0,
+        has_haste: false,
+        id: 9,
+        is_commander: false,
+        kind: { kind: "instant" },
+        mana_cost: { generic: 2, colored: [0, 0, 0, 1, 0] },
+        marked_damage: 0,
+        name: "Thrill of Possibility",
+        needs_target: false,
+        owner: 0,
+        plus_counters: 0,
+        power: 0,
+        summoning_sick: false,
+        tapped: false,
+        toughness: 0,
+        zone: ZONE.Graveyard,
+      },
+    ],
+    pending_choice: pending ?? null,
+    ...overrides,
+  });
+}
+
 function gameFold(s: VisibleState): GameFoldState {
   return {
     seq: 1,
@@ -71,13 +133,14 @@ function gameFold(s: VisibleState): GameFoldState {
       zoneMoves: new Map(),
       resolvedFromStack: new Set(),
       leftStackToPile: new Set(),
+      battlefieldExits: new Map(),
       tokenCreators: new Map(),
       landPlayFrom: new Map(),
       zonePileEntrances: new Map(),
       stackEntrances: new Map(),
       priorStackObjectIds: new Set(),
     },
-    tableFeel: { land: false, stack: false, resolve: false, damage: false },
+    tableFeel: { land: false, stack: false, resolve: false, damage: false, destroy: false, exile: false },
   };
 }
 
@@ -155,7 +218,7 @@ test("order_triggers shows reorder controls and submit", () => {
     pending_choice: {
       kind: "order_triggers",
       count: 2,
-      labels: ["First", "Second"],
+      labels: [testMessageRef("First"), testMessageRef("Second")],
       player: 0,
       source: 1,
     },
@@ -178,7 +241,7 @@ test("order_triggers rows are HTML5-draggable drop targets", () => {
     pending_choice: {
       kind: "order_triggers",
       count: 2,
-      labels: ["First", "Second"],
+      labels: [testMessageRef("First"), testMessageRef("Second")],
       player: 0,
       source: 1,
     },
@@ -197,7 +260,7 @@ test("order_triggers click-to-place reorders then submits choose_order", () => {
     pending_choice: {
       kind: "order_triggers",
       count: 3,
-      labels: ["A", "B", "C"],
+      labels: [testMessageRef("A"), testMessageRef("B"), testMessageRef("C")],
       player: 0,
       source: 1,
     },
@@ -217,7 +280,7 @@ test("order_triggers drag-end clears a cancelled pick", () => {
     pending_choice: {
       kind: "order_triggers",
       count: 2,
-      labels: ["A", "B"],
+      labels: [testMessageRef("A"), testMessageRef("B")],
       player: 0,
       source: 1,
     },
@@ -234,7 +297,7 @@ test("order_triggers submit emits choose_order intent", () => {
     pending_choice: {
       kind: "order_triggers",
       count: 2,
-      labels: ["A", "B"],
+      labels: [testMessageRef("A"), testMessageRef("B")],
       player: 0,
       source: 1,
     },
@@ -329,6 +392,42 @@ test("scry card click moves from Bottom lane to Top lane", () => {
     kind: "partition",
     buckets: { top: [], bottom: [2, 1] },
   });
+});
+
+test("scry submit keeps Top cards in Top while pending choice lingers", () => {
+  // Regression: clearing promptDraft on Done re-inits every card into Bottom via
+  // initPromptDraft / syncPromptDraft before the server drops pending_choice.
+  const s = state({
+    pending_choice: {
+      kind: "scry",
+      player: 0,
+      items: [
+        { id: 1, label: "Island" },
+        { id: 2, label: "Forest" },
+      ],
+    },
+  });
+  const gf = gameFold(s);
+  let board = syncBoardWithGame(initialBoardModel(), gf);
+  board = updateBoard(board, PromptCardToggled({ id: 1 }), gf, "T1")[0];
+  const [submitted, commands] = updateBoard(board, PromptSubmitted(), gf, "T1");
+  expect(commands).toHaveLength(1);
+  board = syncBoardWithGame(submitted, gf);
+  expect(board.promptSubmitInFlight).toBe(true);
+  expect(board.promptDraft).toEqual({
+    kind: "partition",
+    buckets: { top: [1], bottom: [2] },
+  });
+  const [, second] = updateBoard(board, PromptSubmitted(), gf, "T1");
+  expect(second).toHaveLength(0);
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s, board)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.selector('[data-testid="prompt-arrange-top"] [data-testid="prompt-card-1"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="prompt-arrange-bottom"] [data-testid="prompt-card-1"]')).toBeAbsent(),
+    Scene.expect(Scene.selector('[data-testid="prompt-arrange-bottom"] [data-testid="prompt-card-2"]')).toExist(),
+  );
 });
 
 test("select_from_top Take lane click emits select_from_top intent", () => {
@@ -515,9 +614,9 @@ test("optional on-board choose_target Decline emits empty choose_targets", () =>
       ],
       pending_choice: {
         kind: "choose_target",
-        label: "Target creature",
+        label: testMessageRef("Target creature"),
+        min: 0,
         max: 1,
-        optional: true,
         player: 0,
         source: 1,
         items: [{ id: 7, label: "Bear" }],
@@ -607,6 +706,158 @@ test("search_library Fail to find declines", () => {
   });
   const intents = clickPromptIntent(s, Scene.click(Scene.testId("prompt-decline")));
   expect(intents).toEqual([{ kind: "search_library", player: 0, choice: null }]);
+});
+
+test("optional may_return_from_graveyard Decline emits empty choose_sacrifices", () => {
+  const s = state({
+    objects: [
+      {
+        controller: 0,
+        has_haste: false,
+        id: 8,
+        is_commander: false,
+        kind: { kind: "creature", power: 2, toughness: 2 },
+        mana_cost: { generic: 1, colored: [0, 0, 0, 0, 0] },
+        marked_damage: 0,
+        name: "Forest",
+        needs_target: false,
+        owner: 0,
+        plus_counters: 0,
+        power: 2,
+        summoning_sick: false,
+        tapped: false,
+        toughness: 2,
+        zone: ZONE.Graveyard,
+      },
+    ],
+    pending_choice: {
+      kind: "may_return_from_graveyard",
+      player: 0,
+      source: 1,
+      mandatory: false,
+      items: [{ id: 8, label: "Forest" }],
+    },
+  });
+  const commands: unknown[] = [];
+  const update = (model: ViewModel, message: Message): readonly [ViewModel, ReadonlyArray<never>] => {
+    const [board, nextCommands] = updateBoard(model.board, message, model.fold, model.tableId);
+    commands.push(...nextCommands);
+    return [{ ...model, board }, []];
+  };
+
+  Scene.scene(
+    { update, view },
+    Scene.with(
+      viewModel(s, {
+        ...initialBoardModel(),
+        pileExpand: { zone: ZONE.Graveyard, owner: 0 },
+      }),
+    ),
+    resolveBoardOverlayMounts(),
+    Scene.click(Scene.testId("prompt-decline")),
+  );
+
+  expect(commands.map(intentFromCommand)).toEqual([{ kind: "choose_sacrifices", player: 0, sacrifices: [] }]);
+});
+
+test("mandatory may_return_from_graveyard blocks empty submit until a card is chosen", () => {
+  const s = state({
+    pending_choice: {
+      kind: "may_return_from_graveyard",
+      player: 0,
+      source: 1,
+      mandatory: true,
+      items: [{ id: 8, label: "Forest" }],
+    },
+  });
+  const commands: unknown[] = [];
+  const update = (model: ViewModel, message: Message): readonly [ViewModel, ReadonlyArray<never>] => {
+    const [board, nextCommands] = updateBoard(model.board, message, model.fold, model.tableId);
+    commands.push(...nextCommands);
+    return [{ ...model, board }, []];
+  };
+
+  Scene.scene(
+    { update, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("prompt-submit")).toBeDisabled(),
+    Scene.expect(Scene.testId("prompt-decline")).toBeAbsent(),
+    Scene.click(Scene.testId("prompt-card-8")),
+    Scene.expect(Scene.testId("prompt-submit")).toBeEnabled(),
+    Scene.click(Scene.testId("prompt-submit")),
+  );
+
+  expect(commands.map(intentFromCommand)).toEqual([{ kind: "choose_sacrifices", player: 0, sacrifices: [8] }]);
+});
+
+test("may_exile_discarded_to_play shows exile and decline copy on graveyard aim", () => {
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(mayExileDiscardedState())),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("pending-gy-aim")).toExist(),
+    Scene.expect(Scene.testId("prompt-submit")).toHaveText("Exile"),
+    Scene.expect(Scene.testId("prompt-decline")).toHaveText("Don't exile"),
+  );
+});
+
+test("may_exile_discarded_to_play decline emits empty choose_sacrifices", () => {
+  const intents = clickPromptIntent(mayExileDiscardedState(), Scene.click(Scene.testId("prompt-decline")));
+  expect(intents).toEqual([{ kind: "choose_sacrifices", player: 0, sacrifices: [] }]);
+});
+
+test("may_exile_discarded_to_play submit emits the chosen discarded card", () => {
+  const s = mayExileDiscardedState();
+  const gf = gameFold(s);
+  const board = updateBoard(initialBoardModel(), PromptCardToggled({ id: 8 }), gf, "T1")[0];
+  const [, commands] = updateBoard(board, PromptSubmitted(), gf, "T1");
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "choose_sacrifices",
+    player: 0,
+    sacrifices: [8],
+  });
+});
+
+test("choose_copy_target swaps to counter wording for the MayPutCounterOnCreature primer", () => {
+  const s = state({
+    pending_choice: {
+      kind: "choose_copy_target",
+      player: 0,
+      source: 1,
+      put_counter_on_creature: true,
+      items: [{ id: 9, label: "Grizzly Bears" }],
+    },
+  });
+
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("pending-card-pick-aim")).toExist(),
+    Scene.expect(Scene.testId("pick-title")).toHaveText("Choose a creature to get a +1/+1 counter"),
+    Scene.expect(Scene.testId("prompt-submit")).toHaveText("Put counter"),
+  );
+});
+
+test("choose_copy_target keeps copy wording for real copy prompts", () => {
+  const s = state({
+    pending_choice: {
+      kind: "choose_copy_target",
+      player: 0,
+      source: 1,
+      items: [{ id: 9, label: "Grizzly Bears" }],
+    },
+  });
+
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("pending-card-pick-aim")).toExist(),
+    Scene.expect(Scene.testId("pick-title")).toHaveText("Choose a copy target"),
+    Scene.expect(Scene.testId("prompt-submit")).toHaveText("Copy"),
+  );
 });
 
 test("opponent_chooses_revealed_to_graveyard card click submits choose_exiled", () => {
@@ -778,7 +1029,7 @@ test("may_yes_no prompt emits answer_may intent from UI", () => {
     state({
       pending_choice: {
         kind: "may_yes_no",
-        label: "Draw a card?",
+        label: testMessageRef("Draw a card?"),
         player: 0,
         source: 1,
       },
@@ -793,8 +1044,9 @@ test("pay_cost prompt emits pay_optional_cost intent from UI", () => {
     state({
       pending_choice: {
         kind: "pay_cost",
+        can_pay: true,
         cost: { colored: [], generic: 2 },
-        label: "Pay 2?",
+        label: testMessageRef("Pay 2?"),
         player: 0,
         source: 1,
       },
@@ -808,8 +1060,9 @@ test("pay_cost prompt shows cost on Pay and Don't pay decline", () => {
   const s = state({
     pending_choice: {
       kind: "pay_cost",
+      can_pay: true,
       cost: { colored: [0, 0, 0, 1, 0], generic: 2 },
-      label: "Create a Fungus Beast",
+      label: testMessageRef("Create a Fungus Beast"),
       player: 0,
       source: 1,
     },
@@ -822,6 +1075,26 @@ test("pay_cost prompt shows cost on Pay and Don't pay decline", () => {
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-pay")).toHaveText("Pay {2}{R}"),
     Scene.expect(Scene.testId("prompt-decline")).toHaveText("Don't pay"),
+  );
+});
+
+test("pay_cost prompt disables Pay when the player cannot afford the cost", () => {
+  const s = state({
+    pending_choice: {
+      kind: "pay_cost",
+      can_pay: false,
+      cost: { colored: [0, 0, 0, 1, 0], generic: 2 },
+      label: testMessageRef("Create a Fungus Beast"),
+      player: 0,
+      source: 1,
+    },
+  });
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("prompt-pay")).toBeDisabled(),
+    Scene.expect(Scene.testId("prompt-decline")).toExist(),
   );
 });
 
@@ -884,7 +1157,7 @@ test("choose_mode prompt emits choose_mode intent from UI", () => {
     state({
       pending_choice: {
         kind: "choose_mode",
-        labels: ["Mode A", "Mode B"],
+        labels: [testMessageRef("Mode A"), testMessageRef("Mode B")],
         player: 0,
         source: 1,
       },
@@ -902,7 +1175,7 @@ test("choose_mode aim docks above the hand bar", () => {
         state({
           pending_choice: {
             kind: "choose_mode",
-            labels: ["Mode A", "Mode B"],
+            labels: [testMessageRef("Mode A"), testMessageRef("Mode B")],
             player: 0,
             source: 1,
           },
@@ -921,8 +1194,8 @@ test("choose_trigger_modes aim docks above the hand bar", () => {
       kind: "choose_trigger_modes",
       choose: 1,
       modes: [
-        { label: "Draw a card", needs_target: false, targets: [] },
-        { label: "Gain 1 life", needs_target: false, targets: [] },
+        { label: testMessageRef("Draw a card"), needs_target: false, targets: [] },
+        { label: testMessageRef("Gain 1 life"), needs_target: false, targets: [] },
       ],
       optional: false,
       player: 0,
@@ -943,7 +1216,7 @@ test("choose_target_players on-board aim shows pending-player-aim chrome", () =>
   const s = state({
     pending_choice: {
       kind: "choose_target_players",
-      label: "Choose opponents",
+      label: testMessageRef("Choose opponents"),
       min: 1,
       max: 2,
       player: 0,
@@ -1005,7 +1278,7 @@ test("choose_splitting_opponent on-board aim shows pending-player-aim chrome", (
         { id: 0, label: "Player 2", player: 1 },
         { id: 0, label: "Player 3", player: 2 },
       ],
-      label: "Choose an opponent",
+      label: testMessageRef("Choose an opponent"),
       player: 0,
       source: 1,
     },
@@ -1214,6 +1487,7 @@ test("may_draw_up_to prompt emits choose_draw_count intent from UI", () => {
   const s = state({
     pending_choice: {
       kind: "may_draw_up_to",
+      label: testMessageRef("You may draw up to 3"),
       max: 3,
       player: 0,
     },
@@ -1290,7 +1564,7 @@ function xAction(): ActionView {
   return {
     id: 12,
     kind: "cast",
-    label: "Comet Storm",
+    label: testMessageRef("Comet Storm"),
     has_x: true,
     min_x: 0,
     max_x: 3,

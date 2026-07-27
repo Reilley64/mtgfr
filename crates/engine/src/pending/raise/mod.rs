@@ -5,6 +5,8 @@
 //! here are pause payloads, not pure constructors for those flows (prep mutates via events
 //! before the pause).
 
+use std::sync::Arc;
+
 mod common;
 mod copy;
 mod dig;
@@ -48,10 +50,10 @@ pub(crate) enum ChoiceRequest {
         source: crate::ObjectId,
         target: Option<crate::Target>,
         x: u32,
-        modes: &'static [crate::Effect],
+        modes: Arc<[crate::Effect]>,
+        at_placement: bool,
         /// Whether the mode is being chosen for an *activated* ability as it goes on the stack
-        /// (CR 601.2b — Cankerbloom) rather than for a triggered "choose one" at resolution (CR
-        /// 700.2, the historical `false` path). See [`crate::PendingChoice::ChooseMode`].
+        /// (CR 601.2b — Cankerbloom). See [`crate::PendingChoice::ChooseMode`].
         activated: bool,
     },
     MayYesNo {
@@ -106,12 +108,25 @@ pub(crate) enum ChoiceRequest {
         player: crate::PlayerId,
         source: crate::ObjectId,
         filter: crate::CardFilter,
+        mandatory: bool,
+    },
+    /// [`Effect::Choice(ChoiceEffect::MayExileDiscardedNonlandMayPlay)`] — no card still in the
+    /// graveyard skips (Conspiracy Theorist).
+    MayExileDiscardedNonlandMayPlay {
+        player: crate::PlayerId,
+        source: crate::ObjectId,
+        cards: &'static [crate::ObjectId],
     },
     /// [`Effect::Choice(ChoiceEffect::MayDiscard)`] — empty hand skips.
     MayDiscard {
         player: crate::PlayerId,
         source: crate::ObjectId,
         then: &'static [crate::Effect],
+    },
+    /// [`Effect::Choice(ChoiceEffect::MayPutCounterOnCreature)`] — no battlefield creature skips.
+    MayPutCounterOnCreature {
+        player: crate::PlayerId,
+        source: crate::ObjectId,
     },
     /// [`Effect::Choice(ChoiceEffect::Discard)`] — empty (or zero-count) hand skips.
     Discard {
@@ -180,10 +195,13 @@ pub(crate) enum ChoiceRequest {
         player: crate::PlayerId,
         tapped: bool,
     },
-    /// [`Effect::Choice(ChoiceEffect::PutCreatureFromHand)`] — no hand creature skips.
+    /// [`Effect::Choice(ChoiceEffect::PutCreatureFromHand)`] — no eligible hand creature skips.
     PutCreatureFromHand {
         player: crate::PlayerId,
         source: crate::ObjectId,
+        subtypes: &'static [&'static str],
+        keep: bool,
+        defender: Option<crate::PlayerId>,
     },
     /// [`Effect::Choice(ChoiceEffect::CastCreatureFaceDown)`] — no payable creature skips.
     CastCreatureFaceDown {
@@ -230,6 +248,11 @@ pub(crate) enum ChoiceRequest {
         remaining: Vec<crate::PlayerId>,
         source: crate::ObjectId,
     },
+    /// Next opponent in a discard fan-out (Syphon Mind) — empty-hand seats skipped.
+    NextDiscardEdict {
+        remaining: Vec<crate::PlayerId>,
+        source: crate::ObjectId,
+    },
     /// Next seat in Tragic Arrogance's caster-keep fan-out — empty remaining skips.
     NextCasterKeep {
         remaining: Vec<crate::PlayerId>,
@@ -265,6 +288,7 @@ pub(crate) enum ChoiceRequest {
         remaining: Vec<crate::PlayerId>,
         keep_one: bool,
         filter: crate::PermanentFilter,
+        count: u32,
         follow_up: &'static [crate::Effect],
         controller: crate::PlayerId,
         source: crate::ObjectId,
@@ -279,6 +303,7 @@ pub(crate) enum ChoiceRequest {
         keep_one: bool,
         filter: crate::PermanentFilter,
         life_loss: i32,
+        count: u32,
         then: &'static [crate::Effect],
     },
     /// Herald dig / cascade / Creative Technique — empty `candidates` → `None` (caller bottoms).
@@ -390,12 +415,21 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
             player,
             source,
             filter,
-        } => optional::may_return_from_graveyard(game, player, source, filter),
+            mandatory,
+        } => optional::may_return_from_graveyard(game, player, source, filter, mandatory),
+        ChoiceRequest::MayExileDiscardedNonlandMayPlay {
+            player,
+            source,
+            cards,
+        } => optional::may_exile_discarded_nonland_may_play(game, player, source, cards),
         ChoiceRequest::MayDiscard {
             player,
             source,
             then,
         } => optional::may_discard(game, player, source, then),
+        ChoiceRequest::MayPutCounterOnCreature { player, source } => {
+            optional::may_put_counter_on_creature(game, player, source)
+        }
         ChoiceRequest::Discard {
             player,
             count,
@@ -460,9 +494,13 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
         ChoiceRequest::PutLandFromHand { player, tapped } => {
             library::put_land_from_hand(game, player, tapped)
         }
-        ChoiceRequest::PutCreatureFromHand { player, source } => {
-            library::put_creature_from_hand(game, player, source)
-        }
+        ChoiceRequest::PutCreatureFromHand {
+            player,
+            source,
+            subtypes,
+            keep,
+            defender,
+        } => library::put_creature_from_hand(game, player, source, subtypes, keep, defender),
         ChoiceRequest::CastCreatureFaceDown { player, spent_mana } => {
             library::cast_creature_face_down(game, player, spent_mana)
         }
@@ -494,6 +532,9 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
         ChoiceRequest::NextGraveyardExile { remaining, source } => {
             fanout::next_graveyard_exile(game, remaining, source)
         }
+        ChoiceRequest::NextDiscardEdict { remaining, source } => {
+            fanout::next_discard_edict(game, remaining, source)
+        }
         ChoiceRequest::NextCasterKeep {
             remaining,
             caster,
@@ -519,11 +560,12 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
             remaining,
             keep_one,
             filter,
+            count,
             follow_up,
             controller,
             source,
         } => fanout::next_sacrifice_edict(
-            game, remaining, keep_one, filter, follow_up, controller, source,
+            game, remaining, keep_one, filter, count, follow_up, controller, source,
         ),
         ChoiceRequest::ChooseExiledDigToCastFree {
             player,

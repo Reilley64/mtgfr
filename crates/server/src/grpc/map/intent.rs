@@ -65,8 +65,8 @@ pub fn wire_intent_to_pb(intent: WireIntent) -> pb::WireIntent {
             evoked,
             strive_count,
             replicate_count,
-            alternative_cost,
             multikicker_count,
+            alternative_cost,
         } => Intent::Cast(pb::WireIntentCast {
             player: u32::from(player),
             object,
@@ -81,8 +81,8 @@ pub fn wire_intent_to_pb(intent: WireIntent) -> pb::WireIntent {
             evoked,
             strive_count: u32::from(strive_count),
             replicate_count: u32::from(replicate_count),
-            alternative_cost,
             multikicker_count: u32::from(multikicker_count),
+            alternative_cost,
         }),
         WireIntent::PlayLand { player, object } => Intent::PlayLand(pb::WireIntentPlayLand {
             player: u32::from(player),
@@ -322,6 +322,12 @@ pub fn wire_intent_to_pb(intent: WireIntent) -> pb::WireIntent {
                 host,
             })
         }
+        WireIntent::ChooseLegendaryKeep { player, keep } => {
+            Intent::ChooseLegendaryKeep(pb::WireIntentChooseLegendaryKeep {
+                player: u32::from(player),
+                keep,
+            })
+        }
         WireIntent::ChooseCopyTarget { player, copy } => {
             Intent::ChooseCopyTarget(pb::WireIntentChooseCopyTarget {
                 player: u32::from(player),
@@ -494,8 +500,8 @@ pub fn wire_intent_from_pb(intent: pb::WireIntent) -> Result<WireIntent, String>
             evoked,
             strive_count,
             replicate_count,
-            alternative_cost,
             multikicker_count,
+            alternative_cost,
         }) => WireIntent::Cast {
             player: u8_trunc(player),
             object,
@@ -510,8 +516,8 @@ pub fn wire_intent_from_pb(intent: pb::WireIntent) -> Result<WireIntent, String>
             evoked,
             strive_count: u8_trunc(strive_count),
             replicate_count: u8_trunc(replicate_count),
-            alternative_cost,
             multikicker_count: u8_trunc(multikicker_count),
+            alternative_cost,
         },
         Intent::PlayLand(pb::WireIntentPlayLand { player, object }) => WireIntent::PlayLand {
             player: u8_trunc(player),
@@ -753,6 +759,12 @@ pub fn wire_intent_from_pb(intent: pb::WireIntent) -> Result<WireIntent, String>
                 host,
             }
         }
+        Intent::ChooseLegendaryKeep(pb::WireIntentChooseLegendaryKeep { player, keep }) => {
+            WireIntent::ChooseLegendaryKeep {
+                player: u8_trunc(player),
+                keep,
+            }
+        }
         Intent::ChooseCopyTarget(pb::WireIntentChooseCopyTarget { player, copy }) => {
             WireIntent::ChooseCopyTarget {
                 player: u8_trunc(player),
@@ -926,7 +938,7 @@ mod tests {
             evoked: false,
             strive_count: 2,
             replicate_count: 0,
-            multikicker_count: 0,
+            multikicker_count: 4,
             alternative_cost: false,
         };
         let pb = wire_intent_to_pb(cast.clone());

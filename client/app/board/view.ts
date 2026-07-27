@@ -4,6 +4,7 @@ import { boardStatusSummary } from "~/boardStatus";
 import { colors } from "~/design-tokens.generated";
 import { isActivePlayer } from "~/spectator";
 import type { VisibleState } from "~/wire/types";
+import type { CardArtTick } from "../domain/ui/card-art";
 import type { GameFoldState } from "../game/fold";
 import {
   pendingDamageAssignOverlay,
@@ -20,13 +21,17 @@ import { layout, STEP } from "./geometry/layout";
 import { stackPresentation } from "./geometry/stackLayout";
 import { autoTapPreviewIds, paymentPreviewAction } from "./html/actions";
 import { MountBoardAudio, MountHintAutoHide } from "./html/audio-mount";
+import { MountBoardCameraGesture } from "./html/camera-gesture-mount";
 import { MountBoardKeyboard } from "./html/keyboard-mount";
 import { manaTrayView } from "./html/mana-tray";
 import { boardOverlays } from "./html/overlays";
 import { BoardPointerDown, BoardPointerMove, BoardPointerUp, type Message } from "./messages";
 import type { BoardModel } from "./submodel";
 
-const h = html<Message>();
+/** Board TEA messages plus shell ticks emitted by shared mounts (e.g. `cardArt`). */
+export type ViewMessage = Message | typeof CardArtTick.Type;
+
+const h = html<ViewMessage>();
 
 export type BoardViewModel = {
   board: BoardModel;
@@ -70,6 +75,8 @@ function boardAudioAttrs(model: BoardViewModel, state: VisibleState) {
     h.DataAttribute("feel-stack", feel.stack ? "1" : "0"),
     h.DataAttribute("feel-resolve", feel.resolve ? "1" : "0"),
     h.DataAttribute("feel-damage", feel.damage ? "1" : "0"),
+    h.DataAttribute("feel-destroy", feel.destroy ? "1" : "0"),
+    h.DataAttribute("feel-exile", feel.exile ? "1" : "0"),
   ];
 }
 
@@ -77,7 +84,12 @@ function hintVisible(board: BoardModel): boolean {
   return !board.hintDismissed && !board.hintAutoHidden;
 }
 
-export const view = Submodel.defineView<BoardViewModel, Message>((model) => {
+function reconnectBannerText(model: BoardViewModel): string | null {
+  if (model.connected) return null;
+  return model.fold.reject ?? "Connection lost — reconnecting…";
+}
+
+export const view = Submodel.defineView<BoardViewModel, ViewMessage>((model) => {
   const state = model.fold.state;
   if (state == null) return connectingBoard();
 
@@ -169,6 +181,7 @@ export const view = Submodel.defineView<BoardViewModel, Message>((model) => {
     stagedAttackers: model.board.combatAttackers,
     stagedBlocks: model.board.combatBlocks,
     flights: [...model.board.flights.values()],
+    exitFx: [...model.board.exitFx.values()],
     hideCardIds: model.board.hideCardIds,
     targetObjects: overlay.targetObjects,
     pickedObjects:
@@ -215,6 +228,7 @@ export const view = Submodel.defineView<BoardViewModel, Message>((model) => {
         };
 
   const ariaSummary = boardStatusSummary(state, state.viewer);
+  const reconnectText = reconnectBannerText(model);
 
   // Foldkit keeps only the last OnMount insert hook per element — never stack
   // MountBoardKeyboard / MountBoardAudio / MountHintAutoHide on the same node
@@ -250,6 +264,16 @@ export const view = Submodel.defineView<BoardViewModel, Message>((model) => {
             [],
           )
         : null,
+      h.div(
+        [
+          h.Class("pointer-events-none absolute inset-0 z-10 touch-none"),
+          h.DataAttribute("testid", "board-camera-gesture-mount"),
+          h.DataAttribute("board-width", String(model.board.viewport.width)),
+          h.DataAttribute("board-height", String(model.board.viewport.height)),
+          h.OnMount(MountBoardCameraGesture()),
+        ],
+        [],
+      ),
       h.div([h.Class("sr-only"), h.Attribute("aria-live", "polite")], [ariaSummary]),
       Canvas.view<Message>({
         width: model.board.viewport.width,
@@ -299,7 +323,7 @@ export const view = Submodel.defineView<BoardViewModel, Message>((model) => {
         ],
         [],
       ),
-      model.connected
+      reconnectText == null
         ? null
         : h.div(
             [
@@ -308,7 +332,7 @@ export const view = Submodel.defineView<BoardViewModel, Message>((model) => {
                 "fixed top-0 right-0 left-0 z-40 bg-reconnect-rust p-sm text-center font-semibold text-label text-snow",
               ),
             ],
-            ["Reconnecting…"],
+            [reconnectText],
           ),
     ],
   );

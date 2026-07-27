@@ -5,44 +5,60 @@
 //! recompute (`pt_layers`/`apply_pt_layers` — 7b base-set, 7c modifications); keywords/other
 //! characteristics stay additive per engine-core-and-event-model spec. Deferred / gaps: per-deck increments under `docs/fidelity/` (fidelity-grind skill).
 
+use std::sync::Arc;
+
 use crate::*;
 
-/// What a would-be counter placement is aimed at (CR 122.1 — counters sit on permanents and on
-/// players). Engine-internal: the key [`Game::replaced_counters`] answers a CR 614 counter
-/// replacement against.
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum CounterRecipient {
-    Permanent(ObjectId),
-    Player(PlayerId),
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum ContinuousLayer {
+    Type,
+    Ability,
+    PowerToughnessBase,
+    PowerToughnessModifier,
+    Keywords,
 }
 
-/// Whether a replacement's declared recipient scope covers the recipient at hand.
-fn recipients_accept(recipients: CounterRecipients, is_permanent: bool) -> bool {
-    match recipients {
-        CounterRecipients::Permanents => is_permanent,
-        CounterRecipients::Players => !is_permanent,
-        CounterRecipients::PermanentsAndPlayers => true,
-    }
-}
-
-/// One CR 613 continuous-effect entry contributing to a creature's power/toughness, built fresh
-/// per recompute in [`Game::pt_layers`] and applied in order by [`Game::apply_pt_layers`].
-/// Engine-internal — NOT a `CardDef`/TOML surface and never stored (a runtime `Vec`, so `CardDef`
-/// stays `Copy`). `source`/`timestamp` are forward-compat: they only break application ties today
-/// (see [`Game::apply_pt_layers`]) — real CR 613.7 dependency ordering + per-effect timestamps
-/// arrive with the slice that needs them (Quandrix Charm / stacked base-sets — none in the pool).
-struct PtLayer {
+/// One engine-internal CR 613 continuous-effect entry affecting an object's effective
+/// characteristics. Built fresh per query from today's board/runtime state; never stored back onto
+/// `CardDef` or serialized. `timestamp` is the CR 613.7 same-layer ordering key.
+#[derive(Clone, Copy)]
+struct ContinuousEffect {
     source: ObjectId,
     timestamp: u64,
-    kind: PtLayerKind,
+    kind: ContinuousEffectKind,
 }
 
-enum PtLayerKind {
-    /// CR 613.3(7b): the creature's base P/T is set (today's `SetAttachedBasePT` Aura).
+#[derive(Clone, Copy)]
+enum ContinuousEffectKind {
+    /// CR 613.4: type/subtype-changing effect.
+    SetTypes {
+        add_types: TypeSet,
+        /// When `true`, `add_types` *replaces* the host's printed card types (Darksteel Mutation),
+        /// rather than being unioned onto them (Angelic Destiny).
+        set_types: bool,
+        set_subtypes: Option<&'static [&'static str]>,
+        add_subtypes: &'static [&'static str],
+    },
+    /// CR 613.1f/613.1e: "loses all abilities" effect on the host's own printed abilities.
+    LoseAllAbilities,
+    /// CR 613.3(7b): the creature's base P/T is set.
     BasePtSet { power: i32, toughness: i32 },
-    /// CR 613.3(7c): a P/T modification added on top of the base (counters, until-EOT boosts,
-    /// anthems, `grant_to_attached`).
+    /// CR 613.3(7c): a P/T modification added on top of the base.
     PtDelta { power: i32, toughness: i32 },
+    /// Keyword abilities granted by a continuous effect.
+    GrantKeywords { keywords: &'static [Keyword] },
+}
+
+impl ContinuousEffect {
+    fn layer(self) -> ContinuousLayer {
+        match self.kind {
+            ContinuousEffectKind::SetTypes { .. } => ContinuousLayer::Type,
+            ContinuousEffectKind::LoseAllAbilities => ContinuousLayer::Ability,
+            ContinuousEffectKind::BasePtSet { .. } => ContinuousLayer::PowerToughnessBase,
+            ContinuousEffectKind::PtDelta { .. } => ContinuousLayer::PowerToughnessModifier,
+            ContinuousEffectKind::GrantKeywords { .. } => ContinuousLayer::Keywords,
+        }
+    }
 }
 
 impl Game {
@@ -161,8 +177,8 @@ impl Game {
 
         for attachment in self.attachments(object) {
             let name = self.def_of(attachment).name;
-            for ability in self.def_of(attachment).abilities {
-                match (ability.timing, ability.effect) {
+            for ability in self.def_of(attachment).abilities.iter().cloned() {
+                match (ability.timing, ability.effect.clone()) {
                     (
                         Timing::Static,
                         Effect::Static(StaticEffect::GrantToAttached {
@@ -217,7 +233,8 @@ impl Game {
                 let Some(p) = self.as_permanent(id) else {
                     continue;
                 };
-                for ability in p.def.abilities {
+                let def = card_def(p.def);
+                for ability in def.abilities.iter().cloned() {
                     let (
                         Timing::Static,
                         Effect::Static(StaticEffect::Anthem {
@@ -231,7 +248,7 @@ impl Game {
                             all_players,
                             ..
                         }),
-                    ) = (ability.timing, ability.effect)
+                    ) = (ability.timing, ability.effect.clone())
                     else {
                         continue;
                     };
@@ -255,7 +272,7 @@ impl Game {
                     if attacking_only && !self.combat.attackers.contains(&object) {
                         continue;
                     }
-                    let name = p.def.name;
+                    let name = def.name;
                     if let (Amount::Fixed(power), Amount::Fixed(toughness)) = (power, toughness)
                         && (power != 0 || toughness != 0)
                     {
@@ -279,16 +296,17 @@ impl Game {
                     Some(p) if p.owner == owner => p,
                     _ => continue,
                 };
-                for ability in p.def.abilities {
+                let def = card_def(p.def);
+                for ability in def.abilities.iter().cloned() {
                     let (
                         Timing::Static,
                         Effect::Static(StaticEffect::GrantManaAbility { filter, .. }),
-                    ) = (ability.timing, ability.effect)
+                    ) = (ability.timing, ability.effect.clone())
                     else {
                         continue;
                     };
                     if self.permanent_matches(&filter, object, owner, None) {
-                        push(p.def.name, ModifierContribution::ManaAbility);
+                        push(def.name, ModifierContribution::ManaAbility);
                     }
                 }
             }
@@ -410,13 +428,47 @@ impl Game {
             colors[color.index()] = true;
             return colors;
         }
-        let mut colors = color_identity(self.def_of(object));
+        let mut colors = color_identity(&self.def_of(object));
         if let Some(p) = self.as_permanent(object) {
             for color in p.added_colors_eot {
                 colors[color.index()] = true;
             }
         }
         colors
+    }
+
+    /// The old "Radiance" keyword action's target batch (Cleansing Beam, Bathe in Light): the
+    /// chosen `target` creature itself, plus every *other* creature on the battlefield sharing
+    /// at least one color with it (CR 105.2). Only `target` itself is a real target — CR 608.2b
+    /// legality/protection/hexproof gate only that one chosen creature at cast time; the rest of
+    /// the batch is swept in untargeted at resolution, the same way `DamageEffect::EachCreature`
+    /// sweeps its filter (protection still independently prevents each swept creature's own
+    /// share — checked per-creature by the caller). A colorless `target` shares no color with
+    /// anything, so its batch is itself alone.
+    pub(crate) fn radiance_batch(&self, target: ObjectId) -> Vec<ObjectId> {
+        let target_colors = self.colors_of(target);
+        self.battlefield()
+            .into_iter()
+            .filter(|&id| {
+                id == target
+                    || (self.is_creature_on_battlefield(id)
+                        && Color::ALL
+                            .iter()
+                            .any(|c| target_colors[c.index()] && self.colors_of(id)[c.index()]))
+            })
+            .collect()
+    }
+
+    /// The color named by a `choose_color` step for `object`, wherever it's stored: a permanent
+    /// (Mother of Runes, Flickering Ward's own [`Permanent::chosen_color`]) or a spell mid-
+    /// resolution (Bathe in Light's [`Spell::chosen_color`] — a spell isn't a permanent yet, so
+    /// it can't share that slot). `None` if `object` is neither, or named no color.
+    pub(crate) fn chosen_color_of(&self, object: ObjectId) -> Option<Color> {
+        match &self.objects[object as usize] {
+            Object::Permanent(p) => p.chosen_color,
+            Object::Spell(s) => s.chosen_color,
+            _ => None,
+        }
     }
 
     /// `player`'s commander color identity (CR 903.4) — the [`color_identity`] of their
@@ -427,7 +479,7 @@ impl Game {
         self.live_object_ids()
             .into_iter()
             .find(|&id| self.is_commander(id) && self.owner_of(id) == player)
-            .map_or([false; Color::COUNT], |id| color_identity(self.def_of(id)))
+            .map_or([false; Color::COUNT], |id| color_identity(&self.def_of(id)))
     }
 
     /// The mana credit "one mana of any color in your commander's color identity" (CR 903.4 —
@@ -501,7 +553,7 @@ impl Game {
                 LandProduces::OpponentColors => {}
             }
         }
-        for ability in def.abilities {
+        for ability in def.abilities.iter().cloned() {
             let Effect::Mana(ManaEffect::Add {
                 mana: produced,
                 identity,
@@ -644,51 +696,294 @@ impl Game {
         self.as_permanent(object).and_then(|p| p.attached_to)
     }
 
-    /// Each [`Effect::Static(StaticEffect::GrantToAttached)`] granted to `host` by a permanent attached to it,
-    /// as `(power, toughness, keywords)`. Drives the additive P/T and keyword recompute.
-    /// `power`/`toughness` are an [`Amount`], resolved live off the attached permanent as the
-    /// effect's controller/source (Sage's Reverie's "+1/+1 for each Aura you control that's
-    /// attached to a creature" — a board-derived grant, mirroring how
-    /// [`Game::anthem_pt_bonus`] resolves [`Effect::Static(StaticEffect::Anthem)`]'s amounts).
-    pub(crate) fn attachment_grants(
-        &self,
-        host: ObjectId,
-    ) -> impl Iterator<Item = (i32, i32, &'static [Keyword])> + '_ {
-        // Champion's Helm's "as long as equipped creature is legendary" gate — a `legendary_only`
-        // grant contributes no keywords at all while the host isn't legendary.
+    fn static_continuous_timestamp(&self, source: ObjectId) -> u64 {
+        self.as_permanent(source)
+            .map_or(source as u64, |p| p.continuous_timestamp)
+    }
+
+    fn attachment_type_continuous_effects(&self, host: ObjectId) -> Vec<ContinuousEffect> {
+        let mut effects = Vec::new();
+        for id in self.attachments(host) {
+            if self.is_phased_out(id) {
+                continue;
+            }
+            let timestamp = self.static_continuous_timestamp(id);
+            for ability in self.def_of(id).abilities.iter().cloned() {
+                let (
+                    Timing::Static,
+                    Effect::Static(StaticEffect::SetAttachedTypes {
+                        add_types,
+                        set_types,
+                        add_subtypes,
+                        set_subtypes,
+                        lose_all_abilities,
+                    }),
+                ) = (ability.timing, ability.effect.clone())
+                else {
+                    continue;
+                };
+                effects.push(ContinuousEffect {
+                    source: id,
+                    timestamp,
+                    kind: ContinuousEffectKind::SetTypes {
+                        add_types,
+                        set_types,
+                        set_subtypes: (!set_subtypes.is_empty()).then_some(set_subtypes),
+                        add_subtypes,
+                    },
+                });
+                if lose_all_abilities {
+                    effects.push(ContinuousEffect {
+                        source: id,
+                        timestamp,
+                        kind: ContinuousEffectKind::LoseAllAbilities,
+                    });
+                }
+            }
+        }
+        effects
+    }
+
+    fn attachment_continuous_effects(&self, host: ObjectId) -> Vec<ContinuousEffect> {
         let host_legendary = self.def_of(host).legendary;
-        self.attachments(host)
-            .into_iter()
-            // A phased-out Aura/Equipment grants nothing (CR 702.26e — treated as though it
-            // doesn't exist); `attachments` is unfiltered so the phase-in cascade can still find it.
-            .filter(move |&id| !self.is_phased_out(id))
-            .flat_map(move |id| {
-                let controller = self.controller_of(id);
-                self.def_of(id)
-                    .abilities
-                    .iter()
-                    .filter_map(move |a| match (a.timing, a.effect) {
-                        (
-                            Timing::Static,
-                            Effect::Static(StaticEffect::GrantToAttached {
-                                power,
-                                toughness,
-                                keywords,
-                                legendary_only,
-                                ..
-                            }),
-                        ) => Some((
-                            self.resolve_amount(power, controller, id, None, 0),
-                            self.resolve_amount(toughness, controller, id, None, 0),
-                            if legendary_only && !host_legendary {
-                                &[]
-                            } else {
-                                keywords
-                            },
-                        )),
-                        _ => None,
-                    })
-            })
+        let mut effects = Vec::new();
+        for id in self.attachments(host) {
+            if self.is_phased_out(id) {
+                continue;
+            }
+            let controller = self.controller_of(id);
+            let timestamp = self.static_continuous_timestamp(id);
+            for ability in self.def_of(id).abilities.iter().cloned() {
+                match (ability.timing, ability.effect.clone()) {
+                    (
+                        Timing::Static,
+                        Effect::Static(StaticEffect::GrantToAttached {
+                            power,
+                            toughness,
+                            keywords,
+                            legendary_only,
+                            ..
+                        }),
+                    ) => {
+                        let power = self.resolve_amount(power, controller, id, None, 0);
+                        let toughness = self.resolve_amount(toughness, controller, id, None, 0);
+                        if power != 0 || toughness != 0 {
+                            effects.push(ContinuousEffect {
+                                source: id,
+                                timestamp,
+                                kind: ContinuousEffectKind::PtDelta { power, toughness },
+                            });
+                        }
+                        let keywords = if legendary_only && !host_legendary {
+                            &[]
+                        } else {
+                            keywords
+                        };
+                        if !keywords.is_empty() {
+                            effects.push(ContinuousEffect {
+                                source: id,
+                                timestamp,
+                                kind: ContinuousEffectKind::GrantKeywords { keywords },
+                            });
+                        }
+                    }
+                    (
+                        Timing::Static,
+                        Effect::Static(StaticEffect::SetAttachedBasePt { power, toughness }),
+                    ) => effects.push(ContinuousEffect {
+                        source: id,
+                        timestamp,
+                        kind: ContinuousEffectKind::BasePtSet { power, toughness },
+                    }),
+                    (Timing::Static, Effect::Static(StaticEffect::SetAttachedTypes { .. })) => {}
+                    _ => {}
+                }
+            }
+        }
+        effects
+    }
+
+    fn runtime_continuous_effects(&self, object: ObjectId) -> Vec<ContinuousEffect> {
+        let Some(p) = self.as_permanent(object) else {
+            return Vec::new();
+        };
+        let mut effects = Vec::new();
+        if let Some((power, toughness)) = p.base_pt_set_eot {
+            effects.push(ContinuousEffect {
+                source: object,
+                timestamp: p.base_pt_set_eot_timestamp,
+                kind: ContinuousEffectKind::BasePtSet { power, toughness },
+            });
+        }
+        if p.added_types_eot != TypeSet::NONE || !p.added_subtypes_eot.is_empty() {
+            effects.push(ContinuousEffect {
+                source: object,
+                timestamp: p.added_types_eot_timestamp,
+                kind: ContinuousEffectKind::SetTypes {
+                    add_types: p.added_types_eot,
+                    set_types: false,
+                    set_subtypes: None,
+                    add_subtypes: p.added_subtypes_eot,
+                },
+            });
+        }
+        if let Some((power, toughness)) = p.set_base_pt {
+            effects.push(ContinuousEffect {
+                source: object,
+                timestamp: p.set_base_pt_timestamp,
+                kind: ContinuousEffectKind::BasePtSet { power, toughness },
+            });
+        }
+        if p.added_types != TypeSet::NONE || !p.added_subtypes.is_empty() {
+            effects.push(ContinuousEffect {
+                source: object,
+                timestamp: p.added_types_timestamp,
+                kind: ContinuousEffectKind::SetTypes {
+                    add_types: p.added_types,
+                    set_types: false,
+                    set_subtypes: None,
+                    add_subtypes: p.added_subtypes,
+                },
+            });
+        }
+        if p.plus_counters != 0 {
+            effects.push(ContinuousEffect {
+                source: object,
+                timestamp: self.static_continuous_timestamp(object),
+                kind: ContinuousEffectKind::PtDelta {
+                    power: p.plus_counters,
+                    toughness: p.plus_counters,
+                },
+            });
+        }
+        let minus_counters = p.kind_counters[CounterKind::MinusOneMinusOne as usize] as i32;
+        if minus_counters != 0 {
+            effects.push(ContinuousEffect {
+                source: object,
+                timestamp: self.static_continuous_timestamp(object),
+                kind: ContinuousEffectKind::PtDelta {
+                    power: -minus_counters,
+                    toughness: -minus_counters,
+                },
+            });
+        }
+        if p.temp_power != 0 || p.temp_toughness != 0 {
+            effects.push(ContinuousEffect {
+                source: object,
+                timestamp: self.static_continuous_timestamp(object),
+                kind: ContinuousEffectKind::PtDelta {
+                    power: p.temp_power,
+                    toughness: p.temp_toughness,
+                },
+            });
+        }
+        if !p.temp_keywords.is_empty() {
+            effects.push(ContinuousEffect {
+                source: object,
+                timestamp: self.static_continuous_timestamp(object),
+                kind: ContinuousEffectKind::GrantKeywords {
+                    keywords: p.temp_keywords,
+                },
+            });
+        }
+        if !p.granted_keywords.is_empty() {
+            effects.push(ContinuousEffect {
+                source: object,
+                timestamp: p.added_types_timestamp,
+                kind: ContinuousEffectKind::GrantKeywords {
+                    keywords: p.granted_keywords,
+                },
+            });
+        }
+        // Copy-effect exception keywords (CR 707.2 — "except it has haste/myriad") are part of
+        // the object's copiable characteristics, so they grant the keyword the same as any other
+        // continuous grant. `copiable_keywords` reads the same field for the copy-again path.
+        if !p.copy_rider_keywords.is_empty() {
+            effects.push(ContinuousEffect {
+                source: object,
+                timestamp: self.static_continuous_timestamp(object),
+                kind: ContinuousEffectKind::GrantKeywords {
+                    keywords: p.copy_rider_keywords,
+                },
+            });
+        }
+        effects
+    }
+
+    fn anthem_continuous_effects(&self, candidate: ObjectId) -> Vec<ContinuousEffect> {
+        let mut effects = Vec::new();
+        let owner = self.owner_of(candidate);
+        for (source, effect) in self.matching_anthems(candidate) {
+            let timestamp = self.static_continuous_timestamp(source);
+            if let Effect::Static(StaticEffect::Anthem {
+                power,
+                toughness,
+                keywords,
+                ..
+            }) = effect
+            {
+                let power = self.resolve_amount(power, owner, source, None, 0);
+                let toughness = self.resolve_amount(toughness, owner, source, None, 0);
+                if power != 0 || toughness != 0 {
+                    effects.push(ContinuousEffect {
+                        source,
+                        timestamp,
+                        kind: ContinuousEffectKind::PtDelta { power, toughness },
+                    });
+                }
+                if !keywords.is_empty() {
+                    effects.push(ContinuousEffect {
+                        source,
+                        timestamp,
+                        kind: ContinuousEffectKind::GrantKeywords { keywords },
+                    });
+                }
+            }
+        }
+        if self.as_permanent(candidate).is_none() {
+            return effects;
+        }
+        let candidate_controller = self.controller_of(candidate);
+        for (source, object) in self.objects.iter().enumerate() {
+            if !matches!(object, Object::Permanent(_)) {
+                continue;
+            }
+            let source = source as ObjectId;
+            let timestamp = self.static_continuous_timestamp(source);
+            for ability in self.functional_abilities(source).iter().cloned() {
+                let (
+                    Timing::Static,
+                    Effect::Static(StaticEffect::KeywordAnthem {
+                        keywords,
+                        filter,
+                        all_players,
+                    }),
+                ) = (ability.timing, ability.effect.clone())
+                else {
+                    continue;
+                };
+                // "You control" is per-ability, not a pre-filter: an `all_players` grant (Avatar of
+                // Slaughter's "All creatures have double strike") reaches creatures its controller
+                // doesn't control, so its source has to survive the scan.
+                if !all_players && self.controller_of(source) != candidate_controller {
+                    continue;
+                }
+                // A level-gated anthem functions only at or above its level (CR 717.5). A
+                // battlefield source has a real level; a graveyard-functional one is trivially 1.
+                if ability.min_level > self.as_permanent(source).map_or(1, |p| p.level) {
+                    continue;
+                }
+                if !self.permanent_matches(&filter, candidate, candidate_controller, Some(source)) {
+                    continue;
+                }
+                effects.push(ContinuousEffect {
+                    source,
+                    timestamp,
+                    kind: ContinuousEffectKind::GrantKeywords { keywords },
+                });
+            }
+        }
+        effects
     }
 
     /// [`Keyword::ProtectionFrom`] the chosen color of each attached
@@ -704,7 +999,7 @@ impl Game {
             .filter(|&id| {
                 self.def_of(id).abilities.iter().any(|a| {
                     matches!(
-                        (a.timing, a.effect),
+                        (a.timing, a.effect.clone()),
                         (
                             Timing::Static,
                             Effect::Static(StaticEffect::GrantToAttached {
@@ -732,7 +1027,7 @@ impl Game {
         self.attachments(host).into_iter().filter_map(move |id| {
             let goads_host = self.def_of(id).abilities.iter().any(|a| {
                 matches!(
-                    (a.timing, a.effect),
+                    (a.timing, a.effect.clone()),
                     (
                         Timing::Static,
                         Effect::Static(StaticEffect::GrantToAttached { goad: true, .. })
@@ -752,7 +1047,7 @@ impl Game {
             !self.is_phased_out(id)
                 && self.def_of(id).abilities.iter().any(|a| {
                     matches!(
-                        (a.timing, a.effect),
+                        (a.timing, a.effect.clone()),
                         (
                             Timing::Static,
                             Effect::Static(StaticEffect::GrantToAttached {
@@ -776,7 +1071,7 @@ impl Game {
                 && self.controller_of(id) == defender
                 && self.def_of(id).abilities.iter().any(|a| {
                     matches!(
-                        (a.timing, a.effect),
+                        (a.timing, a.effect.clone()),
                         (
                             Timing::Static,
                             Effect::Static(StaticEffect::GrantToAttached {
@@ -796,7 +1091,7 @@ impl Game {
             !self.is_phased_out(id)
                 && self.def_of(id).abilities.iter().any(|a| {
                     matches!(
-                        (a.timing, a.effect),
+                        (a.timing, a.effect.clone()),
                         (
                             Timing::Static,
                             Effect::Static(StaticEffect::GrantToAttached {
@@ -825,7 +1120,7 @@ impl Game {
             self.def_of(id)
                 .abilities
                 .iter()
-                .find_map(|a| match (a.timing, a.effect) {
+                .find_map(|a| match (a.timing, a.effect.clone()) {
                     (
                         Timing::Static,
                         Effect::Static(StaticEffect::GrantToAttached {
@@ -838,23 +1133,13 @@ impl Game {
         })
     }
 
-    /// The `(power, toughness)` a [`Effect::Static(StaticEffect::SetAttachedBasePt)`] Aura forces onto `host`'s base,
-    /// if any is attached — the CR 613.3(7b) base-P/T-set entry [`Game::pt_layers`] emits, applied
-    /// before the 7c counters/pumps/anthems/grants.
-    /// ponytail: takes the first such grant; the pool never stacks two on one creature.
-    pub(crate) fn set_base_pt(&self, host: ObjectId) -> Option<(i32, i32)> {
-        self.attachments(host).into_iter().find_map(|id| {
-            self.def_of(id)
-                .abilities
-                .iter()
-                .find_map(|a| match (a.timing, a.effect) {
-                    (
-                        Timing::Static,
-                        Effect::Static(StaticEffect::SetAttachedBasePt { power, toughness }),
-                    ) => Some((power, toughness)),
-                    _ => None,
-                })
-        })
+    /// The latest attached [`Effect::Static(StaticEffect::SetAttachedBasePt)`] continuous-effect
+    /// entry affecting `host`, if any.
+    fn set_base_pt(&self, host: ObjectId) -> Option<ContinuousEffect> {
+        self.attachment_continuous_effects(host)
+            .into_iter()
+            .filter(|effect| matches!(effect.kind, ContinuousEffectKind::BasePtSet { .. }))
+            .max_by_key(|effect| (effect.timestamp, effect.source))
     }
 
     /// Whether `blocker` may block a creature that has flying (it flies or has reach).
@@ -866,69 +1151,59 @@ impl Game {
     /// `(added_types, set_subtypes, added_subtypes)` — the card types unioned on, the creature
     /// subtypes that *replace* the host's own (when present), and the creature subtypes unioned on.
     /// Empty (`TypeSet::NONE`, `None`, `&[]`) when no such Aura is attached.
-    /// ponytail: takes the first grant per axis; the pool never stacks two type-changing Auras on
-    /// one creature, so CR 613.7 dependency/timestamp ordering is deferred to the slice needing it.
     fn attached_type_layer(
         &self,
         host: ObjectId,
     ) -> (
         TypeSet,
+        bool,
         Option<&'static [&'static str]>,
         &'static [&'static str],
     ) {
+        let mut effects: Vec<_> = self
+            .attachment_type_continuous_effects(host)
+            .into_iter()
+            .filter(|effect| matches!(effect.kind, ContinuousEffectKind::SetTypes { .. }))
+            .collect();
+        effects.sort_by_key(|effect| (effect.layer(), effect.timestamp, effect.source));
         let mut added_types = TypeSet::NONE;
+        let mut set_types = false;
         let mut set_subtypes: Option<&'static [&'static str]> = None;
         let mut added_subtypes: &'static [&'static str] = &[];
-        for id in self.attachments(host) {
-            for ability in self.def_of(id).abilities {
-                let (
-                    Timing::Static,
-                    Effect::Static(StaticEffect::SetAttachedTypes {
-                        add_types,
-                        add_subtypes,
-                        set_subtypes: set,
-                        ..
-                    }),
-                ) = (ability.timing, ability.effect)
-                else {
-                    continue;
-                };
-                added_types = added_types.union(add_types);
-                if !set.is_empty() {
-                    set_subtypes = Some(set);
-                }
-                if !add_subtypes.is_empty() {
-                    added_subtypes = add_subtypes;
-                }
+        for effect in effects {
+            let ContinuousEffectKind::SetTypes {
+                add_types,
+                set_types: set,
+                set_subtypes: set_sub,
+                add_subtypes,
+            } = effect.kind
+            else {
+                continue;
+            };
+            added_types = added_types.union(add_types);
+            if set {
+                set_types = true;
+            }
+            if let Some(set_sub) = set_sub {
+                set_subtypes = Some(set_sub);
+            }
+            if !add_subtypes.is_empty() {
+                added_subtypes = add_subtypes;
             }
         }
-        (added_types, set_subtypes, added_subtypes)
+        (added_types, set_types, set_subtypes, added_subtypes)
     }
 
     /// Whether an attached [`Effect::Static(StaticEffect::SetAttachedTypes)`] Aura with `lose_all_abilities = true`
     /// (Darksteel Mutation's "it loses all other abilities") is stripping `host`'s own printed
     /// abilities and keywords (CR 613.1e/701). Only a battlefield permanent can be a host.
-    /// ponytail: ≤1 ability-removing Aura per host in the pool, so no CR 613.7 timestamp/dependency
-    /// ordering between competing removals — grow it from a card that stacks two.
     pub(crate) fn host_loses_all_abilities(&self, host: ObjectId) -> bool {
         if self.as_permanent(host).is_none() {
             return false;
         }
-        for id in self.attachments(host) {
-            for ability in self.def_of(id).abilities {
-                if let (
-                    Timing::Static,
-                    Effect::Static(StaticEffect::SetAttachedTypes {
-                        lose_all_abilities: true,
-                        ..
-                    }),
-                ) = (ability.timing, ability.effect)
-                {
-                    return true;
-                }
-            }
-        }
-        false
+        self.attachment_type_continuous_effects(host)
+            .into_iter()
+            .any(|effect| matches!(effect.kind, ContinuousEffectKind::LoseAllAbilities))
     }
 
     /// The abilities that *function* on `id` — its printed abilities, unless an attached Aura is
@@ -937,15 +1212,15 @@ impl Game {
     /// battlefield-permanent ability iteration (trigger placement, activation gate, static scans)
     /// reads so the removal applies uniformly. Grants the Aura layers onto the host (its
     /// `grant_to_attached` keywords, its type/base-P/T sets) are separate and unaffected.
-    pub(crate) fn functional_abilities(&self, id: ObjectId) -> &'static [Ability] {
+    pub(crate) fn functional_abilities(&self, id: ObjectId) -> Arc<[Ability]> {
         // CR 708.2: a face-down permanent (a manifest) has no abilities.
         if self.is_face_down(id) {
-            return &[];
+            return empty_slice();
         }
         if self.host_loses_all_abilities(id) {
-            return &[];
+            return empty_slice();
         }
-        self.def_of(id).abilities
+        self.def_of(id).abilities.clone()
     }
 
     /// Whether `id` is a bestowed permanent (CR 702.103) currently attached to a host: while so it
@@ -971,17 +1246,30 @@ impl Game {
             return TypeSet::ENCHANTMENT;
         }
         let printed = self.def_of(id).kind.types();
-        let Some(p) = self.as_permanent(id) else {
+        if self.as_permanent(id).is_none() {
             return printed;
+        }
+        let (attached_types, set_types, _, _) = self.attached_type_layer(id);
+        // CR 613.4: a set-types Aura (Darksteel Mutation) replaces the host's printed card types
+        // outright; an additive Aura (Angelic Destiny) unions onto them.
+        let mut types = if set_types {
+            attached_types
+        } else {
+            printed.union(attached_types)
         };
-        // Type-layer sources: an attached Aura (Darksteel Mutation), an until-EOT self-animation
-        // (Restless Spire → Creature), and an indefinite reanimation set (Excava → Creature). No
-        // pool card stacks two on one permanent, so their order is unobservable (CR 613.7 deferred
-        // — see `pt_layers`).
-        printed
-            .union(self.attached_type_layer(id).0)
-            .union(p.added_types_eot)
-            .union(p.added_types)
+        let mut runtime_effects: Vec<_> = self
+            .runtime_continuous_effects(id)
+            .into_iter()
+            .filter(|effect| matches!(effect.kind, ContinuousEffectKind::SetTypes { .. }))
+            .collect();
+        runtime_effects.sort_by_key(|effect| (effect.layer(), effect.timestamp, effect.source));
+        for effect in runtime_effects {
+            let ContinuousEffectKind::SetTypes { add_types, .. } = effect.kind else {
+                continue;
+            };
+            types = types.union(add_types);
+        }
+        types
     }
 
     /// A battlefield permanent's creature subtypes after the CR 613.4 subtype layer: its printed
@@ -1002,18 +1290,31 @@ impl Game {
         if self.as_permanent(id).is_none() {
             return printed.to_vec();
         }
-        let (_, set, added) = self.attached_type_layer(id);
+        let (_, _, set, added) = self.attached_type_layer(id);
         let mut subtypes = match set {
             Some(set) => set.to_vec(),
             None => printed.to_vec(),
         };
         subtypes.extend_from_slice(added);
-        // A self-animation (Restless Spire → "Elemental") and an indefinite reanimation set
-        // (Excava → "Spirit") add subtypes on top of the printed/Aura set — same union axis as the
-        // Aura's `add_subtypes`.
-        if let Some(p) = self.as_permanent(id) {
-            subtypes.extend_from_slice(p.added_subtypes_eot);
-            subtypes.extend_from_slice(p.added_subtypes);
+        let mut runtime_effects: Vec<_> = self
+            .runtime_continuous_effects(id)
+            .into_iter()
+            .filter(|effect| matches!(effect.kind, ContinuousEffectKind::SetTypes { .. }))
+            .collect();
+        runtime_effects.sort_by_key(|effect| (effect.layer(), effect.timestamp, effect.source));
+        for effect in runtime_effects {
+            let ContinuousEffectKind::SetTypes {
+                set_subtypes,
+                add_subtypes,
+                ..
+            } = effect.kind
+            else {
+                continue;
+            };
+            if let Some(set_subtypes) = set_subtypes {
+                subtypes = set_subtypes.to_vec();
+            }
+            subtypes.extend_from_slice(add_subtypes);
         }
         subtypes
     }
@@ -1093,60 +1394,37 @@ impl Game {
         }
     }
 
-    /// Every CR 613 P/T layer entry currently affecting `object` — the enchanted-base-set Aura
-    /// (7b) plus the 7c modifications (counters, until-EOT boosts, anthems, `grant_to_attached`).
-    /// A re-expression of the additive contributors, not a re-derivation: it reuses the same scans
-    /// ([`Game::set_base_pt`], [`Game::anthem_pt_bonus`], [`Game::attachment_grants`]).
-    /// ponytail: every entry's `source`/`timestamp` is the host `object` as a stand-in. This can
-    /// now push TWO `BasePtSet` layers on one host (a `SetAttachedBasePT` Aura + an until-EOT set),
-    /// but with ≤1 base-set *observed at once* in the pool (no card combines them) and commutative
-    /// 7c deltas, application is order-independent, so any deterministic timestamp is exact. Real
-    /// per-effect timestamps + CR 613.7 dependency ordering land with the slice that stacks two.
-    fn pt_layers(&self, object: ObjectId) -> Vec<PtLayer> {
-        let mut layers = Vec::new();
-        let stamp = |kind| PtLayer {
-            source: object,
-            timestamp: object as u64,
-            kind,
-        };
-        if let Some((power, toughness)) = self.set_base_pt(object) {
-            layers.push(stamp(PtLayerKind::BasePtSet { power, toughness }));
+    /// Every CR 613 P/T continuous-effect entry currently affecting `object`: base-set 7b entries
+    /// plus 7c deltas from counters, pumps, anthems, and attachments. Same-layer ordering is
+    /// timestamped where the pool needs it (notably stacked base sets such as Trench Gorger under a
+    /// later Darksteel Mutation).
+    fn pt_layers(&self, object: ObjectId) -> Vec<ContinuousEffect> {
+        let mut effects = Vec::new();
+        if let Some(effect) = self.set_base_pt(object) {
+            effects.push(effect);
         }
-        if let Some((power, toughness)) = self.as_permanent(object).and_then(|p| p.base_pt_set_eot)
-        {
-            layers.push(stamp(PtLayerKind::BasePtSet { power, toughness }));
-        }
-        // An indefinite reanimation set (Excava → base 1/1), the same 7b base-set as above but not
-        // cleared at cleanup (CR 611.2c).
-        if let Some((power, toughness)) = self.as_permanent(object).and_then(|p| p.set_base_pt) {
-            layers.push(stamp(PtLayerKind::BasePtSet { power, toughness }));
-        }
-        if let Some(p) = self.as_permanent(object) {
-            layers.push(stamp(PtLayerKind::PtDelta {
-                power: p.plus_counters,
-                toughness: p.plus_counters,
-            }));
-            // CR 121.4/122.1: a -1/-1 counter subtracts 1/1, the mirror of a +1/+1 counter's
-            // addition above.
-            let minus_counters = p.kind_counters[CounterKind::MinusOneMinusOne as usize] as i32;
-            layers.push(stamp(PtLayerKind::PtDelta {
-                power: -minus_counters,
-                toughness: -minus_counters,
-            }));
-            layers.push(stamp(PtLayerKind::PtDelta {
-                power: p.temp_power,
-                toughness: p.temp_toughness,
-            }));
-        }
-        let (anthem_power, anthem_toughness) = self.anthem_pt_bonus(object);
-        layers.push(stamp(PtLayerKind::PtDelta {
-            power: anthem_power,
-            toughness: anthem_toughness,
-        }));
-        for (power, toughness, _keywords) in self.attachment_grants(object) {
-            layers.push(stamp(PtLayerKind::PtDelta { power, toughness }));
-        }
-        layers
+        effects.extend(
+            self.attachment_continuous_effects(object)
+                .into_iter()
+                .filter(|effect| matches!(effect.kind, ContinuousEffectKind::PtDelta { .. })),
+        );
+        effects.extend(
+            self.runtime_continuous_effects(object)
+                .into_iter()
+                .filter(|effect| {
+                    matches!(
+                        effect.kind,
+                        ContinuousEffectKind::BasePtSet { .. }
+                            | ContinuousEffectKind::PtDelta { .. }
+                    )
+                }),
+        );
+        effects.extend(
+            self.anthem_continuous_effects(object)
+                .into_iter()
+                .filter(|effect| matches!(effect.kind, ContinuousEffectKind::PtDelta { .. })),
+        );
+        effects
     }
 
     /// Apply CR 613-ordered P/T `layers` to a creature's `printed` base, returning its effective
@@ -1156,33 +1434,30 @@ impl Game {
     fn apply_pt_layers(
         printed_power: i32,
         printed_toughness: i32,
-        mut layers: Vec<PtLayer>,
+        mut layers: Vec<ContinuousEffect>,
     ) -> (i32, i32) {
-        layers.sort_by_key(|l| {
-            (
-                matches!(l.kind, PtLayerKind::PtDelta { .. }),
-                l.timestamp,
-                l.source,
-            )
-        });
+        layers.sort_by_key(|effect| (effect.layer(), effect.timestamp, effect.source));
         let mut power = printed_power;
         let mut toughness = printed_toughness;
-        for layer in layers {
-            match layer.kind {
-                PtLayerKind::BasePtSet {
+        for effect in layers {
+            match effect.kind {
+                ContinuousEffectKind::BasePtSet {
                     power: base_power,
                     toughness: base_toughness,
                 } => {
                     power = base_power;
                     toughness = base_toughness;
                 }
-                PtLayerKind::PtDelta {
+                ContinuousEffectKind::PtDelta {
                     power: delta_power,
                     toughness: delta_toughness,
                 } => {
                     power += delta_power;
                     toughness += delta_toughness;
                 }
+                ContinuousEffectKind::SetTypes { .. }
+                | ContinuousEffectKind::LoseAllAbilities
+                | ContinuousEffectKind::GrantKeywords { .. } => {}
             }
         }
         (power, toughness)
@@ -1203,7 +1478,7 @@ impl Game {
         } else {
             self.def_of(object).keywords.to_vec()
         };
-        for (condition, keyword) in self.def_of(object).conditional_keywords {
+        for (condition, keyword) in self.def_of(object).conditional_keywords.iter().copied() {
             if removes_abilities {
                 break;
             }
@@ -1215,7 +1490,7 @@ impl Game {
             // when a future card conditions a keyword on something else.
             let holds = match condition {
                 Condition::SourceHasCounters { at_least } => {
-                    self.source_has_counters(object, *at_least)
+                    self.source_has_counters(object, at_least)
                 }
                 Condition::SourceAttackedThisTurn => self
                     .as_permanent(object)
@@ -1223,17 +1498,18 @@ impl Game {
                 _ => false,
             };
             if holds {
-                keywords.push(*keyword);
+                keywords.push(keyword);
             }
         }
-        if let Some(p) = self.as_permanent(object) {
-            keywords.extend_from_slice(p.temp_keywords);
-            // Indefinite reanimation grant (Excava → flying), the same union axis as `temp_keywords`
-            // but not cleared at cleanup (CR 611.2c).
-            keywords.extend_from_slice(p.granted_keywords);
-        }
-        for (_, _, granted) in self.attachment_grants(object) {
-            keywords.extend_from_slice(granted);
+        for effect in self
+            .attachment_continuous_effects(object)
+            .into_iter()
+            .chain(self.runtime_continuous_effects(object))
+            .chain(self.anthem_continuous_effects(object))
+        {
+            if let ContinuousEffectKind::GrantKeywords { keywords: granted } = effect.kind {
+                keywords.extend_from_slice(granted);
+            }
         }
         // Backup / "it gains the following abilities until end of turn" (CR 702.166): a granted
         // source's keyword abilities (Guardian Scalelord's flying) ride the target until cleanup.
@@ -1242,12 +1518,28 @@ impl Game {
         // the source has since left: the link persists on `abilities_granted_until_eot`.)
         for &(target, source) in &self.abilities_granted_until_eot {
             if target == object {
-                keywords.extend_from_slice(self.def_of(source).keywords);
+                keywords.extend_from_slice(&self.def_of(source).keywords);
             }
         }
+        // Voice of All's own static "This creature has protection from the chosen color" (paired
+        // with its as-enters `choose_color`): the self-grant twin of `chosen_color_protection_grants`
+        // below, scoped to `object`'s own abilities rather than an attached Aura's. Suppressed
+        // alongside the printed keywords above while the host has lost all abilities.
+        if !removes_abilities
+            && self.def_of(object).abilities.iter().any(|a| {
+                matches!(
+                    (a.timing, a.effect.clone()),
+                    (
+                        Timing::Static,
+                        Effect::Static(StaticEffect::ProtectionFromChosenColor)
+                    )
+                )
+            })
+            && let Some(color) = self.as_permanent(object).and_then(|p| p.chosen_color)
+        {
+            keywords.push(Keyword::ProtectionFrom(ProtectionScope::Color(color)));
+        }
         keywords.extend(self.chosen_color_protection_grants(object));
-        keywords.extend(self.anthem_keywords(object));
-        keywords.extend(self.keyword_anthem_static_grants(object));
         // "Lose ... and can't have" (CR 702.11e/702.18d — arcane_lighthouse): strip these off
         // the fully-unioned set last, so a keyword granted by any source above — including one
         // applied *after* the strip landed this turn — is filtered right back out.
@@ -1302,7 +1594,7 @@ impl Game {
             .chain(graveyard_sources)
             .chain(emblem_sources)
         {
-            for ability in self.functional_abilities(source) {
+            for ability in self.functional_abilities(source).iter().cloned() {
                 let (
                     Timing::Static,
                     effect @ Effect::Static(StaticEffect::Anthem {
@@ -1319,9 +1611,10 @@ impl Game {
                         condition,
                         from_graveyard,
                         all_players,
+                        war_choice,
                         ..
                     }),
-                ) = (ability.timing, ability.effect)
+                ) = (ability.timing, ability.effect.clone())
                 else {
                     continue;
                 };
@@ -1382,6 +1675,17 @@ impl Game {
                 if has_counters && !self.has_any_counter(candidate) {
                     continue;
                 }
+                // Archangel of Strife's "creatures controlled by players who chose war/peace" —
+                // read against the candidate's own seat rather than the anthem source's, through
+                // the same `owner`-as-controller proxy this whole scan uses for "you control".
+                // Keyed by `source` so a second Archangel's answers don't speak for the first's.
+                if let Some(wants_war) = war_choice
+                    && !self.players[owner.0 as usize]
+                        .war_choices
+                        .contains(&(source, wants_war))
+                {
+                    continue;
+                }
                 // An "as long as …" gate (tendershoot_dryad's city's blessing) — evaluated
                 // against the anthem source's own controller, same as its cost/trigger reads
                 // would be.
@@ -1404,56 +1708,19 @@ impl Game {
     /// source itself). The static-scan sibling of [`Game::matching_anthems`]; read at every
     /// noncombat creature-damage choke (effect + fight damage). Combat damage never consults it.
     pub(crate) fn noncombat_damage_prevented_to_creature(&self, target: ObjectId) -> bool {
-        let target_controller = self.controller_of(target);
-        for source in self.battlefield() {
-            if source == target {
-                continue;
-            }
-            if self.controller_of(source) != target_controller {
-                continue;
-            }
-            let prevents = self.functional_abilities(source).iter().any(|ability| {
-                ability.timing == Timing::Static
-                    && matches!(
-                        ability.effect,
-                        Effect::Static(
-                            StaticEffect::PreventNoncombatDamageToOtherCreaturesYouControl
-                        )
-                    )
-            });
-            if prevents {
-                return true;
-            }
-        }
-        false
+        self.replacement_registry()
+            .noncombat_damage_prevented_to_creature(self, target)
     }
 
     /// Whether `target` itself carries Phantom Centaur's self-shield (CR 615: "If damage would
-    /// be dealt to Phantom Centaur, prevent that damage.") or Bloatfly Swarm's scaling variant
-    /// (also CR 615: "If damage would be dealt to this creature while it has a +1/+1 counter on
-    /// it, prevent that damage, remove that many +1/+1 counters from it, then give each player a
-    /// rad counter for each +1/+1 counter removed this way."). Unlike
+    /// be dealt to Phantom Centaur, prevent that damage."). Unlike
     /// [`Game::noncombat_damage_prevented_to_creature`]'s "other creatures you control" scan,
-    /// this is self-only — it reads only `target`'s own abilities — and applies to combat damage
-    /// too (Tajic's static skips combat; neither of these does).
-    ///
-    /// The two differ in their CR 614.1 predicate, so this is not a bare `matches!`: Phantom
-    /// Centaur's applies unconditionally (it just has nothing to take once its counters are
-    /// gone), while Bloatfly Swarm's applies only "while it has a +1/+1 counter on it" — with
-    /// none, the damage is dealt and marked normally.
+    /// this is self-only — true iff `target` has a `(Timing::Static,
+    /// PreventDamageToSelfRemovingCounter)` ability of its own — and applies to combat damage
+    /// too (Tajic's static skips combat; Phantom Centaur's doesn't).
     pub(crate) fn phantom_shield_active(&self, target: ObjectId) -> bool {
-        self.functional_abilities(target).iter().any(|ability| {
-            if ability.timing != Timing::Static {
-                return false;
-            }
-            match ability.effect {
-                Effect::Static(StaticEffect::PreventDamageToSelfRemovingCounter) => true,
-                Effect::Static(StaticEffect::PreventDamageToSelfRemovingCountersGivingRad) => {
-                    self.plus_counters(target) > 0
-                }
-                _ => false,
-            }
-        })
+        self.replacement_registry()
+            .phantom_shield_active(self, target)
     }
 
     /// Whether `target` carries a permanent combat-damage-prevention static shielding damage
@@ -1463,13 +1730,8 @@ impl Game {
     /// own — combat-only, unlike [`Game::phantom_shield_active`], which covers noncombat damage
     /// too and removes a counter each time.
     pub(crate) fn combat_damage_prevented_to_creature(&self, target: ObjectId) -> bool {
-        self.functional_abilities(target).iter().any(|ability| {
-            ability.timing == Timing::Static
-                && matches!(
-                    ability.effect,
-                    Effect::Static(StaticEffect::PreventCombatDamage { to_self: true, .. })
-                )
-        })
+        self.replacement_registry()
+            .combat_damage_prevented_to_creature(target)
     }
 
     /// Whether `source` carries a permanent combat-damage-prevention static shielding damage it
@@ -1478,13 +1740,8 @@ impl Game {
     /// the sibling query to [`Game::combat_damage_prevented_to_creature`], keyed on the source
     /// end of a combat-damage instance instead of the target end.
     pub(crate) fn combat_damage_prevented_by_source(&self, source: ObjectId) -> bool {
-        self.functional_abilities(source).iter().any(|ability| {
-            ability.timing == Timing::Static
-                && matches!(
-                    ability.effect,
-                    Effect::Static(StaticEffect::PreventCombatDamage { by_self: true, .. })
-                )
-        })
+        self.replacement_registry()
+            .combat_damage_prevented_by_source(source)
     }
 
     /// The events Phantom Centaur's shield or Bloatfly Swarm's scaling variant fire alongside
@@ -1501,17 +1758,15 @@ impl Game {
         target: ObjectId,
         amount: i32,
     ) -> Vec<Event> {
+        let registry = self.replacement_registry();
+        if !registry.phantom_shield_active(self, target) {
+            return Vec::new();
+        }
         let available = self.plus_counters(target);
         if available <= 0 {
             return Vec::new();
         }
-        let scales = self.functional_abilities(target).iter().any(|ability| {
-            ability.timing == Timing::Static
-                && matches!(
-                    ability.effect,
-                    Effect::Static(StaticEffect::PreventDamageToSelfRemovingCountersGivingRad)
-                )
-        });
+        let scales = registry.phantom_shield_scales(target);
         let removed = if scales { amount.min(available) } else { 1 };
         if removed <= 0 {
             return Vec::new();
@@ -1534,82 +1789,6 @@ impl Game {
         events
     }
 
-    /// The total (power, toughness) bonus [`Game::matching_anthems`] grants to `candidate`.
-    pub(crate) fn anthem_pt_bonus(&self, candidate: ObjectId) -> (i32, i32) {
-        let owner = self.owner_of(candidate);
-        self.matching_anthems(candidate)
-            .into_iter()
-            .fold((0, 0), |(pw, tf), (source, effect)| match effect {
-                Effect::Static(StaticEffect::Anthem {
-                    power, toughness, ..
-                }) => (
-                    pw + self.resolve_amount(power, owner, source, None, 0),
-                    tf + self.resolve_amount(toughness, owner, source, None, 0),
-                ),
-                _ => (pw, tf),
-            })
-    }
-
-    /// Every keyword [`Game::matching_anthems`] grants to `candidate` (Ohran Frostfang's
-    /// deathtouch, CR 702.2).
-    fn anthem_keywords(&self, candidate: ObjectId) -> Vec<Keyword> {
-        self.matching_anthems(candidate)
-            .into_iter()
-            .flat_map(|(_, effect)| match effect {
-                Effect::Static(StaticEffect::Anthem { keywords, .. }) => keywords.to_vec(),
-                _ => Vec::new(),
-            })
-            .collect()
-    }
-
-    /// Every keyword a static [`Effect::Static(StaticEffect::KeywordAnthem)`] elsewhere on the battlefield grants
-    /// to `candidate` (Sterling Grove's "Other enchantments you control have shroud"). The
-    /// bare-`PermanentFilter` static twin of
-    /// [`Effect::Pump(PumpEffect::GrantKeywordsToPermanentsYouControlUntilEndOfTurn)`]'s one-shot grant — same "you
-    /// control" scan and filter shape (`filter.other` reaches "**other** enchantments"), but read
-    /// fresh here on every recompute instead of resolved once onto `temp_keywords`. Not folded
-    /// into [`Game::matching_anthems`]/[`Game::anthem_keywords`]: those destructure
-    /// [`Effect::Static(StaticEffect::Anthem)`] specifically for its P/T + subtype/color/etc axes, which this
-    /// effect has none of.
-    fn keyword_anthem_static_grants(&self, candidate: ObjectId) -> Vec<Keyword> {
-        if self.as_permanent(candidate).is_none() {
-            return Vec::new();
-        }
-        let candidate_controller = self.controller_of(candidate);
-        let mut keywords = Vec::new();
-        for (source, object) in self.objects.iter().enumerate() {
-            if !matches!(object, Object::Permanent(_)) {
-                continue;
-            }
-            let source = source as ObjectId;
-            if self.controller_of(source) != candidate_controller {
-                continue;
-            }
-            for ability in self.functional_abilities(source) {
-                let (
-                    Timing::Static,
-                    Effect::Static(StaticEffect::KeywordAnthem {
-                        keywords: granted,
-                        filter,
-                    }),
-                ) = (ability.timing, ability.effect)
-                else {
-                    continue;
-                };
-                // A level-gated anthem functions only at or above its level (CR 717.5). A
-                // battlefield source has a real level; a graveyard-functional one is trivially 1.
-                if ability.min_level > self.as_permanent(source).map_or(1, |p| p.level) {
-                    continue;
-                }
-                if !self.permanent_matches(&filter, candidate, candidate_controller, Some(source)) {
-                    continue;
-                }
-                keywords.extend_from_slice(granted);
-            }
-        }
-        keywords
-    }
-
     /// Every activated mana ability granted to `candidate` by a live static
     /// [`Effect::Static(StaticEffect::GrantManaAbility)`] elsewhere on the battlefield (Goldspan Dragon's "Treasures
     /// you control have '{T}, Sacrifice this artifact: Add two mana of any one color.'"). Mirrors
@@ -1619,7 +1798,7 @@ impl Game {
     pub(crate) fn granted_mana_abilities(
         &self,
         candidate: ObjectId,
-    ) -> Vec<(ActivationCost, ManaPool)> {
+    ) -> Vec<(ActivationCost, ManaPool, bool)> {
         let Some(candidate_permanent) = self.as_permanent(candidate) else {
             return Vec::new();
         };
@@ -1632,7 +1811,8 @@ impl Game {
             if p.owner != owner {
                 continue;
             }
-            for ability in p.def.abilities {
+            let def = card_def(p.def);
+            for ability in def.abilities.iter().cloned() {
                 let (
                     Timing::Static,
                     Effect::Static(StaticEffect::GrantManaAbility {
@@ -1640,8 +1820,9 @@ impl Game {
                         cost,
                         mana,
                         restriction,
+                        single_color,
                     }),
-                ) = (ability.timing, ability.effect)
+                ) = (ability.timing, ability.effect.clone())
                 else {
                     continue;
                 };
@@ -1649,7 +1830,7 @@ impl Game {
                     // Wrapped here, once, so every reader of a granted batch (this ability's
                     // own resolution and the `available_mana` estimate) sees it already
                     // spend-restricted (Galazeth Prismari) — see `ManaPool::restricted_by`.
-                    grants.push((cost, mana.restricted_by(restriction)));
+                    grants.push((cost, mana.restricted_by(restriction), single_color));
                 }
             }
         }
@@ -1672,10 +1853,10 @@ impl Game {
             // A phased-out Aura grants nothing (CR 702.26e), mirroring `attachment_grants`.
             .filter(|&id| !self.is_phased_out(id))
             .flat_map(|id| {
-                self.def_of(id)
-                    .abilities
+                let def = self.def_of(id);
+                def.abilities
                     .iter()
-                    .filter_map(|a| match (a.timing, a.effect) {
+                    .filter_map(|a| match (a.timing, a.effect.clone()) {
                         (
                             Timing::Static,
                             Effect::Static(StaticEffect::GrantToAttached {
@@ -1685,6 +1866,7 @@ impl Game {
                         ) if g.trigger.is_none() => Some((g.cost, g.effects)),
                         _ => None,
                     })
+                    .collect::<Vec<_>>()
             })
             .collect()
     }
@@ -1705,10 +1887,10 @@ impl Game {
             // A phased-out Aura/Equipment grants nothing (CR 702.26e), mirroring `attachment_grants`.
             .filter(|&id| !self.is_phased_out(id))
             .flat_map(|id| {
-                self.def_of(id)
-                    .abilities
+                let def = self.def_of(id);
+                def.abilities
                     .iter()
-                    .filter_map(|a| match (a.timing, a.effect) {
+                    .filter_map(|a| match (a.timing, a.effect.clone()) {
                         (
                             Timing::Static,
                             Effect::Static(StaticEffect::GrantToAttached {
@@ -1717,8 +1899,10 @@ impl Game {
                             }),
                         ) => g.trigger.map(|trigger| {
                             let effect = match g.effects {
-                                [single] => *single,
-                                steps => Effect::Sequence { steps },
+                                [single] => single.clone(),
+                                steps => Effect::Sequence {
+                                    steps: steps.into(),
+                                },
                             };
                             Ability {
                                 timing: Timing::Triggered(trigger),
@@ -1732,6 +1916,7 @@ impl Game {
                         }),
                         _ => None,
                     })
+                    .collect::<Vec<_>>()
             })
             .collect()
     }
@@ -1747,12 +1932,12 @@ impl Game {
     /// `None` for an out-of-range index.
     pub fn ability_at(&self, object: ObjectId, index: usize) -> Option<Ability> {
         let def = self.def_of(object);
-        if let Some(&ability) = def.abilities.get(index) {
-            return Some(ability);
+        if let Some(ability) = def.abilities.get(index) {
+            return Some(ability.clone());
         }
         let granted_index = index - def.abilities.len();
         let mana_grants = self.granted_mana_abilities(object);
-        if let Some(&(cost, mana)) = mana_grants.get(granted_index) {
+        if let Some(&(cost, mana, single_color)) = mana_grants.get(granted_index) {
             return Some(Ability {
                 timing: Timing::Activated(cost),
                 effect: Effect::Mana(ManaEffect::Add {
@@ -1763,7 +1948,7 @@ impl Game {
                     opponent_colors: 0,
                     repeat: Amount::Fixed(1),
                     restriction: None,
-                    single_color: false,
+                    single_color,
                     track_provenance: false,
                     target: TargetSpec::None,
                     persist_until_end_of_turn: false,
@@ -1783,8 +1968,10 @@ impl Game {
         // A one-effect grant is used directly; multiple run as a `Sequence` (the same shape a
         // multi-effect own ability uses).
         let effect = match effects {
-            [single] => *single,
-            steps => Effect::Sequence { steps },
+            [single] => single.clone(),
+            steps => Effect::Sequence {
+                steps: steps.into(),
+            },
         };
         Some(Ability {
             timing: Timing::Activated(cost),
@@ -1806,9 +1993,10 @@ impl Game {
             let Object::Permanent(p) = object else {
                 return false;
             };
+            let def = card_def(p.def);
             p.owner == player
-                && p.def.abilities.iter().any(|a| {
-                    (a.timing, a.effect)
+                && def.abilities.iter().any(|a| {
+                    (a.timing, a.effect.clone())
                         == (
                             Timing::Static,
                             Effect::Static(StaticEffect::NoMaximumHandSize),
@@ -1827,12 +2015,35 @@ impl Game {
             let Object::Permanent(p) = object else {
                 return false;
             };
+            let def = card_def(p.def);
             p.owner == player
-                && p.def.abilities.iter().any(|a| {
-                    (a.timing, a.effect)
+                && def.abilities.iter().any(|a| {
+                    (a.timing, a.effect.clone())
                         == (
                             Timing::Static,
                             Effect::Static(StaticEffect::PlayFromGraveyardOncePerTurn),
+                        )
+                })
+        })
+    }
+
+    /// Whether `searcher` is denied library search by an opponent's [`Effect::Static(StaticEffect::OpponentsCantSearchLibraries)`]
+    /// static ability (CR 701.19, Stranglehold's "Your opponents can't search libraries"): true if
+    /// any *other* player controls a permanent with that static live. The single choke every
+    /// library search raises through ([`crate::pending::raise::library::search_library`]), so a
+    /// denied search never even offers a `PendingChoice` — no shuffle either (the search and its
+    /// tied shuffle are one instruction; Stranglehold skips both, per the printed ruling).
+    pub(crate) fn opponent_search_denied(&self, searcher: PlayerId) -> bool {
+        self.objects.iter().any(|object| {
+            let Object::Permanent(p) = object else {
+                return false;
+            };
+            p.owner != searcher
+                && card_def(p.def).abilities.iter().any(|a| {
+                    (a.timing, a.effect.clone())
+                        == (
+                            Timing::Static,
+                            Effect::Static(StaticEffect::OpponentsCantSearchLibraries),
                         )
                 })
         })
@@ -1857,7 +2068,8 @@ impl Game {
             if p.owner != player {
                 continue;
             }
-            for ability in p.def.abilities {
+            let printed = card_def(p.def);
+            for ability in printed.abilities.iter().cloned() {
                 let (
                     Timing::Static,
                     Effect::Static(StaticEffect::ReduceSpellCost {
@@ -1865,7 +2077,7 @@ impl Game {
                         filter,
                         first_x_spell_each_turn,
                     }),
-                ) = (ability.timing, ability.effect)
+                ) = (ability.timing, ability.effect.clone())
                 else {
                     continue;
                 };
@@ -1883,7 +2095,7 @@ impl Game {
                 {
                     continue;
                 }
-                if !self.spell_matches_filter(filter, def, target, player, from_zone) {
+                if !self.spell_matches_filter(filter, def.clone(), target, player, from_zone) {
                     continue;
                 }
                 let resolved = self.resolve_amount(amount, player, id as ObjectId, None, 0);
@@ -1946,7 +2158,7 @@ impl Game {
             SpellFilter::CastFromNonHandZone => from_zone != Zone::Hand,
             // Balefire Liege's "cast a red spell" / "cast a white spell" — CR 105.1/202.2, the
             // spell's own colors (a multicolored spell matches every one of its colors).
-            SpellFilter::Color(color) => color_identity(def)[color.index()],
+            SpellFilter::Color(color) => color_identity(&def)[color.index()],
         }
     }
 
@@ -1958,7 +2170,13 @@ impl Game {
         object: ObjectId,
         base: i32,
     ) -> i32 {
-        self.replaced_counters(placer, CounterRecipient::Permanent(object), true, base)
+        self.replacement_registry().counter_replaced_amount(
+            self,
+            placer,
+            CounterRecipient::Permanent(object),
+            true,
+            base,
+        )
     }
 
     /// The number of counters of a *named* kind (CR 122.1 — charge, -1/-1, …) actually placed when
@@ -1970,7 +2188,13 @@ impl Game {
         object: ObjectId,
         base: i32,
     ) -> i32 {
-        self.replaced_counters(placer, CounterRecipient::Permanent(object), false, base)
+        self.replacement_registry().counter_replaced_amount(
+            self,
+            placer,
+            CounterRecipient::Permanent(object),
+            false,
+            base,
+        )
     }
 
     /// The number of counters actually placed when `placer` would put `base` on `player` — the
@@ -1982,108 +2206,13 @@ impl Game {
         player: PlayerId,
         base: i32,
     ) -> i32 {
-        self.replaced_counters(placer, CounterRecipient::Player(player), false, base)
-    }
-
-    /// Shared body of the three wrappers above: every applicable
-    /// [`Effect::Static(StaticEffect::CounterReplacement)`] on the battlefield applies once.
-    ///
-    /// Two independent gates decide whether a replacement sees a placement. `placer` — who *would
-    /// put* the counters (CR 614.1) — answers Vorinclex's "if **you would put** …" / "if an
-    /// **opponent would put** …". The recipient axis (`recipients`, `filter`, and, when the
-    /// replacement names no placer, the receiving side itself) answers Winding Constrictor's
-    /// passive "if one or more counters **would be put on** an artifact or creature you control".
-    /// A card keys off one or the other, never both.
-    ///
-    /// ponytail: fixed order — additions, then multipliers, then halvings:
-    /// `((base + Σadd) × Πtimes) ÷ 2^halvings`. CR 616.1 lets the *affected player* order
-    /// simultaneous replacements, and once a halving (Vorinclex's opponent clause) is in the mix
-    /// the order genuinely changes the result. Offer a real ordering choice when a board can hold
-    /// both a halving and an adder/doubler at once.
-    fn replaced_counters(
-        &self,
-        placer: PlayerId,
-        recipient: CounterRecipient,
-        plus_one: bool,
-        base: i32,
-    ) -> i32 {
-        if base <= 0 {
-            return base;
-        }
-        let (side, object) = match recipient {
-            CounterRecipient::Permanent(id) => (self.controller_of(id), Some(id)),
-            CounterRecipient::Player(player) => (player, None),
-        };
-        let mut add = 0;
-        let mut times = 1;
-        let mut halvings = 0u32;
-        for (id, obj) in self.objects.iter().enumerate() {
-            let Object::Permanent(p) = obj else {
-                continue;
-            };
-            for ability in p.def.abilities {
-                let (
-                    Timing::Static,
-                    Effect::Static(StaticEffect::CounterReplacement {
-                        add: a,
-                        times: t,
-                        halve,
-                        other,
-                        any_kind,
-                        placer: placer_gate,
-                        recipients,
-                        filter,
-                    }),
-                ) = (ability.timing, ability.effect)
-                else {
-                    continue;
-                };
-                // A level-gated replacement (Innkeeper's Talent's level 3) functions only at or
-                // above its level (CR 717.5).
-                if ability.min_level > p.level {
-                    continue;
-                }
-                // Which side of the table the replacement watches. A placer-keyed clause
-                // ("if you would put …" / "if an opponent would put …") reads who is putting the
-                // counters; everything else reads the recipient's own side ("… you control").
-                let watched = match placer_gate {
-                    Some(CounterPlacer::You) => p.owner == placer,
-                    Some(CounterPlacer::Opponents) => p.owner != placer,
-                    None => p.owner == side,
-                };
-                if !watched {
-                    continue;
-                }
-                // "one or more +1/+1 counters" doesn't see a charge or -1/-1 counter.
-                if !any_kind && !plus_one {
-                    continue;
-                }
-                if !recipients_accept(recipients, object.is_some()) {
-                    continue;
-                }
-                // CR "another creature you control": a replacement that excludes its own
-                // source doesn't apply when the permanent receiving the counters IS that
-                // source (Benevolent Hydra doesn't double its own counters).
-                if other && object == Some(id as ObjectId) {
-                    continue;
-                }
-                // Ozolith's "an artifact or creature you control": a type gate on the recipient,
-                // read from the replacement's own controller's perspective.
-                if let (Some(filter), Some(object)) = (filter, object)
-                    && !self.permanent_matches(&filter, object, p.owner, Some(id as ObjectId))
-                {
-                    continue;
-                }
-                add += a;
-                times *= t;
-                halvings += u32::from(halve);
-            }
-        }
-        let mut n = (base + add) * times;
-        for _ in 0..halvings {
-            n /= 2;
-        }
-        n
+        self.replacement_registry().counter_replaced_amount(
+            self,
+            placer,
+            CounterRecipient::Player(player),
+            false,
+            base,
+        )
     }
 
     /// The total additional +1/+1 counters `entered` receives from every static "creatures you
@@ -2096,37 +2225,8 @@ impl Game {
     /// functioning until the permanent is on the battlefield (same ruling as Master Biomancer /
     /// Corpsejack Menace not affecting their own entry).
     pub(crate) fn additional_enter_counters(&self, entered: ObjectId, controller: PlayerId) -> i32 {
-        let mut total = 0;
-        for (id, obj) in self.objects.iter().enumerate() {
-            let Object::Permanent(p) = obj else {
-                continue;
-            };
-            let source = id as ObjectId;
-            // A permanent's own ETB-modifying static doesn't modify its own entry (see doc above).
-            if source == entered {
-                continue;
-            }
-            if self.controller_of(source) != controller {
-                continue;
-            }
-            for ability in p.def.abilities {
-                let (
-                    Timing::Static,
-                    Effect::Static(StaticEffect::CreaturesYouControlEnterWithCounters {
-                        filter,
-                        count,
-                    }),
-                ) = (ability.timing, ability.effect)
-                else {
-                    continue;
-                };
-                if !self.permanent_matches(&filter, entered, controller, Some(source)) {
-                    continue;
-                }
-                total += self.resolve_count(count, controller, source, None, 0) as i32;
-            }
-        }
-        total
+        self.replacement_registry()
+            .additional_enter_counters(self, entered, controller)
     }
 
     /// The number of tokens actually created when an effect would create `base` tokens under
@@ -2134,27 +2234,8 @@ impl Game {
     /// Doubling Season, "twice that many of those tokens"). Each [`Effect::Static(StaticEffect::TokenReplacement)`]
     /// that `recipient` controls multiplies the count once; the multipliers fold together.
     pub(crate) fn token_count_after_replacements(&self, recipient: PlayerId, base: u32) -> u32 {
-        if base == 0 {
-            return 0;
-        }
-        let mut product: u32 = 1;
-        for obj in &self.objects {
-            let Object::Permanent(p) = obj else {
-                continue;
-            };
-            if p.owner != recipient {
-                continue;
-            }
-            for ability in p.def.abilities {
-                let (Timing::Static, Effect::Static(StaticEffect::TokenReplacement { times })) =
-                    (ability.timing, ability.effect)
-                else {
-                    continue;
-                };
-                product *= times.max(0) as u32;
-            }
-        }
-        base * product
+        self.replacement_registry()
+            .token_replaced_amount(recipient, base)
     }
 
     /// The life actually gained when `recipient` would gain `base` life, after that player's static
@@ -2162,27 +2243,8 @@ impl Game {
     /// Each [`Effect::Static(StaticEffect::LifeGainReplacement)`] that `recipient` controls adds its `plus`; the addends
     /// fold together. Gaining `base <= 0` is not "gaining life", so no replacement applies.
     pub(crate) fn life_gain_after_replacements(&self, recipient: PlayerId, base: i32) -> i32 {
-        if base <= 0 {
-            return base;
-        }
-        let mut total = 0;
-        for (id, obj) in self.objects.iter().enumerate() {
-            let Object::Permanent(p) = obj else {
-                continue;
-            };
-            if self.controller_of(id as ObjectId) != recipient {
-                continue;
-            }
-            for ability in p.def.abilities {
-                let (Timing::Static, Effect::Static(StaticEffect::LifeGainReplacement { plus })) =
-                    (ability.timing, ability.effect)
-                else {
-                    continue;
-                };
-                total += plus;
-            }
-        }
-        base + total
+        self.replacement_registry()
+            .life_gain_replaced_amount(recipient, base)
     }
 
     /// The value of `{X}` a permanent spell actually enters/resolves with when `caster` casts it
@@ -2216,9 +2278,10 @@ impl Game {
             if self.controller_of(id as ObjectId) != caster {
                 continue;
             }
-            for ability in p.def.abilities {
+            let def = card_def(p.def);
+            for ability in def.abilities.iter().cloned() {
                 let (Timing::Static, Effect::Static(StaticEffect::CastXReplacement { times })) =
-                    (ability.timing, ability.effect)
+                    (ability.timing, ability.effect.clone())
                 else {
                     continue;
                 };
@@ -2237,11 +2300,11 @@ impl Game {
         });
     }
 
-    /// Test/setup helper: place a -1/-1 counter on a permanent (raw — bypasses replacements).
-    pub fn add_minus_counter(&mut self, object: ObjectId) {
+    /// Test/setup helper: place one named counter on a permanent (raw — bypasses replacements).
+    pub fn add_kind_counter(&mut self, object: ObjectId, kind: CounterKind) {
         self.apply(&Event::KindCountersPlaced {
             object,
-            kind: CounterKind::MinusOneMinusOne,
+            kind,
             count: 1,
         });
     }
@@ -2315,11 +2378,11 @@ mod cache_tests {
             modal_choose: 0,
             modal_choose_max: None,
             modal_choose_max_if_commander: false,
-            keywords: &[],
-            conditional_keywords: &[],
-            abilities: &[],
-            identity_pips: &[],
-            colors: &[],
+            keywords: empty_slice(),
+            conditional_keywords: empty_slice(),
+            abilities: empty_slice(),
+            identity_pips: empty_slice(),
+            colors: empty_slice(),
             devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
@@ -2327,11 +2390,12 @@ mod cache_tests {
             free_cast_if: None,
             alternative_cost: None,
             cast_only_during_combat: false,
+            cast_only_before_attackers: false,
             approximates: None,
             oracle: None,
-            set: "",
-            subtypes: &[],
-            otags: &[],
+            sets: empty_slice(),
+            subtypes: empty_slice(),
+            otags: empty_slice(),
             cycling: None,
             cycling_sacrifice: SacrificeCost::None,
             flashback: None,
@@ -2351,14 +2415,15 @@ mod cache_tests {
             enchant_graveyard: false,
             back: None,
             adventure: None,
-            halves: &[],
+            halves: empty_slice(),
             suspend: None,
             vanishing: None,
+            cast_x_max: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,
             encore: None,
-            hand_ability: &[],
+            hand_ability: empty_slice(),
             forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,
@@ -2385,6 +2450,7 @@ mod cache_tests {
                 condition: None,
                 from_graveyard: false,
                 all_players: false,
+                war_choice: None,
             }),
             optional: false,
             min_level: 0,
@@ -2404,11 +2470,11 @@ mod cache_tests {
             modal_choose: 0,
             modal_choose_max: None,
             modal_choose_max_if_commander: false,
-            keywords: &[],
-            conditional_keywords: &[],
-            abilities: ABILITIES,
-            identity_pips: &[],
-            colors: &[],
+            keywords: empty_slice(),
+            conditional_keywords: empty_slice(),
+            abilities: ABILITIES.into(),
+            identity_pips: empty_slice(),
+            colors: empty_slice(),
             devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
@@ -2416,11 +2482,12 @@ mod cache_tests {
             free_cast_if: None,
             alternative_cost: None,
             cast_only_during_combat: false,
+            cast_only_before_attackers: false,
             approximates: None,
             oracle: None,
-            set: "",
-            subtypes: &[],
-            otags: &[],
+            sets: empty_slice(),
+            subtypes: empty_slice(),
+            otags: empty_slice(),
             cycling: None,
             cycling_sacrifice: SacrificeCost::None,
             flashback: None,
@@ -2440,14 +2507,15 @@ mod cache_tests {
             enchant_graveyard: false,
             back: None,
             adventure: None,
-            halves: &[],
+            halves: empty_slice(),
             suspend: None,
             vanishing: None,
+            cast_x_max: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,
             encore: None,
-            hand_ability: &[],
+            hand_ability: empty_slice(),
             forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,
@@ -2499,17 +2567,19 @@ mod cache_tests {
         let spell = game.create_object(
             None,
             Object::Spell(Spell {
-                def: anthem(),
+                def: intern_card_def(anthem()),
                 controller: PlayerId(0),
                 targets: TargetList::default(),
                 targets_second: TargetList::default(),
                 commander: false,
                 x: 0,
+                chosen_color: None,
                 modes: Modes::default(),
                 copy: false,
                 flashback: false,
                 escape: false,
                 cast_from_hand: false,
+                cast_during_main_phase: false,
                 damage_division: DamageAssignment::default(),
                 damage_division_players: [None; MAX_TARGETS],
                 counter_division: DamageAssignment::default(),
@@ -2581,11 +2651,11 @@ mod cache_tests {
             modal_choose: 0,
             modal_choose_max: None,
             modal_choose_max_if_commander: false,
-            keywords: &[],
-            conditional_keywords: &[],
-            abilities: &[],
-            identity_pips: &[],
-            colors: &[],
+            keywords: empty_slice(),
+            conditional_keywords: empty_slice(),
+            abilities: empty_slice(),
+            identity_pips: empty_slice(),
+            colors: empty_slice(),
             devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
@@ -2593,11 +2663,12 @@ mod cache_tests {
             free_cast_if: None,
             alternative_cost: None,
             cast_only_during_combat: false,
+            cast_only_before_attackers: false,
             approximates: None,
             oracle: None,
-            set: "",
-            subtypes: &[],
-            otags: &[],
+            sets: empty_slice(),
+            subtypes: empty_slice(),
+            otags: empty_slice(),
             cycling: None,
             cycling_sacrifice: SacrificeCost::None,
             flashback: None,
@@ -2615,14 +2686,15 @@ mod cache_tests {
             functions_in_graveyard: false,
             back: None,
             adventure: None,
-            halves: &[],
+            halves: empty_slice(),
             suspend: None,
             vanishing: None,
+            cast_x_max: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,
             encore: None,
-            hand_ability: &[],
+            hand_ability: empty_slice(),
             forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,
@@ -2657,7 +2729,7 @@ mod cache_tests {
         game.apply(&Event::TokenCreated {
             token,
             controller: PlayerId(0),
-            def: creature(1, 1),
+            def: intern_card_def(creature(1, 1)),
             creator: bear,
         });
         assert!(
@@ -2730,11 +2802,11 @@ mod characteristic_query_tests {
             modal_choose: 0,
             modal_choose_max: None,
             modal_choose_max_if_commander: false,
-            keywords,
-            conditional_keywords: &[],
-            abilities: &[],
-            identity_pips: &[],
-            colors: &[],
+            keywords: keywords.into(),
+            conditional_keywords: empty_slice(),
+            abilities: empty_slice(),
+            identity_pips: empty_slice(),
+            colors: empty_slice(),
             devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
@@ -2742,11 +2814,12 @@ mod characteristic_query_tests {
             free_cast_if: None,
             alternative_cost: None,
             cast_only_during_combat: false,
+            cast_only_before_attackers: false,
             approximates: None,
             oracle: None,
-            set: "",
-            subtypes: &[],
-            otags: &[],
+            sets: empty_slice(),
+            subtypes: empty_slice(),
+            otags: empty_slice(),
             cycling: None,
             cycling_sacrifice: SacrificeCost::None,
             flashback: None,
@@ -2764,14 +2837,15 @@ mod characteristic_query_tests {
             functions_in_graveyard: false,
             back: None,
             adventure: None,
-            halves: &[],
+            halves: empty_slice(),
             suspend: None,
             vanishing: None,
+            cast_x_max: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,
             encore: None,
-            hand_ability: &[],
+            hand_ability: empty_slice(),
             forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,
@@ -2797,11 +2871,11 @@ mod characteristic_query_tests {
             modal_choose: 1,
             modal_choose_max: None,
             modal_choose_max_if_commander: false,
-            keywords: &[],
-            conditional_keywords: &[],
-            abilities: &[],
-            identity_pips: &[],
-            colors: &[],
+            keywords: empty_slice(),
+            conditional_keywords: empty_slice(),
+            abilities: empty_slice(),
+            identity_pips: empty_slice(),
+            colors: empty_slice(),
             devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
@@ -2809,11 +2883,12 @@ mod characteristic_query_tests {
             free_cast_if: None,
             alternative_cost: None,
             cast_only_during_combat: false,
+            cast_only_before_attackers: false,
             approximates: None,
             oracle: None,
-            set: "",
-            subtypes: &[],
-            otags: &[],
+            sets: empty_slice(),
+            subtypes: empty_slice(),
+            otags: empty_slice(),
             cycling: None,
             cycling_sacrifice: SacrificeCost::None,
             flashback: None,
@@ -2831,14 +2906,15 @@ mod characteristic_query_tests {
             functions_in_graveyard: false,
             back: None,
             adventure: None,
-            halves: &[],
+            halves: empty_slice(),
             suspend: None,
             vanishing: None,
+            cast_x_max: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,
             encore: None,
-            hand_ability: &[],
+            hand_ability: empty_slice(),
             forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,
@@ -2895,11 +2971,11 @@ mod characteristic_query_tests {
                 modal_choose: 1,
                 modal_choose_max: None,
                 modal_choose_max_if_commander: false,
-                keywords: &[],
-                conditional_keywords: &[],
-                abilities: &[],
-                identity_pips: &[],
-                colors: &[],
+                keywords: empty_slice(),
+                conditional_keywords: empty_slice(),
+                abilities: empty_slice(),
+                identity_pips: empty_slice(),
+                colors: empty_slice(),
                 devoid: false,
                 enters_tapped: false,
                 enters_tapped_unless: None,
@@ -2907,11 +2983,12 @@ mod characteristic_query_tests {
                 free_cast_if: None,
                 alternative_cost: None,
                 cast_only_during_combat: false,
+                cast_only_before_attackers: false,
                 approximates: None,
                 oracle: None,
-                set: "",
-                subtypes: &[],
-                otags: &[],
+                sets: empty_slice(),
+                subtypes: empty_slice(),
+                otags: empty_slice(),
                 cycling: None,
                 cycling_sacrifice: SacrificeCost::None,
                 flashback: None,
@@ -2929,14 +3006,15 @@ mod characteristic_query_tests {
                 functions_in_graveyard: false,
                 back: None,
                 adventure: None,
-                halves: &[],
+                halves: empty_slice(),
                 suspend: None,
                 vanishing: None,
+                cast_x_max: None,
                 devour: None,
                 demonstrate: false,
                 enter_as_copy: None,
                 encore: None,
-                hand_ability: &[],
+                hand_ability: empty_slice(),
                 forecast: None,
                 may_choose_not_to_untap: false,
                 dredge: None,
@@ -2981,11 +3059,11 @@ mod characteristic_query_tests {
                 modal_choose: 1,
                 modal_choose_max: None,
                 modal_choose_max_if_commander: false,
-                keywords: &[],
-                conditional_keywords: &[],
-                abilities: &[],
-                identity_pips: &[],
-                colors: &[],
+                keywords: empty_slice(),
+                conditional_keywords: empty_slice(),
+                abilities: empty_slice(),
+                identity_pips: empty_slice(),
+                colors: empty_slice(),
                 devoid: false,
                 enters_tapped: false,
                 enters_tapped_unless: None,
@@ -2993,11 +3071,12 @@ mod characteristic_query_tests {
                 free_cast_if: None,
                 alternative_cost: None,
                 cast_only_during_combat: false,
+                cast_only_before_attackers: false,
                 approximates: None,
                 oracle: None,
-                set: "",
-                subtypes: &[],
-                otags: &[],
+                sets: empty_slice(),
+                subtypes: empty_slice(),
+                otags: empty_slice(),
                 cycling: None,
                 cycling_sacrifice: SacrificeCost::None,
                 flashback: None,
@@ -3015,14 +3094,15 @@ mod characteristic_query_tests {
                 functions_in_graveyard: false,
                 back: None,
                 adventure: None,
-                halves: &[],
+                halves: empty_slice(),
                 suspend: None,
                 vanishing: None,
+                cast_x_max: None,
                 devour: None,
                 demonstrate: false,
                 enter_as_copy: None,
                 encore: None,
-                hand_ability: &[],
+                hand_ability: empty_slice(),
                 forecast: None,
                 may_choose_not_to_untap: false,
                 dredge: None,
@@ -3065,11 +3145,11 @@ mod characteristic_query_tests {
                 modal_choose: 1,
                 modal_choose_max: None,
                 modal_choose_max_if_commander: false,
-                keywords: &[],
-                conditional_keywords: &[],
-                abilities: &[],
-                identity_pips: &[],
-                colors: &[],
+                keywords: empty_slice(),
+                conditional_keywords: empty_slice(),
+                abilities: empty_slice(),
+                identity_pips: empty_slice(),
+                colors: empty_slice(),
                 devoid: false,
                 enters_tapped: false,
                 enters_tapped_unless: None,
@@ -3077,11 +3157,12 @@ mod characteristic_query_tests {
                 free_cast_if: None,
                 alternative_cost: None,
                 cast_only_during_combat: false,
+                cast_only_before_attackers: false,
                 approximates: None,
                 oracle: None,
-                set: "",
-                subtypes: &[],
-                otags: &[],
+                sets: empty_slice(),
+                subtypes: empty_slice(),
+                otags: empty_slice(),
                 cycling: None,
                 cycling_sacrifice: SacrificeCost::None,
                 flashback: None,
@@ -3099,14 +3180,15 @@ mod characteristic_query_tests {
                 functions_in_graveyard: false,
                 back: None,
                 adventure: None,
-                halves: &[],
+                halves: empty_slice(),
                 suspend: None,
                 vanishing: None,
+                cast_x_max: None,
                 devour: None,
                 demonstrate: false,
                 enter_as_copy: None,
                 encore: None,
-                hand_ability: &[],
+                hand_ability: empty_slice(),
                 forecast: None,
                 may_choose_not_to_untap: false,
                 dredge: None,

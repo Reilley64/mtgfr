@@ -27,10 +27,32 @@ impl Game {
                 keep_one,
                 filter,
                 life_loss,
+                count,
                 then,
-            }) => self.sacrifice_edict(
-                scope, keep_one, filter, life_loss, then, controller, source, events,
-            ),
+            }) => {
+                let count = self.resolve_count(count, controller, source, target, ctx.x);
+                self.sacrifice_edict(
+                    scope, keep_one, filter, life_loss, count, then, controller, source, events,
+                )
+            }
+            // Syphon Mind's "Each other player discards a card." A fan-out over the opponents in
+            // APNAP order (empty-hand seats skipped), tallying `cards_discarded_this_way` so the
+            // enclosing `Sequence`'s draw step reads it.
+            Effect::Choice(ChoiceEffect::EachOpponentDiscards) => {
+                self.resolution_frame.cards_discarded_this_way = 0;
+                let opponents: Vec<PlayerId> = self
+                    .apnap_order()
+                    .into_iter()
+                    .filter(|&p| p != controller)
+                    .collect();
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::NextDiscardEdict {
+                        remaining: opponents,
+                        source,
+                    },
+                )
+            }
             // A multi-player graveyard-exile fan-out (Augusta) pauses per affected player; its
             // reflexive counter payoff rides in the enclosing `Sequence`, resumed once all answer.
             // ponytail: this "when you do" is CR 603.3b's separate reflexive trigger, modeled here
@@ -114,6 +136,19 @@ impl Game {
                     },
                 )
             }
+            // Archangel of Strife: "As this creature enters, each player chooses war or peace."
+            // No "starting with you" wording, so CR 101.4 default APNAP order, unlike Fateful
+            // Tempest's caster-relative `turn_order_from`. Reuses the council's-dilemma `CastVote`
+            // fan-out — `answer_vote` also recognizes "war"/"peace" ballots, writing each answer
+            // to that player's own `Player::war_choices`, keyed by this source, instead of a tally.
+            Effect::Choice(ChoiceEffect::EachPlayerChoosesWarOrPeace) => pending::raise(
+                self,
+                pending::ChoiceRequest::NextVote {
+                    remaining: self.apnap_order(),
+                    source,
+                    options: &["war", "peace"],
+                },
+            ),
             // Conundrum Sphinx's attack trigger: "each player chooses a card name" (CR 101.4
             // default APNAP order — the trigger carries no "starting with you," but its
             // controller is always the active player, since only the active player's creatures

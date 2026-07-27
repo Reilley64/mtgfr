@@ -1,6 +1,6 @@
 import { Schema as S } from "effect";
-import { CatalogCardSchema } from "../../../../lib/deck-builder/cards";
-import { ScryfallPrintSchema } from "../../../../lib/deck-builder/scryfall";
+import { CatalogCardSchema } from "../../../domain/deck-builder/cards";
+import { ScryfallPrintSchema } from "../../../domain/deck-builder/scryfall";
 import { BuilderMenuItemSchema } from "./messages";
 
 export const DeckEntry = S.Struct({

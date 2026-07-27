@@ -102,7 +102,7 @@ impl Game {
             // Each selected card must be one of the looked-at cards, match the filter, and appear
             // at most once.
             if !cards.contains(&id)
-                || !filter.matches(self.def_of(id))
+                || !filter.matches(&self.def_of(id))
                 || selected[..i].contains(&id)
             {
                 return Err(Reject::IllegalChoice);
@@ -121,7 +121,7 @@ impl Game {
                     player,
                     object: self.next_object_id(),
                     from,
-                    card: self.def_of(from),
+                    card: self.def_id_of(from),
                 },
                 TopDest::Battlefield => {
                     let permanent = self.next_object_id();
@@ -134,7 +134,7 @@ impl Game {
                     }
                 }
             };
-            self.push_apply(&mut events, event);
+            self.push_apply_effect_event(&mut events, event);
         }
         // An Aura among the deployed permanents may need a host chosen (CR 303.4f). Scoped to a
         // lone deployed permanent (Armored Skyhunter's `up_to = 1`) — a multi-permanent batch
@@ -161,9 +161,9 @@ impl Game {
                         player,
                         object: self.next_object_id(),
                         from,
-                        card: self.def_of(from),
+                        card: self.def_id_of(from),
                     };
-                    self.push_apply(&mut events, event);
+                    self.push_apply_effect_event(&mut events, event);
                 }
             }
         }
@@ -219,7 +219,7 @@ impl Game {
                 player,
                 object: self.next_object_id(),
                 from,
-                card: self.def_of(from),
+                card: self.def_id_of(from),
             };
             self.push_apply(&mut events, event);
         }
@@ -338,7 +338,7 @@ impl Game {
                 color,
             }
         };
-        self.push_apply(&mut events, event);
+        self.push_apply_effect_event(&mut events, event);
         Ok(events)
     }
 
@@ -430,7 +430,7 @@ impl Game {
                 player,
                 object: self.next_object_id(),
                 from,
-                card: self.def_of(from),
+                card: self.def_id_of(from),
             },
             SearchDest::Battlefield => Event::SearchedToBattlefield {
                 permanent: self.next_object_id(),
@@ -444,7 +444,7 @@ impl Game {
             SearchDest::LibraryTop => Event::RevealedTopOfLibrary {
                 player,
                 card: from,
-                def: self.def_of(from),
+                def: self.def_id_of(from),
             },
             // Buried Alive: "put them into your graveyard" — the same library-to-graveyard
             // choke `mill_events` uses, so this arrival never counts as "from the battlefield"
@@ -500,8 +500,10 @@ impl Game {
     /// player — a fresh [`PendingChoice::SearchLibrary`] over their own library, same
     /// filter/destination/count. A no-op (single-searcher search, or the fan-out's last player
     /// just finished) when [`ResolutionFrame::search_fanout`](crate::resolution::ResolutionFrame::search_fanout)
-    /// is unset or its queue is empty.
-    fn continue_search_fanout(&mut self) {
+    /// is unset or its queue is empty. Recurses past a queued player Stranglehold denies (that
+    /// player's raise comes back without pausing, CR 701.19) so the rest of the fan-out still
+    /// runs instead of stalling on the first denied seat.
+    pub(crate) fn continue_search_fanout(&mut self) {
         let Some(SearchFanout {
             mut remaining,
             filter,
@@ -536,6 +538,9 @@ impl Game {
                 overflow,
             },
         );
+        if !self.resolution_is_paused() {
+            self.continue_search_fanout();
+        }
     }
 
     /// Answer a [`PendingChoice::PutLandFromHand`]: put the chosen land (one of the offered
@@ -558,7 +563,7 @@ impl Game {
 
         let mut events = Vec::new();
         if let Some(from) = choice {
-            self.push_apply(
+            self.push_apply_effect_event(
                 &mut events,
                 Event::PutOntoBattlefieldFromHand {
                     permanent: self.next_object_id(),
@@ -572,15 +577,21 @@ impl Game {
     }
 
     /// Answer a [`PendingChoice::PutCreatureFromHand`]: put the chosen creature (one of the
-    /// offered candidates) onto the battlefield, grant it haste, and schedule its sacrifice at
-    /// the next end step (CR 603.7) — or decline (`choice = None`).
+    /// offered candidates) onto the battlefield — or decline (`choice = None`). Cauldron Dance
+    /// (`keep == false`) grants it haste and schedules its sacrifice at the next end step (CR
+    /// 603.7); Kaalia (`keep == true`, `defender == Some`) instead enters it tapped and attacking
+    /// that opponent (CR 508.4, reusing the token put-in-attacking path) and keeps it.
     pub(crate) fn put_creature_from_hand(
         &mut self,
         player: PlayerId,
         choice: Option<ObjectId>,
     ) -> Result<Vec<Event>, Reject> {
         let Some(PendingChoice::PutCreatureFromHand {
-            candidates, source, ..
+            candidates,
+            source,
+            keep,
+            defender,
+            ..
         }) = self.pending_choice.clone()
         else {
             return Err(Reject::IllegalChoice);
@@ -591,17 +602,34 @@ impl Game {
         self.finish_answer();
 
         let mut events = Vec::new();
-        if let Some(from) = choice {
-            let permanent = self.next_object_id();
+        let Some(from) = choice else {
+            return Ok(events);
+        };
+        let permanent = self.next_object_id();
+        self.push_apply_effect_event(
+            &mut events,
+            Event::PutOntoBattlefieldFromHand {
+                permanent,
+                from,
+                controller: player,
+                tapped: defender.is_some(),
+            },
+        );
+        // Kaalia: the creature enters attacking the opponent Kaalia attacks — CR 508.4, not a
+        // declared attack, so `TokenEnteredAttacking` (shared with Combat Calligrapher) carries
+        // it rather than re-running `declare_attackers`.
+        if let Some(defender) = defender {
             self.push_apply(
                 &mut events,
-                Event::PutOntoBattlefieldFromHand {
-                    permanent,
-                    from,
-                    controller: player,
-                    tapped: false,
+                Event::TokenEnteredAttacking {
+                    token: permanent,
+                    defender,
                 },
             );
+        }
+        // Cauldron Dance: the put-in creature gains haste and is sacrificed at the next end step;
+        // Kaalia keeps it (already attacking, no haste needed).
+        if !keep {
             const HASTE: &[Keyword] = &[Keyword::Haste];
             self.push_apply(
                 &mut events,
@@ -722,15 +750,15 @@ impl Game {
         Ok(events)
     }
 
-    /// Answer a [`PendingChoice::ChooseMode`]. Two shapes, split on `activated` (see the variant
-    /// doc):
+    /// Answer a [`PendingChoice::ChooseMode`]: pick the chosen mode of a "choose one" modal
+    /// ability ([`Effect::ChooseOne`]).
     ///
-    /// - `activated == false`: a "choose one" triggered ability ([`Effect::ChooseOne`]) — the
-    ///   chosen mode runs immediately through the ordinary resolution pipeline, carrying the
-    ///   trigger's own `source`/`target`/`x` context. The chosen sub-effect may itself pause.
-    /// - `activated == true`: a modal activated ability (CR 601.2b — Cankerbloom) — the chosen
-    ///   mode's own target (if it has one) is requested next, then the mode is placed on the
-    ///   stack (never run immediately; an activated ability always goes to the stack).
+    /// A *triggered* modal ability (`at_placement`) chose its mode as it went on the stack (CR
+    /// 603.3d): *place* the chosen branch — choosing its own target now too — on the stack, so it
+    /// resolves later straight down that branch with no mid-resolution mode pause. A modal effect
+    /// reached mid-resolution (a modal spell's own step — Zimone's Hypothesis) runs the chosen
+    /// branch immediately, carrying the effect's own `source`/`target`/`x` context. Either chosen
+    /// sub-effect may itself pause.
     pub(crate) fn answer_choose_mode(
         &mut self,
         player: PlayerId,
@@ -741,6 +769,7 @@ impl Game {
             target,
             x,
             modes,
+            at_placement,
             activated,
             ..
         }) = self.pending_choice.clone()
@@ -750,7 +779,7 @@ impl Game {
         if mode >= modes.len() {
             return Err(Reject::IllegalMode);
         }
-        let chosen = modes[mode];
+        let chosen = modes[mode].clone();
 
         if activated {
             let spec = chosen.target();
@@ -769,7 +798,7 @@ impl Game {
                 );
                 return Ok(events);
             }
-            let source_colors = color_identity(self.def_of(source));
+            let source_colors = color_identity(&self.def_of(source));
             let legal = self.legal_targets_for(spec, source, player, source_colors, x);
             // CR 601.2c: a mode with no legal target can't be chosen. The `ChooseMode` pause was
             // only cloned above, never taken, so rejecting here leaves it standing — the
@@ -784,7 +813,7 @@ impl Game {
                 pending::ChoiceRequest::ChooseTarget {
                     player,
                     source,
-                    effect: chosen,
+                    effect: chosen.clone(),
                     legal,
                     count: TargetCount::default(),
                     x,
@@ -796,8 +825,12 @@ impl Game {
 
         self.finish_answer();
         let mut events = Vec::new();
+        if at_placement {
+            self.place_targeted_ability(player, source, modes[mode].clone(), 0, false, &mut events);
+            return Ok(events);
+        }
         self.run(
-            chosen,
+            modes[mode].clone(),
             ResolveCtx {
                 controller: player,
                 source,
@@ -851,7 +884,7 @@ impl Game {
         let mut seen_players: Vec<PlayerId> = Vec::new();
         let mut resolved: Vec<(Effect, Option<Target>)> = Vec::new();
         for (m, target) in modes {
-            let (Some(&effect), false) = (mode_effects.get(m), seen_modes.contains(&m)) else {
+            let (Some(effect), false) = (mode_effects.get(m), seen_modes.contains(&m)) else {
                 return Err(Reject::IllegalMode);
             };
             seen_modes.push(m);
@@ -860,7 +893,7 @@ impl Game {
                 if target.is_some() {
                     return Err(Reject::IllegalTarget);
                 }
-                resolved.push((effect, None));
+                resolved.push((effect.clone(), None));
                 continue;
             }
             let Some(Target::Player(chosen_player)) = target else {
@@ -868,13 +901,13 @@ impl Game {
             };
             if seen_players.contains(&chosen_player)
                 || !self
-                    .legal_targets_for(spec, source, player, color_identity(def), x)
+                    .legal_targets_for(spec, source, player, color_identity(&def.clone()), x)
                     .contains(&target.expect("checked Some above"))
             {
                 return Err(Reject::IllegalTarget);
             }
             seen_players.push(chosen_player);
-            resolved.push((effect, target));
+            resolved.push((effect.clone(), target));
         }
         self.finish_answer();
 

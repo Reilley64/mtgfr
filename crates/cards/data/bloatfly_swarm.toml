@@ -3,7 +3,7 @@
 # If damage would be dealt to this creature while it has a +1/+1 counter on it, prevent that damage, remove that many
 # +1/+1 counters from it, then give each player a rad counter for each +1/+1 counter removed this way.
 name = "Bloatfly Swarm"
-set = "pip"
+sets = ["pip"]
 subtypes = ["Insect", "Mutant"]
 id = "fc50e254-71bc-46b3-93e6-c6eb820a3473"
 default_print = "2d90b839-0808-435d-bcf3-aa7af414c44b"

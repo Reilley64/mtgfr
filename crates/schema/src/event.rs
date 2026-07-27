@@ -8,7 +8,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::ObjectId;
-use crate::dto::VisibleState;
+use crate::dto::{MessageRef, VisibleState};
 use crate::intent::WireTarget;
 
 /// A batch of already-redacted events for one viewer plus the viewer's full render state
@@ -20,11 +20,11 @@ pub struct DeltaEnvelope {
     pub seq: u64,
     pub events: Vec<VisibleEvent>,
     pub state: VisibleState,
-    /// Human-readable labels of actions the server auto-submitted in this frame (a forced
+    /// Stable labels of actions the server auto-submitted in this frame (a forced
     /// discard, an auto-passed priority with nothing to do) — for the client's "automatic"
     /// styling, so a forced play is never mistaken for the player's own move.
     #[serde(default)]
-    pub auto_actions: Vec<String>,
+    pub auto_actions: Vec<MessageRef>,
 }
 
 /// An [`engine::Event`] after per-viewer redaction. Public facts pass through
@@ -835,6 +835,7 @@ pub fn spectator_redact(event: &engine::Event) -> VisibleEvent {
 mod tests {
     use super::*;
     use crate::snapshot::{StreamFrame, ViewExtras, complete_visible};
+    use crate::test_support::card_id;
     use engine::{Event, Game, PlayerId};
 
     fn snapshot(game: &Game, viewer: PlayerId) -> crate::dto::VisibleState {
@@ -849,7 +850,7 @@ mod tests {
             player: PlayerId(0),
             object: 7,
             from: 42,
-            card: cards::get_by_name("Shock").unwrap(),
+            card: card_id("Shock"),
         };
         let spec = spectator_redact(&ev);
         match spec {
@@ -892,7 +893,7 @@ mod tests {
             seq: 1,
             events: vec![VisibleEvent::PriorityPassed { player: 0 }],
             state: snapshot(&game, PlayerId(0)),
-            auto_actions: vec!["Discarded Shock (forced)".to_string()],
+            auto_actions: vec![MessageRef::key("auto.test")],
         });
         for frame in [snap, delta, StreamFrame::Heartbeat] {
             let line = serde_json::to_string(&frame).expect("frame serializes");
@@ -914,10 +915,10 @@ mod tests {
             seq: 1,
             events: vec![],
             state: snapshot(&game, PlayerId(0)),
-            auto_actions: vec!["Discarded Shock (forced)".to_string()],
+            auto_actions: vec![MessageRef::key("auto.test")],
         };
         let line = serde_json::to_string(&with_labels).expect("envelope serializes");
-        assert!(line.contains("Discarded Shock (forced)"));
+        assert!(line.contains("auto.test"));
         let back: DeltaEnvelope = serde_json::from_str(&line).expect("envelope parses");
         assert_eq!(back, with_labels);
 
@@ -945,7 +946,7 @@ mod tests {
             player: alice,
             object: 7,
             from: 3,
-            card: cards::get_by_name("Shock").expect("Shock is in the pool"),
+            card: card_id("Shock"),
         };
 
         let for_alice = redact(&draw, alice);
@@ -982,7 +983,7 @@ mod tests {
             player: alice,
             object: 7,
             from: 3,
-            card: cards::get_by_name("Shock").expect("Shock is in the pool"),
+            card: card_id("Shock"),
         };
 
         let for_alice = redact(&tutor, alice);

@@ -27,6 +27,10 @@ fn mana_code(mana: engine::Mana) -> u8 {
     }
 }
 
+fn card_name(id: engine::CardId) -> String {
+    engine::card_def(id).name.to_string()
+}
+
 /// Project a canonical engine event into what `viewer` is allowed to see.
 /// `viewer` is `Some(seat)` for a player, `None` for a spectator — the owner-gated
 /// branches below then simply never fire for a spectator.
@@ -75,6 +79,10 @@ pub(crate) fn project_event(
             // reasoning as `sacrifice_count`/`kicked`/`strive_count` above — no UI reads it yet.
             // Add it when a Replicate card's UI wants to show "cast with N copies."
             replicate_count: _,
+            // ponytail: the declared Multikicker count isn't surfaced on the wire either, same
+            // reasoning as `sacrifice_count`/`kicked`/`strive_count`/`replicate_count` above — no
+            // UI reads it yet.
+            multikicker_count: _,
             // ponytail: whether the spell was bestowed (CR 702.103) isn't surfaced on the wire
             // either, same reasoning as `sacrifice_count`/`kicked` above — no UI reads it yet. Add
             // a `bestowed` to VisibleEvent::SpellCast when the UI wants to show "bestowed."
@@ -99,10 +107,6 @@ pub(crate) fn project_event(
             // condition the client just sees the resulting event for). Add it here if a UI ever
             // wants to badge the cast itself with which colors funded it.
             spent_colors: _,
-            // ponytail: the declared Multikicker count isn't surfaced on the wire either, same
-            // reasoning as `replicate_count` above — no UI reads it yet. Add it when a
-            // Multikicker card's UI wants to show "cast with N charges."
-            multikicker_count: _,
             // ponytail: how many Phyrexian pips were paid with life (CR 107.4f) isn't surfaced on
             // the wire either, same reasoning as `spent_colors` above — the client sees the
             // resulting `LifeChanged` event, and Compleated's as-enters loyalty reduction shows up
@@ -280,6 +284,15 @@ pub(crate) fn project_event(
             toughness,
         },
         Event::TempBoostsEnded { object } => VisibleEvent::TempBoostsEnded { object },
+        // A copy-effect exception keyword rider (CR 707.2 — "except it has haste/myriad") is a
+        // keyword-status change, so it surfaces to the client the same as a `TempBoost`: a
+        // re-snapshot signal, with no P/T delta. The client reads the object's live keyword set
+        // from the fresh snapshot each delta (same rationale as `TempBoost`'s dropped `keywords`).
+        Event::CopyRiderKeywordsGranted { object, .. } => VisibleEvent::TempBoost {
+            object,
+            power: 0,
+            toughness: 0,
+        },
         Event::BasePtSetUntilEndOfTurn {
             object,
             power,
@@ -482,7 +495,7 @@ pub(crate) fn project_event(
             player: player.0,
             card,
             from: redact_private(player, viewer, from),
-            def: redact_private(player, viewer, def.name.to_string()),
+            def: redact_private(player, viewer, card_name(def)),
         },
         Event::BlockerDeclared { blocker, attacker } => {
             VisibleEvent::BlockerDeclared { blocker, attacker }
@@ -611,7 +624,7 @@ pub(crate) fn project_event(
         Event::EmblemCreated {
             emblem,
             controller,
-            def,
+            ref def,
         } => VisibleEvent::EmblemCreated {
             emblem,
             controller: controller.0,
@@ -697,11 +710,14 @@ pub(crate) fn project_event(
             second_from_top,
         },
         Event::LibraryShuffled { player } => VisibleEvent::LibraryShuffled { player: player.0 },
+        Event::LibraryHandSmoothed { player, .. } => {
+            VisibleEvent::LibraryShuffled { player: player.0 }
+        }
         // A reveal is public (CR 701.30) — every viewer, including a spectator, sees it.
         Event::RevealedTopOfLibrary { player, card, def } => VisibleEvent::RevealedTopOfLibrary {
             player: player.0,
             card,
-            def: def.name.to_string(),
+            def: card_name(def),
         },
         Event::PutOnBottomOfLibrary { player, card } => VisibleEvent::PutOnBottomOfLibrary {
             player: player.0,
@@ -716,7 +732,7 @@ pub(crate) fn project_event(
             player: player.0,
             object,
             from: redact_private(player, viewer, from),
-            card: redact_private(player, viewer, card.name.to_string()),
+            card: redact_private(player, viewer, card_name(card)),
         },
         Event::SearchedToBattlefield {
             permanent,
@@ -792,7 +808,7 @@ pub(crate) fn project_event(
             player: player.0,
             object,
             from: redact_private(player, viewer, from),
-            card: redact_private(player, viewer, card.name.to_string()),
+            card: redact_private(player, viewer, card_name(card)),
         },
         Event::Sacrificed { object, by, .. } => VisibleEvent::Sacrificed { object, by: by.0 },
         Event::CastFromExileFreePermissionGranted { card, player } => {

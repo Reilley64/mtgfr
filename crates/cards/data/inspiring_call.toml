@@ -4,7 +4,7 @@ name = "Inspiring Call"
 id = "9b9a10ff-5a5d-4df8-88aa-18d84ff9117c"
 default_print = "2555ec7b-5cc2-4ffd-9344-6368019feff9"
 oracle = "Draw a card for each creature you control with a +1/+1 counter on it. Those creatures gain indestructible until end of turn. (Damage and effects that say \"destroy\" don't destroy them.)"
-set = "tle"
+sets = ["tle"]
 
 [cost]
 generic = 2

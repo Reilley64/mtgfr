@@ -1,15 +1,15 @@
-// Port of the existing stream reconnect coverage to the Foldkit game subscription module.
-// The behaviour remains owned by `streamDeltas`; this test pins the new module path before the
-// subscription wrapper is wired into the app.
+// Stream reconnect coverage for the Foldkit game subscription module.
 
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
+import * as Stream from "effect/Stream";
 import * as TestClock from "effect/testing/TestClock";
 import { beforeAll, describe, expect, it } from "vitest";
 import { makeClient } from "~/effect/client";
 import { stubLocation } from "~/effect/test-support";
-import { type StreamCallbacks, streamDeltas } from "./stream-subscription";
+import { StreamTerminalError } from "./messages";
+import { type GameStreamEvent, streamDeltas, streamMessages } from "./stream-subscription";
 
 beforeAll(stubLocation);
 
@@ -44,8 +44,38 @@ function harness(statusFor: (attempt: number) => number = () => 200) {
   };
 }
 
-function build(h: ReturnType<typeof harness>, cb: StreamCallbacks, random: () => number = () => 1) {
-  return streamDeltas("t", cb, random, makeClient(h.fetchImpl));
+type StreamHandlers = {
+  onFrame?: (frame: GameStreamEvent & { kind: "frame" }) => void;
+  onStatus?: (connected: boolean) => void;
+  onError?: (status: number) => void;
+};
+
+function build(h: ReturnType<typeof harness>, random: () => number = () => 1) {
+  return streamDeltas("t", random, makeClient(h.fetchImpl));
+}
+
+function observe(h: ReturnType<typeof harness>, handlers: StreamHandlers, random: () => number = () => 1) {
+  return build(h, random).pipe(
+    Stream.runForEach((event) =>
+      Effect.sync(() => {
+        switch (event.kind) {
+          case "frame":
+            handlers.onFrame?.(event);
+            return;
+          case "status":
+            handlers.onStatus?.(event.connected);
+            return;
+          case "terminal-error":
+            handlers.onError?.(event.status);
+            return;
+          default: {
+            const _exhaustive: never = event;
+            return _exhaustive;
+          }
+        }
+      }),
+    ),
+  );
 }
 
 const settle = Effect.promise(() => new Promise((r) => setTimeout(r, 5)));
@@ -70,7 +100,7 @@ describe("game stream subscription streamDeltas", () => {
     const frames: unknown[] = [];
     await drive(
       Effect.gen(function* () {
-        const fiber = yield* Effect.forkChild(build(h, { onFrame: (f) => frames.push(f) }));
+        const fiber = yield* Effect.forkChild(observe(h, { onFrame: (event) => frames.push(event.frame) }));
         yield* waitConn(h, 0);
         h.frame(0, 1);
         h.raw(0, "\n");
@@ -87,7 +117,7 @@ describe("game stream subscription streamDeltas", () => {
     const status: boolean[] = [];
     await drive(
       Effect.gen(function* () {
-        const fiber = yield* Effect.forkChild(build(h, { onFrame() {}, onStatus: (c) => status.push(c) }));
+        const fiber = yield* Effect.forkChild(observe(h, { onStatus: (c) => status.push(c) }));
         yield* waitConn(h, 0);
         expect(h.conns.length).toBe(1);
 
@@ -128,7 +158,7 @@ describe("game stream subscription streamDeltas", () => {
     const status: boolean[] = [];
     await drive(
       Effect.gen(function* () {
-        const fiber = yield* Effect.forkChild(build(h, { onFrame() {}, onStatus: (c) => status.push(c) }));
+        const fiber = yield* Effect.forkChild(observe(h, { onStatus: (c) => status.push(c) }));
         yield* waitConn(h, 0);
 
         yield* adjust(500);
@@ -159,7 +189,7 @@ describe("game stream subscription streamDeltas", () => {
     const errors: number[] = [];
     await drive(
       Effect.gen(function* () {
-        yield* Effect.forkChild(build(h, { onFrame() {}, onError: (s) => errors.push(s) }));
+        yield* Effect.forkChild(observe(h, { onError: (s) => errors.push(s) }));
         yield* waitConn(h, 0);
         expect(h.conns.length).toBe(1);
         expect(errors).toEqual([404]);
@@ -172,12 +202,23 @@ describe("game stream subscription streamDeltas", () => {
     );
   });
 
+  it("emits terminal statuses so the board can explain 401 and 404 failures", async () => {
+    for (const status of [401, 404]) {
+      const h = harness(() => status);
+      const messages = await Effect.runPromise(
+        streamMessages("t", () => 1, makeClient(h.fetchImpl)).pipe(Stream.take(1), Stream.runCollect),
+      );
+
+      expect(Array.from(messages)).toEqual([StreamTerminalError({ status })]);
+    }
+  });
+
   it("treats a silent established connection as dead after the stale timeout and reconnects", async () => {
     const h = harness();
     const status: boolean[] = [];
     await drive(
       Effect.gen(function* () {
-        const fiber = yield* Effect.forkChild(build(h, { onFrame() {}, onStatus: (c) => status.push(c) }));
+        const fiber = yield* Effect.forkChild(observe(h, { onStatus: (c) => status.push(c) }));
         yield* waitConn(h, 0);
         h.frame(0, { frame: "snapshot", seq: 0, state: {} });
         yield* settle;
@@ -205,7 +246,7 @@ describe("game stream subscription streamDeltas", () => {
     const frames: unknown[] = [];
     await drive(
       Effect.gen(function* () {
-        const fiber = yield* Effect.forkChild(build(h, { onFrame: (f) => frames.push(f) }));
+        const fiber = yield* Effect.forkChild(observe(h, { onFrame: (event) => frames.push(event.frame) }));
         yield* waitConn(h, 0);
         h.frame(0, { frame: "snapshot", seq: 0, state: {} });
         yield* settle;
@@ -228,7 +269,7 @@ describe("game stream subscription streamDeltas", () => {
     const status: boolean[] = [];
     await drive(
       Effect.gen(function* () {
-        const fiber = yield* Effect.forkChild(build(h, { onFrame() {}, onStatus: (c) => status.push(c) }));
+        const fiber = yield* Effect.forkChild(observe(h, { onStatus: (c) => status.push(c) }));
         yield* waitConn(h, 0);
         h.frame(0, { frame: "heartbeat" });
         yield* settle;
@@ -244,7 +285,7 @@ describe("game stream subscription streamDeltas", () => {
     const frames: unknown[] = [];
     await drive(
       Effect.gen(function* () {
-        const fiber = yield* Effect.forkChild(build(h, { onFrame: (f) => frames.push(f) }));
+        const fiber = yield* Effect.forkChild(observe(h, { onFrame: (event) => frames.push(event.frame) }));
         yield* waitConn(h, 0);
         h.frame(0, 1);
         yield* settle;

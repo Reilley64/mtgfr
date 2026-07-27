@@ -1,6 +1,6 @@
 # Choices, Actions, and Resolution
 
-**Status:** Current (as of 2026-07-20)
+**Status:** Current (as of 2026-07-25)
 **Module:** `crates/engine` (`src/types/` `PendingChoice`/`LegalAction`, `src/cast.rs`, `src/effects.rs`, `src/resolution/`, `src/priority.rs` `settle_payment`, `src/query.rs`, `src/playable.rs`)
 
 ---
@@ -15,7 +15,7 @@ Card effects pause the game for player input — choosing a target, paying a cos
 
 `Game::pending_choice: Option<PendingChoice>` is a plain data enum — no callbacks, no closures. While a choice is pending, `Game::legal_actions()` returns an empty list and only the matching answer intent from the awaited player is accepted by `submit`. When the choice is resolved, the engine continues executing the interrupted effect body (the `ResumeState` deferred-sequence mechanism).
 
-`Game::legal_actions()` returns a `Vec<LegalAction>`, each carrying a stable `id`, the acting `player`, and a `MeaningfulAction` kind. The client submits `Intent::TakeAction { id, … }` to execute the action; the engine looks up the id and dispatches identically to the equivalent concrete intent. Stable ids survive state changes that do not remove the underlying action.
+`Game::legal_actions()` returns a `Vec<LegalAction>`, each carrying a stable `id`, the acting `player`, and a `MeaningfulAction` kind. Schema projection gives each action a `MessageRef` label for client display. The client submits `Intent::TakeAction { id, … }` to execute the action; the engine looks up the id and dispatches identically to the equivalent concrete intent. Stable ids survive state changes that do not remove the underlying action.
 
 Payment is settled engine-side: `Game::settle_payment` auto-taps mana sources to cover a spell's or ability's cost, removing the need for the client to plan or sequence taps before casting.
 
@@ -44,33 +44,39 @@ Payment is settled engine-side: `Game::settle_payment` auto-taps mana sources to
 
 While `Game::pending_choice` is `Some`, no `LegalAction` is exposed and only the correct answer intent from the awaited player is accepted. The known choice kinds are:
 
-- **`ChooseTarget { player, source, effect, legal, count, x, activated }`** — choose one or more targets from `legal` for the given effect. `count.min` is 0 for "up to N" choices. With `min == 0` and exactly one legal target, it is still not forced (the player may decline). Forced only when exactly one target AND `min >= 1` (or `min == legal.len()`).
+- **`ChooseTarget { player, source, effect, legal, count, clause, target, x, spent_mana, activated }`** — the engine's single target-selection pause for ability placement, spell-on-stack retargeting / multi-target clause selection, and ability second-clause selection. `source` is the ability source or spell on the stack; `effect` is present for ability/mid-resolution prompts and omitted for spell-on-stack clauses whose wire label stays the card name. `count.min` is 0 for "up to N" choices. With `min == 0` and exactly one legal target, it is still not forced (the player may decline). Forced only when exactly one target AND `min >= 1` (or `min == legal.len()`). `clause` indexes independent target clauses in printed order, and `target` carries an already-chosen first-clause ability target when a later clause is being chosen. `x` / `spent_mana` / `activated` are engine-only continuation metadata and are not wire-mirrored.
 - **`OrderTriggers { player, source, effects }`** — order simultaneous triggered abilities from the same controller. Forced when exactly one effect is in the list.
-- **`MayYesNo { player, source, effect }`** — "you may" optional trigger. **Never forced** — declining is always a legal choice.
+- **`MayYesNo { player, source, effect, resume }`** — generic yes/no pause for "you may" effects and repeat-loops. `resume` is typed engine-only continuation metadata; the wire/client only see the prompt label and Yes / No affordance. **Never forced** — declining is always a legal choice.
+- **`MayDrawUpTo { player, effect, max, resume }`** — generic "draw 0..=N" pause used by declinable draw counts (for example Arcane Denial) and repeatable loops such as Trade Secrets. `resume` is typed engine-only continuation metadata that decides what resolution step runs after the chosen count. This is never forced: choosing `0` is always legal.
 - **`PayCost { player, source, effect }`** — "you may pay a cost" to get an effect. Never forced.
 - **`DiscardToHandSize { player, hand, count }`** — discard `count` cards from `hand`. Forced when `count == hand.len()` (entire hand must go). A partial discard (choose which cards) is never forced.
 - **`SacrificeEdict { player, options, keep_one, filter, … }`** — sacrifice one or more permanents matching a filter. Forced when exactly one option AND `keep_one == false`. A `keep_one` edict (keep exactly one, sacrifice the rest) is never forced even with one option (keeping vs. sacrificing is a real decision).
 - **`ArrangeTop { player, cards, total }`** — scry / surveil ordering (put some on top in order, rest to bottom). Never forced even for a single card (top vs. bottom is a real choice).
 - **`SearchLibrary { player, filter, … }`** — tutor: browse a zone (library or graveyard) and pick a matching card. Fail-to-find is always legal, so this is never forced.
-- **`ChooseMode { player, source, … }`** — pick from a modal spell's available modes. Forced when exactly one mode is available.
+- **`ChooseMode { player, source, …, at_placement }`** — pick one mode of a modal `Effect::ChooseOne` ability. `at_placement` distinguishes the two rules windows: a *triggered* modal ability chooses its mode as it goes on the stack (CR 603.3d, `at_placement = true`), and the chosen branch — with its own target — is what is placed on the stack, resolving straight down that branch with no mid-resolution mode pause; a modal effect reached mid-resolution (a modal spell's own step, e.g. Zimone's Hypothesis) runs the chosen branch immediately (`at_placement = false`). Forced when exactly one mode is available.
 - **`CommanderRedirect { player, commander, … }`** — redirect a commander to the command zone instead of the graveyard/exile. Not forced (the player may allow it to go to the graveyard).
 - **`AssignCombatDamage { player, attacker, blockers, total_damage }`** — assign trample damage among blockers and the defending player, with lethal-to-each-blocker minimums.
 - **`ChooseAttachHost { player, attachment, legal }`** — pick a legal host for an Aura being deployed (e.g. from a tutor that puts it directly onto the battlefield).
+- **`ChooseLegendaryKeep { player, name, options }`** — legend rule (CR 704.5j): controller chooses which same-named legendary permanent to keep; answered by `Intent::ChooseLegendaryKeep`. Raised from the SBA sweep after event-producing SBAs settle (not mid-resolution).
 - **`PayEchoOrSacrifice { player, permanent }`** — Echo (CR 702.31): pay the echo cost or sacrifice the permanent at upkeep.
 - **`PayRecoverOrExile { player, card }`** — Recover (CR 702.59): pay the recover cost to return a creature from the graveyard, or exile it.
 - **`PayCumulativeUpkeepOrSacrifice { player, permanent, cost }`** — Cumulative Upkeep (CR 702.24): pay all accumulated age-counter costs or sacrifice.
 - **`Discard { player, hand, count }`** — a triggered discard effect (distinct from cleanup discard to hand size).
+- **`MayExileDiscardedToPlay { player, source, options }`** — a batch nonland-discard payoff (Conspiracy Theorist's `Trigger::YouDiscardNonland`): may exile one of `options` (the nonland cards discarded this event, still in the graveyard) face-up with impulse-play permission until end of turn, or decline. Answered by `Intent::ChooseSacrifices` (empty declines, one entry picks); never forced. No card still in the graveyard skips the pause.
 - **`ChooseSacrifice { player, options, filter }`** — a triggered edict that asks the player to pick which permanent(s) they sacrifice voluntarily (for a modal/optional effect).
+
+These three keyword-cost choices come from `Game::pending_obligations`, the engine's unified post-trigger obligation queue. Once ordinary `TriggerGroup` placement is exhausted, `place_pending_triggers` raises them one at a time in fixed priority order: Echo first, then Recover, then Cumulative upkeep.
 
 ### Forced action
 
-`Game::forced_action()` returns the single auto-submittable intent when a pending choice has exactly one legal answer and it is unambiguously the only option. Conservative: "may" choices and ArrangeTop are never forced. The server submits forced choices automatically and tags the resulting log events as `AUTO`.
+`Game::forced_action()` returns the single auto-submittable intent when a pending choice has exactly one legal answer and it is unambiguously the only option. Conservative: "may" choices and ArrangeTop are never forced. The server submits forced choices automatically and carries a `MessageRef` auto-action notice in the delta so the client can mark the log line as automatic.
 
 ### LegalAction and TakeAction
 
 - `Game::refresh_actions()` rebuilds `Game::actions` from `Game::meaningful_actions(player)` for every living seat after every state change.
 - While `pending_choice` is `Some`, `refresh_actions` produces an empty list.
 - Each `LegalAction` carries: `id: u64` (stable monotonic), `player: PlayerId`, `kind: MeaningfulAction`.
+- Each projected `ActionView` carries a `MessageRef` label; card/object names used in those labels are params only when visible to that viewer.
 - An action whose `(player, kind)` pair survives a state change keeps its id. A genuinely new action mints a fresh monotonic id. Dead ids are never recycled.
 - `Intent::TakeAction { id, target, x, modes, sacrifice, discard_cost, graveyard_exile, attackers, blocks }` looks up `id` in `Game::actions`, checks `player` matches, and dispatches to the same private handler the equivalent concrete intent would invoke.
 - `MeaningfulAction` kinds: `PlayLand`, `Cast`, `Activate`, `Cycle`, `ActivateHandAbility`, `Suspend`, `Encore`, `TurnFaceUp`, `CastPrepared`, `CastFaceDown`, `DeclareAttackers`, `DeclareBlockers`.
@@ -94,7 +100,9 @@ When an effect body needs player input mid-resolution, it calls `pending::raise(
 1. Sets `Game::pending_choice = Some(choice)`.
 2. Returns control to the caller; the effect body is not re-entered.
 
-Later, when the player answers, `pending::answer(game, intent)` resolves the choice and stores the answer in the `ResumeState`. `Game::resume_deferred_sequence` is then called at the tail of `submit_inner` to drain any deferred effect steps that were parked while the choice was pending. This allows a single effect body (`Effect::Sequence`, `Effect::Clash`, `Effect::Demonstrate`, etc.) to have multiple pause points without nesting callbacks.
+Later, when the player answers, `pending::answer(game, intent)` resolves the choice and stores the answer in the `ResumeState`. `Game::resume_deferred_sequence` is then called at the tail of `submit_inner` to drain any deferred effect steps that were parked while the choice was pending. Generic choice resumes (`MayYesNo.resume`, `MayDrawUpTo.resume`) keep card-specific follow-ups such as Trade Secrets inside the same engine-side continuation path without exposing extra wire variants. This allows a single effect body (`Effect::Sequence`, `Effect::Clash`, `Effect::Demonstrate`, etc.) to have multiple pause points without nesting callbacks.
+
+When an instant or sorcery finishes resolving without pausing, `Game::finish_instant_sorcery_resolution` handles its final destination. Buyback, flashback/escape, adventure, and Quintorius replacement logic still branch directly from the live `Spell`; self-move riders authored as effect steps set `Game::resolution_finish: Option<FinishPolicy>` during resolution so the finisher can consume one plain post-resolution destination override (`TuckLibraryBottom`, `ExileWithTimeCounters`, or `Exile`).
 
 ### Cast flow (high level)
 
@@ -105,7 +113,7 @@ Later, when the player answers, `pending::answer(game, intent)` resolves the cho
 5. `Event::SpellCast` is emitted; the card moves from hand to stack as `Object::Spell`.
 6. Cast triggers fire (`CastSpell` triggers, magecraft, etc.) at the next priority window (via `enqueue_triggers`).
 7. When the stack resolves (all players pass), `Game::resolve_top` calls `Game::resolve_spell` for the top spell.
-8. Permanents enter the battlefield (`Event::PermanentEntered`); instants/sorceries run their effects via `Game::run` and move to the graveyard.
+8. Permanents enter the battlefield (`Event::PermanentEntered`); instants/sorceries run their effects via `Game::run`, then `finish_instant_sorcery_resolution` sends them to the graveyard or the one-shot `resolution_finish` destination selected during that resolution.
 
 ---
 
@@ -115,8 +123,10 @@ Later, when the player answers, `pending::answer(game, intent)` resolves the cho
 - **Stable action ids (lobby-table-routing-and-live-game spec) enable tap-then-cast.** A client can tap a land (changing mana state but not removing the cast action), then submit `TakeAction { id: cast_id }` with the id it fetched before the tap. The id survives because the action's `(player, kind)` pair is unchanged.
 - **`CastPlayKind` separates listing from execution.** The `List` path checks timing, zone, affordability, and target availability without needing chosen inputs; it drives `meaningful_actions` and auto-pass. The `OneClick` and `Full` paths additionally validate chosen discard picks, graveyard-exile selections, and other cost components.
 - **`ResumeState` is not event-sourced.** The deferred-sequence resume stack (`Vec<ResumeFrame>`) is transient orchestration state on `Game`, consistent with how `pending_choice` is handled. Games are in-memory only (lobby-table-routing-and-live-game spec), so there is no replay concern.
+- **Resolution finish policy is plain data on `Game`.** Self-referential zone riders set `resolution_finish` while their spell resolves, and the finisher consumes it immediately after the effect body completes. This keeps the spell's final destination override in the same orchestration tier as `pending_choice` and `ResumeState`, not in events.
 - **`forced_action` is conservative by design.** It errs on the side of not forcing rather than accidentally making a choice for the player. A real decision must never be auto-submitted.
 - **Payment planner preference order**: free-tap lands before non-land free-tap sources; non-pain sources before pain sources; higher-breadth (more color-versatile) sources preferred. This is a heuristic: the planner aims to minimize color waste without guaranteeing an optimal plan (optimization is bounded and practically good for the pool's cards).
+- **Engine-authored player-facing effect text is structured.** `Effect::message()` and reject mappers return closed `MessageKey` values plus params; English action, prompt, stack, and auto-action copy is formatted by the client catalog.
 
 ---
 
@@ -124,10 +134,12 @@ Later, when the player answers, `pending::answer(game, intent)` resolves the cho
 
 - **`forced_action` is unit-testable** without a board: construct `PendingChoice` directly on a bare `Game`, assert `forced_action()` returns the correct `Some`/`None`. See the in-module tests in `lib.rs`.
 - **Choice resume tests**: construct a board with a choice-raising effect (e.g. Scry), submit the triggering action, assert `pending_choice` is set, then submit the answer intent and assert the game continues correctly.
+- **Keyword-obligation tests**: assert the unified obligation queue still raises Echo choices before Recover choices before Cumulative upkeep choices.
 - **Payment tests**: give a player specific untapped lands, verify `settle_payment` taps the correct sources and the correct mana is deducted. Test pain-land preference (non-pain lands tapped first).
 - **Stable-id tests**: construct a board, call `refresh_actions`, record an id, mutate state in a way that doesn't remove the action, call `refresh_actions` again, assert the id is unchanged. See in-module tests in `lib.rs`.
 - **`TakeAction` dispatch test**: verify that submitting `TakeAction { id }` produces the same events as the equivalent concrete intent for each `MeaningfulAction` kind.
 - **Multi-choice sequence test**: effect with two pause points (e.g. a Clash followed by a Scry) — answer each in order and verify the deferred sequence drains correctly.
+- **MessageRef tests**: representative effects, action projection, trigger-order labels, and automatic choices assert keys and params rather than English strings.
 
 ---
 

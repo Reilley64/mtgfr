@@ -29,12 +29,13 @@ impl Game {
             // spell with mana value 3 or less from their graveyard, once during each of their
             // turns.
             Zone::Graveyard => {
+                let def = card_def(c.def);
                 c.owner == player
-                    && (c.def.flashback.is_some()
-                        || c.def.escape.is_some()
-                        || c.def.retrace
-                        || c.def.graveyard_cast_cost.is_some()
-                        || self.serra_graveyard_play_allowed(c.def, player))
+                    && (def.flashback.is_some()
+                        || def.escape.is_some()
+                        || def.retrace
+                        || def.graveyard_cast_cost.is_some()
+                        || self.serra_graveyard_play_allowed(&def, player))
             }
             _ => false,
         };
@@ -46,7 +47,7 @@ impl Game {
     /// ([`Game::grants_graveyard_recursion`]), haven't already used the once-per-turn permission
     /// ([`Player::graveyard_play_used_this_turn`]), and `def` is a land or a permanent spell (a
     /// nonland card that isn't an instant/sorcery) with mana value 3 or less.
-    fn serra_graveyard_play_allowed(&self, def: CardDef, player: PlayerId) -> bool {
+    fn serra_graveyard_play_allowed(&self, def: &CardDef, player: PlayerId) -> bool {
         if self.players[player.0 as usize].graveyard_play_used_this_turn {
             return false;
         }
@@ -175,9 +176,10 @@ impl Game {
     /// count itself (CR 702.108 — each payment is a full extra instance of the cost, unlike
     /// Strive's "beyond the first") — 0 for a spell with no Replicate, or when pricing without a
     /// declared count.
-    /// `multikicker_count` folds [`AdditionalCost::multikicker`]'s cost on top, the same "each
-    /// payment is a full extra instance" multiply as `replicate_count` (CR 702.34) — 0 for a
-    /// spell with no Multikicker, or when pricing without a declared count.
+    /// `multikicker_count` folds [`AdditionalCost::multikicker`]'s cost on top, multiplied by the
+    /// count itself (CR 702.33c — "any number of times," each payment a full extra instance of
+    /// the cost, mirroring Replicate's own fold rather than Strive's "beyond the first") — 0 for
+    /// a spell with no Multikicker, or when pricing without a declared count.
     /// `alternative_cost` charges [`CardDef::alternative_cost`]'s non-mana rider *instead of* the
     /// printed cost (CR 601.2f), same opt-in shape as `evoked` — `false` for a spell with none, or
     /// when pricing without declaring it. Unlike every other flag above, this replaces the whole
@@ -264,9 +266,9 @@ impl Game {
         if from_command {
             cost.generic += self.commander_tax(player);
         }
-        cost.generic = cost
-            .generic
-            .saturating_sub(self.cost_reduction(player, def, target, zone));
+        cost.generic =
+            cost.generic
+                .saturating_sub(self.cost_reduction(player, def.clone(), target, zone));
         if let Some(amount) = def.cost.reduce_own_generic {
             let discount = self
                 .resolve_amount(amount, player, object, target, x)
@@ -344,11 +346,13 @@ impl Game {
                 .colorless
                 .saturating_add(replicate.colorless.saturating_mul(replicate_count));
         }
-        // Multikicker (CR 702.34a): "you may pay an additional [cost] any number of times as you
-        // cast this spell" — the same "each payment is a full extra instance" multiply as
-        // Replicate above, its own separate additional-cost field.
+        // Multikicker (CR 702.33c): "you may pay an additional [cost] any number of times as you
+        // cast this spell" — a kicker cost payable any number of times, so the declared count
+        // multiplies straight through like Replicate's own fold above rather than Strive's
+        // "beyond the first."
         // ponytail: sums generic/colored/colorless pips only, mirroring kicker/strive/replicate's
-        // own pip-only fold above — Everflowing Chalice's multikicker cost carries none.
+        // own pip-only fold above — Lightkeeper of Emeria's and Comet Storm's multikicker costs
+        // carry none.
         if let Some(multikicker) = base.additional.multikicker {
             cost.generic = cost
                 .generic
@@ -477,7 +481,7 @@ impl Game {
         // folded into it — `validate_cast_cost_picks` already confirmed `def.alternative_cost`
         // is real and its condition holds, so this only sees a genuine one.
         if alternative_cost && let Some(alt) = def.alternative_cost {
-            let rider_events = self.execute_effect(*alt.rider, player, object, None, 0);
+            let rider_events = self.execute_effect(alt.rider.clone(), player, object, None, 0);
             for event in rider_events {
                 self.push_apply(&mut events, event);
             }
@@ -516,7 +520,7 @@ impl Game {
         // card, then the spell itself — sees the previous event already applied.
         for &id in discard_cost {
             let card = self.next_object_id();
-            let def = self.def_of(id);
+            let def = self.def_id_of(id);
             self.push_apply(&mut events, Event::MovedToGraveyard { card, from: id });
             // CR 701.8/601.2h: a cost discard is still a discard — fires "whenever you discard"
             // watchers too.
@@ -541,7 +545,7 @@ impl Game {
         // sacrifice one or more creatures"), paid pre-stack like the discard loop above. Routes
         // through the normal death events so "when this/a creature dies" watchers fire off it.
         for &id in sacrifice_cost {
-            let def = self.def_of(id);
+            let def = self.def_id_of(id);
             let event = self.sacrifice_event(id);
             self.push_apply(&mut events, event);
             self.push_apply(
@@ -608,7 +612,7 @@ impl Game {
             self.push_apply(&mut events, Event::CommanderCastFromCommandZone { player });
         }
         // A multi-target spell now chooses its targets (CR 601.2c): auto-fill when the choice is
-        // forced (a single legal set — take them all), otherwise pause on a ChooseSpellTargets.
+        // forced (a single legal set — take them all), otherwise pause on a ChooseTarget.
         if let Some((spec, count)) = multi_target {
             self.choose_spell_targets(spell_id, spec, count, player, player, &mut events);
         }
@@ -650,13 +654,13 @@ impl Game {
         controller: PlayerId,
         x: u32,
     ) -> Result<(), Reject> {
-        let max = self.modal_choose_max(def, controller);
+        let max = self.modal_choose_max(&def, controller);
         if !(def.modal_choose as usize..=max as usize).contains(&modes.len()) {
             return Err(Reject::IllegalMode);
         }
         let mut seen: Vec<usize> = Vec::new();
         for &(m, target) in modes {
-            let Some(ability) = nth_mode(def, m) else {
+            let Some(ability) = nth_mode(&def, m) else {
                 return Err(Reject::IllegalMode);
             };
             if m >= MAX_MODES || seen.contains(&m) {
@@ -669,14 +673,14 @@ impl Game {
             // independent target clause (Hull Breach mode 2's "target artifact and target
             // enchantment") — see `modal_clause_ability`.
             if !ability.effect.target_count().is_single()
-                || ability_target_clauses(ability).len() > 1
+                || ability_target_clauses(&ability).len() > 1
             {
                 if target.is_some() {
                     return Err(Reject::IllegalTarget);
                 }
                 continue;
             }
-            if !self.targets_are_legal(object, def, target, controller, Some(m), x) {
+            if !self.targets_are_legal(object, &def, target, controller, Some(m), x) {
                 return Err(Reject::IllegalTarget);
             }
         }
@@ -688,7 +692,7 @@ impl Game {
     /// single-target majority, which supplies its one target synchronously in the cast intent.
     /// The head of [`Self::spell_target_clauses`]; modal spells use
     /// [`Self::modal_target_clauses`] instead, scoped to the chosen mode.
-    pub(crate) fn spell_multi_target(&self, def: CardDef) -> Option<(TargetSpec, TargetCount)> {
+    pub(crate) fn spell_multi_target(&self, def: &CardDef) -> Option<(TargetSpec, TargetCount)> {
         self.spell_target_clauses(def).first().copied()
     }
 
@@ -705,16 +709,16 @@ impl Game {
     ///
     /// An ordinary single-target ability contributes nothing (its target rides the cast intent).
     /// Empty for a modal spell.
-    pub(crate) fn spell_target_clauses(&self, def: CardDef) -> Vec<(TargetSpec, TargetCount)> {
+    pub(crate) fn spell_target_clauses(&self, def: &CardDef) -> Vec<(TargetSpec, TargetCount)> {
         if def.modal {
             return Vec::new();
         }
         def.abilities
             .iter()
-            .copied()
             .filter(|a| matches!(a.timing, Timing::Spell))
+            .cloned()
             .flat_map(|a| {
-                let clauses = ability_target_clauses(a);
+                let clauses = ability_target_clauses(&a);
                 if clauses.len() > 1 {
                     return clauses;
                 }
@@ -736,11 +740,11 @@ impl Game {
     /// modes — a modal spell resolves only what was chosen.
     pub(crate) fn modal_target_clauses(
         &self,
-        def: CardDef,
+        def: &CardDef,
         modes: &[(usize, Option<Target>)],
     ) -> Vec<(TargetSpec, TargetCount)> {
         modal_clause_ability(def, modes.iter().copied())
-            .map(ability_target_clauses)
+            .map(|ability| ability_target_clauses(&ability))
             .unwrap_or_default()
     }
 
@@ -749,7 +753,7 @@ impl Game {
     /// [`Self::modal_target_clauses`] instead, read at [`Self::advance_spell_target_clauses`]).
     pub(crate) fn spell_target_clause(
         &self,
-        def: CardDef,
+        def: &CardDef,
         clause: usize,
     ) -> Option<(TargetSpec, TargetCount)> {
         self.spell_target_clauses(def).get(clause).copied()
@@ -761,13 +765,13 @@ impl Game {
     /// bend both key off. `None` for a targetless spell (no retarget/copy-retarget offered). A
     /// later independent clause (Magma Opus) is reached separately once clause 0 settles, through
     /// [`Self::spell_target_clause`] via [`Self::advance_spell_target_clauses`].
-    pub(crate) fn spell_primary_target(&self, def: CardDef) -> Option<(TargetSpec, TargetCount)> {
+    pub(crate) fn spell_primary_target(&self, def: &CardDef) -> Option<(TargetSpec, TargetCount)> {
         let ability = def
             .abilities
             .iter()
             .find(|a| matches!(a.timing, Timing::Spell))?;
-        let spec = ability.effect.target();
-        (spec != TargetSpec::None).then(|| (spec, ability.effect.target_count()))
+        let spec = ability.effect.clone().target();
+        (spec != TargetSpec::None).then(|| (spec, ability.effect.clone().target_count()))
     }
 
     /// Record a just-cast multi-target spell's chosen targets (CR 601.2c), starting at its first
@@ -809,11 +813,11 @@ impl Game {
         let def = self.def_of(spell);
         let next = if def.modal {
             let modes = self.spell(spell).modes;
-            self.modal_target_clauses(def, &modes.chosen().collect::<Vec<_>>())
+            self.modal_target_clauses(&def, &modes.chosen().collect::<Vec<_>>())
                 .get(clause)
                 .copied()
         } else {
-            self.spell_target_clause(def, clause)
+            self.spell_target_clause(&def, clause)
         };
         if let Some((spec, count)) = next {
             self.choose_spell_target_clause(spell, clause, spec, count, anchor, chooser, events);
@@ -827,7 +831,7 @@ impl Game {
     /// `count.max` distinct legal targets — but capped at how many legal targets exist (CR 601.2c:
     /// "the maximum possible number"). When that's a single forced set (take every legal target, no
     /// room to choose fewer or which), it's auto-filled here with no pause and the next clause runs;
-    /// otherwise the caster answers a [`PendingChoice::ChooseSpellTargets`] carrying this `clause`.
+    /// otherwise the caster answers a [`PendingChoice::ChooseTarget`] carrying this `clause`.
     /// See [`Self::choose_spell_targets`] for `anchor`/`chooser`.
     #[allow(clippy::too_many_arguments)]
     fn choose_spell_target_clause(
@@ -844,7 +848,7 @@ impl Game {
             spec,
             spell,
             anchor,
-            color_identity(self.def_of(spell)),
+            color_identity(&self.def_of(spell)),
             self.spell(spell).x,
         );
         let n = legal.len();
@@ -863,6 +867,14 @@ impl Game {
         // CR 601.2c/601.2f/702.42: Strive's own sibling — Twinflame's target count is the
         // caster's declared pre-stack commitment (see `Intent::Cast::strive_count`'s own doc),
         // already recorded as `spell_strive_count` by the time this runs, same as sacrifice above.
+        // CR 601.2c/702.33c: Multikicker's own sibling, "1 + N" rather than "exactly N" — see the
+        // `multikicker_scaled` branch below.
+        // CR 702.33g: a kicked-conditional clause (Orim's Thunder's "If this spell was kicked, it
+        // deals damage ... to target creature") — unkicked collapses the whole clause to (0, 0), a
+        // wholly separate target instance from the card's other (unconditional) clause.
+        // CR 601.2c: a main-phase-conditional target (Return to Dust's "you may exile up to one
+        // *other* target artifact or enchantment") — outside a main phase, `max` caps down to
+        // `min`, since it's the same clause's optional second target, not a separate instance.
         let (min, max) = if count.x_scaled {
             let x = (self.spell(spell).x as usize).min(MAX_TARGETS) as u8;
             (if count.min == 0 { 0 } else { x }, x)
@@ -872,19 +884,45 @@ impl Game {
         } else if count.strive_scaled {
             let x = (self.spell_strive_count(spell) as usize).min(MAX_TARGETS) as u8;
             (x, x)
+        } else if count.multikicker_scaled {
+            // CR 601.2c/702.33c: Multikicker's own sibling — Comet Storm's "choose any target,
+            // then choose another target for each time this spell was kicked" is always one base
+            // target plus one per kick (1 + N), unlike the others above's "exactly N."
+            let x = (1 + self.spell_multikicker_count(spell) as usize).min(MAX_TARGETS) as u8;
+            (x, x)
+        } else if count.kicked_scaled {
+            if self.spell_was_kicked(spell) {
+                (count.min, count.max)
+            } else {
+                (0, 0)
+            }
+        } else if count.main_phase_scaled {
+            if self.spell_cast_during_main_phase(spell) {
+                (count.min, count.max)
+            } else {
+                (count.min, count.min)
+            }
         } else {
             (count.min, count.max)
         };
         let lo = (min as usize).min(n) as u8;
         let hi = (max as usize).min(n) as u8;
-        // Forced: exactly one legal set (must take all `n`, no option to take fewer). Auto-fill,
-        // then chain into the next clause (or the divided-damage split once every clause is set).
-        if lo == hi && hi as usize == n {
+        let count = TargetCount {
+            min: lo,
+            max: hi,
+            ..count
+        };
+        // Forced: exactly one legal set — take all `n` (no option to take fewer), or, for a
+        // clause whose count settled to zero (Orim's Thunder's damage clause cast unkicked), take
+        // none however many are enumerated. Either way auto-fill, then chain into the next clause
+        // (or the divided-damage split once every clause is set). A `min: 0, max: 0` pause would
+        // advertise legal candidates the choice handler can only reject.
+        if lo == hi && (hi as usize == n || hi == 0) {
             self.push_apply(
                 events,
                 Event::SpellTargetsChosen {
                     spell,
-                    targets: TargetList::from_targets(&legal),
+                    targets: TargetList::from_targets(&legal[..hi as usize]),
                     clause: clause as u8,
                 },
             );
@@ -893,13 +931,17 @@ impl Game {
         }
         crate::pending::raise_choice(
             self,
-            PendingChoice::ChooseSpellTargets {
+            PendingChoice::ChooseTarget {
                 player: chooser,
-                spell,
-                min: lo,
-                max: hi,
+                source: spell,
+                effect: None,
                 legal,
+                count,
                 clause: clause as u8,
+                target: None,
+                x: self.spell(spell).x,
+                spent_mana: [0; 6],
+                activated: false,
             },
         );
     }
@@ -914,7 +956,7 @@ impl Game {
     /// `Game::choose_spell_targets_answer`'s player-chosen branch.
     pub(crate) fn maybe_begin_damage_division(&mut self, spell: ObjectId, events: &mut Vec<Event>) {
         let spell_obj = self.spell(spell);
-        let def = spell_obj.def;
+        let def = card_def(spell_obj.def);
         let controller = spell_obj.controller;
         let x = spell_obj.x;
         let Some(ability) = def.abilities.iter().find(|a| {
@@ -962,7 +1004,7 @@ impl Game {
         events: &mut Vec<Event>,
     ) {
         let spell_obj = self.spell(spell);
-        let def = spell_obj.def;
+        let def = card_def(spell_obj.def);
         let controller = spell_obj.controller;
         let x = spell_obj.x;
         let Some(ability) = def.abilities.iter().find(|a| {
@@ -1016,15 +1058,17 @@ impl Game {
         player: PlayerId,
         object: ObjectId,
     ) -> Result<Vec<Event>, Reject> {
-        let Object::Card(card) = self.objects[object as usize] else {
-            return Err(Reject::NotCastable);
+        let def = match &self.objects[object as usize] {
+            Object::Card(card) => card.def,
+            _ => return Err(Reject::NotCastable),
         };
+        let printed = card_def(def);
         // Playable from hand, exile, or (via Serra Paragon, CR 118.9) the graveyard — a land is
         // never cast from the command zone.
         if !matches!(
             self.playable_zone(object, player),
             Some(Zone::Hand | Zone::Exile | Zone::Graveyard)
-        ) || !matches!(card.def.kind, CardKind::Land { .. })
+        ) || !matches!(&printed.kind, CardKind::Land { .. })
         {
             return Err(Reject::NotCastable);
         }
@@ -1039,7 +1083,7 @@ impl Game {
         // the land exists rather than falling through `enters_tapped_unless`. Only offered when
         // affordable (CR 119.4 — life down to and including 0); below the cost the land just
         // enters tapped with no prompt, handled by `Game::enters_tapped` at `Event::LandPlayed`.
-        if let Some(life) = card.def.enters_tapped_unless_you_pay_life
+        if let Some(life) = printed.enters_tapped_unless_you_pay_life
             && self.life(player) >= life as i32
         {
             pending::raise_choice(
@@ -1063,7 +1107,7 @@ impl Game {
         // A land's own as-enters static (CR 616.1 — Vivid Crag's "enters with two charge
         // counters"): no spell/target context at this special action, unlike the cast-resolution
         // choke `push_enters_with_counters` also serves.
-        self.push_enters_with_counters(card.def, permanent, player, None, 0, &mut events);
+        self.push_enters_with_counters(&printed, permanent, player, None, 0, &mut events);
         Ok(events)
     }
 
@@ -1114,7 +1158,7 @@ impl Game {
         events: &mut Vec<Event>,
     ) {
         for &id in sacrificed {
-            let def = self.def_of(id);
+            let def = self.def_id_of(id);
             let sac = self.sacrifice_event(id);
             self.push_apply(events, sac);
             self.push_apply(
@@ -1144,20 +1188,22 @@ impl Game {
         if player != self.priority {
             return Err(Reject::NotYourPriority);
         }
-        let Object::Card(c) = self.objects[card as usize] else {
-            return Err(Reject::CannotActivate);
+        let (owner, zone, def) = match &self.objects[card as usize] {
+            Object::Card(card_state) => (card_state.owner, card_state.zone, card_state.def),
+            _ => return Err(Reject::CannotActivate),
         };
-        if c.zone != Zone::Hand || c.owner != player {
+        let printed = card_def(def);
+        if zone != Zone::Hand || owner != player {
             return Err(Reject::CannotActivate);
         }
-        let Some(cost) = c.def.cycling else {
+        let Some(cost) = printed.cycling else {
             return Err(Reject::CannotActivate);
         };
         // Resolve the cycling sacrifice cost up front (CR 118.9/602.2b), same choke an ordinary
         // activation's sacrifice cost uses.
         let named: Vec<ObjectId> = sacrifice.into_iter().collect();
         let sacrificed =
-            self.validate_sacrifice_cost(player, card, c.def.cycling_sacrifice, &named)?;
+            self.validate_sacrifice_cost(player, card, printed.cycling_sacrifice, &named)?;
 
         // Pay the cost — mana (settled first, auto-tapping lands; an unpayable cost rejects
         // before the discard), the sacrifice, and "discard this card" (CR 702.29a) — before the
@@ -1193,12 +1239,17 @@ impl Game {
         // the ordinary trigger pipeline in `after_events` — lands on top of the draw already on
         // the stack, so it resolves first (Krosan Tusker's "(Do this before you draw.)"). Scanned
         // off the cycled card's own def, mirroring `Trigger::YouCastThis`'s self-scan.
-        if c.def
+        if printed
             .abilities
             .iter()
             .any(|a| a.timing == Timing::Triggered(Trigger::Cycled))
         {
-            self.queue_trigger_group(TriggerContext::of(player), card, c.def, Trigger::Cycled);
+            self.queue_trigger_group(
+                TriggerContext::of(player),
+                card,
+                printed.as_ref().clone(),
+                Trigger::Cycled,
+            );
         }
         // An action resets the pass count; the cycler keeps priority (CR 117.3c) — overriding the
         // active-player default `push_ability_group` set.
@@ -1230,15 +1281,16 @@ impl Game {
         if player != self.priority {
             return Err(Reject::NotYourPriority);
         }
-        let Object::Card(c) = self.objects[card as usize] else {
+        let Object::Card(ref c) = self.objects[card as usize] else {
             return Err(Reject::CannotActivate);
         };
         if c.zone != Zone::Hand || c.owner != player {
             return Err(Reject::CannotActivate);
         }
-        let (ability, forecast) = if let Some(&ability) = c.def.hand_ability.get(index) {
+        let printed = card_def(c.def);
+        let (ability, forecast) = if let Some(ability) = printed.hand_ability.get(index).cloned() {
             (ability, false)
-        } else if let Some(ability) = c.def.forecast {
+        } else if let Some(ability) = printed.forecast.clone() {
             // Forecast (CR 702.57a): activated only during the controller's own upkeep, and
             // only once each turn.
             if self.step != Step::Upkeep || self.active_player != player {
@@ -1297,9 +1349,11 @@ impl Game {
         // ponytail: a hand ability's payload takes no target in the pool (Magma Opus's Treasure,
         // the landcyclers' library search); pushed with `None`. Thread a chosen target through
         // here if a targeted hand ability ever appears.
-        let effect = match ability.effects {
-            [single] => *single,
-            steps => Effect::Sequence { steps },
+        let effect = match ability.effects.as_ref() {
+            [single] => single.clone(),
+            steps => Effect::Sequence {
+                steps: steps.into(),
+            },
         };
         self.push_ability_group(player, card, &[(effect, None)], true, &mut events);
         // An action resets the pass count; the activator keeps priority (CR 117.3c) — overriding
@@ -1322,17 +1376,23 @@ impl Game {
         if player != self.priority {
             return Err(Reject::NotYourPriority);
         }
-        let Object::Card(c) = self.objects[card as usize] else {
+        let Object::Card(ref c) = self.objects[card as usize] else {
             return Err(Reject::CannotActivate);
         };
         if c.zone != Zone::Hand || c.owner != player {
             return Err(Reject::CannotActivate);
         }
-        let Some(suspend) = c.def.suspend else {
+        let printed = card_def(c.def);
+        let Some(suspend) = printed.suspend else {
             return Err(Reject::CannotActivate);
         };
         // CR 702.62b: a card may be suspended any time it could be cast (timing follows the card).
-        if !self.cast_timing_ok(player, card, c.def, playable::CastPlayKind::Full) {
+        if !self.cast_timing_ok(
+            player,
+            card,
+            printed.as_ref().clone(),
+            playable::CastPlayKind::Full,
+        ) {
             return Err(Reject::WrongTiming);
         }
 
@@ -1376,21 +1436,21 @@ impl Game {
         if player != self.priority {
             return Err(Reject::NotYourPriority);
         }
-        let Object::Card(c) = self.objects[card as usize] else {
+        let Object::Card(ref c) = self.objects[card as usize] else {
             return Err(Reject::CannotActivate);
         };
         if c.zone != Zone::Graveyard || c.owner != player {
             return Err(Reject::CannotActivate);
         }
-        let Some(cost) = c.def.encore else {
+        let def = c.def;
+        let printed = card_def(def);
+        let Some(cost) = printed.encore else {
             return Err(Reject::CannotActivate);
         };
         // CR 702.140b: encore may be activated only as a sorcery.
         if !self.can_take_sorcery_speed_action(player) {
             return Err(Reject::WrongTiming);
         }
-        let def = c.def;
-
         // Pay the cost (CR 702.140a): the encore mana cost (settled first, auto-tapping lands; an
         // unpayable cost rejects before any exile) plus exiling this card from the graveyard.
         let mut events = Vec::new();
@@ -1438,7 +1498,7 @@ impl Game {
                         power: 0,
                         toughness: 0,
                         keywords: HASTE,
-                        source_name: def.name,
+                        source_name: printed.name,
                     },
                 );
                 self.push_apply(
@@ -1463,8 +1523,9 @@ impl Game {
     /// Turn a face-down permanent face up: a special action (no stack) usable any time its
     /// controller has priority. Pay the reveal cost — a morph card's *morph* cost (CR 702.37c) if
     /// it has one, otherwise a manifest's hidden *printed* cost (CR 701.34e — Reality Shift) — then
-    /// clear the face-down flag to reveal it. Only a creature card may be turned face up (a
-    /// noncreature manifest stays a 2/2 forever).
+    /// clear the face-down flag to reveal it. Only a creature card may be turned face up from a
+    /// plain manifest (a noncreature manifest stays a 2/2 forever); a morph card has no such
+    /// restriction (CR 702.37c — Zoetic Cavern's real kind is Land).
     pub(crate) fn turn_face_up(
         &mut self,
         player: PlayerId,
@@ -1479,17 +1540,20 @@ impl Game {
         if !perm.face_down || perm.owner != player {
             return Err(Reject::CannotActivate);
         }
-        // CR 701.34e: only a creature card may be turned face up.
-        let CardKind::Creature { .. } = perm.def.kind else {
+        let def = card_def(perm.def);
+        // CR 701.34e: only a creature card may be turned face up — but that restriction is
+        // manifest's alone. A morph card (CR 702.37c) may be turned face up regardless of its
+        // real kind (Zoetic Cavern's is Land), since morph itself grants the turn-up permission.
+        if def.morph.is_none() && !matches!(def.kind, CardKind::Creature { .. }) {
             return Err(Reject::CannotActivate);
-        };
+        }
         // A morph card turns up for its morph cost (CR 702.37c); a manifest (no morph) pays the
         // hidden card's printed cost (CR 701.34e).
         // ponytail: a manifested *morph* card (CR 702.37j — pay either the {3}-back manifest turn
         // or the morph cost) isn't modeled; no pool card manifests a morph card, so a `morph`
         // card here was always a morph cast and its morph cost is correct. Add the dual-cost fork
         // when a card first manifests a morph card.
-        let cost = perm.def.morph.unwrap_or(perm.def.cost);
+        let cost = def.morph.unwrap_or(def.cost);
 
         // Pay the hidden card's mana cost (auto-tapping lands; an unpayable cost rejects before the
         // reveal), then flip it face up.
@@ -1560,10 +1624,11 @@ impl Game {
         if !perm.prepared {
             return Err(Reject::CannotActivate);
         }
-        let Some(back) = perm.def.back else {
+        let printed = card_def(perm.def);
+        let Some(back) = printed.back else {
             return Err(Reject::CannotActivate);
         };
-        let back = *back;
+        let back = card_def(back);
         // "You may cast a copy of its spell" — casting obeys the back face's timing (Pack a Punch
         // is a sorcery: sorcery-speed only).
         if !back.is_instant_speed() && !self.can_take_sorcery_speed_action(player) {
@@ -1576,18 +1641,18 @@ impl Game {
         // choose-after-cast flow `Game::cast_with_kind` gives a directly-cast multi-target
         // spell, rather than the single up-front `target` a single-target/untargeted back face
         // takes.
-        let multi_target = self.spell_multi_target(back);
+        let multi_target = self.spell_multi_target(&back);
         if let Some((spec, count)) = multi_target {
             if target.is_some() {
                 return Err(Reject::IllegalTarget);
             }
             let n = self
-                .legal_targets_for(spec, source, player, color_identity(back), x)
+                .legal_targets_for(spec, source, player, color_identity(&back), x)
                 .len();
             if count.min > 0 && n == 0 {
                 return Err(Reject::IllegalTarget);
             }
-        } else if !self.targets_are_legal(source, back, target, player, None, x) {
+        } else if !self.targets_are_legal(source, &back, target, player, None, x) {
             return Err(Reject::IllegalTarget);
         }
 
@@ -1596,7 +1661,7 @@ impl Game {
         let cost = self.cast_cost(
             player,
             source,
-            back,
+            back.as_ref().clone(),
             target,
             x,
             Zone::Battlefield,
@@ -1667,11 +1732,11 @@ impl Game {
         if self.playable_zone(source, player) != Some(Zone::Hand) {
             return Err(Reject::NotCastable);
         }
-        let front = self.def_of(source);
-        let Some(adventure) = front.adventure else {
+        let front = self.def_id_of(source);
+        let Some(adventure) = card_def(front).adventure else {
             return Err(Reject::NotCastable);
         };
-        let adventure = *adventure;
+        let adventure = card_def(adventure);
         // The adventure obeys its own timing — a sorcery (Grove's Bounty) is sorcery-speed only.
         if !adventure.is_instant_speed() && !self.can_take_sorcery_speed_action(player) {
             return Err(Reject::WrongTiming);
@@ -1680,18 +1745,18 @@ impl Game {
         let x = x.min(u8::MAX as u32);
         // An adventure may be multi-target (Grove's Bounty's "any number of target creatures"):
         // its targets are chosen after the cast, like a directly-cast multi-target spell.
-        let multi_target = self.spell_multi_target(adventure);
+        let multi_target = self.spell_multi_target(&adventure);
         if let Some((spec, count)) = multi_target {
             if target.is_some() {
                 return Err(Reject::IllegalTarget);
             }
             let n = self
-                .legal_targets_for(spec, source, player, color_identity(adventure), x)
+                .legal_targets_for(spec, source, player, color_identity(&adventure), x)
                 .len();
             if count.min > 0 && n == 0 {
                 return Err(Reject::IllegalTarget);
             }
-        } else if !self.targets_are_legal(source, adventure, target, player, None, x) {
+        } else if !self.targets_are_legal(source, &adventure, target, player, None, x) {
             return Err(Reject::IllegalTarget);
         }
 
@@ -1700,7 +1765,7 @@ impl Game {
         let cost = self.cast_cost(
             player,
             source,
-            adventure,
+            adventure.as_ref().clone(),
             target,
             x,
             Zone::Hand,
@@ -1763,9 +1828,10 @@ impl Game {
         if self.playable_zone(source, player) != Some(Zone::Hand) {
             return Err(Reject::NotCastable);
         }
-        let Some(&face) = self.def_of(source).halves.get(half as usize) else {
+        let Some(&face_id) = self.def_of(source).halves.get(half as usize) else {
             return Err(Reject::NotCastable);
         };
+        let face = card_def(face_id);
         // Each half obeys its own timing (Fire and Ice are both instants; a sorcery half would be
         // sorcery-speed only).
         if !face.is_instant_speed() && !self.can_take_sorcery_speed_action(player) {
@@ -1775,18 +1841,18 @@ impl Game {
         let x = x.min(u8::MAX as u32);
         // Fire's "2 damage divided as you choose among one or two targets" is a multi-target
         // clause: its targets are chosen after the cast, like a directly-cast multi-target spell.
-        let multi_target = self.spell_multi_target(face);
+        let multi_target = self.spell_multi_target(&face);
         if let Some((spec, count)) = multi_target {
             if target.is_some() {
                 return Err(Reject::IllegalTarget);
             }
             let n = self
-                .legal_targets_for(spec, source, player, color_identity(face), x)
+                .legal_targets_for(spec, source, player, color_identity(&face), x)
                 .len();
             if count.min > 0 && n == 0 {
                 return Err(Reject::IllegalTarget);
             }
-        } else if !self.targets_are_legal(source, face, target, player, None, x) {
+        } else if !self.targets_are_legal(source, &face, target, player, None, x) {
             return Err(Reject::IllegalTarget);
         }
 
@@ -1795,7 +1861,7 @@ impl Game {
         let cost = self.cast_cost(
             player,
             source,
-            face,
+            face.as_ref().clone(),
             target,
             x,
             Zone::Hand,
@@ -1871,9 +1937,9 @@ impl Game {
         // returns `def.enchant` (any creature for Eidolon) for `CardKind::Aura`.
         let as_aura = CardDef {
             kind: CardKind::Aura,
-            ..def
+            ..def.clone()
         };
-        if !self.targets_are_legal(object, as_aura, target, player, None, 0) {
+        if !self.targets_are_legal(object, &as_aura, target, player, None, 0) {
             return Err(Reject::IllegalTarget);
         }
         // Pay the bestow cost first (settling is the last fallible step — an unpayable cost rejects
@@ -2197,7 +2263,7 @@ impl Game {
         }
         // The ability's source's own colors (CR 702.16b) — Nin, the Pain Artist (a UR source)
         // can't target a permanent with protection from red or blue.
-        let source_colors = color_identity(self.def_of(object));
+        let source_colors = color_identity(&self.def_of(object));
         // `ThisPermanent`/`EnchantedCreature` are a fixed reference, not a real choice (CR:
         // these abilities never say "target") — the activator names no target at all, and this
         // resolves it to the ability's own source (or its attachment host) regardless of what
@@ -2354,15 +2420,15 @@ impl Game {
         // later push dilutes the tail — Illusionary Mask's "the mana you spent on {X}" (CR 107.3)
         // reads this multiset when the ability resolves.
         let spent_mana = spent_counts_from(&events);
-        if cost.once_each_turn {
-            self.push_apply(
-                &mut events,
-                Event::AbilityActivatedThisTurn {
-                    object,
-                    ability_index,
-                },
-            );
-        }
+        // Record every activation, not just `once_each_turn`-capped ones — Dragon Whelp's
+        // "activated four or more times this turn" reads this same per-turn tally.
+        self.push_apply(
+            &mut events,
+            Event::AbilityActivatedThisTurn {
+                object,
+                ability_index,
+            },
+        );
         if cost.taps_self {
             self.push_apply(&mut events, Event::Tapped { object });
         }
@@ -2414,7 +2480,7 @@ impl Game {
         // it, same as any other discard.
         for &id in &named {
             let card = self.next_object_id();
-            let def = self.def_of(id);
+            let def = self.def_id_of(id);
             self.push_apply(&mut events, Event::MovedToGraveyard { card, from: id });
             self.push_apply(
                 &mut events,
@@ -2513,7 +2579,7 @@ impl Game {
             // the private mint's `Sequence => unreachable!()` guard; behavior-preserving for the
             // common bare-`AddMana` case, which still falls through `run`'s catch-all to mint+apply.
             self.run(
-                effect,
+                effect.clone(),
                 ResolveCtx {
                     controller: player,
                     source: object,
@@ -2600,6 +2666,7 @@ impl Game {
                         target: None,
                         x,
                         modes: options,
+                        at_placement: false,
                         activated: true,
                     },
                 );
@@ -2613,7 +2680,7 @@ impl Game {
         // opponent) before the ability hits the stack, threading the activation's `{X}`/spent
         // mana and `activated` through the placement.
         if self
-            .ability_second_target_clause(effect, object, player)
+            .ability_second_target_clause(effect.clone(), object, player)
             .is_some()
         {
             let spec = effect.target();

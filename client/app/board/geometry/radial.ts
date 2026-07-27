@@ -1,6 +1,7 @@
 // Legal activates for a selected permanent, including synthesized tap-for-mana.
 
 import type { ActionView, WireCost } from "~/wire/types";
+import { formatMessage } from "../../domain/i18n/message";
 import { type Camera, worldToScreen } from "./camera";
 import type { RenderCard } from "./layout";
 
@@ -149,7 +150,7 @@ export function radialOptions(
   }
   for (const a of actions ?? []) {
     if (a.section !== "battlefield" || a.object !== objectId) continue;
-    out.push({ kind: "action", action: a, label: a.label, disabled: false });
+    out.push({ kind: "action", action: a, label: formatMessage(a.label), disabled: false });
   }
   return out;
 }

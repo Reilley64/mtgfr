@@ -16,12 +16,361 @@ pub(crate) enum Placement {
     NoLegalTarget,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TriggerWatchZone {
+    Battlefield,
+    Graveyard,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TriggerWatchScope {
+    SelfSource,
+    ControlledPlayer,
+    AllBattlefield,
+    AllBattlefieldExceptPlayer,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TriggerWatchContextKind {
+    Controller,
+    SelfCastX,
+    ActivePlayer,
+    Attack,
+    DamagedCreature,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TriggerWatchKind {
+    Exact(Trigger),
+    Magecraft,
+    CastSpell,
+    DealsCombatDamageToPlayer,
+    DealsDamageToOpponent,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct TriggerWatch {
+    kind: TriggerWatchKind,
+    zone: TriggerWatchZone,
+    scope: TriggerWatchScope,
+    context: TriggerWatchContextKind,
+    skip_graveyard_functional_on_battlefield: bool,
+}
+
+impl TriggerWatch {
+    const fn battlefield_self(trigger: Trigger, context: TriggerWatchContextKind) -> Self {
+        Self {
+            kind: TriggerWatchKind::Exact(trigger),
+            zone: TriggerWatchZone::Battlefield,
+            scope: TriggerWatchScope::SelfSource,
+            context,
+            skip_graveyard_functional_on_battlefield: false,
+        }
+    }
+
+    const fn battlefield_controller(trigger: Trigger) -> Self {
+        Self {
+            kind: TriggerWatchKind::Exact(trigger),
+            zone: TriggerWatchZone::Battlefield,
+            scope: TriggerWatchScope::ControlledPlayer,
+            context: TriggerWatchContextKind::Controller,
+            skip_graveyard_functional_on_battlefield: true,
+        }
+    }
+
+    const fn graveyard_controller(trigger: Trigger) -> Self {
+        Self {
+            kind: TriggerWatchKind::Exact(trigger),
+            zone: TriggerWatchZone::Graveyard,
+            scope: TriggerWatchScope::ControlledPlayer,
+            context: TriggerWatchContextKind::Controller,
+            skip_graveyard_functional_on_battlefield: false,
+        }
+    }
+
+    const fn battlefield_all(trigger: Trigger) -> Self {
+        Self {
+            kind: TriggerWatchKind::Exact(trigger),
+            zone: TriggerWatchZone::Battlefield,
+            scope: TriggerWatchScope::AllBattlefield,
+            context: TriggerWatchContextKind::Controller,
+            skip_graveyard_functional_on_battlefield: false,
+        }
+    }
+
+    const fn battlefield_all_with_active_player(trigger: Trigger) -> Self {
+        Self {
+            kind: TriggerWatchKind::Exact(trigger),
+            zone: TriggerWatchZone::Battlefield,
+            scope: TriggerWatchScope::AllBattlefield,
+            context: TriggerWatchContextKind::ActivePlayer,
+            skip_graveyard_functional_on_battlefield: false,
+        }
+    }
+
+    const fn battlefield_all_except_player(trigger: Trigger) -> Self {
+        Self {
+            kind: TriggerWatchKind::Exact(trigger),
+            zone: TriggerWatchZone::Battlefield,
+            scope: TriggerWatchScope::AllBattlefieldExceptPlayer,
+            context: TriggerWatchContextKind::Controller,
+            skip_graveyard_functional_on_battlefield: false,
+        }
+    }
+
+    const fn battlefield_controller_dynamic(kind: TriggerWatchKind) -> Self {
+        Self {
+            kind,
+            zone: TriggerWatchZone::Battlefield,
+            scope: TriggerWatchScope::ControlledPlayer,
+            context: TriggerWatchContextKind::Controller,
+            skip_graveyard_functional_on_battlefield: true,
+        }
+    }
+
+    const fn battlefield_all_dynamic(kind: TriggerWatchKind) -> Self {
+        Self {
+            kind,
+            zone: TriggerWatchZone::Battlefield,
+            scope: TriggerWatchScope::AllBattlefield,
+            context: TriggerWatchContextKind::Controller,
+            skip_graveyard_functional_on_battlefield: false,
+        }
+    }
+
+    const fn battlefield_self_dynamic(kind: TriggerWatchKind) -> Self {
+        Self {
+            kind,
+            zone: TriggerWatchZone::Battlefield,
+            scope: TriggerWatchScope::SelfSource,
+            context: TriggerWatchContextKind::Controller,
+            skip_graveyard_functional_on_battlefield: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+struct TriggerWatchEvent {
+    source: Option<ObjectId>,
+    player: Option<PlayerId>,
+    active_player: Option<PlayerId>,
+    attack: Option<(PlayerId, PlayerId)>,
+    source_power: Option<i32>,
+    target: Option<Target>,
+    cast_x: Option<u32>,
+    cast_from_hand: Option<bool>,
+    mana_spent: Option<u32>,
+    damaged_creature: Option<ObjectId>,
+    combat_damage: Option<i32>,
+    exclude: Option<ObjectId>,
+}
+
+impl TriggerWatchEvent {
+    const fn for_source(source: ObjectId) -> Self {
+        Self {
+            source: Some(source),
+            player: None,
+            active_player: None,
+            attack: None,
+            source_power: None,
+            target: None,
+            cast_x: None,
+            cast_from_hand: None,
+            mana_spent: None,
+            damaged_creature: None,
+            combat_damage: None,
+            exclude: None,
+        }
+    }
+
+    const fn for_player(player: PlayerId) -> Self {
+        Self {
+            source: None,
+            player: Some(player),
+            active_player: None,
+            attack: None,
+            source_power: None,
+            target: None,
+            cast_x: None,
+            cast_from_hand: None,
+            mana_spent: None,
+            damaged_creature: None,
+            combat_damage: None,
+            exclude: None,
+        }
+    }
+
+    const fn for_active_player(active_player: PlayerId) -> Self {
+        Self {
+            source: None,
+            player: Some(active_player),
+            active_player: Some(active_player),
+            attack: None,
+            source_power: None,
+            target: None,
+            cast_x: None,
+            cast_from_hand: None,
+            mana_spent: None,
+            damaged_creature: None,
+            combat_damage: None,
+            exclude: None,
+        }
+    }
+
+    const fn for_attack(source: ObjectId, attack: (PlayerId, PlayerId), source_power: i32) -> Self {
+        Self {
+            source: Some(source),
+            player: None,
+            active_player: None,
+            attack: Some(attack),
+            source_power: Some(source_power),
+            target: None,
+            cast_x: None,
+            cast_from_hand: None,
+            mana_spent: None,
+            damaged_creature: None,
+            combat_damage: None,
+            exclude: None,
+        }
+    }
+
+    const fn for_spell_cast(
+        spell: ObjectId,
+        controller: PlayerId,
+        target: Option<Target>,
+        x: u32,
+        cast_from_hand: bool,
+        mana_spent: u32,
+    ) -> Self {
+        Self {
+            source: Some(spell),
+            player: Some(controller),
+            active_player: None,
+            attack: None,
+            source_power: None,
+            target,
+            cast_x: Some(x),
+            cast_from_hand: Some(cast_from_hand),
+            mana_spent: Some(mana_spent),
+            damaged_creature: None,
+            combat_damage: None,
+            exclude: None,
+        }
+    }
+
+    const fn for_combat_damage_to_player(source: ObjectId, player: PlayerId, amount: i32) -> Self {
+        Self {
+            source: Some(source),
+            player: Some(player),
+            active_player: None,
+            attack: None,
+            source_power: None,
+            target: None,
+            cast_x: None,
+            cast_from_hand: None,
+            mana_spent: None,
+            damaged_creature: None,
+            combat_damage: Some(amount),
+            exclude: None,
+        }
+    }
+
+    const fn for_damage_to_player(source: ObjectId, player: PlayerId) -> Self {
+        Self {
+            source: Some(source),
+            player: Some(player),
+            active_player: None,
+            attack: None,
+            source_power: None,
+            target: None,
+            cast_x: None,
+            cast_from_hand: None,
+            mana_spent: None,
+            damaged_creature: None,
+            combat_damage: None,
+            exclude: None,
+        }
+    }
+
+    const fn for_combat_damage_to_creature(source: ObjectId, target: ObjectId) -> Self {
+        Self {
+            source: Some(source),
+            player: None,
+            active_player: None,
+            attack: None,
+            source_power: None,
+            target: None,
+            cast_x: None,
+            cast_from_hand: None,
+            mana_spent: None,
+            damaged_creature: Some(target),
+            combat_damage: None,
+            exclude: None,
+        }
+    }
+
+    const fn with_exclude(self, exclude: Option<ObjectId>) -> Self {
+        Self { exclude, ..self }
+    }
+}
+
+const ENTERS_BATTLEFIELD_TRIGGER_WATCHES: &[TriggerWatch] = &[
+    // First, so a card carrying both makes its CR 614.12 as-enters choice before its ETB trigger
+    // is placed on the stack. `place_pending_triggers` resolves this group inline, never placing it.
+    TriggerWatch::battlefield_self(Trigger::AsEnters, TriggerWatchContextKind::SelfCastX),
+    TriggerWatch::battlefield_self(Trigger::Etb, TriggerWatchContextKind::SelfCastX),
+];
+const TURNED_FACE_UP_TRIGGER_WATCHES: &[TriggerWatch] = &[TriggerWatch::battlefield_self(
+    Trigger::TurnedFaceUp,
+    TriggerWatchContextKind::Controller,
+)];
+const ATTACK_TRIGGER_WATCHES: &[TriggerWatch] = &[
+    TriggerWatch::battlefield_self(Trigger::Attacks, TriggerWatchContextKind::Attack),
+    // Mana-Charged Dragon's "whenever this creature attacks or blocks" — the attack half; the
+    // block half is `queue_attacks_or_blocks_block_triggers`, called from `Game::declare_blockers`.
+    TriggerWatch::battlefield_self(Trigger::AttacksOrBlocks, TriggerWatchContextKind::Attack),
+];
+#[cfg(test)]
+const UPKEEP_TRIGGER_WATCHES: &[TriggerWatch] = &[
+    TriggerWatch::battlefield_controller(Trigger::Upkeep),
+    TriggerWatch::graveyard_controller(Trigger::Upkeep),
+    TriggerWatch::battlefield_all(Trigger::EachUpkeep),
+];
+const DRAW_STEP_TRIGGER_WATCHES: &[TriggerWatch] =
+    &[TriggerWatch::battlefield_all_with_active_player(
+        Trigger::EachDrawStep,
+    )];
+const UNTAP_STEP_TRIGGER_WATCHES: &[TriggerWatch] = &[TriggerWatch::battlefield_all_except_player(
+    Trigger::EachOtherPlayerUntapStep,
+)];
+const SPELL_CAST_TRIGGER_WATCHES: &[TriggerWatch] = &[
+    TriggerWatch::battlefield_controller_dynamic(TriggerWatchKind::Magecraft),
+    TriggerWatch::battlefield_all_dynamic(TriggerWatchKind::CastSpell),
+];
+const COMBAT_DAMAGE_TO_PLAYER_TRIGGER_WATCHES: &[TriggerWatch] = &[
+    TriggerWatch::battlefield_all_dynamic(TriggerWatchKind::DealsCombatDamageToPlayer),
+    TriggerWatch::battlefield_self_dynamic(TriggerWatchKind::DealsDamageToOpponent),
+];
+const DAMAGE_TO_PLAYER_TRIGGER_WATCHES: &[TriggerWatch] =
+    &[TriggerWatch::battlefield_self_dynamic(
+        TriggerWatchKind::DealsDamageToOpponent,
+    )];
+const COMBAT_DAMAGE_TO_CREATURE_TRIGGER_WATCHES: &[TriggerWatch] =
+    &[TriggerWatch::battlefield_self(
+        Trigger::DealsCombatDamageToCreature,
+        TriggerWatchContextKind::DamagedCreature,
+    )];
+
 impl Game {
     /// Scan just-produced events and queue the triggered abilities they fire. Two flavors:
     /// *self-referential* triggers fire on the event's own subject (this permanent entered /
     /// attacked / died); *controller-scoped* triggers fire on every permanent the relevant
     /// player controls (their upkeep/end step began, they gained life, they cast a spell).
     pub(crate) fn enqueue_triggers(&mut self, events: &[Event]) {
+        // Wave C: recurring self/controller/every-player watch families route through the
+        // `TriggerWatch` tables below, and the cast/player-damage families now enter through that
+        // same dispatcher too. Explicit arms stay bespoke only where the trigger needs batch
+        // look-back state or extra scratch/ordering handling that does not fit a table row cleanly.
         // CR 603.6c/603.10.1 "look back in time": a watch-others death trigger reads the game
         // state just *before* the deaths, so a watcher that dies in the same batch (a board wipe,
         // a combat sweep) still sees the *other* deaths in that batch. The dying watchers are
@@ -30,7 +379,7 @@ impl Game {
         self.queue_enchantment_death_watchers(events);
         self.queue_nonland_permanent_death_watchers(events);
         for (idx, event) in events.iter().enumerate() {
-            match *event {
+            match event.clone() {
                 // Self-referential: the source is the object the event is about. A land enters via
                 // its own `LandPlayed` event (not `PermanentEntered`), so an ETB on a land — a
                 // scry land / Temple — fires from here too.
@@ -55,33 +404,39 @@ impl Game {
                     // battlefield" watch triggers for this entry (constellation/landfall) — a
                     // real card wanting those to still fire needs last-known-information plumbing
                     // like the Dies-trigger family already has.
-                    if self.as_permanent(permanent).is_some() {
-                        // Evoke (CR 702.74a): queued *before* the permanent's own `Etb` trigger
-                        // below so it lands underneath it on the stack and so resolves *after* —
-                        // an ETB payoff (Mulldrifter's draw two) still happens before the
-                        // sacrifice.
-                        // ponytail: no ordering choice is raised for the controller's own
-                        // simultaneous triggers (CR 603.3b) — the two are queued as separate
-                        // single-ability groups rather than one multi-ability group, so
-                        // `place_pending_triggers` places both without pausing. Grow into a real
-                        // `OrderTriggers` choice if an evoke card ever needs the controller to
-                        // choose the other order.
-                        if self.as_permanent(permanent).is_some_and(|p| p.evoked) {
-                            self.queue_self_sacrifice_trigger(permanent);
-                        }
-                        self.queue_self_trigger(permanent, Trigger::Etb);
-                        // ponytail: watch-others companion to the self `Etb` above —
-                        //   constellation/landfall watch *any other* permanent's entry, not
-                        //   their own.
-                        self.queue_permanent_enters_triggers(permanent);
+                    if self.as_permanent(permanent).is_none() {
+                        continue;
                     }
+                    // Evoke (CR 702.74a): queued *before* the permanent's own `Etb` trigger
+                    // below so it lands underneath it on the stack and so resolves *after* —
+                    // an ETB payoff (Mulldrifter's draw two) still happens before the
+                    // sacrifice.
+                    // ponytail: no ordering choice is raised for the controller's own
+                    // simultaneous triggers (CR 603.3b) — the two are queued as separate
+                    // single-ability groups rather than one multi-ability group, so
+                    // `place_pending_triggers` places both without pausing. Grow into a real
+                    // `OrderTriggers` choice if an evoke card ever needs the controller to
+                    // choose the other order.
+                    if self.as_permanent(permanent).is_some_and(|p| p.evoked) {
+                        self.queue_self_sacrifice_trigger(permanent);
+                    }
+                    self.queue_trigger_watch_table(
+                        ENTERS_BATTLEFIELD_TRIGGER_WATCHES,
+                        TriggerWatchEvent::for_source(permanent),
+                    );
+                    // ponytail: watch-others companion to the self `Etb` above — constellation/
+                    //   landfall watch *any other* permanent's entry, not their own.
+                    self.queue_permanent_enters_triggers(permanent);
                 }
                 // Turned face up (CR 702.37f): scan the now-revealed permanent's own abilities for
                 // a turned-face-up trigger. The flag is already cleared (the apply ran first), so
                 // its real abilities are visible — the same self-scan idiom as the `Etb` above,
                 // but not entering the battlefield, so no watch-others enters triggers.
                 Event::TurnedFaceUp { permanent } => {
-                    self.queue_self_trigger(permanent, Trigger::TurnedFaceUp);
+                    self.queue_trigger_watch_table(
+                        TURNED_FACE_UP_TRIGGER_WATCHES,
+                        TriggerWatchEvent::for_source(permanent),
+                    );
                 }
                 // CR 701.28b: the flag is already set (the apply ran first) — same self-scan idiom
                 // as `TurnedFaceUp` above. A no-op activation (CR 701.28c) mints no
@@ -95,7 +450,11 @@ impl Game {
                     def,
                     ..
                 } => {
-                    self.queue_self_trigger(token, Trigger::Etb);
+                    let printed = card_def(def);
+                    self.queue_trigger_watch_table(
+                        ENTERS_BATTLEFIELD_TRIGGER_WATCHES,
+                        TriggerWatchEvent::for_source(token),
+                    );
                     // A created token is a permanent entering the battlefield (CR 603.6a) too.
                     self.queue_permanent_enters_triggers(token);
                     // Staff of the Storyteller's "whenever you create one or more creature
@@ -103,7 +462,7 @@ impl Game {
                     // batch below — mirrors `graveyard_exits_this_batch`.
                     // ponytail: "you" scope only (`Trigger::YouCreateToken` is fieldless) — no
                     //   pool card needs an opponent/any-player watch yet.
-                    if matches!(def.kind, CardKind::Creature { .. }) {
+                    if matches!(&printed.kind, CardKind::Creature { .. }) {
                         self.batch_trigger_scratch
                             .creature_tokens_created_this_batch
                             .push(controller);
@@ -113,17 +472,14 @@ impl Game {
                 // is exactly what the event's `defender` is — an attack on a planeswalker reads
                 // as an attack on its controller.
                 Event::AttackerDeclared { object, defender, .. } => {
-                    // Self-referential "whenever this creature attacks" carries the attack
-                    // context too (Goblin Guide's `RevealTopToHand.defender`) — every other
-                    // consumer's effect ignores `ctx.attack`, so this is a no-op for them.
-                    let ctx = TriggerContext {
-                        attack: Some((self.controller_of(object), defender)),
-                        // CR 510.2/603.10a: "where X is this creature's power" reads the attacker's
-                        // power the instant the trigger goes on the stack (Guardian Scalelord).
-                        source_power: Some(self.power(object)),
-                        ..TriggerContext::of(self.owner_of(object))
-                    };
-                    self.queue_trigger_group(ctx, object, self.def_of(object), Trigger::Attacks);
+                    self.queue_trigger_watch_table(
+                        ATTACK_TRIGGER_WATCHES,
+                        TriggerWatchEvent::for_attack(
+                            object,
+                            (self.controller_of(object), defender),
+                            self.power(object),
+                        ),
+                    );
                     self.queue_watch_attack_triggers(object, defender);
                     self.queue_enchanted_creature_attacks_triggers(object, defender);
                     self.queue_myriad_triggers(object, defender);
@@ -141,10 +497,10 @@ impl Game {
                     // player's death-watch (Hissing Iguanar) must still see it, off the LKI
                     // `Game::dying_creature_lki` captured before the slot was tombstoned.
                     if matches!(
-                        self.objects[self.current_id(from) as usize],
-                        Object::Removed
+                        &self.objects[self.current_id(from) as usize],
+                        Object::Removed { .. }
                     ) {
-                        if let Some(&(_, def, owner)) = self
+                        if let Some(&(_, ref def, owner)) = self
                             .batch_trigger_scratch
                             .dying_creature_lki
                             .iter()
@@ -153,7 +509,7 @@ impl Game {
                             self.queue_watch_death_triggers(
                                 owner,
                                 from,
-                                def,
+                                def.clone(),
                                 &batch_deaths,
                                 false, // a nontoken permanent
                                 false, // include_self: its own controller left the game too (CR 800.4a)
@@ -174,7 +530,7 @@ impl Game {
                         self.queue_trigger_group(
                             TriggerContext::of(self.owner_of(from)),
                             from,
-                            def,
+                            def.clone(),
                             Trigger::ThisAuraLeaves,
                         );
                     }
@@ -216,13 +572,13 @@ impl Game {
                     // `TuckedToLibrary` below, and its payoff acts on the captured host, not self.
                     // Safe to call unconditionally — a no-op for a non-battlefield `from`, since
                     // `permanents_left_battlefield` is populated by the same battlefield-only gate.
-                    self.queue_leaves_battlefield_triggers(from, self.owner_of(from), def);
+                    self.queue_leaves_battlefield_triggers(from, self.owner_of(from), &def.clone());
                     if from_battlefield && matches!(def.kind, CardKind::Creature { .. }) {
                         let ctx = TriggerContext {
                             dying_source_stats: self.dying_source_stats(from),
                             ..TriggerContext::of(self.owner_of(from))
                         };
-                        self.queue_trigger_group(ctx, from, def, Trigger::Dies);
+                        self.queue_trigger_group(ctx, from, def.clone(), Trigger::Dies);
                         self.queue_watch_death_triggers(
                             self.owner_of(from),
                             from,
@@ -241,7 +597,8 @@ impl Game {
                         // once the ordinary trigger queue (and Echo's) empty.
                         for candidate in self.graveyard_cards(self.owner_of(from)) {
                             if self.def_of(candidate).recover.is_some() {
-                                self.pending_recover.push(candidate);
+                                self.pending_obligations
+                                    .push(Obligation::Recover { card: candidate });
                             }
                         }
                     }
@@ -253,32 +610,33 @@ impl Game {
                     controller,
                     def,
                 } => {
+                    let printed = card_def(def).as_ref().clone();
                     // A token only ever exists as a battlefield permanent, so — unlike the
                     // `MovedToGraveyard` arm above — no scratch guard is needed: every
                     // `TokenCeasedToExist` is CR's "put into a graveyard from the battlefield".
                     self.queue_trigger_group(
                         TriggerContext::of(controller),
                         token,
-                        def,
+                        printed.clone(),
                         Trigger::ThisAuraLeaves,
                     );
                     // Leaves-to-ANY-zone self-trigger (Animate Dead) — see the `MovedToGraveyard`
                     // arm above. `def`/`controller` are passed explicitly since the token's arena
                     // slot is already `Object::Removed`.
-                    self.queue_leaves_battlefield_triggers(token, controller, def);
+                    self.queue_leaves_battlefield_triggers(token, controller, &printed);
                     // Hofri Ghostforge's minted Spirit token's granted return rider — only a
                     // token can carry this link (the printed def never does).
                     self.queue_token_return_exiled_trigger(token, controller);
-                    if matches!(def.kind, CardKind::Creature { .. }) {
+                    if matches!(&printed.kind, CardKind::Creature { .. }) {
                         let ctx = TriggerContext {
                             dying_source_stats: self.dying_source_stats(token),
                             ..TriggerContext::of(controller)
                         };
-                        self.queue_trigger_group(ctx, token, def, Trigger::Dies);
+                        self.queue_trigger_group(ctx, token, printed.clone(), Trigger::Dies);
                         self.queue_watch_death_triggers(
                             controller,
                             token,
-                            def,
+                            printed,
                             &batch_deaths,
                             true, // a token ceasing to exist never satisfies a "nontoken" watch
                             true, // include_self: its controller is still in the game
@@ -298,12 +656,12 @@ impl Game {
                     // its post-move object is already `Object::Removed` — `def_of`/`owner_of`
                     // would panic reading it.
                     if matches!(
-                        self.objects[self.current_id(from) as usize],
-                        Object::Removed
+                        &self.objects[self.current_id(from) as usize],
+                        Object::Removed { .. }
                     ) {
                         continue;
                     }
-                    self.queue_leaves_battlefield_triggers(from, self.owner_of(from), self.def_of(from));
+                    self.queue_leaves_battlefield_triggers(from, self.owner_of(from), &self.def_of(from));
                 }
                 // Controller-scoped: fire on every permanent the player controls.
                 Event::StepBegan {
@@ -311,8 +669,6 @@ impl Game {
                     active_player,
                 } => {
                     self.queue_controller_triggers(active_player, Trigger::Upkeep, None);
-                    // CR "at the beginning of your upkeep" fires the *controller's* graveyard-
-                    // functional upkeep triggers too (Squee), scoped to the active player's upkeep.
                     self.queue_graveyard_controller_triggers(active_player, Trigger::Upkeep);
                     self.queue_each_upkeep_triggers();
                     self.queue_echo_triggers(active_player);
@@ -347,9 +703,6 @@ impl Game {
                     active_player,
                 } => {
                     self.queue_controller_triggers(active_player, Trigger::FirstMainPhase, None);
-                    // Every-player, first-main-phase flavor: fires under its own controller
-                    // regardless of whose first main phase this is (Magus of the Vineyard), the
-                    // first-main-phase twin of the `EachUpkeep`/`EachDrawStep` arms above.
                     self.queue_each_player_first_main_phase_triggers(active_player);
                 }
                 Event::StepBegan {
@@ -407,10 +760,10 @@ impl Game {
                         );
                     }
                 }
-                // Magecraft: casting an instant/sorcery. (The copy half is `SpellCopied`, below.)
-                // Also the general-purpose `CastSpell` watch (Monologue Tax's "an opponent casts
-                // their second spell", Killian's "targets a creature", …) — both fire off the
-                // same event, independently of each other.
+                // Spell-cast watch families route through the watch table now: Magecraft's
+                // instant-or-sorcery gate and the general-purpose `CastSpell{...}` filters still
+                // do their own per-watcher matching, but the event arm itself is just table
+                // dispatch. (Magecraft's copy half stays explicit on `SpellCopied`, below.)
                 Event::SpellCast {
                     spell,
                     controller,
@@ -419,26 +772,25 @@ impl Game {
                     ..
                 } => {
                     let def = self.def_of(spell);
-                    if matches!(def.kind, CardKind::Spell { .. }) {
-                        self.queue_magecraft_triggers(controller, def.mana_value());
-                    }
                     let cast_from_hand = self.spell(spell).cast_from_hand;
                     // The cast's payment rode a `ManaSpent` earlier in this same batch (CR
                     // 601.2h) — `None` for a free/alt cast that spent no mana (Manaform
                     // Hellkite's `Amount::TriggeringSpellManaSpent` reads `Some(0)` in that case,
                     // via the `unwrap_or(0)` below).
-                    let mana_spent = events.iter().find_map(|e| match *e {
+                    let mana_spent = events.iter().find_map(|e| match e.clone() {
                         Event::ManaSpent { player, mana } if player == controller => Some(mana),
                         _ => None,
                     });
-                    self.queue_cast_spell_triggers(
-                        controller,
-                        spell,
-                        def,
-                        target,
-                        x,
-                        cast_from_hand,
-                        mana_spent.map_or(0, |mana| mana.total()),
+                    self.queue_trigger_watch_table(
+                        SPELL_CAST_TRIGGER_WATCHES,
+                        TriggerWatchEvent::for_spell_cast(
+                            spell,
+                            controller,
+                            target,
+                            x,
+                            cast_from_hand,
+                            mana_spent.map_or(0, |mana| mana.total()),
+                        ),
                     );
                     // "When you spend this mana to cast …" (Study Hall / Path of Ancestry / Opal
                     // Palace): fire the producing land's `SpendManaToCast` if its tagged mana
@@ -447,8 +799,8 @@ impl Game {
                         self.queue_spend_to_cast_triggers(controller, spell, spend);
                     }
                     self.queue_becomes_targeted_triggers(target);
-                    self.queue_spell_targets_this_only_triggers(target, controller, spell, def);
-                    self.queue_prowess_triggers(controller, def, target);
+                    self.queue_spell_targets_this_only_triggers(target, controller, spell, def.clone());
+                    self.queue_prowess_triggers(controller, def.clone(), target);
                     // "When you cast this spell" (CR 601.2i/603.3): scanned off the cast card's
                     // own def, not a battlefield watcher — the source is the spell object itself,
                     // so the resulting ability is a separate stack object (Hydroid Krasis's cast
@@ -473,7 +825,7 @@ impl Game {
                             ..TriggerContext::of(controller)
                         },
                         spell,
-                        def,
+                        def.clone(),
                         Trigger::YouCastThis,
                     );
                     // Cascade (CR 702.85e): a rules-keyword "when you cast this spell" trigger, not
@@ -546,39 +898,46 @@ impl Game {
                 // which also fire for a plain destroy: `YouSacrifice`/`AnyPlayerSacrifices` watch
                 // specifically for this marker.
                 Event::Sacrificed { object, by, def } => {
-                    self.queue_sacrifice_triggers(object, by, def)
+                    self.queue_sacrifice_triggers(object, by, card_def(def).as_ref().clone())
                 }
                 // A discard (CR 701.8) — distinct from `MovedToGraveyard`, which also fires for a
                 // sacrifice/destroy: `YouDiscard` watches specifically for this marker.
-                Event::Discarded { card, player, .. } => self.queue_discard_triggers(player, card),
-                // Combat damage to a player (CR 510.2) — never a non-combat life loss, which
-                // only emits `LifeChanged`, and never combat damage to a *creature*, which (CR 510, CR 120.3, CR 506)
-                // emits `DamageMarked` instead.
+                Event::Discarded { card, player, .. } => {
+                    self.queue_discard_triggers(player, card);
+                    // Conspiracy Theorist's "one or more nonland cards" (CR 701.8): record every
+                    // discard now, then drain once per batch below — mirrors
+                    // `graveyard_exits_this_batch`. The nonland filter happens on drain (a card's
+                    // types are stable across the batch).
+                    self.batch_trigger_scratch
+                        .discards_this_batch
+                        .push((player, card));
+                }
+                // Combat damage to a player (CR 510.2) — the combat-damage-to-player watch family
+                // and the broader "deals damage to an opponent" self-watch now dispatch via the
+                // watch table. Aura-host and other scratch-driven companions stay explicit.
                 Event::CombatDamageDealtToPlayer {
                     source,
                     player,
                     amount,
                 } => {
-                    self.queue_combat_damage_triggers(source, player, amount);
                     // Contaminant Grafter's batch watch: "one or more creatures you control deal
                     // combat damage to one or more players" is a single trigger per damage step,
                     // so accumulate the controller here and drain it once below.
                     self.batch_trigger_scratch
                         .creatures_dealt_combat_damage_this_batch
                         .push(self.controller_of(source));
+                    self.queue_trigger_watch_table(
+                        COMBAT_DAMAGE_TO_PLAYER_TRIGGER_WATCHES,
+                        TriggerWatchEvent::for_combat_damage_to_player(source, player, amount),
+                    );
                     // Armadillo Cloak's attached-host damage watch: this creature dealt combat
                     // damage to a player. See `queue_enchanted_creature_deals_damage_triggers`.
                     self.queue_enchanted_creature_deals_damage_triggers(source, amount);
-                    // Looter il-Kor's "deals damage to an opponent" — combat damage is the
-                    // combat half of that watch; the noncombat half is the arm below.
-                    self.queue_deals_damage_to_opponent_triggers(source, player);
                 }
-                // Combat damage to a creature (CR 510.2) — Stinkweed Imp's self-referential
-                // "deals combat damage to a creature" watch. Unlike `CombatDamageDealtToPlayer`'s
-                // multi-scope battlefield scan (`queue_combat_damage_triggers`), this fires
-                // directly off `source`'s own ability: the pool's only consumer needs no
-                // `who`-style scope (flag-don't-force). Never fired by plain `DamageMarked` alone
-                // — a fight (CR 701.12) or other noncombat creature damage only emits that.
+                // Combat damage to a creature (CR 510.2) — still needs the eliminated-source
+                // guard here, but the actual self trigger now queues through the watch table once
+                // that precondition is met. Never fired by plain `DamageMarked` alone — a fight
+                // (CR 701.12) or other noncombat creature damage only emits that.
                 Event::CombatDamageDealtToCreature { source, target, .. } => {
                     // CR 800.4a: if `source`'s owner left the game in this same SBA sweep (e.g. a
                     // blocker trading with its attacker in the same combat-damage batch that also
@@ -586,27 +945,24 @@ impl Game {
                     // its own trigger left with it — same guard as the `Dies` `include_self:
                     // false` case above.
                     if matches!(
-                        self.objects[self.current_id(source) as usize],
-                        Object::Removed
+                        &self.objects[self.current_id(source) as usize],
+                        Object::Removed { .. }
                     ) {
                         continue;
                     }
-                    let ctx = TriggerContext {
-                        damaged_creature: Some(target),
-                        ..TriggerContext::of(self.owner_of(source))
-                    };
-                    self.queue_trigger_group(
-                        ctx,
-                        source,
-                        self.def_of(source),
-                        Trigger::DealsCombatDamageToCreature,
+                    self.queue_trigger_watch_table(
+                        COMBAT_DAMAGE_TO_CREATURE_TRIGGER_WATCHES,
+                        TriggerWatchEvent::for_combat_damage_to_creature(source, target),
                     );
                 }
                 // Noncombat damage dealt to a player (CR 120.1) — the marker
                 // `Effect::Damage(DamageEffect::Target)`'s player arm pushes alongside its `LifeChanged`, never a
                 // non-damage life loss (drain, pay-life), which only emits `LifeChanged`.
                 Event::DamageDealtToPlayer { source, player, .. } => {
-                    self.queue_deals_damage_to_opponent_triggers(source, player);
+                    self.queue_trigger_watch_table(
+                        DAMAGE_TO_PLAYER_TRIGGER_WATCHES,
+                        TriggerWatchEvent::for_damage_to_player(source, player),
+                    );
                 }
                 // Damage marked on a creature (CR 120.3/506) — `Game::deal_creature_damage` is the
                 // shared choke behind both combat damage to a blocker/attacker and noncombat
@@ -697,6 +1053,37 @@ impl Game {
                 );
             }
         }
+        // Conspiracy Theorist's "one or more nonland cards" (CR 701.8/603.3b): the whole
+        // simultaneous discard, not each card, is the trigger event, and it fires only when at
+        // least one discarded card was a nonland. Drain (group by discarder, filter to nonlands,
+        // then clear) and fire each qualifying discarder once. Same shape as the batches above.
+        if !self.batch_trigger_scratch.discards_this_batch.is_empty() {
+            let discards = std::mem::take(&mut self.batch_trigger_scratch.discards_this_batch);
+            let mut players: Vec<PlayerId> = discards.iter().map(|(p, _)| *p).collect();
+            players.sort_unstable_by_key(|p| p.0);
+            players.dedup();
+            for player in players {
+                // Only the nonland cards among this player's discards are "one of them" (CR
+                // 701.8); a land-only discard qualifies no one and fires nothing.
+                let nonland: Vec<ObjectId> = discards
+                    .iter()
+                    .filter(|(p, id)| {
+                        // "Nonland card" is any card that is not a land (CR 701.8) — an
+                        // instant/sorcery has no permanent type at all, so test the *absence* of
+                        // LAND rather than the presence of a NONLAND permanent type.
+                        *p == player && !self.def_of(*id).kind.types().intersects(TypeSet::LAND)
+                    })
+                    .map(|(_, id)| *id)
+                    .collect();
+                if nonland.is_empty() {
+                    continue;
+                }
+                // ponytail: leaked per fire so `TriggerContext` stays `Copy`, exactly like
+                //   `graveyard_exits_this_batch`'s `cards_left_graveyard` above.
+                let nonland: &'static [ObjectId] = Box::leak(nonland.into_boxed_slice());
+                self.queue_discard_nonland_triggers(player, nonland);
+            }
+        }
         // Laelia, the Blade Reforged's growth trigger: CR "one or more cards put into exile
         // from your library and/or your graveyard" batches to one trigger, not one per card.
         // Same drain-dedup-clear shape as the two accumulators above.
@@ -740,6 +1127,181 @@ impl Game {
         self.batch_trigger_scratch.serra_recursion_deaths.clear();
     }
 
+    fn trigger_watch_context(
+        &self,
+        source: ObjectId,
+        controller: PlayerId,
+        kind: TriggerWatchContextKind,
+        event: TriggerWatchEvent,
+    ) -> TriggerContext {
+        match kind {
+            TriggerWatchContextKind::Controller => TriggerContext::of(controller),
+            TriggerWatchContextKind::SelfCastX => TriggerContext {
+                cast_x: Some(self.ability_source_x(source)),
+                ..TriggerContext::of(controller)
+            },
+            TriggerWatchContextKind::ActivePlayer => TriggerContext {
+                active_player: event.active_player,
+                ..TriggerContext::of(controller)
+            },
+            TriggerWatchContextKind::Attack => TriggerContext {
+                attack: event.attack,
+                source_power: event.source_power,
+                ..TriggerContext::of(controller)
+            },
+            TriggerWatchContextKind::DamagedCreature => TriggerContext {
+                damaged_creature: event.damaged_creature,
+                ..TriggerContext::of(controller)
+            },
+        }
+    }
+
+    fn queue_trigger_watch_table(&mut self, watches: &[TriggerWatch], event: TriggerWatchEvent) {
+        for &watch in watches {
+            self.queue_trigger_watch(watch, event);
+        }
+    }
+
+    fn queue_trigger_watch(&mut self, watch: TriggerWatch, event: TriggerWatchEvent) {
+        match watch.kind {
+            TriggerWatchKind::Exact(trigger) => match (watch.zone, watch.scope) {
+                (TriggerWatchZone::Battlefield, TriggerWatchScope::SelfSource) => {
+                    let source = event
+                        .source
+                        .expect("self-source trigger watch requires an event source");
+                    let controller = self.owner_of(source);
+                    let ctx = self.trigger_watch_context(source, controller, watch.context, event);
+                    self.queue_trigger_group(ctx, source, self.def_of(source), trigger);
+                }
+                (TriggerWatchZone::Battlefield, TriggerWatchScope::ControlledPlayer) => {
+                    let player = event
+                        .player
+                        .expect("controller-scoped battlefield watch requires a player");
+                    for id in self.battlefield() {
+                        // A live battlefield permanent's "your …" watch keys on its controller
+                        // (CR 109.4 / 603.3d), not its owner — a stolen or reanimated permanent
+                        // triggers for whoever controls it now, never its original owner.
+                        if Some(id) == event.exclude || self.controller_of(id) != player {
+                            continue;
+                        }
+                        if watch.skip_graveyard_functional_on_battlefield
+                            && self.def_of(id).functions_in_graveyard
+                        {
+                            continue;
+                        }
+                        let ctx = self.trigger_watch_context(id, player, watch.context, event);
+                        self.queue_trigger_group(ctx, id, self.def_of(id), trigger);
+                    }
+                }
+                (TriggerWatchZone::Graveyard, TriggerWatchScope::ControlledPlayer) => {
+                    let player = event
+                        .player
+                        .expect("controller-scoped graveyard watch requires a player");
+                    for id in self.graveyard_cards(player) {
+                        if !self.def_of(id).functions_in_graveyard {
+                            continue;
+                        }
+                        let ctx = self.trigger_watch_context(id, player, watch.context, event);
+                        self.queue_trigger_group(ctx, id, self.def_of(id), trigger);
+                    }
+                }
+                (TriggerWatchZone::Battlefield, TriggerWatchScope::AllBattlefield) => {
+                    for id in self.battlefield() {
+                        if watch.skip_graveyard_functional_on_battlefield
+                            && self.def_of(id).functions_in_graveyard
+                        {
+                            continue;
+                        }
+                        // The triggered ability belongs to the permanent's controller (CR 603.3d),
+                        // not its owner — matters for stolen/reanimated permanents on the battlefield.
+                        let controller = self.controller_of(id);
+                        let ctx = self.trigger_watch_context(id, controller, watch.context, event);
+                        self.queue_trigger_group(ctx, id, self.def_of(id), trigger);
+                    }
+                }
+                (TriggerWatchZone::Battlefield, TriggerWatchScope::AllBattlefieldExceptPlayer) => {
+                    let excluded = event
+                        .player
+                        .expect("all-battlefield-except-player watch requires a player");
+                    for id in self.battlefield() {
+                        // Controller-scoped, not owner-scoped (CR 603.3d): both the "except this
+                        // player" test and the trigger's controller read the live controller.
+                        let controller = self.controller_of(id);
+                        if controller == excluded {
+                            continue;
+                        }
+                        if watch.skip_graveyard_functional_on_battlefield
+                            && self.def_of(id).functions_in_graveyard
+                        {
+                            continue;
+                        }
+                        let ctx = self.trigger_watch_context(id, controller, watch.context, event);
+                        self.queue_trigger_group(ctx, id, self.def_of(id), trigger);
+                    }
+                }
+                (TriggerWatchZone::Graveyard, _) => {
+                    unreachable!("graveyard watches only support controller scope")
+                }
+            },
+            TriggerWatchKind::Magecraft => {
+                let player = event
+                    .player
+                    .expect("magecraft watch dispatch requires the casting player");
+                let spell = event
+                    .source
+                    .expect("magecraft watch dispatch requires the triggering spell");
+                if matches!(self.def_of(spell).kind, CardKind::Spell { .. }) {
+                    self.queue_magecraft_triggers(player, self.def_of(spell).mana_value());
+                }
+            }
+            TriggerWatchKind::CastSpell => {
+                let spell_controller = event
+                    .player
+                    .expect("cast watch dispatch requires the casting player");
+                let spell = event
+                    .source
+                    .expect("cast watch dispatch requires the triggering spell");
+                let cast_x = event.cast_x.expect("cast watch dispatch requires chosen x");
+                let cast_from_hand = event
+                    .cast_from_hand
+                    .expect("cast watch dispatch requires cast-from-hand state");
+                let mana_spent = event
+                    .mana_spent
+                    .expect("cast watch dispatch requires mana spent");
+                self.queue_cast_spell_triggers(
+                    spell_controller,
+                    spell,
+                    self.def_of(spell),
+                    event.target,
+                    cast_x,
+                    cast_from_hand,
+                    mana_spent,
+                );
+            }
+            TriggerWatchKind::DealsCombatDamageToPlayer => {
+                let source = event
+                    .source
+                    .expect("combat-damage watch dispatch requires the damaging source");
+                let player = event
+                    .player
+                    .expect("combat-damage watch dispatch requires the damaged player");
+                let amount = event
+                    .combat_damage
+                    .expect("combat-damage watch dispatch requires the damage amount");
+                self.queue_combat_damage_triggers(source, player, amount);
+            }
+            TriggerWatchKind::DealsDamageToOpponent => {
+                let source = event
+                    .source
+                    .expect("opponent-damage watch dispatch requires the damaging source");
+                let player = event
+                    .player
+                    .expect("opponent-damage watch dispatch requires the damaged player");
+                self.queue_deals_damage_to_opponent_triggers(source, player);
+            }
+        }
+    }
+
     /// Fire `Trigger::ThisPermanentLeavesBattlefield` for `from` if it left the battlefield to
     /// any zone this batch (recorded in `permanents_left_battlefield` by the `Game::apply` exit
     /// choke points) and its `def` has this trigger — Animate Dead's "when this Aura leaves the
@@ -748,7 +1310,12 @@ impl Game {
     /// creature." Takes `owner`/`def` rather than re-deriving them from `from` because a
     /// `TokenCeasedToExist` source's arena slot is already `Object::Removed` by the time this
     /// runs.
-    fn queue_leaves_battlefield_triggers(&mut self, from: ObjectId, owner: PlayerId, def: CardDef) {
+    fn queue_leaves_battlefield_triggers(
+        &mut self,
+        from: ObjectId,
+        owner: PlayerId,
+        def: &CardDef,
+    ) {
         let Some(&(_, host)) = self
             .batch_trigger_scratch
             .permanents_left_battlefield
@@ -761,7 +1328,12 @@ impl Game {
             left_battlefield_host: host,
             ..TriggerContext::of(owner)
         };
-        self.queue_trigger_group(ctx, from, def, Trigger::ThisPermanentLeavesBattlefield);
+        self.queue_trigger_group(
+            ctx,
+            from,
+            def.clone(),
+            Trigger::ThisPermanentLeavesBattlefield,
+        );
     }
 
     /// Hofri Ghostforge's minted Spirit token: if `token` carries a baked
@@ -806,11 +1378,11 @@ impl Game {
     /// `mv_max_x` re-check (Kinetic Ooze), locked in at placement like `cast_mana_value`/`cast_x`
     /// above.
     pub(crate) fn queue_self_trigger(&mut self, source: ObjectId, trigger: Trigger) {
-        let ctx = TriggerContext {
-            cast_x: Some(self.ability_source_x(source)),
-            ..TriggerContext::of(self.owner_of(source))
-        };
-        self.queue_trigger_group(ctx, source, self.def_of(source), trigger);
+        let watch = [TriggerWatch::battlefield_self(
+            trigger,
+            TriggerWatchContextKind::SelfCastX,
+        )];
+        self.queue_trigger_watch_table(&watch, TriggerWatchEvent::for_source(source));
     }
 
     /// Queue "its controller sacrifices it" as `permanent`'s own single-ability [`TriggerGroup`],
@@ -896,11 +1468,18 @@ impl Game {
                 dying_is_token,
             );
         }
-        for &(id, def, controller) in batch_deaths {
+        for &(id, ref def, controller) in batch_deaths {
             if id == dying {
                 continue;
             }
-            self.queue_death_watcher(id, def, controller, dead_controller, dying, dying_is_token);
+            self.queue_death_watcher(
+                id,
+                def.clone(),
+                controller,
+                dead_controller,
+                dying,
+                dying_is_token,
+            );
         }
         if include_self {
             self.queue_self_death_watcher(dying, dying_def, dead_controller);
@@ -926,8 +1505,8 @@ impl Game {
         sources.dedup();
         for source in sources {
             if matches!(
-                self.objects[self.current_id(source) as usize],
-                Object::Removed
+                &self.objects[self.current_id(source) as usize],
+                Object::Removed { .. }
             ) {
                 continue;
             }
@@ -965,21 +1544,26 @@ impl Game {
             dead_creature: Some(dying),
             ..TriggerContext::of(controller)
         };
-        self.queue_trigger_group(ctx, watcher, def, Trigger::CreatureDies);
-        self.queue_trigger_group(ctx, watcher, def, Trigger::CreatureDiesIncludingThis);
+        self.queue_trigger_group(ctx, watcher, def.clone(), Trigger::CreatureDies);
+        self.queue_trigger_group(
+            ctx,
+            watcher,
+            def.clone(),
+            Trigger::CreatureDiesIncludingThis,
+        );
         if controller == dead_controller {
-            self.queue_trigger_group(ctx, watcher, def, Trigger::CreatureYouControlDies);
+            self.queue_trigger_group(ctx, watcher, def.clone(), Trigger::CreatureYouControlDies);
             self.queue_trigger_group(
                 ctx,
                 watcher,
-                def,
+                def.clone(),
                 Trigger::CreatureYouControlDiesIncludingThis,
             );
             if !dying_is_token {
                 self.queue_trigger_group(
                     ctx,
                     watcher,
-                    def,
+                    def.clone(),
                     Trigger::CreatureYouControlDiesNontoken,
                 );
                 self.queue_trigger_group(
@@ -1011,11 +1595,11 @@ impl Game {
         dead_controller: PlayerId,
     ) {
         let ctx = TriggerContext::of(dead_controller);
-        self.queue_trigger_group(ctx, dying, def, Trigger::CreatureDiesIncludingThis);
+        self.queue_trigger_group(ctx, dying, def.clone(), Trigger::CreatureDiesIncludingThis);
         self.queue_trigger_group(
             ctx,
             dying,
-            def,
+            def.clone(),
             Trigger::CreatureYouControlDiesIncludingThis,
         );
         self.queue_trigger_group(
@@ -1037,13 +1621,13 @@ impl Game {
     fn batch_creature_deaths(&self, events: &[Event]) -> Vec<(ObjectId, CardDef, PlayerId)> {
         let mut deaths = Vec::new();
         for event in events {
-            match *event {
+            match event.clone() {
                 Event::MovedToGraveyard { from, .. } => {
                     // Owner left the game in this same sweep: the creature went with them, not to
                     // the graveyard — no death to watch (matches the guard in `enqueue_triggers`).
                     if matches!(
-                        self.objects[self.current_id(from) as usize],
-                        Object::Removed
+                        &self.objects[self.current_id(from) as usize],
+                        Object::Removed { .. }
                     ) {
                         continue;
                     }
@@ -1066,8 +1650,9 @@ impl Game {
                     controller,
                     def,
                 } => {
-                    if matches!(def.kind, CardKind::Creature { .. }) {
-                        deaths.push((token, def, controller));
+                    let printed = card_def(def).as_ref().clone();
+                    if matches!(&printed.kind, CardKind::Creature { .. }) {
+                        deaths.push((token, printed, controller));
                     }
                 }
                 _ => {}
@@ -1088,13 +1673,13 @@ impl Game {
     ///   one sweep won't see it) — grow those from a real card, per flag-don't-force.
     fn queue_enchantment_death_watchers(&mut self, events: &[Event]) {
         for event in events {
-            let (dying, owner, def) = match *event {
+            let (dying, owner, def) = match event.clone() {
                 Event::MovedToGraveyard { from, .. } => {
                     // Owner left the game in this same sweep: no death to watch (matches the
                     // guard in `enqueue_triggers`/`batch_creature_deaths`).
                     if matches!(
-                        self.objects[self.current_id(from) as usize],
-                        Object::Removed
+                        &self.objects[self.current_id(from) as usize],
+                        Object::Removed { .. }
                     ) {
                         continue;
                     }
@@ -1113,14 +1698,18 @@ impl Game {
                     token,
                     controller,
                     def,
-                } => (token, controller, def),
+                } => (token, controller, card_def(def).as_ref().clone()),
                 _ => continue,
             };
             if !def.kind.types().intersects(TypeSet::ENCHANTMENT) {
                 continue;
             }
             for id in self.battlefield() {
-                if id == dying || self.owner_of(id) != owner {
+                // Controller-scoped watcher (CR 603.3d): a stolen/reanimated Starfield Mystic
+                // fires for its current controller. `owner` is the dying enchantment's
+                // controller-at-death stand-in (owner-based look-back for an object that already
+                // left the battlefield, per this deck's increment scope).
+                if id == dying || self.controller_of(id) != owner {
                     continue;
                 }
                 self.queue_trigger_group(
@@ -1151,13 +1740,13 @@ impl Game {
     ///   it) — grow those from a real card, per flag-don't-force.
     fn queue_nonland_permanent_death_watchers(&mut self, events: &[Event]) {
         for event in events {
-            let (dying, owner, def) = match *event {
+            let (dying, owner, def) = match event.clone() {
                 Event::MovedToGraveyard { from, .. } => {
                     // Owner left the game in this same sweep: no death to watch (matches the
                     // guard in `enqueue_triggers`/`batch_creature_deaths`).
                     if matches!(
-                        self.objects[self.current_id(from) as usize],
-                        Object::Removed
+                        &self.objects[self.current_id(from) as usize],
+                        Object::Removed { .. }
                     ) {
                         continue;
                     }
@@ -1176,7 +1765,7 @@ impl Game {
                     token,
                     controller,
                     def,
-                } => (token, controller, def),
+                } => (token, controller, card_def(def).as_ref().clone()),
                 _ => continue,
             };
             if !def.kind.types().intersects(TypeSet::NONLAND) {
@@ -1214,17 +1803,11 @@ impl Game {
         trigger: Trigger,
         exclude: Option<ObjectId>,
     ) {
-        for id in self.battlefield() {
-            if Some(id) == exclude || self.owner_of(id) != player {
-                continue;
-            }
-            // A graveyard-functional card's triggers fire only from the graveyard (CR 603.6e), so
-            // it must not also fire from the battlefield — see `queue_graveyard_controller_triggers`.
-            if self.def_of(id).functions_in_graveyard {
-                continue;
-            }
-            self.queue_trigger_group(TriggerContext::of(player), id, self.def_of(id), trigger);
-        }
+        let watch = [TriggerWatch::battlefield_controller(trigger)];
+        self.queue_trigger_watch_table(
+            &watch,
+            TriggerWatchEvent::for_player(player).with_exclude(exclude),
+        );
     }
 
     /// Queue [`Trigger::CardsLeaveYourGraveyard`] for `player`, threading the batch's leaving-card
@@ -1261,7 +1844,8 @@ impl Game {
                 continue;
             }
             if self.permanent(id).echo_unpaid {
-                self.pending_echo.push(id);
+                self.pending_obligations
+                    .push(Obligation::Echo { permanent: id });
             }
         }
     }
@@ -1277,8 +1861,23 @@ impl Game {
             if self.controller_of(id) != player || self.def_of(id).cumulative_upkeep.is_none() {
                 continue;
             }
-            self.pending_cumulative_upkeep.push(id);
+            self.pending_obligations
+                .push(Obligation::CumulativeUpkeep { permanent: id });
         }
+    }
+
+    fn pop_next_pending_obligation(&mut self) -> Option<Obligation> {
+        for matches_kind in [
+            |obligation: &Obligation| matches!(obligation, Obligation::Echo { .. }),
+            |obligation: &Obligation| matches!(obligation, Obligation::Recover { .. }),
+            |obligation: &Obligation| matches!(obligation, Obligation::CumulativeUpkeep { .. }),
+        ] {
+            let Some(index) = self.pending_obligations.iter().position(matches_kind) else {
+                continue;
+            };
+            return Some(self.pending_obligations.remove(index));
+        }
+        None
     }
 
     /// Queue [`Trigger::Magecraft`] for `player`, threading the triggering spell's mana value `mv`
@@ -1312,12 +1911,8 @@ impl Game {
         player: PlayerId,
         trigger: Trigger,
     ) {
-        for id in self.graveyard_cards(player) {
-            if !self.def_of(id).functions_in_graveyard {
-                continue;
-            }
-            self.queue_trigger_group(TriggerContext::of(player), id, self.def_of(id), trigger);
-        }
+        let watch = [TriggerWatch::graveyard_controller(trigger)];
+        self.queue_trigger_watch_table(&watch, TriggerWatchEvent::for_player(player));
     }
 
     /// Queue every battlefield permanent's [`Trigger::EachUpkeep`] ability at the beginning of
@@ -1329,15 +1924,10 @@ impl Game {
     ///   unlike [`queue_each_draw_step_triggers`](Self::queue_each_draw_step_triggers) (Howling
     ///   Mine). Wire it here too if a future each-upkeep effect needs it.
     pub(crate) fn queue_each_upkeep_triggers(&mut self) {
-        for id in self.battlefield() {
-            let controller = self.owner_of(id);
-            self.queue_trigger_group(
-                TriggerContext::of(controller),
-                id,
-                self.def_of(id),
-                Trigger::EachUpkeep,
-            );
-        }
+        self.queue_trigger_watch_table(
+            &[TriggerWatch::battlefield_all(Trigger::EachUpkeep)],
+            TriggerWatchEvent::default(),
+        );
     }
 
     /// Queue every battlefield permanent's [`Trigger::EachEndStep`] ability at the beginning of
@@ -1348,15 +1938,10 @@ impl Game {
     ///   `queue_each_upkeep_triggers` above — wire it here too if a future each-end-step effect
     ///   needs it.
     pub(crate) fn queue_each_end_step_triggers(&mut self) {
-        for id in self.battlefield() {
-            let controller = self.owner_of(id);
-            self.queue_trigger_group(
-                TriggerContext::of(controller),
-                id,
-                self.def_of(id),
-                Trigger::EachEndStep,
-            );
-        }
+        self.queue_trigger_watch_table(
+            &[TriggerWatch::battlefield_all(Trigger::EachEndStep)],
+            TriggerWatchEvent::default(),
+        );
     }
 
     /// Queue every battlefield permanent's [`Trigger::EachDrawStep`] ability at the beginning of
@@ -1367,14 +1952,10 @@ impl Game {
     /// is, so `active_player` rides along on [`TriggerContext::active_player`] instead of being
     /// dropped like its two every-player siblings above.
     pub(crate) fn queue_each_draw_step_triggers(&mut self, active_player: PlayerId) {
-        for id in self.battlefield() {
-            let controller = self.owner_of(id);
-            let ctx = TriggerContext {
-                active_player: Some(active_player),
-                ..TriggerContext::of(controller)
-            };
-            self.queue_trigger_group(ctx, id, self.def_of(id), Trigger::EachDrawStep);
-        }
+        self.queue_trigger_watch_table(
+            DRAW_STEP_TRIGGER_WATCHES,
+            TriggerWatchEvent::for_active_player(active_player),
+        );
     }
 
     /// Queue every battlefield permanent's [`Trigger::EachPlayerFirstMainPhase`] ability at the
@@ -1386,14 +1967,12 @@ impl Game {
     /// this is, so `active_player` rides along on [`TriggerContext::active_player`] just like
     /// [`queue_each_draw_step_triggers`](Self::queue_each_draw_step_triggers).
     pub(crate) fn queue_each_player_first_main_phase_triggers(&mut self, active_player: PlayerId) {
-        for id in self.battlefield() {
-            let controller = self.owner_of(id);
-            let ctx = TriggerContext {
-                active_player: Some(active_player),
-                ..TriggerContext::of(controller)
-            };
-            self.queue_trigger_group(ctx, id, self.def_of(id), Trigger::EachPlayerFirstMainPhase);
-        }
+        self.queue_trigger_watch_table(
+            &[TriggerWatch::battlefield_all_with_active_player(
+                Trigger::EachPlayerFirstMainPhase,
+            )],
+            TriggerWatchEvent::for_active_player(active_player),
+        );
     }
 
     /// Queue every battlefield permanent's [`Trigger::EachOtherPlayerUntapStep`] ability at the
@@ -1405,18 +1984,10 @@ impl Game {
         &mut self,
         untapping_player: PlayerId,
     ) {
-        for id in self.battlefield() {
-            let controller = self.owner_of(id);
-            if controller == untapping_player {
-                continue;
-            }
-            self.queue_trigger_group(
-                TriggerContext::of(controller),
-                id,
-                self.def_of(id),
-                Trigger::EachOtherPlayerUntapStep,
-            );
-        }
+        self.queue_trigger_watch_table(
+            UNTAP_STEP_TRIGGER_WATCHES,
+            TriggerWatchEvent::for_active_player(untapping_player),
+        );
     }
 
     /// Drain every CR 603.7 delayed trigger whose `fire_at` step just began — the first time any
@@ -1451,7 +2022,7 @@ impl Game {
             .filter(|&&(controller, _, f, _)| {
                 f == fire_at && (!controller_scoped || controller == active_player)
             })
-            .map(|&(controller, source, _, effect)| (controller, source, effect))
+            .map(|&(controller, source, _, ref effect)| (controller, source, effect.clone()))
             .collect();
         if due.is_empty() {
             return;
@@ -1505,7 +2076,7 @@ impl Game {
         then: &'static [Effect],
         token: ObjectId,
     ) {
-        for &effect in then {
+        for effect in then {
             // ponytail: `timing`/`condition` are fabricated inert placeholders, the same way
             // `fire_delayed_triggers` fabricates them — a reflexive ability isn't one of `source`'s
             // printed abilities, and `place_pending_triggers` only reads `effect`/`optional`/`cost`.
@@ -1515,7 +2086,39 @@ impl Game {
                 source,
                 abilities: vec![Ability {
                     timing: Timing::Triggered(Trigger::Upkeep),
-                    effect: effect.with_reflexive_token(token),
+                    effect: effect.clone().with_reflexive_token(token),
+                    optional: false,
+                    min_level: 0,
+                    cost: Cost::FREE,
+                    condition: None,
+                    once_each_turn: false,
+                }],
+            });
+        }
+    }
+
+    /// Enqueue a reflexive "when one or more nonland cards are exiled this way" triggered ability
+    /// (CR 603.3b — Augusta, Order Returned), the count-gated twin of
+    /// [`queue_reflexive_trigger`](Self::queue_reflexive_trigger). Each effect in `then` becomes
+    /// its own single-ability [`TriggerGroup`] with the settled `count` baked in
+    /// ([`Effect::with_reflexive_count`]), so it rides the normal APNAP placement path onto the
+    /// stack as a real, respondable object with its target chosen at placement (CR 601.2c) — after
+    /// the graveyard fan-out, in a real response window.
+    pub(crate) fn queue_reflexive_counter_trigger(
+        &mut self,
+        controller: PlayerId,
+        source: ObjectId,
+        then: &'static [Effect],
+        count: u32,
+    ) {
+        for effect in then {
+            self.pending_trigger_groups.push(TriggerGroup {
+                expanded: false,
+                controller,
+                source,
+                abilities: vec![Ability {
+                    timing: Timing::Triggered(Trigger::Upkeep),
+                    effect: effect.clone().with_reflexive_count(count),
                     optional: false,
                     min_level: 0,
                     cost: Cost::FREE,
@@ -1537,7 +2140,7 @@ impl Game {
     ) {
         let attacking_player = self.controller_of(attacker_object);
         for id in self.battlefield() {
-            let controller = self.owner_of(id);
+            let controller = self.controller_of(id);
             // "one of your opponents": skip watchers whose own controller was the one attacked.
             if controller == attacked {
                 continue;
@@ -1547,6 +2150,7 @@ impl Game {
                 active_player: None,
                 attack: Some((attacking_player, attacked)),
                 discarded: None,
+                discarded_nonland_cards: &[],
                 entering: None,
                 dying_source_stats: None,
                 cast_mana_value: None,
@@ -1602,6 +2206,10 @@ impl Game {
     /// [`Trigger::CreatureEnchantedByYourAuraAttacks`] fires on every battlefield permanent,
     /// gated on how many of the *whole* attacker set (any defender) are enchanted by an Aura the
     /// watcher's own controller controls (CR 508.1, Killian, Decisive Mentor's second ability).
+    /// A fourth, differently-shaped pass follows the per-watcher loop:
+    /// [`Trigger::CreatureAttacks`] (Righteous Cause's "whenever a creature attacks") fires once
+    /// *per attacker* rather than once gated on a count, so it gets its own loop over
+    /// `attackers` instead of joining the single-fire-per-watcher filter chain above.
     /// Called directly from [`Game::declare_attackers`] once the attacker set is committed,
     /// rather than from [`Self::enqueue_triggers`]'s per-event scan.
     pub(crate) fn queue_batch_attack_triggers(
@@ -1611,7 +2219,7 @@ impl Game {
     ) {
         let total_attackers = attackers.len() as u8;
         for id in self.battlefield() {
-            let controller = self.owner_of(id);
+            let controller = self.controller_of(id);
             let against_controller = attackers
                 .iter()
                 .filter(|&&(_, defender)| defender == controller)
@@ -1647,7 +2255,7 @@ impl Game {
                 })
                 .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
                 .map(|a| Ability {
-                    effect: contextualize_effect(a.effect, ctx),
+                    effect: contextualize_effect(a.effect.clone(), ctx),
                     ..*a
                 })
                 .collect();
@@ -1658,6 +2266,39 @@ impl Game {
                     source: id,
                     abilities,
                 });
+            }
+        }
+
+        // "Whenever a creature attacks" (CR 508.1, Righteous Cause): once per attacker, any
+        // controller, any defender — the watcher's own controller need not be involved in the
+        // attack at all. Fires N times off an N-attacker set, unlike the gated single-fire-per-
+        // watcher loop above, so it walks `attackers` in the outer loop instead.
+        for &(attacker, defender) in attackers {
+            let this_attacking_player = self.controller_of(attacker);
+            for id in self.battlefield() {
+                let controller = self.owner_of(id);
+                let ctx = TriggerContext {
+                    attack: Some((this_attacking_player, defender)),
+                    ..TriggerContext::of(controller)
+                };
+                let abilities: Vec<Ability> = self
+                    .functional_abilities(id)
+                    .iter()
+                    .filter(|a| matches!(a.timing, Timing::Triggered(Trigger::CreatureAttacks)))
+                    .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
+                    .map(|a| Ability {
+                        effect: contextualize_effect(a.effect.clone(), ctx),
+                        ..*a
+                    })
+                    .collect();
+                if !abilities.is_empty() {
+                    self.pending_trigger_groups.push(TriggerGroup {
+                        expanded: false,
+                        controller,
+                        source: id,
+                        abilities,
+                    });
+                }
             }
         }
     }
@@ -1686,6 +2327,26 @@ impl Game {
         }
     }
 
+    /// Queue [`Trigger::AttacksOrBlocks`]'s block half (Mana-Charged Dragon, CR 509.3a): unlike
+    /// [`queue_blocks_or_becomes_blocked_triggers`](Self::queue_blocks_or_becomes_blocked_triggers)
+    /// above, only the *blocker* side of each pair fires — a blocked attacker doesn't "block".
+    /// Deduped the same way, so a creature blocking multiple attackers still fires once. Called
+    /// directly from [`Game::declare_blockers`]; the attack half is queued alongside
+    /// [`Trigger::Attacks`] off [`Event::AttackerDeclared`] instead.
+    pub(crate) fn queue_attacks_or_blocks_block_triggers(
+        &mut self,
+        blocks: &[(ObjectId, ObjectId)],
+    ) {
+        let mut fired: Vec<ObjectId> = Vec::new();
+        for &(blocker, _) in blocks {
+            if fired.contains(&blocker) {
+                continue;
+            }
+            fired.push(blocker);
+            self.queue_self_trigger(blocker, Trigger::AttacksOrBlocks);
+        }
+    }
+
     /// Queue attached-permanent attack triggers (CR 508.1, the Impetus cycle — and CR 301.5g's
     /// Equipment twin, Fractal Harness's "whenever equipped creature attacks"): the attacking
     /// `attacker_object`'s attachments (`self.attachments`, Auras *and* Equipment alike) each
@@ -1707,6 +2368,7 @@ impl Game {
                 active_player: None,
                 attack: Some((host_controller, defender)),
                 discarded: None,
+                discarded_nonland_cards: &[],
                 entering: None,
                 dying_source_stats: None,
                 cast_mana_value: None,
@@ -1820,7 +2482,7 @@ impl Game {
             .dying_creature_attachments
             .iter()
             .filter(|&&(host, ..)| host == dying)
-            .map(|&(_, aura, controller, def)| (aura, controller, def))
+            .map(|&(_, aura, controller, ref def)| (aura, controller, def.clone()))
             .collect();
         for (aura, controller, def) in auras {
             if self.players[controller.0 as usize].lost {
@@ -1853,7 +2515,7 @@ impl Game {
             .batch_trigger_scratch
             .dying_creature_attachments
             .iter()
-            .filter(|&&(host, _, controller, def)| {
+            .filter(|&&(host, _, controller, ref def)| {
                 // Skip an Aura whose owner left the game in this same sweep (CR 800.4a) — its
                 // watchers must not count it, checked directly off the captured controller's
                 // `Player::lost` (see `queue_enchanted_creature_dies_triggers`'s own doc for why
@@ -1868,18 +2530,22 @@ impl Game {
             return;
         }
         for id in self.battlefield() {
+            // Controller-scoped (CR 603.3d): a stolen/reanimated Hateful Eidolon fires for its
+            // current controller, which also decides which dying-creature Auras count as "you
+            // controlled". (`batch_deaths` below already carries each dead watcher's
+            // controller-at-death — the CR 603.6c look-back — so those stay as captured.)
             self.queue_an_enchanted_creature_dies_watcher(
                 id,
                 self.def_of(id),
-                self.owner_of(id),
+                self.controller_of(id),
                 &auras,
             );
         }
-        for &(id, def, controller) in batch_deaths {
+        for &(id, ref def, controller) in batch_deaths {
             if id == dying {
                 continue;
             }
-            self.queue_an_enchanted_creature_dies_watcher(id, def, controller, &auras);
+            self.queue_an_enchanted_creature_dies_watcher(id, def.clone(), controller, &auras);
         }
     }
 
@@ -1932,16 +2598,16 @@ impl Game {
                 .iter()
                 .filter(|a| match a.timing {
                     Timing::Triggered(Trigger::YouSacrifice { filter }) => {
-                        controller == by && sacrifice_matches(&filter, def, id, sacrificed)
+                        controller == by && sacrifice_matches(&filter, def.clone(), id, sacrificed)
                     }
                     Timing::Triggered(Trigger::AnyPlayerSacrifices { filter }) => {
-                        sacrifice_matches(&filter, def, id, sacrificed)
+                        sacrifice_matches(&filter, def.clone(), id, sacrificed)
                     }
                     _ => false,
                 })
                 .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
                 .map(|a| Ability {
-                    effect: contextualize_effect(a.effect, ctx),
+                    effect: contextualize_effect(a.effect.clone(), ctx),
                     ..*a
                 })
                 .collect();
@@ -1968,6 +2634,7 @@ impl Game {
             active_player: None,
             attack: None,
             discarded: Some(discarded),
+            discarded_nonland_cards: &[],
             entering: None,
             dying_source_stats: None,
             cast_mana_value: None,
@@ -1995,6 +2662,30 @@ impl Game {
                 continue;
             }
             self.queue_trigger_group(ctx, id, self.def_of(id), Trigger::YouDiscard);
+        }
+    }
+
+    /// Queue [`Trigger::YouDiscardNonland`] watchers on every permanent `player` controls
+    /// (Conspiracy Theorist's "Whenever you discard one or more nonland cards, you may exile one
+    /// of them …"): fires once per discard *event*, not once per card, and only when at least one
+    /// discarded card was a nonland. `nonland_cards` are the discarded nonland cards' new
+    /// graveyard-object ids (CR 603.10a last-known information), threaded into the
+    /// [`TriggerContext`] so the payoff can offer exactly "one of them" — mirrors
+    /// [`queue_cards_leave_graveyard_triggers`](Self::queue_cards_leave_graveyard_triggers).
+    pub(crate) fn queue_discard_nonland_triggers(
+        &mut self,
+        player: PlayerId,
+        nonland_cards: &'static [ObjectId],
+    ) {
+        let ctx = TriggerContext {
+            discarded_nonland_cards: nonland_cards,
+            ..TriggerContext::of(player)
+        };
+        for id in self.battlefield() {
+            if self.owner_of(id) != player {
+                continue;
+            }
+            self.queue_trigger_group(ctx, id, self.def_of(id), Trigger::YouDiscardNonland);
         }
     }
 
@@ -2064,7 +2755,11 @@ impl Game {
             if id == entering {
                 continue;
             }
-            let controller = self.owner_of(id);
+            // Controller-scoped (CR 603.3d / 603.6e): a battlefield watcher's "an enchantment you
+            // control enters" keys on who controls the watcher now (a stolen/reanimated Doomwake
+            // fires for its new controller). `controller_of` returns the owner for a
+            // graveyard-functional watcher, so that path is unchanged.
+            let controller = self.controller_of(id);
             let ctx = TriggerContext {
                 entering: Some(entering),
                 ..TriggerContext::of(controller)
@@ -2099,7 +2794,7 @@ impl Game {
                 })
                 .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
                 .map(|a| Ability {
-                    effect: contextualize_effect(a.effect, ctx),
+                    effect: contextualize_effect(a.effect.clone(), ctx),
                     ..*a
                 })
                 .collect();
@@ -2121,7 +2816,9 @@ impl Game {
     /// ([`queue_self_death_watcher`](Self::queue_self_death_watcher)), `entering` is already on
     /// the battlefield here, so this reads it directly rather than off a snapshot.
     fn queue_self_permanent_enters_trigger(&mut self, entering: ObjectId) {
-        let controller = self.owner_of(entering);
+        // `entering` is live on the battlefield, so its own ETB fires for its controller
+        // (CR 603.3d) — not its owner, which matters if it entered under another player's control.
+        let controller = self.controller_of(entering);
         let ctx = TriggerContext::of(controller);
         let abilities: Vec<Ability> = self
             .functional_abilities(entering)
@@ -2142,7 +2839,7 @@ impl Game {
             })
             .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
             .map(|a| Ability {
-                effect: contextualize_effect(a.effect, ctx),
+                effect: contextualize_effect(a.effect.clone(), ctx),
                 ..*a
             })
             .collect();
@@ -2216,7 +2913,7 @@ impl Game {
                 })
                 .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
                 .map(|a| Ability {
-                    effect: contextualize_effect(a.effect, ctx),
+                    effect: contextualize_effect(a.effect.clone(), ctx),
                     ..*a
                 })
                 .collect();
@@ -2335,7 +3032,10 @@ impl Game {
         //   That's the intended reading ("their second spell" means the cast currently resolving
         //   is the second), not a bug to fix.
         for id in self.battlefield() {
-            let controller = self.owner_of(id);
+            // Controller-scoped (CR 603.3d): a stolen/reanimated cast-watcher (Sram, Kor
+            // Spiritdancer) fires for whoever controls it now, and its `You`/`Opponent` caster
+            // scope is judged against that controller.
+            let controller = self.controller_of(id);
             let ctx = TriggerContext {
                 cast_mana_value: Some(def.mana_value()),
                 // CR 601.2h: the mana actually spent on this cast, locked in when the trigger
@@ -2387,7 +3087,7 @@ impl Game {
                             // spell filter, so the plain hand-cast default suffices here.
                             && self.spell_matches_filter(
                                 filter,
-                                def,
+                                def.clone(),
                                 target,
                                 spell_controller,
                                 Zone::Hand,
@@ -2399,7 +3099,7 @@ impl Game {
                 })
                 .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
                 .map(|a| Ability {
-                    effect: contextualize_effect(a.effect, ctx),
+                    effect: contextualize_effect(a.effect.clone(), ctx),
                     ..*a
                 })
                 .collect();
@@ -2449,7 +3149,7 @@ impl Game {
                 })
                 .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
                 .map(|a| Ability {
-                    effect: contextualize_effect(a.effect, ctx),
+                    effect: contextualize_effect(a.effect.clone(), ctx),
                     ..*a
                 })
                 .collect();
@@ -2561,7 +3261,7 @@ impl Game {
         }
         let casts: Vec<(PlayerId, ObjectId, CardDef, Option<Target>, u32)> = events
             .iter()
-            .filter_map(|e| match *e {
+            .filter_map(|e| match e.clone() {
                 Event::SpellCast {
                     spell,
                     controller,
@@ -2577,12 +3277,12 @@ impl Game {
                 .delayed_triggers
                 .pending_next_cast
                 .iter()
-                .copied()
+                .cloned()
                 .filter(|&(controller, _, filter, _)| {
                     controller == spell_controller
                         && self.spell_matches_filter(
                             filter,
-                            def,
+                            def.clone(),
                             target,
                             spell_controller,
                             Zone::Hand,
@@ -2600,8 +3300,8 @@ impl Game {
                     ..TriggerContext::of(controller)
                 };
                 let effect = match then {
-                    [only] => *only,
-                    _ => Effect::Sequence { steps: then },
+                    [only] => only.clone(),
+                    _ => Effect::Sequence { steps: then.into() },
                 };
                 self.pending_trigger_groups.push(TriggerGroup {
                     expanded: false,
@@ -2644,7 +3344,7 @@ impl Game {
         }
         let damages: Vec<ObjectId> = events
             .iter()
-            .filter_map(|e| match *e {
+            .filter_map(|e| match e.clone() {
                 Event::CombatDamageDealtToPlayer { source, .. } => Some(source),
                 _ => None,
             })
@@ -2654,7 +3354,7 @@ impl Game {
                 .delayed_triggers
                 .pending_combat_damage_watch
                 .iter()
-                .copied()
+                .cloned()
                 .filter(|&(_, _, watched)| watched == damage_source)
                 .map(|(controller, source, _)| (controller, source))
                 .collect();
@@ -2703,7 +3403,7 @@ impl Game {
         }
         let damages: Vec<ObjectId> = events
             .iter()
-            .filter_map(|e| match *e {
+            .filter_map(|e| match e.clone() {
                 Event::CombatDamageDealtToPlayer { source, .. } => Some(source),
                 _ => None,
             })
@@ -2714,7 +3414,7 @@ impl Game {
                 .delayed_triggers
                 .pending_combat_damage_copy
                 .iter()
-                .copied()
+                .cloned()
                 .filter(|&(controller, _, _)| controller == damage_controller)
                 .collect();
             for (controller, source, card) in matches {
@@ -2752,7 +3452,9 @@ impl Game {
     /// `Trigger` value.
     pub(crate) fn queue_player_draws_triggers(&mut self, drawer: PlayerId, nth: u32) {
         for id in self.battlefield() {
-            let controller = self.owner_of(id);
+            // Controller-scoped (CR 603.3d): a stolen/reanimated draw-watcher (Pearl-Ear) fires
+            // for its current controller, and its `You`/`Opponent` drawer scope keys on that.
+            let controller = self.controller_of(id);
             let ctx = TriggerContext::of(controller);
             let abilities: Vec<Ability> = self
                 .functional_abilities(id)
@@ -2773,7 +3475,7 @@ impl Game {
                 })
                 .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
                 .map(|a| Ability {
-                    effect: contextualize_effect(a.effect, ctx),
+                    effect: contextualize_effect(a.effect.clone(), ctx),
                     ..*a
                 })
                 .collect();
@@ -2800,7 +3502,7 @@ impl Game {
         let Some(Target::Object(id)) = spell_target else {
             return;
         };
-        if !matches!(self.objects[id as usize], Object::Permanent(_)) {
+        if !matches!(&self.objects[id as usize], Object::Permanent(_)) {
             return;
         }
         let controller = self.controller_of(id);
@@ -2835,7 +3537,7 @@ impl Game {
             .filter(|a| a.timing == Timing::Triggered(Trigger::BecomesTargeted { who }))
             .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
             .map(|a| Ability {
-                effect: contextualize_effect(a.effect, ctx),
+                effect: contextualize_effect(a.effect.clone(), ctx),
                 ..*a
             })
             .collect();
@@ -2864,7 +3566,7 @@ impl Game {
         let Some(Target::Object(id)) = spell_target else {
             return;
         };
-        if !matches!(self.objects[id as usize], Object::Permanent(_)) {
+        if !matches!(&self.objects[id as usize], Object::Permanent(_)) {
             return;
         }
         let controller = self.controller_of(id);
@@ -2879,11 +3581,17 @@ impl Game {
                 let Timing::Triggered(Trigger::SpellTargetsThisOnly { filter }) = a.timing else {
                     return false;
                 };
-                self.spell_matches_filter(filter, def, spell_target, spell_controller, Zone::Hand)
+                self.spell_matches_filter(
+                    filter,
+                    def.clone(),
+                    spell_target,
+                    spell_controller,
+                    Zone::Hand,
+                )
             })
             .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
             .map(|a| Ability {
-                effect: contextualize_effect(a.effect, ctx),
+                effect: contextualize_effect(a.effect.clone(), ctx),
                 ..*a
             })
             .collect();
@@ -3001,11 +3709,11 @@ impl Game {
             if t != target {
                 continue;
             }
-            for &ability in self.def_of(source).abilities {
-                if ability_grants_source_abilities(ability) {
+            for ability in self.def_of(source).abilities.iter() {
+                if ability_grants_source_abilities(ability.clone()) {
                     continue;
                 }
-                granted.push(ability);
+                granted.push(ability.clone());
             }
         }
         granted
@@ -3039,7 +3747,7 @@ impl Game {
         let abilities: Vec<Ability> = def
             .abilities
             .iter()
-            .copied()
+            .cloned()
             .chain(granted)
             .filter(|a| {
                 a.timing == Timing::Triggered(trigger)
@@ -3089,6 +3797,13 @@ impl Game {
             // Howling Mine: "if Howling Mine is untapped" — source-object-based like the three
             // conditions above.
             Condition::SourceUntapped => self.as_permanent(source).is_some_and(|p| !p.tapped),
+            // Dread Cacodemon/Reiver Demon: "if you cast it from your hand" — source-object-based
+            // like the four conditions above.
+            Condition::CastFromHand => self.as_permanent(source).is_some_and(|p| p.cast_from_hand),
+            // Plumb the Forbidden's reflexive "When you do": the copy trigger happens only if one
+            // or more creatures were sacrificed to the additional cost — source-object-based like
+            // the conditions above, reading the resolving spell's own recorded count (CR 601.2f).
+            Condition::SpellSacrificedToCast => self.spell_sacrifice_count(source) > 0,
             _ => self.condition_holds(condition, ctx),
         }
     }
@@ -3099,6 +3814,9 @@ impl Game {
             Condition::YouControlAtLeastCreatures { count } => {
                 self.creatures_controlled(ctx.controller) as u32 >= count
             }
+            // Pyrohemia: "if no creatures are on the battlefield" — board-wide, every
+            // controller (unlike `YouControlAtLeastCreatures` above).
+            Condition::NoCreaturesOnBattlefield => self.creatures_on_battlefield() == 0,
             // "that opponent has more life than another of your opponents": some other opponent
             // of the controller (not the attacked one) has strictly less life than the attacked.
             Condition::AttackedOpponentHasMoreLifeThanAnotherOpponent => {
@@ -3293,6 +4011,22 @@ impl Game {
             // site (`Game::run`), which intercepts it directly against its own `source` parameter
             // before falling through here (Court Hussar's "unless {W} was spent to cast it").
             Condition::ColorWasSpentToCastThis { .. } => false,
+            // ponytail: source-object-based like `ColorWasSpentToCastThis` above — `TriggerContext`
+            // carries no source id either. Reachable only through `Game::ability_condition_holds`
+            // (Dread Cacodemon's/Reiver Demon's ETB intervening-if, CR 603.4), which intercepts it
+            // directly against its own `source` parameter before falling through here.
+            Condition::CastFromHand => false,
+            // ponytail: source-object-based like `CastFromHand` above — `TriggerContext` carries
+            // no source id either. Reachable only through `Game::ability_condition_holds` (Plumb
+            // the Forbidden's reflexive "When you do" copy gate, CR 603.4), which intercepts it
+            // directly against its own `source` parameter before falling through here.
+            Condition::SpellSacrificedToCast => false,
+            // ponytail: source-object-based like `SourceEnteredWithXAtLeast` above —
+            // `TriggerContext` carries no source id either. Reachable only through the
+            // `Effect::Conditional` resolve site (`Game::run`), which intercepts it directly
+            // against its own `source` parameter before falling through here (Dragon Whelp's
+            // activation-count check).
+            Condition::SourceActivatedThisTurnAtLeast { .. } => false,
             Condition::All { conditions } => {
                 conditions.iter().all(|&c| self.condition_holds(c, ctx))
             }
@@ -3334,7 +4068,8 @@ impl Game {
                 return false;
             }
             let perm = self.permanent(id);
-            if !types.is_empty() && !types.intersects(perm.def.kind.types()) {
+            let printed = card_def(perm.def);
+            if !types.is_empty() && !types.intersects(printed.kind.types()) {
                 return false;
             }
             match token {
@@ -3383,7 +4118,7 @@ impl Game {
     /// now at the land's one ETB site ([`Event::LandPlayed`]). Reuses [`Game::condition_holds`],
     /// the same intervening-if evaluator triggers use, so a land-count/subtype condition is
     /// written once and read from both places.
-    pub(crate) fn enters_tapped(&self, def: CardDef, controller: PlayerId) -> bool {
+    pub(crate) fn enters_tapped(&self, def: &CardDef, controller: PlayerId) -> bool {
         // `enters_tapped_unless_you_pay_life` (CR 614.12's pay-life-or-tapped choice) is
         // resolved by [`Game::play_land`] / its answer handler *before* this site runs — by the
         // time `Event::LandPlayed` applies, the land is either entering tapped outright (the
@@ -3425,7 +4160,7 @@ impl Game {
     pub(crate) fn basic_lands_controlled(&self, controller: PlayerId) -> usize {
         self.battlefield()
             .into_iter()
-            .filter(|&id| self.controller_of(id) == controller && is_basic_land(self.def_of(id)))
+            .filter(|&id| self.controller_of(id) == controller && is_basic_land(&self.def_of(id)))
             .count()
     }
 
@@ -3449,13 +4184,16 @@ impl Game {
         subtypes: &[&str],
     ) -> bool {
         self.objects.iter().any(|o| match o {
-            Object::Card(c) if c.zone == Zone::Hand && c.owner == controller => match c.def.kind {
-                CardKind::Land {
-                    subtypes: land_subtypes,
-                    ..
-                } => land_subtypes.iter().copied().any(|s| subtypes.contains(&s)),
-                _ => false,
-            },
+            Object::Card(c) if c.zone == Zone::Hand && c.owner == controller => {
+                let def = card_def(c.def);
+                match &def.kind {
+                    CardKind::Land {
+                        subtypes: land_subtypes,
+                        ..
+                    } => land_subtypes.iter().copied().any(|s| subtypes.contains(&s)),
+                    _ => false,
+                }
+            }
             _ => false,
         })
     }
@@ -3471,7 +4209,9 @@ impl Game {
     }
 
     /// Put queued triggers on the stack. A group with several abilities raises an
-    /// ordering choice and stops; single-ability groups go straight on the stack.
+    /// ordering choice and stops; single-ability groups go straight on the stack. The one
+    /// exception is [`Trigger::AsEnters`] (CR 614.12), a replacement effect that runs inline here
+    /// and never reaches the stack.
     pub(crate) fn place_pending_triggers(&mut self, events: &mut Vec<Event>) {
         // Don't place triggers while blocked on an unrelated choice.
         if self.pending_choice.is_some() {
@@ -3500,11 +4240,12 @@ impl Game {
             // off its vanishing) can't be modal — no pool token is a modal card — and `def_of`
             // panics on a fully-`Removed` object, so that case is excluded up front rather than
             // read.
-            let modal_modes = (!matches!(self.objects[group.source as usize], Object::Removed))
-                .then(|| self.def_of(group.source))
-                .filter(|def| {
-                    def.modal && !def.abilities.iter().any(|a| a.timing == Timing::Spell)
-                });
+            let modal_modes =
+                (!matches!(&self.objects[group.source as usize], Object::Removed { .. }))
+                    .then(|| self.def_of(group.source))
+                    .filter(|def| {
+                        def.modal && !def.abilities.iter().any(|a| a.timing == Timing::Spell)
+                    });
             if let Some(def) = modal_modes {
                 let group = self.pending_trigger_groups.remove(0);
                 crate::pending::raise_choice(
@@ -3512,7 +4253,7 @@ impl Game {
                     PendingChoice::ChooseTriggerModes {
                         player: group.controller,
                         source: group.source,
-                        modes: group.abilities.iter().map(|a| a.effect).collect(),
+                        modes: group.abilities.iter().map(|a| a.effect.clone()).collect(),
                         choose: def.modal_choose,
                         // The "may" gate lives on each mode ability's own `optional` (CR "you may
                         // choose N" — every mode shares the same optional flag; read the first).
@@ -3526,7 +4267,7 @@ impl Game {
                 // pops it back off the front and re-splits its *real* abilities, so each one
                 // keeps its own `optional` / `cost` / `condition` (Nucklavee's two "you may
                 // return target …" ETB triggers).
-                let effects = group.abilities.iter().map(|a| a.effect).collect();
+                let effects = group.abilities.iter().map(|a| a.effect.clone()).collect();
                 let (controller, source) = (group.controller, group.source);
                 crate::pending::raise_choice(
                     self,
@@ -3539,8 +4280,38 @@ impl Game {
                 return;
             }
             let group = self.pending_trigger_groups.remove(0);
-            let ability = group.abilities[0];
+            let ability = group.abilities[0].clone();
             let (player, source, effect) = (group.controller, group.source, ability.effect);
+
+            // "As this permanent enters, …" (CR 614.12) is a replacement effect, not a triggered
+            // ability: run it right here instead of placing it, so no player holds priority
+            // between the entry and the choice. A choice it raises returns; the post-intent
+            // pipeline re-enters placement once answered, and this group is already popped.
+            // ponytail: state-based actions run one pipeline phase *ahead* of placement, so the
+            // choice lands a sweep later than CR 704.3 strictly wants. Unobservable for every
+            // as-enters card in the pool (their payoffs only add stats or grant protection, and
+            // nothing between the two sweeps gets priority); move this ahead of the SBA phase if
+            // an as-enters choice ever decides whether a permanent survives that first sweep.
+            if ability.timing == Timing::Triggered(Trigger::AsEnters) {
+                debug_assert!(
+                    !ability.optional,
+                    "an as-enters replacement effect can't be a 'you may' — it never reaches the \
+                     optional gate below"
+                );
+                let ctx = crate::resolution::ResolveCtx {
+                    controller: player,
+                    source,
+                    target: None,
+                    targets_second: TargetList::default(),
+                    x: 0,
+                    spent_mana: [0; 6],
+                };
+                self.run(effect, ctx, events);
+                if self.pending_choice.is_some() {
+                    return;
+                }
+                continue;
+            }
 
             // "This ability triggers only once each turn" (Morbid Opportunist, Tocasia's
             // Welcome): counted at placement (when it triggers), not resolution, per CR — so the
@@ -3555,6 +4326,32 @@ impl Game {
                 self.push_apply(events, Event::TriggeredAbilityThisTurn { source });
             }
 
+            // "Choose one —" on a triggered ability (CR 603.3d / 700.2): the mode is chosen as the
+            // ability goes on the stack, not after players pass priority into resolution. Raise the
+            // mode choice now; once answered, the chosen branch — with its own target chosen too —
+            // is what goes on the stack (`answer_choose_mode`'s placement path), so the branch is
+            // public before any response window and resolution runs straight down it. A modal
+            // *spell*'s own resolution-step `ChooseOne` (Zimone's Hypothesis) is unaffected — it is
+            // never a trigger and so never reaches this loop.
+            if let Effect::ChooseOne { options } = effect {
+                if options.is_empty() {
+                    continue;
+                }
+                crate::pending::raise_choice(
+                    self,
+                    PendingChoice::ChooseMode {
+                        player,
+                        source,
+                        target: None,
+                        x: 0,
+                        modes: options,
+                        at_placement: true,
+                        activated: false,
+                    },
+                );
+                return;
+            }
+
             // An optional trigger pauses for a yes/no (or pay-or-decline) before the stack.
             if ability.optional {
                 crate::pending::raise_choice(
@@ -3564,6 +4361,7 @@ impl Game {
                             player,
                             source,
                             effect,
+                            resume: crate::MayYesNoResume::Default,
                         }
                     } else {
                         PendingChoice::PayCost {
@@ -3585,94 +4383,97 @@ impl Game {
             }
         }
 
-        // Echo (CR 702.31c/d): once the ordinary trigger queue is empty, offer one queued
-        // pay-or-sacrifice choice at a time (a second, if any, follows once this one resolves —
-        // the same "one at a time, chained across submits" shape `pending_trigger_groups` uses).
-        // A source that left the battlefield since being queued (removed some other way in the
-        // interim) is skipped with nothing to sacrifice.
-        while let Some(source) = self.pending_echo.first().copied() {
-            self.pending_echo.remove(0);
-            if self.as_permanent(source).is_none() {
-                continue;
+        // Once the ordinary trigger queue is empty, drain one keyword-trigger obligation at a
+        // time. This preserves today's priority order: every Echo first, then every Recover, then
+        // every Cumulative upkeep.
+        while let Some(obligation) = self.pop_next_pending_obligation() {
+            match obligation {
+                // Echo (CR 702.31c/d): offer one queued pay-or-sacrifice choice at a time (a
+                // second, if any, follows once this one resolves — the same "one at a time,
+                // chained across submits" shape `pending_trigger_groups` uses). A source that left
+                // the battlefield since being queued (removed some other way in the interim) is
+                // skipped with nothing to sacrifice.
+                Obligation::Echo { permanent: source } => {
+                    if self.as_permanent(source).is_none() {
+                        continue;
+                    }
+                    let cost = self
+                        .def_of(source)
+                        .echo
+                        .expect("only queued for a permanent with an echo cost");
+                    crate::pending::raise_choice(
+                        self,
+                        PendingChoice::PayEchoOrSacrifice {
+                            player: self.owner_of(source),
+                            source,
+                            cost,
+                        },
+                    );
+                    return;
+                }
+                // Recover (CR 702.59a): offer one queued pay-or-exile choice at a time. A card
+                // that already left the graveyard since being queued (recovered or exiled by an
+                // earlier trigger from the same simultaneous batch of deaths — CR 702.59a's
+                // ruling that only the first of several such triggers has any effect) is silently
+                // skipped: nothing left to pay for.
+                Obligation::Recover { card: source } => {
+                    if !matches!(&self.objects[source as usize], Object::Card(c) if c.zone == Zone::Graveyard)
+                    {
+                        continue;
+                    }
+                    let cost = self
+                        .def_of(source)
+                        .recover
+                        .expect("only queued for a card with a recover cost");
+                    crate::pending::raise_choice(
+                        self,
+                        PendingChoice::PayRecoverOrExile {
+                            player: self.owner_of(source),
+                            source,
+                            cost,
+                        },
+                    );
+                    return;
+                }
+                // Cumulative upkeep (CR 702.24a): put an age counter on the permanent, then offer
+                // one queued pay-or-sacrifice choice at a time, scaled by its now-updated total
+                // age counter count. A source that left the battlefield since being queued is
+                // skipped, same as Echo/Recover above.
+                Obligation::CumulativeUpkeep { permanent: source } => {
+                    if self.as_permanent(source).is_none() {
+                        continue;
+                    }
+                    let cumulative_upkeep = self
+                        .def_of(source)
+                        .cumulative_upkeep
+                        .expect("only queued for a permanent with cumulative upkeep");
+                    self.push_apply(
+                        events,
+                        Event::KindCountersPlaced {
+                            object: source,
+                            kind: CounterKind::Age,
+                            count: 1,
+                        },
+                    );
+                    let age_counters = self.counters_of_kind(source, CounterKind::Age);
+                    let count =
+                        u32::from(cumulative_upkeep.graveyard_cards) * u32::from(age_counters);
+                    let options = self
+                        .living_players()
+                        .flat_map(|p| self.graveyard_of(p))
+                        .collect();
+                    crate::pending::raise_choice(
+                        self,
+                        PendingChoice::PayCumulativeUpkeepOrSacrifice {
+                            player: self.controller_of(source),
+                            source,
+                            options,
+                            count,
+                        },
+                    );
+                    return;
+                }
             }
-            let cost = self
-                .def_of(source)
-                .echo
-                .expect("only queued for a permanent with an echo cost");
-            crate::pending::raise_choice(
-                self,
-                PendingChoice::PayEchoOrSacrifice {
-                    player: self.owner_of(source),
-                    source,
-                    cost,
-                },
-            );
-            return;
-        }
-
-        // Recover (CR 702.59a): once Echo's queue is empty too, offer one queued pay-or-exile
-        // choice at a time. A card that already left the graveyard since being queued (recovered
-        // or exiled by an earlier trigger from the same simultaneous batch of deaths — CR
-        // 702.59a's ruling that only the first of several such triggers has any effect) is
-        // silently skipped: nothing left to pay for.
-        while let Some(source) = self.pending_recover.first().copied() {
-            self.pending_recover.remove(0);
-            if !matches!(self.objects[source as usize], Object::Card(c) if c.zone == Zone::Graveyard)
-            {
-                continue;
-            }
-            let cost = self
-                .def_of(source)
-                .recover
-                .expect("only queued for a card with a recover cost");
-            crate::pending::raise_choice(
-                self,
-                PendingChoice::PayRecoverOrExile {
-                    player: self.owner_of(source),
-                    source,
-                    cost,
-                },
-            );
-            return;
-        }
-
-        // Cumulative upkeep (CR 702.24a): once Recover's queue is empty too, put an age counter
-        // on the permanent, then offer one queued pay-or-sacrifice choice at a time, scaled by
-        // its now-updated total age counter count. A source that left the battlefield since
-        // being queued is skipped, same as Echo/Recover above.
-        while let Some(source) = self.pending_cumulative_upkeep.first().copied() {
-            self.pending_cumulative_upkeep.remove(0);
-            if self.as_permanent(source).is_none() {
-                continue;
-            }
-            let cumulative_upkeep = self
-                .def_of(source)
-                .cumulative_upkeep
-                .expect("only queued for a permanent with cumulative upkeep");
-            self.push_apply(
-                events,
-                Event::KindCountersPlaced {
-                    object: source,
-                    kind: CounterKind::Age,
-                    count: 1,
-                },
-            );
-            let age_counters = self.counters_of_kind(source, CounterKind::Age);
-            let count = u32::from(cumulative_upkeep.graveyard_cards) * u32::from(age_counters);
-            let options = self
-                .living_players()
-                .flat_map(|p| self.graveyard_of(p))
-                .collect();
-            crate::pending::raise_choice(
-                self,
-                PendingChoice::PayCumulativeUpkeepOrSacrifice {
-                    player: self.controller_of(source),
-                    source,
-                    options,
-                    count,
-                },
-            );
-            return;
         }
     }
 
@@ -3713,7 +4514,7 @@ impl Game {
         // the stack or a fully-removed object is not a permanent (a just-died creature's card,
         // still readable for its last-known subtypes/controller, is).
         if !matches!(
-            self.objects[source as usize],
+            &self.objects[source as usize],
             Object::Permanent(_) | Object::Card(_)
         ) {
             return 0;
@@ -3722,7 +4523,7 @@ impl Game {
         let source_subtypes_on = self.def_of(source).subtypes;
         let mut count = 0;
         for doubler in self.battlefield() {
-            for ability in self.functional_abilities(doubler) {
+            for ability in self.functional_abilities(doubler).iter().cloned() {
                 let (
                     Timing::Static,
                     Effect::Static(StaticEffect::TriggerDoubling {
@@ -3730,7 +4531,7 @@ impl Game {
                         source_other,
                         caused_by_instant_or_sorcery_cast,
                     }),
-                ) = (ability.timing, ability.effect)
+                ) = (ability.timing, ability.effect.clone())
                 else {
                     continue;
                 };
@@ -3774,7 +4575,7 @@ impl Game {
         player: PlayerId,
         events: &[Event],
     ) -> bool {
-        events.iter().any(|event| match *event {
+        events.iter().any(|event| match event.clone() {
             Event::SpellCast {
                 spell, controller, ..
             } => controller == player && matches!(self.def_of(spell).kind, CardKind::Spell { .. }),
@@ -3818,9 +4619,9 @@ impl Game {
         // The ability source's own colors (CR 702.16b — protection filters its targets); a
         // Dies-trigger source token may already be `Object::Removed` by placement time, same
         // guard `Game::resolve_top`'s own re-check uses.
-        let source_colors = match self.objects[source as usize] {
-            Object::Removed => [false; Color::COUNT],
-            _ => color_identity(self.def_of(source)),
+        let source_colors = match &self.objects[source as usize] {
+            Object::Removed { .. } => [false; Color::COUNT],
+            _ => color_identity(&self.def_of(source)),
         };
         let legality_x = self.ability_source_x(source);
         // `ThisPermanent`/`EnchantedCreature`/`ThisAurasGraveyardTarget` are a fixed reference,
@@ -3888,10 +4689,13 @@ impl Game {
             PendingChoice::ChooseTarget {
                 player,
                 source,
-                effect,
+                effect: Some(effect),
                 legal,
                 count,
+                clause: 0,
+                target: None,
                 x: activation_x,
+                spent_mana: [0; 6],
                 activated,
             },
         );
@@ -3927,7 +4731,7 @@ impl Game {
         let Effect::Sequence { steps } = effect else {
             return None;
         };
-        self.second_clause_in(steps, source, controller)
+        self.second_clause_in(steps.as_ref(), source, controller)
     }
 
     /// The first second-clause step among `steps` (recursing a gate's `then`), or `None`. See
@@ -3938,7 +4742,7 @@ impl Game {
         source: ObjectId,
         controller: PlayerId,
     ) -> Option<(TargetSpec, TargetCount)> {
-        for &step in steps {
+        for step in steps {
             if let Effect::Conditional {
                 condition,
                 then,
@@ -3948,7 +4752,7 @@ impl Game {
             {
                 // CR 603.4: a gated clause is only a real target clause when its intervening-if
                 // holds as the trigger goes on the stack.
-                if (self.placement_condition_holds(condition, source, controller) != negate)
+                if (self.placement_condition_holds(*condition, source, controller) != *negate)
                     && let Some(found) = self.second_clause_in(then, source, controller)
                 {
                     return Some(found);
@@ -3985,7 +4789,7 @@ impl Game {
     /// or `None`), choose its *second* independent target clause too (CR 603.3d — Kinetic Ooze's
     /// X≥10 "double ... any number of other target creatures") before the ability goes on the stack,
     /// then push the assembled ability. An ability with only one target clause pushes immediately
-    /// (empty `targets_second`). Pauses on a [`PendingChoice::ChooseAbilityTargets`] when the second
+    /// (empty `targets_second`). Pauses on a [`PendingChoice::ChooseTarget`] when the second
     /// clause is a real choice (more than one legal set); auto-fills when it's forced.
     /// `push_x`/`push_spent_mana`/`push_activated` are threaded onto whichever ability this
     /// finally places (an activated donation carries the activation's chosen `{X}` and spent mana
@@ -4006,7 +4810,8 @@ impl Game {
         push_activated: bool,
         events: &mut Vec<Event>,
     ) -> Placement {
-        let Some((spec, count)) = self.ability_second_target_clause(effect, source, player) else {
+        let Some((spec, count)) = self.ability_second_target_clause(effect.clone(), source, player)
+        else {
             self.push_ability_with_targets(
                 player,
                 source,
@@ -4043,14 +4848,18 @@ impl Game {
         }
         crate::pending::raise_choice(
             self,
-            PendingChoice::ChooseAbilityTargets {
+            PendingChoice::ChooseTarget {
                 player,
                 source,
-                effect,
-                target: first,
-                min: lo,
-                max: hi,
+                effect: Some(effect),
                 legal,
+                count: TargetCount {
+                    min: lo,
+                    max: hi,
+                    ..count
+                },
+                clause: 1,
+                target: first,
                 x: push_x,
                 spent_mana: push_spent_mana,
                 activated: push_activated,
@@ -4092,13 +4901,13 @@ impl Game {
         activated: bool,
         events: &mut Vec<Event>,
     ) {
-        for &(effect, target) in abilities {
+        for &(ref effect, target) in abilities {
             self.push_apply(
                 events,
                 Event::TriggeredAbilityOnStack {
                     controller,
                     source,
-                    effect,
+                    effect: effect.clone(),
                     target,
                     targets_second: TargetList::default(),
                     x,
@@ -4195,5 +5004,309 @@ fn ability_grants_source_abilities(ability: Ability) -> bool {
             )
         }),
         _ => false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const P0: PlayerId = PlayerId(0);
+    const P1: PlayerId = PlayerId(1);
+
+    fn test_creature_with_abilities(
+        name: &'static str,
+        abilities: &'static [Ability],
+        functions_in_graveyard: bool,
+    ) -> CardDef {
+        CardDef {
+            name,
+            id: "",
+            default_print: "",
+            cost: Cost::FREE,
+            kind: CardKind::Creature {
+                power: 2,
+                toughness: 2,
+                also: TypeSet::NONE,
+            },
+            legendary: false,
+            uncounterable: false,
+            enchant: None,
+            enchant_graveyard: false,
+            modal: false,
+            modal_choose: 1,
+            modal_choose_max: None,
+            modal_choose_max_if_commander: false,
+            keywords: empty_slice(),
+            conditional_keywords: empty_slice(),
+            abilities: abilities.into(),
+            identity_pips: empty_slice(),
+            colors: empty_slice(),
+            devoid: false,
+            enters_tapped: false,
+            enters_tapped_unless: None,
+            enters_tapped_unless_you_pay_life: None,
+            free_cast_if: None,
+            alternative_cost: None,
+            cast_only_during_combat: false,
+            cast_only_before_attackers: false,
+            approximates: None,
+            oracle: None,
+            sets: empty_slice(),
+            subtypes: empty_slice(),
+            otags: empty_slice(),
+            cycling: None,
+            cycling_sacrifice: SacrificeCost::None,
+            flashback: None,
+            echo: None,
+            cumulative_upkeep: None,
+            recover: None,
+            bestow: None,
+            morph: None,
+            evoke: None,
+            delve: false,
+            escape: None,
+            retrace: false,
+            graveyard_cast_cost: None,
+            cascade: false,
+            functions_in_graveyard,
+            back: None,
+            adventure: None,
+            halves: empty_slice(),
+            suspend: None,
+            vanishing: None,
+            cast_x_max: None,
+            devour: None,
+            demonstrate: false,
+            enter_as_copy: None,
+            encore: None,
+            hand_ability: empty_slice(),
+            forecast: None,
+            may_choose_not_to_untap: false,
+            dredge: None,
+        }
+    }
+
+    fn test_trigger_ability(trigger: Trigger) -> Ability {
+        Ability {
+            timing: Timing::Triggered(trigger),
+            effect: Effect::Draw(DrawEffect::Cards {
+                count: Amount::Fixed(1),
+            }),
+            optional: false,
+            min_level: 0,
+            cost: Cost::FREE,
+            condition: None,
+            once_each_turn: false,
+        }
+    }
+
+    fn test_spell_with_abilities(name: &'static str, abilities: &'static [Ability]) -> CardDef {
+        CardDef {
+            name,
+            id: "",
+            default_print: "",
+            cost: Cost::FREE,
+            kind: CardKind::Spell {
+                speed: SpellSpeed::Instant,
+            },
+            legendary: false,
+            uncounterable: false,
+            enchant: None,
+            enchant_graveyard: false,
+            modal: false,
+            modal_choose: 1,
+            modal_choose_max: None,
+            modal_choose_max_if_commander: false,
+            keywords: empty_slice(),
+            conditional_keywords: empty_slice(),
+            abilities: abilities.into(),
+            identity_pips: empty_slice(),
+            colors: empty_slice(),
+            devoid: false,
+            enters_tapped: false,
+            enters_tapped_unless: None,
+            enters_tapped_unless_you_pay_life: None,
+            free_cast_if: None,
+            alternative_cost: None,
+            cast_only_during_combat: false,
+            cast_only_before_attackers: false,
+            approximates: None,
+            oracle: None,
+            sets: empty_slice(),
+            subtypes: empty_slice(),
+            otags: empty_slice(),
+            cycling: None,
+            cycling_sacrifice: SacrificeCost::None,
+            flashback: None,
+            echo: None,
+            cumulative_upkeep: None,
+            recover: None,
+            bestow: None,
+            morph: None,
+            evoke: None,
+            delve: false,
+            escape: None,
+            retrace: false,
+            graveyard_cast_cost: None,
+            cascade: false,
+            functions_in_graveyard: false,
+            back: None,
+            adventure: None,
+            halves: empty_slice(),
+            suspend: None,
+            vanishing: None,
+            cast_x_max: None,
+            devour: None,
+            demonstrate: false,
+            enter_as_copy: None,
+            encore: None,
+            hand_ability: empty_slice(),
+            forecast: None,
+            may_choose_not_to_untap: false,
+            dredge: None,
+        }
+    }
+
+    fn leak_abilities(abilities: Vec<Ability>) -> &'static [Ability] {
+        Box::leak(abilities.into_boxed_slice())
+    }
+
+    #[test]
+    fn upkeep_watch_table_dispatches_battlefield_and_graveyard_sources() {
+        let mut game = Game::with_players(2, 0);
+        let upkeep_source = game.spawn_on_battlefield(
+            P0,
+            test_creature_with_abilities(
+                "Upkeep Source",
+                leak_abilities(vec![test_trigger_ability(Trigger::Upkeep)]),
+                false,
+            ),
+        );
+        let each_upkeep_source = game.spawn_on_battlefield(
+            P1,
+            test_creature_with_abilities(
+                "Each Upkeep Source",
+                leak_abilities(vec![test_trigger_ability(Trigger::EachUpkeep)]),
+                false,
+            ),
+        );
+        let graveyard_source = game.spawn_in_graveyard(
+            P0,
+            test_creature_with_abilities(
+                "Graveyard Upkeep Source",
+                leak_abilities(vec![test_trigger_ability(Trigger::Upkeep)]),
+                true,
+            ),
+        );
+
+        game.queue_trigger_watch_table(UPKEEP_TRIGGER_WATCHES, TriggerWatchEvent::for_player(P0));
+
+        let mut sources: Vec<ObjectId> = game
+            .pending_trigger_groups
+            .iter()
+            .map(|group| group.source)
+            .collect();
+        sources.sort_unstable();
+        let mut expected = vec![upkeep_source, each_upkeep_source, graveyard_source];
+        expected.sort_unstable();
+        assert_eq!(sources, expected);
+    }
+
+    #[test]
+    fn spell_cast_watch_table_dispatches_magecraft_and_cast_watchers() {
+        let mut game = Game::with_players(2, 0);
+        let magecraft_source = game.spawn_on_battlefield(
+            P0,
+            test_creature_with_abilities(
+                "Magecraft Source",
+                leak_abilities(vec![test_trigger_ability(Trigger::Magecraft)]),
+                false,
+            ),
+        );
+        let your_cast_source = game.spawn_on_battlefield(
+            P0,
+            test_creature_with_abilities(
+                "Your Cast Source",
+                leak_abilities(vec![test_trigger_ability(Trigger::CastSpell {
+                    filter: SpellFilter::AllSpells,
+                    caster: CasterScope::You,
+                    nth_each_turn: None,
+                    from_hand: false,
+                })]),
+                false,
+            ),
+        );
+        let opponent_cast_source = game.spawn_on_battlefield(
+            P1,
+            test_creature_with_abilities(
+                "Opponent Cast Source",
+                leak_abilities(vec![test_trigger_ability(Trigger::CastSpell {
+                    filter: SpellFilter::AllSpells,
+                    caster: CasterScope::Opponent,
+                    nth_each_turn: None,
+                    from_hand: false,
+                })]),
+                false,
+            ),
+        );
+        let spell = game.spawn_in_hand(
+            P0,
+            test_spell_with_abilities("Triggering Spell", leak_abilities(vec![])),
+        );
+
+        game.queue_trigger_watch_table(
+            SPELL_CAST_TRIGGER_WATCHES,
+            TriggerWatchEvent::for_spell_cast(spell, P0, None, 0, true, 0),
+        );
+
+        let mut sources: Vec<ObjectId> = game
+            .pending_trigger_groups
+            .iter()
+            .map(|group| group.source)
+            .collect();
+        sources.sort_unstable();
+        let mut expected = vec![magecraft_source, your_cast_source, opponent_cast_source];
+        expected.sort_unstable();
+        assert_eq!(sources, expected);
+    }
+
+    #[test]
+    fn pending_obligations_drain_echo_then_recover_then_cumulative() {
+        let mut game = Game::with_players(2, 0);
+        game.pending_obligations = vec![
+            Obligation::Recover { card: 20 },
+            Obligation::CumulativeUpkeep { permanent: 30 },
+            Obligation::Echo { permanent: 10 },
+            Obligation::Recover { card: 21 },
+            Obligation::Echo { permanent: 11 },
+            Obligation::CumulativeUpkeep { permanent: 31 },
+        ];
+
+        assert_eq!(
+            game.pop_next_pending_obligation(),
+            Some(Obligation::Echo { permanent: 10 })
+        );
+        assert_eq!(
+            game.pop_next_pending_obligation(),
+            Some(Obligation::Echo { permanent: 11 })
+        );
+        assert_eq!(
+            game.pop_next_pending_obligation(),
+            Some(Obligation::Recover { card: 20 })
+        );
+        assert_eq!(
+            game.pop_next_pending_obligation(),
+            Some(Obligation::Recover { card: 21 })
+        );
+        assert_eq!(
+            game.pop_next_pending_obligation(),
+            Some(Obligation::CumulativeUpkeep { permanent: 30 })
+        );
+        assert_eq!(
+            game.pop_next_pending_obligation(),
+            Some(Obligation::CumulativeUpkeep { permanent: 31 })
+        );
+        assert_eq!(game.pop_next_pending_obligation(), None);
     }
 }

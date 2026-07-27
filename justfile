@@ -10,9 +10,14 @@ server-format:
     cargo fmt
 
 [group('server')]
-[doc("Lint Rust code")]
+[doc("Fail if Rust code is not formatted")]
+server-format-check:
+    cargo fmt --check
+
+[group('server')]
+[doc("Lint Rust code (warnings as errors)")]
 server-lint:
-    cargo clippy --all-targets
+    cargo clippy --all-targets -- -D warnings
 
 [group('server')]
 [doc("Build the workspace")]
@@ -66,12 +71,12 @@ client-typecheck:
 [group('client')]
 [doc("Regenerate styles/mana-oracle.css from mana-font")]
 client-mana-oracle:
-    cd client && node scripts/gen-mana-oracle.mjs
+    cd client && bun scripts/gen-mana-oracle.mjs
 
 [group('client')]
 [doc("Fail if styles/mana-oracle.css is stale vs mana-font")]
 client-mana-oracle-check:
-    cd client && node scripts/gen-mana-oracle.mjs --check
+    cd client && bun scripts/gen-mana-oracle.mjs --check
 
 [group('client')]
 [doc("Fail if tokens.generated.* are stale vs design.tokens.json")]
@@ -115,8 +120,8 @@ test *args:
     @just server-test {{ args }}
     @just client-test
 
-[doc("Server CI check (CR index on committed sources, then fmt + clippy + migrate + nextest)")]
-server-check: engine-cr-index-check server-format server-lint
+[doc("Server CI check (CR index on committed sources, then fmt --check + clippy + migrate + nextest)")]
+server-check: engine-cr-index-check server-format-check server-lint
     cargo run -p server -- migration apply
     just server-test
 

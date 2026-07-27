@@ -1,5 +1,6 @@
 import type { ActionView, PlayerView, WireAttack, WireBlock } from "~/wire/types";
 import type { RenderCard } from "../geometry/layout";
+import type { ExitFx } from "../motion/exit-fx";
 import type { CardFlight } from "../motion/flights";
 import type { BitmapFrame } from "./mount";
 
@@ -46,6 +47,7 @@ function playerPaintKey(player: PlayerView): Record<string, unknown> {
     life: player.life,
     lost: player.lost,
     username: player.username ?? "",
+    gravatar_hash: player.gravatar_hash ?? "",
     hand_count: player.hand_count,
     commander_damage: commanderDamage,
     poison: player.poison ?? 0,
@@ -125,6 +127,18 @@ export function mergeFlightPoses(live: readonly CardFlight[], incoming: readonly
       y: prev.y,
       scale: prev.scale,
       phase: prev.phase,
+    };
+  });
+}
+
+export function mergeExitFxPoses(live: readonly ExitFx[], incoming: readonly ExitFx[]): ExitFx[] {
+  const liveById = new Map(live.map((fx) => [fx.id, fx]));
+  return incoming.map((incomingFx) => {
+    const prior = liveById.get(incomingFx.id);
+    if (prior == null) return incomingFx;
+    return {
+      ...incomingFx,
+      progress: prior.progress,
     };
   });
 }

@@ -1,8 +1,8 @@
 import type { Attribute, html as createHtml, Html } from "foldkit/html";
-import { manaFontClass } from "../../../lib/oracleText";
-import { cardArt } from "../../../lib/ui/card-art";
-import { listRowClass } from "../../../lib/ui/surfaces";
 import { BindDeckCardFlip } from "../../deck-card-nav";
+import { manaFontClass } from "../../domain/oracleText";
+import { cardArt } from "../../domain/ui/card-art";
+import { listRowClass } from "../../domain/ui/surfaces";
 import { identityPipCodes } from "./list/visible";
 
 export type DeckCardModel = {
@@ -21,7 +21,7 @@ function renderPips<Msg>(h: HtmlFactory<Msg>, colorIdentity: readonly number[]):
   if (pips.length === 0) return null;
 
   return h.div(
-    [h.Class("mt-auto flex gap-[3px] text-[14px] text-snow")],
+    [h.Class("flex gap-[3px] text-[14px] text-snow")],
     pips.map((code) => {
       const ms = manaFontClass(code);
       if (ms == null) return null;
@@ -30,7 +30,7 @@ function renderPips<Msg>(h: HtmlFactory<Msg>, colorIdentity: readonly number[]):
   );
 }
 
-function renderDeckCardBody<Msg>(h: HtmlFactory<Msg>, card: DeckCardModel): Html {
+function renderDeckCardBody<Msg>(h: HtmlFactory<Msg>, card: DeckCardModel, opts: { showPlayLabel: boolean }): Html {
   // Flip mounts on the inner chrome so the outer root can keep a separate OnMount
   // (e.g. deck-list context menu) — Foldkit allows one OnMount per element.
   return h.div(
@@ -65,7 +65,21 @@ function renderDeckCardBody<Msg>(h: HtmlFactory<Msg>, card: DeckCardModel): Html
             ],
           ),
           h.div([h.Class("truncate text-chip text-lichen")], [card.commanderName]),
-          renderPips(h, card.colorIdentity),
+          h.div(
+            [h.Class("mt-auto flex items-end justify-between gap-sm")],
+            [
+              renderPips(h, card.colorIdentity),
+              opts.showPlayLabel
+                ? h.span(
+                    [
+                      h.DataAttribute("testid", "deck-play-label"),
+                      h.Class("shrink-0 text-chip font-semibold uppercase tracking-[0.06em] text-vine"),
+                    ],
+                    ["Play"],
+                  )
+                : null,
+            ],
+          ),
         ],
       ),
     ],
@@ -87,10 +101,11 @@ export function renderDeckCard<Msg>(
     h.Class(listRowClass("relative flex flex-col overflow-hidden rounded-hud no-underline text-snow")),
     ...(opts.rootAttrs ?? []),
   ];
+  const body = renderDeckCardBody(h, card, { showPlayLabel: opts.mode === "link" });
 
   if (opts.mode === "static") {
-    return h.div(attrs, [renderDeckCardBody(h, card)]);
+    return h.div(attrs, [body]);
   }
 
-  return h.a([h.Href(opts.href ?? ""), ...attrs], [renderDeckCardBody(h, card)]);
+  return h.a([h.Href(opts.href ?? ""), ...attrs], [body]);
 }

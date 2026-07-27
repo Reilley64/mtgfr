@@ -42,7 +42,7 @@ impl Game {
                 TriggerGroup {
                     controller: group.controller,
                     source: group.source,
-                    abilities: vec![group.abilities[i]],
+                    abilities: vec![group.abilities[i].clone()],
                     expanded: true,
                 },
             );
@@ -51,25 +51,13 @@ impl Game {
         Ok(events)
     }
 
-    /// Answer a [`PendingChoice::ChooseTarget`] (a single triggered-ability target) or a
-    /// [`PendingChoice::ChooseSpellTargets`] (a multi-target spell's N targets, CR 601.2c).
+    /// Answer a [`PendingChoice::ChooseTarget`] (ability placement, spell retargeting, or a
+    /// resolution-time target peel).
     pub(crate) fn choose_targets(
         &mut self,
         player: PlayerId,
         targets: Vec<Target>,
     ) -> Result<Vec<Event>, Reject> {
-        if let Some(PendingChoice::ChooseSpellTargets {
-            spell,
-            min,
-            max,
-            legal,
-            clause,
-            ..
-        }) = self.pending_choice.clone()
-        {
-            return self
-                .choose_spell_targets_answer(player, spell, clause, min, max, &legal, targets);
-        }
         if let Some(PendingChoice::ChooseSplittingOpponent {
             player: controller,
             source,
@@ -78,24 +66,6 @@ impl Game {
         }) = self.pending_choice.clone()
         {
             return self.choose_splitting_opponent_answer(controller, source, legal, then, targets);
-        }
-        if let Some(PendingChoice::ChooseAbilityTargets {
-            player: chooser,
-            source,
-            effect,
-            target: first,
-            min,
-            max,
-            legal,
-            x,
-            spent_mana,
-            activated,
-        }) = self.pending_choice.clone()
-        {
-            return self.choose_ability_targets_answer(
-                player, chooser, source, effect, first, min, max, &legal, x, spent_mana, activated,
-                targets,
-            );
         }
         if let Some(PendingChoice::ChooseActivationCostTargets {
             player: activator,
@@ -117,11 +87,38 @@ impl Game {
             effect,
             legal,
             count,
+            clause,
+            target: first,
             x: activation_x,
+            spent_mana,
             activated,
             ..
         }) = self.pending_choice.clone()
         else {
+            return Err(Reject::IllegalChoice);
+        };
+        if effect.is_none() {
+            return self
+                .choose_spell_targets_answer(player, source, clause, count, &legal, targets);
+        }
+        if clause > 0 {
+            let Some(effect) = effect else {
+                return Err(Reject::IllegalChoice);
+            };
+            return self.choose_ability_targets_answer(
+                player,
+                source,
+                effect,
+                first,
+                count,
+                &legal,
+                activation_x,
+                spent_mana,
+                activated,
+                targets,
+            );
+        }
+        let Some(effect) = effect else {
             return Err(Reject::IllegalChoice);
         };
         // "Up to N" (`count.min == 0`): an empty answer declines. CR 601.2c treats choosing zero
@@ -144,7 +141,7 @@ impl Game {
                 effect,
                 None,
                 activation_x,
-                [0; 6],
+                spent_mana,
                 activated,
                 &mut events,
             );
@@ -194,13 +191,13 @@ impl Game {
             // target ability" against a multi-target trigger; give the primary clause a real
             // `TargetList` (like `targets_second` already is) if one ever does.
             let abilities: Vec<(Effect, Option<Target>)> =
-                targets.iter().map(|&t| (effect, Some(t))).collect();
+                targets.iter().map(|&t| (effect.clone(), Some(t))).collect();
             self.push_ability_group_with_x(
                 player,
                 source,
                 &abilities,
                 activation_x,
-                [0; 6],
+                spent_mana,
                 activated,
                 &mut events,
             );
@@ -243,7 +240,7 @@ impl Game {
                 effect,
                 Some(target),
                 activation_x,
-                [0; 6],
+                spent_mana,
                 activated,
                 &mut events,
             );
@@ -407,25 +404,24 @@ impl Game {
 
     /// Validate and record a triggered ability's *second* independent target clause (CR 603.3d —
     /// Kinetic Ooze's X≥10 "double ... any number of other target creatures"), then push the
-    /// assembled ability — its first-clause `first` target and this clause's chosen `targets` — onto
-    /// the stack. Between `min` and `max` distinct targets, all drawn from `legal` (CR 601.2c).
+    /// assembled ability — its first-clause `first` target and this clause's chosen `targets` —
+    /// onto the stack. Between `count.min` and `count.max` distinct targets, all drawn from
+    /// `legal` (CR 601.2c).
     #[allow(clippy::too_many_arguments)]
     fn choose_ability_targets_answer(
         &mut self,
         player: PlayerId,
-        chooser: PlayerId,
         source: ObjectId,
         effect: Effect,
         first: Option<Target>,
-        min: u8,
-        max: u8,
+        count: TargetCount,
         legal: &[Target],
         x: u32,
         spent_mana: [u8; 6],
         activated: bool,
         targets: Vec<Target>,
     ) -> Result<Vec<Event>, Reject> {
-        if player != chooser || !(min as usize..=max as usize).contains(&targets.len()) {
+        if !(count.min as usize..=count.max as usize).contains(&targets.len()) {
             return Err(Reject::IllegalChoice);
         }
         // Distinct (CR 601.2c: "the same target can't be chosen twice") and all legal.
@@ -512,24 +508,22 @@ impl Game {
         Ok(events)
     }
 
-    /// Validate and record a multi-target spell's chosen targets (CR 601.2c): between `min` and
-    /// `max` of them, all distinct, all drawn from `legal`. Writes them onto the spell via
+    /// Validate and record a multi-target spell's chosen targets (CR 601.2c): between
+    /// `count.min` and `count.max` of them, all distinct, all drawn from `legal`. Writes them onto the spell via
     /// [`Event::SpellTargetsChosen`]; rejects (leaving the choice pending) otherwise. `chooser` is
     /// the player who just answered — chains into the next independent clause (if any) as the same
     /// chooser, legality still anchored on the spell's own controller (see
     /// [`Game::choose_spell_targets`]'s `anchor`/`chooser` doc).
-    #[allow(clippy::too_many_arguments)]
     fn choose_spell_targets_answer(
         &mut self,
         chooser: PlayerId,
         spell: ObjectId,
         clause: u8,
-        min: u8,
-        max: u8,
+        count: TargetCount,
         legal: &[Target],
         targets: Vec<Target>,
     ) -> Result<Vec<Event>, Reject> {
-        if !(min as usize..=max as usize).contains(&targets.len()) {
+        if !(count.min as usize..=count.max as usize).contains(&targets.len()) {
             return Err(Reject::IllegalChoice);
         }
         // Distinct (CR 601.2c: "the same target can't be chosen twice") and all legal.

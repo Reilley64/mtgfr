@@ -1,9 +1,11 @@
 # Accounts, Decks, and Catalog
 
-**Status:** Current (as of 2026-07-20)
+**Status:** Current (as of 2026-07-25)
 **Module:** `crates/server/src/auth.rs`, `crates/server/src/db.rs`, `crates/server/src/decks.rs`,
 `crates/server/src/decks_api.rs`, `crates/server/src/legality.rs`, `crates/server/src/precons.rs`,
-`crates/server/src/catalog_search.rs`, `proto/mtgfr/v1/catalog.proto`, `proto/mtgfr/v1/mtgfr.proto`
+`crates/server/src/catalog_search.rs`, `crates/server/src/ratings.rs`,
+`crates/server/src/grpc/ratings_svc.rs`, `proto/mtgfr/v1/catalog.proto`,
+`proto/mtgfr/v1/mtgfr.proto`
 
 ---
 
@@ -26,7 +28,9 @@ Postgres database (`mtgfr`), accessed via Toasty ORM models (`User`, `Session`, 
 **Auth** is email + password with Argon2id hashing. Signup and login produce an HttpOnly cookie
 (`session`) on the browser via the BFF; the session token also travels as gRPC metadata
 (`x-session-token`) from the BFF to tonic on every protected call. Session TTL is 30 days;
-expired sessions are lazily swept on the next auth attempt with that token.
+expired sessions are lazily swept on the next auth attempt with that token. `User` rows also
+persist leaderboard seed fields: `rating` starts at `1000` and `rating_set_at` stores the Unix
+seconds when that integer rating was last set.
 
 **Decks** are fully user-owned data: `(name, commander, commander_print, cards)` where `cards`
 is a JSON blob of `Vec<DeckCardEntry>` (`id`, `count`, `print`). Print (Printing UUID) is
@@ -34,7 +38,7 @@ required on every line and on the commander; decks are always read and written a
 `legality::validate` runs on every create/update and on game start, returning every problem as a
 list so the deck builder can display all errors simultaneously.
 
-**Precon virtual decks** (-1 through -8) are static fixtures baked into the server binary at
+**Precon virtual decks** (-1 through -9) are static fixtures baked into the server binary at
 compile time via `include_str!` (`crates/server/fixtures/decks/*.json`). They are not DB rows
 and cannot be edited or deleted. Negative ids can never collide with the Postgres autoincrement
 positive ids of user decks. Every user sees precons in their deck list alongside their own decks.
@@ -42,7 +46,7 @@ positive ids of user decks. Every user sees precons in their deck list alongside
 **Card catalog** is a Postgres projection of the engine's `cards::registry()`, populated on
 server boot into the `catalog_cards` table (DDL managed by Toasty migrations; data refreshed by
 `catalog_search::project()` truncate + reinsert). Each row holds a lowercased `search_blob`
-haystack (name + kind + subtypes + set + colors + keywords + Scryfall oracle-tag slugs) and the
+haystack (name + kind + subtypes + every `sets` code + colors + keywords + Scryfall oracle-tag slugs) and the
 card's full wire JSON. `Cards.Search` (BFF `/api/rpc/cards/search`) runs a tokenized `LIKE`
 query against `search_blob`; `Cards.Lookup` fetches specific cards by id for deck hydration on
 load.
@@ -54,6 +58,10 @@ Neither endpoint requires authentication.
 
 - As a **new user**, I sign up with email + password + username; the server hashes my password
   with Argon2id, creates a `User` and a `Session`, and the BFF sets the `session` cookie.
+- As a **new user**, I enter the leaderboard immediately at rating `1000`; my account stores when
+  that starting rating was set so later leaderboard ties stay stable.
+- As a **signed-in player**, I can open the leaderboard and page through every account ordered by
+  rating first, then by who has held that rating the longest when tied.
 - As a **returning user**, I log in; the existing session (or a fresh one) is set as a cookie.
   My session is valid for 30 days; if it expires, the next request gets a 401 and the BFF
   redirects me to log in.
@@ -62,14 +70,16 @@ Neither endpoint requires authentication.
   returns every problem at once: wrong commander type, wrong count, singleton violation, off-color
   cards, missing prints, unknown card ids.
 - As a **deck builder**, I browse the card catalog in the deck builder — searching by name,
-  type, color, keyword, subtype, set, or Scryfall oracle-tag slug. Results are capped at 200 per
+  type, color, keyword, subtype, any set code in `sets`, or Scryfall oracle-tag slug. Results are capped at 200 per
   query; I paginate by adjusting `offset`.
 - As a **deck builder**, I open an existing deck; the client calls `Cards.Lookup` with all card
   ids in the deck to hydrate names, stats, and art without fetching the full catalog.
-- As a **player**, I own precon decks (ids -1 through -8) automatically — no signup action
+- As a **player**, I own precon decks (ids -1 through -9) automatically — no signup action
   needed. I can take a precon to a lobby seat without ever building a custom deck.
 - As a **player**, I take my custom or precon deck to a lobby seat; the lobby validates that the
   deck belongs to my account (or is a precon) before letting me ready up.
+- As a **signed-in player**, I see my account face in deck-list chrome, with an outbound
+  `Change at Gravatar` link instead of in-app avatar uploads.
 
 ---
 
@@ -79,10 +89,10 @@ Neither endpoint requires authentication.
 
 | RPC | Auth required | Behavior |
 |-----|--------------|----------|
-| `Signup` | No | Validate email + username uniqueness; Argon2id hash password; create `User` + `Session`; return `AuthSession` (token + `Me`). BFF sets `Set-Cookie: session=<token>; HttpOnly; SameSite=Lax [; Secure]`. |
+| `Signup` | No | Validate email + username uniqueness; Argon2id hash password; create `User` + `Session`; seed `User.rating = 1000` and `User.rating_set_at = now_unix`; return `AuthSession` (token + `Me`). BFF sets `Set-Cookie: session=<token>; HttpOnly; SameSite=Lax [; Secure]`. |
 | `Login` | No | Verify password hash; create or reuse `Session`; return `AuthSession`. |
 | `Logout` | Yes (cookie) | Delete the session row; BFF clears the cookie. |
-| `GetMe` | Yes (cookie) | Resolve session token → `User`; return `Me {id, email, username}`. |
+| `GetMe` | Yes (cookie) | Resolve session token → `User`; return `Me {id, email, username}`. Email is auth-private and only returned for the authenticated user. |
 
 Session resolution flows:
 1. BFF reads `session` cookie from browser request.
@@ -91,6 +101,16 @@ Session resolution flows:
 4. Expired sessions are deleted lazily on resolution failure (not by a background sweep).
 
 Password is argon2id PHC format, stored in `Session.token` is a random hex token (not a JWT).
+
+### Account Gravatar chrome
+
+Account-facing deck-list chrome derives the signed-in user's Gravatar face from `Me.email`
+(`trim().toLowerCase()` → SHA-256 hex → `https://www.gravatar.com/avatar/{hash}?s=64&d=404`).
+The header uses the same circular Gravatar/monogram helper as lobby seats and exposes
+`account-gravatar-link`, an outbound `Change at Gravatar` link to `https://gravatar.com` with
+`target="_blank"` and `rel="noopener noreferrer"`. There is no in-app upload, crop, or moderation
+surface. Public lobby/game seat payloads carry only `gravatar_hash`, never email; see
+[Gravatar Seat Faces Design](2026-07-25-gravatar-seat-faces-design.md).
 
 ### Deck CRUD (`Decks` gRPC service)
 
@@ -101,7 +121,7 @@ commander print). `DeckDetail` is the full view (id, name, commander, commander\
 If validation fails, the gRPC call returns an error containing all legality problems joined by
 newline; no partial saves.
 
-**List:** Returns `DeckList` with both DB-backed decks (owned by the authed user) and the eight
+**List:** Returns `DeckList` with both DB-backed decks (owned by the authed user) and the nine
 precon summaries. Precons appear in the list with their fixed negative ids; the client can
 display them like any deck.
 
@@ -110,6 +130,31 @@ authed user's owned decks). Returns `DeckDetail`.
 
 **Delete:** Refuses negative id (precons are immutable). Deletes the Postgres row if it belongs
 to the authed user.
+
+### Ratings (`Ratings` gRPC service)
+
+`Ratings.GetLeaderboard` is auth-gated with the same `x-session-token` metadata flow as `Decks`.
+The request accepts `limit` and `offset`; `limit == 0` defaults to `50`, and any higher value is
+capped at `100`.
+
+The server queries `users` ordered by:
+
+1. `rating DESC`
+2. `rating_set_at ASC`
+3. `id ASC`
+
+The response returns:
+
+- `entries[]` with `user_id`, `username`, `rating`, and a 1-based global `rank`
+- `total` with the total number of leaderboard-visible accounts before paging
+
+`rank` is computed from the global sort order, so a page request with `offset = 25` starts ranks at
+`26`.
+
+The BFF exposes `GET /api/rpc/ratings/leaderboard?limit=&offset=` and forwards the session token
+metadata to `Ratings.GetLeaderboard`. The browser RPC client consumes that route as
+`rpc.ratings.leaderboard({ limit, offset })`. The BFF route is `GET`-only; invalid non-`u32`
+`limit` or `offset` query values return HTTP 400 before gRPC is called.
 
 ### Commander legality (`legality::validate`)
 
@@ -128,7 +173,7 @@ returning; the caller gets the complete list. Invariants checked:
 
 ### Precon virtual decks (`precons.rs`)
 
-Eight precons with ids `-1` through `-8` are loaded from `fixtures/decks/*.json` via
+Ten precons with ids `-1` through `-10` are loaded from `fixtures/decks/*.json` via
 `include_str!` at compile time. Each fixture records `commander`, `commander_print`, and `cards`.
 Precon names are:
 
@@ -139,7 +184,11 @@ Precon names are:
 | -3 | Witherbloom Pestilence |
 | -4 | Lorehold Spirit |
 | -5 | Quandrix Unlimited |
-| -6...-8 | Additional fidelity-grind decks |
+| -6 | Enchantress Rubinia |
+| -7 | Deathdancer Xira |
+| -8 | Political Puppets |
+| -9 | Mirror Mastery |
+| -10 | Heavenly Inferno |
 
 `is_precon(id)` returns `true` for `id < 0`. Edit and delete of a precon id returns a 422.
 Precon decklists are the same source of truth as the Phase 5.5 legality fixtures
@@ -149,10 +198,14 @@ Precon decklists are the same source of truth as the Phase 5.5 legality fixtures
 
 On server boot, `catalog_search::project()` truncates `catalog_cards` and reinserts one row per
 card in `cards::registry()`. The `search_blob` for each card is a lowercased concatenation of:
-name, card type (creature/instant/sorcery/enchantment/artifact/planeswalker/land), set code,
+name, card type (creature/instant/sorcery/enchantment/artifact/planeswalker/land), every code in `sets`,
 color identity words (white/blue/black/red/green or "colorless"), "legendary" if legendary,
 printed subtypes, keywords, and Scryfall oracle-tag slugs (both hyphenated and space-separated
 forms).
+
+Catalog rows expose `CatalogCard.sets` as every Scryfall set/edition code with a printing of the
+card's oracle. The older proto field `CatalogCard.set` remains field 12 for wire compatibility and
+is emitted empty; clients use `sets` for catalog search/display metadata.
 
 `Cards.Search` tokenizes the query `q` on whitespace and runs an AND of `LIKE '%<token>%'`
 against `search_blob`, with `limit` capped at 200 and `offset` for pagination. Bind placeholders
@@ -180,13 +233,17 @@ for hydrating a saved deck without fetching the full catalog.
 ## Implementation Decisions
 
 - **Toasty ORM for Postgres** (accounts-decks-and-catalog spec): models `User`, `Session`, `Deck` in
-  `crates/server/src/db.rs`. `Deck.cards` is a JSON blob (`Vec<DeckCardEntry>`) — always read
-  and written as a whole; no per-card relational queries. `push_schema()` is dev / SQLite-test
-  only; production runs Toasty migrations (`just migrate`).
+  `crates/server/src/db.rs`. `User` persists `rating: i32` plus `rating_set_at: i64`; migration
+  backfill defaults existing Postgres rows to `(1000, 0)`, while signup writes the real current
+  Unix seconds. `Deck.cards` is a JSON blob (`Vec<DeckCardEntry>`) — always read and written as a
+  whole; no per-card relational queries. `push_schema()` is dev / SQLite-test only; production
+  runs Toasty migrations (`just migrate`).
 - **Session cookie + `x-session-token` gRPC metadata** (accounts-decks-and-catalog spec): the BFF terminates the
   cookie, passing the raw token as metadata. This means no cookie crosses the same-origin
   boundary; only the BFF knows how to set/clear it. Cookie is `HttpOnly`, `SameSite=Lax`,
   optionally `Secure` (`COOKIE_SECURE=true` in prod), host-only (no `Domain` attribute in prod).
+- **Email privacy**: `Me.email` is available only to the authenticated account chrome. Lobby and
+  game surfaces derive and pass a public `gravatar_hash` instead of exposing email on seats.
 - **Commander validation on every save** (accounts-decks-and-catalog spec): `legality::validate` runs at `Create` and
   `Update`, not deferred to game start. Game start re-validates as a safety check. All problems
   returned at once — not fail-fast — so the deck builder UI can display the complete error list.
@@ -216,8 +273,13 @@ for hydrating a saved deck without fetching the full catalog.
 - `catalog_search.rs` tests use sqlite (Toasty test driver) to exercise `project()`, `search()`,
   and `lookup()` without a live Postgres instance, verifying placeholder dialect branching.
 - gRPC service-level tests in `crates/server/src/grpc/tests.rs` cover `Auth.Signup`, `Auth.Login`,
-  `Decks.Create`, `Decks.List` (including precon interleaving), and `Decks.Delete` with auth
-  enforcement.
+  `Decks.Create`, `Decks.List` (including precon interleaving), `Decks.Delete`, and
+  `Ratings.GetLeaderboard` ordering/paging with auth enforcement.
+- Shell Scene coverage asserts account chrome includes `account-gravatar-link`; Gravatar hashing
+  and URL construction are covered in `client/app/domain/gravatar.test.ts`.
+- `crates/server/src/db.rs` and `crates/server/src/grpc/tests.rs` cover the rating persistence
+  slice: explicit `User` rating round-trip in sqlite plus signup seeding `rating = 1000` with a
+  nonzero `rating_set_at`.
 
 ---
 
@@ -244,11 +306,13 @@ for hydrating a saved deck without fetching the full catalog.
   rules definition (CR 903.4) within the engine's simplified color model.
 - The `catalog_search::project()` call on boot means a server restart always reflects the current
   engine card pool — no stale catalog entries survive a binary update. The truncate+reinsert is
-  cheap for the current pool size (618 deckable card TOMLs).
+  cheap for the current pool size (665 deckable card TOMLs).
 - `CatalogCard.approximates` is the one-line fidelity note on how a card's engine behavior
   differs from its printed rules. The deck builder displays this to inform players of known gaps.
 - `CatalogCard.oracle` carries the printed rules text for deck builder hover/inspect; it is
   absent for vanilla cards and for cards whose oracle text hasn't been recorded in the card TOML.
+- `CatalogCard.summary` carries keyword and modeled-ability summaries as `MessageRef[]`; clients
+  format those refs with the i18n catalog when a surface renders them.
 - Precon fixture JSON files are also the source of truth for the SoC precon tests in
   `crates/server/src/decks.rs` via `include_str!` — changing a precon's list automatically runs
   it through the legality validator on the next `cargo nextest run`.

@@ -1,0 +1,33 @@
+# {T}: Target creature you control gains protection from the color of your choice until end of
+# turn.
+name = "Mother of Runes"
+sets = ["aa2", "clb", "cma", "cmd", "ddo", "ema", "f04", "plst", "prm", "sld", "ulg"]
+id = "60433b48-d27f-413c-905c-43839b1943f1"
+default_print = "a5e19147-e459-43a6-8ef0-e37968a462e3"
+oracle = "{T}: Target creature you control gains protection from the color of your choice until end of turn."
+subtypes = ["Human", "Cleric"]
+
+[cost]
+white = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# {T}: Target creature you control gains protection from the color of your choice until end of
+# turn.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# the color of your choice
+[[abilities.effects]]
+type = "choice"
+mode = "choose_color"
+
+# Target creature you control gains protection from the color of your choice until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "grant_chosen_color_protection_until_end_of_turn"
+target = "creature_you_control"

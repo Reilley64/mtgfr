@@ -3,7 +3,7 @@ name = "Farseek"
 id = "495e52e6-4c2b-4574-9474-eadbdcc8b4ac"
 default_print = "c1aac0f5-1d01-4673-b8d3-878d9a1d423c"
 oracle = "Search your library for a Plains, Island, Swamp, or Mountain card, put it onto the battlefield tapped, then shuffle."
-set = "msc"
+sets = ["msc"]
 
 [cost]
 generic = 1

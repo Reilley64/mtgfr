@@ -29,8 +29,9 @@ import { filterOptionLabels } from "~/optionFilter";
 import { manaFontClass } from "~/oracleText";
 import { isActivePlayer } from "~/spectator";
 import { cardArt } from "~/ui/card-art";
-import type { ChoiceItem, PendingChoiceView, VisibleState, WireModeChoice, WireTarget } from "~/wire/types";
+import type { ChoiceItem, MessageRef, PendingChoiceView, VisibleState, WireModeChoice, WireTarget } from "~/wire/types";
 import { clampX, costText, costWithChosenX } from "~/xCost";
+import { formatMessage } from "../../domain/i18n/message";
 import { modeAvailable } from "../action/modal";
 import {
   gyExileCostObjectIds,
@@ -63,6 +64,7 @@ import {
   ModalModesChosen,
   ModalModeToggled,
   PendingChoiceAnswered,
+  PlayModeChosen,
   PromptCardFilterSet,
   PromptCardToggled,
   PromptDamageSet,
@@ -85,6 +87,10 @@ import type { BoardModel } from "../submodel";
 import { HAND_BAR_H } from "./hand";
 
 const h = html<Message>();
+
+function messageText(message: MessageRef | null | undefined): string {
+  return formatMessage(message);
+}
 
 function itemButton(label: string, testId: string, onClick: Message, disabled = false): Html {
   return h.button(
@@ -489,7 +495,7 @@ function orderPrompt(pending: Extract<PendingChoiceView, { kind: "order_triggers
               "min-w-0 flex-1 cursor-pointer rounded-hud border-0 bg-transparent px-2 py-1 text-left text-body text-snow hover:bg-glass",
             ),
           ],
-          [pending.labels[effectIndex] ?? ""],
+          [messageText(pending.labels[effectIndex])],
         ),
       ],
     );
@@ -772,7 +778,7 @@ function modalPrompt(mc: NonNullable<BoardModel["modalCast"]>): Html {
     const picked = multi ? mc.modeDraft : [];
     const ready = multi ? picked.length >= choose && picked.length <= chooseMax : true;
     const countHint = choose === chooseMax ? `Choose ${choose}` : `Choose ${choose}–${chooseMax}`;
-    const title = mc.action.label || "Choose modes";
+    const title = messageText(mc.action.label) || "Choose modes";
     return h.div(
       [
         h.DataAttribute("testid", "modal-mode-aim"),
@@ -805,10 +811,10 @@ function modalPrompt(mc: NonNullable<BoardModel["modalCast"]>): Html {
                     ].join(" "),
                   ),
                 ],
-                [mode.label, !available ? " (no legal target)" : ""],
+                [messageText(mode.label), !available ? " (no legal target)" : ""],
               );
             }
-            return itemButton(mode.label, `modal-mode-${i}`, ModalModesChosen({ chosen: [i] }));
+            return itemButton(messageText(mode.label), `modal-mode-${i}`, ModalModesChosen({ chosen: [i] }));
           }),
         ),
         multi
@@ -854,8 +860,33 @@ function modalPrompt(mc: NonNullable<BoardModel["modalCast"]>): Html {
   );
 }
 
+function playModePrompt(pick: NonNullable<BoardModel["playModePick"]>): Html {
+  return h.div(
+    [
+      h.DataAttribute("testid", "play-mode-aim"),
+      h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+      h.Class(
+        "pointer-events-auto fixed left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+      ),
+    ],
+    [
+      h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], ["Choose how to play"]),
+      h.div(
+        [h.Class("flex w-full flex-col gap-1")],
+        pick.modes.map((mode, i) =>
+          itemButton(messageText(mode.label), `play-mode-${i}`, PlayModeChosen({ actionId: mode.id })),
+        ),
+      ),
+      cancelButton(),
+    ],
+  );
+}
+
 function pendingChoiceTitle(pending: PendingChoiceView): string {
-  if ("label" in pending && typeof pending.label === "string" && pending.label !== "") return pending.label;
+  if ("label" in pending) {
+    const label = messageText(pending.label);
+    if (label !== "") return label;
+  }
   return `Choose (${pending.kind})`;
 }
 
@@ -936,10 +967,14 @@ function cardPickDeclineLabel(pending: PendingChoiceView): string | null {
     case "choose_exiled_with_card_to_cast":
     case "choose_exiled_dig_to_cast_free":
       return "Don't cast";
+    case "may_return_from_graveyard":
+      return pending.mandatory ? null : "Don't return";
+    case "may_exile_discarded_to_play":
+      return "Don't exile";
     case "choose_attach_host":
       return pending.optional ? "Don't attach" : null;
     case "choose_target":
-      return pending.optional ? "No target" : null;
+      return pending.min === 0 ? "No target" : null;
     case "pay_cumulative_upkeep_or_sacrifice":
       return "Don't pay";
     case "choose_dredge":
@@ -959,10 +994,7 @@ function cardPickConfig(pending: PendingChoiceView): {
   const declineLabel = cardPickDeclineLabel(pending) ?? undefined;
   switch (pending.kind) {
     case "choose_target":
-      return { title: pending.label, submitLabel: "Choose", declineLabel };
-    case "choose_spell_targets":
-    case "choose_ability_targets":
-      return { title: pending.label, submitLabel: "Choose" };
+      return { title: messageText(pending.label), submitLabel: "Choose", declineLabel };
     case "choose_activation_cost_targets":
       return { title: "Choose cost targets", submitLabel: "Choose" };
     case "decline_untap":
@@ -1022,6 +1054,12 @@ function cardPickConfig(pending: PendingChoiceView): {
       return { title: "Choose permanents that get counters", submitLabel: "Choose" };
     case "may_return_from_graveyard":
       return { title: "Choose cards to return from your graveyard", submitLabel: "Return" };
+    case "may_exile_discarded_to_play":
+      return {
+        title: "Choose a discarded nonland card to exile and play this turn",
+        submitLabel: "Exile",
+        declineLabel,
+      };
     case "may_discard":
       return { title: "Choose cards to discard", submitLabel: "Discard" };
     case "discard":
@@ -1056,9 +1094,17 @@ function cardPickConfig(pending: PendingChoiceView): {
         submitLabel: "Choose",
       };
     case "choose_copy_target":
+      if (pending.put_counter_on_creature) {
+        return { title: "Choose a creature to get a +1/+1 counter", submitLabel: "Put counter" };
+      }
       return { title: "Choose a copy target", submitLabel: "Copy" };
     case "choose_attach_host":
       return { title: "Choose what to attach to", submitLabel: "Attach", declineLabel };
+    case "choose_legendary_keep":
+      return {
+        title: `Legend rule — choose which ${pending.name} to keep`,
+        submitLabel: "Keep",
+      };
     case "put_from_hand_on_top":
       return {
         title: `Put ${pending.count} card${pending.count === 1 ? "" : "s"} from your hand on top`,
@@ -1081,13 +1127,12 @@ function pendingGraveyardAimCoach(
   kind:
     | "exile_from_graveyard"
     | "may_return_from_graveyard"
+    | "may_exile_discarded_to_play"
     | "shuffle_from_graveyard"
     | "choose_dredge"
     | "pay_cumulative_upkeep_or_sacrifice"
     | "choose_activation_cost_targets"
-    | "choose_target"
-    | "choose_spell_targets"
-    | "choose_ability_targets",
+    | "choose_target",
   oneClick: boolean,
 ): string {
   switch (kind) {
@@ -1095,6 +1140,8 @@ function pendingGraveyardAimCoach(
       return oneClick ? "Click a card in the graveyard to exile" : "Click cards in the graveyard to exile";
     case "may_return_from_graveyard":
       return "Click cards in the graveyard to return";
+    case "may_exile_discarded_to_play":
+      return "Click a discarded nonland card in your graveyard to exile";
     case "shuffle_from_graveyard":
       return oneClick ? "Click a card in the graveyard to shuffle in" : "Click cards in the graveyard to shuffle in";
     case "choose_dredge":
@@ -1108,8 +1155,6 @@ function pendingGraveyardAimCoach(
         ? "Click a card in the graveyard for the activation cost"
         : "Click cards in the graveyard for the activation cost";
     case "choose_target":
-    case "choose_spell_targets":
-    case "choose_ability_targets":
       return oneClick ? "Click a card in the graveyard to target" : "Click cards in the graveyard to target";
     default: {
       const _exhaustive: never = kind;
@@ -1256,13 +1301,12 @@ function cardPickForKind(
     if (
       kind !== "exile_from_graveyard" &&
       kind !== "may_return_from_graveyard" &&
+      kind !== "may_exile_discarded_to_play" &&
       kind !== "shuffle_from_graveyard" &&
       kind !== "choose_dredge" &&
       kind !== "pay_cumulative_upkeep_or_sacrifice" &&
       kind !== "choose_activation_cost_targets" &&
-      kind !== "choose_target" &&
-      kind !== "choose_spell_targets" &&
-      kind !== "choose_ability_targets"
+      kind !== "choose_target"
     ) {
       return null;
     }
@@ -1271,13 +1315,7 @@ function cardPickForKind(
     const picked = draft.kind === "card-pick" ? draft.picked : [];
     const ready = !oneClick && cardPickReady(pending, picked);
     const required = cardPickRequiredCount(pending);
-    const maxHint =
-      kind === "shuffle_from_graveyard" ||
-      kind === "choose_target" ||
-      kind === "choose_spell_targets" ||
-      kind === "choose_ability_targets"
-        ? pending.max
-        : required;
+    const maxHint = kind === "shuffle_from_graveyard" || kind === "choose_target" ? pending.max : required;
     const countLine =
       !oneClick && maxHint != null
         ? h.div(
@@ -1297,11 +1335,13 @@ function cardPickForKind(
           ? "Exile"
           : kind === "may_return_from_graveyard"
             ? "Return"
-            : kind === "shuffle_from_graveyard"
-              ? "Shuffle"
-              : kind === "pay_cumulative_upkeep_or_sacrifice"
-                ? "Pay"
-                : "Confirm";
+            : kind === "may_exile_discarded_to_play"
+              ? "Exile"
+              : kind === "shuffle_from_graveyard"
+                ? "Shuffle"
+                : kind === "pay_cumulative_upkeep_or_sacrifice"
+                  ? "Pay"
+                  : "Confirm";
       actions.push(submitButton(submitLabel, !ready));
     }
     const decline = declineAnswer(pending);
@@ -1462,14 +1502,17 @@ function cardPickForKind(
   }
   if (pendingBoardTargetMode(pending, state) != null) {
     const decline = declineAnswer(pending);
-    const label = "label" in pending && typeof pending.label === "string" ? pending.label : pendingChoiceTitle(pending);
+    const label =
+      "label" in pending
+        ? messageText(pending.label)
+        : FORMULATOR_FOR_KIND[pending.kind] === "cardPick"
+          ? cardPickConfig(pending).title
+          : pendingChoiceTitle(pending);
     const oneClick = pendingTargetOneClick(pending);
     const draft = board.promptDraft ?? initPromptDraft(pending, state);
     const picked = draft.kind === "card-pick" ? draft.picked : [];
     const max =
-      pending.kind === "choose_target" ||
-      pending.kind === "choose_spell_targets" ||
-      pending.kind === "choose_ability_targets"
+      pending.kind === "choose_target"
         ? pending.max
         : pending.kind === "choose_own_sacrifices" || pending.kind === "choose_activation_cost_targets"
           ? pending.count
@@ -1555,7 +1598,10 @@ function cardPickForKind(
         ),
       ],
       [
-        h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], [pending.label]),
+        h.div(
+          [h.Class("pointer-events-none text-center font-semibold text-body text-snow")],
+          [messageText(pending.label)],
+        ),
         h.div([h.Class("flex flex-wrap justify-center gap-2")], buttons),
       ],
     );
@@ -1651,7 +1697,7 @@ function selectFromTopLanesPrompt(
 }
 
 function yesNoPrompt(
-  pending: Extract<PendingChoiceView, { kind: "may_yes_no" | "dance_exile_more" | "trade_secrets_repeat" }>,
+  pending: Extract<PendingChoiceView, { kind: "may_yes_no" | "dance_exile_more" }>,
   tableId: string | null,
 ): Html {
   return h.div(
@@ -1730,10 +1776,13 @@ function payCostPrompt(
   const title = shockland
     ? "Have it enter untapped?"
     : "label" in pending
-      ? pending.label
+      ? messageText(pending.label)
       : pendingChoiceTitle(pending);
   const payLabel = shockland ? `Pay ${pending.life} life` : `Pay ${costText(pending.cost)}`;
   const declineLabel = payCostDeclineLabel(pending.kind);
+  // Only the optional-trigger prompt carries affordability; the "unless you pay" variants are a
+  // penalty either way, so declining is always a real answer there.
+  const canPay = !("can_pay" in pending) || pending.can_pay;
   return h.div(
     [
       h.DataAttribute("testid", "pending-pay-cost-aim"),
@@ -1747,7 +1796,7 @@ function payCostPrompt(
       h.div(
         [h.Class("flex flex-wrap justify-center gap-2")],
         [
-          answerButton(pending, "prompt-pay", payLabel, { kind: "pay", pay: true }, true, tableId == null),
+          answerButton(pending, "prompt-pay", payLabel, { kind: "pay", pay: true }, true, tableId == null || !canPay),
           answerButton(pending, "prompt-decline", declineLabel, { kind: "pay", pay: false }, false, tableId == null),
         ],
       ),
@@ -1778,7 +1827,7 @@ function modeListPrompt(
             answerButton(
               pending,
               `prompt-mode-${index}`,
-              label,
+              messageText(label),
               { kind: "mode", mode: index },
               index === 0,
               tableId == null,
@@ -1793,11 +1842,11 @@ function modeListPrompt(
   const picked = draft.kind === "modes" ? draft.modes : [];
   const concreteChoices: Array<{ choice: WireModeChoice; label: string }> = pending.modes.flatMap((mode, index) => {
     if (!mode.needs_target) {
-      return [{ choice: { index } satisfies WireModeChoice, label: mode.label }];
+      return [{ choice: { index } satisfies WireModeChoice, label: messageText(mode.label) }];
     }
     return mode.targets.map((target) => ({
       choice: { index, target } satisfies WireModeChoice,
-      label: `${mode.label} — ${targetLabel(target, state)}`,
+      label: `${messageText(mode.label)} — ${targetLabel(target, state)}`,
     }));
   });
   const ready = picked.length === pending.choose || (pending.optional && picked.length === 0);
@@ -1879,7 +1928,7 @@ function playerPickPrompt(
         ),
       ],
       [
-        h.div([h.Class("pointer-events-none")], [pending.label]),
+        h.div([h.Class("pointer-events-none")], [messageText(pending.label)]),
         countLine,
         actions.length > 0 ? h.div([h.Class("flex flex-wrap justify-center gap-2")], actions) : null,
       ].filter((v): v is Html => v !== null),
@@ -1896,7 +1945,10 @@ function playerPickPrompt(
         ),
       ],
       [
-        h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], [pending.label]),
+        h.div(
+          [h.Class("pointer-events-none text-center font-semibold text-body text-snow")],
+          [messageText(pending.label)],
+        ),
         h.div(
           [h.Class("flex flex-wrap justify-center gap-2")],
           pending.items.flatMap((item, index) => {
@@ -1930,7 +1982,10 @@ function playerPickPrompt(
       ),
     ],
     [
-      h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], [pending.label]),
+      h.div(
+        [h.Class("pointer-events-none text-center font-semibold text-body text-snow")],
+        [messageText(pending.label)],
+      ),
       h.div(
         [h.Class("flex flex-wrap justify-center gap-2")],
         pending.items.flatMap((item, index) => {
@@ -2517,21 +2572,14 @@ function stringPickPrompt(
 }
 
 function numberPickTitle(
-  pending: Extract<
-    PendingChoiceView,
-    { kind: "may_draw_up_to" | "trade_secrets_caster_draw" | "pay_any_amount_of_mana" }
-  >,
+  pending: Extract<PendingChoiceView, { kind: "may_draw_up_to" | "pay_any_amount_of_mana" }>,
 ): string {
-  if (pending.kind === "trade_secrets_caster_draw") return `Choose how many cards to draw (up to ${pending.max})`;
   if (pending.kind === "pay_any_amount_of_mana") return `Pay any amount of mana (up to ${pending.max})`;
-  return `Draw up to ${pending.max}`;
+  return messageText(pending.label);
 }
 
 function numberPickPrompt(
-  pending: Extract<
-    PendingChoiceView,
-    { kind: "may_draw_up_to" | "trade_secrets_caster_draw" | "pay_any_amount_of_mana" }
-  >,
+  pending: Extract<PendingChoiceView, { kind: "may_draw_up_to" | "pay_any_amount_of_mana" }>,
   board: BoardModel,
   state: VisibleState,
   tableId: string | null,
@@ -2722,11 +2770,7 @@ function pendingChoicePrompt(
       if (pending.kind !== "assign_combat_damage") return frame("pending-choice", pendingChoiceTitle(pending), []);
       return damageAssignPrompt(pending, state, board);
     case "yesNo":
-      if (
-        pending.kind !== "may_yes_no" &&
-        pending.kind !== "dance_exile_more" &&
-        pending.kind !== "trade_secrets_repeat"
-      ) {
+      if (pending.kind !== "may_yes_no" && pending.kind !== "dance_exile_more") {
         return frame("pending-choice", pendingChoiceTitle(pending), []);
       }
       return yesNoPrompt(pending, tableId);
@@ -2779,11 +2823,7 @@ function pendingChoicePrompt(
       }
       return stringPickPrompt(pending, board, state, tableId);
     case "numberPick":
-      if (
-        pending.kind !== "may_draw_up_to" &&
-        pending.kind !== "trade_secrets_caster_draw" &&
-        pending.kind !== "pay_any_amount_of_mana"
-      ) {
+      if (pending.kind !== "may_draw_up_to" && pending.kind !== "pay_any_amount_of_mana") {
         return frame("pending-choice", pendingChoiceTitle(pending), []);
       }
       return numberPickPrompt(pending, board, state, tableId);
@@ -2810,6 +2850,7 @@ function shouldShowPendingChoice(state: VisibleState): boolean {
 }
 
 export function promptsView(board: BoardModel, state: VisibleState, tableId: string | null): Html | null {
+  if (board.playModePick != null) return playModePrompt(board.playModePick);
   if (board.xPrompt != null) return boardXPrompt(board.xPrompt);
   if (board.modalCast != null) return modalPrompt(board.modalCast);
   if (board.sacrificePick != null) {

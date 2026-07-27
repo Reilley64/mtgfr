@@ -1,6 +1,6 @@
 ---
 name: fidelity-grind
-description: Given an Archidekt deck link, make every card in that deck faithful — deck intake, fidelity report checklist, observability re-audit, pure-authoring pass, engine grind loop, client catch-up, full verify + skill retrospective, then an open PR watched through CI and review to merge. Use when the user provides a deck URL and wants the pool to support it faithfully.
+description: Given an Archidekt deck link or frozen decklist, make every card in that deck faithful — deck intake, fidelity report checklist, observability re-audit, pure-authoring pass, engine grind loop, client catch-up, full verify + skill retrospective, then an open PR watched through CI and review to merge. Use when the user provides a deck source and wants the pool to support it faithfully.
 ---
 
 # Fidelity Grind
@@ -8,15 +8,15 @@ description: Given an Archidekt deck link, make every card in that deck faithful
 Turn an Archidekt deck into a fully faithful slice of the card pool, end to end. This skill
 encodes the process that took the first 429-card pool from ~60% to 99.3% faithful (waves 1–142,
 2026-07). Read `card-dsl` (authoring bar). Drive implementation with the
-`test-driven-development` skill (red → green) throughout. Use other obra/superpowers skills
+`test-driven-development` skill (red → green) throughout. Use other superpowers plugin skills
 named below for isolation, planning, verification, review, and branch finish.
 
-**Inputs:** an Archidekt deck URL (`https://archidekt.com/decks/<id>/<slug>`).
+**Inputs:** either an Archidekt deck URL (`https://archidekt.com/decks/<id>/<slug>`) or a frozen local decklist (for example `docs/decklists/<slug>.md` sourced from an official Wizards list).
 **Output:** every deck card scripted in `crates/cards/data/`, faithful or carrying a precise
 `approximates` residual; engine + client green; an open PR against the default branch with
 the wrap-up report as its body.
 
-## Superpowers skills this grind uses
+## Superpowers plugin skills this grind uses
 
 | Phase | Skill | Role |
 |-------|-------|------|
@@ -34,6 +34,10 @@ the wrap-up report as its body.
 - Follow **`using-git-worktrees`** to put the grind in an isolated workspace. Prefer the
   platform-native worktree flow; fall back to:
   `git worktree add ../mtgfr-grind-<slug> -b fidelity-<slug> main`
+- If the platform flow or a nested `git worktree add` fails but you are already in an isolated
+  checkout, treat the current checkout as the grind root and stamp that absolute path into every
+  brief/script token. The SoC program used `/workspace` this way; do not invent a second nested
+  worktree just to satisfy the ritual.
 - Commit every green wave on that branch. **Never merge to the default branch until the grind is done**
   and the user confirms. Periodically sync-merge the default branch *into* the grind branch (delegate to an
   agent; full workspace tests both sides after resolving). If the default branch was
@@ -51,10 +55,17 @@ the wrap-up report as its body.
 
 ## Phase 1 — Deck intake
 
-- Deck id from the URL; fetch `https://archidekt.com/api/decks/<id>/` (public JSON).
-  Each entry: `card.oracleCard.name`, quantity, categories. Ignore basic-land quantities;
-  dedupe by name. Cross-check oracle text against Scryfall when authoring (Archidekt's
-  `oracleCard.text` can lag) — the TOML `oracle` field must be current Scryfall text.
+- Intake source can be either an Archidekt deck JSON or a frozen local decklist.
+- For Archidekt, fetch `https://archidekt.com/api/decks/<id>/` (public JSON). Each entry:
+  `card.oracleCard.name`, quantity, categories. Ignore basic-land quantities; dedupe by name.
+- For a frozen local decklist (for example the SoC Wizards lists committed under
+  `docs/decklists/*.md`), treat the checked-in list as the source of truth and run
+  `python tooling/soc_fidelity_intake.py docs/decklists/<slug>.md` to baseline A/B/missing
+  against `crates/cards/data/`. Use that output as the starting checklist only; the manual
+  observability re-audit still decides what stays faithful vs. moves to B/D.
+- Cross-check oracle text against Scryfall when authoring — Archidekt's `oracleCard.text` can lag,
+  and local decklists omit oracle text entirely — so the TOML `oracle` field must be current
+  Scryfall text.
 - Card identity is the TOML `name` field (not the filename). Match deck names against
   `grep -h '^name = ' crates/cards/data/*.toml`.
 
@@ -168,14 +179,28 @@ Hard-won loop rules (already baked into the script — do not soften them):
 ## Phase 5 — Client catch-up
 
 Engine waves accrue wire debt. After the grind (or mid-grind if large):
-`just server-codegen`, then diff the regenerated wire types against the client registries —
-every `PendingChoiceView` needs a form in `client/src/components/molecules/prompt-forms.tsx` (reuse an existing
-form when the answer shape matches; the engine dispatches by pending-choice kind), every
-`VisibleEvent` an arm in `client/src/store.ts` (effect/Match, exhaustive), and new
-`MeaningfulAction`s surface via the existing generic tiles/radial. Gate: `npx tsc --noEmit` clean + client tests green via **`just client-test`** — that recipe
-is `bun run test` (vitest). Plain `bun test` runs Bun's own runner over the same files and
-reports dozens of phantom failures; the mirror-mastery grind lost a cycle "fixing" 50 tests
-that were never broken. Only the recipe's output counts as evidence.
+`just server-codegen`, then close the hand-written wire gap —
+
+1. Add any new `PendingChoiceView` kinds to `client/app/domain/wire/types.ts` and register them in
+   `FORMULATOR_FOR_KIND` (`client/app/domain/choice.ts`); reuse an existing formulator when the answer
+   shape matches (prompts render via `client/app/board/html/prompts.ts`).
+2. Add any new `VisibleEvent` kinds to `client/app/domain/wire/types.ts`, extend
+   `VISIBLE_EVENT_KIND_PRESENCE` (`client/app/domain/wire/visibleEventKindPresence.ts`), and add
+   exhaustive arms in `client/app/domain/event-fold.ts` (`extractProvenance` / `describe`).
+3. New `MeaningfulAction`s surface via the existing generic tiles / activation menu.
+
+Canvas tests the grind adds must assert the *invariant*, not the pixel. `expect(ys).toEqual([142,
+156, 170])` for three stacked chips reads as a stacking assertion but is really a snapshot of where
+the avatar block starts, and it goes red the first time the default branch nudges that block.
+Assert what the feature promises — three rows, one line-height apart, in a named order.
+
+Gate: **`just client-check`** (codegen + format + lint + typecheck + Vitest). That includes
+`wire-case-coverage.test.ts`, which fails if generated proto oneofs drift from the hand unions.
+`VISIBLE_EVENT_KIND_PRESENCE` is hand-written and exhaustive, so a new wire event kind that skips
+step 2 above fails only in `just client-typecheck`, as a `Record` "missing the following
+properties" error naming every kind you forgot.
+`just client-test` alone is `bun run test` (vitest). Plain `bun test` runs Bun's own runner over
+the same files and reports dozens of phantom failures — only the just recipes count as evidence.
 
 ## Phase 5.5 — Ship the deck as a precon
 
@@ -218,12 +243,72 @@ pool that supports it. After client catch-up (the wire is settled by then):
    the live drive *did* catch was invisible to every unit test: a mandatory two-target prompt
    the client could only ever answer with one id, wedging all four seats forever.
    Fix what it finds with regression tests at the lowest layer (`test-driven-development`).
+   **Three traps produced four false wedges in the heavenly-inferno grind — the `verify` skill
+   now carries all three:** the smoke stack may take its own HTTP/Vite/Postgres ports but *not*
+   its own gRPC port (routed tables are pinned to `:50051`); a rejected intent acks HTTP 200, so
+   the driver must branch on `Ack.accepted`; and an action's legal targets already ride on
+   `ActionView.targets`, so guessing from the battlefield buries the drive under thousands of
+   `reject.illegal_target` acks. Read `logs/actions.<TABLE>.toon` (every intent, its accepted
+   flag, reject reason, post-state and events) before blaming the engine.
+   **Then read the surviving rejects per card — that is where the real bugs are.** Two clusters
+   outlived the traps here: one was the driver skipping a cost the action itself carried
+   (`sacrifice_choices` → `reject.cannot_activate`), the other a genuine product bug the whole
+   unit suite missed — a spell whose targets are chosen *after* the cast (CR 601.2c) was
+   advertised with `needs_target: true`, so the board staged a target click the cast gate could
+   only reject. Rule: **an action the snapshot lists must be submittable exactly as listed** —
+   and so must a pending choice. Fixing that cluster exposed the next (equip enumerating
+   opponents' creatures its own gate rejects), which exposed the next (a `ChooseSpellTargets`
+   raised with `min: 0, max: 0` and a full `legal` list). Expect this class to recur, and re-run
+   the drive after each fix: a loud cluster hides the quieter ones behind it.
    If the local environment
    cannot boot server+client (missing DB, port conflicts, etc.), delegate the smoke game to a
    cloud/remote agent with a clean setup, or fix the environment before proceeding. Do not
    skip — this is the final integration gate before the PR.
 3. Sync-merge the default branch into the grind branch one last time; full bar both sides
    (`just check`-equivalent: workspace tests, fmt, clippy-no-new, tsc, client tests).
+   Two things a merge breaks that no test name warns you about: a wire field whose *type*
+   changed on the default branch (heavenly-inferno merged an i18n hard-cut that turned
+   `ActionView.label` from `string` into `MessageRef`) only fails in **`just client-typecheck`**,
+   in this branch's own test fixtures — reach for the repo's fixture helper
+   (`client/app/domain/i18n/testMessageRef.ts`) rather than hand-building the new shape; and
+   `docs/CR_INDEX.md` goes stale from both sides' new citations, so re-run
+   `just engine-cr-index` before `just engine-cr-index-check`.
+
+   **The merge's real danger is not conflicts — it is silent unions and silent losses.** A long
+   grind and a moving default branch reimplement the *same* subsystems, and git resolves that
+   without ever showing a marker. Frank-Horrigan merged 74 commits and went 148 → 38 → 23 → 10
+   → 0 failures, every step a variant of one of these:
+   - **Silent union — behavior doubles.** Main had moved self-`Etb` and combat-damage trigger
+     queuing into table dispatch (`queue_trigger_watch_table(ENTERS_BATTLEFIELD_TRIGGER_WATCHES,
+     …)`); the grind still called `queue_self_trigger` / `queue_combat_damage_triggers`
+     explicitly. Both survived, so every ETB fired twice. Symptom: a pending choice re-raised
+     for a clause already answered. After resolving, grep for every dispatch/registration call
+     the grind added and confirm the default branch hasn't grown a second path to it.
+   - **Silent loss — an additive gate vanishes.** Where main's version of a file won wholesale,
+     the grind's *additions inside* untouched-looking functions went with it: an emblem source
+     chain in `matching_anthems`, a `Condition::SourceAttackedThisTurn` keyword arm, a
+     `min_level` gate on a keyword anthem. Nothing conflicted; three tests just failed.
+     **Before merging, snapshot every file the grind touched** (`git show HEAD:<f> >
+     scratchpad/<f>.pre`) so restoring a dropped gate is a two-file diff instead of archaeology.
+   - **Duplicate surface — one of them is now dead.** Main shipped
+     `spell_multikicker_count` / `entered_multikicker_count` for the same card need the grind
+     had solved as `times_kicked` / `entered_times_kicked`. Both compiled; one was written and
+     never read. After the merge, walk the increments backlog's LANDED surface names and
+     confirm each is still *read*, then delete the loser from code, `DSL_REFERENCE.md`, and the
+     increments entry together.
+   - **A default-branch test can encode a scenario the grind's new rule makes illegal.** A
+     server cleanup-discard test relied on a decked-out player still discarding; the grind added
+     the CR 800.4e "no turn-based actions for a player who has left the game" guard. Fix the
+     test's *setup* to a legal scenario — never weaken the new rule to keep an old fixture green.
+   - **`git checkout -- <file>` during resolution is unrecoverable.** Unstaged merge edits live
+     nowhere else. `git add` each file the moment it compiles.
+   - **Card TOML corrupts silently too** — a stray resolution dropped a green pip from Doubling
+     Season's `{4}{G}{G}`, and the only thing that caught it was an *unrelated* cost-reduction
+     test. Diff `crates/cards/data/` against the merge base for cards the grind never touched.
+   - Two mechanical ones: a moved-away generated tree from the default branch's own refactor
+     (`client/lib/wire/generated/` after `client/lib/` → `client/app/domain/`) stays on disk and
+     fails `just client-lint` until deleted; and `bun install` must run in the *worktree* before
+     `just client-typecheck` means anything.
 4. **Skill retrospective (before opening the PR):** the grind isn't done until this skill has
    absorbed what the grind taught. Review the whole run against the skill and fold every
    lesson in *before* opening the PR, so the skill improvements ride in the same squash
@@ -239,14 +324,11 @@ pool that supports it. After client catch-up (the wire is settled by then):
    still match reality: file paths, recipe names, API/lobby flows. Commit the skill edits to
    the grind branch so they ride the PR. Anything learned *during* Phase 7 PR watch (a CI
    failure mode, a review pattern) goes in a small `docs(skills):` follow-up PR.
-5. **Commit hygiene for the PR:** the repo commitlint-lints every PR commit (≤72-char
-   header, lower-case subject, type enum — `merge:` is not a type and defeats commitlint's
-   built-in merge-commit ignore). Grind-wave headers rarely survive this, and after a
-   history rewrite the branch lineage can't be made to lint at all. Since `main` takes
-   squash merges anyway, collapse the branch to ONE conforming commit with the identical
-   verified tree: tag the old head (`git tag grind-<slug>-history`), then
-   `git commit-tree 'HEAD^{tree}' -p origin/<default> -m "<conforming message>"`,
-   `git reset --hard` to it, and force-push. The PR body carries the full story.
+5. **Commit hygiene for the PR:** keep verified wave history by default. This repo's CI
+   lint-checks the **PR title** for release semantics, not every branch commit, so do **not**
+   squash or rewrite the branch just for aesthetics. Only rewrite history if an actual CI /
+   commitlint gate blocks on branch commit messages or merge subjects; tag the old head first,
+   note the reason in the wrap-up report, and force-push only as the unblock.
 6. **End with an open PR, not a direct merge:** follow **`finishing-a-development-branch`**
    (verify tests → present options → execute). Prefer opening a PR with `gh pr create`
    against the default branch. The PR body is the wrap-up report — the deck
@@ -285,5 +367,6 @@ Stay on the PR until it merges; don't end the run at "PR opened".
   sentence/clause it implements, quoted directly above. Comments wrap at 120 chars.
 - Effects always use the `[[abilities.effects]]` array form.
 - Any TOML-surface change updates `DSL_REFERENCE.md` in the same change.
-- `CardDef: Copy` — `&'static` leaked slices, never `Vec`/`String` fields.
+- `CardDef` is `Clone`, not `Copy`; keep skill/backlog/spec prose aligned with the current
+  `Arc`-backed printed-definition storage.
 - Every bug fix gets a regression test at the lowest layer that catches it.

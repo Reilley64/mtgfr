@@ -30,12 +30,14 @@ message PlayerView {
   bool hand_kept = 11;
   // Whether this player may still take another pre-game mulligan.
   bool can_mulligan = 12;
+  // SHA-256 hex Gravatar hash; empty = no face.
+  string gravatar_hash = 13;
   // Poison counters on this player (CR 122.1). Ten or more eliminates them (CR 704.5c).
-  uint32 poison = 13;
+  uint32 poison = 14;
   // Rad counters on this player (CR 122.1, Fallout). No lose-the-game threshold; at the beginning
   // of their precombat main phase they mill this many cards, losing 1 life and one rad counter per
   // nonland card milled.
-  uint32 rad = 14;
+  uint32 rad = 15;
 }
 
 // One source card def's contributions to a permanent (Alt-inspect ledger).
@@ -101,10 +103,21 @@ message StackObjectView {
   // The spell's stack-object id, or the ability's source permanent.
   uint32 source = 2;
   uint32 controller = 3;
-  // A human-readable label (the spell's name, or a description of the ability's effect).
-  string label = 4;
+  reserved 4;
   // The chosen target, if any.
   optional WireTarget target = 5;
+  // Stable label for the spell name or ability effect.
+  MessageRef label = 6;
+  // All declared targets, clause 0 then clause 1 (Magma Opus second clause).
+  // Empty when targetless. `target` remains the primary (first) for older clients.
+  repeated WireTarget targets = 7;
+  // Scryfall Printing UUID for stack art. Required when `source` is a Moved tombstone
+  // (sacrifice-as-cost activations) that never appears in VisibleState.objects.
+  string print = 8;
+  // Source card's catalog id for inspect / oracle (empty when anonymized).
+  string card_id = 9;
+  // Source card's display name for art alt text / inspect (empty when anonymized).
+  string name = 10;
 }
 
 // One labelled item offered by a pending choice (a legal target, or a blocker to assign damage
@@ -121,12 +134,13 @@ message ChoiceItem {
 
 // One printed mode of a modal spell.
 message ModeView {
-  // A human-readable description of the mode's effect.
-  string label = 1;
+  reserved 1;
   // The targets legal for *this mode* right now. Empty when the mode takes no target — and
   // also when it takes one but none is legal, which is why `needs_target` is separate.
   repeated WireTarget targets = 2;
   bool needs_target = 3;
+  // Stable description of the mode's effect.
+  MessageRef label = 4;
 }
 
 // A modal spell's printed modes and how many of them the caster picks (CR 700.2).
@@ -151,8 +165,7 @@ message ActionView {
   optional uint32 ability_index = 4;
   // Section bucket: "hand" | "battlefield" | "command" | "graveyard" | "exile" | "combat".
   string section = 5;
-  // Card name (play_land/cast) or ability label (activate/combat).
-  string label = 6;
+  reserved 6;
   bool needs_target = 7;
   // The targets legal for this action right now.
   repeated WireTarget targets = 8;
@@ -189,6 +202,13 @@ message ActionView {
   // Whether this activate's cost includes {T}/{Q} on the source (CR 302.6 summoning sickness).
   // False / unset for non-activate actions.
   bool taps_self = 22;
+  // Stable card/action/ability label.
+  MessageRef label = 23;
+  // The seats whose creatures this combat declaration covers: the active player for
+  // `declare_attackers` (CR 508.1a), each attacked player this seat still declares for on
+  // `declare_blockers` (CR 509.1a — ordinarily just the viewer, but a live Master Warcraft
+  // moves the choice). Empty for every other action kind.
+  repeated uint32 declare_for = 24;
 }
 
 // The current combat state a client renders: who's attacking and the declared blocks.
@@ -209,7 +229,6 @@ message PendingChoiceView {
   oneof choice {
     PendingChoiceViewOrderTriggers order_triggers = 1;
     PendingChoiceViewChooseTarget choose_target = 2;
-    PendingChoiceViewChooseSpellTargets choose_spell_targets = 3;
     PendingChoiceViewChooseTargetPlayers choose_target_players = 4;
     PendingChoiceViewMayYesNo may_yes_no = 5;
     PendingChoiceViewPayCost pay_cost = 6;
@@ -227,7 +246,6 @@ message PendingChoiceView {
     PendingChoiceViewSacrificeEdict sacrifice_edict = 18;
     PendingChoiceViewProliferate proliferate = 19;
     PendingChoiceViewPhaseOut phase_out = 20;
-    PendingChoiceViewChooseAbilityTargets choose_ability_targets = 21;
     PendingChoiceViewMaySacrifice may_sacrifice = 22;
     PendingChoiceViewChooseOwnSacrifices choose_own_sacrifices = 23;
     PendingChoiceViewDevour devour = 24;
@@ -270,11 +288,11 @@ message PendingChoiceView {
     PendingChoiceViewOpponentChoosesRevealedToGraveyard opponent_chooses_revealed_to_graveyard = 61;
     PendingChoiceViewPayCumulativeUpkeepOrSacrifice pay_cumulative_upkeep_or_sacrifice = 62;
     PendingChoiceViewMayDrawUpTo may_draw_up_to = 63;
-    PendingChoiceViewTradeSecretsCasterDraw trade_secrets_caster_draw = 64;
-    PendingChoiceViewTradeSecretsRepeat trade_secrets_repeat = 65;
     PendingChoiceViewChooseCardName choose_card_name = 66;
     PendingChoiceViewPayAnyAmountOfMana pay_any_amount_of_mana = 67;
-    PendingChoiceViewPayLifeOrEntersTapped pay_life_or_enters_tapped = 68;
+    PendingChoiceViewChooseLegendaryKeep choose_legendary_keep = 68;
+    PendingChoiceViewMayExileDiscardedToPlay may_exile_discarded_to_play = 69;
+    PendingChoiceViewPayLifeOrEntersTapped pay_life_or_enters_tapped = 70;
   }
 }
 
@@ -283,32 +301,22 @@ message PendingChoiceViewOrderTriggers {
   uint32 player = 1;
   uint32 source = 2;
   uint32 count = 3;
-  repeated string labels = 4;
+  reserved 4;
+  repeated MessageRef labels = 5;
 }
 
 // Legal targets to choose among. `label` is the effect being aimed; `source` is the permanent
-// or spell it comes from. `optional` ("up to one" — Killian, Decisive Mentor) lets the player
-// submit no target instead of one of `items`. `max` (Numot, the Devastator's "destroy up to two
-// target lands") is how many of `items` may be chosen at once; `1` for the ubiquitous
-// single-target case.
+// or spell it comes from. `min`/`max` are the number of distinct targets the player may choose
+// from `items`, inclusive. `min == 0` covers "up to N" choices; `min == max == 1` is the
+// ubiquitous single mandatory target case.
 message PendingChoiceViewChooseTarget {
   uint32 player = 1;
   uint32 source = 2;
-  string label = 3;
+  reserved 3;
   repeated ChoiceItem items = 4;
-  bool optional = 5;
   uint32 max = 6;
-}
-
-// A multi-target spell's targets to choose (CR 601.2c): between `min` and `max` distinct
-// `items` for the `spell` on the stack. `label` is the spell's name.
-message PendingChoiceViewChooseSpellTargets {
-  uint32 player = 1;
-  uint32 spell = 2;
-  string label = 3;
-  uint32 min = 4;
-  uint32 max = 5;
-  repeated ChoiceItem items = 6;
+  MessageRef label = 7;
+  uint32 min = 8;
 }
 
 // "Any number of target players" to choose for a targeted edict (CR 601.2c/608.2b — Priest of
@@ -317,10 +325,11 @@ message PendingChoiceViewChooseSpellTargets {
 message PendingChoiceViewChooseTargetPlayers {
   uint32 player = 1;
   uint32 source = 2;
-  string label = 3;
+  reserved 3;
   uint32 min = 4;
   uint32 max = 5;
   repeated ChoiceItem items = 6;
+  MessageRef label = 7;
 }
 
 // Optional "you may" trigger — `label` is the effect so the client can name what accepting
@@ -328,14 +337,17 @@ message PendingChoiceViewChooseTargetPlayers {
 message PendingChoiceViewMayYesNo {
   uint32 player = 1;
   uint32 source = 2;
-  string label = 3;
+  reserved 3;
+  MessageRef label = 4;
 }
 
-// A may-draw-up-to count choice (Arcane Denial's "may draw up to two cards"): this player chooses
-// any number 0..=max of cards to draw. Reveals only the maximum, never hand or library contents.
+// A may-draw-up-to count choice (Arcane Denial's "may draw up to two cards", Trade Secrets'
+// caster draw, and similar prompts): this player chooses any number 0..=max of cards to draw.
+// `label` names what this count answer applies to.
 message PendingChoiceViewMayDrawUpTo {
   uint32 player = 1;
   uint32 max = 2;
+  MessageRef label = 3;
 }
 
 // Join forces (Collective Voyage): this player may pay any amount of mana toward the shared X.
@@ -346,30 +358,17 @@ message PendingChoiceViewPayAnyAmountOfMana {
   uint32 max = 3;
 }
 
-// Trade Secrets' declinable draw: this player (the caster), after `opponent` drew two
-// mandatorily, chooses any number 0..=max of cards to draw.
-message PendingChoiceViewTradeSecretsCasterDraw {
-  uint32 player = 1;
-  uint32 max = 2;
-  uint32 opponent = 3;
-}
-
-// Trade Secrets' repeat-or-stop pause: this player (the target opponent) may run the whole
-// process (the mandatory two-card draw, then `caster`'s declinable draw) again, or stop.
-// Answered by the yes/no AnswerMay.
-message PendingChoiceViewTradeSecretsRepeat {
-  uint32 player = 1;
-  uint32 caster = 2;
-}
-
 // The cost to accept an optional paid trigger (Trudge Garden's "you may pay {2}"), plus the
 // effect label so the client can say what paying does.
 message PendingChoiceViewPayCost {
   uint32 player = 1;
   uint32 source = 2;
   WireCost cost = 3;
-  // Short English for the paid effect — e.g. "Create 1 Fungus Beast token(s)".
-  string label = 4;
+  reserved 4;
+  // Stable label for the paid effect.
+  MessageRef label = 5;
+  // Whether the player can actually produce this cost right now — false greys out Pay.
+  bool can_pay = 6;
 }
 
 // Pay `cost` to save `spell` from being countered, or decline and let it be countered (CR
@@ -500,23 +499,10 @@ message PendingChoiceViewPhaseOut {
   repeated ChoiceItem items = 3;
 }
 
-// A triggered ability's second independent target clause (CR 603.3d — Kinetic Ooze's X≥10
-// "double ... any number of other target creatures"), chosen as the trigger goes on the stack:
-// between `min` and `max` distinct `items` for the ability from `source`. `label` is the
-// effect being aimed. Answered by `ChooseTargets`, like `ChooseSpellTargets`.
-message PendingChoiceViewChooseAbilityTargets {
-  uint32 player = 1;
-  uint32 source = 2;
-  string label = 3;
-  uint32 min = 4;
-  uint32 max = 5;
-  repeated ChoiceItem items = 6;
-}
-
 // An activated ability's own targeted exile cost (CR 601.2c/602.2b — Spurnmage Advocate's
 // "Exile two target cards from an opponent's graveyard"), named after every other cost is
 // already paid: exactly `count` of `items` (cards in an opponent's graveyard). Answered by
-// `ChooseTargets`, like `ChooseAbilityTargets` — but a paid cost, not the ability's own
+// `ChooseTargets` — but a paid cost, not the ability's own
 // stack-bound target clause.
 message PendingChoiceViewChooseActivationCostTargets {
   uint32 player = 1;
@@ -588,12 +574,22 @@ message PendingChoiceViewMayReturnFromGraveyard {
   uint32 player = 1;
   uint32 source = 2;
   repeated ChoiceItem items = 3;
+  bool mandatory = 4;
 }
 
 // This player may discard one of `items` (a card in their own hand, private to them) to gain a
 // rider effect, or decline (CR 608.2c-style resolution-time optional sub-action — Quintorius,
 // History Chaser's +1).
 message PendingChoiceViewMayDiscard {
+  uint32 player = 1;
+  uint32 source = 2;
+  repeated ChoiceItem items = 3;
+}
+
+// This player may exile one of `items` (a nonland card they just discarded, in their own public
+// graveyard) face-up with impulse-play permission until end of turn, or decline (Conspiracy
+// Theorist's "you may exile one of them from your graveyard … you may cast it this turn").
+message PendingChoiceViewMayExileDiscardedToPlay {
   uint32 player = 1;
   uint32 source = 2;
   repeated ChoiceItem items = 3;
@@ -715,7 +711,8 @@ message PendingChoiceViewRevealedCardToBattlefieldOrHand {
 message PendingChoiceViewChooseMode {
   uint32 player = 1;
   uint32 source = 2;
-  repeated string labels = 3;
+  reserved 3;
+  repeated MessageRef labels = 4;
 }
 
 // This player may choose `choose` distinct modes of a modal *triggered* ability (CR 700.2 —
@@ -767,11 +764,14 @@ message PendingChoiceViewChooseCardName {
 
 // This player (an entering permanent's controller) may have `source` enter as a copy of one of
 // `items` (every other creature on the battlefield, public — CR 706/707.2, Altered Ego, Cursed
-// Mirror). Answered with the chosen creature, or a decline (the "you may").
+// Mirror). Answered with the chosen creature, or a decline (the "you may"). Some non-copy choices
+// reuse the same "pick one object or decline" wire shape; `put_counter_on_creature` tells the
+// client to render "put a +1/+1 counter on a creature" copy instead of copy-entry wording.
 message PendingChoiceViewChooseCopyTarget {
   uint32 player = 1;
   uint32 source = 2;
   repeated ChoiceItem items = 3;
+  bool put_counter_on_creature = 4;
 }
 
 // This player (the deployed attachment's controller) must choose a host among `items` (the
@@ -783,6 +783,15 @@ message PendingChoiceViewChooseAttachHost {
   uint32 attachment = 2;
   repeated ChoiceItem items = 3;
   bool optional = 4;
+}
+
+// Legend rule (CR 704.5j): this player controls two or more legendary permanents named `name`
+// (`items`) and must choose exactly one to keep; the rest leave the battlefield. `items` are
+// public battlefield permanents.
+message PendingChoiceViewChooseLegendaryKeep {
+  uint32 player = 1;
+  string name = 2;
+  repeated ChoiceItem items = 3;
 }
 
 // This player (the active player at their untap step) may choose not to untap any of `items` —
@@ -849,8 +858,9 @@ message PendingChoiceViewCastCreatureFaceDown {
 message PendingChoiceViewChooseSplittingOpponent {
   uint32 player = 1;
   uint32 source = 2;
-  string label = 3;
+  reserved 3;
   repeated ChoiceItem items = 4;
+  MessageRef label = 5;
 }
 
 // This player (the opponent `ChooseSplittingOpponent` named) must assign each of `items` (Fact
@@ -1952,10 +1962,11 @@ message DeltaEnvelope {
   uint64 seq = 1;
   repeated VisibleEvent events = 2;
   VisibleState state = 3;
-  // Human-readable labels of actions the server auto-submitted in this frame (a forced
-  // discard, an auto-passed priority with nothing to do) — for the client's "automatic"
-  // styling, so a forced play is never mistaken for the player's own move.
-  repeated string auto_actions = 4;
+  reserved 4;
+  // Stable labels of actions the server auto-submitted in this frame (a forced discard, an
+  // auto-passed priority with nothing to do) — for the client's "automatic" styling, so a
+  // forced play is never mistaken for the player's own move.
+  repeated MessageRef auto_actions = 5;
 }
 
 message SnapshotFrame {

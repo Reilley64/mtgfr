@@ -50,17 +50,20 @@ impl Game {
     /// The zone an object currently occupies — following its lineage if the id has since
     /// moved on (so an old id still reports where the card ended up).
     pub fn zone_of(&self, object: ObjectId) -> Zone {
-        match self.objects[object as usize] {
+        match &self.objects[object as usize] {
             Object::Card(c) => c.zone,
             Object::Spell(_) => Zone::Stack,
             Object::Permanent(_) => Zone::Battlefield,
-            Object::Moved { to } => self.zone_of(to),
-            Object::Removed => panic!("object {object} has left the game"),
+            Object::Moved { to } => self.zone_of(*to),
+            Object::Removed { .. } => panic!("object {object} has left the game"),
         }
     }
 
-    /// Create a card on the bottom of `player`'s library, returning its id.
-    pub(crate) fn spawn_in_library(&mut self, player: PlayerId, def: CardDef) -> ObjectId {
+    /// Create a card on the bottom of `player`'s library, returning its id. Public alongside the
+    /// other `spawn_*` test/setup helpers so a server test can stock a library and avoid decking
+    /// its active player at the draw step.
+    pub fn spawn_in_library(&mut self, player: PlayerId, def: CardDef) -> ObjectId {
+        let def = intern_card_def(def);
         let id = self.create_object(
             None,
             Object::Card(Card {
@@ -80,7 +83,8 @@ impl Game {
     pub fn stack_library(&mut self, player: PlayerId, defs: &[CardDef]) -> Vec<ObjectId> {
         self.players[player.0 as usize].library.clear();
         defs.iter()
-            .map(|&def| self.spawn_in_library(player, def))
+            .cloned()
+            .map(|def| self.spawn_in_library(player, def))
             .collect()
     }
 
@@ -190,7 +194,7 @@ impl Game {
                         player,
                         object: next,
                         from,
-                        card: self.def_of(from),
+                        card: self.def_id_of(from),
                     };
                     next += 1;
                     event

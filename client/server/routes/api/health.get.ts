@@ -1,3 +1,3 @@
-import { defineEventHandler } from "nitro/h3";
+import { defineHandler } from "nitro/h3";
 
-export default defineEventHandler(() => ({ ok: true }));
+export default defineHandler(() => ({ ok: true }));

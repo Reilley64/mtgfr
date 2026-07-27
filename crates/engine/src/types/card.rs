@@ -1,6 +1,19 @@
+use std::sync::Arc;
+
 use super::*;
 #[cfg(feature = "card-dsl")]
 use crate::de;
+use crate::{CardId, card_def};
+
+/// Shared owned slice storage for `CardDef` and nested payloads.
+pub fn arc_slice<T, const N: usize>(items: [T; N]) -> Arc<[T]> {
+    Arc::from(items)
+}
+
+/// Empty shared slice helper for tests and handwritten `CardDef` stubs.
+pub fn empty_slice<T>() -> Arc<[T]> {
+    Arc::default()
+}
 
 /// A seat at the table.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -8,6 +21,24 @@ pub struct PlayerId(pub u8);
 
 /// A game object (a card in some zone), identified for its lifetime in the game.
 pub type ObjectId = u32;
+
+/// What a creature is attacking (CR 508.1): a player, or a planeswalker an opponent controls.
+/// The *defending player* — who declares blocks, pays pillow-fort taxes, and is read by every
+/// "attacks you" trigger (CR 509.1a) — is the player for `Player`, or the planeswalker's
+/// controller for `Planeswalker`. That mapping lives in [`Game::defender_of`], so the whole
+/// blocking/tax/trigger/goad machinery is unchanged by planeswalker attacks — only declaration
+/// legality and combat-damage delivery read the distinction.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AttackTarget {
+    Player(PlayerId),
+    Planeswalker(ObjectId),
+}
+
+impl From<PlayerId> for AttackTarget {
+    fn from(player: PlayerId) -> Self {
+        AttackTarget::Player(player)
+    }
+}
 
 /// The zones a card can occupy. Phase 0 only exercises hand → stack → battlefield → graveyard.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -23,7 +54,11 @@ pub enum Zone {
 
 /// A step within a turn. Combat's five steps are modelled explicitly so triggers and
 /// combat actions have precise timing slots. Untap and Cleanup have no priority window.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+///
+/// Variants are declared in turn order and `Ord` follows that order, so `step < Step::X` reads as
+/// "earlier in this turn than X" (Master Warcraft's "only before attackers are declared"). There's
+/// no extra-combat machinery, so a turn walks each variant at most once and the order is total.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 #[cfg_attr(
     feature = "card-dsl",
     derive(serde::Deserialize),
@@ -155,7 +190,7 @@ pub enum SpellSpeed {
 /// color (the common case — White Knight, "protection from black"), or a non-color quality —
 /// "protection from creatures" (Spirit Mantle, CR 702.16 grants protection from a card type)
 /// or "protection from multicolored" (Stonecoil Serpent, CR 105.4's ≥2-colors quality). Kept
-/// `Copy` so [`Keyword`]/[`CardDef`] stay `Copy`. In TOML, `{ protection = "<value>" }` where
+/// `Copy` so [`Keyword`] stays a small value enum. In TOML, `{ protection = "<value>" }` where
 /// `<value>` is a color name or `"creatures"`/`"multicolored"` — see the `de` module.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProtectionScope {
@@ -228,6 +263,9 @@ pub enum Keyword {
     /// Can be blocked only by artifact creatures and/or black creatures (CR 702.36b). See
     /// [`Game::can_block`].
     Fear,
+    /// Can be blocked only by artifact creatures and/or creatures that share a color with it
+    /// (CR 702.13b) — the color-sharing sibling of [`Fear`](Self::Fear). See [`Game::can_block`].
+    Intimidate,
     /// Elusive Otter's printed evasion static ("Creatures with power less than this creature's
     /// power can't block it") — MTG names no keyword for it.
     /// ponytail: modeled as a card-specific keyword-bag arm on the shared block-legality check
@@ -275,7 +313,7 @@ pub enum Keyword {
 /// A small set of the permanent card types a card carries, as a bitset (creature, artifact,
 /// enchantment, planeswalker, land). Used two ways: a permanent's *own* types (its [`CardKind`]
 /// plus a creature's additional types — see [`CardKind::Creature`]'s `also`), and a
-/// [`PermanentFilter`]'s required-type set. Kept `Copy` so [`CardDef`] stays `Copy`.
+/// [`PermanentFilter`]'s required-type set. Kept `Copy` because it is a tiny value bitset.
 /// ponytail: no subtypes (Goblin, Aura) — those are #15/#18; this is card *types* only.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct TypeSet(u8);
@@ -383,7 +421,7 @@ impl CardKind {
 
 /// When an ability happens.
 // The `Activated(ActivationCost)` variant embeds `Effect` and dwarfs the others, but boxing
-// would break `CardDef: Copy`; same tolerated posture as `Effect`/`StackItem`/`StackEntry`.
+// would add indirection to a hot authored enum. Same tolerated posture as `Effect`/`StackItem`.
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Timing {
@@ -399,7 +437,7 @@ pub enum Timing {
 }
 
 /// A card's behavior: an effect gated by a timing.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Ability {
     pub timing: Timing,
     pub effect: Effect,
@@ -454,15 +492,15 @@ pub struct AlternativeCost {
     /// The non-mana cost paid instead of the printed mana cost, fired at cast time (CR 601.2f —
     /// before the spell is put on the stack), not a resolution effect. Leaked to `'static` like
     /// every other nested [`Effect`] a `Copy` struct holds ([`GrantedAbility::effects`],
-    /// [`Effect::Misc(MiscEffect::ScheduleAtNextUpkeep)`]'s `then`) — `Effect` can't hold itself by value, and
-    /// `CardDef` (which owns an `AlternativeCost`) has to stay `Copy`.
+    /// [`Effect::Misc(MiscEffect::ScheduleAtNextUpkeep)`]'s `then`) so `AlternativeCost` stays a
+    /// compact scalar value.
     #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_effect"))]
     pub rider: &'static Effect,
 }
 
 /// A card definition (identity + behavior). Deserializable (under the `card-dsl` feature)
 /// straight from a card's TOML file — the `cards` crate loads the pool this way.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CardDef {
     /// Scryfall oracle id — canonical Card identity (accounts-decks-and-catalog spec). Empty for test stubs; tokens
     /// that have a Scryfall token card stamp theirs so battlefield art resolves.
@@ -536,26 +574,25 @@ pub struct CardDef {
     /// gated modal card ever lands.
     pub modal_choose_max_if_commander: bool,
     /// The card's intrinsic keywords.
-    pub keywords: &'static [Keyword],
+    pub keywords: Arc<[Keyword]>,
     /// Keywords granted only while a `Condition` holds (CR 702 conditional statics —
     /// Primordial Hydra's "has trample as long as it has ten or more +1/+1 counters"), read by
     /// the characteristics recompute alongside `keywords`. Empty for every ordinary card.
-    pub conditional_keywords: &'static [(Condition, Keyword)],
-    /// The card's abilities. `&'static` keeps `CardDef` `Copy` — loaded card data is
-    /// interned to `'static` at deserialization time (see the `de` module).
-    pub abilities: &'static [Ability],
+    pub conditional_keywords: Arc<[(Condition, Keyword)]>,
+    /// The card's abilities.
+    pub abilities: Arc<[Ability]>,
     /// Extra colors a card's real rules text carries for color identity (CR 903.4) that the
     /// simplified gameplay model (cost pips, a land's single modeled producer, `AddMana`
     /// effects, activated-ability costs) doesn't otherwise capture — e.g. the dropped half of
     /// a flattened dual/pain/filter land, or a colored activated ability cut entirely. Empty
     /// for ordinary cards. `identity = [...]` in TOML; consumed by `schema::color_identity`.
-    pub identity_pips: &'static [Color],
+    pub identity_pips: Arc<[Color]>,
     /// Explicit colors (CR 105.2a: a color indicator, or CR 111.4's "colors are determined by
     /// their text" for a token) overriding the cost-pip derivation in [`color_identity`] — a
-    /// token has no mana cost, so its color must be stated outright. `&'static` (keeps `CardDef`
-    /// `Copy`); empty (every ordinary card) falls back to deriving color from cost pips as usual.
+    /// token has no mana cost, so its color must be stated outright. Empty (every ordinary card)
+    /// falls back to deriving color from cost pips as usual.
     /// `colors = ["green"]` / `["white", "black"]` in TOML.
-    pub colors: &'static [Color],
+    pub colors: Arc<[Color]>,
     /// Devoid (CR 702.114a): the card is colorless despite any colored mana-cost pips —
     /// overrides the cost-pip derivation in [`color_identity`] to all-false, taking priority
     /// over `colors` (a devoid card is never also given an explicit color list). `devoid = true`
@@ -602,6 +639,12 @@ pub struct CardDef {
     /// [`Game::cast_timing_ok`]. `cast_only_during_combat = true` in TOML; `false` (every ordinary
     /// card) leaves timing to `kind`'s instant/sorcery speed alone.
     pub cast_only_during_combat: bool,
+    /// "Cast this spell only before attackers are declared" (CR 601.3e's named-window restriction
+    /// — Master Warcraft): legal from untap through the declare-attackers step, and inside that
+    /// step only until the declaration is made. Like [`Self::cast_only_during_combat`] it layers
+    /// on top of the ordinary instant-speed gate and is checked in [`Game::cast_timing_ok`].
+    /// `cast_only_before_attackers = true` in TOML; `false` for every ordinary card.
+    pub cast_only_before_attackers: bool,
     /// A one-line plain-English note on how this card's modeled behavior diverges from its
     /// printed rules text (a dropped clause, a coarsened trigger, a folded-together mechanic) —
     /// the same fact a `# ponytail:` TOML comment records, but as a datum the catalog/deck
@@ -613,10 +656,10 @@ pub struct CardDef {
     /// engine never parses it (behavior comes from `abilities`/`keywords`). A DFC joins its faces'
     /// text. `oracle = "…"` in TOML; `None` for a card whose text isn't recorded (or a vanilla).
     pub oracle: Option<&'static str>,
-    /// The card's set/edition code (Scryfall's lowercase code, e.g. `"soc"`). Pure catalog
-    /// metadata — the engine never consults it; it exists so the deck-builder search can match
-    /// on set. `set = "…"` in TOML; empty for a card whose set isn't recorded yet.
-    pub set: &'static str,
+    /// Scryfall set codes for every known printing of this card. Pure catalog + coverage
+    /// metadata — the engine never consults it for rules. `sets = ["soc", …]` in TOML; empty
+    /// for a card whose printings are not recorded yet.
+    pub sets: Arc<[&'static str]>,
     /// The card's printed subtypes (the segment after the "—": creature types like "Goblin",
     /// "Wizard"; also artifact/enchantment subtypes). Gameplay-relevant, not just catalog
     /// metadata: [`PermanentFilter::subtypes`] and [`Effect::Static(StaticEffect::Anthem)`]'s `subtypes` axis
@@ -624,11 +667,11 @@ pub struct CardDef {
     /// *land's* types stay on [`CardKind::Land::subtypes`] (rules use those); `schema::catalog_card`
     /// unions the two for the wire. `subtypes = […]` in TOML; empty when unrecorded or genuinely
     /// none — including most token profiles today (grown card by card as tribal payoffs need them).
-    pub subtypes: &'static [&'static str],
+    pub subtypes: Arc<[&'static str]>,
     /// Scryfall Tagger oracle-tag slugs (catalog metadata for deck-builder search). Pure catalog
     /// metadata — the engine never reads this at runtime. `otags = […]` in TOML; empty when
     /// unrecorded. Backfilled from Scryfall by `tooling/backfill-otags.mjs`.
-    pub otags: &'static [&'static str],
+    pub otags: Arc<[&'static str]>,
     /// Cycling {N} (CR 702.29a): "{N}, Discard this card: Draw a card," activatable from the
     /// hand. `None` for a card with no cycling. `cycling = { generic = N }` in TOML (the same
     /// `[cost]`-table shape as a spell's cost).
@@ -652,7 +695,7 @@ pub struct CardDef {
     /// index selecting which entry to activate. `[[hand_ability]]` array-of-tables in TOML: each
     /// entry an `[[hand_ability]]` table with its own `[hand_ability.cost]` (same `[cost]`-table
     /// shape as a spell's cost) plus `[[hand_ability.effects]]` (the standard effects-array shape).
-    pub hand_ability: &'static [HandActivatedAbility],
+    pub hand_ability: Arc<[HandActivatedAbility]>,
     /// Forecast (CR 702.57 — Skyscribing's "Forecast — {2}{U}, Reveal this card from your hand:
     /// Each player draws a card."): a hand-activated ability that, unlike [`Self::hand_ability`],
     /// *reveals* rather than discards its card — the card stays in hand — and is activatable only
@@ -789,25 +832,25 @@ pub struct CardDef {
     /// A "prepare" double-faced card's back face (soc/sos — CR-style): the front creature has an
     /// ability that makes it "become prepared" (a [`Permanent::prepared`] status), and while
     /// prepared its controller may cast a copy of this back-face spell (see [`Game::cast_prepared`]),
-    /// which unprepares it. `None` for every ordinary card. A `&'static CardDef` (not a nested
-    /// `CardDef` by value) so [`CardDef`] stays `Copy` and finitely sized — the back def is leaked
-    /// to `'static` at load, like the rest of the interned card data (see the `de` module).
-    /// `[back]` (an inline `CardDef` table) in TOML.
-    pub back: Option<&'static CardDef>,
+    /// which unprepares it. `None` for every ordinary card. Stored as the nested face's interned
+    /// [`CardId`] so lookups stay pure once the front face is loaded. `[back]` (an inline
+    /// `CardDef` table) in TOML.
+    pub back: Option<CardId>,
     /// An adventure card's adventure half (CR 715 — soc/sos): the front face is the creature
     /// (this `CardDef`), and its `adventure` holds the instant/sorcery spell you may cast from
     /// hand instead (its own `cost`, `kind`, and `abilities`). On resolution the card is exiled
     /// "on an adventure" (CR 715.3d) and its owner may cast the creature half from exile later at
-    /// normal cost (see [`Game::cast_adventure`]). `None` for every ordinary card. A
-    /// `&'static CardDef` (not a nested `CardDef` by value), like [`Self::back`], so [`CardDef`]
-    /// stays `Copy`. `[adventure]` (an inline `CardDef` table) in TOML.
-    pub adventure: Option<&'static CardDef>,
+    /// normal cost (see [`Game::cast_adventure`]). `None` for every ordinary card. Stored as the
+    /// nested face's interned [`CardId`] for the same reason as [`Self::back`]. `[adventure]` (an
+    /// inline `CardDef` table) in TOML.
+    pub adventure: Option<CardId>,
     /// A split card's two castable halves (CR 709 — Fire // Ice): this `CardDef` is the *fused*
     /// card (the combined characteristics every zone but the stack sees, CR 709.4 — combined name,
-    /// mana cost, and colors), and `halves` holds the two faces you may actually cast. Only one
-    /// half is ever cast (CR 709.4a), so casting goes through [`Game::cast_split_half`] and the
-    /// fused def itself is not castable. Empty for every non-split card. `[[half]]` tables in TOML.
-    pub halves: &'static [CardDef],
+    /// mana cost, and colors), and `halves` holds the interned face ids you may actually cast.
+    /// Only one half is ever cast (CR 709.4a), so casting goes through [`Game::cast_split_half`]
+    /// and the fused def itself is not castable. Empty for every non-split card. `[[half]]`
+    /// tables in TOML.
+    pub halves: Arc<[CardId]>,
     /// Suspend N—[cost] (CR 702.62 — Rousing Refrain): "Rather than cast this card from your
     /// hand, you may pay [cost] and exile it with N time counters on it." `None` for a card
     /// without suspend. A rules-keyword (not a `[[abilities]]`): a `Some` lets its owner pay
@@ -831,8 +874,9 @@ pub struct CardDef {
     /// Activate only as a sorcery." `None` for a card without encore. A rules-keyword (not a
     /// `[[abilities]]`): a `Some` holds the encore **mana** cost; the "exile this card from your
     /// graveyard" half of the cost is intrinsic to the activation (paid by [`Game::encore`], not
-    /// stored as a pip). A `&'static Cost` (leaked at load, like [`Self::suspend`]'s cost) so
-    /// [`CardDef`] stays `Copy`. `[encore]` in TOML, the same `[cost]`-table shape as a spell's cost.
+    /// stored as a pip). A `&'static Cost` (leaked at load, like [`Self::suspend`]'s cost) keeps
+    /// the nested rider small and shared. `[encore]` in TOML, the same `[cost]`-table shape as a
+    /// spell's cost.
     pub encore: Option<&'static Cost>,
     /// "You may choose not to untap this during your untap step" (CR 502.2 — Rubinia Soulsinger):
     /// the untap turn-based action pauses this permanent's controller on a yes/no for each such
@@ -858,10 +902,34 @@ pub struct CardDef {
     /// fabricated-single-ability `Game::queue_self_sacrifice_trigger` evoke also uses.
     /// `vanishing = N` in TOML.
     pub vanishing: Option<u8>,
+    /// A cast-time upper bound on the announced value of {X}, beyond the mana the caster can pay
+    /// (CR 601.2b — Open the Way's "X can't be greater than the number of players in the game").
+    /// `None` (every ordinary {X} spell) leaves X bounded only by affordability. `Some(cap)`
+    /// rejects a cast whose announced X exceeds the cap in [`Game::validate_cast`] and clamps the
+    /// count-picker's offered ceiling in the snapshot. `cast_x_max = "player_count"` in TOML;
+    /// ignored on a card with no {X}.
+    pub cast_x_max: Option<CastXMax>,
+}
+
+/// A cast-time ceiling on a spell's announced {X} that isn't derived from mana (CR 601.2b).
+/// See [`CardDef::cast_x_max`].
+/// ponytail: the pool has exactly one such cap (Open the Way's player-count bound), so this is a
+/// single-variant enum rather than a general `Amount`. Grow a variant (or fold in an `Amount`)
+/// when a second differently-bounded {X} spell lands.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "card-dsl",
+    derive(serde::Deserialize),
+    serde(rename_all = "snake_case")
+)]
+pub enum CastXMax {
+    /// "X can't be greater than the number of players in the game" — the count of living seats
+    /// (CR 800.4a losers drop out), read from [`Game::living_player_count`].
+    PlayerCount,
 }
 
 /// The riders on an [`CardDef::enter_as_copy`] replacement (CR 706/707.2). `Copy` — all scalars,
-/// no `Vec` — so [`CardDef`] stays `Copy`. `until_eot` reverts the copy at cleanup (Cursed Mirror,
+/// no `Vec` — so the nested replacement stays compact. `until_eot` reverts the copy at cleanup (Cursed Mirror,
 /// [`Permanent::reverts_to_def_eot`]); `extra_counters` are additional +1/+1 counters the copy
 /// enters with (Altered Ego's X); `gains_haste` grants the copy haste (Cursed Mirror's "except it
 /// has haste"); `of` is the copyable type axis (Copy Enchantment's "any enchantment", CR 707.2,
@@ -919,7 +987,7 @@ pub struct Suspend {
 /// ability whose payload is authored rather than a fixed draw-1. `cost` is the mana paid
 /// alongside "Discard this card" (the rest of the cost, like cycling's); `effects` runs in order
 /// when the ability resolves. `[hand_ability]` in TOML.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(
     feature = "card-dsl",
     derive(serde::Deserialize),
@@ -927,8 +995,8 @@ pub struct Suspend {
 )]
 pub struct HandActivatedAbility {
     pub cost: Cost,
-    #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_slice"))]
-    pub effects: &'static [Effect],
+    #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::arc_slice"))]
+    pub effects: Arc<[Effect]>,
 }
 
 impl CardDef {
@@ -939,7 +1007,7 @@ impl CardDef {
     /// correctly. Each color/color hybrid pip counts 1 (CR 202.3f — both halves are one mana;
     /// Balefire Liege's {2}{R/W}{R/W}{R/W} is mana value 5). A Phyrexian pip counts 1 too, however
     /// it's paid (Vraska, Betrayal's Sting's {4}{B}{B/P} is mana value 6).
-    pub fn mana_value(self) -> u32 {
+    pub fn mana_value(&self) -> u32 {
         let cost = self.cost;
         cost.generic as u32
             + cost.colorless as u32
@@ -961,7 +1029,7 @@ impl CardDef {
     /// reads the printed cost (CR 202.3b treats `{X}` as 0 off the stack), which is safe here
     /// because [`SpendRestriction::ManaValueAtLeastOrHasX`] always also accepts `has_x`
     /// regardless of the value actually chosen for `{X}`.
-    pub fn spell_characteristics(self) -> SpellCharacteristics {
+    pub fn spell_characteristics(&self) -> SpellCharacteristics {
         SpellCharacteristics {
             mana_value: self.mana_value(),
             has_x: self.cost.x > 0,
@@ -978,13 +1046,13 @@ impl CardDef {
 /// `schema::color_identity` (crates/schema/src/lib.rs), which `server::legality::validate`
 /// checks against the pool; `def.colors` never affects deck legality (no pool token is
 /// deck-legal, and no real card sets it).
-pub fn color_identity(def: CardDef) -> [bool; Color::COUNT] {
+pub fn color_identity(def: &CardDef) -> [bool; Color::COUNT] {
     if def.devoid {
         return [false; Color::COUNT];
     }
     if !def.colors.is_empty() {
         let mut identity = [false; Color::COUNT];
-        for &color in def.colors {
+        for &color in def.colors.iter() {
             identity[color.index()] = true;
         }
         return identity;
@@ -1009,7 +1077,7 @@ pub fn color_identity(def: CardDef) -> [bool; Color::COUNT] {
 
 /// Whether `card` is legal in a deck led by `commander` — its color identity must be a
 /// subset of the commander's.
-pub fn within_identity(card: CardDef, commander: CardDef) -> bool {
+pub fn within_identity(card: &CardDef, commander: &CardDef) -> bool {
     let allowed = color_identity(commander);
     let needed = color_identity(card);
     (0..Color::COUNT).all(|i| !needed[i] || allowed[i])
@@ -1018,22 +1086,23 @@ pub fn within_identity(card: CardDef, commander: CardDef) -> bool {
 /// Whether `def` is a basic land: has the "Basic" supertype (CR 205.4a). Reads
 /// [`CardKind::Land`]'s `basic` flag rather than the card's name (or its `subtypes`, which a
 /// nonbasic land can share without being basic — see the field's doc).
-pub(crate) fn is_basic_land(def: CardDef) -> bool {
+pub(crate) fn is_basic_land(def: &CardDef) -> bool {
     matches!(def.kind, CardKind::Land { basic: true, .. })
 }
 
 /// A permanent entering the battlefield: all per-object state at its defaults.
 pub(crate) fn fresh_permanent(
-    def: CardDef,
+    def: CardId,
     owner: PlayerId,
     summoning_sick: bool,
     commander: bool,
 ) -> Permanent {
+    let printed = card_def(def);
     Permanent {
         def,
         owner,
         level: 1,
-        tapped: def.enters_tapped,
+        tapped: printed.enters_tapped,
         summoning_sick,
         entered_this_turn: true,
         attacked_this_turn: false,
@@ -1043,14 +1112,18 @@ pub(crate) fn fresh_permanent(
         temp_power: 0,
         temp_toughness: 0,
         base_pt_set_eot: None,
+        base_pt_set_eot_timestamp: 0,
         added_types_eot: TypeSet::NONE,
+        added_types_eot_timestamp: 0,
         added_subtypes_eot: &[],
         added_colors_eot: &[],
         set_color_eot: None,
         temp_keywords: &[],
         temp_lost_keywords: &[],
         set_base_pt: None,
+        set_base_pt_timestamp: 0,
         added_types: TypeSet::NONE,
+        added_types_timestamp: 0,
         added_subtypes: &[],
         granted_keywords: &[],
         marked_damage: 0,
@@ -1058,15 +1131,17 @@ pub(crate) fn fresh_permanent(
         commander,
         token: false,
         attached_to: None,
-        loyalty: starting_loyalty(def),
+        continuous_timestamp: 0,
+        loyalty: starting_loyalty(&printed),
         loyalty_activated: false,
         finality_counter: false,
         regeneration_shields: 0,
         prepared: false,
-        echo_unpaid: def.echo.is_some(),
+        echo_unpaid: printed.echo.is_some(),
         chosen_subtype: None,
         chosen_color: None,
         entered_with_x: 0,
+        entered_multikicker_count: 0,
         cast_time_enchant_target: None,
         enchant_rewrite_host: None,
         vow_protected: None,
@@ -1077,15 +1152,16 @@ pub(crate) fn fresh_permanent(
         flipped: false,
         masked: false,
         evoked: false,
-        entered_times_kicked: 0,
         reverts_to_def_eot: None,
         spent_colors: [false; Color::COUNT],
+        cast_from_hand: false,
+        copy_rider_keywords: &[],
     }
 }
 
 /// A planeswalker's printed starting loyalty (CR 606.5b — it enters with that many loyalty
 /// counters); 0 for any other card kind.
-pub(crate) fn starting_loyalty(def: CardDef) -> i32 {
+pub(crate) fn starting_loyalty(def: &CardDef) -> i32 {
     match def.kind {
         CardKind::Planeswalker { loyalty } => loyalty,
         _ => 0,
@@ -1094,7 +1170,7 @@ pub(crate) fn starting_loyalty(def: CardDef) -> i32 {
 
 /// A token entering the battlefield: like [`fresh_permanent`], but flagged as a token
 /// (ceases to exist when it leaves the battlefield) and summoning-sick.
-pub(crate) fn fresh_token(def: CardDef, controller: PlayerId) -> Permanent {
+pub(crate) fn fresh_token(def: CardId, controller: PlayerId) -> Permanent {
     Permanent {
         token: true,
         ..fresh_permanent(def, controller, true, false)
@@ -1201,11 +1277,11 @@ fn treasure_token_builtin() -> CardDef {
         modal_choose: 1,
         modal_choose_max: None,
         modal_choose_max_if_commander: false,
-        keywords: &[],
-        conditional_keywords: &[],
-        abilities: ABILITIES,
-        identity_pips: &[],
-        colors: &[],
+        keywords: empty_slice(),
+        conditional_keywords: empty_slice(),
+        abilities: ABILITIES.into(),
+        identity_pips: empty_slice(),
+        colors: empty_slice(),
         devoid: false,
         enters_tapped: false,
         enters_tapped_unless: None,
@@ -1213,11 +1289,12 @@ fn treasure_token_builtin() -> CardDef {
         free_cast_if: None,
         alternative_cost: None,
         cast_only_during_combat: false,
+        cast_only_before_attackers: false,
         approximates: None,
         oracle: None,
-        set: "",
-        subtypes: &["Treasure"],
-        otags: &[],
+        sets: empty_slice(),
+        subtypes: arc_slice(["Treasure"]),
+        otags: empty_slice(),
         cycling: None,
         cycling_sacrifice: SacrificeCost::None,
         flashback: None,
@@ -1237,14 +1314,15 @@ fn treasure_token_builtin() -> CardDef {
         enchant_graveyard: false,
         back: None,
         adventure: None,
-        halves: &[],
+        halves: empty_slice(),
         suspend: None,
         vanishing: None,
+        cast_x_max: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
         encore: None,
-        hand_ability: &[],
+        hand_ability: empty_slice(),
         forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
@@ -1270,11 +1348,11 @@ pub(crate) fn rogue_token_stub() -> CardDef {
         modal_choose: 1,
         modal_choose_max: None,
         modal_choose_max_if_commander: false,
-        keywords: &[],
-        conditional_keywords: &[],
-        abilities: &[],
-        identity_pips: &[],
-        colors: &[Color::Black],
+        keywords: empty_slice(),
+        conditional_keywords: empty_slice(),
+        abilities: empty_slice(),
+        identity_pips: empty_slice(),
+        colors: arc_slice([Color::Black]),
         devoid: false,
         enters_tapped: false,
         enters_tapped_unless: None,
@@ -1282,11 +1360,12 @@ pub(crate) fn rogue_token_stub() -> CardDef {
         free_cast_if: None,
         alternative_cost: None,
         cast_only_during_combat: false,
+        cast_only_before_attackers: false,
         approximates: None,
         oracle: None,
-        set: "",
-        subtypes: &["Rogue"],
-        otags: &[],
+        sets: empty_slice(),
+        subtypes: arc_slice(["Rogue"]),
+        otags: empty_slice(),
         cycling: None,
         cycling_sacrifice: SacrificeCost::None,
         flashback: None,
@@ -1306,14 +1385,15 @@ pub(crate) fn rogue_token_stub() -> CardDef {
         enchant_graveyard: false,
         back: None,
         adventure: None,
-        halves: &[],
+        halves: empty_slice(),
         suspend: None,
         vanishing: None,
+        cast_x_max: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
         encore: None,
-        hand_ability: &[],
+        hand_ability: empty_slice(),
         forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
@@ -1341,11 +1421,11 @@ pub(crate) fn illusion_token() -> CardDef {
         modal_choose: 1,
         modal_choose_max: None,
         modal_choose_max_if_commander: false,
-        keywords: &[],
-        conditional_keywords: &[],
-        abilities: &[],
-        identity_pips: &[],
-        colors: &[Color::Blue],
+        keywords: empty_slice(),
+        conditional_keywords: empty_slice(),
+        abilities: empty_slice(),
+        identity_pips: empty_slice(),
+        colors: arc_slice([Color::Blue]),
         devoid: false,
         enters_tapped: false,
         enters_tapped_unless: None,
@@ -1353,11 +1433,12 @@ pub(crate) fn illusion_token() -> CardDef {
         free_cast_if: None,
         alternative_cost: None,
         cast_only_during_combat: false,
+        cast_only_before_attackers: false,
         approximates: None,
         oracle: None,
-        set: "",
-        subtypes: &["Illusion"],
-        otags: &[],
+        sets: empty_slice(),
+        subtypes: arc_slice(["Illusion"]),
+        otags: empty_slice(),
         cycling: None,
         cycling_sacrifice: SacrificeCost::None,
         flashback: None,
@@ -1377,14 +1458,15 @@ pub(crate) fn illusion_token() -> CardDef {
         enchant_graveyard: false,
         back: None,
         adventure: None,
-        halves: &[],
+        halves: empty_slice(),
         suspend: None,
         vanishing: None,
+        cast_x_max: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
         encore: None,
-        hand_ability: &[],
+        hand_ability: empty_slice(),
         forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
@@ -1392,9 +1474,9 @@ pub(crate) fn illusion_token() -> CardDef {
 }
 
 /// A card at rest in a hidden/graveyard/command zone: identity only, no battlefield state.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub(crate) struct Card {
-    pub(crate) def: CardDef,
+    pub(crate) def: CardId,
     pub(crate) owner: PlayerId,
     /// One of Library / Hand / Graveyard / Exile / Command.
     pub(crate) zone: Zone,
@@ -1410,9 +1492,9 @@ pub(crate) struct Card {
 }
 
 /// A spell on the stack (a cast card waiting to resolve).
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub(crate) struct Spell {
-    pub(crate) def: CardDef,
+    pub(crate) def: CardId,
     pub(crate) controller: PlayerId,
     /// The chosen targets (CR 601.2c). A single-target spell fills one slot; Aether Gale fills up
     /// to six. Empty until a multi-target spell's targets are chosen (see [`Event::SpellTargetsChosen`]).
@@ -1429,6 +1511,13 @@ pub(crate) struct Spell {
     pub(crate) commander: bool,
     /// The chosen `{X}` value, read by X-scaled effects at resolution (0 if the spell has no `{X}`).
     pub(crate) x: u32,
+    /// The color named by a resolution-time [`Effect::Choice(ChoiceEffect::ChooseColor)`] step
+    /// earlier in this spell's own effect `Sequence` (Bathe in Light's "Choose a color. Target
+    /// creature ... gain protection from the chosen color"). The permanent-side twin is
+    /// [`Permanent::chosen_color`] — a spell isn't a permanent while resolving, so it needs its
+    /// own slot rather than sharing that one. `None` until the choice is answered, and for every
+    /// spell without such a choice.
+    pub(crate) chosen_color: Option<Color>,
     /// A modal spell's chosen modes (CR 700.2), each with its own target. An empty selection for
     /// a non-modal spell (which uses `target` and runs every effect).
     pub(crate) modes: Modes,
@@ -1453,6 +1542,12 @@ pub(crate) struct Spell {
     /// hand"); read at [`Event::SpellCast`] apply time off the source card's zone before it
     /// moves to the stack (see `apply.rs`).
     pub(crate) cast_from_hand: bool,
+    /// Whether this spell was cast during its controller's own precombat or postcombat main phase
+    /// (CR 505.1a/505.1b) — Sulfurous Blast's "If you cast this spell during your main phase..."
+    /// rider, Return to Dust's optional second target. Computed the way `cast_from_hand` is: read
+    /// off ambient game state (active player/step) at [`Event::SpellCast`] apply time, not a
+    /// player-declared cost (unlike `kicked`/`multikicker_count` below, so no wire field needed).
+    pub(crate) cast_during_main_phase: bool,
     /// CR 601.2d's damage division for a `divided: true` `Effect::Damage(DamageEffect::Target)` on this spell
     /// (Magma Opus's "4 damage divided as you choose"): `(target, assigned amount)` pairs,
     /// settled right after `targets` above by [`Game::maybe_begin_damage_division`]. Empty for a
@@ -1510,12 +1605,11 @@ pub(crate) struct Spell {
     /// `strive_count` is; read at the [`Event::SpellCast`] choke to mint that many copies via
     /// [`Game::mint_spell_copies`] (CR 702.108b).
     pub(crate) replicate_count: u8,
-    /// How many times the caster paid this spell's Multikicker cost (CR 702.34 —
-    /// [`AdditionalCost::multikicker`]), 0 if the spell has no Multikicker cost or the caster paid
-    /// it zero times. Settled before the spell hits the stack (CR 601.2b) and recorded here the
-    /// way `replicate_count` is; copied onto the resulting [`Permanent::entered_times_kicked`] when
-    /// the spell resolves ([`Event::PermanentEntered`]), read by [`Amount::TimesKicked`] (CR
-    /// 702.34c — "enters with a charge counter on it for each time it was kicked").
+    /// How many times the caster paid this spell's Multikicker cost (CR 702.33c —
+    /// [`AdditionalCost::multikicker`]), 0 if the spell has no Multikicker cost or the caster
+    /// paid it zero times. Settled before the spell hits the stack the way `replicate_count` is;
+    /// read by [`Game::spell_multikicker_count`] (an [`Amount::SpellMultikickerCount`] read, and
+    /// [`TargetCount::multikicker_scaled`]'s cast-time target-count substitution).
     pub(crate) multikicker_count: u8,
     /// Whether this spell was cast from a graveyard under Serra Paragon's permission (CR 118.9 —
     /// [`Effect::Static(StaticEffect::PlayFromGraveyardOncePerTurn)`]). Copied onto the resulting
@@ -1564,9 +1658,9 @@ pub(crate) struct Spell {
 }
 
 /// A permanent on the battlefield, with its mutable per-object state.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub(crate) struct Permanent {
-    pub(crate) def: CardDef,
+    pub(crate) def: CardId,
     pub(crate) owner: PlayerId,
     /// This permanent's Class level (CR 717.4 — a Class enchantment's level counter). Raised one
     /// step at a time by [`Effect::Counters(CountersEffect::LevelUp)`] (via [`Event::LeveledUp`]); read by every
@@ -1623,12 +1717,17 @@ pub(crate) struct Permanent {
     /// counters/pumps/anthems), and cleared alongside `temp_power`/`temp_toughness` at cleanup
     /// (see [`Event::TempBoostsEnded`]'s handler). Not a `CardDef`/TOML surface — P/T is derived.
     pub(crate) base_pt_set_eot: Option<(i32, i32)>,
+    /// The CR 613.7 timestamp of [`Permanent::base_pt_set_eot`], so a later 7b set (Darksteel
+    /// Mutation after Trench Gorger, Quandrix Charm after Darksteel Mutation) wins the layer.
+    pub(crate) base_pt_set_eot_timestamp: u64,
     /// Card types added until end of turn by a self-animation (CR 613.4 — Restless Spire's "this
     /// land becomes a … creature … It's still a land"): `TypeSet::CREATURE` while a manland is
     /// animated, unioned onto its printed types by [`Game::effective_types`], and cleared alongside
     /// `base_pt_set_eot` at cleanup (see [`Event::TempBoostsEnded`]'s handler). The twin of
     /// `base_pt_set_eot` for the type layer — runtime bookkeeping, never a `CardDef`/TOML surface.
     pub(crate) added_types_eot: TypeSet,
+    /// The CR 613.7 timestamp of [`Permanent::added_types_eot`] / [`Permanent::added_subtypes_eot`].
+    pub(crate) added_types_eot_timestamp: u64,
     /// Creature subtypes added until end of turn by the same self-animation (Restless Spire →
     /// "Elemental"): unioned onto the printed subtypes by [`Game::effective_subtypes`], cleared with
     /// `added_types_eot`. `&'static` because it's copied straight from the granting ability's
@@ -1671,11 +1770,15 @@ pub(crate) struct Permanent {
     /// because a permanent that leaves the battlefield becomes a new object (CR 400.7). Runtime
     /// bookkeeping, never a `CardDef`/TOML surface.
     pub(crate) set_base_pt: Option<(i32, i32)>,
+    /// The CR 613.7 timestamp of [`Permanent::set_base_pt`].
+    pub(crate) set_base_pt_timestamp: u64,
     /// Card types added indefinitely (CR 611.2c — Excava's "It's a … creature … in addition to its
     /// other types", turning a reanimated noncreature into a creature): the indefinite twin of
     /// `added_types_eot`, unioned onto the printed types by [`Game::effective_types`], never
     /// cleared at cleanup (resets with the object per CR 400.7).
     pub(crate) added_types: TypeSet,
+    /// The CR 613.7 timestamp of [`Permanent::added_types`] / [`Permanent::added_subtypes`].
+    pub(crate) added_types_timestamp: u64,
     /// Creature subtypes added indefinitely by the same set (Excava → "Spirit"): the indefinite
     /// twin of `added_subtypes_eot`, unioned onto the printed subtypes by
     /// [`Game::effective_subtypes`]. `&'static` — copied straight from the granting ability's
@@ -1696,6 +1799,9 @@ pub(crate) struct Permanent {
     /// The permanent this is attached to, for an Aura/Equipment (CR 301.5/303.4). `None`
     /// when unattached. Its grant (see [`Effect::Static(StaticEffect::GrantToAttached)`]) applies to that host.
     pub(crate) attached_to: Option<ObjectId>,
+    /// The CR 613.7 timestamp of this permanent's own static continuous effects while on the
+    /// battlefield. Set when it enters, and refreshed when an attached grant takes hold on a host.
+    pub(crate) continuous_timestamp: u64,
     /// A planeswalker's current loyalty (its loyalty counters, CR 606.5b). 0 for a non-planeswalker.
     pub(crate) loyalty: i32,
     /// Whether a loyalty ability was activated on this planeswalker this turn (CR 606.3 — at most
@@ -1746,6 +1852,14 @@ pub(crate) struct Permanent {
     /// nothing places counters on Fractal Harness itself. 0 for a token or a permanent with no
     /// {X} in its cost.
     pub(crate) entered_with_x: u32,
+    /// How many times the spell that became this permanent paid its Multikicker cost (CR
+    /// 702.33c), fixed for the rest of this permanent's existence — copied from
+    /// [`Spell::multikicker_count`] as it enters, the same "read the spell's own info before
+    /// it's gone" idiom as `entered_with_x` above (Lightkeeper of Emeria's "gain 2 life for each
+    /// time it was kicked" ETB fires after the spell is already this permanent). Read back by
+    /// [`Game::spell_multikicker_count`]. 0 for a token, a permanent with no Multikicker cost, or
+    /// one paid zero times.
+    pub(crate) entered_multikicker_count: u8,
     /// The graveyard-card object id this Aura targeted when cast (CR 303.4a's "enchant creature
     /// card in a graveyard" — [`CardDef::enchant_graveyard`]), locked in as it enters, the same
     /// "read the spell's own info before it's gone" idiom as `entered_with_x` above (the spell
@@ -1831,21 +1945,15 @@ pub(crate) struct Permanent {
     /// casting [`Spell::evoked`]; runtime state, not TOML-authored, defaulted `false` like
     /// `bestowed`.
     pub(crate) evoked: bool,
-    /// How many times this permanent's spell paid its Multikicker cost (CR 702.34 —
-    /// [`AdditionalCost::multikicker`]), fixed as it enters — copied from [`Spell::multikicker_count`]
-    /// the same "read the spell's own info before it's gone" idiom as `evoked` above. 0 for a
-    /// permanent whose card has no Multikicker cost, or that entered by some other means (a token,
-    /// a copy). Read by [`Amount::TimesKicked`] (CR 702.34c).
-    pub(crate) entered_times_kicked: u8,
     /// The `def` to restore at cleanup for an *until-end-of-turn* enter-as-copy (Cursed Mirror,
     /// CR 706/613 — "become a copy … until end of turn"): when the copy is established, the
     /// permanent's original printed `def` is stashed here and `def` is overwritten with the copied
     /// creature's; at cleanup ([`Event::TempBoostsEnded`]) `def` is restored from this and it is
     /// cleared back to `None` (CR 514.2). `None` for an ordinary permanent or a *permanent* copy
     /// (Altered Ego leaves the overwritten `def` in place). Runtime state, not TOML-authored — a
-    /// `&'static CardDef` (leaked at the copy step, like [`CardDef::back`]) so [`Permanent`] stays
-    /// `Copy` and small (a pointer, not a second inlined [`CardDef`]).
-    pub(crate) reverts_to_def_eot: Option<&'static CardDef>,
+    /// [`CardId`] so the copied shape shares the same interned definition model as every other
+    /// object, without leaking a second `CardDef`.
+    pub(crate) reverts_to_def_eot: Option<CardId>,
     /// The colors of mana spent to cast the spell that became this permanent (CR 106.9), fixed
     /// for the rest of this permanent's existence — copied from [`Spell::spent_colors`] as it
     /// enters, the same "read the spell's own info before it's gone" idiom as `entered_with_x`.
@@ -1854,6 +1962,25 @@ pub(crate) struct Permanent {
     /// any permanent whose casting spell paid no mana or isn't wired through yet (see
     /// [`Spell::spent_colors`]'s doc).
     pub(crate) spent_colors: [bool; Color::COUNT],
+    /// Whether the spell that became this permanent was cast from its controller's hand (CR
+    /// 601) — copied from [`Spell::cast_from_hand`] as it enters, the same "read the spell's own
+    /// info before it's gone" idiom as `entered_with_x`/`spent_colors` above. Read by
+    /// [`Condition::CastFromHand`] (Dread Cacodemon's/Reiver Demon's "if you cast it from your
+    /// hand" ETB intervening-if, CR 603.4). `false` for a token, a reanimated/searched/flickered/
+    /// manifested permanent, or anything else that never went through [`Event::PermanentEntered`]
+    /// — every one of those is, by definition, not a hand cast.
+    pub(crate) cast_from_hand: bool,
+    /// Copy-effect *exception* keywords that are part of this object's **copiable** values (CR
+    /// 707.2 — a copy made "except it has haste"/"except it has myriad": Twinflame, Cursed
+    /// Mirror, Muddle, Determined Iteration, Rionya). Unlike an ordinary until-end-of-turn
+    /// keyword grant (a `TempBoost`, unrelated EOT pump), these ride along when the object is
+    /// copied *again* — so a second-generation copy (Brudiclad, Rite of Replication) keeps the
+    /// rider. Unioned onto the effective keywords by [`Game::runtime_continuous_effects`] and
+    /// read back by [`Game::copiable_keywords`]; set by [`Event::CopyRiderKeywordsGranted`].
+    /// Not cleared at ordinary cleanup (a copiable characteristic resets with the object per CR
+    /// 400.7), but an *until-end-of-turn* copy clears it when its `def` reverts (Cursed Mirror,
+    /// Muddle — see [`Event::TempBoostsEnded`]). `&'static`, defaulted `&[]`.
+    pub(crate) copy_rider_keywords: &'static [Keyword],
 }
 
 /// One slot in the object arena. A card's slot becomes [`Object::Moved`] when it changes
@@ -1863,7 +1990,7 @@ pub(crate) struct Permanent {
 // the id-indexed object arena needs `Object: Copy`, so boxing a variant isn't an option — the same
 // carve-out the sibling `Copy` enums in this crate take.
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub(crate) enum Object {
     Card(Card),
     Spell(Spell),
@@ -1871,8 +1998,14 @@ pub(crate) enum Object {
     Moved {
         to: ObjectId,
     },
-    /// The object left the game (its owner was eliminated) — no longer live (CR 800.4a).
-    Removed,
+    /// The object left the game — a token that ceased to exist (CR 111.7), a spell copy that
+    /// finished resolving (CR 707.10a), or an object owned by an eliminated player (CR 800.4a).
+    /// Carries last-known `def`/`owner` so stack abilities keyed by this id (Food sacrifice,
+    /// Dies triggers off a token) can still project art / provenance after the arena slot dies.
+    Removed {
+        def: CardId,
+        owner: PlayerId,
+    },
 }
 
 /// The default number of seats when a constructor doesn't specify one (the 1v1 games
@@ -1995,6 +2128,11 @@ pub(crate) struct Player {
     /// [`Effect::Static(StaticEffect::PlayFromGraveyardOncePerTurn)`], read by [`Game::playable_zone`] to reject a
     /// second such play the same turn. `false` until the permission is used.
     pub(crate) graveyard_play_used_this_turn: bool,
+    /// Whether this player declared at least one attacker this turn (turn-scoped; reset each
+    /// turn at untap) — Angelic Arbiter's "Each opponent who attacked with a creature this turn
+    /// can't cast spells." Set by [`Event::AttackerDeclared`] (`Game::apply`), keyed by the
+    /// attacker's own controller; read by [`Game::cant_cast_if_attacked_this_turn`].
+    pub(crate) attacked_this_turn: bool,
     /// Monotonic counter for derive-per-op RNG — bumped once per random operation for this seat.
     pub(crate) op_iteration: u64,
     /// Times this player has cast their commander from the command zone (tax = 2× this).
@@ -2012,6 +2150,12 @@ pub(crate) struct Player {
     /// state-based action when the player controls ten or more permanents, and never cleared —
     /// CR 702.130's "for the rest of the game." Feeds [`Condition::YouHaveCitysBlessing`].
     pub(crate) has_citys_blessing: bool,
+    /// This player's answers to Archangel of Strife's "as this creature enters, each player
+    /// chooses war or peace", one `(Archangel, true = war)` entry per copy — CR 614.12 makes the
+    /// choice per permanent, so a second Archangel asks again and each copy's anthems read their
+    /// own answer. Sticky like `has_citys_blessing` above: never cleared once written — an entry
+    /// feeds its `war_choice` anthem for as long as that source lives, and does nothing after.
+    pub(crate) war_choices: Vec<(ObjectId, bool)>,
     /// Mana-provenance side-channel (CR 106.9-adjacent "spend this mana to …" tracking, Study
     /// Hall / Path of Ancestry / Opal Palace): one `(producing source, mana kind)` entry per unit
     /// of provenance-tagged mana this player currently holds, kept beside the summed

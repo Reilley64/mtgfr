@@ -7,7 +7,8 @@
 use axum::http::StatusCode;
 use engine::{Event, Game, PlayerId};
 use schema::{
-    DeltaCompose, StreamFrame, ViewExtras, VisibleState, complete_visible, compose_delta,
+    DeltaCompose, MessageRef, StreamFrame, ViewExtras, VisibleState, complete_visible,
+    compose_delta,
 };
 use tokio::sync::broadcast;
 
@@ -31,6 +32,12 @@ pub fn view_extras(
             seats
                 .get(i)
                 .and_then(|s| s.username.clone())
+                .unwrap_or_default()
+        }),
+        gravatar_hashes: std::array::from_fn(|i| {
+            seats
+                .get(i)
+                .map(|s| s.gravatar_hash.clone())
                 .unwrap_or_default()
         }),
         prints: prints.clone(),
@@ -113,7 +120,7 @@ pub fn should_deliver(broadcast_seq: u64, snapshot_broadcast_seq: u64) -> bool {
 
 /// Build the redacted delta frame for one viewer. `viewer` is `None` for a spectator (6.3) —
 /// the redaction path never exposes a hand or library to them, exactly as for an opponent.
-/// `auto_actions` are the human-readable labels of any forced choices `auto_advance` submitted
+/// `auto_actions` are the stable labels of any forced choices `auto_advance` submitted
 /// while folding this intent's fallout into the frame — same for every viewer (no redaction: a
 /// label never names a private card).
 ///
@@ -124,7 +131,7 @@ pub fn frame_for(
     seq: u64,
     events: &[Event],
     game: &Game,
-    auto_actions: Vec<String>,
+    auto_actions: Vec<MessageRef>,
     extras: &ViewExtras,
 ) -> StreamFrame {
     compose_delta(DeltaCompose {
@@ -155,7 +162,7 @@ mod tests {
             player: PlayerId(0),
             object: 7,
             from: 3,
-            card: def("Shock"),
+            card: engine::intern_card_def(def("Shock")),
         }
     }
 
@@ -223,6 +230,7 @@ mod tests {
         let game = Game::new();
         let mut seats = std::array::from_fn(|_| Seat::default());
         seats[0].username = Some("alice".into());
+        seats[0].gravatar_hash = "abc".into();
         seats[1].username = Some("bob".into());
         let yields = [true, false, false, false];
         let turn_yields = [false, true, false, false];
@@ -238,6 +246,7 @@ mod tests {
         assert!(!state.turn_yielded, "viewer P0 is not turn-yielded");
         assert_eq!(state.stack_hold_remaining_ms, 900);
         assert_eq!(state.players[0].username, "alice");
+        assert_eq!(state.players[0].gravatar_hash, "abc");
         assert_eq!(state.players[1].username, "bob");
 
         let StreamFrame::Delta(DeltaEnvelope { state: p1, .. }) =

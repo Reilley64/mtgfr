@@ -1,0 +1,51 @@
+# Flying
+# As this creature enters, each player chooses war or peace.
+# Creatures controlled by players who chose war get +3/+0.
+# Creatures controlled by players who chose peace get +0/+3.
+name = "Archangel of Strife"
+sets = ["cma", "cmd", "v15"]
+id = "19e302f8-6ddb-4a43-98bc-ee71a456ac5a"
+default_print = "51104596-ffb3-49e3-a1d5-fa294da0d758"
+otags = ["anthem", "flying", "modal-inverse-choices", "symmetrical"]
+oracle = "Flying\nAs this creature enters, each player chooses war or peace.\nCreatures controlled by players who chose war get +3/+0.\nCreatures controlled by players who chose peace get +0/+3."
+subtypes = ["Angel"]
+keywords = ["flying"]
+
+[cost]
+generic = 5
+white = 2
+
+[kind]
+type = "creature"
+power = 6
+toughness = 6
+
+# As this creature enters, each player chooses war or peace.
+[[abilities]]
+timing = "as_enters"
+
+[[abilities.effects]]
+type = "choice"
+mode = "each_player_chooses_war_or_peace"
+
+# Creatures controlled by players who chose war get +3/+0.
+[[abilities]]
+timing = "static"
+
+[[abilities.effects]]
+type = "static"
+mode = "anthem"
+power = 3
+all_players = true
+war_choice = true
+
+# Creatures controlled by players who chose peace get +0/+3.
+[[abilities]]
+timing = "static"
+
+[[abilities.effects]]
+type = "static"
+mode = "anthem"
+toughness = 3
+all_players = true
+war_choice = false

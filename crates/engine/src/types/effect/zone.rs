@@ -81,6 +81,16 @@ pub enum ZoneEffect {
         under_owner: bool,
     },
 
+    /// Tariel, Reckoner of Souls: "Choose a creature card at random from target opponent's
+    /// graveyard. Put that card onto the battlefield under your control." `target` is the
+    /// targeted opponent (CR-real target, `TargetSpec::OpponentPlayer`); the creature card
+    /// itself is picked by the injected RNG at resolution — needs `&mut self`, so this resolves
+    /// via `Game::run_misc_choreo` like `ExileRandomFromGraveyardMayPlay`'s "at random" pick,
+    /// not the pure `mint_zones` path `ReanimateToBattlefield` (a chosen, not random, card) uses.
+    ReanimateRandomFromTargetOpponentGraveyard {
+        target: TargetSpec,
+    },
+
     ReanimateToBattlefield {
         target: TargetSpec,
         #[cfg_attr(feature = "card-dsl", serde(default))]
@@ -93,6 +103,24 @@ pub enum ZoneEffect {
     },
 
     ReflexiveTrigger {
+        #[cfg_attr(
+            feature = "card-dsl",
+            serde(default, deserialize_with = "de::static_slice")
+        )]
+        then: &'static [Effect],
+    },
+
+    /// "When one or more nonland cards are exiled this way, …" (CR 603.3b — Augusta, Order
+    /// Returned). The reflexive twin of [`ReflexiveTrigger`](Self::ReflexiveTrigger) gated on a
+    /// count rather than a minted token: placed after the same resolution's
+    /// [`EachPlayerExilesFromGraveyard`](crate::ChoiceEffect::EachPlayerExilesFromGraveyard) fan-out,
+    /// it creates a reflexive triggered ability for each `then` effect **only when that fan-out
+    /// exiled one or more nonland cards** — none at all when the count is zero. The count
+    /// ([`ResolutionFrame::nonland_cards_exiled_this_way`](crate::resolution::ResolutionFrame)) is
+    /// baked into each `then` effect's [`Amount::NonlandCardsExiledThisWay`](crate::Amount) at
+    /// placement, so the follow-up reads the settled number even though it resolves in its own
+    /// later frame; its target is chosen when it goes on the stack (CR 601.2c), after the fan-out.
+    ReflexiveTriggerIfNonlandExiled {
         #[cfg_attr(
             feature = "card-dsl",
             serde(default, deserialize_with = "de::static_slice")

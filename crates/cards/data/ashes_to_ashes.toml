@@ -1,8 +1,8 @@
 # Exile two target nonartifact creatures. Ashes to Ashes deals 5 damage to you.
 name = "Ashes to Ashes"
+sets = ["4bb", "4ed", "5ed", "drk", "me3", "ptc", "ren", "td0"]
 id = "944a52d9-bb14-43c5-8d05-2afaf023dc9f"
 default_print = "9e61209b-0f56-4bab-9ada-700f91b18dec"
-set = "me3"
 oracle = "Exile two target nonartifact creatures. Ashes to Ashes deals 5 damage to you."
 
 [cost]

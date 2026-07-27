@@ -4,7 +4,7 @@ otags = ["alliteration", "hand-positive", "life-for-cards", "poison-opponents", 
 id = "66051196-53ea-4461-b241-205df9395b3b"
 default_print = "0a10f284-b043-4307-bdc7-6dad47cc9221"
 oracle = "You draw two cards and you lose 2 life. Each opponent gets a poison counter."
-set = "one"
+sets = ["one"]
 
 [cost]
 generic = 2

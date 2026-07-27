@@ -2,6 +2,7 @@
  * @vitest-environment happy-dom
  */
 import { describe, expect, it } from "vitest";
+import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView } from "~/wire/types";
 import {
   ACTIVATION_MENU_GAP_PX,
@@ -20,18 +21,16 @@ import {
   radialWedgeFromElement,
 } from "./radial";
 
-const activate = (over: Partial<ActionView> = {}): ActionView =>
-  ({
-    ability_index: 0,
-    id: 1,
-    kind: "activate",
-    label: "Draw a card",
-    needs_target: false,
-    object: 7,
-    section: "battlefield",
-    targets: [],
-    ...over,
-  }) as unknown as ActionView;
+const activate = (over: Partial<ActionView> = {}): ActionView => ({
+  id: 1,
+  kind: "activate",
+  label: testMessageRef("Draw a card"),
+  needs_target: false,
+  object: 7,
+  section: "battlefield",
+  targets: [],
+  ...over,
+});
 
 describe("radialScreenCenter", () => {
   it("maps the selected card center from world to screen coordinates", () => {
@@ -60,9 +59,9 @@ describe("radialOptions", () => {
 
   it("lists each battlefield action for that object", () => {
     const actions = [
-      activate({ id: 1, label: "Pump" }),
-      activate({ id: 2, object: 8, label: "Other" }),
-      activate({ id: 3, section: "hand", label: "Cast" }),
+      activate({ id: 1, label: testMessageRef("Pump") }),
+      activate({ id: 2, object: 8, label: testMessageRef("Other") }),
+      activate({ id: 3, section: "hand", label: testMessageRef("Cast") }),
     ];
     expect(radialOptions(7, actions, false, false, true)).toEqual([
       { kind: "action", action: actions[0], label: "Pump", disabled: false },
@@ -73,7 +72,7 @@ describe("radialOptions", () => {
     const prepared = activate({
       id: 9,
       kind: "cast_prepared",
-      label: "Pack a Punch",
+      label: testMessageRef("Pack a Punch"),
       needs_target: true,
       targets: [{ kind: "object", id: 3 }],
     });
@@ -91,7 +90,7 @@ describe("radialOptions", () => {
     // Filter lands like Ferrous Lake: no free tap, but a {{1}},{{T}} activate on the wire.
     const filter = activate({
       id: 4,
-      label: "Add {U}{R}",
+      label: testMessageRef("Add {U}{R}"),
     });
     expect(radialOptions(7, [filter], false, false, true)).toEqual([
       { kind: "action", action: filter, label: "Add {U}{R}", disabled: false },
@@ -147,7 +146,7 @@ describe("activationCostChip", () => {
         kind: "action",
         label: "Add {U}{R}",
         disabled: false,
-        action: activate({ label: "Add {U}{R}" }),
+        action: activate({ label: testMessageRef("Add {U}{R}") }),
       }),
     ).toBeNull();
   });

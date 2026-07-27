@@ -31,6 +31,7 @@ impl Game {
                 | ControlEffect::RegenerateShield { .. }
                 | ControlEffect::RemoveFromCombat { .. }
                 | ControlEffect::RevertAllCreaturesToOwners
+                | ControlEffect::TapAll { .. }
                 | ControlEffect::TapTarget { .. }
                 | ControlEffect::UntapAll { .. }
                 | ControlEffect::UntapTarget { .. }) => {
@@ -93,8 +94,11 @@ impl Game {
                 }
                 MiscEffect::Fight { .. }
                 | MiscEffect::MustAttackRandomOpponent
+                | MiscEffect::MustAttackTarget
                 | MiscEffect::PreventCombatDamageToYouCreatingTokens { .. }
-                | MiscEffect::PreventAllCombatDamageThisTurn => {
+                | MiscEffect::PreventAllCombatDamageThisTurn
+                | MiscEffect::YouChooseWhichCreaturesAttack
+                | MiscEffect::YouChooseWhichCreaturesBlock => {
                     unreachable!("a pausing/composite effect resolves via Game::run")
                 }
             },
@@ -124,9 +128,13 @@ impl Game {
                 | ZoneEffect::ShuffleTargetPermanentIntoLibrary { .. }) => {
                     self.mint_zones(z, controller, source, target, x)
                 }
-                ZoneEffect::UntapSearchedLand
+                // Tariel's random pick needs the injected RNG (`&mut self`) — resolves via
+                // `Game::run_misc_choreo`, not this pure mint path.
+                ZoneEffect::ReanimateRandomFromTargetOpponentGraveyard { .. }
+                | ZoneEffect::UntapSearchedLand
                 | ZoneEffect::AttachTriggeringAuraToMintedToken { .. }
                 | ZoneEffect::ReflexiveTrigger { .. }
+                | ZoneEffect::ReflexiveTriggerIfNonlandExiled { .. }
                 | ZoneEffect::ReturnFromGraveyardAttachedToToken { .. }
                 | ZoneEffect::AttachSelfToReanimated
                 | ZoneEffect::AttachSelfToMintedToken

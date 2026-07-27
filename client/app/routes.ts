@@ -5,28 +5,72 @@ import { parseDeckIdParam } from "./deck-id";
 
 export const HomeRoute = r("HomeRoute");
 export const LoginRoute = r("LoginRoute");
+export const LeaderboardRoute = r("LeaderboardRoute");
+export const CoverageRoute = r("CoverageRoute");
 export const NewDeckRoute = r("NewDeckRoute");
 export const DeckRoute = r("DeckRoute", { id: S.String });
 export const PlayRoute = r("PlayRoute", { deckId: S.String });
-export const TableRoute = r("TableRoute", { deckId: S.String, table: S.String });
+export const PregameTableRoute = r("PregameTableRoute", { deckId: S.String, table: S.String });
+export const GameTableRoute = r("GameTableRoute", { table: S.String });
 export const NotFoundRoute = r("NotFoundRoute", { path: S.String });
 
-export const AppRoute = S.Union([HomeRoute, LoginRoute, NewDeckRoute, DeckRoute, PlayRoute, TableRoute, NotFoundRoute]);
+export const AppRoute = S.Union([
+  HomeRoute,
+  LoginRoute,
+  LeaderboardRoute,
+  CoverageRoute,
+  NewDeckRoute,
+  DeckRoute,
+  PlayRoute,
+  PregameTableRoute,
+  GameTableRoute,
+  NotFoundRoute,
+]);
 export type AppRoute = typeof AppRoute.Type;
 
 const homeRouter = pipe(root, mapTo(HomeRoute));
 const loginRouter = pipe(literal("login"), mapTo(LoginRoute));
+const leaderboardRouter = pipe(literal("leaderboard"), mapTo(LeaderboardRoute));
+const coverageRouter = pipe(literal("coverage"), mapTo(CoverageRoute));
 const newDeckRouter = pipe(literal("decks"), slash(literal("new")), mapTo(NewDeckRoute));
 const deckRouter = pipe(literal("decks"), slash(string("id")), mapTo(DeckRoute));
 const playRouter = pipe(literal("play"), slash(string("deckId")), mapTo(PlayRoute));
-const tableRouter = pipe(literal("play"), slash(string("deckId")), slash(string("table")), mapTo(TableRoute));
+const pregameTableRouter = pipe(
+  literal("play"),
+  slash(string("deckId")),
+  slash(string("table")),
+  mapTo(PregameTableRoute),
+);
 
-const appRouter = oneOf(homeRouter, loginRouter, newDeckRouter, deckRouter, tableRouter, playRouter);
+const appRouter = oneOf(
+  homeRouter,
+  loginRouter,
+  leaderboardRouter,
+  coverageRouter,
+  newDeckRouter,
+  deckRouter,
+  pregameTableRouter,
+  playRouter,
+);
 
 export const routeFromUrl = parseUrlWithFallback(appRouter, NotFoundRoute);
 
 export function normalizeAppRoute(route: AppRoute, path: string): AppRoute {
-  if (route._tag !== "PlayRoute" && route._tag !== "TableRoute") return route;
+  if (route._tag === "PlayRoute") {
+    const deckId = route.deckId;
+    if (parseDeckIdParam(deckId) != null) return PlayRoute({ deckId });
+    if (deckId.trim() === "") return NotFoundRoute({ path });
+    return GameTableRoute({ table: deckId });
+  }
+
+  if (route._tag === "GameTableRoute") {
+    const table = route.table;
+    if (parseDeckIdParam(table) != null) return PlayRoute({ deckId: table });
+    if (table.trim() === "") return NotFoundRoute({ path });
+    return GameTableRoute({ table });
+  }
+
+  if (route._tag !== "PregameTableRoute") return route;
   if (parseDeckIdParam(route.deckId) != null) return route;
   return NotFoundRoute({ path });
 }
@@ -52,10 +96,13 @@ export function routePath(route: AppRoute): string {
     M.tagsExhaustive({
       HomeRoute: () => homeRouter(),
       LoginRoute: () => loginRouter(),
+      LeaderboardRoute: () => leaderboardRouter(),
+      CoverageRoute: () => coverageRouter(),
       NewDeckRoute: () => newDeckRouter(),
       DeckRoute: ({ id }) => deckRouter({ id }),
       PlayRoute: ({ deckId }) => playRouter({ deckId }),
-      TableRoute: ({ deckId, table }) => tableRouter({ deckId, table }),
+      PregameTableRoute: ({ deckId, table }) => pregameTableRouter({ deckId, table }),
+      GameTableRoute: ({ table }) => playRouter({ deckId: table }),
       NotFoundRoute: ({ path }) => path,
     }),
   );

@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use super::*;
 #[cfg(feature = "card-dsl")]
 use crate::de;
@@ -149,6 +151,11 @@ pub enum Amount {
     /// way". Reads [`Game::spell_sacrifice_count`] off the effect's `source` (the resolving
     /// spell itself).
     SpellSacrificeCount,
+    /// How many times the resolving spell's Multikicker cost (CR 702.33c) was paid — Lightkeeper
+    /// of Emeria's "you gain 2 life for each time it was kicked." Reads
+    /// [`Game::spell_multikicker_count`] off the effect's `source` (the resolving spell itself),
+    /// the multikicker sibling of [`SpellSacrificeCount`](Self::SpellSacrificeCount)'s read.
+    SpellMultikickerCount,
     /// The mana value of the creature card revealed to pay the resolving spell's
     /// [`AdditionalCost::reveal_creature_from_hand`] (CR 601.2g) — Disaster Radius's "X is the
     /// revealed card's mana value." Reads [`Game::revealed_creature_mana_value`] off the effect's
@@ -249,13 +256,27 @@ pub enum Amount {
         then: &'static Amount,
         else_: &'static Amount,
     },
-    /// How many times the resolving spell's Multikicker cost (CR 702.34) was paid — Everflowing
-    /// Chalice's "This artifact enters with a charge counter on it for each time it was kicked."
-    /// Reads [`Game::times_kicked`] off the effect's `source`, which is still the resolving
-    /// [`Object::Spell`] when read from a cast-time cost but is the fresh [`Object::Permanent`]
-    /// by the time an `enters_with_counters` effect resolves (CR 702.34c) — both shapes are
-    /// covered so the read is never silently 0.
-    TimesKicked,
+    /// `then` if the resolving spell was cast during its controller's main phase, else `else_` —
+    /// Sulfurous Blast's "Sulfurous Blast deals 2 damage to each creature and each player. If you
+    /// cast this spell during your main phase, Sulfurous Blast deals 3 damage ... instead." Reads
+    /// [`Game::spell_cast_during_main_phase`] off the effect's `source` (the resolving spell
+    /// itself), the cast-timing sibling of [`IfSpellKicked`](Self::IfSpellKicked)'s kicked-flag
+    /// read. Both arms are `&'static` (leaked, like `IfSpellKicked`'s) to keep [`Amount`] `Copy`.
+    IfSpellCastDuringMainPhase {
+        then: &'static Amount,
+        else_: &'static Amount,
+    },
+    /// The mana value of the resolving spell's own *first* (clause 0) chosen target — Orim's
+    /// Thunder's "If this spell was kicked, it deals damage equal to that permanent's mana value
+    /// to target creature," where "that permanent" is the artifact or enchantment its own destroy
+    /// clause targeted, not this damage effect's own (clause 1) target creature. Reads
+    /// `self.spell(source).targets.primary()` off the effect's `source` (the resolving spell
+    /// itself) via [`Game::def_of`] — safe even after the destroy clause moves that permanent to
+    /// a graveyard, since a zone change chains through [`Object::Moved`] rather than removing the
+    /// object, and no state-based action clears it mid-resolution (CR 704.3 only checks between
+    /// whole spell/ability resolutions). `0` if the spell has no clause-0 target (unreachable for
+    /// Orim's Thunder — its destroy clause is single-mandatory).
+    SpellFirstTargetManaValue,
     /// The greatest mana value among instant and sorcery spells the effect's controller has cast
     /// this turn (turn-scoped, 0 if none) — Rootha, Mastering the Moment's "X is the greatest
     /// mana value among instant and sorcery spells you've cast this turn." A live read (unlike
@@ -326,6 +347,21 @@ pub enum Amount {
     /// [`Game::resolve_amount`]'s `controller` argument, which a mass effect resolving
     /// per-permanent passes as the affected permanent's controller, not the spell's controller.
     ControllersPoisonCounters,
+    /// `times` × the value of `by` (Congregate's "2 life for each creature on the battlefield" =
+    /// `Scaled { times: 2, by: PerCreatureOnBattlefield }`). `by` is `&'static` (leaked, like other
+    /// nested amounts) to keep [`Amount`] `Copy`.
+    Scaled {
+        times: i32,
+        by: &'static Amount,
+    },
+    /// How many cards were discarded during this resolution's edict fan-out (Syphon Mind's "for
+    /// each card discarded this way"; Malfegor's discarded hand size) — a resolution-local tally on
+    /// [`ResolutionFrame::cards_discarded_this_way`].
+    CardsDiscardedThisWay,
+    /// How many creatures were sacrificed during this resolution's edict fan-out (Syphon Flesh's
+    /// "for each creature sacrificed this way") — a resolution-local tally on
+    /// [`ResolutionFrame::creatures_sacrificed_this_way`].
+    CreaturesSacrificedThisWay,
 }
 
 impl Default for Amount {
@@ -385,15 +421,15 @@ pub enum LandTapBonusColor {
 /// In TOML an effect is a table tagged by `type = "<snake_case variant>"` — adding a
 /// variant here is all the DSL needs (no parallel deserialization arm; see the `de` module).
 ///
-/// `Effect` is `Copy`, so any list-valued field must be `&'static [T]` (leaked/interned once
-/// at TOML-load time), never a `Vec<T>`. In a TOML-parsed variant, reach for
-/// `#[cfg_attr(feature = "card-dsl", serde(default, deserialize_with = "de::static_slice"))]`
-/// (or `de::static_str_slice` for `&'static [&'static str]`) rather than hand-rolling a leak —
-/// see [`Effect::Pump(PumpEffect::PumpUntilEndOfTurn)`]'s `keywords` field for the canonical example.
-// ponytail: `CreateToken` inlines a whole `CardDef`, which is large by design and must stay `Copy`
-// (no `Box`), so this enum is unavoidably big-variant. Boxing would break `Copy`; the lint is noise.
+/// `Effect` is `Clone`, so sequence-like effect payloads may use `Arc<[Effect]>` rather than
+/// leaked `&'static [Effect]`. In a TOML-parsed variant, reach for
+/// `#[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::arc_slice"))]`
+/// for owned effect lists, and keep `de::static_slice` only for the still-`'static` payloads
+/// that have not moved to shared owned storage yet.
+// ponytail: `CreateToken` inlines a whole `CardDef`, which is large by design; boxing it just to
+// appease the lint would add pointer noise for no product benefit.
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(
     feature = "card-dsl",
     derive(serde::Deserialize),
@@ -420,17 +456,17 @@ pub enum Effect {
     Static(StaticEffect),
     Misc(MiscEffect),
     Sequence {
-        #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_slice"))]
-        steps: &'static [Effect],
+        #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::arc_slice"))]
+        steps: Arc<[Effect]>,
     },
     ChooseOne {
-        #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_slice"))]
-        options: &'static [Effect],
+        #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::arc_slice"))]
+        options: Arc<[Effect]>,
     },
     Conditional {
         condition: Condition,
-        #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_slice"))]
-        then: &'static [Effect],
+        #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::arc_slice"))]
+        then: Arc<[Effect]>,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         negate: bool,
         /// "if X … Otherwise, Y" (Lily Bowen, Raging Grandma): a true else branch, run when
@@ -466,10 +502,13 @@ impl Effect {
     }
 
     /// What this effect targets (most effects target nothing).
-    pub(crate) fn target(self) -> TargetSpec {
-        match self {
+    pub(crate) fn target(&self) -> TargetSpec {
+        match self.clone() {
             Effect::Damage(DamageEffect::Target { target, .. })
+            | Effect::Damage(DamageEffect::Radiance { target, .. })
             | Effect::Pump(PumpEffect::PumpUntilEndOfTurn { target, .. })
+            | Effect::Pump(PumpEffect::GrantChosenColorProtectionUntilEndOfTurn { target })
+            | Effect::Pump(PumpEffect::RadianceChosenColorProtectionUntilEndOfTurn { target })
             | Effect::Pump(PumpEffect::SetBasePtTargetUntilEndOfTurn { target, .. })
             | Effect::Pump(PumpEffect::TargetBecomesTreasure { target })
             | Effect::Counters(CountersEffect::PutCounters { target, .. })
@@ -484,6 +523,7 @@ impl Effect {
             | Effect::Zone(ZoneEffect::FlickerTarget { target, .. })
             | Effect::Zone(ZoneEffect::ReturnFromGraveyardToHand { target, .. })
             | Effect::Zone(ZoneEffect::ReanimateToBattlefield { target, .. })
+            | Effect::Zone(ZoneEffect::ReanimateRandomFromTargetOpponentGraveyard { target })
             | Effect::Zone(ZoneEffect::TuckFromGraveyard { target, .. })
             | Effect::Mill(MillEffect::Mill { target, .. })
             | Effect::Choice(ChoiceEffect::TargetPlayerExilesFromGraveyard { target })
@@ -512,7 +552,7 @@ impl Effect {
             // A sequence shares one target: the first step that needs one supplies it.
             Effect::Sequence { steps } => steps
                 .iter()
-                .map(|s| s.target())
+                .map(|s| s.clone().target())
                 .find(|&t| t != TargetSpec::None)
                 .unwrap_or(TargetSpec::None),
             // A conditional step's target is shared from the enclosing sequence, same rule as
@@ -524,7 +564,7 @@ impl Effect {
             } => then
                 .iter()
                 .chain(otherwise.iter())
-                .map(|s| s.target())
+                .map(|s| s.clone().target())
                 .find(|&t| t != TargetSpec::None)
                 .unwrap_or(TargetSpec::None),
             // Quintorius's end step: a fixed target restriction (see the variant doc) — no
@@ -648,9 +688,13 @@ impl Effect {
             })
             // "If target player has fewer than nine poison counters …" (Vraska, Betrayal's Sting).
             | Effect::Counters(CountersEffect::TopUpCountersOnPlayer { .. }) => TargetSpec::Player,
-            // Equip targets the creature to attach to (the "you control" restriction is
-            // enforced when the ability is activated, not by the target spec).
-            Effect::Control(ControlEffect::Equip) => TargetSpec::Creature,
+            // Equip targets "target creature you control" (CR 702.6e). The activation gate
+            // enforces it too; the spec must say so as well, or the enumeration the client
+            // highlights from offers opponents' creatures the gate can only bounce.
+            Effect::Control(ControlEffect::Equip) => TargetSpec::CreatureYouControl,
+            // Basandra, Battle Seraph's {R} ability: "Target creature attacks this turn if able" —
+            // any creature, not just an opponent's.
+            Effect::Misc(MiscEffect::MustAttackTarget) => TargetSpec::Creature,
             // Breena's counter half: "a creature you control" (the drawing player is context,
             // not a target) — restricted to the ability's controller's own creatures.
             Effect::Counters(CountersEffect::AttackerDrawsControllerCounters { .. }) => TargetSpec::CreatureYouControl,
@@ -682,10 +726,12 @@ impl Effect {
             | Effect::Dig(DigEffect::CashOutExiledWithThis)
             | Effect::Dig(DigEffect::CastExiledWithThisFree)
             | Effect::Static(StaticEffect::GrantToAttached { .. })
+            | Effect::Static(StaticEffect::ProtectionFromChosenColor)
             | Effect::Static(StaticEffect::SetAttachedBasePt { .. })
             | Effect::Static(StaticEffect::SetAttachedTypes { .. })
             | Effect::Life(LifeEffect::EachOpponentDrain { .. })
             | Effect::Life(LifeEffect::EachOpponentLoses { .. })
+            | Effect::Life(LifeEffect::EachPlayerLoses { .. })
             | Effect::Life(LifeEffect::EachPlayerBecomesHighest)
             | Effect::Dig(DigEffect::Scry { .. })
             | Effect::Dig(DigEffect::Surveil { .. })
@@ -720,6 +766,7 @@ impl Effect {
             | Effect::Damage(DamageEffect::EachOtherOpponent { .. })
             | Effect::Pump(PumpEffect::WeakenEachCreature { .. })
             | Effect::Pump(PumpEffect::PumpCreaturesYouControlUntilEndOfTurn { .. })
+            | Effect::Pump(PumpEffect::PumpEachCreatureUntilEndOfTurn { .. })
             | Effect::Pump(PumpEffect::GrantKeywordsToPermanentsYouControlUntilEndOfTurn { .. })
             | Effect::Pump(PumpEffect::PumpOtherAttackersAttackingYourOpponents { .. })
             | Effect::Pump(PumpEffect::EnchantedAttackerPumpAttackingOpponentElseControllerLosesLife { .. })
@@ -727,6 +774,9 @@ impl Effect {
             | Effect::Pump(PumpEffect::PumpSelfUntilEndOfTurn { .. })
             | Effect::Static(StaticEffect::ControlAttached)
             | Effect::Choice(ChoiceEffect::EachPlayerSacrifices { .. })
+            | Effect::Choice(ChoiceEffect::EachPlayerChoosesWarOrPeace)
+            | Effect::Choice(ChoiceEffect::EachOpponentDiscards)
+            | Effect::Choice(ChoiceEffect::DiscardYourHand)
             | Effect::Choice(ChoiceEffect::EachPlayerExilesFromGraveyard)
             | Effect::Choice(ChoiceEffect::CasterKeepsOneOfEachTypePerPlayer)
             | Effect::Choice(ChoiceEffect::EachPlayerControllerChoosesCounterTarget)
@@ -744,6 +794,8 @@ impl Effect {
             | Effect::Choice(ChoiceEffect::MaySacrifice { .. })
             | Effect::Choice(ChoiceEffect::MayReturnFromGraveyard { .. })
             | Effect::Choice(ChoiceEffect::MayDiscard { .. })
+            | Effect::Choice(ChoiceEffect::MayExileDiscardedNonlandMayPlay { .. })
+            | Effect::Choice(ChoiceEffect::MayPutCounterOnCreature)
             | Effect::Choice(ChoiceEffect::MayDrawUnlessPays { .. })
             | Effect::Counters(CountersEffect::PutCountersEach { .. })
             | Effect::Counters(CountersEffect::PutLoyaltyCounterEach { .. })
@@ -763,10 +815,11 @@ impl Effect {
                 ..
             })
             | Effect::Choice(ChoiceEffect::PutLandFromHand { .. })
-            | Effect::Choice(ChoiceEffect::PutCreatureFromHand)
+            | Effect::Choice(ChoiceEffect::PutCreatureFromHand { .. })
             | Effect::Choice(ChoiceEffect::PutFromHandOnTop { .. })
             | Effect::Choice(ChoiceEffect::CastCreatureFaceDown)
             | Effect::Control(ControlEffect::UntapAll { .. })
+            | Effect::Control(ControlEffect::TapAll { .. })
             | Effect::Control(ControlEffect::GainControlAllUntilEndOfTurn { .. })
             | Effect::Draw(DrawEffect::EachPlayer { .. })
             | Effect::Choice(ChoiceEffect::SacrificeOwn { .. })
@@ -808,12 +861,23 @@ impl Effect {
             | Effect::Static(StaticEffect::AttackTax { .. })
             | Effect::Static(StaticEffect::CounterScaledAttackTax)
             | Effect::Static(StaticEffect::CantBeAttackedBy { .. })
+            | Effect::Static(StaticEffect::CantBlockFilter { .. })
+            | Effect::Static(StaticEffect::CantCastDuringCombat)
+            // "Each opponent who cast a spell this turn can't attack with creatures" /
+            // "...who attacked with a creature this turn can't cast spells" (Angelic Arbiter): a
+            // per-player lockout, not a chosen target — enforced in `Game::declare_attackers` /
+            // `Game::cast_timing_ok`.
+            | Effect::Static(StaticEffect::CantAttackIfCastThisTurn)
+            | Effect::Static(StaticEffect::CantCastIfAttackedThisTurn)
             // Always names the ability's own source as the required attacker — no chosen target.
             | Effect::Misc(MiscEffect::MustAttackRandomOpponent)
             | Effect::Misc(MiscEffect::PreventCombatDamageToYouCreatingTokens { .. })
             | Effect::Misc(MiscEffect::PreventAllCombatDamageThisTurn)
             // CR 114.5: an emblem can't be targeted, and getting one targets nothing either.
             | Effect::Misc(MiscEffect::GetEmblem { .. })
+            // Names its own controller as the declaring seat (Master Warcraft) — no chosen target.
+            | Effect::Misc(MiscEffect::YouChooseWhichCreaturesAttack)
+            | Effect::Misc(MiscEffect::YouChooseWhichCreaturesBlock)
             | Effect::Counters(CountersEffect::PlaceVowCounters { .. })
             | Effect::Life(LifeEffect::Lose { .. })
             | Effect::Damage(DamageEffect::ToSelf { .. })
@@ -866,6 +930,7 @@ impl Effect {
             // A reflexive trigger's own steps are placed as separate abilities, each choosing its
             // own target when placed — this scheduler step takes no target of its own.
             | Effect::Zone(ZoneEffect::ReflexiveTrigger { .. })
+            | Effect::Zone(ZoneEffect::ReflexiveTriggerIfNonlandExiled { .. })
             | Effect::Control(ControlEffect::AttachSelfToEntering { .. })
             | Effect::Zone(ZoneEffect::AttachSelfToReanimated)
             | Effect::Zone(ZoneEffect::AttachSelfToMintedToken)
@@ -885,6 +950,10 @@ impl Effect {
             | Effect::Zone(ZoneEffect::ReturnThisAuraFromGraveyardAttachedToChosenHost)
             | Effect::Zone(ZoneEffect::ScheduleReturnThisAuraFromGraveyardAttachedToChosenHost)
             | Effect::Static(StaticEffect::NoMaximumHandSize)
+            | Effect::Static(StaticEffect::OpponentsCantSearchLibraries)
+            // "All creatures ... attack each combat if able" (Avatar of Slaughter): a global
+            // requirement, not a chosen target — enforced in `Game::declare_attackers`.
+            | Effect::Static(StaticEffect::MustAttackEachCombat)
             // Backup's grant rides the enclosing `Sequence`'s shared target (the counter's
             // creature), never a target of its own — see the variant doc.
             | Effect::Control(ControlEffect::GrantSourceAbilitiesUntilEndOfTurn)
@@ -923,8 +992,8 @@ impl Effect {
     /// something else besides (Brass Infiniscope's `{T}: Add {C}{C}. When you next cast a spell
     /// with {X} …` arms a delayed trigger too) is still a mana ability as long as it targets
     /// nothing, so a `Sequence` counts if any of its steps does.
-    pub(crate) fn is_mana_ability(self) -> bool {
-        match self {
+    pub(crate) fn is_mana_ability(&self) -> bool {
+        match self.clone() {
             Effect::Mana(ManaEffect::Add { .. }) => true,
             Effect::Sequence { steps } => steps.iter().any(|s| matches!(s, Effect::Mana(ManaEffect::Add { .. }))),
             _ => false,
@@ -935,12 +1004,12 @@ impl Effect {
     /// [`Player::mana_provenance`](crate::state) — an [`Effect::Mana(ManaEffect::Add)`] with `track_provenance`
     /// set (recursing a `Sequence` like [`is_mana_ability`](Self::is_mana_ability)). Read by
     /// `Game::activate_ability` to decide whether to tag the batch it just resolved.
-    pub(crate) fn tracks_mana_provenance(self) -> bool {
-        match self {
+    pub(crate) fn tracks_mana_provenance(&self) -> bool {
+        match self.clone() {
             Effect::Mana(ManaEffect::Add {
                 track_provenance, ..
             }) => track_provenance,
-            Effect::Sequence { steps } => steps.iter().any(|s| s.tracks_mana_provenance()),
+            Effect::Sequence { steps } => steps.iter().any(|s| s.clone().tracks_mana_provenance()),
             _ => false,
         }
     }
@@ -954,8 +1023,8 @@ impl Effect {
     /// and/or enchantments"), [`CountersEffect::PutCounters`](crate::CountersEffect::PutCounters) (Silkguard's "each of up to
     /// X"), and [`DigEffect::ExileTargetGraveyardSpellCastFree`](crate::DigEffect::ExileTargetGraveyardSpellCastFree)
     /// (Renegade Bull's "up to one target," `{0, 1}`) carry a real count.
-    pub(crate) fn target_count(self) -> TargetCount {
-        match self {
+    pub(crate) fn target_count(&self) -> TargetCount {
+        match self.clone() {
             Effect::Zone(ZoneEffect::ReturnToHand { count, .. })
             | Effect::Zone(ZoneEffect::ReturnFromGraveyardToHand { count, .. })
             | Effect::Damage(DamageEffect::Target { count, .. })
@@ -979,7 +1048,7 @@ impl Effect {
             // step, shared with the following untyped `GoadTarget` step).
             Effect::Sequence { steps } => steps
                 .iter()
-                .map(|s| s.target_count())
+                .map(|s| s.clone().target_count())
                 .find(|&c| c != TargetCount::default())
                 .unwrap_or_default(),
             _ => TargetCount::default(),
@@ -992,8 +1061,11 @@ impl Effect {
     /// Distinguishes a genuinely independent clause from a `Sequence` step that merely shares the
     /// one chosen target (Killian's goad), so [`Game::place_ability_second_clause`] only chooses a
     /// second set of targets for the former.
-    pub(crate) fn reads_second_target_clause(self) -> bool {
-        matches!(self, Effect::Counters(CountersEffect::DoubleCountersOnTargetCreatures { .. }))
+    pub(crate) fn reads_second_target_clause(&self) -> bool {
+        matches!(
+            self,
+            Effect::Counters(CountersEffect::DoubleCountersOnTargetCreatures { .. })
+        )
     }
 
     /// Whether this effect still does something with *no* chosen target — itself untargeted, or
@@ -1003,9 +1075,9 @@ impl Effect {
     /// on the stack, versus dropping outright when every step needs the same declined target
     /// (Killian, Decisive Mentor's "tap up to one target creature and goad it" — goad has nothing
     /// to goad without a tapped creature, so parking it on the stack to do nothing is pure noise).
-    pub(crate) fn has_target_independent_step(self) -> bool {
-        match self {
-            Effect::Sequence { steps } => steps.iter().any(|s| s.target() == TargetSpec::None),
+    pub(crate) fn has_target_independent_step(&self) -> bool {
+        match self.clone() {
+            Effect::Sequence { steps } => steps.iter().any(|s| s.clone().target() == TargetSpec::None),
             other => other.target() == TargetSpec::None,
         }
     }
@@ -1021,6 +1093,31 @@ impl Effect {
                     token: Some(token),
                 })
             }
+            other => other,
+        }
+    }
+
+    /// Bake this resolution's settled nonland-exile count into a reflexive
+    /// [`ReflexiveTriggerIfNonlandExiled`](ZoneEffect::ReflexiveTriggerIfNonlandExiled) body (CR
+    /// 603.3b — Augusta, Order Returned) so the follow-up reads the number even though it resolves
+    /// in its own later frame: an [`Amount::NonlandCardsExiledThisWay`](crate::Amount) count on a
+    /// [`PutCounters`](crate::CountersEffect::PutCounters) body becomes a fixed count. One effect
+    /// shape only — the reflexive-count analogue of [`with_reflexive_token`](Self::with_reflexive_token).
+    pub(crate) fn with_reflexive_count(self, count: u32) -> Effect {
+        match self {
+            Effect::Counters(CountersEffect::PutCounters {
+                count: Amount::NonlandCardsExiledThisWay,
+                target,
+                targets,
+                kind,
+                divided,
+            }) => Effect::Counters(CountersEffect::PutCounters {
+                count: Amount::Fixed(count as i32),
+                target,
+                targets,
+                kind,
+                divided,
+            }),
             other => other,
         }
     }
@@ -1407,7 +1504,8 @@ pub struct ActivationCost {
 /// ability would trigger*. If it doesn't hold, the ability never goes on the stack.
 /// ponytail: the CR 603.4 *second* check (re-evaluated as the ability resolves) is skipped — a
 /// single placement-time check is all the pool's cards need; add the re-check when one relies on
-/// the condition becoming false between trigger and resolution. Must stay `Copy` ([`CardDef`]).
+/// the condition becoming false between trigger and resolution. Kept `Copy` because it is a small
+/// authored predicate value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(
     feature = "card-dsl",
@@ -1419,6 +1517,15 @@ pub enum Condition {
     /// ponytail: counts creatures only — the one object kind the pool needs; add a `kind`
     /// discriminator (permanents, artifacts, …) when a real card counts something else.
     YouControlAtLeastCreatures { count: u32 },
+    /// "if no creatures are on the battlefield" (Pyrohemia's self-sacrifice gate) — board-wide,
+    /// every controller, unlike [`YouControlAtLeastCreatures`](Self::YouControlAtLeastCreatures)
+    /// above. Reads [`Game::creatures_on_battlefield`], the same tally
+    /// [`Amount::PerCreatureOnBattlefield`] uses. Usable both as `[abilities.condition]` (CR
+    /// 603.4's first check, at trigger placement) and nested in a `{ type = "conditional", … }`
+    /// step (the CR 603.4 *second* check, re-checked fresh at resolution — a creature created in
+    /// response to the trigger suppresses the sacrifice), same pairing as
+    /// [`SourceUntapped`](Self::SourceUntapped)/Howling Mine.
+    NoCreaturesOnBattlefield,
     /// Breena: "if that opponent has more life than another of your opponents." Reads the
     /// triggering context's attacked opponent; needs the controller to have ≥2 opponents.
     AttackedOpponentHasMoreLifeThanAnotherOpponent,
@@ -1685,16 +1792,54 @@ pub enum Condition {
     /// Sphere's "Activate only if …", CR 602.5b) — [`Game::ability_activation_gate`] evaluates the
     /// same `Ability::condition` slot.
     AnOpponentHasPoisonAtLeast { at_least: u32 },
+    /// "if you cast it from your hand" (CR 603.4 — Dread Cacodemon's/Reiver Demon's ETB
+    /// intervening-if). Source-object-based like [`ColorWasSpentToCastThis`](Self::ColorWasSpentToCastThis)
+    /// just above: `TriggerContext` carries no source id, so
+    /// [`Game::ability_condition_holds`] special-cases it directly against its own `source`
+    /// parameter, reading [`Permanent::cast_from_hand`]. Unreachable through the ordinary
+    /// [`condition_holds`](Game::condition_holds) path (returns `false` there) — every ETB
+    /// intervening-if goes through `ability_condition_holds` instead.
+    CastFromHand,
+    /// "When you do [sacrifice one or more creatures]" (CR 603.4 — Plumb the Forbidden's reflexive
+    /// copy rider). Gates a spell's [`Trigger::YouCastThis`](crate::Trigger::YouCastThis) ability
+    /// on whether one or more permanents were actually sacrificed to pay the spell's additional
+    /// sacrifice cost (CR 601.2f): the reflexive trigger doesn't happen at all when nothing was
+    /// sacrificed, so no zero-count copy trigger ever goes on the stack. Source-object-based like
+    /// [`CastFromHand`](Self::CastFromHand) just above: `TriggerContext` carries no source id, so
+    /// [`Game::ability_condition_holds`] special-cases it directly against its own `source`
+    /// parameter, reading [`Game::spell_sacrifice_count`]. Unreachable through the ordinary
+    /// [`condition_holds`](Game::condition_holds) path (returns `false` there).
+    SpellSacrificedToCast,
+    /// "if this ability has been activated `at_least` or more times this turn" (CR 602.2b —
+    /// Dragon Whelp's "If this ability has been activated four or more times this turn,
+    /// sacrifice this creature at the beginning of the next end step"). Source-object-based like
+    /// [`SourceEnteredWithXAtLeast`](Self::SourceEnteredWithXAtLeast): `TriggerContext` carries no
+    /// source id, so the [`Effect::Conditional`] resolve site special-cases it directly against
+    /// its own `source` parameter, counting this turn's
+    /// [`Event::AbilityActivatedThisTurn`](crate::Event::AbilityActivatedThisTurn) entries for that
+    /// object (`Game::once_per_turn.activated`, cleared every untap). Every activated-ability
+    /// activation records one now (not just a `once_each_turn`-capped one), so a later activation
+    /// this turn is already counted by the time an earlier one resolves — matching the real-card
+    /// ruling that this checks the turn's total activation count, not how many have resolved yet.
+    // ponytail: counts every activation of the *source object*, not of the specific ability the
+    // condition hangs on — the resolve site has the source id but no ability index by then. Exact
+    // for Dragon Whelp (its only activated ability); a card with two activated abilities would
+    // let one ability's activations satisfy the other's count. Thread the index through
+    // `Effect::Conditional` when such a card arrives.
+    SourceActivatedThisTurnAtLeast { at_least: u32 },
 }
 
 /// Whether `sacrifices` is a legal answer to a sacrifice edict over `options`: every id a
 /// distinct one of the options, and the right count — all-but-one kept for `keep_one`, otherwise
-/// exactly one. (The caller only prompts when there's a real choice, so `options` is non-empty
-/// and, for `keep_one`, holds at least two.)
+/// `count` (Malfegor sacrifices one per card discarded), capped at what's available (a player with
+/// fewer creatures than `count` sacrifices all of them — CR 601-style "as many as you can"). (The
+/// caller only prompts when there's a real choice, so `options` is non-empty and, for `keep_one`,
+/// holds at least two.)
 pub(crate) fn valid_sacrifice_choice(
     sacrifices: &[ObjectId],
     options: &[ObjectId],
     keep_one: bool,
+    count: u32,
 ) -> bool {
     if sacrifices.iter().any(|id| !options.contains(id)) {
         return false;
@@ -1703,7 +1848,11 @@ pub(crate) fn valid_sacrifice_choice(
         .iter()
         .enumerate()
         .all(|(i, id)| !sacrifices[..i].contains(id));
-    let required = if keep_one { options.len() - 1 } else { 1 };
+    let required = if keep_one {
+        options.len() - 1
+    } else {
+        (count as usize).min(options.len())
+    };
     no_duplicates && sacrifices.len() == required
 }
 
@@ -1880,6 +2029,14 @@ pub(crate) fn contextualize_effect(effect: Effect, ctx: TriggerContext) -> Effec
     } else {
         fill_cards_left_graveyard(effect, ctx.cards_left_graveyard)
     };
+    // A `YouDiscardNonland` payoff that exiles one of the discarded nonland cards (Conspiracy
+    // Theorist) needs the batch's nonland card ids baked in — same shape as `cards_left_graveyard`
+    // above. `&[]` for every other trigger, so this is a no-op elsewhere.
+    let effect = if ctx.discarded_nonland_cards.is_empty() {
+        effect
+    } else {
+        fill_discarded_nonland_cards(effect, ctx.discarded_nonland_cards)
+    };
     // A delayed one-shot's copy payoff (Thunderclap Drake) needs the spell that fired the
     // armed watch, not the attack tuple below — guarded separately for the same reason as
     // `entering`/`dying_enchanted_creature` above.
@@ -1918,7 +2075,7 @@ pub(crate) fn contextualize_effect(effect: Effect, ctx: TriggerContext) -> Effec
         ),
         None => effect,
     };
-    match (effect, ctx.attack) {
+    match (effect.clone(), ctx.attack) {
         (Effect::Counters(CountersEffect::AttackerDrawsControllerCounters { counters, .. }), Some((attacker, _attacked))) => {
             Effect::Counters(CountersEffect::AttackerDrawsControllerCounters {
                 attacker: Some(attacker),
@@ -1955,6 +2112,16 @@ pub(crate) fn contextualize_effect(effect: Effect, ctx: TriggerContext) -> Effec
         (Effect::Choice(ChoiceEffect::DefendingPlayerSacrifices { count, .. }), Some((_attacker, defender))) => {
             Effect::Choice(ChoiceEffect::DefendingPlayerSacrifices {
                 count,
+                defender: Some(defender),
+            })
+        }
+        // Kaalia of the Vast: "put an … creature card from your hand onto the battlefield tapped
+        // and attacking that opponent" — bake the defending player so the answer enters the
+        // put-in creature tapped and attacking it (CR 508.4).
+        (Effect::Choice(ChoiceEffect::PutCreatureFromHand { subtypes, keep, .. }), Some((_attacker, defender))) => {
+            Effect::Choice(ChoiceEffect::PutCreatureFromHand {
+                subtypes,
+                keep,
                 defender: Some(defender),
             })
         }
@@ -2044,10 +2211,10 @@ fn fill_entering_permanent(effect: Effect, entering: ObjectId) -> Effect {
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|&step| fill_entering_permanent(step, entering))
+                .map(|step| fill_entering_permanent(step.clone(), entering))
                 .collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         other => other,
@@ -2069,10 +2236,10 @@ fn fill_dying_enchanted_creature(effect: Effect, dying: ObjectId) -> Effect {
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|&step| fill_dying_enchanted_creature(step, dying))
+                .map(|step| fill_dying_enchanted_creature(step.clone(), dying))
                 .collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         other => other,
@@ -2092,10 +2259,10 @@ fn fill_damaged_creature(effect: Effect, damaged: ObjectId) -> Effect {
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|&step| fill_damaged_creature(step, damaged))
+                .map(|step| fill_damaged_creature(step.clone(), damaged))
                 .collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         other => other,
@@ -2113,10 +2280,10 @@ fn fill_left_battlefield_host(effect: Effect, host: ObjectId) -> Effect {
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|&step| fill_left_battlefield_host(step, host))
+                .map(|step| fill_left_battlefield_host(step.clone(), host))
                 .collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         other => other,
@@ -2140,10 +2307,10 @@ fn fill_dead_creature(effect: Effect, dead: ObjectId) -> Effect {
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|&step| fill_dead_creature(step, dead))
+                .map(|step| fill_dead_creature(step.clone(), dead))
                 .collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         other => other,
@@ -2162,21 +2329,23 @@ fn fill_dying_permanent_types(effect: Effect, types: TypeSet) -> Effect {
             scope,
             keep_one,
             life_loss,
+            count,
             then,
         }) if filter.shares_type_with_dying_permanent => Effect::Choice(ChoiceEffect::EachPlayerSacrifices {
             filter: PermanentFilter { types, ..filter },
             scope,
             keep_one,
             life_loss,
+            count,
             then,
         }),
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|&step| fill_dying_permanent_types(step, types))
+                .map(|step| fill_dying_permanent_types(step.clone(), types))
                 .collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         other => other,
@@ -2191,6 +2360,19 @@ fn fill_cards_left_graveyard(effect: Effect, cards: &'static [ObjectId]) -> Effe
     match effect {
         Effect::Choice(ChoiceEffect::PutCounterThenMayBecomeCopyOfCardFromList { .. }) => {
             Effect::Choice(ChoiceEffect::PutCounterThenMayBecomeCopyOfCardFromList { cards })
+        }
+        other => other,
+    }
+}
+
+/// Rewrite a [`TriggerContext::discarded_nonland_cards`]-reading effect placeholder to the batch's
+/// nonland card ids: [`Effect::Choice(ChoiceEffect::MayExileDiscardedNonlandMayPlay)`] (Conspiracy
+/// Theorist, off [`Trigger::YouDiscardNonland`]) — mirrors [`fill_cards_left_graveyard`] above.
+/// `cards` is the already-leaked `&'static` slice off the trigger context, so no re-leak here.
+fn fill_discarded_nonland_cards(effect: Effect, cards: &'static [ObjectId]) -> Effect {
+    match effect {
+        Effect::Choice(ChoiceEffect::MayExileDiscardedNonlandMayPlay { .. }) => {
+            Effect::Choice(ChoiceEffect::MayExileDiscardedNonlandMayPlay { cards })
         }
         other => other,
     }
@@ -2211,10 +2393,10 @@ fn fill_triggering_ability(effect: Effect, source: ObjectId) -> Effect {
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|&step| fill_triggering_ability(step, source))
+                .map(|step| fill_triggering_ability(step.clone(), source))
                 .collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         other => other,
@@ -2253,10 +2435,10 @@ fn fill_triggering_spell(effect: Effect, spell: ObjectId) -> Effect {
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|&step| fill_triggering_spell(step, spell))
+                .map(|step| fill_triggering_spell(step.clone(), spell))
                 .collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         other => other,
@@ -2283,10 +2465,10 @@ fn fill_spells_cast_before_this(effect: Effect, n: u32) -> Effect {
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|&step| fill_spells_cast_before_this(step, n))
+                .map(|step| fill_spells_cast_before_this(step.clone(), n))
                 .collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         other => other,
@@ -2305,10 +2487,10 @@ fn fill_triggering_caster(effect: Effect, caster: PlayerId) -> Effect {
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|&step| fill_triggering_caster(step, caster))
+                .map(|step| fill_triggering_caster(step.clone(), caster))
                 .collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         other => other,
@@ -2330,10 +2512,10 @@ fn fill_combat_damage_source_controller(effect: Effect, player: PlayerId) -> Eff
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|&step| fill_combat_damage_source_controller(step, player))
+                .map(|step| fill_combat_damage_source_controller(step.clone(), player))
                 .collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         other => other,
@@ -2352,10 +2534,10 @@ fn fill_combat_damage_recipient(effect: Effect, player: PlayerId) -> Effect {
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|&step| fill_combat_damage_recipient(step, player))
+                .map(|step| fill_combat_damage_recipient(step.clone(), player))
                 .collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         other => other,
@@ -2394,10 +2576,10 @@ fn fill_add_mana_recipient(effect: Effect, active_player: PlayerId) -> Effect {
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|&step| fill_add_mana_recipient(step, active_player))
+                .map(|step| fill_add_mana_recipient(step.clone(), active_player))
                 .collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         other => other,
@@ -2418,10 +2600,10 @@ fn fill_each_draw_step_drawer(effect: Effect, active_player: PlayerId) -> Effect
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|&step| fill_each_draw_step_drawer(step, active_player))
+                .map(|step| fill_each_draw_step_drawer(step.clone(), active_player))
                 .collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         Effect::Conditional {
@@ -2432,15 +2614,15 @@ fn fill_each_draw_step_drawer(effect: Effect, active_player: PlayerId) -> Effect
         } => {
             let filled: Vec<Effect> = then
                 .iter()
-                .map(|&step| fill_each_draw_step_drawer(step, active_player))
+                .map(|step| fill_each_draw_step_drawer(step.clone(), active_player))
                 .collect();
             let filled_otherwise: Vec<Effect> = otherwise
                 .iter()
-                .map(|&step| fill_each_draw_step_drawer(step, active_player))
+                .map(|step| fill_each_draw_step_drawer(step.clone(), active_player))
                 .collect();
             Effect::Conditional {
                 condition,
-                then: Box::leak(filled.into_boxed_slice()),
+                then: Arc::from(filled),
                 negate,
                 otherwise: Box::leak(filled_otherwise.into_boxed_slice()),
             }
@@ -2505,9 +2687,9 @@ fn map_effect_amounts(effect: Effect, f: &impl Fn(Amount) -> Amount) -> Effect {
             damaged,
         }),
         Effect::Sequence { steps } => {
-            let filled: Vec<Effect> = steps.iter().map(|&s| map_effect_amounts(s, f)).collect();
+            let filled: Vec<Effect> = steps.iter().map(|s| map_effect_amounts(s.clone(), f)).collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         other => other,
@@ -2608,27 +2790,27 @@ fn fill_cast_mana_value(effect: Effect, mv: u32) -> Effect {
             if (mv < u32::from(at_least)) != negate {
                 let filled_otherwise: Vec<Effect> = otherwise
                     .iter()
-                    .map(|&step| fill_cast_mana_value(step, mv))
+                    .map(|step| fill_cast_mana_value(step.clone(), mv))
                     .collect();
                 return Effect::Sequence {
-                    steps: Box::leak(filled_otherwise.into_boxed_slice()),
+                    steps: Arc::from(filled_otherwise),
                 };
             }
             let filled: Vec<Effect> = then
                 .iter()
-                .map(|&step| fill_cast_mana_value(step, mv))
+                .map(|step| fill_cast_mana_value(step.clone(), mv))
                 .collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|&step| fill_cast_mana_value(step, mv))
+                .map(|step| fill_cast_mana_value(step.clone(), mv))
                 .collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         other => other,
@@ -2697,10 +2879,10 @@ fn fill_combat_damage(effect: Effect, damage: i32) -> Effect {
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|&step| fill_combat_damage(step, damage))
+                .map(|step| fill_combat_damage(step.clone(), damage))
                 .collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         other => map_effect_amounts(other, &|amount| match amount {
@@ -2738,10 +2920,10 @@ fn fill_source_power(effect: Effect, power: i32) -> Effect {
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|&step| fill_source_power(step, power))
+                .map(|step| fill_source_power(step.clone(), power))
                 .collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         other => other,
@@ -2804,10 +2986,10 @@ pub(crate) fn contextualize_sacrifice_effect(effect: Effect, power: i32, toughne
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|&step| contextualize_sacrifice_effect(step, power, toughness))
+                .map(|step| contextualize_sacrifice_effect(step.clone(), power, toughness))
                 .collect();
             Effect::Sequence {
-                steps: Box::leak(filled.into_boxed_slice()),
+                steps: Arc::from(filled),
             }
         }
         other => other,
@@ -2836,12 +3018,15 @@ mod tests {
                 sacrifice_scaled: false,
                 strive_scaled: false,
                 total_mv_max: None,
+                multikicker_scaled: false,
+                kicked_scaled: false,
+                main_phase_scaled: false,
             },
         });
 
         let target_in_otherwise = Effect::Conditional {
             condition: Condition::SourcePowerAtMost { at_most: 16 },
-            then: &[GAIN],
+            then: arc_slice([GAIN]),
             negate: false,
             otherwise: &[BOUNCE],
         };
@@ -2850,7 +3035,7 @@ mod tests {
         // `then` still wins when both branches target — it is announced first.
         let target_in_then = Effect::Conditional {
             condition: Condition::SourcePowerAtMost { at_most: 16 },
-            then: &[BOUNCE],
+            then: arc_slice([BOUNCE]),
             negate: false,
             otherwise: &[GAIN],
         };
@@ -2858,7 +3043,7 @@ mod tests {
 
         let no_target = Effect::Conditional {
             condition: Condition::SourcePowerAtMost { at_most: 16 },
-            then: &[GAIN],
+            then: arc_slice([GAIN]),
             negate: false,
             otherwise: &[GAIN],
         };

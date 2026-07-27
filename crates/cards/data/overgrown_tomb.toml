@@ -5,7 +5,7 @@ id = "ad7e18e2-c033-4b6c-86e8-d0e5cc824cfd"
 default_print = "ad7e18e2-c033-4b6c-86e8-d0e5cc824cfd"
 otags = ["activated-ability", "cycle-shockland", "synergy-forest", "synergy-swamp"]
 oracle = "({T}: Add {B} or {G}.)\nAs this land enters, you may pay 2 life. If you don't, it enters tapped."
-set = "trk"
+sets = ["trk"]
 enters_tapped_unless_you_pay_life = 2
 
 [kind]

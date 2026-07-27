@@ -2,10 +2,10 @@
 # life.
 # Target creature gets +4/+4 until end of turn.
 name = "Invigorate"
+sets = ["2xm", "a25", "cmd", "ddd", "ema", "gn3", "gvl", "mmq", "plst", "pz1"]
 id = "9264c198-76c7-4ac0-9334-37c691de1b54"
 default_print = "e0899da3-7beb-4161-81a3-e2d694e5b8a5"
 oracle = "If you control a Forest, rather than pay this spell's mana cost, you may have an opponent gain 3 life.\nTarget creature gets +4/+4 until end of turn."
-set = "2xm"
 approximates = "\"have an opponent gain 3 life\" always picks the lowest-seat-index living opponent instead of letting the caster choose which one — observable only with more than one opponent."
 
 [cost]

@@ -26,9 +26,10 @@ import type {
   WireTarget,
 } from "~/wire/types";
 import { clampX } from "~/xCost";
-import { type InspectPin, inspectPinChanged, pinFromCard, pinFromPlayer } from "../../lib/inspect";
-import { humanReason } from "../../lib/reject";
-import { isSoundEnabled, playUnmuteTick, setSoundEnabled, unlockTableAudio } from "../../lib/tableAudio";
+import { formatMessage } from "../domain/i18n/message";
+import { type InspectPin, inspectPinChanged, pinFromCard, pinFromPlayer } from "../domain/inspect";
+import { humanReason } from "../domain/reject";
+import { isSoundEnabled, playUnmuteTick, setSoundEnabled, unlockTableAudio } from "../domain/tableAudio";
 import type { GameFoldState } from "../game/fold";
 import {
   FetchInspectCard,
@@ -38,6 +39,7 @@ import {
   SetYield,
   SubmitIntent,
 } from "../game/intents";
+import type { Message as GameMessage } from "../game/messages";
 import type { RpcClient } from "../resources";
 import {
   buildTakeActionIntent,
@@ -46,9 +48,12 @@ import {
   emptyCostPicks,
   findCastActionForObject,
   type ModalCast,
+  type PlayModePick,
   planCostPipeline,
   planHandDrop,
+  planHandPlay,
   planRunAction,
+  reconcilePlayModeModes,
   type StagedAction,
   settleSacrificePick,
   usedCostPick,
@@ -74,8 +79,9 @@ import {
   stagedPickTargets,
 } from "./action/targeting";
 import type { Camera, Vec2 } from "./geometry/camera";
-import { panBy, screenToWorld, worldToScreen } from "./geometry/camera";
+import { panBy, screenToWorld, worldToScreen, zoomAt } from "./geometry/camera";
 import {
+  canArmEndTurn,
   combatStagingClearsOnStepChange,
   handleCombatDrop,
   stagedAttackersForDisplay,
@@ -84,24 +90,31 @@ import { hitAvatar, hitTest } from "./geometry/hit-test";
 import {
   canSelectPermanent,
   combatMode,
+  declaresFor,
   fitCamera,
   type PointerPhase,
   pointerDown,
   pointerMove,
   pointerUp,
+  primaryActionFor,
 } from "./geometry/interaction";
-import { avatarPos, CARD_H, CARD_W, layout, type RenderCard, STEP, ZONE } from "./geometry/layout";
+import { avatarPos, CARD_H, CARD_W, layout, type RenderCard, ZONE } from "./geometry/layout";
 import { type RadialPress, radialPressDown, radialPressUp } from "./geometry/radial";
 import {
   STACK_HOLD_MAX_MS,
   STACK_VERTICAL_RESERVED,
   shouldAutoCollapseStackExpand,
+  stackFaceScreenOrigin,
   stackPeekFor,
+  stackPresentation,
 } from "./geometry/stackLayout";
+import { modesForObject } from "./html/actions";
 import { selectedRadialOptions } from "./html/activation-menu";
 import { persistHintDismissed, readHintDismissed } from "./html/discoverability";
 import { HAND_BAR_H, HAND_INSPECT_STICKY_BAND, HAND_PLAY_SLACK_PX } from "./html/hand";
+import { CopyBoardLog } from "./log-commands";
 import { GyExileChosen, type Message } from "./messages";
+import { type ExitFx, spawnExitFx } from "./motion/exit-fx";
 import {
   type CardFlight,
   flyingCardIds,
@@ -122,8 +135,17 @@ export type HandDragState = {
   print: string;
   manaCost: WireCost;
   kind?: string;
+  zone?: "hand" | "command" | "graveyard" | "exile";
   x: number;
   y: number;
+};
+
+type BattlefieldPose = {
+  x: number;
+  y: number;
+  scale: number;
+  print: string;
+  name: string;
 };
 
 export type BoardModel = {
@@ -131,10 +153,12 @@ export type BoardModel = {
   cameraFitPlayers: number | null;
   /** True after the player pans/zooms — stops automatic fitCamera from fighting them. */
   cameraUserMoved: boolean;
+  exitFx: Map<number, ExitFx>;
   flights: Map<number, CardFlight>;
   handHidden: Set<number>;
   hideCardIds: Set<number>;
   lastFlightFrame: number | null;
+  lastBattlefieldPoses: Map<number, BattlefieldPose>;
   lastProvenanceSeq: number | null;
   ownedIds: Set<number>;
   pointer: PointerPhase;
@@ -147,6 +171,7 @@ export type BoardModel = {
   cursor: Vec2;
   // Action session state (pre-submit chrome, cost pipeline, staging).
   staged: StagedAction | null;
+  playModePick: PlayModePick | null;
   xPrompt: XPromptState | null;
   modalCast: ModalCast | null;
   sacrificePick: CostPickState | null;
@@ -180,6 +205,12 @@ export type BoardModel = {
   stackExpand: boolean;
   /** Peak hold-ms seen this countdown — bar denominator for `stack_hold_remaining_ms`. */
   stackHoldPeak: number;
+  /** Board log panel shows the full fold buffer instead of the last 30 lines. */
+  logExpanded: boolean;
+  /** Last board log copy succeeded; reset by expand/collapse or a new copy attempt. */
+  logCopied: boolean;
+  /** Last board log copy failed; paired with `logCopied` for toolbar feedback. */
+  logCopyFailed: boolean;
   // Concede.
   confirmConcede: boolean;
   // Game result.
@@ -195,6 +226,12 @@ export type BoardModel = {
   pendingChoiceKey: string | null;
   /** In-progress answer for interactive pending-choice forms. */
   promptDraft: PromptDraft | null;
+  /**
+   * True after a prompt answer was submitted while `pending_choice` still matches.
+   * Keeps the draft painted (no re-init flash) and blocks double-submit / edits until
+   * the choice key changes or the intent is rejected.
+   */
+  promptSubmitInFlight: boolean;
   /** Catalog name suggestions for `choose_card_name` (query must match current draft). */
   cardNameSuggestions: { query: string; names: ReadonlyArray<string> } | null;
   /** Filter query for closed option prompts (creature types). */
@@ -212,10 +249,12 @@ export function initialBoardModel(): BoardModel {
     camera: { panX: 0, panY: 0, zoom: 1 },
     cameraFitPlayers: null,
     cameraUserMoved: false,
+    exitFx: new Map(),
     flights: new Map(),
     handHidden: new Set(),
     hideCardIds: new Set(),
     lastFlightFrame: null,
+    lastBattlefieldPoses: new Map(),
     lastProvenanceSeq: null,
     ownedIds: new Set(),
     pointer: { kind: "idle" },
@@ -225,6 +264,7 @@ export function initialBoardModel(): BoardModel {
     viewport: { ...BOARD_VIEWPORT },
     cursor: { x: 0, y: 0 },
     staged: null,
+    playModePick: null,
     xPrompt: null,
     modalCast: null,
     sacrificePick: null,
@@ -245,6 +285,9 @@ export function initialBoardModel(): BoardModel {
     pileExpand: null,
     stackExpand: false,
     stackHoldPeak: 0,
+    logExpanded: false,
+    logCopied: false,
+    logCopyFailed: false,
     confirmConcede: false,
     resultSeen: false,
     hintDismissed: readHintDismissed(),
@@ -255,6 +298,7 @@ export function initialBoardModel(): BoardModel {
     lastPriorityHolder: null,
     pendingChoiceKey: null,
     promptDraft: null,
+    promptSubmitInFlight: false,
     cardNameSuggestions: null,
     promptOptionFilter: "",
     orderPickPos: null,
@@ -278,7 +322,7 @@ export function syncBoardWithGame(model: BoardModel, fold: BoardFold): BoardMode
   if (!next.cameraUserMoved && next.cameraFitPlayers !== playerCount) {
     next = {
       ...next,
-      camera: fitCamera({ x: next.viewport.width, y: next.viewport.height }, playerCount, 0),
+      camera: fitCamera({ x: next.viewport.width, y: next.viewport.height }, playerCount, HAND_BAR_H),
       cameraFitPlayers: playerCount,
     };
   }
@@ -294,7 +338,19 @@ export function syncBoardWithGame(model: BoardModel, fold: BoardFold): BoardMode
   if (next.lastProvenanceSeq !== fold.seq) {
     next = syncFlightsWithGame(next, fold);
   }
+  next = syncPlayModePick(next, fold);
   return syncStackChrome(next, fold);
+}
+
+function syncPlayModePick(model: BoardModel, fold: BoardFold): BoardModel {
+  const pick = model.playModePick;
+  if (pick == null) return model;
+
+  const modes = reconcilePlayModeModes(pick.modes, fold.state?.actions);
+  if (modes.length === 0) {
+    return { ...clearPlayOrigin(model, pick.card.id), playModePick: null };
+  }
+  return { ...model, playModePick: { ...pick, modes } };
 }
 
 function syncStackChrome(model: BoardModel, fold: BoardFold): BoardModel {
@@ -330,11 +386,17 @@ function syncPromptDraft(model: BoardModel, fold: BoardFold): BoardModel {
     ...model,
     pendingChoiceKey: key,
     promptDraft: pc != null && gameState != null ? initPromptDraft(pc, gameState) : null,
+    promptSubmitInFlight: false,
     cardNameSuggestions: null,
     promptOptionFilter: "",
     orderPickPos: null,
     pileExpand: pile != null ? pile : model.gyExilePick != null ? model.pileExpand : null,
   };
+}
+
+/** Freeze the current prompt draft after submitting an answer (avoids Bottom-lane re-init flash). */
+function withPromptSubmitInFlight(model: BoardModel, extras: Partial<BoardModel> = {}): BoardModel {
+  return { ...model, ...extras, promptSubmitInFlight: true };
 }
 
 function samePromptTarget(a: WireTarget | null | undefined, b: WireTarget | null | undefined): boolean {
@@ -380,26 +442,51 @@ function cardAt(fold: GameFoldState, model: BoardModel, x: number, y: number): R
   return cards.find((card) => card.id === hitId) ?? null;
 }
 
-function combatStepFor(fold: GameFoldState): boolean {
+/** The seats whose creatures this viewer may drag into a combat declaration right now — empty when
+ * no declaration is theirs to make. Usually just themselves; a moved declaration (Master Warcraft)
+ * hands them somebody else's creatures. */
+function stageableSeats(fold: GameFoldState): number[] {
   const state = fold.state;
-  if (state == null) return false;
-
-  const mode = combatMode(
-    state.step,
-    state.active_player === state.viewer,
-    false,
-    state.combat.attackers,
-    state.viewer,
-    {
-      attackersDeclared: state.combat.attackers_declared,
-      blockersDeclared: state.combat.blockers_declared.includes(state.viewer),
-    },
-  );
-  return mode != null;
+  if (state == null) return [];
+  const mode = combatMode(state.actions, false, {
+    attackersDeclared: state.combat.attackers_declared,
+    blockersDeclared: state.combat.blockers_declared.includes(state.viewer),
+  });
+  return declaresFor(state.actions, mode);
 }
 
-function stackTarget(model: BoardModel): Vec2 {
-  return { x: model.viewport.width - 160, y: model.viewport.height / 2 };
+/** Screen pose + scale for a stack flight so settle matches the resting HTML face. */
+function stackFlightAim(
+  model: BoardModel,
+  opts: { count: number; row: number },
+): { x: number; y: number; scale: number } {
+  const count = Math.max(1, opts.count);
+  const row = Math.max(0, Math.min(count - 1, opts.row));
+  const presentation = stackPresentation({
+    count,
+    expandedOpen: model.stackExpand,
+    viewportW: model.viewport.width,
+    viewportH: model.viewport.height,
+  });
+  const origin = stackFaceScreenOrigin({
+    presentation,
+    viewportW: model.viewport.width,
+    viewportH: model.viewport.height,
+    count,
+    row,
+    peek: presentation === "pile" ? stackPeekFor(count, model.viewport.height) : undefined,
+  });
+  return { x: origin.x, y: origin.y, scale: stackFlightScale(model.camera.zoom) };
+}
+
+function stackFlightAimForSource(
+  model: BoardModel,
+  stack: ReadonlyArray<{ source: number }>,
+  sourceId: number,
+): { x: number; y: number; scale: number } {
+  const count = Math.max(1, stack.length);
+  const row = stack.findIndex((entry) => entry.source === sourceId);
+  return stackFlightAim(model, { count, row: row >= 0 ? row : count - 1 });
 }
 
 function cardTarget(camera: Camera, card: RenderCard): Vec2 {
@@ -407,7 +494,10 @@ function cardTarget(camera: Camera, card: RenderCard): Vec2 {
 }
 
 function playerOrigin(model: BoardModel, fold: BoardFold, seat: number): Vec2 {
-  if (fold.state == null) return stackTarget(model);
+  if (fold.state == null) {
+    const aim = stackFlightAim(model, { count: 1, row: 0 });
+    return { x: aim.x, y: aim.y };
+  }
   const count = Math.max(1, fold.state.players.length);
   const pos = avatarPos(seat, fold.state.viewer, count);
   return worldToScreen(model.camera, pos.x, pos.y);
@@ -418,12 +508,50 @@ function retargetFlightToCard(flight: CardFlight, model: BoardModel, card: Rende
   return retargetFlight(flight, { x: target.x, y: target.y, scale: 1 });
 }
 
+function hiddenCardIds(flights: ReadonlyMap<number, CardFlight>, exitFx: ReadonlyMap<number, ExitFx>): Set<number> {
+  const hidden = flyingCardIds(flights);
+  for (const id of exitFx.keys()) hidden.add(id);
+  return hidden;
+}
+
+function battlefieldPoseFromCard(camera: Camera, card: RenderCard): BattlefieldPose {
+  const target = cardTarget(camera, card);
+  return {
+    x: target.x,
+    y: target.y,
+    scale: 1,
+    print: card.print,
+    name: card.name,
+  };
+}
+
+function battlefieldPoseFromFlight(flight: CardFlight): BattlefieldPose {
+  return {
+    x: flight.x,
+    y: flight.y,
+    scale: flight.scale,
+    print: flight.print,
+    name: flight.name,
+  };
+}
+
+function currentBattlefieldPoses(model: BoardModel, cards: readonly RenderCard[]): Map<number, BattlefieldPose> {
+  const poses = new Map<number, BattlefieldPose>();
+  for (const card of cards) {
+    if (card.zone !== ZONE.Battlefield) continue;
+    poses.set(card.id, battlefieldPoseFromCard(model.camera, card));
+  }
+  return poses;
+}
+
 function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
   const state = fold.state;
   if (state == null) return model;
 
   const cards = layout(state, state.viewer);
   const cardsById = new Map(cards.map((card) => [card.id, card]));
+  const battlefieldExitIds = new Set(fold.provenance.battlefieldExits.keys());
+  const exitFx = new Map(model.exitFx);
   const handHidden = new Set(model.handHidden);
   let flights = new Map(model.flights);
 
@@ -434,8 +562,36 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
       continue;
     }
     if (flight.kind !== "stack") continue;
-    const target = stackTarget(model);
-    flights.set(id, retargetFlight(flight, { x: target.x, y: target.y, scale: stackFlightScale(model.camera.zoom) }));
+    const aim = stackFlightAimForSource(model, state.stack, id);
+    flights.set(id, retargetFlight(flight, { x: aim.x, y: aim.y, scale: aim.scale }));
+  }
+
+  for (const [id, zone] of fold.provenance.battlefieldExits) {
+    const from = fold.provenance.zoneMoves.get(id);
+    const flightId = flights.has(id) ? id : from != null && flights.has(from) ? from : null;
+    const flight = flightId == null ? undefined : flights.get(flightId);
+    const pose =
+      flight != null
+        ? battlefieldPoseFromFlight(flight)
+        : ((from != null ? model.lastBattlefieldPoses.get(from) : undefined) ?? model.lastBattlefieldPoses.get(id));
+    if (flight != null && flightId != null) {
+      flights.delete(flightId);
+      if (flight.fromCardId != null) handHidden.delete(flight.fromCardId);
+    }
+    if (pose == null) continue;
+    exitFx.set(
+      id,
+      spawnExitFx({
+        id,
+        print: pose.print,
+        name: pose.name,
+        kind: zone === "graveyard" ? "destroy" : "exile",
+        x: pose.x,
+        y: pose.y,
+        scale: pose.scale,
+        seed: id,
+      }),
+    );
   }
 
   for (const [permanent, from] of fold.provenance.landPlayFrom) {
@@ -475,7 +631,7 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
   }
 
   for (const [spell, meta] of fold.provenance.stackEntrances) {
-    const target = stackTarget(model);
+    const aim = stackFlightAimForSource(model, state.stack, spell);
     if (!flights.has(spell) && flights.has(meta.from)) {
       flights = rebindFlightId(flights, meta.from, spell);
     }
@@ -487,9 +643,9 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
         retargetFlight(
           { ...existing, kind: "stack", fromCardId: meta.from },
           {
-            x: target.x,
-            y: target.y,
-            scale: stackFlightScale(model.camera.zoom),
+            x: aim.x,
+            y: aim.y,
+            scale: aim.scale,
           },
         ),
       );
@@ -507,9 +663,9 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
         x: start.x,
         y: start.y,
         scale: handFlightScale(model.camera.zoom),
-        targetX: target.x,
-        targetY: target.y,
-        targetScale: stackFlightScale(model.camera.zoom),
+        targetX: aim.x,
+        targetY: aim.y,
+        targetScale: aim.scale,
         kind: "stack",
         fromCardId: meta.from,
       }),
@@ -518,6 +674,7 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
   }
 
   for (const id of new Set([...fold.provenance.resolvedFromStack, ...fold.provenance.leftStackToPile])) {
+    if (battlefieldExitIds.has(id)) continue;
     const card = cardsById.get(id);
     if (card == null) continue;
 
@@ -532,7 +689,10 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
       continue;
     }
 
-    const start = stackTarget(model);
+    const startAim = stackFlightAim(model, {
+      count: Math.max(1, state.stack.length + 1),
+      row: state.stack.length,
+    });
     const target = cardTarget(model.camera, card);
     flights.set(
       id,
@@ -540,9 +700,9 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
         id,
         print: card.print,
         name: card.name,
-        x: start.x,
-        y: start.y,
-        scale: stackFlightScale(model.camera.zoom),
+        x: startAim.x,
+        y: startAim.y,
+        scale: startAim.scale,
         targetX: target.x,
         targetY: target.y,
         targetScale: 1,
@@ -552,22 +712,26 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
   }
 
   for (const [id, from] of fold.provenance.zoneMoves) {
+    if (battlefieldExitIds.has(id)) continue;
     if (flights.has(id)) continue;
     const card = cardsById.get(id);
     if (card == null) continue;
 
     const target = cardTarget(model.camera, card);
     const prior = cardsById.get(from);
-    const start = prior == null ? stackTarget(model) : cardTarget(model.camera, prior);
+    const startAim =
+      prior == null
+        ? stackFlightAim(model, { count: Math.max(1, state.stack.length + 1), row: state.stack.length })
+        : { ...cardTarget(model.camera, prior), scale: 1 };
     flights.set(
       id,
       spawnFlight({
         id,
         print: card.print,
         name: card.name,
-        x: start.x,
-        y: start.y,
-        scale: prior == null ? stackFlightScale(model.camera.zoom) : 1,
+        x: startAim.x,
+        y: startAim.y,
+        scale: startAim.scale,
         targetX: target.x,
         targetY: target.y,
         targetScale: 1,
@@ -588,9 +752,11 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
 
   return {
     ...model,
+    exitFx,
     flights,
     handHidden,
-    hideCardIds: flyingCardIds(flights),
+    hideCardIds: hiddenCardIds(flights, exitFx),
+    lastBattlefieldPoses: currentBattlefieldPoses(model, cards),
     lastProvenanceSeq: fold.seq,
     ownedIds: new Set(flights.keys()),
   };
@@ -603,7 +769,7 @@ function pointerDownModel(model: BoardModel, fold: GameFoldState, x: number, y: 
   return {
     ...model,
     cursor: { x, y },
-    pointer: pointerDown(cardAt(fold, model, x, y), x, y, combatStepFor(fold), state.viewer),
+    pointer: pointerDown(cardAt(fold, model, x, y), x, y, stageableSeats(fold)),
   };
 }
 
@@ -880,13 +1046,11 @@ function togglePendingObjectAimPick(
   const max =
     pc.kind === "choose_target"
       ? pc.max
-      : pc.kind === "choose_spell_targets" || pc.kind === "choose_ability_targets"
+      : pc.kind === "shuffle_from_graveyard"
         ? pc.max
-        : pc.kind === "shuffle_from_graveyard"
-          ? pc.max
-          : pc.kind === "choose_activation_cost_targets" || pc.kind === "pay_cumulative_upkeep_or_sacrifice"
-            ? pc.count
-            : (cardPickRequiredCount(pc) ?? undefined);
+        : pc.kind === "choose_activation_cost_targets" || pc.kind === "pay_cumulative_upkeep_or_sacrifice"
+          ? pc.count
+          : (cardPickRequiredCount(pc) ?? undefined);
   let next: number[];
   if (picked.includes(objectId)) {
     next = picked.filter((id) => id !== objectId);
@@ -933,8 +1097,14 @@ function submitPendingHandPick(
   return togglePendingObjectAimPick(idle, fold, pc, objectId);
 }
 
-function applyFlightsSynced(model: BoardModel, flightsIn: readonly CardFlight[], now: number): BoardModel {
+function applyFlightsSynced(
+  model: BoardModel,
+  flightsIn: readonly CardFlight[],
+  exitFxIn: readonly ExitFx[],
+  now: number,
+): BoardModel {
   const flights = new Map<number, CardFlight>();
+  const exitFx = new Map<number, ExitFx>(exitFxIn.map((fx) => [fx.id, fx]));
   const handHidden = new Set(model.handHidden);
   const retainedSourceIds = new Set<number>();
 
@@ -958,16 +1128,18 @@ function applyFlightsSynced(model: BoardModel, flightsIn: readonly CardFlight[],
 
   return {
     ...model,
+    exitFx,
     flights,
     handHidden,
-    hideCardIds: flyingCardIds(flights),
-    lastFlightFrame: flights.size === 0 ? null : now,
+    hideCardIds: hiddenCardIds(flights, exitFx),
+    lastFlightFrame: flights.size === 0 && exitFx.size === 0 ? null : now,
     ownedIds: new Set(flights.keys()),
   };
 }
 
 type Vec = { x: number; y: number };
-type BoardCmd = FoldkitCommand.Command<Message, never, RpcClient>;
+export type OutMessage = Message | GameMessage;
+type BoardCmd = FoldkitCommand.Command<OutMessage, never, RpcClient>;
 type BoardReturn = readonly [BoardModel, ReadonlyArray<BoardCmd>];
 
 function undecidedMulliganInspectLock(state: VisibleState | null | undefined): boolean {
@@ -1075,10 +1247,13 @@ function submitCmd(tableId: string | null, intent: WireIntent): BoardCmd[] {
 }
 
 function boardIntentSubmit(tableId: string | null, intent: WireIntent): BoardCmd[] {
-  // SubmitIntent's Command emits app-level IntentAcked/IntentRejected. The top-level `update`
-  // folds those results into `game.board.reject`, so the board's own case handlers don't need to
-  // observe them directly.
+  // SubmitIntent's Command emits game acknowledgements, which the parent app now wraps through
+  // GotGameMessage before folding them back into `game.board.reject`.
   return submitCmd(tableId, intent);
+}
+
+function boardLogText(fold: GameFoldState): string {
+  return fold.log.map((line) => line.text).join("\n");
 }
 
 function takeAction(
@@ -1110,7 +1285,7 @@ function ensureXPrompt(
     target,
     picks,
     modes,
-    name: action.kind === "cast_prepared" ? action.label : (card?.name ?? action.label),
+    name: action.kind === "cast_prepared" ? formatMessage(action.label) : (card?.name ?? formatMessage(action.label)),
     minX,
     maxX,
     draftX: clampX(maxX, minX, maxX),
@@ -1124,14 +1299,15 @@ function seedDropFromHand(
   card: ObjectView,
   screenOrigin: Vec,
   kind: "battlefield" | "stack",
+  stackCount = 0,
 ): BoardModel {
   const flights = new Map(model.flights);
   const handHidden = new Set(model.handHidden);
   const startScale = handFlightScale(model.camera.zoom);
-  const stackAim = stackTarget(model);
-  const targetX = kind === "stack" ? stackAim.x : screenOrigin.x;
-  const targetY = kind === "stack" ? stackAim.y : screenOrigin.y;
-  const targetScale = kind === "stack" ? stackFlightScale(model.camera.zoom) : 1;
+  const stackAim =
+    kind === "stack"
+      ? stackFlightAim(model, { count: Math.max(1, stackCount + 1), row: stackCount })
+      : { x: screenOrigin.x, y: screenOrigin.y, scale: 1 };
   flights.set(
     card.id,
     spawnFlight({
@@ -1141,9 +1317,9 @@ function seedDropFromHand(
       x: screenOrigin.x,
       y: screenOrigin.y,
       scale: startScale,
-      targetX,
-      targetY,
-      targetScale,
+      targetX: stackAim.x,
+      targetY: stackAim.y,
+      targetScale: stackAim.scale,
       kind,
       fromCardId: card.id,
     }),
@@ -1153,7 +1329,7 @@ function seedDropFromHand(
     ...model,
     flights,
     handHidden,
-    hideCardIds: flyingCardIds(flights),
+    hideCardIds: hiddenCardIds(flights, model.exitFx),
     ownedIds: new Set(flights.keys()),
   };
 }
@@ -1170,7 +1346,7 @@ function clearPlayOrigin(model: BoardModel, cardId: number): BoardModel {
     ...model,
     flights,
     handHidden,
-    hideCardIds: flyingCardIds(flights),
+    hideCardIds: hiddenCardIds(flights, model.exitFx),
     ownedIds: new Set(flights.keys()),
   };
 }
@@ -1191,7 +1367,7 @@ function runAction(
     return [{ ...model, reject: humanReason(plan.reason) }, []];
   }
   if (plan.kind === "stage") {
-    const seeded = seedDropFromHand(model, plan.card, screenOrigin, "stack");
+    const seeded = seedDropFromHand(model, plan.card, screenOrigin, "stack", fold.state?.stack.length ?? 0);
     return [
       {
         ...seeded,
@@ -1212,7 +1388,8 @@ function runAction(
     return [seeded, boardIntentSubmit(tableId, takeAction(fold, action, null, 0, [], plan.picks))];
   }
   if (plan.kind === "cast") {
-    const seeded = card != null ? seedDropFromHand(model, card, screenOrigin, "stack") : model;
+    const seeded =
+      card != null ? seedDropFromHand(model, card, screenOrigin, "stack", fold.state?.stack.length ?? 0) : model;
     const xPrompt = ensureXPrompt(fold, plan.action, null, [], plan.picks);
     if (xPrompt != null) return [{ ...seeded, xPrompt }, []];
     return [seeded, boardIntentSubmit(tableId, takeAction(fold, plan.action, null, 0, [], plan.picks))];
@@ -1337,6 +1514,27 @@ function continueAfterCostPick(
   return [model, []];
 }
 
+export function drainPlayModeIfSingleton(model: BoardModel, fold: GameFoldState, tableId: string | null): BoardReturn {
+  const pick = model.playModePick;
+  if (pick == null || pick.modes.length !== 1) return [model, []];
+
+  const chosen = pick.modes[0];
+  if (chosen == null) return [model, []];
+
+  const [next, commands] = continueAfterCostPick(
+    { ...model, playModePick: null, reject: null },
+    fold,
+    tableId,
+    chosen,
+    pick.card,
+    emptyCostPicks(),
+    pick.dropSeed,
+    pick.screenOrigin,
+  );
+  if (next.reject != null) return [clearPlayOrigin(next, pick.card.id), commands];
+  return [next, commands];
+}
+
 function hideHintOnHandUse(model: BoardModel): BoardModel {
   if (model.hintAutoHidden) return model;
   return { ...model, hintAutoHidden: true };
@@ -1399,13 +1597,38 @@ function handActivated(
     ];
   }
   const threshold = model.viewport.height - HAND_BAR_H + HAND_PLAY_SLACK_PX;
-  const card = objectByAction(fold, action);
-  const plan = planHandDrop(action, card, y, threshold);
-  if (plan.kind === "ignore") return [model, []];
+  const objectId = action.object;
+  const modes =
+    action.section === "hand" && objectId != null ? modesForObject(state?.actions ?? [], objectId) : [action];
+  const playPlan = planHandPlay(modes, y, threshold);
+  if (playPlan.kind === "ignore") return [model, []];
   const withHint = hideHintOnHandUse(model);
   const world = screenToWorld(withHint.camera, x, y);
   const dropSeed: Vec = { x: world.x - CARD_W / 2, y: world.y - CARD_H / 2 };
   const screenOrigin: Vec = { x, y };
+  if (playPlan.kind === "choose") {
+    const firstMode = playPlan.modes[0];
+    if (firstMode == null) return [{ ...withHint, reject: humanReason("UnknownObject") }, []];
+    const card = objectByAction(fold, firstMode) ?? objectByAction(fold, action);
+    if (card == null) return [{ ...withHint, reject: humanReason("UnknownObject") }, []];
+    const seeded = seedDropFromHand(
+      clearActionSessionsForPlayMode(withHint),
+      card,
+      screenOrigin,
+      "stack",
+      fold.state?.stack.length ?? 0,
+    );
+    return [
+      {
+        ...seeded,
+        playModePick: { card, modes: playPlan.modes, dropSeed, screenOrigin },
+      },
+      [],
+    ];
+  }
+  const card = objectByAction(fold, playPlan.action);
+  const plan = planHandDrop(playPlan.action, card, y, threshold);
+  if (plan.kind === "ignore") return [model, []];
   if (plan.kind === "reject") return [{ ...withHint, reject: humanReason(plan.reason) }, []];
   if (plan.kind === "sacrifice-pick") {
     return [
@@ -1456,10 +1679,14 @@ function handActivated(
 }
 
 function cancelAll(model: BoardModel): BoardModel {
-  const clearedOrigin = model.staged != null ? clearPlayOrigin(model, model.staged.card.id) : model;
+  let clearedOrigin = model.staged != null ? clearPlayOrigin(model, model.staged.card.id) : model;
+  if (clearedOrigin.playModePick != null) {
+    clearedOrigin = clearPlayOrigin(clearedOrigin, clearedOrigin.playModePick.card.id);
+  }
   return {
     ...clearedOrigin,
     staged: null,
+    playModePick: null,
     xPrompt: null,
     modalCast: null,
     sacrificePick: null,
@@ -1473,11 +1700,37 @@ function cancelAll(model: BoardModel): BoardModel {
     stackExpand: false,
     pendingChoiceKey: null,
     promptDraft: null,
+    promptSubmitInFlight: false,
     cardNameSuggestions: null,
     promptOptionFilter: "",
     orderPickPos: null,
     handDrag: null,
     hoverActionId: null,
+  };
+}
+
+function clearActionSessionsForPlayMode(model: BoardModel): BoardModel {
+  const ids = [
+    model.staged?.card.id,
+    model.xPrompt?.action.object,
+    model.modalCast?.action.object,
+    model.sacrificePick?.card?.id,
+    model.discardPick?.card?.id,
+    model.gyExilePick?.card?.id,
+  ];
+  let cleared = model;
+  for (const id of ids) {
+    if (id != null) cleared = clearPlayOrigin(cleared, id);
+  }
+  return {
+    ...cleared,
+    staged: null,
+    xPrompt: null,
+    modalCast: null,
+    sacrificePick: null,
+    discardPick: null,
+    gyExilePick: null,
+    pileExpand: null,
   };
 }
 
@@ -1523,26 +1776,18 @@ function primaryFor(
     state.actions?.find((a) => a.kind === "declare_attackers")?.required_attacks ?? [],
     model.attackersConfirmed || state.combat.attackers_declared,
   );
-  // Same-signature as primaryActionFor but done inline to avoid crate churn.
-  const step = state.step;
-  const me = state.viewer;
-  const active = state.active_player;
-  const declaredAttackers = state.combat.attackers;
-  const attackDone = model.attackersConfirmed || state.combat.attackers_declared || declaredAttackers.length > 0;
-  const blockDone = model.blockersConfirmed || state.combat.blockers_declared.includes(me);
-  const attackingMe = declaredAttackers.some((a) => a.defender === me);
-  if (step === STEP.DeclareAttackers && active === me && !attackDone) {
-    return attackers.length
-      ? { kind: "confirm-attackers", label: `Attack (${attackers.length})` }
-      : { kind: "confirm-attackers", label: "No attackers" };
-  }
-  if (step === STEP.DeclareBlockers && attackingMe && !blockDone) {
-    return model.combatBlocks.length
-      ? { kind: "confirm-blockers", label: `Block (${model.combatBlocks.length})` }
-      : { kind: "confirm-blockers", label: "No blockers" };
-  }
-  if (step === STEP.Draw && active === me) return { kind: "pass", label: "Draw" };
-  return { kind: "pass", label: "Next" };
+  return primaryActionFor({
+    step: state.step,
+    activePlayer: state.active_player,
+    me: state.viewer,
+    actions: state.actions,
+    attackers,
+    blocks: model.combatBlocks,
+    attackersConfirmed: model.attackersConfirmed,
+    blockersConfirmed: model.blockersConfirmed,
+    attackersDeclared: state.combat.attackers_declared,
+    blockersDeclared: state.combat.blockers_declared.includes(state.viewer),
+  });
 }
 
 /** Submit a ready multi-aim or on-board damage-assign draft; null when nothing to submit. */
@@ -1553,6 +1798,7 @@ function trySubmitReadyPendingDraft(
 ): BoardReturn | null {
   const state = fold.state;
   if (state == null) return null;
+  if (model.promptSubmitInFlight) return null;
   const synced = syncPromptDraft(model, fold);
   const pc = state.pending_choice;
   if (
@@ -1564,10 +1810,7 @@ function trySubmitReadyPendingDraft(
   ) {
     const answer = buildAnswerFromDraft(pc, synced.promptDraft);
     if (answer != null) {
-      return [
-        { ...synced, promptDraft: null, pendingChoiceKey: null },
-        boardIntentSubmit(tableId, choiceIntent(pc, answer)),
-      ];
+      return [withPromptSubmitInFlight(synced), boardIntentSubmit(tableId, choiceIntent(pc, answer))];
     }
   }
   if (
@@ -1578,10 +1821,7 @@ function trySubmitReadyPendingDraft(
   ) {
     const answer = buildAnswerFromDraft(pc, synced.promptDraft);
     if (answer != null) {
-      return [
-        { ...synced, promptDraft: null, pendingChoiceKey: null },
-        boardIntentSubmit(tableId, choiceIntent(pc, answer)),
-      ];
+      return [withPromptSubmitInFlight(synced), boardIntentSubmit(tableId, choiceIntent(pc, answer))];
     }
   }
   if (
@@ -1591,10 +1831,7 @@ function trySubmitReadyPendingDraft(
   ) {
     const answer = buildAnswerFromDraft(pc, synced.promptDraft);
     if (answer != null) {
-      return [
-        { ...synced, promptDraft: null, pendingChoiceKey: null },
-        boardIntentSubmit(tableId, choiceIntent(pc, answer)),
-      ];
+      return [withPromptSubmitInFlight(synced), boardIntentSubmit(tableId, choiceIntent(pc, answer))];
     }
   }
   if (
@@ -1607,10 +1844,7 @@ function trySubmitReadyPendingDraft(
     if (count >= pc.min && count <= pc.max) {
       const answer = buildAnswerFromDraft(pc, synced.promptDraft);
       if (answer != null) {
-        return [
-          { ...synced, promptDraft: null, pendingChoiceKey: null },
-          boardIntentSubmit(tableId, choiceIntent(pc, answer)),
-        ];
+        return [withPromptSubmitInFlight(synced), boardIntentSubmit(tableId, choiceIntent(pc, answer))];
       }
     }
   }
@@ -1636,10 +1870,7 @@ function trySubmitReadyPendingDraft(
     }
     const answer = buildAnswerFromDraft(pc, synced.promptDraft);
     if (answer != null) {
-      return [
-        { ...synced, promptDraft: null, pendingChoiceKey: null },
-        boardIntentSubmit(tableId, choiceIntent(pc, answer)),
-      ];
+      return [withPromptSubmitInFlight(synced), boardIntentSubmit(tableId, choiceIntent(pc, answer))];
     }
   }
   if (
@@ -1652,7 +1883,7 @@ function trySubmitReadyPendingDraft(
     const answer = buildAnswerFromDraft(pc, synced.promptDraft);
     if (answer != null) {
       return [
-        { ...synced, promptDraft: null, pendingChoiceKey: null, pileExpand: null },
+        withPromptSubmitInFlight(synced, { pileExpand: null }),
         boardIntentSubmit(tableId, choiceIntent(pc, answer)),
       ];
     }
@@ -1667,7 +1898,7 @@ function trySubmitReadyPendingDraft(
     const answer = buildAnswerFromDraft(pc, synced.promptDraft);
     if (answer != null) {
       return [
-        { ...synced, promptDraft: null, pendingChoiceKey: null, pileExpand: null },
+        withPromptSubmitInFlight(synced, { pileExpand: null }),
         boardIntentSubmit(tableId, choiceIntent(pc, answer)),
       ];
     }
@@ -1682,7 +1913,7 @@ function trySubmitReadyPendingDraft(
     const answer = buildAnswerFromDraft(pc, synced.promptDraft);
     if (answer != null) {
       return [
-        { ...synced, promptDraft: null, pendingChoiceKey: null, pileExpand: null },
+        withPromptSubmitInFlight(synced, { pileExpand: null }),
         boardIntentSubmit(tableId, choiceIntent(pc, answer)),
       ];
     }
@@ -1696,7 +1927,14 @@ function primaryClickModel(model: BoardModel, fold: GameFoldState, tableId: stri
   const action = primaryFor(fold, model);
   const me = state.viewer;
   if (action.kind === "confirm-attackers") {
-    const intent: WireIntent = { kind: "declare_attackers", player: me, attackers: model.combatAttackers };
+    // Submit the same merged list the button label uses (goad required_attacks), not bare
+    // local staging — otherwise Attack (1) races an empty declare and latches confirmed.
+    const attackers = stagedAttackersForDisplay(
+      model.combatAttackers,
+      state.actions?.find((a) => a.kind === "declare_attackers")?.required_attacks ?? [],
+      model.attackersConfirmed || state.combat.attackers_declared,
+    );
+    const intent: WireIntent = { kind: "declare_attackers", player: me, attackers };
     return [{ ...model, combatAttackers: [], attackersConfirmed: true }, boardIntentSubmit(tableId, intent)];
   }
   if (action.kind === "confirm-blockers") {
@@ -1715,17 +1953,11 @@ function combatDropModel(
 ): BoardReturn {
   const state = fold.state;
   if (state == null || from == null) return [model, []];
-  const mode = combatMode(
-    state.step,
-    state.active_player === state.viewer,
-    false,
-    state.combat.attackers,
-    state.viewer,
-    {
-      attackersDeclared: model.attackersConfirmed || state.combat.attackers_declared,
-      blockersDeclared: model.blockersConfirmed || state.combat.blockers_declared.includes(state.viewer),
-    },
-  );
+  const mode = combatMode(state.actions, false, {
+    attackersDeclared: model.attackersConfirmed || state.combat.attackers_declared,
+    blockersDeclared: model.blockersConfirmed || state.combat.blockers_declared.includes(state.viewer),
+  });
+  const seats = declaresFor(state.actions, mode);
   const dropOn = blockAttackerId != null ? (state.objects.find((o) => o.id === blockAttackerId) ?? null) : null;
   // ObjectView.kind is a WireKind object; RenderCard.kind (what attackablePlaneswalker reads) is the
   // bare tag string — normalize so the planeswalker check is live, not a runtime type mismatch.
@@ -1736,7 +1968,9 @@ function combatDropModel(
     summoningSick: from.summoning_sick,
     hasHaste: from.has_haste,
   };
-  const opponents = state.players.map((p) => p.player).filter((p) => p !== state.viewer);
+  // Opponents of the seat being declared for, not of the viewer — a moved declaration attacks on
+  // someone else's behalf, and you may not send their creatures at their own planeswalker.
+  const opponents = state.players.map((p) => p.player).filter((p) => !seats.includes(p));
   const result = handleCombatDrop(
     mode,
     model.combatAttackers,
@@ -1745,7 +1979,7 @@ function combatDropModel(
     defenderSeat,
     dropTarget as unknown as Parameters<typeof handleCombatDrop>[5],
     state.combat.attackers,
-    state.viewer,
+    seats,
     opponents,
   );
   if (result.kind === "attackers") return [{ ...model, combatAttackers: result.value }, []];
@@ -1780,6 +2014,16 @@ export function updateBoard(
   switch (message._tag) {
     case "ArtLoaded":
       return [model, []];
+    case "BoardCameraZoomed":
+      if (!Number.isFinite(message.factor) || message.factor <= 0) return [model, []];
+      return [
+        {
+          ...model,
+          camera: zoomAt(model.camera, message.x, message.y, message.factor),
+          cameraUserMoved: true,
+        },
+        [],
+      ];
     case "BoardPointerDown":
       return [pointerDownModel(model, fold, message.x, message.y), []];
     case "BoardPointerMove": {
@@ -1789,7 +2033,7 @@ export function updateBoard(
     case "BoardPointerUp":
       return pointerUpModel(model, fold, tableId, message.x, message.y);
     case "FlightsSynced":
-      return [applyFlightsSynced(model, message.flights, message.now), []];
+      return [applyFlightsSynced(model, message.flights, message.exitFx, message.now), []];
     case "HandActionActivated": {
       const x = message.x ?? model.viewport.width / 2;
       const y = message.y ?? model.viewport.height / 2;
@@ -1812,6 +2056,7 @@ export function updateBoard(
             print: message.print,
             manaCost: message.manaCost,
             kind: message.kind,
+            zone: message.zone,
             x: message.x,
             y: message.y,
           },
@@ -1872,6 +2117,24 @@ export function updateBoard(
     }
     case "CancelActionClicked":
       return [cancelAll(model), []];
+    case "PlayModeChosen": {
+      const pick = model.playModePick;
+      if (pick == null) return [model, []];
+      const chosen = pick.modes.find((mode) => mode.id === message.actionId);
+      if (chosen == null) return [{ ...clearPlayOrigin(model, pick.card.id), playModePick: null }, []];
+      const [next, commands] = continueAfterCostPick(
+        { ...model, playModePick: null, reject: null },
+        fold,
+        tableId,
+        chosen,
+        pick.card,
+        emptyCostPicks(),
+        pick.dropSeed,
+        pick.screenOrigin,
+      );
+      if (next.reject != null) return [clearPlayOrigin(next, pick.card.id), commands];
+      return [next, commands];
+    }
     case "CommanderCastClicked": {
       const action = findCastActionForObject(fold.state?.actions, message.objectId);
       if (action == null) {
@@ -2098,7 +2361,7 @@ export function updateBoard(
     case "PromptCardToggled": {
       const synced = syncPromptDraft(model, fold);
       const pc = fold.state?.pending_choice;
-      if (pc == null || synced.promptDraft == null) return [synced, []];
+      if (pc == null || synced.promptDraft == null || synced.promptSubmitInFlight) return [synced, []];
 
       if (synced.promptDraft.kind === "card-pick") {
         const required = cardPickRequiredCount(pc);
@@ -2304,7 +2567,7 @@ export function updateBoard(
     }
     case "PromptPartitionSet": {
       const synced = syncPromptDraft(model, fold);
-      if (synced.promptDraft?.kind !== "partition") return [synced, []];
+      if (synced.promptDraft?.kind !== "partition" || synced.promptSubmitInFlight) return [synced, []];
       const buckets: Record<string, number[]> = {};
       let currentBucket: string | null = null;
       for (const [bucket, ids] of Object.entries(synced.promptDraft.buckets)) {
@@ -2322,7 +2585,9 @@ export function updateBoard(
       const synced = syncPromptDraft(model, fold);
       const pc = fold.state?.pending_choice;
       const gameState = fold.state;
-      if (pc == null || gameState == null || synced.promptDraft == null) return [synced, []];
+      if (pc == null || gameState == null || synced.promptDraft == null || synced.promptSubmitInFlight) {
+        return [synced, []];
+      }
       if (synced.promptDraft.kind === "card-pick" && !cardPickReady(pc, synced.promptDraft.picked)) {
         return [synced, []];
       }
@@ -2358,21 +2623,15 @@ export function updateBoard(
       }
       const answer = buildAnswerFromDraft(pc, synced.promptDraft);
       if (answer == null) return [synced, []];
-      return [
-        { ...synced, promptDraft: null, pendingChoiceKey: null },
-        boardIntentSubmit(tableId, choiceIntent(pc, answer)),
-      ];
+      return [withPromptSubmitInFlight(synced), boardIntentSubmit(tableId, choiceIntent(pc, answer))];
     }
     case "PromptDeclined": {
       const synced = syncPromptDraft(model, fold);
       const pc = fold.state?.pending_choice;
-      if (pc == null) return [synced, []];
+      if (pc == null || synced.promptSubmitInFlight) return [synced, []];
       const answer = declineAnswer(pc);
       if (answer == null) return [synced, []];
-      return [
-        { ...synced, promptDraft: null, pendingChoiceKey: null },
-        boardIntentSubmit(tableId, choiceIntent(pc, answer)),
-      ];
+      return [withPromptSubmitInFlight(synced), boardIntentSubmit(tableId, choiceIntent(pc, answer))];
     }
     case "ModalModeToggled": {
       const mc = model.modalCast;
@@ -2398,6 +2657,15 @@ export function updateBoard(
       return [{ ...model, stackExpand: true }, []];
     case "StackCollapseClicked":
       return [{ ...model, stackExpand: false }, []];
+    case "LogExpandToggled":
+      return [{ ...model, logExpanded: !model.logExpanded, logCopied: false, logCopyFailed: false }, []];
+    case "LogCopyRequested": {
+      const text = boardLogText(fold);
+      if (text === "") return [{ ...model, logCopied: false, logCopyFailed: false }, []];
+      return [{ ...model, logCopied: false, logCopyFailed: false }, [CopyBoardLog({ text }) as unknown as BoardCmd]];
+    }
+    case "LogCopyCompleted":
+      return [{ ...model, logCopied: message.ok, logCopyFailed: !message.ok }, []];
     case "RadialWedgeArmed":
       return [{ ...model, radialPress: radialPressDown(model.radialPress, message.index) }, []];
     case "RadialWedgeHovered":
@@ -2546,6 +2814,12 @@ export function updateBoard(
       if (tableId == null) return [model, []];
       const enabled = !(state.turn_yielded ?? false);
       if (me === active && state.stack.length === 0) {
+        // Arming End Turn only — cancelling "Ending turn…" stays available. Match the
+        // priority-bar gate so Enter cannot arm through a forced goad declaration.
+        const pendingAttackers = model.combatAttackers.length > 0 && !model.attackersConfirmed;
+        if (enabled && !canArmEndTurn(state, pendingAttackers)) {
+          return [model, []];
+        }
         return [model, [SetTurnYield({ tableId, enabled }) as unknown as BoardCmd]];
       }
       if (me !== active) {

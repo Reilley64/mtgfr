@@ -98,7 +98,7 @@ impl Game {
                             player: p,
                             object: next,
                             from,
-                            card: self.def_of(from),
+                            card: self.def_id_of(from),
                         });
                         next += 1;
                     }

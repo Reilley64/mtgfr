@@ -1,0 +1,47 @@
+# Flying
+# When Bladewing enters, you may return target Dragon permanent card from your graveyard to the battlefield.
+# {B}{R}: Dragon creatures get +1/+1 until end of turn.
+name = "Bladewing the Risen"
+sets = ["c17", "cma", "cmd", "drb", "ima", "pana", "plst", "scg"]
+id = "c22cc70a-9533-4bfc-b3ce-b2d43a73f0c1"
+default_print = "3dc7701c-cbaa-460d-824b-af494993e02e"
+otags = ["activated-ability", "dragon-tribal", "evasion", "reanimate-permanent"]
+oracle = "Flying\nWhen Bladewing enters, you may return target Dragon permanent card from your graveyard to the battlefield.\n{B}{R}: Dragon creatures get +1/+1 until end of turn."
+subtypes = ["Zombie", "Dragon"]
+legendary = true
+keywords = ["flying"]
+
+[cost]
+generic = 3
+black = 2
+red = 2
+
+[kind]
+type = "creature"
+power = 4
+toughness = 4
+
+# When Bladewing enters, you may return target Dragon permanent card from your graveyard to the
+# battlefield.
+[[abilities]]
+timing = "etb"
+optional = true
+
+# you may return target Dragon permanent card from your graveyard to the battlefield.
+[[abilities.effects]]
+type = "zone"
+mode = "reanimate_to_battlefield"
+target = { card_in_graveyard = { whose = "yours", filter = { permanent_with_subtype = ["Dragon"] } } }
+
+# {B}{R}: Dragon creatures get +1/+1 until end of turn.
+[[abilities]]
+timing = "activated"
+activation_cost = { black = 1, red = 1 }
+
+# Dragon creatures get +1/+1 until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "pump_each_creature_until_end_of_turn"
+power = 1
+toughness = 1
+filter = { subtypes = ["Dragon"] }

@@ -1,0 +1,40 @@
+# Flying
+# Whenever Oros deals combat damage to a player, you may pay {2}{W}. If you do, Oros deals 3
+# damage to each nonwhite creature.
+name = "Oros, the Avenger"
+sets = ["cma", "cmd", "ocmd", "plc", "pplc", "prm"]
+id = "454b898f-b134-4d63-ae7b-1e736964cd48"
+default_print = "fc4d7aa2-ee1b-435c-8876-44111fafc97a"
+oracle = "Flying\nWhenever Oros deals combat damage to a player, you may pay {2}{W}. If you do, Oros deals 3 damage to each nonwhite creature."
+subtypes = ["Dragon"]
+legendary = true
+keywords = ["flying"]
+
+[cost]
+generic = 3
+red = 1
+white = 1
+black = 1
+
+[kind]
+type = "creature"
+power = 6
+toughness = 6
+
+# Whenever Oros deals combat damage to a player, you may pay {2}{W}. If you do, Oros deals 3
+# damage to each nonwhite creature.
+[[abilities]]
+timing = "deals_combat_damage_to_player"
+who = "this"
+optional = true
+
+[abilities.cost]
+generic = 2
+white = 1
+
+# Oros deals 3 damage to each nonwhite creature.
+[[abilities.effects]]
+type = "damage"
+mode = "each_creature"
+amount = 3
+filter = { not_color = "white" }

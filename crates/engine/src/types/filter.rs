@@ -330,6 +330,14 @@ pub enum CardFilter {
     /// (Deadly Brew: "return another permanent card from your graveyard to your hand"). The
     /// unbounded twin of [`PermanentWithManaValueAtMost`](Self::PermanentWithManaValueAtMost).
     Permanent,
+    /// A permanent card whose type line carries any of these subtypes, no card-type restriction
+    /// (Bladewing the Risen: "target Dragon permanent card" — a Dragon creature card qualifies).
+    /// [`Permanent`](Self::Permanent) plus a subtype gate; reads the printed subtype line
+    /// ([`CardDef::subtypes`]) directly, the same check [`Aura`](Self::Aura) uses.
+    PermanentWithSubtype(
+        #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_str_slice"))]
+        &'static [&'static str],
+    ),
     /// A card that is neither a creature nor a land (Quintorius, Loremaster's "target
     /// noncreature, nonland card") — an instant, sorcery, noncreature artifact, enchantment
     /// (Aura included), or planeswalker.
@@ -372,7 +380,7 @@ pub enum CardFilter {
 
 impl CardFilter {
     /// Whether a card with this definition matches the filter.
-    pub(crate) fn matches(self, def: CardDef) -> bool {
+    pub(crate) fn matches(self, def: &CardDef) -> bool {
         match self {
             CardFilter::AnyCard => true,
             CardFilter::Land => matches!(def.kind, CardKind::Land { .. }),
@@ -447,6 +455,9 @@ impl CardFilter {
             }
             CardFilter::Enchantment => def.kind.types().intersects(TypeSet::ENCHANTMENT),
             CardFilter::Permanent => !def.kind.types().is_empty(),
+            CardFilter::PermanentWithSubtype(subtypes) => {
+                !def.kind.types().is_empty() && def.subtypes.iter().any(|s| subtypes.contains(s))
+            }
             CardFilter::NoncreatureNonland => {
                 !matches!(def.kind, CardKind::Creature { .. } | CardKind::Land { .. })
             }
@@ -646,8 +657,8 @@ pub enum ColorFilter {
 /// removal ([`TargetSpec::Permanent`]), mass effects ([`Effect::Destroy(DestroyEffect::DestroyAll)`] /
 /// [`Effect::Zone(ZoneEffect::ReturnAllToHand)`]), and sacrifice edicts ([`Effect::Choice(ChoiceEffect::EachPlayerSacrifices)`]).
 /// Every axis is independent; an unset axis imposes no restriction. Evaluated by
-/// [`Game::permanent_matches`], which reads the axes needing game state. Kept `Copy` so
-/// [`CardDef`] stays `Copy`.
+/// [`Game::permanent_matches`], which reads the axes needing game state. Kept `Copy` because it is
+/// a compact authored predicate value.
 ///
 /// In TOML it's a `{ … }` table, or a bare-string shorthand for the common shapes —
 /// `"creatures"`, `"nonland"`, `"artifact"`, `"creature_or_planeswalker"` (see the `de` module).

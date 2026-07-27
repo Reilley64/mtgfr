@@ -1,0 +1,34 @@
+# Flying
+# When this creature enters, if you cast it from your hand, destroy all nonartifact, nonblack
+# creatures. They can't be regenerated.
+name = "Reiver Demon"
+sets = ["cma", "cmd", "ddc", "dvd", "mrd"]
+id = "7dcb95a9-c114-4333-8b45-4380f92d9695"
+default_print = "3e0de032-a107-4095-b475-28f3f13b2c6e"
+oracle = "Flying\nWhen this creature enters, if you cast it from your hand, destroy all nonartifact, nonblack creatures. They can't be regenerated."
+subtypes = ["Demon"]
+keywords = ["flying"]
+
+[cost]
+generic = 4
+black = 4
+
+[kind]
+type = "creature"
+power = 6
+toughness = 6
+
+# When this creature enters, if you cast it from your hand, destroy all nonartifact, nonblack
+# creatures. They can't be regenerated.
+[[abilities]]
+timing = "etb"
+
+[abilities.condition]
+type = "cast_from_hand"
+
+# destroy all nonartifact, nonblack creatures. They can't be regenerated.
+[[abilities.effects]]
+type = "destroy"
+mode = "all"
+filter = { types = "creature", exclude = "artifact", not_color = "black" }
+cant_be_regenerated = true

@@ -4,7 +4,7 @@
 //! Side state for goad (CR 701.38), delayed triggers (CR 603.7), exile links,
 //! once-per-turn flags, until-EOT control (CR 720), and inspect-ledger provenance.
 
-use crate::{CardDef, Effect, Keyword, ObjectId, PlayerId, SpellFilter, Step};
+use crate::{CardDef, CardId, Effect, Keyword, ObjectId, PlayerId, SpellFilter, Step};
 
 /// The CR 611.2b duration condition scoping a control-changing effect (Rubinia Soulsinger's "for
 /// as long as you control Rubinia and Rubinia remains tapped"). Stored alongside the override in
@@ -60,6 +60,21 @@ pub(crate) struct CombatExtras {
     /// Cleared at the next turn's Untap step, the same "this turn" idiom as
     /// `combat_damage_prevention_shields`.
     pub prevent_all_combat_damage_this_turn: bool,
+    /// "You choose which creatures attack this turn" (CR 508.1a — Master Warcraft): the player who
+    /// makes the attack declaration in the active player's place. `None` (the common case) leaves
+    /// it to the active player — read through [`Game::attack_declarer`](crate::Game::attack_declarer),
+    /// the single choke `Game::declare_attackers`, the affordance list and the auto-seal all go
+    /// through. The attackers themselves are still the *active player's* creatures; only the seat
+    /// making the choice moves. Cleared at the next turn's Untap step (the "this turn" boundary,
+    /// same idiom as `must_attack`).
+    pub attack_declarer: Option<PlayerId>,
+    /// "You choose which creatures block this turn and how those creatures block" (CR 509.1a —
+    /// Master Warcraft): the player who makes *every* defending player's block declaration, read
+    /// through [`Game::block_declarer`](crate::Game::block_declarer). Unlike the attack half there
+    /// are several declarations to displace — one per attacked player — so an overridden
+    /// declaration is a single submission covering every attacked seat at once, and each blocker's
+    /// legality is still checked against its own controller. Cleared at the same turn boundary.
+    pub block_declarer: Option<PlayerId>,
 }
 
 /// Active play and control permissions stored outside `Card`/`Permanent` so they stay `Copy`.
@@ -151,24 +166,24 @@ pub(crate) struct PlayPermissions {
     /// [`Event::SpellCast`](crate::Event::SpellCast) handler). Consulted by
     /// [`Game::may_play_from_exile`](crate::Game::may_play_from_exile).
     pub on_adventure: Vec<(ObjectId, PlayerId)>,
-    /// Adventure spells currently on the stack, each `(spell object, the creature front face to
-    /// restore to exile)`. Kept off the `Copy` [`Spell`](crate::Spell) struct (a `CardDef` by value
-    /// would double `Spell`'s size). Pushed by
+    /// Adventure spells currently on the stack, each `(spell object, the creature front-face
+    /// CardId to restore to exile)`. Kept off [`Spell`](crate::Spell) so the stack object only
+    /// carries its live face, not the follow-up restore handle as well. Pushed by
     /// [`Event::AdventureSpellCast`](crate::Event::AdventureSpellCast), read + dropped when the
     /// spell finishes ([`Event::ExiledOnAdventure`](crate::Event::ExiledOnAdventure)).
     /// ponytail: a *countered* adventure spell (which goes to the graveyard, not exile) leaves its
     /// entry here stale — keyed on a now-dead spell id it can never re-match, so it's harmless. No
     /// pool card counters an adventure; drop the entry in `counter_spell` if one ever does.
-    pub adventure_fronts: Vec<(ObjectId, CardDef)>,
-    /// Split-card halves currently on the stack, each `(the half's spell object, the fused card to
-    /// restore)` — the same off-`Copy` shape as [`adventure_fronts`](Self::adventure_fronts). Only
-    /// the cast half is on the stack (CR 709.4a); in every other zone the object is the whole split
-    /// card again (CR 709.4), so [`Game::create_object`](crate::Game) swaps the fused def back in
+    pub adventure_fronts: Vec<(ObjectId, CardId)>,
+    /// Split-card halves currently on the stack, each `(the half's spell object, the fused
+    /// CardId to restore)`. Only the cast half is on the stack (CR 709.4a); in every other zone
+    /// the object is the whole split card again (CR 709.4), so [`Game::create_object`](crate::Game)
+    /// swaps the fused def back in
     /// on the way out — one choke covering resolution, being countered, and a tuck alike.
     /// ponytail: entries are never removed. Object ids retire on zone change (CR 400.7), so a stale
     /// entry can never re-match; drop it in the stack-exit paths if a game ever runs long enough
     /// for the list's length to matter.
-    pub split_halves_on_stack: Vec<(ObjectId, CardDef)>,
+    pub split_halves_on_stack: Vec<(ObjectId, CardId)>,
 }
 
 /// Transient per-batch scratch for trigger enqueueing — not event-sourced.
@@ -210,6 +225,17 @@ pub(crate) struct BatchTriggerScratch {
     /// [`Game::enqueue_triggers`]'s `Event::CombatDamageDealtToPlayer` handling, drained (deduped)
     /// and cleared at the end of every batch.
     pub creatures_dealt_combat_damage_this_batch: Vec<PlayerId>,
+    /// `(discarding player, discarded card's graveyard-object id)` for every discard in the event
+    /// batch currently being applied — the accumulator behind
+    /// [`Trigger::YouDiscardNonland`](crate::Trigger::YouDiscardNonland) (Conspiracy Theorist's
+    /// "Whenever you discard one or more nonland cards …"). Same drain-dedup-clear shape as
+    /// [`graveyard_exits_this_batch`](Self::graveyard_exits_this_batch): pushed by
+    /// [`Game::enqueue_triggers`](crate::Game::enqueue_triggers)'s `Event::Discarded` handling
+    /// (alongside the per-card [`Trigger::YouDiscard`](crate::Trigger::YouDiscard) fan-out), then
+    /// drained once per batch — the whole simultaneous discard, not each card, is the trigger
+    /// event (CR 701.8), and only the **nonland** cards among it are threaded into
+    /// [`TriggerContext::discarded_nonland_cards`](crate::TriggerContext).
+    pub discards_this_batch: Vec<(PlayerId, ObjectId)>,
     /// `(dying creature's pre-move id, attached Aura's pre-move id, that Aura's controller, that
     /// Aura's def)` tuples — CR 603.6c last-known information for
     /// [`Trigger::EnchantedCreatureDies`](crate::Trigger::EnchantedCreatureDies). Captured by
@@ -286,8 +312,11 @@ pub(crate) struct BatchTriggerScratch {
 /// Once-per-turn activation and trigger caps, reset at each untap step.
 #[derive(Clone, Default)]
 pub(crate) struct OncePerTurnLimits {
-    /// Activations this turn of a `once_each_turn`-capped activated ability (CR 602.2b), each
-    /// entry (source object, ability index). Checked by
+    /// Activations this turn of any activated ability, each entry (source object, ability
+    /// index). Recorded for every activation (not just `once_each_turn`-capped ones — CR
+    /// 602.2b), so it doubles as a per-object activation counter for conditions like
+    /// [`SourceActivatedThisTurnAtLeast`](crate::types::effect::shared::Condition::SourceActivatedThisTurnAtLeast)
+    /// (Dragon Whelp). Checked by
     /// [`Game::ability_activation_gate`](crate::Game::ability_activation_gate); cleared at the start of every turn.
     pub activated: Vec<(ObjectId, usize)>,
     /// Placements this turn of a `once_each_turn`-capped *triggered* ability (CR "this ability
@@ -367,11 +396,12 @@ pub(crate) struct DelayedTriggers {
 /// A permanent's controller/token-ness/card-def facts, snapshotted at the moment `Effect::Destroy(DestroyEffect::DestroyAll)`
 /// destroys it — captured because the permanent is already gone from the battlefield by the time
 /// a later `Sequence` step (`Amount::PermanentsDestroyedThisWay`) needs to count how many matched
-/// some filter (Ceaseless Conflict's token rider, Culling Ritual's mana rider). `def` carries the
-/// type/subtype info a `PermanentFilter` needs to match against.
-#[derive(Clone, Copy)]
+/// some filter (Ceaseless Conflict's token rider, Culling Ritual's mana rider). `def` is the
+/// interned handle whose printed data carries the type/subtype info a `PermanentFilter` needs to
+/// match against.
+#[derive(Clone)]
 pub(crate) struct DestroyedThisWay {
-    pub(crate) def: CardDef,
+    pub(crate) def: CardId,
     pub(crate) controller: PlayerId,
     pub(crate) token: bool,
 }

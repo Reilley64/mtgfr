@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
 import { worldToScreen } from "./camera";
 import {
@@ -6,6 +7,7 @@ import {
   attackDrop,
   blockDrop,
   combatMode,
+  declaresFor,
   fitCamera,
   type PointerPhase,
   pointerDown,
@@ -15,7 +17,7 @@ import {
   resolveClick,
   TOP_MARGIN,
 } from "./interaction";
-import { AVATAR_R, avatarPos, boardBounds, CARD_H, type RenderCard, ZONE } from "./layout";
+import { AVATAR_LABEL_BELOW, avatarPos, boardBounds, CARD_H, type RenderCard, ZONE } from "./layout";
 
 const MAIN_1 = 3;
 
@@ -56,39 +58,45 @@ const ZONE_BATTLEFIELD = 2;
 
 describe("pointer state machine", () => {
   it("presses on empty space pan", () => {
-    const p = pointerDown(null, 10, 10, false, 0);
+    const p = pointerDown(null, 10, 10, []);
     expect(p.kind).toBe("pan");
   });
 
-  it("a press on your creature in a combat step starts a drag", () => {
-    const p = pointerDown(card({ controller: 0, kind: "creature" }), 10, 10, true, 0);
+  it("a press on a creature you're declaring for starts a drag", () => {
+    const p = pointerDown(card({ controller: 0, kind: "creature" }), 10, 10, [0]);
     expect(p.kind).toBe("drag");
   });
 
-  it("a creature you don't control is a click candidate, not a drag", () => {
-    const p = pointerDown(card({ controller: 1, kind: "creature" }), 10, 10, true, 0);
+  it("a creature belonging to a seat you don't declare for is a click candidate, not a drag", () => {
+    const p = pointerDown(card({ controller: 1, kind: "creature" }), 10, 10, [0]);
     expect(p.kind).toBe("press");
   });
 
+  // Master Warcraft moved the declaration: seat 0 stages seat 1's creatures, not their own.
+  it("a press on another seat's creature drags when the declaration was moved to you", () => {
+    const p = pointerDown(card({ controller: 1, kind: "creature" }), 10, 10, [1]);
+    expect(p.kind).toBe("drag");
+  });
+
   it("a creature is a click candidate outside a combat step", () => {
-    const p = pointerDown(card({ controller: 0 }), 10, 10, false, 0);
+    const p = pointerDown(card({ controller: 0 }), 10, 10, []);
     expect(p.kind).toBe("press");
   });
 
   it("a press-then-release under the 3px threshold is a click", () => {
-    const down = pointerDown(card({ id: 7 }), 100, 100, false, 0);
+    const down = pointerDown(card({ id: 7 }), 100, 100, []);
     const rel = pointerUp(down, 102, 100, card({ id: 7 }));
     expect(rel).toEqual({ kind: "click", card: card({ id: 7 }) });
   });
 
   it("a press dragged past 3px is not a click", () => {
-    const down = pointerDown(card({ id: 7 }), 100, 100, false, 0);
+    const down = pointerDown(card({ id: 7 }), 100, 100, []);
     const rel = pointerUp(down, 110, 100, card({ id: 7 }));
     expect(rel.kind).toBe("none");
   });
 
   it("panning emits the per-move screen delta", () => {
-    const phase: PointerPhase = pointerDown(null, 100, 100, false, 0);
+    const phase: PointerPhase = pointerDown(null, 100, 100, []);
     const a = pointerMove(phase, 130, 120);
     expect(a.pan).toEqual({ dx: 30, dy: 20 });
     // deltas are incremental: the next move measures from the last, not the press.
@@ -97,7 +105,7 @@ describe("pointer state machine", () => {
   });
 
   it("a drag past the threshold releases as a combat-drop; under it, a click (tap-in-place)", () => {
-    const start = pointerDown(card({ id: 3, controller: 0 }), 50, 50, true, 0);
+    const start = pointerDown(card({ id: 3, controller: 0 }), 50, 50, [0]);
     const dragged = pointerMove(start, 80, 50).phase; // moved 30px
     expect(pointerUp(dragged, 80, 50, null)).toMatchObject({ kind: "combat-drop", card: { id: 3 } });
 
@@ -106,7 +114,7 @@ describe("pointer state machine", () => {
   });
 
   it("moved stays sticky once the threshold is crossed", () => {
-    const start = pointerDown(card({ controller: 0 }), 50, 50, true, 0);
+    const start = pointerDown(card({ controller: 0 }), 50, 50, [0]);
     const far = pointerMove(start, 90, 50).phase;
     const back = pointerMove(far, 50, 50).phase; // returned to origin
     expect(pointerUp(back, 50, 50, null).kind).toBe("combat-drop");
@@ -116,7 +124,7 @@ describe("pointer state machine", () => {
   // clicks it (the threshold is measured from the last move, ~0 away). Looks accidental — flagged
   // for follow-up — but preserved to keep behavior identical.
   it("releasing over a card immediately after a pan clicks it (pinned quirk)", () => {
-    const down = pointerDown(null, 100, 100, false, 0);
+    const down = pointerDown(null, 100, 100, []);
     const panned = pointerMove(down, 300, 300).phase;
     const rel = pointerUp(panned, 300, 300, card({ id: 9 }));
     expect(rel).toMatchObject({ kind: "click", card: { id: 9 } });
@@ -177,16 +185,26 @@ describe("combat staging", () => {
 
   it("blocks only a declared attacker", () => {
     const attackers = [{ attacker: 7, defender: 0 }];
-    expect(blockDrop([], 3, card({ id: 7 }), attackers, 0)).toEqual([{ blocker: 3, attacker: 7 }]);
-    expect(blockDrop([], 3, card({ id: 8 }), attackers, 0)).toBeNull();
-    expect(blockDrop([], 3, null, attackers, 0)).toBeNull();
+    expect(blockDrop([], 3, card({ id: 7 }), attackers, [0])).toEqual([{ blocker: 3, attacker: 7 }]);
+    expect(blockDrop([], 3, card({ id: 8 }), attackers, [0])).toBeNull();
+    expect(blockDrop([], 3, null, attackers, [0])).toBeNull();
   });
 
-  it("blocks only an attacker declared against you (multiplayer)", () => {
+  it("blocks only an attacker declared against a seat this declaration covers (multiplayer)", () => {
     // Seat 2 is attacking seat 1. Seat 0 is a bystander and may not block for them.
     const attackers = [{ attacker: 7, defender: 1 }];
-    expect(blockDrop([], 3, card({ id: 7 }), attackers, 1)).toEqual([{ blocker: 3, attacker: 7 }]);
-    expect(blockDrop([], 3, card({ id: 7 }), attackers, 0)).toBeNull();
+    expect(blockDrop([], 3, card({ id: 7 }), attackers, [1])).toEqual([{ blocker: 3, attacker: 7 }]);
+    expect(blockDrop([], 3, card({ id: 7 }), attackers, [0])).toBeNull();
+  });
+
+  // Master Warcraft moved both defenders' blocks to one seat: it stages blocks for either of them.
+  it("blocks for every seat a moved declaration covers", () => {
+    const attackers = [
+      { attacker: 7, defender: 1 },
+      { attacker: 8, defender: 2 },
+    ];
+    expect(blockDrop([], 3, card({ id: 7 }), attackers, [1, 2])).toEqual([{ blocker: 3, attacker: 7 }]);
+    expect(blockDrop([], 4, card({ id: 8 }), attackers, [1, 2])).toEqual([{ blocker: 4, attacker: 8 }]);
   });
 
   it("re-dropping a staged blocker retargets it instead of blocking twice", () => {
@@ -196,18 +214,18 @@ describe("combat staging", () => {
       { attacker: 7, defender: 0 },
       { attacker: 8, defender: 0 },
     ];
-    const staged = blockDrop([], 3, card({ id: 7 }), attackers, 0);
+    const staged = blockDrop([], 3, card({ id: 7 }), attackers, [0]);
     expect(staged).toBeDefined();
     if (!staged) throw new Error("expected staged block");
-    expect(blockDrop(staged, 3, card({ id: 8 }), attackers, 0)).toEqual([{ blocker: 3, attacker: 8 }]);
+    expect(blockDrop(staged, 3, card({ id: 8 }), attackers, [0])).toEqual([{ blocker: 3, attacker: 8 }]);
   });
 
   it("a second blocker joins the first rather than replacing it (double block)", () => {
     const attackers = [{ attacker: 7, defender: 0 }];
-    const staged = blockDrop([], 3, card({ id: 7 }), attackers, 0);
+    const staged = blockDrop([], 3, card({ id: 7 }), attackers, [0]);
     expect(staged).toBeDefined();
     if (!staged) throw new Error("expected staged block");
-    expect(blockDrop(staged, 4, card({ id: 7 }), attackers, 0)).toEqual([
+    expect(blockDrop(staged, 4, card({ id: 7 }), attackers, [0])).toEqual([
       { blocker: 3, attacker: 7 },
       { blocker: 4, attacker: 7 },
     ]);
@@ -246,8 +264,8 @@ describe("fitCamera", () => {
       // Find whichever seat sits topmost (row 0, if any occupied) and check its avatar's top edge.
       for (let seat = 0; seat < count; seat++) {
         const a = avatarPos(seat, 0, count);
-        if (a.y - AVATAR_R !== bounds.minY) continue; // not the top-row seat
-        const screenTop = worldToScreen(cam, a.x, a.y - AVATAR_R).y;
+        if (a.y - AVATAR_LABEL_BELOW !== bounds.minY) continue; // not the top-row seat
+        const screenTop = worldToScreen(cam, a.x, a.y - AVATAR_LABEL_BELOW).y;
         expect(screenTop).toBeGreaterThanOrEqual(TOP_MARGIN - 0.01); // float slack
       }
     }
@@ -256,34 +274,50 @@ describe("fitCamera", () => {
   // Commander is 4 seats — this is the viewport we dogfood. Cards must stay readable vs the hand.
   it("keeps 4-player battlefield cards readable at 1440×900 with the live hand bar", () => {
     const cam = fitCamera({ x: 1440, y: 900 }, 4, 128);
-    // Commander is the format — 4 seats must stay readable (~hand-card scale, not postage stamps).
-    expect(CARD_H * cam.zoom).toBeGreaterThanOrEqual(86);
+    // Commander is the format — 4 seats must stay readable while preserving the avatar label gutter.
+    expect(CARD_H * cam.zoom).toBeGreaterThanOrEqual(80);
   });
 });
 
 const DECLARE_ATTACKERS = 5;
 const DECLARE_BLOCKERS = 6;
 
-describe("combatMode", () => {
-  const atMe = [{ attacker: 7, defender: 0 }]; // an attacker declared against seat 0
+/** A combat declaration action as the engine projects it: `declare_for` names the seats whose
+ * creatures it covers. */
+function declareAction(kind: "declare_attackers" | "declare_blockers", declare_for: number[]): ActionView {
+  return { id: 1, kind, label: testMessageRef(kind), needs_target: false, section: "combat", declare_for };
+}
 
-  it("is 'attackers' on your declare-attackers step, 'blockers' on the opponent's declare-blockers", () => {
-    expect(combatMode(DECLARE_ATTACKERS, true, false, [], 0)).toBe("attackers");
-    expect(combatMode(DECLARE_BLOCKERS, false, false, atMe, 0)).toBe("blockers");
+describe("combatMode", () => {
+  it("is 'attackers' or 'blockers' according to the declaration the engine offers you", () => {
+    expect(combatMode([declareAction("declare_attackers", [0])], false)).toBe("attackers");
+    expect(combatMode([declareAction("declare_blockers", [0])], false)).toBe("blockers");
   });
-  it("is null off-combat, on the wrong side, or while spectating", () => {
-    expect(combatMode(DECLARE_ATTACKERS, false, false, [], 0)).toBeNull(); // not your attackers step
-    expect(combatMode(DECLARE_BLOCKERS, true, false, atMe, 0)).toBeNull(); // your own turn, no blocks
-    expect(combatMode(MAIN_1, true, false, atMe, 0)).toBeNull(); // not a combat step
-    expect(combatMode(DECLARE_ATTACKERS, true, true, [], 0)).toBeNull(); // spectator
+  it("is null with no declaration offered, or while spectating", () => {
     // A 4-player table: seat 2 is attacking seat 1, so seat 0 has nothing to block (CR 509.1a) and
-    // gets no blocker affordance at all — no drag, no arrow, no phantom "Block (0)".
-    expect(combatMode(DECLARE_BLOCKERS, false, false, [{ attacker: 7, defender: 1 }], 0)).toBeNull();
-    expect(combatMode(DECLARE_BLOCKERS, false, false, [], 0)).toBeNull(); // nobody has attacked yet
+    // the engine lists no declaration — no drag, no arrow, no phantom "Block (0)".
+    expect(combatMode([], false)).toBeNull();
+    expect(combatMode(undefined, false)).toBeNull();
+    expect(combatMode([declareAction("declare_attackers", [0])], true)).toBeNull(); // spectator
   });
   it("is null once the attack or block declaration is final (including empty)", () => {
-    expect(combatMode(DECLARE_ATTACKERS, true, false, [], 0, { attackersDeclared: true })).toBeNull();
-    expect(combatMode(DECLARE_BLOCKERS, false, false, atMe, 0, { blockersDeclared: true })).toBeNull();
+    expect(combatMode([declareAction("declare_attackers", [0])], false, { attackersDeclared: true })).toBeNull();
+    expect(combatMode([declareAction("declare_blockers", [0])], false, { blockersDeclared: true })).toBeNull();
+  });
+});
+
+describe("declaresFor", () => {
+  it("names the seats whose creatures you stage — normally your own", () => {
+    expect(declaresFor([declareAction("declare_blockers", [0])], "blockers")).toEqual([0]);
+  });
+  // Master Warcraft: the caster declares the active player's attackers and every defender's blocks.
+  it("names the other seats when the declaration was moved to you", () => {
+    expect(declaresFor([declareAction("declare_attackers", [0])], "attackers")).toEqual([0]);
+    expect(declaresFor([declareAction("declare_blockers", [1, 2])], "blockers")).toEqual([1, 2]);
+  });
+  it("is empty with no declaration, and never reads the wrong declaration", () => {
+    expect(declaresFor([declareAction("declare_blockers", [1])], null)).toEqual([]);
+    expect(declaresFor([declareAction("declare_blockers", [1])], "attackers")).toEqual([]);
   });
 });
 
@@ -398,9 +432,28 @@ describe("resolveClick", () => {
   });
 
   it("cancels a staged attacker when you click it on your declare-attackers step", () => {
-    const s = state({ step: DECLARE_ATTACKERS, active_player: 0 });
+    const s = state({
+      step: DECLARE_ATTACKERS,
+      active_player: 0,
+      actions: [declareAction("declare_attackers", [0])],
+    });
     const creature = card({ id: 3, zone: ZONE.Battlefield, controller: 0, kind: "creature" });
     expect(resolveClick(s, 0, creature, { ...noCtx, attackers: [{ attacker: 3, defender: 1 }] })).toEqual({
+      kind: "cancel-attacker",
+      id: 3,
+    });
+  });
+
+  // A moved declaration stages creatures you don't control, so cancelling one has to work on them
+  // too — otherwise a Master Warcraft attacker is stuck once staged.
+  it("cancels a staged attacker you don't control when the declaration was moved to you", () => {
+    const s = state({
+      step: DECLARE_ATTACKERS,
+      active_player: 1,
+      actions: [declareAction("declare_attackers", [1])],
+    });
+    const creature = card({ id: 3, zone: ZONE.Battlefield, controller: 1, kind: "creature" });
+    expect(resolveClick(s, 0, creature, { ...noCtx, attackers: [{ attacker: 3, defender: 2 }] })).toEqual({
       kind: "cancel-attacker",
       id: 3,
     });
@@ -412,6 +465,7 @@ describe("resolveClick", () => {
     const s = state({
       step: DECLARE_BLOCKERS,
       active_player: 1,
+      actions: [declareAction("declare_blockers", [0])],
       combat: {
         attackers: [{ attacker: 7, defender: 0 }],
         blocks: [],
@@ -487,8 +541,6 @@ describe("resolveClick", () => {
 
 describe("primaryActionFor", () => {
   const attack = [{ attacker: 1, defender: 1 }];
-  const atMe = [{ attacker: 1, defender: 0 }];
-  const atOther = [{ attacker: 1, defender: 2 }];
   const block = [{ blocker: 2, attacker: 1 }];
   const DRAW = 2;
 
@@ -508,135 +560,85 @@ describe("primaryActionFor", () => {
       label: "Next",
     });
   });
-  it("confirms staged attackers on your own declare-attackers step", () => {
-    expect(primaryActionFor({ step: DECLARE_ATTACKERS, activePlayer: 0, me: 0, attackers: attack })).toEqual({
+  const attackAction = [declareAction("declare_attackers", [0])];
+  const blockAction = [declareAction("declare_blockers", [0])];
+
+  it("confirms staged attackers when the engine offers you the attack declaration", () => {
+    expect(
+      primaryActionFor({ step: DECLARE_ATTACKERS, activePlayer: 0, me: 0, actions: attackAction, attackers: attack }),
+    ).toEqual({
       kind: "confirm-attackers",
       label: "Attack (1)",
     });
   });
   it("confirms an empty attack declaration as 'No attackers'", () => {
-    expect(primaryActionFor({ step: DECLARE_ATTACKERS, activePlayer: 0, me: 0 })).toEqual({
+    expect(primaryActionFor({ step: DECLARE_ATTACKERS, activePlayer: 0, me: 0, actions: attackAction })).toEqual({
       kind: "confirm-attackers",
       label: "No attackers",
     });
   });
   it("confirms staged blockers when you're being attacked", () => {
     expect(
-      primaryActionFor({
-        step: DECLARE_BLOCKERS,
-        activePlayer: 1,
-        me: 0,
-        blocks: block,
-        declaredAttackers: atMe,
-      }),
+      primaryActionFor({ step: DECLARE_BLOCKERS, activePlayer: 1, me: 0, actions: blockAction, blocks: block }),
     ).toEqual({
       kind: "confirm-blockers",
       label: "Block (1)",
     });
   });
   it("confirms an empty block declaration as 'No blockers' when you're being attacked", () => {
-    expect(
-      primaryActionFor({
-        step: DECLARE_BLOCKERS,
-        activePlayer: 1,
-        me: 0,
-        declaredAttackers: atMe,
-      }),
-    ).toEqual({
+    expect(primaryActionFor({ step: DECLARE_BLOCKERS, activePlayer: 1, me: 0, actions: blockAction })).toEqual({
       kind: "confirm-blockers",
       label: "No blockers",
     });
   });
-  it("stays 'Next' once attackers are on the board, or after a local confirm (SSE lag)", () => {
+  // Master Warcraft: seat 3 is neither active nor attacked, but the engine handed them both
+  // declarations — the button has to follow the engine, not the seat.
+  it("offers a moved declaration to the seat the engine gave it to", () => {
     expect(
       primaryActionFor({
         step: DECLARE_ATTACKERS,
         activePlayer: 0,
-        me: 0,
-        declaredAttackers: attack,
+        me: 3,
+        actions: [declareAction("declare_attackers", [0])],
+        attackers: attack,
       }),
-    ).toEqual({ kind: "pass", label: "Next" });
+    ).toEqual({ kind: "confirm-attackers", label: "Attack (1)" });
     expect(
       primaryActionFor({
-        step: DECLARE_ATTACKERS,
+        step: DECLARE_BLOCKERS,
         activePlayer: 0,
-        me: 0,
-        attackersConfirmed: true,
+        me: 3,
+        actions: [declareAction("declare_blockers", [1, 2])],
       }),
-    ).toEqual({
+    ).toEqual({ kind: "confirm-blockers", label: "No blockers" });
+  });
+  // ...and the seat it was taken *from* gets nothing, so two players can't both declare.
+  it("stays 'Next' for an attacked seat whose blocks were moved to somebody else", () => {
+    expect(primaryActionFor({ step: DECLARE_BLOCKERS, activePlayer: 0, me: 1, actions: [], blocks: block })).toEqual({
       kind: "pass",
       label: "Next",
     });
   });
-  it("stays 'Next' once the server reports attackers_declared (empty declare)", () => {
-    // Empty declare leaves combat.attackers empty; without the wire flag the button sticks on
+  it("stays 'Next' after a local confirm (SSE lag) or once the server reports the declaration", () => {
+    // Empty declare leaves combat.attackers empty; without the latch the button sticks on
     // "No attackers" and every retry is IllegalDeclaration.
-    expect(
-      primaryActionFor({
-        step: DECLARE_ATTACKERS,
-        activePlayer: 0,
-        me: 0,
-        attackersDeclared: true,
-      }),
-    ).toEqual({
-      kind: "pass",
-      label: "Next",
-    });
+    for (const over of [{ attackersConfirmed: true }, { attackersDeclared: true }]) {
+      expect(
+        primaryActionFor({ step: DECLARE_ATTACKERS, activePlayer: 0, me: 0, actions: attackAction, ...over }),
+      ).toEqual({ kind: "pass", label: "Next" });
+    }
+    for (const over of [{ blockersConfirmed: true }, { blockersDeclared: true }]) {
+      expect(
+        primaryActionFor({ step: DECLARE_BLOCKERS, activePlayer: 1, me: 0, actions: blockAction, ...over }),
+      ).toEqual({ kind: "pass", label: "Next" });
+    }
   });
-  it("stays 'Next' once your blocks are on the board, or after a local confirm", () => {
-    expect(
-      primaryActionFor({
-        step: DECLARE_BLOCKERS,
-        activePlayer: 1,
-        me: 0,
-        declaredAttackers: atMe,
-        declaredBlocks: block,
-      }),
-    ).toEqual({
-      kind: "pass",
-      label: "Next",
-    });
-    expect(
-      primaryActionFor({
-        step: DECLARE_BLOCKERS,
-        activePlayer: 1,
-        me: 0,
-        declaredAttackers: atMe,
-        blockersConfirmed: true,
-      }),
-    ).toEqual({
-      kind: "pass",
-      label: "Next",
-    });
-  });
-  it("stays 'Next' once the server reports blockers_declared (empty declare)", () => {
-    expect(
-      primaryActionFor({
-        step: DECLARE_BLOCKERS,
-        activePlayer: 1,
-        me: 0,
-        declaredAttackers: atMe,
-        blockersDeclared: true,
-      }),
-    ).toEqual({ kind: "pass", label: "Next" });
-  });
-  it("stays 'Next' on the wrong side of combat or when attacks aim at someone else", () => {
+  it("stays 'Next' with no declaration on offer (wrong side, or attacks aimed at someone else)", () => {
     expect(primaryActionFor({ step: DECLARE_ATTACKERS, activePlayer: 1, me: 0, attackers: attack })).toEqual({
       kind: "pass",
       label: "Next",
     });
     expect(primaryActionFor({ step: DECLARE_BLOCKERS, activePlayer: 0, me: 0, blocks: block })).toEqual({
-      kind: "pass",
-      label: "Next",
-    });
-    expect(
-      primaryActionFor({
-        step: DECLARE_BLOCKERS,
-        activePlayer: 1,
-        me: 0,
-        declaredAttackers: atOther,
-      }),
-    ).toEqual({
       kind: "pass",
       label: "Next",
     });

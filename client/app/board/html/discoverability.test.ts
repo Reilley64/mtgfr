@@ -13,6 +13,20 @@ import { discoverabilityView, HINT_DISMISSED_KEY } from "./discoverability";
 import { boardOverlays } from "./overlays";
 import { resolveBoardOverlayMounts } from "./scene-helpers";
 
+// Node 26 defines a `localStorage` global that reads `undefined` without `--localstorage-file`,
+// and that shadows the one happy-dom installs. Give the hint's persistence a real store either way.
+if (typeof localStorage === "undefined") {
+  const store = new Map<string, string>();
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, v),
+      removeItem: (k: string) => void store.delete(k),
+    },
+  });
+}
+
 const h = html<Message>();
 
 type ViewModel = { board: BoardModel; fold: GameFoldState; tableId: string };
@@ -60,13 +74,14 @@ function gameFold(): GameFoldState {
       zoneMoves: new Map(),
       resolvedFromStack: new Set(),
       leftStackToPile: new Set(),
+      battlefieldExits: new Map(),
       tokenCreators: new Map(),
       landPlayFrom: new Map(),
       zonePileEntrances: new Map(),
       stackEntrances: new Map(),
       priorStackObjectIds: new Set(),
     },
-    tableFeel: { land: false, stack: false, resolve: false, damage: false },
+    tableFeel: { land: false, stack: false, resolve: false, damage: false, destroy: false, exile: false },
   };
 }
 

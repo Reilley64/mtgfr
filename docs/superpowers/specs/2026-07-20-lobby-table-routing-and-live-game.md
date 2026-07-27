@@ -1,8 +1,8 @@
 # Lobby, Table Routing, and Live Game
 
-**Status:** Current (as of 2026-07-24)
+**Status:** Current (as of 2026-07-26)
 **Module:** `crates/server/src/table.rs`, `crates/server/src/lobby.rs`, `crates/server/src/session.rs`,
-`crates/server/src/game_loop.rs`, `crates/server/src/stream.rs`, `crates/server/src/chrome.rs`,
+`crates/server/src/game_loop.rs`, `crates/server/src/ratings.rs`, `crates/server/src/stream.rs`, `crates/server/src/chrome.rs`,
 `crates/server/src/health.rs`, `crates/server/src/main.rs`,
 BFF `client/server/` (Nitro lobby + `table_routes`)
 
@@ -25,7 +25,7 @@ newest pod only.
 The system separates pre-game lobby from live-game concerns across two persistence boundaries:
 
 - **Pre-game lobby** lives on the Nitro BFF (`edh-web`) against Postgres `mtgfr_web`
-  (Drizzle), entirely outside the API pod.
+  (Drizzle over `@effect/sql-pg`), entirely outside the API pod.
 - **Live game** lives in the API pod's in-memory `Registry` (lobby-table-routing-and-live-game spec). No game state is
   persisted; the game is lost if the pod restarts.
 
@@ -36,11 +36,14 @@ The system separates pre-game lobby from live-game concerns across two persisten
 3. Each user toggles ready. The host (first to join) sees the Start button when ≥2 seats are
    claimed and all claimed seats are ready.
 4. The host clicks Start. The BFF calls `Tables.Seed` (gRPC, Service `edh-api`) on the
-   **newest** active API pod. The seed request carries seat order, user ids, and deck ids.
-5. `Tables.Seed` resolves and validates all decks, fetches a drand beacon master seed (or a configured fixed seed in dev/test), deals opening hands, enters the mulligan phase, inserts the
+   **newest** active API pod. The seed request carries seat order, user ids, usernames,
+   public `gravatar_hash` values, and deck ids.
+5. `Tables.Seed` resolves and validates all decks, fetches a drand beacon master seed (or a configured fixed seed in dev/test), deals BO1-smoothed opening hands, enters the mulligan phase, inserts the
    `Table` into the in-memory `Registry`, and returns `SeedResponse { table_id, pod_dns, version }`.
-6. BFF writes `table_routes (table_id → pod_dns)` to `mtgfr_web`. Clients are redirected to
-   `/play/{deck_id}/{table_id}` so the chosen deck remains a required path param.
+6. BFF writes `table_routes (table_id → pod_dns)` to `mtgfr_web`. Pregame browser routes use
+   `/play/{deck_id}/{table_id}` while seated; once lobby poll reports `started`, the client
+   navigates to table-only `/play/{table_id}` for the live board. Deck choice stays on seats
+   in `mtgfr_web` and in the seed payload — not in the in-game URL.
 
 **In-game routing (lobby-table-routing-and-live-game spec):**
 
@@ -53,12 +56,14 @@ affinity cookie; `table_id` in the path is the sole routing key.
 **In-memory Registry and Table (lobby-table-routing-and-live-game spec):**
 
 One `Registry` per API pod process (a `std::sync::Mutex<HashMap<String, Table>>`). Table ids
-are random 128-bit hex strings (unguessable). Each `Table` holds:
+are six-character codes drawn from `23456789ABCDEFGHJKMNPQRSTUVWXYZ` and regenerated until they
+contain at least one letter. Each `Table` holds:
 - The `engine::Game` (pure, deterministic state machine).
 - The 32-byte master seed and `beacon_round` used to derive every engine random operation (`beacon_round = 0` for configured/test seeds).
 - A monotonic `seq` (event counter / stream resume watermark).
 - A `tokio::broadcast` channel per table for fan-out to all subscribers.
 - `ChromeState` (yield flags, stack-hold, dwell — see below).
+- Per-seat public chrome from `SeedSeat`: username and `gravatar_hash` (never email).
 - Per-seat `prints` map (Card id → Printing UUID, for `ObjectView` art).
 - `quiet_since` (for abandoned-table eviction during drain).
 
@@ -71,7 +76,7 @@ Reconnect re-opens the stream from the current `seq` — no gap replay; reconnec
 
 **Chrome settle (turn-priority-and-stack spec / turn-priority-and-stack spec / 0029 / 0037):**
 
-After every intent, `TableSession::apply` applies the engine action, then runs a settle loop
+After every intent, `TableSession::submit` applies the engine action, then runs a settle loop
 (`settle_after_apply`) that:
 1. Loops `PassPriority` while the current priority holder has no meaningful action
    (`has_meaningful_action`) and no pending choice, up to 256 auto-passes.
@@ -97,7 +102,7 @@ On SIGTERM, the server sets `AppState.draining = true` (atomic bool). The drain 
 
 | Endpoint | Behavior |
 |----------|----------|
-| `GET /health/live` | Always 200; body `{"version": "…"}` |
+| `GET /health/live` | Always 200; body `{"version": "…", "faithful_count": N, "faithful_by_set": {"soc": 12, …}}`, where `faithful_count` is the current count of deckable, non-`approximates` card defs in the loaded registry and `faithful_by_set` is an optional lowercase set-code map for shell coverage joins |
 | `GET /health/ready` | Always 200 while process is up; body `"ok"` |
 | `GET /health/drain` | `{"active_tables": N, "draining": bool}` — observation only; not reachable via public tunnel (NetworkPolicy) |
 
@@ -132,6 +137,19 @@ the BFF so that their absence does not block drain of an API pod that was never 
 
 ## Behavior
 
+### Client play routes (browser)
+
+Deck pick, lobby entry, pregame, and in-game paths are owned by the Foldkit client ([shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md), [lobby-entry-ui](2026-07-20-lobby-entry-ui.md)). Server/BFF routing keys only on `table_id` once the game is live.
+
+| Path | Phase |
+|---|---|
+| `/` | Deck pick (home deck list) |
+| `/play/:deckId` | Host/Join entry for the chosen deck |
+| `/play/:deckId/:tableId` | Pregame seated lobby (claim, ready, start) |
+| `/play/:tableId` | In-game board after start (table id only; generated table code containing at least one letter) |
+
+Host create and Join-with-code handoffs land on the two-segment pregame path. Start replaces that URL with the table-only in-game path while preserving the same `table_id` for BFF `table_routes` lookup and the game stream.
+
 ### Seed flow (`Tables.Seed` / `lobby::seed_table_core`)
 
 1. Guard: if `AppState.draining`, return 503.
@@ -142,13 +160,14 @@ the BFF so that their absence does not block drain of an API pod that was never 
    registry lock — no DB await across the lock.
 5. Resolve entropy before inserting the table: `settings.master_seed` or `MTGFR_MASTER_SEED` supplies a fixed 64-hex-character master seed with `beacon_round = 0`; otherwise the API fetches `https://drand.cloudflare.com/public/latest`, retrying across `https://api.drand.sh/public/latest`. The drand `randomness` becomes the `[u8; 32]` engine master seed and `round` is recorded as `beacon_round`.
 6. If beacon entropy is unavailable or malformed and no fixed seed is configured, return 503. No partial table is created and there is no silent production fallback to `OsRng`.
-7. Under the lock: build `Table::seeded(...)`, record `table.seed` and `table.beacon_round`, fill
+7. Under the lock: build `Table::seeded(...)`, record `table.seed` and `table.beacon_round`, copy
+   `SeedSeat.username` and public `SeedSeat.gravatar_hash` into table seat chrome, fill
    `table.prints` (Card id → Printing UUID per seat), seed game via `decks::seed_game`, call
    `registry.try_insert(table_id, table)`.
 8. Return `SeedResponse { table_id, pod_dns: settings.pod_dns, version: settings.version }`.
    BFF writes `table_routes`.
 
-`decks::seed_game` constructs `Game::with_master_seed`, designates commanders, stacks and shuffles each library with per-seat derived RNG, draws seven cards per seat, and calls `begin_mulligans()`. It deliberately does **not** call `begin_first_turn()` at seed time; the first turn begins only after all living seats keep their hands.
+`decks::seed_game` constructs `Game::with_master_seed`, designates commanders, stacks each library, deals a BO1-smoothed opening hand (two per-seat RNG shuffle samples), and calls `begin_mulligans()`. It deliberately does **not** call `begin_first_turn()` at seed time; the first turn begins only after all living seats keep their hands.
 
 ### Stream subscribe (`Game.Stream`)
 
@@ -165,12 +184,19 @@ the BFF so that their absence does not block drain of an API pod that was never 
 
 1. Auth: `x-session-token` → `AuthUser`. The user must have a seat at `table_id`.
 2. `game_loop::submit_core` → `with_seated_drive` → lock registry → find table → find seat →
-   `TableSession::apply(intent)`.
-3. `apply` dispatches the engine intent, runs the settle loop (auto-pass, hold arm/clear), then
+   `TableSession::submit(intent)`.
+3. `submit` dispatches the engine intent, runs the settle loop (auto-pass, hold arm/clear), then
    publishes a `DeltaEnvelope` to `table.tx` for all subscribers.
 4. Returns `Ack { accepted, reason }`. Deltas arrive on the stream, not in the ack.
-5. Action log is appended outside the lock (`action_log::append`) — TOON format, written to
-   `ACTION_LOG_DIR`.
+5. For an accepted apply, `with_seated_drive` snapshots `table.seats`, the full post-apply `Game`,
+   and the emitted `events` under the registry lock, then releases the lock before tail work.
+6. Unlock tail: append the TOON action log row (`action_log::append`, written to `ACTION_LOG_DIR`),
+   then call `ratings::persist_player_lost(&state.db, seats, game, events)`.
+7. `persist_player_lost` extracts every `Event::PlayerLost` in event order, reconstructs the batch's
+   alive players from the post-apply game, skips seats without `user_id`, and applies Elo updates in
+   Postgres from snapshot ratings. Simultaneous multi-loss batches use event order (later losers beat
+   earlier ones) — ponytail approximation. Any DB failure is warning-only (`tracing::warn!`); the ack,
+   settle loop, and stream fan-out still succeed.
 
 While the engine is `mulliganing`, clients submit `KeepHand` or `Mulligan` just like other intents. The server does not auto-advance priority or begin turn one until `MulligansFinished` has occurred; disconnected undecided seats remain undecided.
 
@@ -225,6 +251,21 @@ seeded game; there are no "empty" table shells in the production registry.
 - **BFF-owned lobby** (lobby-table-routing-and-live-game spec): pre-game state lives on `mtgfr_web` (Drizzle). No lobby
   tables in the API pod; no lobby fan-out needed across pods. The BFF owns seat claim, ready-up,
   host start, and `table_routes`.
+- **Effect-native lobby store** (`client/app/domain/lobby-store.ts`): store operations are `Effect.fn`
+  programs that `yield* WebDb` (a `Context.Service` over Drizzle's `drizzle-orm/effect-postgres`
+  driver on `@effect/sql-pg`) and `yield*` each query as an Effect. Lobby table routes keep their
+  Nitro `defineHandler(async …)` boundary, then pass Effect bodies to `withLobbyAuth`; that helper
+  annotates the request span, authenticates, sweeps idle rows, and provides `WebDbLive` around the
+  traced Effect so route bodies yield store programs directly. The remaining Promise-edge caller,
+  `/api/rpc` `resolveTableAddress`, runs `lookupTableRoute` with `runWebDb(op)` from
+  `client/server/db/client.ts`, which reuses one pooled `ManagedRuntime` per `WEB_DATABASE_URL`.
+  There is no surrounding SQL
+  transaction: `createLobby` retries a fresh code on a unique-violation (Postgres `23505`,
+  surfaced as a `UniqueViolation` reason), `joinLobby` re-reads and reconciles on a seat/user race,
+  and `commitStart` deletes the freshly-written `table_routes` row if `markStarted` fails.
+- **Seat face privacy**: the BFF derives/stores lobby `gravatar_hash` from the authenticated
+  user's email, then forwards only that hash in `Tables.Seed`. API table chrome and streams never
+  receive or expose seat email. See [Gravatar Seat Faces Design](2026-07-25-gravatar-seat-faces-design.md).
 - **table_routes for pod affinity** (lobby-table-routing-and-live-game spec): no affinity cookie, no ConfigMap peer registry.
   `table_id` in the path is the routing key; `pod_dns` in `mtgfr_web.table_routes` is the
   destination. Headless Service `publishNotReadyAddresses` keeps Terminating pods dialable.
@@ -234,6 +275,10 @@ seeded game; there are no "empty" table shells in the production registry.
 - **Drand over silent fallback** (`beacon.rs`): production seed calls must get Cloudflare/drand randomness or fail; fixed master seeds are explicit test/dev configuration (`settings.master_seed` or `MTGFR_MASTER_SEED`).
 - **Settle loop bounded** (turn-priority-and-stack spec): up to 256 auto-passes per intent, preventing infinite
   loops on engine bugs. The bound is high enough for real priority chains.
+- **Post-unlock Elo writes** (`game_loop.rs`, `session.rs`, `ratings.rs`): player-submitted intents and
+  held stack-resolution passes both clone `(seats, game, events)` only after an accepted apply, then
+  persist any `PlayerLost` ratings after the registry lock is released. Rating writes are best-effort:
+  `persist_player_lost` logs a warning on failure and never rejects the already-accepted game action.
 - **Abandoned table grace = 60s** (`table.rs`): long enough for a reconnect blip; short enough
   that ghost tables from closed browsers don't pin Terminating pods for the full 24h grace.
   The first no-subscriber sweep *arms* grace from `now` rather than using the seed timestamp,
@@ -260,7 +305,12 @@ seeded game; there are no "empty" table shells in the production registry.
   draining, `drain` status with zero active tables.
 - `crates/server/src/grpc/tests.rs` contains integration tests for `Tables.Seed` (including
   draining rejection, duplicate table id, invalid seat counts, beacon failure, and recorded beacon entropy) and `Game.SubmitIntent` (seated
-  vs. non-seated auth).
+  vs. non-seated auth). The same file also covers the Elo hook with a seeded-table concede that
+  moves persisted ratings.
+- `crates/server/src/ratings.rs` tests assert multi-loss `PlayerLost` batches are processed in
+  event order when the unlock-tail persist hook runs.
+- Stream projection tests assert seeded table extras stamp usernames and `gravatar_hash` into
+  visible player chrome.
 - `crates/server/src/decks.rs` tests assert seeded games deal opening hands, enter mulligans, and delay the first turn until keeps.
 - Engine-level tests (`tests/game.rs`) cover the full game loop: variable players, elimination,
   multiplayer combat, lobby start.
@@ -285,9 +335,12 @@ seeded game; there are no "empty" table shells in the production registry.
 
 ## Further Notes
 
-- The `table_id` is a random 128-bit hex string (`format!("{:032x}", rand_u128)`). It is the
-  stable public identifier copied as a table code and stored in `table_routes`; browser routes keep
-  the player's required deck id in `/play/{deck_id}/{table_id}`.
+- The `table_id` is a six-character code drawn from `23456789ABCDEFGHJKMNPQRSTUVWXYZ` and
+  regenerated until it contains at least one letter. It is the stable public identifier copied as
+  a table code and stored in `table_routes`. Pregame browser routes keep the local player's deck in
+  `/play/{deck_id}/{table_id}`; after start the client strips to `/play/{table_id}` only. Share
+  links and `parseTableCode` accept both shapes (see
+  [lobby-entry-ui](2026-07-20-lobby-entry-ui.md)).
 - `SeedResponse.version` (the API binary's version string) lets the BFF detect a rolling deploy
   crossing versions mid-game — the BFF can surface a "game running on older version" warning
   if desired, though no UI for this currently exists.
@@ -301,3 +354,7 @@ seeded game; there are no "empty" table shells in the production registry.
   receiving the stream; a **watcher** is a client with no seat. The stream redaction path uses
   `Option<PlayerId>` (`None` = spectator projection), so non-seated signed-in watchers receive
   public zones and counts only.
+- Drizzle migrations for `mtgfr_web` are a squashed v3 baseline (`just client-migrate`). An
+  existing `mtgfr_web` that predates the squash is reconciled by the `edh-web-migrate` Job
+  (journal rewrite to the v3 baseline after verifying `lobby_seats.gravatar_hash`) before
+  `drizzle-kit migrate` runs.

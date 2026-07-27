@@ -11,6 +11,8 @@
 //! prior events, mint new stack objects, or arm runtime scratch beyond a pure `mint_*` batch.
 //! Deferred / gaps: per-deck increments under `docs/fidelity/` (fidelity-grind skill).
 
+use std::sync::Arc;
+
 mod control;
 mod copy;
 mod counters;
@@ -66,10 +68,9 @@ pub(crate) struct ResolveCtx {
 
 /// The deferred tail of an [`Effect::Sequence`]: the steps left to run, plus the resolution
 /// context they share. Stashed when a step pauses and replayed when its choice is answered.
-/// `Copy` — every field is (the steps are `&'static`).
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub(crate) struct SequenceCont {
-    pub(crate) steps: &'static [Effect],
+    pub(crate) steps: Arc<[Effect]>,
     pub(crate) ctx: ResolveCtx,
 }
 
@@ -88,7 +89,7 @@ impl Game {
     /// no live controller distinct from its owner, so both reads collapse to the same recorded
     /// value in that case.
     pub(crate) fn owner_of_shared_target(&self, object: ObjectId, to_controller: bool) -> PlayerId {
-        if matches!(self.objects[object as usize], Object::Removed) {
+        if matches!(&self.objects[object as usize], Object::Removed { .. }) {
             let (recorded_object, owner) = self
                 .resolution_frame
                 .vanished_permanent_owner
@@ -112,16 +113,19 @@ impl Game {
     /// answered. Fully non-pausing steps run to completion here.
     pub(crate) fn run_sequence(
         &mut self,
-        steps: &'static [Effect],
+        steps: &[Effect],
         ctx: ResolveCtx,
         events: &mut Vec<Event>,
     ) {
-        for (i, &step) in steps.iter().enumerate() {
-            self.run(step, ctx, events);
+        for (i, step) in steps.iter().enumerate() {
+            self.run(step.clone(), ctx, events);
             if self.resolution_is_paused() {
                 let rest = &steps[i + 1..];
                 if !rest.is_empty() {
-                    self.resume.sequence = Some(SequenceCont { steps: rest, ctx });
+                    self.resume.sequence = Some(SequenceCont {
+                        steps: Arc::from(rest.to_vec()),
+                        ctx,
+                    });
                 }
                 return;
             }
@@ -154,7 +158,7 @@ impl Game {
             }
         }
         if let Some(cont) = self.resume.sequence.take() {
-            self.run_sequence(cont.steps, cont.ctx, events);
+            self.run_sequence(cont.steps.as_ref(), cont.ctx, events);
         }
         if self.resolution_is_paused() {
             return;
@@ -174,8 +178,9 @@ impl Game {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::LazyLock;
 
-    const TEST_LAND: CardDef = CardDef {
+    static TEST_LAND: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         name: "Test Land",
         id: "",
         default_print: "",
@@ -191,8 +196,8 @@ mod tests {
         modal_choose: 1,
         modal_choose_max: None,
         modal_choose_max_if_commander: false,
-        identity_pips: &[],
-        colors: &[],
+        identity_pips: empty_slice(),
+        colors: empty_slice(),
         devoid: false,
         enters_tapped: false,
         enters_tapped_unless: None,
@@ -200,14 +205,15 @@ mod tests {
         free_cast_if: None,
         alternative_cost: None,
         cast_only_during_combat: false,
+        cast_only_before_attackers: false,
         approximates: None,
         oracle: None,
-        set: "",
-        subtypes: &[],
-        otags: &[],
-        keywords: &[],
-        conditional_keywords: &[],
-        abilities: &[],
+        sets: empty_slice(),
+        subtypes: empty_slice(),
+        otags: empty_slice(),
+        keywords: empty_slice(),
+        conditional_keywords: empty_slice(),
+        abilities: empty_slice(),
         cycling: None,
         cycling_sacrifice: SacrificeCost::None,
         flashback: None,
@@ -227,18 +233,19 @@ mod tests {
         enchant_graveyard: false,
         back: None,
         adventure: None,
-        halves: &[],
+        halves: empty_slice(),
         suspend: None,
         vanishing: None,
+        cast_x_max: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
         encore: None,
-        hand_ability: &[],
+        hand_ability: empty_slice(),
         forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
-    };
+    });
 
     const SURVEIL_THEN_DRAW: &[Effect] = &[
         Effect::Dig(DigEffect::Surveil { count: 2 }),
@@ -268,7 +275,10 @@ mod tests {
     #[test]
     fn run_sequence_stashes_tail_when_a_step_pauses() {
         let mut game = Game::with_players(2, 0);
-        game.stack_library(PlayerId(0), &[TEST_LAND, TEST_LAND, TEST_LAND]);
+        game.stack_library(
+            PlayerId(0),
+            &[TEST_LAND.clone(), TEST_LAND.clone(), TEST_LAND.clone()],
+        );
         let mut events = Vec::new();
 
         game.run_sequence(SURVEIL_THEN_DRAW, ctx(PlayerId(0)), &mut events);
@@ -287,7 +297,10 @@ mod tests {
     #[test]
     fn resume_deferred_sequence_runs_the_tail_after_the_pause_clears() {
         let mut game = Game::with_players(2, 0);
-        let lib = game.stack_library(PlayerId(0), &[TEST_LAND, TEST_LAND, TEST_LAND]);
+        let lib = game.stack_library(
+            PlayerId(0),
+            &[TEST_LAND.clone(), TEST_LAND.clone(), TEST_LAND.clone()],
+        );
         let mut events = Vec::new();
 
         game.run_sequence(SURVEIL_THEN_DRAW, ctx(PlayerId(0)), &mut events);
@@ -315,7 +328,10 @@ mod tests {
     #[test]
     fn submit_resumes_a_deferred_sequence_after_a_surveil_answer() {
         let mut game = Game::with_players(2, 0);
-        let lib = game.stack_library(PlayerId(0), &[TEST_LAND, TEST_LAND, TEST_LAND]);
+        let lib = game.stack_library(
+            PlayerId(0),
+            &[TEST_LAND.clone(), TEST_LAND.clone(), TEST_LAND.clone()],
+        );
         let mut events = Vec::new();
 
         game.run_sequence(SURVEIL_THEN_DRAW, ctx(PlayerId(0)), &mut events);
@@ -335,7 +351,7 @@ mod tests {
     #[test]
     fn run_applies_a_pure_effect() {
         let mut game = Game::with_players(2, 0);
-        game.stack_library(PlayerId(0), &[TEST_LAND]);
+        game.stack_library(PlayerId(0), std::slice::from_ref(&*TEST_LAND));
         let mut events = Vec::new();
 
         game.run(

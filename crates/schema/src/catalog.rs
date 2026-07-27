@@ -3,7 +3,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::dto::{WireCost, WireKind};
+use crate::dto::{MessageParam, MessageRef, WireCost, WireKind};
 
 /// One pool card, for the deck builder to browse. Stats/keywords/summary are engine truth.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -16,8 +16,8 @@ pub struct CatalogCard {
     pub cost: WireCost,
     pub kind: WireKind,
     pub keywords: Vec<String>,
-    /// Plain-English summary of the card's keywords + abilities (the engine's simplified behavior).
-    pub summary: String,
+    /// Message refs for the card's keywords + abilities (the engine's simplified behavior).
+    pub summary: Vec<MessageRef>,
     pub legendary: bool,
     /// Color identity as WUBRG indices (see `engine::Color::index`).
     pub color_identity: Vec<u8>,
@@ -27,9 +27,11 @@ pub struct CatalogCard {
     /// The card's printed (oracle) rules text, for the deck builder's read-the-text hover
     /// (`engine::CardDef::oracle`). `None` for a card whose text isn't recorded, or a vanilla.
     pub oracle: Option<String>,
-    /// Set/edition code (Scryfall's lowercase code, e.g. `"soc"`); empty when unrecorded. A
-    /// deck-builder search dimension.
+    /// Deprecated legacy set/edition code; always empty. Use `sets`.
     pub set: String,
+    /// Every Scryfall set code with a printing of this oracle (lowercase). A deck-builder search
+    /// dimension.
+    pub sets: Vec<String>,
     /// Printed subtypes for search (creature types like "Goblin"/"Wizard", plus a land's printed
     /// types). The union of `engine::CardDef::subtypes` (creature/artifact/enchantment types) and,
     /// for a land, its `CardKind::Land::subtypes`.
@@ -87,6 +89,7 @@ pub(crate) fn wire_keyword(keyword: engine::Keyword) -> String {
         Keyword::Skulk => "skulk".into(),
         Keyword::Shadow => "shadow".into(),
         Keyword::Fear => "fear".into(),
+        Keyword::Intimidate => "intimidate".into(),
         Keyword::LesserPowerCantBlock => "lesser_power_cant_block".into(),
         Keyword::CantBlock => "cant_block".into(),
         Keyword::CanBlockOnlyFlyers => "can_block_only_flyers".into(),
@@ -110,7 +113,7 @@ pub(crate) fn wire_keyword(keyword: engine::Keyword) -> String {
     }
 }
 
-/// Human-readable keyword for catalog `summary` (deck-builder hover text).
+/// Human-readable keyword for modifier ledgers where a compact string contribution is enough.
 pub(crate) fn keyword_label(keyword: engine::Keyword) -> String {
     use engine::{Color, Keyword, ProtectionScope};
     match keyword {
@@ -134,6 +137,7 @@ pub(crate) fn keyword_label(keyword: engine::Keyword) -> String {
         Keyword::Skulk => "Skulk".into(),
         Keyword::Shadow => "Shadow".into(),
         Keyword::Fear => "Fear".into(),
+        Keyword::Intimidate => "Intimidate".into(),
         Keyword::LesserPowerCantBlock => "Lesser-power creatures can't block it".into(),
         Keyword::CantBlock => "Can't block".into(),
         Keyword::CanBlockOnlyFlyers => "Can block only creatures with flying".into(),
@@ -157,8 +161,32 @@ pub(crate) fn keyword_label(keyword: engine::Keyword) -> String {
     }
 }
 
+/// Stable summary message for a keyword. The separate `keywords` field keeps compact badge ids;
+/// this one exists for catalog prose formatting on the client.
+fn keyword_message(keyword: engine::Keyword) -> MessageRef {
+    use engine::{Color, Keyword, ProtectionScope};
+    match keyword {
+        Keyword::Ward(n) => MessageRef::key("keyword.ward")
+            .with_params(vec![MessageParam::int("amount", i64::from(n))]),
+        Keyword::ProtectionFrom(scope) => {
+            let scope = match scope {
+                ProtectionScope::Color(Color::White) => "white",
+                ProtectionScope::Color(Color::Blue) => "blue",
+                ProtectionScope::Color(Color::Black) => "black",
+                ProtectionScope::Color(Color::Red) => "red",
+                ProtectionScope::Color(Color::Green) => "green",
+                ProtectionScope::Creatures => "creatures",
+                ProtectionScope::Multicolored => "multicolored",
+            };
+            MessageRef::key("keyword.protection_from")
+                .with_params(vec![MessageParam::string("scope", scope)])
+        }
+        other => MessageRef::key(format!("keyword.{}", wire_keyword(other))),
+    }
+}
+
 /// Wire form of a card's kind.
-pub(crate) fn wire_kind(def: engine::CardDef) -> WireKind {
+pub(crate) fn wire_kind(def: &engine::CardDef) -> WireKind {
     use engine::{CardKind, SpellSpeed};
     match def.kind {
         CardKind::Creature {
@@ -190,7 +218,7 @@ pub(crate) fn wire_kind(def: engine::CardDef) -> WireKind {
 /// shown as all five, like Command Tower. A restricted opponent-producible-colors credit that's
 /// already resolved to a concrete [`engine::Mana::OfColors`] bitmask (never authored in TOML —
 /// only produced at resolution) shows exactly its set.
-fn land_colors(def: engine::CardDef) -> Vec<u8> {
+fn land_colors(def: &engine::CardDef) -> Vec<u8> {
     let mut colors = [false; engine::Color::COUNT];
     if let engine::CardKind::Land {
         produces: Some(produces),
@@ -222,7 +250,7 @@ fn land_colors(def: engine::CardDef) -> Vec<u8> {
             },
         }
     }
-    for ability in def.abilities {
+    for ability in def.abilities.iter() {
         let engine::Effect::Mana(engine::ManaEffect::Add { mana: produced, .. }) = ability.effect
         else {
             continue;
@@ -282,7 +310,7 @@ pub fn color_identity(def: &engine::CardDef) -> u8 {
             id |= 1 << c.index();
         }
     }
-    for c in def.identity_pips {
+    for &c in def.identity_pips.iter() {
         id |= 1 << c.index();
     }
     // Colorless {C}, "any color", the commander-identity credit, and the opponent-producible-
@@ -319,7 +347,7 @@ pub fn color_identity(def: &engine::CardDef) -> u8 {
             | engine::LandProduces::OpponentColors => {}
         }
     }
-    for ability in def.abilities {
+    for ability in def.abilities.iter() {
         if let engine::Effect::Mana(engine::ManaEffect::Add { mana: produced, .. }) = ability.effect
         {
             for c in COLORS {
@@ -372,27 +400,35 @@ fn all_subtypes(def: &engine::CardDef) -> Vec<String> {
 /// A pool card in browse form for the deck builder.
 pub fn catalog_card(def: &engine::CardDef) -> CatalogCard {
     let keywords: Vec<String> = def.keywords.iter().copied().map(wire_keyword).collect();
-    let mut parts: Vec<String> = def.keywords.iter().copied().map(keyword_label).collect();
-    parts.extend(def.abilities.iter().map(|a| a.effect.label()));
+    let mut summary: Vec<MessageRef> = def.keywords.iter().copied().map(keyword_message).collect();
+    summary.extend(
+        def.abilities
+            .iter()
+            .map(|ability| ability.effect.clone().message().into()),
+    );
     CatalogCard {
         id: def.id.to_string(),
         default_print: def.default_print.to_string(),
         name: def.name.to_string(),
         cost: wire_cost(def.cost),
-        kind: wire_kind(*def),
+        kind: wire_kind(def),
         keywords,
-        summary: parts.join(", "),
+        summary,
         legendary: def.legendary,
         color_identity: identity_indices(color_identity(def)),
         approximates: def.approximates.map(str::to_string),
         oracle: def.oracle.map(str::to_string),
-        set: def.set.to_string(),
+        set: String::new(),
+        sets: def.sets.iter().map(|s| s.to_string()).collect(),
         subtypes: all_subtypes(def),
         otags: def.otags.iter().map(|s| s.to_string()).collect(),
-        back: def.back.map(|b| CatalogBackFace {
-            name: b.name.to_string(),
-            oracle: b.oracle.map(str::to_string),
-            approximates: b.approximates.map(str::to_string),
+        back: def.back.map(|id| {
+            let back = engine::card_def(id);
+            CatalogBackFace {
+                name: back.name.to_string(),
+                oracle: back.oracle.map(str::to_string),
+                approximates: back.approximates.map(str::to_string),
+            }
         }),
     }
 }
@@ -409,12 +445,15 @@ mod tests {
         let serra = catalog_card(&def("Serra Angel"));
         assert!(serra.keywords.iter().any(|k| k == "flying"));
         assert!(serra.keywords.iter().any(|k| k == "vigilance"));
-        assert!(serra.summary.contains("Flying"));
-        assert!(serra.summary.contains("Vigilance"));
+        assert!(serra.summary.iter().any(|m| m.key == "keyword.flying"));
+        assert!(serra.summary.iter().any(|m| m.key == "keyword.vigilance"));
 
         let shock = catalog_card(&def("Shock"));
         assert!(
-            shock.summary.contains("Deal 2 damage"),
+            shock
+                .summary
+                .iter()
+                .any(|m| m.key == "effect.damage_target"),
             "got {:?}",
             shock.summary
         );
@@ -425,6 +464,10 @@ mod tests {
             vec![green],
             "Forest is mono-green by its produced mana"
         );
+
+        let viper = catalog_card(&def("Ambush Viper"));
+        assert_eq!(viper.set, "");
+        assert!(viper.sets.contains(&"inr".to_string()));
 
         let tajic = catalog_card(&def("Tajic, Legion's Edge"));
         assert!(tajic.legendary);

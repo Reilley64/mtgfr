@@ -56,6 +56,8 @@ message CatalogBackFace {
 
 // One pool card, for the deck builder to browse. Stats/keywords/summary are engine truth.
 message CatalogCard {
+  reserved 7;
+
   // Card id (Scryfall oracle id).
   string id = 1;
   // Default Printing UUID (Scryfall card id) for art when a deck line hasn't chosen otherwise.
@@ -64,8 +66,8 @@ message CatalogCard {
   WireCost cost = 4;
   WireKind kind = 5;
   repeated string keywords = 6;
-  // Plain-English summary of the card's keywords + abilities (the engine's simplified behavior).
-  string summary = 7;
+  // Message refs for the card's keywords + abilities (the engine's simplified behavior).
+  repeated MessageRef summary = 16;
   bool legendary = 8;
   // Color identity as WUBRG indices (see `engine::Color::index`).
   repeated uint32 color_identity = 9;
@@ -75,7 +77,7 @@ message CatalogCard {
   // The card's printed (oracle) rules text, for the deck builder's read-the-text hover. Absent
   // for a card whose text isn't recorded, or a vanilla.
   optional string oracle = 11;
-  // Set/edition code (Scryfall's lowercase code, e.g. "soc"); empty when unrecorded.
+  // Set/edition code — deprecated; always empty. Use `sets`.
   string set = 12;
   // Printed subtypes for search (creature types, plus a land's printed types).
   repeated string subtypes = 13;
@@ -83,6 +85,8 @@ message CatalogCard {
   repeated string otags = 14;
   // Other face of a prepare DFC. Absent for ordinary single-faced cards.
   optional CatalogBackFace back = 15;
+  // Every Scryfall set code with a printing of this oracle (lowercase).
+  repeated string sets = 17;
 }
 
 // One seat to seed, in seat-index order.
@@ -90,6 +94,7 @@ message SeedSeat {
   int64 user_id = 1;
   string username = 2;
   int64 deck_id = 3;
+  string gravatar_hash = 4;
 }
 
 // Seed a running game from a lobby the BFF already resolved. `seats` is ordered by seat index

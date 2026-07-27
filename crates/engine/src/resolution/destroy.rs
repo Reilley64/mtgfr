@@ -30,17 +30,30 @@ impl Game {
                 }
                 vec![self.graveyard_or_command(object, self.next_object_id())]
             }
-            DestroyEffect::All { filter } => {
+            // Mass destruction: every matching permanent goes to the graveyard (a commander
+            // diverts; a token ceases to exist). Ids are minted sequentially, matching the order
+            // `apply` will push them (as the SBA death sweep does). (CR 704)
+            DestroyEffect::All {
+                filter,
+                cant_be_regenerated,
+            } => {
                 let mut next = self.next_object_id();
                 let mut events = Vec::new();
                 for id in self.battlefield() {
-                    let Object::Permanent(p) = self.objects[id as usize] else {
+                    let Object::Permanent(ref p) = self.objects[id as usize] else {
                         continue;
                     };
                     if !self.permanent_matches(&filter, id, controller, Some(source)) {
                         continue;
                     }
                     if self.has_keyword(id, Keyword::Indestructible) {
+                        continue;
+                    }
+                    // A regeneration shield replaces this permanent's own destroy with a
+                    // regeneration (CR 701.15b), unless "can't be regenerated" turns it off (CR
+                    // 701.15d) — same shield-honoring shape as `DestroyTarget`.
+                    if !cant_be_regenerated && p.regeneration_shields > 0 {
+                        events.push(Event::Regenerated { object: id });
                         continue;
                     }
                     if p.token {
@@ -87,7 +100,7 @@ impl Game {
                 let mut next = self.next_object_id();
                 let mut events = Vec::new();
                 for id in self.battlefield() {
-                    let Object::Permanent(p) = self.objects[id as usize] else {
+                    let Object::Permanent(ref p) = self.objects[id as usize] else {
                         continue;
                     };
                     if !self.permanent_matches(&filter, id, controller, Some(source)) {
@@ -219,7 +232,7 @@ impl Game {
                 if self.zone_of(id) != Zone::Battlefield {
                     return Vec::new();
                 }
-                let def = self.def_of(id);
+                let def = self.def_id_of(id);
                 vec![
                     self.sacrifice_event(id),
                     Event::Sacrificed {
@@ -234,7 +247,7 @@ impl Game {
                 if self.zone_of(id) != Zone::Battlefield {
                     return Vec::new();
                 }
-                let def = self.def_of(id);
+                let def = self.def_id_of(id);
                 vec![
                     self.sacrifice_event(id),
                     Event::Sacrificed {
@@ -245,7 +258,7 @@ impl Game {
                 ]
             }
             SacrificeEffect::Source => {
-                let def = self.def_of(source);
+                let def = self.def_id_of(source);
                 vec![
                     self.sacrifice_event(source),
                     Event::Sacrificed {
@@ -271,7 +284,7 @@ impl Game {
         let evs = self.execute_effect(Effect::Destroy(effect), controller, source, target, x);
         self.resolution_frame.destroyed_this_way.clear();
         for e in &evs {
-            match *e {
+            match e.clone() {
                 Event::TokenCeasedToExist {
                     controller: died_controller,
                     def,
@@ -316,7 +329,7 @@ impl Game {
         let evs = self.execute_effect(Effect::Exile(effect), controller, source, target, x);
         self.resolution_frame.power_exiled_this_way.clear();
         for e in &evs {
-            match *e {
+            match e.clone() {
                 Event::TokenCeasedToExist {
                     token,
                     controller: died_controller,

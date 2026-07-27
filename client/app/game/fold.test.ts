@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ObjectView, StreamFrame, VisibleEvent, VisibleState } from "../../lib/wire/types";
+import type { ObjectView, StreamFrame, VisibleEvent, VisibleState } from "../domain/wire/types";
 import { applyDeltaPure, applySnapshotPure, emptyGameFold, setRejectPure } from "./fold";
 
 type DeltaEnvelope = Omit<Extract<StreamFrame, { frame: "delta" }>, "frame">;
@@ -70,7 +70,14 @@ describe("pure game fold", () => {
     expect(next.seq).toBe(2);
     expect(next.state?.objects.map((object) => object.name)).toEqual(["Island"]);
     expect(next.provenance.landPlayFrom.size).toBe(0);
-    expect(next.tableFeel).toEqual({ land: false, stack: false, resolve: false, damage: false });
+    expect(next.tableFeel).toEqual({
+      land: false,
+      stack: false,
+      resolve: false,
+      damage: false,
+      destroy: false,
+      exile: false,
+    });
   });
 
   it("applyDeltaPure records landPlayFrom provenance", () => {
@@ -82,6 +89,27 @@ describe("pure game fold", () => {
     expect(game.log).toEqual([{ seq: 1, text: "P1 plays Forest" }]);
     expect(game.provenance.landPlayFrom.get(3)).toBe(9);
     expect(game.tableFeel.land).toBe(true);
+  });
+
+  it("applyDeltaPure folds battlefield exits into provenance and tableFeel", () => {
+    let game = emptyGameFold();
+    game = applySnapshotPure(game, 0, mkState([mkObject({ id: 10 }), mkObject({ id: 11 })]));
+    game = applyDeltaPure(
+      game,
+      mkDelta(
+        1,
+        [
+          { kind: "moved_to_graveyard", card: 10, from: 10 },
+          { kind: "moved_to_exile", card: 11, from: 11 },
+        ],
+        [],
+      ),
+    );
+
+    expect(game.provenance.battlefieldExits.get(10)).toBe("graveyard");
+    expect(game.provenance.battlefieldExits.get(11)).toBe("exile");
+    expect(game.tableFeel.destroy).toBe(true);
+    expect(game.tableFeel.exile).toBe(true);
   });
 
   it("applyDeltaPure refreshes stack_hold_remaining_ms for same-seq empty events", () => {

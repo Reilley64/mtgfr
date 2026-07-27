@@ -1,0 +1,37 @@
+# Flying
+# Whenever Kaalia attacks an opponent, you may put an Angel, Demon, or Dragon creature card from
+# your hand onto the battlefield tapped and attacking that opponent.
+name = "Kaalia of the Vast"
+sets = ["2x2", "2xm", "cm1", "cma", "cmd", "mh3", "ocmd", "pmei", "prm", "pz1", "sld"]
+id = "cb8d80c9-ed58-4f2d-aa8c-c383370c7f1a"
+default_print = "e71c8c39-3fbb-4a42-9cf6-b3224f5a56fc"
+oracle = "Flying\nWhenever Kaalia attacks an opponent, you may put an Angel, Demon, or Dragon creature card from your hand onto the battlefield tapped and attacking that opponent."
+legendary = true
+subtypes = ["Human", "Cleric"]
+keywords = ["flying"]
+
+[cost]
+generic = 1
+red = 1
+white = 1
+black = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# Whenever Kaalia attacks an opponent, you may put an Angel, Demon, or Dragon creature card from
+# your hand onto the battlefield tapped and attacking that opponent.
+[[abilities]]
+timing = "attacks"
+
+# you may put an Angel, Demon, or Dragon creature card from your hand onto the battlefield tapped
+# and attacking that opponent.
+# ponytail: reuses the PlayerId-defender put-in-attacking path — if Kaalia attacks a planeswalker,
+# the creature enters attacking that planeswalker's controller, not the planeswalker (rare edge).
+[[abilities.effects]]
+type = "choice"
+mode = "put_creature_from_hand"
+subtypes = ["Angel", "Demon", "Dragon"]
+keep = true

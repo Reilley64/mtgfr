@@ -112,11 +112,17 @@ pub(super) fn search_library(
     count: u8,
     overflow: Option<SearchDest>,
 ) -> Option<PendingChoice> {
+    // Stranglehold's "Your opponents can't search libraries" (CR 701.19): a denied search never
+    // raises a pause at all, so it neither finds a card nor shuffles (the shuffle is tied to the
+    // search that didn't happen).
+    if game.opponent_search_denied(player) {
+        return None;
+    }
     let matches: Vec<ObjectId> = game.players[player.0 as usize]
         .library
         .iter()
         .copied()
-        .filter(|&id| filter.matches(game.def_of(id)))
+        .filter(|&id| filter.matches(&game.def_of(id)))
         .collect();
     Some(PendingChoice::SearchLibrary {
         player,
@@ -149,18 +155,29 @@ pub(super) fn put_land_from_hand(
 }
 
 /// Cauldron Dance's "you may put a creature card from your hand onto the battlefield": the
-/// creature sibling of [`put_land_from_hand`] (CR 608.2b's "may" — no creature in hand raises no
-/// choice). `source` is carried on the choice so the answer can later schedule the end-step
-/// sacrifice against this same resolving ability.
+/// creature sibling of [`put_land_from_hand`] (CR 608.2b's "may" — no eligible creature in hand
+/// raises no choice). `source` is carried on the choice so the answer can later schedule the
+/// end-step sacrifice against this same resolving ability. `subtypes` restricts eligibility
+/// (Kaalia: Angel/Demon/Dragon; empty = any creature); `keep` and `defender` ride along for the
+/// answer (no end-step sacrifice; enter tapped and attacking that opponent).
 pub(super) fn put_creature_from_hand(
     game: &Game,
     player: PlayerId,
     source: ObjectId,
+    subtypes: &'static [&'static str],
+    keep: bool,
+    defender: Option<PlayerId>,
 ) -> Option<PendingChoice> {
     let candidates: Vec<ObjectId> = game
         .hand_of(player)
         .into_iter()
         .filter(|&id| matches!(game.def_of(id).kind, crate::CardKind::Creature { .. }))
+        .filter(|&id| {
+            subtypes.is_empty()
+                || subtypes
+                    .iter()
+                    .any(|want| game.def_of(id).subtypes.contains(want))
+        })
         .collect();
     if candidates.is_empty() {
         return None;
@@ -169,6 +186,8 @@ pub(super) fn put_creature_from_hand(
         player,
         source,
         candidates,
+        keep,
+        defender,
     })
 }
 

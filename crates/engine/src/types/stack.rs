@@ -1,4 +1,7 @@
+use std::sync::Arc;
+
 use super::*;
+use crate::CardId;
 
 /// What an attacking creature is attacking (CR 506.2/508.1a): the defending player, or a
 /// planeswalker that player controls. (Battles — CR 506.2c — have no card in the pool yet; add a
@@ -87,12 +90,12 @@ pub enum Intent {
         /// that many copies (CR 702.108b).
         replicate_count: u8,
         /// How many times the caster paid the spell's Multikicker cost
-        /// ([`AdditionalCost::multikicker`] — CR 702.34), settled before the stack for the same
-        /// reason as `replicate_count` above (its total cost depends on the declared count). 0
-        /// (the default) for a spell with no Multikicker, or "pay it zero times." Folded into the
-        /// mana paid by [`Game::cast_cost`] and recorded on the resulting
-        /// [`Spell::multikicker_count`], read back by [`Amount::TimesKicked`] once the resulting
-        /// permanent enters (CR 702.34c).
+        /// ([`AdditionalCost::multikicker`] — CR 702.33c), settled before the stack for the same
+        /// reason as `strive_count`/`replicate_count` above (its total cost depends on the
+        /// declared count). 0 (the default) for a spell with no Multikicker, or "pay it zero
+        /// times." Folded into the mana paid by [`Game::cast_cost`] and recorded on the resulting
+        /// [`Spell::multikicker_count`], read by [`Amount::SpellMultikickerCount`] and
+        /// [`TargetCount::multikicker_scaled`]'s cast-time target-count substitution.
         multikicker_count: u8,
         /// Whether the caster is casting the spell for its printed alternative cost (CR 601.2f —
         /// [`CardDef::alternative_cost`]) instead of its printed mana cost — Invigorate's "rather
@@ -433,6 +436,10 @@ pub enum Intent {
         player: PlayerId,
         host: Option<ObjectId>,
     },
+    /// Answer a [`PendingChoice::ChooseLegendaryKeep`] (CR 704.5j legend rule): `keep` is the
+    /// one legendary permanent among the conflict options that remains on the battlefield; every
+    /// other option leaves (graveyard / command zone / token cease).
+    ChooseLegendaryKeep { player: PlayerId, keep: ObjectId },
     /// Answer a [`PendingChoice::ChooseCopyTarget`]: `copy = Some(creature)` has the entering
     /// permanent enter as a copy of that creature (one of the choice's `candidates`); `None`
     /// declines the "you may" and it enters as its printed self (CR 706/707.2 — Altered Ego,
@@ -577,6 +584,7 @@ impl Intent {
             Intent::DeclineUntap { keep_tapped, .. } => keep_tapped.clone(),
             Intent::ChooseDredge { dredger, .. } => dredger.iter().copied().collect(),
             Intent::ChooseAttachHost { host, .. } => host.iter().copied().collect(),
+            Intent::ChooseLegendaryKeep { keep, .. } => vec![*keep],
             Intent::ChooseCopyTarget { copy, .. } => copy.iter().copied().collect(),
             // The carried params reference real object ids (the action's own object is looked
             // up from the stored list); range-check them so a bad id can't panic the engine.
@@ -686,6 +694,7 @@ impl Intent {
             | Intent::ChooseCardName { player, .. }
             | Intent::ChooseCopyTarget { player, .. }
             | Intent::ChooseAttachHost { player, .. }
+            | Intent::ChooseLegendaryKeep { player, .. }
             | Intent::ChooseTopOrBottom { player, .. }
             | Intent::TakeAction { player, .. }
             | Intent::PassPriority { player }
@@ -739,6 +748,7 @@ impl Intent {
             | Intent::ChooseCardName { .. }
             | Intent::ChooseCopyTarget { .. }
             | Intent::ChooseAttachHost { .. }
+            | Intent::ChooseLegendaryKeep { .. }
             | Intent::ChooseTopOrBottom { .. } => true,
             Intent::KeepHand { .. }
             | Intent::Mulligan { .. }
@@ -798,6 +808,27 @@ pub enum ProliferateTarget {
 /// A decision the engine is waiting on. While one is pending, only the matching
 /// [`Intent::ChooseOrder`] from `player` is legal.
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MayYesNoResume {
+    /// The default yes/no path: a "yes" runs the baked-in effect and a "no" declines it.
+    Default,
+    /// Trade Secrets' repeat gate: "yes" draws two for `player`, then pauses `caster` on the next
+    /// `MayDrawUpTo`.
+    TradeSecretsRepeat { caster: PlayerId, max: u8 },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MayDrawUpToResume {
+    /// The default count-choice path: draw exactly the chosen count.
+    Default,
+    /// Trade Secrets' caster draw gate: once `player` draws the chosen count, pause `opponent` on
+    /// the generic yes/no repeat choice.
+    TradeSecretsRepeat {
+        opponent: PlayerId,
+        source: ObjectId,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PendingChoice {
     /// `player` must order their simultaneously-triggered abilities (put on the stack
     /// in the chosen order). The order is a permutation of `0..effects.len()`.
@@ -806,45 +837,32 @@ pub enum PendingChoice {
         source: ObjectId,
         effects: Vec<Effect>,
     },
-    /// `player` must choose the target(s) for a triggered (or copied — CR 707.10c) ability
-    /// (`source`'s `effect`) before it goes on the stack (CR 601.2c/603.3c). Answered by
-    /// [`Intent::ChooseTargets`]: between `count.min` and `count.max` distinct targets, drawn
-    /// from `legal` (both already clamped to `legal.len()` by [`Game::place_targeted_ability`]).
-    /// The ubiquitous single-mandatory-target ability carries `count = { min: 1, max: 1 }`;
-    /// `count.min == 0` (Killian, Decisive Mentor's "tap up to one target creature") lets
-    /// `targets` be empty to decline: the ability is dropped rather than placed with no target.
-    /// `count.max > 1` (Numot, the Devastator's "destroy up to two target lands") widens this
-    /// past one target, same range shape as
-    /// [`PendingChoice::ChooseSpellTargets`]/[`PendingChoice::ChooseAbilityTargets`]. `x`/
-    /// `activated` carry an activated ability's own chosen `{X}`/activated-ness so the assembled
-    /// ability pushes with them once answered — `0`/`false` for an ordinary triggered ability
-    /// (which carries no `{X}` of its own); Unbound Flourishing's CR 707.10c copy-retarget of a
-    /// targeted `{X}`-cost activated ability (Nin, the Pain Artist) is the one real consumer. Not
-    /// wire-mirrored — the schema projection ignores these via `..`, same as
-    /// [`PendingChoice::ChooseAbilityTargets`]'s own `x`/`spent_mana`/`activated`.
+    /// `player` must choose target(s) for one of three same-wire cases:
+    ///
+    /// - an ability's first target clause before it goes on the stack (CR 601.2c/603.3c),
+    /// - an already-on-the-stack spell's independent target clause (CR 601.2c / CR 707.10c
+    ///   retargets),
+    /// - or an ability's second independent target clause before that ability is pushed.
+    ///
+    /// Between `count.min` and `count.max` distinct targets are chosen from `legal` (already
+    /// clamped to `legal.len()` by the raise site). `source` is the ability source or the spell on
+    /// the stack. `effect` is `Some` for ability placement / mid-resolution target pauses and
+    /// `None` for spell-on-stack target clauses, whose wire label stays the card name. `clause`
+    /// indexes independent target clauses in printed order; `target` carries an already-chosen
+    /// first-clause ability target when `clause > 0`. `x`/`spent_mana`/`activated` thread an
+    /// ability's activation metadata onto the eventual push and are ignored for spell-on-stack
+    /// choices. Answered by [`Intent::ChooseTargets`].
     ChooseTarget {
         player: PlayerId,
         source: ObjectId,
-        effect: Effect,
+        effect: Option<Effect>,
         legal: Vec<Target>,
         count: TargetCount,
-        x: u32,
-        activated: bool,
-    },
-    /// `player` (the caster) must choose the targets for the multi-target `spell` on the stack
-    /// (CR 601.2c): between `min` and `max` distinct targets drawn from `legal`. Answered by
-    /// [`Intent::ChooseTargets`]. Distinct from [`Self::ChooseTarget`] (a single triggered-ability
-    /// target chosen before it hits the stack); this records N targets onto an already-cast spell.
-    ChooseSpellTargets {
-        player: PlayerId,
-        spell: ObjectId,
-        min: u8,
-        max: u8,
-        legal: Vec<Target>,
-        /// Which independent target clause this pause fills (CR 601.2c — all a spell's targets are
-        /// chosen at once, in printed order). `0` for the usual single multi-target clause; `1` for
-        /// a second one (Magma Opus's tap clause), chained after clause 0 is answered.
         clause: u8,
+        target: Option<Target>,
+        x: u32,
+        spent_mana: [u8; 6],
+        activated: bool,
     },
     /// `player` may decline or accept an optional triggered ability (`source`'s `effect`).
     /// Answered by [`Intent::AnswerMay`].
@@ -852,32 +870,17 @@ pub enum PendingChoice {
         player: PlayerId,
         source: ObjectId,
         effect: Effect,
+        resume: MayYesNoResume,
     },
-    /// `player` (the resolving controller of an [`Effect::Choice(ChoiceEffect::MayDrawUpTo)`]) chooses how many cards to
-    /// draw — any number `0..=max` (CR 120.4 / 601.2c — Arcane Denial's "may draw up to two
-    /// cards"). Answered by [`Intent::ChooseDrawCount`], which draws exactly the chosen number.
-    MayDrawUpTo { player: PlayerId, max: u8 },
-    /// Trade Secrets' declinable draw, after `opponent`'s mandatory two-card draw
-    /// ([`Effect::Choice(ChoiceEffect::MayDrawUpToThenOpponentMayRepeat)`]): `player` (the caster) chooses `0..=max`
-    /// cards to draw. Answered by [`Intent::ChooseDrawCount`] (the same wire shape as
-    /// [`MayDrawUpTo`](Self::MayDrawUpTo)); once answered, `opponent` is paused on
-    /// [`TradeSecretsRepeat`](Self::TradeSecretsRepeat) to decide whether to run the whole
-    /// process again.
-    TradeSecretsCasterDraw {
+    /// `player` chooses how many cards to draw — any number `0..=max` (CR 120.4 / 601.2c —
+    /// Arcane Denial's "may draw up to two cards", Trade Secrets' caster draw, and similar
+    /// declinable count choices). `effect` carries the player-visible prompt label; `resume`
+    /// carries any follow-up bookkeeping the answer should trigger after the draw happens.
+    MayDrawUpTo {
         player: PlayerId,
         max: u8,
-        opponent: PlayerId,
-        source: ObjectId,
-    },
-    /// Trade Secrets' repeat-or-stop pause: `player` (the target opponent, having already drawn
-    /// two and watched `caster` draw up to `max` more) may run the whole process (the mandatory
-    /// two-card draw, then the caster's declinable draw) again, or stop. Answered by
-    /// [`Intent::AnswerMay`] (reusing the yes/no wire shape — `yes` repeats, `no` stops).
-    TradeSecretsRepeat {
-        player: PlayerId,
-        caster: PlayerId,
-        max: u8,
-        source: ObjectId,
+        effect: Effect,
+        resume: MayDrawUpToResume,
     },
     /// `player` (the active player at their untap step) may choose not to untap each of
     /// `permanents` — the permanents they control that carry [`CardDef::may_choose_not_to_untap`]
@@ -1131,30 +1134,6 @@ pub enum PendingChoice {
         source: ObjectId,
         options: Vec<ObjectId>,
     },
-    /// `player` must choose a triggered ability's *second* independent target clause (CR 603.3d —
-    /// Kinetic Ooze's X≥10 "double ... any number of other target creatures") before it goes on the
-    /// stack: between `min` and `max` distinct targets from `legal` (CR 601.2c). The ability's
-    /// `effect` (a `Sequence`) and its already-chosen first-clause `target` are carried so the
-    /// assembled ability — both clauses — is pushed once answered. Answered by
-    /// [`Intent::ChooseTargets`]. Distinct from [`Self::ChooseSpellTargets`] (a spell already on the
-    /// stack) and [`Self::ChooseTarget`] (a single first-clause target).
-    ChooseAbilityTargets {
-        player: PlayerId,
-        source: ObjectId,
-        effect: Effect,
-        target: Option<Target>,
-        min: u8,
-        max: u8,
-        legal: Vec<Target>,
-        /// The activation's chosen `{X}` / spent-mana multiset / activated-ness, carried so the
-        /// assembled ability pushes with them once answered. `0`/all-zero/`false` for a triggered
-        /// second-clause ability (Kinetic Ooze); the activation's own values for an activated
-        /// second-clause ability (Zedruu's donation). Not wire-mirrored — the schema projection
-        /// ignores these via `..`, same as the sibling `ChooseActivationCostTargets` internals.
-        x: u32,
-        spent_mana: [u8; 6],
-        activated: bool,
-    },
     /// `player` (the activator) must name `count` distinct target cards from an opponent's
     /// graveyard to pay an activated ability's own targeted exile cost (CR 601.2c/602.2b —
     /// Spurnmage Advocate's "Exile two target cards from an opponent's graveyard: …" —
@@ -1164,7 +1143,7 @@ pub enum PendingChoice {
     /// target clause, unrelated to this cost's targets. Answered by [`Intent::ChooseTargets`]:
     /// the named cards are exiled, then the fixed ability is pushed onto the stack — see
     /// [`Game::choose_activation_cost_targets_answer`]. Distinct from
-    /// [`Self::ChooseAbilityTargets`] (a *triggered* ability's second stack-bound clause, chosen
+    /// [`Self::ChooseTarget`] with `clause > 0` (a stack-bound ability's second target clause, chosen
     /// at placement, not a cost paid at activation).
     ChooseActivationCostTargets {
         player: PlayerId,
@@ -1208,30 +1187,28 @@ pub enum PendingChoice {
         remaining: u8,
         overflow: Option<SearchDest>,
     },
-    /// `player` (the trigger's controller, or the activator) must choose one of `modes` for an
-    /// [`Effect::ChooseOne`] "choose one" ability. Answered by [`Intent::ChooseMode`]. Mode
-    /// labels for the wire come from `modes.len()` / each mode's [`Effect::label`].
+    /// `player` (the trigger's controller) must choose one of `modes` for an [`Effect::ChooseOne`]
+    /// "choose one" modal ability. Answered by [`Intent::ChooseMode`]; the chosen mode carries the
+    /// ability's `source`/`target`/`x` context. Mode labels for the wire come from `modes.len()` /
+    /// each mode's [`Effect::message`].
     ///
-    /// `activated == false` (CR 700.2 — a "choose one" triggered ability): the mode is chosen at
-    /// the point the ability resolves and immediately run with the trigger's own
-    /// `source`/`target`/`x` context (a triggered ability's whole single target, chosen before
-    /// this pause, works for every mode since only one mode ever actually runs).
+    /// `at_placement` distinguishes the two rules windows this pause serves (CR 603.3d vs CR 608.2):
+    /// a *triggered* modal ability chooses its mode as it goes on the stack (`at_placement = true`),
+    /// so [`Game::answer_choose_mode`] *places* the chosen branch — with its own target — on the
+    /// stack, and it resolves later straight down that branch with no mid-resolution mode pause; a
+    /// modal effect reached mid-resolution (a modal spell's own step — Zimone's Hypothesis)
+    /// keeps `at_placement = false` and runs the chosen branch immediately.
     ///
-    /// `activated == true` (CR 601.2b — a modal *activated* ability, Cankerbloom's "Choose one —
-    /// Destroy target artifact. / Destroy target enchantment. / Proliferate."): the mode is
-    /// chosen as the ability is activated, before any target is picked, because different modes
-    /// may target different things — an activated ability's single `target` intent parameter
-    /// can't carry all of them. `target` is always `None` on this path; the chosen mode's own
-    /// target (if it has one) is requested next via [`PendingChoice::ChooseTarget`].
-    /// ponytail: CR 601.2b orders mode choice ahead of CR 601.2h cost payment; this engine pays
-    /// costs first and raises this pause once the ability would otherwise hit the stack. No
-    /// player gets priority between the two, so the reordering is unobservable.
+    /// `activated` is the third window (CR 601.2b — Cankerbloom): an *activated* modal ability
+    /// also chooses its mode as it goes on the stack, but places through the activated path so
+    /// the stack object is an activated ability rather than a trigger.
     ChooseMode {
         player: PlayerId,
         source: ObjectId,
         target: Option<Target>,
         x: u32,
-        modes: &'static [Effect],
+        modes: Arc<[Effect]>,
+        at_placement: bool,
         activated: bool,
     },
     /// `player` may choose `choose` distinct modes of a modal *triggered* ability (`source`, CR
@@ -1263,6 +1240,9 @@ pub enum PendingChoice {
         keep_one: bool,
         filter: PermanentFilter,
         remaining: Vec<PlayerId>,
+        /// How many of `options` this player sacrifices (Malfegor's "a creature … for each card
+        /// discarded this way"), capped at what they control. 1 for a plain edict.
+        count: u32,
         controller: PlayerId,
         source: ObjectId,
         follow_up: &'static [Effect],
@@ -1283,6 +1263,7 @@ pub enum PendingChoice {
         keep_one: bool,
         filter: PermanentFilter,
         life_loss: i32,
+        count: u32,
         then: &'static [Effect],
     },
     /// `player` must exile one of `options` (a card in their own graveyard) to a multi-player
@@ -1293,6 +1274,18 @@ pub enum PendingChoice {
     /// zone, so `options` are public (no redaction). No `follow_up`: the reflexive payoff rides in
     /// the enclosing `Sequence`, resumed once every player has answered.
     ExileFromGraveyard {
+        player: PlayerId,
+        source: ObjectId,
+        options: Vec<ObjectId>,
+        remaining: Vec<PlayerId>,
+    },
+    /// `player` must discard one of `options` (a card in their own hand) to a multi-player discard
+    /// fan-out ([`Effect::Choice(ChoiceEffect::EachOpponentDiscards)`] — Syphon Mind). Mandatory
+    /// (exactly one, when they have any). Answered by [`Intent::Discard`]. `remaining` are the
+    /// still-to-choose opponents (APNAP order) after this one; the hand is private, so `options`
+    /// are redacted from other seats. No `follow_up`: the "you draw a card for each card discarded
+    /// this way" payoff rides in the enclosing `Sequence`, resumed once every opponent has answered.
+    DiscardEdict {
         player: PlayerId,
         source: ObjectId,
         options: Vec<ObjectId>,
@@ -1362,8 +1355,25 @@ pub enum PendingChoice {
     /// ([`Effect::Choice(ChoiceEffect::MayReturnFromGraveyard)`] — Deadly Brew's "you may return another permanent card
     /// from your graveyard to your hand"). Answered by [`Intent::ChooseSacrifices`] (reusing its
     /// "empty list declines, one entry picks" wire shape): an empty list declines, one entry
-    /// returns that card. The graveyard-return twin of [`Self::MaySacrifice`].
+    /// returns that card. The graveyard-return twin of [`Self::MaySacrifice`]. When `mandatory`
+    /// (Witherbloom Command mode 0's "you return"), an empty (declining) answer is illegal — a
+    /// card must be chosen; the no-legal-card case never reaches here (it skips the pause).
     MayReturnFromGraveyard {
+        player: PlayerId,
+        source: ObjectId,
+        options: Vec<ObjectId>,
+        mandatory: bool,
+    },
+    /// `player` may exile one of `options` (a nonland card they just discarded, still in their
+    /// graveyard) face-up with impulse-play permission until end of turn, or decline
+    /// ([`Effect::Choice(ChoiceEffect::MayExileDiscardedNonlandMayPlay)`] — Conspiracy Theorist's
+    /// "you may exile one of them from your graveyard. If you do, you may cast it this turn").
+    /// Answered by [`Intent::ChooseSacrifices`] (reusing its "empty list declines, one entry
+    /// picks" wire shape, like [`Self::MayReturnFromGraveyard`]): an empty list declines, one
+    /// entry exiles that card with play permission. The impulse-play twin of
+    /// [`Self::MayReturnFromGraveyard`]; the choose-one batch payoff of
+    /// [`Trigger::YouDiscardNonland`](crate::Trigger).
+    MayExileDiscardedToPlay {
         player: PlayerId,
         source: ObjectId,
         options: Vec<ObjectId>,
@@ -1379,6 +1389,19 @@ pub enum PendingChoice {
         source: ObjectId,
         options: Vec<ObjectId>,
         then: &'static [Effect],
+    },
+    /// `player` may put a single +1/+1 counter on one of `options` (a creature on the
+    /// battlefield), or decline ([`Effect::Choice(ChoiceEffect::MayPutCounterOnCreature)`] —
+    /// Zimone's Hypothesis' primer). Answered by [`Intent::ChooseCopyTarget`] (its "one object or
+    /// none" wire shape): `None` declines, `Some(id)` puts the counter. Non-targeted — the pick
+    /// is made at resolution, never advertised on the stack. Distinct from the targeted cast-time
+    /// counter placement ([`CountersEffect::PutCounters`](crate::CountersEffect)); this is a
+    /// resolution-time optional, projected onto the same generic pick-or-decline client view as
+    /// [`Self::ChooseCopyTarget`].
+    MayPutCounterOnCreature {
+        player: PlayerId,
+        source: ObjectId,
+        options: Vec<ObjectId>,
     },
     /// `player` must discard down to the hand-size limit at cleanup (CR 514.3): choose exactly
     /// `count` of `hand` (their whole hand, kept for stable display/validation) to discard.
@@ -1419,14 +1442,18 @@ pub enum PendingChoice {
         tapped: bool,
         candidates: Vec<ObjectId>,
     },
-    /// `player` may put one of `candidates` (their hand's creature cards) onto the battlefield,
-    /// or decline ("up to one" — an [`Effect::Choice(ChoiceEffect::PutCreatureFromHand)`] resolving, Cauldron Dance).
+    /// `player` may put one of `candidates` (their hand's eligible creature cards) onto the
+    /// battlefield, or decline ("up to one" — an [`Effect::Choice(ChoiceEffect::PutCreatureFromHand)`] resolving, Cauldron Dance).
     /// `source` is the resolving ability, threaded through so the answer can schedule the
-    /// end-step sacrifice against it. Answered by [`Intent::PutCreatureFromHand`].
+    /// end-step sacrifice against it. `keep` suppresses that sacrifice (Kaalia); `defender`, when
+    /// set, enters the put-in creature tapped and attacking that opponent (Kaalia, CR 508.4).
+    /// Answered by [`Intent::PutCreatureFromHand`].
     PutCreatureFromHand {
         player: PlayerId,
         source: ObjectId,
         candidates: Vec<ObjectId>,
+        keep: bool,
+        defender: Option<PlayerId>,
     },
     /// `player` may cast one of `candidates` — the creature cards in their hand whose mana cost
     /// could be paid by some amount of, or all of, the mana spent on the `{X}` paid (CR 107.3,
@@ -1715,6 +1742,16 @@ pub enum PendingChoice {
         candidates: Vec<ObjectId>,
         optional: bool,
     },
+    /// Legend rule (CR 704.5j): `player` controls two or more legendary permanents named `name`
+    /// (`options`). They choose exactly one to keep; the rest are put into their owners'
+    /// graveyards (or cease, if tokens; commanders still divert). Answered by
+    /// [`Intent::ChooseLegendaryKeep`]. Raised from the SBA sweep after event-producing SBAs
+    /// settle — one conflict group per sweep.
+    ChooseLegendaryKeep {
+        player: PlayerId,
+        name: &'static str,
+        options: Vec<ObjectId>,
+    },
 }
 
 /// Every creature type printed on a creature card in the pool, offered as the candidate list
@@ -1818,13 +1855,9 @@ impl PendingChoice {
         match self {
             PendingChoice::OrderTriggers { player, .. }
             | PendingChoice::ChooseTarget { player, .. }
-            | PendingChoice::ChooseSpellTargets { player, .. }
-            | PendingChoice::ChooseAbilityTargets { player, .. }
             | PendingChoice::ChooseActivationCostTargets { player, .. }
             | PendingChoice::MayYesNo { player, .. }
             | PendingChoice::MayDrawUpTo { player, .. }
-            | PendingChoice::TradeSecretsCasterDraw { player, .. }
-            | PendingChoice::TradeSecretsRepeat { player, .. }
             | PendingChoice::DeclineUntap { player, .. }
             | PendingChoice::ChooseDredge { player, .. }
             | PendingChoice::PayCost { player, .. }
@@ -1851,11 +1884,14 @@ impl PendingChoice {
             | PendingChoice::SacrificeEdict { player, .. }
             | PendingChoice::ChooseTargetPlayers { player, .. }
             | PendingChoice::ExileFromGraveyard { player, .. }
+            | PendingChoice::DiscardEdict { player, .. }
             | PendingChoice::CastVote { player, .. }
             | PendingChoice::JoinForcesPayment { player, .. }
             | PendingChoice::MaySacrifice { player, .. }
             | PendingChoice::MayReturnFromGraveyard { player, .. }
+            | PendingChoice::MayExileDiscardedToPlay { player, .. }
             | PendingChoice::MayDiscard { player, .. }
+            | PendingChoice::MayPutCounterOnCreature { player, .. }
             | PendingChoice::DiscardToHandSize { player, .. }
             | PendingChoice::DiscardCards { player, .. }
             | PendingChoice::PutFromHandOnTop { player, .. }
@@ -1885,7 +1921,8 @@ impl PendingChoice {
             | PendingChoice::ChooseCopyTarget { player, .. }
             | PendingChoice::ChooseTokenToCopy { player, .. }
             | PendingChoice::ChooseCopyCardFromList { player, .. }
-            | PendingChoice::ChooseAttachHost { player, .. } => *player,
+            | PendingChoice::ChooseAttachHost { player, .. }
+            | PendingChoice::ChooseLegendaryKeep { player, .. } => *player,
             // The answering seat is the caster, not the target player whose board is being pruned.
             PendingChoice::CasterKeepPermanents { caster, .. } => *caster,
             // The chooser (Nils' controller) answers, not the player whose creature is countered.
@@ -1940,10 +1977,10 @@ pub(crate) struct TriggerGroup {
 }
 
 /// An item waiting to resolve on the stack: a cast spell, or a triggered ability.
-// ponytail: Effect is ~CR 957B and this enum is Copy (CardDef: Copy invariant); boxing the large (CR 707)
-// variant would break Copy. Size is acceptable; revisit only if Effect itself shrinks.
+// ponytail: Effect is ~CR 957B; boxing the large variant would add indirection without buying much.
+// Size is acceptable; revisit only if Effect itself shrinks.
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum StackItem {
     Spell(ObjectId),
     Ability {
@@ -1977,10 +2014,10 @@ pub(crate) enum StackItem {
 /// A public, read-only view of one stack item, for rendering the stack. Mirrors
 /// [`StackItem`] (which is internal). Ordering follows the stack: index 0 is the
 /// bottom, the last element is the top (resolves first).
-// ponytail: Effect is ~957B and this enum is Copy (CardDef: Copy invariant); boxing the large
-// variant would break Copy. Size is acceptable; revisit only if Effect itself shrinks.
+// ponytail: Effect is ~957B; boxing the large variant would add indirection without buying much.
+// Size is acceptable; revisit only if Effect itself shrinks.
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StackEntry {
     /// A cast spell waiting to resolve, identified by its stack-object id.
     Spell(ObjectId),
@@ -1996,7 +2033,7 @@ pub enum StackEntry {
 /// A canonical, full-information record of something that happened. The *only* thing
 /// that mutates game state (via [`Game::apply`]). The engine is audience-unaware; any
 /// per-viewer redaction happens outside the engine.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Event {
     /// A card was cast: it left `from` (hand/command) and became the spell `spell` on the stack.
     SpellCast {
@@ -2032,7 +2069,7 @@ pub enum Event {
         /// How many times the caster paid Replicate (CR 702.108), 0 for a spell with no Replicate;
         /// see [`Spell::replicate_count`].
         replicate_count: u8,
-        /// How many times the caster paid Multikicker (CR 702.34), 0 for a spell with no
+        /// How many times the caster paid Multikicker (CR 702.33c), 0 for a spell with no
         /// Multikicker; see [`Spell::multikicker_count`].
         multikicker_count: u8,
         /// Whether this was a bestow cast (CR 702.103 — for [`CardDef::bestow`], as an Aura spell);
@@ -2243,9 +2280,11 @@ pub enum Event {
     /// A planeswalker's once-per-turn loyalty-ability flag was set (`active = true`, when a loyalty
     /// ability is activated) or cleared (`active = false`, at its controller's untap). CR 606.3.
     LoyaltyActivated { object: ObjectId, active: bool },
-    /// A `once_each_turn`-capped activated ability was activated (CR 602.2b). Recorded so
-    /// [`Game::ability_activation_gate`] can reject a second activation of the same
-    /// (source, ability index) this turn; the tally clears at the start of every turn.
+    /// Any activated ability was activated (CR 602.2b), recorded for every activation, not just
+    /// `once_each_turn`-capped ones. Used by [`Game::ability_activation_gate`] to reject a second
+    /// activation of a capped (source, ability index) this turn, and doubles as a per-object
+    /// activation counter for conditions like `SourceActivatedThisTurnAtLeast` (Dragon Whelp); the
+    /// tally clears at the start of every turn.
     /// ponytail: keyed by (object id, ability index), so a freshly re-cast permanent (a new
     /// object id) starts with a clean cap — correct, since a new object is a new game object. (CR 602, CR 601, CR 113)
     AbilityActivatedThisTurn {
@@ -2276,6 +2315,17 @@ pub enum Event {
     },
     /// A permanent's until-end-of-turn boosts wore off (cleanup).
     TempBoostsEnded { object: ObjectId },
+    /// A copy effect made `object` a copy "except it has `keywords`" (CR 707.2 — Twinflame's
+    /// "except it has haste," Muddle's "except it has myriad," Cursed Mirror's haste). Unlike a
+    /// [`TempBoost`](Event::TempBoost) keyword grant, these are part of the object's **copiable**
+    /// characteristics: they union onto its effective keywords (via
+    /// [`Permanent::copy_rider_keywords`]) *and* ride along when it is copied again. Applied by
+    /// unioning into that field; never cleared at ordinary cleanup (a copiable value resets with
+    /// the object per CR 400.7), only when an until-end-of-turn copy reverts its `def`.
+    CopyRiderKeywordsGranted {
+        object: ObjectId,
+        keywords: &'static [Keyword],
+    },
     /// A permanent's base power/toughness was SET until end of turn (CR 613.3(7b) — Biomass
     /// Mutation, Quandrix Charm's "has base power and toughness X/X until end of turn"), stored on
     /// [`Permanent::base_pt_set_eot`] and cleared alongside the temp boosts at
@@ -2345,7 +2395,7 @@ pub enum Event {
     /// `until_eot: false` there.
     BecameCopy {
         object: ObjectId,
-        def: CardDef,
+        def: CardId,
         until_eot: bool,
     },
     /// A permanent lost `keywords` until end of turn and can't have them, unioned onto
@@ -2704,7 +2754,7 @@ pub enum Event {
     TokenCreated {
         token: ObjectId,
         controller: PlayerId,
-        def: CardDef,
+        def: CardId,
         creator: ObjectId,
     },
     /// A token left the battlefield and ceased to exist (CR 111.7) — a state-based action.
@@ -2713,7 +2763,7 @@ pub enum Event {
     TokenCeasedToExist {
         token: ObjectId,
         controller: PlayerId,
-        def: CardDef,
+        def: CardId,
     },
     /// Damage was marked on a permanent. `source` is what dealt it (a spell/ability/attacker),
     /// carried for the game log; `None` for engine-internal adjustments.
@@ -2842,6 +2892,9 @@ pub enum Event {
     /// mandatory shuffle after cards enter it — CR 701.19-style). The resulting order is a hidden
     /// zone's contents, so this event carries no order information, just that a shuffle happened.
     LibraryShuffled { player: PlayerId },
+    /// Pre-game hand deal shuffle with BO1 land smoothing for `hand_size`.
+    /// Order is hidden; this only records that a smoothed shuffle occurred.
+    LibraryHandSmoothed { player: PlayerId, hand_size: u8 },
     /// The top card of `player`'s library was revealed (CR 701.30) — public to every player,
     /// unlike a private look ([`Effect::Dig(DigEffect::LookAtTop)`]). `card` stays where it is (still the top of
     /// the library); a reveal is not itself a zone change, so a later event moves the card if
@@ -2850,7 +2903,7 @@ pub enum Event {
     RevealedTopOfLibrary {
         player: PlayerId,
         card: ObjectId,
-        def: CardDef,
+        def: CardId,
     },
     /// A previously-revealed card ([`Self::RevealedTopOfLibrary`]) went to the bottom of its own
     /// owner's library (Open the Way's non-matching reveals, CR 701.30-adjacent). Not a zone
@@ -2864,7 +2917,7 @@ pub enum Event {
         player: PlayerId,
         object: ObjectId,
         from: ObjectId,
-        card: CardDef,
+        card: CardId,
     },
     /// A found library card `from` was put onto the battlefield under `controller`'s control as the
     /// permanent `permanent` (ramp / fetchland resolving), `tapped` if it enters tapped. Fires ETB
@@ -2939,7 +2992,7 @@ pub enum Event {
         object: ObjectId,
         /// The library-object id it came from.
         from: ObjectId,
-        card: CardDef,
+        card: CardId,
     },
     /// A permanent was sacrificed (CR 701.20): `by` is the player who sacrificed it, `def` its
     /// card definition. Emitted alongside the graveyard/command-zone/vanish event a sacrifice
@@ -2951,7 +3004,7 @@ pub enum Event {
     Sacrificed {
         object: ObjectId,
         by: PlayerId,
-        def: CardDef,
+        def: CardId,
     },
     /// A card was discarded (CR 701.8): `card` is its new graveyard-object id (the same id
     /// `MovedToGraveyard.card` mints), `from` the hand-object id, `player` who discarded it,
@@ -2965,7 +3018,7 @@ pub enum Event {
     Discarded {
         card: ObjectId,
         from: ObjectId,
-        def: CardDef,
+        def: CardId,
         player: PlayerId,
     },
     /// A card was put from hand onto the top of its owner's library (Brainstorm resolving,
@@ -2979,7 +3032,7 @@ pub enum Event {
     PutFromHandOnTop {
         card: ObjectId,
         from: ObjectId,
-        def: CardDef,
+        def: CardId,
         player: PlayerId,
     },
     /// A `Trigger::YouDiscard` payoff (CR 601 impulse play): the graveyard card `from` was
@@ -3102,7 +3155,7 @@ pub(crate) fn is_partition(top: &[ObjectId], bottom: &[ObjectId], cards: &[Objec
 /// The default `{1, 1}` is the ubiquitous single mandatory target, so every existing effect is
 /// untouched. `count = N` in TOML is sugar for `{N, N}` (an exact "N target"); an explicit
 /// `{ min, max }` spells "up to"/"one or two" ranges (see `de::TargetCount`).
-/// ponytail: scalar `u8`s, so `CardDef` stays `Copy`.
+/// ponytail: scalar `u8`s keep the authored target count tiny and easy to copy.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TargetCount {
     pub min: u8,
@@ -3151,6 +3204,41 @@ pub struct TargetCount {
     /// so it composes with `min`/`max`/`x_scaled` on any targeted effect, not just a dig. Parsed
     /// by the hand-written `Deserialize` impl in `de.rs`.
     pub total_mv_max: Option<Amount>,
+    /// Multikicker's own sibling (CR 601.2c/702.33c) — Comet Storm's "Choose any target, then
+    /// choose another target for each time this spell was kicked." Unlike `x_scaled`/
+    /// `sacrifice_scaled`/`strive_scaled` (each "exactly N," substituting the declared/derived
+    /// count directly), Multikicker's count is always "one base target, plus one more per kick":
+    /// when `true`, `min`/`max` are placeholders
+    /// [`Game::choose_spell_targets`](crate::Game::choose_spell_targets) substitutes at cast time
+    /// with `1 + `[`Game::spell_multikicker_count`](crate::Game::spell_multikicker_count). Defaults
+    /// to `false`. Parsed by the hand-written `Deserialize` impl in `de.rs`.
+    pub multikicker_scaled: bool,
+    /// Kicker's own sibling (CR 702.33d/702.33g) — Orim's Thunder's "If this spell was kicked, it
+    /// deals damage equal to that permanent's mana value to target creature," a *whole second
+    /// target clause* (not this clause's own destroy target) present only when kicked. When
+    /// `true`, the authored `min`/`max` apply only if
+    /// [`Game::spell_was_kicked`](crate::Game::spell_was_kicked) holds for the resolving spell;
+    /// otherwise the clause is forced to `(0, 0)` — CR 702.33g's "the spell is cast as if it did
+    /// not have those targets." Unlike `x_scaled`/`sacrifice_scaled`/`strive_scaled`/
+    /// `multikicker_scaled` above (each substituting a *computed count* for the authored
+    /// placeholder), `kicked_scaled` never changes what the authored `min`/`max` mean when the
+    /// gate holds — it only zeroes the clause out when it doesn't. Defaults to `false`. Parsed by
+    /// the hand-written `Deserialize` impl in `de.rs`.
+    pub kicked_scaled: bool,
+    /// The timing-conditional sibling of [`Self::kicked_scaled`] (CR 601.2c's general
+    /// target-conditionality principle, applied to a cast-timing condition rather than an
+    /// additional cost) — Return to Dust's "you may exile up to one other target artifact or
+    /// enchantment" only if cast during the caster's main phase. When `true`, the authored `max`
+    /// applies only if
+    /// [`Game::spell_cast_during_main_phase`](crate::Game::spell_cast_during_main_phase) holds;
+    /// otherwise `max` is capped down to `min`. Unlike `kicked_scaled` (whose gated clause
+    /// vanishes to `(0, 0)` because it's a wholly separate "target creature" clause),
+    /// `main_phase_scaled`'s `min` is never touched: Return to Dust's mandatory first target and
+    /// its conditional second target are the *same* "target artifact or enchantment" clause (one
+    /// count range, not two), so the same-instance distinctness CR 601.2c already gives a
+    /// multi-target clause is what makes the second target "other" for free. Defaults to `false`.
+    /// Parsed by the hand-written `Deserialize` impl in `de.rs`.
+    pub main_phase_scaled: bool,
 }
 
 impl Default for TargetCount {
@@ -3162,6 +3250,9 @@ impl Default for TargetCount {
             sacrifice_scaled: false,
             strive_scaled: false,
             total_mv_max: None,
+            multikicker_scaled: false,
+            kicked_scaled: false,
+            main_phase_scaled: false,
         }
     }
 }
@@ -3169,14 +3260,17 @@ impl Default for TargetCount {
 impl TargetCount {
     /// Whether this is the ubiquitous single-mandatory-target count — the fast path that keeps
     /// every existing spell on the untouched single-target plumbing. An `x_scaled`,
-    /// `sacrifice_scaled`, or `strive_scaled` count is never single even when its printed
-    /// `{min, max}` happens to be `{1, 1}` — its *effective* count depends on a cast-time
-    /// choice/cost and must go through the multi-target machinery.
+    /// `sacrifice_scaled`, `strive_scaled`, or `multikicker_scaled` count is never single even
+    /// when its printed `{min, max}` happens to be `{1, 1}` — its *effective* count depends on a
+    /// cast-time choice/cost and must go through the multi-target machinery.
     pub(crate) fn is_single(self) -> bool {
         self == TargetCount::default()
             && !self.x_scaled
             && !self.sacrifice_scaled
             && !self.strive_scaled
+            && !self.multikicker_scaled
+            && !self.kicked_scaled
+            && !self.main_phase_scaled
     }
 }
 
@@ -3302,17 +3396,17 @@ impl DamageAssignment {
 /// `targets` differ: the mode wants a target but none is legal, so it can't be chosen right now.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ModeInfo {
-    pub label: String,
+    pub label: crate::MessageRef,
     pub needs_target: bool,
     pub targets: Vec<Target>,
 }
 
-pub(crate) fn nth_mode(def: CardDef, mode: usize) -> Option<Ability> {
+pub(crate) fn nth_mode(def: &CardDef, mode: usize) -> Option<Ability> {
     def.abilities
         .iter()
-        .copied()
         .filter(|a| matches!(a.timing, Timing::Spell))
         .nth(mode)
+        .cloned()
 }
 
 /// One ability's independent target clauses, in printed order (CR 601.2c/700.2) — Hull Breach's
@@ -3333,20 +3427,23 @@ pub(crate) fn nth_mode(def: CardDef, mode: usize) -> Option<Ability> {
 /// a hypothetical card with two *genuinely* independent same-spec clauses (no pool card prints
 /// one) would misclassify as one shared clause; promote to an explicit per-effect marker if one
 /// ever does.
-pub(crate) fn ability_target_clauses(ability: Ability) -> Vec<(TargetSpec, TargetCount)> {
-    let Effect::Sequence { steps } = ability.effect else {
-        if ability.effect.target() == TargetSpec::None {
+pub(crate) fn ability_target_clauses(ability: &Ability) -> Vec<(TargetSpec, TargetCount)> {
+    let Effect::Sequence { steps } = &ability.effect else {
+        if ability.effect.clone().target() == TargetSpec::None {
             return Vec::new();
         }
-        return vec![(ability.effect.target(), ability.effect.target_count())];
+        return vec![(
+            ability.effect.clone().target(),
+            ability.effect.clone().target_count(),
+        )];
     };
     let mut clauses: Vec<(TargetSpec, TargetCount)> = Vec::new();
     for step in steps.iter() {
-        let spec = step.target();
+        let spec = step.clone().target();
         if spec == TargetSpec::None || clauses.last().is_some_and(|&(prev, _)| prev == spec) {
             continue;
         }
-        clauses.push((spec, step.target_count()));
+        clauses.push((spec, step.clone().target_count()));
     }
     clauses
 }
@@ -3358,12 +3455,12 @@ pub(crate) fn ability_target_clauses(ability: Ability) -> Vec<(TargetSpec, Targe
 /// enchantment", two single-target clauses). `None` once every chosen mode's target(s) are
 /// already fully supplied synchronously at cast (the ubiquitous single-target-or-no-target mode).
 pub(crate) fn modal_clause_ability(
-    def: CardDef,
+    def: &CardDef,
     modes: impl Iterator<Item = (usize, Option<Target>)>,
 ) -> Option<Ability> {
-    modes.filter_map(|(m, _)| nth_mode(def, m)).find(|&a| {
+    modes.filter_map(|(m, _)| nth_mode(def, m)).find(|a| {
         let clauses = ability_target_clauses(a);
-        clauses.len() > 1 || !a.effect.target_count().is_single()
+        clauses.len() > 1 || !a.effect.clone().target_count().is_single()
     })
 }
 
@@ -3376,15 +3473,15 @@ pub(crate) fn modal_clause_ability(
 /// enters-with-counters site for free.
 /// ponytail: vanishing short-circuits a printed static rather than stacking with it — no pool card
 /// has both, so there is no ordering to get right; place both when one does.
-pub(crate) fn enters_with_counters(def: CardDef) -> Option<(Amount, Option<CounterKind>)> {
+pub(crate) fn enters_with_counters(def: &CardDef) -> Option<(Amount, Option<CounterKind>)> {
     if let Some(counters) = def.vanishing {
         return Some((Amount::Fixed(counters as i32), Some(CounterKind::Time)));
     }
     def.abilities
         .iter()
-        .find_map(|a| match (a.timing, a.effect) {
+        .find_map(|a| match (a.timing, &a.effect) {
             (Timing::Static, Effect::Static(StaticEffect::EntersWithCounters { amount, kind })) => {
-                Some((amount, kind))
+                Some((*amount, *kind))
             }
             _ => None,
         })

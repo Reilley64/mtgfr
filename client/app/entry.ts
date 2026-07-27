@@ -4,6 +4,7 @@ import { initFaro } from "./faro";
 import { init } from "./init";
 import { Message, UrlChanged, UrlRequested } from "./messages";
 import { Model } from "./model";
+import { registerPwa } from "./pwa";
 import { resources } from "./resources";
 import { subscriptions } from "./subscriptions";
 import { update } from "./update";
@@ -29,3 +30,4 @@ const app = Runtime.makeApplication({
 });
 
 Runtime.run(app);
+registerPwa();

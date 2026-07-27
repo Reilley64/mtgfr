@@ -1,10 +1,10 @@
 # ({T}: Add {B}.)
 name = "Swamp"
+sets = ["10e", "2ed", "2xm", "30a", "3ed", "40k", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "9ed", "acr", "afr", "akh", "akr", "ala", "ana", "anb", "arc", "ath", "avr", "bbd", "bfz", "blb", "brb", "brc", "bro", "btd", "c13", "c14", "c15", "c16", "c17", "c18", "c19", "ced", "cei", "chk", "clb", "clu", "cm2", "cma", "cmd", "cmm", "cst", "ddc", "ddd", "dde", "ddh", "ddj", "ddk", "ddm", "ddn", "ddp", "ddq", "ddr", "dft", "dkm", "dmr", "dmu", "dom", "dpa", "dsk", "dtk", "dvd", "e01", "ecl", "eld", "eoe", "fbb", "fdn", "fic", "fin", "frf", "g17", "gk1", "gk2", "gn2", "gn3", "gnt", "grn", "gvl", "h09", "hbg", "hob", "hop", "hou", "ice", "iko", "inr", "inv", "isd", "itp", "j14", "j22", "j25", "jmp", "khm", "kld", "klr", "ktk", "lci", "lea", "leb", "lrw", "ltr", "m10", "m11", "m12", "m13", "m14", "m15", "m19", "m20", "m21", "mbs", "md1", "me1", "me3", "mh2", "mh3", "mid", "mir", "mkm", "mmq", "mom", "mrd", "msh", "neo", "nph", "ody", "olep", "one", "ons", "ori", "otj", "p02", "p23", "pal00", "pal01", "pal03", "pal04", "pal05", "pal06", "pal99", "palp", "pana", "parl", "pc2", "pca", "pd3", "pelp", "pf19", "pf20", "pgpx", "pgru", "phuk", "pip", "plst", "pmps", "pmps06", "pmps07", "pmps08", "pmps09", "pmps10", "pmps11", "por", "ppp1", "prm", "prw2", "prwk", "ps11", "psal", "pss2", "pss3", "pss4", "ptc", "ptk", "rav", "rix", "rna", "roe", "rqs", "rtr", "s99", "scd", "shm", "sir", "sld", "slp", "snc", "soi", "som", "sos", "spm", "stx", "sum", "td0", "td2", "tdm", "thb", "ths", "tla", "tmp", "tmt", "tpr", "tsp", "ugl", "und", "unf", "unh", "usg", "ust", "vow", "war", "wc01", "wc02", "wc03", "wc97", "wc98", "wc99", "who", "woe", "xana", "xln", "zen", "znr"]
 id = "56719f6a-1a6c-4c0a-8d21-18f7d7350b68"
 default_print = "74414c62-4b68-4e1b-9241-feff3231b9ee"
 otags = ["activated-ability", "cycle-lea-basic-land", "eponymous", "single-english-word-name", "unique-type-line"]
 oracle = "({T}: Add {B}.)"
-set = "msh"
 
 [kind]
 type = "land"

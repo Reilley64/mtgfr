@@ -1,8 +1,9 @@
 import { Scene } from "foldkit/test";
-import { BindCardArt } from "~/ui/card-art";
+import { BindCardArt, CardArtTick } from "~/ui/card-art";
 import { MountBitmapLayer, MountFlightLayer } from "../bitmap/mount";
-import { AltDown, ArtLoaded, HandActionHovered, HintAutoHidden, PriorityElapsed } from "../messages";
+import { AltDown, ArtLoaded, BoardCameraZoomed, HandActionHovered, HintAutoHidden, PriorityElapsed } from "../messages";
 import { MountBoardAudio, MountHintAutoHide, MountPriorityWatch } from "./audio-mount";
+import { MountBoardCameraGesture } from "./camera-gesture-mount";
 import { MountHandBarDrag } from "./hand-drag-mount";
 import { MountBoardKeyboard } from "./keyboard-mount";
 
@@ -16,7 +17,7 @@ export function resolveBoardOverlayMounts() {
 
 /** Resolve `cardArt` hosts when the rendered overlay includes card faces. */
 export function resolveBoardCardArtMounts(count = 1) {
-  const resolvers = Array.from({ length: count }, () => [BindCardArt, ArtLoaded()] as const);
+  const resolvers = Array.from({ length: count }, () => [BindCardArt, CardArtTick()] as const);
   return Scene.Mount.resolveAll(...resolvers);
 }
 
@@ -28,6 +29,7 @@ export function resolveLiveBoardMounts(options: { hint?: boolean } = {}) {
     ...(withHint ? ([[MountHintAutoHide(), HintAutoHidden()]] as const) : []),
     [MountBitmapLayer(), ArtLoaded()],
     [MountFlightLayer(), ArtLoaded()],
+    [MountBoardCameraGesture(), BoardCameraZoomed({ x: 0, y: 0, factor: 1 })],
     [MountPriorityWatch(), PriorityElapsed({ seconds: 0 })],
     [MountHandBarDrag(), HandActionHovered({ actionId: null })],
   );

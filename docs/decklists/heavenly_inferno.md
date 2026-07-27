@@ -1,0 +1,126 @@
+# Heavenly Inferno — Commander 2011
+
+Frozen target list for the Heavenly Inferno precon. Mardu (W/B/R) angels-and-demons
+reanimator deck from Commander 2011, offered in-app as a read-only precon.
+
+**Sources**
+- Archidekt: <https://archidekt.com/decks/2209172/heavenly_inferno_commander_2011>
+  (fetched 2026-07-26)
+
+**Commander:** Kaalia of the Vast
+
+---
+
+## Commander (1)
+
+| Count | Card |
+|------:|------|
+| 1 | Kaalia of the Vast |
+
+## Creatures (28)
+
+| Count | Card |
+|------:|------|
+| 1 | Akroma, Angel of Fury |
+| 1 | Angel of Despair |
+| 1 | Angelic Arbiter |
+| 1 | Anger |
+| 1 | Archangel of Strife |
+| 1 | Avatar of Slaughter |
+| 1 | Basandra, Battle Seraph |
+| 1 | Bladewing the Risen |
+| 1 | Boros Guildmage |
+| 1 | Dragon Whelp |
+| 1 | Dread Cacodemon |
+| 1 | Duergar Hedge-Mage |
+| 1 | Fallen Angel |
+| 1 | Furnace Whelp |
+| 1 | Gwyllion Hedge-Mage |
+| 1 | Lightkeeper of Emeria |
+| 1 | Malfegor |
+| 1 | Mana-Charged Dragon |
+| 1 | Mother of Runes |
+| 1 | Oni of Wild Places |
+| 1 | Oros, the Avenger |
+| 1 | Orzhov Guildmage |
+| 1 | Razorjaw Oni |
+| 1 | Reiver Demon |
+| 1 | Serra Angel |
+| 1 | Shattered Angel |
+| 1 | Tariel, Reckoner of Souls |
+| 1 | Voice of All |
+
+## Instants (12)
+
+| Count | Card |
+|------:|------|
+| 1 | Bathe in Light |
+| 1 | Cleansing Beam |
+| 1 | Comet Storm |
+| 1 | Congregate |
+| 1 | Master Warcraft |
+| 1 | Mortify |
+| 1 | Orim's Thunder |
+| 1 | Path to Exile |
+| 1 | Return to Dust |
+| 1 | Sulfurous Blast |
+| 1 | Terminate |
+| 1 | Wrecking Ball |
+
+## Sorceries (7)
+
+| Count | Card |
+|------:|------|
+| 1 | Akroma's Vengeance |
+| 1 | Death by Dragons |
+| 1 | Diabolic Tutor |
+| 1 | Earthquake |
+| 1 | Evincar's Justice |
+| 1 | Syphon Flesh |
+| 1 | Syphon Mind |
+
+## Artifacts (7)
+
+| Count | Card |
+|------:|------|
+| 1 | Armillary Sphere |
+| 1 | Boros Signet |
+| 1 | Darksteel Ingot |
+| 1 | Lightning Greaves |
+| 1 | Orzhov Signet |
+| 1 | Rakdos Signet |
+| 1 | Sol Ring |
+
+## Enchantments (7)
+
+| Count | Card |
+|------:|------|
+| 1 | Pyrohemia |
+| 1 | Righteous Cause |
+| 1 | Soul Snare |
+| 1 | Stranglehold |
+| 1 | Vow of Duty |
+| 1 | Vow of Lightning |
+| 1 | Vow of Malice |
+
+## Lands (38)
+
+| Count | Card |
+|------:|------|
+| 1 | Akoum Refuge |
+| 1 | Barren Moor |
+| 1 | Bojuka Bog |
+| 1 | Boros Garrison |
+| 1 | Command Tower |
+| 1 | Evolving Wilds |
+| 1 | Forgotten Cave |
+| 1 | Molten Slagheap |
+| 8 | Mountain |
+| 1 | Orzhov Basilica |
+| 8 | Plains |
+| 1 | Rakdos Carnarium |
+| 1 | Rupture Spire |
+| 1 | Secluded Steppe |
+| 8 | Swamp |
+| 1 | Vivid Meadow |
+| 1 | Zoetic Cavern |

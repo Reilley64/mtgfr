@@ -78,7 +78,7 @@ export function boardOverlays(
     // Battlefield mana tray is composed in view.ts between vector canvas and bitmap
     // (DOM order under resting permanents) — not here inside overlays.
     stackView(board, state),
-    logPanelView(log),
+    logPanelView(board, log),
     seatedViewer && !undecidedMulligan
       ? handView({
           state,

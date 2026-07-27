@@ -26,7 +26,7 @@ ENV VITE_GIT_COMMIT=$GIT_COMMIT
 ENV APP_VERSION=$APP_VERSION
 ENV GIT_COMMIT=$GIT_COMMIT
 # `bun run build` regenerates gitignored Effect-gRPC clients, typechecks, then writes Nitro/Vite output.
-# Nitro detects Bun and emits a Bun.serve server — runtime must be Bun, not Node.
+# Nitro `preset: "bun"` (client/nitro.config.ts) emits a Bun.serve server — runtime must be Bun.
 RUN bun run build
 
 # ENTRYPOINT is `/usr/local/bin/bun`; CMD is the Nitro server entry (same shape as nodejs distroless).

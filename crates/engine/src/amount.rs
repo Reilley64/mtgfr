@@ -148,6 +148,7 @@ impl Game {
             // `fill_cast_mana_spent` rewrites it to `Fixed` before the ability reaches the stack.
             Amount::TriggeringSpellManaSpent => 0,
             Amount::SpellSacrificeCount => self.spell_sacrifice_count(source) as i32,
+            Amount::SpellMultikickerCount => self.spell_multikicker_count(source) as i32,
             Amount::RevealedCreatureManaValue => self.revealed_creature_mana_value(source) as i32,
             Amount::PermanentsDiedThisTurn => self.permanents_died_this_turn as i32,
             // Reads the snapshot `Effect::Destroy(DestroyEffect::DestroyAll)`'s resolve path just recorded on
@@ -214,7 +215,18 @@ impl Game {
                 };
                 self.resolve_amount(amount, controller, source, target, x)
             }
-            Amount::TimesKicked => self.times_kicked(source) as i32,
+            Amount::IfSpellCastDuringMainPhase { then, else_ } => {
+                let amount = if self.spell_cast_during_main_phase(source) {
+                    *then
+                } else {
+                    *else_
+                };
+                self.resolve_amount(amount, controller, source, target, x)
+            }
+            // Orim's Thunder's "that permanent's mana value" — the resolving spell's own clause-0
+            // target (the destroyed artifact/enchantment), not this effect's own `target` param
+            // (the damage clause's creature).
+            Amount::SpellFirstTargetManaValue => self.spell_first_target_mana_value(source),
             Amount::GreatestInstantOrSorceryManaValueCastThisTurn => {
                 self.players[controller.0 as usize]
                     .greatest_instant_or_sorcery_mana_value_cast_this_turn as i32
@@ -264,6 +276,13 @@ impl Game {
             // single player this amount is relative to, CR 122.1.
             Amount::ControllersPoisonCounters => {
                 self.player_counters(controller, PlayerCounterKind::Poison) as i32
+            }
+            Amount::Scaled { times, by } => {
+                times * self.resolve_amount(*by, controller, source, target, x)
+            }
+            Amount::CardsDiscardedThisWay => self.resolution_frame.cards_discarded_this_way as i32,
+            Amount::CreaturesSacrificedThisWay => {
+                self.resolution_frame.creatures_sacrificed_this_way as i32
             }
         }
     }
@@ -317,7 +336,8 @@ impl Game {
         card: &Card,
         controller: PlayerId,
     ) -> bool {
-        if !filter.types.is_empty() && !filter.types.intersects(card.def.kind.types()) {
+        let printed = card_def(card.def);
+        if !filter.types.is_empty() && !filter.types.intersects(printed.kind.types()) {
             return false;
         }
         let yours = card.owner == controller;
@@ -327,7 +347,7 @@ impl Game {
             _ => {}
         }
         if let Some(max) = filter.mv_max
-            && card.def.mana_value() > max as u32
+            && printed.mana_value() > max as u32
         {
             return false;
         }
@@ -365,14 +385,11 @@ fn destroyed_this_way_matches(
     you: PlayerId,
     snap: &state::DestroyedThisWay,
 ) -> bool {
-    if !filter.types.is_empty() && !filter.types.intersects(snap.def.kind.types()) {
+    let printed = card_def(snap.def);
+    if !filter.types.is_empty() && !filter.types.intersects(printed.kind.types()) {
         return false;
     }
-    if !filter.subtypes.is_empty()
-        && !filter
-            .subtypes
-            .iter()
-            .any(|s| snap.def.subtypes.contains(s))
+    if !filter.subtypes.is_empty() && !filter.subtypes.iter().any(|s| printed.subtypes.contains(s))
     {
         return false;
     }

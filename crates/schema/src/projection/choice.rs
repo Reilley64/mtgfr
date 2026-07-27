@@ -3,6 +3,7 @@
 use crate::catalog::wire_cost;
 use crate::dto::{ChoiceItem, ModeView, PendingChoiceView};
 use crate::intent::WireTarget;
+use crate::message::{named_message, to_wire_message};
 use crate::projection::privacy::private_items;
 
 /// Per-snapshot context for labeling object ids and applying owner-gated privacy.
@@ -95,7 +96,11 @@ impl<'a> ChoiceCtx<'a> {
                 player: player.0,
                 source,
                 count: effects.len() as u32,
-                labels: effects.iter().map(|&e| e.label()).collect(),
+                labels: effects
+                    .iter()
+                    .cloned()
+                    .map(|effect| to_wire_message(effect.message()))
+                    .collect(),
             },
             engine::PendingChoice::ChooseTarget {
                 player,
@@ -107,25 +112,13 @@ impl<'a> ChoiceCtx<'a> {
             } => PendingChoiceView::ChooseTarget {
                 player: player.0,
                 source,
-                label: effect.label(),
+                label: effect.as_ref().map_or_else(
+                    || named_message("card.name", self.game.def_of(source).name),
+                    |effect| to_wire_message(effect.clone().message()),
+                ),
                 items: self.label_targets(legal),
-                optional: count.min == 0,
+                min: count.min,
                 max: count.max,
-            },
-            engine::PendingChoice::ChooseSpellTargets {
-                player,
-                spell,
-                min,
-                max,
-                legal,
-                ..
-            } => PendingChoiceView::ChooseSpellTargets {
-                player: player.0,
-                spell,
-                label: self.game.def_of(spell).name.to_string(),
-                min,
-                max,
-                items: self.label_targets(legal),
             },
             engine::PendingChoice::ChooseTargetPlayers {
                 player,
@@ -137,7 +130,7 @@ impl<'a> ChoiceCtx<'a> {
             } => PendingChoiceView::ChooseTargetPlayers {
                 player: player.0,
                 source,
-                label: self.game.def_of(source).name.to_string(),
+                label: named_message("card.name", self.game.def_of(source).name),
                 min,
                 max,
                 items: self.label_players(legal),
@@ -146,14 +139,21 @@ impl<'a> ChoiceCtx<'a> {
                 player,
                 source,
                 effect,
+                ..
             } => PendingChoiceView::MayYesNo {
                 player: player.0,
                 source,
-                label: effect.label(),
+                label: to_wire_message(effect.message()),
             },
-            engine::PendingChoice::MayDrawUpTo { player, max } => PendingChoiceView::MayDrawUpTo {
+            engine::PendingChoice::MayDrawUpTo {
+                player,
+                max,
+                effect,
+                ..
+            } => PendingChoiceView::MayDrawUpTo {
                 player: player.0,
                 max,
+                label: to_wire_message(effect.message()),
             },
             engine::PendingChoice::JoinForcesPayment { player, source, .. } => {
                 PendingChoiceView::PayAnyAmountOfMana {
@@ -165,22 +165,6 @@ impl<'a> ChoiceCtx<'a> {
                     }),
                 }
             }
-            engine::PendingChoice::TradeSecretsCasterDraw {
-                player,
-                max,
-                opponent,
-                ..
-            } => PendingChoiceView::TradeSecretsCasterDraw {
-                player: player.0,
-                max,
-                opponent: opponent.0,
-            },
-            engine::PendingChoice::TradeSecretsRepeat {
-                player, caster, ..
-            } => PendingChoiceView::TradeSecretsRepeat {
-                player: player.0,
-                caster: caster.0,
-            },
             engine::PendingChoice::PayCost {
                 player,
                 source,
@@ -189,8 +173,9 @@ impl<'a> ChoiceCtx<'a> {
             } => PendingChoiceView::PayCost {
                 player: player.0,
                 source,
+                can_pay: self.game.can_pay_cost(player, cost),
                 cost: wire_cost(cost),
-                label: effect.label(),
+                label: to_wire_message(effect.message()),
             },
             engine::PendingChoice::PayOrCounter {
                 player,
@@ -254,13 +239,15 @@ impl<'a> ChoiceCtx<'a> {
                 source,
                 cost: wire_cost(cost),
             },
-            engine::PendingChoice::PayLifeOrEntersTapped { player, source, life } => {
-                PendingChoiceView::PayLifeOrEntersTapped {
-                    player: player.0,
-                    source,
-                    life,
-                }
-            }
+            engine::PendingChoice::PayLifeOrEntersTapped {
+                player,
+                source,
+                life,
+            } => PendingChoiceView::PayLifeOrEntersTapped {
+                player: player.0,
+                source,
+                life,
+            },
             engine::PendingChoice::SacrificeUnlessReturnLand {
                 player,
                 source,
@@ -415,22 +402,6 @@ impl<'a> ChoiceCtx<'a> {
                 source,
                 items: self.label_items(options),
             },
-            engine::PendingChoice::ChooseAbilityTargets {
-                player,
-                source,
-                effect,
-                min,
-                max,
-                legal,
-                ..
-            } => PendingChoiceView::ChooseAbilityTargets {
-                player: player.0,
-                source,
-                label: effect.label(),
-                min,
-                max,
-                items: self.label_targets(legal),
-            },
             engine::PendingChoice::ChooseActivationCostTargets {
                 player,
                 source,
@@ -499,13 +470,27 @@ impl<'a> ChoiceCtx<'a> {
             } => PendingChoiceView::ChooseMode {
                 player: player.0,
                 source,
-                labels: options.iter().map(|&o| o.to_string()).collect(),
+                labels: options
+                    .iter()
+                    .map(|&o| named_message("choice.option", o))
+                    .collect(),
             },
             engine::PendingChoice::MayReturnFromGraveyard {
                 player,
                 source,
                 options,
+                mandatory,
             } => PendingChoiceView::MayReturnFromGraveyard {
+                player: player.0,
+                source,
+                mandatory,
+                items: self.label_items(options),
+            },
+            engine::PendingChoice::MayExileDiscardedToPlay {
+                player,
+                source,
+                options,
+            } => PendingChoiceView::MayExileDiscardedToPlay {
                 player: player.0,
                 source,
                 items: self.label_items(options),
@@ -519,6 +504,19 @@ impl<'a> ChoiceCtx<'a> {
                 player: player.0,
                 source,
                 items: private_items(player, self.viewer, options, |ids| self.label_items(ids)),
+            },
+            // Zimone's Hypothesis' "+1/+1 counter on a creature" primer is still a "pick one
+            // public object or decline" answer, so it reuses `ChooseCopyTarget` but flips a small
+            // discriminator so the client shows counter wording instead of copy wording.
+            engine::PendingChoice::MayPutCounterOnCreature {
+                player,
+                source,
+                options,
+            } => PendingChoiceView::ChooseCopyTarget {
+                player: player.0,
+                source,
+                items: self.label_items(options),
+                put_counter_on_creature: true,
             },
             engine::PendingChoice::ChooseOwnSacrifices {
                 player,
@@ -558,6 +556,17 @@ impl<'a> ChoiceCtx<'a> {
                 count: count as u32,
                 items: private_items(player, self.viewer, hand, |ids| self.label_items(ids)),
             },
+            // Syphon Mind's per-opponent discard: exactly one card from a private hand — the same
+            // wire shape as a `DiscardCards` of one, with the options redacted from other viewers.
+            engine::PendingChoice::DiscardEdict { player, options, .. } => {
+                PendingChoiceView::Discard {
+                    player: player.0,
+                    count: 1,
+                    items: private_items(player, self.viewer, options, |ids| {
+                        self.label_items(ids)
+                    }),
+                }
+            }
             engine::PendingChoice::PutFromHandOnTop {
                 player,
                 hand,
@@ -670,7 +679,7 @@ impl<'a> ChoiceCtx<'a> {
             } => PendingChoiceView::ChooseSplittingOpponent {
                 player: player.0,
                 source,
-                label: self.game.def_of(source).name.to_string(),
+                label: named_message("card.name", self.game.def_of(source).name),
                 items: self.label_players(legal),
             },
             engine::PendingChoice::PartitionRevealed {
@@ -730,7 +739,11 @@ impl<'a> ChoiceCtx<'a> {
             } => PendingChoiceView::ChooseMode {
                 player: player.0,
                 source,
-                labels: modes.iter().map(|&m| m.label()).collect(),
+                labels: modes
+                    .iter()
+                    .cloned()
+                    .map(|mode| to_wire_message(mode.message()))
+                    .collect(),
             },
             engine::PendingChoice::ChooseTriggerModes {
                 player,
@@ -755,8 +768,9 @@ impl<'a> ChoiceCtx<'a> {
                     optional,
                     modes: modes
                         .iter()
-                        .map(|&effect| ModeView {
-                            label: effect.label(),
+                        .cloned()
+                        .map(|effect| ModeView {
+                            label: to_wire_message(effect.message()),
                             needs_target: true,
                             targets: targets.clone(),
                         })
@@ -811,6 +825,15 @@ impl<'a> ChoiceCtx<'a> {
                 items: self.label_items(candidates),
                 optional,
             },
+            engine::PendingChoice::ChooseLegendaryKeep {
+                player,
+                name,
+                options,
+            } => PendingChoiceView::ChooseLegendaryKeep {
+                player: player.0,
+                name: name.to_string(),
+                items: self.label_items(options),
+            },
             engine::PendingChoice::ChooseCopyTarget {
                 player,
                 source,
@@ -834,6 +857,7 @@ impl<'a> ChoiceCtx<'a> {
                 player: player.0,
                 source,
                 items: self.label_items(candidates),
+                put_counter_on_creature: false,
             },
         }
     }
@@ -897,30 +921,38 @@ mod coverage_tests {
                 PendingChoice::ChooseTarget {
                     player: PlayerId(0),
                     source,
-                    effect: draw_effect(),
+                    effect: Some(draw_effect()),
                     legal: vec![Target::Object(blocker)],
                     count: engine::TargetCount::default(),
+                    clause: 0,
+                    target: None,
                     x: 0,
+                    spent_mana: [0; 6],
                     activated: false,
                 },
                 |view| matches!(view, PendingChoiceView::ChooseTarget { .. }),
             ),
             (
-                PendingChoice::ChooseSpellTargets {
+                PendingChoice::ChooseTarget {
                     player: PlayerId(0),
-                    spell,
-                    min: 1,
-                    max: 1,
+                    source: spell,
+                    effect: None,
                     legal: vec![Target::Object(blocker)],
+                    count: engine::TargetCount::default(),
                     clause: 0,
+                    target: None,
+                    x: 0,
+                    spent_mana: [0; 6],
+                    activated: false,
                 },
-                |view| matches!(view, PendingChoiceView::ChooseSpellTargets { .. }),
+                |view| matches!(view, PendingChoiceView::ChooseTarget { min: 1, max: 1, .. }),
             ),
             (
                 PendingChoice::MayYesNo {
                     player: PlayerId(0),
                     source,
                     effect: draw_effect(),
+                    resume: engine::MayYesNoResume::Default,
                 },
                 |view| matches!(view, PendingChoiceView::MayYesNo { .. }),
             ),
@@ -1007,6 +1039,7 @@ mod coverage_tests {
                     player: PlayerId(0),
                     options: vec![source],
                     keep_one: true,
+                    count: 1,
                     filter: engine::PermanentFilter::default(),
                     remaining: vec![],
                     controller: PlayerId(0),
@@ -1050,6 +1083,8 @@ mod coverage_tests {
                     player: PlayerId(0),
                     source,
                     candidates: vec![hand_card],
+                    keep: false,
+                    defender: None,
                 },
                 |view| matches!(view, PendingChoiceView::PutCreatureFromHand { .. }),
             ),
@@ -1074,7 +1109,8 @@ mod coverage_tests {
                     source,
                     target: None,
                     x: 0,
-                    modes: CHOOSE_ONE_MODES,
+                    modes: CHOOSE_ONE_MODES.into(),
+                    at_placement: false,
                     activated: false,
                 },
                 |view| matches!(view, PendingChoiceView::ChooseMode { .. }),
@@ -1138,10 +1174,75 @@ mod coverage_tests {
         );
         match view {
             PendingChoiceView::PayCost { label, cost, .. } => {
-                assert_eq!(label, draw_effect().label());
+                assert_eq!(label.key, "effect.draw_cards");
                 assert_eq!(cost.generic, 2);
             }
             other => panic!("expected PayCost, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn pay_cost_reports_whether_the_player_can_actually_pay() {
+        let mut game = Game::new();
+        let source = game.spawn_on_battlefield(PlayerId(0), def("Trudge Garden"));
+        let choice = PendingChoice::PayCost {
+            player: PlayerId(0),
+            source,
+            cost: engine::Cost {
+                generic: 2,
+                ..engine::Cost::default()
+            },
+            effect: draw_effect(),
+        };
+
+        let broke = project_pending_choice(&game, Some(PlayerId(0)), choice.clone());
+        let PendingChoiceView::PayCost { can_pay, .. } = broke else {
+            panic!("expected PayCost, got {broke:?}");
+        };
+        assert!(!can_pay, "an empty board cannot produce {{2}}");
+
+        game.spawn_on_battlefield(PlayerId(0), def("Mountain"));
+        game.spawn_on_battlefield(PlayerId(0), def("Mountain"));
+        let solvent = project_pending_choice(&game, Some(PlayerId(0)), choice);
+        let PendingChoiceView::PayCost { can_pay, .. } = solvent else {
+            panic!("expected PayCost");
+        };
+        assert!(can_pay, "two untapped lands cover {{2}}");
+    }
+
+    #[test]
+    fn may_put_counter_on_creature_marks_the_reused_copy_target_view() {
+        let mut game = Game::new();
+        let source = game.spawn_on_battlefield(PlayerId(0), def("Zimone's Hypothesis"));
+        let creature = game.spawn_on_battlefield(PlayerId(0), def("Grizzly Bear"));
+        let view = project_pending_choice(
+            &game,
+            Some(PlayerId(0)),
+            PendingChoice::MayPutCounterOnCreature {
+                player: PlayerId(0),
+                source,
+                options: vec![creature],
+            },
+        );
+
+        let PendingChoiceView::ChooseCopyTarget {
+            source: view_source,
+            items,
+            put_counter_on_creature,
+            ..
+        } = view
+        else {
+            panic!("expected ChooseCopyTarget");
+        };
+        assert_eq!(view_source, source);
+        assert_eq!(
+            items.len(),
+            1,
+            "the player still chooses from the offered creatures"
+        );
+        assert!(
+            put_counter_on_creature,
+            "the reused copy-target view must advertise counter wording"
+        );
     }
 }

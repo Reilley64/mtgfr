@@ -65,7 +65,17 @@
     "sans": {
       "$type": "fontFamily",
       "$value": "system-ui, sans-serif",
-      "$description": "One Face Rule"
+      "$description": "Board HUD / canvas chrome face (dense game UI)"
+    },
+    "shell": {
+      "$type": "fontFamily",
+      "$value": "\"Manrope\", system-ui, sans-serif",
+      "$description": "Shell UI sans — geometric game-client body/controls"
+    },
+    "display": {
+      "$type": "fontFamily",
+      "$value": "\"Space Grotesk\", system-ui, sans-serif",
+      "$description": "Shell display sans — titles, brand, table code emphasis"
     }
   },
   "text": {
@@ -113,7 +123,12 @@
     "md": { "$type": "dimension", "$value": "10px" },
     "lg": { "$type": "dimension", "$value": "14px" },
     "xl": { "$type": "dimension", "$value": "16px" },
-    "xxl": { "$type": "dimension", "$value": "24px" }
+    "xxl": { "$type": "dimension", "$value": "24px" },
+    "shell-gutter": { "$type": "dimension", "$value": "24px" },
+    "shell-header-y": { "$type": "dimension", "$value": "14px" }
+  },
+  "size": {
+    "shell-stage-max": { "$type": "dimension", "$value": "1100px" }
   },
   "shadow": {
     "table": { "$type": "css", "$value": "0 12px 40px rgb(0 0 0 / 0.6)" },
@@ -137,7 +152,7 @@
     }
   },
   "drop-shadow": {
-    "drag": { "$type": "css", "$value": "0 10px 24px rgb(0 0 0 / 0.6)" }
+    "drag": { "$type": "css", "$value": "0 16px 36px rgb(0 0 0 / 0.72)" }
   },
   "ease": {
     "state": { "$type": "css", "$value": "cubic-bezier(0.22, 1, 0.36, 1)" }
@@ -147,6 +162,7 @@
     "stack-return": { "$type": "css", "$value": "stack-return 0.22s ease-in" },
     "stack-resolve": { "$type": "css", "$value": "stack-resolve 0.22s ease-out" },
     "breathe": { "$type": "css", "$value": "breathe 1.8s ease-in-out infinite" },
-    "skeleton": { "$type": "css", "$value": "breathe 1.2s ease-in-out infinite" }
+    "skeleton": { "$type": "css", "$value": "breathe 1.2s ease-in-out infinite" },
+    "shell-enter": { "$type": "css", "$value": "shell-enter 0.2s var(--ease-state)" }
   }
 }

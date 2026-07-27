@@ -4,10 +4,10 @@
 # • Destroy all creatures with mana value 3 or less.
 # • Destroy all creatures with mana value 4 or greater.
 name = "Austere Command"
+sets = ["2xm", "brc", "clb", "cmd", "cmr", "fic", "ima", "lcc", "lrw", "m3c", "mkc", "moc", "mp2", "msc", "ncc", "pip", "plst", "prm", "woc"]
 id = "09cc8709-fe10-472a-b05c-e89f3523018d"
 default_print = "a8bc7912-e201-468a-b251-140205cb741c"
 oracle = "Choose two —\n• Destroy all artifacts.\n• Destroy all enchantments.\n• Destroy all creatures with mana value 3 or less.\n• Destroy all creatures with mana value 4 or greater."
-set = "msc"
 modal = true
 choose = 2
 

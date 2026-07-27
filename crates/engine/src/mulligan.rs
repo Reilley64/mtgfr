@@ -59,13 +59,16 @@ impl Game {
                 Event::PutFromHandOnTop {
                     card: next,
                     from,
-                    def: self.def_of(from),
+                    def: self.def_id_of(from),
                     player,
                 },
             );
         }
 
-        self.push_apply(&mut events, Event::LibraryShuffled { player });
+        self.push_apply(
+            &mut events,
+            Event::LibraryHandSmoothed { player, hand_size },
+        );
         for event in self.draw_events(player, hand_size as u32) {
             self.push_apply(&mut events, event);
         }

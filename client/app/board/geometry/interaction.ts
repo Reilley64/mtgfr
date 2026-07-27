@@ -44,14 +44,15 @@ export type PointerPhase =
   | { kind: "press"; card: RenderCard; x: number; y: number }
   | { kind: "drag"; card: RenderCard; x: number; y: number; moved: boolean };
 
+/** `stageableSeats` are the seats whose creatures may be dragged into a combat declaration right
+ * now (`declaresFor`); empty outside a declaration this viewer is making. */
 export function pointerDown(
   hit: RenderCard | null,
   x: number,
   y: number,
-  combatStep: boolean,
-  me: number,
+  stageableSeats: readonly number[],
 ): PointerPhase {
-  if (hit && hit.kind === "creature" && hit.controller === me && combatStep)
+  if (hit && hit.kind === "creature" && stageableSeats.includes(hit.controller))
     return { kind: "drag", card: hit, x, y, moved: false };
   if (hit) return { kind: "press", card: hit, x, y };
   return { kind: "pan", x, y };
@@ -130,8 +131,9 @@ export function attackablePlaneswalker(target: RenderCard | null, opponents: num
 }
 
 /** Stage `blockerId` blocking the creature dropped onto, or null if that card isn't an attacker
- * declared against `me`. Only the attacked player may block an attacker (rule 509.1a) — in a
- * 4-player game most declared attackers are aimed at somebody else's face.
+ * declared against one of `seats` — the seats this declaration covers (`ActionView.declare_for`).
+ * Only the attacked player may block an attacker (rule 509.1a) — in a 4-player game most declared
+ * attackers are aimed at somebody else's face.
  *
  * Re-dropping an already-staged blocker retargets it, exactly as `attackDrop` retargets an
  * attacker: a creature blocks one attacker unless something says otherwise (CR 509.1a), so
@@ -142,10 +144,10 @@ export function blockDrop(
   blockerId: number,
   target: RenderCard | null,
   declaredAttackers: WireAttack[],
-  me: number,
+  seats: readonly number[],
 ): WireBlock[] | null {
   if (!target) return null;
-  if (!declaredAttackers.some((a) => a.attacker === target.id && a.defender === me)) return null;
+  if (!declaredAttackers.some((a) => a.attacker === target.id && seats.includes(a.defender))) return null;
   const rest = blocks.filter((b) => b.blocker !== blockerId);
   return [...rest, { blocker: blockerId, attacker: target.id }];
 }
@@ -158,26 +160,18 @@ export type PrimaryAction =
   | { kind: "confirm-attackers"; label: string }
   | { kind: "confirm-blockers"; label: string };
 
-/** True once this seat's block declaration is on the board. Blocks against attackers aimed at you
- * are yours alone (CR 509.1a), so any such block means you've already declared. */
-function blockersDeclaredFor(me: number, declaredAttackers: WireAttack[], declaredBlocks: WireBlock[]): boolean {
-  const myAttackers = new Set(declaredAttackers.filter((a) => a.defender === me).map((a) => a.attacker));
-  if (myAttackers.size === 0) return false;
-  return declaredBlocks.some((b) => myAttackers.has(b.attacker));
-}
-
 /**
- * Local latches cover the HTTP→SSE gap; wire `attackers_declared` / `blockers_declared` are the
- * durable source of truth (empty declarations leave combat lists empty).
+ * The action list says which declaration is this seat's to make; the latches only close it early,
+ * covering the HTTP→SSE gap during which the action lingers after the engine has already sealed it.
  */
 export type PrimaryActionInput = {
   step: number;
   activePlayer: number;
   me: number;
+  /** The viewer's action list — which combat declaration (if any) is theirs to make. */
+  actions?: ActionView[];
   attackers?: WireAttack[];
   blocks?: WireBlock[];
-  declaredAttackers?: WireAttack[];
-  declaredBlocks?: WireBlock[];
   attackersConfirmed?: boolean;
   blockersConfirmed?: boolean;
   attackersDeclared?: boolean;
@@ -189,27 +183,27 @@ export function primaryActionFor(input: PrimaryActionInput): PrimaryAction {
     step,
     activePlayer,
     me,
+    actions,
     attackers = [],
     blocks = [],
-    declaredAttackers = [],
-    declaredBlocks = [],
     attackersConfirmed = false,
     blockersConfirmed = false,
     attackersDeclared = false,
     blockersDeclared = false,
   } = input;
-  // Being attacked (not merely "not active") gates blocker confirm — aligned with combatMode /
-  // CR 509.1a so an uninvolved seat never gets a phantom Block button.
-  const attackingMe = declaredAttackers.some((a) => a.defender === me);
-  const attackDone = attackersConfirmed || attackersDeclared || declaredAttackers.length > 0;
-  const blockDone = blockersConfirmed || blockersDeclared || blockersDeclaredFor(me, declaredAttackers, declaredBlocks);
+  // Whose declaration this is comes from the action list; the latches only cover the HTTP→SSE gap,
+  // during which the action can linger after the engine has already closed the declaration.
+  const mode = combatMode(actions, false, {
+    attackersDeclared: attackersConfirmed || attackersDeclared,
+    blockersDeclared: blockersConfirmed || blockersDeclared,
+  });
 
-  if (step === STEP.DeclareAttackers && activePlayer === me && !attackDone) {
+  if (mode === "attackers") {
     return attackers.length
       ? { kind: "confirm-attackers", label: `Attack (${attackers.length})` }
       : { kind: "confirm-attackers", label: "No attackers" };
   }
-  if (step === STEP.DeclareBlockers && attackingMe && !blockDone) {
+  if (mode === "blockers") {
     return blocks.length
       ? { kind: "confirm-blockers", label: `Block (${blocks.length})` }
       : { kind: "confirm-blockers", label: "No blockers" };
@@ -222,11 +216,10 @@ export function primaryActionFor(input: PrimaryActionInput): PrimaryAction {
 
 // ── Combat step + click semantics ──────────────────────────────────────────────────────
 
-/** Which combat declaration, if any, this player is in: they declare attackers on their own
- * declare-attackers step, blockers on the attacker's declare-blockers step — but only if somebody
- * is actually attacking *them*. In a 4-player game most attacks are aimed at someone else's face,
- * and only the attacked player may block (CR 509.1a), so an uninvolved seat gets no blocker
- * affordance: dragging their creatures around would look like a legal move that never lands.
+/** Which combat declaration, if any, this player is in — read straight off the engine's action
+ * list. Who declares and when (CR 508.1a / 509.1a: the active player attacks, only an attacked
+ * player blocks, unless a Master Warcraft moved the choice) is decided server-side; re-deriving it
+ * here would offer an uninvolved seat a drag that never lands, or hide one that would.
  *
  * One source of truth for the "is this a combat step for me?" check that combatStep(), onCombatDrop
  * and resolveClick share. */
@@ -240,26 +233,24 @@ export type CombatDeclaration = {
 };
 
 export function combatMode(
-  step: number,
-  isActive: boolean,
+  actions: ActionView[] | undefined,
   spectating: boolean,
-  declaredAttackers: WireAttack[],
-  me: number,
   declaration: CombatDeclaration = {},
 ): CombatMode {
   if (spectating) return null;
-  const attackersDeclared = declaration.attackersDeclared ?? false;
-  const blockersDeclared = declaration.blockersDeclared ?? false;
-  if (step === STEP.DeclareAttackers && isActive && !attackersDeclared) return "attackers";
-  if (
-    step === STEP.DeclareBlockers &&
-    !isActive &&
-    !blockersDeclared &&
-    declaredAttackers.some((a) => a.defender === me)
-  ) {
-    return "blockers";
-  }
+  const has = (kind: string) => (actions ?? []).some((a) => a.kind === kind);
+  if (has("declare_attackers") && !(declaration.attackersDeclared ?? false)) return "attackers";
+  if (has("declare_blockers") && !(declaration.blockersDeclared ?? false)) return "blockers";
   return null;
+}
+
+/** The seats whose creatures this viewer stages for the declaration they're making — the engine's
+ * own answer (`ActionView.declare_for`), not a rule re-derived here. Ordinarily just the viewer,
+ * but Master Warcraft moves the declaration while the creatures stay their controllers'. */
+export function declaresFor(actions: ActionView[] | undefined, mode: CombatMode): number[] {
+  if (mode == null) return [];
+  const kind = mode === "attackers" ? "declare_attackers" : "declare_blockers";
+  return (actions ?? []).find((a) => a.kind === kind)?.declare_for ?? [];
 }
 
 /** What a click on a board card means, as data. Board's onClickCard is then a dumb switch that
@@ -278,7 +269,7 @@ export interface ClickContext {
   spectating: boolean;
   staged: ObjectView | null; // a targeted spell awaiting its target
   /** Object ids the staged spell may legally target, from the engine's own enumeration
-   * (`ActionView.targets`; see lib/targeting.ts). Empty when nothing is staged. */
+   * (`ActionView.targets`; see board/action/targeting.ts). Empty when nothing is staged. */
   stagedTargets: ReadonlySet<number>;
   attackers: WireAttack[]; // creatures staged as attackers this declaration
   blocks: WireBlock[]; // creatures staged as blockers this declaration
@@ -318,10 +309,11 @@ export function resolveClick(state: VisibleState | null, me: number, card: Rende
     return { kind: "cast", card: cmdr, target: null };
   }
 
-  if (card.zone !== ZONE.Battlefield || card.controller !== me) return { kind: "none" };
+  if (card.zone !== ZONE.Battlefield) return { kind: "none" };
 
-  // Clicking a creature you've staged as an attacker/blocker cancels it.
-  const mode = combatMode(state?.step ?? -1, state?.active_player === me, false, state?.combat.attackers ?? [], me, {
+  // Clicking a creature you've staged as an attacker/blocker cancels it — including one you don't
+  // control, since a moved declaration stages its own controllers' creatures.
+  const mode = combatMode(state?.actions, false, {
     attackersDeclared: state?.combat.attackers_declared ?? false,
     blockersDeclared: state?.combat.blockers_declared?.includes(me) ?? false,
   });
@@ -329,6 +321,8 @@ export function resolveClick(state: VisibleState | null, me: number, card: Rende
     return { kind: "cancel-attacker", id: card.id };
   if (mode === "blockers" && ctx.blocks.some((b) => b.blocker === card.id))
     return { kind: "cancel-blocker", id: card.id };
+
+  if (card.controller !== me) return { kind: "none" };
 
   // Select your permanent — tap-for-mana and activates live on the activation radial, not as a
   // raw board click (one-click auto-tap fought select + on-permanent chips).

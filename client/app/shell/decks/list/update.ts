@@ -1,7 +1,7 @@
 import { Effect, Match as M, Schema as S } from "effect";
 import type { Command as FoldkitCommand } from "foldkit";
 import { Command } from "foldkit";
-import { lookupCardsByIds } from "../../../../lib/deck-builder/lookup-cards";
+import { lookupCardsByIds } from "../../../domain/deck-builder/lookup-cards";
 import { RpcClient } from "../../../resources";
 import {
   DeckDeleted,
@@ -61,7 +61,23 @@ export const DeleteDeck = Command.define(
 export function loadDeckList(
   model: DeckListSubmodel,
 ): readonly [DeckListSubmodel, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
-  return [{ ...model, error: null, loading: true }, [FetchDecks()]];
+  return [{ ...model, accountMenuOpen: false, error: null, loading: true }, [FetchDecks()]];
+}
+
+function enterDeckListRoute(
+  model: DeckListSubmodel,
+): readonly [DeckListSubmodel, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
+  return [
+    {
+      ...model,
+      accountMenuOpen: false,
+      confirmingDeleteId: null,
+      contextMenu: null,
+      error: null,
+      loading: true,
+    },
+    [FetchDecks()],
+  ];
 }
 
 export const update = (
@@ -71,6 +87,7 @@ export const update = (
   M.value(message).pipe(
     M.withReturnType<readonly [DeckListSubmodel, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>]>(),
     M.tagsExhaustive({
+      ChangedDeckListRoute: () => enterDeckListRoute(model),
       RequestedDecksRefresh: () => loadDeckList(model),
       ReceivedDecks: ({ decks }) => {
         const ids = [...new Set(decks.map((deck) => deck.commander).filter(Boolean))];
@@ -84,7 +101,7 @@ export const update = (
       ChangedDeckListSearch: ({ query }) => [{ ...model, searchQuery: query }, []],
       OpenedDeckListMenu: ({ deckId, x, y }) => {
         if (!deckListContextMenuAllowed(deckId)) return [model, []];
-        return [{ ...model, contextMenu: { deckId, x, y } }, []];
+        return [{ ...model, accountMenuOpen: false, contextMenu: { deckId, x, y } }, []];
       },
       ClosedDeckListMenu: () => [{ ...model, contextMenu: null }, []],
       AskedDeckDelete: ({ id }) => [{ ...model, confirmingDeleteId: id, error: null, contextMenu: null }, []],

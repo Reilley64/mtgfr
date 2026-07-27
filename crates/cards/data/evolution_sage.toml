@@ -5,7 +5,7 @@ id = "b45fdeab-00cc-4422-af9f-66f30a880a7c"
 default_print = "1d58d08d-cd62-416d-8d8e-7d9c56d5c4da"
 otags = ["landfall", "proliferate", "triggered-ability"]
 oracle = "Landfall — Whenever a land you control enters, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)"
-set = "ecc"
+sets = ["ecc"]
 subtypes = ["Elf", "Druid"]
 
 [cost]

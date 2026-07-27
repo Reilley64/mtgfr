@@ -18,6 +18,9 @@ pub struct User {
     pub username: String,
     /// argon2 PHC hash string.
     pub password_hash: String,
+    pub rating: i32,
+    /// Unix seconds when the current `rating` integer was set.
+    pub rating_set_at: i64,
 }
 
 #[derive(Debug, Model)]
@@ -73,6 +76,9 @@ pub async fn connect(url: &str) -> toasty::Result<toasty::Db> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::elo::STARTING_RATING;
+
+    const TEST_RATING_SET_AT: i64 = 1_700_000_000;
 
     #[tokio::test]
     async fn a_user_and_deck_round_trip_through_the_store() {
@@ -82,6 +88,8 @@ mod tests {
             .email("a@b.c")
             .username("alice")
             .password_hash("hash")
+            .rating(STARTING_RATING)
+            .rating_set_at(TEST_RATING_SET_AT)
             .exec(&mut db)
             .await
             .expect("create user");
@@ -91,6 +99,8 @@ mod tests {
             .await
             .expect("find by unique email");
         assert_eq!(found.id, user.id);
+        assert_eq!(found.rating, STARTING_RATING);
+        assert_eq!(found.rating_set_at, TEST_RATING_SET_AT);
 
         let tajic = cards::get_by_name("Tajic, Legion's Edge").expect("pool");
         let deck = Deck::create()

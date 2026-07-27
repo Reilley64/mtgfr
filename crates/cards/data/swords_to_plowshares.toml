@@ -1,10 +1,10 @@
 # Exile target creature. Its controller gains life equal to its power.
 name = "Swords to Plowshares"
+sets = ["2ed", "30a", "3ed", "40k", "4bb", "4ed", "a25", "afc", "ath", "bbd", "blc", "brb", "brc", "c16", "c17", "ced", "cei", "cmm", "cmr", "cns", "cst", "ddf", "dmr", "drc", "dsc", "ema", "eoc", "f01", "fbb", "fic", "gn3", "ice", "ima", "j13", "j21", "lcc", "lea", "leb", "ltc", "m3c", "mb2", "me2", "me4", "mic", "mkc", "moc", "msc", "ncc", "nec", "olep", "onc", "pf25", "pip", "plst", "pmei", "prm", "ptc", "scd", "sld", "slp", "soc", "spg", "sta", "sum", "td0", "tdc", "v13", "vma", "voc", "wc97", "who", "woc"]
 id = "b1544f21-7e98-461b-aed5-e748b0168c52"
 default_print = "b4e9c870-23c0-413a-ae39-265f09da16d1"
 otags = ["bible-reference", "drawback", "lifegain", "opponent-lifegain", "removal-creature", "removal-exile", "single-target-instant-sorcery", "spot-removal"]
 oracle = "Exile target creature. Its controller gains life equal to its power."
-set = "msc"
 
 [cost]
 white = 1

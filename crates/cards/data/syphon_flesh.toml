@@ -1,0 +1,33 @@
+# Each other player sacrifices a creature. You create a 2/2 black Zombie creature token for each
+# creature sacrificed this way.
+name = "Syphon Flesh"
+sets = ["cm2", "cma", "cmd", "mic", "scd"]
+id = "bc7c3151-ad07-429a-8af8-e4f24b7d9f6b"
+default_print = "45b24d47-633b-405d-935e-57ecb5b4fd35"
+oracle = "Each other player sacrifices a creature. You create a 2/2 black Zombie creature token for each creature sacrificed this way."
+
+[cost]
+generic = 4
+black = 1
+
+[kind]
+type = "sorcery"
+
+# Each other player sacrifices a creature. You create a 2/2 black Zombie creature token for each
+# creature sacrificed this way.
+[[abilities]]
+timing = "spell"
+
+# Each other player sacrifices a creature.
+[[abilities.effects]]
+type = "choice"
+mode = "each_player_sacrifices"
+scope = "each_opponent"
+filter = "creature"
+
+# You create a 2/2 black Zombie creature token for each creature sacrificed this way.
+[[abilities.effects]]
+type = "token"
+mode = "create"
+token = "ddc8c973-c31e-463f-be45-f3fa7d632362"
+count = "creatures_sacrificed_this_way"

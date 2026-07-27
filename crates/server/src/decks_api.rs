@@ -7,6 +7,8 @@ use schema::{DeckDetail, DeckSummary, SaveDeckRequest};
 
 use crate::AppState;
 use crate::db::Deck;
+#[cfg(test)]
+use crate::elo::STARTING_RATING;
 use crate::legality;
 use crate::precons;
 
@@ -167,6 +169,8 @@ mod tests {
     use crate::db::{User, connect};
     use schema::DeckCardEntry;
 
+    const TEST_RATING_SET_AT: i64 = 1_700_000_000;
+
     async fn test_state() -> AppState {
         AppState::for_test(connect("sqlite::memory:").await.expect("sqlite"))
     }
@@ -178,6 +182,8 @@ mod tests {
             .email(email)
             .username(email.split('@').next().unwrap_or("player"))
             .password_hash("x")
+            .rating(STARTING_RATING)
+            .rating_set_at(TEST_RATING_SET_AT)
             .exec(&mut db)
             .await
             .expect("create user")

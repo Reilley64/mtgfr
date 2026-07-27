@@ -6,7 +6,7 @@ Authoritative rules engine on the server, MTGA-style board in the client, plus a
 
 ## Status
 
-Early and incomplete on purpose. The north star is to support *any* card **faithfully** — grown from real cards, with gaps flagged rather than faked. Today that means ~618 deckable card scripts (`crates/cards/data/`) and an engine that is not rules-complete. The five Secrets of Strixhaven (`soc`) Commander decks (~389 unique cards) are the first proving ground, not the end of the roadmap.
+Early and incomplete on purpose. The north star is to support *any* card **faithfully** — grown from real cards, with gaps flagged rather than faked. Today that means ~665 deckable card scripts (`crates/cards/data/`) and an engine that is not rules-complete. The five Secrets of Strixhaven (`soc`) Commander decks (~389 unique cards) are the first proving ground, not the end of the roadmap.
 
 The public origin ships `robots.txt` that disallows crawlers; this is a friends table, not a content site.
 
@@ -53,3 +53,7 @@ just --list
 - [`docs/README.md`](docs/README.md) — full docs index
 
 Agent-oriented working notes live in [`AGENTS.md`](AGENTS.md). Releases are cut by [semantic-release](https://semantic-release.org/) on `main` (PRs are squash-merged — the **PR title** is the release signal).
+
+## License
+
+Copyright 2026 Reilley. Licensed under the [Apache License 2.0](LICENSE). That covers the software in this repository only — Magic: The Gathering names, card text, art, and related trademarks remain the property of Wizards of the Coast.

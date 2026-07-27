@@ -2,23 +2,38 @@ import { Schema as S } from "effect";
 import { m } from "foldkit/message";
 import { UrlRequest } from "foldkit/navigation";
 import { Url } from "foldkit/url";
-import { CardArtTick } from "../lib/ui/card-art";
-import { ModalOpened } from "../lib/ui/confirmDialog";
 import { Message as BoardMessage } from "./board/messages";
 import { DeckCardFlipTick } from "./deck-card-nav";
+import { CardArtTick } from "./domain/ui/card-art";
+import { ModalOpened } from "./domain/ui/confirmDialog";
 import { Message as GameMessage } from "./game/messages";
+import { Message as AccountChromeMessage } from "./shell/account-chrome/messages";
 import { Message as AuthMessage } from "./shell/auth/messages";
-import { Message as DecksMessage } from "./shell/decks/messages";
+import { Message as CoverageMessage } from "./shell/coverage/messages";
+import { Message as DeckBuilderMessage } from "./shell/decks/builder/messages";
+import { Message as DeckListMessage } from "./shell/decks/list/messages";
+import { Message as LeaderboardMessage } from "./shell/leaderboard/messages";
 import { Message as LobbyMessage } from "./shell/lobby/messages";
 
 export const Booted = m("Booted");
-export const ReceivedApiVersion = m("ReceivedApiVersion", { version: S.NullOr(S.String) });
+export const ReceivedApiVersion = m("ReceivedApiVersion", {
+  version: S.NullOr(S.String),
+  faithfulCount: S.NullOr(S.Number),
+  oracleTotal: S.NullOr(S.Number),
+});
 export const UrlChanged = m("UrlChanged", { url: Url });
 export const UrlRequested = m("UrlRequested", { request: UrlRequest });
 export const NavigationCompleted = m("NavigationCompleted");
-export const PortraitGateChanged = m("PortraitGateChanged", { open: S.Boolean });
-export const PortraitGateCancelled = m("PortraitGateCancelled");
-export const CompletedPortraitGateModal = m("CompletedPortraitGateModal");
+export const LandscapeRotateChanged = m("LandscapeRotateChanged", { active: S.Boolean });
+export const ReceivedMeGravatarHash = m("ReceivedMeGravatarHash", { email: S.String, hash: S.String });
+export const GotAuthMessage = m("GotAuthMessage", { message: AuthMessage });
+export const GotDeckListMessage = m("GotDeckListMessage", { message: DeckListMessage });
+export const GotDeckBuilderMessage = m("GotDeckBuilderMessage", { message: DeckBuilderMessage });
+export const GotCoverageMessage = m("GotCoverageMessage", { message: CoverageMessage });
+export const GotLeaderboardMessage = m("GotLeaderboardMessage", { message: LeaderboardMessage });
+export const GotLobbyMessage = m("GotLobbyMessage", { message: LobbyMessage });
+export const GotBoardMessage = m("GotBoardMessage", { message: BoardMessage });
+export const GotGameMessage = m("GotGameMessage", { message: GameMessage });
 export { CardArtTick, DeckCardFlipTick, ModalOpened };
 
 export const Message = S.Union([
@@ -27,17 +42,20 @@ export const Message = S.Union([
   UrlChanged,
   UrlRequested,
   NavigationCompleted,
-  PortraitGateChanged,
-  PortraitGateCancelled,
-  CompletedPortraitGateModal,
+  LandscapeRotateChanged,
+  ReceivedMeGravatarHash,
+  GotAuthMessage,
+  GotDeckListMessage,
+  GotDeckBuilderMessage,
+  GotCoverageMessage,
+  GotLeaderboardMessage,
+  GotLobbyMessage,
+  GotBoardMessage,
+  GotGameMessage,
   ModalOpened,
   CardArtTick,
   DeckCardFlipTick,
-  BoardMessage,
-  AuthMessage,
-  DecksMessage,
-  LobbyMessage,
-  GameMessage,
+  AccountChromeMessage,
 ]);
 export type Message = typeof Message.Type;
 
@@ -57,67 +75,12 @@ export {
   StreamTerminalError,
 } from "./game/messages";
 export {
-  AuthFailed,
-  ChangedAuthEmail,
-  ChangedAuthMode,
-  ChangedAuthPassword,
-  ChangedAuthUsername,
-  ReceivedMe,
-  RequestedLogout,
-  SubmittedAuth,
-} from "./shell/auth/messages";
+  ClosedAccountMenu,
+  ToggledAccountMenu,
+} from "./shell/account-chrome/messages";
 export {
-  ActivatedBuilderTarget,
-  AddedBuilderCard,
-  AskedDeckDelete,
-  BuilderPrintSearchFailed,
-  BuilderSearchFailed,
-  CancelledBuilderDiscard,
-  CancelledDeckDelete,
-  ChangedBuilderName,
-  ChangedBuilderQuery,
-  ChangedDeckListSearch,
-  ClearedBuilderHover,
-  ClosedBuilderMenu,
-  ClosedBuilderPrintPicker,
-  ClosedDeckListMenu,
-  ConfirmedBuilderDiscard,
-  DeckBuilderLoadFailed,
-  DeckDeleted,
-  DeckDeleteFailed,
-  DeckSaved,
-  DeckSaveFailed,
-  DecksLoadFailed,
-  HydratedBuilderCards,
-  MovedBuilderHover,
-  NavigatedAwayFromBuilder,
-  OpenedBuilderMenu,
-  OpenedBuilderPrintPicker,
-  OpenedDeckListMenu,
-  PickedBuilderPrint,
-  RanBuilderMenuAction,
-  ReceivedBuilderPrints,
-  ReceivedBuilderSearchPage,
-  ReceivedDeckForBuilder,
-  ReceivedDeckListCommanders,
-  ReceivedDecks,
-  RemovedBuilderCard,
-  RequestedBuilderCancel,
-  RequestedDeckDelete,
-  RequestedDecksRefresh,
-  RequestedNextBuilderPage,
-  SetBuilderCommander,
-  SubmittedDeckSave,
-} from "./shell/decks/messages";
-export {
-  ChangedLobbyCode,
-  LobbyCopyCompleted,
-  LobbyRequestFailed,
-  LobbyTableCreated,
-  ReceivedLobbyView,
-  RequestedLobbyCopy,
-  RequestedLobbyHost,
-  RequestedLobbyJoin,
-  RequestedLobbyReady,
-  RequestedLobbyStart,
-} from "./shell/lobby/messages";
+  LeaderboardLoadFailed,
+  ReceivedLeaderboardPage,
+  RequestedLeaderboardNextPage,
+  RequestedLeaderboardRefresh,
+} from "./shell/leaderboard/messages";

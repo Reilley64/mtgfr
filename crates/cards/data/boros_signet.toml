@@ -1,0 +1,24 @@
+# {1}, {T}: Add {R}{W}.
+name = "Boros Signet"
+sets = ["aa1", "blc", "c15", "c17", "c20", "clu", "cm2", "cma", "cmd", "cmm", "cmr", "gk1", "hop", "mm3", "onc", "prm", "rav", "rvr", "sld", "tdc"]
+oracle = "{1}, {T}: Add {R}{W}."
+id = "41c84665-1f99-40ab-aaca-1188649eb263"
+default_print = "49c37c0e-d363-4033-a069-710241cd9923"
+
+[cost]
+generic = 2
+
+[kind]
+type = "artifact"
+
+# {1}, {T}: Add {R}{W}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+activation_cost = { generic = 1 }
+
+# Add {R}{W}.
+[[abilities.effects]]
+type = "mana"
+mode = "add"
+mana = ["red", "white"]

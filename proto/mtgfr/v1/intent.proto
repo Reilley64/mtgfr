@@ -76,7 +76,8 @@ message WireIntent {
     WireIntentMulligan mulligan = 55;
     WireIntentChooseCardName choose_card_name = 56;
     WireIntentCastSplitHalf cast_split_half = 57;
-    WireIntentChooseProliferate choose_proliferate = 58;
+    WireIntentChooseLegendaryKeep choose_legendary_keep = 58;
+    WireIntentChooseProliferate choose_proliferate = 59;
   }
 }
 
@@ -116,7 +117,7 @@ message WireIntentCast {
   // Whether the caster is casting the spell for its printed alternative cost (CR 601.2f);
   // `false` for a spell with none, or to cast it normally.
   bool alternative_cost = 14;
-  // How many times the caster paid the spell's Multikicker cost (CR 702.34); 0 (default) for a
+  // How many times the caster paid the spell's Multikicker cost (CR 702.33c); 0 (default) for a
   // spell with no Multikicker, or "pay it zero times."
   uint32 multikicker_count = 15;
 }
@@ -354,6 +355,13 @@ message WireIntentChooseCardName {
 message WireIntentChooseAttachHost {
   uint32 player = 1;
   optional uint32 host = 2;
+}
+
+// Answer a legend-rule choice (CR 704.5j): `keep` is the one legendary permanent among the
+// conflict options that remains on the battlefield.
+message WireIntentChooseLegendaryKeep {
+  uint32 player = 1;
+  uint32 keep = 2;
 }
 
 // Answer an enter-as-copy choice (CR 706/707.2 — Altered Ego, Cursed Mirror): `copy` is the

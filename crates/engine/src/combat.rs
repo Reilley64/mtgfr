@@ -40,6 +40,12 @@ impl Game {
         if self.has_keyword(blocker, Keyword::CantBlock) {
             return false;
         }
+        // Global "[filter] creatures can't block" (CR 509.1a — Razorjaw Oni's "Black creatures
+        // can't block"): reaches every matching creature battlefield-wide, not just ones a
+        // specific source's controller controls.
+        if self.cant_block_filter(blocker) {
+            return false;
+        }
         // "Enchanted permanent/creature can't … block" (Faith's Fetters, Prison Term): a live
         // attached Aura's continuous `cant_block` grant.
         if self.host_cant_block(blocker) {
@@ -93,6 +99,21 @@ impl Game {
             && !self.colors_of(blocker)[Color::Black.index()]
         {
             return false;
+        }
+        // Intimidate (CR 702.13b): can be blocked only by artifact creatures and/or creatures
+        // that share a color with it.
+        if self.has_keyword(attacker, Keyword::Intimidate)
+            && !self.effective_types(blocker).intersects(TypeSet::ARTIFACT)
+        {
+            let (attacker_colors, blocker_colors) =
+                (self.colors_of(attacker), self.colors_of(blocker));
+            let shares_a_color = attacker_colors
+                .iter()
+                .zip(blocker_colors.iter())
+                .any(|(&a, &b)| a && b);
+            if !shares_a_color {
+                return false;
+            }
         }
         !self.protection_blocks_source(attacker, blocker)
     }
@@ -213,6 +234,11 @@ impl Game {
             // reverse of goad's "must attack", a live attached Aura's continuous `cant_attack`
             // grant.
             && !self.host_cant_attack(creature)
+            // Angelic Arbiter's "Each opponent who cast a spell this turn can't attack with
+            // creatures": a whole-player ban, checked here rather than only at the declaration
+            // so a restriction beats a requirement (CR 509.1a) — a creature that can't attack
+            // isn't "able", so every must-attack loop below reads this and stops demanding it.
+            && !self.cant_attack_if_cast_this_turn(self.controller_of(creature))
             && self
                 .living_players()
                 .any(|d| d != self.controller_of(creature))
@@ -250,11 +276,17 @@ impl Game {
             if goaders.is_empty() || !self.can_attack(id) {
                 continue;
             }
-            let Some(defender) = self
+            // "If able" is gated on the attack tax (CR 508.1g): only defenders whose tax `player`
+            // can pay count, and among those a non-goader is preferred (CR 701.38a). A goaded
+            // creature with no affordable legal defender is not forced at all.
+            let affordable: Vec<PlayerId> = self
                 .living_players()
-                .filter(|&d| d != player)
-                .find(|d| !goaders.contains(d))
-                .or_else(|| self.living_players().find(|&d| d != player))
+                .filter(|&d| d != player && self.can_afford_attack_tax(player, id, d))
+                .collect();
+            let Some(&defender) = affordable
+                .iter()
+                .find(|&&d| !goaders.contains(&d))
+                .or_else(|| affordable.first())
             else {
                 continue;
             };
@@ -334,8 +366,14 @@ impl Game {
         // full object arena here.
         self.controlled_battlefield(defender)
             .into_iter()
-            .flat_map(|id| self.def_of(id).abilities)
-            .map(|ability| match (ability.timing, ability.effect) {
+            .flat_map(|id| {
+                self.def_of(id)
+                    .abilities
+                    .iter()
+                    .cloned()
+                    .collect::<Vec<_>>()
+            })
+            .map(|ability| match (ability.timing, ability.effect.clone()) {
                 (Timing::Static, Effect::Static(StaticEffect::AttackTax { amount })) => {
                     amount as u32
                 }
@@ -343,6 +381,32 @@ impl Game {
                 _ => 0,
             })
             .sum()
+    }
+
+    /// Whether `player` can currently pay the generic attack tax to send a single attacker at
+    /// `defender` (CR 508.1g), evaluated in isolation via [`Game::plan_auto_taps`] — the exact
+    /// affordability [`Game::settle_payment`] applies during declaration. An untaxed defender is
+    /// always affordable. Drives goad's "if able" clause (CR 701.38a): a goaded creature whose
+    /// controller can't pay a defender's tax is not able to attack that defender.
+    /// ponytail: single-attacker affordability — it ignores mana contention when several taxed
+    /// attackers would compete for the same mana in one declaration; no pool card goads two
+    /// creatures into two taxers at once, and the summed-tax `settle_payment` still gates the
+    /// declaration itself. (CR 508.1g, CR 701.38)
+    fn can_afford_attack_tax(
+        &self,
+        player: PlayerId,
+        attacker: ObjectId,
+        defender: PlayerId,
+    ) -> bool {
+        let tax = self.attacker_tax_owed(attacker, defender);
+        if tax == 0 {
+            return true;
+        }
+        let cost = Cost {
+            generic: tax as u8,
+            ..Default::default()
+        };
+        self.plan_auto_taps(player, cost, None, None).is_some()
     }
 
     /// The player `defender` resolves to when `declarer` declares an attack on it, or `None` when
@@ -368,20 +432,84 @@ impl Game {
         legal.then_some(player)
     }
 
+    /// Whether any permanent on the battlefield carries a live
+    /// [`Effect::Static(StaticEffect::MustAttackEachCombat)`] static (Avatar of Slaughter's "All
+    /// creatures ... attack each combat if able"): unlike [`Game::matching_anthems`]'s per-source
+    /// controller gate, this is a plain existence check — the static reaches every creature
+    /// regardless of who controls its source, so only whether one is live anywhere matters.
+    fn must_attack_each_combat_static(&self) -> bool {
+        self.battlefield().into_iter().any(|source| {
+            self.functional_abilities(source).iter().any(|a| {
+                (a.timing, a.effect.clone())
+                    == (
+                        Timing::Static,
+                        Effect::Static(StaticEffect::MustAttackEachCombat),
+                    )
+            })
+        })
+    }
+
+    /// Whether any permanent on the battlefield carries a live
+    /// [`Effect::Static(StaticEffect::CantBlockFilter)`] static matching `blocker` (CR 509.1a —
+    /// Razorjaw Oni's "Black creatures can't block"): unlike [`Game::matching_anthems`]'s
+    /// per-source controller gate, this reaches every matching creature regardless of who
+    /// controls the source or the would-be blocker.
+    fn cant_block_filter(&self, blocker: ObjectId) -> bool {
+        self.battlefield().into_iter().any(|source| {
+            self.functional_abilities(source)
+                .iter()
+                .any(|a| match (a.timing, a.effect.clone()) {
+                    (Timing::Static, Effect::Static(StaticEffect::CantBlockFilter { filter })) => {
+                        self.permanent_matches(
+                            &filter,
+                            blocker,
+                            self.controller_of(source),
+                            Some(source),
+                        )
+                    }
+                    _ => false,
+                })
+        })
+    }
+
+    /// Whether `player` is locked out of declaring any attacker by a live
+    /// [`Effect::Static(StaticEffect::CantAttackIfCastThisTurn)`] static under a different
+    /// player's control (Angelic Arbiter's "Each opponent who cast a spell this turn can't
+    /// attack with creatures"): true only when `player` has cast a spell this turn AND some
+    /// other player controls the static — an "opponent" of that controller's by construction.
+    fn cant_attack_if_cast_this_turn(&self, player: PlayerId) -> bool {
+        self.players[player.0 as usize].spells_cast_this_turn > 0
+            && self.battlefield().into_iter().any(|source| {
+                self.controller_of(source) != player
+                    && self.functional_abilities(source).iter().any(|a| {
+                        (a.timing, a.effect.clone())
+                            == (
+                                Timing::Static,
+                                Effect::Static(StaticEffect::CantAttackIfCastThisTurn),
+                            )
+                    })
+            })
+    }
+
     /// The active player declares attackers during their declare-attackers step. Each must be
     /// an untapped, non-sick creature they control, attacking a living opponent or one of that
     /// opponent's planeswalkers (CR 508.1a); each taps unless it has vigilance.
+    ///
+    /// `player` is the seat *making* the declaration — [`Game::attack_declarer`], which is the
+    /// active player unless a live Master Warcraft moved the choice. The attackers are the active
+    /// player's creatures either way, so every legality check below reads `self.active_player`.
     pub(crate) fn declare_attackers(
         &mut self,
         player: PlayerId,
         attackers: &[(ObjectId, Defender)],
     ) -> Result<Vec<Event>, Reject> {
-        if player != self.active_player
+        if player != self.attack_declarer()
             || self.step != Step::DeclareAttackers
             || self.combat.attackers_declared
         {
             return Err(Reject::IllegalDeclaration);
         }
+        let player = self.active_player;
         // Every attack resolved to its defending player (CR 508.1a) — the form every restriction
         // below reads, so a planeswalker defender is checked as its controller throughout.
         let mut resolved: Vec<(ObjectId, PlayerId)> = Vec::with_capacity(attackers.len());
@@ -408,17 +536,22 @@ impl Game {
                 .controlled_battlefield(defender)
                 .into_iter()
                 .flat_map(|id| {
-                    self.def_of(id)
-                        .abilities
+                    let def = self.def_of(id);
+                    def.abilities
                         .iter()
+                        .cloned()
                         .map(move |ability| (id, ability))
+                        .collect::<Vec<_>>()
                 })
-                .any(|(source, ability)| match (ability.timing, ability.effect) {
-                    (Timing::Static, Effect::Static(StaticEffect::CantBeAttackedBy { filter })) => {
-                        self.permanent_matches(&filter, attacker, defender, Some(source))
-                    }
-                    _ => false,
-                });
+                .any(
+                    |(source, ability)| match (ability.timing, ability.effect.clone()) {
+                        (
+                            Timing::Static,
+                            Effect::Static(StaticEffect::CantBeAttackedBy { filter }),
+                        ) => self.permanent_matches(&filter, attacker, defender, Some(source)),
+                        _ => false,
+                    },
+                );
             if restricted {
                 return Err(Reject::IllegalDeclaration);
             }
@@ -456,18 +589,27 @@ impl Game {
             if goaders.is_empty() || !self.can_attack(id) {
                 continue;
             }
+            // "If able" includes affording the tax to reach a legal defender (CR 508.1g + CR
+            // 701.38a): a goaded creature whose controller can't pay any legal defender's attack
+            // tax is not forced. (Any attack it *is* declared into is still gated by the summed-tax
+            // `settle_payment` below.)
+            let affordable: Vec<PlayerId> = self
+                .living_players()
+                .filter(|&d| d != player && self.can_afford_attack_tax(player, id, d))
+                .collect();
+            if affordable.is_empty() {
+                continue; // not able — the tax can't be paid to reach any defender
+            }
             let Some(&(_, defender)) = attackers.iter().find(|&&(a, _)| a == id) else {
                 return Err(Reject::IllegalDeclaration); // a goaded able creature must attack
             };
-            let nongoader_available = self
-                .living_players()
-                .any(|d| d != player && !goaders.contains(&d));
-            // CR 701.38a: "attacks a *player* other than you if able" — attacking a goader's
-            // planeswalker is not attacking a player at all, so it doesn't satisfy the
-            // requirement either.
+            // CR 701.38a: "attacks a *player* other than you if able" — a non-goader only counts
+            // when its tax is affordable, and attacking a goader's planeswalker is not attacking a
+            // player at all, so neither satisfies the requirement.
+            let nongoader_affordable = affordable.iter().any(|d| !goaders.contains(d));
             let attacks_a_nongoader =
                 matches!(defender, Defender::Player(d) if !goaders.contains(&d));
-            if !attacks_a_nongoader && nongoader_available {
+            if !attacks_a_nongoader && nongoader_affordable {
                 return Err(Reject::IllegalDeclaration); // must attack a non-goader if able
             }
         }
@@ -502,6 +644,23 @@ impl Game {
             }
         }
 
+        // A global "creatures attack each combat if able" static (CR 508.1a — Avatar of
+        // Slaughter's "All creatures ... attack each combat if able"): unlike the recorded
+        // `must_attack` requirements above, this names no specific defender, so any declared
+        // attack discharges it. Only the active player's own creatures can ever be checked here
+        // (declaring attackers is a turn-based action for the active player alone), so the
+        // static's reach into an opponent's creatures is inert until that opponent's own combat.
+        if self.must_attack_each_combat_static() {
+            for id in self.controlled_battlefield(player) {
+                if !self.can_attack(id) {
+                    continue;
+                }
+                if !attackers.iter().any(|&(a, _)| a == id) {
+                    return Err(Reject::IllegalDeclaration); // must attack if able
+                }
+            }
+        }
+
         let mut events = Vec::new();
         // Pillow-fort attack taxes (CR 508.1g / CR 802, Ghostly Prison): the sum owed across the
         // defending players is an additional cost of the declaration, paid up front.
@@ -509,10 +668,10 @@ impl Game {
         // lands via `settle_payment`) — the declaring player implicitly agrees to pay by
         // declaring; can't-afford ⇒ illegal declaration (CR 508.1g), rather than offered as an
         // explicit pay-or-decline choice. No pool card lets the tax be anything but generic, so
-        // auto-planning is exact. ponytail: goad + an unpayable tax — a goaded creature that
-        // "must attack" (CR 701.38) but whose controller can't pay is technically "not able"
-        // (CR 701.38 "if able"); the goad loop above still forces it. Unmodeled residual; no pool
-        // card exercises goad + a tax at once. (CR 701.38)
+        // auto-planning is exact. Goad + an unpayable tax is handled up front: the goad loop above
+        // treats a defender whose tax `player` can't pay as "not able" (CR 701.38a "if able") via
+        // `can_afford_attack_tax`, so a goaded creature is never forced into an attack it can't
+        // afford. (CR 701.38, CR 508.1g)
         let tax = self.attack_tax_owed(&resolved);
         if tax > 0 {
             let cost = Cost {
@@ -567,19 +726,29 @@ impl Game {
     /// An attacked player declares blocks. They may only block attackers aimed at them; each
     /// blocker must be an untapped creature they control; a flyer can only be blocked by a
     /// flyer. Each attacked player declares once, in priority (APNAP) order.
+    ///
+    /// `player` is the seat *making* the declaration. Ordinarily that's the defending player
+    /// themselves and this seals exactly their own blocks; with a live Master Warcraft it's one
+    /// submission covering every attacked seat that player now declares for
+    /// ([`Game::block_seats_for`]). Either way each blocker's legality is checked against its own
+    /// controller, so no one gains a block they couldn't otherwise make (CR 509.1a).
     pub(crate) fn declare_blockers(
         &mut self,
         player: PlayerId,
         blocks: &[(ObjectId, ObjectId)],
     ) -> Result<Vec<Event>, Reject> {
-        if !self.is_attacked_player(player)
-            || self.step != Step::DeclareBlockers
-            || self.combat.blocked_by.contains(&player)
-        {
+        let seats = self.block_seats_for(player);
+        if self.step != Step::DeclareBlockers || seats.is_empty() {
             return Err(Reject::IllegalDeclaration);
         }
         for &(blocker, attacker) in blocks {
-            if !self.can_block(player, blocker, attacker) {
+            // `as_permanent` first: it is safe on any object id, and once it holds `blocker` is a
+            // live permanent, so `controller_of` can't panic on untrusted input.
+            if self.as_permanent(blocker).is_none() {
+                return Err(Reject::IllegalDeclaration);
+            }
+            let defender = self.controller_of(blocker);
+            if !seats.contains(&defender) || !self.can_block(defender, blocker, attacker) {
                 return Err(Reject::IllegalDeclaration);
             }
         }
@@ -599,7 +768,10 @@ impl Game {
         // whole declaration once, not per `BlockerDeclared` event — a multiply-blocked attacker's
         // "becomes blocked" fires only once, same reasoning as the batch attack-count scan below.
         self.queue_blocks_or_becomes_blocked_triggers(blocks);
-        self.combat.blocked_by.push(player); // this defender's block declaration is final
+        // Mana-Charged Dragon's "whenever this creature attacks or blocks" — the block half
+        // (blocker side only; a blocked attacker "becomes blocked", it doesn't "block").
+        self.queue_attacks_or_blocks_block_triggers(blocks);
+        self.combat.blocked_by.extend(&seats); // these defenders' block declarations are final
         // If an attacker is blocked by several creatures, its controller orders them.
         if let Some((attacker, blockers)) = self.next_undivided_multiblock() {
             crate::pending::raise_choice(
@@ -614,6 +786,21 @@ impl Game {
         self.consecutive_passes = 0;
         self.priority = self.active_player;
         Ok(events)
+    }
+
+    /// The defending seats whose block declaration `declarer` is the one to make right now — every
+    /// living attacked player who hasn't declared yet and whose [`Game::block_declarer`] is
+    /// `declarer`. Ordinarily that's `[declarer]` (each defending player declares for themselves,
+    /// CR 509.1a) or empty; with a live Master Warcraft it's the whole undeclared table for its
+    /// controller and empty for everyone else. Empty means "not yours to declare".
+    pub fn block_seats_for(&self, declarer: PlayerId) -> Vec<PlayerId> {
+        self.living_players()
+            .filter(|&p| {
+                self.is_attacked_player(p)
+                    && !self.combat.blocked_by.contains(&p)
+                    && self.block_declarer(p) == declarer
+            })
+            .collect()
     }
 
     /// The first multi-blocked attacker whose damage division hasn't been chosen yet, if any.
@@ -735,7 +922,7 @@ impl Game {
         // Moment's Peace (CR 615, #150): a this-turn table-wide "prevent all combat damage"
         // shield cancels the attacker's damage to every blocker before any is assigned, so no
         // trample overflow is computed either — same silent guard as `deal_creature_damage`'s.
-        if self.combat_extras.prevent_all_combat_damage_this_turn {
+        if self.replacement_registry().prevents_all_combat_damage() {
             return;
         }
         // Fog Bank (CR 615, #220): a permanent "prevent all combat damage ... dealt by" static on
@@ -871,7 +1058,7 @@ impl Game {
         // Fog Bank's "prevent all combat damage ... dealt by" static on the attacker, and Moment's
         // Peace's table-wide this-turn shield (CR 615) — both silent, as on the creature path.
         if self.combat_damage_prevented_by_source(source)
-            || self.combat_extras.prevent_all_combat_damage_this_turn
+            || self.replacement_registry().prevents_all_combat_damage()
         {
             return;
         }
@@ -947,7 +1134,7 @@ impl Game {
         // Moment's Peace (CR 615, #150): a this-turn table-wide "prevent all combat damage"
         // shield silently cancels combat damage to a creature — same silent-prevention style as
         // the noncombat guard above (no event; nothing in the pool reads a prevented total here).
-        if combat && self.combat_extras.prevent_all_combat_damage_this_turn {
+        if combat && self.replacement_registry().prevents_all_combat_damage() {
             return;
         }
         for event in self.creature_damage_events(source, target, amount) {
@@ -1032,7 +1219,7 @@ impl Game {
         // Moment's Peace (CR 615, #150): the table-wide "prevent all combat damage" shield — like
         // Inkshield's above, but every player and no token mint. Still surfaced as the same
         // `Event::CombatDamagePrevented` for observability.
-        if self.combat_extras.prevent_all_combat_damage_this_turn {
+        if self.replacement_registry().prevents_all_combat_damage() {
             self.push_apply(events, Event::CombatDamagePrevented { player, amount });
             return;
         }
@@ -1089,11 +1276,9 @@ impl Game {
         creator: ObjectId,
         events: &mut Vec<Event>,
     ) -> bool {
-        let Some(&(_, token)) = self
-            .combat_extras
-            .combat_damage_prevention_shields
-            .iter()
-            .find(|(p, _)| *p == player)
+        let Some(token) = self
+            .replacement_registry()
+            .combat_damage_prevention_token_for_player(player)
         else {
             return false;
         };

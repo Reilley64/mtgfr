@@ -1,0 +1,48 @@
+# This land enters tapped with two charge counters on it.
+# {T}: Add {W}.
+# {T}, Remove a charge counter from this land: Add one mana of any color.
+name = "Vivid Meadow"
+sets = ["c15", "c17", "cm2", "cma", "cmd", "lrw", "mma", "ncc"]
+id = "dee99df5-628f-4a4e-a203-4dfddc927373"
+default_print = "59eddb1d-a8aa-4eaa-a3f1-14bd2cecadd9"
+otags = ["activated-ability", "counters-matter", "charge-counter-land"]
+oracle = "This land enters tapped with two charge counters on it.\n{T}: Add {W}.\n{T}, Remove a charge counter from this land: Add one mana of any color."
+enters_tapped = true
+
+[kind]
+type = "land"
+
+# This land enters tapped with two charge counters on it.
+[[abilities]]
+timing = "static"
+
+# This land enters tapped with two charge counters on it.
+[[abilities.effects]]
+type = "static"
+mode = "enters_with_counters"
+count = 2
+kind = "charge"
+
+# {T}: Add {W}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add {W}.
+[[abilities.effects]]
+type = "mana"
+mode = "add"
+mana = ["white"]
+
+# {T}, Remove a charge counter from this land: Add one mana of any color.
+[[abilities]]
+timing = "activated"
+taps_self = true
+remove_counters = 1
+remove_counters_kind = "charge"
+
+# Add one mana of any color.
+[[abilities.effects]]
+type = "mana"
+mode = "add"
+mana = ["any"]
