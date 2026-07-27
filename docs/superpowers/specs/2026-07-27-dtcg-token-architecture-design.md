@@ -266,10 +266,9 @@ Some HTML meta surfaces historically want hex:
 - Vite PWA `theme_color` / `background_color`
 - Favicon SVG fill
 
-**Choice:** generate a hex companion (sRGB serialization of the same OKLCH
-token) for these call sites, or keep a single `$extensions."com.mtgfr.hex"`
-mirror written by codegen — authored SoT remains OKLCH. Do not hand-maintain a
-second palette.
+**Implementation:** `gen-tokens.mjs` emits `hexFallbacks.forestFloor`, an sRGB
+serialization of the same OKLCH token, for these call sites. Authored source of
+truth remains OKLCH; do not hand-maintain a second palette.
 
 #### Out of band paint
 

@@ -115,8 +115,7 @@ function shadowDim(value) {
 
 function serializeColor(value) {
   if (typeof value === "string") {
-    // Temporary during migration; Task 6 removes hex source path.
-    return value;
+    throw new Error("color tokens must be DTCG color objects with colorSpace");
   }
 
   const { colorSpace, components, alpha } = value;
@@ -371,8 +370,8 @@ function buildHexFallbacksExport(root) {
   if (node?.$type !== "color") {
     return {};
   }
-  if (typeof node.$value === "string" && /^#[0-9a-f]{6}$/i.test(node.$value)) {
-    return { forestFloor: node.$value };
+  if (typeof node.$value === "string") {
+    throw new Error("hexFallbacks.forestFloor must be derived from an OKLCH color token");
   }
   if (node.$value?.colorSpace === "oklch") {
     return { forestFloor: oklchToHex(node.$value.components) };

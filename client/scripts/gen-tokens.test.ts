@@ -105,6 +105,10 @@ describe("gen-tokens helpers", () => {
     ).toBe("oklch(0.97 0.03 145)");
   });
 
+  it("rejects string color literals in source tokens", () => {
+    expect(() => serializeTokenValue("color", "#0B1310")).toThrow("color tokens must be DTCG color objects");
+  });
+
   it("maps the current CSS drag drop-shadow token to the canvas shadow shape", () => {
     const root = {
       "drop-shadow": {

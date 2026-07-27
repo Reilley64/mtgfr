@@ -5,7 +5,33 @@ const cssPath = new URL("../../styles/tokens.generated.css", import.meta.url);
 const tsPath = new URL("./design-tokens.generated.ts", import.meta.url);
 const tokensPath = new URL("../../../design.tokens.json", import.meta.url);
 
-function readTokens() {
+type ColorValue = string | {
+  colorSpace: string;
+  components: number[];
+  alpha?: number;
+};
+
+type DtcgToken = {
+  $type?: string;
+  $value: ColorValue;
+};
+
+type DesignTokens = {
+  primitive: {
+    color: Record<string, DtcgToken>;
+    space: Record<string, DtcgToken>;
+  };
+  semantic: {
+    color: Record<string, DtcgToken>;
+    font: Record<string, DtcgToken>;
+    text: Record<string, DtcgToken>;
+    radius: Record<string, DtcgToken>;
+    spacing: Record<string, DtcgToken>;
+    size: Record<string, DtcgToken>;
+  };
+};
+
+function readTokens(): DesignTokens {
   return JSON.parse(readFileSync(tokensPath, "utf8"));
 }
 
@@ -36,6 +62,10 @@ describe("design.tokens.json", () => {
     for (const [name, token] of Object.entries(primitiveColors)) {
       expect(token, name).toMatchObject({ $type: "color" });
       expect(String(token.$value), name).not.toMatch(/^\{/);
+      expect(token.$value, name).toMatchObject({
+        colorSpace: "oklch",
+        components: expect.any(Array),
+      });
     }
 
     for (const [name, token] of Object.entries(semanticColors)) {
@@ -79,6 +109,7 @@ describe("design-tokens.generated.ts", () => {
     expect(readFileSync(tsPath, "utf8")).toContain("export const colors");
     const mod = await import("./design-tokens.generated");
     expect(mod.colors.forestFloor).toMatch(/^oklch\(/);
+    expect(mod.colors.priorityGold).toMatch(/^oklch\(/);
     expect(mod.colors.playableBorder).toBe(mod.colors.snowMint);
     expect(mod.shadowDrag).toEqual({
       css: expect.stringMatching(/^0 16px 36px /),
