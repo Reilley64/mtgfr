@@ -114,12 +114,9 @@ function tile(args: {
   const raisedHitH = handBarHitHeight(true, HAND_VISIBLE_H, HAND_CARD_H);
   const raiseY = handBarRaiseTranslateY(true, HAND_VISIBLE_H, HAND_CARD_H);
   const pips = costPips(manaCost, { showZero: objectKind != null && objectKind !== "land" });
-  const faceClass = [
-    "pointer-events-none absolute top-0 right-0 transition-transform duration-[120ms] ease-state",
-    discardSelected
-      ? "[transform:translateY(var(--raise-y))]"
-      : "group-hover/hand-tile:[transform:translateY(var(--raise-y))]",
-  ].join(" ");
+  // Raise on hover or when the group carries data-selected=true (discard / hand-put picks).
+  const faceClass =
+    "pointer-events-none absolute top-0 right-0 transition-transform duration-[120ms] ease-state group-hover/hand-tile:[transform:translateY(var(--raise-y))] group-data-[selected=true]/hand-tile:[transform:translateY(var(--raise-y))]";
 
   // The drag source fades so the canvas DragGhost carries the face; inert slots stay non-interactive.
   const dragSource = playable && action != null && draggingActionId != null && action.id === draggingActionId;
@@ -130,22 +127,25 @@ function tile(args: {
   ]
     .filter((v) => v !== "")
     .join(" ");
+  const pickChrome = discardSelectable || discardSelected;
   const faceChromeClass = [
     "relative origin-bottom rounded-game",
-    discardSelected
-      ? "ring-2 ring-llanowar shadow-[0_0_12px_rgba(47,125,70,0.55)]"
-      : discardSelectable
-        ? "ring-2 ring-island-blue shadow-[0_0_12px_rgba(74,158,255,0.45)]"
-        : dragSource
-          ? ""
-          : barZoneAura(zone, playable),
+    pickChrome
+      ? [
+          "ring-2",
+          "group-data-[selected=true]/hand-tile:ring-llanowar group-data-[selected=true]/hand-tile:shadow-[0_0_12px_rgba(47,125,70,0.55)]",
+          "group-data-[selected=false]/hand-tile:group-data-[selectable=true]/hand-tile:ring-island-blue group-data-[selected=false]/hand-tile:group-data-[selectable=true]/hand-tile:shadow-[0_0_12px_rgba(74,158,255,0.45)]",
+        ].join(" ")
+      : dragSource
+        ? ""
+        : barZoneAura(zone, playable),
   ]
     .filter((v) => v !== "")
     .join(" ");
 
   const hitClass = [
     "pointer-events-auto absolute bottom-0",
-    discardSelected ? "[height:var(--hit-raised-h)]" : "group-hover/hand-tile:[height:var(--hit-raised-h)]",
+    "group-hover/hand-tile:[height:var(--hit-raised-h)] group-data-[selected=true]/hand-tile:[height:var(--hit-raised-h)]",
     playable ? "cursor-grab" : "cursor-not-allowed",
   ].join(" ");
 
@@ -153,7 +153,7 @@ function tile(args: {
     h.Class(hitClass),
     h.Style({
       width: `${hitW}px`,
-      height: `${discardSelected ? raisedHitH : restHitH}px`,
+      height: `${restHitH}px`,
       right: `${HAND_CARD_W - hitW}px`,
       "--hit-raised-h": `${raisedHitH}px`,
     }),
@@ -231,9 +231,6 @@ function tile(args: {
   if (objectId != null) {
     cardFaceAttrs.push(h.DataAttribute("testid", `hand-card-face-${objectId}`));
   }
-  if (discardSelectable || discardSelected) {
-    cardFaceAttrs.push(h.DataAttribute("discard-selected", discardSelected ? "1" : "0"));
-  }
 
   const art: Html = print
     ? cardArt(h, {
@@ -258,21 +255,29 @@ function tile(args: {
         [h.div([h.Class("overflow-hidden text-ellipsis whitespace-nowrap font-semibold")], [name])],
       );
 
+  const tileAttrs: Attribute<Message>[] = [
+    h.Class(
+      "group/hand-tile pointer-events-none relative shrink-0 origin-bottom overflow-visible [z-index:var(--hand-z)] hover:[z-index:50]",
+    ),
+    h.Style({
+      width: `${HAND_CARD_PEEK}px`,
+      height: `${HAND_VISIBLE_H}px`,
+      transform: fanTransform(index, count),
+      "--raise-y": `${raiseY}px`,
+      "--hand-z": String(index + 1),
+    }),
+    h.DataAttribute("hand-index", String(index)),
+  ];
+  if (objectId != null) {
+    tileAttrs.push(h.DataAttribute("testid", `hand-tile-${objectId}`));
+  }
+  if (pickChrome) {
+    tileAttrs.push(h.DataAttribute("selected", discardSelected ? "true" : "false"));
+    tileAttrs.push(h.DataAttribute("selectable", discardSelectable || discardSelected ? "true" : "false"));
+  }
+
   return h.div(
-    [
-      h.Class(
-        "group/hand-tile pointer-events-none relative shrink-0 origin-bottom overflow-visible [z-index:var(--hand-z)] hover:[z-index:50]",
-      ),
-      h.Style({
-        width: `${HAND_CARD_PEEK}px`,
-        height: `${HAND_VISIBLE_H}px`,
-        transform: fanTransform(index, count),
-        "--raise-y": `${raiseY}px`,
-        "--hand-z": String(index + 1),
-      }),
-      h.DataAttribute("hand-index", String(index)),
-      ...(objectId != null ? [h.DataAttribute("testid", `hand-tile-${objectId}`)] : []),
-    ],
+    tileAttrs,
     [
       h.div(
         [h.Class(faceClass), h.Style({ width: `${HAND_CARD_W}px` })],

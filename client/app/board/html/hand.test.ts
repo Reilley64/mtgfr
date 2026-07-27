@@ -454,7 +454,9 @@ describe("handView hover stacking", () => {
     expect(className(root)).not.toContain("z-30");
     expect(treeHasClass(root, "z-50")).toBe(false); // bare z-50 without hover: prefix
     const face = findTestId(tree, "hand-card-face-42");
-    expect(className(face)).toContain("ring-llanowar");
+    expect(className(face)).toContain("group-data-[selected=true]/hand-tile:ring-llanowar");
+    expect(attr(root, "data-selected")).toBe("true");
+    expect(attr(root, "data-selectable")).toBe("true");
     expect(treeHasClass(findTestId(tree, "hand-tile-42"), "z-30")).toBe(false);
   });
 });

@@ -2254,8 +2254,10 @@ test("selected discard-cost hand card paints Llanowar selected chrome", () => {
     Scene.expect(Scene.testId("hand-card-face-11")).toExist(),
     Scene.tap((sim) => {
       const face = findTestId(sim.html, "hand-card-face-11");
-      expect(dataAttr(face, "discard-selected")).toBe("1");
-      expect(className(face)).toContain("ring-llanowar");
+      const tile = findTestId(sim.html, "hand-tile-11");
+      expect(dataAttr(tile, "selected")).toBe("true");
+      expect(dataAttr(tile, "selectable")).toBe("true");
+      expect(className(face)).toContain("group-data-[selected=true]/hand-tile:ring-llanowar");
     }),
   );
 });
@@ -2404,8 +2406,9 @@ test("selected pending discard hand card paints Llanowar selected chrome", () =>
     Scene.expect(Scene.testId("hand-card-face-11")).toExist(),
     Scene.tap((sim) => {
       const face = findTestId(sim.html, "hand-card-face-11");
-      expect(dataAttr(face, "discard-selected")).toBe("1");
-      expect(className(face)).toContain("ring-llanowar");
+      const tile = findTestId(sim.html, "hand-tile-11");
+      expect(dataAttr(tile, "selected")).toBe("true");
+      expect(className(face)).toContain("group-data-[selected=true]/hand-tile:ring-llanowar");
     }),
   );
 });
@@ -2456,8 +2459,9 @@ test("selected may_discard hand card paints Llanowar selected chrome", () => {
     Scene.expect(Scene.testId("hand-card-face-11")).toExist(),
     Scene.tap((sim) => {
       const face = findTestId(sim.html, "hand-card-face-11");
-      expect(dataAttr(face, "discard-selected")).toBe("1");
-      expect(className(face)).toContain("ring-llanowar");
+      const tile = findTestId(sim.html, "hand-tile-11");
+      expect(dataAttr(tile, "selected")).toBe("true");
+      expect(className(face)).toContain("group-data-[selected=true]/hand-tile:ring-llanowar");
     }),
   );
 });
@@ -2865,15 +2869,18 @@ test("selected put_creature_from_hand card paints Llanowar selected chrome like 
     Scene.expect(Scene.testId("hand-card-face-21")).toExist(),
     Scene.expect(Scene.testId("hand-card-face-22")).toExist(),
     Scene.tap((sim) => {
-      const selected = findTestId(sim.html, "hand-card-face-21");
-      expect(dataAttr(selected, "discard-selected")).toBe("1");
-      expect(className(selected)).toContain("ring-llanowar");
-      expect(className(selected)).not.toContain("ring-island-blue");
+      const selectedFace = findTestId(sim.html, "hand-card-face-21");
+      const selectedTile = findTestId(sim.html, "hand-tile-21");
+      expect(dataAttr(selectedTile, "selected")).toBe("true");
+      expect(dataAttr(selectedTile, "selectable")).toBe("true");
+      expect(className(selectedFace)).toContain("group-data-[selected=true]/hand-tile:ring-llanowar");
 
-      const invalid = findTestId(sim.html, "hand-card-face-22");
-      expect(dataAttr(invalid, "discard-selected")).toBeNull();
-      expect(className(invalid)).not.toContain("ring-island-blue");
-      expect(className(invalid)).not.toContain("ring-llanowar");
+      const invalidFace = findTestId(sim.html, "hand-card-face-22");
+      const invalidTile = findTestId(sim.html, "hand-tile-22");
+      expect(dataAttr(invalidTile, "selected")).toBeNull();
+      expect(dataAttr(invalidTile, "selectable")).toBeNull();
+      expect(className(invalidFace)).not.toContain("ring-island-blue");
+      expect(className(invalidFace)).not.toContain("group-data-[selected=true]/hand-tile:ring-llanowar");
     }),
   );
 });
