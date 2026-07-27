@@ -1,7 +1,7 @@
 # Card DSL and Card Pool
 
 **Status:** Current (as of 2026-07-27)
-**Module:** `crates/cards` (`data/*.toml`, `data/tokens/*.toml`), `crates/engine` (`src/de.rs`, `src/types/effect/` — `CardDef`, `Ability`, `Effect`, family enums, `Timing`), `docs/decklists/*.md`
+**Module:** `crates/cards` (`data/*.toml`, `data/tokens/*.toml`), `crates/engine` (`src/toml_surface/` — `CardToml`, `CostToml`, `KindToml`; `src/de.rs` delegates into these surfaces; `src/types/effect/` — `CardDef`, `Ability`, `Effect`, family enums, `Timing`), `docs/decklists/*.md`
 
 ---
 
@@ -189,7 +189,7 @@ These are the **first closed fidelity target** (card-dsl-and-card-pool spec): ev
 - **`Effect` enum grows only from real card demand (card-dsl-and-card-pool spec).** New behavior = new `Effect` variant + `Game::run` arm + `Event::apply` arm + TOML authoring. The DSL never anticipates future cards.
 - **Token profiles are pre-loaded into a `OnceLock<HashMap<&'static str, CardDef>>` before deckable cards.** `install_token_defs` must be called before any card TOML that references a token by id is deserialized. `cards` crate's `load` function handles this ordering, and token creation interns the selected profile before storing it on a live object/event.
 - **The `card-dsl` feature flag gates all DSL deserialization.** The engine can be compiled without TOML parsing (e.g. for pure engine tests that construct `CardDef` inline). The feature adds `serde` derives and `de.rs`.
-- **`de.rs` holds only structurally-divergent deserializers.** Types whose TOML spelling matches their Rust shape use serde derives on the definitions in `types/effect/`. Only when the TOML spelling differs structurally (flat cost table, `instant`/`sorcery` as separate strings, folded `Timing::Activated`) does `de.rs` provide a manual impl.
+- **Structurally-divergent TOML spellings live in `toml_surface`; `de.rs` delegates.** Types whose TOML spelling matches their Rust shape use serde derives on the definitions in `types/effect/`. When the TOML spelling differs structurally, the authored surface is in `crates/engine/src/toml_surface/` — `[kind]` is `KindToml` (`instant`/`sorcery` as separate `type` strings rather than `CardKind::Spell`'s `speed` field), `[cost]` is `CostToml` (flat color-named pips rather than `Cost::colored`), and full cards load via `CardToml`. `de.rs` keeps thin `Deserialize` impls on runtime types (`CardDef`, `CardKind`, `Cost`, …) that deserialize through those surfaces; folded `Timing::Activated` and other effect-family folds remain in `de.rs`.
 - **`otags` and `sets` are pure catalog metadata** — the engine never reads them for gameplay. They exist for deck-builder search (`sets`/`subtypes` + Postgres catalog search, accounts-decks-and-catalog spec), printing-aware coverage, and Scryfall tagger integration. `sets` is backfilled by `tooling/backfill-sets.mjs` from Scryfall printings; `default_print` remains the art/default-printing pointer.
 - **`oracle` is catalog metadata** — the engine never parses it; rules behavior comes from `abilities`/`keywords` only.
 - **`approximates` is surfaced in the card catalog** so the deck builder and audits see the same gap the engine runs. An absent `approximates` field means the card is faithful.
