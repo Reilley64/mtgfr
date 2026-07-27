@@ -52,9 +52,10 @@ describe("intent reject wiring", () => {
     const seeded = modelWithGame();
     const game = seeded.game;
     if (game == null) throw new Error("test setup: game is null");
-    seeded.game = { ...game, board: { ...game.board, promptSubmitInFlight: true } };
+    seeded.game = { ...game, board: { ...game.board, promptSubmitInFlight: true, promptSubmitSeq: 4 } };
     const [next] = update(seeded, GotGameMessage({ message: IntentRejected({ reason: "Not your turn." }) }));
     expect(next.game?.board.promptSubmitInFlight).toBe(false);
+    expect(next.game?.board.promptSubmitSeq).toBeNull();
     expect(next.game?.board.reject).toBe("Not your turn.");
   });
 
