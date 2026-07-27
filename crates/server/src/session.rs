@@ -806,6 +806,7 @@ mod tests {
             also: engine::TypeSet::NONE,
         },
         legendary: false,
+        snow: false,
         uncounterable: false,
         modal: false,
         modal_choose: 1,

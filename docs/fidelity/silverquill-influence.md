@@ -117,7 +117,7 @@ points at the increment(s) that clear it.
 - [x] Gift of Immortality — #3
 - [x] Ghoulish Impetus — #2 (landed)
 - [x] Hateful Eidolon — #1 (landed)
-- [ ] Herald of Amity — #1 landed; still blocked on #5
+- [x] Herald of Amity — #1 and #5 landed (mid-resolution free cast from dig)
 - [x] Keen Duelist — #1 (landed)
 - [x] Killian, Decisive Mentor — #1, #2 (both landed)
 - [x] Kor Spiritdancer — #1 (landed)

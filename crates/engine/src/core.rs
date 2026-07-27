@@ -180,7 +180,6 @@ impl Game {
             .collect()
     }
 
-    /// A player's current life total.
     pub fn life(&self, player: PlayerId) -> i32 {
         self.players[player.0 as usize].life
     }

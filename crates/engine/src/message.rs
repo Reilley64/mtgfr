@@ -126,6 +126,7 @@ message_keys! {
     EFFECT_CHOICE_EACH_PLAYER_SACRIFICES => "effect.choice_each_player_sacrifices",
     EFFECT_CHOICE_JOIN_FORCES_PAY_MANA => "effect.choice_join_forces_pay_mana",
     EFFECT_CHOICE_MAY_DISCARD => "effect.choice_may_discard",
+    EFFECT_CHOICE_MAY_REVEAL_LAND_FROM_HAND => "effect.choice_may_reveal_land_from_hand",
     EFFECT_CHOICE_MAY_DRAW_UNLESS_PAYS => "effect.choice_may_draw_unless_pays",
     EFFECT_CHOICE_MAY_DRAW_UP_TO => "effect.choice_may_draw_up_to",
     EFFECT_CHOICE_MAY_DRAW_UP_TO_THEN_OPPONENT_MAY_REPEAT => "effect.choice_may_draw_up_to_then_opponent_may_repeat",
@@ -147,6 +148,7 @@ message_keys! {
     EFFECT_CHOICE_TARGET_PLAYER_EXILES_FROM_GRAVEYARD => "effect.choice_target_player_exiles_from_graveyard",
     EFFECT_CHOICE_TARGET_PLAYER_MAY_DRAW => "effect.choice_target_player_may_draw",
     EFFECT_DAMAGE_EACH_CREATURE => "effect.damage_each_creature",
+    EFFECT_DAMAGE_EACH_OPPONENT => "effect.damage_each_opponent",
     EFFECT_DAMAGE_EACH_OTHER_OPPONENT => "effect.damage_each_other_opponent",
     EFFECT_DAMAGE_EACH_PLAYER => "effect.damage_each_player",
     EFFECT_DAMAGE_RADIANCE => "effect.damage_radiance",
@@ -746,6 +748,9 @@ fn type_set_token(types: TypeSet) -> String {
     if types.intersects(TypeSet::PLANESWALKER) {
         parts.push("planeswalker".to_string());
     }
+    if types.intersects(TypeSet::BATTLE) {
+        parts.push("battle".to_string());
+    }
     if types.intersects(TypeSet::LAND) {
         parts.push("land".to_string());
     }
@@ -864,6 +869,12 @@ fn permanent_filter_token(filter: PermanentFilter) -> String {
     if filter.shares_type_with_dying_permanent {
         parts.push("shares_type_with_dying_permanent".to_string());
     }
+    if filter.creature_or_vehicle {
+        parts.push("creature_or_vehicle".to_string());
+    }
+    if filter.snow {
+        parts.push("snow".to_string());
+    }
     parts.join("_")
 }
 
@@ -928,6 +939,7 @@ fn card_filter_token(filter: CardFilter) -> String {
         CardFilter::Aura => "aura".to_string(),
         CardFilter::ArtifactOrCreature => "artifact_or_creature".to_string(),
         CardFilter::ArtifactOrEnchantment => "artifact_or_enchantment".to_string(),
+        CardFilter::SnowLand => "snow_land".to_string(),
     }
 }
 
@@ -1140,6 +1152,10 @@ impl Effect {
                 .with_params(vec![amount_param("amount", amount)]),
             Effect::Damage(DamageEffect::EachPlayer { amount }) => {
                 MessageRef::new(MessageKey::EFFECT_DAMAGE_EACH_PLAYER)
+                    .with_params(vec![amount_param("amount", amount)])
+            }
+            Effect::Damage(EachOpponent { amount }) => {
+                MessageRef::new(MessageKey::EFFECT_DAMAGE_EACH_OPPONENT)
                     .with_params(vec![amount_param("amount", amount)])
             }
             Effect::Damage(EachOtherOpponent { amount, .. }) => {
@@ -2001,10 +2017,16 @@ impl Effect {
                 MessageRef::new(MessageKey::EFFECT_STATIC_PREVENT_COMBAT_DAMAGE)
                     .with_params(vec![bool_param("to_self", to_self), bool_param("by_self", by_self)])
             }
-            Effect::Static(CounterReplacement { add, times, .. }) => {
-                MessageRef::new(MessageKey::EFFECT_STATIC_COUNTER_REPLACEMENT)
-                    .with_params(vec![int_param("add", add), int_param("times", times)])
-            }
+            Effect::Static(CounterReplacement {
+                add,
+                times,
+                filter,
+                ..
+            }) => MessageRef::new(MessageKey::EFFECT_STATIC_COUNTER_REPLACEMENT).with_params(vec![
+                int_param("add", add),
+                int_param("times", times),
+                optional_permanent_filter_param("filter", filter),
+            ]),
             Effect::Static(TokenReplacement { times }) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_TOKEN_REPLACEMENT)
                     .with_params(vec![int_param("times", times)])
@@ -2256,6 +2278,7 @@ mod tests {
             count: 1,
             overflow: None,
             count_amount: None,
+            optional: false,
         })
         .message();
         assert_eq!(string_param(&search, "filter"), "basic_land");

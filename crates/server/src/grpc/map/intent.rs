@@ -149,13 +149,17 @@ pub fn wire_intent_to_pb(intent: WireIntent) -> pb::WireIntent {
                 count: u32::from(count),
             })
         }
-        WireIntent::PayOptionalCost { player, pay, x } => {
-            Intent::PayOptionalCost(pb::WireIntentPayOptionalCost {
-                player: u32::from(player),
-                pay,
-                x,
-            })
-        }
+        WireIntent::PayOptionalCost {
+            player,
+            pay,
+            x,
+            discard_cost,
+        } => Intent::PayOptionalCost(pb::WireIntentPayOptionalCost {
+            player: u32::from(player),
+            pay,
+            x,
+            discard_cost,
+        }),
         WireIntent::AssignDamage { player, assignment } => {
             Intent::AssignDamage(pb::WireIntentAssignDamage {
                 player: u32::from(player),
@@ -264,12 +268,15 @@ pub fn wire_intent_to_pb(intent: WireIntent) -> pb::WireIntent {
                 choice,
             })
         }
-        WireIntent::ChooseExiledDigToCastFree { player, choice } => {
-            Intent::ChooseExiledDigToCastFree(pb::WireIntentChooseExiledDigToCastFree {
-                player: u32::from(player),
-                choice,
-            })
-        }
+        WireIntent::ChooseExiledDigToCastFree {
+            player,
+            choice,
+            target,
+        } => Intent::ChooseExiledDigToCastFree(pb::WireIntentChooseExiledDigToCastFree {
+            player: u32::from(player),
+            choice,
+            target: target.map(wire_target_to_pb),
+        }),
         WireIntent::ChooseOpponentPile { player, pile } => {
             Intent::ChooseOpponentPile(pb::WireIntentChooseOpponentPile {
                 player: u32::from(player),
@@ -587,13 +594,17 @@ pub fn wire_intent_from_pb(intent: pb::WireIntent) -> Result<WireIntent, String>
                 count: u8_trunc(count),
             }
         }
-        Intent::PayOptionalCost(pb::WireIntentPayOptionalCost { player, pay, x }) => {
-            WireIntent::PayOptionalCost {
-                player: u8_trunc(player),
-                pay,
-                x,
-            }
-        }
+        Intent::PayOptionalCost(pb::WireIntentPayOptionalCost {
+            player,
+            pay,
+            x,
+            discard_cost,
+        }) => WireIntent::PayOptionalCost {
+            player: u8_trunc(player),
+            pay,
+            x,
+            discard_cost,
+        },
         Intent::AssignDamage(pb::WireIntentAssignDamage { player, assignment }) => {
             WireIntent::AssignDamage {
                 player: u8_trunc(player),
@@ -703,9 +714,11 @@ pub fn wire_intent_from_pb(intent: pb::WireIntent) -> Result<WireIntent, String>
         Intent::ChooseExiledDigToCastFree(pb::WireIntentChooseExiledDigToCastFree {
             player,
             choice,
+            target,
         }) => WireIntent::ChooseExiledDigToCastFree {
             player: u8_trunc(player),
             choice,
+            target: opt_wire_target_from_pb(target)?,
         },
         Intent::ChooseOpponentPile(pb::WireIntentChooseOpponentPile { player, pile }) => {
             WireIntent::ChooseOpponentPile {

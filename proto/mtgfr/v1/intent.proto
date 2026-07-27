@@ -188,10 +188,13 @@ message WireIntentChooseDrawCount {
 }
 
 // `x` is set only when the cost has an X the payer chooses (join forces' "any amount of mana").
+// `discard_cost` names hand cards paying an additional discard on the optional cost (Conspiracy
+// Theorist's "pay {1} and discard a card"); empty when declining or when the cost has no discard.
 message WireIntentPayOptionalCost {
   uint32 player = 1;
   bool pay = 2;
   optional uint32 x = 3;
+  repeated uint32 discard_cost = 4;
 }
 
 message WireIntentAssignDamage {
@@ -285,11 +288,13 @@ message WireIntentChooseExiledWithCardToCast {
   optional uint32 choice = 2;
 }
 
-// Answer a choose-exiled-dig-to-cast-free choice: `choice` is the exiled dig card granted the
-// free-cast permission, or absent to decline.
+// Answer a choose-exiled-dig-to-cast-free choice: `choice` is the exiled dig card cast without
+// paying its mana cost now (mid-resolution), or absent to decline. `target` is the cast-time
+// target when the chosen card needs one (an Aura).
 message WireIntentChooseExiledDigToCastFree {
   uint32 player = 1;
   optional uint32 choice = 2;
+  optional WireTarget target = 3;
 }
 
 // Answer an opponent-chooses-pile choice (Abstract Performance): `pile` is `0` or `1` — which

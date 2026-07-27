@@ -84,6 +84,7 @@ impl Game {
                         player: controller,
                         source,
                         effect: Effect::Copy(CopyEffect::Demonstrate { spell }),
+                        resume: crate::MayYesNoResume::Default,
                     },
                 );
             }

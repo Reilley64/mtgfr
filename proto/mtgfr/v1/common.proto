@@ -94,6 +94,7 @@ message WireKind {
     Artifact artifact = 5;
     Planeswalker planeswalker = 6;
     Land land = 7;
+    Battle battle = 8;
   }
 
   message Creature {
@@ -112,6 +113,11 @@ message WireKind {
   // A planeswalker with its starting loyalty (the printed number it enters with).
   message Planeswalker {
     int32 loyalty = 1;
+  }
+
+  // A battle with its starting defense (the printed number it enters with).
+  message Battle {
+    int32 defense = 1;
   }
 
   // A land and the colors it can tap for (WUBRG indices; see `engine::Color::index`): one

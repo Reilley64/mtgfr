@@ -1,0 +1,20 @@
+# Flying
+# Whenever this Vehicle attacks or blocks, you may draw a card. If you do, discard a card.
+# Crew 1
+# Smuggler's Copter — Artifact — Vehicle. Observer for Ao, the Dawn Sky's "creature or Vehicle"
+# counters mode: a Vehicle permanent that can receive +1/+1 counters. Crew is omitted (Ao does
+# not need the Vehicle to be a creature).
+name = "Smuggler's Copter"
+sets = ["2x2", "aer", "kld", "moc", "nec", "pip", "sld"]
+id = "49136bdc-bc50-49a2-999a-1ef9c16ea130"
+default_print = "2680ed41-da35-475a-9d80-ae2f4686feed"
+otags = ["crew", "looting", "vehicle"]
+oracle = "Flying\nWhenever this Vehicle attacks or blocks, you may draw a card. If you do, discard a card.\nCrew 1 (Tap any number of creatures you control with total power 1 or more: This Vehicle becomes an artifact creature until end of turn.)"
+subtypes = ["Vehicle"]
+keywords = ["flying"]
+
+[cost]
+generic = 2
+
+[kind]
+type = "artifact"

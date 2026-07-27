@@ -33,9 +33,7 @@ toughness = 2
 commander_only = true
 
 # Commanders you control have hexproof.
-# ponytail: the pool's only commander-scoped anthem targets creatures — every pool commander is
-# a creature, so a creature-scoped anthem stands in for "commanders you control have hexproof"
-# even though the real ability isn't creature-restricted.
+# commander_only checks is_commander only — hexproof applies to any commander permanent.
 [[abilities]]
 timing = "static"
 

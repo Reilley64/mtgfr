@@ -18,6 +18,7 @@ const WireKind = S.Union([
   S.Struct({ kind: S.Literal("enchantment") }),
   S.Struct({ kind: S.Literal("artifact") }),
   S.Struct({ kind: S.Literal("planeswalker"), loyalty: S.Number }),
+  S.Struct({ kind: S.Literal("battle"), defense: S.Number }),
   S.Struct({ kind: S.Literal("land"), colors: S.Array(S.Number) }),
 ]);
 

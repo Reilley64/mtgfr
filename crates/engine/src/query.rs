@@ -1382,7 +1382,14 @@ impl Game {
         // Types: empty set = any; otherwise the permanent must share at least one required type.
         // Read the CR 613.4-layered types so a type-changing Aura (Darksteel Mutation → Artifact)
         // is counted / hit.
-        if !filter.types.is_empty() && !filter.types.intersects(self.effective_types(id)) {
+        // `creature_or_vehicle` is an OR-gate that replaces the ordinary types axis (Ao mode 2).
+        if filter.creature_or_vehicle {
+            let is_creature = self.effective_types(id).intersects(TypeSet::CREATURE);
+            let is_vehicle = self.effective_subtypes(id).contains(&"Vehicle");
+            if !is_creature && !is_vehicle {
+                return false;
+            }
+        } else if !filter.types.is_empty() && !filter.types.intersects(self.effective_types(id)) {
             return false;
         }
         // Subtypes: empty = any; otherwise the permanent must carry at least one named subtype
@@ -1574,6 +1581,11 @@ impl Game {
         if filter.with_flying && !self.has_keyword(id, Keyword::Flying) {
             return false;
         }
+        // Snow (CR 205.4g — a battlefield "snow permanent" / Into the North's snow land via
+        // CardFilter). Reads the printed supertype flag.
+        if filter.snow && !printed.snow {
+            return false;
+        }
         true
     }
 
@@ -1624,6 +1636,7 @@ mod permanent_filter_tests {
             },
             kind,
             legendary: false,
+            snow: false,
             uncounterable: false,
             modal: false,
             modal_choose: 1,

@@ -50,9 +50,6 @@ timing = "activated"
 activation_cost = { generic = 2, blue = 1 }
 
 # Creatures named Leitmotif Composer can't be blocked this turn.
-# ponytail: the printed-name filter matches any permanent named "Leitmotif Composer", including
-# this card's own token copies (which share the printed name) — see the `PermanentFilter.name`
-# axis doc for the equality-only scope.
 [[abilities.effects]]
 type = "pump"
 mode = "pump_creatures_you_control_until_end_of_turn"

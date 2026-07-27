@@ -38,6 +38,7 @@ import {
   objectName,
   pendingBoardTargetMode,
   pendingDamageAssignBlockers,
+  pendingDigCastHostMode,
   pendingDivideSpellObjectIndexes,
   pendingExilePickIds,
   pendingExilePickOneClick,
@@ -1387,52 +1388,57 @@ function cardPickForKind(
     ) {
       return null;
     }
-    const oneClick = pendingExilePickOneClick(pending);
     const draft = board.promptDraft ?? initPromptDraft(pending, state);
-    const picked = draft.kind === "card-pick" ? draft.picked : [];
-    const ready = !oneClick && cardPickReady(pending, picked);
-    const required = cardPickRequiredCount(pending);
-    const countLine =
-      !oneClick && required != null
-        ? h.div(
-            [h.DataAttribute("testid", "pending-exile-count"), h.Class("pointer-events-none text-caption text-mist")],
-            [`${picked.length} / ${required} selected`],
-          )
-        : null;
-    const actions: Html[] = [];
-    if (!oneClick) {
-      actions.push(submitButton("Choose", !ready));
-    }
-    const decline = declineAnswer(pending);
-    if (decline != null) {
-      actions.push(
-        answerButton(
-          pending,
-          "prompt-decline",
-          cardPickDeclineLabel(pending) ?? "Decline",
-          decline,
-          false,
-          tableId == null,
-        ),
+    // Dig-cast Aura: after the exile pick, aim at cast_targets on the battlefield.
+    if (kind === "choose_exiled_dig_to_cast_free" && pendingDigCastHostMode(pending, state, draft) != null) {
+      // fall through to dig-host / board-target chrome below
+    } else {
+      const oneClick = pendingExilePickOneClick(pending);
+      const picked = draft.kind === "card-pick" ? draft.picked : [];
+      const ready = !oneClick && cardPickReady(pending, picked);
+      const required = cardPickRequiredCount(pending);
+      const countLine =
+        !oneClick && required != null
+          ? h.div(
+              [h.DataAttribute("testid", "pending-exile-count"), h.Class("pointer-events-none text-caption text-mist")],
+              [`${picked.length} / ${required} selected`],
+            )
+          : null;
+      const actions: Html[] = [];
+      if (!oneClick) {
+        actions.push(submitButton("Choose", !ready));
+      }
+      const decline = declineAnswer(pending);
+      if (decline != null) {
+        actions.push(
+          answerButton(
+            pending,
+            "prompt-decline",
+            cardPickDeclineLabel(pending) ?? "Decline",
+            decline,
+            false,
+            tableId == null,
+          ),
+        );
+      }
+      return h.div(
+        [
+          h.DataAttribute("testid", "pending-exile-aim"),
+          h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+          h.Class(
+            [
+              "fixed left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-xs rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+              actions.length > 0 ? "pointer-events-auto" : "pointer-events-none",
+            ].join(" "),
+          ),
+        ],
+        [
+          h.div([h.Class("pointer-events-none")], [pendingExileAimCoach(kind, oneClick)]),
+          countLine,
+          actions.length > 0 ? h.div([h.Class("flex flex-wrap justify-center gap-2")], actions) : null,
+        ].filter((v): v is Html => v !== null),
       );
     }
-    return h.div(
-      [
-        h.DataAttribute("testid", "pending-exile-aim"),
-        h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
-        h.Class(
-          [
-            "fixed left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-xs rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
-            actions.length > 0 ? "pointer-events-auto" : "pointer-events-none",
-          ].join(" "),
-        ),
-      ],
-      [
-        h.div([h.Class("pointer-events-none")], [pendingExileAimCoach(kind, oneClick)]),
-        countLine,
-        actions.length > 0 ? h.div([h.Class("flex flex-wrap justify-center gap-2")], actions) : null,
-      ].filter((v): v is Html => v !== null),
-    );
   }
   const handPick = pendingHandPickIds(pending, state);
   if (handPick != null) {
@@ -1500,15 +1506,21 @@ function cardPickForKind(
       ].filter((v): v is Html => v !== null),
     );
   }
-  if (pendingBoardTargetMode(pending, state) != null) {
+  if (
+    pendingBoardTargetMode(pending, state) != null ||
+    pendingDigCastHostMode(pending, state, board.promptDraft) != null
+  ) {
     const decline = declineAnswer(pending);
+    const digHost = pendingDigCastHostMode(pending, state, board.promptDraft);
     const label =
-      "label" in pending
-        ? messageText(pending.label)
-        : FORMULATOR_FOR_KIND[pending.kind] === "cardPick"
-          ? cardPickConfig(pending).title
-          : pendingChoiceTitle(pending);
-    const oneClick = pendingTargetOneClick(pending);
+      digHost != null
+        ? "Choose what to enchant"
+        : "label" in pending
+          ? messageText(pending.label)
+          : FORMULATOR_FOR_KIND[pending.kind] === "cardPick"
+            ? cardPickConfig(pending).title
+            : pendingChoiceTitle(pending);
+    const oneClick = digHost != null || pendingTargetOneClick(pending);
     const draft = board.promptDraft ?? initPromptDraft(pending, state);
     const picked = draft.kind === "card-pick" ? draft.picked : [];
     const max =
@@ -1769,6 +1781,7 @@ function payCostPrompt(
         | "pay_life_or_enters_tapped";
     }
   >,
+  board: BoardModel,
   tableId: string | null,
 ): Html {
   // The shockland choice carries a life amount rather than a cost, and no server label.
@@ -1783,6 +1796,23 @@ function payCostPrompt(
   // Only the optional-trigger prompt carries affordability; the "unless you pay" variants are a
   // penalty either way, so declining is always a real answer there.
   const canPay = !("can_pay" in pending) || pending.can_pay;
+  const discardNeed = pending.kind === "pay_cost" ? (pending.discard_count ?? 0) : 0;
+  const draft = board.promptDraft;
+  const picked = discardNeed > 0 && draft?.kind === "card-pick" ? draft.picked : [];
+  const discardReady = discardNeed === 0 || picked.length === discardNeed;
+  const payAnswer: AnswerInput =
+    discardNeed > 0 ? { kind: "pay", pay: true, discard: picked } : { kind: "pay", pay: true };
+  const payDisabled = tableId == null || !canPay || !discardReady;
+  const countLine =
+    discardNeed > 0
+      ? h.div(
+          [
+            h.DataAttribute("testid", "pending-pay-discard-count"),
+            h.Class("pointer-events-none text-caption text-mist"),
+          ],
+          [`${picked.length} / ${discardNeed} selected`],
+        )
+      : null;
   return h.div(
     [
       h.DataAttribute("testid", "pending-pay-cost-aim"),
@@ -1793,14 +1823,15 @@ function payCostPrompt(
     ],
     [
       h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], [title]),
+      countLine,
       h.div(
         [h.Class("flex flex-wrap justify-center gap-2")],
         [
-          answerButton(pending, "prompt-pay", payLabel, { kind: "pay", pay: true }, true, tableId == null || !canPay),
+          answerButton(pending, "prompt-pay", payLabel, payAnswer, true, payDisabled),
           answerButton(pending, "prompt-decline", declineLabel, { kind: "pay", pay: false }, false, tableId == null),
         ],
       ),
-    ],
+    ].filter((v): v is Html => v !== null),
   );
 }
 
@@ -2786,7 +2817,7 @@ function pendingChoicePrompt(
       ) {
         return frame("pending-choice", pendingChoiceTitle(pending), []);
       }
-      return payCostPrompt(pending, tableId);
+      return payCostPrompt(pending, board, tableId);
     case "modeList":
       if (pending.kind !== "choose_mode" && pending.kind !== "choose_trigger_modes") {
         return frame("pending-choice", pendingChoiceTitle(pending), []);

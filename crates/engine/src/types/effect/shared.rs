@@ -763,6 +763,7 @@ impl Effect {
             })
             | Effect::Damage(DamageEffect::EachCreature { .. })
             | Effect::Damage(DamageEffect::EachPlayer { .. })
+            | Effect::Damage(DamageEffect::EachOpponent { .. })
             | Effect::Damage(DamageEffect::EachOtherOpponent { .. })
             | Effect::Pump(PumpEffect::WeakenEachCreature { .. })
             | Effect::Pump(PumpEffect::PumpCreaturesYouControlUntilEndOfTurn { .. })
@@ -1567,13 +1568,11 @@ pub enum Condition {
     /// living-player count, not the table's starting size, so a four-player game that has gone
     /// to heads-up reads *one* opponent.
     YouHaveOpponents { at_least: u32 },
-    /// "if you have a card with any of `subtypes` in hand" — the reveal lands (Vineglimmer Snarl
-    /// and siblings) actually offer a choice whether to reveal, but revealing is strictly better
-    /// (an untapped land vs. a tapped one) with no cost or downside, so there's no real decision
-    /// to pause play for.
-    /// ponytail: modeled as an automatic hand scan rather than a genuine reveal choice — a
-    /// rational player always reveals when they can. Add a real choice if a future card makes
-    /// concealment matter (an opponent reacting to what's revealed).
+    /// "if you have a card with any of `subtypes` in hand" — marks a reveal land (Vineglimmer
+    /// Snarl, Port Town). [`Game::play_land`] raises [`PendingChoice::MayRevealLandFromHand`] when
+    /// the hand has a match; accepting reveals one matching card and enters untapped. Declining
+    /// (or having no match) enters tapped. [`Game::enters_tapped`] always returns tapped for this
+    /// condition so non-play ETB paths stay conservative until they grow the same pause.
     HandHasLandWithSubtype {
         #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_str_slice"))]
         subtypes: &'static [&'static str],

@@ -1,4 +1,3 @@
-# ponytail: the "up to one" declinable target is modeled by optional = true.
 name = "Skyclave Apparition"
 sets = ["blc", "gdy", "m3c", "mb2", "prm", "pznr", "soc", "znr"]
 id = "d90af00a-d322-4265-9954-7b1e80702e18"

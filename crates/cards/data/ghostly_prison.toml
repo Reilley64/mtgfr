@@ -2,15 +2,15 @@
 # Ghostly Prison {2}{W} — Enchantment (soc).
 # The attack tax is a static Effect::AttackTax: an additional cost of declaring attackers aimed at
 # this card's controller (CR 508.1g / CR 802 pillow-fort).
-# ponytail: the tax is auto-paid (pool first, then auto-tapped lands) at declare time rather than
-# offered as an explicit pay-or-decline choice — can't-afford makes the declaration illegal.
+# Auto-settling a *mandatory* additional attack cost has no strategic fork — declining payment is
+# equivalent to not declaring the attack — matching other automatic cost settlement. Can't-afford
+# makes the declaration illegal; affordable tax deducts mana (pool first, then auto-tapped lands).
 name = "Ghostly Prison"
 sets = ["c16", "c19", "c21", "chk", "cmd", "cn2", "f10", "khc", "mkc", "onc", "pc2", "pca", "plst", "prm", "pz1", "sld", "soc", "spg", "td0", "tdc", "voc"]
 id = "e828b189-0e8f-43b8-b909-4c23e742e028"
 default_print = "e1f723a8-0be9-4270-b451-a52d6b2fda4e"
 otags = ["tax-attack"]
 oracle = "Creatures can't attack you unless their controller pays {2} for each creature they control that's attacking you."
-
 [cost]
 generic = 2
 white = 1

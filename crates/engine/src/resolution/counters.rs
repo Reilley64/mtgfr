@@ -353,7 +353,6 @@ impl Game {
                     source_name,
                 }]
             }
-
             _ => unreachable!("counters family mint received a non-family effect"),
         }
     }

@@ -2162,6 +2162,7 @@ mod tests {
             forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,
+            snow: false,
         }
     }
 

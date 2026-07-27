@@ -695,6 +695,7 @@ mod tests {
                 speed: SpellSpeed::Sorcery,
             },
             legendary: false,
+            snow: false,
             uncounterable: false,
             modal,
             modal_choose: 1,

@@ -115,7 +115,7 @@ export function assertAllKindsRegistered(kinds: readonly PendingChoiceView["kind
 export type PromptDraft =
   // `players` holds picked seats for proliferate, whose items mix permanents and players
   // (CR 701.27). Player items all carry `id: 0`, so they cannot ride in `picked`.
-  | { kind: "card-pick"; picked: number[]; filter?: string; players?: number[] }
+  | { kind: "card-pick"; picked: number[]; filter?: string; players?: number[]; host?: number | null }
   | { kind: "order"; order: number[] }
   | { kind: "damage"; amounts: Record<number, number> }
   | { kind: "divide"; amounts: Record<number, number> }
@@ -138,7 +138,7 @@ export type AnswerInput =
   | { kind: "target"; id: number; player?: number }
   | { kind: "targets"; ids: number[] }
   | { kind: "may"; yes: boolean }
-  | { kind: "pay"; pay: boolean }
+  | { kind: "pay"; pay: boolean; discard?: number[] }
   | { kind: "assign"; assignment: WireDamage[] }
   | { kind: "divide_spell"; assignment: WireSpellDamage[] }
   | { kind: "arrange"; top: number[]; bottom: number[] }
@@ -155,7 +155,7 @@ export type AnswerInput =
   | { kind: "distribute"; to_hand: number[]; to_bottom: number[]; to_exile_may_play: number[] }
   | { kind: "shuffle_gy"; cards: number[] }
   | { kind: "choose_exiled_cast"; choice: number | null }
-  | { kind: "choose_exiled_dig"; choice: number | null }
+  | { kind: "choose_exiled_dig"; choice: number | null; target?: WireTarget | null }
   | { kind: "trigger_modes"; modes: WireModeChoice[] }
   | { kind: "mana_color"; color: number }
   | { kind: "creature_type"; subtype: string }
@@ -263,6 +263,10 @@ export function initPromptDraft(pc: PendingChoiceView, state: VisibleState): Pro
     case "dance_exile_more":
       return { kind: "may", yes: false };
     case "pay_cost":
+      if ((pc.discard_count ?? 0) > 0) {
+        return { kind: "card-pick", picked: [], filter: "" };
+      }
+      return { kind: "pay", pay: false };
     case "pay_or_counter":
     case "pay_or_controller_draws":
     case "pay_echo_or_sacrifice":
@@ -348,7 +352,16 @@ export function answerFromDraft(pc: PendingChoiceView, draft: PromptDraft): Answ
     case "dance_exile_more":
       if (draft.kind !== "may") return null;
       return { kind: "may", yes: draft.yes };
-    case "pay_cost":
+    case "pay_cost": {
+      const need = pc.discard_count ?? 0;
+      if (need > 0) {
+        if (draft.kind !== "card-pick") return null;
+        if (draft.picked.length !== need) return null;
+        return { kind: "pay", pay: true, discard: draft.picked };
+      }
+      if (draft.kind !== "pay") return null;
+      return { kind: "pay", pay: draft.pay };
+    }
     case "pay_or_counter":
     case "pay_or_controller_draws":
     case "pay_echo_or_sacrifice":
@@ -496,9 +509,16 @@ export function answerFromDraft(pc: PendingChoiceView, draft: PromptDraft): Answ
     case "choose_exiled_with_card_to_cast":
       if (draft.kind !== "card-pick") return null;
       return { kind: "choose_exiled_cast", choice: pickSingleCard(draft.picked) };
-    case "choose_exiled_dig_to_cast_free":
+    case "choose_exiled_dig_to_cast_free": {
       if (draft.kind !== "card-pick") return null;
-      return { kind: "choose_exiled_dig", choice: pickSingleCard(draft.picked) };
+      const choice = pickSingleCard(draft.picked);
+      const needsHost = (pc.cast_targets?.length ?? 0) > 0;
+      if (needsHost) {
+        if (choice == null || draft.host == null) return null;
+        return { kind: "choose_exiled_dig", choice, target: { kind: "object", id: draft.host } };
+      }
+      return { kind: "choose_exiled_dig", choice, target: null };
+    }
     case "choose_copy_target":
       if (draft.kind !== "card-pick") return null;
       return { kind: "copy_target", copy: pickSingleCard(draft.picked) };
@@ -553,7 +573,7 @@ export function declineAnswer(pc: PendingChoiceView): AnswerInput | null {
     case "choose_exiled_with_card_to_cast":
       return { kind: "choose_exiled_cast", choice: null };
     case "choose_exiled_dig_to_cast_free":
-      return { kind: "choose_exiled_dig", choice: null };
+      return { kind: "choose_exiled_dig", choice: null, target: null };
     case "choose_attach_host":
       return pc.optional ? { kind: "attach_host", host: null } : null;
     case "choose_target":
@@ -590,6 +610,10 @@ export function cardPickRequiredCount(pc: PendingChoiceView): number | null {
     case "choose_target":
       // Up to `max` targets (CR 601.2c — "up to two target lands"); `1` for the common case.
       return pc.max;
+    case "pay_cost": {
+      const need = pc.discard_count ?? 0;
+      return need > 0 ? need : null;
+    }
     case "discard":
     case "put_from_hand_on_top":
     case "pay_cumulative_upkeep_or_sacrifice":
@@ -716,7 +740,12 @@ export function choiceIntent(pc: PendingChoiceView, answer: AnswerInput): WireIn
         targets: a.ids.map((id) => ({ kind: "object", id })),
       }),
       may: (a) => ({ kind: "answer_may", player, yes: a.yes }),
-      pay: (a) => ({ kind: "pay_optional_cost", player, pay: a.pay }),
+      pay: (a) => {
+        if (a.pay && a.discard != null && a.discard.length > 0) {
+          return { kind: "pay_optional_cost", player, pay: true, discard_cost: a.discard };
+        }
+        return { kind: "pay_optional_cost", player, pay: a.pay };
+      },
       assign: (a) => ({ kind: "assign_damage", player, assignment: a.assignment }),
       divide_spell: (a) => ({ kind: "divide_spell_damage", player, assignment: a.assignment }),
       arrange: (a) => ({ kind: "arrange_top", player, top: a.top, bottom: a.bottom }),
@@ -739,7 +768,12 @@ export function choiceIntent(pc: PendingChoiceView, answer: AnswerInput): WireIn
       }),
       shuffle_gy: (a) => ({ kind: "shuffle_from_graveyard", player, cards: a.cards }),
       choose_exiled_cast: (a) => ({ kind: "choose_exiled_with_card_to_cast", player, choice: a.choice }),
-      choose_exiled_dig: (a) => ({ kind: "choose_exiled_dig_to_cast_free", player, choice: a.choice }),
+      choose_exiled_dig: (a) => ({
+        kind: "choose_exiled_dig_to_cast_free",
+        player,
+        choice: a.choice,
+        target: a.target ?? null,
+      }),
       trigger_modes: (a) => ({ kind: "choose_trigger_modes", player, modes: a.modes }),
       mana_color: (a) => ({ kind: "choose_mana_color", player, color: a.color }),
       creature_type: (a) => ({ kind: "choose_creature_type", player, subtype: a.subtype }),

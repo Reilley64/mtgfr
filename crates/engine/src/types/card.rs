@@ -324,8 +324,9 @@ impl TypeSet {
     pub const ENCHANTMENT: TypeSet = TypeSet(4);
     pub const PLANESWALKER: TypeSet = TypeSet(8);
     pub const LAND: TypeSet = TypeSet(16);
-    /// The four nonland permanent types — "any nonland permanent."
-    pub const NONLAND: TypeSet = TypeSet(1 | 2 | 4 | 8);
+    pub const BATTLE: TypeSet = TypeSet(32);
+    /// The five nonland permanent types — "any nonland permanent."
+    pub const NONLAND: TypeSet = TypeSet(1 | 2 | 4 | 8 | 32);
     /// No types. As a filter's `types` it means "no restriction"; as a creature's `also` it
     /// means "no additional types." Same bits, read by context.
     pub const NONE: TypeSet = TypeSet(0);
@@ -369,6 +370,11 @@ pub enum CardKind {
     /// A planeswalker: a permanent that enters with `loyalty` starting loyalty (CR 606.5b) and
     /// whose loyalty abilities are activated at sorcery speed, once per turn (see [`ActivationCost`]).
     Planeswalker { loyalty: i32 },
+    /// A battle: a permanent that enters with `defense` starting defense counters (CR 310.1 /
+    /// 310.2). Stored in [`Permanent::loyalty`] (same counter slot planeswalkers use for loyalty).
+    /// Siege protectors, attack-for-defense, and transform-on-defeat are not modeled yet — the
+    /// pool only needs battles as destroyable permanents for Final Act's mass mode.
+    Battle { defense: i32 },
     /// A land. `produces` is optional sugar for the common "{T}: Add one mana" tap: `Some(m)`
     /// gives the land a free base tap-for-one ([`Game::tap_for_mana`]), while `None` marks a
     /// land with *no* intrinsic mana ability — either a fetch-only land (Prismatic Vista,
@@ -399,6 +405,7 @@ impl CardKind {
             CardKind::Enchantment | CardKind::Aura => TypeSet::ENCHANTMENT,
             CardKind::Artifact => TypeSet::ARTIFACT,
             CardKind::Planeswalker { .. } => TypeSet::PLANESWALKER,
+            CardKind::Battle { .. } => TypeSet::BATTLE,
             CardKind::Land { .. } => TypeSet::LAND,
             CardKind::Spell { .. } => TypeSet::NONE,
         }
@@ -413,6 +420,7 @@ impl CardKind {
             | CardKind::Aura
             | CardKind::Artifact
             | CardKind::Planeswalker { .. }
+            | CardKind::Battle { .. }
             | CardKind::Land { .. } => true,
             CardKind::Spell { speed } => speed == SpellSpeed::Sorcery,
         }
@@ -540,8 +548,13 @@ pub struct CardDef {
     /// type mirroring `enchant` if a second graveyard-enchanting Aura needs a narrower one.
     pub enchant_graveyard: bool,
     /// Whether the card is legendary — the only cards that may be a deck's commander.
-    /// ponytail: a bare bool, not a supertype set; the pool has no other supertypes yet.
+    /// ponytail: a bare bool, not a full CR 205.4a supertype set; snow is the only other
+    /// supertype the pool tracks today ([`Self::snow`]).
     pub legendary: bool,
+    /// Whether the card is snow (CR 205.4g — Snow-Covered Forest, Ohran Frostfang). Read by
+    /// snow-matters filters ([`crate::CardFilter::SnowLand`], [`crate::PermanentFilter::snow`]).
+    /// `false` (default) for every ordinary card. `snow = true` in TOML.
+    pub snow: bool,
     /// "This spell can't be countered" (CR 701.5g, e.g. Altered Ego). Checked in
     /// [`Game::counter_spell`], the shared choke for both the unconditional
     /// [`Effect::Misc(MiscEffect::CounterTargetSpell)`] arm and a declined `PayOrCounter` — the counter fizzles,
@@ -622,9 +635,8 @@ pub struct CardDef {
     /// opponent controls a Plains and you control a Swamp, you may cast this spell without
     /// paying its mana cost"). `None` (the common case) leaves the printed cost untouched. When
     /// the condition holds, [`Game::cast_cost`] returns [`Cost::FREE`] outright rather than
-    /// pausing for a decline — the same "always take the strictly-better option" modeling
-    /// [`Condition::HandHasLandWithSubtype`]'s reveal-lands already use, since nothing in this
-    /// pool wants to voluntarily pay a cost it could skip.
+    /// pausing for a decline — revealing is free and strictly better, so nothing in this pool
+    /// wants to voluntarily pay a cost it could skip.
     pub free_cast_if: Option<Condition>,
     /// A printed alternative cost that isn't a mana cost at all (CR 601.2f — Invigorate: "If you
     /// control a Forest, rather than pay this spell's mana cost, you may have an opponent gain 3
@@ -1164,6 +1176,8 @@ pub(crate) fn fresh_permanent(
 pub(crate) fn starting_loyalty(def: &CardDef) -> i32 {
     match def.kind {
         CardKind::Planeswalker { loyalty } => loyalty,
+        // Battles store starting defense in the same `Permanent::loyalty` slot.
+        CardKind::Battle { defense } => defense,
         _ => 0,
     }
 }
@@ -1272,6 +1286,7 @@ fn treasure_token_builtin() -> CardDef {
         cost: Cost::FREE,
         kind: CardKind::Artifact,
         legendary: false,
+        snow: false,
         uncounterable: false,
         modal: false,
         modal_choose: 1,
@@ -1343,6 +1358,7 @@ pub(crate) fn rogue_token_stub() -> CardDef {
             also: TypeSet::NONE,
         },
         legendary: false,
+        snow: false,
         uncounterable: false,
         modal: false,
         modal_choose: 1,
@@ -1416,6 +1432,7 @@ pub(crate) fn illusion_token() -> CardDef {
             also: TypeSet::NONE,
         },
         legendary: false,
+        snow: false,
         uncounterable: false,
         modal: false,
         modal_choose: 1,

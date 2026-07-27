@@ -247,12 +247,16 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
             cost,
             label,
             can_pay,
+            discard_count,
+            discard_choices,
         } => Choice::PayCost(pb::PendingChoiceViewPayCost {
             player: u32::from(player),
             source,
             cost: Some(wire_cost_to_pb(cost)),
             label: Some(message_ref_to_pb(label)),
             can_pay,
+            discard_count: u32::from(discard_count),
+            discard_choices: discard_choices.unwrap_or_default(),
         }),
         PendingChoiceView::PayOrCounter {
             player,
@@ -569,10 +573,12 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
             player,
             source,
             items,
+            cast_targets,
         } => Choice::ChooseExiledDigToCastFree(pb::PendingChoiceViewChooseExiledDigToCastFree {
             player: u32::from(player),
             source,
             items: choice_items_to_pb(items),
+            cast_targets: choice_items_to_pb(cast_targets),
         }),
         PendingChoiceView::DanceExileMore {
             player,

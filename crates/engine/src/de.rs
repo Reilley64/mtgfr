@@ -322,6 +322,9 @@ impl<'de> Deserialize<'de> for CardDef {
             enchant_graveyard: bool,
             #[serde(default)]
             legendary: bool,
+            /// Snow supertype (CR 205.4g) — `snow = true`; absent (`false`) for every ordinary card.
+            #[serde(default)]
+            snow: bool,
             /// "This spell can't be countered" (CR 701.5g) — `uncounterable = true`; absent
             /// (`false`) for every ordinary card.
             #[serde(default)]
@@ -526,6 +529,7 @@ impl<'de> Deserialize<'de> for CardDef {
             enchant: card.enchant,
             enchant_graveyard: card.enchant_graveyard,
             legendary: card.legendary,
+            snow: card.snow,
             uncounterable: card.uncounterable,
             modal: card.modal,
             modal_choose: card.modal_choose,
@@ -821,6 +825,9 @@ impl<'de> Deserialize<'de> for CardKind {
             Planeswalker {
                 loyalty: i32,
             },
+            Battle {
+                defense: i32,
+            },
             Land {
                 /// Optional sugar for a free "{T}: Add one mana" base tap; omitted for a
                 /// fetch-only land or a land whose mana is all explicit `add_mana` abilities.
@@ -858,6 +865,7 @@ impl<'de> Deserialize<'de> for CardKind {
             Kind::Aura => CardKind::Aura,
             Kind::Artifact => CardKind::Artifact,
             Kind::Planeswalker { loyalty } => CardKind::Planeswalker { loyalty },
+            Kind::Battle { defense } => CardKind::Battle { defense },
             Kind::Land {
                 produces,
                 subtypes,
@@ -1457,6 +1465,7 @@ fn type_bits(name: &str) -> Option<TypeSet> {
         "artifact" => TypeSet::ARTIFACT,
         "enchantment" => TypeSet::ENCHANTMENT,
         "planeswalker" => TypeSet::PLANESWALKER,
+        "battle" => TypeSet::BATTLE,
         "land" => TypeSet::LAND,
         "nonland" => TypeSet::NONLAND,
         "artifact_or_enchantment" => TypeSet::ARTIFACT.union(TypeSet::ENCHANTMENT),
@@ -1471,6 +1480,7 @@ const TYPE_NAMES: &[&str] = &[
     "artifact",
     "enchantment",
     "planeswalker",
+    "battle",
     "land",
     "nonland",
     "artifact_or_enchantment",
@@ -1544,6 +1554,7 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                 let types = match shorthand {
                     // Plurals kept as sugar for the old mass-effect / edict spellings.
                     "creatures" | "creature" => TypeSet::CREATURE,
+                    "battles" | "battle" => TypeSet::BATTLE,
                     "nonland_permanents" | "nonland" => TypeSet::NONLAND,
                     "creature_or_planeswalker" => TypeSet::CREATURE.union(TypeSet::PLANESWALKER),
                     name => type_bits(name).ok_or_else(|| {
@@ -1630,6 +1641,12 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     shares_type_with_dying_permanent: bool,
                     #[serde(default)]
                     with_counter: Option<CounterAxis>,
+                    /// Ao, the Dawn Sky mode 2: creature OR Vehicle subtype (not a card type).
+                    #[serde(default)]
+                    creature_or_vehicle: bool,
+                    /// Snow permanents (CR 205.4g).
+                    #[serde(default)]
+                    snow: bool,
                 }
 
                 let t = Table::deserialize(de::value::MapAccessDeserializer::new(map))?;
@@ -1671,6 +1688,8 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     with_flying: t.with_flying,
                     shares_type_with_dying_permanent: t.shares_type_with_dying_permanent,
                     with_counter: t.with_counter,
+                    creature_or_vehicle: t.creature_or_vehicle,
+                    snow: t.snow,
                 })
             }
         }

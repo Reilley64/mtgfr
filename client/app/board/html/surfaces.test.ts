@@ -1369,6 +1369,57 @@ test("may_yes_no aim shows docked Yes and No", () => {
   );
 });
 
+test("may_yes_no may-reveal land label surfaces from MessageRef", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        pending_choice: {
+          kind: "may_yes_no",
+          label: {
+            key: "effect.choice_may_reveal_land_from_hand",
+            params: [],
+            children: [],
+          },
+          player: 0,
+          source: 7,
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-yes-no-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-yes-no-aim")).toContainText(
+      "You may reveal a matching land card from your hand",
+    ),
+    Scene.expect(Scene.testId("prompt-yes")).toExist(),
+    Scene.expect(Scene.testId("prompt-no")).toExist(),
+  );
+});
+
+test("pay_cost with discard shows count and disabled Pay until picked", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        objects: [card(11, { zone: ZONE.Hand, name: "Fodder" })],
+        pending_choice: {
+          kind: "pay_cost",
+          can_pay: true,
+          cost: { colored: [], generic: 1 },
+          discard_count: 1,
+          discard_choices: [11],
+          label: testMessageRef("Pay 1 and discard a card"),
+          player: 0,
+          source: 1,
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-pay-cost-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-pay-discard-count")).toHaveText("0 / 1 selected"),
+    Scene.expect(Scene.testId("prompt-pay")).toBeDisabled(),
+    Scene.expect(Scene.testId("prompt-decline")).toHaveText("Don't pay"),
+  );
+});
+
 test("choose_color aim shows docked mana pips instead of center modal", () => {
   overlayScene(
     overlayModel(

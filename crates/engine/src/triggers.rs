@@ -4118,6 +4118,11 @@ impl Game {
     /// now at the land's one ETB site ([`Event::LandPlayed`]). Reuses [`Game::condition_holds`],
     /// the same intervening-if evaluator triggers use, so a land-count/subtype condition is
     /// written once and read from both places.
+    ///
+    /// Reveal lands ([`Condition::HandHasLandWithSubtype`]) always read as tapped here: the real
+    /// may-reveal choice is raised by [`Game::play_land`] and stamps `LandPlayed.tapped` from the
+    /// answer. Non-play paths (search / put-from-hand) that still call this helper therefore enter
+    /// tapped unless a future path grows the same pause.
     pub(crate) fn enters_tapped(&self, def: &CardDef, controller: PlayerId) -> bool {
         // `enters_tapped_unless_you_pay_life` (CR 614.12's pay-life-or-tapped choice) is
         // resolved by [`Game::play_land`] / its answer handler *before* this site runs — by the
@@ -4129,9 +4134,28 @@ impl Game {
             return true;
         }
         match def.enters_tapped_unless {
+            Some(Condition::HandHasLandWithSubtype { .. }) => true,
             Some(condition) => !self.condition_holds(condition, TriggerContext::of(controller)),
             None => def.enters_tapped,
         }
+    }
+
+    /// First hand card of `player` whose printed land subtypes intersect `subtypes`, if any —
+    /// the automatic pick for an accepted may-reveal (any matching card satisfies the replacement).
+    pub(crate) fn first_hand_land_with_subtype(
+        &self,
+        player: PlayerId,
+        subtypes: &[&str],
+    ) -> Option<ObjectId> {
+        self.hand_of(player)
+            .into_iter()
+            .find(|&id| match &self.def_of(id).kind {
+                CardKind::Land {
+                    subtypes: land_subtypes,
+                    ..
+                } => land_subtypes.iter().copied().any(|s| subtypes.contains(&s)),
+                _ => false,
+            })
     }
 
     /// How many lands `controller` controls whose printed subtypes intersect `subtypes`
@@ -4177,7 +4201,8 @@ impl Game {
     }
 
     /// Whether `controller`'s hand contains a card whose printed subtypes intersect `subtypes`
-    /// (the reveal lands' automatic hand scan — see [`Condition::HandHasLandWithSubtype`]).
+    /// (reveal-land match check — see [`Condition::HandHasLandWithSubtype`] /
+    /// [`PendingChoice::MayRevealLandFromHand`]).
     pub(crate) fn hand_has_land_with_subtype(
         &self,
         controller: PlayerId,
@@ -5030,6 +5055,7 @@ mod tests {
                 also: TypeSet::NONE,
             },
             legendary: false,
+            snow: false,
             uncounterable: false,
             enchant: None,
             enchant_graveyard: false,
@@ -5111,6 +5137,7 @@ mod tests {
                 speed: SpellSpeed::Instant,
             },
             legendary: false,
+            snow: false,
             uncounterable: false,
             enchant: None,
             enchant_graveyard: false,

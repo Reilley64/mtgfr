@@ -178,7 +178,8 @@ impl Game {
             CardKind::Creature { .. }
             | CardKind::Enchantment
             | CardKind::Artifact
-            | CardKind::Planeswalker { .. } => {
+            | CardKind::Planeswalker { .. }
+            | CardKind::Battle { .. } => {
                 self.resolve_permanent_enter(spell, object, events);
             }
             CardKind::Aura => {
@@ -1086,6 +1087,18 @@ impl Game {
             Effect::Damage(damage @ DamageEffect::ToEnteringPermanent { .. }) => {
                 self.resolve_deal_damage_to_entering(damage, ctx, events)
             }
+            // Animist's Awakening / Open the Way — rest bottoms in random order via
+            // `bottom_pile_in_library` (see `resolution/reveal.rs::resolve_reveal_random_bottoms`).
+            Effect::Reveal(
+                reveal @ (RevealEffect::Until {
+                    rest_dest: RestDest::Bottom,
+                    ..
+                }
+                | RevealEffect::TopCards {
+                    rest_dest: RestDest::Bottom,
+                    ..
+                }),
+            ) => self.resolve_reveal_random_bottoms(reveal, ctx, events),
             // Fabled Passage / Ajani's Chosen / Forum Filibuster / Fractal Harness / Scriv /
             // Animate Dead — see `resolution/sequence_steps.rs::run_sequence_step`.
             Effect::Zone(ZoneEffect::UntapSearchedLand)

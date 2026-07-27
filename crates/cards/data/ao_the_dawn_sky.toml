@@ -35,15 +35,9 @@ timing = "dies"
 #   total mana value 4 or less from among them onto the battlefield. Put the rest on the bottom of
 #   your library in a random order.
 # • Put two +1/+1 counters on each permanent you control that's a creature or Vehicle.
-# ponytail: "put the rest on the bottom of your library in a random order" — the bottom of the
-# library is hidden, so the order among bottomed cards is unobservable; the deterministic
-# library-order stand-in every dig in this pool uses stands in for "random" (the pure engine has
-# no rand). The per-card filter caps each at mv 4 (any card over 4 alone busts the total-4 budget),
-# and mv_budget = 4 enforces the printed "total mana value 4 or less."
-# ponytail: "creature or Vehicle" is trimmed to "creature" — no Vehicle card type exists in the pool.
 [[abilities.effects]]
 type = "choose_one"
 options = [
     { type = "dig", mode = "look_at_top", count = 7, filter = { nonland_permanent_with_mana_value_at_most = 4 }, up_to = 7, min = 0, dest = "battlefield", rest = "bottom", mv_budget = 4 },
-    { type = "counters", mode = "put_counters_each", filter = { types = "creature", controller = "you" }, count = 2 },
+    { type = "counters", mode = "put_counters_each", filter = { creature_or_vehicle = true, controller = "you" }, count = 2 },
 ]
