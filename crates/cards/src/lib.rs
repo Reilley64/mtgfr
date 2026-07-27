@@ -14,6 +14,17 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
 use engine::CardDef;
+use jsonschema::Validator;
+use serde_json::Value as JsonValue;
+
+const CARD_SCHEMA_JSON: &str = include_str!("../schema/card.schema.json");
+const TOKEN_SCHEMA_JSON: &str = include_str!("../schema/token.schema.json");
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum TomlSchemaKind {
+    Card,
+    Token,
+}
 
 struct Pool {
     /// Primary key: Scryfall oracle id ([`CardDef::id`]).
@@ -65,8 +76,52 @@ pub fn get_token(id: &str) -> Option<CardDef> {
     token_pool().by_id.get(id).cloned()
 }
 
+pub fn validate_toml_str(text: &str) -> Result<(), Vec<String>> {
+    validate_toml_str_as(TomlSchemaKind::Card, text)
+}
+
+pub fn validate_toml_str_as(kind: TomlSchemaKind, text: &str) -> Result<(), Vec<String>> {
+    let toml_value = toml::from_str::<toml::Value>(text)
+        .map_err(|err| vec![format!("TOML parse error: {err}")])?;
+    let instance = serde_json::to_value(toml_value)
+        .map_err(|err| vec![format!("TOML to JSON conversion failed: {err}")])?;
+    let validator = schema_validator(kind);
+    let errors: Vec<String> = validator
+        .iter_errors(&instance)
+        .map(|err| format!("{}: {err}", err.instance_path()))
+        .collect();
+
+    if errors.is_empty() {
+        return Ok(());
+    }
+
+    Err(errors)
+}
+
+pub fn validate_toml_path(kind: TomlSchemaKind, path: impl AsRef<Path>) -> Result<(), Vec<String>> {
+    let path = path.as_ref();
+    let text = std::fs::read_to_string(path)
+        .map_err(|err| vec![format!("{}: reading TOML failed: {err}", path.display())])?;
+
+    validate_toml_str_as(kind, &text).map_err(|errors| {
+        errors
+            .into_iter()
+            .map(|error| format!("{}: {error}", path.display()))
+            .collect()
+    })
+}
+
 fn data_dir() -> PathBuf {
     PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/data"))
+}
+
+fn schema_validator(kind: TomlSchemaKind) -> Validator {
+    let schema_text = match kind {
+        TomlSchemaKind::Card => CARD_SCHEMA_JSON,
+        TomlSchemaKind::Token => TOKEN_SCHEMA_JSON,
+    };
+    let schema = serde_json::from_str::<JsonValue>(schema_text).expect("card schema JSON parses");
+    jsonschema::validator_for(&schema).expect("card schema compiles")
 }
 
 fn load_toml_file(path: &Path) -> CardDef {

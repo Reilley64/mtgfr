@@ -147,6 +147,10 @@ cards-schema:
 cards-schema-check:
     cargo run -p cards --bin gen_card_schema -- --check
 
+[doc("Validate card TOML files against the generated JSON Schema")]
+cards-toml-validate *args:
+    cargo run -p cards --bin validate_card_toml -- {{ args }}
+
 [doc("Scan engine for likely missing CR citations (advisory)")]
 engine-cr-scan:
     python3 scripts/scan_missing_cr.py
