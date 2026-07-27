@@ -174,7 +174,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 
 - [ ] **Animate Artifact** {3}{U} · Enchantment — Aura — increment 2
 - [ ] **Animate Wall** {W} · Enchantment — Aura — increment 24
-- [ ] **Ankh of Mishra** {2} · Artifact — increment 58
+- [x] **Ankh of Mishra** {2} · Artifact — increment 58
 - [ ] **Aspect of Wolf** {1}{G} · Enchantment — Aura — increment 2, 25
 - [ ] **Balance** {1}{W} · Sorcery — increment 43
 - [ ] **Basalt Monolith** {3} · Artifact — increment 7

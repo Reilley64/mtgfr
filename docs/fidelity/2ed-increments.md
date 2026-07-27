@@ -813,7 +813,7 @@ approximated down. *Sketch:* a `duration` field on the animation effect (`end_of
 `combat_only` activation gate reusing `cast_only_during_combat`'s own window predicate.
 *Cards:* jade_statue.
 
-### 58. `damage-the-entering-permanents-controller` — 1 card, S
+### 58. `damage-the-entering-permanents-controller` — 1 card, S — **done**
 Depends on: nothing.
 Ankh of Mishra watches lands enter (`Trigger::PermanentEnters` with `EnterController::AnyPlayer`
 already covers the watch) and then damages *that land's controller*. The two damage effects that
@@ -822,6 +822,14 @@ itself, and `DamageEffect::ToTargetController` reads an enclosing `Sequence`'s s
 a trigger with no target never sets. *Sketch:* a `DamageEffect::ToEnteringPermanentController {
 amount }` reading the same `TriggerContext` slot `ToEnteringPermanent` already threads.
 *Cards:* ankh_of_mishra.
+*Landed:* the sketch held exactly. `fill_entering_permanent` (types/effect/shared.rs) is the one
+place the entering object is baked into a trigger's payload, and the new
+`DamageEffect::ToEnteringPermanentController` slots in beside `ToEnteringPermanent` there with no
+other plumbing — unlike its sibling it needs no `resolve_deal_damage_to_entering` choreography
+(that exists only for the `then_if_subtype` rider), just a plain arm in `resolution/damage.rs`.
+It reads `controller_of`, not `owner_of`, so a land stolen by a Confiscate bills the thief, which
+is what the printed word says. The test needed a stocked library for the second player: an empty
+one loses them the game in their draw step and their hand with it.
 
 ### 59. `land-put-into-graveyard-watch` — 1 card, M
 Depends on: 58 (`damage-the-entering-permanents-controller`) — Dingus Egg's payoff is the exit-side

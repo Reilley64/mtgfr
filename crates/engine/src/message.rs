@@ -155,6 +155,7 @@ message_keys! {
     EFFECT_DAMAGE_RADIANCE => "effect.damage_radiance",
     EFFECT_DAMAGE_TARGET => "effect.damage_target",
     EFFECT_DAMAGE_TO_ENTERING_PERMANENT => "effect.damage_to_entering_permanent",
+    EFFECT_DAMAGE_TO_ENTERING_PERMANENT_CONTROLLER => "effect.damage_to_entering_permanent_controller",
     EFFECT_DAMAGE_TO_SELF => "effect.damage_to_self",
     EFFECT_DAMAGE_TO_TARGET_CONTROLLER => "effect.damage_to_target_controller",
     EFFECT_DESTROY_ALL => "effect.destroy_all",
@@ -1181,6 +1182,10 @@ impl Effect {
             Effect::Damage(ToEnteringPermanent { amount, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_DAMAGE_TO_ENTERING_PERMANENT)
                     .with_params(vec![int_param("amount", amount)])
+            }
+            Effect::Damage(ToEnteringPermanentController { amount, .. }) => {
+                MessageRef::new(MessageKey::EFFECT_DAMAGE_TO_ENTERING_PERMANENT_CONTROLLER)
+                    .with_params(vec![amount_param("amount", amount)])
             }
             Effect::Draw(Cards { count }) => MessageRef::new(MessageKey::EFFECT_DRAW_CARDS)
                 .with_params(vec![amount_param("count", count)]),

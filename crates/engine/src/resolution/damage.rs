@@ -493,6 +493,27 @@ impl Game {
                 self.creature_damage_events(source, object, amount).0
             }
 
+            // Ankh of Mishra: 2 damage to the controller of the land that just entered — the
+            // player twin of `ToEnteringPermanent` above, off the same context slot. `controller_of`
+            // (not `owner_of`) is the printed word, so a land under a Confiscate bills the thief.
+            DamageEffect::ToEnteringPermanentController { entering, amount } => {
+                let object = entering.expect("the entering permanent is filled in at placement");
+                let recipient = self.controller_of(object);
+                let amount = self.resolve_amount(amount, controller, source, target, x);
+                let (mut events, amount) = self.player_damage_events(source, recipient, amount);
+                // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
+                if amount > 0 {
+                    events.push(Event::DamageDealtToPlayer {
+                        source,
+                        player: recipient,
+                        amount,
+                    });
+                    // Lifelink (CR 702.15/119.3) triggers on ANY damage the source deals.
+                    events.extend(self.lifelink_gain(source, amount));
+                }
+                events
+            }
+
             // Real damage to the ability's own controller — mirrors `DealDamage`'s
             // `Target::Player` arm, substituting `controller` for the chosen target.
             DamageEffect::ToSelf { amount } => {

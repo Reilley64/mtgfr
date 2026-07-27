@@ -1889,6 +1889,12 @@ fn serra_paragon_graveyard_play_budget_resets_next_turn() {
 
     // Roll around to player 0's next main phase.
     pass_until_next_turn(&mut game);
+    eprintln!(
+        "A step={:?} ap={:?} hand1={:?}",
+        game.current_step(),
+        game.active_player(),
+        game.hand(PlayerId(1))
+    );
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(0) && g.current_step() == Step::Main1
     });
@@ -104993,4 +104999,41 @@ fn wild_growth_adds_its_named_green_with_no_choice() {
         1,
         "plus Wild Growth's additional {{G}}, whatever the land produces"
     );
+}
+
+// Ankh of Mishra: "Whenever a land enters, this artifact deals 2 damage to that land's
+// controller." Any player's land, and the damage follows the land — not the Ankh's controller.
+
+#[test]
+fn ankh_of_mishra_damages_whoever_played_the_land() {
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Ankh of Mishra"));
+    let mine = game.spawn_in_hand(PlayerId(0), card("Forest"));
+    let theirs = game.spawn_in_hand(PlayerId(1), card("Forest"));
+    // Something to draw in their draw step, so they survive to their main phase.
+    game.stack_library(PlayerId(1), &vec![card("Plains"); 5]);
+
+    game.submit(Intent::PlayLand {
+        player: PlayerId(0),
+        object: mine,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    assert_eq!(game.life(PlayerId(0)), 18, "your own land still bills you");
+    assert_eq!(game.life(PlayerId(1)), 20, "and bills nobody else");
+
+    pass_until_next_turn(&mut game);
+    advance_until(&mut game, |g| g.current_step() == Step::Main1);
+    game.submit(Intent::PlayLand {
+        player: PlayerId(1),
+        object: theirs,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.life(PlayerId(1)),
+        18,
+        "an opponent's land bills the opponent, not the Ankh's controller"
+    );
+    assert_eq!(game.life(PlayerId(0)), 18, "who is untouched by it");
 }

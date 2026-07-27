@@ -2391,6 +2391,35 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         );
     }
 
+    /// Ankh of Mishra bills the entering land's controller, not the Ankh's — so the effect reads
+    /// the trigger's own object rather than a target or the source's controller.
+    #[test]
+    fn unlimited_ankh_of_mishra_bills_the_lands_controller() {
+        let ankh = get_by_name("Ankh of Mishra").expect("Ankh of Mishra is in the pool");
+        let ability = &ankh.abilities[0];
+        assert!(
+            matches!(
+                ability.timing,
+                Timing::Triggered(Trigger::PermanentEnters {
+                    filter: PermanentFilter {
+                        types: TypeSet::LAND,
+                        ..
+                    },
+                    controller: EnterController::AnyPlayer,
+                })
+            ),
+            "whenever a land — any player's — enters"
+        );
+        assert_eq!(
+            ability.effect,
+            Effect::Damage(DamageEffect::ToEnteringPermanentController {
+                entering: None,
+                amount: Amount::Fixed(2),
+            }),
+            "deals 2 damage to that land's controller"
+        );
+    }
+
     /// The set's two land-type sweepers name a type, not a card: an ordinary `subtypes` axis,
     /// which reaches a land's own type line through `Game::effective_subtypes`.
     #[test]

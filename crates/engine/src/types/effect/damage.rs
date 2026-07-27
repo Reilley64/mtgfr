@@ -80,6 +80,17 @@ pub enum DamageEffect {
         then: &'static [Effect],
     },
 
+    /// Ankh of Mishra's "deals 2 damage to **that land's** controller" — the player twin of
+    /// [`ToEnteringPermanent`](Self::ToEnteringPermanent), filling the same `entering` slot from
+    /// the same `PermanentEnters` trigger. Distinct from
+    /// [`ToTargetController`](Self::ToTargetController), which reads an enclosing `Sequence`'s
+    /// chosen target — a trigger that targets nothing never sets one.
+    ToEnteringPermanentController {
+        #[cfg_attr(feature = "card-dsl", serde(skip))]
+        entering: Option<ObjectId>,
+        amount: Amount,
+    },
+
     ToSelf {
         amount: Amount,
     },

@@ -868,6 +868,7 @@ impl Effect {
             | Effect::Choice(ChoiceEffect::DamagingCreatureControllerMayDraw { .. })
             | Effect::Draw(DrawEffect::EachDrawStepPlayer { .. })
             | Effect::Damage(DamageEffect::ToEnteringPermanent { .. })
+            | Effect::Damage(DamageEffect::ToEnteringPermanentController { .. })
             | Effect::Zone(ZoneEffect::ReanimateDyingEnchantedCreature { .. })
             | Effect::Zone(ZoneEffect::ExileDeadCreatureCreateCopyWithSubtype { .. })
             | Effect::Zone(ZoneEffect::ReturnThisToHand)
@@ -2211,6 +2212,12 @@ fn fill_entering_permanent(effect: Effect, entering: ObjectId) -> Effect {
             then_if_subtype,
             then,
         }),
+        Effect::Damage(DamageEffect::ToEnteringPermanentController { amount, .. }) => {
+            Effect::Damage(DamageEffect::ToEnteringPermanentController {
+                entering: Some(entering),
+                amount,
+            })
+        }
         Effect::Zone(ZoneEffect::AttachTriggeringAuraToMintedToken { .. }) => {
             Effect::Zone(ZoneEffect::AttachTriggeringAuraToMintedToken {
                 entering: Some(entering),
