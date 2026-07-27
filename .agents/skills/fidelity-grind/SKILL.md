@@ -305,10 +305,35 @@ pool that supports it. After client catch-up (the wire is settled by then):
    - **Card TOML corrupts silently too** — a stray resolution dropped a green pip from Doubling
      Season's `{4}{G}{G}`, and the only thing that caught it was an *unrelated* cost-reduction
      test. Diff `crates/cards/data/` against the merge base for cards the grind never touched.
-   - Two mechanical ones: a moved-away generated tree from the default branch's own refactor
+   - **Collided subsystem — pick the general one and delete the other outright.** Sharpest
+     case yet: while Frank-Horrigan was opening its PR, main shipped a *narrow* poison surface
+     (`Player::poison`, `Event::PlayerPoisonChanged`, `CountersEffect::EachOpponentGetsPoison` /
+     `EachOpponentLosesAllCounters`) for two cards the grind had already covered with the general
+     player-counter subsystem (`PlayerCounterKind`, `Event::PlayerCountersPlaced`,
+     `put_counters_on_player` / `remove_all_player_counters`). Both compiled side by side, and
+     *two storage paths for the same game fact is a bug that no test catches* — a counter placed
+     through one is invisible to the other. Resolve by deleting the loser end to end in one pass:
+     engine field + event + accessor + effect variants + `de.rs` parsing + `message.rs` keys +
+     schema DTO + projection + gRPC map + client `types.ts` /
+     `visibleEventKindPresence.ts` / `event-fold.ts` / i18n catalog + `rustKeys.json` +
+     `DSL_REFERENCE.md` rows. Keep the loser's *tests* — retarget their assertions to the
+     surviving accessor; they are free coverage of cards the grind never wrote.
+   - **A shipped proto field number is burned, even when you delete the field.**
+     `docs/WIRE_COMPAT.md` is expand-only, so when the merge deletes a default-branch event that
+     already released, `reserved N;` its number (at message scope, not inside the `oneof`) and
+     renumber the grind's own new fields above it. Never reuse the slot for a different type.
+   - **A conflicting PR gets no CI at all.** GitHub cannot build the merge ref, so
+     `pull_request` workflows never fire and the PR sits with an empty `statusCheckRollup` — it
+     reads as "still queueing," not "blocked." Check
+     `gh pr view N --json mergeStateStatus,mergeable` right after opening; `DIRTY` /
+     `CONFLICTING` means merge again *now*. Re-merge default immediately before opening the PR,
+     not an hour earlier.
+   - Three mechanical ones: a moved-away generated tree from the default branch's own refactor
      (`client/lib/wire/generated/` after `client/lib/` → `client/app/domain/`) stays on disk and
-     fails `just client-lint` until deleted; and `bun install` must run in the *worktree* before
-     `just client-typecheck` means anything.
+     fails `just client-lint` until deleted; `bun install` must run in the *worktree* before
+     `just client-typecheck` means anything; and commitlint caps the **PR title** at 72
+     characters — check it with `printf '%s' '<title>' | ./node_modules/.bin/commitlint` from the
+     main checkout before opening, since the worktree has no root `node_modules`.
 4. **Skill retrospective (before opening the PR):** the grind isn't done until this skill has
    absorbed what the grind taught. Review the whole run against the skill and fold every
    lesson in *before* opening the PR, so the skill improvements ride in the same squash
