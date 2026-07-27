@@ -704,6 +704,7 @@ export type VisibleState = {
     attackers_declared: boolean;
     blockers_declared: Array<number>;
     blocks: Array<WireBlock>;
+    blocked_attackers: Array<U32>;
   };
   objects: Array<ObjectView>;
   pending_choice?: null | PendingChoiceView;

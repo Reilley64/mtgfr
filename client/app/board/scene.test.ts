@@ -87,7 +87,7 @@ function state(overrides: Partial<VisibleState> = {}): VisibleState {
   return {
     active_player: 0,
     can_act: true,
-    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
     objects: [],
     pending_choice: null,
     players: [player(), player({ player: 1, username: "Bob" })],
@@ -1438,6 +1438,7 @@ test("confirm attackers submits engine-required goad attacks when local staging 
         blocks: [],
         attackers_declared: false,
         blockers_declared: [],
+        blocked_attackers: [],
       },
       actions: [
         {
@@ -1473,6 +1474,7 @@ test("pointer combat drop on opponent life orb stages an attacker", () => {
         blocks: [],
         attackers_declared: false,
         blockers_declared: [],
+        blocked_attackers: [],
       },
       actions: [
         {
@@ -1512,6 +1514,7 @@ test("clicking a staged attacker un-stages it", () => {
         blocks: [],
         attackers_declared: false,
         blockers_declared: [],
+        blocked_attackers: [],
       },
       actions: [
         {
@@ -1550,6 +1553,7 @@ test("clicking a staged blocker un-stages it", () => {
         blocks: [],
         attackers_declared: true,
         blockers_declared: [],
+        blocked_attackers: [],
       },
       actions: [
         {
@@ -1586,6 +1590,7 @@ test("clicking a required goad attacker does not un-stage it", () => {
         blocks: [],
         attackers_declared: false,
         blockers_declared: [],
+        blocked_attackers: [],
       },
       actions: [
         {

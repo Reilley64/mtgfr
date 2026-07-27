@@ -23,7 +23,7 @@ function state(): VisibleState {
   return {
     active_player: 0,
     can_act: true,
-    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
     objects: [],
     pending_choice: null,
     players: [
@@ -527,6 +527,7 @@ test("a moved block declaration stages blocks for the attacked seat, not the dec
       blocks: [],
       attackers_declared: true,
       blockers_declared: [],
+      blocked_attackers: [],
     },
     actions: [declareAction("declare_blockers", [1])],
   });

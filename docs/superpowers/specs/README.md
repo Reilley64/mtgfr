@@ -79,6 +79,7 @@ These documents are **not superseded** and must stay current alongside the specs
 | [bff-route-split](2026-07-26-bff-route-split-design.md) | Design input: Nitro one-file-per lobby/meta op, `defineHandler` + h3 web APIs, path-param join/ready/start; update shell/lobby/coverage specs at implement time |
 | [shell-polish-redesign](2026-07-26-shell-polish-redesign-design.md) | Shipped design input (#252/#259/#261/#262): shared `shellFrame`, shell type pair, atmosphere, CSS portrait→landscape rotate, per-surface reflows + Wave 4 consistency/scroll pass |
 | [lobby-entry-redesign](2026-07-27-lobby-entry-redesign-design.md) | Design input: Host/Join entry Layout C (deck + action stack), soft-inline Join, stronger shared ghost Back; update `lobby-entry-ui` at implement time |
+| [combat-arrow-blocked-retarget](2026-07-27-combat-arrow-blocked-retarget-design.md) | Design input: durable blocked attackers (CR 509.1h / trample 702.19b), post-declare red→blockers + no arrow when blockers leave; update combat / battlefield / wire specs at implement time |
 | [effect-deepening](2026-07-26-effect-deepening-design.md) | Design input: deepen Effect on client (LobbyClient, BFF gRPC Effect dispatch, Drizzle RC effect-postgres, Effect HTTP helpers); update shell/lobby/wire specs per wave |
 
 ## Authoring conventions

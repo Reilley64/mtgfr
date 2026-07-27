@@ -10,7 +10,7 @@ const baseResting = {
   viewer: 0,
   players: [],
   priority: 0,
-  combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+  combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
   stagedAttackers: [],
   stagedBlocks: [],
   hideCardIds: new Set<number>(),
