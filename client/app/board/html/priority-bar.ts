@@ -68,15 +68,21 @@ function showTurnYield(state: VisibleState): boolean {
   return state.viewer !== state.active_player;
 }
 
-export function priorityBarView(board: BoardModel, state: VisibleState, tableId: string | null): Html {
+export function priorityBarView(board: BoardModel, state: VisibleState, tableId: string | null): Html | null {
   const presentation = promptPresentation(board, state);
-  if (presentation.mode !== "none") {
-    const simpleActions = presentation.mode === "simple" ? simplePromptBarActions(board, state, tableId) : null;
+  if (presentation.mode === "modal") {
+    // Rich prompts keep answer chrome inside the centered modal; an empty bar above the
+    // backdrop would steal pointer events from the modal panel.
+    return null;
+  }
+  if (presentation.mode === "simple") {
+    const simpleActions = simplePromptBarActions(board, state, tableId);
 
     return h.div(
       [
         h.DataAttribute("testid", "priority-context-bar"),
-        h.Class("pointer-events-auto fixed right-md z-25 flex flex-col items-end gap-sm"),
+        // Above pile (z-29) and prompt-modal (z-40) backdrops so Choose / Confirm stay clickable.
+        h.Class("pointer-events-auto fixed right-md z-45 flex flex-col items-end gap-sm"),
         h.Style({ bottom: `${HAND_BAR_H + 10}px` }),
       ],
       [

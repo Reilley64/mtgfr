@@ -73,8 +73,8 @@ specs for the current module split, especially
    | 5 | Hand / stack / spell mana | HTML | Resting hand & stack; **spell/payment mana tray** (same layer as hand, above hand cards) |
    | 6 | Flights | Mount / motion | In-flight play cards and battlefield exit FX — **above** hand and stack |
    | 7 | Combat / life hit targets | HTML | Interactive orbs when needed (paint stays in layer 2; hits here) |
-   | 8 | Prompts / choice UI | HTML | `pending_choice` and related |
-   | 9 | Turn HUD | HTML | Phase track, Next / End Turn, discoverability |
+   | 8 | Prompts / choice UI | HTML | `pending_choice` and related; centered `*-modal` / pile overlays (`z-40` / `z-29`) |
+   | 9 | Turn HUD / simple prompt bar | HTML | Phase track; idle Next / End Turn (`z-25`); **simple** prompt answer chrome in `priority-context-bar` at `z-45` so it stays above prompt/pile backdrops |
    | 10 | Inspect dock | HTML | Mode `dock` + backdrop — **topmost** |
 
    **Layer rules:**
@@ -83,7 +83,7 @@ specs for the current module split, especially
    2. **Two mana surfaces:** battlefield in-play mana (layer 2) vs spell/payment mana tray on the hand layer (5).
    3. No resting permanent paint or DOM card face may sit above layer 4 while combat/spell arrows are active. Declare-drag arrows and **declared stack→target arrows** use the **same Mount arrow layer** as committed combat arrows (not the Foldkit Canvas under resting art).
    4. Flights and battlefield exit FX paint above hand/stack (layer 6 over 5).
-   5. Prompts (8) above combat/life hits (7).
+   5. Prompts (8) above combat/life hits (7). Simple-prompt primary actions live in layer 9 above prompt/pile dimmers; rich modals omit the priority bar.
    6. Inspect (10) above everything else on the board, including system modals, while pinned.
    7. Under-card name labels are forbidden on resting permanents (not a separate layer — deleted).
 

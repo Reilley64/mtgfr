@@ -617,8 +617,10 @@ export function cardPickRequiredCount(pc: PendingChoiceView): number | null {
     case "discard":
     case "put_from_hand_on_top":
     case "pay_cumulative_upkeep_or_sacrifice":
-    case "choose_exiled_to_cast_free":
     case "choose_activation_cost_targets":
+      return pc.count;
+    case "choose_exiled_to_cast_free":
+      // Display ceiling only — readiness is `picked.length <= count` (up to).
       return pc.count;
     case "choose_own_sacrifices":
       return pc.count;
@@ -647,6 +649,10 @@ export function cardPickReady(pc: PendingChoiceView, picked: number[]): boolean 
   if (pc.kind === "choose_target") {
     if (picked.length > pc.max) return false;
     return picked.length >= pc.min;
+  }
+  // Plargg / Abstract Performance: "you may cast up to N" — empty through N are legal.
+  if (pc.kind === "choose_exiled_to_cast_free") {
+    return picked.length <= pc.count;
   }
   const required = cardPickRequiredCount(pc);
   if (required != null) return picked.length === required;

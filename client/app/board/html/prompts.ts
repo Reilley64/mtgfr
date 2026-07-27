@@ -1025,7 +1025,7 @@ function cardPickConfig(pending: PendingChoiceView): {
       return { title: "Choose an exiled nonland card", submitLabel: "Choose", declineLabel };
     case "choose_exiled_to_cast_free":
       return {
-        title: `Choose ${pending.count} card${pending.count === 1 ? "" : "s"} to cast for free`,
+        title: `Choose up to ${pending.count} card${pending.count === 1 ? "" : "s"} to cast for free`,
         submitLabel: "Choose",
       };
     case "choose_copy_target":
@@ -1290,11 +1290,12 @@ function cardPickForKind(
       const oneClick = pendingExilePickOneClick(pending);
       const picked = draft.kind === "card-pick" ? draft.picked : [];
       const required = cardPickRequiredCount(pending);
+      const upTo = kind === "choose_exiled_to_cast_free";
       const countLine =
         !oneClick && required != null
           ? h.div(
               [h.DataAttribute("testid", "pending-exile-count"), h.Class("pointer-events-none text-caption text-mist")],
-              [`${picked.length} / ${required} selected`],
+              [upTo ? `${picked.length} / up to ${required} selected` : `${picked.length} / ${required} selected`],
             )
           : null;
       return h.div(
