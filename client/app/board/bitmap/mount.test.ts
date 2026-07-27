@@ -320,6 +320,34 @@ describe("paintBitmapLayer", () => {
     expect(calls.indexOf("arrow")).toBeGreaterThan(calls.indexOf("avatar"));
   });
 
+  it("does not paint an arrow for a blocked attacker with no living blocker after blockers declare", () => {
+    const calls: string[] = [];
+    vi.stubGlobal("window", { devicePixelRatio: 1 });
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => mockCtx(calls)),
+      style: {},
+    } as unknown as HTMLCanvasElement;
+
+    paintBitmapLayer(
+      canvas,
+      frame({
+        players: [player(), player({ player: 1, username: "Bob" })],
+        combat: {
+          attackers: [{ attacker: 1, defender: 1 }],
+          blocks: [],
+          attackers_declared: true,
+          blockers_declared: [1],
+          blocked_attackers: [1],
+        },
+      }),
+      { get: vi.fn(() => undefined) },
+    );
+
+    expect(calls).not.toContain("arrow");
+  });
+
   it("paints stack target arrows above resting permanents (not under card art)", () => {
     // Stack→target arrows used to live only on the Foldkit Canvas under the Mount bitmap,
     // so Island Blue arrows disappeared under permanent faces. Mount layer 4 must paint them.

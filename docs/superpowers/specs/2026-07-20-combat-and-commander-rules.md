@@ -1,6 +1,6 @@
 # Combat and Commander Rules
 
-**Status:** Current (as of 2026-07-20)
+**Status:** Current (as of 2026-07-27)
 **Module:** `crates/engine` (`src/combat.rs`, `src/apply.rs` SBA arm, `src/priority.rs` step advance, `src/state.rs` `CombatExtras`)
 
 ---
@@ -42,7 +42,7 @@ Combat state is held in `Game::combat: CombatState` (attackers, block assignment
 
 1. **BeginCombat** — no declaration required; priority is granted. Triggered abilities for "at the beginning of combat" fire here.
 2. **DeclareAttackers** — the active player submits `Intent::DeclareAttackers { attackers: Vec<(ObjectId, PlayerId)> }`. Each attacker is paired with a defending player. The engine validates the declaration (see below) and resolves attack-triggered abilities. An empty declaration (no attackers) is legal and advances normally.
-3. **DeclareBlockers** — each defending player (in APNAP order relative to the active player) submits `Intent::DeclareBlockers { blocks: Vec<(ObjectId, ObjectId)> }` pairing their blockers with attackers. Each defending player's declaration is validated in turn.
+3. **DeclareBlockers** — each defending player (in APNAP order relative to the active player) submits `Intent::DeclareBlockers { blocks: Vec<(ObjectId, ObjectId)> }` pairing their blockers with attackers. Each defending player's declaration is validated in turn. Each attacker that receives at least one declared blocker is recorded in `CombatState.blocked_attackers` for the rest of combat.
 4. **CombatDamage** — if any first-strike or double-strike creature is attacking or blocking, a first-strike sub-step runs first. Then regular damage is assigned. If a player must assign damage order among multiple blockers, `PendingChoice::AssignCombatDamage` is raised.
 5. **EndCombat** — priority is granted; end-of-combat triggered abilities fire. The `CombatState` is cleared.
 
@@ -99,7 +99,8 @@ this turn" / "…which creatures block this turn"). `CombatExtras::attack_declar
 
 - Attacking and blocking creatures deal damage simultaneously in the combat damage step (CR 510.1).
 - An **unblocked attacker** deals its power in damage to the defending player (or their planeswalker if one is the target — partially implemented: commander flag is supported; planeswalker damage-target is in progress via `target = "player_or_planeswalker"`).
-- A **blocked attacker** deals damage to its blockers; blocked creatures deal damage back to the attacker.
+- A **blocked attacker** deals damage to its living blockers; blocked creatures deal damage back to the attacker.
+- If all living blockers have left combat, `blocked_attackers` keeps the attacker blocked for CR 509.1h: non-trample deals no damage to the defending player/planeswalker, while trample deals its full power to that defender under CR 702.19b.
 - **First strike** (CR 702.7): a first-strike or double-strike creature participates in the first-strike damage sub-step. Regular creatures deal damage in the normal sub-step. Double-strike creatures participate in both.
 - **Trample** (CR 702.19): when a trample attacker is blocked, its controller may assign excess damage (beyond lethal-to-each-blocker) to the defending player. A `PendingChoice::AssignCombatDamage` is raised for the trample assignment.
 - **Deathtouch** (CR 702.2): any non-zero damage from a deathtouch source is considered lethal; when trample + deathtouch interact, 1 point per blocker is lethal, and all remaining damage goes to the defending player.
@@ -157,6 +158,7 @@ this turn" / "…which creatures block this turn"). `CombatExtras::attack_declar
 ## Implementation Decisions
 
 - **`CombatState` is separate from `Permanent` fields.** `Permanent` is `Copy`; attacker/block tracking needs mutable `Vec`s, so they live in `Game::combat`.
+- **Blocked status is durable within combat.** `Event::BlockerDeclared` records the attacker in `CombatState.blocked_attackers`; `remove_from_combat` removes dead or moved block pairs but does not unblock the attacker unless the attacker itself leaves combat.
 - **Block legality and attack legality use the same predicates for listing and validation.** `Game::can_block` is shared between `Game::meaningful_actions` (listing legal blockers) and `Game::declare_blockers` (validation at submission) so they can never disagree.
 - **Goad enforcement mirrors must-attack.** Both are constraint loops in `declare_attackers` that validate the declaration against requirements; goad's "if able" is gated on `Game::can_afford_attack_tax` (CR 508.1g). A declaration failing these is rejected with `Reject::IllegalDeclaration`.
 - **Commander damage uses object ids, not card def ids.** Because zone changes mint new object ids (CR 400.7), the commander is tracked as the current object id of the commander permanent in combat. This is consistent with how all other per-permanent effects are tracked.
@@ -169,6 +171,7 @@ this turn" / "…which creatures block this turn"). `CombatExtras::attack_declar
 
 - **Block legality tests** should construct a board with specific keyword combinations and assert `can_block` returns the correct boolean for each case.
 - **Damage assignment tests** should trace through a trample declaration with multiple blockers and verify the resulting `marked_damage` values and player life total changes.
+- **Blocked-with-no-living-blocker tests** assert non-trample deals no defender damage, trample deals full defender damage, and the durable blocked set remains projected after the blocker leaves.
 - **Goad tests** should arm a goad entry and verify that a declaration not attacking a non-goader is rejected; tax affordability gates "if able" (unaffordable tax ⇒ not forced; affordable non-goader preferred over goader).
 - **Commander damage tests** should deal 20 cumulative points from one commander, then 1 more, and assert `PlayerLost` fires.
 - **Commander redirect tests** should move a commander to the graveyard and verify `PendingChoice::CommanderRedirect` is raised, then accepting it moves the card to the command zone.
