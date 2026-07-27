@@ -251,6 +251,8 @@ export function sceneShapes(state: VisibleState, options: SceneShapesOptions = {
       avatars,
       attackers: [...(options.stagedAttackers ?? []), ...state.combat.attackers],
       blocks: [...(options.stagedBlocks ?? []), ...state.combat.blocks],
+      blockersDeclared: state.combat.blockers_declared,
+      blockedAttackers: state.combat.blocked_attackers,
     }),
     ...stackTargetArrowShapes({
       viewport: { width, height },

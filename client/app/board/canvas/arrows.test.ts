@@ -3,7 +3,7 @@ import { colors } from "~/design-tokens.generated";
 import { testMessageRef } from "~/i18n/testMessageRef";
 import { TARGET_COLOR } from "../action/targeting";
 import type { RenderCard } from "../geometry/layout";
-import { aimArrowShapes, combatDragArrowShapes, stackTargetArrowShapes } from "./arrows";
+import { aimArrowShapes, arrowShapes, combatDragArrowShapes, stackTargetArrowShapes } from "./arrows";
 
 function card(id: number, over: Partial<RenderCard> = {}): RenderCard {
   return {
@@ -164,5 +164,23 @@ describe("combatDragArrowShapes", () => {
     expect(shapes[0]._tag).toBe("Path");
     if (shapes[0]._tag !== "Path") return;
     expect(shapes[0].stroke).toBe(colors.wallGreen);
+  });
+});
+
+describe("arrowShapes", () => {
+  it("retargets blocked attackers to living blockers after blockers declare", () => {
+    const shapes = arrowShapes({
+      camera: { panX: 0, panY: 0, zoom: 1 },
+      cards: [card(10, { x: 0, y: 0 }), card(20, { x: 200, y: 0 })],
+      avatars: { 1: { x: 100, y: 40 } },
+      attackers: [{ attacker: 10, defender: 1 }],
+      blocks: [{ blocker: 20, attacker: 10 }],
+      blockersDeclared: [1],
+      blockedAttackers: [10],
+    });
+
+    expect(shapes).toHaveLength(2);
+    expect(shapes.filter((shape) => shape._tag === "Path" && shape.stroke === "#ff6b6b")).toHaveLength(1);
+    expect(shapes.filter((shape) => shape._tag === "Path" && shape.stroke === colors.wallGreen)).toHaveLength(0);
   });
 });

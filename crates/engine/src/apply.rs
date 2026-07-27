@@ -1701,7 +1701,10 @@ impl Game {
             // site.
             Event::Discarded { .. } => {}
             Event::BlockerDeclared { blocker, attacker } => {
-                self.combat.blocks.push((blocker, attacker))
+                self.combat.blocks.push((blocker, attacker));
+                if !self.combat.blocked_attackers.contains(&attacker) {
+                    self.combat.blocked_attackers.push(attacker);
+                }
             }
             Event::CombatDamageDivided {
                 attacker,
@@ -1972,6 +1975,8 @@ impl Game {
                 controller,
                 def,
             } => {
+                // CR 506.4: a token that ceases to exist is removed from combat.
+                self.remove_from_combat(token);
                 let printed = card_def(def);
                 // CR 603.6c/704.5m last-known information: capture the Aura(s) attached to this
                 // token *before* it vanishes, so `Trigger::EnchantedCreatureDies` can still find
@@ -2026,6 +2031,10 @@ impl Game {
             // `TokenCeasedToExist`) emitted alongside it at the same call site.
             Event::Sacrificed { .. } => {}
             Event::MovedToGraveyard { card, from } => {
+                // CR 506.4: a permanent that leaves the battlefield is removed from combat.
+                if matches!(&self.objects[from as usize], Object::Permanent(_)) {
+                    self.remove_from_combat(from);
+                }
                 // Feeds `Amount::PermanentsDiedThisTurn` (Ominous Harvest's Gravestorm): `from`
                 // being a live battlefield `Object::Permanent` (not a hand/exile/stack card
                 // heading to the graveyard by discard, resolution, or counter) is exactly CR
@@ -2664,5 +2673,6 @@ impl Game {
         self.combat
             .blocks
             .retain(|&(b, a)| b != object && a != object);
+        self.combat.blocked_attackers.retain(|&a| a != object);
     }
 }

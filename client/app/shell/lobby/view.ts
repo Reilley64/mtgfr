@@ -1,11 +1,10 @@
 import { Submodel } from "foldkit";
 import { type Html, html } from "foldkit/html";
 import type { DeckCardFlipTick } from "../../deck-card-nav";
-import { cn } from "../../domain/cn";
 import type { BuilderCatalogCard } from "../../domain/deck-builder/cards";
 import type { AppChromeMeta } from "../../domain/ui/app-version";
 import { buttonClass } from "../../domain/ui/buttonClass";
-import { type CardArtTick, cardArt } from "../../domain/ui/card-art";
+import type { CardArtTick } from "../../domain/ui/card-art";
 import { seatFace } from "../../domain/ui/seat-face";
 import { alertClass, fieldClass, panelClass } from "../../domain/ui/surfaces";
 import type { DeckSummary } from "../../domain/wire/types";
@@ -17,11 +16,9 @@ import { shellFrame } from "../frame/shell-frame";
 import {
   ChangedLobbyCode,
   type Message as LobbyMessage,
-  RequestedLobbyCancelJoin,
   RequestedLobbyCopy,
   RequestedLobbyHost,
   RequestedLobbyJoin,
-  RequestedLobbyOpenJoin,
   RequestedLobbyReady,
   RequestedLobbyStart,
 } from "./messages";
@@ -114,13 +111,6 @@ function deckCardAndBack(
   );
 }
 
-function joinCardClass(): string {
-  return cn(
-    "flex min-h-full flex-col gap-sm rounded-hud border border-vine border-dashed bg-glass-dim p-md text-left",
-    "hover:bg-white/8 disabled:opacity-60",
-  );
-}
-
 function selectedDeckCard(
   deck: DeckSummary | undefined,
   decksLoading: boolean,
@@ -139,167 +129,84 @@ function selectedDeckCard(
   });
 }
 
-function chooseEntry(
+function entrySurface(
   model: LobbySlice,
   deck: DeckSummary | undefined,
   decksLoading: boolean,
   knownCommanders: Readonly<Record<string, BuilderCatalogCard>>,
 ): Html {
   return h.div(
-    [h.Class("flex flex-col gap-lg")],
+    [
+      h.DataAttribute("testid", "lobby-entry"),
+      h.DataAttribute("lobby-entry-motion", "1"),
+      h.Class("grid grid-cols-[minmax(0,320px)_minmax(0,1fr)] items-center gap-xl max-w-[min(100%,720px)]"),
+    ],
     [
       h.div(
-        [
-          h.DataAttribute("testid", "lobby-entry-choose"),
-          h.DataAttribute("lobby-entry-motion", "1"),
-          h.Class("grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] gap-lg"),
-        ],
+        [h.Class("max-w-[320px]"), h.DataAttribute("testid", "lobby-deck-card")],
+        [selectedDeckCard(deck, decksLoading, knownCommanders)],
+      ),
+      h.div(
+        [h.Class("flex flex-col gap-md")],
         [
           h.div(
-            [h.Class("flex flex-col gap-md")],
+            [h.Class("flex flex-col gap-xs")],
             [
-              h.div(
-                [h.Class("max-w-[280px]"), h.DataAttribute("testid", "lobby-deck-card")],
-                [selectedDeckCard(deck, decksLoading, knownCommanders)],
-              ),
-              h.div(
-                [h.Class("flex flex-col gap-xs")],
-                [
-                  h.div([h.Class("font-display font-semibold text-title tracking-[-0.02em]")], ["Ready to play?"]),
-                  h.div([h.Class("text-label text-lichen")], ["Host a fresh Commander table with this deck."]),
-                ],
-              ),
-              h.button(
-                [
-                  h.Type("button"),
-                  h.DataAttribute("testid", "lobby-host"),
-                  h.Disabled(model.submitting),
-                  h.OnClick(RequestedLobbyHost()),
-                  h.Class(buttonClass("primary", "w-fit")),
-                ],
-                ["Host a table"],
-              ),
+              h.div([h.Class("font-display font-semibold text-title tracking-[-0.02em]")], ["Ready to play?"]),
+              h.div([h.Class("text-label text-lichen")], ["Host a fresh Commander table with this deck."]),
             ],
           ),
           h.button(
             [
               h.Type("button"),
-              h.DataAttribute("testid", "lobby-open-join"),
+              h.DataAttribute("testid", "lobby-host"),
               h.Disabled(model.submitting),
-              h.OnClick(RequestedLobbyOpenJoin()),
-              h.Class(joinCardClass()),
+              h.OnClick(RequestedLobbyHost()),
+              h.Class(buttonClass("primary", "w-fit")),
             ],
+            ["Host a table"],
+          ),
+          h.div(
+            [h.Class("flex flex-col gap-sm")],
             [
+              h.div([h.Class("text-label text-lichen")], ["Have a code?"]),
+              h.label([h.For("table-code"), h.Class("sr-only")], ["Table code"]),
               h.div(
+                [h.Class("flex flex-wrap items-center gap-sm")],
                 [
-                  h.Class(
-                    "flex aspect-[137/100] w-full items-center justify-center rounded-hud border border-dashed border-vine-dim bg-glass text-display text-lichen",
+                  h.input([
+                    h.Id("table-code"),
+                    h.DataAttribute("testid", "lobby-join-code"),
+                    h.Placeholder("Table code"),
+                    h.Value(model.code),
+                    h.OnInput((code) => ChangedLobbyCode({ code })),
+                    h.Autocomplete("off"),
+                    h.Spellcheck(false),
+                    h.Class(fieldClass("min-w-[10rem] flex-1")),
+                  ]),
+                  h.button(
+                    [
+                      h.Type("button"),
+                      h.DataAttribute("testid", "lobby-join"),
+                      h.Disabled(model.submitting),
+                      h.OnClick(RequestedLobbyJoin()),
+                      h.Class(buttonClass("ghost")),
+                    ],
+                    ["Join table"],
                   ),
                 ],
-                ["#"],
               ),
-              h.div([h.Class("font-display font-semibold text-title tracking-[-0.02em]")], ["Join a table"]),
-              h.div([h.Class("text-label text-lichen")], ["enter a code"]),
             ],
           ),
-        ],
-      ),
-      h.a(
-        [h.Href(routePath(HomeRoute())), h.DataAttribute("testid", "lobby-back"), h.Class(buttonClass("ghost"))],
-        ["Back"],
-      ),
-    ],
-  );
-}
-
-function bringingArt(
-  deck: DeckSummary | undefined,
-  knownCommanders: Readonly<Record<string, BuilderCatalogCard>>,
-): Html {
-  if (deck == null) {
-    return h.div([h.Class("size-10 bg-glass")], []);
-  }
-
-  const print = deck.commander_print ?? knownCommanders[deck.commander]?.default_print ?? "";
-  if (print === "") {
-    return h.div([h.Class("size-10 bg-glass")], []);
-  }
-
-  return cardArt(h, {
-    print,
-    size: "art_crop",
-    alt: "",
-    className: "size-10 object-cover",
-  });
-}
-
-function joinEntry(
-  model: LobbySlice,
-  deck: DeckSummary | undefined,
-  decksLoading: boolean,
-  knownCommanders: Readonly<Record<string, BuilderCatalogCard>>,
-): Html {
-  const deckName = deck?.name ?? (decksLoading ? "Loading decks…" : "Deck not found.");
-
-  return h.div(
-    [
-      h.DataAttribute("testid", "lobby-entry-join"),
-      h.DataAttribute("lobby-entry-motion", "1"),
-      h.Class("flex flex-col gap-md"),
-    ],
-    [
-      h.div(
-        [
-          h.DataAttribute("testid", "lobby-bringing"),
-          h.Class("flex items-center gap-sm border-b border-vine-dim pb-sm"),
-        ],
-        [
-          h.div([h.Class("size-10 shrink-0 overflow-hidden rounded-control")], [bringingArt(deck, knownCommanders)]),
-          h.div(
-            [h.Class("min-w-0")],
+          h.a(
             [
-              h.div([h.Class("text-label text-lichen")], ["Bringing"]),
-              h.div([h.Class("truncate font-semibold")], [deckName]),
+              h.Href(routePath(HomeRoute())),
+              h.DataAttribute("testid", "lobby-back"),
+              h.Class(buttonClass("ghost", "w-fit")),
             ],
+            ["Back"],
           ),
         ],
-      ),
-      h.div([h.Class("font-display font-semibold text-title tracking-[-0.02em]")], ["Join a table"]),
-      h.div([h.Class("text-label text-lichen")], ["Paste the code your host shared"]),
-      h.label([h.For("table-code"), h.Class("sr-only")], ["Table code"]),
-      h.input([
-        h.Id("table-code"),
-        h.DataAttribute("testid", "lobby-join-code"),
-        h.Placeholder("Table code"),
-        h.Value(model.code),
-        h.OnInput((code) => ChangedLobbyCode({ code })),
-        h.Autocomplete("off"),
-        h.Spellcheck(false),
-        h.Class(fieldClass("w-full")),
-      ]),
-      h.button(
-        [
-          h.Type("button"),
-          h.DataAttribute("testid", "lobby-join"),
-          h.Disabled(model.submitting),
-          h.OnClick(RequestedLobbyJoin()),
-          h.Class(buttonClass("primary")),
-        ],
-        ["Join table"],
-      ),
-      h.button(
-        [
-          h.Type("button"),
-          h.DataAttribute("testid", "lobby-join-cancel"),
-          h.Disabled(model.submitting),
-          h.OnClick(RequestedLobbyCancelJoin()),
-          h.Class(buttonClass("ghost")),
-        ],
-        ["Cancel"],
-      ),
-      h.a(
-        [h.Href(routePath(HomeRoute())), h.DataAttribute("testid", "lobby-back"), h.Class(buttonClass("ghost"))],
-        ["Back"],
       ),
     ],
   );
@@ -324,11 +231,7 @@ function entry(
   }
 
   const deck = decks.find((item) => item.id === model.selectedDeckId);
-  if (model.entryMode === "choose") {
-    return chooseEntry(model, deck, decksLoading, knownCommanders);
-  }
-
-  return joinEntry(model, deck, decksLoading, knownCommanders);
+  return entrySurface(model, deck, decksLoading, knownCommanders);
 }
 
 function seats(model: LobbySlice): Html {
@@ -524,6 +427,34 @@ export const view = Submodel.defineView<LobbySlice, ViewMessage, ViewInputs>((mo
       ? entry(model, decks, decksLoading, knownCommanders)
       : tableLobby(model, decks, decksLoading, knownCommanders);
 
+  const error =
+    model.error == null
+      ? null
+      : h.div(
+          [h.Role("alert"), h.DataAttribute("testid", "lobby-error"), h.Class(alertClass("text-burn-red"))],
+          [humanError(model.error)],
+        );
+
+  const stage =
+    surface === "entry"
+      ? h.div(
+          [h.Class("flex justify-center py-xxl"), h.DataAttribute("testid", "lobby")],
+          [h.div([h.Class("w-full max-w-[min(100%-2rem,720px)]")], [body, error])],
+        )
+      : h.div(
+          [h.Class("flex justify-center py-xxl")],
+          [
+            h.section(
+              [
+                h.DataAttribute("testid", "lobby"),
+                h.DataAttribute("ui", "panel"),
+                h.Class(panelClass("max-w-[min(100%-2rem,640px)]")),
+              ],
+              [body, error],
+            ),
+          ],
+        );
+
   return shellFrame(h, {
     atmosphere: "shell",
     title: "Lobby",
@@ -534,26 +465,6 @@ export const view = Submodel.defineView<LobbySlice, ViewMessage, ViewInputs>((mo
       menuOpen: accountMenuOpen,
       showLeaderboardLink: true,
     }),
-    stage: h.div(
-      [h.Class("flex justify-center py-xxl")],
-      [
-        h.section(
-          [
-            h.DataAttribute("testid", "lobby"),
-            h.DataAttribute("ui", "panel"),
-            h.Class(panelClass("max-w-[min(100%-2rem,640px)]")),
-          ],
-          [
-            body,
-            model.error == null
-              ? null
-              : h.div(
-                  [h.Role("alert"), h.DataAttribute("testid", "lobby-error"), h.Class(alertClass("text-burn-red"))],
-                  [humanError(model.error)],
-                ),
-          ],
-        ),
-      ],
-    ),
+    stage,
   });
 });

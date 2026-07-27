@@ -531,6 +531,9 @@ pub struct CombatView {
     pub attackers_declared: bool,
     /// Seats that have already confirmed their block declaration this combat (including empty).
     pub blockers_declared: Vec<u8>,
+    /// Attackers that became blocked this combat (CR 509.1h), including after blockers leave.
+    #[serde(default)]
+    pub blocked_attackers: Vec<ObjectId>,
 }
 
 /// A summary of the decision the engine is blocked on, if any. A discriminated union so each

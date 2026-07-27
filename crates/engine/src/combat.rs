@@ -881,7 +881,13 @@ impl Game {
             if self.deals_this_batch(attacker, first_strike_batch) {
                 match (blockers.is_empty(), defender) {
                     (true, Some(defender)) => {
-                        self.damage_defender(attacker, defender, self.power(attacker), events)
+                        let was_blocked = self.combat.blocked_attackers.contains(&attacker);
+                        if was_blocked && !self.has_keyword(attacker, Keyword::Trample) {
+                            // CR 509.1h — remains blocked; no damage to player/PW.
+                        } else {
+                            // Unblocked, or blocked trample with no living blockers (CR 702.19b).
+                            self.damage_defender(attacker, defender, self.power(attacker), events)
+                        }
                     }
                     (true, None) => {}
                     (false, _) => {

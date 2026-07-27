@@ -102,7 +102,7 @@ import {
   primaryActionFor,
   resolveClick,
 } from "./geometry/interaction";
-import { avatarPos, CARD_H, CARD_W, layout, type RenderCard, ZONE } from "./geometry/layout";
+import { avatarPos, CARD_H, CARD_W, landRowCenter, layout, type RenderCard, ZONE } from "./geometry/layout";
 import { type RadialPress, radialPressDown, radialPressUp } from "./geometry/radial";
 import {
   STACK_HOLD_MAX_MS,
@@ -370,8 +370,7 @@ function syncStackChrome(model: BoardModel, fold: BoardFold): BoardModel {
   const stackHoldPeak = holdMs > 0 ? Math.min(STACK_HOLD_MAX_MS, Math.max(model.stackHoldPeak, holdMs)) : 0;
 
   const showStaged =
-    (model.staged != null && stagedPickTargets(model.staged, state) === null) ||
-    pendingStackGhost(state) != null;
+    (model.staged != null && stagedPickTargets(model.staged, state) === null) || pendingStackGhost(state) != null;
   const visualCount = state.stack.length + (showStaged ? 1 : 0);
   const peek = stackPeekFor(visualCount, model.viewport.height, STACK_VERTICAL_RESERVED);
   const stackExpand = shouldAutoCollapseStackExpand({
@@ -618,6 +617,14 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
 
     const existing = flights.get(permanent);
     if (existing != null) {
+      const target = cardTarget(model.camera, card);
+      const aim = { x: target.x, y: target.y, scale: 1 };
+      // Provisional land-row seed already on the real slot — show the permanent without a second glide.
+      if (existing.hold && existing.phase === "settled" && poseAtTarget(existing, aim)) {
+        flights.delete(permanent);
+        handHidden.delete(from);
+        continue;
+      }
       flights.set(permanent, retargetFlightToCard({ ...existing, kind: "battlefield", fromCardId: from }, model, card));
       handHidden.add(from);
       continue;
@@ -652,8 +659,13 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
 
     const existing = flights.get(spell);
     if (existing != null) {
-      // Seed already parked on the resting face — hand off to HTML now. Retargeting to "flying"
-      // would play a one-frame settle pulse (lift shadow) before the face appears.
+      // Parked local seeds already finished their glide — hand off to HTML even if the authoritative
+      // face is a few px off (pile recenter). A correction retarget reads as a second animation.
+      if (existing.hold && existing.phase === "settled") {
+        flights.delete(spell);
+        if (meta.from != null) handHidden.delete(meta.from);
+        continue;
+      }
       if (poseAtTarget(existing, aim)) {
         flights.delete(spell);
         if (meta.from != null) handHidden.delete(meta.from);
@@ -1333,6 +1345,19 @@ function ensureXPrompt(
   };
 }
 
+/** Provisional battlefield aim: seat lands-row center so land seeds keep moving until authority. */
+function provisionalLandAim(
+  model: BoardModel,
+  fold: BoardFold,
+  controller: number,
+): { x: number; y: number; scale: number } {
+  const playerCount = Math.max(1, fold.state?.players.length ?? 1);
+  const viewer = fold.state?.viewer ?? 0;
+  const world = landRowCenter(controller, viewer, playerCount);
+  const screen = worldToScreen(model.camera, world.x, world.y);
+  return { x: screen.x, y: screen.y, scale: 1 };
+}
+
 /** Solid `spawnFromHand` / `seedDrop`: hide the bar tile immediately and fly from the drop point. */
 function seedDropFromHand(
   model: BoardModel,
@@ -1340,16 +1365,17 @@ function seedDropFromHand(
   screenOrigin: Vec,
   kind: "battlefield" | "stack",
   stackCount = 0,
+  fold: BoardFold | null = null,
 ): BoardModel {
   const flights = new Map(model.flights);
   const handHidden = new Set(model.handHidden);
   const startScale = handFlightScale(model.camera.zoom);
-  const stackAim =
+  const aim =
     kind === "stack"
       ? stackFlightAim(model, { count: Math.max(1, stackCount + 1), row: stackCount })
-      : // Battlefield: park at the drop at hand scale until landPlayFrom aims the slot — avoid a
-        // shrink-in-place "landing" followed by a second glide to the permanent.
-        { x: screenOrigin.x, y: screenOrigin.y, scale: startScale };
+      : fold != null
+        ? provisionalLandAim(model, fold, card.controller)
+        : { x: screenOrigin.x, y: screenOrigin.y, scale: 1 };
   flights.set(
     card.id,
     spawnFlight({
@@ -1359,9 +1385,9 @@ function seedDropFromHand(
       x: screenOrigin.x,
       y: screenOrigin.y,
       scale: startScale,
-      targetX: stackAim.x,
-      targetY: stackAim.y,
-      targetScale: stackAim.scale,
+      targetX: aim.x,
+      targetY: aim.y,
+      targetScale: aim.scale,
       kind,
       fromCardId: card.id,
       hold: true,
@@ -1410,7 +1436,7 @@ function runAction(
     return [{ ...model, reject: humanReason(plan.reason) }, []];
   }
   if (plan.kind === "stage") {
-    const seeded = seedDropFromHand(model, plan.card, screenOrigin, "stack", fold.state?.stack.length ?? 0);
+    const seeded = seedDropFromHand(model, plan.card, screenOrigin, "stack", fold.state?.stack.length ?? 0, fold);
     return [
       {
         ...seeded,
@@ -1427,12 +1453,12 @@ function runAction(
     ];
   }
   if (plan.kind === "play-land") {
-    const seeded = card != null ? seedDropFromHand(model, card, screenOrigin, "battlefield") : model;
+    const seeded = card != null ? seedDropFromHand(model, card, screenOrigin, "battlefield", 0, fold) : model;
     return [seeded, boardIntentSubmit(tableId, takeAction(fold, action, null, 0, [], plan.picks))];
   }
   if (plan.kind === "cast") {
     const seeded =
-      card != null ? seedDropFromHand(model, card, screenOrigin, "stack", fold.state?.stack.length ?? 0) : model;
+      card != null ? seedDropFromHand(model, card, screenOrigin, "stack", fold.state?.stack.length ?? 0, fold) : model;
     const xPrompt = ensureXPrompt(fold, plan.action, null, [], plan.picks);
     if (xPrompt != null) return [{ ...seeded, xPrompt }, []];
     return [seeded, boardIntentSubmit(tableId, takeAction(fold, plan.action, null, 0, [], plan.picks))];

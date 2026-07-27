@@ -6,7 +6,7 @@ const VARIANTS = {
   primary:
     "rounded-control border-none bg-llanowar px-lg py-sm text-button text-snow-mint transition-colors duration-150 ease-state disabled:opacity-50",
   ghost:
-    "rounded-control border border-vine bg-transparent px-lg py-sm text-button text-mist transition-colors duration-150 ease-state disabled:opacity-50",
+    "rounded-control border border-vine bg-transparent px-lg py-sm text-button text-snow-mint transition-colors duration-150 ease-state disabled:opacity-50",
   danger:
     "rounded-control border border-burn-red bg-transparent px-lg py-sm text-button text-burn-red transition-colors duration-150 ease-state disabled:opacity-50",
   link: "border-none bg-transparent p-0 font-[inherit] text-vine underline",

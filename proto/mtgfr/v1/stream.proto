@@ -222,6 +222,8 @@ message CombatView {
   bool attackers_declared = 3;
   // Seats that have already confirmed their block declaration this combat (including empty).
   repeated uint32 blockers_declared = 4;
+  // Attackers that became blocked this combat (CR 509.1h), including after blockers leave.
+  repeated uint32 blocked_attackers = 5;
 }
 
 // A summary of the decision the engine is blocked on, if any.

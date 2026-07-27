@@ -175,7 +175,7 @@ function frame(overrides: Partial<BitmapFrame> = {}): BitmapFrame {
     viewer: 0,
     players: [player()],
     priority: 0,
-    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
     stagedAttackers: [],
     stagedBlocks: [],
     flights: [],
@@ -232,7 +232,7 @@ describe("paintBitmapLayer", () => {
         viewer: 0,
         players: [player()],
         priority: 0,
-        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
         stagedAttackers: [],
         stagedBlocks: [],
         flights: [],
@@ -295,6 +295,7 @@ describe("paintBitmapLayer", () => {
           blocks: [],
           attackers_declared: true,
           blockers_declared: [],
+          blocked_attackers: [],
         },
         stagedAttackers: [],
         stagedBlocks: [],
@@ -317,6 +318,34 @@ describe("paintBitmapLayer", () => {
     expect(calls.indexOf("image:resting")).toBeGreaterThan(calls.indexOf("clear"));
     expect(calls.indexOf("avatar")).toBeGreaterThan(calls.indexOf("image:resting"));
     expect(calls.indexOf("arrow")).toBeGreaterThan(calls.indexOf("avatar"));
+  });
+
+  it("does not paint an arrow for a blocked attacker with no living blocker after blockers declare", () => {
+    const calls: string[] = [];
+    vi.stubGlobal("window", { devicePixelRatio: 1 });
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => mockCtx(calls)),
+      style: {},
+    } as unknown as HTMLCanvasElement;
+
+    paintBitmapLayer(
+      canvas,
+      frame({
+        players: [player(), player({ player: 1, username: "Bob" })],
+        combat: {
+          attackers: [{ attacker: 1, defender: 1 }],
+          blocks: [],
+          attackers_declared: true,
+          blockers_declared: [1],
+          blocked_attackers: [1],
+        },
+      }),
+      { get: vi.fn(() => undefined) },
+    );
+
+    expect(calls).not.toContain("arrow");
   });
 
   it("paints stack target arrows above resting permanents (not under card art)", () => {
@@ -353,6 +382,7 @@ describe("paintBitmapLayer", () => {
           blocks: [],
           attackers_declared: false,
           blockers_declared: [],
+          blocked_attackers: [],
         },
         stagedAttackers: [],
         stagedBlocks: [],
@@ -415,7 +445,7 @@ describe("paintBitmapLayer", () => {
           player({ player: 1, username: "Bob" }),
         ],
         priority: 0,
-        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
         stagedAttackers: [],
         stagedBlocks: [],
         flights: [],
@@ -497,7 +527,7 @@ describe("paintBitmapLayer", () => {
         viewer: 0,
         players: [player({ gravatar_hash: hash })],
         priority: 0,
-        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
         stagedAttackers: [],
         stagedBlocks: [],
         flights: [],
@@ -571,7 +601,7 @@ describe("paintBitmapLayer", () => {
         players: [player(), player({ player: 1, username: "Bob" })],
         priority: 0,
         // Nothing committed yet — the arrow only exists in staging.
-        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
         stagedAttackers: [{ attacker: 1, defender: 1 }],
         stagedBlocks: [],
         flights: [],
@@ -615,7 +645,7 @@ describe("paintBitmapLayer", () => {
         viewer: 0,
         players: [player()],
         priority: 0,
-        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
         stagedAttackers: [],
         stagedBlocks: [],
         flights: [],
@@ -661,7 +691,7 @@ describe("paintBitmapLayer", () => {
         viewer: 0,
         players: [player()],
         priority: 0,
-        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
         stagedAttackers: [],
         stagedBlocks: [],
         flights: [],
@@ -704,7 +734,7 @@ describe("paintBitmapLayer", () => {
       viewer: 0,
       players: [player()],
       priority: 0,
-      combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+      combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
       stagedAttackers: [],
       stagedBlocks: [],
       flights: [],
@@ -747,7 +777,7 @@ describe("paintBitmapLayer", () => {
       viewer: 0,
       players: [player()],
       priority: 0,
-      combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+      combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
       stagedAttackers: [],
       stagedBlocks: [],
       flights: [],
@@ -792,7 +822,7 @@ describe("paintBitmapLayer", () => {
         viewer: 0,
         players: [player()],
         priority: 0,
-        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
         stagedAttackers: [],
         stagedBlocks: [],
         flights: [],
@@ -837,7 +867,7 @@ describe("paintBitmapLayer", () => {
         viewer: 0,
         players: [player()],
         priority: 0,
-        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
         stagedAttackers: [],
         stagedBlocks: [],
         flights: [],
@@ -883,7 +913,7 @@ describe("paintBitmapLayer", () => {
         viewer: 0,
         players: [player(), player({ player: 1, username: "Bob" })],
         priority: 0,
-        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
         stagedAttackers: [],
         stagedBlocks: [],
         flights: [],
@@ -927,7 +957,7 @@ describe("paintBitmapLayer", () => {
         viewer: 0,
         players: [player()],
         priority: 0,
-        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
         stagedAttackers: [],
         stagedBlocks: [],
         flights: [
@@ -986,7 +1016,7 @@ describe("paintFlightLayer", () => {
         viewer: 0,
         players: [player()],
         priority: 0,
-        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
         stagedAttackers: [],
         stagedBlocks: [],
         flights: [

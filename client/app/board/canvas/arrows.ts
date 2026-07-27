@@ -7,6 +7,7 @@ import type { RenderCard } from "../geometry/layout";
 import { STACK_PEEK, type StackPresentation, stackFaceScreenOrigin } from "../geometry/stackLayout";
 import { stackEntryTargets } from "../geometry/stackTargets";
 import type { AvatarScreenPositions } from "./avatars";
+import { combatArrowEndpoints } from "./combatArrowEndpoints";
 
 type Shape = Canvas.Shape;
 
@@ -142,23 +143,13 @@ export function arrowShapes(input: {
   avatars: AvatarScreenPositions;
   attackers: ReadonlyArray<WireAttack>;
   blocks: ReadonlyArray<WireBlock>;
+  blockersDeclared: ReadonlyArray<number>;
+  blockedAttackers: ReadonlyArray<number>;
 }): Shape[] {
-  const byId = new Map(input.cards.map((card) => [card.id, card]));
   const shapes: Shape[] = [];
-
-  for (const attack of input.attackers) {
-    const from = byId.get(attack.attacker);
-    const to = input.avatars[attack.defender];
-    if (from == null || to == null) continue;
-    shapes.push(...arrowPath(cardCenter(input.camera, from), to, ATTACK_STROKE));
+  for (const endpoint of combatArrowEndpoints(input)) {
+    const stroke = endpoint.kind === "block" ? BLOCK_STROKE : ATTACK_STROKE;
+    shapes.push(...arrowPath(endpoint.from, endpoint.to, stroke));
   }
-
-  for (const block of input.blocks) {
-    const from = byId.get(block.blocker);
-    const to = byId.get(block.attacker);
-    if (from == null || to == null) continue;
-    shapes.push(...arrowPath(cardCenter(input.camera, from), cardCenter(input.camera, to), BLOCK_STROKE));
-  }
-
   return shapes;
 }

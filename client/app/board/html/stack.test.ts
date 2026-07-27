@@ -44,7 +44,7 @@ function gameState(over: Partial<VisibleState> = {}): VisibleState {
   return {
     active_player: 0,
     can_act: true,
-    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
     objects: [],
     pending_choice: null,
     players: [player(), { ...player(), player: 1, username: "Bob" }],
@@ -541,6 +541,75 @@ test("pending choose_target shows source card art on the stack while aiming (Inn
           player: 0,
           source: talent.id,
           items: [{ id: bear.id, label: "Grizzly Bear", print: "bear-print" }],
+        },
+      }),
+    ),
+    tableId: "T1",
+  };
+  Scene.scene(
+    { update: (m) => [m, []], view: overlayView },
+    Scene.with(model),
+    resolveBoardOverlayMounts(),
+    resolveBoardCardArtMounts(),
+    Scene.expect(Scene.testId("stack-overlay")).toExist(),
+    Scene.expect(Scene.testId("stack-face-0")).toExist(),
+    Scene.expect(Scene.testId("stack-staged-hint")).toContainText("Choose a target"),
+    Scene.expect(Scene.selector("[data-art-url]")).toExist(),
+  );
+});
+
+test("pending proliferate shows source card art on the stack after the ability left", () => {
+  // Abilities leave the stack before effects run (CR 608). Contagion Engine / Cankerbloom / etc.
+  // pause on proliferate with an empty stack — ghost the permanent's art at the aim origin.
+  const engine: ObjectView = {
+    controller: 0,
+    has_haste: false,
+    id: 0,
+    is_commander: false,
+    kind: { kind: "artifact" },
+    mana_cost: { generic: 6, colored: [0, 0, 0, 0, 0] },
+    marked_damage: 0,
+    name: "Contagion Engine",
+    needs_target: false,
+    owner: 0,
+    plus_counters: 0,
+    power: 0,
+    print: "contagion-engine-print",
+    summoning_sick: false,
+    tapped: true,
+    toughness: 0,
+    zone: ZONE.Battlefield,
+  };
+  const infected: ObjectView = {
+    controller: 1,
+    has_haste: false,
+    id: 1,
+    is_commander: false,
+    kind: { kind: "creature", power: 2, toughness: 2 },
+    mana_cost: { generic: 1, colored: [0, 0, 0, 0, 1] },
+    marked_damage: 0,
+    name: "Infected Bear",
+    needs_target: false,
+    owner: 1,
+    plus_counters: 1,
+    power: 2,
+    print: "bear-print",
+    summoning_sick: false,
+    tapped: false,
+    toughness: 2,
+    zone: ZONE.Battlefield,
+  };
+  const model: ViewModel = {
+    board: initialBoardModel(),
+    fold: gameFold(
+      gameState({
+        objects: [engine, infected],
+        stack: [],
+        pending_choice: {
+          kind: "proliferate",
+          player: 0,
+          source: engine.id,
+          items: [{ id: infected.id, label: "Infected Bear", print: "bear-print" }],
         },
       }),
     ),

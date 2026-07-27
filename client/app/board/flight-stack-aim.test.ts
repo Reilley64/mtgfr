@@ -26,7 +26,7 @@ function state(overrides: Partial<VisibleState> = {}): VisibleState {
   return {
     active_player: 0,
     can_act: true,
-    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
     objects: [],
     pending_choice: null,
     players: [player(), player({ player: 1, username: "Bob" })],
@@ -332,7 +332,7 @@ describe("stack flight settle handoff", () => {
     expect(afterGame.flights.size).toBe(0);
   });
 
-  it("parks a battlefield seed at drop scale so land sync is the only glide", () => {
+  it("aims a battlefield land seed at the lands row so it keeps moving until sync", () => {
     const handId = 9;
     const land: ObjectView = {
       ...spell(handId, "Forest"),
@@ -360,8 +360,57 @@ describe("stack flight settle handoff", () => {
     expect(flight?.hold).toBe(true);
     expect(flight?.kind).toBe("battlefield");
     expect(flight?.scale).toBe(handFlightScale(afterPlay.camera.zoom));
-    expect(flight?.targetScale).toBe(flight?.scale);
-    expect(flight?.targetX).toBe(500);
-    expect(flight?.targetY).toBe(400);
+    expect(flight?.targetScale).toBe(1);
+    // Must leave the drop point — parking there froze the card until landPlayFrom.
+    expect(flight?.targetX).not.toBe(500);
+    expect(flight?.targetY).not.toBe(400);
+  });
+
+  it("hands off a parked stack seed without a correction glide when the face shifted slightly", () => {
+    const handId = 7;
+    const spellId = 42;
+    const bolt = spell(spellId, "Lightning Bolt");
+    const board0 = { ...initialBoardModel(), viewport: { ...BOARD_VIEWPORT }, cameraFitPlayers: 2 };
+    const face = restingStackFace(board0, 1, 0);
+    // Park slightly off the authoritative face (pile-recenter style drift).
+    const parked = {
+      ...spawnFlight({
+        id: handId,
+        print: bolt.print ?? "",
+        name: bolt.name,
+        x: face.x,
+        y: face.y + 17,
+        scale: stackFlightScale(board0.camera.zoom),
+        targetX: face.x,
+        targetY: face.y + 17,
+        targetScale: stackFlightScale(board0.camera.zoom),
+        kind: "stack",
+        fromCardId: handId,
+        hold: true,
+      }),
+      phase: "settled" as const,
+    };
+
+    const afterGame = syncBoardWithGame(
+      {
+        ...board0,
+        flights: new Map([[handId, parked]]),
+        handHidden: new Set([handId]),
+        hideCardIds: new Set([handId]),
+        ownedIds: new Set([handId]),
+      },
+      gameFold(
+        state({
+          objects: [bolt],
+          stack: [{ controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId }],
+        }),
+        {
+          stackEntrances: new Map([[spellId, { from: handId, controller: 0 }]]),
+        },
+      ),
+    );
+
+    expect(afterGame.flights.size).toBe(0);
+    expect(afterGame.hideCardIds.size).toBe(0);
   });
 });

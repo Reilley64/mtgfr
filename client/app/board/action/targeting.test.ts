@@ -8,6 +8,7 @@ import {
   digCastNeedsHost,
   gyExileCostObjectIds,
   gyExileCostPile,
+  pendingAimStackCount,
   pendingDamageAssignBlockers,
   pendingDamageAssignOverlay,
   pendingDigCastHostMode,
@@ -20,6 +21,7 @@ import {
   pendingHandPickOneClick,
   pendingPlayerAimOneClick,
   pendingPlayerAimOverlay,
+  pendingStackGhost,
   pendingTargetingOverlay,
   pendingTargetOneClick,
   pickedPlayersFromDraft,
@@ -62,7 +64,7 @@ function state(objects: ObjectView[]): VisibleState {
   return {
     active_player: 0,
     can_act: true,
-    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
     objects,
     players: [
       {
@@ -304,6 +306,59 @@ describe("pendingTargetingOverlay", () => {
     };
     const overlay = pendingTargetingOverlay(game.pending_choice, game, { width: 1440, height: 900 }, 1);
     expect(overlay.aimFrom).toEqual(stackAimOrigin(1440, 900, 1));
+  });
+
+  it("ghosts the ability source for mid-resolution proliferate after the ability left the stack", () => {
+    // Abilities leave the stack before their effects run (CR 608) — proliferate pauses with an
+    // empty stack and source = the permanent. Aim still uses the stack origin, so ghost the art.
+    const engine = object({ id: 3, name: "Contagion Engine", print: "engine-print", kind: { kind: "artifact" } });
+    const infected = object({ id: 7, plus_counters: 1 });
+    const game = state([engine, infected]);
+    game.pending_choice = {
+      kind: "proliferate",
+      player: 0,
+      source: 3,
+      items: [{ id: 7, label: "Infected" }],
+    };
+    expect(pendingStackGhost(game)?.id).toBe(3);
+    expect(pendingAimStackCount(game, 0)).toBe(1);
+    const overlay = pendingTargetingOverlay(game.pending_choice, game, { width: 1440, height: 900 }, 0);
+    expect(overlay.aimFrom).toEqual(stackAimOrigin(1440, 900, 1));
+  });
+
+  it("ghosts mid-resolution onboard card-picks that share the proliferate empty-stack shape", () => {
+    const guardian = object({ id: 5, name: "Guardian of Faith", print: "guardian-print" });
+    const ally = object({ id: 8 });
+    const game = state([guardian, ally]);
+    game.pending_choice = {
+      kind: "phase_out",
+      player: 0,
+      source: 5,
+      items: [{ id: 8, label: "Ally" }],
+    };
+    expect(pendingStackGhost(game)?.print).toBe("guardian-print");
+  });
+
+  it("does not ghost proliferate when the resolving spell is still on the stack", () => {
+    // Instants/sorceries stay on the stack until finish (resume.spell_finish) — no duplicate face.
+    const atomize = object({
+      id: 42,
+      zone: ZONE.Stack,
+      name: "Atomize",
+      print: "atomize-print",
+      kind: { kind: "instant" },
+    });
+    const infected = object({ id: 7, plus_counters: 1 });
+    const game = state([atomize, infected]);
+    game.stack = [{ controller: 0, kind: "spell", label: testMessageRef("Atomize"), source: 42 }];
+    game.pending_choice = {
+      kind: "proliferate",
+      player: 0,
+      source: 42,
+      items: [{ id: 7, label: "Infected" }],
+    };
+    expect(pendingStackGhost(game)).toBeNull();
+    expect(pendingAimStackCount(game, 1)).toBe(1);
   });
 
   it("aims for multi-target choose_target when all items are on the battlefield", () => {
@@ -1039,15 +1094,13 @@ describe("pickedPlayersFromDraft", () => {
 
   // Proliferate stores seats on card-pick.players — without this, avatar clicks look dead.
   it("paints proliferate card-pick seats while aiming", () => {
-    expect([
-      ...pickedPlayersFromDraft(true, { kind: "card-pick", picked: [7], filter: "", players: [1] }),
-    ]).toEqual([1]);
+    expect([...pickedPlayersFromDraft(true, { kind: "card-pick", picked: [7], filter: "", players: [1] })]).toEqual([
+      1,
+    ]);
   });
 
   it("stays empty when not aiming or when no seats are picked", () => {
-    expect([...pickedPlayersFromDraft(false, { kind: "card-pick", picked: [], filter: "", players: [1] })]).toEqual(
-      [],
-    );
+    expect([...pickedPlayersFromDraft(false, { kind: "card-pick", picked: [], filter: "", players: [1] })]).toEqual([]);
     expect([...pickedPlayersFromDraft(true, { kind: "card-pick", picked: [7], filter: "" })]).toEqual([]);
   });
 });

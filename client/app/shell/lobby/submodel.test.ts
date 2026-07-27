@@ -6,7 +6,6 @@ test("informRouteChanged resets join entry state when the play deck changes", ()
   const model = {
     ...initialLobbySlice(),
     selectedDeckId: 7,
-    entryMode: "join" as const,
     code: "ABC123",
     error: "UnknownTable",
   };
@@ -14,9 +13,9 @@ test("informRouteChanged resets join entry state when the play deck changes", ()
   const [next, commands] = informRouteChanged(model, { tableId: null, selectedDeckId: 9 });
 
   expect(next.selectedDeckId).toBe(9);
-  expect(next.entryMode).toBe("choose");
   expect(next.code).toBe("");
   expect(next.error).toBeNull();
+  expect(next).not.toHaveProperty("entryMode");
   expect(commands).toEqual([]);
 });
 
@@ -48,7 +47,6 @@ test("informRouteChanged clears a stale selected deck when a table route carries
     ...initialLobbySlice(),
     tableId: "ABC123",
     selectedDeckId: 7,
-    entryMode: "join" as const,
     code: "ABC123",
     started: true,
     copied: true,

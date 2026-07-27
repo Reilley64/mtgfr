@@ -4,13 +4,7 @@ import { client as lobbyHttpClient } from "../../domain/lobby/client";
 import { LobbyNotFound } from "../../domain/lobby/errors";
 import * as tableAudio from "../../domain/tableAudio";
 import { LobbyClient } from "../../resources";
-import {
-  LobbyRequestFailed,
-  RequestedLobbyCancelJoin,
-  RequestedLobbyHost,
-  RequestedLobbyOpenJoin,
-  RequestedLobbyReady,
-} from "./messages";
+import { ChangedLobbyRoute, LobbyRequestFailed, RequestedLobbyHost, RequestedLobbyReady } from "./messages";
 import { initialLobbySlice } from "./submodel";
 import { CreateLobbyTable, JoinLobbyTable, ReadyLobby, update } from "./update";
 
@@ -48,33 +42,29 @@ describe("RequestedLobbyHost deck selection", () => {
   });
 });
 
-describe("lobby entryMode", () => {
-  it("defaults to choose", () => {
-    expect(initialLobbySlice().entryMode).toBe("choose");
+describe("lobby entry slice", () => {
+  it("initial slice has no entryMode field", () => {
+    expect(initialLobbySlice()).not.toHaveProperty("entryMode");
+    expect(initialLobbySlice().code).toBe("");
   });
 
-  it("open join switches to join mode without submitting", () => {
-    const [next, commands] = update(initialLobbySlice(), RequestedLobbyOpenJoin(), []);
-    expect(next.entryMode).toBe("join");
-    expect(commands).toHaveLength(0);
-  });
-
-  it("cancel join returns to choose and clears code + error", () => {
+  it("route reset clears code without entryMode", () => {
     const model = {
       ...initialLobbySlice(),
-      entryMode: "join" as const,
+      selectedDeckId: 7,
       code: "ABC123",
-      error: "UnknownTable",
+      error: "UnknownTable" as string | null,
     };
-    const [next, commands] = update(model, RequestedLobbyCancelJoin(), []);
-    expect(next.entryMode).toBe("choose");
+    const [next, commands] = update(model, ChangedLobbyRoute({ tableId: null, selectedDeckId: 9 }), []);
+    expect(next.selectedDeckId).toBe(9);
     expect(next.code).toBe("");
     expect(next.error).toBeNull();
-    expect(commands).toHaveLength(0);
+    expect(next).not.toHaveProperty("entryMode");
+    expect(commands).toEqual([]);
   });
 
   it("host still creates a table when a deck is selected", () => {
-    const model = { ...initialLobbySlice(), selectedDeckId: 7, entryMode: "choose" as const };
+    const model = { ...initialLobbySlice(), selectedDeckId: 7 };
     const [next, commands] = update(model, RequestedLobbyHost(), [7]);
     expect(next.submitting).toBe(true);
     expect(commands).toHaveLength(1);
