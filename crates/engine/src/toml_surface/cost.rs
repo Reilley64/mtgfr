@@ -64,12 +64,10 @@ pub struct CostToml {
     /// symbol (`phyrexian = ["black"]` for one `{B/P}`, Vraska, Betrayal's Sting's cost).
     pub phyrexian: Vec<Color>,
     /// `[cost.additional]` — an additional cost paid alongside mana (CR 601.2f).
-    #[cfg_attr(feature = "card-schema", schemars(with = "serde_json::Value"))]
     pub additional: AdditionalCost,
     /// A spell's own board-derived generic reduction (Blasphemous Act's "costs {1} less
     /// ... for each creature on the battlefield"), e.g.
     /// `reduce_own_generic = "per_creature_on_battlefield"`.
-    #[cfg_attr(feature = "card-schema", schemars(with = "Option<serde_json::Value>"))]
     pub reduce_own_generic: Option<Amount>,
 }
 

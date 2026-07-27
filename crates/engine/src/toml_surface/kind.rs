@@ -15,7 +15,6 @@ pub enum KindToml {
         /// Additional card types (Artifact Creature, Enchantment Creature) — a list of
         /// type names. Empty for a plain creature.
         #[serde(default)]
-        #[cfg_attr(feature = "card-schema", schemars(with = "serde_json::Value"))]
         also: TypeSet,
     },
     Instant,
@@ -33,7 +32,6 @@ pub enum KindToml {
         /// Optional sugar for a free "{T}: Add one mana" base tap; omitted for a
         /// fetch-only land or a land whose mana is all explicit `add_mana` abilities.
         #[serde(default)]
-        #[cfg_attr(feature = "card-schema", schemars(with = "Option<serde_json::Value>"))]
         produces: Option<LandProduces>,
         /// Printed land types (CR 305 — "Forest", "Island", …). Empty for a land with
         /// none (a check land, an untyped scry land).

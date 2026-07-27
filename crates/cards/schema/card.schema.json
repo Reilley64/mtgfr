@@ -171,6 +171,106 @@
       ],
       "type": "object"
     },
+    "AdditionalCost": {
+      "$ref": "#/$defs/AdditionalCostTableSchema"
+    },
+    "AdditionalCostTableSchema": {
+      "additionalProperties": false,
+      "description": "The TOML shape accepted by [`crate::de`]'s [`AdditionalCost`] visitor.",
+      "properties": {
+        "buyback": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CostToml"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "discard": {
+          "format": "uint8",
+          "minimum": 0.0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "discard_land": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "kicker": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CostToml"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "multikicker": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CostToml"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "pay_life": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PayLifeAdditionalCostTomlSchema"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "replicate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CostToml"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reveal_creature_from_hand": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "sacrifice": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SacrificeAdditionalCostTomlSchema"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "strive": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CostToml"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "type": "object"
+    },
     "AlternativeCostTomlSchema": {
       "additionalProperties": false,
       "description": "The author-facing shape of a [`crate::AlternativeCost`] — an optional [`Condition`] gate plus a `rider` effect. The runtime type leaks its `rider` to `&'static Effect`, so its schema is mirrored here to reference the shared [`EffectTomlSchema`] surface instead.",
@@ -1913,6 +2013,11 @@
       "description": "A `[cost]` table spells each color by name (`white = 1`) rather than as the [`Cost::colored`] WUBRG array; every field is optional.",
       "properties": {
         "additional": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/AdditionalCost"
+            }
+          ],
           "description": "`[cost.additional]` — an additional cost paid alongside mana (CR 601.2f)."
         },
         "black": {
@@ -1977,6 +2082,14 @@
           "type": "integer"
         },
         "reduce_own_generic": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Amount"
+            },
+            {
+              "type": "null"
+            }
+          ],
           "description": "A spell's own board-derived generic reduction (Blasphemous Act's \"costs {1} less ... for each creature on the battlefield\"), e.g. `reduce_own_generic = \"per_creature_on_battlefield\"`."
         },
         "white": {
@@ -2569,6 +2682,11 @@
         {
           "properties": {
             "also": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/TypeSet"
+                }
+              ],
               "description": "Additional card types (Artifact Creature, Enchantment Creature) — a list of type names. Empty for a plain creature."
             },
             "power": {
@@ -2709,6 +2827,14 @@
               "type": "boolean"
             },
             "produces": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/LandProduces"
+                },
+                {
+                  "type": "null"
+                }
+              ],
               "description": "Optional sugar for a free \"{T}: Add one mana\" base tap; omitted for a fetch-only land or a land whose mana is all explicit `add_mana` abilities."
             },
             "subtypes": {
@@ -2733,6 +2859,39 @@
         }
       ]
     },
+    "LandProduces": {
+      "oneOf": [
+        {
+          "enum": [
+            "white",
+            "blue",
+            "black",
+            "red",
+            "green",
+            "colorless",
+            "any",
+            "commander_identity",
+            "opponent_colors"
+          ],
+          "type": "string"
+        },
+        {
+          "items": {
+            "enum": [
+              "white",
+              "blue",
+              "black",
+              "red",
+              "green"
+            ],
+            "type": "string"
+          },
+          "maxItems": 4,
+          "minItems": 2,
+          "type": "array"
+        }
+      ]
+    },
     "Parity": {
       "description": "Power parity gate for a [`PermanentFilter`] (Zimone's Hypothesis's \"return each creature with power of the chosen quality\" — CR: zero counts as even).",
       "enum": [
@@ -2740,6 +2899,24 @@
         "odd"
       ],
       "type": "string"
+    },
+    "PayLifeAdditionalCostMarker": {
+      "enum": [
+        "x"
+      ],
+      "type": "string"
+    },
+    "PayLifeAdditionalCostTomlSchema": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PayLifeAdditionalCostMarker"
+        },
+        {
+          "format": "uint8",
+          "minimum": 0.0,
+          "type": "integer"
+        }
+      ]
     },
     "PermanentFilter": {
       "oneOf": [
@@ -3030,6 +3207,46 @@
         "multicolored"
       ],
       "type": "string"
+    },
+    "SacrificeAdditionalCostCountMarker": {
+      "enum": [
+        "one_or_more"
+      ],
+      "type": "string"
+    },
+    "SacrificeAdditionalCostCountTomlSchema": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SacrificeAdditionalCostCountMarker"
+        },
+        {
+          "format": "uint8",
+          "minimum": 1.0,
+          "type": "integer"
+        }
+      ]
+    },
+    "SacrificeAdditionalCostTomlSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "$ref": "#/$defs/SacrificeAdditionalCostCountTomlSchema"
+        },
+        "filter": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PermanentFilter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "count"
+      ],
+      "type": "object"
     },
     "SacrificeCost": {
       "oneOf": [

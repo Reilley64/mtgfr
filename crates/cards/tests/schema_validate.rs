@@ -138,3 +138,77 @@ bogus = true
     let errors = cards::validate_toml_str(card).expect_err("unknown enter_as_copy key must fail");
     assert!(errors.join("\n").contains("/enter_as_copy"), "{errors:?}");
 }
+
+#[test]
+fn rejects_untyped_non_effect_schema_escape_fields() {
+    let cases = [
+        (
+            "cost.additional.pay_life",
+            r#"
+name = "Bad Additional Cost"
+id = "00000000-0000-0000-0000-000000000009"
+default_print = "00000000-0000-0000-0000-000000000010"
+
+[cost.additional]
+pay_life = "not_x"
+
+[kind]
+type = "instant"
+"#,
+            "/cost/additional/pay_life",
+        ),
+        (
+            "cost.reduce_own_generic",
+            r#"
+name = "Bad Own Reducer"
+id = "00000000-0000-0000-0000-000000000011"
+default_print = "00000000-0000-0000-0000-000000000012"
+
+[cost]
+reduce_own_generic = "not_an_amount"
+
+[kind]
+type = "instant"
+"#,
+            "/cost/reduce_own_generic",
+        ),
+        (
+            "kind.also",
+            r#"
+name = "Bad Also"
+id = "00000000-0000-0000-0000-000000000013"
+default_print = "00000000-0000-0000-0000-000000000014"
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+also = 7
+"#,
+            "/kind",
+        ),
+        (
+            "kind.produces",
+            r#"
+name = "Bad Produces"
+id = "00000000-0000-0000-0000-000000000015"
+default_print = "00000000-0000-0000-0000-000000000016"
+
+[kind]
+type = "land"
+produces = "not_mana"
+"#,
+            "/kind",
+        ),
+    ];
+
+    for (name, card, pointer) in cases {
+        let Err(errors) = cards::validate_toml_str(card) else {
+            panic!("{name} must fail schema");
+        };
+        assert!(
+            errors.join("\n").contains(pointer),
+            "{name} errors did not include {pointer}: {errors:?}"
+        );
+    }
+}

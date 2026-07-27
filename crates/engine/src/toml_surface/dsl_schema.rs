@@ -11,13 +11,14 @@ use schemars::JsonSchema;
 use schemars::r#gen::SchemaGenerator;
 use schemars::schema::{InstanceType, Schema, SchemaObject, SingleOrVec};
 use serde_json::Value as JsonValue;
+use std::num::NonZeroU8;
 
 use crate::de::{PERMANENT_FILTER_SHORTHANDS, SACRIFICE_COST_SHORTHANDS, TYPE_NAMES};
 use crate::toml_surface::CostToml;
 use crate::{
-    Amount, AmountZone, Color, ColorFilter, Condition, Cost, CounterAxis, CounterKind,
-    FilterController, Parity, PermanentFilter, ProtectionScope, SacrificeCost, TokenFilter,
-    TypeSet,
+    AdditionalCost, Amount, AmountZone, Color, ColorFilter, Condition, Cost, CounterAxis,
+    CounterKind, FilterController, LandProduces, Parity, PermanentFilter, ProtectionScope,
+    SacrificeCost, TokenFilter, TypeSet,
 };
 
 // ── schema-building helpers ─────────────────────────────────────────────────────────
@@ -41,6 +42,20 @@ fn array_of(items: Schema) -> Schema {
         ..Default::default()
     };
     object.array().items = Some(SingleOrVec::Single(Box::new(items)));
+    Schema::Object(object)
+}
+
+fn color_choice_array() -> Schema {
+    let mut object = SchemaObject {
+        instance_type: Some(InstanceType::Array.into()),
+        ..Default::default()
+    };
+    let array = object.array();
+    array.items = Some(SingleOrVec::Single(Box::new(string_enum(&[
+        "white", "blue", "black", "red", "green",
+    ]))));
+    array.min_items = Some(2);
+    array.max_items = Some(4);
     Schema::Object(object)
 }
 
@@ -71,6 +86,31 @@ impl JsonSchema for TypeSet {
         one_of(vec![
             string_enum(TYPE_NAMES),
             array_of(string_enum(TYPE_NAMES)),
+        ])
+    }
+}
+
+// ── LandProduces: mana symbol sugar or computed land-producer keywords ───────────────
+
+impl JsonSchema for LandProduces {
+    fn schema_name() -> String {
+        "LandProduces".to_owned()
+    }
+
+    fn json_schema(_gen: &mut SchemaGenerator) -> Schema {
+        one_of(vec![
+            string_enum(&[
+                "white",
+                "blue",
+                "black",
+                "red",
+                "green",
+                "colorless",
+                "any",
+                "commander_identity",
+                "opponent_colors",
+            ]),
+            color_choice_array(),
         ])
     }
 }
@@ -109,6 +149,75 @@ impl JsonSchema for Cost {
     fn json_schema(generator: &mut SchemaGenerator) -> Schema {
         generator.subschema_for::<CostToml>()
     }
+}
+
+// ── AdditionalCost: the closed `[cost.additional]` rider table ───────────────────────
+
+impl JsonSchema for AdditionalCost {
+    fn schema_name() -> String {
+        "AdditionalCost".to_owned()
+    }
+
+    fn json_schema(generator: &mut SchemaGenerator) -> Schema {
+        generator.subschema_for::<AdditionalCostTableSchema>()
+    }
+}
+
+/// The TOML shape accepted by [`crate::de`]'s [`AdditionalCost`] visitor.
+#[allow(dead_code)]
+#[derive(JsonSchema)]
+#[schemars(deny_unknown_fields)]
+struct AdditionalCostTableSchema {
+    discard: Option<u8>,
+    discard_land: Option<bool>,
+    reveal_creature_from_hand: Option<bool>,
+    pay_life: Option<PayLifeAdditionalCostTomlSchema>,
+    sacrifice: Option<SacrificeAdditionalCostTomlSchema>,
+    kicker: Option<CostToml>,
+    buyback: Option<CostToml>,
+    strive: Option<CostToml>,
+    replicate: Option<CostToml>,
+    multikicker: Option<CostToml>,
+}
+
+#[allow(dead_code)]
+#[derive(JsonSchema)]
+#[schemars(untagged)]
+enum PayLifeAdditionalCostTomlSchema {
+    Marker(PayLifeAdditionalCostMarkerSchema),
+    Fixed(u8),
+}
+
+#[derive(JsonSchema)]
+#[schemars(rename = "PayLifeAdditionalCostMarker")]
+#[allow(dead_code)]
+enum PayLifeAdditionalCostMarkerSchema {
+    #[schemars(rename = "x")]
+    X,
+}
+
+#[allow(dead_code)]
+#[derive(JsonSchema)]
+#[schemars(deny_unknown_fields)]
+struct SacrificeAdditionalCostTomlSchema {
+    count: SacrificeAdditionalCostCountTomlSchema,
+    filter: Option<PermanentFilter>,
+}
+
+#[allow(dead_code)]
+#[derive(JsonSchema)]
+#[schemars(untagged)]
+enum SacrificeAdditionalCostCountTomlSchema {
+    Marker(SacrificeAdditionalCostCountMarkerSchema),
+    Fixed(NonZeroU8),
+}
+
+#[derive(JsonSchema)]
+#[schemars(rename = "SacrificeAdditionalCostCountMarker")]
+#[allow(dead_code)]
+enum SacrificeAdditionalCostCountMarkerSchema {
+    #[schemars(rename = "one_or_more")]
+    OneOrMore,
 }
 
 // ── Amount: an integer, a derived-value keyword, or a table ──────────────────────────

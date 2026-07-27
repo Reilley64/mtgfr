@@ -82,7 +82,7 @@ A `[cost]` table spells each color by name (`white = 1`) rather than as the [`Co
 
 | Field | Type | Required | Default | Description |
 |---|---|---:|---|---|
-| `additional` | any | no | - | `[cost.additional]` — an additional cost paid alongside mana (CR 601.2f). |
+| `additional` | AdditionalCost | no | - | `[cost.additional]` — an additional cost paid alongside mana (CR 601.2f). |
 | `black` | integer | no | `0` | Black mana pips (`{B}`). |
 | `blue` | integer | no | `0` | Blue mana pips (`{U}`). |
 | `colorless` | integer | no | `0` | Colorless mana pips (`{C}`), payable only by colorless mana. This is not a color. |
@@ -91,7 +91,7 @@ A `[cost]` table spells each color by name (`white = 1`) rather than as the [`Co
 | `hybrid` | array<array<Color>> | no | - | Hybrid mana pips (CR 107.4e — `{a/b}`): a list of two-color arrays, one per hybrid symbol (`hybrid = [["black", "green"]]` for one `{B/G}`). |
 | `phyrexian` | array<Color> | no | - | Phyrexian mana pips (CR 107.4f — `{a/P}`): a list of colors, one per Phyrexian symbol (`phyrexian = ["black"]` for one `{B/P}`, Vraska, Betrayal's Sting's cost). |
 | `red` | integer | no | `0` | Red mana pips (`{R}`). |
-| `reduce_own_generic` | any | no | - | A spell's own board-derived generic reduction (Blasphemous Act's "costs {1} less ... for each creature on the battlefield"), e.g. `reduce_own_generic = "per_creature_on_battlefield"`. |
+| `reduce_own_generic` | Amount \| null | no | - | A spell's own board-derived generic reduction (Blasphemous Act's "costs {1} less ... for each creature on the battlefield"), e.g. `reduce_own_generic = "per_creature_on_battlefield"`. |
 | `white` | integer | no | `0` | White mana pips (`{W}`). |
 | `x` | XPips | no | - | `{X}` pips. `true` means one `{X}`; an integer gives the count of `{X}` symbols. |
 
