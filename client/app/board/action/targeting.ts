@@ -10,7 +10,7 @@
 
 import type { PromptDraft } from "~/choice";
 import { colors } from "~/design-tokens.generated";
-import type { ActionView, PendingChoiceView, VisibleState, WireTarget } from "~/wire/types";
+import type { ActionView, ObjectView, PendingChoiceView, VisibleState, WireTarget } from "~/wire/types";
 import { formatMessage } from "../../domain/i18n/message";
 import { ZONE } from "../geometry/layout";
 import type { StagedAction } from "./execution";
@@ -189,6 +189,37 @@ export function pendingTargetOneClick(pc: PendingChoiceView): boolean {
   return false;
 }
 
+/**
+ * Source permanent/spell to ghost on the stack while answering `choose_target`, when that source
+ * is not already a stack entry.
+ *
+ * Ability placement (Innkeeper's Talent begin-combat, etc.) pauses on ChooseTarget *before* the
+ * ability is pushed (`Placement::Paused`) — the arrow aims at the stack, so the source card's art
+ * must appear there the same way a local staged cast does. Spells that choose targets after they
+ * are already on the stack must not duplicate the existing face.
+ */
+export function pendingStackGhost(
+  state: VisibleState,
+  pc: PendingChoiceView | null | undefined = state.pending_choice,
+): ObjectView | null {
+  if (pc == null || pc.kind !== "choose_target") return null;
+  if (state.stack.some((entry) => entry.source === pc.source)) return null;
+  return state.objects.find((o) => o.id === pc.source) ?? null;
+}
+
+/** How many faces the pile should count for aim origin while a pending board aim is live. */
+export function pendingAimStackCount(
+  state: VisibleState,
+  stackLen: number,
+  pc: PendingChoiceView | null | undefined = state.pending_choice,
+): number {
+  if (pendingStackGhost(state, pc) != null) return stackLen + 1;
+  if (pc?.kind === "choose_target" && state.stack.some((entry) => entry.source === pc.source)) {
+    return Math.max(1, stackLen);
+  }
+  return stackLen + 1;
+}
+
 /** Aim overlay for on-board pending targets; idle when the modal picker should ask. */
 export function pendingTargetingOverlay(
   pc: PendingChoiceView | null | undefined,
@@ -210,7 +241,7 @@ export function pendingTargetingOverlay(
     aiming: true,
     targetObjects: mode.objects,
     targetPlayers: mode.players,
-    aimFrom: stackAimOrigin(viewport.width, viewport.height, stackLen + 1),
+    aimFrom: stackAimOrigin(viewport.width, viewport.height, pendingAimStackCount(state, stackLen, pc)),
   };
 }
 

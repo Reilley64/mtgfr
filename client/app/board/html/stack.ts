@@ -10,7 +10,7 @@ import { buttonClass } from "~/ui/buttonClass";
 import { cardArt } from "~/ui/card-art";
 import type { VisibleState } from "~/wire/types";
 import { formatMessage } from "../../domain/i18n/message";
-import { aimingObjectIds, stagedPickTargets } from "../action/targeting";
+import { aimingObjectIds, pendingStackGhost, stagedPickTargets } from "../action/targeting";
 import {
   STACK_CARD_W,
   STACK_HORIZONTAL_MARGIN,
@@ -64,7 +64,7 @@ function objectMeta(state: VisibleState, source: number): { print: string; name:
   return { print: obj?.print ?? "", name: obj?.name ?? null, cardId: obj?.card_id };
 }
 
-function stackItems(board: BoardModel, state: VisibleState, showStaged: boolean): StackItem[] {
+function stackItems(board: BoardModel, state: VisibleState, showGhost: boolean): StackItem[] {
   const items: StackItem[] = state.stack.map((entry, row) => {
     const meta = objectMeta(state, entry.source);
     const label = formatMessage(entry.label);
@@ -83,7 +83,10 @@ function stackItems(board: BoardModel, state: VisibleState, showStaged: boolean)
       staged: false,
     };
   });
-  if (showStaged && board.staged != null) {
+  if (!showGhost) return items;
+
+  // Local staged cast/activate wins over a pending ghost (both should not be live together).
+  if (board.staged != null && stagedPickTargets(board.staged, state) === null) {
     const card = board.staged.card;
     items.push({
       row: state.stack.length,
@@ -92,6 +95,20 @@ function stackItems(board: BoardModel, state: VisibleState, showStaged: boolean)
       print: card.print ?? "",
       cardId: card.card_id,
       label: card.name,
+      staged: true,
+    });
+    return items;
+  }
+
+  const pending = pendingStackGhost(state);
+  if (pending != null) {
+    items.push({
+      row: state.stack.length,
+      source: pending.id,
+      imageName: pending.name,
+      print: pending.print ?? "",
+      cardId: pending.card_id,
+      label: pending.name,
       staged: true,
     });
   }
@@ -404,8 +421,14 @@ function shouldEmitDwell(_board: BoardModel, state: VisibleState): boolean {
   return state.can_act && state.priority === state.viewer;
 }
 
+/** Local staged aim or pending choose_target source that needs a stack ghost. */
+function showStackGhost(board: BoardModel, state: VisibleState): boolean {
+  if (board.staged != null && stagedPickTargets(board.staged, state) === null) return true;
+  return pendingStackGhost(state) != null;
+}
+
 export function stackView(board: BoardModel, state: VisibleState): Html | null {
-  const showStaged = board.staged != null && stagedPickTargets(board.staged, state) === null;
+  const showStaged = showStackGhost(board, state);
   const items = stackItems(board, state, showStaged);
   if (items.length === 0) return null;
 

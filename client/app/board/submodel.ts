@@ -76,6 +76,7 @@ import {
   pendingPilePickPile,
   pendingPlayerAimOneClick,
   pendingPlayerAimSeats,
+  pendingStackGhost,
   pendingTargetOneClick,
   sacrificeCostObjectIds,
   stagedPickTargets,
@@ -363,7 +364,9 @@ function syncStackChrome(model: BoardModel, fold: BoardFold): BoardModel {
   const holdMs = state.stack_hold_remaining_ms ?? 0;
   const stackHoldPeak = holdMs > 0 ? Math.min(STACK_HOLD_MAX_MS, Math.max(model.stackHoldPeak, holdMs)) : 0;
 
-  const showStaged = model.staged != null && stagedPickTargets(model.staged, state) === null;
+  const showStaged =
+    (model.staged != null && stagedPickTargets(model.staged, state) === null) ||
+    pendingStackGhost(state) != null;
   const visualCount = state.stack.length + (showStaged ? 1 : 0);
   const peek = stackPeekFor(visualCount, model.viewport.height, STACK_VERTICAL_RESERVED);
   const stackExpand = shouldAutoCollapseStackExpand({

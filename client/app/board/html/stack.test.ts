@@ -485,6 +485,159 @@ test("stack overlay hidden when stack is empty and nothing is staged", () => {
   );
 });
 
+test("pending choose_target shows source card art on the stack while aiming (Innkeeper's Talent)", () => {
+  // Trigger placement pauses on ChooseTarget before the ability is pushed (Placement::Paused).
+  // Arrow aim uses the stack origin — the source permanent's art must ghost there, same as a
+  // staged cast. Innkeeper's Talent's begin-combat +1/+1 is the reproducing case.
+  const talent: ObjectView = {
+    controller: 0,
+    has_haste: false,
+    id: 0,
+    is_commander: false,
+    kind: { kind: "enchantment" },
+    mana_cost: { generic: 1, colored: [0, 0, 0, 0, 1] },
+    marked_damage: 0,
+    name: "Innkeeper's Talent",
+    needs_target: false,
+    owner: 0,
+    plus_counters: 0,
+    power: 0,
+    print: "innkeepers-talent-print",
+    summoning_sick: false,
+    tapped: false,
+    toughness: 0,
+    zone: ZONE.Battlefield,
+  };
+  const bear: ObjectView = {
+    controller: 0,
+    has_haste: false,
+    id: 1,
+    is_commander: false,
+    kind: { kind: "creature", power: 2, toughness: 2 },
+    mana_cost: { generic: 1, colored: [0, 0, 0, 0, 1] },
+    marked_damage: 0,
+    name: "Grizzly Bear",
+    needs_target: false,
+    owner: 0,
+    plus_counters: 0,
+    power: 2,
+    print: "bear-print",
+    summoning_sick: false,
+    tapped: false,
+    toughness: 2,
+    zone: ZONE.Battlefield,
+  };
+  const model: ViewModel = {
+    board: initialBoardModel(),
+    fold: gameFold(
+      gameState({
+        objects: [talent, bear],
+        stack: [],
+        pending_choice: {
+          kind: "choose_target",
+          label: testMessageRef("Put a +1/+1 counter on target creature you control"),
+          min: 1,
+          max: 1,
+          player: 0,
+          source: talent.id,
+          items: [{ id: bear.id, label: "Grizzly Bear", print: "bear-print" }],
+        },
+      }),
+    ),
+    tableId: "T1",
+  };
+  Scene.scene(
+    { update: (m) => [m, []], view: overlayView },
+    Scene.with(model),
+    resolveBoardOverlayMounts(),
+    resolveBoardCardArtMounts(),
+    Scene.expect(Scene.testId("stack-overlay")).toExist(),
+    Scene.expect(Scene.testId("stack-face-0")).toExist(),
+    Scene.expect(Scene.testId("stack-staged-hint")).toContainText("Choose a target"),
+    Scene.expect(Scene.selector("[data-art-url]")).toExist(),
+  );
+});
+
+test("pending choose_target does not duplicate a spell already on the stack", () => {
+  // Post-cast spell targeting: the spell is already a stack entry — ghost must not double it.
+  const bolt: ObjectView = {
+    controller: 0,
+    has_haste: false,
+    id: 42,
+    is_commander: false,
+    kind: { kind: "instant" },
+    mana_cost: { generic: 1, colored: [0, 0, 0, 0, 0] },
+    marked_damage: 0,
+    name: "Lightning Bolt",
+    needs_target: false,
+    owner: 0,
+    plus_counters: 0,
+    power: 0,
+    print: "bolt-print",
+    summoning_sick: false,
+    tapped: false,
+    toughness: 0,
+    zone: ZONE.Stack,
+  };
+  const bear: ObjectView = {
+    controller: 1,
+    has_haste: false,
+    id: 7,
+    is_commander: false,
+    kind: { kind: "creature", power: 2, toughness: 2 },
+    mana_cost: { generic: 1, colored: [0, 0, 0, 0, 1] },
+    marked_damage: 0,
+    name: "Bear",
+    needs_target: false,
+    owner: 1,
+    plus_counters: 0,
+    power: 2,
+    print: "bear-print",
+    summoning_sick: false,
+    tapped: false,
+    toughness: 2,
+    zone: ZONE.Battlefield,
+  };
+  const model: ViewModel = {
+    board: initialBoardModel(),
+    fold: gameFold(
+      gameState({
+        objects: [bolt, bear],
+        stack: [
+          {
+            controller: 0,
+            kind: "spell",
+            label: testMessageRef("Lightning Bolt"),
+            source: bolt.id,
+            print: "bolt-print",
+            name: "Lightning Bolt",
+          },
+        ],
+        pending_choice: {
+          kind: "choose_target",
+          label: testMessageRef("Lightning Bolt"),
+          min: 1,
+          max: 1,
+          player: 0,
+          source: bolt.id,
+          items: [{ id: bear.id, label: "Bear", print: "bear-print" }],
+        },
+      }),
+    ),
+    tableId: "T1",
+  };
+  Scene.scene(
+    { update: (m) => [m, []], view: overlayView },
+    Scene.with(model),
+    resolveBoardOverlayMounts(),
+    resolveBoardCardArtMounts(),
+    Scene.expect(Scene.testId("stack-overlay")).toExist(),
+    Scene.expect(Scene.testId("stack-face-0")).toExist(),
+    Scene.expect(Scene.testId("stack-face-1")).toBeAbsent(),
+    Scene.expect(Scene.testId("stack-staged-hint")).toBeAbsent(),
+  );
+});
+
 test("expand button appears for a tall stack and opens strip view", () => {
   const objects: ObjectView[] = [];
   const stack: VisibleState["stack"] = [];
