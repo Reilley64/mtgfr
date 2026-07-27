@@ -778,6 +778,37 @@ test("modal mode picker renders before modes are chosen", () => {
   );
 });
 
+test("modal mode picker exposes aria-pressed for selected multi-mode rows", () => {
+  const modalCast: ModalCast = {
+    action: action(13, {
+      label: testMessageRef("Cryptic Command"),
+      modal: {
+        choose: 2,
+        choose_max: 2,
+        modes: [
+          { label: testMessageRef("Counter target spell"), needs_target: false, targets: [] },
+          { label: testMessageRef("Draw a card"), needs_target: false, targets: [] },
+        ],
+      },
+    }),
+    modes: [
+      { label: testMessageRef("Counter target spell"), needs_target: false, targets: [] },
+      { label: testMessageRef("Draw a card"), needs_target: false, targets: [] },
+    ],
+    picks: emptyCostPicks(),
+    chosen: null,
+    answers: [],
+    modeDraft: [1],
+  };
+  overlayScene(
+    overlayModel({ ...initialBoardModel(), modalCast }),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="modal-mode-1"]')).toHaveAttr(
+      "aria-pressed",
+      "true",
+    ),
+  );
+});
+
 test("playModePick shows docked play-mode-aim with one button per mode", () => {
   const valleyRannet = card(42, { name: "Valley Rannet" });
   const playModePick: PlayModePick = {

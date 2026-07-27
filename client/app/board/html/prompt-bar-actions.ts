@@ -50,12 +50,20 @@ function barStack(actions: ReadonlyArray<Html>): Html {
   return h.div([h.Class("flex max-w-[min(100vw-2rem,24rem)] flex-col items-end gap-sm")], actions);
 }
 
-function barButton(testId: string, label: string, onClick: Message, primary: boolean, disabled = false): Html {
+function barButton(
+  testId: string,
+  label: string,
+  onClick: Message,
+  primary: boolean,
+  disabled = false,
+  pressed: boolean | null = null,
+): Html {
   return h.button(
     [
       h.Type("button"),
       h.DataAttribute("testid", testId),
       h.Disabled(disabled),
+      ...(pressed == null ? [] : [h.AriaPressed(pressed ? "true" : "false")]),
       h.OnClick(onClick),
       h.Class(gameButtonClass(primary ? "game" : "game-quiet", primary ? priorityPrimaryClass(true) : null)),
     ],
@@ -223,12 +231,14 @@ function modalModeBarActions(mc: NonNullable<BoardModel["modalCast"]>): Html | n
   const modeButtons = mc.modes.map((mode, index) => {
     const available = modeAvailable(mode);
     if (multi) {
+      const selected = picked.includes(index);
       return barButton(
         `modal-mode-${index}`,
         `${messageText(mode.label)}${available ? "" : " (no legal target)"}`,
         ModalModeToggled({ index }),
-        picked.includes(index),
+        selected,
         !available,
+        selected,
       );
     }
 
