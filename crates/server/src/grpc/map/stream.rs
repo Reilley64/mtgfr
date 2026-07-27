@@ -55,6 +55,7 @@ pub fn combat_view_to_pb(combat: CombatView) -> pb::CombatView {
             .into_iter()
             .map(u32::from)
             .collect(),
+        blocked_attackers: combat.blocked_attackers,
     }
 }
 
