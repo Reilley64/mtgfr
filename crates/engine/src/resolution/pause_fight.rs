@@ -22,6 +22,7 @@ impl Game {
             // (CR 601.2c — no damage, no pause) rather than picking an illegal target.
             Effect::Misc(MiscEffect::Fight {
                 ally_is_shared_target: false,
+                one_way,
                 ..
             }) => {
                 let legal = self.legal_targets_for(
@@ -42,6 +43,7 @@ impl Game {
                         effect: Effect::Misc(MiscEffect::Fight {
                             enemy: target,
                             ally_is_shared_target: false,
+                            one_way,
                         }),
                         legal,
                         count: TargetCount::default(),
@@ -82,9 +84,15 @@ impl Game {
                     pending::ChoiceRequest::ChooseTarget {
                         player: controller,
                         source,
+                        // `one_way: false` is deliberate, not a dropped field: this shape hands
+                        // the *enemy* to `Game::fight`'s `a` slot and the ally to `b`, so a
+                        // one-way half would point the wrong way. No card pairs
+                        // `ally_is_shared_target` with `one_way` — swap the slots here first if
+                        // one ever does.
                         effect: Effect::Misc(MiscEffect::Fight {
                             enemy: Some(Target::Object(ally)),
                             ally_is_shared_target: false,
+                            one_way: false,
                         }),
                         legal,
                         count: TargetCount {

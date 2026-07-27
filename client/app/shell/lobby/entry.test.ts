@@ -31,7 +31,10 @@ const url = (pathname: string, search = "") => ({
 function toParentLobbyMessage(message: LobbyViewMessage): Message {
   switch (message._tag) {
     case "CardArtTick":
+    case "ClosedAccountMenu":
     case "DeckCardFlipTick":
+    case "GotAuthMessage":
+    case "ToggledAccountMenu":
       return message;
     default:
       return GotLobbyMessage({ message });
@@ -63,7 +66,8 @@ function card(overrides: Partial<CatalogCard> = {}): CatalogCard {
     legendary: false,
     name: "Card",
     otags: [],
-    set: "tst",
+    set: "",
+    sets: ["tst"],
     subtypes: [],
     summary: [],
     ...overrides,
@@ -108,6 +112,9 @@ const lobbyAppView = (model: Model) =>
         coverageHref: "/coverage",
       },
       surface: model.route._tag === "PregameTableRoute" || model.route._tag === "GameTableRoute" ? "table" : "entry",
+      username: model.session.me?.username ?? "",
+      meGravatarHash: model.session.meGravatarHash,
+      accountMenuOpen: model.decks.list.accountMenuOpen,
     },
     toParentMessage: toParentLobbyMessage,
   });
@@ -142,6 +149,7 @@ test("shows build-a-deck copy when the player has no decks", () => {
         },
       }),
     ),
+    Scene.expect(Scene.selector('[data-testid="lobby-empty"]')).toExist(),
     Scene.expect(Scene.text("Build a deck first (Your decks → New deck).")).toExist(),
     Scene.expect(Scene.selector('[data-testid="lobby-host"]')).not.toExist(),
   );
@@ -183,7 +191,10 @@ test("entry choose mode shows Host and Join destinations with deck on Host", () 
     ),
     Scene.expect(Scene.testId("lobby-entry-choose")).toExist(),
     Scene.expect(Scene.testId("lobby-host")).toExist(),
+    Scene.expect(Scene.testId("lobby-host")).toHaveClass("bg-llanowar"),
     Scene.expect(Scene.testId("lobby-open-join")).toExist(),
+    Scene.expect(Scene.testId("lobby-open-join")).toHaveClass("border-dashed"),
+    Scene.expect(Scene.testId("lobby-open-join")).not.toHaveClass("bg-llanowar"),
     Scene.expect(Scene.testId("lobby-deck-card")).toExist(),
     Scene.expect(Scene.testId("lobby-deck-card-9")).toExist(),
     Scene.expect(Scene.text("Tokens")).toExist(),
@@ -543,6 +554,10 @@ test("joined lobby shows ready/start without a deck picker", () => {
     ),
     Scene.expect(Scene.selector('[data-testid="lobby-ready"]')).toExist(),
     Scene.expect(Scene.selector('[data-testid="lobby-start"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="lobby-table-code"]')).toHaveClass("font-display"),
+    Scene.expect(Scene.selector('[data-testid="lobby-table-code"]')).toHaveClass("text-display"),
+    Scene.expect(Scene.selector('[data-testid="lobby-copy-code"]')).toHaveClass("border-vine"),
+    Scene.expect(Scene.selector('[data-testid="lobby-copy-code"]')).not.toHaveClass("bg-llanowar"),
     Scene.expect(Scene.selector('[data-testid="lobby-deck"]')).not.toExist(),
     Scene.expect(Scene.selector('[data-testid="lobby-claim"]')).not.toExist(),
     Scene.expect(Scene.selector('[data-testid="lobby-start-error"].text-caution-amber')).toExist(),

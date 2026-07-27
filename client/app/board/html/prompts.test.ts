@@ -1085,6 +1085,111 @@ test("pay_cost prompt emits pay_optional_cost intent from UI", () => {
   expect(intents).toEqual([{ kind: "pay_optional_cost", player: 0, pay: true }]);
 });
 
+test("pay_cost with discard disables Pay until a discard is picked", () => {
+  const fodder: ObjectView = {
+    controller: 0,
+    has_haste: false,
+    id: 11,
+    is_commander: false,
+    kind: { kind: "creature", power: 1, toughness: 1 },
+    mana_cost: { generic: 1, colored: [0, 0, 0, 0, 0] },
+    marked_damage: 0,
+    name: "Fodder",
+    needs_target: false,
+    owner: 0,
+    plus_counters: 0,
+    power: 1,
+    print: "",
+    summoning_sick: false,
+    tapped: false,
+    toughness: 1,
+    zone: ZONE.Hand,
+  };
+  const s = state({
+    objects: [fodder],
+    pending_choice: {
+      kind: "pay_cost",
+      can_pay: true,
+      cost: { colored: [], generic: 1 },
+      discard_count: 1,
+      discard_choices: [11],
+      label: testMessageRef("Pay 1 and discard"),
+      player: 0,
+      source: 1,
+    },
+  });
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("pending-pay-cost-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-pay-discard-count")).toHaveText("0 / 1 selected"),
+    Scene.expect(Scene.testId("prompt-pay")).toBeDisabled(),
+    Scene.expect(Scene.testId("prompt-decline")).toExist(),
+  );
+});
+
+test("pay_cost with discard emits discard_cost on pay and omit on decline", () => {
+  const fodder: ObjectView = {
+    controller: 0,
+    has_haste: false,
+    id: 11,
+    is_commander: false,
+    kind: { kind: "creature", power: 1, toughness: 1 },
+    mana_cost: { generic: 1, colored: [0, 0, 0, 0, 0] },
+    marked_damage: 0,
+    name: "Fodder",
+    needs_target: false,
+    owner: 0,
+    plus_counters: 0,
+    power: 1,
+    print: "",
+    summoning_sick: false,
+    tapped: false,
+    toughness: 1,
+    zone: ZONE.Hand,
+  };
+  const pending = {
+    kind: "pay_cost" as const,
+    can_pay: true,
+    cost: { colored: [] as number[], generic: 1 },
+    discard_count: 1,
+    discard_choices: [11],
+    label: testMessageRef("Pay 1 and discard"),
+    player: 0,
+    source: 1,
+  };
+  const s = state({
+    objects: [fodder],
+    pending_choice: pending,
+  });
+  const decline = clickPromptIntent(s, Scene.click(Scene.testId("prompt-decline")));
+  expect(decline).toEqual([{ kind: "pay_optional_cost", player: 0, pay: false }]);
+
+  const commands: unknown[] = [];
+  const update = (model: ViewModel, message: Message): readonly [ViewModel, ReadonlyArray<never>] => {
+    const [board, nextCommands] = updateBoard(model.board, message, model.fold, model.tableId);
+    commands.push(...nextCommands);
+    return [{ ...model, board }, []];
+  };
+  Scene.scene(
+    { update, view },
+    Scene.with(
+      viewModel(s, {
+        ...initialBoardModel(),
+        pendingChoiceKey: choiceDraftKey(pending),
+        promptDraft: { kind: "card-pick", picked: [11], filter: "" },
+      }),
+    ),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("prompt-pay")).toBeEnabled(),
+    Scene.click(Scene.testId("prompt-pay")),
+  );
+  expect(commands.map(intentFromCommand)).toEqual([
+    { kind: "pay_optional_cost", player: 0, pay: true, discard_cost: [11] },
+  ]);
+});
+
 test("pay_cost prompt shows cost on Pay and Don't pay decline", () => {
   const s = state({
     pending_choice: {
@@ -1143,6 +1248,24 @@ test("pay_echo_or_sacrifice decline is labeled Sacrifice", () => {
     Scene.expect(Scene.testId("prompt-pay")).toHaveText("Pay {1}"),
     Scene.expect(Scene.testId("prompt-decline")).toHaveText("Sacrifice"),
   );
+});
+
+// CR 614.12 — a shockland names a life amount rather than a mana cost, and carries no label.
+test("pay_life_or_enters_tapped offers the life payment and pays through", () => {
+  const s = state({
+    pending_choice: { kind: "pay_life_or_enters_tapped", life: 2, player: 0, source: 7 },
+  });
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("pending-pay-cost-aim")).toExist(),
+    Scene.expect(Scene.testId("prompt-pay")).toHaveText("Pay 2 life"),
+    Scene.expect(Scene.testId("prompt-decline")).toHaveText("Enters tapped"),
+  );
+  expect(clickPromptIntent(s, Scene.click(Scene.testId("prompt-pay")))).toEqual([
+    { kind: "pay_optional_cost", player: 0, pay: true },
+  ]);
 });
 
 test("pay_or_counter decline is labeled Let it be countered", () => {

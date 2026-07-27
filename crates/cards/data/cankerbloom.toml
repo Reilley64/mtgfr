@@ -1,0 +1,38 @@
+# {1}, Sacrifice this creature: Choose one —
+# • Destroy target artifact.
+# • Destroy target enchantment.
+# • Proliferate. (Choose any number of permanents and/or players, then give each another counter
+#   of each kind already there.)
+name = "Cankerbloom"
+id = "d5b80895-621a-40df-bf48-6c7295658f21"
+default_print = "89b39293-6f57-4294-85fc-c718bdbb4d40"
+oracle = "{1}, Sacrifice this creature: Choose one —\n• Destroy target artifact.\n• Destroy target enchantment.\n• Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)"
+sets = ["one"]
+subtypes = ["Phyrexian", "Fungus"]
+
+[cost]
+generic = 1
+green = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 2
+
+# {1}, Sacrifice this creature: Choose one —
+[[abilities]]
+timing = "activated"
+activation_cost = { generic = 1 }
+sacrifice = "this"
+
+# • Destroy target artifact.
+# • Destroy target enchantment.
+# • Proliferate. (Choose any number of permanents and/or players, then give each another counter
+#   of each kind already there.)
+[[abilities.effects]]
+type = "choose_one"
+options = [
+    { type = "destroy", mode = "target", target = { permanent = { types = "artifact" } } },
+    { type = "destroy", mode = "target", target = { permanent = { types = "enchantment" } } },
+    { type = "choice", mode = "proliferate", times = 1 },
+]

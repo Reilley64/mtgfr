@@ -138,6 +138,8 @@ pub fn player_view_to_pb(player: PlayerView) -> pb::PlayerView {
             .into_iter()
             .map(commander_damage_view_to_pb)
             .collect(),
+        poison: player.poison,
+        rad: player.rad,
     }
 }
 
@@ -248,12 +250,16 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
             cost,
             label,
             can_pay,
+            discard_count,
+            discard_choices,
         } => Choice::PayCost(pb::PendingChoiceViewPayCost {
             player: u32::from(player),
             source,
             cost: Some(wire_cost_to_pb(cost)),
             label: Some(message_ref_to_pb(label)),
             can_pay,
+            discard_count: u32::from(discard_count),
+            discard_choices: discard_choices.unwrap_or_default(),
         }),
         PendingChoiceView::PayOrCounter {
             player,
@@ -570,10 +576,12 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
             player,
             source,
             items,
+            cast_targets,
         } => Choice::ChooseExiledDigToCastFree(pb::PendingChoiceViewChooseExiledDigToCastFree {
             player: u32::from(player),
             source,
             items: choice_items_to_pb(items),
+            cast_targets: choice_items_to_pb(cast_targets),
         }),
         PendingChoiceView::DanceExileMore {
             player,
@@ -744,6 +752,15 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
             source,
             cost: Some(wire_cost_to_pb(cost)),
         }),
+        PendingChoiceView::PayLifeOrEntersTapped {
+            player,
+            source,
+            life,
+        } => Choice::PayLifeOrEntersTapped(pb::PendingChoiceViewPayLifeOrEntersTapped {
+            player: u32::from(player),
+            source,
+            life: u32::from(life),
+        }),
         PendingChoiceView::SacrificeUnlessReturnLand {
             player,
             source,
@@ -838,6 +855,9 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> Option<pb::VisibleEvent> {
             object,
             level: u32::from(level),
         }),
+        VisibleEvent::BecameMonstrous { object } => {
+            Event::BecameMonstrous(pb::VisibleEventBecameMonstrous { object })
+        }
         VisibleEvent::PhasedOut { object } => {
             Event::PhasedOut(pb::VisibleEventPhasedOut { object })
         }
@@ -953,6 +973,15 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> Option<pb::VisibleEvent> {
             count,
         } => Event::KindCountersPlaced(pb::VisibleEventKindCountersPlaced {
             object,
+            counter_kind: u32::from(counter_kind),
+            count,
+        }),
+        VisibleEvent::PlayerCountersPlaced {
+            player,
+            counter_kind,
+            count,
+        } => Event::PlayerCountersPlaced(pb::VisibleEventPlayerCountersPlaced {
+            player: u32::from(player),
             counter_kind: u32::from(counter_kind),
             count,
         }),
@@ -1286,6 +1315,15 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> Option<pb::VisibleEvent> {
         VisibleEvent::TokenCeasedToExist { token } => {
             Event::TokenCeasedToExist(pb::VisibleEventTokenCeasedToExist { token })
         }
+        VisibleEvent::EmblemCreated {
+            emblem,
+            controller,
+            name,
+        } => Event::EmblemCreated(pb::VisibleEventEmblemCreated {
+            emblem,
+            controller: u32::from(controller),
+            name,
+        }),
         VisibleEvent::SpellCopied {
             copy,
             original,
@@ -1638,6 +1676,8 @@ mod tests {
             can_mulligan: false,
             mana_pool: WireManaPool::default(),
             commander_damage: vec![],
+            poison: 0,
+            rad: 0,
         }
     }
 

@@ -32,6 +32,7 @@ function nameOnly(params: MessageParams): string {
 function edictWho(scope: MessageValue): string {
   if (scope === "each_opponent") return "Each opponent";
   if (scope === "targeted_players") return "Any number of target players";
+  if (scope === "targeted_opponent") return "Target opponent";
   return "Each player";
 }
 
@@ -144,6 +145,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     `${edictWho(param(params, "scope"))} ${bool(params, "keep_one") ? "keeps one creature and sacrifices the rest" : "sacrifices a permanent"}`,
   "effect.choice_join_forces_pay_mana": literal("Starting with you, each player may pay any amount of mana"),
   "effect.choice_may_discard": literal("You may discard a card"),
+  "effect.choice_may_reveal_land_from_hand": literal("You may reveal a matching land card from your hand"),
   "effect.choice_may_draw_unless_pays": (params) =>
     `You may draw a card unless that player pays ${param(params, "cost")}`,
   "effect.choice_may_draw_up_to": (params) => `You may draw up to ${param(params, "count")}`,
@@ -243,6 +245,16 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     "Double the number of +1/+1 counters on any number of other target creatures",
   ),
   "effect.counters_level_up": (params) => `Level ${param(params, "level")}`,
+  "effect.counters_monstrosity": (params) => `Monstrosity ${param(params, "count")}`,
+  "effect.counters_put_counters_on_player": (params) =>
+    `${edictWho(param(params, "scope"))} gets ${param(params, "count")} ${humanize(param(params, "kind"))} counters`,
+  "effect.counters_put_loyalty_counter_each": literal("Put a loyalty counter on each"),
+  "effect.counters_remove_all_but_one_plus_one_counter_then_gain_life": literal(
+    "Remove all but one +1/+1 counter, gain 1 life for each removed",
+  ),
+  "effect.counters_remove_all_player_counters": (params) => `${edictWho(param(params, "scope"))} loses all counters`,
+  "effect.counters_top_up_counters_on_player": (params) =>
+    `Give target player ${humanize(param(params, "kind"))} counters up to ${param(params, "to")}`,
   "effect.counters_move_counters": (params) =>
     bool(params, "all_kinds")
       ? "Move all counters onto another permanent"
@@ -257,6 +269,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.counters_remove_counter_from_self": literal("Remove a +1/+1 counter from it"),
   "effect.damage_each_creature": (params) =>
     `Deal ${param(params, "amount")} damage to ${damageEachCreatureSubject(params)}`,
+  "effect.damage_each_opponent": (params) => `Deal ${param(params, "amount")} damage to each opponent`,
   "effect.damage_each_other_opponent": (params) => `Deal ${param(params, "amount")} damage to each other opponent`,
   "effect.damage_each_player": (params) => `Deal ${param(params, "amount")} damage to each player`,
   "effect.damage_radiance": (params) =>
@@ -371,6 +384,7 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
       ? "Then it fights up to one target creature you do not control"
       : "Target creature you control fights target creature you do not control",
   "effect.misc_flip_source": literal("Flip this permanent"),
+  "effect.misc_get_emblem": literal("You get an emblem"),
   "effect.misc_grant_channel_colorless_mana_this_turn": literal(
     "Until end of turn, any time you could activate a mana ability, you may pay 1 life. If you do, add {C}",
   ),
@@ -426,6 +440,9 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     `This creature has base power and toughness each equal to ${param(params, "amount")}`,
   "effect.pump_strip_keywords_from_opponents_creatures": (params) =>
     `Creatures your opponents control lose ${humanize(param(params, "keywords"))} until end of turn and can't have ${humanize(param(params, "keywords"))} this turn`,
+  "effect.pump_target_becomes_treasure": literal(
+    'Target creature becomes a Treasure artifact with "{T}, Sacrifice this artifact: Add one mana of any color" and loses all other card types and abilities',
+  ),
   "effect.pump_weaken_each_creature": (params) =>
     `${bool(params, "opponents_only") ? "Creatures your opponents control get" : "Each creature gets"} -${param(params, "power")}/-${param(params, "toughness")} until end of turn`,
   "effect.reveal_top_and_drain_mutual": literal(
@@ -484,6 +501,9 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.static_prevent_combat_damage": (params) => preventCombatDamageLabel(params),
   "effect.static_prevent_damage_to_self_removing_counter": literal(
     "If damage would be dealt to this creature, prevent that damage. Remove a +1/+1 counter from this creature",
+  ),
+  "effect.static_prevent_damage_to_self_removing_counters_giving_rad": literal(
+    "If damage would be dealt to this creature while it has a +1/+1 counter on it, prevent that damage, remove that many +1/+1 counters from it, then give each player a rad counter for each +1/+1 counter removed this way",
   ),
   "effect.static_prevent_noncombat_damage_to_other_creatures_you_control": literal(
     "Prevent all noncombat damage that would be dealt to other creatures you control",

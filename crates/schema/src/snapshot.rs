@@ -839,6 +839,8 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                         amount,
                     })
                     .collect(),
+                poison: game.player_counters(pid, engine::PlayerCounterKind::Poison) as u32,
+                rad: game.player_counters(pid, engine::PlayerCounterKind::Rad) as u32,
             }
         })
         .collect();
@@ -1616,6 +1618,31 @@ mod tests {
         );
     }
 
+    /// Poison is the other invisible win condition (ten or more loses, CR 704.5c) and it is public
+    /// information for every seat, so every player's total rides in the snapshot — not just the
+    /// viewer's own.
+    #[test]
+    fn a_snapshot_carries_every_players_poison_total() {
+        let mut game = Game::new();
+        let snap = snapshot(&game, PlayerId(0));
+        assert!(
+            snap.players.iter().all(|player| player.poison == 0),
+            "nobody is poisoned yet; got {:?}",
+            snap.players.iter().map(|p| p.poison).collect::<Vec<_>>(),
+        );
+
+        game.place_player_counters(PlayerId(1), engine::PlayerCounterKind::Poison, 3);
+
+        let snap = snapshot(&game, PlayerId(0));
+        let opponent = snap.players.iter().find(|p| p.player == 1).unwrap();
+        assert_eq!(
+            opponent.poison, 3,
+            "P0 can see P1's poison total — it is public",
+        );
+        let me = snap.players.iter().find(|p| p.player == 0).unwrap();
+        assert_eq!(me.poison, 0, "and P0's own total is untouched");
+    }
+
     /// A modal spell's targets travel per mode (CR 700.2), so the cast action itself reports no
     /// target — the client has to be handed the printed modes and each one's legal targets, or it
     /// can only fire `modes: []` and be rejected.
@@ -2191,13 +2218,14 @@ mod tests {
             devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
+            enters_tapped_unless_you_pay_life: None,
             free_cast_if: None,
             alternative_cost: None,
             cast_only_during_combat: false,
             cast_only_before_attackers: false,
             approximates: None,
             oracle: None,
-            set: "",
+            sets: empty_slice(),
             subtypes: empty_slice(),
             otags: empty_slice(),
             keywords: empty_slice(),
@@ -2234,6 +2262,7 @@ mod tests {
             forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,
+            snow: false,
         }
     }
 

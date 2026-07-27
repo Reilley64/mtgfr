@@ -1,9 +1,9 @@
 # Target player gains 2 life for each creature on the battlefield.
 name = "Congregate"
+sets = ["a25", "cma", "cmd", "dmr", "hop", "m14", "m15", "plst", "usg"]
 id = "d139294c-36bb-4a1e-800d-50c4a4ae9877"
 default_print = "fd0e6027-1516-4587-8f16-9f2354074503"
 oracle = "Target player gains 2 life for each creature on the battlefield."
-set = "cmd"
 
 [cost]
 generic = 3

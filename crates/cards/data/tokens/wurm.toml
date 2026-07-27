@@ -1,0 +1,12 @@
+# Token: Wurm
+# Sources: garruk_primal_hunter.toml
+name = "Wurm"
+id = "46a55586-cc9a-443c-b458-e628afc3c587"
+default_print = "d559711e-7895-46e1-a970-ce5a05ec1ee4"
+colors = ["green"]
+subtypes = ["Wurm"]
+
+[kind]
+type = "creature"
+power = 6
+toughness = 6

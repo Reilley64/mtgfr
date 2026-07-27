@@ -48,6 +48,33 @@ function collectTestIds(node: unknown, out: string[] = []): string[] {
   return out;
 }
 
+function findTestId(node: unknown, testId: string): unknown {
+  if (node == null || typeof node !== "object") return null;
+  const n = node as { data?: { attrs?: Record<string, string> }; children?: unknown[] };
+  if (n.data?.attrs?.["data-testid"] === testId) return node;
+  for (const child of n.children ?? []) {
+    const found = findTestId(child, testId);
+    if (found != null) return found;
+  }
+  return null;
+}
+
+function textContent(node: unknown): string {
+  if (typeof node === "string") return node;
+  if (node == null || typeof node !== "object") return "";
+  const n = node as { children?: unknown[]; text?: string };
+  if (n.text != null) return n.text;
+  return (n.children ?? []).map(textContent).join("");
+}
+
+function expectShellFrame() {
+  return [
+    Scene.expect(Scene.selector('[data-testid="shell-frame"]')).toExist(),
+    Scene.expect(Scene.selector("#portrait-gate")).not.toExist(),
+    Scene.expect(Scene.selector('[data-testid="shell-stage"] main')).not.toExist(),
+  ] as const;
+}
+
 const atraxa = card({
   color_identity: [2, 4, 5],
   cost: { colored: [0, 0, 1, 1, 1], generic: 4 },
@@ -57,7 +84,8 @@ const atraxa = card({
   legendary: true,
   name: "Atraxa, Praetors' Voice",
   oracle: "Flying, vigilance, deathtouch, lifelink",
-  set: "c16",
+  set: "",
+  sets: ["c16"],
   subtypes: ["Angel", "Horror"],
 });
 
@@ -85,7 +113,8 @@ function card(overrides: Partial<CatalogCard> = {}): CatalogCard {
     legendary: false,
     name: "Card",
     otags: [],
-    set: "tst",
+    set: "",
+    sets: ["tst"],
     subtypes: [],
     summary: [],
     ...overrides,
@@ -97,7 +126,7 @@ function loginModel(overrides: Partial<AppModel> = {}): AppModel {
   return {
     ...model,
     route: LoginRoute(),
-    portraitGate: { open: false },
+    landscapeRotate: { active: false },
     sessionLoaded: true,
     session: { me: null, meGravatarHash: null },
     faithfulCount: null,
@@ -111,7 +140,7 @@ function authedModel(route: AppModel["route"], overrides: Partial<AppModel> = {}
   return {
     ...model,
     route,
-    portraitGate: { open: false },
+    landscapeRotate: { active: false },
     sessionLoaded: true,
     session: { me, meGravatarHash: "ff8d9819fc0e12bf0d24892e45987e249a28dce836a85cad60e28eaaa8c6d976" },
     ...overrides,
@@ -124,14 +153,23 @@ describe("shell surface scenes", () => {
       { update, view },
       Scene.with(loginModel({ apiVersion: "1.2.3" })),
       Scene.expect(Scene.selector('[data-testid="auth-panel"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="auth-brand"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="auth-brand"]')).toHaveClass("font-display"),
       Scene.expect(Scene.selector('[data-testid="auth-form"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="auth-email"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="auth-password"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="auth-submit"]')).toExist(),
+      ...expectShellFrame(),
+      Scene.expect(Scene.selector('[data-testid="shell-frame"]')).toHaveClass("shell-atmosphere-auth"),
       Scene.expect(Scene.selector('[data-testid="app-version"]')).toExist(),
       Scene.expect(Scene.text("API 1.2.3")).toExist(),
       Scene.expect(Scene.text("edh.reilley.dev")).toExist(),
       Scene.expect(Scene.text("mtgfr")).not.toExist(),
+      Scene.tap((sim) => {
+        const panel = findTestId(sim.html, "auth-panel");
+        expect(panel).not.toBeNull();
+        expect(textContent(panel)).not.toContain("edh.reilley.dev");
+      }),
     );
   });
 
@@ -198,6 +236,8 @@ describe("shell surface scenes", () => {
         }),
       ),
       Scene.expect(Scene.selector('[data-testid="decks-page"]')).toExist(),
+      ...expectShellFrame(),
+      Scene.expect(Scene.selector('[data-testid="shell-header"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="header-leaderboard-link"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="leaderboard-teaser"]')).not.toExist(),
       Scene.expect(Scene.selector('[data-testid="account-menu-trigger"]')).toExist(),
@@ -210,10 +250,8 @@ describe("shell surface scenes", () => {
       Scene.expect(Scene.text("Your decks")).toExist(),
       Scene.expect(Scene.text("Superfriends")).toExist(),
       Scene.expect(Scene.selector(`[data-testid="deck-list-new-deck"][href="${routePath(NewDeckRoute())}"]`)).toExist(),
+      Scene.expect(Scene.selector('[data-testid="deck-list-new-deck-header"]')).not.toExist(),
       Scene.expect(Scene.text("New deck")).toExist(),
-      Scene.expect(
-        Scene.selector(`[data-testid="deck-list-header"] a[href="${routePath(NewDeckRoute())}"]`),
-      ).not.toExist(),
       Scene.Mount.resolve(BindDeckListContextMenu({ deckId: 1 }), ClosedDeckListMenu()),
       Scene.Mount.resolve(BindDeckCardFlip({ deckId: 1 }), DeckCardFlipTick()),
       Scene.Mount.resolve(BindCardArt, CardArtTick()),
@@ -295,6 +333,8 @@ describe("shell surface scenes", () => {
         }),
       ),
       Scene.expect(Scene.text("No decks yet — build one to get started.")).not.toExist(),
+      Scene.expect(Scene.selector('[data-testid="deck-list-empty"]')).toExist(),
+      Scene.expect(Scene.selector(`[data-testid="deck-list-empty"] a[href="${routePath(NewDeckRoute())}"]`)).toExist(),
       Scene.expect(Scene.selector(`[data-testid="deck-list-new-deck"][href="${routePath(NewDeckRoute())}"]`)).toExist(),
       Scene.Mount.resolve(BindDeckListContextMenuEscape(), ClosedDeckListMenu()),
     );
@@ -337,6 +377,7 @@ describe("shell surface scenes", () => {
         }),
       ),
       Scene.expect(Scene.selector('[data-testid="leaderboard-page"]')).toExist(),
+      ...expectShellFrame(),
       Scene.expectAll(Scene.all.selector('[data-testid="leaderboard-row"]')).toHaveCount(2),
       Scene.expect(Scene.text("#1")).toExist(),
       Scene.expect(Scene.text("alice")).toExist(),
@@ -348,6 +389,25 @@ describe("shell surface scenes", () => {
       Scene.expect(Scene.selector('[data-testid="account-menu-trigger"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="header-leaderboard-link"]')).not.toExist(),
       Scene.expect(Scene.text("Signed in as alice")).not.toExist(),
+    );
+  });
+
+  it("shows a quiet leaderboard empty state when there are no rated games", () => {
+    Scene.scene(
+      { update, view },
+      Scene.with(
+        authedModel(LeaderboardRoute(), {
+          leaderboard: {
+            entries: [],
+            accountMenuOpen: false,
+            error: null,
+            status: "ready",
+            total: 0,
+          },
+        }),
+      ),
+      Scene.expect(Scene.selector('[data-testid="leaderboard-empty"]')).toExist(),
+      Scene.expect(Scene.text("No rated games yet.")).toExist(),
     );
   });
 
@@ -374,13 +434,35 @@ describe("shell surface scenes", () => {
         }),
       ),
       Scene.expect(Scene.selector('[data-testid="coverage-page"]')).toExist(),
+      ...expectShellFrame(),
+      Scene.expect(Scene.selector('[data-testid="coverage-page"]')).toHaveClass("h-full"),
+      Scene.expect(Scene.selector('[data-testid="coverage-page"]')).toHaveClass("min-h-0"),
+      Scene.expect(Scene.selector('[data-testid="coverage-page"]')).toHaveClass("overflow-hidden"),
+      Scene.expect(Scene.selector('[data-testid="coverage-page"]')).not.toHaveClass("h-dvh"),
       Scene.expect(Scene.text("Coverage")).toExist(),
       Scene.expect(Scene.selector('[data-testid="coverage-global-percent"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="coverage-search"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="coverage-table"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="coverage-table-body"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="coverage-table-body"]')).toHaveClass("overflow-y-auto"),
+      Scene.expect(Scene.selector('[data-testid="coverage-table-body"]')).toHaveClass("overscroll-contain"),
+      Scene.expect(Scene.selector('[data-testid="shell-stage"]')).toHaveClass("overflow-hidden"),
+      Scene.expect(Scene.selector('[data-testid="shell-stage"]')).not.toHaveClass("overflow-y-auto"),
       Scene.expect(Scene.selector('[data-testid="coverage-row-soc"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="header-leaderboard-link"]')).toExist(),
       Scene.expect(Scene.text("Secrets of Strixhaven")).toExist(),
       Scene.expect(Scene.text("2.5%")).toExist(),
+      Scene.tap((sim) => {
+        const ids = collectTestIds(sim.html);
+        expect(ids.indexOf("coverage-global-percent")).toBeLessThan(ids.indexOf("shell-stage"));
+        expect(ids.indexOf("coverage-global-percent")).toBeLessThan(ids.indexOf("coverage-page"));
+        const tableBody = findTestId(sim.html, "coverage-table-body");
+        expect(tableBody).not.toBeNull();
+        const bodyText = textContent(tableBody);
+        expect(bodyText).toContain("Secrets of Strixhaven");
+        expect(bodyText).not.toContain("Faithful");
+        expect(bodyText).not.toContain("Scryfall");
+      }),
     );
   });
 
@@ -428,6 +510,7 @@ describe("shell surface scenes", () => {
       Scene.expect(Scene.selector('[data-testid="coverage-page"]')).toExist(),
       Scene.expect(Scene.selector('[role="alert"]')).toExist(),
       Scene.expect(Scene.text("Could not load coverage.")).toExist(),
+      Scene.expect(Scene.selector('[data-testid="coverage-try-again"]')).toExist(),
       Scene.expect(Scene.text("Try again")).toExist(),
       Scene.expect(Scene.selector('[data-testid="coverage-search"]')).toExist(),
     );
@@ -467,10 +550,12 @@ describe("shell surface scenes", () => {
       Scene.type(Scene.selector('[data-testid="coverage-search"]'), "strix"),
       Scene.expect(Scene.selector('[data-testid="coverage-row-soc"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="coverage-row-c16"]')).not.toExist(),
+      Scene.expect(Scene.selector('[data-testid="coverage-empty"]')).not.toExist(),
       Scene.expect(Scene.text("No sets match.")).not.toExist(),
       Scene.type(Scene.selector('[data-testid="coverage-search"]'), "zzzz"),
       Scene.expect(Scene.selector('[data-testid="coverage-row-soc"]')).not.toExist(),
       Scene.expect(Scene.selector('[data-testid="coverage-row-c16"]')).not.toExist(),
+      Scene.expect(Scene.selector('[data-testid="coverage-empty"]')).toExist(),
       Scene.expect(Scene.text("No sets match.")).toExist(),
     );
   });
@@ -514,7 +599,9 @@ describe("shell surface scenes", () => {
       Scene.expectAll(Scene.all.selector('[data-testid="leaderboard-row"]')).toHaveCount(1),
       Scene.expect(Scene.text("#1")).toExist(),
       Scene.expect(Scene.text("Could not load the leaderboard.")).toExist(),
+      Scene.expect(Scene.selector('[data-testid="leaderboard-try-again"]')).toExist(),
       Scene.expect(Scene.text("Try again")).toExist(),
+      Scene.expect(Scene.selector('[data-testid="leaderboard-load-more"]')).not.toExist(),
       Scene.expect(Scene.text("Load more")).not.toExist(),
     );
   });
@@ -540,12 +627,21 @@ describe("shell surface scenes", () => {
         }),
       ),
       Scene.expect(Scene.selector('[data-testid="deck-builder-page"]')).toExist(),
+      ...expectShellFrame(),
+      Scene.expect(Scene.selector('[data-testid="shell-stage"]')).toHaveClass("overflow-hidden"),
+      Scene.expect(Scene.selector('[data-testid="account-menu-trigger"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="deck-name"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="save-deck"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="builder-cancel"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="builder-pool-hint"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="deck-problems"]')).toExist(),
       Scene.expect(Scene.text("Choose a commander first.")).toExist(),
+      Scene.tap((sim) => {
+        const ids = collectTestIds(sim.html);
+        expect(ids.indexOf("builder-cancel")).toBeLessThan(ids.indexOf("shell-header-title"));
+        expect(ids.indexOf("save-deck")).toBeLessThan(ids.indexOf("account-menu-trigger"));
+        expect(ids.indexOf("shell-header-trailing")).toBeLessThan(ids.indexOf("deck-name"));
+      }),
       Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "pool" }), ClearedBuilderHover()),
       Scene.Mount.resolve(OpenDialogAsModal(), ModalOpened()),
       Scene.Mount.resolve(BindCardArt, CardArtTick()),
@@ -610,13 +706,18 @@ describe("shell surface scenes", () => {
         }),
       ),
       Scene.expect(Scene.selector('[data-testid="lobby-entry-choose"]')).toExist(),
+      ...expectShellFrame(),
+      Scene.expect(Scene.selector('[data-testid="account-menu-trigger"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-host"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="lobby-host"]')).toHaveClass("bg-llanowar"),
       Scene.expect(Scene.selector('[data-testid="lobby-open-join"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="lobby-open-join"]')).toHaveClass("border-dashed"),
+      Scene.expect(Scene.selector('[data-testid="lobby-open-join"]')).not.toHaveClass("bg-llanowar"),
       Scene.expect(Scene.selector('[data-testid="lobby-deck-card"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-deck-card-1"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-join-code"]')).toBeAbsent(),
       Scene.expect(Scene.text("Lobby")).toExist(),
-      Scene.expect(Scene.text("edh.reilley.dev")).toExist(),
+      Scene.expect(Scene.text("edh.reilley.dev")).not.toExist(),
       Scene.Mount.resolve(BindDeckCardFlip({ deckId: 1 }), DeckCardFlipTick()),
       Scene.Mount.resolve(BindCardArt, CardArtTick()),
     );
@@ -680,7 +781,13 @@ describe("shell surface scenes", () => {
         }),
       ),
       Scene.expect(Scene.selector('[data-testid="lobby-table-code"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="lobby-table-code"]')).toHaveClass("font-display"),
+      Scene.expect(Scene.selector('[data-testid="lobby-table-code"]')).toHaveClass("text-display"),
+      ...expectShellFrame(),
+      Scene.expect(Scene.selector('[data-testid="account-menu-trigger"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-copy-code"]')).toExist(),
+      Scene.expect(Scene.selector('[data-testid="lobby-copy-code"]')).toHaveClass("border-vine"),
+      Scene.expect(Scene.selector('[data-testid="lobby-copy-code"]')).not.toHaveClass("bg-llanowar"),
       Scene.expect(Scene.selector('[data-testid="lobby-seats"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="lobby-seat-0"]')).toExist(),
       Scene.expect(Scene.selector('[data-testid="seat-face-0"]')).toExist(),
@@ -746,6 +853,7 @@ describe("shell surface scenes", () => {
     Scene.scene(
       { update, view },
       Scene.with(authedModel(NotFoundRoute({ path: "/missing" }))),
+      ...expectShellFrame(),
       Scene.expect(Scene.text("Not found")).toExist(),
       Scene.expect(Scene.text("No Foldkit route for /missing.")).toExist(),
     );

@@ -1,6 +1,7 @@
 import { apiUpstream, parseLiveStatus } from "./api-upstream-auth";
-import { ensureOracleTotalRefresh, getCachedOracleTotal, getCachedOracleTotalBySet } from "./scryfall-oracle-total";
-import { ensureScryfallSetsRefresh, getCachedScryfallSets, type ScryfallSetRow } from "./scryfall-sets";
+import { loadOracleTotal } from "./scryfall-oracle-total";
+import { loadSetOracleTotals } from "./scryfall-set-oracle-totals";
+import { loadScryfallSets, type ScryfallSetRow } from "./scryfall-sets";
 
 export type CoverageSetRow = {
   code: string;
@@ -18,7 +19,7 @@ export type CoverageMeta = {
 
 export function joinCoverageSetRows(
   sets: ReadonlyArray<ScryfallSetRow> | null,
-  oracleTotalBySet: Readonly<Record<string, number>> | null,
+  setOracleTotals: Readonly<Record<string, number>> | null,
   faithfulBySet: Readonly<Record<string, number>> | null,
 ): CoverageSetRow[] {
   if (sets == null || sets.length === 0) return [];
@@ -28,35 +29,48 @@ export function joinCoverageSetRows(
     name: set.name,
     releasedAt: set.releasedAt,
     faithful: faithfulBySet?.[set.code] ?? 0,
-    oracleTotal: oracleTotalBySet?.[set.code] ?? null,
+    oracleTotal: setOracleTotals?.[set.code] ?? null,
   }));
 }
 
-function unavailableCoverageMeta(): CoverageMeta {
-  return {
-    faithfulCount: null,
-    oracleTotal: getCachedOracleTotal(),
-    sets: joinCoverageSetRows(getCachedScryfallSets(), getCachedOracleTotalBySet(), null),
-  };
-}
-
 export async function fetchCoverageMeta(): Promise<CoverageMeta> {
-  ensureOracleTotalRefresh();
-  ensureScryfallSetsRefresh();
+  // Coverage is useless with a cold default_cards cache (every Scryfall cell is "—").
+  // Await cold fills; warm paths return immediately and refresh in the background.
+  const [oracleTotal, setOracleTotals, sets] = await Promise.all([
+    loadOracleTotal(),
+    loadSetOracleTotals(),
+    loadScryfallSets(),
+  ]);
 
   try {
     const res = await fetch(`${apiUpstream()}/health/live`);
-    if (!res.ok) return unavailableCoverageMeta();
+    if (!res.ok) {
+      return {
+        faithfulCount: null,
+        oracleTotal,
+        sets: joinCoverageSetRows(sets, setOracleTotals, null),
+      };
+    }
 
     const parsed = parseLiveStatus(await res.json());
-    if (!parsed) return unavailableCoverageMeta();
+    if (!parsed) {
+      return {
+        faithfulCount: null,
+        oracleTotal,
+        sets: joinCoverageSetRows(sets, setOracleTotals, null),
+      };
+    }
 
     return {
       faithfulCount: parsed.faithfulCount,
-      oracleTotal: getCachedOracleTotal(),
-      sets: joinCoverageSetRows(getCachedScryfallSets(), getCachedOracleTotalBySet(), parsed.faithfulBySet),
+      oracleTotal,
+      sets: joinCoverageSetRows(sets, setOracleTotals, parsed.faithfulBySet),
     };
   } catch {
-    return unavailableCoverageMeta();
+    return {
+      faithfulCount: null,
+      oracleTotal,
+      sets: joinCoverageSetRows(sets, setOracleTotals, null),
+    };
   }
 }

@@ -54,9 +54,9 @@ These documents are **not superseded** and must stay current alongside the specs
 | [observability-ops](2026-07-20-observability-ops.md) | LGTM/Alloy/Grafana ops, Faro, BFF OTEL, scrub rules |
 | [production-topology-and-operations](2026-07-20-production-topology-and-operations.md) | k3s, Argo, Tunnel, migrations, Dockerfiles, health/drain |
 | [prompts-and-pending-choices](2026-07-20-prompts-and-pending-choices.md) | Pending-choice forms, X prompt, modal and local cost prompts |
-| [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md) | Shell routes, portrait gate, auth, Foldkit/wire edge, design tokens, brand |
+| [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md) | Shell routes, CSS landscape rotate, auth, Foldkit/wire edge, design tokens, brand |
 | [stack](2026-07-20-stack.md) | Stack pile, strip, expansion, targetability, auto-resolve pause |
-| [system-overlays](2026-07-20-system-overlays.md) | Result, concede, pile expansion, reconnect, portrait gate overlays |
+| [system-overlays](2026-07-20-system-overlays.md) | Result, concede, pile expansion, reconnect, CSS landscape rotate context |
 | [table-audio](2026-07-20-table-audio.md) | Synthesized table cues, browser unlock, sound toggle |
 | [turn-and-priority-chrome](2026-07-20-turn-and-priority-chrome.md) | Phase, priority, pass/yield, hints, playable chrome, mulligan overlay |
 | [turn-priority-and-stack](2026-07-20-turn-priority-and-stack.md) | Engine turn structure, priority, stack, auto-pass, yields |
@@ -73,9 +73,13 @@ These documents are **not superseded** and must stay current alongside the specs
 | [pool-coverage-badge](2026-07-26-pool-coverage-badge-design.md) | Design input for shell `% faithful` coverage above API version (faithful pool ÷ Scryfall oracle total); update shell-routes / meta at implement time |
 | [foldkit-submodels-pwa-and-play-routes](2026-07-26-foldkit-submodels-pwa-and-play-routes-design.md) | Design input: Foldkit 0.132 + Effect beta.101, `Got*`/`inform*`/`domain/`, play routes (in-game table-only), installable-only PWA; update shell/lobby/board specs per wave |
 | [coverage-by-set](2026-07-26-coverage-by-set-design.md) | Design input for `/coverage` set table (faithful-by-set ÷ Scryfall per-set oracle); badge navigates; depends on pool-coverage-badge |
+| [coverage-printing-aware-sets](2026-07-26-coverage-printing-aware-sets-design.md) | Design input: pool `sets` + backfill script; printing-aware faithful/oracle per set; release-date sort; supersedes coverage-by-set metric/sort |
 | [gha-server-verify-sharding](2026-07-26-gha-server-verify-sharding-design.md) | Design input for 3-shard nextest cold `verify-server` wall-clock; update `ci-and-release` at implement time |
 | [ci-rust-protoc-image](2026-07-26-ci-rust-protoc-image-design.md) | Design input for GHCR `mtgfr-ci` toolchain image (PR1 publish; PR2 containerize verify + migrate job); update `ci-and-release` per PR |
 | [proxy-card-art](2026-07-26-proxy-card-art-design.md) | Design input for deck-saved alter image URLs (BFF-proxied, table-visible, fallback to printing); update deck/catalog/wire (+ art choke points) at implement time |
+| [bff-route-split](2026-07-26-bff-route-split-design.md) | Design input: Nitro one-file-per lobby/meta op, `defineHandler` + h3 web APIs, path-param join/ready/start; update shell/lobby/coverage specs at implement time |
+| [shell-polish-redesign](2026-07-26-shell-polish-redesign-design.md) | Shipped design input (#252/#259/#261/#262): shared `shellFrame`, shell type pair, atmosphere, CSS portrait→landscape rotate, per-surface reflows + Wave 4 consistency/scroll pass |
+| [effect-deepening](2026-07-26-effect-deepening-design.md) | Design input: deepen Effect on client (LobbyClient, BFF gRPC Effect dispatch, Drizzle RC effect-postgres, Effect HTTP helpers); update shell/lobby/wire specs per wave |
 
 ## Authoring conventions
 

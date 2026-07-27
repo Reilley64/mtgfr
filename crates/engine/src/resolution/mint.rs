@@ -46,9 +46,15 @@ impl Game {
                 c @ (CountersEffect::AttackerDrawsControllerCounters { .. }
                 | CountersEffect::DoubleCounters { .. }
                 | CountersEffect::LevelUp { .. }
+                | CountersEffect::Monstrosity { .. }
                 | CountersEffect::PlaceVowCounters { .. }
                 | CountersEffect::PutCounters { .. }
                 | CountersEffect::PutCountersEach { .. }
+                | CountersEffect::PutLoyaltyCounterEach { .. }
+                | CountersEffect::PutCountersOnPlayer { .. }
+                | CountersEffect::RemoveAllPlayerCounters { .. }
+                | CountersEffect::TopUpCountersOnPlayer { .. }
+                | CountersEffect::RemoveAllButOnePlusOneCounterThenGainLife { .. }
                 | CountersEffect::RemoveAllCountersThenDraw { .. }
                 | CountersEffect::RemoveCounterFromSelf) => {
                     self.mint_counters(c, controller, source, target, x)
@@ -74,6 +80,7 @@ impl Game {
                 m @ (MiscEffect::ArmCombatDamageWatch
                 | MiscEffect::BecomePrepared
                 | MiscEffect::FlipSource
+                | MiscEffect::GetEmblem { .. }
                 | MiscEffect::CounterTargetActivatedAbility
                 | MiscEffect::CounterTargetSpell { .. }
                 | MiscEffect::GrantChannelColorlessManaThisTurn

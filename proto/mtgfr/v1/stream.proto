@@ -32,6 +32,12 @@ message PlayerView {
   bool can_mulligan = 12;
   // SHA-256 hex Gravatar hash; empty = no face.
   string gravatar_hash = 13;
+  // Poison counters on this player (CR 122.1). Ten or more eliminates them (CR 704.5c).
+  uint32 poison = 14;
+  // Rad counters on this player (CR 122.1, Fallout). No lose-the-game threshold; at the beginning
+  // of their precombat main phase they mill this many cards, losing 1 life and one rad counter per
+  // nonland card milled.
+  uint32 rad = 15;
 }
 
 // One source card def's contributions to a permanent (Alt-inspect ledger).
@@ -292,6 +298,7 @@ message PendingChoiceView {
     PendingChoiceViewPayAnyAmountOfMana pay_any_amount_of_mana = 67;
     PendingChoiceViewChooseLegendaryKeep choose_legendary_keep = 68;
     PendingChoiceViewMayExileDiscardedToPlay may_exile_discarded_to_play = 69;
+    PendingChoiceViewPayLifeOrEntersTapped pay_life_or_enters_tapped = 70;
   }
 }
 
@@ -368,6 +375,11 @@ message PendingChoiceViewPayCost {
   MessageRef label = 5;
   // Whether the player can actually produce this cost right now — false greys out Pay.
   bool can_pay = 6;
+  // Additional discard count on the optional cost (Conspiracy Theorist's "pay {1} and discard a
+  // card"). 0 when the cost is mana-only.
+  uint32 discard_count = 7;
+  // Hand cards that may pay `discard_count` (private to `player`). Empty when `discard_count` is 0.
+  repeated uint32 discard_choices = 8;
 }
 
 // Pay `cost` to save `spell` from being countered, or decline and let it be countered (CR
@@ -650,12 +662,15 @@ message PendingChoiceViewChooseExiledWithCardToCast {
 }
 
 // This player may choose one card (`items`, public — exile-zone) among a just-exiled dig batch
-// to grant the free-cast permission (CR 118.5), or decline. Every other card in the batch goes
-// to the bottom of the library once answered.
+// to cast without paying its mana cost now (mid-resolution dig cast), or decline. Every other
+// card in the batch goes to the bottom of the library once answered. `cast_targets` are legal
+// cast-time hosts when any candidate needs one (an Aura); empty when every candidate is
+// untargeted.
 message PendingChoiceViewChooseExiledDigToCastFree {
   uint32 player = 1;
   uint32 source = 2;
   repeated ChoiceItem items = 3;
+  repeated ChoiceItem cast_targets = 4;
 }
 
 // This player (the caster) may exile another top-of-library card or stop (Dance with
@@ -825,6 +840,14 @@ message PendingChoiceViewSacrificeUnlessPay {
   uint32 player = 1;
   uint32 source = 2;
   WireCost cost = 3;
+}
+
+// A land card's controller, about to play it, may pay `life` to have it enter untapped, or
+// decline and have it enter tapped (CR 614.12 — Overgrown Tomb).
+message PendingChoiceViewPayLifeOrEntersTapped {
+  uint32 player = 1;
+  uint32 source = 2;
+  uint32 life = 3;
 }
 
 // Return one of `items` (a non-Lair land the player controls, public) to its owner's hand to
@@ -1050,7 +1073,13 @@ message VisibleEvent {
     VisibleEventPutFromHandOnTop put_from_hand_on_top = 129;
     VisibleEventBasePtSetIndefinite base_pt_set_indefinite = 130;
     VisibleEventSplitHalfSpellCast split_half_spell_cast = 131;
+    VisibleEventPlayerCountersPlaced player_counters_placed = 133;
+    VisibleEventBecameMonstrous became_monstrous = 134;
+    VisibleEventEmblemCreated emblem_created = 135;
   }
+  // 132 was VisibleEventPlayerPoisonChanged, superseded by the general player-counter
+  // subsystem (`player_counters_placed`). Burned, not reused (docs/WIRE_COMPAT.md).
+  reserved 132;
 }
 
 message VisibleEventSpellCast {
@@ -1092,6 +1121,11 @@ message VisibleEventPhasedOut {
 // A permanent phased in (CR 702.26f — at its controller's untap). Public, the mirror of
 // `PhasedOut`.
 message VisibleEventPhasedIn {
+  uint32 object = 1;
+}
+
+// A permanent became monstrous (CR 701.28b). Public battlefield status, like `LeveledUp`.
+message VisibleEventBecameMonstrous {
   uint32 object = 1;
 }
 
@@ -1241,6 +1275,16 @@ message VisibleEventCountersPlaced {
 // than +1/+1. `counter_kind` mirrors `engine::CounterKind`'s discriminant.
 message VisibleEventKindCountersPlaced {
   uint32 object = 1;
+  uint32 counter_kind = 2;
+  int32 count = 3;
+}
+
+// A named counter (CR 122.1 — poison) was placed on (`count` positive) or removed from (negative)
+// a *player* — the player-side twin of `KindCountersPlaced`. `counter_kind` mirrors
+// `engine::PlayerCounterKind`'s discriminant. Public: ten or more poison loses the game
+// (CR 704.5c).
+message VisibleEventPlayerCountersPlaced {
+  uint32 player = 1;
   uint32 counter_kind = 2;
   int32 count = 3;
 }
@@ -1618,6 +1662,15 @@ message VisibleEventTokenCreated {
 
 message VisibleEventTokenCeasedToExist {
   uint32 token = 1;
+}
+
+// A player got an emblem (CR 114.1). Public — CR 114.2, an emblem is visible to everyone,
+// and nothing can remove, copy, or target it afterwards (CR 114.5).
+message VisibleEventEmblemCreated {
+  uint32 emblem = 1;
+  uint32 controller = 2;
+  // The emblem's name; its abilities come from the catalog by name, like any other object's.
+  string name = 3;
 }
 
 // A spell on the stack was copied (Twincast): a new spell object `copy` was put on the stack

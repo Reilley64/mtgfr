@@ -1,0 +1,52 @@
+# Trample, haste
+# If you would put one or more counters on a permanent or player, put twice that many of each of those kinds of
+# counters on that permanent or player instead.
+# If an opponent would put one or more counters on a permanent or player, they put half that many of each of those
+# kinds of counters on that permanent or player instead, rounded down.
+name = "Vorinclex, Monstrous Raider"
+id = "5a3fdf5a-bff8-4896-b288-3f43f9a72d9b"
+default_print = "92613468-205e-488b-930d-11908477e9f8"
+oracle = "Trample, haste\nIf you would put one or more counters on a permanent or player, put twice that many of each of those kinds of counters on that permanent or player instead.\nIf an opponent would put one or more counters on a permanent or player, they put half that many of each of those kinds of counters on that permanent or player instead, rounded down."
+sets = ["khm"]
+legendary = true
+subtypes = ["Phyrexian", "Praetor"]
+keywords = ["trample", "haste"]
+approximates = "CR 616.1's ordering choice is unoffered: a halving and a doubler applying at once resolve in the fixed order additions, multipliers, halvings rather than the affected player's chosen order."
+
+[cost]
+generic = 4
+green = 2
+
+[kind]
+type = "creature"
+power = 6
+toughness = 6
+
+# If you would put one or more counters on a permanent or player, put twice that many of each of
+# those kinds of counters on that permanent or player instead.
+[[abilities]]
+timing = "static"
+
+# put twice that many of each of those kinds of counters on that permanent or player instead
+[[abilities.effects]]
+type = "static"
+mode = "counter_replacement"
+times = 2
+any_kind = true
+placer = "you"
+recipients = "permanents_and_players"
+
+# If an opponent would put one or more counters on a permanent or player, they put half that many
+# of each of those kinds of counters on that permanent or player instead, rounded down.
+[[abilities]]
+timing = "static"
+
+# they put half that many of each of those kinds of counters on that permanent or player instead,
+# rounded down
+[[abilities.effects]]
+type = "static"
+mode = "counter_replacement"
+halve = true
+any_kind = true
+placer = "opponents"
+recipients = "permanents_and_players"

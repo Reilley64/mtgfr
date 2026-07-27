@@ -1,0 +1,14 @@
+# ({T}: Add {B} or {G}.)
+# As this land enters, you may pay 2 life. If you don't, it enters tapped.
+name = "Overgrown Tomb"
+id = "975ec9a3-6f20-4177-8211-82526e092538"
+default_print = "ad7e18e2-c033-4b6c-86e8-d0e5cc824cfd"
+otags = ["activated-ability", "cycle-shockland", "synergy-forest", "synergy-swamp"]
+oracle = "({T}: Add {B} or {G}.)\nAs this land enters, you may pay 2 life. If you don't, it enters tapped."
+sets = ["trk"]
+enters_tapped_unless_you_pay_life = 2
+
+[kind]
+type = "land"
+produces = ["black", "green"]
+subtypes = ["Swamp", "Forest"]

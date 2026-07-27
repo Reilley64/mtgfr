@@ -490,6 +490,21 @@ impl Game {
         // read right off the `Event::ManaSpent` `settle_payment` just appended, before any later
         // event dilutes the `events` tail.
         let spent_colors = spent_colors_from(&events);
+        // A Phyrexian pip (CR 107.4f — Vraska, Betrayal's Sting's `{B/P}`) `settle_payment` fell
+        // back to life on, read the same way: `ManaPool::spend_plan_unrestricted` already chose
+        // mana over life whenever a spare unit of the pip's own color was left over, so whatever
+        // it *didn't* fund that way owes 2 life apiece.
+        let phyrexian_life = phyrexian_life_paid_from(&cost, &events);
+        if phyrexian_life > 0 {
+            self.push_apply(
+                &mut events,
+                Event::LifeChanged {
+                    player,
+                    amount: -(2 * i32::from(phyrexian_life)),
+                    source: Some(object),
+                },
+            );
+        }
         // "Reveal a creature card from your hand" (CR 601.2g — Disaster Radius): read before any
         // of this cast's own discard/sacrifice picks touch the hand below. See
         // `AdditionalCost::reveal_creature_from_hand`'s own doc for why the pick is automatic
@@ -590,6 +605,7 @@ impl Game {
                 masked: false,
                 evoked,
                 spent_colors,
+                phyrexian_life_paid: phyrexian_life,
             },
         );
         if from_command {
@@ -1062,11 +1078,50 @@ impl Game {
             return Err(Reject::WrongTiming);
         }
 
+        // "As this land enters, you may pay 2 life. If you don't, it enters tapped." (CR
+        // 614.12 — Overgrown Tomb): a *choice*, not a board-state condition, so it pauses before
+        // the land exists rather than falling through `enters_tapped_unless`. Only offered when
+        // affordable (CR 119.4 — life down to and including 0); below the cost the land just
+        // enters tapped with no prompt, handled by `Game::enters_tapped` at `Event::LandPlayed`.
+        if let Some(life) = printed.enters_tapped_unless_you_pay_life
+            && self.life(player) >= life as i32
+        {
+            pending::raise_choice(
+                self,
+                PendingChoice::PayLifeOrEntersTapped {
+                    player,
+                    source: object,
+                    life,
+                },
+            );
+            return Ok(Vec::new());
+        }
+
+        // Reveal lands (CR 614.12 — Vineglimmer Snarl): "as this land enters, you may reveal…"
+        // pauses before LandPlayed when the hand has a matching card. No match → enters tapped
+        // with no choice. SearchedToBattlefield / put-from-hand paths still use the automatic
+        // hand scan via [`Game::enters_tapped`] (LandPlayed-only pause for now).
+        if let Some(Condition::HandHasLandWithSubtype { subtypes }) = printed.enters_tapped_unless
+            && self.hand_has_land_with_subtype(player, subtypes)
+        {
+            pending::raise_choice(
+                self,
+                PendingChoice::MayRevealLandFromHand {
+                    player,
+                    land: object,
+                    subtypes,
+                },
+            );
+            return Ok(Vec::new());
+        }
+
         let permanent = self.next_object_id();
+        let tapped = self.enters_tapped(&printed, player);
         let mut events = vec![Event::LandPlayed {
             permanent,
             from: object,
             player,
+            tapped,
         }];
         self.apply_all(&events);
         // A land's own as-enters static (CR 616.1 — Vivid Crag's "enters with two charge
@@ -1945,6 +2000,7 @@ impl Game {
                 masked: false,
                 evoked: false,
                 spent_colors,
+                phyrexian_life_paid: 0,
             },
         );
         // Casting is an action: reset the pass count; the caster keeps priority. (CR 117, CR 601)
@@ -2039,6 +2095,7 @@ impl Game {
                 masked,
                 evoked: false,
                 spent_colors,
+                phyrexian_life_paid: 0,
             },
         );
     }
@@ -2614,6 +2671,29 @@ impl Game {
             return Ok(events);
         }
 
+        // A modal activated ability (CR 601.2b — Cankerbloom's "Choose one — Destroy target
+        // artifact. / Destroy target enchantment. / Proliferate."): choose the mode as the
+        // ability is activated, before any target, since its modes may target different things
+        // — the activation's single `target` parameter can't carry all of them. The chosen
+        // mode's own target (if any) is requested next by `answer_choose_mode`.
+        if let Effect::ChooseOne { options } = effect {
+            if !options.is_empty() {
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::ChooseMode {
+                        player,
+                        source: object,
+                        target: None,
+                        x,
+                        modes: options,
+                        at_placement: false,
+                        activated: true,
+                    },
+                );
+            }
+            return Ok(events);
+        }
+
         // A two-target activated ability (Zedruu's donation, CR 601.2c): its first target (the
         // permanent you control) rides `target` — validate it against the effect's own spec (CR
         // 602.2b), then pause to choose the second, independent target clause (the recipient
@@ -2690,6 +2770,29 @@ fn spent_counts_from(events: &[Event]) -> [u8; 6] {
         // unreachable: see `spent_colors_from`'s doc — `settle_payment` always ends with `ManaSpent`.
         _ => [0; 6],
     }
+}
+
+/// How many of `cost`'s Phyrexian pips (CR 107.4f — `{a/P}`) the payment [`Game::settle_payment`]
+/// just appended to `events` paid with life instead of mana, read off its trailing
+/// [`Event::ManaSpent`] the way [`spent_colors_from`] reads colors. Every credit in a spend plan
+/// funds exactly one pip, so the plan's total beyond the cost's non-Phyrexian pips
+/// (`{X}` is already folded into `generic` by [`Cost::with_x`]) counts the pips
+/// [`ManaPool::spend_plan_unrestricted`] covered with mana; the rest owe 2 life apiece.
+fn phyrexian_life_paid_from(cost: &Cost, events: &[Event]) -> u8 {
+    let pips = cost.phyrexian.len() as u32;
+    if pips == 0 {
+        return 0;
+    }
+    let Some(Event::ManaSpent { mana, .. }) = events.last() else {
+        // unreachable: see `spent_colors_from`'s doc — `settle_payment` always ends with `ManaSpent`.
+        return 0;
+    };
+    let non_phyrexian = u32::from(cost.generic)
+        + u32::from(cost.colorless)
+        + cost.colored.iter().map(|&n| u32::from(n)).sum::<u32>()
+        + cost.hybrid.len() as u32;
+    let paid_with_mana = mana.total().saturating_sub(non_phyrexian).min(pips);
+    (pips - paid_with_mana) as u8
 }
 
 /// Build an [`Event::SpellDamageDivided`] from `(target, amount)` pairs (CR 601.2d), splitting

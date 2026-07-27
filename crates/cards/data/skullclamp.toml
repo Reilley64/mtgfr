@@ -2,9 +2,9 @@
 # Whenever equipped creature dies, draw two cards.
 # Equip {1}
 name = "Skullclamp"
+sets = ["40k", "blc", "brc", "c14", "c15", "c16", "c17", "c20", "clb", "cma", "cmd", "dst", "fic", "moc", "msc", "pip", "plst", "sld", "td0", "tdc", "v09", "vma"]
 otags = ["activated-ability", "death-trigger", "draw-engine", "flowstone", "hand-positive", "repeatable-pure-draw"]
 oracle = "Equipped creature gets +1/-1.\nWhenever equipped creature dies, draw two cards.\nEquip {1}"
-set = "msc"
 subtypes = ["Equipment"]
 id = "65986c1b-8e51-4604-b685-d82fa7d1263a"
 default_print = "1d8b007b-3169-4ee3-80c7-781fc096fc7a"

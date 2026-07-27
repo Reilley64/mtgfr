@@ -89,6 +89,7 @@ impl Game {
                                 cast_from_graveyard_only: false,
                                 optional: false,
                             }),
+                            resume: crate::MayYesNoResume::Default,
                         },
                     );
                     return;

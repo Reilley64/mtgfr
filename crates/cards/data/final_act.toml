@@ -4,25 +4,15 @@
 # • Destroy all battles.
 # • Exile all graveyards.
 # • Each opponent loses all counters.
-# Final Act {4}{B}{B} — "Choose one or more —" destroy all creatures / all planeswalkers / all
-# battles / exile all graveyards / each opponent loses all counters.
-#
-# ponytail: the printed card has five modes; three are expressible (destroy all creatures, destroy
-# all planeswalkers, exile all graveyards), so `choose_max` opens "one or more" over those three
-# (mirroring Casualties of War's precedent for a partial-mode "choose one or more" pool). "Destroy
-# all battles" is dropped — battles aren't a modeled permanent type. "Each opponent loses all
-# counters" is dropped — that's counters on the player (poison/energy/experience/etc.), and this
-# pool tracks no player-level counters.
 name = "Final Act"
+sets = ["m3c", "mar", "soc"]
 id = "335a6c6a-030f-45d4-806c-467a22962eed"
 default_print = "a86671d1-4f4b-486e-a0b3-671608974a82"
 otags = ["modal", "removal-battle", "removal-creature", "removal-destroy", "removal-planeswalker", "remove-counters-other", "remove-counters-player", "sweeper", "sweeper-graveyard"]
 oracle = "Choose one or more —\n• Destroy all creatures.\n• Destroy all planeswalkers.\n• Destroy all battles.\n• Exile all graveyards.\n• Each opponent loses all counters."
-set = "soc"
-approximates = "the printed card has five modes; two are dropped — \"destroy all battles\" (battles aren't a modeled permanent type) and \"each opponent loses all counters\" (counters on the player, which this pool doesn't track). \"Choose one or more\" is offered over the remaining three (destroy all creatures / destroy all planeswalkers / exile all graveyards)."
 modal = true
 choose = 1
-choose_max = 3
+choose_max = 5
 
 [cost]
 generic = 4
@@ -51,7 +41,17 @@ type = "destroy"
 mode = "all"
 filter = { types = "planeswalker" }
 
-# Mode 2 — "Exile all graveyards."
+# Mode 2 — "Destroy all battles."
+[[abilities]]
+timing = "spell"
+
+# Destroy all battles.
+[[abilities.effects]]
+type = "destroy"
+mode = "all"
+filter = { types = "battle" }
+
+# Mode 3 — "Exile all graveyards."
 [[abilities]]
 timing = "spell"
 
@@ -59,3 +59,13 @@ timing = "spell"
 [[abilities.effects]]
 type = "exile"
 mode = "all_graveyards"
+
+# Mode 4 — "Each opponent loses all counters."
+[[abilities]]
+timing = "spell"
+
+# Each opponent loses all counters.
+[[abilities.effects]]
+type = "counters"
+mode = "remove_all_player_counters"
+scope = "each_opponent"

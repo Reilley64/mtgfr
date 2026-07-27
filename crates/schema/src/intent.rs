@@ -233,11 +233,16 @@ pub enum WireIntent {
     },
     /// Accept or decline an optional cost. `x` is set only when the cost has an X the payer
     /// chooses (join forces' "any amount of mana") — see [`engine::Intent::PayOptionalCostX`].
+    /// `discard_cost` names hand cards paying an additional discard on the optional cost
+    /// (Conspiracy Theorist's "pay {1} and discard a card"); empty when declining or when the
+    /// cost has no discard.
     PayOptionalCost {
         player: u8,
         pay: bool,
         #[serde(default)]
         x: Option<u32>,
+        #[serde(default)]
+        discard_cost: Vec<ObjectId>,
     },
     AssignDamage {
         player: u8,
@@ -292,6 +297,13 @@ pub enum WireIntent {
     ChooseSacrifices {
         player: u8,
         sacrifices: Vec<ObjectId>,
+    },
+    /// Answer a proliferate choice: the permanents and players this player chose to grow
+    /// (CR 701.27 — "any number of permanents and/or players"; both empty declines).
+    ChooseProliferate {
+        player: u8,
+        permanents: Vec<ObjectId>,
+        players: Vec<u8>,
     },
     /// Answer a cleanup discard: the cards this player discards to reach the hand-size limit.
     Discard {
@@ -359,12 +371,15 @@ pub enum WireIntent {
         #[serde(default)]
         choice: Option<ObjectId>,
     },
-    /// Answer a choose-exiled-dig-to-cast-free choice: `choice` is the exiled dig card granted
-    /// the free-cast permission, or absent to decline.
+    /// Answer a choose-exiled-dig-to-cast-free choice: `choice` is the exiled dig card cast
+    /// without paying its mana cost now (mid-resolution), or absent to decline. `target` is the
+    /// cast-time target when the chosen card needs one (an Aura).
     ChooseExiledDigToCastFree {
         player: u8,
         #[serde(default)]
         choice: Option<ObjectId>,
+        #[serde(default)]
+        target: Option<WireTarget>,
     },
     /// Answer an opponent-chooses-pile choice (Abstract Performance): `pile` is `0` or `1` — which
     /// of the two exile piles this opponent puts into the controller's graveyard.
@@ -646,7 +661,17 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
         ChooseTargetPlayers { players, .. } => ChooseTargetPlayers { player, players },
         AnswerMay { yes, .. } => AnswerMay { player, yes },
         ChooseDrawCount { count, .. } => ChooseDrawCount { player, count },
-        PayOptionalCost { pay, x, .. } => PayOptionalCost { player, pay, x },
+        PayOptionalCost {
+            pay,
+            x,
+            discard_cost,
+            ..
+        } => PayOptionalCost {
+            player,
+            pay,
+            x,
+            discard_cost,
+        },
         AssignDamage { assignment, .. } => AssignDamage { player, assignment },
         DivideSpellDamage { assignment, .. } => DivideSpellDamage { player, assignment },
         ArrangeTop { top, bottom, .. } => ArrangeTop {
@@ -657,6 +682,15 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
         SelectFromTop { cards, .. } => SelectFromTop { player, cards },
         SearchLibrary { choice, .. } => SearchLibrary { player, choice },
         ChooseSacrifices { sacrifices, .. } => ChooseSacrifices { player, sacrifices },
+        ChooseProliferate {
+            permanents,
+            players: chosen,
+            ..
+        } => ChooseProliferate {
+            player,
+            permanents,
+            players: chosen,
+        },
         Discard { cards, .. } => Discard { player, cards },
         PutFromHandOnTop { cards, .. } => PutFromHandOnTop { player, cards },
         DeclineUntap { keep_tapped, .. } => DeclineUntap {
@@ -670,7 +704,11 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
         ReturnLandOrSacrifice { land, .. } => ReturnLandOrSacrifice { player, land },
         ChooseExiledWithCard { choice, .. } => ChooseExiledWithCard { player, choice },
         ChooseExiledWithCardToCast { choice, .. } => ChooseExiledWithCardToCast { player, choice },
-        ChooseExiledDigToCastFree { choice, .. } => ChooseExiledDigToCastFree { player, choice },
+        ChooseExiledDigToCastFree { choice, target, .. } => ChooseExiledDigToCastFree {
+            player,
+            choice,
+            target,
+        },
         ChooseOpponentPile { pile, .. } => ChooseOpponentPile { player, pile },
         RevealedCardToBattlefieldOrHand { choice, .. } => {
             RevealedCardToBattlefieldOrHand { player, choice }
@@ -873,10 +911,16 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
             player: PlayerId(player),
             count,
         },
-        WireIntent::PayOptionalCost { player, pay, x } => match x {
+        WireIntent::PayOptionalCost {
+            player,
+            pay,
+            x,
+            discard_cost,
+        } => match x {
             None => Intent::PayOptionalCost {
                 player: PlayerId(player),
                 pay,
+                discard_cost,
             },
             Some(x) => Intent::PayOptionalCostX {
                 player: PlayerId(player),
@@ -934,6 +978,15 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
             player: PlayerId(player),
             sacrifices,
         },
+        WireIntent::ChooseProliferate {
+            player,
+            permanents,
+            players,
+        } => Intent::ChooseProliferate {
+            player: PlayerId(player),
+            permanents,
+            players: players.into_iter().map(PlayerId).collect(),
+        },
         WireIntent::Discard { player, cards } => Intent::Discard {
             player: PlayerId(player),
             cards,
@@ -979,12 +1032,15 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
                 choice,
             }
         }
-        WireIntent::ChooseExiledDigToCastFree { player, choice } => {
-            Intent::ChooseExiledDigToCastFree {
-                player: PlayerId(player),
-                choice,
-            }
-        }
+        WireIntent::ChooseExiledDigToCastFree {
+            player,
+            choice,
+            target,
+        } => Intent::ChooseExiledDigToCastFree {
+            player: PlayerId(player),
+            choice,
+            target: target.map(WireTarget::to_engine),
+        },
         WireIntent::ChooseOpponentPile { player, pile } => Intent::ChooseOpponentPile {
             player: PlayerId(player),
             pile,

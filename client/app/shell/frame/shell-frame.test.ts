@@ -1,0 +1,142 @@
+import { html } from "foldkit/html";
+import { describe, expect, it } from "vitest";
+import { shellFrame } from "./shell-frame";
+
+type Msg = { _tag: "noop" };
+
+const h = html<Msg>();
+
+function collectTestIds(node: unknown, out: string[] = []): string[] {
+  if (node == null || typeof node !== "object") return out;
+  const n = node as { data?: { attrs?: Record<string, string> }; children?: unknown[] };
+  const id = n.data?.attrs?.["data-testid"];
+  if (typeof id === "string") out.push(id);
+  for (const child of n.children ?? []) collectTestIds(child, out);
+  return out;
+}
+
+function findByTestId(node: unknown, testId: string): unknown {
+  if (node == null || typeof node !== "object") return null;
+  const n = node as { data?: { attrs?: Record<string, string> }; children?: unknown[] };
+  if (n.data?.attrs?.["data-testid"] === testId) return node;
+  for (const child of n.children ?? []) {
+    const found = findByTestId(child, testId);
+    if (found != null) return found;
+  }
+  return null;
+}
+
+function classNameOf(node: unknown): string {
+  const n = node as { data?: { class?: Record<string, boolean> } };
+  return Object.entries(n.data?.class ?? {})
+    .filter(([, active]) => active)
+    .map(([name]) => name)
+    .join(" ");
+}
+
+function collectTags(node: unknown, tag: string, out: unknown[] = []): unknown[] {
+  if (node == null || typeof node !== "object") return out;
+  const n = node as { sel?: string; children?: unknown[] };
+  if (n.sel === tag) out.push(node);
+  for (const child of n.children ?? []) collectTags(child, tag, out);
+  return out;
+}
+
+describe("shellFrame", () => {
+  it("renders header slots, stage, auth atmosphere, and version badge", () => {
+    const tree = shellFrame(h, {
+      atmosphere: "auth",
+      title: "Sign in",
+      subtitle: "Welcome",
+      leading: h.div([h.DataAttribute("testid", "lead")], ["Back"]),
+      trailing: h.div([h.DataAttribute("testid", "trail")], ["Go"]),
+      stage: h.div([h.DataAttribute("testid", "stage-child")], ["Body"]),
+      chrome: { version: "1.2.3", faithfulCount: null, oracleTotal: null, coverageHref: null },
+    });
+
+    const ids = collectTestIds(tree);
+    expect(ids).toContain("shell-frame");
+    expect(ids).toContain("shell-header");
+    expect(ids).toContain("shell-header-leading");
+    expect(ids).toContain("shell-header-title");
+    expect(ids).toContain("shell-header-trailing");
+    expect(ids).toContain("shell-stage");
+    expect(ids).toContain("stage-child");
+    expect(ids).toContain("app-version");
+    expect(classNameOf(findByTestId(tree, "shell-frame"))).toContain("shell-atmosphere-auth");
+    expect(classNameOf(findByTestId(tree, "shell-stage"))).toContain("shell-stage-enter");
+  });
+
+  it("omits header h1 when title is empty or omitted", () => {
+    const omitted = shellFrame(h, {
+      atmosphere: "auth",
+      stage: [],
+      chrome: { version: null, faithfulCount: null, oracleTotal: null, coverageHref: null },
+    });
+    const empty = shellFrame(h, {
+      atmosphere: "auth",
+      title: "",
+      stage: [],
+      chrome: { version: null, faithfulCount: null, oracleTotal: null, coverageHref: null },
+    });
+
+    expect(collectTags(omitted, "h1")).toHaveLength(0);
+    expect(collectTags(empty, "h1")).toHaveLength(0);
+    expect(findByTestId(omitted, "shell-header-title")).not.toBeNull();
+    expect(findByTestId(empty, "shell-header-title")).not.toBeNull();
+  });
+
+  it("uses shell atmosphere variant", () => {
+    const tree = shellFrame(h, {
+      atmosphere: "shell",
+      title: "Decks",
+      stage: [],
+      chrome: { version: null, faithfulCount: null, oracleTotal: null, coverageHref: null },
+    });
+
+    expect(classNameOf(findByTestId(tree, "shell-frame"))).toContain("shell-atmosphere-shell");
+  });
+
+  it("contains the viewport so stage children can own inner scroll", () => {
+    const tree = shellFrame(h, {
+      atmosphere: "shell",
+      title: "New deck",
+      stage: h.div([h.DataAttribute("testid", "stage-child")], ["Body"]),
+      chrome: { version: null, faithfulCount: null, oracleTotal: null, coverageHref: null },
+    });
+
+    expect(classNameOf(findByTestId(tree, "shell-frame"))).toContain("flex");
+    expect(classNameOf(findByTestId(tree, "shell-frame"))).toContain("flex-col");
+    expect(classNameOf(findByTestId(tree, "shell-frame"))).toContain("overflow-hidden");
+    expect(classNameOf(findByTestId(tree, "shell-frame"))).not.toContain("overflow-y-auto");
+    expect(classNameOf(findByTestId(tree, "shell-stage"))).toContain("min-h-0");
+    expect(classNameOf(findByTestId(tree, "shell-stage"))).toContain("flex-1");
+    expect(classNameOf(findByTestId(tree, "shell-stage"))).toContain("overflow-y-auto");
+    expect(classNameOf(findByTestId(tree, "shell-header"))).toContain("shrink-0");
+  });
+
+  it("accepts Html subtitle nodes", () => {
+    const tree = shellFrame(h, {
+      atmosphere: "shell",
+      title: "Coverage",
+      subtitle: h.p([h.DataAttribute("testid", "coverage-global-percent")], ["1.9% faithful"]),
+      stage: [],
+      chrome: { version: null, faithfulCount: null, oracleTotal: null, coverageHref: null },
+    });
+
+    expect(collectTestIds(tree)).toContain("coverage-global-percent");
+  });
+
+  it("locks stage scroll when tools pages own an inner scrollport", () => {
+    const tree = shellFrame(h, {
+      atmosphere: "shell",
+      title: "Coverage",
+      lockStageScroll: true,
+      stage: h.div([h.DataAttribute("testid", "stage-child")], ["Body"]),
+      chrome: { version: null, faithfulCount: null, oracleTotal: null, coverageHref: null },
+    });
+
+    expect(classNameOf(findByTestId(tree, "shell-stage"))).toContain("overflow-hidden");
+    expect(classNameOf(findByTestId(tree, "shell-stage"))).not.toContain("overflow-y-auto");
+  });
+});

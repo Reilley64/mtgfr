@@ -31,7 +31,7 @@ Alt/Option pins a card into a shared preview `dock` mode. The dock has a full-bo
 - When the pinned live object has `marked_damage > 0`, the dock shows a `Marked damage: N` line (`inspect-marked-damage`) above the modifier ledger.
 - Player pins render a text-only dock (`inspect-overlay`) with `Life: N` (`inspect-player-life`) and, when `commander_damage` has rows, a `Commander damage` panel (`inspect-commander-damage`) listing each source as `Owner[: — Commander]: amount / 21` (`inspect-commander-damage-{seat}`). Orb paint stays max-only `Cmd N`.
 - Space is blocked while the dock is open through keyboard dismissal priority.
-- Inspect is topmost in the board layer stack: above prompts, HUD, pile overlay, concede dialog, result overlay, and portrait gate when present.
+- Inspect is topmost in the board layer stack: above prompts, HUD, pile overlay, concede dialog, and result overlay.
 
 ## Implementation Decisions
 

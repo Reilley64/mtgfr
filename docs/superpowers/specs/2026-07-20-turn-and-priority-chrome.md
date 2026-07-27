@@ -24,7 +24,7 @@ Use `PriorityContextBar` for action controls, `TurnBanner` for active player and
 - Empty stack with your priority shows the primary Next/combat confirmation button.
 - Non-empty stack with your priority shows Resolve card and Resolve stack.
 - Helpless non-empty-stack windows do not show a generic Next button.
-- Active players see End Turn when the stack is empty and combat staging is not pending.
+- Active players see End Turn when the stack is empty, combat staging is not pending, and the engine does not require any attackers (`required_attacks` empty — goad / must-attack). While End Turn is already armed, the control stays visible so the seat can cancel.
 - Non-active players see the Until my turn rocker.
 - Local staged sessions, including `playModePick`, show the existing Cancel control; cancelling a parked hand play-mode pick returns the hand card without submitting an intent.
 - Space mirrors the primary/pass action. Enter toggles End Turn or Until my turn.

@@ -1,7 +1,9 @@
 import { CARD_W } from "../geometry/layout";
+import { STACK_CARD_W } from "../geometry/stackLayout";
 
 export const HAND_FACE_W = 208;
-export const STACK_CARD_W = 112;
+/** Re-export resting stack face width so flight scale stays coupled to the HTML stack. */
+export { STACK_CARD_W };
 
 const TAU_MS = 75;
 const EPSILON_PX = 0.5;
@@ -24,6 +26,11 @@ export interface CardFlight {
   phase: FlightPhase;
   kind: FlightKind;
   fromCardId?: number;
+  /**
+   * Local seed awaiting authoritative rebind/retarget. Settles at the aim pose but stays in the
+   * flight set so game sync can continue the same flight instead of spawning a second one.
+   */
+  hold?: boolean;
 }
 
 export type FlightSpawn = {
@@ -39,6 +46,7 @@ export type FlightSpawn = {
   targetScale: number;
   kind: FlightKind;
   fromCardId?: number;
+  hold?: boolean;
 };
 
 export type FlightStepResult = {
@@ -61,11 +69,16 @@ export function spawnFlight(spawn: FlightSpawn): CardFlight {
     phase: "flying",
     kind: spawn.kind,
     fromCardId: spawn.fromCardId,
+    hold: spawn.hold,
   };
 }
 
 export function flightSettled(flight: CardFlight): boolean {
   return flight.phase === "settled";
+}
+
+export function flightOwnsId(flight: CardFlight): boolean {
+  return flight.phase === "flying" || flight.hold === true;
 }
 
 export function handFlightScale(zoom: number): number {
@@ -132,13 +145,14 @@ export function retargetFlight(flight: CardFlight, target: { x: number; y: numbe
     targetY: target.y,
     targetScale: target.scale,
     phase: "flying",
+    hold: false,
   };
 }
 
 export function flyingCardIds(flights: ReadonlyMap<number, CardFlight>): Set<number> {
   const ids = new Set<number>();
   for (const [id, flight] of flights) {
-    if (flight.phase === "flying") ids.add(id);
+    if (flightOwnsId(flight)) ids.add(id);
   }
   return ids;
 }

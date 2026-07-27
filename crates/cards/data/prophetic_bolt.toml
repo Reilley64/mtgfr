@@ -4,11 +4,11 @@
 # hidden, so the order among bottomed cards is unobservable; a fixed (PRNG-shuffled) order stands
 # in for it (same shortcut Dig Through Time's `look_at_top` takes elsewhere in the pool).
 name = "Prophetic Bolt"
+sets = ["2x2", "apc", "c15", "c20", "cmd", "ddj", "plst", "vma"]
 id = "d5e4bf5e-1a66-4315-8c82-640c27977b88"
 default_print = "9f482559-c09f-4261-9715-76fc11014a20"
 oracle = "Prophetic Bolt deals 4 damage to any target. Look at the top four cards of your library. Put one of those cards into your hand and the rest on the bottom of your library in any order."
-set = "cmd"
-
+approximates = "\"the rest on the bottom of your library in any order\" — the bottom of the library is hidden, so the order among bottomed cards is unobservable; a fixed (PRNG-shuffled) order stands in for it (same shortcut Dig Through Time's `look_at_top` takes elsewhere in the pool)."
 [cost]
 generic = 3
 blue = 1

@@ -87,15 +87,27 @@ impl Game {
             Amount::NontokenCreaturesEnteredThisTurn => {
                 self.players[controller.0 as usize].nontoken_creatures_entered_this_turn as i32
             }
+            // "Creatures you control" is a *control* test (CR 109.4/CR 720) — a creature you own
+            // but an opponent has stolen is not yours to count, and one you stole is.
             Amount::TotalPowerYouControl => self
                 .battlefield()
                 .into_iter()
                 .filter(|&id| {
-                    self.owner_of(id) == controller
+                    self.controller_of(id) == controller
                         && matches!(self.def_of(id).kind, CardKind::Creature { .. })
                 })
                 .map(|id| self.power(id))
                 .sum(),
+            Amount::GreatestPowerAmongCreaturesYouControl => self
+                .battlefield()
+                .into_iter()
+                .filter(|&id| {
+                    self.controller_of(id) == controller
+                        && matches!(self.def_of(id).kind, CardKind::Creature { .. })
+                })
+                .map(|id| self.power(id))
+                .max()
+                .unwrap_or(0),
             // Zedruu's "permanents you own that your opponents control" — you own it, but its
             // controller isn't you (CR 108.3/720). A permanent you own is controlled by you or an
             // opponent, so owner-is-you-and-controller-isn't counts each donated permanent once.
@@ -253,6 +265,18 @@ impl Game {
             // `queue_enchanted_creature_deals_damage_triggers`), so a live read here never happens
             // for the pool. The arm exists only so this match stays exhaustive.
             Amount::TriggeringDamageDealt => 0,
+            // "for each poison counter your opponents have" (Phyrexian Swarmlord): the sum over
+            // every living opponent, CR 122.1.
+            Amount::OpponentsPoisonCounters => self
+                .living_players()
+                .filter(|&p| p != controller)
+                .map(|p| self.player_counters(p, PlayerCounterKind::Poison) as i32)
+                .sum(),
+            // "for each poison counter its controller has" (Phyresis Outbreak): the poison on the
+            // single player this amount is relative to, CR 122.1.
+            Amount::ControllersPoisonCounters => {
+                self.player_counters(controller, PlayerCounterKind::Poison) as i32
+            }
             Amount::Scaled { times, by } => {
                 times * self.resolve_amount(*by, controller, source, target, x)
             }

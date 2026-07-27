@@ -1,11 +1,12 @@
 import { Submodel } from "foldkit";
 import { type Html, html } from "foldkit/html";
-import { type AppChromeMeta, appVersionBadge, formatFaithfulPercent } from "../../domain/ui/app-version";
+import { type AppChromeMeta, formatFaithfulPercent } from "../../domain/ui/app-version";
 import { buttonClass } from "../../domain/ui/buttonClass";
-import { feltClass, fieldClass, listRowClass } from "../../domain/ui/surfaces";
+import { alertClass, fieldClass, listRowClass } from "../../domain/ui/surfaces";
 import type { ClosedAccountMenu, GotAuthMessage, ToggledAccountMenu } from "../../messages";
 import { HomeRoute, routePath } from "../../routes";
 import { accountChrome } from "../account-chrome/view";
+import { shellFrame } from "../frame/shell-frame";
 import { ChangedCoverageQuery, type Message as CoverageMessage, RequestedCoverageRefresh } from "./messages";
 import type { CoverageSetRow, CoverageStatus, CoverageSubmodel } from "./submodel";
 
@@ -40,9 +41,11 @@ function statusCopy(status: CoverageStatus): string | null {
   }
 }
 
-function percentValue(row: CoverageSetRow): number {
-  if (row.oracleTotal == null || !(row.oracleTotal > 0)) return Number.NEGATIVE_INFINITY;
-  return row.faithful / row.oracleTotal;
+function compareReleasedAtDescending(left: CoverageSetRow, right: CoverageSetRow): number {
+  if (left.releasedAt == null && right.releasedAt == null) return 0;
+  if (left.releasedAt == null) return 1;
+  if (right.releasedAt == null) return -1;
+  return right.releasedAt.localeCompare(left.releasedAt);
 }
 
 export function coveragePercentText(faithfulCount: number | null, oracleTotal: number | null): string {
@@ -60,8 +63,8 @@ export function visibleCoverageRows(model: Pick<CoverageSubmodel, "query" | "set
         });
 
   return [...filtered].sort((left, right) => {
-    const percentDelta = percentValue(right) - percentValue(left);
-    if (percentDelta !== 0) return percentDelta;
+    const releasedAtOrder = compareReleasedAtDescending(left, right);
+    if (releasedAtOrder !== 0) return releasedAtOrder;
 
     const nameOrder = left.name.localeCompare(right.name);
     if (nameOrder !== 0) return nameOrder;
@@ -87,7 +90,7 @@ function tableRow(row: CoverageSetRow): Html {
       h.span([h.Class("text-right text-body text-snow")], [String(row.faithful)]),
       h.span([h.Class("text-right text-body text-snow")], [row.oracleTotal == null ? "—" : String(row.oracleTotal)]),
       h.span(
-        [h.Class("text-right text-game text-priority-gold")],
+        [h.Class("text-right font-display text-game text-vine")],
         [coveragePercentText(row.faithful, row.oracleTotal)],
       ),
     ],
@@ -101,94 +104,89 @@ export const view = Submodel.defineView<CoverageSubmodel, ViewMessage, ViewInput
   const globalPercent = coveragePercentText(model.faithfulCount, model.oracleTotal);
   const emptyCopy = model.query.trim() === "" ? "No set coverage available." : "No sets match.";
 
-  return h.main(
-    [
-      h.Class(
-        feltClass(
-          "h-full overflow-y-auto p-xxl pt-[max(1.5rem,env(safe-area-inset-top))] pr-[max(1.5rem,env(safe-area-inset-right))] pb-[max(1.5rem,env(safe-area-inset-bottom))] pl-[max(1.5rem,env(safe-area-inset-left))]",
+  return shellFrame(h, {
+    atmosphere: "shell",
+    title: "Coverage",
+    subtitle: h.p(
+      [h.Class("m-0 text-label text-lichen"), h.DataAttribute("testid", "coverage-global-percent")],
+      [`${globalPercent} faithful`],
+    ),
+    chrome,
+    lockStageScroll: true,
+    leading: h.a([h.Href(routePath(HomeRoute())), h.Class(buttonClass("ghost"))], ["Play"]),
+    trailing: accountChrome(h, {
+      username,
+      gravatarHash: meGravatarHash,
+      menuOpen: model.accountMenuOpen,
+      showLeaderboardLink: true,
+    }),
+    stage: h.div(
+      [
+        // Fill the contained shell stage so only the table body scrolls (not the page).
+        h.Class("flex h-full min-h-0 flex-1 flex-col overflow-hidden"),
+        h.DataAttribute("testid", "coverage-page"),
+      ],
+      [
+        h.section(
+          [h.Class("mx-auto flex min-h-0 w-full max-w-[960px] flex-1 flex-col gap-sm")],
+          [
+            model.error == null ? null : h.div([h.Role("alert"), h.Class(alertClass("shrink-0"))], [model.error]),
+            status == null ? null : h.div([h.Class("shrink-0 text-label text-lichen")], [status]),
+            model.status !== "loading"
+              ? h.input([
+                  h.Type("search"),
+                  h.DataAttribute("testid", "coverage-search"),
+                  h.AriaLabel("Search sets"),
+                  h.Placeholder("Search sets…"),
+                  h.Value(model.query),
+                  h.OnInput((query) => ChangedCoverageQuery({ query })),
+                  h.Class(fieldClass("mb-sm w-full max-w-[420px] shrink-0")),
+                ])
+              : null,
+            model.status === "ready" && rows.length > 0
+              ? h.div(
+                  [h.Class("flex min-h-0 flex-1 flex-col gap-xs"), h.DataAttribute("testid", "coverage-table")],
+                  [
+                    h.div(
+                      [
+                        h.Class(
+                          "grid shrink-0 grid-cols-[minmax(0,1.75fr)_96px_96px_80px] gap-md px-md text-label text-lichen",
+                        ),
+                      ],
+                      [
+                        h.span([], ["Set"]),
+                        h.span([h.Class("text-right")], ["Faithful"]),
+                        h.span([h.Class("text-right")], ["Scryfall"]),
+                        h.span([h.Class("text-right")], ["%"]),
+                      ],
+                    ),
+                    h.div(
+                      [
+                        h.Class("flex min-h-0 flex-1 flex-col gap-xs overflow-y-auto overscroll-contain"),
+                        h.DataAttribute("testid", "coverage-table-body"),
+                      ],
+                      rows.map(tableRow),
+                    ),
+                  ],
+                )
+              : null,
+            model.status === "ready" && rows.length === 0
+              ? h.div([h.Class("text-label text-lichen"), h.DataAttribute("testid", "coverage-empty")], [emptyCopy])
+              : null,
+            model.status === "error"
+              ? h.button(
+                  [
+                    h.Type("button"),
+                    h.DataAttribute("testid", "coverage-try-again"),
+                    h.OnClick(RequestedCoverageRefresh()),
+                    h.Class(buttonClass("ghost", "mt-md self-start")),
+                  ],
+                  ["Try again"],
+                )
+              : null,
+          ],
         ),
-      ),
-      h.DataAttribute("testid", "coverage-page"),
-    ],
-    [
-      h.div(
-        [h.Class("mx-auto mb-5 flex max-w-[960px] flex-wrap items-center justify-between gap-md")],
-        [
-          h.div(
-            [h.Class("flex min-w-0 flex-col gap-xs")],
-            [
-              h.h1([h.Class("m-0 text-title")], ["Coverage"]),
-              h.div(
-                [h.Class("text-label text-lichen"), h.DataAttribute("testid", "coverage-global-percent")],
-                [`${globalPercent} faithful`],
-              ),
-            ],
-          ),
-          h.div(
-            [h.Class("flex flex-wrap items-center gap-md")],
-            [
-              h.a([h.Href(routePath(HomeRoute())), h.Class(buttonClass("ghost"))], ["Play"]),
-              accountChrome(h, {
-                username,
-                gravatarHash: meGravatarHash,
-                menuOpen: model.accountMenuOpen,
-                showLeaderboardLink: true,
-              }),
-            ],
-          ),
-        ],
-      ),
-      h.section(
-        [h.Class("mx-auto flex max-w-[960px] flex-col gap-sm")],
-        [
-          model.error == null
-            ? null
-            : h.div([h.Role("alert"), h.Class("text-label text-reconnect-rust")], [model.error]),
-          status == null ? null : h.div([h.Class("text-label text-lichen")], [status]),
-          model.status !== "loading"
-            ? h.input([
-                h.Type("search"),
-                h.DataAttribute("testid", "coverage-search"),
-                h.AriaLabel("Search sets"),
-                h.Placeholder("Search sets…"),
-                h.Value(model.query),
-                h.OnInput((query) => ChangedCoverageQuery({ query })),
-                h.Class(fieldClass("mb-sm w-full max-w-[420px]")),
-              ])
-            : null,
-          model.status === "ready" && rows.length > 0
-            ? h.div(
-                [h.Class("flex flex-col gap-xs"), h.DataAttribute("testid", "coverage-table")],
-                [
-                  h.div(
-                    [h.Class("grid grid-cols-[minmax(0,1.75fr)_96px_96px_80px] gap-md px-md text-label text-lichen")],
-                    [
-                      h.span([], ["Set"]),
-                      h.span([h.Class("text-right")], ["Faithful"]),
-                      h.span([h.Class("text-right")], ["Scryfall"]),
-                      h.span([h.Class("text-right")], ["%"]),
-                    ],
-                  ),
-                  ...rows.map(tableRow),
-                ],
-              )
-            : null,
-          model.status === "ready" && rows.length === 0
-            ? h.div([h.Class("text-label text-lichen")], [emptyCopy])
-            : null,
-          model.status === "error"
-            ? h.button(
-                [
-                  h.Type("button"),
-                  h.OnClick(RequestedCoverageRefresh()),
-                  h.Class(buttonClass("ghost", "mt-md self-start")),
-                ],
-                ["Try again"],
-              )
-            : null,
-        ],
-      ),
-      appVersionBadge(h, chrome),
-    ],
-  );
+      ],
+    ),
+  });
 });

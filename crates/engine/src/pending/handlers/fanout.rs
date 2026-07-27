@@ -45,7 +45,7 @@ impl Game {
 
         let mut events = Vec::new();
         if let Some(&object) = chosen.first() {
-            let n = self.counters_after_replacements(object, 1);
+            let n = self.counters_after_replacements(chooser, object, 1);
             if n > 0 {
                 self.push_apply(
                     &mut events,
@@ -414,7 +414,7 @@ impl Game {
 
         let mut events = Vec::new();
         if let Some(object) = choice {
-            let n = self.counters_after_replacements(object, 1);
+            let n = self.counters_after_replacements(_player, object, 1);
             if n > 0 {
                 self.push_apply(
                     &mut events,

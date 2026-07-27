@@ -22,6 +22,13 @@ impl Game {
                 object: source,
                 prepared: true,
             }],
+            // Garruk, Cursed Huntsman's −6: "You get an emblem with …" (CR 114.1) — the emblem is
+            // created under the ability's controller, not its source's owner.
+            MiscEffect::GetEmblem { emblem } => vec![Event::EmblemCreated {
+                emblem: self.next_object_id(),
+                controller,
+                def: emblem,
+            }],
             // Stensian Sanguinist's attack trigger: arm a delayed watch on the just-deathtouched
             // shared target — its own source becomes prepared the first time that creature deals
             // combat damage to a player this combat (see `Game::fire_combat_damage_watch_triggers`). (CR 510, CR 120.3, CR 506)

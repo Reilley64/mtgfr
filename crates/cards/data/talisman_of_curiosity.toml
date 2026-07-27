@@ -1,0 +1,37 @@
+# {T}: Add {C}.
+# {T}: Add {G} or {U}. This artifact deals 1 damage to you.
+name = "Talisman of Curiosity"
+sets = ["aa1", "drc", "h1r", "m3c", "mh1", "mkc", "pip", "prm", "sld", "soc", "who"]
+id = "8c34b089-aad1-476e-958a-3077bf1bbb51"
+default_print = "8388c4e8-bda1-47e5-8df2-ddec5babcaf9"
+otags = ["activated-ability", "burn-you", "cycle-mh1-talisman", "mana-ability-with-extra-effect", "mana-rock", "refund"]
+oracle = "{T}: Add {C}.\n{T}: Add {G} or {U}. This artifact deals 1 damage to you."
+
+[cost]
+generic = 2
+
+[kind]
+type = "artifact"
+
+# {T}: Add {C}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add {C}.
+[[abilities.effects]]
+type = "mana"
+mode = "add"
+mana = ["colorless"]
+
+# {T}: Add {G} or {U}. This artifact deals 1 damage to you.
+[[abilities]]
+timing = "activated"
+taps_self = true
+self_damage = 1
+
+# Add {G} or {U}. This artifact deals 1 damage to you.
+[[abilities.effects]]
+type = "mana"
+mode = "add"
+mana = [["green", "blue"]]

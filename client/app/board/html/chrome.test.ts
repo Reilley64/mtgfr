@@ -250,7 +250,7 @@ test("live board submodel lifts mulligan CardArtTick without wrapping as GotBoar
       ...base,
       route: GameTableRoute({ table: "ABC123" }),
       currentPath: "/play/ABC123",
-      portraitGate: { open: false },
+      landscapeRotate: { active: false },
       sessionLoaded: true,
       session: { me: { id: 1, email: "alice@example.com", username: "alice" }, meGravatarHash: null },
       game: { ...emptyGameSlice("ABC123"), seq: 1, state },

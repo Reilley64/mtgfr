@@ -1,10 +1,10 @@
 # Radiance — Choose a color. Target creature and each other creature that shares a color with
 # it gain protection from the chosen color until end of turn.
 name = "Bathe in Light"
+sets = ["cma", "cmd", "rav"]
 id = "8e862a8e-7954-43ad-9bc0-09ce7b9859f0"
 default_print = "d1d6dc01-278e-44cc-a488-7e3c2f2e0861"
 oracle = "Radiance — Choose a color. Target creature and each other creature that shares a color with it gain protection from the chosen color until end of turn."
-set = "cma"
 
 [cost]
 generic = 1

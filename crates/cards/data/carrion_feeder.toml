@@ -1,9 +1,9 @@
 # This creature can't block.
 # Sacrifice a creature: Put a +1/+1 counter on this creature.
 name = "Carrion Feeder"
+sets = ["dde", "ema", "f04", "mh1", "plst", "prm", "scg", "sld", "td0"]
 otags = ["activated-ability", "drawback", "free-sacrifice-outlet", "gains-pp-counters", "repeatable-pp-counters", "sacrifice-outlet-creature"]
 oracle = "This creature can't block.\nSacrifice a creature: Put a +1/+1 counter on this creature."
-set = "mh1"
 subtypes = ["Zombie"]
 id = "a1cc5e37-b09a-4b7f-afd5-77c1c35aa425"
 default_print = "0a19da90-880e-4eca-8cf7-6d7baf090d53"

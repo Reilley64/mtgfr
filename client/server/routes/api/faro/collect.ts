@@ -1,7 +1,7 @@
 // Same-origin Faro collect proxy → Alloy faro.receiver (ClusterIP only).
 // Body size capped; no public CORS wildcards (browser posts same-origin).
 
-import { defineEventHandler, getMethod, getRequestHeader, type H3Event, readRawBody } from "nitro/h3";
+import { defineHandler, type H3Event } from "nitro/h3";
 import { bodyCapped, upstreamUrl } from "../../../../app/domain/faro/collect";
 
 function arrayBufferOf(bytes: Uint8Array): ArrayBuffer {
@@ -17,8 +17,8 @@ async function proxyCollect(event: H3Event): Promise<Response> {
     return new Response(null, { status: 204 });
   }
 
-  const rawBody = (await readRawBody(event, false)) ?? new Uint8Array();
-  const capped = bodyCapped(getRequestHeader(event, "content-length") ?? null, rawBody);
+  const rawBody = new Uint8Array(await event.req.arrayBuffer());
+  const capped = bodyCapped(event.req.headers.get("content-length") ?? null, rawBody);
   if (!capped.ok) {
     return new Response(JSON.stringify({ error: "PayloadTooLarge" }), {
       status: 413,
@@ -27,9 +27,9 @@ async function proxyCollect(event: H3Event): Promise<Response> {
   }
 
   const headers = new Headers();
-  const contentType = getRequestHeader(event, "content-type");
+  const contentType = event.req.headers.get("content-type");
   if (contentType) headers.set("content-type", contentType);
-  const faroSession = getRequestHeader(event, "x-faro-session-id");
+  const faroSession = event.req.headers.get("x-faro-session-id");
   if (faroSession) headers.set("x-faro-session-id", faroSession);
 
   const res = await fetch(upstream, {
@@ -45,12 +45,12 @@ async function proxyCollect(event: H3Event): Promise<Response> {
   });
 }
 
-export default defineEventHandler((event) => {
-  if (getMethod(event) === "OPTIONS") {
+export default defineHandler(async (event) => {
+  if (event.req.method === "OPTIONS") {
     /** Same-origin only — no ACAO wildcards. */
     return new Response(null, { status: 204 });
   }
-  if (getMethod(event) !== "POST") {
+  if (event.req.method !== "POST") {
     return new Response("Method Not Allowed", { status: 405 });
   }
   return proxyCollect(event);

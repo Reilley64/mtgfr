@@ -1,8 +1,8 @@
 # This land enters tapped.
 # {T}: Add {G}, {W}, or {U}.
 name = "Seaside Citadel"
+sets = ["afc", "ala", "blc", "c13", "c16", "c17", "c18", "cm2", "cma", "cmm", "dmc", "ecc", "fic", "mkc", "mm3", "ncc", "plst", "pz1", "td0", "who"]
 otags = ["activated-ability", "cycle-ala-shardland"]
-set = "ecc"
 id = "2ae77795-6a80-498b-bf69-6fd612f601e4"
 default_print = "b681599f-aa7a-4b3a-a36a-dc6d70fd6a11"
 oracle = "This land enters tapped.\n{T}: Add {G}, {W}, or {U}."

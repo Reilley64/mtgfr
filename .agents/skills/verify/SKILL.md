@@ -16,7 +16,7 @@ When a live drive fails mysteriously, use **`systematic-debugging`** before patc
 - Confirm the API is up: `curl -s localhost:8080/health/live`. Every game/auth/decks/cards route is gRPC now (wire-protocol-and-visibility spec) — there's no `/openapi.json` or REST path to curl directly; drive it through the BFF's `/api/rpc` (below) or a gRPC client against `:50051`.
 - **An isolated stack may pick its own HTTP, Vite and Postgres ports — never its own gRPC port.**
   Routed table calls ignore `GRPC_UPSTREAM`: the BFF maps a table's `pod_dns` through
-  `grpcUpstreamFromPodDns` (`client/lib/api-upstream.ts`), which pins every pod to `:50051`.
+  `grpcUpstreamFromPodDns` (`client/app/domain/api-upstream.ts`), which pins every pod to `:50051`.
   `GRPC_UPSTREAM` only covers the *unrouted* default path (auth/decks/cards), so a second server
   on another gRPC port signs you in fine and then fails every game stream with
   `503 connect ECONNREFUSED 127.0.0.1:50051`.
@@ -26,7 +26,7 @@ When a live drive fails mysteriously, use **`systematic-debugging`** before patc
 The client talks to the BFF at `client/server/routes/api/rpc/[...path].ts` (lobby/table routes in
 `client/server/routes/api/[...path].ts`), which dials tonic. Drive the same calls with `curl`
 against the BFF (`localhost:5173` in dev) rather than the API directly — cookies still carry the
-session (`-c jar.txt` on signup, `-b jar.txt` after). See `client/lib/wire/rpcs.ts` for the RPC
+session (`-c jar.txt` on signup, `-b jar.txt` after). See `client/app/domain/wire/rpcs.ts` for the RPC
 names/shapes, or use a gRPC client (e.g. `grpcurl`) straight against `:50051` with
 `x-session-token` metadata (see `crates/server/src/grpc/auth_ctx.rs`).
 
@@ -63,7 +63,7 @@ names/shapes, or use a gRPC client (e.g. `grpcurl`) straight against `:50051` wi
 - **`logs/actions.<TABLE>.toon` is the drive-debugging oracle.** Every intent the server saw, one
   row: seq, player, intent, accepted, reject reason, step/active/priority/pending after it, and the
   full event list. Diagnose a wedge from that trace before touching engine code.
-- `scratchpad/drive.py` pattern from past runs: loop { answer pending_choice (discard/scry), play a land if offered, else pass } until the state you want. Precon games hit real choices (cleanup discards, scry lands) — handle or the loop wedges. Mirror `client/lib/choice.ts` for the answer shapes, and keep a fallback chain per choice (decline the cost, answer "no", try each single target, then empty) — the first answer the UI would send is not always payable.
+- `scratchpad/drive.py` pattern from past runs: loop { answer pending_choice (discard/scry), play a land if offered, else pass } until the state you want. Precon games hit real choices (cleanup discards, scry lands) — handle or the loop wedges. Mirror `client/app/domain/choice.ts` for the answer shapes, and keep a fallback chain per choice (decline the cost, answer "no", try each single target, then empty) — the first answer the UI would send is not always payable.
 - Per-stack yield: `Game.SetYield` `{table_id, enabled}`.
 
 ## Watching in the browser

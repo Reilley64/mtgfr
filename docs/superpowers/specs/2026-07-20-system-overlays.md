@@ -1,10 +1,10 @@
 # System Overlays
-**Status:** Current (as of 2026-07-25)
+**Status:** Current (as of 2026-07-26)
 **Module:** `client/app/board/html/overlays.ts`, `client/app/board/html/result-overlay.ts`, `client/app/board/html/concede.ts`, `client/app/board/html/pile-overlay.ts`, `client/app/board/view.ts`
 
 ## Problem Statement
 
-The board needs system-level overlays for game results, concede confirmation, pile expansion, reconnect state, and portrait gating without interfering with the core hand, prompt, HUD, and inspect layers.
+The board needs system-level overlays for game results, concede confirmation, pile expansion, and reconnect state without interfering with the core hand, prompt, HUD, and inspect layers.
 
 ## Solution
 
@@ -25,7 +25,6 @@ Compose system overlays in `boardOverlays` as DOM layers above the board surface
 - Concede confirmation submits a real `concede` intent only after confirmation.
 - `PileOverlay` opens for non-battlefield zone piles, shows an art grid, and closes by backdrop, Close, or Escape.
 - Reconnect banner appears fixed top-center when the stream is disconnected. A transient disconnect says `Connection lost — reconnecting…`. Terminal stream failures use specific copy: 401 says the session expired and asks the player to sign in again; 404 says the table is no longer available. The banner keeps `data-testid="board-reconnecting"` for all reconnect states.
-- A portrait gate may exist as a system modal under the Landscape Rule; it stays below inspect when inspect is pinned.
 - Inspect renders above result, concede, pile, HUD, and prompts.
 
 ## Implementation Decisions
@@ -44,7 +43,7 @@ Compose system overlays in `boardOverlays` as DOM layers above the board surface
 ## Out of Scope
 
 - Replacing result/concede/pile with a unified modal framework.
-- Portrait reflow of the board; portrait gate is a rotate prompt.
+- Portrait reflow of the board; portrait CSS landscape rotate (no dialog) lives at the app root (see [shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md)).
 - Showing private hidden pile cards to non-owners.
 
 ## Further Notes

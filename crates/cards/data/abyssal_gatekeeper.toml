@@ -1,8 +1,8 @@
 # When this creature dies, each player sacrifices a creature of their choice.
 name = "Abyssal Gatekeeper"
+sets = ["ddc", "dvd", "td0", "wth"]
 otags = ["death-trigger-self", "multi-removal", "mutual-sacrifice", "removal-creature", "sacrifice-outlet-creature", "spot-removal", "symmetrical", "type-errata", "wth-storyline-in-cards"]
 oracle = "When this creature dies, each player sacrifices a creature of their choice."
-set = "dvd"
 subtypes = ["Horror"]
 id = "4954181c-cb46-4cac-adc3-2c8b7693a211"
 default_print = "6d2a66f0-1afe-41e6-a597-ec2e95685191"

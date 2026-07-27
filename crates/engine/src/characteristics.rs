@@ -385,6 +385,19 @@ impl Game {
             })
     }
 
+    /// How many poison counters `object` gives a player it deals combat damage to (CR 702.164a).
+    /// Multiple instances of toxic add (CR 702.164b), so every instance is summed rather than
+    /// first-matched the way [`ward_amount`](Self::ward_amount) is.
+    pub(crate) fn toxic_amount(&self, object: ObjectId) -> i32 {
+        self.effective_keywords(object)
+            .into_iter()
+            .filter_map(|k| match k {
+                Keyword::Toxic(n) => Some(i32::from(n)),
+                _ => None,
+            })
+            .sum()
+    }
+
     /// The [`ProtectionScope`]s `object` currently has (CR 702.16), collected from its
     /// effective keywords.
     pub(crate) fn protection_scopes(
@@ -955,6 +968,11 @@ impl Game {
                 if !all_players && self.controller_of(source) != candidate_controller {
                     continue;
                 }
+                // A level-gated anthem functions only at or above its level (CR 717.5). A
+                // battlefield source has a real level; a graveyard-functional one is trivially 1.
+                if ability.min_level > self.as_permanent(source).map_or(1, |p| p.level) {
+                    continue;
+                }
                 if !self.permanent_matches(&filter, candidate, candidate_controller, Some(source)) {
                     continue;
                 }
@@ -1464,9 +1482,22 @@ impl Game {
             if removes_abilities {
                 break;
             }
-            if let Condition::SourceHasCounters { at_least } = condition
-                && self.source_has_counters(object, at_least)
-            {
+            // ponytail: `conditional_keywords` is a static keyword grant (CR 604.3), not a
+            // triggered ability's intervening-if — it has no `TriggerContext` to run through the
+            // general `Game::condition_holds` evaluator, so each source-object-based `Condition`
+            // this axis actually uses gets its own arm here rather than a generic dispatch. Grow
+            // this match (not a fallthrough to `condition_holds`, which is unreachable from here)
+            // when a future card conditions a keyword on something else.
+            let holds = match condition {
+                Condition::SourceHasCounters { at_least } => {
+                    self.source_has_counters(object, at_least)
+                }
+                Condition::SourceAttackedThisTurn => self
+                    .as_permanent(object)
+                    .is_some_and(|p| p.attacked_this_turn),
+                _ => false,
+            };
+            if holds {
                 keywords.push(keyword);
             }
         }
@@ -1553,8 +1584,15 @@ impl Game {
             .into_iter()
             .filter(|&id| self.def_of(id).functions_in_graveyard)
             .map(|id| (id, true, owner));
-        for (source, source_in_graveyard, source_owner) in
-            battlefield_sources.chain(graveyard_sources)
+        // Emblem anthems (CR 114.3 — Garruk, Cursed Huntsman's "Creatures you control get +3/+3
+        // and have trample"). An emblem's abilities function from the command zone, so it is a
+        // third source chain here; it is tagged `false` (not "in a graveyard") because a
+        // `from_graveyard` anthem is specifically a card functioning from a graveyard, which an
+        // emblem never is.
+        let emblem_sources = self.emblems(owner).into_iter().map(|id| (id, false, owner));
+        for (source, source_in_graveyard, source_owner) in battlefield_sources
+            .chain(graveyard_sources)
+            .chain(emblem_sources)
         {
             for ability in self.functional_abilities(source).iter().cloned() {
                 let (
@@ -1681,7 +1719,8 @@ impl Game {
     /// PreventDamageToSelfRemovingCounter)` ability of its own — and applies to combat damage
     /// too (Tajic's static skips combat; Phantom Centaur's doesn't).
     pub(crate) fn phantom_shield_active(&self, target: ObjectId) -> bool {
-        self.replacement_registry().phantom_shield_active(target)
+        self.replacement_registry()
+            .phantom_shield_active(self, target)
     }
 
     /// Whether `target` carries a permanent combat-damage-prevention static shielding damage
@@ -1705,19 +1744,49 @@ impl Game {
             .combat_damage_prevented_by_source(source)
     }
 
-    /// The "remove a +1/+1 counter" event Phantom Centaur's shield fires alongside each
-    /// prevented damage-dealing event (CR 615) — `None` when there's no counter left to remove
-    /// (the shield still applies; it just has nothing to take, CR 615's replacement effect
-    /// doesn't create counters from nothing).
-    pub(crate) fn phantom_shield_counter_removal(&self, target: ObjectId) -> Option<Event> {
-        if !self.replacement_registry().phantom_shield_active(target) {
-            return None;
+    /// The events Phantom Centaur's shield or Bloatfly Swarm's scaling variant fire alongside
+    /// each prevented damage-dealing event (both CR 615): a `CountersPlaced` removing the
+    /// counters taken, plus — for Bloatfly Swarm's rad-counter rider only — one
+    /// `PlayerCountersPlaced` rad counter (CR 122.1) per player per counter removed. Empty when
+    /// there's no counter left to remove (the shield still applies; it just has nothing to take,
+    /// CR 615's replacement effect doesn't create counters from nothing). Phantom Centaur's own
+    /// variant always removes exactly one counter regardless of `amount` — "remove a +1/+1
+    /// counter" isn't scaled by the damage; Bloatfly Swarm's "remove that many" removes
+    /// `min(amount, counters present)`, since it can't remove counters that aren't there.
+    pub(crate) fn phantom_shield_counter_removal(
+        &self,
+        target: ObjectId,
+        amount: i32,
+    ) -> Vec<Event> {
+        let registry = self.replacement_registry();
+        if !registry.phantom_shield_active(self, target) {
+            return Vec::new();
         }
-        (self.plus_counters(target) > 0).then_some(Event::CountersPlaced {
+        let available = self.plus_counters(target);
+        if available <= 0 {
+            return Vec::new();
+        }
+        let scales = registry.phantom_shield_scales(target);
+        let removed = if scales { amount.min(available) } else { 1 };
+        if removed <= 0 {
+            return Vec::new();
+        }
+        let mut events = vec![Event::CountersPlaced {
             object: target,
-            count: -1,
+            count: -removed,
             source_name: self.def_of(target).name,
-        })
+        }];
+        if scales {
+            events.extend(
+                self.living_players()
+                    .map(|player| Event::PlayerCountersPlaced {
+                        player,
+                        kind: PlayerCounterKind::Rad,
+                        count: removed,
+                    }),
+            );
+        }
+        events
     }
 
     /// Every activated mana ability granted to `candidate` by a live static
@@ -1794,7 +1863,57 @@ impl Game {
                                 granted_ability: Some(g),
                                 ..
                             }),
-                        ) => Some((g.cost, g.effects)),
+                        ) if g.trigger.is_none() => Some((g.cost, g.effects)),
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect()
+    }
+
+    /// Every *triggered* ability granted to `host` by a live
+    /// [`Effect::Static(StaticEffect::GrantToAttached)`] Aura/Equipment attached to it (Power
+    /// Fist's "Whenever this creature deals combat damage to a player, put that many +1/+1
+    /// counters on it."), synthesized directly as an [`Ability`] — unlike the activated twin
+    /// ([`Game::granted_attachment_abilities`]), there is no `ability_at` index to address, since
+    /// a triggered ability isn't activated. Recomputed live off the same attachment scan, so it
+    /// disappears the instant the Aura/Equipment leaves (CR 702.26e for a phased-out one).
+    /// ponytail: only the combat-damage-to-a-player scanner consults granted triggered abilities —
+    /// the pool's one consumer (Power Fist). Move this onto a shared owned-abilities accessor the
+    /// moment a second granted trigger flavor lands.
+    pub(crate) fn granted_attachment_triggers(&self, host: ObjectId) -> Vec<Ability> {
+        self.attachments(host)
+            .into_iter()
+            // A phased-out Aura/Equipment grants nothing (CR 702.26e), mirroring `attachment_grants`.
+            .filter(|&id| !self.is_phased_out(id))
+            .flat_map(|id| {
+                let def = self.def_of(id);
+                def.abilities
+                    .iter()
+                    .filter_map(|a| match (a.timing, a.effect.clone()) {
+                        (
+                            Timing::Static,
+                            Effect::Static(StaticEffect::GrantToAttached {
+                                granted_ability: Some(g),
+                                ..
+                            }),
+                        ) => g.trigger.map(|trigger| {
+                            let effect = match g.effects {
+                                [single] => single.clone(),
+                                steps => Effect::Sequence {
+                                    steps: steps.into(),
+                                },
+                            };
+                            Ability {
+                                timing: Timing::Triggered(trigger),
+                                effect,
+                                optional: false,
+                                min_level: 0,
+                                cost: Cost::FREE,
+                                condition: None,
+                                once_each_turn: false,
+                            }
+                        }),
                         _ => None,
                     })
                     .collect::<Vec<_>>()
@@ -2043,18 +2162,57 @@ impl Game {
         }
     }
 
-    /// The number of +1/+1 counters actually placed when `base` would be put on `object`, after
-    /// its controller's static replacement effects (CR 614 — Hardened Scales, a "twice that many"
-    /// doubler). Each [`Effect::Static(StaticEffect::CounterReplacement)`] that controller controls applies once.
-    ///
-    /// ponytail: fixed order — all additions, then all multipliers: `(base + Σadd) × Πtimes`.
-    /// CR 616.1 lets the *affected player* order simultaneous replacements; every counter
-    /// replacement in the pool is that player's own adder/doubler, and add-then-multiply maximizes
-    /// the result — the choice they'd make — so a single order is documented rather than offered as
-    /// a choice. Grow into a real ordering choice if a card ever makes another order preferable.
-    pub(crate) fn counters_after_replacements(&self, object: ObjectId, base: i32) -> i32 {
-        self.replacement_registry()
-            .counter_replaced_amount(self, object, base)
+    /// The number of +1/+1 counters actually placed when `placer` would put `base` on `object`
+    /// (CR 614 — Hardened Scales, Doubling Season).
+    pub(crate) fn counters_after_replacements(
+        &self,
+        placer: PlayerId,
+        object: ObjectId,
+        base: i32,
+    ) -> i32 {
+        self.replacement_registry().counter_replaced_amount(
+            self,
+            placer,
+            CounterRecipient::Permanent(object),
+            true,
+            base,
+        )
+    }
+
+    /// The number of counters of a *named* kind (CR 122.1 — charge, -1/-1, …) actually placed when
+    /// `placer` would put `base` on `object`. Only "one or more counters" replacements see these
+    /// (Winding Constrictor, Vorinclex); a "+1/+1 counters" replacement does not.
+    pub(crate) fn kind_counters_after_replacements(
+        &self,
+        placer: PlayerId,
+        object: ObjectId,
+        base: i32,
+    ) -> i32 {
+        self.replacement_registry().counter_replaced_amount(
+            self,
+            placer,
+            CounterRecipient::Permanent(object),
+            false,
+            base,
+        )
+    }
+
+    /// The number of counters actually placed when `placer` would put `base` on `player` — the
+    /// player half of CR 122.1 (poison, rad, experience), reached by Winding Constrictor's "if you
+    /// would get one or more counters" and Vorinclex's "on a permanent or player".
+    pub(crate) fn player_counters_after_replacements(
+        &self,
+        placer: PlayerId,
+        player: PlayerId,
+        base: i32,
+    ) -> i32 {
+        self.replacement_registry().counter_replaced_amount(
+            self,
+            placer,
+            CounterRecipient::Player(player),
+            false,
+            base,
+        )
     }
 
     /// The total additional +1/+1 counters `entered` receives from every static "creatures you
@@ -2186,6 +2344,7 @@ mod cache_tests {
         colorless: 0,
         x: 0,
         hybrid: &[],
+        phyrexian: &[],
         additional: AdditionalCost {
             discard: 0,
             discard_land: false,
@@ -2214,6 +2373,7 @@ mod cache_tests {
                 also: TypeSet::NONE,
             },
             legendary: false,
+            snow: false,
             uncounterable: false,
             modal: false,
             modal_choose: 0,
@@ -2227,13 +2387,14 @@ mod cache_tests {
             devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
+            enters_tapped_unless_you_pay_life: None,
             free_cast_if: None,
             alternative_cost: None,
             cast_only_during_combat: false,
             cast_only_before_attackers: false,
             approximates: None,
             oracle: None,
-            set: "",
+            sets: empty_slice(),
             subtypes: empty_slice(),
             otags: empty_slice(),
             cycling: None,
@@ -2305,6 +2466,7 @@ mod cache_tests {
             cost: FREE,
             kind: CardKind::Enchantment,
             legendary: false,
+            snow: false,
             uncounterable: false,
             modal: false,
             modal_choose: 0,
@@ -2318,13 +2480,14 @@ mod cache_tests {
             devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
+            enters_tapped_unless_you_pay_life: None,
             free_cast_if: None,
             alternative_cost: None,
             cast_only_during_combat: false,
             cast_only_before_attackers: false,
             approximates: None,
             oracle: None,
-            set: "",
+            sets: empty_slice(),
             subtypes: empty_slice(),
             otags: empty_slice(),
             cycling: None,
@@ -2435,6 +2598,7 @@ mod cache_tests {
                 masked: false,
                 evoked: false,
                 spent_colors: [false; Color::COUNT],
+                phyrexian_life_paid: 0,
             }),
         );
         let permanent = game.objects.len() as ObjectId;
@@ -2482,6 +2646,7 @@ mod cache_tests {
                 basic: true,
             },
             legendary: false,
+            snow: false,
             uncounterable: false,
             enchant: None,
             enchant_graveyard: false,
@@ -2497,13 +2662,14 @@ mod cache_tests {
             devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
+            enters_tapped_unless_you_pay_life: None,
             free_cast_if: None,
             alternative_cost: None,
             cast_only_during_combat: false,
             cast_only_before_attackers: false,
             approximates: None,
             oracle: None,
-            set: "",
+            sets: empty_slice(),
             subtypes: empty_slice(),
             otags: empty_slice(),
             cycling: None,
@@ -2549,6 +2715,7 @@ mod cache_tests {
             player: PlayerId(0),
             from,
             permanent,
+            tapped: false,
         });
         assert!(
             game.characteristics_cache
@@ -2603,6 +2770,7 @@ mod characteristic_query_tests {
         colorless: 0,
         x: 0,
         hybrid: &[],
+        phyrexian: &[],
         additional: AdditionalCost {
             discard: 0,
             discard_land: false,
@@ -2631,6 +2799,7 @@ mod characteristic_query_tests {
                 also: TypeSet::NONE,
             },
             legendary: false,
+            snow: false,
             uncounterable: false,
             enchant: None,
             enchant_graveyard: false,
@@ -2646,13 +2815,14 @@ mod characteristic_query_tests {
             devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
+            enters_tapped_unless_you_pay_life: None,
             free_cast_if: None,
             alternative_cost: None,
             cast_only_during_combat: false,
             cast_only_before_attackers: false,
             approximates: None,
             oracle: None,
-            set: "",
+            sets: empty_slice(),
             subtypes: empty_slice(),
             otags: empty_slice(),
             cycling: None,
@@ -2699,6 +2869,7 @@ mod characteristic_query_tests {
                 basic: false,
             },
             legendary: false,
+            snow: false,
             uncounterable: false,
             enchant: None,
             enchant_graveyard: false,
@@ -2714,13 +2885,14 @@ mod characteristic_query_tests {
             devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
+            enters_tapped_unless_you_pay_life: None,
             free_cast_if: None,
             alternative_cost: None,
             cast_only_during_combat: false,
             cast_only_before_attackers: false,
             approximates: None,
             oracle: None,
-            set: "",
+            sets: empty_slice(),
             subtypes: empty_slice(),
             otags: empty_slice(),
             cycling: None,
@@ -2798,6 +2970,7 @@ mod characteristic_query_tests {
                     also: TypeSet::NONE,
                 },
                 legendary: false,
+                snow: false,
                 uncounterable: false,
                 enchant: None,
                 enchant_graveyard: false,
@@ -2813,13 +2986,14 @@ mod characteristic_query_tests {
                 devoid: false,
                 enters_tapped: false,
                 enters_tapped_unless: None,
+                enters_tapped_unless_you_pay_life: None,
                 free_cast_if: None,
                 alternative_cost: None,
                 cast_only_during_combat: false,
                 cast_only_before_attackers: false,
                 approximates: None,
                 oracle: None,
-                set: "",
+                sets: empty_slice(),
                 subtypes: empty_slice(),
                 otags: empty_slice(),
                 cycling: None,
@@ -2885,6 +3059,7 @@ mod characteristic_query_tests {
                     also: TypeSet::NONE,
                 },
                 legendary: false,
+                snow: false,
                 uncounterable: false,
                 enchant: None,
                 enchant_graveyard: false,
@@ -2900,13 +3075,14 @@ mod characteristic_query_tests {
                 devoid: false,
                 enters_tapped: false,
                 enters_tapped_unless: None,
+                enters_tapped_unless_you_pay_life: None,
                 free_cast_if: None,
                 alternative_cost: None,
                 cast_only_during_combat: false,
                 cast_only_before_attackers: false,
                 approximates: None,
                 oracle: None,
-                set: "",
+                sets: empty_slice(),
                 subtypes: empty_slice(),
                 otags: empty_slice(),
                 cycling: None,
@@ -2970,6 +3146,7 @@ mod characteristic_query_tests {
                     also: TypeSet::NONE,
                 },
                 legendary: true,
+                snow: false,
                 uncounterable: false,
                 enchant: None,
                 enchant_graveyard: false,
@@ -2985,13 +3162,14 @@ mod characteristic_query_tests {
                 devoid: false,
                 enters_tapped: false,
                 enters_tapped_unless: None,
+                enters_tapped_unless_you_pay_life: None,
                 free_cast_if: None,
                 alternative_cost: None,
                 cast_only_during_combat: false,
                 cast_only_before_attackers: false,
                 approximates: None,
                 oracle: None,
-                set: "",
+                sets: empty_slice(),
                 subtypes: empty_slice(),
                 otags: empty_slice(),
                 cycling: None,

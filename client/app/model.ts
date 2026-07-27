@@ -15,8 +15,8 @@ export const SessionSlice = S.Struct({
 });
 export type SessionSlice = typeof SessionSlice.Type;
 
-export const PortraitGateSlice = S.Struct({ open: S.Boolean });
-export type PortraitGateSlice = typeof PortraitGateSlice.Type;
+export const LandscapeRotateSlice = S.Struct({ active: S.Boolean });
+export type LandscapeRotateSlice = typeof LandscapeRotateSlice.Type;
 
 export type GameSlice = GameFoldState & {
   active: boolean;
@@ -70,7 +70,7 @@ export const Model = S.Struct({
   coverage: CoverageSubmodel,
   lobby: LobbySlice,
   game: S.NullOr(GameSlice),
-  portraitGate: PortraitGateSlice,
+  landscapeRotate: LandscapeRotateSlice,
 });
 type ModelFromSchema = typeof Model.Type;
 export type Model = Omit<ModelFromSchema, "game"> & { game: GameSlice | null };

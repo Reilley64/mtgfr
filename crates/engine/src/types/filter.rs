@@ -376,6 +376,10 @@ pub enum CardFilter {
     /// [`CardKind`] match, so an Aura counts (it's still an enchantment card, CR 205.4a) the same
     /// way [`Enchantment`](Self::Enchantment) does.
     ArtifactOrEnchantment,
+    /// A snow land card (Into the North: "Search your library for a snow land card") — any land
+    /// with [`CardDef::snow`], basic or not. Distinct from [`Land`](Self::Land) (no snow gate) and
+    /// from a snow *creature* (Ohran Frostfang fails this).
+    SnowLand,
 }
 
 impl CardFilter {
@@ -478,6 +482,7 @@ impl CardFilter {
                 .kind
                 .types()
                 .intersects(TypeSet::ARTIFACT.union(TypeSet::ENCHANTMENT)),
+            CardFilter::SnowLand => matches!(def.kind, CardKind::Land { .. }) && def.snow,
         }
     }
 }
@@ -798,6 +803,36 @@ pub struct PermanentFilter {
     /// `TriggerContext::dying_permanent_types` before [`Game::permanent_matches`] ever reads this
     /// filter, so [`Game::permanent_matches`] itself never consults this flag.
     pub shares_type_with_dying_permanent: bool,
+    /// Counter axis (CR 122.1) narrower than `modified` above — `modified` also matches an
+    /// equipped/enchanted permanent with no counter at all, so it can't express Inspiring Call's
+    /// "creature you control with a +1/+1 counter on it" or Innkeeper's Talent's "permanents you
+    /// control with counters on them" (any kind). `None` (default) doesn't gate on counters.
+    pub with_counter: Option<CounterAxis>,
+    /// "each permanent you control that's a creature or Vehicle" (Ao, the Dawn Sky mode 2) —
+    /// matches a creature **or** a permanent carrying the Vehicle artifact subtype (CR 205.3g;
+    /// Vehicle is not a card type). When `true`, the ordinary `types` axis is ignored for the
+    /// match (this OR-gate replaces it). `false` (default) imposes no restriction.
+    pub creature_or_vehicle: bool,
+    /// Restrict to snow permanents (CR 205.4g — Into the North's "snow land" via
+    /// [`CardFilter::SnowLand`], or a battlefield "snow permanent" scan). `false` (default)
+    /// imposes no restriction. Reads [`CardDef::snow`].
+    pub snow: bool,
+}
+
+/// TOML `with_counter = "any"` / `with_counter = "plus_one_plus_one"` — the two counter shapes
+/// the pool currently needs on a [`PermanentFilter`] (CR 122.1's unqualified "counter" vs the
+/// +1/+1 kind specifically).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "card-dsl",
+    derive(serde::Deserialize),
+    serde(rename_all = "snake_case")
+)]
+pub enum CounterAxis {
+    /// Any counter of any kind (Innkeeper's Talent's "with counters on them").
+    Any,
+    /// Specifically a +1/+1 counter (Inspiring Call's "with a +1/+1 counter on it").
+    PlusOnePlusOne,
 }
 
 impl PermanentFilter {
@@ -833,11 +868,16 @@ impl PermanentFilter {
             without_flying: false,
             with_flying: false,
             shares_type_with_dying_permanent: false,
+            with_counter: None,
+            creature_or_vehicle: false,
+            snow: false,
         }
     }
 }
 
-/// Which players a multi-player sacrifice edict ([`Effect::Choice(ChoiceEffect::EachPlayerSacrifices)`]) affects.
+/// Which players a multi-player fan-out effect affects — a sacrifice edict
+/// ([`Effect::Choice(ChoiceEffect::EachPlayerSacrifices)`]) or a player-counter placement
+/// ([`Effect::Counters(CountersEffect::PutCountersOnPlayer)`], "each player/opponent gets a poison counter").
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(
     feature = "card-dsl",
@@ -855,6 +895,13 @@ pub enum EdictScope {
     /// [`PendingChoice::ChooseTargetPlayers`](super::PendingChoice::ChooseTargetPlayers) pause
     /// before the edict's per-player sacrifice fan-out begins.
     TargetedPlayers,
+    /// "Target opponent" (Venerated Rotpriest's "target opponent gets a poison counter") —
+    /// exactly one opponent, chosen as an ordinary target when the ability goes on the stack (CR
+    /// 601.2c), not a subset picked during resolution like
+    /// [`TargetedPlayers`](Self::TargetedPlayers). The effect carrying it reports
+    /// [`TargetSpec::OpponentPlayer`](super::TargetSpec::OpponentPlayer), so the shared targeting
+    /// machinery picks and legality-checks the player; resolution just reads the chosen target.
+    TargetedOpponent,
 }
 
 /// Who controls a token minted by [`Effect::Token(TokenEffect::Create)`] (CR 111.4's "under its controller's

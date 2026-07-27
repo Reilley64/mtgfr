@@ -2,10 +2,10 @@
 # When this creature enters, if you cast it from your hand, destroy all nonartifact, nonblack
 # creatures. They can't be regenerated.
 name = "Reiver Demon"
+sets = ["cma", "cmd", "ddc", "dvd", "mrd"]
 id = "7dcb95a9-c114-4333-8b45-4380f92d9695"
 default_print = "3e0de032-a107-4095-b475-28f3f13b2c6e"
 oracle = "Flying\nWhen this creature enters, if you cast it from your hand, destroy all nonartifact, nonblack creatures. They can't be regenerated."
-set = "cma"
 subtypes = ["Demon"]
 keywords = ["flying"]
 

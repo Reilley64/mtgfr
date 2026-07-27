@@ -107,7 +107,7 @@ impl Game {
                         || (!self.has_keyword(id, Keyword::Indestructible)
                             && (p.marked_damage >= toughness || p.deathtouched))
                 }
-                CardKind::Planeswalker { .. } => p.loyalty <= 0,
+                CardKind::Planeswalker { .. } | CardKind::Battle { .. } => p.loyalty <= 0,
                 _ => false,
             };
             if !dies {
@@ -202,7 +202,8 @@ impl Game {
         }
 
         // Player eliminations last (see the note above): a player at 0-or-less life, who tried to
-        // draw from an empty library, or who took lethal commander damage loses (CR 704.5a/c/g).
+        // draw from an empty library, who has ten or more poison counters, or who took lethal
+        // commander damage loses (CR 704.5a/b/c, CR 903.10a).
         for (id, player) in self.players.iter().enumerate() {
             if player.lost {
                 continue;
@@ -211,7 +212,14 @@ impl Game {
                 .commander_damage
                 .iter()
                 .any(|&(_, amount)| amount >= LETHAL_COMMANDER_DAMAGE);
-            if player.life <= 0 || player.attempted_empty_draw || lethal_commander_damage {
+            // CR 704.5c: ten or more poison counters loses the game.
+            let lethal_poison =
+                player.kind_counters[PlayerCounterKind::Poison as usize] >= LETHAL_POISON;
+            if player.life <= 0
+                || player.attempted_empty_draw
+                || lethal_poison
+                || lethal_commander_damage
+            {
                 events.push(Event::PlayerLost {
                     player: PlayerId(id as u8),
                 });
@@ -535,6 +543,7 @@ impl Game {
                 masked,
                 evoked,
                 spent_colors,
+                phyrexian_life_paid,
             } => {
                 let (def, commander) = match &self.objects[from as usize] {
                     Object::Card(c) => (c.def, c.commander),
@@ -598,6 +607,7 @@ impl Game {
                         masked,
                         evoked,
                         spent_colors,
+                        phyrexian_life_paid,
                     }),
                 );
                 if serra_recursion {
@@ -688,6 +698,9 @@ impl Game {
                         // the same `Event::ManaSpent` snapshot `Event::SpellCast` uses
                         // (`Game::cast_adventure`) if one ever does.
                         spent_colors: [false; Color::COUNT],
+                        // No pool adventure card has a Phyrexian pip; wire this the same way as
+                        // `spent_colors` above if one ever does.
+                        phyrexian_life_paid: 0,
                     }),
                 );
                 assert_eq!(id, spell);
@@ -770,6 +783,9 @@ impl Game {
                         // wire this from the same `Event::ManaSpent` snapshot `Event::SpellCast`
                         // uses if one ever does.
                         spent_colors: [false; Color::COUNT],
+                        // No pool split card has a Phyrexian pip; wire this the same way as
+                        // `spent_colors` above if one ever does.
+                        phyrexian_life_paid: 0,
                     }),
                 );
                 assert_eq!(id, spell);
@@ -867,6 +883,7 @@ impl Game {
                             evoked: false,
                             // A copy pays no cost (CR 707.10) — nothing was spent to "cast" it.
                             spent_colors: [false; Color::COUNT],
+                            phyrexian_life_paid: 0,
                         },
                     }),
                 );
@@ -882,6 +899,10 @@ impl Game {
             }
             Event::LeveledUp { source, level } => {
                 self.permanent_mut(source).level = level;
+            }
+            // CR 701.28b: a one-way flag, never cleared by the Untap `StepBegan` turn-boundary reset.
+            Event::BecameMonstrous { object } => {
+                self.permanent_mut(object).monstrous = true;
             }
             // CR 712: the permanent flips to its back face (one-way, permanent). Its live
             // characteristics now come from `def.back` (via `def_of`); the object is otherwise
@@ -969,6 +990,9 @@ impl Game {
                         // wire this from the same `Event::ManaSpent` snapshot `Event::SpellCast`
                         // uses if one ever does.
                         spent_colors: [false; Color::COUNT],
+                        // No pool prepare back face has a Phyrexian pip; wire this the same way as
+                        // `spent_colors` above if one ever does.
+                        phyrexian_life_paid: 0,
                     }),
                 );
                 assert_eq!(id, spell);
@@ -1081,6 +1105,10 @@ impl Game {
                     // expires at the next Untap — same behavior-exact turn-boundary idiom as the
                     // per-player Inkshield shield just above.
                     self.combat_extras.prevent_all_combat_damage_this_turn = false;
+                    // "Entered the battlefield this turn" (Oran-Rief, the Vastwood) and "attacked
+                    // this turn" (Agent Frank Horrigan's indestructible grant, CR 508.1) both
+                    // expire at the same turn boundary — every battlefield permanent's, not just
+                    // the active player's (a new turn, anyone's, ends "this turn").
                     // "You choose which creatures attack/block this turn" (Master Warcraft)
                     // expires at the same turn boundary as the shields above — combat is always
                     // within the turn, so clearing at Untap is behavior-exact for "this turn".
@@ -1090,7 +1118,9 @@ impl Game {
                     // the same turn boundary — every battlefield permanent's, not just the
                     // active player's (a new turn, anyone's, ends "this turn").
                     for id in self.battlefield() {
-                        self.permanent_mut(id).entered_this_turn = false;
+                        let p = self.permanent_mut(id);
+                        p.entered_this_turn = false;
+                        p.attacked_this_turn = false;
                     }
                 } else if step == Step::EndCombat {
                     // CR "this combat": an `ArmCombatDamageWatch` watch that never fired this
@@ -1103,9 +1133,9 @@ impl Game {
                 permanent,
                 from,
                 player,
+                tapped,
             } => {
                 let def = self.def_id_of(from);
-                let printed = card_def(def);
                 let commander = self.is_commander(from);
                 // Serra Paragon (CR 118.9): a land can only be played from the graveyard under its
                 // once-per-turn permission (no other effect plays lands from there), so a
@@ -1113,9 +1143,9 @@ impl Game {
                 let serra_recursion = self.zone_of(from) == Zone::Graveyard;
                 let mut perm = fresh_permanent(def, player, false, commander);
                 perm.serra_recursion = serra_recursion;
-                // A land's own `enters_tapped` is unconditional; a conditional gate (check
-                // lands, slowlands, reveal lands) is resolved here instead, at this one ETB site.
-                perm.tapped = self.enters_tapped(&printed, player);
+                // `tapped` is decided at the LandPlayed construction site ([`Game::play_land`] /
+                // may-reveal answer) via [`Game::enters_tapped`] or the reveal choice — CR 614.13.
+                perm.tapped = tapped;
                 let id = self.create_object(Some(from), Object::Permanent(perm));
                 assert_eq!(id, permanent);
                 self.permanent_mut(permanent).continuous_timestamp =
@@ -1181,6 +1211,14 @@ impl Game {
                 let current = self.permanent(object).kind_counters[kind as usize] as i32;
                 self.permanent_mut(object).kind_counters[kind as usize] =
                     (current + count).max(0) as u8;
+            }
+            Event::PlayerCountersPlaced {
+                player,
+                kind,
+                count,
+            } => {
+                let slot = &mut self.players[player.0 as usize].kind_counters[kind as usize];
+                *slot = (*slot as i32 + count).max(0) as u8;
             }
             Event::LoyaltyChanged { object, amount } => {
                 self.permanent_mut(object).loyalty += amount
@@ -1324,9 +1362,17 @@ impl Game {
                 until_eot,
             } => {
                 let p = self.permanent_mut(object);
-                if until_eot {
-                    p.reverts_to_def_eot = Some(p.def);
-                }
+                // An *indefinite* rewrite (CR 400.7) disarms any revert already armed on this
+                // permanent: otherwise `Event::TempBoostsEnded` would restore the pre-copy def at
+                // cleanup and undo a later-timestamped, durationless effect (Vraska, Betrayal's
+                // Sting's −2 on a Cursed Mirror that is currently copying a creature).
+                // ponytail: that rewrite snapshots whatever def is live now, so it inherits the
+                // copy's name/cost rather than the printed card's — a CR 613 layered
+                // recomputation would keep the printed copiable values under the layer-4/6 set.
+                p.reverts_to_def_eot = match until_eot {
+                    true => Some(p.def),
+                    false => None,
+                };
                 p.def = def;
                 // A new copy effect replaces the object's copiable characteristics wholesale (CR
                 // 707.2), so any "except it has <keywords>" rider from a *prior* copied form is
@@ -1450,6 +1496,10 @@ impl Game {
                 let target = defender_planeswalker
                     .map_or(Defender::Player(defender), Defender::Planeswalker);
                 self.combat.attack_targets.push((object, target));
+                // CR 508.1: turn-scoped "attacked this turn" flag (`Condition::SourceAttackedThisTurn`)
+                // — set here, not in `declare_attackers` (event-sourced state: intents mint events,
+                // events mutate board facts); cleared at the next Untap step below.
+                self.permanent_mut(object).attacked_this_turn = true;
                 // Angelic Arbiter's "attacked with a creature this turn" tracking (turn-scoped;
                 // reset at Untap alongside the other this-turn tallies above).
                 let controller = self.controller_of(object);
@@ -1715,6 +1765,29 @@ impl Game {
                 assert_eq!(id, card);
                 self.remove_spell_from_stack(from);
             }
+            // CR 114.1/114.3: the emblem is created in its owner's command zone with only the
+            // abilities `def` carries. `commander: false` is what distinguishes it from an actual
+            // commander there — the engine's only other two ways into `Zone::Command`
+            // (`Game::designate_commander` and `MovedToCommandZone` above) both hardcode `true`,
+            // and both castability gates (`Game::cast`, `Game::playable`) require it, so an
+            // emblem is never castable. Nothing ever removes it (CR 114.5).
+            Event::EmblemCreated {
+                emblem,
+                controller,
+                def,
+            } => {
+                let id = self.create_object(
+                    None,
+                    Object::Card(Card {
+                        def: intern_card_def(def),
+                        owner: controller,
+                        zone: Zone::Command,
+                        commander: false,
+                        face_down: false,
+                    }),
+                );
+                assert_eq!(id, emblem);
+            }
             Event::ManaEmptied {
                 player,
                 end_of_turn,
@@ -1771,9 +1844,10 @@ impl Game {
                     face_down,
                     masked,
                     evoked,
-                    spent_colors,
-                    cast_from_hand,
                     multikicker_count,
+                    spent_colors,
+                    phyrexian_life_paid,
+                    cast_from_hand,
                 ) = match &self.objects[from as usize] {
                     Object::Spell(s) => (
                         s.def,
@@ -1787,9 +1861,10 @@ impl Game {
                         s.face_down,
                         s.masked,
                         s.evoked,
-                        s.spent_colors,
-                        s.cast_from_hand,
                         s.multikicker_count,
+                        s.spent_colors,
+                        s.phyrexian_life_paid,
+                        s.cast_from_hand,
                     ),
                     _ => panic!("PermanentEntered source {from} is not a spell"),
                 };
@@ -1831,6 +1906,13 @@ impl Game {
                 // alongside the permanent's ETB triggers (`Game::enqueue_triggers`), so an ETB
                 // payoff (Mulldrifter's draw two) still resolves first.
                 self.permanent_mut(permanent).evoked = evoked;
+                // Compleated (CR 107.4f — Vraska, Betrayal's Sting): a {a/P} pip paid with life
+                // means the planeswalker enters with two fewer loyalty counters, two per pip so
+                // paid. A one-shot as-enters adjustment, not durable state — no new `Permanent`
+                // field needed, the same idiom as `entered_with_x` above.
+                if phyrexian_life_paid > 0 {
+                    self.permanent_mut(permanent).loyalty -= 2 * i32::from(phyrexian_life_paid);
+                }
                 // See `Permanent::spent_colors`'s doc — same "read it before the spell is gone"
                 // idiom as `entered_with_x` above (Court Hussar's "unless {W} was spent to cast it").
                 self.permanent_mut(permanent).spent_colors = spent_colors;
@@ -2521,7 +2603,7 @@ impl Game {
             }
             // A reveal is not a zone change (CR 701.30) — the card stays exactly where it is;
             // nothing to mutate here.
-            Event::RevealedTopOfLibrary { .. } => {}
+            Event::RevealedTopOfLibrary { .. } | Event::RevealedFromHand { .. } => {}
             Event::PutOnBottomOfLibrary { player, card } => {
                 // Same-zone reorder, not a zone change — no new object, just move it in the vec.
                 let library = &mut self.players[player.0 as usize].library;

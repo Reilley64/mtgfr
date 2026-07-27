@@ -9,7 +9,7 @@ product
 A fixed group of friends (2–4 per table) playing Commander (EDH) together in the
 browser, mostly desktop, mostly evening game sessions. Phones and tablets are
 supported in **landscape only** — the board and builder assume horizontal space;
-portrait gets a rotate prompt, not a reflowed vertical layout. One player hosts a
+portrait gets CSS landscape rotate (no dialog), not a reflowed vertical layout. One player hosts a
 table; others claim seats with their own saved decks. Eliminated players stay as
 spectators. They are fluent Magic players — the interface can assume the game's
 vocabulary (priority, stack, tap, commander damage) and must never fight their

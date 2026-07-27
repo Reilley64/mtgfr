@@ -94,6 +94,12 @@ message_keys! {
     EFFECT_COUNTERS_DOUBLE_COUNTERS_ON_ATTACHED_CREATURE => "effect.counters_double_counters_on_attached_creature",
     EFFECT_COUNTERS_DOUBLE_COUNTERS_ON_TARGET_CREATURES => "effect.counters_double_counters_on_target_creatures",
     EFFECT_COUNTERS_LEVEL_UP => "effect.counters_level_up",
+    EFFECT_COUNTERS_MONSTROSITY => "effect.counters_monstrosity",
+    EFFECT_COUNTERS_PUT_COUNTERS_ON_PLAYER => "effect.counters_put_counters_on_player",
+    EFFECT_COUNTERS_PUT_LOYALTY_COUNTER_EACH => "effect.counters_put_loyalty_counter_each",
+    EFFECT_COUNTERS_REMOVE_ALL_BUT_ONE_PLUS_ONE_COUNTER_THEN_GAIN_LIFE => "effect.counters_remove_all_but_one_plus_one_counter_then_gain_life",
+    EFFECT_COUNTERS_REMOVE_ALL_PLAYER_COUNTERS => "effect.counters_remove_all_player_counters",
+    EFFECT_COUNTERS_TOP_UP_COUNTERS_ON_PLAYER => "effect.counters_top_up_counters_on_player",
     EFFECT_COUNTERS_MOVE_COUNTERS => "effect.counters_move_counters",
     EFFECT_COUNTERS_PLACE_VOW_COUNTERS => "effect.counters_place_vow_counters",
     EFFECT_COUNTERS_PUT_COUNTERS => "effect.counters_put_counters",
@@ -120,6 +126,7 @@ message_keys! {
     EFFECT_CHOICE_EACH_PLAYER_SACRIFICES => "effect.choice_each_player_sacrifices",
     EFFECT_CHOICE_JOIN_FORCES_PAY_MANA => "effect.choice_join_forces_pay_mana",
     EFFECT_CHOICE_MAY_DISCARD => "effect.choice_may_discard",
+    EFFECT_CHOICE_MAY_REVEAL_LAND_FROM_HAND => "effect.choice_may_reveal_land_from_hand",
     EFFECT_CHOICE_MAY_DRAW_UNLESS_PAYS => "effect.choice_may_draw_unless_pays",
     EFFECT_CHOICE_MAY_DRAW_UP_TO => "effect.choice_may_draw_up_to",
     EFFECT_CHOICE_MAY_DRAW_UP_TO_THEN_OPPONENT_MAY_REPEAT => "effect.choice_may_draw_up_to_then_opponent_may_repeat",
@@ -141,6 +148,7 @@ message_keys! {
     EFFECT_CHOICE_TARGET_PLAYER_EXILES_FROM_GRAVEYARD => "effect.choice_target_player_exiles_from_graveyard",
     EFFECT_CHOICE_TARGET_PLAYER_MAY_DRAW => "effect.choice_target_player_may_draw",
     EFFECT_DAMAGE_EACH_CREATURE => "effect.damage_each_creature",
+    EFFECT_DAMAGE_EACH_OPPONENT => "effect.damage_each_opponent",
     EFFECT_DAMAGE_EACH_OTHER_OPPONENT => "effect.damage_each_other_opponent",
     EFFECT_DAMAGE_EACH_PLAYER => "effect.damage_each_player",
     EFFECT_DAMAGE_RADIANCE => "effect.damage_radiance",
@@ -212,6 +220,7 @@ message_keys! {
     EFFECT_MISC_COUNTER_TARGET_SPELL => "effect.misc_counter_target_spell",
     EFFECT_MISC_FIGHT => "effect.misc_fight",
     EFFECT_MISC_FLIP_SOURCE => "effect.misc_flip_source",
+    EFFECT_MISC_GET_EMBLEM => "effect.misc_get_emblem",
     EFFECT_MISC_GRANT_CHANNEL_COLORLESS_MANA_THIS_TURN => "effect.misc_grant_channel_colorless_mana_this_turn",
     EFFECT_MISC_GRANT_FLASH_THIS_TURN => "effect.misc_grant_flash_this_turn",
     EFFECT_MISC_MUST_ATTACK_RANDOM_OPPONENT => "effect.misc_must_attack_random_opponent",
@@ -239,6 +248,7 @@ message_keys! {
     EFFECT_PUMP_SET_BASE_PT_TARGET_UNTIL_END_OF_TURN => "effect.pump_set_base_pt_target_until_end_of_turn",
     EFFECT_PUMP_SET_OWN_BASE_PT_FROM_AMOUNT => "effect.pump_set_own_base_pt_from_amount",
     EFFECT_PUMP_STRIP_KEYWORDS_FROM_OPPONENTS_CREATURES => "effect.pump_strip_keywords_from_opponents_creatures",
+    EFFECT_PUMP_TARGET_BECOMES_TREASURE => "effect.pump_target_becomes_treasure",
     EFFECT_PUMP_WEAKEN_EACH_CREATURE => "effect.pump_weaken_each_creature",
     EFFECT_REVEAL_TOP_AND_DRAIN_MUTUAL => "effect.reveal_top_and_drain_mutual",
     EFFECT_REVEAL_TOP_CARDS => "effect.reveal_top_cards",
@@ -273,6 +283,7 @@ message_keys! {
     EFFECT_STATIC_PLAY_FROM_GRAVEYARD_ONCE_PER_TURN => "effect.static_play_from_graveyard_once_per_turn",
     EFFECT_STATIC_PREVENT_COMBAT_DAMAGE => "effect.static_prevent_combat_damage",
     EFFECT_STATIC_PREVENT_DAMAGE_TO_SELF_REMOVING_COUNTER => "effect.static_prevent_damage_to_self_removing_counter",
+    EFFECT_STATIC_PREVENT_DAMAGE_TO_SELF_REMOVING_COUNTERS_GIVING_RAD => "effect.static_prevent_damage_to_self_removing_counters_giving_rad",
     EFFECT_STATIC_PREVENT_NONCOMBAT_DAMAGE_TO_OTHER_CREATURES_YOU_CONTROL => "effect.static_prevent_noncombat_damage_to_other_creatures_you_control",
     EFFECT_STATIC_REDUCE_SPELL_COST => "effect.static_reduce_spell_cost",
     EFFECT_STATIC_SET_ATTACHED_BASE_PT => "effect.static_set_attached_base_pt",
@@ -577,6 +588,8 @@ fn keyword_token(keyword: Keyword) -> String {
             format!("protection_from_{}", protection_scope_token(scope))
         }
         Keyword::Hexproof => "hexproof".to_string(),
+        Keyword::Infect => "infect".to_string(),
+        Keyword::Toxic(n) => format!("toxic_{n}"),
         Keyword::Shroud => "shroud".to_string(),
         Keyword::Prowess => "prowess".to_string(),
         Keyword::Skulk => "skulk".to_string(),
@@ -676,6 +689,14 @@ fn edict_scope_token(scope: EdictScope) -> &'static str {
         EdictScope::AllPlayers => "all_players",
         EdictScope::EachOpponent => "each_opponent",
         EdictScope::TargetedPlayers => "targeted_players",
+        EdictScope::TargetedOpponent => "targeted_opponent",
+    }
+}
+
+fn player_counter_kind_token(kind: PlayerCounterKind) -> &'static str {
+    match kind {
+        PlayerCounterKind::Poison => "poison",
+        PlayerCounterKind::Rad => "rad",
     }
 }
 
@@ -726,6 +747,9 @@ fn type_set_token(types: TypeSet) -> String {
     }
     if types.intersects(TypeSet::PLANESWALKER) {
         parts.push("planeswalker".to_string());
+    }
+    if types.intersects(TypeSet::BATTLE) {
+        parts.push("battle".to_string());
     }
     if types.intersects(TypeSet::LAND) {
         parts.push("land".to_string());
@@ -845,6 +869,12 @@ fn permanent_filter_token(filter: PermanentFilter) -> String {
     if filter.shares_type_with_dying_permanent {
         parts.push("shares_type_with_dying_permanent".to_string());
     }
+    if filter.creature_or_vehicle {
+        parts.push("creature_or_vehicle".to_string());
+    }
+    if filter.snow {
+        parts.push("snow".to_string());
+    }
     parts.join("_")
 }
 
@@ -909,6 +939,7 @@ fn card_filter_token(filter: CardFilter) -> String {
         CardFilter::Aura => "aura".to_string(),
         CardFilter::ArtifactOrCreature => "artifact_or_creature".to_string(),
         CardFilter::ArtifactOrEnchantment => "artifact_or_enchantment".to_string(),
+        CardFilter::SnowLand => "snow_land".to_string(),
     }
 }
 
@@ -1062,6 +1093,11 @@ fn amount_token(amount: Amount) -> &'static str {
         Amount::InstantOrSorceryCardsInYourGraveyard => {
             "instant_or_sorcery_cards_in_your_graveyard"
         }
+        Amount::GreatestPowerAmongCreaturesYouControl => {
+            "greatest_power_among_creatures_you_control"
+        }
+        Amount::OpponentsPoisonCounters => "opponents_poison_counters",
+        Amount::ControllersPoisonCounters => "controllers_poison_counters",
         Amount::CombatDamageDealt => "combat_damage_dealt",
         Amount::TriggeringDamageDealt => "triggering_damage_dealt",
         Amount::SpellsCastBeforeThisThisTurn => "spells_cast_before_this_this_turn",
@@ -1116,6 +1152,10 @@ impl Effect {
                 .with_params(vec![amount_param("amount", amount)]),
             Effect::Damage(DamageEffect::EachPlayer { amount }) => {
                 MessageRef::new(MessageKey::EFFECT_DAMAGE_EACH_PLAYER)
+                    .with_params(vec![amount_param("amount", amount)])
+            }
+            Effect::Damage(EachOpponent { amount }) => {
+                MessageRef::new(MessageKey::EFFECT_DAMAGE_EACH_OPPONENT)
                     .with_params(vec![amount_param("amount", amount)])
             }
             Effect::Damage(EachOtherOpponent { amount, .. }) => {
@@ -1977,10 +2017,16 @@ impl Effect {
                 MessageRef::new(MessageKey::EFFECT_STATIC_PREVENT_COMBAT_DAMAGE)
                     .with_params(vec![bool_param("to_self", to_self), bool_param("by_self", by_self)])
             }
-            Effect::Static(CounterReplacement { add, times, .. }) => {
-                MessageRef::new(MessageKey::EFFECT_STATIC_COUNTER_REPLACEMENT)
-                    .with_params(vec![int_param("add", add), int_param("times", times)])
-            }
+            Effect::Static(CounterReplacement {
+                add,
+                times,
+                filter,
+                ..
+            }) => MessageRef::new(MessageKey::EFFECT_STATIC_COUNTER_REPLACEMENT).with_params(vec![
+                int_param("add", add),
+                int_param("times", times),
+                optional_permanent_filter_param("filter", filter),
+            ]),
             Effect::Static(TokenReplacement { times }) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_TOKEN_REPLACEMENT)
                     .with_params(vec![int_param("times", times)])
@@ -2093,6 +2139,40 @@ impl Effect {
                 .with_children(options.iter().map(|effect| effect.clone().message()).collect()),
             Effect::Conditional { then, .. } => MessageRef::new(MessageKey::EFFECT_CONDITIONAL)
                 .with_children(then.iter().map(|effect| effect.clone().message()).collect()),
+            Effect::Counters(Monstrosity { count }) => {
+                MessageRef::new(MessageKey::EFFECT_COUNTERS_MONSTROSITY)
+                    .with_params(vec![int_param("count", count)])
+            }
+            Effect::Counters(PutCountersOnPlayer { kind, count, scope }) => {
+                MessageRef::new(MessageKey::EFFECT_COUNTERS_PUT_COUNTERS_ON_PLAYER).with_params(vec![
+                    str_param("kind", player_counter_kind_token(kind)),
+                    amount_param("count", count),
+                    edict_scope_param("scope", scope),
+                ])
+            }
+            Effect::Counters(RemoveAllPlayerCounters { scope }) => {
+                MessageRef::new(MessageKey::EFFECT_COUNTERS_REMOVE_ALL_PLAYER_COUNTERS)
+                    .with_params(vec![edict_scope_param("scope", scope)])
+            }
+            Effect::Counters(TopUpCountersOnPlayer { kind, to }) => {
+                MessageRef::new(MessageKey::EFFECT_COUNTERS_TOP_UP_COUNTERS_ON_PLAYER).with_params(vec![
+                    str_param("kind", player_counter_kind_token(kind)),
+                    int_param("to", to),
+                ])
+            }
+            Effect::Counters(RemoveAllButOnePlusOneCounterThenGainLife { .. }) => {
+                MessageRef::new(MessageKey::EFFECT_COUNTERS_REMOVE_ALL_BUT_ONE_PLUS_ONE_COUNTER_THEN_GAIN_LIFE)
+            }
+            Effect::Counters(PutLoyaltyCounterEach { .. }) => {
+                MessageRef::new(MessageKey::EFFECT_COUNTERS_PUT_LOYALTY_COUNTER_EACH)
+            }
+            Effect::Misc(GetEmblem { .. }) => MessageRef::new(MessageKey::EFFECT_MISC_GET_EMBLEM),
+            Effect::Pump(TargetBecomesTreasure { .. }) => {
+                MessageRef::new(MessageKey::EFFECT_PUMP_TARGET_BECOMES_TREASURE)
+            }
+            Effect::Static(PreventDamageToSelfRemovingCountersGivingRad) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_PREVENT_DAMAGE_TO_SELF_REMOVING_COUNTERS_GIVING_RAD)
+            }
         }
     }
 }
@@ -2198,6 +2278,7 @@ mod tests {
             count: 1,
             overflow: None,
             count_amount: None,
+            optional: false,
         })
         .message();
         assert_eq!(string_param(&search, "filter"), "basic_land");

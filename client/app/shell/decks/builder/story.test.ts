@@ -45,6 +45,12 @@ import { BindBuilderCardPointer, view as builderView } from "./view";
 
 const emptyChrome = { version: null, faithfulCount: null, oracleTotal: null, coverageHref: null };
 const me = { id: 1, email: "alice@example.com", username: "alice" };
+const emptyViewInputs = {
+  chrome: emptyChrome,
+  username: me.username,
+  meGravatarHash: null,
+  accountMenuOpen: false,
+};
 
 const url = (pathname: string, search = "") => ({
   protocol: "http:",
@@ -70,7 +76,8 @@ function card(overrides: Partial<CatalogCard> = {}): CatalogCard {
     legendary: false,
     name: "Card",
     otags: [],
-    set: "tst",
+    set: "",
+    sets: ["tst"],
     subtypes: [],
     summary: [],
     ...overrides,
@@ -249,14 +256,17 @@ test("catalog and decklist are independent overscroll-contained scroll hosts", (
   };
 
   Scene.scene(
-    { update: builderUpdate, view: (model) => builderView(model, { chrome: emptyChrome }) },
+    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
     Scene.with(model),
     Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "deck" }), ClearedBuilderHover()),
     Scene.Mount.resolve(BindCardArt, ClearedBuilderHover() as never),
-    // Viewport-bounded shell — without h-dvh the grid grows with the pool and the catalog never overflows.
-    Scene.expect(Scene.selector('[data-testid="deck-builder-page"]')).toHaveClass("h-dvh"),
+    // Fill the contained shell stage — h-dvh under the header made the whole shell page scroll.
+    Scene.expect(Scene.selector('[data-testid="deck-builder-page"]')).toHaveClass("h-full"),
+    Scene.expect(Scene.selector('[data-testid="deck-builder-page"]')).toHaveClass("min-h-0"),
+    Scene.expect(Scene.selector('[data-testid="deck-builder-page"]')).toHaveClass("flex-1"),
     Scene.expect(Scene.selector('[data-testid="deck-builder-page"]')).toHaveClass("grid-rows-[minmax(0,1fr)]"),
     Scene.expect(Scene.selector('[data-testid="deck-builder-page"]')).toHaveClass("overflow-hidden"),
+    Scene.expect(Scene.selector('[data-testid="deck-builder-page"]')).not.toHaveClass("h-dvh"),
     Scene.expect(Scene.selector('[data-testid="deck-builder-page"]')).not.toHaveClass("min-h-screen"),
     Scene.expect(Scene.selector('[data-testid="builder-pool-scroll"]')).toHaveClass("overflow-y-auto"),
     Scene.expect(Scene.selector('[data-testid="builder-pool-scroll"]')).toHaveClass("overscroll-contain"),
@@ -279,7 +289,7 @@ test("print picker freezes catalog and decklist scroll while print grid stays sc
   };
 
   Scene.scene(
-    { update: builderUpdate, view: (model) => builderView(model, { chrome: emptyChrome }) },
+    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
     Scene.with(model),
     Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "deck" }), ClearedBuilderHover()),
     Scene.Mount.resolve(OpenDialogAsModal(), ClearedBuilderHover()),
@@ -310,7 +320,7 @@ test("print selection renders a Scryfall tile picker instead of a UUID input", (
   };
 
   Scene.scene(
-    { update: builderUpdate, view: (model) => builderView(model, { chrome: emptyChrome }) },
+    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
     Scene.with(model),
     Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "deck" }), ClearedBuilderHover()),
     Scene.Mount.resolve(OpenDialogAsModal(), ClearedBuilderHover()),
@@ -405,7 +415,7 @@ test("decklist rows are keyed by card id so pointer mounts remount after remove"
 
   // Keys force snabbdom to destroy/recreate rows; without them BindBuilderCardPointer
   // keeps the removed cardId after the first click (Mount args are mount-time only).
-  const html = builderView(model, { chrome: emptyChrome });
+  const html = builderView(model, emptyViewInputs);
   expect(html).not.toBeNull();
   if (html == null) return;
   for (const id of ["mana-crypt", "sol-ring"] as const) {
@@ -497,7 +507,7 @@ test("set-proxy-art menu action opens the dialog, locks scroll, and saves proxy 
   };
 
   Scene.scene(
-    { update: builderUpdate, view: (nextModel) => builderView(nextModel, { chrome: emptyChrome }) },
+    { update: builderUpdate, view: (nextModel) => builderView(nextModel, emptyViewInputs) },
     Scene.with(model),
     Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "deck" }), ClearedBuilderHover()),
     Scene.Mount.resolve(BindCardArt, ClearedBuilderHover() as never),
@@ -542,7 +552,7 @@ test("proxy art dialog validates the url and clear removes the existing override
   };
 
   Scene.scene(
-    { update: builderUpdate, view: (nextModel) => builderView(nextModel, { chrome: emptyChrome }) },
+    { update: builderUpdate, view: (nextModel) => builderView(nextModel, emptyViewInputs) },
     Scene.with(model),
     Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "deck" }), ClearedBuilderHover()),
     Scene.Mount.resolve(BindCardArt, ClearedBuilderHover() as never),
@@ -652,7 +662,7 @@ test("pool cards do not set a native title tooltip on hover", () => {
   };
 
   Scene.scene(
-    { update: builderUpdate, view: (model) => builderView(model, { chrome: emptyChrome }) },
+    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
     Scene.with(model),
     Scene.expect(Scene.selector('[data-testid="pool-card-sol-ring"]')).toExist(),
     Scene.expect(Scene.selector('[data-testid="pool-card-sol-ring"][title]')).toBeAbsent(),
@@ -684,7 +694,7 @@ test("hover preview and context menu render when present in the model", () => {
   };
 
   Scene.scene(
-    { update: builderUpdate, view: (model) => builderView(model, { chrome: emptyChrome }) },
+    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
     Scene.with(model),
     Scene.expect(Scene.selector('[data-testid="builder-hover-preview"]')).toExist(),
     Scene.expect(Scene.selector('[data-testid="builder-context-menu"]')).toExist(),
@@ -784,7 +794,7 @@ test("Cancel button renders in builder view", () => {
   };
 
   Scene.scene(
-    { update: builderUpdate, view: (model) => builderView(model, { chrome: emptyChrome }) },
+    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
     Scene.with(model),
     Scene.expect(Scene.selector('[data-testid="builder-cancel"]')).toExist(),
   );
@@ -799,7 +809,7 @@ test("discard confirm dialog renders when confirmingDiscard is true", () => {
   };
 
   Scene.scene(
-    { update: builderUpdate, view: (model) => builderView(model, { chrome: emptyChrome }) },
+    { update: builderUpdate, view: (model) => builderView(model, emptyViewInputs) },
     Scene.with(model),
     Scene.Mount.resolve(OpenDialogAsModal(), ClearedBuilderHover()),
     Scene.expect(Scene.selector('[data-testid="builder-discard-confirm"]')).toExist(),

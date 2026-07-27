@@ -24,9 +24,7 @@ export const ReceivedApiVersion = m("ReceivedApiVersion", {
 export const UrlChanged = m("UrlChanged", { url: Url });
 export const UrlRequested = m("UrlRequested", { request: UrlRequest });
 export const NavigationCompleted = m("NavigationCompleted");
-export const PortraitGateChanged = m("PortraitGateChanged", { open: S.Boolean });
-export const PortraitGateCancelled = m("PortraitGateCancelled");
-export const CompletedPortraitGateModal = m("CompletedPortraitGateModal");
+export const LandscapeRotateChanged = m("LandscapeRotateChanged", { active: S.Boolean });
 export const ReceivedMeGravatarHash = m("ReceivedMeGravatarHash", { email: S.String, hash: S.String });
 export const GotAuthMessage = m("GotAuthMessage", { message: AuthMessage });
 export const GotDeckListMessage = m("GotDeckListMessage", { message: DeckListMessage });
@@ -44,9 +42,7 @@ export const Message = S.Union([
   UrlChanged,
   UrlRequested,
   NavigationCompleted,
-  PortraitGateChanged,
-  PortraitGateCancelled,
-  CompletedPortraitGateModal,
+  LandscapeRotateChanged,
   ReceivedMeGravatarHash,
   GotAuthMessage,
   GotDeckListMessage,

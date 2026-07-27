@@ -1340,6 +1340,24 @@ impl Game {
             .collect()
     }
 
+    /// Ids of every emblem `player` owns (CR 114). An emblem is an ownerless-but-controlled,
+    /// unremovable, non-permanent object that exists only in the command zone (CR 114.1) and has
+    /// no characteristics other than its abilities (CR 114.5), so it is stored as a command-zone
+    /// [`Object::Card`] with `commander: false` — the engine's only other two ways into
+    /// [`Zone::Command`] ([`Game::designate_commander`] and [`Event::MovedToCommandZone`]) both
+    /// set `commander: true`, which makes that flag an unambiguous emblem discriminator. Nothing
+    /// removes, copies, or targets an emblem (CR 114.5), so there is no counterpart remover.
+    pub fn emblems(&self, player: PlayerId) -> Vec<ObjectId> {
+        self.objects
+            .iter()
+            .enumerate()
+            .filter(|(_, o)| {
+                matches!(o, Object::Card(c) if c.zone == Zone::Command && !c.commander && c.owner == player)
+            })
+            .map(|(id, _)| id as ObjectId)
+            .collect()
+    }
+
     /// Whether the permanent `id` satisfies `filter`. `you` is the effect's controller (the
     /// "you" the filter's `controller` axis is relative to); `source` is the filter's own source
     /// permanent, used only by the `other` axis ("another permanent") — pass `None` where there
@@ -1364,7 +1382,14 @@ impl Game {
         // Types: empty set = any; otherwise the permanent must share at least one required type.
         // Read the CR 613.4-layered types so a type-changing Aura (Darksteel Mutation → Artifact)
         // is counted / hit.
-        if !filter.types.is_empty() && !filter.types.intersects(self.effective_types(id)) {
+        // `creature_or_vehicle` is an OR-gate that replaces the ordinary types axis (Ao mode 2).
+        if filter.creature_or_vehicle {
+            let is_creature = self.effective_types(id).intersects(TypeSet::CREATURE);
+            let is_vehicle = self.effective_subtypes(id).contains(&"Vehicle");
+            if !is_creature && !is_vehicle {
+                return false;
+            }
+        } else if !filter.types.is_empty() && !filter.types.intersects(self.effective_types(id)) {
             return false;
         }
         // Subtypes: empty = any; otherwise the permanent must carry at least one named subtype
@@ -1501,6 +1526,15 @@ impl Game {
         if filter.modified && !self.is_modified(id, you) {
             return false;
         }
+        // Counter axis (CR 122.1 — Innkeeper's Talent's "with counters on them", Inspiring
+        // Call's "with a +1/+1 counter on it"). Narrower than `modified` above, which also
+        // matches an equipped/enchanted permanent with no counter at all.
+        match filter.with_counter {
+            None => {}
+            Some(CounterAxis::Any) if self.has_any_counter(id) => {}
+            Some(CounterAxis::PlusOnePlusOne) if self.plus_counters(id) > 0 => {}
+            Some(_) => return false,
+        }
         // Printed name (CR 201.2 — Leitmotif Composer's "creatures named Leitmotif Composer").
         if let Some(name) = filter.name
             && printed.name != name
@@ -1547,6 +1581,11 @@ impl Game {
         if filter.with_flying && !self.has_keyword(id, Keyword::Flying) {
             return false;
         }
+        // Snow (CR 205.4g — a battlefield "snow permanent" / Into the North's snow land via
+        // CardFilter). Reads the printed supertype flag.
+        if filter.snow && !printed.snow {
+            return false;
+        }
         true
     }
 
@@ -1591,11 +1630,13 @@ mod permanent_filter_tests {
                 colorless: 0,
                 x: 0,
                 hybrid: &[],
+                phyrexian: &[],
                 additional: AdditionalCost::default(),
                 reduce_own_generic: None,
             },
             kind,
             legendary: false,
+            snow: false,
             uncounterable: false,
             modal: false,
             modal_choose: 1,
@@ -1609,13 +1650,14 @@ mod permanent_filter_tests {
             devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
+            enters_tapped_unless_you_pay_life: None,
             free_cast_if: None,
             alternative_cost: None,
             cast_only_during_combat: false,
             cast_only_before_attackers: false,
             approximates: None,
             oracle: None,
-            set: "",
+            sets: empty_slice(),
             subtypes: empty_slice(),
             otags: empty_slice(),
             cycling: None,

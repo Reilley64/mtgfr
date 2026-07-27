@@ -176,7 +176,7 @@ impl Game {
             // end of turn." Places the counter, then pauses on a ChooseCopyCardFromList choice
             // over the artifact/creature cards that left; no copyable card means no pause.
             Effect::Choice(ChoiceEffect::PutCounterThenMayBecomeCopyOfCardFromList { cards }) => {
-                let count = self.counters_after_replacements(source, 1);
+                let count = self.counters_after_replacements(controller, source, 1);
                 if count > 0 {
                     self.push_apply(
                         events,

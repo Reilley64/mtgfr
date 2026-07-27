@@ -114,8 +114,6 @@ Notes on cards deliberately kept in A despite intake `ponytail:` prompts or Lore
 - **Spirit of Resilience** — its copy payoff reads the chosen graveyard card's printed copyable
   values. That is exact here because the candidate list is built from cards that just left a
   graveyard, not battlefield permanents carrying copy-layer riders.
-- **White Orchid Phantom** — "may search" still collapses to fail-to-find on the search itself, but
-  declining to search is indistinguishable from searching and choosing no basic land.
 
 ## B. In pool, approximated at intake (0)
 
@@ -161,8 +159,8 @@ increment [#1](lorehold-spirit-increments.md#1-triggered-modal-choices-must-be-c
 their dies triggers now choose the branch when the trigger is put onto the stack, preserving the
 real response window before resolution.
 
-Ao's separate "creature or Vehicle" trim still stays harmless here — Lorehold fields no Vehicle card
-and no Lorehold card distinguishes the absent type line.
+Ao's "creature or Vehicle" mode is faithful — `PermanentFilter.creature_or_vehicle` matches
+creatures and Vehicle-subtype permanents; `Smuggler's Copter` is the Vehicle observer.
 
 ### 3. `Augusta, Order Returned` now creates the reflexive follow-up trigger correctly (LANDED)
 
@@ -187,7 +185,6 @@ No other explicit residual becomes a Lorehold blocker:
 - `Furycalm Snarl`'s reveal shortcut stays strictly upside.
 - `Kirol, History Buff`'s prepared back-face cast stays behaviorally exact for this deck.
 - `Spirit of Resilience`'s copy-source note remains exact for graveyard cards.
-- `White Orchid Phantom`'s fail-to-find stand-in is indistinguishable from declining the search.
 
 The re-audit's three Lorehold increments are now closed; Lorehold needs no remaining deck-local
 fidelity work.

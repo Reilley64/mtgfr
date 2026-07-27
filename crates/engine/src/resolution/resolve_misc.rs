@@ -53,7 +53,7 @@ impl Game {
                         .filter(|snap| snap.controller == player)
                         .map(|snap| snap.power)
                         .sum();
-                    let n = self.counters_after_replacements(minted, power);
+                    let n = self.counters_after_replacements(player, minted, power);
                     if n > 0 {
                         self.push_apply(
                             events,

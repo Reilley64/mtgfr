@@ -770,6 +770,7 @@ impl Game {
             x,
             modes,
             at_placement,
+            activated,
             ..
         }) = self.pending_choice.clone()
         else {
@@ -778,8 +779,51 @@ impl Game {
         if mode >= modes.len() {
             return Err(Reject::IllegalMode);
         }
-        self.finish_answer();
+        let chosen = modes[mode].clone();
 
+        if activated {
+            let spec = chosen.target();
+            if spec == TargetSpec::None {
+                self.finish_answer();
+                let mut events = Vec::new();
+                self.place_ability_second_clause(
+                    player,
+                    source,
+                    chosen,
+                    None,
+                    x,
+                    [0; 6],
+                    true,
+                    &mut events,
+                );
+                return Ok(events);
+            }
+            let source_colors = color_identity(&self.def_of(source));
+            let legal = self.legal_targets_for(spec, source, player, source_colors, x);
+            // CR 601.2c: a mode with no legal target can't be chosen. The `ChooseMode` pause was
+            // only cloned above, never taken, so rejecting here leaves it standing — the
+            // activator picks a different mode instead of being stranded on an unpayable one.
+            if legal.is_empty() {
+                return Err(Reject::IllegalChoice);
+            }
+            self.finish_answer();
+            let events = Vec::new();
+            pending::raise(
+                self,
+                pending::ChoiceRequest::ChooseTarget {
+                    player,
+                    source,
+                    effect: chosen.clone(),
+                    legal,
+                    count: TargetCount::default(),
+                    x,
+                    activated: true,
+                },
+            );
+            return Ok(events);
+        }
+
+        self.finish_answer();
         let mut events = Vec::new();
         if at_placement {
             self.place_targeted_ability(player, source, modes[mode].clone(), 0, false, &mut events);

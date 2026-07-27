@@ -3,11 +3,11 @@
 # {T}: Add {W} or {B}.
 # Temple of Silence: "This land enters tapped. When this land enters, scry 1. {T}: Add {W} or {B}."
 name = "Temple of Silence"
+sets = ["brc", "c21", "clb", "cmm", "dmc", "drc", "dsc", "fdn", "lcc", "m20", "m21", "m3c", "moc", "ncc", "onc", "otc", "pip", "pm20", "pm21", "prm", "soc", "tdc", "ths"]
 id = "e6e6fce8-0f6a-4b84-865e-d4e4a4182f9f"
 default_print = "f7d3770f-cde6-4e29-8cbf-fe841634a5d7"
 otags = ["activated-ability", "cycle-block-ths-scry-land", "scry", "triggered-ability", "utility-land"]
 oracle = "This land enters tapped.\nWhen this land enters, scry 1. (Look at the top card of your library. You may put that card on the bottom.)\n{T}: Add {W} or {B}."
-set = "soc"
 enters_tapped = true
 
 [kind]

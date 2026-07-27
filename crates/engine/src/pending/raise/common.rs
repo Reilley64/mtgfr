@@ -1,6 +1,6 @@
 //! Identity `ChoiceRequest` → `PendingChoice` mappings (isomorphic fields, always pause).
 
-use crate::{MayYesNoResume, PendingChoice};
+use crate::PendingChoice;
 
 use super::ChoiceRequest;
 
@@ -61,6 +61,7 @@ pub(super) fn map_identical(request: &ChoiceRequest) -> Option<PendingChoice> {
             x,
             modes,
             at_placement,
+            activated,
         } => Some(PendingChoice::ChooseMode {
             player: *player,
             source: *source,
@@ -68,16 +69,18 @@ pub(super) fn map_identical(request: &ChoiceRequest) -> Option<PendingChoice> {
             x: *x,
             modes: modes.clone(),
             at_placement: *at_placement,
+            activated: *activated,
         }),
         ChoiceRequest::MayYesNo {
             player,
             source,
             effect,
+            resume,
         } => Some(PendingChoice::MayYesNo {
             player: *player,
             source: *source,
             effect: effect.clone(),
-            resume: MayYesNoResume::Default,
+            resume: resume.clone(),
         }),
         ChoiceRequest::DivideSpellDamage {
             player,

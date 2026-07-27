@@ -984,24 +984,20 @@ impl Game {
             if self.combat_damage_prevented_to_creature(blocker) {
                 continue;
             }
-            // A blocking Phantom Centaur prevents this share and removes one of its own +1/+1
-            // counters instead (CR 615) — the same self-shield `deal_creature_damage` applies
-            // on the blocker-to-attacker path. The prevented share still counts as assigned.
+            // A blocking Phantom Centaur (or Bloatfly Swarm's scaling variant) prevents this
+            // share and removes +1/+1 counters instead (CR 615) — the same self-shield
+            // `deal_creature_damage` applies on the blocker-to-attacker path. The prevented share
+            // still counts as assigned.
             if self.phantom_shield_active(blocker) {
-                if let Some(removal) = self.phantom_shield_counter_removal(blocker) {
+                for removal in self.phantom_shield_counter_removal(blocker, amount) {
                     self.push_apply(events, removal);
                 }
                 continue;
             }
             dealt += amount;
-            self.push_apply(
-                events,
-                Event::DamageMarked {
-                    object: blocker,
-                    amount,
-                    source: Some(attacker),
-                },
-            );
+            for event in self.creature_damage_events(attacker, blocker, amount) {
+                self.push_apply(events, event);
+            }
             // CR 510.2: this is combat damage to a creature — a `DealsCombatDamageToCreature`
             // watch (Stinkweed Imp) fires off this marker, not the plain `DamageMarked` above.
             self.push_apply(
@@ -1113,9 +1109,9 @@ impl Game {
         // Phantom Centaur (CR 615): "If damage would be dealt to Phantom Centaur, prevent that
         // damage. Remove a +1/+1 counter from Phantom Centaur." Self-only, but unlike Tajic's
         // noncombat-only static, this applies to combat damage too — checked regardless of
-        // `combat`.
+        // `combat`. Bloatfly Swarm's scaling variant (also CR 615) shares this same check.
         if self.phantom_shield_active(target) {
-            if let Some(removal) = self.phantom_shield_counter_removal(target) {
+            for removal in self.phantom_shield_counter_removal(target, amount) {
                 self.push_apply(events, removal);
             }
             return;
@@ -1141,14 +1137,9 @@ impl Game {
         if combat && self.replacement_registry().prevents_all_combat_damage() {
             return;
         }
-        self.push_apply(
-            events,
-            Event::DamageMarked {
-                object: target,
-                amount,
-                source: Some(source),
-            },
-        );
+        for event in self.creature_damage_events(source, target, amount) {
+            self.push_apply(events, event);
+        }
         // CR 510.2: combat damage to a creature (blocker → attacker) also fires a
         // `DealsCombatDamageToCreature` watch (Stinkweed Imp) — `fight`'s noncombat call
         // (`combat = false`) does not.
@@ -1171,7 +1162,17 @@ impl Game {
     /// Resolve a fight (CR 701.12): `a` and `b` each deal damage equal to their power to the
     /// other, simultaneously — both powers are read before either amount is applied (CR
     /// 510.2/701.12c), so neither side's damage affects how much the other deals.
-    pub(crate) fn fight(&mut self, a: ObjectId, b: ObjectId, events: &mut Vec<Event>) {
+    ///
+    /// `one_way` (Infectious Bite) skips `b`'s damage back to `a` — this is not a fight at all
+    /// (the oracle text never says "fights"; CR 701.12 doesn't apply), just a plain "deals damage
+    /// equal to its power to" reusing the same damage plumbing.
+    pub(crate) fn fight(
+        &mut self,
+        a: ObjectId,
+        b: ObjectId,
+        one_way: bool,
+        events: &mut Vec<Event>,
+    ) {
         // CR 615: a masked Illusionary Mask creature that would deal damage is turned face up first
         // — before its power is read, so it deals its real power (its being-dealt-damage flip rides
         // on `deal_creature_damage` below).
@@ -1182,6 +1183,9 @@ impl Game {
         // Fight damage is noncombat (CR 701.12), so it passes `combat = false` — Tajic's static
         // prevents it, unlike combat damage.
         self.deal_creature_damage(a, b, power_a, false, events);
+        if one_way {
+            return;
+        }
         self.deal_creature_damage(b, a, power_b, false, events);
     }
 
@@ -1219,14 +1223,9 @@ impl Game {
             self.push_apply(events, Event::CombatDamagePrevented { player, amount });
             return;
         }
-        self.push_apply(
-            events,
-            Event::LifeChanged {
-                player,
-                amount: -amount,
-                source: Some(source),
-            },
-        );
+        for event in self.player_damage_events(source, player, amount) {
+            self.push_apply(events, event);
+        }
         if self.is_commander(source) {
             self.push_apply(
                 events,
@@ -1245,6 +1244,22 @@ impl Game {
                 amount,
             },
         );
+        // Toxic N (CR 702.164a): "Players dealt combat damage by this creature also get N poison
+        // counters" — in addition to the damage, not instead of it, so this sits after the damage
+        // events rather than replacing them the way infect does. It is deliberately below every
+        // prevention guard above: damage that was wholly prevented was never dealt, so it grants
+        // no toxic counters.
+        let toxic = self.toxic_amount(source);
+        if toxic > 0 {
+            self.push_apply(
+                events,
+                Event::PlayerCountersPlaced {
+                    player,
+                    kind: PlayerCounterKind::Poison,
+                    count: toxic,
+                },
+            );
+        }
         self.gain_lifelink(source, amount, events);
     }
 

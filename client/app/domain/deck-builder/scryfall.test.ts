@@ -1,9 +1,39 @@
+import * as Effect from "effect/Effect";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { artCropFallbackUrl, buildImageUrl, scryfallImageUrl, searchPrints } from "./scryfall";
+import {
+  artCropFallbackUrl,
+  buildImageUrl,
+  parseRetryAfterMs,
+  scryfallImageUrl,
+  searchPrints,
+} from "./scryfall";
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
+});
+
+describe("parseRetryAfterMs", () => {
+  it("reads integer seconds from Retry-After", () => {
+    expect(parseRetryAfterMs("2")).toBe(2_000);
+  });
+
+  it("falls back to 30s when the header is missing or invalid", () => {
+    expect(parseRetryAfterMs(null)).toBe(30_000);
+    expect(parseRetryAfterMs("")).toBe(30_000);
+    expect(parseRetryAfterMs("nope")).toBe(30_000);
+  });
+
+  it("clamps oversized delays", () => {
+    expect(parseRetryAfterMs("120")).toBe(60_000);
+  });
+
+  it("parses HTTP-date Retry-After relative to now", () => {
+    const now = Date.UTC(2026, 6, 27, 12, 0, 0);
+    const when = new Date(now + 5_000).toUTCString();
+    expect(parseRetryAfterMs(when, now)).toBe(5_000);
+  });
 });
 
 describe("searchPrints User-Agent", () => {
@@ -17,12 +47,94 @@ describe("searchPrints User-Agent", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    await searchPrints("00000000-0000-0000-0000-000000000000");
+    await Effect.runPromise(searchPrints("00000000-0000-0000-0000-000000000000"));
 
     expect(fetchMock).toHaveBeenCalled();
     const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
     const headers = init?.headers as Record<string, string>;
     expect(headers["User-Agent"]).toBe("edh.reilley.dev/0.1");
+  });
+});
+
+describe("searchPrints 429 retry", () => {
+  it("waits Retry-After then retries and succeeds", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ object: "error", code: "rate_limit" }), {
+          status: 429,
+          headers: { "Content-Type": "application/json", "Retry-After": "2" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: [
+              {
+                id: "print-1",
+                set: "one",
+                set_name: "Phyrexia: All Will Be One",
+                collector_number: "91",
+                released_at: "2023-02-03",
+              },
+            ],
+            has_more: false,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const pending = Effect.runPromise(searchPrints("e4912bc3-bee9-4a2f-a13e-3a99018f8a65"));
+    await vi.advanceTimersByTimeAsync(2_000);
+    const prints = await pending;
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(prints).toEqual([
+      {
+        collector_number: "91",
+        id: "print-1",
+        released_at: "2023-02-03",
+        set: "one",
+        set_name: "Phyrexia: All Will Be One",
+      },
+    ]);
+  });
+
+  it("does not retry non-429 failures", async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ object: "error" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(Effect.runPromise(searchPrints("e4912bc3-bee9-4a2f-a13e-3a99018f8a65"))).rejects.toThrow(
+      /Scryfall print search failed \(400\)/,
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("gives up after Retry-After retries are exhausted", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ object: "error", code: "rate_limit" }), {
+          status: 429,
+          headers: { "Content-Type": "application/json", "Retry-After": "1" },
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const pending = Effect.runPromise(searchPrints("e4912bc3-bee9-4a2f-a13e-3a99018f8a65"));
+    const expectation = expect(pending).rejects.toThrow(/Scryfall print search failed \(429\)/);
+    await vi.advanceTimersByTimeAsync(1_000);
+    await vi.advanceTimersByTimeAsync(1_000);
+    await expectation;
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 });
 

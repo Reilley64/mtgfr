@@ -2,10 +2,10 @@
 # Flying
 # {R}: This creature gets +1/+0 until end of turn.
 name = "Avatar of Fury"
+sets = ["cmd", "e01", "pcy"]
 id = "4854f836-2247-43c3-adbc-1d1ee5eaf120"
 default_print = "f9badf70-5e86-4d43-b457-5cbf821d97df"
 oracle = "If an opponent controls seven or more lands, this spell costs {6} less to cast.\nFlying\n{R}: This creature gets +1/+0 until end of turn."
-set = "cmd"
 subtypes = ["Avatar"]
 keywords = ["flying"]
 

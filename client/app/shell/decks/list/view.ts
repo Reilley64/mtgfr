@@ -3,13 +3,15 @@ import { Submodel } from "foldkit";
 import { type Html, html } from "foldkit/html";
 import * as Mount from "foldkit/mount";
 import { cn } from "../../../domain/cn";
-import { type AppChromeMeta, appVersionBadge } from "../../../domain/ui/app-version";
+import type { AppChromeMeta } from "../../../domain/ui/app-version";
+import { buttonClass } from "../../../domain/ui/buttonClass";
 import { confirmDialog } from "../../../domain/ui/confirmDialog";
-import { feltClass, fieldClass, listRowClass } from "../../../domain/ui/surfaces";
+import { alertClass, fieldClass, listRowClass } from "../../../domain/ui/surfaces";
 import type { CardArtTick, DeckCardFlipTick, GotAuthMessage, ModalOpened } from "../../../messages";
 import { DeckRoute, NewDeckRoute, PlayRoute, routePath } from "../../../routes";
 import type { ClosedAccountMenu, ToggledAccountMenu } from "../../account-chrome/messages";
 import { accountChrome } from "../../account-chrome/view";
+import { shellFrame } from "../../frame/shell-frame";
 import { type DeckCardModel, renderDeckCard } from "../deck-card";
 import {
   AskedDeckDelete,
@@ -181,107 +183,120 @@ export type ViewInputs = {
 export const view = Submodel.defineView<DeckListSubmodel, ViewMessage, ViewInputs>((model, viewInputs) => {
   const visible = visibleDecks(model.decks, model.knownCommanders, model.searchQuery);
 
-  return h.main(
-    [
-      h.Class(
-        feltClass(
-          "h-full overflow-y-auto p-xxl pt-[max(1.5rem,env(safe-area-inset-top))] pr-[max(1.5rem,env(safe-area-inset-right))] pb-[max(1.5rem,env(safe-area-inset-bottom))] pl-[max(1.5rem,env(safe-area-inset-left))]",
-        ),
-      ),
-      h.DataAttribute("testid", "decks-page"),
-      h.OnMount(BindDeckListContextMenuEscape()),
-    ],
-    [
-      model.confirmingDeleteId != null
-        ? confirmDialog(h, {
-            title: `Delete "${model.decks.find((d) => d.id === model.confirmingDeleteId)?.name ?? ""}"?`,
-            body: "This deck and its card list are gone for good.",
-            confirmLabel: "Delete deck",
-            danger: true,
-            onConfirm: RequestedDeckDelete({ id: model.confirmingDeleteId }),
-            onCancel: CancelledDeckDelete(),
-            testId: "confirm-delete-dialog",
-          })
-        : null,
-      h.div(
-        [
-          h.Class("mx-auto mb-5 flex max-w-[960px] flex-wrap items-center justify-between gap-md"),
-          h.DataAttribute("testid", "deck-list-header"),
-        ],
-        [
-          h.h1([h.Class("m-0 text-title")], ["Your decks"]),
-          h.div(
-            [h.Class("flex flex-wrap items-center gap-md")],
-            [
-              accountChrome(h, {
-                username: viewInputs.username,
-                gravatarHash: viewInputs.meGravatarHash,
-                menuOpen: model.accountMenuOpen,
-                showLeaderboardLink: true,
-              }),
-            ],
-          ),
-        ],
-      ),
-      h.section(
-        [h.Class("mx-auto max-w-[960px]")],
-        [
-          model.error == null
-            ? null
-            : h.div([h.Role("alert"), h.Class("text-label text-reconnect-rust")], [model.error]),
-          model.loading ? h.div([h.Class("text-label text-lichen")], ["Loading decks…"]) : null,
-          !model.loading && model.decks.length > 0
-            ? h.input([
-                h.Type("search"),
-                h.DataAttribute("testid", "deck-list-search"),
-                h.AriaLabel("Search decks"),
-                h.Placeholder("Search decks…"),
-                h.Value(model.searchQuery),
-                h.OnInput((value) => ChangedDeckListSearch({ query: value })),
-                h.Class(fieldClass("mb-md w-full max-w-[960px]")),
-              ])
-            : null,
-          !model.loading && model.decks.length > 0 && visible.length === 0
-            ? h.div([h.Class("text-label text-lichen")], ["No decks match."])
-            : null,
-          !model.loading
-            ? h.div(
-                [
-                  h.DataAttribute("testid", "deck-list-grid"),
-                  h.Class("mx-auto grid max-w-[960px] grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-md"),
-                ],
-                [
-                  h.a(
-                    [
-                      h.Href(routePath(NewDeckRoute())),
-                      h.DataAttribute("testid", "deck-list-new-deck"),
-                      h.Class(
-                        listRowClass(
-                          "flex aspect-auto min-h-[200px] flex-col items-center justify-center gap-sm border border-dashed border-vine bg-transparent no-underline",
-                        ),
+  return shellFrame(h, {
+    atmosphere: "shell",
+    title: "Your decks",
+    chrome: viewInputs.chrome,
+    trailing: accountChrome(h, {
+      username: viewInputs.username,
+      gravatarHash: viewInputs.meGravatarHash,
+      menuOpen: model.accountMenuOpen,
+      showLeaderboardLink: true,
+    }),
+    stage: h.div(
+      [
+        h.Class("h-full overflow-y-auto"),
+        h.DataAttribute("testid", "decks-page"),
+        h.OnMount(BindDeckListContextMenuEscape()),
+      ],
+      [
+        model.confirmingDeleteId != null
+          ? confirmDialog(h, {
+              title: `Delete "${model.decks.find((d) => d.id === model.confirmingDeleteId)?.name ?? ""}"?`,
+              body: "This deck and its card list are gone for good.",
+              confirmLabel: "Delete deck",
+              danger: true,
+              onConfirm: RequestedDeckDelete({ id: model.confirmingDeleteId }),
+              onCancel: CancelledDeckDelete(),
+              testId: "confirm-delete-dialog",
+            })
+          : null,
+        h.section(
+          [h.Class("mx-auto w-full")],
+          [
+            model.error == null ? null : h.div([h.Role("alert"), h.Class(alertClass())], [model.error]),
+            model.loading ? h.div([h.Class("text-label text-lichen")], ["Loading decks…"]) : null,
+            !model.loading && model.decks.length > 0
+              ? h.input([
+                  h.Type("search"),
+                  h.DataAttribute("testid", "deck-list-search"),
+                  h.AriaLabel("Search decks"),
+                  h.Placeholder("Search decks…"),
+                  h.Value(model.searchQuery),
+                  h.OnInput((value) => ChangedDeckListSearch({ query: value })),
+                  h.Class(fieldClass("mb-md w-full")),
+                ])
+              : null,
+            !model.loading && model.decks.length > 0 && visible.length === 0
+              ? h.div(
+                  [h.Class("text-label text-lichen"), h.DataAttribute("testid", "deck-list-filter-empty")],
+                  ["No decks match."],
+                )
+              : null,
+            !model.loading && model.decks.length === 0
+              ? h.div(
+                  [
+                    h.DataAttribute("testid", "deck-list-empty"),
+                    h.Class(
+                      listRowClass(
+                        "mb-md flex flex-col items-center gap-sm rounded-panel border border-dashed border-vine bg-glass p-xl text-center",
                       ),
-                      h.AriaLabel("New deck"),
-                    ],
-                    [
-                      h.span([h.Class("text-title text-lichen")], ["+"]),
-                      h.span([h.Class("text-label font-semibold text-snow")], ["New deck"]),
-                    ],
-                  ),
-                  ...visible.map((deck) => {
-                    return renderDeckCard(h, deckCardModel(model, deck), {
-                      mode: "link",
-                      href: routePath(PlayRoute({ deckId: String(deck.id) })),
-                      rootAttrs: [h.OnMount(BindDeckListContextMenu({ deckId: deck.id }))],
-                      testId: `deck-tile-${deck.id}`,
-                    });
-                  }),
-                ],
-              )
-            : null,
-        ],
-      ),
-      appVersionBadge(h, viewInputs.chrome),
-      contextMenu(model),
-    ],
-  );
+                    ),
+                  ],
+                  [
+                    h.h2(
+                      [h.Class("m-0 font-display text-title tracking-[-0.02em] text-snow")],
+                      ["Build your first Commander deck"],
+                    ),
+                    h.p(
+                      [h.Class("m-0 max-w-[34rem] text-label text-lichen")],
+                      ["Create a deck, choose a commander, then use it to host or join a table."],
+                    ),
+                    h.a(
+                      [h.Href(routePath(NewDeckRoute())), h.Class(buttonClass("primary", "mt-xs no-underline"))],
+                      ["Create a deck"],
+                    ),
+                  ],
+                )
+              : null,
+            !model.loading
+              ? h.div(
+                  [
+                    h.DataAttribute("testid", "deck-list-grid"),
+                    h.Class("mx-auto grid w-full grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-md"),
+                  ],
+                  [
+                    h.a(
+                      [
+                        h.Href(routePath(NewDeckRoute())),
+                        h.DataAttribute("testid", "deck-list-new-deck"),
+                        h.Class(
+                          listRowClass(
+                            "flex aspect-auto min-h-[200px] flex-col items-center justify-center gap-sm border border-dashed border-vine bg-transparent no-underline",
+                          ),
+                        ),
+                        h.AriaLabel("New deck"),
+                      ],
+                      [
+                        h.span([h.Class("text-title text-lichen")], ["+"]),
+                        h.span([h.Class("text-label font-semibold text-snow")], ["New deck"]),
+                      ],
+                    ),
+                    ...visible.map((deck) => {
+                      return renderDeckCard(h, deckCardModel(model, deck), {
+                        mode: "link",
+                        href: routePath(PlayRoute({ deckId: String(deck.id) })),
+                        rootAttrs: [h.OnMount(BindDeckListContextMenu({ deckId: deck.id }))],
+                        testId: `deck-tile-${deck.id}`,
+                      });
+                    }),
+                  ],
+                )
+              : null,
+          ],
+        ),
+        contextMenu(model),
+      ],
+    ),
+  });
 });

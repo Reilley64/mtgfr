@@ -1,11 +1,11 @@
 # At the beginning of your upkeep, you may return this card from your graveyard to your hand.
 # Squee, Goblin Nabob (soc): {2}{R} 1/1 Legendary Goblin.
 name = "Squee, Goblin Nabob"
+sets = ["10e", "c19", "cmm", "mb2", "mma", "mmq", "slc", "soc", "uma"]
 id = "0ef760f4-bbec-4735-8d60-fc24d973452a"
 default_print = "8aabc541-ff2a-416f-a973-44eda8ec4706"
 otags = ["deprecated-legend-type", "regrowth-self", "trigger-from-graveyard"]
 oracle = "At the beginning of your upkeep, you may return this card from your graveyard to your hand."
-set = "soc"
 subtypes = ["Goblin"]
 legendary = true
 # CR 603.6e — Squee's only ability is a triggered ability that functions from the graveyard.

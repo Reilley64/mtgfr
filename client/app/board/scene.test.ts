@@ -8,7 +8,7 @@ import { Submodel } from "foldkit";
 import { html } from "foldkit/html";
 import { Scene } from "foldkit/test";
 import { beforeAll, expect, test } from "vitest";
-import { choiceDraftKey } from "~/choice";
+import { buildAnswerFromDraft, choiceDraftKey, choiceIntent } from "~/choice";
 import { testMessageRef } from "~/i18n/testMessageRef";
 import { BindCardArt } from "~/ui/card-art";
 import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
@@ -36,6 +36,7 @@ import {
   PendingChoiceAnswered,
   PileCardClicked,
   PlayModeChosen,
+  PrimaryClicked,
   PromptSubmitted,
   RadialOptionPicked,
   StackDwellChanged,
@@ -850,9 +851,10 @@ test("pointer up on proliferate accumulates picks until Confirm", () => {
   expect(board.promptDraft).toEqual({ kind: "card-pick", picked: [1, 2], filter: "" });
   [, commands] = updateBoard(board, PromptSubmitted(), gameFold, "T1");
   expect(intentFromCommand(commands[0])).toEqual({
-    kind: "choose_sacrifices",
+    kind: "choose_proliferate",
     player: 0,
-    sacrifices: [1, 2],
+    permanents: [1, 2],
+    players: [],
   });
 });
 
@@ -1321,6 +1323,38 @@ test("pointer up on choose_target_players avatar accumulates seat picks", () => 
   expect(next.promptDraft).toEqual({ kind: "player-pick", players: [1] });
 });
 
+// CR 701.27 offers players alongside permanents; a poisoned seat must be pickable and must ride
+// out in the proliferate answer's `players` list, not as an object id.
+test("pointer up on a proliferate avatar accumulates the seat and answers with both lists", () => {
+  const bear = creature(31, 0);
+  const pending = {
+    kind: "proliferate" as const,
+    player: 0,
+    source: 1,
+    items: [
+      { id: bear.id, label: "Bear" },
+      { id: 0, label: "Player 2", player: 1 },
+    ],
+  };
+  const players = [player(), player({ player: 1, username: "Bob" })];
+  const gameFold = fold(state({ objects: [bear], pending_choice: pending, players }));
+  const board = initialBoardModel();
+  const world = avatarPos(1, 0, 2);
+  const screen = worldToScreen(board.camera, world.x, world.y);
+  const [next, commands] = updateBoard(board, BoardPointerUp({ x: screen.x, y: screen.y }), gameFold, "T1");
+  expect(commands).toEqual([]);
+  expect(next.promptDraft).toMatchObject({ kind: "card-pick", players: [1] });
+
+  const answer = buildAnswerFromDraft(pending, { kind: "card-pick", picked: [bear.id], players: [1] });
+  if (answer == null) throw new Error("expected a proliferate answer");
+  expect(choiceIntent(pending, answer)).toEqual({
+    kind: "choose_proliferate",
+    player: 0,
+    permanents: [bear.id],
+    players: [1],
+  });
+});
+
 test("pointer up on non-target while staged clears drag without submitting", () => {
   const attacker = creature(11, 0);
   const other = creature(99, 1);
@@ -1348,6 +1382,39 @@ test("pointer up on non-target while staged clears drag without submitting", () 
   const gameFold = fold(state({ objects: [attacker, other] }));
   const [, commands] = updateBoard(board, BoardPointerUp({ x: 100, y: 100 }), gameFold, "T1");
   expect(commands).toEqual([]);
+});
+
+test("confirm attackers submits engine-required goad attacks when local staging is empty", () => {
+  const gameFold = fold(
+    state({
+      step: STEP.DeclareAttackers,
+      combat: {
+        attackers: [],
+        blocks: [],
+        attackers_declared: false,
+        blockers_declared: [],
+      },
+      actions: [
+        {
+          id: 1,
+          kind: "declare_attackers",
+          label: testMessageRef("Attack"),
+          needs_target: false,
+          section: "combat",
+          declare_for: [0],
+          required_attacks: [{ attacker: 7, defender: 1 }],
+        } as ActionView,
+      ],
+    }),
+  );
+  const [nextBoard, commands] = updateBoard(initialBoardModel(), PrimaryClicked(), gameFold, "T1");
+  expect(nextBoard.attackersConfirmed).toBe(true);
+  expect(commands).toHaveLength(1);
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "declare_attackers",
+    player: 0,
+    attackers: [{ attacker: 7, defender: 1 }],
+  });
 });
 
 test("pointer combat drop on opponent life orb stages an attacker", () => {
@@ -2121,6 +2188,46 @@ test("HandActionActivated during pending discard toggles card-pick draft", () =>
   expect(next.promptDraft).toEqual({ kind: "card-pick", picked: [11], filter: "" });
 });
 
+test("HandActionActivated during pay_cost discard toggles picks then PromptSubmitted pays", () => {
+  const a = creature(11, 0, { name: "Fodder", zone: ZONE.Hand });
+  const pending = {
+    kind: "pay_cost" as const,
+    can_pay: true,
+    cost: { colored: [0, 0, 0, 0, 0], generic: 1 },
+    discard_count: 1,
+    discard_choices: [11],
+    label: testMessageRef("Pay 1 and discard"),
+    player: 0,
+    source: 1,
+  };
+  const fodderAction: ActionView = {
+    id: 51,
+    kind: "cast",
+    label: testMessageRef("Cast Fodder"),
+    needs_target: false,
+    object: 11,
+    section: "hand",
+  };
+  const gameFold = fold(
+    state({
+      objects: [a],
+      actions: [fodderAction],
+      pending_choice: pending,
+      can_act: true,
+    }),
+  );
+  let board = initialBoardModel();
+  [board] = updateBoard(board, HandActionActivated({ action: fodderAction, x: 400, y: 200 }), gameFold, "T1");
+  expect(board.promptDraft).toEqual({ kind: "card-pick", picked: [11], filter: "" });
+  const [, commands] = updateBoard(board, PromptSubmitted(), gameFold, "T1");
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "pay_optional_cost",
+    player: 0,
+    pay: true,
+    discard_cost: [11],
+  });
+});
+
 test("HandActionActivated during pending discard toggles selection off", () => {
   const a = creature(11, 0, { name: "A", zone: ZONE.Hand });
   const b = creature(12, 0, { name: "B", zone: ZONE.Hand });
@@ -2274,6 +2381,97 @@ test("PileCardClicked during choose_exiled_with_card submits choose intent", () 
     kind: "choose_exiled_with_card",
     player: 0,
     choice: 30,
+  });
+});
+
+test("dig-cast Aura: exile pick stages draft, then host click submits with target", () => {
+  const aura = creature(33, 0, { name: "Spirit Mantle", zone: ZONE.Exile });
+  const host = creature(7, 0, { name: "Bear", zone: ZONE.Battlefield });
+  const pending = {
+    kind: "choose_exiled_dig_to_cast_free" as const,
+    player: 0,
+    source: 1,
+    items: [{ id: 33, label: "Spirit Mantle" }],
+    cast_targets: [{ id: 7, label: "Bear" }],
+  };
+  const gameFold = fold(
+    state({
+      objects: [aura, host],
+      pending_choice: pending,
+      can_act: true,
+    }),
+  );
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    pileExpand: { zone: ZONE.Exile, owner: 0 },
+    pendingChoiceKey: choiceDraftKey(pending),
+    promptDraft: { kind: "card-pick", picked: [], filter: "" },
+  };
+  const [afterExile, exileCmds] = updateBoard(board, PileCardClicked({ id: 33 }), gameFold, "T1");
+  expect(exileCmds).toEqual([]);
+  expect(afterExile.promptDraft).toEqual({ kind: "card-pick", picked: [33], filter: "" });
+  expect(afterExile.pileExpand).toBeNull();
+
+  Scene.scene(
+    {
+      update: (model: { board: BoardModel; fold: GameFoldState; tableId: string }, message: Message) => {
+        const [nextBoard] = updateBoard(model.board, message, model.fold, model.tableId);
+        return [{ ...model, board: nextBoard }, []];
+      },
+      view: (model: { board: BoardModel; fold: GameFoldState; tableId: string }) => {
+        if (model.fold.state == null) return h.div([], []);
+        return boardOverlays(model.board, model.fold.state, model.tableId, model.fold.log);
+      },
+    },
+    Scene.with({ board: afterExile, fold: gameFold, tableId: "T1" }),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("pending-target-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-target-aim")).toHaveText(/Choose what to enchant/),
+    Scene.expect(Scene.testId("prompt-decline")).toHaveText("Don't cast"),
+  );
+
+  const [afterHost, hostCmds] = updateBoard(
+    afterExile,
+    TargetChosen({ target: { kind: "object", id: 7 } }),
+    gameFold,
+    "T1",
+  );
+  expect(afterHost.promptDraft).toBeNull();
+  expect(intentFromCommand(hostCmds[0])).toEqual({
+    kind: "choose_exiled_dig_to_cast_free",
+    player: 0,
+    choice: 33,
+    target: { kind: "object", id: 7 },
+  });
+});
+
+test("dig-cast without cast_targets: exile pick submits choice only", () => {
+  const bear = creature(33, 0, { name: "Bear", zone: ZONE.Exile });
+  const pending = {
+    kind: "choose_exiled_dig_to_cast_free" as const,
+    player: 0,
+    source: 1,
+    items: [{ id: 33, label: "Bear" }],
+  };
+  const gameFold = fold(
+    state({
+      objects: [bear],
+      pending_choice: pending,
+      can_act: true,
+    }),
+  );
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    pileExpand: { zone: ZONE.Exile, owner: 0 },
+    pendingChoiceKey: choiceDraftKey(pending),
+    promptDraft: { kind: "card-pick", picked: [], filter: "" },
+  };
+  const [, commands] = updateBoard(board, PileCardClicked({ id: 33 }), gameFold, "T1");
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "choose_exiled_dig_to_cast_free",
+    player: 0,
+    choice: 33,
+    target: null,
   });
 });
 
@@ -2639,7 +2837,8 @@ test("inspect overlay docks left with backdrop when pinned", () => {
         name: "Sol Ring",
         oracle: "{T}: Add {C}.",
         otags: [],
-        set: "soc",
+        set: "",
+        sets: ["soc"],
         subtypes: [],
         summary: [],
       },
@@ -2684,7 +2883,8 @@ test("inspect Flip keeps the dock open while backdrop click dismisses it", () =>
         name: "Front Face",
         oracle: "Front oracle.",
         otags: [],
-        set: "soc",
+        set: "",
+        sets: ["soc"],
         subtypes: [],
         summary: [],
       },

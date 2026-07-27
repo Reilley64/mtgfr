@@ -18,6 +18,7 @@ const WireKind = S.Union([
   S.Struct({ kind: S.Literal("enchantment") }),
   S.Struct({ kind: S.Literal("artifact") }),
   S.Struct({ kind: S.Literal("planeswalker"), loyalty: S.Number }),
+  S.Struct({ kind: S.Literal("battle"), defense: S.Number }),
   S.Struct({ kind: S.Literal("land"), colors: S.Array(S.Number) }),
 ]);
 
@@ -64,6 +65,7 @@ export const CatalogCardSchema = S.Struct({
   oracle: S.optional(S.NullOr(S.String)),
   otags: S.Array(S.String),
   set: S.String,
+  sets: S.Array(S.String),
   subtypes: S.Array(S.String),
   summary: S.Array(MessageRef),
 });

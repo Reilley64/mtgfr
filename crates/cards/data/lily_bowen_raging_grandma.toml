@@ -1,0 +1,51 @@
+# Vigilance
+# Lily Bowen enters with two +1/+1 counters on it.
+# At the beginning of your upkeep, double the number of +1/+1 counters on Lily Bowen if its power is 16 or less.
+# Otherwise, remove all but one +1/+1 counter from it, then you gain 1 life for each +1/+1 counter removed this
+# way.
+name = "Lily Bowen, Raging Grandma"
+id = "6b2d92f5-b0a1-4f30-9140-da490bf01bda"
+default_print = "052dc548-d356-43fe-9484-665db7e1f505"
+otags = ["counter-doubler", "exponential", "gains-pp-counters", "pp-counters-matter", "repeatable-lifegain", "repeatable-pp-counters", "triggered-ability"]
+oracle = "Vigilance\nLily Bowen enters with two +1/+1 counters on it.\nAt the beginning of your upkeep, double the number of +1/+1 counters on Lily Bowen if its power is 16 or less. Otherwise, remove all but one +1/+1 counter from it, then you gain 1 life for each +1/+1 counter removed this way."
+sets = ["pip"]
+subtypes = ["Mutant", "Warrior"]
+legendary = true
+keywords = ["vigilance"]
+
+[cost]
+generic = 3
+green = 1
+
+[kind]
+type = "creature"
+power = 0
+toughness = 0
+
+# Lily Bowen enters with two +1/+1 counters on it.
+[[abilities]]
+timing = "static"
+
+# Lily Bowen enters with two +1/+1 counters on it.
+[[abilities.effects]]
+type = "static"
+mode = "enters_with_counters"
+count = 2
+
+# At the beginning of your upkeep, double the number of +1/+1 counters on Lily Bowen if its power
+# is 16 or less. Otherwise, remove all but one +1/+1 counter from it, then you gain 1 life for
+# each +1/+1 counter removed this way.
+[[abilities]]
+timing = "upkeep"
+
+# double the number of +1/+1 counters on Lily Bowen if its power is 16 or less. Otherwise, remove
+# all but one +1/+1 counter from it, then you gain 1 life for each +1/+1 counter removed this way.
+[[abilities.effects]]
+type = "conditional"
+condition = { type = "source_power_at_most", at_most = 16 }
+then = [
+        { type = "counters", mode = "double_counters", target = "this" },
+    ]
+otherwise = [
+        { type = "counters", mode = "remove_all_but_one_plus_one_counter_then_gain_life", target = "this" },
+    ]

@@ -27,9 +27,11 @@ pub struct CatalogCard {
     /// The card's printed (oracle) rules text, for the deck builder's read-the-text hover
     /// (`engine::CardDef::oracle`). `None` for a card whose text isn't recorded, or a vanilla.
     pub oracle: Option<String>,
-    /// Set/edition code (Scryfall's lowercase code, e.g. `"soc"`); empty when unrecorded. A
-    /// deck-builder search dimension.
+    /// Deprecated legacy set/edition code; always empty. Use `sets`.
     pub set: String,
+    /// Every Scryfall set code with a printing of this oracle (lowercase). A deck-builder search
+    /// dimension.
+    pub sets: Vec<String>,
     /// Printed subtypes for search (creature types like "Goblin"/"Wizard", plus a land's printed
     /// types). The union of `engine::CardDef::subtypes` (creature/artifact/enchantment types) and,
     /// for a land, its `CardKind::Land::subtypes`.
@@ -93,6 +95,8 @@ pub(crate) fn wire_keyword(keyword: engine::Keyword) -> String {
         Keyword::CanBlockOnlyFlyers => "can_block_only_flyers".into(),
         Keyword::Decayed => "decayed".into(),
         Keyword::Myriad => "myriad".into(),
+        Keyword::Infect => "infect".into(),
+        Keyword::Toxic(n) => format!("toxic:{n}"),
         Keyword::Ward(n) => format!("ward:{n}"),
         Keyword::ProtectionFrom(scope) => {
             let name = match scope {
@@ -139,6 +143,8 @@ pub(crate) fn keyword_label(keyword: engine::Keyword) -> String {
         Keyword::CanBlockOnlyFlyers => "Can block only creatures with flying".into(),
         Keyword::Decayed => "Decayed".into(),
         Keyword::Myriad => "Myriad".into(),
+        Keyword::Infect => "Infect".into(),
+        Keyword::Toxic(n) => format!("Toxic {n}"),
         Keyword::Ward(n) => format!("Ward {{{n}}}"),
         Keyword::ProtectionFrom(scope) => {
             let name = match scope {
@@ -198,6 +204,7 @@ pub(crate) fn wire_kind(def: &engine::CardDef) -> WireKind {
         CardKind::Aura => WireKind::Enchantment,
         CardKind::Artifact => WireKind::Artifact,
         CardKind::Planeswalker { loyalty } => WireKind::Planeswalker { loyalty },
+        CardKind::Battle { defense } => WireKind::Battle { defense },
         CardKind::Land { .. } => WireKind::Land {
             colors: land_colors(def),
         },
@@ -412,7 +419,8 @@ pub fn catalog_card(def: &engine::CardDef) -> CatalogCard {
         color_identity: identity_indices(color_identity(def)),
         approximates: def.approximates.map(str::to_string),
         oracle: def.oracle.map(str::to_string),
-        set: def.set.to_string(),
+        set: String::new(),
+        sets: def.sets.iter().map(|s| s.to_string()).collect(),
         subtypes: all_subtypes(def),
         otags: def.otags.iter().map(|s| s.to_string()).collect(),
         back: def.back.map(|id| {
@@ -457,6 +465,10 @@ mod tests {
             vec![green],
             "Forest is mono-green by its produced mana"
         );
+
+        let viper = catalog_card(&def("Ambush Viper"));
+        assert_eq!(viper.set, "");
+        assert!(viper.sets.contains(&"inr".to_string()));
 
         let tajic = catalog_card(&def("Tajic, Legion's Edge"));
         assert!(tajic.legendary);
@@ -526,17 +538,12 @@ mod tests {
     }
 
     #[test]
-    fn catalog_card_surfaces_a_known_faithfulness_gap() {
-        // Final Act drops three of its five modes (battles, mass-graveyard exile, counters on
-        // players — none a modeled game object) — the gap is recorded as a datum, not just a TOML
-        // comment, so the deck builder / audits can read it.
+    fn catalog_card_final_act_is_faithful() {
         let final_act = catalog_card(&def("Final Act"));
-        let note = final_act
-            .approximates
-            .expect("Final Act's dropped modes are a known approximation");
         assert!(
-            note.contains("dropped"),
-            "expected the note to call out the dropped modes, got {note:?}"
+            final_act.approximates.is_none(),
+            "Final Act's five modes are expressible; got {:?}",
+            final_act.approximates
         );
     }
 }

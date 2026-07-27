@@ -1,10 +1,10 @@
 # Indestructible (Effects that say "destroy" don't destroy this artifact.)
 # {T}: Add one mana of any color.
 name = "Darksteel Ingot"
+sets = ["c13", "c15", "c16", "c17", "cm2", "cma", "cmd", "cmm", "dst", "m14", "otc", "pal04", "pio", "plst", "prm", "sld"]
 id = "a2529491-7389-4cfa-92d2-145eda779603"
 default_print = "a2ed37db-613a-48fa-874b-16ef00580d41"
 oracle = "Indestructible (Effects that say \"destroy\" don't destroy this artifact.)\n{T}: Add one mana of any color."
-set = "cmd"
 keywords = ["indestructible"]
 
 [cost]

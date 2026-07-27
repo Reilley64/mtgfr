@@ -394,14 +394,29 @@ impl Game {
                 // "whenever a creature enters" watches see it.
                 | Event::Manifested { permanent, .. }
                 | Event::LandPlayed { permanent, .. } => {
-                    // Evoke (CR 702.74a): queued *before* the permanent's own `Etb` trigger below
-                    // so it lands underneath it on the stack and so resolves *after* — an ETB
-                    // payoff (Mulldrifter's draw two) still happens before the sacrifice.
-                    // ponytail: no ordering choice is raised for the controller's own simultaneous
-                    // triggers (CR 603.3b) — the two are queued as separate single-ability groups
-                    // rather than one multi-ability group, so `place_pending_triggers` places both
-                    // without pausing. Grow into a real `OrderTriggers` choice if an evoke card
-                    // ever needs the controller to choose the other order.
+                    // CR 800.4a: if this same event batch already eliminated the entering
+                    // permanent's controller (Overgrown Tomb's pay-2-life-to-0 replacement, then
+                    // the state-based sweep — `PostIntentPhase::StateBasedActions` runs before
+                    // `TriggerEnqueue`), the permanent already left the game outright, not merely
+                    // the battlefield. There's no controller left to put a triggered ability on
+                    // the stack for, so it's skipped rather than queued from a since-removed
+                    // object. ponytail: also silently drops other permanents' "enters the
+                    // battlefield" watch triggers for this entry (constellation/landfall) — a
+                    // real card wanting those to still fire needs last-known-information plumbing
+                    // like the Dies-trigger family already has.
+                    if self.as_permanent(permanent).is_none() {
+                        continue;
+                    }
+                    // Evoke (CR 702.74a): queued *before* the permanent's own `Etb` trigger
+                    // below so it lands underneath it on the stack and so resolves *after* —
+                    // an ETB payoff (Mulldrifter's draw two) still happens before the
+                    // sacrifice.
+                    // ponytail: no ordering choice is raised for the controller's own
+                    // simultaneous triggers (CR 603.3b) — the two are queued as separate
+                    // single-ability groups rather than one multi-ability group, so
+                    // `place_pending_triggers` places both without pausing. Grow into a real
+                    // `OrderTriggers` choice if an evoke card ever needs the controller to
+                    // choose the other order.
                     if self.as_permanent(permanent).is_some_and(|p| p.evoked) {
                         self.queue_self_sacrifice_trigger(permanent);
                     }
@@ -422,6 +437,12 @@ impl Game {
                         TURNED_FACE_UP_TRIGGER_WATCHES,
                         TriggerWatchEvent::for_source(permanent),
                     );
+                }
+                // CR 701.28b: the flag is already set (the apply ran first) — same self-scan idiom
+                // as `TurnedFaceUp` above. A no-op activation (CR 701.28c) mints no
+                // `BecameMonstrous` at all, so this never double-fires.
+                Event::BecameMonstrous { object } => {
+                    self.queue_self_trigger(object, Trigger::BecomesMonstrous);
                 }
                 Event::TokenCreated {
                     token,
@@ -899,6 +920,12 @@ impl Game {
                     player,
                     amount,
                 } => {
+                    // Contaminant Grafter's batch watch: "one or more creatures you control deal
+                    // combat damage to one or more players" is a single trigger per damage step,
+                    // so accumulate the controller here and drain it once below.
+                    self.batch_trigger_scratch
+                        .creatures_dealt_combat_damage_this_batch
+                        .push(self.controller_of(source));
                     self.queue_trigger_watch_table(
                         COMBAT_DAMAGE_TO_PLAYER_TRIGGER_WATCHES,
                         TriggerWatchEvent::for_combat_damage_to_player(source, player, amount),
@@ -999,6 +1026,31 @@ impl Game {
             owners.dedup();
             for owner in owners {
                 self.queue_controller_triggers(owner, Trigger::YouCreateToken, None);
+            }
+        }
+        // CR 603.3b "one or more creatures you control deal combat damage to one or more
+        // players" (Contaminant Grafter): the whole combat damage step is one trigger event, not
+        // one per connecting creature. Same drain-dedup-clear shape as the accumulator above.
+        if !self
+            .batch_trigger_scratch
+            .creatures_dealt_combat_damage_this_batch
+            .is_empty()
+        {
+            let mut controllers = std::mem::take(
+                &mut self
+                    .batch_trigger_scratch
+                    .creatures_dealt_combat_damage_this_batch,
+            );
+            controllers.sort_unstable_by_key(|p| p.0);
+            controllers.dedup();
+            for controller in controllers {
+                self.queue_controller_triggers(
+                    controller,
+                    Trigger::DealsCombatDamageToPlayer {
+                        who: CombatDamageScope::YourCreaturesBatch,
+                    },
+                    None,
+                );
             }
         }
         // Conspiracy Theorist's "one or more nonland cards" (CR 701.8/603.3b): the whole
@@ -2834,9 +2886,14 @@ impl Game {
                 combat_damage_source_controller: Some(source_controller),
                 ..TriggerContext::of(controller)
             };
+            // ponytail: only this scanner consults granted triggered abilities — the pool's one
+            // consumer (Power Fist). Move onto a shared owned-abilities accessor the moment a
+            // second granted trigger flavor lands (see `Game::granted_attachment_triggers`).
+            let granted_triggers = self.granted_attachment_triggers(id);
             let abilities: Vec<Ability> = self
                 .functional_abilities(id)
                 .iter()
+                .chain(granted_triggers.iter())
                 .filter(|a| match a.timing {
                     Timing::Triggered(Trigger::DealsCombatDamageToPlayer { who }) => match who {
                         CombatDamageScope::This => id == source,
@@ -2847,6 +2904,10 @@ impl Game {
                         // Edric: any creature's damage counts, but only when it landed on one of
                         // the watcher's own opponents (CR 102.3 — every other player).
                         CombatDamageScope::AnyCreatureDamagingYourOpponent => player != controller,
+                        // Contaminant Grafter's "one or more creatures you control" fires once
+                        // for the whole combat damage step, not once per creature — it is queued
+                        // from the batch drain at the end of `enqueue_triggers`, never here.
+                        CombatDamageScope::YourCreaturesBatch => false,
                     },
                     _ => false,
                 })
@@ -3429,14 +3490,14 @@ impl Game {
         }
     }
 
-    /// Queue [`Trigger::BecomesTargeted`] triggers (CR 603.2c "becomes the target of a
-    /// spell"): a spell just declared `spell_target`. Self-referential, like
-    /// [`Game::queue_permanent_enters_triggers`]'s `Etb` sibling — unlike the
-    /// battlefield-scanning watches above, there's exactly one possible source (the targeted
-    /// permanent itself), so this looks it up directly rather than scanning every permanent.
+    /// Queue [`Trigger::BecomesTargeted`] triggers (CR 603.2c "becomes the target of a spell"): a
+    /// spell just declared `spell_target`. Both scopes fire under the *targeted permanent's*
+    /// controller — [`BecomesTargetedScope::This`] off the targeted permanent's own abilities
+    /// (Goldspan Dragon), [`BecomesTargetedScope::CreatureYouControl`] off every permanent that
+    /// player controls, but only when the target is one of their creatures (Venerated Rotpriest).
     /// ponytail: the engine's spells carry a single [`Target`] (multi-target is unlanded), so
-    /// this fires at most once per cast — faithful for Goldspan Dragon, the only consumer. A
-    /// spell with no target, or one targeting a player rather than a permanent, fires nothing.
+    /// this fires at most once per cast. A spell with no target, or one targeting a player rather
+    /// than a permanent, fires nothing.
     pub(crate) fn queue_becomes_targeted_triggers(&mut self, spell_target: Option<Target>) {
         let Some(Target::Object(id)) = spell_target else {
             return;
@@ -3445,25 +3506,50 @@ impl Game {
             return;
         }
         let controller = self.controller_of(id);
+        self.queue_becomes_targeted_group(id, controller, BecomesTargetedScope::This);
+        if !self.is_creature_on_battlefield(id) {
+            return;
+        }
+        for watcher in self.battlefield() {
+            if self.controller_of(watcher) != controller {
+                continue;
+            }
+            self.queue_becomes_targeted_group(
+                watcher,
+                controller,
+                BecomesTargetedScope::CreatureYouControl,
+            );
+        }
+    }
+
+    /// One watcher's share of [`Self::queue_becomes_targeted_triggers`]: `source`'s abilities that
+    /// watch `who`, queued under `controller` (the targeted permanent's controller).
+    fn queue_becomes_targeted_group(
+        &mut self,
+        source: ObjectId,
+        controller: PlayerId,
+        who: BecomesTargetedScope,
+    ) {
         let ctx = TriggerContext::of(controller);
         let abilities: Vec<Ability> = self
-            .functional_abilities(id)
+            .functional_abilities(source)
             .iter()
-            .filter(|a| matches!(a.timing, Timing::Triggered(Trigger::BecomesTargeted)))
+            .filter(|a| a.timing == Timing::Triggered(Trigger::BecomesTargeted { who }))
             .filter(|a| a.condition.is_none_or(|c| self.condition_holds(c, ctx)))
             .map(|a| Ability {
                 effect: contextualize_effect(a.effect.clone(), ctx),
                 ..*a
             })
             .collect();
-        if !abilities.is_empty() {
-            self.pending_trigger_groups.push(TriggerGroup {
-                expanded: false,
-                controller,
-                source: id,
-                abilities,
-            });
+        if abilities.is_empty() {
+            return;
         }
+        self.pending_trigger_groups.push(TriggerGroup {
+            expanded: false,
+            controller,
+            source,
+            abilities,
+        });
     }
 
     /// Queue [`Trigger::SpellTargetsThisOnly`] triggers (Mirrorwing Dragon — CR 603.2c narrowed
@@ -3762,6 +3848,14 @@ impl Game {
                 .living_players()
                 .filter(|&p| p != ctx.controller)
                 .any(|p| self.lands_controlled(p) as u32 >= at_least),
+            // "you have two or more opponents": living seats only (CR 800.4a) — an eliminated
+            // player stops being an opponent, unlike the table's starting player count.
+            Condition::YouHaveOpponents { at_least } => {
+                self.living_players()
+                    .filter(|&p| p != ctx.controller)
+                    .count() as u32
+                    >= at_least
+            }
             Condition::HandHasLandWithSubtype { subtypes } => {
                 self.hand_has_land_with_subtype(ctx.controller, subtypes)
             }
@@ -3818,6 +3912,12 @@ impl Game {
             // through `Game::ability_condition_holds` (mana_bloom's upkeep trigger, queued via
             // `queue_trigger_group`), which intercepts it before falling through here.
             Condition::SourceHasNoCountersOfKind { .. } => false,
+            // ponytail: source-object-based like `SourceHasCounters` above — `TriggerContext`
+            // carries no source object. Reachable only directly against the object by the
+            // characteristics recompute's conditional-keyword gate (Agent Frank Horrigan's
+            // indestructible grant), which reads `Permanent::attacked_this_turn` itself rather
+            // than through `condition_holds`.
+            Condition::SourceAttackedThisTurn => false,
             Condition::YouControlColorPermanents { color, at_least } => {
                 self.battlefield()
                     .into_iter()
@@ -3889,11 +3989,23 @@ impl Game {
             Condition::AnOpponentHasLifeAtMost { at_most } => self
                 .living_players()
                 .any(|p| p != ctx.controller && self.life(p) <= at_most as i32),
+            // Corrupted (CR 702.165): "an opponent has three or more poison counters" — an
+            // existential over living opponents, same shape as the life check above.
+            Condition::AnOpponentHasPoisonAtLeast { at_least } => self.living_players().any(|p| {
+                p != ctx.controller
+                    && self.player_counters(p, PlayerCounterKind::Poison) as u32 >= at_least
+            }),
             // ponytail: source-object-based like `TargetPowerAtLeast` above — `TriggerContext`
             // carries no source id either. Reachable only through the `Effect::Conditional`
             // resolve site (`Game::run`), which intercepts it directly against its own `source`
             // parameter before falling through here (Kinetic Ooze's X-threshold riders).
             Condition::SourceEnteredWithXAtLeast { .. } => false,
+            // ponytail: source-object-based like `SourceEnteredWithXAtLeast` above —
+            // `TriggerContext` carries no source id either. Reachable only through the
+            // `Effect::Conditional` resolve site (`Game::run`), which intercepts it directly
+            // against its own `source` parameter before falling through here (Lily Bowen,
+            // Raging Grandma's upkeep gate).
+            Condition::SourcePowerAtMost { .. } => false,
             // ponytail: source-object-based like `SourceEnteredWithXAtLeast` above — `TriggerContext`
             // carries no source id either. Reachable only through the `Effect::Conditional` resolve
             // site (`Game::run`), which intercepts it directly against its own `source` parameter
@@ -4006,11 +4118,44 @@ impl Game {
     /// now at the land's one ETB site ([`Event::LandPlayed`]). Reuses [`Game::condition_holds`],
     /// the same intervening-if evaluator triggers use, so a land-count/subtype condition is
     /// written once and read from both places.
+    ///
+    /// Reveal lands ([`Condition::HandHasLandWithSubtype`]) always read as tapped here: the real
+    /// may-reveal choice is raised by [`Game::play_land`] and stamps `LandPlayed.tapped` from the
+    /// answer. Non-play paths (search / put-from-hand) that still call this helper therefore enter
+    /// tapped unless a future path grows the same pause.
     pub(crate) fn enters_tapped(&self, def: &CardDef, controller: PlayerId) -> bool {
+        // `enters_tapped_unless_you_pay_life` (CR 614.12's pay-life-or-tapped choice) is
+        // resolved by [`Game::play_land`] / its answer handler *before* this site runs — by the
+        // time `Event::LandPlayed` applies, the land is either entering tapped outright (the
+        // choice was declined, or never offered — CR 119.4's life floor) or about to be untapped
+        // by a follow-up `Event::Untapped` (the choice was paid). Either way this always
+        // returns `true` here; it never reads the *outcome* of that choice.
+        if def.enters_tapped_unless_you_pay_life.is_some() {
+            return true;
+        }
         match def.enters_tapped_unless {
+            Some(Condition::HandHasLandWithSubtype { .. }) => true,
             Some(condition) => !self.condition_holds(condition, TriggerContext::of(controller)),
             None => def.enters_tapped,
         }
+    }
+
+    /// First hand card of `player` whose printed land subtypes intersect `subtypes`, if any —
+    /// the automatic pick for an accepted may-reveal (any matching card satisfies the replacement).
+    pub(crate) fn first_hand_land_with_subtype(
+        &self,
+        player: PlayerId,
+        subtypes: &[&str],
+    ) -> Option<ObjectId> {
+        self.hand_of(player)
+            .into_iter()
+            .find(|&id| match &self.def_of(id).kind {
+                CardKind::Land {
+                    subtypes: land_subtypes,
+                    ..
+                } => land_subtypes.iter().copied().any(|s| subtypes.contains(&s)),
+                _ => false,
+            })
     }
 
     /// How many lands `controller` controls whose printed subtypes intersect `subtypes`
@@ -4056,7 +4201,8 @@ impl Game {
     }
 
     /// Whether `controller`'s hand contains a card whose printed subtypes intersect `subtypes`
-    /// (the reveal lands' automatic hand scan — see [`Condition::HandHasLandWithSubtype`]).
+    /// (reveal-land match check — see [`Condition::HandHasLandWithSubtype`] /
+    /// [`PendingChoice::MayRevealLandFromHand`]).
     pub(crate) fn hand_has_land_with_subtype(
         &self,
         controller: PlayerId,
@@ -4225,6 +4371,7 @@ impl Game {
                         x: 0,
                         modes: options,
                         at_placement: true,
+                        activated: false,
                     },
                 );
                 return;
@@ -4625,6 +4772,7 @@ impl Game {
                 condition,
                 then,
                 negate,
+                ..
             } = step
             {
                 // CR 603.4: a gated clause is only a real target clause when its intervening-if
@@ -4907,6 +5055,7 @@ mod tests {
                 also: TypeSet::NONE,
             },
             legendary: false,
+            snow: false,
             uncounterable: false,
             enchant: None,
             enchant_graveyard: false,
@@ -4922,13 +5071,14 @@ mod tests {
             devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
+            enters_tapped_unless_you_pay_life: None,
             free_cast_if: None,
             alternative_cost: None,
             cast_only_during_combat: false,
             cast_only_before_attackers: false,
             approximates: None,
             oracle: None,
-            set: "",
+            sets: empty_slice(),
             subtypes: empty_slice(),
             otags: empty_slice(),
             cycling: None,
@@ -4987,6 +5137,7 @@ mod tests {
                 speed: SpellSpeed::Instant,
             },
             legendary: false,
+            snow: false,
             uncounterable: false,
             enchant: None,
             enchant_graveyard: false,
@@ -5002,13 +5153,14 @@ mod tests {
             devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
+            enters_tapped_unless_you_pay_life: None,
             free_cast_if: None,
             alternative_cost: None,
             cast_only_during_combat: false,
             cast_only_before_attackers: false,
             approximates: None,
             oracle: None,
-            set: "",
+            sets: empty_slice(),
             subtypes: empty_slice(),
             otags: empty_slice(),
             cycling: None,

@@ -1,8 +1,8 @@
 # Search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle.
 name = "Explosive Vegetation"
+sets = ["c18", "cmd", "cn2", "ddo", "dmc", "drc", "dsc", "dtk", "hop", "ons", "plst", "td0"]
 otags = ["tutor-land-basic", "tutor-land-to-battlefield", "multi-land-ramp"]
 oracle = "Search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle."
-set = "dsc"
 id = "a0abd957-01a0-4aa9-8fc8-0e6840d21606"
 default_print = "8de3fdf8-d55e-4ffc-8f8b-6314d4d467ce"
 

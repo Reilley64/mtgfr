@@ -158,6 +158,25 @@ impl Game {
                 return Err(Reject::IllegalTarget);
             }
         }
+        // A set-level mana-value budget (CR 601.2c — Rampaging Yao Guai's "destroy any number of
+        // target artifacts and/or enchantments with total mana value X or less"): the chosen
+        // set's *summed* mana value must not exceed the budget, resolved once against this
+        // ability's own source (its entered `{X}`, not `activation_x` — a trigger carries none of
+        // its own). An over-budget answer leaves the pending choice untouched (this function
+        // never took it, only cloned it), the same as the distinctness/legality rejects above.
+        if let Some(budget_amount) = count.total_mv_max {
+            let ability_x = self.ability_source_x(source);
+            let budget = self.resolve_amount(budget_amount, player, source, None, ability_x);
+            let total_mv: i32 = targets
+                .iter()
+                .map(|&t| {
+                    self.resolve_amount(Amount::TargetManaValue, player, source, Some(t), ability_x)
+                })
+                .sum();
+            if total_mv > budget {
+                return Err(Reject::IllegalChoice);
+            }
+        }
 
         self.finish_answer();
         let mut events = Vec::new();
@@ -186,11 +205,11 @@ impl Game {
         };
         // A fight's second creature (see `Effect::Misc(MiscEffect::Fight)`) is chosen mid-resolution, not placed
         // as a new ability — apply the mutual damage directly instead of going back on the stack.
-        if let Effect::Misc(MiscEffect::Fight { enemy, .. }) = effect {
+        if let Effect::Misc(MiscEffect::Fight { enemy, one_way, .. }) = effect {
             let your_creature = expect_object_target(Some(target), "a fight's chosen creature");
             let enemy_creature =
                 expect_object_target(enemy, "a fight's pre-resolved opponent creature");
-            self.fight(your_creature, enemy_creature, &mut events);
+            self.fight(your_creature, enemy_creature, one_way, &mut events);
         } else if let Effect::Counters(CountersEffect::MoveCounters {
             from, all_kinds, ..
         }) = effect
@@ -200,7 +219,7 @@ impl Game {
             // gets above.
             let from = expect_object_target(from, "a move-counters effect's stashed source");
             let to = expect_object_target(Some(target), "a move-counters effect's destination");
-            self.move_counters(from, to, all_kinds, &mut events);
+            self.move_counters(player, from, to, all_kinds, &mut events);
         } else if let Effect::Copy(CopyEffect::Demonstrate { spell }) = effect {
             // The chosen opponent (CR 702.147a) also gets a copy — mint the controller's own
             // copy now (with its usual CR 707.10c retarget); the opponent's copy is deferred to
@@ -229,14 +248,13 @@ impl Game {
         Ok(events)
     }
 
-    /// Every counter-removal event for `object` — one [`Event::CountersPlaced`] (negative) if it
-    /// has any +1/+1 counters, plus one [`Event::KindCountersPlaced`] (negative) per named kind
-    /// present — and the total count removed. Shared by `RemoveAllCountersThenDraw` (remove and
-    /// draw) and [`Self::move_counters`] (remove, then re-place on the destination).
+    /// Answer a [`PendingChoice::Proliferate`]: each chosen permanent or player gets one more
+    /// counter of every kind already there (CR 701.27). A nonzero `remaining` re-raises for the
+    /// next iteration of a "proliferate twice"/"proliferate X times".
     pub(crate) fn answer_proliferate(
         &mut self,
         player: PlayerId,
-        chosen: Vec<ObjectId>,
+        chosen: Vec<ProliferateTarget>,
     ) -> Result<Vec<Event>, Reject> {
         let Some(PendingChoice::Proliferate {
             source,
@@ -252,41 +270,28 @@ impl Game {
         let distinct = chosen
             .iter()
             .enumerate()
-            .all(|(i, id)| !chosen[..i].contains(id));
-        if !distinct || chosen.iter().any(|id| !options.contains(id)) {
+            .all(|(i, t)| !chosen[..i].contains(t));
+        if !distinct || chosen.iter().any(|t| !options.contains(t)) {
             return Err(Reject::IllegalChoice);
         }
         self.finish_answer();
 
         let mut events = Vec::new();
-        for &id in &chosen {
-            let plus = self.permanent(id).plus_counters;
-            if plus > 0 {
-                let n = self.counters_after_replacements(id, 1);
-                if n > 0 {
-                    self.push_apply(
-                        &mut events,
-                        Event::CountersPlaced {
-                            object: id,
-                            count: n,
-                            source_name: "",
-                        },
-                    );
+        for &target in &chosen {
+            match target {
+                ProliferateTarget::Permanent(id) => {
+                    self.proliferate_permanent(player, &mut events, id)
                 }
-            }
-            for &kind in CounterKind::ALL.iter() {
-                if self.permanent(id).kind_counters[kind as usize] > 0 {
-                    self.push_apply(
-                        &mut events,
-                        Event::KindCountersPlaced {
-                            object: id,
-                            kind,
-                            count: 1,
-                        },
-                    );
+                ProliferateTarget::Player(seat) => {
+                    self.proliferate_player(player, &mut events, seat)
                 }
             }
         }
+        // Whenever you proliferate (CR 701.27, Scheming Aspirant) — one instance just resolved,
+        // regardless of whether `chosen` is empty (CR 701.27 doesn't condition the instance on a
+        // nonempty choice), so this fires unconditionally, once per answered instance. A
+        // "proliferate twice" re-raises below for the next instance, which fires this again.
+        self.queue_controller_triggers(player, Trigger::YouProliferate, None);
         pending::raise(
             self,
             pending::ChoiceRequest::Proliferate {
@@ -296,6 +301,72 @@ impl Game {
             },
         );
         Ok(events)
+    }
+
+    /// Give `id` another counter of each kind already on it (CR 701.27).
+    /// ponytail: a loyalty counter added here skips the CR 614 replacement pipeline — loyalty is
+    /// the scalar [`Permanent::loyalty`], not a `kind_counters` slot. Route it once loyalty and
+    /// named counters share a store.
+    fn proliferate_permanent(&mut self, placer: PlayerId, events: &mut Vec<Event>, id: ObjectId) {
+        if self.permanent(id).plus_counters > 0 {
+            let n = self.counters_after_replacements(placer, id, 1);
+            if n > 0 {
+                self.push_apply(
+                    events,
+                    Event::CountersPlaced {
+                        object: id,
+                        count: n,
+                        source_name: "",
+                    },
+                );
+            }
+        }
+        for &kind in CounterKind::ALL.iter() {
+            if self.permanent(id).kind_counters[kind as usize] == 0 {
+                continue;
+            }
+            let n = self.kind_counters_after_replacements(placer, id, 1);
+            if n > 0 {
+                self.push_apply(
+                    events,
+                    Event::KindCountersPlaced {
+                        object: id,
+                        kind,
+                        count: n,
+                    },
+                );
+            }
+        }
+        // A planeswalker's loyalty is loyalty counters (CR 306.5b), so it gets one more too.
+        if self.permanent(id).loyalty > 0 {
+            self.push_apply(
+                events,
+                Event::LoyaltyChanged {
+                    object: id,
+                    amount: 1,
+                },
+            );
+        }
+    }
+
+    /// Give `seat` another counter of each kind already on them (CR 701.27 — poison).
+    fn proliferate_player(&mut self, placer: PlayerId, events: &mut Vec<Event>, seat: PlayerId) {
+        for &kind in PlayerCounterKind::ALL.iter() {
+            if self.player_counters(seat, kind) == 0 {
+                continue;
+            }
+            let n = self.player_counters_after_replacements(placer, seat, 1);
+            if n > 0 {
+                self.push_apply(
+                    events,
+                    Event::PlayerCountersPlaced {
+                        player: seat,
+                        kind,
+                        count: n,
+                    },
+                );
+            }
+        }
     }
 
     /// Answer a [`PendingChoice::PhaseOut`]: every chosen creature (and everything attached to it)

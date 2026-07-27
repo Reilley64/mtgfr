@@ -58,6 +58,19 @@ describe("intent reject wiring", () => {
     expect(next.game?.board.reject).toBe("Not your turn.");
   });
 
+  it("IntentRejected clears combat confirm latches so a rejected goad declare can be retried", () => {
+    const seeded = modelWithGame();
+    const game = seeded.game;
+    if (game == null) throw new Error("test setup: game is null");
+    seeded.game = {
+      ...game,
+      board: { ...game.board, attackersConfirmed: true, blockersConfirmed: true },
+    };
+    const [next] = update(seeded, GotGameMessage({ message: IntentRejected({ reason: "Illegal declaration." }) }));
+    expect(next.game?.board.attackersConfirmed).toBe(false);
+    expect(next.game?.board.blockersConfirmed).toBe(false);
+  });
+
   it("IntentAcked clears board.reject", () => {
     const seeded = modelWithGame();
     const game = seeded.game;

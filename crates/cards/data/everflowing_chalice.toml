@@ -1,0 +1,40 @@
+# Multikicker {2} (You may pay an additional {2} any number of times as you cast this spell.)
+# This artifact enters with a charge counter on it for each time it was kicked.
+# {T}: Add {C} for each charge counter on this artifact.
+name = "Everflowing Chalice"
+id = "0a79237e-0811-4a8a-bd4d-db3ca91bff22"
+default_print = "e4ed0052-d6dd-4f69-8313-10863baefac9"
+oracle = "Multikicker {2} (You may pay an additional {2} any number of times as you cast this spell.)\nThis artifact enters with a charge counter on it for each time it was kicked.\n{T}: Add {C} for each charge counter on this artifact."
+sets = ["eoc"]
+
+[cost]
+generic = 0
+
+[cost.additional.multikicker]
+generic = 2
+
+[kind]
+type = "artifact"
+
+# This artifact enters with a charge counter on it for each time it was kicked.
+[[abilities]]
+timing = "static"
+
+# This artifact enters with a charge counter on it for each time it was kicked.
+[[abilities.effects]]
+type = "static"
+mode = "enters_with_counters"
+count = "spell_multikicker_count"
+kind = "charge"
+
+# {T}: Add {C} for each charge counter on this artifact.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add {C} for each charge counter on this artifact.
+[[abilities.effects]]
+type = "mana"
+mode = "add"
+mana = ["colorless"]
+repeat = { per_counter_of_kind = "charge" }

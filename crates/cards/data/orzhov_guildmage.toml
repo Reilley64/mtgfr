@@ -1,10 +1,11 @@
 # {2}{W}: Target player gains 1 life.
 # {2}{B}: Each player loses 1 life.
 name = "Orzhov Guildmage"
+sets = ["clu", "cma", "cmd", "gpt", "rvr"]
 id = "877bfa3f-6e30-4cb3-831e-d56849b01334"
 default_print = "5eb5c82b-71aa-4c94-bda0-3e5abe10ea67"
 oracle = "{2}{W}: Target player gains 1 life.\n{2}{B}: Each player loses 1 life."
-set = "clu"
+approximates = "\"each player loses 1 life\" (CR-simultaneous) is composed as each-opponent-then-you sequential — the resulting life totals are identical and no pool card observes the ordering."
 subtypes = ["Human", "Wizard"]
 
 [cost]

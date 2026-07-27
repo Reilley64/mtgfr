@@ -772,6 +772,9 @@ impl Game {
     /// only pay that way reads `false` until the player floats the mana by hand; teach
     /// [`Game::plan_auto_taps`] sacrifice costs if that ever gates a real prompt.
     pub fn can_pay_cost(&self, player: PlayerId, cost: Cost) -> bool {
+        if cost.additional.discard as usize > self.hand_of(player).len() {
+            return false;
+        }
         self.plan_auto_taps(player, cost, None, None).is_some()
     }
 
@@ -1507,6 +1510,15 @@ impl Game {
         active: PlayerId,
         events: &mut Vec<Event>,
     ) {
+        // CR 800.4e: if the active player leaves the game mid-turn, that turn continues to its
+        // completion *without* an active player — nobody untaps, draws, mills for rad, or (below)
+        // discards to hand size. Their zones were emptied by the CR 800.4a sweep, so a draw here
+        // would reach removed library objects. Every other turn-based action still runs: ending
+        // combat (CR 511.3) and cleanup's damage/boost/control housekeeping (CR 514.2) belong to
+        // the whole board, not to the active player.
+        if self.has_lost(active) && matches!(step, Step::Untap | Step::Draw | Step::Main1) {
+            return;
+        }
         match step {
             Step::Untap => {
                 // Goad ends "until your next turn" (CR 701.38b): the active player's turn
@@ -1704,6 +1716,14 @@ impl Game {
                 let drawn = self.draw_card(active);
                 events.extend(drawn);
             }
+            // Rad counters (CR 122.1, Fallout): "At the beginning of each player's precombat main
+            // phase, if that player has any rad counters, they mill that many cards. For each
+            // nonland card milled this way, that player loses 1 life and removes one rad counter."
+            // A turn-based action, not a triggered ability — no stack object, no priority window,
+            // nothing to respond to. `Step::Main1` is the *precombat* main phase (`Main2` is
+            // postcombat), and "each player's" resolves in that player's own turn, so only the
+            // active player's counters fire here.
+            Step::Main1 => self.perform_rad_counter_mill(active, events),
             // The two combat damage steps deal their own batch (CR 510.5). The between-steps
             // SBA sweep and death triggers are handled by `submit` after this step, and a (CR 704, CR 603, CR 104.3)
             // priority window opens between them. (CR 117)
@@ -1791,6 +1811,10 @@ impl Game {
                 if self.has_no_max_hand_size(active) {
                     return;
                 }
+                // Nobody is left to discard for a seat that left the game (CR 800.4e).
+                if self.has_lost(active) {
+                    return;
+                }
                 // Discard down to the hand-size limit (CR 514.3): the player chooses which cards.
                 let hand = self.hand_of(active);
                 let over = hand.len().saturating_sub(HAND_SIZE);
@@ -1809,6 +1833,50 @@ impl Game {
             }
             _ => {}
         }
+    }
+
+    /// The rad-counter turn-based action for `player`'s precombat main phase (CR 122.1, Fallout):
+    /// mill one card per rad counter, then lose 1 life and remove one rad counter for each
+    /// *nonland* card actually milled. A short library mills only what's there, so the life loss
+    /// and the removal follow the real nonland count — never the counter total.
+    fn perform_rad_counter_mill(&mut self, player: PlayerId, events: &mut Vec<Event>) {
+        let rad = self.player_counters(player, PlayerCounterKind::Rad);
+        if rad == 0 {
+            return;
+        }
+
+        let milled = self.mill_events(player, rad as u32);
+        let nonland = milled
+            .iter()
+            .filter(|event| match event {
+                Event::Milled { from, .. } => {
+                    !matches!(self.def_of(*from).kind, CardKind::Land { .. })
+                }
+                _ => false,
+            })
+            .count() as i32;
+        self.apply_all(&milled);
+        events.extend(milled);
+        if nonland == 0 {
+            return;
+        }
+
+        self.push_apply(
+            events,
+            Event::LifeChanged {
+                player,
+                amount: -nonland,
+                source: None,
+            },
+        );
+        self.push_apply(
+            events,
+            Event::PlayerCountersPlaced {
+                player,
+                kind: PlayerCounterKind::Rad,
+                count: -nonland,
+            },
+        );
     }
 
     /// Ids of the permanents `player` controls on the battlefield.
@@ -1850,6 +1918,7 @@ mod tests {
                 basic: true,
             },
             legendary: false,
+            snow: false,
             uncounterable: false,
             enchant: None,
             enchant_graveyard: false,
@@ -1865,13 +1934,14 @@ mod tests {
             devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
+            enters_tapped_unless_you_pay_life: None,
             free_cast_if: None,
             alternative_cost: None,
             cast_only_during_combat: false,
             cast_only_before_attackers: false,
             approximates: None,
             oracle: None,
-            set: "",
+            sets: empty_slice(),
             subtypes: empty_slice(),
             otags: empty_slice(),
             cycling: None,
@@ -1920,6 +1990,21 @@ mod tests {
         let mana = game.available_mana(P0);
         assert_eq!(mana.colored[Color::Green.index()], 1);
         assert_eq!(mana.total(), 1);
+    }
+
+    // CR 800.4e: a turn whose active player has left the game runs to completion without an
+    // active player — no untap, no draw, no cleanup discard for the seat that is gone. Their
+    // library objects were removed by the CR 800.4a sweep, so drawing from it would panic.
+    #[test]
+    fn an_eliminated_active_player_skips_their_turn_based_actions() {
+        let mut game = Game::with_players(4, 0);
+        game.spawn_in_library(P0, forest());
+        game.apply(&Event::PlayerLost { player: P0 });
+
+        let mut events = Vec::new();
+        game.perform_turn_based_actions(Step::Draw, P0, &mut events);
+
+        assert!(events.is_empty());
     }
 
     #[test]

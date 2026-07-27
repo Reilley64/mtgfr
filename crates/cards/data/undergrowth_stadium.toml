@@ -1,0 +1,16 @@
+# This land enters tapped unless you have two or more opponents.
+# {T}: Add {B} or {G}.
+name = "Undergrowth Stadium"
+id = "7c69f718-acc8-4851-8e5d-0cbaaa86192c"
+default_print = "35bd7a70-0cd1-48f2-96b6-7869c003a8c7"
+otags = ["activated-ability", "cycle-cmr-bond-land"]
+oracle = "This land enters tapped unless you have two or more opponents.\n{T}: Add {B} or {G}."
+sets = ["cmr"]
+
+[kind]
+type = "land"
+produces = ["black", "green"]
+
+[enters_tapped_unless]
+type = "you_have_opponents"
+at_least = 2

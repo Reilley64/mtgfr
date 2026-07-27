@@ -22,7 +22,7 @@ import {
   ReceivedMeGravatarHash,
 } from "./messages";
 import { emptyGameSlice, type Model } from "./model";
-import type { RpcClient } from "./resources";
+import type { LobbyClient, RpcClient } from "./resources";
 import {
   GameTableRoute,
   isProtectedRoute,
@@ -47,6 +47,8 @@ import * as Leaderboard from "./shell/leaderboard";
 import type { Message as LeaderboardMessage } from "./shell/leaderboard/messages";
 import * as Lobby from "./shell/lobby";
 import type { Message as LobbyMessage } from "./shell/lobby/messages";
+
+type AppResources = LobbyClient | RpcClient;
 
 const Redirect = Command.define(
   "Redirect",
@@ -94,11 +96,11 @@ function toAppBoardMessage(message: BoardOutMessage): Message {
 
 function mapBoardCommands(
   commands: ReadonlyArray<FoldkitCommand.Command<BoardOutMessage, never, RpcClient>>,
-): ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>> {
+): ReadonlyArray<FoldkitCommand.Command<Message, never, AppResources>> {
   return Command.mapMessages(commands, toAppBoardMessage);
 }
 
-function sessionCommands(model: Model): ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>> {
+function sessionCommands(model: Model): ReadonlyArray<FoldkitCommand.Command<Message, never, AppResources>> {
   if (!model.sessionLoaded) return [];
 
   if (model.session.me == null && isProtectedRoute(model.route)) {
@@ -114,21 +116,21 @@ function sessionCommands(model: Model): ReadonlyArray<FoldkitCommand.Command<Mes
 
 function enterDeckListRoute(
   model: Model,
-): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
+): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, AppResources>>] {
   const [list, commands] = DeckList.informRouteChanged(model.decks.list);
   return [{ ...model, decks: { ...model.decks, list } }, mapDeckListCommands(commands)];
 }
 
 function enterLeaderboardRoute(
   model: Model,
-): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
+): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, AppResources>>] {
   const [leaderboard, commands] = Leaderboard.informRouteChanged(model.leaderboard);
   return [{ ...model, leaderboard }, mapLeaderboardCommands(commands)];
 }
 
 function enterCoverageRoute(
   model: Model,
-): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
+): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, AppResources>>] {
   const [coverage, commands] = Coverage.informRouteChanged(model.coverage);
   return [{ ...model, coverage }, mapCoverageCommands(commands)];
 }
@@ -136,7 +138,7 @@ function enterCoverageRoute(
 function enterDeckBuilderRoute(
   model: Model,
   editingId: string | null,
-): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
+): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, AppResources>>] {
   const [builder, commands] = DeckBuilder.informRouteChanged(model.decks.builder, editingId);
   return [{ ...model, decks: { ...model.decks, builder } }, mapDeckBuilderCommands(commands)];
 }
@@ -144,7 +146,7 @@ function enterDeckBuilderRoute(
 function enterLobbyRoute(
   model: Model,
   args: { tableId: string | null; selectedDeckId: number | null },
-): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
+): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, AppResources>>] {
   const [list, deckListCommands] = DeckList.informRouteChanged(model.decks.list);
   const [lobby, lobbyCommands] = Lobby.informRouteChanged(model.lobby, args);
   return [
@@ -169,7 +171,7 @@ function gameSliceForTableRoute(model: Model, tableId: string) {
 function enterGameTableRoute(
   model: Model,
   tableId: string,
-): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
+): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, AppResources>>] {
   const [list, deckListCommands] = DeckList.informRouteChanged(model.decks.list);
   const [lobby, lobbyCommands] = Lobby.informRouteChanged(model.lobby, {
     tableId,
@@ -186,7 +188,9 @@ function enterGameTableRoute(
   ];
 }
 
-function routeEntry(model: Model): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
+function routeEntry(
+  model: Model,
+): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, AppResources>>] {
   const authCommands = sessionCommands(model);
   if (authCommands.length > 0) return [model, authCommands];
   if (!model.sessionLoaded || model.session.me == null) return [model, []];
@@ -226,14 +230,14 @@ function routeEntry(model: Model): readonly [Model, ReadonlyArray<FoldkitCommand
 
 function mapDeckListCommands(
   commands: ReadonlyArray<FoldkitCommand.Command<ListMessage, never, RpcClient>>,
-): ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>> {
+): ReadonlyArray<FoldkitCommand.Command<Message, never, AppResources>> {
   return Command.mapMessages(commands, (message) => GotDeckListMessage({ message }));
 }
 
 function foldDeckList(
   model: Model,
   message: ListMessage,
-): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
+): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, AppResources>>] {
   const [list, commands] = DeckList.update(model.decks.list, message);
   return [{ ...model, decks: { ...model.decks, list } }, mapDeckListCommands(commands)];
 }
@@ -249,21 +253,21 @@ function notFoundWhenPlayDeckMissing(model: Model): Model {
 function foldDeckBuilder(
   model: Model,
   message: BuilderMessage,
-): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
+): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, AppResources>>] {
   const [builder, commands] = DeckBuilder.update(model.decks.builder, message);
   return [{ ...model, decks: { ...model.decks, builder } }, mapDeckBuilderCommands(commands)];
 }
 
 function mapDeckBuilderCommands(
   commands: ReadonlyArray<FoldkitCommand.Command<BuilderMessage, never, RpcClient>>,
-): ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>> {
+): ReadonlyArray<FoldkitCommand.Command<Message, never, AppResources>> {
   return Command.mapMessages(commands, (message) => GotDeckBuilderMessage({ message }));
 }
 
 function foldLeaderboard(
   model: Model,
   message: LeaderboardMessage,
-): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
+): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, AppResources>>] {
   const [leaderboard, commands] = Leaderboard.update(model.leaderboard, message);
   return [{ ...model, leaderboard }, mapLeaderboardCommands(commands)];
 }
@@ -271,7 +275,7 @@ function foldLeaderboard(
 function foldCoverage(
   model: Model,
   message: CoverageMessage,
-): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
+): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, AppResources>>] {
   const [coverage, commands] = Coverage.update(model.coverage, message);
   return [{ ...model, coverage }, mapCoverageCommands(commands)];
 }
@@ -279,7 +283,7 @@ function foldCoverage(
 function foldBoard(
   model: Model,
   message: BoardMessage,
-): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
+): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, AppResources>>] {
   if (message._tag === "LeaveGame") {
     const path = "/";
     return [model, [Redirect({ path })]];
@@ -292,7 +296,7 @@ function foldBoard(
 function foldLobby(
   model: Model,
   message: LobbyMessage,
-): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
+): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, AppResources>>] {
   const deckIds = model.decks.list.decks.map((deck) => deck.id);
   const [lobby, commands] = Lobby.update(model.lobby, message, deckIds);
   const game =
@@ -317,26 +321,26 @@ function foldLobby(
 
 function mapLeaderboardCommands(
   commands: ReadonlyArray<FoldkitCommand.Command<LeaderboardMessage, never, RpcClient>>,
-): ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>> {
+): ReadonlyArray<FoldkitCommand.Command<Message, never, AppResources>> {
   return Command.mapMessages(commands, (message) => GotLeaderboardMessage({ message }));
 }
 
 function mapCoverageCommands(
-  commands: ReadonlyArray<FoldkitCommand.Command<CoverageMessage, never, RpcClient>>,
-): ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>> {
+  commands: ReadonlyArray<FoldkitCommand.Command<CoverageMessage, never, LobbyClient>>,
+): ReadonlyArray<FoldkitCommand.Command<Message, never, AppResources>> {
   return Command.mapMessages(commands, (message) => GotCoverageMessage({ message }));
 }
 
 function mapLobbyCommands(
-  commands: ReadonlyArray<FoldkitCommand.Command<LobbyMessage, never, RpcClient>>,
-): ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>> {
+  commands: ReadonlyArray<FoldkitCommand.Command<LobbyMessage, never, LobbyClient>>,
+): ReadonlyArray<FoldkitCommand.Command<Message, never, AppResources>> {
   return Command.mapMessages(commands, (message) => GotLobbyMessage({ message }));
 }
 
 function foldAuth(
   model: Model,
   message: AuthMessage,
-): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] {
+): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, AppResources>>] {
   const [auth, commands] = Auth.update(model.auth, message);
   const mappedCommands = Command.mapMessages(commands, (child) => GotAuthMessage({ message: child }));
 
@@ -358,9 +362,9 @@ function foldAuth(
 export const update = (
   model: Model,
   message: Message,
-): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>] =>
+): readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, AppResources>>] =>
   M.value(message).pipe(
-    M.withReturnType<readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>]>(),
+    M.withReturnType<readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, AppResources>>]>(),
     M.tagsExhaustive({
       Booted: () => [model, []],
       ReceivedApiVersion: ({ version, faithfulCount, oracleTotal }) => [
@@ -379,7 +383,7 @@ export const update = (
       },
       UrlRequested: ({ request }) =>
         M.value(request).pipe(
-          M.withReturnType<readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, RpcClient>>]>(),
+          M.withReturnType<readonly [Model, ReadonlyArray<FoldkitCommand.Command<Message, never, AppResources>>]>(),
           M.tagsExhaustive({
             Internal: ({ url }) => {
               const href = urlToString(url);
@@ -390,9 +394,7 @@ export const update = (
           }),
         ),
       NavigationCompleted: () => [model, []],
-      PortraitGateChanged: ({ open }) => [{ ...model, portraitGate: { open } }, []],
-      PortraitGateCancelled: () => [model, []],
-      CompletedPortraitGateModal: () => [model, []],
+      LandscapeRotateChanged: ({ active }) => [{ ...model, landscapeRotate: { active } }, []],
       ReceivedMeGravatarHash: ({ email, hash }) => {
         if (model.session.me?.email !== email) return [model, []];
         return [{ ...model, session: { ...model.session, meGravatarHash: hash } }, []];
@@ -417,7 +419,14 @@ export const update = (
       GotCoverageMessage: ({ message }) => foldCoverage(model, message),
       GotLobbyMessage: ({ message }) => foldLobby(model, message),
       ToggledAccountMenu: () => {
-        if (model.route._tag === "HomeRoute") {
+        if (
+          model.route._tag === "HomeRoute" ||
+          model.route._tag === "NewDeckRoute" ||
+          model.route._tag === "DeckRoute" ||
+          model.route._tag === "PlayRoute" ||
+          model.route._tag === "PregameTableRoute" ||
+          model.route._tag === "GameTableRoute"
+        ) {
           const list = model.decks.list;
           return [
             {
@@ -461,7 +470,14 @@ export const update = (
         return [model, []];
       },
       ClosedAccountMenu: () => {
-        if (model.route._tag === "HomeRoute") {
+        if (
+          model.route._tag === "HomeRoute" ||
+          model.route._tag === "NewDeckRoute" ||
+          model.route._tag === "DeckRoute" ||
+          model.route._tag === "PlayRoute" ||
+          model.route._tag === "PregameTableRoute" ||
+          model.route._tag === "GameTableRoute"
+        ) {
           return [
             {
               ...model,

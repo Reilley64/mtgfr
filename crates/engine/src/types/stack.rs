@@ -263,7 +263,14 @@ pub enum Intent {
         dredger: Option<ObjectId>,
     },
     /// Answer a [`PendingChoice::PayCost`]: pay the cost (getting the effect) or decline.
-    PayOptionalCost { player: PlayerId, pay: bool },
+    /// When the optional cost includes an additional discard ([`Cost::additional`](crate::Cost)'s
+    /// `discard`), `discard_cost` names those hand cards — empty when declining or when the cost
+    /// has no discard. Paying succeeds only when mana *and* the named discards are both settled.
+    PayOptionalCost {
+        player: PlayerId,
+        pay: bool,
+        discard_cost: Vec<ObjectId>,
+    },
     /// Answer a [`PendingChoice::PayCost`] whose `cost` carries a chosen `{X}` (CR 107.3 — Decree
     /// of Justice's cycling rider "you may pay {X}. If you do, create X 1/1 white Soldier
     /// creature tokens."): pay `cost.with_x(x)` and thread `x` onto the placed ability so its own
@@ -308,6 +315,14 @@ pub enum Intent {
         to_hand: Vec<ObjectId>,
         to_bottom: Vec<ObjectId>,
         to_exile_may_play: Vec<ObjectId>,
+    },
+    /// Answer a [`PendingChoice::Proliferate`]: the chosen permanents and players (CR 701.27 —
+    /// "any number of permanents and/or players"), a subset of the choice's `options` with no
+    /// repeats. Both lists empty is a legal "proliferate nothing."
+    ChooseProliferate {
+        player: PlayerId,
+        permanents: Vec<ObjectId>,
+        players: Vec<PlayerId>,
     },
     /// Answer a [`PendingChoice::ShuffleFromGraveyard`]: `cards` are the graveyard cards this
     /// player shuffles into their library (any subset of the offered `candidates`, including
@@ -378,10 +393,12 @@ pub enum Intent {
         choice: Option<ObjectId>,
     },
     /// Answer a [`PendingChoice::ChooseExiledDigToCastFree`]: `choice` is the just-exiled card
-    /// granted the free-cast permission (one of the offered candidates), or `None` to decline.
+    /// cast without paying its mana cost now (one of the offered candidates), or `None` to
+    /// decline. `target` is the cast-time target when the chosen card needs one (an Aura).
     ChooseExiledDigToCastFree {
         player: PlayerId,
         choice: Option<ObjectId>,
+        target: Option<Target>,
     },
     /// Answer a [`PendingChoice::OpponentChoosesPile`] (Abstract Performance): `pile` is `0` for
     /// the first pile or `1` for the second — the pile this opponent puts into the controller's
@@ -571,6 +588,7 @@ impl Intent {
             }
             Intent::ReturnLandOrSacrifice { land, .. } => land.iter().copied().collect(),
             Intent::ChooseSacrifices { sacrifices, .. } => sacrifices.clone(),
+            Intent::ChooseProliferate { permanents, .. } => permanents.clone(),
             Intent::Discard { cards, .. } | Intent::PutFromHandOnTop { cards, .. } => cards.clone(),
             Intent::DeclineUntap { keep_tapped, .. } => keep_tapped.clone(),
             Intent::ChooseDredge { dredger, .. } => dredger.iter().copied().collect(),
@@ -606,11 +624,11 @@ impl Intent {
                 .iter()
                 .filter_map(|(_, t)| t.and_then(Target::object_id))
                 .collect(),
+            Intent::PayOptionalCost { discard_cost, .. } => discard_cost.clone(),
             Intent::ChooseOrder { .. }
             | Intent::ChooseTargetPlayers { .. }
             | Intent::AnswerMay { .. }
             | Intent::ChooseDrawCount { .. }
-            | Intent::PayOptionalCost { .. }
             | Intent::PayOptionalCostX { .. }
             | Intent::ChooseMode { .. }
             | Intent::ChooseOpponentPile { .. }
@@ -665,6 +683,7 @@ impl Intent {
             | Intent::ShuffleFromGraveyard { player, .. }
             | Intent::SearchLibrary { player, .. }
             | Intent::ChooseSacrifices { player, .. }
+            | Intent::ChooseProliferate { player, .. }
             | Intent::Discard { player, .. }
             | Intent::PutFromHandOnTop { player, .. }
             | Intent::PutLandFromHand { player, .. }
@@ -718,6 +737,7 @@ impl Intent {
             | Intent::ShuffleFromGraveyard { .. }
             | Intent::SearchLibrary { .. }
             | Intent::ChooseSacrifices { .. }
+            | Intent::ChooseProliferate { .. }
             | Intent::Discard { .. }
             | Intent::PutFromHandOnTop { .. }
             | Intent::PutLandFromHand { .. }
@@ -786,12 +806,27 @@ pub enum SplittingContinuation {
     Clash,
 }
 
+/// One thing proliferate may choose (CR 701.27: "Choose any number of permanents and/or
+/// players"). A card in exile is neither, so a suspended card's time counters are out of reach.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProliferateTarget {
+    Permanent(ObjectId),
+    Player(PlayerId),
+}
+
 /// A decision the engine is waiting on. While one is pending, only the matching
 /// [`Intent::ChooseOrder`] from `player` is legal.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MayYesNoResume {
     /// The default yes/no path: a "yes" runs the baked-in effect and a "no" declines it.
+    /// Ability-level `optional` triggers (Borderland Ranger) use this — accepting places the
+    /// ability on the stack rather than resolving it inline.
     Default,
+    /// Mid-resolution "may" (White Orchid Phantom's `SearchLibrary.optional`): a "yes" continues
+    /// the still-resolving ability by running `effect` inline; a "no" skips it (and walks an
+    /// AllPlayers search fan-out forward when one is live). Distinct from [`Self::Default`], which
+    /// would re-place a SearchLibrary effect as a new stack object.
+    ResolveInline,
     /// Trade Secrets' repeat gate: "yes" draws two for `player`, then pauses `caster` on the next
     /// `MayDrawUpTo`.
     TradeSecretsRepeat { caster: PlayerId, max: u8 },
@@ -852,6 +887,16 @@ pub enum PendingChoice {
         source: ObjectId,
         effect: Effect,
         resume: MayYesNoResume,
+    },
+    /// `player` may reveal a hand land whose printed subtypes intersect `subtypes` as `land`
+    /// enters (CR 614.12 — Vineglimmer Snarl / Port Town). Raised from [`Game::play_land`] before
+    /// [`Event::LandPlayed`] when the hand has a match; answered by [`Intent::AnswerMay`].
+    /// Accepting reveals one matching card and the land enters untapped; declining (or having no
+    /// match, which never raises this) enters it tapped.
+    MayRevealLandFromHand {
+        player: PlayerId,
+        land: ObjectId,
+        subtypes: &'static [&'static str],
     },
     /// `player` chooses how many cards to draw — any number `0..=max` (CR 120.4 / 601.2c —
     /// Arcane Denial's "may draw up to two cards", Trade Secrets' caster draw, and similar
@@ -972,6 +1017,19 @@ pub enum PendingChoice {
         source: ObjectId,
         cost: Cost,
     },
+    /// `player` (a land card's controller, about to play it) may pay `life` to have it enter
+    /// untapped, or decline and have it enter tapped (CR 614.12 — [`CardDef::enters_tapped_unless_you_pay_life`],
+    /// Overgrown Tomb's "As this land enters, you may pay 2 life. If you don't, it enters
+    /// tapped."). Raised by [`Game::play_land`] *before* the land's own [`Event::LandPlayed`] is
+    /// minted (the land isn't on the battlefield yet — CR 614.12's replacement locks in before
+    /// the permanent exists), so `source` is the land *card*, not a permanent. Answered by
+    /// [`Intent::PayOptionalCost`], the land-drop-scoped twin of [`Self::SacrificeUnlessPay`] —
+    /// same shape, opposite consequence (there, sacrifice; here, tapped).
+    PayLifeOrEntersTapped {
+        player: PlayerId,
+        source: ObjectId,
+        life: u8,
+    },
     /// `player` (`source`'s controller) must return one of `candidates` (their own non-Lair
     /// lands) to its owner's hand to keep `source`, or decline and sacrifice it — Treva's Ruins'
     /// own ETB triggered ability. The land-bounce twin of [`Self::SacrificeUnlessPay`]; answered
@@ -1077,19 +1135,19 @@ pub enum PendingChoice {
         to_bottom: u32,
         to_exile_may_play: u32,
     },
-    /// `player` may choose any number of `options` (every permanent on the battlefield that
-    /// currently has a counter, any controller — CR 701.27) to proliferate: each chosen one
-    /// gets another counter of every kind already on it. Answered by
-    /// [`Intent::ChooseSacrifices`] (reusing its "any subset of the offered set" wire shape —
-    /// unlike [`SacrificeEdict`](Self::SacrificeEdict)/[`MaySacrifice`](Self::MaySacrifice)'s
-    /// exactly-one, an empty answer here is a legal "proliferate nothing"). `remaining` is how
-    /// many more times [`Effect::Choice(ChoiceEffect::Proliferate)`]'s `times` still has to run after this one; a
+    /// `player` may choose any number of `options` — every permanent on the battlefield and
+    /// every player that currently has a counter (CR 701.27: "Choose any number of permanents
+    /// and/or players") — to proliferate: each chosen one gets another counter of every kind
+    /// already there. Answered by [`Intent::ChooseProliferate`]; an empty answer is a legal
+    /// "proliferate nothing," unlike
+    /// [`SacrificeEdict`](Self::SacrificeEdict)/[`MaySacrifice`](Self::MaySacrifice)'s
+    /// exactly-one. `remaining` is how many more times [`Effect::Choice(ChoiceEffect::Proliferate)`]'s `times` still has to run after this one; a
     /// nonzero `remaining` re-pauses on a fresh `Proliferate` choice once this one's counters
     /// are placed, mirroring [`SearchLibrary`](Self::SearchLibrary)'s re-pause chaining.
     Proliferate {
         player: PlayerId,
         source: ObjectId,
-        options: Vec<ObjectId>,
+        options: Vec<ProliferateTarget>,
         remaining: u8,
     },
     /// `player` (Guardian of Faith's controller) may choose any number of `options` — the *other*
@@ -1166,6 +1224,10 @@ pub enum PendingChoice {
     /// stack, and it resolves later straight down that branch with no mid-resolution mode pause; a
     /// modal effect reached mid-resolution (a modal spell's own step — Zimone's Hypothesis)
     /// keeps `at_placement = false` and runs the chosen branch immediately.
+    ///
+    /// `activated` is the third window (CR 601.2b — Cankerbloom): an *activated* modal ability
+    /// also chooses its mode as it goes on the stack, but places through the activated path so
+    /// the stack object is an activated ability rather than a trigger.
     ChooseMode {
         player: PlayerId,
         source: ObjectId,
@@ -1173,6 +1235,7 @@ pub enum PendingChoice {
         x: u32,
         modes: Arc<[Effect]>,
         at_placement: bool,
+        activated: bool,
     },
     /// `player` may choose `choose` distinct modes of a modal *triggered* ability (`source`, CR
     /// 700.2's "choose two" extended to a trigger's own modes), each mode paired with its own
@@ -1447,11 +1510,11 @@ pub enum PendingChoice {
         candidates: Vec<ObjectId>,
     },
     /// `player` must choose up to one of `candidates` — the cards among `source`'s just-exiled
-    /// dig batch (`exiled`) that match the effect's filter — to grant the free-cast permission
-    /// (CR 118.5), or decline (Herald of Amity's "exile the top eight … you may cast an Aura
-    /// spell from among them without paying its mana cost" resolving). Answered by
-    /// [`Intent::ChooseExiledDigToCastFree`]. Answering (either way) also puts every other card
-    /// in `exiled` on the bottom of the library (CR "put the rest on the bottom") — unlike
+    /// dig batch (`exiled`) that match the effect's filter — to cast without paying its mana
+    /// cost **now** (mid-resolution, CR 608.2g), or decline (Herald of Amity / Cascade). Answered
+    /// by [`Intent::ChooseExiledDigToCastFree`] (whose `target` names a cast-time target when the
+    /// chosen card needs one). Answering (either way) also puts every other card in `exiled` on
+    /// the bottom of the library (CR "put the rest on the bottom") — unlike
     /// [`ChooseExiledWithCardToCast`](Self::ChooseExiledWithCardToCast), whose non-chosen
     /// candidates simply stay in their pile. The candidates are exile-zone cards, so public.
     ChooseExiledDigToCastFree {
@@ -1820,6 +1883,7 @@ impl PendingChoice {
             | PendingChoice::ChooseTarget { player, .. }
             | PendingChoice::ChooseActivationCostTargets { player, .. }
             | PendingChoice::MayYesNo { player, .. }
+            | PendingChoice::MayRevealLandFromHand { player, .. }
             | PendingChoice::MayDrawUpTo { player, .. }
             | PendingChoice::DeclineUntap { player, .. }
             | PendingChoice::ChooseDredge { player, .. }
@@ -1831,6 +1895,7 @@ impl PendingChoice {
             | PendingChoice::PayCumulativeUpkeepOrSacrifice { player, .. }
             | PendingChoice::PayRecoverOrExile { player, .. }
             | PendingChoice::SacrificeUnlessPay { player, .. }
+            | PendingChoice::PayLifeOrEntersTapped { player, .. }
             | PendingChoice::SacrificeUnlessReturnLand { player, .. }
             | PendingChoice::AssignCombatDamage { player, .. }
             | PendingChoice::DivideSpellDamage { player, .. }
@@ -2049,6 +2114,9 @@ pub enum Event {
         /// The colors of mana actually spent to pay this cast's cost (CR 106.9); see
         /// [`Spell::spent_colors`].
         spent_colors: [bool; Color::COUNT],
+        /// How many Phyrexian mana pips were paid with life instead of mana (CR 107.4f); see
+        /// [`Spell::phyrexian_life_paid`].
+        phyrexian_life_paid: u8,
     },
     /// A multi-target spell's chosen targets (CR 601.2c) were recorded onto `spell` — either
     /// auto-filled at cast (when the choice was forced) or answered via [`Intent::ChooseTargets`].
@@ -2079,6 +2147,10 @@ pub enum Event {
     /// A Class permanent gained a level (CR 717.2 — [`Effect::Counters(CountersEffect::LevelUp)`]): sets `source`'s
     /// [`Permanent::level`] to `level`. Public battlefield status, like [`Self::PreparedChanged`].
     LeveledUp { source: ObjectId, level: u8 },
+    /// A permanent became monstrous (CR 701.28b — [`Effect::Counters(CountersEffect::Monstrosity)`]):
+    /// sets [`Permanent::monstrous`], a one-way flag never cleared by [`Self::StepBegan`]'s
+    /// turn-boundary reset. Public battlefield status, like [`Self::LeveledUp`].
+    BecameMonstrous { object: ObjectId },
     /// `object` flipped (CR 712 — a Kamigawa flip card's [`Effect::Misc(MiscEffect::FlipSource)`]): sets
     /// [`Permanent::flipped`], so it permanently uses its [`CardDef::back`] face's characteristics.
     /// Public battlefield status, like [`Self::PreparedChanged`].
@@ -2176,11 +2248,13 @@ pub enum Event {
     AbilityCountered { source: ObjectId },
     /// A new step began (also carries the active player, which changes each turn).
     StepBegan { step: Step, active_player: PlayerId },
-    /// A land `from` was played from hand and became the permanent `permanent`.
+    /// A land `from` was played from hand and became the permanent `permanent`, entering
+    /// `tapped` when its replacement effect says so (CR 614.13 — check lands, reveal lands).
     LandPlayed {
         permanent: ObjectId,
         from: ObjectId,
         player: PlayerId,
+        tapped: bool,
     },
     /// A permanent became tapped.
     Tapped { object: ObjectId },
@@ -2218,6 +2292,16 @@ pub enum Event {
     KindCountersPlaced {
         object: ObjectId,
         kind: CounterKind,
+        count: i32,
+    },
+    /// `count` of `kind`'s counters were placed on (positive) or removed from (negative) a
+    /// *player* (CR 122.1 — poison) — the player-side twin of
+    /// [`KindCountersPlaced`](Self::KindCountersPlaced) above. Mutates
+    /// [`Player::kind_counters`]; ten or more poison then loses the game via CR 704.5c's
+    /// state-based action. Public information — the whole table can see a poison total.
+    PlayerCountersPlaced {
+        player: PlayerId,
+        kind: PlayerCounterKind,
         count: i32,
     },
     /// A planeswalker's loyalty changed by `amount` (a loyalty ability's cost: +N / 0 / −N).
@@ -2334,7 +2418,10 @@ pub enum Event {
     /// `until_eot`, the original `def` is stashed on [`Permanent::reverts_to_def_eot`] first and
     /// restored at cleanup ([`Event::TempBoostsEnded`], CR 514.2); otherwise the copy is
     /// indefinite (resets only when the object leaves the battlefield, CR 400.7). A copy is public
-    /// battlefield status — the projected object's name/types change accordingly.
+    /// battlefield status — the projected object's name/types change accordingly. Also carries a
+    /// non-copy type/ability-SETTING rewrite (CR 613.1d/613.1f — Vraska, Betrayal's Sting's −2:
+    /// "becomes a Treasure artifact … and loses all other card types and abilities"), always
+    /// `until_eot: false` there.
     BecameCopy {
         object: ObjectId,
         def: CardId,
@@ -2637,6 +2724,14 @@ pub enum Event {
     CombatDamagePrevented { player: PlayerId, amount: i32 },
     /// `from` left play and became the command-zone card `card` (commander replacement).
     MovedToCommandZone { card: ObjectId, from: ObjectId },
+    /// "You get an emblem with …" (CR 114.1): `controller` got the emblem object `emblem`, whose
+    /// `def` carries its abilities and nothing else. Public — CR 114.2, an emblem is visible to
+    /// everyone; nothing can remove, copy, or target it afterwards (CR 114.5).
+    EmblemCreated {
+        emblem: ObjectId,
+        controller: PlayerId,
+        def: CardDef,
+    },
     /// A player's mana pool emptied (a step or phase ended).
     ManaEmptied {
         player: PlayerId,
@@ -2835,6 +2930,13 @@ pub enum Event {
     /// one does (Goblin Guide's [`Effect::Reveal(RevealEffect::TopToHand)`], Keen Duelist's
     /// [`Effect::Reveal(RevealEffect::TopAndDrainMutual)`]).
     RevealedTopOfLibrary {
+        player: PlayerId,
+        card: ObjectId,
+        def: CardId,
+    },
+    /// A card in `player`'s hand was revealed (CR 701.30 — Vineglimmer Snarl's "you may reveal a
+    /// Forest or Island card from your hand"). `card` stays in hand; a reveal is not a zone change.
+    RevealedFromHand {
         player: PlayerId,
         card: ObjectId,
         def: CardId,
@@ -3123,6 +3225,21 @@ pub struct TargetCount {
     /// with that declared count (always "exactly N," like `sacrifice_scaled`'s "exactly X").
     /// Defaults to `false`. Parsed by the hand-written `Deserialize` impl in `de.rs`.
     pub strive_scaled: bool,
+    /// A set-level cap on the chosen targets' *summed* mana value (CR 601.2c: legality is
+    /// evaluated over the whole chosen set, not per target) — Rampaging Yao Guai's "destroy any
+    /// number of target artifacts and/or enchantments with total mana value X or less". `None`
+    /// (default) imposes no budget, matching every existing multi-target effect. `Some(amount)`
+    /// is resolved once, against the choosing ability's own source (its entered `{X}` for a
+    /// permanent's own ETB, via [`Game::ability_source_x`](crate::Game::ability_source_x)/
+    /// [`Game::resolve_amount`](crate::Game::resolve_amount)), and checked against the sum of
+    /// each chosen target's mana value ([`Amount::TargetManaValue`]) in
+    /// [`Game::choose_targets`](crate::Game::choose_targets) — an over-budget answer is
+    /// [`Reject::IllegalChoice`](crate::Reject::IllegalChoice), not a truncation. Distinct from
+    /// [`crate::types::effect::dig::DigEffect::LookAtTop`]'s own `mv_budget` (a per-card dig
+    /// filter, already resolved to a bare `u32` before the pause); this is a *target-count* axis
+    /// so it composes with `min`/`max`/`x_scaled` on any targeted effect, not just a dig. Parsed
+    /// by the hand-written `Deserialize` impl in `de.rs`.
+    pub total_mv_max: Option<Amount>,
     /// Multikicker's own sibling (CR 601.2c/702.33c) — Comet Storm's "Choose any target, then
     /// choose another target for each time this spell was kicked." Unlike `x_scaled`/
     /// `sacrifice_scaled`/`strive_scaled` (each "exactly N," substituting the declared/derived
@@ -3168,6 +3285,7 @@ impl Default for TargetCount {
             x_scaled: false,
             sacrifice_scaled: false,
             strive_scaled: false,
+            total_mv_max: None,
             multikicker_scaled: false,
             kicked_scaled: false,
             main_phase_scaled: false,

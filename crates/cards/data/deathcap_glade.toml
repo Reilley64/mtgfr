@@ -1,0 +1,16 @@
+# This land enters tapped unless you control two or more other lands.
+# {T}: Add {B} or {G}.
+name = "Deathcap Glade"
+id = "f6d24565-5b32-4eff-b2e0-6e2c25516ff0"
+default_print = "78897104-80e1-4d8a-9958-145b40f679e8"
+otags = ["dual-land", "enters-tapped-conditional", "fixing-land"]
+oracle = "This land enters tapped unless you control two or more other lands.\n{T}: Add {B} or {G}."
+sets = ["sos"]
+
+[kind]
+type = "land"
+produces = ["black", "green"]
+
+[enters_tapped_unless]
+type = "you_control_lands"
+at_least = 2

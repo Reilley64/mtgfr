@@ -92,7 +92,7 @@ export const SearchBuilderPrints = Command.define(
   ReceivedBuilderPrints,
   BuilderPrintSearchFailed,
 )(({ cardId }) =>
-  Effect.tryPromise(() => searchPrints(cardId)).pipe(
+  searchPrints(cardId).pipe(
     Effect.map((prints) => ReceivedBuilderPrints({ cardId, prints })),
     Effect.catch(() => Effect.succeed(BuilderPrintSearchFailed({ cardId }))),
   ),

@@ -1,8 +1,8 @@
 # Draw three cards.
 name = "Harmonize"
+sets = ["arc", "blc", "c13", "c17", "c19", "c20", "cmd", "cmr", "dd1", "ddd", "dds", "dsc", "ecc", "ema", "evg", "fic", "gvl", "ltc", "m3c", "mm3", "msc", "ncc", "p08", "pip", "plc", "plst", "prm", "pz1", "scd", "sld", "sta", "td0", "tmc", "tsr", "znc"]
 otags = ["burst-draw", "color-break", "hand-positive", "misnomer", "pure-draw", "shares-name-with-a-mechanic", "single-english-word-name"]
 oracle = "Draw three cards."
-set = "msc"
 id = "7eff84f1-f772-497a-b350-bbc93d0230f7"
 default_print = "bd7138fb-6aa7-455e-b1f7-ca08d747277d"
 

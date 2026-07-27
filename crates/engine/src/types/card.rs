@@ -293,6 +293,21 @@ pub enum Keyword {
     /// this keyword; Muddle, the Ever-Changing grants it to itself temporarily via its magecraft
     /// ability.
     Myriad,
+    /// Infect (CR 702.90): this source's damage to a creature is dealt as that many -1/-1 counters
+    /// (CR 702.90b) and its damage to a player as that many poison counters (CR 702.90c). The
+    /// damage is still dealt (CR 120.3) at its original size — lifelink, deathtouch, the
+    /// commander-damage tally and every "deals damage" watch still see it. Read at the two damage
+    /// chokes [`Game::creature_damage_events`](crate::Game::creature_damage_events) and
+    /// [`Game::player_damage_events`](crate::Game::player_damage_events).
+    Infect,
+    /// Toxic N (CR 702.164): "Players dealt combat damage by this creature also get N poison
+    /// counters." Unlike Infect it does *not* reshape the damage (CR 702.164a) — the life loss
+    /// still happens and the poison counters are placed on top of it. Multiple instances add
+    /// (CR 702.164b), so this is read as a sum by
+    /// [`Game::toxic_amount`](crate::Game::toxic_amount), not a first-match lookup like Ward's.
+    /// Combat damage only: applied at [`Game::damage_player`](crate::Game::damage_player), after
+    /// that choke's prevention guards, so fully prevented combat damage places no counters.
+    Toxic(u8),
 }
 
 /// A small set of the permanent card types a card carries, as a bitset (creature, artifact,
@@ -309,8 +324,9 @@ impl TypeSet {
     pub const ENCHANTMENT: TypeSet = TypeSet(4);
     pub const PLANESWALKER: TypeSet = TypeSet(8);
     pub const LAND: TypeSet = TypeSet(16);
-    /// The four nonland permanent types — "any nonland permanent."
-    pub const NONLAND: TypeSet = TypeSet(1 | 2 | 4 | 8);
+    pub const BATTLE: TypeSet = TypeSet(32);
+    /// The five nonland permanent types — "any nonland permanent."
+    pub const NONLAND: TypeSet = TypeSet(1 | 2 | 4 | 8 | 32);
     /// No types. As a filter's `types` it means "no restriction"; as a creature's `also` it
     /// means "no additional types." Same bits, read by context.
     pub const NONE: TypeSet = TypeSet(0);
@@ -354,6 +370,11 @@ pub enum CardKind {
     /// A planeswalker: a permanent that enters with `loyalty` starting loyalty (CR 606.5b) and
     /// whose loyalty abilities are activated at sorcery speed, once per turn (see [`ActivationCost`]).
     Planeswalker { loyalty: i32 },
+    /// A battle: a permanent that enters with `defense` starting defense counters (CR 310.1 /
+    /// 310.2). Stored in [`Permanent::loyalty`] (same counter slot planeswalkers use for loyalty).
+    /// Siege protectors, attack-for-defense, and transform-on-defeat are not modeled yet — the
+    /// pool only needs battles as destroyable permanents for Final Act's mass mode.
+    Battle { defense: i32 },
     /// A land. `produces` is optional sugar for the common "{T}: Add one mana" tap: `Some(m)`
     /// gives the land a free base tap-for-one ([`Game::tap_for_mana`]), while `None` marks a
     /// land with *no* intrinsic mana ability — either a fetch-only land (Prismatic Vista,
@@ -384,6 +405,7 @@ impl CardKind {
             CardKind::Enchantment | CardKind::Aura => TypeSet::ENCHANTMENT,
             CardKind::Artifact => TypeSet::ARTIFACT,
             CardKind::Planeswalker { .. } => TypeSet::PLANESWALKER,
+            CardKind::Battle { .. } => TypeSet::BATTLE,
             CardKind::Land { .. } => TypeSet::LAND,
             CardKind::Spell { .. } => TypeSet::NONE,
         }
@@ -398,6 +420,7 @@ impl CardKind {
             | CardKind::Aura
             | CardKind::Artifact
             | CardKind::Planeswalker { .. }
+            | CardKind::Battle { .. }
             | CardKind::Land { .. } => true,
             CardKind::Spell { speed } => speed == SpellSpeed::Sorcery,
         }
@@ -525,8 +548,13 @@ pub struct CardDef {
     /// type mirroring `enchant` if a second graveyard-enchanting Aura needs a narrower one.
     pub enchant_graveyard: bool,
     /// Whether the card is legendary — the only cards that may be a deck's commander.
-    /// ponytail: a bare bool, not a supertype set; the pool has no other supertypes yet.
+    /// ponytail: a bare bool, not a full CR 205.4a supertype set; snow is the only other
+    /// supertype the pool tracks today ([`Self::snow`]).
     pub legendary: bool,
+    /// Whether the card is snow (CR 205.4g — Snow-Covered Forest, Ohran Frostfang). Read by
+    /// snow-matters filters ([`crate::CardFilter::SnowLand`], [`crate::PermanentFilter::snow`]).
+    /// `false` (default) for every ordinary card. `snow = true` in TOML.
+    pub snow: bool,
     /// "This spell can't be countered" (CR 701.5g, e.g. Altered Ego). Checked in
     /// [`Game::counter_spell`], the shared choke for both the unconditional
     /// [`Effect::Misc(MiscEffect::CounterTargetSpell)`] arm and a declined `PayOrCounter` — the counter fizzles,
@@ -594,14 +622,21 @@ pub struct CardDef {
     /// the unconditional `enters_tapped` flag. Mutually meaningful: a card that needs both
     /// (none currently do) would need a third state; not worth it until one does.
     pub enters_tapped_unless: Option<Condition>,
+    /// A CR 614.12 as-enters replacement *choice*, not a `Condition` — Overgrown Tomb's "As this
+    /// land enters, you may pay 2 life. If you don't, it enters tapped.": `Some(life)` raises a
+    /// [`PendingChoice::PayLifeOrEntersTapped`] before the land enters, offered only when the
+    /// controller's life total is greater than or equal to `life` (CR 119.4 — a player may pay
+    /// life down to and including 0; below the cost the land simply enters tapped, no prompt).
+    /// `None` (the common case) leaves [`Self::enters_tapped_unless`] as the only conditional
+    /// gate. `enters_tapped_unless_you_pay_life = 2` in TOML.
+    pub enters_tapped_unless_you_pay_life: Option<u8>,
     /// A printed "you may cast this spell without paying its mana cost" permission, gated on a
     /// board-state [`Condition`] checked fresh at cast time (CR 118.5 — Massacre: "If an
     /// opponent controls a Plains and you control a Swamp, you may cast this spell without
     /// paying its mana cost"). `None` (the common case) leaves the printed cost untouched. When
     /// the condition holds, [`Game::cast_cost`] returns [`Cost::FREE`] outright rather than
-    /// pausing for a decline — the same "always take the strictly-better option" modeling
-    /// [`Condition::HandHasLandWithSubtype`]'s reveal-lands already use, since nothing in this
-    /// pool wants to voluntarily pay a cost it could skip.
+    /// pausing for a decline — revealing is free and strictly better, so nothing in this pool
+    /// wants to voluntarily pay a cost it could skip.
     pub free_cast_if: Option<Condition>,
     /// A printed alternative cost that isn't a mana cost at all (CR 601.2f — Invigorate: "If you
     /// control a Forest, rather than pay this spell's mana cost, you may have an opponent gain 3
@@ -633,10 +668,10 @@ pub struct CardDef {
     /// engine never parses it (behavior comes from `abilities`/`keywords`). A DFC joins its faces'
     /// text. `oracle = "…"` in TOML; `None` for a card whose text isn't recorded (or a vanilla).
     pub oracle: Option<&'static str>,
-    /// The card's set/edition code (Scryfall's lowercase code, e.g. `"soc"`). Pure catalog
-    /// metadata — the engine never consults it; it exists so the deck-builder search can match
-    /// on set. `set = "…"` in TOML; empty for a card whose set isn't recorded yet.
-    pub set: &'static str,
+    /// Scryfall set codes for every known printing of this card. Pure catalog + coverage
+    /// metadata — the engine never consults it for rules. `sets = ["soc", …]` in TOML; empty
+    /// for a card whose printings are not recorded yet.
+    pub sets: Arc<[&'static str]>,
     /// The card's printed subtypes (the segment after the "—": creature types like "Goblin",
     /// "Wizard"; also artifact/enchantment subtypes). Gameplay-relevant, not just catalog
     /// metadata: [`PermanentFilter::subtypes`] and [`Effect::Static(StaticEffect::Anthem)`]'s `subtypes` axis
@@ -982,13 +1017,15 @@ impl CardDef {
     /// (CR 202.3b), which is exactly how [`Cost`] stores it (the `x` marker adds nothing to the
     /// printed pips), so a graveyard/battlefield mana-value gate reads the printed value
     /// correctly. Each color/color hybrid pip counts 1 (CR 202.3f — both halves are one mana;
-    /// Balefire Liege's {2}{R/W}{R/W}{R/W} is mana value 5).
+    /// Balefire Liege's {2}{R/W}{R/W}{R/W} is mana value 5). A Phyrexian pip counts 1 too, however
+    /// it's paid (Vraska, Betrayal's Sting's {4}{B}{B/P} is mana value 6).
     pub fn mana_value(&self) -> u32 {
         let cost = self.cost;
         cost.generic as u32
             + cost.colorless as u32
             + cost.colored.iter().map(|&pips| pips as u32).sum::<u32>()
             + cost.hybrid.len() as u32
+            + cost.phyrexian.len() as u32
     }
 
     /// Whether this card may be cast any time its owner has priority — an instant, or a
@@ -1042,6 +1079,11 @@ pub fn color_identity(def: &CardDef) -> [bool; Color::COUNT] {
         identity[a.index()] = true;
         identity[b.index()] = true;
     }
+    // A Phyrexian pip (CR 107.4f, {A/P}) contributes its color regardless of how it's paid (CR
+    // 105.2b/903.4) — Vraska, Betrayal's Sting's {B/P} makes her black.
+    for &color in def.cost.phyrexian {
+        identity[color.index()] = true;
+    }
     identity
 }
 
@@ -1075,6 +1117,8 @@ pub(crate) fn fresh_permanent(
         tapped: printed.enters_tapped,
         summoning_sick,
         entered_this_turn: true,
+        attacked_this_turn: false,
+        monstrous: false,
         plus_counters: 0,
         kind_counters: [0; CounterKind::COUNT],
         temp_power: 0,
@@ -1132,6 +1176,8 @@ pub(crate) fn fresh_permanent(
 pub(crate) fn starting_loyalty(def: &CardDef) -> i32 {
     match def.kind {
         CardKind::Planeswalker { loyalty } => loyalty,
+        // Battles store starting defense in the same `Permanent::loyalty` slot.
+        CardKind::Battle { defense } => defense,
         _ => 0,
     }
 }
@@ -1162,6 +1208,26 @@ pub fn treasure_token() -> CardDef {
         return def;
     }
     treasure_token_builtin()
+}
+
+/// A permanent that "becomes a Treasure artifact … and loses all other card types and abilities"
+/// (CR 613.1d/613.1f — Vraska, Betrayal's Sting's −2). Unlike a copy effect (CR 707) this is a
+/// type- and ability-SETTING effect: name, mana cost and identity are unchanged, only the card
+/// types, subtypes and abilities are replaced by the Treasure profile. Color (CR 613 layer 5) is
+/// untouched too, so `cost` carries the pip-derived colors and the explicit `colors`/`devoid`
+/// overrides ride along for a target that states its color outright (a token, CR 111.4).
+/// `legendary` stays because a supertype is not a card type (CR 205.4).
+pub(crate) fn becomes_treasure(printed: CardDef) -> CardDef {
+    CardDef {
+        name: printed.name,
+        id: printed.id,
+        default_print: printed.default_print,
+        cost: printed.cost,
+        legendary: printed.legendary,
+        colors: printed.colors,
+        devoid: printed.devoid,
+        ..treasure_token()
+    }
 }
 
 /// Builtin Treasure profile — keep in lockstep with `cards/data/tokens/treasure.toml`.
@@ -1220,6 +1286,7 @@ fn treasure_token_builtin() -> CardDef {
         cost: Cost::FREE,
         kind: CardKind::Artifact,
         legendary: false,
+        snow: false,
         uncounterable: false,
         modal: false,
         modal_choose: 1,
@@ -1233,13 +1300,14 @@ fn treasure_token_builtin() -> CardDef {
         devoid: false,
         enters_tapped: false,
         enters_tapped_unless: None,
+        enters_tapped_unless_you_pay_life: None,
         free_cast_if: None,
         alternative_cost: None,
         cast_only_during_combat: false,
         cast_only_before_attackers: false,
         approximates: None,
         oracle: None,
-        set: "",
+        sets: empty_slice(),
         subtypes: arc_slice(["Treasure"]),
         otags: empty_slice(),
         cycling: None,
@@ -1290,6 +1358,7 @@ pub(crate) fn rogue_token_stub() -> CardDef {
             also: TypeSet::NONE,
         },
         legendary: false,
+        snow: false,
         uncounterable: false,
         modal: false,
         modal_choose: 1,
@@ -1303,13 +1372,14 @@ pub(crate) fn rogue_token_stub() -> CardDef {
         devoid: false,
         enters_tapped: false,
         enters_tapped_unless: None,
+        enters_tapped_unless_you_pay_life: None,
         free_cast_if: None,
         alternative_cost: None,
         cast_only_during_combat: false,
         cast_only_before_attackers: false,
         approximates: None,
         oracle: None,
-        set: "",
+        sets: empty_slice(),
         subtypes: arc_slice(["Rogue"]),
         otags: empty_slice(),
         cycling: None,
@@ -1362,6 +1432,7 @@ pub(crate) fn illusion_token() -> CardDef {
             also: TypeSet::NONE,
         },
         legendary: false,
+        snow: false,
         uncounterable: false,
         modal: false,
         modal_choose: 1,
@@ -1375,13 +1446,14 @@ pub(crate) fn illusion_token() -> CardDef {
         devoid: false,
         enters_tapped: false,
         enters_tapped_unless: None,
+        enters_tapped_unless_you_pay_life: None,
         free_cast_if: None,
         alternative_cost: None,
         cast_only_during_combat: false,
         cast_only_before_attackers: false,
         approximates: None,
         oracle: None,
-        set: "",
+        sets: empty_slice(),
         subtypes: arc_slice(["Illusion"]),
         otags: empty_slice(),
         cycling: None,
@@ -1592,6 +1664,14 @@ pub(crate) struct Spell {
     /// cast) or a cast form (adventure, prepared copy) this snapshot isn't wired through yet — no
     /// pool card checks color-spent off those forms.
     pub(crate) spent_colors: [bool; Color::COUNT],
+    /// How many of this spell's Phyrexian mana pips (CR 107.4f — Vraska, Betrayal's Sting's
+    /// Compleated `{B/P}`) were paid with life instead of mana, snapshotted right before this
+    /// spell hits the stack (see `phyrexian_life_paid_from` in `cast.rs`). Copied onto the
+    /// resulting permanent's as-enters loyalty when the spell resolves
+    /// ([`Event::PermanentEntered`]) — CR 107.4f: "If life was paid, this planeswalker enters
+    /// with two fewer loyalty counters" per pip so paid. `0` for a spell with no Phyrexian pips
+    /// or one that paid them all with mana.
+    pub(crate) phyrexian_life_paid: u8,
 }
 
 /// A permanent on the battlefield, with its mutable per-object state.
@@ -1623,6 +1703,22 @@ pub(crate) struct Permanent {
     /// back to `false` to keep their "as if it had been there since before the turn" contract,
     /// the same way they override `summoning_sick`.
     pub(crate) entered_this_turn: bool,
+    /// Whether this permanent was declared as an attacker this turn (CR 508.1, [`Event::AttackerDeclared`]).
+    /// Backs [`Condition::SourceAttackedThisTurn`] (Agent Frank Horrigan's "has indestructible as
+    /// long as it attacked this turn"). Turn-scoped like `entered_this_turn` above — set the
+    /// instant the permanent is declared an attacker and cleared for *every* battlefield
+    /// permanent at every Untap step (see [`Event::StepBegan`]'s turn-boundary reset block), not
+    /// just its controller's. Distinct from [`PermanentFilter::attacking`], which only holds
+    /// while the permanent is still in combat this turn: this stays `true` after end of combat,
+    /// after the permanent is removed from combat, or after it changes controllers mid-combat.
+    pub(crate) attacked_this_turn: bool,
+    /// Whether this permanent has become monstrous (CR 701.28b) — a one-way state, not
+    /// turn-scoped: it is never cleared at any Untap step, and a permanent that leaves the
+    /// battlefield and returns is a new object that starts `false` again ([`fresh_permanent`]).
+    /// Set by [`Event::BecameMonstrous`] the moment a [`CountersEffect::Monstrosity`] resolves
+    /// (Alpha Deathclaw's "{5}{B}{G}: Monstrosity 4"), even if a replacement effect drove the
+    /// accompanying +1/+1 counters to zero (CR 701.28c only silences a *second* activation).
+    pub(crate) monstrous: bool,
     /// Net +1/+1 counters (each adds +1 power and +1 toughness).
     pub(crate) plus_counters: i32,
     /// Named non-P/T counters (CR 122.1 — charge, story, …), indexed by [`CounterKind`] as
@@ -1942,6 +2038,9 @@ pub(crate) const COMMANDER_LIFE: i32 = 40;
 /// Combat damage from a single commander that loses the game.
 pub(crate) const LETHAL_COMMANDER_DAMAGE: i32 = 21;
 
+/// Poison counters on a player that lose the game (CR 704.5c).
+pub(crate) const LETHAL_POISON: u8 = 10;
+
 /// The maximum hand size enforced by the cleanup step.
 pub(crate) const HAND_SIZE: usize = 7;
 
@@ -2058,6 +2157,10 @@ pub(crate) struct Player {
     /// Commander combat damage taken, keyed by the source commander's owner (each player
     /// has one commander); 21 from one source loses the game.
     pub(crate) commander_damage: Vec<(PlayerId, i32)>,
+    /// Named counters sitting on this *player* (CR 122.1), one slot per [`PlayerCounterKind`] —
+    /// the player-side twin of [`Permanent::kind_counters`]. Ten or more poison loses the game
+    /// (CR 704.5c).
+    pub(crate) kind_counters: [u8; PlayerCounterKind::COUNT],
     /// Set once the player has lost the game (a state-based action).
     pub(crate) lost: bool,
     /// Whether this player has the city's blessing (CR 702.131 ascend). Sticky: set once by a

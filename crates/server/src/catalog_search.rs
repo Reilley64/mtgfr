@@ -27,7 +27,7 @@ fn placeholder(db: &toasty::Db, n: usize) -> String {
 }
 
 /// The lowercased haystack a card is matched against: everything a single search box should hit —
-/// name, card type, printed subtypes, set code, colors, keywords, and Scryfall oracle-tag slugs.
+/// name, card type, printed subtypes, set codes, colors, keywords, and Scryfall oracle-tag slugs.
 fn search_blob(c: &CatalogCard) -> String {
     let kind = match c.kind {
         WireKind::Creature { .. } => "creature",
@@ -36,6 +36,7 @@ fn search_blob(c: &CatalogCard) -> String {
         WireKind::Enchantment => "enchantment",
         WireKind::Artifact => "artifact",
         WireKind::Planeswalker { .. } => "planeswalker",
+        WireKind::Battle { .. } => "battle",
         WireKind::Land { .. } => "land",
     };
     let colors = if c.color_identity.is_empty() {
@@ -47,7 +48,8 @@ fn search_blob(c: &CatalogCard) -> String {
             .collect::<Vec<_>>()
             .join(" ")
     };
-    let mut parts = vec![c.name.clone(), kind.to_string(), c.set.clone(), colors];
+    let mut parts = vec![c.name.clone(), kind.to_string(), colors];
+    parts.extend(c.sets.iter().cloned());
     if c.legendary {
         parts.push("legendary".to_string());
     }
@@ -232,6 +234,19 @@ mod tests {
         assert!(
             !names(&hits).contains(&"Ambush Viper"),
             "AND semantics: the instant token excludes it"
+        );
+    }
+
+    #[tokio::test]
+    async fn search_matches_any_code_in_sets() {
+        // Zedruu has `sets = ["c16", "cmd", ...]`; `cmd` is not the legacy lone set.
+        let mut db = projected().await;
+
+        let hits = search(&mut db, "zedruu cmd", 100, 0).await.expect("search");
+
+        assert!(
+            names(&hits).contains(&"Zedruu the Greathearted"),
+            "search should match every listed set code"
         );
     }
 

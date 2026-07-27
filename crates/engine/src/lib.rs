@@ -54,6 +54,8 @@ mod zones;
 pub use defs::{CardId, card_def, intern_card_def};
 pub use message::*;
 pub use mulligan::hand_size_after_mulligans;
+/// What a would-be counter placement is aimed at — see [`replacements::CounterRecipient`].
+pub(crate) use replacements::CounterRecipient;
 /// Shared Effect-resolution context for [`Game::run`] / [`Game::run_sequence`].
 pub(crate) use resolution::ResolveCtx;
 /// All-players search fan-out continuation state (Veteran Explorer) — see
@@ -808,6 +810,7 @@ mod refresh_actions_tests {
                 basic: true,
             },
             legendary: false,
+            snow: false,
             uncounterable: false,
             enchant: None,
             enchant_graveyard: false,
@@ -823,13 +826,14 @@ mod refresh_actions_tests {
             devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
+            enters_tapped_unless_you_pay_life: None,
             free_cast_if: None,
             alternative_cost: None,
             cast_only_during_combat: false,
             cast_only_before_attackers: false,
             approximates: None,
             oracle: None,
-            set: "",
+            sets: empty_slice(),
             subtypes: empty_slice(),
             otags: empty_slice(),
             cycling: None,
@@ -922,6 +926,7 @@ mod refresh_actions_tests {
                     also: TypeSet::NONE,
                 },
                 legendary: false,
+                snow: false,
                 uncounterable: false,
                 enchant: None,
                 enchant_graveyard: false,
@@ -937,13 +942,14 @@ mod refresh_actions_tests {
                 devoid: false,
                 enters_tapped: false,
                 enters_tapped_unless: None,
+                enters_tapped_unless_you_pay_life: None,
                 free_cast_if: None,
                 alternative_cost: None,
                 cast_only_during_combat: false,
                 cast_only_before_attackers: false,
                 approximates: None,
                 oracle: None,
-                set: "",
+                sets: empty_slice(),
                 subtypes: empty_slice(),
                 otags: empty_slice(),
                 cycling: None,

@@ -1,9 +1,17 @@
 import { Schema as S } from "effect";
+import * as Duration from "effect/Duration";
+import * as Effect from "effect/Effect";
 
 export type ImageSize = "small" | "normal" | "large" | "png" | "art_crop";
 export type ImageFace = "front" | "back";
 
 const CDN = String(import.meta.env.VITE_CARD_CDN ?? "").replace(/\/$/, "");
+const SCRYFALL_UA = "edh.reilley.dev/0.1";
+/** Scryfall locks an IP for ~30s after a 429 when Retry-After is absent. */
+const DEFAULT_RETRY_AFTER_MS = 30_000;
+const MAX_RETRY_AFTER_MS = 60_000;
+/** Initial attempt + this many retries after 429. */
+const MAX_429_RETRIES = 2;
 
 export function cardBackUrl(): string {
   return "/card-back.webp";
@@ -54,38 +62,82 @@ function readString(record: Record<string, unknown>, key: string): string | null
   return typeof value === "string" ? value : null;
 }
 
-export async function searchPrints(oracleId: string): Promise<ScryfallPrint[]> {
-  const q = encodeURIComponent(`oracleid:${oracleId}`);
-  const out: ScryfallPrint[] = [];
-  let url: string | null = `https://api.scryfall.com/cards/search?q=${q}&unique=prints&order=released`;
-  while (url) {
-    const res: Response = await fetch(url, {
-      headers: { Accept: "application/json", "User-Agent": "edh.reilley.dev/0.1" },
-    });
-    if (!res.ok) {
-      throw new Error(`Scryfall print search failed (${res.status})`);
-    }
-    const body: unknown = await res.json();
-    if (!isRecord(body)) return out;
+/** Parse Scryfall/HTTP `Retry-After` into a clamped delay in milliseconds. */
+export function parseRetryAfterMs(header: string | null, nowMs: number = Date.now()): number {
+  if (header == null || header.trim() === "") return DEFAULT_RETRY_AFTER_MS;
 
-    const data = Array.isArray(body.data) ? body.data : [];
-    for (const value of data) {
-      if (!isRecord(value)) continue;
-      const id = readString(value, "id");
-      const set = readString(value, "set");
-      const setName = readString(value, "set_name");
-      const collectorNumber = readString(value, "collector_number");
-      if (id == null || set == null || setName == null || collectorNumber == null) continue;
-
-      out.push({
-        collector_number: collectorNumber,
-        id,
-        released_at: readString(value, "released_at") ?? "",
-        set,
-        set_name: setName,
-      });
-    }
-    url = body.has_more === true ? readString(body, "next_page") : null;
+  const asSeconds = Number(header);
+  if (Number.isFinite(asSeconds) && asSeconds >= 0) {
+    return Math.min(Math.ceil(asSeconds * 1000), MAX_RETRY_AFTER_MS);
   }
-  return out;
+
+  const when = Date.parse(header);
+  if (Number.isFinite(when)) {
+    return Math.min(Math.max(0, when - nowMs), MAX_RETRY_AFTER_MS);
+  }
+
+  return DEFAULT_RETRY_AFTER_MS;
+}
+
+function fetchPrintSearchPage(url: string): Effect.Effect<Response, Error> {
+  return Effect.gen(function* () {
+    let retries = 0;
+    while (true) {
+      const res = yield* Effect.tryPromise({
+        try: () =>
+          fetch(url, {
+            headers: { Accept: "application/json", "User-Agent": SCRYFALL_UA },
+          }),
+        catch: (cause) => (cause instanceof Error ? cause : new Error(String(cause))),
+      });
+
+      if (res.status !== 429) return res;
+      if (retries >= MAX_429_RETRIES) {
+        return yield* Effect.fail(new Error(`Scryfall print search failed (${res.status})`));
+      }
+
+      retries += 1;
+      const delayMs = parseRetryAfterMs(res.headers.get("Retry-After"));
+      yield* Effect.sleep(Duration.millis(delayMs));
+    }
+  });
+}
+
+export function searchPrints(oracleId: string): Effect.Effect<ScryfallPrint[], Error> {
+  return Effect.gen(function* () {
+    const q = encodeURIComponent(`oracleid:${oracleId}`);
+    const out: ScryfallPrint[] = [];
+    let url: string | null = `https://api.scryfall.com/cards/search?q=${q}&unique=prints&order=released`;
+    while (url) {
+      const res = yield* fetchPrintSearchPage(url);
+      if (!res.ok) {
+        return yield* Effect.fail(new Error(`Scryfall print search failed (${res.status})`));
+      }
+      const body: unknown = yield* Effect.tryPromise({
+        try: () => res.json(),
+        catch: (cause) => (cause instanceof Error ? cause : new Error(String(cause))),
+      });
+      if (!isRecord(body)) return out;
+
+      const data = Array.isArray(body.data) ? body.data : [];
+      for (const value of data) {
+        if (!isRecord(value)) continue;
+        const id = readString(value, "id");
+        const set = readString(value, "set");
+        const setName = readString(value, "set_name");
+        const collectorNumber = readString(value, "collector_number");
+        if (id == null || set == null || setName == null || collectorNumber == null) continue;
+
+        out.push({
+          collector_number: collectorNumber,
+          id,
+          released_at: readString(value, "released_at") ?? "",
+          set,
+          set_name: setName,
+        });
+      }
+      url = body.has_more === true ? readString(body, "next_page") : null;
+    }
+    return out;
+  });
 }

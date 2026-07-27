@@ -1,0 +1,62 @@
+# 0: Create two 2/2 black and green Wolf creature tokens with "When this token dies, put a loyalty counter on each
+# Garruk you control."
+# −3: Destroy target creature. Draw a card.
+# −6: You get an emblem with "Creatures you control get +3/+3 and have trample."
+name = "Garruk, Cursed Huntsman"
+id = "e0cef79c-ad47-4cbc-9d73-a913e487ccb7"
+default_print = "abef512f-8f1d-4257-b16f-c0eed58670ec"
+oracle = "0: Create two 2/2 black and green Wolf creature tokens with \"When this token dies, put a loyalty counter on each Garruk you control.\"\n−3: Destroy target creature. Draw a card.\n−6: You get an emblem with \"Creatures you control get +3/+3 and have trample.\""
+sets = ["eld"]
+subtypes = ["Garruk"]
+legendary = true
+
+[cost]
+generic = 4
+black = 1
+green = 1
+
+[kind]
+type = "planeswalker"
+loyalty = 5
+
+# 0: Create two 2/2 black and green Wolf creature tokens with "When this token dies, put a loyalty
+# counter on each Garruk you control."
+[[abilities]]
+timing = "activated"
+loyalty = 0
+
+# Create two 2/2 black and green Wolf creature tokens with "When this token dies, put a loyalty
+# counter on each Garruk you control."
+[[abilities.effects]]
+type = "token"
+mode = "create"
+token = "21c3b763-b6a2-4e9e-8621-d2ab62e448f2"
+count = 2
+
+# −3: Destroy target creature. Draw a card.
+[[abilities]]
+timing = "activated"
+loyalty = -3
+
+# Destroy target creature.
+[[abilities.effects]]
+type = "destroy"
+mode = "target"
+target = "creature"
+
+# Draw a card.
+[[abilities.effects]]
+type = "draw"
+mode = "cards"
+count = 1
+
+# −6: You get an emblem with "Creatures you control get +3/+3 and have trample."
+[[abilities]]
+timing = "activated"
+loyalty = -6
+
+# You get an emblem with "Creatures you control get +3/+3 and have trample."
+[[abilities.effects]]
+type = "misc"
+mode = "get_emblem"
+emblem = "6a5090b1-5eb6-4709-8208-ff3678be5756"

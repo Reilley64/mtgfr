@@ -2,10 +2,10 @@
 # Flying
 # When this creature enters, you gain 2 life for each time it was kicked.
 name = "Lightkeeper of Emeria"
+sets = ["cma", "cmd", "wwk"]
 id = "7f31aa43-cf75-4488-b47f-e16e923a2d01"
 default_print = "00d998ca-7e81-4302-b2c1-acd90ea2b44d"
 oracle = "Multikicker {W} (You may pay an additional {W} any number of times as you cast this spell.)\nFlying\nWhen this creature enters, you gain 2 life for each time it was kicked."
-set = "cmd"
 subtypes = ["Angel"]
 keywords = ["flying"]
 

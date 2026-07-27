@@ -80,7 +80,15 @@ export function updateGame(
           ...game,
           ...rejected,
           // Re-enable the frozen prompt draft so the player can correct and resubmit.
-          board: { ...game.board, reject: message.reason, promptSubmitInFlight: false },
+          // Also clear optimistic combat confirm latches — a rejected goad/empty declare
+          // must not leave staging disabled for the rest of the step.
+          board: {
+            ...game.board,
+            reject: message.reason,
+            promptSubmitInFlight: false,
+            attackersConfirmed: false,
+            blockersConfirmed: false,
+          },
         },
         [],
       ];

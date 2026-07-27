@@ -52,11 +52,17 @@ pub(crate) enum ChoiceRequest {
         x: u32,
         modes: Arc<[crate::Effect]>,
         at_placement: bool,
+        /// Whether the mode is being chosen for an *activated* ability as it goes on the stack
+        /// (CR 601.2b — Cankerbloom). See [`crate::PendingChoice::ChooseMode`].
+        activated: bool,
     },
     MayYesNo {
         player: crate::PlayerId,
         source: crate::ObjectId,
         effect: crate::Effect,
+        /// [`crate::MayYesNoResume::Default`] for ability-level optional triggers;
+        /// [`crate::MayYesNoResume::ResolveInline`] for mid-resolution may-search.
+        resume: crate::MayYesNoResume,
     },
     DivideSpellDamage {
         player: crate::PlayerId,

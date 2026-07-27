@@ -19,6 +19,19 @@ export function maxCommanderDamage(player: PlayerView): number {
   return max;
 }
 
+/** The alternate lose-the-game / attrition clocks stacked under a life orb, in row order. */
+export function clockChips(player: PlayerView): Array<{ label: string; fill: string }> {
+  const chips: Array<{ label: string; fill: string }> = [];
+  const cmd = maxCommanderDamage(player);
+  if (cmd > 0) chips.push({ label: `Cmd ${cmd}`, fill: "#db8664" });
+  const poison = player.poison ?? 0;
+  // CR 704.5c — ten poison counters eliminate a player, so the last two tick over to red.
+  if (poison > 0) chips.push({ label: `Poison ${poison}`, fill: poison >= 8 ? "#e0574f" : "#8fd14f" });
+  const rad = player.rad ?? 0;
+  if (rad > 0) chips.push({ label: `Rad ${rad}`, fill: "#e8a33d" });
+  return chips;
+}
+
 export type AvatarScreenPositions = Record<number, { x: number; y: number }>;
 
 export function avatarScreenPositions(
@@ -101,15 +114,14 @@ export function avatarShapes(
       }),
     );
 
-    const cmd = maxCommanderDamage(player);
-    if (cmd > 0) {
+    for (const [row, chip] of clockChips(player).entries()) {
       shapes.push(
         Canvas.Text({
           x: pos.x,
-          y: pos.y + offsets.commander * zoom,
-          content: `Cmd ${cmd}`,
+          y: pos.y + (offsets.commander + row * 14) * zoom,
+          content: chip.label,
           font: `${Math.max(1, Math.round(12 * zoom))}px system-ui, sans-serif`,
-          fill: "#db8664",
+          fill: chip.fill,
           align: "Center",
           baseline: "Middle",
         }),

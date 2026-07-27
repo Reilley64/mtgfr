@@ -515,13 +515,26 @@ fn auto_advance(
         // otherwise skip them and opponents could never respond during an end-turn walk.
         let active = game.active_player();
         let end_turn = turn_yields[active.0 as usize];
+        // Goad / must-attack: empty seal is illegal (CR 701.38). End Turn must not keep
+        // auto-passing the declarer — disarm the active seat's End Turn (and the declarer's
+        // yield, when a moved declaration made them different) and stop so a legal attack
+        // can be submitted.
+        let forced_attack_declaration = game.current_step() == engine::Step::DeclareAttackers
+            && !game.attackers_declared()
+            && holder == game.attack_declarer()
+            && !game.required_attacks(game.active_player()).is_empty();
+        if forced_attack_declaration && (turn_yields[holder.0 as usize] || end_turn) {
+            turn_yields[holder.0 as usize] = false;
+            turn_yields[active.0 as usize] = false;
+            break;
+        }
         let can_respond = end_turn
             && holder != active
             && game.stack_is_empty()
             && game.has_empty_stack_instant_play(holder);
         let skip = yields[holder.0 as usize]
             // End Turn response windows override the responder's until-my-turn (turn-priority-and-stack spec).
-            || (turn_yields[holder.0 as usize] && !can_respond)
+            || (turn_yields[holder.0 as usize] && !can_respond && !forced_attack_declaration)
             || (!game.has_meaningful_action(holder) && !can_respond);
         if !skip {
             break;
@@ -793,6 +806,7 @@ mod tests {
             also: engine::TypeSet::NONE,
         },
         legendary: false,
+        snow: false,
         uncounterable: false,
         modal: false,
         modal_choose: 1,
@@ -803,13 +817,14 @@ mod tests {
         devoid: false,
         enters_tapped: false,
         enters_tapped_unless: None,
+        enters_tapped_unless_you_pay_life: None,
         free_cast_if: None,
         alternative_cost: None,
         cast_only_during_combat: false,
         cast_only_before_attackers: false,
         approximates: None,
         oracle: None,
-        set: "",
+        sets: empty_slice(),
         subtypes: empty_slice(),
         otags: empty_slice(),
         keywords: empty_slice(),
@@ -825,6 +840,7 @@ mod tests {
                     x_scaled: false,
                     sacrifice_scaled: false,
                     strive_scaled: false,
+                    total_mv_max: None,
                     multikicker_scaled: false,
                     kicked_scaled: false,
                     main_phase_scaled: false,
@@ -1421,6 +1437,61 @@ mod tests {
         );
     }
 
+    /// End Turn while a goaded creature must attack must not leave the seat auto-passing forever:
+    /// empty seal is illegal (CR 701.38), so End Turn disarms and the declarer can still submit
+    /// a legal attack declaration.
+    #[test]
+    fn end_turn_with_goaded_creature_disarms_and_still_accepts_legal_declare() {
+        let bear = || cards::get_by_name("Grizzly Bear").expect("Grizzly Bear in pool");
+        let mut table = Table::empty();
+        let mut game = engine::Game::new();
+        let attacker = game.spawn_on_battlefield(PlayerId(0), bear());
+        game.goad(attacker, PlayerId(1));
+        table.game = Some(game);
+        advance_table_to_step(&mut table, engine::Step::DeclareAttackers);
+        assert_eq!(table.game.as_ref().unwrap().active_player(), PlayerId(0));
+
+        let (result, _) = TableSession::new(&mut table).set_turn_yield(PlayerId(0), true);
+        assert!(result.accepted);
+
+        let game = table.game.as_ref().unwrap();
+        assert_eq!(
+            game.current_step(),
+            engine::Step::DeclareAttackers,
+            "goad forbids empty seal — stay on declare attackers"
+        );
+        assert!(
+            !game.attackers_declared(),
+            "declaration stays open until a legal attack lands"
+        );
+        assert!(
+            !table.chrome.turn_yields()[0],
+            "End Turn must disarm when goad blocks the empty seal"
+        );
+        assert_eq!(
+            game.priority_holder(),
+            PlayerId(0),
+            "declarer keeps priority to submit a legal attack"
+        );
+
+        let (result, _) = TableSession::new(&mut table).submit(Intent::DeclareAttackers {
+            player: PlayerId(0),
+            attackers: vec![(attacker, Defender::Player(PlayerId(1)))],
+        });
+        assert!(
+            result.accepted,
+            "legal goaded attack must still land after End Turn bounced: {:?}",
+            result.reason
+        );
+        assert!(
+            result
+                .events
+                .iter()
+                .any(|e| matches!(e, Event::AttackerDeclared { .. })),
+            "legal goaded attack must emit AttackerDeclared after End Turn bounced"
+        );
+    }
+
     /// End Turn from Declare Attackers must seal an empty attack and finish the turn in one arm —
     /// the client often still has "No attackers" beside End Turn; a single End Turn click must not
     /// leave the seat stuck needing a second click.
@@ -1690,8 +1761,16 @@ mod tests {
         let mut table = Table::empty();
         table.game = Some(engine::Game::new());
 
-        // Reach End with an empty hand, then overfill so Cleanup must pause on discard.
-        advance_table_to_step(&mut table, engine::Step::End);
+        // Stock a library first: an empty-library draw decks P0, and a player who has left the
+        // game takes no turn-based actions at all (CR 800.4e) — discard included.
+        {
+            let game = table.game.as_mut().unwrap();
+            for _ in 0..8 {
+                game.spawn_in_library(PlayerId(0), plains());
+            }
+        }
+        // Reach a late-turn priority window, then overfill so Cleanup must pause on discard.
+        advance_table_to_step(&mut table, engine::Step::Main2);
         {
             let game = table.game.as_mut().unwrap();
             for _ in 0..8 {

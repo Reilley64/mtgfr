@@ -4,10 +4,10 @@
 # You may put a creature card from your hand onto the battlefield. That creature gains haste. Its
 # controller sacrifices it at the beginning of the next end step.
 name = "Cauldron Dance"
+sets = ["c17", "inv", "plst", "td0"]
 id = "e9784eb4-96f2-409e-a7b5-eb6478644943"
 default_print = "50e70e67-eba0-46f4-97d8-62c249b267c8"
 oracle = "Cast this spell only during combat.\nReturn target creature card from your graveyard to the battlefield. That creature gains haste. Return it to your hand at the beginning of the next end step.\nYou may put a creature card from your hand onto the battlefield. That creature gains haste. Its controller sacrifices it at the beginning of the next end step."
-set = "c17"
 cast_only_during_combat = true
 
 [cost]

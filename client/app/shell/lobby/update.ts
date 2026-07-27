@@ -1,15 +1,17 @@
 import { Effect, Match as M, Schema as S } from "effect";
 import type { Command as FoldkitCommand } from "foldkit";
 import { Command } from "foldkit";
-import { createTable, joinTable, readyUp, startGame } from "../../domain/lobby/client";
 import { parseTableCode } from "../../domain/lobby/code";
+import type { LobbyClientError } from "../../domain/lobby/errors";
 import { lobbyIsHost } from "../../domain/lobby/seat";
 import type { LobbyView } from "../../domain/lobby/types";
 import { unlockTableAudio } from "../../domain/tableAudio";
+import { LobbyClient } from "../../resources";
 import { LobbyCopyCompleted, LobbyRequestFailed, LobbyTableCreated, type Message, ReceivedLobbyView } from "./messages";
 import type { LobbySlice } from "./submodel";
 
 const UNREACHABLE = "Unreachable";
+const UNKNOWN_TABLE = "UnknownTable";
 
 function viewError(view: LobbyView): string | null {
   return view.error ?? null;
@@ -28,6 +30,11 @@ function applyView(model: LobbySlice, view: LobbyView): LobbySlice {
 
 function viewResult(view: LobbyView | null): typeof ReceivedLobbyView.Type | typeof LobbyRequestFailed.Type {
   return view == null ? LobbyRequestFailed({ message: UNREACHABLE }) : ReceivedLobbyView({ view });
+}
+
+function lobbyFailure(error: LobbyClientError): typeof LobbyRequestFailed.Type {
+  if (error._tag === "LobbyNotFound") return LobbyRequestFailed({ message: UNKNOWN_TABLE });
+  return LobbyRequestFailed({ message: UNREACHABLE });
 }
 
 function selectedDeckId(model: LobbySlice): number | null {
@@ -84,12 +91,13 @@ export const CreateLobbyTable = Command.define(
   LobbyTableCreated,
   LobbyRequestFailed,
 )(
-  Effect.tryPromise(() => createTable()).pipe(
-    Effect.map((created) =>
-      created == null ? LobbyRequestFailed({ message: UNREACHABLE }) : LobbyTableCreated({ tableId: created.table_id }),
-    ),
-    Effect.catch(() => Effect.succeed(LobbyRequestFailed({ message: UNREACHABLE }))),
-  ),
+  Effect.gen(function* () {
+    const lobby = yield* LobbyClient;
+    return yield* lobby.createTable().pipe(
+      Effect.map((created) => LobbyTableCreated({ tableId: created.table_id })),
+      Effect.catch((error) => Effect.succeed(lobbyFailure(error))),
+    );
+  }),
 );
 
 export const JoinLobbyTable = Command.define(
@@ -98,10 +106,13 @@ export const JoinLobbyTable = Command.define(
   ReceivedLobbyView,
   LobbyRequestFailed,
 )(({ tableId, deckId }) =>
-  Effect.tryPromise(() => joinTable({ table_id: tableId, deck_id: deckId })).pipe(
-    Effect.map(viewResult),
-    Effect.catch(() => Effect.succeed(LobbyRequestFailed({ message: UNREACHABLE }))),
-  ),
+  Effect.gen(function* () {
+    const lobby = yield* LobbyClient;
+    return yield* lobby.joinTable(tableId, { deck_id: deckId }).pipe(
+      Effect.map(viewResult),
+      Effect.catch((error) => Effect.succeed(lobbyFailure(error))),
+    );
+  }),
 );
 
 export const ReadyLobby = Command.define(
@@ -111,9 +122,14 @@ export const ReadyLobby = Command.define(
   LobbyRequestFailed,
 )(({ tableId, ready }) =>
   Effect.sync(() => unlockTableAudio()).pipe(
-    Effect.flatMap(() => Effect.tryPromise(() => readyUp({ table_id: tableId, ready }))),
+    Effect.flatMap(() =>
+      Effect.gen(function* () {
+        const lobby = yield* LobbyClient;
+        return yield* lobby.readyUp(tableId, { ready });
+      }),
+    ),
     Effect.map(viewResult),
-    Effect.catch(() => Effect.succeed(LobbyRequestFailed({ message: UNREACHABLE }))),
+    Effect.catch((error) => Effect.succeed(lobbyFailure(error))),
   ),
 );
 
@@ -123,10 +139,13 @@ export const StartLobbyGame = Command.define(
   ReceivedLobbyView,
   LobbyRequestFailed,
 )(({ tableId }) =>
-  Effect.tryPromise(() => startGame({ table_id: tableId })).pipe(
-    Effect.map(viewResult),
-    Effect.catch(() => Effect.succeed(LobbyRequestFailed({ message: UNREACHABLE }))),
-  ),
+  Effect.gen(function* () {
+    const lobby = yield* LobbyClient;
+    return yield* lobby.startGame(tableId).pipe(
+      Effect.map(viewResult),
+      Effect.catch((error) => Effect.succeed(lobbyFailure(error))),
+    );
+  }),
 );
 
 export const CopyLobbyLink = Command.define(
@@ -140,7 +159,9 @@ export const CopyLobbyLink = Command.define(
   ),
 );
 
-function joinCommand(model: LobbySlice): readonly [LobbySlice, ReadonlyArray<FoldkitCommand.Command<Message>>] {
+function joinCommand(
+  model: LobbySlice,
+): readonly [LobbySlice, ReadonlyArray<FoldkitCommand.Command<Message, never, LobbyClient>>] {
   const tableId = tableForJoin(model);
   if (tableId == null) {
     return [{ ...model, error: "Enter the table code your host shared.", submitting: false }, []];
@@ -161,9 +182,9 @@ export const update = (
   model: LobbySlice,
   message: Message,
   _deckIds: ReadonlyArray<number>,
-): readonly [LobbySlice, ReadonlyArray<FoldkitCommand.Command<Message>>] =>
+): readonly [LobbySlice, ReadonlyArray<FoldkitCommand.Command<Message, never, LobbyClient>>] =>
   M.value(message).pipe(
-    M.withReturnType<readonly [LobbySlice, ReadonlyArray<FoldkitCommand.Command<Message>>]>(),
+    M.withReturnType<readonly [LobbySlice, ReadonlyArray<FoldkitCommand.Command<Message, never, LobbyClient>>]>(),
     M.tagsExhaustive({
       ChangedLobbyRoute: ({ tableId, selectedDeckId }) => [applyRouteChange(model, { tableId, selectedDeckId }), []],
       ChangedLobbyCode: ({ code }) => [{ ...model, code }, []],

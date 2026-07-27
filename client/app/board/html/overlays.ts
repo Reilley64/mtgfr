@@ -95,7 +95,9 @@ export function boardOverlays(
             if (board.discardPick != null) return new Set(board.discardPick.picks.discard_cost);
             if (
               state.pending_choice != null &&
-              (state.pending_choice.kind === "discard" || state.pending_choice.kind === "may_discard") &&
+              (state.pending_choice.kind === "discard" ||
+                state.pending_choice.kind === "may_discard" ||
+                (state.pending_choice.kind === "pay_cost" && (state.pending_choice.discard_count ?? 0) > 0)) &&
               board.promptDraft?.kind === "card-pick"
             ) {
               return new Set(board.promptDraft.picked);

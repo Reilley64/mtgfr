@@ -4,10 +4,10 @@
 # Tap target permanent.
 # Draw a card.
 name = "Fire // Ice"
+sets = ["apc", "cmd", "ddj", "dmr", "f06", "mh2", "plst", "prm", "uma", "wc01", "wc02"]
 id = "ae92942b-919c-4ea9-b693-85fcef765d5a"
 default_print = "230e65b2-a908-4418-8ef9-ecc475ff0b27"
 oracle = "Fire deals 2 damage divided as you choose among one or two targets. // Tap target permanent.\nDraw a card."
-set = "cmd"
 
 # Off the stack a split card has the combined characteristics of both halves (CR 709.4): the fused
 # card is a red-and-blue instant with mana value 4. Only a half is ever cast (CR 709.4a).
@@ -23,7 +23,6 @@ type = "instant"
 [[half]]
 name = "Fire"
 oracle = "Fire deals 2 damage divided as you choose among one or two targets."
-set = "cmd"
 
 [half.cost]
 generic = 1
@@ -49,7 +48,6 @@ divided = true
 [[half]]
 name = "Ice"
 oracle = "Tap target permanent.\nDraw a card."
-set = "cmd"
 
 [half.cost]
 generic = 1

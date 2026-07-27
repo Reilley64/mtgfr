@@ -5,7 +5,7 @@
 //! lives on the same table: most arms are `None`; only singleton / no-real-choice cases
 //! return an Intent. Handlers under [`super::handlers`] still own apply logic.
 
-use crate::{Event, Game, Intent, PendingChoice, Reject};
+use crate::{Event, Game, Intent, PendingChoice, ProliferateTarget, Reject};
 
 /// Apply `intent` as the answer to the current [`PendingChoice`].
 ///
@@ -29,10 +29,12 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
             Intent::ChooseTargets { player, targets } => game.choose_targets(player, targets),
             _ => Err(Reject::IllegalChoice),
         },
-        PendingChoice::MayYesNo { .. } => match intent {
-            Intent::AnswerMay { player, yes } => game.answer_may(player, yes),
-            _ => Err(Reject::IllegalChoice),
-        },
+        PendingChoice::MayYesNo { .. } | PendingChoice::MayRevealLandFromHand { .. } => {
+            match intent {
+                Intent::AnswerMay { player, yes } => game.answer_may(player, yes),
+                _ => Err(Reject::IllegalChoice),
+            }
+        }
         PendingChoice::MayDrawUpTo { .. } => match intent {
             Intent::ChooseDrawCount { player, count } => game.answer_may_draw_up_to(player, count),
             _ => Err(Reject::IllegalChoice),
@@ -49,18 +51,24 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
             _ => Err(Reject::IllegalChoice),
         },
         PendingChoice::PayCost { .. } => match intent {
-            Intent::PayOptionalCost { player, pay } => game.pay_optional_cost(player, pay),
+            Intent::PayOptionalCost {
+                player,
+                pay,
+                discard_cost,
+            } => game.pay_optional_cost(player, pay, &discard_cost),
             Intent::PayOptionalCostX { player, pay, x } => {
                 game.pay_optional_cost_with_x(player, pay, x)
             }
             _ => Err(Reject::IllegalChoice),
         },
         PendingChoice::PayOrCounter { .. } => match intent {
-            Intent::PayOptionalCost { player, pay } => game.pay_or_counter(player, pay),
+            Intent::PayOptionalCost { player, pay, .. } => game.pay_or_counter(player, pay),
             _ => Err(Reject::IllegalChoice),
         },
         PendingChoice::PayOrControllerDraws { .. } => match intent {
-            Intent::PayOptionalCost { player, pay } => game.pay_or_controller_draws(player, pay),
+            Intent::PayOptionalCost { player, pay, .. } => {
+                game.pay_or_controller_draws(player, pay)
+            }
             _ => Err(Reject::IllegalChoice),
         },
         PendingChoice::ChooseCounteredSpellDestination { .. } => match intent {
@@ -70,7 +78,7 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
             _ => Err(Reject::IllegalChoice),
         },
         PendingChoice::PayEchoOrSacrifice { .. } => match intent {
-            Intent::PayOptionalCost { player, pay } => game.pay_echo(player, pay),
+            Intent::PayOptionalCost { player, pay, .. } => game.pay_echo(player, pay),
             _ => Err(Reject::IllegalChoice),
         },
         PendingChoice::PayCumulativeUpkeepOrSacrifice { .. } => match intent {
@@ -80,11 +88,17 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
             _ => Err(Reject::IllegalChoice),
         },
         PendingChoice::PayRecoverOrExile { .. } => match intent {
-            Intent::PayOptionalCost { player, pay } => game.pay_recover(player, pay),
+            Intent::PayOptionalCost { player, pay, .. } => game.pay_recover(player, pay),
             _ => Err(Reject::IllegalChoice),
         },
         PendingChoice::SacrificeUnlessPay { .. } => match intent {
-            Intent::PayOptionalCost { player, pay } => game.pay_sacrifice_unless(player, pay),
+            Intent::PayOptionalCost { player, pay, .. } => game.pay_sacrifice_unless(player, pay),
+            _ => Err(Reject::IllegalChoice),
+        },
+        PendingChoice::PayLifeOrEntersTapped { .. } => match intent {
+            Intent::PayOptionalCost { player, pay, .. } => {
+                game.pay_life_or_enters_tapped(player, pay)
+            }
             _ => Err(Reject::IllegalChoice),
         },
         PendingChoice::SacrificeUnlessReturnLand { .. } => match intent {
@@ -139,8 +153,17 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
             _ => Err(Reject::IllegalChoice),
         },
         PendingChoice::Proliferate { .. } => match intent {
-            Intent::ChooseSacrifices { player, sacrifices } => {
-                game.answer_proliferate(player, sacrifices)
+            Intent::ChooseProliferate {
+                player,
+                permanents,
+                players,
+            } => {
+                let chosen = permanents
+                    .into_iter()
+                    .map(ProliferateTarget::Permanent)
+                    .chain(players.into_iter().map(ProliferateTarget::Player))
+                    .collect();
+                game.answer_proliferate(player, chosen)
             }
             _ => Err(Reject::IllegalChoice),
         },
@@ -289,9 +312,11 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
             _ => Err(Reject::IllegalChoice),
         },
         PendingChoice::ChooseExiledDigToCastFree { .. } => match intent {
-            Intent::ChooseExiledDigToCastFree { player, choice } => {
-                game.choose_exiled_dig_to_cast_free(player, choice)
-            }
+            Intent::ChooseExiledDigToCastFree {
+                player,
+                choice,
+                target,
+            } => game.choose_exiled_dig_to_cast_free(player, choice, target),
             _ => Err(Reject::IllegalChoice),
         },
         PendingChoice::OpponentChoosesPile { .. } => match intent {
@@ -462,6 +487,7 @@ pub(crate) fn forced(game: &Game) -> Option<Intent> {
         }),
         // Default for every other discriminant — same table, no forced Intent.
         PendingChoice::MayYesNo { .. }
+        | PendingChoice::MayRevealLandFromHand { .. }
         | PendingChoice::MayDrawUpTo { .. }
         | PendingChoice::DeclineUntap { .. }
         | PendingChoice::ChooseDredge { .. }
@@ -473,6 +499,7 @@ pub(crate) fn forced(game: &Game) -> Option<Intent> {
         | PendingChoice::PayCumulativeUpkeepOrSacrifice { .. }
         | PendingChoice::PayRecoverOrExile { .. }
         | PendingChoice::SacrificeUnlessPay { .. }
+        | PendingChoice::PayLifeOrEntersTapped { .. }
         | PendingChoice::SacrificeUnlessReturnLand { .. }
         | PendingChoice::AssignCombatDamage { .. }
         | PendingChoice::DivideSpellDamage { .. }

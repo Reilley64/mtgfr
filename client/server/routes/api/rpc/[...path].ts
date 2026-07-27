@@ -2,15 +2,12 @@
 
 import * as Effect from "effect/Effect";
 import {
-  defineEventHandler,
+  defineHandler,
   deleteCookie,
   getCookie,
-  getMethod,
-  getRequestHeader,
   getRequestURL,
   getRouterParam,
   type H3Event,
-  readRawBody,
   setCookie,
 } from "nitro/h3";
 import { grpcUpstreamFromPodDns } from "../../../../app/domain/api-upstream";
@@ -20,7 +17,7 @@ import { grpcRequestEnv, runTracedRequest } from "../../../../app/domain/otel";
 import { GrpcCallError, httpStatusOf } from "../../../../app/domain/wire/grpcClient";
 import { dispatchRpc, type RpcOutcome } from "../../../../app/domain/wire/rpcServer";
 import type { StreamFrame } from "../../../../app/domain/wire/types";
-import { createWebDb } from "../../../db/client";
+import { runWebDb } from "../../../db/client";
 
 const SESSION_COOKIE = "session";
 const COOKIE_MAX_AGE_SECONDS = 30 * 24 * 60 * 60; // 30 days — mirrors crates/server/src/auth.rs
@@ -39,8 +36,7 @@ function cookieOptions() {
  * falls back to the default (unrouted) address in dev, where every table lives in one process —
  * same semantics as the retired HTTP `resolveGameUpstream`. */
 async function resolveTableAddress(tableId: string): Promise<string | null> {
-  const db = createWebDb();
-  const pod = await lookupTableRoute(db, tableId);
+  const pod = await runWebDb(lookupTableRoute(tableId));
   if (!pod) return null;
   // Legacy seed fallback wrote bare `instance_id` ("local"); that is not DNS.
   if (pod === "local") return grpcUpstream();
@@ -132,14 +128,10 @@ const dispatchRpcTraced = Effect.fn(function* (args: RpcDispatchArgs) {
     "rpc.path": path,
   });
   const env = yield* grpcRequestEnv(args.sessionToken);
-  return yield* Effect.tryPromise({
-    try: () =>
-      dispatchRpc(args.segments, args.method, args.body, args.searchParams, {
-        ...env,
-        defaultAddress: grpcUpstream(),
-        resolveTableAddress,
-      }),
-    catch: (err) => (err instanceof Error ? err : new Error(String(err))),
+  return yield* dispatchRpc(args.segments, args.method, args.body, args.searchParams, {
+    ...env,
+    defaultAddress: grpcUpstream(),
+    resolveTableAddress,
   });
 });
 
@@ -148,21 +140,21 @@ function routeSegments(event: H3Event): string[] {
 }
 
 async function jsonBody(event: H3Event): Promise<unknown> {
-  const raw = await readRawBody(event, "utf8");
-  return JSON.parse(raw ?? "");
+  const raw = await event.req.text();
+  return JSON.parse(raw);
 }
 
 const ALLOWED_METHODS = new Set(["GET", "POST", "PUT", "DELETE"]);
 
-async function handle(event: H3Event): Promise<Response> {
-  const method = getMethod(event);
+export default defineHandler(async (event) => {
+  const method = event.req.method;
   if (!ALLOWED_METHODS.has(method)) {
     return new Response("Method Not Allowed", { status: 405 });
   }
 
   const segments = routeSegments(event);
   const sessionToken = getCookie(event, SESSION_COOKIE) ?? null;
-  const traceparent = getRequestHeader(event, "traceparent") ?? null;
+  const traceparent = event.req.headers.get("traceparent") ?? null;
 
   let body: unknown;
   if (method === "POST" || method === "PUT") {
@@ -196,6 +188,4 @@ async function handle(event: H3Event): Promise<Response> {
   }
 
   return outcomeToResponse(outcome);
-}
-
-export default defineEventHandler(handle);
+});

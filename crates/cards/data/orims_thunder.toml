@@ -2,10 +2,10 @@
 # Destroy target artifact or enchantment. If this spell was kicked, it deals damage equal to that
 # permanent's mana value to target creature.
 name = "Orim's Thunder"
+sets = ["apc", "c15", "cm2", "cma", "cmd", "dmr", "hop"]
 id = "380429d5-82db-449c-b9b9-3e82ab987972"
 default_print = "79431517-5ef4-44f4-8ff2-53a27b4c84b0"
 oracle = "Kicker {R} (You may pay an additional {R} as you cast this spell.)\nDestroy target artifact or enchantment. If this spell was kicked, it deals damage equal to that permanent's mana value to target creature."
-set = "cmd"
 
 [cost]
 generic = 2

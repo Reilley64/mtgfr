@@ -32,10 +32,10 @@ impl Game {
     /// Move counters from `from` onto `to` ([`Effect::Counters(CountersEffect::MoveCounters)`]): +1/+1 counters always
     /// move, through the same replaceable-placement pipeline the destination's own +1/+1
     /// doublers would apply to any other "put a counter" (CR 614); `all_kinds` also moves every
-    /// named kind present, raw (named kinds bypass that pipeline everywhere else in the pool —
-    /// see [`Effect::Static(StaticEffect::EntersWithCounters)`]'s doc).
+    /// named kind present, through the any-kind half of that same pipeline.
     pub(crate) fn move_counters(
         &mut self,
+        placer: PlayerId,
         from: ObjectId,
         to: ObjectId,
         all_kinds: bool,
@@ -51,7 +51,7 @@ impl Game {
                     source_name: self.def_of(from).name,
                 },
             );
-            let n = self.counters_after_replacements(to, plus);
+            let n = self.counters_after_replacements(placer, to, plus);
             if n > 0 {
                 self.push_apply(
                     events,
@@ -79,14 +79,17 @@ impl Game {
                     count: -count,
                 },
             );
-            self.push_apply(
-                events,
-                Event::KindCountersPlaced {
-                    object: to,
-                    kind,
-                    count,
-                },
-            );
+            let n = self.kind_counters_after_replacements(placer, to, count);
+            if n > 0 {
+                self.push_apply(
+                    events,
+                    Event::KindCountersPlaced {
+                        object: to,
+                        kind,
+                        count: n,
+                    },
+                );
+            }
         }
     }
 
@@ -98,6 +101,7 @@ impl Game {
     /// summing to at most the source's live count) by [`Self::divide_moved_counters`].
     pub(crate) fn move_counters_distributed(
         &mut self,
+        placer: PlayerId,
         from: ObjectId,
         assignment: &[(ObjectId, i32)],
         events: &mut Vec<Event>,
@@ -115,7 +119,7 @@ impl Game {
             },
         );
         for &(to, n) in assignment {
-            let n = self.counters_after_replacements(to, n);
+            let n = self.counters_after_replacements(placer, to, n);
             if n <= 0 {
                 continue;
             }

@@ -393,6 +393,30 @@ test("active player sees the end-turn affordance", () => {
   overlayScene(overlayModel(), Scene.expect(Scene.testId("board-end-turn")).toExist());
 });
 
+test("end turn is hidden when a goaded creature must attack", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        step: 5, // declare attackers
+        actions: [
+          {
+            id: 1,
+            kind: "declare_attackers",
+            label: testMessageRef("Declare attackers"),
+            needs_target: false,
+            section: "combat",
+            declare_for: [0],
+            required_attacks: [{ attacker: 7, defender: 1 }],
+          },
+        ],
+      }),
+    ),
+    Scene.expect(Scene.testId("board-end-turn")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toContainText("Attack (1)"),
+  );
+});
+
 test("non-active player sees the turn-yield rocker", () => {
   overlayScene(
     overlayModel(initialBoardModel(), gameState({ active_player: 1 })),
@@ -505,7 +529,8 @@ test("inspect overlay renders from a pinned inspect card", () => {
         kind: { kind: "artifact" },
         legendary: false,
         otags: [],
-        set: "soc",
+        set: "",
+        sets: ["soc"],
         subtypes: [],
         summary: [],
       },
@@ -549,7 +574,8 @@ test("inspect overlay shows marked damage for a damaged battlefield permanent", 
           kind: { kind: "creature", power: 2, toughness: 2 },
           legendary: false,
           otags: [],
-          set: "soc",
+          set: "",
+          sets: ["soc"],
           subtypes: ["Bear"],
           summary: [],
         },
@@ -1353,6 +1379,57 @@ test("may_yes_no aim shows docked Yes and No", () => {
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-yes")).toExist(),
     Scene.expect(Scene.testId("prompt-no")).toExist(),
+  );
+});
+
+test("may_yes_no may-reveal land label surfaces from MessageRef", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        pending_choice: {
+          kind: "may_yes_no",
+          label: {
+            key: "effect.choice_may_reveal_land_from_hand",
+            params: [],
+            children: [],
+          },
+          player: 0,
+          source: 7,
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-yes-no-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-yes-no-aim")).toContainText(
+      "You may reveal a matching land card from your hand",
+    ),
+    Scene.expect(Scene.testId("prompt-yes")).toExist(),
+    Scene.expect(Scene.testId("prompt-no")).toExist(),
+  );
+});
+
+test("pay_cost with discard shows count and disabled Pay until picked", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        objects: [card(11, { zone: ZONE.Hand, name: "Fodder" })],
+        pending_choice: {
+          kind: "pay_cost",
+          can_pay: true,
+          cost: { colored: [], generic: 1 },
+          discard_count: 1,
+          discard_choices: [11],
+          label: testMessageRef("Pay 1 and discard a card"),
+          player: 0,
+          source: 1,
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-pay-cost-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-pay-discard-count")).toHaveText("0 / 1 selected"),
+    Scene.expect(Scene.testId("prompt-pay")).toBeDisabled(),
+    Scene.expect(Scene.testId("prompt-decline")).toHaveText("Don't pay"),
   );
 });
 
