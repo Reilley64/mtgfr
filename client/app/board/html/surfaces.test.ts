@@ -677,7 +677,7 @@ test("result overlay renders watch and leave actions", () => {
   );
 });
 
-test("x prompt shows stepper controls and a live cost preview", () => {
+test("x prompt uses a center modal with a live cost preview", () => {
   const xPrompt: XPromptState = {
     action: action(12, { label: testMessageRef("Comet Storm"), has_x: true, max_x: 3, min_x: 0 }),
     target: null,
@@ -691,8 +691,9 @@ test("x prompt shows stepper controls and a live cost preview", () => {
   };
   overlayScene(
     overlayModel({ ...initialBoardModel(), xPrompt }),
-    Scene.expect(Scene.testId("x-prompt-aim")).toExist(),
-    Scene.expect(Scene.testId("x-prompt")).toBeAbsent(),
+    Scene.expect(Scene.testId("x-prompt-modal")).toExist(),
+    Scene.expect(Scene.testId("x-prompt-aim")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
     Scene.expect(Scene.testId("x-prompt-preview")).toHaveText("Pay {4}"),
     Scene.expect(Scene.testId("x-prompt-value")).toHaveText("3"),
     Scene.expect(Scene.testId("x-prompt-inc")).toBeDisabled(),
@@ -704,7 +705,7 @@ test("x prompt shows stepper controls and a live cost preview", () => {
   );
 });
 
-test("off-board staged target pick shows docked target-pick-aim instead of center modal", () => {
+test("off-board staged target pick uses a center modal", () => {
   const corpse = card(22, {
     name: "Corpse",
     zone: ZONE.Graveyard,
@@ -737,9 +738,11 @@ test("off-board staged target pick shows docked target-pick-aim instead of cente
       gameState({ objects: [spell, corpse] }),
     ),
     resolveBoardCardArtMounts(),
-    Scene.expect(Scene.testId("target-pick-aim")).toExist(),
+    Scene.expect(Scene.testId("target-pick-modal")).toExist(),
+    Scene.expect(Scene.testId("target-pick-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("target-pick")).toBeAbsent(),
     Scene.expect(Scene.testId("target-pick-0")).toExist(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
   );
 });
 
@@ -881,9 +884,11 @@ test("join-forces mana prompt shows a stepper instead of per-amount buttons", ()
         },
       }),
     ),
-    Scene.expect(Scene.testId("pending-join-forces-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-join-forces-modal")).toExist(),
+    Scene.expect(Scene.testId("pending-join-forces-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice-waiting")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-number-value")).toHaveText("0"),
     Scene.expect(Scene.testId("prompt-number-min")).toExist(),
     Scene.expect(Scene.testId("prompt-number-max")).toExist(),
@@ -892,7 +897,7 @@ test("join-forces mana prompt shows a stepper instead of per-amount buttons", ()
   );
 });
 
-test("may_draw_up_to shows docked pending-draw-count-aim with number buttons", () => {
+test("may_draw_up_to uses a center modal with number buttons", () => {
   overlayScene(
     overlayModel(
       initialBoardModel(),
@@ -905,15 +910,17 @@ test("may_draw_up_to shows docked pending-draw-count-aim with number buttons", (
         },
       }),
     ),
-    Scene.expect(Scene.testId("pending-draw-count-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-draw-count-modal")).toExist(),
+    Scene.expect(Scene.testId("pending-draw-count-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice-waiting")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-number-0")).toExist(),
     Scene.expect(Scene.testId("prompt-number-3")).toExist(),
   );
 });
 
-test("choose_target_players off-board list shows docked pending-player-pick-aim", () => {
+test("choose_target_players off-board list uses a center player-pick modal", () => {
   overlayScene(
     overlayModel(
       initialBoardModel(),
@@ -933,16 +940,18 @@ test("choose_target_players off-board list shows docked pending-player-pick-aim"
         },
       }),
     ),
-    Scene.expect(Scene.testId("pending-player-pick-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-player-pick-modal")).toExist(),
+    Scene.expect(Scene.testId("pending-player-pick-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-player-aim")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-player-1")).toExist(),
     Scene.expect(Scene.testId("prompt-player-2")).toExist(),
     Scene.expect(Scene.testId("prompt-submit")).toBeDisabled(),
   );
 });
 
-test("choose_splitting_opponent off-board list shows docked pending-player-pick-aim", () => {
+test("choose_splitting_opponent off-board list uses a center player-pick modal", () => {
   overlayScene(
     overlayModel(
       initialBoardModel(),
@@ -960,8 +969,10 @@ test("choose_splitting_opponent off-board list shows docked pending-player-pick-
         },
       }),
     ),
-    Scene.expect(Scene.testId("pending-player-pick-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-player-pick-modal")).toExist(),
+    Scene.expect(Scene.testId("pending-player-pick-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-player-1")).toExist(),
   );
 });
@@ -1247,7 +1258,7 @@ test("optional on-board choose_target Decline lives in the primary bar", () => {
   );
 });
 
-test("scry aim shows docked Top and Bottom arrange lanes", () => {
+test("scry uses a center modal with Top and Bottom arrange lanes", () => {
   overlayScene(
     overlayModel(
       initialBoardModel(),
@@ -1262,8 +1273,10 @@ test("scry aim shows docked Top and Bottom arrange lanes", () => {
         },
       }),
     ),
-    Scene.expect(Scene.testId("pending-arrange-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-arrange-modal")).toExist(),
+    Scene.expect(Scene.testId("pending-arrange-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-arrange-lanes")).toExist(),
     Scene.expect(Scene.testId("prompt-arrange-top")).toExist(),
     Scene.expect(Scene.testId("prompt-arrange-bottom")).toExist(),
@@ -1273,7 +1286,7 @@ test("scry aim shows docked Top and Bottom arrange lanes", () => {
   );
 });
 
-test("order_triggers aim shows docked drag rows, click-to-place, and arrow controls", () => {
+test("order_triggers uses a center modal with drag rows and arrow controls", () => {
   overlayScene(
     overlayModel(
       initialBoardModel(),
@@ -1287,8 +1300,10 @@ test("order_triggers aim shows docked drag rows, click-to-place, and arrow contr
         },
       }),
     ),
-    Scene.expect(Scene.testId("pending-order-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-order-modal")).toExist(),
+    Scene.expect(Scene.testId("pending-order-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-order-list")).toExist(),
     Scene.expect(Scene.selector('[data-testid="prompt-order-0"][draggable="true"]')).toExist(),
     Scene.expect(Scene.testId("prompt-order-pick-0")).toHaveText("ETB draw"),
@@ -1357,7 +1372,7 @@ test("revealed_card_to_battlefield_or_hand aim shows face and destination button
   );
 });
 
-test("partition_revealed aim shows docked Pile A and Pile B lanes", () => {
+test("partition_revealed uses a center modal with Pile A and Pile B lanes", () => {
   overlayScene(
     overlayModel(
       initialBoardModel(),
@@ -1373,14 +1388,16 @@ test("partition_revealed aim shows docked Pile A and Pile B lanes", () => {
         },
       }),
     ),
-    Scene.expect(Scene.testId("pending-partition-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-partition-modal")).toExist(),
+    Scene.expect(Scene.testId("pending-partition-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-partition-lanes")).toExist(),
     Scene.expect(Scene.testId("prompt-submit")).toExist(),
   );
 });
 
-test("distribute_top aim shows docked Hand Bottom Exile lanes", () => {
+test("distribute_top uses a center modal with Hand Bottom Exile lanes", () => {
   overlayScene(
     overlayModel(
       initialBoardModel(),
@@ -1399,14 +1416,16 @@ test("distribute_top aim shows docked Hand Bottom Exile lanes", () => {
         },
       }),
     ),
-    Scene.expect(Scene.testId("pending-distribute-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-distribute-modal")).toExist(),
+    Scene.expect(Scene.testId("pending-distribute-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-distribute-lanes")).toExist(),
     Scene.expect(Scene.testId("prompt-submit")).toExist(),
   );
 });
 
-test("select_from_top aim shows docked Take and Bottom lanes", () => {
+test("select_from_top uses a center modal with Take and Bottom lanes", () => {
   overlayScene(
     overlayModel(
       { ...initialBoardModel(), promptDraft: { kind: "card-pick", picked: [1], filter: "" } },
@@ -1423,8 +1442,10 @@ test("select_from_top aim shows docked Take and Bottom lanes", () => {
         },
       }),
     ),
-    Scene.expect(Scene.testId("pending-select-top-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-select-top-modal")).toExist(),
+    Scene.expect(Scene.testId("pending-select-top-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-select-top-lanes")).toExist(),
     Scene.expect(Scene.testId("prompt-select-top-take-label")).toHaveText("Take (1 / 2)"),
     Scene.expect(Scene.testId("prompt-select-top-rest-label")).toHaveText("Bottom of library"),
@@ -1704,7 +1725,7 @@ test("library search hides idle priority actions", () => {
   );
 });
 
-test("off-board card pick shows docked pending-card-pick-aim instead of center modal", () => {
+test("off-board card pick uses a center card-pick modal", () => {
   overlayScene(
     overlayModel(
       initialBoardModel(),
@@ -1720,9 +1741,11 @@ test("off-board card pick shows docked pending-card-pick-aim instead of center m
         },
       }),
     ),
-    Scene.expect(Scene.testId("pending-card-pick-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-card-pick-modal")).toExist(),
+    Scene.expect(Scene.testId("pending-card-pick-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-target-aim")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
     Scene.expect(Scene.testId("pick-title")).toHaveText("Proliferate — choose any number"),
     Scene.expect(Scene.testId("pick-card-scroll")).toExist(),
     Scene.expect(Scene.testId("prompt-card-10")).toExist(),
@@ -1731,7 +1754,7 @@ test("off-board card pick shows docked pending-card-pick-aim instead of center m
   );
 });
 
-test("choose_target player buttons show docked pending-player-pick-aim instead of center modal", () => {
+test("choose_target player buttons use a center player-pick modal", () => {
   const yard = card(99, {
     name: "Yard Card",
     owner: 1,
@@ -1759,9 +1782,11 @@ test("choose_target player buttons show docked pending-player-pick-aim instead o
         },
       }),
     ),
-    Scene.expect(Scene.testId("pending-player-pick-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-player-pick-modal")).toExist(),
+    Scene.expect(Scene.testId("pending-player-pick-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-target-aim")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-player-0")).toExist(),
     Scene.expect(Scene.testId("prompt-player-1")).toExist(),
   );
@@ -2067,7 +2092,7 @@ test("sacrifice pick prompt renders as a board surface", () => {
   );
 });
 
-test("off-board sacrifice cost shows docked sacrifice-pick-aim instead of center modal", () => {
+test("off-board sacrifice cost uses a center sacrifice-pick modal", () => {
   const sacrificeAction = action(14, {
     kind: "activate",
     label: testMessageRef("Village Rites"),
@@ -2094,9 +2119,11 @@ test("off-board sacrifice cost shows docked sacrifice-pick-aim instead of center
       },
       gameState({ objects: [offBoard] }),
     ),
-    Scene.expect(Scene.testId("sacrifice-pick-aim")).toExist(),
+    Scene.expect(Scene.testId("sacrifice-pick-modal")).toExist(),
+    Scene.expect(Scene.testId("sacrifice-pick-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("sacrifice-pick")).toBeAbsent(),
     Scene.expect(Scene.testId("sacrifice-cost-aim")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
     Scene.expect(Scene.testId("sacrifice-pick-55")).toHaveText("Fodder"),
   );
 });
@@ -2225,7 +2252,7 @@ test("discard cost aim enables confirm when one card selected", () => {
   );
 });
 
-test("off-board discard cost shows docked discard-pick-aim instead of center modal", () => {
+test("off-board discard cost uses a center discard-pick modal", () => {
   const caster = card(10, {
     name: "Caster",
     zone: ZONE.Hand,
@@ -2252,9 +2279,11 @@ test("off-board discard cost shows docked discard-pick-aim instead of center mod
       },
       gameState({ objects: [caster] }),
     ),
-    Scene.expect(Scene.testId("discard-pick-aim")).toExist(),
+    Scene.expect(Scene.testId("discard-pick-modal")).toExist(),
+    Scene.expect(Scene.testId("discard-pick-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("discard-pick")).toBeAbsent(),
     Scene.expect(Scene.testId("discard-cost-aim")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
     Scene.expect(Scene.testId("discard-pick-11")).toHaveText("#11"),
   );
 });

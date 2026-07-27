@@ -285,20 +285,14 @@ function arrangeLanesPrompt(
       ? "Click a card to move it between Top and Graveyard. Order on Top is left to right."
       : "Click a card to move it between Top and Bottom. Order in each lane is left to right.";
 
-  return h.div(
-    [
-      h.DataAttribute("testid", "pending-arrange-aim"),
-      h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
-      h.Class(
-        "pointer-events-auto fixed left-1/2 z-30 flex max-h-[min(70vh,560px)] w-[min(92vw,720px)] -translate-x-1/2 flex-col gap-2 overflow-hidden rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-snow shadow-hud",
-      ),
-    ],
-    [
-      h.div([h.Class("shrink-0 font-semibold text-body")], [title]),
+  return promptModalFrame({
+    testId: "pending-arrange-modal",
+    title,
+    body: [
       h.div(
         [
           h.DataAttribute("testid", "prompt-arrange-lanes"),
-          h.Class("flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain"),
+          h.Class("flex min-h-0 w-[min(92vw,720px)] flex-1 flex-col gap-3 overflow-y-auto overscroll-contain"),
         ],
         [
           h.div([h.Class("shrink-0 text-caption text-mist")], [hint]),
@@ -340,9 +334,9 @@ function arrangeLanesPrompt(
           ),
         ],
       ),
-      h.div([h.Class("flex shrink-0 flex-wrap gap-2")], [submitButton("Done", false)]),
     ],
-  );
+    actions: [submitButton("Done", false)],
+  });
 }
 
 function cardPickPrompt(
@@ -437,22 +431,16 @@ function cardPickPrompt(
     });
   }
 
-  // Card grids dock near the hand bar so the board stays visible (Arena chrome).
-  return h.div(
-    [
-      h.DataAttribute("testid", "pending-card-pick-aim"),
-      h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
-      h.Class(
-        "pointer-events-auto fixed left-1/2 z-30 flex max-h-[min(70vh,560px)] w-[min(92vw,720px)] -translate-x-1/2 flex-col gap-2 overflow-hidden rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-snow shadow-hud",
-      ),
-    ],
-    [
-      h.div([h.DataAttribute("testid", "pick-title"), h.Class("shrink-0 font-semibold text-body")], [config.title]),
+  return promptModalFrame({
+    testId: "pending-card-pick-modal",
+    title: config.title,
+    body: [
+      h.div([h.DataAttribute("testid", "pick-title"), h.Class("sr-only")], [config.title]),
       hintEl,
-      scrollEl,
-      actionsEl,
+      h.div([h.Class("flex min-h-0 w-[min(92vw,720px)] flex-1 flex-col gap-2")], [scrollEl]),
     ].filter((v): v is Html => v !== null),
-  );
+    actions: [actionsEl],
+  });
 }
 
 function orderPrompt(pending: Extract<PendingChoiceView, { kind: "order_triggers" }>, board: BoardModel): Html {
@@ -515,34 +503,33 @@ function orderPrompt(pending: Extract<PendingChoiceView, { kind: "order_triggers
       ],
     );
   });
-  return h.div(
-    [
-      h.DataAttribute("testid", "pending-order-aim"),
-      h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
-      h.Class(
-        "pointer-events-auto fixed left-1/2 z-30 flex max-h-[min(70vh,560px)] w-[min(92vw,560px)] -translate-x-1/2 flex-col gap-2 overflow-hidden rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-snow shadow-hud",
-      ),
-    ],
-    [
-      h.div([h.Class("shrink-0 font-semibold text-body")], ["Order these triggers — the last one resolves first"]),
+  return promptModalFrame({
+    testId: "pending-order-modal",
+    title: "Order these triggers — the last one resolves first",
+    body: [
       h.div(
-        [h.Class("shrink-0 text-caption text-mist")],
+        [h.Class("flex min-h-0 w-[min(92vw,560px)] flex-1 flex-col gap-2")],
         [
-          pick == null
-            ? "Drag a trigger to reorder, or click then click where it should go (↑↓ also work)."
-            : "Drop on another row to place it — or click / release to cancel.",
+          h.div(
+            [h.Class("shrink-0 text-caption text-mist")],
+            [
+              pick == null
+                ? "Drag a trigger to reorder, or click then click where it should go (↑↓ also work)."
+                : "Drop on another row to place it — or click / release to cancel.",
+            ],
+          ),
+          h.div(
+            [
+              h.DataAttribute("testid", "prompt-order-list"),
+              h.Class("flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain"),
+            ],
+            rows,
+          ),
         ],
       ),
-      h.div(
-        [
-          h.DataAttribute("testid", "prompt-order-list"),
-          h.Class("flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain"),
-        ],
-        rows,
-      ),
-      submitButton("Submit", false),
     ],
-  );
+    actions: [submitButton("Submit", false)],
+  });
 }
 
 function amountStepper(id: number, amount: number, max: number): Html {
@@ -687,20 +674,14 @@ function targetPickButton(target: WireTarget, state: VisibleState, testId: strin
 }
 
 function targetPickPrompt(title: string, targets: ReadonlyArray<WireTarget>, state: VisibleState): Html {
-  return h.div(
-    [
-      h.DataAttribute("testid", "target-pick-aim"),
-      h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
-      h.Class(
-        "pointer-events-auto fixed left-1/2 z-30 flex max-h-[min(70vh,560px)] w-[min(92vw,720px)] -translate-x-1/2 flex-col gap-2 overflow-hidden rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-snow shadow-hud",
-      ),
-    ],
-    [
-      h.div([h.Class("shrink-0 text-center font-semibold text-body")], [title]),
+  return promptModalFrame({
+    testId: "target-pick-modal",
+    title,
+    body: [
       h.div(
         [
           h.Class(
-            `${PICK_CARD_SCROLL_MIN_CLASS} w-full flex-1 overflow-y-auto overscroll-contain rounded-panel bg-glass/30 p-2`,
+            `${PICK_CARD_SCROLL_MIN_CLASS} w-[min(92vw,720px)] flex-1 overflow-y-auto overscroll-contain rounded-panel bg-glass/30 p-2`,
           ),
         ],
         [
@@ -710,53 +691,49 @@ function targetPickPrompt(title: string, targets: ReadonlyArray<WireTarget>, sta
           ),
         ],
       ),
-      h.div([h.Class("flex shrink-0 flex-wrap justify-center gap-2")], [cancelButton()]),
     ],
-  );
+    actions: [cancelButton()],
+  });
 }
 
 function boardXPrompt(prompt: NonNullable<BoardModel["xPrompt"]>): Html {
   const { minX, maxX, draftX, xCost, name } = prompt;
   const preview = costText(costWithChosenX(xCost, draftX));
-  return h.div(
-    [
-      h.DataAttribute("testid", "x-prompt-aim"),
-      h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
-      h.Class(
-        "pointer-events-auto fixed left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
-      ),
-    ],
-    [
-      h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], [`Choose X for ${name}`]),
+  return promptModalFrame({
+    testId: "x-prompt-modal",
+    title: `Choose X for ${name}`,
+    body: [
       h.div(
+        [h.Class("flex min-h-0 w-[min(92vw,28rem)] flex-col items-center gap-sm")],
         [
-          h.Class("flex items-center justify-center gap-2 text-body text-mist"),
-          h.DataAttribute("testid", "x-prompt-preview"),
-        ],
-        [`Pay ${preview}`],
-      ),
-      h.div(
-        [h.Class("flex flex-wrap items-center justify-center gap-2")],
-        [
-          itemButton("Min", "x-prompt-min", XDraftSet({ x: minX })),
-          itemButton("−", "x-prompt-dec", XDraftSet({ x: draftX - 1 }), draftX <= minX),
-          h.span(
+          h.div(
             [
-              h.DataAttribute("testid", "x-prompt-value"),
-              h.Class("min-w-[2ch] text-center text-body font-semibold text-snow"),
+              h.Class("flex items-center justify-center gap-2 text-body text-mist"),
+              h.DataAttribute("testid", "x-prompt-preview"),
             ],
-            [String(draftX)],
+            [`Pay ${preview}`],
           ),
-          itemButton("+", "x-prompt-inc", XDraftSet({ x: draftX + 1 }), draftX >= maxX),
-          itemButton("Max", "x-prompt-max", XDraftSet({ x: maxX })),
+          h.div(
+            [h.Class("flex flex-wrap items-center justify-center gap-2")],
+            [
+              itemButton("Min", "x-prompt-min", XDraftSet({ x: minX })),
+              itemButton("−", "x-prompt-dec", XDraftSet({ x: draftX - 1 }), draftX <= minX),
+              h.span(
+                [
+                  h.DataAttribute("testid", "x-prompt-value"),
+                  h.Class("min-w-[2ch] text-center text-body font-semibold text-snow"),
+                ],
+                [String(draftX)],
+              ),
+              itemButton("+", "x-prompt-inc", XDraftSet({ x: draftX + 1 }), draftX >= maxX),
+              itemButton("Max", "x-prompt-max", XDraftSet({ x: maxX })),
+            ],
+          ),
         ],
       ),
-      h.div(
-        [h.Class("flex flex-wrap items-center justify-center gap-2")],
-        [itemButton("Confirm", "x-prompt-confirm", XSubmitted({ x: draftX })), cancelButton()],
-      ),
     ],
-  );
+    actions: [itemButton("Confirm", "x-prompt-confirm", XSubmitted({ x: draftX })), cancelButton()],
+  });
 }
 
 function costPickPrompt(
@@ -765,7 +742,23 @@ function costPickPrompt(
   choices: ReadonlyArray<number>,
   state: VisibleState,
   message: (id: number) => Message,
+  presentation: "aim" | "modal" = "aim",
 ): Html {
+  const body = h.div(
+    [h.Class("flex min-h-0 w-[min(92vw,28rem)] flex-wrap justify-center gap-2")],
+    choices.map((id) => {
+      const obj = state.objects.find((o) => o.id === id);
+      return itemButton(obj?.name ?? `#${id}`, `${testId}-${id}`, message(id));
+    }),
+  );
+  if (presentation === "modal") {
+    return promptModalFrame({
+      testId: `${testId}-modal`,
+      title,
+      body: [body],
+      actions: [cancelButton()],
+    });
+  }
   return h.div(
     [
       h.DataAttribute("testid", `${testId}-aim`),
@@ -774,17 +767,7 @@ function costPickPrompt(
         "pointer-events-auto fixed left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
       ),
     ],
-    [
-      h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], [title]),
-      h.div(
-        [h.Class("flex flex-wrap justify-center gap-2")],
-        choices.map((id) => {
-          const obj = state.objects.find((o) => o.id === id);
-          return itemButton(obj?.name ?? `#${id}`, `${testId}-${id}`, message(id));
-        }),
-      ),
-      cancelButton(),
-    ],
+    [h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], [title]), body, cancelButton()],
   );
 }
 
@@ -1431,22 +1414,12 @@ function cardPickForKind(
         ),
       );
     }
-    return h.div(
-      [
-        h.DataAttribute("testid", "pending-player-pick-aim"),
-        h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
-        h.Class(
-          "pointer-events-auto fixed left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
-        ),
-      ],
-      [
-        h.div(
-          [h.Class("pointer-events-none text-center font-semibold text-body text-snow")],
-          [messageText(pending.label)],
-        ),
-        h.div([h.Class("flex flex-wrap justify-center gap-2")], buttons),
-      ],
-    );
+    return promptModalFrame({
+      testId: "pending-player-pick-modal",
+      title: messageText(pending.label),
+      body: [h.div([h.Class("flex min-h-0 w-[min(92vw,28rem)] flex-wrap justify-center gap-2")], buttons)],
+      actions: [],
+    });
   }
 
   if (pending.kind === "scry" || pending.kind === "surveil") {
@@ -1475,20 +1448,14 @@ function selectFromTopLanesPrompt(
     return item != null ? [item] : [];
   });
   const restItems = pending.items.filter((it) => !picked.includes(it.id));
-  return h.div(
-    [
-      h.DataAttribute("testid", "pending-select-top-aim"),
-      h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
-      h.Class(
-        "pointer-events-auto fixed left-1/2 z-30 flex max-h-[min(70vh,560px)] w-[min(92vw,720px)] -translate-x-1/2 flex-col gap-2 overflow-hidden rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-snow shadow-hud",
-      ),
-    ],
-    [
-      h.div([h.Class("shrink-0 font-semibold text-body")], [`Select up to ${pending.up_to} from the top`]),
+  return promptModalFrame({
+    testId: "pending-select-top-modal",
+    title: `Select up to ${pending.up_to} from the top`,
+    body: [
       h.div(
         [
           h.DataAttribute("testid", "prompt-select-top-lanes"),
-          h.Class("flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain"),
+          h.Class("flex min-h-0 w-[min(92vw,720px)] flex-1 flex-col gap-3 overflow-y-auto overscroll-contain"),
         ],
         [
           h.div(
@@ -1533,9 +1500,9 @@ function selectFromTopLanesPrompt(
           ),
         ],
       ),
-      h.div([h.Class("flex shrink-0 flex-wrap gap-2")], [submitButton("Done", false)]),
     ],
-  );
+    actions: [submitButton("Done", false)],
+  });
 }
 
 function yesNoPrompt(pending: Extract<PendingChoiceView, { kind: "may_yes_no" | "dance_exile_more" }>): Html {
@@ -1711,21 +1678,12 @@ function playerPickPrompt(
   }
 
   if (pending.kind === "choose_splitting_opponent") {
-    return h.div(
-      [
-        h.DataAttribute("testid", "pending-player-pick-aim"),
-        h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
-        h.Class(
-          "pointer-events-auto fixed left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
-        ),
-      ],
-      [
+    return promptModalFrame({
+      testId: "pending-player-pick-modal",
+      title: messageText(pending.label),
+      body: [
         h.div(
-          [h.Class("pointer-events-none text-center font-semibold text-body text-snow")],
-          [messageText(pending.label)],
-        ),
-        h.div(
-          [h.Class("flex flex-wrap justify-center gap-2")],
+          [h.Class("flex min-h-0 w-[min(92vw,28rem)] flex-wrap justify-center gap-2")],
           pending.items.flatMap((item, index) => {
             const seat = playerSeatFromItem(item, state, index);
             if (seat == null) return [];
@@ -1742,27 +1700,23 @@ function playerPickPrompt(
           }),
         ),
       ],
-    );
+      actions: [],
+    });
   }
 
   const draft = board.promptDraft ?? initPromptDraft(pending, state);
   const picked = draft.kind === "player-pick" ? draft.players : [];
   const ready = picked.length >= pending.min && picked.length <= pending.max;
-  return h.div(
-    [
-      h.DataAttribute("testid", "pending-player-pick-aim"),
-      h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
-      h.Class(
-        "pointer-events-auto fixed left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
-      ),
-    ],
-    [
+  return promptModalFrame({
+    testId: "pending-player-pick-modal",
+    title: messageText(pending.label),
+    body: [
       h.div(
-        [h.Class("pointer-events-none text-center font-semibold text-body text-snow")],
-        [messageText(pending.label)],
+        [h.Class("pointer-events-none text-caption text-mist")],
+        [`${picked.length} / ${pending.max} selected`],
       ),
       h.div(
-        [h.Class("flex flex-wrap justify-center gap-2")],
+        [h.Class("flex min-h-0 w-[min(92vw,28rem)] flex-wrap justify-center gap-2")],
         pending.items.flatMap((item, index) => {
           const seat = playerSeatFromItem(item, state, index);
           if (seat == null) return [];
@@ -1788,9 +1742,9 @@ function playerPickPrompt(
           ];
         }),
       ),
-      h.div([h.Class("flex flex-wrap justify-center gap-2")], [submitButton("Choose", !ready), cancelButton()]),
     ],
-  );
+    actions: [submitButton("Choose", !ready), cancelButton()],
+  });
 }
 
 function divideTotalPrompt(
@@ -1949,20 +1903,14 @@ function partitionPrompt(
       return item != null ? [item] : [];
     });
     const pileBItems = pending.items.filter((it) => !pileAIds.includes(it.id));
-    return h.div(
-      [
-        h.DataAttribute("testid", "pending-partition-aim"),
-        h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
-        h.Class(
-          "pointer-events-auto fixed left-1/2 z-30 flex max-h-[min(70vh,560px)] w-[min(92vw,720px)] -translate-x-1/2 flex-col gap-2 overflow-hidden rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-snow shadow-hud",
-        ),
-      ],
-      [
-        h.div([h.Class("shrink-0 font-semibold text-body")], ["Choose cards for Pile A"]),
+    return promptModalFrame({
+      testId: "pending-partition-modal",
+      title: "Choose cards for Pile A",
+      body: [
         h.div(
           [
             h.DataAttribute("testid", "prompt-partition-lanes"),
-            h.Class("flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain"),
+            h.Class("flex min-h-0 w-[min(92vw,720px)] flex-1 flex-col gap-3 overflow-y-auto overscroll-contain"),
           ],
           [
             h.div([h.Class("shrink-0 text-caption text-mist")], ["Click a card to move it between Pile A and Pile B."]),
@@ -2004,9 +1952,9 @@ function partitionPrompt(
             ),
           ],
         ),
-        h.div([h.Class("flex shrink-0 gap-2")], [submitButton("Lock piles", false), cancelButton()]),
       ],
-    );
+      actions: [submitButton("Lock piles", false), cancelButton()],
+    });
   }
 
   return distributeTopLanesPrompt(pending, board, state, tableId);
@@ -2111,20 +2059,14 @@ function distributeTopLanesPrompt(
     );
   };
 
-  return h.div(
-    [
-      h.DataAttribute("testid", "pending-distribute-aim"),
-      h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
-      h.Class(
-        "pointer-events-auto fixed left-1/2 z-30 flex max-h-[min(70vh,560px)] w-[min(92vw,720px)] -translate-x-1/2 flex-col gap-2 overflow-hidden rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-snow shadow-hud",
-      ),
-    ],
-    [
-      h.div([h.Class("shrink-0 font-semibold text-body")], ["Distribute the revealed cards"]),
+  return promptModalFrame({
+    testId: "pending-distribute-modal",
+    title: "Distribute the revealed cards",
+    body: [
       h.div(
         [
           h.DataAttribute("testid", "prompt-distribute-lanes"),
-          h.Class("flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain"),
+          h.Class("flex min-h-0 w-[min(92vw,720px)] flex-1 flex-col gap-3 overflow-y-auto overscroll-contain"),
         ],
         [
           h.div(
@@ -2148,9 +2090,9 @@ function distributeTopLanesPrompt(
           lane("prompt-distribute-exile", "Exile (may play)", toExile, pending.to_exile_may_play),
         ],
       ),
-      h.div([h.Class("flex shrink-0 gap-2")], [submitButton("Distribute", !ready), cancelButton()]),
     ],
-  );
+    actions: [submitButton("Distribute", !ready), cancelButton()],
+  });
 }
 
 function colorPickPrompt(
@@ -2352,21 +2294,12 @@ function numberPickPrompt(
     const draft = board.promptDraft ?? initPromptDraft(pending, state);
     const max = pending.max;
     const count = clampX(draft.kind === "number" ? draft.count : 0, 0, max);
-    return h.div(
-      [
-        h.DataAttribute("testid", "pending-join-forces-aim"),
-        h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
-        h.Class(
-          "pointer-events-auto fixed left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
-        ),
-      ],
-      [
+    return promptModalFrame({
+      testId: "pending-join-forces-modal",
+      title: numberPickTitle(pending),
+      body: [
         h.div(
-          [h.Class("pointer-events-none text-center font-semibold text-body text-snow")],
-          [numberPickTitle(pending)],
-        ),
-        h.div(
-          [h.Class("flex flex-wrap items-center justify-center gap-2")],
+          [h.Class("flex min-h-0 w-[min(92vw,28rem)] flex-wrap items-center justify-center gap-2")],
           [
             itemButton("Min", "prompt-number-min", PromptNumberSet({ count: 0 })),
             itemButton("−", "prompt-number-dec", PromptNumberSet({ count: count - 1 }), count <= 0),
@@ -2381,23 +2314,17 @@ function numberPickPrompt(
             itemButton("Max", "prompt-number-max", PromptNumberSet({ count: max })),
           ],
         ),
-        submitButton(count === 0 ? "Pay 0 (decline)" : `Pay {${count}}`, tableId == null),
       ],
-    );
+      actions: [submitButton(count === 0 ? "Pay 0 (decline)" : `Pay {${count}}`, tableId == null)],
+    });
   }
   const answerFor = (count: number): AnswerInput => ({ kind: "draw_count", count });
-  return h.div(
-    [
-      h.DataAttribute("testid", "pending-draw-count-aim"),
-      h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
-      h.Class(
-        "pointer-events-auto fixed left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
-      ),
-    ],
-    [
-      h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], [numberPickTitle(pending)]),
+  return promptModalFrame({
+    testId: "pending-draw-count-modal",
+    title: numberPickTitle(pending),
+    body: [
       h.div(
-        [h.Class("flex flex-wrap justify-center gap-2")],
+        [h.Class("flex min-h-0 w-[min(92vw,28rem)] flex-wrap justify-center gap-2")],
         Array.from({ length: pending.max + 1 }, (_, count) =>
           answerButton(
             pending,
@@ -2410,7 +2337,8 @@ function numberPickPrompt(
         ),
       ),
     ],
-  );
+    actions: [],
+  });
 }
 
 function destinationPickPrompt(
@@ -2589,8 +2517,13 @@ export function promptsView(board: BoardModel, state: VisibleState, tableId: str
         [h.div([h.Class("pointer-events-none")], ["Click a permanent to sacrifice"])],
       );
     }
-    return costPickPrompt("sacrifice-pick", "Choose a permanent to sacrifice", choices, state, (id) =>
-      SacrificeChosen({ objectId: id }),
+    return costPickPrompt(
+      "sacrifice-pick",
+      "Choose a permanent to sacrifice",
+      choices,
+      state,
+      (id) => SacrificeChosen({ objectId: id }),
+      "modal",
     );
   }
   if (board.discardPick != null) {
@@ -2618,8 +2551,13 @@ export function promptsView(board: BoardModel, state: VisibleState, tableId: str
         ],
       );
     }
-    return costPickPrompt("discard-pick", "Choose a card to discard", choices, state, (id) =>
-      DiscardChosen({ ids: [id] }),
+    return costPickPrompt(
+      "discard-pick",
+      "Choose a card to discard",
+      choices,
+      state,
+      (id) => DiscardChosen({ ids: [id] }),
+      "modal",
     );
   }
   if (board.gyExilePick != null) {

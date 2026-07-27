@@ -452,7 +452,7 @@ test("select_from_top Take lane click emits select_from_top intent", () => {
   });
 });
 
-test("distribute_top shows docked Hand Bottom Exile lanes", () => {
+test("distribute_top uses a center modal with Hand Bottom Exile lanes", () => {
   const s = state({
     pending_choice: {
       kind: "distribute_top",
@@ -471,8 +471,10 @@ test("distribute_top shows docked Hand Bottom Exile lanes", () => {
     { update: sceneUpdate, view },
     Scene.with(viewModel(s)),
     resolveBoardOverlayMounts(),
-    Scene.expect(Scene.testId("pending-distribute-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-distribute-modal")).toExist(),
+    Scene.expect(Scene.testId("pending-distribute-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-distribute-lanes")).toExist(),
     Scene.expect(Scene.testId("prompt-distribute-pool")).toExist(),
     Scene.expect(Scene.testId("prompt-distribute-hand")).toExist(),
@@ -509,7 +511,7 @@ test("distribute_top card click cycles into Hand then Bottom", () => {
   });
 });
 
-test("partition_revealed shows docked Pile A and Pile B lanes", () => {
+test("partition_revealed uses a center modal with Pile A and Pile B lanes", () => {
   const s = state({
     pending_choice: {
       kind: "partition_revealed",
@@ -525,8 +527,10 @@ test("partition_revealed shows docked Pile A and Pile B lanes", () => {
     { update: sceneUpdate, view },
     Scene.with(viewModel(s)),
     resolveBoardOverlayMounts(),
-    Scene.expect(Scene.testId("pending-partition-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-partition-modal")).toExist(),
+    Scene.expect(Scene.testId("pending-partition-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-partition-lanes")).toExist(),
     Scene.expect(Scene.testId("prompt-partition-a")).toExist(),
     Scene.expect(Scene.testId("prompt-partition-b")).toExist(),
@@ -834,7 +838,9 @@ test("choose_copy_target swaps to counter wording for the MayPutCounterOnCreatur
     { update: sceneUpdate, view },
     Scene.with(viewModel(s)),
     resolveBoardOverlayMounts(),
-    Scene.expect(Scene.testId("pending-card-pick-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-card-pick-modal")).toExist(),
+    Scene.expect(Scene.testId("pending-card-pick-aim")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
     Scene.expect(Scene.testId("pick-title")).toHaveText("Choose a creature to get a +1/+1 counter"),
     Scene.expect(Scene.testId("prompt-submit")).toHaveText("Put counter"),
   );
@@ -854,7 +860,9 @@ test("choose_copy_target keeps copy wording for real copy prompts", () => {
     { update: sceneUpdate, view },
     Scene.with(viewModel(s)),
     resolveBoardOverlayMounts(),
-    Scene.expect(Scene.testId("pending-card-pick-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-card-pick-modal")).toExist(),
+    Scene.expect(Scene.testId("pending-card-pick-aim")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
     Scene.expect(Scene.testId("pick-title")).toHaveText("Choose a copy target"),
     Scene.expect(Scene.testId("prompt-submit")).toHaveText("Copy"),
   );
@@ -1604,8 +1612,10 @@ test("may_draw_up_to prompt emits choose_draw_count intent from UI", () => {
     { update: sceneUpdate, view },
     Scene.with(viewModel(s)),
     resolveBoardOverlayMounts(),
-    Scene.expect(Scene.testId("pending-draw-count-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-draw-count-modal")).toExist(),
+    Scene.expect(Scene.testId("pending-draw-count-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
   );
   const intents = clickPromptIntent(s, Scene.click(Scene.testId("prompt-number-2")));
   expect(intents).toEqual([{ kind: "choose_draw_count", player: 0, count: 2 }]);
@@ -1624,8 +1634,10 @@ test("pay_any_amount_of_mana uses a stepper and submits the draft amount", () =>
     { update: sceneUpdate, view },
     Scene.with(viewModel(s)),
     resolveBoardOverlayMounts(),
-    Scene.expect(Scene.testId("pending-join-forces-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-join-forces-modal")).toExist(),
+    Scene.expect(Scene.testId("pending-join-forces-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-number-value")).toHaveText("0"),
     Scene.expect(Scene.testId("prompt-number-0")).not.toExist(),
     Scene.expect(Scene.testId("prompt-number-dec")).toBeDisabled(),
