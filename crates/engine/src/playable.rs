@@ -344,6 +344,13 @@ impl Game {
         {
             return false;
         }
+        // "Cast this spell only before the combat damage step" (CR 601.3e — Berserk): the third
+        // window of the same family. `Step::FirstStrikeCombatDamage` is the boundary rather than
+        // `CombatDamage` because it is the *first* combat damage step whenever it exists, and the
+        // engine only creates it when a first striker is in combat (CR 510.5).
+        if def.cast_only_before_combat_damage && self.step >= Step::FirstStrikeCombatDamage {
+            return false;
+        }
         // "Players can't cast spells during combat" (CR 601.2i-adjacent — Basandra, Battle
         // Seraph): global and absolute — reaches every player, not just this ability's own
         // controller, and overrides even an instant-speed / flash permission below.
@@ -759,6 +766,7 @@ mod tests {
             alternative_cost: None,
             cast_only_during_combat: false,
             cast_only_before_attackers: false,
+            cast_only_before_combat_damage: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),
@@ -972,6 +980,7 @@ mod tests {
                             count: TargetCount::default(),
                             cant_be_regenerated: false,
                             at: None,
+                            only_if_it_attacked: false,
                         }),
                         optional: false,
                         min_level: 0,

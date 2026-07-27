@@ -2491,6 +2491,44 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         );
     }
 
+    /// Berserk's rider has to ride the destroy itself. The "if it attacked this turn" test is read
+    /// when the delayed ability fires, not when the spell resolves, so a `Conditional` wrapper
+    /// around the schedule would answer for the wrong moment.
+    #[test]
+    fn unlimited_berserk_pumps_by_target_power_and_schedules_a_conditional_destroy() {
+        let berserk = get_by_name("Berserk").expect("Berserk is in the pool");
+        assert!(
+            berserk.cast_only_before_combat_damage,
+            "cast this spell only before the combat damage step"
+        );
+        let Effect::Sequence { steps } = &berserk.abilities[0].effect else {
+            panic!("a pump and a scheduled destroy");
+        };
+        assert!(
+            matches!(
+                steps[0],
+                Effect::Pump(PumpEffect::PumpUntilEndOfTurn {
+                    power: Amount::TargetPower,
+                    toughness: Amount::Fixed(0),
+                    keywords: [Keyword::Trample],
+                    ..
+                })
+            ),
+            "+X/+0 where X is its power, and trample"
+        );
+        assert!(
+            matches!(
+                steps[1],
+                Effect::Destroy(DestroyEffect::Target {
+                    at: Some(engine::Step::End),
+                    only_if_it_attacked: true,
+                    ..
+                })
+            ),
+            "the end-step destroy collects only from a creature that attacked"
+        );
+    }
+
     /// Black Vise's upkeep trigger must carry the chosen-player gate: without it, `each_upkeep`
     /// bills every seat at the table instead of the one opponent the card named as it entered.
     #[test]
@@ -2970,6 +3008,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                     count: TargetCount::default(),
                     cant_be_regenerated: *cant_be_regenerated,
                     at: None,
+                    only_if_it_attacked: false,
                 }),
                 "{name} destroys what it names"
             );
@@ -3440,6 +3479,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                     count: TargetCount::default(),
                     cant_be_regenerated: false,
                     at: None,
+                    only_if_it_attacked: false,
                 }),
             ),
             (
@@ -3452,6 +3492,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                     count: TargetCount::default(),
                     cant_be_regenerated: false,
                     at: None,
+                    only_if_it_attacked: false,
                 }),
             ),
             (
@@ -3465,6 +3506,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                     count: TargetCount::default(),
                     cant_be_regenerated: false,
                     at: None,
+                    only_if_it_attacked: false,
                 }),
             ),
             (
@@ -3567,6 +3609,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                     count: TargetCount::default(),
                     cant_be_regenerated: false,
                     at: Some(engine::Step::End),
+                    only_if_it_attacked: false,
                 }),
             ],
             "flying now, destroyed at the beginning of the next end step"

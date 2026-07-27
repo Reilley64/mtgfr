@@ -386,6 +386,10 @@ impl<'de> Deserialize<'de> for CardDef {
             /// — `cast_only_before_attackers = true`; absent (`false`) for every ordinary card.
             #[serde(default)]
             cast_only_before_attackers: bool,
+            /// "Cast this spell only before the combat damage step" (CR 601.3e — Berserk)
+            /// — `cast_only_before_combat_damage = true`; absent (`false`) for every ordinary card.
+            #[serde(default)]
+            cast_only_before_combat_damage: bool,
             #[serde(default)]
             approximates: Option<String>,
             #[serde(default)]
@@ -553,6 +557,7 @@ impl<'de> Deserialize<'de> for CardDef {
             alternative_cost: card.alternative_cost,
             cast_only_during_combat: card.cast_only_during_combat,
             cast_only_before_attackers: card.cast_only_before_attackers,
+            cast_only_before_combat_damage: card.cast_only_before_combat_damage,
             approximates: card.approximates.map(|s| &*Box::leak(s.into_boxed_str())),
             oracle: card.oracle.map(|s| &*Box::leak(s.into_boxed_str())),
             sets: arc_strs(card.sets),

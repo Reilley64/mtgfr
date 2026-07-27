@@ -125,6 +125,7 @@ mod game_tests {
             alternative_cost: None,
             cast_only_during_combat: false,
             cast_only_before_attackers: false,
+            cast_only_before_combat_damage: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),

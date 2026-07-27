@@ -1,0 +1,40 @@
+# Cast this spell only before the combat damage step.
+# Target creature gains trample and gets +X/+0 until end of turn, where X is its power. At the
+# beginning of the next end step, destroy that creature if it attacked this turn.
+name = "Berserk"
+otags = ["combat-trick", "gives-trample", "power-doubler", "removal-creature", "removal-destroy", "single-english-word-name", "single-target-instant-sorcery", "spot-removal", "timing-restriction", "berserk"]
+sets = ["2ed", "30a", "ced", "cei", "cn2", "lea", "leb", "me1", "sld", "soa", "v09", "vma"]
+id = "8b67d192-9a05-4a47-82ae-5fc4b7834d88"
+default_print = "fd082697-493f-48e3-a41f-123700435025"
+oracle = "Cast this spell only before the combat damage step.\nTarget creature gains trample and gets +X/+0 until end of turn, where X is its power. At the beginning of the next end step, destroy that creature if it attacked this turn."
+
+# Cast this spell only before the combat damage step.
+cast_only_before_combat_damage = true
+
+[cost]
+green = 1
+
+[kind]
+type = "instant"
+
+# Target creature gains trample and gets +X/+0 until end of turn, where X is its power. At the
+# beginning of the next end step, destroy that creature if it attacked this turn.
+[[abilities]]
+timing = "spell"
+
+# Target creature gains trample and gets +X/+0 until end of turn, where X is its power.
+[[abilities.effects]]
+type = "pump"
+mode = "pump_until_end_of_turn"
+power = "target_power"
+toughness = 0
+keywords = ["trample"]
+target = { permanent = { types = "creature" } }
+
+# At the beginning of the next end step, destroy that creature if it attacked this turn.
+[[abilities.effects]]
+type = "destroy"
+mode = "target"
+at = "end"
+only_if_it_attacked = true
+target = { permanent = { types = "creature" } }

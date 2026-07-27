@@ -693,6 +693,14 @@ pub struct CardDef {
     /// on top of the ordinary instant-speed gate and is checked in [`Game::cast_timing_ok`].
     /// `cast_only_before_attackers = true` in TOML; `false` for every ordinary card.
     pub cast_only_before_attackers: bool,
+    /// "Cast this spell only before the combat damage step" (CR 601.3e's named-window restriction
+    /// — Berserk): legal from untap through the declare-blockers step, and closed for the rest of
+    /// the turn from the first combat damage step on — [`Step::FirstStrikeCombatDamage`] when a
+    /// first striker is in combat, [`Step::CombatDamage`] otherwise, which is the same boundary
+    /// because the engine only creates the first-strike step when one is needed. Layers on top of
+    /// the ordinary instant-speed gate like its two siblings above, checked in
+    /// [`Game::cast_timing_ok`]. `cast_only_before_combat_damage = true` in TOML.
+    pub cast_only_before_combat_damage: bool,
     /// A one-line plain-English note on how this card's modeled behavior diverges from its
     /// printed rules text (a dropped clause, a coarsened trigger, a folded-together mechanic) —
     /// the same fact a `# ponytail:` TOML comment records, but as a datum the catalog/deck
@@ -1346,6 +1354,7 @@ fn treasure_token_builtin() -> CardDef {
         alternative_cost: None,
         cast_only_during_combat: false,
         cast_only_before_attackers: false,
+        cast_only_before_combat_damage: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),
@@ -1418,6 +1427,7 @@ pub(crate) fn rogue_token_stub() -> CardDef {
         alternative_cost: None,
         cast_only_during_combat: false,
         cast_only_before_attackers: false,
+        cast_only_before_combat_damage: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),
@@ -1492,6 +1502,7 @@ pub(crate) fn illusion_token() -> CardDef {
         alternative_cost: None,
         cast_only_during_combat: false,
         cast_only_before_attackers: false,
+        cast_only_before_combat_damage: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),

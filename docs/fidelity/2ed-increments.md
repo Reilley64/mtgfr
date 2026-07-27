@@ -743,13 +743,37 @@ needs no cleanup arm. That also let the wire stay put: an Aura grounding its hos
 "re-read this object's keywords" cue as the until-end-of-turn strip, so the projection reuses
 `VisibleEvent::KeywordsStripped` instead of growing a new event and a proto message.
 
-### 45. `pump-by-own-power-with-delayed-destroy` — 1 card, S
+### 45. `pump-by-own-power-with-delayed-destroy` — 1 card, S — **done**
 Depends on: nothing.
 Berserk. `Amount::TargetPower` exists, so "+X/+0 where X is its power" is close — but it must
 snapshot at resolution, not track live. The rider is a delayed end-step destroy conditioned on
 whether the creature attacked, which is `attacked_this_turn` (#1's neighbourhood) plus a scheduled
 effect. Also needs the cast-timing restriction "only before the combat damage step."
 *Cards:* berserk.
+
+*Landed:* two of the three pieces were already in the engine, and the backlog's worry about the
+third was misplaced. `PumpUntilEndOfTurn` already takes an `Amount` per axis and already grants
+keywords, so "gains trample and gets +X/+0 where X is its power" is `power = "target_power"`,
+`toughness = 0`, `keywords = ["trample"]` — and it snapshots for free, because the amount resolves
+once into a fixed temp boost rather than tracking anything. (The backlog also had the pump as
++X/+X; the printed Oracle is +X/+0.) The delayed destroy is Stone Giant's: `destroy/target` with
+`at = "end"` already bakes the chosen id into a `destroy/that_creature` payload and schedules it,
+so nothing is re-targeted when it fires.
+
+What was actually missing was the *conditional* on that rider. It cannot be an
+`Effect::Conditional` around the schedule, because "if it attacked this turn" has to be read when
+the delayed ability fires, not when Berserk resolves — a first-main-phase Berserk on a creature
+that then attacks still kills it. And it cannot be `Condition::SourceAttackedThisTurn`, because a
+delayed trigger's source is Berserk itself, not the creature. So the flag rides the effect the
+same way `at` does: `only_if_it_attacked` on `destroy/target`, carried into the
+`destroy/that_creature` payload, checked against that creature's `Permanent::attacked_this_turn`
+at fire time.
+
+The cast restriction is the third member of an existing family: `cast_only_before_combat_damage`
+next to `cast_only_during_combat` (Cauldron Dance) and `cast_only_before_attackers` (Master
+Warcraft), one guard in `cast_timing_ok`. The boundary is `Step::FirstStrikeCombatDamage` rather
+than `CombatDamage`, since that step is the first combat damage step whenever it exists and the
+engine only creates it when a first striker is in combat (CR 510.5).
 
 ### 46. `mana-from-variable-amount` — 1 card, S — **done**
 Depends on: nothing.

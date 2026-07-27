@@ -2423,6 +2423,7 @@ fn fill_damaged_creature(effect: Effect, damaged: ObjectId) -> Effect {
         Effect::Destroy(DestroyEffect::ThatCreature { .. }) => {
             Effect::Destroy(DestroyEffect::ThatCreature {
                 creature: Some(damaged),
+                only_if_it_attacked: false,
             })
         }
         Effect::Sequence { steps } => {

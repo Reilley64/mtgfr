@@ -20,6 +20,7 @@ impl Game {
             DestroyEffect::Target {
                 cant_be_regenerated,
                 at,
+                only_if_it_attacked,
                 ..
             } => {
                 let object = expect_object_target(target, "destroy");
@@ -33,6 +34,7 @@ impl Game {
                         fire_at,
                         effect: Effect::Destroy(DestroyEffect::ThatCreature {
                             creature: Some(object),
+                            only_if_it_attacked,
                         }),
                     }];
                 }
@@ -83,10 +85,21 @@ impl Game {
                 }
                 events
             }
-            DestroyEffect::ThatCreature { creature } => {
+            DestroyEffect::ThatCreature {
+                creature,
+                only_if_it_attacked,
+            } => {
                 let Some(id) = creature else {
                     return Vec::new();
                 };
+                // Berserk: the rider only collects on a creature that was declared an attacker
+                // this turn (CR 508.1), which is why the check waits until the delayed ability
+                // fires rather than happening when it was scheduled.
+                if only_if_it_attacked
+                    && !self.as_permanent(id).is_some_and(|p| p.attacked_this_turn)
+                {
+                    return Vec::new();
+                }
                 if self.zone_of(id) != Zone::Battlefield {
                     return Vec::new();
                 }

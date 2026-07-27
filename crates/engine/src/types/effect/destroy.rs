@@ -28,6 +28,13 @@ pub enum DestroyEffect {
         /// shape as [`ZoneEffect::FlickerTarget`]'s `return_at`.
         #[cfg_attr(feature = "card-dsl", serde(default))]
         at: Option<Step>,
+        /// Berserk's "destroy that creature *if it attacked this turn*" — carried into the
+        /// scheduled [`DestroyEffect::ThatCreature`] payload and checked when that fires, never
+        /// here: the creature can still be declared an attacker after this effect resolves (a
+        /// main-phase Berserk), so a check at scheduling time would read the wrong turn. Only
+        /// meaningful with `at`; `false` (the default) destroys unconditionally.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        only_if_it_attacked: bool,
     },
 
     /// "Destroy *that creature*" over an id baked in when the ability was placed or scheduled,
@@ -37,5 +44,10 @@ pub enum DestroyEffect {
     ThatCreature {
         #[cfg_attr(feature = "card-dsl", serde(skip))]
         creature: Option<ObjectId>,
+        /// Berserk's rider, carried down from [`DestroyEffect::Target::only_if_it_attacked`] when
+        /// the delayed ability was scheduled: destroy only if `creature` was declared an attacker
+        /// this turn ([`Permanent::attacked_this_turn`]). `false` for every other filler.
+        #[cfg_attr(feature = "card-dsl", serde(skip))]
+        only_if_it_attacked: bool,
     },
 }
