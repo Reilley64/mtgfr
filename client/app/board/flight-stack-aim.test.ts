@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ObjectView, PlayerView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
-import { CARD_W, ZONE } from "./geometry/layout";
+import { worldToScreen } from "./geometry/camera";
+import { avatarPos, CARD_W, ZONE } from "./geometry/layout";
 import { STACK_CARD_W, stackFaceScreenOrigin, stackPeekFor, stackPresentation } from "./geometry/stackLayout";
-import { spawnFlight, stackFlightScale } from "./motion/flights";
-import { BOARD_VIEWPORT, initialBoardModel, syncBoardWithGame } from "./submodel";
+import { FlightsSynced } from "./messages";
+import { spawnFlight, stackFlightScale, stepFlights } from "./motion/flights";
+import { BOARD_VIEWPORT, initialBoardModel, syncBoardWithGame, updateBoard } from "./submodel";
 
 function player(overrides: Partial<PlayerView> = {}): PlayerView {
   return {
@@ -211,5 +213,79 @@ describe("stack flight settle handoff", () => {
     // Stale hardcoded mid-right aim must not remain the settle target.
     expect(flight?.targetX).not.toBe(BOARD_VIEWPORT.width - 160);
     expect(flight?.targetY).not.toBe(BOARD_VIEWPORT.height / 2);
+  });
+
+  it("does not restart a local seed flight from the avatar after it reaches the stack", () => {
+    const handId = 7;
+    const spellId = 42;
+    const bolt = spell(spellId, "Lightning Bolt");
+    const board0 = { ...initialBoardModel(), viewport: { ...BOARD_VIEWPORT } };
+    const face = restingStackFace(board0, 1, 0);
+    const seeded = spawnFlight({
+      id: handId,
+      print: bolt.print ?? "",
+      name: bolt.name,
+      x: 400,
+      y: 700,
+      scale: 2,
+      targetX: face.x,
+      targetY: face.y,
+      targetScale: stackFlightScale(board0.camera.zoom),
+      kind: "stack",
+      fromCardId: handId,
+      hold: true,
+    });
+
+    // Mount clock reaches the stack face before the game sync arrives.
+    let live = new Map([[handId, seeded]]);
+    for (let i = 0; i < 40; i += 1) {
+      live = stepFlights(live, 16, false).flights;
+    }
+    const parked = live.get(handId);
+    if (parked == null) throw new Error("expected seed flight to park at the stack");
+    expect(parked.x).toBeCloseTo(face.x, 0);
+    expect(parked.y).toBeCloseTo(face.y, 0);
+    expect(parked.phase).toBe("settled");
+    expect(parked.hold).toBe(true);
+
+    const fold = gameFold();
+    const [afterSyncMsg] = updateBoard(
+      {
+        ...board0,
+        flights: new Map([[handId, parked]]),
+        handHidden: new Set([handId]),
+        hideCardIds: new Set([handId]),
+        ownedIds: new Set([handId]),
+      },
+      FlightsSynced({ flights: [parked], exitFx: [], now: 500 }),
+      fold,
+      null,
+    );
+
+    // Held seed must survive settle sync so stackEntrances can rebind it.
+    expect(afterSyncMsg.flights.has(handId)).toBe(true);
+
+    const afterGame = syncBoardWithGame(
+      afterSyncMsg,
+      gameFold(
+        state({
+          objects: [bolt],
+          stack: [{ controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId }],
+        }),
+        {
+          stackEntrances: new Map([[spellId, { from: handId, controller: 0 }]]),
+        },
+      ),
+    );
+
+    const flight = afterGame.flights.get(spellId);
+    expect(flight).toBeDefined();
+    expect(afterGame.flights.has(handId)).toBe(false);
+
+    const avatar = worldToScreen(afterGame.camera, avatarPos(0, 0, 2).x, avatarPos(0, 0, 2).y);
+    // Continuity: rebound flight keeps the parked stack pose, not a fresh avatar spawn.
+    expect(flight?.x).toBeCloseTo(face.x, 0);
+    expect(flight?.y).toBeCloseTo(face.y, 0);
+    expect(Math.hypot((flight?.x ?? 0) - avatar.x, (flight?.y ?? 0) - avatar.y)).toBeGreaterThan(80);
   });
 });
