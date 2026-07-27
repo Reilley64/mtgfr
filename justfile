@@ -120,8 +120,8 @@ test *args:
     @just server-test {{ args }}
     @just client-test
 
-[doc("Server CI check (CR index + card schema drift, then fmt --check + clippy + migrate + nextest)")]
-server-check: engine-cr-index-check cards-schema-check server-format-check server-lint
+[doc("Server CI check (CR index + card DSL drift, then fmt --check + clippy + migrate + nextest)")]
+server-check: engine-cr-index-check cards-schema-check cards-dsl-ref-check server-format-check server-lint
     cargo run -p server -- migration apply
     just server-test
 
@@ -129,7 +129,7 @@ server-check: engine-cr-index-check cards-schema-check server-format-check serve
 client-check: client-tokens-check client-mana-oracle-check server-codegen client-format client-lint client-typecheck client-test
 
 [doc("Run all checks")]
-check: client-tokens-check client-mana-oracle-check cards-schema-check engine-cr-index-check server-codegen format lint typecheck test
+check: client-tokens-check client-mana-oracle-check cards-schema-check cards-dsl-ref-check engine-cr-index-check server-codegen format lint typecheck test
 
 [doc("Regenerate docs/CR_INDEX.md from engine CR citations")]
 engine-cr-index:
@@ -146,6 +146,14 @@ cards-schema:
 [doc("Fail if card TOML JSON Schemas are stale")]
 cards-schema-check:
     cargo run -p cards --bin gen_card_schema -- --check
+
+[doc("Regenerate generated card DSL Markdown reference")]
+cards-dsl-ref:
+    cargo run -p cards --bin gen_dsl_reference
+
+[doc("Fail if generated card DSL Markdown reference is stale")]
+cards-dsl-ref-check:
+    cargo run -p cards --bin gen_dsl_reference -- --check
 
 [doc("Validate card TOML files against the generated JSON Schema")]
 cards-toml-validate *args:

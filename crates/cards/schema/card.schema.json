@@ -162,6 +162,7 @@
       "description": "A card's top-level TOML table.\n\nThis mirrors the DSL's top-level card shape with owned fields, then folds into the interned `CardDef` representation used by the engine.",
       "properties": {
         "abilities": {
+          "description": "Authored rules text as ability blocks. Each block has a `timing` and one or more `effects`; multiple effects fold into `Effect::Sequence` in order.",
           "items": {
             "$ref": "#/$defs/AbilityTomlSchema"
           },
@@ -183,6 +184,7 @@
         },
         "approximates": {
           "default": null,
+          "description": "Machine-readable fidelity note for modeled divergences. Set this whenever a `# ponytail:` comment marks a deliberate simplification; leave absent for faithful cards.",
           "type": [
             "string",
             "null"
@@ -268,7 +270,12 @@
           "type": "array"
         },
         "cost": {
-          "$ref": "#/$defs/CostToml"
+          "allOf": [
+            {
+              "$ref": "#/$defs/CostToml"
+            }
+          ],
+          "description": "Printed mana cost. Omit the table for free cards such as lands and most token profiles."
         },
         "cumulative_upkeep": {
           "description": "Cumulative upkeep (CR 702.24) — `[cumulative_upkeep]` (`graveyard_cards = N`); absent for a card without cumulative upkeep."
@@ -362,6 +369,7 @@
         },
         "enters_tapped": {
           "default": false,
+          "description": "Unconditional enters-tapped replacement (CR 614.13), usually for lands.",
           "type": "boolean"
         },
         "enters_tapped_unless": true,
@@ -450,6 +458,7 @@
           "type": "string"
         },
         "identity": {
+          "description": "Extra color-identity pips (CR 903.4) that the simplified model would otherwise drop, such as pips in trimmed activated abilities. Deck-building only.",
           "items": {
             "$ref": "#/$defs/Color"
           },
@@ -462,10 +471,16 @@
           "type": "array"
         },
         "kind": {
-          "$ref": "#/$defs/KindToml"
+          "allOf": [
+            {
+              "$ref": "#/$defs/KindToml"
+            }
+          ],
+          "description": "Printed card kind/type line as a `[kind]` table."
         },
         "legendary": {
           "default": false,
+          "description": "Legendary supertype; Commander deck validation reads this when identifying legal commanders.",
           "type": "boolean"
         },
         "may_choose_not_to_untap": {
@@ -475,6 +490,7 @@
         },
         "modal": {
           "default": false,
+          "description": "A modal spell or modal triggered ability (\"Choose N\"). For modal spells, each `timing = \"spell\"` ability is one mode.",
           "type": "boolean"
         },
         "morph": {
@@ -489,10 +505,12 @@
           "description": "Morph (CR 702.37) — `[morph]` with the same `[cost]`-table shape as `[bestow]` (the card's morph cost); absent for a card without morph."
         },
         "name": {
+          "description": "Printed card name and card-pool registry key. The filename is arbitrary; this field is what authors, tests, and the catalog use to find a card.",
           "type": "string"
         },
         "oracle": {
           "default": null,
+          "description": "Verbatim Scryfall Oracle text for catalog hover/read-the-card display. The engine never parses this; behavior comes from abilities, keywords, and other DSL fields.",
           "type": [
             "string",
             "null"
@@ -500,6 +518,7 @@
         },
         "otags": {
           "default": [],
+          "description": "Scryfall Tagger oracle-tag slugs for thematic catalog search. Pure metadata.",
           "items": {
             "type": "string"
           },
@@ -523,6 +542,7 @@
         },
         "sets": {
           "default": [],
+          "description": "Every Scryfall set code with a printing of this oracle, used by coverage and catalog search. Pure metadata; gameplay never reads it.",
           "items": {
             "type": "string"
           },
@@ -535,6 +555,7 @@
         },
         "subtypes": {
           "default": [],
+          "description": "Printed non-land subtypes, such as creature, artifact, and enchantment subtypes. Land types live under `[kind].subtypes`.",
           "items": {
             "type": "string"
           },
@@ -608,30 +629,35 @@
         },
         "black": {
           "default": 0,
+          "description": "Black mana pips (`{B}`).",
           "format": "uint8",
           "minimum": 0.0,
           "type": "integer"
         },
         "blue": {
           "default": 0,
+          "description": "Blue mana pips (`{U}`).",
           "format": "uint8",
           "minimum": 0.0,
           "type": "integer"
         },
         "colorless": {
           "default": 0,
+          "description": "Colorless mana pips (`{C}`), payable only by colorless mana. This is not a color.",
           "format": "uint8",
           "minimum": 0.0,
           "type": "integer"
         },
         "generic": {
           "default": 0,
+          "description": "Generic mana pips such as `{2}`.",
           "format": "uint8",
           "minimum": 0.0,
           "type": "integer"
         },
         "green": {
           "default": 0,
+          "description": "Green mana pips (`{G}`).",
           "format": "uint8",
           "minimum": 0.0,
           "type": "integer"
@@ -657,6 +683,7 @@
         },
         "red": {
           "default": 0,
+          "description": "Red mana pips (`{R}`).",
           "format": "uint8",
           "minimum": 0.0,
           "type": "integer"
@@ -666,12 +693,18 @@
         },
         "white": {
           "default": 0,
+          "description": "White mana pips (`{W}`).",
           "format": "uint8",
           "minimum": 0.0,
           "type": "integer"
         },
         "x": {
-          "$ref": "#/$defs/XPips"
+          "allOf": [
+            {
+              "$ref": "#/$defs/XPips"
+            }
+          ],
+          "description": "`{X}` pips. `true` means one `{X}`; an integer gives the count of `{X}` symbols."
         }
       },
       "type": "object"
@@ -688,31 +721,162 @@
       "type": "object"
     },
     "EffectTypeTomlSchema": {
-      "enum": [
-        "damage",
-        "draw",
-        "life",
-        "destroy",
-        "exile",
-        "sacrifice",
-        "control",
-        "counters",
-        "mana",
-        "mill",
-        "pump",
-        "reveal",
-        "token",
-        "zone",
-        "copy",
-        "dig",
-        "choice",
-        "static",
-        "misc",
-        "sequence",
-        "choose_one",
-        "conditional"
-      ],
-      "type": "string"
+      "oneOf": [
+        {
+          "description": "Damage effects such as targeted damage and mass creature damage.",
+          "enum": [
+            "damage"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Card draw effects for one player, target players, or each player.",
+          "enum": [
+            "draw"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Life gain, life loss, drain, and life-payment riders.",
+          "enum": [
+            "life"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Destroy effects for targets, filtered groups, and damaged objects.",
+          "enum": [
+            "destroy"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Exile effects for targets, graveyards, and until-source-leaves zones.",
+          "enum": [
+            "exile"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Sacrifice effects for the source or other specified permanents.",
+          "enum": [
+            "sacrifice"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Tap, untap, goad, equip, and control-changing effects.",
+          "enum": [
+            "control"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Add, remove, move, and count counters.",
+          "enum": [
+            "counters"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Mana production effects.",
+          "enum": [
+            "mana"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Mill and impulse-exile-from-library effects.",
+          "enum": [
+            "mill"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Temporary or base power/toughness modifications.",
+          "enum": [
+            "pump"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Reveal effects.",
+          "enum": [
+            "reveal"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Token creation and copy-token effects.",
+          "enum": [
+            "token"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Move cards or permanents between zones.",
+          "enum": [
+            "zone"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Copy spells, abilities, or objects.",
+          "enum": [
+            "copy"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Search, scry, surveil, cascade, clash, and top-library selection.",
+          "enum": [
+            "dig"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Resolution-time choices such as may-sacrifice, discard, and proliferate.",
+          "enum": [
+            "choice"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Continuous static effects and replacement effects.",
+          "enum": [
+            "static"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Specialized effects that do not fit a broader family yet.",
+          "enum": [
+            "misc"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Run multiple effects in order.",
+          "enum": [
+            "sequence"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Choose one effect branch during resolution.",
+          "enum": [
+            "choose_one"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Run effects only when a condition holds, with optional otherwise steps.",
+          "enum": [
+            "conditional"
+          ],
+          "type": "string"
+        }
+      ]
     },
     "HandActivatedAbilityTomlSchema": {
       "additionalProperties": false,
@@ -1169,6 +1333,7 @@
   "description": "A card's top-level TOML table.\n\nThis mirrors the DSL's top-level card shape with owned fields, then folds into the interned `CardDef` representation used by the engine.",
   "properties": {
     "abilities": {
+      "description": "Authored rules text as ability blocks. Each block has a `timing` and one or more `effects`; multiple effects fold into `Effect::Sequence` in order.",
       "items": {
         "$ref": "#/$defs/AbilityTomlSchema"
       },
@@ -1190,6 +1355,7 @@
     },
     "approximates": {
       "default": null,
+      "description": "Machine-readable fidelity note for modeled divergences. Set this whenever a `# ponytail:` comment marks a deliberate simplification; leave absent for faithful cards.",
       "type": [
         "string",
         "null"
@@ -1275,7 +1441,12 @@
       "type": "array"
     },
     "cost": {
-      "$ref": "#/$defs/CostToml"
+      "allOf": [
+        {
+          "$ref": "#/$defs/CostToml"
+        }
+      ],
+      "description": "Printed mana cost. Omit the table for free cards such as lands and most token profiles."
     },
     "cumulative_upkeep": {
       "description": "Cumulative upkeep (CR 702.24) — `[cumulative_upkeep]` (`graveyard_cards = N`); absent for a card without cumulative upkeep."
@@ -1369,6 +1540,7 @@
     },
     "enters_tapped": {
       "default": false,
+      "description": "Unconditional enters-tapped replacement (CR 614.13), usually for lands.",
       "type": "boolean"
     },
     "enters_tapped_unless": true,
@@ -1457,6 +1629,7 @@
       "type": "string"
     },
     "identity": {
+      "description": "Extra color-identity pips (CR 903.4) that the simplified model would otherwise drop, such as pips in trimmed activated abilities. Deck-building only.",
       "items": {
         "$ref": "#/$defs/Color"
       },
@@ -1469,10 +1642,16 @@
       "type": "array"
     },
     "kind": {
-      "$ref": "#/$defs/KindToml"
+      "allOf": [
+        {
+          "$ref": "#/$defs/KindToml"
+        }
+      ],
+      "description": "Printed card kind/type line as a `[kind]` table."
     },
     "legendary": {
       "default": false,
+      "description": "Legendary supertype; Commander deck validation reads this when identifying legal commanders.",
       "type": "boolean"
     },
     "may_choose_not_to_untap": {
@@ -1482,6 +1661,7 @@
     },
     "modal": {
       "default": false,
+      "description": "A modal spell or modal triggered ability (\"Choose N\"). For modal spells, each `timing = \"spell\"` ability is one mode.",
       "type": "boolean"
     },
     "morph": {
@@ -1496,10 +1676,12 @@
       "description": "Morph (CR 702.37) — `[morph]` with the same `[cost]`-table shape as `[bestow]` (the card's morph cost); absent for a card without morph."
     },
     "name": {
+      "description": "Printed card name and card-pool registry key. The filename is arbitrary; this field is what authors, tests, and the catalog use to find a card.",
       "type": "string"
     },
     "oracle": {
       "default": null,
+      "description": "Verbatim Scryfall Oracle text for catalog hover/read-the-card display. The engine never parses this; behavior comes from abilities, keywords, and other DSL fields.",
       "type": [
         "string",
         "null"
@@ -1507,6 +1689,7 @@
     },
     "otags": {
       "default": [],
+      "description": "Scryfall Tagger oracle-tag slugs for thematic catalog search. Pure metadata.",
       "items": {
         "type": "string"
       },
@@ -1530,6 +1713,7 @@
     },
     "sets": {
       "default": [],
+      "description": "Every Scryfall set code with a printing of this oracle, used by coverage and catalog search. Pure metadata; gameplay never reads it.",
       "items": {
         "type": "string"
       },
@@ -1542,6 +1726,7 @@
     },
     "subtypes": {
       "default": [],
+      "description": "Printed non-land subtypes, such as creature, artifact, and enchantment subtypes. Land types live under `[kind].subtypes`.",
       "items": {
         "type": "string"
       },

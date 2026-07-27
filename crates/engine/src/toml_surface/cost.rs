@@ -41,13 +41,21 @@ impl From<XPips> for u8 {
 )]
 #[serde(default, deny_unknown_fields)]
 pub struct CostToml {
+    /// Generic mana pips such as `{2}`.
     pub generic: u8,
+    /// White mana pips (`{W}`).
     pub white: u8,
+    /// Blue mana pips (`{U}`).
     pub blue: u8,
+    /// Black mana pips (`{B}`).
     pub black: u8,
+    /// Red mana pips (`{R}`).
     pub red: u8,
+    /// Green mana pips (`{G}`).
     pub green: u8,
+    /// Colorless mana pips (`{C}`), payable only by colorless mana. This is not a color.
     pub colorless: u8,
+    /// `{X}` pips. `true` means one `{X}`; an integer gives the count of `{X}` symbols.
     pub x: XPips,
     /// Hybrid mana pips (CR 107.4e — `{a/b}`): a list of two-color arrays, one per
     /// hybrid symbol (`hybrid = [["black", "green"]]` for one `{B/G}`).

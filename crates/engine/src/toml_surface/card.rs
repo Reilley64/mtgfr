@@ -16,27 +16,55 @@ use crate::{
 #[schemars(rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
 enum EffectTypeTomlSchema {
+    #[schemars(description = "Damage effects such as targeted damage and mass creature damage.")]
     Damage,
+    #[schemars(description = "Card draw effects for one player, target players, or each player.")]
     Draw,
+    #[schemars(description = "Life gain, life loss, drain, and life-payment riders.")]
     Life,
+    #[schemars(description = "Destroy effects for targets, filtered groups, and damaged objects.")]
     Destroy,
+    #[schemars(
+        description = "Exile effects for targets, graveyards, and until-source-leaves zones."
+    )]
     Exile,
+    #[schemars(description = "Sacrifice effects for the source or other specified permanents.")]
     Sacrifice,
+    #[schemars(description = "Tap, untap, goad, equip, and control-changing effects.")]
     Control,
+    #[schemars(description = "Add, remove, move, and count counters.")]
     Counters,
+    #[schemars(description = "Mana production effects.")]
     Mana,
+    #[schemars(description = "Mill and impulse-exile-from-library effects.")]
     Mill,
+    #[schemars(description = "Temporary or base power/toughness modifications.")]
     Pump,
+    #[schemars(description = "Reveal effects.")]
     Reveal,
+    #[schemars(description = "Token creation and copy-token effects.")]
     Token,
+    #[schemars(description = "Move cards or permanents between zones.")]
     Zone,
+    #[schemars(description = "Copy spells, abilities, or objects.")]
     Copy,
+    #[schemars(description = "Search, scry, surveil, cascade, clash, and top-library selection.")]
     Dig,
+    #[schemars(
+        description = "Resolution-time choices such as may-sacrifice, discard, and proliferate."
+    )]
     Choice,
+    #[schemars(description = "Continuous static effects and replacement effects.")]
     Static,
+    #[schemars(description = "Specialized effects that do not fit a broader family yet.")]
     Misc,
+    #[schemars(description = "Run multiple effects in order.")]
     Sequence,
+    #[schemars(description = "Choose one effect branch during resolution.")]
     ChooseOne,
+    #[schemars(
+        description = "Run effects only when a condition holds, with optional otherwise steps."
+    )]
     Conditional,
 }
 
@@ -188,12 +216,17 @@ pub struct CardToml {
     /// Scryfall card UUID for the default Printing — required on top-level pool TOMLs.
     #[serde(default)]
     pub default_print: String,
+    /// Printed card name and card-pool registry key. The filename is arbitrary; this field
+    /// is what authors, tests, and the catalog use to find a card.
     pub name: String,
     #[serde(
         default,
         deserialize_with = "crate::toml_surface::deserialize_cost_toml"
     )]
+    /// Printed mana cost. Omit the table for free cards such as lands and most token
+    /// profiles.
     pub cost: CostToml,
+    /// Printed card kind/type line as a `[kind]` table.
     pub kind: KindToml,
     /// An Aura's enchant subject restriction (CR 303.4a) — `enchant = { … }`, the same
     /// [`PermanentFilter`] table/shorthand shape as any other filter field; absent means
@@ -207,6 +240,8 @@ pub struct CardToml {
     #[serde(default)]
     pub enchant_graveyard: bool,
     #[serde(default)]
+    /// Legendary supertype; Commander deck validation reads this when identifying legal
+    /// commanders.
     pub legendary: bool,
     /// Snow supertype (CR 205.4g) — `snow = true`; absent (`false`) for every ordinary card.
     #[serde(default)]
@@ -216,6 +251,8 @@ pub struct CardToml {
     #[serde(default)]
     pub uncounterable: bool,
     #[serde(default)]
+    /// A modal spell or modal triggered ability ("Choose N"). For modal spells, each
+    /// `timing = "spell"` ability is one mode.
     pub modal: bool,
     #[serde(rename = "choose", default = "one_u8")]
     pub modal_choose: u8,
@@ -237,8 +274,12 @@ pub struct CardToml {
     pub conditional_keywords: Vec<ConditionalKeywordToml>,
     #[serde(default)]
     #[cfg_attr(feature = "card-schema", schemars(with = "Vec<AbilityTomlSchema>"))]
+    /// Authored rules text as ability blocks. Each block has a `timing` and one or more
+    /// `effects`; multiple effects fold into `Effect::Sequence` in order.
     pub abilities: Vec<Ability>,
     #[serde(default)]
+    /// Extra color-identity pips (CR 903.4) that the simplified model would otherwise
+    /// drop, such as pips in trimmed activated abilities. Deck-building only.
     pub identity: Vec<Color>,
     /// Explicit colors (CR 105.2a) overriding the cost-pip derivation — a token's stated
     /// color, since it has no mana cost to derive one from. `colors = ["green"]` in
@@ -249,6 +290,7 @@ pub struct CardToml {
     #[serde(default)]
     pub devoid: bool,
     #[serde(default)]
+    /// Unconditional enters-tapped replacement (CR 614.13), usually for lands.
     pub enters_tapped: bool,
     #[serde(default)]
     // WAVE_C: model Condition's tagged TOML surface.
@@ -280,13 +322,23 @@ pub struct CardToml {
     #[serde(default)]
     pub cast_only_before_attackers: bool,
     #[serde(default)]
+    /// Machine-readable fidelity note for modeled divergences. Set this whenever a
+    /// `# ponytail:` comment marks a deliberate simplification; leave absent for faithful
+    /// cards.
     pub approximates: Option<String>,
+    /// Verbatim Scryfall Oracle text for catalog hover/read-the-card display. The engine
+    /// never parses this; behavior comes from abilities, keywords, and other DSL fields.
     #[serde(default)]
     pub oracle: Option<String>,
+    /// Every Scryfall set code with a printing of this oracle, used by coverage and
+    /// catalog search. Pure metadata; gameplay never reads it.
     #[serde(default)]
     pub sets: Vec<String>,
+    /// Printed non-land subtypes, such as creature, artifact, and enchantment subtypes.
+    /// Land types live under `[kind].subtypes`.
     #[serde(default)]
     pub subtypes: Vec<String>,
+    /// Scryfall Tagger oracle-tag slugs for thematic catalog search. Pure metadata.
     #[serde(default)]
     pub otags: Vec<String>,
     /// Cycling {N} (CR 702.29a) — `cycling = { generic = N }`; absent for a card with none.
