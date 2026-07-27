@@ -5,16 +5,30 @@ description: Author or edit a card definition TOML in crates/cards/data/, or jud
 
 # Card-Definition TOML DSL
 
-One TOML file per card in `crates/cards/data/*.toml`, deserialized into `engine::CardDef`.
+One TOML file per card in `crates/cards/data/*.toml`, parsed as `engine::CardToml`
+and folded into `engine::CardDef`.
 Token profiles live in `crates/cards/data/tokens/*.toml` and are referenced from creating cards
 by Scryfall oracle id (`token = "<id>"` on `create_token` — no inline token tables).
 
 **Full field reference: [`DSL_REFERENCE.md`](DSL_REFERENCE.md)** (in this skill folder). Read
-it before writing or editing a card TOML. **Source of truth for shapes** is
-`crates/engine/src/types.rs` and `crates/engine/src/de.rs` — if the reference and code
+it before writing or editing a card TOML. It is still hand-maintained until Wave B's generated
+reference ships. **Source of truth for shapes** is `crates/engine/src/toml_surface/`,
+`crates/engine/src/types/effect/`, and `crates/engine/src/de.rs` — if the reference and code
 disagree, the code wins. Engine gaps for a deck live in that deck's
 `docs/fidelity/<slug>-increments.md` (created by the `fidelity-grind` skill) — flag with
 `approximates` / `# ponytail:` on the card rather than contorting the model.
+
+## Schema and validation
+
+- Generated schemas live at `crates/cards/schema/card.schema.json` and
+  `crates/cards/schema/token.schema.json`.
+- Validate touched deckable cards with `just cards-toml-validate crates/cards/data/<card>.toml`.
+- Validate token profiles with
+  `just cards-toml-validate --token crates/cards/data/tokens/<token>.toml`.
+- After changing TOML surface types or schema annotations, run `just cards-schema`; use
+  `just cards-schema-check` to prove the committed schemas are fresh.
+- Schema validation catches structural TOML mistakes. Rust deserialize through
+  `CardToml -> CardDef` remains the authority for what actually loads.
 
 ## Non-negotiable discipline
 
