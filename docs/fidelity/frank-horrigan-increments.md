@@ -692,9 +692,9 @@ trim the note to the genuinely-remaining "destroy all battles" residual. *Cards:
 
 _Landed 2026-07-27: new `CountersEffect::RemoveAllPlayerCounters { scope }` (mirrors
 `PutCountersOnPlayer`'s `EdictScope` shape, iterating every `PlayerCounterKind` via a new `ALL`
-const) restores the fifth mode as `final_act.toml` mode 3, `choose_max` raised to 4. The
-`approximates` note now names only the "destroy all battles" residual. Still blocked: that
-one mode — battles aren't a modeled permanent type, and no card in this deck makes one._
+const) restores the fifth mode. `main` landed the "destroy all battles" mode independently while
+this branch was in flight, so the merged card carries all five printed modes as `choose_max = 5`
+with the counter mode at index 4, and the `approximates` note is gone entirely._
 
 ### 24. `plus-minus-counter-annihilation-sba` — observers, S — LANDED 2026-07-26
 Depends on: nothing. **Falsifies `characteristics.rs:1100`.**

@@ -131,7 +131,7 @@ into the increment that clears it. Seven are cleared as of 2026-07-27; two remai
 
 | Claim | Falsified by | Increment |
 |---|---|---|
-| ~~`final_act.toml:13,22` — "each opponent loses all counters" dropped; "this pool tracks no player-level counters"~~ **cleared 2026-07-27** | the whole infect/rad suite | #23 (landed) — the fifth mode is restored; only "destroy all battles" remains dropped |
+| ~~`final_act.toml:13,22` — "each opponent loses all counters" dropped; "this pool tracks no player-level counters"~~ **cleared 2026-07-27** | the whole infect/rad suite | #23 (landed) — the fifth mode is restored; `main` supplied the battles mode, so all five printed modes are expressible |
 | ~~`types/effect/shared.rs:1035` — proliferate "can't yet add a time counter to a suspended card"~~ **cleared 2026-07-27** | 9 proliferate sources + 3 planeswalkers + Innkeeper's Talent | #17 (landed) — the note understated it: proliferate also omitted **players**, **loyalty**, and **Class level**. Players and loyalty now ship; the exile-store kinds (time/suspend) remain the residual |
 | ~~`types/effect/shared.rs:1070` — "grow this slot array when a future card needs another named kind"~~ **cleared 2026-07-27** | poison/rad | #20 slices 1 + #21 (landed) — the prescribed remedy could not work (the slot array lives on `Permanent`, poison/rad live on players); a separate `PlayerCounterKind` shipped instead |
 | `characteristics.rs:1811` — CR 616.1 ordering "documented rather than offered as a choice" because every pool replacement is the affected player's own adder | Vorinclex, Monstrous Raider | #19 (landed) — a *halving* owned by an opponent breaks all three premises at once; the note is rewritten on `Game::replaced_counters` and the ordering is **still** unoffered |
