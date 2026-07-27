@@ -90,6 +90,19 @@ pub enum StaticEffect {
     /// declaring player (CR: "opponent").
     CantAttackIfCastThisTurn,
 
+    /// "This creature can't attack unless defending player controls an Island" (Sea Serpent,
+    /// Pirate Ship): a restriction carried by the *attacker*, satisfied when the defending player
+    /// controls at least one permanent matching `filter`. The mirror image of
+    /// [`StaticEffect::CantBeAttackedBy`] below, which the defender carries — both are scanned per
+    /// declared (attacker, defender) pair in `Game::declare_attackers`. Printed for two players;
+    /// at a pod the same creature can be legal against one seat and illegal against the next,
+    /// which is why this hangs off the pair rather than off the attacker alone. Also folded into
+    /// [`Game::can_attack`](crate::Game), so a creature with no open seat is not "able" and goad
+    /// cannot demand an attack the card forbids (CR 509.1a).
+    CantAttackUnlessDefenderControls {
+        filter: PermanentFilter,
+    },
+
     CantBeAttackedBy {
         filter: PermanentFilter,
     },
@@ -205,6 +218,12 @@ pub enum StaticEffect {
         cant_block: bool,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         cant_attack_controller: bool,
+        /// Animate Wall's "Enchanted Wall can attack as though it didn't have defender": the host
+        /// ignores the [`Keyword::Defender`](crate::Keyword) attack restriction while this Aura is
+        /// on it. The keyword itself stays — only `Game::can_attack`'s check for it is waived — so
+        /// anything else reading "has defender" is unaffected.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        may_attack_ignoring_defender: bool,
         /// Consecrate Land's "can't be enchanted by other Auras": no *other* Aura may attach to
         /// this host — none can be cast targeting it, and one already there falls off (CR
         /// 704.5n). See [`Game::host_cant_be_enchanted_by`](crate::Game::host_cant_be_enchanted_by).

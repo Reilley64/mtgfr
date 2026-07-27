@@ -764,6 +764,7 @@ impl Effect {
             | Effect::Dig(DigEffect::CashOutExiledWithThis)
             | Effect::Dig(DigEffect::CastExiledWithThisFree)
             | Effect::Static(StaticEffect::BasePowerToughnessFromAmount { .. })
+            | Effect::Static(StaticEffect::CantAttackUnlessDefenderControls { .. })
             | Effect::Static(StaticEffect::GrantToAttached { .. })
             | Effect::Static(StaticEffect::ProtectionFromChosenColor)
             | Effect::Static(StaticEffect::SetAttachedBasePt { .. })
@@ -1589,6 +1590,14 @@ pub enum Condition {
         #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_str_slice"))]
         subtypes: &'static [&'static str],
         count: u32,
+    },
+    /// "if you control no lands whose type line carries any of `subtypes`" (Sea Serpent's
+    /// "when you control no Islands"). The empty-board mirror of
+    /// [`ControlsLandsWithSubtype`](Self::ControlsLandsWithSubtype), which only counts *upward* —
+    /// `count = 0` there would hold vacuously.
+    ControlsNoLandsWithSubtype {
+        #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_str_slice"))]
+        subtypes: &'static [&'static str],
     },
     /// "if an opponent controls `count` or more lands whose type line carries any of
     /// `subtypes`" (Massacre's free-cast permission: "if an opponent controls a Plains" —

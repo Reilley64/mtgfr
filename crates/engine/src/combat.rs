@@ -240,7 +240,10 @@ impl Game {
         self.is_creature_on_battlefield(creature)
             && !p.tapped
             && !self.is_sick_without_haste(creature)
-            && !self.has_keyword(creature, Keyword::Defender)
+            // Animate Wall's "can attack as though it didn't have defender" waives this one
+            // check without touching the keyword itself.
+            && (!self.has_keyword(creature, Keyword::Defender)
+                || self.host_may_attack_ignoring_defender(creature))
             // "Enchanted permanent/creature can't attack" (Faith's Fetters, Prison Term): the
             // reverse of goad's "must attack", a live attached Aura's continuous `cant_attack`
             // grant.
@@ -250,9 +253,34 @@ impl Game {
             // so a restriction beats a requirement (CR 509.1a) — a creature that can't attack
             // isn't "able", so every must-attack loop below reads this and stops demanding it.
             && !self.cant_attack_if_cast_this_turn(self.controller_of(creature))
-            && self
-                .living_players()
-                .any(|d| d != self.controller_of(creature))
+            && self.living_players().any(|d| {
+                // Sea Serpent's "unless defending player controls an Island" is per-defender, so
+                // "able to attack" means *some* seat is open. Checked here as well as at the
+                // declaration so a restriction beats goad's requirement (CR 509.1a).
+                d != self.controller_of(creature) && self.may_attack_defender(creature, d)
+            })
+    }
+
+    /// Whether `attacker`'s own printed attack restriction (Sea Serpent's "this creature can't
+    /// attack unless defending player controls an Island") is satisfied against `defender`. The
+    /// filter is matched over *that player's* battlefield, which is what makes the same creature
+    /// legal against one seat and illegal against the next.
+    pub(crate) fn may_attack_defender(&self, attacker: ObjectId, defender: PlayerId) -> bool {
+        self.def_of(attacker).abilities.iter().all(|ability| {
+            let (
+                Timing::Static,
+                Effect::Static(StaticEffect::CantAttackUnlessDefenderControls { filter }),
+            ) = (ability.timing, &ability.effect)
+            else {
+                return true;
+            };
+            // Battlefield only, and only the defender's — the same enumeration `CantBeAttackedBy`
+            // uses below, which never walks the full object arena (`controller_of` panics on a
+            // ceased token).
+            self.controlled_battlefield(defender)
+                .into_iter()
+                .any(|id| self.permanent_matches(filter, id, defender, Some(attacker)))
+        })
     }
 
     /// Test/setup helper: goad `creature` on behalf of `by` (routed through an event so state
@@ -533,6 +561,11 @@ impl Game {
             let Some(defending_player) = self.legal_defending_player(player, defender) else {
                 return Err(Reject::IllegalDeclaration);
             };
+            // The attacker's own per-defender restriction (Sea Serpent). `can_attack` above only
+            // established that *some* seat is open; this is the one actually declared.
+            if !self.may_attack_defender(a, defending_player) {
+                return Err(Reject::IllegalDeclaration);
+            }
             resolved.push((a, defending_player));
         }
 

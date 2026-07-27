@@ -2473,6 +2473,45 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         }
     }
 
+    /// "Can't attack unless defending player controls an Island": the restriction rides the
+    /// *attacker*, and its filter names the Island without a controller axis — the scan is already
+    /// scoped to the defending player's battlefield, so a `controller = "you"` here would read the
+    /// wrong seat.
+    #[test]
+    fn unlimited_island_gated_attackers_look_at_the_defenders_board() {
+        for name in ["Sea Serpent", "Pirate Ship"] {
+            let def = get_by_name(name).expect("in the pool");
+            let restriction = def
+                .abilities
+                .iter()
+                .find_map(|a| match &a.effect {
+                    Effect::Static(StaticEffect::CantAttackUnlessDefenderControls { filter }) => {
+                        Some(filter)
+                    }
+                    _ => None,
+                })
+                .unwrap_or_else(|| panic!("{name} can't attack unless there is an Island"));
+            assert_eq!(restriction.subtypes, ["Island"]);
+            assert_eq!(restriction.controller, FilterController::Any);
+        }
+    }
+
+    /// Animate Wall's "Enchant Wall" is what keeps its defender waiver honest: it can only ever be
+    /// handed to a creature that has defender for the printed reason.
+    #[test]
+    fn unlimited_animate_wall_only_enchants_walls() {
+        let aura = get_by_name("Animate Wall").expect("Animate Wall is in the pool");
+        let enchant = aura.enchant.expect("it enchants a Wall");
+        assert_eq!(enchant.subtypes, ["Wall"]);
+        assert!(matches!(
+            aura.abilities[0].effect,
+            Effect::Static(StaticEffect::GrantToAttached {
+                may_attack_ignoring_defender: true,
+                ..
+            })
+        ));
+    }
+
     /// "Power and toughness are each equal to …": both halves read the same count, and the
     /// printed box stays 0/0 so the defining ability is the only thing supplying numbers.
     #[test]

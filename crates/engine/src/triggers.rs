@@ -3878,6 +3878,11 @@ impl Game {
             Condition::ControlsLandsWithSubtype { subtypes, count } => {
                 self.lands_with_subtype_controlled(ctx.controller, subtypes) as u32 >= count
             }
+            // Sea Serpent: "when you control no Islands" — the same land-type scan as above,
+            // read for emptiness rather than a threshold.
+            Condition::ControlsNoLandsWithSubtype { subtypes } => {
+                self.lands_with_subtype_controlled(ctx.controller, subtypes) == 0
+            }
             // "an opponent controls ... a Plains": holds when *some* living opponent
             // individually meets the threshold (unlike `OpponentsControlLands`, which sums).
             Condition::OpponentControlsLandsWithSubtype { subtypes, count } => self

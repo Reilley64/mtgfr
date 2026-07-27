@@ -3128,6 +3128,121 @@ fn attackers_can_be_split_across_multiple_opponents() {
     assert_eq!(game.life(PlayerId(3)), 20, "P3 wasn't attacked");
 }
 
+// ── Attack restrictions read off the defending player's board (Sea Serpent, Animate Wall) ──
+
+#[test]
+fn sea_serpent_can_only_be_sent_at_a_player_who_controls_an_island() {
+    // "This creature can't attack unless defending player controls an Island." Printed for two
+    // players; at a pod it is a per-defender restriction, so the same Serpent is legal against one
+    // seat and illegal against the next.
+    let mut game = Game::with_players(3, 0);
+    let serpent = game.spawn_on_battlefield(PlayerId(0), card("Sea Serpent")); // 5/5
+    game.spawn_on_battlefield(PlayerId(1), card("Island"));
+    game.spawn_on_battlefield(PlayerId(0), card("Island"));
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+
+    assert_eq!(
+        game.submit(Intent::DeclareAttackers {
+            player: PlayerId(0),
+            attackers: vec![(serpent, Defender::Player(PlayerId(2)))],
+        }),
+        Err(Reject::IllegalDeclaration),
+        "P2 controls no Island, and the Serpent's controller having one is not the same thing",
+    );
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: vec![(serpent, Defender::Player(PlayerId(1)))],
+    })
+    .expect("P1 controls an Island, so that seat is open");
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+    assert_eq!(game.life(PlayerId(1)), 15, "the 5/5 connected");
+}
+
+#[test]
+fn a_goaded_sea_serpent_with_no_island_to_attack_is_not_required_to_attack() {
+    // Goad demands an attack "if able" (CR 701.38a). A Serpent whose every defender is Islandless
+    // is not able, so the declaration of nothing must still be legal — a requirement never
+    // overrides a restriction (CR 509.1a).
+    let mut game = Game::with_players(2, 0);
+    let serpent = game.spawn_on_battlefield(PlayerId(0), card("Sea Serpent"));
+    game.goad(serpent, PlayerId(1));
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: vec![],
+    })
+    .expect("goad cannot demand an attack the Serpent's own restriction forbids");
+}
+
+#[test]
+fn sea_serpent_is_sacrificed_when_its_controller_holds_no_island() {
+    // "When you control no Islands, sacrifice this creature." An Island of the opponent's is not
+    // yours, so it does not keep the Serpent alive.
+    let mut game = Game::with_players(2, 0);
+    let serpent = game.spawn_on_battlefield(PlayerId(0), card("Sea Serpent"));
+    game.spawn_on_battlefield(PlayerId(1), card("Island"));
+    advance_until(&mut game, |g| {
+        g.current_step() == Step::End && g.active_player() == PlayerId(0)
+    });
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.zone_of(serpent),
+        Zone::Graveyard,
+        "its controller controls no Island of their own"
+    );
+}
+
+#[test]
+fn sea_serpent_stays_while_its_controller_keeps_an_island() {
+    let mut game = Game::with_players(2, 0);
+    let serpent = game.spawn_on_battlefield(PlayerId(0), card("Sea Serpent"));
+    game.spawn_on_battlefield(PlayerId(0), card("Island"));
+    advance_until(&mut game, |g| {
+        g.current_step() == Step::End && g.active_player() == PlayerId(0)
+    });
+    assert!(
+        game.stack().is_empty(),
+        "the intervening-if holds the trigger off while an Island is out"
+    );
+    assert_eq!(game.zone_of(serpent), Zone::Battlefield);
+}
+
+#[test]
+fn animate_wall_lets_the_wall_it_enchants_attack() {
+    // "Enchanted Wall can attack as though it didn't have defender." The Wall keeps the keyword —
+    // only the attack restriction stops applying, and only for the one Wall the Aura is on.
+    let mut game = Game::with_players(2, 0);
+    let enchanted = game.spawn_on_battlefield(PlayerId(0), card("Wall of Swords")); // 3/5 defender
+    let bare = game.spawn_on_battlefield(PlayerId(0), card("Wall of Swords"));
+    let animate = game.spawn_in_hand(PlayerId(0), card("Animate Wall"));
+    cast_and_resolve(&mut game, animate, Some(Target::Object(enchanted)));
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+
+    assert_eq!(
+        game.submit(Intent::DeclareAttackers {
+            player: PlayerId(0),
+            attackers: vec![
+                (enchanted, Defender::Player(PlayerId(1))),
+                (bare, Defender::Player(PlayerId(1))),
+            ],
+        }),
+        Err(Reject::IllegalDeclaration),
+        "the Wall next to it was never enchanted, so its defender still holds",
+    );
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: vec![(enchanted, Defender::Player(PlayerId(1)))],
+    })
+    .expect("the enchanted Wall attacks as though it had no defender");
+    assert!(
+        game.has_keyword(enchanted, Keyword::Defender),
+        "it still has defender — it merely attacks as though it did not"
+    );
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+    assert_eq!(game.life(PlayerId(1)), 17, "the 3/5 connected");
+}
+
 // ── Attack tax / pillow-fort statics (CR 508.1g declare-attackers costs, Ghostly Prison) ──
 
 /// Float `n` generic-worth of mana into `player`'s pool by tapping `n` Forests.
@@ -29503,6 +29618,7 @@ static FLIGHT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             cant_attack: false,
             cant_block: false,
             cant_attack_controller: false,
+            may_attack_ignoring_defender: false,
             cant_be_enchanted: false,
             activated_abilities: None,
             legendary_only: false,
@@ -29593,6 +29709,7 @@ static PRO_WHITE_CLOAK: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             cant_attack: false,
             cant_block: false,
             cant_attack_controller: false,
+            may_attack_ignoring_defender: false,
             cant_be_enchanted: false,
             activated_abilities: None,
             legendary_only: false,
@@ -29685,6 +29802,7 @@ static FALLEN_IDEAL_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             cant_attack: false,
             cant_block: false,
             cant_attack_controller: false,
+            may_attack_ignoring_defender: false,
             cant_be_enchanted: false,
             activated_abilities: None,
             legendary_only: false,
@@ -29714,6 +29832,7 @@ static VOW_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             cant_attack: false,
             cant_block: false,
             cant_attack_controller: true,
+            may_attack_ignoring_defender: false,
             cant_be_enchanted: false,
             activated_abilities: None,
             legendary_only: false,
@@ -102035,6 +102154,7 @@ static TOXIC_AURA_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             cant_attack: false,
             cant_block: false,
             cant_attack_controller: false,
+            may_attack_ignoring_defender: false,
             cant_be_enchanted: false,
             activated_abilities: None,
             legendary_only: false,

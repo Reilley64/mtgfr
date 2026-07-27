@@ -389,7 +389,7 @@ Sink's "they tap all lands with mana abilities they control" is a filtered mass 
 `tap_all`. Power Sink is otherwise the standard counter-unless-pays shape.
 *Cards:* drain_power, mana_short, power_sink.
 
-### 24. `attack-restrictions-by-defender` — 3 cards, S
+### 24. `attack-restrictions-by-defender` — 3 cards, S — **done**
 Depends on: nothing.
 "This creature can't attack unless defending player controls an Island" and Animate Wall's "can
 attack as though it didn't have defender." Attack legality checks keywords and tapped state but
@@ -400,6 +400,7 @@ the multiplayer wrinkle the printed card never had to consider), and a
 `StaticEffect::IgnoresDefender` consulted beside the `Defender` keyword check. Pirate Ship and Sea
 Serpent's "when you control no Islands, sacrifice this" is a state trigger the engine has a shape
 for (`no_creatures_on_battlefield` is the same idea).
+*Landed:* the restriction wanted a filter, not a condition. `StaticEffect::CantAttackUnlessDefenderControls { filter }` is the exact mirror of the `CantBeAttackedBy` static sitting one screen away in `declare_attackers` — that one rides the defender, this one rides the attacker — so it reuses `permanent_matches` over the defending player's battlefield and renders through the filter machinery that already existed. Trying it as a `Condition` first was the wrong rung: conditions have no message rendering, so the card text would have projected as a blank. Animate Wall needed no new static at all, only a `may_attack_ignoring_defender` bool on the existing `grant_to_attached` bag beside `cant_attack` — "as though it didn't have defender" waives `can_attack`'s one check without touching the keyword, which is what the printed "as though" says. The restriction is also folded into `can_attack`'s legal-defender clause, because leaving it out lets goad demand an attack the card forbids and no legal declaration exists (CR 509.1a) — a soft-lock, not a rules nicety. `Condition::ControlsNoLandsWithSubtype` is new because `controls_lands_with_subtype` only counts upward and `count = 0` holds vacuously. What did *not* land: "When you control no Islands, sacrifice this creature" is a state trigger (CR 603.8) and the engine has no state-trigger shape — Pyrohemia's `no_creatures_on_battlefield`, which the sketch called the same idea, is a printed end-step trigger, not a state trigger. Both ships carry an `approximates` marker and the end-step approximation; see #77.
 *Cards:* animate_wall, pirate_ship, sea_serpent.
 
 ### 25. `amount-arithmetic` — 2 cards, S
@@ -1126,6 +1127,22 @@ response, gained shroud, or regenerated (CR 701.15 — regeneration replaces the
 was not destroyed) makes the two diverge, and this card's whole point is the symmetry between what
 it destroys and what it burns.
 *Cards:* volcanic_eruption.
+
+### 77. `state-triggers` — 2 cards, M
+Depends on: nothing.
+Split out of #24. Pirate Ship and Sea Serpent's "When you control no Islands, sacrifice this
+creature" is a state trigger (CR 603.8): it fires the moment the condition becomes true, checked
+whenever the game checks state-based actions, and does not fire again until the condition has been
+false in between. Both cards ship an `each_end_step` approximation with the same intervening-if, so
+a ship whose last Island left survives until that turn's end step. *Sketch:* a `timing =
+"state"` ability whose `[abilities.condition]` is scanned in the same pipeline phase that already
+places triggers after the state-based sweep (`triggers.rs`'s placement runs one phase behind
+`check_state_based_actions`, which is exactly CR 603.8's timing), plus a per-(object, ability)
+"already fired for this condition" latch cleared when the condition next reads false — without the
+latch a sacrifice that gets replaced or countered re-fires on every sweep. Resist reaching for it
+until a card needs the *immediacy*: the two ships only differ from their approximation for the span
+of one turn, and no 2ed card punishes that window.
+*Cards:* pirate_ship, sea_serpent.
 
 ### 74. `defining-count-that-switches-on-attacking` — 1 card, M
 Depends on: #2 (done).

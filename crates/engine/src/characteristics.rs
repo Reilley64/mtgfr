@@ -1064,6 +1064,29 @@ impl Game {
         })
     }
 
+    /// Whether a live Aura attached to `host` waives the [`Keyword::Defender`] attack
+    /// restriction — Animate Wall's "Enchanted Wall can attack as though it didn't have defender."
+    /// The host keeps the keyword; only `Game::can_attack`'s check for it is skipped, so this is
+    /// "as though", not a keyword loss. The mirror image of [`Self::host_cant_attack`], read off
+    /// the same attachment scan, so it ends the instant the Aura leaves.
+    pub(crate) fn host_may_attack_ignoring_defender(&self, host: ObjectId) -> bool {
+        self.attachments(host).into_iter().any(|id| {
+            !self.is_phased_out(id)
+                && self.def_of(id).abilities.iter().any(|a| {
+                    matches!(
+                        (a.timing, a.effect.clone()),
+                        (
+                            Timing::Static,
+                            Effect::Static(StaticEffect::GrantToAttached {
+                                may_attack_ignoring_defender: true,
+                                ..
+                            })
+                        )
+                    )
+                })
+        })
+    }
+
     /// Whether a live Aura attached to `host` carries a static [`Effect::Static(StaticEffect::GrantToAttached)`] with
     /// `cant_attack_controller = true` *and* is controlled by `defender` (the Vow cycle's
     /// "Enchanted creature can't attack you" — scoped to this Aura's own controller, unlike

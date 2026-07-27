@@ -173,7 +173,7 @@ Authorable in Phase 3 with no engine change. TDD each one.
 Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 
 - [ ] **Animate Artifact** {3}{U} · Enchantment — Aura — increment 76
-- [ ] **Animate Wall** {W} · Enchantment — Aura — increment 24
+- [x] **Animate Wall** {W} · Enchantment — Aura — increment 24
 - [x] **Ankh of Mishra** {2} · Artifact — increment 58
 - [ ] **Aspect of Wolf** {1}{G} · Enchantment — Aura — increment 75, 25
 - [ ] **Balance** {1}{W} · Sorcery — increment 43
@@ -272,7 +272,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Paralyze** {B} · Enchantment — Aura — increment 7
 - [ ] **Personal Incarnation** {3}{W}{W}{W} · Creature — Avatar Incarnation — increment 6
 - [ ] **Phantasmal Terrain** {U}{U} · Enchantment — Aura — increment 8
-- [ ] **Pirate Ship** {4}{U} · Creature — Human Pirate — increment 24
+- [x] **Pirate Ship** {4}{U} · Creature — Human Pirate — increment 24, 77
 - [x] **Plague Rats** {2}{B} · Creature — Rat — increment 2
 - [ ] **Power Leak** {1}{U} · Enchantment — Aura — increment 4
 - [ ] **Power Sink** {X}{U} · Instant — increment 23
@@ -287,7 +287,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Sacrifice** {B} · Instant — increment 46
 - [x] **Samite Healer** {1}{W} · Creature — Human Cleric — increment 4
 - [x] **Scavenging Ghoul** {3}{B} · Creature — Zombie — increment 28
-- [ ] **Sea Serpent** {5}{U} · Creature — Serpent — increment 24
+- [x] **Sea Serpent** {5}{U} · Creature — Serpent — increment 24, 77
 - [x] **Shanodin Dryads** {G} · Creature — Nymph Dryad — increment 3
 - [ ] **Simulacrum** {1}{B} · Instant — increment 22
 - [ ] **Siren's Call** {U} · Instant — increment 26

@@ -270,6 +270,7 @@ message_keys! {
     EFFECT_STATIC_ATTACK_TAX => "effect.static_attack_tax",
     EFFECT_STATIC_BASE_POWER_TOUGHNESS_FROM_AMOUNT => "effect.static_base_power_toughness_from_amount",
     EFFECT_STATIC_CANT_ATTACK_IF_CAST_THIS_TURN => "effect.static_cant_attack_if_cast_this_turn",
+    EFFECT_STATIC_CANT_ATTACK_UNLESS_DEFENDER_CONTROLS => "effect.static_cant_attack_unless_defender_controls",
     EFFECT_STATIC_CANT_BE_ATTACKED_BY => "effect.static_cant_be_attacked_by",
     EFFECT_STATIC_CANT_BLOCK_FILTER => "effect.static_cant_block_filter",
     EFFECT_STATIC_CANT_CAST_DURING_COMBAT => "effect.static_cant_cast_during_combat",
@@ -2080,6 +2081,10 @@ impl Effect {
             }
             Effect::Static(CantBlockFilter { filter }) => MessageRef::new(MessageKey::EFFECT_STATIC_CANT_BLOCK_FILTER)
                 .with_params(vec![permanent_filter_param("filter", filter)]),
+            Effect::Static(CantAttackUnlessDefenderControls { filter }) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_CANT_ATTACK_UNLESS_DEFENDER_CONTROLS)
+                    .with_params(vec![permanent_filter_param("filter", filter)])
+            }
             Effect::Static(CantBeAttackedBy { filter }) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_CANT_BE_ATTACKED_BY)
                     .with_params(vec![permanent_filter_param("filter", filter)])

@@ -485,6 +485,8 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.static_cant_attack_if_cast_this_turn": literal(
     "Each opponent who cast a spell this turn can't attack with creatures",
   ),
+  "effect.static_cant_attack_unless_defender_controls": (params) =>
+    `This creature can't attack unless defending player controls ${param(params, "filter")}`,
   "effect.static_cant_be_attacked_by": (params) => `${humanize(param(params, "filter", "Creatures"))} can't attack you`,
   "effect.static_cant_block_filter": (params) => `${humanize(param(params, "filter", "Creatures"))} can't block`,
   "effect.static_cant_cast_during_combat": literal("Players can't cast spells during combat"),
