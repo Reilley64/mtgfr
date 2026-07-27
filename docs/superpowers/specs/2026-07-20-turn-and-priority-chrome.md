@@ -50,7 +50,7 @@ Use `PriorityContextBar` for action controls, `TurnBanner` for active player and
 ## Testing Decisions
 
 - Chrome tests cover Next, Resolve card, Resolve stack, End Turn, Until my turn, and staged / parked play-mode cancel controls.
-- Surface Scene tests cover simple and modal prompt takeovers hiding idle priority actions, including yes/no, pay-cost, mode, pile, destination, board-aim commit/decline/cancel actions, play-mode, and modal-mode actions moving into `priority-context-bar` while the matching coach prompt stays button-free.
+- Surface Scene tests cover simple and modal prompt takeovers hiding idle priority actions, including yes/no, pay-cost, mode, pile, destination, board-aim commit/decline/cancel actions, play-mode, modal-mode actions moving into `priority-context-bar`, and centered rich-prompt shells such as library search / color / creature-type / card-name while the matching coach prompt stays button-free.
 - Chrome Scene tests cover the undecided `mulligan-overlay`, disabled `mulligan-take`, and the post-keep `mulligan-waiting` banner with the restored `hand-bar`.
 - A live board Scene test resolves mulligan `BindCardArt` with `CardArtTick` through the app `toParentMessage` boundary so art ticks are not wrapped as `GotBoardMessage`.
 - Mulligan unit tests cover Keep/Mulligan copy, enablement, and waiting status that names undecided seats (including empty-username fallback).

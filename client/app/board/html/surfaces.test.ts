@@ -1559,7 +1559,7 @@ test("pay_cost with discard shows count and disabled Pay until picked", () => {
   );
 });
 
-test("choose_color aim shows docked mana pips instead of center modal", () => {
+test("choose_color uses a center modal and hides primary actions", () => {
   overlayScene(
     overlayModel(
       initialBoardModel(),
@@ -1571,14 +1571,16 @@ test("choose_color aim shows docked mana pips instead of center modal", () => {
         },
       }),
     ),
-    Scene.expect(Scene.testId("pending-color-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-color-modal")).toExist(),
+    Scene.expect(Scene.testId("pending-color-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-color-0")).toExist(),
     Scene.expect(Scene.testId("prompt-color-pip-4")).toExist(),
   );
 });
 
-test("choose_mana_color aim shows docked mana pips instead of center modal", () => {
+test("choose_mana_color uses a center modal and hides primary actions", () => {
   overlayScene(
     overlayModel(
       initialBoardModel(),
@@ -1591,8 +1593,10 @@ test("choose_mana_color aim shows docked mana pips instead of center modal", () 
         },
       }),
     ),
-    Scene.expect(Scene.testId("pending-color-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-color-modal")).toExist(),
+    Scene.expect(Scene.testId("pending-color-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-color-1")).toExist(),
   );
 });
@@ -1643,7 +1647,7 @@ test("non-decider sees waiting banner instead of pending-choice controls", () =>
   );
 });
 
-test("library search aim shows docked filter chrome instead of center modal", () => {
+test("library search uses a center modal and hides primary actions", () => {
   overlayScene(
     overlayModel(
       {
@@ -1663,8 +1667,10 @@ test("library search aim shows docked filter chrome instead of center modal", ()
         },
       }),
     ),
-    Scene.expect(Scene.testId("pending-library-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-library-modal")).toExist(),
+    Scene.expect(Scene.testId("pending-library-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
     Scene.expect(Scene.testId("pick-title")).toHaveText("Search your library"),
     Scene.expect(Scene.testId("pick-card-filter")).toExist(),
     Scene.expect(Scene.placeholder("Filter by name…")).toExist(),
@@ -1761,7 +1767,7 @@ test("choose_target player buttons show docked pending-player-pick-aim instead o
   );
 });
 
-test("choose_card_name prompt shows a Card name placeholder field", () => {
+test("choose_card_name uses a center modal with a Card name placeholder field", () => {
   overlayScene(
     overlayModel(
       initialBoardModel(),
@@ -1773,15 +1779,17 @@ test("choose_card_name prompt shows a Card name placeholder field", () => {
         },
       }),
     ),
-    Scene.expect(Scene.testId("pending-card-name-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-card-name-modal")).toExist(),
+    Scene.expect(Scene.testId("pending-card-name-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
     Scene.expect(Scene.placeholder("Card name")).toExist(),
     Scene.expect(Scene.testId("prompt-name-input")).toExist(),
     Scene.expect(Scene.testId("prompt-submit")).toBeDisabled(),
   );
 });
 
-test("choose_card_name prompt lists matching catalog suggestions", () => {
+test("choose_card_name center modal lists matching catalog suggestions", () => {
   overlayScene(
     overlayModel(
       {
@@ -1797,15 +1805,17 @@ test("choose_card_name prompt lists matching catalog suggestions", () => {
         },
       }),
     ),
-    Scene.expect(Scene.testId("pending-card-name-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-card-name-modal")).toExist(),
+    Scene.expect(Scene.testId("pending-card-name-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-name-suggestions")).toExist(),
     Scene.expect(Scene.testId("prompt-name-suggestion-0")).toHaveText("Sol Ring"),
     Scene.expect(Scene.testId("prompt-name-suggestion-1")).toHaveText("Sol Talisman"),
   );
 });
 
-test("choose_creature_type prompt filters options by name", () => {
+test("choose_creature_type uses a center modal and filters options by name", () => {
   overlayScene(
     overlayModel(
       { ...initialBoardModel(), promptOptionFilter: "cler" },
@@ -1818,8 +1828,10 @@ test("choose_creature_type prompt filters options by name", () => {
         },
       }),
     ),
-    Scene.expect(Scene.testId("pending-creature-type-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-creature-type-modal")).toExist(),
+    Scene.expect(Scene.testId("pending-creature-type-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-type-filter")).toExist(),
     Scene.expect(Scene.placeholder("Filter types…")).toExist(),
     Scene.expect(Scene.testId("prompt-type-scroll")).toExist(),

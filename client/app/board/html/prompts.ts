@@ -80,6 +80,7 @@ import {
 } from "../messages";
 import type { BoardModel } from "../submodel";
 import { HAND_BAR_H } from "./hand";
+import { promptModalFrame } from "./prompt-modal";
 
 const h = html<Message>();
 
@@ -402,10 +403,44 @@ function cardPickPrompt(
     ],
   );
 
+  const scrollEl = h.div(
+    [
+      h.DataAttribute("testid", "pick-card-scroll"),
+      h.Class(
+        `${PICK_CARD_SCROLL_MIN_CLASS} w-full flex-1 overflow-y-auto overscroll-contain rounded-panel bg-glass/30 p-2`,
+      ),
+    ],
+    [cardsEl],
+  );
+
+  if (searchable) {
+    return promptModalFrame({
+      testId: "pending-library-modal",
+      title: config.title,
+      body: [
+        h.div([h.DataAttribute("testid", "pick-title"), h.Class("sr-only")], [config.title]),
+        h.div(
+          [h.Class("pointer-events-none shrink-0 text-caption text-mist")],
+          ["Filter by name, click a card, then Choose — or Fail to find."],
+        ),
+        h.div(
+          [h.Class("flex min-h-0 w-[min(92vw,720px)] flex-1 flex-col gap-2")],
+          [filterEl ?? h.span([], []), scrollEl],
+        ),
+      ].filter((v): v is Html => v !== null),
+      actions: [
+        submitButton(config.submitLabel, !ready),
+        config.declineLabel != null
+          ? itemButton(config.declineLabel, "prompt-decline", PromptDeclined())
+          : h.span([], []),
+      ].filter((v): v is Html => v !== null),
+    });
+  }
+
   // Card grids dock near the hand bar so the board stays visible (Arena chrome).
   return h.div(
     [
-      h.DataAttribute("testid", searchable ? "pending-library-aim" : "pending-card-pick-aim"),
+      h.DataAttribute("testid", "pending-card-pick-aim"),
       h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
       h.Class(
         "pointer-events-auto fixed left-1/2 z-30 flex max-h-[min(70vh,560px)] w-[min(92vw,720px)] -translate-x-1/2 flex-col gap-2 overflow-hidden rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-snow shadow-hud",
@@ -413,23 +448,8 @@ function cardPickPrompt(
     ],
     [
       h.div([h.DataAttribute("testid", "pick-title"), h.Class("shrink-0 font-semibold text-body")], [config.title]),
-      searchable
-        ? h.div(
-            [h.Class("pointer-events-none shrink-0 text-caption text-mist")],
-            ["Filter by name, click a card, then Choose — or Fail to find."],
-          )
-        : null,
       hintEl,
-      filterEl,
-      h.div(
-        [
-          h.DataAttribute("testid", "pick-card-scroll"),
-          h.Class(
-            `${PICK_CARD_SCROLL_MIN_CLASS} w-full flex-1 overflow-y-auto overscroll-contain rounded-panel bg-glass/30 p-2`,
-          ),
-        ],
-        [cardsEl],
-      ),
+      scrollEl,
       actionsEl,
     ].filter((v): v is Html => v !== null),
   );
@@ -2146,16 +2166,10 @@ function colorPickPrompt(
   ] as const;
   const sizePx = 28;
   const title = pending.kind === "choose_mana_color" ? "Choose a mana color" : "Choose a color";
-  return h.div(
-    [
-      h.DataAttribute("testid", "pending-color-aim"),
-      h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
-      h.Class(
-        "pointer-events-auto fixed left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
-      ),
-    ],
-    [
-      h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], [title]),
+  return promptModalFrame({
+    testId: "pending-color-modal",
+    title,
+    body: [
       h.div(
         [h.Class("flex flex-wrap items-center justify-center gap-2")],
         colors.map((color) => {
@@ -2202,7 +2216,8 @@ function colorPickPrompt(
         }),
       ),
     ],
-  );
+    actions: [],
+  });
 }
 
 function stringPickPrompt(
@@ -2221,107 +2236,103 @@ function stringPickPrompt(
       board.cardNameSuggestions.names.length > 0
         ? board.cardNameSuggestions.names
         : [];
-    return h.div(
-      [
-        h.DataAttribute("testid", "pending-card-name-aim"),
-        h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
-        h.Class(
-          "pointer-events-auto fixed left-1/2 z-30 flex max-h-[min(70vh,560px)] w-[min(92vw,360px)] -translate-x-1/2 flex-col items-center gap-sm overflow-hidden rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
-        ),
-      ],
-      [
-        h.div([h.Class("pointer-events-none shrink-0 text-center font-semibold text-body text-snow")], ["Name a card"]),
-        h.input([
-          h.DataAttribute("testid", "prompt-name-input"),
-          h.Placeholder("Card name"),
-          h.Autofocus(true),
-          h.AriaLabel("Card name"),
-          h.Value(value),
-          h.OnInput((v) => PromptStringSet({ value: v })),
-          h.OnKeyDownPreventDefault((key) => {
-            if (key !== "Enter" || !canSubmit) return Option.none();
-            return Option.some(PromptSubmitted());
-          }),
-          h.Class("w-full shrink-0 rounded-hud bg-glass px-3 py-1 text-body text-snow"),
-        ]),
-        suggestions.length > 0
-          ? h.div(
-              [
-                h.DataAttribute("testid", "prompt-name-suggestions"),
-                h.Class("flex min-h-0 w-full flex-1 flex-col gap-1 overflow-y-auto"),
-              ],
-              suggestions.map((name, index) =>
-                h.button(
+    return promptModalFrame({
+      testId: "pending-card-name-modal",
+      title: "Name a card",
+      body: [
+        h.div(
+          [h.Class("flex min-h-0 w-[min(92vw,360px)] flex-1 flex-col gap-sm")],
+          [
+            h.input([
+              h.DataAttribute("testid", "prompt-name-input"),
+              h.Placeholder("Card name"),
+              h.Autofocus(true),
+              h.AriaLabel("Card name"),
+              h.Value(value),
+              h.OnInput((v) => PromptStringSet({ value: v })),
+              h.OnKeyDownPreventDefault((key) => {
+                if (key !== "Enter" || !canSubmit) return Option.none();
+                return Option.some(PromptSubmitted());
+              }),
+              h.Class("w-full shrink-0 rounded-hud bg-glass px-3 py-1 text-body text-snow"),
+            ]),
+            suggestions.length > 0
+              ? h.div(
                   [
-                    h.Type("button"),
-                    h.DataAttribute("testid", `prompt-name-suggestion-${index}`),
-                    h.OnClick(PromptStringSet({ value: name })),
-                    h.Class(
-                      "cursor-pointer rounded-hud bg-glass px-3 py-1 text-left text-body text-snow hover:bg-glass-dim",
-                    ),
+                    h.DataAttribute("testid", "prompt-name-suggestions"),
+                    h.Class("flex min-h-0 w-full flex-1 flex-col gap-1 overflow-y-auto"),
                   ],
-                  [name],
-                ),
-              ),
-            )
-          : null,
-        submitButton("Name", !canSubmit),
+                  suggestions.map((name, index) =>
+                    h.button(
+                      [
+                        h.Type("button"),
+                        h.DataAttribute("testid", `prompt-name-suggestion-${index}`),
+                        h.OnClick(PromptStringSet({ value: name })),
+                        h.Class(
+                          "cursor-pointer rounded-hud bg-glass px-3 py-1 text-left text-body text-snow hover:bg-glass-dim",
+                        ),
+                      ],
+                      [name],
+                    ),
+                  ),
+                )
+              : null,
+          ],
+        ),
       ].filter((v): v is Html => v !== null),
-    );
+      actions: [submitButton("Name", !canSubmit)],
+    });
   }
-  return h.div(
-    [
-      h.DataAttribute("testid", "pending-creature-type-aim"),
-      h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
-      h.Class(
-        "pointer-events-auto fixed left-1/2 z-30 flex max-h-[min(70vh,560px)] w-[min(92vw,360px)] -translate-x-1/2 flex-col items-center gap-sm overflow-hidden rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
-      ),
-    ],
-    [
+  return promptModalFrame({
+    testId: "pending-creature-type-modal",
+    title: "Choose a creature type",
+    body: [
       h.div(
-        [h.Class("pointer-events-none shrink-0 text-center font-semibold text-body text-snow")],
-        ["Choose a creature type"],
-      ),
-      h.input([
-        h.DataAttribute("testid", "prompt-type-filter"),
-        h.Type("search"),
-        h.Placeholder("Filter types…"),
-        h.Autofocus(true),
-        h.AriaLabel("Filter creature types"),
-        h.Value(board.promptOptionFilter),
-        h.OnInput((v) => PromptOptionFilterSet({ query: v })),
-        h.Class("w-full shrink-0 rounded-hud bg-glass px-3 py-1 text-body text-snow"),
-      ]),
-      h.div(
+        [h.Class("flex min-h-0 w-[min(92vw,360px)] flex-1 flex-col gap-sm")],
         [
-          h.DataAttribute("testid", "prompt-type-scroll"),
-          h.Class("min-h-0 w-full flex-1 overflow-y-auto overscroll-contain"),
-        ],
-        [
+          h.input([
+            h.DataAttribute("testid", "prompt-type-filter"),
+            h.Type("search"),
+            h.Placeholder("Filter types…"),
+            h.Autofocus(true),
+            h.AriaLabel("Filter creature types"),
+            h.Value(board.promptOptionFilter),
+            h.OnInput((v) => PromptOptionFilterSet({ query: v })),
+            h.Class("w-full shrink-0 rounded-hud bg-glass px-3 py-1 text-body text-snow"),
+          ]),
           h.div(
-            [h.Class("flex flex-wrap justify-center gap-2")],
-            (() => {
-              const shown = filterOptionLabels(pending.options, board.promptOptionFilter);
-              if (shown.length === 0 && board.promptOptionFilter.trim() !== "") {
-                return [h.div([h.Class("text-label text-mist")], ["No types match."])];
-              }
-              return shown.map((option) => {
-                const index = pending.options.indexOf(option);
-                return answerButton(
-                  pending,
-                  `prompt-string-${index}`,
-                  option,
-                  { kind: "creature_type", subtype: option },
-                  false,
-                  tableId == null,
-                );
-              });
-            })(),
+            [
+              h.DataAttribute("testid", "prompt-type-scroll"),
+              h.Class("min-h-0 w-full flex-1 overflow-y-auto overscroll-contain"),
+            ],
+            [
+              h.div(
+                [h.Class("flex flex-wrap justify-center gap-2")],
+                (() => {
+                  const shown = filterOptionLabels(pending.options, board.promptOptionFilter);
+                  if (shown.length === 0 && board.promptOptionFilter.trim() !== "") {
+                    return [h.div([h.Class("text-label text-mist")], ["No types match."])];
+                  }
+                  return shown.map((option) => {
+                    const index = pending.options.indexOf(option);
+                    return answerButton(
+                      pending,
+                      `prompt-string-${index}`,
+                      option,
+                      { kind: "creature_type", subtype: option },
+                      false,
+                      tableId == null,
+                    );
+                  });
+                })(),
+              ),
+            ],
           ),
         ],
       ),
     ],
-  );
+    actions: [],
+  });
 }
 
 function numberPickTitle(
