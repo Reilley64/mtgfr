@@ -376,15 +376,31 @@ Pirate, Serpent, Shade, Specter, Spider, Unicorn, Wall, Wraith. *Sketch:* add th
 Land it in the same wave as the first batch of 2ed creatures so the two stay consistent.
 *Cards:* none directly — every "choose a creature type" card in the pool gains the options.
 
-### 28. `counter-kinds` — 5 cards, S
+### 28. `counter-kinds` — 5 cards, S — **corpse landed, 3 kinds left**
 Depends on: nothing.
 Falsifies the fixed counter-slot array in `types/effect/shared.rs`. 2ed needs four kinds it
 doesn't have: +1/+0 (Clockwork Beast), corpse (Scavenging Ghoul), mire (Cyclopean Tomb), vitality
 (Living Artifact). Three are inert bookkeeping counters; +1/+0 is a real P/T counter that
-`characteristics.rs` must apply in layer 7d beside +1/+1. *Sketch:* extend the slot array and add
-the +1/+0 arm to the counter-based P/T computation. Clockwork Beast additionally caps its own
-activation ("can't cause the total to be greater than seven"), which is a bound on the effect's
-amount, not a new counter concept.
+`characteristics.rs` must apply in layer 7d beside +1/+1.
+
+`CounterKind::Corpse` landed (`COUNT` 10 → 11, one `ALL` entry, one `message.rs` name) and
+Scavenging Ghoul ships. The only other engine gap it needed was game-wide death counting:
+`Amount::CreaturesDiedThisTurn` is per-controller, and the Ghoul's "for each creature that died
+this turn" names no controller, so `Amount::CreaturesDiedThisTurnAnyController` sums every
+player's tally (they all clear at the same Untap step, so the sum is exact — no new field).
+Everything else the card needs already existed: `"each_end_step"`, `put_counters` with a named
+`kind`, and `remove_counters` / `remove_counters_kind` as an activation cost paying
+`regenerate_shield { target = "this" }`.
+
+The other four cards each need something *besides* a counter kind, which is why the slot-array
+work alone doesn't finish this increment:
+- **Cyclopean Tomb** — mire counters are the easy half; it also needs #8 (changing a land's type)
+  and a rest-of-game delayed trigger that unwinds them when the Tomb leaves.
+- **Living Artifact** — vitality counters need a "whenever you're dealt damage" watcher.
+- **Clockwork Beast** — +1/+0 is a real P/T counter (layer 7d, beside +1/+1); it also caps its own
+  activation ("can't cause the total to be greater than seven", a bound on the effect's amount)
+  and needs an end-of-combat conditional removal.
+- **Rock Hydra** — blocked on #4 (damage prevention).
 *Cards:* clockwork_beast, cyclopean_tomb, living_artifact, rock_hydra, scavenging_ghoul.
 
 ### 29. `extra-land-plays-and-land-play-trigger` — 1 card, S

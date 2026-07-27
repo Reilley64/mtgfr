@@ -622,6 +622,7 @@ fn counter_kind_token(kind: CounterKind) -> &'static str {
         CounterKind::Strife => "strife",
         CounterKind::Age => "age",
         CounterKind::Storage => "storage",
+        CounterKind::Corpse => "corpse",
     }
 }
 
@@ -1055,6 +1056,7 @@ fn amount_token(amount: Amount) -> &'static str {
         Amount::CardsInYourHand => "cards_in_your_hand",
         Amount::CommanderCastsFromCommandZone => "commander_casts_from_command_zone",
         Amount::CreaturesDiedThisTurn => "creatures_died_this_turn",
+        Amount::CreaturesDiedThisTurnAnyController => "creatures_died_this_turn_any_controller",
         Amount::NontokenCreaturesEnteredThisTurn => "nontoken_creatures_entered_this_turn",
         Amount::SacrificedCreaturePower => "sacrificed_creature_power",
         Amount::SacrificedCreatureToughness => "sacrificed_creature_toughness",

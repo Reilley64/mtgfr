@@ -286,7 +286,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Rock Hydra** {X}{R}{R} · Creature — Hydra — increment 4, 28
 - [ ] **Sacrifice** {B} · Instant — increment 46
 - [ ] **Samite Healer** {1}{W} · Creature — Human Cleric — increment 4
-- [ ] **Scavenging Ghoul** {3}{B} · Creature — Zombie — increment 28
+- [x] **Scavenging Ghoul** {3}{B} · Creature — Zombie — increment 28
 - [ ] **Sea Serpent** {5}{U} · Creature — Serpent — increment 24
 - [x] **Shanodin Dryads** {G} · Creature — Nymph Dryad — increment 3
 - [ ] **Simulacrum** {1}{B} · Instant — increment 22

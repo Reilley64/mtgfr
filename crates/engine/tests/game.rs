@@ -4725,6 +4725,55 @@ fn defiling_daemogoths_end_step_drains_each_opponent_by_life_gained_this_turn() 
 }
 
 #[test]
+fn scavenging_ghoul_banks_a_corpse_counter_per_death_and_spends_one_to_regenerate() {
+    // "At the beginning of each end step, put a corpse counter on this creature for each creature
+    // that died this turn." — *each* creature, so a creature that died under an opponent's control
+    // banks a counter too. "Remove a corpse counter from this creature: Regenerate this creature."
+    let mut g = TestGame::new();
+    let ghoul = g.spawn_on_battlefield(PlayerId(0), card("Scavenging Ghoul"));
+    let mine = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let theirs = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
+
+    for victim in [mine, theirs] {
+        let shock = g.spawn_in_hand(PlayerId(0), card("Shock"));
+        g.cast(shock).at(Target::Object(victim)).resolve();
+        assert_eq!(
+            g.zone_of(victim),
+            Zone::Graveyard,
+            "2 damage killed the 2/2"
+        );
+    }
+
+    advance_until(&mut g, |g| g.current_step() == Step::End);
+    resolve_top_of_stack(&mut g); // the end-step trigger resolves
+
+    assert_eq!(
+        g.counters_of_kind(ghoul, CounterKind::Corpse),
+        2,
+        "one counter per creature that died this turn, either side of the table"
+    );
+
+    g.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: ghoul,
+        ability_index: 1, // Remove a corpse counter: Regenerate this creature.
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut g);
+
+    assert_eq!(
+        g.counters_of_kind(ghoul, CounterKind::Corpse),
+        1,
+        "the shield cost one banked corpse counter"
+    );
+    assert_eq!(g.regeneration_shields(ghoul), 1, "one shield granted");
+}
+
+#[test]
 fn venerable_warsinger_reanimates_creature_with_mv_at_most_combat_damage() {
     // Venerable Warsinger (soc): "...Whenever this creature deals combat damage to a player, (CR 510, CR 120.3, CR 506)
     // you may return target creature card with mana value X or less from your graveyard to the

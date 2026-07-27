@@ -84,6 +84,11 @@ impl Game {
             Amount::CreaturesDiedThisTurn => {
                 self.players[controller.0 as usize].creatures_died_this_turn as i32
             }
+            Amount::CreaturesDiedThisTurnAnyController => self
+                .players
+                .iter()
+                .map(|player| player.creatures_died_this_turn as i32)
+                .sum(),
             Amount::NontokenCreaturesEnteredThisTurn => {
                 self.players[controller.0 as usize].nontoken_creatures_entered_this_turn as i32
             }

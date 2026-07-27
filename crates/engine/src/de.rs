@@ -1015,6 +1015,7 @@ impl<'de> Deserialize<'de> for ProtectionScope {
 /// value (`"x"`, `"half_x"`, `"half_x_rounded_down"`, `"twice_x"`, `"per_creature_you_control"`, `"source_power"`,
 /// `"source_toughness"`, `"target_power"`, `"target_mana_value"`, `"per_counter_on_source"`, `"life_gained_this_turn"`,
 /// `"spells_cast_this_turn"`, `"commander_casts_from_command_zone"`, `"creatures_died_this_turn"`,
+/// `"creatures_died_this_turn_any_controller"`,
 /// `"nontoken_creatures_entered_this_turn"`,
 /// `"sacrificed_creature_power"`, `"commander_color_count"`, `"total_power_you_control"`,
 /// `"greatest_power_among_creatures_you_control"`,
@@ -1056,6 +1057,7 @@ impl<'de> Deserialize<'de> for Amount {
             "cards_in_your_hand",
             "commander_casts_from_command_zone",
             "creatures_died_this_turn",
+            "creatures_died_this_turn_any_controller",
             "nontoken_creatures_entered_this_turn",
             "sacrificed_creature_power",
             "sacrificed_creature_toughness",
@@ -1125,6 +1127,9 @@ impl<'de> Deserialize<'de> for Amount {
                     "cards_in_your_hand" => Amount::CardsInYourHand,
                     "commander_casts_from_command_zone" => Amount::CommanderCastsFromCommandZone,
                     "creatures_died_this_turn" => Amount::CreaturesDiedThisTurn,
+                    "creatures_died_this_turn_any_controller" => {
+                        Amount::CreaturesDiedThisTurnAnyController
+                    }
                     "nontoken_creatures_entered_this_turn" => {
                         Amount::NontokenCreaturesEnteredThisTurn
                     }

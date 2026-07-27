@@ -81,6 +81,13 @@ pub enum Amount {
     /// tally, the death-side sibling of [`SpellsCastThisTurn`](Self::SpellsCastThisTurn)) — Gorma,
     /// the Gullet's "for each creature that died under your control this turn".
     CreaturesDiedThisTurn,
+    /// How many creatures died this turn under *any* player's control — Scavenging Ghoul's "for
+    /// each creature that died this turn", which names no controller. Sums every player's
+    /// [`CreaturesDiedThisTurn`](Self::CreaturesDiedThisTurn) tally rather than carrying a field of
+    /// its own: those tallies all clear together at the same Untap step, so the sum is exactly the
+    /// game-wide count. The creature-only twin of
+    /// [`PermanentsDiedThisTurn`](Self::PermanentsDiedThisTurn), which counts any permanent type.
+    CreaturesDiedThisTurnAnyController,
     /// How many nontoken creatures entered the battlefield under the effect's controller's
     /// control this turn (a turn-scoped tally, the entering-side sibling of
     /// [`CreaturesDiedThisTurn`](Self::CreaturesDiedThisTurn), excluding tokens) — Gyome, Master
@@ -1227,6 +1234,10 @@ pub enum CounterKind {
     /// mana ..."): banked mana potential, removed later (possibly many at once, unlike the
     /// pool's other remove-a-counter costs) to fund a burst of mana.
     Storage,
+    /// A corpse counter (CR 122.1 — Scavenging Ghoul): banked deaths, one per creature that died
+    /// this turn, spent one at a time to pay the Ghoul's own regeneration. Inert bookkeeping — it
+    /// changes nothing about the permanent by itself.
+    Corpse,
 }
 
 impl CounterKind {
@@ -1238,7 +1249,7 @@ impl CounterKind {
     /// `&'static [(CounterKind, u8)]` slice if the kind set ever needs to be open-ended. A counter
     /// kind that sits on a *player* (poison, CR 122.1) doesn't belong here at all — it has its own
     /// parallel [`PlayerCounterKind`] and its own store on [`Player::kind_counters`].
-    pub(crate) const COUNT: usize = 10;
+    pub(crate) const COUNT: usize = 11;
 
     /// Every kind, for enumerating "each kind present" (proliferate, move/remove-all-counters).
     pub(crate) const ALL: [CounterKind; Self::COUNT] = [
@@ -1252,6 +1263,7 @@ impl CounterKind {
         CounterKind::Strife,
         CounterKind::Age,
         CounterKind::Storage,
+        CounterKind::Corpse,
     ];
 }
 
