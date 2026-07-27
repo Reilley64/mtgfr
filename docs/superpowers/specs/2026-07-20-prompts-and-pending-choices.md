@@ -1,6 +1,6 @@
 # Prompts and Pending Choices
 **Status:** Current (as of 2026-07-26)
-**Module:** `client/app/board/html/prompts.ts`, `client/app/board/html/pending-choice-waiting.ts`, `client/app/domain/choice.ts`, `client/app/domain/choiceWaiting.ts`, `client/app/domain/cardPickSearch.ts`, `client/app/domain/optionFilter.ts`, `client/app/domain/xCost.ts`, `client/app/board/action/execution.ts`, `client/app/domain/ui/card-art.ts`, `client/app/domain/wire/types.ts`
+**Module:** `client/app/board/html/prompts.ts`, `client/app/board/html/prompt-bar-actions.ts`, `client/app/board/html/pending-choice-waiting.ts`, `client/app/domain/choice.ts`, `client/app/domain/choiceWaiting.ts`, `client/app/domain/cardPickSearch.ts`, `client/app/domain/optionFilter.ts`, `client/app/domain/xCost.ts`, `client/app/board/action/execution.ts`, `client/app/domain/ui/card-art.ts`, `client/app/domain/wire/types.ts`
 
 ## Problem Statement
 
@@ -88,7 +88,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - `opponent_chooses_revealed_to_graveyard` shows docked `pending-revealed-aim` with one-click revealed faces (and Choose none) instead of the center card grid.
 - `revealed_card_to_battlefield_or_hand` shows docked `pending-revealed-destination-aim` with the revealed face plus Battlefield / Hand.
 - `choose_countered_spell_destination` shows docked `pending-destination-aim` with Top / Bottom.
-- `may_yes_no` / `dance_exile_more` show docked `pending-yes-no-aim` with Yes / No. Trade Secrets uses the same generic `may_yes_no` prompt shape rather than a dedicated wire kind. Snarl / Port Town may-reveal-land uses the same shape with MessageRef `effect.choice_may_reveal_land_from_hand` (`answer_may`).
+- `may_yes_no` / `dance_exile_more` keep docked `pending-yes-no-aim` as a bottom coach title only; the actual Yes / No actions move into `priority-context-bar` with the primary-bar silhouette. Trade Secrets uses the same generic `may_yes_no` prompt shape rather than a dedicated wire kind. Snarl / Port Town may-reveal-land uses the same shape with MessageRef `effect.choice_may_reveal_land_from_hand` (`answer_may`).
 - `choose_mode` shows docked `pending-mode-aim` with one-click mode labels (`prompt-mode-{i}`).
 - `choose_trigger_modes` shows docked `pending-trigger-modes-aim` with multi-select mode rows, Choose, and Cancel (center `pending-choice` is unused for this kind).
 - `pay_any_amount_of_mana` (join forces) shows docked `pending-join-forces-aim` with Min/−/value/+/Max stepper and Pay submit.
@@ -144,7 +144,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Scene tests cover Space/Enter submitting ready scry / order_triggers / distribute_top drafts (and refusing incomplete distribute_top).
 - Scene/unit tests cover dredge decline (`Draw normally` → `dredger: null`) and single-pick readiness for Dredge.
 - Scene tests cover pay-cost button copy (`Pay {…}` and kind-specific declines).
-- Scene/unit tests cover `pay_cost` with `discard_count` (count chrome, Pay disabled until picks, `discard_cost` on pay, omit on decline) and may-reveal land `may_yes_no` label (`effect.choice_may_reveal_land_from_hand`).
+- Scene/unit tests cover `pay_cost` with `discard_count` (count chrome, Pay disabled until picks, `discard_cost` on pay, omit on decline) and `may_yes_no` simple-bar behavior: MessageRef labels still surface on `pending-yes-no-aim`, bar Yes / No actions keep `prompt-yes` / `prompt-no`, and the coach stays button-free.
 - Scene tests cover `choose_copy_target` wording for both the normal copy case and the reused counter-primer case.
 - Scene tests cover docked `pending-color-aim` for `choose_color` / `choose_mana_color` (mana pips; no center `pending-choice`).
 - Scene tests cover docked `pending-mode-aim` for `choose_mode` (mode buttons; no center `pending-choice`).

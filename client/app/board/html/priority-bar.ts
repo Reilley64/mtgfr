@@ -22,6 +22,7 @@ import {
 import { promptPresentation } from "../promptPresentation";
 import type { BoardModel } from "../submodel";
 import { HAND_BAR_H } from "./hand";
+import { simplePromptBarActions } from "./prompt-bar-actions";
 
 const h = html<Message>();
 
@@ -67,9 +68,11 @@ function showTurnYield(state: VisibleState): boolean {
   return state.viewer !== state.active_player;
 }
 
-export function priorityBarView(board: BoardModel, state: VisibleState): Html {
+export function priorityBarView(board: BoardModel, state: VisibleState, tableId: string | null): Html {
   const presentation = promptPresentation(board, state);
   if (presentation.mode !== "none") {
+    const simpleActions = presentation.mode === "simple" ? simplePromptBarActions(board, state, tableId) : null;
+
     return h.div(
       [
         h.DataAttribute("testid", "priority-context-bar"),
@@ -77,6 +80,7 @@ export function priorityBarView(board: BoardModel, state: VisibleState): Html {
         h.Style({ bottom: `${HAND_BAR_H + 10}px` }),
       ],
       [
+        simpleActions,
         board.reject != null
           ? h.div([h.DataAttribute("testid", "board-reject"), h.Class("text-caption text-burn-red")], [board.reject])
           : null,

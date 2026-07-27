@@ -108,7 +108,7 @@ export function boardOverlays(
       : null,
     seatedViewer ? mulliganOverlayView(state) : null,
     seatedViewer ? mulliganWaitingView(state) : null,
-    seatedViewer && !chrome.show ? priorityBarView(board, state) : null,
+    seatedViewer && !chrome.show ? priorityBarView(board, state, tableId) : null,
     seatedViewer && !chrome.show ? promptsView(board, state, tableId) : null,
     seatedViewer && !chrome.show ? activationMenuView(board, state) : null,
     seatedViewer ? concedeButtonView() : null,

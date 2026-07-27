@@ -1708,10 +1708,7 @@ function selectFromTopLanesPrompt(
   );
 }
 
-function yesNoPrompt(
-  pending: Extract<PendingChoiceView, { kind: "may_yes_no" | "dance_exile_more" }>,
-  tableId: string | null,
-): Html {
+function yesNoPrompt(pending: Extract<PendingChoiceView, { kind: "may_yes_no" | "dance_exile_more" }>): Html {
   return h.div(
     [
       h.DataAttribute("testid", "pending-yes-no-aim"),
@@ -1724,13 +1721,6 @@ function yesNoPrompt(
       h.div(
         [h.Class("pointer-events-none text-center font-semibold text-body text-snow")],
         [pendingChoiceTitle(pending)],
-      ),
-      h.div(
-        [h.Class("flex flex-wrap justify-center gap-2")],
-        [
-          answerButton(pending, "prompt-yes", "Yes", { kind: "may", yes: true }, true, tableId == null),
-          answerButton(pending, "prompt-no", "No", { kind: "may", yes: false }, false, tableId == null),
-        ],
       ),
     ],
   );
@@ -2804,7 +2794,7 @@ function pendingChoicePrompt(
       if (pending.kind !== "may_yes_no" && pending.kind !== "dance_exile_more") {
         return frame("pending-choice", pendingChoiceTitle(pending), []);
       }
-      return yesNoPrompt(pending, tableId);
+      return yesNoPrompt(pending);
     case "payCost":
       if (
         pending.kind !== "pay_cost" &&

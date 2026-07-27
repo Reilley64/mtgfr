@@ -1349,7 +1349,7 @@ test("pay_cost aim shows docked Pay and decline", () => {
   );
 });
 
-test("may_yes_no aim shows docked Yes and No", () => {
+test("may_yes_no puts Yes/No in the primary bar with a bottom coach", () => {
   overlayScene(
     overlayModel(
       initialBoardModel(),
@@ -1362,10 +1362,14 @@ test("may_yes_no aim shows docked Yes and No", () => {
         },
       }),
     ),
+    Scene.expect(Scene.testId("priority-context-bar")).toExist(),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-yes"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-no"]')).toExist(),
     Scene.expect(Scene.testId("pending-yes-no-aim")).toExist(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
-    Scene.expect(Scene.testId("prompt-yes")).toExist(),
-    Scene.expect(Scene.testId("prompt-no")).toExist(),
+    Scene.expect(Scene.selector('[data-testid="pending-yes-no-aim"] [data-testid="prompt-yes"]')).toBeAbsent(),
+    Scene.expect(Scene.selector('[data-testid="pending-yes-no-aim"] [data-testid="prompt-no"]')).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
   );
 });
 
@@ -1411,8 +1415,10 @@ test("may_yes_no may-reveal land label surfaces from MessageRef", () => {
     Scene.expect(Scene.testId("pending-yes-no-aim")).toContainText(
       "You may reveal a matching land card from your hand",
     ),
-    Scene.expect(Scene.testId("prompt-yes")).toExist(),
-    Scene.expect(Scene.testId("prompt-no")).toExist(),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-yes"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-no"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="pending-yes-no-aim"] [data-testid="prompt-yes"]')).toBeAbsent(),
+    Scene.expect(Scene.selector('[data-testid="pending-yes-no-aim"] [data-testid="prompt-no"]')).toBeAbsent(),
   );
 });
 
