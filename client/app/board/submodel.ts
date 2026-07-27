@@ -99,6 +99,7 @@ import {
   pointerMove,
   pointerUp,
   primaryActionFor,
+  resolveClick,
 } from "./geometry/interaction";
 import { avatarPos, CARD_H, CARD_W, layout, type RenderCard, ZONE } from "./geometry/layout";
 import { type RadialPress, radialPressDown, radialPressUp } from "./geometry/radial";
@@ -115,14 +116,16 @@ import { selectedRadialOptions } from "./html/activation-menu";
 import { persistHintDismissed, readHintDismissed } from "./html/discoverability";
 import { HAND_BAR_H, HAND_INSPECT_STICKY_BAND, HAND_PLAY_SLACK_PX } from "./html/hand";
 import { CopyBoardLog } from "./log-commands";
-import { GyExileChosen, type Message } from "./messages";
+import { CombatCancelAttacker, CombatCancelBlocker, GyExileChosen, type Message } from "./messages";
 import { type ExitFx, spawnExitFx } from "./motion/exit-fx";
 import {
   type CardFlight,
   flightOwnsId,
   flyingCardIds,
   handFlightScale,
+  poseAtTarget,
   rebindFlightId,
+  remapFlightsForZoom,
   retargetFlight,
   spawnFlight,
   stackFlightScale,
@@ -323,9 +326,11 @@ export function syncBoardWithGame(model: BoardModel, fold: BoardFold): BoardMode
   }
   const playerCount = Math.max(1, fold.state.players.length);
   if (!next.cameraUserMoved && next.cameraFitPlayers !== playerCount) {
+    const fitted = fitCamera({ x: next.viewport.width, y: next.viewport.height }, playerCount, HAND_BAR_H);
     next = {
       ...next,
-      camera: fitCamera({ x: next.viewport.width, y: next.viewport.height }, playerCount, HAND_BAR_H),
+      flights: remapFlightsForZoom(next.flights, next.camera.zoom, fitted.zoom),
+      camera: fitted,
       cameraFitPlayers: playerCount,
     };
   }
@@ -644,6 +649,13 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
 
     const existing = flights.get(spell);
     if (existing != null) {
+      // Seed already parked on the resting face — hand off to HTML now. Retargeting to "flying"
+      // would play a one-frame settle pulse (lift shadow) before the face appears.
+      if (poseAtTarget(existing, aim)) {
+        flights.delete(spell);
+        if (meta.from != null) handHidden.delete(meta.from);
+        continue;
+      }
       flights.set(
         spell,
         retargetFlight(
@@ -953,6 +965,23 @@ function pointerUpModel(
         }
       } else {
         return togglePendingObjectAimPick(idle, fold, pc, release.card.id);
+      }
+    }
+    // Combat cancel + permanent select share `resolveClick` so tap-in-place on a staged
+    // attacker/blocker un-stages it before the activation radial can open.
+    if (fold.state != null) {
+      const click = resolveClick(fold.state, fold.state.viewer, release.card, {
+        spectating: false,
+        staged: null,
+        stagedTargets: new Set(),
+        attackers: idle.combatAttackers,
+        blocks: idle.combatBlocks,
+      });
+      if (click.kind === "cancel-attacker") {
+        return updateBoard(idle, CombatCancelAttacker({ attackerId: click.id }), fold, tableId);
+      }
+      if (click.kind === "cancel-blocker") {
+        return updateBoard(idle, CombatCancelBlocker({ blockerId: click.id }), fold, tableId);
       }
     }
     if (
@@ -1339,7 +1368,9 @@ function seedDropFromHand(
   const stackAim =
     kind === "stack"
       ? stackFlightAim(model, { count: Math.max(1, stackCount + 1), row: stackCount })
-      : { x: screenOrigin.x, y: screenOrigin.y, scale: 1 };
+      : // Battlefield: park at the drop at hand scale until landPlayFrom aims the slot — avoid a
+        // shrink-in-place "landing" followed by a second glide to the permanent.
+        { x: screenOrigin.x, y: screenOrigin.y, scale: startScale };
   flights.set(
     card.id,
     spawnFlight({
@@ -2049,14 +2080,18 @@ export function updateBoard(
       return [model, []];
     case "BoardCameraZoomed":
       if (!Number.isFinite(message.factor) || message.factor <= 0) return [model, []];
-      return [
-        {
-          ...model,
-          camera: zoomAt(model.camera, message.x, message.y, message.factor),
-          cameraUserMoved: true,
-        },
-        [],
-      ];
+      {
+        const camera = zoomAt(model.camera, message.x, message.y, message.factor);
+        return [
+          {
+            ...model,
+            flights: remapFlightsForZoom(model.flights, model.camera.zoom, camera.zoom),
+            camera,
+            cameraUserMoved: true,
+          },
+          [],
+        ];
+      }
     case "BoardPointerDown":
       return [pointerDownModel(model, fold, message.x, message.y), []];
     case "BoardPointerMove": {
