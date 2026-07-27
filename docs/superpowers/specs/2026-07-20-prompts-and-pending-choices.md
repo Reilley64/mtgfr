@@ -26,7 +26,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - As a player answering a one-click on-board target choice, I aim at highlighted permanents/players (no card grid); optional choices keep Decline on the aim chrome.
 - As a player targeting only cards in one graveyard, I click selectable pile cards under `pending-gy-aim` instead of a modal grid.
 - As an opponent choosing a revealed card for the graveyard, I click a face in the docked `pending-revealed-aim` strip (or Choose none).
-- As a player choosing battlefield or hand for a revealed card, I see the face in docked `pending-revealed-destination-aim` with Battlefield / Hand.
+- As a player choosing battlefield or hand for a revealed card, I see the face in docked `pending-revealed-destination-aim` while Battlefield / Hand lives in `priority-context-bar`.
 - As a player choosing target players, I aim at life-orb avatars on the board (multi-pick accumulates until Confirm).
 - As a player scrying or surveilling, I assign looked-at cards into Top vs Bottom (or Graveyard) lanes in docked `pending-arrange-aim` instead of a center modal.
 - As a player selecting from the top of my library, I assign cards into Take vs Bottom lanes in docked `pending-select-top-aim` (up to the allowed count).
@@ -36,17 +36,17 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - As a player offered dredge, I can pick one dredger or decline with Draw normally.
 - As a player answering an optional-pay prompt, I see the mana cost on Pay and an outcome-specific decline label.
 - As a player joining forces (`pay_any_amount_of_mana`), I adjust a Min/−/value/+/Max stepper up to my affordable max and confirm (0 declines).
-- As a player choosing trigger modes, I multi-select mode rows in docked `pending-trigger-modes-aim` and Choose (or Cancel).
-- As a player choosing between two piles (`opponent_chooses_pile` / `choose_pile_for_hand`), I pick Pile A or Pile B in docked `pending-pile-aim`.
+- As a player choosing trigger modes, I multi-select mode rows in docked `pending-trigger-modes-aim` and then Choose or Cancel from `priority-context-bar`.
+- As a player choosing between two piles (`opponent_chooses_pile` / `choose_pile_for_hand`), I inspect docked `pending-pile-aim` card labels and pick Pile A or Pile B from `priority-context-bar`.
 - As a player choosing cards, prompts use the same cached card art behavior as hand and stack.
 - As a player resolving `may_exile_discarded_to_play`, I pick one discarded nonland card from my graveyard to exile and play this turn, or decline with explicit `Don't exile` chrome.
 
 ## Behavior
 
 - Local prompts render in this order: hand play-mode chooser, X prompt, modal cast, sacrifice pick, discard pick, graveyard-exile pick, staged target picker.
-- Local `playModePick` is board session chrome alongside `modalCast`, cost picks, and staged targets (not an engine `pending_choice`). Multi-action hand cards use docked `play-mode-aim` with one `play-mode-{i}` button per legal mode plus Cancel; choosing a row dispatches `PlayModeChosen` and keeps the parked stack flight while the selected action continues through cost, modal, target, or submit steps. Cancel clears the park and returns the card to hand without submitting an intent.
+- Local `playModePick` is board session chrome alongside `modalCast`, cost picks, and staged targets (not an engine `pending_choice`). Multi-action hand cards use docked `play-mode-aim` as a title-only coach while `priority-context-bar` carries one `play-mode-{i}` button per legal mode plus Cancel; choosing a row dispatches `PlayModeChosen` and keeps the parked stack flight while the selected action continues through cost, modal, target, or submit steps. Cancel clears the park and returns the card to hand without submitting an intent.
 - While `play-mode-aim` is open, snapshot and delta sync prune buttons whose action ids are no longer legal. Exactly one remaining mode auto-continues that mode; zero remaining modes cancel the session, return the card to hand, and submit no intent. A stale `PlayModeChosen` for a pruned action id clears `playModePick`, returns the card to hand, and emits no command.
-- Local modal spells use docked `modal-mode-aim` (mode rows + Cast/Cancel; center `modal-mode-picker` unused). After modes are chosen and a target is still needed, docked `modal-waiting-aim` replaces center `modal-waiting`.
+- Local modal spells use docked `modal-mode-aim` as a title-only coach while `priority-context-bar` carries the mode rows plus Cast/Cancel (center `modal-mode-picker` unused). After modes are chosen and a target is still needed, docked `modal-waiting-aim` replaces center `modal-waiting`.
 - Off-board staged-action targets use docked `target-pick-aim` (scrollable face/player strip + Cancel; center `target-pick` unused).
 - Local cost pickers that cannot aim on the canvas (`sacrifice-pick`, `discard-pick`, `gy-exile-pick`) use docked `${id}-aim` button strips (center `${id}` modals unused).
 - Engine pending choices render only when `pending_choice.player === state.viewer` and the viewer is an active seated player.
@@ -86,15 +86,15 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Engine exile card-picks (`choose_exiled_*` / `opponent_chooses_exiled_nonland`) with a shared exile pile show `pending-exile-aim` and selectable exile pile cards.
 - `choose_exiled_dig_to_cast_free` with non-empty `cast_targets` (Aura dig) is two-step: after the exile pick, chrome switches to `pending-target-aim` (“Choose what to enchant”) over projected hosts; submit carries both `choice` and object `target`. Untargeted dig (empty `cast_targets`) stays one-step exile aim.
 - `opponent_chooses_revealed_to_graveyard` shows docked `pending-revealed-aim` with one-click revealed faces (and Choose none) instead of the center card grid.
-- `revealed_card_to_battlefield_or_hand` shows docked `pending-revealed-destination-aim` with the revealed face plus Battlefield / Hand.
-- `choose_countered_spell_destination` shows docked `pending-destination-aim` with Top / Bottom.
+- `revealed_card_to_battlefield_or_hand` shows docked `pending-revealed-destination-aim` with the revealed face while Battlefield / Hand lives in `priority-context-bar`.
+- `choose_countered_spell_destination` shows docked `pending-destination-aim` while Top / Bottom lives in `priority-context-bar`.
 - `may_yes_no` / `dance_exile_more` keep docked `pending-yes-no-aim` as a bottom coach title only; the actual Yes / No actions move into `priority-context-bar` with the primary-bar silhouette. Trade Secrets uses the same generic `may_yes_no` prompt shape rather than a dedicated wire kind. Snarl / Port Town may-reveal-land uses the same shape with MessageRef `effect.choice_may_reveal_land_from_hand` (`answer_may`).
-- `choose_mode` shows docked `pending-mode-aim` with one-click mode labels (`prompt-mode-{i}`).
-- `choose_trigger_modes` shows docked `pending-trigger-modes-aim` with multi-select mode rows, Choose, and Cancel (center `pending-choice` is unused for this kind).
+- `choose_mode` shows docked `pending-mode-aim` as a title-only coach while `priority-context-bar` carries the one-click mode labels (`prompt-mode-{i}`).
+- `choose_trigger_modes` shows docked `pending-trigger-modes-aim` with multi-select mode rows while `priority-context-bar` carries Choose and Cancel (center `pending-choice` is unused for this kind).
 - `pay_any_amount_of_mana` (join forces) shows docked `pending-join-forces-aim` with Min/−/value/+/Max stepper and Pay submit.
 - `may_draw_up_to` shows docked `pending-draw-count-aim` with one-click number buttons (`0`…`max`) and a MessageRef-backed title. Trade Secrets uses this same generic draw-count prompt rather than a dedicated wire kind.
 - `choose_copy_target` keeps the docked card-pick surface, but when the wire carries `put_counter_on_creature = true` (the reused Zimone's Hypothesis primer) the chrome swaps from copy wording to `Choose a creature to get a +1/+1 counter` with a `Put counter` submit button.
-- `opponent_chooses_pile` / `choose_pile_for_hand` show docked `pending-pile-aim` with Pile A / Pile B (card labels + choose buttons).
+- `opponent_chooses_pile` / `choose_pile_for_hand` show docked `pending-pile-aim` with Pile A / Pile B card labels while `priority-context-bar` carries the choose buttons.
 - `choose_target_players` / `choose_splitting_opponent` with seat-tagged items aim at life orbs (`pending-player-aim`); one-click when `max === 1` (or splitting); multi-pick accumulates seats in the player-pick draft with Confirm. Enter / Space submit when ready. Picked seats paint a solid Priority Gold ring (`pickedPlayers`). Items without seat tags fall back to docked `pending-player-pick-aim` player buttons (Choose/Cancel for multi-pick).
 - `scry` / `surveil` use docked `pending-arrange-aim` with two-lane arrange chrome (`prompt-arrange-lanes`): cards start in Bottom (library bottom or Graveyard for Surveil); click toggles a card between Top and Bottom, preserving left-to-right order in each lane. Done always submits `arrange_top` via partition draft `{ top, bottom }`. After Done, `promptSubmitInFlight` freezes that draft (no re-init into Bottom) until `pending_choice` changes or the intent is rejected.
 - `select_from_top` uses docked `pending-select-top-aim` with Take vs Bottom lanes (`prompt-select-top-lanes`); click toggles into Take (capped at `up_to`); Done submits `select_from_top` with the Take ids.
@@ -103,8 +103,8 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - `order_triggers` uses docked `pending-order-aim`; rows support HTML5 drag reorder (`Draggable` / `OnDrop` → `PromptOrderRowClicked`, `OnDragEnd` → `PromptOrderDragEnded`), click-to-place (`orderPickPos`), and ↑↓ (`PromptOrderMoved`); list lives under `prompt-order-list`. Submit still emits `choose_order`.
 - Enter or Space submits a ready lane / order draft (`order_triggers`, `scry`, `surveil`, `select_from_top`, `distribute_top`, `partition_revealed`) the same way the Done / Confirm button does (`trySubmitReadyPendingDraft`).
 - `choose_dredge` requires exactly one selected dredger to enable Dredge; `prompt-decline` (“Draw normally”) submits `dredger: null` via `declineAnswer`.
-- Optional-pay prompts (`pay_cost`, `pay_or_counter`, `pay_or_controller_draws`, `pay_echo_or_sacrifice`, `pay_recover_or_exile`, `sacrifice_unless_pay`, `pay_life_or_enters_tapped`) use docked `pending-pay-cost-aim`; they label the affirm button `Pay ${costText(cost)}` and use outcome-specific declines: Don’t pay / Let it be countered / Let them draw / Sacrifice / Exile. `pay_cost` also carries `can_pay` (the engine’s own `Game::can_pay_cost`, the planner `settle_payment` runs); when it is false the Pay button is disabled rather than offering a payment the engine would reject. The “unless you pay” variants carry no flag — declining is a real answer there either way. `pay_life_or_enters_tapped` (shockland, CR 614.12) carries a life amount instead of a cost and no server label: it titles the prompt “Have it enter untapped?”, affirms with `Pay ${life} life`, and declines with “Enters tapped”.
-- When `pay_cost` carries `discard_count > 0` (Conspiracy Theorist’s “pay {1} and discard a card”), the same docked aim shows `pending-pay-discard-count` and hand tiles from `discard_choices` highlight for select-then-Pay (Llanowar selected chrome). Pay stays disabled until exactly `discard_count` cards are picked and `can_pay` is true; the emitted `pay_optional_cost` intent includes `discard_cost`. Decline still emits `pay: false` with no discard cards.
+- Optional-pay prompts (`pay_cost`, `pay_or_counter`, `pay_or_controller_draws`, `pay_echo_or_sacrifice`, `pay_recover_or_exile`, `sacrifice_unless_pay`, `pay_life_or_enters_tapped`) use docked `pending-pay-cost-aim` as a title/count coach while `priority-context-bar` carries the affirm/decline buttons. The affirm button reads `Pay ${costText(cost)}` and the decline reads the outcome-specific label: Don’t pay / Let it be countered / Let them draw / Sacrifice / Exile. `pay_cost` also carries `can_pay` (the engine’s own `Game::can_pay_cost`, the planner `settle_payment` runs); when it is false the Pay button is disabled rather than offering a payment the engine would reject. The “unless you pay” variants carry no flag — declining is a real answer there either way. `pay_life_or_enters_tapped` (shockland, CR 614.12) carries a life amount instead of a cost and no server label: it titles the prompt “Have it enter untapped?”, affirms with `Pay ${life} life`, and declines with “Enters tapped”.
+- When `pay_cost` carries `discard_count > 0` (Conspiracy Theorist’s “pay {1} and discard a card”), the same docked aim shows `pending-pay-discard-count` and hand tiles from `discard_choices` highlight for select-then-Pay (Llanowar selected chrome). The bar Pay button stays disabled until exactly `discard_count` cards are picked and `can_pay` is true; the emitted `pay_optional_cost` intent includes `discard_cost`. Decline still emits `pay: false` with no discard cards.
 - `pay_any_amount_of_mana` (join forces) uses a clamped stepper over `[0, max]` with draft on `promptDraft` (`PromptNumberSet`); Confirm submits via `PromptSubmitted`. Per-N buttons (`prompt-number-N`) are not used for this kind. `may_draw_up_to` / `trade_secrets_caster_draw` keep one-click number buttons in the docked aim.
 
 ## Implementation Decisions
@@ -128,8 +128,8 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Scene/unit tests for MessageRef-backed prompts assert formatted English for labels while catalog coverage guards every Rust-emitted key.
 - Unit tests cover `pendingChoiceWaitingText` (null for decider / absent / mulligan; named seat and `P{seat}` fallback).
 - X prompt Scene tests assert docked `x-prompt-aim` (no center `x-prompt`), stepper controls, preview text (e.g. `Pay {4}`), confirm, disabled `+` at max, and absence of per-X buttons (`x-prompt-n`).
-- Scene tests cover docked `play-mode-aim`, `play-mode-{i}` rows, Cancel, stale legality pruning, stale `PlayModeChosen` without intent, and `PlayModeChosen` clearing `playModePick` before continuing the selected action.
-- Scene tests cover docked `modal-mode-aim` / `modal-waiting-aim` (no center `modal-mode-picker` / `modal-waiting`).
+- Scene tests cover docked `play-mode-aim` with `priority-context-bar` `play-mode-{i}` rows + Cancel, stale legality pruning, stale `PlayModeChosen` without intent, and `PlayModeChosen` clearing `playModePick` before continuing the selected action.
+- Scene tests cover docked `modal-mode-aim` / `modal-waiting-aim` (no center `modal-mode-picker` / `modal-waiting`) with pre-choice mode rows and Cast/Cancel in `priority-context-bar`.
 - Scene tests cover docked `target-pick-aim` for off-board staged targets (no center `target-pick`).
 - Scene tests cover docked `sacrifice-pick-aim` / `discard-pick-aim` for off-board cost fallbacks (no center pick modals).
 - Scene tests cover engine `pending-discard-aim` and local `discard-cost-aim` select-then-Confirm (`pending-discard-count` / `discard-cost-count`, disabled Discard until ready, Llanowar selected chrome on hand faces).
@@ -143,15 +143,15 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Board pointer tests cover clicking a battlefield `divide_counters` target moves 1 counter onto it; Space/Enter submit when ready (`pending-divide-counters-aim`, no center `pending-choice`).
 - Scene tests cover Space/Enter submitting ready scry / order_triggers / distribute_top drafts (and refusing incomplete distribute_top).
 - Scene/unit tests cover dredge decline (`Draw normally` → `dredger: null`) and single-pick readiness for Dredge.
-- Scene tests cover pay-cost button copy (`Pay {…}` and kind-specific declines).
+- Scene tests cover pay-cost coach copy plus `priority-context-bar` button copy (`Pay {…}` and kind-specific declines).
 - Scene/unit tests cover `pay_cost` with `discard_count` (count chrome, Pay disabled until picks, `discard_cost` on pay, omit on decline) and `may_yes_no` simple-bar behavior: MessageRef labels still surface on `pending-yes-no-aim`, bar Yes / No actions keep `prompt-yes` / `prompt-no`, and the coach stays button-free.
 - Scene tests cover `choose_copy_target` wording for both the normal copy case and the reused counter-primer case.
 - Scene tests cover docked `pending-color-aim` for `choose_color` / `choose_mana_color` (mana pips; no center `pending-choice`).
-- Scene tests cover docked `pending-mode-aim` for `choose_mode` (mode buttons; no center `pending-choice`).
+- Scene tests cover docked `pending-mode-aim` for `choose_mode` with `priority-context-bar` mode buttons (no center `pending-choice`).
 - Scene/unit tests cover docked join-forces `pending-join-forces-aim` mana stepper (no per-N buttons; draft submit; no center `pending-choice`).
 - Scene/unit tests cover docked draw-count `pending-draw-count-aim` (number buttons; no center `pending-choice`; `choose_draw_count` intent).
-- Scene tests cover docked `pending-trigger-modes-aim` (mode rows; no center `pending-choice`).
-- Scene/unit tests cover docked `pending-pile-aim` (Pile A/B; no center `pending-choice`; `choose_opponent_pile` intent).
+- Scene tests cover docked `pending-trigger-modes-aim` with coach toggle rows and `priority-context-bar` Choose/Cancel (no center `pending-choice`).
+- Scene/unit tests cover docked `pending-pile-aim` with coach card labels, `priority-context-bar` Pile A/B buttons, and `choose_opponent_pile` intent.
 - Scene tests cover docked `pending-player-pick-aim` for untagged `choose_target_players` / `choose_splitting_opponent` lists (no center `pending-choice`).
 - Scene/unit tests cover library-search docked aim (`pending-library-aim`), filter, face dedupe, pinned scroll chrome, Choose, and Fail to find.
 - Scene tests cover off-board card-pick grids as docked `pending-card-pick-aim` (no center `pending-choice`) and mixed `choose_target` player buttons as `pending-player-pick-aim`.
@@ -163,7 +163,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Scene tests cover `opponent_chooses_revealed_to_graveyard` docked aim (one-click face → `choose_exiled_with_card`, Choose none declines).
 - Scene/unit tests cover optional vs mandatory `may_return_from_graveyard` (`prompt-decline` present only when optional, `Return` disabled until a card is picked, `mandatory` decoded from wire).
 - Scene/unit tests cover `may_exile_discarded_to_play` proto decode, formulator registration, `pending-gy-aim` chrome (`Exile` / `Don't exile`), decline → empty `choose_sacrifices`, and submit → chosen discarded card.
-- Scene tests cover `revealed_card_to_battlefield_or_hand` docked destination aim (Battlefield / Hand intents).
+- Scene tests cover `revealed_card_to_battlefield_or_hand` docked destination aim with the face in coach and Battlefield / Hand intents in `priority-context-bar`.
 - Scene/pointer tests cover on-board `sacrifice_edict` one-click and `proliferate` accumulate → Confirm (including seat + permanent mixed picks that keep both lists, and Priority Gold paint for `card-pick.players`).
 - Scene/unit tests cover docked scry/surveil `pending-arrange-aim` Top↔Bottom (Graveyard) lanes and click toggle → `arrange_top`.
 - Scene tests cover docked `pending-select-top-aim` Take/Bottom lanes (no center `pending-choice`).

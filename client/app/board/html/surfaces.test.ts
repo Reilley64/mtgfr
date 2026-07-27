@@ -769,9 +769,12 @@ test("modal mode picker renders before modes are chosen", () => {
     overlayModel({ ...initialBoardModel(), modalCast }),
     Scene.expect(Scene.testId("modal-mode-aim")).toExist(),
     Scene.expect(Scene.testId("modal-mode-picker")).toBeAbsent(),
-    Scene.expect(Scene.testId("modal-mode-0")).toExist(),
-    Scene.expect(Scene.testId("modal-mode-1")).toExist(),
-    Scene.expect(Scene.testId("modal-cast")).toBeDisabled(),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="modal-mode-0"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="modal-mode-1"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="modal-cast"]')).toBeDisabled(),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-cancel"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="modal-mode-aim"] [data-testid="modal-mode-0"]')).toBeAbsent(),
+    Scene.expect(Scene.selector('[data-testid="modal-mode-aim"] [data-testid="modal-cast"]')).toBeAbsent(),
   );
 });
 
@@ -799,10 +802,12 @@ test("playModePick shows docked play-mode-aim with one button per mode", () => {
   overlayScene(
     overlayModel({ ...initialBoardModel(), playModePick }),
     Scene.expect(Scene.testId("play-mode-aim")).toExist(),
-    Scene.expect(Scene.testId("play-mode-0")).toExist(),
-    Scene.expect(Scene.testId("play-mode-1")).toExist(),
-    Scene.expect(Scene.testId("play-mode-2")).toExist(),
-    Scene.expect(Scene.testId("prompt-cancel")).toExist(),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="play-mode-0"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="play-mode-1"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="play-mode-2"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-cancel"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="play-mode-aim"] [data-testid="play-mode-0"]')).toBeAbsent(),
+    Scene.expect(Scene.selector('[data-testid="play-mode-aim"] [data-testid="prompt-cancel"]')).toBeAbsent(),
   );
 });
 
@@ -950,7 +955,14 @@ test("choose_trigger_modes shows docked pending-trigger-modes-aim", () => {
     Scene.expect(Scene.testId("pending-choice-waiting")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-mode-choice-0")).toExist(),
     Scene.expect(Scene.testId("prompt-mode-choice-1")).toExist(),
-    Scene.expect(Scene.testId("prompt-submit")).toBeDisabled(),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-submit"]')).toBeDisabled(),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-cancel"]')).toExist(),
+    Scene.expect(
+      Scene.selector('[data-testid="pending-trigger-modes-aim"] [data-testid="prompt-submit"]'),
+    ).toBeAbsent(),
+    Scene.expect(
+      Scene.selector('[data-testid="pending-trigger-modes-aim"] [data-testid="prompt-cancel"]'),
+    ).toBeAbsent(),
   );
 });
 
@@ -971,8 +983,10 @@ test("choose_pile_for_hand shows docked pending-pile-aim", () => {
     Scene.expect(Scene.testId("pending-pile-aim")).toExist(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice-waiting")).toBeAbsent(),
-    Scene.expect(Scene.testId("prompt-pile-0")).toExist(),
-    Scene.expect(Scene.testId("prompt-pile-1")).toExist(),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-pile-0"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-pile-1"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="pending-pile-aim"] [data-testid="prompt-pile-0"]')).toBeAbsent(),
+    Scene.expect(Scene.selector('[data-testid="pending-pile-aim"] [data-testid="prompt-pile-1"]')).toBeAbsent(),
   );
 });
 
@@ -1226,8 +1240,18 @@ test("choose_countered_spell_destination aim shows docked Top and Bottom", () =>
     ),
     Scene.expect(Scene.testId("pending-destination-aim")).toExist(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
-    Scene.expect(Scene.testId("prompt-destination-top")).toExist(),
-    Scene.expect(Scene.testId("prompt-destination-bottom")).toExist(),
+    Scene.expect(
+      Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-destination-top"]'),
+    ).toExist(),
+    Scene.expect(
+      Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-destination-bottom"]'),
+    ).toExist(),
+    Scene.expect(
+      Scene.selector('[data-testid="pending-destination-aim"] [data-testid="prompt-destination-top"]'),
+    ).toBeAbsent(),
+    Scene.expect(
+      Scene.selector('[data-testid="pending-destination-aim"] [data-testid="prompt-destination-bottom"]'),
+    ).toBeAbsent(),
   );
 });
 
@@ -1246,8 +1270,18 @@ test("revealed_card_to_battlefield_or_hand aim shows face and destination button
     Scene.expect(Scene.testId("pending-revealed-destination-aim")).toExist(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-revealed-face")).toHaveText("Beast"),
-    Scene.expect(Scene.testId("prompt-destination-battlefield")).toExist(),
-    Scene.expect(Scene.testId("prompt-destination-hand")).toExist(),
+    Scene.expect(
+      Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-destination-battlefield"]'),
+    ).toExist(),
+    Scene.expect(
+      Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-destination-hand"]'),
+    ).toExist(),
+    Scene.expect(
+      Scene.selector('[data-testid="pending-revealed-destination-aim"] [data-testid="prompt-destination-battlefield"]'),
+    ).toBeAbsent(),
+    Scene.expect(
+      Scene.selector('[data-testid="pending-revealed-destination-aim"] [data-testid="prompt-destination-hand"]'),
+    ).toBeAbsent(),
   );
 });
 
@@ -1344,8 +1378,14 @@ test("pay_cost aim shows docked Pay and decline", () => {
     ),
     Scene.expect(Scene.testId("pending-pay-cost-aim")).toExist(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
-    Scene.expect(Scene.testId("prompt-pay")).toHaveText("Pay {2}{R}"),
-    Scene.expect(Scene.testId("prompt-decline")).toHaveText("Don't pay"),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-pay"]')).toHaveText(
+      "Pay {2}{R}",
+    ),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-decline"]')).toHaveText(
+      "Don't pay",
+    ),
+    Scene.expect(Scene.selector('[data-testid="pending-pay-cost-aim"] [data-testid="prompt-pay"]')).toBeAbsent(),
+    Scene.expect(Scene.selector('[data-testid="pending-pay-cost-aim"] [data-testid="prompt-decline"]')).toBeAbsent(),
   );
 });
 
@@ -1500,8 +1540,14 @@ test("choose_mode aim shows docked mode buttons instead of center modal", () => 
     ),
     Scene.expect(Scene.testId("pending-mode-aim")).toExist(),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
-    Scene.expect(Scene.testId("prompt-mode-0")).toHaveText("Draw a card"),
-    Scene.expect(Scene.testId("prompt-mode-1")).toHaveText("Create a token"),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-mode-0"]')).toHaveText(
+      "Draw a card",
+    ),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-mode-1"]')).toHaveText(
+      "Create a token",
+    ),
+    Scene.expect(Scene.selector('[data-testid="pending-mode-aim"] [data-testid="prompt-mode-0"]')).toBeAbsent(),
+    Scene.expect(Scene.selector('[data-testid="pending-mode-aim"] [data-testid="prompt-mode-1"]')).toBeAbsent(),
   );
 });
 

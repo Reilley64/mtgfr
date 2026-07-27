@@ -32,7 +32,6 @@ import { cardArt } from "~/ui/card-art";
 import type { ChoiceItem, MessageRef, PendingChoiceView, VisibleState, WireModeChoice, WireTarget } from "~/wire/types";
 import { clampX, costText, costWithChosenX } from "~/xCost";
 import { formatMessage } from "../../domain/i18n/message";
-import { modeAvailable } from "../action/modal";
 import {
   gyExileCostObjectIds,
   objectName,
@@ -62,10 +61,7 @@ import {
   GyExileChosen,
   GyExileConfirmed,
   type Message,
-  ModalModesChosen,
-  ModalModeToggled,
   PendingChoiceAnswered,
-  PlayModeChosen,
   PromptCardFilterSet,
   PromptCardToggled,
   PromptDamageSet,
@@ -773,12 +769,6 @@ function costPickPrompt(
 
 function modalPrompt(mc: NonNullable<BoardModel["modalCast"]>): Html {
   if (mc.chosen == null) {
-    const choose = mc.action.modal?.choose ?? 1;
-    const chooseMax = mc.action.modal?.choose_max ?? choose;
-    const multi = chooseMax > 1;
-    const picked = multi ? mc.modeDraft : [];
-    const ready = multi ? picked.length >= choose && picked.length <= chooseMax : true;
-    const countHint = choose === chooseMax ? `Choose ${choose}` : `Choose ${choose}–${chooseMax}`;
     const title = messageText(mc.action.label) || "Choose modes";
     return h.div(
       [
@@ -788,59 +778,7 @@ function modalPrompt(mc: NonNullable<BoardModel["modalCast"]>): Html {
           "pointer-events-auto fixed left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
         ),
       ],
-      [
-        h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], [title]),
-        h.div([h.Class("pointer-events-none text-caption text-mist")], [countHint]),
-        h.div(
-          [h.Class("flex w-full flex-col gap-1")],
-          mc.modes.map((mode, i) => {
-            const selected = picked.includes(i);
-            const available = modeAvailable(mode);
-            if (multi) {
-              return h.button(
-                [
-                  h.Type("button"),
-                  h.DataAttribute("testid", `modal-mode-${i}`),
-                  h.AriaPressed(selected ? "true" : "false"),
-                  h.Disabled(!available),
-                  h.OnClick(ModalModeToggled({ index: i })),
-                  h.Class(
-                    [
-                      "rounded-hud px-3 py-2 text-left text-body",
-                      selected ? "bg-llanowar/25 text-snow" : "bg-glass text-snow",
-                      !available ? "cursor-not-allowed opacity-40" : "hover:bg-glass-dim",
-                    ].join(" "),
-                  ),
-                ],
-                [messageText(mode.label), !available ? " (no legal target)" : ""],
-              );
-            }
-            return itemButton(messageText(mode.label), `modal-mode-${i}`, ModalModesChosen({ chosen: [i] }));
-          }),
-        ),
-        multi
-          ? h.div(
-              [h.Class("flex flex-wrap justify-center gap-2")],
-              [
-                h.button(
-                  [
-                    h.Type("button"),
-                    h.DataAttribute("testid", "modal-cast"),
-                    h.Disabled(!ready),
-                    h.OnClick(ModalModesChosen({ chosen: [...picked] })),
-                    h.Class(
-                      ready
-                        ? "cursor-pointer rounded-hud bg-llanowar px-3 py-1 text-body text-snow"
-                        : "cursor-not-allowed rounded-hud bg-glass px-3 py-1 text-body text-mist",
-                    ),
-                  ],
-                  ["Cast"],
-                ),
-                cancelButton(),
-              ],
-            )
-          : cancelButton(),
-      ],
+      [h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], [title])],
     );
   }
   return h.div(
@@ -861,7 +799,7 @@ function modalPrompt(mc: NonNullable<BoardModel["modalCast"]>): Html {
   );
 }
 
-function playModePrompt(pick: NonNullable<BoardModel["playModePick"]>): Html {
+function playModePrompt(_pick: NonNullable<BoardModel["playModePick"]>): Html {
   return h.div(
     [
       h.DataAttribute("testid", "play-mode-aim"),
@@ -870,16 +808,7 @@ function playModePrompt(pick: NonNullable<BoardModel["playModePick"]>): Html {
         "pointer-events-auto fixed left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
       ),
     ],
-    [
-      h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], ["Choose how to play"]),
-      h.div(
-        [h.Class("flex w-full flex-col gap-1")],
-        pick.modes.map((mode, i) =>
-          itemButton(messageText(mode.label), `play-mode-${i}`, PlayModeChosen({ actionId: mode.id })),
-        ),
-      ),
-      cancelButton(),
-    ],
+    [h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], ["Choose how to play"])],
   );
 }
 
@@ -1726,37 +1655,6 @@ function yesNoPrompt(pending: Extract<PendingChoiceView, { kind: "may_yes_no" | 
   );
 }
 
-function payCostDeclineLabel(
-  kind:
-    | "pay_cost"
-    | "pay_or_counter"
-    | "pay_or_controller_draws"
-    | "pay_echo_or_sacrifice"
-    | "pay_recover_or_exile"
-    | "sacrifice_unless_pay"
-    | "pay_life_or_enters_tapped",
-): string {
-  switch (kind) {
-    case "pay_or_counter":
-      return "Let it be countered";
-    case "pay_life_or_enters_tapped":
-      return "Enters tapped";
-    case "pay_or_controller_draws":
-      return "Let them draw";
-    case "pay_echo_or_sacrifice":
-    case "sacrifice_unless_pay":
-      return "Sacrifice";
-    case "pay_recover_or_exile":
-      return "Exile";
-    case "pay_cost":
-      return "Don't pay";
-    default: {
-      const _exhaustive: never = kind;
-      return _exhaustive;
-    }
-  }
-}
-
 function payCostPrompt(
   pending: Extract<
     PendingChoiceView,
@@ -1772,7 +1670,7 @@ function payCostPrompt(
     }
   >,
   board: BoardModel,
-  tableId: string | null,
+  _tableId: string | null,
 ): Html {
   // The shockland choice carries a life amount rather than a cost, and no server label.
   const shockland = pending.kind === "pay_life_or_enters_tapped";
@@ -1781,18 +1679,9 @@ function payCostPrompt(
     : "label" in pending
       ? messageText(pending.label)
       : pendingChoiceTitle(pending);
-  const payLabel = shockland ? `Pay ${pending.life} life` : `Pay ${costText(pending.cost)}`;
-  const declineLabel = payCostDeclineLabel(pending.kind);
-  // Only the optional-trigger prompt carries affordability; the "unless you pay" variants are a
-  // penalty either way, so declining is always a real answer there.
-  const canPay = !("can_pay" in pending) || pending.can_pay;
   const discardNeed = pending.kind === "pay_cost" ? (pending.discard_count ?? 0) : 0;
   const draft = board.promptDraft;
   const picked = discardNeed > 0 && draft?.kind === "card-pick" ? draft.picked : [];
-  const discardReady = discardNeed === 0 || picked.length === discardNeed;
-  const payAnswer: AnswerInput =
-    discardNeed > 0 ? { kind: "pay", pay: true, discard: picked } : { kind: "pay", pay: true };
-  const payDisabled = tableId == null || !canPay || !discardReady;
   const countLine =
     discardNeed > 0
       ? h.div(
@@ -1811,17 +1700,9 @@ function payCostPrompt(
         "pointer-events-auto fixed left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
       ),
     ],
-    [
-      h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], [title]),
-      countLine,
-      h.div(
-        [h.Class("flex flex-wrap justify-center gap-2")],
-        [
-          answerButton(pending, "prompt-pay", payLabel, payAnswer, true, payDisabled),
-          answerButton(pending, "prompt-decline", declineLabel, { kind: "pay", pay: false }, false, tableId == null),
-        ],
-      ),
-    ].filter((v): v is Html => v !== null),
+    [h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], [title]), countLine].filter(
+      (v): v is Html => v !== null,
+    ),
   );
 }
 
@@ -1840,22 +1721,7 @@ function modeListPrompt(
           "pointer-events-auto fixed left-1/2 z-30 flex max-w-[min(100%-2rem,28rem)] -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
         ),
       ],
-      [
-        h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], ["Choose a mode"]),
-        h.div(
-          [h.Class("flex flex-col gap-2")],
-          pending.labels.map((label, index) =>
-            answerButton(
-              pending,
-              `prompt-mode-${index}`,
-              messageText(label),
-              { kind: "mode", mode: index },
-              index === 0,
-              tableId == null,
-            ),
-          ),
-        ),
-      ],
+      [h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], ["Choose a mode"])],
     );
   }
 
@@ -1870,7 +1736,6 @@ function modeListPrompt(
       label: `${messageText(mode.label)} — ${targetLabel(target, state)}`,
     }));
   });
-  const ready = picked.length === pending.choose || (pending.optional && picked.length === 0);
   return h.div(
     [
       h.DataAttribute("testid", "pending-trigger-modes-aim"),
@@ -1908,7 +1773,6 @@ function modeListPrompt(
           );
         }),
       ),
-      h.div([h.Class("flex flex-wrap justify-center gap-2")], [submitButton("Choose", !ready), cancelButton()]),
     ],
   );
 }
@@ -2141,24 +2005,16 @@ function divideTotalPrompt(
 
 function pilePickPrompt(
   pending: Extract<PendingChoiceView, { kind: "opponent_chooses_pile" | "choose_pile_for_hand" }>,
-  tableId: string | null,
+  _tableId: string | null,
 ): Html {
-  const pileBlock = (title: string, items: ReadonlyArray<ChoiceItem>, pile: 0 | 1): Html =>
+  const pileBlock = (title: string, items: ReadonlyArray<ChoiceItem>): Html =>
     h.div(
       [h.Class("min-w-[180px] flex-1 rounded-panel bg-glass p-3")],
       [
         h.div([h.Class("mb-2 font-semibold text-body text-snow")], [title]),
         h.div(
-          [h.Class("mb-3 flex flex-col gap-1 text-caption text-mist")],
+          [h.Class("flex flex-col gap-1 text-caption text-mist")],
           items.map((item) => h.span([], [item.label])),
-        ),
-        answerButton(
-          pending,
-          `prompt-pile-${pile}`,
-          title,
-          { kind: "opponent_pile", pile },
-          pile === 0,
-          tableId == null,
         ),
       ],
     );
@@ -2174,7 +2030,7 @@ function pilePickPrompt(
       h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], ["Choose a pile"]),
       h.div(
         [h.Class("flex w-full flex-wrap justify-center gap-3")],
-        [pileBlock("Pile A", pending.pile_a, 0), pileBlock("Pile B", pending.pile_b, 1)],
+        [pileBlock("Pile A", pending.pile_a), pileBlock("Pile B", pending.pile_b)],
       ),
     ],
   );
@@ -2676,7 +2532,7 @@ function destinationPickPrompt(
     { kind: "choose_countered_spell_destination" | "revealed_card_to_battlefield_or_hand" }
   >,
   state: VisibleState,
-  tableId: string | null,
+  _tableId: string | null,
 ): Html {
   if (pending.kind === "choose_countered_spell_destination") {
     return h.div(
@@ -2691,27 +2547,6 @@ function destinationPickPrompt(
         h.div(
           [h.Class("pointer-events-none text-center font-semibold text-body text-snow")],
           ["Put the countered spell on top or bottom?"],
-        ),
-        h.div(
-          [h.Class("flex flex-wrap justify-center gap-2")],
-          [
-            answerButton(
-              pending,
-              "prompt-destination-top",
-              "Top",
-              { kind: "top_or_bottom", top: true },
-              true,
-              tableId == null,
-            ),
-            answerButton(
-              pending,
-              "prompt-destination-bottom",
-              "Bottom",
-              { kind: "top_or_bottom", top: false },
-              false,
-              tableId == null,
-            ),
-          ],
         ),
       ],
     );
@@ -2749,27 +2584,6 @@ function destinationPickPrompt(
         ["Put the revealed card onto the battlefield or into your hand?"],
       ),
       faceEl,
-      h.div(
-        [h.Class("flex flex-wrap justify-center gap-2")],
-        [
-          answerButton(
-            pending,
-            "prompt-destination-battlefield",
-            "Battlefield",
-            { kind: "revealed", choice: pending.item.id },
-            true,
-            tableId == null,
-          ),
-          answerButton(
-            pending,
-            "prompt-destination-hand",
-            "Hand",
-            { kind: "revealed", choice: null },
-            false,
-            tableId == null,
-          ),
-        ],
-      ),
     ],
   );
 }
