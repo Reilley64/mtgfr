@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { appVersion, gitCommit } from "./build-meta";
+import { appVersion, deploymentEnvironment, gitCommit } from "./build-meta";
 
 describe("build-meta (browser-safe)", () => {
   it("falls back to vite / defaults without reading a missing process global", () => {
@@ -8,5 +8,10 @@ describe("build-meta (browser-safe)", () => {
     expect(appVersion({ APP_VERSION: " 9.9.9 " }, "1.2.3")).toBe("9.9.9");
     expect(gitCommit({}, undefined)).toBe("unknown");
     expect(gitCommit({}, "abc")).toBe("abc");
+  });
+
+  it("reads deployment environment only when set", () => {
+    expect(deploymentEnvironment({})).toBeUndefined();
+    expect(deploymentEnvironment({ DEPLOYMENT_ENVIRONMENT: " production " })).toBe("production");
   });
 });
