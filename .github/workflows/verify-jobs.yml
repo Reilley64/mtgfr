@@ -56,12 +56,13 @@ jobs:
         with:
           shared-key: verify-server
 
-      - name: CR index + card schema + DSL reference + fmt + clippy
+      - name: CR index + card schema + DSL reference + pool validation + fmt + clippy
         run: |
           set -euo pipefail
           just engine-cr-index-check
           just cards-schema-check
           just cards-dsl-ref-check
+          just cards-toml-validate-pool
           just server-format-check
           just server-lint
 

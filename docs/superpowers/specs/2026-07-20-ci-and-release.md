@@ -76,7 +76,8 @@ branch commit range.
     GHA workspace mount is writable). Each uses `Swatinem/rust-cache`
     `shared-key: verify-server`.
     - Lint: CR index + card JSON Schema drift (`cards-schema-check`) + DSL
-      reference drift (`cards-dsl-ref-check`) + fmt + clippy (tools from the
+      reference drift (`cards-dsl-ref-check`) + full card/token pool schema
+      validation (`cards-toml-validate-pool`) + fmt + clippy (tools from the
       image; no host rustup/protoc installs).
     - Test shards: `cargo nextest run --profile ci --partition count:i/3` only —
       **no** Postgres service (tests use in-memory SQLite). Per-shard JUnit
@@ -166,7 +167,8 @@ Not published to npm. `@semantic-release/npm` bumps `package.json` version only 
 
 - CI itself is the verification surface: `verify-jobs.yml` gates merge and release.
 - `iac/` terraform validate runs from `ci.yml` when iac paths change (plan not run in CI).
-- Local equivalents: `just server-check`, `just client-check`, `just check`.
+- Local equivalents: `just server-check`, `just client-check`, `just check`; server and root checks
+  include full deckable-card and token TOML schema validation via `just cards-toml-validate-pool`.
 
 ---
 

@@ -120,8 +120,8 @@ test *args:
     @just server-test {{ args }}
     @just client-test
 
-[doc("Server CI check (CR index + card DSL drift, then fmt --check + clippy + migrate + nextest)")]
-server-check: engine-cr-index-check cards-schema-check cards-dsl-ref-check server-format-check server-lint
+[doc("Server CI check (CR index + card DSL drift + pool validation, then fmt --check + clippy + migrate + nextest)")]
+server-check: engine-cr-index-check cards-schema-check cards-dsl-ref-check cards-toml-validate-pool server-format-check server-lint
     cargo run -p server -- migration apply
     just server-test
 
@@ -129,7 +129,7 @@ server-check: engine-cr-index-check cards-schema-check cards-dsl-ref-check serve
 client-check: client-tokens-check client-mana-oracle-check server-codegen client-format client-lint client-typecheck client-test
 
 [doc("Run all checks")]
-check: client-tokens-check client-mana-oracle-check cards-schema-check cards-dsl-ref-check engine-cr-index-check server-codegen format lint typecheck test
+check: client-tokens-check client-mana-oracle-check cards-schema-check cards-dsl-ref-check cards-toml-validate-pool engine-cr-index-check server-codegen format lint typecheck test
 
 [doc("Regenerate docs/CR_INDEX.md from engine CR citations")]
 engine-cr-index:
@@ -158,6 +158,11 @@ cards-dsl-ref-check:
 [doc("Validate card TOML files against the generated JSON Schema")]
 cards-toml-validate *args:
     cargo run -p cards --bin validate_card_toml -- {{ args }}
+
+[doc("Validate the full deckable and token TOML pools against generated JSON Schemas")]
+cards-toml-validate-pool:
+    @just cards-toml-validate crates/cards/data/*.toml
+    @just cards-toml-validate --token crates/cards/data/tokens/*.toml
 
 [doc("Scan engine for likely missing CR citations (advisory)")]
 engine-cr-scan:
