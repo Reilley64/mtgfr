@@ -1,7 +1,9 @@
 # DTCG token architecture — typed composites, aliases, tiers, CSS Color 4
 
-**Status:** Design (2026-07-27). Living surface specs remain the source of truth after
-implementation:
+**Status:** Implemented (2026-07-27) on branch
+`cursor/dtcg-token-architecture-design-b959` / PR
+[#289](https://github.com/Reilley64/mtgfr/pull/289). This file is historical
+design input; living surface specs remain the source of truth:
 [`2026-07-20-shell-routes-and-auth.md`](2026-07-20-shell-routes-and-auth.md)
 (design-system section), plus prose in [`DESIGN.md`](../../../DESIGN.md) and the
 token file [`design.tokens.json`](../../../design.tokens.json). Canvas consumers

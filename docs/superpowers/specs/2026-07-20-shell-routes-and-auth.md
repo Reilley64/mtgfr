@@ -140,15 +140,16 @@ The game stream is a Foldkit subscription keyed by route table id and active gam
 
 ### Design system (`DESIGN.md`, `design.tokens.json`, `client/styles/global.css`)
 
-`design.tokens.json` (DTCG) is the **single source of truth** for design token values. Token prose and rules live in [`DESIGN.md`](../../../DESIGN.md). `bun run gen` (Style Dictionary) generates `client/styles/tokens.generated.css` (Tailwind v4 `@theme`) and `client/app/domain/design-tokens.generated.ts` (canvas named colors). `global.css` imports generated theme output and keeps hand-authored keyframes/interaction rules. Foldkit HTML helpers and shared UI helpers in `client/app/domain/ui/` own component recipes — never via `@apply`, and not as token component maps. Inline style is used only for CSS variables; classes carry appearance. Arbitrary values (`bg-[#18221ef5]`) are for one-off values that token files do not name; they do not extend the token list.
+`design.tokens.json` is the **single source of truth** for design token values, authored as DTCG 2025.10. Token prose and rules live in [`DESIGN.md`](../../../DESIGN.md); the DTCG architecture design is historical input in [dtcg-token-architecture-design](2026-07-27-dtcg-token-architecture-design.md). The token file uses `primitive` and `semantic` tiers: primitives hold OKLCH source decisions and spacing, while semantic tokens keep the public CSS/Tailwind/canvas names and point at primitives or other semantics through DTCG aliases. `bun run gen` (Style Dictionary) resolves aliases, emits CSS Color 4 `oklch(...)` strings to `client/styles/tokens.generated.css` (Tailwind v4 `@theme`), emits matching canvas constants and typed structures to `client/app/domain/design-tokens.generated.ts`, and emits narrow `hexFallbacks` for meta/PWA/favicon surfaces that still require hex. The token source does not use `$type: "css"`; shadows, cubic beziers, durations, and typography are typed composites. `global.css` imports generated theme output and keeps hand-authored keyframes/interaction rules. Foldkit HTML helpers and shared UI helpers in `client/app/domain/ui/` own component recipes — never via `@apply`, and not as token component maps. Inline style is used only for CSS variables; classes carry appearance. Arbitrary values (`bg-[#18221ef5]`) are for one-off values that token files do not name; they do not extend the token list.
 
 Key semantic tokens:
-- `forest-floor` (#0B1310) — canvas background, `index.html` inline background (prevents flash).
-- `forest-surface` (#101816FA) — panels.
-- `forest-hud` (#0C1412EB) — HUD panels.
+- `forest-floor` — canvas background, `index.html` inline background, and generated `hexFallbacks.forestFloor` for meta/PWA/favicon fill (prevents flash).
+- `forest-surface` — panels.
+- `forest-hud` — HUD panels.
 - `llanowar` / `llanowar-deep` — primary buttons (hover → active).
-- `priority-gold` (#FFD76A) — priority orb. **Gold = a decision is owed** (The Gold Means Act Rule).
-- `vine` (#22CC44) — active borders.
+- `priority-gold` — priority orb. **Gold = a decision is owed** (The Gold Means Act Rule).
+- `playable-border` — alias of `snow-mint`, used when a card has a current action.
+- `vine` — active borders.
 - Seat colors: `seat-forest`, `seat-island`, `seat-mountain`, `seat-arcane` — player identity, never semantics.
 - Combat semantics: `mountain-red` (attack), `wall-green` (block), `island-blue` (targeting).
 
