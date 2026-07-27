@@ -125,11 +125,13 @@ import {
   flyingCardIds,
   handFlightScale,
   poseAtTarget,
+  poseNearHandoff,
   rebindFlightId,
   remapFlightsForZoom,
   retargetFlight,
   spawnFlight,
   stackFlightScale,
+  traceFlightSync,
 } from "./motion/flights";
 
 export const BOARD_VIEWPORT = { width: 1440, height: 900 } as const;
@@ -513,9 +515,14 @@ function playerOrigin(model: BoardModel, fold: BoardFold, seat: number): Vec2 {
   return worldToScreen(model.camera, pos.x, pos.y);
 }
 
-function retargetFlightToCard(flight: CardFlight, model: BoardModel, card: RenderCard): CardFlight {
+function retargetFlightToCard(
+  flight: CardFlight,
+  model: BoardModel,
+  card: RenderCard,
+  opts?: { retainHold?: boolean },
+): CardFlight {
   const target = cardTarget(model.camera, card);
-  return retargetFlight(flight, { x: target.x, y: target.y, scale: 1 });
+  return retargetFlight(flight, { x: target.x, y: target.y, scale: 1 }, opts);
 }
 
 function hiddenCardIds(flights: ReadonlyMap<number, CardFlight>, exitFx: ReadonlyMap<number, ExitFx>): Set<number> {
@@ -619,13 +626,57 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
     if (existing != null) {
       const target = cardTarget(model.camera, card);
       const aim = { x: target.x, y: target.y, scale: 1 };
-      // Provisional land-row seed already on the real slot — show the permanent without a second glide.
-      if (existing.hold && existing.phase === "settled" && poseAtTarget(existing, aim)) {
+      // On/near the real slot — hand off when parked, or keep easing without a short retarget.
+      // Settled far from the slot (provisional row) must still retarget with hold retained.
+      if (existing.hold && poseAtTarget(existing, aim)) {
         flights.delete(permanent);
         handHidden.delete(from);
         continue;
       }
-      flights.set(permanent, retargetFlightToCard({ ...existing, kind: "battlefield", fromCardId: from }, model, card));
+      if (existing.hold && poseNearHandoff(existing, aim)) {
+        const remainingPx = Math.hypot(aim.x - existing.x, aim.y - existing.y);
+        if (existing.phase === "settled") {
+          traceFlightSync({
+            op: "handoff",
+            zone: "land",
+            id: permanent,
+            hold: true,
+            phase: existing.phase,
+            remainingPx,
+          });
+          flights.delete(permanent);
+          handHidden.delete(from);
+        } else {
+          traceFlightSync({
+            op: "skip-near",
+            zone: "land",
+            id: permanent,
+            hold: true,
+            phase: existing.phase,
+            remainingPx,
+          });
+          handHidden.add(from);
+        }
+        continue;
+      }
+      {
+        const remainingPx = Math.hypot(aim.x - existing.x, aim.y - existing.y);
+        traceFlightSync({
+          op: "retarget",
+          zone: "land",
+          id: permanent,
+          hold: existing.hold === true,
+          phase: existing.phase,
+          remainingPx,
+          retainedHold: existing.hold === true,
+        });
+      }
+      flights.set(
+        permanent,
+        retargetFlightToCard({ ...existing, kind: "battlefield", fromCardId: from }, model, card, {
+          retainHold: existing.hold === true,
+        }),
+      );
       handHidden.add(from);
       continue;
     }
@@ -659,17 +710,50 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
 
     const existing = flights.get(spell);
     if (existing != null) {
-      // Parked local seeds already finished their glide — hand off to HTML even if the authoritative
-      // face is a few px off (pile recenter). A correction retarget reads as a second animation.
-      if (existing.hold && existing.phase === "settled") {
-        flights.delete(spell);
-        if (meta.from != null) handHidden.delete(meta.from);
-        continue;
-      }
+      // At the face — hand off. Near but still flying: keep the current glide (do not retarget
+      // the last inches — that is the short second ease). Far: retarget, retain hold.
       if (poseAtTarget(existing, aim)) {
         flights.delete(spell);
         if (meta.from != null) handHidden.delete(meta.from);
         continue;
+      }
+      if (existing.hold && poseNearHandoff(existing, aim)) {
+        const remainingPx = Math.hypot(aim.x - existing.x, aim.y - existing.y);
+        if (existing.phase === "settled") {
+          traceFlightSync({
+            op: "handoff",
+            zone: "stack",
+            id: spell,
+            hold: true,
+            phase: existing.phase,
+            remainingPx,
+          });
+          flights.delete(spell);
+          if (meta.from != null) handHidden.delete(meta.from);
+        } else if (meta.from != null) {
+          traceFlightSync({
+            op: "skip-near",
+            zone: "stack",
+            id: spell,
+            hold: true,
+            phase: existing.phase,
+            remainingPx,
+          });
+          handHidden.add(meta.from);
+        }
+        continue;
+      }
+      {
+        const remainingPx = Math.hypot(aim.x - existing.x, aim.y - existing.y);
+        traceFlightSync({
+          op: "retarget",
+          zone: "stack",
+          id: spell,
+          hold: existing.hold === true,
+          phase: existing.phase,
+          remainingPx,
+          retainedHold: existing.hold === true,
+        });
       }
       flights.set(
         spell,
@@ -680,6 +764,7 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
             y: aim.y,
             scale: aim.scale,
           },
+          { retainHold: existing.hold === true },
         ),
       );
       handHidden.add(meta.from);
@@ -704,6 +789,36 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
       }),
     );
     handHidden.add(meta.from);
+  }
+
+  // After provenance folds, held seeds may still be easing. Hand off when parked; while far,
+  // refresh aim without clearing hold (avoids the post-retarget short second ease).
+  for (const [id, flight] of [...flights.entries()]) {
+    if (!flight.hold) continue;
+    if (flight.kind === "stack") {
+      if (!state.stack.some((entry) => entry.source === id)) continue;
+      const aim = stackFlightAimForSource(model, state.stack, id);
+      if (poseAtTarget(flight, aim) || (flight.phase === "settled" && poseNearHandoff(flight, aim))) {
+        flights.delete(id);
+        if (flight.fromCardId != null) handHidden.delete(flight.fromCardId);
+        continue;
+      }
+      if (poseNearHandoff(flight, aim)) continue;
+      flights.set(id, retargetFlight(flight, { x: aim.x, y: aim.y, scale: aim.scale }, { retainHold: true }));
+      continue;
+    }
+    if (flight.kind !== "battlefield") continue;
+    const card = cardsById.get(id);
+    if (card == null) continue;
+    const target = cardTarget(model.camera, card);
+    const aim = { x: target.x, y: target.y, scale: 1 };
+    if (poseAtTarget(flight, aim) || (flight.phase === "settled" && poseNearHandoff(flight, aim))) {
+      flights.delete(id);
+      if (flight.fromCardId != null) handHidden.delete(flight.fromCardId);
+      continue;
+    }
+    if (poseNearHandoff(flight, aim)) continue;
+    flights.set(id, retargetFlight(flight, aim, { retainHold: true }));
   }
 
   for (const id of new Set([...fold.provenance.resolvedFromStack, ...fold.provenance.leftStackToPile])) {
