@@ -95,6 +95,12 @@
   --shadow-pick: 0 0 0 3px #22cc44, 0 10px 24px rgb(0 0 0 / 0.6);
   --drop-shadow-drag: 0 16px 36px rgb(0 0 0 / 0.72);
   --ease-state: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-stack-in: 0.25s;
+  --duration-stack-return: 0.22s;
+  --duration-stack-resolve: 0.22s;
+  --duration-breathe: 1.8s;
+  --duration-skeleton: 1.2s;
+  --duration-shell-enter: 0.2s;
   --animate-stack-in: stack-in 0.25s ease-out;
   --animate-stack-return: stack-return 0.22s ease-in;
   --animate-stack-resolve: stack-resolve 0.22s ease-out;

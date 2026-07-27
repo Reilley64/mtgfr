@@ -154,15 +154,20 @@
   "drop-shadow": {
     "drag": { "$type": "css", "$value": "0 16px 36px rgb(0 0 0 / 0.72)" }
   },
-  "ease": {
-    "state": { "$type": "css", "$value": "cubic-bezier(0.22, 1, 0.36, 1)" }
-  },
-  "animate": {
-    "stack-in": { "$type": "css", "$value": "stack-in 0.25s ease-out" },
-    "stack-return": { "$type": "css", "$value": "stack-return 0.22s ease-in" },
-    "stack-resolve": { "$type": "css", "$value": "stack-resolve 0.22s ease-out" },
-    "breathe": { "$type": "css", "$value": "breathe 1.8s ease-in-out infinite" },
-    "skeleton": { "$type": "css", "$value": "breathe 1.2s ease-in-out infinite" },
-    "shell-enter": { "$type": "css", "$value": "shell-enter 0.2s var(--ease-state)" }
+  "semantic": {
+    "ease": {
+      "state": {
+        "$type": "cubicBezier",
+        "$value": [0.22, 1, 0.36, 1]
+      }
+    },
+    "duration": {
+      "stack-in": { "$type": "duration", "$value": { "value": 0.25, "unit": "s" } },
+      "stack-return": { "$type": "duration", "$value": { "value": 0.22, "unit": "s" } },
+      "stack-resolve": { "$type": "duration", "$value": { "value": 0.22, "unit": "s" } },
+      "breathe": { "$type": "duration", "$value": { "value": 1.8, "unit": "s" } },
+      "skeleton": { "$type": "duration", "$value": { "value": 1.2, "unit": "s" } },
+      "shell-enter": { "$type": "duration", "$value": { "value": 0.2, "unit": "s" } }
+    }
   }
 }
