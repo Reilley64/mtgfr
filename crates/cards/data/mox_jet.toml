@@ -1,5 +1,6 @@
 # {T}: Add {B}.
 name = "Mox Jet"
+otags = ["activated-ability", "cycle-lea-moxen", "manaless-value", "power-nine"]
 sets = ["2ed", "30a", "ced", "cei", "lea", "leb", "ovnt", "prm", "vma", "ydmu"]
 id = "0677f49e-f8bf-4349-af52-2ccde9287c2e"
 default_print = "70d6c02e-0f48-4fb0-94f3-1fc92ee1814f"

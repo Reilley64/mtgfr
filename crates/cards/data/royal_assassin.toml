@@ -1,5 +1,6 @@
 # {T}: Destroy target tapped creature.
 name = "Royal Assassin"
+otags = ["activated-ability", "removal-creature", "removal-destroy", "repeatable-crime", "repeatable-removal", "spot-removal", "type-addition-human", "royal-assassin-ability"]
 sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "8ed", "9ed", "acr", "ced", "cei", "dmr", "fbb", "lea", "leb", "m10", "m11", "m12", "pjjt", "pjse", "prm", "psus", "sum"]
 id = "9ed6f28f-a3db-48c5-9ab0-b90a7fba5f57"
 default_print = "5cceb11b-0f70-4749-8a8c-d698cd01cd6e"

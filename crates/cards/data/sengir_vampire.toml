@@ -2,6 +2,7 @@
 # Whenever a creature dealt damage by this creature this turn dies, put a +1/+1 counter on this
 # creature.
 name = "Sengir Vampire"
+otags = ["cycle-w16-u", "evasion", "hunger", "repeatable-pp-counters"]
 sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "9ed", "anb", "brb", "btd", "ced", "cei", "ddk", "dpa", "fbb", "jmp", "lea", "leb", "m12", "m14", "m15", "mb2", "me4", "ori", "p30h", "plst", "ps11", "ptc", "sum", "tor", "w16", "w17"]
 id = "749141aa-f6c4-4ad8-b146-406e68ae9b0b"
 default_print = "ffd7ca8e-6437-4b85-81dd-7173200dcec7"

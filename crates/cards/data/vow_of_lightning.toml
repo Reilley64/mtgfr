@@ -1,6 +1,7 @@
 # Enchant creature
 # Enchanted creature gets +2/+2, has first strike, and can't attack you or planeswalkers you control.
 name = "Vow of Lightning"
+otags = ["cycle-cmd-vow", "cycle-cmr-vow", "gives-first-strike", "multiplayer", "prevent-attack", "removal-creature", "synergy-planeswalker"]
 sets = ["cma", "cmd", "cmr", "e02", "gn3", "mkc", "plst", "pz1"]
 id = "bfed67f3-70d2-49c2-8f25-16e4d10fa5be"
 default_print = "a0742d43-8a67-4485-b0ce-5a4e057fa915"

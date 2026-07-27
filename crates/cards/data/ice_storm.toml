@@ -1,5 +1,6 @@
 # Destroy target land.
 name = "Ice Storm"
+otags = ["removal-destroy", "removal-land", "single-target-instant-sorcery", "spot-removal"]
 sets = ["2ed", "30a", "ced", "cei", "lea", "leb", "me1", "sld"]
 id = "a0b97e33-2d0c-4800-a9f5-9cd9be651ea8"
 default_print = "2ec2246d-8bea-43c4-bf7f-2acad363e0af"

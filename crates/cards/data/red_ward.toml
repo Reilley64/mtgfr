@@ -1,6 +1,7 @@
 # Enchant creature
 # Enchanted creature has protection from red. This effect doesn't remove this Aura.
 name = "Red Ward"
+otags = ["cycle-lea-ward", "french-vanilla-aura", "gives-protection", "hate-red"]
 sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
 id = "73f84440-425f-4cf5-b01a-3ae89f1f6e37"
 default_print = "03d818b4-4722-4035-a2bc-ebc4c8c90ec0"

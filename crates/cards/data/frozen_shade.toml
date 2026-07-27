@@ -1,5 +1,6 @@
 # {B}: This creature gets +1/+1 until end of turn.
 name = "Frozen Shade"
+otags = ["activated-ability", "bottomless-mana-sink", "shade-pump"]
 sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
 id = "f75f9006-217d-4ec8-9c35-ceefe1c5ae4e"
 default_print = "485421e0-ee1c-425b-abe0-ec5a7e2c0042"

@@ -1,5 +1,6 @@
 # {1}, {T}: Tap target artifact, creature, or land.
 name = "Icy Manipulator"
+otags = ["activated-ability", "hate-artifact", "repeatable-crime", "tapper-artifact", "tapper-creature", "tapper-land"]
 sets = ["10e", "2ed", "30a", "9ed", "ced", "cei", "ddh", "dkm", "dmr", "dom", "f05", "ice", "lea", "leb", "me4", "mrd", "olep", "plst", "prm", "ptc"]
 id = "3608f1f7-8dc5-4dd1-ae91-c830e1de9529"
 default_print = "2a7cf252-1af0-4b03-89bc-8287b4052a23"

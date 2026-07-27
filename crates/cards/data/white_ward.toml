@@ -1,6 +1,7 @@
 # Enchant creature
 # Enchanted creature has protection from white. This effect doesn't remove this Aura.
 name = "White Ward"
+otags = ["alliteration", "cycle-lea-ward", "french-vanilla-aura", "gives-protection", "hate-white"]
 sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
 id = "860468b3-625a-4663-a5ae-336ae10fc7d0"
 default_print = "77cbc0fa-d5b8-412a-bdca-7f62d8d1ce1e"

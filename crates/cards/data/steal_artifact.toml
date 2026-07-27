@@ -1,6 +1,7 @@
 # Enchant artifact
 # You control enchanted artifact.
 name = "Steal Artifact"
+otags = ["theft-artifact"]
 sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "7ed", "8ed", "ced", "cei", "fbb", "lea", "leb", "ptc", "sum"]
 id = "cd8ae9f2-edac-473a-8846-c08219e617c3"
 default_print = "04a1a6f4-a73b-4593-b14e-8c87f94debc1"

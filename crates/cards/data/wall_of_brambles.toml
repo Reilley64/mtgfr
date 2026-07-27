@@ -1,6 +1,7 @@
 # Defender (This creature can't attack.)
 # {G}: Regenerate this creature.
 name = "Wall of Brambles"
+otags = ["activated-ability", "drawback", "regenerates-self", "type-errata"]
 sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
 id = "f8d82a00-c10e-4b9e-9642-d05706900a97"
 default_print = "5ae21e65-fc55-4a90-806e-452ef0ad5e3a"

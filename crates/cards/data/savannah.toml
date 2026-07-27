@@ -1,5 +1,6 @@
 # ({T}: Add {G} or {W}.)
 name = "Savannah"
+otags = ["activated-ability", "cycle-abu-dual-land", "nonbasic-basic-land-type", "single-english-word-name"]
 sets = ["2ed", "30a", "3ed", "ced", "cei", "fbb", "lea", "leb", "me2", "me4", "olgc", "prm", "sum", "vma"]
 id = "703243f0-8cb3-420f-958f-5fd4bde30293"
 default_print = "38937c61-280e-457f-aef9-43139446163a"

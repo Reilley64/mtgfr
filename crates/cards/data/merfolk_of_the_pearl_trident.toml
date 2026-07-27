@@ -1,5 +1,6 @@
 # (no rules text — vanilla creature)
 name = "Merfolk of the Pearl Trident"
+otags = ["cycle-s99-vanilla-1-drop", "type-errata-summon-creature"]
 sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "ced", "cei", "fbb", "itp", "lea", "leb", "m13", "plst", "por", "psal", "rqs", "s99", "sld", "sum", "wc01"]
 id = "218d9277-c179-4de3-9c7f-79b5a6d4fa38"
 default_print = "a360fe4e-c9a6-42fa-a97a-8b5a0c19ef93"

@@ -1,5 +1,6 @@
 # ({T}: Add {B} or {G}.)
 name = "Bayou"
+otags = ["activated-ability", "cycle-abu-dual-land", "nonbasic-basic-land-type", "single-english-word-name"]
 sets = ["2ed", "30a", "3ed", "ced", "cei", "fbb", "lea", "leb", "me3", "me4", "olgc", "prm", "sum", "vma"]
 id = "b76d1ae6-ad1d-4bac-b4c3-2e03e0e84d9b"
 default_print = "d66e43f0-1558-409f-8248-cc1d76c6bd8e"

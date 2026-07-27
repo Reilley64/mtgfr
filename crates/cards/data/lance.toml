@@ -1,6 +1,7 @@
 # Enchant creature
 # Enchanted creature has first strike.
 name = "Lance"
+otags = ["french-vanilla-aura", "gives-first-strike", "single-english-word-name"]
 sets = ["2ed", "30a", "3ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
 id = "5960dd01-6797-4c73-b48a-f637b9c288cc"
 default_print = "e7e9714d-072b-4237-8371-5ce2709c878f"

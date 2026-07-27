@@ -3,6 +3,7 @@
 # Dredge 5 (If you would draw a card, you may mill five cards instead. If you do, return this card from your
 # graveyard to your hand.)
 name = "Stinkweed Imp"
+otags = ["evasion", "manaless-value", "mill-self", "old-damage-deathtouch", "regrowth-self"]
 sets = ["ddc", "ddj", "dvd", "gk1", "mma", "plst", "rav", "sld", "td0", "tsr"]
 id = "e005bc76-4985-4ec6-b9f6-cf6d0d9f5df4"
 default_print = "2ab08d69-210b-4b06-88a2-45281a1a4e1e"

@@ -1,5 +1,6 @@
 # Target creature gets +X/+0 until end of turn.
 name = "Howl from Beyond"
+otags = ["combat-trick", "single-target-instant-sorcery"]
 sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "ced", "cei", "dmr", "fbb", "ice", "lea", "leb", "me4", "sum"]
 id = "403cf6ae-48a9-4ea9-894e-7135cfca4e1b"
 default_print = "78694fa9-85dc-4671-87e9-a2bccdc9fcce"

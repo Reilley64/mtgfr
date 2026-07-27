@@ -3,6 +3,7 @@
 # {G}: Regenerate enchanted creature. (The next time that creature would be destroyed this
 # turn, instead tap it, remove it from combat, and heal all damage on it.)
 name = "Regeneration"
+otags = ["activated-ability", "regenerates-other", "single-english-word-name"]
 sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "9ed", "ced", "cei", "fbb", "ice", "lea", "leb", "mir", "sum"]
 id = "89390a33-b289-4edd-a114-6616e49a49c2"
 default_print = "b523f013-3dbd-4b5c-9433-cdec7dc737ba"

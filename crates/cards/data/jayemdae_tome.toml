@@ -1,5 +1,6 @@
 # {4}, {T}: Draw a card.
 name = "Jayemdae Tome"
+otags = ["activated-ability", "draw-engine", "repeatable-pure-draw", "type-addition-book", "vanity-card", "virtual-legendary", "tome"]
 sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "ced", "cei", "fbb", "itp", "lea", "leb", "m13", "ori", "ps11", "ptc", "rqs", "sum"]
 id = "39ee576a-0803-4063-9c84-f2b537e4d44c"
 default_print = "e470c00b-57ac-48d4-b1e6-74b74872e620"

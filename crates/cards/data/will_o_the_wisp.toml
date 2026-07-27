@@ -2,6 +2,7 @@
 # {B}: Regenerate this creature. (The next time this creature would be destroyed this turn,
 # instead tap it, remove it from combat, and heal all damage on it.)
 name = "Will-o'-the-Wisp"
+otags = ["activated-ability", "alliteration", "evasion", "regenerates-self", "type-errata-name-self"]
 sets = ["2ed", "30a", "3ed", "4bb", "4ed", "9ed", "a25", "ced", "cei", "fbb", "lea", "leb", "plst", "sum"]
 id = "8b60fcfe-fb90-4a00-a708-25b59bfc9b5a"
 default_print = "73a2a070-464e-4749-87f1-2df5c8b2a93b"

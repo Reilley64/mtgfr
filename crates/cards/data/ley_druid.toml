@@ -1,5 +1,6 @@
 # {T}: Untap target land.
 name = "Ley Druid"
+otags = ["activated-ability", "mana-dork", "repeatable-crime", "type-addition-human", "untapper-land"]
 sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "9ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
 id = "a4ae41c7-9631-407d-8fd3-04f403d940a8"
 default_print = "30c3f2cd-5113-45f5-bb8d-4a7d5c4c76a5"

@@ -1,5 +1,6 @@
 # Each other player discards a card. You draw a card for each card discarded this way.
 name = "Syphon Mind"
+otags = ["burst-draw", "discard", "hand-neutral", "hand-positive", "inverted-effects", "per-player", "pure-draw"]
 sets = ["c14", "c17", "clb", "cm2", "cma", "cmd", "dci", "fic", "hop", "m3c", "msc", "ons", "scd"]
 id = "abc37d6c-6300-47b5-a679-9db5b83eb54f"
 default_print = "53a224be-4365-46da-9ff2-a04ea16e5154"

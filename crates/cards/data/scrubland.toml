@@ -1,5 +1,6 @@
 # ({T}: Add {W} or {B}.)
 name = "Scrubland"
+otags = ["activated-ability", "cycle-abu-dual-land", "nonbasic-basic-land-type", "single-english-word-name"]
 sets = ["2ed", "30a", "3ed", "ced", "cei", "fbb", "lea", "leb", "me3", "me4", "olgc", "prm", "sum", "vma"]
 id = "c8d95ca8-7d12-4072-aeaf-e20f248c7e39"
 default_print = "7e18d625-0950-4062-8d41-f8b681eff234"

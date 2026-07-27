@@ -1,5 +1,6 @@
 # (no rules text — vanilla creature)
 name = "Hurloon Minotaur"
+otags = ["meme"]
 sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "anb", "ced", "cei", "fbb", "lea", "leb", "me3", "o90p", "sum"]
 id = "8f1dae40-b307-446e-bbd2-86aa35813871"
 default_print = "eb72cfc8-6235-4951-b1ba-6d9531f5eabf"

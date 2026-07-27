@@ -2,6 +2,7 @@
 # creature.)
 # Enchanted creature gets +0/+2 and has reach. (It can block creatures with flying.)
 name = "Web"
+otags = ["french-vanilla-aura", "gives-reach", "single-english-word-name", "three-letter-name"]
 sets = ["2ed", "30a", "3ed", "4bb", "4ed", "9ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
 id = "5aa12aff-db3c-4be5-822b-3afdf536b33e"
 default_print = "6fbbac49-9117-4e15-89e8-98387f7511ed"

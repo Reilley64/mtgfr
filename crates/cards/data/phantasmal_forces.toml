@@ -1,6 +1,7 @@
 # Flying
 # At the beginning of your upkeep, sacrifice this creature unless you pay {U}.
 name = "Phantasmal Forces"
+otags = ["creature-type-phantasm", "drawback", "evasion", "triggered-ability", "type-errata", "upkeep-cost"]
 sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "lea", "leb", "me4", "sum"]
 id = "06a158c6-7e36-49f8-a8e0-a7b7df5fd7ed"
 default_print = "e8244a80-3d9a-4392-ac62-739b3e330638"

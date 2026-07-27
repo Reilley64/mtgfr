@@ -1,5 +1,6 @@
 # Destroy all enchantments.
 name = "Tranquility"
+otags = ["hate-enchantment", "removal-destroy", "removal-enchantment", "single-english-word-name", "sweeper", "symmetrical"]
 sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "brb", "ced", "cei", "fbb", "inv", "lea", "leb", "mmq", "ptc", "sum", "tmp", "tpr"]
 id = "f671e3c3-cd59-4d06-a1af-5d04892cf74d"
 default_print = "fc24f763-4c7f-45e4-933b-573d1ace1ddc"

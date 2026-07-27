@@ -1,6 +1,7 @@
 # Chain Lightning deals 3 damage to any target. Then that player or that permanent's controller may pay {R}{R}. If
 # the player does, they may copy this spell and may choose a new target for that copy.
 name = "Chain Lightning"
+otags = ["burn-any", "lightning-bolt-redux", "single-target-instant-sorcery", "spot-removal", "chain-spell"]
 sets = ["aa3", "bbd", "dmr", "ema", "jmp", "leg", "mb2", "me3", "mp2", "pd2", "sld", "td0", "vma"]
 id = "8785f42f-87b9-4a0a-89ce-ea423649ba9c"
 default_print = "2105a0d9-ea2e-4ffc-be08-424b5617205d"
