@@ -1,6 +1,6 @@
 # Deck List and Builder
 
-**Status:** Current (as of 2026-07-26)
+**Status:** Current (as of 2026-07-27)
 **Module:** `client/app/shell/decks/**`, `client/app/domain/deck-builder/**`, `client/app/domain/ui/card-art.ts`, `client/app/domain/image-cache.ts`, `client/app/domain/deck-builder/scryfall.ts`
 
 ---
@@ -71,7 +71,7 @@ stage body is a split-pane layout (no duplicate page title in the decklist pane)
 
 - **Left: card pool grid.** Loads from `/api/rpc/cards/search` in 100-card pages via an `IntersectionObserver` sentinel at the grid bottom. Filters: text search (tokenized LIKE over `search_blob`), set, subtypes ([accounts-decks-and-catalog](2026-07-20-accounts-decks-and-catalog.md)). Pool tiles are `POOL_CARD` style: art thumbnail + name + type + cost pips, click-to-add. Right-click (or 500 ms long-press) opens a context menu with printing options and basics shortcuts.
 - **Right: decklist panel.** Deck name field (`deck-name`), commander picker (legendary creatures in the list), 99-card decklist with per-card counts and a running total, and client legality problems (`deck-problems`) via the shared `alertClass` recipe. Click a row to remove one. Decklist rows (and pool tiles / commander chip) are keyed by oracle id so `BindBuilderCardPointer` remounts after list churn — Mount args are captured at insert, so unkeyed reuse left later rows activating the removed card until refresh. Deck save calls `/api/rpc/decks` or `/api/rpc/decks/:id` with `SaveDeckRequest` from the header Save control.
-- **Printing preference.** Card identity is the Scryfall oracle id (`CardDef.id`); a Printing is a Scryfall UUID used only for art ([accounts-decks-and-catalog](2026-07-20-accounts-decks-and-catalog.md)). `preferredPrint` is session-sticky per oracle id — once you pick a printing for a card, adding it again reuses that choice. `searchPrints(oracleId)` fetches Scryfall prints for the picker.
+- **Printing preference.** Card identity is the Scryfall oracle id (`CardDef.id`); a Printing is a Scryfall UUID used only for art ([accounts-decks-and-catalog](2026-07-20-accounts-decks-and-catalog.md)). `preferredPrint` is session-sticky per oracle id — once you pick a printing for a card, adding it again reuses that choice. `searchPrints(oracleId)` fetches Scryfall prints for the picker. On HTTP **429**, it waits `Retry-After` (integer seconds or HTTP-date; default **30s** when absent/invalid, clamped to **60s**) and retries the same page up to **2** times before failing into the print-picker error state. Non-429 failures fail immediately with no wait.
 - **Singleton enforcement.** Non-basic non-commander cards cap at 1. Commander is set via the context menu only; `canBeCommander` restricts to legendary creatures.
 - **Full Commander legality** is enforced server-side on save; the client surfaces validation errors returned as `CreateDeck422` / `UpdateDeck422` tagged Schema errors.
 - **Card lookup.** `lookupCardsByIds(ids, client)` fetches oracle data for deck hydration through `/api/rpc/cards/lookup`.
@@ -110,7 +110,7 @@ Missing ordinary (non-`art_crop`) CDN art stays empty after load failure (no Scr
 ## Testing Decisions
 
 - `client/app/shell/decks/**/*.test.ts` — decks list/builder stories and helpers (including sequential multi-card remove and keyed decklist rows for pointer-Mount remount).
-- `client/app/domain/deck-builder/*.test.ts` — print prefs, menus, hover preview.
+- `client/app/domain/deck-builder/*.test.ts` — print prefs, menus, hover preview; `scryfall.test.ts` covers `Retry-After` parsing and 429 wait-then-retry for `searchPrints`.
 - `client/app/domain/ui/card-art.test.ts` — art URL / host sync against `ImageCache`.
 - `client/app/domain/image-cache.test.ts` — cache settle / subscriber behavior.
 - Scene coverage for shell deck surfaces lives with other shell Scene tests, including
