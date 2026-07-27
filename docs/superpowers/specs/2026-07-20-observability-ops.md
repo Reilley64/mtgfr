@@ -1,12 +1,14 @@
 # Observability Ops
 
-**Status:** Current (as of 2026-07-25)
+**Status:** Current (as of 2026-07-27)
 **Module:** `iac/observability.tf`, `client/app/faro.ts`, `client/app/entry.ts`,
 `client/server/plugins/otel.server.ts`, `client/server/routes/api/faro/`, `crates/server` (OTEL export)
 
 Related: [production-topology-and-operations](2026-07-20-production-topology-and-operations.md)
 (namespaces, env wiring), [ci-and-release](2026-07-20-ci-and-release.md),
-[shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md) (shell pointer only).
+[shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md) (shell pointer only),
+[OpenTelemetry Semantic Conventions design](2026-07-27-otel-semantic-conventions-design.md)
+(approved design input).
 
 ---
 
@@ -43,6 +45,38 @@ port-forward`; no tunnel hostname for the observability plane. Exporters no-op l
 
 ## Behavior
 
+### Semantic-convention contract
+
+The deployed browser → BFF → API telemetry vocabulary follows the Medium OpenTelemetry Semantic
+Conventions set pinned to **1.37.0**. The pin covers stable resource, HTTP, RPC/gRPC, safe DB, and
+exception attributes plus deliberate `mtgfr.*` extensions. Bump the pin only when an adopted key is
+renamed/removed or an already-adopted family needs a newer stable name.
+
+One shared attribute dictionary owns the allow/deny rules; individual runtimes map to it and do not
+invent free-form span keys. Scrub rules win over conventions.
+
+| Family | Allow | Forbid |
+|---|---|---|
+| Resource | `service.name`, `service.version`, `service.instance.id`, `deployment.environment`, `vcs.ref.head.revision` | user/session tokens, deck lists, table secrets, auth material |
+| HTTP | `http.request.method`, `http.response.status_code`, low-cardinality `http.route` or `url.path`, `url.scheme`, `server.address` | request/response bodies, sensitive query strings, auth/cookie headers as attributes |
+| RPC / gRPC | `rpc.system=grpc`, `rpc.service`, short `rpc.method`, `rpc.grpc.status_code` | full HTTP/2 path as `rpc.method`, request/response bodies |
+| DB | `db.system=postgresql`, `db.operation.name`, `db.namespace` | `db.query.text`, statement strings, parameters, row contents |
+| Exceptions | span status `Error`, `exception.type`, safe `exception.escaped` | `exception.message` or stacks when they may include payloads |
+| `mtgfr.*` | `mtgfr.table.id`, `mtgfr.intent.kind`, `mtgfr.intent.accepted`, `mtgfr.user.id` | `mtgfr.intent.payload`, hand/library fields, auth tokens, any unlisted game key |
+
+Runtime ownership:
+
+| Runtime | Sets | Does not own |
+|---|---|---|
+| Faro (`edh-web` browser) | App/resource identity and HTTP client attrs on same-origin `/api` fetches | gRPC, DB, `mtgfr.*` game fields |
+| BFF (`edh-web` Nitro / Effect) | HTTP server attrs, outbound gRPC client attrs, safe DB attrs, exceptions | Engine internals |
+| API (`edh-api` / tonic) | Inbound RPC server attrs, `mtgfr.*`, exceptions; safe DB attrs when DB spans are emitted | Browser RUM |
+| Engine (`crates/engine`) | Local `tracing` spans only | OTEL exporters |
+
+Span names stay low-cardinality: BFF HTTP spans are route-oriented, gRPC spans are
+`{rpc.service}/{rpc.method}`, and span names never include card names, player names, intent bodies,
+or private game state.
+
 ### Self-hosted LGTM (namespace `observability`)
 
 **Self-hosted LGTM** in namespace `observability` (Terraform Helm via `iac/observability.tf`):
@@ -61,7 +95,7 @@ Cluster placement and NetworkPolicy context:
 `@grafana/faro-web-sdk` + `@grafana/faro-web-tracing`. Posts to same-origin `/api/faro/collect`;
 the BFF proxies to Alloy `faro.receiver`. Session sampling forced to 100%; stale sessions
 (`isSampled=false` in `sessionStorage`) are repaired. `traceparent` propagation is same-origin
-`/api` only.
+`/api` only. Faro app identity remains `app.name=edh-web`, aligned with `service.name=edh-web`.
 
 ### BFF (OTEL)
 
@@ -94,8 +128,12 @@ messages for clients; those strings never appear on span attributes.
 
 ### API (OTEL)
 
-**API:** `tracing` + `opentelemetry-otlp` (HTTP export) in `crates/server`. Engine
-(`crates/engine`) emits `tracing` spans but no OTEL exporters (engine is pure).
+**API:** `tracing` + `opentelemetry-otlp` (HTTP export) in `crates/server`. Inbound tonic spans
+use `rpc.system=grpc`, `rpc.service`, short `rpc.method`, `rpc.grpc.status_code`, and
+`{rpc.service}/{rpc.method}` names. Game submit spans use `mtgfr.table.id`, `mtgfr.intent.kind`,
+`mtgfr.intent.accepted`, and `mtgfr.user.id` only; legacy bare `table_id`, `intent.kind`,
+`accepted`, and `user_id` are not emitted as OTEL attribute keys. Engine (`crates/engine`) emits
+`tracing` spans but no OTEL exporters (engine is pure).
 
 Prod endpoint wiring (`OTEL_EXPORTER_OTLP_ENDPOINT`, `FARO_COLLECT_UPSTREAM`) is listed in the
 Settings / BFF env tables of
@@ -103,9 +141,10 @@ Settings / BFF env tables of
 
 ### Scrub rules
 
-**Scrub rules:** identifiers, timing, error classes only. No hand/library contents, intent
-payloads, or auth headers. Faro collect is capped at 512 KiB (`FARO_MAX_BODY_BYTES`); oversize
-requests return 413. TOON action traces (`ACTION_LOG_DIR`) must stay off Loki. Alloy Faro
+**Scrub rules:** identifiers, timing, error classes, and allowlisted convention keys only. No
+hand/library contents, intent payloads, SQL/query bodies, auth headers, cookies, or free-form
+attributes outside the dictionary. Faro collect is capped at 512 KiB (`FARO_MAX_BODY_BYTES`);
+oversize requests return 413. TOON action traces (`ACTION_LOG_DIR`) must stay off Loki. Alloy Faro
 rate-limits ingest.
 
 ### Grafana access (operator only)
@@ -130,6 +169,19 @@ Panels:
   `rpc.grpc.status_code` for `service.name=edh-api`.
 - A Tempo trace-search table for API spans carrying `mtgfr.table.id`.
 
+Expected good Tempo tree:
+
+```text
+Faro fetch (edh-web, HTTP client attrs)
+  └─ BFF HTTP server span (http.request.method, http.route / url.path, status)
+       └─ BFF RPC client span (rpc.system=grpc, rpc.service, rpc.method)
+            └─ API RPC server span (same rpc.*; optional mtgfr.table.id /
+               mtgfr.intent.kind / mtgfr.intent.accepted; status / exception.type only)
+```
+
+Privacy check: open the API leaf span for a sampled submit path and confirm no hand/library
+contents, no intent payload, no SQL text, and no Authorization/cookie values are present.
+
 ### Local / dev
 
 **Local/dev:** OTEL exporters no-op when `OTEL_EXPORTER_OTLP_ENDPOINT` is unset. `RUST_LOG`
@@ -153,6 +205,8 @@ still drives `tracing` / fmt output.
 - **RED dashboard queries traces directly:** Terraform provisions the dashboard through Grafana
   Helm values; panels use Tempo datasource UID `tempo` and TraceQL metrics functions because
   Prometheus does not receive generated spanmetrics in this stack.
+- **Semantic-convention pin:** the living contract pins OpenTelemetry Semantic Conventions 1.37.0.
+  New telemetry families require a design pass before they join the shared dictionary.
 
 ---
 
@@ -171,6 +225,13 @@ still drives `tracing` / fmt output.
 - Dashboard provisioning changes are validated with JSON syntax checks and `terraform validate`
   from `iac/`; dashboard query behavior is checked manually through operator Grafana after
   port-forwarding.
+- API Rust golden fixtures assert resource/span helper output includes allowlisted resource,
+  RPC/gRPC, exception, and `mtgfr.*` keys while excluding legacy bare game keys, payloads,
+  hand/library data, auth headers, and SQL/query text.
+- BFF TypeScript golden fixtures assert HTTP server, outbound gRPC, safe DB, exception, and build
+  metadata resource attributes match the shared dictionary and omit forbidden body/query/auth keys.
+- Manual golden trace verification uses the good Tempo tree shown in Behavior and the API leaf-span
+  privacy check; live LGTM is not required for every PR.
 
 ---
 
