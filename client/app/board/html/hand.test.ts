@@ -290,7 +290,7 @@ describe("handView playable outlines", () => {
 });
 
 describe("handView drag chrome", () => {
-  it("moves playable border from source to ghost while dragging", () => {
+  it("fades the drag source and leaves the ghost to the flight canvas", () => {
     const castable = object(42, { name: "Lightning Bolt" });
     const cast = action(7, { object: 42 });
     const tree = handView({
@@ -311,13 +311,10 @@ describe("handView drag chrome", () => {
     const source = findTestId(tree, "hand-card-face-42");
     expect(className(source)).not.toContain("ring-playable-border");
     expect(treeHasClass(source, "opacity-25")).toBe(true);
-    const ghost = findTestId(tree, "hand-drag-ghost");
-    expect(ghost).not.toBeNull();
-    expect(treeHasClass(ghost, "ring-playable-border")).toBe(true);
-    expect(treeHasClass(ghost, "drop-shadow-drag")).toBe(true);
+    expect(findTestId(tree, "hand-drag-ghost")).toBeNull();
   });
 
-  it("applies drop-shadow-drag on name-only drag ghost fallback", () => {
+  it("does not render an HTML drag ghost for name-only cards", () => {
     const castable = object(42, { name: "Lightning Bolt", print: "" });
     const cast = action(7, { object: 42 });
     const tree = handView({
@@ -335,12 +332,10 @@ describe("handView drag chrome", () => {
         y: 10,
       },
     });
-    const ghost = findTestId(tree, "hand-drag-ghost");
-    expect(ghost).not.toBeNull();
-    expect(treeHasClass(ghost, "drop-shadow-drag")).toBe(true);
+    expect(findTestId(tree, "hand-drag-ghost")).toBeNull();
   });
 
-  it("uses command playable aura classes on a command-zone drag ghost", () => {
+  it("does not render an HTML command-zone drag ghost", () => {
     const commander = object(9, {
       zone: ZONE.Command,
       is_commander: true,
@@ -362,10 +357,10 @@ describe("handView drag chrome", () => {
         y: 10,
       },
     });
-    const ghost = findTestId(tree, "hand-drag-ghost");
-    expect(ghost).not.toBeNull();
-    expect(treeHasClass(ghost, "ring-playable-border")).toBe(true);
-    expect(treeHasClass(ghost, "outline-commander-gold")).toBe(true);
+    expect(findTestId(tree, "hand-drag-ghost")).toBeNull();
+    const source = findTestId(tree, "hand-card-face-9");
+    expect(className(source)).not.toContain("ring-playable-border");
+    expect(treeHasClass(source, "opacity-25")).toBe(true);
   });
 
   it("uses not-allowed on unplayable and grab on playable hit strips", () => {

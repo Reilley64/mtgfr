@@ -1,6 +1,6 @@
 # Hand and Zone Bar
-**Status:** Current (as of 2026-07-26)
-**Module:** `client/app/board/html/hand.ts`, `client/app/board/html/hand-drag-mount.ts`, `client/app/board/html/actions.ts`, `client/app/board/geometry/handBarHit.ts`, `client/app/board/motion/flights.ts`, `client/app/board/submodel.ts`
+**Status:** Current (as of 2026-07-27)
+**Module:** `client/app/board/html/hand.ts`, `client/app/board/html/hand-drag-mount.ts`, `client/app/board/html/actions.ts`, `client/app/board/geometry/handBarHit.ts`, `client/app/board/motion/flights.ts`, `client/app/board/motion/screen-motion.ts`, `client/app/board/submodel.ts`
 
 ## Problem Statement
 
@@ -30,7 +30,7 @@ Render a fixed DOM hand bar at the bottom of the board. It groups tiles in Arena
 - `hiddenId`, `hiddenIds`, and flight ownership suppress tiles while a staged play or flight owns the card.
 - Playable hand/command tiles get the playable border from `barZoneAura(zone, playable)`.
 - Unplayable hand/command tiles stay full brightness: no `brightness-[0.55]` or equivalent veil.
-- Resting faces use `--shadow-hand` (`shadow-hand`). The drag source fades with `opacity-25` and loses playable aura; the drag ghost carries the face, zone-aware `barZoneAura(zone, true)`, and the shared lift `--drop-shadow-drag` (same recipe as canvas flights; plus `shadow-hand`). Idle hits use `cursor-grab` when playable and `cursor-not-allowed` otherwise; an active drag sets `cursor-grabbing` on the document element.
+- Resting faces use `--shadow-hand` (`shadow-hand`). The drag source fades with `opacity-25` and loses playable aura. The drag **ghost** is painted on the Mount flight / screen-motion layer (`DragGhost` via `screen-motion.ts`), not as HTML — shared lift shadow and zone playable strokes, continuous with the flight that seeds on release. Idle hits use `cursor-grab` when playable and `cursor-not-allowed` otherwise; an active drag sets `cursor-grabbing` on the document element.
 - Graveyard/exile bar tiles appear only for actions and use their zone outline colors when playable.
 - Graveyard-section actions include casts from that zone (flashback/escape/retrace), encore, and activated abilities whose source is in the graveyard (`functions_in_graveyard` — Teacher's Pest's `{B}{G}` self-return). Wire `ActionView.section` is `"graveyard"` for those activates so `bySection` buckets them here rather than the battlefield radial.
 - Hand and priority controls render only for active seated players, not spectators or eliminated players.
@@ -42,11 +42,11 @@ Render a fixed DOM hand bar at the bottom of the board. It groups tiles in Arena
 - `cardArt(h, opts)` is used for DOM faces and accepts optional `style` for precise tile sizing.
 - Alt-inspect hover metadata is attached to every face-up bar tile, playable or not.
 - Resting bar spacing is hand-tuned Arena-forward constants (not a single global scale factor). Hit height, raise translate, sticky inspect band, and drag play threshold derive from those constants.
-- Ghost aura must use the dragged tile's **zone** for `barZoneAura` (not hard-coded `"hand"` when dragging command/gy/exile).
+- Canvas drag ghost strokes must use the dragged tile's **zone** (not hard-coded hand) when dragging command/gy/exile. Resting bar tiles still use `barZoneAura` CSS.
 
 ## Testing Decisions
 
-- Scene/unit tests cover the hand bar, command/hand playable borders, unplayable no-dim behavior, drag-source opacity fade, spectator suppression, and a graveyard-section `activate` tile (Teacher's Pest–style self-return).
+- Scene/unit tests cover the hand bar, command/hand playable borders, unplayable no-dim behavior, drag-source opacity fade (no HTML `hand-drag-ghost`), spectator suppression, and a graveyard-section `activate` tile (Teacher's Pest–style self-return).
 - Schema snapshot tests lock `ActionView.section == "graveyard"` for a `functions_in_graveyard` activate.
 - Interaction checks should drag above and below the play threshold and assert commit versus cancel outcomes.
 - Scene tests cover multi-mode hand activation entering `playModePick`, local-session exclusivity, `PlayModeChosen` continuation, the single-mode auto path, stale legality prune/cancel behavior, stale `PlayModeChosen` without intent, and Cancel restoring the parked hand card.

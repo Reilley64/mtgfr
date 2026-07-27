@@ -27,6 +27,7 @@ import { MountBoardKeyboard } from "./html/keyboard-mount";
 import { manaTrayView } from "./html/mana-tray";
 import { boardOverlays } from "./html/overlays";
 import { BoardPointerDown, BoardPointerMove, BoardPointerUp, type Message } from "./messages";
+import { dragGhostFromHandDrag } from "./motion/screen-motion";
 import type { BoardModel } from "./submodel";
 
 /** Board TEA messages plus shell ticks emitted by shared mounts (e.g. `cardArt`). */
@@ -196,6 +197,10 @@ export const view = Submodel.defineView<BoardViewModel, ViewMessage>((model) => 
     stack: state.stack,
     stackPresentation: stackMode,
     flights: [...model.board.flights.values()],
+    dragGhost:
+      model.board.handDrag == null
+        ? null
+        : dragGhostFromHandDrag(model.board.handDrag, model.board.camera.zoom),
     exitFx: [...model.board.exitFx.values()],
     hideCardIds: model.board.hideCardIds,
     targetObjects: overlay.targetObjects,

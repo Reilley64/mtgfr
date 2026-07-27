@@ -1,0 +1,130 @@
+import { describe, expect, it, vi } from "vitest";
+import { COMMANDER_GOLD, PLAYABLE_BORDER } from "../chrome";
+import { LIFT_SHADOW_COLOR } from "../lift-shadow";
+import type { DragGhost } from "../motion/screen-motion";
+import { paintDragGhost, paintScreenMotion } from "./paint-screen-motion";
+
+function fakeCtx(calls: string[]): CanvasRenderingContext2D {
+  const state = {
+    fillStyle: "",
+    strokeStyle: "",
+    shadowColor: "",
+    shadowBlur: 0,
+    shadowOffsetY: 0,
+    lineWidth: 1,
+  };
+  const ctx = {
+    beginPath: vi.fn(),
+    clip: vi.fn(),
+    drawImage: vi.fn(),
+    fill: vi.fn(() => calls.push(`fill:${state.fillStyle}`)),
+    fillText: vi.fn(),
+    restore: vi.fn(),
+    roundRect: vi.fn(),
+    save: vi.fn(),
+    stroke: vi.fn(() => calls.push(`stroke:${state.strokeStyle}`)),
+  } as unknown as CanvasRenderingContext2D;
+
+  for (const key of ["fillStyle", "strokeStyle", "shadowColor"] as const) {
+    Object.defineProperty(ctx, key, {
+      get: () => state[key],
+      set: (value) => {
+        state[key] = String(value);
+        if (key === "shadowColor" && value) calls.push(`shadow:${value}`);
+      },
+    });
+  }
+  Object.defineProperty(ctx, "shadowBlur", {
+    get: () => state.shadowBlur,
+    set: (value) => {
+      state.shadowBlur = Number(value);
+    },
+  });
+  Object.defineProperty(ctx, "shadowOffsetY", {
+    get: () => state.shadowOffsetY,
+    set: (value) => {
+      state.shadowOffsetY = Number(value);
+    },
+  });
+  Object.defineProperty(ctx, "lineWidth", {
+    get: () => state.lineWidth,
+    set: (value) => {
+      state.lineWidth = Number(value);
+    },
+  });
+
+  return ctx;
+}
+
+function ghost(overrides: Partial<DragGhost> = {}): DragGhost {
+  return {
+    print: "",
+    name: "Bolt",
+    x: 100,
+    y: 200,
+    scale: 2,
+    zone: "hand",
+    ...overrides,
+  };
+}
+
+describe("paintDragGhost", () => {
+  it("applies the shared lift shadow then a mint playable ring for hand zone", () => {
+    const calls: string[] = [];
+    const ctx = fakeCtx(calls);
+    paintDragGhost(ctx, ghost({ zone: "hand" }), 1, { get: () => undefined });
+    expect(calls).toContain(`shadow:${LIFT_SHADOW_COLOR}`);
+    expect(calls).toContain(`stroke:${PLAYABLE_BORDER}`);
+  });
+
+  it("strokes commander gold outside the mint ring for command zone", () => {
+    const calls: string[] = [];
+    const ctx = fakeCtx(calls);
+    paintDragGhost(ctx, ghost({ zone: "command" }), 1, { get: () => undefined });
+    expect(calls).toContain(`stroke:${PLAYABLE_BORDER}`);
+    expect(calls).toContain(`stroke:${COMMANDER_GOLD}`);
+  });
+});
+
+describe("paintScreenMotion", () => {
+  it("paints the drag ghost playable ring when a ghost is present", () => {
+    const calls: string[] = [];
+    const ctx = fakeCtx(calls);
+    paintScreenMotion(ctx, {
+      dragGhost: ghost(),
+      flights: [
+        {
+          id: 1,
+          print: "",
+          name: "Flight",
+          x: 10,
+          y: 10,
+          scale: 1,
+          targetX: 10,
+          targetY: 10,
+          targetScale: 1,
+          phase: "flying",
+          kind: "stack",
+        },
+      ],
+      exitFx: [],
+      zoom: 1,
+      cache: { get: () => undefined },
+    });
+    expect(calls).toContain(`stroke:${PLAYABLE_BORDER}`);
+    expect(calls).toContain(`shadow:${LIFT_SHADOW_COLOR}`);
+  });
+
+  it("skips drag paint when dragGhost is null", () => {
+    const calls: string[] = [];
+    const ctx = fakeCtx(calls);
+    paintScreenMotion(ctx, {
+      dragGhost: null,
+      flights: [],
+      exitFx: [],
+      zoom: 1,
+      cache: { get: () => undefined },
+    });
+    expect(calls).not.toContain(`stroke:${PLAYABLE_BORDER}`);
+  });
+});
