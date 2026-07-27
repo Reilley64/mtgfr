@@ -171,6 +171,16 @@ impl Game {
                 | Event::PutOntoBattlefieldFromHand { .. } => {
                     cache.invalidate_all_battlefield(self);
                 }
+                // A tapped-state anthem axis (Castle's "untapped creatures you control get +0/+2")
+                // reads the candidate's own `tapped`, so only the permanent that turned needs
+                // dropping. Every tap and untap in the engine routes through these three events —
+                // regeneration (CR 701.15b) taps as part of its replacement rather than emitting
+                // its own `Tapped`.
+                Event::Tapped { object }
+                | Event::Untapped { object }
+                | Event::Regenerated { object } => {
+                    cache.invalidate_object(object);
+                }
                 // Turning face up swaps the anonymous 2/2 for the real card's characteristics.
                 Event::TurnedFaceUp { permanent } => cache.invalidate_object(permanent),
                 // Flipping (CR 712) swaps the front face's name/types/P/T/abilities for the back's.

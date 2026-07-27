@@ -186,7 +186,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Bog Wraith** {3}{B} · Creature — Wraith — increment 3
 - [x] **Burrowing** {R} · Enchantment — Aura — increment 3
 - [ ] **Camouflage** {G} · Instant — increment 48
-- [ ] **Castle** {3}{W} · Enchantment — increment 40
+- [x] **Castle** {3}{W} · Enchantment — increment 40
 - [ ] **Chaoslace** {R} · Instant — increment 15
 - [ ] **Circle of Protection: Black** {1}{W} · Enchantment — increment 4, 5
 - [ ] **Circle of Protection: Blue** {1}{W} · Enchantment — increment 4, 5

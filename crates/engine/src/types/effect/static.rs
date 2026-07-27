@@ -42,6 +42,12 @@ pub enum StaticEffect {
         attacking_only: bool,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         blocking_only: bool,
+        /// Castle's "Untapped creatures you control get +0/+2" — restricts the anthem to
+        /// candidates that aren't tapped right now. Live like every other axis here (CR 613.4):
+        /// the buff falls off the instant a creature taps, so `characteristics_cache.rs`
+        /// invalidates on [`Event::Tapped`](crate::Event)/`Untapped`.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        untapped_only: bool,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         commander_only: bool,
         #[cfg_attr(feature = "card-dsl", serde(default))]

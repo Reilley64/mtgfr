@@ -2376,6 +2376,23 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         );
     }
 
+    /// Castle's anthem is gated on the candidate's tapped state — an axis that lives on
+    /// `anthem` beside `attacking_only`/`blocking_only` rather than on a filter.
+    #[test]
+    fn unlimited_castle_buffs_only_untapped_creatures() {
+        let castle = get_by_name("Castle").expect("Castle is in the pool");
+        let Effect::Static(StaticEffect::Anthem {
+            toughness,
+            untapped_only,
+            ..
+        }) = &castle.abilities[0].effect
+        else {
+            panic!("untapped creatures you control get +0/+2");
+        };
+        assert_eq!(*toughness, Amount::Fixed(2), "+0/+2");
+        assert!(*untapped_only, "untapped creatures");
+    }
+
     /// The set's one Aura that enchants a land. Both printed halves ride a single
     /// `grant_to_attached`: the keyword and the closed door.
     #[test]

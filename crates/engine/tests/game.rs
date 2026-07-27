@@ -15299,6 +15299,7 @@ static ANTHEM_LORD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             chosen_subtype: false,
             attacking_only: false,
             blocking_only: false,
+            untapped_only: false,
             commander_only: false,
             has_counters: false,
             condition: None,
@@ -17047,6 +17048,7 @@ static RED_WHITE_ANTHEM_LORD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 chosen_subtype: false,
                 attacking_only: false,
                 blocking_only: false,
+                untapped_only: false,
                 commander_only: false,
                 has_counters: false,
                 condition: None,
@@ -17074,6 +17076,7 @@ static RED_WHITE_ANTHEM_LORD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 chosen_subtype: false,
                 attacking_only: false,
                 blocking_only: false,
+                untapped_only: false,
                 commander_only: false,
                 has_counters: false,
                 condition: None,
@@ -29881,6 +29884,7 @@ static ANGEL_ANTHEM: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             chosen_subtype: false,
             attacking_only: false,
             blocking_only: false,
+            untapped_only: false,
             commander_only: false,
             has_counters: false,
             condition: None,
@@ -68211,6 +68215,7 @@ static SAPROLING_ANTHEM: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             chosen_subtype: false,
             attacking_only: false,
             blocking_only: false,
+            untapped_only: false,
             commander_only: false,
             has_counters: false,
             condition: None,
@@ -91614,6 +91619,7 @@ static BLOCKING_ANTHEM_LORD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             chosen_subtype: false,
             attacking_only: false,
             blocking_only: true,
+            untapped_only: false,
             commander_only: false,
             has_counters: false,
             condition: None,
@@ -104871,5 +104877,41 @@ fn fastbonds_land_play_budget_resets_each_turn() {
     assert!(
         game.stack_is_empty(),
         "the count resets with the turn, so this is a first land play again"
+    );
+}
+
+// Castle: "Untapped creatures you control get +0/+2." An anthem that has to fall off the instant
+// a creature taps, not at the next board change.
+
+#[test]
+fn castle_buffs_only_untapped_creatures_you_control() {
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Castle"));
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Prodigal Sorcerer"));
+    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Prodigal Sorcerer"));
+
+    assert_eq!(game.toughness(mine), 3, "1/1 plus Castle's +0/+2");
+    assert_eq!(game.toughness(theirs), 1, "creatures *you* control");
+
+    // "{T}: This creature deals 1 damage to any target" — tapping drops the buff at once.
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: mine,
+        ability_index: 0,
+        target: Some(Target::Player(PlayerId(1))),
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("the Sorcerer's tap ability");
+    assert_eq!(game.toughness(mine), 1, "a tapped creature loses the buff");
+
+    resolve_top_of_stack(&mut game);
+    pass_until_next_turn(&mut game);
+    pass_until_next_turn(&mut game);
+    assert_eq!(
+        game.toughness(mine),
+        3,
+        "untapping in your untap step gets it back"
     );
 }

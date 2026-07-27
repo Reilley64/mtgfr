@@ -83,7 +83,11 @@ function preventCombatDamageLabel(params: MessageParams): string {
 }
 
 function staticAnthem(params: MessageParams): string {
-  const scope = bool(params, "self_only") ? "This creature" : "Creatures you control";
+  const scope = bool(params, "self_only")
+    ? "This creature"
+    : bool(params, "untapped_only")
+      ? "Untapped creatures you control"
+      : "Creatures you control";
   const keywords = String(param(params, "keywords"));
   if (keywords !== "") return `${scope} have ${humanize(keywords)}`;
   return `${scope} get${bool(params, "self_only") ? "s" : ""} +${param(params, "power")}/+${param(params, "toughness")}`;

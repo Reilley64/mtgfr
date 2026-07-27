@@ -590,7 +590,7 @@ the scanner already sweeps graveyards for `may_return_from_graveyard`; if it doe
 the condition).
 *Cards:* nether_shadow.
 
-### 40. `untapped-conditioned-anthem` — 1 card, S
+### 40. `untapped-conditioned-anthem` — 1 card, S — **done**
 Depends on: nothing.
 Castle's "untapped creatures you control get +0/+2." `anthem` filters by color, subtype, and
 controller but not by tapped state — and this one must re-evaluate the instant a creature taps.
@@ -598,6 +598,14 @@ controller but not by tapped state — and this one must re-evaluate the instant
 invalidating on tap/untap (confirm it already does — the cache invalidates on
 `CombatCleared` and battlefield changes; a bare tap may not be one).
 *Cards:* castle.
+*Landed:* not on `PermanentFilter` — it already has a `tapped: Option<bool>`, but `anthem` takes
+no filter at all (its axes are inline fields), so the axis went on `anthem` itself as
+`untapped_only: bool`, beside `attacking_only`/`blocking_only`. The sketch's cache doubt was
+right: `invalidate_characteristics_cache` had no tap arm at all. Three events cover every write
+to `Permanent::tapped` — `Tapped`, `Untapped`, and `Regenerated` (CR 701.15b taps inside its own
+replacement rather than emitting a `Tapped`); the ETB-tapped rider is already covered by
+`PermanentEntered`'s board-wide drop. Each one invalidates just the permanent that turned, since
+the axis reads the candidate's own `tapped`.
 
 ### 41. `opponent-chosen-sacrifice` — 1 card, S
 Depends on: #20 (landed).

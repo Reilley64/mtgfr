@@ -245,6 +245,7 @@ impl Game {
                             colors,
                             exclude_source,
                             attacking_only,
+                            untapped_only,
                             all_players,
                             ..
                         }),
@@ -270,6 +271,9 @@ impl Game {
                         continue;
                     }
                     if attacking_only && !self.combat.attackers.contains(&object) {
+                        continue;
+                    }
+                    if untapped_only && self.as_permanent(object).is_some_and(|p| p.tapped) {
                         continue;
                     }
                     let name = def.name;
@@ -1629,6 +1633,7 @@ impl Game {
                         chosen_subtype,
                         attacking_only,
                         blocking_only,
+                        untapped_only,
                         commander_only,
                         self_only,
                         exclude_source,
@@ -1693,6 +1698,9 @@ impl Game {
                         .iter()
                         .any(|&(blocker, _)| blocker == candidate)
                 {
+                    continue;
+                }
+                if untapped_only && self.as_permanent(candidate).is_some_and(|p| p.tapped) {
                     continue;
                 }
                 if commander_only && !self.is_commander(candidate) {
@@ -2530,6 +2538,7 @@ mod cache_tests {
                 chosen_subtype: false,
                 attacking_only: false,
                 blocking_only: false,
+                untapped_only: false,
                 commander_only: false,
                 has_counters: false,
                 condition: None,
