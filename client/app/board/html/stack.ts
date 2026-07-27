@@ -421,7 +421,7 @@ function shouldEmitDwell(_board: BoardModel, state: VisibleState): boolean {
   return state.can_act && state.priority === state.viewer;
 }
 
-/** Local staged aim or pending choose_target source that needs a stack ghost. */
+/** Local staged aim or pending board-aim source that needs a stack ghost. */
 function showStackGhost(board: BoardModel, state: VisibleState): boolean {
   if (board.staged != null && stagedPickTargets(board.staged, state) === null) return true;
   return pendingStackGhost(state) != null;
