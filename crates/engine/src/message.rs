@@ -282,6 +282,7 @@ message_keys! {
     EFFECT_STATIC_KEYWORD_ANTHEM => "effect.static_keyword_anthem",
     EFFECT_STATIC_LIFE_GAIN_REPLACEMENT => "effect.static_life_gain_replacement",
     EFFECT_STATIC_NO_MAXIMUM_HAND_SIZE => "effect.static_no_maximum_hand_size",
+    EFFECT_STATIC_PLAY_ANY_NUMBER_OF_LANDS => "effect.static_play_any_number_of_lands",
     EFFECT_STATIC_PLAY_FROM_GRAVEYARD_ONCE_PER_TURN => "effect.static_play_from_graveyard_once_per_turn",
     EFFECT_STATIC_PREVENT_COMBAT_DAMAGE => "effect.static_prevent_combat_damage",
     EFFECT_STATIC_PREVENT_DAMAGE_TO_SELF_REMOVING_COUNTER => "effect.static_prevent_damage_to_self_removing_counter",
@@ -1997,6 +1998,9 @@ impl Effect {
                 MessageRef::new(MessageKey::EFFECT_STATIC_PREVENT_DAMAGE_TO_SELF_REMOVING_COUNTER)
             }
             Effect::Static(NoMaximumHandSize) => MessageRef::new(MessageKey::EFFECT_STATIC_NO_MAXIMUM_HAND_SIZE),
+            Effect::Static(PlayAnyNumberOfLands) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_PLAY_ANY_NUMBER_OF_LANDS)
+            }
             Effect::Static(PlayFromGraveyardOncePerTurn) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_PLAY_FROM_GRAVEYARD_ONCE_PER_TURN)
             }

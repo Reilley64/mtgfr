@@ -437,7 +437,7 @@ work alone doesn't finish this increment:
 - **Rock Hydra** — blocked on #4 (damage prevention).
 *Cards:* clockwork_beast, cyclopean_tomb, living_artifact, rock_hydra, scavenging_ghoul.
 
-### 29. `extra-land-plays-and-land-play-trigger` — 1 card, S
+### 29. `extra-land-plays-and-land-play-trigger` — 1 card, S — **done**
 Depends on: nothing.
 Fastbond. "You may play any number of lands on each of your turns" plus "whenever you play a land,
 if it wasn't the first land you played this turn." The engine enforces one land per turn with a
@@ -446,6 +446,19 @@ counter; the counter exists, nothing lifts the cap and nothing triggers on the p
 land-play legality check, and a `Timing::LandPlayed` trigger carrying the per-turn ordinal so the
 intervening-if reads it directly.
 *Cards:* fastbond.
+*Landed:* three small pieces, none of them the sketch's. The static is `PlayAnyNumberOfLands`,
+fieldless — the sketch's `count: Option<u32>` is config for a value only one printed card sets, so
+it waits for an Exploration. The trigger is a plain controller-scoped `Trigger::YouPlayALand`
+alongside `YouDiscard`, and the per-turn ordinal the sketch wanted the trigger to carry is already
+on the board: `Player::lands_played` is bumped by the `Event::LandPlayed` apply *before* triggers
+enqueue, so CR 603.4's check reads it as an ordinary intervening-if
+(`Condition::LandsPlayedThisTurnAtLeast { at_least = 2 }`) — no new context plumbing.
+The real work was the cap itself, which was written out twice (the `Intent::PlayLand` legality
+check in `Game::play_land` and the `land_drop_unused` playability hint in `Game::land_actions`).
+Both now route through one `Game::land_drop_available`, so an offered land play is a legal one;
+lifting the cap in only the legality check would have left the hint still hiding lands 2..n.
+Scoped by controller rather than owner, unlike the `has_no_max_hand_size` helper it is modelled on
+— a stolen Fastbond gives its permission to the thief.
 
 ### 30. `counter-spell-with-mana-value-x` — 1 card, S — **done**
 Depends on: nothing.

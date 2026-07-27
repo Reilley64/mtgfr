@@ -1072,9 +1072,7 @@ impl Game {
         {
             return Err(Reject::NotCastable);
         }
-        if !self.can_take_sorcery_speed_action(player)
-            || self.players[player.0 as usize].lands_played >= 1
-        {
+        if !self.can_take_sorcery_speed_action(player) || !self.land_drop_available(player) {
             return Err(Reject::WrongTiming);
         }
 

@@ -295,6 +295,14 @@ pub enum Trigger {
     /// the [`TriggerContext`]'s `discarded` field so the effect can act on "that card"; see
     /// [`Game::queue_discard_triggers`].
     YouDiscard,
+    /// Whenever this permanent's controller *plays* a land (CR 305.1 — the special action, not
+    /// the landfall "enters"): Fastbond's "whenever you play a land". Fieldless and
+    /// controller-scoped like [`YouDiscard`](Self::YouDiscard) above; fires off
+    /// [`Event::LandPlayed`](crate::Event), so a fetched, reanimated, or token land doesn't
+    /// qualify. Fastbond's "if it wasn't the first land you played this turn" is the ability's own
+    /// intervening-if ([`Condition::LandsPlayedThisTurnAtLeast`](crate::Condition)), not part of
+    /// the trigger.
+    YouPlayALand,
     /// Whenever a creature deals combat damage to a player (CR 510.2), scoped by `who`:
     /// [`CombatDamageScope::This`] (Leitmotif Composer — only this permanent's own damage),
     /// [`CombatDamageScope::YourCreatures`] (Ohran Frostfang, Defiling Daemogoth — any creature

@@ -217,7 +217,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Evil Presence** {B} · Enchantment — Aura — increment 8
 - [ ] **False Orders** {R} · Instant — increment 11
 - [ ] **Farmstead** {W}{W}{W} · Enchantment — Aura — increment 36
-- [ ] **Fastbond** {G} · Enchantment — increment 29
+- [x] **Fastbond** {G} · Enchantment — increment 29
 - [ ] **Feedback** {2}{U} · Enchantment — Aura — increment 61
 - [ ] **Fireball** {X}{R} · Sorcery — increment 53
 - [ ] **Flashfires** {3}{R} · Sorcery — increment 51

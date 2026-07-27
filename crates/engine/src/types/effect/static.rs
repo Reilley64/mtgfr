@@ -221,6 +221,14 @@ pub enum StaticEffect {
 
     OpponentsCantSearchLibraries,
 
+    /// Fastbond's "You may play any number of lands on each of your turns" (CR 305.2 — the
+    /// one-land-per-turn rule is an effect-modifiable maximum). Read by
+    /// [`Game::land_drop_available`](crate::Game), the single gate both the legality check and the
+    /// playability hint route through.
+    /// ponytail: fieldless — the pool's only extra-land-play permission is unlimited. Add a
+    /// `count` when an Exploration/Azusa "play an additional land" lands.
+    PlayAnyNumberOfLands,
+
     PlayFromGraveyardOncePerTurn,
 
     PreventCombatDamage {

@@ -963,6 +963,7 @@ impl Effect {
             | Effect::Zone(ZoneEffect::ScheduleReturnThisAuraFromGraveyardAttachedToChosenHost)
             | Effect::Static(StaticEffect::NoMaximumHandSize)
             | Effect::Static(StaticEffect::OpponentsCantSearchLibraries)
+            | Effect::Static(StaticEffect::PlayAnyNumberOfLands)
             // "All creatures ... attack each combat if able" (Avatar of Slaughter): a global
             // requirement, not a chosen target — enforced in `Game::declare_attackers`.
             | Effect::Static(StaticEffect::MustAttackEachCombat)
@@ -1770,6 +1771,13 @@ pub enum Condition {
     /// Reads the controller's turn-scoped `Player::land_entered_under_your_control_this_turn`
     /// flag, set at the permanent-enters choke and reset each untap.
     LandEnteredUnderYourControlThisTurn,
+    /// "if it wasn't the first land you played this turn" (Fastbond — `at_least = 2`): the
+    /// controller has *played* at least `at_least` lands this turn. Reads `Player::lands_played`,
+    /// which the [`Event::LandPlayed`](crate::Event) apply already bumped by the time CR 603.4's
+    /// check runs, so the land being played counts itself. Narrower than
+    /// [`LandEnteredUnderYourControlThisTurn`](Self::LandEnteredUnderYourControlThisTurn) above —
+    /// a fetched or token land isn't *played*, and never feeds this.
+    LandsPlayedThisTurnAtLeast { at_least: u32 },
     /// "if you control a prime number of lands" (Zimone, All-Questioning). Reads
     /// [`Game::lands_controlled`] through a small trial-division primality test.
     YouControlPrimeNumberOfLands,

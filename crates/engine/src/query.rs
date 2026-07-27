@@ -87,7 +87,7 @@ impl Game {
         let mut actions = Vec::new();
         let sorcery_ok = self.can_take_sorcery_speed_action(player);
         let available = self.available_mana(player);
-        let land_drop_unused = self.players[player.0 as usize].lands_played < 1;
+        let land_drop_unused = self.land_drop_available(player);
 
         for (id, o) in self.objects.iter().enumerate() {
             let id = id as ObjectId;

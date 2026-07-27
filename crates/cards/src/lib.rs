@@ -2353,6 +2353,29 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         );
     }
 
+    /// Fastbond's two halves: the cap-lifting static, and the land-play trigger whose
+    /// "if it wasn't the first land you played this turn" is an intervening-if reading the
+    /// turn's own tally — the play itself is already counted, so the threshold is two.
+    #[test]
+    fn unlimited_fastbond_lifts_the_land_cap_and_bills_you_for_it() {
+        let fastbond = get_by_name("Fastbond").expect("Fastbond is in the pool");
+        assert_eq!(
+            fastbond.abilities[0].effect,
+            Effect::Static(StaticEffect::PlayAnyNumberOfLands),
+            "you may play any number of lands on each of your turns"
+        );
+        assert_eq!(
+            fastbond.abilities[1].timing,
+            Timing::Triggered(Trigger::YouPlayALand),
+            "whenever you play a land"
+        );
+        assert_eq!(
+            fastbond.abilities[1].condition,
+            Some(Condition::LandsPlayedThisTurnAtLeast { at_least: 2 }),
+            "if it wasn't the first land you played this turn"
+        );
+    }
+
     /// The set's one Aura that enchants a land. Both printed halves ride a single
     /// `grant_to_attached`: the keyword and the closed door.
     #[test]

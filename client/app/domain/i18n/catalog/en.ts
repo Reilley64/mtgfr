@@ -499,6 +499,9 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     `${bool(params, "all_players") ? "All permanents" : "Permanents you control"} have ${humanize(param(params, "keywords"))}`,
   "effect.static_life_gain_replacement": (params) => `life gained: n + ${param(params, "plus")}`,
   "effect.static_no_maximum_hand_size": literal("You have no maximum hand size"),
+  "effect.static_play_any_number_of_lands": literal(
+    "You may play any number of lands on each of your turns",
+  ),
   "effect.static_play_from_graveyard_once_per_turn": literal(
     "Once during each of your turns, you may play a land or cast a permanent spell with mana value 3 or less from your graveyard",
   ),

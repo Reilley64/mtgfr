@@ -2031,6 +2031,31 @@ impl Game {
         })
     }
 
+    /// Whether `player` may still play a land this turn (CR 305.2): one per turn, unless a
+    /// permanent they control lifts the cap with a live
+    /// [`Effect::Static(StaticEffect::PlayAnyNumberOfLands)`] (Fastbond). The single gate both the
+    /// legality check in [`Game::play_land`] and the playability hint in `Game::land_actions`
+    /// route through, so an offered land play is always a legal one.
+    pub(crate) fn land_drop_available(&self, player: PlayerId) -> bool {
+        if self.players[player.0 as usize].lands_played < 1 {
+            return true;
+        }
+        self.objects.iter().enumerate().any(|(id, object)| {
+            let Object::Permanent(p) = object else {
+                return false;
+            };
+            // Controller, not owner: a stolen Fastbond gives its permission to the thief.
+            self.controller_of(id as ObjectId) == player
+                && card_def(p.def).abilities.iter().any(|a| {
+                    (a.timing, a.effect.clone())
+                        == (
+                            Timing::Static,
+                            Effect::Static(StaticEffect::PlayAnyNumberOfLands),
+                        )
+                })
+        })
+    }
+
     /// Whether `player` controls a permanent granting Serra Paragon's graveyard-play permission
     /// (CR 118.9 — a live [`Effect::Static(StaticEffect::PlayFromGraveyardOncePerTurn)`] static ability). Read by
     /// [`Game::playable_zone`] to decide whether a land / permanent spell in `player`'s graveyard

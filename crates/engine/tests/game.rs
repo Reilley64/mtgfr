@@ -104777,3 +104777,99 @@ fn sunglasses_of_urza_leaves_white_mana_paying_white() {
         "the Lions landed"
     );
 }
+
+// "You may play any number of lands on each of your turns" plus "whenever you play a land, if it
+// wasn't the first land you played this turn, Fastbond deals 1 damage to you."
+
+#[test]
+fn a_second_land_play_is_illegal_without_fastbond() {
+    let mut game = Game::new();
+    let first = game.spawn_in_hand(PlayerId(0), card("Forest"));
+    let second = game.spawn_in_hand(PlayerId(0), card("Forest"));
+
+    game.submit(Intent::PlayLand {
+        player: PlayerId(0),
+        object: first,
+    })
+    .expect("the turn's one land play");
+    assert_eq!(
+        game.submit(Intent::PlayLand {
+            player: PlayerId(0),
+            object: second,
+        }),
+        Err(Reject::WrongTiming),
+        "one land per turn"
+    );
+}
+
+#[test]
+fn fastbond_lets_you_play_any_number_of_lands() {
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Fastbond"));
+    let lands: Vec<_> = (0..3)
+        .map(|_| game.spawn_in_hand(PlayerId(0), card("Forest")))
+        .collect();
+
+    for land in lands {
+        game.submit(Intent::PlayLand {
+            player: PlayerId(0),
+            object: land,
+        })
+        .expect("Fastbond lifts the one-land-per-turn cap");
+        // Each play past the first puts Fastbond's damage trigger on the stack.
+        while !game.stack_is_empty() {
+            resolve_top_of_stack(&mut game);
+        }
+    }
+}
+
+#[test]
+fn fastbond_deals_you_one_damage_per_land_after_the_first() {
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Fastbond"));
+    let first = game.spawn_in_hand(PlayerId(0), card("Forest"));
+    let second = game.spawn_in_hand(PlayerId(0), card("Forest"));
+
+    game.submit(Intent::PlayLand {
+        player: PlayerId(0),
+        object: first,
+    })
+    .expect("the first land");
+    assert!(
+        game.stack_is_empty(),
+        "the first land of the turn doesn't meet the intervening if"
+    );
+    assert_eq!(game.life(PlayerId(0)), 20);
+
+    game.submit(Intent::PlayLand {
+        player: PlayerId(0),
+        object: second,
+    })
+    .expect("the second land");
+    resolve_top_of_stack(&mut game);
+    assert_eq!(game.life(PlayerId(0)), 19, "Fastbond deals 1 damage to you");
+}
+
+#[test]
+fn fastbonds_land_play_budget_resets_each_turn() {
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Fastbond"));
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    let land = game.spawn_in_hand(PlayerId(0), card("Forest"));
+
+    pass_until_next_turn(&mut game);
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Main1
+    });
+
+    game.submit(Intent::PlayLand {
+        player: PlayerId(0),
+        object: land,
+    })
+    .expect("a new turn's first land play");
+    assert!(
+        game.stack_is_empty(),
+        "the count resets with the turn, so this is a first land play again"
+    );
+}

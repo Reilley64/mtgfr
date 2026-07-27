@@ -983,6 +983,16 @@ impl Game {
                 _ => {}
             }
         }
+        // Fastbond's "whenever you play a land" (CR 305.1 — the special action itself, not the
+        // landfall "enters"): controller-scoped, off the same `LandPlayed` event the ETB family
+        // above watches self-referentially. Fastbond's "if it wasn't the first land you played
+        // this turn" is the ability's own intervening-if, so nothing here counts.
+        for event in events {
+            let Event::LandPlayed { player, .. } = event else {
+                continue;
+            };
+            self.queue_controller_triggers(*player, Trigger::YouPlayALand, None);
+        }
         // CR "one or more cards leave your graveyard" (Quintorius Field Historian / Lorehold): the
         // whole batch, not each card, is the trigger event — a board-wipe-then-reanimate or a
         // multi-card exile fires each affected player's watcher once. `create_object` recorded every
@@ -4038,6 +4048,12 @@ impl Game {
             }
             Condition::LandEnteredUnderYourControlThisTurn => {
                 self.players[ctx.controller.0 as usize].land_entered_under_your_control_this_turn
+            }
+            // Fastbond's "if it wasn't the first land you played this turn": the play's own
+            // `Player::lands_played` bump has already landed by the time this runs, so the second
+            // land of the turn reads 2.
+            Condition::LandsPlayedThisTurnAtLeast { at_least } => {
+                u32::from(self.players[ctx.controller.0 as usize].lands_played) >= at_least
             }
             Condition::YouControlPrimeNumberOfLands => {
                 is_prime(self.lands_controlled(ctx.controller))
