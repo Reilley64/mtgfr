@@ -162,6 +162,44 @@ test("spell stack face stays hidden while its stack entrance flight is in progre
   );
 });
 
+test("spell stack face stays hidden while a settled stack flight is still in the model", () => {
+  const { objects, stack } = spellOnStack(42, "Lightning Bolt", "bolt-print");
+  const flight = {
+    ...spawnFlight({
+      id: 42,
+      kind: "stack",
+      name: "Lightning Bolt",
+      print: "bolt-print",
+      scale: 1,
+      targetScale: 1,
+      targetX: 100,
+      targetY: 40,
+      x: 100,
+      y: 40,
+      fromCardId: 7,
+    }),
+    phase: "settled" as const,
+    hold: false,
+  };
+  const model: ViewModel = {
+    board: {
+      ...initialBoardModel(),
+      flights: new Map([[42, flight]]),
+      hideCardIds: new Set([42]),
+      ownedIds: new Set([42]),
+    },
+    fold: gameFold(gameState({ objects, stack })),
+    tableId: "T1",
+  };
+  Scene.scene(
+    { update: (m) => [m, []], view: overlayView },
+    Scene.with(model),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("stack-overlay")).toExist(),
+    Scene.expect(Scene.testId("stack-face-0")).toBeAbsent(),
+  );
+});
+
 function abilityDuringSourceFlight(kind: "battlefield" | "from-stack"): ViewModel {
   // Trigger on the stack: entry.source is the permanent id. A battlefield / from-stack flight for
   // that same id puts it in hideCardIds so the resting battlefield face stays hidden — but the

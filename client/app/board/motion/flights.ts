@@ -8,6 +8,9 @@ export { STACK_CARD_W };
 const TAU_MS = 75;
 const EPSILON_PX = 0.5;
 const EPSILON_SCALE = 0.02;
+/** Authority handoff radius — near enough that a correction ease would read as a second short glide. */
+export const FLIGHT_HANDOFF_PX = 72;
+export const FLIGHT_HANDOFF_SCALE = 0.25;
 
 export type FlightPhase = "flying" | "settled";
 export type FlightKind = "battlefield" | "stack" | "from-stack";
@@ -135,14 +138,41 @@ export function rebindFlightId(
   return next;
 }
 
-export function retargetFlight(flight: CardFlight, target: { x: number; y: number; scale: number }): CardFlight {
+export type FlightSyncTrace = {
+  t: number;
+  op: "handoff" | "retarget" | "skip-near" | "spawn";
+  zone: "stack" | "land";
+  id: number;
+  hold: boolean;
+  phase: FlightPhase | "none";
+  remainingPx: number;
+  retainedHold?: boolean;
+};
+
+/** DEV-only ring buffer for live verify (Playwright reads `globalThis.__flightSyncEvents`). */
+export function traceFlightSync(ev: Omit<FlightSyncTrace, "t">): void {
+  if (!import.meta.env.DEV) return;
+  const g = globalThis as typeof globalThis & { __flightSyncEvents?: FlightSyncTrace[] };
+  if (g.__flightSyncEvents == null) g.__flightSyncEvents = [];
+  const list = g.__flightSyncEvents;
+  list.push({ ...ev, t: performance.now() });
+  if (list.length > 200) list.splice(0, list.length - 200);
+}
+
+export function retargetFlight(
+  flight: CardFlight,
+  target: { x: number; y: number; scale: number },
+  opts?: { retainHold?: boolean },
+): CardFlight {
   return {
     ...flight,
     targetX: target.x,
     targetY: target.y,
     targetScale: target.scale,
     phase: "flying",
-    hold: false,
+    // Local seeds keep hold through authority aim updates so later sync can hand off cleanly
+    // instead of clearing hold and inviting a short second ease / early HTML reveal.
+    hold: opts?.retainHold === true ? flight.hold : false,
   };
 }
 
@@ -162,6 +192,20 @@ export function poseAtTarget(
   return (
     Math.hypot(target.x - pose.x, target.y - pose.y) <= EPSILON_PX &&
     Math.abs(target.scale - pose.scale) <= EPSILON_SCALE
+  );
+}
+
+/**
+ * True when a held local seed is close enough to the authoritative pose that retargeting would
+ * only play a short second ease after the main glide.
+ */
+export function poseNearHandoff(
+  pose: { x: number; y: number; scale: number },
+  target: { x: number; y: number; scale: number },
+): boolean {
+  return (
+    Math.hypot(target.x - pose.x, target.y - pose.y) <= FLIGHT_HANDOFF_PX &&
+    Math.abs(target.scale - pose.scale) <= FLIGHT_HANDOFF_SCALE
   );
 }
 
