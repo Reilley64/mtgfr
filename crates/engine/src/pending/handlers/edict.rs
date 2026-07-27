@@ -19,11 +19,18 @@ impl Game {
             .collect()
     }
 
-    /// The permanents `player` controls that a sacrifice edict's `filter` can take.
-    pub(crate) fn edict_options(&self, player: PlayerId, filter: PermanentFilter) -> Vec<ObjectId> {
+    /// The permanents `player` controls that a sacrifice edict's `filter` can take. `source` is the
+    /// effect's own object, needed only by `filter.other` — "a creature other than this creature"
+    /// (Lord of the Pit) would otherwise let the Demon eat itself.
+    pub(crate) fn edict_options(
+        &self,
+        player: PlayerId,
+        filter: PermanentFilter,
+        source: Option<ObjectId>,
+    ) -> Vec<ObjectId> {
         self.controlled_battlefield(player)
             .into_iter()
-            .filter(|&id| self.permanent_matches(&filter, id, player, None))
+            .filter(|&id| self.permanent_matches(&filter, id, player, source))
             .collect()
     }
 

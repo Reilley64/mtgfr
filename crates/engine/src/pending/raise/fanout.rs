@@ -54,8 +54,11 @@ pub(super) fn next_caster_keep(
 ) -> Option<PendingChoice> {
     while !remaining.is_empty() {
         let target_player = remaining.remove(0);
-        let options =
-            game.edict_options(target_player, PermanentFilter::of(crate::TypeSet::NONLAND));
+        let options = game.edict_options(
+            target_player,
+            PermanentFilter::of(crate::TypeSet::NONLAND),
+            None,
+        );
         if options.is_empty() {
             continue;
         }
@@ -161,7 +164,7 @@ pub(super) fn next_sacrifice_edict(
 ) -> Option<PendingChoice> {
     while !remaining.is_empty() {
         let player = remaining.remove(0);
-        let options = game.edict_options(player, filter);
+        let options = game.edict_options(player, filter, Some(source));
         if options.is_empty() || (keep_one && options.len() == 1) {
             continue;
         }

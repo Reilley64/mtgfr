@@ -255,7 +255,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Living Artifact** {G} · Enchantment — Aura — increment 22, 28
 - [ ] **Living Lands** {3}{G} · Enchantment — increment 8
 - [x] **Lord of Atlantis** {U}{U} · Creature — Merfolk — increment 3
-- [ ] **Lord of the Pit** {4}{B}{B}{B} · Creature — Demon — increment 72
+- [x] **Lord of the Pit** {4}{B}{B}{B} · Creature — Demon — increment 72
 - [ ] **Lure** {1}{G}{G} · Enchantment — Aura — increment 11
 - [ ] **Magical Hack** {U} · Instant — increment 16
 - [ ] **Mana Flare** {2}{R} · Enchantment — increment 19

@@ -3128,6 +3128,31 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
             "the unpaid Force stays on the battlefield and mauls you for 8"
         );
 
+        // Lord of the Pit's upkeep is *not* a pay-or-else: nothing is optional, and the damage is
+        // the fallback for being unable to feed it.
+        let lord = get_by_name("Lord of the Pit").expect("Lord of the Pit is in the pool");
+        assert_eq!(lord.abilities[0].timing, Timing::Triggered(Trigger::Upkeep));
+        let Effect::Conditional {
+            ref then,
+            otherwise,
+            ..
+        } = lord.abilities[0].effect
+        else {
+            panic!("Lord of the Pit eats, or bites");
+        };
+        let [Effect::Choice(ChoiceEffect::SacrificeOwn { filter, count })] = *then.as_ref() else {
+            panic!("the fed branch is a single own-sacrifice");
+        };
+        assert_eq!(count, 1);
+        assert!(filter.other, "'other than this creature' — never itself");
+        assert_eq!(
+            otherwise,
+            &[Effect::Damage(DamageEffect::ToSelf {
+                amount: Amount::Fixed(7)
+            })],
+            "a starving Lord bites its controller for 7"
+        );
+
         // Verduran Enchantress watches enchantment casts, and the draw is optional.
         let enchantress =
             get_by_name("Verduran Enchantress").expect("Verduran Enchantress is in the pool");

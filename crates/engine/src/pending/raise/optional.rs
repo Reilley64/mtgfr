@@ -70,7 +70,7 @@ pub(super) fn may_sacrifice(
     filter: PermanentFilter,
     then: &'static [Effect],
 ) -> Option<PendingChoice> {
-    let options = game.edict_options(player, filter);
+    let options = game.edict_options(player, filter, Some(source));
     if options.is_empty() {
         return None;
     }
@@ -89,7 +89,7 @@ pub(super) fn devour(
     multiplier: u32,
 ) -> Option<PendingChoice> {
     let options: Vec<ObjectId> = game
-        .edict_options(player, PermanentFilter::of(crate::TypeSet::CREATURE))
+        .edict_options(player, PermanentFilter::of(crate::TypeSet::CREATURE), None)
         .into_iter()
         .filter(|&id| id != source)
         .collect();
@@ -234,7 +234,7 @@ pub(super) fn sacrifice_unless_return_land(
     source: ObjectId,
     filter: PermanentFilter,
 ) -> Option<PendingChoice> {
-    let candidates = game.edict_options(player, filter);
+    let candidates = game.edict_options(player, filter, Some(source));
     if candidates.is_empty() {
         return None;
     }

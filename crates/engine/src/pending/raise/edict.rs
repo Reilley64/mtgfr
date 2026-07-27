@@ -9,7 +9,7 @@ pub(super) fn choose_own_sacrifices(
     filter: PermanentFilter,
     count: u32,
 ) -> Option<PendingChoice> {
-    let options = game.edict_options(player, filter);
+    let options = game.edict_options(player, filter, Some(source));
     if options.len() <= count as usize {
         return None;
     }

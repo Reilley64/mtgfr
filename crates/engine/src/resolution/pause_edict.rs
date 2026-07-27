@@ -211,7 +211,7 @@ impl Game {
                     },
                 );
                 if !self.resolution_is_paused() {
-                    let options = self.edict_options(controller, filter);
+                    let options = self.edict_options(controller, filter, Some(source));
                     self.sacrifice_ids(&options, controller, events);
                 }
             }
@@ -230,7 +230,7 @@ impl Game {
                     },
                 );
                 if !self.resolution_is_paused() {
-                    let options = self.edict_options(defender, filter);
+                    let options = self.edict_options(defender, filter, Some(source));
                     self.sacrifice_ids(&options, defender, events);
                 }
             }

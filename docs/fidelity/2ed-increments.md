@@ -910,17 +910,19 @@ payment path, whose answer is bound as the resolving ability's `x` — at which 
 half is a #4 shield of `Amount::X` armed on the same player immediately before the damage.
 *Cards:* power_leak.
 
-### 72. `mandatory-sacrifice-or-inability-penalty` — 1 card, S
+### 72. `mandatory-sacrifice-or-inability-penalty` — 1 card, S — **done**
 Depends on: nothing.
 Split out of #20. Lord of the Pit: "At the beginning of your upkeep, sacrifice a creature other
 than this creature. If you can't, this creature deals 7 damage to you." Not a pay-or-else — nothing
-is optional, and the fallback fires on *inability*, not on a declined payment. Two gaps: the edict
-machinery (`EachPlayerSacrifices`) has no `EdictScope` for the controller alone, and nothing
-expresses "if you can't".
-*Sketch:* an `EdictScope::Controller` variant (exhaustive arms in `message.rs` `edict_scope_token`
-and `resolution/counters.rs`), with `PermanentFilter.other = true` supplying "other than this
-creature"; wrap it in the existing `Conditional { condition, then, otherwise }`, whose else branch
-already exists. `YouControlAtLeastCreatures { count = 2 }` is the available proxy for "you control
-another creature" and is exact while the Lord is on the battlefield — record the residual as a
-`ponytail:` comment rather than a new condition.
+is optional, and the fallback fires on *inability*, not on a declined payment.
+*Landed:* no new edict scope was needed. `ChoiceEffect::SacrificeOwn { filter, count }` already
+means "the controller sacrifices `count` of their own matching permanents", and the existing
+`Conditional { condition, then, otherwise }` supplies the "if you can't" branch. The one engine
+change was a bug fix: `Game::edict_options` passed `None` as the source to `permanent_matches`, so
+`filter.other` was a silent no-op on *every* edict path. It now takes `source: Option<ObjectId>`,
+threaded from all eight call sites (`None` only where it is meaningless — devour hand-rolls its own
+exclusion, and `CasterKeepPermanents` filters nothing). Without it the Lord counted as its own food
+and the mandatory sacrifice stalled on an unanswerable pause. "You control another creature" is
+spelled `you_control_at_least_creatures { count = 2 }`, exact while the Lord is on the battlefield
+(the only time the trigger resolves) and recorded as a `ponytail:` comment on the card.
 *Cards:* lord_of_the_pit.

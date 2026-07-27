@@ -104428,3 +104428,57 @@ fn force_of_nature_paid_off_deals_no_damage() {
 
     assert_eq!(game.life(PlayerId(0)), 20, "the paid Force deals nothing");
 }
+
+// "At the beginning of your upkeep, sacrifice a creature other than this creature. If you can't,
+// this creature deals 7 damage to you." — a mandatory sacrifice whose fallback fires on
+// *inability*, not on a declined payment.
+
+#[test]
+fn lord_of_the_pit_eats_another_creature_and_spares_its_controller() {
+    let mut game = Game::new();
+    let lord = game.spawn_on_battlefield(PlayerId(0), card("Lord of the Pit"));
+    let bears = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
+    });
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.zone_of(bears),
+        Zone::Graveyard,
+        "the Bears fed the Lord"
+    );
+    assert_eq!(
+        game.zone_of(lord),
+        Zone::Battlefield,
+        "'other than this creature' spares the Lord itself"
+    );
+    assert_eq!(game.life(PlayerId(0)), 20, "a fed Lord deals no damage");
+}
+
+#[test]
+fn a_starving_lord_of_the_pit_mauls_its_controller_for_seven() {
+    let mut game = Game::new();
+    let lord = game.spawn_on_battlefield(PlayerId(0), card("Lord of the Pit"));
+    game.stack_library(PlayerId(0), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bears"), card("Grizzly Bears")]);
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
+    });
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.life(PlayerId(0)),
+        13,
+        "no other creature — 7 to the face"
+    );
+    assert_eq!(
+        game.zone_of(lord),
+        Zone::Battlefield,
+        "the Lord never eats itself"
+    );
+}
