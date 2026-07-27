@@ -30,6 +30,7 @@ const ALL_PENDING_CHOICE_KINDS = [
   "pay_echo_or_sacrifice",
   "pay_recover_or_exile",
   "sacrifice_unless_pay",
+  "pay_life_or_enters_tapped",
   "sacrifice_unless_return_land",
   "assign_combat_damage",
   "divide_spell_damage",
@@ -297,7 +298,23 @@ test("buildAnswerFromDraft builds discard from card-pick draft", () => {
 test("buildAnswerFromDraft builds proliferate from empty card-pick", () => {
   const pc = { kind: "proliferate" as const, items: [], player: 0, source: 1 };
   const draft: PromptDraft = { kind: "card-pick", picked: [] };
-  expect(buildAnswerFromDraft(pc, draft)).toEqual({ kind: "sacrifice", ids: [] });
+  expect(buildAnswerFromDraft(pc, draft)).toEqual({ kind: "proliferate", permanents: [], players: [] });
+});
+
+// CR 701.27 proliferates players as well as permanents, so the answer names both lists — the
+// engine rejects the sacrifice shape this used to send.
+test("proliferate answers name chosen permanents and player seats separately", () => {
+  const pc = { kind: "proliferate" as const, items: [], player: 0, source: 1 };
+  const draft: PromptDraft = { kind: "card-pick", picked: [7, 9], players: [2] };
+  const answer = buildAnswerFromDraft(pc, draft);
+  expect(answer).toEqual({ kind: "proliferate", permanents: [7, 9], players: [2] });
+  if (answer == null) throw new Error("expected a proliferate answer");
+  expect(choiceIntent(pc, answer)).toEqual({
+    kind: "choose_proliferate",
+    player: 0,
+    permanents: [7, 9],
+    players: [2],
+  });
 });
 
 test("mandatory may_return_from_graveyard requires a pick and optional may_return can decline", () => {
@@ -931,36 +948,40 @@ describe("answerFromDraft builds accepted intents", () => {
         target: { kind: "object", id: 7 },
       },
     );
-    expect(answerFromDraft(
-      {
-        kind: "choose_exiled_dig_to_cast_free",
-        items: [{ id: 34, label: "Spirit Mantle" }],
-        cast_targets: [{ id: 7, label: "Bear" }],
-        player: 0,
-        source: 1,
-      },
-      { kind: "card-pick", picked: [34] },
-    )).toBeNull();
-    expect(choiceIntent(
-      {
-        kind: "choose_exiled_dig_to_cast_free",
-        items: [{ id: 34, label: "Spirit Mantle" }],
-        cast_targets: [{ id: 7, label: "Bear" }],
-        player: 0,
-        source: 1,
-      },
-      (() => {
-        const declined = declineAnswer({
+    expect(
+      answerFromDraft(
+        {
           kind: "choose_exiled_dig_to_cast_free",
           items: [{ id: 34, label: "Spirit Mantle" }],
           cast_targets: [{ id: 7, label: "Bear" }],
           player: 0,
           source: 1,
-        });
-        if (declined == null) throw new Error("expected decline answer for dig cast");
-        return declined;
-      })(),
-    )).toEqual({
+        },
+        { kind: "card-pick", picked: [34] },
+      ),
+    ).toBeNull();
+    expect(
+      choiceIntent(
+        {
+          kind: "choose_exiled_dig_to_cast_free",
+          items: [{ id: 34, label: "Spirit Mantle" }],
+          cast_targets: [{ id: 7, label: "Bear" }],
+          player: 0,
+          source: 1,
+        },
+        (() => {
+          const declined = declineAnswer({
+            kind: "choose_exiled_dig_to_cast_free",
+            items: [{ id: 34, label: "Spirit Mantle" }],
+            cast_targets: [{ id: 7, label: "Bear" }],
+            player: 0,
+            source: 1,
+          });
+          if (declined == null) throw new Error("expected decline answer for dig cast");
+          return declined;
+        })(),
+      ),
+    ).toEqual({
       kind: "choose_exiled_dig_to_cast_free",
       choice: null,
       player: 0,

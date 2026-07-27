@@ -817,6 +817,7 @@ mod tests {
         devoid: false,
         enters_tapped: false,
         enters_tapped_unless: None,
+        enters_tapped_unless_you_pay_life: None,
         free_cast_if: None,
         alternative_cost: None,
         cast_only_during_combat: false,
@@ -839,6 +840,7 @@ mod tests {
                     x_scaled: false,
                     sacrifice_scaled: false,
                     strive_scaled: false,
+                    total_mv_max: None,
                     multikicker_scaled: false,
                     kicked_scaled: false,
                     main_phase_scaled: false,
@@ -1759,8 +1761,16 @@ mod tests {
         let mut table = Table::empty();
         table.game = Some(engine::Game::new());
 
-        // Reach End with an empty hand, then overfill so Cleanup must pause on discard.
-        advance_table_to_step(&mut table, engine::Step::End);
+        // Stock a library first: an empty-library draw decks P0, and a player who has left the
+        // game takes no turn-based actions at all (CR 800.4e) — discard included.
+        {
+            let game = table.game.as_mut().unwrap();
+            for _ in 0..8 {
+                game.spawn_in_library(PlayerId(0), plains());
+            }
+        }
+        // Reach a late-turn priority window, then overfill so Cleanup must pause on discard.
+        advance_table_to_step(&mut table, engine::Step::Main2);
         {
             let game = table.game.as_mut().unwrap();
             for _ in 0..8 {

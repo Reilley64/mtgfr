@@ -1,0 +1,32 @@
+# Infect (This creature deals damage to creatures in the form of -1/-1 counters and to players in the form of poison
+# counters.)
+# At the beginning of your upkeep, create a 1/1 green Phyrexian Insect creature token with infect for each poison
+# counter your opponents have.
+name = "Phyrexian Swarmlord"
+id = "4fc2755c-ae7b-4147-a573-b33679a461e8"
+default_print = "8a91dea7-9792-4714-82b0-ba2c06cef304"
+oracle = "Infect (This creature deals damage to creatures in the form of -1/-1 counters and to players in the form of poison counters.)\nAt the beginning of your upkeep, create a 1/1 green Phyrexian Insect creature token with infect for each poison counter your opponents have."
+sets = ["nph"]
+subtypes = ["Phyrexian", "Insect", "Horror"]
+keywords = ["infect"]
+
+[cost]
+generic = 4
+green = 2
+
+[kind]
+type = "creature"
+power = 4
+toughness = 4
+
+# At the beginning of your upkeep, create a 1/1 green Phyrexian Insect creature token with infect for each poison
+# counter your opponents have.
+[[abilities]]
+timing = "upkeep"
+
+# create a 1/1 green Phyrexian Insect creature token with infect for each poison counter your opponents have.
+[[abilities.effects]]
+type = "token"
+mode = "create"
+token = "d7e7f7f2-d2e1-48ce-97d0-55c43c360d88"
+count = "opponents_poison_counters"

@@ -689,9 +689,7 @@ describe("pendingDigCastHostMode", () => {
       items: [{ id: 33, label: "Bear" }],
     };
     expect(digCastNeedsHost(pc)).toBe(false);
-    expect(
-      pendingDigCastHostMode(pc, state([object({ id: 7 })]), { kind: "card-pick", picked: [33] }),
-    ).toBeNull();
+    expect(pendingDigCastHostMode(pc, state([object({ id: 7 })]), { kind: "card-pick", picked: [33] })).toBeNull();
   });
 });
 

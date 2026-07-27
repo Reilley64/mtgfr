@@ -52,6 +52,9 @@ pub(crate) enum ChoiceRequest {
         x: u32,
         modes: Arc<[crate::Effect]>,
         at_placement: bool,
+        /// Whether the mode is being chosen for an *activated* ability as it goes on the stack
+        /// (CR 601.2b — Cankerbloom). See [`crate::PendingChoice::ChooseMode`].
+        activated: bool,
     },
     MayYesNo {
         player: crate::PlayerId,

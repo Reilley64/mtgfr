@@ -180,11 +180,6 @@ impl Game {
             .collect()
     }
 
-    /// A player's current life total.
-    pub fn poison(&self, player: PlayerId) -> u8 {
-        self.players[player.0 as usize].poison
-    }
-
     pub fn life(&self, player: PlayerId) -> i32 {
         self.players[player.0 as usize].life
     }
@@ -193,6 +188,38 @@ impl Game {
     /// commanders that have actually connected appear. 21 from any single one is lethal (CR 903.10a).
     pub fn commander_damage(&self, player: PlayerId) -> &[(PlayerId, i32)] {
         &self.players[player.0 as usize].commander_damage
+    }
+
+    /// How many counters of `kind` sit on `player` (CR 122.1). Public information — ten or more
+    /// poison counters loses the game (CR 704.5c).
+    pub fn player_counters(&self, player: PlayerId, kind: PlayerCounterKind) -> u8 {
+        self.players[player.0 as usize].kind_counters[kind as usize]
+    }
+
+    /// Test/setup helper: place `count` counters of `kind` on `player` (routed through an event so
+    /// state stays mutated only by [`Game::apply`], exactly as [`Game::deal_commander_damage`]).
+    /// A real placement, so CR 614 replacements apply (Winding Constrictor, Vorinclex).
+    pub fn place_player_counters(&mut self, player: PlayerId, kind: PlayerCounterKind, count: i32) {
+        // ponytail: the helper has no real placing player, so the placement counts as
+        // self-inflicted — `player` puts them on themself. Real placements reach the pipeline
+        // through `Game::mint_counters` with the resolving controller as the placer; give this
+        // helper its own `placer` param if a test ever needs an opponent handing out poison.
+        let count = self.player_counters_after_replacements(player, player, count);
+        if count == 0 {
+            return;
+        }
+        self.apply(&Event::PlayerCountersPlaced {
+            player,
+            kind,
+            count,
+        });
+    }
+
+    /// Test/setup helper: add `amount` loyalty counters to a planeswalker (routed through an
+    /// event, exactly as [`Game::place_player_counters`]) — the setup a test needs to reach an
+    /// ultimate a card has no plus ability to climb to.
+    pub fn add_loyalty(&mut self, object: ObjectId, amount: i32) {
+        self.apply(&Event::LoyaltyChanged { object, amount });
     }
 
     /// Whether a player has lost the game.
@@ -649,6 +676,13 @@ impl Game {
     /// exist until its controller's next turn). `false` if `id` isn't a permanent.
     pub fn is_phased_out(&self, id: ObjectId) -> bool {
         self.as_permanent(id).is_some_and(|p| p.phased_out)
+    }
+
+    /// Whether the permanent at `id` is monstrous (CR 701.28b — has had a "Monstrosity N"
+    /// ability resolve on it). `false` if `id` isn't a permanent, including a fresh object that
+    /// left and re-entered the battlefield (a new object is never monstrous).
+    pub fn is_monstrous(&self, id: ObjectId) -> bool {
+        self.as_permanent(id).is_some_and(|p| p.monstrous)
     }
 
     /// Whether the permanent at `id` is face down (CR 708 — a manifested card): a 2/2 colorless

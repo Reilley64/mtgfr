@@ -1,0 +1,44 @@
+# Equipped creature has trample and "Whenever this creature deals combat damage to a player, put
+# that many +1/+1 counters on it."
+# Equip {2}
+name = "Power Fist"
+id = "bdfcf7df-8c06-4abe-af41-eccabb9fc2c8"
+default_print = "9e8f7fbc-bf2a-43c1-a88d-807c1e7dab69"
+otags = ["activated-ability", "exponential", "gives-pp-counters", "gives-trample", "scales-with-damage-dealt", "slith-ability", "triggered-ability"]
+oracle = "Equipped creature has trample and \"Whenever this creature deals combat damage to a player, put that many +1/+1 counters on it.\"\nEquip {2}"
+sets = ["pip"]
+subtypes = ["Equipment"]
+
+[cost]
+generic = 1
+green = 1
+
+[kind]
+type = "artifact"
+
+# Equipped creature has trample and "Whenever this creature deals combat damage to a player, put
+# that many +1/+1 counters on it."
+[[abilities]]
+timing = "static"
+
+# Equipped creature has trample and "Whenever this creature deals combat damage to a player, put
+# that many +1/+1 counters on it."
+[[abilities.effects]]
+type = "static"
+mode = "grant_to_attached"
+power = 0
+toughness = 0
+keywords = ["trample"]
+granted_ability = { trigger = { deals_combat_damage_to_player = { who = "this" } }, effects = [{ type = "counters", mode = "put_counters", target = "this", count = "combat_damage_dealt" }] }
+
+# Equip {2}
+[[abilities]]
+timing = "activated"
+
+[abilities.activation_cost]
+generic = 2
+
+# Equip {2}
+[[abilities.effects]]
+type = "control"
+mode = "equip"

@@ -1743,11 +1743,14 @@ function payCostDeclineLabel(
     | "pay_or_controller_draws"
     | "pay_echo_or_sacrifice"
     | "pay_recover_or_exile"
-    | "sacrifice_unless_pay",
+    | "sacrifice_unless_pay"
+    | "pay_life_or_enters_tapped",
 ): string {
   switch (kind) {
     case "pay_or_counter":
       return "Let it be countered";
+    case "pay_life_or_enters_tapped":
+      return "Enters tapped";
     case "pay_or_controller_draws":
       return "Let them draw";
     case "pay_echo_or_sacrifice":
@@ -1774,14 +1777,21 @@ function payCostPrompt(
         | "pay_or_controller_draws"
         | "pay_echo_or_sacrifice"
         | "pay_recover_or_exile"
-        | "sacrifice_unless_pay";
+        | "sacrifice_unless_pay"
+        | "pay_life_or_enters_tapped";
     }
   >,
   board: BoardModel,
   tableId: string | null,
 ): Html {
-  const title = "label" in pending ? messageText(pending.label) : pendingChoiceTitle(pending);
-  const payLabel = `Pay ${costText(pending.cost)}`;
+  // The shockland choice carries a life amount rather than a cost, and no server label.
+  const shockland = pending.kind === "pay_life_or_enters_tapped";
+  const title = shockland
+    ? "Have it enter untapped?"
+    : "label" in pending
+      ? messageText(pending.label)
+      : pendingChoiceTitle(pending);
+  const payLabel = shockland ? `Pay ${pending.life} life` : `Pay ${costText(pending.cost)}`;
   const declineLabel = payCostDeclineLabel(pending.kind);
   // Only the optional-trigger prompt carries affordability; the "unless you pay" variants are a
   // penalty either way, so declining is always a real answer there.
@@ -2802,7 +2812,8 @@ function pendingChoicePrompt(
         pending.kind !== "pay_or_controller_draws" &&
         pending.kind !== "pay_echo_or_sacrifice" &&
         pending.kind !== "pay_recover_or_exile" &&
-        pending.kind !== "sacrifice_unless_pay"
+        pending.kind !== "sacrifice_unless_pay" &&
+        pending.kind !== "pay_life_or_enters_tapped"
       ) {
         return frame("pending-choice", pendingChoiceTitle(pending), []);
       }

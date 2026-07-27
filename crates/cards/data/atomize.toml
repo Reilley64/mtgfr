@@ -1,0 +1,36 @@
+# Destroy target nonland permanent. Proliferate. (Choose any number of permanents and/or players, then give each
+# another counter of each kind already there.)
+name = "Atomize"
+id = "4b457bc2-2d8c-42cb-9a63-bb4c459d14e3"
+default_print = "592cbafc-ab4e-461f-b64f-0bf9d83aaff3"
+otags = ["counters-matter", "removal-destroy", "removal-nonland", "single-target-instant-sorcery", "spot-removal"]
+oracle = "Destroy target nonland permanent. Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)"
+sets = ["pip"]
+
+[cost]
+generic = 2
+black = 1
+green = 1
+
+[kind]
+type = "instant"
+
+# Destroy target nonland permanent.
+[[abilities]]
+timing = "spell"
+
+# Destroy target nonland permanent.
+[[abilities.effects]]
+type = "destroy"
+mode = "target"
+target = { permanent = "nonland" }
+
+# Proliferate.
+[[abilities]]
+timing = "spell"
+
+# Proliferate.
+[[abilities.effects]]
+type = "choice"
+mode = "proliferate"
+times = 1

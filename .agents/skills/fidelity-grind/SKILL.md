@@ -181,16 +181,24 @@ Hard-won loop rules (already baked into the script — do not soften them):
 Engine waves accrue wire debt. After the grind (or mid-grind if large):
 `just server-codegen`, then close the hand-written wire gap —
 
-1. Add any new `PendingChoiceView` kinds to `client/lib/wire/types.ts` and register them in
-   `FORMULATOR_FOR_KIND` (`client/lib/choice.ts`); reuse an existing formulator when the answer
+1. Add any new `PendingChoiceView` kinds to `client/app/domain/wire/types.ts` and register them in
+   `FORMULATOR_FOR_KIND` (`client/app/domain/choice.ts`); reuse an existing formulator when the answer
    shape matches (prompts render via `client/app/board/html/prompts.ts`).
-2. Add any new `VisibleEvent` kinds to `client/lib/wire/types.ts`, extend
-   `VISIBLE_EVENT_KIND_PRESENCE` (`client/lib/wire/visibleEventKindPresence.ts`), and add
-   exhaustive arms in `client/lib/event-fold.ts` (`extractProvenance` / `describe`).
+2. Add any new `VisibleEvent` kinds to `client/app/domain/wire/types.ts`, extend
+   `VISIBLE_EVENT_KIND_PRESENCE` (`client/app/domain/wire/visibleEventKindPresence.ts`), and add
+   exhaustive arms in `client/app/domain/event-fold.ts` (`extractProvenance` / `describe`).
 3. New `MeaningfulAction`s surface via the existing generic tiles / activation menu.
+
+Canvas tests the grind adds must assert the *invariant*, not the pixel. `expect(ys).toEqual([142,
+156, 170])` for three stacked chips reads as a stacking assertion but is really a snapshot of where
+the avatar block starts, and it goes red the first time the default branch nudges that block.
+Assert what the feature promises — three rows, one line-height apart, in a named order.
 
 Gate: **`just client-check`** (codegen + format + lint + typecheck + Vitest). That includes
 `wire-case-coverage.test.ts`, which fails if generated proto oneofs drift from the hand unions.
+`VISIBLE_EVENT_KIND_PRESENCE` is hand-written and exhaustive, so a new wire event kind that skips
+step 2 above fails only in `just client-typecheck`, as a `Record` "missing the following
+properties" error naming every kind you forgot.
 `just client-test` alone is `bun run test` (vitest). Plain `bun test` runs Bun's own runner over
 the same files and reports dozens of phantom failures — only the just recipes count as evidence.
 
@@ -262,9 +270,70 @@ pool that supports it. After client catch-up (the wire is settled by then):
    changed on the default branch (heavenly-inferno merged an i18n hard-cut that turned
    `ActionView.label` from `string` into `MessageRef`) only fails in **`just client-typecheck`**,
    in this branch's own test fixtures — reach for the repo's fixture helper
-   (`client/lib/i18n/testMessageRef.ts`) rather than hand-building the new shape; and
+   (`client/app/domain/i18n/testMessageRef.ts`) rather than hand-building the new shape; and
    `docs/CR_INDEX.md` goes stale from both sides' new citations, so re-run
    `just engine-cr-index` before `just engine-cr-index-check`.
+
+   **The merge's real danger is not conflicts — it is silent unions and silent losses.** A long
+   grind and a moving default branch reimplement the *same* subsystems, and git resolves that
+   without ever showing a marker. Frank-Horrigan merged 74 commits and went 148 → 38 → 23 → 10
+   → 0 failures, every step a variant of one of these:
+   - **Silent union — behavior doubles.** Main had moved self-`Etb` and combat-damage trigger
+     queuing into table dispatch (`queue_trigger_watch_table(ENTERS_BATTLEFIELD_TRIGGER_WATCHES,
+     …)`); the grind still called `queue_self_trigger` / `queue_combat_damage_triggers`
+     explicitly. Both survived, so every ETB fired twice. Symptom: a pending choice re-raised
+     for a clause already answered. After resolving, grep for every dispatch/registration call
+     the grind added and confirm the default branch hasn't grown a second path to it.
+   - **Silent loss — an additive gate vanishes.** Where main's version of a file won wholesale,
+     the grind's *additions inside* untouched-looking functions went with it: an emblem source
+     chain in `matching_anthems`, a `Condition::SourceAttackedThisTurn` keyword arm, a
+     `min_level` gate on a keyword anthem. Nothing conflicted; three tests just failed.
+     **Before merging, snapshot every file the grind touched** (`git show HEAD:<f> >
+     scratchpad/<f>.pre`) so restoring a dropped gate is a two-file diff instead of archaeology.
+   - **Duplicate surface — one of them is now dead.** Main shipped
+     `spell_multikicker_count` / `entered_multikicker_count` for the same card need the grind
+     had solved as `times_kicked` / `entered_times_kicked`. Both compiled; one was written and
+     never read. After the merge, walk the increments backlog's LANDED surface names and
+     confirm each is still *read*, then delete the loser from code, `DSL_REFERENCE.md`, and the
+     increments entry together.
+   - **A default-branch test can encode a scenario the grind's new rule makes illegal.** A
+     server cleanup-discard test relied on a decked-out player still discarding; the grind added
+     the CR 800.4e "no turn-based actions for a player who has left the game" guard. Fix the
+     test's *setup* to a legal scenario — never weaken the new rule to keep an old fixture green.
+   - **`git checkout -- <file>` during resolution is unrecoverable.** Unstaged merge edits live
+     nowhere else. `git add` each file the moment it compiles.
+   - **Card TOML corrupts silently too** — a stray resolution dropped a green pip from Doubling
+     Season's `{4}{G}{G}`, and the only thing that caught it was an *unrelated* cost-reduction
+     test. Diff `crates/cards/data/` against the merge base for cards the grind never touched.
+   - **Collided subsystem — pick the general one and delete the other outright.** Sharpest
+     case yet: while Frank-Horrigan was opening its PR, main shipped a *narrow* poison surface
+     (`Player::poison`, `Event::PlayerPoisonChanged`, `CountersEffect::EachOpponentGetsPoison` /
+     `EachOpponentLosesAllCounters`) for two cards the grind had already covered with the general
+     player-counter subsystem (`PlayerCounterKind`, `Event::PlayerCountersPlaced`,
+     `put_counters_on_player` / `remove_all_player_counters`). Both compiled side by side, and
+     *two storage paths for the same game fact is a bug that no test catches* — a counter placed
+     through one is invisible to the other. Resolve by deleting the loser end to end in one pass:
+     engine field + event + accessor + effect variants + `de.rs` parsing + `message.rs` keys +
+     schema DTO + projection + gRPC map + client `types.ts` /
+     `visibleEventKindPresence.ts` / `event-fold.ts` / i18n catalog + `rustKeys.json` +
+     `DSL_REFERENCE.md` rows. Keep the loser's *tests* — retarget their assertions to the
+     surviving accessor; they are free coverage of cards the grind never wrote.
+   - **A shipped proto field number is burned, even when you delete the field.**
+     `docs/WIRE_COMPAT.md` is expand-only, so when the merge deletes a default-branch event that
+     already released, `reserved N;` its number (at message scope, not inside the `oneof`) and
+     renumber the grind's own new fields above it. Never reuse the slot for a different type.
+   - **A conflicting PR gets no CI at all.** GitHub cannot build the merge ref, so
+     `pull_request` workflows never fire and the PR sits with an empty `statusCheckRollup` — it
+     reads as "still queueing," not "blocked." Check
+     `gh pr view N --json mergeStateStatus,mergeable` right after opening; `DIRTY` /
+     `CONFLICTING` means merge again *now*. Re-merge default immediately before opening the PR,
+     not an hour earlier.
+   - Three mechanical ones: a moved-away generated tree from the default branch's own refactor
+     (`client/lib/wire/generated/` after `client/lib/` → `client/app/domain/`) stays on disk and
+     fails `just client-lint` until deleted; `bun install` must run in the *worktree* before
+     `just client-typecheck` means anything; and commitlint caps the **PR title** at 72
+     characters — check it with `printf '%s' '<title>' | ./node_modules/.bin/commitlint` from the
+     main checkout before opening, since the worktree has no root `node_modules`.
 4. **Skill retrospective (before opening the PR):** the grind isn't done until this skill has
    absorbed what the grind taught. Review the whole run against the skill and fold every
    lesson in *before* opening the PR, so the skill improvements ride in the same squash

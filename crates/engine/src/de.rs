@@ -18,14 +18,14 @@ use serde::Deserialize;
 use serde::de::{self, Deserializer, IntoDeserializer, Visitor};
 
 use crate::{
-    Ability, ActivationCost, AdditionalCost, AlternativeCost, Amount, AmountZone, CardDef,
-    CardFilter, CardKind, CastXMax, CasterScope, Color, ColorFilter, CombatDamageScope, Condition,
-    Cost, CounterKind, CumulativeUpkeepCost, EdictScope, Effect, EnterAsCopy, EnterController,
-    EscapeCost, FilterController, GrantedAbility, HandActivatedAbility, Keyword, LandProduces,
-    Mana, ManaPool, Parity, PermanentFilter, ProtectionScope, ReanimateBecomes,
-    SacrificeAdditionalCost, SacrificeAdditionalCostCount, SacrificeCost, SpellFilter, SpellSpeed,
-    SpendToCastPredicate, Suspend, TargetCount, Timing, TokenFilter, Trigger, TypeSet,
-    intern_card_def,
+    Ability, ActivationCost, AdditionalCost, AlternativeCost, Amount, AmountZone,
+    BecomesTargetedScope, CardDef, CardFilter, CardKind, CastXMax, CasterScope, Color, ColorFilter,
+    CombatDamageScope, Condition, Cost, CounterAxis, CounterKind, CumulativeUpkeepCost, EdictScope,
+    Effect, EnterAsCopy, EnterController, EscapeCost, FilterController, GrantedAbility,
+    HandActivatedAbility, Keyword, LandProduces, Mana, ManaPool, Parity, PermanentFilter,
+    ProtectionScope, ReanimateBecomes, SacrificeAdditionalCost, SacrificeAdditionalCostCount,
+    SacrificeCost, SpellFilter, SpellSpeed, SpendToCastPredicate, Suspend, TargetCount, Timing,
+    TokenFilter, Trigger, TypeSet, intern_card_def,
 };
 
 /// Token profiles loaded from `cards/data/tokens/` before deckable cards deserialize. Keyed by
@@ -111,6 +111,36 @@ where
     D: Deserializer<'de>,
 {
     Ok(Some(&*Box::leak(Box::new(GrantedAbility::deserialize(d)?))))
+}
+
+/// The one [`Trigger`] flavor [`GrantedAbility`]'s `trigger` can spell in TOML today (Power
+/// Fist's "Whenever this creature deals combat damage to a player, …"), externally tagged like a
+/// plain Rust enum (`trigger = { deals_combat_damage_to_player = { who = "this" } }`) — unlike
+/// [`Timing`]'s `TriggerTag`, which pairs a `timing` tag with sibling fields on the *ability's own
+/// table* because an [`Ability`] already has a flat `timing` column to piggyback on; a
+/// [`GrantedAbility`] has no such column, so its `trigger` nests instead.
+/// ponytail: only `DealsCombatDamageToPlayer` is wired — extend this tag (mirroring
+/// `TriggerTag`) the moment a second granted-trigger card needs a different flavor.
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum GrantedTriggerTag {
+    DealsCombatDamageToPlayer {
+        #[serde(default)]
+        who: CombatDamageScope,
+    },
+}
+
+/// `deserialize_with` for [`GrantedAbility`]'s `trigger`. Only called when the key is present (a
+/// `#[serde(default)]` absent key stays `None`), so it always yields `Some`.
+pub(crate) fn opt_granted_trigger<'de, D>(d: D) -> Result<Option<Trigger>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Ok(Some(match GrantedTriggerTag::deserialize(d)? {
+        GrantedTriggerTag::DealsCombatDamageToPlayer { who } => {
+            Trigger::DealsCombatDamageToPlayer { who }
+        }
+    }))
 }
 
 /// `deserialize_with` for [`Effect::Zone(ZoneEffect::ReanimateToBattlefield)`]'s `becomes`: leak the one owned
@@ -335,6 +365,10 @@ impl<'de> Deserialize<'de> for CardDef {
             enters_tapped: bool,
             #[serde(default)]
             enters_tapped_unless: Option<Condition>,
+            /// A CR 614.12 as-enters replacement choice (Overgrown Tomb) — `enters_tapped_unless_you_pay_life = 2`;
+            /// absent for a card without one.
+            #[serde(default)]
+            enters_tapped_unless_you_pay_life: Option<u8>,
             /// A printed conditional free-cast permission (CR 118.5) — `free_cast_if = { .. }`
             /// with the same `Condition` table shape as `enters_tapped_unless`; absent for a
             /// card without one.
@@ -514,6 +548,7 @@ impl<'de> Deserialize<'de> for CardDef {
             devoid: card.devoid,
             enters_tapped: card.enters_tapped,
             enters_tapped_unless: card.enters_tapped_unless,
+            enters_tapped_unless_you_pay_life: card.enters_tapped_unless_you_pay_life,
             free_cast_if: card.free_cast_if,
             alternative_cost: card.alternative_cost,
             cast_only_during_combat: card.cast_only_during_combat,
@@ -608,6 +643,9 @@ impl<'de> Deserialize<'de> for Cost {
             /// Hybrid mana pips (CR 107.4e — `{a/b}`): a list of two-color arrays, one per
             /// hybrid symbol (`hybrid = [["black", "green"]]` for one `{B/G}`).
             hybrid: Vec<[Color; 2]>,
+            /// Phyrexian mana pips (CR 107.4f — `{a/P}`): a list of colors, one per Phyrexian
+            /// symbol (`phyrexian = ["black"]` for one `{B/P}`, Vraska, Betrayal's Sting's cost).
+            phyrexian: Vec<Color>,
             /// `[cost.additional]` — an additional cost paid alongside mana (CR 601.2f).
             additional: AdditionalCost,
             /// A spell's own board-derived generic reduction (Blasphemous Act's "costs {1} less
@@ -638,6 +676,7 @@ impl<'de> Deserialize<'de> for Cost {
             colorless: pips.colorless,
             x: pips.x.into(),
             hybrid: intern(hybrid),
+            phyrexian: intern(pips.phyrexian),
             additional: pips.additional,
             reduce_own_generic: pips.reduce_own_generic,
         })
@@ -978,11 +1017,12 @@ impl<'de> Deserialize<'de> for ProtectionScope {
 /// `"spells_cast_this_turn"`, `"commander_casts_from_command_zone"`, `"creatures_died_this_turn"`,
 /// `"nontoken_creatures_entered_this_turn"`,
 /// `"sacrificed_creature_power"`, `"commander_color_count"`, `"total_power_you_control"`,
+/// `"greatest_power_among_creatures_you_control"`,
 /// `"triggering_spell_mana_value"`, `"spell_sacrifice_count"`, `"spell_multikicker_count"`,
 /// `"revealed_creature_mana_value"`,
 /// `"permanents_died_this_turn"`,
 /// `"mana_paid_this_way"`, `"past_votes"`, `"present_votes"`, `"total_mana_value_milled_this_way"`,
-/// `"exiled_card_mana_value_this_way"`, `"combat_damage_dealt"`, `"spells_cast_before_this_this_turn"`),
+/// `"exiled_card_mana_value_this_way"`, `"combat_damage_dealt"`, `"spells_cast_before_this_this_turn"`)
 /// or a table for a filtered count
 /// (`{ per_permanent = <filter>, zone = "graveyard" }`), a per-kind counter count
 /// (`{ per_counter_of_kind = "charge" }`), a conditional amount
@@ -1021,6 +1061,7 @@ impl<'de> Deserialize<'de> for Amount {
             "sacrificed_creature_toughness",
             "commander_color_count",
             "total_power_you_control",
+            "greatest_power_among_creatures_you_control",
             "permanents_you_own_opponents_control",
             "triggering_spell_mana_value",
             "triggering_spell_mana_spent",
@@ -1076,6 +1117,8 @@ impl<'de> Deserialize<'de> for Amount {
                     "target_toughness" => Amount::TargetToughness,
                     "target_mana_value" => Amount::TargetManaValue,
                     "per_counter_on_source" => Amount::PerCounterOnSource,
+                    "opponents_poison_counters" => Amount::OpponentsPoisonCounters,
+                    "controllers_poison_counters" => Amount::ControllersPoisonCounters,
                     "life_gained_this_turn" => Amount::LifeGainedThisTurn,
                     "spells_cast_this_turn" => Amount::SpellsCastThisTurn,
                     "cards_in_target_player_hand" => Amount::CardsInTargetPlayerHand,
@@ -1089,6 +1132,9 @@ impl<'de> Deserialize<'de> for Amount {
                     "sacrificed_creature_toughness" => Amount::SacrificedCreatureToughness,
                     "commander_color_count" => Amount::CommanderColorCount,
                     "total_power_you_control" => Amount::TotalPowerYouControl,
+                    "greatest_power_among_creatures_you_control" => {
+                        Amount::GreatestPowerAmongCreaturesYouControl
+                    }
                     "permanents_you_own_opponents_control" => {
                         Amount::PermanentsYouOwnOpponentsControl
                     }
@@ -1289,6 +1335,10 @@ impl<'de> Deserialize<'de> for Amount {
 ///   target(s)" where X is the number sacrificed (Immoral Bargain). `strive_scaled` (default
 ///   `false`) is Strive's own sibling (see [`TargetCount::strive_scaled`]'s own doc): `{
 ///   strive_scaled = true }` is "exactly N target(s)" where N is the caster's declared Strive
+///   target count (Twinflame). `total_mv_max` (an [`Amount`], default `None`) is a set-level cap
+///   on the chosen targets' *summed* mana value (see [`TargetCount::total_mv_max`]'s own doc):
+///   `{ min = 0, max = 255, total_mv_max = "x" }` is "any number of target artifacts and/or
+///   enchantments with total mana value X or less" (Rampaging Yao Guai).
 ///   target count (Twinflame). `multikicker_scaled` (default `false`) is Multikicker's own
 ///   sibling (see [`TargetCount::multikicker_scaled`]'s own doc): `{ multikicker_scaled = true }`
 ///   is "one target, then one more for each time this spell was kicked" (Comet Storm) — unlike
@@ -1330,6 +1380,7 @@ impl<'de> Deserialize<'de> for TargetCount {
                     x_scaled: false,
                     sacrifice_scaled: false,
                     strive_scaled: false,
+                    total_mv_max: None,
                     multikicker_scaled: false,
                     kicked_scaled: false,
                     main_phase_scaled: false,
@@ -1358,6 +1409,8 @@ impl<'de> Deserialize<'de> for TargetCount {
                     #[serde(default)]
                     strive_scaled: bool,
                     #[serde(default)]
+                    total_mv_max: Option<Amount>,
+                    #[serde(default)]
                     multikicker_scaled: bool,
                     #[serde(default)]
                     kicked_scaled: bool,
@@ -1374,6 +1427,7 @@ impl<'de> Deserialize<'de> for TargetCount {
                     x_scaled: t.x_scaled,
                     sacrifice_scaled: t.sacrifice_scaled,
                     strive_scaled: t.strive_scaled,
+                    total_mv_max: t.total_mv_max,
                     multikicker_scaled: t.multikicker_scaled,
                     kicked_scaled: t.kicked_scaled,
                     main_phase_scaled: t.main_phase_scaled,
@@ -1473,7 +1527,7 @@ impl<'de> Deserialize<'de> for TypeSet {
 /// `enchanted_by_you`, `mv_max`, `mv_min`, `mv_eq_x`, `mv_max_x`, `power_max`, `power_parity`,
 /// `noncreature`, `exclude`, `color`, `not_color`, `modified`, `attacking`, `attacking_you`,
 /// `power_less_than_source`, `entered_this_turn`, `nonbasic`, `nonlegendary`, `nonlair`,
-/// `without_flying`, `with_flying`). `noncreature` is sugar for `exclude = "creature"`;
+/// `without_flying`, `with_flying`, `with_counter`). `noncreature` is sugar for `exclude = "creature"`;
 /// `not_color` is sugar for `color`'s negated-color arm — both fold into the same
 /// [`PermanentFilter`] fields as their general spelling (see below).
 impl<'de> Deserialize<'de> for PermanentFilter {
@@ -1585,6 +1639,8 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     /// bare-string shorthand of the same name above.
                     #[serde(default)]
                     shares_type_with_dying_permanent: bool,
+                    #[serde(default)]
+                    with_counter: Option<CounterAxis>,
                     /// Ao, the Dawn Sky mode 2: creature OR Vehicle subtype (not a card type).
                     #[serde(default)]
                     creature_or_vehicle: bool,
@@ -1631,6 +1687,7 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     without_flying: t.without_flying,
                     with_flying: t.with_flying,
                     shares_type_with_dying_permanent: t.shares_type_with_dying_permanent,
+                    with_counter: t.with_counter,
                     creature_or_vehicle: t.creature_or_vehicle,
                     snow: t.snow,
                 })
@@ -1738,6 +1795,7 @@ enum TriggerTag {
     Etb,
     AsEnters,
     TurnedFaceUp,
+    BecomesMonstrous,
     Attacks,
     BlocksOrBecomesBlocked,
     AttacksOrBlocks,
@@ -1813,6 +1871,7 @@ enum TriggerTag {
     SpendManaToCast,
     YouLoseLifeFirstTimeEachTurn,
     Cycled,
+    YouProliferate,
 }
 
 /// An `[[abilities]]` table is flat in TOML: the timing is a string, and an activated
@@ -1919,10 +1978,16 @@ impl<'de> Deserialize<'de> for Ability {
             #[serde(default)]
             controller: EnterController,
             /// Who a `deals_combat_damage_to_player` trigger watches (Leitmotif Composer's
-            /// `this`, Ohran Frostfang's `your_creatures`, Curiosity Crafter's `your_tokens`).
-            /// Ignored for every other trigger/timing.
+            /// `this`, Ohran Frostfang's `your_creatures`, Curiosity Crafter's `your_tokens`,
+            /// Contaminant Grafter's batch-once `your_creatures_batch`). Ignored for every other
+            /// trigger/timing.
             #[serde(default)]
             who: CombatDamageScope,
+            /// Which permanent a `becomes_targeted` trigger watches — `this` (default, Goldspan
+            /// Dragon) or `creature_you_control` (Venerated Rotpriest). Ignored for every other
+            /// trigger/timing.
+            #[serde(default)]
+            targeted: BecomesTargetedScope,
             /// The spell filter for a `cast_spell` trigger (Monologue Tax's "a spell", Sram
             /// Senior Edificer's "an Aura, Equipment, or Vehicle spell"). Named distinctly from
             /// `filter` (a [`PermanentFilter`], taken by the sacrifice triggers above). Ignored
@@ -1990,6 +2055,7 @@ impl<'de> Deserialize<'de> for Ability {
                 TriggerTag::Etb => Trigger::Etb,
                 TriggerTag::AsEnters => Trigger::AsEnters,
                 TriggerTag::TurnedFaceUp => Trigger::TurnedFaceUp,
+                TriggerTag::BecomesMonstrous => Trigger::BecomesMonstrous,
                 TriggerTag::Attacks => Trigger::Attacks,
                 TriggerTag::BlocksOrBecomesBlocked => Trigger::BlocksOrBecomesBlocked,
                 TriggerTag::AttacksOrBlocks => Trigger::AttacksOrBlocks,
@@ -2091,7 +2157,7 @@ impl<'de> Deserialize<'de> for Ability {
                     Trigger::CardsExiledFromYourLibraryOrGraveyard
                 }
                 TriggerTag::YouCreateToken => Trigger::YouCreateToken,
-                TriggerTag::BecomesTargeted => Trigger::BecomesTargeted,
+                TriggerTag::BecomesTargeted => Trigger::BecomesTargeted { who: flat.targeted },
                 TriggerTag::SpellTargetsThisOnly => Trigger::SpellTargetsThisOnly {
                     filter: flat.spell_filter,
                 },
@@ -2108,6 +2174,7 @@ impl<'de> Deserialize<'de> for Ability {
                 },
                 TriggerTag::YouLoseLifeFirstTimeEachTurn => Trigger::YouLoseLifeFirstTimeEachTurn,
                 TriggerTag::Cycled => Trigger::Cycled,
+                TriggerTag::YouProliferate => Trigger::YouProliferate,
             }),
             TimingName::Special(SpecialTiming::Spell) => Timing::Spell,
             TimingName::Special(SpecialTiming::Static) => Timing::Static,

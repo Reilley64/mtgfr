@@ -7,7 +7,7 @@ import { gravatarUrl, monogramLetter } from "../../domain/gravatar";
 import { type ImageCache, sharedImageCache } from "../../domain/image-cache";
 import type { Vec } from "../action/targeting";
 import { TARGET_COLOR } from "../action/targeting";
-import { maxCommanderDamage } from "../canvas/avatars";
+import { clockChips } from "../canvas/avatars";
 import { PLAYABLE_BORDER, playableBattlefieldObjectIds } from "../chrome";
 import { type Camera, worldToScreen } from "../geometry/camera";
 import { AVATAR_R, avatarLabelOffsets, avatarPos, type RenderCard, seatColor } from "../geometry/layout";
@@ -488,11 +488,10 @@ function paintAvatars(ctx: CanvasRenderingContext2D, frame: BitmapFrame, cache: 
     ctx.font = `${Math.max(1, Math.round(12 * frame.camera.zoom))}px system-ui, sans-serif`;
     ctx.fillText(`Hand ${player.hand_count}`, screen.x, screen.y + offsets.hand * frame.camera.zoom);
 
-    const cmd = maxCommanderDamage(player);
-    if (cmd > 0) {
-      ctx.fillStyle = "#db8664";
-      ctx.font = `${Math.max(1, Math.round(12 * frame.camera.zoom))}px system-ui, sans-serif`;
-      ctx.fillText(`Cmd ${cmd}`, screen.x, screen.y + offsets.commander * frame.camera.zoom);
+    ctx.font = `${Math.max(1, Math.round(12 * frame.camera.zoom))}px system-ui, sans-serif`;
+    for (const [row, chip] of clockChips(player).entries()) {
+      ctx.fillStyle = chip.fill;
+      ctx.fillText(chip.label, screen.x, screen.y + (offsets.commander + row * 14) * frame.camera.zoom);
     }
     ctx.restore();
   }

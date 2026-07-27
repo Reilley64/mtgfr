@@ -140,8 +140,14 @@ impl Game {
                 Event::PermanentEntered { .. } => {
                     cache.invalidate_all_battlefield(self);
                 }
+                // A new emblem's static abilities (CR 114.3 — Garruk, Cursed Huntsman's "Creatures
+                // you control get +3/+3 and have trample") apply to every creature its controller
+                // owns, same scope as `LandPlayed`/`TokenCreated`.
                 Event::LandPlayed { player, .. }
                 | Event::TokenCreated {
+                    controller: player, ..
+                }
+                | Event::EmblemCreated {
                     controller: player, ..
                 } => {
                     cache.invalidate_owner(self, player);
@@ -199,6 +205,14 @@ impl Game {
                 }
                 Event::AttackerDeclared { object, .. } => {
                     cache.invalidate_object(object);
+                }
+                // Untap clears every battlefield permanent's `attacked_this_turn` (Agent Frank
+                // Horrigan's indestructible grant, CR 508.1) — same board-wide turn-boundary
+                // invalidation shape as `CombatCleared` below.
+                Event::StepBegan {
+                    step: Step::Untap, ..
+                } => {
+                    cache.invalidate_all_battlefield(self);
                 }
                 // A chosen-type-gated anthem's newly-set source affects every creature the
                 // controller owns, same scope as `LandPlayed`/`TokenCreated` above.

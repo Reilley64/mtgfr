@@ -679,6 +679,7 @@ mod tests {
             colorless: 0,
             x: 0,
             hybrid: &[],
+            phyrexian: &[],
             additional: NO_ADD,
             reduce_own_generic: None,
         }
@@ -715,6 +716,7 @@ mod tests {
                                 x_scaled: false,
                                 sacrifice_scaled: false,
                                 strive_scaled: false,
+                                total_mv_max: None,
                                 multikicker_scaled: false,
                                 kicked_scaled: false,
                                 main_phase_scaled: false,
@@ -750,6 +752,7 @@ mod tests {
             devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
+            enters_tapped_unless_you_pay_life: None,
             free_cast_if: None,
             alternative_cost: None,
             cast_only_during_combat: false,

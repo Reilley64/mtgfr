@@ -54,6 +54,12 @@ pub enum Trigger {
     /// trigger). Fires off [`Event::TurnedFaceUp`] by scanning the now-revealed object's own
     /// abilities. Spelled `"turned_face_up"` in TOML.
     TurnedFaceUp,
+    /// When this permanent becomes monstrous (CR 701.28b — Alpha Deathclaw's "…or becomes
+    /// monstrous…"). Fires off [`Event::BecameMonstrous`] by scanning the source's own
+    /// abilities — the same self-scan idiom as [`Self::TurnedFaceUp`] above, but never fires a
+    /// second time on a later no-op activation (CR 701.28c means no event is minted at all).
+    /// Spelled `"becomes_monstrous"` in TOML.
+    BecomesMonstrous,
     /// When this creature is declared as an attacker.
     Attacks,
     /// Whenever this creature blocks or becomes blocked (Goblin Cadets, CR 509/CR 509.1h): fires
@@ -444,18 +450,17 @@ pub enum Trigger {
     /// ponytail: fieldless — "you" is the only scope any pool card needs (flag-don't-force; add
     /// an opponent/any-player scope the moment a second consumer wants one).
     YouCreateToken,
-    /// Whenever this permanent becomes the target of a spell (CR 603.2c "becomes the
-    /// target"), fired under the *targeted permanent's own controller* — Goldspan Dragon.
-    /// A self-referential watch, like [`Etb`](Self::Etb)/[`Attacks`](Self::Attacks): scoped
-    /// to the permanent itself, not "any permanent"/"another permanent", since the only pool
-    /// consumer needs no filter (flag-don't-force — add one the moment a second consumer
-    /// wants it). Fires off [`Event::SpellCast`]'s carried `target`; see
+    /// Whenever a permanent becomes the target of a spell (CR 603.2c "becomes the target"), fired
+    /// under the *targeted permanent's own controller* — Goldspan Dragon
+    /// ([`BecomesTargetedScope::This`], the self-referential default) or Venerated Rotpriest
+    /// ([`BecomesTargetedScope::CreatureYouControl`], every watcher sharing the targeted
+    /// creature's controller). Fires off [`Event::SpellCast`]'s carried `target`; see
     /// [`Game::queue_becomes_targeted_triggers`].
     /// ponytail: the engine's spells carry a single [`Target`] (multi-target spells are
     /// unlanded), so this fires at most once per spell cast — faithful for Goldspan, but a
     /// hypothetical spell targeting *this* permanent among several targets would need
     /// per-target firing once multi-target lands.
-    BecomesTargeted,
+    BecomesTargeted { who: BecomesTargetedScope },
     /// "When you cast this spell" (CR 601.2i/603.3): a triggered ability on the spell's *own*
     /// text that goes on the stack above the spell the moment it's cast, controlled by the
     /// caster — Hydroid Krasis's "you gain half X life and draw half X cards, rounded down."
@@ -539,6 +544,17 @@ pub enum Trigger {
     /// [`Game::cycle`](crate::Game::cycle). Fieldless: every pool consumer is self-only ("this
     /// card"), so no filter/scope axis exists yet (flag-don't-force).
     Cycled,
+    /// Whenever the ability's controller proliferates (CR 701.27 — "proliferate twice"/"proliferate
+    /// X times" is a *set* of separate proliferate instances, so this fires once per instance, not
+    /// once per resolution) — Scheming Aspirant: "Whenever you proliferate, each opponent loses 2
+    /// life and you gain 2 life." Fires unconditionally at the end of each answered instance inside
+    /// [`Game::answer_proliferate`], even when the player proliferates nothing (CR 701.27 doesn't
+    /// condition the instance on a nonempty choice). A controller-scoped "you did X" trigger like
+    /// [`YouCreateToken`](Self::YouCreateToken); see
+    /// [`Game::queue_controller_triggers`](super::Game::queue_controller_triggers).
+    /// ponytail: fieldless — "you" is the only scope any pool card needs (flag-don't-force; add an
+    /// opponent/any-player scope the moment a second consumer wants one).
+    YouProliferate,
 }
 
 /// Which cast a [`Trigger::SpendManaToCast`] watch accepts as "this mana was spent to cast …",
@@ -616,6 +632,32 @@ pub enum CombatDamageScope {
     /// the ability's controller's opponents (Edric, Spymaster of Trest: "Whenever a creature deals
     /// combat damage to one of your opponents"). The only scope that reads the damaged player.
     AnyCreatureDamagingYourOpponent,
+    /// "Whenever one or more creatures you control deal combat damage to one or more players"
+    /// (Contaminant Grafter) — CR 603.3b's batch wording: **one** trigger per combat damage step
+    /// however many of the controller's creatures connected, unlike
+    /// [`YourCreatures`](Self::YourCreatures)'s per-creature firing. Accumulated across the event
+    /// batch in `BatchTriggerScratch::creatures_dealt_combat_damage_this_batch` and drained
+    /// (deduped by controller) at the end of [`Game::enqueue_triggers`], the same shape as
+    /// [`Trigger::YouCreateToken`](Trigger::YouCreateToken).
+    YourCreaturesBatch,
+}
+
+/// Which permanent a [`Trigger::BecomesTargeted`] watch cares about, relative to the ability's own
+/// source/controller (CR 603.2c).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(
+    feature = "card-dsl",
+    derive(serde::Deserialize),
+    serde(rename_all = "snake_case")
+)]
+pub enum BecomesTargetedScope {
+    /// "Whenever this permanent becomes the target of a spell" (Goldspan Dragon) — the default.
+    #[default]
+    This,
+    /// "Whenever a creature you control becomes the target of a spell" (Venerated Rotpriest) —
+    /// every watcher controlled by the targeted creature's controller, the watcher itself
+    /// included (it is a creature its controller controls).
+    CreatureYouControl,
 }
 
 /// What a triggering event exposes to an intervening-if condition and to a watch-others effect:

@@ -270,6 +270,15 @@ impl<'a> ChoiceCtx<'a> {
                 source,
                 cost: wire_cost(cost),
             },
+            engine::PendingChoice::PayLifeOrEntersTapped {
+                player,
+                source,
+                life,
+            } => PendingChoiceView::PayLifeOrEntersTapped {
+                player: player.0,
+                source,
+                life,
+            },
             engine::PendingChoice::SacrificeUnlessReturnLand {
                 player,
                 source,
@@ -405,7 +414,15 @@ impl<'a> ChoiceCtx<'a> {
             } => PendingChoiceView::Proliferate {
                 player: player.0,
                 source,
-                items: self.label_items(options),
+                // Counter-bearing permanents and players alike (CR 701.27). Both are public
+                // information — a poison total is visible to the whole table.
+                items: options
+                    .into_iter()
+                    .map(|target| match target {
+                        engine::ProliferateTarget::Permanent(id) => self.object_item(id),
+                        engine::ProliferateTarget::Player(seat) => self.player_item(seat),
+                    })
+                    .collect(),
             },
             engine::PendingChoice::PhaseOut {
                 player,
@@ -1137,6 +1154,7 @@ mod coverage_tests {
                     x: 0,
                     modes: CHOOSE_ONE_MODES.into(),
                     at_placement: false,
+                    activated: false,
                 },
                 |view| matches!(view, PendingChoiceView::ChooseMode { .. }),
             ),

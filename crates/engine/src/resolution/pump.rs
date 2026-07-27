@@ -335,6 +335,21 @@ impl Game {
                 })
                 .map(|object| Event::KeywordsStripped { object, keywords })
                 .collect(),
+            // Vraska, Betrayal's Sting's −2: the target creature becomes a Treasure artifact and
+            // loses all other card types and abilities (CR 613.1d/613.1f) — an indefinite def
+            // overwrite, so `BecameCopy`'s `until_eot: false` never restores it. A target that has
+            // left the battlefield since is skipped (CR 608.2b).
+            PumpEffect::TargetBecomesTreasure { .. } => {
+                let object = expect_object_target(target, "becomes a Treasure");
+                let Some(current) = self.as_permanent(object).map(|p| p.def) else {
+                    return Vec::new();
+                };
+                vec![Event::BecameCopy {
+                    object,
+                    def: intern_card_def(becomes_treasure((*card_def(current)).clone())),
+                    until_eot: false,
+                }]
+            }
             // Mass weaken: every creature gets -power/-toughness until end of turn (a negative
             // TempBoost, cleared at cleanup). A 0-or-less-toughness creature dies to the next SBA. (CR 704, CR 514)
             PumpEffect::WeakenEachCreature {
@@ -342,18 +357,28 @@ impl Game {
                 toughness,
                 opponents_only,
             } => {
-                let power = self.resolve_amount(power, controller, source, target, x);
-                let toughness = self.resolve_amount(toughness, controller, source, target, x);
+                // Both amounts are resolved once per affected creature, relative to *that*
+                // creature's controller, not the effect's — Phyresis Outbreak's "for each poison
+                // counter its controller has" (CR 122.1) gives each opponent's creatures a
+                // different -N/-N. `resolve_amount`'s `controller` argument is "the player this
+                // amount is relative to"; for a controller-independent amount (`Fixed`, `X`) that
+                // distinction is invisible, which is why the flat weakeners are unaffected.
                 self.battlefield()
                     .into_iter()
                     .filter(|&id| self.is_creature_on_battlefield(id))
                     .filter(|&id| !opponents_only || self.controller_of(id) != controller)
-                    .map(|object| Event::TempBoost {
-                        object,
-                        power: -power,
-                        toughness: -toughness,
-                        keywords: &[],
-                        source_name,
+                    .map(|object| {
+                        let relative_to = self.controller_of(object);
+                        let power = self.resolve_amount(power, relative_to, source, target, x);
+                        let toughness =
+                            self.resolve_amount(toughness, relative_to, source, target, x);
+                        Event::TempBoost {
+                            object,
+                            power: -power,
+                            toughness: -toughness,
+                            keywords: &[],
+                            source_name,
+                        }
                     })
                     .collect()
             }

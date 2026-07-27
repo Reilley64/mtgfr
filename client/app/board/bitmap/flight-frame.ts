@@ -50,6 +50,8 @@ function playerPaintKey(player: PlayerView): Record<string, unknown> {
     gravatar_hash: player.gravatar_hash ?? "",
     hand_count: player.hand_count,
     commander_damage: commanderDamage,
+    poison: player.poison ?? 0,
+    rad: player.rad ?? 0,
   };
 }
 

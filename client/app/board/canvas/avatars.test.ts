@@ -90,3 +90,46 @@ describe("avatarShapes commander damage", () => {
     expect(cmdText?._tag === "Text" ? cmdText.fill : null).toBe("#db8664");
   });
 });
+
+describe("avatarShapes poison and rad clocks", () => {
+  const positions = { 0: { x: 100, y: 100 } };
+
+  it("omits both when the player has neither", () => {
+    const texts = textContents(avatarShapes([player()], positions, 0, 1));
+    expect(texts.some((t) => t.startsWith("Poison ") || t.startsWith("Rad "))).toBe(false);
+  });
+
+  it("paints the poison and rad totals", () => {
+    const texts = textContents(avatarShapes([player({ poison: 3, rad: 2 })], positions, 0, 1));
+    expect(texts).toContain("Poison 3");
+    expect(texts).toContain("Rad 2");
+  });
+
+  // CR 704.5c — the last two poison counters before elimination read as a warning.
+  it("turns the poison chip red inside lethal range", () => {
+    const fillAt = (poison: number) => {
+      const shapes = avatarShapes([player({ poison })], positions, 0, 1);
+      const chip = shapes.find((s) => s._tag === "Text" && s.content === `Poison ${poison}`);
+      return chip?._tag === "Text" ? chip.fill : null;
+    };
+    expect(fillAt(7)).toBe("#8fd14f");
+    expect(fillAt(9)).toBe("#e0574f");
+  });
+
+  // Cmd, Poison, and Rad stack rather than overprint each other.
+  it("stacks the chips on distinct rows", () => {
+    const shapes = avatarShapes(
+      [player({ commander_damage: [{ from: 1, amount: 14 }], poison: 4, rad: 1 })],
+      positions,
+      0,
+      1,
+    );
+    const ys = shapes
+      .filter((s) => s._tag === "Text" && /^(Cmd|Poison|Rad) /.test(s.content))
+      .map((s) => (s._tag === "Text" ? s.y : 0));
+    // Three rows one line-height apart, in Cmd → Poison → Rad order — asserted as gaps so moving
+    // where the avatar block starts doesn't read as a stacking regression.
+    expect(ys).toHaveLength(3);
+    expect([ys[1] - ys[0], ys[2] - ys[1]]).toEqual([14, 14]);
+  });
+});

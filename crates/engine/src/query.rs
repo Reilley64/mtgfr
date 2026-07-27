@@ -1340,6 +1340,24 @@ impl Game {
             .collect()
     }
 
+    /// Ids of every emblem `player` owns (CR 114). An emblem is an ownerless-but-controlled,
+    /// unremovable, non-permanent object that exists only in the command zone (CR 114.1) and has
+    /// no characteristics other than its abilities (CR 114.5), so it is stored as a command-zone
+    /// [`Object::Card`] with `commander: false` — the engine's only other two ways into
+    /// [`Zone::Command`] ([`Game::designate_commander`] and [`Event::MovedToCommandZone`]) both
+    /// set `commander: true`, which makes that flag an unambiguous emblem discriminator. Nothing
+    /// removes, copies, or targets an emblem (CR 114.5), so there is no counterpart remover.
+    pub fn emblems(&self, player: PlayerId) -> Vec<ObjectId> {
+        self.objects
+            .iter()
+            .enumerate()
+            .filter(|(_, o)| {
+                matches!(o, Object::Card(c) if c.zone == Zone::Command && !c.commander && c.owner == player)
+            })
+            .map(|(id, _)| id as ObjectId)
+            .collect()
+    }
+
     /// Whether the permanent `id` satisfies `filter`. `you` is the effect's controller (the
     /// "you" the filter's `controller` axis is relative to); `source` is the filter's own source
     /// permanent, used only by the `other` axis ("another permanent") — pass `None` where there
@@ -1508,6 +1526,15 @@ impl Game {
         if filter.modified && !self.is_modified(id, you) {
             return false;
         }
+        // Counter axis (CR 122.1 — Innkeeper's Talent's "with counters on them", Inspiring
+        // Call's "with a +1/+1 counter on it"). Narrower than `modified` above, which also
+        // matches an equipped/enchanted permanent with no counter at all.
+        match filter.with_counter {
+            None => {}
+            Some(CounterAxis::Any) if self.has_any_counter(id) => {}
+            Some(CounterAxis::PlusOnePlusOne) if self.plus_counters(id) > 0 => {}
+            Some(_) => return false,
+        }
         // Printed name (CR 201.2 — Leitmotif Composer's "creatures named Leitmotif Composer").
         if let Some(name) = filter.name
             && printed.name != name
@@ -1603,6 +1630,7 @@ mod permanent_filter_tests {
                 colorless: 0,
                 x: 0,
                 hybrid: &[],
+                phyrexian: &[],
                 additional: AdditionalCost::default(),
                 reduce_own_generic: None,
             },
@@ -1622,6 +1650,7 @@ mod permanent_filter_tests {
             devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
+            enters_tapped_unless_you_pay_life: None,
             free_cast_if: None,
             alternative_cost: None,
             cast_only_during_combat: false,

@@ -25,4 +25,4 @@ timing = "static"
 type = "static"
 mode = "counter_replacement"
 add = 1
-filter = "creatures"
+filter = { types = "creature", controller = "you" }

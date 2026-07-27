@@ -67,4 +67,5 @@ timing = "spell"
 # Each opponent loses all counters.
 [[abilities.effects]]
 type = "counters"
-mode = "each_opponent_loses_all_counters"
+mode = "remove_all_player_counters"
+scope = "each_opponent"

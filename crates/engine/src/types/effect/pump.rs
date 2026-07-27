@@ -141,6 +141,10 @@ pub enum PumpEffect {
         keywords: &'static [Keyword],
     },
 
+    TargetBecomesTreasure {
+        target: TargetSpec,
+    },
+
     WeakenEachCreature {
         power: Amount,
         toughness: Amount,

@@ -630,6 +630,51 @@ impl Game {
         Ok(events)
     }
 
+    /// Answer a [`PendingChoice::PayLifeOrEntersTapped`]: pay `life` for the land to enter
+    /// untapped, or decline and have it enter tapped (CR 614.12 — Overgrown Tomb's "As this
+    /// land enters, you may pay 2 life. If you don't, it enters tapped."). The land-drop twin of
+    /// [`Game::pay_sacrifice_unless`] — same [`Intent::PayOptionalCost`] shape, opposite
+    /// consequence (there, sacrifice; here, tapped). `source` is still the land *card*: the
+    /// permanent doesn't exist until this answer mints [`Event::LandPlayed`] (CR 614.12's
+    /// replacement locks in before the land is on the battlefield).
+    pub(crate) fn pay_life_or_enters_tapped(
+        &mut self,
+        player: PlayerId,
+        pay: bool,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::PayLifeOrEntersTapped { source, life, .. }) =
+            self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        self.finish_answer();
+
+        let mut events = Vec::new();
+        if pay {
+            self.push_apply(
+                &mut events,
+                Event::LifeChanged {
+                    player,
+                    amount: -(life as i32),
+                    source: Some(source),
+                },
+            );
+        }
+        let def = self.def_of(source);
+        let permanent = self.next_object_id();
+        self.push_apply(
+            &mut events,
+            Event::LandPlayed {
+                permanent,
+                from: source,
+                player,
+                tapped: !pay,
+            },
+        );
+        self.push_enters_with_counters(&def, permanent, player, None, 0, &mut events);
+        Ok(events)
+    }
+
     /// Answer a [`PendingChoice::SacrificeUnlessReturnLand`]: `land` (one of the offered
     /// candidates) returns to its owner's hand and `source` stays; `None` declines and
     /// sacrifices `source` instead (CR 701.16).

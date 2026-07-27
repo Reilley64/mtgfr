@@ -298,6 +298,13 @@ pub enum WireIntent {
         player: u8,
         sacrifices: Vec<ObjectId>,
     },
+    /// Answer a proliferate choice: the permanents and players this player chose to grow
+    /// (CR 701.27 — "any number of permanents and/or players"; both empty declines).
+    ChooseProliferate {
+        player: u8,
+        permanents: Vec<ObjectId>,
+        players: Vec<u8>,
+    },
     /// Answer a cleanup discard: the cards this player discards to reach the hand-size limit.
     Discard {
         player: u8,
@@ -675,6 +682,15 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
         SelectFromTop { cards, .. } => SelectFromTop { player, cards },
         SearchLibrary { choice, .. } => SearchLibrary { player, choice },
         ChooseSacrifices { sacrifices, .. } => ChooseSacrifices { player, sacrifices },
+        ChooseProliferate {
+            permanents,
+            players: chosen,
+            ..
+        } => ChooseProliferate {
+            player,
+            permanents,
+            players: chosen,
+        },
         Discard { cards, .. } => Discard { player, cards },
         PutFromHandOnTop { cards, .. } => PutFromHandOnTop { player, cards },
         DeclineUntap { keep_tapped, .. } => DeclineUntap {
@@ -961,6 +977,15 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
         WireIntent::ChooseSacrifices { player, sacrifices } => Intent::ChooseSacrifices {
             player: PlayerId(player),
             sacrifices,
+        },
+        WireIntent::ChooseProliferate {
+            player,
+            permanents,
+            players,
+        } => Intent::ChooseProliferate {
+            player: PlayerId(player),
+            permanents,
+            players: players.into_iter().map(PlayerId).collect(),
         },
         WireIntent::Discard { player, cards } => Intent::Discard {
             player: PlayerId(player),

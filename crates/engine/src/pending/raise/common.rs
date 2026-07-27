@@ -61,6 +61,7 @@ pub(super) fn map_identical(request: &ChoiceRequest) -> Option<PendingChoice> {
             x,
             modes,
             at_placement,
+            activated,
         } => Some(PendingChoice::ChooseMode {
             player: *player,
             source: *source,
@@ -68,6 +69,7 @@ pub(super) fn map_identical(request: &ChoiceRequest) -> Option<PendingChoice> {
             x: *x,
             modes: modes.clone(),
             at_placement: *at_placement,
+            activated: *activated,
         }),
         ChoiceRequest::MayYesNo {
             player,

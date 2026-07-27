@@ -95,6 +95,8 @@ pub(crate) fn wire_keyword(keyword: engine::Keyword) -> String {
         Keyword::CanBlockOnlyFlyers => "can_block_only_flyers".into(),
         Keyword::Decayed => "decayed".into(),
         Keyword::Myriad => "myriad".into(),
+        Keyword::Infect => "infect".into(),
+        Keyword::Toxic(n) => format!("toxic:{n}"),
         Keyword::Ward(n) => format!("ward:{n}"),
         Keyword::ProtectionFrom(scope) => {
             let name = match scope {
@@ -141,6 +143,8 @@ pub(crate) fn keyword_label(keyword: engine::Keyword) -> String {
         Keyword::CanBlockOnlyFlyers => "Can block only creatures with flying".into(),
         Keyword::Decayed => "Decayed".into(),
         Keyword::Myriad => "Myriad".into(),
+        Keyword::Infect => "Infect".into(),
+        Keyword::Toxic(n) => format!("Toxic {n}"),
         Keyword::Ward(n) => format!("Ward {{{n}}}"),
         Keyword::ProtectionFrom(scope) => {
             let name = match scope {

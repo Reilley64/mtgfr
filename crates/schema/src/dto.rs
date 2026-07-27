@@ -127,6 +127,17 @@ pub struct PlayerView {
     /// otherwise cannot see coming.
     #[serde(default)]
     pub commander_damage: Vec<CommanderDamageView>,
+    /// Poison counters on this player (CR 122.1). Ten or more eliminates them (CR 704.5c) — like
+    /// commander damage, a win condition the client otherwise cannot see coming. Public to every
+    /// seat and to spectators.
+    #[serde(default)]
+    pub poison: u32,
+    /// Rad counters on this player (CR 122.1, Fallout). No lose-the-game threshold, but at the
+    /// beginning of their precombat main phase they mill this many cards, losing 1 life and one
+    /// rad counter per nonland card milled — a self-mill clock the client otherwise cannot see
+    /// coming. Public to every seat and to spectators.
+    #[serde(default)]
+    pub rad: u32,
 }
 
 /// Wire form of [`engine::ManaPool`]: WUBRG counts, `{C}`, any, dual either-credits, and
@@ -668,6 +679,15 @@ pub enum PendingChoiceView {
         source: ObjectId,
         cost: WireCost,
     },
+    /// A land card's controller, about to play it, may pay `life` to have it enter untapped, or
+    /// decline and have it enter tapped (CR 614.12 — Overgrown Tomb). `source` is the land
+    /// *card*, not a permanent — it isn't on the battlefield yet. Answered by the wire
+    /// `PayOptionalCost` intent.
+    PayLifeOrEntersTapped {
+        player: u8,
+        source: ObjectId,
+        life: u8,
+    },
     /// Return one of `items` (a non-Lair land the player controls, public) to its owner's hand
     /// to keep `source`, or decline and sacrifice it (Treva's Ruins).
     SacrificeUnlessReturnLand {
@@ -1121,6 +1141,7 @@ impl PendingChoiceView {
             | Self::PayEchoOrSacrifice { .. }
             | Self::PayRecoverOrExile { .. }
             | Self::SacrificeUnlessPay { .. }
+            | Self::PayLifeOrEntersTapped { .. }
             | Self::ChooseMode { .. }
             | Self::ChooseTriggerModes { .. }
             | Self::ChooseManaColor { .. }

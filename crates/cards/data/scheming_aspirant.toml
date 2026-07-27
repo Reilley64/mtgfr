@@ -1,0 +1,27 @@
+# Whenever you proliferate, each opponent loses 2 life and you gain 2 life.
+name = "Scheming Aspirant"
+id = "cf4a3b1a-4b87-473e-be1f-3aa3da45c28e"
+default_print = "8de80f71-82b5-499c-afc0-6bbae6b896ad"
+otags = ["counters-matter", "opponent-loses-life", "proliferate"]
+oracle = "Whenever you proliferate, each opponent loses 2 life and you gain 2 life."
+sets = ["one"]
+subtypes = ["Phyrexian", "Advisor"]
+
+[cost]
+generic = 1
+black = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 3
+
+# Whenever you proliferate, each opponent loses 2 life and you gain 2 life.
+[[abilities]]
+timing = "you_proliferate"
+
+# each opponent loses 2 life and you gain 2 life.
+[[abilities.effects]]
+type = "life"
+mode = "each_opponent_drain"
+amount = 2

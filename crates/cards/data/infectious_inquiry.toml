@@ -3,7 +3,7 @@ name = "Infectious Inquiry"
 sets = ["one"]
 id = "66051196-53ea-4461-b241-205df9395b3b"
 default_print = "0a10f284-b043-4307-bdc7-6dad47cc9221"
-otags = ["hand-positive", "life-for-cards", "poison", "pure-draw"]
+otags = ["alliteration", "hand-positive", "life-for-cards", "poison-opponents", "pure-draw"]
 oracle = "You draw two cards and you lose 2 life. Each opponent gets a poison counter."
 
 [cost]
@@ -32,5 +32,7 @@ amount = 2
 # Each opponent gets a poison counter.
 [[abilities.effects]]
 type = "counters"
-mode = "each_opponent_gets_poison"
+mode = "put_counters_on_player"
+kind = "poison"
 count = 1
+scope = "each_opponent"

@@ -1,0 +1,37 @@
+# {T}: Add {C}.
+# {T}: Add {B} or {G}. Activate only if you control a Swamp.
+name = "Tainted Wood"
+id = "fa6d05a1-3df4-4751-b1a0-8d9693faec73"
+default_print = "3da7ab6b-b10a-4786-b1eb-92de7e66690e"
+oracle = "{T}: Add {C}.\n{T}: Add {B} or {G}. Activate only if you control a Swamp."
+sets = ["dsc"]
+
+[kind]
+type = "land"
+
+# {T}: Add {C}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add {C}.
+[[abilities.effects]]
+type = "mana"
+mode = "add"
+mana = ["colorless"]
+
+# {T}: Add {B} or {G}. Activate only if you control a Swamp.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+[abilities.condition]
+type = "controls_lands_with_subtype"
+subtypes = ["Swamp"]
+count = 1
+
+# Add {B} or {G}.
+[[abilities.effects]]
+type = "mana"
+mode = "add"
+mana = [["black", "green"]]

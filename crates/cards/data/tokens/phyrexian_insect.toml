@@ -1,0 +1,13 @@
+# Token: Phyrexian Insect
+# Sources: phyrexian_swarmlord.toml
+name = "Phyrexian Insect"
+id = "d7e7f7f2-d2e1-48ce-97d0-55c43c360d88"
+default_print = "5a90e8ab-5a76-4834-9cd6-186af939ea41"
+colors = ["green"]
+subtypes = ["Phyrexian", "Insect"]
+keywords = ["infect"]
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1

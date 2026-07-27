@@ -66,6 +66,7 @@ impl Game {
                         x,
                         modes: options,
                         at_placement: false,
+                        activated: false,
                     },
                 );
             }

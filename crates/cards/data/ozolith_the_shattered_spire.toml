@@ -34,7 +34,7 @@ timing = "static"
 type = "static"
 mode = "counter_replacement"
 add = 1
-filter = "artifact_or_creature"
+filter = { types = "artifact_or_creature", controller = "you" }
 
 # {1}{G}, {T}: Put a +1/+1 counter on target artifact or creature you control. Activate only as a sorcery.
 [[abilities]]

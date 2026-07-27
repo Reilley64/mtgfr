@@ -1,0 +1,28 @@
+# Flying
+# {T}: Add one mana of any color.
+name = "Birds of Paradise"
+id = "d3a0b660-358c-41bd-9cd2-41fbf3491b1a"
+default_print = "492c2f9a-51e7-4e0f-9899-23bf43ea988b"
+oracle = "Flying\n{T}: Add one mana of any color."
+sets = ["msc"]
+subtypes = ["Bird"]
+keywords = ["flying"]
+
+[cost]
+green = 1
+
+[kind]
+type = "creature"
+power = 0
+toughness = 1
+
+# {T}: Add one mana of any color.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add one mana of any color.
+[[abilities.effects]]
+type = "mana"
+mode = "add"
+mana = ["any"]

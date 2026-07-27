@@ -1,0 +1,42 @@
+# Menace
+# Whenever another creature you control dies, put a +1/+1 counter on this creature.
+# When this creature dies, each opponent gets a number of rad counters equal to its power.
+name = "Feral Ghoul"
+id = "284db94d-e583-4355-89fd-6c0906f9d17e"
+default_print = "fbdef99d-6ce9-495d-a55b-e6ba799d3da7"
+oracle = "Menace\nWhenever another creature you control dies, put a +1/+1 counter on this creature.\nWhen this creature dies, each opponent gets a number of rad counters equal to its power."
+sets = ["pip"]
+subtypes = ["Zombie", "Mutant"]
+keywords = ["menace"]
+
+[cost]
+generic = 2
+black = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# Whenever another creature you control dies, put a +1/+1 counter on this creature.
+[[abilities]]
+timing = "creature_you_control_dies"
+
+# put a +1/+1 counter on this creature
+[[abilities.effects]]
+type = "counters"
+mode = "put_counters"
+count = 1
+target = "this"
+
+# When this creature dies, each opponent gets a number of rad counters equal to its power.
+[[abilities]]
+timing = "dies"
+
+# each opponent gets a number of rad counters equal to its power
+[[abilities.effects]]
+type = "counters"
+mode = "put_counters_on_player"
+kind = "rad"
+count = "source_power"
+scope = "each_opponent"

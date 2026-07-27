@@ -24,10 +24,9 @@ toughness = 4
 
 # Whenever one or more creatures you control deal combat damage to a player, this creature
 # becomes prepared.
-# become_prepared is idempotent — per-creature vs batch combat-damage watches converge.
 [[abilities]]
 timing = "deals_combat_damage_to_player"
-who = "your_creatures"
+who = "your_creatures_batch"
 
 # this creature becomes prepared.
 [[abilities.effects]]

@@ -36,3 +36,4 @@ timing = "static"
 type = "static"
 mode = "counter_replacement"
 times = 2
+any_kind = true

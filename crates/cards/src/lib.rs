@@ -623,7 +623,14 @@ token = { name = "Inkling", power = 2, toughness = 1 }
                 Effect::Sequence { steps } => {
                     collect_steps(steps.as_ref(), out);
                 }
-                Effect::Conditional { then, .. } => collect_steps(then.as_ref(), out),
+                // Both branches: a token minted only in the else branch is still a pool token
+                // that needs its art id, and nothing else in the build would catch it.
+                Effect::Conditional {
+                    then, otherwise, ..
+                } => {
+                    collect_steps(then.as_ref(), out);
+                    collect_steps(otherwise, out);
+                }
                 Effect::Zone(ZoneEffect::ExileTargetGraveyardCardThenIfCreature { then }) => {
                     collect_steps(then, out);
                 }
@@ -733,6 +740,59 @@ token = { name = "Inkling", power = 2, toughness = 1 }
             rubinia.keywords.is_empty(),
             "the printed card has no keywords (no flying)"
         );
+    }
+
+    /// Agent Frank Horrigan's "has indestructible as long as it attacked this turn" is wired
+    /// through `conditional_keywords`, not a plain printed keyword (increment
+    /// `attacked-this-turn-condition`).
+    #[test]
+    fn agent_frank_horrigans_indestructible_is_conditional_on_having_attacked() {
+        let frank =
+            get_by_name("Agent Frank Horrigan").expect("Agent Frank Horrigan is in the pool");
+        assert_eq!(
+            frank.kind,
+            CardKind::Creature {
+                power: 8,
+                toughness: 6,
+                also: TypeSet::NONE
+            }
+        );
+        assert!(frank.legendary);
+        assert_eq!(*frank.keywords, [Keyword::Trample]);
+        assert_eq!(
+            *frank.conditional_keywords,
+            [(Condition::SourceAttackedThisTurn, Keyword::Indestructible)]
+        );
+        assert_eq!(
+            frank
+                .abilities
+                .iter()
+                .filter(|a| a.timing == Timing::Triggered(Trigger::Etb))
+                .count(),
+            1,
+            "one etb ability"
+        );
+        assert_eq!(
+            frank
+                .abilities
+                .iter()
+                .filter(|a| a.timing == Timing::Triggered(Trigger::Attacks))
+                .count(),
+            1,
+            "one attacks ability"
+        );
+        // "proliferate twice" is one proliferate with `times = 2` (CR 701.27b repeats the
+        // process, each repetition its own choice) — not two `times = 1` effects, which would
+        // label as "Proliferate 1 times" twice and split one oracle clause across two blocks.
+        for ability in frank.abilities.iter() {
+            assert_eq!(
+                ability.effect,
+                Effect::Choice(ChoiceEffect::Proliferate {
+                    times: Amount::Fixed(2)
+                }),
+                "each trigger proliferates twice in a single effect"
+            );
+        }
     }
 
     #[test]

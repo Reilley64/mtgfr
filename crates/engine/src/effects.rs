@@ -463,7 +463,7 @@ impl Game {
         // doubler/Hardened-Scales replacement pipeline as any other counter placement. Non-spell
         // battlefield-entry events reuse the same reads through `push_apply_effect_event`.
         let bonus = self.additional_enter_counters(entered, spell.controller);
-        let n = self.counters_after_replacements(entered, bonus);
+        let n = self.counters_after_replacements(spell.controller, entered, bonus);
         if n > 0 {
             self.push_apply(
                 events,
@@ -485,7 +485,7 @@ impl Game {
             .position(|&(id, _)| id == object)
         {
             let (_, bonus) = self.pending_enter_bonus_counters.remove(pos);
-            let n = self.counters_after_replacements(entered, bonus as i32);
+            let n = self.counters_after_replacements(spell.controller, entered, bonus as i32);
             if n > 0 {
                 self.push_apply(
                     events,
@@ -505,8 +505,11 @@ impl Game {
             && let Some(escape) = printed.escape
             && escape.plus_one_plus_one_counters > 0
         {
-            let n =
-                self.counters_after_replacements(entered, escape.plus_one_plus_one_counters as i32);
+            let n = self.counters_after_replacements(
+                spell.controller,
+                entered,
+                escape.plus_one_plus_one_counters as i32,
+            );
             if n > 0 {
                 self.push_apply(
                     events,
@@ -544,7 +547,7 @@ impl Game {
         let counters = self.resolve_count(amount, controller, perm, target, x);
         match kind {
             None => {
-                let n = self.counters_after_replacements(perm, counters as i32);
+                let n = self.counters_after_replacements(controller, perm, counters as i32);
                 if n > 0 {
                     self.push_apply(
                         events,
@@ -556,17 +559,19 @@ impl Game {
                     );
                 }
             }
-            Some(kind) if counters > 0 => {
-                self.push_apply(
-                    events,
-                    Event::KindCountersPlaced {
-                        object: perm,
-                        kind,
-                        count: counters as i32,
-                    },
-                );
+            Some(kind) => {
+                let n = self.kind_counters_after_replacements(controller, perm, counters as i32);
+                if n > 0 {
+                    self.push_apply(
+                        events,
+                        Event::KindCountersPlaced {
+                            object: perm,
+                            kind,
+                            count: n,
+                        },
+                    );
+                }
             }
-            Some(_) => {}
         }
     }
 
@@ -1009,14 +1014,16 @@ impl Game {
             // `ColorWasSpentToCastThis` (Court Hussar's "unless {W} was spent to cast it" off a
             // resolved permanent, Firespout's "if {R} was spent to cast this spell" off the
             // still-on-the-stack spell), and
-            // `SourceUntapped` (Howling Mine's CR 603.4 *second* check): `TriggerContext` carries
-            // neither a target nor a source id, so those are special-cased directly against the
-            // shared `target`/this resolution's own `source` here — the same "condition_holds
-            // can't reach it" shape as `ability_condition_holds`'s source-based special cases.
+            // `SourceUntapped` (Howling Mine's CR 603.4 *second* check), and `SourcePowerAtMost`
+            // (Lily Bowen, Raging Grandma's upkeep gate): `TriggerContext` carries neither a
+            // target nor a source id, so those are special-cased directly against the shared
+            // `target`/this resolution's own `source` here — the same "condition_holds can't
+            // reach it" shape as `ability_condition_holds`'s source-based special cases.
             Effect::Conditional {
                 condition,
                 then,
                 negate,
+                otherwise,
             } => {
                 let holds = match condition {
                     Condition::TargetPowerAtLeast { at_least } => target
@@ -1033,6 +1040,12 @@ impl Game {
                     }
                     Condition::SourceEnteredWithXAtLeast { at_least } => {
                         self.ability_source_x(source) >= at_least
+                    }
+                    // Lily Bowen, Raging Grandma: "double ... if its power is 16 or less.
+                    // Otherwise, ..." — source-object-based like `SourceEnteredWithXAtLeast`
+                    // above, re-read live at resolution.
+                    Condition::SourcePowerAtMost { at_most } => {
+                        self.power(source) <= at_most as i32
                     }
                     Condition::ColorWasSpentToCastThis { color } => self
                         .as_permanent(source)
@@ -1062,6 +1075,8 @@ impl Game {
                 };
                 if holds != negate {
                     self.run_sequence(then.as_ref(), ctx, events);
+                } else if !otherwise.is_empty() {
+                    self.run_sequence(otherwise, ctx, events);
                 }
             }
             // Feral Appetite — see `resolution/sequence_steps.rs::run_sequence_step`.

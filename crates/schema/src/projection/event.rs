@@ -107,6 +107,12 @@ pub(crate) fn project_event(
             // condition the client just sees the resulting event for). Add it here if a UI ever
             // wants to badge the cast itself with which colors funded it.
             spent_colors: _,
+            // ponytail: how many Phyrexian pips were paid with life (CR 107.4f) isn't surfaced on
+            // the wire either, same reasoning as `spent_colors` above — the client sees the
+            // resulting `LifeChanged` event, and Compleated's as-enters loyalty reduction shows up
+            // on the permanent's own loyalty total. Add it here if a UI wants to badge the cast
+            // itself as "Compleated, paid with life."
+            phyrexian_life_paid: _,
         } => VisibleEvent::SpellCast {
             spell,
             from,
@@ -126,6 +132,7 @@ pub(crate) fn project_event(
             object: source,
             level,
         },
+        Event::BecameMonstrous { object } => VisibleEvent::BecameMonstrous { object },
         Event::Flipped { object } => VisibleEvent::Flipped { object },
         Event::PhasedOut { object } => VisibleEvent::PhasedOut { object },
         Event::PhasedIn { object } => VisibleEvent::PhasedIn { object },
@@ -236,11 +243,18 @@ pub(crate) fn project_event(
             counter_kind: kind as u8,
             count,
         },
-        Event::LoyaltyChanged { object, amount } => VisibleEvent::LoyaltyChanged { object, amount },
-        Event::PlayerPoisonChanged { player, count } => VisibleEvent::PlayerPoisonChanged {
+        // Public: a poison total is a visible win condition (CR 704.5c), so it passes through
+        // unredacted for every viewer, seated or spectating.
+        Event::PlayerCountersPlaced {
+            player,
+            kind,
+            count,
+        } => VisibleEvent::PlayerCountersPlaced {
             player: player.0,
+            counter_kind: kind as u8,
             count,
         },
+        Event::LoyaltyChanged { object, amount } => VisibleEvent::LoyaltyChanged { object, amount },
         Event::LoyaltyActivated { object, active } => {
             VisibleEvent::LoyaltyActivated { object, active }
         }
@@ -607,6 +621,16 @@ pub(crate) fn project_event(
             creator: Some(creator),
         },
         Event::TokenCeasedToExist { token, .. } => VisibleEvent::TokenCeasedToExist { token },
+        // CR 114.2: an emblem is public information — never redacted, whoever the viewer is.
+        Event::EmblemCreated {
+            emblem,
+            controller,
+            ref def,
+        } => VisibleEvent::EmblemCreated {
+            emblem,
+            controller: controller.0,
+            name: def.name.to_string(),
+        },
         Event::SpellCopied {
             copy,
             original,

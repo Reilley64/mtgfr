@@ -1,0 +1,40 @@
+# When this artifact enters, put a -1/-1 counter on each creature target player controls.
+# {4}, {T}: Proliferate twice. (Choose any number of permanents and/or players, then give each
+# another counter of each kind already there. Then do it again.)
+name = "Contagion Engine"
+id = "482bd55a-ba73-4722-8643-94fa12818515"
+default_print = "dce72636-08e4-484e-ad81-4d1597a31ffb"
+otags = ["counters-matter", "proliferate", "triggered-ability", "activated-ability"]
+oracle = "When this artifact enters, put a -1/-1 counter on each creature target player controls.\n{4}, {T}: Proliferate twice. (Choose any number of permanents and/or players, then give each another counter of each kind already there. Then do it again.)"
+sets = ["som"]
+
+[cost]
+generic = 6
+
+[kind]
+type = "artifact"
+
+# When this artifact enters, put a -1/-1 counter on each creature target player controls.
+[[abilities]]
+timing = "etb"
+
+# put a -1/-1 counter on each creature target player controls
+[[abilities.effects]]
+type = "counters"
+mode = "put_counters_each"
+filter = { types = "creature", controller = "you" }
+count = 1
+kind = "minus_one_minus_one"
+target_player = true
+
+# {4}, {T}: Proliferate twice.
+[[abilities]]
+timing = "activated"
+taps_self = true
+activation_cost = { generic = 4 }
+
+# Proliferate twice.
+[[abilities.effects]]
+type = "choice"
+mode = "proliferate"
+times = 2

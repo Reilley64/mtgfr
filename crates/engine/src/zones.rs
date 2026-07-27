@@ -59,8 +59,10 @@ impl Game {
         }
     }
 
-    /// Create a card on the bottom of `player`'s library, returning its id.
-    pub(crate) fn spawn_in_library(&mut self, player: PlayerId, def: CardDef) -> ObjectId {
+    /// Create a card on the bottom of `player`'s library, returning its id. Public alongside the
+    /// other `spawn_*` test/setup helpers so a server test can stock a library and avoid decking
+    /// its active player at the draw step.
+    pub fn spawn_in_library(&mut self, player: PlayerId, def: CardDef) -> ObjectId {
         let def = intern_card_def(def);
         let id = self.create_object(
             None,

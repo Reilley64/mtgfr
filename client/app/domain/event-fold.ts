@@ -153,13 +153,15 @@ export function extractProvenance(
         "goaded",
         "keywords_stripped",
         "kind_counters_placed",
+        "player_counters_placed",
+        "became_monstrous",
+        "emblem_created",
         "leaves_illusion_minted",
         "library_shuffled",
         "life_changed",
         "lost_summoning_sickness",
         "loyalty_activated",
         "loyalty_changed",
-        "player_poison_changed",
         "mana_added",
         "mana_emptied",
         "mana_spent",
@@ -263,6 +265,16 @@ export function describe(e: VisibleEvent, state: VisibleState): string | null {
       flipped: (e) => `${name(e.object)} flips`,
       // counter_kind is a numeric engine index with no client name table, so the kind stays unnamed.
       kind_counters_placed: (e) => `${name(e.object)} gets ${e.count} counter${e.count === 1 ? "" : "s"}`,
+      // Unlike permanent counters, the two player counter kinds are named (engine
+      // `PlayerCounterKind`: 0 = poison, 1 = rad) and worth naming — poison is a lose condition.
+      player_counters_placed: (e) => {
+        const kind = e.counter_kind === 1 ? "rad" : "poison";
+        if (e.count < 0) return `${p(e.player)} loses ${-e.count} ${kind} counter${e.count === -1 ? "" : "s"}`;
+        return `${p(e.player)} gets ${e.count} ${kind} counter${e.count === 1 ? "" : "s"}`;
+      },
+      became_monstrous: (e) => `${name(e.object)} becomes monstrous`,
+      // CR 114.5 — nothing can remove an emblem, so this line is the only trace it leaves.
+      emblem_created: (e) => `${p(e.controller)} gets an emblem (${e.name})`,
       control_gained: (e) => `${p(e.controller)} gains control of ${name(e.object)}`,
       conditioned_control_gained: (e) => `${p(e.controller)} gains control of ${name(e.object)}`,
       conditioned_control_ended: (e) => `control of ${name(e.object)} reverts`,
@@ -348,7 +360,6 @@ export function describe(e: VisibleEvent, state: VisibleState): string | null {
       "lost_summoning_sickness",
       "loyalty_activated",
       "loyalty_changed",
-      "player_poison_changed",
       "mana_added",
       "mana_emptied",
       "mana_spent",

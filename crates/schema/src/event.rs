@@ -60,6 +60,10 @@ pub enum VisibleEvent {
         object: ObjectId,
         level: u8,
     },
+    /// A permanent became monstrous (CR 701.28b). Public battlefield status, like `LeveledUp`.
+    BecameMonstrous {
+        object: ObjectId,
+    },
     /// A permanent flipped (CR 712 — a Kamigawa flip card): it now uses its back face's
     /// characteristics. Public battlefield status, like `PreparedChanged`; the client swaps to the
     /// back face from its own card data.
@@ -193,15 +197,21 @@ pub enum VisibleEvent {
         counter_kind: u8,
         count: i32,
     },
+    /// A named counter (CR 122.1 — poison) was placed on (`count` positive) or removed from
+    /// (negative) a *player* — the player-side twin of [`Self::KindCountersPlaced`].
+    /// `counter_kind` mirrors `engine::PlayerCounterKind`'s discriminant (0 = poison, 1 = rad),
+    /// the same raw-index convention its permanent-side sibling uses. Public: ten or more poison
+    /// counters lose the game (CR 704.5c), and rad counters are a self-mill clock every seat can
+    /// see coming — neither is ever redacted.
+    PlayerCountersPlaced {
+        player: u8,
+        counter_kind: u8,
+        count: i32,
+    },
     /// A planeswalker's loyalty changed by `amount` (a loyalty ability's +N / 0 / −N cost).
     LoyaltyChanged {
         object: ObjectId,
         amount: i32,
-    },
-    /// Poison counters on a player changed by `count` (positive place / negative remove).
-    PlayerPoisonChanged {
-        player: u8,
-        count: i32,
     },
     /// A planeswalker's once-per-turn loyalty flag was set/cleared (CR 606.3).
     LoyaltyActivated {
@@ -551,6 +561,15 @@ pub enum VisibleEvent {
     TokenCeasedToExist {
         token: ObjectId,
     },
+    /// `controller` got an emblem (CR 114.1). Never redacted — CR 114.2, an emblem is public, and
+    /// nothing can remove, copy, or target it afterwards (CR 114.5).
+    EmblemCreated {
+        emblem: ObjectId,
+        controller: u8,
+        /// The emblem's name, which is all a viewer needs to identify it (its abilities come from
+        /// the catalog by name, same as any other object's).
+        name: String,
+    },
     /// A spell on the stack was copied (Twincast): a new spell object `copy` was put on the stack
     /// above `original`, controlled by `controller`.
     SpellCopied {
@@ -841,6 +860,26 @@ mod tests {
             }
             other => panic!("expected CardDrawn, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn a_poison_counter_is_public_to_every_viewer() {
+        // Ten or more poison counters lose the game (CR 704.5c). A total nobody but the poisoned
+        // seat could see would be an invisible win condition, so this event is never redacted —
+        // not for the poisoned player, not for an opponent, not for a spectator.
+        let ev = Event::PlayerCountersPlaced {
+            player: PlayerId(1),
+            kind: engine::PlayerCounterKind::Poison,
+            count: 1,
+        };
+        let expected = VisibleEvent::PlayerCountersPlaced {
+            player: 1,
+            counter_kind: engine::PlayerCounterKind::Poison as u8,
+            count: 1,
+        };
+        assert_eq!(redact(&ev, PlayerId(1)), expected, "the poisoned player");
+        assert_eq!(redact(&ev, PlayerId(0)), expected, "an opponent");
+        assert_eq!(spectator_redact(&ev), expected, "a spectator");
     }
 
     #[test]

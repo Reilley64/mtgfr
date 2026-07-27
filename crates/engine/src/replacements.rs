@@ -1,5 +1,23 @@
 use crate::*;
 
+/// What a would-be counter placement is aimed at (CR 122.1 — counters sit on permanents and on
+/// players). Engine-internal: the key [`ReplacementRegistry::counter_replaced_amount`] answers a
+/// CR 614 counter replacement against.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum CounterRecipient {
+    Permanent(ObjectId),
+    Player(PlayerId),
+}
+
+/// Whether a replacement's declared recipient scope covers the recipient at hand.
+fn recipients_accept(recipients: CounterRecipients, is_permanent: bool) -> bool {
+    match recipients {
+        CounterRecipients::Permanents => is_permanent,
+        CounterRecipients::Players => !is_permanent,
+        CounterRecipients::PermanentsAndPlayers => true,
+    }
+}
+
 #[derive(Clone)]
 pub(crate) struct ReplacementRegistry {
     effects: Vec<ReplacementEffect>,
@@ -14,6 +32,9 @@ enum ReplacementEffect {
     PreventAllCombatDamageThisTurn,
     PreventDamageToSelfRemovingCounter {
         object: ObjectId,
+        /// Bloatfly Swarm's variant: removes *that many* counters (not exactly one) and hands
+        /// every player that many rad counters.
+        scales: bool,
     },
     PreventCombatDamage {
         object: ObjectId,
@@ -29,7 +50,11 @@ enum ReplacementEffect {
         controller: PlayerId,
         add: i32,
         times: i32,
+        halve: bool,
         other: bool,
+        any_kind: bool,
+        placer: Option<CounterPlacer>,
+        recipients: CounterRecipients,
         filter: Option<PermanentFilter>,
     },
     CreaturesYouControlEnterWithCounters {
@@ -70,6 +95,13 @@ impl ReplacementRegistry {
                     Effect::Static(StaticEffect::PreventDamageToSelfRemovingCounter) => {
                         effects.push(ReplacementEffect::PreventDamageToSelfRemovingCounter {
                             object: source,
+                            scales: false,
+                        });
+                    }
+                    Effect::Static(StaticEffect::PreventDamageToSelfRemovingCountersGivingRad) => {
+                        effects.push(ReplacementEffect::PreventDamageToSelfRemovingCounter {
+                            object: source,
+                            scales: true,
                         });
                     }
                     Effect::Static(StaticEffect::PreventCombatDamage { to_self, by_self }) => {
@@ -92,15 +124,28 @@ impl ReplacementRegistry {
                     Effect::Static(StaticEffect::CounterReplacement {
                         add,
                         times,
+                        halve,
                         other,
+                        any_kind,
+                        placer,
+                        recipients,
                         filter,
                     }) => {
+                        // A level-gated replacement (Innkeeper's Talent's level 3) functions only
+                        // at or above its level (CR 717.5).
+                        if ability.min_level > game.as_permanent(source).map_or(0, |p| p.level) {
+                            continue;
+                        }
                         effects.push(ReplacementEffect::CounterReplacement {
                             source,
                             controller,
                             add,
                             times,
+                            halve,
                             other,
+                            any_kind,
+                            placer,
+                            recipients,
                             filter,
                         });
                     }
@@ -162,10 +207,27 @@ impl ReplacementRegistry {
         })
     }
 
-    pub(crate) fn phantom_shield_active(&self, target: ObjectId) -> bool {
+    /// Bloatfly Swarm's scaling variant only applies while it has a counter to remove — its
+    /// prevention is worded off the removal, unlike Phantom Centaur's unconditional shield.
+    pub(crate) fn phantom_shield_active(&self, game: &Game, target: ObjectId) -> bool {
         self.effects.iter().any(|effect| match effect {
-            ReplacementEffect::PreventDamageToSelfRemovingCounter { object } => *object == target,
+            ReplacementEffect::PreventDamageToSelfRemovingCounter { object, scales } => {
+                *object == target && (!scales || game.plus_counters(target) > 0)
+            }
             _ => false,
+        })
+    }
+
+    /// Whether the shield on `target` is Bloatfly Swarm's "remove that many"/rad variant.
+    pub(crate) fn phantom_shield_scales(&self, target: ObjectId) -> bool {
+        self.effects.iter().any(|effect| {
+            matches!(
+                effect,
+                ReplacementEffect::PreventDamageToSelfRemovingCounter {
+                    object,
+                    scales: true,
+                } if *object == target
+            )
         })
     }
 
@@ -191,40 +253,95 @@ impl ReplacementRegistry {
         })
     }
 
-    pub(crate) fn counter_replaced_amount(&self, game: &Game, object: ObjectId, base: i32) -> i32 {
+    /// Every applicable [`Effect::Static(StaticEffect::CounterReplacement)`] on the battlefield
+    /// applies once to a would-be placement of `base` counters.
+    ///
+    /// Two independent gates decide whether a replacement sees a placement. `placer` — who *would
+    /// put* the counters (CR 614.1) — answers Vorinclex's "if **you would put** …" / "if an
+    /// **opponent would put** …". The recipient axis (`recipients`, `filter`, and, when the
+    /// replacement names no placer, the receiving side itself) answers Winding Constrictor's
+    /// passive "if one or more counters **would be put on** an artifact or creature you control".
+    /// A card keys off one or the other, never both.
+    ///
+    /// ponytail: fixed order — additions, then multipliers, then halvings:
+    /// `((base + Σadd) × Πtimes) ÷ 2^halvings`. CR 616.1 lets the *affected player* order
+    /// simultaneous replacements, and once a halving (Vorinclex's opponent clause) is in the mix
+    /// the order genuinely changes the result. Offer a real ordering choice when a board can hold
+    /// both a halving and an adder/doubler at once.
+    pub(crate) fn counter_replaced_amount(
+        &self,
+        game: &Game,
+        placer: PlayerId,
+        recipient: CounterRecipient,
+        plus_one: bool,
+        base: i32,
+    ) -> i32 {
         if base <= 0 {
             return base;
         }
-        let controller = game.controller_of(object);
+        let (side, object) = match recipient {
+            CounterRecipient::Permanent(id) => (game.controller_of(id), Some(id)),
+            CounterRecipient::Player(player) => (player, None),
+        };
         let mut add = 0;
         let mut times = 1;
+        let mut halvings = 0u32;
         for effect in &self.effects {
             let ReplacementEffect::CounterReplacement {
                 source,
-                controller: replacement_controller,
+                controller,
                 add: next_add,
                 times: next_times,
+                halve,
                 other,
+                any_kind,
+                placer: placer_gate,
+                recipients,
                 filter,
             } = effect
             else {
                 continue;
             };
-            if *replacement_controller != controller {
+            // Which side of the table the replacement watches. A placer-keyed clause ("if you
+            // would put …" / "if an opponent would put …") reads who is putting the counters;
+            // everything else reads the recipient's own side ("… you control").
+            let watched = match placer_gate {
+                Some(CounterPlacer::You) => *controller == placer,
+                Some(CounterPlacer::Opponents) => *controller != placer,
+                None => *controller == side,
+            };
+            if !watched {
                 continue;
             }
-            if *other && *source == object {
+            // "one or more +1/+1 counters" doesn't see a charge or -1/-1 counter.
+            if !any_kind && !plus_one {
                 continue;
             }
-            if filter.is_some_and(|f| {
-                !game.permanent_matches(&f, object, *replacement_controller, Some(*source))
-            }) {
+            if !recipients_accept(*recipients, object.is_some()) {
+                continue;
+            }
+            // CR "another creature you control": a replacement that excludes its own source
+            // doesn't apply when the permanent receiving the counters IS that source (Benevolent
+            // Hydra doesn't double its own counters).
+            if *other && object == Some(*source) {
+                continue;
+            }
+            // Ozolith's "an artifact or creature you control": a type gate on the recipient, read
+            // from the replacement's own controller's perspective.
+            if let (Some(filter), Some(object)) = (filter, object)
+                && !game.permanent_matches(filter, object, *controller, Some(*source))
+            {
                 continue;
             }
             add += *next_add;
             times *= *next_times;
+            halvings += u32::from(*halve);
         }
-        (base + add) * times
+        let mut n = (base + add) * times;
+        for _ in 0..halvings {
+            n /= 2;
+        }
+        n
     }
 
     pub(crate) fn additional_enter_counters(
@@ -349,7 +466,7 @@ impl Game {
         let printed = self.def_of(permanent);
         self.push_enters_with_counters(&printed, permanent, controller, None, 0, events);
         let bonus = self.additional_enter_counters(permanent, controller);
-        let n = self.counters_after_replacements(permanent, bonus);
+        let n = self.counters_after_replacements(controller, permanent, bonus);
         if n <= 0 {
             return;
         }

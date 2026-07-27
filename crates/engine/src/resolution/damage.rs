@@ -6,6 +6,76 @@
 use crate::*;
 
 impl Game {
+    /// The event that lands `amount` damage from `source` on creature `object` — the single choke
+    /// every creature-damage mint routes through, so infect (CR 702.90b) reshapes all of them at
+    /// once. An infect source's damage is dealt in the form of that many -1/-1 counters instead of
+    /// being marked; everything else marks damage as usual (CR 120.3/506).
+    ///
+    /// Prevention and protection are the caller's job and stay ahead of this call — a prevented
+    /// hit never reaches here, so it places no counters either.
+    ///
+    /// ponytail: an infect hit emits no [`Event::DamageMarked`], so the two watchers that ride
+    /// that event alone — Armadillo Cloak's enchanted-host damage trigger and Vampiric Dragon's
+    /// `damaged_this_turn` tally (`triggers.rs`) — don't see it, though CR 120.3 says the damage
+    /// was dealt. Upgrade path: a source-carrying `Event::DamageDealtToCreature` marker pushed
+    /// alongside both forms (the creature twin of [`Event::DamageDealtToPlayer`]), with those
+    /// watchers moved onto it.
+    pub(crate) fn creature_damage_events(
+        &self,
+        source: ObjectId,
+        object: ObjectId,
+        amount: i32,
+    ) -> Vec<Event> {
+        if !self.has_keyword(source, Keyword::Infect) {
+            return vec![Event::DamageMarked {
+                object,
+                amount,
+                source: Some(source),
+            }];
+        }
+        // 0 or less damage is never dealt (CR 120.8) — and never placed as counters.
+        if amount <= 0 {
+            return Vec::new();
+        }
+        vec![Event::KindCountersPlaced {
+            object,
+            kind: CounterKind::MinusOneMinusOne,
+            count: amount,
+        }]
+    }
+
+    /// The event that lands `amount` damage from `source` on `player` — the player twin of
+    /// [`creature_damage_events`](Self::creature_damage_events). An infect source's damage is dealt
+    /// in the form of that many poison counters (CR 702.90c) instead of as life loss.
+    ///
+    /// Only the life-loss event itself is swapped: the caller's [`Event::DamageDealtToPlayer`] /
+    /// [`Event::CombatDamageDealtToPlayer`] marker, commander-damage tally and lifelink gain all
+    /// still fire off the original amount, because infect changes the form of the damage, not the
+    /// fact that it was dealt (CR 120.3).
+    pub(crate) fn player_damage_events(
+        &self,
+        source: ObjectId,
+        player: PlayerId,
+        amount: i32,
+    ) -> Vec<Event> {
+        if !self.has_keyword(source, Keyword::Infect) {
+            return vec![Event::LifeChanged {
+                player,
+                amount: -amount,
+                source: Some(source),
+            }];
+        }
+        // 0 or less damage is never dealt (CR 120.8) — and never placed as counters.
+        if amount <= 0 {
+            return Vec::new();
+        }
+        vec![Event::PlayerCountersPlaced {
+            player,
+            kind: PlayerCounterKind::Poison,
+            count: amount,
+        }]
+    }
+
     pub(crate) fn mint_damage(
         &self,
         effect: DamageEffect,
@@ -54,13 +124,10 @@ impl Game {
                         if self.damage_prevented_by_protection(object, Some(source)) {
                             return Vec::new();
                         }
-                        // Phantom Centaur's self-shield prevents this damage outright and
-                        // removes one of its own +1/+1 counters instead (CR 615).
+                        // Phantom Centaur's self-shield (or Bloatfly Swarm's scaling variant)
+                        // prevents this damage outright and removes +1/+1 counters instead (CR 615).
                         if self.phantom_shield_active(object) {
-                            return self
-                                .phantom_shield_counter_removal(object)
-                                .into_iter()
-                                .collect();
+                            return self.phantom_shield_counter_removal(object, amount);
                         }
                         // Damage to a planeswalker removes that many loyalty counters instead of
                         // being marked (CR 120.3c/306.9) — checked ahead of Tajic's creature-only
@@ -75,20 +142,12 @@ impl Game {
                         if self.noncombat_damage_prevented_to_creature(object) {
                             return Vec::new();
                         }
-                        vec![Event::DamageMarked {
-                            object,
-                            amount,
-                            source: Some(source),
-                        }]
+                        self.creature_damage_events(source, object, amount)
                     }
                     // Damage to a player is life loss. ponytail: the commander-damage tally is
                     // combat-only (CR 903.10a), so a burn spell never adds to it.
                     Target::Player(player) => {
-                        let mut events = vec![Event::LifeChanged {
-                            player,
-                            amount: -amount,
-                            source: Some(source),
-                        }];
+                        let mut events = self.player_damage_events(source, player, amount);
                         // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
                         if amount > 0 {
                             events.push(Event::DamageDealtToPlayer {
@@ -194,21 +253,16 @@ impl Game {
                                 amount: -self.resolve_amount(amount, controller, object, target, x),
                             }];
                         }
-                        // Phantom Centaur's self-shield prevents its own share and removes one of
-                        // its own +1/+1 counters instead (CR 615) — a shielded creature swaps its
-                        // `DamageMarked` for that counter removal rather than being filtered out
-                        // outright.
+                        let object_amount =
+                            self.resolve_amount(amount, controller, object, target, x);
+                        // Phantom Centaur's self-shield (or Bloatfly Swarm's scaling variant)
+                        // prevents its own share and removes +1/+1 counters instead (CR 615) — a
+                        // shielded creature swaps its `DamageMarked` for that counter removal
+                        // rather than being filtered out outright.
                         if self.phantom_shield_active(object) {
-                            return self
-                                .phantom_shield_counter_removal(object)
-                                .into_iter()
-                                .collect();
+                            return self.phantom_shield_counter_removal(object, object_amount);
                         }
-                        vec![Event::DamageMarked {
-                            object,
-                            amount: self.resolve_amount(amount, controller, object, target, x),
-                            source: Some(source),
-                        }]
+                        self.creature_damage_events(source, object, object_amount)
                     })
                     .collect()
             }
@@ -232,10 +286,7 @@ impl Game {
                         // Phantom Centaur's self-shield prevents its own share and removes one
                         // of its own +1/+1 counters instead (CR 615).
                         if self.phantom_shield_active(object) {
-                            return self
-                                .phantom_shield_counter_removal(object)
-                                .into_iter()
-                                .collect();
+                            return self.phantom_shield_counter_removal(object, amount);
                         }
                         vec![Event::DamageMarked {
                             object,
@@ -256,11 +307,7 @@ impl Game {
                 let amount = self.resolve_amount(amount, controller, source, target, x);
                 self.living_players()
                     .flat_map(|player| {
-                        let mut events = vec![Event::LifeChanged {
-                            player,
-                            amount: -amount,
-                            source: Some(source),
-                        }];
+                        let mut events = self.player_damage_events(source, player, amount);
                         // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
                         if amount > 0 {
                             events.push(Event::DamageDealtToPlayer {
@@ -313,11 +360,7 @@ impl Game {
                 self.living_players()
                     .filter(|&player| player != controller && player != damaged)
                     .flat_map(|player| {
-                        let mut events = vec![Event::LifeChanged {
-                            player,
-                            amount: -amount,
-                            source: Some(source),
-                        }];
+                        let mut events = self.player_damage_events(source, player, amount);
                         // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
                         if amount > 0 {
                             events.push(Event::DamageDealtToPlayer {
@@ -343,34 +386,23 @@ impl Game {
                 if self.damage_prevented_by_protection(object, Some(source)) {
                     return Vec::new();
                 }
-                // Phantom Centaur's self-shield prevents this damage outright and removes one
-                // of its own +1/+1 counters instead (CR 615).
+                // Phantom Centaur's self-shield (or Bloatfly Swarm's scaling variant) prevents
+                // this damage outright and removes +1/+1 counters instead (CR 615).
                 if self.phantom_shield_active(object) {
-                    return self
-                        .phantom_shield_counter_removal(object)
-                        .into_iter()
-                        .collect();
+                    return self.phantom_shield_counter_removal(object, amount);
                 }
                 // Tajic prevents noncombat damage to its controller's other creatures (CR 615).
                 if self.noncombat_damage_prevented_to_creature(object) {
                     return Vec::new();
                 }
-                vec![Event::DamageMarked {
-                    object,
-                    amount,
-                    source: Some(source),
-                }]
+                self.creature_damage_events(source, object, amount)
             }
 
             // Real damage to the ability's own controller — mirrors `DealDamage`'s
             // `Target::Player` arm, substituting `controller` for the chosen target.
             DamageEffect::ToSelf { amount } => {
                 let amount = self.resolve_amount(amount, controller, source, target, x);
-                let mut events = vec![Event::LifeChanged {
-                    player: controller,
-                    amount: -amount,
-                    source: Some(source),
-                }];
+                let mut events = self.player_damage_events(source, controller, amount);
                 // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
                 if amount > 0 {
                     events.push(Event::DamageDealtToPlayer {
@@ -392,11 +424,7 @@ impl Game {
                 let creature = expect_object_target(target, "deal damage to target's controller");
                 let recipient = self.controller_of(creature);
                 let amount = self.resolve_amount(amount, controller, source, target, x);
-                let mut events = vec![Event::LifeChanged {
-                    player: recipient,
-                    amount: -amount,
-                    source: Some(source),
-                }];
+                let mut events = self.player_damage_events(source, recipient, amount);
                 // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
                 if amount > 0 {
                     events.push(Event::DamageDealtToPlayer {
@@ -441,7 +469,18 @@ impl Game {
             unreachable!("resolve_deal_damage_to_entering received a non-family effect")
         };
         let evs = self.execute_effect(Effect::Damage(effect), controller, source, target, x);
-        let damage_landed = evs.iter().any(|e| matches!(e, Event::DamageMarked { .. }));
+        // Either form of dealt damage counts (CR 119.3): an infect source's hit lands as -1/-1
+        // counters rather than marked damage (CR 702.90b), and still satisfies "is dealt damage".
+        let damage_landed = evs.iter().any(|e| {
+            matches!(
+                e,
+                Event::DamageMarked { .. }
+                    | Event::KindCountersPlaced {
+                        kind: CounterKind::MinusOneMinusOne,
+                        ..
+                    }
+            )
+        });
         self.apply_all(&evs);
         events.extend(evs);
         if !damage_landed {

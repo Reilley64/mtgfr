@@ -5,7 +5,7 @@
 //! lives on the same table: most arms are `None`; only singleton / no-real-choice cases
 //! return an Intent. Handlers under [`super::handlers`] still own apply logic.
 
-use crate::{Event, Game, Intent, PendingChoice, Reject};
+use crate::{Event, Game, Intent, PendingChoice, ProliferateTarget, Reject};
 
 /// Apply `intent` as the answer to the current [`PendingChoice`].
 ///
@@ -95,6 +95,12 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
             Intent::PayOptionalCost { player, pay, .. } => game.pay_sacrifice_unless(player, pay),
             _ => Err(Reject::IllegalChoice),
         },
+        PendingChoice::PayLifeOrEntersTapped { .. } => match intent {
+            Intent::PayOptionalCost { player, pay, .. } => {
+                game.pay_life_or_enters_tapped(player, pay)
+            }
+            _ => Err(Reject::IllegalChoice),
+        },
         PendingChoice::SacrificeUnlessReturnLand { .. } => match intent {
             Intent::ReturnLandOrSacrifice { player, land } => {
                 game.return_land_or_sacrifice(player, land)
@@ -147,8 +153,17 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
             _ => Err(Reject::IllegalChoice),
         },
         PendingChoice::Proliferate { .. } => match intent {
-            Intent::ChooseSacrifices { player, sacrifices } => {
-                game.answer_proliferate(player, sacrifices)
+            Intent::ChooseProliferate {
+                player,
+                permanents,
+                players,
+            } => {
+                let chosen = permanents
+                    .into_iter()
+                    .map(ProliferateTarget::Permanent)
+                    .chain(players.into_iter().map(ProliferateTarget::Player))
+                    .collect();
+                game.answer_proliferate(player, chosen)
             }
             _ => Err(Reject::IllegalChoice),
         },
@@ -484,6 +499,7 @@ pub(crate) fn forced(game: &Game) -> Option<Intent> {
         | PendingChoice::PayCumulativeUpkeepOrSacrifice { .. }
         | PendingChoice::PayRecoverOrExile { .. }
         | PendingChoice::SacrificeUnlessPay { .. }
+        | PendingChoice::PayLifeOrEntersTapped { .. }
         | PendingChoice::SacrificeUnlessReturnLand { .. }
         | PendingChoice::AssignCombatDamage { .. }
         | PendingChoice::DivideSpellDamage { .. }
