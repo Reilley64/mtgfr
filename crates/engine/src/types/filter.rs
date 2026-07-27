@@ -768,6 +768,13 @@ pub struct PermanentFilter {
     /// (see [`Game::permanent_matches`]) — every filter that sets this pairs it with a targeted
     /// ability, which always threads its source.
     pub power_less_than_source: bool,
+    /// Toughness strictly less than the filter's own source permanent's *power* (Stone Giant —
+    /// "target creature you control with toughness less than this creature's power": what the
+    /// Giant can throw is what it can lift). `false` (default) imposes no restriction. Like
+    /// `power_less_than_source` just above, meaningless without a `source` (see
+    /// [`Game::permanent_matches`]) — every filter that sets it pairs it with a targeted ability,
+    /// which always threads its source.
+    pub toughness_less_than_source_power: bool,
     /// Requires the permanent entered the battlefield this turn (CR "entered the battlefield
     /// this turn" — Oran-Rief, the Vastwood's "each green creature that entered this turn").
     /// `false` (default) imposes no restriction. Distinct from checking `summoning_sick`, which
@@ -875,6 +882,7 @@ impl PermanentFilter {
             attacking_you: false,
             blocking: false,
             power_less_than_source: false,
+            toughness_less_than_source_power: false,
             entered_this_turn: false,
             nonbasic: false,
             name: None,

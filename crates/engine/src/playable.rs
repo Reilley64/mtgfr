@@ -971,6 +971,7 @@ mod tests {
                             target: TargetSpec::Permanent(PermanentFilter::of(TypeSet::ARTIFACT)),
                             count: TargetCount::default(),
                             cant_be_regenerated: false,
+                            at: None,
                         }),
                         optional: false,
                         min_level: 0,

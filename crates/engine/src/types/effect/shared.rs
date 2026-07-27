@@ -838,7 +838,7 @@ impl Effect {
             | Effect::Sacrifice(SacrificeEffect::Object { .. })
             | Effect::Sacrifice(SacrificeEffect::Source)
             | Effect::Sacrifice(SacrificeEffect::EnchantedCreature { .. })
-            | Effect::Destroy(DestroyEffect::TriggeringDamagedCreature { .. })
+            | Effect::Destroy(DestroyEffect::ThatCreature { .. })
             | Effect::Exile(ExileEffect::Object { .. })
             | Effect::Zone(ZoneEffect::ReturnObjectToHand { .. })
             | Effect::Zone(ZoneEffect::ExileGraveyardObjectGainLife { .. })
@@ -2265,8 +2265,8 @@ fn fill_dying_enchanted_creature(effect: Effect, dying: ObjectId) -> Effect {
 /// effect variant only (flag-don't-force: no other pool card reads this context field yet).
 fn fill_damaged_creature(effect: Effect, damaged: ObjectId) -> Effect {
     match effect {
-        Effect::Destroy(DestroyEffect::TriggeringDamagedCreature { .. }) => {
-            Effect::Destroy(DestroyEffect::TriggeringDamagedCreature {
+        Effect::Destroy(DestroyEffect::ThatCreature { .. }) => {
+            Effect::Destroy(DestroyEffect::ThatCreature {
                 creature: Some(damaged),
             })
         }

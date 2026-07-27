@@ -19,9 +19,23 @@ impl Game {
         match effect {
             DestroyEffect::Target {
                 cant_be_regenerated,
+                at,
                 ..
             } => {
                 let object = expect_object_target(target, "destroy");
+                // "Destroy that creature at the beginning of the next end step" (Stone Giant): a
+                // CR 603.7 delayed triggered ability carrying the id this ability already chose,
+                // so it destroys that creature and re-targets nothing when it fires.
+                if let Some(fire_at) = at {
+                    return vec![Event::DelayedTriggerScheduled {
+                        controller,
+                        source,
+                        fire_at,
+                        effect: Effect::Destroy(DestroyEffect::ThatCreature {
+                            creature: Some(object),
+                        }),
+                    }];
+                }
                 if self.has_keyword(object, Keyword::Indestructible) {
                     return Vec::new();
                 }
@@ -69,7 +83,7 @@ impl Game {
                 }
                 events
             }
-            DestroyEffect::TriggeringDamagedCreature { creature } => {
+            DestroyEffect::ThatCreature { creature } => {
                 let Some(id) = creature else {
                     return Vec::new();
                 };

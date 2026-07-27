@@ -296,7 +296,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [x] **Soul Net** {1} · Artifact — increment 10
 - [x] **Spell Blast** {X}{U} · Instant — increment 30
 - [ ] **Stasis** {1}{U} · Enchantment — increment 7
-- [ ] **Stone Giant** {2}{R}{R} · Creature — Giant — increment 42
+- [x] **Stone Giant** {2}{R}{R} · Creature — Giant — increment 42
 - [ ] **Sunglasses of Urza** {3} · Artifact — increment 32
 - [ ] **Thicket Basilisk** {3}{G}{G} · Creature — Basilisk — increment 21
 - [ ] **Thoughtlace** {U} · Instant — increment 15

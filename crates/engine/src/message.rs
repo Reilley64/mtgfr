@@ -853,6 +853,9 @@ fn permanent_filter_token(filter: PermanentFilter) -> String {
     if filter.power_less_than_source {
         parts.push("power_lt_source".to_string());
     }
+    if filter.toughness_less_than_source_power {
+        parts.push("toughness_lt_source_power".to_string());
+    }
     if filter.entered_this_turn {
         parts.push("entered_this_turn".to_string());
     }
@@ -1250,7 +1253,9 @@ impl Effect {
                 MessageRef::new(MessageKey::EFFECT_DESTROY_ALL)
                     .with_params(vec![permanent_filter_param("filter", filter)])
             }
-            Effect::Destroy(TriggeringDamagedCreature { .. }) => {
+            // The key's name predates the variant's; its string is already "Destroy that creature",
+            // which reads right for the damage look-back and Stone Giant's delayed landing alike.
+            Effect::Destroy(ThatCreature { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_DESTROY_TRIGGERING_DAMAGED_CREATURE)
             }
             Effect::Exile(ExileEffect::Target { .. }) => MessageRef::new(MessageKey::EFFECT_EXILE_TARGET),

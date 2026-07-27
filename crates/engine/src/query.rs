@@ -1583,6 +1583,14 @@ impl Game {
         {
             return false;
         }
+        // Light enough for the source to throw (Stone Giant — "toughness less than this creature's
+        // power"). Same no-source no-op as `power_less_than_source` above.
+        if filter.toughness_less_than_source_power
+            && let Some(source) = source
+            && self.toughness(id) >= self.power(source)
+        {
+            return false;
+        }
         // Without flying (Breath of Darigaaz's "each creature without flying").
         if filter.without_flying && self.has_keyword(id, Keyword::Flying) {
             return false;

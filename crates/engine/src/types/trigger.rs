@@ -314,7 +314,7 @@ pub enum Trigger {
     /// (CR 701.12) or other noncombat creature damage only emits that, not this marker. The
     /// damaged creature's id rides in [`TriggerContext::damaged_creature`] (CR 603.10a
     /// last-known information) so
-    /// [`Effect::Destroy(DestroyEffect::DestroyTriggeringDamagedCreature)`](crate::Effect::Destroy(DestroyEffect::DestroyTriggeringDamagedCreature))
+    /// [`Effect::Destroy(DestroyEffect::ThatCreature)`](crate::Effect::Destroy(DestroyEffect::ThatCreature))
     /// can act on "that creature". See the `Event::CombatDamageDealtToCreature` arm of
     /// [`Game::enqueue_triggers`].
     DealsCombatDamageToCreature,
@@ -777,7 +777,7 @@ pub(crate) struct TriggerContext {
     /// watch's source just dealt combat damage to (Stinkweed Imp's "destroy that creature"),
     /// named separately from `dying_enchanted_creature`/`dead_creature` above since the damaged
     /// creature need not be dead or even still on the battlefield. `None` for every other
-    /// trigger. Feeds [`Effect::Destroy(DestroyEffect::DestroyTriggeringDamagedCreature)`] via `contextualize_effect`;
+    /// trigger. Feeds [`Effect::Destroy(DestroyEffect::ThatCreature)`] via `contextualize_effect`;
     /// `def_of`/`owner_of`/`zone_of` all still resolve it whether it's still a live permanent or
     /// has since left. See the `Event::CombatDamageDealtToCreature` arm of
     /// [`Game::enqueue_triggers`] for where this is captured. Named so a future "all damage this

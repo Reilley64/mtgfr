@@ -5638,6 +5638,7 @@ static DESTROY: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 main_phase_scaled: false,
             },
             cant_be_regenerated: false,
+            at: None,
         }),
         optional: false,
         min_level: 0,
@@ -5732,6 +5733,7 @@ static DESTROY_NONARTIFACT_NONBLACK: LazyLock<CardDef> = LazyLock::new(|| CardDe
                 main_phase_scaled: false,
             },
             cant_be_regenerated: false,
+            at: None,
         }),
         optional: false,
         min_level: 0,
@@ -5822,6 +5824,7 @@ static DESTROY_ANY_PERMANENT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 main_phase_scaled: false,
             },
             cant_be_regenerated: false,
+            at: None,
         }),
         optional: false,
         min_level: 0,
@@ -5915,6 +5918,7 @@ static DESTROY_NONBASIC_LAND: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 main_phase_scaled: false,
             },
             cant_be_regenerated: false,
+            at: None,
         }),
         optional: false,
         min_level: 0,
@@ -16913,6 +16917,7 @@ static DESTROY_ENCHANTMENT_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                 main_phase_scaled: false,
             },
             cant_be_regenerated: false,
+            at: None,
         }),
         optional: false,
         min_level: 0,
@@ -64593,6 +64598,7 @@ static TEST_STEELBANE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                     main_phase_scaled: false,
                 },
                 cant_be_regenerated: false,
+                at: None,
             }),
             optional: false,
             min_level: 0,
@@ -88259,6 +88265,7 @@ static TEST_MINUS_ONE_COUNTER_CREATURE: LazyLock<CardDef> = LazyLock::new(|| Car
                     main_phase_scaled: false,
                 },
                 cant_be_regenerated: false,
+                at: None,
             }),
             optional: false,
             min_level: 0,
@@ -99228,6 +99235,7 @@ static RAMPAGING_YAO_GUAI_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
                     main_phase_scaled: false,
                 },
                 cant_be_regenerated: false,
+                at: None,
             }),
             optional: false,
             min_level: 0,
@@ -104519,5 +104527,65 @@ fn righteousness_cant_target_a_creature_that_stayed_home() {
             .try_submit(),
         Err(Reject::IllegalTarget),
         "a creature that didn't block isn't a legal target"
+    );
+}
+
+// "{T}: Target creature you control with toughness less than this creature's power gains flying
+// until end of turn. Destroy that creature at the beginning of the next end step." — the throw is
+// gated on the Giant's own live power, and the landing is a CR 603.7 delayed trigger over the same
+// creature the activation already chose.
+
+#[test]
+fn stone_giant_throws_a_creature_that_dies_at_the_next_end_step() {
+    let mut g = TestGame::new();
+    let giant = g.spawn_on_battlefield(PlayerId(0), card("Stone Giant"));
+    let bears = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+
+    g.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: giant,
+        ability_index: 0,
+        target: Some(Target::Object(bears)),
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut g);
+
+    assert!(g.has_keyword(bears, Keyword::Flying), "thrown, so it flies");
+    assert_eq!(
+        g.zone_of(bears),
+        Zone::Battlefield,
+        "it stays up for the rest of the turn"
+    );
+
+    advance_until(&mut g, |g| g.current_step() == Step::End);
+    resolve_top_of_stack(&mut g); // the delayed "destroy that creature" trigger
+
+    assert_eq!(g.zone_of(bears), Zone::Graveyard, "the landing kills it");
+}
+
+#[test]
+fn stone_giant_cant_throw_a_creature_as_tough_as_its_power() {
+    let mut g = TestGame::new();
+    let giant = g.spawn_on_battlefield(PlayerId(0), card("Stone Giant"));
+    let liftable = g.spawn_on_battlefield(PlayerId(0), card("Grizzly Bears"));
+    let too_big = g.spawn_on_battlefield(PlayerId(0), card("Hill Giant"));
+    let theirs = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
+
+    let offered = g.legal_targets(giant, Some(0));
+
+    assert!(
+        offered.contains(&Target::Object(liftable)),
+        "toughness 2 is under the Giant's power 3"
+    );
+    assert!(
+        !offered.contains(&Target::Object(too_big)),
+        "toughness 3 isn't *less* than power 3"
+    );
+    assert!(
+        !offered.contains(&Target::Object(theirs)),
+        "a Giant only throws its own"
     );
 }

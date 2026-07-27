@@ -2461,6 +2461,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                     target: *target,
                     count: TargetCount::default(),
                     cant_be_regenerated: *cant_be_regenerated,
+                    at: None,
                 }),
                 "{name} destroys what it names"
             );
@@ -2870,6 +2871,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                     }),
                     count: TargetCount::default(),
                     cant_be_regenerated: false,
+                    at: None,
                 }),
             ),
             (
@@ -2881,6 +2883,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                     }),
                     count: TargetCount::default(),
                     cant_be_regenerated: false,
+                    at: None,
                 }),
             ),
             (
@@ -2893,6 +2896,7 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                     }),
                     count: TargetCount::default(),
                     cant_be_regenerated: false,
+                    at: None,
                 }),
             ),
             (
@@ -2967,6 +2971,37 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                 }),
             ],
             "2 to any target, 3 to you"
+        );
+
+        // Stone Giant throws a creature it can lift, and the creature lands at the next end step —
+        // both halves ride the same chosen target, so both carry the same lift gate.
+        let giant = get_by_name("Stone Giant").expect("Stone Giant is in the pool");
+        let Effect::Sequence { steps } = &giant.abilities[0].effect else {
+            panic!("Stone Giant throws, then the creature lands");
+        };
+        let liftable = TargetSpec::Permanent(PermanentFilter {
+            types: TypeSet::CREATURE,
+            controller: engine::FilterController::You,
+            toughness_less_than_source_power: true,
+            ..PermanentFilter::default()
+        });
+        assert_eq!(
+            steps.as_ref(),
+            &[
+                Effect::Pump(PumpEffect::PumpUntilEndOfTurn {
+                    power: Amount::Fixed(0),
+                    toughness: Amount::Fixed(0),
+                    target: liftable,
+                    keywords: &[Keyword::Flying],
+                }),
+                Effect::Destroy(DestroyEffect::Target {
+                    target: liftable,
+                    count: TargetCount::default(),
+                    cant_be_regenerated: false,
+                    at: Some(engine::Step::End),
+                }),
+            ],
+            "flying now, destroyed at the beginning of the next end step"
         );
     }
 

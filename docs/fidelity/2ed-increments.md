@@ -567,13 +567,25 @@ in turn order, and record that as an `approximates` on the card. The penalty's o
 this creature", has no effect either — the pool taps *targets*, not the source.
 *Cards:* demonic_hordes.
 
-### 42. `filter-comparing-to-source` — 1 card, S
+### 42. `filter-comparing-to-source` — 1 card, S — **done**
 Depends on: nothing.
 Stone Giant's "target creature you control with toughness less than this creature's power."
 Filters compare against constants, never against the source's own live characteristics.
-*Sketch:* a `toughness_less_than: Option<Amount>` on `PermanentFilter` resolved at target-legality
-time with the source in scope — `Amount::SourcePower` already exists, so this is a filter axis, not
-a new amount.
+*Landed:* two gaps, not one — the increment named only the filter, but the card's second sentence
+("Destroy that creature at the beginning of the next end step") had no shape either.
+The filter half is a `toughness_less_than_source_power: bool` on `PermanentFilter`, not the
+sketch's `toughness_less_than: Option<Amount>`: `power_less_than_source` sits right above it doing
+the same comparison one characteristic over, and a bool mirroring it is smaller than an amount axis
+no second card wants. Target enumeration already threads `source`, so nothing else moved.
+The delayed half reuses flicker's schedule-or-do-it-now shape: `destroy/target` gained an
+`at: Option<Step>` that, when set, emits a CR 603.7 `DelayedTriggerScheduled` carrying the id the
+activation *already* chose, so the landing re-targets nothing. Its payload is the variant Stinkweed
+Imp's look-back destroy already used — renamed `TriggeringDamagedCreature` → `ThatCreature`
+(DSL `destroy/that_creature`), since both users print exactly "destroy that creature" and its
+resolution never read anything about damage. No new effect variant, no second destroy arm.
+An illegal target isn't rejected at activation (this engine's posture — CR 608.2b fizzles it at
+resolution instead), so the lift gate is asserted where a player meets it: `legal_targets` offers
+the 2/2 and withholds the 3/3 and the opponent's creature.
 *Cards:* stone_giant.
 
 ### 43. `mass-symmetrical-rebalancing` — 1 card, L
