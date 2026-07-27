@@ -202,7 +202,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Copper Tablet** {2} · Artifact — increment 60
 - [ ] **Copy Artifact** {1}{U} · Enchantment — increment 12
 - [ ] **Creature Bond** {1}{U} · Enchantment — Aura — increment 62
-- [ ] **Crystal Rod** {1} · Artifact — increment 10
+- [x] **Crystal Rod** {1} · Artifact — increment 10
 - [ ] **Cursed Land** {2}{B}{B} · Enchantment — Aura — increment 61
 - [ ] **Cyclopean Tomb** {4} · Artifact — increment 8, 28
 - [x] **Deathgrip** {B}{B} · Enchantment — increment 9
@@ -236,10 +236,10 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Hypnotic Specter** {1}{B}{B} · Creature — Specter — increment 17
 - [ ] **Instill Energy** {G} · Enchantment — Aura — increment 7
 - [ ] **Invisibility** {U}{U} · Enchantment — Aura — increment 11
-- [ ] **Iron Star** {1} · Artifact — increment 10
+- [x] **Iron Star** {1} · Artifact — increment 10
 - [ ] **Ironclaw Orcs** {1}{R} · Creature — Orc — increment 11
 - [ ] **Island Sanctuary** {1}{W} · Enchantment — increment 65
-- [ ] **Ivory Cup** {1} · Artifact — increment 10
+- [x] **Ivory Cup** {1} · Artifact — increment 10
 - [ ] **Jade Monolith** {4} · Artifact — increment 6
 - [ ] **Jade Statue** {4} · Artifact — increment 57
 - [ ] **Juggernaut** {4} · Artifact Creature — Juggernaut — increment 11
@@ -293,14 +293,14 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Siren's Call** {U} · Instant — increment 26
 - [ ] **Sleight of Mind** {U} · Instant — increment 16
 - [ ] **Smoke** {R}{R} · Enchantment — increment 7
-- [ ] **Soul Net** {1} · Artifact — increment 10
+- [x] **Soul Net** {1} · Artifact — increment 10
 - [ ] **Spell Blast** {X}{U} · Instant — increment 30
 - [ ] **Stasis** {1}{U} · Enchantment — increment 7
 - [ ] **Stone Giant** {2}{R}{R} · Creature — Giant — increment 42
 - [ ] **Sunglasses of Urza** {3} · Artifact — increment 32
 - [ ] **Thicket Basilisk** {3}{G}{G} · Creature — Basilisk — increment 21
 - [ ] **Thoughtlace** {U} · Instant — increment 15
-- [ ] **Throne of Bone** {1} · Artifact — increment 10
+- [x] **Throne of Bone** {1} · Artifact — increment 10
 - [ ] **Timber Wolves** {G} · Creature — Wolf — increment 14
 - [ ] **Time Vault** {2} · Artifact — increment 7, 18
 - [ ] **Time Walk** {1}{U} · Sorcery — increment 18
@@ -314,7 +314,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Warp Artifact** {B}{B} · Enchantment — Aura — increment 61
 - [ ] **Wild Growth** {G} · Enchantment — Aura — increment 64
 - [ ] **Winter Orb** {2} · Artifact — increment 7
-- [ ] **Wooden Sphere** {1} · Artifact — increment 10
+- [x] **Wooden Sphere** {1} · Artifact — increment 10
 - [ ] **Word of Command** {B}{B} · Instant — increment 49
 - [ ] **Zombie Master** {1}{B}{B} · Creature — Zombie — increment 66
 

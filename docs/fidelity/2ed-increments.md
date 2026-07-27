@@ -169,17 +169,16 @@ blocked the five artifact "rods" either; they moved wholesale to #10, the shape 
 need. Gloom's cost-increase work is now #67.
 *Cards:* blue_elemental_blast, deathgrip, lifeforce, red_elemental_blast.
 
-### 10. `optional-mana-payment-in-trigger` — 6 cards, S
+### 10. `optional-mana-payment-in-trigger` — 6 cards, S — **done**
 Depends on: nothing.
-"Whenever a player casts a white spell, you may pay {1}. If you do, you gain 1 life." The engine
-has optional triggers (`optional = true`, a yes/no prompt) and it has cost payment on activation,
-but a trigger whose *resolution* offers a mana payment has no shape. *Sketch:* reuse
-`PendingChoice::PayCost` — the same one `sacrifice_self_unless_pay` raises — from inside trigger
-resolution, with the remaining effects gated on payment rather than on the pay-or-else penalty.
-The five artifact "rods" also want their cast trigger scoped to *any* player, not just the
-controller; their colour filter needs nothing (`Trigger::CastSpell` already carries a
-`SpellFilter`, and `SpellFilter::Color` already exists — see #9). Soul Net is the same shape on a
-creature-dies trigger, so it can land first as the walking skeleton.
+*Landed:* no engine change — the third stale premise in a row. "A trigger whose resolution offers
+a mana payment" already has a shape and it is not a resolution pause at all: an `optional = true`
+triggered ability with a non-free `[abilities.cost]` raises `PendingChoice::PayCost` *before* the
+ability goes on the stack (`Game::place_pending_triggers`), answered by
+`Intent::PayOptionalCost` — Trudge Garden's "you may pay {2}" is the same card shape.
+`Trigger::CastSpell` already carries both the `SpellFilter` (so `{ color = "white" }` works — #9)
+and `CasterScope::AnyPlayer` for "whenever *a player* casts", so the five artifact rods needed
+nothing either. All six are pure authoring.
 *Cards:* crystal_rod, iron_star, ivory_cup, soul_net, throne_of_bone, wooden_sphere.
 
 ### 11. `block-restrictions-and-requirements` — 7 cards, L

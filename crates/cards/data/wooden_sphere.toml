@@ -1,0 +1,29 @@
+# Whenever a player casts a green spell, you may pay {1}. If you do, you gain 1 life.
+name = "Wooden Sphere"
+otags = ["cast-trigger", "cycle-lea-lucky-charm", "hate-green", "repeatable-lifegain", "synergy-green", "toll"]
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
+id = "0bd8917c-bec4-4603-bc3f-8e0c2afae56a"
+default_print = "fb19b35e-e0b9-4575-b146-2682ad8a5175"
+oracle = "Whenever a player casts a green spell, you may pay {1}. If you do, you gain 1 life."
+
+[cost]
+generic = 1
+
+[kind]
+type = "artifact"
+
+# Whenever a player casts a green spell, you may pay {1}. If you do, you gain 1 life.
+[[abilities]]
+timing = "cast_spell"
+spell_filter = { color = "green" }
+caster = "any_player"
+optional = true
+
+[abilities.cost]
+generic = 1
+
+# you gain 1 life.
+[[abilities.effects]]
+type = "life"
+mode = "gain"
+amount = 1

@@ -21120,6 +21120,130 @@ fn blood_artist_drains_a_target_player_when_any_creature_dies() {
 }
 
 #[test]
+fn soul_net_buys_a_life_with_a_generic_when_any_creature_dies() {
+    // "Whenever a creature dies, you may pay {1}. If you do, you gain 1 life." — the pay window
+    // opens before the trigger goes on the stack, and an opponent's creature dying opens it too.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    game.spawn_on_battlefield(PlayerId(0), card("Soul Net"));
+    let victim = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
+
+    let shock = game.spawn_in_hand(PlayerId(0), card("Shock"));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: shock,
+        target: Some(Target::Object(victim)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // Shock resolves → lethal → SBA kills the bear. (CR 704)
+    assert_eq!(game.zone_of(victim), Zone::Graveyard, "the creature died");
+
+    assert!(matches!(
+        game.pending_choice(),
+        Some(PendingChoice::PayCost {
+            player: PlayerId(0),
+            ..
+        })
+    ));
+    let life = game.life(PlayerId(0));
+    game.submit(Intent::PayOptionalCost {
+        player: PlayerId(0),
+        pay: true,
+        discard_cost: vec![],
+    })
+    .unwrap();
+    resolve_whole_stack(&mut game);
+
+    assert_eq!(game.life(PlayerId(0)), life + 1, "paying bought the life");
+}
+
+#[test]
+fn a_colour_filtered_cast_trigger_watches_every_player_not_just_its_controller() {
+    // Ivory Cup: "Whenever a player casts a white spell, …" — *a player*, so an opponent's white
+    // spell fires it, and a spell of any other colour fires nothing.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(1));
+    game.spawn_on_battlefield(PlayerId(0), card("Ivory Cup"));
+    // Swords' own lifegain lands on the target's controller, so keep the target on P1's side —
+    // P0's life then moves only if the Cup itself pays out.
+    let victim = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bears"));
+
+    let bolt = game.spawn_in_hand(PlayerId(1), card("Lightning Bolt"));
+    let swords = game.spawn_in_hand(PlayerId(1), card("Swords to Plowshares"));
+    // P1 casts on P0's turn, so P0 hands over priority first — both spells are instants.
+    let cast = |game: &mut Game, object, target| {
+        game.submit(Intent::PassPriority {
+            player: PlayerId(0),
+        })
+        .unwrap();
+        game.submit(Intent::Cast {
+            player: PlayerId(1),
+            object,
+            target: Some(target),
+            x: 0,
+            modes: vec![],
+            discard_cost: vec![],
+            graveyard_exile: vec![],
+            sacrifice_cost: vec![],
+            kicked: false,
+            bought_back: false,
+            evoked: false,
+            strive_count: 0,
+            replicate_count: 0,
+            multikicker_count: 0,
+            alternative_cost: false,
+        })
+        .expect("the instant is castable");
+    };
+
+    cast(&mut game, bolt, Target::Player(PlayerId(1)));
+    assert!(
+        game.pending_choice().is_none(),
+        "a red spell is not a white spell"
+    );
+    resolve_whole_stack(&mut game);
+
+    game.fund_mana(PlayerId(0)); // the Cup's controller pays the {1}, not the caster
+    let life = game.life(PlayerId(0));
+    cast(&mut game, swords, Target::Object(victim));
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::PayCost {
+                player: PlayerId(0),
+                ..
+            })
+        ),
+        "the opponent's white spell opened the Cup's pay window"
+    );
+    game.submit(Intent::PayOptionalCost {
+        player: PlayerId(0),
+        pay: true,
+        discard_cost: vec![],
+    })
+    .unwrap();
+    resolve_whole_stack(&mut game);
+
+    assert_eq!(
+        game.life(PlayerId(0)),
+        life + 1,
+        "the Cup's controller gained"
+    );
+}
+
+#[test]
 fn zulaport_drains_each_opponent_when_your_own_creature_dies() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
