@@ -75,6 +75,10 @@ is separate — context does not survive `runPromise` into outbound calls. `grpc
 every gRPC call. Do not use Node AsyncLocalStorage or per-helper optional `traceparent` args.
 
 BFF propagates its span into gRPC metadata so Tempo shows browser → web → API trace chains.
+Outbound BFF gRPC calls from `client/app/domain/wire/grpcClient.ts` open client spans named
+`{rpc.service}/{rpc.method}` with `rpc.system=grpc`, `rpc.service`, and `rpc.method` attributes.
+`GrpcStatusError` failures annotate only `rpc.grpc.status_code` and `exception.type`; gRPC status
+messages, request bodies, and intent payloads stay out of span attributes.
 
 ### API (OTEL)
 
@@ -129,6 +133,8 @@ still drives `tracing` / fmt output.
   same-origin `/api` request (manual / friend-group ops check).
 - Local: with `OTEL_EXPORTER_OTLP_ENDPOINT` unset, exporters no-op; client/server unit suites do not
   require Alloy.
+- BFF outbound gRPC semantic-convention spans are covered by
+  `client/app/domain/wire/grpcClient.semconv.test.ts`.
 - Build metadata consumed by BFF OTEL resource attributes is covered by
   `client/app/domain/build-meta.test.ts` ([shell-routes-and-auth](2026-07-20-shell-routes-and-auth.md)).
 
