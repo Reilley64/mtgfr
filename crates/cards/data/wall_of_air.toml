@@ -1,0 +1,17 @@
+# Defender, flying (This creature can't attack, and it can block creatures with flying.)
+name = "Wall of Air"
+sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
+id = "b2d3da40-e2f7-4480-9da9-33019d6f4071"
+default_print = "d672107f-e274-4a0e-888a-c2aa59a2fab5"
+oracle = "Defender, flying (This creature can't attack, and it can block creatures with flying.)"
+subtypes = ["Wall"]
+keywords = ["flying", "defender"]
+
+[cost]
+generic = 1
+blue = 2
+
+[kind]
+type = "creature"
+power = 1
+toughness = 5

@@ -1,0 +1,15 @@
+# (no rules text — vanilla creature)
+name = "Craw Wurm"
+sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "5ed", "8ed", "9ed", "ced", "cei", "fbb", "lea", "leb", "m10", "sum"]
+id = "6a462a69-3e42-41de-a3aa-a488d9f38d69"
+default_print = "3875f73d-6108-488b-bd34-4cf2c23ce6b3"
+subtypes = ["Wurm"]
+
+[cost]
+generic = 4
+green = 2
+
+[kind]
+type = "creature"
+power = 6
+toughness = 4

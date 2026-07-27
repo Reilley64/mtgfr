@@ -1,0 +1,11 @@
+# ({T}: Add {R} or {G}.)
+name = "Taiga"
+sets = ["2ed", "30a", "3ed", "ced", "cei", "fbb", "lea", "leb", "me2", "me4", "olgc", "prm", "sum", "vma"]
+id = "22e3cf1d-3559-4ce1-954c-8dc815342979"
+default_print = "01006833-6007-4c16-9ebb-20d31c60a57a"
+oracle = "({T}: Add {R} or {G}.)"
+
+[kind]
+type = "land"
+subtypes = ["Mountain", "Forest"]
+produces = ["red", "green"]

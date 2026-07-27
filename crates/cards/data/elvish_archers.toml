@@ -1,0 +1,17 @@
+# First strike
+name = "Elvish Archers"
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "ced", "cei", "fbb", "itp", "lea", "leb", "ptc", "rqs", "sum"]
+id = "534ce8e2-53a1-407c-9881-d3b5347d43c3"
+default_print = "0e8411c9-4f6f-4301-ac36-386016a32852"
+oracle = "First strike"
+subtypes = ["Elf", "Archer"]
+keywords = ["first_strike"]
+
+[cost]
+generic = 1
+green = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 1

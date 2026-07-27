@@ -1,0 +1,15 @@
+# (no rules text — vanilla creature)
+name = "Water Elemental"
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "me4", "s99", "sum"]
+id = "c470fbe1-0538-46ec-8741-3143f5e78af8"
+default_print = "c498c898-1671-4632-b69a-0e1e9b8d05b8"
+subtypes = ["Elemental"]
+
+[cost]
+generic = 3
+blue = 2
+
+[kind]
+type = "creature"
+power = 5
+toughness = 4

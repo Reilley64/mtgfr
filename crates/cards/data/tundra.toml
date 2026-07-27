@@ -1,0 +1,11 @@
+# ({T}: Add {W} or {U}.)
+name = "Tundra"
+sets = ["2ed", "30a", "3ed", "ced", "cei", "fbb", "lea", "leb", "me2", "me4", "olgc", "prm", "sum", "vma"]
+id = "02418479-9455-417f-a6a1-004356faff37"
+default_print = "0d08f5e4-d2d3-4659-86d4-a983d80e3b2c"
+oracle = "({T}: Add {W} or {U}.)"
+
+[kind]
+type = "land"
+subtypes = ["Plains", "Island"]
+produces = ["white", "blue"]

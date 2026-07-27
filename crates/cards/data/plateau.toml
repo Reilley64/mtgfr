@@ -1,0 +1,11 @@
+# ({T}: Add {R} or {W}.)
+name = "Plateau"
+sets = ["2ed", "30a", "3ed", "ced", "cei", "fbb", "lea", "leb", "me3", "me4", "olgc", "prm", "sum", "vma"]
+id = "c7a15ca4-085f-4d92-8387-c3711c04c8fa"
+default_print = "de38f96c-5d17-4cf2-9951-f0866eadd011"
+oracle = "({T}: Add {R} or {W}.)"
+
+[kind]
+type = "land"
+subtypes = ["Mountain", "Plains"]
+produces = ["red", "white"]

@@ -1,0 +1,14 @@
+# (no rules text — vanilla creature)
+name = "Mons's Goblin Raiders"
+sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "itp", "lea", "leb", "rqs", "s00", "s99", "sum"]
+id = "a37159df-f6d7-4db6-85de-0ea77f425993"
+default_print = "0d3eff55-6a14-4c01-8b05-715094a319b3"
+subtypes = ["Goblin"]
+
+[cost]
+red = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1

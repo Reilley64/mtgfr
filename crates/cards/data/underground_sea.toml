@@ -1,0 +1,11 @@
+# ({T}: Add {U} or {B}.)
+name = "Underground Sea"
+sets = ["2ed", "30a", "3ed", "ced", "cei", "fbb", "lea", "leb", "me2", "me4", "olgc", "prm", "sum", "vma"]
+id = "4b22be3a-8ce1-47d1-b82e-6c3ccfb0548b"
+default_print = "bc98d888-4af3-43a3-b035-40c651057b6e"
+oracle = "({T}: Add {U} or {B}.)"
+
+[kind]
+type = "land"
+subtypes = ["Island", "Swamp"]
+produces = ["blue", "black"]

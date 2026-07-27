@@ -2059,4 +2059,126 @@ id = \"00000000-0000-0000-0000-000000000001\"
 default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0000-0000-000000000001\"\ndefault_print = \"00000000-0000-0000-0000-000000000002\"\n\n[kind]\ntype = \"sorcery\"\n\n[[abilities]]\ntiming = \"spell\"\n";
         assert!(toml::from_str::<CardDef>(empty).is_err());
     }
+
+    /// Unlimited Edition's creatures whose whole rules text is nothing, or nothing but bare
+    /// keywords. Their fidelity is entirely frame fidelity, so the assertion is the frame.
+    #[test]
+    fn unlimited_vanilla_and_keyword_only_creatures_have_their_printed_frames() {
+        let cases: &[(&str, i32, i32, &[Keyword])] = &[
+            ("Air Elemental", 4, 4, &[Keyword::Flying]),
+            ("Craw Wurm", 6, 4, &[]),
+            ("Earth Elemental", 4, 5, &[]),
+            ("Elvish Archers", 2, 1, &[Keyword::FirstStrike]),
+            ("Fire Elemental", 5, 4, &[]),
+            ("Giant Spider", 2, 4, &[Keyword::Reach]),
+            ("Gray Ogre", 2, 2, &[]),
+            ("Hill Giant", 3, 3, &[]),
+            ("Hurloon Minotaur", 2, 3, &[]),
+            ("Ironroot Treefolk", 3, 5, &[]),
+            ("Mahamoti Djinn", 5, 6, &[Keyword::Flying]),
+            ("Merfolk of the Pearl Trident", 1, 1, &[]),
+            ("Mons's Goblin Raiders", 1, 1, &[]),
+            ("Pearled Unicorn", 2, 2, &[]),
+            ("Phantom Monster", 3, 3, &[Keyword::Flying]),
+            ("Roc of Kher Ridges", 3, 3, &[Keyword::Flying]),
+            ("Scathe Zombies", 2, 2, &[]),
+            ("Scryb Sprites", 1, 1, &[Keyword::Flying]),
+            ("Wall of Air", 1, 5, &[Keyword::Defender, Keyword::Flying]),
+            ("Wall of Ice", 0, 7, &[Keyword::Defender]),
+            ("Wall of Stone", 0, 8, &[Keyword::Defender]),
+            (
+                "Wall of Swords",
+                3,
+                5,
+                &[Keyword::Defender, Keyword::Flying],
+            ),
+            ("Wall of Wood", 0, 3, &[Keyword::Defender]),
+            ("War Mammoth", 3, 3, &[Keyword::Trample]),
+            ("Water Elemental", 5, 4, &[]),
+        ];
+        for &(name, power, toughness, keywords) in cases {
+            let card = get_by_name(name).unwrap_or_else(|| panic!("{name} is in the pool"));
+            assert_eq!(
+                card.kind,
+                CardKind::Creature {
+                    power,
+                    toughness,
+                    also: TypeSet::NONE
+                },
+                "{name} P/T"
+            );
+            let mut sorted = card.keywords.to_vec();
+            sorted.sort_by_key(|k| format!("{k:?}"));
+            let mut want = keywords.to_vec();
+            want.sort_by_key(|k| format!("{k:?}"));
+            assert_eq!(sorted, want, "{name} keywords");
+            assert!(card.abilities.is_empty(), "{name} has no rules text");
+            assert!(card.sets.contains(&"2ed"), "{name} was printed in 2ed");
+        }
+
+        // Obsianus Golem is the one artifact creature in the group — same shape, extra type.
+        let golem = get_by_name("Obsianus Golem").expect("Obsianus Golem is in the pool");
+        assert_eq!(
+            golem.kind,
+            CardKind::Creature {
+                power: 4,
+                toughness: 6,
+                also: TypeSet::ARTIFACT
+            }
+        );
+    }
+
+    /// The original ten dual lands: no rules text at all, just two basic land types. The mana
+    /// comes from the types (CR 305.6), which the DSL spells as a two-color `produces`.
+    #[test]
+    fn unlimited_dual_lands_tap_for_either_of_their_two_basic_types() {
+        // Subtypes are in printed order; the color pair is in WUBRG order, which is how
+        // `Mana::Either` normalizes an unordered pair.
+        let cases: &[(&str, Color, Color, [&str; 2])] = &[
+            ("Badlands", Color::Black, Color::Red, ["Swamp", "Mountain"]),
+            ("Bayou", Color::Black, Color::Green, ["Swamp", "Forest"]),
+            ("Plateau", Color::White, Color::Red, ["Mountain", "Plains"]),
+            ("Savannah", Color::White, Color::Green, ["Forest", "Plains"]),
+            ("Scrubland", Color::White, Color::Black, ["Plains", "Swamp"]),
+            ("Taiga", Color::Red, Color::Green, ["Mountain", "Forest"]),
+            (
+                "Tropical Island",
+                Color::Blue,
+                Color::Green,
+                ["Forest", "Island"],
+            ),
+            ("Tundra", Color::White, Color::Blue, ["Plains", "Island"]),
+            (
+                "Underground Sea",
+                Color::Blue,
+                Color::Black,
+                ["Island", "Swamp"],
+            ),
+            (
+                "Volcanic Island",
+                Color::Blue,
+                Color::Red,
+                ["Island", "Mountain"],
+            ),
+        ];
+        for &(name, a, b, subtypes) in cases {
+            let land = get_by_name(name).unwrap_or_else(|| panic!("{name} is in the pool"));
+            let CardKind::Land {
+                produces,
+                subtypes: printed,
+                basic,
+            } = land.kind
+            else {
+                panic!("{name} is a land");
+            };
+            assert_eq!(
+                produces,
+                Some(LandProduces::Mana(Mana::Either(a, b))),
+                "{name} taps for either of its two colors"
+            );
+            assert_eq!(printed, subtypes, "{name} printed land types");
+            assert!(!basic, "{name} is nonbasic");
+            assert!(land.abilities.is_empty(), "{name} has no rules text");
+        }
+    }
 }
