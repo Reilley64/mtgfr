@@ -2828,6 +2828,56 @@ test("put_creature_from_hand uses select then Confirm like discard", () => {
   );
 });
 
+test("selected put_creature_from_hand card paints Llanowar selected chrome like discard", () => {
+  const angel = card(21, {
+    name: "Angel",
+    zone: ZONE.Hand,
+    kind: { kind: "creature", power: 4, toughness: 4 },
+  });
+  const bolt = card(22, {
+    name: "Lightning Bolt",
+    zone: ZONE.Hand,
+    kind: { kind: "instant" },
+  });
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        promptDraft: { kind: "card-pick", picked: [21], filter: "" },
+      },
+      gameState({
+        objects: [angel, bolt],
+        actions: [
+          action(50, {
+            kind: "cast",
+            label: testMessageRef("Cast"),
+            object: 22,
+            section: "hand",
+          }),
+        ],
+        pending_choice: {
+          kind: "put_creature_from_hand",
+          player: 0,
+          items: [{ id: 21, label: "Angel" }],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("hand-card-face-21")).toExist(),
+    Scene.expect(Scene.testId("hand-card-face-22")).toExist(),
+    Scene.tap((sim) => {
+      const selected = findTestId(sim.html, "hand-card-face-21");
+      expect(dataAttr(selected, "discard-selected")).toBe("1");
+      expect(className(selected)).toContain("ring-llanowar");
+      expect(className(selected)).not.toContain("ring-island-blue");
+
+      const invalid = findTestId(sim.html, "hand-card-face-22");
+      expect(dataAttr(invalid, "discard-selected")).toBeNull();
+      expect(className(invalid)).not.toContain("ring-island-blue");
+      expect(className(invalid)).not.toContain("ring-llanowar");
+    }),
+  );
+});
+
 test("full board view mounts the bitmap layer", () => {
   liveBoardScene(
     fullBoardModel(initialBoardModel(), gameState()),
