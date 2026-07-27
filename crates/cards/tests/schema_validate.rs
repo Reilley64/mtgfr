@@ -32,6 +32,65 @@ fn accepts_abrade_pool_card() {
     cards::validate_toml_str(&abrade).expect("Abrade TOML validates against the card schema");
 }
 
+#[test]
+fn rejects_misspelled_permanent_filter_shorthand() {
+    let card = r#"
+name = "Bad Filter"
+id = "00000000-0000-0000-0000-000000000005"
+default_print = "00000000-0000-0000-0000-000000000006"
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+[[abilities]]
+timing = "you_sacrifice"
+filter = "creaturs"
+
+[[abilities.effects]]
+type = "draw"
+mode = "cards"
+count = 1
+"#;
+
+    let errors = cards::validate_toml_str(card).expect_err("misspelled filter shorthand must fail");
+    assert!(
+        errors.join("\n").contains("/abilities/0/filter"),
+        "{errors:?}"
+    );
+}
+
+#[test]
+fn rejects_sacrifice_cost_without_filter_key() {
+    let card = r#"
+name = "Bad Sacrifice Cost"
+id = "00000000-0000-0000-0000-000000000007"
+default_print = "00000000-0000-0000-0000-000000000008"
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+[[abilities]]
+timing = "activated"
+sacrifice = { count = 2 }
+
+[[abilities.effects]]
+type = "life"
+mode = "gain"
+amount = 1
+"#;
+
+    let errors = cards::validate_toml_str(card)
+        .expect_err("sacrifice cost needs creature or permanent filter key");
+    assert!(
+        errors.join("\n").contains("/abilities/0/sacrifice"),
+        "{errors:?}"
+    );
+}
+
 /// A promoted opaque surface (Wave C) now carries a real typed schema, so a wrong-typed value is
 /// rejected — where the former `any` escape silently accepted anything. `cumulative_upkeep` is an
 /// object with an integer `graveyard_cards`, so a bare string no longer validates.
@@ -51,7 +110,10 @@ toughness = 1
 
     let errors =
         cards::validate_toml_str(card).expect_err("wrong-typed cumulative_upkeep must fail");
-    assert!(errors.join("\n").contains("/cumulative_upkeep"), "{errors:?}");
+    assert!(
+        errors.join("\n").contains("/cumulative_upkeep"),
+        "{errors:?}"
+    );
 }
 
 /// The promoted `enter_as_copy` surface likewise rejects an unknown key rather than accepting any

@@ -12,19 +12,25 @@ use schemars::r#gen::SchemaGenerator;
 use schemars::schema::{InstanceType, Schema, SchemaObject, SingleOrVec};
 use serde_json::Value as JsonValue;
 
+use crate::de::{PERMANENT_FILTER_SHORTHANDS, SACRIFICE_COST_SHORTHANDS, TYPE_NAMES};
+use crate::toml_surface::CostToml;
 use crate::{
     Amount, AmountZone, Color, ColorFilter, Condition, Cost, CounterAxis, CounterKind,
     FilterController, Parity, PermanentFilter, ProtectionScope, SacrificeCost, TokenFilter,
     TypeSet,
 };
-use crate::toml_surface::CostToml;
 
 // ── schema-building helpers ─────────────────────────────────────────────────────────
 
 fn string_enum(values: &[&str]) -> Schema {
     Schema::Object(SchemaObject {
         instance_type: Some(InstanceType::String.into()),
-        enum_values: Some(values.iter().map(|v| JsonValue::String((*v).to_owned())).collect()),
+        enum_values: Some(
+            values
+                .iter()
+                .map(|v| JsonValue::String((*v).to_owned()))
+                .collect(),
+        ),
         ..Default::default()
     })
 }
@@ -44,29 +50,28 @@ fn one_of(schemas: Vec<Schema>) -> Schema {
     Schema::Object(object)
 }
 
+fn required_key(name: &str) -> Schema {
+    let mut object = SchemaObject {
+        instance_type: Some(InstanceType::Object.into()),
+        ..Default::default()
+    };
+    object.object().required.insert(name.to_owned());
+    Schema::Object(object)
+}
+
 // ── TypeSet: a card-type name or a list of them ──────────────────────────────────────
 
 /// The card-type names a [`TypeSet`] accepts (see [`crate::de`]'s `type_bits`).
-const TYPE_NAMES: &[&str] = &[
-    "creature",
-    "artifact",
-    "enchantment",
-    "planeswalker",
-    "battle",
-    "land",
-    "nonland",
-    "artifact_or_enchantment",
-    "creature_or_planeswalker",
-    "artifact_or_creature",
-];
-
 impl JsonSchema for TypeSet {
     fn schema_name() -> String {
         "TypeSet".to_owned()
     }
 
     fn json_schema(_gen: &mut SchemaGenerator) -> Schema {
-        one_of(vec![string_enum(TYPE_NAMES), array_of(string_enum(TYPE_NAMES))])
+        one_of(vec![
+            string_enum(TYPE_NAMES),
+            array_of(string_enum(TYPE_NAMES)),
+        ])
     }
 }
 
@@ -265,23 +270,13 @@ impl JsonSchema for PermanentFilter {
 
     fn json_schema(generator: &mut SchemaGenerator) -> Schema {
         one_of(vec![
-            generator.subschema_for::<String>(),
+            string_enum(PERMANENT_FILTER_SHORTHANDS),
             generator.subschema_for::<PermanentFilterTableSchema>(),
         ])
     }
 }
 
 // ── SacrificeCost: a shorthand string or a `{ creature|permanent, count }` table ──────
-
-/// The table form of a [`SacrificeCost`] — mirrors the visitor's map in [`crate::de`].
-#[allow(dead_code)]
-#[derive(JsonSchema)]
-#[schemars(deny_unknown_fields)]
-struct SacrificeCostTableSchema {
-    creature: Option<PermanentFilter>,
-    permanent: Option<PermanentFilter>,
-    count: Option<u8>,
-}
 
 impl JsonSchema for SacrificeCost {
     fn schema_name() -> String {
@@ -290,8 +285,30 @@ impl JsonSchema for SacrificeCost {
 
     fn json_schema(generator: &mut SchemaGenerator) -> Schema {
         one_of(vec![
-            string_enum(&["none", "this", "creature"]),
-            generator.subschema_for::<SacrificeCostTableSchema>(),
+            string_enum(SACRIFICE_COST_SHORTHANDS),
+            sacrifice_cost_table_schema(generator),
         ])
     }
+}
+
+fn sacrifice_cost_table_schema(generator: &mut SchemaGenerator) -> Schema {
+    let mut object = SchemaObject {
+        instance_type: Some(InstanceType::Object.into()),
+        ..Default::default()
+    };
+    object.object().properties.insert(
+        "creature".to_owned(),
+        generator.subschema_for::<PermanentFilter>(),
+    );
+    object.object().properties.insert(
+        "permanent".to_owned(),
+        generator.subschema_for::<PermanentFilter>(),
+    );
+    object
+        .object()
+        .properties
+        .insert("count".to_owned(), generator.subschema_for::<u8>());
+    object.object().additional_properties = Some(Box::new(Schema::Bool(false)));
+    object.subschemas().any_of = Some(vec![required_key("creature"), required_key("permanent")]);
+    Schema::Object(object)
 }

@@ -2744,6 +2744,22 @@
     "PermanentFilter": {
       "oneOf": [
         {
+          "enum": [
+            "shares_type_with_dying_permanent",
+            "creatures",
+            "creature",
+            "battles",
+            "battle",
+            "nonland_permanents",
+            "nonland",
+            "artifact",
+            "enchantment",
+            "planeswalker",
+            "land",
+            "artifact_or_enchantment",
+            "creature_or_planeswalker",
+            "artifact_or_creature"
+          ],
           "type": "string"
         },
         {
@@ -3026,44 +3042,37 @@
           "type": "string"
         },
         {
-          "$ref": "#/$defs/SacrificeCostTableSchema"
+          "additionalProperties": false,
+          "anyOf": [
+            {
+              "required": [
+                "creature"
+              ],
+              "type": "object"
+            },
+            {
+              "required": [
+                "permanent"
+              ],
+              "type": "object"
+            }
+          ],
+          "properties": {
+            "count": {
+              "format": "uint8",
+              "minimum": 0.0,
+              "type": "integer"
+            },
+            "creature": {
+              "$ref": "#/$defs/PermanentFilter"
+            },
+            "permanent": {
+              "$ref": "#/$defs/PermanentFilter"
+            }
+          },
+          "type": "object"
         }
       ]
-    },
-    "SacrificeCostTableSchema": {
-      "additionalProperties": false,
-      "description": "The table form of a [`SacrificeCost`] — mirrors the visitor's map in [`crate::de`].",
-      "properties": {
-        "count": {
-          "format": "uint8",
-          "minimum": 0.0,
-          "type": [
-            "integer",
-            "null"
-          ]
-        },
-        "creature": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/PermanentFilter"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "permanent": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/PermanentFilter"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      },
-      "type": "object"
     },
     "SpellFilter": {
       "description": "Which spells a static cost-reducer ([`Effect::Static(StaticEffect::ReduceSpellCost)`]) applies to — the \"spells you cast\" clause of a \"…cost {N} less\" ability. Matched against the card being cast. ponytail: the shapes the pool needs; color/tribe filters (\"black creature spells\", \"Goblin spells\") grow from a real card that wants one (they'd need a color/subtype read).",

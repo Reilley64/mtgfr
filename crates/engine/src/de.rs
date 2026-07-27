@@ -1021,7 +1021,7 @@ fn type_bits(name: &str) -> Option<TypeSet> {
     })
 }
 
-const TYPE_NAMES: &[&str] = &[
+pub(crate) const TYPE_NAMES: &[&str] = &[
     "creature",
     "artifact",
     "enchantment",
@@ -1033,6 +1033,25 @@ const TYPE_NAMES: &[&str] = &[
     "creature_or_planeswalker",
     "artifact_or_creature",
 ];
+
+pub(crate) const PERMANENT_FILTER_SHORTHANDS: &[&str] = &[
+    "shares_type_with_dying_permanent",
+    "creatures",
+    "creature",
+    "battles",
+    "battle",
+    "nonland_permanents",
+    "nonland",
+    "artifact",
+    "enchantment",
+    "planeswalker",
+    "land",
+    "artifact_or_enchantment",
+    "creature_or_planeswalker",
+    "artifact_or_creature",
+];
+
+pub(crate) const SACRIFICE_COST_SHORTHANDS: &[&str] = &["none", "this", "creature"];
 
 /// A [`TypeSet`] in TOML: one type name (`"artifact"`) or a list of them
 /// (`["creature", "artifact"]`, their union). An empty list is the empty set.
@@ -1275,7 +1294,7 @@ impl<'de> Deserialize<'de> for SacrificeCost {
                         filter: PermanentFilter::of(TypeSet::CREATURE),
                         count: 1,
                     }),
-                    other => Err(E::custom(format!("unknown sacrifice cost {other:?}"))),
+                    other => Err(E::unknown_variant(other, SACRIFICE_COST_SHORTHANDS)),
                 }
             }
 
