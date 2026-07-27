@@ -308,4 +308,5 @@ jobs:
 
       - name: buf breaking skipped on main push
         if: github.event_name != 'pull_request'
-        run: echo "wire: main push — lint only (breaking vs origin/main is vacuous)."
+        run: |
+          echo "wire: main push — lint only (breaking vs origin/main is vacuous)."
