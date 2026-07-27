@@ -506,11 +506,9 @@ describe("stack flight settle handoff", () => {
       }),
     );
 
-    // Near but still flying — keep the glide; do not clear into a short correction retarget.
-    const leftover = afterGame.flights.get(permanentId);
-    expect(leftover).toBeDefined();
-    expect(leftover?.hold).toBe(true);
-    expect(leftover?.phase).toBe("flying");
+    // Near but still flying — hand off; do not keep a stale glide that later corrects.
+    expect(afterGame.flights.get(permanentId)).toBeUndefined();
+    expect(afterGame.handHidden.has(handId)).toBe(false);
   });
 
   it("does not start a short second glide when sync arrives near the end of a stack seed", () => {
@@ -555,16 +553,57 @@ describe("stack flight settle handoff", () => {
       ),
     );
 
-    // Near-end: finish the current glide — never clear hold and retarget the last inches.
-    const leftover = afterGame.flights.get(spellId);
-    if (leftover == null) {
-      expect(afterGame.flights.size).toBe(0);
-    } else {
-      expect(leftover.hold).toBe(true);
-      expect(leftover.phase).toBe("flying");
-      const remaining = Math.hypot(leftover.targetX - leftover.x, leftover.targetY - leftover.y);
-      expect(remaining).toBeLessThanOrEqual(72);
-    }
+    // Near the authoritative face — hand off immediately. Keeping a stale glide then
+    // correcting later is the short second ease.
+    expect(afterGame.flights.size).toBe(0);
+    expect(afterGame.handHidden.has(handId)).toBe(false);
+  });
+
+  it("hands off near the face even when the seed is still aimed at a stale far target", () => {
+    const handId = 7;
+    const spellId = 42;
+    const bolt = spell(spellId, "Lightning Bolt");
+    const board0 = { ...initialBoardModel(), viewport: { ...BOARD_VIEWPORT }, cameraFitPlayers: 2 };
+    const face = restingStackFace(board0, 1, 0);
+    const scale = stackFlightScale(board0.camera.zoom);
+    // Pose is near the real stack face, but target still points at a wrong seed aim.
+    // Continuing that glide then retargeting is the double animation.
+    const nearFaceStaleAim = spawnFlight({
+      id: handId,
+      print: bolt.print ?? "",
+      name: bolt.name,
+      x: face.x,
+      y: face.y + 30,
+      scale,
+      targetX: face.x - 200,
+      targetY: face.y + 200,
+      targetScale: scale,
+      kind: "stack",
+      fromCardId: handId,
+      hold: true,
+    });
+
+    const afterGame = syncBoardWithGame(
+      {
+        ...board0,
+        flights: new Map([[handId, nearFaceStaleAim]]),
+        handHidden: new Set([handId]),
+        hideCardIds: new Set([handId]),
+        ownedIds: new Set([handId]),
+      },
+      gameFold(
+        state({
+          objects: [bolt],
+          stack: [{ controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId }],
+        }),
+        {
+          stackEntrances: new Map([[spellId, { from: handId, controller: 0 }]]),
+        },
+      ),
+    );
+
+    expect(afterGame.flights.size).toBe(0);
+    expect(afterGame.handHidden.has(handId)).toBe(false);
   });
 
   it("keeps hold when a far stack seed retargets so a later settle sync can hand off", () => {

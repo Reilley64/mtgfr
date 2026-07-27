@@ -347,6 +347,42 @@ export function paintFlightLayer(canvas: HTMLCanvasElement, frame: BitmapFrame, 
   const ctx = prepareLayerCtx(canvas, frame);
   if (ctx == null) return;
 
+  if (import.meta.env.DEV) {
+    const g = globalThis as typeof globalThis & {
+      __liveFlightPoses?: Array<{
+        id: number;
+        x: number;
+        y: number;
+        scale: number;
+        targetX: number;
+        targetY: number;
+        targetScale: number;
+        phase: string;
+        hold?: boolean;
+        remaining: number;
+        t: number;
+      }>;
+    };
+    if (g.__liveFlightPoses == null) g.__liveFlightPoses = [];
+    const now = performance.now();
+    for (const flight of frame.flights) {
+      g.__liveFlightPoses.push({
+        id: flight.id,
+        x: flight.x,
+        y: flight.y,
+        scale: flight.scale,
+        targetX: flight.targetX,
+        targetY: flight.targetY,
+        targetScale: flight.targetScale,
+        phase: flight.phase,
+        hold: flight.hold,
+        remaining: Math.hypot(flight.targetX - flight.x, flight.targetY - flight.y),
+        t: now,
+      });
+    }
+    if (g.__liveFlightPoses.length > 2000) g.__liveFlightPoses.splice(0, g.__liveFlightPoses.length - 2000);
+  }
+
   paintScreenMotion(ctx, {
     dragGhost: frame.dragGhost,
     flights: frame.flights,
