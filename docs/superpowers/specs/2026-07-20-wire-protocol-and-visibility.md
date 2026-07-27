@@ -154,6 +154,8 @@ BFF can pin later `table_id` hops to this pod.
 
 During mulligans, each `PlayerView` also carries `mulligans_taken`, `hand_kept`, and `can_mulligan`. These are public status fields; card identities remain private through the existing hand/object redaction rules. The local player's legal actions include setup-section `keep_hand` and `mulligan` actions while they are undecided.
 
+`CombatView.blocked_attackers` (field 5, expand-only) lists attackers that received at least one declared blocker and remain blocked for the rest of combat (CR 509.1h), including after their blockers leave. After every attacked seat has declared blockers, the client uses this set with `blocks` and living battlefield objects to paint post-declare attack arrows per [`2026-07-20-battlefield.md`](2026-07-20-battlefield.md): blocked attackers aim at living blockers; blocked attackers with no living blockers paint no combat arrow.
+
 ### Redaction rules
 
 Implemented in `crates/schema/` (`schema::event::{redact, spectator_redact}` re-exported from the schema lib; privacy helpers in `projection/privacy.rs`; `schema::snapshot`):
