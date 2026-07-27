@@ -1,5 +1,5 @@
 # Action Session and Targeting
-**Status:** Current (as of 2026-07-23)
+**Status:** Current (as of 2026-07-27)
 **Module:** `client/app/board/action/session.ts`, `client/app/board/action/execution.ts`, `client/app/board/action/targeting.ts`, `client/app/board/geometry/combat-staging.ts`, `client/app/board/submodel.ts`
 
 ## Problem Statement
