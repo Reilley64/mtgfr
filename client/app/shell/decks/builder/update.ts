@@ -22,8 +22,8 @@ import {
 import { RpcClient } from "../../../resources";
 import {
   type BuilderMenuActionSchema,
-  type BuilderProxyArtTargetKind,
   BuilderPrintSearchFailed,
+  type BuilderProxyArtTargetKind,
   BuilderSearchFailed,
   DeckBuilderLoadFailed,
   DeckSaved,
