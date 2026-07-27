@@ -30,6 +30,12 @@ pub enum PumpEffect {
             serde(default, deserialize_with = "de::static_slice")
         )]
         add_colors: &'static [Color],
+        /// "becomes a 3/6 Golem artifact creature **until end of combat**" (Jade Statue) — the
+        /// animation is swept at the End of Combat step instead of surviving to cleanup. Strictly
+        /// shorter than the default until-end-of-turn duration, so it can't be approximated by
+        /// leaving it off.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        ends_at_end_of_combat: bool,
     },
 
     EnchantedAttackerPumpAttackingOpponentElseControllerLosesLife {

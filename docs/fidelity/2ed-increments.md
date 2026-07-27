@@ -1011,7 +1011,7 @@ waits. *Sketch:* a `your_turn_only` bool on the activated-ability cost fields, c
 
 *Landed:* the sketch was wrong — `sorcery_speed` is not the only activation-timing gate. `ability_activation_gate` already runs an ability's `condition` as an activation restriction ("Activate only if you control five or more lands" — Temple of the False God), and `Condition::DuringYourTurn` already existed for Restless Spire's conditional first strike. Disrupting Scepter is `[abilities.condition] type = "during_your_turn"` and nothing else: zero engine lines. The new `your_turn_only` bool would have been a second spelling of a predicate the gate already evaluates. Worth remembering for #57 and anything else that reaches for a new cost flag — check `Condition` first, since the activation gate and the intervening-if evaluator are the same code path.
 
-### 57. `until-end-of-combat-animation` — 1 card, M
+### 57. `until-end-of-combat-animation` — 1 card, M — **done**
 Depends on: 56 (`activate-only-during-your-turn`) — both are activation/duration gates on the
 same ability shape, and the combat-window check is the same kind of predicate.
 Jade Statue needs two things at once: `animate_self_until_end_of_turn` only knows the
@@ -1022,6 +1022,21 @@ approximated down. *Sketch:* a `duration` field on the animation effect (`end_of
 `end_of_combat`, cleared at the end-of-combat step alongside the existing cleanup) plus a
 `combat_only` activation gate reusing `cast_only_during_combat`'s own window predicate.
 *Cards:* jade_statue.
+
+*Landed:* the gate half was free, and for the reason #56 recorded — check `Condition` before
+reaching for a cost flag. `Condition::DuringCombat` (`self.step.is_combat()`, the same predicate
+`cast_only_during_combat` uses on the cast side) is two lines, and `ability_activation_gate` already
+runs an ability's condition as an activation restriction. No `combat_only` cost field.
+
+The duration half is a `ends_at_end_of_combat` bool riding `AnimateSelfUntilEndOfTurn` down to
+`Event::BasePtSetUntilEndOfTurn` and onto `Permanent`, plus an End of Combat sweep in
+`begin_step` next to the existing `CombatCleared` push. Not projected to the wire: the client reads
+the animated P/T off the snapshot, so the duration is engine bookkeeping and the proto is untouched.
+
+Ceiling, recorded in a `ponytail:` at the sweep: it reuses `Event::TempBoostsEnded`, which ends
+*every* until-EOT effect on the Statue, so a pump cast on it mid-combat would end early too. A
+dedicated event costs seven files across engine/schema/proto/server for one card; split it if a
+second end-of-combat card ever lands.
 
 ### 58. `damage-the-entering-permanents-controller` — 1 card, S — **done**
 Depends on: nothing.

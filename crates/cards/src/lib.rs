@@ -4070,6 +4070,26 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         assert!(cost.taps_self);
     }
 
+    /// Jade Statue prints two restrictions the DSL keeps on separate axes: *when* it may be
+    /// activated (a `during_combat` condition) and *how long* the animation lasts (a shorter
+    /// duration than the effect's until-end-of-turn default). Neither implies the other.
+    #[test]
+    fn unlimited_jade_statue_animates_only_in_combat_and_only_for_combat() {
+        let statue = get_by_name("Jade Statue").expect("Jade Statue is in the pool");
+        assert_eq!(statue.abilities[0].condition, Some(Condition::DuringCombat));
+        let Effect::Pump(PumpEffect::AnimateSelfUntilEndOfTurn {
+            base_power,
+            base_toughness,
+            ends_at_end_of_combat,
+            ..
+        }) = statue.abilities[0].effect
+        else {
+            panic!("a self-animation");
+        };
+        assert_eq!((base_power, base_toughness), (3, 6));
+        assert!(ends_at_end_of_combat, "\"until end of combat\"");
+    }
+
     /// Farmstead grants a *triggered* ability, so its `GrantedAbility` carries a trigger and the
     /// `optional` flag that raises the "you may pay {W}{W}" pause — an activated grant has
     /// neither.

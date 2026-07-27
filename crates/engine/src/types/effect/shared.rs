@@ -1901,6 +1901,13 @@ pub enum Condition {
     /// `ctx.controller`, re-evaluated live like every other static-anthem gate here — flips off
     /// the instant the turn passes to someone else, not just at cleanup.
     DuringYourTurn,
+    /// "Activate only during combat" (Jade Statue — CR 506.1's combat phase, from Beginning of
+    /// Combat through End of Combat). Holds iff the current step is a combat step, whoever the
+    /// active player is — the Statue's own text names no seat, so it animates on an opponent's
+    /// turn to block. The activation-timing sibling of [`DuringYourTurn`](Self::DuringYourTurn),
+    /// read through the same [`Game::ability_activation_gate`](crate::Game) path a spell's
+    /// `cast_only_during_combat` field covers on the cast side.
+    DuringCombat,
     /// "If you win the clash" (Lash Out — CR 701.22d): reads the resolution-scoped
     /// [`Game::clash_won`](crate::Game) flag a preceding [`Effect::Dig(DigEffect::Clash)`](crate::Effect::Dig(DigEffect::Clash))
     /// step in the same resolution just set. Not a persistent board fact — it lives only for the

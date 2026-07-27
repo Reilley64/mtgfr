@@ -241,7 +241,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Island Sanctuary** {1}{W} · Enchantment — increment 65
 - [x] **Ivory Cup** {1} · Artifact — increment 10
 - [ ] **Jade Monolith** {4} · Artifact — increment 6
-- [ ] **Jade Statue** {4} · Artifact — increment 57
+- [x] **Jade Statue** {4} · Artifact — increment 57
 - [ ] **Juggernaut** {4} · Artifact Creature — Juggernaut — increment 11
 - [x] **Karma** {2}{W}{W} · Enchantment — increment 1
 - [x] **Keldon Warlord** {2}{R}{R} · Creature — Human Barbarian — increment 2

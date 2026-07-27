@@ -104877,6 +104877,69 @@ fn mind_twist_for_more_than_the_hand_holds_just_empties_it() {
     assert!(hand_ids(&game, PlayerId(1)).is_empty(), "the hand is empty");
 }
 
+// ── An animation that ends at end of combat (fidelity #57) ───────────────────────────────────
+
+#[test]
+fn jade_statue_animates_for_combat_only_and_reverts_at_end_of_combat() {
+    // Jade Statue: "{2}: Jade Statue becomes a 3/6 Golem artifact creature until end of combat.
+    // Activate only during combat." The animation is *shorter* than until-end-of-turn — the
+    // Statue is an inert artifact again in the postcombat main phase.
+    let mut game = Game::new();
+    let statue = game.spawn_on_battlefield(PlayerId(0), card("Jade Statue"));
+    game.spawn_in_library(PlayerId(0), VANILLA.clone());
+
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: statue,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("activatable during combat");
+    resolve_top_of_stack(&mut game);
+
+    assert!(
+        game.effective_types(statue).intersects(TypeSet::CREATURE),
+        "it becomes a creature"
+    );
+    assert_eq!(game.power(statue), 3, "a 3/6 via the base-P/T set");
+    assert_eq!(game.toughness(statue), 6);
+    assert!(game.effective_subtypes(statue).contains(&"Golem"));
+
+    advance_until(&mut game, |g| g.current_step() == Step::Main2);
+    assert!(
+        !game.effective_types(statue).intersects(TypeSet::CREATURE),
+        "end of combat, not end of turn — it's an inert artifact again in Main2"
+    );
+    assert_eq!(game.power(statue), 0);
+}
+
+#[test]
+fn jade_statue_cant_be_animated_outside_combat() {
+    // "Activate only during combat" — the precombat main phase is not a combat step.
+    let mut game = Game::new();
+    let statue = game.spawn_on_battlefield(PlayerId(0), card("Jade Statue"));
+    game.fund_mana(PlayerId(0));
+
+    assert!(
+        game.submit(Intent::ActivateAbility {
+            player: PlayerId(0),
+            object: statue,
+            ability_index: 0,
+            target: None,
+            sacrifice: vec![],
+            discard_cost: vec![],
+            x: 0,
+        })
+        .is_err(),
+        "Main1 is not combat"
+    );
+}
+
 // ── An Aura granting a triggered ability to its host (fidelity #36) ──────────────────────────
 
 #[test]

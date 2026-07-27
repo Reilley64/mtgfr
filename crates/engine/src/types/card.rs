@@ -1169,6 +1169,7 @@ pub(crate) fn fresh_permanent(
         temp_power: 0,
         temp_toughness: 0,
         base_pt_set_eot: None,
+        animation_ends_at_end_of_combat: false,
         base_pt_set_eot_timestamp: 0,
         added_types_eot: TypeSet::NONE,
         added_types_eot_timestamp: 0,
@@ -1795,6 +1796,11 @@ pub(crate) struct Permanent {
     /// counters/pumps/anthems), and cleared alongside `temp_power`/`temp_toughness` at cleanup
     /// (see [`Event::TempBoostsEnded`]'s handler). Not a `CardDef`/TOML surface — P/T is derived.
     pub(crate) base_pt_set_eot: Option<(i32, i32)>,
+    /// Whether the until-end-of-turn animation above is really an *until end of combat* one (Jade
+    /// Statue): set alongside `base_pt_set_eot`, read by the End of Combat sweep in
+    /// [`Game::begin_step`], and cleared with the rest of the temp state at
+    /// [`Event::TempBoostsEnded`].
+    pub(crate) animation_ends_at_end_of_combat: bool,
     /// The CR 613.7 timestamp of [`Permanent::base_pt_set_eot`], so a later 7b set (Darksteel
     /// Mutation after Trench Gorger, Quandrix Charm after Darksteel Mutation) wins the layer.
     pub(crate) base_pt_set_eot_timestamp: u64,

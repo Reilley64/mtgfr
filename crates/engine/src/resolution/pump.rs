@@ -202,6 +202,7 @@ impl Game {
                         object,
                         power,
                         toughness,
+                        ends_at_end_of_combat: false,
                     })
                     .collect()
             }
@@ -215,6 +216,7 @@ impl Game {
                     object,
                     power: self.resolve_amount(power, controller, source, target, x),
                     toughness: self.resolve_amount(toughness, controller, source, target, x),
+                    ends_at_end_of_combat: false,
                 }]
             }
             // Indefinite self base-P/T SET (Trench Gorger's "this creature has base power and
@@ -242,6 +244,7 @@ impl Game {
                 base_toughness,
                 keywords,
                 add_colors,
+                ends_at_end_of_combat,
             } => {
                 if self.as_permanent(source).is_none() {
                     return Vec::new();
@@ -257,6 +260,7 @@ impl Game {
                         object: source,
                         power: base_power,
                         toughness: base_toughness,
+                        ends_at_end_of_combat,
                     },
                 ];
                 if !keywords.is_empty() {

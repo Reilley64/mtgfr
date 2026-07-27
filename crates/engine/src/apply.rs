@@ -1339,11 +1339,13 @@ impl Game {
                 object,
                 power,
                 toughness,
+                ends_at_end_of_combat,
             } => {
                 let ts = self.stamp_continuous_timestamp();
                 let p = self.permanent_mut(object);
                 p.base_pt_set_eot = Some((power, toughness));
                 p.base_pt_set_eot_timestamp = ts;
+                p.animation_ends_at_end_of_combat = ends_at_end_of_combat;
             }
             Event::TypesAddedUntilEndOfTurn {
                 object,
@@ -1434,6 +1436,7 @@ impl Game {
                 p.temp_lost_keywords = &[];
                 p.base_pt_set_eot = None;
                 p.base_pt_set_eot_timestamp = 0;
+                p.animation_ends_at_end_of_combat = false;
                 p.added_types_eot = TypeSet::NONE;
                 p.added_types_eot_timestamp = 0;
                 p.added_subtypes_eot = &[];

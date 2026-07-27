@@ -297,10 +297,13 @@ pub(crate) fn project_event(
             power: 0,
             toughness: 0,
         },
+        // `ends_at_end_of_combat` is engine bookkeeping for the End of Combat sweep — the client
+        // reads the animated P/T off the snapshot, so the duration isn't projected.
         Event::BasePtSetUntilEndOfTurn {
             object,
             power,
             toughness,
+            ..
         } => VisibleEvent::BasePtSetUntilEndOfTurn {
             object,
             power,

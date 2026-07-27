@@ -1764,6 +1764,17 @@ impl Game {
                 if self.combat.attackers_declared {
                     self.push_apply(events, Event::CombatCleared);
                 }
+                // Jade Statue's "becomes a 3/6 Golem artifact creature until end of combat" — the
+                // only duration in the pool shorter than a turn, swept here instead of at cleanup.
+                // ponytail: `TempBoostsEnded` ends *every* until-EOT effect on the Statue, so a
+                // pump cast on it mid-combat ends early too. Narrow enough to live with; split the
+                // event if a second end-of-combat card ever lands.
+                let animated: Vec<ObjectId> = self
+                    .permanent_ids(|p| p.animation_ends_at_end_of_combat)
+                    .collect();
+                for id in animated {
+                    self.push_apply(events, Event::TempBoostsEnded { object: id });
+                }
             }
             Step::Cleanup => {
                 // Remove all marked damage and until-end-of-turn boosts from every permanent.

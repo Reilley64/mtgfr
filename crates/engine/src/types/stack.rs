@@ -2422,6 +2422,10 @@ pub enum Event {
         object: ObjectId,
         power: i32,
         toughness: i32,
+        /// Jade Statue's "until end of combat": the whole animation is swept at the End of Combat
+        /// step instead of at cleanup. Bookkeeping for the sweep only — the client reads the
+        /// permanent's P/T from the snapshot either way, so this isn't projected.
+        ends_at_end_of_combat: bool,
     },
     /// A permanent gained card types + creature subtypes + colors until end of turn (CR 613.4 —
     /// Restless Spire's self-animation adds Creature + Elemental + blue/red to a noncreature land).
