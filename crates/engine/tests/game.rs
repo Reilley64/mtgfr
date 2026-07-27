@@ -26222,6 +26222,46 @@ fn a_countered_spell_goes_to_its_owners_graveyard_and_never_resolves() {
 }
 
 #[test]
+fn spell_blast_only_counters_a_spell_whose_mana_value_equals_the_x_paid() {
+    // "Counter target spell with mana value X." The X is chosen before targets (CR 601.2b), so
+    // the same card reaches a different spell depending on what was paid.
+    let mut g = TestGame::new();
+    let bear = g.spawn_in_hand(PlayerId(0), card("Grizzly Bears")); // {1}{G} — mana value 2
+    let bolt = g.spawn_in_hand(PlayerId(0), card("Lightning Bolt")); // {R} — mana value 1
+    let blast = g.spawn_in_hand(PlayerId(0), card("Spell Blast"));
+    let blast2 = g.spawn_in_hand(PlayerId(0), card("Spell Blast"));
+
+    g.cast(bear).submit();
+    let bear_spell = top_spell(&g);
+    assert_eq!(
+        g.cast(blast)
+            .x(1)
+            .at(Target::Object(bear_spell))
+            .try_submit(),
+        Err(Reject::IllegalTarget),
+        "X = 1 doesn't reach a mana value 2 spell"
+    );
+    g.cast(blast).x(2).at(Target::Object(bear_spell)).resolve();
+    resolve_whole_stack(&mut g);
+    assert_eq!(
+        g.zone_of(bear),
+        Zone::Graveyard,
+        "X = 2 countered the mana value 2 spell"
+    );
+
+    let opp_life = g.life(PlayerId(1));
+    g.cast(bolt).at(Target::Player(PlayerId(1))).submit();
+    let bolt_spell = top_spell(&g);
+    g.cast(blast2).x(1).at(Target::Object(bolt_spell)).resolve();
+    resolve_whole_stack(&mut g);
+    assert_eq!(
+        g.life(PlayerId(1)),
+        opp_life,
+        "X = 1 countered the mana value 1 spell before it dealt its damage"
+    );
+}
+
+#[test]
 fn a_color_filtered_counter_only_targets_a_spell_of_that_color() {
     // Blue Elemental Blast's first mode is "Counter target red spell." A green creature spell is
     // not a legal target; a red burn spell is, and dies before dealing its damage.

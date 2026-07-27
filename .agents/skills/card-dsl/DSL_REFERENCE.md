@@ -1700,7 +1700,11 @@ single-purpose arm; Unbound Flourishing's copy ability), `"historic"` (CR
 Pearl-Ear, Imperial Advisor), `"cast_from_non_hand_zone"` (a spell cast from anywhere other
 than the caster's hand — a flashback/escape from a graveyard, an impulse-play from exile, a
 command-zone cast; Advanced Reconstruction's level 3 "Spells you cast from anywhere other than
-your hand cost {2} less"), or `{ color = "red" }` (the cast spell's own colors, CR 105.1/202.2 —
+your hand cost {2} less"), `"mana_value_equals_x"` (a spell whose mana value equals the `{X}` paid
+for the spell doing the filtering — Spell Blast's "Counter target spell with mana value X"; the one
+X-dependent arm, so it only ever matches where the filtering spell's own X is known, i.e. a
+`counter_target_spell` target enumeration, never a trigger or cost-reducer `spell_filter`), or
+`{ color = "red" }` (the cast spell's own colors, CR 105.1/202.2 —
 a multicolored spell matches any of its colors; Balefire Liege's "cast a red spell" /
 "cast a white spell"). Only `reduce_spell_cost` reads the cast-from zone; every other
 consumer treats a spell as a plain hand cast.

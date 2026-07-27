@@ -2156,6 +2156,10 @@ impl Game {
             // Advanced Reconstruction's level 3: "Spells you cast from anywhere other than your
             // hand …" — the only arm that reads the cast-from zone (CR 601).
             SpellFilter::CastFromNonHandZone => from_zone != Zone::Hand,
+            // Spell Blast's "with mana value X" is matched inline in `legal_targets_for`, the
+            // only choke that knows the filtering spell's own X. Never true here: this function's
+            // trigger and cost-reducer callers have no X to compare against.
+            SpellFilter::ManaValueEqualsX => false,
             // Balefire Liege's "cast a red spell" / "cast a white spell" — CR 105.1/202.2, the
             // spell's own colors (a multicolored spell matches every one of its colors).
             SpellFilter::Color(color) => color_identity(&def)[color.index()],

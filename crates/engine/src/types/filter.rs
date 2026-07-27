@@ -245,6 +245,15 @@ pub enum SpellFilter {
     /// multicolored spell matches any of its colors.
     #[cfg_attr(feature = "card-dsl", serde(rename = "color"))]
     Color(Color),
+    /// A spell whose mana value equals the `{X}` paid for the spell doing the filtering (Spell
+    /// Blast's "Counter target spell with mana value X"). The only X-dependent arm: it is matched
+    /// inline in [`Game::legal_targets_for`](crate::Game)'s `SpellOnStack` enumeration — the one
+    /// place that knows the filtering spell's X, and the same place the CR 608.2b resolution
+    /// re-check reads — so `Game::spell_matches_filter`, which serves trigger and cost-reducer
+    /// call sites with no X of their own, never matches it. The spell-side twin of
+    /// [`PermanentFilter::mv_eq_x`].
+    #[cfg_attr(feature = "card-dsl", serde(rename = "mana_value_equals_x"))]
+    ManaValueEqualsX,
 }
 
 /// Which library cards a [`Effect::Dig(DigEffect::SearchLibrary)`] may find (CR 701.19 — "search for a card").

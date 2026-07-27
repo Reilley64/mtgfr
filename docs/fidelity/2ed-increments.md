@@ -413,12 +413,14 @@ land-play legality check, and a `Timing::LandPlayed` trigger carrying the per-tu
 intervening-if reads it directly.
 *Cards:* fastbond.
 
-### 30. `counter-spell-with-mana-value-x` — 1 card, S
+### 30. `counter-spell-with-mana-value-x` — 1 card, S — **done**
 Depends on: nothing.
-Spell Blast. `counter_target_spell` filters by type; it can't gate on the target's mana value
-matching the X paid. *Sketch:* the target legality check for the counter gains a
-`mana_value_equals: Option<Amount>` resolved against the X already paid — an X-dependent target
-restriction, checked at cast time when X is locked in.
+Spell Blast. Shipped as `SpellFilter::ManaValueEqualsX`, matched inline in
+`Game::legal_targets_for`'s `SpellOnStack` arm. That function already threaded the filtering
+spell's chosen `x` (for `PermanentFilter::mv_eq_x`) and is the single choke both cast-time
+legality and the CR 608.2b resolution re-check route through, so the change was one early-return
+there plus two exhaustiveness arms — no new field, and no signature change to
+`spell_matches_filter`'s call sites, which have no X of their own and so answer `false`.
 *Cards:* spell_blast.
 
 ### 31. `look-at-target-players-hand` — 1 card, S

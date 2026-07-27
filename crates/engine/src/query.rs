@@ -1063,6 +1063,12 @@ impl Game {
                     _ => None,
                 })
                 .filter(|&id| {
+                    // "with mana value X" (Spell Blast) reads the *countering* spell's own chosen
+                    // X, which lives here and not in `spell_matches_filter`'s trigger/cost-reducer
+                    // call sites — the `PermanentFilter::mv_eq_x` arm above does the same inline.
+                    if filter == SpellFilter::ManaValueEqualsX {
+                        return self.def_of(id).mana_value() == x;
+                    }
                     // A counter/target-spell filter never reads the cast-from zone; pass the
                     // plain hand-cast default (see `spell_matches_filter`).
                     self.spell_matches_filter(

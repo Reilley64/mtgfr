@@ -978,6 +978,7 @@ fn spell_filter_token(filter: SpellFilter) -> String {
         }
         SpellFilter::CastFromNonHandZone => "cast_from_non_hand_zone".to_string(),
         SpellFilter::Color(color) => format!("color_{}", color_token(color)),
+        SpellFilter::ManaValueEqualsX => "mana_value_equals_x".to_string(),
     }
 }
 
