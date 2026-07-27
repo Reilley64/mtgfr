@@ -96417,3 +96417,4 @@ fn winding_constrictor_adds_to_counters_an_opponent_puts_on_your_creature() {
         "a creature you control receives them, whoever put them: 2 + 1 = 3"
     );
 }
+

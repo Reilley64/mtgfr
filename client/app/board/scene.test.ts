@@ -8,7 +8,7 @@ import { Submodel } from "foldkit";
 import { html } from "foldkit/html";
 import { Scene } from "foldkit/test";
 import { beforeAll, expect, test } from "vitest";
-import { choiceDraftKey } from "~/choice";
+import { buildAnswerFromDraft, choiceDraftKey, choiceIntent } from "~/choice";
 import { BindCardArt } from "~/ui/card-art";
 import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
@@ -436,9 +436,10 @@ test("pointer up on proliferate accumulates picks until Confirm", () => {
   expect(board.promptDraft).toEqual({ kind: "card-pick", picked: [1, 2], filter: "" });
   [, commands] = updateBoard(board, PromptSubmitted(), gameFold, "T1");
   expect(intentFromCommand(commands[0])).toEqual({
-    kind: "choose_sacrifices",
+    kind: "choose_proliferate",
     player: 0,
-    sacrifices: [1, 2],
+    permanents: [1, 2],
+    players: [],
   });
 });
 
@@ -905,6 +906,38 @@ test("pointer up on choose_target_players avatar accumulates seat picks", () => 
   const [next, commands] = updateBoard(board, BoardPointerUp({ x: screen.x, y: screen.y }), gameFold, "T1");
   expect(commands).toEqual([]);
   expect(next.promptDraft).toEqual({ kind: "player-pick", players: [1] });
+});
+
+// CR 701.27 offers players alongside permanents; a poisoned seat must be pickable and must ride
+// out in the proliferate answer's `players` list, not as an object id.
+test("pointer up on a proliferate avatar accumulates the seat and answers with both lists", () => {
+  const bear = creature(31, 0);
+  const pending = {
+    kind: "proliferate" as const,
+    player: 0,
+    source: 1,
+    items: [
+      { id: bear.id, label: "Bear" },
+      { id: 0, label: "Player 2", player: 1 },
+    ],
+  };
+  const players = [player(), player({ player: 1, username: "Bob" })];
+  const gameFold = fold(state({ objects: [bear], pending_choice: pending, players }));
+  const board = initialBoardModel();
+  const world = avatarPos(1, 0, 2);
+  const screen = worldToScreen(board.camera, world.x, world.y);
+  const [next, commands] = updateBoard(board, BoardPointerUp({ x: screen.x, y: screen.y }), gameFold, "T1");
+  expect(commands).toEqual([]);
+  expect(next.promptDraft).toMatchObject({ kind: "card-pick", players: [1] });
+
+  const answer = buildAnswerFromDraft(pending, { kind: "card-pick", picked: [bear.id], players: [1] });
+  if (answer == null) throw new Error("expected a proliferate answer");
+  expect(choiceIntent(pending, answer)).toEqual({
+    kind: "choose_proliferate",
+    player: 0,
+    permanents: [bear.id],
+    players: [1],
+  });
 });
 
 test("pointer up on non-target while staged clears drag without submitting", () => {

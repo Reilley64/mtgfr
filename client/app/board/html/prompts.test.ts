@@ -843,6 +843,24 @@ test("pay_echo_or_sacrifice decline is labeled Sacrifice", () => {
   );
 });
 
+// CR 614.12 — a shockland names a life amount rather than a mana cost, and carries no label.
+test("pay_life_or_enters_tapped offers the life payment and pays through", () => {
+  const s = state({
+    pending_choice: { kind: "pay_life_or_enters_tapped", life: 2, player: 0, source: 7 },
+  });
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("pending-pay-cost-aim")).toExist(),
+    Scene.expect(Scene.testId("prompt-pay")).toHaveText("Pay 2 life"),
+    Scene.expect(Scene.testId("prompt-decline")).toHaveText("Enters tapped"),
+  );
+  expect(clickPromptIntent(s, Scene.click(Scene.testId("prompt-pay")))).toEqual([
+    { kind: "pay_optional_cost", player: 0, pay: true },
+  ]);
+});
+
 test("pay_or_counter decline is labeled Let it be countered", () => {
   const s = state({
     pending_choice: {

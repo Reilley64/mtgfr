@@ -790,10 +790,14 @@ function pointerUpModel(
   const pendingAim = fold.state != null ? pendingBoardTargetMode(pc, fold.state) : null;
   if (pendingAim != null && pc != null) {
     const seat = avatarSeatAt(fold, model, x, y);
-    if (seat != null && pendingAim.players.has(seat) && pendingTargetOneClick(pc)) {
-      const answer = answerFromBoardTarget(pc, { kind: "player", player: seat });
-      if (answer != null) {
-        return [idle, boardIntentSubmit(tableId, choiceIntent(pc, answer))];
+    if (seat != null && pendingAim.players.has(seat)) {
+      if (pendingTargetOneClick(pc)) {
+        const answer = answerFromBoardTarget(pc, { kind: "player", player: seat });
+        if (answer != null) {
+          return [idle, boardIntentSubmit(tableId, choiceIntent(pc, answer))];
+        }
+      } else {
+        return togglePendingPlayerAimPick(idle, fold, seat);
       }
     }
   }
@@ -846,6 +850,18 @@ function completeStagedTarget(
     if (xPrompt != null) return [{ ...nextModel, xPrompt }, []];
   }
   return [nextModel, boardIntentSubmit(tableId, takeAction(fold, staged.action, target, 0, [], staged.picks))];
+}
+
+/** Toggle a player seat into/out of the multi-aim card-pick draft (proliferate, CR 701.27). */
+function togglePendingPlayerAimPick(model: BoardModel, fold: GameFoldState, seat: number): BoardReturn {
+  const synced = syncPromptDraft(model, fold);
+  const draft =
+    synced.promptDraft?.kind === "card-pick"
+      ? synced.promptDraft
+      : { kind: "card-pick" as const, picked: [], filter: "" };
+  const players = draft.players ?? [];
+  const next = players.includes(seat) ? players.filter((p) => p !== seat) : [...players, seat];
+  return [{ ...synced, promptDraft: { ...draft, players: next } }, []];
 }
 
 /** Toggle an object id into/out of the multi-aim card-pick draft (no submit). */

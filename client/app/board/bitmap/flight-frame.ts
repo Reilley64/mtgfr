@@ -48,6 +48,8 @@ function playerPaintKey(player: PlayerView): Record<string, unknown> {
     username: player.username ?? "",
     hand_count: player.hand_count,
     commander_damage: commanderDamage,
+    poison: player.poison ?? 0,
+    rad: player.rad ?? 0,
   };
 }
 

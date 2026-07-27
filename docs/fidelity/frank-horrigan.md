@@ -146,3 +146,27 @@ into the increment that clears it. Seven are cleared as of 2026-07-27; two remai
 `counters_after_replacements` — it flips to a live bug the moment #19 widens that function past
 +1/+1.
 
+
+## Live smoke game
+
+Four two-seat games driven over the real HTTP/SSE surface (BFF `:3000` → tonic `:50051`), both
+seats on the 100-card decklist. The deck saved legally on every run (the deck-legality frame
+gate), and all four reached a natural game over — every one of them on **poison** (CR 704.5c),
+this deck's own kill: two ended with a single seat at ten counters, two ended in a mutual loss
+when both seats crossed ten in the same state-based-action sweep.
+
+**Pending-choice kinds that fired live:** `proliferate`, `search_library`, `choose_target`,
+`discard`, `scry`, `choose_mode`, `may_yes_no`, `sacrifice_edict`, `divide_counters`, and
+`pay_life_or_enters_tapped`. Everything else in the pending-choice union stayed engine-test-only
+this run — no seat ever drew into them — and the report says so rather than implying coverage.
+The four surfaces this grind actually added (proliferate over players *and* permanents, poison
+and rad on `PlayerView`, the shockland pay-life prompt, counter replacements keyed on the
+placing player) all fired live.
+
+**What the drive caught that no unit test did:** the engine panicked (`object N is not a
+permanent` / `object N has left the game`) whenever a player was eliminated during their own
+turn — this deck kills with poison mid-turn, so it hit constantly. `perform_turn_based_actions`
+ran the dead seat's untap/draw/rad-mill against zones the CR 800.4a sweep had already emptied.
+Fixed per CR 800.4e (the turn continues to completion *without* an active player) with a
+regression test at the engine layer; the board-wide turn-based actions (end-of-combat clearing,
+cleanup's damage/boost/control housekeeping) deliberately keep running.

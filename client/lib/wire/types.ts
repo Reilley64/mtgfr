@@ -152,6 +152,10 @@ export type PlayerView = {
   };
   mulligans_taken?: number;
   player: number;
+  // Poison counters (CR 122.1); ten or more eliminates this player (CR 704.5c).
+  poison?: number;
+  // Rad counters (CR 122.1, Fallout) — milled off at this player's precombat main phase.
+  rad?: number;
   username?: string;
 };
 export type ObjectView = {
@@ -241,6 +245,10 @@ export type VisibleEvent =
   | { kind: "lost_summoning_sickness"; object: U32 }
   | { count: number; kind: "counters_placed"; object: U32 }
   | { count: number; counter_kind: number; kind: "kind_counters_placed"; object: U32 }
+  // `counter_kind` mirrors engine `PlayerCounterKind`: 0 = poison, 1 = rad.
+  | { count: number; counter_kind: number; kind: "player_counters_placed"; player: number }
+  | { kind: "became_monstrous"; object: U32 }
+  | { controller: number; emblem: U32; kind: "emblem_created"; name: string }
   | { amount: number; kind: "loyalty_changed"; object: U32 }
   | { active: boolean; kind: "loyalty_activated"; object: U32 }
   | { ability_index: number; kind: "ability_activated_this_turn"; object: U32 }
@@ -422,6 +430,8 @@ export type PendingChoiceView =
   | { cost: WireCost; kind: "pay_echo_or_sacrifice"; player: number; source: U32 }
   | { cost: WireCost; kind: "pay_recover_or_exile"; player: number; source: U32 }
   | { cost: WireCost; kind: "sacrifice_unless_pay"; player: number; source: U32 }
+  // Shockland (CR 614.12): pay `life` on the way in, or the land enters tapped.
+  | { kind: "pay_life_or_enters_tapped"; life: number; player: number; source: U32 }
   | { items: Array<ChoiceItem>; kind: "sacrifice_unless_return_land"; player: number; source: U32 }
   | { items: Array<ChoiceItem>; kind: "assign_combat_damage"; player: number; source: U32 }
   | { items: Array<ChoiceItem>; kind: "divide_spell_damage"; player: number; spell: U32; total: number }
@@ -582,6 +592,7 @@ export type WireIntent =
   | { cards?: Array<U32>; kind: "shuffle_from_graveyard"; player: number }
   | { choice?: null | U32; kind: "search_library"; player: number }
   | { kind: "choose_sacrifices"; player: number; sacrifices: Array<U32> }
+  | { kind: "choose_proliferate"; permanents: Array<U32>; player: number; players: Array<number> }
   | { cards: Array<U32>; kind: "discard"; player: number }
   | { choice?: null | U32; kind: "put_land_from_hand"; player: number }
   | { choice?: null | U32; kind: "put_creature_from_hand"; player: number }

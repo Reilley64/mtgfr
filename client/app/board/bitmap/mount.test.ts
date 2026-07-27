@@ -326,6 +326,31 @@ describe("paintBitmapLayer", () => {
     expect(calls.filter((c) => c.startsWith("text:Cmd "))).toHaveLength(1);
   });
 
+  // Poison is a lose condition (CR 704.5c) and rad drives a mill clock — both belong on the orb.
+  it("stacks poison and rad chips under the Cmd chip", () => {
+    const calls: string[] = [];
+    vi.stubGlobal("window", { devicePixelRatio: 1 });
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => mockCtx(calls)),
+      style: {},
+    } as unknown as HTMLCanvasElement;
+
+    paintBitmapLayer(
+      canvas,
+      frame({
+        cards: [],
+        players: [player({ commander_damage: [{ from: 1, amount: 3 }], poison: 4, rad: 1 })],
+      }),
+      { get: vi.fn(() => undefined) },
+    );
+
+    expect(calls).toContain("text:Cmd 3");
+    expect(calls).toContain("text:Poison 4");
+    expect(calls).toContain("text:Rad 1");
+  });
+
   it("paints staged declare-attackers arrows above resting cards", () => {
     const calls: string[] = [];
     vi.stubGlobal("window", { devicePixelRatio: 1 });

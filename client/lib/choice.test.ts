@@ -29,6 +29,7 @@ const ALL_PENDING_CHOICE_KINDS = [
   "pay_echo_or_sacrifice",
   "pay_recover_or_exile",
   "sacrifice_unless_pay",
+  "pay_life_or_enters_tapped",
   "sacrifice_unless_return_land",
   "assign_combat_damage",
   "divide_spell_damage",
@@ -287,7 +288,23 @@ test("buildAnswerFromDraft builds discard from card-pick draft", () => {
 test("buildAnswerFromDraft builds proliferate from empty card-pick", () => {
   const pc = { kind: "proliferate" as const, items: [], player: 0, source: 1 };
   const draft: PromptDraft = { kind: "card-pick", picked: [] };
-  expect(buildAnswerFromDraft(pc, draft)).toEqual({ kind: "sacrifice", ids: [] });
+  expect(buildAnswerFromDraft(pc, draft)).toEqual({ kind: "proliferate", permanents: [], players: [] });
+});
+
+// CR 701.27 proliferates players as well as permanents, so the answer names both lists — the
+// engine rejects the sacrifice shape this used to send.
+test("proliferate answers name chosen permanents and player seats separately", () => {
+  const pc = { kind: "proliferate" as const, items: [], player: 0, source: 1 };
+  const draft: PromptDraft = { kind: "card-pick", picked: [7, 9], players: [2] };
+  const answer = buildAnswerFromDraft(pc, draft);
+  expect(answer).toEqual({ kind: "proliferate", permanents: [7, 9], players: [2] });
+  if (answer == null) throw new Error("expected a proliferate answer");
+  expect(choiceIntent(pc, answer)).toEqual({
+    kind: "choose_proliferate",
+    player: 0,
+    permanents: [7, 9],
+    players: [2],
+  });
 });
 
 describe("answerFromDraft builds accepted intents", () => {

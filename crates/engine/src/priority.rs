@@ -1439,6 +1439,15 @@ impl Game {
         active: PlayerId,
         events: &mut Vec<Event>,
     ) {
+        // CR 800.4e: if the active player leaves the game mid-turn, that turn continues to its
+        // completion *without* an active player — nobody untaps, draws, mills for rad, or (below)
+        // discards to hand size. Their zones were emptied by the CR 800.4a sweep, so a draw here
+        // would reach removed library objects. Every other turn-based action still runs: ending
+        // combat (CR 511.3) and cleanup's damage/boost/control housekeeping (CR 514.2) belong to
+        // the whole board, not to the active player.
+        if self.has_lost(active) && matches!(step, Step::Untap | Step::Draw | Step::Main1) {
+            return;
+        }
         match step {
             Step::Untap => {
                 // Goad ends "until your next turn" (CR 701.38b): the active player's turn
@@ -1731,6 +1740,10 @@ impl Game {
                 if self.has_no_max_hand_size(active) {
                     return;
                 }
+                // Nobody is left to discard for a seat that left the game (CR 800.4e).
+                if self.has_lost(active) {
+                    return;
+                }
                 // Discard down to the hand-size limit (CR 514.3): the player chooses which cards.
                 let hand = self.hand_of(active);
                 let over = hand.len().saturating_sub(HAND_SIZE);
@@ -1903,6 +1916,21 @@ mod tests {
         let mana = game.available_mana(P0);
         assert_eq!(mana.colored[Color::Green.index()], 1);
         assert_eq!(mana.total(), 1);
+    }
+
+    // CR 800.4e: a turn whose active player has left the game runs to completion without an
+    // active player — no untap, no draw, no cleanup discard for the seat that is gone. Their
+    // library objects were removed by the CR 800.4a sweep, so drawing from it would panic.
+    #[test]
+    fn an_eliminated_active_player_skips_their_turn_based_actions() {
+        let mut game = Game::with_players(4, 0);
+        game.spawn_in_library(P0, forest());
+        game.apply(&Event::PlayerLost { player: P0 });
+
+        let mut events = Vec::new();
+        game.perform_turn_based_actions(Step::Draw, P0, &mut events);
+
+        assert!(events.is_empty());
     }
 
     #[test]

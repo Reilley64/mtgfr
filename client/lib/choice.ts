@@ -45,6 +45,7 @@ export const FORMULATOR_FOR_KIND: { [K in PendingChoiceView["kind"]]: Formulator
   pay_echo_or_sacrifice: "payCost",
   pay_recover_or_exile: "payCost",
   sacrifice_unless_pay: "payCost",
+  pay_life_or_enters_tapped: "payCost",
   sacrifice_unless_return_land: "cardPick",
   assign_combat_damage: "damageAssign",
   divide_spell_damage: "divideTotal",
@@ -114,7 +115,9 @@ export function assertAllKindsRegistered(kinds: readonly PendingChoiceView["kind
 }
 
 export type PromptDraft =
-  | { kind: "card-pick"; picked: number[]; filter?: string }
+  // `players` holds picked seats for proliferate, whose items mix permanents and players
+  // (CR 701.27). Player items all carry `id: 0`, so they cannot ride in `picked`.
+  | { kind: "card-pick"; picked: number[]; filter?: string; players?: number[] }
   | { kind: "order"; order: number[] }
   | { kind: "damage"; amounts: Record<number, number> }
   | { kind: "divide"; amounts: Record<number, number> }
@@ -143,6 +146,7 @@ export type AnswerInput =
   | { kind: "arrange"; top: number[]; bottom: number[] }
   | { kind: "search"; choice: number | null }
   | { kind: "sacrifice"; ids: number[] }
+  | { kind: "proliferate"; permanents: number[]; players: number[] }
   | { kind: "discard"; cards: number[] }
   | { kind: "put_land"; choice: number | null }
   | { kind: "put_creature"; choice: number | null }
@@ -192,6 +196,11 @@ export function answerFromBoardTarget(pc: PendingChoiceView, target: WireTarget)
     if (target.kind !== "object") return null;
     return { kind: "targets", ids: [target.id] };
   }
+  if (pc.kind === "proliferate") {
+    return target.kind === "player"
+      ? { kind: "proliferate", permanents: [], players: [target.player] }
+      : { kind: "proliferate", permanents: [target.id], players: [] };
+  }
   if (target.kind !== "object") return null;
   if (pc.kind === "choose_attach_host") return { kind: "attach_host", host: target.id };
   if (pc.kind === "sacrifice_unless_return_land") return { kind: "return_land", land: target.id };
@@ -199,7 +208,6 @@ export function answerFromBoardTarget(pc: PendingChoiceView, target: WireTarget)
   if (pc.kind === "decline_untap") return { kind: "keep_tapped", ids: [target.id] };
   if (
     pc.kind === "sacrifice_edict" ||
-    pc.kind === "proliferate" ||
     pc.kind === "choose_own_sacrifices" ||
     pc.kind === "phase_out" ||
     pc.kind === "may_sacrifice" ||
@@ -265,6 +273,7 @@ export function initPromptDraft(pc: PendingChoiceView, state: VisibleState): Pro
     case "pay_echo_or_sacrifice":
     case "pay_recover_or_exile":
     case "sacrifice_unless_pay":
+    case "pay_life_or_enters_tapped":
       return { kind: "pay", pay: false };
     case "choose_mode":
       return { kind: "mode", mode: 0 };
@@ -353,6 +362,7 @@ export function answerFromDraft(pc: PendingChoiceView, draft: PromptDraft): Answ
     case "pay_echo_or_sacrifice":
     case "pay_recover_or_exile":
     case "sacrifice_unless_pay":
+    case "pay_life_or_enters_tapped":
       if (draft.kind !== "pay") return null;
       return { kind: "pay", pay: draft.pay };
     case "choose_mode":
@@ -447,8 +457,10 @@ export function answerFromDraft(pc: PendingChoiceView, draft: PromptDraft): Answ
     case "discard":
       if (draft.kind !== "card-pick") return null;
       return { kind: "discard", cards: draft.picked };
-    case "sacrifice_edict":
     case "proliferate":
+      if (draft.kind !== "card-pick") return null;
+      return { kind: "proliferate", permanents: draft.picked, players: draft.players ?? [] };
+    case "sacrifice_edict":
     case "choose_own_sacrifices":
     case "phase_out":
     case "may_sacrifice":
@@ -711,6 +723,7 @@ export function choiceIntent(pc: PendingChoiceView, answer: AnswerInput): WireIn
       arrange: (a) => ({ kind: "arrange_top", player, top: a.top, bottom: a.bottom }),
       search: (a) => ({ kind: "search_library", player, choice: a.choice }),
       sacrifice: (a) => ({ kind: "choose_sacrifices", player, sacrifices: a.ids }),
+      proliferate: (a) => ({ kind: "choose_proliferate", player, permanents: a.permanents, players: a.players }),
       discard: (a) => ({ kind: "discard", player, cards: a.cards }),
       put_land: (a) => ({ kind: "put_land_from_hand", player, choice: a.choice }),
       put_creature: (a) => ({ kind: "put_creature_from_hand", player, choice: a.choice }),

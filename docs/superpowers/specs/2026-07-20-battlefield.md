@@ -81,9 +81,9 @@ Battlefield playable borders are derived from current `ActionView` data. Tap-onl
 
 Avatars are painted on the Mount bitmap layer (`bitmap/mount.ts` `paintAvatars`) using the same camera transform as cards; `canvas/avatars.ts` keeps a matching vector helper for the Foldkit Canvas pass beneath the Mount layer. The priority player uses a gold stroke. Lost players render with muted fill. Player life, name, and hand count paint inside the avatar group.
 
-When a seat has taken commander damage, the orb also paints `Cmd N` below the username (`pos.y + 42 * zoom`, fill `#db8664`), where `N` is `maxCommanderDamage(player)` — the highest `amount` from any single entry in `PlayerView.commander_damage` (the 21-damage kill clock is per commander source). Omit the label when that max is 0 or the field is absent/empty. Lost seats still show `Cmd N` when present. Targetable player highlights use Island Blue.
+Alternate lose-the-game and attrition clocks stack below the username as chips (`clockChips(player)`, rows at `pos.y + (42 + row * 14) * zoom`), in order: `Cmd N` (fill `#db8664`), where `N` is `maxCommanderDamage(player)` — the highest `amount` from any single entry in `PlayerView.commander_damage` (the 21-damage kill clock is per commander source); `Poison N` (fill `#8fd14f`, switching to `#e0574f` at 8 or more, since ten counters eliminate a player per CR 704.5c); and `Rad N` (fill `#e8a33d`). Each chip is omitted when its total is 0 or the field is absent. Lost seats still show their chips. Targetable player highlights use Island Blue.
 
-`restingPaintSnapshot` / `playerPaintKey` includes `commander_damage` so Mount resting repaint runs when only commander damage changes (life/hand/username unchanged).
+`restingPaintSnapshot` / `playerPaintKey` includes `commander_damage`, `poison`, and `rad` so Mount resting repaint runs when only a clock changes (life/hand/username unchanged).
 
 ### Arrows and target highlights
 
@@ -126,7 +126,7 @@ These are visual/layout rules only; they do not collapse engine objects.
 ## Testing Decisions
 
 - Canvas scene tests assert felt, seat, avatar, and arrow ordering.
-- Avatar unit tests assert `Cmd N` paint from `commander_damage` (max source only; omitted at 0) on both Mount `paintAvatars` and the vector `avatarShapes` helper.
+- Avatar unit tests assert `Cmd N` paint from `commander_damage` (max source only; omitted at 0) on both Mount `paintAvatars` and the vector `avatarShapes` helper, plus `Poison N` / `Rad N` chips: omitted at 0, stacked on distinct rows, and the poison fill flipping to red inside lethal range.
 - Resting-snapshot tests assert a `commander_damage`-only player change invalidates Mount resting paint.
 - Bitmap paint tests assert playable, commander, target, auto-tap, P/T, loyalty, counter, and damage chrome on the resting layer.
 - Scene tests assert arrows and interactive life-orb hit targets remain layered correctly.
