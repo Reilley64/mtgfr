@@ -74,8 +74,8 @@ branch commit range.
     `ghcr.io/reilley64/mtgfr-ci:latest` (`container.options: --user root` so the
     GHA workspace mount is writable). Each uses `Swatinem/rust-cache`
     `shared-key: verify-server`.
-    - Lint: CR index + fmt + clippy (tools from the image; no host rustup/protoc
-      installs).
+    - Lint: CR index + card JSON Schema drift (`cards-schema-check`) + fmt +
+      clippy (tools from the image; no host rustup/protoc installs).
     - Test shards: `cargo nextest run --profile ci --partition count:i/3` only —
       **no** Postgres service (tests use in-memory SQLite). Per-shard JUnit
       upload + test summary.

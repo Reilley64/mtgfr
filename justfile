@@ -120,8 +120,8 @@ test *args:
     @just server-test {{ args }}
     @just client-test
 
-[doc("Server CI check (CR index on committed sources, then fmt --check + clippy + migrate + nextest)")]
-server-check: engine-cr-index-check server-format-check server-lint
+[doc("Server CI check (CR index + card schema drift, then fmt --check + clippy + migrate + nextest)")]
+server-check: engine-cr-index-check cards-schema-check server-format-check server-lint
     cargo run -p server -- migration apply
     just server-test
 
@@ -129,7 +129,7 @@ server-check: engine-cr-index-check server-format-check server-lint
 client-check: client-tokens-check client-mana-oracle-check server-codegen client-format client-lint client-typecheck client-test
 
 [doc("Run all checks")]
-check: client-tokens-check client-mana-oracle-check engine-cr-index-check server-codegen format lint typecheck test
+check: client-tokens-check client-mana-oracle-check cards-schema-check engine-cr-index-check server-codegen format lint typecheck test
 
 [doc("Regenerate docs/CR_INDEX.md from engine CR citations")]
 engine-cr-index:
