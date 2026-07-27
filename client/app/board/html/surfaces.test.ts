@@ -1056,7 +1056,10 @@ test("on-board choose_target_players Confirm lives in the primary bar", () => {
 test("choose_trigger_modes shows docked pending-trigger-modes-aim", () => {
   overlayScene(
     overlayModel(
-      initialBoardModel(),
+      {
+        ...initialBoardModel(),
+        promptDraft: { kind: "modes", modes: [{ index: 0 }] },
+      },
       gameState({
         pending_choice: {
           kind: "choose_trigger_modes",
@@ -1076,7 +1079,7 @@ test("choose_trigger_modes shows docked pending-trigger-modes-aim", () => {
     Scene.expect(Scene.testId("pending-choice-waiting")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-mode-choice-0")).toExist(),
     Scene.expect(Scene.testId("prompt-mode-choice-1")).toExist(),
-    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-submit"]')).toBeDisabled(),
+    Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-submit"]')).not.toBeDisabled(),
     Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-cancel"]')).toExist(),
     Scene.expect(
       Scene.selector('[data-testid="pending-trigger-modes-aim"] [data-testid="prompt-submit"]'),
@@ -1084,6 +1087,13 @@ test("choose_trigger_modes shows docked pending-trigger-modes-aim", () => {
     Scene.expect(
       Scene.selector('[data-testid="pending-trigger-modes-aim"] [data-testid="prompt-cancel"]'),
     ).toBeAbsent(),
+    Scene.tap((sim) => {
+      const selected = findTestId(sim.html, "prompt-mode-choice-0");
+      expect(dataAttr(selected, "selected")).toBe("true");
+      expect(className(selected)).toContain("data-[selected=true]:bg-llanowar/25");
+      const rest = findTestId(sim.html, "prompt-mode-choice-1");
+      expect(dataAttr(rest, "selected")).toBe("false");
+    }),
   );
 });
 
@@ -1334,7 +1344,7 @@ test("scry uses a center modal with Top and Bottom arrange lanes", () => {
 test("order_triggers uses a center modal with drag rows and arrow controls", () => {
   overlayScene(
     overlayModel(
-      initialBoardModel(),
+      { ...initialBoardModel(), orderPickPos: 0 },
       gameState({
         pending_choice: {
           kind: "order_triggers",
@@ -1355,6 +1365,13 @@ test("order_triggers uses a center modal with drag rows and arrow controls", () 
     Scene.expect(Scene.testId("prompt-order-up-0")).toExist(),
     Scene.expect(Scene.testId("prompt-order-down-1")).toExist(),
     Scene.expect(Scene.testId("prompt-submit")).toExist(),
+    Scene.tap((sim) => {
+      const selected = findTestId(sim.html, "prompt-order-0");
+      expect(dataAttr(selected, "selected")).toBe("true");
+      expect(className(selected)).toContain("data-[selected=true]:border-llanowar");
+      const rest = findTestId(sim.html, "prompt-order-1");
+      expect(dataAttr(rest, "selected")).toBe("false");
+    }),
   );
 });
 
@@ -1773,7 +1790,7 @@ test("library search hides idle priority actions", () => {
 test("off-board card pick uses a center card-pick modal", () => {
   overlayScene(
     overlayModel(
-      initialBoardModel(),
+      { ...initialBoardModel(), promptDraft: { kind: "card-pick", picked: [10], filter: "" } },
       gameState({
         pending_choice: {
           kind: "proliferate",
@@ -1796,6 +1813,13 @@ test("off-board card pick uses a center card-pick modal", () => {
     Scene.expect(Scene.testId("prompt-card-10")).toExist(),
     Scene.expect(Scene.testId("prompt-card-11")).toExist(),
     Scene.expect(Scene.testId("prompt-submit")).toHaveText("Proliferate"),
+    Scene.tap((sim) => {
+      const picked = findTestId(sim.html, "prompt-card-10");
+      expect(dataAttr(picked, "selected")).toBe("true");
+      expect(className(picked)).toContain("data-[selected=true]:border-llanowar");
+      const rest = findTestId(sim.html, "prompt-card-11");
+      expect(dataAttr(rest, "selected")).toBe("false");
+    }),
   );
 });
 
@@ -2745,6 +2769,55 @@ test("gy exile cost aim shows coach when choices share a graveyard", () => {
     Scene.expect(Scene.testId("gy-exile-pick")).toBeAbsent(),
     Scene.expect(Scene.testId("gy-exile-pick-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
+  );
+});
+
+test("selectable pile card paints Island blue; selected paints Priority Gold via data attrs", () => {
+  const gy = card(8, {
+    name: "Fodder",
+    zone: ZONE.Graveyard,
+    kind: { kind: "creature", power: 1, toughness: 1 },
+  });
+  const other = card(9, {
+    name: "Other",
+    zone: ZONE.Graveyard,
+    kind: { kind: "creature", power: 1, toughness: 1 },
+  });
+  const castAction = action(50, {
+    kind: "cast",
+    label: testMessageRef("Cast"),
+    graveyard_exile_choices: [8],
+    graveyard_exile_min: 1,
+    graveyard_exile_max: 1,
+    object: 10,
+    section: "hand",
+  });
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        gyExilePick: {
+          action: castAction,
+          card: card(10, { name: "Caster", zone: ZONE.Hand, kind: { kind: "instant" } }),
+          dropSeed: { x: 0, y: 0 },
+          screenOrigin: { x: 0, y: 0 },
+          picks: { ...emptyCostPicks(), graveyard_exile: [8] },
+        },
+        pileExpand: { zone: ZONE.Graveyard, owner: 0 },
+      },
+      gameState({ objects: [gy, other] }),
+    ),
+    Scene.expect(Scene.testId("pile-card-8")).toExist(),
+    Scene.tap((sim) => {
+      const selected = findTestId(sim.html, "pile-card-8");
+      expect(dataAttr(selected, "selected")).toBe("true");
+      expect(dataAttr(selected, "selectable")).toBe("true");
+      expect(className(selected)).toContain("data-[selected=true]:ring-priority-gold");
+      expect(className(selected)).toContain("data-[selected=false]:ring-island-blue");
+
+      const inert = findTestId(sim.html, "pile-card-9");
+      expect(inert).toBeNull();
+    }),
   );
 });
 

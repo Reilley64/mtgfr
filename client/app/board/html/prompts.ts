@@ -171,13 +171,14 @@ function cardPickButton(item: ChoiceItem, state: VisibleState, picked: ReadonlyA
     [
       h.Type("button"),
       h.DataAttribute("testid", `prompt-card-${item.id}`),
+      h.DataAttribute("selected", selected ? "true" : "false"),
       h.AriaLabel(item.label),
       h.AriaPressed(selected ? "true" : "false"),
       h.OnClick(PromptCardToggled({ id: item.id })),
       h.Class(
         [
-          "relative cursor-pointer rounded-[9px] border-4 p-0 transition-transform duration-150 ease-out hover:-translate-y-1",
-          selected ? "border-llanowar" : "border-transparent",
+          "group/prompt-card relative cursor-pointer rounded-[9px] border-4 border-transparent p-0 transition-transform duration-150 ease-out hover:-translate-y-1",
+          "data-[selected=true]:border-llanowar",
         ].join(" "),
       ),
     ],
@@ -452,6 +453,7 @@ function orderPrompt(pending: Extract<PendingChoiceView, { kind: "order_triggers
     return h.div(
       [
         h.DataAttribute("testid", `prompt-order-${pos}`),
+        h.DataAttribute("selected", selected ? "true" : "false"),
         h.Draggable(true),
         h.OnDragStart(PromptOrderRowClicked({ pos })),
         h.AllowDrop(),
@@ -459,8 +461,8 @@ function orderPrompt(pending: Extract<PendingChoiceView, { kind: "order_triggers
         h.OnDragEnd(PromptOrderDragEnded()),
         h.Class(
           [
-            "flex cursor-grab items-center gap-2 rounded-hud border px-2 py-2 transition-colors active:cursor-grabbing",
-            selected ? "border-llanowar bg-llanowar/20 opacity-80" : "border-transparent bg-glass/50",
+            "group/prompt-order flex cursor-grab items-center gap-2 rounded-hud border border-transparent bg-glass/50 px-2 py-2 transition-colors active:cursor-grabbing",
+            "data-[selected=true]:border-llanowar data-[selected=true]:bg-llanowar/20 data-[selected=true]:opacity-80",
           ].join(" "),
         ),
       ],
@@ -1632,13 +1634,14 @@ function modeListPrompt(
             [
               h.Type("button"),
               h.DataAttribute("testid", `prompt-mode-choice-${choiceIndex}`),
+              h.DataAttribute("selected", selected ? "true" : "false"),
               h.AriaPressed(selected ? "true" : "false"),
               h.Disabled(tableId == null),
               h.OnClick(PromptModeChoiceToggled({ index: choice.index, target: choice.target ?? null })),
               h.Class(
                 [
-                  "rounded-hud px-3 py-2 text-left text-body",
-                  selected ? "bg-llanowar/25 text-snow" : "bg-glass text-snow",
+                  "group/prompt-mode rounded-hud bg-glass px-3 py-2 text-left text-body text-snow",
+                  "data-[selected=true]:bg-llanowar/25",
                   tableId == null ? "cursor-not-allowed opacity-50" : "hover:bg-glass-dim",
                 ].join(" "),
               ),
@@ -1732,13 +1735,14 @@ function playerPickPrompt(
               [
                 h.Type("button"),
                 h.DataAttribute("testid", `prompt-player-${seat}`),
+                h.DataAttribute("selected", selected ? "true" : "false"),
                 h.AriaPressed(selected ? "true" : "false"),
                 h.Disabled(tableId == null),
                 h.OnClick(PromptCardToggled({ id: seat })),
                 h.Class(
                   [
-                    "rounded-hud px-3 py-2 text-body",
-                    selected ? "bg-llanowar/25 text-snow" : "bg-glass text-snow",
+                    "group/prompt-player rounded-hud bg-glass px-3 py-2 text-body text-snow",
+                    "data-[selected=true]:bg-llanowar/25",
                     tableId == null ? "cursor-not-allowed opacity-50" : "hover:bg-glass-dim",
                   ].join(" "),
                 ),

@@ -126,6 +126,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Prompt text from the engine stays as `MessageRef` until the view edge; formulators use formatted text for titles but submit only structured answers.
 - `promptPresentation(board, state)` is the single presentation classifier for prompt chrome; it returns `none`, `simple`, or `modal`, tags whether a `simple` prompt is board-aim, and defaults uncategorized engine kinds to `modal`.
 - `promptsView` renders content only: bottom-docked coach strips for `simple` flows and centered `promptModalFrame` shells for `modal` flows, including the dimmed backdrop and in-modal action rows.
+- Interactive pick chrome prefers `data-selected` (and named `group/…` where hover-linked) over JS class ternaries — card-pick faces, order rows, trigger-mode / player-pick buttons, and pile overlay thumbs follow the AGENTS.md Tailwind data-attr pattern.
 
 ## Testing Decisions
 

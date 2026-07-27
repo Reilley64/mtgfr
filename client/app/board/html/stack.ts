@@ -130,16 +130,13 @@ function stackFace(opts: {
   style: Record<string, string>;
 }): Html {
   const faceClass = [
-    "absolute rounded-game shadow-hand",
-    opts.staged || opts.legalTarget ? "ring-2" : "",
-    opts.legalTarget ? "cursor-pointer" : "",
+    "group/stack-face absolute rounded-game shadow-hand",
+    "data-[legal-target=true]:cursor-pointer data-[legal-target=true]:ring-2 data-[legal-target=true]:ring-island-blue",
+    "data-[staged=true]:ring-2 data-[staged=true]:ring-island-blue",
     opts.isTop ? "group-hover/stack:shadow-[0_0_16px_rgba(255,215,106,0.4)]" : "",
   ]
     .filter((v) => v !== "")
     .join(" ");
-
-  const faceStyle: Record<string, string> = { ...opts.style };
-  if (opts.staged || opts.legalTarget) faceStyle["--tw-ring-color"] = TARGET_COLOR;
 
   const art: Html =
     opts.imageName && opts.print
@@ -162,12 +159,15 @@ function stackFace(opts: {
 
   const faceAttrs: Attribute<Message>[] = [
     h.Class(faceClass),
-    h.Style(faceStyle),
+    h.Style(opts.style),
     h.DataAttribute("testid", `stack-face-${opts.row}`),
     h.Attribute("title", opts.imageName ?? opts.label),
   ];
+  if (opts.staged) {
+    faceAttrs.push(h.DataAttribute("staged", "true"));
+  }
   if (opts.legalTarget) {
-    faceAttrs.push(h.DataAttribute("legal-target", "1"));
+    faceAttrs.push(h.DataAttribute("legal-target", "true"));
     faceAttrs.push(h.OnClick(TargetChosen({ target: { kind: "object", id: opts.source } })));
   }
   // Solid stack overlay: hover a face → Alt-inspect aux for that card.

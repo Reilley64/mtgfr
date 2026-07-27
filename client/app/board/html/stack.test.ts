@@ -504,7 +504,8 @@ test("legal stack face is highlighted and click submits take_action", () => {
     Scene.with({ board, fold, tableId: "T1" }),
     resolveBoardOverlayMounts(),
     resolveBoardCardArtMounts(3),
-    Scene.expect(Scene.selector('[data-legal-target="1"]')).toExist(),
+    Scene.expect(Scene.selector('[data-legal-target="true"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="stack-face-0"][data-legal-target="true"]')).toExist(),
     Scene.expect(Scene.testId("target-pick")).toBeAbsent(),
   );
   const [nextBoard, commands] = updateBoard(board, TargetChosen({ target: { kind: "object", id: 42 } }), fold, "T1");
