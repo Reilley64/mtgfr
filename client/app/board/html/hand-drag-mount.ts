@@ -6,12 +6,40 @@ import * as Mount from "foldkit/mount";
 import type { ActionView, WireCost } from "~/wire/types";
 import { formatMessage } from "../../domain/i18n/message";
 import { HandActionHovered, HandDragEnded, HandDragMoved, HandDragStarted } from "../messages";
+import { clientToBoardPoint } from "./camera-gesture-mount";
 
 type HandDragMessage =
   | typeof HandDragStarted.Type
   | typeof HandDragMoved.Type
   | typeof HandDragEnded.Type
   | typeof HandActionHovered.Type;
+
+function boardGestureHost(): HTMLElement | null {
+  if (typeof document === "undefined") return null;
+  return document.querySelector<HTMLElement>('[data-testid="board-camera-gesture-mount"]');
+}
+
+/**
+ * Map viewport client coordinates into board logical space for canvas drag paint.
+ * HTML ghosts used `position:fixed` with client coords; the flight canvas paints in
+ * board viewport space (stretched via CSS), so raw clientX/Y sit off-cursor.
+ */
+export function clientToHandDragPoint(clientX: number, clientY: number): { x: number; y: number } {
+  const host = boardGestureHost();
+  if (host == null) return { x: clientX, y: clientY };
+  const mapped = clientToBoardPoint(host, clientX, clientY);
+  if (mapped != null) return mapped;
+  const rect = host.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return { x: clientX, y: clientY };
+  const boardWidth = Number(host.dataset.boardWidth);
+  const boardHeight = Number(host.dataset.boardHeight);
+  const width = Number.isFinite(boardWidth) && boardWidth > 0 ? boardWidth : rect.width;
+  const height = Number.isFinite(boardHeight) && boardHeight > 0 ? boardHeight : rect.height;
+  return {
+    x: ((clientX - rect.left) / rect.width) * width,
+    y: ((clientY - rect.top) / rect.height) * height,
+  };
+}
 
 function readBarZone(zone: string | undefined): "hand" | "command" | "graveyard" | "exile" | null {
   if (zone === "hand" || zone === "command" || zone === "graveyard" || zone === "exile") {
@@ -104,20 +132,24 @@ export const MountHandBarDrag = Mount.defineStream(
             if (hit == null) return;
             event.preventDefault();
             teardown();
-            const payload = readHandDragPayload(hit, event.clientX, event.clientY);
+            const at = clientToHandDragPoint(event.clientX, event.clientY);
+            const payload = readHandDragPayload(hit, at.x, at.y);
             if (payload == null) return;
             Queue.offerUnsafe(queue, payload);
             clearGrab = armHandDragGrabbingCursor();
-            move = (ev) => Queue.offerUnsafe(queue, HandDragMoved({ x: ev.clientX, y: ev.clientY }));
+            move = (ev) => {
+              const point = clientToHandDragPoint(ev.clientX, ev.clientY);
+              Queue.offerUnsafe(queue, HandDragMoved({ x: point.x, y: point.y }));
+            };
             up = (ev) => {
               teardown();
-              Queue.offerUnsafe(queue, HandDragEnded({ x: ev.clientX, y: ev.clientY }));
+              const point = clientToHandDragPoint(ev.clientX, ev.clientY);
+              Queue.offerUnsafe(queue, HandDragEnded({ x: point.x, y: point.y }));
             };
             cancel = () => {
               teardown();
-              Queue.offerUnsafe(queue, HandDragEnded({ x: event.clientX, y: event.clientY }));
-            };
-            window.addEventListener("pointermove", move);
+              Queue.offerUnsafe(queue, HandDragEnded({ x: at.x, y: at.y }));
+            };            window.addEventListener("pointermove", move);
             window.addEventListener("pointerup", up);
             window.addEventListener("pointercancel", cancel);
           };

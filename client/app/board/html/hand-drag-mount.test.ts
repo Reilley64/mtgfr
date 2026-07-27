@@ -5,7 +5,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView } from "~/wire/types";
-import { armHandDragGrabbingCursor, readHandDragPayload, setHandDragGrabbingCursor } from "./hand-drag-mount";
+import { armHandDragGrabbingCursor, clientToHandDragPoint, readHandDragPayload, setHandDragGrabbingCursor } from "./hand-drag-mount";
 
 function action(section: ActionView["section"]): ActionView {
   return {
@@ -30,6 +30,58 @@ function hit(args: { action: ActionView; barZone?: string }): HTMLElement {
   }
   return element;
 }
+
+describe("clientToHandDragPoint", () => {
+  afterEach(() => {
+    document.body.replaceChildren();
+  });
+
+  it("maps client coordinates into board logical space via the gesture host", () => {
+    const host = document.createElement("div");
+    host.dataset.testid = "board-camera-gesture-mount";
+    host.dataset.boardWidth = "1440";
+    host.dataset.boardHeight = "900";
+    host.getBoundingClientRect = () =>
+      ({
+        left: 0,
+        top: 0,
+        width: 720,
+        height: 450,
+        right: 720,
+        bottom: 450,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }) as DOMRect;
+    document.body.append(host);
+
+    // Mid-window client point must land at mid-board when the CSS box is half the logical size.
+    expect(clientToHandDragPoint(360, 225)).toEqual({ x: 720, y: 450 });
+  });
+
+  it("still projects when the pointer is above the hand bar (outside a strict host hit test)", () => {
+    const host = document.createElement("div");
+    host.dataset.testid = "board-camera-gesture-mount";
+    host.dataset.boardWidth = "1440";
+    host.dataset.boardHeight = "900";
+    host.getBoundingClientRect = () =>
+      ({
+        left: 0,
+        top: 0,
+        width: 720,
+        height: 450,
+        right: 720,
+        bottom: 450,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }) as DOMRect;
+    document.body.append(host);
+
+    // 10px above the host — drag must keep tracking in board space, not fall back to raw clientY.
+    expect(clientToHandDragPoint(360, -10)).toEqual({ x: 720, y: -20 });
+  });
+});
 
 describe("setHandDragGrabbingCursor", () => {
   afterEach(() => {
