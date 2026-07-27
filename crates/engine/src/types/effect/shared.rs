@@ -384,6 +384,15 @@ pub enum Amount {
         times: i32,
         by: &'static Amount,
     },
+    /// Half of `of`, rounding up or down as the card says (Aspect of Wolf's "+X/+Y, where X is
+    /// half the number of Forests you control, rounded down, and Y is … rounded up"). `of` is
+    /// `&'static` (leaked) for the same reason [`Scaled`](Self::Scaled)'s `by` is. The two
+    /// X-scoped halves above stay separate: they are rewritten to `Fixed` at trigger placement
+    /// by `fill_cast_x`, which reads the variant, not the amount inside it.
+    Half {
+        of: &'static Amount,
+        round_up: bool,
+    },
     /// How many cards were discarded during this resolution's edict fan-out (Syphon Mind's "for
     /// each card discarded this way"; Malfegor's discarded hand size) — a resolution-local tally on
     /// [`ResolutionFrame::cards_discarded_this_way`].

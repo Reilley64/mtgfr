@@ -295,6 +295,10 @@ impl Game {
             Amount::Scaled { times, by } => {
                 times * self.resolve_amount(*by, controller, source, target, x)
             }
+            Amount::Half { of, round_up } => {
+                let n = self.resolve_amount(*of, controller, source, target, x);
+                if round_up { (n + 1) / 2 } else { n / 2 }
+            }
             Amount::CardsDiscardedThisWay => self.resolution_frame.cards_discarded_this_way as i32,
             Amount::CreaturesSacrificedThisWay => {
                 self.resolution_frame.creatures_sacrificed_this_way as i32

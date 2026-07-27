@@ -1226,8 +1226,23 @@ impl<'de> Deserialize<'de> for Amount {
                     times: Option<i32>,
                     #[serde(default)]
                     per: Option<Amount>,
+                    /// `{ half = "per_creature_you_control", round_up = true }` —
+                    /// [`Amount::Half`]. `round_up` defaults to false: a card that halves a count
+                    /// says which way it rounds, and Aspect of Wolf prints both.
+                    #[serde(default)]
+                    half: Option<Amount>,
+                    #[serde(default)]
+                    round_up: bool,
                 }
                 let t = Table::deserialize(de::value::MapAccessDeserializer::new(map))?;
+                // `half` wraps another amount rather than naming a count of its own, so it is
+                // answered here instead of joining the exactly-one-of table below.
+                if let Some(of) = t.half {
+                    return Ok(Amount::Half {
+                        of: &*Box::leak(Box::new(of)),
+                        round_up: t.round_up,
+                    });
+                }
                 match (
                     t.per_permanent,
                     t.per_counter_of_kind,
@@ -1324,7 +1339,7 @@ impl<'de> Deserialize<'de> for Amount {
                         "an amount table needs exactly one of `per_permanent`, `per_counter_of_kind`, \
                          `condition`+`then`, `if_kicked`+`else`, `if_main_phase`+`else`, \
                          `permanents_destroyed_this_way`, \
-                         `auras_attached_to_source`, or `times`+`per`",
+                         `auras_attached_to_source`, `times`+`per`, or `half`",
                     )),
                 }
             }

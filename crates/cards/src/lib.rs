@@ -2491,6 +2491,36 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         );
     }
 
+    /// Aspect of Wolf's two halves round *opposite* ways off the same count — swap them and the
+    /// card is wrong on every odd number of Forests, which is the only interesting case.
+    #[test]
+    fn unlimited_aspect_of_wolf_rounds_its_power_down_and_its_toughness_up() {
+        let aspect = get_by_name("Aspect of Wolf").expect("Aspect of Wolf is in the pool");
+        let [ability] = &aspect.abilities[..] else {
+            panic!("one static");
+        };
+        let Effect::Static(StaticEffect::GrantToAttached {
+            power, toughness, ..
+        }) = ability.effect
+        else {
+            panic!("it pumps the creature it enchants");
+        };
+        let (
+            Amount::Half {
+                of: forests,
+                round_up: false,
+            },
+            Amount::Half {
+                of: same,
+                round_up: true,
+            },
+        ) = (power, toughness)
+        else {
+            panic!("power halves down, toughness halves up");
+        };
+        assert_eq!(forests, same, "both halve the same count of Forests");
+    }
+
     /// Natural Selection's shuffle is a second effect, not a flag on the look: the caster is asked
     /// only after they have already put the three cards back in the order they wanted, so the
     /// choice they are making is whether to throw that ordering away.

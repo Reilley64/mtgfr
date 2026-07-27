@@ -1103,6 +1103,7 @@ fn amount_token(amount: Amount) -> &'static str {
         Amount::CardsDiscardedThisWay => "cards_discarded_this_way",
         Amount::CreaturesSacrificedThisWay => "creatures_sacrificed_this_way",
         Amount::Scaled { .. } => "scaled",
+        Amount::Half { .. } => "half",
         Amount::IfSpellCastDuringMainPhase { .. } => "if_spell_cast_during_main_phase",
         Amount::RevealedCreatureManaValue => "revealed_creature_mana_value",
         Amount::PermanentsDiedThisTurn => "permanents_died_this_turn",

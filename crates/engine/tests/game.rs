@@ -105989,3 +105989,40 @@ fn natural_selection_may_have_that_player_shuffle_the_order_away() {
         "the targeted player shuffles, not the caster"
     );
 }
+
+#[test]
+fn aspect_of_wolf_splits_half_your_forests_between_power_and_toughness() {
+    // Aspect of Wolf: "Enchanted creature gets +X/+Y, where X is half the number of Forests you
+    // control, rounded down, and Y is half the number of Forests you control, rounded up." An odd
+    // number of Forests is the whole point of the card — the two halves disagree by one.
+    let mut game = Game::new();
+    let host = game.spawn_on_battlefield(PlayerId(0), VANILLA.clone()); // 2/2
+    for _ in 0..3 {
+        game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    }
+    let aspect = game.spawn_in_hand(PlayerId(0), card("Aspect of Wolf"));
+    cast_and_resolve(&mut game, aspect, Some(Target::Object(host)));
+
+    assert_eq!(
+        game.power(host),
+        2 + 1,
+        "three Forests are +1 power, rounded down"
+    );
+    assert_eq!(game.toughness(host), 2 + 2, "and +2 toughness, rounded up");
+
+    game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    assert_eq!(
+        game.power(host),
+        2 + 2,
+        "a fourth Forest closes the gap, live"
+    );
+    assert_eq!(game.toughness(host), 2 + 2);
+
+    game.spawn_on_battlefield(PlayerId(1), card("Forest"));
+    assert_eq!(
+        game.power(host),
+        2 + 2,
+        "a Forest you do not control is not counted"
+    );
+    assert_eq!(game.toughness(host), 2 + 2);
+}

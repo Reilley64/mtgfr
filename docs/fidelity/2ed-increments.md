@@ -1195,7 +1195,7 @@ the source's declared defender. Note the card is also blocked on #8 for its seco
 land-subtype change with an unusual duration.
 *Cards:* gaea_s_liege.
 
-### 75. `half-of-a-count-amounts` — 1 card, S
+### 75. `half-of-a-count-amounts` — 1 card, S — **done**
 Depends on: nothing.
 Split out of #2, where it never belonged — this is an Aura pump, not a defining ability. Aspect of
 Wolf: "Enchanted creature gets +X/+Y, where X is half the number of Forests you control, rounded
@@ -1207,6 +1207,16 @@ count. *Sketch:* an `Amount::Half { of: Box<Amount>, round_up: bool }` wrapper, 
 two X-scoped variants; check whether folding them in is smaller than leaving them alone before
 doing it.
 *Cards:* aspect_of_wolf.
+
+*Landed:* `Amount::Half { of, round_up }`, with `of` leaked to `&'static` the way `Amount::Scaled`
+already leaks its `by` — nesting an amount inside an amount is a solved problem here, so this was
+one variant, one resolver arm, one authoring key. Folding `HalfX`/`HalfXRoundedDown` in was not
+smaller: `fill_cast_x` matches on those two variants by name to rewrite a `Trigger::YouCastThis`
+ability's amount to a `Fixed` at placement, so subsuming them would mean teaching that rewrite to
+walk inside a wrapper for no card's benefit. They stay.
+
+The authoring key is answered ahead of the amount table's exactly-one-of match rather than joining
+it, since a twelfth slot in that tuple buys nothing when the key is unambiguous on its own.
 
 ### 76. `defining-power-toughness-on-an-enchanted-host` — 1 card, M
 Depends on: #2 (done).

@@ -1718,6 +1718,13 @@ Write one of:
   coefficient Amounts otherwise lack — use it when the printed multiplier isn't 1 and the effect
   can't split into that many summed statics (see the `per_permanent`/`self_only` anthem idiom for
   the static-splitting alternative).
+- a halved amount: `{ half = <Amount>, round_up = <bool, default false> }` — half the resolved
+  inner amount (Aspect of Wolf's "+X/+Y, where X is half the number of Forests you control,
+  rounded down, and Y is ... rounded up" is `power = { half = { per_permanent = { subtypes =
+  ["Forest"], controller = "you" } } }`, and the same table with `round_up = true` for
+  `toughness`). Rounding defaults to down, so a card that rounds up has to say so. Distinct from
+  the `"half_x"` / `"half_x_rounded_down"` keywords, which halve the *casting spell's `{X}`* and
+  are rewritten to a fixed number when the trigger is placed.
 
 A non-negative-count field (draw/mill/token/counter) clamps a negative result to 0.
 
