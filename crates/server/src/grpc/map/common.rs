@@ -196,6 +196,7 @@ pub fn wire_kind_to_pb(kind: WireKind) -> pb::WireKind {
         WireKind::Planeswalker { loyalty } => {
             Kind::Planeswalker(pb::wire_kind::Planeswalker { loyalty })
         }
+        WireKind::Battle { defense } => Kind::Battle(pb::wire_kind::Battle { defense }),
         WireKind::Land { colors } => Kind::Land(pb::wire_kind::Land {
             colors: u8s(colors),
         }),
@@ -216,6 +217,7 @@ pub fn wire_kind_from_pb(kind: pb::WireKind) -> Result<WireKind, String> {
         Some(Kind::Planeswalker(pb::wire_kind::Planeswalker { loyalty })) => {
             Ok(WireKind::Planeswalker { loyalty })
         }
+        Some(Kind::Battle(pb::wire_kind::Battle { defense })) => Ok(WireKind::Battle { defense }),
         Some(Kind::Land(pb::wire_kind::Land { colors })) => Ok(WireKind::Land {
             colors: colors.into_iter().map(u8_trunc).collect(),
         }),

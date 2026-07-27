@@ -1044,6 +1044,7 @@ message VisibleEvent {
     VisibleEventPutFromHandOnTop put_from_hand_on_top = 129;
     VisibleEventBasePtSetIndefinite base_pt_set_indefinite = 130;
     VisibleEventSplitHalfSpellCast split_half_spell_cast = 131;
+    VisibleEventPlayerPoisonChanged player_poison_changed = 132;
   }
 }
 
@@ -1243,6 +1244,11 @@ message VisibleEventKindCountersPlaced {
 message VisibleEventLoyaltyChanged {
   uint32 object = 1;
   int32 amount = 2;
+}
+
+message VisibleEventPlayerPoisonChanged {
+  uint32 player = 1;
+  int32 count = 2;
 }
 
 // A planeswalker's once-per-turn loyalty flag was set/cleared (CR 606.3).

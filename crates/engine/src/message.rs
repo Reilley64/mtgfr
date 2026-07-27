@@ -100,6 +100,8 @@ message_keys! {
     EFFECT_COUNTERS_PUT_COUNTERS_EACH => "effect.counters_put_counters_each",
     EFFECT_COUNTERS_REMOVE_ALL_COUNTERS_THEN_DRAW => "effect.counters_remove_all_counters_then_draw",
     EFFECT_COUNTERS_REMOVE_COUNTER_FROM_SELF => "effect.counters_remove_counter_from_self",
+    EFFECT_COUNTERS_EACH_OPPONENT_GETS_POISON => "effect.counters_each_opponent_gets_poison",
+    EFFECT_COUNTERS_EACH_OPPONENT_LOSES_ALL_COUNTERS => "effect.counters_each_opponent_loses_all_counters",
     EFFECT_CHOICE_CAST_CREATURE_FACE_DOWN => "effect.choice_cast_creature_face_down",
     EFFECT_CHOICE_CASTER_KEEPS_ONE_OF_EACH_TYPE_PER_PLAYER => "effect.choice_caster_keeps_one_of_each_type_per_player",
     EFFECT_CHOICE_CHOOSE_COLOR => "effect.choice_choose_color",
@@ -727,6 +729,9 @@ fn type_set_token(types: TypeSet) -> String {
     if types.intersects(TypeSet::PLANESWALKER) {
         parts.push("planeswalker".to_string());
     }
+    if types.intersects(TypeSet::BATTLE) {
+        parts.push("battle".to_string());
+    }
     if types.intersects(TypeSet::LAND) {
         parts.push("land".to_string());
     }
@@ -1310,6 +1315,13 @@ impl Effect {
             }
             Effect::Counters(RemoveCounterFromSelf) => {
                 MessageRef::new(MessageKey::EFFECT_COUNTERS_REMOVE_COUNTER_FROM_SELF)
+            }
+            Effect::Counters(EachOpponentGetsPoison { count }) => {
+                MessageRef::new(MessageKey::EFFECT_COUNTERS_EACH_OPPONENT_GETS_POISON)
+                    .with_params(vec![int_param("count", count)])
+            }
+            Effect::Counters(EachOpponentLosesAllCounters) => {
+                MessageRef::new(MessageKey::EFFECT_COUNTERS_EACH_OPPONENT_LOSES_ALL_COUNTERS)
             }
             Effect::Mana(ManaEffect::Add { .. }) => MessageRef::new(MessageKey::EFFECT_MANA_ADD),
             Effect::Mill(Mill { count, .. }) => MessageRef::new(MessageKey::EFFECT_MILL_MILL)

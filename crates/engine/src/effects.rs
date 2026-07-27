@@ -178,7 +178,8 @@ impl Game {
             CardKind::Creature { .. }
             | CardKind::Enchantment
             | CardKind::Artifact
-            | CardKind::Planeswalker { .. } => {
+            | CardKind::Planeswalker { .. }
+            | CardKind::Battle { .. } => {
                 self.resolve_permanent_enter(spell, object, events);
             }
             CardKind::Aura => {

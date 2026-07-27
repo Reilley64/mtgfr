@@ -956,6 +956,12 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> Option<pb::VisibleEvent> {
         VisibleEvent::LoyaltyChanged { object, amount } => {
             Event::LoyaltyChanged(pb::VisibleEventLoyaltyChanged { object, amount })
         }
+        VisibleEvent::PlayerPoisonChanged { player, count } => {
+            Event::PlayerPoisonChanged(pb::VisibleEventPlayerPoisonChanged {
+                player: u32::from(player),
+                count,
+            })
+        }
         VisibleEvent::LoyaltyActivated { object, active } => {
             Event::LoyaltyActivated(pb::VisibleEventLoyaltyActivated { object, active })
         }

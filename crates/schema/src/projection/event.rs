@@ -236,6 +236,10 @@ pub(crate) fn project_event(
             count,
         },
         Event::LoyaltyChanged { object, amount } => VisibleEvent::LoyaltyChanged { object, amount },
+        Event::PlayerPoisonChanged { player, count } => VisibleEvent::PlayerPoisonChanged {
+            player: player.0,
+            count,
+        },
         Event::LoyaltyActivated { object, active } => {
             VisibleEvent::LoyaltyActivated { object, active }
         }

@@ -71356,11 +71356,8 @@ fn ingenious_prodigy_no_counters_no_upkeep_draw() {
 }
 
 #[test]
-fn final_act_choose_one_or_more_over_its_two_expressible_modes() {
-    // Final Act: "Choose one or more — destroy all creatures / destroy all planeswalkers /
-    // destroy all battles / exile all graveyards / each opponent loses all counters." Only two of
-    // the five modes are expressible; choosing both at once destroys the creature and the
-    // planeswalker.
+fn final_act_choose_one_or_more_destroys_creatures_and_planeswalkers() {
+    // Final Act: "Choose one or more — …" — modes 0 and 1 destroy all creatures / planeswalkers.
     let mut g = TestGame::new();
     let creature = g.spawn_on_battlefield(PlayerId(0), VANILLA.clone());
     let walker = g.spawn_on_battlefield(PlayerId(1), test_planeswalker("Test Walker", 3));
@@ -71382,7 +71379,7 @@ fn final_act_choose_one_or_more_over_its_two_expressible_modes() {
 
 #[test]
 fn final_act_exile_all_graveyards_mode_empties_every_graveyard() {
-    // Final Act mode 2 ("exile all graveyards") exiles every player's graveyard, no target —
+    // Final Act mode 3 ("exile all graveyards") exiles every player's graveyard, no target —
     // contrast with the single-target `exile_graveyard` (Bojuka Bog) above, which only empties
     // whichever player it's aimed at.
     let mut g = TestGame::new();
@@ -71391,7 +71388,7 @@ fn final_act_exile_all_graveyards_mode_empties_every_graveyard() {
     let forest = g.spawn_in_graveyard(PlayerId(1), card("Forest"));
 
     let act = g.spawn_in_hand(PlayerId(0), card("Final Act"));
-    g.cast(act).mode(2, None).resolve();
+    g.cast(act).mode(3, None).resolve();
 
     assert_eq!(
         g.zone_of(mountain),
@@ -71413,6 +71410,57 @@ fn final_act_exile_all_graveyards_mode_empties_every_graveyard() {
         0,
         "a graveyard that isn't the caster's own is fully emptied"
     );
+}
+
+#[test]
+fn final_act_destroy_all_battles_mode_destroys_battles() {
+    let mut g = TestGame::new();
+    let battle = g.spawn_on_battlefield(PlayerId(1), card("Invasion of Mercadia"));
+    let bear = g.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+
+    let act = g.spawn_in_hand(PlayerId(0), card("Final Act"));
+    g.cast(act).mode(2, None).resolve();
+
+    assert_eq!(
+        g.zone_of(battle),
+        Zone::Graveyard,
+        "destroy all battles hits the siege"
+    );
+    assert_eq!(
+        g.zone_of(bear),
+        Zone::Battlefield,
+        "creatures are untouched by the battles-only mode"
+    );
+}
+
+#[test]
+fn final_act_each_opponent_loses_all_counters_clears_poison() {
+    let mut g = TestGame::new();
+    // Infectious Inquiry: draw 2, lose 2, each opponent gets a poison counter.
+    let inquiry = g.spawn_in_hand(PlayerId(0), card("Infectious Inquiry"));
+    g.cast(inquiry).resolve();
+    assert_eq!(
+        g.poison(PlayerId(1)),
+        1,
+        "opponent received a poison counter"
+    );
+    assert_eq!(g.poison(PlayerId(0)), 0, "caster does not poison themself");
+
+    let act = g.spawn_in_hand(PlayerId(0), card("Final Act"));
+    g.cast(act).mode(4, None).resolve();
+
+    assert_eq!(
+        g.poison(PlayerId(1)),
+        0,
+        "each opponent loses all counters clears poison"
+    );
+}
+
+#[test]
+fn invasion_of_mercadia_enters_with_starting_defense() {
+    let mut g = TestGame::new();
+    let battle = g.spawn_on_battlefield(PlayerId(0), card("Invasion of Mercadia"));
+    assert_eq!(g.loyalty(battle), 4, "battle enters with printed defense");
 }
 
 #[test]

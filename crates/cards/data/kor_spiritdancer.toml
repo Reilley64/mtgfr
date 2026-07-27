@@ -9,6 +9,7 @@ id = "2bfc7467-1316-43d3-9ca6-ff36cc2de607"
 default_print = "48da45bd-ed72-4239-af02-e848703a1d02"
 otags = ["cast-trigger-you", "color-break", "draw-engine", "enchantment-engine", "repeatable-pure-draw", "uril-ability"]
 oracle = "This creature gets +2/+2 for each Aura attached to it.\nWhenever you cast an Aura spell, you may draw a card."
+approximates = "Amounts carry no per-unit coefficient, so the +2/+2-per-Aura is modeled as two summed +1/+1-per-Aura self-statics (the pool's idiom — eidolon_of_countless_battles does the same for a doubled anthem)."
 subtypes = ["Kor", "Wizard"]
 
 [cost]

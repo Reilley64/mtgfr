@@ -689,6 +689,8 @@ impl Effect {
             | Effect::Life(LifeEffect::EachOpponentLoses { .. })
             | Effect::Life(LifeEffect::EachPlayerLoses { .. })
             | Effect::Life(LifeEffect::EachPlayerBecomesHighest)
+            | Effect::Counters(CountersEffect::EachOpponentGetsPoison { .. })
+            | Effect::Counters(CountersEffect::EachOpponentLosesAllCounters)
             | Effect::Dig(DigEffect::Scry { .. })
             | Effect::Dig(DigEffect::Surveil { .. })
             | Effect::Dig(DigEffect::LookAtTop { .. })

@@ -2222,6 +2222,9 @@ pub enum Event {
     },
     /// A planeswalker's loyalty changed by `amount` (a loyalty ability's cost: +N / 0 / −N).
     LoyaltyChanged { object: ObjectId, amount: i32 },
+    /// `count` poison counters were placed on (positive) or removed from (negative) a player.
+    /// Absolute clear to zero is a negative delta equal to their current poison.
+    PlayerPoisonChanged { player: PlayerId, count: i32 },
     /// A planeswalker's once-per-turn loyalty-ability flag was set (`active = true`, when a loyalty
     /// ability is activated) or cleared (`active = false`, at its controller's untap). CR 606.3.
     LoyaltyActivated { object: ObjectId, active: bool },

@@ -1,6 +1,6 @@
 # Card DSL and Card Pool
 
-**Status:** Current (as of 2026-07-26)
+**Status:** Current (as of 2026-07-27)
 **Module:** `crates/cards` (`data/*.toml`, `data/tokens/*.toml`), `crates/engine` (`src/de.rs`, `src/types/effect/` — `CardDef`, `Ability`, `Effect`, family enums, `Timing`), `docs/decklists/*.md`
 
 ---
@@ -15,7 +15,7 @@ Card behavior in Magic is vast and varied. Encoding it per-card in engine code w
 
 Each card is a TOML file in `crates/cards/data/` that deserializes into a `CardDef` struct in `crates/engine`. `CardDef` is `Clone`, not `Copy`. Printed list-like fields (`abilities`, `keywords`, `conditional_keywords`, `identity_pips`, `colors`, `subtypes`, `otags`, `hand_ability`, `halves`) deserialize into `Arc<[T]>`, while runtime game objects and events intern each printed definition into a `CardId -> Arc<CardDef>` table and carry the small handle instead. Nested `[back]` / `[adventure]` faces are interned during deserialization as stable `CardId`s, so flip/adventure/prepare flows read and restore them without minting new handles at runtime. Card behavior is expressed as `Ability { timing, effect }` pairs; the `Effect` enum is the vocabulary. The DSL grows **only when a real card demands it** (card-dsl-and-card-pool spec). Gaps are flagged via the `approximates` field and `# ponytail:` comments rather than forced approximations. Token profiles live in `data/tokens/` and are referenced by Scryfall oracle id from creating cards.
 
-Thirty-nine token profiles and 719 deckable card TOMLs are present as of 2026-07-26. Ten decklists live in `docs/decklists/*.md` (the five Secrets of Strixhaven decks and five additional non-SoC lists). The five Secrets of Strixhaven precons are now the first closed fidelity proving ground: Prismari Artistry (85/85), Quandrix Unlimited (87/87), and Lorehold Spirit (83/83) are fully faithful, while Silverquill Influence and Witherbloom Pestilence each retain one named residual (`Herald of Amity`, `Final Act`).
+Thirty-nine token profiles and 724 deckable card TOMLs are present as of 2026-07-27. Ten decklists live in `docs/decklists/*.md` (the five Secrets of Strixhaven decks and five additional non-SoC lists). The five Secrets of Strixhaven precons cover every Scryfall `soc` oracle (375), including the three Talismans that were previously missing from the pool; `Final Act` is fully modal. Remaining named SoC residuals are honest `approximates` notes (including `Herald of Amity`'s deferred resolution-time free cast) — every `# ponytail:` now pairs with an `approximates` field.
 
 ---
 
@@ -30,7 +30,7 @@ Thirty-nine token profiles and 719 deckable card TOMLs are present as of 2026-07
 7. As a **deck builder user**, I want oracle tags (`otags`) for thematic search (e.g. "typal-spirit", "ramp") even for cards whose rules aren't implemented as a tag.
 8. As a **test author**, I want to construct `CardDef` values inline in tests without parsing TOML, so unit tests are self-contained.
 9. As a **Commander player**, I want my commander's color identity enforced at deck-build time, so I can't accidentally include off-color cards.
-10. As a **player**, I want the pool's ~719 cards available for deck building, spanning the five SoC Commander precon lists and additional curated cards.
+10. As a **player**, I want the pool's ~724 cards available for deck building, spanning the five SoC Commander precon lists and additional curated cards.
 
 ---
 
@@ -173,7 +173,7 @@ Ten decklists live in `docs/decklists/*.md`:
 - Five additional lists: Political Puppets, Mirror Mastery, Enchantress Rubinia, Deathdancer Xira,
   Heavenly Inferno.
 
-These are the **first closed fidelity target** (card-dsl-and-card-pool spec): every card in these lists is now in the pool and closed at the fidelity-report bar, with only two named residuals left across the full program (`Herald of Amity` and `Final Act`). The north star (card-dsl-and-card-pool spec) remains any card, faithfully — the SoC decks are the proving ground, not the ceiling.
+These are the **first closed fidelity target** (card-dsl-and-card-pool spec): every card in these lists is now in the pool and closed at the fidelity-report bar. `Final Act`'s five modes are expressible; remaining named SoC residuals ride honest `approximates` notes (notably `Herald of Amity`'s deferred mid-resolution free cast). The north star (card-dsl-and-card-pool spec) remains any card, faithfully — the SoC decks are the proving ground, not the ceiling.
 
 ### Deck-builder legality
 

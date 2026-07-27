@@ -146,6 +146,7 @@ export type WireKind =
   | { kind: "enchantment" }
   | { kind: "artifact" }
   | { kind: "planeswalker"; loyalty: number }
+  | { defense: number; kind: "battle" }
   | { colors: Array<number>; kind: "land" };
 export type WireOfColorsMana = { amount: number; mask: number };
 export type U32 = number;
@@ -281,6 +282,7 @@ export type VisibleEvent =
   | { count: number; kind: "counters_placed"; object: U32 }
   | { count: number; counter_kind: number; kind: "kind_counters_placed"; object: U32 }
   | { amount: number; kind: "loyalty_changed"; object: U32 }
+  | { count: number; kind: "player_poison_changed"; player: number }
   | { active: boolean; kind: "loyalty_activated"; object: U32 }
   | { ability_index: number; kind: "ability_activated_this_turn"; object: U32 }
   | { kind: "triggered_ability_this_turn"; source: U32 }

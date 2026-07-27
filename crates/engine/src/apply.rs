@@ -107,7 +107,7 @@ impl Game {
                         || (!self.has_keyword(id, Keyword::Indestructible)
                             && (p.marked_damage >= toughness || p.deathtouched))
                 }
-                CardKind::Planeswalker { .. } => p.loyalty <= 0,
+                CardKind::Planeswalker { .. } | CardKind::Battle { .. } => p.loyalty <= 0,
                 _ => false,
             };
             if !dies {
@@ -1184,6 +1184,10 @@ impl Game {
             }
             Event::LoyaltyChanged { object, amount } => {
                 self.permanent_mut(object).loyalty += amount
+            }
+            Event::PlayerPoisonChanged { player, count } => {
+                let slot = &mut self.players[player.0 as usize].poison;
+                *slot = ((*slot as i32) + count).max(0) as u8;
             }
             Event::LoyaltyActivated { object, active } => {
                 self.permanent_mut(object).loyalty_activated = active

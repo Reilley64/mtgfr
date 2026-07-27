@@ -309,8 +309,9 @@ impl TypeSet {
     pub const ENCHANTMENT: TypeSet = TypeSet(4);
     pub const PLANESWALKER: TypeSet = TypeSet(8);
     pub const LAND: TypeSet = TypeSet(16);
-    /// The four nonland permanent types — "any nonland permanent."
-    pub const NONLAND: TypeSet = TypeSet(1 | 2 | 4 | 8);
+    pub const BATTLE: TypeSet = TypeSet(32);
+    /// The five nonland permanent types — "any nonland permanent."
+    pub const NONLAND: TypeSet = TypeSet(1 | 2 | 4 | 8 | 32);
     /// No types. As a filter's `types` it means "no restriction"; as a creature's `also` it
     /// means "no additional types." Same bits, read by context.
     pub const NONE: TypeSet = TypeSet(0);
@@ -354,6 +355,11 @@ pub enum CardKind {
     /// A planeswalker: a permanent that enters with `loyalty` starting loyalty (CR 606.5b) and
     /// whose loyalty abilities are activated at sorcery speed, once per turn (see [`ActivationCost`]).
     Planeswalker { loyalty: i32 },
+    /// A battle: a permanent that enters with `defense` starting defense counters (CR 310.1 /
+    /// 310.2). Stored in [`Permanent::loyalty`] (same counter slot planeswalkers use for loyalty).
+    /// Siege protectors, attack-for-defense, and transform-on-defeat are not modeled yet — the
+    /// pool only needs battles as destroyable permanents for Final Act's mass mode.
+    Battle { defense: i32 },
     /// A land. `produces` is optional sugar for the common "{T}: Add one mana" tap: `Some(m)`
     /// gives the land a free base tap-for-one ([`Game::tap_for_mana`]), while `None` marks a
     /// land with *no* intrinsic mana ability — either a fetch-only land (Prismatic Vista,
@@ -384,6 +390,7 @@ impl CardKind {
             CardKind::Enchantment | CardKind::Aura => TypeSet::ENCHANTMENT,
             CardKind::Artifact => TypeSet::ARTIFACT,
             CardKind::Planeswalker { .. } => TypeSet::PLANESWALKER,
+            CardKind::Battle { .. } => TypeSet::BATTLE,
             CardKind::Land { .. } => TypeSet::LAND,
             CardKind::Spell { .. } => TypeSet::NONE,
         }
@@ -398,6 +405,7 @@ impl CardKind {
             | CardKind::Aura
             | CardKind::Artifact
             | CardKind::Planeswalker { .. }
+            | CardKind::Battle { .. }
             | CardKind::Land { .. } => true,
             CardKind::Spell { speed } => speed == SpellSpeed::Sorcery,
         }
@@ -1132,6 +1140,8 @@ pub(crate) fn fresh_permanent(
 pub(crate) fn starting_loyalty(def: &CardDef) -> i32 {
     match def.kind {
         CardKind::Planeswalker { loyalty } => loyalty,
+        // Battles store starting defense in the same `Permanent::loyalty` slot.
+        CardKind::Battle { defense } => defense,
         _ => 0,
     }
 }
@@ -1949,6 +1959,10 @@ pub(crate) const HAND_SIZE: usize = 7;
 #[derive(Debug, Clone, Default)]
 pub(crate) struct Player {
     pub(crate) life: i32,
+    /// Poison counters on this player (CR 704.5c / 122.1). Cleared by effects that strip all
+    /// counters from a player (Final Act). Other player-counter kinds (energy, experience, …)
+    /// are not modeled yet — add parallel fields when a pool card needs them.
+    pub(crate) poison: u8,
     /// Available mana this step (colored, colorless, and "any"). Empties between steps.
     pub(crate) mana_pool: ManaPool,
     /// The player's library, top of library first (index 0 is drawn next).

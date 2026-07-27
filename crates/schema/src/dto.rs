@@ -220,6 +220,10 @@ pub enum WireKind {
     Planeswalker {
         loyalty: i32,
     },
+    /// A battle with its starting defense (the printed number it enters with).
+    Battle {
+        defense: i32,
+    },
     /// A land and the colors it can tap for (WUBRG indices; see `engine::Color::index`):
     /// one entry for a mono producer, two for a dual ("{T}: Add {G} or {U}"), all five
     /// for "any color", empty for a pure colorless producer. Informational for the client

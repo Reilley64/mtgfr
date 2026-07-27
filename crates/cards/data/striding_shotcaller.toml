@@ -10,6 +10,7 @@ id = "10389ff7-2ea4-4413-90cc-0e3ca268c64d"
 default_print = "159c2891-c1e2-4ec3-8c20-d6b97315dd1c"
 otags = ["alliteration", "curiosity", "cycle-soc-two-color-prepare", "draw-engine", "gives-castable-from-exile", "gives-flying", "jump", "multiple-targets", "repeatable-pp-counters", "repeatable-pure-draw", "single-target-instant-sorcery", "support"]
 oracle = "Reach\nWhenever one or more creatures you control deal combat damage to a player, this creature becomes prepared. (While it's prepared, you may cast a copy of its spell. Doing so unprepares it.) // Put a +1/+1 counter on each of up to X target creatures. Those creatures gain flying until end of turn. Draw a card."
+approximates = "the real trigger is a single batch \"one or more ... deal ...\" watch (fires once per combat damage step); `who = \"your_creatures\"` fires once per damaging creature instead. Both converge on the same prepared state (`become_prepared` is idempotent), so the divergence is unobservable — upgrade to a batch combat-damage trigger if a card ever needs to count how many creatures connected, not just whether any did."
 subtypes = ["Troll", "Druid"]
 keywords = ["reach"]
 

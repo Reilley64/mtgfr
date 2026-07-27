@@ -12,8 +12,8 @@ cast-time context, and `Witherbloom Command`'s silent mandatory-vs-may land retu
 graveyard-resource deck. All three D increments (#1, #2) have since landed.
 
 **Final state (2026-07-26): 84/84 nonbasic Witherbloom cards are in the pool — 83 fully faithful and
-one deliberate approximation (`Final Act`, #3, still blocked on battles and player counters). Both
-eligible engine increments (#1 cast-time self-copy, #2 mandatory graveyard return) are LANDED.**
+no deliberate approximations remaining. Both eligible engine increments (#1 cast-time self-copy,
+#2 mandatory graveyard return) and #3 (`Final Act` missing modes) are LANDED.**
 
 ## A. In pool, faithful (83)
 
@@ -114,11 +114,10 @@ Notes on cards deliberately kept in A despite intake `ponytail:` prompts:
 - **Toxic Deluge** — the note explains that X is paid as life, not mana. The cast-time life-payment
   behavior itself is landed.
 
-## B. In pool, approximated at intake (1)
+## B. In pool, approximated at intake (0)
 
-- [ ] Final Act — #3. The card still drops the printed "destroy all battles" and "each opponent
-  loses all counters" modes, so it remains a real approximation; Witherbloom does not falsify the
-  current premise that neither missing surface exists in the live pool yet.
+None. `Final Act` landed its two missing modes (2026-07-27) once `Invasion of Mercadia` (battle)
+and `Infectious Inquiry` (poison) entered the pool as observers.
 
 ## C. New, expressible today (0)
 

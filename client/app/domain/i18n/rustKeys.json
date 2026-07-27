@@ -74,6 +74,8 @@
   "effect.counters_put_counters_each",
   "effect.counters_remove_all_counters_then_draw",
   "effect.counters_remove_counter_from_self",
+  "effect.counters_each_opponent_gets_poison",
+  "effect.counters_each_opponent_loses_all_counters",
   "effect.choice_cast_creature_face_down",
   "effect.choice_caster_keeps_one_of_each_type_per_player",
   "effect.choice_choose_color",

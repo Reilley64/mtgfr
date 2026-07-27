@@ -9,6 +9,7 @@ id = "697ac261-263b-4879-bf45-6d10d23312ae"
 default_print = "e002d351-3795-4cd9-b389-9ed81077845e"
 otags = ["cycle-neo-dragon", "death-trigger-self", "evasion", "gives-pp-counters-to-all", "impulse-nonland", "impulse-onto-battlefield", "modal", "synergy-vehicle"]
 oracle = "Flying, vigilance\nWhen Ao dies, choose one —\n• Look at the top seven cards of your library. Put any number of nonland permanent cards with total mana value 4 or less from among them onto the battlefield. Put the rest on the bottom of your library in a random order.\n• Put two +1/+1 counters on each permanent you control that's a creature or Vehicle."
+approximates = "\"put the rest on the bottom of your library in a random order\" — the bottom of the library is hidden, so the order among bottomed cards is unobservable; the deterministic library-order stand-in every dig in this pool uses stands in for \"random\" (the pure engine has no rand). The per-card filter caps each at mv 4 (any card over 4 alone busts the total-4 budget), and mv_budget = 4 enforces the printed \"total mana value 4 or less.\"; \"creature or Vehicle\" is trimmed to \"creature\" — no Vehicle card type exists in the pool."
 subtypes = ["Dragon", "Spirit"]
 legendary = true
 keywords = ["flying", "vigilance"]

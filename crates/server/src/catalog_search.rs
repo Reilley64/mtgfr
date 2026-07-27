@@ -36,6 +36,7 @@ fn search_blob(c: &CatalogCard) -> String {
         WireKind::Enchantment => "enchantment",
         WireKind::Artifact => "artifact",
         WireKind::Planeswalker { .. } => "planeswalker",
+        WireKind::Battle { .. } => "battle",
         WireKind::Land { .. } => "land",
     };
     let colors = if c.color_identity.is_empty() {

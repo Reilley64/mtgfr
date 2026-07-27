@@ -96,6 +96,8 @@ function kindFill(card: RenderCard): string {
       return "#2a2540";
     case "planeswalker":
       return "#3a2a20";
+    case "battle":
+      return "#3a2820";
     case "instant":
     case "sorcery":
       return "#1d2b3a";

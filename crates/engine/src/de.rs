@@ -782,6 +782,9 @@ impl<'de> Deserialize<'de> for CardKind {
             Planeswalker {
                 loyalty: i32,
             },
+            Battle {
+                defense: i32,
+            },
             Land {
                 /// Optional sugar for a free "{T}: Add one mana" base tap; omitted for a
                 /// fetch-only land or a land whose mana is all explicit `add_mana` abilities.
@@ -819,6 +822,7 @@ impl<'de> Deserialize<'de> for CardKind {
             Kind::Aura => CardKind::Aura,
             Kind::Artifact => CardKind::Artifact,
             Kind::Planeswalker { loyalty } => CardKind::Planeswalker { loyalty },
+            Kind::Battle { defense } => CardKind::Battle { defense },
             Kind::Land {
                 produces,
                 subtypes,
@@ -1403,6 +1407,7 @@ fn type_bits(name: &str) -> Option<TypeSet> {
         "artifact" => TypeSet::ARTIFACT,
         "enchantment" => TypeSet::ENCHANTMENT,
         "planeswalker" => TypeSet::PLANESWALKER,
+        "battle" => TypeSet::BATTLE,
         "land" => TypeSet::LAND,
         "nonland" => TypeSet::NONLAND,
         "artifact_or_enchantment" => TypeSet::ARTIFACT.union(TypeSet::ENCHANTMENT),
@@ -1417,6 +1422,7 @@ const TYPE_NAMES: &[&str] = &[
     "artifact",
     "enchantment",
     "planeswalker",
+    "battle",
     "land",
     "nonland",
     "artifact_or_enchantment",
@@ -1490,6 +1496,7 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                 let types = match shorthand {
                     // Plurals kept as sugar for the old mass-effect / edict spellings.
                     "creatures" | "creature" => TypeSet::CREATURE,
+                    "battles" | "battle" => TypeSet::BATTLE,
                     "nonland_permanents" | "nonland" => TypeSet::NONLAND,
                     "creature_or_planeswalker" => TypeSet::CREATURE.union(TypeSet::PLANESWALKER),
                     name => type_bits(name).ok_or_else(|| {
