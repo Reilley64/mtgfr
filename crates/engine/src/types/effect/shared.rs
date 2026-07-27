@@ -869,6 +869,7 @@ impl Effect {
             | Effect::Draw(DrawEffect::EachDrawStepPlayer { .. })
             | Effect::Damage(DamageEffect::ToEnteringPermanent { .. })
             | Effect::Damage(DamageEffect::ToEnteringPermanentController { .. })
+            | Effect::Damage(DamageEffect::ToTriggeringPlayer { .. })
             | Effect::Zone(ZoneEffect::ReanimateDyingEnchantedCreature { .. })
             | Effect::Zone(ZoneEffect::ExileDeadCreatureCreateCopyWithSubtype { .. })
             | Effect::Zone(ZoneEffect::ReturnThisToHand)
@@ -2099,7 +2100,7 @@ pub(crate) fn contextualize_effect(effect: Effect, ctx: TriggerContext) -> Effec
     // CR "at the beginning of each player's first main phase … that player adds {G}{G}".
     let effect = match ctx.active_player {
         Some(active_player) => fill_add_mana_recipient(
-            fill_each_draw_step_drawer(effect, active_player),
+            fill_active_player_payoff(effect, active_player),
             active_player,
         ),
         None => effect,
@@ -2597,7 +2598,7 @@ fn fill_damage_recipient(effect: Effect, player: PlayerId) -> Effect {
 
 /// Rewrite a [`TriggerContext::active_player`]-reading effect placeholder to the player whose
 /// first main phase it is: [`Effect::Mana(ManaEffect::Add)`]'s `recipient` (Magus of the Vineyard's "that
-/// player adds {G}{G}") — mirrors [`fill_each_draw_step_drawer`] below, one field over. Only
+/// player adds {G}{G}") — mirrors [`fill_active_player_payoff`] below, one field over. Only
 /// `Sequence` recurses (no pool `add_mana` sits inside a `Conditional`).
 fn fill_add_mana_recipient(effect: Effect, active_player: PlayerId) -> Effect {
     match effect {
@@ -2637,21 +2638,26 @@ fn fill_add_mana_recipient(effect: Effect, active_player: PlayerId) -> Effect {
     }
 }
 
-/// Rewrite a [`TriggerContext::active_player`]-reading effect placeholder to the player whose
-/// draw step it is: [`Effect::Draw(DrawEffect::EachDrawStepPlayer)`] (Howling Mine's "that player draws an
-/// additional card") — mirrors [`fill_triggering_caster`] above. Recurses into
+/// Rewrite a [`TriggerContext::active_player`]-reading effect placeholder to the player whose step
+/// it is: [`Effect::Draw(DrawEffect::EachDrawStepPlayer)`] (Howling Mine's "that player draws an
+/// additional card") or [`Effect::Damage(DamageEffect::ToTriggeringPlayer)`] (Copper Tablet's "deals
+/// 1 damage to that player") — mirrors [`fill_triggering_caster`] above. Recurses into
 /// [`Effect::Conditional`]'s `then` (not just `Sequence`, unlike its siblings) so Howling Mine's
 /// CR 603.4 resolution-time re-check wrapper still gets its nested draw filled.
-fn fill_each_draw_step_drawer(effect: Effect, active_player: PlayerId) -> Effect {
+fn fill_active_player_payoff(effect: Effect, active_player: PlayerId) -> Effect {
     match effect {
         Effect::Draw(DrawEffect::EachDrawStepPlayer { count, .. }) => Effect::Draw(DrawEffect::EachDrawStepPlayer {
             drawer: Some(active_player),
             count,
         }),
+        Effect::Damage(DamageEffect::ToTriggeringPlayer { amount, .. }) => Effect::Damage(DamageEffect::ToTriggeringPlayer {
+            player: Some(active_player),
+            amount,
+        }),
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|step| fill_each_draw_step_drawer(step.clone(), active_player))
+                .map(|step| fill_active_player_payoff(step.clone(), active_player))
                 .collect();
             Effect::Sequence {
                 steps: Arc::from(filled),
@@ -2665,11 +2671,11 @@ fn fill_each_draw_step_drawer(effect: Effect, active_player: PlayerId) -> Effect
         } => {
             let filled: Vec<Effect> = then
                 .iter()
-                .map(|step| fill_each_draw_step_drawer(step.clone(), active_player))
+                .map(|step| fill_active_player_payoff(step.clone(), active_player))
                 .collect();
             let filled_otherwise: Vec<Effect> = otherwise
                 .iter()
-                .map(|step| fill_each_draw_step_drawer(step.clone(), active_player))
+                .map(|step| fill_active_player_payoff(step.clone(), active_player))
                 .collect();
             Effect::Conditional {
                 condition,

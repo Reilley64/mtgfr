@@ -2391,6 +2391,26 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
         );
     }
 
+    /// Copper Tablet fires on every upkeep and bills whoever's upkeep it is, so the payoff reads
+    /// the trigger's active player rather than sweeping the table.
+    #[test]
+    fn unlimited_copper_tablet_bills_the_upkeeps_own_player() {
+        let tablet = get_by_name("Copper Tablet").expect("Copper Tablet is in the pool");
+        let ability = &tablet.abilities[0];
+        assert!(
+            matches!(ability.timing, Timing::Triggered(Trigger::EachUpkeep)),
+            "at the beginning of each player's upkeep"
+        );
+        assert_eq!(
+            ability.effect,
+            Effect::Damage(DamageEffect::ToTriggeringPlayer {
+                player: None,
+                amount: Amount::Fixed(1),
+            }),
+            "deals 1 damage to that player"
+        );
+    }
+
     /// Ankh of Mishra bills the entering land's controller, not the Ankh's — so the effect reads
     /// the trigger's own object rather than a target or the source's controller.
     #[test]

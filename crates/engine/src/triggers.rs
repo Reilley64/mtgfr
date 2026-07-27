@@ -334,7 +334,7 @@ const ATTACK_TRIGGER_WATCHES: &[TriggerWatch] = &[
 const UPKEEP_TRIGGER_WATCHES: &[TriggerWatch] = &[
     TriggerWatch::battlefield_controller(Trigger::Upkeep),
     TriggerWatch::graveyard_controller(Trigger::Upkeep),
-    TriggerWatch::battlefield_all(Trigger::EachUpkeep),
+    TriggerWatch::battlefield_all_with_active_player(Trigger::EachUpkeep),
 ];
 const DRAW_STEP_TRIGGER_WATCHES: &[TriggerWatch] =
     &[TriggerWatch::battlefield_all_with_active_player(
@@ -670,7 +670,7 @@ impl Game {
                 } => {
                     self.queue_controller_triggers(active_player, Trigger::Upkeep, None);
                     self.queue_graveyard_controller_triggers(active_player, Trigger::Upkeep);
-                    self.queue_each_upkeep_triggers();
+                    self.queue_each_upkeep_triggers(active_player);
                     self.queue_echo_triggers(active_player);
                     self.queue_cumulative_upkeep_triggers(active_player);
                 }
@@ -1930,14 +1930,16 @@ impl Game {
     /// *any* player's upkeep (CR "at the beginning of each upkeep") — unlike
     /// [`queue_controller_triggers`](Self::queue_controller_triggers), this doesn't gate on
     /// whose upkeep it is, only on the ability's own controller for the resulting effect.
-    /// ponytail: doesn't thread [`TriggerContext::active_player`] — the pool's each-upkeep
-    ///   abilities (a Pest, a Saproling, a Snake) don't need to know whose upkeep triggered them,
-    ///   unlike [`queue_each_draw_step_triggers`](Self::queue_each_draw_step_triggers) (Howling
-    ///   Mine). Wire it here too if a future each-upkeep effect needs it.
-    pub(crate) fn queue_each_upkeep_triggers(&mut self) {
+    /// `active_player` rides along on [`TriggerContext::active_player`] for the payoffs that do
+    /// name whose upkeep it is (Copper Tablet's "deals 1 damage to **that player**"), exactly as
+    /// [`queue_each_draw_step_triggers`](Self::queue_each_draw_step_triggers) threads it for
+    /// Howling Mine; the ones that don't (a Pest, a Saproling, a Snake) simply ignore it.
+    pub(crate) fn queue_each_upkeep_triggers(&mut self, active_player: PlayerId) {
         self.queue_trigger_watch_table(
-            &[TriggerWatch::battlefield_all(Trigger::EachUpkeep)],
-            TriggerWatchEvent::default(),
+            &[TriggerWatch::battlefield_all_with_active_player(
+                Trigger::EachUpkeep,
+            )],
+            TriggerWatchEvent::for_active_player(active_player),
         );
     }
 

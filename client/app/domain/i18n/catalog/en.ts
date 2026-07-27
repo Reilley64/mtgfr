@@ -289,6 +289,8 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
   "effect.damage_to_self": (params) => `Deals ${param(params, "amount")} damage to you`,
   "effect.damage_to_target_controller": (params) =>
     `Deals ${param(params, "amount")} damage to that creature's controller`,
+  "effect.damage_to_triggering_player": (params) =>
+    `Deals ${param(params, "amount")} damage to that player`,
   "effect.destroy_all": (params) => `Destroy all ${humanize(param(params, "filter", "permanents"))}`,
   "effect.destroy_target": literal("Destroy target"),
   "effect.destroy_triggering_damaged_creature": literal("Destroy that creature"),

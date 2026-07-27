@@ -842,7 +842,7 @@ outside all of them, and every arm is controller-scoped besides. *Sketch:* a
 mirroring `PermanentEnters`'s filter+scope shape, with the dying permanent's controller on the
 context. *Cards:* dingus_egg.
 
-### 60. `each-upkeep-payoff-addresses-that-player` — 1 card, S
+### 60. `each-upkeep-payoff-addresses-that-player` — 1 card, S — **done**
 Depends on: nothing.
 `Trigger::EachUpkeep` fires on every player's upkeep but, per its own `ponytail:` note on
 `queue_each_upkeep_triggers`, does not thread `TriggerContext::active_player` the way
@@ -851,6 +851,12 @@ name whose upkeep it is; `DamageEffect::EachPlayer` would hit the whole table on
 which is four times the printed damage in a four-player game. *Sketch:* thread `active_player` in
 `queue_each_upkeep_triggers` (the note already sketches it) plus a
 `DamageEffect::ToTriggeringPlayer { amount }`. *Cards:* copper_tablet.
+*Landed:* both halves as sketched, and the threading was three lines — `TriggerWatchContextKind`
+is per-watch and purely additive (it fills `TriggerContext::active_player` and leaves
+`controller` alone), so swapping `EachUpkeep`'s watch to `battlefield_all_with_active_player`
+costs the pool's existing each-upkeep cards nothing. The new damage mode fills its player slot
+through the same walker Howling Mine uses, now renamed `fill_active_player_payoff` since it is no
+longer draw-only. The stale `ponytail:` note on `queue_each_upkeep_triggers` is gone with it.
 
 ### 61. `upkeep-of-the-enchanted-permanents-controller` — 4 cards, M
 Depends on: 60 (`each-upkeep-payoff-addresses-that-player`) — same "damage the player this upkeep

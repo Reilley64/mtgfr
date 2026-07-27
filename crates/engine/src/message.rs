@@ -158,6 +158,7 @@ message_keys! {
     EFFECT_DAMAGE_TO_ENTERING_PERMANENT_CONTROLLER => "effect.damage_to_entering_permanent_controller",
     EFFECT_DAMAGE_TO_SELF => "effect.damage_to_self",
     EFFECT_DAMAGE_TO_TARGET_CONTROLLER => "effect.damage_to_target_controller",
+    EFFECT_DAMAGE_TO_TRIGGERING_PLAYER => "effect.damage_to_triggering_player",
     EFFECT_DESTROY_ALL => "effect.destroy_all",
     EFFECT_DESTROY_TARGET => "effect.destroy_target",
     EFFECT_DESTROY_TRIGGERING_DAMAGED_CREATURE => "effect.destroy_triggering_damaged_creature",
@@ -1185,6 +1186,10 @@ impl Effect {
             }
             Effect::Damage(ToEnteringPermanentController { amount, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_DAMAGE_TO_ENTERING_PERMANENT_CONTROLLER)
+                    .with_params(vec![amount_param("amount", amount)])
+            }
+            Effect::Damage(ToTriggeringPlayer { amount, .. }) => {
+                MessageRef::new(MessageKey::EFFECT_DAMAGE_TO_TRIGGERING_PLAYER)
                     .with_params(vec![amount_param("amount", amount)])
             }
             Effect::Draw(Cards { count }) => MessageRef::new(MessageKey::EFFECT_DRAW_CARDS)

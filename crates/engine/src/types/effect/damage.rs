@@ -91,6 +91,16 @@ pub enum DamageEffect {
         amount: Amount,
     },
 
+    /// Copper Tablet's "at the beginning of each player's upkeep … deals 1 damage to **that
+    /// player**" — the player whose step this is, filled from [`TriggerContext::active_player`] at
+    /// trigger placement. [`EachPlayer`](Self::EachPlayer) would bill the whole table on every
+    /// upkeep, which is once per seat per round instead of once.
+    ToTriggeringPlayer {
+        #[cfg_attr(feature = "card-dsl", serde(skip))]
+        player: Option<PlayerId>,
+        amount: Amount,
+    },
+
     ToSelf {
         amount: Amount,
     },

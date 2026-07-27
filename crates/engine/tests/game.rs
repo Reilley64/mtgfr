@@ -105037,3 +105037,34 @@ fn ankh_of_mishra_damages_whoever_played_the_land() {
     );
     assert_eq!(game.life(PlayerId(0)), 18, "who is untouched by it");
 }
+
+// Copper Tablet: "At the beginning of each player's upkeep, this artifact deals 1 damage to that
+// player." Every upkeep, once, aimed at whoever's upkeep it is — not at the Tablet's controller.
+
+#[test]
+fn copper_tablet_bills_whoever_the_upkeep_belongs_to() {
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Copper Tablet"));
+    for p in 0..2u8 {
+        game.stack_library(PlayerId(p), &vec![card("Plains"); 5]);
+    }
+
+    // Turn one's upkeep is already behind us, so the first fire we see is the opponent's.
+    pass_until_next_turn(&mut game);
+    advance_until(&mut game, |g| g.current_step() == Step::Main1);
+    assert_eq!(game.life(PlayerId(1)), 19, "their upkeep, their damage");
+    assert_eq!(
+        game.life(PlayerId(0)),
+        20,
+        "the Tablet's own controller is untouched by an upkeep that isn't theirs"
+    );
+
+    pass_until_next_turn(&mut game);
+    advance_until(&mut game, |g| g.current_step() == Step::Main1);
+    assert_eq!(game.life(PlayerId(0)), 19, "and it comes back around");
+    assert_eq!(
+        game.life(PlayerId(1)),
+        19,
+        "once per upkeep, not once per player"
+    );
+}

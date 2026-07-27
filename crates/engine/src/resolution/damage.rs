@@ -514,6 +514,26 @@ impl Game {
                 events
             }
 
+            // Copper Tablet: 1 damage to the player whose upkeep this is, baked in at trigger
+            // placement off `TriggerContext::active_player` — same shape as the arm above, with
+            // the recipient arriving as a player rather than as a permanent to ask.
+            DamageEffect::ToTriggeringPlayer { player, amount } => {
+                let recipient = player.expect("the triggering player is filled in at placement");
+                let amount = self.resolve_amount(amount, controller, source, target, x);
+                let (mut events, amount) = self.player_damage_events(source, recipient, amount);
+                // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
+                if amount > 0 {
+                    events.push(Event::DamageDealtToPlayer {
+                        source,
+                        player: recipient,
+                        amount,
+                    });
+                    // Lifelink (CR 702.15/119.3) triggers on ANY damage the source deals.
+                    events.extend(self.lifelink_gain(source, amount));
+                }
+                events
+            }
+
             // Real damage to the ability's own controller — mirrors `DealDamage`'s
             // `Target::Player` arm, substituting `controller` for the chosen target.
             DamageEffect::ToSelf { amount } => {

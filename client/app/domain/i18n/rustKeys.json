@@ -132,6 +132,7 @@
   "effect.damage_to_entering_permanent_controller",
   "effect.damage_to_self",
   "effect.damage_to_target_controller",
+  "effect.damage_to_triggering_player",
   "effect.destroy_all",
   "effect.destroy_target",
   "effect.destroy_triggering_damaged_creature",
