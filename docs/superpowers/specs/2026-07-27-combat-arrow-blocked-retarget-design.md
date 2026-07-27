@@ -131,4 +131,3 @@ about where damage goes for non-trample).
   silent full-power hit is less surprising — explicitly rejected for v1 (arrow
   absence only).
 - Dual arrows for trample-with-living-blockers (overflow to player) — rejected.
-}
