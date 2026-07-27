@@ -20,8 +20,6 @@ import {
   pendingHandPickOneClick,
   pendingPlayerAimOneClick,
   pendingPlayerAimOverlay,
-  pendingAimStackCount,
-  pendingStackGhost,
   pendingTargetingOverlay,
   pendingTargetOneClick,
   sacrificeCostObjectIds,
