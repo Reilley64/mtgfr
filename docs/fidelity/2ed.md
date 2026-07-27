@@ -233,7 +233,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Guardian Angel** {X}{W} · Instant — increment 4
 - [x] **Healing Salve** {W} · Instant — increment 4
 - [ ] **Helm of Chatzuk** {1} · Artifact — increment 14
-- [ ] **Hypnotic Specter** {1}{B}{B} · Creature — Specter — increment 17
+- [x] **Hypnotic Specter** {1}{B}{B} · Creature — Specter — increment 17
 - [ ] **Instill Energy** {G} · Enchantment — Aura — increment 7
 - [ ] **Invisibility** {U}{U} · Enchantment — Aura — increment 11
 - [x] **Iron Star** {1} · Artifact — increment 10
@@ -264,7 +264,7 @@ Blocked on the numbered increments in [`2ed-increments.md`](2ed-increments.md).
 - [ ] **Manabarbs** {3}{R} · Enchantment — increment 19
 - [ ] **Meekstone** {1} · Artifact — increment 7
 - [ ] **Mesa Pegasus** {1}{W} · Creature — Pegasus — increment 14
-- [ ] **Mind Twist** {X}{B} · Sorcery — increment 17
+- [x] **Mind Twist** {X}{B} · Sorcery — increment 17
 - [ ] **Natural Selection** {G} · Instant — increment 55
 - [ ] **Nether Shadow** {B}{B} · Creature — Spirit — increment 39
 - [ ] **Nettling Imp** {2}{B} · Creature — Imp — increment 26

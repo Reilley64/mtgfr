@@ -123,10 +123,12 @@ export const enCatalog: Readonly<Record<string, MessageFormatter>> = {
     `That creature's controller may draw ${param(params, "count")}`,
   "effect.choice_defending_player_sacrifices": (params) =>
     `Defending player sacrifices ${param(params, "count")} permanents of their choice`,
-  "effect.choice_discard": (params) =>
-    bool(params, "target_player")
-      ? `Target player discards ${param(params, "count")}${bool(params, "or_one_matching") ? " unless they discard a land card" : ""}`
-      : `Discard ${param(params, "count")}${bool(params, "or_one_matching") ? " unless you discard a land card" : ""}`,
+  "effect.choice_discard": (params) => {
+    const suffix = bool(params, "random") ? " at random" : ""
+    return bool(params, "target_player")
+      ? `Target player discards ${param(params, "count")}${suffix}${bool(params, "or_one_matching") ? " unless they discard a land card" : ""}`
+      : `Discard ${param(params, "count")}${suffix}${bool(params, "or_one_matching") ? " unless you discard a land card" : ""}`
+  },
   "effect.choice_each_other_token_becomes_copy_of_chosen": literal(
     "You may choose a token you control; if you do, each other token you control becomes a copy of that token",
   ),

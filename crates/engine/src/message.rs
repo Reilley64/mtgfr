@@ -1782,10 +1782,13 @@ impl Effect {
                 count,
                 target_player,
                 or_one_matching,
+                random,
+                ..
             }) => MessageRef::new(MessageKey::EFFECT_CHOICE_DISCARD).with_params(vec![
-                int_param("count", count),
+                amount_param("count", count),
                 bool_param("target_player", target_player),
                 bool_param("or_one_matching", or_one_matching.is_some()),
+                bool_param("random", random),
             ]),
             Effect::Choice(Proliferate { times }) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_PROLIFERATE)
@@ -2242,9 +2245,12 @@ mod tests {
                     count: Amount::Fixed(2),
                 }),
                 Effect::Choice(ChoiceEffect::Discard {
-                    count: 2,
+                    count: Amount::Fixed(2),
                     target_player: false,
                     or_one_matching: None,
+                    random: false,
+                    damaged_player: false,
+                    discarder: None,
                 }),
             ]),
         }

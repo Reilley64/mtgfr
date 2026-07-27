@@ -1963,8 +1963,8 @@ pub(crate) fn contextualize_effect(effect: Effect, ctx: TriggerContext) -> Effec
     // CR 510.2/603.10a: a `DealsCombatDamageToPlayer` trigger's "each other opponent" splash (Hydra
     // Omnivore) excludes whoever took the combat damage, locked in when the trigger goes on the
     // stack — same last-known-information shape as `combat_damage` above.
-    let effect = match ctx.combat_damage_recipient {
-        Some(player) => fill_combat_damage_recipient(effect, player),
+    let effect = match ctx.damage_recipient {
+        Some(player) => fill_damage_recipient(effect, player),
         None => effect,
     };
     // CR 510.2/603.10a: an `Attacks` trigger's reanimation target bound resolves against the
@@ -2536,19 +2536,35 @@ fn fill_combat_damage_source_controller(effect: Effect, player: PlayerId) -> Eff
     }
 }
 
-/// Rewrite a [`TriggerContext::combat_damage_recipient`]-reading effect placeholder to the player
-/// who took the combat damage: [`Effect::Damage(DamageEffect::EachOtherOpponent)`] (Hydra Omnivore's "each *other*
-/// opponent") — mirrors [`fill_combat_damage_source_controller`] above, one field over.
-fn fill_combat_damage_recipient(effect: Effect, player: PlayerId) -> Effect {
+/// Rewrite a [`TriggerContext::damage_recipient`]-reading effect placeholder to the player
+/// who took the damage: [`Effect::Damage(DamageEffect::EachOtherOpponent)`] (Hydra Omnivore's "each *other*
+/// opponent") and [`Effect::Choice(ChoiceEffect::Discard)`] (Hypnotic Specter's "*that player*
+/// discards a card at random") — mirrors [`fill_combat_damage_source_controller`] above, one field over.
+fn fill_damage_recipient(effect: Effect, player: PlayerId) -> Effect {
     match effect {
         Effect::Damage(DamageEffect::EachOtherOpponent { amount, .. }) => Effect::Damage(DamageEffect::EachOtherOpponent {
             amount,
             damaged: Some(player),
         }),
+        Effect::Choice(ChoiceEffect::Discard {
+            count,
+            target_player,
+            or_one_matching,
+            random,
+            damaged_player: true,
+            ..
+        }) => Effect::Choice(ChoiceEffect::Discard {
+            count,
+            target_player,
+            or_one_matching,
+            random,
+            damaged_player: true,
+            discarder: Some(player),
+        }),
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|step| fill_combat_damage_recipient(step.clone(), player))
+                .map(|step| fill_damage_recipient(step.clone(), player))
                 .collect();
             Effect::Sequence {
                 steps: Arc::from(filled),

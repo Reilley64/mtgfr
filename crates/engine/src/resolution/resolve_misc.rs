@@ -172,6 +172,31 @@ impl Game {
                 let event = self.reanimate_event(card, controller, false);
                 self.push_apply(events, event);
             }
+            // "Discards a card at random" (Hypnotic Specter) / "discards X cards at random" (Mind
+            // Twist). Unlike every other discard this raises no pause — nobody chooses, so the
+            // cards come off the injected per-op RNG (needs `&mut self`) here rather than from an
+            // answered `ChoiceRequest::Discard`. Discarding fewer than asked when the hand runs
+            // short is ordinary CR 701.8c, not a rejection. The discard itself still routes through
+            // the shared `discard_ids`, so discard watchers, madness and Containment Construct see
+            // a random pitch exactly as they see a chosen one.
+            Effect::Choice(ChoiceEffect::Discard {
+                count,
+                target_player,
+                discarder,
+                ..
+            }) => {
+                let player = self.discarding_player(discarder, target_player, controller, target);
+                let count = self
+                    .resolve_amount(count, controller, source, target, x)
+                    .max(0) as usize;
+                let mut hand = self.hand_of(player);
+                let mut picked = Vec::new();
+                for _ in 0..count.min(hand.len()) {
+                    let idx = self.with_op_rng(player, |rng| rng.gen_index(hand.len()));
+                    picked.push(hand.swap_remove(idx));
+                }
+                self.discard_ids(&picked, player, events);
+            }
             // Inkshield (CR 615): arm a this-turn combat-damage prevention shield protecting the
             // ability's controller ("dealt to *you*"), carrying the Inkling profile minted per
             // point prevented. The tokens are created at the prevention itself (in `damage_player`),

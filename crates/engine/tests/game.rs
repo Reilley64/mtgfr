@@ -58447,9 +58447,12 @@ fn discard_one_spell() -> CardDef {
             "Discard One",
             Box::leak(Box::new([spell_ability(Effect::Choice(
                 ChoiceEffect::Discard {
-                    count: 1,
+                    count: Amount::Fixed(1),
                     target_player: false,
                     or_one_matching: None,
+                    random: false,
+                    damaged_player: false,
+                    discarder: None,
                 },
             ))])),
         )
@@ -58493,9 +58496,12 @@ fn discard_n_spell(count: u32) -> CardDef {
         "Discard N",
         Box::leak(Box::new([spell_ability(Effect::Choice(
             ChoiceEffect::Discard {
-                count,
+                count: Amount::Fixed(count as i32),
                 target_player: false,
                 or_one_matching: None,
+                random: false,
+                damaged_player: false,
+                discarder: None,
             },
         ))])),
     )
@@ -61475,9 +61481,12 @@ fn loot() -> CardDef {
                     count: Amount::Fixed(2),
                 }),
                 Effect::Choice(ChoiceEffect::Discard {
-                    count: 2,
+                    count: Amount::Fixed(2),
                     target_player: false,
                     or_one_matching: None,
+                    random: false,
+                    damaged_player: false,
+                    discarder: None,
                 }),
             ]),
         })])),
@@ -104295,5 +104304,72 @@ fn a_prevention_shield_expires_at_the_turn_boundary() {
         game.life(PlayerId(0)),
         start - 3,
         "the shield expired with the turn that armed it"
+    );
+}
+
+#[test]
+fn mind_twist_takes_x_cards_from_the_targeted_players_hand_without_asking_them() {
+    // "Target player discards X cards at random." At random means *nobody* chooses — the
+    // discarding player gets no pause, unlike every other discard in the pool.
+    let mut game = TestGame::new();
+    for _ in 0..3 {
+        game.spawn_in_hand(PlayerId(1), card("Grizzly Bears"));
+    }
+    let twist = game.spawn_in_hand(PlayerId(0), card("Mind Twist"));
+
+    game.cast(twist)
+        .at(Target::Player(PlayerId(1)))
+        .x(2)
+        .resolve();
+
+    assert_eq!(
+        hand_ids(&game, PlayerId(1)).len(),
+        1,
+        "two of the three cards went at random"
+    );
+    assert!(
+        game.pending_choice().is_none(),
+        "a random discard offers no choice to answer"
+    );
+}
+
+#[test]
+fn mind_twist_for_more_than_the_hand_holds_just_empties_it() {
+    // X above hand size discards as many as possible (CR 701.8c) rather than rejecting the cast.
+    let mut game = TestGame::new();
+    game.spawn_in_hand(PlayerId(1), card("Grizzly Bears"));
+    let twist = game.spawn_in_hand(PlayerId(0), card("Mind Twist"));
+
+    game.cast(twist)
+        .at(Target::Player(PlayerId(1)))
+        .x(5)
+        .resolve();
+
+    assert!(hand_ids(&game, PlayerId(1)).is_empty(), "the hand is empty");
+}
+
+#[test]
+fn hypnotic_specter_makes_the_player_it_hit_discard_not_its_controller() {
+    // "Whenever Hypnotic Specter deals damage to an opponent, that player discards a card at
+    // random." *That* player — the one who took the damage, not the Specter's controller.
+    let mut game = TestGame::new();
+    let specter = game.spawn_on_battlefield(PlayerId(0), card("Hypnotic Specter"));
+    game.spawn_in_hand(PlayerId(0), card("Grizzly Bears"));
+    for _ in 0..2 {
+        game.spawn_in_hand(PlayerId(1), card("Grizzly Bears"));
+    }
+
+    attack_with(&mut game, vec![specter]);
+    advance_until(&mut game, |g| g.current_step() == Step::Main2);
+
+    assert_eq!(
+        hand_ids(&game, PlayerId(1)).len(),
+        1,
+        "the damaged opponent pitched one at random"
+    );
+    assert_eq!(
+        hand_ids(&game, PlayerId(0)).len(),
+        1,
+        "the Specter's controller keeps their own hand"
     );
 }

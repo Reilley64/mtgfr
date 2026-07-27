@@ -742,17 +742,20 @@ pub(crate) struct TriggerContext {
     /// other trigger, same shape as `dying_source_stats` above. See
     /// [`Game::queue_combat_damage_triggers`] for where this is captured.
     pub(crate) combat_damage: Option<i32>,
-    /// CR 510.2/603.10a last-known information: the player the source just dealt combat damage
-    /// to, for a [`Trigger::DealsCombatDamageToPlayer`] watch whose payoff excludes them (Hydra
-    /// Omnivore: "it deals that much damage to each **other** opponent"). `None` for every other
-    /// trigger, same shape as `combat_damage` above. See
-    /// [`Game::queue_combat_damage_triggers`] for where this is captured.
-    pub(crate) combat_damage_recipient: Option<PlayerId>,
+    /// CR 510.2/603.10a last-known information: the player the source just dealt damage to, for a
+    /// watch whose payoff names *that* player rather than the ability's controller — a
+    /// [`Trigger::DealsCombatDamageToPlayer`] payoff that excludes them (Hydra Omnivore: "it deals
+    /// that much damage to each **other** opponent"), or a [`Trigger::DealsDamageToOpponent`]
+    /// payoff that lands on them (Hypnotic Specter: "**that player** discards a card at random").
+    /// `None` for every other trigger, same shape as `combat_damage` above. See
+    /// [`Game::queue_combat_damage_triggers`] / [`Game::queue_deals_damage_to_opponent_triggers`]
+    /// for where this is captured.
+    pub(crate) damage_recipient: Option<PlayerId>,
     /// CR 510.2/603.10a last-known information: who controlled the creature that just dealt the
     /// combat damage, for a [`Trigger::DealsCombatDamageToPlayer`] watch whose payoff belongs to
     /// that player rather than the watcher's controller (Edric, Spymaster of Trest: "**its
     /// controller** may draw a card"). `None` for every other trigger, same shape as
-    /// `combat_damage_recipient` above.
+    /// `damage_recipient` above.
     pub(crate) combat_damage_source_controller: Option<PlayerId>,
     /// CR 609.7/603.10a last-known information: the amount of damage the enchanted host just
     /// dealt (combat or noncombat alike), for a [`Trigger::EnchantedCreatureDealsDamage`] watch's
@@ -865,7 +868,7 @@ impl TriggerContext {
             cast_x: None,
             auras_you_controlled_attached_to_dying_creature: None,
             combat_damage: None,
-            combat_damage_recipient: None,
+            damage_recipient: None,
             combat_damage_source_controller: None,
             triggering_damage_dealt: None,
             dying_enchanted_creature: None,

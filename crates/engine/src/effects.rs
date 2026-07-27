@@ -990,6 +990,10 @@ impl Game {
             Effect::Copy(CopyEffect::MintFreeCopyOfExiledCard { .. }) => {
                 self.run_copy(effect, ctx, events)
             }
+            // A discard *at random* picks for itself — no pause, straight to the misc choreo.
+            Effect::Choice(ChoiceEffect::Discard { random: true, .. }) => {
+                self.run_misc_choreo(effect, ctx, events)
+            }
             // Discard / PutFromHand* / CastCreatureFaceDown — hand pause peel (`resolution/pause_hand`).
             Effect::Choice(ChoiceEffect::Discard { .. })
             | Effect::Choice(ChoiceEffect::PutFromHandOnTop { .. })

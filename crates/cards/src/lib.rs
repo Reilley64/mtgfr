@@ -1378,9 +1378,12 @@ token = { name = "Inkling", power = 2, toughness = 1 }
                         opponent: false,
                     }),
                     Effect::Choice(ChoiceEffect::Discard {
-                        count: 2,
+                        count: Amount::Fixed(2),
                         target_player: true,
                         or_one_matching: None,
+                        random: false,
+                        damaged_player: false,
+                        discarder: None,
                     }),
                 ]),
             }
@@ -2042,9 +2045,12 @@ token = { name = "Inkling", power = 2, toughness = 1 }
                     count: Amount::Fixed(2)
                 }),
                 Effect::Choice(ChoiceEffect::Discard {
-                    count: 2,
+                    count: Amount::Fixed(2),
                     target_player: false,
                     or_one_matching: None,
+                    random: false,
+                    damaged_player: false,
+                    discarder: None,
                 }),
             ],
             "draw two, then discard two — in order"
@@ -2576,6 +2582,18 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                 }),
             ),
             (
+                "Mind Twist",
+                // "discards X cards at random" — X off the cast, and no one chooses.
+                Effect::Choice(ChoiceEffect::Discard {
+                    count: Amount::X,
+                    target_player: true,
+                    or_one_matching: None,
+                    random: true,
+                    damaged_player: false,
+                    discarder: None,
+                }),
+            ),
+            (
                 "Death Ward",
                 Effect::Control(ControlEffect::RegenerateShield {
                     target: TargetSpec::Creature,
@@ -3042,6 +3060,25 @@ default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0
                 targets: TargetCount::default(),
                 kind: None,
                 divided: false,
+            })
+        );
+
+        // Hypnotic Specter's saboteur trigger empties the hand of *the player it hit*, and
+        // nobody picks the card.
+        let specter = get_by_name("Hypnotic Specter").expect("Hypnotic Specter is in the pool");
+        assert_eq!(
+            specter.abilities[0].timing,
+            Timing::Triggered(Trigger::DealsDamageToOpponent)
+        );
+        assert_eq!(
+            specter.abilities[0].effect,
+            Effect::Choice(ChoiceEffect::Discard {
+                count: Amount::Fixed(1),
+                target_player: false,
+                or_one_matching: None,
+                random: true,
+                damaged_player: true,
+                discarder: None,
             })
         );
 

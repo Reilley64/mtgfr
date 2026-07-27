@@ -2159,7 +2159,7 @@ impl Game {
                 cast_x: None,
                 auras_you_controlled_attached_to_dying_creature: None,
                 combat_damage: None,
-                combat_damage_recipient: None,
+                damage_recipient: None,
                 combat_damage_source_controller: None,
                 triggering_damage_dealt: None,
                 dying_enchanted_creature: None,
@@ -2377,7 +2377,7 @@ impl Game {
                 cast_x: None,
                 auras_you_controlled_attached_to_dying_creature: None,
                 combat_damage: None,
-                combat_damage_recipient: None,
+                damage_recipient: None,
                 combat_damage_source_controller: None,
                 triggering_damage_dealt: None,
                 dying_enchanted_creature: None,
@@ -2456,7 +2456,12 @@ impl Game {
             return;
         }
         self.queue_trigger_group(
-            TriggerContext::of(controller),
+            // "…**that player** discards a card at random" (Hypnotic Specter) needs the damaged
+            // opponent's identity, not the watching ability's controller.
+            TriggerContext {
+                damage_recipient: Some(player),
+                ..TriggerContext::of(controller)
+            },
             source,
             self.def_of(source),
             Trigger::DealsDamageToOpponent,
@@ -2643,7 +2648,7 @@ impl Game {
             cast_x: None,
             auras_you_controlled_attached_to_dying_creature: None,
             combat_damage: None,
-            combat_damage_recipient: None,
+            damage_recipient: None,
             combat_damage_source_controller: None,
             triggering_damage_dealt: None,
             dying_enchanted_creature: None,
@@ -2883,7 +2888,7 @@ impl Game {
             let controller = self.owner_of(id);
             let ctx = TriggerContext {
                 combat_damage: (id == source).then_some(amount),
-                combat_damage_recipient: Some(player),
+                damage_recipient: Some(player),
                 combat_damage_source_controller: Some(source_controller),
                 ..TriggerContext::of(controller)
             };

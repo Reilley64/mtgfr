@@ -36,11 +36,29 @@ pub enum ChoiceEffect {
     },
 
     Discard {
-        count: u32,
+        count: Amount,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         target_player: bool,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         or_one_matching: Option<CardFilter>,
+        /// "Discards a card **at random**" (Hypnotic Specter, Mind Twist): nobody chooses, so
+        /// this discard raises no pause at all — it resolves straight through
+        /// [`Game::run_misc_choreo`](crate::Game::run_misc_choreo), picking from the discarder's
+        /// hand with the engine's injected per-op RNG.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        random: bool,
+        /// "**That player** discards a card at random" (Hypnotic Specter) — the discarder is
+        /// whoever this ability's source just damaged, not its controller. Only meaningful under
+        /// a damage watch; Looter il-Kor's same-trigger "draw a card, then discard a card" leaves
+        /// it unset, because *its* discard is the controller's.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        damaged_player: bool,
+        /// The player [`damaged_player`](Self::Discard::damaged_player) resolved to, baked in when
+        /// the watch fired from
+        /// [`TriggerContext::damage_recipient`](crate::types::trigger::TriggerContext). `None`
+        /// everywhere else.
+        #[cfg_attr(feature = "card-dsl", serde(skip))]
+        discarder: Option<PlayerId>,
     },
 
     EachOtherTokenBecomesCopyOfChosen,

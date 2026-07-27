@@ -266,15 +266,23 @@ narrow and its ceiling is the printed cards: it will not rewrite a word the card
 already store as an enum.
 *Cards:* magical_hack, sleight_of_mind.
 
-### 17. `random-discard` — 2 cards, S
+### 17. `random-discard` — 2 cards, S — **done**
 Depends on: nothing.
 "Discards a card at random" / "discards X cards at random." No `mode = "random"` or `at_random`
-exists anywhere in the pool. The engine's determinism rule means this must draw from the injected
+existed anywhere in the pool. The engine's determinism rule means this must draw from the injected
 RNG the engine already threads for shuffling, never a wall-clock or thread-local source.
-*Sketch:* a `random: bool` on the existing discard effect; when set, the controller does not
-choose — the discarded cards are picked by the injected RNG. Card identity stays hidden from the
-opponent's projection through the existing visibility filter (the discard *event* is public, the
-hand it was drawn from is not).
+*Landed:* `random = true` on the existing discard effect. It is the first discard that raises **no
+pause** — nobody chooses, so instead of `run_hand_pause` it routes to `run_misc_choreo` and picks
+from the discarder's hand with `Game::with_op_rng`, the same derive-per-op RNG the shuffle draws
+from (the `ReanimateRandomFromTargetOpponentGraveyard` precedent). The pitch still goes through the
+shared `discard_ids`, so discard watchers see a random discard exactly as they see a chosen one.
+Two smaller widenings rode along: `count` grew from a bare `u32` to an `Amount` for Mind Twist's
+`count = "x"` (`Amount` deserializes from a bare integer, so every existing discard TOML is
+unchanged), and a `damaged_player` flag names the discarder as "**that player**" — the player the
+source just damaged — for Hypnotic Specter, filled at trigger placement out of what is now
+`TriggerContext::damage_recipient` (renamed from `combat_damage_recipient`, since
+`deals_damage_to_opponent` fires on noncombat damage too). That flag is opt-in precisely because
+Looter il-Kor shares the same trigger and *its* discard is still the controller's.
 *Cards:* hypnotic_specter, mind_twist.
 
 ### 18. `extra-turns` — 2 cards, M
