@@ -139,6 +139,14 @@ engine-cr-index:
 engine-cr-index-check:
     python3 scripts/gen_cr_index.py --check
 
+[doc("Regenerate committed card TOML JSON Schemas")]
+cards-schema:
+    cargo run -p cards --bin gen_card_schema
+
+[doc("Fail if card TOML JSON Schemas are stale")]
+cards-schema-check:
+    cargo run -p cards --bin gen_card_schema -- --check
+
 [doc("Scan engine for likely missing CR citations (advisory)")]
 engine-cr-scan:
     python3 scripts/scan_missing_cr.py

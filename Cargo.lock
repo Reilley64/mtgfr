@@ -428,6 +428,8 @@ name = "cards"
 version = "0.1.0"
 dependencies = [
  "engine",
+ "schemars",
+ "serde_json",
  "toml 0.8.23",
 ]
 

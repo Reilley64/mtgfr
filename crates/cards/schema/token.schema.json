@@ -1,0 +1,1585 @@
+{
+  "$defs": {
+    "AbilityTomlSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "activation_cost": {
+          "$ref": "#/$defs/CostToml"
+        },
+        "at_least": {
+          "default": 0,
+          "format": "uint8",
+          "minimum": 0.0,
+          "type": "integer"
+        },
+        "caster": {
+          "default": "",
+          "type": "string"
+        },
+        "condition": {
+          "default": null
+        },
+        "controller": {
+          "default": "",
+          "type": "string"
+        },
+        "cost": {
+          "$ref": "#/$defs/CostToml"
+        },
+        "discard_cost": {
+          "default": 0,
+          "format": "uint8",
+          "minimum": 0.0,
+          "type": "integer"
+        },
+        "drawer": {
+          "default": "",
+          "type": "string"
+        },
+        "effects": {
+          "items": {
+            "$ref": "#/$defs/EffectTomlSchema"
+          },
+          "type": "array"
+        },
+        "exile_self": {
+          "default": false,
+          "type": "boolean"
+        },
+        "filter": {
+          "default": null
+        },
+        "from_hand": {
+          "default": false,
+          "type": "boolean"
+        },
+        "graveyard_exile_target_count": {
+          "default": 0,
+          "format": "uint8",
+          "minimum": 0.0,
+          "type": "integer"
+        },
+        "loyalty": {
+          "default": null,
+          "format": "int32",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "mill_self": {
+          "default": 0,
+          "format": "uint8",
+          "minimum": 0.0,
+          "type": "integer"
+        },
+        "min_level": {
+          "default": 0,
+          "format": "uint8",
+          "minimum": 0.0,
+          "type": "integer"
+        },
+        "nth_each_turn": {
+          "default": null,
+          "format": "uint8",
+          "minimum": 0.0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "once_each_turn": {
+          "default": false,
+          "type": "boolean"
+        },
+        "optional": {
+          "default": false,
+          "type": "boolean"
+        },
+        "pay_life": {
+          "default": null
+        },
+        "remove_counters": {
+          "default": 0,
+          "format": "uint8",
+          "minimum": 0.0,
+          "type": "integer"
+        },
+        "remove_counters_kind": {
+          "default": null
+        },
+        "remove_counters_x": {
+          "default": false,
+          "type": "boolean"
+        },
+        "return_self": {
+          "default": false,
+          "type": "boolean"
+        },
+        "sacrifice": {
+          "default": null
+        },
+        "self_damage": {
+          "default": 0,
+          "format": "uint8",
+          "minimum": 0.0,
+          "type": "integer"
+        },
+        "sorcery_speed": {
+          "default": false,
+          "type": "boolean"
+        },
+        "spell_filter": {
+          "default": null
+        },
+        "spend_predicate": {
+          "default": "",
+          "type": "string"
+        },
+        "taps_self": {
+          "default": false,
+          "type": "boolean"
+        },
+        "targeted": {
+          "default": "",
+          "type": "string"
+        },
+        "timing": {
+          "type": "string"
+        },
+        "who": {
+          "default": "",
+          "type": "string"
+        }
+      },
+      "required": [
+        "timing"
+      ],
+      "type": "object"
+    },
+    "CardToml": {
+      "additionalProperties": false,
+      "description": "A card's top-level TOML table.\n\nThis mirrors the DSL's top-level card shape with owned fields, then folds into the interned `CardDef` representation used by the engine.",
+      "properties": {
+        "abilities": {
+          "items": {
+            "$ref": "#/$defs/AbilityTomlSchema"
+          },
+          "type": "array"
+        },
+        "adventure": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CardToml"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "An adventure card's adventure half (CR 715, soc/sos) — an inline `[adventure]` `CardDef` table (its own `cost`, `kind`, `abilities`), parsed like `back` and interned below. Absent for ordinary cards."
+        },
+        "alternative_cost": {
+          "description": "A printed non-mana alternative cost (CR 601.2f) — `alternative_cost = { condition = { .. }, rider = { .. } }`; absent for a card without one."
+        },
+        "approximates": {
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "back": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CardToml"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A \"prepare\" DFC's back face (soc/sos) — an inline `[back]` `CardDef` table, parsed via `CardDef`'s own impl and interned below. Absent for ordinary cards."
+        },
+        "bestow": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CostToml"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Bestow (CR 702.103) — `[bestow]` with the same `[cost]`-table shape as `[echo]`; absent for a card without bestow."
+        },
+        "cascade": {
+          "default": false,
+          "description": "Cascade (CR 702.85) — `cascade = true`; absent (`false`) for a card without cascade.",
+          "type": "boolean"
+        },
+        "cast_only_before_attackers": {
+          "default": false,
+          "description": "\"Cast this spell only before attackers are declared\" (CR 601.3e — Master Warcraft) — `cast_only_before_attackers = true`; absent (`false`) for every ordinary card.",
+          "type": "boolean"
+        },
+        "cast_only_during_combat": {
+          "default": false,
+          "description": "\"Cast this spell only during combat\" (CR 601.3e) — `cast_only_during_combat = true`; absent (`false`) for every ordinary card.",
+          "type": "boolean"
+        },
+        "cast_x_max": {
+          "description": "A non-mana cast-time cap on {X} (CR 601.2b — Open the Way's player-count bound) — `cast_x_max = \"player_count\"`; absent (`None`) for every ordinary {X} spell.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "choose": {
+          "default": 1,
+          "format": "uint8",
+          "minimum": 0.0,
+          "type": "integer"
+        },
+        "choose_max": {
+          "default": null,
+          "description": "CR 700.2d \"choose one or more\" — the max of the range; `None` keeps the count fixed at exactly `modal_choose` (every \"choose one\"/\"choose two\" card).",
+          "format": "uint8",
+          "minimum": 0.0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "choose_max_if_commander": {
+          "default": false,
+          "description": "Gates `modal_choose_max` on the caster controlling a commander at cast time (Nexus Mentality's \"if you control a commander as you cast this spell, you may choose both instead\"). `false` for every ordinary modal card.",
+          "type": "boolean"
+        },
+        "colors": {
+          "description": "Explicit colors (CR 105.2a) overriding the cost-pip derivation — a token's stated color, since it has no mana cost to derive one from. `colors = [\"green\"]` in TOML; empty (every ordinary card) derives color from cost pips as usual.",
+          "items": {
+            "$ref": "#/$defs/Color"
+          },
+          "type": "array"
+        },
+        "conditional_keywords": {
+          "description": "A keyword granted only while a `Condition` holds (Primordial Hydra's trample at ten-or-more +1/+1 counters) — `conditional_keywords = [{ condition = { type = \"...\" }, keyword = \"...\" }]` in TOML. Empty for every ordinary card.",
+          "items": {
+            "$ref": "#/$defs/ConditionalKeywordToml"
+          },
+          "type": "array"
+        },
+        "cost": {
+          "$ref": "#/$defs/CostToml"
+        },
+        "cumulative_upkeep": {
+          "description": "Cumulative upkeep (CR 702.24) — `[cumulative_upkeep]` (`graveyard_cards = N`); absent for a card without cumulative upkeep."
+        },
+        "cycling": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CostToml"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Cycling {N} (CR 702.29a) — `cycling = { generic = N }`; absent for a card with none."
+        },
+        "cycling_sacrifice": {
+          "description": "A sacrifice folded into the cycling cost (CR 702.29b — Edge of Autumn's \"Cycling—Sacrifice a land\"), same [`SacrificeCost`] table/shorthand shape as an activation sacrifice cost. Absent (`SacrificeCost::None`) for ordinary cycling."
+        },
+        "default_print": {
+          "default": "",
+          "description": "Scryfall card UUID for the default Printing — required on top-level pool TOMLs.",
+          "type": "string"
+        },
+        "delve": {
+          "default": false,
+          "description": "Delve (CR 702.66) — `delve = true`; absent (`false`) for a card without delve.",
+          "type": "boolean"
+        },
+        "demonstrate": {
+          "default": false,
+          "description": "Demonstrate (CR 702.147) — `demonstrate = true`; absent (`false`) for a card without demonstrate.",
+          "type": "boolean"
+        },
+        "devoid": {
+          "default": false,
+          "description": "Devoid (CR 702.114a) — `devoid = true`; absent (`false`) for every ordinary card.",
+          "type": "boolean"
+        },
+        "devour": {
+          "default": null,
+          "description": "Devour N (CR 702.82) — `devour = N`; absent for a card without devour.",
+          "format": "uint32",
+          "minimum": 0.0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "dredge": {
+          "default": null,
+          "description": "Dredge N (CR 702.52) — `dredge = N` for a dredger; absent (`None`) otherwise.",
+          "format": "uint8",
+          "minimum": 0.0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "echo": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CostToml"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Echo (CR 702.31) — `[echo]` with the same `[cost]`-table shape; absent for a card without echo."
+        },
+        "enchant": {
+          "description": "An Aura's enchant subject restriction (CR 303.4a) — `enchant = { … }`, the same [`PermanentFilter`] table/shorthand shape as any other filter field; absent means \"any creature\" (every ordinary Aura)."
+        },
+        "enchant_graveyard": {
+          "default": false,
+          "description": "Animate Dead's cast-time \"enchant creature card in a graveyard\" (CR 303.4a) — `enchant_graveyard = true`; absent (`false`) for every ordinary card.",
+          "type": "boolean"
+        },
+        "encore": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CostToml"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Encore [cost] (CR 702.140, Angel of Indemnity) — an `[encore]` table with the same `[cost]`-table shape as `[flashback]`, leaked to `'static` below. Absent for a card without encore."
+        },
+        "enter_as_copy": {
+          "description": "Enter-as-a-copy replacement (CR 706/707.2) — an inline `enter_as_copy = { .. }` table (`until_eot`/`extra_counters`/`gains_haste`, all optional). Absent for a card without it."
+        },
+        "enters_tapped": {
+          "default": false,
+          "type": "boolean"
+        },
+        "enters_tapped_unless": true,
+        "enters_tapped_unless_you_pay_life": {
+          "default": null,
+          "description": "A CR 614.12 as-enters replacement choice (Overgrown Tomb) — `enters_tapped_unless_you_pay_life = 2`; absent for a card without one.",
+          "format": "uint8",
+          "minimum": 0.0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "escape": {
+          "description": "Escape (CR 702.19) — `[escape]` (an `[escape.cost]` sub-table plus `exile`/ `plus_one_plus_one_counters`); absent for a card without escape."
+        },
+        "evoke": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CostToml"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Evoke (CR 702.74) — `[evoke]` with the same `[cost]`-table shape as `[echo]`; absent for a card without evoke."
+        },
+        "flashback": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CostToml"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Flashback (CR 702.34) — `[flashback]` with the same `[cost]`-table shape (may carry a `[flashback.additional]` rider); absent for a card without flashback."
+        },
+        "forecast": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HandActivatedAbilityTomlSchema"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Forecast (CR 702.57, Skyscribing) — a `[forecast]` table (`[forecast.cost]` + `[[forecast.effects]]`), the reveal-and-keep sibling of `hand_ability`. Absent for a card without one."
+        },
+        "free_cast_if": {
+          "description": "A printed conditional free-cast permission (CR 118.5) — `free_cast_if = { .. }` with the same `Condition` table shape as `enters_tapped_unless`; absent for a card without one."
+        },
+        "functions_in_graveyard": {
+          "default": false,
+          "description": "CR 603.6e — this card's triggered abilities fire from its owner's graveyard rather than the battlefield (Squee, Nether Traitor). `false` for every ordinary card.",
+          "type": "boolean"
+        },
+        "graveyard_cast_cost": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CostToml"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Cast-from-graveyard alternative cost for a permanent (CR 118.9) — `[graveyard_cast_cost]` with the same `[cost]`-table shape as `[flashback]`; absent for a card without it."
+        },
+        "half": {
+          "description": "A split card's two castable halves (CR 709, Fire // Ice) — `[[half]]` tables, each its own inline `CardDef` (name, oracle, `cost`, `kind`, `abilities`) parsed like `adventure`. Empty for every non-split card.",
+          "items": {
+            "$ref": "#/$defs/CardToml"
+          },
+          "type": "array"
+        },
+        "hand_ability": {
+          "description": "A hand-activated, discard-this-card ability (CR 113.6/602.5e, Magma Opus) — zero or more `[[hand_ability]]` tables (`[hand_ability.cost]` + `[[hand_ability.effects]]` each), one per typecycling type (CR 702.29d — Valley Rannet's mountaincycling and forestcycling). Empty for a card without one.",
+          "items": {
+            "$ref": "#/$defs/HandActivatedAbilityTomlSchema"
+          },
+          "type": "array"
+        },
+        "id": {
+          "default": "",
+          "description": "Scryfall oracle id — required on top-level pool TOMLs (enforced at registry load). Nested faces/tokens may omit it (`\"\"`).",
+          "type": "string"
+        },
+        "identity": {
+          "items": {
+            "$ref": "#/$defs/Color"
+          },
+          "type": "array"
+        },
+        "keywords": {
+          "items": {
+            "$ref": "#/$defs/Keyword"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "$ref": "#/$defs/KindToml"
+        },
+        "legendary": {
+          "default": false,
+          "type": "boolean"
+        },
+        "may_choose_not_to_untap": {
+          "default": false,
+          "description": "\"You may choose not to untap this during your untap step\" (CR 502.2 — Rubinia Soulsinger) — `may_choose_not_to_untap = true`; absent (`false`) for every ordinary permanent.",
+          "type": "boolean"
+        },
+        "modal": {
+          "default": false,
+          "type": "boolean"
+        },
+        "morph": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CostToml"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Morph (CR 702.37) — `[morph]` with the same `[cost]`-table shape as `[bestow]` (the card's morph cost); absent for a card without morph."
+        },
+        "name": {
+          "type": "string"
+        },
+        "oracle": {
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "otags": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "recover": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CostToml"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Recover (CR 702.59) — `[recover]` with the same `[cost]`-table shape as `[echo]`; absent for a card without recover."
+        },
+        "retrace": {
+          "default": false,
+          "description": "Retrace (CR 702.83) — `retrace = true`; absent (`false`) for a card without retrace.",
+          "type": "boolean"
+        },
+        "sets": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "snow": {
+          "default": false,
+          "description": "Snow supertype (CR 205.4g) — `snow = true`; absent (`false`) for every ordinary card.",
+          "type": "boolean"
+        },
+        "subtypes": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "suspend": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SuspendTomlSchema"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Suspend N—[cost] (CR 702.62, Rousing Refrain) — a `[suspend]` table whose `cost` sub-table is leaked to `'static` by the `Suspend` impl. Absent for ordinary cards."
+        },
+        "uncounterable": {
+          "default": false,
+          "description": "\"This spell can't be countered\" (CR 701.5g) — `uncounterable = true`; absent (`false`) for every ordinary card.",
+          "type": "boolean"
+        },
+        "vanishing": {
+          "default": null,
+          "description": "Vanishing N (CR 702.63) — `vanishing = N` for a vanishing permanent; absent (`None`) for every other card.",
+          "format": "uint8",
+          "minimum": 0.0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "name"
+      ],
+      "type": "object"
+    },
+    "Color": {
+      "description": "The five colors of mana (WUBRG order). Colorless `{C}` is *not* a color (it never enters color identity) — it and \"any color\" are modelled separately as [`Mana`].",
+      "enum": [
+        "white",
+        "blue",
+        "black",
+        "red",
+        "green"
+      ],
+      "type": "string"
+    },
+    "ConditionalKeywordToml": {
+      "additionalProperties": false,
+      "description": "One entry of `CardDef::conditional_keywords` as spelled in TOML — an `{ condition, keyword }` table folded into a `(Condition, Keyword)` tuple at load.",
+      "properties": {
+        "condition": true,
+        "keyword": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "condition",
+        "keyword"
+      ],
+      "type": "object"
+    },
+    "CostToml": {
+      "additionalProperties": false,
+      "description": "A `[cost]` table spells each color by name (`white = 1`) rather than as the [`Cost::colored`] WUBRG array; every field is optional.",
+      "properties": {
+        "additional": {
+          "description": "`[cost.additional]` — an additional cost paid alongside mana (CR 601.2f)."
+        },
+        "black": {
+          "default": 0,
+          "format": "uint8",
+          "minimum": 0.0,
+          "type": "integer"
+        },
+        "blue": {
+          "default": 0,
+          "format": "uint8",
+          "minimum": 0.0,
+          "type": "integer"
+        },
+        "colorless": {
+          "default": 0,
+          "format": "uint8",
+          "minimum": 0.0,
+          "type": "integer"
+        },
+        "generic": {
+          "default": 0,
+          "format": "uint8",
+          "minimum": 0.0,
+          "type": "integer"
+        },
+        "green": {
+          "default": 0,
+          "format": "uint8",
+          "minimum": 0.0,
+          "type": "integer"
+        },
+        "hybrid": {
+          "description": "Hybrid mana pips (CR 107.4e — `{a/b}`): a list of two-color arrays, one per hybrid symbol (`hybrid = [[\"black\", \"green\"]]` for one `{B/G}`).",
+          "items": {
+            "items": {
+              "$ref": "#/$defs/Color"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "phyrexian": {
+          "description": "Phyrexian mana pips (CR 107.4f — `{a/P}`): a list of colors, one per Phyrexian symbol (`phyrexian = [\"black\"]` for one `{B/P}`, Vraska, Betrayal's Sting's cost).",
+          "items": {
+            "$ref": "#/$defs/Color"
+          },
+          "type": "array"
+        },
+        "red": {
+          "default": 0,
+          "format": "uint8",
+          "minimum": 0.0,
+          "type": "integer"
+        },
+        "reduce_own_generic": {
+          "description": "A spell's own board-derived generic reduction (Blasphemous Act's \"costs {1} less ... for each creature on the battlefield\"), e.g. `reduce_own_generic = \"per_creature_on_battlefield\"`."
+        },
+        "white": {
+          "default": 0,
+          "format": "uint8",
+          "minimum": 0.0,
+          "type": "integer"
+        },
+        "x": {
+          "$ref": "#/$defs/XPips"
+        }
+      },
+      "type": "object"
+    },
+    "EffectTomlSchema": {
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/EffectTypeTomlSchema"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "EffectTypeTomlSchema": {
+      "enum": [
+        "damage",
+        "draw",
+        "life",
+        "destroy",
+        "exile",
+        "sacrifice",
+        "control",
+        "counters",
+        "mana",
+        "mill",
+        "pump",
+        "reveal",
+        "token",
+        "zone",
+        "copy",
+        "dig",
+        "choice",
+        "static",
+        "misc",
+        "sequence",
+        "choose_one",
+        "conditional"
+      ],
+      "type": "string"
+    },
+    "HandActivatedAbilityTomlSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "cost": {
+          "$ref": "#/$defs/CostToml"
+        },
+        "effects": {
+          "items": {
+            "$ref": "#/$defs/EffectTomlSchema"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "cost"
+      ],
+      "type": "object"
+    },
+    "Keyword": {
+      "description": "The evergreen keywords that change combat/timing math in the Phase 1 pool.\n\nIn TOML a keyword is a bare string (`\"flying\"`) or, for the parametrized ones, a single-key table — `{ ward = 2 }` / `{ protection = \"red\" }` (serde's externally tagged forms).",
+      "oneOf": [
+        {
+          "enum": [
+            "flying",
+            "first_strike",
+            "vigilance",
+            "haste",
+            "trample",
+            "deathtouch"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Can block creatures with flying (CR 702.9).",
+          "enum": [
+            "reach"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Can't be blocked except by two or more creatures (CR 702.111).",
+          "enum": [
+            "menace"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Deals combat damage in both the first-strike and the normal batch (CR 702.4).",
+          "enum": [
+            "double_strike"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Damage this deals also causes its controller to gain that much life (CR 702.15).",
+          "enum": [
+            "lifelink"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Can't attack (CR 702.3).",
+          "enum": [
+            "defender"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Can't be blocked this turn/permanently (a fixed subset of CR 702.10's \"unblockable\" — no \"except by …\" carve-out). Read by [`Game::can_block`].",
+          "enum": [
+            "unblockable"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "\"Destroy\" and lethal damage don't destroy this (CR 702.12). A 0-or-less-toughness SBA still applies — indestructible doesn't save a 0-toughness creature.",
+          "enum": [
+            "indestructible"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "May be cast any time you could cast an instant (CR 702.8).",
+          "enum": [
+            "flash"
+          ],
+          "type": "string"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Ward {N} (CR 702.21): when an opponent targets this, counter that spell/ability unless they pay {N} generic. Modeled as a cast-time tax (see [`Game::cast`]).",
+          "properties": {
+            "ward": {
+              "format": "uint8",
+              "minimum": 0.0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "ward"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Protection from a color, card type, or color-count quality (CR 702.16): can't be blocked/targeted/damaged by a source of that quality. See [`Game::protection_scopes`].",
+          "properties": {
+            "protection": {
+              "$ref": "#/$defs/ProtectionScope"
+            }
+          },
+          "required": [
+            "protection"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "Can't be the target of spells or abilities *opponents* control (CR 702.11). Its own controller can still target it. See the target-legality retain in [`Game::legal_targets_for`].",
+          "enum": [
+            "hexproof"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Can't be the target of any spell or ability, even its own controller's (CR 702.18). See the target-legality retain in [`Game::legal_targets_for`].",
+          "enum": [
+            "shroud"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Whenever this creature's controller casts a noncreature spell, it gets +1/+1 until end of turn (CR 702.108). The whole ability *is* the keyword (CR 702.108a) — see [`Game::queue_prowess_triggers`] for where it's synthesized rather than authored as a TOML `[[abilities]]`.",
+          "enum": [
+            "prowess"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Can't be blocked by creatures with greater power (CR 702.72a). See [`Game::can_block`].",
+          "enum": [
+            "skulk"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Can only block or be blocked by other Shadow creatures (CR 702.28b/c). A *paired* restriction — it also stops a Shadow creature from blocking a non-Shadow attacker. See [`Game::can_block`].",
+          "enum": [
+            "shadow"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Can be blocked only by artifact creatures and/or black creatures (CR 702.36b). See [`Game::can_block`].",
+          "enum": [
+            "fear"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Can be blocked only by artifact creatures and/or creatures that share a color with it (CR 702.13b) — the color-sharing sibling of [`Fear`](Self::Fear). See [`Game::can_block`].",
+          "enum": [
+            "intimidate"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Elusive Otter's printed evasion static (\"Creatures with power less than this creature's power can't block it\") — MTG names no keyword for it. ponytail: modeled as a card-specific keyword-bag arm on the shared block-legality check rather than new DSL surface for one card.",
+          "enum": [
+            "lesser_power_cant_block"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "\"This creature can't block\" (CR 509.1a — Bloodghast is never a legal blocker). Read by [`Game::can_block`].",
+          "enum": [
+            "cant_block"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Brazen Borrower's printed \"can block only creatures with flying\" static — MTG names no keyword for it. ponytail: modeled as a card-specific keyword-bag arm on the shared block-legality check rather than new DSL surface for one card.",
+          "enum": [
+            "can_block_only_flyers"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Decayed (CR 702.148): can't block ([`Game::can_block`]), and \"when it attacks, sacrifice it at the beginning of the end of combat step\" (CR 702.148c) — a rules-defined delayed trigger, scheduled at declare-attackers rather than authored as a token ability. See [`Game::declare_attackers`].",
+          "enum": [
+            "decayed"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Myriad (CR 702.114): \"Whenever this creature attacks, for each opponent other than the defending player, you may create a token copy that's tapped and attacking that player or a planeswalker they control. Exile the tokens at the end of combat.\" The whole ability *is* the keyword (CR 702.114a) — like Prowess, synthesized from the keyword at attack time rather than authored as a TOML `[[abilities]]`. See [`Game::queue_myriad_triggers`](crate::Game::queue_myriad_triggers). No pool card prints this keyword; Muddle, the Ever-Changing grants it to itself temporarily via its magecraft ability.",
+          "enum": [
+            "myriad"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Infect (CR 702.90): this source's damage to a creature is dealt as that many -1/-1 counters (CR 702.90b) and its damage to a player as that many poison counters (CR 702.90c). The damage is still dealt (CR 120.3) at its original size — lifelink, deathtouch, the commander-damage tally and every \"deals damage\" watch still see it. Read at the two damage chokes [`Game::creature_damage_events`](crate::Game::creature_damage_events) and [`Game::player_damage_events`](crate::Game::player_damage_events).",
+          "enum": [
+            "infect"
+          ],
+          "type": "string"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Toxic N (CR 702.164): \"Players dealt combat damage by this creature also get N poison counters.\" Unlike Infect it does *not* reshape the damage (CR 702.164a) — the life loss still happens and the poison counters are placed on top of it. Multiple instances add (CR 702.164b), so this is read as a sum by [`Game::toxic_amount`](crate::Game::toxic_amount), not a first-match lookup like Ward's. Combat damage only: applied at [`Game::damage_player`](crate::Game::damage_player), after that choke's prevention guards, so fully prevented combat damage places no counters.",
+          "properties": {
+            "toxic": {
+              "format": "uint8",
+              "minimum": 0.0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "toxic"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "KindToml": {
+      "description": "A `[kind]` table spells instants and sorceries as their own `type` tags (`type = \"instant\"`) rather than as [`CardKind::Spell`]'s `speed` field.",
+      "oneOf": [
+        {
+          "properties": {
+            "also": {
+              "description": "Additional card types (Artifact Creature, Enchantment Creature) — a list of type names. Empty for a plain creature."
+            },
+            "power": {
+              "format": "int32",
+              "type": "integer"
+            },
+            "toughness": {
+              "format": "int32",
+              "type": "integer"
+            },
+            "type": {
+              "enum": [
+                "creature"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "power",
+            "toughness",
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "type": {
+              "enum": [
+                "instant"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "type": {
+              "enum": [
+                "sorcery"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "type": {
+              "enum": [
+                "enchantment"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "type": {
+              "enum": [
+                "aura"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "type": {
+              "enum": [
+                "artifact"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "loyalty": {
+              "format": "int32",
+              "type": "integer"
+            },
+            "type": {
+              "enum": [
+                "planeswalker"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "loyalty",
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "defense": {
+              "format": "int32",
+              "type": "integer"
+            },
+            "type": {
+              "enum": [
+                "battle"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "defense",
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "basic": {
+              "default": false,
+              "description": "The \"Basic\" supertype (CR 205.4a) — `basic = true` in TOML for the five basics. Independent of `subtypes`: a nonbasic dual can carry the same type strings without being basic.",
+              "type": "boolean"
+            },
+            "produces": {
+              "description": "Optional sugar for a free \"{T}: Add one mana\" base tap; omitted for a fetch-only land or a land whose mana is all explicit `add_mana` abilities."
+            },
+            "subtypes": {
+              "default": [],
+              "description": "Printed land types (CR 305 — \"Forest\", \"Island\", …). Empty for a land with none (a check land, an untyped scry land).",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": {
+              "enum": [
+                "land"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ProtectionScope": {
+      "description": "The quality a [`Keyword::ProtectionFrom`] protects against (CR 702.16): a single fixed color (the common case — White Knight, \"protection from black\"), or a non-color quality — \"protection from creatures\" (Spirit Mantle, CR 702.16 grants protection from a card type) or \"protection from multicolored\" (Stonecoil Serpent, CR 105.4's ≥2-colors quality). Kept `Copy` so [`Keyword`] stays a small value enum. In TOML, `{ protection = \"<value>\" }` where `<value>` is a color name or `\"creatures\"`/`\"multicolored\"` — see the `de` module.",
+      "oneOf": [
+        {
+          "enum": [
+            "Creatures",
+            "Multicolored"
+          ],
+          "type": "string"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "Color": {
+              "$ref": "#/$defs/Color"
+            }
+          },
+          "required": [
+            "Color"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "SuspendTomlSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "cost": {
+          "$ref": "#/$defs/CostToml"
+        },
+        "counters": {
+          "format": "uint32",
+          "minimum": 0.0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "cost",
+        "counters"
+      ],
+      "type": "object"
+    },
+    "XPips": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "format": "uint8",
+          "minimum": 0.0,
+          "type": "integer"
+        }
+      ],
+      "description": "`[cost]`'s `x` key: the common case `x = true` (a single `{X}`) or an integer count of `{X}` symbols (`x = 3` for Astral Cornucopia's `{X}{X}{X}`, CR 107.3). `false`/absent means no `{X}`. Untagged so TOML's own scalar type picks the arm."
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A card's top-level TOML table.\n\nThis mirrors the DSL's top-level card shape with owned fields, then folds into the interned `CardDef` representation used by the engine.",
+  "properties": {
+    "abilities": {
+      "items": {
+        "$ref": "#/$defs/AbilityTomlSchema"
+      },
+      "type": "array"
+    },
+    "adventure": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CardToml"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "An adventure card's adventure half (CR 715, soc/sos) — an inline `[adventure]` `CardDef` table (its own `cost`, `kind`, `abilities`), parsed like `back` and interned below. Absent for ordinary cards."
+    },
+    "alternative_cost": {
+      "description": "A printed non-mana alternative cost (CR 601.2f) — `alternative_cost = { condition = { .. }, rider = { .. } }`; absent for a card without one."
+    },
+    "approximates": {
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "back": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CardToml"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "A \"prepare\" DFC's back face (soc/sos) — an inline `[back]` `CardDef` table, parsed via `CardDef`'s own impl and interned below. Absent for ordinary cards."
+    },
+    "bestow": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CostToml"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Bestow (CR 702.103) — `[bestow]` with the same `[cost]`-table shape as `[echo]`; absent for a card without bestow."
+    },
+    "cascade": {
+      "default": false,
+      "description": "Cascade (CR 702.85) — `cascade = true`; absent (`false`) for a card without cascade.",
+      "type": "boolean"
+    },
+    "cast_only_before_attackers": {
+      "default": false,
+      "description": "\"Cast this spell only before attackers are declared\" (CR 601.3e — Master Warcraft) — `cast_only_before_attackers = true`; absent (`false`) for every ordinary card.",
+      "type": "boolean"
+    },
+    "cast_only_during_combat": {
+      "default": false,
+      "description": "\"Cast this spell only during combat\" (CR 601.3e) — `cast_only_during_combat = true`; absent (`false`) for every ordinary card.",
+      "type": "boolean"
+    },
+    "cast_x_max": {
+      "description": "A non-mana cast-time cap on {X} (CR 601.2b — Open the Way's player-count bound) — `cast_x_max = \"player_count\"`; absent (`None`) for every ordinary {X} spell.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "choose": {
+      "default": 1,
+      "format": "uint8",
+      "minimum": 0.0,
+      "type": "integer"
+    },
+    "choose_max": {
+      "default": null,
+      "description": "CR 700.2d \"choose one or more\" — the max of the range; `None` keeps the count fixed at exactly `modal_choose` (every \"choose one\"/\"choose two\" card).",
+      "format": "uint8",
+      "minimum": 0.0,
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "choose_max_if_commander": {
+      "default": false,
+      "description": "Gates `modal_choose_max` on the caster controlling a commander at cast time (Nexus Mentality's \"if you control a commander as you cast this spell, you may choose both instead\"). `false` for every ordinary modal card.",
+      "type": "boolean"
+    },
+    "colors": {
+      "description": "Explicit colors (CR 105.2a) overriding the cost-pip derivation — a token's stated color, since it has no mana cost to derive one from. `colors = [\"green\"]` in TOML; empty (every ordinary card) derives color from cost pips as usual.",
+      "items": {
+        "$ref": "#/$defs/Color"
+      },
+      "type": "array"
+    },
+    "conditional_keywords": {
+      "description": "A keyword granted only while a `Condition` holds (Primordial Hydra's trample at ten-or-more +1/+1 counters) — `conditional_keywords = [{ condition = { type = \"...\" }, keyword = \"...\" }]` in TOML. Empty for every ordinary card.",
+      "items": {
+        "$ref": "#/$defs/ConditionalKeywordToml"
+      },
+      "type": "array"
+    },
+    "cost": {
+      "$ref": "#/$defs/CostToml"
+    },
+    "cumulative_upkeep": {
+      "description": "Cumulative upkeep (CR 702.24) — `[cumulative_upkeep]` (`graveyard_cards = N`); absent for a card without cumulative upkeep."
+    },
+    "cycling": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CostToml"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Cycling {N} (CR 702.29a) — `cycling = { generic = N }`; absent for a card with none."
+    },
+    "cycling_sacrifice": {
+      "description": "A sacrifice folded into the cycling cost (CR 702.29b — Edge of Autumn's \"Cycling—Sacrifice a land\"), same [`SacrificeCost`] table/shorthand shape as an activation sacrifice cost. Absent (`SacrificeCost::None`) for ordinary cycling."
+    },
+    "default_print": {
+      "description": "Scryfall card UUID for the default Printing — required on top-level pool TOMLs.",
+      "minLength": 1,
+      "type": "string"
+    },
+    "delve": {
+      "default": false,
+      "description": "Delve (CR 702.66) — `delve = true`; absent (`false`) for a card without delve.",
+      "type": "boolean"
+    },
+    "demonstrate": {
+      "default": false,
+      "description": "Demonstrate (CR 702.147) — `demonstrate = true`; absent (`false`) for a card without demonstrate.",
+      "type": "boolean"
+    },
+    "devoid": {
+      "default": false,
+      "description": "Devoid (CR 702.114a) — `devoid = true`; absent (`false`) for every ordinary card.",
+      "type": "boolean"
+    },
+    "devour": {
+      "default": null,
+      "description": "Devour N (CR 702.82) — `devour = N`; absent for a card without devour.",
+      "format": "uint32",
+      "minimum": 0.0,
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "dredge": {
+      "default": null,
+      "description": "Dredge N (CR 702.52) — `dredge = N` for a dredger; absent (`None`) otherwise.",
+      "format": "uint8",
+      "minimum": 0.0,
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "echo": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CostToml"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Echo (CR 702.31) — `[echo]` with the same `[cost]`-table shape; absent for a card without echo."
+    },
+    "enchant": {
+      "description": "An Aura's enchant subject restriction (CR 303.4a) — `enchant = { … }`, the same [`PermanentFilter`] table/shorthand shape as any other filter field; absent means \"any creature\" (every ordinary Aura)."
+    },
+    "enchant_graveyard": {
+      "default": false,
+      "description": "Animate Dead's cast-time \"enchant creature card in a graveyard\" (CR 303.4a) — `enchant_graveyard = true`; absent (`false`) for every ordinary card.",
+      "type": "boolean"
+    },
+    "encore": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CostToml"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Encore [cost] (CR 702.140, Angel of Indemnity) — an `[encore]` table with the same `[cost]`-table shape as `[flashback]`, leaked to `'static` below. Absent for a card without encore."
+    },
+    "enter_as_copy": {
+      "description": "Enter-as-a-copy replacement (CR 706/707.2) — an inline `enter_as_copy = { .. }` table (`until_eot`/`extra_counters`/`gains_haste`, all optional). Absent for a card without it."
+    },
+    "enters_tapped": {
+      "default": false,
+      "type": "boolean"
+    },
+    "enters_tapped_unless": true,
+    "enters_tapped_unless_you_pay_life": {
+      "default": null,
+      "description": "A CR 614.12 as-enters replacement choice (Overgrown Tomb) — `enters_tapped_unless_you_pay_life = 2`; absent for a card without one.",
+      "format": "uint8",
+      "minimum": 0.0,
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "escape": {
+      "description": "Escape (CR 702.19) — `[escape]` (an `[escape.cost]` sub-table plus `exile`/ `plus_one_plus_one_counters`); absent for a card without escape."
+    },
+    "evoke": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CostToml"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Evoke (CR 702.74) — `[evoke]` with the same `[cost]`-table shape as `[echo]`; absent for a card without evoke."
+    },
+    "flashback": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CostToml"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Flashback (CR 702.34) — `[flashback]` with the same `[cost]`-table shape (may carry a `[flashback.additional]` rider); absent for a card without flashback."
+    },
+    "forecast": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/HandActivatedAbilityTomlSchema"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Forecast (CR 702.57, Skyscribing) — a `[forecast]` table (`[forecast.cost]` + `[[forecast.effects]]`), the reveal-and-keep sibling of `hand_ability`. Absent for a card without one."
+    },
+    "free_cast_if": {
+      "description": "A printed conditional free-cast permission (CR 118.5) — `free_cast_if = { .. }` with the same `Condition` table shape as `enters_tapped_unless`; absent for a card without one."
+    },
+    "functions_in_graveyard": {
+      "default": false,
+      "description": "CR 603.6e — this card's triggered abilities fire from its owner's graveyard rather than the battlefield (Squee, Nether Traitor). `false` for every ordinary card.",
+      "type": "boolean"
+    },
+    "graveyard_cast_cost": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CostToml"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Cast-from-graveyard alternative cost for a permanent (CR 118.9) — `[graveyard_cast_cost]` with the same `[cost]`-table shape as `[flashback]`; absent for a card without it."
+    },
+    "half": {
+      "description": "A split card's two castable halves (CR 709, Fire // Ice) — `[[half]]` tables, each its own inline `CardDef` (name, oracle, `cost`, `kind`, `abilities`) parsed like `adventure`. Empty for every non-split card.",
+      "items": {
+        "$ref": "#/$defs/CardToml"
+      },
+      "type": "array"
+    },
+    "hand_ability": {
+      "description": "A hand-activated, discard-this-card ability (CR 113.6/602.5e, Magma Opus) — zero or more `[[hand_ability]]` tables (`[hand_ability.cost]` + `[[hand_ability.effects]]` each), one per typecycling type (CR 702.29d — Valley Rannet's mountaincycling and forestcycling). Empty for a card without one.",
+      "items": {
+        "$ref": "#/$defs/HandActivatedAbilityTomlSchema"
+      },
+      "type": "array"
+    },
+    "id": {
+      "description": "Scryfall oracle id — required on top-level pool TOMLs (enforced at registry load). Nested faces/tokens may omit it (`\"\"`).",
+      "minLength": 1,
+      "type": "string"
+    },
+    "identity": {
+      "items": {
+        "$ref": "#/$defs/Color"
+      },
+      "type": "array"
+    },
+    "keywords": {
+      "items": {
+        "$ref": "#/$defs/Keyword"
+      },
+      "type": "array"
+    },
+    "kind": {
+      "$ref": "#/$defs/KindToml"
+    },
+    "legendary": {
+      "default": false,
+      "type": "boolean"
+    },
+    "may_choose_not_to_untap": {
+      "default": false,
+      "description": "\"You may choose not to untap this during your untap step\" (CR 502.2 — Rubinia Soulsinger) — `may_choose_not_to_untap = true`; absent (`false`) for every ordinary permanent.",
+      "type": "boolean"
+    },
+    "modal": {
+      "default": false,
+      "type": "boolean"
+    },
+    "morph": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CostToml"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Morph (CR 702.37) — `[morph]` with the same `[cost]`-table shape as `[bestow]` (the card's morph cost); absent for a card without morph."
+    },
+    "name": {
+      "type": "string"
+    },
+    "oracle": {
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "otags": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "recover": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CostToml"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Recover (CR 702.59) — `[recover]` with the same `[cost]`-table shape as `[echo]`; absent for a card without recover."
+    },
+    "retrace": {
+      "default": false,
+      "description": "Retrace (CR 702.83) — `retrace = true`; absent (`false`) for a card without retrace.",
+      "type": "boolean"
+    },
+    "sets": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "snow": {
+      "default": false,
+      "description": "Snow supertype (CR 205.4g) — `snow = true`; absent (`false`) for every ordinary card.",
+      "type": "boolean"
+    },
+    "subtypes": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "suspend": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SuspendTomlSchema"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Suspend N—[cost] (CR 702.62, Rousing Refrain) — a `[suspend]` table whose `cost` sub-table is leaked to `'static` by the `Suspend` impl. Absent for ordinary cards."
+    },
+    "uncounterable": {
+      "default": false,
+      "description": "\"This spell can't be countered\" (CR 701.5g) — `uncounterable = true`; absent (`false`) for every ordinary card.",
+      "type": "boolean"
+    },
+    "vanishing": {
+      "default": null,
+      "description": "Vanishing N (CR 702.63) — `vanishing = N` for a vanishing permanent; absent (`None`) for every other card.",
+      "format": "uint8",
+      "minimum": 0.0,
+      "type": [
+        "integer",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "id",
+    "default_print",
+    "kind",
+    "name"
+  ],
+  "title": "mtgfr token TOML",
+  "type": "object"
+}
