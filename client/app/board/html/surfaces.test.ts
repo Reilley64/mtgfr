@@ -513,7 +513,7 @@ test("board reject surface renders when local reject text is set", () => {
   );
 });
 
-test("hand surfaces render cost pips and a drag ghost", () => {
+test("hand surfaces render cost pips and fade the drag source without an HTML ghost", () => {
   const handCard = card(42, {
     name: "Lightning Bolt",
     print: "bolt-print",
@@ -540,9 +540,9 @@ test("hand surfaces render cost pips and a drag ghost", () => {
       },
       gameState({ actions: [castAction], objects: [handCard] }),
     ),
-    resolveBoardCardArtMounts(2),
+    resolveBoardCardArtMounts(1),
     Scene.expect(Scene.testId("hand-cost-pips")).toExist(),
-    Scene.expect(Scene.testId("hand-drag-ghost")).toExist(),
+    Scene.expect(Scene.testId("hand-drag-ghost")).not.toExist(),
   );
 });
 

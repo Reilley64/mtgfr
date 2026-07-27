@@ -82,6 +82,7 @@ These documents are **not superseded** and must stay current alongside the specs
 | [combat-arrow-blocked-retarget](2026-07-27-combat-arrow-blocked-retarget-design.md) | Design input: durable blocked attackers (CR 509.1h / trample 702.19b), post-declare red→blockers + no arrow when blockers leave; update combat / battlefield / wire specs at implement time |
 | [effect-deepening](2026-07-26-effect-deepening-design.md) | Design input: deepen Effect on client (LobbyClient, BFF gRPC Effect dispatch, Drizzle RC effect-postgres, Effect HTTP helpers); update shell/lobby/wire specs per wave |
 | [prompt-primary-bar-takeover](2026-07-27-prompt-primary-bar-takeover-design.md) | Design input: simple prompt actions own the primary-bar slot; rich pickers are center modals; board-aim coaches stay bottom-docked; update prompts + turn-and-priority-chrome at implement time |
+| [unified-screen-motion](2026-07-27-unified-screen-motion-design.md) | Design input: unify hand-drag ghost + flights + ExitFx onto the Mount flight / screen-motion paint layer; update flights + hand-and-zone-bar |
 
 ## Authoring conventions
 

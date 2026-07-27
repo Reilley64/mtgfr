@@ -199,6 +199,7 @@ function flightClockState(overrides: Partial<FlightClockState> = {}): FlightCloc
   return {
     liveFlights: [],
     liveExitFx: [],
+    liveDragGhost: null,
     lastRestingSnapshot: null,
     ...overrides,
   };
@@ -1143,6 +1144,25 @@ describe("bitmapFrameNeedsRaf", () => {
 });
 
 describe("flight clock helpers", () => {
+  it("drag-ghost pose change paints the flight layer without resting paint", () => {
+    const ghost = {
+      print: "bolt",
+      name: "Lightning Bolt",
+      x: 100,
+      y: 200,
+      scale: 2,
+      zone: "hand" as const,
+    };
+    const first = applyPublishedFrame(flightClockState(), frame({ dragGhost: ghost, cards: [] }));
+    expect(first.paintFlight).toBe(true);
+    const moved = applyPublishedFrame(
+      first.state,
+      frame({ dragGhost: { ...ghost, x: 140, y: 180 }, cards: [] }),
+    );
+    expect(moved.paintResting).toBe(false);
+    expect(moved.paintFlight).toBe(true);
+  });
+
   it("pose-only flight tick does not request resting paint", () => {
     const flight = spawnFlight({
       id: 3,

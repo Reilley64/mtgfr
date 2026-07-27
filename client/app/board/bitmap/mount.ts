@@ -15,8 +15,9 @@ import { type Camera, worldToScreen } from "../geometry/camera";
 import { AVATAR_R, avatarLabelOffsets, avatarPos, type RenderCard, seatColor } from "../geometry/layout";
 import type { StackPresentation } from "../geometry/stackLayout";
 import { ArtLoaded, FlightsSynced } from "../messages";
-import { type ExitFx, exitFxParticles, particleAllowancePerFx, stepExitFx } from "../motion/exit-fx";
+import { type ExitFx, stepExitFx } from "../motion/exit-fx";
 import { type CardFlight, stepFlights } from "../motion/flights";
+import type { DragGhost } from "../motion/screen-motion";
 import { mergeExitFxPoses, mergeFlightPoses, restingPaintChanged, restingPaintSnapshot } from "./flight-frame";
 import {
   paintAutoTapPreview,
@@ -25,8 +26,7 @@ import {
   paintCardPickedHighlight,
   paintCardTargetHighlight,
 } from "./paint-cards";
-import { paintExitFx } from "./paint-exit-fx";
-import { paintFlightCard } from "./paint-flights";
+import { paintScreenMotion } from "./paint-screen-motion";
 
 export type BitmapFrame = {
   width: number;
@@ -44,6 +44,8 @@ export type BitmapFrame = {
   stack?: readonly StackObjectView[];
   stackPresentation?: StackPresentation;
   flights: readonly CardFlight[];
+  /** Active hand-drag ghost painted on the flight / screen-motion layer. */
+  dragGhost?: DragGhost | null;
   exitFx?: readonly ExitFx[];
   hideCardIds: ReadonlySet<number>;
   targetObjects: ReadonlySet<number>;
@@ -65,6 +67,7 @@ export type BitmapFrame = {
 export type FlightClockState = {
   liveFlights: CardFlight[];
   liveExitFx: ExitFx[];
+  liveDragGhost: DragGhost | null;
   lastRestingSnapshot: ReturnType<typeof restingPaintSnapshot> | null;
 };
 
@@ -75,6 +78,7 @@ let currentFrame: BitmapFrame | null = null;
 let flightClockState: FlightClockState = {
   liveFlights: [],
   liveExitFx: [],
+  liveDragGhost: null,
   lastRestingSnapshot: null,
 };
 const mountedLayers = new Set<BitmapMountHandle>();
@@ -125,21 +129,24 @@ export function applyPublishedFrame(
     prefersReducedMotion(),
   );
   const liveExitFx = [...steppedExitFx.exitFx.values()];
-  const mergedFrame = { ...frame, flights: liveFlights, exitFx: liveExitFx };
-  const { flights: _flights, exitFx: _exitFx, ...restingFrame } = mergedFrame;
+  const liveDragGhost = frame.dragGhost ?? null;
+  const mergedFrame = { ...frame, flights: liveFlights, exitFx: liveExitFx, dragGhost: liveDragGhost };
+  const { flights: _flights, exitFx: _exitFx, dragGhost: _dragGhost, ...restingFrame } = mergedFrame;
   const nextRestingSnapshot = restingPaintSnapshot(restingFrame);
 
   return {
     state: {
       liveFlights,
       liveExitFx,
+      liveDragGhost,
       lastRestingSnapshot: nextRestingSnapshot,
     },
     paintResting: restingPaintChanged(state.lastRestingSnapshot, nextRestingSnapshot),
     paintFlight:
       state.lastRestingSnapshot == null ||
       flightsChanged(state.liveFlights, liveFlights) ||
-      exitFxChanged(state.liveExitFx, liveExitFx),
+      exitFxChanged(state.liveExitFx, liveExitFx) ||
+      dragGhostChanged(state.liveDragGhost, liveDragGhost),
     sync:
       steppedExitFx.completedIds.length > 0 ? { flights: liveFlights, exitFx: liveExitFx, now: animationNow() } : null,
     frame: mergedFrame,
@@ -174,7 +181,7 @@ export function tickFlightClock(
       liveFlights,
       liveExitFx,
     },
-    frame: { ...frame, flights: liveFlights, exitFx: liveExitFx },
+    frame: { ...frame, flights: liveFlights, exitFx: liveExitFx, dragGhost: frame.dragGhost ?? null },
     paintFlight: true,
     sync:
       flyingMembershipChanged || allSettled || exitFxMembershipChanged
@@ -234,6 +241,19 @@ function exitFxChanged(prev: readonly ExitFx[], next: readonly ExitFx[]): boolea
   return false;
 }
 
+function dragGhostChanged(prev: DragGhost | null, next: DragGhost | null): boolean {
+  if (prev == null && next == null) return false;
+  if (prev == null || next == null) return true;
+  return (
+    prev.x !== next.x ||
+    prev.y !== next.y ||
+    prev.scale !== next.scale ||
+    prev.print !== next.print ||
+    prev.name !== next.name ||
+    prev.zone !== next.zone
+  );
+}
+
 function flyingIds(flights: readonly CardFlight[]): Set<number> {
   return new Set(flights.filter((flight) => flight.phase === "flying").map((flight) => flight.id));
 }
@@ -255,6 +275,7 @@ function resetClockState(): void {
   flightClockState = {
     liveFlights: [],
     liveExitFx: [],
+    liveDragGhost: null,
     lastRestingSnapshot: null,
   };
 }
@@ -321,19 +342,18 @@ export function paintBitmapLayer(canvas: HTMLCanvasElement, frame: BitmapFrame, 
   }
 }
 
-/** Layer 6: in-flight cards only, on a canvas above the hand/stack HTML. */
+/** Layer 6: screen motion (drag ghost + flights + ExitFx), above hand/stack HTML. */
 export function paintFlightLayer(canvas: HTMLCanvasElement, frame: BitmapFrame, cache: Pick<ImageCache, "get">): void {
   const ctx = prepareLayerCtx(canvas, frame);
   if (ctx == null) return;
 
-  for (const flight of frame.flights) {
-    paintFlightCard(ctx, flight, frame.camera.zoom, cache);
-  }
-  const exitFx = frame.exitFx ?? [];
-  const particleAllowance = particleAllowancePerFx(exitFx.length);
-  for (const fx of exitFx) {
-    paintExitFx(ctx, fx, frame.camera.zoom, cache, exitFxParticles(fx, particleAllowance));
-  }
+  paintScreenMotion(ctx, {
+    dragGhost: frame.dragGhost,
+    flights: frame.flights,
+    exitFx: frame.exitFx ?? [],
+    zoom: frame.camera.zoom,
+    cache,
+  });
 }
 
 function renderBoardLayer(canvas: HTMLCanvasElement): void {
@@ -601,6 +621,7 @@ function preloadFrameArt(frame: BitmapFrame, cache: Pick<ImageCache, "preload">)
   for (const flight of frame.flights) {
     if (flight.print) urls.push(imageUrlByPrint(flight.print));
   }
+  if (frame.dragGhost?.print) urls.push(imageUrlByPrint(frame.dragGhost.print));
   for (const fx of frame.exitFx ?? []) {
     if (fx.print) urls.push(imageUrlByPrint(fx.print));
   }
