@@ -46,7 +46,7 @@ export type BitmapFrame = {
   /** Combat-damage assign draft amounts keyed by blocker object id. */
   assignAmounts: ReadonlyMap<number, number>;
   targetPlayers: ReadonlySet<number>;
-  /** Multi player-aim seats already toggled in the player-pick draft (Priority Gold solid ring). */
+  /** Multi player-aim seats already toggled (Priority Gold solid ring). */
   pickedPlayers: ReadonlySet<number>;
   aimFrom: Vec | null;
   cursor: Vec;

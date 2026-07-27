@@ -11,6 +11,7 @@ import {
   pendingDivideSpellOverlay,
   pendingPlayerAimOverlay,
   pendingTargetingOverlay,
+  pickedPlayersFromDraft,
   sacrificeCostOverlay,
   stagingOverlay,
 } from "./action/targeting";
@@ -202,10 +203,7 @@ export const view = Submodel.defineView<BoardViewModel, ViewMessage>((model) => 
         ? new Map(Object.entries(model.board.promptDraft.amounts).map(([id, amount]) => [Number(id), amount]))
         : new Map()),
     targetPlayers: overlay.targetPlayers,
-    pickedPlayers:
-      overlay.aiming && model.board.promptDraft?.kind === "player-pick"
-        ? new Set(model.board.promptDraft.players)
-        : new Set(),
+    pickedPlayers: pickedPlayersFromDraft(overlay.aiming, model.board.promptDraft),
     aimFrom: overlay.aiming ? overlay.aimFrom : null,
     cursor: model.board.cursor,
     combatDragFrom: combatDrag?.from ?? null,
