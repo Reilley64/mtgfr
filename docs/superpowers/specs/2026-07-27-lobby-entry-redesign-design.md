@@ -1,6 +1,6 @@
 # Lobby entry redesign (design)
 
-**Status:** Design input (2026-07-27). Not shipped.
+**Status:** Design input (2026-07-27). Shipped in Layout C entry reflow; living behavior in [lobby-entry-ui](2026-07-20-lobby-entry-ui.md).
 **Surfaces:** `lobby-entry-ui` (Host/Join entry); shared shell ghost button recipe (`client/app/domain/ui/buttonClass.ts`) used by lobby Back and other shell secondary/back nav. Living update target at implement time: [lobby-entry-ui](2026-07-20-lobby-entry-ui.md). Seated lobby layout is out of scope.
 
 ---

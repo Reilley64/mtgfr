@@ -1,6 +1,6 @@
 # Lobby Entry UI
 
-**Status:** Current (as of 2026-07-26)
+**Status:** Current (as of 2026-07-27)
 **Module:** `client/app/shell/lobby/**`, `client/app/domain/lobby/client.ts`, `client/app/domain/lobby-store.ts`
 
 ---
@@ -47,9 +47,9 @@ Bare `/play` and `?deck=` entry points are Not found (hard cut). Single-segment 
 
 Home ↔ `/play/{id}` morphs the shared deck-card chrome with a short FLIP animation (`deck-card-nav.ts`; skipped for reduced motion) — list-side detail in [deck-list-and-builder](2026-07-20-deck-list-and-builder.md).
 
-### Host / Join entry (Layout C)
+### Host / Join entry
 
-On entry, the shared shell header owns the `Lobby` title; the lobby stage does not render a second wordmark or hero. The entry surface is a two-column Layout C grid with the selected deck-card chrome (`lobby-deck-card` / `lobby-deck-card-{id}`) on the left and the action stack on the right, rooted at `lobby-entry`. Stage beats keep display typography (`Ready to play?`), Host stays the primary Llanowar action (`lobby-host`), and Join is always available inline through `lobby-join-code` plus a ghost `lobby-join` button beneath “Have a code?”. `lobby-back` stays as a ghost link under the stack. The entry surface does not render the old dashed `lobby-open-join` card, focused join panel, Bringing strip, or cancel affordance. When the player has no decks or no selected deck, amber copy (`lobby-empty`) points them back to Your decks. Transport errors use `lobby-error` via `alertClass` (burn-red). Claim-seat and seated lobby still use the deck card + Ready/Start chrome as before. It does not render the old deck `<select>` or `Bring:` name strip in entry or claim-seat states; claim-seat shows **Back** to Your decks without a deck picker.
+On `/play/:deckId` with a selected deck, the lobby stage is a deck-anchored composition (no full-stage enclosing panel): selected deck-card chrome (`lobby-deck-card` / `lobby-deck-card-{id}`) on the left; an action stack on the right with display beat ("Ready to play?"), primary Llanowar **Host a table** (`lobby-host`), soft-inline Join ("Have a code?" + `lobby-join-code` + ghost **Join table** `lobby-join`), and ghost **Back** (`lobby-back`) to Your decks. There is no choose→join mode switch, dashed Join card, Bringing strip, or join-cancel control. Host is the only solid Llanowar CTA; Join and Back use the shared strengthened `buttonClass("ghost")` recipe (`text-snow-mint` on vine border). When the player has no decks or no selected deck, amber copy (`lobby-empty`) points them back to Your decks. Transport errors use `lobby-error` via `alertClass` (burn-red). Seated (`surface: "table"`) may keep the panel wrapper; claim-seat and Ready/Start chrome are unchanged by the entry reflow. It does not render the old deck `<select>` or `Bring:` name strip in entry or claim-seat states; claim-seat shows **Back** to Your decks without a deck picker.
 
 ### Seated lobby chrome
 
@@ -81,7 +81,7 @@ Helpers also live in `client/app/domain/lobby/client.ts` for table URL / code pa
 - `client/app/domain/lobby/code.test.ts` — `parseTableCode` for both `/play/:deckId/:table` and `/play/:table` path shapes, bare codes, and junk rejection (`/play/`, three+ segments).
 - `client/app/domain/lobby-store.test.ts` — lobby state helpers; with `WEB_DATABASE_URL`, asserts
   `loadLobby` on an empty table (requires migrate-applied `gravatar_hash`).
-- Scene assertions for lobby entry / seated surfaces, including `seat-face-0` Gravatar/monogram chrome and the table-only `/play/:table` shell route, live with shell Scene coverage (`just client-check`).
+- Layout C lobby entry Scene coverage in `client/app/shell/surfaces.test.ts` and `client/app/shell/lobby/entry.test.ts` asserts `lobby-entry` (no enclosing panel), Host primary (`bg-llanowar`), ghost Join/Back (`text-snow-mint`, not solid Llanowar), and absence of legacy choose/join controls; seated surfaces including `seat-face-0` Gravatar/monogram chrome and the table-only `/play/:table` shell route are covered there too (`just client-check`).
 
 ---
 
