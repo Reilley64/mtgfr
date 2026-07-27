@@ -1,6 +1,6 @@
 # Wire Protocol and Visibility
 
-**Status:** Current (as of 2026-07-26)
+**Status:** Current (as of 2026-07-27)
 **Module:** `proto/mtgfr/v1/`, `crates/schema/`, `crates/server/src/grpc/`, `client/app/domain/wire/`
 (`types.ts`, `protoMap.ts`, `visibleEventKindPresence.ts`, `wire-case-coverage.test.ts`, generated/)
 
@@ -145,7 +145,7 @@ BFF can pin later `table_id` hops to this pod.
 | `players` | Per-seat `PlayerView`: username, public `gravatar_hash` (SHA-256 hex; empty = monogram), life, commander tax, commander damage, `hand_count`, `library_count`, mana pool |
 | `objects` | Every `ObjectView` visible to this viewer: hand cards (own only), battlefield, stack, graveyard, exile, command zone |
 | `stack` | `StackObjectView` list, bottom-first; `MessageRef` label, optional primary `target`, `targets` list (clause 0 then clause 1; empty when targetless), and source art identity (`print` / `name` / `card_id`) for when `source` is omitted from `objects` (Moved tombstone or ceased token) |
-| `combat` | `CombatView`: declared attackers with defenders, declared blocks, confirmed flags |
+| `combat` | `CombatView`: declared attackers with defenders, declared blocks, confirmed flags, and `blocked_attackers` for attackers that remain blocked after their blockers leave combat |
 | `pending_choice` | The `PendingChoiceView` the engine is blocked on, if any; effect/mode titles use `MessageRef` labels |
 | `actions` | `ActionView` list for this viewer's own legal actions with `MessageRef` labels (empty for spectators) |
 | `can_act`, `yielded`, `turn_yielded` | Priority / yield state for auto-pass logic |
@@ -153,6 +153,8 @@ BFF can pin later `table_id` hops to this pod.
 | `mulliganing` | Whether the game is still in simultaneous pre-game mulligans |
 
 During mulligans, each `PlayerView` also carries `mulligans_taken`, `hand_kept`, and `can_mulligan`. These are public status fields; card identities remain private through the existing hand/object redaction rules. The local player's legal actions include setup-section `keep_hand` and `mulligan` actions while they are undecided.
+
+`CombatView.blocked_attackers` (field 5, expand-only) lists attackers that received at least one declared blocker and remain blocked for the rest of combat (CR 509.1h), including after their blockers leave. After every attacked seat has declared blockers, the client uses this set with `blocks` and living battlefield objects to paint post-declare attack arrows per [`2026-07-20-battlefield.md`](2026-07-20-battlefield.md): blocked attackers aim at living blockers; blocked attackers with no living blockers paint no combat arrow.
 
 ### Redaction rules
 

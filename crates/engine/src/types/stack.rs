@@ -1976,6 +1976,8 @@ pub(crate) struct CombatState {
     pub(crate) attack_targets: Vec<(ObjectId, Defender)>,
     /// (blocker, attacker) pairs.
     pub(crate) blocks: Vec<(ObjectId, ObjectId)>,
+    /// Attackers that became blocked this combat (CR 509.1h). Survives when all blockers leave.
+    pub(crate) blocked_attackers: Vec<ObjectId>,
     /// Attacker → how its combat damage is divided among its blockers (multi-block only).
     /// Set via [`Event::CombatDamageDivided`].
     pub(crate) damage: Vec<(ObjectId, Vec<(ObjectId, i32)>)>,

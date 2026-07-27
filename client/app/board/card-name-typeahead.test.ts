@@ -8,7 +8,7 @@ function state(overrides: Partial<VisibleState> = {}): VisibleState {
   return {
     active_player: 0,
     can_act: true,
-    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
     objects: [],
     pending_choice: { kind: "choose_card_name", player: 0, source: 1 },
     players: [

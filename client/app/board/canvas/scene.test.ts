@@ -63,7 +63,7 @@ function boardFixture(): VisibleState {
   return {
     active_player: 0,
     can_act: true,
-    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
     objects: [object(), object({ id: 2, kind: { kind: "land", colors: [4] }, name: "Forest", power: 0, toughness: 0 })],
     pending_choice: null,
     players: [player(), player({ player: 1, username: "Bob" })],

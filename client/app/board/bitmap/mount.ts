@@ -9,6 +9,7 @@ import type { Vec } from "../action/targeting";
 import { TARGET_COLOR } from "../action/targeting";
 import { stackTargetArrowEndpoints } from "../canvas/arrows";
 import { clockChips } from "../canvas/avatars";
+import { combatArrowEndpoints } from "../canvas/combatArrowEndpoints";
 import { PLAYABLE_BORDER, playableBattlefieldObjectIds } from "../chrome";
 import { type Camera, worldToScreen } from "../geometry/camera";
 import { AVATAR_R, avatarLabelOffsets, avatarPos, type RenderCard, seatColor } from "../geometry/layout";
@@ -504,28 +505,25 @@ function paintAvatars(ctx: CanvasRenderingContext2D, frame: BitmapFrame, cache: 
 }
 
 function paintCombatArrows(ctx: CanvasRenderingContext2D, frame: BitmapFrame): void {
-  const cardsById = new Map(frame.cards.map((card) => [card.id, card]));
-  const avatars = new Map<number, { x: number; y: number }>();
+  const avatars: Record<number, { x: number; y: number }> = {};
   const count = Math.max(1, frame.players.length);
   for (const player of frame.players) {
     const pos = avatarPos(player.player, frame.viewer, count);
-    avatars.set(player.player, worldToScreen(frame.camera, pos.x, pos.y));
+    avatars[player.player] = worldToScreen(frame.camera, pos.x, pos.y);
   }
 
   // Declare-drag staging arrows share the arrow layer with committed arrows (canvas map layer 4).
-  for (const attack of [...frame.stagedAttackers, ...frame.combat.attackers]) {
-    const from = cardsById.get(attack.attacker);
-    const to = avatars.get(attack.defender);
-    if (from == null || to == null) continue;
+  for (const endpoint of combatArrowEndpoints({
+    camera: frame.camera,
+    cards: frame.cards,
+    avatars,
+    attackers: [...frame.stagedAttackers, ...frame.combat.attackers],
+    blocks: [...frame.stagedBlocks, ...frame.combat.blocks],
+    blockersDeclared: frame.combat.blockers_declared,
+    blockedAttackers: frame.combat.blocked_attackers,
+  })) {
     // Attack stroke matches arrows.ts ATTACK_STROKE (not colors.mountainRed).
-    paintArrow(ctx, cardCenter(frame.camera, from), to, "#ff6b6b");
-  }
-
-  for (const block of [...frame.stagedBlocks, ...frame.combat.blocks]) {
-    const from = cardsById.get(block.blocker);
-    const to = cardsById.get(block.attacker);
-    if (from == null || to == null) continue;
-    paintArrow(ctx, cardCenter(frame.camera, from), cardCenter(frame.camera, to), colors.wallGreen);
+    paintArrow(ctx, endpoint.from, endpoint.to, endpoint.kind === "block" ? colors.wallGreen : "#ff6b6b");
   }
 }
 
@@ -554,10 +552,6 @@ function paintStackTargetArrows(ctx: CanvasRenderingContext2D, frame: BitmapFram
 function paintStagingAimArrow(ctx: CanvasRenderingContext2D, frame: BitmapFrame): void {
   if (frame.aimFrom == null) return;
   paintArrow(ctx, frame.aimFrom, frame.cursor, TARGET_COLOR, [2, 6]);
-}
-
-function cardCenter(camera: Camera, card: RenderCard): { x: number; y: number } {
-  return worldToScreen(camera, card.x + card.w / 2, card.y + card.h / 2);
 }
 
 function paintArrow(

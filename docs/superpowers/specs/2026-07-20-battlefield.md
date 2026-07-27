@@ -89,7 +89,7 @@ Alternate lose-the-game and attrition clocks stack below the username as chips (
 
 ### Arrows and target highlights
 
-`canvas/arrows.ts` defines combat and targeting arrow geometry. The Mount bitmap layer (`paintBitmapLayer`) paints those arrows above resting permanents and avatars — attack arrows Mountain Red (`#ff6b6b`), block arrows Wall Green (`#66ff99`), Island Blue (`#77CCFF`) for staged/pending aim and for declared stack→target arrows. Declare-attackers drag aim uses the same arrow layer as committed arrows. Stack target arrows must not rely on the Foldkit Canvas vector pass alone: that canvas sits under the Mount resting-art layer, so arrows painted only there disappear under permanent faces.
+`canvas/combatArrowEndpoints.ts` is the shared source of truth for committed and staged combat arrow endpoints. `canvas/arrows.ts` turns those endpoints into Foldkit shapes, and the Mount bitmap layer (`paintBitmapLayer`) paints the same endpoints above resting permanents and avatars. Before every attacked defender has declared blockers, attack arrows stay attacker → defending player avatar or attacked planeswalker card, and block arrows stay blocker → attacker. After every attacked defender has declared blockers, blocked attackers point at their living blockers with attack-red arrows, block-green arrows are suppressed, unblocked attackers still point at their defender, and a blocked attacker with no living blocker paints no combat arrow. Declare-attackers drag aim uses the same arrow layer as committed arrows. Stack target arrows must not rely on the Foldkit Canvas vector pass alone: that canvas sits under the Mount resting-art layer, so arrows painted only there disappear under permanent faces.
 
 ### Canvas hex colors
 
@@ -132,7 +132,8 @@ These are visual/layout rules only; they do not collapse engine objects.
 - Avatar unit tests assert Gravatar image paint, monogram fallback, mirrored flipped/upright label offsets, and `Cmd N` paint from `commander_damage` (max source only; omitted at 0) on both Mount `paintAvatars` and the vector `avatarShapes` helper, plus `Poison N` / `Rad N` chips: omitted at 0, stacked on distinct rows, and the poison fill flipping to red inside lethal range.
 - Resting-snapshot tests assert `gravatar_hash`-only and `commander_damage`-only player changes invalidate Mount resting paint.
 - Bitmap paint tests assert playable, commander, target, auto-tap, P/T, loyalty, counter, and damage chrome on the resting layer.
-- Bitmap paint tests assert stack→target arrows paint after resting card art and avatars.
+- Bitmap paint tests assert stack→target arrows paint after resting card art and avatars, and blocked attackers with no living blocker paint no combat arrow after blockers are declared.
+- Combat arrow endpoint and Canvas shape tests assert pre-declare arrows, post-declare retargeting, and no-arrow blocked attackers.
 - Scene tests assert arrows and interactive life-orb hit targets remain layered correctly.
 - Density tests assert packing, cluster fan, and hover raise order.
 

@@ -82,7 +82,7 @@ function gameState(overrides: Partial<VisibleState> = {}): VisibleState {
   return {
     active_player: 0,
     can_act: true,
-    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
     objects: [],
     pending_choice: null,
     players: [player(0), player(1)],
@@ -346,7 +346,7 @@ test("declare attackers shows combat staging coach for the active seat", () => {
     step: 5,
     active_player: 0,
     priority: 0,
-    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
   });
   Scene.scene(
     { update: (m) => [m, []], view: overlayView },
